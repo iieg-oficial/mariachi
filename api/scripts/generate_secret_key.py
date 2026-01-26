@@ -1,0 +1,26 @@
+import secrets
+
+print("=" * 70)
+print("Generador de SECRET_KEY para Backend Portal IIEG")
+print("=" * 70)
+print()
+print("Genera una clave secreta criptográficamente segura para usar")
+print("en la variable de entorno SECRET_KEY")
+print()
+
+secret_key = secrets.token_urlsafe(32)
+
+print("Tu SECRET_KEY generado:")
+print("-" * 70)
+print(secret_key)
+print("-" * 70)
+print()
+print("Copia esta clave y agrégala a tu archivo .env:")
+print(f'SECRET_KEY={secret_key}')
+print()
+print("⚠️  IMPORTANTE:")
+print("  - NO compartas esta clave con nadie")
+print("  - NO la subas a repositorios públicos")
+print("  - Usa una clave diferente para cada ambiente")
+print("  - Guárdala de forma segura (secrets manager en producción)")
+print()

@@ -1,0 +1,13 @@
+export { default as PagesDoc } from './PagesDoc';
+export { default as EditorDoc } from './EditorDoc';
+export { default as PageComponentsDoc } from './PageComponentsDoc';
+export { default as MenusDoc } from './MenusDoc';
+export { default as MediaDoc } from './MediaDoc';
+export { default as LayoutsDoc } from './LayoutsDoc';
+export { default as SEODoc } from './SEODoc';
+export { default as SearchDoc } from './SearchDoc';
+export { default as ApprovalsDoc } from './ApprovalsDoc';
+export { default as TrashDoc } from './TrashDoc';
+export { default as ImportExportDoc } from './ImportExportDoc';
+export { default as UsersDoc } from './UsersDoc';
+export { default as HistoryDoc } from './HistoryDoc';

@@ -1,0 +1,45 @@
+.menu-tree .ant-tree-treenode {
+    padding: 6px 0 !important;
+    align-items: flex-start !important;
+}
+
+.menu-tree .ant-tree-node-content-wrapper {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    padding: 0 !important;
+    line-height: normal !important;
+}
+
+.menu-tree .ant-tree-node-content-wrapper:hover {
+    background: transparent !important;
+}
+
+.menu-tree .ant-tree-node-content-wrapper.ant-tree-node-selected {
+    background: transparent !important;
+}
+
+.menu-tree .ant-tree-switcher {
+    width: 32px !important;
+    height: auto !important;
+    line-height: 1 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding-top: 16px !important;
+    flex-shrink: 0 !important;
+}
+
+.menu-tree .ant-tree-switcher .ant-tree-switcher-icon {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+.menu-tree .ant-tree-indent-unit {
+    width: 32px !important;
+}
+
+.menu-tree .ant-tree-draggable-icon {
+    display: none !important;
+}

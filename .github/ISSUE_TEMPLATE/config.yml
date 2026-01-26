@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📚 Documentación
+    url: https://github.com/IIEG/portal/tree/main/docs
+    about: Revisa la documentación antes de crear un issue
+  - name: 💬 Discusiones
+    url: https://github.com/IIEG/portal/discussions
+    about: Haz preguntas o discute ideas en Discussions

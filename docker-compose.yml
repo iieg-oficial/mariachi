@@ -1,0 +1,124 @@
+name: portal
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: portal-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-iieg_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-iieg_password}
+      POSTGRES_DB: ${POSTGRES_DB:-iieg_portal}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-iieg_user} -d ${POSTGRES_DB:-iieg_portal}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - portal_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: portal-redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - portal_network
+
+  minio:
+    image: minio/minio:latest
+    container_name: portal-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minio_admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minio_password}
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - portal_network
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: portal-api
+    command: ./scripts/start_backend.sh
+    ports:
+      - "${API_PORT:-8000}:8000"
+    env_file:
+      - ./api/.env
+    volumes:
+      - ./api:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-iieg_user}:${POSTGRES_PASSWORD:-iieg_password}@postgres:5432/${POSTGRES_DB:-iieg_portal}
+      REDIS_URL: redis://redis:6379/0
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minio_admin}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minio_password}
+    networks:
+      - portal_network
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile.prod
+      args:
+        VITE_NODE_ENV: ${VITE_NODE_ENV:-production}
+        VITE_GOOGLE_ANALYTICS_ID: ${VITE_GOOGLE_ANALYTICS_ID:-}
+    image: portal/web:latest
+    container_name: portal-web
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-80}:80"
+    networks:
+      - portal_network
+
+  admin:
+    build:
+      context: ./admin
+      dockerfile: Dockerfile.prod
+      args:
+        VITE_NODE_ENV: ${VITE_NODE_ENV:-production}
+        VITE_GOOGLE_ANALYTICS_ID: ${VITE_GOOGLE_ANALYTICS_ID:-}
+    image: portal/admin:latest
+    container_name: portal-admin
+    restart: unless-stopped
+    ports:
+      - "${ADMIN_PORT:-8080}:80"
+    networks:
+      - portal_network
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+
+
+networks:
+  portal_network:
+    driver: bridge

@@ -1,0 +1,24 @@
+from datetime import datetime
+
+from sqlalchemy import Column, DateTime, Enum, Integer, String
+from sqlalchemy.orm import relationship
+
+from app.core.database import Base
+
+
+class Usuario(Base):
+    __tablename__ = "usuarios"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, nullable=False, index=True)
+    email = Column(String, unique=True, nullable=False, index=True)
+    hashed_password = Column(String, nullable=False)
+    name = Column(String, nullable=False)
+    role = Column(
+        Enum("tetlamamakani", "editora", "diseñadora", name="user_roles"), nullable=False
+    )
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    history_entries = relationship("HistoryEntry", back_populates="user")
+    media_uploads = relationship("Media", back_populates="uploaded_by_user")
+    font_uploads = relationship("Font", back_populates="uploaded_by_user")

@@ -1,0 +1,63 @@
+name: 🐛 Bug Report
+description: Reportar un error o comportamiento inesperado
+title: "[Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Gracias por reportar este bug. Por favor completa la información.
+  - type: dropdown
+    id: component
+    attributes:
+      label: Componente
+      description: ¿En qué parte del proyecto está el bug?
+      options:
+        - Frontend (Portal público)
+        - CMS (Panel de administración)
+        - Backend (API)
+        - Docker/Infraestructura
+        - Otro
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Descripción del Bug
+      description: Describe claramente el problema
+      placeholder: Cuando hago X, sucede Y en lugar de Z
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Pasos para Reproducir
+      description: Lista los pasos para reproducir el bug
+      placeholder: |
+        1. Ir a '...'
+        2. Hacer click en '...'
+        3. Ver error
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Comportamiento Esperado
+      description: ¿Qué debería suceder?
+    validations:
+      required: true
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: Si aplica, agrega capturas de pantalla
+  - type: textarea
+    id: environment
+    attributes:
+      label: Entorno
+      description: Información del sistema
+      placeholder: |
+        - OS: Ubuntu 22.04
+        - Navegador: Chrome 120
+        - Node: 24.x
+        - Python: 3.10

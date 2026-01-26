@@ -1,0 +1,45 @@
+name: ✨ Feature Request
+description: Sugerir una nueva funcionalidad
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ¡Gracias por tu sugerencia! Cuéntanos sobre tu idea.
+  - type: dropdown
+    id: component
+    attributes:
+      label: Componente
+      description: ¿A qué parte del proyecto aplica?
+      options:
+        - Frontend (Portal público)
+        - CMS (Panel de administración)
+        - Backend (API)
+        - Documentación
+        - Otro
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problema que Resuelve
+      description: ¿Esta solicitud está relacionada con un problema?
+      placeholder: Me frustra cuando...
+  - type: textarea
+    id: solution
+    attributes:
+      label: Solución Propuesta
+      description: Describe la funcionalidad que te gustaría
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternativas Consideradas
+      description: ¿Has considerado otras soluciones?
+  - type: textarea
+    id: context
+    attributes:
+      label: Contexto Adicional
+      description: Cualquier otra información, mockups, screenshots

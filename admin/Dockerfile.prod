@@ -1,0 +1,33 @@
+FROM node:24-alpine AS builder
+LABEL version=$VERSION \
+    description="Administrador para IIEG Portal - Production" \
+    maintainer="edgar.villarreal@iieg.gob.mx" \
+    licenses="MIT"
+
+ARG VITE_GOOGLE_ANALYTICS_ID
+ARG NGINX_PORT
+ARG VITE_NODE_ENV
+ENV VITE_GOOGLE_ANALYTICS_ID=$VITE_GOOGLE_ANALYTICS_ID
+ENV NGINX_PORT=$NGINX_PORT
+ENV VITE_NODE_ENV=$VITE_NODE_ENV
+
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci
+COPY . .
+
+RUN if [ -f .env.production ]; then \
+    echo "Using .env.production file"; \
+    else \
+    echo "Creating .env.production from build args"; \
+    echo "VITE_NODE_ENV=${VITE_NODE_ENV}" > .env.production; \
+    echo "VITE_GOOGLE_ANALYTICS_ID=${VITE_GOOGLE_ANALYTICS_ID}" >> .env.production; \
+    fi
+
+RUN npm run build
+
+FROM nginx:alpine
+COPY --from=builder /app/dist /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+EXPOSE $NGINX_PORT
+CMD ["nginx", "-g", "daemon off;"]
