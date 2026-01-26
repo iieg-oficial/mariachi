@@ -14,9 +14,9 @@
 
 | Componente | Descripción | Puerto Dev |
 |------------|-------------|------------|
-| **Frontend** | Portal público con React + Vite + Tailwind | 3010 |
-| **CMS** | Panel de administración con React + Ant Design | 3011 |
-| **Backend** | API con FastAPI + PostgreSQL + Redis | 8000 |
+| **Web** | Portal público con React + Vite + Tailwind | 3010 |
+| **Admin** | Panel de administración con React + Ant Design | 3011 |
+| **Api** | API con FastAPI + PostgreSQL + Redis | 8000 |
 
 ## Inicio Rápido
 
@@ -30,18 +30,18 @@ cd portal
 # Levantar infraestructura
 docker compose -f docker-compose.dev.yml up postgres redis minio -d
 
-# Backend
-cd backend
+# Api
+cd api
 cp .env.example .env
 pip install -e ".[dev]"
 uvicorn app.main:app --reload
 
-# Frontend (nueva terminal)
-cd frontend
+# Web (nueva terminal)
+cd web
 npm install && npm run dev
 
-# CMS (nueva terminal)
-cd cms
+# Admin (nueva terminal)
+cd admin
 npm install && npm run dev
 ```
 
@@ -50,6 +50,25 @@ npm install && npm run dev
 ```bash
 docker compose up -d
 ```
+
+## Comandos Útiles (Makefile)
+
+El proyecto incluye un `Makefile` para facilitar tareas comunes.
+
+Uso: `make <comando> [ENV=dev|prod]` (por defecto `dev`)
+
+| Comando | Descripción |
+|---------|-------------|
+| `make up` | Inicia el entorno (en segundo plano) |
+| `make build` | Reconstruye e inicia el entorno |
+| `make down` | Detiene todos los contenedores |
+| `make logs` | Muestra logs en tiempo real |
+| `make restart` | Reinicia el entorno |
+| `make clean` | Elimina contenedores, redes y volúmenes |
+| `make shell-api` | Entra a la terminal del contenedor API |
+| `make shell-web` | Entra a la terminal del contenedor Web |
+| `make shell-admin` | Entra a la terminal del contenedor Admin |
+| `make setup` | Crea archivos .env iniciales |
 
 ## Documentación
 
@@ -60,12 +79,6 @@ docker compose up -d
 | [Cookies y CSRF](./docs/COOKIES_CSRF.md) | Seguridad de autenticación |
 | [Contribución](./CONTRIBUTING.md) | Guía para contribuidores |
 | [Changelog](./CHANGELOG.md) | Historial de cambios |
-
-### READMEs Específicos
-
-- [Backend README](./backend/README.md)
-- [Frontend README](./frontend/README.md)
-- [CMS README](./cms/README.md)
 
 ## Licencia
 
