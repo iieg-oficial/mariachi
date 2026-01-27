@@ -8,6 +8,12 @@ services:
       args:
         VITE_NODE_ENV: ${VITE_NODE_ENV:-production}
         VITE_GOOGLE_ANALYTICS_ID: ${VITE_GOOGLE_ANALYTICS_ID:-}
+        VITE_WEB_API_URL: ${VITE_WEB_API_URL}
+        VITE_API_TIMEOUT: ${VITE_API_TIMEOUT:-10000}
+        VITE_APP_NAME: ${VITE_APP_NAME:-Portal}
+        VITE_ADMIN_API_URL: ${VITE_ADMIN_API_URL}
+        VITE_ADMIN_API_TIMEOUT: ${VITE_ADMIN_API_TIMEOUT:-10000}
+        VITE_ADMIN_APP_NAME: ${VITE_ADMIN_APP_NAME:-Administrador}
     container_name: portal-nginx
     ports:
       - "80:80"
