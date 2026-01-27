@@ -59,7 +59,7 @@ withCredentials: true,
 
 **Ahora:**
 ```javascript
-baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api/cms',
+baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api/administrador',
 headers: {
     Authorization: `Bearer ${localStorage.getItem('access_token')}`
 }
@@ -100,7 +100,7 @@ VITE_HOST_FRONTEND=localhost
 VITE_APP_NAME=CMS Portal
 
 # API Backend
-VITE_API_URL=http://localhost:8000/api/cms
+VITE_API_URL=http://localhost:8000/api/administrador
 VITE_API_TIMEOUT=10000
 
 VITE_GOOGLE_ANALYTICS_ID=G-XXXXXXXXXX
@@ -158,7 +158,7 @@ npm run dev
 ```javascript
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/cms';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/administrador';
 
 const api = axios.create({
     baseURL: API_URL,
@@ -193,7 +193,7 @@ VITE_HOST_FRONTEND=localhost
 VITE_APP_NAME=IIEG Portal
 
 # API Backend
-VITE_API_URL=http://localhost:8000/api/cms
+VITE_API_URL=http://localhost:8000/api/administrador
 VITE_API_TIMEOUT=10000
 
 VITE_GOOGLE_ANALYTICS_ID=G-XXXXXXXXXX
@@ -219,21 +219,21 @@ npm run dev
 El portal público puede consumir estos endpoints SIN autenticación:
 
 ```javascript
-GET /api/cms/menu-items/tree
+GET /api/administrador/menu-items/tree
 
-GET /api/cms/pages
-GET /api/cms/pages/{id}
+GET /api/administrador/pages
+GET /api/administrador/pages/{id}
 
-GET /api/cms/layouts
-GET /api/cms/styles
+GET /api/administrador/layouts
+GET /api/administrador/styles
 
-GET /api/cms/media
-GET /api/cms/media/{id}
+GET /api/administrador/media
+GET /api/administrador/media/{id}
 
-GET /api/cms/search/content?q={query}
-GET /api/cms/search/global?q={query}
+GET /api/administrador/search/content?q={query}
+GET /api/administrador/search/global?q={query}
 
-GET /api/cms/icons
+GET /api/administrador/icons
 ```
 
 ---
@@ -271,7 +271,7 @@ cd /IIEG/backend-portal
 docker-compose up -d
 
 # Probar endpoints directamente
-curl http://localhost:8000/api/cms/menu-items/tree
+curl http://localhost:8000/api/administrador/menu-items/tree
 ```
 
 ### Verificar Conexión
@@ -284,7 +284,7 @@ curl http://localhost:8000/health
 
 **2. Login desde CMS:**
 ```bash
-curl -X POST http://localhost:8000/api/cms/auth/login \
+curl -X POST http://localhost:8000/api/administrador/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"admin123"}'
 
@@ -304,7 +304,7 @@ curl -X POST http://localhost:8000/api/cms/auth/login \
 
 **3. Obtener Menú Público:**
 ```bash
-curl http://localhost:8000/api/cms/menu-items/tree
+curl http://localhost:8000/api/administrador/menu-items/tree
 
 # Respuesta: Árbol de menú en JSON
 ```
@@ -351,7 +351,7 @@ console.log(localStorage.getItem('access_token'));
 **Solución:**
 ```bash
 # Verificar en iieg-portal/frontend/.env.development
-VITE_API_URL=http://localhost:8000/api/cms  # ✅ Correcto
+VITE_API_URL=http://localhost:8000/api/administrador  # ✅ Correcto
 # NO:
 # VITE_API_URL=http://localhost:3000/api    # ❌ Incorrecto (puerto viejo)
 ```
@@ -392,58 +392,58 @@ ports:
 
 | Método | Endpoint | Descripción |
 |--------|----------|-------------|
-| POST | `/api/cms/auth/login` | Login con credenciales |
-| POST | `/api/cms/auth/logout` | Cerrar sesión |
-| GET | `/api/cms/auth/me` | Usuario actual |
-| GET | `/api/cms/auth/verify` | Verificar token |
+| POST | `/api/administrador/auth/login` | Login con credenciales |
+| POST | `/api/administrador/auth/logout` | Cerrar sesión |
+| GET | `/api/administrador/auth/me` | Usuario actual |
+| GET | `/api/administrador/auth/verify` | Verificar token |
 
 ### Usuarios (Solo Tetlamamakani)
 
 | Método | Endpoint | Descripción |
 |--------|----------|-------------|
-| GET | `/api/cms/users` | Listar usuarios |
-| GET | `/api/cms/users/{id}` | Obtener usuario |
-| POST | `/api/cms/users` | Crear usuario |
-| PUT | `/api/cms/users/{id}` | Actualizar usuario |
-| DELETE | `/api/cms/users/{id}` | Eliminar usuario |
+| GET | `/api/administrador/users` | Listar usuarios |
+| GET | `/api/administrador/users/{id}` | Obtener usuario |
+| POST | `/api/administrador/users` | Crear usuario |
+| PUT | `/api/administrador/users/{id}` | Actualizar usuario |
+| DELETE | `/api/administrador/users/{id}` | Eliminar usuario |
 
 ### Páginas
 
 | Método | Endpoint | Descripción | Requiere Auth |
 |--------|----------|-------------|---------------|
-| GET | `/api/cms/pages` | Listar páginas | ❌ No |
-| GET | `/api/cms/pages/{id}` | Obtener página | ❌ No |
-| PUT | `/api/cms/pages/{id}` | Crear/Actualizar | ✅ Sí |
-| DELETE | `/api/cms/pages/{id}` | Eliminar | ✅ Sí |
+| GET | `/api/administrador/pages` | Listar páginas | ❌ No |
+| GET | `/api/administrador/pages/{id}` | Obtener página | ❌ No |
+| PUT | `/api/administrador/pages/{id}` | Crear/Actualizar | ✅ Sí |
+| DELETE | `/api/administrador/pages/{id}` | Eliminar | ✅ Sí |
 
 ### Menú
 
 | Método | Endpoint | Descripción | Requiere Auth |
 |--------|----------|-------------|---------------|
-| GET | `/api/cms/menu-items` | Listar items | ❌ No |
-| GET | `/api/cms/menu-items/tree` | Árbol jerárquico | ❌ No |
-| GET | `/api/cms/menu-items/{id}` | Obtener item | ❌ No |
-| POST | `/api/cms/menu-items` | Crear item | ✅ Sí |
-| PUT | `/api/cms/menu-items/{id}` | Actualizar | ✅ Sí |
-| DELETE | `/api/cms/menu-items/{id}` | Eliminar | ✅ Sí |
+| GET | `/api/administrador/menu-items` | Listar items | ❌ No |
+| GET | `/api/administrador/menu-items/tree` | Árbol jerárquico | ❌ No |
+| GET | `/api/administrador/menu-items/{id}` | Obtener item | ❌ No |
+| POST | `/api/administrador/menu-items` | Crear item | ✅ Sí |
+| PUT | `/api/administrador/menu-items/{id}` | Actualizar | ✅ Sí |
+| DELETE | `/api/administrador/menu-items/{id}` | Eliminar | ✅ Sí |
 
 ### Media
 
 | Método | Endpoint | Descripción | Requiere Auth |
 |--------|----------|-------------|---------------|
-| GET | `/api/cms/media` | Listar archivos | ❌ No |
-| GET | `/api/cms/media/folders` | Listar carpetas | ❌ No |
-| POST | `/api/cms/media` | Subir archivo | ✅ Sí |
-| DELETE | `/api/cms/media/{id}` | Eliminar | ✅ Sí |
-| POST | `/api/cms/media/folders` | Crear carpeta | ✅ Sí |
+| GET | `/api/administrador/media` | Listar archivos | ❌ No |
+| GET | `/api/administrador/media/folders` | Listar carpetas | ❌ No |
+| POST | `/api/administrador/media` | Subir archivo | ✅ Sí |
+| DELETE | `/api/administrador/media/{id}` | Eliminar | ✅ Sí |
+| POST | `/api/administrador/media/folders` | Crear carpeta | ✅ Sí |
 
 ### Otros Endpoints
 
-**Layouts:** `/api/cms/layouts`
-**Estilos:** `/api/cms/styles`
-**Historial:** `/api/cms/history` (Solo Admin)
-**Búsqueda:** `/api/cms/search/content`, `/api/cms/search/global`
-**Iconos:** `/api/cms/icons`
+**Layouts:** `/api/administrador/layouts`
+**Estilos:** `/api/administrador/styles`
+**Historial:** `/api/administrador/history` (Solo Admin)
+**Búsqueda:** `/api/administrador/search/content`, `/api/administrador/search/global`
+**Iconos:** `/api/administrador/icons`
 
 Documentación completa: http://localhost:8000/docs
 

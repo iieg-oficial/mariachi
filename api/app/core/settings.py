@@ -28,7 +28,7 @@ class Settings(BaseSettings):
         default=["http://localhost:5173", "http://localhost:5174"]
     )
 
-    cms_prefix: str = Field(default="/api/cms")
+    cms_prefix: str = Field(default="/api/administrador")
     portal_prefix: str = Field(default="/api/portal")
 
     cookie_name: str = Field(default="access_token")

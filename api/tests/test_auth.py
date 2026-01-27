@@ -9,7 +9,7 @@ def test_healthcheck(client):
 
 def test_login_success(client, admin_user):
     response = client.post(
-        "/api/cms/auth/login",
+        "/api/administrador/auth/login",
         json={"username": "admin_test", "password": "testpass123"},
     )
     assert response.status_code == 200
@@ -21,7 +21,7 @@ def test_login_success(client, admin_user):
 
 def test_login_invalid_credentials(client, admin_user):
     response = client.post(
-        "/api/cms/auth/login",
+        "/api/administrador/auth/login",
         json={"username": "admin_test", "password": "wrongpassword"},
     )
     assert response.status_code == 401
@@ -30,7 +30,7 @@ def test_login_invalid_credentials(client, admin_user):
 
 def test_login_missing_fields(client):
     response = client.post(
-        "/api/cms/auth/login",
+        "/api/administrador/auth/login",
         json={"username": "admin_test"},
     )
     assert response.status_code == 422
@@ -38,7 +38,7 @@ def test_login_missing_fields(client):
 
 def test_get_current_user(client, admin_user, admin_token):
     response = client.get(
-        "/api/cms/auth/me",
+        "/api/administrador/auth/me",
         headers={"Authorization": f"Bearer {admin_token}"},
     )
     assert response.status_code == 200
@@ -48,13 +48,13 @@ def test_get_current_user(client, admin_user, admin_token):
 
 
 def test_get_current_user_no_token(client):
-    response = client.get("/api/cms/auth/me")
+    response = client.get("/api/administrador/auth/me")
     assert response.status_code == 401
 
 
 def test_get_current_user_invalid_token(client):
     response = client.get(
-        "/api/cms/auth/me",
+        "/api/administrador/auth/me",
         headers={"Authorization": "Bearer invalid_token"},
     )
     assert response.status_code == 401
@@ -62,7 +62,7 @@ def test_get_current_user_invalid_token(client):
 
 def test_verify_token_valid(client, admin_token):
     response = client.get(
-        "/api/cms/auth/verify",
+        "/api/administrador/auth/verify",
         headers={"Authorization": f"Bearer {admin_token}"},
     )
     assert response.status_code == 200
@@ -71,7 +71,7 @@ def test_verify_token_valid(client, admin_token):
 
 def test_verify_token_invalid(client):
     response = client.get(
-        "/api/cms/auth/verify",
+        "/api/administrador/auth/verify",
         headers={"Authorization": "Bearer invalid_token"},
     )
     assert response.status_code == 401
@@ -79,7 +79,7 @@ def test_verify_token_invalid(client):
 
 def test_logout(client, admin_token):
     response = client.post(
-        "/api/cms/auth/logout",
+        "/api/administrador/auth/logout",
         headers={"Authorization": f"Bearer {admin_token}"},
     )
     assert response.status_code == 200

@@ -33,7 +33,7 @@ echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "2️⃣  Test: Autenticación (Login)"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-LOGIN_RESPONSE="$(curl -s -X POST "${BACKEND_URL}/api/cms/auth/login" \
+LOGIN_RESPONSE="$(curl -s -X POST "${BACKEND_URL}/api/administrador/auth/login" \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"admin123"}')"
 
@@ -58,7 +58,7 @@ echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "3️⃣  Test: Endpoint Protegido (GET /users)"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-USERS="$(curl -s -X GET "${BACKEND_URL}/api/cms/users" \
+USERS="$(curl -s -X GET "${BACKEND_URL}/api/administrador/users" \
   -H "Authorization: Bearer $TOKEN")"
 
 USER_COUNT="$(echo "$USERS" | jq 'length' 2>/dev/null)"
@@ -77,7 +77,7 @@ echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "4️⃣  Test: Protección de Endpoints (sin token)"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-NO_AUTH="$(curl -s -X GET "${BACKEND_URL}/api/cms/users")"
+NO_AUTH="$(curl -s -X GET "${BACKEND_URL}/api/administrador/users")"
 if printf '%s' "$NO_AUTH" | grep -Eq 'Not authenticated|detail'; then
   echo "✅ Protección funcionando correctamente"
   echo "   Sin token → Acceso denegado"
@@ -91,7 +91,7 @@ echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "5️⃣  Test: Endpoint Público (GET /menu-items/tree)"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-MENU="$(curl -s "${BACKEND_URL}/api/cms/menu-items/tree")"
+MENU="$(curl -s "${BACKEND_URL}/api/administrador/menu-items/tree")"
 MENU_COUNT="$(echo "$MENU" | jq 'length' 2>/dev/null)"
 if is_number "$MENU_COUNT" && [ "$MENU_COUNT" -ge 0 ]; then
   echo "✅ Endpoint público funciona"
@@ -109,11 +109,11 @@ echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo "6️⃣  Test: CORS Headers"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-CORS_CMS="$(curl -s -I -X OPTIONS "${BACKEND_URL}/api/cms/menu-items" \
+CORS_CMS="$(curl -s -I -X OPTIONS "${BACKEND_URL}/api/administrador/menu-items" \
   -H "Origin: http://localhost:3011" \
   -H "Access-Control-Request-Method: GET" | grep -i "access-control-allow-origin")"
 
-CORS_IIEG="$(curl -s -I -X OPTIONS "${BACKEND_URL}/api/cms/menu-items" \
+CORS_IIEG="$(curl -s -I -X OPTIONS "${BACKEND_URL}/api/administrador/menu-items" \
   -H "Origin: http://localhost:3010" \
   -H "Access-Control-Request-Method: GET" | grep -i "access-control-allow-origin")"
 

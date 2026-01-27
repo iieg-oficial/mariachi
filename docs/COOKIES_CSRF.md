@@ -228,7 +228,7 @@ app.add_middleware(
 ```javascript
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/cms';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/administrador';
 
 const api = axios.create({
     baseURL: API_URL,
@@ -420,7 +420,7 @@ access_token=eyJhbGc...;
 
 ```bash
 # 1. Login y ver cookie en respuesta
-curl -v -X POST http://localhost:8000/api/cms/auth/login \
+curl -v -X POST http://localhost:8000/api/administrador/auth/login \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"admin123"}' \
   --cookie-jar cookies.txt
@@ -429,11 +429,11 @@ curl -v -X POST http://localhost:8000/api/cms/auth/login \
 # Set-Cookie: access_token=eyJhbGc...; HttpOnly; Path=/; SameSite=lax
 
 # 2. Usar cookie en request subsecuente
-curl http://localhost:8000/api/cms/auth/me \
+curl http://localhost:8000/api/administrador/auth/me \
   --cookie cookies.txt
 
 # 3. Probar con CSRF
-curl -X POST http://localhost:8000/api/cms/users \
+curl -X POST http://localhost:8000/api/administrador/users \
   --cookie cookies.txt \
   -H "X-CSRF-Token: <csrf-token-from-login>" \
   -H "Content-Type: application/json" \
@@ -443,7 +443,7 @@ curl -X POST http://localhost:8000/api/cms/users \
 ### Probar en Navegador (DevTools)
 
 ```javascript
-fetch('http://localhost:8000/api/cms/auth/login', {
+fetch('http://localhost:8000/api/administrador/auth/login', {
     method: 'POST',
     credentials: 'include',
     headers: {'Content-Type': 'application/json'},
@@ -452,7 +452,7 @@ fetch('http://localhost:8000/api/cms/auth/login', {
 
 document.cookie;  
 
-fetch('http://localhost:8000/api/cms/auth/me', {
+fetch('http://localhost:8000/api/administrador/auth/me', {
     credentials: 'include'
 }).then(r => r.json()).then(console.log);
 ```
@@ -484,7 +484,7 @@ CSRF_SECRET_KEY=$(python -c "import secrets; print(secrets.token_urlsafe(32))")
 ### Frontend (producción)
 
 ```javascript
-VITE_API_URL=https://api.iieg.gob.mx/api/cms
+VITE_API_URL=https://api.iieg.gob.mx/api/administrador
 ```
 
 ---

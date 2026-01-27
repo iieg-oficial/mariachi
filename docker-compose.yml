@@ -66,8 +66,8 @@ services:
 
   web:
     build:
-      context: ./web
-      dockerfile: Dockerfile.prod
+      context: .
+      dockerfile: ./web/Dockerfile.prod
       args:
         VITE_NODE_ENV: ${VITE_NODE_ENV:-production}
         VITE_GOOGLE_ANALYTICS_ID: ${VITE_GOOGLE_ANALYTICS_ID:-}
@@ -81,8 +81,8 @@ services:
 
   admin:
     build:
-      context: ./admin
-      dockerfile: Dockerfile.prod
+      context: .
+      dockerfile: ./admin/Dockerfile.prod
       args:
         VITE_NODE_ENV: ${VITE_NODE_ENV:-production}
         VITE_GOOGLE_ANALYTICS_ID: ${VITE_GOOGLE_ANALYTICS_ID:-}

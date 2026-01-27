@@ -77,7 +77,7 @@ def editora_user(db_session):
 @pytest.fixture(scope="function")
 def admin_token(client, admin_user):
     response = client.post(
-        "/api/cms/auth/login",
+        "/api/administrador/auth/login",
         json={"username": "admin_test", "password": "testpass123"},
     )
     return response.json()["access_token"]
@@ -86,7 +86,7 @@ def admin_token(client, admin_user):
 @pytest.fixture(scope="function")
 def editora_token(client, editora_user):
     response = client.post(
-        "/api/cms/auth/login",
+        "/api/administrador/auth/login",
         json={"username": "editora_test", "password": "testpass123"},
     )
     return response.json()["access_token"]
