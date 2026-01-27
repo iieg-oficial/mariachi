@@ -44,7 +44,7 @@ services:
     ports:
       - "${API_PORT:-8000}:8000"
     env_file:
-      - ./api/.env
+      - ./.env
     volumes:
       - ./api:/app
     depends_on:
