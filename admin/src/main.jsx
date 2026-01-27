@@ -229,7 +229,7 @@ const router = createBrowserRouter([
             }
         ],
     },
-]);
+], { basename: '/administrador' });
 
 createRoot(document.getElementById('root')).render(
     <AuthProvider>

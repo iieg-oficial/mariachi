@@ -20,6 +20,7 @@ export default defineConfig(({ mode }) => {
                 usePolling: true
             }
         },
+        base: '/administrador/',
         build: {
             outDir: 'dist',
             sourcemap: true

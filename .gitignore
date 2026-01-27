@@ -93,6 +93,9 @@ credentials/
 *.pem
 *.key
 *.cert
+*.crt
+nginx/ssl/*
+!nginx/ssl/.gitkeep
 
 # MinIO data (if running locally without docker)
 .minio.sys/
