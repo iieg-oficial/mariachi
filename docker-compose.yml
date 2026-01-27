@@ -71,7 +71,6 @@ services:
       args:
         VITE_NODE_ENV: ${VITE_NODE_ENV:-production}
         VITE_GOOGLE_ANALYTICS_ID: ${VITE_GOOGLE_ANALYTICS_ID:-}
-    image: portal/web:latest
     container_name: portal-web
     restart: unless-stopped
     ports:
@@ -86,7 +85,6 @@ services:
       args:
         VITE_NODE_ENV: ${VITE_NODE_ENV:-production}
         VITE_GOOGLE_ANALYTICS_ID: ${VITE_GOOGLE_ANALYTICS_ID:-}
-    image: portal/admin:latest
     container_name: portal-admin
     restart: unless-stopped
     ports:
