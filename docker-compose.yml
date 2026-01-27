@@ -2,18 +2,17 @@ name: portal
 
 services:
   nginx:
-    image: nginx:alpine
+    build:
+      context: .
+      dockerfile: ./nginx/Dockerfile
+      args:
+        VITE_NODE_ENV: ${VITE_NODE_ENV:-production}
+        VITE_GOOGLE_ANALYTICS_ID: ${VITE_GOOGLE_ANALYTICS_ID:-}
     container_name: portal-nginx
     ports:
       - "80:80"
       - "443:443"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/conf.d:/etc/nginx/conf.d:ro
-      - ./nginx/ssl:/etc/nginx/ssl:ro
     depends_on:
-      - web
-      - admin
       - api
     networks:
       - portal_network
@@ -26,8 +25,6 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-iieg_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-iieg_password}
       POSTGRES_DB: ${POSTGRES_DB:-iieg_portal}
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -41,8 +38,6 @@ services:
   redis:
     image: redis:7-alpine
     container_name: portal-redis
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -59,8 +54,6 @@ services:
       dockerfile: Dockerfile
     container_name: portal-api
     command: ./scripts/start_backend.sh
-    ports:
-      - "${API_PORT:-8000}:8000"
     env_file:
       - ./.env
     extra_hosts:
@@ -87,34 +80,9 @@ services:
     networks:
       - portal_network
 
-  web:
-    build:
-      context: .
-      dockerfile: ./web/Dockerfile.prod
-      args:
-        VITE_NODE_ENV: ${VITE_NODE_ENV:-production}
-        VITE_GOOGLE_ANALYTICS_ID: ${VITE_GOOGLE_ANALYTICS_ID:-}
-    container_name: portal-web
-    restart: unless-stopped
-    networks:
-      - portal_network
-
-  admin:
-    build:
-      context: .
-      dockerfile: ./admin/Dockerfile.prod
-      args:
-        VITE_NODE_ENV: ${VITE_NODE_ENV:-production}
-        VITE_GOOGLE_ANALYTICS_ID: ${VITE_GOOGLE_ANALYTICS_ID:-}
-    container_name: portal-admin
-    restart: unless-stopped
-    networks:
-      - portal_network
-
 volumes:
   postgres_data:
   redis_data:
-
 
 networks:
   portal_network:
