@@ -109,7 +109,7 @@ export default function History() {
             key: 'user',
             width: 200,
             render: (_, record) => (
-                <Space direction="vertical" size={0}>
+                <Space orientation="vertical" size={0}>
                     <Space>
                         <UserOutlined />
                         <Text strong>{record.userName}</Text>

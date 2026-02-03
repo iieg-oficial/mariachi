@@ -31,7 +31,7 @@ const TypographySection = ({ form }) => {
 
         return (
             <Form.Item label={label}>
-                <Space direction="vertical" style={{ width: '100%' }}>
+                <Space orientation="vertical" style={{ width: '100%' }}>
                     <Button
                         icon={<FontSizeOutlined />}
                         onClick={() => openFontModal(field, `Configurar ${label}`)}

@@ -34,7 +34,7 @@ export default function ContentSearch() {
     return (
         <div>
             <Card>
-                <Space direction="vertical" style={{ width: '100%' }} size="large">
+                <Space orientation="vertical" style={{ width: '100%' }} size="large">
                     <SearchBar
                         searchTerm={searchTerm}
                         onSearchChange={setSearchTerm}

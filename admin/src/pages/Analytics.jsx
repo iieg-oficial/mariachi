@@ -107,7 +107,7 @@ export default function Analytics() {
             key: 'page',
             width: '30%',
             render: (page, record) => (
-                <Space direction="vertical" size="small">
+                <Space orientation="vertical" size="small">
                     <Text strong>{record.title}</Text>
                     <Text code type="secondary" style={{ fontSize: 11 }}>
                         {page}
@@ -170,7 +170,7 @@ export default function Analytics() {
     return (
         <div>
             <Card>
-                <Space direction="vertical" style={{ width: '100%' }} size="large">
+                <Space orientation="vertical" style={{ width: '100%' }} size="large">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Title level={4} style={{ margin: 0 }}>
                             <LineChartOutlined /> Analytics Dashboard
@@ -369,7 +369,7 @@ export default function Analytics() {
                     <Row gutter={16}>
                         <Col span={12}>
                             <Card title="Fuentes de Tráfico">
-                                <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                                <Space orientation="vertical" style={{ width: '100%' }} size="middle">
                                     {trafficSources.map((source, index) => (
                                         <div key={index}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
@@ -389,7 +389,7 @@ export default function Analytics() {
 
                         <Col span={12}>
                             <Card title="Dispositivos">
-                                <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                                <Space orientation="vertical" style={{ width: '100%' }} size="middle">
                                     {deviceBreakdown.map((device, index) => (
                                         <div key={index}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
@@ -412,7 +412,7 @@ export default function Analytics() {
                     </Row>
 
                     <Card title="Ubicación Geográfica - Top Países">
-                        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                        <Space orientation="vertical" style={{ width: '100%' }} size="middle">
                             {topCountries.map((country, index) => (
                                 <div key={index}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>

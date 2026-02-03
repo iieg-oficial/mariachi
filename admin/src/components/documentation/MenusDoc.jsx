@@ -24,7 +24,7 @@ export default function MenusDoc() {
 
             <Title level={4}>¿Cómo crear un nuevo menú?</Title>
             <Steps
-                direction="vertical"
+                orientation="vertical"
                 current={-1}
                 items={[
                     {
@@ -50,7 +50,7 @@ export default function MenusDoc() {
 
             <Title level={4}>Tipos de Enlaces</Title>
             <Card size="small" style={{ marginBottom: 16 }}>
-                <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                <Space orientation="vertical" style={{ width: '100%' }} size="middle">
                     <div>
                         <Tag color="blue">Página</Tag>
                         <Text> Enlaza a una página interna del sitio</Text>

@@ -24,7 +24,7 @@ export default function PagesDoc() {
 
             <Title level={4}>¿Cómo crear una nueva página?</Title>
             <Steps
-                direction="vertical"
+                orientation="vertical"
                 current={-1}
                 items={[
                     {
@@ -50,7 +50,7 @@ export default function PagesDoc() {
 
             <Title level={4}>Estados de una Página</Title>
             <Card size="small" style={{ marginBottom: 16 }}>
-                <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                <Space orientation="vertical" style={{ width: '100%' }} size="middle">
                     <div>
                         <Tag color="default">Borrador</Tag>
                         <Text> - La página está en creación y no es visible públicamente.</Text>

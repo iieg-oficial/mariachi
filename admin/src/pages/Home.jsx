@@ -30,7 +30,7 @@ export default function Home() {
 
             {user && (
                 <Card style={{ maxWidth: 600, marginTop: 24 }}>
-                    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                    <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
                         <div>
                             <Paragraph type="secondary" style={{ margin: 0, fontSize: 12 }}>
                                 Usuario

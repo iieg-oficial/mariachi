@@ -89,7 +89,7 @@ const PagePreview = ({ visible, onClose, page }) => {
                     marginBottom: 16,
                     border: '1px solid #91d5ff'
                 }}>
-                    <Space direction="vertical" style={{ width: '100%' }}>
+                    <Space orientation="vertical" style={{ width: '100%' }}>
                         {page.seo.metaTitle && (
                             <div>
                                 <Tag color="blue">Meta Title</Tag>

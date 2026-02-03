@@ -72,7 +72,7 @@ export default function HeroBannerComponent({
     if (editable) {
         return (
             <Card title="Configuración Banner Hero" size="small">
-                <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                <Space orientation="vertical" style={{ width: '100%' }} size="middle">
                     <Input
                         placeholder="Título principal"
                         value={title}

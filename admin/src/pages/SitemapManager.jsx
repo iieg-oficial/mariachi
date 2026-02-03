@@ -179,7 +179,7 @@ ${includedPages.map(page => `    <url>
             key: 'url',
             width: '25%',
             render: (url, record) => (
-                <Space direction="vertical" size="small">
+                <Space orientation="vertical" size="small">
                     <Text strong>{url}</Text>
                     <Text type="secondary" style={{ fontSize: 12 }}>
                         {record.title}
@@ -280,7 +280,7 @@ ${includedPages.map(page => `    <url>
     return (
         <div>
             <Card>
-                <Space direction="vertical" style={{ width: '100%' }} size="large">
+                <Space orientation="vertical" style={{ width: '100%' }} size="large">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Title level={4} style={{ margin: 0 }}>
                             <GlobalOutlined /> Gestor de Sitemap XML
@@ -450,7 +450,7 @@ ${includedPages.map(page => `    <url>
                 <Alert
                     message="Información"
                     description={
-                        <Space direction="vertical" size="small">
+                        <Space orientation="vertical" size="small">
                             <Text>
                                 URLs incluidas: <Text strong>{includedCount}</Text>
                             </Text>

@@ -35,7 +35,7 @@ const PageVersionHistory = ({ versions = [], currentVersion, onRestore, onPrevie
         Modal.confirm({
             title: '¿Restaurar esta versión?',
             content: (
-                <Space direction="vertical">
+                <Space orientation="vertical">
                     <Text>Se restaurará la versión del {new Date(version.createdAt).toLocaleString()}</Text>
                     <Text type="warning">Los cambios no guardados se perderán</Text>
                 </Space>
@@ -106,7 +106,7 @@ const PageVersionHistory = ({ versions = [], currentVersion, onRestore, onPrevie
                             dot: isCurrent ? <SaveOutlined /> : <ClockCircleOutlined />,
                             children: (
                                 <div key={version.id}>
-                                    <Space direction="vertical" style={{ width: '100%' }} size="small">
+                                    <Space orientation="vertical" style={{ width: '100%' }} size="small">
                                         <Space wrap>
                                             <Tag color={getVersionTypeColor(version.type)}>
                                                 v{version.version}
@@ -193,7 +193,7 @@ const PageVersionHistory = ({ versions = [], currentVersion, onRestore, onPrevie
                 width="80%"
             >
                 {selectedVersion && (
-                    <Space direction="vertical" style={{ width: '100%' }}>
+                    <Space orientation="vertical" style={{ width: '100%' }}>
                         <Descriptions column={2} size="small" bordered>
                             <Descriptions.Item label="Versión">
                                 v{selectedVersion.version}
@@ -222,7 +222,7 @@ const PageVersionHistory = ({ versions = [], currentVersion, onRestore, onPrevie
                             style={{ marginTop: 16 }}
                         >
                             {selectedVersion.changes ? (
-                                <Space direction="vertical">
+                                <Space orientation="vertical">
                                     {selectedVersion.changes.sections && (
                                         <Text>• {selectedVersion.changes.sections} secciones modificadas</Text>
                                     )}

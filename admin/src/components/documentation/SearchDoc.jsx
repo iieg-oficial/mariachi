@@ -24,7 +24,7 @@ export default function SearchDoc() {
 
             <Title level={4}>Tipos de Búsqueda</Title>
             <Card size="small" style={{ marginBottom: 16 }}>
-                <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                <Space orientation="vertical" style={{ width: '100%' }} size="middle">
                     <div>
                         <Tag color="blue">Búsqueda Global</Tag>
                         <Text> Busca en todos los tipos de contenido simultáneamente</Text>

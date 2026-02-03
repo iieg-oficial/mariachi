@@ -169,7 +169,7 @@ const NotificationCenter = () => {
                     </Space>
                 }
             >
-                <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                <Space orientation="vertical" style={{ width: '100%' }} size="middle">
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                         {filterOptions.map(option => (
                             <Tag.CheckableTag
@@ -236,7 +236,7 @@ const NotificationCenter = () => {
                                     <List.Item.Meta
                                         avatar={getNotificationIcon(notification.type)}
                                         title={
-                                            <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                                            <Space orientation="vertical" size="small" style={{ width: '100%' }}>
                                                 <Space style={{ width: '100%', justifyContent: 'space-between' }}>
                                                     <Text strong={!notification.read}>
                                                         {notification.title}

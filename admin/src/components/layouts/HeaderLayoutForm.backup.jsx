@@ -163,7 +163,7 @@ const HeaderLayoutForm = ({ initialData, onSaved }) => {
                         label="Logo"
                         name="logoUrl"
                     >
-                        <Space direction="vertical" style={{ width: '100%' }}>
+                        <Space orientation="vertical" style={{ width: '100%' }}>
                             <Button
                                 icon={<FileImageOutlined />}
                                 onClick={() => setMediaSelectorVisible(true)}
@@ -178,7 +178,7 @@ const HeaderLayoutForm = ({ initialData, onSaved }) => {
                                     borderRadius: 4,
                                     background: '#fafafa'
                                 }}>
-                                    <Space direction="vertical" align="center" style={{ width: '100%' }}>
+                                    <Space orientation="vertical" align="center" style={{ width: '100%' }}>
                                         <Image
                                             src={selectedLogo}
                                             alt="Logo seleccionado"
@@ -223,7 +223,7 @@ const HeaderLayoutForm = ({ initialData, onSaved }) => {
                         name="titleFont"
                         tooltip="Fuente tipográfica para el título del sitio"
                     >
-                        <Space direction="vertical" style={{ width: '100%' }}>
+                        <Space orientation="vertical" style={{ width: '100%' }}>
                             <Button
                                 icon={<FontSizeOutlined />}
                                 onClick={() => openFontSelector('titleFont')}
@@ -268,7 +268,7 @@ const HeaderLayoutForm = ({ initialData, onSaved }) => {
                         name="menuFont"
                         tooltip="Fuente tipográfica para los elementos del menú de navegación"
                     >
-                        <Space direction="vertical" style={{ width: '100%' }}>
+                        <Space orientation="vertical" style={{ width: '100%' }}>
                             <Button
                                 icon={<FontSizeOutlined />}
                                 onClick={() => openFontSelector('menuFont')}

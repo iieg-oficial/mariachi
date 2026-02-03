@@ -343,9 +343,9 @@ const SEOAnalyzer = ({ page, seo }) => {
             }
             style={{ marginBottom: 16 }}
         >
-            <Space direction="vertical" style={{ width: '100%' }} size="large">
+            <Space orientation="vertical" style={{ width: '100%' }} size="large">
                 <div>
-                    <Space direction="vertical" style={{ width: '100%' }}>
+                    <Space orientation="vertical" style={{ width: '100%' }}>
                         <Space align="center">
                             <Text strong>Puntuación SEO:</Text>
                             <Text
@@ -433,7 +433,7 @@ const SEOAnalyzer = ({ page, seo }) => {
                                 dataSource={Object.entries(analysis.keywords)}
                                 renderItem={([keyword, data]) => (
                                     <List.Item>
-                                        <Space direction="vertical" style={{ width: '100%' }}>
+                                        <Space orientation="vertical" style={{ width: '100%' }}>
                                             <Space style={{ width: '100%', justifyContent: 'space-between' }}>
                                                 <Text strong>{keyword}</Text>
                                                 <Space>
@@ -499,7 +499,7 @@ const SEOAnalyzer = ({ page, seo }) => {
                                                     </Space>
                                                 }
                                                 description={
-                                                    <Space direction="vertical" size="small">
+                                                    <Space orientation="vertical" size="small">
                                                         <Text type="secondary">{issue.message}</Text>
                                                         <Alert
                                                             message="Cómo mejorar"
@@ -536,7 +536,7 @@ const SEOAnalyzer = ({ page, seo }) => {
                                                 avatar={getIssueIcon(issue.type)}
                                                 title={issue.category}
                                                 description={
-                                                    <Space direction="vertical" size="small">
+                                                    <Space orientation="vertical" size="small">
                                                         <Text type="secondary">{issue.message}</Text>
                                                         <Text type="secondary" style={{ fontSize: 12 }}>
                                                             💡 {issue.suggestion}

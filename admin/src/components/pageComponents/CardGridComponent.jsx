@@ -54,7 +54,7 @@ export default function CardGridComponent({
     if (editable) {
         return (
             <Card title="Configuración Grid de Cards" size="small">
-                <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                <Space orientation="vertical" style={{ width: '100%' }} size="middle">
                     <Input
                         placeholder="Título de la sección"
                         value={title}

@@ -87,7 +87,7 @@ export default function FeatureShowcaseComponent({
     if (editable) {
         return (
             <Card title="Configuración Showcase" size="small">
-                <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                <Space orientation="vertical" style={{ width: '100%' }} size="middle">
                     <Input
                         placeholder="Título"
                         value={title}
@@ -152,7 +152,7 @@ export default function FeatureShowcaseComponent({
 
                     <div>
                         <strong>Contenido Visual</strong>
-                        <Space direction="vertical" style={{ width: '100%', marginTop: 8 }}>
+                        <Space orientation="vertical" style={{ width: '100%', marginTop: 8 }}>
                             <Select
                                 value={visualContent?.type}
                                 onChange={(value) =>

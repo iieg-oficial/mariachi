@@ -246,7 +246,7 @@ export default function RobotsManager() {
     return (
         <div>
             <Card>
-                <Space direction="vertical" style={{ width: '100%' }} size="large">
+                <Space orientation="vertical" style={{ width: '100%' }} size="large">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Title level={4} style={{ margin: 0 }}>
                             <FileTextOutlined /> Gestor de Robots.txt
@@ -406,7 +406,7 @@ export default function RobotsManager() {
                     <Alert
                         message="Importante"
                         description={
-                            <Space direction="vertical" size="small">
+                            <Space orientation="vertical" size="small">
                                 <Text>• El archivo robots.txt debe estar en la raíz del sitio: <Text code>https://iieg.gob.mx/robots.txt</Text></Text>
                                 <Text>• Los cambios pueden tardar en reflejarse en los motores de búsqueda</Text>
                                 <Text>• Valida tu robots.txt con <a href="https://www.google.com/webmasters/tools/robots-testing-tool" target="_blank" rel="noopener noreferrer">Google Robots Testing Tool</a></Text>
@@ -447,11 +447,11 @@ export default function RobotsManager() {
                     onChange={(e) => setSelectedTemplate(e.target.value)}
                     style={{ width: '100%' }}
                 >
-                    <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                    <Space orientation="vertical" style={{ width: '100%' }} size="middle">
                         {Object.entries(ROBOT_TEMPLATES).map(([key, template]) => (
                             <Card key={key} size="small">
                                 <Radio value={key} style={{ width: '100%' }}>
-                                    <Space direction="vertical" size="small">
+                                    <Space orientation="vertical" size="small">
                                         <Text strong>{template.name}</Text>
                                         <Text type="secondary">{template.description}</Text>
                                         <Card
@@ -508,7 +508,7 @@ export default function RobotsManager() {
                 <Alert
                     message="Información"
                     description={
-                        <Space direction="vertical" size="small">
+                        <Space orientation="vertical" size="small">
                             <Text>
                                 Este archivo debe ser subido a: <Text code>https://iieg.gob.mx/robots.txt</Text>
                             </Text>

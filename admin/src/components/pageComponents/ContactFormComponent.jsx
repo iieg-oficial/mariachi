@@ -50,7 +50,7 @@ export default function ContactFormComponent({
     if (editable) {
         return (
             <Card title="Configuración Formulario de Contacto" size="small">
-                <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                <Space orientation="vertical" style={{ width: '100%' }} size="middle">
                     <Input
                         placeholder="Título de la sección"
                         value={title}
@@ -68,7 +68,7 @@ export default function ContactFormComponent({
 
                     {showContactInfo && (
                         <Card size="small" title="Información de Contacto">
-                            <Space direction="vertical" style={{ width: '100%' }}>
+                            <Space orientation="vertical" style={{ width: '100%' }}>
                                 <Input
                                     placeholder="Dirección"
                                     value={contactInfo?.address}

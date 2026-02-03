@@ -24,7 +24,7 @@ export default function MediaDoc() {
 
             <Title level={4}>¿Cómo subir archivos?</Title>
             <Steps
-                direction="vertical"
+                orientation="vertical"
                 current={-1}
                 items={[
                     {
@@ -50,7 +50,7 @@ export default function MediaDoc() {
 
             <Title level={4}>Tipos de Archivos Soportados</Title>
             <Card size="small" style={{ marginBottom: 16 }}>
-                <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                <Space orientation="vertical" style={{ width: '100%' }} size="middle">
                     <div>
                         <Tag color="blue">Imágenes</Tag>
                         <Text> JPG, PNG, GIF, WebP, SVG (máx 10MB)</Text>

@@ -226,7 +226,7 @@ const FilePicker = ({
         >
             <Tabs activeKey={activeTab} onChange={setActiveTab}>
                 <TabPane tab="Buscar Archivos" key="browse">
-                    <Space direction="vertical" style={{ width: '100%', marginBottom: 16 }}>
+                    <Space orientation="vertical" style={{ width: '100%', marginBottom: 16 }}>
                         <Row gutter={16}>
                             <Col flex="auto">
                                 <Search
@@ -298,7 +298,7 @@ const FilePicker = ({
 
                 <TabPane tab="Subir Nuevo" key="upload">
                     <div style={{ padding: '20px 0' }}>
-                        <Space direction="vertical" style={{ width: '100%' }} size="large">
+                        <Space orientation="vertical" style={{ width: '100%' }} size="large">
                             <Select
                                 placeholder="Seleccionar carpeta de destino"
                                 style={{ width: '100%' }}

@@ -158,9 +158,9 @@ export default function PageEditor() {
             <Layout>
                 <Sider width={280} style={{ background: '#fff', padding: '24px 16px', overflow: 'auto' }}>
                     <Title level={5}>Componentes</Title>
-                    <Space direction="vertical" style={{ width: '100%' }} size="small">
+                    <Space orientation="vertical" style={{ width: '100%' }} size="small">
                         <Card size="small" title="Básicos">
-                            <Space direction="vertical" style={{ width: '100%' }}>
+                            <Space orientation="vertical" style={{ width: '100%' }}>
                                 <Button
                                     block
                                     icon={<FileTextOutlined />}
@@ -185,7 +185,7 @@ export default function PageEditor() {
                             </Space>
                         </Card>
                         <Card size="small" title="Secciones">
-                            <Space direction="vertical" style={{ width: '100%' }}>
+                            <Space orientation="vertical" style={{ width: '100%' }}>
                                 <Button
                                     block
                                     icon={<PictureOutlined />}

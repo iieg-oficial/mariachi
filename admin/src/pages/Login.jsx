@@ -41,7 +41,7 @@ export default function Login() {
                     boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
                 }}
             >
-                <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                <Space orientation="vertical" size="large" style={{ width: '100%' }}>
                     <div style={{ textAlign: 'center' }}>
                         <Title level={2} style={{ margin: 0, color: '#1890ff' }}>
                             CMS Portal
@@ -53,7 +53,7 @@ export default function Login() {
 
                     {import.meta.env.DEV && (
                         <Alert
-                            message="Modo de Desarrollo"
+                            title="Modo de Desarrollo"
                             description={
                                 <div>
                                     <p style={{ margin: '8px 0' }}><strong>Usuarios de prueba:</strong></p>

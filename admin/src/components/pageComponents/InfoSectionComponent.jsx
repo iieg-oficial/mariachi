@@ -42,7 +42,7 @@ export default function InfoSectionComponent({
     if (editable) {
         return (
             <Card title="Configuración Sección Informativa" size="small">
-                <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                <Space orientation="vertical" style={{ width: '100%' }} size="middle">
                     <Input
                         placeholder="Título de la sección"
                         value={title}
@@ -262,7 +262,7 @@ function InfoCardModal({ visible, onCancel, onSubmit, initialValues }) {
 
                 <div>
                     <strong>Enlaces</strong>
-                    <Space direction="vertical" style={{ width: '100%', marginTop: 8 }}>
+                    <Space orientation="vertical" style={{ width: '100%', marginTop: 8 }}>
                         <Input
                             placeholder="Texto del enlace"
                             value={linkText}

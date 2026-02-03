@@ -39,7 +39,7 @@ export default function SearchResultsTable({
             key: 'title',
             width: '25%',
             render: (text, record) => (
-                <Space direction="vertical" size="small">
+                <Space orientation="vertical" size="small">
                     <Text strong>{text}</Text>
                     <Text type="secondary" style={{ fontSize: 12 }}>
                         {record.slug}
@@ -91,7 +91,7 @@ export default function SearchResultsTable({
                 if (!date) return '-';
                 const dateObj = typeof date === 'string' ? new Date(date) : date;
                 return (
-                    <Space direction="vertical" size="small">
+                    <Space orientation="vertical" size="small">
                         <Text>{dateObj.toLocaleDateString('es-ES')}</Text>
                         <Text type="secondary" style={{ fontSize: 12 }}>
                             {dateObj.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}

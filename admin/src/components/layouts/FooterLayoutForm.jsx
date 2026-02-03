@@ -182,7 +182,7 @@ const FooterLayoutForm = ({ initialData, onSaved }) => {
                     name="textFont"
                     tooltip="Fuente tipográfica para textos generales del footer"
                 >
-                    <Space direction="vertical" style={{ width: '100%' }}>
+                    <Space orientation="vertical" style={{ width: '100%' }}>
                         <Button
                             icon={<FontSizeOutlined />}
                             onClick={() => openFontSelector('textFont')}
@@ -227,7 +227,7 @@ const FooterLayoutForm = ({ initialData, onSaved }) => {
                     name="linkFont"
                     tooltip="Fuente tipográfica para enlaces y links del footer"
                 >
-                    <Space direction="vertical" style={{ width: '100%' }}>
+                    <Space orientation="vertical" style={{ width: '100%' }}>
                         <Button
                             icon={<FontSizeOutlined />}
                             onClick={() => openFontSelector('linkFont')}

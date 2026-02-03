@@ -117,7 +117,7 @@ export default function Approvals() {
             dataIndex: 'title',
             key: 'title',
             render: (text, record) => (
-                <Space direction="vertical" size="small">
+                <Space orientation="vertical" size="small">
                     <Text strong>{text}</Text>
                     <Text type="secondary" style={{ fontSize: 12 }}>
                         Por {record.author}

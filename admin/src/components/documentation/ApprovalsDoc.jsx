@@ -24,7 +24,7 @@ export default function ApprovalsDoc() {
 
             <Title level={4}>¿Cómo funciona el proceso?</Title>
             <Steps
-                direction="vertical"
+                orientation="vertical"
                 current={-1}
                 items={[
                     {
@@ -50,7 +50,7 @@ export default function ApprovalsDoc() {
 
             <Title level={4}>Roles en el Proceso</Title>
             <Card size="small" style={{ marginBottom: 16 }}>
-                <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                <Space orientation="vertical" style={{ width: '100%' }} size="middle">
                     <div>
                         <Tag color="blue">Editor</Tag>
                         <Text> Crea contenido y solicita aprobación</Text>

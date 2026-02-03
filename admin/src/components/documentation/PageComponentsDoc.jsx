@@ -261,7 +261,7 @@ export default function PageComponentsDoc() {
 
             <Title level={4}>Buenas Prácticas</Title>
             <Card size="small">
-                <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                <Space orientation="vertical" style={{ width: '100%' }} size="middle">
                     <div>
                         <Text strong>1. Organización de contenido:</Text>
                         <Paragraph>

@@ -336,7 +336,7 @@ export default function RedirectsManager() {
     return (
         <div>
             <Card>
-                <Space direction="vertical" style={{ width: '100%' }} size="large">
+                <Space orientation="vertical" style={{ width: '100%' }} size="large">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Title level={4} style={{ margin: 0 }}>
                             <SwapOutlined /> Gestor de Redirecciones
@@ -533,7 +533,7 @@ export default function RedirectsManager() {
                     >
                         <Select>
                             <Select.Option value={301}>
-                                <Space direction="vertical" size="small">
+                                <Space orientation="vertical" size="small">
                                     <Text strong>301 - Redirección Permanente</Text>
                                     <Text type="secondary" style={{ fontSize: 12 }}>
                                         Usa cuando la página cambió permanentemente. Mejor para SEO.
@@ -541,7 +541,7 @@ export default function RedirectsManager() {
                                 </Space>
                             </Select.Option>
                             <Select.Option value={302}>
-                                <Space direction="vertical" size="small">
+                                <Space orientation="vertical" size="small">
                                     <Text strong>302 - Redirección Temporal</Text>
                                     <Text type="secondary" style={{ fontSize: 12 }}>
                                         Usa para cambios temporales. No transfiere autoridad SEO.

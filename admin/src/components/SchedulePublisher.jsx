@@ -36,7 +36,7 @@ const SchedulePublisher = ({ pageId, currentSchedule, onSchedule, onCancel }) =>
         Modal.confirm({
             title: '¿Confirmar publicación programada?',
             content: (
-                <Space direction="vertical">
+                <Space orientation="vertical">
                     <Text>La página se publicará automáticamente el:</Text>
                     <Text strong>{combinedDateTime.toLocaleString('es-ES')}</Text>
                     <Alert
@@ -135,7 +135,7 @@ const SchedulePublisher = ({ pageId, currentSchedule, onSchedule, onCancel }) =>
                 </Space>
             }
         >
-            <Space direction="vertical" style={{ width: '100%' }} size="large">
+            <Space orientation="vertical" style={{ width: '100%' }} size="large">
                 <div>
                     <Alert
                         message="Programa la publicación automática"
@@ -145,7 +145,7 @@ const SchedulePublisher = ({ pageId, currentSchedule, onSchedule, onCancel }) =>
                         style={{ marginBottom: 16 }}
                     />
 
-                    <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                    <Space orientation="vertical" style={{ width: '100%' }} size="middle">
                         <div>
                             <Text strong style={{ display: 'block', marginBottom: 8 }}>
                                 <CalendarOutlined /> Fecha de publicación:
@@ -235,7 +235,7 @@ const SchedulePublisher = ({ pageId, currentSchedule, onSchedule, onCancel }) =>
                                                 </Space>
                                             }
                                             description={
-                                                <Space direction="vertical" size="small">
+                                                <Space orientation="vertical" size="small">
                                                     <Text type="secondary">
                                                         Creado por {schedule.createdBy} - {new Date(schedule.createdAt).toLocaleString('es-ES')}
                                                     </Text>

@@ -26,7 +26,7 @@ const LogoSection = ({ form }) => {
                 label="Logo"
                 name="logoUrl"
             >
-                <Space direction="vertical" style={{ width: '100%' }}>
+                <Space orientation="vertical" style={{ width: '100%' }}>
                     <Button
                         icon={<FileImageOutlined />}
                         onClick={() => setMediaSelectorVisible(true)}
@@ -41,7 +41,7 @@ const LogoSection = ({ form }) => {
                             borderRadius: 4,
                             background: '#fafafa'
                         }}>
-                            <Space direction="vertical" align="center" style={{ width: '100%' }}>
+                            <Space orientation="vertical" align="center" style={{ width: '100%' }}>
                                 <Image
                                     src={selectedLogo}
                                     alt="Logo seleccionado"

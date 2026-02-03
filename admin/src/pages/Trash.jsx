@@ -89,7 +89,7 @@ export default function Trash() {
             title: '¿Restaurar esta página?',
             icon: <RollbackOutlined />,
             content: (
-                <Space direction="vertical">
+                <Space orientation="vertical">
                     <Text>La página "{record.title}" será restaurada a su estado anterior.</Text>
                     <Text type="secondary">Estado original: {record.originalStatus}</Text>
                 </Space>
@@ -113,7 +113,7 @@ export default function Trash() {
             title: '¿Eliminar permanentemente?',
             icon: <ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />,
             content: (
-                <Space direction="vertical">
+                <Space orientation="vertical">
                     <Alert
                         message="¡Advertencia!"
                         description="Esta acción no se puede deshacer. La página será eliminada permanentemente."
@@ -162,7 +162,7 @@ export default function Trash() {
             title: `¿Eliminar permanentemente ${selectedRowKeys.length} página(s)?`,
             icon: <ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />,
             content: (
-                <Space direction="vertical">
+                <Space orientation="vertical">
                     <Alert
                         message="¡Advertencia!"
                         description="Esta acción no se puede deshacer. Las páginas seleccionadas serán eliminadas permanentemente."
@@ -191,7 +191,7 @@ export default function Trash() {
             title: '¿Vaciar papelera?',
             icon: <ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />,
             content: (
-                <Space direction="vertical">
+                <Space orientation="vertical">
                     <Alert
                         message="¡Advertencia Crítica!"
                         description="Esta acción eliminará TODAS las páginas en la papelera de forma permanente. No se puede deshacer."
@@ -223,7 +223,7 @@ export default function Trash() {
             key: 'title',
             width: '25%',
             render: (text, record) => (
-                <Space direction="vertical" size="small">
+                <Space orientation="vertical" size="small">
                     <Text strong>{text}</Text>
                     <Text type="secondary" style={{ fontSize: 12 }}>
                         {record.slug}
@@ -258,7 +258,7 @@ export default function Trash() {
             key: 'deletedAt',
             width: '15%',
             render: (date) => (
-                <Space direction="vertical" size="small">
+                <Space orientation="vertical" size="small">
                     <Text>{new Date(date).toLocaleDateString('es-ES')}</Text>
                     <Text type="secondary" style={{ fontSize: 12 }}>
                         {new Date(date).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
@@ -278,7 +278,7 @@ export default function Trash() {
                 const color = getProgressColor(record.deletedAt);
 
                 return (
-                    <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                    <Space orientation="vertical" size="small" style={{ width: '100%' }}>
                         <Space>
                             <ClockCircleOutlined style={{ color }} />
                             <Text style={{ color }}>
@@ -332,7 +332,7 @@ export default function Trash() {
     return (
         <div>
             <Card>
-                <Space direction="vertical" style={{ width: '100%' }} size="large">
+                <Space orientation="vertical" style={{ width: '100%' }} size="large">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <Title level={4} style={{ margin: 0 }}>
                             <DeleteOutlined /> Papelera
@@ -351,7 +351,7 @@ export default function Trash() {
                     <Alert
                         message="Información sobre la papelera"
                         description={
-                            <Space direction="vertical" size="small">
+                            <Space orientation="vertical" size="small">
                                 <Text>
                                     Las páginas eliminadas permanecen en la papelera durante {DAYS_BEFORE_PERMANENT_DELETE} días antes de ser eliminadas permanentemente.
                                 </Text>

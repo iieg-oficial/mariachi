@@ -84,7 +84,7 @@ const ApprovalStatus = ({
                 }
                 style={{ marginBottom: 16 }}
             >
-                <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                <Space orientation="vertical" style={{ width: '100%' }} size="middle">
                     <Alert
                         message={statusConfig?.description}
                         type={
@@ -186,7 +186,7 @@ const ApprovalStatus = ({
                 okText="Enviar Solicitud"
                 cancelText="Cancelar"
             >
-                <Space direction="vertical" style={{ width: '100%' }}>
+                <Space orientation="vertical" style={{ width: '100%' }}>
                     <Text>Agrega un mensaje opcional para el revisor:</Text>
                     <TextArea
                         rows={4}
@@ -209,7 +209,7 @@ const ApprovalStatus = ({
                 okButtonProps={{ danger: true }}
                 cancelText="Cancelar"
             >
-                <Space direction="vertical" style={{ width: '100%' }}>
+                <Space orientation="vertical" style={{ width: '100%' }}>
                     <Alert
                         message="Especifica los cambios necesarios"
                         description="El autor recibirá este mensaje y podrá realizar los cambios solicitados."

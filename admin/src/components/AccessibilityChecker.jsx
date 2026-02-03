@@ -209,9 +209,9 @@ const AccessibilityChecker = ({ page, onValidate }) => {
                 </Button>
             }
         >
-            <Space direction="vertical" style={{ width: '100%' }} size="large">
+            <Space orientation="vertical" style={{ width: '100%' }} size="large">
                 <div>
-                    <Space direction="vertical" style={{ width: '100%' }}>
+                    <Space orientation="vertical" style={{ width: '100%' }}>
                         <Space align="center">
                             <Text strong>Puntuación de Accesibilidad:</Text>
                             <Text
@@ -291,7 +291,7 @@ const AccessibilityChecker = ({ page, onValidate }) => {
                                                     </Space>
                                                 }
                                                 description={
-                                                    <Space direction="vertical" size="small">
+                                                    <Space orientation="vertical" size="small">
                                                         <Text type="secondary">{issue.description}</Text>
                                                         <Text type="secondary">
                                                             <FileTextOutlined /> {issue.criterion}
@@ -338,7 +338,7 @@ const AccessibilityChecker = ({ page, onValidate }) => {
                                                     </Space>
                                                 }
                                                 description={
-                                                    <Space direction="vertical" size="small">
+                                                    <Space orientation="vertical" size="small">
                                                         <Text type="secondary">{issue.description}</Text>
                                                         <Tooltip title={issue.suggestion}>
                                                             <Button type="link" size="small" icon={<BulbOutlined />}>
@@ -359,7 +359,7 @@ const AccessibilityChecker = ({ page, onValidate }) => {
                 <Alert
                     message="Sobre los Niveles WCAG"
                     description={
-                        <Space direction="vertical">
+                        <Space orientation="vertical">
                             {Object.entries(WCAG_LEVELS).map(([key, level]) => (
                                 <div key={key}>
                                     <Tag color={level.color}>{level.label}</Tag>

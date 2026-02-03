@@ -24,7 +24,7 @@ export default function TrashDoc() {
 
             <Title level={4}>¿Qué contiene la Papelera?</Title>
             <Card size="small" style={{ marginBottom: 16 }}>
-                <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                <Space orientation="vertical" style={{ width: '100%' }} size="middle">
                     <div>
                         <Tag color="blue">Páginas</Tag>
                         <Text> Páginas del sitio web eliminadas</Text>

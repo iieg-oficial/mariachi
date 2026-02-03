@@ -12,7 +12,6 @@
         "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0"
     },
     "dependencies": {
-        "@ant-design/v5-patch-for-react-19":"1.0.3",
         "@ant-design/icons":"6.1.0",
         "antd":"6.2.2",
         "axios":"1.13.3",

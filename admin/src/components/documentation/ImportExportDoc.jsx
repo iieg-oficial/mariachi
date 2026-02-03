@@ -24,7 +24,7 @@ export default function ImportExportDoc() {
 
             <Title level={4}>Exportar Contenido</Title>
             <Steps
-                direction="vertical"
+                orientation="vertical"
                 current={-1}
                 items={[
                     {
@@ -50,7 +50,7 @@ export default function ImportExportDoc() {
 
             <Title level={4}>Tipos de Exportación</Title>
             <Card size="small" style={{ marginBottom: 16 }}>
-                <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                <Space orientation="vertical" style={{ width: '100%' }} size="middle">
                     <div>
                         <Tag color="blue">Exportación Completa</Tag>
                         <Text> Todo el contenido del sitio incluyendo configuraciones</Text>
@@ -84,7 +84,7 @@ export default function ImportExportDoc() {
 
             <Title level={4}>Importar Contenido</Title>
             <Steps
-                direction="vertical"
+                orientation="vertical"
                 current={-1}
                 items={[
                     {

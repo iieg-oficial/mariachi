@@ -24,7 +24,7 @@ export default function UsersDoc() {
 
             <Title level={4}>¿Cómo crear un nuevo usuario?</Title>
             <Steps
-                direction="vertical"
+                orientation="vertical"
                 current={-1}
                 items={[
                     {
@@ -50,7 +50,7 @@ export default function UsersDoc() {
 
             <Title level={4}>Roles de Usuario</Title>
             <Card size="small" style={{ marginBottom: 16 }}>
-                <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                <Space orientation="vertical" style={{ width: '100%' }} size="middle">
                     <div>
                         <Tag color="red">Administrador (tetlamamakani)</Tag>
                         <Text> Control total del sistema, todos los permisos</Text>

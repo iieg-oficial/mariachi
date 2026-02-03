@@ -51,7 +51,7 @@ export default function ProcurementListComponent({
     if (editable) {
         return (
             <Card title="Configuración Lista de Licitaciones" size="small">
-                <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                <Space orientation="vertical" style={{ width: '100%' }} size="middle">
                     <Input
                         placeholder="Título de la sección"
                         value={title}

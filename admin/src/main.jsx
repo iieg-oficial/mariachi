@@ -31,7 +31,6 @@ import SitemapManager from '@pages/SitemapManager';
 import RobotsManager from '@pages/RobotsManager';
 import RedirectsManager from '@pages/RedirectsManager';
 import Analytics from '@pages/Analytics';
-import '@ant-design/v5-patch-for-react-19';
 
 const { DEV, VITE_GOOGLE_ANALYTICS_ID } = import.meta.env;
 

@@ -24,7 +24,7 @@ export default function HistoryDoc() {
 
             <Title level={4}>¿Qué se registra?</Title>
             <Card size="small" style={{ marginBottom: 16 }}>
-                <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                <Space orientation="vertical" style={{ width: '100%' }} size="middle">
                     <div>
                         <Tag color="blue">Cambios en Páginas</Tag>
                         <Text> Creación, edición, publicación, eliminación</Text>

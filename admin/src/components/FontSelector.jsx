@@ -83,7 +83,7 @@ const FontSelector = ({
                 width={800}
                 okButtonProps={{ disabled: !selectedFamily }}
             >
-                <Space direction="vertical" style={{ width: '100%' }} size="large">
+                <Space orientation="vertical" style={{ width: '100%' }} size="large">
                     <Space style={{ width: '100%', justifyContent: 'space-between' }}>
                         <Select
                             placeholder="Selecciona una familia tipográfica"

@@ -24,7 +24,7 @@ export default function EditorDoc() {
 
             <Title level={4}>¿Cómo usar el Editor?</Title>
             <Steps
-                direction="vertical"
+                orientation="vertical"
                 current={-1}
                 items={[
                     {
@@ -50,7 +50,7 @@ export default function EditorDoc() {
 
             <Title level={4}>Componentes Básicos</Title>
             <Card size="small" style={{ marginBottom: 16 }} title="Elementos Básicos">
-                <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                <Space orientation="vertical" style={{ width: '100%' }} size="middle">
                     <div>
                         <Text strong>Texto:</Text>
                         <Text> Párrafos y texto enriquecido para contenido general</Text>
@@ -68,7 +68,7 @@ export default function EditorDoc() {
 
             <Title level={4}>Componentes de Secciones</Title>
             <Card size="small" style={{ marginBottom: 16 }} title="Secciones Completas">
-                <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                <Space orientation="vertical" style={{ width: '100%' }} size="middle">
                     <div>
                         <Tag color="purple">Banner Hero</Tag>
                         <Text> Sección principal de bienvenida con título, subtítulo, botones CTA y estadísticas opcionales</Text>

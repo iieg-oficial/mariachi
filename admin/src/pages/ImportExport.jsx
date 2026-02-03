@@ -129,7 +129,7 @@ export default function ImportExport() {
             title: '¿Confirmar importación?',
             icon: <WarningOutlined style={{ color: '#faad14' }} />,
             content: (
-                <Space direction="vertical">
+                <Space orientation="vertical">
                     <Alert
                         message="Advertencia"
                         description="Los datos existentes con el mismo ID serán reemplazados. Esta acción no se puede deshacer."
@@ -175,7 +175,7 @@ export default function ImportExport() {
     return (
         <div>
             <Card>
-                <Space direction="vertical" style={{ width: '100%' }} size="large">
+                <Space orientation="vertical" style={{ width: '100%' }} size="large">
                     <Title level={4}>
                         <ExportOutlined /> Exportación e Importación
                     </Title>
@@ -204,7 +204,7 @@ export default function ImportExport() {
                             </Button>
                         }
                     >
-                        <Space direction="vertical" style={{ width: '100%' }}>
+                        <Space orientation="vertical" style={{ width: '100%' }}>
                             <Paragraph>
                                 Exporta el contenido de tu sitio en formato JSON. Puedes seleccionar qué elementos deseas incluir en la exportación.
                             </Paragraph>
@@ -245,7 +245,7 @@ export default function ImportExport() {
                             </Button>
                         }
                     >
-                        <Space direction="vertical" style={{ width: '100%' }}>
+                        <Space orientation="vertical" style={{ width: '100%' }}>
                             <Paragraph>
                                 Importa contenido desde un archivo JSON previamente exportado. El sistema validará la estructura antes de proceder.
                             </Paragraph>
@@ -286,7 +286,7 @@ export default function ImportExport() {
                 confirmLoading={exporting}
                 width={600}
             >
-                <Space direction="vertical" style={{ width: '100%' }} size="large">
+                <Space orientation="vertical" style={{ width: '100%' }} size="large">
                     <Alert
                         message="Selecciona qué deseas exportar"
                         description="El archivo de exportación incluirá todos los elementos seleccionados en formato JSON."
@@ -303,7 +303,7 @@ export default function ImportExport() {
                             onChange={(e) => setExportScope(e.target.value)}
                             style={{ width: '100%' }}
                         >
-                            <Space direction="vertical" style={{ width: '100%' }}>
+                            <Space orientation="vertical" style={{ width: '100%' }}>
                                 <Radio value="all">Exportar todo el sitio</Radio>
                                 <Radio value="selected">Exportar páginas seleccionadas</Radio>
                             </Space>
@@ -328,7 +328,7 @@ export default function ImportExport() {
                         <Text strong style={{ display: 'block', marginBottom: 12 }}>
                             Elementos a incluir:
                         </Text>
-                        <Space direction="vertical">
+                        <Space orientation="vertical">
                             <Checkbox
                                 checked={exportOptions.includePages}
                                 onChange={(e) => setExportOptions({ ...exportOptions, includePages: e.target.checked })}
@@ -393,7 +393,7 @@ export default function ImportExport() {
                 okButtonProps={{ disabled: !importFile }}
                 width={600}
             >
-                <Space direction="vertical" style={{ width: '100%' }} size="large">
+                <Space orientation="vertical" style={{ width: '100%' }} size="large">
                     <Alert
                         message="Sube un archivo JSON de exportación"
                         description="El sistema validará la estructura del archivo antes de permitir la importación."
@@ -421,7 +421,7 @@ export default function ImportExport() {
                                     Vista previa de importación:
                                 </Text>
                                 <Card size="small">
-                                    <Space direction="vertical" style={{ width: '100%' }}>
+                                    <Space orientation="vertical" style={{ width: '100%' }}>
                                         <Space>
                                             <Tag color="blue">Versión: {importPreview.version}</Tag>
                                             <Text type="secondary">
@@ -431,7 +431,7 @@ export default function ImportExport() {
 
                                         <Divider style={{ margin: '8px 0' }} />
 
-                                        <Space direction="vertical">
+                                        <Space orientation="vertical">
                                             {importPreview.pagesCount > 0 && (
                                                 <Text><FileOutlined /> {importPreview.pagesCount} página(s)</Text>
                                             )}

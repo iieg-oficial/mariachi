@@ -70,7 +70,7 @@ export default function CarouselComponent({
     if (editable) {
         return (
             <Card title="Configuración Carrusel" size="small">
-                <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                <Space orientation="vertical" style={{ width: '100%' }} size="middle">
                     <Space wrap>
                         <Switch
                             checked={autoplay}

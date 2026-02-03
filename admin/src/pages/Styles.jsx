@@ -179,7 +179,7 @@ export default function Styles() {
                                     name={['typography', 'headingFont']}
                                     tooltip="Fuente para todos los encabezados del sitio"
                                 >
-                                    <Space direction="vertical" style={{ width: '100%' }}>
+                                    <Space orientation="vertical" style={{ width: '100%' }}>
                                         <Button
                                             icon={<FontSizeOutlined />}
                                             onClick={() => openFontSelector('headingFont')}
@@ -210,7 +210,7 @@ export default function Styles() {
                                     name={['typography', 'bodyFont']}
                                     tooltip="Fuente para texto de párrafos y contenido"
                                 >
-                                    <Space direction="vertical" style={{ width: '100%' }}>
+                                    <Space orientation="vertical" style={{ width: '100%' }}>
                                         <Button
                                             icon={<FontSizeOutlined />}
                                             onClick={() => openFontSelector('bodyFont')}
@@ -245,7 +245,7 @@ export default function Styles() {
                                     name={['typography', 'buttonFont']}
                                     tooltip="Fuente para textos de botones y llamadas a la acción"
                                 >
-                                    <Space direction="vertical" style={{ width: '100%' }}>
+                                    <Space orientation="vertical" style={{ width: '100%' }}>
                                         <Button
                                             icon={<FontSizeOutlined />}
                                             onClick={() => openFontSelector('buttonFont')}

@@ -24,7 +24,7 @@ export default function LayoutsDoc() {
 
             <Title level={4}>Tipos de Layouts</Title>
             <Card size="small" style={{ marginBottom: 16 }}>
-                <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                <Space orientation="vertical" style={{ width: '100%' }} size="middle">
                     <div>
                         <Tag color="blue">Ancho Completo</Tag>
                         <Text> El contenido ocupa todo el ancho de la pantalla</Text>
