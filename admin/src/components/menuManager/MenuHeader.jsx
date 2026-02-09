@@ -1,5 +1,6 @@
 import { Typography, Space, Button, Badge, Tag } from 'antd';
 import { PlusOutlined, SaveOutlined, UndoOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
+import DisabledFeature from '@components/common/DisabledFeature';
 
 const { Title } = Typography;
 
@@ -8,8 +9,7 @@ export default function MenuHeader({
     changesCount,
     publishing,
     onDiscard,
-    onPublish,
-    onCreate
+    onPublish
 }) {
     return (
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
@@ -42,14 +42,16 @@ export default function MenuHeader({
                         </Button>
                     </>
                 )}
-                <Button
-                    type="primary"
-                    icon={<PlusOutlined />}
-                    onClick={onCreate}
-                    ghost={hasChanges}
-                >
-                    Nuevo Item de Nivel Superior
-                </Button>
+                <DisabledFeature>
+                    <Button
+                        type="primary"
+                        icon={<PlusOutlined />}
+                        disabled
+                        ghost={hasChanges}
+                    >
+                        Nuevo Item de Nivel Superior
+                    </Button>
+                </DisabledFeature>
             </Space>
         </div>
     );

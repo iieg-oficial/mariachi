@@ -12,6 +12,7 @@ class MenuItem(Base):
     url = Column(String, nullable=False)
     order = Column(Integer, default=0)
     visible = Column(Boolean, default=True)
+    disabled = Column(Boolean, default=False)
     external = Column(Boolean, default=False)
     parent_id = Column(Integer, nullable=True)
     icon = Column(String, nullable=True)

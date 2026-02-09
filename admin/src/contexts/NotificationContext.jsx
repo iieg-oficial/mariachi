@@ -1,4 +1,5 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import api from '@services/api';
 
 const NotificationContext = createContext();
 
@@ -25,122 +26,78 @@ export const NOTIFICATION_TYPES = {
 export function NotificationProvider({ children }) {
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
+    const [loading, setLoading] = useState(false);
+
+    const loadNotifications = useCallback(async () => {
+        try {
+            setLoading(true);
+            const response = await api.get('/notifications');
+            const notifs = response.data.map(n => ({
+                ...n,
+                id: n.id.toString(),
+                createdAt: new Date(n.created_at)
+            }));
+            setNotifications(notifs);
+            setUnreadCount(notifs.filter(n => !n.read).length);
+        } catch (error) {
+            console.error('Error loading notifications:', error);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
 
     useEffect(() => {
         loadNotifications();
-
-        const interval = setInterval(() => {
-        }, 30000);
-
+        const interval = setInterval(loadNotifications, 30000);
         return () => clearInterval(interval);
-    }, []);
+    }, [loadNotifications]);
 
-    const loadNotifications = () => {
-        const mockNotifications = [
-            {
-                id: '1',
-                type: NOTIFICATION_TYPES.APPROVAL_REQUEST,
-                title: 'Nueva solicitud de aprobación',
-                message: 'Juan Pérez ha solicitado aprobación para "Página Principal"',
-                data: {
-                    pageId: '123',
-                    pageTitle: 'Página Principal',
-                    requestedBy: 'Juan Pérez'
-                },
-                read: false,
-                createdAt: new Date(Date.now() - 5 * 60 * 1000)
-            },
-            {
-                id: '2',
-                type: NOTIFICATION_TYPES.APPROVAL_APPROVED,
-                title: 'Aprobación confirmada',
-                message: 'Tu página "Servicios" ha sido aprobada',
-                data: {
-                    pageId: '456',
-                    pageTitle: 'Servicios',
-                    approvedBy: 'María García'
-                },
-                read: false,
-                createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000)
-            },
-            {
-                id: '3',
-                type: NOTIFICATION_TYPES.SCHEDULED_PUBLISH,
-                title: 'Publicación programada completada',
-                message: 'La página "Blog: Novedades 2024" se ha publicado automáticamente',
-                data: {
-                    pageId: '789',
-                    pageTitle: 'Blog: Novedades 2024'
-                },
-                read: true,
-                createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000)
-            },
-            {
-                id: '4',
-                type: NOTIFICATION_TYPES.COMMENT,
-                title: 'Nuevo comentario',
-                message: 'Ana López ha comentado en "Contacto"',
-                data: {
-                    pageId: '321',
-                    pageTitle: 'Contacto',
-                    commentBy: 'Ana López',
-                    comment: 'Necesitamos actualizar el horario de atención'
-                },
-                read: true,
-                createdAt: new Date(Date.now() - 3 * 60 * 60 * 1000)
-            },
-            {
-                id: '5',
-                type: NOTIFICATION_TYPES.TRASH_EXPIRING,
-                title: 'Páginas a punto de eliminarse',
-                message: '2 páginas en papelera serán eliminadas permanentemente en 3 días',
-                data: {
-                    expiringCount: 2,
-                    daysRemaining: 3
-                },
-                read: false,
-                createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000)
-            }
-        ];
-
-        setNotifications(mockNotifications);
-        updateUnreadCount(mockNotifications);
+    const markAsRead = async (notificationId) => {
+        try {
+            await api.put(`/notifications/${notificationId}/read`);
+            setNotifications(prev => {
+                const updated = prev.map(n =>
+                    n.id === notificationId ? { ...n, read: true } : n
+                );
+                setUnreadCount(updated.filter(n => !n.read).length);
+                return updated;
+            });
+        } catch (error) {
+            console.error('Error marking notification as read:', error);
+        }
     };
 
-    const updateUnreadCount = (notifs) => {
-        const count = notifs.filter(n => !n.read).length;
-        setUnreadCount(count);
+    const markAllAsRead = async () => {
+        try {
+            await api.put('/notifications/read-all');
+            setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+            setUnreadCount(0);
+        } catch (error) {
+            console.error('Error marking all as read:', error);
+        }
     };
 
-    const markAsRead = (notificationId) => {
-        setNotifications(prev => {
-            const updated = prev.map(n =>
-                n.id === notificationId ? { ...n, read: true } : n
-            );
-            updateUnreadCount(updated);
-            return updated;
-        });
+    const deleteNotification = async (notificationId) => {
+        try {
+            await api.delete(`/notifications/${notificationId}`);
+            setNotifications(prev => {
+                const updated = prev.filter(n => n.id !== notificationId);
+                setUnreadCount(updated.filter(n => !n.read).length);
+                return updated;
+            });
+        } catch (error) {
+            console.error('Error deleting notification:', error);
+        }
     };
 
-    const markAllAsRead = () => {
-        setNotifications(prev => {
-            const updated = prev.map(n => ({ ...n, read: true }));
-            updateUnreadCount(updated);
-            return updated;
-        });
-    };
-
-    const deleteNotification = (notificationId) => {
-        setNotifications(prev => {
-            const updated = prev.filter(n => n.id !== notificationId);
-            updateUnreadCount(updated);
-            return updated;
-        });
-    };
-
-    const clearAll = () => {
-        setNotifications([]);
-        setUnreadCount(0);
+    const clearAll = async () => {
+        try {
+            await api.delete('/notifications');
+            setNotifications([]);
+            setUnreadCount(0);
+        } catch (error) {
+            console.error('Error clearing notifications:', error);
+        }
     };
 
     const addNotification = (notification) => {
@@ -150,22 +107,20 @@ export function NotificationProvider({ children }) {
             read: false,
             createdAt: new Date()
         };
-
-        setNotifications(prev => {
-            const updated = [newNotification, ...prev];
-            updateUnreadCount(updated);
-            return updated;
-        });
+        setNotifications(prev => [newNotification, ...prev]);
+        setUnreadCount(prev => prev + 1);
     };
 
     const value = {
         notifications,
         unreadCount,
+        loading,
         markAsRead,
         markAllAsRead,
         deleteNotification,
         clearAll,
-        addNotification
+        addNotification,
+        refreshNotifications: loadNotifications
     };
 
     return (

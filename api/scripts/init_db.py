@@ -22,7 +22,7 @@ def crear_usuario_admin(db):
     admin_password = os.getenv("ADMIN_PASSWORD")
     
     if not admin_password:
-        print("⚠️ ADMIN_PASSWORD no está definida en variables de entorno. Omitiendo creación de admin.")
+        print("ADMIN_PASSWORD no está definida en variables de entorno. Omitiendo creación de admin.")
         return
 
     admin = (
@@ -54,7 +54,7 @@ def crear_usuarios_ejemplo(db):
     disenadora_password = os.getenv("SAMPLE_DISENADORA_PASSWORD")
     
     if not editora_password or not disenadora_password:
-        print("⚠️ SAMPLE_EDITORA_PASSWORD o SAMPLE_DISENADORA_PASSWORD no definidos. Omitiendo usuarios de ejemplo.")
+        print("SAMPLE_EDITORA_PASSWORD o SAMPLE_DISENADORA_PASSWORD no definidos. Omitiendo usuarios de ejemplo.")
         return
 
     usuarios = [
@@ -98,11 +98,13 @@ def crear_menu_items_ejemplo(db):
     print("Creando items de menú de ejemplo...")
 
     menu_items = [
-        {"label": "Inicio", "url": "/", "order": 1, "visible": True},
-        {"label": "Nosotros", "url": "/nosotros", "order": 2, "visible": True},
-        {"label": "Publicaciones", "url": "/publicaciones", "order": 3, "visible": True},
-        {"label": "Datos Abiertos", "url": "/datos-abiertos", "order": 4, "visible": True},
-        {"label": "Contacto", "url": "/contacto", "order": 5, "visible": True},
+        {"label": "Inicio", "url": "/", "order": 1, "visible": True, "disabled": False},
+        {"label": "Conocenos", "url": "/conocenos", "order": 2, "visible": True, "disabled": False},
+        {"label": "Sistema de información", "url": "/sistema-de-informacion", "order": 3, "visible": True, "disabled": False},
+        {"label": "Datos Abiertos y documentación", "url": "/datos-abiertos-y-documentacion", "order": 4, "visible": True, "disabled": False},
+        {"label": "Comunidad", "url": "/comunidad", "order": 5, "visible": True, "disabled": False},
+        {"label": "Transparencia", "url": "/transparencia", "order": 6, "visible": True, "disabled": False},
+        {"label": "Trámites y servicios", "url": "/tramites-y-servicios", "order": 7, "visible": True, "disabled": False},
     ]
 
     for item_data in menu_items:

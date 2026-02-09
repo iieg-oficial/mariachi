@@ -16,7 +16,10 @@ def construir_arbol_menu(items: list[MenuItem]) -> list[MenuItemTree]:
     item_map = {}
     root_items = []
 
-    items_visibles = sorted([item for item in items if item.visible], key=lambda x: x.order)
+    items_visibles = sorted(
+        [item for item in items if item.visible],
+        key=lambda x: x.order
+    )
 
     for item in items_visibles:
         item_dict = MenuItemResponse.model_validate(item).model_dump()

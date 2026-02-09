@@ -1,16 +1,14 @@
 import { useState } from 'react';
-import { Tree, Card, Alert, Button, Modal, Typography } from 'antd';
+import { Card, Alert, Button, Modal, Typography } from 'antd';
 import { useMenuDraft } from '@hooks/useMenuDraft';
 import { useMenuIcons } from '@hooks/useMenuIcons';
-import { useMenuTreeBuilder } from '@hooks/useMenuTreeBuilder';
 import { useMenuItemModal } from '@hooks/useMenuItemModal';
-import { useMenuDragDrop } from '@hooks/useMenuDragDrop';
 import { findAllChildren } from '@utils/menuUtils';
 import { MAX_LEVEL } from '@constants/menuConstants';
 import MenuHeader from '@components/menuManager/MenuHeader';
 import MenuItemModal from '@components/menuManager/MenuItemModal';
 import PublishChangesModal from '@components/menuManager/PublishChangesModal';
-import './MenuManager.css';
+import SortableTree from '@components/menuManager/SortableTree';
 
 const { Text } = Typography;
 
@@ -83,13 +81,9 @@ export default function MenuManager() {
         });
     };
 
-    const { treeData } = useMenuTreeBuilder(menuItems, originalMenuItems, customIcons, {
-        onAddChild: handleAddChild,
-        onEdit: handleEdit,
-        onDelete: handleDelete
-    });
-
-    const { handleDrop } = useMenuDragDrop(menuItems, updateItemsOrder);
+    const handleReorder = (newItems) => {
+        updateItemsOrder(newItems);
+    };
 
     const handleDiscard = () => {
         Modal.confirm({
@@ -124,7 +118,6 @@ export default function MenuManager() {
                 publishing={publishing}
                 onDiscard={handleDiscard}
                 onPublish={handlePublish}
-                onCreate={handleCreate}
             />
 
             {hasChanges && (
@@ -151,19 +144,17 @@ export default function MenuManager() {
             />
 
             <Card loading={loading}>
-                <Tree
-                    draggable
-                    blockNode
-                    defaultExpandAll
-                    onDrop={handleDrop}
-                    treeData={treeData}
-                    style={{
-                        fontSize: 14,
-                        background: '#fff'
-                    }}
-                    className="menu-tree"
-                />
-                {treeData.length === 0 && !loading && (
+                {menuItems.length > 0 ? (
+                    <SortableTree
+                        items={menuItems}
+                        originalItems={originalMenuItems}
+                        customIcons={customIcons}
+                        onReorder={handleReorder}
+                        onEdit={handleEdit}
+                        onAddChild={handleAddChild}
+                        onDelete={handleDelete}
+                    />
+                ) : (
                     <div style={{ textAlign: 'center', padding: 40, color: '#999', fontSize: 15 }}>
                         No hay items en el menú. Haz clic en "Nuevo Item de Nivel Superior" para comenzar.
                     </div>

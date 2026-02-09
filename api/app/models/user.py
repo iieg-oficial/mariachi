@@ -22,3 +22,4 @@ class Usuario(Base):
     history_entries = relationship("HistoryEntry", back_populates="user")
     media_uploads = relationship("Media", back_populates="uploaded_by_user")
     font_uploads = relationship("Font", back_populates="uploaded_by_user")
+    notifications = relationship("Notification", back_populates="user")

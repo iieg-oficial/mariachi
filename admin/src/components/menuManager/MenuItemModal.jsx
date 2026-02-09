@@ -1,7 +1,6 @@
-import { Modal, Form, Input, Alert, Radio, Select, Switch, Space } from 'antd';
+import { Modal, Form, Input, Alert, Radio, Select, Space, Switch, Tag } from 'antd';
+import { EyeOutlined, EyeInvisibleOutlined, StopOutlined } from '@ant-design/icons';
 import { PREDEFINED_ICONS } from '@constants/menuConstants';
-
-const { TextArea } = Input;
 
 export default function MenuItemModal({
     visible,
@@ -36,7 +35,7 @@ export default function MenuItemModal({
                 layout="vertical"
                 onFinish={onSubmit}
                 initialValues={{
-                    visible: true,
+                    status: 'visible',
                     external: false,
                     order: 0
                 }}
@@ -142,11 +141,32 @@ export default function MenuItemModal({
                 </Form.Item>
 
                 <Form.Item
-                    label={<span style={{ fontSize: 14, fontWeight: 500 }}>Visible</span>}
-                    name="visible"
-                    valuePropName="checked"
+                    label={<span style={{ fontSize: 14, fontWeight: 500 }}>Estado de visibilidad</span>}
+                    name="status"
+                    tooltip="Define cómo se muestra este item en el portal público"
                 >
-                    <Switch />
+                    <Radio.Group>
+                        <Space orientation="vertical">
+                            <Radio value="visible">
+                                <Space>
+                                    <Tag icon={<EyeOutlined />} color="green">Visible</Tag>
+                                    <span style={{ color: '#8c8c8c', fontSize: 12 }}>Se muestra en el menú del portal</span>
+                                </Space>
+                            </Radio>
+                            <Radio value="hidden">
+                                <Space>
+                                    <Tag icon={<EyeInvisibleOutlined />} color="red">Oculto</Tag>
+                                    <span style={{ color: '#8c8c8c', fontSize: 12 }}>No aparece en el menú público</span>
+                                </Space>
+                            </Radio>
+                            <Radio value="disabled">
+                                <Space>
+                                    <Tag icon={<StopOutlined />} color="default">Deshabilitado</Tag>
+                                    <span style={{ color: '#8c8c8c', fontSize: 12 }}>Temporalmente no disponible</span>
+                                </Space>
+                            </Radio>
+                        </Space>
+                    </Radio.Group>
                 </Form.Item>
 
                 {selectedParent && (

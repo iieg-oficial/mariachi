@@ -6,6 +6,7 @@ class MenuItemBase(BaseModel):
     url: str = Field(..., min_length=1)
     order: int = Field(default=0)
     visible: bool = Field(default=True)
+    disabled: bool = Field(default=False)
     external: bool = Field(default=False)
     parent_id: int | None = Field(default=None, serialization_alias="parentId")
     icon: str | None = None
@@ -22,6 +23,7 @@ class MenuItemUpdate(BaseModel):
     url: str | None = None
     order: int | None = None
     visible: bool | None = None
+    disabled: bool | None = None
     external: bool | None = None
     parent_id: int | None = Field(default=None, serialization_alias="parentId")
     icon: str | None = None

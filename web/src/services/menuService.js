@@ -16,11 +16,13 @@ const transformMenuData = (backendData) => {
         name: item.label.toUpperCase(),
         path: item.url,
         icon: item.icon,
+        disabled: item.disabled || false,
         submenu: item.children && item.children.length > 0
             ? item.children.map(child => ({
                 name: child.label,
                 path: child.url,
-                icon: child.icon || '📄'
+                icon: child.icon || '📄',
+                disabled: child.disabled || false
             }))
             : undefined
     }));

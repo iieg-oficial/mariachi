@@ -7,6 +7,8 @@ from app.api.deps import get_current_user, get_db, verify_csrf
 from app.models.page import Page
 from app.models.user import Usuario
 from app.schemas.page import PageCreate, PageResponse, PageUpdate
+from app.services.history import registrar_accion
+from app.services.notification import notificar_admins, NOTIFICATION_TYPES
 
 router = APIRouter(prefix="/pages", tags=["páginas"])
 
@@ -45,6 +47,7 @@ async def actualizar_o_crear_pagina(
     current_user: Usuario = Depends(verify_csrf),
 ):
     pagina = db.query(Page).filter(Page.menu_item_id == page_id).first()
+    is_new = pagina is None
 
     if not pagina:
         nueva_pagina = Page(
@@ -55,17 +58,38 @@ async def actualizar_o_crear_pagina(
         db.add(nueva_pagina)
         db.commit()
         db.refresh(nueva_pagina)
-        return nueva_pagina
+        pagina = nueva_pagina
 
-    update_data = page_in.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(pagina, field, value)
+    else:
+        update_data = page_in.model_dump(exclude_unset=True)
+        for field, value in update_data.items():
+            setattr(pagina, field, value)
 
-    pagina.published_at = datetime.utcnow()
-    pagina.updated_at = datetime.utcnow()
+        pagina.published_at = datetime.utcnow()
+        pagina.updated_at = datetime.utcnow()
+        db.commit()
+        db.refresh(pagina)
 
-    db.commit()
-    db.refresh(pagina)
+    action = "crear" if is_new else "actualizar"
+    registrar_accion(
+        db,
+        user_id=current_user.id,
+        action=action,
+        resource="page",
+        resource_id=page_id,
+        description=f"{current_user.name} {'creó' if is_new else 'actualizó'} la página '{pagina.title}'",
+        details={"title": pagina.title, "slug": pagina.slug},
+    )
+
+    notificar_admins(
+        db,
+        type=NOTIFICATION_TYPES["PAGE_PUBLISHED"],
+        title="Página publicada",
+        message=f"{current_user.name} {'creó' if is_new else 'actualizó'} la página '{pagina.title}'",
+        data={"pageId": page_id, "pageTitle": pagina.title, "publishedBy": current_user.name},
+        exclude_user_id=current_user.id,
+    )
+
     return pagina
 
 

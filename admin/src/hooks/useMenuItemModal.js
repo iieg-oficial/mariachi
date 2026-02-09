@@ -17,6 +17,7 @@ export const useMenuItemModal = (menuItems, createItem, updateItem) => {
         setUrlPreview('/');
         setIconType('none');
         form.resetFields();
+        form.setFieldsValue({ status: 'visible' });
         setModalVisible(true);
     };
 
@@ -26,8 +27,14 @@ export const useMenuItemModal = (menuItems, createItem, updateItem) => {
         setUrlPreview(`${parentItem.url}/`);
         setIconType('none');
         form.resetFields();
-        form.setFieldsValue({ parentId: parentItem.id });
+        form.setFieldsValue({ parentId: parentItem.id, status: 'visible' });
         setModalVisible(true);
+    };
+
+    const getStatusFromItem = (item) => {
+        if (item.disabled) return 'disabled';
+        if (item.visible) return 'visible';
+        return 'hidden';
     };
 
     const handleEdit = (item) => {
@@ -43,7 +50,10 @@ export const useMenuItemModal = (menuItems, createItem, updateItem) => {
             setIconType('none');
         }
 
-        form.setFieldsValue(item);
+        form.setFieldsValue({
+            ...item,
+            status: getStatusFromItem(item)
+        });
         setModalVisible(true);
     };
 
@@ -88,7 +98,14 @@ export const useMenuItemModal = (menuItems, createItem, updateItem) => {
 
         const url = generateUrl(values.label, values.parentId, menuItems);
 
-        const payload = { ...values, url };
+        const { status, ...rest } = values;
+        const payload = {
+            ...rest,
+            url,
+            visible: status === 'visible',
+            disabled: status === 'disabled'
+        };
+
         if (iconType === 'none') {
             delete payload.icon;
             delete payload.iconId;
