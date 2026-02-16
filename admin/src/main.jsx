@@ -31,6 +31,8 @@ import SitemapManager from '@pages/SitemapManager';
 import RobotsManager from '@pages/RobotsManager';
 import RedirectsManager from '@pages/RedirectsManager';
 import Analytics from '@pages/Analytics';
+import PublicationRequests from '@pages/PublicationRequests';
+import ChangePassword from '@pages/ChangePassword';
 
 const { DEV, VITE_GOOGLE_ANALYTICS_ID } = import.meta.env;
 
@@ -84,6 +86,14 @@ const router = createBrowserRouter([
                         element: (
                             <RoleProtectedRoute allowedRoles={['tetlamamakani']}>
                                 <Approvals />
+                            </RoleProtectedRoute>
+                        )
+                    },
+                    {
+                        path: 'solicitudes-publicacion',
+                        element: (
+                            <RoleProtectedRoute allowedRoles={['tetlamamakani']}>
+                                <PublicationRequests />
                             </RoleProtectedRoute>
                         )
                     },
@@ -211,6 +221,13 @@ const router = createBrowserRouter([
                             <RoleProtectedRoute allowedRoles={['tetlamamakani', 'diseñadora']}>
                                 <Styles />
                             </RoleProtectedRoute>
+                        )
+                    }, {
+                        path: 'change-password',
+                        element: (
+                            <ProtectedRoute>
+                                <ChangePassword />
+                            </ProtectedRoute>
                         )
                     }, {
                         path: '*',

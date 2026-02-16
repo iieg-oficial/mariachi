@@ -41,6 +41,7 @@ const router = createBrowserRouter([
             { path: '/comunidad', element: <ComunidadPage /> },
             { path: '/transparencia', element: <TransparenciaPage /> },
             { path: '/tramites', element: <TramitesPage /> },
+            { path: '/sistema-de-informacion', element: <SistemasPage /> },
             { path: '*', element: <h1 className="text-4xl text-center mt-20">404 - Página No Encontrada</h1> },
         ],
     },

@@ -7,7 +7,7 @@ from app.api.deps import get_db, verify_csrf
 from app.models.font import Font
 from app.models.user import Usuario
 from app.schemas.font import FontFamily, FontListItem, FontResponse
-from app.services.s3 import get_s3_service
+from app.services.acervo import get_acervo_service
 
 router = APIRouter(prefix="/fonts", tags=["fonts"])
 
@@ -106,9 +106,9 @@ async def subir_fuente(
     object_name = f"fonts/{uuid.uuid4()}{file_extension}"
 
     # Subir a MinIO
-    s3_service = get_s3_service()
+    acervo_service = get_acervo_service()
     try:
-        url = await s3_service.upload_file(file, object_name)
+        url = await acervo_service.upload_file(file, object_name)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -294,10 +294,10 @@ async def eliminar_fuente(
         )
 
     # Eliminar archivo de MinIO
-    s3_service = get_s3_service()
+    acervo_service = get_acervo_service()
     # Extraer object_name de la URL
     object_name = fuente.url.split("/")[-2] + "/" + fuente.url.split("/")[-1]
-    s3_service.delete_file(object_name)
+    acervo_service.delete_file(object_name)
 
     # Eliminar de base de datos
     db.delete(fuente)

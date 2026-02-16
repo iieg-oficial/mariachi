@@ -9,24 +9,27 @@ export default function PublishChangesModal({
     modifiedItems,
     deletedItems,
     onCancel,
-    onConfirm
+    onConfirm,
+    isAdmin = true
 }) {
     return (
         <Modal
-            title="Publicar cambios"
+            title={isAdmin ? "Publicar cambios" : "Solicitar publicación"}
             open={visible}
             onCancel={onCancel}
             onOk={onConfirm}
-            okText="Publicar"
+            okText={isAdmin ? "Publicar" : "Solicitar aprobación"}
             cancelText="Cancelar"
             confirmLoading={loading}
             width={700}
         >
             <div>
                 <Alert
-                    message="Resumen de cambios"
-                    description="Revisa cuidadosamente los cambios antes de publicar. Esta acción no se puede deshacer."
-                    type="warning"
+                    message={isAdmin ? "Resumen de cambios" : "Solicitud de publicación"}
+                    description={isAdmin
+                        ? "Revisa cuidadosamente los cambios antes de publicar. Esta acción no se puede deshacer."
+                        : "Tu solicitud será enviada a un administrador para su aprobación."}
+                    type={isAdmin ? "warning" : "info"}
                     showIcon
                     style={{ marginBottom: 24 }}
                 />

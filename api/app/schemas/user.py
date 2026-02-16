@@ -16,6 +16,7 @@ class UsuarioCreate(UsuarioBase):
 
 
 class UsuarioUpdate(BaseModel):
+    username: str | None = Field(None, min_length=3, max_length=50)
     email: EmailStr | None = None
     name: str | None = Field(None, min_length=1, max_length=100)
     role: Literal["tetlamamakani", "editora", "diseñadora"] | None = None
@@ -24,9 +25,19 @@ class UsuarioUpdate(BaseModel):
 class UsuarioResponse(UsuarioBase):
     id: int
     role: str
+    must_change_password: bool
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class PasswordChange(BaseModel):
+    current_password: str
+    new_password: str = Field(..., min_length=8)
+
+
+class PasswordReset(BaseModel):
+    new_password: str
 
 
 class LoginRequest(BaseModel):

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, Enum, Integer, String
+from sqlalchemy import Boolean, Column, DateTime, Enum, Integer, String
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -17,6 +17,7 @@ class Usuario(Base):
     role = Column(
         Enum("tetlamamakani", "editora", "diseñadora", name="user_roles"), nullable=False
     )
+    must_change_password = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     history_entries = relationship("HistoryEntry", back_populates="user")

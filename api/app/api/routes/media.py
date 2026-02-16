@@ -8,7 +8,7 @@ from app.api.deps import get_current_user, get_db, verify_csrf
 from app.models.media import Media, MediaFolder
 from app.models.user import Usuario
 from app.schemas.media import FolderCreate, FolderResponse
-from app.services.s3 import get_s3_service
+from app.services.acervo import get_acervo_service
 
 router = APIRouter(prefix="/media", tags=["media"])
 
@@ -72,13 +72,13 @@ async def subir_archivo(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
 ):
-    s3_service = get_s3_service()
+    acervo_service = get_acervo_service()
 
     file_extension = file.filename.split(".")[-1] if "." in file.filename else ""
     unique_name = f"{uuid.uuid4()}.{file_extension}" if file_extension else str(uuid.uuid4())
 
     try:
-        url = await s3_service.upload_file(file, unique_name)
+        url = await acervo_service.upload_file(file, unique_name)
 
         nuevo_media = Media(
             name=unique_name,
@@ -128,8 +128,8 @@ async def eliminar_archivo(
             status_code=status.HTTP_404_NOT_FOUND, detail="Archivo no encontrado"
         )
 
-    s3_service = get_s3_service()
-    s3_service.delete_file(media_item.name)
+    acervo_service = get_acervo_service()
+    acervo_service.delete_file(media_item.name)
 
     db.delete(media_item)
     db.commit()

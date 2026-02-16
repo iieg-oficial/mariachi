@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Card, Alert, Button, Modal, Typography } from 'antd';
+import { useAuth } from '@contexts/AuthContext';
 import { useMenuDraft } from '@hooks/useMenuDraft';
 import { useMenuIcons } from '@hooks/useMenuIcons';
 import { useMenuItemModal } from '@hooks/useMenuItemModal';
@@ -13,10 +14,12 @@ import SortableTree from '@components/menuManager/SortableTree';
 const { Text } = Typography;
 
 export default function MenuManager() {
+    const { user } = useAuth();
+
     const {
-        menuItems, originalMenuItems, loading, publishing, hasChanges, createItem, updateItem,
+        menuItems, originalMenuItems, loading, publishing, hasChanges, isAdmin, createItem, updateItem,
         deleteItems, updateItemsOrder, discardChanges, getChangesSummary, publishChanges
-    } = useMenuDraft();
+    } = useMenuDraft(user);
 
     const { customIcons } = useMenuIcons();
 
@@ -101,8 +104,8 @@ export default function MenuManager() {
     };
 
     const confirmPublish = async () => {
-        const success = await publishChanges();
-        if (success) {
+        const result = await publishChanges();
+        if (result?.published || result?.pending) {
             setPublishModalVisible(false);
         }
     };
@@ -123,7 +126,7 @@ export default function MenuManager() {
             {hasChanges && (
                 <Alert
                     message="Modo borrador"
-                    description={`Tienes ${changesCount} cambio(s) pendiente(s). Los cambios no se guardarán hasta que hagas clic en "Publicar cambios".`}
+                    description={`Tienes ${changesCount} cambio(s) pendiente(s). ${isAdmin ? 'Los cambios se publicarán directamente.' : 'Un administrador debe aprobar los cambios.'}`}
                     type="warning"
                     showIcon
                     style={{ marginBottom: 16 }}
@@ -183,6 +186,7 @@ export default function MenuManager() {
                 deletedItems={deletedItems}
                 onCancel={() => setPublishModalVisible(false)}
                 onConfirm={confirmPublish}
+                isAdmin={isAdmin}
             />
         </div>
     );

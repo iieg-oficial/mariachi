@@ -11,12 +11,11 @@ import {
 import {
     SortableContext,
     sortableKeyboardCoordinates,
-    verticalListSortingStrategy
+    verticalListSortingStrategy,
+    arrayMove
 } from '@dnd-kit/sortable';
 import { message } from 'antd';
 import SortableTreeItem from './SortableTreeItem';
-import { getItemLevel } from '@utils/menuUtils';
-import { MAX_LEVEL } from '@constants/menuConstants';
 
 export default function SortableTree({
     items,
@@ -73,55 +72,38 @@ export default function SortableTree({
 
         if (!over || active.id === over.id) return;
 
-        const activeIndex = flatItems.findIndex(item => item.id === active.id);
-        const overIndex = flatItems.findIndex(item => item.id === over.id);
+        const draggedItem = items.find(item => item.id === active.id);
+        const targetItem = items.find(item => item.id === over.id);
 
-        if (activeIndex === -1 || overIndex === -1) return;
+        if (!draggedItem || !targetItem) return;
 
-        const draggedItem = flatItems[activeIndex];
-        const targetItem = flatItems[overIndex];
-
-        const newParentId = targetItem.parentId;
-
-        if (newParentId) {
-            const newParentLevel = getItemLevel(newParentId, items);
-            if (newParentLevel >= MAX_LEVEL) {
-                message.error(`No se puede mover aquí. El nivel máximo es ${MAX_LEVEL}`);
-                return;
-            }
+        if (draggedItem.parentId !== targetItem.parentId) {
+            message.warning('Solo puedes reordenar items del mismo nivel');
+            return;
         }
 
+        const parentId = draggedItem.parentId;
         const siblings = items
-            .filter(item => item.parentId === newParentId && item.id !== draggedItem.id)
+            .filter(item => item.parentId === parentId)
             .sort((a, b) => a.order - b.order);
 
-        const targetSiblingIndex = siblings.findIndex(item => item.id === targetItem.id);
+        const oldIndex = siblings.findIndex(item => item.id === active.id);
+        const newIndex = siblings.findIndex(item => item.id === over.id);
 
+        if (oldIndex === -1 || newIndex === -1) return;
+
+        const reorderedSiblings = arrayMove(siblings, oldIndex, newIndex);
+
+        const siblingIds = new Set(siblings.map(s => s.id));
         const updatedItems = items.map(item => {
-            if (item.id === draggedItem.id) {
-                return {
-                    ...item,
-                    parentId: newParentId,
-                    order: overIndex > activeIndex ? targetSiblingIndex + 1 : targetSiblingIndex
-                };
-            }
-            return item;
-        });
-
-        let orderIndex = 0;
-        const finalItems = updatedItems.map(item => {
-            if (item.parentId === newParentId && item.id !== draggedItem.id) {
-                const newOrder = orderIndex;
-                if (orderIndex === (overIndex > activeIndex ? targetSiblingIndex + 1 : targetSiblingIndex)) {
-                    orderIndex++;
-                }
-                orderIndex++;
+            if (siblingIds.has(item.id)) {
+                const newOrder = reorderedSiblings.findIndex(s => s.id === item.id);
                 return { ...item, order: newOrder };
             }
             return item;
         });
 
-        onReorder(finalItems);
+        onReorder(updatedItems);
     };
 
     const handleDragCancel = () => {

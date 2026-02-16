@@ -14,11 +14,17 @@ export default function Login() {
     const onFinish = async (values) => {
         setLoading(true);
         try {
-            await login(values.username, values.password);
+            const data = await login(values.username, values.password);
             message.success('¡Inicio de sesión exitoso!');
-            navigate('/');
+
+            if (data.user.must_change_password) {
+                navigate('/change-password');
+            } else {
+                navigate('/');
+            }
         } catch (error) {
-            const errorMessage = error.response?.data?.error || 'Error al iniciar sesión';
+            console.error(error);
+            const errorMessage = error.response?.data?.detail || 'Error al iniciar sesión';
             message.error(errorMessage);
         } finally {
             setLoading(false);

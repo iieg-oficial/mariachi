@@ -2,10 +2,33 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Tag, Space, Button } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, HolderOutlined, FileTextOutlined, EyeOutlined, EyeInvisibleOutlined, StopOutlined } from '@ant-design/icons';
-import { useNavigate } from 'react-router';
 import { getIconComponent } from '@utils/menuUtils';
 import { MAX_LEVEL } from '@constants/menuConstants';
 import DisabledFeature from '@components/common/DisabledFeature';
+
+const STYLES = {
+    dragHandle: {
+        color: '#999',
+        cursor: 'grab',
+        fontSize: 16,
+        touchAction: 'none'
+    },
+    label: {
+        fontWeight: 500,
+        fontSize: 15,
+        color: '#262626',
+        marginBottom: 4
+    },
+    url: {
+        fontSize: 13,
+        color: '#8c8c8c',
+        fontFamily: 'monospace',
+        wordBreak: 'break-all'
+    },
+    tag: { margin: 0, fontSize: 13, padding: '2px 8px' },
+    badgeTag: { marginLeft: 8, fontSize: 11 },
+    button: { fontSize: 14 }
+};
 
 export default function SortableTreeItem({
     item,
@@ -18,7 +41,6 @@ export default function SortableTreeItem({
     onDelete,
     childCount = 0
 }) {
-    const navigate = useNavigate();
     const canAddChild = level < MAX_LEVEL;
 
     const {
@@ -71,48 +93,33 @@ export default function SortableTreeItem({
                     <HolderOutlined
                         {...attributes}
                         {...listeners}
-                        style={{
-                            color: '#999',
-                            cursor: 'grab',
-                            fontSize: 16,
-                            touchAction: 'none'
-                        }}
+                        style={STYLES.dragHandle}
                     />
                     {renderIcon()}
                     <div style={{ flex: 1 }}>
-                        <div style={{
-                            fontWeight: 500,
-                            fontSize: 15,
-                            color: '#262626',
-                            marginBottom: 4
-                        }}>
+                        <div style={STYLES.label}>
                             {item.label}
                             {childCount > 0 && (
-                                <Tag color="cyan" style={{ marginLeft: 8, fontSize: 11 }}>
+                                <Tag color="cyan" style={STYLES.badgeTag}>
                                     {childCount} hijo{childCount > 1 ? 's' : ''}
                                 </Tag>
                             )}
-                            {isNew && <Tag color="blue" style={{ marginLeft: 8, fontSize: 11 }}>NUEVO</Tag>}
-                            {isModified && <Tag color="orange" style={{ marginLeft: 8, fontSize: 11 }}>MODIFICADO</Tag>}
+                            {isNew && <Tag color="blue" style={STYLES.badgeTag}>NUEVO</Tag>}
+                            {isModified && <Tag color="orange" style={STYLES.badgeTag}>MODIFICADO</Tag>}
                         </div>
-                        <div style={{
-                            fontSize: 13,
-                            color: '#8c8c8c',
-                            fontFamily: 'monospace',
-                            wordBreak: 'break-all'
-                        }}>
+                        <div style={STYLES.url}>
                             {item.url}
                         </div>
                     </div>
                     <Tag
                         color={level === 1 ? 'blue' : level === 2 ? 'green' : level === 3 ? 'orange' : 'red'}
-                        style={{ margin: 0, fontSize: 13, padding: '2px 8px' }}
+                        style={STYLES.tag}
                     >
                         Nivel {level}
                     </Tag>
                     <Tag
                         color={item.external ? 'orange' : 'blue'}
-                        style={{ margin: 0, fontSize: 13, padding: '2px 8px' }}
+                        style={STYLES.tag}
                     >
                         {item.external ? 'Externo' : 'Interno'}
                     </Tag>
@@ -120,7 +127,7 @@ export default function SortableTreeItem({
                         <Tag
                             icon={<StopOutlined />}
                             color="default"
-                            style={{ margin: 0, fontSize: 13, padding: '2px 8px' }}
+                            style={STYLES.tag}
                         >
                             Deshabilitado
                         </Tag>
@@ -128,7 +135,7 @@ export default function SortableTreeItem({
                         <Tag
                             icon={<EyeOutlined />}
                             color="green"
-                            style={{ margin: 0, fontSize: 13, padding: '2px 8px' }}
+                            style={STYLES.tag}
                         >
                             Visible
                         </Tag>
@@ -136,7 +143,7 @@ export default function SortableTreeItem({
                         <Tag
                             icon={<EyeInvisibleOutlined />}
                             color="red"
-                            style={{ margin: 0, fontSize: 13, padding: '2px 8px' }}
+                            style={STYLES.tag}
                         >
                             Oculto
                         </Tag>
@@ -148,9 +155,8 @@ export default function SortableTreeItem({
                                     type="primary"
                                     size="middle"
                                     icon={<FileTextOutlined />}
-                                    onClick={(_e) => navigate(`/menu-manager/edit-page/${item.id}`)}
                                     disabled
-                                    style={{ fontSize: 14 }}
+                                    style={STYLES.button}
                                 >
                                     Editar Página
                                 </Button>
@@ -167,7 +173,7 @@ export default function SortableTreeItem({
                                         onAddChild(item);
                                     }}
                                     disabled
-                                    style={{ fontSize: 14 }}
+                                    style={STYLES.button}
                                 >
                                     Agregar hijo
                                 </Button>
@@ -181,7 +187,7 @@ export default function SortableTreeItem({
                                 e.stopPropagation();
                                 onEdit(item);
                             }}
-                            style={{ fontSize: 14 }}
+                            style={STYLES.button}
                         />
                         <DisabledFeature>
                             <Button
@@ -194,7 +200,7 @@ export default function SortableTreeItem({
                                     onDelete(item);
                                 }}
                                 icon={<DeleteOutlined />}
-                                style={{ fontSize: 14 }}
+                                style={STYLES.button}
                             />
                         </DisabledFeature>
                     </Space>

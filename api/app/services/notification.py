@@ -12,6 +12,7 @@ NOTIFICATION_TYPES = {
     "PAGE_UPDATED": "page_updated",
     "PAGE_PUBLISHED": "page_published",
     "MENU_UPDATED": "menu_updated",
+    "PUBLICATION_REQUESTED": "publication_requested",
     "SYSTEM": "system",
 }
 

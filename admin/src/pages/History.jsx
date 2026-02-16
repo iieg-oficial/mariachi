@@ -62,7 +62,7 @@ export default function History() {
             if (filters.resource) params.append('resource', filters.resource);
             if (filters.action) params.append('action', filters.action);
 
-            const response = await api.get(`/history?${params.toString()}`);
+            const response = await api.get(`/historial?${params.toString()}`);
             setHistory(response.data);
         } catch (error) {
             console.error('Error loading history:', error);
@@ -73,7 +73,7 @@ export default function History() {
 
     const loadStats = async () => {
         try {
-            const response = await api.get('/history/stats');
+            const response = await api.get('/historial/stats');
             setStats(response.data);
         } catch (error) {
             console.error('Error loading stats:', error);
@@ -119,7 +119,7 @@ export default function History() {
                     </Text>
                 </Space>
             ),
-            filters: stats ? Object.keys(stats.byUser).map(user => ({
+            filters: stats?.byUser ? Object.keys(stats.byUser).map(user => ({
                 text: user,
                 value: user
             })) : [],
@@ -151,7 +151,7 @@ export default function History() {
             render: (resource) => (
                 <Tag color="blue">{resourceLabels[resource] || resource}</Tag>
             ),
-            filters: stats ? Object.keys(stats.byResource).map(resource => ({
+            filters: stats?.byResource ? Object.keys(stats.byResource).map(resource => ({
                 text: resourceLabels[resource] || resource,
                 value: resource
             })) : [],

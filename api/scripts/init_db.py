@@ -105,6 +105,7 @@ def crear_menu_items_ejemplo(db):
         {"label": "Comunidad", "url": "/comunidad", "order": 5, "visible": True, "disabled": False},
         {"label": "Transparencia", "url": "/transparencia", "order": 6, "visible": True, "disabled": False},
         {"label": "Trámites y servicios", "url": "/tramites-y-servicios", "order": 7, "visible": True, "disabled": False},
+        {"label": "Próximamente", "url": "/proximamente", "order": 8, "visible": True, "disabled": True},
     ]
 
     for item_data in menu_items:

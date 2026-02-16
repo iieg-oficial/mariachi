@@ -12,12 +12,12 @@ class Settings(BaseSettings):
     algorithm: str
     access_token_expire_minutes: int
     redis_url: str
-    minio_endpoint: str
-    minio_public_endpoint: str
-    minio_access_key: str
-    minio_secret_key: str
-    minio_bucket_name: str
-    minio_use_ssl: bool
+    acervo_endpoint: str
+    acervo_public_endpoint: str
+    acervo_access_key: str
+    acervo_secret_key: str
+    acervo_bucket_name: str
+    acervo_use_ssl: bool
     cors_origins: list[str]
     admin_prefix: str
     web_prefix: str

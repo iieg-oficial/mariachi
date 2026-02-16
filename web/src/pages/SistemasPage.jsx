@@ -3,7 +3,8 @@ function SistemasPage() {
         {
             name: 'Sistema de Información Geográfica',
             description: 'Plataforma para consulta y análisis de información geoespacial del estado de Jalisco.',
-            icon: '🗺️'
+            icon: '🗺️',
+            url: '/mapalab'
         },
         {
             name: 'Sistema Estatal de Información Estadística',
@@ -25,9 +26,9 @@ function SistemasPage() {
     return (
         <div className="container mx-auto px-4 py-8">
             <h1 className="text-4xl font-bold text-purple-800 mb-6">Sistemas de Información</h1>
-            
+
             <p className="text-gray-700 text-lg mb-8">
-                Consulta nuestros sistemas de información estadística y geográfica para acceder a datos 
+                Consulta nuestros sistemas de información estadística y <a href="/mapalab" className="text-purple-800 hover:text-purple-600 underline">geográfica</a> para acceder a datos
                 confiables y actualizados sobre el estado de Jalisco.
             </p>
 
@@ -37,9 +38,11 @@ function SistemasPage() {
                         <div className="text-4xl mb-4">{sistema.icon}</div>
                         <h3 className="text-xl font-semibold text-gray-800 mb-2">{sistema.name}</h3>
                         <p className="text-gray-600">{sistema.description}</p>
-                        <button className="mt-4 px-4 py-2 bg-purple-800 text-white rounded hover:bg-purple-700 transition-colors">
-                            Acceder al Sistema
-                        </button>
+                        {sistema.url && (
+                            <a href={sistema.url} className="mt-4 inline-block px-4 py-2 bg-purple-800 text-white rounded hover:bg-purple-700 transition-colors">
+                                Acceder al Sistema
+                            </a>
+                        )}
                     </div>
                 ))}
             </div>

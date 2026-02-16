@@ -15,6 +15,10 @@ services:
         VITE_ADMIN_API_TIMEOUT: ${VITE_ADMIN_API_TIMEOUT:-10000}
         VITE_ADMIN_APP_NAME: ${VITE_ADMIN_APP_NAME:-Administrador}
     container_name: portal-nginx
+    environment:
+      MAPALAB_HOST: ${MAPALAB_HOST}
+      GEOSERVER_HOST: ${GEOSERVER_HOST}
+      ACERVO_HOST: ${ACERVO_HOST}
     ports:
       - "80:80"
       - "443:443"
@@ -63,10 +67,10 @@ services:
     env_file:
       - ./.env
     extra_hosts:
-      - "${S3_DOMAIN:-s3.jalisco.gob.mx}:${S3_HOST_IP:-host-gateway}"
+      - "${ACERVO_DOMAIN}:${ACERVO_HOST_IP:-host-gateway}"
     volumes:
       - ./api:/app
-      - ./nginx/ssl/${S3_DOMAIN:-s3.jalisco.gob.mx}.crt:/usr/local/share/ca-certificates/${S3_DOMAIN:-s3.jalisco.gob.mx}.crt:ro
+      - ./nginx/ssl/${ACERVO_DOMAIN}.crt:/usr/local/share/ca-certificates/${ACERVO_DOMAIN}.crt:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -75,14 +79,14 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-iieg_user}:${POSTGRES_PASSWORD:-iieg_password}@postgres:5432/${POSTGRES_DB:-iieg_portal}
       REDIS_URL: redis://redis:6379/0
-      MINIO_ENDPOINT: ${MINIO_ENDPOINT}
-      MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT}
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
-      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME:-iieg-media}
-      MINIO_USE_SSL: ${MINIO_USE_SSL:-false}
-      REQUESTS_CA_BUNDLE: /usr/local/share/ca-certificates/${S3_DOMAIN:-s3.jalisco.gob.mx}.crt
-      SSL_CERT_FILE: /usr/local/share/ca-certificates/${S3_DOMAIN:-s3.jalisco.gob.mx}.crt
+      ACERVO_ENDPOINT: ${ACERVO_ENDPOINT}
+      ACERVO_PUBLIC_ENDPOINT: ${ACERVO_PUBLIC_ENDPOINT}
+      ACERVO_ACCESS_KEY: ${ACERVO_ACCESS_KEY}
+      ACERVO_SECRET_KEY: ${ACERVO_SECRET_KEY}
+      ACERVO_BUCKET_NAME: ${ACERVO_BUCKET_NAME:-iieg-acervo}
+      ACERVO_USE_SSL: ${ACERVO_USE_SSL:-false}
+      REQUESTS_CA_BUNDLE: /usr/local/share/ca-certificates/${ACERVO_DOMAIN}.crt
+      SSL_CERT_FILE: /usr/local/share/ca-certificates/${ACERVO_DOMAIN}.crt
     networks:
       - portal_network
 

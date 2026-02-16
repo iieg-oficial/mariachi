@@ -57,12 +57,12 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-iieg_user}:${POSTGRES_PASSWORD:-iieg_password}@postgres:5432/${POSTGRES_DB:-iieg_portal}
       REDIS_URL: redis://redis:6379/0
-      MINIO_ENDPOINT: ${MINIO_ENDPOINT}
-      MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT}
-      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
-      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
-      MINIO_BUCKET_NAME: ${MINIO_BUCKET_NAME:-iieg-media}
-      MINIO_USE_SSL: ${MINIO_USE_SSL:-false}
+      ACERVO_ENDPOINT: ${ACERVO_ENDPOINT}
+      ACERVO_PUBLIC_ENDPOINT: ${ACERVO_PUBLIC_ENDPOINT}
+      ACERVO_ACCESS_KEY: ${ACERVO_ACCESS_KEY}
+      ACERVO_SECRET_KEY: ${ACERVO_SECRET_KEY}
+      ACERVO_BUCKET_NAME: ${ACERVO_BUCKET_NAME:-iieg-media}
+      ACERVO_USE_SSL: ${ACERVO_USE_SSL:-false}
     networks:
       - portal_network_dev
 

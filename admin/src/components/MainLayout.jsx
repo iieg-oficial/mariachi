@@ -5,7 +5,8 @@ import {
     TeamOutlined, LogoutOutlined, HomeOutlined,
     LayoutOutlined, MenuOutlined, AppstoreOutlined, BookOutlined,
     FileTextOutlined, BgColorsOutlined, HistoryOutlined, FileImageOutlined,
-    ClockCircleOutlined, SearchOutlined, DeleteOutlined, SwapOutlined, FontSizeOutlined
+    ClockCircleOutlined, SearchOutlined, DeleteOutlined, SwapOutlined, FontSizeOutlined,
+    LockOutlined
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router';
 import { useAuth } from '@contexts/AuthContext';
@@ -15,7 +16,7 @@ import GlobalSearch from '@components/GlobalSearch';
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
 
-export default function MainLayout () {
+export default function MainLayout() {
     const [collapsed, setCollapsed] = useState(false);
     const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
     const navigate = useNavigate();
@@ -156,6 +157,12 @@ export default function MainLayout () {
             key: 'profile',
             icon: <UserOutlined />,
             label: 'Perfil'
+        },
+        {
+            key: 'change-password',
+            icon: <LockOutlined />,
+            label: 'Cambiar Contraseña',
+            onClick: () => navigate('/change-password')
         },
         {
             type: 'divider'

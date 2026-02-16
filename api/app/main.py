@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import auth, fonts, history, icons, layouts, media, menu, notifications, pages, public, search, styles, users
+from app.api.routes import auth, drafts, fonts, history, icons, layouts, media, menu, notifications, pages, public, publication_requests, search, styles, users
 from app.core.settings import get_settings
 
 settings = get_settings()
@@ -44,6 +44,8 @@ def create_app() -> FastAPI:
     app.include_router(icons.router, prefix=settings.admin_prefix)
     app.include_router(styles.router, prefix=settings.admin_prefix)
     app.include_router(notifications.router, prefix=settings.admin_prefix)
+    app.include_router(drafts.router, prefix=settings.admin_prefix)
+    app.include_router(publication_requests.router, prefix=settings.admin_prefix)
 
     app.include_router(public.router, prefix=settings.web_prefix)
 

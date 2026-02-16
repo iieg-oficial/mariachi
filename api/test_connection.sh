@@ -149,11 +149,11 @@ else
   echo "⚠️  Redis no detectado"
 fi
 
-MINIO_STATUS="$(docker-compose ps minio 2>/dev/null | grep -c 'Up')"
-if [ "$MINIO_STATUS" -ge 1 ] 2>/dev/null; then
-  echo "✅ MinIO corriendo"
+ACERVO_STATUS="$(docker-compose ps acervo 2>/dev/null | grep -c 'Up')"
+if [ "$ACERVO_STATUS" -ge 1 ] 2>/dev/null; then
+  echo "✅ Acervo corriendo"
 else
-  echo "⚠️  MinIO no detectado"
+  echo "⚠️  Acervo no detectado"
 fi
 echo ""
 

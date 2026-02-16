@@ -102,7 +102,7 @@ export const useMenuItemModal = (menuItems, createItem, updateItem) => {
         const payload = {
             ...rest,
             url,
-            visible: status === 'visible',
+            visible: status === 'visible' || status === 'disabled',
             disabled: status === 'disabled'
         };
 

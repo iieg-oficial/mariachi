@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.core.database import get_db
-from app.core.security import crear_access_token, crear_csrf_token, verificar_password
+from app.core.security import crear_access_token, crear_csrf_token, verify_password
 from app.core.settings import get_settings
 from app.models.user import Usuario
 from app.schemas.user import LoginRequest, LoginResponse, UsuarioResponse
@@ -22,7 +22,7 @@ async def login(
 ):
     usuario = db.query(Usuario).filter(Usuario.username == credentials.username).first()
 
-    if not usuario or not verificar_password(credentials.password, usuario.hashed_password):
+    if not usuario or not verify_password(credentials.password, usuario.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Credenciales inválidas",

@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Table, Card, Typography, Tag, Space, Button, Modal, Form, Input, Select, message } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, LockOutlined } from '@ant-design/icons';
 import api from '@services/api';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 const roleColors = {
     tetlamamakani: 'red',
@@ -68,6 +68,38 @@ export default function Users() {
                     fetchUsers();
                 } catch {
                     message.error('Error al eliminar usuario');
+                }
+            }
+        });
+    };
+
+    const handleResetPassword = (record) => {
+        Modal.confirm({
+            title: '¿Resetear contraseña?',
+            content: (
+                <div>
+                    <p>Se generará una nueva contraseña temporal para <strong>{record.name}</strong>.</p>
+                    <p>El usuario deberá cambiarla en su próximo inicio de sesión.</p>
+                </div>
+            ),
+            okText: 'Resetear',
+            cancelText: 'Cancelar',
+            onOk: async () => {
+                try {
+                    const response = await api.post(`/users/${record.id}/reset-password`);
+                    Modal.info({
+                        title: 'Contraseña Reseteada',
+                        content: (
+                            <div>
+                                <p>La nueva contraseña temporal es:</p>
+                                <Title level={4} copyable>{response.data.temp_password}</Title>
+                                <p>Por favor compártela con el usuario de forma segura.</p>
+                            </div>
+                        ),
+                        width: 400
+                    });
+                } catch (error) {
+                    message.error('Error al resetear contraseña');
                 }
             }
         });
@@ -140,6 +172,13 @@ export default function Users() {
                         onClick={() => handleEdit(record)}
                     >
                         Editar
+                    </Button>
+                    <Button
+                        type="link"
+                        icon={<LockOutlined />}
+                        onClick={() => handleResetPassword(record)}
+                    >
+                        Resetear
                     </Button>
                     <Button
                         type="link"

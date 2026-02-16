@@ -22,7 +22,7 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    const login = async (username, password) => {
+    const loginUser = async (username, password) => {
         const response = await api.post('/auth/login', {
             username,
             password
@@ -53,6 +53,7 @@ export const AuthProvider = ({ children }) => {
         try {
             const response = await api.get('/auth/me');
             setUser(response.data);
+            return response.data;
         } catch (error) {
             setUser(null);
             throw error;
@@ -62,7 +63,7 @@ export const AuthProvider = ({ children }) => {
     const value = {
         user,
         loading,
-        login,
+        login: loginUser,
         logout,
         isAuthenticated,
         refreshUser,
