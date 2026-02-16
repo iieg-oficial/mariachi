@@ -39,4 +39,4 @@ COPY ./nginx/ssl /etc/nginx/ssl
 COPY --from=web-builder /app/dist /usr/share/nginx/html
 COPY --from=admin-builder /app/dist /usr/share/nginx/html/administrador
 EXPOSE 80 443
-CMD ["/bin/sh", "-c", "envsubst '${MAPALAB_HOST} ${GEOSERVER_HOST} ${ACERVO_HOST}' < /etc/nginx/templates/portal.conf > /etc/nginx/conf.d/portal.conf && nginx -g 'daemon off;'"]
+CMD ["/bin/sh", "-c", "envsubst '${MAPALAB_HOST} ${GEOSERVER_HOST} ${ACERVO_HOST} ${SERVER_NAME} ${SSL_CERTIFICATE} ${SSL_CERTIFICATE_KEY} ${CORS_ALLOWED_ORIGIN}' < /etc/nginx/templates/portal.conf > /etc/nginx/conf.d/portal.conf && nginx -g 'daemon off;'"]

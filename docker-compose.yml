@@ -15,10 +15,8 @@ services:
         VITE_ADMIN_API_TIMEOUT: ${VITE_ADMIN_API_TIMEOUT:-10000}
         VITE_ADMIN_APP_NAME: ${VITE_ADMIN_APP_NAME:-Administrador}
     container_name: portal-nginx
-    environment:
-      MAPALAB_HOST: ${MAPALAB_HOST}
-      GEOSERVER_HOST: ${GEOSERVER_HOST}
-      ACERVO_HOST: ${ACERVO_HOST}
+    env_file:
+      - ./nginx/.env
     ports:
       - "80:80"
       - "443:443"
