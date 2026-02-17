@@ -19,3 +19,13 @@ export const getPageById = async (pageId) => {
         return null;
     }
 };
+
+export const getPageBySlug = async (slug) => {
+    try {
+        const response = await api.get(`/paginas/${slug}`);
+        return response.data;
+    } catch (error) {
+        console.error(`Error fetching page by slug ${slug}:`, error);
+        return null;
+    }
+};

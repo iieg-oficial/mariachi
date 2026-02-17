@@ -5,12 +5,7 @@ import ReactGA from 'react-ga4';
 import './index.css'
 import MainProvider from '@providers/MainProvider';
 import Home from '@pages/Home';
-import ConocenosPage from '@pages/ConocenosPage';
-import SistemasPage from '@pages/SistemasPage';
-import DatosAbiertosPage from '@pages/DatosAbiertosPage';
-import ComunidadPage from '@pages/ComunidadPage';
-import TransparenciaPage from '@pages/TransparenciaPage';
-import TramitesPage from '@pages/TramitesPage';
+import DynamicPage from '@pages/DynamicPage';
 
 const env = import.meta.env;
 const MODE = env.VITE_NODE_ENV
@@ -35,14 +30,7 @@ const router = createBrowserRouter([
         element: <MainProvider />,
         children: [
             { index: true, element: <Home /> },
-            { path: '/conocenos', element: <ConocenosPage /> },
-            { path: '/sistemas', element: <SistemasPage /> },
-            { path: '/datos-abiertos', element: <DatosAbiertosPage /> },
-            { path: '/comunidad', element: <ComunidadPage /> },
-            { path: '/transparencia', element: <TransparenciaPage /> },
-            { path: '/tramites', element: <TramitesPage /> },
-            { path: '/sistema-de-informacion', element: <SistemasPage /> },
-            { path: '*', element: <h1 className="text-4xl text-center mt-20">404 - Página No Encontrada</h1> },
+            { path: '*', element: <DynamicPage /> },
         ],
     },
 ]);

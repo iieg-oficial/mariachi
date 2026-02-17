@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { message } from 'antd';
 import api from '@services/api';
+import { BLOCK_CONFIG } from '@constants/pageConstants';
 
 export const usePageDraft = (pageId) => {
     const [originalPage, setOriginalPage] = useState(null);
@@ -22,6 +23,12 @@ export const usePageDraft = (pageId) => {
         try {
             const response = await api.get(`/pages/${pageId}`);
             const pageData = response.data || createEmptyPage();
+
+            if (pageData.sections && pageData.sections.length > 0 && pageData.sections[0].columns) {
+                console.warn('Detected old nested structure. Resetting to flat blocks.');
+                pageData.sections = [];
+            }
+
             setOriginalPage(JSON.parse(JSON.stringify(pageData)));
             setPage(JSON.parse(JSON.stringify(pageData)));
         } catch (error) {
@@ -41,189 +48,81 @@ export const usePageDraft = (pageId) => {
         sections: [],
         seo: {
             metaTitle: '',
-            metaDescription: '',
-            metaKeywords: '',
-            ogTitle: '',
-            ogDescription: '',
-            ogImage: '',
-            ogUrl: '',
-            twitterCard: 'summary_large_image',
-            twitterTitle: '',
-            twitterDescription: '',
-            twitterImage: '',
-            canonicalUrl: '',
-            noIndex: false,
-            noFollow: false
+            metaDescription: ''
         }
     });
 
-    const addSection = (columns = 1) => {
-        const newSection = {
-            id: `temp-section-${nextTempId}`,
-            columns: columns,
-            items: Array(columns).fill(null).map((_, index) => ({
-                id: `temp-item-${nextTempId}-${index}`,
-                components: []
-            }))
+    const addBlock = (blockType) => {
+        const config = BLOCK_CONFIG[blockType];
+        if (!config) return;
+
+        const newBlock = {
+            id: `temp-block-${nextTempId}`,
+            type: blockType,
+            props: JSON.parse(JSON.stringify(config.defaultProps))
         };
 
         setNextTempId(prev => prev + 1);
         setPage(prev => ({
             ...prev,
-            sections: [...prev.sections, newSection]
+            sections: [...prev.sections, newBlock]
         }));
-        message.success('Sección agregada');
     };
 
-    const removeSection = (sectionId) => {
+    const removeBlock = (blockId) => {
         setPage(prev => ({
             ...prev,
-            sections: prev.sections.filter(s => s.id !== sectionId)
+            sections: prev.sections.filter(b => b.id !== blockId)
         }));
-        message.success('Sección eliminada');
     };
 
-    const updateSection = (sectionId, updates) => {
+    const updateBlock = (blockId, newProps) => {
         setPage(prev => ({
             ...prev,
-            sections: prev.sections.map(section =>
-                section.id === sectionId ? { ...section, ...updates } : section
+            sections: prev.sections.map(b =>
+                b.id === blockId ? { ...b, props: { ...b.props, ...newProps } } : b
             )
         }));
     };
 
-    const moveSectionUp = (sectionIndex) => {
-        if (sectionIndex === 0) return;
+    const moveBlock = (index, direction) => {
+        if (direction === 'up' && index === 0) return;
+        if (direction === 'down' && index === page.sections.length - 1) return;
+
         setPage(prev => {
-            const newSections = [...prev.sections];
-            [newSections[sectionIndex - 1], newSections[sectionIndex]] =
-            [newSections[sectionIndex], newSections[sectionIndex - 1]];
-            return { ...prev, sections: newSections };
+            const newBlocks = [...prev.sections];
+            const targetIndex = direction === 'up' ? index - 1 : index + 1;
+            [newBlocks[index], newBlocks[targetIndex]] = [newBlocks[targetIndex], newBlocks[index]];
+            return { ...prev, sections: newBlocks };
         });
     };
 
-    const moveSectionDown = (sectionIndex) => {
-        if (sectionIndex === page.sections.length - 1) return;
+    const duplicateBlock = (index) => {
         setPage(prev => {
-            const newSections = [...prev.sections];
-            [newSections[sectionIndex], newSections[sectionIndex + 1]] =
-            [newSections[sectionIndex + 1], newSections[sectionIndex]];
-            return { ...prev, sections: newSections };
-        });
-    };
-
-    const addComponent = (sectionId, itemIndex, component) => {
-        setPage(prev => ({
-            ...prev,
-            sections: prev.sections.map(section => {
-                if (section.id !== sectionId) return section;
-
-                const newItems = [...section.items];
-                newItems[itemIndex] = {
-                    ...newItems[itemIndex],
-                    components: [
-                        ...newItems[itemIndex].components,
-                        {
-                            id: `temp-comp-${nextTempId}`,
-                            type: component.type,
-                            props: { ...component.defaultProps }
-                        }
-                    ]
-                };
-
-                return { ...section, items: newItems };
-            })
-        }));
-
-        setNextTempId(prev => prev + 1);
-        message.success(`${component.label} agregado`);
-    };
-
-    const removeComponent = (sectionId, itemIndex, componentId) => {
-        setPage(prev => ({
-            ...prev,
-            sections: prev.sections.map(section => {
-                if (section.id !== sectionId) return section;
-
-                const newItems = [...section.items];
-                newItems[itemIndex] = {
-                    ...newItems[itemIndex],
-                    components: newItems[itemIndex].components.filter(c => c.id !== componentId)
-                };
-
-                return { ...section, items: newItems };
-            })
-        }));
-        message.success('Componente eliminado');
-    };
-
-    const updateComponent = (sectionId, itemIndex, componentId, props) => {
-        setPage(prev => ({
-            ...prev,
-            sections: prev.sections.map(section => {
-                if (section.id !== sectionId) return section;
-
-                const newItems = [...section.items];
-                newItems[itemIndex] = {
-                    ...newItems[itemIndex],
-                    components: newItems[itemIndex].components.map(comp =>
-                        comp.id === componentId ? { ...comp, props: { ...comp.props, ...props } } : comp
-                    )
-                };
-
-                return { ...section, items: newItems };
-            })
-        }));
-    };
-
-    const moveComponentUp = (sectionId, itemIndex, componentIndex) => {
-        if (componentIndex === 0) return;
-
-        setPage(prev => ({
-            ...prev,
-            sections: prev.sections.map(section => {
-                if (section.id !== sectionId) return section;
-
-                const newItems = [...section.items];
-                const components = [...newItems[itemIndex].components];
-                [components[componentIndex - 1], components[componentIndex]] =
-                [components[componentIndex], components[componentIndex - 1]];
-                newItems[itemIndex] = { ...newItems[itemIndex], components };
-
-                return { ...section, items: newItems };
-            })
-        }));
-    };
-
-    const moveComponentDown = (sectionId, itemIndex, componentIndex) => {
-        setPage(prev => {
-            const section = prev.sections.find(s => s.id === sectionId);
-            if (!section) return prev;
-
-            const components = section.items[itemIndex].components;
-            if (componentIndex === components.length - 1) return prev;
-
-            return {
-                ...prev,
-                sections: prev.sections.map(s => {
-                    if (s.id !== sectionId) return s;
-
-                    const newItems = [...s.items];
-                    const comps = [...newItems[itemIndex].components];
-                    [comps[componentIndex], comps[componentIndex + 1]] =
-                    [comps[componentIndex + 1], comps[componentIndex]];
-                    newItems[itemIndex] = { ...newItems[itemIndex], components: comps };
-
-                    return { ...s, items: newItems };
-                })
+            const blockToCopy = prev.sections[index];
+            const newBlock = {
+                ...JSON.parse(JSON.stringify(blockToCopy)),
+                id: `temp-block-${nextTempId}`
             };
+            const newBlocks = [...prev.sections];
+            newBlocks.splice(index + 1, 0, newBlock);
+            return { ...prev, sections: newBlocks };
         });
+        setNextTempId(prev => prev + 1);
+        message.success('Bloque duplicado');
     };
 
     const updateSEO = (seoData) => {
         setPage(prev => ({
             ...prev,
             seo: { ...prev.seo, ...seoData }
+        }));
+    };
+
+    const updatePageStructure = (newSections) => {
+        setPage(prev => ({
+            ...prev,
+            sections: newSections
         }));
     };
 
@@ -235,12 +134,17 @@ export const usePageDraft = (pageId) => {
     const publishChanges = async () => {
         setPublishing(true);
         try {
-            const pageToPublish = replaceTemporaryIds(page);
+            const pageToPublish = {
+                ...page,
+                sections: page.sections.map(block => ({
+                    ...block,
+                    id: block.id.startsWith('temp-') ? undefined : block.id
+                }))
+            };
 
             await api.put(`/pages/${pageId}`, pageToPublish);
 
-            setOriginalPage(JSON.parse(JSON.stringify(pageToPublish)));
-            setPage(JSON.parse(JSON.stringify(pageToPublish)));
+            setOriginalPage(JSON.parse(JSON.stringify(page)));
 
             message.success('Página publicada exitosamente');
             return true;
@@ -253,69 +157,19 @@ export const usePageDraft = (pageId) => {
         }
     };
 
-    const replaceTemporaryIds = (pageData) => {
-        let idCounter = 1;
-        const idMap = {};
-
-        const getNewId = (oldId) => {
-            if (!oldId.toString().startsWith('temp-')) return oldId;
-            if (!idMap[oldId]) {
-                idMap[oldId] = idCounter++;
-            }
-            return idMap[oldId];
-        };
-
-        return {
-            ...pageData,
-            sections: pageData.sections.map(section => ({
-                ...section,
-                id: getNewId(section.id),
-                items: section.items.map(item => ({
-                    ...item,
-                    id: getNewId(item.id),
-                    components: item.components.map(comp => ({
-                        ...comp,
-                        id: getNewId(comp.id)
-                    }))
-                }))
-            }))
-        };
-    };
-
-    const applyTemplate = (template) => {
-        if (!template) return;
-
-        setPage(prev => ({
-            ...prev,
-            sections: template.sections || [],
-            seo: {
-                ...prev.seo,
-                ...template.seo
-            }
-        }));
-
-        message.success('Plantilla aplicada exitosamente');
-    };
-
     return {
         page,
-        originalPage,
         loading,
         publishing,
         hasChanges,
-        addSection,
-        removeSection,
-        updateSection,
-        moveSectionUp,
-        moveSectionDown,
-        addComponent,
-        removeComponent,
-        updateComponent,
-        moveComponentUp,
-        moveComponentDown,
+        addBlock,
+        removeBlock,
+        updateBlock,
+        moveBlock,
+        duplicateBlock,
         updateSEO,
+        updatePageStructure,
         discardChanges,
-        publishChanges,
-        applyTemplate
+        publishChanges
     };
 };

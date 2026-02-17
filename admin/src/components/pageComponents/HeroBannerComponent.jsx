@@ -8,6 +8,8 @@ export default function HeroBannerComponent({
     title,
     subtitle,
     backgroundGradient,
+    ctaText,
+    ctaLink,
     ctaButtons = [],
     statistics = [],
     showStatistics,
@@ -214,19 +216,27 @@ export default function HeroBannerComponent({
                 <p className="text-xl mb-8 opacity-90">{subtitle}</p>
 
                 <div className="flex gap-4 mb-12">
-                    {ctaButtons.map((btn, index) => (
-                        <a
-                            key={index}
-                            href={btn.link}
-                            className={`px-6 py-3 rounded-lg font-medium transition-all ${
-                                btn.type === 'primary'
+                    {ctaButtons && ctaButtons.length > 0 ? (
+                        ctaButtons.map((btn, index) => (
+                            <a
+                                key={index}
+                                href={btn.link}
+                                className={`px-6 py-3 rounded-lg font-medium transition-all ${btn.type === 'primary'
                                     ? 'bg-white text-purple-900 hover:bg-gray-100'
                                     : 'border-2 border-white text-white hover:bg-white hover:text-purple-900'
-                            }`}
+                                    }`}
+                            >
+                                {btn.text}
+                            </a>
+                        ))
+                    ) : (ctaText && ctaLink) ? (
+                        <a
+                            href={ctaLink}
+                            className="px-6 py-3 rounded-lg font-medium transition-all bg-white text-purple-900 hover:bg-gray-100"
                         >
-                            {btn.text}
+                            {ctaText}
                         </a>
-                    ))}
+                    ) : null}
                 </div>
 
                 {showStatistics && statistics.length > 0 && (

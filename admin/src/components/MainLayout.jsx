@@ -4,7 +4,7 @@ import {
     MenuFoldOutlined, MenuUnfoldOutlined, UserOutlined,
     TeamOutlined, LogoutOutlined,
     MenuOutlined,
-    FileTextOutlined, FileImageOutlined,
+    FileImageOutlined,
     LockOutlined
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router';
@@ -40,12 +40,7 @@ export default function MainLayout() {
     }
 
     if (user?.role === 'tetlamamakani' || user?.role === 'editora') {
-        menuItems.push({
-            key: '/pages',
-            icon: <FileTextOutlined />,
-            label: 'Páginas',
-            onClick: () => navigate('/pages')
-        });
+
         menuItems.push({
             key: '/media',
             icon: <FileImageOutlined />,

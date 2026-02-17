@@ -1,7 +1,7 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Tag, Space, Button } from 'antd';
-import { EditOutlined, HolderOutlined, EyeOutlined, EyeInvisibleOutlined, StopOutlined } from '@ant-design/icons';
+import { EditOutlined, FileTextOutlined, HolderOutlined, EyeOutlined, EyeInvisibleOutlined, StopOutlined } from '@ant-design/icons';
 import { getIconComponent } from '@utils/menuUtils';
 
 const STYLES = {
@@ -35,6 +35,7 @@ export default function SortableTreeItem({
     isNew,
     isModified,
     onEdit,
+    onEditPage,
     childCount = 0
 }) {
     const {
@@ -141,6 +142,18 @@ export default function SortableTreeItem({
                         >
                             Oculto
                         </Tag>
+                    )}
+                    {!item.external && (
+                        <Button
+                            type="default"
+                            size="middle"
+                            icon={<FileTextOutlined />}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onEditPage(item.id);
+                            }}
+                            style={STYLES.button}
+                        />
                     )}
                     <Button
                         type="default"

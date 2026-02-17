@@ -25,8 +25,8 @@ async def obtener_pagina(page_id: str, db: Session = Depends(get_db)):
         return PageResponse(
             id=0,
             menu_item_id=page_id,
-            title="",
-            slug="",
+            title="Nueva Página",
+            slug="nueva-pagina",
             sections=[],
             meta_description=None,
             meta_keywords=None,
@@ -84,3 +84,39 @@ async def eliminar_pagina(
     db.delete(pagina)
     db.commit()
     return {"message": "Página eliminada exitosamente"}
+
+@router.get("/slug/{slug}", response_model=PageResponse)
+def obtener_pagina_por_slug(slug: str, db: Session = Depends(get_db)):
+    """
+    Obtiene la configuración de una página por su slug.
+    Si no existe, retorna 404.
+    """
+    pagina = db.query(Page).filter(Page.slug == slug).first()
+    
+    if not pagina:
+        # Para 'home', podemos devolver una estructura default si no existe en DB
+        if slug == 'home':
+             return PageResponse(
+                id=0,
+                menu_item_id=0,
+                title="Inicio",
+                slug="home",
+                sections=[],
+                meta_description="Página de Inicio",
+                meta_keywords="",
+                published_at=datetime.utcnow(),
+                updated_at=datetime.utcnow(),
+            )
+        raise HTTPException(status_code=404, detail="Página no encontrada")
+
+    return PageResponse(
+        id=pagina.id,
+        menu_item_id=pagina.menu_item_id,
+        title=pagina.title,
+        slug=pagina.slug,
+        sections=pagina.sections if pagina.sections else [],
+        meta_description=pagina.meta_description,
+        meta_keywords=pagina.meta_keywords,
+        published_at=pagina.published_at,
+        updated_at=pagina.updated_at,
+    )

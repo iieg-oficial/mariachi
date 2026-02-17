@@ -22,7 +22,8 @@ export default function SortableTree({
     originalItems,
     customIcons,
     onReorder,
-    onEdit
+    onEdit,
+    onEditPage
 }) {
     const [activeId, setActiveId] = useState(null);
 
@@ -137,6 +138,7 @@ export default function SortableTree({
                             isNew={isItemNew(item)}
                             isModified={isItemModified(item)}
                             onEdit={onEdit}
+                            onEditPage={onEditPage}
                         />
                     ))}
                 </div>

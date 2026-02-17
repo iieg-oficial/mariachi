@@ -15,7 +15,6 @@ import Login from '@pages/Login';
 import Users from '@pages/Users';
 import MenuManager from '@pages/MenuManager';
 import PageEditor from '@pages/PageEditor';
-import Pages from '@pages/Pages';
 import Media from '@pages/Media';
 import ChangePassword from '@pages/ChangePassword';
 
@@ -49,7 +48,7 @@ const router = createBrowserRouter([
                 element: <MainLayout />,
                 errorElement: <ErrorBoundary />,
                 children: [
-                    { index: true, element: <Navigate to="pages" replace /> },
+                    { index: true, element: <Navigate to="menu" replace /> },
                     {
                         path: 'users',
                         element: (
@@ -66,14 +65,7 @@ const router = createBrowserRouter([
                             </RoleProtectedRoute>
                         )
                     },
-                    {
-                        path: 'pages',
-                        element: (
-                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
-                                <Pages />
-                            </RoleProtectedRoute>
-                        )
-                    },
+
                     {
                         path: 'pages/edit/:id',
                         element: (

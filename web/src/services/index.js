@@ -1,5 +1,3 @@
 export { getMenuItems } from './menuService';
-export { getPages, getPageById } from './pageService';
-export { getLayouts, getLayoutByType } from './layoutService';
-export { getStyles } from './styleService';
+export { getPages, getPageById, getPageBySlug } from './pageService';
 export { default as api } from './apiService';

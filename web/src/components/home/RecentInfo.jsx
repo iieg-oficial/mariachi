@@ -1,7 +1,13 @@
 import { Link } from 'react-router'
 
-function RecentInfo() {
-    const recentItems = [
+function RecentInfo({
+    title = "Información Más Reciente",
+    subtitle = "Accede a los datos, publicaciones e indicadores más actualizados",
+    items,
+    footerText = "Ver todas las actualizaciones",
+    footerLink = "/comunidad/noticias"
+}) {
+    const defaultItems = [
         {
             id: 1,
             type: 'Indicador',
@@ -42,7 +48,9 @@ function RecentInfo() {
             color: 'orange',
             link: '/datos-abiertos/apis'
         }
-    ]
+    ];
+
+    const recentItems = (items && items.length > 0) ? items : defaultItems;
 
     const colorClasses = {
         purple: {
@@ -76,19 +84,19 @@ function RecentInfo() {
             <div className="container mx-auto px-4">
                 <div className="text-center mb-12">
                     <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
-                        Información Más Reciente
+                        {title}
                     </h2>
                     <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-                        Accede a los datos, publicaciones e indicadores más actualizados
+                        {subtitle}
                     </p>
                 </div>
 
                 <div className="max-w-6xl mx-auto grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {recentItems.map((item) => {
-                        const colors = colorClasses[item.color]
+                    {recentItems.map((item, index) => {
+                        const colors = colorClasses[item.color] || colorClasses.purple
                         return (
                             <Link
-                                key={item.id}
+                                key={item.id || index}
                                 to={item.link}
                                 className={`block bg-white border-2 ${colors.border} ${colors.hover} rounded-xl p-6 transition-all duration-200 hover:shadow-lg group`}
                             >
@@ -119,10 +127,10 @@ function RecentInfo() {
 
                 <div className="text-center mt-12">
                     <Link
-                        to="/comunidad/noticias"
+                        to={footerLink}
                         className="inline-flex items-center gap-2 px-6 py-3 bg-gray-900 text-white font-semibold rounded-lg hover:bg-gray-800 transition-colors duration-200"
                     >
-                        Ver todas las actualizaciones
+                        {footerText}
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                         </svg>

@@ -1,7 +1,35 @@
 import { Link } from 'react-router'
 
-function SistemasInfo() {
-    const sistemas = [
+function SistemasInfo({
+    title = "Sistemas de Información",
+    subtitle = "Accede a nuestras herramientas y plataformas especializadas para análisis de datos",
+    items,
+    footerText = "Ver todos los sistemas",
+    footerLink = "/sistemas"
+}) {
+    const defaultSistemas = [
+        {
+            id: 1,
+            name: 'MIDE Jalisco',
+            description: 'Sistema de Monitoreo de Indicadores del Desarrollo',
+            icon: '📈',
+            link: '/sistemas/mide-jalisco',
+            featured: true
+        },
+        // ... (other defaults, simplified)
+        {
+            id: 6,
+            name: 'Sistema de Consultas',
+            description: 'Herramienta para consultas especializadas',
+            icon: '💻',
+            link: '/sistemas/consultas',
+            featured: false
+        }
+    ];
+
+    // Restore full default list if needed or rely on empty items check
+    // Actually full list is needed for defaults to look good
+    const fullDefaultSistemas = [
         {
             id: 1,
             name: 'MIDE Jalisco',
@@ -50,7 +78,9 @@ function SistemasInfo() {
             link: '/sistemas/consultas',
             featured: false
         }
-    ]
+    ];
+
+    const sistemas = (items && items.length > 0) ? items : fullDefaultSistemas;
 
     return (
         <section id="sistemas" className="py-16 bg-white scroll-mt-16">
@@ -58,17 +88,17 @@ function SistemasInfo() {
                 <div className="max-w-6xl mx-auto">
                     <div className="text-center mb-12">
                         <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
-                            Sistemas de Información
+                            {title}
                         </h2>
                         <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-                            Accede a nuestras herramientas y plataformas especializadas para análisis de datos
+                            {subtitle}
                         </p>
                     </div>
 
                     <div className="grid md:grid-cols-3 gap-6 mb-8">
-                        {sistemas.filter(s => s.featured).map((sistema) => (
+                        {sistemas.filter(s => s.featured).map((sistema, index) => (
                             <Link
-                                key={sistema.id}
+                                key={sistema.id || index}
                                 to={sistema.link}
                                 className="group bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-8 hover:shadow-xl transition-all duration-300 border-2 border-purple-200 hover:border-purple-400"
                             >
@@ -90,9 +120,9 @@ function SistemasInfo() {
                     </div>
 
                     <div className="grid md:grid-cols-3 gap-4">
-                        {sistemas.filter(s => !s.featured).map((sistema) => (
+                        {sistemas.filter(s => !s.featured).map((sistema, index) => (
                             <Link
-                                key={sistema.id}
+                                key={sistema.id || index}
                                 to={sistema.link}
                                 className="group bg-white border-2 border-gray-200 rounded-lg p-6 hover:border-purple-400 hover:shadow-md transition-all duration-200"
                             >
@@ -116,10 +146,10 @@ function SistemasInfo() {
 
                     <div className="mt-12 text-center">
                         <Link
-                            to="/sistemas"
+                            to={footerLink}
                             className="inline-flex items-center gap-2 px-8 py-4 bg-purple-700 text-white font-semibold rounded-lg hover:bg-purple-800 transition-colors duration-200 shadow-lg hover:shadow-xl"
                         >
-                            Ver todos los sistemas
+                            {footerText}
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                             </svg>

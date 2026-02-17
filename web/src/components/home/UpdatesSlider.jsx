@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router'
 
-function UpdatesSlider() {
+function UpdatesSlider({
+    title = "Actualizaciones Recientes",
+    subtitle = "Mantente informado con las últimas novedades del IIEG",
+    items
+}) {
     const [currentSlide, setCurrentSlide] = useState(0)
 
-    const updates = [
+    const defaultUpdates = [
         {
-            id: 1,
             title: 'Nuevo sistema de información estadística disponible',
             description: 'Consulta los últimos datos económicos y demográficos de Jalisco',
             date: '15 de octubre, 2025',
@@ -14,34 +17,18 @@ function UpdatesSlider() {
             link: '/sistemas',
             category: 'Sistemas'
         },
+        // ... (other defaults, simplified for brevity but kept if items is undefined)
         {
-            id: 2,
             title: 'Actualización de datos abiertos mensuales',
             description: 'Descarga los conjuntos de datos más recientes en formato abierto',
             date: '10 de octubre, 2025',
             image: '📁',
             link: '/datos-abiertos',
             category: 'Datos Abiertos'
-        },
-        {
-            id: 3,
-            title: 'Capacitación en análisis de datos geoespaciales',
-            description: 'Inscríbete a nuestro próximo curso de análisis con herramientas GIS',
-            date: '5 de octubre, 2025',
-            image: '🎓',
-            link: '/comunidad/capacitaciones',
-            category: 'Capacitación'
-        },
-        {
-            id: 4,
-            title: 'Publicación de indicadores trimestrales',
-            description: 'Revisa los indicadores económicos y sociales del tercer trimestre',
-            date: '1 de octubre, 2025',
-            image: '📈',
-            link: '/sistemas',
-            category: 'Indicadores'
         }
-    ]
+    ];
+
+    const updates = (items && items.length > 0) ? items : defaultUpdates;
 
     useEffect(() => {
         const timer = setInterval(() => {
@@ -68,23 +55,23 @@ function UpdatesSlider() {
             <div className="container mx-auto px-4">
                 <div className="text-center mb-12">
                     <h2 className="text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
-                        Actualizaciones Recientes
+                        {title}
                     </h2>
                     <p className="text-lg text-gray-600">
-                        Mantente informado con las últimas novedades del IIEG
+                        {subtitle}
                     </p>
                 </div>
 
                 <div className="relative max-w-5xl mx-auto">
                     <div className="relative overflow-hidden rounded-2xl bg-white shadow-xl">
-                        <div 
+                        <div
                             className="flex transition-transform duration-500 ease-in-out"
                             style={{ transform: `translateX(-${currentSlide * 100}%)` }}
                         >
-                            {updates.map((update) => (
-                                <div key={update.id} className="w-full flex-shrink-0">
+                            {updates.map((update, index) => (
+                                <div key={update.id || index} className="w-full flex-shrink-0">
                                     <div className="flex flex-col md:flex-row items-center p-8 md:p-12 gap-8">
-                                        <div className="text-8xl">{update.image}</div>
+                                        <div className="text-8xl">{update.icon || update.image}</div>
 
                                         <div className="flex-1 text-center md:text-left">
                                             <span className="inline-block px-3 py-1 text-xs font-semibold text-purple-700 bg-purple-100 rounded-full mb-3">
@@ -99,7 +86,7 @@ function UpdatesSlider() {
                                             <p className="text-sm text-gray-500 mb-6">
                                                 {update.date}
                                             </p>
-                                            <Link 
+                                            <Link
                                                 to={update.link}
                                                 className="inline-block px-6 py-3 bg-purple-700 text-white font-semibold rounded-lg hover:bg-purple-800 transition-colors duration-200"
                                             >
@@ -136,11 +123,10 @@ function UpdatesSlider() {
                             <button
                                 key={index}
                                 onClick={() => goToSlide(index)}
-                                className={`h-2 rounded-full transition-all duration-300 ${
-                                    index === currentSlide 
-                                        ? 'w-8 bg-purple-700' 
-                                        : 'w-2 bg-gray-300 hover:bg-gray-400'
-                                }`}
+                                className={`h-2 rounded-full transition-all duration-300 ${index === currentSlide
+                                    ? 'w-8 bg-purple-700'
+                                    : 'w-2 bg-gray-300 hover:bg-gray-400'
+                                    }`}
                                 aria-label={`Ir a slide ${index + 1}`}
                             />
                         ))}

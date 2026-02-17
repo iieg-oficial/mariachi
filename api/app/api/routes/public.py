@@ -1,9 +1,13 @@
+from datetime import datetime
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
 from app.models.menu_item import MenuItem
+from app.models.page import Page
 from app.schemas.menu_item import MenuItemResponse, MenuItemTree
+from app.schemas.page import PageResponse
 
 router = APIRouter(tags=["portal público"])
 
@@ -35,3 +39,23 @@ def construir_arbol_menu(items: list[MenuItem]) -> list[MenuItemTree]:
 async def obtener_arbol_menu(db: Session = Depends(get_db)):
     items = db.query(MenuItem).all()
     return construir_arbol_menu(items)
+
+
+@router.get("/paginas/{slug}", response_model=PageResponse)
+async def obtener_pagina_por_slug(slug: str, db: Session = Depends(get_db)):
+    pagina = db.query(Page).filter(Page.slug == slug).first()
+
+    if not pagina:
+        return PageResponse(
+            id=0,
+            menu_item_id="",
+            title="",
+            slug=slug,
+            sections=[],
+            meta_description=None,
+            meta_keywords=None,
+            published_at=None,
+            updated_at=datetime.utcnow(),
+        )
+
+    return pagina

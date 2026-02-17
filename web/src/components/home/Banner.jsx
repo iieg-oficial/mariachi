@@ -1,31 +1,41 @@
 import { Link } from 'react-router'
 
-function Banner() {
+function Banner({
+    title = "Instituto de Información Estadística y Geográfica",
+    subtitle = "Generamos, integramos y difundimos información estadística y geográfica de calidad para el desarrollo de Jalisco.",
+    cta1Text = "Conoce más sobre el IIEG",
+    cta1Link = "/conocenos",
+    cta2Text = "Datos Abiertos",
+    cta2Link = "/datos-abiertos"
+}) {
     return (
         <section id="banner" className="relative bg-gradient-to-r from-purple-900 to-purple-700 py-20 scroll-mt-16">
             <div className="container mx-auto px-4">
                 <div className="flex flex-col lg:flex-row items-center justify-between gap-12">
                     <div className="lg:w-1/2 text-white space-y-6">
                         <h1 className="text-4xl lg:text-5xl font-bold leading-tight">
-                            Instituto de Información Estadística y Geográfica
+                            {title}
                         </h1>
                         <p className="text-lg lg:text-xl text-purple-100">
-                            Generamos, integramos y difundimos información estadística y geográfica 
-                            de calidad para el desarrollo de Jalisco.
+                            {subtitle}
                         </p>
                         <div className="flex flex-wrap gap-4">
-                            <Link 
-                                to="/conocenos" 
-                                className="px-6 py-3 bg-white text-purple-900 font-semibold rounded-lg hover:bg-purple-50 transition-colors duration-200"
-                            >
-                                Conoce más sobre el IIEG
-                            </Link>
-                            <Link 
-                                to="/datos-abiertos" 
-                                className="px-6 py-3 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-500 transition-colors duration-200"
-                            >
-                                Datos Abiertos
-                            </Link>
+                            {cta1Text && (
+                                <Link
+                                    to={cta1Link}
+                                    className="px-6 py-3 bg-white text-purple-900 font-semibold rounded-lg hover:bg-purple-50 transition-colors duration-200"
+                                >
+                                    {cta1Text}
+                                </Link>
+                            )}
+                            {cta2Text && (
+                                <Link
+                                    to={cta2Link}
+                                    className="px-6 py-3 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-500 transition-colors duration-200"
+                                >
+                                    {cta2Text}
+                                </Link>
+                            )}
                         </div>
                     </div>
 

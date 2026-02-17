@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router';
 import { Card, Alert, Button, Modal } from 'antd';
 import { useAuth } from '@contexts/AuthContext';
 import { useMenuDraft } from '@hooks/useMenuDraft';
@@ -11,6 +12,7 @@ import SortableTree from '@components/menuManager/SortableTree';
 
 export default function MenuManager() {
     const { user } = useAuth();
+    const navigate = useNavigate();
 
     const {
         menuItems, originalMenuItems, loading, publishing, hasChanges, isAdmin, updateItem,
@@ -37,6 +39,10 @@ export default function MenuManager() {
 
     const handleReorder = (newItems) => {
         updateItemsOrder(newItems);
+    };
+
+    const handleEditPage = (itemId) => {
+        navigate(`/pages/edit/${itemId}`);
     };
 
     const handleDiscard = () => {
@@ -105,6 +111,7 @@ export default function MenuManager() {
                         customIcons={customIcons}
                         onReorder={handleReorder}
                         onEdit={handleEdit}
+                        onEditPage={handleEditPage}
                     />
                 ) : (
                     <div style={{ textAlign: 'center', padding: 40, color: '#999', fontSize: 15 }}>
