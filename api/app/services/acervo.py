@@ -40,7 +40,8 @@ class AcervoService:
                 content_type=file.content_type,
             )
 
-            url = f"http://{settings.acervo_public_endpoint}/{self.bucket_name}/{object_name}"
+            scheme = "https" if settings.acervo_use_ssl else "http"
+            url = f"{scheme}://{settings.acervo_public_endpoint}/{self.bucket_name}/{object_name}"
             return url
         except S3Error as e:
             raise Exception(f"Error uploading file: {str(e)}")
@@ -53,7 +54,8 @@ class AcervoService:
             return False
 
     def get_file_url(self, object_name: str) -> str:
-        return f"http://{settings.acervo_public_endpoint}/{self.bucket_name}/{object_name}"
+        scheme = "https" if settings.acervo_use_ssl else "http"
+        return f"{scheme}://{settings.acervo_public_endpoint}/{self.bucket_name}/{object_name}"
 
 
 _acervo_service: AcervoService | None = None

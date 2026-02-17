@@ -64,11 +64,9 @@ services:
     command: ./scripts/start_backend.sh
     env_file:
       - ./.env
-    extra_hosts:
-      - "${ACERVO_DOMAIN}:${ACERVO_HOST_IP:-host-gateway}"
     volumes:
       - ./api:/app
-      - ./nginx/ssl/${ACERVO_DOMAIN}.crt:/usr/local/share/ca-certificates/${ACERVO_DOMAIN}.crt:ro
+      - ../acervo/nginx/ssl/acervo.crt:/usr/local/share/ca-certificates/acervo.crt:ro
     depends_on:
       postgres:
         condition: service_healthy
@@ -83,8 +81,8 @@ services:
       ACERVO_SECRET_KEY: ${ACERVO_SECRET_KEY}
       ACERVO_BUCKET_NAME: ${ACERVO_BUCKET_NAME:-iieg-acervo}
       ACERVO_USE_SSL: ${ACERVO_USE_SSL:-false}
-      REQUESTS_CA_BUNDLE: /usr/local/share/ca-certificates/${ACERVO_DOMAIN}.crt
-      SSL_CERT_FILE: /usr/local/share/ca-certificates/${ACERVO_DOMAIN}.crt
+      REQUESTS_CA_BUNDLE: /usr/local/share/ca-certificates/acervo.crt
+      SSL_CERT_FILE: /usr/local/share/ca-certificates/acervo.crt
     networks:
       - portal_network
 
