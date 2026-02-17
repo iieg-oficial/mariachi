@@ -18,7 +18,7 @@ function HomePage() {
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
-        // Try to fetch 'home' page configuration
+         
         getPageBySlug('home')
             .then(data => {
                 if (data && data.sections && data.sections.length > 0) {
@@ -41,7 +41,7 @@ function HomePage() {
         )
     }
 
-    // If dynamic content exists, render it
+     
     if (page && page.sections.length > 0) {
         return (
             <div className="min-h-screen">
@@ -52,7 +52,7 @@ function HomePage() {
         )
     }
 
-    // Fallback: Original static structure
+     
     return (
         <div className="min-h-screen">
             <Banner />

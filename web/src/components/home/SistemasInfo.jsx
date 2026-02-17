@@ -16,7 +16,7 @@ function SistemasInfo({
             link: '/sistemas/mide-jalisco',
             featured: true
         },
-        // ... (other defaults, simplified)
+         
         {
             id: 6,
             name: 'Sistema de Consultas',
@@ -27,8 +27,8 @@ function SistemasInfo({
         }
     ];
 
-    // Restore full default list if needed or rely on empty items check
-    // Actually full list is needed for defaults to look good
+     
+     
     const fullDefaultSistemas = [
         {
             id: 1,

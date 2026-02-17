@@ -15,7 +15,7 @@ export const BLOCK_TYPES = {
     CONTACT_FORM: 'contact-form',
     PROCUREMENT_LIST: 'procurement-list',
 
-    // Home Blocks
+     
     HOME_HERO: 'home-hero',
     HOME_UPDATES_SLIDER: 'home-updates-slider',
     HOME_RECENT_INFO: 'home-recent-info',
@@ -35,8 +35,8 @@ export const BLOCK_CONFIG = {
             ctaText: 'Ver más',
             ctaLink: '#',
             backgroundImage: '',
-            height: 'medium', // small, medium, large
-            align: 'center' // left, center, right
+            height: 'medium',  
+            align: 'center'  
         },
         schema: [
             { name: 'title', label: 'Título', type: 'text', required: true },
@@ -118,8 +118,8 @@ export const BLOCK_CONFIG = {
             title: 'Sobre Nosotros',
             content: 'Descripción detallada...',
             image: '',
-            imagePosition: 'right', // left, right
-            backgroundColor: 'white' // white, gray
+            imagePosition: 'right',  
+            backgroundColor: 'white'  
         },
         schema: [
             { name: 'title', label: 'Título', type: 'text' },
@@ -146,7 +146,7 @@ export const BLOCK_CONFIG = {
         category: BLOCK_CATEGORIES.MEDIA,
         icon: 'PictureOutlined',
         defaultProps: {
-            layout: 'grid', // grid, carousel
+            layout: 'grid',  
             items: []
         },
         schema: [
@@ -195,7 +195,7 @@ export const BLOCK_CONFIG = {
         ]
     },
 
-    // HOME BLOCKS
+     
     [BLOCK_TYPES.HOME_HERO]: {
         type: BLOCK_TYPES.HOME_HERO,
         label: 'Hero Home',

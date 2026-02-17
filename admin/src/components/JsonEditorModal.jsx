@@ -5,11 +5,11 @@ import { BLOCK_CONFIG, BLOCK_CATEGORIES, BLOCK_TYPES, getBlocksByCategory } from
 
 const { TextArea } = Input;
 const { Text, Title } = Typography;
-const { Panel } = Collapse;
 
 export default function JsonEditorModal({ visible, onClose, initialData, onSave }) {
     const [jsonString, setJsonString] = useState('');
     const [error, setError] = useState(null);
+    const [messageApi, contextHolder] = message.useMessage();
 
     useEffect(() => {
         if (visible && initialData) {
@@ -31,13 +31,13 @@ export default function JsonEditorModal({ visible, onClose, initialData, onSave 
     const copySnippet = (type) => {
         const config = BLOCK_CONFIG[type];
         const snippet = {
-            id: Date.now().toString(), // Helper for new ID
+            id: Date.now().toString(),  
             type: type,
             props: config.defaultProps || {}
         };
         const snippetString = JSON.stringify(snippet, null, 2);
         navigator.clipboard.writeText(snippetString);
-        message.success(`Plantilla de ${config.label} copiada al portapapeles`);
+        messageApi.success(`Plantilla de ${config.label} copiada al portapapeles`);
     };
 
     const renderSnippetList = () => {
@@ -49,6 +49,40 @@ export default function JsonEditorModal({ visible, onClose, initialData, onSave 
             [BLOCK_CATEGORIES.DATA]: 'Datos',
         };
 
+        const items = Object.entries(categories).map(([catKey, catLabel]) => {
+            const blocks = getBlocksByCategory(catKey);
+            if (blocks.length === 0) return null;
+
+            return {
+                key: catKey,
+                label: catLabel,
+                children: (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {blocks.map(block => (
+                            <div key={block.type} style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                padding: '8px',
+                                border: '1px solid #f0f0f0',
+                                borderRadius: '4px',
+                                background: '#fafafa'
+                            }}>
+                                <span style={{ fontSize: 13 }}>{block.label}</span>
+                                <Tooltip title="Copiar bloque JSON">
+                                    <Button
+                                        size="small"
+                                        icon={<CopyOutlined />}
+                                        onClick={() => copySnippet(block.type)}
+                                    />
+                                </Tooltip>
+                            </div>
+                        ))}
+                    </div>
+                )
+            };
+        }).filter(Boolean);
+
         return (
             <div style={{ maxHeight: '600px', overflowY: 'auto', paddingRight: 10 }}>
                 <Title level={5}>Plantillas de Bloques</Title>
@@ -56,39 +90,7 @@ export default function JsonEditorModal({ visible, onClose, initialData, onSave 
                     Haz clic en copiar para obtener el JSON y pegarlo en el editor.
                 </Text>
 
-                <Collapse defaultActiveKey={['home']} accordion>
-                    {Object.entries(categories).map(([catKey, catLabel]) => {
-                        const blocks = getBlocksByCategory(catKey);
-                        if (blocks.length === 0) return null;
-
-                        return (
-                            <Panel header={catLabel} key={catKey}>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                                    {blocks.map(block => (
-                                        <div key={block.type} style={{
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                            alignItems: 'center',
-                                            padding: '8px',
-                                            border: '1px solid #f0f0f0',
-                                            borderRadius: '4px',
-                                            background: '#fafafa'
-                                        }}>
-                                            <span style={{ fontSize: 13 }}>{block.label}</span>
-                                            <Tooltip title="Copiar bloque JSON">
-                                                <Button
-                                                    size="small"
-                                                    icon={<CopyOutlined />}
-                                                    onClick={() => copySnippet(block.type)}
-                                                />
-                                            </Tooltip>
-                                        </div>
-                                    ))}
-                                </div>
-                            </Panel>
-                        );
-                    })}
-                </Collapse>
+                <Collapse defaultActiveKey={['home']} accordion items={items} />
             </div>
         );
     };
@@ -104,6 +106,7 @@ export default function JsonEditorModal({ visible, onClose, initialData, onSave 
             cancelText="Cancelar"
             style={{ top: 20 }}
         >
+            {contextHolder}
             <Row gutter={24}>
                 <Col span={16}>
                     <Alert

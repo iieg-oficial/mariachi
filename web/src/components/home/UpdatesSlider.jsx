@@ -17,7 +17,7 @@ function UpdatesSlider({
             link: '/sistemas',
             category: 'Sistemas'
         },
-        // ... (other defaults, simplified for brevity but kept if items is undefined)
+         
         {
             title: 'Actualización de datos abiertos mensuales',
             description: 'Descarga los conjuntos de datos más recientes en formato abierto',

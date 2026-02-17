@@ -14,7 +14,7 @@ import BlockEditorForm from '@components/BlockEditorForm';
 
 const { Header, Content } = Layout;
 const { Title, Text } = Typography;
-const { Panel } = Collapse;
+
 
 export default function PageEditor() {
     const { id } = useParams();
@@ -33,7 +33,7 @@ export default function PageEditor() {
         discardChanges
     } = usePageDraft(id);
 
-    // TODO: Get real user role. For now assuming admin for demo or strictly controlling via UI
+     
     const isAdmin = true;
     const [jsonEditorVisible, setJsonEditorVisible] = useState(false);
 
@@ -113,7 +113,7 @@ export default function PageEditor() {
                             <div key={block.id} className="block-wrapper" style={{ position: 'relative' }}>
                                 <Card
                                     hoverable
-                                    bodyStyle={{ padding: 0 }}
+                                    styles={{ body: { padding: 0 } }}
                                     style={{ border: '1px solid #e0e0e0', overflow: 'hidden' }}
                                     title={<Text strong>{config ? config.label : block.type}</Text>}
                                 >
@@ -121,14 +121,20 @@ export default function PageEditor() {
                                         <BlockComponent {...block.props} />
                                     </div>
 
-                                    <Collapse ghost expandIconPosition="end">
-                                        <Panel header="Editar Propiedades" key="1">
-                                            <BlockEditorForm
-                                                block={block}
-                                                onChange={(values) => updateBlock(block.id, values)}
-                                            />
-                                        </Panel>
-                                    </Collapse>
+                                    <Collapse
+                                        ghost
+                                        expandIconPlacement="end"
+                                        items={[{
+                                            key: '1',
+                                            label: 'Editar Propiedades',
+                                            children: (
+                                                <BlockEditorForm
+                                                    block={block}
+                                                    onChange={(values) => updateBlock(block.id, values)}
+                                                />
+                                            )
+                                        }]}
+                                    />
                                 </Card>
                             </div>
                         );
