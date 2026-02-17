@@ -36,6 +36,7 @@ FROM nginx:alpine
 COPY ./nginx/nginx.conf /etc/nginx/nginx.conf
 COPY ./nginx/conf.d /etc/nginx/templates
 COPY ./nginx/ssl /etc/nginx/ssl
+COPY ./nginx/static /usr/share/nginx/static
 COPY --from=web-builder /app/dist /usr/share/nginx/html
 COPY --from=admin-builder /app/dist /usr/share/nginx/html/administrador
 EXPOSE 80 443

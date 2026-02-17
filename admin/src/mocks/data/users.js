@@ -17,24 +17,6 @@ export const users = [
         role: 'editora',
         createdAt: '2025-01-15T00:00:00Z'
     },
-    {
-        id: '3',
-        username: 'diseñadora',
-        password: 'diseñadora123',
-        email: 'disenadora@iieg.gob.mx',
-        name: 'Diseñadora Gráfica',
-        role: 'diseñadora',
-        createdAt: '2025-02-15T00:00:00Z'
-    },
-    {
-        id: '4',
-        username: 'viewer',
-        password: 'viewer123',
-        email: 'viewer@iieg.gob.mx',
-        name: 'Usuario Consulta',
-        role: 'viewer',
-        createdAt: '2025-02-01T00:00:00Z'
-    }
 ];
 
 export const findUserByCredentials = (username, password) => {

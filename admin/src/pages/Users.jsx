@@ -7,16 +7,12 @@ const { Title, Text } = Typography;
 
 const roleColors = {
     tetlamamakani: 'red',
-    editor: 'blue',
-    diseñadora: 'purple',
-    viewer: 'green'
+    editora: 'blue'
 };
 
 const roleLabels = {
     tetlamamakani: 'Tetlamamakani',
-    editor: 'Editor',
-    diseñadora: 'Diseñadora',
-    viewer: 'Consulta'
+    editora: 'Editora'
 };
 
 export default function Users() {
@@ -267,9 +263,7 @@ export default function Users() {
                     >
                         <Select>
                             <Select.Option value="tetlamamakani">Tetlamamakani</Select.Option>
-                            <Select.Option value="editor">Editor</Select.Option>
-                            <Select.Option value="diseñadora">Diseñadora</Select.Option>
-                            <Select.Option value="viewer">Consulta</Select.Option>
+                            <Select.Option value="editora">Editora</Select.Option>
                         </Select>
                     </Form.Item>
 

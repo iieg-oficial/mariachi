@@ -10,28 +10,13 @@ import ProtectedRoute from '@components/ProtectedRoute';
 import RoleProtectedRoute from '@components/RoleProtectedRoute';
 import ErrorBoundary from '@components/ErrorBoundary';
 import MainLayout from '@components/MainLayout';
-import Home from '@pages/Home';
+import { Navigate } from 'react-router';
 import Login from '@pages/Login';
 import Users from '@pages/Users';
-import Layouts from '@pages/Layouts';
 import MenuManager from '@pages/MenuManager';
-import Icons from '@pages/Icons';
-import Documentation from '@pages/Documentation';
 import PageEditor from '@pages/PageEditor';
 import Pages from '@pages/Pages';
-import Styles from '@pages/Styles';
-import History from '@pages/History';
 import Media from '@pages/Media';
-import Fonts from '@pages/Fonts';
-import Approvals from '@pages/Approvals';
-import ContentSearch from '@pages/ContentSearch';
-import Trash from '@pages/Trash';
-import ImportExport from '@pages/ImportExport';
-import SitemapManager from '@pages/SitemapManager';
-import RobotsManager from '@pages/RobotsManager';
-import RedirectsManager from '@pages/RedirectsManager';
-import Analytics from '@pages/Analytics';
-import PublicationRequests from '@pages/PublicationRequests';
 import ChangePassword from '@pages/ChangePassword';
 
 const { DEV, VITE_GOOGLE_ANALYTICS_ID } = import.meta.env;
@@ -64,7 +49,7 @@ const router = createBrowserRouter([
                 element: <MainLayout />,
                 errorElement: <ErrorBoundary />,
                 children: [
-                    { index: true, element: <Home /> },
+                    { index: true, element: <Navigate to="pages" replace /> },
                     {
                         path: 'users',
                         element: (
@@ -74,127 +59,25 @@ const router = createBrowserRouter([
                         )
                     },
                     {
-                        path: 'history',
-                        element: (
-                            <RoleProtectedRoute allowedRoles={['tetlamamakani']}>
-                                <History />
-                            </RoleProtectedRoute>
-                        )
-                    },
-                    {
-                        path: 'approvals',
-                        element: (
-                            <RoleProtectedRoute allowedRoles={['tetlamamakani']}>
-                                <Approvals />
-                            </RoleProtectedRoute>
-                        )
-                    },
-                    {
-                        path: 'solicitudes-publicacion',
-                        element: (
-                            <RoleProtectedRoute allowedRoles={['tetlamamakani']}>
-                                <PublicationRequests />
-                            </RoleProtectedRoute>
-                        )
-                    },
-                    {
-                        path: 'layouts',
-                        element: (
-                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'diseñadora']}>
-                                <Layouts />
-                            </RoleProtectedRoute>
-                        )
-                    },
-                    {
                         path: 'menu',
                         element: (
-                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'diseñadora']}>
+                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
                                 <MenuManager />
                             </RoleProtectedRoute>
                         )
                     },
                     {
-                        path: 'icons',
-                        element: (
-                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'diseñadora']}>
-                                <Icons />
-                            </RoleProtectedRoute>
-                        )
-                    },
-                    {
-                        path: 'documentation',
-                        element: (
-                            <Documentation />
-                        )
-                    },
-                    {
                         path: 'pages',
                         element: (
-                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora', 'diseñadora']}>
+                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
                                 <Pages />
-                            </RoleProtectedRoute>
-                        )
-                    },
-                    {
-                        path: 'search',
-                        element: (
-                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora', 'diseñadora']}>
-                                <ContentSearch />
-                            </RoleProtectedRoute>
-                        )
-                    },
-                    {
-                        path: 'trash',
-                        element: (
-                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora', 'diseñadora']}>
-                                <Trash />
-                            </RoleProtectedRoute>
-                        )
-                    },
-                    {
-                        path: 'import-export',
-                        element: (
-                            <RoleProtectedRoute allowedRoles={['tetlamamakani']}>
-                                <ImportExport />
-                            </RoleProtectedRoute>
-                        )
-                    },
-                    {
-                        path: 'sitemap',
-                        element: (
-                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
-                                <SitemapManager />
-                            </RoleProtectedRoute>
-                        )
-                    },
-                    {
-                        path: 'robots',
-                        element: (
-                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
-                                <RobotsManager />
-                            </RoleProtectedRoute>
-                        )
-                    },
-                    {
-                        path: 'redirects',
-                        element: (
-                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
-                                <RedirectsManager />
-                            </RoleProtectedRoute>
-                        )
-                    },
-                    {
-                        path: 'analytics',
-                        element: (
-                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
-                                <Analytics />
                             </RoleProtectedRoute>
                         )
                     },
                     {
                         path: 'pages/edit/:id',
                         element: (
-                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora', 'diseñadora']}>
+                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
                                 <PageEditor />
                             </RoleProtectedRoute>
                         )
@@ -202,27 +85,12 @@ const router = createBrowserRouter([
                     {
                         path: 'media',
                         element: (
-                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora', 'diseñadora']}>
+                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
                                 <Media />
                             </RoleProtectedRoute>
                         )
                     },
                     {
-                        path: 'fonts',
-                        element: (
-                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'diseñadora']}>
-                                <Fonts />
-                            </RoleProtectedRoute>
-                        )
-                    },
-                    {
-                        path: 'styles',
-                        element: (
-                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'diseñadora']}>
-                                <Styles />
-                            </RoleProtectedRoute>
-                        )
-                    }, {
                         path: 'change-password',
                         element: (
                             <ProtectedRoute>

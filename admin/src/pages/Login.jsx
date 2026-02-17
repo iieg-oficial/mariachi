@@ -65,9 +65,7 @@ export default function Login() {
                                     <p style={{ margin: '8px 0' }}><strong>Usuarios de prueba:</strong></p>
                                     <ul style={{ margin: 0, paddingLeft: 20 }}>
                                         <li>admin / admin123 (Tetlamamakani)</li>
-                                        <li>editor / editor123 (Editor)</li>
-                                        <li>diseñadora / diseñadora123 (Diseñadora)</li>
-                                        <li>viewer / viewer123 (Consulta)</li>
+                                        <li>editor / editor123 (Editora)</li>
                                     </ul>
                                 </div>
                             }

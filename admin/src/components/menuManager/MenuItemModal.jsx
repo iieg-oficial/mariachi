@@ -9,7 +9,6 @@ export default function MenuItemModal({
     form,
     urlPreview,
     iconType,
-    customIcons,
     onCancel,
     onSubmit,
     onLabelChange,
@@ -74,7 +73,6 @@ export default function MenuItemModal({
                     >
                         <Radio.Button value="none">Sin icono</Radio.Button>
                         <Radio.Button value="predefined">Icono predefinido</Radio.Button>
-                        <Radio.Button value="custom">Icono del banco</Radio.Button>
                     </Radio.Group>
 
                     {iconType === 'predefined' && (
@@ -90,30 +88,6 @@ export default function MenuItemModal({
                                         <Space>
                                             {icon.icon}
                                             <span>{icon.label}</span>
-                                        </Space>
-                                    </Select.Option>
-                                ))}
-                            </Select>
-                        </Form.Item>
-                    )}
-
-                    {iconType === 'custom' && (
-                        <Form.Item
-                            name="iconId"
-                            noStyle
-                            rules={[{ required: true, message: 'Por favor selecciona un icono' }]}
-                        >
-                            <Select
-                                size="large"
-                                placeholder="Selecciona un icono del banco"
-                                showSearch
-                                optionFilterProp="label"
-                            >
-                                {customIcons.map(icon => (
-                                    <Select.Option key={icon.id} value={icon.id} label={icon.name}>
-                                        <Space>
-                                            <span dangerouslySetInnerHTML={{ __html: icon.svg }} style={{ fontSize: 16, display: 'flex' }} />
-                                            <span>{icon.name}</span>
                                         </Space>
                                     </Select.Option>
                                 ))}

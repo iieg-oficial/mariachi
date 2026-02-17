@@ -1,6 +1,5 @@
 import { Typography, Space, Button, Badge, Tag } from 'antd';
-import { PlusOutlined, SaveOutlined, UndoOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
-import DisabledFeature from '@components/common/DisabledFeature';
+import { SaveOutlined, UndoOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 
 const { Title } = Typography;
 
@@ -42,16 +41,6 @@ export default function MenuHeader({
                         </Button>
                     </>
                 )}
-                <DisabledFeature>
-                    <Button
-                        type="primary"
-                        icon={<PlusOutlined />}
-                        disabled
-                        ghost={hasChanges}
-                    >
-                        Nuevo Item de Nivel Superior
-                    </Button>
-                </DisabledFeature>
             </Space>
         </div>
     );

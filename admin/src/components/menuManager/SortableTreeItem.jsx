@@ -1,10 +1,8 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Tag, Space, Button } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, HolderOutlined, FileTextOutlined, EyeOutlined, EyeInvisibleOutlined, StopOutlined } from '@ant-design/icons';
+import { EditOutlined, HolderOutlined, EyeOutlined, EyeInvisibleOutlined, StopOutlined } from '@ant-design/icons';
 import { getIconComponent } from '@utils/menuUtils';
-import { MAX_LEVEL } from '@constants/menuConstants';
-import DisabledFeature from '@components/common/DisabledFeature';
 
 const STYLES = {
     dragHandle: {
@@ -36,13 +34,9 @@ export default function SortableTreeItem({
     customIcons,
     isNew,
     isModified,
-    onAddChild,
     onEdit,
-    onDelete,
     childCount = 0
 }) {
-    const canAddChild = level < MAX_LEVEL;
-
     const {
         attributes,
         listeners,
@@ -148,62 +142,16 @@ export default function SortableTreeItem({
                             Oculto
                         </Tag>
                     )}
-                    <Space size="small">
-                        {!item.external && (
-                            <DisabledFeature>
-                                <Button
-                                    type="primary"
-                                    size="middle"
-                                    icon={<FileTextOutlined />}
-                                    disabled
-                                    style={STYLES.button}
-                                >
-                                    Editar Página
-                                </Button>
-                            </DisabledFeature>
-                        )}
-                        {canAddChild && (
-                            <DisabledFeature>
-                                <Button
-                                    type="default"
-                                    size="middle"
-                                    icon={<PlusOutlined />}
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        onAddChild(item);
-                                    }}
-                                    disabled
-                                    style={STYLES.button}
-                                >
-                                    Agregar hijo
-                                </Button>
-                            </DisabledFeature>
-                        )}
-                        <Button
-                            type="default"
-                            size="middle"
-                            icon={<EditOutlined />}
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onEdit(item);
-                            }}
-                            style={STYLES.button}
-                        />
-                        <DisabledFeature>
-                            <Button
-                                type="default"
-                                size="middle"
-                                danger
-                                disabled
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    onDelete(item);
-                                }}
-                                icon={<DeleteOutlined />}
-                                style={STYLES.button}
-                            />
-                        </DisabledFeature>
-                    </Space>
+                    <Button
+                        type="default"
+                        size="middle"
+                        icon={<EditOutlined />}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onEdit(item);
+                        }}
+                        style={STYLES.button}
+                    />
                 </div>
             </div>
         </div>

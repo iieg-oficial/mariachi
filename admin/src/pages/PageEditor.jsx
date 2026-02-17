@@ -15,11 +15,7 @@ import SEOEditor from '@components/SEOEditor';
 import SEOAnalyzer from '@components/SEOAnalyzer';
 import PagePreview from '@components/PagePreview';
 import TemplateSelector from '@components/TemplateSelector';
-import ApprovalStatus from '@components/ApprovalStatus';
 import PageVersionHistory from '@components/PageVersionHistory';
-import AccessibilityChecker from '@components/AccessibilityChecker';
-import SchedulePublisher from '@components/SchedulePublisher';
-import { APPROVAL_STATUS } from '@constants/approvalConstants';
 
 const { Header, Sider, Content } = Layout;
 const { Title, Text } = Typography;
@@ -265,27 +261,6 @@ export default function PageEditor() {
                     <SEOAnalyzer
                         page={page}
                         seo={page.seo || {}}
-                    />
-
-                    <ApprovalStatus
-                        status={page.approvalStatus || APPROVAL_STATUS.DRAFT}
-                        approvalHistory={page.approvalHistory || []}
-                        onRequestApproval={() => { }}
-                        onApprove={() => { }}
-                        onReject={() => { }}
-                        disabled={!page || loading}
-                    />
-
-                    <AccessibilityChecker
-                        page={page}
-                        onValidate={() => { }}
-                    />
-
-                    <SchedulePublisher
-                        pageId={id}
-                        currentSchedule={page.scheduledPublications}
-                        onSchedule={() => { }}
-                        onCancel={() => { }}
                     />
 
                     <Card style={{ marginBottom: 16 }}>

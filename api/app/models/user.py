@@ -15,12 +15,9 @@ class Usuario(Base):
     hashed_password = Column(String, nullable=False)
     name = Column(String, nullable=False)
     role = Column(
-        Enum("tetlamamakani", "editora", "diseñadora", name="user_roles"), nullable=False
+        Enum("tetlamamakani", "editora", name="user_roles"), nullable=False
     )
     must_change_password = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
-    history_entries = relationship("HistoryEntry", back_populates="user")
     media_uploads = relationship("Media", back_populates="uploaded_by_user")
-    font_uploads = relationship("Font", back_populates="uploaded_by_user")
-    notifications = relationship("Notification", back_populates="user")

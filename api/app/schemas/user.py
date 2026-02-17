@@ -12,14 +12,14 @@ class UsuarioBase(BaseModel):
 
 class UsuarioCreate(UsuarioBase):
     password: str = Field(..., min_length=8)
-    role: Literal["tetlamamakani", "editora", "diseñadora"]
+    role: Literal["tetlamamakani", "editora"]
 
 
 class UsuarioUpdate(BaseModel):
     username: str | None = Field(None, min_length=3, max_length=50)
     email: EmailStr | None = None
     name: str | None = Field(None, min_length=1, max_length=100)
-    role: Literal["tetlamamakani", "editora", "diseñadora"] | None = None
+    role: Literal["tetlamamakani", "editora"] | None = None
 
 
 class UsuarioResponse(UsuarioBase):

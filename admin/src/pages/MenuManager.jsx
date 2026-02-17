@@ -1,24 +1,20 @@
 import { useState } from 'react';
-import { Card, Alert, Button, Modal, Typography } from 'antd';
+import { Card, Alert, Button, Modal } from 'antd';
 import { useAuth } from '@contexts/AuthContext';
 import { useMenuDraft } from '@hooks/useMenuDraft';
 import { useMenuIcons } from '@hooks/useMenuIcons';
 import { useMenuItemModal } from '@hooks/useMenuItemModal';
-import { findAllChildren } from '@utils/menuUtils';
-import { MAX_LEVEL } from '@constants/menuConstants';
 import MenuHeader from '@components/menuManager/MenuHeader';
 import MenuItemModal from '@components/menuManager/MenuItemModal';
 import PublishChangesModal from '@components/menuManager/PublishChangesModal';
 import SortableTree from '@components/menuManager/SortableTree';
 
-const { Text } = Typography;
-
 export default function MenuManager() {
     const { user } = useAuth();
 
     const {
-        menuItems, originalMenuItems, loading, publishing, hasChanges, isAdmin, createItem, updateItem,
-        deleteItems, updateItemsOrder, discardChanges, getChangesSummary, publishChanges
+        menuItems, originalMenuItems, loading, publishing, hasChanges, isAdmin, updateItem,
+        updateItemsOrder, discardChanges, getChangesSummary, publishChanges
     } = useMenuDraft(user);
 
     const { customIcons } = useMenuIcons();
@@ -32,57 +28,12 @@ export default function MenuManager() {
         urlPreview,
         iconType,
         form,
-        handleCreate,
-        handleAddChild,
         handleEdit,
         handleLabelChange,
         handleIconTypeChange,
         handleSubmit,
         handleCancel
-    } = useMenuItemModal(menuItems, createItem, updateItem);
-
-    const handleDelete = (item) => {
-        const { idsToDelete, itemsToDelete } = findAllChildren(item.id, menuItems);
-        const hasChildren = itemsToDelete.length > 1;
-
-        Modal.confirm({
-            title: '¿Está seguro de eliminar este item del menú?',
-            content: (
-                <div>
-                    {hasChildren ? (
-                        <>
-                            <Text>Se eliminarán los siguientes items:</Text>
-                            <ul style={{ marginTop: 12, marginBottom: 0 }}>
-                                <li>
-                                    <Text strong style={{ color: '#ff4d4f' }}>{item.label}</Text>
-                                    <Text type="secondary"> (principal)</Text>
-                                </li>
-                                {itemsToDelete.slice(1).map(child => (
-                                    <li key={child.id}>
-                                        <Text strong style={{ color: '#ff7875' }}>{child.label}</Text>
-                                        <Text type="secondary"> - {child.url}</Text>
-                                    </li>
-                                ))}
-                            </ul>
-                            <Alert
-                                message={`Total: ${itemsToDelete.length} item(s) serán eliminados`}
-                                type="error"
-                                showIcon
-                                style={{ marginTop: 16 }}
-                            />
-                        </>
-                    ) : (
-                        <Text>Se eliminará: <Text strong>{item.label}</Text></Text>
-                    )}
-                </div>
-            ),
-            okText: 'Eliminar',
-            okType: 'danger',
-            cancelText: 'Cancelar',
-            width: 500,
-            onOk: () => deleteItems(idsToDelete, itemsToDelete.length)
-        });
-    };
+    } = useMenuItemModal(menuItems, null, updateItem);
 
     const handleReorder = (newItems) => {
         updateItemsOrder(newItems);
@@ -140,7 +91,7 @@ export default function MenuManager() {
 
             <Alert
                 message="Menú jerárquico con arrastrar y soltar"
-                description={`Arrastra los items para reordenarlos. Puedes crear menús con hasta ${MAX_LEVEL} niveles de profundidad. Usa los botones "Agregar hijo" para crear submenús.`}
+                description="Arrastra los items para reordenarlos. Usa el botón de editar para modificar cada item."
                 type="info"
                 showIcon
                 style={{ marginBottom: 16 }}
@@ -154,12 +105,10 @@ export default function MenuManager() {
                         customIcons={customIcons}
                         onReorder={handleReorder}
                         onEdit={handleEdit}
-                        onAddChild={handleAddChild}
-                        onDelete={handleDelete}
                     />
                 ) : (
                     <div style={{ textAlign: 'center', padding: 40, color: '#999', fontSize: 15 }}>
-                        No hay items en el menú. Haz clic en "Nuevo Item de Nivel Superior" para comenzar.
+                        No hay items en el menú.
                     </div>
                 )}
             </Card>
@@ -171,7 +120,6 @@ export default function MenuManager() {
                 form={form}
                 urlPreview={urlPreview}
                 iconType={iconType}
-                customIcons={customIcons}
                 onCancel={handleCancel}
                 onSubmit={handleSubmit}
                 onLabelChange={handleLabelChange}

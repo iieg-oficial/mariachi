@@ -5,8 +5,6 @@ from app.api.deps import get_current_user, get_db, verify_csrf
 from app.models.menu_item import MenuItem
 from app.models.user import Usuario
 from app.schemas.menu_item import MenuItemCreate, MenuItemResponse, MenuItemTree, MenuItemUpdate
-from app.services.history import registrar_accion
-from app.services.notification import notificar_admins, NOTIFICATION_TYPES
 
 router = APIRouter(prefix="/menu-items", tags=["menú"])
 
@@ -63,26 +61,6 @@ async def crear_menu_item(
     db.add(nuevo_item)
     db.commit()
     db.refresh(nuevo_item)
-
-    registrar_accion(
-        db,
-        user_id=current_user.id,
-        action="crear",
-        resource="menu_item",
-        resource_id=str(nuevo_item.id),
-        description=f"{current_user.name} creó el item de menú '{nuevo_item.label}'",
-        details={"label": nuevo_item.label, "url": nuevo_item.url},
-    )
-
-    notificar_admins(
-        db,
-        type=NOTIFICATION_TYPES["MENU_UPDATED"],
-        title="Menú actualizado",
-        message=f"{current_user.name} creó el item '{nuevo_item.label}'",
-        data={"itemId": nuevo_item.id, "label": nuevo_item.label, "action": "crear"},
-        exclude_user_id=current_user.id,
-    )
-
     return nuevo_item
 
 
@@ -99,33 +77,12 @@ async def actualizar_menu_item(
             status_code=status.HTTP_404_NOT_FOUND, detail="Item no encontrado"
         )
 
-    old_label = item.label
     update_data = item_in.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(item, field, value)
 
     db.commit()
     db.refresh(item)
-
-    registrar_accion(
-        db,
-        user_id=current_user.id,
-        action="actualizar",
-        resource="menu_item",
-        resource_id=str(item.id),
-        description=f"{current_user.name} actualizó el item de menú '{item.label}'",
-        details={"label": item.label, "url": item.url, "old_label": old_label},
-    )
-
-    notificar_admins(
-        db,
-        type=NOTIFICATION_TYPES["MENU_UPDATED"],
-        title="Menú actualizado",
-        message=f"{current_user.name} actualizó el item '{item.label}'",
-        data={"itemId": item.id, "label": item.label, "action": "actualizar"},
-        exclude_user_id=current_user.id,
-    )
-
     return item
 
 
@@ -141,27 +98,6 @@ async def eliminar_menu_item(
             status_code=status.HTTP_404_NOT_FOUND, detail="Item no encontrado"
         )
 
-    label = item.label
     db.delete(item)
     db.commit()
-
-    registrar_accion(
-        db,
-        user_id=current_user.id,
-        action="eliminar",
-        resource="menu_item",
-        resource_id=str(item_id),
-        description=f"{current_user.name} eliminó el item de menú '{label}'",
-        details={"label": label},
-    )
-
-    notificar_admins(
-        db,
-        type=NOTIFICATION_TYPES["MENU_UPDATED"],
-        title="Menú actualizado",
-        message=f"{current_user.name} eliminó el item '{label}'",
-        data={"itemId": item_id, "label": label, "action": "eliminar"},
-        exclude_user_id=current_user.id,
-    )
-
     return {"message": "Item eliminado exitosamente"}
