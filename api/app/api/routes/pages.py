@@ -96,7 +96,7 @@ async def actualizar_o_crear_pagina(
             )
 
     if not pagina:
-        data = page_in.model_dump(exclude_unset=True)
+        data = page_in.model_dump(exclude_unset=True, exclude={'expected_updated_at'})
         if not data.get('slug'):
             data['slug'], _ = _slug_from_menu_item(page_id, db)
         nueva_pagina = Page(
