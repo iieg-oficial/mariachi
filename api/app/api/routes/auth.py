@@ -10,11 +10,11 @@ from app.core.settings import get_settings
 from app.models.user import Usuario
 from app.schemas.user import LoginRequest, LoginResponse, UsuarioResponse
 
-router = APIRouter(prefix="/auth", tags=["autenticación"])
+router = APIRouter(prefix="/autenticacion", tags=["autenticación"])
 settings = get_settings()
 
 
-@router.post("/login", response_model=LoginResponse)
+@router.post("/iniciar-sesion", response_model=LoginResponse)
 async def login(
     credentials: LoginRequest,
     response: Response,
@@ -51,7 +51,7 @@ async def login(
     )
 
 
-@router.post("/logout")
+@router.post("/cerrar-sesion")
 async def logout(
     response: Response,
     current_user: Usuario = Depends(get_current_user),
@@ -66,11 +66,11 @@ async def logout(
     return {"message": "Sesión cerrada exitosamente"}
 
 
-@router.get("/me", response_model=UsuarioResponse)
+@router.get("/perfil", response_model=UsuarioResponse)
 async def get_current_user_info(current_user: Usuario = Depends(get_current_user)):
     return current_user
 
 
-@router.get("/verify")
+@router.get("/verificar")
 async def verify_token(current_user: Usuario = Depends(get_current_user)):
     return {"valid": True}

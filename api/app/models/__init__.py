@@ -1,4 +1,5 @@
 from app.core.database import Base
+from app.models.borrador import Borrador
 from app.models.media import Media, MediaFolder
 from app.models.menu_item import MenuItem
 from app.models.page import Page
@@ -11,4 +12,5 @@ __all__ = [
     "MenuItem",
     "Media",
     "MediaFolder",
+    "Borrador",
 ]

@@ -13,7 +13,7 @@ export const AuthProvider = ({ children }) => {
 
     const checkAuth = async () => {
         try {
-            const response = await api.get('/auth/me');
+            const response = await api.get('/autenticacion/perfil');
             setUser(response.data);
         } catch (error) {
             setUser(null);
@@ -23,7 +23,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     const loginUser = async (username, password) => {
-        const response = await api.post('/auth/login', {
+        const response = await api.post('/autenticacion/iniciar-sesion', {
             username,
             password
         });
@@ -37,7 +37,7 @@ export const AuthProvider = ({ children }) => {
 
     const logout = async () => {
         try {
-            await api.post('/auth/logout');
+            await api.post('/autenticacion/cerrar-sesion');
         } catch {
         } finally {
             sessionStorage.removeItem('csrf_token');
@@ -51,7 +51,7 @@ export const AuthProvider = ({ children }) => {
 
     const refreshUser = async () => {
         try {
-            const response = await api.get('/auth/me');
+            const response = await api.get('/autenticacion/perfil');
             setUser(response.data);
             return response.data;
         } catch (error) {

@@ -1,50 +1,49 @@
-import { useState, useEffect } from 'react';
-import { useParams } from 'react-router';
-import { getPageBySlug } from '@services/pageService';
-import SectionRenderer from '@components/pageComponents/ComponentRenderer';
+import { useState, useEffect } from 'react'
+import { useParams, useSearchParams } from 'react-router'
+import { getPageBySlug, getPreviewPage } from '@services/pageService'
+import BlockRenderer from '@components/BlockRenderer'
 
 export default function DynamicPage() {
-    const { '*': slug } = useParams();
-    const [page, setPage] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(false);
+    const { '*': slug } = useParams()
+    const [searchParams] = useSearchParams()
+    const previewToken = searchParams.get('preview')
+    const [page, setPage] = useState(null)
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState(false)
 
     useEffect(() => {
         const loadPage = async () => {
-            setLoading(true);
-            setError(false);
+            setLoading(true)
+            setError(false)
 
-            const fullSlug = slug || '';
-            const data = await getPageBySlug(fullSlug);
+            const data = previewToken
+                ? await getPreviewPage(previewToken)
+                : await getPageBySlug(slug || '')
 
             if (!data || data.id === 0) {
-                setError(true);
+                setError(true)
             } else {
-                setPage(data);
+                setPage(data)
                 if (data.metaDescription) {
-                    document.querySelector('meta[name="description"]')?.setAttribute('content', data.metaDescription);
+                    document.querySelector('meta[name="description"]')?.setAttribute('content', data.metaDescription)
                 }
                 if (data.title) {
-                    document.title = `${data.title} - IIEG`;
+                    document.title = `${data.title} - IIEG`
                 }
             }
 
-            setLoading(false);
-        };
+            setLoading(false)
+        }
 
-        loadPage();
-    }, [slug]);
+        loadPage()
+    }, [slug, previewToken])
 
     if (loading) {
         return (
-            <div className="container mx-auto px-4 py-16 text-center">
-                <div className="animate-pulse">
-                    <div className="h-8 bg-gray-200 rounded w-1/3 mx-auto mb-4"></div>
-                    <div className="h-4 bg-gray-200 rounded w-2/3 mx-auto mb-2"></div>
-                    <div className="h-4 bg-gray-200 rounded w-1/2 mx-auto"></div>
-                </div>
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-900" />
             </div>
-        );
+        )
     }
 
     if (error) {
@@ -53,15 +52,21 @@ export default function DynamicPage() {
                 <h1 className="text-4xl font-bold text-gray-800 mb-4">Página no encontrada</h1>
                 <p className="text-gray-600">La página que buscas no existe o aún no tiene contenido.</p>
             </div>
-        );
+        )
     }
 
     return (
-        <div className="container mx-auto px-4 py-8">
-            {page.title && (
-                <h1 className="text-4xl font-bold text-gray-900 mb-8">{page.title}</h1>
+        <div className="min-h-screen flex flex-col">
+            {previewToken && (
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 9999, background: '#faad14', color: '#000', textAlign: 'center', padding: '8px 16px', fontWeight: 600, fontSize: 14 }}>
+                    Modo vista previa — este contenido no está publicado
+                </div>
             )}
-            <SectionRenderer sections={page.sections} />
+            <div style={previewToken ? { paddingTop: 37 } : undefined}>
+                {(page.sections || []).map((block, index) => (
+                    <BlockRenderer key={block.id || index} block={block} />
+                ))}
+            </div>
         </div>
-    );
+    )
 }

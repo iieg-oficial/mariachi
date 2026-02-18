@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router';
-import { Card, Alert, Button, Modal } from 'antd';
+import { useNavigate, useSearchParams } from 'react-router';
+import { Card, Alert, Button, Modal, Input } from 'antd';
 import { useAuth } from '@contexts/AuthContext';
 import { useMenuDraft } from '@hooks/useMenuDraft';
 import { useMenuIcons } from '@hooks/useMenuIcons';
@@ -13,37 +13,33 @@ import SortableTree from '@components/menuManager/SortableTree';
 export default function MenuManager() {
     const { user } = useAuth();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+
+    const isAdmin = user?.role === 'tetlamamakani';
+    const reviewMode = isAdmin && searchParams.get('review') === 'true';
+    const borradorId = searchParams.get('borrador');
 
     const {
-        menuItems, originalMenuItems, loading, publishing, hasChanges, isAdmin, updateItem,
-        updateItemsOrder, discardChanges, getChangesSummary, publishChanges
-    } = useMenuDraft(user);
+        menuItems, originalMenuItems, loading, publishing, hasChanges,
+        hasDraft, borradorEstado, comentarioRechazo, reviewAuthor,
+        updateItem, updateItemsOrder, discardChanges,
+        getChangesSummary, publishChanges, openPreview, rechazarRevision
+    } = useMenuDraft(user, { reviewMode, borradorId });
 
     const { customIcons } = useMenuIcons();
 
     const [publishModalVisible, setPublishModalVisible] = useState(false);
+    const [rechazarModalVisible, setRechazarModalVisible] = useState(false);
+    const [rechazarComentario, setRechazarComentario] = useState('');
 
     const {
-        modalVisible,
-        editingItem,
-        selectedParent,
-        urlPreview,
-        iconType,
-        form,
-        handleEdit,
-        handleLabelChange,
-        handleIconTypeChange,
-        handleSubmit,
-        handleCancel
+        modalVisible, editingItem, selectedParent, urlPreview, iconType, form,
+        handleEdit, handleLabelChange, handleIconTypeChange, handleSubmit, handleCancel
     } = useMenuItemModal(menuItems, null, updateItem);
 
-    const handleReorder = (newItems) => {
-        updateItemsOrder(newItems);
-    };
+    const handleReorder = (newItems) => updateItemsOrder(newItems);
 
-    const handleEditPage = (itemId) => {
-        navigate(`/pages/edit/${itemId}`);
-    };
+    const handleEditPage = (itemId) => navigate(`/pages/edit/${itemId}`);
 
     const handleDiscard = () => {
         Modal.confirm({
@@ -57,7 +53,11 @@ export default function MenuManager() {
     };
 
     const handlePublish = () => {
-        setPublishModalVisible(true);
+        if (reviewMode) {
+            publishChanges();
+        } else {
+            setPublishModalVisible(true);
+        }
     };
 
     const confirmPublish = async () => {
@@ -67,7 +67,9 @@ export default function MenuManager() {
         }
     };
 
-    const { newItems, deletedItems, modifiedItems } = hasChanges ? getChangesSummary() : { newItems: [], deletedItems: [], modifiedItems: [] };
+    const { newItems, deletedItems, modifiedItems } = hasChanges
+        ? getChangesSummary()
+        : { newItems: [], deletedItems: [], modifiedItems: [] };
     const changesCount = newItems.length + deletedItems.length + modifiedItems.length;
 
     return (
@@ -76,32 +78,52 @@ export default function MenuManager() {
                 hasChanges={hasChanges}
                 changesCount={changesCount}
                 publishing={publishing}
+                isAdmin={isAdmin}
+                reviewMode={reviewMode}
+                reviewAuthor={reviewAuthor}
+                borradorEstado={borradorEstado}
                 onDiscard={handleDiscard}
                 onPublish={handlePublish}
+                onPreview={openPreview}
+                onRechazar={() => setRechazarModalVisible(true)}
             />
 
-            {hasChanges && (
+            {!isAdmin && borradorEstado === 'rechazado' && (
+                <Alert
+                    type="error"
+                    message="Borrador rechazado"
+                    description={comentarioRechazo || 'El administrador rechazó el borrador sin especificar un motivo.'}
+                    style={{ marginBottom: 16 }}
+                    showIcon
+                />
+            )}
+
+            {hasChanges && !reviewMode && (
                 <Alert
                     message="Modo borrador"
-                    description={`Tienes ${changesCount} cambio(s) pendiente(s). ${isAdmin ? 'Los cambios se publicarán directamente.' : 'Un administrador debe aprobar los cambios.'}`}
+                    description={`Tienes ${changesCount} cambio(s) pendiente(s). ${isAdmin ? 'Los cambios se publicarán directamente.' : 'Envíalos a revisión cuando estén listos.'}`}
                     type="warning"
                     showIcon
                     style={{ marginBottom: 16 }}
                     action={
-                        <Button size="small" type="text" onClick={handlePublish}>
-                            Ver cambios
-                        </Button>
+                        isAdmin && (
+                            <Button size="small" type="text" onClick={() => setPublishModalVisible(true)}>
+                                Ver cambios
+                            </Button>
+                        )
                     }
                 />
             )}
 
-            <Alert
-                message="Menú jerárquico con arrastrar y soltar"
-                description="Arrastra los items para reordenarlos. Usa el botón de editar para modificar cada item."
-                type="info"
-                showIcon
-                style={{ marginBottom: 16 }}
-            />
+            {!reviewMode && (
+                <Alert
+                    message="Menú jerárquico con arrastrar y soltar"
+                    description="Arrastra los items para reordenarlos. Usa el botón de editar para modificar cada item."
+                    type="info"
+                    showIcon
+                    style={{ marginBottom: 16 }}
+                />
+            )}
 
             <Card loading={loading}>
                 {menuItems.length > 0 ? (
@@ -143,6 +165,27 @@ export default function MenuManager() {
                 onConfirm={confirmPublish}
                 isAdmin={isAdmin}
             />
+
+            <Modal
+                title="Rechazar borrador de menú"
+                open={rechazarModalVisible}
+                onOk={async () => {
+                    await rechazarRevision(rechazarComentario);
+                    setRechazarModalVisible(false);
+                    setRechazarComentario('');
+                }}
+                onCancel={() => { setRechazarModalVisible(false); setRechazarComentario(''); }}
+                okText="Rechazar"
+                okType="danger"
+                cancelText="Cancelar"
+            >
+                <Input.TextArea
+                    placeholder="Motivo del rechazo (opcional)"
+                    value={rechazarComentario}
+                    onChange={e => setRechazarComentario(e.target.value)}
+                    rows={3}
+                />
+            </Modal>
         </div>
     );
 }

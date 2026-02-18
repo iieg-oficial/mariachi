@@ -9,7 +9,7 @@ from app.core.security import hash_password, verify_password
 from app.models.user import Usuario
 from app.schemas.user import PasswordChange, PasswordReset, UsuarioCreate, UsuarioResponse, UsuarioUpdate
 
-router = APIRouter(prefix="/users", tags=["usuarios"])
+router = APIRouter(prefix="/usuarios", tags=["usuarios"])
 
 
 def generate_temp_password(length=12):
@@ -124,7 +124,7 @@ async def actualizar_usuario(
     return usuario
 
 
-@router.post("/{usuario_id}/reset-password")
+@router.post("/{usuario_id}/restablecer-contrasena")
 async def resetear_password(
     usuario_id: int,
     db: Session = Depends(get_db),
@@ -153,7 +153,7 @@ async def resetear_password(
     }
 
 
-@router.post("/change-password")
+@router.post("/cambiar-contrasena")
 async def cambiar_password(
     password_data: PasswordChange,
     db: Session = Depends(get_db),

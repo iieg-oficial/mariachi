@@ -1,13 +1,7 @@
-import Banner from './home/Banner'
-import UpdatesSlider from './home/UpdatesSlider'
-import RecentInfo from './home/RecentInfo'
-import SistemasInfo from './home/SistemasInfo'
+import Carousel from './pageComponents/Carousel'
 
 const COMPONENT_MAP = {
-    'home-hero': Banner,
-    'home-updates-slider': UpdatesSlider,
-    'home-recent-info': RecentInfo,
-    'home-sistemas': SistemasInfo
+    'carousel': Carousel,
 }
 
 export default function BlockRenderer({ block }) {

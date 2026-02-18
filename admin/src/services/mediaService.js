@@ -78,7 +78,7 @@ export const getMediaFiles = async (filters = {}) => {
         if (filters.type) params.append('type', filters.type);
         if (filters.search) params.append('search', filters.search);
 
-        const response = await api.get(`/media?${params.toString()}`);
+        const response = await api.get(`/multimedia?${params.toString()}`);
         return response.data;
     } catch (error) {
         console.error('Error fetching media files:', error);
@@ -88,7 +88,7 @@ export const getMediaFiles = async (filters = {}) => {
 
 export const getMediaFile = async (id) => {
     try {
-        const response = await api.get(`/media/${id}`);
+        const response = await api.get(`/multimedia/${id}`);
         return response.data;
     } catch (error) {
         console.error('Error fetching media file:', error);
@@ -109,7 +109,7 @@ export const uploadMediaFile = async (file, options = {}) => {
             formData.append('alt', options.alt);
         }
 
-        const response = await api.post('/media', formData, {
+        const response = await api.post('/multimedia', formData, {
             headers: {
                 'Content-Type': 'multipart/form-data',
             },
@@ -166,7 +166,7 @@ export const uploadMultipleFiles = async (files, options = {}) => {
 
 export const updateMediaFile = async (id, updates) => {
     try {
-        const response = await api.put(`/media/${id}`, updates);
+        const response = await api.put(`/multimedia/${id}`, updates);
         return response.data;
     } catch (error) {
         console.error('Error updating media file:', error);
@@ -176,7 +176,7 @@ export const updateMediaFile = async (id, updates) => {
 
 export const deleteMediaFile = async (id) => {
     try {
-        await api.delete(`/media/${id}`);
+        await api.delete(`/multimedia/${id}`);
 
         await deleteFromIndexedDB(id);
 
@@ -201,7 +201,7 @@ export const deleteMultipleFiles = async (ids) => {
 
 export const getFolders = async () => {
     try {
-        const response = await api.get('/media/folders');
+        const response = await api.get('/multimedia/carpetas');
         return response.data;
     } catch (error) {
         console.error('Error fetching folders:', error);
@@ -211,7 +211,7 @@ export const getFolders = async () => {
 
 export const createFolder = async (name, parent = null) => {
     try {
-        const response = await api.post('/media/folders', { name, parent });
+        const response = await api.post('/multimedia/carpetas', { name, parent });
         return response.data;
     } catch (error) {
         console.error('Error creating folder:', error);
@@ -221,7 +221,7 @@ export const createFolder = async (name, parent = null) => {
 
 export const deleteFolder = async (id) => {
     try {
-        await api.delete(`/media/folders/${id}`);
+        await api.delete(`/multimedia/carpetas/${id}`);
         return true;
     } catch (error) {
         console.error('Error deleting folder:', error);

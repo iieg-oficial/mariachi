@@ -1,14 +1,16 @@
-import { useState } from 'react';
-import { Layout, Menu, Button, Avatar, Dropdown, Typography } from 'antd';
+import { useState, useEffect } from 'react';
+import { Layout, Menu, Button, Avatar, Dropdown, Typography, Badge } from 'antd';
 import {
     MenuFoldOutlined, MenuUnfoldOutlined, UserOutlined,
     TeamOutlined, LogoutOutlined,
     MenuOutlined,
     FileImageOutlined,
-    LockOutlined
+    LockOutlined,
+    AuditOutlined
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router';
 import { useAuth } from '@contexts/AuthContext';
+import api from '@services/api';
 
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
@@ -28,6 +30,15 @@ export default function MainLayout() {
         }
     };
 
+    const [pendingCount, setPendingCount] = useState(0);
+
+    useEffect(() => {
+        if (user?.role !== 'tetlamamakani') return;
+        api.get('/borradores/pendientes')
+            .then(r => setPendingCount(r.data.length))
+            .catch(() => {});
+    }, [user]);
+
     const menuItems = [];
 
     if (user?.role === 'tetlamamakani') {
@@ -36,6 +47,14 @@ export default function MainLayout() {
             icon: <TeamOutlined />,
             label: 'Usuarios',
             onClick: () => navigate('/users')
+        });
+        menuItems.push({
+            key: '/revision',
+            icon: <AuditOutlined />,
+            label: pendingCount > 0
+                ? <span>Revisiones <Badge count={pendingCount} size="small" /></span>
+                : 'Revisiones',
+            onClick: () => navigate('/revision')
         });
     }
 

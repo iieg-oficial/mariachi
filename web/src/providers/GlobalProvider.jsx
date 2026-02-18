@@ -1,18 +1,31 @@
 import { useCallback, useMemo, useState, useEffect } from 'react';
 import ReactGA from 'react-ga4';
 import GlobalContext from '@contexts/GlobalContext';
-import { getMenuItems } from '@services/menuService';
+import { getMenuItems, getPreviewMenu } from '@services/menuService';
 
 const GlobalProvider = ({ children }) => {
     const [menuItems, setMenuItems] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [isMenuPreview, setIsMenuPreview] = useState(false);
 
     useEffect(() => {
         const loadGlobalData = async () => {
             setLoading(true);
             try {
-                const items = await getMenuItems();
-                setMenuItems(items);
+                const params = new URLSearchParams(window.location.search);
+                const menuPreviewToken = params.get('menu-preview');
+
+                if (menuPreviewToken) {
+                    const previewItems = await getPreviewMenu(menuPreviewToken);
+                    if (previewItems) {
+                        setMenuItems(previewItems);
+                        setIsMenuPreview(true);
+                    } else {
+                        setMenuItems(await getMenuItems());
+                    }
+                } else {
+                    setMenuItems(await getMenuItems());
+                }
             } catch (error) {
                 console.error('Error loading global data:', error);
             } finally {
@@ -29,12 +42,9 @@ const GlobalProvider = ({ children }) => {
     const value = useMemo(() => ({
         GlobalAnalyticsEvent,
         navigation: { menuItems },
-        loading
-    }), [
-        GlobalAnalyticsEvent,
-        menuItems,
-        loading
-    ]);
+        loading,
+        isMenuPreview
+    }), [GlobalAnalyticsEvent, menuItems, loading, isMenuPreview]);
 
     return (
         <GlobalContext.Provider value={value}>

@@ -25,6 +25,7 @@ class PageUpdate(BaseModel):
     sections: list[dict] | None = None
     meta_description: str | None = Field(default=None, serialization_alias="metaDescription")
     meta_keywords: str | None = Field(default=None, serialization_alias="metaKeywords")
+    expected_updated_at: datetime | None = Field(default=None, alias="expectedUpdatedAt")
 
     model_config = ConfigDict(populate_by_name=True)
 

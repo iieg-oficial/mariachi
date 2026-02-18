@@ -1,10 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router';
 import { message } from 'antd';
 import api from '@services/api';
 
-const RESOURCE_TYPE = 'menu_items';
+const RESOURCE_TYPE = 'elementos-menu';
+const RESOURCE_ID = 'global';
 
-export const useMenuDraft = (user) => {
+export const useMenuDraft = (user, { reviewMode = false, borradorId = null } = {}) => {
+    const navigate = useNavigate();
     const [originalMenuItems, setOriginalMenuItems] = useState([]);
     const [menuItems, setMenuItems] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -12,7 +15,9 @@ export const useMenuDraft = (user) => {
     const [nextTempId, setNextTempId] = useState(1);
     const [hasDraft, setHasDraft] = useState(false);
     const [draftId, setDraftId] = useState(null);
-    const [pendingRequest, setPendingRequest] = useState(null);
+    const [borradorEstado, setBorradorEstado] = useState('en_progreso');
+    const [comentarioRechazo, setComentarioRechazo] = useState(null);
+    const [reviewAuthor, setReviewAuthor] = useState(null);
 
     const isAdmin = user?.role === 'tetlamamakani';
 
@@ -25,23 +30,32 @@ export const useMenuDraft = (user) => {
     const fetchMenuItems = async () => {
         setLoading(true);
         try {
-            const [itemsResponse, draftResponse] = await Promise.all([
-                api.get('/menu-items'),
-                api.get(`/borradores/${RESOURCE_TYPE}`).catch(() => ({ data: null }))
-            ]);
-
+            const itemsResponse = await api.get('/elementos-menu');
             setOriginalMenuItems(itemsResponse.data);
 
-            if (draftResponse.data?.data) {
-                const draftData = JSON.parse(draftResponse.data.data);
-                setMenuItems(draftData.menuItems || itemsResponse.data);
-                setNextTempId(draftData.nextTempId || 1);
+            if (reviewMode && borradorId) {
+                const reviewResponse = await api.get(`/borradores/por-id/${borradorId}`);
+                const reviewData = reviewResponse.data;
+                setMenuItems(reviewData.data?.menuItems || itemsResponse.data);
+                setNextTempId(reviewData.data?.nextTempId || 1);
                 setHasDraft(true);
-                setDraftId(draftResponse.data.id);
+                setDraftId(reviewData.id);
+                setReviewAuthor(reviewData.usuario);
             } else {
-                setMenuItems(itemsResponse.data);
-                setHasDraft(false);
-                setDraftId(null);
+                const draftResponse = await api.get(`/borradores/${RESOURCE_TYPE}/${RESOURCE_ID}`).catch(() => ({ data: null }));
+                if (draftResponse.data?.data) {
+                    const draftData = draftResponse.data.data;
+                    setMenuItems(draftData.menuItems || itemsResponse.data);
+                    setNextTempId(draftData.nextTempId || 1);
+                    setHasDraft(true);
+                    setDraftId(draftResponse.data.id);
+                    setBorradorEstado(draftResponse.data.estado || 'en_progreso');
+                    setComentarioRechazo(draftResponse.data.comentario_rechazo || null);
+                } else {
+                    setMenuItems(itemsResponse.data);
+                    setHasDraft(false);
+                    setDraftId(null);
+                }
             }
         } catch {
             message.error('Error al cargar items del menú');
@@ -51,24 +65,28 @@ export const useMenuDraft = (user) => {
     };
 
     const saveDraft = useCallback(async (items, tempId) => {
+        if (reviewMode) return;
         try {
-            const response = await api.put(`/borradores/${RESOURCE_TYPE}`, {
-                resource_type: RESOURCE_TYPE,
-                data: JSON.stringify({ menuItems: items, nextTempId: tempId })
+            const response = await api.put(`/borradores/${RESOURCE_TYPE}/${RESOURCE_ID}`, {
+                data: { menuItems: items, nextTempId: tempId }
             });
             setHasDraft(true);
             setDraftId(response.data.id);
-        } catch {
-        }
-    }, []);
+            setBorradorEstado(response.data.estado || 'en_progreso');
+            setComentarioRechazo(null);
+        } catch {}
+    }, [reviewMode]);
 
     const deleteDraft = async () => {
         try {
-            await api.delete(`/borradores/${RESOURCE_TYPE}`);
+            if (reviewMode && borradorId) {
+                await api.delete(`/borradores/por-id/${borradorId}`);
+            } else {
+                await api.delete(`/borradores/${RESOURCE_TYPE}/${RESOURCE_ID}`);
+            }
             setHasDraft(false);
             setDraftId(null);
-        } catch {
-        }
+        } catch {}
     };
 
     const createItem = (itemData) => {
@@ -107,7 +125,6 @@ export const useMenuDraft = (user) => {
     const updateItemsOrder = (updatedItems) => {
         setMenuItems(updatedItems);
         saveDraft(updatedItems, nextTempId);
-        message.success('Orden actualizado en el borrador.');
     };
 
     const discardChanges = async () => {
@@ -125,7 +142,6 @@ export const useMenuDraft = (user) => {
             const original = originalMenuItems.find(orig => orig.id === item.id);
             return original && JSON.stringify(original) !== JSON.stringify(item);
         });
-
         return { newItems, deletedItems, modifiedItems };
     };
 
@@ -133,7 +149,7 @@ export const useMenuDraft = (user) => {
         const { newItems, deletedItems, modifiedItems } = getChangesSummary();
 
         for (const item of deletedItems) {
-            await api.delete(`/menu-items/${item.id}`);
+            await api.delete(`/elementos-menu/${item.id}`);
         }
 
         const tempIdMap = {};
@@ -142,44 +158,72 @@ export const useMenuDraft = (user) => {
             if (itemData.parentId?.toString().startsWith('temp-')) {
                 itemData.parentId = tempIdMap[itemData.parentId] || null;
             }
-            const response = await api.post('/menu-items', itemData);
+            const response = await api.post('/elementos-menu', itemData);
             tempIdMap[id] = response.data.id;
         }
 
         for (const item of modifiedItems) {
-            await api.put(`/menu-items/${item.id}`, item);
+            await api.put(`/elementos-menu/${item.id}`, item);
+        }
+    };
+
+    const solicitarRevision = async () => {
+        if (!hasDraft) {
+            message.error('No hay cambios guardados para enviar a revisión');
+            return false;
+        }
+        try {
+            await api.post(`/borradores/${RESOURCE_TYPE}/${RESOURCE_ID}/solicitar-revision`);
+            setBorradorEstado('pendiente_revision');
+            message.success('Cambios de menú enviados a revisión');
+            return true;
+        } catch {
+            message.error('Error al enviar a revisión');
+            return false;
+        }
+    };
+
+    const rechazarRevision = async (comentario) => {
+        try {
+            await api.post(`/borradores/por-id/${borradorId}/rechazar`, { comentario });
+            message.success('Borrador rechazado');
+            navigate('/revision');
+        } catch {
+            message.error('Error al rechazar el borrador');
+        }
+    };
+
+    const openPreview = async () => {
+        const WEB_URL = import.meta.env.VITE_WEB_URL || 'http://localhost:3010';
+        try {
+            const { data } = await api.post('/preview/menu', { items: menuItems });
+            window.open(`${WEB_URL}/?menu-preview=${data.token}`, '_blank');
+        } catch {
+            message.error('Error al generar vista previa del menú');
         }
     };
 
     const publishChanges = async () => {
-        if (!hasDraft || !draftId) {
+        if (!hasDraft && !reviewMode) {
             message.error('No hay borrador para publicar');
             return false;
         }
 
         setPublishing(true);
-
         try {
             if (isAdmin) {
                 await applyChangesToDatabase();
                 await deleteDraft();
                 message.success('Cambios publicados exitosamente');
                 await fetchMenuItems();
+                if (reviewMode) navigate('/revision');
                 return { published: true };
             } else {
-                await api.post('/solicitudes-publicacion', {
-                    resource_type: RESOURCE_TYPE,
-                    draft_id: draftId
-                });
-                setPendingRequest(true);
-                message.success('Solicitud de publicación enviada. Un administrador debe aprobarla.');
-                return { published: false, pending: true };
+                return await solicitarRevision()
+                    ? { published: false, pending: true }
+                    : { published: false, error: true };
             }
-        } catch (error) {
-            if (error.response?.status === 400) {
-                message.warning('Ya existe una solicitud pendiente para este borrador');
-                return { published: false, pending: true };
-            }
+        } catch {
             message.error('Error al procesar la publicación');
             return { published: false, error: true };
         } finally {
@@ -195,14 +239,18 @@ export const useMenuDraft = (user) => {
         hasChanges,
         hasDraft,
         isAdmin,
-        pendingRequest,
+        borradorEstado,
+        comentarioRechazo,
+        reviewAuthor,
         createItem,
         updateItem,
         deleteItems,
         updateItemsOrder,
         discardChanges,
         getChangesSummary,
-        publishChanges
+        publishChanges,
+        solicitarRevision,
+        rechazarRevision,
+        openPreview
     };
 };
-

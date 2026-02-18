@@ -29,7 +29,7 @@ export default function Users() {
     const fetchUsers = async () => {
         setLoading(true);
         try {
-            const response = await api.get('/users');
+            const response = await api.get('/usuarios');
             setUsers(response.data);
         } catch {
             message.error('Error al cargar usuarios');
@@ -59,7 +59,7 @@ export default function Users() {
             cancelText: 'Cancelar',
             onOk: async () => {
                 try {
-                    await api.delete(`/users/${record.id}`);
+                    await api.delete(`/usuarios/${record.id}`);
                     message.success('Usuario eliminado exitosamente');
                     fetchUsers();
                 } catch {
@@ -82,7 +82,7 @@ export default function Users() {
             cancelText: 'Cancelar',
             onOk: async () => {
                 try {
-                    const response = await api.post(`/users/${record.id}/reset-password`);
+                    const response = await api.post(`/usuarios/${record.id}/restablecer-contrasena`);
                     Modal.info({
                         title: 'Contraseña Reseteada',
                         content: (
@@ -104,10 +104,10 @@ export default function Users() {
     const handleSubmit = async (values) => {
         try {
             if (editingUser) {
-                await api.put(`/users/${editingUser.id}`, values);
+                await api.put(`/usuarios/${editingUser.id}`, values);
                 message.success('Usuario actualizado exitosamente');
             } else {
-                await api.post('/users', values);
+                await api.post('/usuarios', values);
                 message.success('Usuario creado exitosamente');
             }
             setModalVisible(false);

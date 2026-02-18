@@ -1,8 +1,17 @@
 import api from './apiService';
 
+export const getPreviewMenu = async (token) => {
+    try {
+        const response = await api.get(`/preview/menu/${token}`)
+        return transformMenuData(response.data.items || [])
+    } catch {
+        return null
+    }
+}
+
 export const getMenuItems = async () => {
     try {
-        const response = await api.get('/menu-items/tree');
+        const response = await api.get('/elementos-menu/arbol');
         return transformMenuData(response.data);
     } catch (error) {
         console.error('Error fetching menu items:', error);

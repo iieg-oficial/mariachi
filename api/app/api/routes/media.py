@@ -10,7 +10,7 @@ from app.models.user import Usuario
 from app.schemas.media import FolderCreate, FolderResponse
 from app.services.acervo import get_acervo_service
 
-router = APIRouter(prefix="/media", tags=["media"])
+router = APIRouter(prefix="/multimedia", tags=["media"])
 
 
 @router.get("", response_model=list[dict])
@@ -55,7 +55,7 @@ async def listar_media(
     ]
 
 
-@router.get("/folders", response_model=list[dict])
+@router.get("/carpetas", response_model=list[dict])
 async def listar_carpetas(db: Session = Depends(get_db)):
     folders = db.query(MediaFolder).all()
     return [
@@ -137,7 +137,7 @@ async def eliminar_archivo(
     return {"message": "Archivo eliminado exitosamente"}
 
 
-@router.post("/folders", status_code=status.HTTP_201_CREATED, response_model=FolderResponse)
+@router.post("/carpetas", status_code=status.HTTP_201_CREATED, response_model=FolderResponse)
 async def crear_carpeta(
     folder_data: FolderCreate,
     db: Session = Depends(get_db),

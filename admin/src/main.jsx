@@ -17,6 +17,7 @@ import MenuManager from '@pages/MenuManager';
 import PageEditor from '@pages/PageEditor';
 import Media from '@pages/Media';
 import ChangePassword from '@pages/ChangePassword';
+import RevisionQueue from '@pages/RevisionQueue';
 
 const { DEV, VITE_GOOGLE_ANALYTICS_ID } = import.meta.env;
 
@@ -54,6 +55,14 @@ const router = createBrowserRouter([
                         element: (
                             <RoleProtectedRoute allowedRoles={['tetlamamakani']}>
                                 <Users />
+                            </RoleProtectedRoute>
+                        )
+                    },
+                    {
+                        path: 'revision',
+                        element: (
+                            <RoleProtectedRoute allowedRoles={['tetlamamakani']}>
+                                <RevisionQueue />
                             </RoleProtectedRoute>
                         )
                     },

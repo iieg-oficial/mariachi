@@ -6,7 +6,7 @@ from app.models.menu_item import MenuItem
 from app.models.user import Usuario
 from app.schemas.menu_item import MenuItemCreate, MenuItemResponse, MenuItemTree, MenuItemUpdate
 
-router = APIRouter(prefix="/menu-items", tags=["menú"])
+router = APIRouter(prefix="/elementos-menu", tags=["menú"])
 
 
 def construir_arbol_menu(items: list[MenuItem]) -> list[MenuItemTree]:
@@ -35,7 +35,7 @@ async def listar_menu_items(db: Session = Depends(get_db)):
     return items
 
 
-@router.get("/tree", response_model=list[MenuItemTree])
+@router.get("/arbol", response_model=list[MenuItemTree])
 async def obtener_arbol_menu(db: Session = Depends(get_db)):
     items = db.query(MenuItem).all()
     return construir_arbol_menu(items)
