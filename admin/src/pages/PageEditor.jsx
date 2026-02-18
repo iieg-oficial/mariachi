@@ -165,7 +165,7 @@ export default function PageEditor() {
                 {reviewMode && reviewAuthor && (
                     <Alert
                         type="info"
-                        message={`Revisando borrador de ${reviewAuthor.name}`}
+                        title={`Revisando borrador de ${reviewAuthor.name}`}
                         style={{ marginBottom: 16 }}
                         showIcon
                     />
@@ -173,7 +173,7 @@ export default function PageEditor() {
                 {!isAdmin && borradorEstado === 'rechazado' && (
                     <Alert
                         type="error"
-                        message="Borrador rechazado"
+                        title="Borrador rechazado"
                         description={comentarioRechazo || 'El administrador rechazó el borrador sin especificar un motivo.'}
                         style={{ marginBottom: 16 }}
                         showIcon

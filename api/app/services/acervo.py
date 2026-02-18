@@ -1,5 +1,6 @@
 from io import BytesIO
 
+import urllib3
 from fastapi import UploadFile
 from minio import Minio
 from minio.error import S3Error
@@ -11,11 +12,20 @@ settings = get_settings()
 
 class AcervoService:
     def __init__(self):
+        http_client = None
+        if settings.acervo_use_ssl and not settings.acervo_verify_ssl:
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+            http_client = urllib3.PoolManager(
+                cert_reqs="CERT_NONE",
+                retries=urllib3.Retry(total=3, backoff_factor=0.5),
+            )
+
         self.client = Minio(
             settings.acervo_endpoint,
             access_key=settings.acervo_access_key,
             secret_key=settings.acervo_secret_key,
             secure=settings.acervo_use_ssl,
+            http_client=http_client,
         )
         self.bucket_name = settings.acervo_bucket_name
         self._ensure_bucket_exists()

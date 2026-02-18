@@ -58,7 +58,7 @@ def crear_usuarios_ejemplo(db):
 
     usuario_existente = (
         db.query(Usuario)
-        .filter(Usuario.username == "editora1")
+        .filter((Usuario.username == "editora1") | (Usuario.email == "editora@iieg.gob.mx"))
         .first()
     )
     if not usuario_existente:

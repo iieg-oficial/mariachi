@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     acervo_secret_key: str
     acervo_bucket_name: str
     acervo_use_ssl: bool
+    acervo_verify_ssl: bool = True
     cors_origins: list[str]
     admin_prefix: str
     web_prefix: str

@@ -91,7 +91,7 @@ export default function MenuManager() {
             {!isAdmin && borradorEstado === 'rechazado' && (
                 <Alert
                     type="error"
-                    message="Borrador rechazado"
+                    title="Borrador rechazado"
                     description={comentarioRechazo || 'El administrador rechazó el borrador sin especificar un motivo.'}
                     style={{ marginBottom: 16 }}
                     showIcon
@@ -100,7 +100,7 @@ export default function MenuManager() {
 
             {hasChanges && !reviewMode && (
                 <Alert
-                    message="Modo borrador"
+                    title="Modo borrador"
                     description={`Tienes ${changesCount} cambio(s) pendiente(s). ${isAdmin ? 'Los cambios se publicarán directamente.' : 'Envíalos a revisión cuando estén listos.'}`}
                     type="warning"
                     showIcon
@@ -117,7 +117,7 @@ export default function MenuManager() {
 
             {!reviewMode && (
                 <Alert
-                    message="Menú jerárquico con arrastrar y soltar"
+                    title="Menú jerárquico con arrastrar y soltar"
                     description="Arrastra los items para reordenarlos. Usa el botón de editar para modificar cada item."
                     type="info"
                     showIcon

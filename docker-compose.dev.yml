@@ -63,6 +63,7 @@ services:
       ACERVO_SECRET_KEY: ${ACERVO_SECRET_KEY}
       ACERVO_BUCKET_NAME: ${ACERVO_BUCKET_NAME:-iieg-media}
       ACERVO_USE_SSL: ${ACERVO_USE_SSL:-false}
+      ACERVO_VERIFY_SSL: ${ACERVO_VERIFY_SSL:-true}
     networks:
       - portal_network_dev
 
