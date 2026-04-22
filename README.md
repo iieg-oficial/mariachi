@@ -1,4 +1,4 @@
-# Portal IIEG
+# Mariachi
 
 <div align="center">
 
@@ -6,80 +6,119 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688?style=for-the-badge&logo=fastapi)
 ![License](https://img.shields.io/badge/License-MIT-purple?style=for-the-badge)
 
-**Portal del Instituto de Información Estadística y Geográfica de Jalisco**
+**CMS (Mariachi) + Portal público del IIEG**
 
 </div>
 
-## Componentes
+Monorepo con tres componentes que comparten backend e infraestructura:
 
-| Componente | Descripción | Puerto Dev |
-|------------|-------------|------------|
-| **Web** | Portal público con React + Vite + Tailwind | 3010 |
-| **Admin** | Panel de administración con React + Ant Design | 3011 |
-| **Api** | API con FastAPI + PostgreSQL + Redis | 8000 |
+| Componente | Descripción | Puerto dev |
+|---|---|---|
+| **admin** | CMS *Mariachi* con React + Ant Design | 3011 |
+| **web** | Portal público con React + Vite + Tailwind (congelado) | 3010 |
+| **api** | Backend FastAPI + PostgreSQL + Redis | 8000 |
 
-## Inicio Rápido
+En producción y staging se levanta detrás del `gateway-hub` externo (termina SSL, sirve robots/sitemap y headers de seguridad). El `nginx/` interno de este repo queda minimal — solo sirve los estáticos de `admin/` y `web/` y hace proxy a `/api/`.
 
-### Desarrollo
+---
 
-```bash
-# Clonar repositorio
-git clone https://github.com/IIEG/portal.git
-cd portal
+## Inicio rápido
 
-# Levantar infraestructura
-docker compose -f docker-compose.dev.yml up postgres redis minio -d
-
-# Api
-cd api
-cp .env.example .env
-pip install -e ".[dev]"
-uvicorn app.main:app --reload
-
-# Web (nueva terminal)
-cd web
-npm install && npm run dev
-
-# Admin (nueva terminal)
-cd admin
-npm install && npm run dev
-```
-
-### Producción
+### Desarrollo local
 
 ```bash
-docker compose up -d
+# 1. Crear archivos .env a partir de los ejemplos
+make setup
+
+# 2. Editar .env.development con tus credenciales locales
+
+# 3. Levantar
+make up
 ```
 
-## Comandos Útiles (Makefile)
+Accesos locales: web en `http://localhost:3010`, admin en `http://localhost:3011`, api en `http://localhost:8000/api/administrador`.
 
-El proyecto incluye un `Makefile` para facilitar tareas comunes.
+### Staging y producción
 
-Uso: `make <comando> [ENV=dev|prod]` (por defecto `dev`)
+Ambos corren detrás de `gateway-hub` en la red Docker externa `iieg-network`.
+
+```bash
+# Una vez, si la red no existe:
+docker network create iieg-network
+
+# Staging
+make up ENV=staging       # usa .env.staging + docker-compose.yml
+
+# Producción
+make up ENV=prod          # usa .env.production + docker-compose.yml
+```
+
+En el `.env` de `gateway-hub`: `PORTAL_HOST=mariachi-nginx:80`.
+
+---
+
+## Comandos (Makefile)
+
+`make <comando> [ENV=dev|staging|prod]` (por defecto `ENV=dev`).
 
 | Comando | Descripción |
-|---------|-------------|
-| `make up` | Inicia el entorno (en segundo plano) |
-| `make build` | Reconstruye e inicia el entorno |
-| `make down` | Detiene todos los contenedores |
-| `make logs` | Muestra logs en tiempo real |
-| `make restart` | Reinicia el entorno |
-| `make clean` | Elimina contenedores, redes y volúmenes |
-| `make shell-api` | Entra a la terminal del contenedor API |
-| `make shell-web` | Entra a la terminal del contenedor Web |
-| `make shell-admin` | Entra a la terminal del contenedor Admin |
-| `make setup` | Crea archivos .env iniciales |
+|---|---|
+| `make up` | Levanta el entorno en segundo plano |
+| `make build` | Reconstruye imágenes y levanta |
+| `make down` | Detiene contenedores |
+| `make logs` | Sigue logs en vivo |
+| `make restart` | Reinicia |
+| `make clean` | Borra contenedores, redes y volúmenes del entorno |
+| `make shell-api` | Shell dentro del contenedor API |
+| `make shell-admin` / `shell-web` | Shell dentro del contenedor admin / web |
+| `make setup` | Crea `.env.development`, `.env.staging` y `.env.production` desde los `.example` |
+
+---
+
+## Entornos
+
+El comportamiento del backend se bifurca por la variable `ENVIRONMENT` (leída en `api/app/core/settings.py`):
+
+| `ENVIRONMENT` | `docs_url` / `redoc_url` / `openapi_url` | `cookie_secure` | `CORS_ORIGINS` con `*` |
+|---|---|---|---|
+| `development` | configurables | configurable | permitido |
+| `staging` | configurables | configurable | permitido |
+| `production` | forzados a `None` | forzado a `true` | rechazado (error) |
+
+El Makefile elige el `docker-compose.*.yml` y el `.env.*` según `ENV`. El servicio `api` respeta `API_ENV_FILE` para cargar el `.env.*` correcto dentro del contenedor.
+
+---
+
+## CI
+
+Workflows en `.github/workflows/`:
+
+| Workflow | Disparador | Qué hace |
+|---|---|---|
+| `commit-lint` | PRs | Valida Conventional Commits |
+| `ci` | Push a ramas ≠ `develop`/`main`, y PRs | Lanza los 3 jobs reusables en paralelo |
+| `test-backend` | Reusable | `ruff check` + `pytest` sobre `api/` |
+| `test-frontend` | Reusable (`app: admin\|web`) | `npm ci` + `npm run lint` + `npm run build` |
+
+CD queda pendiente hasta que exista un entorno staging activo.
+
+---
 
 ## Documentación
 
 | Documento | Descripción |
-|-----------|-------------|
-| [Arquitectura](./docs/ARCHITECTURE.md) | Estructura del monorepo y stack |
-| [Conexión Frontend](./docs/FRONTEND_CONNECTION.md) | Integración con backend |
-| [Cookies y CSRF](./docs/COOKIES_CSRF.md) | Seguridad de autenticación |
-| [Contribución](./CONTRIBUTING.md) | Guía para contribuidores |
-| [Changelog](./CHANGELOG.md) | Historial de cambios |
+|---|---|
+| [context](./docs/context.md) | Referencia completa del monorepo |
+| [ARCHITECTURE](./docs/ARCHITECTURE.md) | Stack, estructura y diagrama |
+| [DATAENGINE_CREDENTIALS](./docs/DATAENGINE_CREDENTIALS.md) | Provisioning del rol para DataEngine |
+| [ALEMBIC_MULTI_ENV](./docs/ALEMBIC_MULTI_ENV.md) | Migraciones en dos BDs |
+| [COOKIES_CSRF](./docs/COOKIES_CSRF.md) | Modelo de seguridad |
+| [DRAFTS](./docs/DRAFTS.md) | Sistema de borradores y revision queue |
+| [PENDIENTES](./docs/PENDIENTES.md) | Roadmap |
+| [CHANGELOG](./CHANGELOG.md) | Historial de cambios |
+
+---
 
 ## Licencia
 
-[MIT](./LICENSE) - Instituto de Información Estadística y Geográfica de Jalisco
+[MIT](./LICENSE)

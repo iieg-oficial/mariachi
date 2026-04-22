@@ -1,68 +1,80 @@
-# Roadmap - Portal IIEG
+# Roadmap — Mariachi
 
-## v1.0 — Febrero a Agosto 2026
+## v1.0 — 2026
 
-### v1.0-alpha — Feb/Mar 2026 | Estabilización
+### v1.0-alpha | Estabilización
 - [x] Auth, Usuarios, Páginas, Editor, Menú, Media
-- [ ] Corregir start_backend.sh (quitar --reload en producción)
-- [ ] Migración Alembic alineada con modelos actuales (post-destazadero)
+- [ ] Corregir `start_backend.sh` (quitar `--reload` en producción)
+- [x] Migración Alembic alineada con modelos actuales (multi-env `mariachi` + `dataengine`)
+- [x] Tests API: layer_service, stats_templates, auth, users
 - [ ] Tests API: pages, menu, media, public
 - [ ] Tests Admin: smoke tests con Vitest
 
-### v1.0-beta — Abr/May 2026 | CI/CD y QA
-- [ ] GitHub Actions: lint + tests en PR
+### v1.0-beta | CI/CD y QA
+- [x] GitHub Actions: lint + tests en PR (backend con `ruff` + `pytest`, admin y web con `lint` + `build`)
 - [ ] GitHub Actions: build Docker + push a registry
 - [ ] Logging estructurado (JSON) en FastAPI
 - [ ] Script de deploy automatizado (staging → producción)
-- [ ] Revisión de seguridad (CORS, CSRF, cookies, headers)
+- [x] Revisión de seguridad en backend: CORS sin `*` en producción, `cookie_secure` forzado, `docs_url`/`redoc_url` deshabilitados en prod
 - [ ] QA funcional completo en staging
 
-### v1.0-rc — Jun/Jul 2026 | Staging y preparación
-- [ ] Entorno staging con datos reales
+### v1.0-rc | Staging y preparación
+- [x] Entornos separados: `.env.staging.example` y `.env.production.example` con Makefile `ENV=staging|prod`
+- [x] Compatibilidad con `gateway-hub`: nginx HTTP-only en `iieg-network`
+- [ ] Entorno staging con datos reales desplegado
 - [ ] Monitoreo básico (health checks + alertas)
 - [ ] Backup automatizado de PostgreSQL
-- [ ] Certificado SSL renovación automática (certbot/cron)
 - [ ] Pruebas de carga (nginx rate limits, API timeouts)
-- [ ] Documentación de deploy en docs/DEPLOYMENT.md
+- [ ] Documentación de deploy en `docs/DEPLOYMENT.md`
 
-### v1.0 — Agosto 2026 | Producción
+### v1.0 | Producción
 - [ ] Deploy a producción
-- [ ] DNS y SSL final configurado
-- [ ] Verificación robots.txt y sitemap.xml
 - [ ] Google Analytics validado
 - [ ] Capacitación a usuarios (admin + editora)
 
+> **Nota:** SSL, DNS, `robots.txt` y `sitemap.xml` los gestiona el `gateway-hub` arriba — fuera del scope de este repo.
+
 ---
 
-## Caracteristicas pendientes (post v1.0)
+## Módulo de capas (integración MapaLab)
 
-### v1.1 — Octubre 2026
+- [x] Editor del árbol de capas con drag & drop
+- [x] CRUD de capas, metadata y stats sobre DataEngine
+- [x] Introspección de GeoServer (workspaces, capas, campos, estilos)
+- [x] Aprobación de borradores tipo `layer`
+- [x] Rate limiting en memoria para writes y lecturas GeoServer
+- [x] Bulk edit de tags con paste TSV
+- [ ] Credenciales DataEngine provisionadas en producción (ver `DATAENGINE_CREDENTIALS.md`)
+
+---
+
+## Post v1.0
+
+### v1.1
 - Menú: crear items, agregar hijos, eliminar items
 - Menú: editar página desde item
 - Papelera (soft-delete con recuperación)
 - Historial/auditoría de acciones
 
-### v1.2 — Noviembre 2026
-- Aprobaciones y solicitudes de publicación
+### v1.2
+- [x] Aprobaciones y solicitudes de publicación (revision queue)
 - Notificaciones (centro de notificaciones)
 - Roles: diseñadora y viewer
 - Dashboard de inicio
 
-### v1.3 — Diciembre 2026
+### v1.3
 - Estilos globales (colores, tipografía)
 - Layouts (header/footer)
 - Gestión de fuentes tipográficas
 - Iconos personalizados (CRUD SVG)
 - Menú: iconos personalizados (banco de iconos)
 
-### v1.4 — Enero 2027
+### v1.4
 - Búsqueda de contenido (página y global Ctrl+K)
 - Analytics (visitas, dispositivos, tráfico)
-- Sitemap dinámico (generador desde admin)
-- Robots.txt dinámico (editor desde admin)
 - Redirects (redirecciones URL)
 
-### v1.5 — Febrero 2027
+### v1.5
 - Verificador de accesibilidad (PageEditor)
 - Publicación programada (PageEditor)
 - Import/Export de contenido

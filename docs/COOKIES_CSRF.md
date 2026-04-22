@@ -223,7 +223,7 @@ app.add_middleware(
 
 ## 💻 Configuración Frontend (CMS Portal)
 
-### 1. API Service (`frontend/src/services/api.js`)
+### 1. API Service (`admin/src/services/api.js`)
 
 ```javascript
 import axios from 'axios';
@@ -266,7 +266,7 @@ api.interceptors.response.use(
 export default api;
 ```
 
-### 2. Auth Context (`frontend/src/contexts/AuthContext.jsx`)
+### 2. Auth Context (`admin/src/contexts/AuthContext.jsx`)
 
 ```javascript
 const login = async (username, password) => {

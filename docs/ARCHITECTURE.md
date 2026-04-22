@@ -1,278 +1,253 @@
-# Arquitectura del Portal IIEG
+# Arquitectura de Mariachi
 
-## Stack Tecnológico
+## Stack tecnológico
 
-### Portal Web (web/)
-
-| Tecnología | Versión | Uso |
-|------------|---------|-----|
-| React | 19.2.4 | UI library |
-| React Router | 7.13.0 | Routing / SPA navigation |
-| Vite | 7.3.1 | Build tool / dev server |
-| TailwindCSS | 4.1.18 | Estilos (con @tailwindcss/postcss) |
-| Axios | 1.13.3 | HTTP client |
-| React GA4 | 2.1.0 | Google Analytics 4 |
-
-### CMS Admin (admin/)
+### Portal web (`web/`)
 
 | Tecnología | Versión | Uso |
-|------------|---------|-----|
-| React | 19.2.4 | UI library |
-| React Router | 7.13.0 | Routing / SPA navigation |
-| Vite | 7.3.1 | Build tool / dev server |
-| Ant Design | 6.2.2 | Componentes UI del panel admin |
-| @ant-design/icons | 6.1.0 | Iconografía del CMS |
-| Axios | 1.13.3 | HTTP client |
-| @dnd-kit | core 6.3 / sortable 10.0 | Drag & drop (ordenamiento de elementos) |
-| React GA4 | 2.1.0 | Google Analytics 4 |
-| MSW | 2.12.7 | Mock Service Worker (testing) |
+|---|---|---|
+| React | 19.2 | UI library |
+| React Router | 7.13 | Routing / SPA |
+| Vite | 7.3 | Build / dev server |
+| TailwindCSS | 4.1 | Estilos |
+| Axios | 1.13 | HTTP client |
+| React GA4 | 2.1 | Google Analytics 4 |
 
-### Backend (api/)
+### CMS Admin (`admin/`)
 
 | Tecnología | Versión | Uso |
-|------------|---------|-----|
+|---|---|---|
+| React | 19.2 | UI library |
+| React Router | 7.13 | Routing / SPA |
+| Vite | 7.3 | Build / dev server |
+| Ant Design | 6.2 | Componentes del panel admin |
+| @ant-design/icons | 6.1 | Iconografía |
+| Axios | 1.13 | HTTP client |
+| @dnd-kit | 6.3 / 10.0 | Drag & drop (árboles ordenables) |
+| React GA4 | 2.1 | Google Analytics 4 |
+
+### Backend (`api/`)
+
+| Tecnología | Versión | Uso |
+|---|---|---|
 | Python | 3.12 | Runtime |
-| FastAPI | 0.111–0.112 | Framework API REST |
-| Uvicorn | 0.23+ | ASGI server (desarrollo) |
-| Gunicorn + Uvicorn workers | 22–23 | ASGI server (producción) |
+| FastAPI | 0.111–0.112 | Framework API |
+| Uvicorn / Gunicorn | 0.23+ / 22+ | ASGI server |
 | SQLAlchemy | 2.0 | ORM |
-| Alembic | 1.13 | Migraciones de BD |
-| Pydantic / pydantic-settings | 2.5+ | Validación de datos y configuración |
-| python-jose | 3.3+ | JWT tokens (autenticación) |
+| Alembic | 1.13 | Migraciones (multi-env: `mariachi` + `dataengine`) |
+| Pydantic / pydantic-settings | 2.5+ | Validación y configuración |
+| python-jose | 3.3+ | JWT |
 | passlib + bcrypt | 1.7+ / 3.2+ | Hashing de contraseñas |
-| Redis (driver) | 5.0+ | Cliente para cache y sesiones |
+| Redis (driver) | 5.0+ | Cache y sesiones |
 | MinIO (driver) | 7.2+ | Cliente S3 para Acervo |
+| httpx | 0.26+ | Cliente HTTP (GeoServer REST, notificaciones a mapalab) |
 | psycopg2-binary | 2.9+ | Driver PostgreSQL |
-| python-multipart | 0.0.9+ | Upload de archivos |
-| python-dotenv | 1.0+ | Variables de entorno |
 
 ### Dev / Testing
 
 | Tecnología | Versión | Uso |
-|------------|---------|-----|
-| ESLint | 9.39.2 | Linter JS/JSX (web + admin) |
-| Ruff | 0.3+ | Linter + formatter Python |
-| Pytest | 8.0+ | Testing backend |
-| HTTPX | 0.26+ | HTTP client async para tests |
-| pytest-asyncio | 0.23+ | Soporte async en tests |
-| pytest-cov | 4.1+ | Cobertura de tests |
+|---|---|---|
+| ESLint | 9.39+ | Linter JS/JSX (admin + web) |
+| Ruff | 0.3+ | Linter Python |
+| Pytest | 8.0+ | Tests backend |
+| pytest-asyncio | 0.23+ | Tests async |
+| pytest-cov | 4.1+ | Cobertura |
 | Mypy | 1.9+ | Type checking Python |
 
-### Base de Datos
+### Bases de datos
 
-| Tecnología | Versión | Uso |
-|------------|---------|-----|
-| PostgreSQL | 16 (prod) / 18 (dev) | Base de datos relacional del portal |
+| Tecnología | Uso |
+|---|---|
+| PostgreSQL 16 (prod) / 18 (dev) | BD principal del CMS (`iieg_portal`) |
+| PostgreSQL + PostGIS (externa, DataEngine) | Tablas `layers`, `workspaces`, `layer_metadata`, etc. del módulo de capas |
 
-### GIS / Geoespacial
+### Infraestructura
 
-| Tecnología | Versión | Uso |
-|------------|---------|-----|
-| GeoServer | 2.27 Kartoza | Servidor de mapas (WMS/WFS/WCS), proxy vía Nginx |
-| PostGIS | — | Extensión geoespacial en DataEngine |
+| Tecnología | Uso |
+|---|---|
+| Docker + Docker Compose | Orquestación. Dos archivos: `docker-compose.dev.yml` y `docker-compose.yml` (staging/prod) |
+| Nginx Alpine | Servidor de estáticos + proxy a `/api/`. Se levanta en HTTP-only detrás del gateway externo |
+| Make | Automatización (`make up [ENV=dev\|staging\|prod]`) |
 
-### Infraestructura / DevOps
+---
 
-| Tecnología | Versión | Uso |
-|------------|---------|-----|
-| Docker | — | Contenedores para todos los servicios |
-| Docker Compose | — | Orquestación (2 archivos: dev + prod) |
-| Nginx | Alpine | Reverse proxy (producción) + servidor de estáticos |
-| Make | — | Automatización de comandos (make up, make build, make clean) |
-| Node | 24 Alpine | Imagen base para frontend y CMS |
-| Python | 3.12 Slim | Imagen base para backend |
+## Modelo de despliegue
 
-### Arquitectura
+Mariachi no expone puertos al host en staging/prod. Todo el tráfico externo llega al `gateway-hub` (otro repo, Nginx arriba de todos los servicios) y entra a mariachi por la red Docker externa `iieg-network` usando el nombre de servicio `mariachi-nginx:80`.
 
-- Monorepo con 4 directorios: `web/`, `admin/`, `api/`, `nginx/`
-- Red Docker compartida (`portal_network`) para comunicación entre servicios
-- Dos modos: desarrollo (Vite dev server + Uvicorn --reload) y producción (Nginx estático + Gunicorn)
-- Backend: arquitectura en capas — routes → services → models con schemas Pydantic
-- Frontend: estructura por páginas con hooks y contextos compartidos
+El gateway externo resuelve:
 
-## Diagrama de Arquitectura
+- Terminación SSL / HTTP-2.
+- Redirect `80 → 443`.
+- `robots.txt`, `sitemap.xml` y control de `SEO_ENABLED` por entorno.
+- Headers de seguridad (HSTS, X-Frame-Options, CSP, etc.).
+- Proxies a `/mapalab/`, `/acervo/`, `/geoserver/` (servicios vecinos).
+
+El nginx interno de mariachi solo sirve los estáticos de `admin/` (en `/administrador/`) y `web/` (en `/`) y hace proxy a `/api/`. No monta certificados SSL ni maneja redirects.
+
+---
+
+## Diagrama
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': {'background': '#f3f4f6', 'primaryColor': '#f3f4f6', 'lineColor': '#6b7280'}}}%%
 flowchart TB
-    subgraph INTERNET["🌐 Internet"]
-        U["👤 Usuario / Navegador"]
+    U["👤 Usuario"]
+
+    subgraph GW["Gateway externo (otro repo)"]
+        NGX_GW["Nginx :443 SSL + HTTP/2<br/>robots, sitemap, security headers,<br/>rate limit global"]
     end
 
-    subgraph SERVIDOR["🔒 Servidor Principal — iieg.jalisco.gob.mx"]
+    subgraph MARIACHI["Mariachi (este repo)"]
         direction TB
-        NGINX_SSL["Nginx :443 SSL + HTTP/2\n:80 → 301 → :443"]
+        NGX_MA["mariachi-nginx :80<br/>(solo estáticos + /api/)"]
 
-        subgraph RUTAS["Rutas Nginx"]
-            direction TB
-            R_WEB["/ → Portal SPA"]
-            R_CMS["/administrador → CMS"]
-            R_API["/api/ → FastAPI"]
-            R_GEO["/geoserver/ → GeoServer"]
-            R_MAPA["/mapalab/ → MapaLab"]
-            R_ACERVO["/acervo/ → Acervo"]
+        subgraph STATIC["Estáticos (build)"]
+            FE_WEB["web/ → /"]
+            FE_ADMIN["admin/ → /administrador/"]
         end
 
-        subgraph STATIC["Archivos Estáticos"]
-            FE_WEB["Portal React 19 + Vite 7"]
-            FE_CMS["CMS React 19 + Ant Design 5"]
-        end
-
-        subgraph DOCKER["Docker — portal_network"]
-            direction TB
-            API_SVC["FastAPI :8000"]
-
-            subgraph DB_SVC["PostgreSQL 16 :5432"]
-                PG_DB["DB: iieg_portal"]
-                PG_VOL["Volume: postgres_data"]
-                ALEMBIC["Alembic migrations"]
-            end
-
-            subgraph REDIS_SVC["Redis 7 :6379"]
-                REDIS_CACHE["Cache / Sessions"]
-                REDIS_VOL["Volume: redis_data"]
-            end
-        end
+        API_SVC["mariachi-api :8000 (FastAPI)"]
+        PG["mariachi-postgres :5432<br/>DB: iieg_portal"]
+        RD["mariachi-redis :6379"]
     end
 
-    subgraph INST_GEO["🗺️ GeoServer"]
-        subgraph GS_SVC["GeoServer 2.27 Kartoza :8080"]
-            GS_WMS["WMS / WFS / WCS"]
-            GS_DATA["data_dir + plugins"]
-            GS_ACC["🔐 Web restringido\nSolo acceso desde el instituto"]
-        end
+    subgraph EXT["Servicios vecinos"]
+        MAPA["mapalab backend"]
+        ACERVO["Acervo (MinIO S3)"]
+        GSRV["GeoServer"]
+        DE["DataEngine<br/>PostgreSQL + PostGIS"]
     end
 
-    subgraph INST_DE["🗄️ DataEngine"]
-        DE_PG_PRI["PostgreSQL Primary\nPostGIS :5432 SSL"]
-        DE_PG_REP["PostgreSQL Replica :5433"]
-        DE_BKP["pg-backup"]
-    end
+    U -->|HTTPS| NGX_GW
 
-    subgraph INST_MAPA["🧪 MapaLab"]
-        ML_FE["Frontend SPA"]
-        ML_BE["Backend Node.js :3000"]
-    end
+    NGX_GW -->|"/"| NGX_MA
+    NGX_GW -->|"/administrador/"| NGX_MA
+    NGX_GW -->|"/api/"| NGX_MA
+    NGX_GW -->|"/mapalab/"| MAPA
+    NGX_GW -->|"/acervo/"| ACERVO
+    NGX_GW -->|"/geoserver/"| GSRV
 
-    subgraph INST_ACERVO["📦 Acervo"]
-        ACERVO_S3["MinIO S3-compatible\n:9000 API · :9001 Console"]
-        BKT_PORTAL["Bucket: iieg-portal"]
-        BKT_MAPA["Bucket: mapalab"]
-        BKT_BKP["Bucket: backups"]
-    end
+    NGX_MA --> STATIC
+    NGX_MA -->|"proxy /api/"| API_SVC
 
-    U -->|"HTTPS :443"| NGINX_SSL
-    NGINX_SSL --> RUTAS
+    API_SVC -->|SQL| PG
+    API_SVC -->|TCP| RD
+    API_SVC -->|S3 HTTPS| ACERVO
+    API_SVC -->|SQL| DE
+    API_SVC -->|REST| GSRV
+    API_SVC -->|HTTP notify| MAPA
 
-    R_WEB --> FE_WEB
-    R_CMS --> FE_CMS
-    R_API -->|"HTTP :8000"| API_SVC
-    R_GEO -->|"HTTP :8080"| GS_SVC
-    R_MAPA -->|"HTTP :3000"| ML_BE
-    R_ACERVO -->|"HTTPS"| ACERVO_S3
-
-    API_SVC -->|"SQL :5432"| DB_SVC
-    API_SVC -->|"TCP :6379"| REDIS_SVC
-    API_SVC -->|"HTTPS S3"| BKT_PORTAL
-
-    GS_SVC -->|"SQL :5432"| DE_PG_PRI
-
-    ML_BE -->|"SQL :5233 solo lectura"| DE_PG_REP
-    ML_BE -->|"HTTPS S3"| BKT_MAPA
-
-    DE_PG_PRI -->|"replicación"| DE_PG_REP
-    DE_PG_PRI -->|"dump"| DE_BKP
-    DE_BKP -->|"HTTPS S3"| BKT_BKP
-
-    style INTERNET fill:#ede9fe,stroke:#7c3aed,color:#4c1d95,font-weight:bold
-    style SERVIDOR fill:#eff6ff,stroke:#3b82f6,color:#1e3a8a,font-weight:bold
-    style RUTAS fill:#dbeafe,stroke:#60a5fa,color:#1e40af,font-weight:bold
-    style STATIC fill:#dbeafe,stroke:#60a5fa,color:#1e40af,font-weight:bold
-    style DOCKER fill:#ecfdf5,stroke:#22c55e,color:#065f46,font-weight:bold
-    style API_SVC fill:#86efac,stroke:#16a34a,color:#14532d,font-weight:bold
-    style DB_SVC fill:#fde68a,stroke:#f59e0b,color:#78350f,font-weight:bold
-    style REDIS_SVC fill:#fecaca,stroke:#ef4444,color:#7f1d1d,font-weight:bold
-    style INST_GEO fill:#fff7ed,stroke:#f97316,color:#7c2d12,font-weight:bold
-    style GS_SVC fill:#fdba74,stroke:#ea580c,color:#431407,font-weight:bold
-    style INST_DE fill:#fef2f2,stroke:#ef4444,color:#7f1d1d,font-weight:bold
-    style INST_MAPA fill:#ecfeff,stroke:#22d3ee,color:#164e63,font-weight:bold
-    style INST_ACERVO fill:#faf5ff,stroke:#a855f7,color:#581c87,font-weight:bold
+    style GW fill:#ede9fe,stroke:#7c3aed,color:#4c1d95,font-weight:bold
+    style MARIACHI fill:#ecfdf5,stroke:#22c55e,color:#065f46,font-weight:bold
+    style STATIC fill:#dbeafe,stroke:#60a5fa,color:#1e40af
+    style EXT fill:#fff7ed,stroke:#f97316,color:#7c2d12,font-weight:bold
+    style NGX_GW fill:#c4b5fd,stroke:#7c3aed,color:#4c1d95
+    style NGX_MA fill:#86efac,stroke:#16a34a,color:#14532d
+    style API_SVC fill:#86efac,stroke:#16a34a,color:#14532d
+    style PG fill:#fde68a,stroke:#f59e0b,color:#78350f
+    style RD fill:#fecaca,stroke:#ef4444,color:#7f1d1d
+    style DE fill:#fecaca,stroke:#ef4444,color:#7f1d1d
 ```
 
-## Estructura del Monorepo
+---
+
+## Estructura del monorepo
 
 ```
-portal/
-├── backend/              # API FastAPI
+mariachi/
+├── api/                              # Backend FastAPI
 │   ├── app/
-│   │   ├── api/routes/   # Endpoints
-│   │   ├── core/         # Config, security, database
-│   │   ├── models/       # SQLAlchemy models
-│   │   ├── schemas/      # Pydantic schemas
-│   │   └── services/     # Business logic
-│   ├── alembic/          # Migraciones DB
-│   └── scripts/          # Scripts de utilidad
+│   │   ├── main.py                   # create_app
+│   │   ├── api/
+│   │   │   ├── deps.py               # get_current_user, verify_csrf, require_role
+│   │   │   ├── rate_limit.py         # Sliding window en memoria
+│   │   │   └── routes/               # auth, users, pages, menu, media, borradores,
+│   │   │                             # layers, layer_metadata, geoserver, preview, public
+│   │   ├── core/
+│   │   │   ├── settings.py           # Pydantic settings + bifurcación por ENVIRONMENT
+│   │   │   ├── database.py           # engine principal + get_dataengine_db (lazy)
+│   │   │   └── security.py           # JWT + CSRF
+│   │   ├── models/                   # user, page, menu_item, media, borrador, layer*
+│   │   ├── schemas/                  # Pydantic request/response
+│   │   └── services/                 # acervo, geoserver_client, layer_service,
+│   │                                 # mapalab_notifier, stats_templates
+│   ├── alembic/
+│   │   ├── versions/mariachi/        # Migraciones de iieg_portal
+│   │   └── versions/dataengine/      # Migraciones del schema mapalab en DataEngine
+│   ├── scripts/                      # init_db, seed_layers, migrate_mapalab_card
+│   └── tests/
 │
-├── frontend/             # Portal público (React)
-│   └── frontend/
-│       ├── src/
-│       │   ├── components/
-│       │   ├── pages/
-│       │   ├── hooks/
-│       │   ├── services/
-│       │   └── contexts/
-│       └── public/
+├── admin/                            # CMS (Ant Design)
+│   └── src/
+│       ├── main.jsx
+│       ├── pages/                    # Login, PageEditor, MenuManager, Media,
+│       │                             # RevisionQueue, Users, MapalabLayers
+│       ├── components/
+│       │   ├── MainLayout.jsx        # Menú lateral (Portalito + Mapalab)
+│       │   └── layersEditor/         # Drawers y JSON editor para capas
+│       ├── hooks/                    # useLayerTreeAdmin, etc.
+│       ├── contexts/                 # AuthContext
+│       └── services/                 # apiService con CSRF
 │
-├── cms/                  # CMS Admin (React + Ant Design)
-│   └── frontend/
-│       ├── src/
-│       │   ├── components/
-│       │   ├── pages/
-│       │   ├── hooks/
-│       │   ├── services/
-│       │   └── contexts/
-│       └── public/
+├── web/                              # Portal público (congelado)
+│   └── src/
+│       ├── main.jsx
+│       ├── pages/
+│       ├── components/
+│       └── services/apiService.js
 │
-└── docs/                 # Documentación adicional
+├── nginx/                            # Proxy HTTP-only interno
+│   ├── nginx.conf
+│   ├── conf.d/mariachi.conf          # listen 80, /api/ proxy, estáticos admin/web
+│   └── Dockerfile                    # multi-stage: web-builder + admin-builder + nginx
+│
+├── scripts/                          # Scripts de gestión
+│   ├── migrate-acervo-bucket.sh
+│   └── rename-github-repo.sh
+│
+├── docs/                             # Esta documentación
+├── .github/workflows/                # CI (commit-lint, ci, test-backend, test-frontend)
+├── docker-compose.yml                # staging / producción
+├── docker-compose.dev.yml            # desarrollo local
+├── Makefile
+├── .env.example
+├── .env.development.example
+├── .env.staging.example
+├── .env.production.example
+└── CHANGELOG.md
 ```
 
-## Flujos de Trabajo
+---
 
-### Desarrollo Local
+## Red Docker
 
-```bash
-# Levantar servicios de infraestructura
-docker compose -f docker-compose.dev.yml up postgres redis minio -d
+| Red | Tipo | Servicios | Propósito |
+|---|---|---|---|
+| `mariachi_network` | Bridge interna (este repo) | `api`, `postgres`, `redis`, `nginx` | Comunicación intra-mariachi |
+| `iieg-network` | External (compartida) | `nginx` + `api` también se conectan | Interop con gateway-hub y servicios vecinos (mapalab, acervo, geoserver, dataengine) |
 
-# Backend
-cd backend && uvicorn app.main:app --reload --port 8000
+En dev (`docker-compose.dev.yml`) no existe `nginx` — los frontends corren directo en Vite (3010/3011), el API en 8000, y no se necesita `iieg-network`.
 
-# Frontend (puerto 3010)
-cd frontend && npm run dev
-
-# CMS (puerto 3011)
-cd cms && npm run dev
-```
-
-### Producción
-
-```bash
-docker compose up -d
-```
+---
 
 ## Puertos
 
-| Servicio | Desarrollo | Producción |
-|----------|------------|------------|
-| Frontend | 3010 | 80 (nginx) |
-| CMS | 3011 | 80 (nginx) |
-| Backend | 8000 | 8000 |
-| PostgreSQL | 5432 | 5432 |
-| Redis | 6379 | 6379 |
-| MinIO API | 9000 | 9000 |
-| MinIO Console | 9001 | 9001 |
+| Servicio | Dev | Staging / Prod |
+|---|---|---|
+| `web` (Vite) | 3010 | — (servido como estático por nginx) |
+| `admin` (Vite) | 3011 | — (servido como estático por nginx) |
+| `api` | 8000 | interno (via proxy de nginx) |
+| `nginx` | — | `expose: 80` en `iieg-network`, sin puertos al host |
+| `postgres` | 5432 | interno |
+| `redis` | 6379 | interno |
 
-## Documentación Adicional
+---
 
-- [Conexión Frontend-Backend](./FRONTEND_CONNECTION.md)
-- [Cookies y CSRF](./COOKIES_CSRF.md)
+## Documentación relacionada
+
+- [context](./context.md) — referencia completa del monorepo
+- [DATAENGINE_CREDENTIALS](./DATAENGINE_CREDENTIALS.md) — provisioning del rol para DataEngine
+- [ALEMBIC_MULTI_ENV](./ALEMBIC_MULTI_ENV.md) — migraciones multi-BD
+- [COOKIES_CSRF](./COOKIES_CSRF.md) — modelo de seguridad
+- [DRAFTS](./DRAFTS.md) — borradores y revision queue

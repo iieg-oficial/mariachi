@@ -71,9 +71,8 @@ Rutas del backend (prefijos):
 | Ant Design | 6.2.2 |
 | @dnd-kit core / sortable | 6.3 / 10.0 |
 | Axios | 1.13.3 |
-| MSW | 2.12.7 (testing) |
 
-Paginas: `Login`, `PageEditor`, `MenuManager`, `Media`, `RevisionQueue`, `Users`, `ChangePassword`.
+Paginas: `Login`, `PageEditor`, `MenuManager`, `Media`, `RevisionQueue`, `Users`, `ChangePassword`, `MapalabLayers`.
 
 ### Portal web publico (`web/`) — congelado
 
@@ -413,7 +412,6 @@ Este repo se integra con otros servicios internos vecinos (CMS, visor de mapas, 
 - `docs/CONVENTIONS_FRONTEND.md` — convenciones web (Tailwind)
 - `docs/COOKIES_CSRF.md` — modelo de seguridad
 - `docs/DRAFTS.md` — sistema de borradores y revision queue
-- `docs/FRONTEND_CONNECTION.md` — conexion frontend-backend
 - `docs/DATAENGINE_CREDENTIALS.md` — requerimientos para credenciales DataEngine
 - `docs/ALEMBIC_MULTI_ENV.md` — migraciones en dos BDs (`-x db=mariachi|dataengine`)
 - `scripts/rename-github-repo.sh` — actualiza remote local tras rename en GitHub
