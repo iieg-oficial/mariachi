@@ -1,9 +1,9 @@
-name: portal-dev
+name: mariachi-dev
 
 services:
   postgres:
     image: postgres:18-alpine
-    container_name: portal-postgres-dev
+    container_name: mariachi-postgres-dev
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-iieg_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-iieg_password}
@@ -18,11 +18,11 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - portal_network_dev
+      - mariachi_network_dev
 
   redis:
     image: redis:8-alpine
-    container_name: portal-redis-dev
+    container_name: mariachi-redis-dev
     ports:
       - "${REDIS_PORT:-6379}:6379"
     volumes:
@@ -33,13 +33,13 @@ services:
       timeout: 5s
       retries: 5
     networks:
-      - portal_network_dev
+      - mariachi_network_dev
 
   api:
     build:
       context: ./api
       dockerfile: Dockerfile
-    container_name: portal-api-dev
+    container_name: mariachi-api-dev
     command: ./scripts/start_backend.sh
     ports:
       - "${API_PORT:-8000}:8000"
@@ -65,11 +65,11 @@ services:
       ACERVO_USE_SSL: ${ACERVO_USE_SSL:-false}
       ACERVO_VERIFY_SSL: ${ACERVO_VERIFY_SSL:-true}
     networks:
-      - portal_network_dev
+      - mariachi_network_dev
 
   web:
     image: node:24-alpine
-    container_name: portal-web-dev
+    container_name: mariachi-web-dev
     working_dir: /app
     command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
     ports:
@@ -83,11 +83,11 @@ services:
       - VITE_PORT=3010
       - VITE_GOOGLE_ANALYTICS_ID=${VITE_GOOGLE_ANALYTICS_ID}
     networks:
-      - portal_network_dev
+      - mariachi_network_dev
 
   admin:
     image: node:24-alpine
-    container_name: portal-admin-dev
+    container_name: mariachi-admin-dev
     working_dir: /app
     command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
     ports:
@@ -101,7 +101,7 @@ services:
       - VITE_PORT=3011
       - VITE_GOOGLE_ANALYTICS_ID=${VITE_GOOGLE_ANALYTICS_ID}
     networks:
-      - portal_network_dev
+      - mariachi_network_dev
 
 volumes:
   postgres_data_dev:
@@ -111,5 +111,5 @@ volumes:
 
 
 networks:
-  portal_network_dev:
+  mariachi_network_dev:
     driver: bridge

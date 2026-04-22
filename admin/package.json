@@ -1,9 +1,9 @@
 {
-    "name": "admin-portal",
+    "name": "mariachi-admin",
     "description": "Portal web del administrador del portal para el IIEG",
     "license": "MIT",
     "author": "Edgar Alejandro Villarreal Padilla <edgar.villarreal@iieg.gob.mx>",
-    "version": "1.0.0",
+    "version": "0.9.0",
     "type": "module",
     "scripts": {
         "dev": "vite",

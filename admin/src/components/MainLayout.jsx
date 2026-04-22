@@ -6,7 +6,10 @@ import {
     MenuOutlined,
     FileImageOutlined,
     LockOutlined,
-    AuditOutlined
+    AuditOutlined,
+    GlobalOutlined,
+    EnvironmentOutlined,
+    PartitionOutlined
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router';
 import { useAuth } from '@contexts/AuthContext';
@@ -39,16 +42,17 @@ export default function MainLayout() {
             .catch(() => {});
     }, [user]);
 
-    const menuItems = [];
+    const portalitoChildren = [];
+    const mapalabChildren = [];
 
     if (user?.role === 'tetlamamakani') {
-        menuItems.push({
+        portalitoChildren.push({
             key: '/users',
             icon: <TeamOutlined />,
             label: 'Usuarios',
             onClick: () => navigate('/users')
         });
-        menuItems.push({
+        portalitoChildren.push({
             key: '/revision',
             icon: <AuditOutlined />,
             label: pendingCount > 0
@@ -59,18 +63,42 @@ export default function MainLayout() {
     }
 
     if (user?.role === 'tetlamamakani' || user?.role === 'editora') {
-
-        menuItems.push({
+        portalitoChildren.push({
             key: '/media',
             icon: <FileImageOutlined />,
             label: 'Media',
             onClick: () => navigate('/media')
         });
-        menuItems.push({
+        portalitoChildren.push({
             key: '/menu',
             icon: <MenuOutlined />,
             label: 'Menú',
             onClick: () => navigate('/menu')
+        });
+
+        mapalabChildren.push({
+            key: '/mapalab/layers',
+            icon: <PartitionOutlined />,
+            label: 'Capas',
+            onClick: () => navigate('/mapalab/layers')
+        });
+    }
+
+    const menuItems = [];
+    if (portalitoChildren.length > 0) {
+        menuItems.push({
+            key: 'portalito',
+            icon: <GlobalOutlined />,
+            label: 'Portalito',
+            children: portalitoChildren
+        });
+    }
+    if (mapalabChildren.length > 0) {
+        menuItems.push({
+            key: 'mapalab',
+            icon: <EnvironmentOutlined />,
+            label: 'Mapalab',
+            children: mapalabChildren
         });
     }
 
@@ -109,12 +137,13 @@ export default function MainLayout() {
                     fontSize: collapsed ? 16 : 20,
                     fontWeight: 'bold'
                 }}>
-                    {collapsed ? 'CMS' : 'CMS Portal'}
+                    {collapsed ? 'MA' : 'Mariachi'}
                 </div>
                 <Menu
                     theme="dark"
                     mode="inline"
                     selectedKeys={[location.pathname]}
+                    defaultOpenKeys={location.pathname.startsWith('/mapalab') ? ['mapalab'] : ['portalito']}
                     items={menuItems}
                 />
             </Sider>

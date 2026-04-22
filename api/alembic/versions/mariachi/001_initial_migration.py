@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 revision = '001'
 down_revision = None
-branch_labels = None
+branch_labels = ('mariachi',)
 depends_on = None
 
 

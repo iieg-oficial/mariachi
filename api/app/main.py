@@ -3,7 +3,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import auth, borradores, media, menu, pages, preview, public, users
+from app.api import metrics as metrics_module
+from app.api.routes import auth, borradores, geoserver, layer_metadata, layers, media, menu, pages, preview, public, users
 from app.core.settings import get_settings
 
 settings = get_settings()
@@ -38,9 +39,13 @@ def create_app() -> FastAPI:
     app.include_router(menu.router, prefix=settings.admin_prefix)
     app.include_router(media.router, prefix=settings.admin_prefix)
     app.include_router(borradores.router, prefix=settings.admin_prefix)
+    app.include_router(layers.router, prefix=settings.admin_prefix)
+    app.include_router(layer_metadata.router, prefix=settings.admin_prefix)
+    app.include_router(geoserver.router, prefix=settings.admin_prefix)
     app.include_router(preview.admin_router, prefix=settings.admin_prefix)
     app.include_router(preview.public_router, prefix=settings.web_prefix)
     app.include_router(public.router, prefix=settings.web_prefix)
+    app.include_router(metrics_module.router)
 
     @app.get("/", tags=["health"])
     async def healthcheck():

@@ -1,8 +1,9 @@
+import { lazy, Suspense } from 'react';
 import { createBrowserRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 import { createRoot } from 'react-dom/client'
 import ReactGA from 'react-ga4';
-import { Result } from 'antd';
+import { Result, Spin } from 'antd';
 import './index.css'
 import { AuthProvider } from '@contexts/AuthContext';
 import MainProvider from '@providers/MainProvider';
@@ -12,12 +13,22 @@ import ErrorBoundary from '@components/ErrorBoundary';
 import MainLayout from '@components/MainLayout';
 import { Navigate } from 'react-router';
 import Login from '@pages/Login';
-import Users from '@pages/Users';
-import MenuManager from '@pages/MenuManager';
-import PageEditor from '@pages/PageEditor';
-import Media from '@pages/Media';
 import ChangePassword from '@pages/ChangePassword';
-import RevisionQueue from '@pages/RevisionQueue';
+
+const Users = lazy(() => import('@pages/Users'));
+const MenuManager = lazy(() => import('@pages/MenuManager'));
+const PageEditor = lazy(() => import('@pages/PageEditor'));
+const Media = lazy(() => import('@pages/Media'));
+const RevisionQueue = lazy(() => import('@pages/RevisionQueue'));
+const MapalabLayers = lazy(() => import('@pages/MapalabLayers'));
+
+const PageFallback = () => (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+        <Spin tip="Cargando..." />
+    </div>
+);
+
+const withSuspense = (node) => <Suspense fallback={<PageFallback />}>{node}</Suspense>;
 
 const { DEV, VITE_GOOGLE_ANALYTICS_ID } = import.meta.env;
 
@@ -52,7 +63,7 @@ const router = createBrowserRouter([
                     { index: true, element: <Navigate to="menu" replace /> },
                     {
                         path: 'users',
-                        element: (
+                        element: withSuspense(
                             <RoleProtectedRoute allowedRoles={['tetlamamakani']}>
                                 <Users />
                             </RoleProtectedRoute>
@@ -60,7 +71,7 @@ const router = createBrowserRouter([
                     },
                     {
                         path: 'revision',
-                        element: (
+                        element: withSuspense(
                             <RoleProtectedRoute allowedRoles={['tetlamamakani']}>
                                 <RevisionQueue />
                             </RoleProtectedRoute>
@@ -68,7 +79,7 @@ const router = createBrowserRouter([
                     },
                     {
                         path: 'menu',
-                        element: (
+                        element: withSuspense(
                             <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
                                 <MenuManager />
                             </RoleProtectedRoute>
@@ -77,7 +88,7 @@ const router = createBrowserRouter([
 
                     {
                         path: 'pages/edit/:id',
-                        element: (
+                        element: withSuspense(
                             <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
                                 <PageEditor />
                             </RoleProtectedRoute>
@@ -85,9 +96,17 @@ const router = createBrowserRouter([
                     },
                     {
                         path: 'media',
-                        element: (
+                        element: withSuspense(
                             <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
                                 <Media />
+                            </RoleProtectedRoute>
+                        )
+                    },
+                    {
+                        path: 'mapalab/layers',
+                        element: withSuspense(
+                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
+                                <MapalabLayers />
                             </RoleProtectedRoute>
                         )
                     },
