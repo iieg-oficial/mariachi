@@ -1,6 +1,0 @@
-User-agent: *
-Allow: /
-Disallow: /administrador/
-Disallow: /api/
-
-Sitemap: https://iieg.gob.mx/sitemap.xml
