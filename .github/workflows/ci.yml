@@ -1,0 +1,20 @@
+name: CI
+
+on:
+  push:
+    branches-ignore: [develop, main]
+  pull_request:
+
+jobs:
+  backend:
+    uses: ./.github/workflows/test-backend.yml
+
+  admin:
+    uses: ./.github/workflows/test-frontend.yml
+    with:
+      app: admin
+
+  web:
+    uses: ./.github/workflows/test-frontend.yml
+    with:
+      app: web

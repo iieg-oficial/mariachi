@@ -1,0 +1,43 @@
+name: Test Frontend
+
+on:
+  workflow_call:
+    inputs:
+      app:
+        description: 'Subcarpeta del frontend a testear (admin o web)'
+        required: true
+        type: string
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./${{ inputs.app }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: 'npm'
+          cache-dependency-path: ${{ inputs.app }}/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        env:
+          VITE_WEB_API_URL: http://localhost:8000/api/portal
+          VITE_ADMIN_API_URL: http://localhost:8000/api/administrador
+          VITE_API_TIMEOUT: 10000
+          VITE_ADMIN_API_TIMEOUT: 10000
+          VITE_APP_NAME: Portal
+          VITE_ADMIN_APP_NAME: Admin
+          VITE_NODE_ENV: production
+        run: npm run build
