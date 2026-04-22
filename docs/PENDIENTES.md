@@ -38,12 +38,18 @@
 
 ## Módulo de capas (integración MapaLab)
 
-- [x] Editor del árbol de capas con drag & drop
+- [x] Editor del árbol de capas con drag & drop (Ant Design `Tree.draggable`)
 - [x] CRUD de capas, metadata y stats sobre DataEngine
 - [x] Introspección de GeoServer (workspaces, capas, campos, estilos)
-- [x] Aprobación de borradores tipo `layer`
+- [x] Aprobación de borradores tipo `layer` (polimórficos con `resource_type`)
 - [x] Rate limiting en memoria para writes y lecturas GeoServer
-- [x] Bulk edit de tags con paste TSV
+- [x] Bulk edit de tags con paste TSV (`BulkTagsDrawer`)
+- [x] Selector GeoServer dinámico en drawer de edición
+- [x] Editor JSON para `infobox_config` custom (`InfoBoxJsonEditor`)
+- [x] Formularios dinámicos por preset InfoBox (`InfoBoxPresetForm`)
+- [x] Preview de InfoBox con datos dummy (`InfoBoxPreview`)
+- [x] Observabilidad `/metrics` Prometheus + integración con huachicol
+- [x] Tests integración cruzada mariachi → mapalab (`test_integration_notify.py`)
 - [ ] Credenciales DataEngine provisionadas en producción (ver `DATAENGINE_CREDENTIALS.md`)
 
 ---

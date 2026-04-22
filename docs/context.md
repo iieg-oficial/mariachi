@@ -269,15 +269,19 @@ Requieren cookie JWT valida + CSRF en writes.
 | Metodo | Ruta | Funcion |
 |---|---|---|
 | GET/POST/PUT/DELETE/PATCH | `/api/administrador/layers/*` | CRUD de capas en DataEngine via `get_dataengine_db()`. Invalida `mapalab.layer_tree_cache` via `notify_tree_changed()` |
+| PATCH | `/api/administrador/layers/reorder` | Reordena hijos de un padre (drag & drop, admin-only) |
+| PATCH | `/api/administrador/layers/bulk-tags` | Edicion masiva de tags (max 500 por request) |
 | GET/PUT | `/api/administrador/layer-metadata/{layer_key}` | CRUD de metadata descriptiva (`mapalab.layer_metadata`) |
 | GET/PUT | `/api/administrador/layer-metadata/{layer_key}/stats` | CRUD de numeralia + stats_config (`mapalab.layer_stats`) |
 | GET | `/api/administrador/geoserver/*` | Introspeccion GeoServer REST (workspaces, campos, estilos) |
 | POST | `/api/administrador/borradores/por-id/{id}/aprobar` | Aprueba borrador; si `resource_type='layer'`, materializa en DataEngine |
+| GET | `/metrics` | Metricas Prometheus (sin auth, usado por huachicol) |
 
-Editor UI: `admin/src/pages/MapalabLayers.jsx` con Ant Design Tree + drawer.
-Script de migracion 1-shot: `api/scripts/migrate_mapalab_card.py` (copio `public.mapalab_card` → `mapalab.layer_metadata` + `mapalab.layer_stats`).
+Rate limiting: writes en 60 req/min por usuario, reads de GeoServer en 120 req/min. Responde `429` con header `Retry-After`.
 
-Ver la documentacion interna de mapalab para la arquitectura completa.
+Editor UI: `admin/src/pages/MapalabLayers.jsx` con Ant Design Tree + drawer. Componentes del drawer de InfoBox en `admin/src/components/layersEditor/`: `InfoBoxPresetForm`, `InfoBoxPreview`, `InfoBoxJsonEditor`.
+
+Ver la documentacion interna de mapalab (`/IIEG/mapalab/docs/layers.md`, `infobox.md`) para la arquitectura completa.
 
 ---
 

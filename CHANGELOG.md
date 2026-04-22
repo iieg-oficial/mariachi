@@ -13,6 +13,43 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.12.0] - 2026-04-22
+
+Editor de capas avanzado (drag & drop, preview InfoBox, editor JSON custom, formularios por preset), endpoint `/metrics` Prometheus y code-split del admin.
+
+### Agregado
+
+- **Drag & drop de reorden** en `MapalabLayers.jsx` vía `Tree.draggable`. Solo admin, solo siblings con mismo padre. Usa `PATCH /layers/reorder`.
+- **`BulkTagsDrawer`** del release anterior ahora visible solo para admin desde el extra del card.
+- **Editor InfoBox enriquecido** en `LayerEditDrawer.jsx`:
+    - `InfoBoxPresetForm.jsx` renderiza campos específicos por preset (`municipio`, `punto`, `punto_municipio`, `punto_ubicacion`, `punto_completo`).
+    - `InfoBoxPreview.jsx` muestra preview con datos dummy (badges de municipio/característica, listas, iconText, stats, texto).
+    - `InfoBoxJsonEditor.jsx` para preset `custom` (textarea monospace con validación JSON en vivo; `key={layer.id}` para evitar contaminación entre capas).
+    - Form incluye `infoboxParams` (dict) e `infoboxConfig` (JSON custom).
+- **Endpoint `/metrics`** en `app/api/metrics.py` (formato Prometheus plain text). Contadores:
+    - `mariachi_rate_limit_hits_total` — incrementado en `app/api/rate_limit.py`.
+    - `mariachi_tree_notify_total` — incrementado en `app/services/mapalab_notifier.py`.
+    - `mariachi_geoserver_calls_total` — incrementado en los 3 endpoints de `routes/geoserver.py`.
+    - Sin dependencias nuevas: `defaultdict[str, int]` + `threading.Lock`.
+- **Code-split del admin** en `src/main.jsx`: `React.lazy()` + `Suspense` para `Users`, `MenuManager`, `PageEditor`, `Media`, `RevisionQueue`, `MapalabLayers`. Chunks separados por página (`MapalabLayers` ~43 kB, ~15 kB gzip). Bundle inicial no carga tree ni editor rico.
+- **Tests integración cruzada** (`tests/test_integration_notify.py`):
+    - Notifier skip cuando `mapalab_backend_url` vacío.
+    - Notifier POST a `/layers/refresh-cache` con URL correcta (mock via `httpx.MockTransport`).
+    - Debounce consolida 5 llamadas en 1 single hit.
+    - `/metrics` devuelve `text/plain; version=0.0.4`.
+    - `incr()` thread-safe (10 threads × 1000 incrementos == 10_000 final).
+
+### Cambiado
+
+- `useLayerTreeAdmin` expone `reorderLayers(parentId, orderedIds)` además de los hooks previos.
+- `LayerEditDrawer` usa `Form.useWatch` en 5 campos (workspaceAlias, geoserverLayer, infoboxTemplate, infoboxParams, infoboxConfig) — elimina todo state paralelo.
+
+### Integración huachicol
+
+- `MARIACHI_BACKEND_TARGET` agregado a `scripts/generate-targets.sh` y `.env.example` del stack de monitoreo. Prometheus (file_sd) detecta el target en ~30s tras `make targets`.
+
+---
+
 ## [0.11.0] - 2026-04-22
 
 Mariachi ahora se levanta detrás de `gateway-hub` en la red `iieg-network`. El nginx interno queda minimal: solo sirve los estáticos de `admin/` y `web/`, y hace proxy a `/api/`. Gateway-hub arriba se encarga de SSL, redirects, `robots.txt`, `sitemap.xml`, headers de seguridad y proxies a `mapalab`, `acervo` y `geoserver`.

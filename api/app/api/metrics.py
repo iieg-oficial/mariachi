@@ -1,0 +1,36 @@
+from __future__ import annotations
+
+import threading
+from collections import defaultdict
+
+from fastapi import APIRouter, Response
+
+_counters: dict[str, int] = defaultdict(int)
+_lock = threading.Lock()
+
+COUNTER_RATE_LIMIT_HITS = 'mariachi_rate_limit_hits_total'
+COUNTER_TREE_NOTIFY = 'mariachi_tree_notify_total'
+COUNTER_GEOSERVER_CALLS = 'mariachi_geoserver_calls_total'
+COUNTER_LAYER_WRITES = 'mariachi_layer_writes_total'
+COUNTER_LAYER_READS = 'mariachi_layer_reads_total'
+
+
+def incr(name: str, amount: int = 1) -> None:
+    with _lock:
+        _counters[name] += amount
+
+
+def _render_prometheus() -> str:
+    lines: list[str] = []
+    for name, value in sorted(_counters.items()):
+        lines.append(f'# TYPE {name} counter')
+        lines.append(f'{name} {value}')
+    return '\n'.join(lines) + '\n'
+
+
+router = APIRouter(tags=['metrics'])
+
+
+@router.get('/metrics', include_in_schema=False)
+async def metrics() -> Response:
+    return Response(content=_render_prometheus(), media_type='text/plain; version=0.0.4')
