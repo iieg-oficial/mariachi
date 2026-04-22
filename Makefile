@@ -1,5 +1,5 @@
-# Makefile para IIEG Portal
-# Gestiona comandos de desarrollo y producción para Docker Compose
+# Makefile para IIEG Mariachi (CMS) + Portal (web publico)
+# Gestiona comandos de desarrollo, staging y producción para Docker Compose
 
 # Colores para output
 GREEN  := $(shell tput -Txterm setaf 2)
@@ -13,8 +13,12 @@ ENV ?= dev
 # Configuración según entorno
 ifeq ($(ENV),prod)
 	COMPOSE_FILE := docker-compose.yml
-	ENV_FILE     := .env
+	ENV_FILE     := .env.production
 	MSG_ENV      := Producción
+else ifeq ($(ENV),staging)
+	COMPOSE_FILE := docker-compose.yml
+	ENV_FILE     := .env.staging
+	MSG_ENV      := Staging
 else
 	COMPOSE_FILE := docker-compose.dev.yml
 	ENV_FILE     := .env.development
@@ -26,9 +30,9 @@ endif
 ## Muestra ayuda de comandos disponibles
 help:
 	@echo ''
-	@echo '${YELLOW}IIEG Portal - Comandos disponibles${RESET}'
+	@echo '${YELLOW}IIEG Mariachi (CMS) + Portal - Comandos disponibles${RESET}'
 	@echo ''
-	@echo 'Uso: ${YELLOW}make <comando> [ENV=dev|prod]${RESET}'
+	@echo 'Uso: ${YELLOW}make <comando> [ENV=dev|staging|prod]${RESET}'
 	@echo '     (Por defecto ENV=dev)'
 	@echo ''
 	@echo '${GREEN}Comandos Generales:${RESET}'
@@ -52,18 +56,18 @@ help:
 
 up:
 	@echo "${GREEN}Iniciando entorno de $(MSG_ENV)...${RESET}"
-	docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) up -d
+	API_ENV_FILE=$(ENV_FILE) docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) up -d
 
 build:
 	@echo "${GREEN}Reconstruyendo entorno de $(MSG_ENV)...${RESET}"
-	docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) up -d --build
+	API_ENV_FILE=$(ENV_FILE) docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) up -d --build
 
 down:
 	@echo "${YELLOW}Deteniendo entorno de $(MSG_ENV)...${RESET}"
-	docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) down
+	API_ENV_FILE=$(ENV_FILE) docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) down
 
 logs:
-	docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) logs -f
+	API_ENV_FILE=$(ENV_FILE) docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) logs -f
 
 restart: down up
 
@@ -87,14 +91,20 @@ shell-admin:
 
 setup:
 	@if [ ! -f .env.development ]; then \
-		cp .env.example .env.development; \
+		cp .env.development.example .env.development; \
 		echo "${GREEN}Creado .env.development desde ejemplo${RESET}"; \
 	else \
 		echo "${YELLOW}.env.development ya existe${RESET}"; \
 	fi
-	@if [ ! -f .env ]; then \
-		cp .env.example .env; \
-		echo "${GREEN}Creado .env desde ejemplo${RESET}"; \
+	@if [ ! -f .env.staging ]; then \
+		cp .env.staging.example .env.staging; \
+		echo "${GREEN}Creado .env.staging desde ejemplo${RESET}"; \
 	else \
-		echo "${YELLOW}.env ya existe${RESET}"; \
+		echo "${YELLOW}.env.staging ya existe${RESET}"; \
+	fi
+	@if [ ! -f .env.production ]; then \
+		cp .env.production.example .env.production; \
+		echo "${GREEN}Creado .env.production desde ejemplo${RESET}"; \
+	else \
+		echo "${YELLOW}.env.production ya existe${RESET}"; \
 	fi
