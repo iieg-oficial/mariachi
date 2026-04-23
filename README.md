@@ -1,5 +1,7 @@
 # Mariachi
 
+**Version:** 0.12.0 ([changelog](CHANGELOG.md))
+
 <div align="center">
 
 ![React](https://img.shields.io/badge/React-19.2-61DAFB?style=for-the-badge&logo=react)

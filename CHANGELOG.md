@@ -11,6 +11,20 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ## [Unreleased]
 
+### Agregado
+- `mapalab_notifier`: retry con backoff exponencial (3 intentos, delays 0.5s y 1s) al invocar `POST /layers/refresh-cache` en mapalab. Tras agotar reintentos incrementa el counter `mariachi_tree_notify_failed_total` (expuesto en `/metrics`) y loguea `ERROR` para alerta en Loki.
+
+### Cambiado
+- **Politica de ownership del schema `mapalab.*`**: las migraciones con `-x db=dataengine` son la fuente autoritativa. `mapalab-dataengine/jobs/bootstrap/v14_schema.sql` queda frozen como baseline. Cambios futuros de schema viven unicamente en `alembic/versions/dataengine/`.
+- `docs/context.md`: actualizado PostgreSQL a 18 (prod y dev) — el README previo decia 16 en prod, drift de documentacion resuelto.
+
+### Corregido
+- `tests/test_integration_notify.py`: patch pattern `httpx.Client` recursivo arreglado. 4 tests pre-existentes que fallaban ahora pasan. Agregados 2 tests nuevos (`test_notifier_retries_on_failure`, `test_notifier_succeeds_on_retry`).
+
+### Documentacion
+- `README.md`: agregada linea de version (`**Version:** 0.12.0`).
+- `docs/ALEMBIC_MULTI_ENV.md`: documentada la politica de ownership del schema `mapalab.*`.
+
 ---
 
 ## [0.12.0] - 2026-04-22
