@@ -10,6 +10,7 @@ _lock = threading.Lock()
 
 COUNTER_RATE_LIMIT_HITS = 'mariachi_rate_limit_hits_total'
 COUNTER_TREE_NOTIFY = 'mariachi_tree_notify_total'
+COUNTER_TREE_NOTIFY_FAILED = 'mariachi_tree_notify_failed_total'
 COUNTER_GEOSERVER_CALLS = 'mariachi_geoserver_calls_total'
 COUNTER_LAYER_WRITES = 'mariachi_layer_writes_total'
 COUNTER_LAYER_READS = 'mariachi_layer_reads_total'
