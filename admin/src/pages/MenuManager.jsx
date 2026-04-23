@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { Card, Alert, Button, Modal, Input } from 'antd';
+import useIsMobile from '@hooks/useIsMobile';
 import { useAuth } from '@contexts/AuthContext';
 import { useMenuDraft } from '@hooks/useMenuDraft';
 import { useMenuIcons } from '@hooks/useMenuIcons';
@@ -11,6 +12,7 @@ import PublishChangesModal from '@components/menuManager/PublishChangesModal';
 import SortableTree from '@components/menuManager/SortableTree';
 
 export default function MenuManager() {
+    const { isMobile } = useIsMobile();
     const { user } = useAuth();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
@@ -178,6 +180,8 @@ export default function MenuManager() {
                 okText="Rechazar"
                 okType="danger"
                 cancelText="Cancelar"
+                width={isMobile ? '100%' : 520}
+                centered={isMobile}
             >
                 <Input.TextArea
                     placeholder="Motivo del rechazo (opcional)"

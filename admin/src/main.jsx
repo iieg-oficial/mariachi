@@ -24,7 +24,7 @@ const MapalabLayers = lazy(() => import('@pages/MapalabLayers'));
 
 const PageFallback = () => (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
-        <Spin tip="Cargando..." />
+        <Spin size="large" />
     </div>
 );
 

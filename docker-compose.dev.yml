@@ -66,6 +66,7 @@ services:
       ACERVO_VERIFY_SSL: ${ACERVO_VERIFY_SSL:-true}
     networks:
       - mariachi_network_dev
+      - dataengine-network
 
   web:
     image: node:24-alpine
@@ -100,8 +101,10 @@ services:
     environment:
       - VITE_PORT=3011
       - VITE_GOOGLE_ANALYTICS_ID=${VITE_GOOGLE_ANALYTICS_ID}
+      - VITE_MAPALAB_PROXY_URL=${VITE_MAPALAB_PROXY_URL:-http://mapalab-dev-frontend-1:3006}
     networks:
       - mariachi_network_dev
+      - mapalab-network
 
 volumes:
   postgres_data_dev:
@@ -113,3 +116,7 @@ volumes:
 networks:
   mariachi_network_dev:
     driver: bridge
+  mapalab-network:
+    external: true
+  dataengine-network:
+    external: true

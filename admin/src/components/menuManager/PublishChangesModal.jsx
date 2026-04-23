@@ -1,4 +1,5 @@
 import { Modal, Typography, Tag, Alert, Divider } from 'antd';
+import useIsMobile from '@hooks/useIsMobile';
 
 const { Title, Text } = Typography;
 
@@ -12,6 +13,7 @@ export default function PublishChangesModal({
     onConfirm,
     isAdmin = true
 }) {
+    const { isMobile } = useIsMobile();
     return (
         <Modal
             title={isAdmin ? "Publicar cambios" : "Solicitar publicación"}
@@ -21,11 +23,12 @@ export default function PublishChangesModal({
             okText={isAdmin ? "Publicar" : "Solicitar aprobación"}
             cancelText="Cancelar"
             confirmLoading={loading}
-            width={700}
+            width={isMobile ? '100%' : 700}
+            centered={isMobile}
         >
             <div>
                 <Alert
-                    message={isAdmin ? "Resumen de cambios" : "Solicitud de publicación"}
+                    title={isAdmin ? "Resumen de cambios" : "Solicitud de publicación"}
                     description={isAdmin
                         ? "Revisa cuidadosamente los cambios antes de publicar. Esta acción no se puede deshacer."
                         : "Tu solicitud será enviada a un administrador para su aprobación."}

@@ -1,5 +1,6 @@
 import { Typography, Space, Button, Badge, Tag } from 'antd';
 import { SaveOutlined, UndoOutlined, ExclamationCircleOutlined, EyeOutlined, SendOutlined } from '@ant-design/icons';
+import useIsMobile from '@hooks/useIsMobile';
 
 const { Title } = Typography;
 
@@ -16,10 +17,20 @@ export default function MenuHeader({
     onPreview,
     onRechazar
 }) {
+    const { isMobile } = useIsMobile();
+
     return (
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                <Title level={2} style={{ margin: 0 }}>
+        <div style={{
+            display: 'flex',
+            flexDirection: isMobile ? 'column' : 'row',
+            justifyContent: 'space-between',
+            alignItems: isMobile ? 'stretch' : 'center',
+            gap: 12,
+            marginBottom: 16,
+            flexWrap: 'wrap'
+        }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <Title level={isMobile ? 3 : 2} style={{ margin: 0 }}>
                     {reviewMode ? `Revisando menú de ${reviewAuthor?.name || '...'}` : 'Gestión de Menú'}
                 </Title>
                 {hasChanges && !reviewMode && (
@@ -36,15 +47,19 @@ export default function MenuHeader({
                     <Tag color="red" style={{ padding: '4px 12px', fontSize: 14 }}>Rechazado</Tag>
                 )}
             </div>
-            <Space>
-                <Button icon={<EyeOutlined />} onClick={onPreview}>
+            <Space
+                wrap
+                size={[8, 8]}
+                style={{ width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'stretch' : 'flex-end' }}
+            >
+                <Button icon={<EyeOutlined />} onClick={onPreview} block={isMobile}>
                     Vista previa
                 </Button>
 
                 {reviewMode && isAdmin && (
                     <>
-                        <Button danger onClick={onRechazar}>Rechazar</Button>
-                        <Button type="primary" icon={<SaveOutlined />} loading={publishing} onClick={onPublish}>
+                        <Button danger onClick={onRechazar} block={isMobile}>Rechazar</Button>
+                        <Button type="primary" icon={<SaveOutlined />} loading={publishing} onClick={onPublish} block={isMobile}>
                             Publicar borrador
                         </Button>
                     </>
@@ -52,8 +67,8 @@ export default function MenuHeader({
 
                 {!reviewMode && isAdmin && hasChanges && (
                     <>
-                        <Button icon={<UndoOutlined />} onClick={onDiscard}>Descartar cambios</Button>
-                        <Button type="primary" icon={<SaveOutlined />} loading={publishing} onClick={onPublish}>
+                        <Button icon={<UndoOutlined />} onClick={onDiscard} block={isMobile}>Descartar cambios</Button>
+                        <Button type="primary" icon={<SaveOutlined />} loading={publishing} onClick={onPublish} block={isMobile}>
                             Publicar cambios
                         </Button>
                     </>
@@ -61,8 +76,8 @@ export default function MenuHeader({
 
                 {!reviewMode && !isAdmin && hasChanges && borradorEstado !== 'pendiente_revision' && (
                     <>
-                        <Button danger onClick={onDiscard}>Descartar</Button>
-                        <Button type="primary" icon={<SendOutlined />} loading={publishing} onClick={onPublish}>
+                        <Button danger onClick={onDiscard} block={isMobile}>Descartar</Button>
+                        <Button type="primary" icon={<SendOutlined />} loading={publishing} onClick={onPublish} block={isMobile}>
                             Enviar a revisión
                         </Button>
                     </>

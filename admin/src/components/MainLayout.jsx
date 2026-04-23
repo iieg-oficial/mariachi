@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Layout, Menu, Button, Avatar, Dropdown, Typography, Badge } from 'antd';
+import { Layout, Menu, Button, Avatar, Dropdown, Typography, Badge, Drawer, Grid } from 'antd';
 import {
     MenuFoldOutlined, MenuUnfoldOutlined, UserOutlined,
     TeamOutlined, LogoutOutlined,
@@ -14,12 +14,17 @@ import {
 import { Outlet, useNavigate, useLocation } from 'react-router';
 import { useAuth } from '@contexts/AuthContext';
 import api from '@services/api';
+import { BRAND } from '@providers/MainProvider';
 
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
+const { useBreakpoint } = Grid;
 
 export default function MainLayout() {
     const [collapsed, setCollapsed] = useState(false);
+    const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+    const screens = useBreakpoint();
+    const isMobile = !screens.md;
     const navigate = useNavigate();
     const location = useLocation();
     const { user, logout } = useAuth();
@@ -42,6 +47,15 @@ export default function MainLayout() {
             .catch(() => {});
     }, [user]);
 
+    useEffect(() => {
+        if (isMobile) setMobileDrawerOpen(false);
+    }, [location.pathname, isMobile]);
+
+    const handleNav = (path) => {
+        navigate(path);
+        if (isMobile) setMobileDrawerOpen(false);
+    };
+
     const portalitoChildren = [];
     const mapalabChildren = [];
 
@@ -50,7 +64,7 @@ export default function MainLayout() {
             key: '/users',
             icon: <TeamOutlined />,
             label: 'Usuarios',
-            onClick: () => navigate('/users')
+            onClick: () => handleNav('/users')
         });
         portalitoChildren.push({
             key: '/revision',
@@ -58,7 +72,7 @@ export default function MainLayout() {
             label: pendingCount > 0
                 ? <span>Revisiones <Badge count={pendingCount} size="small" /></span>
                 : 'Revisiones',
-            onClick: () => navigate('/revision')
+            onClick: () => handleNav('/revision')
         });
     }
 
@@ -67,20 +81,20 @@ export default function MainLayout() {
             key: '/media',
             icon: <FileImageOutlined />,
             label: 'Media',
-            onClick: () => navigate('/media')
+            onClick: () => handleNav('/media')
         });
         portalitoChildren.push({
             key: '/menu',
             icon: <MenuOutlined />,
             label: 'Menú',
-            onClick: () => navigate('/menu')
+            onClick: () => handleNav('/menu')
         });
 
         mapalabChildren.push({
             key: '/mapalab/layers',
             icon: <PartitionOutlined />,
             label: 'Capas',
-            onClick: () => navigate('/mapalab/layers')
+            onClick: () => handleNav('/mapalab/layers')
         });
     }
 
@@ -125,51 +139,91 @@ export default function MainLayout() {
         }
     ];
 
+    const brand = (isCollapsedView) => (
+        <div style={{
+            height: 64,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#fff',
+            fontSize: isCollapsedView ? 16 : 20,
+            fontWeight: 'bold'
+        }}>
+            {isCollapsedView ? 'MA' : 'Mariachi'}
+        </div>
+    );
+
+    const sideMenu = (
+        <Menu
+            theme="dark"
+            mode="inline"
+            selectedKeys={[location.pathname]}
+            defaultOpenKeys={location.pathname.startsWith('/mapalab') ? ['mapalab'] : ['portalito']}
+            items={menuItems}
+        />
+    );
+
     return (
         <Layout style={{ minHeight: '100vh' }}>
-            <Sider trigger={null} collapsible collapsed={collapsed}>
-                <div style={{
-                    height: 64,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: '#fff',
-                    fontSize: collapsed ? 16 : 20,
-                    fontWeight: 'bold'
-                }}>
-                    {collapsed ? 'MA' : 'Mariachi'}
-                </div>
-                <Menu
-                    theme="dark"
-                    mode="inline"
-                    selectedKeys={[location.pathname]}
-                    defaultOpenKeys={location.pathname.startsWith('/mapalab') ? ['mapalab'] : ['portalito']}
-                    items={menuItems}
-                />
-            </Sider>
+            {!isMobile && (
+                <Sider trigger={null} collapsible collapsed={collapsed}>
+                    {brand(collapsed)}
+                    {sideMenu}
+                </Sider>
+            )}
+
+            {isMobile && (
+                <Drawer
+                    placement="left"
+                    open={mobileDrawerOpen}
+                    onClose={() => setMobileDrawerOpen(false)}
+                    closeIcon={null}
+                    styles={{
+                        wrapper: { width: 240 },
+                        body: { padding: 0, background: BRAND.numeralia },
+                        header: { display: 'none' }
+                    }}
+                >
+                    {brand(false)}
+                    {sideMenu}
+                </Drawer>
+            )}
+
             <Layout>
                 <Header style={{
-                    padding: '0 24px',
+                    padding: isMobile ? '0 12px' : '0 24px',
                     background: '#fff',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
-                    boxShadow: '0 1px 4px rgba(0,21,41,.08)'
+                    boxShadow: '0 1px 4px rgba(0,21,41,.08)',
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 10
                 }}>
                     <Button
                         type="text"
-                        icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-                        onClick={() => setCollapsed(!collapsed)}
-                        style={{ fontSize: 16, width: 64, height: 64 }}
+                        icon={collapsed || isMobile ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+                        onClick={() => {
+                            if (isMobile) setMobileDrawerOpen(true);
+                            else setCollapsed(!collapsed);
+                        }}
+                        style={{ fontSize: 16, width: isMobile ? 48 : 64, height: 64 }}
+                        aria-label="Abrir menú"
                     />
                     <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
                         <div style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-                            <Text style={{ marginRight: 8 }}>{user?.name}</Text>
+                            {!isMobile && <Text style={{ marginRight: 8 }}>{user?.name}</Text>}
                             <Avatar icon={<UserOutlined />} />
                         </div>
                     </Dropdown>
                 </Header>
-                <Content style={{ margin: '24px 16px', padding: 24, background: '#fff', minHeight: 280 }}>
+                <Content style={{
+                    margin: isMobile ? '12px 8px' : '24px 16px',
+                    padding: isMobile ? 12 : 24,
+                    background: '#fff',
+                    minHeight: 280
+                }}>
                     <Outlet />
                 </Content>
             </Layout>

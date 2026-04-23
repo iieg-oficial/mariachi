@@ -60,6 +60,27 @@ ALTER ROLE mariachi_layers SET search_path = mapalab, public;
 
 **Por que schema dedicado:** aisla las tablas del modulo de capas de todo lo demas en DataEngine (schemas de datos geoespaciales, `public` que tiene `mapalab_card` y `layer_periodicity`, etc.). Si algo va mal, `DROP SCHEMA mapalab CASCADE` limpia todo sin tocar el resto.
 
+### 3.1. GRANTs sobre tablas creadas por otro rol (bootstrap v14)
+
+El schema `mapalab` es owned por `mariachi_layers`, pero las tablas las crea el superuser (`POSTGRES_USER` del DataEngine, p.ej. `gengine_user`) al correr `v14_schema.sql`. Sin GRANTs explicitos, `mariachi_layers` solo es owner del schema pero no de las tablas, y el editor de capas truena con `permission denied for table layers`.
+
+**Automatizado en el bootstrap:** `mapalab-dataengine/scripts/bootstrap-v14.sh` aplica estos GRANTs en el "Paso 3b" (justo despues de crear las tablas). Se corren via `make prod-migration` o `./scripts/bootstrap-v14.sh` y son idempotentes. Ver `ecosystem.md` seccion 7.3 / este script para el detalle.
+
+```sql
+-- Aplicado automaticamente por bootstrap-v14.sh paso 3b:
+GRANT USAGE ON SCHEMA mapalab TO mariachi_layers;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA mapalab TO mariachi_layers;
+GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA mapalab TO mariachi_layers;
+ALTER DEFAULT PRIVILEGES FOR ROLE <POSTGRES_USER> IN SCHEMA mapalab
+    GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO mariachi_layers;
+ALTER DEFAULT PRIVILEGES FOR ROLE <POSTGRES_USER> IN SCHEMA mapalab
+    GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO mariachi_layers;
+```
+
+El `ALTER DEFAULT PRIVILEGES` cubre tablas/sequences futuras que cree el mismo rol (p.ej. migraciones de alembic corriendo como `POSTGRES_USER`). Si en el futuro las migraciones corren como `mariachi_layers`, estos GRANTs no hacen falta para esos objetos nuevos — las tablas serian owned directamente por `mariachi_layers`.
+
+**Replicar en staging/prod:** se aplica solo al correr `make prod-migration` en `mapalab-dataengine`. No hay runbook manual.
+
 ---
 
 ## 4. Configuracion de red (pg_hba.conf)

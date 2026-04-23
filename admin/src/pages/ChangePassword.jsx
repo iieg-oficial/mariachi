@@ -52,15 +52,15 @@ export default function ChangePassword() {
             justifyContent: 'center',
             alignItems: 'center',
             minHeight: '80vh',
-            padding: 20
+            padding: 12
         }}>
-            <Card style={{ width: 400, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+            <Card style={{ width: '100%', maxWidth: 400, boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
                 <div style={{ textAlign: 'center', mb: 24 }}>
                     <LockOutlined style={{ fontSize: 32, color: '#1890ff', marginBottom: 16 }} />
                     <Title level={3}>Cambiar Contraseña</Title>
                     {user?.must_change_password && (
                         <Alert
-                            message="Cambio obligatorio"
+                            title="Cambio obligatorio"
                             description="Por seguridad, debes cambiar tu contraseña antes de continuar."
                             type="warning"
                             showIcon

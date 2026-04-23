@@ -2,7 +2,7 @@
 
 > Documento de referencia completo. Leer este archivo proporciona contexto del monorepo sin explorar el codebase.
 >
-> Ultima actualizacion: 2026-04-22
+> Ultima actualizacion: 2026-04-23 (v0.13.0)
 
 ---
 
@@ -169,13 +169,23 @@ Red: `mariachi_network` (antes `portal_network`).
 
 | Servicio | Container name | Puerto | Funcion |
 |---|---|---|---|
-| `postgres` | `mariachi-postgres-dev` | 5432 | PostgreSQL 18 |
+| `postgres` | `mariachi-postgres-dev` | 5433 (host) → 5432 | PostgreSQL 18 |
 | `redis` | `mariachi-redis-dev` | 6379 | Cache/sessions |
 | `api` | `mariachi-api-dev` | 8000 | Uvicorn --reload |
 | `web` | `mariachi-web-dev` | 3010 | Vite dev server |
 | `admin` | `mariachi-admin-dev` | 3011 | Vite dev server |
 
-Red: `mariachi_network_dev`.
+Redes: `mariachi_network_dev` (propia) + `mapalab-network` (external, para que el admin alcance a `mapalab-dev-frontend-1` desde su Vite proxy). Eventualmente `api` deberá unirse a `dataengine-network` (external) para alcanzar `dataengine-primary` en el modulo de capas.
+
+### Topologia por entorno (importante)
+
+| Entorno | Despliegue | Como se alcanzan los vecinos (mapalab, dataengine, acervo, geoserver) |
+|---|---|---|
+| **dev** (workstation local) | Todos los repos levantan su propio `docker-compose.*.yml` en **una sola maquina**. Mariachi, mapalab, dataengine, acervo, etc. corren como contenedores en el mismo host Docker. | Por **nombre de contenedor** via redes docker compartidas/external (`mapalab-network`, `dataengine-network`, `iieg-network`). El Vite del admin proxea `/mapalab/*` a `mapalab-dev-frontend-1:3006` — el hook usa siempre la ruta relativa. |
+| **staging** (GCP) | **Una sola VM** con todos los contenedores juntos (misma idea que dev pero en la nube). El `gateway-hub` termina SSL y enruta por path. | Igual que dev: nombres de contenedor via redes docker external. El admin en staging se sirve como build estatico desde `mariachi-nginx`; `/mapalab/*` lo resuelve el `gateway-hub` al container de mapalab en la misma VM. |
+| **produccion** (administracion) | **Servers separados** por servicio (mariachi en una VM, mapalab en otra, dataengine en otra). | Por **hostname/DNS + IP publica o privada** segun el caso. El `gateway-hub` externo termina SSL y enruta `/`/`/administrador/`/`/api/` a mariachi-nginx, `/mapalab/*` a la VM de mapalab, etc. `DATAENGINE_DATABASE_URL` apunta al host real de DataEngine via `pg_hba.conf` + `sslmode=require`. |
+
+**Implicacion:** el proxy `/mapalab` del `vite.config.js` del admin solo se usa en **dev** (y en staging si el admin se corre con Vite en vez de como build, que no es el caso). En prod el admin es build estatico y el enrutamiento lo hace el `gateway-hub`.
 
 ---
 
@@ -369,6 +379,19 @@ Este repo se integra con otros servicios internos vecinos (CMS, visor de mapas, 
 ---
 
 ## 14. Cambios recientes
+
+### 2026-04-23 (v0.13.0)
+
+Detalle completo en `docs/CHANGELOG.md` §[0.13.0]. Resumen:
+
+- **Admin responsive en mobile** con hook `useIsMobile` + Drawer lateral en lugar de Sider + tablas/drawers/modales adaptativos en 12 paginas/componentes.
+- **Paleta de marca de MapaLab** aplicada via `ConfigProvider` (numeralia/purple/orange). Constantes exportadas como `BRAND` desde `admin/src/providers/MainProvider.jsx`.
+- **Login minimalista** sin gradiente pesado; inputs `variant="filled"`; barrita de marca con los 3 colores.
+- **Conectividad dev con mapalab**: proxy Vite `/mapalab/*` + admin en `mapalab-network`. Proxy usado solo en dev (en prod lo resuelve gateway-hub).
+- **Conectividad dev con DataEngine**: `api` en `dataengine-network` + `DATAENGINE_DATABASE_URL` poblado.
+- **`MAPALAB_BACKEND_URL`** agregada — sin ella el cache `layer_tree_cache` no se invalida tras CRUD y los cambios no aparecen hasta el cron diario.
+- **GRANTs sobre `mapalab.*`** automatizados en `mapalab-dataengine` v1.6.0 (paso 3b de `bootstrap-v14.sh`). Sin eso, el editor truena con `permission denied for table layers`. Ver `DATAENGINE_CREDENTIALS.md` §3.1.
+- **Migraciones de deprecaciones AntD v6**: `Alert.message` → `title`, `Drawer.width/height` → `styles.wrapper`, `<Collapse.Panel>` → `items`, `<Spin tip>` reemplazado, wrapper `<App>` en `MainProvider`.
 
 ### 2026-04-22
 

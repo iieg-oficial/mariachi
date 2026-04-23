@@ -11,6 +11,7 @@ import {
     message,
 } from 'antd';
 import { useLayerTreeAdmin } from '@hooks/useLayerTreeAdmin';
+import useIsMobile from '@hooks/useIsMobile';
 
 const { Text, Paragraph } = Typography;
 
@@ -35,6 +36,7 @@ const parsePaste = (text) => {
 
 
 export default function BulkTagsDrawer({ open, onClose, onDone }) {
+    const { isMobile } = useIsMobile();
     const { bulkUpdateTags } = useLayerTreeAdmin();
     const [text, setText] = useState('');
     const [submitting, setSubmitting] = useState(false);
@@ -88,11 +90,16 @@ export default function BulkTagsDrawer({ open, onClose, onDone }) {
     return (
         <Drawer
             title="Edición masiva de tags"
-            width={720}
+            placement={isMobile ? 'bottom' : 'right'}
+            styles={{
+                wrapper: isMobile
+                    ? { width: '100%', height: '92%' }
+                    : { width: 720 }
+            }}
             open={open}
             onClose={handleClose}
             extra={
-                <Space>
+                <Space wrap size={[8, 8]}>
                     <Button onClick={handleClose}>Cerrar</Button>
                     <Button
                         type="primary"
@@ -122,14 +129,15 @@ export default function BulkTagsDrawer({ open, onClose, onDone }) {
                     rowKey="id"
                     dataSource={parsed}
                     columns={columns}
-                    pagination={{ pageSize: 10 }}
+                    pagination={{ pageSize: 10, simple: isMobile }}
+                    scroll={{ x: 'max-content' }}
                     style={{ marginBottom: 16 }}
                 />
             )}
             {result && (
                 <Alert
                     type={result.not_found?.length ? 'warning' : 'success'}
-                    message={`${result.updated} actualizadas`}
+                    title={`${result.updated} actualizadas`}
                     description={
                         result.not_found?.length
                             ? `No encontradas: ${result.not_found.join(', ')}`

@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router';
-import { Layout, Button, Typography, Spin, Empty, Card, Space, Collapse, Drawer, Tag, Alert, Modal, Input } from 'antd';
+import { Layout, Button, Typography, Spin, Empty, Card, Space, Collapse, Drawer, Tag, Alert, Modal, Input, Tooltip } from 'antd';
 import {
     SaveOutlined, CloseOutlined,
     SettingOutlined, CodeOutlined, CloudOutlined, EyeOutlined, SendOutlined
 } from '@ant-design/icons';
 import { usePageDraft } from '@hooks/usePageDraft';
 import { useAuth } from '@contexts/AuthContext';
+import useIsMobile from '@hooks/useIsMobile';
 import { BLOCK_CONFIG, BLOCK_TYPES } from '@constants/pageConstants';
 import { getBlockComponent } from '@components/pageComponents';
 import SEOEditor from '@components/SEOEditor';
@@ -19,6 +20,7 @@ const { Title, Text } = Typography;
 
 
 export default function PageEditor() {
+    const { isMobile } = useIsMobile();
     const { id } = useParams();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
@@ -69,47 +71,61 @@ export default function PageEditor() {
         return <Empty description="Página no encontrada" />;
     }
 
+    const labelOrIcon = (label) => (isMobile ? '' : label);
+
     return (
         <Layout style={{ minHeight: '100vh', background: '#f5f5f5' }}>
             <Header style={{
                 background: '#fff',
-                padding: '0 24px',
+                padding: isMobile ? '8px 12px' : '0 24px',
                 display: 'flex',
-                alignItems: 'center',
+                flexDirection: isMobile ? 'column' : 'row',
+                alignItems: isMobile ? 'stretch' : 'center',
                 justifyContent: 'space-between',
+                gap: isMobile ? 8 : 16,
+                height: 'auto',
+                lineHeight: 'normal',
                 boxShadow: '0 2px 8px rgba(0,0,0,0.06)',
-                zIndex: 10
+                zIndex: 10,
+                position: 'sticky',
+                top: 0
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', minWidth: 0 }}>
                     <Button icon={<CloseOutlined />} onClick={() => navigate(reviewMode ? '/revision' : '/menu')}>
-                        Cerrar
+                        {isMobile ? '' : 'Cerrar'}
                     </Button>
-                    <Title level={4} style={{ margin: 0 }}>
+                    <Title level={isMobile ? 5 : 4} style={{ margin: 0, wordBreak: 'break-word' }}>
                         {page.title || 'Sin Título'}
-                        {hasChanges && !reviewMode && <Text type="warning" style={{ fontSize: 14, marginLeft: 8 }}>(Sin publicar)</Text>}
-                        {!hasChanges && hasDraft && !reviewMode && <Tag icon={<CloudOutlined />} color="blue" style={{ marginLeft: 8, fontWeight: 'normal' }}>Borrador guardado</Tag>}
+                        {hasChanges && !reviewMode && <Text type="warning" style={{ fontSize: 13, marginLeft: 8 }}>(Sin publicar)</Text>}
+                        {!hasChanges && hasDraft && !reviewMode && <Tag icon={<CloudOutlined />} color="blue" style={{ marginLeft: 8, fontWeight: 'normal' }}>Borrador</Tag>}
                         {!isAdmin && borradorEstado === 'pendiente_revision' && <Tag color="orange" style={{ marginLeft: 8, fontWeight: 'normal' }}>En revisión</Tag>}
                         {!isAdmin && borradorEstado === 'rechazado' && <Tag color="red" style={{ marginLeft: 8, fontWeight: 'normal' }}>Rechazado</Tag>}
                     </Title>
                 </div>
-                <Space>
-                    {editores.length > 0 && (
+                <Space wrap size={[8, 8]} style={{ width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'flex-start' : 'flex-end' }}>
+                    {editores.length > 0 && !isMobile && (
                         <Space size={4}>
-                            <Text type="warning" style={{ fontSize: 13 }}>También editando:</Text>
+                            <Text type="warning" style={{ fontSize: 13 }}>Editando:</Text>
                             {editores.map(e => <Tag key={e.username} color="orange">{e.name}</Tag>)}
                         </Space>
                     )}
                     {isAdmin && (
-                        <Button icon={<CodeOutlined />} onClick={() => setJsonEditorVisible(true)}>
-                            JSON
-                        </Button>
+                        <Tooltip title="JSON">
+                            <Button icon={<CodeOutlined />} onClick={() => setJsonEditorVisible(true)}>
+                                {labelOrIcon('JSON')}
+                            </Button>
+                        </Tooltip>
                     )}
-                    <Button icon={<SettingOutlined />} onClick={() => setSettingsDrawerVisible(true)}>
-                        Configuración y SEO
-                    </Button>
-                    <Button icon={<EyeOutlined />} onClick={openPreview}>
-                        Vista previa
-                    </Button>
+                    <Tooltip title="Configuración y SEO">
+                        <Button icon={<SettingOutlined />} onClick={() => setSettingsDrawerVisible(true)}>
+                            {labelOrIcon('Configuración y SEO')}
+                        </Button>
+                    </Tooltip>
+                    <Tooltip title="Vista previa">
+                        <Button icon={<EyeOutlined />} onClick={openPreview}>
+                            {labelOrIcon('Vista previa')}
+                        </Button>
+                    </Tooltip>
                     {reviewMode && isAdmin && (
                         <Button danger onClick={() => setRechazarModalVisible(true)}>
                             Rechazar
@@ -117,7 +133,7 @@ export default function PageEditor() {
                     )}
                     {isAdmin && hasChanges && !reviewMode && (
                         <Button danger onClick={discardChanges}>
-                            Descartar
+                            {labelOrIcon('Descartar')}
                         </Button>
                     )}
                     {isAdmin && (
@@ -135,7 +151,7 @@ export default function PageEditor() {
                         <>
                             {hasChanges && (
                                 <Button danger onClick={discardChanges}>
-                                    Descartar
+                                    {labelOrIcon('Descartar')}
                                 </Button>
                             )}
                             <Button
@@ -144,7 +160,7 @@ export default function PageEditor() {
                                 onClick={() => saveDraft()}
                                 disabled={!hasChanges}
                             >
-                                Guardar borrador
+                                {labelOrIcon('Guardar borrador')}
                             </Button>
                             {borradorEstado !== 'pendiente_revision' && (
                                 <Button
@@ -153,7 +169,7 @@ export default function PageEditor() {
                                     onClick={solicitarRevision}
                                     disabled={!hasDraft}
                                 >
-                                    Enviar a revisión
+                                    {labelOrIcon('Enviar a revisión')}
                                 </Button>
                             )}
                         </>
@@ -161,7 +177,7 @@ export default function PageEditor() {
                 </Space>
             </Header>
 
-            <Content style={{ padding: '24px', maxWidth: 1000, margin: '0 auto', width: '100%' }}>
+            <Content style={{ padding: isMobile ? 12 : 24, maxWidth: 1000, margin: '0 auto', width: '100%' }}>
                 {reviewMode && reviewAuthor && (
                     <Alert
                         type="info"
@@ -225,8 +241,9 @@ export default function PageEditor() {
 
             <Drawer
                 title="Configuración de Página y SEO"
-                placement="right"
-                size="large"
+                placement={isMobile ? 'bottom' : 'right'}
+                size={isMobile ? undefined : 'large'}
+                styles={isMobile ? { wrapper: { width: '100%', height: '92%' } } : undefined}
                 onClose={() => setSettingsDrawerVisible(false)}
                 open={settingsDrawerVisible}
             >
@@ -260,6 +277,8 @@ export default function PageEditor() {
                 okText="Rechazar"
                 okType="danger"
                 cancelText="Cancelar"
+                width={isMobile ? '100%' : 520}
+                centered={isMobile}
             >
                 <Input.TextArea
                     placeholder="Motivo del rechazo (opcional)"

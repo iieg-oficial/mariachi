@@ -8,12 +8,14 @@ import {
     FileOutlined, AppstoreOutlined, BarsOutlined, DownloadOutlined, CopyOutlined, EyeOutlined
 } from '@ant-design/icons';
 import mediaService from '@services/mediaService';
+import useIsMobile from '@hooks/useIsMobile';
 
 const { Dragger } = Upload;
 const { Search } = Input;
 const { Option } = Select;
 
 const Media = () => {
+    const { isMobile } = useIsMobile();
     const [loading, setLoading] = useState(false);
     const [mediaFiles, setMediaFiles] = useState([]);
     const [folders, setFolders] = useState([]);
@@ -348,17 +350,19 @@ const Media = () => {
             <Card
                 title="Media Manager"
                 extra={
-                    <Space>
+                    <Space wrap size={[8, 8]} style={{ width: isMobile ? '100%' : 'auto' }}>
                         <Button
                             type="primary"
                             icon={<InboxOutlined />}
                             onClick={() => setUploadModalVisible(true)}
+                            block={isMobile}
                         >
                             Subir Archivos
                         </Button>
                         <Button
                             icon={<FolderAddOutlined />}
                             onClick={() => setFolderModalVisible(true)}
+                            block={isMobile}
                         >
                             Nueva Carpeta
                         </Button>
@@ -369,7 +373,7 @@ const Media = () => {
                                 okText="Sí"
                                 cancelText="No"
                             >
-                                <Button danger icon={<DeleteOutlined />}>
+                                <Button danger icon={<DeleteOutlined />} block={isMobile}>
                                     Eliminar Seleccionados
                                 </Button>
                             </Popconfirm>
@@ -377,17 +381,17 @@ const Media = () => {
                     </Space>
                 }
             >
-                <Row gutter={16} style={{ marginBottom: 24 }}>
-                    <Col span={6}>
+                <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                    <Col xs={12} sm={12} md={6}>
                         <Statistic title="Total de Archivos" value={stats.total} />
                     </Col>
-                    <Col span={6}>
+                    <Col xs={12} sm={12} md={6}>
                         <Statistic title="Imágenes" value={stats.images} prefix={<FileImageOutlined />} />
                     </Col>
-                    <Col span={6}>
+                    <Col xs={12} sm={12} md={6}>
                         <Statistic title="Documentos" value={stats.documents} prefix={<FilePdfOutlined />} />
                     </Col>
-                    <Col span={6}>
+                    <Col xs={12} sm={12} md={6}>
                         <Statistic
                             title="Tamaño Total"
                             value={mediaService.formatFileSize(stats.totalSize)}
@@ -395,20 +399,25 @@ const Media = () => {
                     </Col>
                 </Row>
 
-                <Row gutter={16} style={{ marginBottom: 16 }}>
-                    <Col flex="auto">
+                <div style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: 8,
+                    marginBottom: 16
+                }}>
+                    <div style={{ flex: isMobile ? '1 1 100%' : '1 1 240px', minWidth: 0 }}>
                         <Search
                             placeholder="Buscar archivos..."
                             allowClear
                             onSearch={setSearchText}
                             style={{ width: '100%' }}
                         />
-                    </Col>
-                    <Col>
+                    </div>
+                    <div style={{ flex: isMobile ? '1 1 calc(50% - 4px)' : '0 0 auto' }}>
                         <Select
                             placeholder="Carpeta"
                             allowClear
-                            style={{ width: 200 }}
+                            style={{ width: isMobile ? '100%' : 200 }}
                             onChange={setSelectedFolder}
                             value={selectedFolder}
                         >
@@ -418,12 +427,12 @@ const Media = () => {
                                 </Option>
                             ))}
                         </Select>
-                    </Col>
-                    <Col>
+                    </div>
+                    <div style={{ flex: isMobile ? '1 1 calc(50% - 4px)' : '0 0 auto' }}>
                         <Select
                             placeholder="Tipo"
                             allowClear
-                            style={{ width: 150 }}
+                            style={{ width: isMobile ? '100%' : 150 }}
                             onChange={setSelectedType}
                             value={selectedType}
                         >
@@ -432,9 +441,10 @@ const Media = () => {
                             <Option value="video">Videos</Option>
                             <Option value="audio">Audio</Option>
                         </Select>
-                    </Col>
-                    <Col>
+                    </div>
+                    <div style={{ flex: isMobile ? '1 1 100%' : '0 0 auto' }}>
                         <Segmented
+                            block={isMobile}
                             options={[
                                 { label: 'Grid', value: 'grid', icon: <AppstoreOutlined /> },
                                 { label: 'Lista', value: 'list', icon: <BarsOutlined /> }
@@ -442,8 +452,8 @@ const Media = () => {
                             value={viewMode}
                             onChange={setViewMode}
                         />
-                    </Col>
-                </Row>
+                    </div>
+                </div>
 
                 <Spin spinning={loading}>
                     {mediaFiles.length === 0 ? (
@@ -455,11 +465,13 @@ const Media = () => {
                             columns={columns}
                             dataSource={mediaFiles}
                             rowKey="id"
+                            size={isMobile ? 'small' : 'middle'}
                             rowSelection={{
                                 selectedRowKeys: selectedFiles,
                                 onChange: setSelectedFiles
                             }}
-                            scroll={{ x: 1200 }}
+                            scroll={{ x: 'max-content' }}
+                            pagination={{ simple: isMobile }}
                         />
                     )}
                 </Spin>
@@ -473,7 +485,8 @@ const Media = () => {
                     form.resetFields();
                 }}
                 footer={null}
-                width={600}
+                width={isMobile ? '100%' : 600}
+                centered={isMobile}
             >
                 <Form form={form} layout="vertical">
                     <Form.Item
@@ -529,6 +542,8 @@ const Media = () => {
                     setFolderModalVisible(false);
                     folderForm.resetFields();
                 }}
+                width={isMobile ? '100%' : 520}
+                centered={isMobile}
             >
                 <Form form={folderForm} layout="vertical">
                     <Form.Item
@@ -559,6 +574,8 @@ const Media = () => {
                 open={editModalVisible}
                 onOk={handleEditSubmit}
                 onCancel={() => setEditModalVisible(false)}
+                width={isMobile ? '100%' : 520}
+                centered={isMobile}
             >
                 <Form form={editForm} layout="vertical">
                     <Form.Item
@@ -603,7 +620,8 @@ const Media = () => {
                         Descargar
                     </Button>
                 ]}
-                width={800}
+                width={isMobile ? '100%' : 800}
+                centered={isMobile}
             >
                 {currentFile && (
                     <div>

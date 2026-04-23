@@ -1,15 +1,20 @@
 import { useState } from 'react';
-import { Form, Input, Button, Card, Typography, message, Space, Alert } from 'antd';
+import { Form, Input, Button, Typography, message, Alert, Flex, theme } from 'antd';
 import { UserOutlined, LockOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router';
 import { useAuth } from '@contexts/AuthContext';
+import useIsMobile from '@hooks/useIsMobile';
+import { BRAND } from '@providers/MainProvider';
 
-const { Title, Paragraph } = Typography;
+const { Title, Text } = Typography;
+const { useToken } = theme;
 
 export default function Login() {
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
     const { login } = useAuth();
+    const { token } = useToken();
+    const { isMobile } = useIsMobile();
 
     const onFinish = async (values) => {
         setLoading(true);
@@ -32,106 +37,111 @@ export default function Login() {
     };
 
     return (
-        <div style={{
-            minHeight: '100vh',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            padding: '20px'
-        }}>
-            <Card
+        <Flex
+            align="center"
+            justify="center"
+            style={{
+                minHeight: '100vh',
+                padding: isMobile ? token.paddingLG : token.paddingXL,
+                background: token.colorBgLayout
+            }}
+        >
+            <Flex
+                vertical
+                gap={token.marginXL}
                 style={{
                     width: '100%',
-                    maxWidth: 450,
-                    boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
+                    maxWidth: 360,
+                    background: token.colorBgContainer,
+                    padding: isMobile ? token.paddingLG : token.paddingXL,
+                    borderRadius: token.borderRadiusLG,
+                    border: isMobile ? 'none' : `1px solid ${token.colorBorderSecondary}`
                 }}
             >
-                <Space orientation="vertical" size="large" style={{ width: '100%' }}>
-                    <div style={{ textAlign: 'center' }}>
-                        <Title level={2} style={{ margin: 0, color: '#1890ff' }}>
-                            CMS Portal
-                        </Title>
-                        <Paragraph style={{ color: '#8c8c8c', marginTop: 8 }}>
-                            Instituto de Información Estadística y Geográfica de Jalisco
-                        </Paragraph>
-                    </div>
+                <Flex vertical gap={token.marginXXS}>
+                    <div
+                        aria-hidden
+                        style={{
+                            width: 40,
+                            height: 4,
+                            borderRadius: 2,
+                            background: `linear-gradient(90deg, ${BRAND.numeralia}, ${BRAND.purple}, ${BRAND.orange})`,
+                            marginBottom: token.marginSM
+                        }}
+                    />
+                    <Title level={3} style={{ margin: 0, fontWeight: 500 }}>
+                        Mariachi
+                    </Title>
+                    <Text type="secondary" style={{ fontSize: 13 }}>
+                        CMS del Instituto de Información Estadística y Geográfica de Jalisco
+                    </Text>
+                </Flex>
 
-                    {import.meta.env.DEV && (
-                        <Alert
-                            title="Modo de Desarrollo"
-                            description={
-                                <div>
-                                    <p style={{ margin: '8px 0' }}><strong>Usuarios de prueba:</strong></p>
-                                    <ul style={{ margin: 0, paddingLeft: 20 }}>
-                                        <li>admin / admin123 (Tetlamamakani)</li>
-                                        <li>editor / editor123 (Editora)</li>
-                                    </ul>
-                                </div>
-                            }
-                            type="info"
-                            icon={<InfoCircleOutlined />}
-                            showIcon
-                        />
-                    )}
-
-                    <Form
-                        name="login"
-                        onFinish={onFinish}
-                        autoComplete="off"
-                        layout="vertical"
-                        initialValues={
-                            import.meta.env.DEV ? { username: 'admin' } : {}
+                {import.meta.env.DEV && (
+                    <Alert
+                        type="info"
+                        icon={<InfoCircleOutlined />}
+                        showIcon
+                        style={{ background: token.colorFillQuaternary, border: 'none' }}
+                        title={<Text strong style={{ fontSize: 13 }}>Dev</Text>}
+                        description={
+                            <Flex vertical gap={2}>
+                                <Text style={{ fontSize: 12 }}>admin / admin123</Text>
+                                <Text style={{ fontSize: 12 }}>editor / editor123</Text>
+                            </Flex>
                         }
+                    />
+                )}
+
+                <Form
+                    name="login"
+                    onFinish={onFinish}
+                    autoComplete="off"
+                    layout="vertical"
+                    requiredMark={false}
+                    initialValues={
+                        import.meta.env.DEV ? { username: 'admin' } : {}
+                    }
+                >
+                    <Form.Item
+                        label="Usuario"
+                        name="username"
+                        rules={[{ required: true, message: 'Ingrese su usuario' }]}
                     >
-                        <Form.Item
-                            label="Usuario"
-                            name="username"
-                            rules={[
-                                {
-                                    required: true,
-                                    message: 'Por favor ingrese su usuario',
-                                },
-                            ]}
-                        >
-                            <Input
-                                prefix={<UserOutlined />}
-                                placeholder="Ingrese su usuario"
-                                size="large"
-                            />
-                        </Form.Item>
+                        <Input
+                            prefix={<UserOutlined style={{ color: token.colorTextTertiary }} />}
+                            placeholder="usuario"
+                            size="large"
+                            variant="filled"
+                        />
+                    </Form.Item>
 
-                        <Form.Item
-                            label="Contraseña"
-                            name="password"
-                            rules={[
-                                {
-                                    required: true,
-                                    message: 'Por favor ingrese su contraseña',
-                                },
-                            ]}
-                        >
-                            <Input.Password
-                                prefix={<LockOutlined />}
-                                placeholder="Ingrese su contraseña"
-                                size="large"
-                            />
-                        </Form.Item>
+                    <Form.Item
+                        label="Contraseña"
+                        name="password"
+                        rules={[{ required: true, message: 'Ingrese su contraseña' }]}
+                    >
+                        <Input.Password
+                            prefix={<LockOutlined style={{ color: token.colorTextTertiary }} />}
+                            placeholder="••••••••"
+                            size="large"
+                            variant="filled"
+                        />
+                    </Form.Item>
 
-                        <Form.Item style={{ marginBottom: 0 }}>
-                            <Button
-                                type="primary"
-                                htmlType="submit"
-                                loading={loading}
-                                size="large"
-                                block
-                            >
-                                Iniciar Sesión
-                            </Button>
-                        </Form.Item>
-                    </Form>
-                </Space>
-            </Card>
-        </div>
+                    <Form.Item style={{ marginBottom: 0, marginTop: token.marginLG }}>
+                        <Button
+                            type="primary"
+                            htmlType="submit"
+                            loading={loading}
+                            size="large"
+                            block
+                        >
+                            Entrar
+                        </Button>
+                    </Form.Item>
+                </Form>
+            </Flex>
+        </Flex>
     );
 }

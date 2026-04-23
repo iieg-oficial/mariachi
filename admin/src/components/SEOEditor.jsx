@@ -244,7 +244,7 @@ const SEOEditor = ({ seo = {}, onChange }) => {
     return (
         <Card title={<><GlobalOutlined /> SEO & Metadata</>} style={{ marginBottom: 16 }}>
             <Alert
-                message="Optimización para Motores de Búsqueda"
+                title="Optimización para Motores de Búsqueda"
                 description="Completa estos campos para mejorar la visibilidad de la página en Google y redes sociales."
                 type="info"
                 showIcon
@@ -500,7 +500,7 @@ const SEOEditor = ({ seo = {}, onChange }) => {
                         key="structured-data"
                     >
                         <Alert
-                            message="Datos Estructurados"
+                            title="Datos Estructurados"
                             description="Ayuda a los motores de búsqueda a entender mejor tu contenido mediante Schema.org JSON-LD"
                             type="info"
                             icon={<InfoCircleOutlined />}
@@ -625,7 +625,7 @@ const SEOEditor = ({ seo = {}, onChange }) => {
 
                         {schemaType === 'BreadcrumbList' && (
                             <Alert
-                                message="Migas de Pan"
+                                title="Migas de Pan"
                                 description="Las migas de pan se generan automáticamente basadas en la estructura de navegación de tu sitio."
                                 type="info"
                                 showIcon
@@ -634,7 +634,7 @@ const SEOEditor = ({ seo = {}, onChange }) => {
 
                         {schemaType === 'FAQPage' && (
                             <Alert
-                                message="Página de Preguntas Frecuentes"
+                                title="Página de Preguntas Frecuentes"
                                 description="Los elementos FAQ se generan automáticamente si agregas componentes de tipo FAQ a tu página."
                                 type="info"
                                 showIcon
@@ -643,7 +643,7 @@ const SEOEditor = ({ seo = {}, onChange }) => {
 
                         {schemaType === 'WebPage' && (
                             <Alert
-                                message="Página Web General"
+                                title="Página Web General"
                                 description="Los datos básicos (título, descripción, URL) se toman automáticamente de los meta tags."
                                 type="success"
                                 showIcon
@@ -666,7 +666,7 @@ const SEOEditor = ({ seo = {}, onChange }) => {
                         </Card>
 
                         <Alert
-                            message="Validación"
+                            title="Validación"
                             description={
                                 <span>
                                     Valida tu structured data con{' '}

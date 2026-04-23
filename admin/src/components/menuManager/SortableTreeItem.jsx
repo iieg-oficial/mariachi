@@ -1,21 +1,24 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Tag, Space, Button } from 'antd';
+import { Tag, Button } from 'antd';
 import { EditOutlined, FileTextOutlined, HolderOutlined, EyeOutlined, EyeInvisibleOutlined, StopOutlined } from '@ant-design/icons';
 import { getIconComponent } from '@utils/menuUtils';
+import useIsMobile from '@hooks/useIsMobile';
 
 const STYLES = {
     dragHandle: {
         color: '#999',
         cursor: 'grab',
         fontSize: 16,
-        touchAction: 'none'
+        touchAction: 'none',
+        flexShrink: 0
     },
     label: {
         fontWeight: 500,
         fontSize: 15,
         color: '#262626',
-        marginBottom: 4
+        marginBottom: 4,
+        wordBreak: 'break-word'
     },
     url: {
         fontSize: 13,
@@ -38,6 +41,7 @@ export default function SortableTreeItem({
     onEditPage,
     childCount = 0
 }) {
+    const { isMobile } = useIsMobile();
     const {
         attributes,
         listeners,
@@ -50,11 +54,13 @@ export default function SortableTreeItem({
         data: { item, level }
     });
 
+    const indent = isMobile ? (level - 1) * 16 : (level - 1) * 32;
+
     const style = {
         transform: CSS.Transform.toString(transform),
         transition,
         opacity: isDragging ? 0.5 : 1,
-        marginLeft: (level - 1) * 32
+        marginLeft: indent
     };
 
     const renderIcon = () => {
@@ -70,6 +76,20 @@ export default function SortableTreeItem({
         return null;
     };
 
+    const statusTag = item.disabled ? (
+        <Tag icon={<StopOutlined />} color="default" style={STYLES.tag}>
+            {isMobile ? '' : 'Deshabilitado'}
+        </Tag>
+    ) : item.visible ? (
+        <Tag icon={<EyeOutlined />} color="green" style={STYLES.tag}>
+            {isMobile ? '' : 'Visible'}
+        </Tag>
+    ) : (
+        <Tag icon={<EyeInvisibleOutlined />} color="red" style={STYLES.tag}>
+            {isMobile ? '' : 'Oculto'}
+        </Tag>
+    );
+
     return (
         <div ref={setNodeRef} style={style}>
             <div style={{
@@ -77,21 +97,26 @@ export default function SortableTreeItem({
                 flexDirection: 'column',
                 gap: 8,
                 width: '100%',
-                padding: '12px 16px',
+                padding: isMobile ? '10px 12px' : '12px 16px',
                 marginBottom: 8,
                 background: isDragging ? '#e6f7ff' : isNew ? '#e6f7ff' : isModified ? '#fafafa' : '#ffffff',
                 borderRadius: 6,
                 border: `1px solid ${isDragging ? '#1890ff' : isNew ? '#91d5ff' : isModified ? '#d9d9d9' : '#f0f0f0'}`,
                 boxShadow: isDragging ? '0 4px 12px rgba(0,0,0,0.15)' : 'none'
             }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: isMobile ? 8 : 12,
+                    flexWrap: 'wrap'
+                }}>
                     <HolderOutlined
                         {...attributes}
                         {...listeners}
                         style={STYLES.dragHandle}
                     />
                     {renderIcon()}
-                    <div style={{ flex: 1 }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={STYLES.label}>
                             {item.label}
                             {childCount > 0 && (
@@ -100,71 +125,61 @@ export default function SortableTreeItem({
                                 </Tag>
                             )}
                             {isNew && <Tag color="blue" style={STYLES.badgeTag}>NUEVO</Tag>}
-                            {isModified && <Tag color="orange" style={STYLES.badgeTag}>MODIFICADO</Tag>}
+                            {isModified && <Tag color="orange" style={STYLES.badgeTag}>MODIF</Tag>}
                         </div>
                         <div style={STYLES.url}>
                             {item.url}
                         </div>
                     </div>
-                    <Tag
-                        color={level === 1 ? 'blue' : level === 2 ? 'green' : level === 3 ? 'orange' : 'red'}
-                        style={STYLES.tag}
-                    >
-                        Nivel {level}
-                    </Tag>
-                    <Tag
-                        color={item.external ? 'orange' : 'blue'}
-                        style={STYLES.tag}
-                    >
-                        {item.external ? 'Externo' : 'Interno'}
-                    </Tag>
-                    {item.disabled ? (
-                        <Tag
-                            icon={<StopOutlined />}
-                            color="default"
-                            style={STYLES.tag}
-                        >
-                            Deshabilitado
-                        </Tag>
-                    ) : item.visible ? (
-                        <Tag
-                            icon={<EyeOutlined />}
-                            color="green"
-                            style={STYLES.tag}
-                        >
-                            Visible
-                        </Tag>
-                    ) : (
-                        <Tag
-                            icon={<EyeInvisibleOutlined />}
-                            color="red"
-                            style={STYLES.tag}
-                        >
-                            Oculto
-                        </Tag>
-                    )}
-                    {!item.external && (
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        flexWrap: 'wrap',
+                        marginLeft: isMobile ? 0 : 'auto'
+                    }}>
+                        {!isMobile && (
+                            <Tag
+                                color={level === 1 ? 'blue' : level === 2 ? 'green' : level === 3 ? 'orange' : 'red'}
+                                style={STYLES.tag}
+                            >
+                                Nivel {level}
+                            </Tag>
+                        )}
+                        {!isMobile && (
+                            <Tag
+                                color={item.external ? 'orange' : 'blue'}
+                                style={STYLES.tag}
+                            >
+                                {item.external ? 'Externo' : 'Interno'}
+                            </Tag>
+                        )}
+                        {statusTag}
+                        {!item.external && (
+                            <Button
+                                type="default"
+                                size={isMobile ? 'small' : 'middle'}
+                                icon={<FileTextOutlined />}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onEditPage(item.id);
+                                }}
+                                style={STYLES.button}
+                                aria-label="Editar página"
+                            />
+                        )}
                         <Button
                             type="default"
-                            size="middle"
-                            icon={<FileTextOutlined />}
+                            size={isMobile ? 'small' : 'middle'}
+                            icon={<EditOutlined />}
                             onClick={(e) => {
                                 e.stopPropagation();
-                                onEditPage(item.id);
+                                onEdit(item);
                             }}
                             style={STYLES.button}
+                            aria-label="Editar item"
                         />
-                    )}
-                    <Button
-                        type="default"
-                        size="middle"
-                        icon={<EditOutlined />}
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            onEdit(item);
-                        }}
-                        style={STYLES.button}
-                    />
+                    </div>
                 </div>
             </div>
         </div>

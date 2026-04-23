@@ -399,7 +399,7 @@ const SEOAnalyzer = ({ page, seo }) => {
 
                 {analysis.issues.length > 0 && (
                     <Alert
-                        message={`Se encontraron ${analysis.issues.length} problema(s) de SEO`}
+                        title={`Se encontraron ${analysis.issues.length} problema(s) de SEO`}
                         description={
                             <Space>
                                 {groupedIssues.error.length > 0 && (
@@ -450,7 +450,7 @@ const SEOAnalyzer = ({ page, seo }) => {
                                             </Space>
                                             {data.status === 'low' && (
                                                 <Alert
-                                                    message="Densidad baja"
+                                                    title="Densidad baja"
                                                     description="Considera usar esta keyword más frecuentemente en el contenido"
                                                     type="warning"
                                                     showIcon
@@ -459,7 +459,7 @@ const SEOAnalyzer = ({ page, seo }) => {
                                             )}
                                             {data.status === 'high' && (
                                                 <Alert
-                                                    message="Densidad alta"
+                                                    title="Densidad alta"
                                                     description="Evita el keyword stuffing. Reduce el uso de esta palabra"
                                                     type="error"
                                                     showIcon
@@ -502,7 +502,7 @@ const SEOAnalyzer = ({ page, seo }) => {
                                                     <Space orientation="vertical" size="small">
                                                         <Text type="secondary">{issue.message}</Text>
                                                         <Alert
-                                                            message="Cómo mejorar"
+                                                            title="Cómo mejorar"
                                                             description={issue.suggestion}
                                                             type="info"
                                                             showIcon
@@ -554,7 +554,7 @@ const SEOAnalyzer = ({ page, seo }) => {
 
                 {analysis.suggestions.length > 0 && (
                     <Alert
-                        message="¡Buen trabajo!"
+                        title="¡Buen trabajo!"
                         description={
                             <List
                                 size="small"

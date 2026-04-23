@@ -14,3 +14,53 @@ body {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
+
+img {
+    max-width: 100%;
+    height: auto;
+}
+
+/* Mobile layout tweaks: AntD sticks to desktop paddings by default */
+@media (max-width: 767px) {
+    .ant-layout-content {
+        margin: 12px 8px !important;
+        padding: 12px !important;
+    }
+
+    .ant-card-head {
+        padding: 0 12px !important;
+    }
+
+    .ant-card-head-wrapper {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 8px 0;
+    }
+
+    .ant-card-extra {
+        margin-left: 0 !important;
+        width: 100%;
+    }
+
+    .ant-card-body {
+        padding: 12px !important;
+    }
+
+    .ant-modal {
+        max-width: calc(100vw - 16px) !important;
+        margin: 8px auto !important;
+    }
+
+    .ant-drawer-content-wrapper {
+        max-width: 100vw !important;
+    }
+
+    .ant-table {
+        font-size: 13px;
+    }
+
+    .ant-form-item-label > label {
+        font-size: 14px;
+    }
+}

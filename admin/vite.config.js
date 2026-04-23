@@ -7,7 +7,10 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 export default defineConfig(({ mode }) => {
-    const { VITE_ADMIN_PORT, VITE_ADMIN_HOST } = loadEnv(mode, __dirname, '');
+    const env = loadEnv(mode, __dirname, '');
+    const { VITE_ADMIN_PORT, VITE_ADMIN_HOST, VITE_MAPALAB_PROXY_URL } = env;
+
+    const mapalabTarget = VITE_MAPALAB_PROXY_URL || 'http://mapalab-dev-frontend-1:3006';
 
     return {
         plugins: [react()],
@@ -18,6 +21,14 @@ export default defineConfig(({ mode }) => {
             strictPort: true,
             watch: {
                 usePolling: true
+            },
+            proxy: {
+                '/mapalab': {
+                    target: mapalabTarget,
+                    changeOrigin: false,
+                    headers: { host: 'localhost' },
+                    rewrite: (path) => path.replace(/^\/mapalab/, '')
+                }
             }
         },
         base: '/administrador/',

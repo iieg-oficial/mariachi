@@ -27,6 +27,7 @@ import { useLayerTreeAdmin } from '@hooks/useLayerTreeAdmin';
 import { useAuth } from '@contexts/AuthContext';
 import LayerEditDrawer from '@components/layersEditor/LayerEditDrawer';
 import BulkTagsDrawer from '@components/layersEditor/BulkTagsDrawer';
+import useIsMobile from '@hooks/useIsMobile';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -42,14 +43,14 @@ const NODE_ICONS = {
 const renderTitle = (node) => {
     const { title, nodeType, workspaceAlias, geoserverLayer, disabled, hiddenInMenu } = node;
     return (
-        <Space>
-            <span style={{ opacity: disabled ? 0.5 : 1 }}>{title}</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <span style={{ opacity: disabled ? 0.5 : 1, wordBreak: 'break-word' }}>{title}</span>
             <Tag color="default">{nodeType}</Tag>
             {workspaceAlias && <Tag color="blue">{workspaceAlias}</Tag>}
             {geoserverLayer && <Text type="secondary" style={{ fontSize: 11 }}>{geoserverLayer}</Text>}
             {hiddenInMenu && <Tag color="orange">oculto</Tag>}
             {disabled && <Tag color="red">disabled</Tag>}
-        </Space>
+        </span>
     );
 };
 
@@ -76,6 +77,7 @@ const filterTree = (nodes, q) => {
 
 
 export default function MapalabLayers() {
+    const { isMobile } = useIsMobile();
     const { user } = useAuth();
     const isAdmin = user?.role === 'tetlamamakani';
     const {
@@ -195,59 +197,64 @@ export default function MapalabLayers() {
             title={
                 <Space>
                     <PartitionOutlined />
-                    <Title level={4} style={{ margin: 0 }}>Editor de Capas MapaLab</Title>
+                    <Title level={isMobile ? 5 : 4} style={{ margin: 0 }}>Editor de Capas MapaLab</Title>
                 </Space>
             }
             extra={
-                <Space>
+                <Space wrap size={[8, 8]} style={{ width: isMobile ? '100%' : 'auto' }}>
                     <Input
                         placeholder="Buscar capa"
                         prefix={<SearchOutlined />}
                         value={q}
                         onChange={(e) => setQ(e.target.value)}
                         allowClear
-                        style={{ width: 220 }}
+                        style={{ width: isMobile ? '100%' : 220 }}
                     />
                     <Button
                         type="primary"
                         disabled={!selectedKey}
                         onClick={handleEdit}
+                        block={isMobile}
                     >
                         Editar seleccionada
                     </Button>
                     {isAdmin && (
-                        <Button icon={<TagsOutlined />} onClick={() => setBulkTagsOpen(true)}>
+                        <Button icon={<TagsOutlined />} onClick={() => setBulkTagsOpen(true)} block={isMobile}>
                             Bulk tags
                         </Button>
                     )}
-                    <Button icon={<ReloadOutlined />} onClick={reload}>Recargar</Button>
+                    <Button icon={<ReloadOutlined />} onClick={reload} block={isMobile}>Recargar</Button>
                 </Space>
             }
         >
             <Paragraph type="secondary">
                 Árbol jerárquico del visor MapaLab. Los nodos <Tag>tema</Tag> / <Tag color="blue">category</Tag> / <Tag color="default">group</Tag> organizan las capas. Los nodos <Tag color="green">leaf</Tag> son las capas WMS reales.
             </Paragraph>
-            {error && <Alert type="error" message={error} style={{ marginBottom: 16 }} />}
+            {error && <Alert type="error" title={error} style={{ marginBottom: 16 }} />}
             {loading ? (
                 <div style={{ textAlign: 'center', padding: 48 }}>
-                    <Spin tip="Cargando árbol de capas..." />
+                    <Spin size="large" />
+                    <div style={{ marginTop: 12, color: 'rgba(0,0,0,0.45)' }}>Cargando árbol de capas...</div>
                 </div>
             ) : visibleTree.length === 0 ? (
                 <Empty description="Sin resultados" />
             ) : (
-                <Tree
-                    treeData={visibleTree}
-                    showIcon
-                    icon={(props) => NODE_ICONS[props.nodeType] || NODE_ICONS.leaf}
-                    titleRender={renderTitle}
-                    selectedKeys={selectedKey ? [selectedKey] : []}
-                    onSelect={handleSelect}
-                    expandedKeys={expandedKeys}
-                    onExpand={setExpandedKeys}
-                    autoExpandParent
-                    draggable={isAdmin && !q}
-                    onDrop={handleDrop}
-                />
+                <div style={{ overflowX: 'auto' }}>
+                    <Tree
+                        treeData={visibleTree}
+                        showIcon
+                        icon={(props) => NODE_ICONS[props.nodeType] || NODE_ICONS.leaf}
+                        titleRender={renderTitle}
+                        selectedKeys={selectedKey ? [selectedKey] : []}
+                        onSelect={handleSelect}
+                        expandedKeys={expandedKeys}
+                        onExpand={setExpandedKeys}
+                        autoExpandParent
+                        draggable={isAdmin && !q}
+                        onDrop={handleDrop}
+                        blockNode
+                    />
+                </div>
             )}
 
             <LayerEditDrawer

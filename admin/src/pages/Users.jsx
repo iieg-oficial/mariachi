@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Table, Card, Typography, Tag, Space, Button, Modal, Form, Input, Select, message } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, LockOutlined } from '@ant-design/icons';
 import api from '@services/api';
+import useIsMobile from '@hooks/useIsMobile';
 
 const { Title, Text } = Typography;
 
@@ -16,6 +17,7 @@ const roleLabels = {
 };
 
 export default function Users() {
+    const { isMobile } = useIsMobile();
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
@@ -92,7 +94,8 @@ export default function Users() {
                                 <p>Por favor compártela con el usuario de forma segura.</p>
                             </div>
                         ),
-                        width: 400
+                        width: isMobile ? '100%' : 400,
+                        centered: true
                     });
                 } catch (error) {
                     message.error('Error al resetear contraseña');
@@ -160,21 +163,23 @@ export default function Users() {
         {
             title: 'Acciones',
             key: 'actions',
+            fixed: isMobile ? undefined : 'right',
+            width: isMobile ? undefined : 280,
             render: (_, record) => (
-                <Space>
+                <Space size={isMobile ? 'small' : 'middle'} wrap>
                     <Button
                         type="link"
                         icon={<EditOutlined />}
                         onClick={() => handleEdit(record)}
                     >
-                        Editar
+                        {isMobile ? '' : 'Editar'}
                     </Button>
                     <Button
                         type="link"
                         icon={<LockOutlined />}
                         onClick={() => handleResetPassword(record)}
                     >
-                        Resetear
+                        {isMobile ? '' : 'Resetear'}
                     </Button>
                     <Button
                         type="link"
@@ -182,7 +187,7 @@ export default function Users() {
                         icon={<DeleteOutlined />}
                         onClick={() => handleDelete(record)}
                     >
-                        Eliminar
+                        {isMobile ? '' : 'Eliminar'}
                     </Button>
                 </Space>
             )
@@ -191,26 +196,37 @@ export default function Users() {
 
     return (
         <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-                <Title level={2} style={{ margin: 0 }}>Administración de Usuarios</Title>
+            <div style={{
+                display: 'flex',
+                flexDirection: isMobile ? 'column' : 'row',
+                justifyContent: 'space-between',
+                alignItems: isMobile ? 'stretch' : 'center',
+                gap: 12,
+                marginBottom: 16
+            }}>
+                <Title level={isMobile ? 3 : 2} style={{ margin: 0 }}>Administración de Usuarios</Title>
                 <Button
                     type="primary"
                     icon={<PlusOutlined />}
                     onClick={handleCreate}
+                    block={isMobile}
                 >
                     Nuevo Usuario
                 </Button>
             </div>
 
-            <Card>
+            <Card styles={{ body: { padding: isMobile ? 0 : undefined } }}>
                 <Table
                     columns={columns}
                     dataSource={users}
                     rowKey="id"
                     loading={loading}
+                    scroll={{ x: 'max-content' }}
+                    size={isMobile ? 'small' : 'middle'}
                     pagination={{
                         pageSize: 10,
-                        showSizeChanger: true,
+                        showSizeChanger: !isMobile,
+                        simple: isMobile,
                         showTotal: (total) => `Total ${total} usuarios`
                     }}
                 />
@@ -223,6 +239,8 @@ export default function Users() {
                 onOk={() => form.submit()}
                 okText={editingUser ? 'Actualizar' : 'Crear'}
                 cancelText="Cancelar"
+                width={isMobile ? '100%' : 520}
+                centered={isMobile}
             >
                 <Form
                     form={form}

@@ -14,6 +14,7 @@ import {
     Typography,
 } from 'antd';
 import { useLayerTreeAdmin } from '@hooks/useLayerTreeAdmin';
+import useIsMobile from '@hooks/useIsMobile';
 import InfoBoxPresetForm from './InfoBoxPresetForm';
 import InfoBoxPreview from './InfoBoxPreview';
 import InfoBoxJsonEditor from './InfoBoxJsonEditor';
@@ -30,6 +31,7 @@ const NODE_TYPE_OPTIONS = [
 
 
 export default function LayerEditDrawer({ open, layer, saving, isAdmin = true, onClose, onSave }) {
+    const { isMobile } = useIsMobile();
     const [form] = Form.useForm();
     const { listGeoserverWorkspaces, listGeoserverStyles } = useLayerTreeAdmin();
     const [workspaces, setWorkspaces] = useState([]);
@@ -115,16 +117,21 @@ export default function LayerEditDrawer({ open, layer, saving, isAdmin = true, o
     return (
         <Drawer
             title={
-                <Space>
+                <Space wrap>
                     <span>Editar capa</span>
                     <Tag color="purple">{layer.id}</Tag>
                 </Space>
             }
-            width={600}
+            placement={isMobile ? 'bottom' : 'right'}
+            styles={{
+                wrapper: isMobile
+                    ? { width: '100%', height: '92%' }
+                    : { width: 600 }
+            }}
             open={open}
             onClose={onClose}
             extra={
-                <Space>
+                <Space wrap size={[8, 8]}>
                     <Button onClick={onClose}>Cancelar</Button>
                     {isAdmin ? (
                         <Button type="primary" loading={saving} onClick={handleSaveDirect}>
@@ -144,105 +151,134 @@ export default function LayerEditDrawer({ open, layer, saving, isAdmin = true, o
             }
         >
             <Form form={form} layout="vertical">
-                <Collapse defaultActiveKey={['identidad', 'wms']}>
-                    <Collapse.Panel header="Identidad" key="identidad">
-                        <Form.Item label="Label" name="label" rules={[{ required: true }]}>
-                            <Input />
-                        </Form.Item>
-                        <Form.Item label="Node type" name="nodeType">
-                            <Select options={NODE_TYPE_OPTIONS} />
-                        </Form.Item>
-                        <Form.Item label="Tags de búsqueda (coma)" name="searchTags">
-                            <Input placeholder="seguridad, delito, feminicidio" />
-                        </Form.Item>
-                    </Collapse.Panel>
-
-                    <Collapse.Panel header="Visibilidad" key="visibilidad">
-                        <Form.Item label="Oculta en menú" name="hiddenInMenu" valuePropName="checked">
-                            <Switch />
-                        </Form.Item>
-                        <Form.Item label="Deshabilitada (prefijo *)" name="disabled" valuePropName="checked">
-                            <Switch />
-                        </Form.Item>
-                    </Collapse.Panel>
-
-                    <Collapse.Panel header="WMS" key="wms">
-                        {loadingWs && <Spin size="small" style={{ marginBottom: 12 }} />}
-                        <Form.Item label="Workspace" name="workspaceAlias">
-                            <Select
-                                showSearch
-                                allowClear
-                                placeholder="Selecciona workspace"
-                                options={workspaces.map((w) => ({
-                                    value: w.alias,
-                                    label: `${w.label || w.alias} (${w.layers?.length || 0} capas)`,
-                                }))}
-                            />
-                        </Form.Item>
-                        <Form.Item label="Capa GeoServer" name="geoserverLayer">
-                            <AutoComplete
-                                options={availableLayers.map((l) => ({ value: l }))}
-                                filterOption={(input, option) =>
-                                    option.value.toLowerCase().includes(input.toLowerCase())
-                                }
-                                placeholder={selectedWs ? 'Elige una capa del workspace' : 'Selecciona workspace primero'}
-                                disabled={!selectedWs}
-                            />
-                        </Form.Item>
-                        <Form.Item label="Estilo" name="styles">
-                            <AutoComplete
-                                options={availableStyles.map((s) => ({ value: s }))}
-                                placeholder="Vacio = estilo por defecto"
-                            />
-                        </Form.Item>
-                        <Form.Item label="CQL filter" name="cqlFilter">
-                            <Input.TextArea rows={2} placeholder="modalidad = 'Con violencia'" />
-                        </Form.Item>
-                        <Form.Item label="WMS group" name="wmsGroup" extra="Capas con mismo grupo se mergean en una request WMS">
-                            <Input />
-                        </Form.Item>
-                    </Collapse.Panel>
-
-                    <Collapse.Panel header="Descarga" key="descarga">
-                        <Form.Item label="WFS disponible" name="wfsAvailable" valuePropName="checked">
-                            <Switch />
-                        </Form.Item>
-                        <Form.Item label="Descargable" name="downloadable" valuePropName="checked">
-                            <Switch />
-                        </Form.Item>
-                    </Collapse.Panel>
-
-                    <Collapse.Panel header="InfoBox" key="infobox">
-                        <Form.Item label="Template" name="infoboxTemplate">
-                            <Select
-                                allowClear
-                                options={[
-                                    { value: 'municipio', label: 'municipio' },
-                                    { value: 'punto', label: 'punto' },
-                                    { value: 'punto_municipio', label: 'punto_municipio' },
-                                    { value: 'punto_ubicacion', label: 'punto_ubicacion' },
-                                    { value: 'punto_completo', label: 'punto_completo' },
-                                    { value: 'custom', label: 'custom (JSON libre)' },
-                                ]}
-                            />
-                        </Form.Item>
-                        {selectedTemplate && selectedTemplate !== 'custom' && (
-                            <InfoBoxPresetForm template={selectedTemplate} />
-                        )}
-                        {selectedTemplate === 'custom' && (
-                            <Form.Item name="infoboxConfig" label="Configuración JSON">
-                                <InfoBoxJsonEditor key={layer?.id} />
-                            </Form.Item>
-                        )}
-                        <div style={{ marginTop: 16 }}>
-                            <Text strong style={{ display: 'block', marginBottom: 8 }}>Preview</Text>
-                            <InfoBoxPreview
-                                template={selectedTemplate}
-                                params={selectedTemplate === 'custom' ? watchedConfig : watchedParams}
-                            />
-                        </div>
-                    </Collapse.Panel>
-                </Collapse>
+                <Collapse
+                    defaultActiveKey={['identidad', 'wms']}
+                    items={[
+                        {
+                            key: 'identidad',
+                            label: 'Identidad',
+                            children: (
+                                <>
+                                    <Form.Item label="Label" name="label" rules={[{ required: true }]}>
+                                        <Input />
+                                    </Form.Item>
+                                    <Form.Item label="Node type" name="nodeType">
+                                        <Select options={NODE_TYPE_OPTIONS} />
+                                    </Form.Item>
+                                    <Form.Item label="Tags de búsqueda (coma)" name="searchTags">
+                                        <Input placeholder="seguridad, delito, feminicidio" />
+                                    </Form.Item>
+                                </>
+                            )
+                        },
+                        {
+                            key: 'visibilidad',
+                            label: 'Visibilidad',
+                            children: (
+                                <>
+                                    <Form.Item label="Oculta en menú" name="hiddenInMenu" valuePropName="checked">
+                                        <Switch />
+                                    </Form.Item>
+                                    <Form.Item label="Deshabilitada (prefijo *)" name="disabled" valuePropName="checked">
+                                        <Switch />
+                                    </Form.Item>
+                                </>
+                            )
+                        },
+                        {
+                            key: 'wms',
+                            label: 'WMS',
+                            children: (
+                                <>
+                                    {loadingWs && <Spin size="small" style={{ marginBottom: 12 }} />}
+                                    <Form.Item label="Workspace" name="workspaceAlias">
+                                        <Select
+                                            showSearch
+                                            allowClear
+                                            placeholder="Selecciona workspace"
+                                            options={workspaces.map((w) => ({
+                                                value: w.alias,
+                                                label: `${w.label || w.alias} (${w.layers?.length || 0} capas)`,
+                                            }))}
+                                        />
+                                    </Form.Item>
+                                    <Form.Item label="Capa GeoServer" name="geoserverLayer">
+                                        <AutoComplete
+                                            options={availableLayers.map((l) => ({ value: l }))}
+                                            filterOption={(input, option) =>
+                                                option.value.toLowerCase().includes(input.toLowerCase())
+                                            }
+                                            placeholder={selectedWs ? 'Elige una capa del workspace' : 'Selecciona workspace primero'}
+                                            disabled={!selectedWs}
+                                        />
+                                    </Form.Item>
+                                    <Form.Item label="Estilo" name="styles">
+                                        <AutoComplete
+                                            options={availableStyles.map((s) => ({ value: s }))}
+                                            placeholder="Vacio = estilo por defecto"
+                                        />
+                                    </Form.Item>
+                                    <Form.Item label="CQL filter" name="cqlFilter">
+                                        <Input.TextArea rows={2} placeholder="modalidad = 'Con violencia'" />
+                                    </Form.Item>
+                                    <Form.Item label="WMS group" name="wmsGroup" extra="Capas con mismo grupo se mergean en una request WMS">
+                                        <Input />
+                                    </Form.Item>
+                                </>
+                            )
+                        },
+                        {
+                            key: 'descarga',
+                            label: 'Descarga',
+                            children: (
+                                <>
+                                    <Form.Item label="WFS disponible" name="wfsAvailable" valuePropName="checked">
+                                        <Switch />
+                                    </Form.Item>
+                                    <Form.Item label="Descargable" name="downloadable" valuePropName="checked">
+                                        <Switch />
+                                    </Form.Item>
+                                </>
+                            )
+                        },
+                        {
+                            key: 'infobox',
+                            label: 'InfoBox',
+                            children: (
+                                <>
+                                    <Form.Item label="Template" name="infoboxTemplate">
+                                        <Select
+                                            allowClear
+                                            options={[
+                                                { value: 'municipio', label: 'municipio' },
+                                                { value: 'punto', label: 'punto' },
+                                                { value: 'punto_municipio', label: 'punto_municipio' },
+                                                { value: 'punto_ubicacion', label: 'punto_ubicacion' },
+                                                { value: 'punto_completo', label: 'punto_completo' },
+                                                { value: 'custom', label: 'custom (JSON libre)' },
+                                            ]}
+                                        />
+                                    </Form.Item>
+                                    {selectedTemplate && selectedTemplate !== 'custom' && (
+                                        <InfoBoxPresetForm template={selectedTemplate} />
+                                    )}
+                                    {selectedTemplate === 'custom' && (
+                                        <Form.Item name="infoboxConfig" label="Configuración JSON">
+                                            <InfoBoxJsonEditor key={layer?.id} />
+                                        </Form.Item>
+                                    )}
+                                    <div style={{ marginTop: 16 }}>
+                                        <Text strong style={{ display: 'block', marginBottom: 8 }}>Preview</Text>
+                                        <InfoBoxPreview
+                                            template={selectedTemplate}
+                                            params={selectedTemplate === 'custom' ? watchedConfig : watchedParams}
+                                        />
+                                    </div>
+                                </>
+                            )
+                        }
+                    ]}
+                />
             </Form>
         </Drawer>
     );

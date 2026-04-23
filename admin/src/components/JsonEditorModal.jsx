@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react';
 import { Modal, Input, message, Alert, Row, Col, Card, Button, Typography, Collapse, Tooltip } from 'antd';
 import { CopyOutlined } from '@ant-design/icons';
 import { BLOCK_CONFIG, BLOCK_CATEGORIES, BLOCK_TYPES, getBlocksByCategory } from '@constants/pageConstants';
+import useIsMobile from '@hooks/useIsMobile';
 
 const { TextArea } = Input;
 const { Text, Title } = Typography;
 
 export default function JsonEditorModal({ visible, onClose, initialData, onSave }) {
+    const { isMobile } = useIsMobile();
     const [jsonString, setJsonString] = useState('');
     const [error, setError] = useState(null);
     const [messageApi, contextHolder] = message.useMessage();
@@ -101,14 +103,15 @@ export default function JsonEditorModal({ visible, onClose, initialData, onSave 
             open={visible}
             onCancel={onClose}
             onOk={handleSave}
-            width={1000}
+            width={isMobile ? '100%' : 1000}
             okText="Aplicar Cambios"
             cancelText="Cancelar"
-            style={{ top: 20 }}
+            style={{ top: isMobile ? 0 : 20 }}
+            centered={isMobile}
         >
             {contextHolder}
-            <Row gutter={24}>
-                <Col span={16}>
+            <Row gutter={[16, 16]}>
+                <Col xs={24} md={16}>
                     <Alert
                         title="Zona de Peligro"
                         description="Editar el JSON directamente puede romper la página. Asegúrate de mantener la estructura correcta."
@@ -123,11 +126,11 @@ export default function JsonEditorModal({ visible, onClose, initialData, onSave 
                             setJsonString(e.target.value);
                             setError(null);
                         }}
-                        rows={25}
+                        rows={isMobile ? 14 : 25}
                         style={{ fontFamily: 'monospace', fontSize: 12, whiteSpace: 'pre' }}
                     />
                 </Col>
-                <Col span={8}>
+                <Col xs={24} md={8}>
                     {renderSnippetList()}
                 </Col>
             </Row>

@@ -42,7 +42,7 @@ export default function InfoBoxJsonEditor({ value, onChange }) {
             {error && (
                 <Alert
                     type="error"
-                    message="JSON inválido"
+                    title="JSON inválido"
                     description={error}
                     style={{ marginTop: 8 }}
                 />

@@ -1,6 +1,7 @@
 import { Modal, Form, Input, Alert, Radio, Select, Space, Switch, Tag } from 'antd';
 import { EyeOutlined, EyeInvisibleOutlined, StopOutlined } from '@ant-design/icons';
 import { PREDEFINED_ICONS } from '@constants/menuConstants';
+import useIsMobile from '@hooks/useIsMobile';
 
 export default function MenuItemModal({
     visible,
@@ -14,6 +15,7 @@ export default function MenuItemModal({
     onLabelChange,
     onIconTypeChange
 }) {
+    const { isMobile } = useIsMobile();
     return (
         <Modal
             title={
@@ -28,6 +30,8 @@ export default function MenuItemModal({
             onOk={() => form.submit()}
             okText={editingItem ? 'Actualizar' : 'Crear'}
             cancelText="Cancelar"
+            width={isMobile ? '100%' : 520}
+            centered={isMobile}
         >
             <Form
                 form={form}
@@ -52,7 +56,7 @@ export default function MenuItemModal({
                 </Form.Item>
 
                 <Alert
-                    message="Ruta generada automáticamente"
+                    title="Ruta generada automáticamente"
                     description={
                         <div style={{ fontFamily: 'monospace', fontSize: 14, marginTop: 8, color: '#1890ff' }}>
                             {urlPreview}
@@ -151,7 +155,7 @@ export default function MenuItemModal({
 
                 {!selectedParent && !editingItem && (
                     <Alert
-                        message="Item de nivel superior"
+                        title="Item de nivel superior"
                         description="Este item se agregará en el nivel superior del menú. La ruta se generará automáticamente a partir del nombre. Usa el botón 'Agregar hijo' en un item existente para crear submenús."
                         type="success"
                         showIcon

@@ -3,10 +3,12 @@ import { Table, Card, Typography, Button, Space, Modal, Input, message, Tag } fr
 import { useNavigate } from 'react-router';
 import { EditOutlined, CloseOutlined, EyeOutlined } from '@ant-design/icons';
 import api from '@services/api';
+import useIsMobile from '@hooks/useIsMobile';
 
 const { Title } = Typography;
 
 export default function RevisionQueue() {
+    const { isMobile } = useIsMobile();
     const navigate = useNavigate();
     const [borradores, setBorradores] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -105,13 +107,15 @@ export default function RevisionQueue() {
         {
             title: 'Acciones',
             key: 'acciones',
+            fixed: isMobile ? undefined : 'right',
+            width: isMobile ? undefined : 360,
             render: (_, record) => (
-                <Space>
+                <Space size="small" wrap>
                     <Button
                         icon={<EyeOutlined />}
                         onClick={() => isMenu(record) ? handleMenuPreview(record) : handlePreview(record)}
                     >
-                        Vista previa
+                        {isMobile ? '' : 'Vista previa'}
                     </Button>
                     <Button
                         type="primary"
@@ -121,14 +125,14 @@ export default function RevisionQueue() {
                             : navigate(`/pages/edit/${record.resource_id}?review=true&borrador=${record.id}`)
                         }
                     >
-                        Revisar
+                        {isMobile ? '' : 'Revisar'}
                     </Button>
                     <Button
                         danger
                         icon={<CloseOutlined />}
                         onClick={() => handleRechazar(record)}
                     >
-                        Rechazar
+                        {isMobile ? '' : 'Rechazar'}
                     </Button>
                 </Space>
             )
@@ -137,15 +141,21 @@ export default function RevisionQueue() {
 
     return (
         <div>
-            <Title level={2} style={{ marginBottom: 24 }}>Cola de revisión</Title>
+            <Title level={isMobile ? 3 : 2} style={{ marginBottom: 16 }}>Cola de revisión</Title>
 
-            <Card>
+            <Card styles={{ body: { padding: isMobile ? 0 : undefined } }}>
                 <Table
                     columns={columns}
                     dataSource={borradores}
                     rowKey="id"
                     loading={loading}
-                    pagination={{ pageSize: 20, showTotal: (total) => `${total} pendientes` }}
+                    size={isMobile ? 'small' : 'middle'}
+                    scroll={{ x: 'max-content' }}
+                    pagination={{
+                        pageSize: 20,
+                        simple: isMobile,
+                        showTotal: (total) => `${total} pendientes`
+                    }}
                     locale={{ emptyText: 'Sin borradores pendientes de revisión' }}
                 />
             </Card>
@@ -158,6 +168,8 @@ export default function RevisionQueue() {
                 okText="Rechazar"
                 okType="danger"
                 cancelText="Cancelar"
+                width={isMobile ? '100%' : 520}
+                centered={isMobile}
             >
                 <p>
                     Se notificará a <strong>{borradorSeleccionado?.usuario?.name}</strong> que su borrador de{' '}
