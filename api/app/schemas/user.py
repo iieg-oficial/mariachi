@@ -1,7 +1,16 @@
 from datetime import datetime
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import AfterValidator, BaseModel, EmailStr, Field
+
+
+def _ensure_has_at(v: str) -> str:
+    if "@" not in v or not v.split("@", 1)[0] or not v.split("@", 1)[1]:
+        raise ValueError("email debe tener la forma local@domain")
+    return v
+
+
+LaxEmail = Annotated[str, AfterValidator(_ensure_has_at)]
 
 
 class UsuarioBase(BaseModel):
@@ -27,6 +36,7 @@ class UsuarioResponse(UsuarioBase):
     role: str
     must_change_password: bool
     created_at: datetime
+    email: LaxEmail
 
     model_config = {"from_attributes": True}
 
