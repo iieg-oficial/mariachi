@@ -56,13 +56,66 @@ def test_notifier_posts_to_refresh_cache_endpoint():
             return httpx.Response(200, json={'ok': True})
 
         transport = httpx.MockTransport(handler)
-        with patch('httpx.Client', lambda **kw: httpx.Client(transport=transport, **{k: v for k, v in kw.items() if k != 'transport'})):
+        real_client = httpx.Client
+        with patch('httpx.Client', lambda **kw: real_client(transport=transport, **{k: v for k, v in kw.items() if k != 'transport'})):
             mapalab_notifier._do_notify()
 
         assert called['method'] == 'POST'
         assert called['url'] == 'http://mapalab-test.local/layers/refresh-cache'
     finally:
         s.mapalab_backend_url = original
+
+
+def test_notifier_retries_on_failure():
+    from app.services import mapalab_notifier
+    from app.api.metrics import COUNTER_TREE_NOTIFY_FAILED, _counters
+    s, original = _mock_settings_with_url()
+    original_backoff = mapalab_notifier._BACKOFF_BASE_SECONDS
+    mapalab_notifier._BACKOFF_BASE_SECONDS = 0.01
+    failed_before = _counters.get(COUNTER_TREE_NOTIFY_FAILED, 0)
+    try:
+        attempts = {'n': 0}
+
+        def handler(request):
+            attempts['n'] += 1
+            return httpx.Response(500, json={'error': 'boom'})
+
+        transport = httpx.MockTransport(handler)
+        real_client = httpx.Client
+        with patch('httpx.Client', lambda **kw: real_client(transport=transport, **{k: v for k, v in kw.items() if k != 'transport'})):
+            mapalab_notifier._do_notify()
+
+        assert attempts['n'] == mapalab_notifier._MAX_ATTEMPTS
+        failed_after = _counters.get(COUNTER_TREE_NOTIFY_FAILED, 0)
+        assert failed_after - failed_before == 1
+    finally:
+        s.mapalab_backend_url = original
+        mapalab_notifier._BACKOFF_BASE_SECONDS = original_backoff
+
+
+def test_notifier_succeeds_on_retry():
+    from app.services import mapalab_notifier
+    s, original = _mock_settings_with_url()
+    original_backoff = mapalab_notifier._BACKOFF_BASE_SECONDS
+    mapalab_notifier._BACKOFF_BASE_SECONDS = 0.01
+    try:
+        attempts = {'n': 0}
+
+        def handler(request):
+            attempts['n'] += 1
+            if attempts['n'] < 2:
+                return httpx.Response(503)
+            return httpx.Response(200, json={'ok': True})
+
+        transport = httpx.MockTransport(handler)
+        real_client = httpx.Client
+        with patch('httpx.Client', lambda **kw: real_client(transport=transport, **{k: v for k, v in kw.items() if k != 'transport'})):
+            mapalab_notifier._do_notify()
+
+        assert attempts['n'] == 2
+    finally:
+        s.mapalab_backend_url = original
+        mapalab_notifier._BACKOFF_BASE_SECONDS = original_backoff
 
 
 def test_notifier_debounces_multiple_calls():
@@ -76,7 +129,8 @@ def test_notifier_debounces_multiple_calls():
             return httpx.Response(200, json={'ok': True})
 
         transport = httpx.MockTransport(handler)
-        with patch('httpx.Client', lambda **kw: httpx.Client(transport=transport, **{k: v for k, v in kw.items() if k != 'transport'})):
+        real_client = httpx.Client
+        with patch('httpx.Client', lambda **kw: real_client(transport=transport, **{k: v for k, v in kw.items() if k != 'transport'})):
             for _ in range(5):
                 mapalab_notifier.notify_tree_changed()
 
