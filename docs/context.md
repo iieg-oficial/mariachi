@@ -89,7 +89,7 @@ Paginas: `Login`, `PageEditor`, `MenuManager`, `Media`, `RevisionQueue`, `Users`
 | Componente | Tecnologia | Notas |
 |---|---|---|
 | Proxy interno | Nginx | sirve `web/dist` en `/`, `admin/dist` en `/administrador/`, proxea `api/` a backend |
-| BD | PostgreSQL 16 (prod) / 18 (dev) | DB: `iieg_portal` |
+| BD | PostgreSQL 18 (prod y dev) | DB: `iieg_portal` |
 | Cache/sessions | Redis 7 | |
 | Almacenamiento | Acervo (MinIO S3-compatible) | bucket `iieg-acervo` (prod), `portal-dev` (dev) |
 | DataEngine (solo v1.4.0+ MapaLab) | PostgreSQL + PostGIS externo | Segunda conexion para tabla `layers` |
@@ -159,7 +159,7 @@ mariachi/
 | Servicio | Container name | Puerto | Funcion |
 |---|---|---|---|
 | `nginx` | `mariachi-nginx` | 80, 443 | Proxy + estaticos |
-| `postgres` | `mariachi-postgres` | interno | PostgreSQL 16 |
+| `postgres` | `mariachi-postgres` | interno | PostgreSQL 18 |
 | `redis` | `mariachi-redis` | interno | Cache/sessions |
 | `api` | `mariachi-api` | interno | FastAPI + Gunicorn |
 

@@ -1,6 +1,8 @@
 # Alembic con multiples bases de datos
 
 > Mariachi maneja **dos bases de datos** via un solo setup de Alembic, usando el argumento `-x db=...`.
+>
+> **Politica de ownership (2026-04-23)**: las migraciones con `-x db=dataengine` son la **fuente autoritativa** del schema `mapalab.*` en DataEngine. El archivo `mapalab-dataengine/jobs/bootstrap/v14_schema.sql` queda frozen como baseline de bootstrap — no se toca. Cualquier cambio futuro de schema entra como migracion alembic aqui. Ver `gateway-hub/docs/ecosystem.md` seccion 7.3.
 
 ---
 
