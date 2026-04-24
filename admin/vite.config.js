@@ -79,16 +79,10 @@ export default defineConfig(({ mode }) => {
         resolve: {
             alias: {
                 '@': path.resolve(__dirname, './src'),
-                '@components': path.resolve(__dirname, './src/components'),
-                '@pages': path.resolve(__dirname, './src/pages'),
-                '@layouts': path.resolve(__dirname, './src/layouts'),
-                '@providers': path.resolve(__dirname, './src/providers'),
+                '@app': path.resolve(__dirname, './src/app'),
+                '@features': path.resolve(__dirname, './src/features'),
+                '@shared': path.resolve(__dirname, './src/shared'),
                 '@assets': path.resolve(__dirname, './src/assets'),
-                '@utils': path.resolve(__dirname, './src/utils'),
-                '@hooks': path.resolve(__dirname, './src/hooks'),
-                '@services': path.resolve(__dirname, './src/services'),
-                '@contexts': path.resolve(__dirname, './src/contexts'),
-                '@constants': path.resolve(__dirname, './src/constants'),
             },
         },
     };

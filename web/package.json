@@ -3,7 +3,7 @@
     "description": "Portal web del Instituto de Información Estadística y Geográfica de Jalisco (IIEG)",
     "license": "MIT",
     "author": "Edgar Alejandro Villarreal Padilla <edgar.villarreal@iieg.gob.mx>",
-    "version": "0.14.0",
+    "version": "0.15.0",
     "private": true,
     "type": "module",
     "scripts": {

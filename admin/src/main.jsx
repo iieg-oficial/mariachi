@@ -6,15 +6,15 @@ import ReactGA from 'react-ga4';
 import * as Sentry from '@sentry/react';
 import { Result, Spin } from 'antd';
 import './index.css'
-import { AuthProvider } from '@contexts/AuthContext';
-import MainProvider from '@providers/MainProvider';
-import ProtectedRoute from '@components/ProtectedRoute';
-import RoleProtectedRoute from '@components/RoleProtectedRoute';
-import ErrorBoundary from '@components/ErrorBoundary';
-import MainLayout from '@components/MainLayout';
+import { AuthProvider } from '@shared/contexts/AuthContext';
+import MainProvider from '@app/providers/MainProvider';
+import ProtectedRoute from '@app/guards/ProtectedRoute';
+import RoleProtectedRoute from '@app/guards/RoleProtectedRoute';
+import ErrorBoundary from '@app/guards/ErrorBoundary';
+import MainLayout from '@app/MainLayout';
 import { Navigate } from 'react-router';
-import Login from '@pages/Login';
-import ChangePassword from '@pages/ChangePassword';
+import Login from '@features/auth/pages/LoginPage';
+import ChangePassword from '@features/auth/pages/ChangePasswordPage';
 
 const isDev = import.meta.env.DEV;
 
@@ -28,12 +28,12 @@ if (import.meta.env.VITE_SENTRY_DSN) {
     });
 }
 
-const Users = lazy(() => import('@pages/Users'));
-const MenuManager = lazy(() => import('@pages/MenuManager'));
-const PageEditor = lazy(() => import('@pages/PageEditor'));
-const Media = lazy(() => import('@pages/Media'));
-const RevisionQueue = lazy(() => import('@pages/RevisionQueue'));
-const MapalabLayers = lazy(() => import('@pages/MapalabLayers'));
+const Users = lazy(() => import('@features/users'));
+const MenuManager = lazy(() => import('@features/portal-menu'));
+const PageEditor = lazy(() => import('@features/portal-pages'));
+const Media = lazy(() => import('@features/media'));
+const RevisionQueue = lazy(() => import('@features/revision'));
+const LayersPage = lazy(() => import('@features/mapalab-layers'));
 
 const PageFallback = () => (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
@@ -119,7 +119,7 @@ const router = createBrowserRouter([
                         path: 'mapalab/layers',
                         element: withSuspense(
                             <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
-                                <MapalabLayers />
+                                <LayersPage />
                             </RoleProtectedRoute>
                         )
                     },
