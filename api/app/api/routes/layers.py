@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, require_role, verify_csrf
+from app.api.deps import get_current_user, require_project_access, require_role, verify_csrf
 from app.api.rate_limit import rate_limit
 from app.core.database import get_dataengine_db
 from app.models.layer import Layer, Workspace
@@ -18,7 +18,11 @@ from app.services import layer_service
 from app.services.geoserver_client import GeoServerError
 from app.services.mapalab_notifier import notify_tree_changed
 
-router = APIRouter(prefix='/layers', tags=['layers'])
+router = APIRouter(
+    prefix='/layers',
+    tags=['layers'],
+    dependencies=[Depends(require_project_access('mapalab'))],
+)
 
 _require_editor_or_admin = require_role(['tetlamamakani', 'editora'])
 _require_admin = require_role(['tetlamamakani'])

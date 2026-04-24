@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.api.deps import require_role, verify_csrf
+from app.api.deps import require_project_access, require_role, verify_csrf
 from app.api.rate_limit import rate_limit
 from app.core.database import get_dataengine_db
 from app.models.layer_metadata import LayerMetadata, LayerStats
@@ -15,7 +15,11 @@ from app.schemas.layer_metadata import (
 from app.services.mapalab_notifier import notify_tree_changed
 from app.services.stats_templates import StatsTemplateError, validate_stats_config
 
-router = APIRouter(prefix='/layer-metadata', tags=['layer-metadata'])
+router = APIRouter(
+    prefix='/layer-metadata',
+    tags=['layer-metadata'],
+    dependencies=[Depends(require_project_access('mapalab'))],
+)
 
 _require_editor_or_admin = require_role(['tetlamamakani', 'editora'])
 _require_admin = require_role(['tetlamamakani'])

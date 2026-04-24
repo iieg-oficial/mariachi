@@ -3,7 +3,7 @@ from typing import Annotated, Literal
 
 from pydantic import AfterValidator, BaseModel, EmailStr, Field
 
-from app.schemas.project import BucketSummary, UserProjectMembership
+from app.schemas.project import BucketSummary, UserProjectAssignment, UserProjectMembership
 
 
 def _ensure_has_at(v: str) -> str:
@@ -24,6 +24,7 @@ class UsuarioBase(BaseModel):
 class UsuarioCreate(UsuarioBase):
     password: str = Field(..., min_length=8)
     role: Literal["tetlamamakani", "editora"]
+    project_assignments: list["UserProjectAssignment"] | None = None
 
 
 class UsuarioUpdate(BaseModel):
@@ -31,6 +32,7 @@ class UsuarioUpdate(BaseModel):
     email: EmailStr | None = None
     name: str | None = Field(None, min_length=1, max_length=100)
     role: Literal["tetlamamakani", "editora"] | None = None
+    project_assignments: list["UserProjectAssignment"] | None = None
 
 
 class UsuarioResponse(UsuarioBase):
@@ -39,12 +41,12 @@ class UsuarioResponse(UsuarioBase):
     must_change_password: bool
     created_at: datetime
     email: LaxEmail
+    projects: list["UserProjectMembership"] = []
 
     model_config = {"from_attributes": True}
 
 
 class CurrentUserResponse(UsuarioResponse):
-    projects: list["UserProjectMembership"] = []
     accessible_buckets: list["BucketSummary"] = []
 
 

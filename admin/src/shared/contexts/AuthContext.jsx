@@ -28,11 +28,13 @@ export const AuthProvider = ({ children }) => {
             password
         });
 
-        const { csrf_token, user } = response.data;
+        const { csrf_token } = response.data;
         sessionStorage.setItem('csrf_token', csrf_token);
-        setUser(user);
 
-        return response.data;
+        const profile = await api.get('/autenticacion/perfil');
+        setUser(profile.data);
+
+        return { ...response.data, user: profile.data };
     };
 
     const logout = async () => {

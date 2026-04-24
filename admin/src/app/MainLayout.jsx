@@ -1,20 +1,17 @@
 import { useState, useEffect } from 'react';
-import { Layout, Menu, Button, Avatar, Dropdown, Typography, Badge, Drawer, Grid } from 'antd';
+import { Layout, Menu, Button, Avatar, Dropdown, Typography, Drawer, Grid } from 'antd';
 import {
-    MenuFoldOutlined, MenuUnfoldOutlined, UserOutlined,
-    TeamOutlined, LogoutOutlined,
-    MenuOutlined,
-    FileImageOutlined,
+    MenuFoldOutlined,
+    MenuUnfoldOutlined,
+    UserOutlined,
+    LogoutOutlined,
     LockOutlined,
-    AuditOutlined,
-    GlobalOutlined,
-    EnvironmentOutlined,
-    PartitionOutlined
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router';
 import { useAuth } from '@shared/contexts/AuthContext';
 import api from '@shared/services/api';
 import { BRAND } from '@app/providers/MainProvider';
+import { buildSiderItems, defaultOpenKeyForPath } from '@app/sider-config';
 
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
@@ -56,87 +53,31 @@ export default function MainLayout() {
         if (isMobile) setMobileDrawerOpen(false);
     };
 
-    const portalitoChildren = [];
-    const mapalabChildren = [];
-
-    if (user?.role === 'tetlamamakani') {
-        portalitoChildren.push({
-            key: '/users',
-            icon: <TeamOutlined />,
-            label: 'Usuarios',
-            onClick: () => handleNav('/users')
-        });
-        portalitoChildren.push({
-            key: '/revision',
-            icon: <AuditOutlined />,
-            label: pendingCount > 0
-                ? <span>Revisiones <Badge count={pendingCount} size="small" /></span>
-                : 'Revisiones',
-            onClick: () => handleNav('/revision')
-        });
-    }
-
-    if (user?.role === 'tetlamamakani' || user?.role === 'editora') {
-        portalitoChildren.push({
-            key: '/media',
-            icon: <FileImageOutlined />,
-            label: 'Media',
-            onClick: () => handleNav('/media')
-        });
-        portalitoChildren.push({
-            key: '/menu',
-            icon: <MenuOutlined />,
-            label: 'Menú',
-            onClick: () => handleNav('/menu')
-        });
-
-        mapalabChildren.push({
-            key: '/mapalab/layers',
-            icon: <PartitionOutlined />,
-            label: 'Capas',
-            onClick: () => handleNav('/mapalab/layers')
-        });
-    }
-
-    const menuItems = [];
-    if (portalitoChildren.length > 0) {
-        menuItems.push({
-            key: 'portalito',
-            icon: <GlobalOutlined />,
-            label: 'Portalito',
-            children: portalitoChildren
-        });
-    }
-    if (mapalabChildren.length > 0) {
-        menuItems.push({
-            key: 'mapalab',
-            icon: <EnvironmentOutlined />,
-            label: 'Mapalab',
-            children: mapalabChildren
-        });
-    }
+    const menuItems = buildSiderItems({
+        user,
+        onNavigate: handleNav,
+        extras: { pendingCount },
+    });
 
     const userMenuItems = [
         {
             key: 'profile',
             icon: <UserOutlined />,
-            label: 'Perfil'
+            label: 'Perfil',
         },
         {
             key: 'change-password',
             icon: <LockOutlined />,
             label: 'Cambiar Contraseña',
-            onClick: () => navigate('/change-password')
+            onClick: () => navigate('/change-password'),
         },
-        {
-            type: 'divider'
-        },
+        { type: 'divider' },
         {
             key: 'logout',
             icon: <LogoutOutlined />,
             label: 'Cerrar Sesión',
-            onClick: handleLogout
-        }
+            onClick: handleLogout,
+        },
     ];
 
     const brand = (isCollapsedView) => (
@@ -147,7 +88,7 @@ export default function MainLayout() {
             justifyContent: 'center',
             color: '#fff',
             fontSize: isCollapsedView ? 16 : 20,
-            fontWeight: 'bold'
+            fontWeight: 'bold',
         }}>
             {isCollapsedView ? 'MA' : 'Mariachi'}
         </div>
@@ -158,7 +99,7 @@ export default function MainLayout() {
             theme="dark"
             mode="inline"
             selectedKeys={[location.pathname]}
-            defaultOpenKeys={location.pathname.startsWith('/mapalab') ? ['mapalab'] : ['portalito']}
+            defaultOpenKeys={[defaultOpenKeyForPath(location.pathname)]}
             items={menuItems}
         />
     );
@@ -181,7 +122,7 @@ export default function MainLayout() {
                     styles={{
                         wrapper: { width: 240 },
                         body: { padding: 0, background: BRAND.numeralia },
-                        header: { display: 'none' }
+                        header: { display: 'none' },
                     }}
                 >
                     {brand(false)}
@@ -199,7 +140,7 @@ export default function MainLayout() {
                     boxShadow: '0 1px 4px rgba(0,21,41,.08)',
                     position: 'sticky',
                     top: 0,
-                    zIndex: 10
+                    zIndex: 10,
                 }}>
                     <Button
                         type="text"
@@ -222,7 +163,7 @@ export default function MainLayout() {
                     margin: isMobile ? '12px 8px' : '24px 16px',
                     padding: isMobile ? 12 : 24,
                     background: '#fff',
-                    minHeight: 280
+                    minHeight: 280,
                 }}>
                     <Outlet />
                 </Content>

@@ -13,6 +13,37 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.17.0] - 2026-04-24
+
+Sider dinámico con grupo "Plataforma" arriba + grupos por proyecto; form de Usuarios con asignación de proyectos y rol por proyecto; `require_project_access` aplicado a los endpoints de dominio existentes. Primer release con cambios visuales del refactor multi-proyecto.
+
+### Agregado
+
+#### Frontend
+
+- `admin/src/app/sider-config.jsx` — config declarativa del sider: `PLATFORM_ITEMS` (Usuarios, Media, Revisiones con filtro por rol global) y `PROJECT_REGISTRY` (portal → Menú + Páginas; mapalab → Capas; sieej → placeholder). `buildSiderItems(user)` construye los items del Menu AntD desde la config + perfil. Agregar un nuevo proyecto = agregar entry a `PROJECT_REGISTRY`, sin tocar `MainLayout`.
+- `MainLayout.jsx` ahora renderiza el sider desde `buildSiderItems`. Primer grupo "Plataforma" (siempre que el usuario tenga rol global con al menos un item), luego un grupo por proyecto al que tenga membresía (admin global ve todos los proyectos registrados). Badge de pendientes en "Revisiones" portado a la config.
+- `UsersPage` — form con sección "Proyectos y roles" cuando `role=editora`: un checkbox + select (Editor / Viewer) por proyecto disponible. Hidden para `tetlamamakani` con nota informativa de acceso global. Columna nueva en la tabla que muestra las asignaciones como tags.
+
+#### Backend
+
+- `UsuarioCreate` y `UsuarioUpdate` aceptan `project_assignments: list[UserProjectAssignment] | None`. `POST /usuarios` y `PUT /usuarios/{id}` crean/reemplazan membresías en la misma transacción (atómico).
+- `UsuarioResponse` ahora incluye `projects: list[UserProjectMembership]` — `GET /usuarios` y `GET /usuarios/{id}` devuelven las asignaciones.
+- `AuthContext.loginUser` hace un hit extra a `/autenticacion/perfil` tras el login para poblar `projects` + `accessible_buckets` en el `user` del context (antes solo traía datos básicos).
+
+### Cambiado
+
+- `/paginas` y `/elementos-menu` ahora requieren `require_project_access("portal")` a nivel de router.
+- `/layers`, `/layer-metadata`, `/geoserver` ahora requieren `require_project_access("mapalab")` a nivel de router.
+- Admin global (`tetlamamakani`) bypass automático por rol; editoras sin membership al proyecto correspondiente reciben `403`.
+
+### Notas
+
+- Las **creds del usuario** para ediciones siguen usando el rol global (`editora`) como check mínimo; la granularidad de `viewer` (bloquear writes por membership) se afinará cuando haya UI para gestionar roles viewer-only y se pueda validar en integración.
+- El form de Users envía `project_assignments: []` explícitamente cuando el rol es `tetlamamakani` para limpiar cualquier asignación previa al cambiar de role.
+
+---
+
 ## [0.16.0] - 2026-04-24
 
 Backend multi-proyecto: modelo de dominio `Project` + `UserProject` + `MediaBucket`, extensión de `/auth/me` con proyectos y buckets accesibles, y helpers de autorización (`require_project_access`, `require_bucket_access`). Base del refactor multi-proyecto (Portalito, MapaLab, SIEEJ). Sin cambios visuales ni de flujo en el admin todavía — el consumo frontend llega en PR 3 y 4.

@@ -1,12 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_db, verify_csrf
+from app.api.deps import get_current_user, get_db, require_project_access, verify_csrf
 from app.models.menu_item import MenuItem
 from app.models.user import Usuario
 from app.schemas.menu_item import MenuItemCreate, MenuItemResponse, MenuItemTree, MenuItemUpdate
 
-router = APIRouter(prefix="/elementos-menu", tags=["menú"])
+router = APIRouter(
+    prefix="/elementos-menu",
+    tags=["menú"],
+    dependencies=[Depends(require_project_access("portal"))],
+)
 
 
 def construir_arbol_menu(items: list[MenuItem]) -> list[MenuItemTree]:

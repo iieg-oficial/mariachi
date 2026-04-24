@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from app.api.deps import require_role
+from app.api.deps import require_project_access, require_role
 from app.api.metrics import COUNTER_GEOSERVER_CALLS, incr
 from app.api.rate_limit import rate_limit
 from app.core.database import get_dataengine_db
@@ -9,7 +9,11 @@ from app.models.layer import Workspace
 from app.models.user import Usuario
 from app.services.geoserver_client import GeoServerClient, GeoServerError
 
-router = APIRouter(prefix='/geoserver', tags=['geoserver'])
+router = APIRouter(
+    prefix='/geoserver',
+    tags=['geoserver'],
+    dependencies=[Depends(require_project_access('mapalab'))],
+)
 
 _require_editor_or_admin = require_role(['tetlamamakani', 'editora'])
 _read_rate_limit = rate_limit(max_requests=120, window_seconds=60.0)
