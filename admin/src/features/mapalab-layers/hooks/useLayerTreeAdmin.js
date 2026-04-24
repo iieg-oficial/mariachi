@@ -108,6 +108,16 @@ export const useLayerTreeAdmin = () => {
         return res.data;
     }, []);
 
+    const getInitialOrder = useCallback(async () => {
+        const res = await api.get('/layers/initial-order');
+        return res.data;
+    }, []);
+
+    const setInitialOrder = useCallback(async (orderedIds) => {
+        const res = await api.patch('/layers/initial-order', { layers: orderedIds });
+        return res.data;
+    }, []);
+
     const getLayerMetadata = useCallback(async (layerKey) => {
         try {
             const res = await api.get(`/layer-metadata/${encodeURIComponent(layerKey)}`);
@@ -140,6 +150,8 @@ export const useLayerTreeAdmin = () => {
         listGeoserverStyles,
         bulkUpdateTags,
         reorderLayers,
+        getInitialOrder,
+        setInitialOrder,
         getLayerMetadata,
         updateLayerMetadata,
     };

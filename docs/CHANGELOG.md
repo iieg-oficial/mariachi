@@ -13,6 +13,36 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.23.0] - 2026-04-24
+
+Configuración de capas iniciales en MapaLab desde el admin: la tabla `mapalab.initial_layer_order` y el endpoint PATCH ya existían pero no había UI; solo se podía mantener vía SQL directo.
+
+### Agregado
+
+- **Endpoint backend `GET /api/administrador/layers/initial-order`** (admin-only) que devuelve la lista ordenada actual con metadata (`layerId`, `sortOrder`, `label`, `nodeType`, `parentId`). Antes solo existía PATCH para escribir, sin forma de leer el estado.
+- **Service `layer_service.list_initial_order(session)`** — JOIN de `InitialLayerOrder` + `Layer` ordenado por `sort_order`.
+- **Schema `InitialOrderItem`** en `api/app/schemas/layer.py`.
+- **Hook `useLayerTreeAdmin`:** funciones `getInitialOrder()` y `setInitialOrder(orderedIds)`.
+- **Sider:** item "Capas iniciales" bajo el grupo MapaLab → `/mapalab/initial-order` (solo admin).
+- **Página `InitialLayerOrderPage`** con dnd-kit:
+    - Lista de capas activas en orden actual; arrastrar para reordenar.
+    - Modal "Agregar capa" con `Select` searchable contra el catálogo de capas hoja (`nodeType === 'leaf'`) que aún no están en el orden inicial.
+    - Botón "Quitar" por fila.
+    - Botones "Descartar" (vuelve al estado original) y "Guardar" (PATCH atómico, refresh del árbol).
+    - Estado vacío + manejo de errores.
+- **Ruta** `mapalab/initial-order` registrada en `main.jsx` con `RoleProtectedRoute(['tetlamamakani'])`.
+
+### Cambiado
+
+- **`api/pyproject.toml`** — `[tool.ruff.lint.per-file-ignores]` para `models/layer.py`, `services/layer_service.py`, `services/mapalab_notifier.py` (regla `I001`). Esos archivos pertenecen al ciclo DataEngine/`prod-migracion` y sus autofixes se aplican allá; se ignoran en develop para no bloquear CI.
+
+### Notas
+
+- `set_initial_order` ya validaba que las capas existieran y reemplazaba el orden atómicamente — no hubo cambios al service de escritura, solo se agregó lectura.
+- `notify_tree_changed()` se sigue disparando en el PATCH para invalidar caché del frontend público de MapaLab.
+
+---
+
 ## [0.22.1] - 2026-04-24
 
 Limpieza post-cobertura: tests preexistentes rotos por la migración a cookies, deprecation de `datetime.utcnow()`, configuración de CI sobreviviente del split del portal y `package-lock.json` desync.

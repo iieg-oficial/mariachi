@@ -3,7 +3,6 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 NodeType = Literal["tema", "category", "label", "group", "leaf"]
 
 
@@ -135,3 +134,13 @@ class ReorderBody(BaseModel):
 
 class InitialOrderBody(BaseModel):
     layers: list[str]
+
+
+class InitialOrderItem(BaseModel):
+    layer_id: str = Field(..., serialization_alias="layerId")
+    sort_order: int = Field(..., serialization_alias="sortOrder")
+    label: str
+    node_type: str = Field(..., serialization_alias="nodeType")
+    parent_id: str | None = Field(default=None, serialization_alias="parentId")
+
+    model_config = ConfigDict(populate_by_name=True, from_attributes=True)

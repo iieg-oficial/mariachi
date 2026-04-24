@@ -9,6 +9,7 @@ import {
     EnvironmentOutlined,
     ProjectOutlined,
     FormOutlined,
+    OrderedListOutlined,
 } from '@ant-design/icons';
 
 export const PLATFORM_ITEMS = [
@@ -54,6 +55,12 @@ export const PROJECT_REGISTRY = {
                 path: '/mapalab/layers',
                 label: 'Capas',
                 icon: <PartitionOutlined />,
+            },
+            {
+                key: '/mapalab/initial-order',
+                path: '/mapalab/initial-order',
+                label: 'Capas iniciales',
+                icon: <OrderedListOutlined />,
             },
         ],
     },

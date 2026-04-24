@@ -202,6 +202,31 @@ def set_initial_order(session: Session, ordered_ids: list[str]) -> None:
     session.flush()
 
 
+def list_initial_order(session: Session) -> list[dict]:
+    rows = (
+        session.query(
+            InitialLayerOrder.layer_id,
+            InitialLayerOrder.sort_order,
+            Layer.label,
+            Layer.node_type,
+            Layer.parent_id,
+        )
+        .join(Layer, Layer.id == InitialLayerOrder.layer_id)
+        .order_by(InitialLayerOrder.sort_order)
+        .all()
+    )
+    return [
+        {
+            "layer_id": r.layer_id,
+            "sort_order": r.sort_order,
+            "label": r.label,
+            "node_type": r.node_type,
+            "parent_id": r.parent_id,
+        }
+        for r in rows
+    ]
+
+
 def duplicate_layer(session: Session, layer: Layer, new_id_suffix: str = '_copy') -> Layer:
     new_id = f'{layer.id}{new_id_suffix}'
     existing = session.query(Layer).filter(Layer.id == new_id).first()

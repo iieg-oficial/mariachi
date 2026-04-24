@@ -35,6 +35,7 @@ const Media = lazy(() => import('@features/media'));
 const RevisionQueue = lazy(() => import('@features/revision'));
 const LayersPage = lazy(() => import('@features/mapalab-layers'));
 const LayerEditPage = lazy(() => import('@features/mapalab-layers').then((m) => ({ default: m.LayerEditPage })));
+const InitialLayerOrderPage = lazy(() => import('@features/mapalab-layers').then((m) => ({ default: m.InitialLayerOrderPage })));
 const FormulariosPage = lazy(() => import('@features/sieej-formularios'));
 
 const PageFallback = () => (
@@ -130,6 +131,14 @@ const router = createBrowserRouter([
                         element: withSuspense(
                             <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
                                 <LayerEditPage />
+                            </RoleProtectedRoute>
+                        )
+                    },
+                    {
+                        path: 'mapalab/initial-order',
+                        element: withSuspense(
+                            <RoleProtectedRoute allowedRoles={['tetlamamakani']}>
+                                <InitialLayerOrderPage />
                             </RoleProtectedRoute>
                         )
                     },
