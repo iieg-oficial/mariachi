@@ -3,6 +3,8 @@ from typing import Annotated, Literal
 
 from pydantic import AfterValidator, BaseModel, EmailStr, Field
 
+from app.schemas.project import BucketSummary, UserProjectMembership
+
 
 def _ensure_has_at(v: str) -> str:
     if "@" not in v or not v.split("@", 1)[0] or not v.split("@", 1)[1]:
@@ -39,6 +41,11 @@ class UsuarioResponse(UsuarioBase):
     email: LaxEmail
 
     model_config = {"from_attributes": True}
+
+
+class CurrentUserResponse(UsuarioResponse):
+    projects: list["UserProjectMembership"] = []
+    accessible_buckets: list["BucketSummary"] = []
 
 
 class PasswordChange(BaseModel):

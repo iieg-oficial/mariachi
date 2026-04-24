@@ -3,12 +3,12 @@ from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, get_current_user_context
 from app.core.database import get_db
 from app.core.security import crear_access_token, crear_csrf_token, verify_password
 from app.core.settings import get_settings
 from app.models.user import Usuario
-from app.schemas.user import LoginRequest, LoginResponse, UsuarioResponse
+from app.schemas.user import CurrentUserResponse, LoginRequest, LoginResponse, UsuarioResponse
 
 router = APIRouter(prefix="/autenticacion", tags=["autenticación"])
 settings = get_settings()
@@ -66,9 +66,11 @@ async def logout(
     return {"message": "Sesión cerrada exitosamente"}
 
 
-@router.get("/perfil", response_model=UsuarioResponse)
-async def get_current_user_info(current_user: Usuario = Depends(get_current_user)):
-    return current_user
+@router.get("/perfil", response_model=CurrentUserResponse)
+async def get_current_user_info(
+    context: dict = Depends(get_current_user_context),
+):
+    return context
 
 
 @router.get("/verificar")

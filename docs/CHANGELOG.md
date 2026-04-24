@@ -13,6 +13,67 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.16.0] - 2026-04-24
+
+Backend multi-proyecto: modelo de dominio `Project` + `UserProject` + `MediaBucket`, extensión de `/auth/me` con proyectos y buckets accesibles, y helpers de autorización (`require_project_access`, `require_bucket_access`). Base del refactor multi-proyecto (Portalito, MapaLab, SIEEJ). Sin cambios visuales ni de flujo en el admin todavía — el consumo frontend llega en PR 3 y 4.
+
+### Agregado
+
+#### Modelos y BD (`iieg_portal`)
+
+- Tabla `projects`: `id`, `slug` UNIQUE, `name`, `description`, `is_active`, `created_at`.
+- Tabla `user_projects`: many-to-many usuario↔proyecto con `project_role: editor | viewer`. FK a `usuarios(id)` y `projects(id)` con `ON DELETE CASCADE`.
+- Tabla `media_buckets`: `acervo_bucket` UNIQUE, `access_key_ref` (nombre de env var, no cred en BD), `display_name`, `is_public`, `is_active`, FK a `projects(id)`.
+- Seeds iniciales en la misma migración:
+    - Proyectos: `portal`, `mapalab`, `sieej`.
+    - Buckets: `portal` → project portal, `mapalab` y `dateengine` → project mapalab. Los dos primeros `is_public=true` (match con las políticas anónimas GET de Acervo).
+    - Backfill: cada usuario `editora` existente recibe membership `editor` en `portal` y `mapalab` para no romper acceso previo.
+- Migración: `c0d1e2f3a4b5_add_projects_user_projects_media_buckets.py` sobre branch `mariachi`.
+
+#### Modelos Python
+
+- `app/models/project.py`: `Project`, `UserProject`.
+- `app/models/media_bucket.py`: `MediaBucket`.
+- Ambos registrados en `app/models/__init__.py`.
+
+#### Schemas Pydantic
+
+- `app/schemas/project.py`: `ProjectCreate`, `ProjectUpdate`, `ProjectResponse`, `UserProjectAssignment`, `UserProjectMembership`, `BucketSummary`.
+- `app/schemas/media_bucket.py`: `MediaBucketCreate`, `MediaBucketUpdate`, `MediaBucketResponse`.
+- `app/schemas/user.py`: nuevo `CurrentUserResponse` que extiende `UsuarioResponse` con `projects: list[UserProjectMembership]` y `accessible_buckets: list[BucketSummary]`.
+
+#### Endpoints
+
+- `GET /api/administrador/projects` — lista proyectos activos (cualquier usuario autenticado).
+- `POST /api/administrador/projects` — admin-only, crea proyecto.
+- `PATCH /api/administrador/projects/{id}` — admin-only, actualiza.
+- `GET /api/administrador/projects/{id}/members` — admin-only, lista membresías.
+- `PUT /api/administrador/projects/users/{user_id}` — admin-only, reemplaza todas las membresías de un usuario en una sola llamada (payload: `[{project_slug, project_role}]`).
+- `GET /api/administrador/media-buckets` — lista buckets visibles para el usuario actual (admin ve todos; editora/diseñadora filtra por proyectos asignados).
+- `POST /api/administrador/media-buckets` — admin-only.
+- `PATCH /api/administrador/media-buckets/{id}` — admin-only.
+- `GET /api/administrador/autenticacion/perfil` — ahora devuelve `CurrentUserResponse` con `projects` y `accessible_buckets` precalculados en un solo hit.
+
+#### Helpers de autorización (`app/api/deps.py`)
+
+- `get_current_user_context()` — inyecta dict con user + memberships + buckets accesibles. Usado por `/autenticacion/perfil`.
+- `require_project_access(project_slug, min_role=None)` — dependencia que verifica membership del usuario en el proyecto indicado. Admin global bypass. `min_role="editor"` rechaza viewers.
+- `require_bucket_access(bucket_id_param="bucket_id")` — dependencia que verifica que el usuario pertenezca al proyecto dueño del bucket, devuelve el objeto `MediaBucket` resuelto.
+
+### Convenciones introducidas
+
+- **Credenciales por bucket NO viven en la BD.** `media_buckets.access_key_ref` guarda el nombre de una env var (ej. `ACERVO_MAPALAB`) y el backend resuelve `{ref}_ACCESS_KEY` / `{ref}_SECRET_KEY` del entorno en runtime. Evita leaks via dumps de DB.
+- **Superadmin es por rol global** (`tetlamamakani`), no por asignación. No hace falta insertar filas en `user_projects` para admins — pueden con todo por defecto.
+- **Un usuario puede ser `editor` en un proyecto y `viewer` en otro** (el viewer que pediste para preview sin edición se modela como `user_projects.project_role='viewer'`, no como rol global nuevo).
+
+### Notas
+
+- Los endpoints existentes `/pages`, `/menu`, `/layers`, `/layer-metadata`, `/geoserver` **aún no** usan `require_project_access`. Se aplicarán en PR 3 (sider dinámico + form de Users con proyectos), junto con el UI para asignar proyectos al crear/editar usuarios. Aplicarlo sin ese UI rompería el flujo de alta de usuarios.
+- El consumo real de `access_key_ref` por el servicio de Media (cliente MinIO por bucket) llega en PR 4.
+- La migración detectó que `init_db.py` inicializaba el schema con `create_all` sin registrar revision en Alembic. Se hizo `alembic stamp b5c6d7e8f9a0` antes de aplicar la nueva — documentar en `DEPLOYMENT.md` cuando exista.
+
+---
+
 ## [0.15.0] - 2026-04-24
 
 Reestructura del admin a **feature-sliced architecture** (sin cambios de lógica ni de UI). Preparación para el refactor multi-proyecto (Portalito, MapaLab, SIEEJ) y multi-bucket. Este release es puramente arquitectónico: misma funcionalidad, organización escalable.
