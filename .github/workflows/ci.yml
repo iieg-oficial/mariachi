@@ -2,7 +2,6 @@ name: CI
 
 on:
   push:
-    branches-ignore: [develop, main]
   pull_request:
 
 jobs:
@@ -13,8 +12,3 @@ jobs:
     uses: ./.github/workflows/test-frontend.yml
     with:
       app: admin
-
-  web:
-    uses: ./.github/workflows/test-frontend.yml
-    with:
-      app: web

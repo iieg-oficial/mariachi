@@ -9,7 +9,6 @@ from app.api.deps import get_current_user
 from app.api.metrics import COUNTER_RATE_LIMIT_HITS, incr
 from app.models.user import Usuario
 
-
 logger = logging.getLogger(__name__)
 
 _buckets: dict[str, list[float]] = {}

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from app.api.deps import require_project_access, require_role
+from app.api.deps import require_project_access
 from app.api.metrics import COUNTER_GEOSERVER_CALLS, incr
 from app.api.rate_limit import rate_limit
 from app.core.database import get_dataengine_db

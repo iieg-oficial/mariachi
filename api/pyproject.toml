@@ -1,6 +1,6 @@
 [project]
 name = "mariachi-api"
-version = "0.22.0"
+version = "0.22.1"
 description = "FastAPI backend for CMS (mariachi) and portal frontends."
 authors = [{name = "IIEG", email = "dev@iieg.gob.mx"}]
 requires-python = ">=3.12"
@@ -43,6 +43,9 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools.packages.find]
 include = ["app*"]
 exclude = ["alembic*", "scripts*", "tests*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
 
 [tool.ruff]
 line-length = 100

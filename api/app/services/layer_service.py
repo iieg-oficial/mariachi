@@ -9,7 +9,6 @@ from app.models.layer import InitialLayerOrder, Layer, Workspace
 from app.schemas.layer import LayerCreate, LayerUpdate
 from app.services.geoserver_client import GeoServerClient, GeoServerError
 
-
 INFOBOX_TEMPLATES = {
     'municipio', 'punto', 'punto_municipio',
     'punto_ubicacion', 'punto_completo', 'custom',

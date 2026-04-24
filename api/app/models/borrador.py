@@ -1,9 +1,8 @@
-from datetime import datetime
-
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, JSON, String, Text, UniqueConstraint
+from sqlalchemy import JSON, Column, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
+from app.core.time import utcnow
 
 
 class Borrador(Base):
@@ -16,8 +15,8 @@ class Borrador(Base):
     data = Column(JSON, nullable=False)
     estado = Column(String, nullable=False, default='en_progreso')
     comentario_rechazo = Column(Text, nullable=True)
-    creado_en = Column(DateTime, default=datetime.utcnow)
-    actualizado_en = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    creado_en = Column(DateTime, default=utcnow)
+    actualizado_en = Column(DateTime, default=utcnow, onupdate=utcnow)
 
     usuario = relationship("Usuario", foreign_keys=[usuario_id], lazy="select")
 

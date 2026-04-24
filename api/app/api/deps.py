@@ -1,4 +1,4 @@
-from fastapi import Cookie, Depends, HTTPException, status, Request
+from fastapi import Cookie, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db

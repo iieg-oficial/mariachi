@@ -1,10 +1,9 @@
-from datetime import datetime
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import get_current_user, get_db, require_role, verify_csrf
 from app.core.database import get_dataengine_db
+from app.core.time import utcnow
 from app.models.borrador import Borrador
 from app.models.layer import Layer
 from app.models.user import Usuario
@@ -106,7 +105,7 @@ async def aprobar_borrador(
         )
 
     borrador.estado = 'aprobado'
-    borrador.actualizado_en = datetime.utcnow()
+    borrador.actualizado_en = utcnow()
     db.commit()
     notify_tree_changed()
     return {'ok': True, **result}
@@ -128,7 +127,7 @@ async def rechazar_borrador(
 
     borrador.estado = 'rechazado'
     borrador.comentario_rechazo = body.comentario
-    borrador.actualizado_en = datetime.utcnow()
+    borrador.actualizado_en = utcnow()
     db.commit()
     return {"ok": True}
 
@@ -196,7 +195,7 @@ async def guardar_borrador(
         borrador.data = borrador_in.data
         borrador.estado = 'en_progreso'
         borrador.comentario_rechazo = None
-        borrador.actualizado_en = datetime.utcnow()
+        borrador.actualizado_en = utcnow()
     else:
         borrador = Borrador(
             resource_type=resource_type,
@@ -230,7 +229,7 @@ async def solicitar_revision(
 
     borrador.estado = 'pendiente_revision'
     borrador.comentario_rechazo = None
-    borrador.actualizado_en = datetime.utcnow()
+    borrador.actualizado_en = utcnow()
     db.commit()
     return {"ok": True}
 

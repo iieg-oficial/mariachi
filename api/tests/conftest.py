@@ -79,24 +79,6 @@ def editora_user(db_session):
     return user
 
 
-@pytest.fixture(scope="function")
-def admin_token(client, admin_user):
-    response = client.post(
-        "/api/administrador/autenticacion/iniciar-sesion",
-        json={"username": "admin_test", "password": "testpass123"},
-    )
-    return response.json()["access_token"]
-
-
-@pytest.fixture(scope="function")
-def editora_token(client, editora_user):
-    response = client.post(
-        "/api/administrador/autenticacion/iniciar-sesion",
-        json={"username": "editora_test", "password": "testpass123"},
-    )
-    return response.json()["access_token"]
-
-
 def login_as(client, username, password):
     response = client.post(
         f"{ADMIN_PREFIX}/autenticacion/iniciar-sesion",

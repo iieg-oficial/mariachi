@@ -9,7 +9,6 @@ import httpx
 from app.api.metrics import COUNTER_TREE_NOTIFY, COUNTER_TREE_NOTIFY_FAILED, incr
 from app.core.settings import get_settings
 
-
 logger = logging.getLogger(__name__)
 
 _DEBOUNCE_WINDOW_SECONDS = 5.0

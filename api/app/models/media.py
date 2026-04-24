@@ -1,9 +1,8 @@
-from datetime import datetime
-
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, JSON, String
+from sqlalchemy import JSON, Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
+from app.core.time import utcnow
 
 
 class MediaFolder(Base):
@@ -30,7 +29,7 @@ class Media(Base):
     thumbnail = Column(String, nullable=True)
     folder = Column(String, ForeignKey("media_folders.path"), default="/", nullable=False, index=True)
     uploaded_by = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
-    uploaded_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    uploaded_at = Column(DateTime, default=utcnow, nullable=False)
     metadata_json = Column("metadata", JSON, default=dict)
 
     uploaded_by_user = relationship("Usuario", back_populates="media_uploads")

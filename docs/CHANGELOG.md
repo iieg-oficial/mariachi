@@ -13,6 +13,28 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.22.1] - 2026-04-24
+
+Limpieza post-cobertura: tests preexistentes rotos por la migración a cookies, deprecation de `datetime.utcnow()`, configuración de CI sobreviviente del split del portal y `package-lock.json` desync.
+
+### Cambiado
+
+- **Tests preexistentes (`tests/test_auth.py`, `tests/test_users.py`):** migrados a las fixtures cookie-aware `admin_session`/`editora_session`. Antes asumían `access_token` en body + header `Authorization: Bearer` (pre-cookies). Ahora 21 tests de auth/usuarios pasan en lugar de 23 errores. Las fixtures viejas `admin_token`/`editora_token` (huérfanas) eliminadas del conftest.
+- **`tests/conftest.py`:** filtro de tablas con schema (`schema is None`) en `db_session` para que SQLite ignore las tablas SIEEJ del trabajo en progreso.
+- **`api/pyproject.toml`:** `[tool.pytest.ini_options] testpaths = ["tests"]` para que pytest no recolecte `scripts/test_*.py` (son scripts CLI con `if __name__ == "__main__"`, no tests).
+- **`api/app/core/time.py` (nuevo) + replaces:** helper `utcnow()` que retorna naive UTC. Reemplazo de `datetime.utcnow()` (deprecated en 3.12, removed en 3.13) en `core/security.py`, `api/routes/{borradores,pages}.py`, `models/{borrador,media,media_bucket,page,project,user}.py`. Comportamiento idéntico (naive UTC), 0 deprecation warnings. Modelos DataEngine (`models/layer.py`) y archivos del trabajo SIEEJ en progreso quedan fuera (van por sus propias ramas).
+- **`.github/workflows/ci.yml`:** removido el job `web` (el portal vive en repo separado desde 0.21.x — el path `web/` no existe en este repo). Removido `branches-ignore: [develop, main]` para que CI corra también en push directo a develop, no solo en PRs.
+- **`admin/package-lock.json`:** resync con `npm install --package-lock-only`. Estaba en `0.12.0` cuando `package.json` ya iba en `0.22.0` — `npm ci` en CI fallaba por mismatch.
+- **Ruff autofix:** 27 issues (sort de imports + 1 whitespace) resueltos automáticamente en archivos del CMS. Archivos DataEngine (`models/layer.py`, `schemas/layer.py`) excluidos por la política de ownership; sus autofixes corresponden a la rama `prod-migracion`.
+
+### Resultado
+
+- `pytest -q` → `85 passed, 6 warnings` (de `39 passed, 1 failed, 23 errors, 186 warnings`).
+- `ruff check app tests` → `All checks passed!`.
+- CI ya corre en push a develop, sin job inexistente bloqueando.
+
+---
+
 ## [0.22.0] - 2026-04-24
 
 Cobertura smoke de tests para el refactor multi-proyecto. Hasta hoy CI corría `pytest -q` y `npm test` sin nada que ejecutara para los endpoints/guards/UI nuevos.

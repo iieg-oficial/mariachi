@@ -1,9 +1,7 @@
-from datetime import datetime
-
-from sqlalchemy import Column, DateTime, Integer, JSON, String, Text
-from sqlalchemy.orm import relationship
+from sqlalchemy import JSON, Column, DateTime, Integer, String, Text
 
 from app.core.database import Base
+from app.core.time import utcnow
 
 
 class Page(Base):
@@ -17,4 +15,4 @@ class Page(Base):
     meta_description = Column(Text, nullable=True)
     meta_keywords = Column(String, nullable=True)
     published_at = Column(DateTime, nullable=True)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)

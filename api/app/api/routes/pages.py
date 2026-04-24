@@ -1,15 +1,14 @@
-from datetime import datetime
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 
 from app.api.deps import get_current_user, get_db, require_project_access, verify_csrf
 from app.core.cache import get_cache, redis_client, set_cache
+from app.core.time import utcnow
 from app.models.menu_item import MenuItem
 from app.models.page import Page
 from app.models.user import Usuario
-from app.schemas.page import PageCreate, PageResponse, PageUpdate
+from app.schemas.page import PageResponse, PageUpdate
 
 router = APIRouter(
     prefix="/paginas",
@@ -53,7 +52,7 @@ async def obtener_pagina(page_id: str, db: Session = Depends(get_db)):
             meta_description=None,
             meta_keywords=None,
             published_at=None,
-            updated_at=datetime.utcnow(),
+            updated_at=utcnow(),
         )
 
     return pagina
@@ -109,7 +108,7 @@ async def actualizar_o_crear_pagina(
         nueva_pagina = Page(
             menu_item_id=page_id,
             **data,
-            published_at=datetime.utcnow(),
+            published_at=utcnow(),
         )
         db.add(nueva_pagina)
         db.commit()
@@ -122,8 +121,8 @@ async def actualizar_o_crear_pagina(
         if 'sections' in update_data:
             flag_modified(pagina, 'sections')
 
-        pagina.published_at = datetime.utcnow()
-        pagina.updated_at = datetime.utcnow()
+        pagina.published_at = utcnow()
+        pagina.updated_at = utcnow()
         db.commit()
         db.refresh(pagina)
 
@@ -154,7 +153,7 @@ def obtener_pagina_por_slug(slug: str, db: Session = Depends(get_db)):
     Si no existe, retorna 404.
     """
     pagina = db.query(Page).filter(Page.slug == slug).first()
-    
+
     if not pagina:
         # Para 'home', podemos devolver una estructura default si no existe en DB
         if slug == 'home':
@@ -166,8 +165,8 @@ def obtener_pagina_por_slug(slug: str, db: Session = Depends(get_db)):
                 sections=[],
                 meta_description="Página de Inicio",
                 meta_keywords="",
-                published_at=datetime.utcnow(),
-                updated_at=datetime.utcnow(),
+                published_at=utcnow(),
+                updated_at=utcnow(),
             )
         raise HTTPException(status_code=404, detail="Página no encontrada")
 

@@ -1,9 +1,8 @@
-from datetime import datetime
-
 from sqlalchemy import Boolean, Column, DateTime, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
+from app.core.time import utcnow
 
 
 class Project(Base):
@@ -14,7 +13,7 @@ class Project(Base):
     name = Column(String(200), nullable=False)
     description = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=utcnow, nullable=False)
 
     memberships = relationship("UserProject", back_populates="project", cascade="all, delete-orphan")
     buckets = relationship("MediaBucket", back_populates="project", cascade="all, delete-orphan")

@@ -1,10 +1,11 @@
-from datetime import datetime, timedelta
 import secrets
+from datetime import timedelta
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
 from .settings import get_settings
+from .time import utcnow
 
 settings = get_settings()
 
@@ -22,9 +23,9 @@ def hash_password(password: str) -> str:
 def crear_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
     to_encode = data.copy()
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = utcnow() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=settings.access_token_expire_minutes)
+        expire = utcnow() + timedelta(minutes=settings.access_token_expire_minutes)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
 
@@ -42,7 +43,7 @@ def crear_csrf_token(username: str) -> str:
         "sub": username,
         "type": "csrf",
         "random": secrets.token_urlsafe(32),
-        "exp": datetime.utcnow() + timedelta(minutes=settings.csrf_token_expire_minutes),
+        "exp": utcnow() + timedelta(minutes=settings.csrf_token_expire_minutes),
     }
     return jwt.encode(data, settings.csrf_secret_key, algorithm=settings.algorithm)
 

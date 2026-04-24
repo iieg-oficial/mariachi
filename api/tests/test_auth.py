@@ -1,4 +1,4 @@
-import pytest
+from tests.conftest import ADMIN_PREFIX
 
 
 def test_healthcheck(client):
@@ -9,19 +9,29 @@ def test_healthcheck(client):
 
 def test_login_success(client, admin_user):
     response = client.post(
-        "/api/administrador/autenticacion/iniciar-sesion",
+        f"{ADMIN_PREFIX}/autenticacion/iniciar-sesion",
         json={"username": "admin_test", "password": "testpass123"},
     )
     assert response.status_code == 200
     data = response.json()
-    assert "access_token" in data
-    assert data["token_type"] == "bearer"
+    assert "csrf_token" in data
     assert data["user"]["username"] == "admin_test"
+    assert data["user"]["role"] == "tetlamamakani"
+
+
+def test_login_sets_cookie(client, admin_user):
+    response = client.post(
+        f"{ADMIN_PREFIX}/autenticacion/iniciar-sesion",
+        json={"username": "admin_test", "password": "testpass123"},
+    )
+    assert response.status_code == 200
+    cookie_names = [c.name for c in response.cookies.jar]
+    assert any("token" in name.lower() or "session" in name.lower() for name in cookie_names)
 
 
 def test_login_invalid_credentials(client, admin_user):
     response = client.post(
-        "/api/administrador/autenticacion/iniciar-sesion",
+        f"{ADMIN_PREFIX}/autenticacion/iniciar-sesion",
         json={"username": "admin_test", "password": "wrongpassword"},
     )
     assert response.status_code == 401
@@ -30,57 +40,54 @@ def test_login_invalid_credentials(client, admin_user):
 
 def test_login_missing_fields(client):
     response = client.post(
-        "/api/administrador/autenticacion/iniciar-sesion",
+        f"{ADMIN_PREFIX}/autenticacion/iniciar-sesion",
         json={"username": "admin_test"},
     )
     assert response.status_code == 422
 
 
-def test_get_current_user(client, admin_user, admin_token):
-    response = client.get(
-        "/api/administrador/autenticacion/perfil",
-        headers={"Authorization": f"Bearer {admin_token}"},
-    )
+def test_get_current_user(admin_session):
+    client = admin_session["client"]
+    response = client.get(f"{ADMIN_PREFIX}/autenticacion/perfil")
     assert response.status_code == 200
     data = response.json()
     assert data["username"] == "admin_test"
     assert data["role"] == "tetlamamakani"
 
 
-def test_get_current_user_no_token(client):
-    response = client.get("/api/administrador/autenticacion/perfil")
+def test_get_current_user_no_cookie(client):
+    response = client.get(f"{ADMIN_PREFIX}/autenticacion/perfil")
     assert response.status_code == 401
 
 
-def test_get_current_user_invalid_token(client):
+def test_get_current_user_invalid_cookie(client, admin_user):
     response = client.get(
-        "/api/administrador/autenticacion/perfil",
-        headers={"Authorization": "Bearer invalid_token"},
+        f"{ADMIN_PREFIX}/autenticacion/perfil",
+        cookies={"access_token": "invalid_token"},
     )
     assert response.status_code == 401
 
 
-def test_verify_token_valid(client, admin_token):
-    response = client.get(
-        "/api/administrador/autenticacion/verificar",
-        headers={"Authorization": f"Bearer {admin_token}"},
-    )
+def test_verify_token_valid(admin_session):
+    client = admin_session["client"]
+    response = client.get(f"{ADMIN_PREFIX}/autenticacion/verificar")
     assert response.status_code == 200
     assert response.json()["valid"] is True
 
 
-def test_verify_token_invalid(client):
+def test_verify_token_invalid(client, admin_user):
     response = client.get(
-        "/api/administrador/autenticacion/verificar",
-        headers={"Authorization": "Bearer invalid_token"},
+        f"{ADMIN_PREFIX}/autenticacion/verificar",
+        cookies={"access_token": "invalid_token"},
     )
     assert response.status_code == 401
 
 
-def test_logout(client, admin_token):
+def test_logout(admin_session):
+    client = admin_session["client"]
     response = client.post(
-        "/api/administrador/autenticacion/cerrar-sesion",
-        headers={"Authorization": f"Bearer {admin_token}"},
+        f"{ADMIN_PREFIX}/autenticacion/cerrar-sesion",
+        headers={"X-CSRF-Token": admin_session["csrf"]},
     )
     assert response.status_code == 200
     assert "exitosamente" in response.json()["message"]

@@ -5,7 +5,6 @@ from typing import Any
 from sqlalchemy import text
 from sqlalchemy.engine import Connection
 
-
 STATS_OPERATIONS = {'count', 'count_distinct', 'count_where', 'sum', 'avg', 'min', 'max', 'latest'}
 
 

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_db, require_project_access, verify_csrf
+from app.api.deps import get_db, require_project_access, verify_csrf
 from app.models.menu_item import MenuItem
 from app.models.user import Usuario
 from app.schemas.menu_item import MenuItemCreate, MenuItemResponse, MenuItemTree, MenuItemUpdate

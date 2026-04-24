@@ -5,7 +5,22 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import metrics as metrics_module
-from app.api.routes import auth, borradores, formularios, geoserver, layer_metadata, layers, media, media_buckets, menu, pages, preview, projects, public, users
+from app.api.routes import (
+    auth,
+    borradores,
+    formularios,
+    geoserver,
+    layer_metadata,
+    layers,
+    media,
+    media_buckets,
+    menu,
+    pages,
+    preview,
+    projects,
+    public,
+    users,
+)
 from app.core.settings import get_settings
 
 settings = get_settings()

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, require_project_access, require_role, verify_csrf
+from app.api.deps import require_project_access, require_role, verify_csrf
 from app.api.rate_limit import rate_limit
 from app.core.database import get_dataengine_db
 from app.models.layer import Layer, Workspace

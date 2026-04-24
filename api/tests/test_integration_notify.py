@@ -35,8 +35,8 @@ def _mock_settings_with_url():
 
 
 def test_notifier_skips_when_no_url():
-    from app.services import mapalab_notifier
     from app.core.settings import get_settings
+    from app.services import mapalab_notifier
     s = get_settings()
     s.mapalab_backend_url = None
     with patch('httpx.Client') as mock_client:
@@ -67,8 +67,8 @@ def test_notifier_posts_to_refresh_cache_endpoint():
 
 
 def test_notifier_retries_on_failure():
-    from app.services import mapalab_notifier
     from app.api.metrics import COUNTER_TREE_NOTIFY_FAILED, _counters
+    from app.services import mapalab_notifier
     s, original = _mock_settings_with_url()
     original_backoff = mapalab_notifier._BACKOFF_BASE_SECONDS
     mapalab_notifier._BACKOFF_BASE_SECONDS = 0.01
