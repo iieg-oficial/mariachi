@@ -1,7 +1,10 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import ADMIN_ROLE, get_current_user, require_role, verify_csrf
+from app.api.metrics import COUNTER_MEDIA_BUCKET_WRITES, incr
 from app.core.database import get_db
 from app.models.media_bucket import MediaBucket
 from app.models.project import Project, UserProject
@@ -12,6 +15,7 @@ from app.schemas.media_bucket import (
     MediaBucketUpdate,
 )
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/media-buckets", tags=["media-buckets"])
 
 
@@ -49,6 +53,8 @@ async def create_bucket(
     db.add(bucket)
     db.commit()
     db.refresh(bucket)
+    incr(COUNTER_MEDIA_BUCKET_WRITES)
+    logger.info("action=bucket.create user_id=%s acervo_bucket=%s", _.id, bucket.acervo_bucket)
     return bucket
 
 
@@ -67,4 +73,6 @@ async def update_bucket(
         setattr(bucket, field, value)
     db.commit()
     db.refresh(bucket)
+    incr(COUNTER_MEDIA_BUCKET_WRITES)
+    logger.info("action=bucket.update user_id=%s bucket_id=%s", _.id, bucket.id)
     return bucket

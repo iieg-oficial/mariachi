@@ -1,3 +1,4 @@
+import logging
 import secrets
 import string
 
@@ -5,11 +6,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db, verify_csrf
+from app.api.metrics import COUNTER_USER_WRITES, incr
 from app.core.security import hash_password, verify_password
 from app.models.project import Project, UserProject
 from app.models.user import Usuario
 from app.schemas.user import PasswordChange, UsuarioCreate, UsuarioResponse, UsuarioUpdate
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/usuarios", tags=["usuarios"])
 
 
@@ -125,6 +128,8 @@ async def crear_usuario(
 
     db.commit()
     db.refresh(nuevo_usuario)
+    incr(COUNTER_USER_WRITES)
+    logger.info("action=user.create actor=%s new_user=%s role=%s", current_user.id, nuevo_usuario.id, nuevo_usuario.role)
     return _serialize_user(db, nuevo_usuario)
 
 
@@ -172,6 +177,8 @@ async def actualizar_usuario(
 
     db.commit()
     db.refresh(usuario)
+    incr(COUNTER_USER_WRITES)
+    logger.info("action=user.update actor=%s target=%s", current_user.id, usuario.id)
     return _serialize_user(db, usuario)
 
 
@@ -248,4 +255,6 @@ async def eliminar_usuario(
 
     db.delete(usuario)
     db.commit()
+    incr(COUNTER_USER_WRITES)
+    logger.info("action=user.delete actor=%s target=%s", current_user.id, usuario.id)
     return {"message": "Usuario eliminado exitosamente"}

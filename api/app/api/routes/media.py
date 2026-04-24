@@ -1,9 +1,11 @@
+import logging
 import uuid
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import ADMIN_ROLE, get_current_user, get_db, verify_csrf
+from app.api.metrics import COUNTER_MEDIA_DELETES, COUNTER_MEDIA_UPLOADS, incr
 from app.models.media import Media, MediaFolder
 from app.models.media_bucket import MediaBucket
 from app.models.project import UserProject
@@ -11,6 +13,7 @@ from app.models.user import Usuario
 from app.schemas.media import FolderCreate, FolderResponse
 from app.services.acervo import AcervoClient
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/multimedia", tags=["media"])
 
 
@@ -144,6 +147,11 @@ async def subir_archivo(
         db.add(nuevo)
         db.commit()
         db.refresh(nuevo)
+        incr(COUNTER_MEDIA_UPLOADS)
+        logger.info(
+            "action=media.upload user_id=%s bucket=%s size=%s name=%s",
+            current_user.id, bucket.acervo_bucket, nuevo.size, nuevo.original_name,
+        )
         return _serialize_media(nuevo)
     except Exception as e:
         raise HTTPException(
@@ -169,6 +177,8 @@ async def eliminar_archivo(
 
     db.delete(item)
     db.commit()
+    incr(COUNTER_MEDIA_DELETES)
+    logger.info("action=media.delete user_id=%s media_id=%s name=%s", current_user.id, item.id, item.name)
     return {"message": "Archivo eliminado exitosamente"}
 
 

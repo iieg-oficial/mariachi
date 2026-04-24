@@ -13,6 +13,35 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.21.1] - 2026-04-24
+
+Observabilidad en endpoints del refactor multi-proyecto y refresh de docs.
+
+### Agregado
+
+- **Counters `/metrics` para writes nuevos:**
+    - `mariachi_project_writes_total` — create / update / set_memberships en `/projects`.
+    - `mariachi_user_writes_total` — create / update / delete en `/usuarios`.
+    - `mariachi_media_bucket_writes_total` — create / update en `/media-buckets`.
+    - `mariachi_media_uploads_total`, `mariachi_media_deletes_total` — en `/multimedia`.
+    - `mariachi_layer_metadata_writes_total` — en `/layer-metadata` PUT.
+- **Logging estructurado básico** (`logger.info` con key=value) en writes de:
+    - `routes/projects.py`: create, update, set_memberships.
+    - `routes/users.py`: create, update, delete.
+    - `routes/media_buckets.py`: create, update.
+    - `routes/media.py`: upload, delete (incluye `bucket`, `size`, `name`).
+- Los logs siguen patrón `action=<dominio>.<operación> actor=<id> target=<id> ...`. Paso siguiente natural: migrar a JSON structured logs; por ahora text con key=value es grep-friendly.
+
+### Cambiado
+
+- `docs/PENDIENTES.md` refresh completo: estado actual marcado (0.21.0), items cumplidos del refactor cerrados, pendientes nuevos organizados (tests, lint ESLint 10, counters, upload directo en LayerMetadataSection, tabla `sieej_formularios` real).
+- `docs/CONTRIBUTING.md`:
+    - Instrucciones de setup actualizadas (admin-only, portal vive en repo separado).
+    - Nueva sección **"Arquitectura del admin (feature-sliced)"** con reglas de import entre `app/`, `shared/`, `features/` y checklist para agregar un proyecto nuevo.
+    - Regla "sin comentarios en código" explícita.
+
+---
+
 ## [0.21.0] - 2026-04-24
 
 **Breaking UI path:** el admin se sirve ahora bajo `/mariachi/` en vez de `/administrador/`, alineando con la convención del `gateway-hub` (`^~ /mariachi/` ya estaba reservado).

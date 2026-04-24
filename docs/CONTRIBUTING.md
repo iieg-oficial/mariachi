@@ -28,7 +28,7 @@ Este proyecto adhiere a un [Código de Conducta](./CODE_OF_CONDUCT.md). Al parti
 
 ### Prerrequisitos
 
-- Node.js >= 20 (admin y web)
+- Node.js >= 20 (admin)
 - Python 3.12+ (api)
 - Docker y Docker Compose
 - Git
@@ -39,7 +39,7 @@ Este proyecto adhiere a un [Código de Conducta](./CODE_OF_CONDUCT.md). Al parti
 git clone https://github.com/IIEG/mariachi.git
 cd mariachi
 make setup            # Crea .env.{development,staging,production}
-make up               # Levanta entorno dev (admin, web, api, postgres, redis)
+make up               # Levanta entorno dev (admin, api, postgres, redis)
 
 # Desarrollo local sin Docker
 # Backend (api/)
@@ -48,16 +48,13 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
 
-# Portal publico (web/)
-cd ../web
-npm install
-npm run dev
-
-# CMS (admin/)
+# Admin (admin/)
 cd ../admin
 npm install
 npm run dev
 ```
+
+El portal público vive en repo separado (`../portal`); si necesitas levantarlo para testear flujo completo, ve las instrucciones ahí.
 
 ## Proceso de Desarrollo
 
@@ -90,16 +87,52 @@ npm run dev
 - Máximo 300 líneas por archivo
 - Ejecutar: `ruff format` y `ruff check`
 
-### Admin y Web (JavaScript/React, `admin/` y `web/`)
+### Admin (JavaScript/React, `admin/`)
 
-- Usar ESLint configurado
+- ESLint 10 + jsx-a11y + regla `no-restricted-imports` que bloquea PNG (usar WebP/SVG)
 - Nombres de componentes: PascalCase
 - Funciones y variables: camelCase
 - Ejecutar: `npm run lint`
 
-### Sin comentarios innecesarios
+### Sin comentarios en código
 
-El código debe ser auto-explicativo. Comentarios solo para lógica de negocio compleja.
+El código debe ser auto-explicativo. Cero comentarios — ni JSDoc, ni docstrings descriptivos, ni `//` inline. Si sientes la necesidad de explicar algo, primero intenta renombrar variables/funciones para que el código lo diga.
+
+Excepciones reservadas: frontmatter de migraciones Alembic (generado por la herramienta), directivas `# syntax=docker/dockerfile:1` y similares.
+
+### Arquitectura del admin (feature-sliced)
+
+`admin/src/` está organizado en tres zonas — respetar las reglas de import para mantener la escalabilidad multi-proyecto.
+
+```
+admin/src/
+├── app/              # shell: MainLayout, guards, providers, sider-config
+├── shared/           # reusable entre features: AuthContext, useIsMobile, api
+└── features/
+    ├── auth/         # plataforma (shared entre proyectos)
+    ├── users/        # plataforma
+    ├── media/        # plataforma
+    ├── revision/     # plataforma (admin-only)
+    ├── portal-pages/ # proyecto portalito
+    ├── portal-menu/  # proyecto portalito
+    ├── mapalab-layers/ # proyecto mapalab
+    └── sieej-formularios/ # proyecto sieej
+```
+
+**Reglas de dependencia:**
+
+1. Features de **proyecto** (`portal-*`, `mapalab-*`, `sieej-*`) **NO importan entre sí**. Si dos necesitan compartir código, ese código sube a `shared/` o a una feature de plataforma.
+2. Features de **proyecto pueden consumir** features de **plataforma** (`users`, `media`, `revision`, `auth`) vía sus barrels: `import { BucketFilePicker } from '@features/media'`.
+3. `shared/` **nunca** importa de `features/`.
+4. `app/` solo importa de `features/` para registrar rutas y el sider (en `sider-config.jsx` y `main.jsx`).
+5. Cada feature expone su API pública en su `index.js` (barrel). No importar desde paths internos de otra feature.
+
+**Agregar un proyecto nuevo:**
+
+1. Crear `features/<slug-proyecto>/` con estructura (`pages/`, `components/`, `hooks/`, `api/`, `index.js`).
+2. Agregar entry al `PROJECT_REGISTRY` en `admin/src/app/sider-config.jsx`.
+3. Insertar el proyecto en la tabla `projects` (migración backend).
+4. Registrar lazy-load en `admin/src/main.jsx` + ruta en el router.
 
 ## Commits y Mensajes
 

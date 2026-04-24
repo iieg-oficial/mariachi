@@ -14,6 +14,12 @@ COUNTER_TREE_NOTIFY_FAILED = 'mariachi_tree_notify_failed_total'
 COUNTER_GEOSERVER_CALLS = 'mariachi_geoserver_calls_total'
 COUNTER_LAYER_WRITES = 'mariachi_layer_writes_total'
 COUNTER_LAYER_READS = 'mariachi_layer_reads_total'
+COUNTER_PROJECT_WRITES = 'mariachi_project_writes_total'
+COUNTER_USER_WRITES = 'mariachi_user_writes_total'
+COUNTER_MEDIA_BUCKET_WRITES = 'mariachi_media_bucket_writes_total'
+COUNTER_MEDIA_UPLOADS = 'mariachi_media_uploads_total'
+COUNTER_MEDIA_DELETES = 'mariachi_media_deletes_total'
+COUNTER_LAYER_METADATA_WRITES = 'mariachi_layer_metadata_writes_total'
 
 
 def incr(name: str, amount: int = 1) -> None:
