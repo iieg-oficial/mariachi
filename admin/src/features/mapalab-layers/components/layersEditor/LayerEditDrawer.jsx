@@ -18,6 +18,7 @@ import useIsMobile from '@shared/hooks/useIsMobile';
 import InfoBoxPresetForm from './InfoBoxPresetForm';
 import InfoBoxPreview from './InfoBoxPreview';
 import InfoBoxJsonEditor from './InfoBoxJsonEditor';
+import LayerMetadataSection from './LayerMetadataSection';
 
 const { Text } = Typography;
 
@@ -276,7 +277,12 @@ export default function LayerEditDrawer({ open, layer, saving, isAdmin = true, o
                                     </div>
                                 </>
                             )
-                        }
+                        },
+                        {
+                            key: 'metadatos',
+                            label: 'Metadatos descriptivos',
+                            children: <LayerMetadataSection layerKey={layer?.id} />,
+                        },
                     ]}
                 />
             </Form>

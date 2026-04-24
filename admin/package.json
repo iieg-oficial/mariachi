@@ -1,9 +1,9 @@
 {
     "name": "mariachi-admin",
-    "description": "Portal web del administrador del portal para el IIEG",
+    "description": "Mariachi — panel de administración del ecosistema IIEG",
     "license": "MIT",
     "author": "Edgar Alejandro Villarreal Padilla <edgar.villarreal@iieg.gob.mx>",
-    "version": "0.17.0",
+    "version": "0.18.0",
     "private": true,
     "type": "module",
     "scripts": {

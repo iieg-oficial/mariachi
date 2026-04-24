@@ -21,6 +21,7 @@ class Media(Base):
     __tablename__ = "media"
 
     id = Column(Integer, primary_key=True, index=True)
+    bucket_id = Column(Integer, ForeignKey("media_buckets.id"), nullable=True, index=True)
     name = Column(String, nullable=False, index=True)
     original_name = Column(String, nullable=False)
     type = Column(String, nullable=False)

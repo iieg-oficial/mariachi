@@ -1,6 +1,6 @@
 import api from '@shared/services/api';
 
-const DB_NAME = 'CMS_MediaStorage';
+const DB_NAME = 'Mariachi_MediaStorage';
 const DB_VERSION = 1;
 const STORE_NAME = 'media_files';
 
@@ -70,9 +70,34 @@ const deleteFromIndexedDB = async (id) => {
 };
 
 
+export const getBuckets = async () => {
+    try {
+        const response = await api.get('/media-buckets');
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching buckets:', error);
+        throw error;
+    }
+};
+
+export const listBucketObjects = async (bucketId, prefix = '') => {
+    try {
+        const params = new URLSearchParams({ bucket_id: String(bucketId) });
+        if (prefix) params.append('prefix', prefix);
+        const response = await api.get(`/multimedia/objetos-bucket?${params.toString()}`);
+        return response.data;
+    } catch (error) {
+        console.error('Error listing bucket objects:', error);
+        throw error;
+    }
+};
+
 export const getMediaFiles = async (filters = {}) => {
     try {
-        const params = new URLSearchParams();
+        if (!filters.bucketId) {
+            return [];
+        }
+        const params = new URLSearchParams({ bucket_id: String(filters.bucketId) });
 
         if (filters.folder) params.append('folder', filters.folder);
         if (filters.type) params.append('type', filters.type);
@@ -100,6 +125,11 @@ export const uploadMediaFile = async (file, options = {}) => {
     try {
         const formData = new FormData();
         formData.append('file', file);
+
+        if (!options.bucketId) {
+            throw new Error('bucketId requerido para subir archivos');
+        }
+        formData.append('bucket_id', String(options.bucketId));
 
         if (options.folder) {
             formData.append('folder', options.folder);
@@ -317,6 +347,8 @@ export const getImageDimensions = (file) => {
 };
 
 export default {
+    getBuckets,
+    listBucketObjects,
     getMediaFiles,
     getMediaFile,
     uploadMediaFile,

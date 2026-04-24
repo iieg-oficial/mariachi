@@ -108,6 +108,21 @@ export const useLayerTreeAdmin = () => {
         return res.data;
     }, []);
 
+    const getLayerMetadata = useCallback(async (layerKey) => {
+        try {
+            const res = await api.get(`/layer-metadata/${encodeURIComponent(layerKey)}`);
+            return res.data;
+        } catch (err) {
+            if (err.response?.status === 404) return null;
+            throw err;
+        }
+    }, []);
+
+    const updateLayerMetadata = useCallback(async (layerKey, payload) => {
+        const res = await api.put(`/layer-metadata/${encodeURIComponent(layerKey)}`, payload);
+        return res.data;
+    }, []);
+
     return {
         treeData,
         rawTree,
@@ -125,5 +140,7 @@ export const useLayerTreeAdmin = () => {
         listGeoserverStyles,
         bulkUpdateTags,
         reorderLayers,
+        getLayerMetadata,
+        updateLayerMetadata,
     };
 };

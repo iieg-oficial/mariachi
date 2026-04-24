@@ -145,8 +145,9 @@ mariachi/
 ├── docker-compose.yml            # name: mariachi (prod)
 ├── docker-compose.dev.yml        # name: mariachi-dev
 ├── Makefile
-├── .env.example
 ├── .env.development.example
+├── .env.staging.example
+├── .env.production.example
 └── README.md
 ```
 
@@ -414,7 +415,7 @@ Detalle completo en `docs/CHANGELOG.md` §[0.13.0]. Resumen:
 ### Listos para ejecutar (solo faltan credenciales / acciones externas)
 
 - [x] **Alembic multi-environment** — configurado, ver `docs/ALEMBIC_MULTI_ENV.md`. Listo para crear migración de DataEngine cuando haya credenciales.
-- [x] **COOKIE_DOMAIN** — ajustado al subdominio específico en `.env` (no versionado). El `.env.example` usa placeholder. Cubre `/administrador/*` y `/mapalab/*` sin exponer cookie a otros subdominios del dominio raiz.
+- [x] **COOKIE_DOMAIN** — ajustado al subdominio específico en `.env.*` (no versionado). Los `.env.*.example` usan placeholder. Cubre `/administrador/*` y `/mapalab/*` sin exponer cookie a otros subdominios del dominio raiz.
 - [x] **Script rename GitHub remote** — `scripts/rename-github-repo.sh`. Correr después de renombrar en GitHub web.
 - [x] **Script migración bucket Acervo** — `scripts/migrate-acervo-bucket.sh`. Requiere `mc` instalado y acceso al endpoint de Acervo.
 

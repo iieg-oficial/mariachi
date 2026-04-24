@@ -17,6 +17,8 @@ const { Option } = Select;
 const Media = () => {
     const { isMobile } = useIsMobile();
     const [loading, setLoading] = useState(false);
+    const [buckets, setBuckets] = useState([]);
+    const [selectedBucketId, setSelectedBucketId] = useState(null);
     const [mediaFiles, setMediaFiles] = useState([]);
     const [folders, setFolders] = useState([]);
     const [selectedFolder, setSelectedFolder] = useState(null);
@@ -34,19 +36,39 @@ const Media = () => {
     const [editForm] = Form.useForm();
 
     useEffect(() => {
-        loadMediaFiles();
+        loadBuckets();
         loadFolders();
-    }, [selectedFolder, selectedType, searchText]);
+    }, []);
+
+    useEffect(() => {
+        if (selectedBucketId) {
+            loadMediaFiles();
+        } else {
+            setMediaFiles([]);
+        }
+    }, [selectedBucketId, selectedFolder, selectedType, searchText]);
+
+    const loadBuckets = async () => {
+        try {
+            const data = await mediaService.getBuckets();
+            setBuckets(data);
+            if (data.length > 0 && !selectedBucketId) {
+                setSelectedBucketId(data[0].id);
+            }
+        } catch {
+            message.error('Error al cargar buckets');
+        }
+    };
 
     const loadMediaFiles = async () => {
         try {
             setLoading(true);
-            const filters = {
+            const data = await mediaService.getMediaFiles({
+                bucketId: selectedBucketId,
                 folder: selectedFolder,
                 type: selectedType,
-                search: searchText
-            };
-            const data = await mediaService.getMediaFiles(filters);
+                search: searchText,
+            });
             setMediaFiles(data);
         } catch {
             message.error('Error al cargar archivos');
@@ -74,13 +96,20 @@ const Media = () => {
     const handleUpload = async (options) => {
         const { file, onSuccess, onError, onProgress } = options;
 
+        if (!selectedBucketId) {
+            onError(new Error('Selecciona un bucket primero'));
+            message.error('Selecciona un bucket primero');
+            return;
+        }
+
         try {
             const uploadOptions = {
+                bucketId: selectedBucketId,
                 folder: form.getFieldValue('folder') || '/',
                 alt: form.getFieldValue('alt') || '',
                 onProgress: (percent) => {
                     onProgress({ percent });
-                }
+                },
             };
 
             const result = await mediaService.uploadMediaFile(file, uploadOptions);
@@ -405,6 +434,18 @@ const Media = () => {
                     gap: 8,
                     marginBottom: 16
                 }}>
+                    <div style={{ flex: isMobile ? '1 1 100%' : '0 0 240px' }}>
+                        <Select
+                            placeholder="Bucket"
+                            value={selectedBucketId}
+                            onChange={setSelectedBucketId}
+                            style={{ width: '100%' }}
+                            options={buckets.map((b) => ({
+                                value: b.id,
+                                label: `${b.display_name} · ${b.acervo_bucket}`,
+                            }))}
+                        />
+                    </div>
                     <div style={{ flex: isMobile ? '1 1 100%' : '1 1 240px', minWidth: 0 }}>
                         <Search
                             placeholder="Buscar archivos..."

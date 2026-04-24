@@ -1,6 +1,6 @@
 # Mariachi
 
-**Versión:** 0.17.0 ([changelog](docs/CHANGELOG.md))
+**Versión:** 0.18.0 ([changelog](docs/CHANGELOG.md))
 
 <div align="center">
 
@@ -8,7 +8,7 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688?style=for-the-badge&logo=fastapi)
 ![License](https://img.shields.io/badge/License-MIT-purple?style=for-the-badge)
 
-**CMS (Mariachi) + Portal público del IIEG**
+**Mariachi — panel de administración + portal público del IIEG**
 
 </div>
 
@@ -16,7 +16,7 @@ Monorepo con tres componentes que comparten backend e infraestructura:
 
 | Componente | Descripción | Puerto dev |
 |---|---|---|
-| **admin** | CMS *Mariachi* con React + Ant Design | 3011 |
+| **admin** | Panel *Mariachi* con React + Ant Design | 3011 |
 | **web** | Portal público con React + Vite + Tailwind (congelado) | 3010 |
 | **api** | Backend FastAPI + PostgreSQL + Redis | 8000 |
 

@@ -217,7 +217,6 @@ mariachi/
 ├── docker-compose.yml                # staging / producción
 ├── docker-compose.dev.yml            # desarrollo local
 ├── Makefile
-├── .env.example
 ├── .env.development.example
 ├── .env.staging.example
 ├── .env.production.example

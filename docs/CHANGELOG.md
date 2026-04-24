@@ -13,6 +13,66 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.18.0] - 2026-04-24
+
+Media por bucket end-to-end + edición de metadatos descriptivos de capas. Cierra el refactor multi-proyecto con funcionalidad visible. Incluye limpieza de archivos `.env*` duplicados en `api/` y normalización de los `.env*.example` con placeholders genéricos.
+
+### Agregado
+
+#### Backend — multi-bucket
+
+- `AcervoClient` refactorizado: soporta un cliente por bucket vía `AcervoClient.for_bucket(bucket)` con cache por `(acervo_bucket, access_key_ref)`.
+- `resolve_bucket_credentials(access_key_ref)` — resuelve `{ACERVO_*_ACCESS_KEY, ACERVO_*_SECRET_KEY}` desde env; fallback a `ACERVO_ACCESS_KEY/SECRET_KEY` globales si faltan.
+- `AcervoClient.list_objects(prefix, recursive)` — lista objetos reales del bucket.
+- Columna `bucket_id` en tabla `media` (FK a `media_buckets`, `ON DELETE SET NULL`). Migración `d1e2f3a4b5c6` + backfill: items existentes apuntan al bucket `portal`.
+- `GET /multimedia?bucket_id=<id>` — listado filtra por bucket; `require_bucket_access` via helper `_resolve_bucket_or_403`.
+- `POST /multimedia` acepta `bucket_id` en formulario; sube al bucket resuelto y persiste `bucket_id` en la fila de `media`.
+- `DELETE /multimedia/{id}` — resuelve el bucket del item para borrar en MinIO + BD.
+- `GET /multimedia/objetos-bucket?bucket_id=<id>&prefix=<p>` — endpoint nuevo que lista objetos **reales del bucket en MinIO**, útil para el file picker (no depende de la tabla `media`).
+- `PUT /layer-metadata/{layer_key}` relajado de admin-only a editor+admin (consistente con el resto de writes sobre mapalab).
+
+#### Frontend — Media por bucket
+
+- `features/media/components/BucketFilePicker.jsx` — modal que lista archivos de un bucket con soporte para múltiples prefijos (tabs) + búsqueda. Al seleccionar devuelve `{nombre, enlace, url}`. Exportado como API pública del feature media.
+- `features/media/api/mediaService`: nuevos `getBuckets()` y `listBucketObjects(bucketId, prefix)`. `getMediaFiles({ bucketId, ... })` ahora requiere `bucketId` explícito (no ejecuta si falta).
+- `features/media/pages/MediaPage`: selector de bucket arriba de los filtros (carga al mount, selecciona el primero por default). Los listados y uploads usan el `bucketId` seleccionado.
+
+#### Frontend — Metadatos descriptivos editables
+
+- `features/mapalab-layers/components/layersEditor/LayerMetadataSection.jsx` — sección nueva que carga (`GET /layer-metadata/{layer_key}`) y guarda (`PUT`) metadatos:
+    - `descripcion`, `frecuencia`, `fecha_ultima` como inputs simples.
+    - `fuentes` y `metodologia` como `Form.List` editable (agregar/quitar entradas).
+    - `metadato` (archivos adjuntos) como `Form.List` con pares `{nombre, enlace}` + botón que abre el `BucketFilePicker` apuntado al bucket `mapalab` con prefijos `metadata/txt/` y `metadata/xlsx/`.
+    - Si la capa aún no tiene metadatos (404), muestra alert y crea al guardar.
+- `useLayerTreeAdmin` expone `getLayerMetadata(key)` y `updateLayerMetadata(key, payload)`.
+- `LayerEditDrawer` integra la sección como nueva entrada del Collapse: **"Metadatos descriptivos"**. Usa el `layer.id` como `layer_key`.
+
+#### Variables de entorno
+
+- `.env.development.example`, `.env.staging.example`, `.env.production.example` normalizados con placeholders genéricos: `<user>`, `<password>`, `<host>`, `<port>`, `<domain>`, `<bucket_name>`, etc. Sin IPs, hostnames o puertos hardcodeados.
+- Agregadas vars `ACERVO_{PORTAL,MAPALAB,DATEENGINE}_{ACCESS,SECRET}_KEY` (placeholders vacíos) en los tres examples — fallback silencioso a las globales.
+
+### Cambiado
+
+- Todos los endpoints de `/multimedia` ahora operan scoped a un bucket específico. El item `Media` guarda `bucket_id` persistente.
+- `AuthContext.loginUser` ya hacía hit a `/perfil` (v0.17.0); el `user` del context incluye `accessible_buckets` que el `MediaPage` y el `BucketFilePicker` consumen.
+
+### Removido
+
+- `.env.example` en la raíz (redundante — los 3 `.env.*.example` cubren todos los entornos).
+- Duplicados residuales `api/.env.{development,staging,production}.example` — no estaban en git, eran residuos locales. Los únicos env files viven en raíz.
+
+### Corregido
+
+- Branding drift: `README.md`, `Makefile`, `admin/package.json` description, `admin/src/features/auth/pages/LoginPage.jsx` subtítulo, `admin/src/features/media/api/mediaService.js` `DB_NAME`, y `PROJECT_NAME` / `VITE_ADMIN_APP_NAME` en los `.env*` — eliminan referencias a "CMS" y "Portal" como nombre del proyecto (se reservan "Portal" solo para el sitio público y "Mariachi" para el panel). Afecta solo strings de UI/metadata.
+
+### Notas
+
+- Las credenciales específicas por bucket en producción deben definirse por el equipo de Acervo (user dedicado por bucket). En dev local siguen usando la root credential via fallback.
+- El `BucketFilePicker` solo navega objetos reales del bucket; aún no permite subir archivos desde el drawer de capa. Upload viene en un PR posterior si se requiere (hoy se sube desde Media y se referencia el path aquí).
+
+---
+
 ## [0.17.0] - 2026-04-24
 
 Sider dinámico con grupo "Plataforma" arriba + grupos por proyecto; form de Usuarios con asignación de proyectos y rol por proyecto; `require_project_access` aplicado a los endpoints de dominio existentes. Primer release con cambios visuales del refactor multi-proyecto.

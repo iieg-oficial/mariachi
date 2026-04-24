@@ -73,7 +73,7 @@ export default function Login() {
                         Mariachi
                     </Title>
                     <Text type="secondary" style={{ fontSize: 13 }}>
-                        CMS del Instituto de Información Estadística y Geográfica de Jalisco
+                        Panel de administración del Instituto de Información Estadística y Geográfica de Jalisco
                     </Text>
                 </Flex>
 

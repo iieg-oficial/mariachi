@@ -1,4 +1,4 @@
-# Makefile para IIEG Mariachi (CMS) + Portal (web publico)
+# Makefile de Mariachi (panel IIEG) + Portal (web publico)
 # Gestiona comandos de desarrollo, staging y producción para Docker Compose
 
 # UID/GID del host para que volumenes escritos por contenedores tengan ownership correcto
@@ -34,7 +34,7 @@ endif
 ## Muestra ayuda de comandos disponibles
 help:
 	@echo ''
-	@echo '${YELLOW}IIEG Mariachi (CMS) + Portal - Comandos disponibles${RESET}'
+	@echo '${YELLOW}Mariachi + Portal IIEG — comandos disponibles${RESET}'
 	@echo ''
 	@echo 'Uso: ${YELLOW}make <comando> [ENV=dev|staging|prod]${RESET}'
 	@echo '     (Por defecto ENV=dev)'

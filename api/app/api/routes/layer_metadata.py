@@ -52,7 +52,7 @@ async def update_metadata(
     data: LayerMetadataUpdate,
     db: Session = Depends(get_dataengine_db),
     current_user: Usuario = Depends(verify_csrf),
-    _admin: Usuario = Depends(_require_admin),
+    _editor: Usuario = Depends(_require_editor_or_admin),
     _rl: Usuario = Depends(_write_rate_limit),
 ):
     row = db.query(LayerMetadata).filter(LayerMetadata.layer_key == layer_key).first()
