@@ -1,33 +1,33 @@
 # Mariachi + Portal — Contexto del Proyecto
 
 > Documento de referencia completo. Leer este archivo proporciona contexto del monorepo sin explorar el codebase.
->
-> Ultima actualizacion: 2026-04-23 (v0.13.0)
+
+**Versión:** 0.14.0 · **Última actualización:** 2026-04-24
 
 ---
 
-## 1. Que contiene este repositorio
+## Qué contiene este repositorio
 
 Este monorepo aloja **dos productos distintos** que comparten backend e infraestructura:
 
-| Producto | Que es | Carpeta | Ruta publica | Estado |
+| Producto | Qué es | Carpeta | Ruta publica | Estado |
 |---|---|---|---|---|
 | **Mariachi** | CMS para editar el Portal (admin panel con Ant Design) | `admin/` | `/administrador/` | Activo (se desarrolla) |
 | **Portal** | Sitio web publico del IIEG | `web/` | `/` | **Congelado** (no se desarrolla mas) |
 
 Ambos consumen el mismo backend FastAPI en `api/` pero con prefijos de URL distintos.
 
-**Origen del nombre:** la carpeta del repo se llamaba `portal/` originalmente. En 2026-04-22 se renombro a `mariachi/` para reflejar que el CMS es lo unico que se sigue desarrollando. El portal publico sigue alli pero congelado.
+**Origen del nombre:** la carpeta del repo se llamaba `portal/` originalmente. En 2026-04-22 se renombro a `mariachi/` para reflejar que el CMS es lo único que se sigue desarrollando. El portal publico sigue alli pero congelado.
 
 ---
 
-## 2. Historia breve del rename (2026-04-22)
+## Historia breve del rename (2026-04-22)
 
 El monorepo se renombro de `portal/` a `mariachi/` porque:
 
 - El nombre "portal" era ambiguo: habia **el sitio publico** (producto) y **el repo** (que contiene tanto el sitio publico como el CMS).
-- El desarrollo del sitio publico (`web/`) se detuvo — lo asignaron originalmente aqui pero se retiro del alcance.
-- El CMS (`admin/` + `api/`) es lo unico con roadmap activo, y su nombre interno es **Mariachi**.
+- El desarrollo del sitio publico (`web/`) se detuvo — lo asignaron originalmente aquí pero se retiro del alcance.
+- El CMS (`admin/` + `api/`) es lo único con roadmap activo, y su nombre interno es **Mariachi**.
 
 El rename fue **solo de carpeta e identificadores internos de infra** (docker compose, container names, networks). **No se toco**:
 
@@ -38,7 +38,7 @@ El rename fue **solo de carpeta e identificadores internos de infra** (docker co
 
 ---
 
-## 3. Stack
+## Stack
 
 ### Backend (`api/`) — compartido por mariachi y portal
 
@@ -92,12 +92,12 @@ Paginas: `Login`, `PageEditor`, `MenuManager`, `Media`, `RevisionQueue`, `Users`
 | BD | PostgreSQL 18 (prod y dev) | DB: `iieg_portal` |
 | Cache/sessions | Redis 7 | |
 | Almacenamiento | Acervo (MinIO S3-compatible) | bucket `iieg-acervo` (prod), `portal-dev` (dev) |
-| DataEngine (solo v1.4.0+ MapaLab) | PostgreSQL + PostGIS externo | Segunda conexion para tabla `layers` |
+| DataEngine (solo v1.4.0+ MapaLab) | PostgreSQL + PostGIS externo | Segunda conexión para tabla `layers` |
 | Contenedores | Docker Compose | profiles: prod (`docker-compose.yml`), dev (`docker-compose.dev.yml`) |
 
 ---
 
-## 4. Estructura
+## Estructura
 
 ```
 mariachi/
@@ -135,7 +135,7 @@ mariachi/
 │   │   ├── components/
 │   │   └── services/apiService.js
 │   └── package.json              # name: portal-web
-├── nginx/                        # Proxy + sirve estaticos
+├── nginx/                        # Proxy + sirve estáticos
 │   ├── conf.d/mariachi.conf      # Template con envsubst
 │   ├── ssl/
 │   ├── static/                   # robots.txt, sitemap.xml
@@ -152,13 +152,13 @@ mariachi/
 
 ---
 
-## 5. Contenedores y red
+## Contenedores y red
 
 ### docker-compose.yml (prod)
 
 | Servicio | Container name | Puerto | Funcion |
 |---|---|---|---|
-| `nginx` | `mariachi-nginx` | 80, 443 | Proxy + estaticos |
+| `nginx` | `mariachi-nginx` | 80, 443 | Proxy + estáticos |
 | `postgres` | `mariachi-postgres` | interno | PostgreSQL 18 |
 | `redis` | `mariachi-redis` | interno | Cache/sessions |
 | `api` | `mariachi-api` | interno | FastAPI + Gunicorn |
@@ -177,19 +177,19 @@ Red: `mariachi_network` (antes `portal_network`).
 
 Redes: `mariachi_network_dev` (propia) + `mapalab-network` (external, para que el admin alcance a `mapalab-dev-frontend-1` desde su Vite proxy). Eventualmente `api` deberá unirse a `dataengine-network` (external) para alcanzar `dataengine-primary` en el modulo de capas.
 
-### Topologia por entorno (importante)
+### Topología por entorno (importante)
 
-| Entorno | Despliegue | Como se alcanzan los vecinos (mapalab, dataengine, acervo, geoserver) |
+| Entorno | Despliegue | Cómo se alcanzan los vecinos (mapalab, dataengine, acervo, geoserver) |
 |---|---|---|
 | **dev** (workstation local) | Todos los repos levantan su propio `docker-compose.*.yml` en **una sola maquina**. Mariachi, mapalab, dataengine, acervo, etc. corren como contenedores en el mismo host Docker. | Por **nombre de contenedor** via redes docker compartidas/external (`mapalab-network`, `dataengine-network`, `iieg-network`). El Vite del admin proxea `/mapalab/*` a `mapalab-dev-frontend-1:3006` — el hook usa siempre la ruta relativa. |
-| **staging** (GCP) | **Una sola VM** con todos los contenedores juntos (misma idea que dev pero en la nube). El `gateway-hub` termina SSL y enruta por path. | Igual que dev: nombres de contenedor via redes docker external. El admin en staging se sirve como build estatico desde `mariachi-nginx`; `/mapalab/*` lo resuelve el `gateway-hub` al container de mapalab en la misma VM. |
-| **produccion** (administracion) | **Servers separados** por servicio (mariachi en una VM, mapalab en otra, dataengine en otra). | Por **hostname/DNS + IP publica o privada** segun el caso. El `gateway-hub` externo termina SSL y enruta `/`/`/administrador/`/`/api/` a mariachi-nginx, `/mapalab/*` a la VM de mapalab, etc. `DATAENGINE_DATABASE_URL` apunta al host real de DataEngine via `pg_hba.conf` + `sslmode=require`. |
+| **staging** (GCP) | **Una sola VM** con todos los contenedores juntos (misma idea que dev pero en la nube). El `gateway-hub` termina SSL y enruta por path. | Igual que dev: nombres de contenedor via redes docker external. El admin en staging se sirve como build estático desde `mariachi-nginx`; `/mapalab/*` lo resuelve el `gateway-hub` al container de mapalab en la misma VM. |
+| **producción** (administracion) | **Servers separados** por servicio (mariachi en una VM, mapalab en otra, dataengine en otra). | Por **hostname/DNS + IP publica o privada** segun el caso. El `gateway-hub` externo termina SSL y enruta `/`/`/administrador/`/`/api/` a mariachi-nginx, `/mapalab/*` a la VM de mapalab, etc. `DATAENGINE_DATABASE_URL` apunta al host real de DataEngine via `pg_hba.conf` + `sslmode=require`. |
 
-**Implicacion:** el proxy `/mapalab` del `vite.config.js` del admin solo se usa en **dev** (y en staging si el admin se corre con Vite en vez de como build, que no es el caso). En prod el admin es build estatico y el enrutamiento lo hace el `gateway-hub`.
+**Implicacion:** el proxy `/mapalab` del `vite.config.js` del admin solo se usa en **dev** (y en staging si el admin se corre con Vite en vez de como build, que no es el caso). En prod el admin es build estático y el enrutamiento lo hace el `gateway-hub`.
 
 ---
 
-## 6. Variables de entorno clave
+## Variables de entorno clave
 
 ### Backend (`api/`)
 
@@ -223,7 +223,7 @@ Redes: `mariachi_network_dev` (propia) + `mapalab-network` (external, para que e
 
 ---
 
-## 7. Autenticacion
+## Autenticación
 
 ### Flujo
 
@@ -239,16 +239,16 @@ Definidos en `models/user.py`. Flujo de revision con `RevisionQueue` permite apr
 
 ### Cookie compartida con MapaLab (v1.4.0)
 
-Un `COOKIE_DOMAIN` apuntando al subdominio comun (ej. `app.tu-dominio.com`) hace que la cookie sea valida en `/mapalab/*` tambien. Esto permite que:
+Un `COOKIE_DOMAIN` apuntando al subdominio común (ej. `app.tu-dominio.com`) hace que la cookie sea valida en `/mapalab/*` también. Esto permite que:
 
-- El admin autenticado en `/administrador/layers` tenga sesion automatica al ir a `/mapalab/` (ej. para un boton de preview).
+- El admin autenticado en `/administrador/layers` tenga sesion automática al ir a `/mapalab/` (ej. para un boton de preview).
 - El backend de mapalab NO necesita validar auth (solo lee capas, endpoints publicos). Solo mariachi valida auth para writes.
 
 Ver `docs/COOKIES_CSRF.md` para detalles completos.
 
 ---
 
-## 8. Endpoints principales
+## Endpoints principales
 
 ### Sitio publico (`/api/portal/*`)
 
@@ -265,9 +265,9 @@ Sin auth. `router = APIRouter(tags=["portal público"])` en `routes/public.py`.
 | Metodo | Ruta | Funcion |
 |---|---|---|
 | POST | `/auth/login`, `/auth/logout` | |
-| GET/POST/PUT/DELETE | `/users/*` | Gestion de usuarios |
+| GET/POST/PUT/DELETE | `/users/*` | Gestión de usuarios |
 | GET/POST/PUT/DELETE | `/pages/*` | Editor de paginas |
-| GET/POST/PUT/DELETE | `/menu/*` | Gestion de menu |
+| GET/POST/PUT/DELETE | `/menu/*` | Gestión de menu |
 | GET/POST | `/media/*` | Upload a Acervo |
 | GET/POST/PATCH | `/borradores/*` | Revision queue |
 | GET | `/preview/*` | Preview de paginas sin publicar |
@@ -291,11 +291,11 @@ Rate limiting: writes en 60 req/min por usuario, reads de GeoServer en 120 req/m
 
 Editor UI: `admin/src/pages/MapalabLayers.jsx` con Ant Design Tree + drawer. Componentes del drawer de InfoBox en `admin/src/components/layersEditor/`: `InfoBoxPresetForm`, `InfoBoxPreview`, `InfoBoxJsonEditor`.
 
-Ver la documentacion interna de mapalab (`/IIEG/mapalab/docs/layers.md`, `infobox.md`) para la arquitectura completa.
+Ver la documentación interna de mapalab (`/IIEG/mapalab/docs/layers.md`, `infobox.md`) para la arquitectura completa.
 
 ---
 
-## 9. Integracion con el gateway externo
+## Integracion con el gateway externo
 
 Un gateway Nginx externo enruta segun path. Rutas relevantes para este repo:
 
@@ -311,7 +311,7 @@ La variable `PORTAL_HOST` del gateway sigue apuntando al container de este repo 
 
 ---
 
-## 10. BD iieg_portal
+## BD iieg_portal
 
 Tablas existentes (modelos en `api/app/models/`):
 
@@ -329,11 +329,11 @@ Migraciones via Alembic en `api/alembic/versions/`.
 - `workspaces`
 - `initial_layer_order`
 
-Esas migraciones tambien viven en Alembic de este repo, pero apuntan a `DATAENGINE_DATABASE_URL`. Implica configurar multi-environment en `alembic.ini` (env `mariachi` vs `dataengine`).
+Esas migraciones también viven en Alembic de este repo, pero apuntan a `DATAENGINE_DATABASE_URL`. Implica configurar multi-environment en `alembic.ini` (env `mariachi` vs `dataengine`).
 
 ---
 
-## 11. Comandos (Makefile)
+## Comandos (Makefile)
 
 ```bash
 make up            # Levanta el entorno (ENV=dev por defecto)
@@ -353,13 +353,13 @@ make up ENV=prod
 
 ---
 
-## 12. Integracion con MapaLab (v1.4.0)
+## Integracion con MapaLab (v1.4.0)
 
 A partir de v1.4.0 de MapaLab, mariachi expone un **editor de capas del visor** bajo `/administrador/layers`. Esto implica:
 
-1. **Segunda conexion DB** a DataEngine (`DATAENGINE_DATABASE_URL`).
+1. **Segunda conexión DB** a DataEngine (`DATAENGINE_DATABASE_URL`).
 2. **Nuevo router** `api/app/api/routes/layers.py` con CRUD + reorder + duplicate.
-3. **Nuevo router** `api/app/api/routes/geoserver.py` con introspeccion REST via `httpx`.
+3. **Nuevo router** `api/app/api/routes/geoserver.py` con introspección REST via `httpx`.
 4. **Nuevo service** `api/app/services/geoserver_client.py`.
 5. **Nuevos modelos** SQLAlchemy para `layers`, `workspaces`, `initial_layer_order` en `api/app/models/layer.py` (usan `DataEngineBase` de `core/database.py`).
 6. **Nueva pagina admin** `admin/src/pages/LayersEditor.jsx` con Ant Design Tree + drag & drop.
@@ -372,13 +372,13 @@ Pre-requisitos: credenciales de escritura en DataEngine — ver `docs/DATAENGINE
 
 ---
 
-## 13. Ecosistema
+## Ecosistema
 
-Este repo se integra con otros servicios internos vecinos (CMS, visor de mapas, DataEngine PostgreSQL+PostGIS, gateway Nginx, almacenamiento S3-compatible, GeoServer, stack de observabilidad) que comparten una red Docker comun. Los detalles de topologia son internos.
+Este repo se integra con otros servicios internos vecinos (CMS, visor de mapas, DataEngine PostgreSQL+PostGIS, gateway Nginx, almacenamiento S3-compatible, GeoServer, stack de observabilidad) que comparten una red Docker común. Los detalles de topología son internos.
 
 ---
 
-## 14. Cambios recientes
+## Cambios recientes
 
 ### 2026-04-23 (v0.13.0)
 
@@ -409,29 +409,29 @@ Detalle completo en `docs/CHANGELOG.md` §[0.13.0]. Resumen:
 
 ---
 
-## 15. Pendientes
+## Pendientes
 
 ### Listos para ejecutar (solo faltan credenciales / acciones externas)
 
-- [x] **Alembic multi-environment** — configurado, ver `docs/ALEMBIC_MULTI_ENV.md`. Listo para crear migracion de DataEngine cuando haya credenciales.
-- [x] **COOKIE_DOMAIN** — ajustado al subdominio especifico en `.env` (no versionado). El `.env.example` usa placeholder. Cubre `/administrador/*` y `/mapalab/*` sin exponer cookie a otros subdominios del dominio raiz.
-- [x] **Script rename GitHub remote** — `scripts/rename-github-repo.sh`. Correr despues de renombrar en GitHub web.
-- [x] **Script migracion bucket Acervo** — `scripts/migrate-acervo-bucket.sh`. Requiere `mc` instalado y acceso al endpoint de Acervo.
+- [x] **Alembic multi-environment** — configurado, ver `docs/ALEMBIC_MULTI_ENV.md`. Listo para crear migración de DataEngine cuando haya credenciales.
+- [x] **COOKIE_DOMAIN** — ajustado al subdominio específico en `.env` (no versionado). El `.env.example` usa placeholder. Cubre `/administrador/*` y `/mapalab/*` sin exponer cookie a otros subdominios del dominio raiz.
+- [x] **Script rename GitHub remote** — `scripts/rename-github-repo.sh`. Correr después de renombrar en GitHub web.
+- [x] **Script migración bucket Acervo** — `scripts/migrate-acervo-bucket.sh`. Requiere `mc` instalado y acceso al endpoint de Acervo.
 
 ### Listo en dev local
 
 - [x] **Rol `mariachi_layers` provisionado en DataEngine local** — validado: conecta, puede CREATE/DROP tablas, NO tiene acceso a `mapalab_card`. `DATAENGINE_DATABASE_URL` ya configurado en `.env.development` (no versionado).
-- [x] **Alembic multi-env probado contra DataEngine local** — `alembic -x db=dataengine current` ejecuta sin errores (heads vacios, esperado hasta que arranque v1.4.0).
+- [x] **Alembic multi-env probado contra DataEngine local** — `alembic -x db=dataengine current` ejecuta sin errores (heads vacíos, esperado hasta que arranque v1.4.0).
 
 ### Coordinacion externa
 
-- [ ] **Renombrar repo en GitHub web** — ir a `https://github.com/<owner>/<repo-viejo>/settings` → Repository name → nuevo nombre. GitHub mantiene redireccion automatica. Luego correr `GH_OWNER=<owner> GH_OLD_REPO=<viejo> GH_NEW_REPO=<nuevo> scripts/rename-github-repo.sh --execute`.
-- [ ] **Credenciales DataEngine en produccion** — coordinar con equipo para provisionar rol `mariachi_layers` en el DataEngine de prod (el mismo SQL de `docs/DATAENGINE_CREDENTIALS.md`, pero en la VM real + `pg_hba.conf` con IP del servidor mariachi + `sslmode=require`).
+- [ ] **Renombrar repo en GitHub web** — ir a `https://github.com/<owner>/<repo-viejo>/settings` → Repository name → nuevo nombre. GitHub mantiene redirección automática. Luego correr `GH_OWNER=<owner> GH_OLD_REPO=<viejo> GH_NEW_REPO=<nuevo> scripts/rename-github-repo.sh --execute`.
+- [ ] **Credenciales DataEngine en producción** — coordinar con equipo para provisionar rol `mariachi_layers` en el DataEngine de prod (el mismo SQL de `docs/DATAENGINE_CREDENTIALS.md`, pero en la VM real + `pg_hba.conf` con IP del servidor mariachi + `sslmode=require`).
 - [ ] **Bucket Acervo `mariachi-dev`** — ejecutar `scripts/migrate-acervo-bucket.sh --execute` cuando haya acceso al MinIO de Acervo. Luego actualizar `ACERVO_BUCKET_NAME` en `.env.development`.
 
 ---
 
-## 16. Referencias
+## Referencias
 
 - `docs/ARCHITECTURE.md` — diagrama detallado del monorepo
 - `docs/CONVENTIONS_BACKEND.md` — convenciones Python/FastAPI

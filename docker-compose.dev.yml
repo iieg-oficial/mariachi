@@ -2,7 +2,10 @@ name: mariachi-dev
 
 services:
   postgres:
-    image: postgres:18-alpine
+    build:
+      dockerfile_inline: |
+        FROM postgres:18-alpine
+    image: mariachi-postgres-dev
     container_name: mariachi-postgres-dev
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-iieg_user}
@@ -21,7 +24,10 @@ services:
       - mariachi_network_dev
 
   redis:
-    image: redis:8-alpine
+    build:
+      dockerfile_inline: |
+        FROM redis:8-alpine
+    image: mariachi-redis-dev
     container_name: mariachi-redis-dev
     ports:
       - "${REDIS_PORT:-6379}:6379"
@@ -39,6 +45,8 @@ services:
     build:
       context: ./api
       dockerfile: Dockerfile
+      target: development
+    image: mariachi-api-dev
     container_name: mariachi-api-dev
     command: ./scripts/start_backend.sh
     ports:
@@ -64,15 +72,19 @@ services:
       ACERVO_BUCKET_NAME: ${ACERVO_BUCKET_NAME:-iieg-media}
       ACERVO_USE_SSL: ${ACERVO_USE_SSL:-false}
       ACERVO_VERIFY_SSL: ${ACERVO_VERIFY_SSL:-true}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE:-1.0}
     networks:
       - mariachi_network_dev
       - dataengine-network
 
   web:
-    image: node:24-alpine
+    build:
+      context: ./web
+      dockerfile: Dockerfile.dev
+    image: mariachi-web-dev
     container_name: mariachi-web-dev
     working_dir: /app
-    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
     ports:
       - "${WEB_PORT:-3010}:3010"
     volumes:
@@ -87,10 +99,12 @@ services:
       - mariachi_network_dev
 
   admin:
-    image: node:24-alpine
+    build:
+      context: ./admin
+      dockerfile: Dockerfile.dev
+    image: mariachi-admin-dev
     container_name: mariachi-admin-dev
     working_dir: /app
-    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
     ports:
       - "${ADMIN_PORT:-3011}:3011"
     volumes:

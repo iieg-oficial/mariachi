@@ -1,5 +1,6 @@
 from contextlib import asynccontextmanager
 
+import sentry_sdk
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -8,6 +9,14 @@ from app.api.routes import auth, borradores, geoserver, layer_metadata, layers, 
 from app.core.settings import get_settings
 
 settings = get_settings()
+
+if settings.sentry_dsn:
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn,
+        environment=settings.environment,
+        release=f"mariachi-api@{settings.version}",
+        traces_sample_rate=settings.sentry_traces_sample_rate,
+    )
 
 
 @asynccontextmanager

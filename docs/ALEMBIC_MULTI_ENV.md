@@ -1,8 +1,10 @@
-# Alembic con multiples bases de datos
+# Alembic con múltiples bases de datos
 
-> Mariachi maneja **dos bases de datos** via un solo setup de Alembic, usando el argumento `-x db=...`.
->
-> **Politica de ownership (2026-04-23)**: las migraciones con `-x db=dataengine` son la **fuente autoritativa** del schema `mapalab.*` en DataEngine. El archivo `mapalab-dataengine/jobs/bootstrap/v14_schema.sql` queda frozen como baseline de bootstrap — no se toca. Cualquier cambio futuro de schema entra como migracion alembic aqui. Ver `gateway-hub/docs/ecosystem.md` seccion 7.3.
+> Mariachi maneja **dos bases de datos** vía un solo setup de Alembic, usando el argumento `-x db=...`.
+
+**Versión:** 0.14.0 · **Última actualización:** 2026-04-24
+
+> **Política de ownership (2026-04-23):** las migraciones con `-x db=dataengine` son la **fuente autoritativa** del schema `mapalab.*` en DataEngine. El archivo `mapalab-dataengine/jobs/bootstrap/v14_schema.sql` queda frozen como baseline de bootstrap — no se toca. Cualquier cambio futuro de schema entra como migración alembic aquí. Ver `gateway-hub/docs/ecosystem.md` sección 7.3.
 
 ---
 
@@ -13,7 +15,7 @@
 | `mariachi` (default) | `DATABASE_URL` | `app.models.Base` | `public.alembic_version` | `mariachi` | `alembic/versions/mariachi/` |
 | `dataengine` | `DATAENGINE_DATABASE_URL` | `app.core.database.DataEngineBase` | `mapalab.alembic_version_dataengine` | `dataengine` | `alembic/versions/dataengine/` |
 
-Version tables distintas permiten que las migraciones de cada BD no interfieran. Branch labels permiten apuntar a un head especifico con `alembic upgrade <label>@head` sin correr el otro.
+Version tables distintas permiten que las migraciones de cada BD no interfieran. Branch labels permiten apuntar a un head específico con `alembic upgrade <label>@head` sin correr el otro.
 
 ---
 
@@ -86,7 +88,7 @@ api/
 │       │   ├── ee37ba52b458_add_publication_requests.py
 │       │   └── f3a8b2c1d9e7_add_borradores.py
 │       └── dataengine/       # migraciones de DataEngine (capas MapaLab)
-│           └── (vacio por ahora)
+│           └── (vacío por ahora)
 ├── app/
 │   ├── models/
 │   │   ├── __init__.py       # exporta Base + modelos del CMS
@@ -127,7 +129,7 @@ class Layer(DataEngineBase):
     # ...
 ```
 
-2. Generar migracion:
+2. Generar migración:
 
 ```bash
 alembic -x db=dataengine revision --autogenerate -m "add workspaces and layers"
@@ -148,7 +150,7 @@ alembic -x db=dataengine upgrade head
 ### Primer deploy a DataEngine
 
 ```bash
-# 1. Verificar conexion
+# 1. Verificar conexión
 python -c "from app.core.database import get_dataengine_db; next(get_dataengine_db()).execute('SELECT 1')"
 
 # 2. Aplicar migraciones
@@ -180,7 +182,7 @@ No afecta la BD del CMS (tiene `version_table` separada).
   ```
 
 **`Can't locate revision identified by '<hash>'`**
-- El archivo de migracion con ese hash no existe en la carpeta correspondiente. Verificar que esta en `alembic/versions/<db>/`.
+- El archivo de migración con ese hash no existe en la carpeta correspondiente. Verificar que esta en `alembic/versions/<db>/`.
 
 ---
 

@@ -1,6 +1,6 @@
 # Guía de Contribución
 
-¡Gracias por tu interés en contribuir al Portal IIEG! Este documento proporciona las directrices para contribuir al proyecto.
+¡Gracias por tu interés en contribuir al Mariachi! Este documento proporciona las directrices para contribuir al proyecto.
 
 ## Tabla de Contenidos
 
@@ -28,34 +28,33 @@ Este proyecto adhiere a un [Código de Conducta](./CODE_OF_CONDUCT.md). Al parti
 
 ### Prerrequisitos
 
-- Node.js >= 18 (frontend y cms)
-- Python 3.10+ (backend)
+- Node.js >= 20 (admin y web)
+- Python 3.12+ (api)
 - Docker y Docker Compose
 - Git
 
 ### Setup Inicial
 
 ```bash
-git clone https://github.com/IIEG/portal.git
-cd portal
+git clone https://github.com/IIEG/mariachi.git
+cd mariachi
+make setup            # Crea .env.{development,staging,production}
+make up               # Levanta entorno dev (admin, web, api, postgres, redis)
 
-# Opción 1: Desarrollo con Docker
-docker compose -f docker-compose.dev.yml up
-
-# Opción 2: Desarrollo local
-# Backend
-cd backend
+# Desarrollo local sin Docker
+# Backend (api/)
+cd api
 python -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
 
-# Frontend
-cd ../frontend
+# Portal publico (web/)
+cd ../web
 npm install
 npm run dev
 
-# CMS
-cd ../cms
+# CMS (admin/)
+cd ../admin
 npm install
 npm run dev
 ```
@@ -83,7 +82,7 @@ npm run dev
 
 ## Estándares de Código
 
-### Backend (Python)
+### Backend (Python, `api/`)
 
 - Seguir PEP 8
 - Nombres de clases: PascalCase
@@ -91,7 +90,7 @@ npm run dev
 - Máximo 300 líneas por archivo
 - Ejecutar: `ruff format` y `ruff check`
 
-### Frontend/CMS (JavaScript/React)
+### Admin y Web (JavaScript/React, `admin/` y `web/`)
 
 - Usar ESLint configurado
 - Nombres de componentes: PascalCase
@@ -171,4 +170,4 @@ Describe cómo probaste los cambios
 
 ---
 
-**¡Gracias por contribuir al Portal IIEG!** 🎉
+**¡Gracias por contribuir al Mariachi!** 🎉

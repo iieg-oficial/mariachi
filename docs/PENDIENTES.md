@@ -13,6 +13,7 @@
 ### v1.0-beta | CI/CD y QA
 - [x] GitHub Actions: lint + tests en PR (backend con `ruff` + `pytest`, admin y web con `lint` + `build`)
 - [ ] GitHub Actions: build Docker + push a registry
+- [ ] GitHub Actions: workflow `cd.yml` para deploy automatizado a producción (SSH deploy, health-check con reintentos, notificaciones Discord). Tomar como referencia `mapalab/.github/workflows/cd.yml`. Requiere secrets `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_KEY`, `DISCORD_WEBHOOK`.
 - [ ] Logging estructurado (JSON) en FastAPI
 - [ ] Script de deploy automatizado (staging → producción)
 - [x] Revisión de seguridad en backend: CORS sin `*` en producción, `cookie_secure` forzado, `docs_url`/`redoc_url` deshabilitados en prod

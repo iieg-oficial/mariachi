@@ -31,6 +31,12 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Test (if present)
+        run: npm test --if-present
+
+      - name: Dead code check (if present)
+        run: npm run check:dead-code:strict --if-present
+
       - name: Build
         env:
           VITE_WEB_API_URL: http://localhost:8000/api/portal

@@ -1,6 +1,10 @@
 # Makefile para IIEG Mariachi (CMS) + Portal (web publico)
 # Gestiona comandos de desarrollo, staging y producción para Docker Compose
 
+# UID/GID del host para que volumenes escritos por contenedores tengan ownership correcto
+export UID := $(shell id -u)
+export GID := $(shell id -g)
+
 # Colores para output
 GREEN  := $(shell tput -Txterm setaf 2)
 YELLOW := $(shell tput -Txterm setaf 3)
@@ -25,7 +29,7 @@ else
 	MSG_ENV      := Desarrollo
 endif
 
-.PHONY: help up build down logs restart clean shell-api shell-web shell-admin setup
+.PHONY: help up build down logs restart clean shell-api shell-web shell-admin setup setup-hooks ensure-networks
 
 ## Muestra ayuda de comandos disponibles
 help:
@@ -48,7 +52,15 @@ help:
 	@echo '  ${YELLOW}make shell-web${RESET}   - Entra a la terminal del contenedor Web'
 	@echo '  ${YELLOW}make shell-admin${RESET} - Entra a la terminal del contenedor Admin'
 	@echo '  ${YELLOW}make setup${RESET}       - Crea archivos .env iniciales si no existen'
+	@echo '  ${YELLOW}make setup-hooks${RESET} - Configura git hooks del proyecto (core.hooksPath)'
 	@echo ''
+
+ensure-networks:
+	@docker network create iieg-network 2>/dev/null || true
+
+setup-hooks:
+	@git config core.hooksPath .githooks
+	@echo "${GREEN}Hooks configurados en .githooks/${RESET}"
 
 # =============================================================================
 # COMANDOS PRINCIPALES

@@ -1,0 +1,82 @@
+name: Auto PR to Main
+
+on:
+  push:
+    branches: [develop]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  backend:
+    uses: ./.github/workflows/test-backend.yml
+
+  admin:
+    uses: ./.github/workflows/test-frontend.yml
+    with:
+      app: admin
+
+  web:
+    uses: ./.github/workflows/test-frontend.yml
+    with:
+      app: web
+
+  create-pr:
+    needs: [backend, admin, web]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Create or update PR
+        env:
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+        run: |
+          EXISTING_PR=$(gh pr list --base main --head develop --state open --json number --jq '.[0].number')
+
+          if [ -n "$EXISTING_PR" ]; then
+            echo "PR #$EXISTING_PR ya existe, actualizando..."
+            gh pr edit "$EXISTING_PR" \
+              --title "chore: auto-merge develop into main" \
+              --body "$(cat <<'EOF'
+          ## Auto-merge
+
+          PR generado automaticamente al pasar los tests en develop.
+
+          **Ultimo commit:** ${{ github.sha }}
+          **Autor:** ${{ github.actor }}
+          EOF
+          )"
+          else
+            echo "Creando nuevo PR..."
+            gh pr create \
+              --base main \
+              --head develop \
+              --title "chore: auto-merge develop into main" \
+              --body "$(cat <<'EOF'
+          ## Auto-merge
+
+          PR generado automaticamente al pasar los tests en develop.
+
+          **Ultimo commit:** ${{ github.sha }}
+          **Autor:** ${{ github.actor }}
+          EOF
+          )"
+          fi
+
+      - name: Enable auto-merge
+        env:
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+        run: |
+          PR_NUMBER=$(gh pr list --base main --head develop --state open --json number --jq '.[0].number')
+          if [ -n "$PR_NUMBER" ]; then
+            for i in 1 2 3; do
+              gh pr merge "$PR_NUMBER" --auto --merge && break
+              echo "Intento $i fallido, esperando 30s..."
+              sleep 30
+            done
+            echo "Auto-merge procesado en PR #$PR_NUMBER"
+          fi

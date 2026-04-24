@@ -1,5 +1,7 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
+import { visualizer } from 'rollup-plugin-visualizer';
+import { sentryVitePlugin } from '@sentry/vite-plugin';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -7,21 +9,51 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, __dirname, '');
+    const { SENTRY_AUTH_TOKEN, SENTRY_ORG, SENTRY_PROJECT } = env;
+    const sentryEnabled = Boolean(SENTRY_AUTH_TOKEN && SENTRY_ORG && SENTRY_PROJECT);
+
+    const plugins = [
+        react(),
+        visualizer({
+            filename: 'dist/stats.html',
+            gzipSize: true,
+            brotliSize: true,
+            template: 'treemap',
+        }),
+    ];
+
+    if (sentryEnabled) {
+        plugins.push(
+            sentryVitePlugin({
+                org: SENTRY_ORG,
+                project: SENTRY_PROJECT,
+                authToken: SENTRY_AUTH_TOKEN,
+            }),
+        );
+    }
 
     return {
-        plugins: [react()],
+        plugins,
         root: '.',
         server: {
             host: env.VITE_WEB_HOST ?? '0.0.0.0',
             port: Number(env.VITE_WEB_PORT ?? '3010'),
             strictPort: true,
             watch: {
-                usePolling: true
-            }
+                usePolling: true,
+            },
         },
         build: {
             outDir: 'dist',
-            sourcemap: true
+            sourcemap: sentryEnabled,
+            rollupOptions: {
+                output: {
+                    manualChunks: {
+                        'react-vendor': ['react', 'react-dom', 'react-router'],
+                        'sentry': ['@sentry/react'],
+                    },
+                },
+            },
         },
         resolve: {
             alias: {
@@ -34,7 +66,7 @@ export default defineConfig(({ mode }) => {
                 '@utils': path.resolve(__dirname, './src/utils'),
                 '@hooks': path.resolve(__dirname, './src/hooks'),
                 '@services': path.resolve(__dirname, './src/services'),
-                '@contexts': path.resolve(__dirname, './src/contexts')
+                '@contexts': path.resolve(__dirname, './src/contexts'),
             },
         },
     };

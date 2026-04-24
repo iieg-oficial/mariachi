@@ -1,19 +1,21 @@
-# 🔐 Autenticación con httpOnly Cookies + CSRF
+# Autenticación con httpOnly Cookies + CSRF
 
-Guía completa del sistema de autenticación seguro con **httpOnly cookies** y **CSRF tokens**.
+> Guía completa del sistema de autenticación con cookies `HttpOnly` + tokens CSRF firmados.
+
+**Versión:** 0.14.0 · **Última actualización:** 2026-04-24
 
 ---
 
-## 🎯 ¿Por Qué httpOnly Cookies + CSRF?
+## ¿Por Qué httpOnly Cookies + CSRF?
 
 ### Ventajas sobre localStorage + JWT
 
 | Aspecto | localStorage + JWT | httpOnly Cookies + CSRF |
 |---------|-------------------|-------------------------|
-| **Protección XSS** | ❌ Vulnerable | ✅ Protegido |
-| **Protección CSRF** | ✅ Inmune | ✅ Protegido con token |
-| **JavaScript Access** | ❌ Accesible | ✅ NO accesible |
-| **Auto-manejo** | ❌ Manual | ✅ Automático por navegador |
+| **Protección XSS** | Vulnerable | Protegido |
+| **Protección CSRF** | Inmune | Protegido con token |
+| **JavaScript Access** | Accesible | NO accesible |
+| **Auto-manejo** | Manual | Automático por navegador |
 | **Seguridad** | Media | Alta |
 
 ### Amenazas que Previene
@@ -28,53 +30,32 @@ Guía completa del sistema de autenticación seguro con **httpOnly cookies** y *
 
 ---
 
-## 🏗️ Arquitectura del Sistema
+## Arquitectura del Sistema
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                        FRONTEND (CMS)                        │
-│  ┌────────────────────────────────────────────────────────┐ │
-│  │ 1. Login: POST /auth/login {username, password}       │ │
-│  └────────────────────────────────────────────────────────┘ │
-│                            ↓                                 │
-└────────────────────────────────────────────────────────────┬─┘
-                             ↓                                │
-┌────────────────────────────────────────────────────────────┴─┐
-│                        BACKEND                                │
-│  ┌────────────────────────────────────────────────────────┐  │
-│  │ 2. Validar credenciales                                │  │
-│  │ 3. Crear JWT access_token                              │  │
-│  │ 4. Crear CSRF token (JWT firmado)                      │  │
-│  │ 5. Set-Cookie: access_token=xxx; HttpOnly; Secure     │  │
-│  │ 6. Responder: {csrf_token, user}                       │  │
-│  └────────────────────────────────────────────────────────┘  │
-└────────────────────────────────────────────────────────────┬─┘
-                             ↓                                │
-┌────────────────────────────────────────────────────────────┴─┐
-│                        FRONTEND                               │
-│  ┌────────────────────────────────────────────────────────┐  │
-│  │ 7. Guardar CSRF token en sessionStorage                │  │
-│  │ 8. Cookie se guarda automáticamente en navegador       │  │
-│  │    (NO accesible por JavaScript - httpOnly)            │  │
-│  └────────────────────────────────────────────────────────┘  │
-│                                                               │
-│  Requests Subsecuentes:                                      │
-│  ┌────────────────────────────────────────────────────────┐  │
-│  │ GET /auth/me                                            │  │
-│  │ Cookie: access_token=xxx (automático)                   │  │
-│  └────────────────────────────────────────────────────────┘  │
-│                                                               │
-│  ┌────────────────────────────────────────────────────────┐  │
-│  │ POST /users                                             │  │
-│  │ Cookie: access_token=xxx (automático)                   │  │
-│  │ X-CSRF-Token: yyy (manual desde sessionStorage)         │  │
-│  └────────────────────────────────────────────────────────┘  │
-└───────────────────────────────────────────────────────────────┘
+```mermaid
+sequenceDiagram
+    participant FE as Frontend (CMS)
+    participant BE as Backend (FastAPI)
+
+    FE->>BE: 1. POST /auth/login {username, password}
+    BE->>BE: 2. Valida credenciales
+    BE->>BE: 3. Crea JWT access_token
+    BE->>BE: 4. Crea CSRF token (JWT firmado)
+    BE-->>FE: 5. Set-Cookie access_token (HttpOnly, Secure)<br/>6. Body {csrf_token, user}
+    FE->>FE: 7. Guarda CSRF en sessionStorage<br/>8. Navegador guarda cookie (no accesible por JS)
+
+    Note over FE,BE: Requests subsecuentes
+
+    FE->>BE: GET /auth/me<br/>Cookie: access_token (auto)
+    BE-->>FE: 200 user
+
+    FE->>BE: POST /users<br/>Cookie: access_token (auto)<br/>X-CSRF-Token: ... (manual)
+    BE-->>FE: 200 ok
 ```
 
 ---
 
-## 🔧 Configuración Backend
+## Configuración Backend
 
 ### 1. Variables de Entorno (`.env`)
 
@@ -221,7 +202,7 @@ app.add_middleware(
 
 ---
 
-## 💻 Configuración Frontend (CMS Portal)
+## Configuración Frontend (CMS Portal)
 
 ### 1. API Service (`admin/src/services/api.js`)
 
@@ -301,7 +282,7 @@ const checkAuth = async () => {
 
 ---
 
-## 🔍 Flujo Detallado
+## Flujo Detallado
 
 ### Login
 
@@ -329,7 +310,7 @@ const checkAuth = async () => {
    sessionStorage.setItem('csrf_token', csrf_token)
    ↓
 9. Navegador guarda cookie automáticamente
-   ✅ Cookie NO accesible por JavaScript (httpOnly)
+   Cookie NO accesible por JavaScript (httpOnly)
 ```
 
 ### Request GET (Solo lectura)
@@ -380,7 +361,7 @@ const checkAuth = async () => {
 
 ---
 
-## 🛡️ Seguridad
+## Seguridad
 
 ### Flags de Cookie
 
@@ -404,17 +385,17 @@ access_token=eyJhbGc...;
 
 ### Consideraciones de Seguridad
 
-✅ **httpOnly = true:** Previene XSS
-✅ **Secure = true (prod):** Solo HTTPS
-✅ **SameSite = lax:** Previene CSRF básico
-✅ **CSRF token:** Previene CSRF avanzado
-✅ **Tokens separados:** JWT para auth, CSRF para validación
-✅ **Expiración:** Tokens expiran automáticamente
-✅ **CORS estricto:** Solo dominios permitidos
+**httpOnly = true:** Previene XSS
+**Secure = true (prod):** Solo HTTPS
+**SameSite = lax:** Previene CSRF básico
+**CSRF token:** Previene CSRF avanzado
+**Tokens separados:** JWT para auth, CSRF para validación
+**Expiración:** Tokens expiran automáticamente
+**CORS estricto:** Solo dominios permitidos
 
 ---
 
-## 🧪 Testing
+## Testing
 
 ### Probar Login
 
@@ -459,7 +440,7 @@ fetch('http://localhost:8000/api/administrador/auth/me', {
 
 ---
 
-## 🚀 Deployment Producción
+## Deployment Producción
 
 ### Backend (.env producción)
 
@@ -489,7 +470,7 @@ VITE_API_URL=https://api.iieg.gob.mx/api/administrador
 
 ---
 
-## ❓ FAQ
+## FAQ
 
 **¿Por qué sessionStorage y no localStorage para CSRF?**
 - sessionStorage se limpia al cerrar pestaña

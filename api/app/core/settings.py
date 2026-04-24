@@ -47,6 +47,9 @@ class Settings(BaseSettings):
 
     mapalab_backend_url: str | None = None
 
+    sentry_dsn: str | None = None
+    sentry_traces_sample_rate: float = 0.1
+
     @field_validator("cors_origins", mode="before")
     @classmethod
     def parse_cors_origins(cls, v):

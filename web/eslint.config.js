@@ -2,9 +2,10 @@ import js from '@eslint/js';
 import globals from 'globals';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
+import jsxA11y from 'eslint-plugin-jsx-a11y';
 
 export default [
-    { ignores: ['dist'] },
+    { ignores: ['dist', 'coverage'] },
     {
         files: ['**/*.{js,jsx}'],
         languageOptions: {
@@ -19,26 +20,41 @@ export default [
         plugins: {
             'react-hooks': reactHooks,
             'react-refresh': reactRefresh,
+            'jsx-a11y': jsxA11y,
         },
         rules: {
             ...js.configs.recommended.rules,
             ...reactHooks.configs.recommended.rules,
+            ...jsxA11y.flatConfigs.recommended.rules,
             'indent': ['error', 4],
             'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+            'no-restricted-imports': ['error', {
+                patterns: [{
+                    group: ['*.png', '**/*.png'],
+                    message: 'PNG imports no permitidos. Convierte a WebP (cwebp -lossless) o usa SVG. Si es estrictamente necesario, justifica en PR y usa eslint-disable-next-line.',
+                }],
+            }],
             'max-lines': ['error', {
                 'max': 300,
                 'skipBlankLines': true,
-                'skipComments': true
+                'skipComments': true,
             }],
             'quotes': ['error', 'single', {
                 'avoidEscape': true,
-                'allowTemplateLiterals': true
+                'allowTemplateLiterals': true,
             }],
             'template-curly-spacing': ['error', 'never'],
+            'react-hooks/exhaustive-deps': 'warn',
             'react-refresh/only-export-components': [
                 'warn',
                 { allowConstantExport: true },
             ],
         },
     },
-]
+    {
+        files: ['**/test/**/*.{js,jsx}', '**/*.test.{js,jsx}', '**/tests/**/*.{js,jsx}'],
+        languageOptions: {
+            globals: { ...globals.browser, ...globals.node },
+        },
+    },
+];

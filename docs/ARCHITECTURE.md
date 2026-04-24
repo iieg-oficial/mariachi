@@ -1,5 +1,11 @@
 # Arquitectura de Mariachi
 
+> Diagrama y composición del monorepo: stacks, red Docker, puertos, y cómo se conecta con el `gateway-hub` externo.
+
+**Versión:** 0.14.0 · **Última actualización:** 2026-04-24
+
+---
+
 ## Stack tecnológico
 
 ### Portal web (`web/`)
