@@ -2,7 +2,7 @@
 
 > Documento de referencia completo. Leer este archivo proporciona contexto del monorepo sin explorar el codebase.
 
-**Versión:** 0.14.0 · **Última actualización:** 2026-04-24
+**Versión:** 0.21.0 · **Última actualización:** 2026-04-24
 
 ---
 
@@ -12,7 +12,7 @@ Este monorepo aloja **dos productos distintos** que comparten backend e infraest
 
 | Producto | Qué es | Carpeta | Ruta publica | Estado |
 |---|---|---|---|---|
-| **Mariachi** | Panel de administración del ecosistema IIEG (Ant Design) | `admin/` | `/administrador/` | Activo |
+| **Mariachi** | Panel de administración del ecosistema IIEG (Ant Design) | `admin/` | `/mariachi/` | Activo |
 
 El **Portal público** (sitio web del IIEG) se separó a su propio repo `iieg/portal/` (ver README raíz). Consume `/api/portal/*` de este `api`.
 
@@ -89,7 +89,7 @@ Paginas: `Login`, `PageEditor`, `MenuManager`, `Media`, `RevisionQueue`, `Users`
 
 | Componente | Tecnologia | Notas |
 |---|---|---|
-| Proxy interno | Nginx | sirve `web/dist` en `/`, `admin/dist` en `/administrador/`, proxea `api/` a backend |
+| Proxy interno | Nginx | sirve `web/dist` en `/`, `admin/dist` en `/mariachi/`, proxea `api/` a backend |
 | BD | PostgreSQL 18 (prod y dev) | DB: `iieg_portal` |
 | Cache/sessions | Redis 7 | |
 | Almacenamiento | Acervo (MinIO S3-compatible) | bucket `iieg-acervo` (prod), `portal-dev` (dev) |
@@ -185,7 +185,7 @@ Redes: `mariachi_network_dev` (propia) + `mapalab-network` (external, para que e
 |---|---|---|
 | **dev** (workstation local) | Todos los repos levantan su propio `docker-compose.*.yml` en **una sola maquina**. Mariachi, mapalab, dataengine, acervo, etc. corren como contenedores en el mismo host Docker. | Por **nombre de contenedor** via redes docker compartidas/external (`mapalab-network`, `dataengine-network`, `iieg-network`). El Vite del admin proxea `/mapalab/*` a `mapalab-dev-frontend-1:3006` — el hook usa siempre la ruta relativa. |
 | **staging** (GCP) | **Una sola VM** con todos los contenedores juntos (misma idea que dev pero en la nube). El `gateway-hub` termina SSL y enruta por path. | Igual que dev: nombres de contenedor via redes docker external. El admin en staging se sirve como build estático desde `mariachi-nginx`; `/mapalab/*` lo resuelve el `gateway-hub` al container de mapalab en la misma VM. |
-| **producción** (administracion) | **Servers separados** por servicio (mariachi en una VM, mapalab en otra, dataengine en otra). | Por **hostname/DNS + IP publica o privada** segun el caso. El `gateway-hub` externo termina SSL y enruta `/`/`/administrador/`/`/api/` a mariachi-nginx, `/mapalab/*` a la VM de mapalab, etc. `DATAENGINE_DATABASE_URL` apunta al host real de DataEngine via `pg_hba.conf` + `sslmode=require`. |
+| **producción** (administracion) | **Servers separados** por servicio (mariachi en una VM, mapalab en otra, dataengine en otra). | Por **hostname/DNS + IP publica o privada** segun el caso. El `gateway-hub` externo termina SSL y enruta `/`/`/mariachi/`/`/api/` a mariachi-nginx, `/mapalab/*` a la VM de mapalab, etc. `DATAENGINE_DATABASE_URL` apunta al host real de DataEngine via `pg_hba.conf` + `sslmode=require`. |
 
 **Implicacion:** el proxy `/mapalab` del `vite.config.js` del admin solo se usa en **dev** (y en staging si el admin se corre con Vite en vez de como build, que no es el caso). En prod el admin es build estático y el enrutamiento lo hace el `gateway-hub`.
 
@@ -229,7 +229,7 @@ Redes: `mariachi_network_dev` (propia) + `mapalab-network` (external, para que e
 
 ### Flujo
 
-1. Admin entra a `/administrador/` en el navegador.
+1. Admin entra a `/mariachi/` en el navegador.
 2. Login emite cookie `access_token` con JWT (`HttpOnly Secure SameSite=lax`).
 3. Frontend guarda CSRF token en memoria y lo envia como header `X-CSRF-Token` en writes.
 4. Backend valida cookie (`get_current_user`) + CSRF (`verify_csrf`) en rutas protegidas.
@@ -243,7 +243,7 @@ Definidos en `models/user.py`. Flujo de revision con `RevisionQueue` permite apr
 
 Un `COOKIE_DOMAIN` apuntando al subdominio común (ej. `app.tu-dominio.com`) hace que la cookie sea valida en `/mapalab/*` también. Esto permite que:
 
-- El admin autenticado en `/administrador/layers` tenga sesion automática al ir a `/mapalab/` (ej. para un boton de preview).
+- El admin autenticado en `/mariachi/layers` tenga sesion automática al ir a `/mapalab/` (ej. para un boton de preview).
 - El backend de mapalab NO necesita validar auth (solo lee capas, endpoints publicos). Solo mariachi valida auth para writes.
 
 Ver `docs/COOKIES_CSRF.md` para detalles completos.
@@ -305,7 +305,7 @@ Un gateway Nginx externo enruta segun path. Rutas relevantes para este repo:
 |---|---|---|
 | `/` | `portal` (`PORTAL_HOST`) | `mariachi-nginx` (este repo) → `web/dist` |
 | `/api/` | `portal` (`PORTAL_HOST`) | `mariachi-nginx` → `mariachi-api` |
-| `/administrador/` | `portal` (`PORTAL_HOST`) | `mariachi-nginx` → `admin/dist` |
+| `/mariachi/` | `portal` (`PORTAL_HOST`) | `mariachi-nginx` → `admin/dist` |
 
 **Atencion:** el gateway mantiene el nombre `portal` en su upstream por conflicto de nombres con otro upstream ya existente. Se deja como esta.
 
@@ -357,7 +357,7 @@ make up ENV=prod
 
 ## Integracion con MapaLab (v1.4.0)
 
-A partir de v1.4.0 de MapaLab, mariachi expone un **editor de capas del visor** bajo `/administrador/layers`. Esto implica:
+A partir de v1.4.0 de MapaLab, mariachi expone un **editor de capas del visor** bajo `/mariachi/layers`. Esto implica:
 
 1. **Segunda conexión DB** a DataEngine (`DATAENGINE_DATABASE_URL`).
 2. **Nuevo router** `api/app/api/routes/layers.py` con CRUD + reorder + duplicate.
@@ -416,7 +416,7 @@ Detalle completo en `docs/CHANGELOG.md` §[0.13.0]. Resumen:
 ### Listos para ejecutar (solo faltan credenciales / acciones externas)
 
 - [x] **Alembic multi-environment** — configurado, ver `docs/ALEMBIC_MULTI_ENV.md`. Listo para crear migración de DataEngine cuando haya credenciales.
-- [x] **COOKIE_DOMAIN** — ajustado al subdominio específico en `.env.*` (no versionado). Los `.env.*.example` usan placeholder. Cubre `/administrador/*` y `/mapalab/*` sin exponer cookie a otros subdominios del dominio raiz.
+- [x] **COOKIE_DOMAIN** — ajustado al subdominio específico en `.env.*` (no versionado). Los `.env.*.example` usan placeholder. Cubre `/mariachi/*` y `/mapalab/*` sin exponer cookie a otros subdominios del dominio raiz.
 - [x] **Script rename GitHub remote** — `scripts/rename-github-repo.sh`. Correr después de renombrar en GitHub web.
 - [x] **Script migración bucket Acervo** — `scripts/migrate-acervo-bucket.sh`. Requiere `mc` instalado y acceso al endpoint de Acervo.
 

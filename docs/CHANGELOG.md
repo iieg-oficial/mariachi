@@ -13,6 +13,30 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.21.0] - 2026-04-24
+
+**Breaking UI path:** el admin se sirve ahora bajo `/mariachi/` en vez de `/administrador/`, alineando con la convención del `gateway-hub` (`^~ /mariachi/` ya estaba reservado).
+
+### Cambiado
+
+- `admin/vite.config.js`: `base: '/mariachi/'` (antes `/administrador/`).
+- `admin/src/main.jsx`: `basename: '/mariachi'`.
+- `admin/src/shared/services/api.js`: redirect al login tras 401 apunta a `/mariachi/login`.
+- `nginx/conf.d/mariachi.conf`:
+    - Nueva `location /mariachi` con alias a `/usr/share/nginx/html/mariachi` y SPA fallback.
+    - `location /administrador` ahora devuelve `301 /mariachi$request_uri` (bookmarks viejos siguen funcionando, pero con redirect permanente).
+    - `location = /` redirige a `/mariachi/` (antes a `/administrador/`).
+- `nginx/Dockerfile`: `COPY --from=admin-builder /app/dist /usr/share/nginx/html/mariachi`.
+- `docs/context.md`, `docs/ARCHITECTURE.md`, `README.md`: menciones visibles del path actualizadas a `/mariachi/`.
+
+### Notas
+
+- El prefijo de **API** sigue siendo `/api/administrador/*` (no se toca en este release). Los requests del admin pegan a ese path absoluto y el gateway los rutea correctamente. Cambiar el API prefix es un refactor separado que implica actualizar también el gateway-hub (todavía rutea `/api/*` al upstream que termina en mariachi).
+- En producción el `gateway-hub` ya tiene `location ^~ /mariachi/` apuntando al upstream `mariachi`; este release hace que ese path funcione.
+- El redirect `301 /administrador → /mariachi` mantiene compatibilidad para links viejos.
+
+---
+
 ## [0.20.1] - 2026-04-24
 
 Deuda técnica pendiente del refactor multi-proyecto: migración a Alembic como fuente autoritativa del schema, viewer-por-proyecto blindado a nivel write, y limpieza del drawer legacy.

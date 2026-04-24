@@ -26,6 +26,6 @@ RUN npm run build
 FROM nginx:alpine
 COPY ./nginx/nginx.conf /etc/nginx/nginx.conf
 COPY ./nginx/conf.d/mariachi.conf /etc/nginx/conf.d/mariachi.conf
-COPY --from=admin-builder /app/dist /usr/share/nginx/html/administrador
+COPY --from=admin-builder /app/dist /usr/share/nginx/html/mariachi
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]

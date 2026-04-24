@@ -61,7 +61,7 @@ export default defineConfig(({ mode }) => {
                 },
             },
         },
-        base: '/administrador/',
+        base: '/mariachi/',
         build: {
             outDir: 'dist',
             sourcemap: sentryEnabled,

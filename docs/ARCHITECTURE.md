@@ -2,7 +2,7 @@
 
 > Diagrama y composición del monorepo: stacks, red Docker, puertos, y cómo se conecta con el `gateway-hub` externo.
 
-**Versión:** 0.14.0 · **Última actualización:** 2026-04-24
+**Versión:** 0.21.0 · **Última actualización:** 2026-04-24
 
 ---
 
@@ -80,7 +80,7 @@ El gateway externo resuelve:
 - Headers de seguridad (HSTS, X-Frame-Options, CSP, etc.).
 - Proxies a `/mapalab/`, `/acervo/`, `/geoserver/` (servicios vecinos).
 
-El nginx interno de mariachi solo sirve los estáticos de `admin/` (en `/administrador/`) y hace proxy a `/api/`. La raíz (`/`) redirige a `/administrador/`. No monta certificados SSL ni maneja redirects globales.
+El nginx interno de mariachi solo sirve los estáticos de `admin/` (en `/mariachi/`) y hace proxy a `/api/`. La raíz (`/`) redirige a `/mariachi/`. No monta certificados SSL ni maneja redirects globales.
 
 ---
 
@@ -100,7 +100,7 @@ flowchart TB
         NGX_MA["mariachi-nginx :80<br/>(solo estáticos + /api/)"]
 
         subgraph STATIC["Estáticos (build)"]
-            FE_ADMIN["admin/ → /administrador/"]
+            FE_ADMIN["admin/ → /mariachi/"]
         end
 
         API_SVC["mariachi-api :8000 (FastAPI)"]
@@ -118,7 +118,7 @@ flowchart TB
     U -->|HTTPS| NGX_GW
 
     NGX_GW -->|"/"| NGX_MA
-    NGX_GW -->|"/administrador/"| NGX_MA
+    NGX_GW -->|"/mariachi/"| NGX_MA
     NGX_GW -->|"/api/"| NGX_MA
     NGX_GW -->|"/mapalab/"| MAPA
     NGX_GW -->|"/acervo/"| ACERVO
