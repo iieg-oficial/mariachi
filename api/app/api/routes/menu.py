@@ -12,6 +12,8 @@ router = APIRouter(
     dependencies=[Depends(require_project_access("portal"))],
 )
 
+_require_editor = require_project_access("portal", min_role="editor")
+
 
 def construir_arbol_menu(items: list[MenuItem]) -> list[MenuItemTree]:
     item_map = {}
@@ -60,6 +62,7 @@ async def crear_menu_item(
     item_in: MenuItemCreate,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
+    _editor: Usuario = Depends(_require_editor),
 ):
     nuevo_item = MenuItem(**item_in.model_dump())
     db.add(nuevo_item)
@@ -74,6 +77,7 @@ async def actualizar_menu_item(
     item_in: MenuItemUpdate,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
+    _editor: Usuario = Depends(_require_editor),
 ):
     item = db.query(MenuItem).filter(MenuItem.id == item_id).first()
     if not item:
@@ -95,6 +99,7 @@ async def eliminar_menu_item(
     item_id: int,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
+    _editor: Usuario = Depends(_require_editor),
 ):
     item = db.query(MenuItem).filter(MenuItem.id == item_id).first()
     if not item:

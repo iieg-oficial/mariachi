@@ -15,7 +15,7 @@ router = APIRouter(
     dependencies=[Depends(require_project_access('mapalab'))],
 )
 
-_require_editor_or_admin = require_role(['tetlamamakani', 'editora'])
+_require_project_editor = require_project_access('mapalab', min_role='editor')
 _read_rate_limit = rate_limit(max_requests=120, window_seconds=60.0)
 
 
@@ -29,7 +29,7 @@ def _resolve_workspace(db: Session, alias: str) -> Workspace:
 @router.get('/workspaces')
 async def list_workspaces_with_layers(
     db: Session = Depends(get_dataengine_db),
-    current_user: Usuario = Depends(_require_editor_or_admin),
+    current_user: Usuario = Depends(_require_project_editor),
     _rl: Usuario = Depends(_read_rate_limit),
 ):
     incr(COUNTER_GEOSERVER_CALLS)
@@ -61,7 +61,7 @@ async def list_fields(
     layer: str,
     include_samples: bool = Query(default=False),
     db: Session = Depends(get_dataengine_db),
-    current_user: Usuario = Depends(_require_editor_or_admin),
+    current_user: Usuario = Depends(_require_project_editor),
     _rl: Usuario = Depends(_read_rate_limit),
 ):
     incr(COUNTER_GEOSERVER_CALLS)
@@ -95,7 +95,7 @@ async def list_styles(
     alias: str,
     layer: str,
     db: Session = Depends(get_dataengine_db),
-    current_user: Usuario = Depends(_require_editor_or_admin),
+    current_user: Usuario = Depends(_require_project_editor),
     _rl: Usuario = Depends(_read_rate_limit),
 ):
     incr(COUNTER_GEOSERVER_CALLS)

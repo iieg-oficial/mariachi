@@ -21,7 +21,7 @@ router = APIRouter(
     dependencies=[Depends(require_project_access('mapalab'))],
 )
 
-_require_editor_or_admin = require_role(['tetlamamakani', 'editora'])
+_require_project_editor = require_project_access('mapalab', min_role='editor')
 _require_admin = require_role(['tetlamamakani'])
 _write_rate_limit = rate_limit(max_requests=60, window_seconds=60.0)
 
@@ -29,7 +29,7 @@ _write_rate_limit = rate_limit(max_requests=60, window_seconds=60.0)
 @router.get('', response_model=list[LayerMetadataResponse])
 async def list_metadata(
     db: Session = Depends(get_dataengine_db),
-    current_user: Usuario = Depends(_require_editor_or_admin),
+    current_user: Usuario = Depends(_require_project_editor),
 ):
     return db.query(LayerMetadata).order_by(LayerMetadata.layer_key).all()
 
@@ -38,7 +38,7 @@ async def list_metadata(
 async def get_metadata(
     layer_key: str,
     db: Session = Depends(get_dataengine_db),
-    current_user: Usuario = Depends(_require_editor_or_admin),
+    current_user: Usuario = Depends(_require_project_editor),
 ):
     row = db.query(LayerMetadata).filter(LayerMetadata.layer_key == layer_key).first()
     if not row:
@@ -52,7 +52,7 @@ async def update_metadata(
     data: LayerMetadataUpdate,
     db: Session = Depends(get_dataengine_db),
     current_user: Usuario = Depends(verify_csrf),
-    _editor: Usuario = Depends(_require_editor_or_admin),
+    _editor: Usuario = Depends(_require_project_editor),
     _rl: Usuario = Depends(_write_rate_limit),
 ):
     row = db.query(LayerMetadata).filter(LayerMetadata.layer_key == layer_key).first()
@@ -78,7 +78,7 @@ async def update_metadata(
 async def get_stats(
     layer_key: str,
     db: Session = Depends(get_dataengine_db),
-    current_user: Usuario = Depends(_require_editor_or_admin),
+    current_user: Usuario = Depends(_require_project_editor),
 ):
     row = db.query(LayerStats).filter(LayerStats.layer_key == layer_key).first()
     if not row:

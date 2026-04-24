@@ -17,6 +17,8 @@ router = APIRouter(
     dependencies=[Depends(require_project_access("portal"))],
 )
 
+_require_editor = require_project_access("portal", min_role="editor")
+
 
 def _slug_from_menu_item(page_id: str, db: Session) -> tuple[str, str]:
     try:
@@ -87,6 +89,7 @@ async def actualizar_o_crear_pagina(
     page_in: PageUpdate,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
+    _editor: Usuario = Depends(_require_editor),
 ):
     pagina = db.query(Page).filter(Page.menu_item_id == page_id).first()
 
@@ -132,6 +135,7 @@ async def eliminar_pagina(
     page_id: str,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
+    _editor: Usuario = Depends(_require_editor),
 ):
     pagina = db.query(Page).filter(Page.menu_item_id == page_id).first()
     if not pagina:

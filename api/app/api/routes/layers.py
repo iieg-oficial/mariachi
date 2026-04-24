@@ -24,8 +24,8 @@ router = APIRouter(
     dependencies=[Depends(require_project_access('mapalab'))],
 )
 
-_require_editor_or_admin = require_role(['tetlamamakani', 'editora'])
 _require_admin = require_role(['tetlamamakani'])
+_require_project_editor = require_project_access('mapalab', min_role='editor')
 _write_rate_limit = rate_limit(max_requests=60, window_seconds=60.0)
 
 
@@ -43,7 +43,7 @@ def _map_domain_errors(exc: Exception) -> HTTPException:
 @router.get('/workspaces', response_model=list[WorkspaceResponse])
 async def list_workspaces(
     db: Session = Depends(get_dataengine_db),
-    current_user: Usuario = Depends(_require_editor_or_admin),
+    current_user: Usuario = Depends(_require_project_editor),
 ):
     return db.query(Workspace).order_by(Workspace.alias).all()
 
@@ -52,7 +52,7 @@ async def list_workspaces(
 async def get_layer(
     layer_id: str,
     db: Session = Depends(get_dataengine_db),
-    current_user: Usuario = Depends(_require_editor_or_admin),
+    current_user: Usuario = Depends(_require_project_editor),
 ):
     layer = db.query(Layer).filter(Layer.id == layer_id).first()
     if not layer:

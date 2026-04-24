@@ -1,18 +1,46 @@
 import os
+import subprocess
 import sys
 from pathlib import Path
 
 sys.path.append(str(Path(__file__).parent.parent))
 
-from app.core.database import SessionLocal, engine
+from app.core.database import SessionLocal
 from app.core.security import hash_password
-from app.models import Base, MediaFolder, MenuItem, Usuario
+from app.models import MediaFolder, MenuItem, Usuario
+
+API_ROOT = Path(__file__).parent.parent
 
 
-def crear_tablas():
-    print("Creando tablas en la base de datos...")
-    Base.metadata.create_all(bind=engine)
-    print("✓ Tablas creadas")
+def aplicar_migraciones():
+    print("Aplicando migraciones Alembic (branch mariachi)...")
+    result = subprocess.run(
+        ["alembic", "-x", "db=mariachi", "upgrade", "mariachi@head"],
+        cwd=API_ROOT,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        print(result.stdout)
+        print(result.stderr, file=sys.stderr)
+        raise RuntimeError("Alembic upgrade (mariachi) fallo")
+    print("✓ Migraciones mariachi aplicadas")
+
+    if os.getenv("DATAENGINE_DATABASE_URL"):
+        print("DATAENGINE_DATABASE_URL presente — aplicando migraciones dataengine...")
+        result = subprocess.run(
+            ["alembic", "-x", "db=dataengine", "upgrade", "dataengine@head"],
+            cwd=API_ROOT,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            print(result.stdout)
+            print(result.stderr, file=sys.stderr)
+            raise RuntimeError("Alembic upgrade (dataengine) fallo")
+        print("✓ Migraciones dataengine aplicadas")
 
 
 def crear_usuario_admin(db):
@@ -112,14 +140,15 @@ def crear_carpeta_raiz(db):
 
 def main():
     print("=" * 60)
-    print("Inicializando base de datos - Backend Portal IIEG")
+    print("Inicializando base de datos — Mariachi API")
     print("=" * 60)
     print()
+
+    aplicar_migraciones()
 
     db = SessionLocal()
 
     try:
-        crear_tablas()
         crear_carpeta_raiz(db)
         crear_usuario_admin(db)
         crear_usuarios_ejemplo(db)
