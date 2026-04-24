@@ -13,6 +13,48 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.19.0] - 2026-04-24
+
+Edición de capas rediseñada a página dedicada con split view (árbol + editor). SIEEJ entra al sider como administrador genérico de formularios (placeholder listo para integración).
+
+### Agregado
+
+#### Editor de capas como página dedicada
+
+- `features/mapalab-layers/pages/LayerEditPage.jsx` — página nueva en ruta `/mapalab/layers/:id/edit`:
+    - Layout **split view**: árbol de capas (sticky, 280px) a la izquierda + editor a la derecha (ancho completo).
+    - Click en cualquier capa del árbol lateral navega a su edit page sin salir del contexto.
+    - **Tabs horizontales** reemplazan el Collapse del drawer: Identidad, WMS, Descarga, InfoBox, Metadatos descriptivos. Cada tab usa todo el ancho disponible.
+    - Preview del InfoBox ahora se renderiza **lado a lado** con el formulario del preset (columnas xs=24 md=12).
+    - Header fijo con breadcrumb `Capas / <nombre>` + tag de ID + botones de guardar.
+    - URL compartible, botón atrás del browser funciona.
+- Router: nueva entrada `mapalab/layers/:id/edit` en `admin/src/main.jsx`.
+- `LayersPage` ahora navega a la página dedicada en el botón "Editar" (antes abría drawer modal).
+
+#### SIEEJ — administrador de formularios (placeholder)
+
+- Feature nuevo `features/sieej-formularios/` con `FormulariosPage`:
+    - Tabla CRUD genérica con campos `slug`, `name`, `description`, `is_active`.
+    - Modal para crear/editar.
+    - Alert informativa de "módulo en construcción".
+- Entry en `PROJECT_REGISTRY` (`sieej-config.jsx`) con item "Formularios" e icono `FormOutlined`.
+- Backend stub `api/app/api/routes/formularios.py` bajo `require_project_access('sieej')`:
+    - `GET /formularios` → `[]` (permite que la UI cargue).
+    - `POST` / `PUT` / `DELETE` → `501 Not Implemented` con mensaje claro.
+- Feature visible en el sider para admin global y para editoras/diseñadoras que tengan membership en `sieej`.
+
+### Cambiado
+
+- `LayersPage` eliminó el state y handlers relacionados con el drawer (`editingLayer`, `drawerOpen`, `saving`, `handleSave`). Ahora navega a la página dedicada.
+- `LayerEditDrawer` permanece en el código como componente legacy pero ya no se renderiza desde ningún lugar (sin imports activos). Se eliminará cuando se valide la página en producción.
+
+### Notas
+
+- Al entrar a la página dedicada, el tree lateral se carga una vez al mount (hook `useLayerTreeAdmin.reload`). Cambiar de capa desde el tree lateral actualiza la URL y re-renderiza el form con la capa nueva, pero mantiene el árbol intacto — navegación instantánea.
+- Para SIEEJ: cuando el backend real del módulo se implemente, la página ya tiene el shape que espera (`{id, slug, name, description, is_active}`). Solo hay que levantar los endpoints reales en `formularios.py`.
+
+---
+
 ## [0.18.0] - 2026-04-24
 
 Media por bucket end-to-end + edición de metadatos descriptivos de capas. Cierra el refactor multi-proyecto con funcionalidad visible. Incluye limpieza de archivos `.env*` duplicados en `api/` y normalización de los `.env*.example` con placeholders genéricos.

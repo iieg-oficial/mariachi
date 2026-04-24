@@ -8,6 +8,7 @@ import {
     GlobalOutlined,
     EnvironmentOutlined,
     ProjectOutlined,
+    FormOutlined,
 } from '@ant-design/icons';
 
 export const PLATFORM_ITEMS = [
@@ -59,7 +60,14 @@ export const PROJECT_REGISTRY = {
     sieej: {
         label: 'SIEEJ',
         icon: <ProjectOutlined />,
-        items: [],
+        items: [
+            {
+                key: '/sieej/formularios',
+                path: '/sieej/formularios',
+                label: 'Formularios',
+                icon: <FormOutlined />,
+            },
+        ],
     },
 };
 

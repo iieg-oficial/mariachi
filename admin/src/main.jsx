@@ -34,6 +34,8 @@ const PageEditor = lazy(() => import('@features/portal-pages'));
 const Media = lazy(() => import('@features/media'));
 const RevisionQueue = lazy(() => import('@features/revision'));
 const LayersPage = lazy(() => import('@features/mapalab-layers'));
+const LayerEditPage = lazy(() => import('@features/mapalab-layers').then((m) => ({ default: m.LayerEditPage })));
+const FormulariosPage = lazy(() => import('@features/sieej-formularios'));
 
 const PageFallback = () => (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
@@ -120,6 +122,22 @@ const router = createBrowserRouter([
                         element: withSuspense(
                             <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
                                 <LayersPage />
+                            </RoleProtectedRoute>
+                        )
+                    },
+                    {
+                        path: 'mapalab/layers/:id/edit',
+                        element: withSuspense(
+                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
+                                <LayerEditPage />
+                            </RoleProtectedRoute>
+                        )
+                    },
+                    {
+                        path: 'sieej/formularios',
+                        element: withSuspense(
+                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
+                                <FormulariosPage />
                             </RoleProtectedRoute>
                         )
                     },

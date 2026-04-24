@@ -3,7 +3,6 @@ import {
     Alert,
     Button,
     Card,
-    Drawer,
     Empty,
     Input,
     Space,
@@ -23,9 +22,9 @@ import {
     AppstoreOutlined,
     FileOutlined,
 } from '@ant-design/icons';
+import { useNavigate } from 'react-router';
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
 import { useAuth } from '@shared/contexts/AuthContext';
-import LayerEditDrawer from '@features/mapalab-layers/components/layersEditor/LayerEditDrawer';
 import BulkTagsDrawer from '@features/mapalab-layers/components/layersEditor/BulkTagsDrawer';
 import useIsMobile from '@shared/hooks/useIsMobile';
 
@@ -80,14 +79,11 @@ export default function MapalabLayers() {
     const { isMobile } = useIsMobile();
     const { user } = useAuth();
     const isAdmin = user?.role === 'tetlamamakani';
+    const navigate = useNavigate();
     const {
-        treeData, loading, error, reload,
-        getLayer, updateLayer, saveLayerDraft, requestReview, getLayerDraft, reorderLayers,
+        treeData, loading, error, reload, reorderLayers,
     } = useLayerTreeAdmin();
     const [selectedKey, setSelectedKey] = useState(null);
-    const [editingLayer, setEditingLayer] = useState(null);
-    const [drawerOpen, setDrawerOpen] = useState(false);
-    const [saving, setSaving] = useState(false);
     const [q, setQ] = useState('');
     const [expandedKeys, setExpandedKeys] = useState([]);
     const [bulkTagsOpen, setBulkTagsOpen] = useState(false);
@@ -147,49 +143,9 @@ export default function MapalabLayers() {
         }
     };
 
-    const handleEdit = async () => {
+    const handleEdit = () => {
         if (!selectedKey) return;
-        try {
-            const layer = await getLayer(selectedKey);
-            if (!isAdmin) {
-                const draft = await getLayerDraft(selectedKey);
-                if (draft?.data) {
-                    setEditingLayer({ ...layer, ...draft.data, id: layer.id, _draftEstado: draft.estado });
-                    setDrawerOpen(true);
-                    return;
-                }
-            }
-            setEditingLayer(layer);
-            setDrawerOpen(true);
-        } catch (err) {
-            message.error(err.response?.data?.detail || 'No se pudo cargar la capa');
-        }
-    };
-
-    const handleSave = async (data, { submitForReview = false } = {}) => {
-        if (!editingLayer) return;
-        setSaving(true);
-        try {
-            if (isAdmin) {
-                await updateLayer(editingLayer.id, data);
-                message.success(`Capa "${editingLayer.id}" actualizada`);
-            } else {
-                await saveLayerDraft(editingLayer.id, data);
-                if (submitForReview) {
-                    await requestReview(editingLayer.id);
-                    message.success(`Borrador enviado a revisión`);
-                } else {
-                    message.success(`Borrador guardado`);
-                }
-            }
-            setDrawerOpen(false);
-            setEditingLayer(null);
-            await reload();
-        } catch (err) {
-            message.error(err.response?.data?.detail || 'No se pudo guardar');
-        } finally {
-            setSaving(false);
-        }
+        navigate(`/mapalab/layers/${encodeURIComponent(selectedKey)}/edit`);
     };
 
     return (
@@ -256,18 +212,6 @@ export default function MapalabLayers() {
                     />
                 </div>
             )}
-
-            <LayerEditDrawer
-                open={drawerOpen}
-                layer={editingLayer}
-                saving={saving}
-                isAdmin={isAdmin}
-                onClose={() => {
-                    setDrawerOpen(false);
-                    setEditingLayer(null);
-                }}
-                onSave={handleSave}
-            />
 
             <BulkTagsDrawer
                 open={bulkTagsOpen}
