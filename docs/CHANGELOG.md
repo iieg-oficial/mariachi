@@ -13,6 +13,52 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.20.1] - 2026-04-24
+
+Deuda técnica pendiente del refactor multi-proyecto: migración a Alembic como fuente autoritativa del schema, viewer-por-proyecto blindado a nivel write, y limpieza del drawer legacy.
+
+### Cambiado
+
+- **`api/scripts/init_db.py`** ya no hace `Base.metadata.create_all`. Ahora corre `alembic -x db=mariachi upgrade mariachi@head` vía `subprocess` y, si `DATAENGINE_DATABASE_URL` está presente, también `alembic -x db=dataengine upgrade dataengine@head`. Alembic queda como fuente autoritativa del schema; el hack manual de `alembic stamp` ya no es necesario al resetear una BD de dev.
+- **Viewer por proyecto blindado en writes:**
+    - `/paginas` (PUT, DELETE) y `/elementos-menu` (POST, PUT, DELETE) añaden guard `_require_editor = require_project_access("portal", min_role="editor")`.
+    - `/layer-metadata` (PUT) y `/geoserver/*` usan `_require_project_editor = require_project_access("mapalab", min_role="editor")` (antes era `require_role`, no validaba membership por proyecto).
+    - Admin global (`tetlamamakani`) sigue con bypass.
+    - Efecto: un usuario con rol global `editora` + `project_role = viewer` en portal/mapalab ya **no puede escribir** en esos módulos, solo leer. El preview-only que pediste funciona en serio.
+
+### Removido
+
+- `admin/src/features/mapalab-layers/components/layersEditor/LayerEditDrawer.jsx` (291 líneas) — código legacy que ya no se importaba desde ningún lugar tras el PR 0.19.0 (split view).
+
+---
+
+## [0.20.0] - 2026-04-24
+
+**Breaking:** el portal público (`web/`) se extrae a su propio repo (`iieg/portal`) con historia preservada vía `git subtree split`. Mariachi queda como panel de administración + API; cada proyecto del ecosistema vive en su propio repo.
+
+### Removido
+
+- Carpeta `web/` completa — ahora en `../portal` como repo independiente.
+- Servicio `web` de `docker-compose.dev.yml` + volumen `web_node_modules`.
+- Stage `web-builder` de `nginx/Dockerfile`.
+- `location /` en `nginx/conf.d/mariachi.conf` (reemplazado por redirect 302 a `/administrador/`).
+- Build args de nginx: `VITE_WEB_API_URL`, `VITE_API_TIMEOUT`, `VITE_APP_NAME`.
+- Target `shell-web` del Makefile.
+- Env vars del portal en los cuatro `.env*`: `WEB_PORT`, `VITE_WEB_PORT`, `VITE_WEB_HOST`, `VITE_APP_NAME`, `VITE_WEB_API_URL`, `VITE_API_TIMEOUT`.
+
+### Cambiado
+
+- `README.md`, `docs/context.md`, `docs/ARCHITECTURE.md`: mariachi se describe como repo con dos componentes (`admin/` + `api/`); remiten a `../portal` para el portal público.
+- Endpoint `/api/portal/*` del backend permanece — lo consume ahora el repo `iieg/portal` desde su propio compose.
+- Nginx interno: raíz redirige a `/administrador/`.
+
+### Notas
+
+- Split hecho con `git subtree split --prefix=web -b portal-split` + `git pull` al nuevo repo (historia preservada).
+- El gateway-hub externo en staging/prod sigue ruteando `/` al portal; el cambio es interno.
+
+---
+
 ## [0.19.0] - 2026-04-24
 
 Edición de capas rediseñada a página dedicada con split view (árbol + editor). SIEEJ entra al sider como administrador genérico de formularios (placeholder listo para integración).
