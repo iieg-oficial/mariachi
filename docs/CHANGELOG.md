@@ -13,6 +13,30 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.22.0] - 2026-04-24
+
+Cobertura smoke de tests para el refactor multi-proyecto. Hasta hoy CI corría `pytest -q` y `npm test` sin nada que ejecutara para los endpoints/guards/UI nuevos.
+
+### Agregado
+
+- **Backend (`api/tests/`, pytest):** 24 tests nuevos.
+    - `test_projects.py` (9): GET requiere auth, GET filtra inactivos, POST/PATCH admin-only (editora=403), conflicto 409 por slug duplicado, PUT `/projects/users/{id}` reemplaza memberships atómicamente.
+    - `test_media_buckets.py` (9): GET admin ve todos, editora con membership solo los suyos, editora sin membership lista vacía, POST admin-only con validación de project_id, PATCH admin-only.
+    - `test_require_project_access.py` (6): editora sin membership = 403, admin global bypassa, viewer puede leer y no escribir, editor puede escribir, proyecto inexistente = 404.
+    - `tests/conftest.py`: nuevas fixtures `admin_session` y `editora_session` que hacen login real (cookie + csrf) en lugar del fixture viejo `admin_token` (que rompió en la migración a cookies). Filtro de tablas con schema en `db_session` para que SQLite ignore tablas que no son del schema default.
+- **Frontend (`admin/src/`, vitest + happy-dom + @testing-library/react):** 17 tests nuevos.
+    - `app/__tests__/sider-config.test.js` (12): `buildSiderItems({ user: null })` = `[]`; admin ve Plataforma + 3 grupos de proyecto; editora con membership en `portal` ve solo Plataforma (Media) + Portalito; editora sin memberships solo Plataforma; `defaultOpenKeyForPath` mapea path → grupo correcto; badge de Revisiones aparece con `pendingCount > 0`; onClick invoca onNavigate.
+    - `features/media/components/__tests__/BucketFilePicker.test.jsx` (5): no fetcha cuando `open=false`, lista archivos cuando se abre, click en fila llama `onSelect` con `{nombre, enlace, url}` y cierra, búsqueda filtra case-insensitive, cambiar tab refetcha con nuevo prefix.
+- **`admin/vitest.config.js` + `admin/vitest.setup.js`:** configuración inicial (no existía). environment=happy-dom, alias resueltos como en vite.config, jest-dom matchers cargados en setup.
+
+### Notas
+
+- `test_formularios.py` queda fuera de este release: el plan original asumía endpoints stub (501/[]), pero en `develop` ya hay implementación real de SIEEJ en progreso (no commiteada). Cuando ese trabajo aterrice se agregará cobertura específica.
+- Tests existentes (test_auth, test_users) siguen rotos por la migración a cookies — no es deuda nueva sino preexistente; los nuevos tests usan las fixtures cookie-aware (`admin_session`/`editora_session`).
+- Frontend test del form de UsersPage (sección "Proyectos y roles") quedó fuera del scope smoke: requiere mocks de AuthContext + axios + Router que exceden el costo/beneficio para esta PR. Se puede agregar cuando se extraiga el form a un componente aislado.
+
+---
+
 ## [0.21.2] - 2026-04-24
 
 Lint pass ESLint 10: del upgrade en 0.14.0 quedaba la deuda técnica de correr lint contra todo el admin. Triage por categoría y fix archivo por archivo.

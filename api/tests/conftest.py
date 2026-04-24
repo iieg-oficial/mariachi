@@ -6,8 +6,12 @@ from sqlalchemy.pool import StaticPool
 
 from app.core.database import Base, get_db
 from app.core.security import hash_password
+from app.core.settings import get_settings
 from app.main import app
 from app.models.user import Usuario
+
+settings = get_settings()
+ADMIN_PREFIX = settings.admin_prefix
 
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
 
@@ -21,13 +25,14 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engin
 
 @pytest.fixture(scope="function")
 def db_session():
-    Base.metadata.create_all(bind=engine)
+    tables = [t for t in Base.metadata.sorted_tables if t.schema is None]
+    Base.metadata.create_all(bind=engine, tables=tables)
     session = TestingSessionLocal()
     try:
         yield session
     finally:
         session.close()
-        Base.metadata.drop_all(bind=engine)
+        Base.metadata.drop_all(bind=engine, tables=tables)
 
 
 @pytest.fixture(scope="function")
@@ -90,3 +95,24 @@ def editora_token(client, editora_user):
         json={"username": "editora_test", "password": "testpass123"},
     )
     return response.json()["access_token"]
+
+
+def login_as(client, username, password):
+    response = client.post(
+        f"{ADMIN_PREFIX}/autenticacion/iniciar-sesion",
+        json={"username": username, "password": password},
+    )
+    assert response.status_code == 200, response.text
+    return response.json()["csrf_token"]
+
+
+@pytest.fixture(scope="function")
+def admin_session(client, admin_user):
+    csrf = login_as(client, "admin_test", "testpass123")
+    return {"client": client, "csrf": csrf, "user": admin_user}
+
+
+@pytest.fixture(scope="function")
+def editora_session(client, editora_user):
+    csrf = login_as(client, "editora_test", "testpass123")
+    return {"client": client, "csrf": csrf, "user": editora_user}
