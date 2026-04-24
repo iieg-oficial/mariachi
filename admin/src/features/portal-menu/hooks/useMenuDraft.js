@@ -14,20 +14,14 @@ export const useMenuDraft = (user, { reviewMode = false, borradorId = null } = {
     const [publishing, setPublishing] = useState(false);
     const [nextTempId, setNextTempId] = useState(1);
     const [hasDraft, setHasDraft] = useState(false);
-    const [draftId, setDraftId] = useState(null);
+    const [, setDraftId] = useState(null);
     const [borradorEstado, setBorradorEstado] = useState('en_progreso');
     const [comentarioRechazo, setComentarioRechazo] = useState(null);
     const [reviewAuthor, setReviewAuthor] = useState(null);
 
     const isAdmin = user?.role === 'tetlamamakani';
 
-    useEffect(() => {
-        fetchMenuItems();
-    }, []);
-
-    const hasChanges = JSON.stringify(originalMenuItems) !== JSON.stringify(menuItems);
-
-    const fetchMenuItems = async () => {
+    const fetchMenuItems = useCallback(async () => {
         setLoading(true);
         try {
             const itemsResponse = await api.get('/elementos-menu');
@@ -62,31 +56,34 @@ export const useMenuDraft = (user, { reviewMode = false, borradorId = null } = {
         } finally {
             setLoading(false);
         }
-    };
+    }, [reviewMode, borradorId]);
+
+    useEffect(() => {
+        fetchMenuItems();
+    }, [fetchMenuItems]);
+
+    const hasChanges = JSON.stringify(originalMenuItems) !== JSON.stringify(menuItems);
 
     const saveDraft = useCallback(async (items, tempId) => {
         if (reviewMode) return;
-        try {
-            const response = await api.put(`/borradores/${RESOURCE_TYPE}/${RESOURCE_ID}`, {
-                data: { menuItems: items, nextTempId: tempId }
-            });
-            setHasDraft(true);
-            setDraftId(response.data.id);
-            setBorradorEstado(response.data.estado || 'en_progreso');
-            setComentarioRechazo(null);
-        } catch {}
+        const response = await api.put(`/borradores/${RESOURCE_TYPE}/${RESOURCE_ID}`, {
+            data: { menuItems: items, nextTempId: tempId }
+        }).catch(() => null);
+        if (!response) return;
+        setHasDraft(true);
+        setDraftId(response.data.id);
+        setBorradorEstado(response.data.estado || 'en_progreso');
+        setComentarioRechazo(null);
     }, [reviewMode]);
 
     const deleteDraft = async () => {
-        try {
-            if (reviewMode && borradorId) {
-                await api.delete(`/borradores/por-id/${borradorId}`);
-            } else {
-                await api.delete(`/borradores/${RESOURCE_TYPE}/${RESOURCE_ID}`);
-            }
-            setHasDraft(false);
-            setDraftId(null);
-        } catch {}
+        const path = reviewMode && borradorId
+            ? `/borradores/por-id/${borradorId}`
+            : `/borradores/${RESOURCE_TYPE}/${RESOURCE_ID}`;
+        const ok = await api.delete(path).then(() => true).catch(() => false);
+        if (!ok) return;
+        setHasDraft(false);
+        setDraftId(null);
     };
 
     const createItem = (itemData) => {

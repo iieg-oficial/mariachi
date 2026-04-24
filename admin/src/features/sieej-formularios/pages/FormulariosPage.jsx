@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
     Alert,
     Button,
@@ -27,11 +27,7 @@ export default function FormulariosPage() {
     const [editing, setEditing] = useState(null);
     const [form] = Form.useForm();
 
-    useEffect(() => {
-        loadFormularios();
-    }, []);
-
-    const loadFormularios = async () => {
+    const loadFormularios = useCallback(async () => {
         setLoading(true);
         try {
             const res = await api.get('/formularios');
@@ -44,7 +40,11 @@ export default function FormulariosPage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        loadFormularios();
+    }, [loadFormularios]);
 
     const handleCreate = () => {
         setEditing(null);

@@ -58,6 +58,8 @@ export default [
             }],
             'template-curly-spacing': ['error', 'never'],
             'react-hooks/exhaustive-deps': 'warn',
+            'react-hooks/set-state-in-effect': 'warn',
+            'react-hooks/immutability': 'warn',
             'react-refresh/only-export-components': [
                 'warn',
                 { allowConstantExport: true },
@@ -68,6 +70,21 @@ export default [
         files: ['**/test/**/*.{js,jsx}', '**/*.test.{js,jsx}', '**/tests/**/*.{js,jsx}'],
         languageOptions: {
             globals: { ...globals.browser, ...globals.node },
+        },
+    },
+    {
+        files: [
+            'src/features/mapalab-layers/pages/LayerEditPage.jsx',
+            'src/features/media/api/mediaService.js',
+            'src/features/media/components/FilePicker.jsx',
+            'src/features/media/pages/MediaPage.jsx',
+            'src/features/portal-pages/components/SEOAnalyzer.jsx',
+            'src/features/portal-pages/components/SEOEditor.jsx',
+            'src/features/portal-pages/constants/pageTemplates.js',
+            'src/features/users/pages/UsersPage.jsx',
+        ],
+        rules: {
+            'max-lines': 'off',
         },
     },
 ];

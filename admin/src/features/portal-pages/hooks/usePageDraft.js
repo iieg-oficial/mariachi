@@ -58,7 +58,7 @@ export const usePageDraft = (pageId, { reviewMode = false, borradorId = null } =
         return () => clearInterval(presenceIntervalRef.current);
     }, [pageId]);
 
-    const loadPage = async () => {
+    async function loadPage() {
         setLoading(true);
         draftSaveEnabled.current = false;
         try {
@@ -109,9 +109,9 @@ export const usePageDraft = (pageId, { reviewMode = false, borradorId = null } =
         } finally {
             setLoading(false);
         }
-    };
+    }
 
-    const saveDraft = async (pageData) => {
+    async function saveDraft(pageData) {
         if (reviewMode) return;
         const data = pageData || page;
         if (!data || !pageId) return;
@@ -126,7 +126,7 @@ export const usePageDraft = (pageId, { reviewMode = false, borradorId = null } =
         } catch { /* fallo silencioso */ } finally {
             setSaving(false);
         }
-    };
+    }
 
     const deleteDraft = async () => {
         try {

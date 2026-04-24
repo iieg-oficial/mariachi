@@ -28,7 +28,7 @@ const SEOAnalyzer = ({ page, seo }) => {
         }
     }, [page, seo]);
 
-    const performAnalysis = () => {
+    function performAnalysis() {
         const issues = [];
         const suggestions = [];
         let score = 100;
@@ -224,9 +224,9 @@ const SEOAnalyzer = ({ page, seo }) => {
             readability,
             contentStats: contentAnalysis
         });
-    };
+    }
 
-    const analyzeKeywordDensity = (page, keywords) => {
+    function analyzeKeywordDensity(page, keywords) {
         const allText = extractAllText(page).toLowerCase();
         const words = allText.split(/\s+/).filter(w => w.length > 0);
         const totalWords = words.length;
@@ -245,9 +245,9 @@ const SEOAnalyzer = ({ page, seo }) => {
         });
 
         return density;
-    };
+    }
 
-    const analyzeContent = (page) => {
+    function analyzeContent(page) {
         const allText = extractAllText(page);
         const words = allText.split(/\s+/).filter(w => w.length > 0);
 
@@ -276,9 +276,9 @@ const SEOAnalyzer = ({ page, seo }) => {
             imageCount,
             imagesWithoutAlt
         };
-    };
+    }
 
-    const analyzeReadability = (page) => {
+    function analyzeReadability(page) {
         const text = extractAllText(page);
         const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
         const words = text.split(/\s+/).filter(w => w.length > 0);
@@ -295,9 +295,9 @@ const SEOAnalyzer = ({ page, seo }) => {
             readabilityScore,
             level: readabilityScore >= 80 ? 'Excelente' : readabilityScore >= 60 ? 'Buena' : 'Necesita mejora'
         };
-    };
+    }
 
-    const extractAllText = (page) => {
+    function extractAllText(page) {
         let text = '';
         if (page.sections) {
             page.sections.forEach(section => {
@@ -310,7 +310,7 @@ const SEOAnalyzer = ({ page, seo }) => {
             });
         }
         return text;
-    };
+    }
 
     const getScoreColor = (score) => {
         if (score >= 80) return '#52c41a';
@@ -320,10 +320,10 @@ const SEOAnalyzer = ({ page, seo }) => {
 
     const getIssueIcon = (type) => {
         switch (type) {
-            case 'error': return <CloseCircleOutlined style={{ color: '#ff4d4f' }} />;
-            case 'warning': return <WarningOutlined style={{ color: '#faad14' }} />;
-            case 'info': return <BulbOutlined style={{ color: '#1890ff' }} />;
-            default: return <CheckCircleOutlined style={{ color: '#52c41a' }} />;
+        case 'error': return <CloseCircleOutlined style={{ color: '#ff4d4f' }} />;
+        case 'warning': return <WarningOutlined style={{ color: '#faad14' }} />;
+        case 'info': return <BulbOutlined style={{ color: '#1890ff' }} />;
+        default: return <CheckCircleOutlined style={{ color: '#52c41a' }} />;
         }
     };
 
@@ -440,7 +440,7 @@ const SEOAnalyzer = ({ page, seo }) => {
                                                     <Tag
                                                         color={
                                                             data.status === 'good' ? 'success' :
-                                                            data.status === 'low' ? 'warning' : 'error'
+                                                                data.status === 'low' ? 'warning' : 'error'
                                                         }
                                                     >
                                                         {data.density}%

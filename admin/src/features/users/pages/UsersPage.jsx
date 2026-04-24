@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
     Table,
     Card,
@@ -48,12 +48,7 @@ export default function Users() {
     const selectedRole = Form.useWatch('role', form);
     const projectAssignments = Form.useWatch('project_assignments', form) || {};
 
-    useEffect(() => {
-        fetchUsers();
-        fetchProjects();
-    }, []);
-
-    const fetchUsers = async () => {
+    const fetchUsers = useCallback(async () => {
         setLoading(true);
         try {
             const response = await api.get('/usuarios');
@@ -63,16 +58,21 @@ export default function Users() {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
-    const fetchProjects = async () => {
+    const fetchProjects = useCallback(async () => {
         try {
             const response = await api.get('/projects');
             setProjects(response.data);
         } catch {
             message.error('Error al cargar proyectos');
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        fetchUsers();
+        fetchProjects();
+    }, [fetchUsers, fetchProjects]);
 
     const assignmentsToFormValue = (projectsList) => {
         const value = {};

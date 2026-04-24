@@ -57,21 +57,21 @@ const PageVersionHistory = ({ versions = [], currentVersion, onRestore, onPrevie
 
     const getVersionTypeColor = (type) => {
         switch (type) {
-            case 'major': return 'red';
-            case 'minor': return 'orange';
-            case 'patch': return 'blue';
-            case 'auto': return 'default';
-            default: return 'default';
+        case 'major': return 'red';
+        case 'minor': return 'orange';
+        case 'patch': return 'blue';
+        case 'auto': return 'default';
+        default: return 'default';
         }
     };
 
     const getVersionTypeLabel = (type) => {
         switch (type) {
-            case 'major': return 'Mayor';
-            case 'minor': return 'Menor';
-            case 'patch': return 'Parche';
-            case 'auto': return 'Auto';
-            default: return type;
+        case 'major': return 'Mayor';
+        case 'minor': return 'Menor';
+        case 'patch': return 'Parche';
+        case 'auto': return 'Auto';
+        default: return type;
         }
     };
 
@@ -97,7 +97,7 @@ const PageVersionHistory = ({ versions = [], currentVersion, onRestore, onPrevie
                 }
             >
                 <Timeline
-                    items={versions.map((version, index) => {
+                    items={versions.map((version) => {
                         const isCurrent = version.id === currentVersion;
                         const versionTimeAgo = timeAgo(version.createdAt);
 

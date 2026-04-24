@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Table, Card, Typography, Button, Space, Modal, Input, message, Tag } from 'antd';
 import { useNavigate } from 'react-router';
 import { EditOutlined, CloseOutlined, EyeOutlined } from '@ant-design/icons';
@@ -16,11 +16,7 @@ export default function RevisionQueue() {
     const [borradorSeleccionado, setBorradorSeleccionado] = useState(null);
     const [comentario, setComentario] = useState('');
 
-    useEffect(() => {
-        fetchPendientes();
-    }, []);
-
-    const fetchPendientes = async () => {
+    const fetchPendientes = useCallback(async () => {
         setLoading(true);
         try {
             const response = await api.get('/borradores/pendientes');
@@ -30,7 +26,11 @@ export default function RevisionQueue() {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        fetchPendientes();
+    }, [fetchPendientes]);
 
     const handlePreview = async (borrador) => {
         const WEB_URL = import.meta.env.VITE_WEB_URL || 'http://localhost:3010';

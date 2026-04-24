@@ -23,7 +23,7 @@ export default function MenuManager() {
 
     const {
         menuItems, originalMenuItems, loading, publishing, hasChanges,
-        hasDraft, borradorEstado, comentarioRechazo, reviewAuthor,
+        borradorEstado, comentarioRechazo, reviewAuthor,
         updateItem, updateItemsOrder, discardChanges,
         getChangesSummary, publishChanges, openPreview, rechazarRevision
     } = useMenuDraft(user, { reviewMode, borradorId });

@@ -15,28 +15,28 @@ export default function ErrorBoundary() {
     const getErrorTitle = () => {
         const status = getErrorStatus();
         switch (status) {
-            case 404:
-                return '404 - Página no encontrada';
-            case 403:
-                return '403 - Acceso denegado';
-            case 500:
-                return '500 - Error del servidor';
-            default:
-                return 'Error inesperado';
+        case 404:
+            return '404 - Página no encontrada';
+        case 403:
+            return '403 - Acceso denegado';
+        case 500:
+            return '500 - Error del servidor';
+        default:
+            return 'Error inesperado';
         }
     };
 
     const getErrorSubtitle = () => {
         const status = getErrorStatus();
         switch (status) {
-            case 404:
-                return 'Lo sentimos, la página que visitaste no existe.';
-            case 403:
-                return 'No tienes permisos para acceder a esta página.';
-            case 500:
-                return 'Lo sentimos, algo salió mal en el servidor.';
-            default:
-                return error?.message || 'Ha ocurrido un error inesperado.';
+        case 404:
+            return 'Lo sentimos, la página que visitaste no existe.';
+        case 403:
+            return 'No tienes permisos para acceder a esta página.';
+        case 500:
+            return 'Lo sentimos, algo salió mal en el servidor.';
+        default:
+            return error?.message || 'Ha ocurrido un error inesperado.';
         }
     };
 

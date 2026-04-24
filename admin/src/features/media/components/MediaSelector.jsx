@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Modal, Button, Row, Col, Card, Image, Empty, Spin, Select, Input, message } from 'antd';
 import { FileImageOutlined, FolderOutlined, SearchOutlined } from '@ant-design/icons';
 import mediaService from '@features/media/api/mediaService';
@@ -21,6 +21,32 @@ const MediaSelector = ({
     const [selectedFile, setSelectedFile] = useState(null);
     const [searchText, setSearchText] = useState('');
 
+    const loadMediaFiles = useCallback(async () => {
+        try {
+            setLoading(true);
+            const filters = {
+                folder: selectedFolder,
+                type: fileType,
+                search: searchText
+            };
+            const data = await mediaService.getMediaFiles(filters);
+            setMediaFiles(data);
+        } catch {
+            message.error('Error al cargar archivos');
+        } finally {
+            setLoading(false);
+        }
+    }, [selectedFolder, fileType, searchText]);
+
+    const loadFolders = useCallback(async () => {
+        try {
+            const data = await mediaService.getFolders();
+            setFolders(data);
+        } catch {
+            message.error('Error al cargar carpetas');
+        }
+    }, []);
+
     useEffect(() => {
         if (visible && defaultFolder && folders.length > 0) {
             const folder = folders.find(f =>
@@ -36,39 +62,13 @@ const MediaSelector = ({
         if (visible) {
             loadFolders();
         }
-    }, [visible]);
+    }, [visible, loadFolders]);
 
     useEffect(() => {
         if (visible && folders.length > 0) {
             loadMediaFiles();
         }
-    }, [visible, selectedFolder, searchText, folders]);
-
-    const loadMediaFiles = async () => {
-        try {
-            setLoading(true);
-            const filters = {
-                folder: selectedFolder,
-                type: fileType,
-                search: searchText
-            };
-            const data = await mediaService.getMediaFiles(filters);
-            setMediaFiles(data);
-        } catch {
-            message.error('Error al cargar archivos');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const loadFolders = async () => {
-        try {
-            const data = await mediaService.getFolders();
-            setFolders(data);
-        } catch {
-            message.error('Error al cargar carpetas');
-        }
-    };
+    }, [visible, folders, loadMediaFiles]);
 
     const handleSelectFile = (file) => {
         setSelectedFile(file);
@@ -135,7 +135,7 @@ const MediaSelector = ({
                         description={
                             selectedFolder
                                 ? `No hay archivos en la carpeta "${selectedFolder}"`
-                                : "No hay archivos disponibles"
+                                : 'No hay archivos disponibles'
                         }
                         image={Empty.PRESENTED_IMAGE_SIMPLE}
                         style={{ padding: '40px 0' }}

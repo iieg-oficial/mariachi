@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import {
     AutoComplete,
     Breadcrumb,
@@ -93,6 +93,26 @@ export default function LayerEditPage() {
         return () => { cancelled = true; };
     }, [selectedWs, selectedGsLayer, listGeoserverStyles]);
 
+    const populate = useCallback((data) => {
+        form.setFieldsValue({
+            label: data.label,
+            nodeType: data.nodeType,
+            hiddenInMenu: data.hiddenInMenu,
+            disabled: data.disabled,
+            workspaceAlias: data.workspaceAlias,
+            geoserverLayer: data.geoserverLayer,
+            styles: data.styles,
+            cqlFilter: data.cqlFilter,
+            wmsGroup: data.wmsGroup,
+            wfsAvailable: data.wfsAvailable,
+            downloadable: data.downloadable,
+            searchTags: (data.searchMeta?.tags || data.search_tags || []).join(', '),
+            infoboxTemplate: data.infoboxTemplate,
+            infoboxParams: data.infoboxParams || {},
+            infoboxConfig: data.infoboxConfig || null,
+        });
+    }, [form]);
+
     useEffect(() => {
         if (!layerId) return;
         let cancelled = false;
@@ -118,27 +138,7 @@ export default function LayerEditPage() {
             }
         })();
         return () => { cancelled = true; };
-    }, [layerId, isAdmin, getLayer, getLayerDraft]);
-
-    const populate = (data) => {
-        form.setFieldsValue({
-            label: data.label,
-            nodeType: data.nodeType,
-            hiddenInMenu: data.hiddenInMenu,
-            disabled: data.disabled,
-            workspaceAlias: data.workspaceAlias,
-            geoserverLayer: data.geoserverLayer,
-            styles: data.styles,
-            cqlFilter: data.cqlFilter,
-            wmsGroup: data.wmsGroup,
-            wfsAvailable: data.wfsAvailable,
-            downloadable: data.downloadable,
-            searchTags: (data.searchMeta?.tags || data.search_tags || []).join(', '),
-            infoboxTemplate: data.infoboxTemplate,
-            infoboxParams: data.infoboxParams || {},
-            infoboxConfig: data.infoboxConfig || null,
-        });
-    };
+    }, [layerId, isAdmin, getLayer, getLayerDraft, populate]);
 
     const buildPayload = async () => {
         const values = await form.validateFields();
@@ -374,7 +374,7 @@ export default function LayerEditPage() {
                 <div style={{ marginBottom: 16 }}>
                     <Breadcrumb
                         items={[
-                            { title: <a onClick={() => navigate('/mapalab/layers')}>Capas</a> },
+                            { title: <Button type="link" size="small" style={{ padding: 0 }} onClick={() => navigate('/mapalab/layers')}>Capas</Button> },
                             { title: layer?.label || layerId },
                         ]}
                         style={{ marginBottom: 8 }}

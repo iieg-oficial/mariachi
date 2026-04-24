@@ -161,83 +161,83 @@ const SEOEditor = ({ seo = {}, onChange }) => {
         const schema = { '@context': 'https://schema.org' };
 
         switch (schemaType) {
-            case 'Organization':
-                return {
-                    ...schema,
+        case 'Organization':
+            return {
+                ...schema,
+                '@type': 'Organization',
+                name: defaultSEO.structuredData?.organizationName || '',
+                logo: defaultSEO.structuredData?.organizationLogo || '',
+                url: defaultSEO.canonicalUrl || ''
+            };
+
+        case 'Article':
+            return {
+                ...schema,
+                '@type': 'Article',
+                headline: defaultSEO.metaTitle || '',
+                description: defaultSEO.metaDescription || '',
+                author: {
+                    '@type': 'Person',
+                    name: defaultSEO.structuredData?.articleAuthor || ''
+                },
+                publisher: {
                     '@type': 'Organization',
-                    name: defaultSEO.structuredData?.organizationName || '',
-                    logo: defaultSEO.structuredData?.organizationLogo || '',
-                    url: defaultSEO.canonicalUrl || ''
-                };
+                    name: defaultSEO.structuredData?.articlePublisher || '',
+                    logo: {
+                        '@type': 'ImageObject',
+                        url: defaultSEO.structuredData?.organizationLogo || ''
+                    }
+                },
+                datePublished: defaultSEO.structuredData?.articleDatePublished || '',
+                dateModified: defaultSEO.structuredData?.articleDateModified || '',
+                image: defaultSEO.ogImage || ''
+            };
 
-            case 'Article':
-                return {
-                    ...schema,
-                    '@type': 'Article',
-                    headline: defaultSEO.metaTitle || '',
-                    description: defaultSEO.metaDescription || '',
-                    author: {
-                        '@type': 'Person',
-                        name: defaultSEO.structuredData?.articleAuthor || ''
-                    },
-                    publisher: {
-                        '@type': 'Organization',
-                        name: defaultSEO.structuredData?.articlePublisher || '',
-                        logo: {
-                            '@type': 'ImageObject',
-                            url: defaultSEO.structuredData?.organizationLogo || ''
-                        }
-                    },
-                    datePublished: defaultSEO.structuredData?.articleDatePublished || '',
-                    dateModified: defaultSEO.structuredData?.articleDateModified || '',
-                    image: defaultSEO.ogImage || ''
-                };
+        case 'LocalBusiness':
+            return {
+                ...schema,
+                '@type': defaultSEO.structuredData?.localBusinessType || 'LocalBusiness',
+                name: defaultSEO.structuredData?.localBusinessName || '',
+                address: defaultSEO.structuredData?.localBusinessAddress || '',
+                telephone: defaultSEO.structuredData?.localBusinessPhone || '',
+                url: defaultSEO.canonicalUrl || ''
+            };
 
-            case 'LocalBusiness':
-                return {
-                    ...schema,
-                    '@type': defaultSEO.structuredData?.localBusinessType || 'LocalBusiness',
-                    name: defaultSEO.structuredData?.localBusinessName || '',
-                    address: defaultSEO.structuredData?.localBusinessAddress || '',
-                    telephone: defaultSEO.structuredData?.localBusinessPhone || '',
-                    url: defaultSEO.canonicalUrl || ''
-                };
+        case 'BreadcrumbList':
+            return {
+                ...schema,
+                '@type': 'BreadcrumbList',
+                itemListElement: (defaultSEO.structuredData?.breadcrumbs || []).map((item, index) => ({
+                    '@type': 'ListItem',
+                    position: index + 1,
+                    name: item.name,
+                    item: item.url
+                }))
+            };
 
-            case 'BreadcrumbList':
-                return {
-                    ...schema,
-                    '@type': 'BreadcrumbList',
-                    itemListElement: (defaultSEO.structuredData?.breadcrumbs || []).map((item, index) => ({
-                        '@type': 'ListItem',
-                        position: index + 1,
-                        name: item.name,
-                        item: item.url
-                    }))
-                };
+        case 'FAQPage':
+            return {
+                ...schema,
+                '@type': 'FAQPage',
+                mainEntity: (defaultSEO.structuredData?.faqItems || []).map(item => ({
+                    '@type': 'Question',
+                    name: item.question,
+                    acceptedAnswer: {
+                        '@type': 'Answer',
+                        text: item.answer
+                    }
+                }))
+            };
 
-            case 'FAQPage':
-                return {
-                    ...schema,
-                    '@type': 'FAQPage',
-                    mainEntity: (defaultSEO.structuredData?.faqItems || []).map(item => ({
-                        '@type': 'Question',
-                        name: item.question,
-                        acceptedAnswer: {
-                            '@type': 'Answer',
-                            text: item.answer
-                        }
-                    }))
-                };
-
-            case 'WebPage':
-            default:
-                return {
-                    ...schema,
-                    '@type': 'WebPage',
-                    name: defaultSEO.metaTitle || '',
-                    description: defaultSEO.metaDescription || '',
-                    url: defaultSEO.canonicalUrl || ''
-                };
+        case 'WebPage':
+        default:
+            return {
+                ...schema,
+                '@type': 'WebPage',
+                name: defaultSEO.metaTitle || '',
+                description: defaultSEO.metaDescription || '',
+                url: defaultSEO.canonicalUrl || ''
+            };
         }
     };
 
@@ -301,7 +301,7 @@ const SEOEditor = ({ seo = {}, onChange }) => {
                         <Space>
                             <Tag color={
                                 validation.description.status === 'success' ? 'success' :
-                                validation.description.status === 'warning' ? 'warning' : 'error'
+                                    validation.description.status === 'warning' ? 'warning' : 'error'
                             }>
                                 {validation.description.message}
                             </Tag>

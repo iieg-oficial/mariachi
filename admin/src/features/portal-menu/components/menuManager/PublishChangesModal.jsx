@@ -16,11 +16,11 @@ export default function PublishChangesModal({
     const { isMobile } = useIsMobile();
     return (
         <Modal
-            title={isAdmin ? "Publicar cambios" : "Solicitar publicación"}
+            title={isAdmin ? 'Publicar cambios' : 'Solicitar publicación'}
             open={visible}
             onCancel={onCancel}
             onOk={onConfirm}
-            okText={isAdmin ? "Publicar" : "Solicitar aprobación"}
+            okText={isAdmin ? 'Publicar' : 'Solicitar aprobación'}
             cancelText="Cancelar"
             confirmLoading={loading}
             width={isMobile ? '100%' : 700}
@@ -28,11 +28,11 @@ export default function PublishChangesModal({
         >
             <div>
                 <Alert
-                    title={isAdmin ? "Resumen de cambios" : "Solicitud de publicación"}
+                    title={isAdmin ? 'Resumen de cambios' : 'Solicitud de publicación'}
                     description={isAdmin
-                        ? "Revisa cuidadosamente los cambios antes de publicar. Esta acción no se puede deshacer."
-                        : "Tu solicitud será enviada a un administrador para su aprobación."}
-                    type={isAdmin ? "warning" : "info"}
+                        ? 'Revisa cuidadosamente los cambios antes de publicar. Esta acción no se puede deshacer.'
+                        : 'Tu solicitud será enviada a un administrador para su aprobación.'}
+                    type={isAdmin ? 'warning' : 'info'}
                     showIcon
                     style={{ marginBottom: 24 }}
                 />

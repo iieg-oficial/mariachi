@@ -33,7 +33,6 @@ export default function JsonEditorModal({ visible, onClose, initialData, onSave 
     const copySnippet = (type) => {
         const config = BLOCK_CONFIG[type];
         const snippet = {
-            id: Date.now().toString(),  
             type: type,
             props: config.defaultProps || {}
         };

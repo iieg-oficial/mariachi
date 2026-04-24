@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import api from '@shared/services/api';
 
 const AuthContext = createContext(null);
@@ -7,20 +7,20 @@ export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        checkAuth();
-    }, []);
-
-    const checkAuth = async () => {
+    const checkAuth = useCallback(async () => {
         try {
             const response = await api.get('/autenticacion/perfil');
             setUser(response.data);
-        } catch (error) {
+        } catch {
             setUser(null);
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        checkAuth();
+    }, [checkAuth]);
 
     const loginUser = async (username, password) => {
         const response = await api.post('/autenticacion/iniciar-sesion', {
@@ -38,13 +38,9 @@ export const AuthProvider = ({ children }) => {
     };
 
     const logout = async () => {
-        try {
-            await api.post('/autenticacion/cerrar-sesion');
-        } catch {
-        } finally {
-            sessionStorage.removeItem('csrf_token');
-            setUser(null);
-        }
+        await api.post('/autenticacion/cerrar-sesion').catch(() => null);
+        sessionStorage.removeItem('csrf_token');
+        setUser(null);
     };
 
     const isAuthenticated = () => {
@@ -56,9 +52,9 @@ export const AuthProvider = ({ children }) => {
             const response = await api.get('/autenticacion/perfil');
             setUser(response.data);
             return response.data;
-        } catch (error) {
+        } catch (err) {
             setUser(null);
-            throw error;
+            throw err;
         }
     };
 

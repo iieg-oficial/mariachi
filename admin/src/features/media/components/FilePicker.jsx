@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
     Modal, Row, Col, Card, Image, Input, Select, Space, 
     Button, Upload, message, Spin, Empty, Tag, Tabs
@@ -31,14 +31,7 @@ const FilePicker = ({
     const [selectedFiles, setSelectedFiles] = useState([]);
     const [activeTab, setActiveTab] = useState('browse'); 
 
-    useEffect(() => {
-        if (visible) {
-            loadMediaFiles();
-            loadFolders();
-        }
-    }, [visible, selectedFolder, selectedType, searchText]);
-
-    const loadMediaFiles = async () => {
+    const loadMediaFiles = useCallback(async () => {
         try {
             setLoading(true);
             const filters = {
@@ -60,16 +53,23 @@ const FilePicker = ({
         } finally {
             setLoading(false);
         }
-    };
+    }, [selectedFolder, selectedType, searchText, allowedTypes]);
 
-    const loadFolders = async () => {
+    const loadFolders = useCallback(async () => {
         try {
             const data = await mediaService.getFolders();
             setFolders(data);
         } catch {
             message.error('Error al cargar carpetas');
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        if (visible) {
+            loadMediaFiles();
+            loadFolders();
+        }
+    }, [visible, loadMediaFiles, loadFolders]);
 
     const handleFileClick = (file) => {
         if (multiple) {

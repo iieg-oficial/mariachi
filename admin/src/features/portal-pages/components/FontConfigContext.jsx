@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import fontService from '@features/portal-pages/hooks/fontService';
 
 const FontConfigContext = createContext();
@@ -7,11 +7,7 @@ export const FontConfigProvider = ({ children }) => {
     const [fontFamilies, setFontFamilies] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        loadFonts();
-    }, []);
-
-    const loadFonts = async () => {
+    const loadFonts = useCallback(async () => {
         try {
             setLoading(true);
             const families = await fontService.getFontFamilies();
@@ -21,7 +17,11 @@ export const FontConfigProvider = ({ children }) => {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        loadFonts();
+    }, [loadFonts]);
 
     const getWeightsForFamily = (familyName) => {
         const family = fontFamilies.find(f => f.family === familyName);

@@ -9,7 +9,7 @@ const { Title, Text } = Typography;
 
 export default function ChangePassword() {
     const [loading, setLoading] = useState(false);
-    const { logout, user, refreshUser } = useAuth();
+    const { user, refreshUser } = useAuth();
     const navigate = useNavigate();
     const [form] = Form.useForm();
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
     Card, Button, Upload, Table, Image, Space, message, Modal, Form, Input, Select, 
     Tag, Popconfirm, Row, Col, Statistic, Segmented, Empty, Spin
@@ -35,20 +35,7 @@ const Media = () => {
     const [folderForm] = Form.useForm();
     const [editForm] = Form.useForm();
 
-    useEffect(() => {
-        loadBuckets();
-        loadFolders();
-    }, []);
-
-    useEffect(() => {
-        if (selectedBucketId) {
-            loadMediaFiles();
-        } else {
-            setMediaFiles([]);
-        }
-    }, [selectedBucketId, selectedFolder, selectedType, searchText]);
-
-    const loadBuckets = async () => {
+    const loadBuckets = useCallback(async () => {
         try {
             const data = await mediaService.getBuckets();
             setBuckets(data);
@@ -58,9 +45,9 @@ const Media = () => {
         } catch {
             message.error('Error al cargar buckets');
         }
-    };
+    }, [selectedBucketId]);
 
-    const loadMediaFiles = async () => {
+    const loadMediaFiles = useCallback(async () => {
         try {
             setLoading(true);
             const data = await mediaService.getMediaFiles({
@@ -75,16 +62,29 @@ const Media = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [selectedBucketId, selectedFolder, selectedType, searchText]);
 
-    const loadFolders = async () => {
+    const loadFolders = useCallback(async () => {
         try {
             const data = await mediaService.getFolders();
             setFolders(data);
         } catch {
             message.error('Error al cargar carpetas');
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        loadBuckets();
+        loadFolders();
+    }, [loadBuckets, loadFolders]);
+
+    useEffect(() => {
+        if (selectedBucketId) {
+            loadMediaFiles();
+        } else {
+            setMediaFiles([]);
+        }
+    }, [selectedBucketId, loadMediaFiles]);
 
     const stats = {
         total: mediaFiles.length,

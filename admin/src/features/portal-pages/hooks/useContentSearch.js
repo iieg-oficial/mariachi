@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { searchContent, getAuthors } from '@features/portal-pages/hooks/searchService';
 
 export default function useContentSearch() {
@@ -10,24 +10,16 @@ export default function useContentSearch() {
     const [authors, setAuthors] = useState([]);
     const [loading, setLoading] = useState(false);
 
-    useEffect(() => {
-        loadAuthors();
-    }, []);
-
-    useEffect(() => {
-        performSearch();
-    }, [searchTerm, statusFilter, authorFilter, dateRange]);
-
-    const loadAuthors = async () => {
+    const loadAuthors = useCallback(async () => {
         try {
             const data = await getAuthors();
             setAuthors(data);
         } catch (error) {
             console.error('Error loading authors:', error);
         }
-    };
+    }, []);
 
-    const performSearch = async () => {
+    const performSearch = useCallback(async () => {
         setLoading(true);
         try {
             const results = await searchContent({
@@ -43,7 +35,15 @@ export default function useContentSearch() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [searchTerm, statusFilter, authorFilter, dateRange]);
+
+    useEffect(() => {
+        loadAuthors();
+    }, [loadAuthors]);
+
+    useEffect(() => {
+        performSearch();
+    }, [performSearch]);
 
     const clearFilters = () => {
         setSearchTerm('');

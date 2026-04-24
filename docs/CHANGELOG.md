@@ -13,6 +13,30 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.21.2] - 2026-04-24
+
+Lint pass ESLint 10: del upgrade en 0.14.0 quedaba la deuda técnica de correr lint contra todo el admin. Triage por categoría y fix archivo por archivo.
+
+### Cambiado
+
+- **`admin/eslint.config.js`:**
+    - Override de `max-lines: 'off'` para 8 archivos cuya división aumentaría más complejidad que el límite (`LayerEditPage`, `mediaService`, `FilePicker`, `MediaPage`, `SEOAnalyzer`, `SEOEditor`, `pageTemplates`, `UsersPage`).
+    - Downgrade de `react-hooks/set-state-in-effect` y `react-hooks/immutability` a `warn`. Son reglas nuevas de react-hooks 7 que requieren refactor arquitectónico (cambiar idiomas de modal/form/draft a derived state o key-based remount). Se atiende como deuda técnica posterior, sin bloquear lint.
+- **Refactor de patrones `useEffect → fetch fn`** (eliminó la mayoría de errores `react-hooks/immutability`): en ~14 hooks/componentes se hoistea la función a `useCallback` antes del `useEffect`, o se convierte a `function` declaration cuando no requiere memoización. Files: `AuthContext`, `useMenuDraft`, `UsersPage`, `FormulariosPage`, `RevisionQueuePage`, `FontConfigContext`, `FontSelector`, `FilePicker`, `MediaSelector`, `MediaPage`, `useContentSearch`, `usePageDraft`, `LayerEditPage`, `SEOAnalyzer`.
+- **Limpieza de `no-unused-vars`** (8 errores): drop de `logout` en `ChangePasswordPage`, `hasDraft` en `MenuManagerPage`, `index` en `PageVersionHistory`, `isAdmin2` en `PageEditorPage`, `level/childCount` desreferenciados en `SortableTree` (renombrados con prefijo `_`), `draftId` en `useMenuDraft` (slot vacío en destructuring).
+- **`no-empty` (3 errores):** restructurado `try/catch` vacío en `AuthContext.logout`, `useMenuDraft.saveDraft/deleteDraft` con patrón `await ... .catch(() => null)`.
+- **`jsx-a11y` (3 errores en `LayerEditPage`):** `<a onClick>` en breadcrumb reemplazado por `<Button type="link">` para keyboard/role correctos.
+- **`react-hooks/purity` (1 error en `JsonEditorModal`):** removido `id: Date.now()` del snippet copiado al portapapeles — el id se asigna cuando el bloque se inserta, no en la plantilla.
+- **`autofix` ESLint:** 174 errores de `indent`/`quotes`/etc resueltos con `eslint --fix` (sin cambios semánticos, solo estilo).
+
+### Resultado
+
+- `npm run lint` → `0 errors, 39 warnings` (de `228 errors, 23 warnings`).
+- Warnings restantes documentadas como deuda técnica: 22 `set-state-in-effect`, 12 `react-refresh/only-export-components`, 4 `exhaustive-deps`, 1 `immutability`.
+- `npm run build` pasa limpio.
+
+---
+
 ## [0.21.1] - 2026-04-24
 
 Observabilidad en endpoints del refactor multi-proyecto y refresh de docs.

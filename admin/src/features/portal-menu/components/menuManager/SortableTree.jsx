@@ -114,7 +114,7 @@ export default function SortableTree({
     const isItemModified = (item) => {
         const original = originalItems.find(o => o.id === item.id);
         if (!original) return false;
-        const { level, childCount, ...itemWithoutFlattenProps } = item;
+        const { level: _l, childCount: _c, ...itemWithoutFlattenProps } = item;
         return JSON.stringify(original) !== JSON.stringify(itemWithoutFlattenProps);
     };
 

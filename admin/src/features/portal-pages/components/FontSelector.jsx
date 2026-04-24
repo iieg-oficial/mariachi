@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Modal, Button, Spin, Empty, Select, Space, Typography, Input, message } from 'antd';
 import { FontSizeOutlined, PlusOutlined } from '@ant-design/icons';
 import fontService from '@features/portal-pages/hooks/fontService';
@@ -20,14 +20,7 @@ const FontSelector = ({
     const [previewText, setPreviewText] = useState('El veloz murciélago hindú comía feliz cardillo y kiwi. 0123456789');
     const [uploaderVisible, setUploaderVisible] = useState(false);
 
-    useEffect(() => {
-        if (visible) {
-            loadFonts();
-            setSelectedFamily(defaultFamily);
-        }
-    }, [visible, defaultFamily]);
-
-    const loadFonts = async () => {
+    const loadFonts = useCallback(async () => {
         try {
             setLoading(true);
             const data = await fontService.getFontFamilies();
@@ -42,7 +35,14 @@ const FontSelector = ({
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        if (visible) {
+            loadFonts();
+            setSelectedFamily(defaultFamily);
+        }
+    }, [visible, defaultFamily, loadFonts]);
 
     const handleSelectFamily = (family) => {
         setSelectedFamily(family);
