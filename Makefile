@@ -29,7 +29,7 @@ else
 	MSG_ENV      := Desarrollo
 endif
 
-.PHONY: help up build down logs restart clean shell-api shell-web shell-admin setup setup-hooks ensure-networks
+.PHONY: help up build down logs restart clean shell-api shell-admin setup setup-hooks ensure-networks
 
 ## Muestra ayuda de comandos disponibles
 help:
@@ -49,7 +49,6 @@ help:
 	@echo '${GREEN}Utilidades:${RESET}'
 	@echo '  ${YELLOW}make clean${RESET}       - Elimina contenedores, redes y volúmenes (¡Cuidado!)'
 	@echo '  ${YELLOW}make shell-api${RESET}   - Entra a la terminal del contenedor API'
-	@echo '  ${YELLOW}make shell-web${RESET}   - Entra a la terminal del contenedor Web'
 	@echo '  ${YELLOW}make shell-admin${RESET} - Entra a la terminal del contenedor Admin'
 	@echo '  ${YELLOW}make setup${RESET}       - Crea archivos .env iniciales si no existen'
 	@echo '  ${YELLOW}make setup-hooks${RESET} - Configura git hooks del proyecto (core.hooksPath)'
@@ -94,9 +93,6 @@ clean:
 
 shell-api:
 	docker compose -f $(COMPOSE_FILE) exec api /bin/bash
-
-shell-web:
-	docker compose -f $(COMPOSE_FILE) exec web /bin/sh
 
 shell-admin:
 	docker compose -f $(COMPOSE_FILE) exec admin /bin/sh

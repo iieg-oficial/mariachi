@@ -1,6 +1,6 @@
 # Mariachi
 
-**Versión:** 0.19.0 ([changelog](docs/CHANGELOG.md))
+**Versión:** 0.20.0 ([changelog](docs/CHANGELOG.md))
 
 <div align="center">
 
@@ -8,19 +8,20 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688?style=for-the-badge&logo=fastapi)
 ![License](https://img.shields.io/badge/License-MIT-purple?style=for-the-badge)
 
-**Mariachi — panel de administración + portal público del IIEG**
+**Mariachi — panel de administración del ecosistema IIEG**
 
 </div>
 
-Monorepo con tres componentes que comparten backend e infraestructura:
+Repo con dos componentes que comparten infraestructura:
 
 | Componente | Descripción | Puerto dev |
 |---|---|---|
 | **admin** | Panel *Mariachi* con React + Ant Design | 3011 |
-| **web** | Portal público con React + Vite + Tailwind (congelado) | 3010 |
 | **api** | Backend FastAPI + PostgreSQL + Redis | 8000 |
 
-En producción y staging se levanta detrás del `gateway-hub` externo (termina SSL, sirve robots/sitemap y headers de seguridad). El `nginx/` interno de este repo queda minimal — solo sirve los estáticos de `admin/` y `web/` y hace proxy a `/api/`.
+Administra contenido de los proyectos del ecosistema IIEG (Portalito, MapaLab, SIEEJ). El **Portal público** vive ahora en su propio repo ([../portal](../portal)) — consume `/api/portal/*` de este `api`.
+
+En producción y staging se levanta detrás del `gateway-hub` externo (termina SSL, sirve robots/sitemap y headers de seguridad). El `nginx/` interno de este repo queda minimal — sirve los estáticos del `admin/` y hace proxy a `/api/`.
 
 ---
 

@@ -12,8 +12,9 @@ Este monorepo aloja **dos productos distintos** que comparten backend e infraest
 
 | Producto | Qué es | Carpeta | Ruta publica | Estado |
 |---|---|---|---|---|
-| **Mariachi** | CMS para editar el Portal (admin panel con Ant Design) | `admin/` | `/administrador/` | Activo (se desarrolla) |
-| **Portal** | Sitio web publico del IIEG | `web/` | `/` | **Congelado** (no se desarrolla mas) |
+| **Mariachi** | Panel de administración del ecosistema IIEG (Ant Design) | `admin/` | `/administrador/` | Activo |
+
+El **Portal público** (sitio web del IIEG) se separó a su propio repo `iieg/portal/` (ver README raíz). Consume `/api/portal/*` de este `api`.
 
 Ambos consumen el mismo backend FastAPI en `api/` pero con prefijos de URL distintos.
 

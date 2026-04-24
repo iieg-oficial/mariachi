@@ -8,16 +8,7 @@
 
 ## Stack tecnológico
 
-### Portal web (`web/`)
-
-| Tecnología | Versión | Uso |
-|---|---|---|
-| React | 19.2 | UI library |
-| React Router | 7.13 | Routing / SPA |
-| Vite | 7.3 | Build / dev server |
-| TailwindCSS | 4.1 | Estilos |
-| Axios | 1.13 | HTTP client |
-| React GA4 | 2.1 | Google Analytics 4 |
+> El portal público (sitio web del IIEG) vive ahora en su propio repo: [`../portal`](../portal). Consume `/api/portal/*` de este `api`.
 
 ### CMS Admin (`admin/`)
 
@@ -89,7 +80,7 @@ El gateway externo resuelve:
 - Headers de seguridad (HSTS, X-Frame-Options, CSP, etc.).
 - Proxies a `/mapalab/`, `/acervo/`, `/geoserver/` (servicios vecinos).
 
-El nginx interno de mariachi solo sirve los estáticos de `admin/` (en `/administrador/`) y `web/` (en `/`) y hace proxy a `/api/`. No monta certificados SSL ni maneja redirects.
+El nginx interno de mariachi solo sirve los estáticos de `admin/` (en `/administrador/`) y hace proxy a `/api/`. La raíz (`/`) redirige a `/administrador/`. No monta certificados SSL ni maneja redirects globales.
 
 ---
 
@@ -109,7 +100,6 @@ flowchart TB
         NGX_MA["mariachi-nginx :80<br/>(solo estáticos + /api/)"]
 
         subgraph STATIC["Estáticos (build)"]
-            FE_WEB["web/ → /"]
             FE_ADMIN["admin/ → /administrador/"]
         end
 
@@ -195,13 +185,6 @@ mariachi/
 │       ├── hooks/                    # useLayerTreeAdmin, etc.
 │       ├── contexts/                 # AuthContext
 │       └── services/                 # apiService con CSRF
-│
-├── web/                              # Portal público (congelado)
-│   └── src/
-│       ├── main.jsx
-│       ├── pages/
-│       ├── components/
-│       └── services/apiService.js
 │
 ├── nginx/                            # Proxy HTTP-only interno
 │   ├── nginx.conf

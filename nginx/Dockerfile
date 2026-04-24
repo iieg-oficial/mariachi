@@ -1,28 +1,3 @@
-FROM node:24-alpine AS web-builder
-WORKDIR /app
-COPY ./web/package*.json ./
-RUN npm ci
-COPY ./web/ .
-ARG VITE_NODE_ENV=production
-ARG VITE_GOOGLE_ANALYTICS_ID
-ARG VITE_WEB_API_URL
-ARG VITE_API_TIMEOUT=10000
-ARG VITE_APP_NAME
-ARG VITE_SENTRY_DSN
-ARG SENTRY_AUTH_TOKEN
-ARG SENTRY_ORG
-ARG SENTRY_PROJECT
-ENV VITE_NODE_ENV=$VITE_NODE_ENV
-ENV VITE_GOOGLE_ANALYTICS_ID=$VITE_GOOGLE_ANALYTICS_ID
-ENV VITE_WEB_API_URL=$VITE_WEB_API_URL
-ENV VITE_API_TIMEOUT=$VITE_API_TIMEOUT
-ENV VITE_APP_NAME=$VITE_APP_NAME
-ENV VITE_SENTRY_DSN=$VITE_SENTRY_DSN
-ENV SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN
-ENV SENTRY_ORG=$SENTRY_ORG
-ENV SENTRY_PROJECT=$SENTRY_PROJECT
-RUN npm run build
-
 FROM node:24-alpine AS admin-builder
 WORKDIR /app
 COPY ./admin/package*.json ./
@@ -51,7 +26,6 @@ RUN npm run build
 FROM nginx:alpine
 COPY ./nginx/nginx.conf /etc/nginx/nginx.conf
 COPY ./nginx/conf.d/mariachi.conf /etc/nginx/conf.d/mariachi.conf
-COPY --from=web-builder /app/dist /usr/share/nginx/html
 COPY --from=admin-builder /app/dist /usr/share/nginx/html/administrador
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
