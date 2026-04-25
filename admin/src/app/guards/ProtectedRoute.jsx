@@ -1,9 +1,12 @@
 import { Navigate } from 'react-router';
-import { Spin } from 'antd';
-import { useAuth } from '@shared/contexts/AuthContext';
+import { Spin, Result, Button } from 'antd';
+import { useAuth } from '@shared/contexts/useAuth';
+
+const STAFF_ROLES = ['tetlamamakani', 'editora'];
+const SIEEJ_LOGIN_PATH = '/sieej/inicio-sesion';
 
 export default function ProtectedRoute({ children }) {
-    const { isAuthenticated, loading } = useAuth();
+    const { isAuthenticated, loading, user, logout } = useAuth();
 
     if (loading) {
         return (
@@ -22,6 +25,36 @@ export default function ProtectedRoute({ children }) {
 
     if (!isAuthenticated()) {
         return <Navigate to="/login" replace />;
+    }
+
+    // Rol externo: no entra al admin CMS. Cierra sesion y manda al login publico.
+    if (user && !STAFF_ROLES.includes(user.role)) {
+        return (
+            <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                minHeight: '60vh'
+            }}>
+                <Result
+                    status="403"
+                    title="Acceso restringido"
+                    subTitle="El panel administrativo es solo para staff del IIEG. Tu cuenta es de tipo externo y debe usar la plataforma publica de SIEEJ."
+                    extra={[
+                        <Button
+                            key="sieej"
+                            type="primary"
+                            onClick={() => { window.location.href = SIEEJ_LOGIN_PATH; }}
+                        >
+                            Ir a SIEEJ
+                        </Button>,
+                        <Button key="logout" onClick={async () => { await logout(); }}>
+                            Cerrar sesion
+                        </Button>,
+                    ]}
+                />
+            </div>
+        );
     }
 
     return children;

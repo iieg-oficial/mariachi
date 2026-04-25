@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { Form, Input, Button, Typography, message, Flex, Row, Col, theme } from 'antd';
 import { useNavigate } from 'react-router';
-import { useAuth } from '@shared/contexts/AuthContext';
+import { useAuth } from '@shared/contexts/useAuth';
 import useIsMobile from '@shared/hooks/useIsMobile';
-import { BRAND } from '@app/providers/MainProvider';
+import { BRAND } from '@app/providers/brand';
 
 const { Title, Text, Link: TypoLink } = Typography;
 const { useToken } = theme;
@@ -19,6 +19,14 @@ export default function Login() {
         setLoading(true);
         try {
             const data = await login(values.username, values.password);
+
+            // Rol externo no tiene panel admin: redirige a SIEEJ.
+            if (data.user.role === 'externo') {
+                message.info('Cuenta externa. Te llevamos a SIEEJ.');
+                window.location.href = '/sieej/inicio-sesion';
+                return;
+            }
+
             message.success('¡Inicio de sesión exitoso!');
 
             if (data.user.must_change_password) {
