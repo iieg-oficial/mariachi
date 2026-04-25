@@ -51,7 +51,9 @@ export default function Login() {
                 minHeight: '100dvh',
                 width: '100%',
                 boxSizing: 'border-box',
-                padding: 'clamp(16px, 3vw, 32px)',
+                paddingInline: 'max(20px, env(safe-area-inset-left), env(safe-area-inset-right))',
+                paddingBlock: 'max(24px, env(safe-area-inset-top))',
+                paddingBottom: 'max(24px, env(safe-area-inset-bottom))',
                 background: `url(${import.meta.env.BASE_URL}login-background.svg) center / cover no-repeat`,
                 overscrollBehavior: 'none',
                 overflowX: 'hidden',
@@ -61,10 +63,11 @@ export default function Login() {
                 style={{
                     width: '100%',
                     maxWidth: 1088,
+                    marginInline: 'auto',
                     background: token.colorBgContainer,
                     borderRadius: 16,
                     boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
-                    padding: 'clamp(40px, 6vw, 72px) clamp(24px, 4vw, 56px)',
+                    padding: 'clamp(32px, 5vw, 72px) clamp(20px, 4vw, 56px)',
                     boxSizing: 'border-box',
                     overflow: 'hidden',
                 }}
