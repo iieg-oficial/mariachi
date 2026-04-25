@@ -26,7 +26,7 @@ export default function ChangePassword() {
 
         setLoading(true);
         try {
-            await api.post('/usuarios/cambiar-contrasena', {
+            await api.post('/autenticacion/cambiar-contrasena', {
                 current_password: values.current_password,
                 new_password: values.new_password
             });
