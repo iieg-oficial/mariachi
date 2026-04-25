@@ -11,6 +11,7 @@ from app.models.user import Usuario
 settings = get_settings()
 
 ADMIN_ROLE = "tetlamamakani"
+STAFF_ROLES = {"tetlamamakani", "editora"}
 
 
 async def get_current_user(
@@ -72,6 +73,18 @@ def require_role(allowed_roles: list[str]):
         return current_user
 
     return role_checker
+
+
+async def require_staff(
+    current_user: Usuario = Depends(get_current_user),
+) -> Usuario:
+    """Restringe a staff del IIEG (tetlamamakani o editora). Bloquea rol externo."""
+    if current_user.role not in STAFF_ROLES:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acceso restringido al staff del IIEG",
+        )
+    return current_user
 
 
 def _user_memberships(db: Session, user: Usuario) -> list[dict]:

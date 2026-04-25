@@ -14,7 +14,7 @@ class Usuario(Base):
     hashed_password = Column(String, nullable=False)
     name = Column(String, nullable=False)
     role = Column(
-        Enum("tetlamamakani", "editora", name="user_roles"), nullable=False
+        Enum("tetlamamakani", "editora", "externo", name="user_roles"), nullable=False
     )
     must_change_password = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=utcnow, nullable=False)
