@@ -122,7 +122,9 @@ Las credenciales del bucket se resuelven con `ACERVO_SIEEJ_ACCESS_KEY`/`ACERVO_S
 
 ## Auth y RBAC
 
-Una dependencia de gobierno = `Usuario(role='editora')` + `UserProject(project=sieej, role='editor')`. La membership se inserta a mano (o via admin CMS) cuando se crea el usuario. El admin global (`role='tetlamamakani'`) tiene acceso sin necesidad de membership por proyecto.
+Una dependencia de gobierno = `Usuario(role='externo')` + `UserProject(project=sieej, role='editor')`. La membership se inserta a mano (o via admin CMS) cuando se crea el usuario. El admin global (`role='tetlamamakani'`) tiene acceso sin necesidad de membership por proyecto.
+
+El rol `externo` (introducido en 0.25.0) reemplaza el uso historico de `editora` para usuarios fuera del staff IIEG. Las cuentas con `role='externo'` reciben 403 al intentar acceder a routers admin-only del CMS. Detalle completo de la matriz de roles en [docs/ROLES.md](ROLES.md).
 
 El flujo del wizard se basa en `user_id`: cada fila de `general`, `enlace`, `bases_datos` referencia al usuario que la creo. Un usuario solo ve y edita sus propios registros (filtros aplicados en services).
 

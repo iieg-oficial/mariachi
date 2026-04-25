@@ -243,3 +243,4 @@ En dev (`docker-compose.dev.yml`) no existe `nginx` — los frontends corren dir
 - [COOKIES_CSRF](./COOKIES_CSRF.md) — modelo de seguridad
 - [DRAFTS](./DRAFTS.md) — borradores y revision queue
 - [sieej](./sieej.md) — modulo SIEEJ: schema, endpoints `/formularios/*`, integracion con frontend `iieg-oficial/sieej`
+- [ROLES](./ROLES.md) — matriz de roles globales (tetlamamakani, editora, externo) y autorizacion por proyecto
