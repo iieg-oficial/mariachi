@@ -13,6 +13,38 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.25.3] - 2026-04-25
+
+Polish del login para alinearse pixel-a-pixel con SIEEJ. Continuación de v0.25.2.
+
+### Agregado
+
+- **Iconos custom de visualizar/ocultar contraseña** copiados de `SIEEJ/frontend/src/assets/icons/` a `admin/public/ico-show.svg` y `ico-hidden.svg`. Se renderizan en el `Input.Password` via `iconRender` custom (22×22), reemplazando los `EyeOutlined`/`EyeInvisibleOutlined` default de antd.
+
+### Cambiado
+
+- **Tipografía Garet aplicada explícitamente** en JSX inline (Title "Hola"/"Mariachi", Text "Ingresa…", Botón, Aviso de privacidad) y en CSS global (`.login-form-sieej` labels, inputs, placeholders). Antes heredaba del `theme.token.fontFamily` pero algunas partes internas de antd usaban su propio fontFamily.
+- **Padding del card responsivo** con `clamp(40px, 6vw, 72px) clamp(24px, 4vw, 56px)` (vertical mayor para más respiro). Outer Flex padding `clamp(16px, 3vw, 32px)`. Row gutter responsive: `xs/sm: 0` apilado, `md: 32`, `lg: 48`.
+- **Color del isotipo Mariachi** detectado del PNG real del escudo IIEG (`#5B6770`, gris azulado, ~80% de pixels). Texto "Mariachi" usa este color matcheando el escudo.
+- **Divider entre escudo y "Mariachi"** en `BRAND.orange` (naranja institucional) `1×28px`. Antes era gris, ahora destaca como acento.
+- **Botón "Iniciar sesión":** `BRAND.orange` → `BRAND.purple` (morado institucional, igual a SIEEJ).
+- **Asterisco `*` de campos required:** ahora se renderiza DESPUÉS del label texto (antd lo pone antes por default). Color `BRAND.orange` bold via `requiredMark` custom + CSS para deshabilitar el `::before` default de antd.
+- **Logo Jalisco:** `40px` → `52px` (igual a SIEEJ `h-[52px]`). Separación del card: `20px` → `40px`. Gap con aviso: `8` → `20`.
+- **Iconos del Input.Password:** removida sombra duplicada al hacer hover (el `.ant-input` interno del wrapper ahora tiene `box-shadow: none` para evitar doble shadow del wrapper + input).
+- **Card overflow:** `overflow: hidden` + `boxSizing: border-box` para evitar scroll horizontal del antd Row (que aplica margin-left/right negativo por gutter).
+- **Outer Flex:** `overflowX: hidden` + `width: 100%` para evitar scroll horizontal del SVG background.
+- **Removido el botón "Olvidé mi contraseña"** (no aplica en SIEEJ tampoco).
+- **Removido texto "Instituto de Información…"** de la columna derecha (los logos son self-evident).
+- **Escudo Mariachi:** ajustado a `80×80px` para matchear visualmente el escudo dentro del logo IIEG. Sin gap con el divider (`marginRight: 2`); separación normal con el título (`marginLeft: 6`).
+
+### Notas
+
+Pendiente para próxima sesión (reportado por el user, no bloqueante):
+- Backend GET `/layers/initial-order` devuelve 500 (no llega a enviar headers CORS, browser bloquea). Hay que verificar el service `list_initial_order` contra la BD real.
+- antd warnings (`Space.direction` deprecated en `InitialLayerOrderPage`, `Alert.message` deprecated en algún lugar). Cambios mecánicos a `orientation` y `title`.
+
+---
+
 ## [0.25.2] - 2026-04-25
 
 Login del admin homologado con el de SIEEJ para consistencia visual entre productos del ecosistema IIEG.
