@@ -13,6 +13,19 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.25.9] - 2026-04-25
+
+### Agregado
+
+- **Handle de resize manual** en el sider del editor de capas. Arrastrar el borde derecho del sider lo redimensiona entre 240 y 600px. El ancho elegido persiste en `localStorage` (`mapalab.layerEditor.siderWidth`).
+- **`useResizableWidth` hook** (`admin/src/shared/hooks/useResizableWidth.js`) — reutilizable, recibe `initialWidth`, `storageKey`, `min`, `max`. Maneja mousedown/move/up con `userSelect: none` durante drag para no seleccionar texto.
+
+### Notas
+
+Por qué resize manual y no auto-fit al contenido del árbol expandido: el auto-fit causa layout shifts cada vez que expandes/colapsas un nodo (el content de la derecha se mueve, los formularios re-flowan), rompiendo predictibilidad. El handle manual es el patrón estándar de IDEs/admin panels (VS Code, Notion, Linear) — el user controla el ancho con decisión consciente, sin sorpresas.
+
+---
+
 ## [0.25.8] - 2026-04-25
 
 Unificación de las vistas de capas MapaLab — `LayersPage` (listado) y `LayerEditPage` (editor) eran dos pantallas separadas; ahora es **una sola vista** con sider árbol + content editor.

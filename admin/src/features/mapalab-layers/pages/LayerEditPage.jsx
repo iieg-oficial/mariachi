@@ -32,6 +32,7 @@ import LayerAliasesSection from '@features/mapalab-layers/components/layersEdito
 import LayersTreeSider from '@features/mapalab-layers/components/LayersTreeSider';
 import BulkTagsDrawer from '@features/mapalab-layers/components/layersEditor/BulkTagsDrawer';
 import { NODE_TYPE_OPTIONS } from '@features/mapalab-layers/constants/nodeTypes';
+import useResizableWidth from '@shared/hooks/useResizableWidth';
 
 const { Content, Sider } = Layout;
 const { Text, Title, Paragraph } = Typography;
@@ -69,6 +70,12 @@ export default function LayerEditPage() {
     const [workspaces, setWorkspaces] = useState([]);
     const [availableStyles, setAvailableStyles] = useState([]);
     const [bulkTagsOpen, setBulkTagsOpen] = useState(false);
+    const { width: siderWidth, handleStart: handleSiderResize } = useResizableWidth({
+        initialWidth: 320,
+        storageKey: 'mapalab.layerEditor.siderWidth',
+        min: 240,
+        max: 600,
+    });
 
     const selectedWs = Form.useWatch('workspaceAlias', form);
     const selectedGsLayer = Form.useWatch('geoserverLayer', form);
@@ -397,12 +404,13 @@ export default function LayerEditPage() {
         <Layout style={{ minHeight: 'calc(100vh - 112px)', background: 'transparent' }}>
             {!isMobile && (
                 <Sider
-                    width={320}
+                    width={siderWidth}
                     theme="light"
                     style={{
                         background: '#fff',
                         borderRight: '1px solid #f0f0f0',
                         overflow: 'hidden',
+                        position: 'relative',
                     }}
                 >
                     <LayersTreeSider
@@ -415,6 +423,23 @@ export default function LayerEditPage() {
                         onReorder={reorderLayers}
                         isAdmin={isAdmin}
                         onBulkTagsClick={() => setBulkTagsOpen(true)}
+                    />
+                    <button
+                        type="button"
+                        aria-label="Redimensionar árbol"
+                        onMouseDown={handleSiderResize}
+                        style={{
+                            position: 'absolute',
+                            top: 0,
+                            right: -3,
+                            bottom: 0,
+                            width: 6,
+                            cursor: 'col-resize',
+                            zIndex: 2,
+                            background: 'transparent',
+                            border: 'none',
+                            padding: 0,
+                        }}
                     />
                 </Sider>
             )}
