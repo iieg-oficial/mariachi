@@ -120,6 +120,20 @@ def _payload_to_row(payload: dict[str, Any], updated_by: str | None) -> dict[str
     return row
 
 
+def _validate_slug_unique(session: Session, slug: str | None, exclude_layer_id: str | None) -> None:
+    if not slug:
+        return
+    from app.services import slug_service
+    if not slug_service.is_valid_slug(slug):
+        raise ValueError(
+            f"Slug invalido: '{slug}'. Solo minusculas, numeros y guiones; max 60 chars."
+        )
+    if slug_service.slug_taken(session, slug, exclude_layer_id=exclude_layer_id):
+        raise ValueError(
+            f"Slug '{slug}' ya esta tomado por otra capa o por un alias existente."
+        )
+
+
 def create_layer(
     session: Session,
     data: LayerCreate,
@@ -134,6 +148,8 @@ def create_layer(
             payload.get('workspace_alias'),
             payload.get('geoserver_layer'),
         )
+
+    _validate_slug_unique(session, payload.get('slug'), exclude_layer_id=None)
 
     row = _payload_to_row(payload, updated_by)
 
@@ -159,6 +175,9 @@ def update_layer(
         'workspace_alias' in payload or 'geoserver_layer' in payload
     ):
         validate_layer_against_geoserver(session, new_workspace, new_geoserver_layer)
+
+    if 'slug' in payload:
+        _validate_slug_unique(session, payload.get('slug'), exclude_layer_id=layer.id)
 
     if 'infobox_template' in payload or 'infobox_params' in payload:
         template = payload.get('infobox_template', layer.infobox_template)
@@ -240,6 +259,7 @@ def duplicate_layer(session: Session, layer: Layer, new_id_suffix: str = '_copy'
     }
     data['id'] = new_id
     data['updated_by'] = 'duplicate'
+    data['slug'] = None
     new_layer = Layer(**data)
     session.add(new_layer)
     session.flush()

@@ -28,6 +28,7 @@ import InfoBoxPresetForm from '@features/mapalab-layers/components/layersEditor/
 import InfoBoxPreview from '@features/mapalab-layers/components/layersEditor/InfoBoxPreview';
 import InfoBoxJsonEditor from '@features/mapalab-layers/components/layersEditor/InfoBoxJsonEditor';
 import LayerMetadataSection from '@features/mapalab-layers/components/layersEditor/LayerMetadataSection';
+import LayerAliasesSection from '@features/mapalab-layers/components/layersEditor/LayerAliasesSection';
 
 const { Content, Sider } = Layout;
 const { Text, Title } = Typography;
@@ -57,6 +58,10 @@ export default function LayerEditPage() {
         getLayerDraft,
         listGeoserverWorkspaces,
         listGeoserverStyles,
+        listLayerAliases,
+        createLayerAlias,
+        deleteLayerAlias,
+        suggestSlug,
     } = useLayerTreeAdmin();
 
     const [form] = Form.useForm();
@@ -96,6 +101,7 @@ export default function LayerEditPage() {
     const populate = useCallback((data) => {
         form.setFieldsValue({
             label: data.label,
+            slug: data.slug,
             nodeType: data.nodeType,
             hiddenInMenu: data.hiddenInMenu,
             disabled: data.disabled,
@@ -219,6 +225,23 @@ export default function LayerEditPage() {
         </Space>
     );
 
+    const handleSuggestSlug = async () => {
+        const label = form.getFieldValue('label');
+        if (!label) {
+            message.warning('Captura un label primero');
+            return;
+        }
+        try {
+            const { slug, available } = await suggestSlug(label);
+            form.setFieldValue('slug', slug);
+            if (!available) {
+                message.info(`Slug sugerido (con sufijo, '${slug}') porque hubo colision`);
+            }
+        } catch (err) {
+            message.error(err?.response?.data?.detail || 'Error al sugerir slug');
+        }
+    };
+
     const tabItems = [
         {
             key: 'identidad',
@@ -227,6 +250,23 @@ export default function LayerEditPage() {
                 <>
                     <Form.Item label="Label" name="label" rules={[{ required: true }]}>
                         <Input />
+                    </Form.Item>
+                    <Form.Item
+                        label="Slug publico"
+                        name="slug"
+                        extra="Identificador para URLs publicas: solo minusculas, numeros y guiones (e.g. establecimientos-salud). Vacio = no aparece en deeplinks."
+                        rules={[
+                            {
+                                pattern: /^[a-z0-9-]+$/,
+                                message: 'Solo minusculas, numeros y guiones',
+                            },
+                            { max: 60 },
+                        ]}
+                    >
+                        <Space.Compact style={{ width: '100%' }}>
+                            <Input placeholder="establecimientos-salud" />
+                            <Button onClick={handleSuggestSlug}>Sugerir desde label</Button>
+                        </Space.Compact>
                     </Form.Item>
                     <Form.Item label="Node type" name="nodeType">
                         <Select options={NODE_TYPE_OPTIONS} />
@@ -241,6 +281,18 @@ export default function LayerEditPage() {
                         <Switch />
                     </Form.Item>
                 </>
+            ),
+        },
+        {
+            key: 'aliases',
+            label: 'Aliases',
+            children: (
+                <LayerAliasesSection
+                    layerId={layerId}
+                    listAliases={listLayerAliases}
+                    createAlias={createLayerAlias}
+                    deleteAlias={deleteLayerAlias}
+                />
             ),
         },
         {

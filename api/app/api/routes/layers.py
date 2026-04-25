@@ -4,18 +4,24 @@ from sqlalchemy.orm import Session
 from app.api.deps import require_project_access, require_role, verify_csrf
 from app.api.rate_limit import rate_limit
 from app.core.database import get_dataengine_db
-from app.models.layer import Layer, Workspace
+from app.models.layer import Layer, LayerAlias, Workspace
 from app.models.user import Usuario
 from app.schemas.layer import (
+    BulkSlugGenerateResponse,
+    BulkSlugGenerateResult,
     InitialOrderBody,
     InitialOrderItem,
+    LayerAliasCreate,
+    LayerAliasResponse,
     LayerCreate,
     LayerResponse,
     LayerUpdate,
     ReorderBody,
+    SlugSuggestRequest,
+    SlugSuggestResponse,
     WorkspaceResponse,
 )
-from app.services import layer_service
+from app.services import layer_service, slug_service
 from app.services.geoserver_client import GeoServerError
 from app.services.mapalab_notifier import notify_tree_changed
 
@@ -226,3 +232,115 @@ async def duplicate_layer(
     except ValueError as exc:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(exc))
+
+
+@router.get('/{layer_id}/aliases', response_model=list[LayerAliasResponse])
+async def list_layer_aliases(
+    layer_id: str,
+    db: Session = Depends(get_dataengine_db),
+    current_user: Usuario = Depends(_require_project_editor),
+):
+    layer = db.query(Layer).filter(Layer.id == layer_id).first()
+    if not layer:
+        raise HTTPException(status_code=404, detail=f"Capa '{layer_id}' no encontrada")
+    return (
+        db.query(LayerAlias)
+        .filter(LayerAlias.layer_id == layer_id)
+        .order_by(LayerAlias.created_at)
+        .all()
+    )
+
+
+@router.post(
+    '/{layer_id}/aliases',
+    response_model=LayerAliasResponse,
+    status_code=201,
+)
+async def create_layer_alias(
+    layer_id: str,
+    body: LayerAliasCreate,
+    db: Session = Depends(get_dataengine_db),
+    current_user: Usuario = Depends(verify_csrf),
+    _admin: Usuario = Depends(_require_admin),
+    _rl: Usuario = Depends(_write_rate_limit),
+):
+    layer = db.query(Layer).filter(Layer.id == layer_id).first()
+    if not layer:
+        raise HTTPException(status_code=404, detail=f"Capa '{layer_id}' no encontrada")
+
+    if slug_service.slug_taken(db, body.alias):
+        raise HTTPException(
+            status_code=409,
+            detail=f"Alias '{body.alias}' ya esta tomado por otra capa o slug canonico",
+        )
+
+    alias = LayerAlias(
+        alias=body.alias,
+        layer_id=layer_id,
+        created_by=current_user.email,
+    )
+    db.add(alias)
+    db.commit()
+    db.refresh(alias)
+    notify_tree_changed()
+    return alias
+
+
+@router.delete('/{layer_id}/aliases/{alias}', status_code=204)
+async def delete_layer_alias(
+    layer_id: str,
+    alias: str,
+    db: Session = Depends(get_dataengine_db),
+    current_user: Usuario = Depends(verify_csrf),
+    _admin: Usuario = Depends(_require_admin),
+    _rl: Usuario = Depends(_write_rate_limit),
+):
+    row = (
+        db.query(LayerAlias)
+        .filter(LayerAlias.alias == alias, LayerAlias.layer_id == layer_id)
+        .first()
+    )
+    if not row:
+        raise HTTPException(status_code=404, detail=f"Alias '{alias}' no existe en capa '{layer_id}'")
+    db.delete(row)
+    db.commit()
+    notify_tree_changed()
+    return None
+
+
+@router.post('/slugs/suggest', response_model=SlugSuggestResponse)
+async def suggest_slug(
+    body: SlugSuggestRequest,
+    db: Session = Depends(get_dataengine_db),
+    current_user: Usuario = Depends(_require_project_editor),
+):
+    base = slug_service.slugify(body.label) or "capa"
+    if not slug_service.is_valid_slug(base):
+        base = "capa"
+    final = slug_service.resolve_collision(db, base)
+    return SlugSuggestResponse(slug=final, available=(final == base))
+
+
+@router.post('/slugs/bulk-generate', response_model=BulkSlugGenerateResponse)
+async def bulk_generate_slugs(
+    body: dict,
+    db: Session = Depends(get_dataengine_db),
+    current_user: Usuario = Depends(verify_csrf),
+    _admin: Usuario = Depends(_require_admin),
+    _rl: Usuario = Depends(_write_rate_limit),
+):
+    overwrite = bool(body.get("overwrite", False))
+    layers = db.query(Layer).filter(Layer.node_type == "leaf").order_by(Layer.id).all()
+    results = slug_service.generate_for_layers(db, layers, overwrite_existing=overwrite)
+    db.commit()
+    notify_tree_changed()
+
+    typed_results = [BulkSlugGenerateResult(**r) for r in results]
+    assigned = sum(1 for r in typed_results if r.status != "skipped_existing")
+    skipped = sum(1 for r in typed_results if r.status == "skipped_existing")
+    return BulkSlugGenerateResponse(
+        total=len(typed_results),
+        assigned=assigned,
+        skipped=skipped,
+        results=typed_results,
+    )

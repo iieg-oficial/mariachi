@@ -1,9 +1,22 @@
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 NodeType = Literal["tema", "category", "label", "group", "leaf"]
+
+SLUG_PATTERN = r"^[a-z0-9-]+$"
+
+
+def _validate_slug(value: str | None) -> str | None:
+    if value is None or value == "":
+        return None
+    import re
+    if not re.match(SLUG_PATTERN, value) or len(value) > 60:
+        raise ValueError(
+            "Slug invalido: solo minusculas, numeros y guiones; max 60 chars"
+        )
+    return value
 
 
 class WorkspaceBase(BaseModel):
@@ -21,6 +34,7 @@ class WorkspaceResponse(WorkspaceBase):
 
 class LayerBase(BaseModel):
     id: str = Field(..., min_length=1, max_length=100)
+    slug: str | None = Field(default=None, max_length=60)
     parent_id: str | None = Field(default=None, serialization_alias="parentId")
     label: str = Field(..., min_length=1, max_length=255)
     sort_order: int = Field(default=0, serialization_alias="sortOrder")
@@ -63,12 +77,18 @@ class LayerBase(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True, from_attributes=True)
 
+    @field_validator("slug")
+    @classmethod
+    def _validate_slug_field(cls, v: str | None) -> str | None:
+        return _validate_slug(v)
+
 
 class LayerCreate(LayerBase):
     pass
 
 
 class LayerUpdate(BaseModel):
+    slug: str | None = Field(default=None, max_length=60)
     parent_id: str | None = Field(default=None, serialization_alias="parentId")
     label: str | None = Field(default=None, max_length=255)
     sort_order: int | None = Field(default=None, serialization_alias="sortOrder")
@@ -111,6 +131,11 @@ class LayerUpdate(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
+    @field_validator("slug")
+    @classmethod
+    def _validate_slug_update(cls, v: str | None) -> str | None:
+        return _validate_slug(v)
+
 
 class LayerResponse(LayerBase):
     created_at: datetime = Field(..., serialization_alias="createdAt")
@@ -144,3 +169,48 @@ class InitialOrderItem(BaseModel):
     parent_id: str | None = Field(default=None, serialization_alias="parentId")
 
     model_config = ConfigDict(populate_by_name=True, from_attributes=True)
+
+
+class LayerAliasResponse(BaseModel):
+    alias: str
+    layer_id: str = Field(..., serialization_alias="layerId")
+    created_by: str | None = Field(default=None, serialization_alias="createdBy")
+    created_at: datetime = Field(..., serialization_alias="createdAt")
+
+    model_config = ConfigDict(populate_by_name=True, from_attributes=True)
+
+
+class LayerAliasCreate(BaseModel):
+    alias: str = Field(..., min_length=1, max_length=60)
+
+    @field_validator("alias")
+    @classmethod
+    def _validate_alias_field(cls, v: str) -> str:
+        validated = _validate_slug(v)
+        if validated is None:
+            raise ValueError("Alias requerido")
+        return validated
+
+
+class SlugSuggestRequest(BaseModel):
+    label: str = Field(..., min_length=1)
+
+
+class SlugSuggestResponse(BaseModel):
+    slug: str
+    available: bool
+
+
+class BulkSlugGenerateResult(BaseModel):
+    layer_id: str = Field(..., serialization_alias="layerId")
+    slug: str
+    status: Literal["assigned", "skipped_existing", "collision_resolved"]
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class BulkSlugGenerateResponse(BaseModel):
+    total: int
+    assigned: int
+    skipped: int
+    results: list[BulkSlugGenerateResult]

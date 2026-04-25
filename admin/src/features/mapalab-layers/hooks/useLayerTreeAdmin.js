@@ -133,6 +133,30 @@ export const useLayerTreeAdmin = () => {
         return res.data;
     }, []);
 
+    const listLayerAliases = useCallback(async (layerId) => {
+        const res = await api.get(`/layers/${layerId}/aliases`);
+        return res.data;
+    }, []);
+
+    const createLayerAlias = useCallback(async (layerId, alias) => {
+        const res = await api.post(`/layers/${layerId}/aliases`, { alias });
+        return res.data;
+    }, []);
+
+    const deleteLayerAlias = useCallback(async (layerId, alias) => {
+        await api.delete(`/layers/${layerId}/aliases/${encodeURIComponent(alias)}`);
+    }, []);
+
+    const suggestSlug = useCallback(async (label) => {
+        const res = await api.post('/layers/slugs/suggest', { label });
+        return res.data;
+    }, []);
+
+    const bulkGenerateSlugs = useCallback(async (overwrite = false) => {
+        const res = await api.post('/layers/slugs/bulk-generate', { overwrite });
+        return res.data;
+    }, []);
+
     return {
         treeData,
         rawTree,
@@ -154,5 +178,10 @@ export const useLayerTreeAdmin = () => {
         setInitialOrder,
         getLayerMetadata,
         updateLayerMetadata,
+        listLayerAliases,
+        createLayerAlias,
+        deleteLayerAlias,
+        suggestSlug,
+        bulkGenerateSlugs,
     };
 };

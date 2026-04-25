@@ -5,6 +5,20 @@ from app.models.media_bucket import MediaBucket
 from app.models.menu_item import MenuItem
 from app.models.page import Page
 from app.models.project import Project, UserProject
+from app.models.sieej import (
+    BasesDatos,
+    BDEjesEstrategicos,
+    CatalogoCalidadDatos,
+    CatalogoCategoriaDatos,
+    CatalogoEjesEstrategicos,
+    CatalogoHerramientasGestion,
+    CatalogoObjetivoUso,
+    CatalogoPeriodicidad,
+    CatalogoUnidadAdmin,
+    CatalogoUsuariosDatos,
+    Enlace,
+    General,
+)
 from app.models.user import Usuario
 
 __all__ = [
@@ -18,4 +32,16 @@ __all__ = [
     "Project",
     "UserProject",
     "MediaBucket",
+    "BDEjesEstrategicos",
+    "BasesDatos",
+    "CatalogoCalidadDatos",
+    "CatalogoCategoriaDatos",
+    "CatalogoEjesEstrategicos",
+    "CatalogoHerramientasGestion",
+    "CatalogoObjetivoUso",
+    "CatalogoPeriodicidad",
+    "CatalogoUnidadAdmin",
+    "CatalogoUsuariosDatos",
+    "Enlace",
+    "General",
 ]

@@ -1,0 +1,11 @@
+{
+    "periodicidad": [
+        "Diario",
+        "Semanal",
+        "Mensual",
+        "Anual",
+        "Indeterminado",
+        "Otro"
+    ]
+
+}
