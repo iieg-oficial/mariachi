@@ -41,7 +41,7 @@ export default function Users() {
     const { isMobile } = useIsMobile();
     const [users, setUsers] = useState([]);
     const [projects, setProjects] = useState([]);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [modalVisible, setModalVisible] = useState(false);
     const [editingUser, setEditingUser] = useState(null);
     const [form] = Form.useForm();
@@ -49,7 +49,6 @@ export default function Users() {
     const projectAssignments = Form.useWatch('project_assignments', form) || {};
 
     const fetchUsers = useCallback(async () => {
-        setLoading(true);
         try {
             const response = await api.get('/usuarios');
             setUsers(response.data);
@@ -60,19 +59,18 @@ export default function Users() {
         }
     }, []);
 
-    const fetchProjects = useCallback(async () => {
-        try {
-            const response = await api.get('/projects');
-            setProjects(response.data);
-        } catch {
-            message.error('Error al cargar proyectos');
-        }
-    }, []);
-
     useEffect(() => {
-        fetchUsers();
-        fetchProjects();
-    }, [fetchUsers, fetchProjects]);
+        let cancelled = false;
+        Promise.all([api.get('/usuarios'), api.get('/projects')])
+            .then(([usersRes, projectsRes]) => {
+                if (cancelled) return;
+                setUsers(usersRes.data);
+                setProjects(projectsRes.data);
+            })
+            .catch(() => message.error('Error al cargar datos'))
+            .finally(() => { if (!cancelled) setLoading(false); });
+        return () => { cancelled = true; };
+    }, []);
 
     const assignmentsToFormValue = (projectsList) => {
         const value = {};

@@ -34,7 +34,8 @@ api.interceptors.response.use(
         if (error.response?.status === 401) {
             sessionStorage.removeItem('csrf_token');
             if (!window.location.pathname.endsWith('/login')) {
-                window.location.href = '/administrador/login';
+                const base = import.meta.env.BASE_URL || '/';
+                window.location.href = `${base.replace(/\/$/, '')}/administrador/login`;
             }
         }
         return Promise.reject(error);

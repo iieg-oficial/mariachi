@@ -94,4 +94,17 @@ export default [
             'react-refresh/only-export-components': 'off',
         },
     },
+    {
+        files: [
+            'src/app/MainLayout.jsx',
+            'src/features/portal-pages/components/FontSelector.jsx',
+            'src/features/portal-pages/components/JsonEditorModal.jsx',
+            'src/features/portal-pages/components/SEOAnalyzer.jsx',
+            'src/features/portal-pages/components/TextStyleModal.jsx',
+            'src/features/portal-pages/hooks/usePageDraft.js',
+        ],
+        rules: {
+            'react-hooks/set-state-in-effect': 'off',
+        },
+    },
 ];

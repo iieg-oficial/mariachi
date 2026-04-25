@@ -22,13 +22,12 @@ const { Title, Paragraph } = Typography;
 export default function FormulariosPage() {
     const { isMobile } = useIsMobile();
     const [formularios, setFormularios] = useState([]);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
     const [editing, setEditing] = useState(null);
     const [form] = Form.useForm();
 
     const loadFormularios = useCallback(async () => {
-        setLoading(true);
         try {
             const res = await api.get('/formularios');
             setFormularios(res.data);
@@ -43,8 +42,16 @@ export default function FormulariosPage() {
     }, []);
 
     useEffect(() => {
-        loadFormularios();
-    }, [loadFormularios]);
+        let cancelled = false;
+        api.get('/formularios')
+            .then((res) => { if (!cancelled) setFormularios(res.data); })
+            .catch((err) => {
+                if (err?.response?.status !== 404) message.error('Error al cargar formularios');
+                if (!cancelled) setFormularios([]);
+            })
+            .finally(() => { if (!cancelled) setLoading(false); });
+        return () => { cancelled = true; };
+    }, []);
 
     const handleCreate = () => {
         setEditing(null);

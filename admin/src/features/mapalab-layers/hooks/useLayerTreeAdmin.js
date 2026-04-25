@@ -30,7 +30,6 @@ export const useLayerTreeAdmin = () => {
     const [error, setError] = useState(null);
 
     const reload = useCallback(async () => {
-        setLoading(true);
         setError(null);
         try {
             const tree = await fetchLayerTreePublic();
@@ -44,8 +43,17 @@ export const useLayerTreeAdmin = () => {
     }, []);
 
     useEffect(() => {
-        reload();
-    }, [reload]);
+        let cancelled = false;
+        fetchLayerTreePublic()
+            .then((tree) => {
+                if (cancelled) return;
+                setRawTree(tree);
+                setTreeData(toAntTreeData(tree));
+            })
+            .catch((err) => { if (!cancelled) setError(err.message || String(err)); })
+            .finally(() => { if (!cancelled) setLoading(false); });
+        return () => { cancelled = true; };
+    }, []);
 
     const getLayer = useCallback(async (layerId) => {
         const res = await api.get(`/layers/${layerId}`);

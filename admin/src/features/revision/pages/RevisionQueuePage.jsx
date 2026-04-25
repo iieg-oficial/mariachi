@@ -11,13 +11,12 @@ export default function RevisionQueue() {
     const { isMobile } = useIsMobile();
     const navigate = useNavigate();
     const [borradores, setBorradores] = useState([]);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [rechazarModalVisible, setRechazarModalVisible] = useState(false);
     const [borradorSeleccionado, setBorradorSeleccionado] = useState(null);
     const [comentario, setComentario] = useState('');
 
     const fetchPendientes = useCallback(async () => {
-        setLoading(true);
         try {
             const response = await api.get('/borradores/pendientes');
             setBorradores(response.data);
@@ -29,8 +28,13 @@ export default function RevisionQueue() {
     }, []);
 
     useEffect(() => {
-        fetchPendientes();
-    }, [fetchPendientes]);
+        let cancelled = false;
+        api.get('/borradores/pendientes')
+            .then((res) => { if (!cancelled) setBorradores(res.data); })
+            .catch(() => message.error('Error al cargar la cola de revisión'))
+            .finally(() => { if (!cancelled) setLoading(false); });
+        return () => { cancelled = true; };
+    }, []);
 
     const handlePreview = async (borrador) => {
         const WEB_URL = import.meta.env.VITE_WEB_URL || 'http://localhost:3010';

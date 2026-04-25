@@ -18,8 +18,13 @@ export const AuthProvider = ({ children }) => {
     }, []);
 
     useEffect(() => {
-        checkAuth();
-    }, [checkAuth]);
+        let cancelled = false;
+        api.get('/autenticacion/perfil')
+            .then((res) => { if (!cancelled) setUser(res.data); })
+            .catch(() => { if (!cancelled) setUser(null); })
+            .finally(() => { if (!cancelled) setLoading(false); });
+        return () => { cancelled = true; };
+    }, []);
 
     const loginUser = async (username, password) => {
         const response = await api.post('/autenticacion/iniciar-sesion', {

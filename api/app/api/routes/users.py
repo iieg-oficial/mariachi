@@ -10,7 +10,13 @@ from app.api.metrics import COUNTER_USER_WRITES, incr
 from app.core.security import hash_password, verify_password
 from app.models.project import Project, UserProject
 from app.models.user import Usuario
-from app.schemas.user import PasswordChange, UsuarioCreate, UsuarioResponse, UsuarioUpdate
+from app.schemas.user import (
+    DependenciaSieejCreate,
+    DependenciaSieejResponse,
+    UsuarioCreate,
+    UsuarioResponse,
+    UsuarioUpdate,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/usuarios", tags=["usuarios"])
@@ -209,6 +215,58 @@ async def resetear_password(
         "message": "Contraseña reseteada exitosamente",
         "temp_password": temp_password
     }
+
+
+@router.post("/agregar-dependencia-sieej", response_model=DependenciaSieejResponse, status_code=status.HTTP_201_CREATED)
+async def agregar_dependencia_sieej(
+    payload: DependenciaSieejCreate,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(verify_csrf),
+):
+    if current_user.role not in ["tetlamamakani"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Solo administradores pueden agregar dependencias",
+        )
+
+    if db.query(Usuario).filter(Usuario.username == payload.username).first():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="El nombre de usuario ya existe"
+        )
+    if db.query(Usuario).filter(Usuario.email == payload.email).first():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="El email ya está registrado"
+        )
+
+    sieej_project = db.query(Project).filter(Project.slug == "sieej").first()
+    if sieej_project is None:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Proyecto sieej no esta seedeado",
+        )
+
+    temp_password = generate_temp_password()
+    nuevo = Usuario(
+        username=payload.username,
+        email=payload.email,
+        name=payload.name,
+        hashed_password=hash_password(temp_password),
+        role="externo",
+        must_change_password=True,
+    )
+    db.add(nuevo)
+    db.flush()
+
+    db.add(UserProject(user_id=nuevo.id, project_id=sieej_project.id, project_role="editor"))
+    db.commit()
+    db.refresh(nuevo)
+    incr(COUNTER_USER_WRITES)
+    logger.info("action=user.create_dependencia_sieej actor=%s new_user=%s", current_user.id, nuevo.id)
+
+    return DependenciaSieejResponse(
+        user=UsuarioResponse.model_validate(_serialize_user(db, nuevo)),
+        temp_password=temp_password,
+    )
 
 
 

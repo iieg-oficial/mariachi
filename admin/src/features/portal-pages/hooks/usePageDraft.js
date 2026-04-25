@@ -26,31 +26,7 @@ export const usePageDraft = (pageId, { reviewMode = false, borradorId = null } =
     const draftSaveEnabled = useRef(false);
     const presenceIntervalRef = useRef(null);
 
-    useEffect(() => {
-        if (pageId) loadPage();
-    }, [pageId, loadPage]);
-
-    useEffect(() => {
-        if (!pageId) return;
-
-        const registrar = async () => {
-            try { await api.put(`/paginas/${pageId}/presencia`); } catch { /* silencioso */ }
-        };
-        const obtener = async () => {
-            try {
-                const { data } = await api.get(`/paginas/${pageId}/presencia`);
-                setEditores(data);
-            } catch { /* silencioso */ }
-        };
-
-        registrar();
-        obtener();
-        presenceIntervalRef.current = setInterval(() => { registrar(); obtener(); }, 20000);
-        return () => clearInterval(presenceIntervalRef.current);
-    }, [pageId]);
-
     const loadPage = useCallback(async () => {
-        setLoading(true);
         draftSaveEnabled.current = false;
         try {
             const response = await api.get(`/paginas/${pageId}`);
@@ -101,6 +77,29 @@ export const usePageDraft = (pageId, { reviewMode = false, borradorId = null } =
             setLoading(false);
         }
     }, [pageId, reviewMode, borradorId]);
+
+    useEffect(() => {
+        if (pageId) loadPage();
+    }, [pageId, loadPage]);
+
+    useEffect(() => {
+        if (!pageId) return;
+
+        const registrar = async () => {
+            try { await api.put(`/paginas/${pageId}/presencia`); } catch { /* silencioso */ }
+        };
+        const obtener = async () => {
+            try {
+                const { data } = await api.get(`/paginas/${pageId}/presencia`);
+                setEditores(data);
+            } catch { /* silencioso */ }
+        };
+
+        registrar();
+        obtener();
+        presenceIntervalRef.current = setInterval(() => { registrar(); obtener(); }, 20000);
+        return () => clearInterval(presenceIntervalRef.current);
+    }, [pageId]);
 
     const pageRef = useRef(page);
     useEffect(() => { pageRef.current = page; });

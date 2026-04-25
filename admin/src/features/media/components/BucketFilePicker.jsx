@@ -8,16 +8,17 @@ const { Text } = Typography;
 export default function BucketFilePicker({ open, onClose, onSelect, bucketId, prefixes = [''], title = 'Seleccionar archivo' }) {
     const [activePrefix, setActivePrefix] = useState(prefixes[0] || '');
     const [objects, setObjects] = useState([]);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
 
     useEffect(() => {
         if (!open || !bucketId) return;
-        setLoading(true);
+        let cancelled = false;
         listBucketObjects(bucketId, activePrefix)
-            .then((data) => setObjects(data))
+            .then((data) => { if (!cancelled) setObjects(data); })
             .catch(() => message.error('No se pudieron listar los archivos del bucket'))
-            .finally(() => setLoading(false));
+            .finally(() => { if (!cancelled) setLoading(false); });
+        return () => { cancelled = true; };
     }, [open, bucketId, activePrefix]);
 
     const filtered = search

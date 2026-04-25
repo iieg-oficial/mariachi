@@ -10,7 +10,7 @@ export const useMenuDraft = (user, { reviewMode = false, borradorId = null } = {
     const navigate = useNavigate();
     const [originalMenuItems, setOriginalMenuItems] = useState([]);
     const [menuItems, setMenuItems] = useState([]);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [publishing, setPublishing] = useState(false);
     const [nextTempId, setNextTempId] = useState(1);
     const [hasDraft, setHasDraft] = useState(false);
@@ -22,7 +22,6 @@ export const useMenuDraft = (user, { reviewMode = false, borradorId = null } = {
     const isAdmin = user?.role === 'tetlamamakani';
 
     const fetchMenuItems = useCallback(async () => {
-        setLoading(true);
         try {
             const itemsResponse = await api.get('/elementos-menu');
             setOriginalMenuItems(itemsResponse.data);
@@ -59,8 +58,47 @@ export const useMenuDraft = (user, { reviewMode = false, borradorId = null } = {
     }, [reviewMode, borradorId]);
 
     useEffect(() => {
-        fetchMenuItems();
-    }, [fetchMenuItems]);
+        let cancelled = false;
+        (async () => {
+            try {
+                const itemsResponse = await api.get('/elementos-menu');
+                if (cancelled) return;
+                setOriginalMenuItems(itemsResponse.data);
+
+                if (reviewMode && borradorId) {
+                    const reviewResponse = await api.get(`/borradores/por-id/${borradorId}`);
+                    if (cancelled) return;
+                    const reviewData = reviewResponse.data;
+                    setMenuItems(reviewData.data?.menuItems || itemsResponse.data);
+                    setNextTempId(reviewData.data?.nextTempId || 1);
+                    setHasDraft(true);
+                    setDraftId(reviewData.id);
+                    setReviewAuthor(reviewData.usuario);
+                } else {
+                    const draftResponse = await api.get(`/borradores/${RESOURCE_TYPE}/${RESOURCE_ID}`).catch(() => ({ data: null }));
+                    if (cancelled) return;
+                    if (draftResponse.data?.data) {
+                        const draftData = draftResponse.data.data;
+                        setMenuItems(draftData.menuItems || itemsResponse.data);
+                        setNextTempId(draftData.nextTempId || 1);
+                        setHasDraft(true);
+                        setDraftId(draftResponse.data.id);
+                        setBorradorEstado(draftResponse.data.estado || 'en_progreso');
+                        setComentarioRechazo(draftResponse.data.comentario_rechazo || null);
+                    } else {
+                        setMenuItems(itemsResponse.data);
+                        setHasDraft(false);
+                        setDraftId(null);
+                    }
+                }
+            } catch {
+                if (!cancelled) message.error('Error al cargar items del menú');
+            } finally {
+                if (!cancelled) setLoading(false);
+            }
+        })();
+        return () => { cancelled = true; };
+    }, [reviewMode, borradorId]);
 
     const hasChanges = JSON.stringify(originalMenuItems) !== JSON.stringify(menuItems);
 

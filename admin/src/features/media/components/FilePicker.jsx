@@ -22,7 +22,7 @@ const FilePicker = ({
     allowedTypes = [], 
     title = 'Seleccionar Archivo'
 }) => {
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [mediaFiles, setMediaFiles] = useState([]);
     const [folders, setFolders] = useState([]);
     const [selectedFolder, setSelectedFolder] = useState(null);
@@ -33,7 +33,6 @@ const FilePicker = ({
 
     const loadMediaFiles = useCallback(async () => {
         try {
-            setLoading(true);
             const filters = {
                 folder: selectedFolder,
                 type: selectedType,
@@ -55,21 +54,23 @@ const FilePicker = ({
         }
     }, [selectedFolder, selectedType, searchText, allowedTypes]);
 
-    const loadFolders = useCallback(async () => {
-        try {
-            const data = await mediaService.getFolders();
-            setFolders(data);
-        } catch {
-            message.error('Error al cargar carpetas');
-        }
-    }, []);
-
     useEffect(() => {
-        if (visible) {
-            loadMediaFiles();
-            loadFolders();
-        }
-    }, [visible, loadMediaFiles, loadFolders]);
+        if (!visible) return;
+        let cancelled = false;
+        const filters = { folder: selectedFolder, type: selectedType, search: searchText };
+        Promise.all([mediaService.getMediaFiles(filters), mediaService.getFolders()])
+            .then(([files, folderList]) => {
+                if (cancelled) return;
+                const filtered = allowedTypes.length > 0
+                    ? files.filter((f) => mediaService.validateFileType(f, allowedTypes))
+                    : files;
+                setMediaFiles(filtered);
+                setFolders(folderList);
+            })
+            .catch(() => message.error('Error al cargar archivos'))
+            .finally(() => { if (!cancelled) setLoading(false); });
+        return () => { cancelled = true; };
+    }, [visible, selectedFolder, selectedType, searchText, allowedTypes]);
 
     const handleFileClick = (file) => {
         if (multiple) {

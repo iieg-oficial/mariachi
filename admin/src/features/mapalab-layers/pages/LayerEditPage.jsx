@@ -122,7 +122,6 @@ export default function LayerEditPage() {
     useEffect(() => {
         if (!layerId) return;
         let cancelled = false;
-        setLoading(true);
         (async () => {
             try {
                 const fresh = await getLayer(layerId);

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { Modal, Button, Row, Col, Card, Image, Empty, Spin, Select, Input, message } from 'antd';
 import { FileImageOutlined, FolderOutlined, SearchOutlined } from '@ant-design/icons';
 import mediaService from '@features/media/api/mediaService';
@@ -14,61 +14,38 @@ const MediaSelector = ({
     fileType = 'image',
     title = 'Seleccionar Imagen'
 }) => {
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [mediaFiles, setMediaFiles] = useState([]);
     const [folders, setFolders] = useState([]);
     const [selectedFolder, setSelectedFolder] = useState(null);
     const [selectedFile, setSelectedFile] = useState(null);
     const [searchText, setSearchText] = useState('');
 
-    const loadMediaFiles = useCallback(async () => {
-        try {
-            setLoading(true);
-            const filters = {
-                folder: selectedFolder,
-                type: fileType,
-                search: searchText
-            };
-            const data = await mediaService.getMediaFiles(filters);
-            setMediaFiles(data);
-        } catch {
-            message.error('Error al cargar archivos');
-        } finally {
-            setLoading(false);
-        }
-    }, [selectedFolder, fileType, searchText]);
-
-    const loadFolders = useCallback(async () => {
-        try {
-            const data = await mediaService.getFolders();
-            setFolders(data);
-        } catch {
-            message.error('Error al cargar carpetas');
-        }
-    }, []);
+    useEffect(() => {
+        if (!visible) return;
+        let cancelled = false;
+        mediaService.getFolders()
+            .then((data) => {
+                if (cancelled) return;
+                setFolders(data);
+                if (defaultFolder) {
+                    const folder = data.find((f) => f.name === defaultFolder || f.path === defaultFolder);
+                    if (folder) setSelectedFolder(folder.path);
+                }
+            })
+            .catch(() => message.error('Error al cargar carpetas'));
+        return () => { cancelled = true; };
+    }, [visible, defaultFolder]);
 
     useEffect(() => {
-        if (visible && defaultFolder && folders.length > 0) {
-            const folder = folders.find(f =>
-                f.name === defaultFolder || f.path === defaultFolder
-            );
-            if (folder) {
-                setSelectedFolder(folder.path);
-            }
-        }
-    }, [visible, defaultFolder, folders]);
-
-    useEffect(() => {
-        if (visible) {
-            loadFolders();
-        }
-    }, [visible, loadFolders]);
-
-    useEffect(() => {
-        if (visible && folders.length > 0) {
-            loadMediaFiles();
-        }
-    }, [visible, folders, loadMediaFiles]);
+        if (!visible || folders.length === 0) return;
+        let cancelled = false;
+        mediaService.getMediaFiles({ folder: selectedFolder, type: fileType, search: searchText })
+            .then((data) => { if (!cancelled) setMediaFiles(data); })
+            .catch(() => message.error('Error al cargar archivos'))
+            .finally(() => { if (!cancelled) setLoading(false); });
+        return () => { cancelled = true; };
+    }, [visible, folders, selectedFolder, fileType, searchText]);
 
     const handleSelectFile = (file) => {
         setSelectedFile(file);

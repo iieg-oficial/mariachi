@@ -13,7 +13,7 @@ const MAPALAB_PREFIXES = ['metadata/txt/', 'metadata/xlsx/'];
 export default function LayerMetadataSection({ layerKey }) {
     const { getLayerMetadata, updateLayerMetadata } = useLayerTreeAdmin();
     const [form] = Form.useForm();
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [notFound, setNotFound] = useState(false);
     const [pickerOpen, setPickerOpen] = useState(false);
@@ -35,8 +35,6 @@ export default function LayerMetadataSection({ layerKey }) {
     useEffect(() => {
         if (!layerKey) return;
         let cancelled = false;
-        setLoading(true);
-        setNotFound(false);
         getLayerMetadata(layerKey)
             .then((data) => {
                 if (cancelled) return;

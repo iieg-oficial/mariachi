@@ -16,7 +16,7 @@ const { Option } = Select;
 
 const Media = () => {
     const { isMobile } = useIsMobile();
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [buckets, setBuckets] = useState([]);
     const [selectedBucketId, setSelectedBucketId] = useState(null);
     const [mediaFiles, setMediaFiles] = useState([]);
@@ -35,21 +35,17 @@ const Media = () => {
     const [folderForm] = Form.useForm();
     const [editForm] = Form.useForm();
 
-    const loadBuckets = useCallback(async () => {
+    const loadFolders = useCallback(async () => {
         try {
-            const data = await mediaService.getBuckets();
-            setBuckets(data);
-            if (data.length > 0 && !selectedBucketId) {
-                setSelectedBucketId(data[0].id);
-            }
+            const data = await mediaService.getFolders();
+            setFolders(data);
         } catch {
-            message.error('Error al cargar buckets');
+            message.error('Error al cargar carpetas');
         }
-    }, [selectedBucketId]);
+    }, []);
 
     const loadMediaFiles = useCallback(async () => {
         try {
-            setLoading(true);
             const data = await mediaService.getMediaFiles({
                 bucketId: selectedBucketId,
                 folder: selectedFolder,
@@ -64,33 +60,43 @@ const Media = () => {
         }
     }, [selectedBucketId, selectedFolder, selectedType, searchText]);
 
-    const loadFolders = useCallback(async () => {
-        try {
-            const data = await mediaService.getFolders();
-            setFolders(data);
-        } catch {
-            message.error('Error al cargar carpetas');
-        }
+    useEffect(() => {
+        let cancelled = false;
+        Promise.all([mediaService.getBuckets(), mediaService.getFolders()])
+            .then(([bucketsData, foldersData]) => {
+                if (cancelled) return;
+                setBuckets(bucketsData);
+                setFolders(foldersData);
+                if (bucketsData.length > 0) {
+                    setSelectedBucketId((prev) => prev ?? bucketsData[0].id);
+                }
+            })
+            .catch(() => message.error('Error al cargar datos iniciales'));
+        return () => { cancelled = true; };
     }, []);
 
     useEffect(() => {
-        loadBuckets();
-        loadFolders();
-    }, [loadBuckets, loadFolders]);
+        if (!selectedBucketId) return;
+        let cancelled = false;
+        mediaService.getMediaFiles({
+            bucketId: selectedBucketId,
+            folder: selectedFolder,
+            type: selectedType,
+            search: searchText,
+        })
+            .then((data) => { if (!cancelled) setMediaFiles(data); })
+            .catch(() => message.error('Error al cargar archivos'))
+            .finally(() => { if (!cancelled) setLoading(false); });
+        return () => { cancelled = true; };
+    }, [selectedBucketId, selectedFolder, selectedType, searchText]);
 
-    useEffect(() => {
-        if (selectedBucketId) {
-            loadMediaFiles();
-        } else {
-            setMediaFiles([]);
-        }
-    }, [selectedBucketId, loadMediaFiles]);
+    const visibleMediaFiles = selectedBucketId ? mediaFiles : [];
 
     const stats = {
-        total: mediaFiles.length,
-        images: mediaFiles.filter(f => f.type.startsWith('image/')).length,
-        documents: mediaFiles.filter(f => f.type === 'application/pdf').length,
-        totalSize: mediaFiles.reduce((sum, f) => sum + f.size, 0)
+        total: visibleMediaFiles.length,
+        images: visibleMediaFiles.filter(f => f.type.startsWith('image/')).length,
+        documents: visibleMediaFiles.filter(f => f.type === 'application/pdf').length,
+        totalSize: visibleMediaFiles.reduce((sum, f) => sum + f.size, 0)
     };
 
     const handleUpload = async (options) => {
@@ -318,7 +324,7 @@ const Media = () => {
 
     const renderGridView = () => (
         <Row gutter={[16, 16]}>
-            {mediaFiles.map(file => (
+            {visibleMediaFiles.map(file => (
                 <Col key={file.id} xs={24} sm={12} md={8} lg={6} xl={4}>
                     <Card
                         hoverable
@@ -497,14 +503,14 @@ const Media = () => {
                 </div>
 
                 <Spin spinning={loading}>
-                    {mediaFiles.length === 0 ? (
+                    {visibleMediaFiles.length === 0 ? (
                         <Empty description="No hay archivos" />
                     ) : viewMode === 'grid' ? (
                         renderGridView()
                     ) : (
                         <Table
                             columns={columns}
-                            dataSource={mediaFiles}
+                            dataSource={visibleMediaFiles}
                             rowKey="id"
                             size={isMobile ? 'small' : 'middle'}
                             rowSelection={{

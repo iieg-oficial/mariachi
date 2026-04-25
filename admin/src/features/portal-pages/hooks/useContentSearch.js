@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { searchContent, getAuthors } from '@features/portal-pages/hooks/searchService';
 
 export default function useContentSearch() {
@@ -8,42 +8,27 @@ export default function useContentSearch() {
     const [dateRange, setDateRange] = useState(null);
     const [searchResults, setSearchResults] = useState([]);
     const [authors, setAuthors] = useState([]);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
 
-    const loadAuthors = useCallback(async () => {
-        try {
-            const data = await getAuthors();
-            setAuthors(data);
-        } catch (error) {
-            console.error('Error loading authors:', error);
-        }
+    useEffect(() => {
+        let cancelled = false;
+        getAuthors()
+            .then((data) => { if (!cancelled) setAuthors(data); })
+            .catch((err) => console.error('Error loading authors:', err));
+        return () => { cancelled = true; };
     }, []);
 
-    const performSearch = useCallback(async () => {
-        setLoading(true);
-        try {
-            const results = await searchContent({
-                searchTerm,
-                status: statusFilter,
-                author: authorFilter,
-                dateRange
-            });
-            setSearchResults(results);
-        } catch (error) {
-            console.error('Error searching content:', error);
-            setSearchResults([]);
-        } finally {
-            setLoading(false);
-        }
+    useEffect(() => {
+        let cancelled = false;
+        searchContent({ searchTerm, status: statusFilter, author: authorFilter, dateRange })
+            .then((results) => { if (!cancelled) setSearchResults(results); })
+            .catch((err) => {
+                console.error('Error searching content:', err);
+                if (!cancelled) setSearchResults([]);
+            })
+            .finally(() => { if (!cancelled) setLoading(false); });
+        return () => { cancelled = true; };
     }, [searchTerm, statusFilter, authorFilter, dateRange]);
-
-    useEffect(() => {
-        loadAuthors();
-    }, [loadAuthors]);
-
-    useEffect(() => {
-        performSearch();
-    }, [performSearch]);
 
     const clearFilters = () => {
         setSearchTerm('');

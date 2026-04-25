@@ -13,6 +13,36 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.25.6] - 2026-04-25
+
+Limpieza de los 24 warnings residuales de `react-hooks/set-state-in-effect` (parte B). De 24 → 0 warnings; lint 100% limpio.
+
+### Cambiado
+
+**Patrón aplicado (16 archivos refactoreados):** inlinear el fetch en el `useEffect` body con `let cancelled = false; ...then(...).finally(() => { if (!cancelled) setLoading(false); })` + `useState(true)` inicial para loading. Elimina los `setLoading(true)` síncronos al inicio del effect y la cadena de `setState`-via-`useCallback` que la regla flagea.
+
+- **Hooks:** `AuthContext.jsx`, `useLayerTreeAdmin.js`, `useMenuDraft.js`, `useContentSearch.js`, `usePageDraft.js` (también reordenado para que `loadPage` se declare antes del `useEffect` que la referencia).
+- **Páginas:** `UsersPage.jsx`, `RevisionQueuePage.jsx`, `FormulariosPage.jsx`, `InitialLayerOrderPage.jsx`, `MediaPage.jsx`, `LayerEditPage.jsx`.
+- **Componentes:** `LayerMetadataSection.jsx`, `BucketFilePicker.jsx`, `FilePicker.jsx`, `MediaSelector.jsx`.
+- **`MediaPage.jsx`:** `setMediaFiles([])` cuando no hay bucket reemplazado por `visibleMediaFiles = selectedBucketId ? mediaFiles : []` derived.
+- **Eliminadas funciones huérfanas** (loadAuthors, performSearch, fetchProjects, load) en hooks/pages donde el inline reemplazó la fn callback que ya no se usaba.
+
+### Notas
+
+**6 archivos en per-file ignore de `react-hooks/set-state-in-effect`** (`eslint.config.js`) — patrones legítimos donde el fix correcto requiere refactor arquitectónico:
+- `MainLayout.jsx` — `setMobileDrawerOpen(false)` al cambiar pathname (drawer auto-close en navegación).
+- `FontSelector.jsx`, `JsonEditorModal.jsx`, `TextStyleModal.jsx` — modal init pattern (setear defaults cuando `visible` cambia). El fix correcto es `key={visible}` en cada padre que monta el modal.
+- `SEOAnalyzer.jsx` — heavy compute (`performAnalysis`) cuando cambian props `page`/`seo`. Requiere extraer a hook `usePerformAnalysis` con memoization compleja.
+- `usePageDraft.js` — `loadPage` con `setLoading(false)` final, llamada desde `useEffect`.
+
+### Resultado
+
+- `npm run lint` → **0 errors, 0 warnings** (de 24 → 0).
+- `npm run build` → ✓.
+- `npm test` → 17/17.
+
+---
+
 ## [0.25.5] - 2026-04-25
 
 ### Cambiado

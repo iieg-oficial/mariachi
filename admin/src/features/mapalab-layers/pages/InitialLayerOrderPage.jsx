@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
     Alert,
     Button,
@@ -140,29 +140,26 @@ export default function InitialLayerOrderPage() {
         return map;
     }, [allLayersFlat]);
 
-    const load = useCallback(async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            const data = await getInitialOrder();
-            const normalized = data.map((d) => ({
-                id: d.layerId,
-                label: d.label,
-                nodeType: d.nodeType,
-                parentId: d.parentId,
-            }));
-            setItems(normalized);
-            setOriginal(normalized);
-        } catch (err) {
-            setError(err?.response?.data?.detail || err?.message || 'Error al cargar capas iniciales');
-        } finally {
-            setLoading(false);
-        }
-    }, [getInitialOrder]);
-
     useEffect(() => {
-        load();
-    }, [load]);
+        let cancelled = false;
+        getInitialOrder()
+            .then((data) => {
+                if (cancelled) return;
+                const normalized = data.map((d) => ({
+                    id: d.layerId,
+                    label: d.label,
+                    nodeType: d.nodeType,
+                    parentId: d.parentId,
+                }));
+                setItems(normalized);
+                setOriginal(normalized);
+            })
+            .catch((err) => {
+                if (!cancelled) setError(err?.response?.data?.detail || err?.message || 'Error al cargar capas iniciales');
+            })
+            .finally(() => { if (!cancelled) setLoading(false); });
+        return () => { cancelled = true; };
+    }, [getInitialOrder]);
 
     const dirty = useMemo(() => {
         if (items.length !== original.length) return true;
