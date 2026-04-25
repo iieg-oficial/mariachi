@@ -153,9 +153,6 @@ export default function Login() {
                                     alt="IIEG"
                                     style={{ maxWidth: 280, width: '100%', height: 'auto' }}
                                 />
-                                <Text type="secondary" style={{ marginTop: token.marginLG, textAlign: 'center', fontSize: 13 }}>
-                                    Instituto de Información Estadística<br />y Geográfica de Jalisco
-                                </Text>
                                 <img
                                     src={`${import.meta.env.BASE_URL}jalisco-logo.svg`}
                                     alt="Gobierno de Jalisco"

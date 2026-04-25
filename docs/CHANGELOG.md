@@ -13,6 +13,14 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.24.4] - 2026-04-24
+
+### Cambiado
+
+- **`LoginPage.jsx`** — removido el texto `"Instituto de Información Estadística y Geográfica de Jalisco"` de la columna derecha. El logo IIEG + el logo Jalisco ya hacen self-evident el branding; el texto era redundante.
+
+---
+
 ## [0.24.3] - 2026-04-24
 
 Branding del admin alineado con MapaLab: tipografía Garet, scrollbar custom, redesign del login y fix del scroll vertical en mobile.
