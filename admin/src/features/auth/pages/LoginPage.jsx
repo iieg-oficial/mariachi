@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { Form, Input, Button, Typography, message, Alert, Flex, Row, Col, theme } from 'antd';
-import { InfoCircleOutlined } from '@ant-design/icons';
+import { Form, Input, Button, Typography, message, Flex, Row, Col, theme } from 'antd';
 import { useNavigate } from 'react-router';
 import { useAuth } from '@shared/contexts/AuthContext';
 import useIsMobile from '@shared/hooks/useIsMobile';
@@ -43,9 +42,10 @@ export default function Login() {
             align="center"
             justify="center"
             style={{
-                minHeight: '100vh',
+                minHeight: '100dvh',
                 padding: isMobile ? token.paddingLG : token.paddingXL,
                 background: token.colorBgLayout,
+                overscrollBehavior: 'none',
             }}
         >
             <div
@@ -87,22 +87,6 @@ export default function Login() {
                                     Ingresa tus datos para iniciar sesión.
                                 </Text>
                             </Flex>
-
-                            {import.meta.env.DEV && (
-                                <Alert
-                                    type="info"
-                                    icon={<InfoCircleOutlined />}
-                                    showIcon
-                                    style={{ background: token.colorFillQuaternary, border: 'none', marginBottom: token.marginLG }}
-                                    message={<Text strong style={{ fontSize: 13 }}>Dev</Text>}
-                                    description={
-                                        <Flex vertical gap={2}>
-                                            <Text style={{ fontSize: 12 }}>admin / admin123</Text>
-                                            <Text style={{ fontSize: 12 }}>editor / editor123</Text>
-                                        </Flex>
-                                    }
-                                />
-                            )}
 
                             <Form
                                 name="login"
@@ -178,7 +162,7 @@ export default function Login() {
             </div>
 
             <TypoLink
-                href="https://www.iieg.gob.mx/ns/wp-content/uploads/2025/02/Aviso_Privacidad_Integral_IIEG_01_2025.pdf"
+                href="https://iieg.gob.mx/ns/wp-content/uploads/2025/06/Aviso_de_Privacidad_Integral_IIEG_06_2025.pdf"
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{

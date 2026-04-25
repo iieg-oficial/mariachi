@@ -86,11 +86,24 @@ export default function MainLayout() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            gap: 8,
+            padding: '0 12px',
             color: '#fff',
-            fontSize: isCollapsedView ? 16 : 20,
-            fontWeight: 'bold',
         }}>
-            {isCollapsedView ? 'MA' : 'Mariachi'}
+            <img
+                src="/iieg-favicon-192.png"
+                alt="IIEG"
+                style={{
+                    height: isCollapsedView ? 28 : 32,
+                    width: 'auto',
+                    flexShrink: 0,
+                }}
+            />
+            {!isCollapsedView && (
+                <span style={{ fontSize: 18, fontWeight: 'bold', letterSpacing: 0.5 }}>
+                    Mariachi
+                </span>
+            )}
         </div>
     );
 

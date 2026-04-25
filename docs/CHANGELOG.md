@@ -13,6 +13,25 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.24.2] - 2026-04-24
+
+Branding del admin (favicon, title, logo en sider) y limpieza del login.
+
+### Agregado
+
+- **Favicons IIEG** descargados del sitio oficial (`iieg.gob.mx`) y servidos desde `admin/public/`: `iieg-favicon-32.png`, `iieg-favicon-192.png`, `iieg-apple-touch-icon.png`, `iieg-logo.png`.
+- **`admin/index.html`** actualizado: title `"Mariachi - IIEG"` (antes `"CMS Portal - IIEG"`), `apple-mobile-web-app-title` `"Mariachi"` (antes `"CMS Portal"`), `theme-color` y `msapplication-TileColor` en purple `#5C2472` (antes blue `#3b82f6` genérico), links `<link rel="icon">` para 32×32 y 192×192 + `apple-touch-icon` 180×180.
+- **`admin/src/app/MainLayout.jsx`** — el brand del sider ahora muestra el isotipo IIEG (192×192 PNG) + texto "Mariachi" cuando está expandido, solo el isotipo cuando está colapsado. Antes solo mostraba texto `"Mariachi"` / `"MA"`.
+
+### Cambiado
+
+- **`admin/src/features/auth/pages/LoginPage.jsx`:**
+    - `minHeight: '100vh'` → `minHeight: '100dvh'` + `overscrollBehavior: 'none'`. En mobile el viewport real cambia cuando la barra del browser se oculta/muestra; con `100vh` el contenedor era más alto que la pantalla visible y el rubber-band del scroll permitía deslizar verticalmente. `dvh` se ajusta dinámicamente al viewport visible.
+    - Removido el `<Alert>` "Dev" con credenciales `admin/admin123`, `editor/editor123` (visible solo cuando `import.meta.env.DEV`). Ya no se necesita — el dev tiene la sesión persistida del browser. Imports `Alert` e `InfoCircleOutlined` también eliminados.
+    - URL del aviso de privacidad actualizada a la versión más reciente publicada por IIEG: `Aviso_de_Privacidad_Integral_IIEG_06_2025.pdf` (junio 2025) en lugar de `Aviso_Privacidad_Integral_IIEG_01_2025.pdf` (enero 2025).
+
+---
+
 ## [0.24.1] - 2026-04-24
 
 Fix de regresión arrastrada desde v0.21.0 cuando el admin se movió a servirse bajo `/mariachi/`.
