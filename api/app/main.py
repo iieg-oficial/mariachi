@@ -58,13 +58,9 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    # Routers accesibles para cualquier autenticado (incluido rol externo).
-    # auth: necesita ser alcanzable por externo para login/perfil/logout.
-    # formularios: el sieej tiene su propia gate require_project_access('sieej').
     app.include_router(auth.router, prefix=settings.admin_prefix)
     app.include_router(formularios.router, prefix=settings.admin_prefix)
 
-    # Routers admin-only del CMS: bloqueados para rol externo via require_staff.
     staff_dep = [Depends(require_staff)]
     app.include_router(users.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(projects.router, prefix=settings.admin_prefix, dependencies=staff_dep)
@@ -78,7 +74,6 @@ def create_app() -> FastAPI:
     app.include_router(geoserver.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(preview.admin_router, prefix=settings.admin_prefix, dependencies=staff_dep)
 
-    # Web prefix: rutas publicas (sin auth).
     app.include_router(preview.public_router, prefix=settings.web_prefix)
     app.include_router(public.router, prefix=settings.web_prefix)
     app.include_router(metrics_module.router)

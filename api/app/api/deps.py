@@ -78,7 +78,6 @@ def require_role(allowed_roles: list[str]):
 async def require_staff(
     current_user: Usuario = Depends(get_current_user),
 ) -> Usuario:
-    """Restringe a staff del IIEG (tetlamamakani o editora). Bloquea rol externo."""
     if current_user.role not in STAFF_ROLES:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

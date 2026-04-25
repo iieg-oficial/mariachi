@@ -20,7 +20,6 @@ export default function Login() {
         try {
             const data = await login(values.username, values.password);
 
-            // Rol externo no tiene panel admin: redirige a SIEEJ.
             if (data.user.role === 'externo') {
                 message.info('Cuenta externa. Te llevamos a SIEEJ.');
                 window.location.href = '/sieej/inicio-sesion';

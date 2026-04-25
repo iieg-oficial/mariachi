@@ -27,7 +27,6 @@ export default function ProtectedRoute({ children }) {
         return <Navigate to="/login" replace />;
     }
 
-    // Rol externo: no entra al admin CMS. Cierra sesion y manda al login publico.
     if (user && !STAFF_ROLES.includes(user.role)) {
         return (
             <div style={{
