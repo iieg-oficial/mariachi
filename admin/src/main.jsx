@@ -173,7 +173,7 @@ const router = createBrowserRouter([
             }
         ],
     },
-], { basename: '/administrador' });
+], { basename: '/mariachi' });
 
 createRoot(document.getElementById('root')).render(
     <AuthProvider>

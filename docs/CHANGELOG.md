@@ -13,6 +13,16 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.24.1] - 2026-04-24
+
+Fix de regresión arrastrada desde v0.21.0 cuando el admin se movió a servirse bajo `/mariachi/`.
+
+### Corregido
+
+- **`admin/src/main.jsx`** — `basename` del router actualizado de `/administrador` a `/mariachi`. El bundle se sirve bajo `/mariachi/` (vite `base`) pero el router seguía esperando `/administrador`, por lo que la URL real `/mariachi/...` no matcheaba ninguna ruta — todo caía a un 404 silencioso al refrescar en cualquier path. Solo funcionaba si la app entraba por el path raíz y los redirects internos cargaban el primer match. Síntoma en consola: `<Router basename="/administrador"> is not able to match the URL "/mariachi/..."`.
+
+---
+
 ## [0.24.0] - 2026-04-24
 
 Absorcion del backend de SIEEJ en mariachi como modulo `formularios`. El frontend de SIEEJ migra a su propio repositorio (`iieg-oficial/sieej`) y se sirve a traves de `mariachi-nginx` bajo `/sieej/`. El stub `formularios.py` que devolvia 501 se reemplaza por implementacion completa.
