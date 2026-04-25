@@ -267,7 +267,7 @@ export default function LayerEditPage() {
                             <Button onClick={handleSuggestSlug}>Sugerir desde label</Button>
                         </Space.Compact>
                     </Form.Item>
-                    <Form.Item label="Node type" name="nodeType">
+                    <Form.Item label="Tipo de nodo" name="nodeType">
                         <Select options={NODE_TYPE_OPTIONS} />
                     </Form.Item>
                     <Form.Item label="Tags de búsqueda (coma)" name="searchTags">

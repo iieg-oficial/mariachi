@@ -23,7 +23,7 @@ class UsuarioBase(BaseModel):
 
 class UsuarioCreate(UsuarioBase):
     password: str = Field(..., min_length=8)
-    role: Literal["tetlamamakani", "editora"]
+    role: Literal["tetlamamakani", "editora", "externo"]
     project_assignments: list["UserProjectAssignment"] | None = None
 
 
@@ -31,8 +31,12 @@ class UsuarioUpdate(BaseModel):
     username: str | None = Field(None, min_length=3, max_length=50)
     email: EmailStr | None = None
     name: str | None = Field(None, min_length=1, max_length=100)
-    role: Literal["tetlamamakani", "editora"] | None = None
+    role: Literal["tetlamamakani", "editora", "externo"] | None = None
     project_assignments: list["UserProjectAssignment"] | None = None
+
+
+class DependenciaSieejCreate(UsuarioBase):
+    pass
 
 
 class UsuarioResponse(UsuarioBase):
@@ -72,3 +76,8 @@ class LoginResponse(BaseModel):
 class TokenPayload(BaseModel):
     sub: str
     exp: int
+
+
+class DependenciaSieejResponse(BaseModel):
+    user: UsuarioResponse
+    temp_password: str

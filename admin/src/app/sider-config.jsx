@@ -10,6 +10,7 @@ import {
     ProjectOutlined,
     FormOutlined,
     OrderedListOutlined,
+    UserAddOutlined,
 } from '@ant-design/icons';
 
 export const PLATFORM_ITEMS = [
@@ -73,6 +74,13 @@ export const PROJECT_REGISTRY = {
                 path: '/sieej/formularios',
                 label: 'Formularios',
                 icon: <FormOutlined />,
+            },
+            {
+                key: '/sieej/agregar-dependencia',
+                path: '/sieej/agregar-dependencia',
+                label: 'Agregar dependencia',
+                icon: <UserAddOutlined />,
+                allowedGlobalRoles: ['tetlamamakani'],
             },
         ],
     },

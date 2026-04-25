@@ -37,6 +37,7 @@ import {
     UndoOutlined,
 } from '@ant-design/icons';
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
+import { labelForNodeType } from '@features/mapalab-layers/constants/nodeTypes';
 import useIsMobile from '@shared/hooks/useIsMobile';
 
 const { Content } = Layout;
@@ -100,7 +101,7 @@ function SortableRow({ item, onRemove, isMobile }) {
                 </Text>
                 <Space size={4} wrap>
                     <Tag color="blue" style={{ marginRight: 0, fontSize: 11 }}>{item.id}</Tag>
-                    {item.nodeType && <Tag style={{ marginRight: 0, fontSize: 11 }}>{item.nodeType}</Tag>}
+                    {item.nodeType && <Tag style={{ marginRight: 0, fontSize: 11 }}>{labelForNodeType(item.nodeType)}</Tag>}
                 </Space>
             </Space>
             <Button

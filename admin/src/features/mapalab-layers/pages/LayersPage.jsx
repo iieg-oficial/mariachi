@@ -26,6 +26,7 @@ import { useNavigate } from 'react-router';
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
 import { useAuth } from '@shared/contexts/useAuth';
 import BulkTagsDrawer from '@features/mapalab-layers/components/layersEditor/BulkTagsDrawer';
+import { labelForNodeType } from '@features/mapalab-layers/constants/nodeTypes';
 import useIsMobile from '@shared/hooks/useIsMobile';
 
 const { Title, Text, Paragraph } = Typography;
@@ -44,7 +45,7 @@ const renderTitle = (node) => {
     return (
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             <span style={{ opacity: disabled ? 0.5 : 1, wordBreak: 'break-word' }}>{title}</span>
-            <Tag color="default">{nodeType}</Tag>
+            <Tag color="default">{labelForNodeType(nodeType)}</Tag>
             {workspaceAlias && <Tag color="blue">{workspaceAlias}</Tag>}
             {geoserverLayer && <Text type="secondary" style={{ fontSize: 11 }}>{geoserverLayer}</Text>}
             {hiddenInMenu && <Tag color="orange">oculto</Tag>}
