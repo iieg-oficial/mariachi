@@ -13,6 +13,18 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.25.4] - 2026-04-25
+
+### Corregido
+
+- **`api/app/api/routes/layers.py`** — `GET /layers/initial-order` devolvía `500 Internal Server Error` (y CORS bloqueaba en browser) porque FastAPI matcheaba con `GET /layers/{layer_id}` (declarado antes), interpretando `initial-order` como un `layer_id`. La query a `mapalab.layers.id = 'initial-order'` además fallaba porque el modelo SQLAlchemy `Layer` ya pide la columna `slug` (parte del WIP DataEngine en `prod-migracion`) que no existe en la BD de dev. Fix: reordenar `GET /initial-order` ANTES de `GET /{layer_id}` para que matchee primero. Sin tocar el modelo `Layer` (sigue siendo trabajo de DataEngine en `prod-migracion`).
+
+### Cambiado
+
+- **Sider — color de selección:** `BRAND.purple` (`#5C2472` morado) → `#4a6494` (azul más claro, variante de `BRAND.numeralia` `#2e4372`). Mejor armonía con el azul institucional del sider; el morado destacaba demasiado contra el azul.
+
+---
+
 ## [0.25.3] - 2026-04-25
 
 Polish del login para alinearse pixel-a-pixel con SIEEJ. Continuación de v0.25.2.

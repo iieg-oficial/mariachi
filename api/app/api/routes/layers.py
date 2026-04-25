@@ -55,6 +55,14 @@ async def list_workspaces(
     return db.query(Workspace).order_by(Workspace.alias).all()
 
 
+@router.get('/initial-order', response_model=list[InitialOrderItem])
+async def list_initial_order(
+    db: Session = Depends(get_dataengine_db),
+    _admin: Usuario = Depends(_require_admin),
+):
+    return layer_service.list_initial_order(db)
+
+
 @router.get('/{layer_id}', response_model=LayerResponse)
 async def get_layer(
     layer_id: str,
@@ -184,14 +192,6 @@ async def bulk_update_tags(
     db.commit()
     notify_tree_changed()
     return {'updated': updated, 'not_found': not_found}
-
-
-@router.get('/initial-order', response_model=list[InitialOrderItem])
-async def list_initial_order(
-    db: Session = Depends(get_dataengine_db),
-    _admin: Usuario = Depends(_require_admin),
-):
-    return layer_service.list_initial_order(db)
 
 
 @router.patch('/initial-order')

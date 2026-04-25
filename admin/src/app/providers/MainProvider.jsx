@@ -27,7 +27,7 @@ export default function MainProvider() {
                     },
                     Menu: {
                         darkItemBg: BRAND.numeralia,
-                        darkItemSelectedBg: BRAND.purple,
+                        darkItemSelectedBg: '#4a6494',
                         darkSubMenuItemBg: '#25365b'
                     },
                     Button: {
