@@ -13,6 +13,25 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.25.10] - 2026-04-25
+
+### Cambiado
+
+- **Editor de capas (`LayerEditPage`) — campos en español + descripciones:**
+    - Todos los `Form.Item label` traducidos: "Label" → "Etiqueta visible", "Slug publico" → "Slug público", "Workspace" → "Workspace de GeoServer", "CQL filter" → "Filtro CQL", "WMS group" → "Grupo WMS", "Template" → "Plantilla", "Preview" → "Vista previa", etc.
+    - Todos los campos tienen `extra` con descripción explicando para qué sirven (no solo el slug). Mismo patrón en los 4 tabs.
+    - Tabs renombrados: "WMS" → "Servicio WMS", "InfoBox" → "Cuadro de información".
+    - Opciones del select de plantilla InfoBox capitalizadas y en español: "municipio" → "Municipio", "punto_municipio" → "Punto + municipio", "custom" → "Personalizado (JSON libre)", etc.
+    - Botón "Sugerir desde label" → "Sugerir" + Tooltip de antd con la descripción larga ("Genera un slug desde la etiqueta visible…").
+- **Aliases movido al tab "Identidad"** (debajo del campo Slug). Antes era un tab separado. Decisión: alias y slug son la misma feature conceptualmente (identidad de la capa); separarlos era confuso.
+- **Sider del editor colapsable:**
+    - Botón en esquina superior derecha del sider (LeftOutlined / MenuUnfoldOutlined). Estado persiste en `localStorage` (`mapalab.layerEditor.siderCollapsed`).
+    - Sider colapsado = 40px (solo el botón de toggle). Expandido = `siderWidth` con árbol completo y handle de resize.
+    - Default por viewport (sin preferencia previa en localStorage): `< 992px` colapsado, `≥ 992px` expandido. La preferencia explícita del user manda sobre el default.
+    - Transición suave 0.2s.
+
+---
+
 ## [0.25.9] - 2026-04-25
 
 ### Agregado
