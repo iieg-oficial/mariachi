@@ -13,6 +13,25 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.25.11] - 2026-04-25
+
+### Corregido
+
+- **Botón "Sugerir" del slug no llenaba el Input** — el `Form.Item name="slug"` envolvía un `Space.Compact` (no un control directo), entonces antd Form intentaba pasar `value`/`onChange` al `Space.Compact` que no es un control de input. El `setFieldValue('slug', ...)` actualizaba el form state pero no se reflejaba visualmente. Fix: Input directo como hijo del Form.Item, botón "Sugerir" como `addonAfter` con Tooltip.
+- Mensaje del handler `handleSuggestSlug`: warning ahora dice "Captura un nombre primero" (antes "Captura un label primero", desactualizado tras renombrar el label visible). Y agregado `message.success` siempre que la API responde OK (antes solo aparecía mensaje cuando había colisión, dando la impresión de que "no hace nada").
+
+### Cambiado
+
+- **`LayerAliasesSection` + Form.Item wrapper:**
+    - Label "Aliases (atajos opcionales)" → "**Alias** (atajos opcionales)" (en español es invariable).
+    - Descripción duplicada eliminada (queda solo la interna del componente). Antes el `Form.Item extra` y el `<Text>` interno decían lo mismo.
+    - Descripción interna actualizada a español pulido + acentos + ahora dice "nombre en URL" en lugar de "slug" (consistente con el rename del label en el commit anterior).
+    - Placeholder del input: `"esalud"` → `"ejemplo: esalud"`.
+    - Empty state del listado: `"Sin aliases. El slug canonico sigue funcionando."` → `"Sin alias. El nombre en URL canónico sigue funcionando."`.
+    - Mensajes de error internos: "los aliases" → "los alias".
+
+---
+
 ## [0.25.10] - 2026-04-25
 
 ### Cambiado

@@ -248,15 +248,15 @@ export default function LayerEditPage() {
     const handleSuggestSlug = async () => {
         const label = form.getFieldValue('label');
         if (!label) {
-            message.warning('Captura un label primero');
+            message.warning('Captura un nombre primero');
             return;
         }
         try {
             const { slug, available } = await suggestSlug(label);
             form.setFieldValue('slug', slug);
-            if (!available) {
-                message.info(`Slug sugerido (con sufijo, '${slug}') porque hubo colision`);
-            }
+            message.success(available
+                ? `Slug sugerido: '${slug}'`
+                : `Slug sugerido (con sufijo, '${slug}') porque ya existía uno con ese nombre`);
         } catch (err) {
             message.error(err?.response?.data?.detail || 'Error al sugerir slug');
         }
@@ -288,14 +288,23 @@ export default function LayerEditPage() {
                             { max: 60 },
                         ]}
                     >
-                        <Space.Compact style={{ width: '100%' }}>
-                            <Input placeholder="establecimientos-salud" />
-                            <Tooltip title="Genera un slug desde la etiqueta visible (lowercase, sin acentos, guiones por espacios). Valida que esté disponible; si ya existe agrega sufijo numérico.">
-                                <Button onClick={handleSuggestSlug}>Sugerir</Button>
-                            </Tooltip>
-                        </Space.Compact>
+                        <Input
+                            placeholder="establecimientos-salud"
+                            addonAfter={
+                                <Tooltip title="Genera un nombre en URL desde el nombre de la capa (lowercase, sin acentos, guiones por espacios). Valida que esté disponible; si ya existe agrega sufijo numérico.">
+                                    <Button
+                                        type="link"
+                                        size="small"
+                                        onClick={handleSuggestSlug}
+                                        style={{ padding: 0, height: 'auto' }}
+                                    >
+                                        Sugerir
+                                    </Button>
+                                </Tooltip>
+                            }
+                        />
                     </Form.Item>
-                    <Form.Item label="Aliases (atajos opcionales)" extra="Aliases cortos opcionales que también resuelven a esta capa via ?layer=<alias>. El slug canónico siempre funciona; los aliases son atajos memorizables (ejemplo: esalud → establecimientos-salud) o redirects para URLs viejas que cambiaron de slug.">
+                    <Form.Item label="Alias (atajos opcionales)">
                         <LayerAliasesSection
                             layerId={layerId}
                             listAliases={listLayerAliases}

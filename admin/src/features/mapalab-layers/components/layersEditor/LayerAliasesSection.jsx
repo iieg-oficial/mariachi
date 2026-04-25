@@ -15,7 +15,7 @@ export default function LayerAliasesSection({ layerId, listAliases, createAlias,
             const data = await listAliases(layerId);
             setAliases(data || []);
         } catch (err) {
-            message.error(err?.response?.data?.detail || 'No se pudieron cargar los aliases');
+            message.error(err?.response?.data?.detail || 'No se pudieron cargar los alias');
         } finally {
             setLoading(false);
         }
@@ -26,7 +26,7 @@ export default function LayerAliasesSection({ layerId, listAliases, createAlias,
         let cancelled = false;
         listAliases(layerId)
             .then((data) => { if (!cancelled) setAliases(data || []); })
-            .catch((err) => message.error(err?.response?.data?.detail || 'No se pudieron cargar los aliases'))
+            .catch((err) => message.error(err?.response?.data?.detail || 'No se pudieron cargar los alias'))
             .finally(() => { if (!cancelled) setLoading(false); });
         return () => { cancelled = true; };
     }, [layerId, listAliases]);
@@ -56,9 +56,10 @@ export default function LayerAliasesSection({ layerId, listAliases, createAlias,
     return (
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
             <Text type="secondary">
-                Aliases cortos opcionales que tambien resuelven a esta capa via{' '}
-                <code>?layer=&lt;alias&gt;</code>. El slug canonico siempre funciona; los aliases son atajos
-                memorizables (ejemplo: <code>esalud</code> -&gt; <code>establecimientos-salud</code>).
+                Atajos cortos opcionales que también resuelven a esta capa vía{' '}
+                <code>?layer=&lt;alias&gt;</code>. El nombre en URL canónico siempre funciona; los alias son
+                memorizables (ejemplo: <code>esalud</code> → <code>establecimientos-salud</code>) o sirven
+                como redirects para URLs viejas que cambiaron de nombre.
             </Text>
 
             <Form form={form} layout="inline" onFinish={handleAdd}>
@@ -70,7 +71,7 @@ export default function LayerAliasesSection({ layerId, listAliases, createAlias,
                         { max: 60 },
                     ]}
                 >
-                    <Input placeholder="esalud" style={{ width: 240 }} />
+                    <Input placeholder="ejemplo: esalud" style={{ width: 240 }} />
                 </Form.Item>
                 <Form.Item>
                     <Button type="primary" icon={<PlusOutlined />} htmlType="submit">
@@ -84,7 +85,7 @@ export default function LayerAliasesSection({ layerId, listAliases, createAlias,
                 bordered
                 loading={loading}
                 dataSource={aliases}
-                locale={{ emptyText: 'Sin aliases. El slug canonico sigue funcionando.' }}
+                locale={{ emptyText: 'Sin alias. El nombre en URL canónico sigue funcionando.' }}
                 renderItem={(item) => (
                     <List.Item
                         actions={[
