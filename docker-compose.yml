@@ -20,6 +20,10 @@ services:
       - "80"
     depends_on:
       - api
+    volumes:
+      # SIEEJ frontend (otro repo) construye su dist con `make build` y mariachi-nginx lo sirve en /sieej/.
+      # Ver ../SIEEJ/README.md y mariachi/docs/context.md.
+      - ${SIEEJ_DIST_PATH:-../SIEEJ/frontend/dist}:/usr/share/nginx/html/sieej:ro
     networks:
       - mariachi_network
       - iieg-network
