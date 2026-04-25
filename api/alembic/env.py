@@ -1,5 +1,4 @@
 from logging.config import fileConfig
-from pathlib import Path
 
 from sqlalchemy import engine_from_config, pool
 
@@ -13,26 +12,13 @@ if config.config_file_name is not None:
 
 settings = get_settings()
 
-db_target = context.get_x_argument(as_dictionary=True).get("db", "mariachi")
-
-if db_target == "mariachi":
-    from app.models import Base as target_base
-    target_url = settings.database_url
-    version_table = "alembic_version"
-elif db_target == "dataengine":
-    from app.core.database import DataEngineBase as target_base
-    if not settings.dataengine_database_url:
-        raise RuntimeError(
-            "DATAENGINE_DATABASE_URL no esta configurado. "
-            "Requerido para migraciones con -x db=dataengine."
-        )
-    target_url = settings.dataengine_database_url
-    version_table = "alembic_version_dataengine"
-    import app.models.layer  # noqa: F401 — carga modelos para autogenerate cuando existan
-else:
-    raise RuntimeError(
-        f"db_target invalido: '{db_target}'. Usar -x db=mariachi o -x db=dataengine."
-    )
+# Politica (ecosystem §7.3 v2, 2026-04-24): mariachi gestiona unicamente su
+# propio schema 'mariachi'. Las migraciones del schema 'mapalab' viven en
+# mapalab-dataengine/jobs/alembic/ y se aplican vía `make migrate` desde
+# ese repo. Si necesitas correrlas en dev local: cd ../mapalab-dataengine && make migrate
+from app.models import Base as target_base
+target_url = settings.database_url
+version_table = "alembic_version"
 
 target_metadata = target_base.metadata
 config.set_main_option("sqlalchemy.url", target_url)

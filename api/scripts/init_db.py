@@ -13,9 +13,9 @@ API_ROOT = Path(__file__).parent.parent
 
 
 def aplicar_migraciones():
-    print("Aplicando migraciones Alembic (branch mariachi)...")
+    print("Aplicando migraciones Alembic (schema mariachi)...")
     result = subprocess.run(
-        ["alembic", "-x", "db=mariachi", "upgrade", "mariachi@head"],
+        ["alembic", "upgrade", "head"],
         cwd=API_ROOT,
         check=False,
         capture_output=True,
@@ -24,23 +24,11 @@ def aplicar_migraciones():
     if result.returncode != 0:
         print(result.stdout)
         print(result.stderr, file=sys.stderr)
-        raise RuntimeError("Alembic upgrade (mariachi) fallo")
+        raise RuntimeError("Alembic upgrade fallo")
     print("✓ Migraciones mariachi aplicadas")
-
-    if os.getenv("DATAENGINE_DATABASE_URL"):
-        print("DATAENGINE_DATABASE_URL presente — aplicando migraciones dataengine...")
-        result = subprocess.run(
-            ["alembic", "-x", "db=dataengine", "upgrade", "dataengine@head"],
-            cwd=API_ROOT,
-            check=False,
-            capture_output=True,
-            text=True,
-        )
-        if result.returncode != 0:
-            print(result.stdout)
-            print(result.stderr, file=sys.stderr)
-            raise RuntimeError("Alembic upgrade (dataengine) fallo")
-        print("✓ Migraciones dataengine aplicadas")
+    print()
+    print("ℹ Las migraciones del schema mapalab.* viven en mapalab-dataengine.")
+    print("  Aplicalas desde alli con: cd ../mapalab-dataengine && make migrate")
 
 
 def crear_usuario_admin(db):
