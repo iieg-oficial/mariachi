@@ -20,6 +20,7 @@ from app.api.routes import (
     preview,
     projects,
     public,
+    sieej_admin,
     users,
 )
 from app.core.settings import get_settings
@@ -73,6 +74,7 @@ def create_app() -> FastAPI:
     app.include_router(layer_metadata.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(geoserver.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(preview.admin_router, prefix=settings.admin_prefix, dependencies=staff_dep)
+    app.include_router(sieej_admin.router, prefix=settings.admin_prefix, dependencies=staff_dep)
 
     app.include_router(preview.public_router, prefix=settings.web_prefix)
     app.include_router(public.router, prefix=settings.web_prefix)
