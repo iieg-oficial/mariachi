@@ -159,15 +159,18 @@ mariachi/
 │   │   │   ├── deps.py               # get_current_user, verify_csrf, require_role
 │   │   │   ├── rate_limit.py         # Sliding window en memoria
 │   │   │   └── routes/               # auth, users, pages, menu, media, borradores,
-│   │   │                             # layers, layer_metadata, geoserver, preview, public
+│   │   │                             # layers, layer_metadata, geoserver, preview, public,
+│   │   │                             # formularios/ (modulo sieej, ver docs/sieej.md)
 │   │   ├── core/
 │   │   │   ├── settings.py           # Pydantic settings + bifurcación por ENVIRONMENT
 │   │   │   ├── database.py           # engine principal + get_dataengine_db (lazy)
 │   │   │   └── security.py           # JWT + CSRF
-│   │   ├── models/                   # user, page, menu_item, media, borrador, layer*
-│   │   ├── schemas/                  # Pydantic request/response
+│   │   ├── models/                   # user, page, menu_item, media, borrador, layer*,
+│   │   │                             # sieej/ (schema sieej, 12 tablas)
+│   │   ├── schemas/                  # Pydantic request/response (incl. schemas/sieej/)
 │   │   └── services/                 # acervo, geoserver_client, layer_service,
-│   │                                 # mapalab_notifier, stats_templates
+│   │                                 # mapalab_notifier, stats_templates,
+│   │                                 # sieej/ (general, enlace, bases_datos)
 │   ├── alembic/
 │   │   ├── versions/mariachi/        # Migraciones de iieg_portal
 │   │   └── versions/dataengine/      # Migraciones del schema mapalab en DataEngine
@@ -239,3 +242,4 @@ En dev (`docker-compose.dev.yml`) no existe `nginx` — los frontends corren dir
 - [ALEMBIC_MULTI_ENV](./ALEMBIC_MULTI_ENV.md) — migraciones multi-BD
 - [COOKIES_CSRF](./COOKIES_CSRF.md) — modelo de seguridad
 - [DRAFTS](./DRAFTS.md) — borradores y revision queue
+- [sieej](./sieej.md) — modulo SIEEJ: schema, endpoints `/formularios/*`, integracion con frontend `iieg-oficial/sieej`

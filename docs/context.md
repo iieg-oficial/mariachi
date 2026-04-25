@@ -2,21 +2,22 @@
 
 > Documento de referencia completo. Leer este archivo proporciona contexto del monorepo sin explorar el codebase.
 
-**Versión:** 0.21.0 · **Última actualización:** 2026-04-24
+**Versión:** 0.24.0 · **Última actualización:** 2026-04-24
 
 ---
 
 ## Qué contiene este repositorio
 
-Este monorepo aloja **dos productos distintos** que comparten backend e infraestructura:
+Este monorepo aloja el panel de administración del ecosistema IIEG y el backend compartido por varios productos:
 
 | Producto | Qué es | Carpeta | Ruta publica | Estado |
 |---|---|---|---|---|
 | **Mariachi** | Panel de administración del ecosistema IIEG (Ant Design) | `admin/` | `/mariachi/` | Activo |
+| **SIEEJ (frontend)** | Captura de formularios para dependencias de gobierno (otro repo: `iieg-oficial/sieej`) | servido como volumen en `mariachi-nginx` | `/sieej/` | Activo |
 
 El **Portal público** (sitio web del IIEG) se separó a su propio repo `iieg/portal/` (ver README raíz). Consume `/api/portal/*` de este `api`.
 
-Ambos consumen el mismo backend FastAPI en `api/` pero con prefijos de URL distintos.
+Mariachi y SIEEJ consumen el mismo backend FastAPI en `api/` con el mismo prefijo `admin_prefix` (`/api/administrador`). Mariachi usa los routers `auth`, `users`, `pages`, `menu`, `media`, `borradores`, `layers`, etc. SIEEJ usa exclusivamente `/api/administrador/formularios/*` (ver `docs/sieej.md`).
 
 **Origen del nombre:** la carpeta del repo se llamaba `portal/` originalmente. En 2026-04-22 se renombro a `mariachi/` para reflejar que el CMS es lo único que se sigue desarrollando. El portal publico sigue alli pero congelado.
 
@@ -441,6 +442,7 @@ Detalle completo en `docs/CHANGELOG.md` §[0.13.0]. Resumen:
 - `docs/CONVENTIONS_FRONTEND.md` — convenciones web (Tailwind)
 - `docs/COOKIES_CSRF.md` — modelo de seguridad
 - `docs/DRAFTS.md` — sistema de borradores y revision queue
+- `docs/sieej.md` — modulo SIEEJ: schema dedicado, endpoints `/formularios/*`, integracion con `iieg-oficial/sieej`
 - `docs/DATAENGINE_CREDENTIALS.md` — requerimientos para credenciales DataEngine
 - `docs/ALEMBIC_MULTI_ENV.md` — migraciones en dos BDs (`-x db=mariachi|dataengine`)
 - `scripts/rename-github-repo.sh` — actualiza remote local tras rename en GitHub

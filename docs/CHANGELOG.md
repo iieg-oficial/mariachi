@@ -13,6 +13,34 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.24.0] - 2026-04-24
+
+Absorcion del backend de SIEEJ en mariachi como modulo `formularios`. El frontend de SIEEJ migra a su propio repositorio (`iieg-oficial/sieej`) y se sirve a traves de `mariachi-nginx` bajo `/sieej/`. El stub `formularios.py` que devolvia 501 se reemplaza por implementacion completa.
+
+### Agregado
+
+- **Schema dedicado `sieej`** en BD `iieg_portal` con 12 tablas: 8 catalogos (unidad_admin, categoria_datos, herramientas_gestion, calidad_datos, periodicidad, objetivo_uso, usuarios_datos, ejes_estrategicos), 3 entidades (general, enlace, bases_datos) y 1 relacion N:M (bd_ejes_estrategicos). Migration `e7f8a9b0c1d2_init_sieej_schema.py` aplica DDL y siembra catalogos desde `api/data/sieej/*.json`. Tambien siembra `MediaBucket(acervo_bucket='sieej-diccionarios')` para subida de diccionarios.
+- **Modelos SQLAlchemy 2.0** en `api/app/models/sieej/` con `__table_args__={"schema":"sieej"}`. FKs cross-schema a `public.usuarios` con `ON DELETE CASCADE`.
+- **Schemas Pydantic** en `api/app/schemas/sieej/`: General, Enlace, BasesDatos (Create/Update/Response) y `CatalogosResponse` (bundle de las 8 colecciones para reducir roundtrips desde el frontend).
+- **Services** en `api/app/services/sieej/`: `GeneralService`, `EnlaceService`, `BasesDatosService`. `BasesDatosService.upload_diccionario(...)` es async y sube via `AcervoClient.for_bucket(bucket)` al MediaBucket dedicado, guardando la URL publica en `bases_datos.ruta_diccionario`.
+- **Routes `/formularios/*`** en `api/app/api/routes/formularios/` (subpaquete con cuatro subrouters): `catalogos`, `general`, `enlaces`, `bases_datos`. El router padre se monta con `Depends(require_project_access('sieej'))` y las mutaciones requieren `verify_csrf`.
+- **mariachi-nginx sirve frontend SIEEJ** en `/sieej/`: el `dist/` del repo `iieg-oficial/sieej` se monta como volumen read-only via `${SIEEJ_DIST_PATH:-../SIEEJ/frontend/dist}` en el `docker-compose.yml`. La directiva `location /sieej` en `nginx/conf.d/mariachi.conf` aplica `try_files` con fallback a `/sieej/index.html` para SPA routing.
+- **Login del admin** rediseñado con el mockup oficial del IIEG (heredado de SIEEJ): layout AntD a dos columnas, barra de gradiente institucional, copy "Hola / Ingresa tus datos para iniciar sesión", color primary purple `#5C2472` y panel derecho con logo IIEG sobre gradiente. Conserva la logica de `useAuth()` sin cambios.
+- **Documentacion** nueva en `docs/sieej.md` con detalles del modulo (modelo de datos, endpoints, estructura del codigo, integracion con Acervo y RBAC).
+
+### Cambiado
+
+- `api/app/api/routes/formularios.py` (stub 501) → reemplazado por subpaquete `formularios/`.
+- `docs/context.md` y `docs/ARCHITECTURE.md` actualizados para reflejar SIEEJ como segundo producto del monorepo y el routing `/sieej/` en mariachi-nginx.
+
+### Notas
+
+- Una dependencia de gobierno = `Usuario(role='editora')` + `UserProject(project=sieej, role='editor')`. El admin global (`role='tetlamamakani'`) tiene bypass.
+- SIEEJ no toca DataEngine. Cualquier cambio futuro a DataEngine va en rama dedicada `prod-migracion` con `alembic -x db=dataengine upgrade head`.
+- El gateway-hub no requiere upstream propio para SIEEJ; usa `portal` (= mariachi-nginx).
+
+---
+
 ## [0.23.0] - 2026-04-24
 
 Configuración de capas iniciales en MapaLab desde el admin: la tabla `mapalab.initial_layer_order` y el endpoint PATCH ya existían pero no había UI; solo se podía mantener vía SQL directo.
