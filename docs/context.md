@@ -443,6 +443,7 @@ Detalle completo en `docs/CHANGELOG.md` §[0.13.0]. Resumen:
 - `docs/COOKIES_CSRF.md` — modelo de seguridad
 - `docs/DRAFTS.md` — sistema de borradores y revision queue
 - `docs/sieej.md` — modulo SIEEJ: schema dedicado, endpoints `/formularios/*`, integracion con `iieg-oficial/sieej`
+- `docs/ROLES.md` — matriz de roles globales (tetlamamakani, editora, externo) y autorizacion por proyecto via UserProject
 - `docs/DATAENGINE_CREDENTIALS.md` — requerimientos para credenciales DataEngine
 - `docs/ALEMBIC_MULTI_ENV.md` — migraciones en dos BDs (`-x db=mariachi|dataengine`)
 - `scripts/rename-github-repo.sh` — actualiza remote local tras rename en GitHub

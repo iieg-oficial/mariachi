@@ -13,6 +13,41 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.25.0] - 2026-04-25
+
+Tercer rol global `externo` para separar usuarios del staff IIEG (admin CMS) de usuarios de productos publicos autenticados (SIEEJ hoy, MapaLab autenticado a futuro). Antes solo existian `tetlamamakani` y `editora`, lo que obligaba a otorgar `editora` a dependencias externas y abria un escalado de privilegios al admin CMS completo.
+
+### Agregado
+
+- **Rol `externo`** en el ENUM `user_roles`. Migration alembic `f1a2b3c4d5e6_add_role_externo.py` (rama mariachi) aplica `ALTER TYPE user_roles ADD VALUE IF NOT EXISTS 'externo'`. El acceso a productos sigue mediado por `UserProject(project_id, project_role)`.
+- **Dependency `require_staff`** en `api/app/api/deps.py` (constante `STAFF_ROLES = {'tetlamamakani', 'editora'}`). Devuelve 403 si la cuenta autenticada es `externo`.
+- **Aplicacion del guard** a nivel de `include_router` en `api/app/main.py`: 11 routers admin-only quedan bloqueados para externo (users, projects, media_buckets, pages, menu, media, borradores, layers, layer_metadata, geoserver, preview.admin_router). Los routers de auth, formularios y los publicos no llevan el guard.
+- **Frontend admin**: `ProtectedRoute` muestra pantalla 403 con boton "Ir a SIEEJ" cuando la sesion es de un externo. `LoginPage` redirige a `/sieej/inicio-sesion` automaticamente si la cuenta autenticada es externa.
+- **Documentacion** en `docs/ROLES.md`: matriz de roles, dependencies disponibles, flujo de onboarding de externos (con SQL de ejemplo), casos de uso planeados (SIEEJ, MapaLab autenticado), tabla de validacion smoke.
+
+### Cambiado
+
+- `docs/sieej.md`: seccion de auth/RBAC actualizada para reflejar que las dependencias usan `externo` (no `editora`) y referenciar `docs/ROLES.md`.
+- `docs/context.md` y `docs/ARCHITECTURE.md`: enlace a `docs/ROLES.md` en sus indices.
+
+### Validacion en dev
+
+Smoke con un usuario `externo_test` (role='externo' + UserProject sieej editor):
+
+- `POST /api/administrador/autenticacion/iniciar-sesion`: 200, devuelve csrf_token y user con role='externo'.
+- `GET /api/administrador/usuarios`: 403.
+- `GET /api/administrador/paginas`: 403.
+- `GET /api/administrador/formularios/catalogos`: 200 (8 colecciones con su seed completo).
+- `GET /api/administrador/autenticacion/perfil`: 200.
+
+### Notas
+
+- La migration usa `op.execute("ALTER TYPE ... ADD VALUE IF NOT EXISTS")`. Postgres 12+ permite esta operacion dentro de transaccion (con la restriccion de no usar el nuevo valor en la misma tx, lo cual no aplica aqui).
+- Downgrade no implementado: Postgres no permite eliminar valores de un enum sin recrear el tipo. Si se necesita revertir, hay que reasignar usuarios y migrar columnas a un tipo nuevo.
+- El frontend SIEEJ no requiere cambios: ya valida que `/perfil` devuelva 200 y que `/formularios/*` no devuelva 403, sin distinguir rol.
+
+---
+
 ## [0.24.4] - 2026-04-24
 
 ### Cambiado
