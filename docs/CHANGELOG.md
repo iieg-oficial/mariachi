@@ -13,6 +13,20 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.25.2] - 2026-04-25
+
+Login del admin homologado con el de SIEEJ para consistencia visual entre productos del ecosistema IIEG.
+
+### Cambiado
+
+- **Background del login:** color sólido morado → `login-background.svg` copiado de `SIEEJ/frontend/src/assets/svg/img_back.svg` (servido desde `admin/public/`). Cubre todo el viewport.
+- **Layout del card:** quitada la división interna con `borderLeft` entre columnas. Ahora es un único card blanco con padding 40 y `gutter={40}` entre cols (mismo patrón que SIEEJ).
+- **Columna derecha:** ahora muestra `isotipo IIEG-favicon-192 + texto "Mariachi"` (estilo del sider) arriba + logo IIEG abajo. Antes solo logo IIEG + Jalisco.
+- **Logo Jalisco + aviso de privacidad** salieron del card y quedaron debajo, centrados sobre el background SVG (igual que SIEEJ). Aviso en blanco subrayado bold de 10px.
+- Removida la barra gradient azul/morado/naranja que estaba arriba del título "Hola" — el SIEEJ no la tiene.
+
+---
+
 ## [0.25.1] - 2026-04-25
 
 Limpieza de warnings react-hooks 7 — parte A (mecánicos, riesgo cero). De 43 warnings → 24 (los 24 restantes son `set-state-in-effect`, parte B, pendiente). Plus actualización de metadata de `pyproject.toml`.

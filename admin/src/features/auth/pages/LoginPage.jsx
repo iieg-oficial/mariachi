@@ -51,7 +51,7 @@ export default function Login() {
                 minHeight: '100dvh',
                 boxSizing: 'border-box',
                 padding: isMobile ? token.paddingLG : token.paddingXL,
-                background: BRAND.purple,
+                background: `url(${import.meta.env.BASE_URL}login-background.svg) center / cover no-repeat`,
                 overscrollBehavior: 'none',
             }}
         >
@@ -60,33 +60,15 @@ export default function Login() {
                     width: '100%',
                     maxWidth: 1088,
                     background: token.colorBgContainer,
-                    borderRadius: token.borderRadiusLG,
-                    border: `1px solid ${token.colorBorderSecondary}`,
-                    boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
-                    overflow: 'hidden',
+                    borderRadius: 16,
+                    boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
+                    padding: isMobile ? token.paddingLG : 40,
                 }}
             >
-                <Row>
+                <Row gutter={isMobile ? 0 : 40} align="middle">
                     <Col xs={24} md={12}>
-                        <Flex
-                            vertical
-                            justify="center"
-                            style={{
-                                padding: isMobile ? token.paddingLG : 56,
-                                minHeight: 480,
-                            }}
-                        >
+                        <Flex vertical justify="center" style={{ minHeight: isMobile ? 'auto' : 380 }}>
                             <Flex vertical gap={token.marginXS} style={{ marginBottom: token.marginXL }}>
-                                <div
-                                    aria-hidden
-                                    style={{
-                                        width: 40,
-                                        height: 4,
-                                        borderRadius: 2,
-                                        background: `linear-gradient(90deg, ${BRAND.numeralia}, ${BRAND.purple}, ${BRAND.orange})`,
-                                        marginBottom: token.marginSM,
-                                    }}
-                                />
                                 <Title level={2} style={{ margin: 0, color: BRAND.purple, fontWeight: 700 }}>
                                     Hola
                                 </Title>
@@ -143,27 +125,21 @@ export default function Login() {
 
                     {!isMobile && (
                         <Col xs={0} md={12}>
-                            <Flex
-                                vertical
-                                align="center"
-                                justify="center"
-                                style={{
-                                    padding: 56,
-                                    minHeight: 480,
-                                    background: token.colorBgContainer,
-                                    borderLeft: `1px solid ${token.colorBorderSecondary}`,
-                                    height: '100%',
-                                }}
-                            >
+                            <Flex vertical align="center" justify="center" gap={token.marginLG} style={{ minHeight: 380 }}>
+                                <Flex align="center" gap={12}>
+                                    <img
+                                        src={`${import.meta.env.BASE_URL}iieg-favicon-192.png`}
+                                        alt="Mariachi"
+                                        style={{ height: 56, width: 'auto' }}
+                                    />
+                                    <Title level={1} style={{ margin: 0, color: BRAND.numeralia, fontWeight: 700, letterSpacing: 1 }}>
+                                        Mariachi
+                                    </Title>
+                                </Flex>
                                 <img
                                     src={`${import.meta.env.BASE_URL}iieg-logo.png`}
                                     alt="IIEG"
-                                    style={{ maxWidth: 280, width: '100%', height: 'auto' }}
-                                />
-                                <img
-                                    src={`${import.meta.env.BASE_URL}jalisco-logo.svg`}
-                                    alt="Gobierno de Jalisco"
-                                    style={{ maxWidth: 200, width: '100%', height: 'auto', marginTop: token.marginXL }}
+                                    style={{ maxWidth: 240, width: '100%', height: 'auto' }}
                                 />
                             </Flex>
                         </Col>
@@ -171,18 +147,26 @@ export default function Login() {
                 </Row>
             </div>
 
-            <TypoLink
-                href="https://iieg.gob.mx/ns/wp-content/uploads/2025/06/Aviso_de_Privacidad_Integral_IIEG_06_2025.pdf"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{
-                    marginTop: token.marginLG,
-                    fontSize: 12,
-                    color: '#fff',
-                }}
-            >
-                Aviso de privacidad
-            </TypoLink>
+            <Flex vertical align="center" gap={token.marginSM} style={{ marginTop: token.marginXL }}>
+                <img
+                    src={`${import.meta.env.BASE_URL}jalisco-logo.svg`}
+                    alt="Gobierno de Jalisco"
+                    style={{ height: 52, width: 'auto' }}
+                />
+                <TypoLink
+                    href="https://iieg.gob.mx/ns/wp-content/uploads/2025/06/Aviso_de_Privacidad_Integral_IIEG_06_2025.pdf"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                        fontSize: 10,
+                        color: '#fff',
+                        textDecoration: 'underline',
+                        fontWeight: 700,
+                    }}
+                >
+                    Aviso de privacidad
+                </TypoLink>
+            </Flex>
         </Flex>
     );
 }
