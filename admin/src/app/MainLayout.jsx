@@ -8,9 +8,9 @@ import {
     LockOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router';
-import { useAuth } from '@shared/contexts/AuthContext';
+import { useAuth } from '@shared/contexts/useAuth';
 import api from '@shared/services/api';
-import { BRAND } from '@app/providers/MainProvider';
+import { BRAND } from '@app/providers/brand';
 import { buildSiderItems, defaultOpenKeyForPath } from '@app/sider-config';
 
 const { Header, Sider, Content } = Layout;

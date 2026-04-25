@@ -87,4 +87,10 @@ export default [
             'max-lines': 'off',
         },
     },
+    {
+        files: ['src/main.jsx'],
+        rules: {
+            'react-refresh/only-export-components': 'off',
+        },
+    },
 ];

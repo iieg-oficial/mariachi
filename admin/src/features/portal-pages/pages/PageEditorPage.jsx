@@ -6,7 +6,7 @@ import {
     SettingOutlined, CodeOutlined, CloudOutlined, EyeOutlined, SendOutlined
 } from '@ant-design/icons';
 import { usePageDraft } from '@features/portal-pages/hooks/usePageDraft';
-import { useAuth } from '@shared/contexts/AuthContext';
+import { useAuth } from '@shared/contexts/useAuth';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import { BLOCK_CONFIG, BLOCK_TYPES } from '@features/portal-pages/constants/pageConstants';
 import { getBlockComponent } from '@features/portal-pages/components/pageComponents';

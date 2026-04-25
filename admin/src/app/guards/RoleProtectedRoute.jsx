@@ -1,6 +1,6 @@
 import { Navigate } from 'react-router';
 import { Result, Button } from 'antd';
-import { useAuth } from '@shared/contexts/AuthContext';
+import { useAuth } from '@shared/contexts/useAuth';
 import { useNavigate } from 'react-router';
 
 export default function RoleProtectedRoute({ children, allowedRoles = [] }) {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { message } from 'antd';
 import api from '@shared/services/api';
@@ -28,16 +28,7 @@ export const usePageDraft = (pageId, { reviewMode = false, borradorId = null } =
 
     useEffect(() => {
         if (pageId) loadPage();
-    }, [pageId]);
-
-    useEffect(() => {
-        if (!draftSaveEnabled.current || !pageId || reviewMode) return;
-
-        if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-        saveTimerRef.current = setTimeout(() => saveDraft(), 1500);
-
-        return () => clearTimeout(saveTimerRef.current);
-    }, [page]);
+    }, [pageId, loadPage]);
 
     useEffect(() => {
         if (!pageId) return;
@@ -58,12 +49,12 @@ export const usePageDraft = (pageId, { reviewMode = false, borradorId = null } =
         return () => clearInterval(presenceIntervalRef.current);
     }, [pageId]);
 
-    async function loadPage() {
+    const loadPage = useCallback(async () => {
         setLoading(true);
         draftSaveEnabled.current = false;
         try {
             const response = await api.get(`/paginas/${pageId}`);
-            const pageData = response.data || createEmptyPage();
+            const pageData = response.data || { id: pageId, menuItemId: pageId, title: '', sections: [], seo: { metaTitle: '', metaDescription: '' } };
 
             if (pageData.sections?.length > 0 && pageData.sections[0].columns) {
                 pageData.sections = [];
@@ -103,17 +94,20 @@ export const usePageDraft = (pageId, { reviewMode = false, borradorId = null } =
             }
         } catch (error) {
             console.error('Error loading page:', error);
-            const emptyPage = createEmptyPage();
+            const emptyPage = { id: pageId, menuItemId: pageId, title: '', sections: [], seo: { metaTitle: '', metaDescription: '' } };
             setOriginalPage(emptyPage);
             setPage(emptyPage);
         } finally {
             setLoading(false);
         }
-    }
+    }, [pageId, reviewMode, borradorId]);
 
-    async function saveDraft(pageData) {
+    const pageRef = useRef(page);
+    useEffect(() => { pageRef.current = page; });
+
+    const saveDraft = useCallback(async (pageData) => {
         if (reviewMode) return;
-        const data = pageData || page;
+        const data = pageData || pageRef.current;
         if (!data || !pageId) return;
         setSaving(true);
         try {
@@ -126,7 +120,16 @@ export const usePageDraft = (pageId, { reviewMode = false, borradorId = null } =
         } catch { /* fallo silencioso */ } finally {
             setSaving(false);
         }
-    }
+    }, [pageId, reviewMode]);
+
+    useEffect(() => {
+        if (!draftSaveEnabled.current || !pageId || reviewMode) return;
+
+        if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+        saveTimerRef.current = setTimeout(() => saveDraft(), 1500);
+
+        return () => clearTimeout(saveTimerRef.current);
+    }, [page, pageId, reviewMode, saveDraft]);
 
     const deleteDraft = async () => {
         try {
@@ -138,14 +141,6 @@ export const usePageDraft = (pageId, { reviewMode = false, borradorId = null } =
             setHasDraft(false);
         } catch { /* silencioso si no existe */ }
     };
-
-    const createEmptyPage = () => ({
-        id: pageId,
-        menuItemId: pageId,
-        title: '',
-        sections: [],
-        seo: { metaTitle: '', metaDescription: '' }
-    });
 
     const addBlock = (blockType) => {
         const config = BLOCK_CONFIG[blockType];

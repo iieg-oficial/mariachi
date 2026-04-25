@@ -24,7 +24,7 @@ import {
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router';
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
-import { useAuth } from '@shared/contexts/AuthContext';
+import { useAuth } from '@shared/contexts/useAuth';
 import BulkTagsDrawer from '@features/mapalab-layers/components/layersEditor/BulkTagsDrawer';
 import useIsMobile from '@shared/hooks/useIsMobile';
 

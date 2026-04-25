@@ -1,12 +1,7 @@
 import { Outlet } from 'react-router';
 import { ConfigProvider, theme, App as AntApp } from 'antd';
 import esES from 'antd/locale/es_ES';
-
-export const BRAND = {
-    numeralia: '#2e4372',
-    purple: '#5C2472',
-    orange: '#FF8300'
-};
+import { BRAND } from '@app/providers/brand';
 
 export default function MainProvider() {
     return (

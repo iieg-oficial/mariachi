@@ -1,7 +1,6 @@
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import fontService from '@features/portal-pages/hooks/fontService';
-
-const FontConfigContext = createContext();
+import { FontConfigContext } from '@features/portal-pages/components/useFontConfig';
 
 export const FontConfigProvider = ({ children }) => {
     const [fontFamilies, setFontFamilies] = useState([]);
@@ -9,7 +8,6 @@ export const FontConfigProvider = ({ children }) => {
 
     const loadFonts = useCallback(async () => {
         try {
-            setLoading(true);
             const families = await fontService.getFontFamilies();
             setFontFamilies(families);
         } catch (error) {
@@ -20,8 +18,13 @@ export const FontConfigProvider = ({ children }) => {
     }, []);
 
     useEffect(() => {
-        loadFonts();
-    }, [loadFonts]);
+        let cancelled = false;
+        fontService.getFontFamilies()
+            .then((families) => { if (!cancelled) setFontFamilies(families); })
+            .catch((error) => console.error('Error loading fonts:', error))
+            .finally(() => { if (!cancelled) setLoading(false); });
+        return () => { cancelled = true; };
+    }, []);
 
     const getWeightsForFamily = (familyName) => {
         const family = fontFamilies.find(f => f.family === familyName);
@@ -48,13 +51,3 @@ export const FontConfigProvider = ({ children }) => {
         </FontConfigContext.Provider>
     );
 };
-
-export const useFontConfig = () => {
-    const context = useContext(FontConfigContext);
-    if (!context) {
-        throw new Error('useFontConfig must be used within FontConfigProvider');
-    }
-    return context;
-};
-
-export default FontConfigContext;

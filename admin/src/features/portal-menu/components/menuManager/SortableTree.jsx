@@ -17,6 +17,24 @@ import {
 import { message } from 'antd';
 import SortableTreeItem from './SortableTreeItem';
 
+const flattenTree = (items, parentId = null, level = 1) => {
+    const result = [];
+    const children = items
+        .filter(item => item.parentId === parentId)
+        .sort((a, b) => a.order - b.order);
+
+    for (const item of children) {
+        const itemChildren = items.filter(i => i.parentId === item.id);
+        result.push({
+            ...item,
+            level,
+            childCount: itemChildren.length
+        });
+        result.push(...flattenTree(items, item.id, level + 1));
+    }
+    return result;
+};
+
 export default function SortableTree({
     items,
     originalItems,
@@ -37,24 +55,6 @@ export default function SortableTree({
             coordinateGetter: sortableKeyboardCoordinates
         })
     );
-
-    const flattenTree = (items, parentId = null, level = 1) => {
-        const result = [];
-        const children = items
-            .filter(item => item.parentId === parentId)
-            .sort((a, b) => a.order - b.order);
-
-        for (const item of children) {
-            const itemChildren = items.filter(i => i.parentId === item.id);
-            result.push({
-                ...item,
-                level,
-                childCount: itemChildren.length
-            });
-            result.push(...flattenTree(items, item.id, level + 1));
-        }
-        return result;
-    };
 
     const flatItems = useMemo(() => flattenTree(items), [items]);
     const itemIds = useMemo(() => flatItems.map(item => item.id), [flatItems]);

@@ -1,8 +1,8 @@
 [project]
 name = "mariachi-api"
-version = "0.25.0"
-description = "FastAPI backend for CMS (mariachi) and portal frontends."
-authors = [{name = "IIEG", email = "dev@iieg.gob.mx"}]
+version = "0.25.1"
+description = "Mariachi — backend API del ecosistema IIEG (admin, MapaLab, SIEEJ)."
+authors = [{name = "Edgar Alejandro Villarreal Padilla", email = "edgar.villarreal@iieg.gob.mx"}]
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.111,<0.113",

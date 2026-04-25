@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Button, Form, Input, List, Popconfirm, Space, Tag, Typography, message } from 'antd';
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 
@@ -6,12 +6,11 @@ const { Text } = Typography;
 
 export default function LayerAliasesSection({ layerId, listAliases, createAlias, deleteAlias }) {
     const [aliases, setAliases] = useState([]);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [form] = Form.useForm();
 
-    const reload = async () => {
+    const reload = useCallback(async () => {
         if (!layerId) return;
-        setLoading(true);
         try {
             const data = await listAliases(layerId);
             setAliases(data || []);
@@ -20,11 +19,17 @@ export default function LayerAliasesSection({ layerId, listAliases, createAlias,
         } finally {
             setLoading(false);
         }
-    };
+    }, [layerId, listAliases]);
 
     useEffect(() => {
-        reload();
-    }, [layerId]);
+        if (!layerId) return;
+        let cancelled = false;
+        listAliases(layerId)
+            .then((data) => { if (!cancelled) setAliases(data || []); })
+            .catch((err) => message.error(err?.response?.data?.detail || 'No se pudieron cargar los aliases'))
+            .finally(() => { if (!cancelled) setLoading(false); });
+        return () => { cancelled = true; };
+    }, [layerId, listAliases]);
 
     const handleAdd = async () => {
         const values = await form.validateFields();

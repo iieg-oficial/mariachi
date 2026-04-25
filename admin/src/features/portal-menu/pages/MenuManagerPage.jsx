@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { Card, Alert, Button, Modal, Input } from 'antd';
 import useIsMobile from '@shared/hooks/useIsMobile';
-import { useAuth } from '@shared/contexts/AuthContext';
+import { useAuth } from '@shared/contexts/useAuth';
 import { useMenuDraft } from '@features/portal-menu/hooks/useMenuDraft';
 import { useMenuIcons } from '@features/portal-menu/hooks/useMenuIcons';
 import { useMenuItemModal } from '@features/portal-menu/hooks/useMenuItemModal';

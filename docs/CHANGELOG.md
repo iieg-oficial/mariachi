@@ -13,6 +13,31 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.25.1] - 2026-04-25
+
+Limpieza de warnings react-hooks 7 — parte A (mecánicos, riesgo cero). De 43 warnings → 24 (los 24 restantes son `set-state-in-effect`, parte B, pendiente). Plus actualización de metadata de `pyproject.toml`.
+
+### Cambiado
+
+- **`api/pyproject.toml`** — `authors` corregido a `Edgar Alejandro Villarreal Padilla / edgar.villarreal@iieg.gob.mx`. `description` actualizada a `"Mariachi — backend API del ecosistema IIEG (admin, MapaLab, SIEEJ)."` (antes decía "FastAPI backend for CMS (mariachi) and portal frontends." — el portal vive en otro repo desde 0.21.x y SIEEJ/MapaLab no son CMS).
+- **`react-refresh/only-export-components` (13 warnings → 0):**
+    - `admin/src/main.jsx` — per-file ignore en `eslint.config.js` (entry point no participa en HMR; los `lazy()` y helpers como `withSuspense` flagean falso positivo).
+    - `BRAND` extraído de `MainProvider.jsx` a nuevo `admin/src/app/providers/brand.js`. Imports actualizados en `MainLayout.jsx` y `LoginPage.jsx`.
+    - `useAuth` y `AuthContext` extraídos de `AuthContext.jsx` a nuevo `admin/src/shared/contexts/useAuth.js`. `AuthContext.jsx` ahora solo exporta `AuthProvider`. Imports actualizados en 9 consumidores via `sed`.
+    - `useFontConfig` y `FontConfigContext` extraídos de `FontConfigContext.jsx` a nuevo `useFontConfig.js`. Import actualizado en `TextStyleModal.jsx`.
+- **`react-hooks/exhaustive-deps` (5 warnings → 0):**
+    - `LayerAliasesSection.jsx` — `reload` wrappeada en `useCallback([layerId, listAliases])`. El `useEffect` inlinea el fetch directamente para evitar también `set-state-in-effect`.
+    - `SortableTree.jsx` — `flattenTree` (función pura) extraída a module scope.
+    - `SEOAnalyzer.jsx` — `extractAllText`, `analyzeKeywordDensity`, `analyzeContent`, `analyzeReadability` movidas a module scope (todas puras). `performAnalysis` wrappeada en `useCallback([page, seo])` y agregada a las deps del `useEffect`. `setAnalysis(prev => ...)` intermedio innecesario removido; `keywords: analysis.keywords` (siempre vacío) reemplazado por `keywords: {}`.
+    - `usePageDraft.js` — `loadPage` y `saveDraft` convertidas de `async function` a `useCallback`. `saveDraft` lee `page` via `useRef` (`pageRef`) en vez de closure para no recrearse en cada cambio. `createEmptyPage` (helper trivial) inlinada. Reordenado el `useEffect` de autosave para que `saveDraft` esté declarada antes del effect que la referencia.
+- **`react-hooks/immutability` (1 warning → 0):** `SEOAnalyzer.jsx` — helpers ahora declarados antes del `useEffect` que los llama.
+
+### Pendiente (parte B)
+
+- 24 warnings de `react-hooks/set-state-in-effect` requieren refactor caso-por-caso (key-based remount, computar derived state, mover a event handler) y QA visual en browser. Documentado como deuda técnica en sesión dedicada.
+
+---
+
 ## [0.25.0] - 2026-04-25
 
 Tercer rol global `externo` para separar usuarios del staff IIEG (admin CMS) de usuarios de productos publicos autenticados (SIEEJ hoy, MapaLab autenticado a futuro). Antes solo existian `tetlamamakani` y `editora`, lo que obligaba a otorgar `editora` a dependencias externas y abria un escalado de privilegios al admin CMS completo.

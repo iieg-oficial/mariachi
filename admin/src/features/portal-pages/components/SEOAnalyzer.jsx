@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Card, Progress, Space, Typography, List, Tag, Collapse, Alert, Statistic, Row, Col } from 'antd';
 import {
     CheckCircleOutlined,
@@ -13,6 +13,92 @@ import {
 const { Title, Text, Paragraph } = Typography;
 const { Panel } = Collapse;
 
+function extractAllText(page) {
+    let text = '';
+    if (page.sections) {
+        page.sections.forEach(section => {
+            section.items?.forEach(item => {
+                item.components?.forEach(comp => {
+                    if (comp.type === 'text') text += comp.props.content + ' ';
+                    if (comp.type === 'heading') text += comp.props.text + ' ';
+                });
+            });
+        });
+    }
+    return text;
+}
+
+function analyzeKeywordDensity(page, keywords) {
+    const allText = extractAllText(page).toLowerCase();
+    const words = allText.split(/\s+/).filter(w => w.length > 0);
+    const totalWords = words.length;
+
+    const density = {};
+    keywords.forEach(keyword => {
+        const kw = keyword.toLowerCase();
+        const count = (allText.match(new RegExp(kw, 'gi')) || []).length;
+        const percent = totalWords > 0 ? ((count / totalWords) * 100).toFixed(2) : 0;
+
+        density[keyword] = {
+            count,
+            density: percent,
+            status: percent < 0.5 ? 'low' : percent > 3 ? 'high' : 'good'
+        };
+    });
+
+    return density;
+}
+
+function analyzeContent(page) {
+    const allText = extractAllText(page);
+    const words = allText.split(/\s+/).filter(w => w.length > 0);
+
+    let headingCount = 0;
+    let imageCount = 0;
+    let imagesWithoutAlt = 0;
+
+    if (page.sections) {
+        page.sections.forEach(section => {
+            section.items?.forEach(item => {
+                item.components?.forEach(comp => {
+                    if (comp.type === 'heading') headingCount++;
+                    if (comp.type === 'image') {
+                        imageCount++;
+                        if (!comp.props.alt) imagesWithoutAlt++;
+                    }
+                });
+            });
+        });
+    }
+
+    return {
+        wordCount: words.length,
+        characterCount: allText.length,
+        headingCount,
+        imageCount,
+        imagesWithoutAlt
+    };
+}
+
+function analyzeReadability(page) {
+    const text = extractAllText(page);
+    const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+    const words = text.split(/\s+/).filter(w => w.length > 0);
+
+    const avgWordsPerSentence = sentences.length > 0 ? (words.length / sentences.length).toFixed(1) : 0;
+
+    let readabilityScore = 100;
+    if (avgWordsPerSentence > 25) readabilityScore -= 20;
+    else if (avgWordsPerSentence > 20) readabilityScore -= 10;
+
+    return {
+        sentenceCount: sentences.length,
+        avgWordsPerSentence,
+        readabilityScore,
+        level: readabilityScore >= 80 ? 'Excelente' : readabilityScore >= 60 ? 'Buena' : 'Necesita mejora'
+    };
+}
+
 const SEOAnalyzer = ({ page, seo }) => {
     const [analysis, setAnalysis] = useState({
         score: 0,
@@ -22,13 +108,7 @@ const SEOAnalyzer = ({ page, seo }) => {
         readability: {}
     });
 
-    useEffect(() => {
-        if (page && seo) {
-            performAnalysis();
-        }
-    }, [page, seo]);
-
-    function performAnalysis() {
+    const performAnalysis = useCallback(() => {
         const issues = [];
         const suggestions = [];
         let score = 100;
@@ -214,103 +294,22 @@ const SEOAnalyzer = ({ page, seo }) => {
         }
 
         const readability = analyzeReadability(page);
-        setAnalysis(prev => ({ ...prev, readability }));
 
         setAnalysis({
             score: Math.max(0, Math.min(100, score)),
             issues,
             suggestions,
-            keywords: analysis.keywords,
+            keywords: {},
             readability,
             contentStats: contentAnalysis
         });
-    }
+    }, [page, seo]);
 
-    function analyzeKeywordDensity(page, keywords) {
-        const allText = extractAllText(page).toLowerCase();
-        const words = allText.split(/\s+/).filter(w => w.length > 0);
-        const totalWords = words.length;
-
-        const density = {};
-        keywords.forEach(keyword => {
-            const kw = keyword.toLowerCase();
-            const count = (allText.match(new RegExp(kw, 'gi')) || []).length;
-            const percent = totalWords > 0 ? ((count / totalWords) * 100).toFixed(2) : 0;
-
-            density[keyword] = {
-                count,
-                density: percent,
-                status: percent < 0.5 ? 'low' : percent > 3 ? 'high' : 'good'
-            };
-        });
-
-        return density;
-    }
-
-    function analyzeContent(page) {
-        const allText = extractAllText(page);
-        const words = allText.split(/\s+/).filter(w => w.length > 0);
-
-        let headingCount = 0;
-        let imageCount = 0;
-        let imagesWithoutAlt = 0;
-
-        if (page.sections) {
-            page.sections.forEach(section => {
-                section.items?.forEach(item => {
-                    item.components?.forEach(comp => {
-                        if (comp.type === 'heading') headingCount++;
-                        if (comp.type === 'image') {
-                            imageCount++;
-                            if (!comp.props.alt) imagesWithoutAlt++;
-                        }
-                    });
-                });
-            });
+    useEffect(() => {
+        if (page && seo) {
+            performAnalysis();
         }
-
-        return {
-            wordCount: words.length,
-            characterCount: allText.length,
-            headingCount,
-            imageCount,
-            imagesWithoutAlt
-        };
-    }
-
-    function analyzeReadability(page) {
-        const text = extractAllText(page);
-        const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
-        const words = text.split(/\s+/).filter(w => w.length > 0);
-
-        const avgWordsPerSentence = sentences.length > 0 ? (words.length / sentences.length).toFixed(1) : 0;
-
-        let readabilityScore = 100;
-        if (avgWordsPerSentence > 25) readabilityScore -= 20;
-        else if (avgWordsPerSentence > 20) readabilityScore -= 10;
-
-        return {
-            sentenceCount: sentences.length,
-            avgWordsPerSentence,
-            readabilityScore,
-            level: readabilityScore >= 80 ? 'Excelente' : readabilityScore >= 60 ? 'Buena' : 'Necesita mejora'
-        };
-    }
-
-    function extractAllText(page) {
-        let text = '';
-        if (page.sections) {
-            page.sections.forEach(section => {
-                section.items?.forEach(item => {
-                    item.components?.forEach(comp => {
-                        if (comp.type === 'text') text += comp.props.content + ' ';
-                        if (comp.type === 'heading') text += comp.props.text + ' ';
-                    });
-                });
-            });
-        }
-        return text;
-    }
+    }, [page, seo, performAnalysis]);
 
     const getScoreColor = (score) => {
         if (score >= 80) return '#52c41a';

@@ -23,7 +23,7 @@ import { ArrowLeftOutlined, SaveOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router';
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
 import useIsMobile from '@shared/hooks/useIsMobile';
-import { useAuth } from '@shared/contexts/AuthContext';
+import { useAuth } from '@shared/contexts/useAuth';
 import InfoBoxPresetForm from '@features/mapalab-layers/components/layersEditor/InfoBoxPresetForm';
 import InfoBoxPreview from '@features/mapalab-layers/components/layersEditor/InfoBoxPreview';
 import InfoBoxJsonEditor from '@features/mapalab-layers/components/layersEditor/InfoBoxJsonEditor';

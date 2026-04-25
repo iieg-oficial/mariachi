@@ -1,5 +1,5 @@
 import { Modal, Form, Select, Space, Typography, Divider, Row, Col } from 'antd';
-import { useFontConfig } from '@features/portal-pages/components/FontConfigContext';
+import { useFontConfig } from '@features/portal-pages/components/useFontConfig';
 import { useState, useEffect } from 'react';
 
 const { Text } = Typography;
