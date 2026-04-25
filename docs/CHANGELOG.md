@@ -13,6 +13,34 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.24.3] - 2026-04-24
+
+Branding del admin alineado con MapaLab: tipografía Garet, scrollbar custom, redesign del login y fix del scroll vertical en mobile.
+
+### Agregado
+
+- **Fuentes Garet** (5 weights: 300/400/500/700/800) copiadas de `mapalab/frontend/public/fonts/` a `admin/public/fonts/`. Importadas via `@font-face` en `admin/src/index.css`.
+- **Scrollbar custom** (thin, 6px, gris translúcido) en html/body — mismo estilo que MapaLab (`scrollbar-thin`, `scrollbar-thumb-gray-400`, `scrollbar-thumb-gray-500`). Estilos en `admin/src/index.css`.
+- **Variables CSS** `--color-numeralia`, `--color-purple`, `--color-orange` en `:root` para usar desde CSS puro (los `BRAND` JS ya existían).
+
+### Cambiado
+
+- **Body font-family** ahora arranca con `"Garet"` (antes: stack genérico de sistema). El `MainProvider` ya usaba Garet en `theme.token.fontFamily` pero las fuentes no estaban servidas — ahora sí.
+- **`MainProvider.jsx`:** `AntApp minHeight: '100vh'` → `'100dvh'`. En mobile `100vh` excede el viewport visible cuando aparece la barra del browser; `dvh` se ajusta dinámicamente.
+- **Logo Jalisco** (`jalisco_large_dark.svg`) copiado de `mapalab/frontend/src/assets/logos/` a `admin/public/jalisco-logo.svg`. Mostrado en la columna derecha del LoginPage debajo del IIEG.
+- **Asset paths con vite base:** `<img src="/iieg-...">` → `<img src={\`${import.meta.env.BASE_URL}iieg-...\`}>` en `MainLayout.jsx` y `LoginPage.jsx`. En prod el admin se sirve bajo `/mariachi/`, pero los paths absolutos no se prefijaban → imagen rota en producción (y en dev se rompía si el browser caché tenía estado intermedio).
+- **`LoginPage.jsx` — redesign completo:**
+    - Outer background: `token.colorBgLayout` (gris claro) → `BRAND.purple` (morado institucional).
+    - Columna derecha del card: gradient morado → blanco (`token.colorBgContainer`) con `borderLeft: 1px solid borderSecondary` como divisor entre las dos columnas. Antes el morado estaba duplicado dentro del card.
+    - Logo IIEG: `logo_iieg_login.svg` (con `filter: brightness(0) invert(1)` — aplastaba todo a blanco, se veía como cuadro vacío) → `/iieg-logo.png` (PNG transparente a color, sin filtro) sobre fondo blanco.
+    - Logo Jalisco agregado en la columna derecha debajo del IIEG.
+    - Título "Hola": `color: BRAND.purple` (morado institucional).
+    - Botón "Iniciar sesión": `BRAND.purple` → `BRAND.orange` (naranja institucional para destacar el CTA).
+    - Texto "Aviso de privacidad" (sobre el morado outer): `colorTextSecondary` (gris) → `#fff` para contraste pleno.
+    - Outer Flex: `boxSizing: 'border-box'` para que el padding entre dentro del `100dvh`. Antes el padding sumaba sobre el `minHeight: 100vh`, generando scroll vertical innecesario.
+
+---
+
 ## [0.24.2] - 2026-04-24
 
 Branding del admin (favicon, title, logo en sider) y limpieza del login.

@@ -91,7 +91,7 @@ export default function MainLayout() {
             color: '#fff',
         }}>
             <img
-                src="/iieg-favicon-192.png"
+                src={`${import.meta.env.BASE_URL}iieg-favicon-192.png`}
                 alt="IIEG"
                 style={{
                     height: isCollapsedView ? 28 : 32,

@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router';
 import { useAuth } from '@shared/contexts/AuthContext';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import { BRAND } from '@app/providers/MainProvider';
-import logoIIEG from '../assets/logo_iieg_login.svg';
 
 const { Title, Text, Link: TypoLink } = Typography;
 const { useToken } = theme;
@@ -43,8 +42,9 @@ export default function Login() {
             justify="center"
             style={{
                 minHeight: '100dvh',
+                boxSizing: 'border-box',
                 padding: isMobile ? token.paddingLG : token.paddingXL,
-                background: token.colorBgLayout,
+                background: BRAND.purple,
                 overscrollBehavior: 'none',
             }}
         >
@@ -119,7 +119,7 @@ export default function Login() {
                                         loading={loading}
                                         size="large"
                                         block
-                                        style={{ background: BRAND.purple, borderColor: BRAND.purple }}
+                                        style={{ background: BRAND.orange, borderColor: BRAND.orange }}
                                     >
                                         Iniciar sesión
                                     </Button>
@@ -143,18 +143,24 @@ export default function Login() {
                                 style={{
                                     padding: 56,
                                     minHeight: 480,
-                                    background: `linear-gradient(135deg, ${BRAND.purple} 0%, #4a1d5c 100%)`,
+                                    background: token.colorBgContainer,
+                                    borderLeft: `1px solid ${token.colorBorderSecondary}`,
                                     height: '100%',
                                 }}
                             >
                                 <img
-                                    src={logoIIEG}
+                                    src={`${import.meta.env.BASE_URL}iieg-logo.png`}
                                     alt="IIEG"
-                                    style={{ maxWidth: 280, width: '100%', height: 'auto', filter: 'brightness(0) invert(1)' }}
+                                    style={{ maxWidth: 280, width: '100%', height: 'auto' }}
                                 />
-                                <Text style={{ color: '#fff', opacity: 0.85, marginTop: token.marginXL, textAlign: 'center', fontSize: 13 }}>
+                                <Text type="secondary" style={{ marginTop: token.marginLG, textAlign: 'center', fontSize: 13 }}>
                                     Instituto de Información Estadística<br />y Geográfica de Jalisco
                                 </Text>
+                                <img
+                                    src={`${import.meta.env.BASE_URL}jalisco-logo.svg`}
+                                    alt="Gobierno de Jalisco"
+                                    style={{ maxWidth: 200, width: '100%', height: 'auto', marginTop: token.marginXL }}
+                                />
                             </Flex>
                         </Col>
                     )}
@@ -168,7 +174,7 @@ export default function Login() {
                 style={{
                     marginTop: token.marginLG,
                     fontSize: 12,
-                    color: token.colorTextSecondary,
+                    color: '#fff',
                 }}
             >
                 Aviso de privacidad

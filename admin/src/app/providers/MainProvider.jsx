@@ -44,7 +44,7 @@ export default function MainProvider() {
                 }
             }}
         >
-            <AntApp style={{ minHeight: '100vh' }}>
+            <AntApp style={{ minHeight: '100dvh' }}>
                 <Outlet />
             </AntApp>
         </ConfigProvider>
