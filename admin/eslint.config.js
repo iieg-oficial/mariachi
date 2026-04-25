@@ -74,6 +74,7 @@ export default [
     },
     {
         files: [
+            'src/features/mapalab-layers/pages/InitialLayerOrderPage.jsx',
             'src/features/mapalab-layers/pages/LayerEditPage.jsx',
             'src/features/media/api/mediaService.js',
             'src/features/media/components/FilePicker.jsx',

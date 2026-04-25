@@ -13,6 +13,25 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.25.5] - 2026-04-25
+
+### Cambiado
+
+- **`InitialLayerOrderPage` responsive mobile:**
+    - `Content`: padding `24` → `12` en mobile, `width: 100%` + `boxSizing: border-box` (cabe en pantallas chicas).
+    - `Title`: level `3` → `4` en mobile (texto secundario también baja a 12px).
+    - `Card body/header`: paddings reducidos en mobile (`12px` y `8px 12px`).
+    - **Botones del Card extra:** solo iconos en mobile, label visible solo en desktop. Wrap automático si no caben.
+    - `Card title`: simplificado en mobile (`"3 capas"` en lugar de `"3 capas activas"`).
+    - `SortableRow`: padding `8px 8px` (vs `10px 12px` desktop), gap `8` (vs `12`), font-size `13px` (vs `14`), tags `11px`. `Button delete` size `small` en mobile. `wordBreak: break-word` para labels largos.
+    - `Modal`: `width: 100%` + `centered` en mobile (en lugar de 520px fijo).
+- **Fix antd deprecations:**
+    - `<Space direction="vertical">` → `<Space orientation="vertical">` (3 ocurrencias).
+    - `<Alert message={error}>` → `<Alert title={error}>`.
+- **`eslint.config.js`:** agregado `InitialLayerOrderPage.jsx` al per-file-ignore de `max-lines` (323 líneas; el responsive condicional infla, partir aumentaría complejidad).
+
+---
+
 ## [0.25.4] - 2026-04-25
 
 ### Corregido

@@ -5,7 +5,6 @@ import {
     Card,
     Empty,
     Layout,
-    List,
     Modal,
     Select,
     Space,
@@ -38,6 +37,7 @@ import {
     UndoOutlined,
 } from '@ant-design/icons';
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
+import useIsMobile from '@shared/hooks/useIsMobile';
 
 const { Content } = Layout;
 const { Title, Text } = Typography;
@@ -55,7 +55,7 @@ function flattenTree(nodes, acc = []) {
     return acc;
 }
 
-function SortableRow({ item, onRemove }) {
+function SortableRow({ item, onRemove, isMobile }) {
     const {
         attributes,
         listeners,
@@ -78,8 +78,8 @@ function SortableRow({ item, onRemove }) {
                 ...style,
                 display: 'flex',
                 alignItems: 'center',
-                gap: 12,
-                padding: '10px 12px',
+                gap: isMobile ? 8 : 12,
+                padding: isMobile ? '8px 8px' : '10px 12px',
                 background: '#fff',
                 border: '1px solid #f0f0f0',
                 borderRadius: 6,
@@ -89,24 +89,28 @@ function SortableRow({ item, onRemove }) {
             <span
                 {...attributes}
                 {...listeners}
-                style={{ cursor: 'grab', color: '#8c8c8c', fontSize: 18, lineHeight: 1 }}
+                style={{ cursor: 'grab', color: '#8c8c8c', fontSize: 18, lineHeight: 1, flexShrink: 0 }}
                 aria-label="Arrastrar"
             >
                 <HolderOutlined />
             </span>
-            <Space direction="vertical" size={0} style={{ flex: 1, minWidth: 0 }}>
-                <Text strong>{item.label}</Text>
-                <Space size={8}>
-                    <Tag color="blue">{item.id}</Tag>
-                    {item.nodeType && <Tag>{item.nodeType}</Tag>}
+            <Space orientation="vertical" size={2} style={{ flex: 1, minWidth: 0 }}>
+                <Text strong style={{ fontSize: isMobile ? 13 : 14, wordBreak: 'break-word' }}>
+                    {item.label}
+                </Text>
+                <Space size={4} wrap>
+                    <Tag color="blue" style={{ marginRight: 0, fontSize: 11 }}>{item.id}</Tag>
+                    {item.nodeType && <Tag style={{ marginRight: 0, fontSize: 11 }}>{item.nodeType}</Tag>}
                 </Space>
             </Space>
             <Button
                 danger
                 type="text"
+                size={isMobile ? 'small' : 'middle'}
                 icon={<DeleteOutlined />}
                 onClick={() => onRemove(item.id)}
                 aria-label={`Quitar ${item.label}`}
+                style={{ flexShrink: 0 }}
             />
         </div>
     );
@@ -114,6 +118,7 @@ function SortableRow({ item, onRemove }) {
 
 export default function InitialLayerOrderPage() {
     const { rawTree, getInitialOrder, setInitialOrder, reload } = useLayerTreeAdmin();
+    const { isMobile } = useIsMobile();
     const [items, setItems] = useState([]);
     const [original, setOriginal] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -214,48 +219,65 @@ export default function InitialLayerOrderPage() {
         setItems(original);
     };
 
+    const cardActions = (
+        <Space size={isMobile ? 4 : 8} wrap>
+            <Button
+                icon={<PlusOutlined />}
+                size={isMobile ? 'small' : 'middle'}
+                onClick={() => setAddModalOpen(true)}
+                disabled={availableToAdd.length === 0}
+            >
+                {!isMobile && 'Agregar capa'}
+            </Button>
+            <Button
+                icon={<UndoOutlined />}
+                size={isMobile ? 'small' : 'middle'}
+                onClick={handleReset}
+                disabled={!dirty || saving}
+            >
+                {!isMobile && 'Descartar'}
+            </Button>
+            <Button
+                type="primary"
+                icon={<SaveOutlined />}
+                size={isMobile ? 'small' : 'middle'}
+                onClick={handleSave}
+                loading={saving}
+                disabled={!dirty}
+            >
+                {!isMobile && 'Guardar'}
+            </Button>
+        </Space>
+    );
+
     return (
-        <Content style={{ padding: 24, maxWidth: 900, margin: '0 auto' }}>
-            <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <Content style={{
+            padding: isMobile ? 12 : 24,
+            maxWidth: 900,
+            margin: '0 auto',
+            width: '100%',
+            boxSizing: 'border-box',
+        }}>
+            <Space orientation="vertical" size="large" style={{ width: '100%' }}>
                 <div>
-                    <Title level={3} style={{ marginBottom: 4 }}>Capas iniciales</Title>
-                    <Text type="secondary">
+                    <Title level={isMobile ? 4 : 3} style={{ marginBottom: 4 }}>Capas iniciales</Title>
+                    <Text type="secondary" style={{ fontSize: isMobile ? 12 : 14 }}>
                         Capas que aparecen activas por defecto en el panel de MapaLab al cargar el mapa.
                         Arrastra para reordenar.
                     </Text>
                 </div>
 
-                {error && <Alert type="error" message={error} showIcon closable onClose={() => setError(null)} />}
+                {error && <Alert type="error" title={error} showIcon closable onClose={() => setError(null)} />}
 
                 <Card
-                    title={`${items.length} capa${items.length === 1 ? '' : 's'} activa${items.length === 1 ? '' : 's'}`}
-                    extra={
-                        <Space>
-                            <Button
-                                icon={<PlusOutlined />}
-                                onClick={() => setAddModalOpen(true)}
-                                disabled={availableToAdd.length === 0}
-                            >
-                                Agregar capa
-                            </Button>
-                            <Button
-                                icon={<UndoOutlined />}
-                                onClick={handleReset}
-                                disabled={!dirty || saving}
-                            >
-                                Descartar
-                            </Button>
-                            <Button
-                                type="primary"
-                                icon={<SaveOutlined />}
-                                onClick={handleSave}
-                                loading={saving}
-                                disabled={!dirty}
-                            >
-                                Guardar
-                            </Button>
-                        </Space>
-                    }
+                    title={isMobile
+                        ? `${items.length} capa${items.length === 1 ? '' : 's'}`
+                        : `${items.length} capa${items.length === 1 ? '' : 's'} activa${items.length === 1 ? '' : 's'}`}
+                    extra={cardActions}
+                    styles={{
+                        body: { padding: isMobile ? 12 : 24 },
+                        header: { padding: isMobile ? '8px 12px' : '12px 24px' },
+                    }}
                 >
                     {loading ? (
                         <div style={{ textAlign: 'center', padding: 40 }}>
@@ -274,7 +296,12 @@ export default function InitialLayerOrderPage() {
                                 strategy={verticalListSortingStrategy}
                             >
                                 {items.map((item) => (
-                                    <SortableRow key={item.id} item={item} onRemove={handleRemove} />
+                                    <SortableRow
+                                        key={item.id}
+                                        item={item}
+                                        onRemove={handleRemove}
+                                        isMobile={isMobile}
+                                    />
                                 ))}
                             </SortableContext>
                         </DndContext>
@@ -290,9 +317,11 @@ export default function InitialLayerOrderPage() {
                 okText="Agregar"
                 cancelText="Cancelar"
                 okButtonProps={{ disabled: !pendingAddId }}
+                width={isMobile ? '100%' : 520}
+                centered={isMobile}
             >
-                <Space direction="vertical" style={{ width: '100%' }}>
-                    <Text type="secondary">
+                <Space orientation="vertical" style={{ width: '100%' }}>
+                    <Text type="secondary" style={{ fontSize: 12 }}>
                         Solo se listan capas hoja que aún no están en el orden inicial.
                     </Text>
                     <Select
