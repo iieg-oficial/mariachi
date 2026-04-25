@@ -33,7 +33,6 @@ const MenuManager = lazy(() => import('@features/portal-menu'));
 const PageEditor = lazy(() => import('@features/portal-pages'));
 const Media = lazy(() => import('@features/media'));
 const RevisionQueue = lazy(() => import('@features/revision'));
-const LayersPage = lazy(() => import('@features/mapalab-layers'));
 const LayerEditPage = lazy(() => import('@features/mapalab-layers').then((m) => ({ default: m.LayerEditPage })));
 const InitialLayerOrderPage = lazy(() => import('@features/mapalab-layers').then((m) => ({ default: m.InitialLayerOrderPage })));
 const FormulariosPage = lazy(() => import('@features/sieej-formularios'));
@@ -122,7 +121,7 @@ const router = createBrowserRouter([
                         path: 'mapalab/layers',
                         element: withSuspense(
                             <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
-                                <LayersPage />
+                                <LayerEditPage />
                             </RoleProtectedRoute>
                         )
                     },

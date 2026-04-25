@@ -1,10 +1,11 @@
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
     AutoComplete,
     Breadcrumb,
     Button,
     Card,
     Col,
+    Empty,
     Form,
     Input,
     Layout,
@@ -15,11 +16,10 @@ import {
     Switch,
     Tabs,
     Tag,
-    Tree,
     Typography,
     message,
 } from 'antd';
-import { ArrowLeftOutlined, SaveOutlined } from '@ant-design/icons';
+import { PartitionOutlined, SaveOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router';
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
 import useIsMobile from '@shared/hooks/useIsMobile';
@@ -29,17 +29,12 @@ import InfoBoxPreview from '@features/mapalab-layers/components/layersEditor/Inf
 import InfoBoxJsonEditor from '@features/mapalab-layers/components/layersEditor/InfoBoxJsonEditor';
 import LayerMetadataSection from '@features/mapalab-layers/components/layersEditor/LayerMetadataSection';
 import LayerAliasesSection from '@features/mapalab-layers/components/layersEditor/LayerAliasesSection';
+import LayersTreeSider from '@features/mapalab-layers/components/LayersTreeSider';
+import BulkTagsDrawer from '@features/mapalab-layers/components/layersEditor/BulkTagsDrawer';
+import { NODE_TYPE_OPTIONS } from '@features/mapalab-layers/constants/nodeTypes';
 
 const { Content, Sider } = Layout;
-const { Text, Title } = Typography;
-
-const NODE_TYPE_OPTIONS = [
-    { value: 'tema', label: 'tema' },
-    { value: 'category', label: 'category' },
-    { value: 'label', label: 'label' },
-    { value: 'group', label: 'group' },
-    { value: 'leaf', label: 'leaf' },
-];
+const { Text, Title, Paragraph } = Typography;
 
 export default function LayerEditPage() {
     const { id: layerId } = useParams();
@@ -50,6 +45,8 @@ export default function LayerEditPage() {
 
     const {
         treeData,
+        loading: treeLoading,
+        error: treeError,
         reload,
         getLayer,
         updateLayer,
@@ -62,6 +59,7 @@ export default function LayerEditPage() {
         createLayerAlias,
         deleteLayerAlias,
         suggestSlug,
+        reorderLayers,
     } = useLayerTreeAdmin();
 
     const [form] = Form.useForm();
@@ -70,6 +68,7 @@ export default function LayerEditPage() {
     const [saving, setSaving] = useState(false);
     const [workspaces, setWorkspaces] = useState([]);
     const [availableStyles, setAvailableStyles] = useState([]);
+    const [bulkTagsOpen, setBulkTagsOpen] = useState(false);
 
     const selectedWs = Form.useWatch('workspaceAlias', form);
     const selectedGsLayer = Form.useWatch('geoserverLayer', form);
@@ -197,16 +196,16 @@ export default function LayerEditPage() {
     const selectedWsObj = workspaces.find((w) => w.alias === selectedWs);
     const availableLayers = selectedWsObj?.layers || [];
 
-    const treeForSider = useMemo(
-        () => treeData.map((n) => ({ ...n, selectable: true })),
-        [treeData],
-    );
+    const handleSelectFromTree = (key) => {
+        if (!key) {
+            navigate('/mapalab/layers');
+        } else {
+            navigate(`/mapalab/layers/${encodeURIComponent(key)}/edit`);
+        }
+    };
 
-    const actionButtons = (
+    const actionButtons = layerId && (
         <Space wrap>
-            <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/mapalab/layers')}>
-                Volver
-            </Button>
             {isAdmin ? (
                 <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={handleSaveDirect}>
                     Guardar
@@ -398,65 +397,105 @@ export default function LayerEditPage() {
         <Layout style={{ minHeight: 'calc(100vh - 112px)', background: 'transparent' }}>
             {!isMobile && (
                 <Sider
-                    width={280}
+                    width={320}
                     theme="light"
                     style={{
                         background: '#fff',
                         borderRight: '1px solid #f0f0f0',
-                        overflow: 'auto',
+                        overflow: 'hidden',
                     }}
                 >
-                    <div style={{ padding: 12 }}>
-                        <Title level={5} style={{ margin: '0 0 12px' }}>Árbol de capas</Title>
-                        <Tree
-                            treeData={treeForSider}
-                            selectedKeys={layerId ? [layerId] : []}
-                            onSelect={(keys) => {
-                                if (keys[0]) navigate(`/mapalab/layers/${encodeURIComponent(keys[0])}/edit`);
-                            }}
-                            blockNode
-                            showLine={{ showLeafIcon: false }}
-                            defaultExpandAll
-                        />
-                    </div>
+                    <LayersTreeSider
+                        treeData={treeData}
+                        loading={treeLoading}
+                        error={treeError}
+                        selectedKey={layerId || null}
+                        onSelect={handleSelectFromTree}
+                        onReload={reload}
+                        onReorder={reorderLayers}
+                        isAdmin={isAdmin}
+                        onBulkTagsClick={() => setBulkTagsOpen(true)}
+                    />
                 </Sider>
             )}
             <Content style={{ padding: isMobile ? 12 : 24 }}>
-                <div style={{ marginBottom: 16 }}>
-                    <Breadcrumb
-                        items={[
-                            { title: <Button type="link" size="small" style={{ padding: 0 }} onClick={() => navigate('/mapalab/layers')}>Capas</Button> },
-                            { title: layer?.label || layerId },
-                        ]}
-                        style={{ marginBottom: 8 }}
-                    />
-                    <div style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        flexWrap: 'wrap',
-                        gap: 12,
-                    }}>
-                        <Space wrap>
-                            <Title level={isMobile ? 4 : 3} style={{ margin: 0 }}>
-                                {layer?.label || 'Editar capa'}
-                            </Title>
-                            <Tag color="purple">{layerId}</Tag>
-                        </Space>
-                        {actionButtons}
-                    </div>
-                </div>
+                {isMobile && (
+                    <Card style={{ marginBottom: 16 }} styles={{ body: { padding: 0 } }}>
+                        <LayersTreeSider
+                            treeData={treeData}
+                            loading={treeLoading}
+                            error={treeError}
+                            selectedKey={layerId || null}
+                            onSelect={handleSelectFromTree}
+                            onReload={reload}
+                            onReorder={reorderLayers}
+                            isAdmin={isAdmin}
+                            onBulkTagsClick={() => setBulkTagsOpen(true)}
+                            showHeader
+                        />
+                    </Card>
+                )}
 
-                <Card>
-                    {loading ? (
-                        <Spin style={{ display: 'block', margin: '48px auto' }} size="large" />
-                    ) : (
-                        <Form form={form} layout="vertical">
-                            <Tabs defaultActiveKey="identidad" items={tabItems} />
-                        </Form>
-                    )}
-                </Card>
+                {!layerId ? (
+                    <Card>
+                        <Empty
+                            image={<PartitionOutlined style={{ fontSize: 56, color: '#d9d9d9' }} />}
+                            description={
+                                <Space direction="vertical" align="center" size={4}>
+                                    <Title level={4} style={{ margin: 0 }}>Editor de capas MapaLab</Title>
+                                    <Paragraph type="secondary" style={{ margin: 0, maxWidth: 480, textAlign: 'center' }}>
+                                        Selecciona una capa del árbol para editar sus propiedades.
+                                        Los nodos hoja (Capa) son las capas WMS reales; los demás organizan la jerarquía.
+                                    </Paragraph>
+                                </Space>
+                            }
+                        />
+                    </Card>
+                ) : (
+                    <>
+                        <div style={{ marginBottom: 16 }}>
+                            <Breadcrumb
+                                items={[
+                                    { title: <Button type="link" size="small" style={{ padding: 0 }} onClick={() => navigate('/mapalab/layers')}>Capas</Button> },
+                                    { title: layer?.label || layerId },
+                                ]}
+                                style={{ marginBottom: 8 }}
+                            />
+                            <div style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                flexWrap: 'wrap',
+                                gap: 12,
+                            }}>
+                                <Space wrap>
+                                    <Title level={isMobile ? 4 : 3} style={{ margin: 0 }}>
+                                        {layer?.label || 'Editar capa'}
+                                    </Title>
+                                    <Tag color="purple">{layerId}</Tag>
+                                </Space>
+                                {actionButtons}
+                            </div>
+                        </div>
+
+                        <Card>
+                            {loading ? (
+                                <Spin style={{ display: 'block', margin: '48px auto' }} size="large" />
+                            ) : (
+                                <Form form={form} layout="vertical">
+                                    <Tabs defaultActiveKey="identidad" items={tabItems} />
+                                </Form>
+                            )}
+                        </Card>
+                    </>
+                )}
             </Content>
+
+            <BulkTagsDrawer
+                open={bulkTagsOpen}
+                onClose={() => setBulkTagsOpen(false)}
+                onDone={reload}
+            />
         </Layout>
     );
 }

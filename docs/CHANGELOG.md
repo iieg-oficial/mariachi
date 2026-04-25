@@ -13,6 +13,33 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.25.8] - 2026-04-25
+
+Unificación de las vistas de capas MapaLab — `LayersPage` (listado) y `LayerEditPage` (editor) eran dos pantallas separadas; ahora es **una sola vista** con sider árbol + content editor.
+
+### Agregado
+
+- **Componente `LayersTreeSider`** (`admin/src/features/mapalab-layers/components/LayersTreeSider.jsx`) — sider árbol reutilizable con:
+    - Iconos por tipo (folder morado para `tema`, folder open azul para `category`, tags grises para `label`, appstore amarillo para `group`, file verde para `leaf`).
+    - `titleRender` con label + Tag colorido del tipo (`purple/blue/default/gold/green` matchean los iconos) + tags workspace/oculto/disabled.
+    - Input de búsqueda inline (busca por label, workspace, geoserver layer, key).
+    - Drag-and-drop reorder dentro del mismo padre (admin only).
+    - Botones "Bulk tags" (admin) y "Recargar".
+    - Estado de loading + error + empty.
+
+### Cambiado
+
+- **`LayerEditPage` ahora soporta ruta sin `:id`:** `/mapalab/layers` muestra el sider con el árbol y un placeholder en el Content ("Editor de capas MapaLab — Selecciona una capa del árbol…"). `/mapalab/layers/:id/edit` muestra el editor con la capa cargada. Ambas rutas apuntan al mismo componente.
+- **Sider del editor:** `width 280` → `320`. Reemplazado el Tree simple (sin iconos ni tags) por `LayersTreeSider` completo. En mobile el sider se renderiza como Card colapsado al inicio del Content.
+- **`main.jsx`:** ruta `/mapalab/layers` antes apuntaba a `LayersPage`, ahora apunta a `LayerEditPage` (mismo componente que `/mapalab/layers/:id/edit`).
+- **`features/mapalab-layers/index.js`:** removido export de `LayersPage` (ya no existe). Default export ahora es `LayerEditPage`.
+
+### Eliminado
+
+- **`LayersPage.jsx`** — funcionalidad absorbida por `LayerEditPage` + `LayersTreeSider`. El árbol full-width separado del editor era redundante; ahora el árbol está siempre visible mientras editas.
+
+---
+
 ## [0.25.7] - 2026-04-25
 
 ### Cambiado
