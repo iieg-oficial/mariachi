@@ -13,6 +13,22 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.25.7] - 2026-04-25
+
+### Cambiado
+
+- **Tipos de nodo del árbol MapaLab traducidos a español** en la UI:
+    - `tema` → "Tema"
+    - `category` → "Categoría"
+    - `label` → "Etiqueta"
+    - `group` → "Grupo"
+    - `leaf` → "Capa" (nodos hoja = capas WMS reales)
+    - Centralizado en `admin/src/features/mapalab-layers/constants/nodeTypes.js` con `NODE_TYPE_LABELS`, `NODE_TYPE_OPTIONS` y helper `labelForNodeType()`.
+    - Aplicado en `LayerEditPage` (Select del Form, label "Tipo de nodo" en lugar de "Node type"), `LayersPage` (Tag del árbol) y `InitialLayerOrderPage` (Tag de cada item).
+- **Valores internos** del ENUM `node_type` en `mapalab.layers` (BD DataEngine) sin cambios — solo se traducen los labels visibles. La compatibilidad con el modelo SQLAlchemy y el árbol público de MapaLab se mantiene.
+
+---
+
 ## [0.25.6] - 2026-04-25
 
 Limpieza de los 24 warnings residuales de `react-hooks/set-state-in-effect` (parte B). De 24 → 0 warnings; lint 100% limpio.
