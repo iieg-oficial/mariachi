@@ -9,8 +9,10 @@ from app.api.deps import require_staff
 from app.api.routes import (
     auth,
     borradores,
+    eventos,
     formularios,
     geoserver,
+    home,
     layer_metadata,
     layers,
     media,
@@ -75,9 +77,12 @@ def create_app() -> FastAPI:
     app.include_router(geoserver.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(preview.admin_router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(sieej_admin.router, prefix=settings.admin_prefix, dependencies=staff_dep)
+    app.include_router(eventos.router, prefix=settings.admin_prefix, dependencies=staff_dep)
+    app.include_router(home.router, prefix=settings.admin_prefix, dependencies=staff_dep)
 
     app.include_router(preview.public_router, prefix=settings.web_prefix)
     app.include_router(public.router, prefix=settings.web_prefix)
+    app.include_router(public.mapalab_router, prefix=settings.mapalab_public_prefix)
     app.include_router(metrics_module.router)
 
     @app.get("/", tags=["health"])

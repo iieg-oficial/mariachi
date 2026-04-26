@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     cors_origins: list[str]
     admin_prefix: str
     web_prefix: str
+    mapalab_public_prefix: str = "/api/mapalab"
     cookie_name: str
     cookie_max_age: int
     cookie_domain: str | None = None

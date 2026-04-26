@@ -1,3 +1,17 @@
+from app.schemas.evento import (
+    BBox,
+    CapaRef,
+    EventoCreate,
+    EventoPublicResponse,
+    EventoResponse,
+    EventoUpdate,
+)
+from app.schemas.home_section import (
+    HomePublicResponse,
+    HomeSectionKey,
+    HomeSectionResponse,
+    SECTION_SCHEMAS,
+)
 from app.schemas.menu_item import (
     MenuItemCreate,
     MenuItemResponse,
@@ -26,4 +40,14 @@ __all__ = [
     "MenuItemUpdate",
     "MenuItemResponse",
     "MenuItemTree",
+    "BBox",
+    "CapaRef",
+    "EventoCreate",
+    "EventoUpdate",
+    "EventoResponse",
+    "EventoPublicResponse",
+    "HomeSectionKey",
+    "HomeSectionResponse",
+    "HomePublicResponse",
+    "SECTION_SCHEMAS",
 ]

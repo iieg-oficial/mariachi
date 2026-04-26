@@ -1,5 +1,7 @@
 from app.core.database import Base
 from app.models.borrador import Borrador
+from app.models.evento import Evento
+from app.models.home_section import HomeSection
 from app.models.media import Media, MediaFolder
 from app.models.media_bucket import MediaBucket
 from app.models.menu_item import MenuItem
@@ -29,6 +31,8 @@ __all__ = [
     "Media",
     "MediaFolder",
     "Borrador",
+    "Evento",
+    "HomeSection",
     "Project",
     "UserProject",
     "MediaBucket",

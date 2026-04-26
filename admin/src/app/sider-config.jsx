@@ -11,6 +11,8 @@ import {
     FormOutlined,
     OrderedListOutlined,
     UserAddOutlined,
+    CalendarOutlined,
+    HomeOutlined,
 } from '@ant-design/icons';
 
 export const PLATFORM_ITEMS = [
@@ -62,6 +64,18 @@ export const PROJECT_REGISTRY = {
                 path: '/mapalab/initial-order',
                 label: 'Capas iniciales',
                 icon: <OrderedListOutlined />,
+            },
+            {
+                key: '/mapalab/eventos',
+                path: '/mapalab/eventos',
+                label: 'Eventos',
+                icon: <CalendarOutlined />,
+            },
+            {
+                key: '/mapalab/home',
+                path: '/mapalab/home',
+                label: 'Home',
+                icon: <HomeOutlined />,
             },
         ],
     },
