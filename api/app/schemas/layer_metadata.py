@@ -7,6 +7,9 @@ class Fuentes(BaseModel):
     corto: str | None = None
     largo: str | None = None
     enlace: str | None = None
+    enlace_label: str | None = Field(default=None, serialization_alias='enlaceLabel')
+
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class Metodologia(BaseModel):
@@ -29,11 +32,25 @@ class NumeraliaValue(BaseModel):
 
 
 class StatsConfigItem(BaseModel):
-    posicion: int
-    nombre: str
+    posicion: int | None = None
+    position: int | None = None
+    nombre: str | None = None
+    label: str | None = None
     simbolo: str | None = None
+    symbol: str | None = None
     query: str | None = None
     format: str | None = None
+    operation: str | None = None
+    schema_: str | None = Field(default=None, alias='schema')
+    table: str | None = None
+    field: str | None = None
+    where_field: str | None = None
+    where_value: str | int | float | bool | None = None
+    order_field: str | None = None
+    value: str | int | float | None = None
+    expression: dict | None = None
+
+    model_config = ConfigDict(populate_by_name=True, extra='allow')
 
 
 class LayerMetadataBase(BaseModel):
@@ -42,8 +59,8 @@ class LayerMetadataBase(BaseModel):
     layer_name_db: str | None = Field(default=None, serialization_alias='layerNameDb')
     layer_name_usuario: str | None = Field(default=None, serialization_alias='layerNameUsuario')
     descripcion: str | None = None
-    fuentes: Fuentes | None = None
-    metodologia: Metodologia | None = None
+    fuentes: list[Fuentes] | Fuentes | None = None
+    metodologia: list[Metodologia] | Metodologia | None = None
     metadato: list[MetadatoItem] | None = None
     frecuencia: str | None = None
     fecha_ultima: str | None = Field(default=None, serialization_alias='fechaUltima')
@@ -68,8 +85,8 @@ class LayerMetadataUpdate(BaseModel):
     layer_name_db: str | None = Field(default=None, serialization_alias='layerNameDb')
     layer_name_usuario: str | None = Field(default=None, serialization_alias='layerNameUsuario')
     descripcion: str | None = None
-    fuentes: Fuentes | None = None
-    metodologia: Metodologia | None = None
+    fuentes: list[Fuentes] | Fuentes | None = None
+    metodologia: list[Metodologia] | Metodologia | None = None
     metadato: list[MetadatoItem] | None = None
     frecuencia: str | None = None
     fecha_ultima: str | None = Field(default=None, serialization_alias='fechaUltima')

@@ -62,22 +62,23 @@ export default function LayerAliasesSection({ layerId, listAliases, createAlias,
                 como redirects para URLs viejas que cambiaron de nombre.
             </Text>
 
-            <Form form={form} layout="inline" onFinish={handleAdd}>
-                <Form.Item
-                    name="alias"
-                    rules={[
-                        { required: true, message: 'Alias requerido' },
-                        { pattern: /^[a-z0-9-]+$/, message: 'Solo minusculas, numeros y guiones' },
-                        { max: 60 },
-                    ]}
-                >
-                    <Input placeholder="ejemplo: esalud" style={{ width: 240 }} />
-                </Form.Item>
-                <Form.Item>
-                    <Button type="primary" icon={<PlusOutlined />} htmlType="submit">
+            <Form form={form} component={false}>
+                <Space.Compact style={{ width: '100%', maxWidth: 360 }}>
+                    <Form.Item
+                        name="alias"
+                        noStyle
+                        rules={[
+                            { required: true, message: 'Alias requerido' },
+                            { pattern: /^[a-z0-9-]+$/, message: 'Solo minusculas, numeros y guiones' },
+                            { max: 60 },
+                        ]}
+                    >
+                        <Input placeholder="ejemplo: esalud" onPressEnter={handleAdd} />
+                    </Form.Item>
+                    <Button type="primary" icon={<PlusOutlined />} onClick={handleAdd}>
                         Agregar alias
                     </Button>
-                </Form.Item>
+                </Space.Compact>
             </Form>
 
             <List
@@ -100,7 +101,17 @@ export default function LayerAliasesSection({ layerId, listAliases, createAlias,
                             </Popconfirm>,
                         ]}
                     >
-                        <Tag color="blue">{item.alias}</Tag>
+                        <Tag
+                            color="#5C2472"
+                            style={{
+                                fontSize: 14,
+                                color: '#262626',
+                                padding: '2px 10px',
+                                borderRadius: 6,
+                            }}
+                        >
+                            {item.alias}
+                        </Tag>
                         <Text type="secondary" style={{ marginLeft: 8 }}>
                             por {item.createdBy || '—'}
                         </Text>

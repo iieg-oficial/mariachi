@@ -64,6 +64,76 @@ def _serialize_media(item: Media) -> dict:
     }
 
 
+_MIME_BY_EXT = {
+    "txt": "text/plain", "csv": "text/csv", "pdf": "application/pdf",
+    "json": "application/json", "xml": "application/xml",
+    "xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "xls": "application/vnd.ms-excel",
+    "doc": "application/msword",
+    "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "zip": "application/zip", "rar": "application/x-rar-compressed",
+    "png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg",
+    "gif": "image/gif", "webp": "image/webp", "svg": "image/svg+xml",
+    "geojson": "application/geo+json", "shp": "application/octet-stream",
+}
+
+
+def _guess_mime(path: str) -> str:
+    ext = path.rsplit(".", 1)[-1].lower() if "." in path else ""
+    return _MIME_BY_EXT.get(ext, "application/octet-stream")
+
+
+def _folder_from_path(path: str) -> str:
+    if "/" not in path:
+        return ""
+    return "/" + path.rsplit("/", 1)[0]
+
+
+def _serialize_bucket_only(bucket_id: int, obj: dict) -> dict:
+    name = obj["name"]
+    is_dir = bool(obj.get("is_dir") or name.endswith("/"))
+    last_modified = obj.get("last_modified")
+    if last_modified and hasattr(last_modified, "isoformat"):
+        last_modified = last_modified.isoformat()
+    if is_dir:
+        clean = name.rstrip("/")
+        return {
+            "id": f"dir:{bucket_id}:{name}",
+            "bucket_id": bucket_id,
+            "name": name,
+            "originalName": clean.rsplit("/", 1)[-1],
+            "type": "directory",
+            "size": 0,
+            "url": None,
+            "thumbnail": None,
+            "folder": _folder_from_path(clean),
+            "uploadedBy": None,
+            "uploadedByName": "—",
+            "uploadedAt": last_modified,
+            "metadata": {},
+            "bucketOnly": True,
+            "isDir": True,
+        }
+    mime = _guess_mime(name)
+    return {
+        "id": f"bucket:{bucket_id}:{name}",
+        "bucket_id": bucket_id,
+        "name": name,
+        "originalName": name.rsplit("/", 1)[-1],
+        "type": mime,
+        "size": obj.get("size", 0),
+        "url": obj.get("url"),
+        "thumbnail": obj.get("url") if mime.startswith("image/") else None,
+        "folder": _folder_from_path(name),
+        "uploadedBy": None,
+        "uploadedByName": "—",
+        "uploadedAt": last_modified,
+        "metadata": {},
+        "bucketOnly": True,
+        "isDir": False,
+    }
+
+
 @router.get("", response_model=list[dict])
 async def listar_media(
     db: Session = Depends(get_db),
@@ -72,22 +142,67 @@ async def listar_media(
     folder: str | None = Query(None),
     type: str | None = Query(None),
     search: str | None = Query(None),
+    recursive: bool = Query(False, description="Si false, devuelve solo el primer nivel del prefix (incluye carpetas)"),
 ):
-    _resolve_bucket_or_403(bucket_id, current_user, db)
+    """Lista archivos del bucket fusionando objetos físicos (MinIO) + registros locales (tabla media).
 
-    query = db.query(Media).filter(Media.bucket_id == bucket_id)
-    if folder:
-        query = query.filter(Media.folder == folder)
+    Fuente de verdad: el bucket. Los registros locales aportan metadata enriquecida
+    (alt, descripción, etc.) cuando existen. Los objetos físicos sin registro local
+    aparecen marcados con bucketOnly=true.
+    """
+    bucket = _resolve_bucket_or_403(bucket_id, current_user, db)
+
+    # 1) Objetos físicos del bucket
+    client = AcervoClient.for_bucket(bucket)
+    prefix = ""
+    if folder and folder != "/":
+        prefix = folder.lstrip("/").rstrip("/") + "/"
+    bucket_objects = client.list_objects(prefix=prefix, recursive=recursive)
+    for obj in bucket_objects:
+        if not obj.get("is_dir") and not obj["name"].endswith("/"):
+            obj["url"] = client.get_file_url(obj["name"])
+
+    # 2) Registros locales del mismo bucket
+    local_items = db.query(Media).filter(Media.bucket_id == bucket_id).all()
+    local_by_name = {item.name: item for item in local_items}
+
+    # 3) Fusionar: para cada objeto del bucket, usar el registro local si existe
+    results: list[dict] = []
+    seen_names: set[str] = set()
+    for obj in bucket_objects:
+        name = obj["name"]
+        seen_names.add(name)
+        local = local_by_name.get(name)
+        if local is not None:
+            entry = _serialize_media(local)
+            # Enriquecer con dato fresco del bucket (size/url pueden haber cambiado)
+            entry["url"] = obj.get("url") or entry["url"]
+            entry["size"] = obj.get("size", entry["size"])
+            results.append(entry)
+        else:
+            results.append(_serialize_bucket_only(bucket_id, obj))
+
+    # 4) Registros locales sin objeto físico (huérfanos): solo cuando hacemos listado
+    #    recursivo del bucket (sino no podemos saber si están en otros niveles).
+    if recursive:
+        for item in local_items:
+            if item.name not in seen_names:
+                entry = _serialize_media(item)
+                entry["orphan"] = True  # señal: existe en BD pero no en bucket
+                results.append(entry)
+
+    # 5) Aplicar filtros (en memoria — bucket pequeño, no hay paginación server-side)
     if type:
-        query = query.filter(Media.type.startswith(type))
+        results = [r for r in results if (r.get("type") or "").startswith(type)]
     if search:
-        search_lower = f"%{search.lower()}%"
-        query = query.filter(
-            Media.name.ilike(search_lower) | Media.original_name.ilike(search_lower)
-        )
+        s = search.lower()
+        results = [
+            r for r in results
+            if s in (r.get("name") or "").lower()
+            or s in (r.get("originalName") or "").lower()
+        ]
 
-    items = query.order_by(Media.uploaded_at.desc()).all()
-    return [_serialize_media(item) for item in items]
+    return results
 
 
 @router.get("/objetos-bucket", response_model=list[dict])
@@ -127,20 +242,37 @@ async def subir_archivo(
     client = AcervoClient.for_bucket(bucket)
 
     file_extension = file.filename.split(".")[-1] if "." in file.filename else ""
-    unique_name = f"{uuid.uuid4()}.{file_extension}" if file_extension else str(uuid.uuid4())
+    base = f"{uuid.uuid4()}.{file_extension}" if file_extension else str(uuid.uuid4())
+
+    # Normalizar el prefix de carpeta y construir el path final dentro del bucket
+    clean_folder = (folder or "").strip().strip("/")
+    object_key = f"{clean_folder}/{base}" if clean_folder else base
+
+    # Asegurar que la carpeta exista en media_folders (FK requirement)
+    folder_path = f"{clean_folder}/" if clean_folder else None
+    if folder_path:
+        existing_folder = db.query(MediaFolder).filter(MediaFolder.path == folder_path).first()
+        if not existing_folder:
+            new_folder = MediaFolder(
+                name=clean_folder.rsplit("/", 1)[-1],
+                path=folder_path,
+                parent=None,
+            )
+            db.add(new_folder)
+            db.flush()
 
     try:
-        url = await client.upload_file(file, unique_name)
+        url = await client.upload_file(file, object_key)
 
         nuevo = Media(
             bucket_id=bucket.id,
-            name=unique_name,
+            name=object_key,
             original_name=file.filename,
             type=file.content_type or "application/octet-stream",
             size=file.size or 0,
             url=url,
             thumbnail=url if file.content_type and file.content_type.startswith("image/") else None,
-            folder=folder,
+            folder=folder_path,
             uploaded_by=current_user.id,
             metadata_json={"alt": alt} if alt else {},
         )
@@ -160,13 +292,32 @@ async def subir_archivo(
         )
 
 
-@router.delete("/{media_id}")
+@router.delete("/{media_id:path}")
 async def eliminar_archivo(
-    media_id: int,
+    media_id: str,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
 ):
-    item = db.query(Media).filter(Media.id == media_id).first()
+    # Soporte de ids sinteticos para objetos sin registro local: "bucket:{bucket_id}:{name}"
+    if media_id.startswith("bucket:"):
+        try:
+            _, bucket_id_str, name = media_id.split(":", 2)
+            bucket_id = int(bucket_id_str)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="ID sintetico invalido")
+        bucket = _resolve_bucket_or_403(bucket_id, current_user, db)
+        client = AcervoClient.for_bucket(bucket)
+        client.delete_file(name)
+        incr(COUNTER_MEDIA_DELETES)
+        logger.info("action=media.delete.bucket_only user_id=%s bucket=%s name=%s", current_user.id, bucket_id, name)
+        return {"message": "Archivo eliminado del bucket"}
+
+    try:
+        media_int = int(media_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="ID invalido")
+
+    item = db.query(Media).filter(Media.id == media_int).first()
     if not item:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Archivo no encontrado")
 

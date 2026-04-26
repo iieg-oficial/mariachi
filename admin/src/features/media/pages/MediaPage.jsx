@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
-    Card, Button, Upload, Table, Image, Space, message, Modal, Form, Input, Select, 
-    Tag, Popconfirm, Row, Col, Statistic, Segmented, Empty, Spin
+    Card, Button, Upload, Table, Image, Space, message, Modal, Form, Input, Select,
+    Tag, Popconfirm, Row, Col, Statistic, Segmented, Empty, Spin, Breadcrumb
 } from 'antd';
 import {
-    InboxOutlined, DeleteOutlined, EditOutlined, FolderOutlined, FolderAddOutlined, FileImageOutlined, FilePdfOutlined,
-    FileOutlined, AppstoreOutlined, BarsOutlined, DownloadOutlined, CopyOutlined, EyeOutlined
+    InboxOutlined, DeleteOutlined, EditOutlined, FolderOutlined, FolderOpenOutlined, FolderAddOutlined, FileImageOutlined, FilePdfOutlined,
+    FileOutlined, AppstoreOutlined, BarsOutlined, DownloadOutlined, CopyOutlined, EyeOutlined, HomeOutlined
 } from '@ant-design/icons';
 import mediaService from '@features/media/api/mediaService';
 import useIsMobile from '@shared/hooks/useIsMobile';
@@ -21,7 +21,7 @@ const Media = () => {
     const [selectedBucketId, setSelectedBucketId] = useState(null);
     const [mediaFiles, setMediaFiles] = useState([]);
     const [folders, setFolders] = useState([]);
-    const [selectedFolder, setSelectedFolder] = useState(null);
+    const [currentPath, setCurrentPath] = useState('');
     const [selectedType, setSelectedType] = useState(null);
     const [searchText, setSearchText] = useState('');
     const [viewMode, setViewMode] = useState('grid');
@@ -48,9 +48,10 @@ const Media = () => {
         try {
             const data = await mediaService.getMediaFiles({
                 bucketId: selectedBucketId,
-                folder: selectedFolder,
+                folder: currentPath,
                 type: selectedType,
                 search: searchText,
+                recursive: Boolean(searchText),
             });
             setMediaFiles(data);
         } catch {
@@ -58,7 +59,7 @@ const Media = () => {
         } finally {
             setLoading(false);
         }
-    }, [selectedBucketId, selectedFolder, selectedType, searchText]);
+    }, [selectedBucketId, currentPath, selectedType, searchText]);
 
     useEffect(() => {
         let cancelled = false;
@@ -68,35 +69,73 @@ const Media = () => {
                 setBuckets(bucketsData);
                 setFolders(foldersData);
                 if (bucketsData.length > 0) {
-                    setSelectedBucketId((prev) => prev ?? bucketsData[0].id);
+                    setSelectedBucketId((prev) => {
+                        if (prev != null) return prev;
+                        const mapalab = bucketsData.find((b) => b.acervo_bucket === 'mapalab');
+                        return (mapalab || bucketsData[0]).id;
+                    });
                 }
             })
             .catch(() => message.error('Error al cargar datos iniciales'));
         return () => { cancelled = true; };
     }, []);
 
+    const [bucketStats, setBucketStats] = useState({ total: 0, images: 0, documents: 0, totalSize: 0 });
+
+    const isDocumentType = (type) => {
+        if (!type) return false;
+        if (type.startsWith('image/')) return false;
+        const docPrefixes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats',
+            'application/vnd.ms-excel', 'application/vnd.ms-powerpoint',
+            'application/json', 'application/xml', 'application/geo+json',
+            'text/'];
+        return docPrefixes.some((p) => type.startsWith(p));
+    };
+
     useEffect(() => {
         if (!selectedBucketId) return;
         let cancelled = false;
         mediaService.getMediaFiles({
             bucketId: selectedBucketId,
-            folder: selectedFolder,
+            recursive: true,
+        })
+            .then((data) => {
+                if (cancelled) return;
+                const files = (data || []).filter(f => !f.isDir);
+                setBucketStats({
+                    total: files.length,
+                    images: files.filter(f => f.type?.startsWith('image/')).length,
+                    documents: files.filter(f => isDocumentType(f.type)).length,
+                    totalSize: files.reduce((sum, f) => sum + (f.size || 0), 0),
+                });
+            })
+            .catch(() => {});
+        return () => { cancelled = true; };
+    }, [selectedBucketId]);
+
+    useEffect(() => {
+        if (!selectedBucketId) return;
+        let cancelled = false;
+        mediaService.getMediaFiles({
+            bucketId: selectedBucketId,
+            folder: currentPath,
             type: selectedType,
             search: searchText,
+            recursive: Boolean(searchText),
         })
             .then((data) => { if (!cancelled) setMediaFiles(data); })
             .catch(() => message.error('Error al cargar archivos'))
             .finally(() => { if (!cancelled) setLoading(false); });
         return () => { cancelled = true; };
-    }, [selectedBucketId, selectedFolder, selectedType, searchText]);
+    }, [selectedBucketId, currentPath, selectedType, searchText]);
 
     const visibleMediaFiles = selectedBucketId ? mediaFiles : [];
 
     const stats = {
-        total: visibleMediaFiles.length,
-        images: visibleMediaFiles.filter(f => f.type.startsWith('image/')).length,
+        total: visibleMediaFiles.filter(f => !f.isDir).length,
+        images: visibleMediaFiles.filter(f => f.type?.startsWith('image/')).length,
         documents: visibleMediaFiles.filter(f => f.type === 'application/pdf').length,
-        totalSize: visibleMediaFiles.reduce((sum, f) => sum + f.size, 0)
+        totalSize: visibleMediaFiles.reduce((sum, f) => sum + (f.size || 0), 0)
     };
 
     const handleUpload = async (options) => {
@@ -199,6 +238,34 @@ const Media = () => {
         setPreviewVisible(true);
     };
 
+    const handleEnterDir = (file) => {
+        const cleanName = file.name.endsWith('/') ? file.name : `${file.name}/`;
+        setCurrentPath(cleanName);
+        setSelectedFiles([]);
+    };
+
+    const breadcrumbItems = (() => {
+        const items = [{
+            title: <span style={{ cursor: 'pointer' }} onClick={() => setCurrentPath('')}>
+                <HomeOutlined /> Raíz
+            </span>,
+        }];
+        if (currentPath) {
+            const parts = currentPath.replace(/\/$/, '').split('/');
+            let acc = '';
+            parts.forEach((p, i) => {
+                acc += `${p}/`;
+                const path = acc;
+                items.push({
+                    title: i === parts.length - 1 ? p : (
+                        <span style={{ cursor: 'pointer' }} onClick={() => setCurrentPath(path)}>{p}</span>
+                    ),
+                });
+            });
+        }
+        return items;
+    })();
+
     const getFileIcon = (type) => {
         if (type.startsWith('image/')) return <FileImageOutlined style={{ fontSize: 48, color: '#1890ff' }} />;
         if (type === 'application/pdf') return <FilePdfOutlined style={{ fontSize: 48, color: '#ff4d4f' }} />;
@@ -211,8 +278,15 @@ const Media = () => {
             dataIndex: 'thumbnail',
             key: 'thumbnail',
             width: 100,
-            render: (thumbnail, record) => (
-                record.type.startsWith('image/') ? (
+            render: (thumbnail, record) => {
+                if (record.isDir) {
+                    return (
+                        <div style={{ textAlign: 'center', cursor: 'pointer' }} onClick={() => handleEnterDir(record)}>
+                            <FolderOutlined style={{ fontSize: 36, color: '#FF8300' }} />
+                        </div>
+                    );
+                }
+                return record.type?.startsWith('image/') ? (
                     <Image
                         src={thumbnail}
                         width={60}
@@ -225,17 +299,26 @@ const Media = () => {
                     <div style={{ textAlign: 'center' }}>
                         {getFileIcon(record.type)}
                     </div>
-                )
-            )
+                );
+            }
         },
         {
             title: 'Nombre',
             dataIndex: 'originalName',
             key: 'originalName',
-            sorter: (a, b) => a.originalName.localeCompare(b.originalName),
+            sorter: (a, b) => {
+                if (a.isDir && !b.isDir) return -1;
+                if (!a.isDir && b.isDir) return 1;
+                return a.originalName.localeCompare(b.originalName);
+            },
             render: (text, record) => (
-                <div>
-                    <div style={{ fontWeight: 500 }}>{text}</div>
+                <div
+                    onClick={record.isDir ? () => handleEnterDir(record) : undefined}
+                    style={{ cursor: record.isDir ? 'pointer' : 'default' }}
+                >
+                    <div style={{ fontWeight: 500, color: record.isDir ? '#5C2472' : undefined }}>
+                        {record.isDir ? `📁 ${text}` : text}
+                    </div>
                     <div style={{ fontSize: 12, color: '#8c8c8c' }}>{record.name}</div>
                 </div>
             )
@@ -257,8 +340,8 @@ const Media = () => {
             dataIndex: 'size',
             key: 'size',
             width: 120,
-            sorter: (a, b) => a.size - b.size,
-            render: (size) => mediaService.formatFileSize(size)
+            sorter: (a, b) => (a.size || 0) - (b.size || 0),
+            render: (size, record) => record.isDir ? '—' : mediaService.formatFileSize(size)
         },
         {
             title: 'Carpeta',
@@ -322,14 +405,25 @@ const Media = () => {
         }
     ];
 
+    const sortedFiles = [...visibleMediaFiles].sort((a, b) => {
+        if (a.isDir && !b.isDir) return -1;
+        if (!a.isDir && b.isDir) return 1;
+        return (a.originalName || '').localeCompare(b.originalName || '');
+    });
+
     const renderGridView = () => (
         <Row gutter={[16, 16]}>
-            {visibleMediaFiles.map(file => (
+            {sortedFiles.map(file => (
                 <Col key={file.id} xs={24} sm={12} md={8} lg={6} xl={4}>
                     <Card
                         hoverable
+                        onClick={file.isDir ? () => handleEnterDir(file) : undefined}
                         cover={
-                            file.type.startsWith('image/') ? (
+                            file.isDir ? (
+                                <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FFF2E5', cursor: 'pointer' }}>
+                                    <FolderOutlined style={{ fontSize: 80, color: '#FF8300' }} />
+                                </div>
+                            ) : file.type?.startsWith('image/') ? (
                                 <div style={{ height: 200, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f0f0f0' }}>
                                     <Image
                                         src={file.thumbnail}
@@ -344,7 +438,9 @@ const Media = () => {
                                 </div>
                             )
                         }
-                        actions={[
+                        actions={file.isDir ? [
+                            <FolderOpenOutlined key="open" onClick={() => handleEnterDir(file)} />,
+                        ] : [
                             <EyeOutlined key="view" onClick={() => handlePreview(file)} />,
                             <CopyOutlined key="copy" onClick={() => handleCopyUrl(file.url)} />,
                             <EditOutlined key="edit" onClick={() => handleEdit(file)} />,
@@ -367,7 +463,7 @@ const Media = () => {
                             }
                             description={
                                 <div>
-                                    <div>{mediaService.formatFileSize(file.size)}</div>
+                                    <div>{file.isDir ? 'Carpeta' : mediaService.formatFileSize(file.size)}</div>
                                     <div style={{ fontSize: 11, color: '#8c8c8c' }}>
                                         {new Date(file.uploadedAt).toLocaleDateString('es-MX')}
                                     </div>
@@ -418,21 +514,25 @@ const Media = () => {
             >
                 <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
                     <Col xs={12} sm={12} md={6}>
-                        <Statistic title="Total de Archivos" value={stats.total} />
+                        <Statistic title="Total de archivos (bucket)" value={bucketStats.total} />
                     </Col>
                     <Col xs={12} sm={12} md={6}>
-                        <Statistic title="Imágenes" value={stats.images} prefix={<FileImageOutlined />} />
+                        <Statistic title="Imágenes" value={bucketStats.images} prefix={<FileImageOutlined />} />
                     </Col>
                     <Col xs={12} sm={12} md={6}>
-                        <Statistic title="Documentos" value={stats.documents} prefix={<FilePdfOutlined />} />
+                        <Statistic title="Documentos" value={bucketStats.documents} prefix={<FilePdfOutlined />} />
                     </Col>
                     <Col xs={12} sm={12} md={6}>
                         <Statistic
-                            title="Tamaño Total"
-                            value={mediaService.formatFileSize(stats.totalSize)}
+                            title="Tamaño total"
+                            value={mediaService.formatFileSize(bucketStats.totalSize)}
                         />
                     </Col>
                 </Row>
+
+                <div style={{ marginBottom: 12 }}>
+                    <Breadcrumb items={breadcrumbItems} />
+                </div>
 
                 <div style={{
                     display: 'flex',
@@ -459,21 +559,6 @@ const Media = () => {
                             onSearch={setSearchText}
                             style={{ width: '100%' }}
                         />
-                    </div>
-                    <div style={{ flex: isMobile ? '1 1 calc(50% - 4px)' : '0 0 auto' }}>
-                        <Select
-                            placeholder="Carpeta"
-                            allowClear
-                            style={{ width: isMobile ? '100%' : 200 }}
-                            onChange={setSelectedFolder}
-                            value={selectedFolder}
-                        >
-                            {folders.map(folder => (
-                                <Option key={folder.id} value={folder.path}>
-                                    <FolderOutlined /> {folder.name}
-                                </Option>
-                            ))}
-                        </Select>
                     </div>
                     <div style={{ flex: isMobile ? '1 1 calc(50% - 4px)' : '0 0 auto' }}>
                         <Select
@@ -510,7 +595,7 @@ const Media = () => {
                     ) : (
                         <Table
                             columns={columns}
-                            dataSource={visibleMediaFiles}
+                            dataSource={sortedFiles}
                             rowKey="id"
                             size={isMobile ? 'small' : 'middle'}
                             rowSelection={{

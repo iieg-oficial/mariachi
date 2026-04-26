@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Empty, Input, Space, Spin, Tag, Tree, Typography, message } from 'antd';
 import {
     AppstoreOutlined,
@@ -94,8 +94,26 @@ export default function LayersTreeSider({
 }) {
     const [q, setQ] = useState('');
     const [expandedKeys, setExpandedKeys] = useState([]);
+    const [userTouchedExpansion, setUserTouchedExpansion] = useState(false);
 
     const visibleTree = useMemo(() => filterTree(treeData, q), [treeData, q]);
+
+    useEffect(() => {
+        if (userTouchedExpansion) return;
+        if (selectedKey) return;
+        if (!treeData?.length) return;
+        const allKeys = [];
+        const collect = (nodes) => {
+            for (const n of nodes) {
+                if (n.children?.length) {
+                    allKeys.push(n.key);
+                    collect(n.children);
+                }
+            }
+        };
+        collect(treeData);
+        setExpandedKeys(allKeys);
+    }, [selectedKey, treeData, userTouchedExpansion]);
 
     const handleDrop = async (info) => {
         if (!isAdmin) {
@@ -177,8 +195,9 @@ export default function LayersTreeSider({
                         selectedKeys={selectedKey ? [selectedKey] : []}
                         onSelect={(keys) => onSelect?.(keys[0] || null)}
                         expandedKeys={expandedKeys}
-                        onExpand={setExpandedKeys}
+                        onExpand={(keys) => { setExpandedKeys(keys); setUserTouchedExpansion(true); }}
                         autoExpandParent
+                        expandAction="click"
                         draggable={isAdmin && !q}
                         onDrop={handleDrop}
                         blockNode

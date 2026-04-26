@@ -93,8 +93,9 @@ export const useLayerTreeAdmin = () => {
         return res.data;
     }, []);
 
-    const listGeoserverFields = useCallback(async (alias, layer) => {
-        const res = await api.get(`/geoserver/workspaces/${alias}/layers/${layer}/fields`);
+    const listGeoserverFields = useCallback(async (alias, layer, { includeSamples = false } = {}) => {
+        const params = includeSamples ? '?include_samples=true' : '';
+        const res = await api.get(`/geoserver/workspaces/${alias}/layers/${layer}/fields${params}`);
         return res.data;
     }, []);
 
@@ -138,6 +139,31 @@ export const useLayerTreeAdmin = () => {
 
     const updateLayerMetadata = useCallback(async (layerKey, payload) => {
         const res = await api.put(`/layer-metadata/${encodeURIComponent(layerKey)}`, payload);
+        return res.data;
+    }, []);
+
+    const getLayerStats = useCallback(async (layerKey) => {
+        try {
+            const res = await api.get(`/layer-metadata/${encodeURIComponent(layerKey)}/stats`);
+            return res.data;
+        } catch (err) {
+            if (err.response?.status === 404) return null;
+            throw err;
+        }
+    }, []);
+
+    const updateLayerStats = useCallback(async (layerKey, payload) => {
+        const res = await api.put(`/layer-metadata/${encodeURIComponent(layerKey)}/stats`, payload);
+        return res.data;
+    }, []);
+
+    const previewLayerStat = useCallback(async (layerKey, cfg) => {
+        const res = await api.post(`/layer-metadata/${encodeURIComponent(layerKey)}/stats/preview`, cfg);
+        return res.data;
+    }, []);
+
+    const refreshLayerStats = useCallback(async (layerKey) => {
+        const res = await api.post(`/layer-metadata/${encodeURIComponent(layerKey)}/stats/refresh`);
         return res.data;
     }, []);
 
@@ -186,6 +212,10 @@ export const useLayerTreeAdmin = () => {
         setInitialOrder,
         getLayerMetadata,
         updateLayerMetadata,
+        getLayerStats,
+        updateLayerStats,
+        previewLayerStat,
+        refreshLayerStats,
         listLayerAliases,
         createLayerAlias,
         deleteLayerAlias,

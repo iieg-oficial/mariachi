@@ -13,6 +13,90 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.26.0] - 2026-04-26
+
+### Editor de capas (admin/mapalab-layers)
+
+- **Política de visibilidad por nodeType** (`constants/nodeTypes.js`):
+  - `FIELD_VISIBILITY` y `TAB_VISIBILITY` declarativos. Helpers `isFieldVisible`, `isTabVisible`.
+  - `slug` y `alias` solo visibles para `group` y `leaf` (no para `tema`/`category`/`label` — no son activables por URL).
+  - `searchTags` solo para `group`/`leaf`. Tabs Servicios/InfoBox/Metadatos solo para `group`/`leaf`.
+  - Banner contextual (`NODE_TYPE_HELP`) explicando por qué cada tipo de nodo tiene menos campos.
+- **InfoBox blocks editor** (`InfoBoxBlocksEditor.jsx`, NUEVO): editor visual por bloques que reemplaza al template selector + `InfoBoxPresetForm` + `InfoBoxJsonEditor` (los dos últimos eliminados, en BD nadie usaba `infobox_template`). Bloques: `headerField`, `labelGroups` (con `staticValues` y `fields` con styling propio anidado), `cards` (con `decimals`), `list`, `iconText`, `text`. Reorden con flechas ↑/↓ persistido en `blockOrder`. Herencia desde el group ancestro: si un leaf no tiene config propia y el group sí, banner verde "Heredando de X" + botón "Personalizar para esta capa" con `Modal.confirm`. En group: banner azul "se hereda a los hijos sin config propia". Botón "Quitar personalización y volver a heredar" con confirmación.
+- **CQL filter builder** (`CqlFilterBuilder.jsx`, NUEVO): modo Constructor (rows campo/operador/valor combinables con AND/OR, autocomplete de valores reales con `?include_samples=true`) y modo Texto avanzado (TextArea monospace + tags clickeables de campos disponibles). Parser bidireccional para CQL simples; tag amarillo "no parseable al constructor" cuando aplica.
+- **WMS group field** (`WmsGroupField.jsx`, NUEVO): Select puro con grupos existentes en el árbol, agrupados por "Grupos en hermanos directos" / "Otros grupos en el árbol" / "Valor actual (sin otras capas asignadas)" para legacy. Chips con miembros del grupo (color azul si comparten rama, gris si no) + tooltips con workspace/capa GS/rama. Warnings cuando workspace, rama o `timeEnabled` difieren entre miembros.
+- **Servicios condicional para groups** (`GroupServicesReference.jsx`, NUEVO): si nodeType es `group` sin workspace propio, la tab Servicios muestra banner explicando que el group es agrupador (no capa WMS) + tags resumen (N hijas, feature type compartido, wms_group) + tabla read-only con cada capa hija (label, feature type, CQL truncado) + botón ✏ para editar el CQL de cada hija directo.
+- **`InfoBoxPreview` reescrito** para renderizar el `infobox_config` real (no el shape viejo de template+params). Soporta `staticValues`, `decimals` en cards, glifos para iconText, headerField con detección literal vs campo. Respeta `blockOrder`.
+- **`LayerEditPage`**: helpers `sharedFeatureTypeFromDescendants` (deriva `salud:unidades_salud` para groups como `establecimientos_salud`), `inheritedInfobox`, `countSiblingsSharingFeatureType`. Tab Metadatos resuelve el `layerKey` correcto automáticamente para groups, mostrando banner verde "este nodo no tiene feature type propio, pero todos sus descendientes usan el mismo".
+- **Tab Servicios** ampliada con periodicidad: `timeEnabled` (con descripción de ImageMosaic), `defaultDate` (acepta `latest` o año, normaliza a `{year}` o string), `timeStylePattern`, `hidePeriodicity`.
+- **`LayerAliasesSection`**: Form interno aislado con `component={false}` para evitar nested HTML form (causaba reload de página). Tags morado institucional `#5C2472` con padding y radius.
+- **`LayersTreeSider`**: árbol auto-expandido cuando no hay capa seleccionada; respeta interacción manual del usuario via `userTouchedExpansion`. `expandAction="click"` para expandir desde cualquier parte del nodo. Estado preservado al colapsar el sider (`display:none` en lugar de unmount).
+- **Etiquetas de búsqueda** como pills naranja `#FF8300` (`Select mode="tags"` con `tokenSeparators=[' ', ',']`, normalización lowercase + dedup). Soporta múltiples palabras simultáneas separadas por espacio.
+- Estilos SLD/Workspace/Capa GeoServer con fallback al value actual cuando aún no llegan las opciones async (evita pérdida visual de la selección).
+- Breadcrumb completo: cadena de ancestros desde la raíz hasta la capa actual, cada uno navegable.
+
+### Metadatos descriptivos
+
+- **`LayerMetadataSection.jsx` refactor completo**:
+  - **Multi-fuente**: `fuentes` ahora es array editable con `Form.List` (cards anidadas por fuente). Schema backend acepta `list[Fuentes] | Fuentes | None` (backwards-compat con BD que tiene objeto). Normalización a array al guardar.
+  - **Multi-metodología**: misma idea para `metodologia`.
+  - **Texto personalizado del enlace** por fuente (`enlace_label`): si vacío, mapalab usa "Ver fuente" / "Fuente N" como hoy.
+  - **Referencias cartográficas**: nueva sección con `tipo_mapa` (Select IIEG/INEGI), `tipo_mapa_enlace`, `texto_leyenda`, `link_final_capa`. Quitado `tarjeta_punto_poligono` (no usado por mapalab).
+  - **Frecuencia de actualización** ahora es `Select` con catálogo extendido (17 opciones: Diaria, Semanal, Quincenal, Mensual, Bimestral, …, Decenal, Continua, Bajo demanda, No programado, Histórico). Preserva valores legacy con etiqueta "(valor previo)".
+  - **Descripciones (`extra`)** en cada Form.Item de metadata.
+  - Reordenado para coincidir con el panel de Detalles del visor mapalab (`LayerInfoSections.jsx`): Información general → **Estadísticas** → Fuentes → Metodología → Refs cartográficas → Archivos adjuntos.
+  - Banner adaptativo según `derivedFromDescendants`/`siblingsSharingCount`: explica si la metadata se hereda del feature type común o se comparte con N hermanas.
+  - Bug fix: `setFieldsValue` se mueve a `useEffect` separado tras `loading=false` para garantizar que los Form.Items estén montados al precargar.
+  - Bug fix: lectura del alias `fechaUltima` (camelCase del backend) además de `fecha_ultima`.
+
+### Estadísticas (numeralia)
+
+- **`LayerStatsSection.jsx`** (NUEVO): editor de hasta 8 slots con tres modos por slot:
+  - **Estático**: valor literal (uso típico para datos no automatizables).
+  - **Operación simple**: `count`, `count_distinct`, `count_where`, `sum`, `avg`, `min`, `max`, `latest`. Selector de columna desde GeoServer.
+  - **Fórmula**: combinatoria recursiva (`add`, `sub`, `mul`, `div`, `percent`, `percent_change`) hasta 6 niveles de profundidad. Cada lado puede ser primitiva, otra fórmula, o literal.
+  - Por slot: nombre, símbolo, formato (entero/decimal/porcentaje/MXN/compacto), botón "Probar" (preview en vivo via endpoint POST `/stats/preview`), eliminar.
+  - Preview en vivo con resultado real ejecutado contra la BD.
+  - **Auto-import de valores legacy**: si `stats_config` está vacío y hay `values` (típico import del Sheet original ya descontinuado), se precargan como slots estáticos editables. Banner azul informativo.
+  - **Pie de numeralia** con regla forzada: si no empieza con `*`, se prefija automáticamente al guardar.
+  - **Cache TTL** con selector de unidad (min/horas/días) — internamente siempre minutos. Descripción detallada del comportamiento del cache.
+  - Botón "Recalcular valores ahora" → endpoint POST `/stats/refresh` que ejecuta todas las queries y persiste resultados.
+
+### Media manager (admin/media)
+
+- **Vista Explorador** (`MediaPage.jsx`): navegación tipo file system en lugar de lista plana.
+  - Nuevo state `currentPath` reemplaza al viejo selector "Carpeta".
+  - Breadcrumb navegable (`🏠 Raíz / metadata / txt`) con cada parte clickeable.
+  - Carpetas (con icono naranja folder) primero en la tabla y grid; click entra adentro.
+  - Search activa modo recursivo automáticamente; al limpiar vuelve al modo carpeta del nivel actual.
+  - Bucket por defecto = `mapalab` (el único con datos reales).
+  - Estadísticas globales del bucket (recursivas) en lugar de solo el nivel actual. "Documentos" ahora cuenta PDF, Word, Excel, PowerPoint, TXT, CSV, JSON, XML, GeoJSON.
+- **Modal `BucketFilePicker`** responsive 95%×alto, sin scroll horizontal (`tableLayout="fixed"` + `wordBreak`), header (Tabs + Search) y paginación sticky. Columnas adaptativas (Tamaño oculto en mobile, Modificado eliminada por innecesaria — un archivo por capa, sin versionado). Título "Elegir archivo".
+- **`BucketFileUploader.jsx`** (NUEVO): modal de upload directo al bucket desde el editor de capa. Dropzone, selector de carpeta destino, progress %. Tras upload, agrega entrada al `Form.List name="metadato"` con path **relativo** (no URL absoluta de MinIO local — portable entre entornos).
+- Botón "Subir archivo nuevo" + link "Administrar todos los archivos →" en la sección Archivos adjuntos del editor de capa.
+
+### Backend (api)
+
+- **`stats_templates.py` extendido**: nuevo tipo `formula` con expresión recursiva (combinator `add`/`sub`/`mul`/`div`/`percent`/`percent_change`) sobre primitivas. Validación whitelist estricta. Soporta `static`. Helper `execute_stat` evalúa cualquier tipo.
+- **Nuevos endpoints en `layer_metadata.py`**:
+  - `POST /layer-metadata/{key}/stats/preview` — evalúa una sola operación contra la BD sin persistir.
+  - `POST /layer-metadata/{key}/stats/refresh` — ejecuta todas las stats configuradas y persiste `values` + `values_refreshed_at`.
+- **Bug fix CRÍTICO de routing** (`layer_metadata.py`): los endpoints `/{layer_key:path}/stats*` se reordenaron para declararse ANTES del catch-all `/{layer_key:path}`. FastAPI evalúa rutas en orden y `:path` matchea barras, por lo que el endpoint genérico absorbía rutas como `/salud:unidades_salud/stats` (resolvía `layer_key="salud:unidades_salud/stats"` y respondía 404). Comentario in-line en el archivo para que no vuelva a ocurrir.
+- **`schemas/layer_metadata.py`**: `Fuentes` ahora con `enlace_label`. `LayerMetadataBase` y `LayerMetadataUpdate` aceptan `list[Fuentes] | Fuentes | None` y `list[Metodologia] | Metodologia | None`. `StatsConfigItem` extendido con `value`, `expression`, `schema_`, `table`, etc.
+- **`layer_metadata.update_metadata`**: normaliza `fuentes` y `metodologia` a array al persistir, descartando entradas vacías. Acepta tanto objeto como array entrantes (backwards-compat).
+- **`media.py` listar_media**: ahora **lista los objetos físicos del bucket MinIO como fuente principal** y los enriquece con la tabla `media` cuando existe registro local. Si un objeto físico no tiene registro local (caso típico legacy), se sintetiza con `id="bucket:{N}:{path}"`, `bucketOnly: true`, mime inferido, `isDir` para directorios. Soporte `recursive: bool` (default false para vista explorador con dirs).
+- **`media.py` eliminar_archivo**: soporta IDs sintéticos `bucket:N:path` (borra del bucket sin requerir registro local) y los IDs numéricos legacy.
+- **`media.py` subir_archivo**: ahora usa el `folder` como prefix real en el bucket (`metadata/txt/{uuid}.{ext}` en lugar de raíz). Auto-crea la entrada en `media_folders` si no existe (satisface FK sin error).
+- **`acervo.list_objects`**: nuevo flag `is_dir` por objeto (objetos terminados en `/` cuando recursive=false son directorios virtuales).
+
+### Eliminado
+
+- `InfoBoxJsonEditor.jsx` y `InfoBoxPresetForm.jsx` (reemplazados por `InfoBoxBlocksEditor`).
+- Campo "Tipo de tarjeta (geometría)" del editor de metadata (no consumido por mapalab).
+- Tabs separadas "Servicio WMS" y "Descarga" — fusionadas en una sola tab "Servicios".
+
+---
+
 ## [0.25.11] - 2026-04-25
 
 ### Corregido

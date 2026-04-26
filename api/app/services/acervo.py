@@ -88,11 +88,14 @@ class AcervoClient:
     def list_objects(self, prefix: str = "", recursive: bool = True) -> list[dict]:
         results = []
         for obj in self.client.list_objects(self.bucket_name, prefix=prefix, recursive=recursive):
+            name = obj.object_name
+            is_dir = name.endswith("/")
             results.append({
-                "name": obj.object_name,
-                "size": obj.size,
+                "name": name,
+                "size": obj.size or 0,
                 "last_modified": obj.last_modified.isoformat() if obj.last_modified else None,
                 "etag": obj.etag,
+                "is_dir": is_dir,
             })
         return results
 

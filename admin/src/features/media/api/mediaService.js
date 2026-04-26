@@ -102,6 +102,7 @@ export const getMediaFiles = async (filters = {}) => {
         if (filters.folder) params.append('folder', filters.folder);
         if (filters.type) params.append('type', filters.type);
         if (filters.search) params.append('search', filters.search);
+        if (filters.recursive !== undefined) params.append('recursive', String(filters.recursive));
 
         const response = await api.get(`/multimedia?${params.toString()}`);
         return response.data;

@@ -25,14 +25,21 @@ import { useNavigate, useParams } from 'react-router';
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import { useAuth } from '@shared/contexts/useAuth';
-import InfoBoxPresetForm from '@features/mapalab-layers/components/layersEditor/InfoBoxPresetForm';
+import InfoBoxBlocksEditor from '@features/mapalab-layers/components/layersEditor/InfoBoxBlocksEditor';
 import InfoBoxPreview from '@features/mapalab-layers/components/layersEditor/InfoBoxPreview';
-import InfoBoxJsonEditor from '@features/mapalab-layers/components/layersEditor/InfoBoxJsonEditor';
 import LayerMetadataSection from '@features/mapalab-layers/components/layersEditor/LayerMetadataSection';
 import LayerAliasesSection from '@features/mapalab-layers/components/layersEditor/LayerAliasesSection';
+import CqlFilterBuilder from '@features/mapalab-layers/components/layersEditor/CqlFilterBuilder';
+import WmsGroupField from '@features/mapalab-layers/components/layersEditor/WmsGroupField';
+import GroupServicesReference from '@features/mapalab-layers/components/layersEditor/GroupServicesReference';
 import LayersTreeSider from '@features/mapalab-layers/components/LayersTreeSider';
 import BulkTagsDrawer from '@features/mapalab-layers/components/layersEditor/BulkTagsDrawer';
-import { NODE_TYPE_OPTIONS } from '@features/mapalab-layers/constants/nodeTypes';
+import {
+    NODE_TYPE_OPTIONS,
+    NODE_TYPE_HELP,
+    isFieldVisible,
+    isTabVisible,
+} from '@features/mapalab-layers/constants/nodeTypes';
 import useResizableWidth from '@shared/hooks/useResizableWidth';
 
 const { Content, Sider } = Layout;
@@ -57,6 +64,7 @@ export default function LayerEditPage() {
         getLayerDraft,
         listGeoserverWorkspaces,
         listGeoserverStyles,
+        listGeoserverFields,
         listLayerAliases,
         createLayerAlias,
         deleteLayerAlias,
@@ -70,6 +78,7 @@ export default function LayerEditPage() {
     const [saving, setSaving] = useState(false);
     const [workspaces, setWorkspaces] = useState([]);
     const [availableStyles, setAvailableStyles] = useState([]);
+    const [availableFields, setAvailableFields] = useState([]);
     const [bulkTagsOpen, setBulkTagsOpen] = useState(false);
     const { width: siderWidth, handleStart: handleSiderResize } = useResizableWidth({
         initialWidth: 320,
@@ -94,9 +103,9 @@ export default function LayerEditPage() {
 
     const selectedWs = Form.useWatch('workspaceAlias', form);
     const selectedGsLayer = Form.useWatch('geoserverLayer', form);
-    const selectedTemplate = Form.useWatch('infoboxTemplate', form);
-    const watchedParams = Form.useWatch('infoboxParams', form);
+    const selectedStyles = Form.useWatch('styles', form);
     const watchedConfig = Form.useWatch('infoboxConfig', form);
+    const watchedNodeType = Form.useWatch('nodeType', form);
 
     useEffect(() => {
         reload();
@@ -119,6 +128,18 @@ export default function LayerEditPage() {
         return () => { cancelled = true; };
     }, [selectedWs, selectedGsLayer, listGeoserverStyles]);
 
+    useEffect(() => {
+        if (!selectedWs || !selectedGsLayer) {
+            setAvailableFields([]);
+            return;
+        }
+        let cancelled = false;
+        listGeoserverFields(selectedWs, selectedGsLayer)
+            .then((data) => { if (!cancelled) setAvailableFields(data?.fields || []); })
+            .catch(() => { if (!cancelled) setAvailableFields([]); });
+        return () => { cancelled = true; };
+    }, [selectedWs, selectedGsLayer, listGeoserverFields]);
+
     const populate = useCallback((data) => {
         form.setFieldsValue({
             label: data.label,
@@ -133,9 +154,11 @@ export default function LayerEditPage() {
             wmsGroup: data.wmsGroup,
             wfsAvailable: data.wfsAvailable,
             downloadable: data.downloadable,
-            searchTags: (data.searchMeta?.tags || data.search_tags || []).join(', '),
-            infoboxTemplate: data.infoboxTemplate,
-            infoboxParams: data.infoboxParams || {},
+            timeEnabled: data.timeEnabled,
+            defaultDate: data.defaultDate ?? data.default_date ?? null,
+            timeStylePattern: data.timeStylePattern ?? data.time_style_pattern ?? '',
+            hidePeriodicity: data.hidePeriodicity ?? data.hide_periodicity ?? false,
+            searchTags: data.searchTags || data.search_tags || data.searchMeta?.tags || [],
             infoboxConfig: data.infoboxConfig || null,
         });
     }, [form]);
@@ -151,12 +174,10 @@ export default function LayerEditPage() {
                     const draft = await getLayerDraft(layerId);
                     if (draft?.data) {
                         setLayer({ ...fresh, ...draft.data, id: fresh.id, _draftEstado: draft.estado });
-                        populate({ ...fresh, ...draft.data });
                         return;
                     }
                 }
                 setLayer(fresh);
-                populate(fresh);
             } catch (err) {
                 message.error(err?.response?.data?.detail || 'No se pudo cargar la capa');
             } finally {
@@ -164,15 +185,21 @@ export default function LayerEditPage() {
             }
         })();
         return () => { cancelled = true; };
-    }, [layerId, isAdmin, getLayer, getLayerDraft, populate]);
+    }, [layerId, isAdmin, getLayer, getLayerDraft]);
+
+    useEffect(() => {
+        if (loading || !layer) return;
+        populate(layer);
+    }, [loading, layer, populate]);
 
     const buildPayload = async () => {
         const values = await form.validateFields();
-        const tagsArray = (values.searchTags || '')
-            .split(',')
-            .map((t) => t.trim())
-            .filter(Boolean);
-        return { ...values, searchTags: tagsArray };
+        const raw = values.searchTags;
+        const tagsArray = Array.isArray(raw)
+            ? raw
+            : (raw || '').split(',').map((t) => t.trim()).filter(Boolean);
+        const { infoboxTemplate: _omitTpl, infoboxParams: _omitParams, ...rest } = values;
+        return { ...rest, searchTags: tagsArray };
     };
 
     const handleSaveDirect = async () => {
@@ -217,6 +244,103 @@ export default function LayerEditPage() {
 
     const selectedWsObj = workspaces.find((w) => w.alias === selectedWs);
     const availableLayers = selectedWsObj?.layers || [];
+
+    const workspaceOptions = (() => {
+        const opts = workspaces.map((w) => ({
+            value: w.alias,
+            label: `${w.label || w.alias} (${w.layers?.length || 0} capas)`,
+        }));
+        if (selectedWs && !opts.find((o) => o.value === selectedWs)) {
+            opts.unshift({ value: selectedWs, label: selectedWs });
+        }
+        return opts;
+    })();
+
+    const layerOptions = (() => {
+        const opts = availableLayers.map((l) => ({ value: l }));
+        if (selectedGsLayer && !opts.find((o) => o.value === selectedGsLayer)) {
+            opts.unshift({ value: selectedGsLayer });
+        }
+        return opts;
+    })();
+
+    const breadcrumbPath = (() => {
+        if (!layerId || !treeData?.length) return [];
+        const find = (nodes, target, path) => {
+            for (const n of nodes) {
+                const next = [...path, n];
+                if (n.key === target) return next;
+                if (n.children?.length) {
+                    const found = find(n.children, target, next);
+                    if (found) return found;
+                }
+            }
+            return null;
+        };
+        return find(treeData, layerId, []) || [];
+    })();
+
+    const countSiblingsSharingFeatureType = (featureKey) => {
+        if (!featureKey || !treeData?.length) return 0;
+        let count = 0;
+        const visit = (nodes) => {
+            for (const n of nodes) {
+                if (n.key !== layerId) {
+                    const wms = n.raw?.wmsConfig || {};
+                    const ws = wms.workspace || n.raw?.workspaceAlias;
+                    const gl = wms.geoserverLayer || n.raw?.geoserverLayer;
+                    if (ws && gl && `${ws}:${gl}` === featureKey) count++;
+                }
+                if (n.children?.length) visit(n.children);
+            }
+        };
+        visit(treeData);
+        return count;
+    };
+
+    const sharedFeatureTypeFromDescendants = (() => {
+        const currentNode = breadcrumbPath[breadcrumbPath.length - 1];
+        if (!currentNode) return null;
+        const featureTypes = new Set();
+        const visit = (node) => {
+            const raw = node?.raw || {};
+            const wms = raw.wmsConfig || {};
+            const ws = wms.workspace || raw.workspaceAlias || raw.workspace_alias;
+            const gl = wms.geoserverLayer || raw.geoserverLayer || raw.geoserver_layer;
+            if (ws && gl) featureTypes.add(`${ws}:${gl}`);
+            if (node.children?.length) node.children.forEach(visit);
+        };
+        if (currentNode.children?.length) currentNode.children.forEach(visit);
+        if (featureTypes.size === 1) {
+            const [ft] = featureTypes;
+            const [ws, gl] = ft.split(':');
+            return { layerKey: ft, workspace: ws, geoserverLayer: gl, count: featureTypes.size };
+        }
+        if (featureTypes.size > 1) {
+            return { layerKey: null, multiple: Array.from(featureTypes) };
+        }
+        return null;
+    })();
+
+    const inheritedInfobox = (() => {
+        if (!breadcrumbPath.length) return null;
+        for (let i = breadcrumbPath.length - 2; i >= 0; i--) {
+            const ancestor = breadcrumbPath[i];
+            const raw = ancestor?.raw || {};
+            if (raw.nodeType !== 'group') continue;
+            const cfg = raw.infoboxConfig || raw.infobox_config || raw.littleCard;
+            if (cfg) return { id: ancestor.key, label: ancestor.title, config: cfg };
+        }
+        return null;
+    })();
+
+    const styleOptions = (() => {
+        const opts = availableStyles.map((s) => ({ value: s }));
+        if (selectedStyles && !opts.find((o) => o.value === selectedStyles)) {
+            opts.unshift({ value: selectedStyles });
+        }
+        return opts;
+    })();
 
     const handleSelectFromTree = (key) => {
         if (!key) {
@@ -276,42 +400,46 @@ export default function LayerEditPage() {
                     >
                         <Input />
                     </Form.Item>
-                    <Form.Item
-                        label="Nombre en URL"
-                        name="slug"
-                        extra="Nombre que se utiliza en la URL para acceder a la capa. Solo se permiten minúsculas, números y guiones. Estable, debe cambiar pocas veces. Vacío = no aparece en deeplinks. Ejemplos: establecimientos-salud, indices-desarrollo-urbano."
-                        rules={[
-                            {
-                                pattern: /^[a-z0-9-]+$/,
-                                message: 'Solo minúsculas, números y guiones',
-                            },
-                            { max: 60 },
-                        ]}
-                    >
-                        <Input
-                            placeholder="establecimientos-salud"
-                            addonAfter={
-                                <Tooltip title="Genera un nombre en URL desde el nombre de la capa (lowercase, sin acentos, guiones por espacios). Valida que esté disponible; si ya existe agrega sufijo numérico.">
-                                    <Button
-                                        type="link"
-                                        size="small"
-                                        onClick={handleSuggestSlug}
-                                        style={{ padding: 0, height: 'auto' }}
-                                    >
-                                        Sugerir
-                                    </Button>
-                                </Tooltip>
-                            }
-                        />
-                    </Form.Item>
-                    <Form.Item label="Alias (atajos opcionales)">
-                        <LayerAliasesSection
-                            layerId={layerId}
-                            listAliases={listLayerAliases}
-                            createAlias={createLayerAlias}
-                            deleteAlias={deleteLayerAlias}
-                        />
-                    </Form.Item>
+                    {isFieldVisible('slug', watchedNodeType) && (
+                        <Form.Item
+                            label="Nombre en URL"
+                            name="slug"
+                            extra="Nombre que se utiliza en la URL para acceder a la capa. Solo se permiten minúsculas, números y guiones. Estable, debe cambiar pocas veces. Vacío = no aparece en deeplinks. Ejemplos: establecimientos-salud, indices-desarrollo-urbano."
+                            rules={[
+                                {
+                                    pattern: /^[a-z0-9-]+$/,
+                                    message: 'Solo minúsculas, números y guiones',
+                                },
+                                { max: 60 },
+                            ]}
+                        >
+                            <Input
+                                placeholder="establecimientos-salud"
+                                addonAfter={
+                                    <Tooltip title="Genera un nombre en URL desde el nombre de la capa (lowercase, sin acentos, guiones por espacios). Valida que esté disponible; si ya existe agrega sufijo numérico.">
+                                        <Button
+                                            type="link"
+                                            size="small"
+                                            onClick={handleSuggestSlug}
+                                            style={{ padding: 0, height: 'auto' }}
+                                        >
+                                            Sugerir
+                                        </Button>
+                                    </Tooltip>
+                                }
+                            />
+                        </Form.Item>
+                    )}
+                    {isFieldVisible('alias', watchedNodeType) && (
+                        <Form.Item label="Alias (atajos opcionales)">
+                            <LayerAliasesSection
+                                layerId={layerId}
+                                listAliases={listLayerAliases}
+                                createAlias={createLayerAlias}
+                                deleteAlias={deleteLayerAlias}
+                            />
+                        </Form.Item>
+                    )}
                     <Form.Item
                         label="Tipo de nodo"
                         name="nodeType"
@@ -319,13 +447,49 @@ export default function LayerEditPage() {
                     >
                         <Select options={NODE_TYPE_OPTIONS} />
                     </Form.Item>
-                    <Form.Item
-                        label="Etiquetas de búsqueda (separadas por coma)"
-                        name="searchTags"
-                        extra="Palabras clave adicionales para filtrar la capa en el buscador del visor. Ej: 'seguridad, delito, feminicidio'."
-                    >
-                        <Input placeholder="seguridad, delito, feminicidio" />
-                    </Form.Item>
+                    {isFieldVisible('searchTags', watchedNodeType) && (
+                        <Form.Item
+                            label="Etiquetas de búsqueda"
+                            name="searchTags"
+                            normalize={(values) =>
+                                Array.isArray(values)
+                                    ? Array.from(
+                                          new Set(
+                                              values
+                                                  .map((v) => String(v).toLowerCase().trim())
+                                                  .filter(Boolean),
+                                          ),
+                                      )
+                                    : values
+                            }
+                            extra="Palabras clave adicionales para filtrar la capa en el buscador del visor. Escribe y presiona espacio, coma o Enter para crear cada etiqueta. Se normalizan a minúsculas."
+                        >
+                            <Select
+                                mode="tags"
+                                tokenSeparators={[' ', ',']}
+                                placeholder="seguridad delito feminicidio"
+                                style={{ width: '100%' }}
+                                open={false}
+                                suffixIcon={null}
+                                tagRender={({ label, closable, onClose }) => (
+                                    <Tag
+                                        color="#FF8300"
+                                        closable={closable}
+                                        onClose={onClose}
+                                        style={{
+                                            margin: '3px 4px 3px 0',
+                                            fontSize: 14,
+                                            color: '#262626',
+                                            padding: '2px 10px',
+                                            borderRadius: 6,
+                                        }}
+                                    >
+                                        {label}
+                                    </Tag>
+                                )}
+                            />
+                        </Form.Item>
+                    )}
                     <Form.Item
                         label="Oculta en menú"
                         name="hiddenInMenu"
@@ -346,9 +510,11 @@ export default function LayerEditPage() {
             ),
         },
         {
-            key: 'wms',
-            label: 'Servicio WMS',
-            children: (
+            key: 'servicios',
+            label: 'Servicios',
+            children: watchedNodeType === 'group' && !selectedWs ? (
+                <GroupServicesReference groupId={layerId} treeData={treeData} />
+            ) : (
                 <>
                     <Form.Item
                         label="Workspace de GeoServer"
@@ -359,10 +525,7 @@ export default function LayerEditPage() {
                             showSearch
                             allowClear
                             placeholder="Selecciona workspace"
-                            options={workspaces.map((w) => ({
-                                value: w.alias,
-                                label: `${w.label || w.alias} (${w.layers?.length || 0} capas)`,
-                            }))}
+                            options={workspaceOptions}
                         />
                     </Form.Item>
                     <Form.Item
@@ -371,7 +534,7 @@ export default function LayerEditPage() {
                         extra="Nombre técnico de la capa en GeoServer (sin prefijo de workspace). Debe existir en el workspace seleccionado."
                     >
                         <AutoComplete
-                            options={availableLayers.map((l) => ({ value: l }))}
+                            options={layerOptions}
                             filterOption={(input, option) =>
                                 option.value.toLowerCase().includes(input.toLowerCase())
                             }
@@ -385,32 +548,34 @@ export default function LayerEditPage() {
                         extra="Nombre del estilo SLD a aplicar. Vacío = estilo por defecto del workspace."
                     >
                         <AutoComplete
-                            options={availableStyles.map((s) => ({ value: s }))}
+                            options={styleOptions}
                             placeholder="Vacío = estilo por defecto"
                         />
                     </Form.Item>
                     <Form.Item
                         label="Filtro CQL"
                         name="cqlFilter"
-                        extra="Filtro de tipo CQL aplicado a la capa al renderizar. Ej: modalidad = 'Con violencia'. Vacío = sin filtro."
+                        extra="Filtro de tipo CQL aplicado a la capa al renderizar. El constructor arma condiciones campo/operador/valor con los atributos reales de la capa; usa 'Texto avanzado' para CQL más complejo."
                     >
-                        <Input.TextArea rows={2} placeholder="modalidad = 'Con violencia'" />
+                        <CqlFilterBuilder
+                            workspaceAlias={selectedWs}
+                            geoserverLayer={selectedGsLayer}
+                            listFields={listGeoserverFields}
+                        />
                     </Form.Item>
                     <Form.Item
                         label="Grupo WMS"
                         name="wmsGroup"
-                        extra="Capas con el mismo grupo se mergean en una sola request WMS al GeoServer (mejora performance cuando varias capas comparten estilo)."
+                        extra="Capas con el mismo grupo se mergean en una sola request WMS al GeoServer (mejora performance cuando varias capas comparten estilo). Lo más seguro es agruparlas con sus hermanas directas en el árbol."
                     >
-                        <Input />
+                        <WmsGroupField
+                            layerId={layerId}
+                            treeData={treeData}
+                            workspaceAlias={selectedWs}
+                            timeEnabled={layer?.timeEnabled}
+                        />
                     </Form.Item>
-                </>
-            ),
-        },
-        {
-            key: 'descarga',
-            label: 'Descarga',
-            children: (
-                <>
+
                     <Form.Item
                         label="WFS disponible"
                         name="wfsAvailable"
@@ -427,50 +592,74 @@ export default function LayerEditPage() {
                     >
                         <Switch />
                     </Form.Item>
+
+                    <Form.Item
+                        label="Soporte temporal (timeEnabled)"
+                        name="timeEnabled"
+                        valuePropName="checked"
+                        extra="Activa filtros temporales en GeoServer (capas con dimensión TIME). Suele usarse en rásters publicados como ImageMosaic donde GeoServer expone la fecha como dimensión nativa (ej. mosaicos mensuales/anuales de temperatura, precipitación, NDVI). En vectoriales también funciona si la capa tiene un campo TIME indexado."
+                    >
+                        <Switch />
+                    </Form.Item>
+                    <Form.Item
+                        label="Fecha por defecto"
+                        name="defaultDate"
+                        normalize={(v) => {
+                            if (v === undefined || v === null || v === '') return null;
+                            if (v === 'latest') return 'latest';
+                            const num = Number(v);
+                            return Number.isFinite(num) ? { year: num } : v;
+                        }}
+                        getValueProps={(v) => {
+                            if (v === null || v === undefined) return { value: '' };
+                            if (v === 'latest') return { value: 'latest' };
+                            if (typeof v === 'object' && v.year) return { value: String(v.year) };
+                            return { value: String(v) };
+                        }}
+                        extra="Año específico (ej. 2024), o 'latest' para usar la más reciente disponible."
+                    >
+                        <Input placeholder="2024 o latest" />
+                    </Form.Item>
+                    <Form.Item
+                        label="Patrón de estilo temporal (timeStylePattern)"
+                        name="timeStylePattern"
+                        extra="Plantilla de nombre de estilo SLD que cambia según la fecha. Ej: poblacion_{year}."
+                    >
+                        <Input placeholder="poblacion_{year}" />
+                    </Form.Item>
+                    <Form.Item
+                        label="Ocultar selector de periodicidad"
+                        name="hidePeriodicity"
+                        valuePropName="checked"
+                        extra="Si está activo, el visor no muestra el control de fechas para esta capa aunque exista soporte temporal."
+                    >
+                        <Switch />
+                    </Form.Item>
                 </>
             ),
         },
         {
             key: 'infobox',
-            label: 'Cuadro de información',
+            label: 'Tarjeta',
             children: (
                 <Row gutter={24}>
-                    <Col xs={24} md={12}>
+                    <Col xs={24} md={14}>
                         <Form.Item
-                            label="Plantilla"
-                            name="infoboxTemplate"
-                            extra="Formato del cuadro que aparece al hacer click sobre una feature. 'custom' permite JSON libre para casos especiales."
+                            name="infoboxConfig"
+                            label="Configuración del cuadro"
+                            extra="Bloques que componen el cuadro que aparece al hacer click sobre una feature en el visor. Cada bloque (encabezado, etiquetas, cards, lista, íconos, texto) se puede agregar o quitar según necesites."
                         >
-                            <Select
-                                allowClear
-                                options={[
-                                    { value: 'municipio', label: 'Municipio' },
-                                    { value: 'punto', label: 'Punto' },
-                                    { value: 'punto_municipio', label: 'Punto + municipio' },
-                                    { value: 'punto_ubicacion', label: 'Punto + ubicación' },
-                                    { value: 'punto_completo', label: 'Punto completo' },
-                                    { value: 'custom', label: 'Personalizado (JSON libre)' },
-                                ]}
+                            <InfoBoxBlocksEditor
+                                availableFields={availableFields}
+                                inherited={inheritedInfobox}
+                                nodeType={watchedNodeType}
                             />
                         </Form.Item>
-                        {selectedTemplate && selectedTemplate !== 'custom' && (
-                            <InfoBoxPresetForm template={selectedTemplate} />
-                        )}
-                        {selectedTemplate === 'custom' && (
-                            <Form.Item
-                                name="infoboxConfig"
-                                label="Configuración JSON"
-                                extra="JSON libre con la configuración del cuadro de información. Sólo para casos no cubiertos por las plantillas predefinidas."
-                            >
-                                <InfoBoxJsonEditor key={layer?.id} />
-                            </Form.Item>
-                        )}
                     </Col>
-                    <Col xs={24} md={12}>
+                    <Col xs={24} md={10}>
                         <Text strong style={{ display: 'block', marginBottom: 8 }}>Vista previa</Text>
                         <InfoBoxPreview
-                            template={selectedTemplate}
-                            params={selectedTemplate === 'custom' ? watchedConfig : watchedParams}
+                            value={watchedConfig || inheritedInfobox?.config || null}
                         />
                     </Col>
                 </Row>
@@ -478,10 +667,40 @@ export default function LayerEditPage() {
         },
         {
             key: 'metadatos',
-            label: 'Metadatos descriptivos',
-            children: layer ? <LayerMetadataSection layerKey={layer.id} /> : null,
+            label: 'Metadatos',
+            children: layer ? (() => {
+                const ownFeatureType = layer.workspaceAlias && layer.geoserverLayer
+                    ? { layerKey: `${layer.workspaceAlias}:${layer.geoserverLayer}`, workspace: layer.workspaceAlias, geoserverLayer: layer.geoserverLayer, derived: false }
+                    : null;
+                const derived = !ownFeatureType && sharedFeatureTypeFromDescendants?.layerKey
+                    ? { ...sharedFeatureTypeFromDescendants, derived: true }
+                    : null;
+                const metaCtx = ownFeatureType || derived;
+                if (!metaCtx) {
+                    return (
+                        <Empty description={
+                            sharedFeatureTypeFromDescendants?.multiple
+                                ? `Este nodo agrupa capas con feature types distintos (${sharedFeatureTypeFromDescendants.multiple.join(', ')}). Los metadatos se editan en cada feature type por separado.`
+                                : 'Este nodo no tiene feature type propio ni descendientes con uno común. No hay metadatos que editar aquí.'
+                        } />
+                    );
+                }
+                return (
+                    <LayerMetadataSection
+                        layerKey={metaCtx.layerKey}
+                        workspace={metaCtx.workspace}
+                        geoserverLayer={metaCtx.geoserverLayer}
+                        availableFields={availableFields}
+                        derivedFromDescendants={metaCtx.derived}
+                        siblingsSharingCount={ownFeatureType ? countSiblingsSharingFeatureType(metaCtx.layerKey) : 0}
+                        currentNodeType={watchedNodeType}
+                    />
+                );
+            })() : null,
         },
-    ];
+    ].filter((tab) => tab.key === 'identidad' || isTabVisible(tab.key, watchedNodeType));
+
+    const nodeHelp = NODE_TYPE_HELP[watchedNodeType];
 
     return (
         <Layout style={{ minHeight: 'calc(100vh - 112px)', background: 'transparent' }}>
@@ -510,38 +729,36 @@ export default function LayerEditPage() {
                             zIndex: 3,
                         }}
                     />
-                    {!siderCollapsed && (
-                        <>
-                            <LayersTreeSider
-                                treeData={treeData}
-                                loading={treeLoading}
-                                error={treeError}
-                                selectedKey={layerId || null}
-                                onSelect={handleSelectFromTree}
-                                onReload={reload}
-                                onReorder={reorderLayers}
-                                isAdmin={isAdmin}
-                                onBulkTagsClick={() => setBulkTagsOpen(true)}
-                            />
-                            <button
-                                type="button"
-                                aria-label="Redimensionar árbol"
-                                onMouseDown={handleSiderResize}
-                                style={{
-                                    position: 'absolute',
-                                    top: 0,
-                                    right: -3,
-                                    bottom: 0,
-                                    width: 6,
-                                    cursor: 'col-resize',
-                                    zIndex: 2,
-                                    background: 'transparent',
-                                    border: 'none',
-                                    padding: 0,
-                                }}
-                            />
-                        </>
-                    )}
+                    <div style={{ display: siderCollapsed ? 'none' : 'block', height: '100%' }}>
+                        <LayersTreeSider
+                            treeData={treeData}
+                            loading={treeLoading}
+                            error={treeError}
+                            selectedKey={layerId || null}
+                            onSelect={handleSelectFromTree}
+                            onReload={reload}
+                            onReorder={reorderLayers}
+                            isAdmin={isAdmin}
+                            onBulkTagsClick={() => setBulkTagsOpen(true)}
+                        />
+                        <button
+                            type="button"
+                            aria-label="Redimensionar árbol"
+                            onMouseDown={handleSiderResize}
+                            style={{
+                                position: 'absolute',
+                                top: 0,
+                                right: -3,
+                                bottom: 0,
+                                width: 6,
+                                cursor: 'col-resize',
+                                zIndex: 2,
+                                background: 'transparent',
+                                border: 'none',
+                                padding: 0,
+                            }}
+                        />
+                    </div>
                 </Sider>
             )}
             <Content style={{ padding: isMobile ? 12 : 24 }}>
@@ -583,7 +800,19 @@ export default function LayerEditPage() {
                             <Breadcrumb
                                 items={[
                                     { title: <Button type="link" size="small" style={{ padding: 0 }} onClick={() => navigate('/mapalab/layers')}>Capas</Button> },
-                                    { title: layer?.label || layerId },
+                                    ...breadcrumbPath.slice(0, -1).map((n) => ({
+                                        title: (
+                                            <Button
+                                                type="link"
+                                                size="small"
+                                                style={{ padding: 0 }}
+                                                onClick={() => navigate(`/mapalab/layers/${encodeURIComponent(n.key)}/edit`)}
+                                            >
+                                                {n.title}
+                                            </Button>
+                                        ),
+                                    })),
+                                    { title: breadcrumbPath.at(-1)?.title || layer?.label || layerId },
                                 ]}
                                 style={{ marginBottom: 8 }}
                             />
@@ -609,6 +838,22 @@ export default function LayerEditPage() {
                                 <Spin style={{ display: 'block', margin: '48px auto' }} size="large" />
                             ) : (
                                 <Form form={form} layout="vertical">
+                                    {nodeHelp && (
+                                        <div style={{
+                                            background: '#E6F4FF',
+                                            border: '1px solid #91CAFF',
+                                            borderRadius: 6,
+                                            padding: '8px 12px',
+                                            marginBottom: 16,
+                                        }}>
+                                            <Text strong style={{ display: 'block', marginBottom: 2 }}>
+                                                {nodeHelp.title}
+                                            </Text>
+                                            <Text type="secondary" style={{ fontSize: 12 }}>
+                                                {nodeHelp.body}
+                                            </Text>
+                                        </div>
+                                    )}
                                     <Tabs defaultActiveKey="identidad" items={tabItems} />
                                 </Form>
                             )}

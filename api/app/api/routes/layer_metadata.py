@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException
+from datetime import datetime, timezone
+
+from fastapi import APIRouter, Body, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_project_access, require_role, verify_csrf
@@ -14,7 +16,11 @@ from app.schemas.layer_metadata import (
     LayerStatsUpdate,
 )
 from app.services.mapalab_notifier import notify_tree_changed
-from app.services.stats_templates import StatsTemplateError, validate_stats_config
+from app.services.stats_templates import (
+    StatsTemplateError,
+    execute_stat,
+    validate_stats_config,
+)
 
 router = APIRouter(
     prefix='/layer-metadata',
@@ -35,44 +41,70 @@ async def list_metadata(
     return db.query(LayerMetadata).order_by(LayerMetadata.layer_key).all()
 
 
-@router.get('/{layer_key:path}', response_model=LayerMetadataResponse)
-async def get_metadata(
-    layer_key: str,
-    db: Session = Depends(get_dataengine_db),
-    current_user: Usuario = Depends(_require_project_editor),
-):
-    row = db.query(LayerMetadata).filter(LayerMetadata.layer_key == layer_key).first()
-    if not row:
-        raise HTTPException(status_code=404, detail=f"Metadata '{layer_key}' no encontrada")
-    return row
+# NOTA: las rutas con sub-paths fijos (/stats, /stats/preview, /stats/refresh) DEBEN
+# declararse ANTES del catch-all `{layer_key:path}` porque el `:path` matchea barras
+# y absorbería rutas como "salud:unidades_salud/stats" como un solo layer_key.
+
+@router.get('/{layer_key:path}/stats/preview')
+async def preview_stat_get_unsupported(layer_key: str):
+    raise HTTPException(status_code=405, detail="Use POST")
 
 
-@router.put('/{layer_key:path}', response_model=LayerMetadataResponse)
-async def update_metadata(
+@router.post('/{layer_key:path}/stats/preview')
+async def preview_stat(
     layer_key: str,
-    data: LayerMetadataUpdate,
+    cfg: dict = Body(...),
     db: Session = Depends(get_dataengine_db),
     current_user: Usuario = Depends(verify_csrf),
     _editor: Usuario = Depends(_require_project_editor),
     _rl: Usuario = Depends(_write_rate_limit),
 ):
-    row = db.query(LayerMetadata).filter(LayerMetadata.layer_key == layer_key).first()
+    try:
+        validated = validate_stats_config([cfg])[0]
+    except StatsTemplateError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    try:
+        value = execute_stat(db.connection(), validated)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f'Error ejecutando stat: {exc}')
+    return {'value': value, 'config': validated}
+
+
+@router.post('/{layer_key:path}/stats/refresh', response_model=LayerStatsResponse)
+async def refresh_stats(
+    layer_key: str,
+    db: Session = Depends(get_dataengine_db),
+    current_user: Usuario = Depends(verify_csrf),
+    _editor: Usuario = Depends(_require_project_editor),
+    _rl: Usuario = Depends(_write_rate_limit),
+):
+    row = db.query(LayerStats).filter(LayerStats.layer_key == layer_key).first()
     if not row:
-        raise HTTPException(status_code=404, detail=f"Metadata '{layer_key}' no encontrada")
+        raise HTTPException(status_code=404, detail=f"Stats '{layer_key}' no encontrados")
 
-    payload = data.model_dump(exclude_unset=True, by_alias=False)
-    for key, value in payload.items():
-        if key in ('fuentes', 'metodologia') and value is not None:
-            setattr(row, key, value)
-        elif key == 'metadato' and value is not None:
-            setattr(row, key, [item if isinstance(item, dict) else item.model_dump() for item in value])
-        else:
-            setattr(row, key, value)
-    row.updated_by = current_user.email
+    cfgs = row.stats_config or []
+    values = []
+    errors = []
+    conn = db.connection()
+    for cfg in cfgs:
+        try:
+            value = execute_stat(conn, cfg)
+        except Exception as exc:
+            value = None
+            errors.append({'position': cfg.get('position'), 'error': str(exc)})
+        values.append({
+            'posicion': cfg.get('position'),
+            'valor': None if value is None else str(value),
+            'nombre': cfg.get('label'),
+            'simbolo': cfg.get('symbol'),
+        })
 
+    row.values = values
+    row.values_refreshed_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(row)
-    incr(COUNTER_LAYER_METADATA_WRITES)
+    if errors:
+        return {**row.__dict__, '_errors': errors}
     return row
 
 
@@ -120,4 +152,47 @@ async def update_stats(
     db.commit()
     db.refresh(row)
     notify_tree_changed()
+    return row
+
+
+@router.get('/{layer_key:path}', response_model=LayerMetadataResponse)
+async def get_metadata(
+    layer_key: str,
+    db: Session = Depends(get_dataengine_db),
+    current_user: Usuario = Depends(_require_project_editor),
+):
+    row = db.query(LayerMetadata).filter(LayerMetadata.layer_key == layer_key).first()
+    if not row:
+        raise HTTPException(status_code=404, detail=f"Metadata '{layer_key}' no encontrada")
+    return row
+
+
+@router.put('/{layer_key:path}', response_model=LayerMetadataResponse)
+async def update_metadata(
+    layer_key: str,
+    data: LayerMetadataUpdate,
+    db: Session = Depends(get_dataengine_db),
+    current_user: Usuario = Depends(verify_csrf),
+    _editor: Usuario = Depends(_require_project_editor),
+    _rl: Usuario = Depends(_write_rate_limit),
+):
+    row = db.query(LayerMetadata).filter(LayerMetadata.layer_key == layer_key).first()
+    if not row:
+        raise HTTPException(status_code=404, detail=f"Metadata '{layer_key}' no encontrada")
+
+    payload = data.model_dump(exclude_unset=True, by_alias=False)
+    for key, value in payload.items():
+        if key in ('fuentes', 'metodologia') and value is not None:
+            normalized = value if isinstance(value, list) else [value]
+            normalized = [it for it in normalized if it and any(v is not None and v != '' for v in it.values())]
+            setattr(row, key, normalized or None)
+        elif key == 'metadato' and value is not None:
+            setattr(row, key, [item if isinstance(item, dict) else item.model_dump() for item in value])
+        else:
+            setattr(row, key, value)
+    row.updated_by = current_user.email
+
+    db.commit()
+    db.refresh(row)
+    incr(COUNTER_LAYER_METADATA_WRITES)
     return row
