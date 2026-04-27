@@ -13,6 +13,14 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.30.9] - 2026-04-27
+
+### CI (infra) — fix backend pytest
+
+- **`.github/workflows/test-backend.yml`**: el step `Tests` ahora declara explícitamente las 23 variables de entorno que `pydantic-settings` exige al instanciar `Settings()` (`PROJECT_NAME`, `VERSION`, `DATABASE_URL`, `SECRET_KEY`, etc.). En CI no hay `.env.*`, por lo que `tests/conftest.py` rompía con `ValidationError: 23 validation errors for Settings` al hacer `from app.core.database import Base` (que llama `get_settings()` a nivel de módulo). Valores son fakes de test: `DATABASE_URL=sqlite:///:memory:`, `CORS_ORIGINS=["http://localhost:3000"]`, secrets dummy. La lint step queda intacta.
+
+---
+
 ## [0.30.8] - 2026-04-27
 
 ### Admin (admin) — fix dead-code check (knip)
