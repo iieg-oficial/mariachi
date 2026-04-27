@@ -13,6 +13,14 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.30.4] - 2026-04-27
+
+### Backend (api) — fix Alembic
+
+- **Nueva migración `d2e3f4a5b6c7_add_disabled_to_menu_items`**: añade columna `menu_items.disabled` (Boolean, default `false`). El modelo `MenuItem` la declaraba desde antes pero la migración 001 nunca la creó y ninguna intermedia la añadió, así que `init_db.py` rompía al seedear los menu items con `column menu_items.disabled does not exist`.
+
+---
+
 ## [0.30.3] - 2026-04-27
 
 ### Backend (api) — proxy/gateway awareness
