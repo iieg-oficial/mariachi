@@ -13,6 +13,15 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.30.11] - 2026-04-27
+
+### Backend (api) — migración: URLs del Acervo a forma relativa
+
+- **Nueva migración `e3f4a5b6c7d8_normalize_acervo_urls_to_relative`**: recorre `eventos.icono_url/imagen_url`, `home_sections.payload_published/payload_draft` y `pages.sections`, reemplazando `https://{ACERVO_PUBLIC_ENDPOINT}/{bucket}/{path}` → `bucket/path`. Idempotente: filas ya normalizadas y URLs externas (otro host) no se tocan. `downgrade()` reconstruye absoluto usando el endpoint y el scheme actuales del settings, también idempotente sobre filas que ya tienen scheme.
+- **No incluye `layers.icon_url`**: la tabla `layers` vive en el schema `mapalab` de la base DataEngine y sus migraciones se gestionan en el repo `mapalab-dataengine`. La normalización en runtime (commit anterior) hace que cualquier escritura nueva guarde relativo; los datos legacy se servirán correctamente porque `to_absolute` deja pasar los absolutos sin tocar.
+
+---
+
 ## [0.30.10] - 2026-04-27
 
 ### Backend (api) — URLs del Acervo guardadas como relativas

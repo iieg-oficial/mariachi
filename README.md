@@ -1,6 +1,6 @@
 # Mariachi
 
-**Versión:** 0.21.1 ([changelog](docs/CHANGELOG.md))
+**Versión:** 0.30.11 ([changelog](docs/CHANGELOG.md))
 
 <div align="center">
 
