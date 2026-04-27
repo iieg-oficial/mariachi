@@ -94,6 +94,8 @@ class Layer(DataEngineBase):
     infobox_params = Column(JSONB, nullable=True)
     infobox_config = Column(JSONB, nullable=True)
 
+    icon_url = Column(Text, nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=text("NOW()"), nullable=False)
     updated_at = Column(
         DateTime(timezone=True),

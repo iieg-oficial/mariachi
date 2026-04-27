@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router';
+import { useNavigate, useParams, useSearchParams } from 'react-router';
 import dayjs from 'dayjs';
 import {
     Alert,
@@ -11,6 +11,7 @@ import {
     Input,
     InputNumber,
     Layout,
+    Modal,
     Popconfirm,
     Row,
     Space,
@@ -22,6 +23,8 @@ import {
 } from 'antd';
 import {
     ArrowLeftOutlined,
+    CheckOutlined,
+    CloseOutlined,
     DeleteOutlined,
     EyeInvisibleOutlined,
     SaveOutlined,
@@ -39,6 +42,9 @@ import EventoIconPicker from '@features/mapalab-eventos/components/EventoIconPic
 import BBoxField from '@features/mapalab-eventos/components/BBoxField';
 import CapasField from '@features/mapalab-eventos/components/CapasField';
 import useIsMobile from '@shared/hooks/useIsMobile';
+import usePresencia from '@shared/hooks/usePresencia';
+import PresenciaIndicator from '@shared/components/PresenciaIndicator';
+import useResourceDraft from '@shared/hooks/useResourceDraft';
 
 const { Content } = Layout;
 const { Title, Text } = Typography;
@@ -51,6 +57,7 @@ function eventoToForm(e) {
         slug: e.slug,
         descripcion: e.descripcion,
         icono_url: e.iconoUrl ?? e.icono_url,
+        imagen_url: e.imagenUrl ?? e.imagen_url,
         bbox: e.bbox,
         capas: e.capas || [],
         activo: e.activo,
@@ -75,6 +82,7 @@ function formToPayload(values, { isCreate }) {
         titulo: values.titulo,
         descripcion: values.descripcion || null,
         icono_url: values.icono_url || null,
+        imagen_url: values.imagen_url || null,
         bbox: cleanBbox,
         capas: values.capas || [],
         activo: Boolean(values.activo),
@@ -97,6 +105,21 @@ export default function EventoEditPage() {
     const [form] = Form.useForm();
     const [saving, setSaving] = useState(false);
     const [acting, setActing] = useState(false);
+    const [rechazoModalOpen, setRechazoModalOpen] = useState(false);
+    const [rechazoComentario, setRechazoComentario] = useState('');
+    const editores = usePresencia(isCreate ? null : `/eventos/${id}`, !isCreate);
+    const [searchParams] = useSearchParams();
+    const reviewMode = searchParams.get('review') === 'true';
+    const borradorId = searchParams.get('borrador');
+
+    const draft = useResourceDraft({
+        resourceType: 'evento',
+        resourceId: isCreate ? null : id,
+        enabled: !isCreate,
+        reviewMode,
+        borradorId,
+        onApplyDraft: (data) => form.setFieldsValue(eventoToForm(data)),
+    });
 
     useEffect(() => {
         if (!isCreate && evento) {
@@ -108,6 +131,12 @@ export default function EventoEditPage() {
 
     const initialValues = useMemo(() => eventoToForm(evento), [evento]);
 
+    const handleValuesChange = () => {
+        if (isCreate || reviewMode) return;
+        const values = form.getFieldsValue();
+        draft.scheduleAutosave(formToPayload(values, { isCreate: false }));
+    };
+
     const handleSave = async () => {
         try {
             const values = await form.validateFields();
@@ -118,13 +147,17 @@ export default function EventoEditPage() {
                 message.success('Evento creado');
                 navigate(`/mapalab/eventos/${created.id}/edit`, { replace: true });
             } else {
-                await updateEvento(id, payload);
+                draft.cancelAutosave();
+                await updateEvento(id, { ...payload, expectedUpdatedAt: evento?.updatedAt });
+                await draft.deleteDraft();
                 message.success('Evento actualizado');
                 await reload();
             }
         } catch (err) {
             if (err?.errorFields) {
                 message.error('Revisa los campos marcados');
+            } else if (err?.response?.status === 409) {
+                message.error('El evento fue modificado por otra persona. Recarga para ver los cambios.');
             } else {
                 message.error(err?.response?.data?.detail || 'Error al guardar');
             }
@@ -143,12 +176,18 @@ export default function EventoEditPage() {
         }
         setActing(true);
         try {
-            await updateEvento(id, formToPayload(values, { isCreate: false }));
+            draft.cancelAutosave();
+            await updateEvento(id, { ...formToPayload(values, { isCreate: false }), expectedUpdatedAt: evento?.updatedAt });
             await publicarEvento(id);
+            await draft.deleteDraft();
             message.success('Evento publicado');
             await reload();
         } catch (err) {
-            message.error(err?.response?.data?.detail || 'Error al publicar');
+            if (err?.response?.status === 409) {
+                message.error('El evento fue modificado por otra persona. Recarga para ver los cambios.');
+            } else {
+                message.error(err?.response?.data?.detail || 'Error al publicar');
+            }
         } finally {
             setActing(false);
         }
@@ -179,6 +218,31 @@ export default function EventoEditPage() {
         }
     };
 
+    const handleSolicitarRevision = async () => {
+        let values;
+        try {
+            values = await form.validateFields();
+        } catch {
+            message.error('Revisa los campos marcados');
+            return;
+        }
+        const ok = await draft.solicitarRevision(formToPayload(values, { isCreate: false }));
+        if (ok) await reload();
+    };
+
+    const handleAprobar = async () => {
+        const ok = await draft.aprobar();
+        if (ok) navigate('/revision');
+    };
+
+    const handleRechazar = async () => {
+        const ok = await draft.rechazar(rechazoComentario);
+        if (ok) {
+            setRechazoModalOpen(false);
+            navigate('/revision');
+        }
+    };
+
     if (loading && !isCreate) {
         return (
             <Content style={{ padding: 40, textAlign: 'center' }}>
@@ -194,7 +258,7 @@ export default function EventoEditPage() {
             <Space direction="vertical" size="large" style={{ width: '100%' }}>
                 <Space style={{ justifyContent: 'space-between', width: '100%' }} wrap>
                     <Space>
-                        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate('/mapalab/eventos')}>
+                        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(reviewMode ? '/revision' : '/mapalab/eventos')}>
                             Volver
                         </Button>
                         <Title level={isMobile ? 4 : 3} style={{ margin: 0 }}>
@@ -205,40 +269,74 @@ export default function EventoEditPage() {
                                 {estado === 'published' ? 'Publicado' : 'Borrador'}
                             </Tag>
                         )}
+                        {reviewMode && draft.reviewAuthor && (
+                            <Tag color="purple">En revisión: {draft.reviewAuthor.name}</Tag>
+                        )}
+                        {!reviewMode && draft.borradorEstado === 'pendiente_revision' && (
+                            <Tag color="orange">Pendiente revisión</Tag>
+                        )}
                     </Space>
                     <Space wrap>
-                        {!isCreate && estado === 'draft' && (
-                            <Button icon={<SendOutlined />} type="primary" loading={acting} onClick={handlePublicar}>
-                                Publicar
-                            </Button>
-                        )}
-                        {!isCreate && estado === 'published' && (
-                            <Button icon={<EyeInvisibleOutlined />} loading={acting} onClick={handleDespublicar}>
-                                Despublicar
-                            </Button>
-                        )}
-                        {!isCreate && (
-                            <Popconfirm
-                                title="¿Eliminar evento?"
-                                okText="Eliminar"
-                                cancelText="Cancelar"
-                                okButtonProps={{ danger: true }}
-                                onConfirm={handleEliminar}
-                            >
-                                <Button danger icon={<DeleteOutlined />} loading={acting}>
-                                    Eliminar
+                        {reviewMode ? (
+                            <>
+                                <Button danger icon={<CloseOutlined />} onClick={() => setRechazoModalOpen(true)}>
+                                    Rechazar
                                 </Button>
-                            </Popconfirm>
+                                <Button type="primary" icon={<CheckOutlined />} onClick={handleAprobar}>
+                                    Aprobar
+                                </Button>
+                            </>
+                        ) : (
+                            <>
+                                {!isCreate && estado === 'draft' && (
+                                    <Button icon={<SendOutlined />} type="primary" loading={acting} onClick={handlePublicar}>
+                                        Publicar
+                                    </Button>
+                                )}
+                                {!isCreate && estado === 'published' && (
+                                    <Button icon={<EyeInvisibleOutlined />} loading={acting} onClick={handleDespublicar}>
+                                        Despublicar
+                                    </Button>
+                                )}
+                                {!isCreate && draft.borradorEstado !== 'pendiente_revision' && (
+                                    <Button icon={<SendOutlined />} onClick={handleSolicitarRevision}>
+                                        Solicitar revisión
+                                    </Button>
+                                )}
+                                {!isCreate && (
+                                    <Popconfirm
+                                        title="¿Eliminar evento?"
+                                        okText="Eliminar"
+                                        cancelText="Cancelar"
+                                        okButtonProps={{ danger: true }}
+                                        onConfirm={handleEliminar}
+                                    >
+                                        <Button danger icon={<DeleteOutlined />} loading={acting}>
+                                            Eliminar
+                                        </Button>
+                                    </Popconfirm>
+                                )}
+                                <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={handleSave}>
+                                    {isCreate ? 'Crear' : 'Guardar'}
+                                </Button>
+                            </>
                         )}
-                        <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={handleSave}>
-                            {isCreate ? 'Crear' : 'Guardar'}
-                        </Button>
                     </Space>
                 </Space>
 
                 {error && <Alert type="error" message={error} showIcon closable />}
+                <PresenciaIndicator editores={editores} />
+                {!reviewMode && draft.borradorEstado === 'rechazado' && draft.comentarioRechazo && (
+                    <Alert
+                        type="warning"
+                        showIcon
+                        message="Tu borrador fue rechazado"
+                        description={draft.comentarioRechazo}
+                    />
+                )}
+                {draft.saving && <Text type="secondary" style={{ fontSize: 12 }}>Guardando borrador…</Text>}
 
-                <Form form={form} layout="vertical" initialValues={initialValues}>
+                <Form form={form} layout="vertical" initialValues={initialValues} onValuesChange={handleValuesChange}>
                     <Row gutter={[16, 16]}>
                         <Col xs={24} lg={14}>
                             <Card title="Información">
@@ -285,7 +383,18 @@ export default function EventoEditPage() {
                             </Card>
 
                             <Card title="Apariencia" style={{ marginTop: 16 }}>
-                                <Form.Item name="icono_url" label="Icono">
+                                <Form.Item
+                                    name="icono_url"
+                                    label="Icono compacto (sider colapsado)"
+                                    extra="Imagen pequeña, idealmente cuadrada (~64×64). Se muestra cuando el sider del visor está colapsado."
+                                >
+                                    <EventoIconPicker />
+                                </Form.Item>
+                                <Form.Item
+                                    name="imagen_url"
+                                    label="Imagen banner (sider expandido)"
+                                    extra="Imagen ancha tipo banner (3:1 o 4:1). Se muestra cuando el sider del visor está expandido."
+                                >
                                     <EventoIconPicker />
                                 </Form.Item>
                             </Card>
@@ -305,6 +414,24 @@ export default function EventoEditPage() {
                     </Text>
                 )}
             </Space>
+
+            <Modal
+                title="Rechazar borrador"
+                open={rechazoModalOpen}
+                onOk={handleRechazar}
+                onCancel={() => setRechazoModalOpen(false)}
+                okText="Rechazar"
+                okType="danger"
+                cancelText="Cancelar"
+            >
+                <p>Se notificará a <strong>{draft.reviewAuthor?.name || 'el editor'}</strong> que su borrador fue rechazado.</p>
+                <Input.TextArea
+                    placeholder="Motivo del rechazo (opcional)"
+                    value={rechazoComentario}
+                    onChange={(e) => setRechazoComentario(e.target.value)}
+                    rows={3}
+                />
+            </Modal>
         </Content>
     );
 }

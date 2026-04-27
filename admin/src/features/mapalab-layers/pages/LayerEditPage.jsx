@@ -33,6 +33,7 @@ import CqlFilterBuilder from '@features/mapalab-layers/components/layersEditor/C
 import WmsGroupField from '@features/mapalab-layers/components/layersEditor/WmsGroupField';
 import GroupServicesReference from '@features/mapalab-layers/components/layersEditor/GroupServicesReference';
 import LayersTreeSider from '@features/mapalab-layers/components/LayersTreeSider';
+import TemaIconField from '@features/mapalab-layers/components/layersEditor/TemaIconField';
 import BulkTagsDrawer from '@features/mapalab-layers/components/layersEditor/BulkTagsDrawer';
 import {
     NODE_TYPE_OPTIONS,
@@ -70,6 +71,7 @@ export default function LayerEditPage() {
         deleteLayerAlias,
         suggestSlug,
         reorderLayers,
+        createLayer,
     } = useLayerTreeAdmin();
 
     const [form] = Form.useForm();
@@ -160,6 +162,7 @@ export default function LayerEditPage() {
             hidePeriodicity: data.hidePeriodicity ?? data.hide_periodicity ?? false,
             searchTags: data.searchTags || data.search_tags || data.searchMeta?.tags || [],
             infoboxConfig: data.infoboxConfig || null,
+            iconUrl: data.iconUrl ?? data.icon_url ?? '',
         });
     }, [form]);
 
@@ -447,6 +450,15 @@ export default function LayerEditPage() {
                     >
                         <Select options={NODE_TYPE_OPTIONS} />
                     </Form.Item>
+                    {watchedNodeType === 'tema' && (
+                        <Form.Item
+                            label="Icono"
+                            name="iconUrl"
+                            extra="Icono SVG/PNG mostrado en el sider del visor para este tema."
+                        >
+                            <TemaIconField />
+                        </Form.Item>
+                    )}
                     {isFieldVisible('searchTags', watchedNodeType) && (
                         <Form.Item
                             label="Etiquetas de búsqueda"
@@ -738,6 +750,7 @@ export default function LayerEditPage() {
                             onSelect={handleSelectFromTree}
                             onReload={reload}
                             onReorder={reorderLayers}
+                            onCreate={createLayer}
                             isAdmin={isAdmin}
                             onBulkTagsClick={() => setBulkTagsOpen(true)}
                         />
@@ -772,6 +785,7 @@ export default function LayerEditPage() {
                             onSelect={handleSelectFromTree}
                             onReload={reload}
                             onReorder={reorderLayers}
+                            onCreate={createLayer}
                             isAdmin={isAdmin}
                             onBulkTagsClick={() => setBulkTagsOpen(true)}
                             showHeader

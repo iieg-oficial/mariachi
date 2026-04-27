@@ -75,6 +75,8 @@ class LayerBase(BaseModel):
     infobox_params: dict | None = Field(default=None, serialization_alias="infoboxParams")
     infobox_config: dict | None = Field(default=None, serialization_alias="infoboxConfig")
 
+    icon_url: str | None = Field(default=None, serialization_alias="iconUrl")
+
     model_config = ConfigDict(populate_by_name=True, from_attributes=True)
 
     @field_validator("slug")
@@ -128,6 +130,8 @@ class LayerUpdate(BaseModel):
     infobox_template: str | None = Field(default=None, serialization_alias="infoboxTemplate")
     infobox_params: dict | None = Field(default=None, serialization_alias="infoboxParams")
     infobox_config: dict | None = Field(default=None, serialization_alias="infoboxConfig")
+
+    icon_url: str | None = Field(default=None, serialization_alias="iconUrl")
 
     model_config = ConfigDict(populate_by_name=True)
 

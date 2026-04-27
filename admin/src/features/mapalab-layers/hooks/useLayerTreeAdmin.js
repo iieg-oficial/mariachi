@@ -84,6 +84,11 @@ export const useLayerTreeAdmin = () => {
         }
     }, []);
 
+    const createLayer = useCallback(async (payload) => {
+        const res = await api.post('/layers', payload);
+        return res.data;
+    }, []);
+
     const deleteLayer = useCallback(async (layerId) => {
         await api.delete(`/layers/${layerId}`);
     }, []);
@@ -198,6 +203,7 @@ export const useLayerTreeAdmin = () => {
         error,
         reload,
         getLayer,
+        createLayer,
         updateLayer,
         saveLayerDraft,
         requestReview,

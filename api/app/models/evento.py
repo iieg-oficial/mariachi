@@ -12,6 +12,7 @@ class Evento(Base):
     titulo = Column(String(200), nullable=False)
     descripcion = Column(Text, nullable=True)
     icono_url = Column(Text, nullable=True)
+    imagen_url = Column(Text, nullable=True)
     bbox = Column(JSON, nullable=True)
     capas = Column(JSON, default=list, nullable=False)
     activo = Column(Boolean, nullable=False, default=False)

@@ -38,6 +38,7 @@ class EventoBase(BaseModel):
     titulo: str = Field(..., min_length=1, max_length=200)
     descripcion: str | None = None
     icono_url: str | None = Field(default=None, serialization_alias='iconoUrl')
+    imagen_url: str | None = Field(default=None, serialization_alias='imagenUrl')
     bbox: BBox | None = None
     capas: list[CapaRef] = Field(default_factory=list)
     activo: bool = False
@@ -56,6 +57,7 @@ class EventoUpdate(BaseModel):
     titulo: str | None = Field(default=None, min_length=1, max_length=200)
     descripcion: str | None = None
     icono_url: str | None = Field(default=None, serialization_alias='iconoUrl')
+    imagen_url: str | None = Field(default=None, serialization_alias='imagenUrl')
     bbox: BBox | None = None
     capas: list[CapaRef] | None = None
     activo: bool | None = None
@@ -63,6 +65,7 @@ class EventoUpdate(BaseModel):
     fecha_fin: datetime | None = Field(default=None, serialization_alias='fechaFin')
     orden: int | None = None
     slug: str | None = Field(default=None, min_length=1, max_length=120)
+    expected_updated_at: datetime | None = Field(default=None, alias='expectedUpdatedAt')
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -84,6 +87,7 @@ class EventoPublicResponse(BaseModel):
     titulo: str
     descripcion: str | None = None
     icono_url: str | None = Field(default=None, serialization_alias='iconoUrl')
+    imagen_url: str | None = Field(default=None, serialization_alias='imagenUrl')
     bbox: BBox | None = None
     capas: list[CapaRef] = Field(default_factory=list)
     fecha_inicio: datetime | None = Field(default=None, serialization_alias='fechaInicio')
