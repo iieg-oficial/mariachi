@@ -77,6 +77,7 @@ services:
     networks:
       - mariachi_network_dev
       - dataengine-network
+      - acervo_network_dev
 
   admin:
     build:
@@ -112,4 +113,7 @@ networks:
   mapalab-network:
     external: true
   dataengine-network:
+    external: true
+  acervo_network_dev:
+    name: acervo-dev_acervo_network_dev
     external: true

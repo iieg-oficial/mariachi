@@ -13,6 +13,15 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.30.13] - 2026-04-27
+
+### Infra (compose) — `mariachi-api-dev` conectado a la red del acervo local
+
+- **`docker-compose.dev.yml`**: el servicio `api` ahora se une también a `acervo_network_dev` (red externa que crea el repo `iieg-oficial/acervo`, named `acervo-dev_acervo_network_dev`). Antes el container vivía solo en `mariachi_network_dev` + `dataengine-network` y no podía resolver `acervo-minio-dev` por DNS, lo que dejaba colgado al MinIO client del backend en el `bucket_exists()` inicial cuando se apuntaba el `.env.development` al MinIO local. Mismo patrón ya usado para `mapalab-network`.
+- Para correrlo localmente: arrancar primero `iieg-oficial/acervo` (`docker compose -f docker-compose.dev.yml up -d`) — esto crea la red externa — y luego `mariachi`.
+
+---
+
 ## [0.30.12] - 2026-04-27
 
 ### Infra (env) — opción acervo MinIO local en `.env.development.example`
