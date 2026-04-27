@@ -13,6 +13,184 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.30.9] - 2026-04-27
+
+### CI (infra) — fix backend pytest
+
+- **`.github/workflows/test-backend.yml`**: el step `Tests` ahora declara explícitamente las 23 variables de entorno que `pydantic-settings` exige al instanciar `Settings()` (`PROJECT_NAME`, `VERSION`, `DATABASE_URL`, `SECRET_KEY`, etc.). En CI no hay `.env.*`, por lo que `tests/conftest.py` rompía con `ValidationError: 23 validation errors for Settings` al hacer `from app.core.database import Base` (que llama `get_settings()` a nivel de módulo). Valores son fakes de test: `DATABASE_URL=sqlite:///:memory:`, `CORS_ORIGINS=["http://localhost:3000"]`, secrets dummy. La lint step queda intacta.
+
+---
+
+## [0.30.8] - 2026-04-27
+
+### Admin (admin) — fix dead-code check (knip)
+
+- **`admin/knip.json`** (nuevo): configuración mínima para `npm run check:dead-code:strict`. Define `project: src/**/*.{js,jsx}`, lista en `ignore` los archivos legacy del rediseño de portal-pages (font selectors, SEOAnalyzer/TemplateSelector, hooks de búsqueda, `AddSieejDependenciaPage`, `NavigationMenu`, `auth/index.js`) que aún no se referencian desde `main.jsx` pero se conservan, declara `lint-staged` y `msw` en `ignoreDependencies` (devDeps en uso por hooks/tests no detectables por análisis estático) y activa `ignoreExportsUsedInFile` para que knip no marque named exports consumidos solo internamente (caso `BannerEditor..FooterEditor` referenciados desde `SECTION_REGISTRY` en el mismo archivo).
+- **`features/mapalab-home/api/homeService.js`**: removida `getSeccion` (sin callers; el caso de uso quedó cubierto por `listSecciones` y la API admin del home).
+- **`features/portal-menu/utils/menuUtils.js`**: removida `findAllChildren` (sin callers; el menú ya hace borrado en cascada vía `parentId` desde el backend).
+
+---
+
+## [0.30.7] - 2026-04-27
+
+### Admin (admin) — fix lint CI
+
+- **`eslint.config.js`**: añadidos al override `max-lines: off` los archivos preexistentes que ya superaban 300 líneas y no son objetivo de refactor en este PR — `EventoEditPage.jsx`, `sectionEditors.jsx`, `HomePage.jsx` (mapalab-home), `LayersTreeSider.jsx`, `CqlFilterBuilder.jsx`, `InfoBoxBlocksEditor.jsx`, `LayerMetadataSection.jsx`, `LayerStatsSection.jsx`. Mantiene la regla activa para nuevo código.
+- **Indent (`eslint --fix`)**: corregida indentación en `EventoEditPage.jsx` (literal de bbox dentro de ternario) y `RevisionQueuePage.jsx` (anidado en mensaje de rechazo).
+- **`no-unused-vars`**:
+  - `InfoBoxPreview.jsx`: removida prop `template` (no usada por ningún caller).
+  - `LayerMetadataSection.jsx` + `LayerEditPage.jsx`: removida prop `currentNodeType` (sin lectura).
+  - `LayerStatsSection.jsx`: `catch (err)` → `catch` y eliminada función muerta `importLegacyValuesAsStatic` (24 líneas).
+  - `MediaPage.jsx`: eliminado objeto `stats` computado nunca consumido.
+- **`jsx-a11y`**:
+  - `LayersTreeSider.jsx`: el `<span>` clickeable de cada nodo del árbol ahora declara `role="button"`, `tabIndex` (0/-1 según `disabled`) y `onKeyDown` que dispara la edición con Enter/Espacio.
+  - `MediaPage.jsx`: convertidos a `<button type="button">` los breadcrumbs (Raíz + segmentos), el thumbnail de carpetas y la celda de nombre cuando es carpeta. El cell de nombre vuelve a ser `<div>` cuando el row es archivo (sin click handler).
+
+---
+
+## [0.30.6] - 2026-04-27
+
+### Backend (api) — fix lint CI
+
+- **Imports ordenados (`I001`)**: ruff falló en CI por bloques de imports sin ordenar en `app/api/routes/auth.py`, `app/models/home_section.py`, `app/schemas/__init__.py` y `app/schemas/home_section.py`. Auto-fix con `ruff --fix`.
+- **`tests/test_sieej_formularios.py`**: removidos `CatalogoCategoriaDatos` y `CatalogoEjesEstrategicos` (imports sin uso, `F401`); renombrada variable local `SessionLocal` → `session_factory` para cumplir `N806` (snake_case en funciones).
+
+---
+
+## [0.30.5] - 2026-04-27
+
+### Backend (api) — fix split layers
+
+- **`routes/layers/`**: el parent router tenía `prefix='/layers'` y los sub-routers prefix vacío. FastAPI 0.111 valida que un router con prefix vacío no tenga endpoints con path vacío (`@router.post('', ...)` en `crud.create_layer`), y al arranque tiraba `Prefix and path cannot be both empty`. Movido el `prefix='/layers'` a cada sub-router (`crud`, `aliases`, `slugs/'/layers/slugs'`); el parent solo conserva tags y dependencies. Paths HTTP finales sin cambio.
+
+---
+
+## [0.30.4] - 2026-04-27
+
+### Backend (api) — fix Alembic
+
+- **Nueva migración `d2e3f4a5b6c7_add_disabled_to_menu_items`**: añade columna `menu_items.disabled` (Boolean, default `false`). El modelo `MenuItem` la declaraba desde antes pero la migración 001 nunca la creó y ninguna intermedia la añadió, así que `init_db.py` rompía al seedear los menu items con `column menu_items.disabled does not exist`.
+
+---
+
+## [0.30.3] - 2026-04-27
+
+### Backend (api) — proxy/gateway awareness
+
+- **`api/scripts/start_backend.sh`**: uvicorn arranca con `--proxy-headers --forwarded-allow-ips='*'`; gunicorn con `--forwarded-allow-ips='*'`. Antes el API ignoraba `X-Forwarded-Proto`/`X-Forwarded-For` y `request.url.scheme` siempre era `http` aunque el cliente viniera por HTTPS desde el gateway.
+- **`nginx/conf.d/mariachi.conf`**: nuevos `map` para `$forwarded_proto` y `$forwarded_host` que preservan los headers que ya envió el gateway externo. Antes `proxy_set_header X-Forwarded-Proto $scheme;` sobrescribía con `http` el `https` que venía de afuera.
+- **`nginx/nginx.conf`**: añadido `set_real_ip_from` para los CIDRs privados (`10/8`, `172.16/12`, `192.168/16`) + `real_ip_header X-Forwarded-For` + `real_ip_recursive on`. Resultado: `$remote_addr` en logs es el IP real del cliente, no el del último hop interno (gateway-hub).
+- **`docs/context.md`**: nueva sección "Cadena de proxy" documentando la topología `cliente → gateway-hub → mariachi-nginx → mariachi-api` y las implicaciones para headers, cookies y CORS.
+
+### Backend (api) — fix Alembic
+
+- **Migración `ee37ba52b458_add_publication_requests`** convertida en no-op. Original creaba `publication_requests` con FK a `drafts`, tabla que nunca llegó a la rama main (se renombró a `borradores` entre el 9 y el 18 de feb 2026). Cero referencias en código a `publication_requests`. La migración rompía `make up ENV=dev` en BDs frescas (`relation "drafts" does not exist`). El revision id se preserva por linealidad de la cadena.
+
+---
+
+## [0.30.2] - 2026-04-27
+
+### Backend (api) — multi-worker safety
+
+- **`services/mapalab_public_cache`** debounce migrado de `threading.Timer` a Redis `SET NX EX 5`. Antes, en producción con N workers de Gunicorn, cada worker mantenía su propio timer y la ventana de debounce no era global; ahora el primer notify dentro de cualquier worker bumpea inmediatamente y los siguientes 5s quedan deduplicados a través de Redis. Semántica: "first-call-wins" en vez de "last-call-after-delay" — el cache se invalida al primer cambio, no al último.
+- **`api/rate_limit`** migrado de `dict[str, list[float]]` en memoria a Redis sorted set por usuario (sliding window real). `ZADD now`, `ZREMRANGEBYSCORE -inf cutoff`, `ZCARD` en pipeline atómico. Antes el límite era per-worker (con N workers, el techo real era N * max_requests). Ahora es global. `Retry-After` derivado del miembro más antiguo del set.
+- Si Redis falla (`pipe.execute()` lanza), el rate-limit hace fail-open (deja pasar) y emite warning; preferible a tirar el endpoint cuando Redis tiene problemas transitorios.
+
+### Backend (api) — limpieza
+
+- **`routes/projects.py`**: deps anónimas `_:` y `__:` reemplazadas por `_csrf` / `current_user` / `_admin` (legibles). Patrón de seguridad alineado con el resto de routers (CSRF como dep aparte, autorización via `Depends(_require_admin)`).
+
+---
+
+## [0.30.1] - 2026-04-27
+
+### Backend (api)
+
+- **`routes/layers.py` partido** en paquete `routes/layers/` con 4 módulos:
+  - `crud.py` (214 líneas): workspaces, initial-order, CRUD, reorder, bulk-tags, duplicate.
+  - `aliases.py` (91 líneas): `/{layer_id}/aliases` (list/create/delete).
+  - `slugs.py` (60 líneas): `/slugs/suggest` y `/slugs/bulk-generate`.
+  - `_deps.py` (20 líneas): helpers compartidos (`require_admin`, `require_project_editor`, `write_rate_limit`, `map_domain_errors`).
+  - `__init__.py` (14 líneas): router parent con prefix `/layers`, tags y `require_project_access('mapalab')`.
+- Antes: 1 archivo de 346 líneas. Ahora: ningún archivo de routes excede 215 líneas.
+- Sin cambios de contrato HTTP — todos los paths, métodos, status codes y schemas se preservan.
+
+---
+
+## [0.30.0] - 2026-04-27
+
+### Backend (api) — refactor estructural
+
+- **Nuevos services** que absorben lógica antes mezclada en routers:
+  - `services/presence.py`: helpers `register()` / `list_others()` para presencia colaborativa via Redis. Sustituye 3 implementaciones casi idénticas en `routes/{eventos,pages,home}.py`.
+  - `services/borrador_service.py`: registry `APPLIERS` (evento, home_section, layer) + `apply_borrador()`. Reemplaza el `if/elif/else` por `resource_type` que vivía en `routes/borradores.py:aprobar_borrador`.
+  - `services/media_service.py`: serializadores (`serialize_media`, `serialize_bucket_only`), listado fusionado bucket+BD, `resolve_bucket_or_403`, `ensure_folder_exists`, `guess_mime`.
+  - `services/menu_tree.py`: `build_menu_tree()` ahora único, antes duplicado entre `routes/menu.py` y `routes/public.py`.
+  - `core/optimistic.py`: helper `check_concurrent_edit(db_ts, expected_ts, detail)` para concurrencia optimista (HTTP 409 por `updated_at`). Reemplaza el patrón `replace(tzinfo=None) + abs(...) > 2` repetido en eventos, pages y home.
+
+### Backend (api) — limpieza
+
+- **Routers más finos**:
+  - `routes/borradores.py`: 327 → 211 líneas (delegación a `borrador_service`).
+  - `routes/media.py`: 357 → 169 líneas (delegación a `media_service`).
+- **Autorización declarativa**: reemplazo de checks `if current_user.role != 'tetlamamakani'` por `Depends(require_role([...]))` en `routes/users.py` (crear, eliminar, resetear contraseña, agregar dependencia SIEEJ) y `routes/borradores.py`. Mantenidos los checks híbridos (admin O dueño) y los filtros de query por rol (lógica de negocio, no autorización).
+- **`api/deps.py`**: `_user_memberships` → `list_user_memberships`, `_user_accessible_buckets` → `list_user_accessible_buckets` (públicos para reuso desde `auth.py`).
+- **Modernización**: migrado `datetime.utcnow()` (deprecado en 3.12) a `app.core.time.utcnow` en `models/layer.py`, `models/sieej/*`, `services/sieej/*`. Tipado actualizado a sintaxis PEP 604 (`list[T]`, `T | None`) en módulo SIEEJ y `services/acervo.py`.
+- **Logging seguro**: `routes/media.py:subir_archivo` ya no expone `str(e)` en el detail HTTP; usa `logger.exception` para el stack y mensaje genérico al cliente.
+
+### Fix
+
+- **`/autenticacion/iniciar-sesion`** ahora incluye `projects` en `LoginResponse.user`. Antes el `UsuarioResponse.model_validate(usuario)` devolvía `projects=[]` porque el modelo SQLAlchemy no expone ese atributo; el frontend tenía que pegar a `/perfil` después del login para hidratar membresías.
+
+---
+
+## [0.29.1] - 2026-04-27
+
+### Infra
+
+- **`docker-compose.yml`**: default de `env_file` cambia de `./.env` a `./.env.staging`. El `.env` raíz era ambiguo (en realidad contenía valores de producción) y se renombró a `.env.production`. Si falta `API_ENV_FILE`, ahora se cae en staging (más seguro que producción) — alineado con el `Makefile` que ya resolvía por `ENV`.
+- **Limpieza**: borrados `nginx/.env` (no consumido por nadie — la conf interna de nginx tiene los valores hardcoded y el Dockerfile no carga el archivo) y `api/.env` huérfano (0 bytes, owner root, materializado por un bind-mount fallido).
+
+---
+
+## [0.29.0] - 2026-04-26
+
+### Admin (admin/) — Home v2 + presencia + drafts
+
+- **Home v2**: rediseño del dashboard del editor mapalab. Nuevo `LayerIdsField` que resuelve y muestra capas por id desde el árbol del backend. Hooks de borrador (`useDraftHooks`) integrados en formularios con autosave + indicador "Guardado / Hay cambios".
+
+### Backend (api) — colaboración en tiempo real
+
+- **Presencia** (Redis): endpoints `PUT/GET /{resource}/{id}/presencia` para `pages`, `eventos` y secciones `home`. TTL 30s, key `presencia:{scope}:{id}:{username}`. Permite mostrar quién más está editando el mismo recurso.
+- **Concurrencia optimista**: campo `expected_updated_at` en payload de update; el backend devuelve 409 si el timestamp en BD difiere por más de 2s.
+- **Aprobación de borradores extendida**: `borradores/por-id/{id}/aprobar` ahora aplica también `evento` y `home_section` (antes solo `layer`). Cada flujo dispara su `notify_*_changed()` para invalidar caches públicos.
+
+### Backend (api) — integración mapalab
+
+- **Cliente shares** (`services/mapalab_shares.py`): `POST /mapalab-shares` proxy autenticado al backend de mapalab para crear/pinear shares permanentes.
+- **Cache version público**: `GET /api/mapalab/cache-version` devuelve tokens por scope (`eventos`, `home`) que el visor usa para revalidar. `services/mapalab_public_cache._schedule()` con debounce 5s antes de bumpear el token.
+
+---
+
+## [0.28.0] - 2026-04-26
+
+### Mapalab admin
+
+- **Banner contextual en eventos**: aviso visual en el listado/edición de eventos del visor mapalab.
+- **Iconos custom en temas**: soporte para subir/asignar iconos por tema desde el editor.
+- **Modal de creación en layers**: nuevo flujo para crear capas sin salir del listado.
+
+---
+
+## [0.27.0] - 2026-04-26
+
+### Mapalab admin
+
+- **Editor de eventos** (CRUD): listado, creación, edición, publicación/despublicación. Schema `Evento` con BBox, capas referenciadas, fechas activas, slug.
+- **Home del visor** (`HomeSectionsPage`): editor de las secciones publicables del home (banner, topics, guide, select, faq, video, footer) con publish/discard y preview pre-publicación.
+
+---
+
 ## [0.26.0] - 2026-04-26
 
 ### Editor de capas (admin/mapalab-layers)

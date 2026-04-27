@@ -6,11 +6,6 @@ export const listSecciones = async () => {
     return res.data;
 };
 
-export const getSeccion = async (key) => {
-    const res = await api.get(`/home/${key}`);
-    return res.data;
-};
-
 export const saveBorrador = async (key, payload, expectedUpdatedAt) => {
     const params = expectedUpdatedAt ? { expectedUpdatedAt } : undefined;
     const res = await api.put(`/home/${key}`, payload, { params });

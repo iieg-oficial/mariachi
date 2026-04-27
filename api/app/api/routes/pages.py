@@ -3,12 +3,13 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 
 from app.api.deps import get_current_user, get_db, require_project_access, verify_csrf
-from app.core.cache import get_cache, redis_client, set_cache
+from app.core.optimistic import check_concurrent_edit
 from app.core.time import utcnow
 from app.models.menu_item import MenuItem
 from app.models.page import Page
 from app.models.user import Usuario
 from app.schemas.page import PageResponse, PageUpdate
+from app.services import presence
 
 router = APIRouter(
     prefix="/paginas",
@@ -63,8 +64,7 @@ async def registrar_presencia(
     page_id: str,
     current_user: Usuario = Depends(get_current_user),
 ):
-    key = f"presencia:pagina:{page_id}:{current_user.username}"
-    set_cache(key, {"username": current_user.username, "name": current_user.name}, expire=30)
+    presence.register("pagina", page_id, current_user.username, current_user.name)
     return {"ok": True}
 
 
@@ -73,13 +73,7 @@ async def obtener_presencia(
     page_id: str,
     current_user: Usuario = Depends(get_current_user),
 ):
-    keys = redis_client.keys(f"presencia:pagina:{page_id}:*")
-    editores = []
-    for key in keys:
-        data = get_cache(key)
-        if data and data["username"] != current_user.username:
-            editores.append(data)
-    return editores
+    return presence.list_others("pagina", page_id, current_user.username)
 
 
 @router.put("/{page_id}", response_model=PageResponse)
@@ -92,14 +86,12 @@ async def actualizar_o_crear_pagina(
 ):
     pagina = db.query(Page).filter(Page.menu_item_id == page_id).first()
 
-    if pagina and page_in.expected_updated_at:
-        db_ts = pagina.updated_at.replace(tzinfo=None)
-        req_ts = page_in.expected_updated_at.replace(tzinfo=None)
-        if abs((db_ts - req_ts).total_seconds()) > 2:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="La página fue modificada por otro usuario",
-            )
+    if pagina:
+        check_concurrent_edit(
+            pagina.updated_at,
+            page_in.expected_updated_at,
+            detail="La página fue modificada por otro usuario",
+        )
 
     if not pagina:
         data = page_in.model_dump(exclude_unset=True, exclude={'expected_updated_at'})

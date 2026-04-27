@@ -1,5 +1,3 @@
-from datetime import datetime
-
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
@@ -15,6 +13,7 @@ from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import relationship
 
 from app.core.database import DataEngineBase
+from app.core.time import utcnow
 
 NODE_TYPES = ("tema", "category", "label", "group", "leaf")
 
@@ -100,7 +99,7 @@ class Layer(DataEngineBase):
     updated_at = Column(
         DateTime(timezone=True),
         server_default=text("NOW()"),
-        onupdate=datetime.utcnow,
+        onupdate=utcnow,
         nullable=False,
     )
     updated_by = Column(String(100), nullable=True)

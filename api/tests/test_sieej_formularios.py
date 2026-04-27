@@ -1,4 +1,5 @@
 import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -10,12 +11,9 @@ from app.main import app
 from app.models.project import Project, UserProject
 from app.models.sieej import (
     BasesDatos,
-    CatalogoCategoriaDatos,
-    CatalogoEjesEstrategicos,
     CatalogoUnidadAdmin,
 )
 from app.models.user import Usuario
-from fastapi.testclient import TestClient
 
 settings = get_settings()
 ADMIN_PREFIX = settings.admin_prefix
@@ -40,8 +38,8 @@ def sieej_engine():
 
 @pytest.fixture(scope="function")
 def sieej_session(sieej_engine):
-    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=sieej_engine)
-    session = SessionLocal()
+    session_factory = sessionmaker(autocommit=False, autoflush=False, bind=sieej_engine)
+    session = session_factory()
     yield session
     session.close()
 

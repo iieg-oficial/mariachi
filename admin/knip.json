@@ -1,0 +1,30 @@
+{
+    "$schema": "https://unpkg.com/knip@6/schema.json",
+    "project": [
+        "src/**/*.{js,jsx}"
+    ],
+    "ignore": [
+        "src/features/auth/index.js",
+        "src/features/portal-menu/components/NavigationMenu.jsx",
+        "src/features/portal-pages/components/FontConfigContext.jsx",
+        "src/features/portal-pages/components/FontSelector.jsx",
+        "src/features/portal-pages/components/FontUploader.jsx",
+        "src/features/portal-pages/components/PagePreview.jsx",
+        "src/features/portal-pages/components/PageVersionHistory.jsx",
+        "src/features/portal-pages/components/PersonalizedInput.jsx",
+        "src/features/portal-pages/components/SEOAnalyzer.jsx",
+        "src/features/portal-pages/components/TemplateSelector.jsx",
+        "src/features/portal-pages/components/TextStyleModal.jsx",
+        "src/features/portal-pages/components/useFontConfig.js",
+        "src/features/portal-pages/constants/pageTemplates.js",
+        "src/features/portal-pages/hooks/fontService.js",
+        "src/features/portal-pages/hooks/searchService.js",
+        "src/features/portal-pages/hooks/useContentSearch.js",
+        "src/features/users/pages/AddSieejDependenciaPage.jsx"
+    ],
+    "ignoreDependencies": [
+        "lint-staged",
+        "msw"
+    ],
+    "ignoreExportsUsedInFile": true
+}

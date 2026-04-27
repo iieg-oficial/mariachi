@@ -86,7 +86,7 @@ async def require_staff(
     return current_user
 
 
-def _user_memberships(db: Session, user: Usuario) -> list[dict]:
+def list_user_memberships(db: Session, user: Usuario) -> list[dict]:
     rows = (
         db.query(Project.slug, Project.name, UserProject.project_role)
         .join(UserProject, UserProject.project_id == Project.id)
@@ -96,7 +96,7 @@ def _user_memberships(db: Session, user: Usuario) -> list[dict]:
     return [{"slug": r.slug, "name": r.name, "project_role": r.project_role} for r in rows]
 
 
-def _user_accessible_buckets(db: Session, user: Usuario) -> list[dict]:
+def list_user_accessible_buckets(db: Session, user: Usuario) -> list[dict]:
     query = (
         db.query(MediaBucket, Project.slug)
         .join(Project, Project.id == MediaBucket.project_id)
@@ -131,8 +131,8 @@ async def get_current_user_context(
         "role": current_user.role,
         "must_change_password": current_user.must_change_password,
         "created_at": current_user.created_at,
-        "projects": _user_memberships(db, current_user),
-        "accessible_buckets": _user_accessible_buckets(db, current_user),
+        "projects": list_user_memberships(db, current_user),
+        "accessible_buckets": list_user_accessible_buckets(db, current_user),
     }
     return data
 

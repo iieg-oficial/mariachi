@@ -460,7 +460,7 @@ export default function LayerStatsSection({
                 setStats(null);
                 setConfig([]);
             }
-        } catch (err) {
+        } catch {
             message.error('Error cargando estadísticas');
         } finally {
             setLoading(false);
@@ -501,29 +501,6 @@ export default function LayerStatsSection({
     };
 
     const removeSlot = (idx) => setConfig(config.filter((_, i) => i !== idx));
-
-    const importLegacyValuesAsStatic = () => {
-        const legacy = stats?.values || [];
-        if (!legacy.length) return;
-        const slots = legacy
-            .map((v) => ({
-                position: Number(v.posicion) || null,
-                operation: 'static',
-                value: v.valor ?? '',
-                label: v.nombre || '',
-                symbol: v.simbolo || '',
-                format: '',
-            }))
-            .filter((s) => s.position && s.position >= 1 && s.position <= 8);
-        const merged = [...config];
-        for (const s of slots) {
-            const existing = merged.findIndex((c) => c.position === s.position);
-            if (existing >= 0) merged[existing] = s;
-            else merged.push(s);
-        }
-        setConfig(merged);
-        message.success(`${slots.length} slot(s) estáticos creados a partir de los valores legacy`);
-    };
 
     const normalizePieNumeralia = (text) => {
         const trimmed = (text || '').trim();

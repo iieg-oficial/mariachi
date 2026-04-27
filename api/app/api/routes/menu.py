@@ -5,6 +5,7 @@ from app.api.deps import get_db, require_project_access, verify_csrf
 from app.models.menu_item import MenuItem
 from app.models.user import Usuario
 from app.schemas.menu_item import MenuItemCreate, MenuItemResponse, MenuItemTree, MenuItemUpdate
+from app.services.menu_tree import build_menu_tree
 
 router = APIRouter(
     prefix="/elementos-menu",
@@ -13,26 +14,6 @@ router = APIRouter(
 )
 
 _require_editor = require_project_access("portal", min_role="editor")
-
-
-def construir_arbol_menu(items: list[MenuItem]) -> list[MenuItemTree]:
-    item_map = {}
-    root_items = []
-
-    items_visibles = sorted([item for item in items if item.visible], key=lambda x: x.order)
-
-    for item in items_visibles:
-        item_dict = MenuItemResponse.model_validate(item).model_dump()
-        item_map[item.id] = MenuItemTree(**item_dict, children=[])
-
-    for item in items_visibles:
-        tree_item = item_map[item.id]
-        if item.parent_id and item.parent_id in item_map:
-            item_map[item.parent_id].children.append(tree_item)
-        else:
-            root_items.append(tree_item)
-
-    return root_items
 
 
 @router.get("", response_model=list[MenuItemResponse])
@@ -44,7 +25,7 @@ async def listar_menu_items(db: Session = Depends(get_db)):
 @router.get("/arbol", response_model=list[MenuItemTree])
 async def obtener_arbol_menu(db: Session = Depends(get_db)):
     items = db.query(MenuItem).all()
-    return construir_arbol_menu(items)
+    return build_menu_tree(items)
 
 
 @router.get("/{item_id}", response_model=MenuItemResponse)

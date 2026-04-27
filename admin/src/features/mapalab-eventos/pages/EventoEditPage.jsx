@@ -72,11 +72,11 @@ function formToPayload(values, { isCreate }) {
     const cleanBbox = values.bbox && [values.bbox.minx, values.bbox.miny, values.bbox.maxx, values.bbox.maxy].every(
         (v) => v !== null && v !== undefined && v !== ''
     ) ? {
-        minx: Number(values.bbox.minx),
-        miny: Number(values.bbox.miny),
-        maxx: Number(values.bbox.maxx),
-        maxy: Number(values.bbox.maxy),
-    } : null;
+            minx: Number(values.bbox.minx),
+            miny: Number(values.bbox.miny),
+            maxx: Number(values.bbox.maxx),
+            maxy: Number(values.bbox.maxy),
+        } : null;
 
     const payload = {
         titulo: values.titulo,

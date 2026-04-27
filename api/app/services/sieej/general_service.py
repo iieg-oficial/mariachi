@@ -1,9 +1,7 @@
-from datetime import datetime
-from typing import Optional
-
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.core.time import utcnow
 from app.models.sieej import CatalogoUnidadAdmin, General
 from app.schemas.sieej.general import GeneralCreate, GeneralResponse, GeneralUpdate
 
@@ -12,7 +10,7 @@ class GeneralService:
     def __init__(self, db: Session):
         self.db = db
 
-    def _get(self, user_id: int, general_id: Optional[int] = None) -> Optional[General]:
+    def _get(self, user_id: int, general_id: int | None = None) -> General | None:
         query = self.db.query(General).filter(General.user_id == user_id, General.is_active.is_(True))
         if general_id is not None:
             query = query.filter(General.id == general_id)
@@ -32,7 +30,7 @@ class GeneralService:
             )
         return unidad
 
-    def get(self, user_id: int) -> Optional[GeneralResponse]:
+    def get(self, user_id: int) -> GeneralResponse | None:
         general = self._get(user_id)
         if general is None:
             return None
@@ -53,7 +51,7 @@ class GeneralService:
         self.db.refresh(general)
         return self._format(general)
 
-    def update(self, general_id: int, data: GeneralUpdate, user_id: int) -> Optional[GeneralResponse]:
+    def update(self, general_id: int, data: GeneralUpdate, user_id: int) -> GeneralResponse | None:
         general = self._get(user_id, general_id)
         if general is None:
             return None
@@ -63,17 +61,17 @@ class GeneralService:
         general.hay_responsable = data.hay_responsable
         general.descripcion_hay_responsable = data.descripcion_hay_responsable
         general.desafios_oportunidades = data.desafios_oportunidades
-        general.updated_at = datetime.utcnow()
+        general.updated_at = utcnow()
         self.db.commit()
         self.db.refresh(general)
         return self._format(general)
 
-    def delete(self, general_id: int, user_id: int) -> Optional[dict]:
+    def delete(self, general_id: int, user_id: int) -> dict | None:
         general = self._get(user_id, general_id)
         if general is None:
             return None
         general.is_active = False
-        general.updated_at = datetime.utcnow()
+        general.updated_at = utcnow()
         self.db.commit()
         return {"message": "Información general eliminada exitosamente"}
 

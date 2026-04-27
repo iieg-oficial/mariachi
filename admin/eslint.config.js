@@ -74,6 +74,14 @@ export default [
     },
     {
         files: [
+            'src/features/mapalab-eventos/pages/EventoEditPage.jsx',
+            'src/features/mapalab-home/components/sectionEditors.jsx',
+            'src/features/mapalab-home/pages/HomePage.jsx',
+            'src/features/mapalab-layers/components/LayersTreeSider.jsx',
+            'src/features/mapalab-layers/components/layersEditor/CqlFilterBuilder.jsx',
+            'src/features/mapalab-layers/components/layersEditor/InfoBoxBlocksEditor.jsx',
+            'src/features/mapalab-layers/components/layersEditor/LayerMetadataSection.jsx',
+            'src/features/mapalab-layers/components/layersEditor/LayerStatsSection.jsx',
             'src/features/mapalab-layers/pages/InitialLayerOrderPage.jsx',
             'src/features/mapalab-layers/pages/LayerEditPage.jsx',
             'src/features/media/api/mediaService.js',

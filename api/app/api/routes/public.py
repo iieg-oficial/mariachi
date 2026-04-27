@@ -10,41 +10,19 @@ from app.models.menu_item import MenuItem
 from app.models.page import Page
 from app.schemas.evento import EventoPublicResponse
 from app.schemas.home_section import SECTION_SCHEMAS, HomePublicResponse
-from app.schemas.menu_item import MenuItemResponse, MenuItemTree
+from app.schemas.menu_item import MenuItemTree
 from app.schemas.page import PageResponse
 from app.services.mapalab_public_cache import get_versions
+from app.services.menu_tree import build_menu_tree
 
 router = APIRouter(tags=["portal público"])
 mapalab_router = APIRouter(tags=["mapalab público"])
 
 
-def construir_arbol_menu(items: list[MenuItem]) -> list[MenuItemTree]:
-    item_map = {}
-    root_items = []
-
-    items_visibles = sorted(
-        [item for item in items if item.visible],
-        key=lambda x: x.order
-    )
-
-    for item in items_visibles:
-        item_dict = MenuItemResponse.model_validate(item).model_dump()
-        item_map[item.id] = MenuItemTree(**item_dict, children=[])
-
-    for item in items_visibles:
-        tree_item = item_map[item.id]
-        if item.parent_id and item.parent_id in item_map:
-            item_map[item.parent_id].children.append(tree_item)
-        else:
-            root_items.append(tree_item)
-
-    return root_items
-
-
 @router.get("/elementos-menu/arbol", response_model=list[MenuItemTree])
 async def obtener_arbol_menu(db: Session = Depends(get_db)):
     items = db.query(MenuItem).all()
-    return construir_arbol_menu(items)
+    return build_menu_tree(items)
 
 
 @router.get("/paginas/{slug:path}", response_model=PageResponse)

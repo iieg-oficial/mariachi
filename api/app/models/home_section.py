@@ -3,7 +3,6 @@ from sqlalchemy import JSON, Column, DateTime, String
 from app.core.database import Base
 from app.core.time import utcnow
 
-
 HOME_SECTION_KEYS = ("banner", "topics", "guide", "select", "faq", "video", "footer")
 
 

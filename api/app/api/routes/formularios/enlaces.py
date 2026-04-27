@@ -1,5 +1,3 @@
-from typing import List
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -12,7 +10,7 @@ from app.services.sieej.enlace_service import EnlaceService
 router = APIRouter()
 
 
-@router.get("/enlaces", response_model=List[EnlaceResponse])
+@router.get("/enlaces", response_model=list[EnlaceResponse])
 async def list_enlaces(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),

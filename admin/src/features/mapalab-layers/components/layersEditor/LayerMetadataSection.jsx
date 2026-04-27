@@ -61,7 +61,6 @@ export default function LayerMetadataSection({
     availableFields,
     derivedFromDescendants = false,
     siblingsSharingCount = 0,
-    currentNodeType = null,
 }) {
     const { getLayerMetadata, updateLayerMetadata } = useLayerTreeAdmin();
     const [form] = Form.useForm();

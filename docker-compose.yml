@@ -67,7 +67,7 @@ services:
     container_name: mariachi-api
     command: ./scripts/start_backend.sh
     env_file:
-      - ${API_ENV_FILE:-./.env}
+      - ${API_ENV_FILE:-./.env.staging}
     volumes:
       - ./api:/app
       - ../acervo/nginx/ssl/acervo.crt:/usr/local/share/ca-certificates/acervo.crt:ro
