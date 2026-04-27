@@ -13,6 +13,21 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.30.1] - 2026-04-27
+
+### Backend (api)
+
+- **`routes/layers.py` partido** en paquete `routes/layers/` con 4 módulos:
+  - `crud.py` (214 líneas): workspaces, initial-order, CRUD, reorder, bulk-tags, duplicate.
+  - `aliases.py` (91 líneas): `/{layer_id}/aliases` (list/create/delete).
+  - `slugs.py` (60 líneas): `/slugs/suggest` y `/slugs/bulk-generate`.
+  - `_deps.py` (20 líneas): helpers compartidos (`require_admin`, `require_project_editor`, `write_rate_limit`, `map_domain_errors`).
+  - `__init__.py` (14 líneas): router parent con prefix `/layers`, tags y `require_project_access('mapalab')`.
+- Antes: 1 archivo de 346 líneas. Ahora: ningún archivo de routes excede 215 líneas.
+- Sin cambios de contrato HTTP — todos los paths, métodos, status codes y schemas se preservan.
+
+---
+
 ## [0.30.0] - 2026-04-27
 
 ### Backend (api) — refactor estructural
