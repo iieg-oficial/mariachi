@@ -11,8 +11,9 @@ export const getSeccion = async (key) => {
     return res.data;
 };
 
-export const saveBorrador = async (key, payload) => {
-    const res = await api.put(`/home/${key}`, payload);
+export const saveBorrador = async (key, payload, expectedUpdatedAt) => {
+    const params = expectedUpdatedAt ? { expectedUpdatedAt } : undefined;
+    const res = await api.put(`/home/${key}`, payload, { params });
     return res.data;
 };
 

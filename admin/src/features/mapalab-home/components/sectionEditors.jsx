@@ -1,9 +1,39 @@
-import { useState } from 'react';
-import { Button, Empty, Form, Input, Select, Space, Switch, Tabs, Typography } from 'antd';
-import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
+import { useEffect, useRef, useState } from 'react';
+import { Button, Empty, Form, Input, Space, Switch, Tabs, Typography, message } from 'antd';
+import { ArrowDownOutlined, ArrowUpOutlined, DeleteOutlined, LinkOutlined, PlusOutlined } from '@ant-design/icons';
+import api from '@shared/services/api';
 import ImageUrlField from '@features/mapalab-home/components/ImageUrlField';
+import LayerIdsField from '@features/mapalab-home/components/LayerIdsField';
 
 const { Text } = Typography;
+
+
+function extractShareId(link) {
+    if (!link || typeof link !== 'string') return null;
+    const m = link.match(/[?&]s=([a-zA-Z0-9]+)/);
+    return m ? m[1] : null;
+}
+
+
+async function pinPermanente(shareId) {
+    try {
+        await api.post(`/mapalab-shares/${shareId}/pin-permanent`);
+        return true;
+    } catch (err) {
+        message.error(err?.response?.data?.detail || 'No se pudo marcar como permanente');
+        return false;
+    }
+}
+
+
+async function unpinPermanente(shareId) {
+    try {
+        await api.delete(`/mapalab-shares/${shareId}/pin-permanent`);
+        return true;
+    } catch {
+        return false;
+    }
+}
 
 
 function newId() {
@@ -129,6 +159,79 @@ export function BannerEditor() {
 }
 
 
+function SubtopicEditor({ parentName, subName, sIdx, total, onMove, onRemove }) {
+    const form = Form.useFormInstance();
+    const [syncing, setSyncing] = useState(false);
+
+    const linkPath = ['items', parentName, 'subtopics', subName, 'link'];
+    const currentLink = Form.useWatch(linkPath, form) ?? '';
+    const lastSyncedShareIdRef = useRef(extractShareId(currentLink));
+
+    useEffect(() => { lastSyncedShareIdRef.current = extractShareId(currentLink); }, []);
+
+    const syncShareIfNeeded = async (rawValue) => {
+        const newId = extractShareId(rawValue);
+        const prevId = lastSyncedShareIdRef.current;
+        if (newId === prevId) return;
+        setSyncing(true);
+        try {
+            if (prevId) await unpinPermanente(prevId);
+            if (newId) {
+                const ok = await pinPermanente(newId);
+                if (!ok) {
+                    lastSyncedShareIdRef.current = null;
+                    return;
+                }
+                message.success(`Share ${newId} marcado como permanente`);
+            } else if (prevId) {
+                message.info(`Share ${prevId} ya no es permanente`);
+            }
+            lastSyncedShareIdRef.current = newId;
+        } finally {
+            setSyncing(false);
+        }
+    };
+
+    return (
+        <div style={{ border: '1px dashed #d9d9d9', borderRadius: 6, padding: 8, background: '#fff' }}>
+            <Space style={{ justifyContent: 'space-between', width: '100%', marginBottom: 4 }}>
+                <Text style={{ fontSize: 11 }}>Subtema #{sIdx + 1}</Text>
+                <Space size={2}>
+                    <Button size="small" icon={<ArrowUpOutlined />} disabled={sIdx === 0} onClick={() => onMove(sIdx, sIdx - 1)} />
+                    <Button size="small" icon={<ArrowDownOutlined />} disabled={sIdx === total - 1} onClick={() => onMove(sIdx, sIdx + 1)} />
+                    <Button size="small" danger icon={<DeleteOutlined />} onClick={() => onRemove(subName)} />
+                </Space>
+            </Space>
+            <Form.Item name={[subName, 'label']} label="Etiqueta" style={{ marginBottom: 8 }}>
+                <Input size="small" />
+            </Form.Item>
+            <Form.Item
+                name={[subName, 'layer_ids']}
+                label="Capas"
+                style={{ marginBottom: 8 }}
+                getValueFromEvent={(value) => Array.isArray(value) ? value : []}
+            >
+                <LayerIdsField />
+            </Form.Item>
+            <Form.Item
+                name={[subName, 'link']}
+                label="Link (opcional)"
+                extra="Si está vacío, el visor usa /mapa?layers=… con las capas de arriba. Si tiene un share del visor (?s=ABC) se marca permanente al guardar; si lo borras o cambias, se libera."
+                style={{ marginBottom: 0 }}
+            >
+                <Input
+                    size="small"
+                    placeholder="/mapa?s=ABC123 · /mapa#zona · https://…"
+                    prefix={<LinkOutlined style={{ color: '#999' }} />}
+                    onBlur={(e) => syncShareIfNeeded(e.target.value)}
+                    suffix={syncing ? <Text type="secondary" style={{ fontSize: 11 }}>sincronizando…</Text> : null}
+                />
+            </Form.Item>
+        </div>
+    );
+}
+
+
 function SubtopicsList({ parentName }) {
     return (
         <Form.List name={[parentName, 'subtopics']}>
@@ -139,27 +242,17 @@ function SubtopicsList({ parentName }) {
                         <Text type="secondary" style={{ fontSize: 12 }}>Sin subtemas.</Text>
                     )}
                     {fields.map((sub, sIdx) => (
-                        <div key={sub.key} style={{ border: '1px dashed #d9d9d9', borderRadius: 6, padding: 8, background: '#fff' }}>
-                            <Space style={{ justifyContent: 'space-between', width: '100%', marginBottom: 4 }}>
-                                <Text style={{ fontSize: 11 }}>Subtema #{sIdx + 1}</Text>
-                                <Space size={2}>
-                                    <Button size="small" disabled={sIdx === 0} onClick={() => move(sIdx, sIdx - 1)}></Button>
-                                    <Button size="small" disabled={sIdx === fields.length - 1} onClick={() => move(sIdx, sIdx + 1)}></Button>
-                                    <Button size="small" danger icon={<DeleteOutlined />} onClick={() => remove(sub.name)} />
-                                </Space>
-                            </Space>
-                            <Form.Item name={[sub.name, 'label']} label="Etiqueta" style={{ marginBottom: 8 }}><Input size="small" /></Form.Item>
-                            <Form.Item
-                                name={[sub.name, 'layer_ids']}
-                                label="Layer IDs"
-                                style={{ marginBottom: 0 }}
-                                getValueFromEvent={(value) => Array.isArray(value) ? value : []}
-                            >
-                                <Select mode="tags" size="small" placeholder="Escribe ids y enter" tokenSeparators={[',']} />
-                            </Form.Item>
-                        </div>
+                        <SubtopicEditor
+                            key={sub.key}
+                            parentName={parentName}
+                            subName={sub.name}
+                            sIdx={sIdx}
+                            total={fields.length}
+                            onMove={move}
+                            onRemove={remove}
+                        />
                     ))}
-                    <Button size="small" type="dashed" icon={<PlusOutlined />} onClick={() => add({ label: '', layer_ids: [] })} block>
+                    <Button size="small" type="dashed" icon={<PlusOutlined />} onClick={() => add({ label: '', layer_ids: [], link: '' })} block>
                         Agregar subtema
                     </Button>
                 </Space>

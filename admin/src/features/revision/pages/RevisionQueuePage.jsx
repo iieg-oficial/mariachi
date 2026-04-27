@@ -82,14 +82,30 @@ export default function RevisionQueue() {
     };
 
     const isMenu = (record) => record?.resource_type === 'elementos-menu';
+    const isEvento = (record) => record?.resource_type === 'evento';
+    const isHomeSection = (record) => record?.resource_type === 'home_section';
+
+    const tipoTag = (record) => {
+        if (isMenu(record)) return <Tag color="purple">Menú de navegación</Tag>;
+        if (isEvento(record)) return <Tag color="geekblue">Evento: {record.data?.titulo || record.resource_id}</Tag>;
+        if (isHomeSection(record)) return <Tag color="cyan">Home: {record.resource_id}</Tag>;
+        return record.data?.title || `Página ${record.resource_id}`;
+    };
+
+    const editPath = (record) => {
+        if (isMenu(record)) return `/menu?review=true&borrador=${record.id}`;
+        if (isEvento(record)) return `/mapalab/eventos/${record.resource_id}/edit?review=true&borrador=${record.id}`;
+        if (isHomeSection(record)) return `/mapalab/home?review=true&borrador=${record.id}`;
+        return `/pages/edit/${record.resource_id}?review=true&borrador=${record.id}`;
+    };
+
+    const supportsPreview = (record) => isMenu(record) || (!isEvento(record) && !isHomeSection(record));
 
     const columns = [
         {
             title: 'Recurso',
             key: 'recurso',
-            render: (_, record) => isMenu(record)
-                ? <Tag color="purple">Menú de navegación</Tag>
-                : record.data?.title || `Página ${record.resource_id}`
+            render: (_, record) => tipoTag(record)
         },
         {
             title: 'Editor',
@@ -115,19 +131,18 @@ export default function RevisionQueue() {
             width: isMobile ? undefined : 360,
             render: (_, record) => (
                 <Space size="small" wrap>
-                    <Button
-                        icon={<EyeOutlined />}
-                        onClick={() => isMenu(record) ? handleMenuPreview(record) : handlePreview(record)}
-                    >
-                        {isMobile ? '' : 'Vista previa'}
-                    </Button>
+                    {supportsPreview(record) && (
+                        <Button
+                            icon={<EyeOutlined />}
+                            onClick={() => isMenu(record) ? handleMenuPreview(record) : handlePreview(record)}
+                        >
+                            {isMobile ? '' : 'Vista previa'}
+                        </Button>
+                    )}
                     <Button
                         type="primary"
                         icon={<EditOutlined />}
-                        onClick={() => isMenu(record)
-                            ? navigate(`/menu?review=true&borrador=${record.id}`)
-                            : navigate(`/pages/edit/${record.resource_id}?review=true&borrador=${record.id}`)
-                        }
+                        onClick={() => navigate(editPath(record))}
                     >
                         {isMobile ? '' : 'Revisar'}
                     </Button>
@@ -177,7 +192,12 @@ export default function RevisionQueue() {
             >
                 <p>
                     Se notificará a <strong>{borradorSeleccionado?.usuario?.name}</strong> que su borrador de{' '}
-                    <strong>{isMenu(borradorSeleccionado) ? 'Menú de navegación' : borradorSeleccionado?.data?.title}</strong> fue rechazado.
+                    <strong>{borradorSeleccionado ? (
+                        isMenu(borradorSeleccionado) ? 'Menú de navegación'
+                            : isEvento(borradorSeleccionado) ? `evento "${borradorSeleccionado.data?.titulo || borradorSeleccionado.resource_id}"`
+                            : isHomeSection(borradorSeleccionado) ? `sección home "${borradorSeleccionado.resource_id}"`
+                            : borradorSeleccionado.data?.title
+                    ) : ''}</strong> fue rechazado.
                 </p>
                 <Input.TextArea
                     placeholder="Motivo del rechazo (opcional)"
