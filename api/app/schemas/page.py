@@ -1,6 +1,8 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
+
+from app.core.acervo_url import to_absolute_in, to_relative_in
 
 
 class PageBase(BaseModel):
@@ -11,6 +13,15 @@ class PageBase(BaseModel):
     meta_keywords: str | None = Field(default=None, serialization_alias="metaKeywords")
 
     model_config = ConfigDict(populate_by_name=True)
+
+    @field_validator("sections", mode="before")
+    @classmethod
+    def _store_sections_relative(cls, v):
+        return to_relative_in(v) if v is not None else v
+
+    @field_serializer("sections", when_used="json")
+    def _expose_sections_absolute(self, v):
+        return to_absolute_in(v)
 
 
 class PageCreate(PageBase):
@@ -28,6 +39,11 @@ class PageUpdate(BaseModel):
     expected_updated_at: datetime | None = Field(default=None, alias="expectedUpdatedAt")
 
     model_config = ConfigDict(populate_by_name=True)
+
+    @field_validator("sections", mode="before")
+    @classmethod
+    def _store_sections_relative(cls, v):
+        return to_relative_in(v) if v is not None else v
 
 
 class PageResponse(PageBase):

@@ -6,6 +6,7 @@ from fastapi import UploadFile
 from minio import Minio
 from minio.error import S3Error
 
+from app.core.acervo_url import to_absolute
 from app.core.settings import get_settings
 from app.models.media_bucket import MediaBucket
 
@@ -71,9 +72,7 @@ class AcervoClient:
                 content_type=file.content_type,
             )
 
-            scheme = "https" if settings.acervo_use_ssl else "http"
-            url = f"{scheme}://{settings.acervo_public_endpoint}/{self.bucket_name}/{object_name}"
-            return url
+            return to_absolute(f"{self.bucket_name}/{object_name}")
         except S3Error as e:
             raise Exception(f"Error uploading file: {str(e)}")
 
@@ -99,8 +98,7 @@ class AcervoClient:
         return results
 
     def get_file_url(self, object_name: str) -> str:
-        scheme = "https" if settings.acervo_use_ssl else "http"
-        return f"{scheme}://{settings.acervo_public_endpoint}/{self.bucket_name}/{object_name}"
+        return to_absolute(f"{self.bucket_name}/{object_name}")
 
 
 _legacy_service: AcervoClient | None = None

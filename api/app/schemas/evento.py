@@ -1,7 +1,9 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
+
+from app.core.acervo_url import to_absolute, to_relative
 
 
 class CapaRef(BaseModel):
@@ -48,6 +50,15 @@ class EventoBase(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
+    @field_validator('icono_url', 'imagen_url', mode='before')
+    @classmethod
+    def _store_relative(cls, v):
+        return to_relative(v)
+
+    @field_serializer('icono_url', 'imagen_url', when_used='json-unless-none')
+    def _expose_absolute(self, v):
+        return to_absolute(v)
+
 
 class EventoCreate(EventoBase):
     slug: str | None = Field(default=None, min_length=1, max_length=120)
@@ -68,6 +79,11 @@ class EventoUpdate(BaseModel):
     expected_updated_at: datetime | None = Field(default=None, alias='expectedUpdatedAt')
 
     model_config = ConfigDict(populate_by_name=True)
+
+    @field_validator('icono_url', 'imagen_url', mode='before')
+    @classmethod
+    def _store_relative(cls, v):
+        return to_relative(v)
 
 
 class EventoResponse(EventoBase):
@@ -95,3 +111,7 @@ class EventoPublicResponse(BaseModel):
     orden: int = 0
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+    @field_serializer('icono_url', 'imagen_url', when_used='json-unless-none')
+    def _expose_absolute(self, v):
+        return to_absolute(v)

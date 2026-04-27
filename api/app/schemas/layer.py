@@ -1,7 +1,9 @@
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
+
+from app.core.acervo_url import to_absolute, to_relative
 
 NodeType = Literal["tema", "category", "label", "group", "leaf"]
 
@@ -84,6 +86,15 @@ class LayerBase(BaseModel):
     def _validate_slug_field(cls, v: str | None) -> str | None:
         return _validate_slug(v)
 
+    @field_validator("icon_url", mode="before")
+    @classmethod
+    def _store_icon_relative(cls, v):
+        return to_relative(v)
+
+    @field_serializer("icon_url", when_used="json-unless-none")
+    def _expose_icon_absolute(self, v):
+        return to_absolute(v)
+
 
 class LayerCreate(LayerBase):
     pass
@@ -139,6 +150,11 @@ class LayerUpdate(BaseModel):
     @classmethod
     def _validate_slug_update(cls, v: str | None) -> str | None:
         return _validate_slug(v)
+
+    @field_validator("icon_url", mode="before")
+    @classmethod
+    def _store_icon_relative(cls, v):
+        return to_relative(v)
 
 
 class LayerResponse(LayerBase):

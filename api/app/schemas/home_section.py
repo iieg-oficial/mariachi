@@ -1,7 +1,9 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
+
+from app.core.acervo_url import to_absolute, to_absolute_in, to_relative
 
 HomeSectionKey = Literal['banner', 'topics', 'guide', 'select', 'faq', 'video', 'footer']
 
@@ -17,6 +19,15 @@ class BannerItem(BaseModel):
     activo: bool = False
 
     model_config = ConfigDict(populate_by_name=True, extra='forbid')
+
+    @field_validator('imagen_url', 'logo_url', mode='before')
+    @classmethod
+    def _store_relative(cls, v):
+        return to_relative(v) or ''
+
+    @field_serializer('imagen_url', 'logo_url', when_used='json')
+    def _expose_absolute(self, v):
+        return to_absolute(v) if v else v
 
 
 class BannerPayload(BaseModel):
@@ -46,6 +57,15 @@ class TopicItem(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True, extra='forbid')
 
+    @field_validator('imagen_url', mode='before')
+    @classmethod
+    def _store_relative(cls, v):
+        return to_relative(v) or ''
+
+    @field_serializer('imagen_url', when_used='json')
+    def _expose_absolute(self, v):
+        return to_absolute(v) if v else v
+
 
 class TopicsPayload(BaseModel):
     items: list[TopicItem] = Field(default_factory=list)
@@ -61,6 +81,15 @@ class GuideItem(BaseModel):
     orden: int = 0
 
     model_config = ConfigDict(populate_by_name=True, extra='forbid')
+
+    @field_validator('imagen_url', mode='before')
+    @classmethod
+    def _store_relative(cls, v):
+        return to_relative(v) or ''
+
+    @field_serializer('imagen_url', when_used='json')
+    def _expose_absolute(self, v):
+        return to_absolute(v) if v else v
 
 
 class GuidePayload(BaseModel):
@@ -79,6 +108,15 @@ class SelectItem(BaseModel):
     orden: int = 0
 
     model_config = ConfigDict(populate_by_name=True, extra='forbid')
+
+    @field_validator('imagen_url', mode='before')
+    @classmethod
+    def _store_relative(cls, v):
+        return to_relative(v) or ''
+
+    @field_serializer('imagen_url', when_used='json')
+    def _expose_absolute(self, v):
+        return to_absolute(v) if v else v
 
 
 class SelectPayload(BaseModel):
@@ -122,6 +160,15 @@ class FooterLogo(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True, extra='forbid')
 
+    @field_validator('imagen_url', mode='before')
+    @classmethod
+    def _store_relative(cls, v):
+        return to_relative(v) or ''
+
+    @field_serializer('imagen_url', when_used='json')
+    def _expose_absolute(self, v):
+        return to_absolute(v) if v else v
+
 
 class FooterPayload(BaseModel):
     copyright: str = ''
@@ -151,6 +198,10 @@ class HomeSectionResponse(BaseModel):
     published_at: datetime | None = Field(default=None, serialization_alias='publishedAt')
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+    @field_serializer('payload_published', 'payload_draft', when_used='json')
+    def _expose_absolute(self, v):
+        return to_absolute_in(v)
 
 
 class HomePublicResponse(BaseModel):

@@ -13,6 +13,17 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.30.10] - 2026-04-27
+
+### Backend (api) — URLs del Acervo guardadas como relativas
+
+- **Nuevo `app/core/acervo_url.py`**: helpers `to_relative` y `to_absolute` (ambos idempotentes y tolerantes a hosts externos), más `to_relative_in` / `to_absolute_in` para recorrer recursivamente dicts/listas tocando solo claves que terminan en `_url` / `Url`. La forma persistida es `bucket/object_path` (sin scheme); la URL se reconstruye con `ACERVO_PUBLIC_ENDPOINT` y `ACERVO_USE_SSL` al serializar la respuesta. URLs con un host distinto al endpoint del acervo se conservan tal cual (escape para imágenes externas).
+- **`app/services/acervo.py`**: `upload_file` y `get_file_url` ahora delegan en `to_absolute(f"{bucket}/{object}")`. Mismo string final, una sola fuente de verdad.
+- **Schemas (`evento`, `home_section`, `layer`, `page`)**: se añadieron `field_validator(mode='before')` con `to_relative` para normalizar lo que entra (admin sigue mandando absoluto, se guarda relativo) y `field_serializer(when_used='json')` con `to_absolute` para devolver absoluto al cliente. `model_dump()` (sin `mode='json'`) sigue devolviendo el valor relativo, lo que mantiene intactos los flujos internos que persisten dicts en JSON columns (ej. `_validate_payload` en `routes/home.py`). Para los blobs `HomeSectionResponse.payload_*` y `PageBase.sections` se aplica el helper recursivo.
+- Compatibilidad: como ambos helpers son idempotentes, código cliente y datos viejos siguen funcionando sin migración. La normalización de datos existentes va en otra revisión.
+
+---
+
 ## [0.30.9] - 2026-04-27
 
 ### CI (infra) — fix backend pytest
