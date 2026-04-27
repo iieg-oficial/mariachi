@@ -2,7 +2,7 @@
 
 > Diagrama y composición del monorepo: stacks, red Docker, puertos, y cómo se conecta con el `gateway-hub` externo.
 
-**Versión:** 0.21.0 · **Última actualización:** 2026-04-24
+**Versión:** 0.30.0 · **Última actualización:** 2026-04-27
 
 ---
 
@@ -164,12 +164,16 @@ mariachi/
 │   │   ├── core/
 │   │   │   ├── settings.py           # Pydantic settings + bifurcación por ENVIRONMENT
 │   │   │   ├── database.py           # engine principal + get_dataengine_db (lazy)
-│   │   │   └── security.py           # JWT + CSRF
+│   │   │   ├── security.py           # JWT + CSRF
+│   │   │   ├── time.py               # utcnow helper (timezone-naive)
+│   │   │   └── optimistic.py         # check_concurrent_edit (HTTP 409 por updated_at)
 │   │   ├── models/                   # user, page, menu_item, media, borrador, layer*,
 │   │   │                             # sieej/ (schema sieej, 12 tablas)
 │   │   ├── schemas/                  # Pydantic request/response (incl. schemas/sieej/)
 │   │   └── services/                 # acervo, geoserver_client, layer_service,
-│   │                                 # mapalab_notifier, stats_templates,
+│   │                                 # mapalab_notifier, mapalab_public_cache, mapalab_shares,
+│   │                                 # stats_templates, slug_service, presence,
+│   │                                 # borrador_service, media_service, menu_tree,
 │   │                                 # sieej/ (general, enlace, bases_datos)
 │   ├── alembic/
 │   │   ├── versions/mariachi/        # Migraciones de iieg_portal

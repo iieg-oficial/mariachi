@@ -13,6 +13,80 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.30.0] - 2026-04-27
+
+### Backend (api) — refactor estructural
+
+- **Nuevos services** que absorben lógica antes mezclada en routers:
+  - `services/presence.py`: helpers `register()` / `list_others()` para presencia colaborativa via Redis. Sustituye 3 implementaciones casi idénticas en `routes/{eventos,pages,home}.py`.
+  - `services/borrador_service.py`: registry `APPLIERS` (evento, home_section, layer) + `apply_borrador()`. Reemplaza el `if/elif/else` por `resource_type` que vivía en `routes/borradores.py:aprobar_borrador`.
+  - `services/media_service.py`: serializadores (`serialize_media`, `serialize_bucket_only`), listado fusionado bucket+BD, `resolve_bucket_or_403`, `ensure_folder_exists`, `guess_mime`.
+  - `services/menu_tree.py`: `build_menu_tree()` ahora único, antes duplicado entre `routes/menu.py` y `routes/public.py`.
+  - `core/optimistic.py`: helper `check_concurrent_edit(db_ts, expected_ts, detail)` para concurrencia optimista (HTTP 409 por `updated_at`). Reemplaza el patrón `replace(tzinfo=None) + abs(...) > 2` repetido en eventos, pages y home.
+
+### Backend (api) — limpieza
+
+- **Routers más finos**:
+  - `routes/borradores.py`: 327 → 211 líneas (delegación a `borrador_service`).
+  - `routes/media.py`: 357 → 169 líneas (delegación a `media_service`).
+- **Autorización declarativa**: reemplazo de checks `if current_user.role != 'tetlamamakani'` por `Depends(require_role([...]))` en `routes/users.py` (crear, eliminar, resetear contraseña, agregar dependencia SIEEJ) y `routes/borradores.py`. Mantenidos los checks híbridos (admin O dueño) y los filtros de query por rol (lógica de negocio, no autorización).
+- **`api/deps.py`**: `_user_memberships` → `list_user_memberships`, `_user_accessible_buckets` → `list_user_accessible_buckets` (públicos para reuso desde `auth.py`).
+- **Modernización**: migrado `datetime.utcnow()` (deprecado en 3.12) a `app.core.time.utcnow` en `models/layer.py`, `models/sieej/*`, `services/sieej/*`. Tipado actualizado a sintaxis PEP 604 (`list[T]`, `T | None`) en módulo SIEEJ y `services/acervo.py`.
+- **Logging seguro**: `routes/media.py:subir_archivo` ya no expone `str(e)` en el detail HTTP; usa `logger.exception` para el stack y mensaje genérico al cliente.
+
+### Fix
+
+- **`/autenticacion/iniciar-sesion`** ahora incluye `projects` en `LoginResponse.user`. Antes el `UsuarioResponse.model_validate(usuario)` devolvía `projects=[]` porque el modelo SQLAlchemy no expone ese atributo; el frontend tenía que pegar a `/perfil` después del login para hidratar membresías.
+
+---
+
+## [0.29.1] - 2026-04-27
+
+### Infra
+
+- **`docker-compose.yml`**: default de `env_file` cambia de `./.env` a `./.env.staging`. El `.env` raíz era ambiguo (en realidad contenía valores de producción) y se renombró a `.env.production`. Si falta `API_ENV_FILE`, ahora se cae en staging (más seguro que producción) — alineado con el `Makefile` que ya resolvía por `ENV`.
+- **Limpieza**: borrados `nginx/.env` (no consumido por nadie — la conf interna de nginx tiene los valores hardcoded y el Dockerfile no carga el archivo) y `api/.env` huérfano (0 bytes, owner root, materializado por un bind-mount fallido).
+
+---
+
+## [0.29.0] - 2026-04-26
+
+### Admin (admin/) — Home v2 + presencia + drafts
+
+- **Home v2**: rediseño del dashboard del editor mapalab. Nuevo `LayerIdsField` que resuelve y muestra capas por id desde el árbol del backend. Hooks de borrador (`useDraftHooks`) integrados en formularios con autosave + indicador "Guardado / Hay cambios".
+
+### Backend (api) — colaboración en tiempo real
+
+- **Presencia** (Redis): endpoints `PUT/GET /{resource}/{id}/presencia` para `pages`, `eventos` y secciones `home`. TTL 30s, key `presencia:{scope}:{id}:{username}`. Permite mostrar quién más está editando el mismo recurso.
+- **Concurrencia optimista**: campo `expected_updated_at` en payload de update; el backend devuelve 409 si el timestamp en BD difiere por más de 2s.
+- **Aprobación de borradores extendida**: `borradores/por-id/{id}/aprobar` ahora aplica también `evento` y `home_section` (antes solo `layer`). Cada flujo dispara su `notify_*_changed()` para invalidar caches públicos.
+
+### Backend (api) — integración mapalab
+
+- **Cliente shares** (`services/mapalab_shares.py`): `POST /mapalab-shares` proxy autenticado al backend de mapalab para crear/pinear shares permanentes.
+- **Cache version público**: `GET /api/mapalab/cache-version` devuelve tokens por scope (`eventos`, `home`) que el visor usa para revalidar. `services/mapalab_public_cache._schedule()` con debounce 5s antes de bumpear el token.
+
+---
+
+## [0.28.0] - 2026-04-26
+
+### Mapalab admin
+
+- **Banner contextual en eventos**: aviso visual en el listado/edición de eventos del visor mapalab.
+- **Iconos custom en temas**: soporte para subir/asignar iconos por tema desde el editor.
+- **Modal de creación en layers**: nuevo flujo para crear capas sin salir del listado.
+
+---
+
+## [0.27.0] - 2026-04-26
+
+### Mapalab admin
+
+- **Editor de eventos** (CRUD): listado, creación, edición, publicación/despublicación. Schema `Evento` con BBox, capas referenciadas, fechas activas, slug.
+- **Home del visor** (`HomeSectionsPage`): editor de las secciones publicables del home (banner, topics, guide, select, faq, video, footer) con publish/discard y preview pre-publicación.
+
+---
+
 ## [0.26.0] - 2026-04-26
 
 ### Editor de capas (admin/mapalab-layers)
