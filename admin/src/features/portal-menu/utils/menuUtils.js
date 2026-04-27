@@ -30,24 +30,6 @@ export const getItemLevel = (itemId, menuItems) => {
     return 1 + getItemLevel(item.parentId, menuItems);
 };
 
-export const findAllChildren = (itemId, menuItems) => {
-    const idsToDelete = [itemId];
-    const itemsToDelete = [menuItems.find(i => i.id === itemId)];
-
-    const findChildren = (parentId) => {
-        menuItems.forEach(i => {
-            if (i.parentId === parentId) {
-                idsToDelete.push(i.id);
-                itemsToDelete.push(i);
-                findChildren(i.id);
-            }
-        });
-    };
-    findChildren(itemId);
-
-    return { idsToDelete, itemsToDelete };
-};
-
 export const getIconComponent = (iconName) => {
     const IconComponent = ICON_MAP[iconName];
     return IconComponent ? IconComponent : null;

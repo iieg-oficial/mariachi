@@ -13,6 +13,16 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.30.8] - 2026-04-27
+
+### Admin (admin) — fix dead-code check (knip)
+
+- **`admin/knip.json`** (nuevo): configuración mínima para `npm run check:dead-code:strict`. Define `project: src/**/*.{js,jsx}`, lista en `ignore` los archivos legacy del rediseño de portal-pages (font selectors, SEOAnalyzer/TemplateSelector, hooks de búsqueda, `AddSieejDependenciaPage`, `NavigationMenu`, `auth/index.js`) que aún no se referencian desde `main.jsx` pero se conservan, declara `lint-staged` y `msw` en `ignoreDependencies` (devDeps en uso por hooks/tests no detectables por análisis estático) y activa `ignoreExportsUsedInFile` para que knip no marque named exports consumidos solo internamente (caso `BannerEditor..FooterEditor` referenciados desde `SECTION_REGISTRY` en el mismo archivo).
+- **`features/mapalab-home/api/homeService.js`**: removida `getSeccion` (sin callers; el caso de uso quedó cubierto por `listSecciones` y la API admin del home).
+- **`features/portal-menu/utils/menuUtils.js`**: removida `findAllChildren` (sin callers; el menú ya hace borrado en cascada vía `parentId` desde el backend).
+
+---
+
 ## [0.30.7] - 2026-04-27
 
 ### Admin (admin) — fix lint CI
