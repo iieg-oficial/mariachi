@@ -238,7 +238,7 @@ const renderBodyBlock = (key, cfg) => {
 };
 
 
-export default function InfoBoxPreview({ template, params, value }) {
+export default function InfoBoxPreview({ params, value }) {
     const cfg = value ?? params ?? null;
 
     if (!cfg || (typeof cfg === 'object' && Object.keys(cfg).length === 0)) {

@@ -466,12 +466,12 @@ export default function LayerEditPage() {
                             normalize={(values) =>
                                 Array.isArray(values)
                                     ? Array.from(
-                                          new Set(
-                                              values
-                                                  .map((v) => String(v).toLowerCase().trim())
-                                                  .filter(Boolean),
-                                          ),
-                                      )
+                                        new Set(
+                                            values
+                                                .map((v) => String(v).toLowerCase().trim())
+                                                .filter(Boolean),
+                                        ),
+                                    )
                                     : values
                             }
                             extra="Palabras clave adicionales para filtrar la capa en el buscador del visor. Escribe y presiona espacio, coma o Enter para crear cada etiqueta. Se normalizan a minúsculas."
@@ -705,7 +705,6 @@ export default function LayerEditPage() {
                         availableFields={availableFields}
                         derivedFromDescendants={metaCtx.derived}
                         siblingsSharingCount={ownFeatureType ? countSiblingsSharingFeatureType(metaCtx.layerKey) : 0}
-                        currentNodeType={watchedNodeType}
                     />
                 );
             })() : null,

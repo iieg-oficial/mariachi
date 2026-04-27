@@ -88,9 +88,20 @@ function CompactNodeTitle({ node, onEdit }) {
         onEdit?.();
     };
 
+    const handleKeyDown = (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            e.stopPropagation();
+            onEdit?.();
+        }
+    };
+
     return (
         <span
+            role="button"
+            tabIndex={disabled ? -1 : 0}
             onClick={handleClick}
+            onKeyDown={handleKeyDown}
             style={{
                 display: 'flex',
                 alignItems: 'center',

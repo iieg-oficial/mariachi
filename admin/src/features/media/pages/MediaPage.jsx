@@ -131,13 +131,6 @@ const Media = () => {
 
     const visibleMediaFiles = selectedBucketId ? mediaFiles : [];
 
-    const stats = {
-        total: visibleMediaFiles.filter(f => !f.isDir).length,
-        images: visibleMediaFiles.filter(f => f.type?.startsWith('image/')).length,
-        documents: visibleMediaFiles.filter(f => f.type === 'application/pdf').length,
-        totalSize: visibleMediaFiles.reduce((sum, f) => sum + (f.size || 0), 0)
-    };
-
     const handleUpload = async (options) => {
         const { file, onSuccess, onError, onProgress } = options;
 
@@ -245,10 +238,20 @@ const Media = () => {
     };
 
     const breadcrumbItems = (() => {
+        const linkStyle = {
+            cursor: 'pointer',
+            background: 'none',
+            border: 'none',
+            padding: 0,
+            color: 'inherit',
+            font: 'inherit',
+        };
         const items = [{
-            title: <span style={{ cursor: 'pointer' }} onClick={() => setCurrentPath('')}>
-                <HomeOutlined /> Raíz
-            </span>,
+            title: (
+                <button type="button" style={linkStyle} onClick={() => setCurrentPath('')}>
+                    <HomeOutlined /> Raíz
+                </button>
+            ),
         }];
         if (currentPath) {
             const parts = currentPath.replace(/\/$/, '').split('/');
@@ -258,7 +261,7 @@ const Media = () => {
                 const path = acc;
                 items.push({
                     title: i === parts.length - 1 ? p : (
-                        <span style={{ cursor: 'pointer' }} onClick={() => setCurrentPath(path)}>{p}</span>
+                        <button type="button" style={linkStyle} onClick={() => setCurrentPath(path)}>{p}</button>
                     ),
                 });
             });
@@ -281,9 +284,20 @@ const Media = () => {
             render: (thumbnail, record) => {
                 if (record.isDir) {
                     return (
-                        <div style={{ textAlign: 'center', cursor: 'pointer' }} onClick={() => handleEnterDir(record)}>
+                        <button
+                            type="button"
+                            onClick={() => handleEnterDir(record)}
+                            style={{
+                                textAlign: 'center',
+                                cursor: 'pointer',
+                                background: 'none',
+                                border: 'none',
+                                padding: 0,
+                                width: '100%',
+                            }}
+                        >
                             <FolderOutlined style={{ fontSize: 36, color: '#FF8300' }} />
-                        </div>
+                        </button>
                     );
                 }
                 return record.type?.startsWith('image/') ? (
@@ -311,17 +325,35 @@ const Media = () => {
                 if (!a.isDir && b.isDir) return 1;
                 return a.originalName.localeCompare(b.originalName);
             },
-            render: (text, record) => (
-                <div
-                    onClick={record.isDir ? () => handleEnterDir(record) : undefined}
-                    style={{ cursor: record.isDir ? 'pointer' : 'default' }}
-                >
-                    <div style={{ fontWeight: 500, color: record.isDir ? '#5C2472' : undefined }}>
-                        {record.isDir ? `📁 ${text}` : text}
-                    </div>
-                    <div style={{ fontSize: 12, color: '#8c8c8c' }}>{record.name}</div>
-                </div>
-            )
+            render: (text, record) => {
+                const content = (
+                    <>
+                        <div style={{ fontWeight: 500, color: record.isDir ? '#5C2472' : undefined }}>
+                            {record.isDir ? `📁 ${text}` : text}
+                        </div>
+                        <div style={{ fontSize: 12, color: '#8c8c8c' }}>{record.name}</div>
+                    </>
+                );
+                if (!record.isDir) return <div>{content}</div>;
+                return (
+                    <button
+                        type="button"
+                        onClick={() => handleEnterDir(record)}
+                        style={{
+                            cursor: 'pointer',
+                            background: 'none',
+                            border: 'none',
+                            padding: 0,
+                            textAlign: 'left',
+                            width: '100%',
+                            font: 'inherit',
+                            color: 'inherit',
+                        }}
+                    >
+                        {content}
+                    </button>
+                );
+            }
         },
         {
             title: 'Tipo',

@@ -195,8 +195,8 @@ export default function RevisionQueue() {
                     <strong>{borradorSeleccionado ? (
                         isMenu(borradorSeleccionado) ? 'Menú de navegación'
                             : isEvento(borradorSeleccionado) ? `evento "${borradorSeleccionado.data?.titulo || borradorSeleccionado.resource_id}"`
-                            : isHomeSection(borradorSeleccionado) ? `sección home "${borradorSeleccionado.resource_id}"`
-                            : borradorSeleccionado.data?.title
+                                : isHomeSection(borradorSeleccionado) ? `sección home "${borradorSeleccionado.resource_id}"`
+                                    : borradorSeleccionado.data?.title
                     ) : ''}</strong> fue rechazado.
                 </p>
                 <Input.TextArea

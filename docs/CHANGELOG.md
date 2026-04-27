@@ -13,6 +13,23 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.30.7] - 2026-04-27
+
+### Admin (admin) — fix lint CI
+
+- **`eslint.config.js`**: añadidos al override `max-lines: off` los archivos preexistentes que ya superaban 300 líneas y no son objetivo de refactor en este PR — `EventoEditPage.jsx`, `sectionEditors.jsx`, `HomePage.jsx` (mapalab-home), `LayersTreeSider.jsx`, `CqlFilterBuilder.jsx`, `InfoBoxBlocksEditor.jsx`, `LayerMetadataSection.jsx`, `LayerStatsSection.jsx`. Mantiene la regla activa para nuevo código.
+- **Indent (`eslint --fix`)**: corregida indentación en `EventoEditPage.jsx` (literal de bbox dentro de ternario) y `RevisionQueuePage.jsx` (anidado en mensaje de rechazo).
+- **`no-unused-vars`**:
+  - `InfoBoxPreview.jsx`: removida prop `template` (no usada por ningún caller).
+  - `LayerMetadataSection.jsx` + `LayerEditPage.jsx`: removida prop `currentNodeType` (sin lectura).
+  - `LayerStatsSection.jsx`: `catch (err)` → `catch` y eliminada función muerta `importLegacyValuesAsStatic` (24 líneas).
+  - `MediaPage.jsx`: eliminado objeto `stats` computado nunca consumido.
+- **`jsx-a11y`**:
+  - `LayersTreeSider.jsx`: el `<span>` clickeable de cada nodo del árbol ahora declara `role="button"`, `tabIndex` (0/-1 según `disabled`) y `onKeyDown` que dispara la edición con Enter/Espacio.
+  - `MediaPage.jsx`: convertidos a `<button type="button">` los breadcrumbs (Raíz + segmentos), el thumbnail de carpetas y la celda de nombre cuando es carpeta. El cell de nombre vuelve a ser `<div>` cuando el row es archivo (sin click handler).
+
+---
+
 ## [0.30.6] - 2026-04-27
 
 ### Backend (api) — fix lint CI
