@@ -12,6 +12,7 @@ from app.schemas.evento import EventoPublicResponse
 from app.schemas.home_section import SECTION_SCHEMAS, HomePublicResponse
 from app.schemas.menu_item import MenuItemResponse, MenuItemTree
 from app.schemas.page import PageResponse
+from app.services.mapalab_public_cache import get_versions
 
 router = APIRouter(tags=["portal público"])
 mapalab_router = APIRouter(tags=["mapalab público"])
@@ -54,6 +55,11 @@ async def obtener_pagina_por_slug(slug: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Página no encontrada")
 
     return pagina
+
+
+@mapalab_router.get("/cache-version")
+async def cache_version():
+    return get_versions()
 
 
 @mapalab_router.get("/eventos", response_model=list[EventoPublicResponse])

@@ -15,6 +15,7 @@ from app.api.routes import (
     home,
     layer_metadata,
     layers,
+    mapalab_shares,
     media,
     media_buckets,
     menu,
@@ -79,6 +80,7 @@ def create_app() -> FastAPI:
     app.include_router(sieej_admin.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(eventos.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(home.router, prefix=settings.admin_prefix, dependencies=staff_dep)
+    app.include_router(mapalab_shares.router, prefix=settings.admin_prefix, dependencies=staff_dep)
 
     app.include_router(preview.public_router, prefix=settings.web_prefix)
     app.include_router(public.router, prefix=settings.web_prefix)
