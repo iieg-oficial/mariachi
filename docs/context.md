@@ -405,6 +405,18 @@ Excepción: si el usuario en el mismo turno te pidió explícitamente correr el 
 
 ---
 
+## Convención sobre mensajes de commit
+
+**No agregar atribuciones automáticas en el mensaje de commit.** Específicamente, omitir trailers como `Co-Authored-By: Claude ...`, `Generated with Claude Code`, o cualquier firma de herramienta. El historial de git debe leer como si lo hubiera escrito un humano del equipo IIEG.
+
+Aplica también a:
+- **Pull request bodies / descriptions**: sin "🤖 Generated with..." ni equivalentes.
+- **Issue comments creados via `gh`**: sin firma.
+
+Mantener el formato Conventional Commits (`type(scope): subject` + body opcional explicando el *por qué*). El cuerpo describe la decisión técnica; nada más.
+
+---
+
 ## Integracion con MapaLab (v1.4.0)
 
 A partir de v1.4.0 de MapaLab, mariachi expone un **editor de capas del visor** bajo `/mariachi/layers`. Esto implica:
