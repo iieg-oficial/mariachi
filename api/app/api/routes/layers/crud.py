@@ -24,7 +24,7 @@ from app.services import layer_service
 from app.services.geoserver_client import GeoServerError
 from app.services.mapalab_notifier import notify_tree_changed
 
-router = APIRouter()
+router = APIRouter(prefix='/layers')
 
 
 @router.get('/workspaces', response_model=list[WorkspaceResponse])

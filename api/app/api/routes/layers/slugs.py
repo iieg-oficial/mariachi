@@ -19,7 +19,7 @@ from app.schemas.layer import (
 from app.services import slug_service
 from app.services.mapalab_notifier import notify_tree_changed
 
-router = APIRouter(prefix='/slugs')
+router = APIRouter(prefix='/layers/slugs')
 
 
 @router.post('/suggest', response_model=SlugSuggestResponse)

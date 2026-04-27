@@ -13,6 +13,14 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.30.5] - 2026-04-27
+
+### Backend (api) — fix split layers
+
+- **`routes/layers/`**: el parent router tenía `prefix='/layers'` y los sub-routers prefix vacío. FastAPI 0.111 valida que un router con prefix vacío no tenga endpoints con path vacío (`@router.post('', ...)` en `crud.create_layer`), y al arranque tiraba `Prefix and path cannot be both empty`. Movido el `prefix='/layers'` a cada sub-router (`crud`, `aliases`, `slugs/'/layers/slugs'`); el parent solo conserva tags y dependencies. Paths HTTP finales sin cambio.
+
+---
+
 ## [0.30.4] - 2026-04-27
 
 ### Backend (api) — fix Alembic

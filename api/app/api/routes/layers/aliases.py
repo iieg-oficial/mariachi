@@ -14,7 +14,7 @@ from app.schemas.layer import LayerAliasCreate, LayerAliasResponse
 from app.services import slug_service
 from app.services.mapalab_notifier import notify_tree_changed
 
-router = APIRouter()
+router = APIRouter(prefix='/layers')
 
 
 @router.get('/{layer_id}/aliases', response_model=list[LayerAliasResponse])
