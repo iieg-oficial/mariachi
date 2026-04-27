@@ -19,10 +19,12 @@ from app.schemas.project import (
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/projects", tags=["projects"])
 
+_require_admin = require_role(["tetlamamakani"])
+
 
 @router.get("", response_model=list[ProjectResponse])
 async def list_projects(
-    _: Usuario = Depends(get_current_user),
+    _user: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     return db.query(Project).filter(Project.is_active.is_(True)).order_by(Project.slug).all()
@@ -31,9 +33,9 @@ async def list_projects(
 @router.post("", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
 async def create_project(
     payload: ProjectCreate,
-    _: Usuario = Depends(require_role(["tetlamamakani"])),
-    __: Usuario = Depends(verify_csrf),
     db: Session = Depends(get_db),
+    _csrf: Usuario = Depends(verify_csrf),
+    current_user: Usuario = Depends(_require_admin),
 ):
     if db.query(Project).filter(Project.slug == payload.slug).first():
         raise HTTPException(status.HTTP_409_CONFLICT, detail="slug ya existe")
@@ -42,7 +44,7 @@ async def create_project(
     db.commit()
     db.refresh(project)
     incr(COUNTER_PROJECT_WRITES)
-    logger.info("action=project.create user_id=%s slug=%s", _.id, project.slug)
+    logger.info("action=project.create user_id=%s slug=%s", current_user.id, project.slug)
     return project
 
 
@@ -50,9 +52,9 @@ async def create_project(
 async def update_project(
     project_id: int,
     payload: ProjectUpdate,
-    _: Usuario = Depends(require_role(["tetlamamakani"])),
-    __: Usuario = Depends(verify_csrf),
     db: Session = Depends(get_db),
+    _csrf: Usuario = Depends(verify_csrf),
+    current_user: Usuario = Depends(_require_admin),
 ):
     project = db.query(Project).filter(Project.id == project_id).first()
     if project is None:
@@ -62,15 +64,15 @@ async def update_project(
     db.commit()
     db.refresh(project)
     incr(COUNTER_PROJECT_WRITES)
-    logger.info("action=project.update user_id=%s slug=%s", _.id, project.slug)
+    logger.info("action=project.update user_id=%s slug=%s", current_user.id, project.slug)
     return project
 
 
 @router.get("/{project_id}/members", response_model=list[dict])
 async def list_project_members(
     project_id: int,
-    _: Usuario = Depends(require_role(["tetlamamakani"])),
     db: Session = Depends(get_db),
+    _admin: Usuario = Depends(_require_admin),
 ):
     rows = (
         db.query(Usuario.id, Usuario.username, Usuario.name, UserProject.project_role)
@@ -88,9 +90,9 @@ async def list_project_members(
 async def set_user_projects(
     user_id: int,
     assignments: list[UserProjectAssignment],
-    _: Usuario = Depends(require_role(["tetlamamakani"])),
-    __: Usuario = Depends(verify_csrf),
     db: Session = Depends(get_db),
+    _csrf: Usuario = Depends(verify_csrf),
+    current_user: Usuario = Depends(_require_admin),
 ):
     user = db.query(Usuario).filter(Usuario.id == user_id).first()
     if user is None:
@@ -119,7 +121,7 @@ async def set_user_projects(
     incr(COUNTER_PROJECT_WRITES)
     logger.info(
         "action=project.set_memberships actor=%s target_user=%s slugs=%s",
-        _.id, user_id, slugs,
+        current_user.id, user_id, slugs,
     )
 
     rows = (

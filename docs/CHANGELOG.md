@@ -13,6 +13,20 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.30.2] - 2026-04-27
+
+### Backend (api) — multi-worker safety
+
+- **`services/mapalab_public_cache`** debounce migrado de `threading.Timer` a Redis `SET NX EX 5`. Antes, en producción con N workers de Gunicorn, cada worker mantenía su propio timer y la ventana de debounce no era global; ahora el primer notify dentro de cualquier worker bumpea inmediatamente y los siguientes 5s quedan deduplicados a través de Redis. Semántica: "first-call-wins" en vez de "last-call-after-delay" — el cache se invalida al primer cambio, no al último.
+- **`api/rate_limit`** migrado de `dict[str, list[float]]` en memoria a Redis sorted set por usuario (sliding window real). `ZADD now`, `ZREMRANGEBYSCORE -inf cutoff`, `ZCARD` en pipeline atómico. Antes el límite era per-worker (con N workers, el techo real era N * max_requests). Ahora es global. `Retry-After` derivado del miembro más antiguo del set.
+- Si Redis falla (`pipe.execute()` lanza), el rate-limit hace fail-open (deja pasar) y emite warning; preferible a tirar el endpoint cuando Redis tiene problemas transitorios.
+
+### Backend (api) — limpieza
+
+- **`routes/projects.py`**: deps anónimas `_:` y `__:` reemplazadas por `_csrf` / `current_user` / `_admin` (legibles). Patrón de seguridad alineado con el resto de routers (CSRF como dep aparte, autorización via `Depends(_require_admin)`).
+
+---
+
 ## [0.30.1] - 2026-04-27
 
 ### Backend (api)

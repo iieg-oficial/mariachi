@@ -2,7 +2,7 @@
 
 > Diagrama y composición del monorepo: stacks, red Docker, puertos, y cómo se conecta con el `gateway-hub` externo.
 
-**Versión:** 0.30.1 · **Última actualización:** 2026-04-27
+**Versión:** 0.30.2 · **Última actualización:** 2026-04-27
 
 ---
 
@@ -157,7 +157,7 @@ mariachi/
 │   │   ├── main.py                   # create_app
 │   │   ├── api/
 │   │   │   ├── deps.py               # get_current_user, verify_csrf, require_role
-│   │   │   ├── rate_limit.py         # Sliding window en memoria
+│   │   │   ├── rate_limit.py         # Sliding window en Redis (multi-worker safe)
 │   │   │   └── routes/               # auth, users, pages, menu, media, borradores,
 │   │   │                             # layers, layer_metadata, geoserver, preview, public,
 │   │   │                             # formularios/ (modulo sieej, ver docs/sieej.md)
