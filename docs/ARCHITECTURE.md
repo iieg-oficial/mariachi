@@ -2,7 +2,7 @@
 
 > Diagrama y composición del monorepo: stacks, red Docker, puertos, y cómo se conecta con el `gateway-hub` externo.
 
-**Versión:** 0.30.2 · **Última actualización:** 2026-04-27
+**Versión:** 0.30.3 · **Última actualización:** 2026-04-27
 
 ---
 

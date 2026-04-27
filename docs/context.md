@@ -356,6 +356,45 @@ make up ENV=prod
 
 ---
 
+## Cadena de proxy (gateway externo → mariachi-nginx → api)
+
+En staging/prod, mariachi vive **detrás de un gateway externo** (`gateway-hub`, otro repo). La cadena es:
+
+```
+cliente (HTTPS) → gateway-hub (Nginx :443, termina SSL)
+              → mariachi-nginx (:80 en iieg-network)
+              → mariachi-api (Uvicorn/Gunicorn :8000 en mariachi_network)
+```
+
+Implicaciones para el código y la configuración:
+
+- **`uvicorn`/`gunicorn`** se arrancan con `--proxy-headers --forwarded-allow-ips='*'` (`api/scripts/start_backend.sh`). Sin esto, `request.url.scheme` siempre sería `http` aunque el cliente venga por HTTPS.
+- **`mariachi-nginx`** preserva los headers `X-Forwarded-Proto` y `X-Forwarded-Host` que ya vienen del gateway (via `map`). Si los sobrescribiera con `$scheme`/`$host` locales, el API creería que la conexión es HTTP y que el host es `mariachi-nginx`.
+- **`mariachi-nginx`** define `set_real_ip_from` para los CIDRs privados (`10/8`, `172.16/12`, `192.168/16`). Así `$remote_addr` en logs es el IP real del cliente, no el del último hop interno (gateway-hub).
+- **No exponer puertos al host** desde `docker-compose.yml` (prod). Solo `expose: 80` en `iieg-network` para que el gateway pueda alcanzar a mariachi-nginx.
+- **`cookie_secure=true`** en `.env.production`: el gateway termina TLS y la cookie se envía sobre HTTPS al cliente. Internamente entre containers la cookie ya está set (no se vuelve a enviar al gateway).
+- **CORS**: `cors_origins` en `.env.production` se restringe a los dominios públicos del gateway (`https://iieg.jalisco.gob.mx`), no a IPs internos.
+
+En **dev** (`docker-compose.dev.yml`) no hay gateway: Vite expone `:3011`, API expone `:8010`. El admin se conecta directo al API por `localhost`. La regla `--proxy-headers` con `--forwarded-allow-ips='*'` sigue activa pero como nadie envía headers, no afecta.
+
+---
+
+## Convención sobre comentarios en código
+
+**No agregar comentarios en código.** El código debe ser auto-explicativo a través de nombres descriptivos, funciones pequeñas y servicios/helpers bien delimitados. Esta regla aplica a backend (Python), frontend (JS/JSX), shell, nginx y migraciones Alembic.
+
+Excepciones acotadas (mismo criterio que `docs/CONVENTIONS_BACKEND.md`):
+
+- Lógica de negocio del dominio cuyo *por qué* no se infiere del nombre (ej. referencia a una regulación fiscal específica, una restricción del proveedor de un servicio externo).
+- Workarounds temporales con `TODO:` que explican qué condición tiene que cumplirse para removerlos.
+- Advertencias críticas de seguridad que un revisor podría pasar por alto al leer el código.
+
+**No** se agregan docstrings redundantes (la firma con type hints ya documenta), ni docstrings narrativos en migraciones Alembic (más allá del template de `revision id` y `create date`), ni comentarios que repiten lo que el código hace.
+
+Cualquier "por qué" que merezca preservarse va en commit message, PR description, o en este `context.md` / `ARCHITECTURE.md` — donde es discoverable y no envejece junto al código.
+
+---
+
 ## Convención sobre GitHub CLI (`gh`)
 
 Antes de ejecutar **cualquier** comando `gh`, consulta primero al usuario describiendo el subcomando, el repo/PR/issue/release destino y el efecto esperado. Espera confirmación antes de correrlo.

@@ -13,6 +13,21 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.30.3] - 2026-04-27
+
+### Backend (api) — proxy/gateway awareness
+
+- **`api/scripts/start_backend.sh`**: uvicorn arranca con `--proxy-headers --forwarded-allow-ips='*'`; gunicorn con `--forwarded-allow-ips='*'`. Antes el API ignoraba `X-Forwarded-Proto`/`X-Forwarded-For` y `request.url.scheme` siempre era `http` aunque el cliente viniera por HTTPS desde el gateway.
+- **`nginx/conf.d/mariachi.conf`**: nuevos `map` para `$forwarded_proto` y `$forwarded_host` que preservan los headers que ya envió el gateway externo. Antes `proxy_set_header X-Forwarded-Proto $scheme;` sobrescribía con `http` el `https` que venía de afuera.
+- **`nginx/nginx.conf`**: añadido `set_real_ip_from` para los CIDRs privados (`10/8`, `172.16/12`, `192.168/16`) + `real_ip_header X-Forwarded-For` + `real_ip_recursive on`. Resultado: `$remote_addr` en logs es el IP real del cliente, no el del último hop interno (gateway-hub).
+- **`docs/context.md`**: nueva sección "Cadena de proxy" documentando la topología `cliente → gateway-hub → mariachi-nginx → mariachi-api` y las implicaciones para headers, cookies y CORS.
+
+### Backend (api) — fix Alembic
+
+- **Migración `ee37ba52b458_add_publication_requests`** convertida en no-op. Original creaba `publication_requests` con FK a `drafts`, tabla que nunca llegó a la rama main (se renombró a `borradores` entre el 9 y el 18 de feb 2026). Cero referencias en código a `publication_requests`. La migración rompía `make up ENV=dev` en BDs frescas (`relation "drafts" does not exist`). El revision id se preserva por linealidad de la cadena.
+
+---
+
 ## [0.30.2] - 2026-04-27
 
 ### Backend (api) — multi-worker safety
