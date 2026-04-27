@@ -13,6 +13,14 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.30.12] - 2026-04-27
+
+### Infra (env) — opción acervo MinIO local en `.env.development.example`
+
+- **`.env.development.example`**: bloque de comentarios sobre `ACERVO_ENDPOINT` con dos opciones documentadas. Opción A (default actual) apunta a un acervo remoto IIEG; Opción B apunta al `acervo-minio-dev` que ya levanta `docker-compose.dev.yml` en `:9000`. Incluye los `mc` para crear los buckets `portal` y `mapalab` y darles anonymous download (necesario para servir imágenes desde el navegador). No cambia el default — cada dev decide cuándo migrarse a local.
+
+---
+
 ## [0.30.11] - 2026-04-27
 
 ### Backend (api) — migración: URLs del Acervo a forma relativa
