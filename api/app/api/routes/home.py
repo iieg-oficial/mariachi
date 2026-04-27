@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 
 from app.api.deps import get_current_user, get_db, require_project_access, verify_csrf
-from app.core.cache import get_cache, redis_client, set_cache
+from app.core.optimistic import check_concurrent_edit
 from app.core.time import utcnow
 from app.models.home_section import HomeSection
 from app.models.user import Usuario
@@ -15,6 +15,7 @@ from app.schemas.home_section import (
     HomePublicResponse,
     HomeSectionResponse,
 )
+from app.services import presence
 from app.services.mapalab_public_cache import notify_home_changed
 
 router = APIRouter(
@@ -71,8 +72,7 @@ async def registrar_presencia_home(
 ):
     if key not in SECTION_SCHEMAS:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Sección desconocida: {key}")
-    cache_key = f"presencia:home:{key}:{current_user.username}"
-    set_cache(cache_key, {"username": current_user.username, "name": current_user.name}, expire=30)
+    presence.register("home", key, current_user.username, current_user.name)
     return {"ok": True}
 
 
@@ -83,13 +83,7 @@ async def obtener_presencia_home(
 ):
     if key not in SECTION_SCHEMAS:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Sección desconocida: {key}")
-    keys = redis_client.keys(f"presencia:home:{key}:*")
-    editores = []
-    for cache_key in keys:
-        data = get_cache(cache_key)
-        if data and data["username"] != current_user.username:
-            editores.append(data)
-    return editores
+    return presence.list_others("home", key, current_user.username)
 
 
 @router.get("/{key}", response_model=HomeSectionResponse)
@@ -108,14 +102,11 @@ async def actualizar_borrador(
 ):
     section = _get_section_or_404(db, key)
 
-    if expected_updated_at:
-        db_ts = section.updated_at.replace(tzinfo=None)
-        req_ts = expected_updated_at.replace(tzinfo=None)
-        if abs((db_ts - req_ts).total_seconds()) > 2:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="La sección fue modificada por otro usuario",
-            )
+    check_concurrent_edit(
+        section.updated_at,
+        expected_updated_at,
+        detail="La sección fue modificada por otro usuario",
+    )
 
     section.payload_draft = _validate_payload(key, payload)
     flag_modified(section, 'payload_draft')

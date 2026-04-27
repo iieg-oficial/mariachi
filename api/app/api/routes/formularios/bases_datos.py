@@ -1,5 +1,3 @@
-from typing import List
-
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
@@ -16,7 +14,7 @@ from app.services.sieej.bases_datos_service import BasesDatosService
 router = APIRouter()
 
 
-@router.get("/bases-datos", response_model=List[BasesDatosResponse])
+@router.get("/bases-datos", response_model=list[BasesDatosResponse])
 async def list_bases_datos(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),

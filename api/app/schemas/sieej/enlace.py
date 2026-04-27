@@ -1,5 +1,3 @@
-from typing import Optional
-
 from pydantic import BaseModel, ConfigDict, Field
 
 
@@ -10,7 +8,7 @@ class EnlaceBase(BaseModel):
     direccion: str
     puesto: str
     email: str
-    extension: Optional[str] = Field(default=None)
+    extension: str | None = Field(default=None)
     telefono: str
     es_tecnico: bool
 

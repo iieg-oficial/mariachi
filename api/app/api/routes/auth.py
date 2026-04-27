@@ -3,7 +3,12 @@ from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_current_user_context, verify_csrf
+from app.api.deps import (
+    get_current_user,
+    get_current_user_context,
+    list_user_memberships,
+    verify_csrf,
+)
 from app.core.database import get_db
 from app.core.security import crear_access_token, crear_csrf_token, hash_password, verify_password
 from app.core.settings import get_settings
@@ -45,9 +50,12 @@ async def login(
 
     csrf_token = crear_csrf_token(usuario.username)
 
+    user_payload = UsuarioResponse.model_validate(usuario).model_dump()
+    user_payload["projects"] = list_user_memberships(db, usuario)
+
     return LoginResponse(
         csrf_token=csrf_token,
-        user=UsuarioResponse.model_validate(usuario),
+        user=UsuarioResponse.model_validate(user_payload),
     )
 
 

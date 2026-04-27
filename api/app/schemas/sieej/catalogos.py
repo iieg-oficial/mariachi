@@ -1,5 +1,3 @@
-from typing import List
-
 from pydantic import BaseModel, ConfigDict
 
 
@@ -13,11 +11,11 @@ class CatalogoItem(BaseModel):
 class CatalogosResponse(BaseModel):
     """Bundle con todos los catálogos SIEEJ; reduce roundtrips desde el wizard."""
 
-    unidades_admin: List[CatalogoItem]
-    categoria_datos: List[CatalogoItem]
-    herramientas_gestion: List[CatalogoItem]
-    calidad_datos: List[CatalogoItem]
-    periodicidad: List[CatalogoItem]
-    objetivo_uso: List[CatalogoItem]
-    usuarios_datos: List[CatalogoItem]
-    ejes_estrategicos: List[CatalogoItem]
+    unidades_admin: list[CatalogoItem]
+    categoria_datos: list[CatalogoItem]
+    herramientas_gestion: list[CatalogoItem]
+    calidad_datos: list[CatalogoItem]
+    periodicidad: list[CatalogoItem]
+    objetivo_uso: list[CatalogoItem]
+    usuarios_datos: list[CatalogoItem]
+    ejes_estrategicos: list[CatalogoItem]

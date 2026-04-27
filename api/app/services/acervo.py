@@ -1,6 +1,5 @@
 import os
 from io import BytesIO
-from typing import Optional
 
 import urllib3
 from fastapi import UploadFile
@@ -13,7 +12,7 @@ from app.models.media_bucket import MediaBucket
 settings = get_settings()
 
 
-def resolve_bucket_credentials(access_key_ref: Optional[str]) -> tuple[str, str]:
+def resolve_bucket_credentials(access_key_ref: str | None) -> tuple[str, str]:
     if access_key_ref:
         ak = os.getenv(f"{access_key_ref}_ACCESS_KEY")
         sk = os.getenv(f"{access_key_ref}_SECRET_KEY")

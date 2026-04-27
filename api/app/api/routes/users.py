@@ -5,9 +5,9 @@ import string
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_db, verify_csrf
+from app.api.deps import get_current_user, get_db, require_role, verify_csrf
 from app.api.metrics import COUNTER_USER_WRITES, incr
-from app.core.security import hash_password, verify_password
+from app.core.security import hash_password
 from app.models.project import Project, UserProject
 from app.models.user import Usuario
 from app.schemas.user import (
@@ -20,6 +20,8 @@ from app.schemas.user import (
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/usuarios", tags=["usuarios"])
+
+_require_admin = require_role(["tetlamamakani"])
 
 
 def generate_temp_password(length=12):
@@ -106,13 +108,9 @@ async def obtener_usuario(
 async def crear_usuario(
     usuario_in: UsuarioCreate,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(verify_csrf),
+    _csrf: Usuario = Depends(verify_csrf),
+    current_user: Usuario = Depends(_require_admin),
 ):
-    if current_user.role not in ["tetlamamakani"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Permisos insuficientes para esta operación",
-        )
     if db.query(Usuario).filter(Usuario.username == usuario_in.username).first():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="El nombre de usuario ya existe"
@@ -192,14 +190,9 @@ async def actualizar_usuario(
 async def resetear_password(
     usuario_id: int,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(verify_csrf),
+    _csrf: Usuario = Depends(verify_csrf),
+    _admin: Usuario = Depends(_require_admin),
 ):
-    if current_user.role != "tetlamamakani":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Solo administradores pueden resetear contraseñas"
-        )
-
     usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
     if not usuario:
         raise HTTPException(
@@ -221,14 +214,9 @@ async def resetear_password(
 async def agregar_dependencia_sieej(
     payload: DependenciaSieejCreate,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(verify_csrf),
+    _csrf: Usuario = Depends(verify_csrf),
+    current_user: Usuario = Depends(_require_admin),
 ):
-    if current_user.role not in ["tetlamamakani"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Solo administradores pueden agregar dependencias",
-        )
-
     if db.query(Usuario).filter(Usuario.username == payload.username).first():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="El nombre de usuario ya existe"
@@ -275,13 +263,9 @@ async def agregar_dependencia_sieej(
 async def eliminar_usuario(
     usuario_id: int,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(verify_csrf),
+    _csrf: Usuario = Depends(verify_csrf),
+    current_user: Usuario = Depends(_require_admin),
 ):
-    if current_user.role not in ["tetlamamakani"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Permisos insuficientes para esta operación",
-        )
     usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
     if not usuario:
         raise HTTPException(

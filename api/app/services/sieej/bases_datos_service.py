@@ -1,10 +1,9 @@
 import uuid
-from datetime import datetime
-from typing import List, Optional
 
 from fastapi import HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
+from app.core.time import utcnow
 from app.models.media_bucket import MediaBucket
 from app.models.project import Project
 from app.models.sieej import (
@@ -44,7 +43,7 @@ class BasesDatosService:
     def __init__(self, db: Session):
         self.db = db
 
-    def _get(self, user_id: int, bd_id: Optional[int] = None) -> Optional[BasesDatos]:
+    def _get(self, user_id: int, bd_id: int | None = None) -> BasesDatos | None:
         query = self.db.query(BasesDatos).filter(
             BasesDatos.user_id == user_id, BasesDatos.is_active.is_(True)
         )
@@ -53,7 +52,7 @@ class BasesDatosService:
             return query.first()
         return query.first()
 
-    def list(self, user_id: int) -> List[BasesDatosResponse]:
+    def list(self, user_id: int) -> list[BasesDatosResponse]:
         items = (
             self.db.query(BasesDatos)
             .filter(BasesDatos.user_id == user_id, BasesDatos.is_active.is_(True))
@@ -62,7 +61,7 @@ class BasesDatosService:
         )
         return [self._format(item) for item in items]
 
-    def get(self, bd_id: int, user_id: int) -> Optional[BasesDatosResponse]:
+    def get(self, bd_id: int, user_id: int) -> BasesDatosResponse | None:
         bd = self._get(user_id, bd_id)
         return self._format(bd) if bd else None
 
@@ -77,7 +76,7 @@ class BasesDatosService:
         self.db.refresh(bd)
         return self._format(bd)
 
-    def update(self, bd_id: int, data: BasesDatosUpdate, user_id: int) -> Optional[BasesDatosResponse]:
+    def update(self, bd_id: int, data: BasesDatosUpdate, user_id: int) -> BasesDatosResponse | None:
         bd = self._get(user_id, bd_id)
         if bd is None:
             return None
@@ -134,23 +133,23 @@ class BasesDatosService:
         ):
             setattr(bd, field, getattr(data, field))
 
-        bd.updated_at = datetime.utcnow()
+        bd.updated_at = utcnow()
         self.db.commit()
         self.db.refresh(bd)
         return self._format(bd)
 
-    def delete(self, bd_id: int, user_id: int) -> Optional[dict]:
+    def delete(self, bd_id: int, user_id: int) -> dict | None:
         bd = self._get(user_id, bd_id)
         if bd is None:
             return None
         bd.is_active = False
-        bd.updated_at = datetime.utcnow()
+        bd.updated_at = utcnow()
         self.db.commit()
         return {"message": "Base de datos eliminada exitosamente"}
 
     async def upload_diccionario(
         self, bd_id: int, user_id: int, file: UploadFile
-    ) -> Optional[BasesDatosResponse]:
+    ) -> BasesDatosResponse | None:
         bd = self._get(user_id, bd_id)
         if bd is None:
             return None
@@ -183,7 +182,7 @@ class BasesDatosService:
 
         bd.ruta_diccionario = url
         bd.tiene_diccionario = True
-        bd.updated_at = datetime.utcnow()
+        bd.updated_at = utcnow()
         self.db.commit()
         self.db.refresh(bd)
         return self._format(bd)
