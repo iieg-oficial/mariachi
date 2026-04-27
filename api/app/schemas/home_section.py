@@ -29,6 +29,7 @@ class BannerPayload(BaseModel):
 class SubtopicItem(BaseModel):
     label: str = ''
     layer_ids: list[str] = Field(default_factory=list, serialization_alias='layerIds')
+    link: str = ''
 
     model_config = ConfigDict(populate_by_name=True, extra='forbid')
 

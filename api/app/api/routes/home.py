@@ -1,10 +1,12 @@
 import copy
+from datetime import datetime
 
-from fastapi import APIRouter, Body, Depends, HTTPException, status
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 
-from app.api.deps import get_db, require_project_access, verify_csrf
+from app.api.deps import get_current_user, get_db, require_project_access, verify_csrf
+from app.core.cache import get_cache, redis_client, set_cache
 from app.core.time import utcnow
 from app.models.home_section import HomeSection
 from app.models.user import Usuario
@@ -13,6 +15,7 @@ from app.schemas.home_section import (
     HomePublicResponse,
     HomeSectionResponse,
 )
+from app.services.mapalab_public_cache import notify_home_changed
 
 router = APIRouter(
     prefix="/home",
@@ -61,6 +64,34 @@ async def preview_home(db: Session = Depends(get_db)):
     return _build_public(secciones)
 
 
+@router.put("/{key}/presencia")
+async def registrar_presencia_home(
+    key: str,
+    current_user: Usuario = Depends(get_current_user),
+):
+    if key not in SECTION_SCHEMAS:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Sección desconocida: {key}")
+    cache_key = f"presencia:home:{key}:{current_user.username}"
+    set_cache(cache_key, {"username": current_user.username, "name": current_user.name}, expire=30)
+    return {"ok": True}
+
+
+@router.get("/{key}/presencia")
+async def obtener_presencia_home(
+    key: str,
+    current_user: Usuario = Depends(get_current_user),
+):
+    if key not in SECTION_SCHEMAS:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Sección desconocida: {key}")
+    keys = redis_client.keys(f"presencia:home:{key}:*")
+    editores = []
+    for cache_key in keys:
+        data = get_cache(cache_key)
+        if data and data["username"] != current_user.username:
+            editores.append(data)
+    return editores
+
+
 @router.get("/{key}", response_model=HomeSectionResponse)
 async def obtener_seccion(key: str, db: Session = Depends(get_db)):
     return _get_section_or_404(db, key)
@@ -70,11 +101,22 @@ async def obtener_seccion(key: str, db: Session = Depends(get_db)):
 async def actualizar_borrador(
     key: str,
     payload: dict = Body(...),
+    expected_updated_at: datetime | None = Query(default=None, alias='expectedUpdatedAt'),
     db: Session = Depends(get_db),
     _csrf: Usuario = Depends(verify_csrf),
     _editor: Usuario = Depends(_require_editor),
 ):
     section = _get_section_or_404(db, key)
+
+    if expected_updated_at:
+        db_ts = section.updated_at.replace(tzinfo=None)
+        req_ts = expected_updated_at.replace(tzinfo=None)
+        if abs((db_ts - req_ts).total_seconds()) > 2:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="La sección fue modificada por otro usuario",
+            )
+
     section.payload_draft = _validate_payload(key, payload)
     flag_modified(section, 'payload_draft')
     section.updated_at = utcnow()
@@ -97,6 +139,7 @@ async def publicar_seccion(
     section.updated_at = utcnow()
     db.commit()
     db.refresh(section)
+    notify_home_changed()
     return section
 
 

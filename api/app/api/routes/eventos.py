@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db, require_project_access, verify_csrf
+from app.api.deps import get_current_user, get_db, require_project_access, verify_csrf
+from app.core.cache import get_cache, redis_client, set_cache
 from app.core.time import utcnow
 from app.models.evento import Evento
 from app.models.user import Usuario
@@ -11,6 +12,7 @@ from app.schemas.evento import (
     EventoResponse,
     EventoUpdate,
 )
+from app.services.mapalab_public_cache import notify_eventos_changed
 from app.services.slug_service import is_valid_slug, slugify
 
 router = APIRouter(
@@ -66,6 +68,30 @@ async def crear_evento(
     return evento
 
 
+@router.put("/{evento_id}/presencia")
+async def registrar_presencia_evento(
+    evento_id: int,
+    current_user: Usuario = Depends(get_current_user),
+):
+    key = f"presencia:evento:{evento_id}:{current_user.username}"
+    set_cache(key, {"username": current_user.username, "name": current_user.name}, expire=30)
+    return {"ok": True}
+
+
+@router.get("/{evento_id}/presencia")
+async def obtener_presencia_evento(
+    evento_id: int,
+    current_user: Usuario = Depends(get_current_user),
+):
+    keys = redis_client.keys(f"presencia:evento:{evento_id}:*")
+    editores = []
+    for key in keys:
+        data = get_cache(key)
+        if data and data["username"] != current_user.username:
+            editores.append(data)
+    return editores
+
+
 @router.get("/{evento_id}", response_model=EventoResponse)
 async def obtener_evento(evento_id: int, db: Session = Depends(get_db)):
     evento = db.query(Evento).filter(Evento.id == evento_id).first()
@@ -86,7 +112,16 @@ async def actualizar_evento(
     if not evento:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento no encontrado")
 
-    update_data = evento_in.model_dump(exclude_unset=True)
+    if evento_in.expected_updated_at:
+        db_ts = evento.updated_at.replace(tzinfo=None)
+        req_ts = evento_in.expected_updated_at.replace(tzinfo=None)
+        if abs((db_ts - req_ts).total_seconds()) > 2:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="El evento fue modificado por otro usuario",
+            )
+
+    update_data = evento_in.model_dump(exclude_unset=True, exclude={'expected_updated_at'})
 
     if 'slug' in update_data:
         update_data['slug'] = _ensure_slug(db, update_data['slug'], evento.titulo, exclude_id=evento.id)
@@ -97,6 +132,8 @@ async def actualizar_evento(
     evento.updated_at = utcnow()
     db.commit()
     db.refresh(evento)
+    if evento.estado == 'published':
+        notify_eventos_changed()
     return evento
 
 
@@ -114,6 +151,7 @@ async def publicar_evento(
     evento.published_at = utcnow()
     db.commit()
     db.refresh(evento)
+    notify_eventos_changed()
     return evento
 
 
@@ -130,6 +168,7 @@ async def despublicar_evento(
     evento.estado = 'draft'
     db.commit()
     db.refresh(evento)
+    notify_eventos_changed()
     return evento
 
 
@@ -143,8 +182,11 @@ async def eliminar_evento(
     evento = db.query(Evento).filter(Evento.id == evento_id).first()
     if not evento:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento no encontrado")
+    estaba_publicado = evento.estado == 'published'
     db.delete(evento)
     db.commit()
+    if estaba_publicado:
+        notify_eventos_changed()
     return {"message": "Evento eliminado"}
 
 
