@@ -13,6 +13,15 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.30.6] - 2026-04-27
+
+### Backend (api) — fix lint CI
+
+- **Imports ordenados (`I001`)**: ruff falló en CI por bloques de imports sin ordenar en `app/api/routes/auth.py`, `app/models/home_section.py`, `app/schemas/__init__.py` y `app/schemas/home_section.py`. Auto-fix con `ruff --fix`.
+- **`tests/test_sieej_formularios.py`**: removidos `CatalogoCategoriaDatos` y `CatalogoEjesEstrategicos` (imports sin uso, `F401`); renombrada variable local `SessionLocal` → `session_factory` para cumplir `N806` (snake_case en funciones).
+
+---
+
 ## [0.30.5] - 2026-04-27
 
 ### Backend (api) — fix split layers

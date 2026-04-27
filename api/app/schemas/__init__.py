@@ -7,10 +7,10 @@ from app.schemas.evento import (
     EventoUpdate,
 )
 from app.schemas.home_section import (
+    SECTION_SCHEMAS,
     HomePublicResponse,
     HomeSectionKey,
     HomeSectionResponse,
-    SECTION_SCHEMAS,
 )
 from app.schemas.menu_item import (
     MenuItemCreate,

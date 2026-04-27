@@ -3,7 +3,6 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 HomeSectionKey = Literal['banner', 'topics', 'guide', 'select', 'faq', 'video', 'footer']
 
 

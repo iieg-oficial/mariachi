@@ -13,7 +13,13 @@ from app.core.database import get_db
 from app.core.security import crear_access_token, crear_csrf_token, hash_password, verify_password
 from app.core.settings import get_settings
 from app.models.user import Usuario
-from app.schemas.user import CurrentUserResponse, LoginRequest, LoginResponse, PasswordChange, UsuarioResponse
+from app.schemas.user import (
+    CurrentUserResponse,
+    LoginRequest,
+    LoginResponse,
+    PasswordChange,
+    UsuarioResponse,
+)
 
 router = APIRouter(prefix="/autenticacion", tags=["autenticación"])
 settings = get_settings()
