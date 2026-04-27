@@ -356,6 +356,16 @@ make up ENV=prod
 
 ---
 
+## Convención sobre GitHub CLI (`gh`)
+
+Antes de ejecutar **cualquier** comando `gh`, consulta primero al usuario describiendo el subcomando, el repo/PR/issue/release destino y el efecto esperado. Espera confirmación antes de correrlo.
+
+Aplica a todos los `gh`, incluyendo los de solo lectura (`gh pr view`, `gh issue list`, `gh auth status`). Razón: cada llamada `gh` es una API call autenticada contra GitHub que puede afectar estado externo (crear/modificar PRs, issues, comments, releases) o consumir cuota. La regla unificada elimina la ambigüedad de "¿qué cuenta como destructivo?".
+
+Excepción: si el usuario en el mismo turno te pidió explícitamente correr el comando, no necesitas re-consultar.
+
+---
+
 ## Integracion con MapaLab (v1.4.0)
 
 A partir de v1.4.0 de MapaLab, mariachi expone un **editor de capas del visor** bajo `/mariachi/layers`. Esto implica:
