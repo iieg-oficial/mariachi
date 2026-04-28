@@ -64,6 +64,7 @@ export default function MainLayout() {
             key: 'profile',
             icon: <UserOutlined />,
             label: 'Perfil',
+            onClick: () => navigate('/perfil'),
         },
         {
             key: 'change-password',
@@ -168,7 +169,10 @@ export default function MainLayout() {
                     <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
                         <div style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
                             {!isMobile && <Text style={{ marginRight: 8 }}>{user?.name}</Text>}
-                            <Avatar icon={<UserOutlined />} />
+                            <Avatar
+                                src={user?.avatarUrl || user?.avatar_url || undefined}
+                                icon={!(user?.avatarUrl || user?.avatar_url) && <UserOutlined />}
+                            />
                         </div>
                     </Dropdown>
                 </Header>

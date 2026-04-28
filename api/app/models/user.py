@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, DateTime, Enum, Integer, String
+from sqlalchemy import Boolean, Column, DateTime, Enum, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -17,6 +17,7 @@ class Usuario(Base):
         Enum("tetlamamakani", "editora", "externo", name="user_roles"), nullable=False
     )
     must_change_password = Column(Boolean, default=True, nullable=False)
+    avatar_url = Column(Text, nullable=True)
     created_at = Column(DateTime, default=utcnow, nullable=False)
 
     media_uploads = relationship("Media", back_populates="uploaded_by_user")

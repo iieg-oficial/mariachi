@@ -1,8 +1,17 @@
 from datetime import datetime
 from typing import Annotated, Literal
 
-from pydantic import AfterValidator, BaseModel, EmailStr, Field
+from pydantic import (
+    AfterValidator,
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    field_serializer,
+    field_validator,
+)
 
+from app.core.acervo_url import to_absolute, to_relative
 from app.schemas.project import BucketSummary, UserProjectAssignment, UserProjectMembership
 
 
@@ -43,11 +52,34 @@ class UsuarioResponse(UsuarioBase):
     id: int
     role: str
     must_change_password: bool
+    avatar_url: str | None = Field(default=None, serialization_alias='avatarUrl')
     created_at: datetime
     email: LaxEmail
     projects: list["UserProjectMembership"] = []
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+    @field_validator('avatar_url', mode='before')
+    @classmethod
+    def _store_avatar_relative(cls, v):
+        return to_relative(v)
+
+    @field_serializer('avatar_url', when_used='json-unless-none')
+    def _expose_avatar_absolute(self, v):
+        return to_absolute(v)
+
+
+class PerfilUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=100)
+    email: EmailStr | None = None
+    avatar_url: str | None = Field(default=None, serialization_alias='avatarUrl')
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    @field_validator('avatar_url', mode='before')
+    @classmethod
+    def _store_avatar_relative(cls, v):
+        return to_relative(v)
 
 
 class CurrentUserResponse(UsuarioResponse):

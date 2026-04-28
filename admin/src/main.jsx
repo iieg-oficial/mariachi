@@ -40,6 +40,7 @@ const EventoEditPage = lazy(() => import('@features/mapalab-eventos').then((m) =
 const HomePage = lazy(() => import('@features/mapalab-home').then((m) => ({ default: m.HomePage })));
 const FormulariosPage = lazy(() => import('@features/sieej-formularios'));
 const Inicio = lazy(() => import('@features/inicio'));
+const Perfil = lazy(() => import('@features/perfil'));
 
 const PageFallback = () => (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
@@ -83,6 +84,10 @@ const router = createBrowserRouter([
                     {
                         path: 'inicio',
                         element: withSuspense(<Inicio />)
+                    },
+                    {
+                        path: 'perfil',
+                        element: withSuspense(<Perfil />)
                     },
                     {
                         path: 'users',

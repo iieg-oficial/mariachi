@@ -18,6 +18,7 @@ from app.schemas.user import (
     LoginRequest,
     LoginResponse,
     PasswordChange,
+    PerfilUpdate,
     UsuarioResponse,
 )
 
@@ -85,6 +86,27 @@ async def get_current_user_info(
     context: dict = Depends(get_current_user_context),
 ):
     return context
+
+
+@router.put("/perfil", response_model=UsuarioResponse)
+async def actualizar_perfil(
+    payload: PerfilUpdate,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(verify_csrf),
+):
+    data = payload.model_dump(exclude_unset=True)
+
+    if "email" in data and data["email"] != current_user.email:
+        existing = db.query(Usuario).filter(Usuario.email == data["email"], Usuario.id != current_user.id).first()
+        if existing:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email ya está en uso")
+
+    for field, value in data.items():
+        setattr(current_user, field, value)
+
+    db.commit()
+    db.refresh(current_user)
+    return current_user
 
 
 @router.get("/verificar")

@@ -13,6 +13,25 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.30.21] - 2026-04-28
+
+### Backend (api) — perfil editable + avatar
+
+- **Migración alembic `f4a5b6c7d8e9_add_avatar_url_to_usuarios`**: nueva columna `usuarios.avatar_url` (Text nullable). Aplicada en dev.
+- **`Usuario.avatar_url`** en el modelo SQLAlchemy.
+- **Schemas (`schemas/user.py`)**: `UsuarioResponse.avatar_url` con `serialization_alias='avatarUrl'`. `field_validator(mode='before')` aplica `to_relative` y `field_serializer(when_used='json-unless-none')` aplica `to_absolute` — la URL del avatar se persiste relativa al bucket y se devuelve absoluta al cliente, igual que las URLs de eventos / home / capas. Nuevo `PerfilUpdate` con `name`, `email`, `avatar_url` (todos opcionales).
+- **`PUT /autenticacion/perfil`**: actualiza nombre, email o avatar del `current_user`. Verifica unicidad de email contra otros usuarios (409 si conflict). Requiere `verify_csrf`.
+
+### Admin (admin) — página `/perfil`
+
+- **Nuevo feature module `features/perfil/`**:
+  - `pages/PerfilPage.jsx` con avatar grande (96px), botón "Cambiar avatar" que abre `<BucketFilePicker bucketId=portal>`, botón secundario "Quitar avatar"; form con `name` + `email` (required, validación de email), nota inferior con `username` (no editable) y `role` (no editable). Botón principal "Guardar cambios" hace `PUT /autenticacion/perfil` y luego `refreshUser()` del context para que el avatar del header se actualice sin recargar.
+  - `api/perfilService.js` con `actualizarPerfil(data)`.
+- **Ruta `/perfil`** registrada en `main.jsx` con `lazy(() => import('@features/perfil'))`.
+- **`MainLayout.jsx`**: el item "Perfil" del dropdown del avatar (header arriba-derecha) ahora navega a `/perfil` (antes era estático sin `onClick`). El `<Avatar>` del header lee `user.avatarUrl` (con fallback `user.avatar_url`); muestra `<UserOutlined />` solo cuando no hay avatar.
+
+---
+
 ## [0.30.20] - 2026-04-28
 
 ### Backend (api) — registro extendido de plataformas + `static_version`
