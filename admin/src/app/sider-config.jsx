@@ -13,6 +13,7 @@ import {
     UserAddOutlined,
     CalendarOutlined,
     HomeOutlined,
+    DashboardOutlined,
 } from '@ant-design/icons';
 
 export const PLATFORM_ITEMS = [
@@ -108,11 +109,19 @@ export function buildSiderItems({ user, onNavigate, extras = {} }) {
 
     const items = [];
 
+    items.push({
+        key: '/inicio',
+        icon: <DashboardOutlined />,
+        label: 'Inicio',
+        onClick: () => onNavigate('/inicio'),
+    });
+
     const platformChildren = PLATFORM_ITEMS
         .filter((item) => item.allowedGlobalRoles.includes(role))
         .map((item) => ({
             key: item.key,
             icon: item.icon,
+            disabled: item.disabled,
             label: item.showBadge && extras.pendingCount > 0 ? (
                 <span>
                     {item.label}{' '}
@@ -130,7 +139,7 @@ export function buildSiderItems({ user, onNavigate, extras = {} }) {
                     </span>
                 </span>
             ) : item.label,
-            onClick: () => onNavigate(item.path),
+            onClick: item.disabled ? undefined : () => onNavigate(item.path),
         }));
 
     if (platformChildren.length > 0) {
@@ -153,12 +162,17 @@ export function buildSiderItems({ user, onNavigate, extras = {} }) {
             key: `project-${slug}`,
             icon: project.icon,
             label: project.label,
-            children: project.items.map((item) => ({
-                key: item.key,
-                icon: item.icon,
-                label: item.label,
-                onClick: () => onNavigate(item.path),
-            })),
+            disabled: project.disabled,
+            children: project.items.map((item) => {
+                const itemDisabled = project.disabled || item.disabled;
+                return {
+                    key: item.key,
+                    icon: item.icon,
+                    label: item.label,
+                    disabled: itemDisabled,
+                    onClick: itemDisabled ? undefined : () => onNavigate(item.path),
+                };
+            }),
         });
     }
 

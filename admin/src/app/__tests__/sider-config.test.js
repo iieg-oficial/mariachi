@@ -9,17 +9,19 @@ describe('buildSiderItems', () => {
         expect(buildSiderItems({ user: undefined, onNavigate: noop })).toEqual([]);
     });
 
-    it('admin (tetlamamakani) ve grupo Plataforma + 3 grupos de proyecto', () => {
+    it('admin (tetlamamakani) ve Inicio + grupo Plataforma + 3 grupos de proyecto', () => {
         const items = buildSiderItems({
             user: { role: 'tetlamamakani', projects: [] },
             onNavigate: noop,
         });
-        expect(items).toHaveLength(4);
-        expect(items[0].key).toBe('platform');
-        expect(items[0].label).toBe('Plataforma');
-        expect(items[0].children).toHaveLength(3);
+        expect(items).toHaveLength(5);
+        expect(items[0].key).toBe('/inicio');
+        expect(items[0].label).toBe('Inicio');
+        expect(items[1].key).toBe('platform');
+        expect(items[1].label).toBe('Plataforma');
+        expect(items[1].children).toHaveLength(3);
 
-        const projectKeys = items.slice(1).map((i) => i.key);
+        const projectKeys = items.slice(2).map((i) => i.key);
         expect(projectKeys).toContain('project-portal');
         expect(projectKeys).toContain('project-mapalab');
         expect(projectKeys).toContain('project-sieej');
@@ -37,7 +39,7 @@ describe('buildSiderItems', () => {
         ]);
     });
 
-    it('editora con membership en portal solo ve Plataforma (Media) + Portalito', () => {
+    it('editora con membership en portal ve Inicio + Plataforma (Media) + Portalito', () => {
         const items = buildSiderItems({
             user: {
                 role: 'editora',
@@ -45,7 +47,8 @@ describe('buildSiderItems', () => {
             },
             onNavigate: noop,
         });
-        expect(items).toHaveLength(2);
+        expect(items).toHaveLength(3);
+        expect(items.find((i) => i.key === '/inicio')).toBeDefined();
 
         const platform = items.find((i) => i.key === 'platform');
         expect(platform).toBeDefined();
@@ -59,14 +62,15 @@ describe('buildSiderItems', () => {
         expect(items.find((i) => i.key === 'project-sieej')).toBeUndefined();
     });
 
-    it('editora sin memberships solo ve Plataforma con Media', () => {
+    it('editora sin memberships ve Inicio + Plataforma con Media', () => {
         const items = buildSiderItems({
             user: { role: 'editora', projects: [] },
             onNavigate: noop,
         });
-        expect(items).toHaveLength(1);
-        expect(items[0].key).toBe('platform');
-        expect(items[0].children.map((c) => c.key)).toEqual(['/media']);
+        expect(items).toHaveLength(2);
+        expect(items[0].key).toBe('/inicio');
+        expect(items[1].key).toBe('platform');
+        expect(items[1].children.map((c) => c.key)).toEqual(['/media']);
     });
 
     it('editora con membership en mapalab y sieej ve ambos grupos', () => {
@@ -96,6 +100,33 @@ describe('buildSiderItems', () => {
         const platform = items.find((i) => i.key === 'platform');
         platform.children[0].onClick();
         expect(onNavigate).toHaveBeenCalledWith('/users');
+    });
+
+    it('proyecto con disabled:true se renderiza con flag disabled y sus hijos no tienen onClick', () => {
+        const items = buildSiderItems({
+            user: { role: 'tetlamamakani', projects: [] },
+            onNavigate: vi.fn(),
+        });
+        const portal = items.find((i) => i.key === 'project-portal');
+        expect(portal.disabled).toBe(true);
+        portal.children.forEach((c) => {
+            expect(c.disabled).toBe(true);
+            expect(c.onClick).toBeUndefined();
+        });
+        const sieej = items.find((i) => i.key === 'project-sieej');
+        expect(sieej.disabled).toBe(true);
+    });
+
+    it('item /inicio dispara onNavigate al click', () => {
+        const onNavigate = vi.fn();
+        const items = buildSiderItems({
+            user: { role: 'editora', projects: [] },
+            onNavigate,
+        });
+        const inicio = items.find((i) => i.key === '/inicio');
+        expect(inicio).toBeDefined();
+        inicio.onClick();
+        expect(onNavigate).toHaveBeenCalledWith('/inicio');
     });
 
     it('badge de revisiones aparece cuando pendingCount > 0', () => {

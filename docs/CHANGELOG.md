@@ -13,6 +13,16 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.30.18] - 2026-04-28
+
+### Admin (admin) — sider acepta `disabled` y entrada raíz "Inicio"
+
+- **`buildSiderItems` honra `disabled`**: el flag `disabled: true` que ya estaba en `PROJECT_REGISTRY.portal` y `PROJECT_REGISTRY.sieej` (puesto por el usuario) ahora propaga al item del menú de antd. El grupo se renderiza apagado y los items hijos heredan `disabled = group.disabled || item.disabled` (deshabilita todo el subárbol). Cuando `disabled`, `onClick` queda `undefined` para que ni con teclado se dispare la navegación. `PLATFORM_ITEMS` también acepta `disabled` por item.
+- **Entrada raíz "Inicio" en el sider**: nuevo item `{ key: '/inicio', icon: <DashboardOutlined />, label: 'Inicio' }` antepuesto a la lista para todos los roles autenticados (sin filtro de `allowedGlobalRoles` — todo usuario logueado tiene página personal). Click → `onNavigate('/inicio')`. La landing ya existía desde v0.30.15 pero solo se llegaba via redirect del root; ahora hay acceso directo desde cualquier ruta.
+- **Tests `sider-config.test.js`** actualizados al nuevo conteo (5 items para admin en vez de 4, 3 para editora con un proyecto en vez de 2, 2 para editora sin proyectos en vez de 1) y dos casos nuevos: `disabled:true` propaga al item y a sus hijos sin `onClick`; click en `/inicio` dispara `onNavigate('/inicio')`. 20/20 pasan.
+
+---
+
 ## [0.30.17] - 2026-04-28
 
 ### Admin (admin) — bridge de `message` para suprimir warning antd `[antd: message]`
