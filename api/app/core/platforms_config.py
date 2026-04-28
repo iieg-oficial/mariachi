@@ -54,7 +54,7 @@ PLATFORMS: list[PlatformConfig] = [
         "url": None,
         "probe": "ontoy",
         "probe_url_template": "{dataengine_ontoy_url}",
-        "static_version": "1.11.0",
+        "static_version": "1.12.0",
     },
     {
         "slug": "acervo",
@@ -70,7 +70,7 @@ PLATFORMS: list[PlatformConfig] = [
         "url": None,
         "probe": "ontoy",
         "probe_url_template": "{gateway_hub_ontoy_url}",
-        "static_version": "0.1.0",
+        "static_version": "1.23.0",
     },
     {
         "slug": "huachicol",
@@ -78,7 +78,7 @@ PLATFORMS: list[PlatformConfig] = [
         "url": None,
         "probe": "ontoy",
         "probe_url_template": "{huachicol_ontoy_url}",
-        "static_version": "0.1.0",
+        "static_version": "1.16.1",
     },
     {
         "slug": "geoserver",

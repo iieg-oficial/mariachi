@@ -24,6 +24,7 @@ ENV SENTRY_PROJECT=$SENTRY_PROJECT
 RUN npm run build
 
 FROM nginx:alpine
+RUN rm -f /etc/nginx/conf.d/default.conf
 COPY ./nginx/nginx.conf /etc/nginx/nginx.conf
 COPY ./nginx/conf.d/mariachi.conf /etc/nginx/conf.d/mariachi.conf
 COPY --from=admin-builder /app/dist /usr/share/nginx/html/mariachi

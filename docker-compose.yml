@@ -37,7 +37,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-iieg_password}
       POSTGRES_DB: ${POSTGRES_DB:-iieg_portal}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-iieg_user} -d ${POSTGRES_DB:-iieg_portal}" ]
       interval: 10s
@@ -71,6 +71,9 @@ services:
     volumes:
       - ./api:/app
       - ../acervo/nginx/ssl/acervo.crt:/usr/local/share/ca-certificates/acervo.crt:ro
+      - ./docs/CHANGELOG.md:/app/_docs/CHANGELOG.md:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       postgres:
         condition: service_healthy
