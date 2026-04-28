@@ -13,6 +13,14 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.30.24] - 2026-04-28
+
+### Repo — `LICENSE` movido a root para que GitHub la detecte
+
+- **`docs/LICENSE` → `LICENSE`**: GitHub solo detecta automáticamente la licencia cuando el archivo está en el root del repo (acepta `LICENSE`, `LICENSE.md`, `LICENSE.txt`, `LICENCE`, `COPYING`). Tener el archivo solo en `docs/` hacía que el repo apareciera sin badge de licencia y que la API de GitHub no expusiera el campo `license` en el endpoint de repositorio. Mismo patrón ya usado por los demás repos del ecosistema (mapalab, acervo, gateway-hub, huachicol, mapalab-dataengine).
+
+---
+
 ## [0.30.23] - 2026-04-28
 
 ### Backend (api) — todas las plataformas usan probe `ontoy` con su URL configurable
