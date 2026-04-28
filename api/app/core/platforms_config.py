@@ -5,23 +5,31 @@ Cada plataforma tiene un `probe` que define cómo se chequea su estado:
 - `ontoy`       → GET al endpoint propio del proyecto (mariachi convention).
 - `http_health` → GET HTTP cualquiera; 200 = healthy. La versión queda en None.
 - `dataengine`  → conexión SQL a DataEngine + `SELECT version()`.
+- `none`        → no hay probe; siempre healthy si la entrada existe. Útil para
+                  servicios sin endpoint accesible (jobs, batch, postgres puro).
 
-Plataformas externas que aún no exponen un endpoint conocido se marcan
-`probe="http_health"` apuntando a una URL de su propio repo (acervo MinIO,
-sieej landing, etc.).
+Cada plataforma puede tener `static_version` con la versión del **repositorio**
+(la del CHANGELOG). Cuando está presente, el endpoint la devuelve en lugar de
+la que reporte el probe — útil para repos cuya versión semántica vive en
+`docs/CHANGELOG.md` y no se expone via API (acervo, gateway-hub, geoserver,
+huachicol). El `healthy` siempre viene del probe.
+
+IMPORTANTE: al bumpear el CHANGELOG de uno de esos repos, hay que sincronizar
+el `static_version` de aquí. (TODO: pre-commit hook que lo verifique.)
 """
 
 from typing import Literal, TypedDict
 
-Probe = Literal["self", "ontoy", "http_health", "dataengine"]
+Probe = Literal["self", "ontoy", "http_health", "dataengine", "none"]
 
 
-class PlatformConfig(TypedDict):
+class PlatformConfig(TypedDict, total=False):
     slug: str
     label: str
     url: str | None
     probe: Probe
     probe_url_template: str | None
+    static_version: str | None
 
 
 PLATFORMS: list[PlatformConfig] = [
@@ -40,18 +48,44 @@ PLATFORMS: list[PlatformConfig] = [
         "probe_url_template": "{mapalab_backend_url}/ontoy",
     },
     {
-        "slug": "acervo",
-        "label": "Acervo (MinIO)",
-        "url": None,
-        "probe": "http_health",
-        "probe_url_template": "{acervo_scheme}://{acervo_endpoint}/minio/health/live",
-    },
-    {
-        "slug": "dataengine",
+        "slug": "mapalab-dataengine",
         "label": "DataEngine",
         "url": None,
         "probe": "dataengine",
         "probe_url_template": None,
+        "static_version": "1.6.0",
+    },
+    {
+        "slug": "acervo",
+        "label": "Acervo",
+        "url": None,
+        "probe": "http_health",
+        "probe_url_template": "{acervo_scheme}://{acervo_endpoint}/minio/health/live",
+        "static_version": "0.1.0",
+    },
+    {
+        "slug": "gateway-hub",
+        "label": "Gateway Hub",
+        "url": None,
+        "probe": "none",
+        "probe_url_template": None,
+        "static_version": "0.1.0",
+    },
+    {
+        "slug": "huachicol",
+        "label": "Huachicol",
+        "url": None,
+        "probe": "none",
+        "probe_url_template": None,
+        "static_version": "0.1.0",
+    },
+    {
+        "slug": "geoserver",
+        "label": "GeoServer",
+        "url": None,
+        "probe": "http_health",
+        "probe_url_template": "{geoserver_url}",
+        "static_version": "0.1.0",
     },
     {
         "slug": "sieej",

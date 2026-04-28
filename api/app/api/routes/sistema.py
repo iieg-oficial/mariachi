@@ -21,10 +21,12 @@ def _resolve_template(template: str | None, settings) -> str | None:
         return None
     mapalab_backend = (settings.mapalab_backend_url or "").rstrip("/")
     sieej = (settings.sieej_url or "").rstrip("/")
+    geoserver = (settings.geoserver_url or "").rstrip("/")
     acervo_scheme = "https" if settings.acervo_use_ssl else "http"
     resolved = (
         template.replace("{mapalab_backend_url}", mapalab_backend)
                 .replace("{sieej_url}", sieej)
+                .replace("{geoserver_url}", geoserver)
                 .replace("{acervo_scheme}", acervo_scheme)
                 .replace("{acervo_endpoint}", settings.acervo_endpoint or "")
     )
@@ -78,37 +80,30 @@ async def listar_plataformas(_: Usuario = Depends(get_current_user)):
     for plat in PLATFORMS:
         slug, label, url = plat["slug"], plat["label"], plat["url"]
         probe = plat["probe"]
+        static_version = plat.get("static_version")
 
         if probe == "self":
-            results.append({
-                "slug": slug, "label": label, "url": url,
-                "version": get_app_version(), "healthy": True,
-            })
-            continue
-
-        if probe == "dataengine":
-            v, ok = _probe_dataengine(get_dataengine_db)
-            results.append({
-                "slug": slug, "label": label, "url": url,
-                "version": v, "healthy": ok,
-            })
-            continue
-
-        resolved = _resolve_template(plat["probe_url_template"], settings)
-        if not resolved:
-            results.append({
-                "slug": slug, "label": label, "url": url,
-                "version": None, "healthy": False,
-            })
-            continue
-
-        if probe == "ontoy":
-            v, ok = _probe_ontoy(resolved)
+            v_probe, ok = get_app_version(), True
+        elif probe == "none":
+            v_probe, ok = None, True
+        elif probe == "dataengine":
+            v_probe, ok = _probe_dataengine(get_dataengine_db)
         else:
-            v, ok = _probe_http_health(resolved)
+            resolved = _resolve_template(plat.get("probe_url_template"), settings)
+            if not resolved:
+                v_probe, ok = None, False
+            elif probe == "ontoy":
+                v_probe, ok = _probe_ontoy(resolved)
+            else:
+                v_probe, ok = _probe_http_health(resolved)
+
+        version = static_version or v_probe
         results.append({
-            "slug": slug, "label": label, "url": url,
-            "version": v, "healthy": ok,
+            "slug": slug,
+            "label": label,
+            "url": url,
+            "version": version,
+            "healthy": ok,
         })
 
     return results

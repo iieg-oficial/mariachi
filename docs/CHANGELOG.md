@@ -13,6 +13,23 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.30.20] - 2026-04-28
+
+### Backend (api) — registro extendido de plataformas + `static_version`
+
+- **`platforms_config.py`** ahora incluye 8 plataformas del ecosistema: `mariachi`, `mapalab`, `mapalab-dataengine`, `acervo`, `gateway-hub`, `huachicol`, `geoserver`, `sieej`. Cada una con su `slug`, `label`, `url` (opcional), `probe` y `probe_url_template`.
+- **Nuevo campo opcional `static_version`** por plataforma. Cuando está presente, el endpoint la devuelve como versión en lugar de la que reporta el probe. Es la versión del **repositorio** (la del `docs/CHANGELOG.md`), no la del software empaquetado. Útil para repos como `acervo` (MinIO no expone su versión sin auth), `gateway-hub` (Nginx no tiene `/version`), `geoserver` (Java, sin endpoint trivial) y `mapalab-dataengine` (es Postgres + jobs, no API).
+- **Nuevo probe `none`** para servicios sin endpoint accesible — siempre reporta `healthy=true`. Se usa para `gateway-hub` y `huachicol` mientras no agregan un endpoint o un static.
+- **Settings**: el campo `geoserver_url` (que ya existía) ahora se usa para el probe `http_health` de GeoServer.
+- **Sincronización manual**: bumpear `static_version` en este archivo cuando se bumpea el `CHANGELOG.md` del repo correspondiente. (TODO: pre-commit hook que valide.)
+
+### Eco-versionado en repos del ecosistema
+
+- **`acervo`**, **`gateway-hub`**, **`huachicol`**, **`geoserver`**: nuevos `docs/CHANGELOG.md` y `VERSION` en root con `0.1.0` inicial. Antes ningún repo de infra llevaba versionado explícito; los cambios solo se reflejaban en commits. Ahora cada característica registrada en commit dispara un bump.
+- **`mapalab-dataengine`**: nuevo `VERSION` (1.6.0) sincronizado con su `docs/CHANGELOG.md`.
+
+---
+
 ## [0.30.19] - 2026-04-28
 
 ### Backend (api) + Admin (admin) — landing reescrita: plataformas + notas de versión
