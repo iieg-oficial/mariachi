@@ -73,7 +73,7 @@ export default function GroupServicesReference({ groupId, treeData }) {
             dataIndex: 'label',
             key: 'label',
             render: (text, record) => (
-                <Space direction="vertical" size={0}>
+                <Space orientation="vertical" size={0}>
                     <Text strong>{text}</Text>
                     {record.parentLabel && (
                         <Text type="secondary" style={{ fontSize: 11 }}>en: {record.parentLabel}</Text>
@@ -112,7 +112,7 @@ export default function GroupServicesReference({ groupId, treeData }) {
     ];
 
     return (
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
             <Alert
                 type="info"
                 showIcon

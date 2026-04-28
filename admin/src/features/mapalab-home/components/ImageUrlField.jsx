@@ -29,7 +29,7 @@ export default function ImageUrlField({ value, onChange, disabled, placeholder =
     };
 
     return (
-        <Space direction="vertical" style={{ width: '100%' }}>
+        <Space orientation="vertical" style={{ width: '100%' }}>
             <Space.Compact style={{ width: '100%' }}>
                 <Input
                     placeholder={placeholder}

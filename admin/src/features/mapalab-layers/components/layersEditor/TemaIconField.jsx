@@ -33,7 +33,7 @@ export default function TemaIconField({ value, onChange, disabled }) {
     };
 
     return (
-        <Space direction="vertical" style={{ width: '100%' }}>
+        <Space orientation="vertical" style={{ width: '100%' }}>
             <Space.Compact style={{ width: '100%' }}>
                 <Input
                     placeholder="https://… o ruta del bucket"

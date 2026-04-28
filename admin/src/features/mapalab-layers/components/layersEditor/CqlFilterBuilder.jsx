@@ -314,7 +314,7 @@ export default function CqlFilterBuilder({
     };
 
     return (
-        <Space direction="vertical" size="small" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="small" style={{ width: '100%' }}>
             <Space size="small">
                 <Radio.Group
                     size="small"
@@ -339,7 +339,7 @@ export default function CqlFilterBuilder({
             </Space>
 
             {mode === 'builder' ? (
-                <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                <Space orientation="vertical" size="small" style={{ width: '100%' }}>
                     {conditions.length > 1 && (
                         <Space size="small">
                             <Text type="secondary">Combinar con:</Text>
@@ -405,7 +405,7 @@ export default function CqlFilterBuilder({
                     )}
                 </Space>
             ) : (
-                <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                <Space orientation="vertical" size="small" style={{ width: '100%' }}>
                     {fields.length > 0 && (
                         <div>
                             <Text type="secondary" style={{ fontSize: 12 }}>

@@ -120,14 +120,14 @@ async def eliminar_borrador_por_id(
     return {"message": "Borrador eliminado"}
 
 
-@router.get("/{resource_type}/{resource_id}", response_model=BorradorResponse)
+@router.get("/{resource_type}/{resource_id}", response_model=BorradorResponse | None)
 async def obtener_borrador(
     resource_type: str,
     resource_id: str,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    borrador = (
+    return (
         db.query(Borrador)
         .options(joinedload(Borrador.usuario))
         .filter(
@@ -137,9 +137,6 @@ async def obtener_borrador(
         )
         .first()
     )
-    if not borrador:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Borrador no encontrado")
-    return borrador
 
 
 @router.put("/{resource_type}/{resource_id}", response_model=BorradorResponse)

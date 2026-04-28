@@ -61,7 +61,7 @@ function ItemListEditor({ name, label, addLabel, renderFields, tabKeyField = 'ti
 
                 if (fields.length === 0) {
                     return (
-                        <Space direction="vertical" style={{ width: '100%', alignItems: 'center', padding: 16 }}>
+                        <Space orientation="vertical" style={{ width: '100%', alignItems: 'center', padding: 16 }}>
                             <Empty description={`Sin ${label.toLowerCase()}s`} />
                             <Button type="dashed" icon={<PlusOutlined />} onClick={handleAdd}>{addLabel}</Button>
                         </Space>
@@ -236,7 +236,7 @@ function SubtopicsList({ parentName }) {
     return (
         <Form.List name={[parentName, 'subtopics']}>
             {(fields, { add, remove, move }) => (
-                <Space direction="vertical" style={{ width: '100%' }}>
+                <Space orientation="vertical" style={{ width: '100%' }}>
                     <Text strong style={{ fontSize: 12 }}>Subtemas (links rápidos)</Text>
                     {fields.length === 0 && (
                         <Text type="secondary" style={{ fontSize: 12 }}>Sin subtemas.</Text>
@@ -356,7 +356,7 @@ export function FaqEditor() {
 
 export function VideoEditor() {
     return (
-        <Space direction="vertical" style={{ width: '100%' }}>
+        <Space orientation="vertical" style={{ width: '100%' }}>
             <Form.Item name="youtube_id" label="YouTube ID" extra="Solo el ID, ej: MzuImZuDM3E">
                 <Input placeholder="MzuImZuDM3E" />
             </Form.Item>
@@ -370,7 +370,7 @@ export function VideoEditor() {
 
 export function FooterEditor() {
     return (
-        <Space direction="vertical" style={{ width: '100%' }}>
+        <Space orientation="vertical" style={{ width: '100%' }}>
             <Form.Item name="copyright" label="Texto de copyright" extra="Ej: Instituto de Información Estadística y Geográfica de Jalisco ©">
                 <Input />
             </Form.Item>

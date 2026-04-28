@@ -43,6 +43,7 @@ export default function useResourceDraft({
             try {
                 const res = await api.get(`/borradores/${resourceType}/${resourceId}`);
                 if (cancelled) return;
+                if (!res.data) return;
                 setHasDraft(true);
                 setBorradorEstado(res.data?.estado || 'en_progreso');
                 setComentarioRechazo(res.data?.comentario_rechazo || null);

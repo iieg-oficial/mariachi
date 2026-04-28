@@ -108,7 +108,7 @@ const PrimitiveEditor = ({ value, onChange, availableFields, schema, table }) =>
     const set = (patch) => onChange({ ...value, ...patch });
     const op = value.operation || 'count';
     return (
-        <Space direction="vertical" size={6} style={{ width: '100%' }}>
+        <Space orientation="vertical" size={6} style={{ width: '100%' }}>
             <Select
                 size="small"
                 value={op}
@@ -225,7 +225,7 @@ const ExpressionEditor = ({ value, onChange, availableFields, schema, table, dep
                 />
             )}
             {kind === 'combinator' && (
-                <Space direction="vertical" size={6} style={{ width: '100%' }}>
+                <Space orientation="vertical" size={6} style={{ width: '100%' }}>
                     <Select
                         size="small"
                         value={value.op || 'percent'}
@@ -298,7 +298,7 @@ const StatSlot = ({ slot, onChange, onRemove, availableFields, schema, table, la
     };
 
     const baseInputs = (
-        <Space direction="vertical" size={6} style={{ width: '100%' }}>
+        <Space orientation="vertical" size={6} style={{ width: '100%' }}>
             <Space.Compact style={{ width: '100%' }}>
                 <Input
                     size="small"
@@ -341,7 +341,7 @@ const StatSlot = ({ slot, onChange, onRemove, availableFields, schema, table, la
             }
             styles={{ body: { paddingTop: 8 } }}
         >
-            <Space direction="vertical" size="small" style={{ width: '100%' }}>
+            <Space orientation="vertical" size="small" style={{ width: '100%' }}>
                 <Radio.Group
                     size="small"
                     value={mode}
@@ -547,7 +547,7 @@ export default function LayerStatsSection({
     const refreshedAt = stats?.valuesRefreshedAt || stats?.values_refreshed_at;
 
     return (
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
             <Alert
                 type="info"
                 showIcon
@@ -587,7 +587,7 @@ export default function LayerStatsSection({
             {config.length === 0 ? (
                 <Empty description="Sin slots. Agrega uno arriba." />
             ) : (
-                <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                <Space orientation="vertical" size="small" style={{ width: '100%' }}>
                     {config
                         .slice()
                         .sort((a, b) => (a.position || 0) - (b.position || 0))
@@ -623,7 +623,7 @@ export default function LayerStatsSection({
             </Card>
 
             <Card size="small" title="Cache TTL (tiempo de vida del valor calculado)" styles={{ body: { paddingTop: 8 } }}>
-                <Space direction="vertical" size={6} style={{ width: '100%' }}>
+                <Space orientation="vertical" size={6} style={{ width: '100%' }}>
                     <Text type="secondary" style={{ fontSize: 12 }}>
                         Tiempo que los valores calculados se consideran vigentes antes de recalcularse desde la BD.
                         Los valores estáticos no se ven afectados (no se recalculan). Para operaciones dinámicas:
@@ -678,7 +678,7 @@ export default function LayerStatsSection({
                             description="Esta capa tenía valores guardados sin configuración (vienen del Sheet original). Los precarga­mos como slots estáticos editables. Edita los que quieras, convierte alguno a operación dinámica (count/sum/fórmula) si aplica, y guarda la configuración para que mariachi pase a ser la fuente única."
                         />
                     )}
-                    <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                    <Space orientation="vertical" size={4} style={{ width: '100%' }}>
                         {stats.values.map((v, i) => (
                             <Tag
                                 key={i}

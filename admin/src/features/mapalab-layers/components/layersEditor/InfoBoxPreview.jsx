@@ -166,7 +166,7 @@ const ICON_GLYPH = {
 };
 
 const IconTexts = ({ items }) => (
-    <Space direction="vertical" size={4} style={{ width: '100%' }}>
+    <Space orientation="vertical" size={4} style={{ width: '100%' }}>
         {items.map((it, i) => (
             <Space key={i} size={6}>
                 <span style={{ fontSize: 14 }}>{ICON_GLYPH[it.icon] || '•'}</span>
@@ -213,7 +213,7 @@ const renderBodyBlock = (key, cfg) => {
     }
     if (key === 'labelGroups' && cfg.labelGroups?.length) {
         return (
-            <Space key="labelGroups" direction="vertical" size={4} style={{ width: '100%', marginBottom: 8 }}>
+            <Space key="labelGroups" orientation="vertical" size={4} style={{ width: '100%', marginBottom: 8 }}>
                 {cfg.labelGroups.map((g, i) => <LabelGroup key={i} group={g} />)}
             </Space>
         );

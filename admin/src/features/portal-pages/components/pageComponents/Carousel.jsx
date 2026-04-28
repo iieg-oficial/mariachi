@@ -28,7 +28,7 @@ export default function Carousel({ slides = [], autoplay = true, interval = 5000
                         size="small"
                         style={{ minWidth: 200, maxWidth: 220, flexShrink: 0, background: '#0f172a', border: '1px solid #334155' }}
                     >
-                        <Space direction="vertical" size={6} style={{ width: '100%' }}>
+                        <Space orientation="vertical" size={6} style={{ width: '100%' }}>
                             {slide.backgroundImage ? (
                                 <img
                                     src={slide.backgroundImage}

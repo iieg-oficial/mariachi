@@ -47,7 +47,7 @@ const ShortcutCard = ({ to, icon, title, description }) => (
             style={{ height: '100%' }}
             styles={{ body: { padding: 20 } }}
         >
-            <Space direction="vertical" size={8} style={{ width: '100%' }}>
+            <Space orientation="vertical" size={8} style={{ width: '100%' }}>
                 <div style={{ fontSize: 32, color: '#5C2472' }}>{icon}</div>
                 <Text strong style={{ fontSize: 16 }}>{title}</Text>
                 <Text type="secondary" style={{ fontSize: 13 }}>{description}</Text>
@@ -127,7 +127,7 @@ export default function InicioPage() {
 
     return (
         <Content style={{ padding: 24, maxWidth: 1200, margin: '0 auto', width: '100%' }}>
-            <Space direction="vertical" size="large" style={{ width: '100%' }}>
+            <Space orientation="vertical" size="large" style={{ width: '100%' }}>
                 <div>
                     <Title level={3} style={{ marginBottom: 4 }}>
                         Hola, {user?.name || 'editor'}
@@ -169,7 +169,7 @@ export default function InicioPage() {
                         <Empty
                             image={Empty.PRESENTED_IMAGE_SIMPLE}
                             description={
-                                <Space direction="vertical" size={4}>
+                                <Space orientation="vertical" size={4}>
                                     <Text>No tienes borradores en progreso</Text>
                                     <Text type="secondary" style={{ fontSize: 12 }}>
                                         Empieza por <Link to="/mapalab/home">editar el Inicio</Link> o <Link to="/mapalab/eventos">crear un evento</Link>.

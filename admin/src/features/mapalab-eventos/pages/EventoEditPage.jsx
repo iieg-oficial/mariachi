@@ -255,7 +255,7 @@ export default function EventoEditPage() {
 
     return (
         <Content style={{ padding: isMobile ? 12 : 24, maxWidth: 1100, margin: '0 auto', width: '100%' }}>
-            <Space direction="vertical" size="large" style={{ width: '100%' }}>
+            <Space orientation="vertical" size="large" style={{ width: '100%' }}>
                 <Space style={{ justifyContent: 'space-between', width: '100%' }} wrap>
                     <Space>
                         <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(reviewMode ? '/revision' : '/mapalab/eventos')}>

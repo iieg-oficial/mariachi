@@ -199,7 +199,7 @@ const HeaderFieldBlock = ({ value, onChange, onRemove, availableFields }) => {
 
     return (
         <BlockShell title="Encabezado (headerField)" onRemove={onRemove} hint="Título grande del cuadro">
-            <Space direction="vertical" size={6} style={{ width: '100%' }}>
+            <Space orientation="vertical" size={6} style={{ width: '100%' }}>
                 <Radio.Group
                     size="small"
                     value={mode}
@@ -244,7 +244,7 @@ const NestedFieldEditor = ({ entry, onChange, onRemove, availableFields, parentS
     };
     return (
         <Card size="small" type="inner" styles={{ body: { padding: 8 } }}>
-            <Space direction="vertical" size={4} style={{ width: '100%' }}>
+            <Space orientation="vertical" size={4} style={{ width: '100%' }}>
                 <Space.Compact style={{ width: '100%' }}>
                     <Select
                         style={{ flex: 1 }}
@@ -287,7 +287,7 @@ const LabelGroupsBlock = ({ value = [], onChange, onRemove, availableFields }) =
 
     return (
         <BlockShell title="Etiquetas (labelGroups)" onRemove={onRemove} hint="Badges con colores (ej. municipio, característica)">
-            <Space direction="vertical" size="small" style={{ width: '100%' }}>
+            <Space orientation="vertical" size="small" style={{ width: '100%' }}>
                 {value.map((g, idx) => {
                     const groupKind = g.staticValues !== undefined ? 'static' : 'fields';
                     const setKind = (kind) => {
@@ -311,7 +311,7 @@ const LabelGroupsBlock = ({ value = [], onChange, onRemove, availableFields }) =
                                 <Button size="small" type="text" danger icon={<DeleteOutlined />} onClick={() => removeGroup(idx)} />
                             }
                         >
-                            <Space direction="vertical" size={6} style={{ width: '100%' }}>
+                            <Space orientation="vertical" size={6} style={{ width: '100%' }}>
                                 <Radio.Group
                                     size="small"
                                     value={groupKind}
@@ -343,7 +343,7 @@ const LabelGroupsBlock = ({ value = [], onChange, onRemove, availableFields }) =
                                                 <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 4 }}>
                                                     Campos con styling propio:
                                                 </Text>
-                                                <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                                                <Space orientation="vertical" size={4} style={{ width: '100%' }}>
                                                     {nestedFields.map((entry, ei) => (
                                                         <NestedFieldEditor
                                                             key={ei}
@@ -375,7 +375,7 @@ const LabelGroupsBlock = ({ value = [], onChange, onRemove, availableFields }) =
                                         </Button>
                                     </>
                                 ) : (
-                                    <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                                    <Space orientation="vertical" size={4} style={{ width: '100%' }}>
                                         {(g.staticValues || []).map((sv, si) => {
                                             const isObj = sv && typeof sv === 'object';
                                             const text = isObj ? (sv.fallback || '') : (sv || '');
@@ -440,7 +440,7 @@ const CardsBlock = ({ value = [], columns = 1, onChange, onColumnsChange, onRemo
 
     return (
         <BlockShell title="Cards (estadísticas)" onRemove={onRemove} hint="Grid de valores numéricos con label">
-            <Space direction="vertical" size="small" style={{ width: '100%' }}>
+            <Space orientation="vertical" size="small" style={{ width: '100%' }}>
                 <Space size={6}>
                     <Text type="secondary" style={{ fontSize: 12 }}>Columnas:</Text>
                     <InputNumber size="small" min={1} max={4} value={columns} onChange={(v) => onColumnsChange(v ?? 1)} />
@@ -495,7 +495,7 @@ const ListBlock = ({ value = [], onChange, onRemove, availableFields }) => {
 
     return (
         <BlockShell title="Lista (list)" onRemove={onRemove} hint="Pares label/valor (formatea fechas y números)">
-            <Space direction="vertical" size="small" style={{ width: '100%' }}>
+            <Space orientation="vertical" size="small" style={{ width: '100%' }}>
                 {value.map((it, idx) => (
                     <Space.Compact key={idx} style={{ width: '100%' }}>
                         <Select
@@ -544,7 +544,7 @@ const IconTextBlock = ({ value = [], onChange, onRemove, availableFields }) => {
 
     return (
         <BlockShell title="Íconos con texto (iconText)" onRemove={onRemove} hint="Ícono + valor del campo (ubicación abre Maps, celular abre marcador)">
-            <Space direction="vertical" size="small" style={{ width: '100%' }}>
+            <Space orientation="vertical" size="small" style={{ width: '100%' }}>
                 {value.map((it, idx) => (
                     <Space.Compact key={idx} style={{ width: '100%' }}>
                         <Select
@@ -591,7 +591,7 @@ const TextBlock = ({ value = [], onChange, onRemove }) => {
 
     return (
         <BlockShell title="Texto (text)" onRemove={onRemove} hint="Párrafos libres (ej. descripción metodológica)">
-            <Space direction="vertical" size="small" style={{ width: '100%' }}>
+            <Space orientation="vertical" size="small" style={{ width: '100%' }}>
                 {value.map((it, idx) => (
                     <Space.Compact key={idx} style={{ width: '100%' }}>
                         <Input.TextArea
@@ -758,7 +758,7 @@ export default function InfoBoxBlocksEditor({ value, onChange, availableFields =
     const inheriting = !hasOwnConfig && !!inherited;
 
     return (
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
             {config.headerTransform && (
                 <Tag color="orange" style={{ whiteSpace: 'normal', height: 'auto', padding: '4px 8px' }}>
                     Esta capa usa <code>headerTransform</code> avanzado (mapeo o sufijos por feature). Se preserva al guardar pero no se edita aquí.
@@ -787,7 +787,7 @@ export default function InfoBoxBlocksEditor({ value, onChange, availableFields =
                     borderRadius: 6,
                     padding: '10px 12px',
                 }}>
-                    <Space direction="vertical" size={6} style={{ width: '100%' }}>
+                    <Space orientation="vertical" size={6} style={{ width: '100%' }}>
                         <Text strong>
                             Heredando del grupo: <code>{inherited.label}</code>
                         </Text>
@@ -830,7 +830,7 @@ export default function InfoBoxBlocksEditor({ value, onChange, availableFields =
                     borderRadius: 6,
                     padding: '8px 12px',
                 }}>
-                    <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                    <Space orientation="vertical" size={4} style={{ width: '100%' }}>
                         <Text type="secondary" style={{ fontSize: 12 }}>
                             Esta capa tiene <b>cuadro personalizado</b> que sobrescribe al del grupo
                             {' '}<code>{inherited.label}</code>.
@@ -919,7 +919,7 @@ export default function InfoBoxBlocksEditor({ value, onChange, availableFields =
                     <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 4 }}>
                         Bloques del cuerpo (usa las flechas para reordenar):
                     </Text>
-                    <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                    <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
                         {bodyOrder.map((key, idx) => (
                             <ReorderableBlock
                                 key={key}

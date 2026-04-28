@@ -797,7 +797,7 @@ export default function LayerEditPage() {
                         <Empty
                             image={<PartitionOutlined style={{ fontSize: 56, color: '#d9d9d9' }} />}
                             description={
-                                <Space direction="vertical" align="center" size={4}>
+                                <Space orientation="vertical" align="center" size={4}>
                                     <Title level={4} style={{ margin: 0 }}>Editor de capas MapaLab</Title>
                                     <Paragraph type="secondary" style={{ margin: 0, maxWidth: 480, textAlign: 'center' }}>
                                         Selecciona una capa del árbol para editar sus propiedades.

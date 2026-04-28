@@ -87,7 +87,7 @@ export default function CapasField({ value = [], onChange, disabled }) {
             title: 'Capa',
             key: 'capa',
             render: (_, record, idx) => (
-                <Space direction="vertical" size={0}>
+                <Space orientation="vertical" size={0}>
                     <Tag color="blue">{record.workspace}:{record.layer}</Tag>
                     <Input
                         size="small"
@@ -141,7 +141,7 @@ export default function CapasField({ value = [], onChange, disabled }) {
     ];
 
     return (
-        <Space direction="vertical" style={{ width: '100%' }}>
+        <Space orientation="vertical" style={{ width: '100%' }}>
             <Space style={{ justifyContent: 'space-between', width: '100%' }}>
                 <Text type="secondary" style={{ fontSize: 12 }}>
                     Capas que aparecerán en el panel del evento. Reordena con los botones.
@@ -170,7 +170,7 @@ export default function CapasField({ value = [], onChange, disabled }) {
                 footer={null}
                 width={720}
             >
-                <Space direction="vertical" style={{ width: '100%' }}>
+                <Space orientation="vertical" style={{ width: '100%' }}>
                     <Input.Search
                         placeholder="Buscar por label, workspace o layer"
                         value={search}

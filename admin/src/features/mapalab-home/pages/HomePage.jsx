@@ -314,7 +314,7 @@ export default function HomePage() {
         const seccion = seccionesByKey[reviewSectionKey];
         return (
             <Content style={{ padding: isMobile ? 12 : 24, maxWidth: 1100, margin: '0 auto', width: '100%' }}>
-                <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                <Space orientation="vertical" size="large" style={{ width: '100%' }}>
                     <Title level={isMobile ? 4 : 3} style={{ margin: 0 }}>
                         Revisar sección: {SECTION_REGISTRY[reviewSectionKey]?.label || reviewSectionKey}
                     </Title>
@@ -350,13 +350,12 @@ export default function HomePage() {
 
     return (
         <Content style={{ padding: isMobile ? 12 : 24, maxWidth: 1100, margin: '0 auto', width: '100%' }}>
-            <Space direction="vertical" size="large" style={{ width: '100%' }}>
+            <Space orientation="vertical" size="large" style={{ width: '100%' }}>
                 <Space style={{ justifyContent: 'space-between', width: '100%' }} wrap>
                     <div>
-                        <Title level={isMobile ? 4 : 3} style={{ marginBottom: 4 }}>Inicio MapaLab</Title>
+                        <Title level={isMobile ? 4 : 3} style={{ marginBottom: 4 }}>Inicio de MapaLab</Title>
                         <Text type="secondary">
-                            Edita el contenido del landing del visor. Cada sección tiene un borrador independiente
-                            que solo se publica cuando lo confirmas.
+                            Edita el contenido de inicio para MapaLab
                         </Text>
                     </div>
                     <Space>
@@ -375,7 +374,7 @@ export default function HomePage() {
                         onChange={setActiveKey}
                         destroyOnHidden={false}
                         items={tabs}
-                        tabPosition={isMobile ? 'top' : 'left'}
+                        tabPlacement={isMobile ? 'top' : 'left'}
                         style={{ minHeight: 400 }}
                     />
                 )}

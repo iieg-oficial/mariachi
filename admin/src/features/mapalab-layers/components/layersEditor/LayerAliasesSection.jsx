@@ -54,7 +54,7 @@ export default function LayerAliasesSection({ layerId, listAliases, createAlias,
     };
 
     return (
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
             <Text type="secondary">
                 Atajos cortos opcionales que también resuelven a esta capa vía{' '}
                 <code>?layer=&lt;alias&gt;</code>. El nombre en URL canónico siempre funciona; los alias son

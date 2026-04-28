@@ -57,7 +57,7 @@ export default function LayerIdsField({ value = [], onChange, disabled }) {
     };
 
     return (
-        <Space direction="vertical" style={{ width: '100%' }}>
+        <Space orientation="vertical" style={{ width: '100%' }}>
             <Space style={{ justifyContent: 'space-between', width: '100%' }}>
                 <Text type="secondary" style={{ fontSize: 11 }}>
                     Capas que se activarán al hacer click en este subtema.
@@ -70,7 +70,7 @@ export default function LayerIdsField({ value = [], onChange, disabled }) {
             {ids.length === 0 ? (
                 <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Sin capas" style={{ margin: 0 }} />
             ) : (
-                <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                <Space orientation="vertical" size={4} style={{ width: '100%' }}>
                     {ids.map((id, idx) => {
                         const meta = byId.get(id);
                         return (
@@ -100,7 +100,7 @@ export default function LayerIdsField({ value = [], onChange, disabled }) {
                 footer={null}
                 width={720}
             >
-                <Space direction="vertical" style={{ width: '100%' }}>
+                <Space orientation="vertical" style={{ width: '100%' }}>
                     <Input.Search
                         placeholder="Buscar por id, label o layer"
                         value={search}

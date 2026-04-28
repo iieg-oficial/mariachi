@@ -11,12 +11,12 @@ export default function BBoxField({ value, onChange, disabled }) {
     };
 
     return (
-        <Space direction="vertical" style={{ width: '100%' }}>
+        <Space orientation="vertical" style={{ width: '100%' }}>
             <Text type="secondary" style={{ fontSize: 12 }}>
                 Coordenadas en EPSG:4326 (longitud/latitud). El visor hará zoom a este rectángulo al abrir el evento.
             </Text>
             <Space wrap>
-                <Space direction="vertical" size={0}>
+                <Space orientation="vertical" size={0}>
                     <Text style={{ fontSize: 11 }}>min lon (oeste)</Text>
                     <InputNumber
                         value={v.minx}
@@ -26,7 +26,7 @@ export default function BBoxField({ value, onChange, disabled }) {
                         style={{ width: 140 }}
                     />
                 </Space>
-                <Space direction="vertical" size={0}>
+                <Space orientation="vertical" size={0}>
                     <Text style={{ fontSize: 11 }}>min lat (sur)</Text>
                     <InputNumber
                         value={v.miny}
@@ -36,7 +36,7 @@ export default function BBoxField({ value, onChange, disabled }) {
                         style={{ width: 140 }}
                     />
                 </Space>
-                <Space direction="vertical" size={0}>
+                <Space orientation="vertical" size={0}>
                     <Text style={{ fontSize: 11 }}>max lon (este)</Text>
                     <InputNumber
                         value={v.maxx}
@@ -46,7 +46,7 @@ export default function BBoxField({ value, onChange, disabled }) {
                         style={{ width: 140 }}
                     />
                 </Space>
-                <Space direction="vertical" size={0}>
+                <Space orientation="vertical" size={0}>
                     <Text style={{ fontSize: 11 }}>max lat (norte)</Text>
                     <InputNumber
                         value={v.maxy}

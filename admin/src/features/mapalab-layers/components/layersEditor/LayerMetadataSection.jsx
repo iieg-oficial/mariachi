@@ -185,7 +185,7 @@ export default function LayerMetadataSection({
     }
 
     return (
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="large" style={{ width: '100%' }}>
             <Alert
                 type={derivedFromDescendants ? 'success' : (siblingsSharingCount > 0 ? 'warning' : 'info')}
                 showIcon

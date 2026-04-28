@@ -63,7 +63,7 @@ export default function BucketFilePicker({ open, onClose, onSelect, bucketId, pr
             render: (name) => {
                 const basename = name.split('/').pop();
                 return (
-                    <Space direction="vertical" size={0} style={{ width: '100%' }}>
+                    <Space orientation="vertical" size={0} style={{ width: '100%' }}>
                         <Text strong style={{ wordBreak: 'break-all' }}>{basename}</Text>
                         <Text type="secondary" style={{ fontSize: 11, wordBreak: 'break-all' }}>{name}</Text>
                     </Space>
@@ -151,7 +151,7 @@ export default function BucketFilePicker({ open, onClose, onSelect, bucketId, pr
                         })}
                         locale={{
                             emptyText: (
-                                <Space direction="vertical" align="center" style={{ padding: 24 }}>
+                                <Space orientation="vertical" align="center" style={{ padding: 24 }}>
                                     <FolderOpenOutlined style={{ fontSize: 32, color: '#8c8c8c' }} />
                                     <Text type="secondary">Sin archivos en esta carpeta</Text>
                                 </Space>

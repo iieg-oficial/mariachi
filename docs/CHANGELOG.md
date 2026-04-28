@@ -13,6 +13,20 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.30.16] - 2026-04-28
+
+### Admin (admin) — antd deprecations + 404 ruidosos en useResourceDraft
+
+- **`<Space direction>` → `<Space orientation>`**: 65 ocurrencias renombradas en bloque (sed) en `features/`, `shared/` y `app/`. antd >=5 marca `direction` como deprecated en `Space` (no afecta a otros componentes que usan `direction`, como `Drawer`).
+- **`<Tabs tabPosition>` → `<Tabs tabPlacement>`**: en `mapalab-home/pages/HomePage.jsx`. Misma deprecación de antd.
+
+### Backend (api) + Admin (admin) — borradores existence-check sin 404
+
+- **`GET /borradores/{resource_type}/{resource_id}`** ahora devuelve `200 null` cuando el usuario no tiene un borrador para ese par. Antes devolvía `404`, lo que era el flujo normal pero llenaba la consola del browser de errores rojos al abrir cualquier sección de Inicio o un evento. `response_model` cambió a `BorradorResponse | None`.
+- **`shared/hooks/useResourceDraft.js`** ahora trata `res.data === null` como "no draft": no llama `setHasDraft`, no muestra `message.info`, no aplica `onApplyDraft`. El `try/catch` queda por si el endpoint falla por otro motivo (sin sesión, etc.).
+
+---
+
 ## [0.30.15] - 2026-04-28
 
 ### Backend (api) + Admin (admin) — landing de Inicio (bandeja personal + atajos)

@@ -109,7 +109,7 @@ export default function WmsGroupField({
     }
 
     return (
-        <Space direction="vertical" size="small" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="small" style={{ width: '100%' }}>
             <Select
                 value={value || undefined}
                 onChange={(v) => onChange?.(v ?? '')}
@@ -139,7 +139,7 @@ export default function WmsGroupField({
                             <Tooltip
                                 key={m.id}
                                 title={
-                                    <Space direction="vertical" size={0}>
+                                    <Space orientation="vertical" size={0}>
                                         <span>workspace: {m.workspaceAlias || '—'}</span>
                                         <span>capa GS: {m.geoserverLayer || '—'}</span>
                                         <span>rama: {m.parentLabel || '—'}</span>
