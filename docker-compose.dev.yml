@@ -55,6 +55,7 @@ services:
       - ./.env.development
     volumes:
       - ./api:/app
+      - ./docs:/app/_docs:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:

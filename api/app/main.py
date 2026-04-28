@@ -24,6 +24,7 @@ from app.api.routes import (
     projects,
     public,
     sieej_admin,
+    sistema,
     users,
 )
 from app.core.settings import get_settings
@@ -73,6 +74,7 @@ def create_app() -> FastAPI:
     app.include_router(menu.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(media.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(borradores.router, prefix=settings.admin_prefix, dependencies=staff_dep)
+    app.include_router(sistema.router, prefix=settings.admin_prefix)
     app.include_router(layers.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(layer_metadata.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(geoserver.router, prefix=settings.admin_prefix, dependencies=staff_dep)
@@ -93,6 +95,15 @@ def create_app() -> FastAPI:
             "status": "ok",
             "project": settings.project_name,
             "version": settings.version,
+        }
+
+    @app.get("/ontoy", tags=["health"])
+    async def ontoy():
+        from app.core.version import get_app_version
+        return {
+            "slug": "mariachi-api",
+            "label": "Mariachi API",
+            "version": get_app_version(),
         }
 
     @app.get("/health", tags=["health"])

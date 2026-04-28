@@ -13,6 +13,36 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.30.19] - 2026-04-28
+
+### Backend (api) + Admin (admin) — landing reescrita: plataformas + notas de versión
+
+- **Atajos eliminados** del `/inicio`. Ya no tiene sentido tener "Editar Inicio / Eventos / Media / Revisiones" como cards porque el sider los expone directamente.
+- **Nuevas secciones en `/inicio`**:
+  - **Plataformas del ecosistema** — grid de cards con `label`, `slug`, `version` (tag azul si la conoce, gris si no), badge de estado (verde "activa" si responde, gris "no integrada" si no). Click en una card activa va a su URL si la tiene; las inactivas no son clickeables.
+  - **Notas de versión** — `Collapse` con las últimas 5 entradas del `docs/CHANGELOG.md`. La primera viene expandida.
+
+### Backend (api) — `/sistema/plataformas` y `/sistema/notas-version`
+
+- **`/ontoy`** raíz en mariachi-api (`{slug, label, version}`). Convención del ecosistema IIEG: cada repo expone este endpoint para que el dashboard de Mariachi pueda detectar versión y healthy en una sola llamada.
+- **`app/core/version.py`** — `get_app_version()` lee la versión real del `pyproject.toml` (no `importlib.metadata`, que en dev queda desfasada respecto al wheel instalado en el editable install).
+- **`app/core/platforms_config.py`** — registro hardcoded con campos `slug, label, url, probe, probe_url_template`. `probe` admite cuatro tipos: `self` (lee versión local sin red), `ontoy` (HTTP GET al endpoint `/ontoy` del repo, parse JSON), `http_health` (HTTP GET a una URL cualquiera, 200 = healthy, sin versión), `dataengine` (`SELECT version()` vía `get_dataengine_db`). Templates con placeholders `{mapalab_backend_url}`, `{sieej_url}`, `{acervo_scheme}://{acervo_endpoint}`. Si un placeholder queda vacío (env no configurada) la plataforma reporta `healthy=false`.
+- **`app/services/changelog_parser.py`** — parser de Keep a Changelog → JSON estructurado `[{version, fecha, secciones: [{titulo, contenido}]}]`. Lee de `/app/_docs/CHANGELOG.md` (montaje agregado a `docker-compose.dev.yml`) o del path relativo del repo como fallback. Soporta `[Unreleased]` / `[No publicado]` (los salta) y `## [x.y.z] - YYYY-MM-DD`.
+- **`app/api/routes/sistema.py`** — `GET /sistema/plataformas` y `GET /sistema/notas-version?limit=5`. Ambos requieren `current_user` (cualquier rol). El probe de mapalab consulta `{MAPALAB_BACKEND_URL}/ontoy`; el de acervo `http://{ACERVO_ENDPOINT}/minio/health/live` (interno, no público); el de sieej `{SIEEJ_URL}`; el de dataengine reutiliza `get_dataengine_db` y parsea la respuesta de `SELECT version()` para tomar el número (`18.3`, `17.2`, etc.).
+- **`docker-compose.dev.yml`** — `./docs:/app/_docs:ro` para que el parser pueda leer el changelog en runtime.
+- **Settings nuevos**: `sieej_url` (opcional). El `mapalab_backend_url` ya existía. `MAPALAB_FRONTEND_URL` deliberadamente NO se agrega porque mapalab es un solo deployment (backend + frontend); su `/ontoy` cubre ambos.
+- **`.env.development.example`** — `SIEEJ_URL` documentado con su comportamiento ("vacío = no integrada").
+
+### Admin (admin) — mini-renderer de markdown
+
+- **Nuevo `shared/components/Markdown.jsx`**: renderer minimal sin dependencias externas. Soporta `**negritas**` → `<strong>`, `` `inline code` `` → `<code>` con estilo monospaced, y viñetas `- item` agrupadas en `<ul>`. Es lo justo para renderizar las entradas del CHANGELOG sin el ruido de `react-markdown` + plugins. La página de inicio usa este componente para `notas-version`; antes mostraba el markdown como texto plano (`<Paragraph whiteSpace='pre-wrap'>`).
+
+### Mapalab — `/ontoy` en backend
+
+- **`mapalab/backend/app/__version__.py`** y **`server.py`**: nuevo endpoint `GET /ontoy` que devuelve `{slug, label, version}` para que mariachi pueda detectarlo. La versión se mantiene sincronizada con `frontend/package.json` (un solo bumpeo del repo). Lo bumpeé manualmente al `1.13.1`. El bump en `frontend/package.json` debe actualizar también este archivo (TODO: pre-commit hook que lo valide; mientras tanto, manual).
+
+---
+
 ## [0.30.18] - 2026-04-28
 
 ### Admin (admin) — sider acepta `disabled` y entrada raíz "Inicio"

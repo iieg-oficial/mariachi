@@ -1,15 +1,20 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
-import { Layout, Card, Typography, Space, Tag, Table, Button, Empty, Spin, Alert } from 'antd';
+import { Layout, Card, Typography, Space, Tag, Table, Button, Empty, Spin, Alert, Collapse, Badge, Tooltip } from 'antd';
 import {
-    HomeOutlined,
-    CalendarOutlined,
-    FileImageOutlined,
     AuditOutlined,
     EditOutlined,
+    AppstoreOutlined,
+    FileTextOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '@shared/contexts/useAuth';
-import { getMisBorradores, getBorradoresPendientes } from '@features/inicio/api/inicioService';
+import Markdown from '@shared/components/Markdown';
+import {
+    getMisBorradores,
+    getBorradoresPendientes,
+    getPlataformas,
+    getNotasVersion,
+} from '@features/inicio/api/inicioService';
 
 const { Content } = Layout;
 const { Title, Text } = Typography;
@@ -40,28 +45,46 @@ const tituloRecurso = (record) => {
 };
 
 
-const ShortcutCard = ({ to, icon, title, description }) => (
-    <Link to={to} style={{ display: 'block', height: '100%' }}>
-        <Card
-            hoverable
-            style={{ height: '100%' }}
-            styles={{ body: { padding: 20 } }}
-        >
-            <Space orientation="vertical" size={8} style={{ width: '100%' }}>
-                <div style={{ fontSize: 32, color: '#5C2472' }}>{icon}</div>
-                <Text strong style={{ fontSize: 16 }}>{title}</Text>
-                <Text type="secondary" style={{ fontSize: 13 }}>{description}</Text>
+const PlataformaCard = ({ plataforma }) => {
+    const { slug, label, url, version, healthy } = plataforma;
+    const versionTag = version
+        ? <Tag color="blue">v{version}</Tag>
+        : <Tag color="default">sin versión</Tag>;
+    const statusBadge = healthy
+        ? <Badge status="success" text="activa" />
+        : <Tooltip title="No respondió al endpoint /ontoy"><Badge status="default" text="no integrada" /></Tooltip>;
+
+    const body = (
+        <Space orientation="vertical" size={8} style={{ width: '100%' }}>
+            <Space style={{ justifyContent: 'space-between', width: '100%' }}>
+                <Text strong style={{ fontSize: 16 }}>{label}</Text>
+                {versionTag}
             </Space>
-        </Card>
-    </Link>
-);
+            <Text type="secondary" style={{ fontSize: 12 }}>{slug}</Text>
+            {statusBadge}
+        </Space>
+    );
+
+    if (url && healthy) {
+        return (
+            <Link to={url} style={{ display: 'block', height: '100%' }}>
+                <Card hoverable size="small" styles={{ body: { padding: 16 } }}>{body}</Card>
+            </Link>
+        );
+    }
+    return <Card size="small" styles={{ body: { padding: 16 } }}>{body}</Card>;
+};
 
 
 export default function InicioPage() {
     const { user } = useAuth();
     const [misBorradores, setMisBorradores] = useState([]);
     const [pendientes, setPendientes] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const [plataformas, setPlataformas] = useState([]);
+    const [notasVersion, setNotasVersion] = useState([]);
+    const [loadingBorradores, setLoadingBorradores] = useState(true);
+    const [loadingPlataformas, setLoadingPlataformas] = useState(true);
+    const [loadingNotas, setLoadingNotas] = useState(true);
     const isAdmin = user?.role === 'tetlamamakani';
 
     useEffect(() => {
@@ -76,10 +99,28 @@ export default function InicioPage() {
                 if (pend) setPendientes(pend);
             })
             .catch(() => {})
-            .finally(() => { if (!cancelled) setLoading(false); });
+            .finally(() => { if (!cancelled) setLoadingBorradores(false); });
 
         return () => { cancelled = true; };
     }, [isAdmin]);
+
+    useEffect(() => {
+        let cancelled = false;
+        getPlataformas()
+            .then((data) => { if (!cancelled) setPlataformas(data); })
+            .catch(() => {})
+            .finally(() => { if (!cancelled) setLoadingPlataformas(false); });
+        return () => { cancelled = true; };
+    }, []);
+
+    useEffect(() => {
+        let cancelled = false;
+        getNotasVersion(5)
+            .then((data) => { if (!cancelled) setNotasVersion(data); })
+            .catch(() => {})
+            .finally(() => { if (!cancelled) setLoadingNotas(false); });
+        return () => { cancelled = true; };
+    }, []);
 
     const rechazados = useMemo(
         () => misBorradores.filter((b) => b.estado === 'rechazado'),
@@ -125,6 +166,26 @@ export default function InicioPage() {
         },
     ];
 
+    const notasItems = notasVersion.map((release) => ({
+        key: release.version,
+        label: (
+            <Space>
+                <Tag color="blue">v{release.version}</Tag>
+                {release.fecha && <Text type="secondary" style={{ fontSize: 12 }}>{release.fecha}</Text>}
+            </Space>
+        ),
+        children: (
+            <Space orientation="vertical" size={12} style={{ width: '100%' }}>
+                {release.secciones.map((sec, i) => (
+                    <div key={i}>
+                        {sec.titulo && <Text strong>{sec.titulo}</Text>}
+                        <Markdown text={sec.contenido} />
+                    </div>
+                ))}
+            </Space>
+        ),
+    }));
+
     return (
         <Content style={{ padding: 24, maxWidth: 1200, margin: '0 auto', width: '100%' }}>
             <Space orientation="vertical" size="large" style={{ width: '100%' }}>
@@ -163,7 +224,7 @@ export default function InicioPage() {
                 )}
 
                 <Card title="Mis borradores" size="small">
-                    {loading ? (
+                    {loadingBorradores ? (
                         <div style={{ textAlign: 'center', padding: 24 }}><Spin /></div>
                     ) : misBorradores.length === 0 ? (
                         <Empty
@@ -189,39 +250,33 @@ export default function InicioPage() {
                 </Card>
 
                 <div>
-                    <Title level={4} style={{ marginBottom: 12 }}>Atajos</Title>
-                    <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-                        gap: 16,
-                    }}>
-                        <ShortcutCard
-                            to="/mapalab/home"
-                            icon={<HomeOutlined />}
-                            title="Editar Inicio"
-                            description="Banner, guías y secciones del visor MapaLab."
-                        />
-                        <ShortcutCard
-                            to="/mapalab/eventos"
-                            icon={<CalendarOutlined />}
-                            title="Eventos"
-                            description="Crea y administra eventos visibles en el visor."
-                        />
-                        <ShortcutCard
-                            to="/media"
-                            icon={<FileImageOutlined />}
-                            title="Media"
-                            description="Sube y administra imágenes y archivos del Acervo."
-                        />
-                        {isAdmin && (
-                            <ShortcutCard
-                                to="/revision"
-                                icon={<AuditOutlined />}
-                                title="Revisiones"
-                                description="Aprueba o rechaza los borradores pendientes."
-                            />
-                        )}
-                    </div>
+                    <Title level={4} style={{ marginBottom: 12 }}>
+                        <AppstoreOutlined /> Plataformas del ecosistema
+                    </Title>
+                    {loadingPlataformas ? (
+                        <div style={{ textAlign: 'center', padding: 24 }}><Spin /></div>
+                    ) : (
+                        <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                            gap: 16,
+                        }}>
+                            {plataformas.map((p) => <PlataformaCard key={p.slug} plataforma={p} />)}
+                        </div>
+                    )}
+                </div>
+
+                <div>
+                    <Title level={4} style={{ marginBottom: 12 }}>
+                        <FileTextOutlined /> Notas de versión
+                    </Title>
+                    {loadingNotas ? (
+                        <div style={{ textAlign: 'center', padding: 24 }}><Spin /></div>
+                    ) : notasVersion.length === 0 ? (
+                        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Sin notas disponibles" />
+                    ) : (
+                        <Collapse items={notasItems} defaultActiveKey={[notasVersion[0]?.version]} />
+                    )}
                 </div>
             </Space>
         </Content>

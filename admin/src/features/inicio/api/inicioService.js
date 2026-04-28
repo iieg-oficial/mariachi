@@ -9,3 +9,13 @@ export const getBorradoresPendientes = async () => {
     const res = await api.get('/borradores/pendientes');
     return res.data;
 };
+
+export const getPlataformas = async () => {
+    const res = await api.get('/sistema/plataformas');
+    return res.data;
+};
+
+export const getNotasVersion = async (limit = 5) => {
+    const res = await api.get(`/sistema/notas-version?limit=${limit}`);
+    return res.data;
+};
