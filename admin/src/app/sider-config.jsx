@@ -74,7 +74,7 @@ export const PROJECT_REGISTRY = {
             {
                 key: '/mapalab/home',
                 path: '/mapalab/home',
-                label: 'Home',
+                label: 'Inicio',
                 icon: <HomeOutlined />,
             },
         ],

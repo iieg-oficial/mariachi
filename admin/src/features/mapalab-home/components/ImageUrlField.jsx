@@ -5,7 +5,6 @@ import api from '@shared/services/api';
 import { BucketFilePicker } from '@features/media';
 
 const MAPALAB_BUCKET_SLUG = 'mapalab';
-const PREFIXES = ['home/', 'eventos/iconos/', 'iconos/', ''];
 
 
 export default function ImageUrlField({ value, onChange, disabled, placeholder = 'URL de imagen' }) {
@@ -43,7 +42,7 @@ export default function ImageUrlField({ value, onChange, disabled, placeholder =
                     disabled={disabled || !bucketId}
                     onClick={() => setOpen(true)}
                 >
-                    Bucket
+                    Media
                 </Button>
             </Space.Compact>
             {value && (
@@ -59,7 +58,6 @@ export default function ImageUrlField({ value, onChange, disabled, placeholder =
                 onClose={() => setOpen(false)}
                 onSelect={onSelect}
                 bucketId={bucketId}
-                prefixes={PREFIXES}
                 title="Elegir imagen"
             />
         </Space>

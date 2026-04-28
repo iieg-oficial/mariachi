@@ -353,7 +353,7 @@ export default function HomePage() {
             <Space direction="vertical" size="large" style={{ width: '100%' }}>
                 <Space style={{ justifyContent: 'space-between', width: '100%' }} wrap>
                     <div>
-                        <Title level={isMobile ? 4 : 3} style={{ marginBottom: 4 }}>Home MapaLab</Title>
+                        <Title level={isMobile ? 4 : 3} style={{ marginBottom: 4 }}>Inicio MapaLab</Title>
                         <Text type="secondary">
                             Edita el contenido del landing del visor. Cada sección tiene un borrador independiente
                             que solo se publica cuando lo confirmas.

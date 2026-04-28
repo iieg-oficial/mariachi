@@ -5,7 +5,6 @@ import api from '@shared/services/api';
 import { BucketFilePicker } from '@features/media';
 
 const MAPALAB_BUCKET_SLUG = 'mapalab';
-const TEMA_ICON_PREFIXES = ['svg/temas/', 'svg/'];
 
 
 export default function TemaIconField({ value, onChange, disabled }) {
@@ -47,7 +46,7 @@ export default function TemaIconField({ value, onChange, disabled }) {
                     disabled={disabled || !bucketId}
                     onClick={() => setPickerOpen(true)}
                 >
-                    Bucket
+                    Media
                 </Button>
             </Space.Compact>
             {value && (
@@ -65,7 +64,6 @@ export default function TemaIconField({ value, onChange, disabled }) {
                 onClose={() => setPickerOpen(false)}
                 onSelect={onSelect}
                 bucketId={bucketId}
-                prefixes={TEMA_ICON_PREFIXES}
                 title="Elegir icono del tema"
             />
         </Space>

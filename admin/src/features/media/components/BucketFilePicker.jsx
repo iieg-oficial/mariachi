@@ -5,8 +5,8 @@ import { listBucketObjects } from '@features/media/api/mediaService';
 
 const { Text } = Typography;
 
-export default function BucketFilePicker({ open, onClose, onSelect, bucketId, prefixes = [''], title = 'Seleccionar archivo' }) {
-    const [activePrefix, setActivePrefix] = useState(prefixes[0] || '');
+export default function BucketFilePicker({ open, onClose, onSelect, bucketId, prefixes, title = 'Seleccionar archivo' }) {
+    const [activePrefix, setActivePrefix] = useState('');
     const [objects, setObjects] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
@@ -18,16 +18,37 @@ export default function BucketFilePicker({ open, onClose, onSelect, bucketId, pr
     useEffect(() => {
         if (!open || !bucketId) return;
         let cancelled = false;
-        listBucketObjects(bucketId, activePrefix)
+        setLoading(true);
+        listBucketObjects(bucketId, '')
             .then((data) => { if (!cancelled) setObjects(data); })
             .catch(() => message.error('No se pudieron listar los archivos del bucket'))
             .finally(() => { if (!cancelled) setLoading(false); });
         return () => { cancelled = true; };
-    }, [open, bucketId, activePrefix]);
+    }, [open, bucketId]);
+
+    const effectivePrefixes = useMemo(() => {
+        if (Array.isArray(prefixes) && prefixes.length > 0) return prefixes;
+        const set = new Set(['']);
+        for (const o of objects) {
+            const idx = o.name.indexOf('/');
+            if (idx > 0) set.add(o.name.slice(0, idx + 1));
+        }
+        return Array.from(set).sort((a, b) => (a === '' ? -1 : b === '' ? 1 : a.localeCompare(b)));
+    }, [prefixes, objects]);
+
+    useEffect(() => {
+        if (effectivePrefixes.length && !effectivePrefixes.includes(activePrefix)) {
+            setActivePrefix(effectivePrefixes[0]);
+        }
+    }, [effectivePrefixes, activePrefix]);
+
+    const scopedObjects = useMemo(() => (
+        activePrefix ? objects.filter((o) => o.name.startsWith(activePrefix)) : objects
+    ), [objects, activePrefix]);
 
     const filtered = useMemo(() => (
-        search ? objects.filter((o) => o.name.toLowerCase().includes(search.toLowerCase())) : objects
-    ), [search, objects]);
+        search ? scopedObjects.filter((o) => o.name.toLowerCase().includes(search.toLowerCase())) : scopedObjects
+    ), [search, scopedObjects]);
 
     const paginated = useMemo(() => {
         const start = (page - 1) * pageSize;
@@ -64,9 +85,9 @@ export default function BucketFilePicker({ open, onClose, onSelect, bucketId, pr
         },
     ];
 
-    const tabItems = prefixes.map((p) => ({
+    const tabItems = effectivePrefixes.map((p) => ({
         key: p || '(root)',
-        label: p ? p.replace(/\/$/, '') : 'Raíz',
+        label: p ? p.replace(/\/$/, '') : 'Todo',
     }));
 
     return (
@@ -89,7 +110,7 @@ export default function BucketFilePicker({ open, onClose, onSelect, bucketId, pr
                     padding: '12px 16px',
                     borderBottom: '1px solid #f0f0f0',
                 }}>
-                    {prefixes.length > 1 && (
+                    {effectivePrefixes.length > 1 && (
                         <Tabs
                             activeKey={activePrefix || '(root)'}
                             onChange={(k) => setActivePrefix(k === '(root)' ? '' : k)}
@@ -132,7 +153,7 @@ export default function BucketFilePicker({ open, onClose, onSelect, bucketId, pr
                             emptyText: (
                                 <Space direction="vertical" align="center" style={{ padding: 24 }}>
                                     <FolderOpenOutlined style={{ fontSize: 32, color: '#8c8c8c' }} />
-                                    <Text type="secondary">El bucket está vacío en este prefijo</Text>
+                                    <Text type="secondary">Sin archivos en esta carpeta</Text>
                                 </Space>
                             ),
                         }}

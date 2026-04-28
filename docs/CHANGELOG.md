@@ -13,6 +13,25 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.30.14] - 2026-04-28
+
+### Admin (admin) — picker de Media: auto-discovery de carpetas + textos
+
+- **`BucketFilePicker`**: `prefixes` ahora es opcional. Si no se pasa, el componente lista todo el bucket una sola vez al abrir y deriva los tabs de las carpetas top-level encontradas (`Set` de `name.split('/')[0] + '/'`). Al cambiar de tab se filtra en frontend, sin segundo request. Si `prefixes` se pasa explícitamente (caso `LayerMetadataSection` con `metadata/txt/`, `metadata/xlsx/`), se respeta el override. El tab "Raíz" pasó a llamarse "Todo" y el placeholder vacío a "Sin archivos en esta carpeta".
+- **Pickers afectados** (eliminado `prefixes` hardcodeado, ahora auto-discover):
+  - `mapalab-home/components/ImageUrlField.jsx` — antes `['home/', 'eventos/iconos/', 'iconos/', '']`. Razón del bug del banner: las imágenes del seed estaban subidas en `webp/` y `svg/`, ningún tab las cubría.
+  - `mapalab-eventos/components/EventoIconPicker.jsx` — antes `['eventos/iconos/', 'iconos/', '']`.
+  - `mapalab-layers/components/layersEditor/TemaIconField.jsx` — antes `['svg/temas/', 'svg/']`.
+- **Renombres UI** (mantiene los slugs/keys internos):
+  - Botón `Bucket` → `Media` en `ImageUrlField`, `EventoIconPicker`, `TemaIconField`.
+  - `MediaPage` Select placeholder `Bucket` → `Media`.
+  - `LayerMetadataSection`: mensaje `Bucket mapalab no disponible` → `Media mapalab no disponible`; link `Administrar todos los archivos del bucket →` → `Administrar todos los archivos →`.
+  - Sider `mapalab/home`: label `Home` → `Inicio`.
+  - `HomePage` título `Home MapaLab` → `Inicio MapaLab`.
+- **Tests**: `BucketFilePicker.test.jsx` actualizado — el tab change ahora valida que NO refetcha (el flujo es 1 request inicial + filtrado en frontend); nuevo caso para auto-discovery de tabs.
+
+---
+
 ## [0.30.13] - 2026-04-27
 
 ### Infra (compose) — `mariachi-api-dev` conectado a la red del acervo local

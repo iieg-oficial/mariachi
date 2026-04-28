@@ -574,7 +574,7 @@ const Media = () => {
                 }}>
                     <div style={{ flex: isMobile ? '1 1 100%' : '0 0 240px' }}>
                         <Select
-                            placeholder="Bucket"
+                            placeholder="Media"
                             value={selectedBucketId}
                             onChange={setSelectedBucketId}
                             style={{ width: '100%' }}

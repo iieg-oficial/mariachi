@@ -158,7 +158,7 @@ export default function LayerMetadataSection({
 
     const openPicker = (index) => {
         if (!mapalabBucketId) {
-            message.warning('Bucket mapalab no disponible');
+            message.warning('Media mapalab no disponible');
             return;
         }
         setPickerFieldIndex(index);
@@ -444,7 +444,7 @@ export default function LayerMetadataSection({
                     </Form.List>
                     <div style={{ marginTop: 12, textAlign: 'right' }}>
                         <Link to="/media" style={{ fontSize: 12 }}>
-                            Administrar todos los archivos del bucket →
+                            Administrar todos los archivos →
                         </Link>
                     </div>
                 </Card>

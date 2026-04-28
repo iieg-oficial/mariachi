@@ -106,7 +106,7 @@ describe('BucketFilePicker', () => {
         });
     });
 
-    it('cambiar de tab refetcha con el nuevo prefix', async () => {
+    it('cambiar de tab filtra en frontend sin refetchar', async () => {
         render(
             <BucketFilePicker
                 open
@@ -117,12 +117,32 @@ describe('BucketFilePicker', () => {
             />,
         );
         await waitFor(() => {
-            expect(listBucketObjects).toHaveBeenCalledWith(1, 'fotos/');
+            expect(listBucketObjects).toHaveBeenCalledWith(1, '');
         });
+        await screen.findByText('perfil.jpg');
+        expect(screen.queryByText('informe.pdf')).not.toBeInTheDocument();
 
         fireEvent.click(screen.getByText('docs'));
         await waitFor(() => {
-            expect(listBucketObjects).toHaveBeenCalledWith(1, 'docs/');
+            expect(screen.getByText('informe.pdf')).toBeInTheDocument();
         });
+        expect(screen.queryByText('perfil.jpg')).not.toBeInTheDocument();
+        expect(listBucketObjects).toHaveBeenCalledTimes(1);
+    });
+
+    it('descubre prefixes automaticamente cuando no se pasan', async () => {
+        render(
+            <BucketFilePicker
+                open
+                onClose={vi.fn()}
+                onSelect={vi.fn()}
+                bucketId={1}
+            />,
+        );
+        await screen.findByText('perfil.jpg');
+        expect(screen.getByRole('tab', { name: 'Todo' })).toBeInTheDocument();
+        expect(screen.getByRole('tab', { name: 'fotos' })).toBeInTheDocument();
+        expect(screen.getByRole('tab', { name: 'docs' })).toBeInTheDocument();
+        expect(screen.getByRole('tab', { name: 'banners' })).toBeInTheDocument();
     });
 });
