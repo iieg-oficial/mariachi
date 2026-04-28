@@ -1,21 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
-import {
-    Alert,
-    Button,
-    Card,
-    Form,
-    Input,
-    Layout,
-    Modal,
-    Popconfirm,
-    Space,
-    Spin,
-    Tabs,
-    Tag,
-    Typography,
-    message,
-} from 'antd';
+import { Alert, Button, Card, Form, Input, Layout, Modal, Popconfirm, Space, Spin, Tabs, Tag, Tooltip, Typography } from 'antd';
 import {
     CheckOutlined,
     CloseOutlined,
@@ -36,20 +21,18 @@ import useIsMobile from '@shared/hooks/useIsMobile';
 import usePresencia from '@shared/hooks/usePresencia';
 import PresenciaIndicator from '@shared/components/PresenciaIndicator';
 import useResourceDraft from '@shared/hooks/useResourceDraft';
+import { message } from '@shared/services/message';
 
 const { Content } = Layout;
 const { Title, Text } = Typography;
-
 
 function defaultsForKey(key) {
     return SECTION_DEFAULTS[key] || {};
 }
 
-
 function payloadFromResponse(seccion) {
     return seccion?.payloadDraft ?? seccion?.payload_draft ?? {};
 }
-
 
 function SectionTab({ seccion, onUpdated, active, reviewMode = false, borradorId = null, onReviewDone }) {
     const navigate = useNavigate();
@@ -264,7 +247,6 @@ function SectionTab({ seccion, onUpdated, active, reviewMode = false, borradorId
     );
 }
 
-
 export default function HomePage() {
     const [secciones, setSecciones] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -309,6 +291,15 @@ export default function HomePage() {
     };
 
     const seccionesByKey = Object.fromEntries(secciones.map((s) => [s.key, s]));
+
+    const pendientesPublicar = useMemo(() => secciones
+        .filter((s) => {
+            const draft = JSON.stringify(s.payloadDraft ?? s.payload_draft ?? {});
+            const pub = JSON.stringify(s.payloadPublished ?? s.payload_published ?? {});
+            return draft !== pub;
+        })
+        .map((s) => ({ key: s.key, label: SECTION_REGISTRY[s.key]?.label || s.key })),
+    [secciones]);
 
     if (reviewMode && reviewSectionKey) {
         const seccion = seccionesByKey[reviewSectionKey];
@@ -359,7 +350,19 @@ export default function HomePage() {
                         </Text>
                     </div>
                     <Space>
-                        <Tag color="blue">Borrador → Publicado</Tag>
+                        {loading ? null : pendientesPublicar.length === 0 ? (
+                            <Tag color="green">Todo publicado</Tag>
+                        ) : (
+                            <Tooltip title={`Sin publicar: ${pendientesPublicar.map((s) => s.label).join(', ')}`}>
+                                <Tag
+                                    color="orange"
+                                    style={{ cursor: 'pointer' }}
+                                    onClick={() => setActiveKey(pendientesPublicar[0].key)}
+                                >
+                                    {pendientesPublicar.length} sin publicar
+                                </Tag>
+                            </Tooltip>
+                        )}
                         <Button icon={<ReloadOutlined />} onClick={reload}>Recargar</Button>
                     </Space>
                 </Space>

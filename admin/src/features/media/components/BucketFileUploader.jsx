@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Modal, Upload, Select, Form, Button, Space, Typography, message } from 'antd';
+import { Modal, Upload, Select, Form, Button, Space, Typography } from 'antd';
 import { InboxOutlined } from '@ant-design/icons';
 import { uploadMediaFile } from '@features/media/api/mediaService';
+import { message } from '@shared/services/message';
 
 const { Dragger } = Upload;
 const { Text } = Typography;

@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router';
-import { message } from 'antd';
+
 import api from '@shared/services/api';
+import { message } from '@shared/services/message';
 
 const RESOURCE_TYPE = 'elementos-menu';
 const RESOURCE_ID = 'global';

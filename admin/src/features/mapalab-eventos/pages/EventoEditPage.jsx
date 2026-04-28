@@ -1,26 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import dayjs from 'dayjs';
-import {
-    Alert,
-    Button,
-    Card,
-    Col,
-    DatePicker,
-    Form,
-    Input,
-    InputNumber,
-    Layout,
-    Modal,
-    Popconfirm,
-    Row,
-    Space,
-    Spin,
-    Switch,
-    Tag,
-    Typography,
-    message,
-} from 'antd';
+import { Alert, Button, Card, Col, DatePicker, Form, Input, InputNumber, Layout, Modal, Popconfirm, Row, Space, Spin, Switch, Tag, Typography } from 'antd';
 import {
     ArrowLeftOutlined,
     CheckOutlined,
@@ -45,10 +26,10 @@ import useIsMobile from '@shared/hooks/useIsMobile';
 import usePresencia from '@shared/hooks/usePresencia';
 import PresenciaIndicator from '@shared/components/PresenciaIndicator';
 import useResourceDraft from '@shared/hooks/useResourceDraft';
+import { message } from '@shared/services/message';
 
 const { Content } = Layout;
 const { Title, Text } = Typography;
-
 
 function eventoToForm(e) {
     if (!e) return { activo: false, capas: [], orden: 0 };
@@ -66,7 +47,6 @@ function eventoToForm(e) {
         orden: e.orden ?? 0,
     };
 }
-
 
 function formToPayload(values, { isCreate }) {
     const cleanBbox = values.bbox && [values.bbox.minx, values.bbox.miny, values.bbox.maxx, values.bbox.maxy].every(
@@ -94,7 +74,6 @@ function formToPayload(values, { isCreate }) {
     if (!isCreate && !values.slug) delete payload.slug;
     return payload;
 }
-
 
 export default function EventoEditPage() {
     const { id } = useParams();

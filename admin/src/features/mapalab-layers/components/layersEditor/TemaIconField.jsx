@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Button, Image, Input, Space, message } from 'antd';
+import { Button, Image, Input, Space } from 'antd';
 import { FileImageOutlined } from '@ant-design/icons';
 import api from '@shared/services/api';
 import { BucketFilePicker } from '@features/media';
+import { message } from '@shared/services/message';
 
 const MAPALAB_BUCKET_SLUG = 'mapalab';
-
 
 export default function TemaIconField({ value, onChange, disabled }) {
     const [bucketId, setBucketId] = useState(null);

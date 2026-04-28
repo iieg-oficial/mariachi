@@ -1,20 +1,10 @@
 import { useMemo, useState } from 'react';
-import {
-    Button,
-    Empty,
-    Input,
-    Modal,
-    Space,
-    Table,
-    Tag,
-    Typography,
-    message,
-} from 'antd';
+import { Button, Empty, Input, Modal, Space, Table, Tag, Typography } from 'antd';
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
+import { message } from '@shared/services/message';
 
 const { Text } = Typography;
-
 
 function flattenLeaves(nodes, acc = []) {
     for (const n of nodes || []) {
@@ -30,7 +20,6 @@ function flattenLeaves(nodes, acc = []) {
     }
     return acc;
 }
-
 
 export default function CapasField({ value = [], onChange, disabled }) {
     const { rawTree, loading } = useLayerTreeAdmin();

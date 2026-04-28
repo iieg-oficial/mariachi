@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Card, Form, Input, Button, Alert, Typography, message } from 'antd';
+import { Card, Form, Input, Button, Alert, Typography } from 'antd';
 import { LockOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router';
 import api from '@shared/services/api';
 import { useAuth } from '@shared/contexts/useAuth';
+import { message } from '@shared/services/message';
 
 const { Title, Text } = Typography;
 

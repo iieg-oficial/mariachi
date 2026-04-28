@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Form, Input, Button, Typography, Card, Alert, Flex, message } from 'antd';
+import { Form, Input, Button, Typography, Card, Alert, Flex } from 'antd';
 import { CopyOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router';
 import api from '@shared/services/api';
+import { message } from '@shared/services/message';
 
 const { Title, Text } = Typography;
 

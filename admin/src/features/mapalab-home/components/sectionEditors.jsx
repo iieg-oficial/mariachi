@@ -1,19 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
-import { Button, Empty, Form, Input, Space, Switch, Tabs, Typography, message } from 'antd';
+import { Button, Empty, Form, Input, Space, Switch, Tabs, Typography } from 'antd';
 import { ArrowDownOutlined, ArrowUpOutlined, DeleteOutlined, LinkOutlined, PlusOutlined } from '@ant-design/icons';
 import api from '@shared/services/api';
 import ImageUrlField from '@features/mapalab-home/components/ImageUrlField';
 import LayerIdsField from '@features/mapalab-home/components/LayerIdsField';
+import { message } from '@shared/services/message';
 
 const { Text } = Typography;
-
 
 function extractShareId(link) {
     if (!link || typeof link !== 'string') return null;
     const m = link.match(/[?&]s=([a-zA-Z0-9]+)/);
     return m ? m[1] : null;
 }
-
 
 async function pinPermanente(shareId) {
     try {
@@ -25,7 +24,6 @@ async function pinPermanente(shareId) {
     }
 }
 
-
 async function unpinPermanente(shareId) {
     try {
         await api.delete(`/mapalab-shares/${shareId}/pin-permanent`);
@@ -35,11 +33,9 @@ async function unpinPermanente(shareId) {
     }
 }
 
-
 function newId() {
     return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
-
 
 function ItemListEditor({ name, label, addLabel, renderFields, tabKeyField = 'titulo', maxItems = null }) {
     const [activeKey, setActiveKey] = useState(null);
@@ -131,7 +127,6 @@ function ItemListEditor({ name, label, addLabel, renderFields, tabKeyField = 'ti
     );
 }
 
-
 export function BannerEditor() {
     return (
         <ItemListEditor
@@ -157,7 +152,6 @@ export function BannerEditor() {
         />
     );
 }
-
 
 function SubtopicEditor({ parentName, subName, sIdx, total, onMove, onRemove }) {
     const form = Form.useFormInstance();
@@ -231,7 +225,6 @@ function SubtopicEditor({ parentName, subName, sIdx, total, onMove, onRemove }) 
     );
 }
 
-
 function SubtopicsList({ parentName }) {
     return (
         <Form.List name={[parentName, 'subtopics']}>
@@ -261,7 +254,6 @@ function SubtopicsList({ parentName }) {
     );
 }
 
-
 export function TopicsEditor() {
     return (
         <ItemListEditor
@@ -288,7 +280,6 @@ export function TopicsEditor() {
     );
 }
 
-
 export function GuideEditor() {
     return (
         <ItemListEditor
@@ -308,7 +299,6 @@ export function GuideEditor() {
         />
     );
 }
-
 
 export function SelectEditor() {
     return (
@@ -334,7 +324,6 @@ export function SelectEditor() {
     );
 }
 
-
 export function FaqEditor() {
     return (
         <ItemListEditor
@@ -353,7 +342,6 @@ export function FaqEditor() {
     );
 }
 
-
 export function VideoEditor() {
     return (
         <Space orientation="vertical" style={{ width: '100%' }}>
@@ -366,7 +354,6 @@ export function VideoEditor() {
         </Space>
     );
 }
-
 
 export function FooterEditor() {
     return (
@@ -412,7 +399,6 @@ export function FooterEditor() {
     );
 }
 
-
 export const SECTION_DEFAULTS = {
     banner: { items: [] },
     topics: { items: [] },
@@ -422,7 +408,6 @@ export const SECTION_DEFAULTS = {
     faq: { items: [] },
     footer: { copyright: '', privacy_policy_label: '', privacy_policy_href: '', logos: [] },
 };
-
 
 export const SECTION_REGISTRY = {
     banner: { label: 'Banner', Editor: BannerEditor },

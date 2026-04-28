@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Modal, Pagination, Table, Tabs, Input, Space, Typography, message } from 'antd';
+import { Modal, Pagination, Table, Tabs, Input, Space, Typography } from 'antd';
 import { FolderOpenOutlined } from '@ant-design/icons';
 import { listBucketObjects } from '@features/media/api/mediaService';
+import { message } from '@shared/services/message';
 
 const { Text } = Typography;
 

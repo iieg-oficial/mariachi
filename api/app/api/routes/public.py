@@ -3,6 +3,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
+from app.core.settings import get_settings
 from app.core.time import utcnow
 from app.models.evento import Evento
 from app.models.home_section import HomeSection
@@ -59,7 +60,8 @@ async def eventos_visibles(db: Session = Depends(get_db)):
 
 @mapalab_router.get("/home", response_model=HomePublicResponse)
 async def home_publicado(db: Session = Depends(get_db)):
-    secciones = {s.key: s.payload_published for s in db.query(HomeSection).all()}
+    field = "payload_draft" if get_settings().environment != "production" else "payload_published"
+    secciones = {s.key: getattr(s, field) for s in db.query(HomeSection).all()}
     sanitized = {}
     for key, schema_cls in SECTION_SCHEMAS.items():
         raw = secciones.get(key) or {}

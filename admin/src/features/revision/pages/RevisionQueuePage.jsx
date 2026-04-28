@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Table, Card, Typography, Button, Space, Modal, Input, message, Tag } from 'antd';
+import { Table, Card, Typography, Button, Space, Modal, Input, Tag } from 'antd';
 import { useNavigate } from 'react-router';
 import { EditOutlined, CloseOutlined, EyeOutlined } from '@ant-design/icons';
 import api from '@shared/services/api';
 import useIsMobile from '@shared/hooks/useIsMobile';
+import { message } from '@shared/services/message';
 
 const { Title } = Typography;
 

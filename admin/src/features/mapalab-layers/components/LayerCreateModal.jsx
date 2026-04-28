@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Form, Input, Modal, Select, Space, Switch, TreeSelect, Typography, message } from 'antd';
+import { Alert, Form, Input, Modal, Select, Space, Switch, TreeSelect, Typography } from 'antd';
 import { NODE_TYPE_HELP, NODE_TYPE_OPTIONS, isFieldVisible } from '@features/mapalab-layers/constants/nodeTypes';
+import { message } from '@shared/services/message';
 
 const { Text } = Typography;
-
 
 function buildTreeSelectData(nodes) {
     return (nodes || []).map((n) => ({
@@ -12,7 +12,6 @@ function buildTreeSelectData(nodes) {
         children: n.children?.length ? buildTreeSelectData(n.children) : undefined,
     }));
 }
-
 
 function slugify(text) {
     if (!text) return '';
@@ -24,7 +23,6 @@ function slugify(text) {
         .replace(/^-+|-+$/g, '')
         .slice(0, 60);
 }
-
 
 export default function LayerCreateModal({ open, onClose, onSubmit, treeData = [], defaultParentId = null, defaultNodeType = 'leaf' }) {
     const [form] = Form.useForm();

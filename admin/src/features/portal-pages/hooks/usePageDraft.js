@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { message } from 'antd';
+
 import api from '@shared/services/api';
 import { BLOCK_CONFIG } from '@features/portal-pages/constants/pageConstants';
+import { message } from '@shared/services/message';
 
 const DRAFT_RESOURCE = 'pagina';
 

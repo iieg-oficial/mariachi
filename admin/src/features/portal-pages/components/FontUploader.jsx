@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Modal, Form, Input, InputNumber, Select, Upload, Button, Progress, message } from 'antd';
+import { Modal, Form, Input, InputNumber, Select, Upload, Button, Progress } from 'antd';
 import { UploadOutlined, FontSizeOutlined } from '@ant-design/icons';
 import fontService from '@features/portal-pages/hooks/fontService';
+import { message } from '@shared/services/message';
 
 const { Option } = Select;
 

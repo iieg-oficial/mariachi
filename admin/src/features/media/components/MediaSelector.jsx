@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Modal, Button, Row, Col, Card, Image, Empty, Spin, Select, Input, message } from 'antd';
+import { Modal, Button, Row, Col, Card, Image, Empty, Spin, Select, Input } from 'antd';
 import { FileImageOutlined, FolderOutlined, SearchOutlined } from '@ant-design/icons';
 import mediaService from '@features/media/api/mediaService';
+import { message } from '@shared/services/message';
 
 const { Search } = Input;
 const { Option } = Select;

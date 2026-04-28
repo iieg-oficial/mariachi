@@ -14,8 +14,9 @@ import {
     verticalListSortingStrategy,
     arrayMove
 } from '@dnd-kit/sortable';
-import { message } from 'antd';
+
 import SortableTreeItem from './SortableTreeItem';
+import { message } from '@shared/services/message';
 
 const flattenTree = (items, parentId = null, level = 1) => {
     const result = [];

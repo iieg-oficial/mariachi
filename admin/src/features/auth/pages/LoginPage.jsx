@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Form, Input, Button, Typography, message, Flex, Row, Col, theme } from 'antd';
+import { Form, Input, Button, Typography, Flex, Row, Col, theme } from 'antd';
 import { useNavigate } from 'react-router';
 import { useAuth } from '@shared/contexts/useAuth';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import { BRAND } from '@app/providers/brand';
+import { message } from '@shared/services/message';
 
 const { Title, Text, Link: TypoLink } = Typography;
 const { useToken } = theme;

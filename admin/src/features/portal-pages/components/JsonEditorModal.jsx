@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Modal, Input, message, Alert, Row, Col, Card, Button, Typography, Collapse, Tooltip } from 'antd';
+import { Modal, Input, Alert, Row, Col, Card, Button, Typography, Collapse, Tooltip } from 'antd';
 import { CopyOutlined } from '@ant-design/icons';
 import { BLOCK_CONFIG, BLOCK_CATEGORIES, BLOCK_TYPES, getBlocksByCategory } from '@features/portal-pages/constants/pageConstants';
 import useIsMobile from '@shared/hooks/useIsMobile';
+import { message } from '@shared/services/message';
 
 const { TextArea } = Input;
 const { Text, Title } = Typography;

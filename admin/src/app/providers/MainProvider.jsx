@@ -2,6 +2,7 @@ import { Outlet } from 'react-router';
 import { ConfigProvider, theme, App as AntApp } from 'antd';
 import esES from 'antd/locale/es_ES';
 import { BRAND } from '@app/providers/brand';
+import MessageBridge from '@app/MessageBridge';
 
 export default function MainProvider() {
     return (
@@ -40,6 +41,7 @@ export default function MainProvider() {
             }}
         >
             <AntApp style={{ minHeight: '100dvh' }}>
+                <MessageBridge />
                 <Outlet />
             </AntApp>
         </ConfigProvider>

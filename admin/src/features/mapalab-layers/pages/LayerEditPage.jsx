@@ -1,25 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import {
-    AutoComplete,
-    Breadcrumb,
-    Button,
-    Card,
-    Col,
-    Empty,
-    Form,
-    Input,
-    Layout,
-    Row,
-    Select,
-    Space,
-    Spin,
-    Switch,
-    Tabs,
-    Tag,
-    Tooltip,
-    Typography,
-    message,
-} from 'antd';
+import { AutoComplete, Breadcrumb, Button, Card, Col, Empty, Form, Input, Layout, Row, Select, Space, Spin, Switch, Tabs, Tag, Tooltip, Typography } from 'antd';
 import { LeftOutlined, MenuUnfoldOutlined, PartitionOutlined, SaveOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router';
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
@@ -42,6 +22,7 @@ import {
     isTabVisible,
 } from '@features/mapalab-layers/constants/nodeTypes';
 import useResizableWidth from '@shared/hooks/useResizableWidth';
+import { message } from '@shared/services/message';
 
 const { Content, Sider } = Layout;
 const { Text, Title, Paragraph } = Typography;

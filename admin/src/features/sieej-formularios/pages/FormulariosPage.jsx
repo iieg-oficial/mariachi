@@ -1,21 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
-import {
-    Alert,
-    Button,
-    Card,
-    Empty,
-    Form,
-    Input,
-    Modal,
-    Space,
-    Table,
-    Tag,
-    Typography,
-    message,
-} from 'antd';
+import { Alert, Button, Card, Empty, Form, Input, Modal, Space, Table, Tag, Typography } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, FormOutlined } from '@ant-design/icons';
 import api from '@shared/services/api';
 import useIsMobile from '@shared/hooks/useIsMobile';
+import { message } from '@shared/services/message';
 
 const { Title, Paragraph } = Typography;
 

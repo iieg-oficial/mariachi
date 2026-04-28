@@ -13,6 +13,31 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.30.17] - 2026-04-28
+
+### Admin (admin) — bridge de `message` para suprimir warning antd `[antd: message]`
+
+- **`<App>` static functions can not consume context like dynamic theme**: el warning aparecía cada vez que un componente importaba `import { message } from 'antd'` en una app envuelta por `<AntApp>`. Migrar los 35 archivos a `App.useApp().message` era invasivo. Solución: bridge.
+- **Nuevo `shared/services/message.js`**: proxy con métodos `success/error/warning/info/loading/open/destroy` que delega en un `messageApi` cargado en runtime. Si se llama antes del mount, encola y dispara cuando llega.
+- **Nuevo `app/MessageBridge.jsx`**: dentro de `<AntApp>` llama `App.useApp()` y guarda el `message` instance en el módulo via `setMessageApi`. Renderiza `null`.
+- **`app/providers/MainProvider.jsx`**: monta `<MessageBridge />` dentro de `<AntApp>`, antes del `<Outlet />`.
+- **Migración mecánica de imports**: 35 archivos (.jsx y .js) bajo `src/features/`, `src/shared/hooks/` y demás, ahora importan `import { message } from '@shared/services/message'` en vez de `from 'antd'`. El proxy mantiene el mismo API, no hace falta tocar lógica.
+
+### Backend (api) + visor — borradores visibles en el visor en dev
+
+- **`/api/mapalab/home`** ahora sirve `payload_draft` cuando `settings.environment != "production"` (antes siempre `payload_published`). En prod sigue devolviendo solo lo publicado.
+- **`PUT /home/{key}`** dispara `notify_home_changed()` también al guardar borrador en dev (antes solo al publicar). En prod queda intacto: el cache solo se invalida al publicar. La condición es `settings.environment != "production"`.
+- Resultado: en dev, guardar borrador y refrescar el visor ya muestra los cambios sin necesidad de pulsar "Publicar". En prod, el flujo de revisión sigue protegido — el visor nunca expone borradores.
+
+### Admin (admin) — Tag dinámico "Borrador → Publicado"
+
+- **`features/mapalab-home/pages/HomePage.jsx`**: el `<Tag color="blue">Borrador → Publicado</Tag>` estático que no informaba nada se reemplaza por:
+  - `<Tag color="green">Todo publicado</Tag>` cuando `JSON.stringify(payloadDraft) === JSON.stringify(payloadPublished)` para todas las secciones.
+  - `<Tooltip><Tag color="orange">N sin publicar</Tag></Tooltip>` cuando hay diferencias. El tooltip lista los labels de las secciones (Banner, Guía, Footer…). Click en el tag hace `setActiveKey` al primer tab con cambios.
+- Cálculo en `useMemo([secciones])`. Movido arriba del early return de `reviewMode` para no romper la regla de hooks.
+
+---
+
 ## [0.30.16] - 2026-04-28
 
 ### Admin (admin) — antd deprecations + 404 ruidosos en useResourceDraft

@@ -7,6 +7,7 @@ from sqlalchemy.orm.attributes import flag_modified
 
 from app.api.deps import get_current_user, get_db, require_project_access, verify_csrf
 from app.core.optimistic import check_concurrent_edit
+from app.core.settings import get_settings
 from app.core.time import utcnow
 from app.models.home_section import HomeSection
 from app.models.user import Usuario
@@ -113,6 +114,8 @@ async def actualizar_borrador(
     section.updated_at = utcnow()
     db.commit()
     db.refresh(section)
+    if get_settings().environment != "production":
+        notify_home_changed()
     return section
 
 

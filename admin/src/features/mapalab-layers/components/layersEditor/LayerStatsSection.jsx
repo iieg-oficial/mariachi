@@ -1,20 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-    Alert,
-    Button,
-    Card,
-    Empty,
-    Input,
-    InputNumber,
-    Radio,
-    Select,
-    Space,
-    Spin,
-    Tag,
-    Tooltip,
-    Typography,
-    message,
-} from 'antd';
+import { Alert, Button, Card, Empty, Input, InputNumber, Radio, Select, Space, Spin, Tag, Tooltip, Typography } from 'antd';
 import {
     CalculatorOutlined,
     DeleteOutlined,
@@ -23,6 +8,7 @@ import {
     ThunderboltOutlined,
 } from '@ant-design/icons';
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
+import { message } from '@shared/services/message';
 
 const { Text } = Typography;
 

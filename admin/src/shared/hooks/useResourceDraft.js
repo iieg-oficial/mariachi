@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { message } from 'antd';
+
 import api from '@shared/services/api';
+import { message } from '@shared/services/message';
 
 const AUTOSAVE_DELAY_MS = 1500;
 

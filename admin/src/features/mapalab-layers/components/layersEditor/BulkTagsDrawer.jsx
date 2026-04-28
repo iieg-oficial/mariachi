@@ -1,17 +1,8 @@
 import { useMemo, useState } from 'react';
-import {
-    Alert,
-    Button,
-    Drawer,
-    Input,
-    Space,
-    Table,
-    Tag,
-    Typography,
-    message,
-} from 'antd';
+import { Alert, Button, Drawer, Input, Space, Table, Tag, Typography } from 'antd';
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
 import useIsMobile from '@shared/hooks/useIsMobile';
+import { message } from '@shared/services/message';
 
 const { Text, Paragraph } = Typography;
 
@@ -33,7 +24,6 @@ const parsePaste = (text) => {
     }
     return rows;
 };
-
 
 export default function BulkTagsDrawer({ open, onClose, onDone }) {
     const { isMobile } = useIsMobile();

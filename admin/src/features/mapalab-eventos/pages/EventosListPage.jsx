@@ -1,19 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
-import {
-    Alert,
-    Button,
-    Card,
-    Layout,
-    Modal,
-    Popconfirm,
-    Space,
-    Spin,
-    Table,
-    Tag,
-    Typography,
-    message,
-} from 'antd';
+import { Alert, Button, Card, Layout, Modal, Popconfirm, Space, Spin, Table, Tag, Typography } from 'antd';
 import {
     DeleteOutlined,
     EditOutlined,
@@ -28,10 +15,10 @@ import {
     useEventosList,
 } from '@features/mapalab-eventos/hooks/useEventos';
 import useIsMobile from '@shared/hooks/useIsMobile';
+import { message } from '@shared/services/message';
 
 const { Content } = Layout;
 const { Title, Text } = Typography;
-
 
 function formatDate(value) {
     if (!value) return '—';
@@ -41,7 +28,6 @@ function formatDate(value) {
         return value;
     }
 }
-
 
 export default function EventosListPage() {
     const { items, loading, error, reload } = useEventosList();

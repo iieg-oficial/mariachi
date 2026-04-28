@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Modal, Button, Spin, Empty, Select, Space, Typography, Input, message } from 'antd';
+import { Modal, Button, Spin, Empty, Select, Space, Typography, Input } from 'antd';
 import { FontSizeOutlined, PlusOutlined } from '@ant-design/icons';
 import fontService from '@features/portal-pages/hooks/fontService';
 import FontUploader from './FontUploader';
+import { message } from '@shared/services/message';
 
 const { Option } = Select;
 const { Text } = Typography;

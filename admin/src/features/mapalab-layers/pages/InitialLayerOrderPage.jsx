@@ -1,18 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import {
-    Alert,
-    Button,
-    Card,
-    Empty,
-    Layout,
-    Modal,
-    Select,
-    Space,
-    Spin,
-    Tag,
-    Typography,
-    message,
-} from 'antd';
+import { Alert, Button, Card, Empty, Layout, Modal, Select, Space, Spin, Tag, Typography } from 'antd';
 import {
     DndContext,
     KeyboardSensor,
@@ -39,6 +26,7 @@ import {
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
 import { labelForNodeType } from '@features/mapalab-layers/constants/nodeTypes';
 import useIsMobile from '@shared/hooks/useIsMobile';
+import { message } from '@shared/services/message';
 
 const { Content } = Layout;
 const { Title, Text } = Typography;

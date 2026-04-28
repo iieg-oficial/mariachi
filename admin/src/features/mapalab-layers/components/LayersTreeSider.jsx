@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Button, Empty, Input, Space, Spin, Tag, Tooltip, Tree, Typography, message } from 'antd';
+import { Alert, Button, Empty, Input, Space, Spin, Tag, Tooltip, Tree, Typography } from 'antd';
 import {
     AppstoreOutlined,
     EyeInvisibleOutlined,
@@ -15,6 +15,7 @@ import {
 } from '@ant-design/icons';
 import { labelForNodeType } from '@features/mapalab-layers/constants/nodeTypes';
 import LayerCreateModal from '@features/mapalab-layers/components/LayerCreateModal';
+import { message } from '@shared/services/message';
 
 const { Text, Title } = Typography;
 
@@ -60,7 +61,6 @@ function saveExpandedKeys(keys) {
     try { localStorage.setItem(EXPANDED_KEYS_STORAGE, JSON.stringify(keys)); } catch { /* ignore */ }
 }
 
-
 function StatusIcons({ disabled, hiddenInMenu }) {
     if (!disabled && !hiddenInMenu) return null;
     return (
@@ -78,7 +78,6 @@ function StatusIcons({ disabled, hiddenInMenu }) {
         </span>
     );
 }
-
 
 function CompactNodeTitle({ node, onEdit }) {
     const { title, disabled } = node;
@@ -126,7 +125,6 @@ function CompactNodeTitle({ node, onEdit }) {
     );
 }
 
-
 function DetailedNodeTitle({ node }) {
     const { title, nodeType, workspaceAlias, geoserverLayer, disabled, hiddenInMenu } = node;
     return (
@@ -146,7 +144,6 @@ function DetailedNodeTitle({ node }) {
         </span>
     );
 }
-
 
 const filterTree = (nodes, q) => {
     if (!q) return nodes;
@@ -178,7 +175,6 @@ const findParentAndSiblings = (nodes, targetKey, parent = null) => {
     }
     return null;
 };
-
 
 export default function LayersTreeSider({
     treeData,

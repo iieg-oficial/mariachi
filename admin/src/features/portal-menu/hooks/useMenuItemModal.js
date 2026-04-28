@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Form, message } from 'antd';
+import { Form } from 'antd';
 import { generateUrl, getItemLevel } from '@features/portal-menu/utils/menuUtils';
 import { MAX_LEVEL } from '@features/portal-menu/constants/menuConstants';
+import { message } from '@shared/services/message';
 
 export const useMenuItemModal = (menuItems, createItem, updateItem) => {
     const [modalVisible, setModalVisible] = useState(false);

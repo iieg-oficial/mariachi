@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Button, Form, Input, List, Popconfirm, Space, Tag, Typography, message } from 'antd';
+import { Button, Form, Input, List, Popconfirm, Space, Tag, Typography } from 'antd';
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
+import { message } from '@shared/services/message';
 
 const { Text } = Typography;
 

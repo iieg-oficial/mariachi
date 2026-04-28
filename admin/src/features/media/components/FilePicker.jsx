@@ -1,13 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-import { 
-    Modal, Row, Col, Card, Image, Input, Select, Space, 
-    Button, Upload, message, Spin, Empty, Tag, Tabs
-} from 'antd';
+import { Modal, Row, Col, Card, Image, Input, Select, Space, Button, Upload, Spin, Empty, Tag, Tabs } from 'antd';
 import { 
     FileImageOutlined, FilePdfOutlined, FileOutlined, InboxOutlined, 
     FolderOutlined, SearchOutlined, CheckCircleFilled
 } from '@ant-design/icons';
 import mediaService from '@features/media/api/mediaService';
+import { message } from '@shared/services/message';
 
 const { Search } = Input;
 const { Option } = Select;

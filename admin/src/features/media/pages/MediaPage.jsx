@@ -1,14 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-import {
-    Card, Button, Upload, Table, Image, Space, message, Modal, Form, Input, Select,
-    Tag, Popconfirm, Row, Col, Statistic, Segmented, Empty, Spin, Breadcrumb
-} from 'antd';
+import { Card, Button, Upload, Table, Image, Space, Modal, Form, Input, Select, Tag, Popconfirm, Row, Col, Statistic, Segmented, Empty, Spin, Breadcrumb } from 'antd';
 import {
     InboxOutlined, DeleteOutlined, EditOutlined, FolderOutlined, FolderOpenOutlined, FolderAddOutlined, FileImageOutlined, FilePdfOutlined,
     FileOutlined, AppstoreOutlined, BarsOutlined, DownloadOutlined, CopyOutlined, EyeOutlined, HomeOutlined
 } from '@ant-design/icons';
 import mediaService from '@features/media/api/mediaService';
 import useIsMobile from '@shared/hooks/useIsMobile';
+import { message } from '@shared/services/message';
 
 const { Dragger } = Upload;
 const { Search } = Input;

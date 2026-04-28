@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Alert, Button, Card, Form, Input, Select, Space, Spin, Typography, message } from 'antd';
+import { Alert, Button, Card, Form, Input, Select, Space, Spin, Typography } from 'antd';
 import { PlusOutlined, MinusCircleOutlined, FolderOpenOutlined, UploadOutlined } from '@ant-design/icons';
 import { Link } from 'react-router';
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
 import { BucketFilePicker, BucketFileUploader } from '@features/media';
 import LayerStatsSection from '@features/mapalab-layers/components/layersEditor/LayerStatsSection';
 import api from '@shared/services/api';
+import { message } from '@shared/services/message';
 
 const { Text } = Typography;
 
