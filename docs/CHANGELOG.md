@@ -13,6 +13,18 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.30.22] - 2026-04-28
+
+### Backend (api) — sincronización con `static_version` retroactivo
+
+- **`platforms_config.py`** sincronizado con los CHANGELOGs reescritos retroactivamente desde el historial de commits de cada repo:
+  - `acervo`: `0.1.0` → `1.17.0`
+  - `mapalab-dataengine`: `1.6.0` → `1.11.0`
+  - `geoserver`: `0.1.0` → `1.14.1`
+  - `gateway-hub` y `huachicol` siguen en `0.1.0` (no han bumpeado todavía).
+
+---
+
 ## [0.30.21] - 2026-04-28
 
 ### Backend (api) — perfil editable + avatar

@@ -53,7 +53,7 @@ PLATFORMS: list[PlatformConfig] = [
         "url": None,
         "probe": "dataengine",
         "probe_url_template": None,
-        "static_version": "1.6.0",
+        "static_version": "1.11.0",
     },
     {
         "slug": "acervo",
@@ -61,7 +61,7 @@ PLATFORMS: list[PlatformConfig] = [
         "url": None,
         "probe": "http_health",
         "probe_url_template": "{acervo_scheme}://{acervo_endpoint}/minio/health/live",
-        "static_version": "0.1.0",
+        "static_version": "1.17.0",
     },
     {
         "slug": "gateway-hub",
@@ -85,7 +85,7 @@ PLATFORMS: list[PlatformConfig] = [
         "url": None,
         "probe": "http_health",
         "probe_url_template": "{geoserver_url}",
-        "static_version": "0.1.0",
+        "static_version": "1.14.1",
     },
     {
         "slug": "sieej",
