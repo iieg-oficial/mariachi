@@ -28,6 +28,20 @@ async def obtener_pendientes(
     )
 
 
+@router.get("/mios", response_model=list[BorradorResponse])
+async def obtener_mis_borradores(
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    return (
+        db.query(Borrador)
+        .options(joinedload(Borrador.usuario))
+        .filter(Borrador.usuario_id == current_user.id)
+        .order_by(Borrador.actualizado_en.desc())
+        .all()
+    )
+
+
 @router.get("/por-id/{borrador_id}", response_model=BorradorResponse)
 async def obtener_borrador_por_id(
     borrador_id: int,

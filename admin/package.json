@@ -3,7 +3,7 @@
     "description": "Mariachi — panel de administración del ecosistema IIEG",
     "license": "MIT",
     "author": "Edgar Alejandro Villarreal Padilla <edgar.villarreal@iieg.gob.mx>",
-    "version": "0.30.14",
+    "version": "0.30.15",
     "private": true,
     "type": "module",
     "scripts": {

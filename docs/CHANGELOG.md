@@ -13,6 +13,24 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.30.15] - 2026-04-28
+
+### Backend (api) + Admin (admin) — landing de Inicio (bandeja personal + atajos)
+
+- **Backend `app/api/routes/borradores.py`**: nuevo endpoint `GET /borradores/mios` que devuelve los borradores del `current_user` (todos los estados, ordenados por `actualizado_en desc`). El de `/pendientes` ya existía y queda intacto.
+- **Admin `features/inicio/`** (nuevo feature module):
+  - `pages/InicioPage.jsx` con tres bloques apilados:
+    1. *Header* con saludo al usuario y rol.
+    2. *Alerta* roja si el usuario tiene borradores rechazados (con cantidad).
+    3. *Card de revisión* (solo `tetlamamakani`) si hay pendientes globales — link directo a `/revision`.
+    4. *Tabla "Mis borradores"* con columnas tipo / recurso / estado / última edición / continuar. Empty state sugiere editar el Inicio o crear un evento.
+    5. *Atajos*: grid responsive (`auto-fit, minmax(220px, 1fr)`) con cards a `mapalab/home`, `mapalab/eventos`, `media`, y `revision` (admin-only).
+  - `api/inicioService.js` con `getMisBorradores()` y `getBorradoresPendientes()`.
+- **Admin `main.jsx`**: cambia `<Navigate to="menu" replace />` → `<Navigate to="inicio" replace />` (la ruta `/menu` quedó inconsistente al deshabilitar el proyecto Portalito en el sider). Nueva ruta `inicio` registrada con `lazy(() => import('@features/inicio'))`.
+- Tests: 18/18 ✓ (sin tests nuevos para la página — el feature es UI presentacional sobre datos del backend).
+
+---
+
 ## [0.30.14] - 2026-04-28
 
 ### Admin (admin) — picker de Media: auto-discovery de carpetas + textos

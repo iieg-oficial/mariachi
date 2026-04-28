@@ -44,6 +44,7 @@ export const PROJECT_REGISTRY = {
     portal: {
         label: 'Portalito',
         icon: <GlobalOutlined />,
+        disabled: true,
         items: [
             { key: '/menu', path: '/menu', label: 'Menú', icon: <MenuOutlined /> },
             { key: '/pages', path: '/pages', label: 'Páginas', icon: <FileTextOutlined /> },
@@ -82,6 +83,7 @@ export const PROJECT_REGISTRY = {
     sieej: {
         label: 'SIEEJ',
         icon: <ProjectOutlined />,
+        disabled: true,
         items: [
             {
                 key: '/sieej/formularios',
