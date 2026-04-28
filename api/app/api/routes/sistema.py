@@ -19,17 +19,21 @@ _TIMEOUT_SECONDS = 2.0
 def _resolve_template(template: str | None, settings) -> str | None:
     if not template:
         return None
-    mapalab_backend = (settings.mapalab_backend_url or "").rstrip("/")
-    sieej = (settings.sieej_url or "").rstrip("/")
-    geoserver = (settings.geoserver_url or "").rstrip("/")
-    acervo_scheme = "https" if settings.acervo_use_ssl else "http"
-    resolved = (
-        template.replace("{mapalab_backend_url}", mapalab_backend)
-                .replace("{sieej_url}", sieej)
-                .replace("{geoserver_url}", geoserver)
-                .replace("{acervo_scheme}", acervo_scheme)
-                .replace("{acervo_endpoint}", settings.acervo_endpoint or "")
-    )
+    placeholders = {
+        "mapalab_backend_url": (settings.mapalab_backend_url or "").rstrip("/"),
+        "dataengine_ontoy_url": (settings.dataengine_ontoy_url or "").rstrip("/"),
+        "acervo_ontoy_url": (settings.acervo_ontoy_url or "").rstrip("/"),
+        "geoserver_ontoy_url": (settings.geoserver_ontoy_url or "").rstrip("/"),
+        "gateway_hub_ontoy_url": (settings.gateway_hub_ontoy_url or "").rstrip("/"),
+        "huachicol_ontoy_url": (settings.huachicol_ontoy_url or "").rstrip("/"),
+        "sieej_ontoy_url": (settings.sieej_ontoy_url or "").rstrip("/"),
+        "sieej_url": (settings.sieej_url or "").rstrip("/"),
+        "acervo_scheme": "https" if settings.acervo_use_ssl else "http",
+        "acervo_endpoint": settings.acervo_endpoint or "",
+    }
+    resolved = template
+    for k, v in placeholders.items():
+        resolved = resolved.replace(f"{{{k}}}", v)
     if not resolved or "{" in resolved or resolved in {"://", "://"}:
         return None
     return resolved

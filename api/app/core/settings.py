@@ -49,6 +49,12 @@ class Settings(BaseSettings):
     mapalab_backend_url: str | None = None
     mapalab_internal_token: str | None = None
     sieej_url: str | None = None
+    sieej_ontoy_url: str | None = None
+    acervo_ontoy_url: str | None = None
+    dataengine_ontoy_url: str | None = None
+    geoserver_ontoy_url: str | None = None
+    gateway_hub_ontoy_url: str | None = None
+    huachicol_ontoy_url: str | None = None
 
     sentry_dsn: str | None = None
     sentry_traces_sample_rate: float = 0.1

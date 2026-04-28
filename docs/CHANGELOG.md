@@ -13,6 +13,18 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.30.23] - 2026-04-28
+
+### Backend (api) — todas las plataformas usan probe `ontoy` con su URL configurable
+
+- Cada repo del ecosistema implementó su propio endpoint `/ontoy` (acervo y gateway-hub via nginx con `alias /etc/nginx/version.json`; mapalab-dataengine via servicio `version-api` independiente en `:8088`; geoserver escribe `/ontoy.json` desde su `entrypoint-wrapper.sh`; mapalab-backend lo expone desde FastAPI). Mariachi ahora consulta esos endpoints en lugar de usar probes ad-hoc por plataforma.
+- **`platforms_config.py`** unificado: todas las plataformas externas usan `probe="ontoy"` con `probe_url_template="{<slug>_ontoy_url}"`. Eliminado el probe `dataengine` (SQL) y `http_health` para acervo — ahora todas comparten el mismo flujo. El `static_version` se conserva como fallback de versión (si el endpoint no responde, igual se muestra la versión del CHANGELOG del repo).
+- **Resolver de templates** en `routes/sistema.py` refactorizado a un dict de placeholders para escalar limpiamente.
+- **Settings nuevos** (`core/settings.py`): `acervo_ontoy_url`, `dataengine_ontoy_url`, `geoserver_ontoy_url`, `gateway_hub_ontoy_url`, `huachicol_ontoy_url`, `sieej_ontoy_url`. Todos opcionales; vacío = probe queda como `healthy=false` pero la card sigue mostrando `static_version`.
+- **`.env.development`**: `DATAENGINE_ONTOY_URL=http://host.docker.internal:8088/ontoy` (único que se puede probar localmente; el resto vive detrás de nginx que solo levanta en staging/production). `.env.development.example` documenta el comportamiento.
+
+---
+
 ## [0.30.22] - 2026-04-28
 
 ### Backend (api) — sincronización con `static_version` retroactivo
