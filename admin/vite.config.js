@@ -21,16 +21,18 @@ export default defineConfig(({ mode }) => {
 
     const mapalabTarget = VITE_MAPALAB_PROXY_URL || 'http://mapalab-dev-frontend-1:3006';
     const sentryEnabled = Boolean(SENTRY_AUTH_TOKEN && SENTRY_ORG && SENTRY_PROJECT);
+    const statsEnabled = env.BUILD_STATS === '1' || env.BUILD_STATS === 'true';
 
-    const plugins = [
-        react(),
-        visualizer({
+    const plugins = [react()];
+
+    if (statsEnabled) {
+        plugins.push(visualizer({
             filename: 'dist/stats.html',
             gzipSize: true,
             brotliSize: true,
             template: 'treemap',
-        }),
-    ];
+        }));
+    }
 
     if (sentryEnabled) {
         plugins.push(

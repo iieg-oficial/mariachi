@@ -13,18 +13,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml ./
-COPY . .
-
-EXPOSE 8000
+RUN mkdir -p app && touch app/__init__.py
 
 FROM base AS development
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --upgrade pip && pip install -e ".[dev]"
+    pip install -e ".[dev]"
+COPY . .
+EXPOSE 8000
 ENV ENV=development
 CMD ["./scripts/start_backend.sh"]
 
 FROM base AS production
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip install --upgrade pip && pip install -e "."
+    pip install -e "."
+COPY . .
+EXPOSE 8000
 ENV ENV=production
 CMD ["./scripts/start_backend.sh"]

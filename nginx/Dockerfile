@@ -1,7 +1,11 @@
+# syntax=docker/dockerfile:1
 FROM node:24-alpine AS admin-builder
 WORKDIR /app
+
 COPY ./admin/package*.json ./
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --prefer-offline --no-audit --fund=false
+
 COPY ./admin/ .
 ARG VITE_NODE_ENV=production
 ARG VITE_ADMIN_API_URL=/api/administrador
@@ -17,7 +21,11 @@ ENV VITE_SENTRY_DSN=$VITE_SENTRY_DSN
 ENV SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN
 ENV SENTRY_ORG=$SENTRY_ORG
 ENV SENTRY_PROJECT=$SENTRY_PROJECT
-RUN npm run build
+ARG BUILD_STATS
+ENV BUILD_STATS=$BUILD_STATS
+RUN --mount=type=cache,target=/app/node_modules/.vite \
+    --mount=type=cache,target=/root/.npm \
+    npm run build
 
 FROM nginx:alpine
 RUN rm -f /etc/nginx/conf.d/default.conf

@@ -13,6 +13,62 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.30.41] - 2026-04-29
+
+### Infra — `vite build` 45% mas rapido
+
+Mejoras al `npm run build` del admin (nginx/Dockerfile + vite.config.js):
+
+- **`rollup-plugin-visualizer` ahora opcional**: solo se carga si `BUILD_STATS=1`. Antes corria en cada build agregando ~2s y generando `dist/stats.html` que rara vez se mira. El bundle final no cambia.
+- **Cache mount para `node_modules/.vite`**: Vite pre-bundlea las deps externas (antd, react, etc.) en `node_modules/.vite/deps/`. Sin cache mount, esto se rehace en cada `--no-cache`. Con cache mount el pre-bundling sobrevive entre builds y el segundo build solo transforma el codigo cambiado.
+- **Cache mount para `/root/.npm` tambien en el RUN del build** (ademas del `npm ci`). Si vite ejecuta scripts npm internos, ya tiene cache disponible.
+- **Build arg `BUILD_STATS`** propagado por `docker-compose.yml` para que sea opt-in: `BUILD_STATS=1 make build ENV=prod` cuando quieras analizar el bundle.
+
+### Mediciones
+
+```
+npm run build (vite + rollup):  11.3s -> 6.2s   (~45% mas rapido)
+nginx rebuild incremental:      18.5s -> 13.8s  (~25% mas rapido)
+```
+
+---
+
+## [0.30.40] - 2026-04-29
+
+### Infra — optimizacion de tiempo de build de imagenes Docker
+
+Los rebuilds incrementales eran innecesariamente lentos porque la cache de Docker se invalidaba en pasos costosos cuando cambiaba cualquier archivo del repo.
+
+#### `api/Dockerfile`
+
+Antes: `COPY . .` venia ANTES de `pip install`, asi que cualquier cambio (incluso un comentario) invalidaba la cache del `pip install` y forzaba reinstalar todas las deps de Python (~30s).
+
+Ahora:
+
+1. `COPY pyproject.toml` y crear stub `app/__init__.py` para que el package sea instalable.
+2. `pip install -e ".[dev]"` o `pip install -e "."` con `--mount=type=cache,target=/root/.cache/pip`.
+3. `COPY . .` al final (sobreescribe el stub con el codigo real).
+
+El paso pesado (`pip install`) solo se re-ejecuta cuando cambia `pyproject.toml`, no cuando cambia el codigo. **Rebuild con cambio de codigo: ~0.6s** (antes: ~25-30s).
+
+#### `nginx/Dockerfile`
+
+Agregado `--mount=type=cache,target=/root/.npm` al `npm ci`. Sin esto, builds con `--no-cache` re-descargaban todos los paquetes npm (lento). Tambien `--prefer-offline --no-audit --fund=false` para reducir overhead.
+
+El paso dominante en rebuilds del nginx (con cambio de codigo) es `npm run build` (vite + rollup), que no se puede cachear porque el output depende del codigo. Pero el `npm ci` ahora no se invalida si solo cambia el codigo del admin.
+
+#### Mediciones (local, M1 + Docker Desktop)
+
+```
+api    rebuild --no-cache:  ~28s (antes: similar)
+api    rebuild con cambio:  ~0.6s (antes: ~25-30s)   ← 50x mas rapido
+
+nginx  rebuild --no-cache:  ~25s
+nginx  rebuild con cambio:  ~18.5s (npm ci cacheado, vite build)
+```
+
+---
+
 ## [0.30.39] - 2026-04-29
 
 ### Docs — `.env.*.example` simplificados al minimo necesario
