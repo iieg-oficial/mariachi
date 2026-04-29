@@ -62,7 +62,7 @@ PLATFORMS: list[PlatformConfig] = [
         "url": None,
         "probe": "ontoy",
         "probe_url_template": "{acervo_ontoy_url}",
-        "static_version": "1.18.0",
+        "static_version": "1.18.1",
     },
     {
         "slug": "gateway-hub",
@@ -70,7 +70,7 @@ PLATFORMS: list[PlatformConfig] = [
         "url": None,
         "probe": "ontoy",
         "probe_url_template": "{gateway_hub_ontoy_url}",
-        "static_version": "1.24.1",
+        "static_version": "1.24.5",
     },
     {
         "slug": "huachicol",
