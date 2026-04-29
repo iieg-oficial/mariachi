@@ -62,7 +62,7 @@ PLATFORMS: list[PlatformConfig] = [
         "url": None,
         "probe": "ontoy",
         "probe_url_template": "{acervo_ontoy_url}",
-        "static_version": "1.18.1",
+        "static_version": "1.18.2",
     },
     {
         "slug": "gateway-hub",
