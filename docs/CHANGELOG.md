@@ -13,6 +13,39 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.30.39] - 2026-04-29
+
+### Docs — `.env.*.example` simplificados al minimo necesario
+
+Los tres `.env.*.example` arrastraban variables redundantes (sobreescritas por `docker-compose.yml` `environment:`, con default sensato en `settings.py`/`Dockerfile`, o forzadas en `enforce_production_defaults`). Esto invitaba a configurar cosas que no surtian efecto y agregaba ruido.
+
+Removidas (todas tienen default ya en codigo):
+- `ALGORITHM`, `ACCESS_TOKEN_EXPIRE_MINUTES`, `CSRF_TOKEN_EXPIRE_MINUTES` (defaults `HS256`/30/60).
+- `COOKIE_NAME`, `COOKIE_MAX_AGE`, `COOKIE_HTTPONLY`, `COOKIE_SECURE` (defaults; `cookie_secure` forzado a `True` en prod por `enforce_production_defaults`).
+- `PROJECT_NAME`, `VERSION` (`PROJECT_NAME` default; `VERSION` se resuelve via `get_app_version()` desde `pyproject.toml`).
+- `ADMIN_PREFIX`, `WEB_PREFIX`, `MAPALAB_PUBLIC_PREFIX` (defaults).
+- `DATAENGINE_POOL_SIZE`, `DATAENGINE_MAX_OVERFLOW`, `GEOSERVER_TIMEOUT` (defaults).
+- `DOCS_URL`, `REDOC_URL`, `OPENAPI_URL` (forzados a `None` en prod por `enforce_production_defaults`).
+- `VITE_NODE_ENV`, `VITE_ADMIN_API_TIMEOUT`, `VITE_ADMIN_APP_NAME`, `VITE_ADMIN_PORT`, `VITE_ADMIN_HOST` (defaults en `nginx/Dockerfile` o no se referencian).
+- `VITE_GOOGLE_ANALYTICS_ID` (mariachi delega a `gateway-hub` GTM desde 0.30.28).
+- `DATABASE_URL`, `REDIS_URL` (sobreescritos por `environment:` en docker-compose).
+- `ACERVO_ACCESS_KEY`, `ACERVO_SECRET_KEY`, `ACERVO_BUCKET_NAME` (sin fallback al root desde 0.30.29; cada bucket usa sus creds).
+- `COMPOSE_PROJECT_NAME` en prod/staging (compose tiene `name: mariachi`).
+
+Mantenidas / mejoradas:
+- Comentarios cortos sobre como rotar creds (`init-buckets.sh --rotate`), proposito de cada `*_ONTOY_URL`, etc.
+- `ACERVO_PUBLIC_ENDPOINT=/acervo` (path relativo) en prod/staging para evitar mixed content (ya estaba en codigo desde 0.30.34).
+
+### Conteo de lineas (antes -> despues)
+
+```
+.env.production.example:    ~75 -> 79 (con comentarios mas utiles)
+.env.staging.example:        73 -> 58
+.env.development.example:    98 -> 73
+```
+
+---
+
 ## [0.30.38] - 2026-04-29
 
 ### Infra — fix `IsADirectoryError` en `mariachi-api` cuando acervo no tiene cert propio
