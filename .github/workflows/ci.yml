@@ -12,3 +12,38 @@ jobs:
     uses: ./.github/workflows/test-frontend.yml
     with:
       app: admin
+
+  notify-failure:
+    needs: [backend, admin]
+    if: failure() && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Discord - CI Failure
+        continue-on-error: true
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          COMMIT_MSG=$(echo '${{ github.event.head_commit.message }}' | head -1)
+          COMMIT_URL="${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}"
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          FAILED_JOBS=""
+          [ "${{ needs.backend.result }}" = "failure" ] && FAILED_JOBS="${FAILED_JOBS}backend "
+          [ "${{ needs.admin.result }}" = "failure" ] && FAILED_JOBS="${FAILED_JOBS}admin "
+          [ -z "$FAILED_JOBS" ] && FAILED_JOBS="(unknown)"
+
+          curl -sf -H "Content-Type: application/json" -d '{
+            "embeds": [{
+              "title": "CI fallido — mariachi",
+              "color": 15158332,
+              "fields": [
+                { "name": "Branch", "value": "`${{ github.ref_name }}`", "inline": true },
+                { "name": "Jobs", "value": "'"$FAILED_JOBS"'", "inline": true },
+                { "name": "Autor", "value": "${{ github.actor }}", "inline": true },
+                { "name": "Commit", "value": "['"${COMMIT_MSG}"']('"${COMMIT_URL}"')", "inline": false },
+                { "name": "Logs", "value": "['"Ver run"']('"${RUN_URL}"')", "inline": false }
+              ],
+              "footer": { "text": "iieg-oficial/mariachi" },
+              "timestamp": "'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"
+            }]
+          }' "$DISCORD_WEBHOOK"

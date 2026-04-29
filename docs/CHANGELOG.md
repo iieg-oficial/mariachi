@@ -13,6 +13,19 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.30.42] - 2026-04-29
+
+### CI — fix workflow file invalido + notificacion Discord
+
+`.github/workflows/test-backend.yml` tenia el valor `DATABASE_URL: sqlite:///:memory:` sin comillas. YAML interpreta los `:` dentro del valor como inicio de mappings y rompe el parser. GitHub Actions reporta esto como `This run likely failed because of a workflow file issue.` y el run falla SIN ejecutar jobs (`total_count: 0`). Por eso `gh run view` no mostraba log: nunca arrancaron los jobs.
+
+### Cambios
+
+- **`test-backend.yml`**: comillas alrededor de `'sqlite:///:memory:'` (el unico valor con `:` problematico). De paso eliminadas vars que ya no usa el codigo (`VERSION`, `ALGORITHM`, `ACCESS_TOKEN_EXPIRE_MINUTES`, `ACERVO_ACCESS_KEY`, `ACERVO_SECRET_KEY`, `ACERVO_BUCKET_NAME`, `ADMIN_PREFIX`, `WEB_PREFIX`, `COOKIE_*`, `CSRF_TOKEN_EXPIRE_MINUTES` — todas tienen default en `settings.py` o se eliminaron del modelo). Agregadas las 5 pares de creds por bucket que el codigo ahora exige (`ACERVO_<BUCKET>_ACCESS_KEY/SECRET_KEY`).
+- **`ci.yml`**: nuevo job `notify-failure` que dispara solo en `push` (no en PRs) cuando `backend` o `admin` fallan, y manda un embed a Discord con commit, autor, jobs fallidos y link al run. Patron tomado del `cd.yml` de mapalab. Requiere secret `DISCORD_WEBHOOK_URL` configurado en el repo (`gh secret set DISCORD_WEBHOOK_URL`).
+
+---
+
 ## [0.30.41] - 2026-04-29
 
 ### Infra — `vite build` 45% mas rapido
