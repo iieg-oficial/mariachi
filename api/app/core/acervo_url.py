@@ -14,6 +14,14 @@ from typing import Any
 from app.core.settings import get_settings
 
 
+def _public_endpoint() -> str:
+    return get_settings().acervo_public_endpoint
+
+
+def _is_path_endpoint(endpoint: str) -> bool:
+    return endpoint.startswith("/")
+
+
 def _scheme_and_host() -> tuple[str, str]:
     settings = get_settings()
     scheme = "https" if settings.acervo_use_ssl else "http"
@@ -21,6 +29,9 @@ def _scheme_and_host() -> tuple[str, str]:
 
 
 def _absolute_prefixes() -> list[str]:
+    endpoint = _public_endpoint()
+    if _is_path_endpoint(endpoint):
+        return [endpoint.rstrip("/") + "/"]
     scheme, host = _scheme_and_host()
     prefixes = [f"{scheme}://{host}/"]
     other = "http" if scheme == "https" else "https"
@@ -32,6 +43,8 @@ def to_relative(value: str | None) -> str | None:
     if not value:
         return value
     if not isinstance(value, str):
+        return value
+    if value.startswith("/api/"):
         return value
     for prefix in _absolute_prefixes():
         if value.startswith(prefix):
@@ -50,8 +63,11 @@ def to_absolute(value: str | None) -> str | None:
         return value
     if value.startswith("/api/"):
         return value
-    scheme, host = _scheme_and_host()
-    return f"{scheme}://{host}/{value.lstrip('/')}"
+    endpoint = _public_endpoint()
+    if _is_path_endpoint(endpoint):
+        return f"{endpoint.rstrip('/')}/{value.lstrip('/')}"
+    scheme = "https" if get_settings().acervo_use_ssl else "http"
+    return f"{scheme}://{endpoint}/{value.lstrip('/')}"
 
 
 _URL_KEY_SUFFIXES = ("_url", "Url")

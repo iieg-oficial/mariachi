@@ -130,6 +130,7 @@ async def get_current_user_context(
         "name": current_user.name,
         "role": current_user.role,
         "must_change_password": current_user.must_change_password,
+        "avatar_url": current_user.avatar_url,
         "created_at": current_user.created_at,
         "projects": list_user_memberships(db, current_user),
         "accessible_buckets": list_user_accessible_buckets(db, current_user),

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Layout, Card, Form, Input, Button, Avatar, Space, Typography, Tag, Divider } from 'antd';
-import { UserOutlined, SaveOutlined, FileImageOutlined } from '@ant-design/icons';
+import { Layout, Card, Form, Input, Button, Avatar, Space, Typography, Tag, Divider, Upload } from 'antd';
+import { UserOutlined, SaveOutlined, FileImageOutlined, UploadOutlined } from '@ant-design/icons';
 import { useAuth } from '@shared/contexts/useAuth';
 import { BucketFilePicker } from '@features/media';
+import { uploadMediaFile } from '@features/media/api/mediaService';
 import { message } from '@shared/services/message';
 import api from '@shared/services/api';
 import { actualizarPerfil } from '@features/perfil/api/perfilService';
@@ -10,15 +11,18 @@ import { actualizarPerfil } from '@features/perfil/api/perfilService';
 const { Content } = Layout;
 const { Title, Text } = Typography;
 
-const PORTAL_BUCKET_SLUG = 'portal';
-
+const GENERIC_BUCKET_SLUG = 'iieg';
+const PRIVATE_BUCKET_SLUG = 'mariachi';
+const GENERIC_PREFIX = 'avatars/';
 
 export default function PerfilPage() {
     const { user, refreshUser } = useAuth();
     const [form] = Form.useForm();
     const [saving, setSaving] = useState(false);
     const [pickerOpen, setPickerOpen] = useState(false);
-    const [bucketId, setBucketId] = useState(null);
+    const [uploading, setUploading] = useState(false);
+    const [genericBucketId, setGenericBucketId] = useState(null);
+    const [privateBucketId, setPrivateBucketId] = useState(null);
     const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl || user?.avatar_url || '');
 
     useEffect(() => {
@@ -26,9 +30,10 @@ export default function PerfilPage() {
         api.get('/media-buckets')
             .then((res) => {
                 if (cancelled) return;
-                const portal = res.data.find((b) => b.acervo_bucket === PORTAL_BUCKET_SLUG);
-                if (portal) setBucketId(portal.id);
-                else if (res.data.length > 0) setBucketId(res.data[0].id);
+                const generic = res.data.find((b) => b.acervo_bucket === GENERIC_BUCKET_SLUG);
+                const priv = res.data.find((b) => b.acervo_bucket === PRIVATE_BUCKET_SLUG);
+                if (generic) setGenericBucketId(generic.id);
+                if (priv) setPrivateBucketId(priv.id);
             })
             .catch(() => {});
         return () => { cancelled = true; };
@@ -42,9 +47,46 @@ export default function PerfilPage() {
         setAvatarUrl(user?.avatarUrl || user?.avatar_url || '');
     }, [user, form]);
 
-    const onSelectAvatar = (file) => {
+    const onSelectGeneric = (file) => {
         if (file?.url) setAvatarUrl(file.url);
         setPickerOpen(false);
+    };
+
+    const onCustomUpload = async ({ file, onSuccess, onError }) => {
+        if (!privateBucketId || !user?.id) {
+            message.error('Bucket privado no disponible');
+            onError?.(new Error('no privateBucketId'));
+            return;
+        }
+        try {
+            setUploading(true);
+            const result = await uploadMediaFile(file, {
+                bucketId: privateBucketId,
+                folder: `/avatars/u${user.id}/`,
+            });
+            if (result?.url) setAvatarUrl(result.url);
+            message.success('Avatar subido');
+            onSuccess?.(result);
+        } catch (err) {
+            message.error(err?.response?.data?.detail || 'Error al subir avatar');
+            onError?.(err);
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    const beforeUpload = (file) => {
+        const isImage = file.type.startsWith('image/');
+        if (!isImage) {
+            message.error('Solo se permiten imágenes');
+            return Upload.LIST_IGNORE;
+        }
+        const maxBytes = 5 * 1024 * 1024;
+        if (file.size > maxBytes) {
+            message.error('La imagen debe pesar menos de 5 MB');
+            return Upload.LIST_IGNORE;
+        }
+        return true;
     };
 
     const handleSave = async () => {
@@ -75,25 +117,44 @@ export default function PerfilPage() {
 
                 <Card>
                     <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
-                        <Space size="large" align="center">
+                        <Space size="large" align="center" wrap>
                             <Avatar
                                 size={96}
                                 src={avatarUrl || undefined}
                                 icon={!avatarUrl && <UserOutlined />}
                             />
-                            <Space orientation="vertical" size={4}>
-                                <Button
-                                    icon={<FileImageOutlined />}
-                                    disabled={!bucketId}
-                                    onClick={() => setPickerOpen(true)}
-                                >
-                                    Cambiar avatar
-                                </Button>
+                            <Space orientation="vertical" size={8}>
+                                <Space size={8} wrap>
+                                    <Button
+                                        icon={<FileImageOutlined />}
+                                        disabled={!genericBucketId}
+                                        onClick={() => setPickerOpen(true)}
+                                    >
+                                        Elegir genérico
+                                    </Button>
+                                    <Upload
+                                        accept="image/*"
+                                        showUploadList={false}
+                                        beforeUpload={beforeUpload}
+                                        customRequest={onCustomUpload}
+                                    >
+                                        <Button
+                                            icon={<UploadOutlined />}
+                                            loading={uploading}
+                                            disabled={!privateBucketId}
+                                        >
+                                            Subir personalizado
+                                        </Button>
+                                    </Upload>
+                                </Space>
                                 {avatarUrl && (
                                     <Button type="link" size="small" onClick={() => setAvatarUrl('')}>
                                         Quitar avatar
                                     </Button>
                                 )}
+                                <Text type="secondary" style={{ fontSize: 11 }}>
+                                    Genéricos: bucket público compartido. Personalizados: privado, solo accesible con sesión.
+                                </Text>
                             </Space>
                         </Space>
 
@@ -143,9 +204,11 @@ export default function PerfilPage() {
             <BucketFilePicker
                 open={pickerOpen}
                 onClose={() => setPickerOpen(false)}
-                onSelect={onSelectAvatar}
-                bucketId={bucketId}
-                title="Elegir avatar"
+                onSelect={onSelectGeneric}
+                bucketId={genericBucketId}
+                prefixes={[GENERIC_PREFIX]}
+                mode="grid"
+                title="Elegir avatar genérico"
             />
         </Content>
     );

@@ -235,6 +235,8 @@ const Media = () => {
         setSelectedFiles([]);
     };
 
+    const currentBucket = buckets.find((b) => b.id === selectedBucketId);
+
     const breadcrumbItems = (() => {
         const linkStyle = {
             cursor: 'pointer',
@@ -247,7 +249,7 @@ const Media = () => {
         const items = [{
             title: (
                 <button type="button" style={linkStyle} onClick={() => setCurrentPath('')}>
-                    <HomeOutlined /> Raíz
+                    <HomeOutlined /> {currentBucket?.display_name || 'Raíz'}
                 </button>
             ),
         }];
@@ -509,20 +511,28 @@ const Media = () => {
     return (
         <div>
             <Card
-                title="Media Manager"
+                title="Multimedia"
                 extra={
                     <Space wrap size={[8, 8]} style={{ width: isMobile ? '100%' : 'auto' }}>
                         <Button
                             type="primary"
                             icon={<InboxOutlined />}
-                            onClick={() => setUploadModalVisible(true)}
+                            onClick={() => {
+                                form.setFieldsValue({ folder: currentPath || '/' });
+                                setUploadModalVisible(true);
+                            }}
+                            disabled={!selectedBucketId}
                             block={isMobile}
                         >
                             Subir Archivos
                         </Button>
                         <Button
                             icon={<FolderAddOutlined />}
-                            onClick={() => setFolderModalVisible(true)}
+                            onClick={() => {
+                                folderForm.setFieldsValue({ parent: currentPath || undefined });
+                                setFolderModalVisible(true);
+                            }}
+                            disabled={!selectedBucketId}
                             block={isMobile}
                         >
                             Nueva Carpeta
@@ -574,11 +584,14 @@ const Media = () => {
                         <Select
                             placeholder="Media"
                             value={selectedBucketId}
-                            onChange={setSelectedBucketId}
+                            onChange={(id) => {
+                                setSelectedBucketId(id);
+                                setCurrentPath('');
+                            }}
                             style={{ width: '100%' }}
                             options={buckets.map((b) => ({
                                 value: b.id,
-                                label: `${b.display_name} · ${b.acervo_bucket}`,
+                                label: b.display_name,
                             }))}
                         />
                     </div>
@@ -651,19 +664,18 @@ const Media = () => {
                 centered={isMobile}
             >
                 <Form form={form} layout="vertical">
+                    {currentBucket && (
+                        <Form.Item label="Bucket">
+                            <Input value={currentBucket.display_name} disabled />
+                        </Form.Item>
+                    )}
                     <Form.Item
                         label="Carpeta de destino"
                         name="folder"
                         initialValue="/"
+                        extra="Ruta dentro del bucket. Edita si quieres subir a otra carpeta."
                     >
-                        <Select>
-                            <Option value="/">Raíz</Option>
-                            {folders.map(folder => (
-                                <Option key={folder.id} value={folder.path}>
-                                    <FolderOutlined /> {folder.name}
-                                </Option>
-                            ))}
-                        </Select>
+                        <Input placeholder="/" prefix={<FolderOutlined />} />
                     </Form.Item>
 
                     <Form.Item
@@ -708,6 +720,11 @@ const Media = () => {
                 centered={isMobile}
             >
                 <Form form={folderForm} layout="vertical">
+                    {currentBucket && (
+                        <Form.Item label="Bucket">
+                            <Input value={currentBucket.display_name} disabled />
+                        </Form.Item>
+                    )}
                     <Form.Item
                         label="Nombre de la carpeta"
                         name="name"
@@ -719,14 +736,9 @@ const Media = () => {
                     <Form.Item
                         label="Carpeta padre (opcional)"
                         name="parent"
+                        extra="Ruta dentro del bucket donde se creará la nueva carpeta."
                     >
-                        <Select allowClear placeholder="Ninguna (carpeta raíz)">
-                            {folders.map(folder => (
-                                <Option key={folder.id} value={folder.path}>
-                                    <FolderOutlined /> {folder.name}
-                                </Option>
-                            ))}
-                        </Select>
+                        <Input allowClear placeholder="Ninguna (carpeta raíz)" prefix={<FolderOutlined />} />
                     </Form.Item>
                 </Form>
             </Modal>

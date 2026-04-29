@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Modal, Pagination, Table, Tabs, Input, Space, Typography } from 'antd';
+import { Modal, Pagination, Table, Tabs, Input, Space, Typography, Empty, Spin } from 'antd';
 import { FolderOpenOutlined } from '@ant-design/icons';
 import { listBucketObjects } from '@features/media/api/mediaService';
 import { message } from '@shared/services/message';
 
 const { Text } = Typography;
 
-export default function BucketFilePicker({ open, onClose, onSelect, bucketId, prefixes, title = 'Seleccionar archivo' }) {
+const IMAGE_EXTENSIONS = /\.(jpe?g|png|gif|webp|svg|bmp|avif)$/i;
+
+export default function BucketFilePicker({ open, onClose, onSelect, bucketId, prefixes, mode = 'list', title = 'Seleccionar archivo' }) {
     const [activePrefix, setActivePrefix] = useState('');
     const [objects, setObjects] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -129,36 +131,121 @@ export default function BucketFilePicker({ open, onClose, onSelect, bucketId, pr
                 </div>
 
                 <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '0 16px' }}>
-                    <Table
-                        columns={columns}
-                        dataSource={paginated}
-                        rowKey="name"
-                        loading={loading}
-                        size="small"
-                        sticky={{ offsetHeader: 0 }}
-                        pagination={false}
-                        tableLayout="fixed"
-                        onRow={(record) => ({
-                            onClick: () => {
-                                const basename = record.name.split('/').pop();
-                                onSelect({
-                                    nombre: basename,
-                                    enlace: `/${record.name.startsWith('/') ? record.name.slice(1) : record.name}`,
-                                    url: record.url,
-                                });
-                                onClose();
-                            },
-                            style: { cursor: 'pointer' },
-                        })}
-                        locale={{
-                            emptyText: (
-                                <Space orientation="vertical" align="center" style={{ padding: 24 }}>
-                                    <FolderOpenOutlined style={{ fontSize: 32, color: '#8c8c8c' }} />
-                                    <Text type="secondary">Sin archivos en esta carpeta</Text>
-                                </Space>
-                            ),
-                        }}
-                    />
+                    {mode === 'grid' ? (
+                        loading ? (
+                            <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}>
+                                <Spin />
+                            </div>
+                        ) : paginated.length === 0 ? (
+                            <Empty
+                                image={<FolderOpenOutlined style={{ fontSize: 48, color: '#8c8c8c' }} />}
+                                description={<Text type="secondary">Sin archivos en esta carpeta</Text>}
+                                style={{ padding: 48 }}
+                            />
+                        ) : (
+                            <div style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
+                                gap: 12,
+                                padding: '12px 0',
+                            }}>
+                                {paginated.map((record) => {
+                                    const basename = record.name.split('/').pop();
+                                    const isImage = IMAGE_EXTENSIONS.test(basename);
+                                    return (
+                                        <button
+                                            key={record.name}
+                                            type="button"
+                                            onClick={() => {
+                                                onSelect({
+                                                    nombre: basename,
+                                                    enlace: `/${record.name.startsWith('/') ? record.name.slice(1) : record.name}`,
+                                                    url: record.url,
+                                                });
+                                                onClose();
+                                            }}
+                                            style={{
+                                                border: '1px solid #f0f0f0',
+                                                borderRadius: 8,
+                                                background: '#fff',
+                                                padding: 8,
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                alignItems: 'center',
+                                                gap: 6,
+                                                transition: 'border-color .15s, box-shadow .15s',
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.borderColor = '#1890ff';
+                                                e.currentTarget.style.boxShadow = '0 2px 8px rgba(24,144,255,0.15)';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.borderColor = '#f0f0f0';
+                                                e.currentTarget.style.boxShadow = 'none';
+                                            }}
+                                        >
+                                            <div style={{
+                                                width: '100%',
+                                                aspectRatio: '1 / 1',
+                                                background: '#fafafa',
+                                                borderRadius: 6,
+                                                overflow: 'hidden',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                            }}>
+                                                {isImage && record.url ? (
+                                                    <img
+                                                        src={record.url}
+                                                        alt={basename}
+                                                        loading="lazy"
+                                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                                    />
+                                                ) : (
+                                                    <FolderOpenOutlined style={{ fontSize: 32, color: '#bfbfbf' }} />
+                                                )}
+                                            </div>
+                                            <Text style={{ fontSize: 11, textAlign: 'center', wordBreak: 'break-all' }} ellipsis={{ tooltip: basename }}>
+                                                {basename}
+                                            </Text>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )
+                    ) : (
+                        <Table
+                            columns={columns}
+                            dataSource={paginated}
+                            rowKey="name"
+                            loading={loading}
+                            size="small"
+                            sticky={{ offsetHeader: 0 }}
+                            pagination={false}
+                            tableLayout="fixed"
+                            onRow={(record) => ({
+                                onClick: () => {
+                                    const basename = record.name.split('/').pop();
+                                    onSelect({
+                                        nombre: basename,
+                                        enlace: `/${record.name.startsWith('/') ? record.name.slice(1) : record.name}`,
+                                        url: record.url,
+                                    });
+                                    onClose();
+                                },
+                                style: { cursor: 'pointer' },
+                            })}
+                            locale={{
+                                emptyText: (
+                                    <Space orientation="vertical" align="center" style={{ padding: 24 }}>
+                                        <FolderOpenOutlined style={{ fontSize: 32, color: '#8c8c8c' }} />
+                                        <Text type="secondary">Sin archivos en esta carpeta</Text>
+                                    </Space>
+                                ),
+                            }}
+                        />
+                    )}
                 </div>
 
                 {filtered.length > 0 && (

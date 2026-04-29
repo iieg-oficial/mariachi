@@ -13,6 +13,78 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.30.37] - 2026-04-29
+
+### Admin (UI) — refinamientos UX en `/media`
+
+- **Titulo `Media Manager` -> `Multimedia`** (en español, alineado con el endpoint `/multimedia`).
+- **Modal "Subir Archivos"**:
+  - Nuevo campo "Bucket" (read-only) que muestra el nombre del bucket destino — antes el usuario no veia a donde estaba subiendo.
+  - "Carpeta de destino" cambio de `Select` (lista de todas las carpetas globales registradas en `media_folders`, sin filtro por bucket) a `Input` editable con el `currentPath` precargado. El usuario ve a donde va, puede editar manualmente.
+- **Modal "Nueva Carpeta"**:
+  - Mismo campo "Bucket" read-only.
+  - "Carpeta padre" tambien cambio a `Input` editable.
+- **Cambio de bucket resetea `currentPath` a raiz**: antes si navegabas a `mariachi/avatars/u1/` y luego cambiabas al bucket `portal`, seguias en el path `avatars/u1/` aplicado a portal, dando una falsa sensacion de "no hay archivos". Ahora cualquier cambio de bucket vuelve a la raiz.
+
+---
+
+## [0.30.36] - 2026-04-29
+
+### Backend (api) — fix `avatarUrl` perdido al refrescar `/perfil`
+
+`get_current_user_context` (en `api/deps.py`) arma manualmente el dict que retorna `GET /autenticacion/perfil` (`CurrentUserResponse`). El dict no incluia el campo `avatar_url`, asi que aunque la BD tuviera el avatar correcto, el GET retornaba `avatarUrl: null`. En el frontend, `refreshUser()` despues del PUT sobreescribia el state con `avatarUrl` vacio y el avatar se "perdia" al recargar la pagina.
+
+Fix: `get_current_user_context` ahora incluye `avatar_url=current_user.avatar_url` en el dict. El field_serializer `_expose_avatar_absolute` (en `schemas/user.py:UsuarioResponse`) lo procesa correctamente y lo expone como `avatarUrl` en la respuesta JSON.
+
+---
+
+## [0.30.35] - 2026-04-29
+
+### Backend (api) — fix idempotencia `to_relative` para paths del proxy
+
+Bug introducido implícitamente cuando empezamos a guardar URLs del proxy en `avatar_url`: el validator `to_relative` strip-eaba el `/` inicial de paths absolutos del API, dejando `avatar_url` como `api/administrador/multimedia/proxy/...` (sin barra). Al releer, `to_absolute` no reconocia el prefix `/api/` y trataba el path como relativo al bucket público, generando URLs invalidas tipo `/acervo/api/administrador/...`.
+
+Fix: `to_relative(...)` ahora preserva paths que empiezan con `/api/` (igual que `to_absolute(...)`). Idempotencia restaurada: `to_absolute(to_relative(x)) == x` para URLs del proxy.
+
+Si tienes `avatar_url` ya corruptos en BD (subidos antes del fix), repararlos con:
+```sql
+UPDATE usuarios SET avatar_url = '/' || avatar_url WHERE avatar_url LIKE 'api/%';
+```
+
+### Admin (UI) — `/perfil` modo grid en el picker de avatars genéricos
+
+- **`BucketFilePicker`** acepta nuevo prop `mode="grid"|"list"` (default `list`). En modo grid muestra thumbnails (`<img>` real con `objectFit: cover`) en una grilla responsiva (`auto-fill, minmax(140px, 1fr)`); para items que no son imagen muestra icono. Hover visual con borde azul.
+- **`PerfilPage`** pasa `mode="grid"` al picker de "Elegir genérico" — los avatars del bucket `iieg/avatars/` se muestran como miniaturas clicables en lugar de tabla.
+
+---
+
+## [0.30.34] - 2026-04-29
+
+### Backend (api) — URLs del acervo relativas al dominio (cierra mixed-content)
+
+`ACERVO_PUBLIC_ENDPOINT` ahora soporta valores tipo path (`/acervo` en vez de `localhost:9080`). El admin se sirve por HTTPS pero las URLs del acervo iban a `http://localhost:9080/...` provocando que el browser bloqueara las imagenes con `Mixed Content: was loaded over HTTPS, but requested an insecure element`. Ahora `to_absolute(...)` detecta endpoints que empiezan con `/` y retorna URL relativa al dominio actual (gateway-hub la enruta a MinIO). Sin host hardcoded, funciona igual en local (`iieg.local`) y en GCP (`mapalab-iieg.app`).
+
+- **`acervo_url.py:to_absolute`** y `to_relative`: soporte para path-only endpoints.
+- **`.env.production`** local: `ACERVO_PUBLIC_ENDPOINT=/acervo`.
+
+### Admin (UI) — `/media` y `/perfil` adaptados
+
+- **Breadcrumb de `/media`** ahora muestra el nombre del bucket actual en el inicio (`Mariachi > avatars > u1`) en lugar de un genérico `Raíz`.
+- **Botones `Subir Archivos` y `Nueva Carpeta`** en `/media` ahora pre-seleccionan la carpeta donde el usuario está navegando (`currentPath`) en lugar de `/` hardcoded. Tambien se deshabilitan si no hay bucket seleccionado.
+- **`/perfil`** rediseñado con dos opciones de avatar: `Elegir genérico` (pickea del bucket público compartido `iieg/avatars/`) y `Subir personalizado` (sube al bucket privado `mariachi/avatars/u<user_id>/`, accesible solo via proxy autenticado). Antes apuntaba a `portal` para ambos casos.
+
+---
+
+## [0.30.33] - 2026-04-29
+
+### Admin (UI) — simplificacion de nombres de buckets en `/media`
+
+- Antes el select de bucket en la pagina `/media` mostraba `${display_name} · ${acervo_bucket}` (ej. `"Metadatos de capas · mapalab"`). El display_name original era descriptivo pero confuso (un bucket entero NO son solo metadatos) y la concatenacion duplicaba info. Ahora el label es directo y reconocible: `Portal`, `MapaLab`, `Mariachi`, `SIEEJ`, `IIEG`.
+- **Migracion `b2c3d4e5f6a7_simplify_bucket_display_names.py`** UPDATEa los `display_name` de `media_buckets` a las versiones cortas. Idempotente, downgrade restaura los textos largos.
+- **`MediaPage.jsx`**: el `label` del `Select` ahora es `b.display_name` simple (sin sufijo `· acervo_bucket`).
+
+---
+
 ## [0.30.32] - 2026-04-29
 
 ### Backend (api+infra) — proxy autenticado para buckets privados (cierra brecha de privacidad)
