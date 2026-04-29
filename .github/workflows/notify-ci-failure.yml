@@ -13,19 +13,37 @@ jobs:
       github.event.workflow_run.head_branch == 'production'
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 2
+
+      - name: Compute version transition
+        id: ver
+        run: |
+          NEW=$(grep '^version' api/pyproject.toml | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
+          OLD=$(git show HEAD~1:api/pyproject.toml 2>/dev/null | grep '^version' | head -1 | sed -E 's/.*"([^"]+)".*/\1/' || true)
+          if [ -z "$OLD" ] || [ "$NEW" = "$OLD" ]; then
+            TRANS="$NEW (sin bump)"
+          else
+            TRANS="$OLD → $NEW"
+          fi
+          echo "transition=$TRANS" >> "$GITHUB_OUTPUT"
+
       - name: Notify Discord - CI Failure
         continue-on-error: true
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          RUN: ${{ toJSON(github.event.workflow_run) }}
         run: |
-          COMMIT_MSG=$(echo "$RUN" | python3 -c "import json,sys; print(json.load(sys.stdin).get('head_commit',{}).get('message','').splitlines()[0] if json.load(sys.stdin) else '')" 2>/dev/null || echo "${{ github.event.workflow_run.display_title }}")
           COMMIT_SHA="${{ github.event.workflow_run.head_sha }}"
           COMMIT_SHORT="${COMMIT_SHA:0:7}"
           COMMIT_URL="${{ github.server_url }}/${{ github.repository }}/commit/${COMMIT_SHA}"
           RUN_URL="${{ github.event.workflow_run.html_url }}"
           AUTHOR="${{ github.event.workflow_run.actor.login }}"
           BRANCH="${{ github.event.workflow_run.head_branch }}"
+          COMMIT_MSG=$(git log -1 --pretty=%s "$COMMIT_SHA" 2>/dev/null || echo "${{ github.event.workflow_run.display_title }}")
+          VERSION="${{ steps.ver.outputs.transition }}"
 
           curl -sf -H "Content-Type: application/json" -d '{
             "embeds": [{
@@ -35,6 +53,7 @@ jobs:
                 { "name": "Commit", "value": "[`'"$COMMIT_SHORT"'`]('"$COMMIT_URL"')", "inline": true },
                 { "name": "Autor", "value": "'"$AUTHOR"'", "inline": true },
                 { "name": "Branch", "value": "`'"$BRANCH"'`", "inline": true },
+                { "name": "Version", "value": "`'"$VERSION"'`", "inline": true },
                 { "name": "Cambios", "value": "'"$COMMIT_MSG"'" },
                 { "name": "Workflow", "value": "[Ver logs]('"$RUN_URL"')", "inline": true }
               ],

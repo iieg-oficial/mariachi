@@ -13,6 +13,24 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.30.47] - 2026-04-29
+
+### CI — embed de Discord ahora muestra transicion de version
+
+`notify-ci-failure.yml` ahora hace `actions/checkout@v6` con `fetch-depth: 2` (commit del fail + su padre), lee `api/pyproject.toml` en HEAD y `HEAD~1`, y construye un campo `Version` con el formato `0.30.46 → 0.30.47`. Si `pyproject.toml` no cambio en el commit, muestra `0.30.47 (sin bump)`.
+
+### Como se ve en Discord
+
+```
+CI fallido — mariachi
+Commit: abc1234       Autor: edgar       Branch: production
+Version: 0.30.46 → 0.30.47
+Cambios: ci: agregar version transition al embed
+Workflow: Ver logs
+```
+
+---
+
 ## [0.30.46] - 2026-04-29
 
 ### CI — notificacion Discord solo para fallos en `production`
