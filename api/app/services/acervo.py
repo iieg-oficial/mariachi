@@ -14,12 +14,20 @@ settings = get_settings()
 
 
 def resolve_bucket_credentials(access_key_ref: str | None) -> tuple[str, str]:
-    if access_key_ref:
-        ak = os.getenv(f"{access_key_ref}_ACCESS_KEY")
-        sk = os.getenv(f"{access_key_ref}_SECRET_KEY")
-        if ak and sk:
-            return ak, sk
-    return settings.acervo_access_key, settings.acervo_secret_key
+    if not access_key_ref:
+        raise RuntimeError(
+            "media_bucket sin access_key_ref. Cada bucket debe declarar el prefijo "
+            "de sus credenciales (e.g. ACERVO_MARIACHI)."
+        )
+    ak = os.getenv(f"{access_key_ref}_ACCESS_KEY")
+    sk = os.getenv(f"{access_key_ref}_SECRET_KEY")
+    if not ak or not sk:
+        raise RuntimeError(
+            f"Faltan {access_key_ref}_ACCESS_KEY/{access_key_ref}_SECRET_KEY en el "
+            f"entorno. Mariachi ya no hace fallback a las credenciales root de MinIO; "
+            f"cada bucket activo debe tener sus propias credenciales por bucket."
+        )
+    return ak, sk
 
 
 class AcervoClient:
@@ -101,15 +109,3 @@ class AcervoClient:
         return to_absolute(f"{self.bucket_name}/{object_name}")
 
 
-_legacy_service: AcervoClient | None = None
-
-
-def get_acervo_service() -> AcervoClient:
-    global _legacy_service
-    if _legacy_service is None:
-        _legacy_service = AcervoClient(
-            settings.acervo_bucket_name,
-            settings.acervo_access_key,
-            settings.acervo_secret_key,
-        )
-    return _legacy_service

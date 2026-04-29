@@ -22,9 +22,6 @@ class Settings(BaseSettings):
     redis_url: str
     acervo_endpoint: str
     acervo_public_endpoint: str
-    acervo_access_key: str
-    acervo_secret_key: str
-    acervo_bucket_name: str
     acervo_use_ssl: bool = False
     acervo_verify_ssl: bool = True
     cors_origins: list[str]

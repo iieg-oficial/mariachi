@@ -13,6 +13,31 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.30.29] - 2026-04-29
+
+### Backend (api+infra) — principio de menor privilegio para acervo
+
+- Mariachi escribia a TODOS los buckets de Acervo con las credenciales root del cluster MinIO (fallback de `acervo.py:resolve_bucket_credentials`). Esto violaba el principio de menor privilegio: si las creds de mariachi se filtraban, el atacante tenia acceso completo al cluster (incluyendo buckets de huachicol y otros que mariachi nunca toca). Ahora cada bucket usa sus propias credenciales (`<REF>_user` con policy attached solo sobre ese bucket).
+- **`media_buckets`**: nuevo proyecto `mariachi` con bucket `mariachi` (publico, anonymous GetObject) para los assets propios del panel admin (avatars y demas). El bucket `dateengine` (con typo, jamas usado por mariachi en runtime) queda desactivado (`is_active=false`); no se borra el row para preservar FKs eventuales. Migracion: `a1b2c3d4e5f6_add_mariachi_project_and_bucket.py`.
+- **`acervo.py`**: removido el fallback al usuario root. Si un bucket activo no tiene `<REF>_ACCESS_KEY`/`<REF>_SECRET_KEY` configuradas, lanza `RuntimeError` explicito (en lugar de degradar silenciosamente a creds root).
+- **`settings.py`**: removidas `acervo_access_key`, `acervo_secret_key`, `acervo_bucket_name` (ya no se usan).
+- **`acervo.py`**: removida la funcion legacy `get_acervo_service` (codigo muerto, nunca se llamaba).
+- **`docker-compose.yml` / `docker-compose.dev.yml`**: removidas `ACERVO_ACCESS_KEY`, `ACERVO_SECRET_KEY`, `ACERVO_BUCKET_NAME` del bloque `environment:` del servicio `api`.
+- **`.env.production`** / `.env.staging` / `.env.development`: removidas las creds root globales. Ahora se requieren las 4 pares por bucket: `ACERVO_PORTAL_*`, `ACERVO_MAPALAB_*`, `ACERVO_MARIACHI_*`, `ACERVO_SIEEJ_*`. Removidas `ACERVO_DATEENGINE_*` (bucket desactivado).
+- **`.env.production.example`** / `.env.staging.example` / `.env.development.example`: actualizados al nuevo modelo con instruccion de como rotar passwords (`cd ../acervo && ./scripts/init-buckets.sh --rotate`).
+
+### Notas migracion (en orden)
+
+1. **Acervo (>= 1.19.0)**: rotar passwords con `./scripts/init-buckets.sh --rotate` y crear el bucket `mariachi`. Capturar las 4 passwords que imprime el script.
+2. **Mariachi `.env.production`**: pegar las 4 passwords nuevas en `ACERVO_PORTAL_SECRET_KEY`, `ACERVO_MAPALAB_SECRET_KEY`, `ACERVO_MARIACHI_SECRET_KEY`, `ACERVO_SIEEJ_SECRET_KEY`. Remover `ACERVO_ACCESS_KEY`, `ACERVO_SECRET_KEY`, `ACERVO_BUCKET_NAME`, `ACERVO_DATEENGINE_*`.
+3. **Mariachi `make build ENV=prod`**: la migracion alembic se aplica en el bootstrap. Sin las creds por bucket, mariachi-api arranca pero al primer write a un bucket lanza 500 con detalle "Faltan <REF>_ACCESS_KEY/<REF>_SECRET_KEY".
+
+### Compat
+
+- **Avatars existentes**: si los avatars actuales viven en bucket `portal`, esta migracion NO los mueve. Quedan donde estan; el bucket `mariachi` se usa para nuevos uploads. Si quieres migrarlos: comando `mc cp --recursive acervo/portal/<ruta-avatars> acervo/mariachi/avatars/` mas `UPDATE usuarios SET avatar_url=...` manual.
+
+---
+
 ## [0.30.28] - 2026-04-29
 
 ### Admin — migracion al patron GTM de gateway-hub (eliminado `react-ga4`)

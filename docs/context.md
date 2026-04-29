@@ -213,7 +213,8 @@ Redes: `mariachi_network_dev` (propia) + `mapalab-network` (external, para que e
 | `CORS_ORIGINS` | JSON array | |
 | `ADMIN_PREFIX` | `/api/administrador` | Ruta del CMS |
 | `WEB_PREFIX` | `/api/portal` | Ruta del sitio publico |
-| `ACERVO_ENDPOINT` / `ACERVO_ACCESS_KEY` / etc. | — | MinIO S3 |
+| `ACERVO_ENDPOINT` / `ACERVO_PUBLIC_ENDPOINT` / `ACERVO_USE_SSL` / `ACERVO_VERIFY_SSL` | — | MinIO S3 (host y publico, sin creds globales) |
+| `ACERVO_<REF>_ACCESS_KEY` / `ACERVO_<REF>_SECRET_KEY` | — | Creds **por bucket** (REF coincide con `media_buckets.access_key_ref`). Sin fallback a creds root del cluster: cada bucket activo requiere su par. |
 
 ### Frontend (Vite)
 

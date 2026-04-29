@@ -78,9 +78,6 @@ services:
       REDIS_URL: redis://redis:6379/0
       ACERVO_ENDPOINT: ${ACERVO_ENDPOINT}
       ACERVO_PUBLIC_ENDPOINT: ${ACERVO_PUBLIC_ENDPOINT}
-      ACERVO_ACCESS_KEY: ${ACERVO_ACCESS_KEY}
-      ACERVO_SECRET_KEY: ${ACERVO_SECRET_KEY}
-      ACERVO_BUCKET_NAME: ${ACERVO_BUCKET_NAME:-iieg-acervo}
       ACERVO_USE_SSL: ${ACERVO_USE_SSL:-false}
       REQUESTS_CA_BUNDLE: /usr/local/share/ca-certificates/acervo.crt
       SSL_CERT_FILE: /usr/local/share/ca-certificates/acervo.crt

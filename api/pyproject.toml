@@ -1,6 +1,6 @@
 [project]
 name = "mariachi-api"
-version = "0.30.28"
+version = "0.30.29"
 description = "Mariachi — backend API del ecosistema IIEG (admin, MapaLab, SIEEJ)."
 authors = [{name = "Edgar Alejandro Villarreal Padilla", email = "edgar.villarreal@iieg.gob.mx"}]
 requires-python = ">=3.12"

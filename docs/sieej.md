@@ -118,7 +118,7 @@ El frontend consume `/api/administrador/*` con `withCredentials: true`. Guarda e
 
 Los diccionarios de bases de datos se suben al bucket `sieej-diccionarios` (creado por la migration). El servicio `bases_datos_service.upload_diccionario(...)` usa `AcervoClient.for_bucket(bucket)` (cliente cacheado por bucket) y guarda la URL en `bases_datos.ruta_diccionario`. El nombre del objeto sigue el patron `u<user_id>/bd<bd_id>/<uuid>.<ext>`.
 
-Las credenciales del bucket se resuelven con `ACERVO_SIEEJ_ACCESS_KEY`/`ACERVO_SIEEJ_SECRET_KEY` (fallback a `ACERVO_ACCESS_KEY`/`ACERVO_SECRET_KEY` del ambiente global) — ver `services/acervo.py::resolve_bucket_credentials`.
+Las credenciales del bucket se resuelven con `ACERVO_SIEEJ_ACCESS_KEY`/`ACERVO_SIEEJ_SECRET_KEY`. Si faltan, `services/acervo.py::resolve_bucket_credentials` lanza `RuntimeError` explicito (desde 0.30.29 ya no hay fallback a creds root del cluster — principio de menor privilegio). Generar/rotar con `cd ../acervo && ./scripts/init-buckets.sh --rotate sieej-diccionarios`.
 
 ## Auth y RBAC
 
