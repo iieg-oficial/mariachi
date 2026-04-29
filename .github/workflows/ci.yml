@@ -15,7 +15,10 @@ jobs:
 
   notify-failure:
     needs: [backend, admin]
-    if: failure() && github.event_name == 'push'
+    if: |
+      always() &&
+      github.event_name == 'push' &&
+      (needs.backend.result != 'success' || needs.admin.result != 'success')
     runs-on: ubuntu-latest
     steps:
       - name: Notify Discord - CI Failure
@@ -28,8 +31,8 @@ jobs:
           RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
           FAILED_JOBS=""
-          [ "${{ needs.backend.result }}" = "failure" ] && FAILED_JOBS="${FAILED_JOBS}backend "
-          [ "${{ needs.admin.result }}" = "failure" ] && FAILED_JOBS="${FAILED_JOBS}admin "
+          [ "${{ needs.backend.result }}" != "success" ] && FAILED_JOBS="${FAILED_JOBS}backend(${{ needs.backend.result }}) "
+          [ "${{ needs.admin.result }}" != "success" ] && FAILED_JOBS="${FAILED_JOBS}admin(${{ needs.admin.result }}) "
           [ -z "$FAILED_JOBS" ] && FAILED_JOBS="(unknown)"
 
           curl -sf -H "Content-Type: application/json" -d '{
