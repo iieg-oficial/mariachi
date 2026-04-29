@@ -2,41 +2,43 @@ import json
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+from app.core.version import get_app_version
 
 
 class Settings(BaseSettings):
     environment: Literal["development", "staging", "production"] = "development"
-    project_name: str
-    version: str
+    project_name: str = "Mariachi"
+    version: str = Field(default_factory=get_app_version)
     database_url: str
     dataengine_database_url: str | None = None
     dataengine_pool_size: int = 5
     dataengine_max_overflow: int = 5
     secret_key: str
-    algorithm: str
-    access_token_expire_minutes: int
+    algorithm: str = "HS256"
+    access_token_expire_minutes: int = 30
     redis_url: str
     acervo_endpoint: str
     acervo_public_endpoint: str
     acervo_access_key: str
     acervo_secret_key: str
     acervo_bucket_name: str
-    acervo_use_ssl: bool
+    acervo_use_ssl: bool = False
     acervo_verify_ssl: bool = True
     cors_origins: list[str]
-    admin_prefix: str
-    web_prefix: str
+    admin_prefix: str = "/api/administrador"
+    web_prefix: str = "/api/portal"
     mapalab_public_prefix: str = "/api/mapalab"
-    cookie_name: str
-    cookie_max_age: int
+    cookie_name: str = "access_token"
+    cookie_max_age: int = 1800
     cookie_domain: str | None = None
-    cookie_secure: bool
-    cookie_httponly: bool
-    cookie_samesite: str
+    cookie_secure: bool = False
+    cookie_httponly: bool = True
+    cookie_samesite: str = "lax"
     csrf_secret_key: str
-    csrf_token_expire_minutes: int
+    csrf_token_expire_minutes: int = 60
     docs_url: str | None = None
     redoc_url: str | None = None
     openapi_url: str | None = None
