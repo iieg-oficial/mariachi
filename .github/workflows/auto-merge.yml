@@ -1,4 +1,4 @@
-name: Auto PR to Main
+name: Auto PR to Production
 
 on:
   push:
@@ -17,13 +17,8 @@ jobs:
     with:
       app: admin
 
-  web:
-    uses: ./.github/workflows/test-frontend.yml
-    with:
-      app: web
-
   create-pr:
-    needs: [backend, admin, web]
+    needs: [backend, admin]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -35,12 +30,12 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
-          EXISTING_PR=$(gh pr list --base main --head develop --state open --json number --jq '.[0].number')
+          EXISTING_PR=$(gh pr list --base production --head develop --state open --json number --jq '.[0].number')
 
           if [ -n "$EXISTING_PR" ]; then
             echo "PR #$EXISTING_PR ya existe, actualizando..."
             gh pr edit "$EXISTING_PR" \
-              --title "chore: auto-merge develop into main" \
+              --title "chore: auto-merge develop into production" \
               --body "$(cat <<'EOF'
           ## Auto-merge
 
@@ -53,9 +48,9 @@ jobs:
           else
             echo "Creando nuevo PR..."
             gh pr create \
-              --base main \
+              --base production \
               --head develop \
-              --title "chore: auto-merge develop into main" \
+              --title "chore: auto-merge develop into production" \
               --body "$(cat <<'EOF'
           ## Auto-merge
 
@@ -71,7 +66,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
-          PR_NUMBER=$(gh pr list --base main --head develop --state open --json number --jq '.[0].number')
+          PR_NUMBER=$(gh pr list --base production --head develop --state open --json number --jq '.[0].number')
           if [ -n "$PR_NUMBER" ]; then
             for i in 1 2 3; do
               gh pr merge "$PR_NUMBER" --auto --merge && break

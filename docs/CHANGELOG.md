@@ -13,6 +13,43 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.30.49] - 2026-04-29
+
+### CI — `notify-ci-failure` filtra branch a nivel evento (`branches: [production]`)
+
+`workflow_run` antes filtraba `head_branch == 'production'` en el `if:` del job. Eso significaba que GitHub CREABA el workflow run en cada push a cualquier branch (develop, feature, etc.), pero el job se salta y el run aparece como `skipped` (⊘) en la lista. Ruido visual constante.
+
+Fix: usar `branches: [production]` en el evento `workflow_run`. GitHub solo dispara el workflow cuando el CI corre en production. Push a develop -> ningun run de notify-ci-failure (no aparece nada). Push a production con CI fallido -> dispara, ejecuta el job, manda Discord.
+
+### Cambios en `notify-ci-failure.yml`
+
+```yaml
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [production]   # ← nuevo, evita los runs skipped en otros branches
+```
+
+Y la condicion del job solo filtra `conclusion == 'failure' && event == 'push'` (sin `head_branch == 'production'` porque ya esta filtrado por evento).
+
+---
+
+## [0.30.48] - 2026-04-29
+
+### CI — `auto-merge.yml` apuntado a `production` (no `main`) + sin job `web`
+
+`auto-merge.yml` heredaba la convencion vieja: target `main` (rama que ya no existe) y referencia a un frontend `web/` (que no esta en el repo, solo en filesystem local). Ahora:
+
+- `--base main` -> `--base production`
+- `--head develop` (sin cambios)
+- Job `web` removido (solo `backend` y `admin`)
+- Titulo/body actualizado: `auto-merge develop into production`
+
+Patron tomado de `mapalab/.github/workflows/auto-merge.yml`. Disparador: push a `develop`. Si tests pasan, abre/actualiza PR contra `production` y habilita `--auto --merge` (la PR se mergea sola en cuanto las required checks pasen y haya el numero requerido de approvals).
+
+---
+
 ## [0.30.47] - 2026-04-29
 
 ### CI — embed de Discord ahora muestra transicion de version
