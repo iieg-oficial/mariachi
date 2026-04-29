@@ -13,6 +13,67 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.30.28] - 2026-04-29
+
+### Admin — migracion al patron GTM de gateway-hub (eliminado `react-ga4`)
+
+- Mariachi-admin ahora delega Google Analytics al `sub_filter` GTM que `gateway-hub` inyecta a nivel nginx en todas las respuestas HTML del ecosistema (mismo patron ya usado por mapalab y sieej). El admin deja de embeber su propio SDK; los page_view se disparan via "All Pages" trigger en GTM y los eventos custom se envian con `window.dataLayer.push(...)` sin requerir build args ni recompilacion.
+- **`admin/src/main.jsx`**: removido `import ReactGA from 'react-ga4'` y el bloque `ReactGA.initialize(VITE_GOOGLE_ANALYTICS_ID, ...)`. La libreria solo se usaba para `initialize`; nunca se llamaban `ReactGA.event` ni `ReactGA.send`, asi que era codigo muerto.
+- **`admin/package.json`** + `package-lock.json`: removida la dependencia `react-ga4@2.1.0`.
+- **`nginx/Dockerfile`**: removidos `ARG VITE_GOOGLE_ANALYTICS_ID` y su `ENV`.
+- **`docker-compose.yml`**: removida `VITE_GOOGLE_ANALYTICS_ID` de `nginx.build.args`.
+- **`.env.production`**: la linea `VITE_GOOGLE_ANALYTICS_ID=` queda como inerte (ya no la lee nada). Se documenta para activar GA en `gateway-hub/.env` -> `GTM_ID=GTM-XXXXXXX`.
+
+### Validacion
+
+- Rebuild `--no-cache`: bundle del admin no contiene `react-ga4`, `gtag.js` ni referencias a `googletagmanager.com`.
+- `https://iieg.local/mariachi/`: 200 OK con titulo correcto.
+- Si `gateway-hub/.env` define `GTM_ID`, el snippet GTM aparece en el HTML servido por `/mariachi/` sin tocar nada en mariachi.
+
+---
+
+## [0.30.27] - 2026-04-29
+
+### Infra — SIEEJ deja de ser hospedado por mariachi-nginx
+
+- `gateway-hub` (>= v1.24.0) ahora sirve el dist de SIEEJ directamente con `alias`. Mariachi deja de tener responsabilidades de hospedaje de otros frontends; queda como una plataforma mas dentro del ecosistema, no como proxy. Esto restablece la separacion de capas: cada plataforma tiene su propio servicio o se sirve desde el ingress, no desde otra plataforma.
+- **`docker-compose.yml`**: removido el bind mount `${SIEEJ_DIST_PATH:-../SIEEJ/frontend/dist}:/usr/share/nginx/html/sieej:ro` del servicio `nginx` (con su comentario asociado).
+- **`nginx/conf.d/mariachi.conf`**: removido `location /sieej { alias /usr/share/nginx/html/sieej; try_files ... /sieej/index.html; }`.
+- **`.env.production`**: removida `SIEEJ_DIST_PATH`. `SIEEJ_ONTOY_URL` ahora apunta a `http://gateway-hub-nginx-1/sieej/ontoy` (gateway-hub expone el JSON en su bloque :80 para que el probe HTTP interno de mariachi-api no sea redirigido a HTTPS).
+
+### Validacion
+
+- `mariachi-nginx /sieej/` -> 404 (correcto, ya no lo sirve).
+- `https://iieg.local/sieej/` -> 200 (gateway-hub).
+- `mariachi-api -> http://gateway-hub-nginx-1/sieej/ontoy` -> 200 con `{"slug":"sieej","label":"SIEEJ","version":"1.2.0"}`.
+
+---
+
+## [0.30.26] - 2026-04-29
+
+### Backend (api) — defaults sensatos en `settings.py` + `version` autoresolvida desde `pyproject.toml`
+
+- 13 campos de `Settings` que antes eran obligatorios ahora tienen default razonable, lo que reduce drasticamente la cantidad de variables que hay que repetir en cada `.env`. La idea: el `.env` solo declara lo que difiere del default, no lo que ya es la convencion del proyecto.
+- **`core/settings.py`**:
+  - Defaults nuevos: `algorithm="HS256"`, `access_token_expire_minutes=30`, `csrf_token_expire_minutes=60`, `admin_prefix="/api/administrador"`, `web_prefix="/api/portal"`, `cookie_name="access_token"`, `cookie_max_age=1800`, `cookie_httponly=True`, `cookie_samesite="lax"`, `cookie_secure=False`, `acervo_use_ssl=False`. `enforce_production_defaults` sigue forzando `cookie_secure=True` cuando `environment=="production"`.
+  - `project_name` con default `"Mariachi"`.
+  - **`version`** ahora se resuelve via `Field(default_factory=get_app_version)` (lee del `pyproject.toml` con `tomllib`). Single source of truth: la version del repo es la del `pyproject.toml`, no se duplica en `.env` (donde estaba desactualizada).
+- **`.env.production`** reducido de 116 a ~60 lineas: eliminadas variables redundantes (puertos sin mapping en compose, vars que se sobreescriben en `environment:` del compose, vars muertas del frontend `web/`, vars con default ya en settings, vars del dev server de Vite). Las vacias opcionales (`ACERVO_*_ACCESS_KEY/SECRET_KEY`, `MAPALAB_INTERNAL_TOKEN`, `SIEEJ_URL`, `SENTRY_*`, `VITE_GOOGLE_ANALYTICS_ID`, `VITE_SENTRY_DSN`) se conservan como placeholders documentados.
+- **`nginx/Dockerfile`**: simplificados los `ARG`/`ENV` del admin-builder. `VITE_ADMIN_API_URL` ahora tiene default `=/api/administrador`. Removidas `VITE_ADMIN_API_TIMEOUT` y `VITE_ADMIN_APP_NAME` (no se referencian en `admin/src`). Agregada `VITE_WEB_URL` que faltaba (existia en el codigo del admin pero nunca llegaba al build).
+- **`docker-compose.yml`**: alineados los `nginx.build.args` con el `Dockerfile`. `VITE_ADMIN_API_URL: ${VITE_ADMIN_API_URL:-/api/administrador}` con fallback. Agregado `VITE_WEB_URL`.
+
+---
+
+## [0.30.25] - 2026-04-28
+
+### Infra — Postgres 18 mount + remove default.conf + extra_hosts
+
+- **`docker-compose.yml`**: `postgres:18-alpine` (era `postgres:15-alpine`). El volumen ahora monta `postgres_data:/var/lib/postgresql` (era `:/var/lib/postgresql/data`) porque la imagen 18 cambio el path de datos por defecto.
+- **`api/Dockerfile`**: `extra_hosts: host.docker.internal:host-gateway` para que la API pueda alcanzar servicios en el host (DataEngine, GeoServer, Acervo) cuando estan fuera del compose.
+- **`nginx/Dockerfile`**: `RUN ... && rm -f /etc/nginx/conf.d/default.conf` para que el `server_name localhost` que ships la imagen `nginx:alpine` no gane como default y bloquee al `mariachi.conf`.
+
+---
+
 ## [0.30.24] - 2026-04-28
 
 ### Repo — `LICENSE` movido a root para que GitHub la detecte

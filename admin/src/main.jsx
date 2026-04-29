@@ -2,7 +2,6 @@ import { lazy, Suspense } from 'react';
 import { createBrowserRouter } from 'react-router';
 import { RouterProvider } from 'react-router/dom';
 import { createRoot } from 'react-dom/client'
-import ReactGA from 'react-ga4';
 import * as Sentry from '@sentry/react';
 import { Result, Spin } from 'antd';
 import './index.css'
@@ -49,19 +48,6 @@ const PageFallback = () => (
 );
 
 const withSuspense = (node) => <Suspense fallback={<PageFallback />}>{node}</Suspense>;
-
-const { DEV, VITE_GOOGLE_ANALYTICS_ID } = import.meta.env;
-
-if (VITE_GOOGLE_ANALYTICS_ID && VITE_GOOGLE_ANALYTICS_ID.startsWith('G-')) {
-    ReactGA.initialize(VITE_GOOGLE_ANALYTICS_ID, {
-        testMode: DEV,
-        gaOptions: {
-            cookieFlags: DEV ? 'SameSite=None;Secure' : 'Lax'
-        }
-    });
-} else if (DEV) {
-    console.info('Google Analytics no inicializado: VITE_GOOGLE_ANALYTICS_ID no definido o inválido');
-}
 
 const router = createBrowserRouter([
     {
