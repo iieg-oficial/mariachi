@@ -13,6 +13,31 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.30.50] - 2026-04-29
+
+### CI — `notify-ci-failure.yml` -> `notify-ci.yml` (notifica success Y failure)
+
+Renombrado el workflow para que tambien notifique runs exitosos en `production`. Patron tomado de `mapalab/cd.yml`: un solo job con dos steps condicionados por `conclusion`, embed verde (3066993) para success y rojo (15158332) para failure.
+
+### Cambios
+
+- **Renombrado**: `notify-ci-failure.yml` -> `notify-ci.yml`. Title: `Notify CI`.
+- **Job `if`** acepta success o failure (no solo failure).
+- **Step `Compute commit metadata`** unificado (commit short, msg escapado, version transition) que ambos steps de notificacion reusan via outputs.
+- **Step `Notify Discord - Success`**: embed verde, titulo `CI exitoso — mariachi`.
+- **Step `Notify Discord - Failure`**: embed rojo, titulo `CI fallido — mariachi`.
+- **`branches: [production]`** sigue filtrando a nivel evento — no spam de runs en develop.
+
+### Resultado
+
+```
+push develop      -> CI develop      -> (nada, no dispara workflow_run)
+push production   -> CI ✓ production -> Discord verde "CI exitoso"
+push production   -> CI ✗ production -> Discord rojo "CI fallido"
+```
+
+---
+
 ## [0.30.49] - 2026-04-29
 
 ### CI — `notify-ci-failure` filtra branch a nivel evento (`branches: [production]`)
