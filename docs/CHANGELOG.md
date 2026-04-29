@@ -13,6 +13,83 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.30.32] - 2026-04-29
+
+### Backend (api+infra) — proxy autenticado para buckets privados (cierra brecha de privacidad)
+
+Hasta 0.30.31, los URLs construidos por `AcervoClient.get_file_url` y `client.upload_file` siempre apuntaban directamente al bucket de acervo (`https://<dominio>/acervo/<bucket>/<path>`). Cuando un bucket es privado (e.g. `mariachi`), esas URLs:
+- Fallan con 403 en el browser (esperado).
+- **Quedan registradas en BD** (`media.url`, `usuarios.avatar_url`) y pueden filtrarse en logs, HTTP referers, exports, etc., apuntando a un recurso no accesible y revelando estructura interna.
+
+Ademas, schemas que usan `to_absolute(...)` (`schemas/user.py:avatar_url`, `schemas/evento.py`, `schemas/layer.py`, `schemas/home_section.py`) anteponian el host publico del acervo a cualquier path relativo, asumiendo que era publico.
+
+### Cambios
+
+- **`AcervoClient`** ahora es bucket-aware: acepta `is_public: bool` y `bucket_id: int` en `__init__`. `for_bucket()` los pasa desde `MediaBucket`.
+- **`AcervoClient.get_file_url`**:
+  - Si `is_public=True`: comportamiento previo (URL directa al bucket via `acervo_public_endpoint`).
+  - Si `is_public=False`: retorna URL relativa al endpoint proxy de mariachi-api: `/api/administrador/multimedia/proxy/<bucket_id>/<object_path>`.
+- **`AcervoClient.upload_file`** ahora reutiliza `get_file_url` para construir la URL de retorno (queda bucket-aware automaticamente).
+- **`to_absolute(...)`** preserva paths que empiezan con `/api/` (eran del proxy del API, no del bucket). Antes los antepondria con el host del acervo y romperia.
+- **Endpoint nuevo `GET /multimedia/proxy/{bucket_id}/{object_path:path}`** (en `routes/media.py`):
+  - Requiere autenticacion (`get_current_user`).
+  - Valida acceso al bucket via `media_service.resolve_bucket_or_403` (mismo modelo de permisos que el resto de `multimedia/*`).
+  - Stream-ea el contenido del bucket privado. `Cache-Control: private, max-age=300`.
+- **`AcervoClient.stat_object` / `get_object_stream`** expuestos para que el endpoint pueda leer el objeto.
+
+### Fix infra: `nginx/conf.d/mariachi.conf`
+
+La regex de cache de assets estaticos (`location ~* \.(js|css|png|jpg|...)$`) capturaba **antes** que `location /api/` cualquier URL del API que terminara en una extension de archivo (e.g. `/api/.../proxy/12/avatars/u1/test.jpg`), provocando 404 al servir desde filesystem. Fix: cambiar `location /api/` y `location /api/administrador/media/` a `location ^~ /api/...` para forzar prioridad de prefix sobre regex.
+
+### Validacion local (gateway -> mariachi-nginx -> mariachi-api -> minio)
+
+```
+GET /acervo/mariachi/avatars/u1/test.jpg                    → 403 (anonymous denegado)
+GET /api/administrador/multimedia/proxy/12/avatars/u1/...   → 401 (sin sesion)
+GET /api/administrador/multimedia/proxy/12/avatars/u1/...   → 200 + image/jpeg (con sesion)
+```
+
+---
+
+## [0.30.31] - 2026-04-29
+
+### Backend (api) — bucket `mariachi` privado, avatars al bucket compartido `iieg`
+
+- **Bucket `mariachi` cambia a `is_public=false`**: queda reservado para assets administrativos staff-only del panel admin (logs descargables, exportaciones internas, archivos que no deben quedar en el indice publico). Los avatars de usuarios YA NO viven aqui.
+- **Avatars al bucket `iieg`** (publico, compartido) bajo la convencion `iieg/avatars/u<user_id>/<uuid>.<ext>`. La razon: el avatar de una editora aparece en multiples vistas y multiples frontends del ecosistema (lista de publicaciones, "ultima edicion por", listas de usuarios). Tenerlo publico y compartido permite que cualquier frontend lo referencie con URL relativa `/acervo/iieg/avatars/...` sin presigned URLs ni proxy autenticado.
+- **Migracion** `a1b2c3d4e5f6_*.py` actualizada: `media_buckets.iieg` con descripcion explicita `'Assets institucionales IIEG (incluye avatars)'`; `media_buckets.mariachi` con descripcion `'Assets administrativos privados'` y `is_public=false`.
+- **`docs/context.md`** documenta la separacion publicos/privados, la convencion del path `iieg/avatars/u<id>/...` y las dos politicas de upload (assets institucionales solo para `tetlamamakani`; avatars donde el `user_id` del path debe coincidir con `current_user.id`).
+
+### Notas migracion (al bajar 0.30.31 + acervo 1.20.1)
+
+1. La migracion alembic se aplica sola en el bootstrap. Si ya tenias avatars en el bucket `mariachi` (de testing temprano), muevelos al bucket `iieg/avatars/`:
+   ```bash
+   docker exec acervo-minio mc alias set local http://localhost:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
+   docker exec acervo-minio mc mirror --remove local/mariachi/avatars/ local/iieg/avatars/
+   docker exec acervo-minio mc anonymous set none local/mariachi
+   ```
+2. Si tu UI de subida de avatar todavia apunta al `bucket_id` de mariachi, cambialo al `bucket_id` de iieg (consultar `media_buckets`).
+
+---
+
+## [0.30.30] - 2026-04-29
+
+### Backend (api) — bucket compartido `iieg` + rename `sieej-diccionarios → sieej`
+
+- **`media_buckets`** ahora incluye un bucket compartido `iieg` (proyecto institucional nuevo) para assets reutilizables entre todos los frontends del ecosistema (logos IIEG, escudos Jalisco, fuentes web, iconos, documentos institucionales). Publico (anonymous GetObject); solo `tetlamamakani` puede subir. Acervo lo crea automaticamente con `init-buckets.sh` (>= acervo 1.20.0).
+- **Bucket `sieej-diccionarios` renombrado a `sieej`** (mas corto, consistente con los demas). El `access_key_ref` ya era `ACERVO_SIEEJ` (no cambia), solo se ajusta el `acervo_bucket`. Acervo migra los objetos del bucket viejo al nuevo automaticamente.
+- **Migracion** `a1b2c3d4e5f6_add_mariachi_project_and_bucket.py` actualizada: ahora tambien INSERTa proyecto/bucket `iieg` y UPDATEa `sieej-diccionarios -> sieej`.
+
+### Notas migracion
+
+Cuando bajes a la VM (orden importa):
+
+1. **Acervo (>= 1.20.0)**: edita `.env.gateway` con `MINIO_BUCKETS=portal mapalab mariachi sieej dataengine iieg`, `--force-recreate minio` y corre `--rotate`. Captura las 6 passwords.
+2. **Mariachi `.env.production`**: pega las 6 passwords en `ACERVO_<REF>_SECRET_KEY` (incluye `ACERVO_IIEG_*` que es nueva).
+3. **Mariachi `make build ENV=prod`**: la migracion alembic se aplica en bootstrap. Verifica que `media_buckets` muestre 6 rows con `iieg` y `sieej` (no `sieej-diccionarios`).
+
+---
+
 ## [0.30.29] - 2026-04-29
 
 ### Backend (api+infra) — principio de menor privilegio para acervo

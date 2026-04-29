@@ -33,7 +33,14 @@ def resolve_bucket_credentials(access_key_ref: str | None) -> tuple[str, str]:
 class AcervoClient:
     _cache: dict[str, "AcervoClient"] = {}
 
-    def __init__(self, bucket_name: str, access_key: str, secret_key: str):
+    def __init__(
+        self,
+        bucket_name: str,
+        access_key: str,
+        secret_key: str,
+        is_public: bool = True,
+        bucket_id: int | None = None,
+    ):
         http_client = None
         if settings.acervo_use_ssl and not settings.acervo_verify_ssl:
             urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -50,6 +57,8 @@ class AcervoClient:
             http_client=http_client,
         )
         self.bucket_name = bucket_name
+        self.is_public = is_public
+        self.bucket_id = bucket_id
         self._ensure_bucket_exists()
 
     def _ensure_bucket_exists(self):
@@ -64,7 +73,13 @@ class AcervoClient:
         key = f"{bucket.acervo_bucket}:{bucket.access_key_ref}"
         if key not in cls._cache:
             ak, sk = resolve_bucket_credentials(bucket.access_key_ref)
-            cls._cache[key] = cls(bucket.acervo_bucket, ak, sk)
+            cls._cache[key] = cls(
+                bucket.acervo_bucket,
+                ak,
+                sk,
+                is_public=bool(bucket.is_public),
+                bucket_id=bucket.id,
+            )
         return cls._cache[key]
 
     async def upload_file(self, file: UploadFile, object_name: str) -> str:
@@ -80,7 +95,7 @@ class AcervoClient:
                 content_type=file.content_type,
             )
 
-            return to_absolute(f"{self.bucket_name}/{object_name}")
+            return self.get_file_url(object_name)
         except S3Error as e:
             raise Exception(f"Error uploading file: {str(e)}")
 
@@ -106,6 +121,18 @@ class AcervoClient:
         return results
 
     def get_file_url(self, object_name: str) -> str:
+        if not self.is_public:
+            if self.bucket_id is None:
+                raise RuntimeError(
+                    f"AcervoClient para bucket privado '{self.bucket_name}' sin bucket_id"
+                )
+            return f"/api/administrador/multimedia/proxy/{self.bucket_id}/{object_name.lstrip('/')}"
         return to_absolute(f"{self.bucket_name}/{object_name}")
+
+    def get_object_stream(self, object_name: str):
+        return self.client.get_object(self.bucket_name, object_name)
+
+    def stat_object(self, object_name: str):
+        return self.client.stat_object(self.bucket_name, object_name)
 
 

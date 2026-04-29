@@ -93,7 +93,7 @@ Paginas: `Login`, `PageEditor`, `MenuManager`, `Media`, `RevisionQueue`, `Users`
 | Proxy interno | Nginx | sirve `web/dist` en `/`, `admin/dist` en `/mariachi/`, proxea `api/` a backend |
 | BD | PostgreSQL 18 (prod y dev) | DB: `iieg_portal` |
 | Cache/sessions | Redis 7 | |
-| Almacenamiento | Acervo (MinIO S3-compatible) | bucket `iieg-acervo` (prod), `portal-dev` (dev) |
+| Almacenamiento | Acervo (MinIO S3-compatible) | buckets por proyecto en `media_buckets`. **Publicos** (anonymous GetObject): `portal`, `mapalab`, `iieg`. **Privados**: `mariachi`, `sieej`, `dataengine` (deshabilitado). Cada bucket usa `<REF>_user` con policy attached al bucket; sin fallback a creds root. |
 | DataEngine (solo v1.4.0+ MapaLab) | PostgreSQL + PostGIS externo | Segunda conexión para tabla `layers` |
 | Contenedores | Docker Compose | profiles: prod (`docker-compose.yml`), dev (`docker-compose.dev.yml`) |
 
@@ -224,6 +224,36 @@ Redes: `mariachi_network_dev` (propia) + `mapalab-network` (external, para que e
 | `VITE_ADMIN_API_URL` | Base URL que usa `admin/` (CMS). Ej: `https://tu-dominio.com/api/administrador` |
 | `VITE_APP_NAME` / `VITE_ADMIN_APP_NAME` | Branding |
 | `VITE_GOOGLE_ANALYTICS_ID` | GA4 |
+
+### Bucket compartido `iieg` (assets institucionales + avatars)
+
+Bucket publico (anonymous GetObject) para todo lo que se muestra en cualquier frontend del ecosistema. Estructura:
+
+```
+acervo/iieg/
+  ├── logos/          # iieg-logo.svg, jalisco-escudo.svg, etc.
+  ├── icons/          # iconos institucionales reutilizables
+  ├── fonts/          # archivos .woff2 si hay fuentes auto-hosteadas
+  ├── docs/           # aviso-privacidad.pdf, terminos-uso.pdf, etc.
+  ├── images/         # imagenes generales institucionales
+  └── avatars/u<user_id>/<uuid>.<ext>   # avatars de usuarios (globales al ecosistema)
+```
+
+**Por que avatars aqui y no en `mariachi`**: si una editora aparece en una lista de "ultima edicion" tanto en mariachi-admin como en otros frontends, mostrar el mismo avatar requiere que sea publico y compartido. El bucket `mariachi` es privado (assets administrativos staff-only); los avatars son datos que aparecen en muchas vistas.
+
+**Como leerlo desde un frontend** (mariachi-admin, mapalab, sieej, portal):
+- En **produccion/staging** todos los frontends viven bajo el mismo dominio, asi que URL relativa basta: `<img src="/acervo/iieg/logos/iieg-logo.svg">`, `<img src="/acervo/iieg/avatars/u42/abc123.jpg">`.
+- En **dev local** cada frontend corre en su propio puerto sin gateway-hub. Si el frontend necesita el bucket en dev, define `VITE_IIEG_ASSETS_URL=http://localhost:9080/iieg` en su `.env.development` y usa `import.meta.env.VITE_IIEG_ASSETS_URL || '/acervo/iieg'` como fallback.
+
+**Como subir**:
+- Assets institucionales (`logos/`, `icons/`, `fonts/`, `docs/`): solo el rol global `tetlamamakani` puede subir (control via `media_buckets` y permisos del proyecto `iieg`).
+- Avatars de usuarios (`avatars/u<id>/...`): cualquier usuario autenticado sube SU PROPIO avatar via el endpoint de perfil; mariachi-api valida que el `user_id` del path coincida con `current_user.id`.
+
+**Convencion de versionado** (assets institucionales): usar paths inmutables (`logos/v1/logo.svg`, `logos/v2/logo.svg`) en lugar de sobreescribir, para no invalidar cache de browsers ni romper frontends que apunten a una version especifica.
+
+### Bucket privado `mariachi`
+
+Reservado para assets administrativos internos del panel admin que NO se exponen al publico: logs descargables, exportaciones internas, archivos staff-only. NO almacena avatars (esos viven en `iieg`). Acceso requiere autenticacion como staff y mariachi-api debe servirlos via presigned URLs o proxy autenticado, NO con URL publica.
 
 ---
 

@@ -2,6 +2,8 @@ import logging
 import uuid
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi.responses import StreamingResponse
+from minio.error import S3Error
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db, verify_csrf
@@ -28,6 +30,44 @@ async def listar_media(
 ):
     bucket = media_service.resolve_bucket_or_403(bucket_id, current_user, db)
     return media_service.listar_media(db, bucket, folder, type, search, recursive)
+
+
+@router.get("/proxy/{bucket_id}/{object_path:path}")
+async def proxy_object(
+    bucket_id: int,
+    object_path: str,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    bucket = media_service.resolve_bucket_or_403(bucket_id, current_user, db)
+    client = AcervoClient.for_bucket(bucket)
+    try:
+        stat = client.stat_object(object_path)
+    except S3Error as exc:
+        if exc.code in {"NoSuchKey", "NoSuchBucket"}:
+            raise HTTPException(status_code=404, detail="Archivo no encontrado")
+        logger.exception("action=media.proxy.stat user_id=%s bucket=%s key=%s", current_user.id, bucket.acervo_bucket, object_path)
+        raise HTTPException(status_code=502, detail="Error consultando acervo")
+
+    response = client.get_object_stream(object_path)
+
+    def iterator():
+        try:
+            for chunk in response.stream(64 * 1024):
+                yield chunk
+        finally:
+            response.close()
+            response.release_conn()
+
+    headers = {
+        "Cache-Control": "private, max-age=300",
+        "Content-Length": str(stat.size) if stat.size is not None else "",
+    }
+    return StreamingResponse(
+        iterator(),
+        media_type=stat.content_type or "application/octet-stream",
+        headers=headers,
+    )
 
 
 @router.get("/objetos-bucket", response_model=list[dict])

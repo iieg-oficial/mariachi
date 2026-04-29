@@ -1,22 +1,3 @@
-"""add mariachi project + bucket; rename dateengine -> dataengine + deactivate
-
-Revision ID: a1b2c3d4e5f6
-Revises: f4a5b6c7d8e9
-Create Date: 2026-04-29 17:00:00.000000
-
-Mariachi gana su propio proyecto y bucket en acervo para guardar avatars y
-otros assets internos del panel admin. Antes mariachi escribia con las creds
-root de MinIO (fallback de acervo.py); ahora escribe con `mariachi-user` que
-solo tiene permisos sobre el bucket `mariachi`.
-
-El bucket historico `dateengine` (con typo) se renombra a `dataengine` y
-queda desactivado: mariachi nunca lo usa en runtime, pero corregimos el
-nombre por higiene y consistencia con el patron de otros repos. La
-contraparte en MinIO la hace `acervo/scripts/init-buckets.sh` (>= acervo
-1.19.0): detecta el bucket viejo, migra objetos al nuevo y elimina el
-viejo.
-"""
-
 from alembic import op
 import sqlalchemy as sa
 
@@ -31,7 +12,9 @@ def upgrade() -> None:
     op.execute(
         sa.text("""
             INSERT INTO projects (slug, name, description, is_active, created_at)
-            VALUES ('mariachi', 'Mariachi', 'Panel de administracion del ecosistema IIEG', true, NOW())
+            VALUES
+                ('mariachi', 'Mariachi', 'Panel de administracion del ecosistema IIEG', true, NOW()),
+                ('iieg',     'IIEG',     'Assets institucionales compartidos (logos, fuentes, iconos)', true, NOW())
             ON CONFLICT (slug) DO NOTHING
         """)
     )
@@ -39,9 +22,12 @@ def upgrade() -> None:
     op.execute(
         sa.text("""
             INSERT INTO media_buckets (project_id, acervo_bucket, access_key_ref, display_name, is_public, is_active, created_at)
-            SELECT p.id, 'mariachi', 'ACERVO_MARIACHI', 'Assets de Mariachi', true, true, NOW()
-            FROM projects p
-            WHERE p.slug = 'mariachi'
+            SELECT p.id, b.acervo_bucket, b.access_key_ref, b.display_name, b.is_public, true, NOW()
+            FROM (VALUES
+                ('mariachi', 'mariachi', 'ACERVO_MARIACHI', 'Assets administrativos privados', false),
+                ('iieg',     'iieg',     'ACERVO_IIEG',     'Assets institucionales IIEG (avatars genericos)', true)
+            ) AS b(project_slug, acervo_bucket, access_key_ref, display_name, is_public)
+            JOIN projects p ON p.slug = b.project_slug
             ON CONFLICT DO NOTHING
         """)
     )
@@ -56,8 +42,24 @@ def upgrade() -> None:
         """)
     )
 
+    op.execute(
+        sa.text("""
+            UPDATE media_buckets
+            SET acervo_bucket = 'sieej'
+            WHERE acervo_bucket = 'sieej-diccionarios'
+        """)
+    )
+
 
 def downgrade() -> None:
+    op.execute(
+        sa.text("""
+            UPDATE media_buckets
+            SET acervo_bucket = 'sieej-diccionarios'
+            WHERE acervo_bucket = 'sieej'
+        """)
+    )
+
     op.execute(
         sa.text("""
             UPDATE media_buckets
@@ -71,12 +73,12 @@ def downgrade() -> None:
     op.execute(
         sa.text("""
             DELETE FROM media_buckets
-            WHERE acervo_bucket = 'mariachi'
+            WHERE acervo_bucket IN ('mariachi', 'iieg')
         """)
     )
 
     op.execute(
         sa.text("""
-            DELETE FROM projects WHERE slug = 'mariachi'
+            DELETE FROM projects WHERE slug IN ('mariachi', 'iieg')
         """)
     )

@@ -48,6 +48,8 @@ def to_absolute(value: str | None) -> str | None:
         return value
     if "://" in value:
         return value
+    if value.startswith("/api/"):
+        return value
     scheme, host = _scheme_and_host()
     return f"{scheme}://{host}/{value.lstrip('/')}"
 

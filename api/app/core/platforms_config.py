@@ -1,24 +1,3 @@
-"""Lista de plataformas del ecosistema IIEG que se exponen en `/sistema/plataformas`.
-
-Cada plataforma tiene un `probe` que define cómo se chequea su estado:
-- `self`        → versión leída del `pyproject.toml` local (sin red).
-- `ontoy`       → GET al endpoint `/ontoy` del proyecto. Espera JSON con `version`.
-                  Convención del ecosistema IIEG.
-- `http_health` → GET HTTP cualquiera; 200 = healthy. La versión queda en None.
-- `dataengine`  → conexión SQL a DataEngine + `SELECT version()` (versión de Postgres).
-- `none`        → no hay probe; siempre healthy. Útil cuando un servicio aún no expone
-                  endpoint y solo queremos mostrar su `static_version`.
-
-Cada plataforma puede tener `static_version` con la versión del **repositorio**
-(la del CHANGELOG). Cuando está presente, se devuelve siempre — aún si el probe
-no responde — para que el dashboard muestre la versión del repo aunque el
-servicio esté caído. El `healthy` siempre viene del probe.
-
-IMPORTANTE: al bumpear el CHANGELOG de un repo del ecosistema, sincronizar el
-`static_version` aquí. (TODO: pre-commit hook que lo verifique.) La versión del
-endpoint `/ontoy` también debería coincidir, pero la del CHANGELOG manda.
-"""
-
 from typing import Literal, TypedDict
 
 Probe = Literal["self", "ontoy", "http_health", "dataengine", "none"]
@@ -62,7 +41,7 @@ PLATFORMS: list[PlatformConfig] = [
         "url": None,
         "probe": "ontoy",
         "probe_url_template": "{acervo_ontoy_url}",
-        "static_version": "1.19.0",
+        "static_version": "1.20.1",
     },
     {
         "slug": "gateway-hub",
