@@ -13,6 +13,30 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.30.46] - 2026-04-29
+
+### CI — notificacion Discord solo para fallos en `production`
+
+`workflow_run` carga el archivo `notify-ci-failure.yml` desde la default branch del repo (hoy `develop`), pero la condicion ahora filtra por `head_branch == 'production'` asi solo notifica al canal de Discord (`deploy`) cuando un CI fallido viene de `push` a `production`. Los fallos en `develop` o feature branches NO mandan nada — esos canales son ruidosos y no se deployan.
+
+### Cambios
+
+- **`notify-ci-failure.yml`** condicion actualizada:
+  ```yaml
+  if: |
+    github.event.workflow_run.conclusion == 'failure' &&
+    github.event.workflow_run.event == 'push' &&
+    github.event.workflow_run.head_branch == 'production'
+  ```
+
+### Setup en el repo
+
+- Default branch: `develop` (intacto).
+- `main` ya estaba removida del remote; tambien purgada del local (`git branch -D main` + `git remote prune origin`).
+- Para que `workflow_run` se dispare, el archivo `notify-ci-failure.yml` debe estar **en `develop`** (la default branch). Tras pushear a production, hay que mergear/cherry-pickear ese archivo a `develop`. Sino el workflow no se carga aunque exista en production.
+
+---
+
 ## [0.30.45] - 2026-04-29
 
 ### CI — separar notificacion Discord en workflow propio (`workflow_run`)
