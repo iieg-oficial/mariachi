@@ -13,6 +13,28 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.30.45] - 2026-04-29
+
+### CI — separar notificacion Discord en workflow propio (`workflow_run`)
+
+Despues de varios intentos, decidimos sacar la notificacion del CI principal y ponerla en un workflow separado disparado por `workflow_run`. Razones:
+
+- `if: failure()` -> el job aparecia como `skipped` en runs exitosos.
+- `if: always() + condicion`-> el job aparecia como `skipped` adentro o consumia ~1s del runner para nada.
+- Cualquier opcion dentro del CI principal mete ruido visual o cuesta tiempo en cada push.
+
+Patron `workflow_run` resuelve esto:
+
+- En runs exitosos del CI: solo aparecen `backend` y `admin`. Cero jobs extra.
+- En runs fallidos del CI: aparece un workflow run separado (`Notify CI Failure`) que ejecuta el embed a Discord. No infla el run del CI.
+
+### Cambios
+
+- **`ci.yml`**: removido el job `notify`. Solo orquesta `backend` + `admin`.
+- **`notify-ci-failure.yml`** (nuevo): workflow disparado por `workflow_run` cuando `CI` termina con `conclusion == 'failure'` y `event == 'push'`. Contexto del commit/branch/autor/run viene del payload de `workflow_run`.
+
+---
+
 ## [0.30.44] - 2026-04-29
 
 ### CI — alinear notificacion al patron de mapalab/cd.yml
