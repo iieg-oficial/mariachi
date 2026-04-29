@@ -13,6 +13,32 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.30.51] - 2026-04-29
+
+### CI — embed Discord mas compacto y consistente
+
+- **Titulo sin "— mariachi"**: el bot de Discord se llama mariachi, era redundante. Ahora `CI exitoso` y `CI fallido`.
+- **Version con badge emoji**: 🟢 para success, 🔴 para failure (acompaña el color del embed para que sea reconocible incluso si el cliente colapsa colores).
+- **Version y Workflow en la misma fila**: ambos `inline: true` adyacentes (sin field no-inline entre ellos), Discord los pone uno al lado del otro como dos columnas. Antes Cambios rompia la fila.
+- **Texto del link**: "Ver run"/"Ver logs" → "Ver ejecución" (mas natural en español).
+
+### Resultado visual del embed
+
+```
+CI exitoso
+─────────────────────────────────────
+Commit       Autor      Branch
+[abc1234]    edgar      `production`
+
+Version              Workflow
+🟢 0.30.50 → 0.30.51 [Ver ejecución]
+
+Cambios
+ci: agregar emoji a version transition
+```
+
+---
+
 ## [0.30.50] - 2026-04-29
 
 ### CI — `notify-ci-failure.yml` -> `notify-ci.yml` (notifica success Y failure)

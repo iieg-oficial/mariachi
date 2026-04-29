@@ -48,15 +48,15 @@ jobs:
 
           curl -sf -H "Content-Type: application/json" -d '{
             "embeds": [{
-              "title": "CI exitoso — mariachi",
+              "title": "CI exitoso",
               "color": 3066993,
               "fields": [
                 { "name": "Commit", "value": "[`${{ steps.meta.outputs.short }}`]('"$COMMIT_URL"')", "inline": true },
                 { "name": "Autor", "value": "${{ github.event.workflow_run.actor.login }}", "inline": true },
                 { "name": "Branch", "value": "`${{ github.event.workflow_run.head_branch }}`", "inline": true },
-                { "name": "Version", "value": "`${{ steps.meta.outputs.version }}`", "inline": true },
-                { "name": "Cambios", "value": "${{ steps.meta.outputs.msg }}" },
-                { "name": "Workflow", "value": "[Ver run]('"$RUN_URL"')", "inline": true }
+                { "name": "Version", "value": "🟢 `${{ steps.meta.outputs.version }}`", "inline": true },
+                { "name": "Workflow", "value": "[Ver ejecución]('"$RUN_URL"')", "inline": true },
+                { "name": "Cambios", "value": "${{ steps.meta.outputs.msg }}" }
               ],
               "footer": { "text": "iieg-oficial/mariachi" },
               "timestamp": "'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"
@@ -74,15 +74,15 @@ jobs:
 
           curl -sf -H "Content-Type: application/json" -d '{
             "embeds": [{
-              "title": "CI fallido — mariachi",
+              "title": "CI fallido",
               "color": 15158332,
               "fields": [
                 { "name": "Commit", "value": "[`${{ steps.meta.outputs.short }}`]('"$COMMIT_URL"')", "inline": true },
                 { "name": "Autor", "value": "${{ github.event.workflow_run.actor.login }}", "inline": true },
                 { "name": "Branch", "value": "`${{ github.event.workflow_run.head_branch }}`", "inline": true },
-                { "name": "Version", "value": "`${{ steps.meta.outputs.version }}`", "inline": true },
-                { "name": "Cambios", "value": "${{ steps.meta.outputs.msg }}" },
-                { "name": "Workflow", "value": "[Ver logs]('"$RUN_URL"')", "inline": true }
+                { "name": "Version", "value": "🔴 `${{ steps.meta.outputs.version }}`", "inline": true },
+                { "name": "Workflow", "value": "[Ver ejecución]('"$RUN_URL"')", "inline": true },
+                { "name": "Cambios", "value": "${{ steps.meta.outputs.msg }}" }
               ],
               "footer": { "text": "iieg-oficial/mariachi" },
               "timestamp": "'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"
