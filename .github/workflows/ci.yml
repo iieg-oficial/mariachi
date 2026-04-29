@@ -13,15 +13,18 @@ jobs:
     with:
       app: admin
 
-  notify-failure:
+  notify:
     needs: [backend, admin]
-    if: |
-      always() &&
-      github.event_name == 'push' &&
-      (needs.backend.result != 'success' || needs.admin.result != 'success')
+    if: always() && github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
-      - name: Notify Discord - CI Failure
+      - name: Status
+        run: |
+          echo "backend: ${{ needs.backend.result }}"
+          echo "admin: ${{ needs.admin.result }}"
+
+      - name: Notify Discord - Failure
+        if: needs.backend.result != 'success' || needs.admin.result != 'success'
         continue-on-error: true
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
@@ -40,11 +43,12 @@ jobs:
               "title": "CI fallido — mariachi",
               "color": 15158332,
               "fields": [
-                { "name": "Branch", "value": "`${{ github.ref_name }}`", "inline": true },
-                { "name": "Jobs", "value": "'"$FAILED_JOBS"'", "inline": true },
+                { "name": "Commit", "value": "[`'"${GITHUB_SHA::7}"'`]('"$COMMIT_URL"')", "inline": true },
                 { "name": "Autor", "value": "${{ github.actor }}", "inline": true },
-                { "name": "Commit", "value": "['"${COMMIT_MSG}"']('"${COMMIT_URL}"')", "inline": false },
-                { "name": "Logs", "value": "['"Ver run"']('"${RUN_URL}"')", "inline": false }
+                { "name": "Branch", "value": "`${{ github.ref_name }}`", "inline": true },
+                { "name": "Jobs fallidos", "value": "'"$FAILED_JOBS"'" },
+                { "name": "Cambios", "value": "'"$COMMIT_MSG"'" },
+                { "name": "Workflow", "value": "[Ver logs]('"$RUN_URL"')", "inline": true }
               ],
               "footer": { "text": "iieg-oficial/mariachi" },
               "timestamp": "'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"

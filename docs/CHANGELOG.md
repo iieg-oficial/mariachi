@@ -13,6 +13,57 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.30.44] - 2026-04-29
+
+### CI — alinear notificacion al patron de mapalab/cd.yml
+
+El job `notify-failure` con `if: failure()` o `if: always() && (...)` aparecia como `skipped` en cada run exitoso del CI, generando ruido visual en la UI de GitHub Actions. Mapalab tiene un patron mas limpio en `cd.yml/notify`: el job siempre corre (`if: always()`), y dentro tiene un step "Status" siempre + steps condicionales para success/failure. Asi el job aparece como `success` (no `skipped`) cuando todo pasa, y los steps internos individuales son los que se saltan.
+
+### Cambios en `ci.yml`
+
+- Job renombrado de `notify-failure` a `notify`.
+- Condicion: `if: always() && github.event_name == 'push'` (siempre corre, salvo en PRs).
+- Nuevo step `Status` que solo imprime los resultados de los needs — garantiza que el job tenga un step que SI corre, evitando que el job entero quede como skipped.
+- Step `Notify Discord - Failure` con `if: needs.backend.result != 'success' || needs.admin.result != 'success'`. Solo dispara cuando hay fallo real.
+- Embed actualizado al estilo de mapalab (commit corto en backticks + autor + branch + jobs fallidos + cambios + link al workflow).
+
+### Resultado visual
+
+```
+Antes:
+  ✓ backend
+  ✓ admin
+  ⊘ notify-failure (skipped)   ← feo
+
+Ahora (run exitoso):
+  ✓ backend
+  ✓ admin
+  ✓ notify   ← se ejecuta, solo el step de Discord queda skipped adentro
+```
+
+---
+
+## [0.30.43] - 2026-04-29
+
+### CI — fix `notify-failure` skipped cuando jobs cancelled/skipped
+
+`if: failure()` solo dispara cuando algun `needs.X.result == 'failure'`. Pero cuando el workflow file tiene un bug de YAML (como el caso del 0.30.42 con `DATABASE_URL: sqlite:///:memory:` sin comillas), los jobs `backend` y `admin` quedan como `cancelled` o `skipped` (no `failure`), y `notify-failure` se saltaba silenciosamente sin enviar nada a Discord — exactamente el caso donde MAS necesitas la notificacion.
+
+### Cambios
+
+- **`ci.yml` `notify-failure.if`** ahora es:
+  ```yaml
+  if: |
+    always() &&
+    github.event_name == 'push' &&
+    (needs.backend.result != 'success' || needs.admin.result != 'success')
+  ```
+  - `always()` evita que GitHub skipee el job cuando un need no es success (default).
+  - Check explicito `!= 'success'` cubre `failure`, `cancelled`, `skipped`, `null`.
+- **Mensaje a Discord** ahora incluye el `result` real entre parentesis: `backend(cancelled) admin(skipped)`. Asi distinguis bug de YAML vs test fail vs timeout.
+
+---
+
 ## [0.30.42] - 2026-04-29
 
 ### CI — fix workflow file invalido + notificacion Discord
