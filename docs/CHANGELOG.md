@@ -13,6 +13,21 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.30.38] - 2026-04-29
+
+### Infra — fix `IsADirectoryError` en `mariachi-api` cuando acervo no tiene cert propio
+
+En `docker-compose.yml`, el servicio `api` montaba `../acervo/nginx/ssl/acervo.crt` como volumen y seteaba `REQUESTS_CA_BUNDLE`/`SSL_CERT_FILE` apuntando a esa ruta. En modo `INFRA=gateway` (que es el patron actual en GCP), acervo NO tiene cert propio (TLS lo termina gateway-hub con Let's Encrypt). Como el path `../acervo/nginx/ssl/acervo.crt` no existe en el host, docker creaba un directorio vacio con ese nombre y al cargar `urllib3` intentaba leerlo como archivo, fallando con `IsADirectoryError: [Errno 21] Is a directory` -> 500 en cualquier endpoint que tocara MinIO.
+
+Como `ACERVO_USE_SSL=false` (mariachi-api se conecta a `acervo-minio:9000` por HTTP dentro de la red docker), el cert nunca fue necesario. Removidos:
+
+- Bind mount `../acervo/nginx/ssl/acervo.crt:/usr/local/share/ca-certificates/acervo.crt:ro` del servicio `api`.
+- Env vars `REQUESTS_CA_BUNDLE` y `SSL_CERT_FILE`.
+
+Si en el futuro alguien necesita SSL al MinIO interno (poco probable, pero posible si se hace acervo standalone con cert propio), puede agregar el bind mount + env vars con un compose override.
+
+---
+
 ## [0.30.37] - 2026-04-29
 
 ### Admin (UI) — refinamientos UX en `/media`
