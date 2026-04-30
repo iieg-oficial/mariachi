@@ -243,7 +243,7 @@ const SEOEditor = ({ seo = {}, onChange }) => {
 
     return (
         <Card title={<><GlobalOutlined /> SEO & Metadata</>} style={{ marginBottom: 16 }}>
-            <Alert
+            <Alert closable
                 title="Optimización para Motores de Búsqueda"
                 description="Completa estos campos para mejorar la visibilidad de la página en Google y redes sociales."
                 type="info"
@@ -499,7 +499,7 @@ const SEOEditor = ({ seo = {}, onChange }) => {
                         }
                         key="structured-data"
                     >
-                        <Alert
+                        <Alert closable
                             title="Datos Estructurados"
                             description="Ayuda a los motores de búsqueda a entender mejor tu contenido mediante Schema.org JSON-LD"
                             type="info"
@@ -624,7 +624,7 @@ const SEOEditor = ({ seo = {}, onChange }) => {
                         )}
 
                         {schemaType === 'BreadcrumbList' && (
-                            <Alert
+                            <Alert closable
                                 title="Migas de Pan"
                                 description="Las migas de pan se generan automáticamente basadas en la estructura de navegación de tu sitio."
                                 type="info"
@@ -633,7 +633,7 @@ const SEOEditor = ({ seo = {}, onChange }) => {
                         )}
 
                         {schemaType === 'FAQPage' && (
-                            <Alert
+                            <Alert closable
                                 title="Página de Preguntas Frecuentes"
                                 description="Los elementos FAQ se generan automáticamente si agregas componentes de tipo FAQ a tu página."
                                 type="info"
@@ -642,7 +642,7 @@ const SEOEditor = ({ seo = {}, onChange }) => {
                         )}
 
                         {schemaType === 'WebPage' && (
-                            <Alert
+                            <Alert closable
                                 title="Página Web General"
                                 description="Los datos básicos (título, descripción, URL) se toman automáticamente de los meta tags."
                                 type="success"
@@ -665,7 +665,7 @@ const SEOEditor = ({ seo = {}, onChange }) => {
                             </pre>
                         </Card>
 
-                        <Alert
+                        <Alert closable
                             title="Validación"
                             description={
                                 <span>

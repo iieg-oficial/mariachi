@@ -187,7 +187,7 @@ export default function LayerMetadataSection({
 
     return (
         <Space orientation="vertical" size="large" style={{ width: '100%' }}>
-            <Alert
+            <Alert closable
                 type={derivedFromDescendants ? 'success' : (siblingsSharingCount > 0 ? 'warning' : 'info')}
                 showIcon
                 message={
@@ -213,7 +213,7 @@ export default function LayerMetadataSection({
                 }
             />
             {notFound && (
-                <Alert
+                <Alert closable
                     type="warning"
                     showIcon
                     message="Este feature type aún no tiene metadatos. Guarda para crearlos."

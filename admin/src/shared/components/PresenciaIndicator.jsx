@@ -6,7 +6,7 @@ export default function PresenciaIndicator({ editores }) {
     const nombres = editores.map((e) => e.name || e.username).join(', ');
     const verbo = editores.length === 1 ? 'también está editando' : 'también están editando';
     return (
-        <Alert
+        <Alert closable
             type="warning"
             showIcon
             icon={<TeamOutlined />}

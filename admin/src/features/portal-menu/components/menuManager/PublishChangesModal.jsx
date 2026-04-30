@@ -27,7 +27,7 @@ export default function PublishChangesModal({
             centered={isMobile}
         >
             <div>
-                <Alert
+                <Alert closable
                     title={isAdmin ? 'Resumen de cambios' : 'Solicitud de publicación'}
                     description={isAdmin
                         ? 'Revisa cuidadosamente los cambios antes de publicar. Esta acción no se puede deshacer.'

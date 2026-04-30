@@ -197,7 +197,7 @@ export default function InicioPage() {
                 </div>
 
                 {rechazados.length > 0 && (
-                    <Alert
+                    <Alert closable
                         type="error"
                         showIcon
                         message={`Tienes ${rechazados.length} borrador${rechazados.length === 1 ? '' : 'es'} rechazado${rechazados.length === 1 ? '' : 's'}`}

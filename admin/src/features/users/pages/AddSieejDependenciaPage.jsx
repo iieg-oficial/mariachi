@@ -47,7 +47,7 @@ export default function AddSieejDependenciaPage() {
 
             {created ? (
                 <Card style={{ marginTop: 24 }}>
-                    <Alert
+                    <Alert closable
                         type="success"
                         showIcon
                         message={`Dependencia ${created.user.username} creada`}

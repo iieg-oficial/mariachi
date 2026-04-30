@@ -134,7 +134,7 @@ export default function FormulariosPage() {
                 </Button>
             </div>
 
-            <Alert
+            <Alert closable
                 type="info"
                 showIcon
                 style={{ marginBottom: 16 }}

@@ -125,7 +125,7 @@ export default function BulkTagsDrawer({ open, onClose, onDone }) {
                 />
             )}
             {result && (
-                <Alert
+                <Alert closable
                     type={result.not_found?.length ? 'warning' : 'success'}
                     title={`${result.updated} actualizadas`}
                     description={

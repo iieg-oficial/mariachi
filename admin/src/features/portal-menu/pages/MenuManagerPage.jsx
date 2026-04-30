@@ -91,7 +91,7 @@ export default function MenuManager() {
             />
 
             {!isAdmin && borradorEstado === 'rechazado' && (
-                <Alert
+                <Alert closable
                     type="error"
                     title="Borrador rechazado"
                     description={comentarioRechazo || 'El administrador rechazó el borrador sin especificar un motivo.'}
@@ -101,7 +101,7 @@ export default function MenuManager() {
             )}
 
             {hasChanges && !reviewMode && (
-                <Alert
+                <Alert closable
                     title="Modo borrador"
                     description={`Tienes ${changesCount} cambio(s) pendiente(s). ${isAdmin ? 'Los cambios se publicarán directamente.' : 'Envíalos a revisión cuando estén listos.'}`}
                     type="warning"
@@ -118,7 +118,7 @@ export default function MenuManager() {
             )}
 
             {!reviewMode && (
-                <Alert
+                <Alert closable
                     title="Menú jerárquico con arrastrar y soltar"
                     description="Arrastra los items para reordenarlos. Usa el botón de editar para modificar cada item."
                     type="info"

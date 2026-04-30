@@ -306,7 +306,7 @@ export default function EventoEditPage() {
                 {error && <Alert type="error" message={error} showIcon closable />}
                 <PresenciaIndicator editores={editores} />
                 {!reviewMode && draft.borradorEstado === 'rechazado' && draft.comentarioRechazo && (
-                    <Alert
+                    <Alert closable
                         type="warning"
                         showIcon
                         message="Tu borrador fue rechazado"

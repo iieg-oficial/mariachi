@@ -199,13 +199,13 @@ function SectionTab({ seccion, onUpdated, active, reviewMode = false, borradorId
                 </div>
             )}
             {!reviewMode && draft.borradorEstado === 'pendiente_revision' && (
-                <Alert type="warning" showIcon message="Tu borrador está pendiente de revisión." style={{ marginBottom: 12 }} />
+                <Alert closable type="warning" showIcon message="Tu borrador está pendiente de revisión." style={{ marginBottom: 12 }} />
             )}
             {!reviewMode && draft.borradorEstado === 'rechazado' && draft.comentarioRechazo && (
-                <Alert type="warning" showIcon message="Tu borrador fue rechazado" description={draft.comentarioRechazo} style={{ marginBottom: 12 }} />
+                <Alert closable type="warning" showIcon message="Tu borrador fue rechazado" description={draft.comentarioRechazo} style={{ marginBottom: 12 }} />
             )}
             {reviewMode && draft.reviewAuthor && (
-                <Alert type="info" showIcon message={`Borrador enviado por ${draft.reviewAuthor.name}`} style={{ marginBottom: 12 }} />
+                <Alert closable type="info" showIcon message={`Borrador enviado por ${draft.reviewAuthor.name}`} style={{ marginBottom: 12 }} />
             )}
             <Card title={reg.label} extra={extraButtons}>
                 <Editor />

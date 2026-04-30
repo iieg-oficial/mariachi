@@ -60,7 +60,7 @@ export default function ChangePassword() {
                     <LockOutlined style={{ fontSize: 32, color: '#1890ff', marginBottom: 16 }} />
                     <Title level={3}>Cambiar Contraseña</Title>
                     {user?.must_change_password && (
-                        <Alert
+                        <Alert closable
                             title="Cambio obligatorio"
                             description="Por seguridad, debes cambiar tu contraseña antes de continuar."
                             type="warning"

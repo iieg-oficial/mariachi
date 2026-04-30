@@ -397,7 +397,7 @@ const SEOAnalyzer = ({ page, seo }) => {
                 )}
 
                 {analysis.issues.length > 0 && (
-                    <Alert
+                    <Alert closable
                         title={`Se encontraron ${analysis.issues.length} problema(s) de SEO`}
                         description={
                             <Space>
@@ -448,7 +448,7 @@ const SEOAnalyzer = ({ page, seo }) => {
                                                 </Space>
                                             </Space>
                                             {data.status === 'low' && (
-                                                <Alert
+                                                <Alert closable
                                                     title="Densidad baja"
                                                     description="Considera usar esta keyword más frecuentemente en el contenido"
                                                     type="warning"
@@ -457,7 +457,7 @@ const SEOAnalyzer = ({ page, seo }) => {
                                                 />
                                             )}
                                             {data.status === 'high' && (
-                                                <Alert
+                                                <Alert closable
                                                     title="Densidad alta"
                                                     description="Evita el keyword stuffing. Reduce el uso de esta palabra"
                                                     type="error"
@@ -500,7 +500,7 @@ const SEOAnalyzer = ({ page, seo }) => {
                                                 description={
                                                     <Space orientation="vertical" size="small">
                                                         <Text type="secondary">{issue.message}</Text>
-                                                        <Alert
+                                                        <Alert closable
                                                             title="Cómo mejorar"
                                                             description={issue.suggestion}
                                                             type="info"
@@ -552,7 +552,7 @@ const SEOAnalyzer = ({ page, seo }) => {
                 )}
 
                 {analysis.suggestions.length > 0 && (
-                    <Alert
+                    <Alert closable
                         title="¡Buen trabajo!"
                         description={
                             <List

@@ -55,7 +55,7 @@ export default function MenuItemModal({
                     />
                 </Form.Item>
 
-                <Alert
+                <Alert closable
                     title="Ruta generada automáticamente"
                     description={
                         <div style={{ fontFamily: 'monospace', fontSize: 14, marginTop: 8, color: '#1890ff' }}>
@@ -154,7 +154,7 @@ export default function MenuItemModal({
                 )}
 
                 {!selectedParent && !editingItem && (
-                    <Alert
+                    <Alert closable
                         title="Item de nivel superior"
                         description="Este item se agregará en el nivel superior del menú. La ruta se generará automáticamente a partir del nombre. Usa el botón 'Agregar hijo' en un item existente para crear submenús."
                         type="success"

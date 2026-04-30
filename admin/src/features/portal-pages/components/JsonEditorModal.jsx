@@ -112,14 +112,14 @@ export default function JsonEditorModal({ visible, onClose, initialData, onSave 
             {contextHolder}
             <Row gutter={[16, 16]}>
                 <Col xs={24} md={16}>
-                    <Alert
+                    <Alert closable
                         title="Zona de Peligro"
                         description="Editar el JSON directamente puede romper la página. Asegúrate de mantener la estructura correcta."
                         type="warning"
                         showIcon
                         style={{ marginBottom: 16 }}
                     />
-                    {error && <Alert title={error} type="error" showIcon style={{ marginBottom: 16 }} />}
+                    {error && <Alert closable title={error} type="error" showIcon style={{ marginBottom: 16 }} />}
                     <TextArea
                         value={jsonString}
                         onChange={(e) => {

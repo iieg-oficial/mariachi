@@ -178,7 +178,7 @@ export default function PageEditor() {
 
             <Content style={{ padding: isMobile ? 12 : 24, maxWidth: 1000, margin: '0 auto', width: '100%' }}>
                 {reviewMode && reviewAuthor && (
-                    <Alert
+                    <Alert closable
                         type="info"
                         title={`Revisando borrador de ${reviewAuthor.name}`}
                         style={{ marginBottom: 16 }}
@@ -186,7 +186,7 @@ export default function PageEditor() {
                     />
                 )}
                 {!isAdmin && borradorEstado === 'rechazado' && (
-                    <Alert
+                    <Alert closable
                         type="error"
                         title="Borrador rechazado"
                         description={comentarioRechazo || 'El administrador rechazó el borrador sin especificar un motivo.'}
