@@ -49,7 +49,7 @@ export default function BulkTagsDrawer({ open, onClose, onDone }) {
                 onDone?.();
             }
         } catch (err) {
-            message.error(err.response?.data?.detail || 'Error en bulk update');
+            message.error(err.response?.data?.detail || 'Error en la edición en lote');
         } finally {
             setSubmitting(false);
         }
@@ -62,9 +62,9 @@ export default function BulkTagsDrawer({ open, onClose, onDone }) {
     };
 
     const columns = [
-        { title: 'Layer ID', dataIndex: 'id', key: 'id', width: 240 },
+        { title: 'ID de capa', dataIndex: 'id', key: 'id', width: 240 },
         {
-            title: 'Tags',
+            title: 'Etiquetas',
             dataIndex: 'tags',
             key: 'tags',
             render: (tags) => (
@@ -79,7 +79,7 @@ export default function BulkTagsDrawer({ open, onClose, onDone }) {
 
     return (
         <Drawer
-            title="Edición masiva de tags"
+            title="Edición masiva de etiquetas"
             placement={isMobile ? 'bottom' : 'right'}
             styles={{
                 wrapper: isMobile
@@ -103,8 +103,8 @@ export default function BulkTagsDrawer({ open, onClose, onDone }) {
             }
         >
             <Paragraph type="secondary">
-                Pega filas desde Excel/Sheets. Formato: <Text code>layer_id</Text> TAB <Text code>tag1, tag2, tag3</Text>.
-                Máximo 500 capas por request.
+                Pega filas desde Excel/Sheets. Formato: <Text code>id_capa</Text> TAB <Text code>etiqueta1, etiqueta2, etiqueta3</Text>.
+                Máximo 500 capas por solicitud.
             </Paragraph>
             <Input.TextArea
                 value={text}

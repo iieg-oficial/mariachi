@@ -113,14 +113,19 @@ function CompactNodeTitle({ node, onEdit }) {
                 opacity: disabled ? 0.5 : 1,
             }}
         >
-            <span style={{
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                flex: 1,
-                minWidth: 0,
-            }}>
-                {title}
+            <span style={{ flex: 1, minWidth: 0, overflow: 'hidden' }}>
+                <span style={{
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    wordBreak: 'break-word',
+                    whiteSpace: 'normal',
+                    lineHeight: '18px',
+                }}>
+                    {title}
+                </span>
             </span>
             <StatusIcons disabled={disabled} hiddenInMenu={node.hiddenInMenu} />
         </span>
@@ -132,8 +137,19 @@ function DetailedNodeTitle({ node }) {
     const isProperty = isPropertyOfGroup(nodeType, parentNodeType);
     const tagColor = isProperty ? PROPERTY_TAG_COLOR : (NODE_TAG_COLORS[nodeType] || 'default');
     return (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            <span style={{ opacity: disabled ? 0.5 : 1, wordBreak: 'break-word' }}>{title}</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', minWidth: 0, width: '100%' }}>
+            <span style={{
+                opacity: disabled ? 0.5 : 1,
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                wordBreak: 'break-word',
+                lineHeight: '18px',
+                minWidth: 0,
+                flex: '1 1 auto',
+            }}>{title}</span>
             <Tag color={tagColor} style={{ fontSize: 10, marginRight: 0 }}>
                 {labelForNode(nodeType, parentNodeType)}
             </Tag>
@@ -317,7 +333,7 @@ export default function LayersTreeSider({
                 )}
                 {isAdmin && onBulkTagsClick && (
                     <Button size="small" icon={<TagsOutlined />} onClick={onBulkTagsClick}>
-                        Bulk tags
+                        Etiquetas en lote
                     </Button>
                 )}
                 {onReload && (
@@ -327,7 +343,39 @@ export default function LayersTreeSider({
                 )}
             </Space>
             {error && <Alert closable type="error" title={error} />}
-            <div ref={containerRef} className="layers-tree-compact" style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+            <div ref={containerRef} className="layers-tree-compact" style={{ flex: 1, minHeight: 0, position: 'relative', overflowX: 'hidden' }}>
+                <style>{`
+                    .layers-tree-compact .ant-tree,
+                    .layers-tree-compact .ant-tree-list,
+                    .layers-tree-compact .ant-tree-list-holder,
+                    .layers-tree-compact .ant-tree-list-holder-inner {
+                        width: 100% !important;
+                        max-width: 100% !important;
+                    }
+                    .layers-tree-compact .ant-tree-treenode {
+                        width: 100% !important;
+                        box-sizing: border-box;
+                        padding-right: 4px;
+                    }
+                    .layers-tree-compact .ant-tree-node-content-wrapper {
+                        flex: 1 1 auto;
+                        min-width: 0;
+                        overflow: hidden;
+                    }
+                    .layers-tree-compact .ant-tree-title {
+                        display: block;
+                        min-width: 0;
+                        overflow: hidden;
+                        word-break: break-word;
+                        white-space: normal;
+                    }
+                    .layers-tree-compact .ant-tree-node-content-wrapper {
+                        white-space: normal !important;
+                        height: auto !important;
+                        min-height: 0;
+                        line-height: 1.4;
+                    }
+                `}</style>
                 {viewMode === 'compact' && (
                     <style>{`
                         .layers-tree-compact .ant-tree-switcher_open,
@@ -377,7 +425,7 @@ export default function LayersTreeSider({
                         blockNode
                         virtual
                         height={containerHeight}
-                        itemHeight={28}
+                        itemHeight={viewMode === 'detailed' ? 64 : 44}
                     />
                 )}
             </div>
