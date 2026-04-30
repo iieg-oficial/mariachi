@@ -13,7 +13,7 @@ import {
     StopOutlined,
     TagsOutlined,
 } from '@ant-design/icons';
-import { labelForNodeType } from '@features/mapalab-layers/constants/nodeTypes';
+import { labelForNode, isPropertyOfGroup } from '@features/mapalab-layers/constants/nodeTypes';
 import LayerCreateModal from '@features/mapalab-layers/components/LayerCreateModal';
 import { message } from '@shared/services/message';
 
@@ -42,6 +42,8 @@ const NODE_TAG_COLORS = {
     group: 'gold',
     leaf: 'green',
 };
+
+const PROPERTY_TAG_COLOR = 'cyan';
 
 const VIEW_MODE_KEY = 'mapalab_layers_view_mode';
 const EXPANDED_KEYS_STORAGE = 'mapalab_layers_expanded';
@@ -126,12 +128,14 @@ function CompactNodeTitle({ node, onEdit }) {
 }
 
 function DetailedNodeTitle({ node }) {
-    const { title, nodeType, workspaceAlias, geoserverLayer, disabled, hiddenInMenu } = node;
+    const { title, nodeType, parentNodeType, workspaceAlias, geoserverLayer, disabled, hiddenInMenu } = node;
+    const isProperty = isPropertyOfGroup(nodeType, parentNodeType);
+    const tagColor = isProperty ? PROPERTY_TAG_COLOR : (NODE_TAG_COLORS[nodeType] || 'default');
     return (
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
             <span style={{ opacity: disabled ? 0.5 : 1, wordBreak: 'break-word' }}>{title}</span>
-            <Tag color={NODE_TAG_COLORS[nodeType] || 'default'} style={{ fontSize: 10, marginRight: 0 }}>
-                {labelForNodeType(nodeType)}
+            <Tag color={tagColor} style={{ fontSize: 10, marginRight: 0 }}>
+                {labelForNode(nodeType, parentNodeType)}
             </Tag>
             {workspaceAlias && (
                 <Tag color="blue" style={{ fontSize: 10, marginRight: 0 }}>{workspaceAlias}</Tag>
@@ -322,7 +326,7 @@ export default function LayersTreeSider({
                     </Button>
                 )}
             </Space>
-            {error && <Alert type="error" title={error} />}
+            {error && <Alert closable type="error" title={error} />}
             <div ref={containerRef} className="layers-tree-compact" style={{ flex: 1, minHeight: 0, position: 'relative' }}>
                 {viewMode === 'compact' && (
                     <style>{`

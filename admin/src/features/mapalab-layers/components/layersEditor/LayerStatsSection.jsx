@@ -9,6 +9,22 @@ import {
 } from '@ant-design/icons';
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
 import { message } from '@shared/services/message';
+import StatusBadge from '@shared/components/StatusBadge';
+
+const labelWithBeta = (text) => (
+    <>
+        {text}
+        <StatusBadge
+            variant="beta"
+            size="sm"
+            style={{
+                position: 'absolute',
+                top: -10,
+                right: 0,
+            }}
+        />
+    </>
+);
 
 const { Text } = Typography;
 
@@ -335,8 +351,8 @@ const StatSlot = ({ slot, onChange, onRemove, availableFields, schema, table, la
                     optionType="button"
                     options={[
                         { value: 'static', label: 'Estático' },
-                        { value: 'primitive', label: 'Operación simple' },
-                        { value: 'formula', label: 'Fórmula' },
+                        { value: 'primitive', label: labelWithBeta('Operación simple') },
+                        { value: 'formula', label: labelWithBeta('Fórmula') },
                     ]}
                 />
                 {baseInputs}
@@ -534,7 +550,7 @@ export default function LayerStatsSection({
 
     return (
         <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
-            <Alert
+            <Alert closable
                 type="info"
                 showIcon
                 message={
@@ -547,7 +563,7 @@ export default function LayerStatsSection({
             />
 
             {!schema || !table ? (
-                <Alert
+                <Alert closable
                     type="warning"
                     showIcon
                     message="Para operaciones dinámicas se necesitan workspace y capa GeoServer definidos en la pestaña Servicios."
@@ -564,9 +580,27 @@ export default function LayerStatsSection({
                 </Button>
                 <Button size="small" icon={<PlusOutlined />} onClick={() => addSlot('primitive')}>
                     Slot operación
+                    <StatusBadge
+                        variant="beta"
+                        size="sm"
+                        style={{
+                            position: 'absolute',
+                            top: -10,
+                            right: 0,
+                        }}
+                    />
                 </Button>
                 <Button size="small" icon={<CalculatorOutlined />} onClick={() => addSlot('formula')}>
                     Slot fórmula
+                    <StatusBadge
+                        variant="beta"
+                        size="sm"
+                        style={{
+                            position: 'absolute',
+                            top: -10,
+                            right: 0,
+                        }}
+                    />
                 </Button>
             </Space>
 
@@ -656,7 +690,7 @@ export default function LayerStatsSection({
                     styles={{ body: { paddingTop: 8 } }}
                 >
                     {config.some((c) => c._autoFromLegacy) && (
-                        <Alert
+                        <Alert closable
                             type="info"
                             showIcon
                             style={{ marginBottom: 8 }}

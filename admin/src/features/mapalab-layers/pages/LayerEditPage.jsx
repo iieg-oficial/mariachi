@@ -1,5 +1,5 @@
-import { useEffect, useState, useCallback } from 'react';
-import { AutoComplete, Breadcrumb, Button, Card, Col, Empty, Form, Input, Layout, Row, Select, Space, Spin, Switch, Tabs, Tag, Tooltip, Typography } from 'antd';
+import { useEffect, useMemo, useState, useCallback } from 'react';
+import { Alert, AutoComplete, Breadcrumb, Button, Card, Col, Empty, Form, Input, Layout, Row, Select, Space, Spin, Switch, Tabs, Tag, Tooltip, Typography } from 'antd';
 import { LeftOutlined, MenuUnfoldOutlined, PartitionOutlined, SaveOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router';
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
@@ -12,6 +12,8 @@ import LayerAliasesSection from '@features/mapalab-layers/components/layersEdito
 import CqlFilterBuilder from '@features/mapalab-layers/components/layersEditor/CqlFilterBuilder';
 import WmsGroupField from '@features/mapalab-layers/components/layersEditor/WmsGroupField';
 import GroupServicesReference from '@features/mapalab-layers/components/layersEditor/GroupServicesReference';
+import SldEditor from '@features/mapalab-layers/components/sldEditor/SldEditor';
+import StatusBadge from '@shared/components/StatusBadge';
 import LayersTreeSider from '@features/mapalab-layers/components/LayersTreeSider';
 import TemaIconField from '@features/mapalab-layers/components/layersEditor/TemaIconField';
 import BulkTagsDrawer from '@features/mapalab-layers/components/layersEditor/BulkTagsDrawer';
@@ -20,7 +22,10 @@ import {
     NODE_TYPE_HELP,
     isFieldVisible,
     isTabVisible,
+    isPropertyOfGroup,
+    labelForNode,
 } from '@features/mapalab-layers/constants/nodeTypes';
+import { findNodeContext } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
 import useResizableWidth from '@shared/hooks/useResizableWidth';
 import { message } from '@shared/services/message';
 
@@ -73,7 +78,6 @@ export default function LayerEditPage() {
         if (typeof window === 'undefined') return false;
         const stored = window.localStorage.getItem('mapalab.layerEditor.siderCollapsed');
         if (stored !== null) return stored === 'true';
-        // Sin preferencia: colapsado en pantallas medianas y chicas (< lg breakpoint de antd, 992px)
         return window.matchMedia('(max-width: 991.98px)').matches;
     });
     const toggleSider = () => {
@@ -89,6 +93,12 @@ export default function LayerEditPage() {
     const selectedStyles = Form.useWatch('styles', form);
     const watchedConfig = Form.useWatch('infoboxConfig', form);
     const watchedNodeType = Form.useWatch('nodeType', form);
+    const parentNodeType = useMemo(() => {
+        if (!layerId || !treeData?.length) return null;
+        const ctx = findNodeContext(treeData, layerId);
+        return ctx?.parentNodeType ?? null;
+    }, [layerId, treeData]);
+    const isProperty = isPropertyOfGroup(watchedNodeType, parentNodeType);
 
     useEffect(() => {
         reload();
@@ -427,10 +437,23 @@ export default function LayerEditPage() {
                     <Form.Item
                         label="Tipo de nodo"
                         name="nodeType"
-                        extra="Rol del nodo en la jerarquía: Tema/Categoría/Etiqueta/Grupo organizan; Capa es la capa WMS real."
+                        extra={
+                            isProperty
+                                ? 'Este nodo es una Propiedad: comparte feature type con su grupo padre y se enciende cuando se enciende el grupo. No se puede cambiar de tipo desde aquí.'
+                                : 'Rol del nodo en la jerarquía: Tema/Categoría/Etiqueta/Grupo organizan; Capa es la capa WMS real.'
+                        }
                     >
-                        <Select options={NODE_TYPE_OPTIONS} />
+                        <Select options={NODE_TYPE_OPTIONS} disabled={isProperty} />
                     </Form.Item>
+                    {isProperty && (
+                        <Alert closable
+                            type="info"
+                            showIcon
+                            style={{ marginBottom: 16 }}
+                            message="Estás editando una Propiedad"
+                            description={`Las propiedades comparten feature type, simbología, metadatos y numeralia con su grupo padre (todo se almacena por feature type, no por propiedad). Solo se distinguen entre hermanas por su CQL filter. Cambia el "Filtro CQL" en la pestaña Servicios para ajustar qué features se incluyen en esta propiedad. La metadata, numeralia y simbología se editan una sola vez en el grupo padre.`}
+                        />
+                    )}
                     {watchedNodeType === 'tema' && (
                         <Form.Item
                             label="Icono"
@@ -690,7 +713,36 @@ export default function LayerEditPage() {
                 );
             })() : null,
         },
-    ].filter((tab) => tab.key === 'identidad' || isTabVisible(tab.key, watchedNodeType));
+        {
+            key: 'simbologia',
+            label: (
+                <>
+                    Simbología
+                    <StatusBadge
+                        variant="beta"
+                        size="sm"
+                        style={{
+                            position: 'absolute',
+                            top: 0,
+                            right: -20,
+                        }}
+                    />
+                </>
+            ),
+            children: layer ? (
+                <SldEditor
+                    layer={layer}
+                    derivedFeatureType={
+                        sharedFeatureTypeFromDescendants?.layerKey
+                            ? sharedFeatureTypeFromDescendants
+                            : null
+                    }
+                />
+            ) : null,
+        },
+    ]
+        .filter((tab) => tab.key === 'identidad' || isTabVisible(tab.key, watchedNodeType))
+        .filter((tab) => !(isProperty && (tab.key === 'simbologia' || tab.key === 'metadatos')));
 
     const nodeHelp = NODE_TYPE_HELP[watchedNodeType];
 
@@ -822,6 +874,9 @@ export default function LayerEditPage() {
                                         {layer?.label || 'Editar capa'}
                                     </Title>
                                     <Tag color="purple">{layerId}</Tag>
+                                    {isProperty && (
+                                        <Tag color="cyan">{labelForNode(watchedNodeType, parentNodeType)}</Tag>
+                                    )}
                                 </Space>
                                 {actionButtons}
                             </div>

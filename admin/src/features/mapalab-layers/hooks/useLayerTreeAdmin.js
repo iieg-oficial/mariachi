@@ -2,18 +2,30 @@ import { useCallback, useEffect, useState } from 'react';
 import api from '@shared/services/api';
 
 
-const toAntTreeData = (nodes) =>
+const toAntTreeData = (nodes, parentNodeType = null) =>
     nodes.map((n) => ({
         key: n.id,
         title: n.label,
         nodeType: n.nodeType,
+        parentNodeType,
         workspaceAlias: n.workspaceAlias,
         geoserverLayer: n.geoserverLayer,
         disabled: n.disabled,
         hiddenInMenu: n.hiddenInMenu,
         raw: n,
-        children: n.children && n.children.length > 0 ? toAntTreeData(n.children) : undefined,
+        children: n.children && n.children.length > 0 ? toAntTreeData(n.children, n.nodeType) : undefined,
     }));
+
+export const findNodeContext = (treeData, layerId) => {
+    for (const n of treeData) {
+        if (n.key === layerId) return { node: n, parentNodeType: n.parentNodeType ?? null };
+        if (n.children?.length) {
+            const found = findNodeContext(n.children, layerId);
+            if (found) return found;
+        }
+    }
+    return null;
+};
 
 
 const fetchLayerTreePublic = async () => {

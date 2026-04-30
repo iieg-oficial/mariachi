@@ -24,22 +24,23 @@ import {
     UndoOutlined,
 } from '@ant-design/icons';
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
-import { labelForNodeType } from '@features/mapalab-layers/constants/nodeTypes';
+import { labelForNode, isPropertyOfGroup } from '@features/mapalab-layers/constants/nodeTypes';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import { message } from '@shared/services/message';
 
 const { Content } = Layout;
 const { Title, Text } = Typography;
 
-function flattenTree(nodes, acc = []) {
+function flattenTree(nodes, acc = [], parentNodeType = null) {
     for (const n of nodes || []) {
         acc.push({
             id: n.id,
             label: n.label,
             nodeType: n.nodeType,
+            parentNodeType,
             parentId: n.raw?.parentId ?? null,
         });
-        if (n.children?.length) flattenTree(n.children, acc);
+        if (n.children?.length) flattenTree(n.children, acc, n.nodeType);
     }
     return acc;
 }
@@ -89,7 +90,14 @@ function SortableRow({ item, onRemove, isMobile }) {
                 </Text>
                 <Space size={4} wrap>
                     <Tag color="blue" style={{ marginRight: 0, fontSize: 11 }}>{item.id}</Tag>
-                    {item.nodeType && <Tag style={{ marginRight: 0, fontSize: 11 }}>{labelForNodeType(item.nodeType)}</Tag>}
+                    {item.nodeType && (
+                        <Tag
+                            color={isPropertyOfGroup(item.nodeType, item.parentNodeType) ? 'cyan' : undefined}
+                            style={{ marginRight: 0, fontSize: 11 }}
+                        >
+                            {labelForNode(item.nodeType, item.parentNodeType)}
+                        </Tag>
+                    )}
                 </Space>
             </Space>
             <Button

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Form, Input, Modal, Select, Space, Switch, TreeSelect, Typography } from 'antd';
-import { NODE_TYPE_HELP, NODE_TYPE_OPTIONS, isFieldVisible } from '@features/mapalab-layers/constants/nodeTypes';
+import { NODE_TYPE_HELP, NODE_TYPE_OPTIONS, isFieldVisible, isPropertyOfGroup } from '@features/mapalab-layers/constants/nodeTypes';
+import { findNodeContext } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
 import { message } from '@shared/services/message';
 
 const { Text } = Typography;
@@ -32,6 +33,11 @@ export default function LayerCreateModal({ open, onClose, onSubmit, treeData = [
     const [slugTouched, setSlugTouched] = useState(false);
     const watchedNodeType = Form.useWatch('node_type', form);
     const watchedLabel = Form.useWatch('label', form);
+    const watchedParentId = Form.useWatch('parent_id', form);
+
+    const parentCtx = watchedParentId ? findNodeContext(treeData, watchedParentId) : null;
+    const parentNodeType = parentCtx?.node?.nodeType ?? null;
+    const willBeProperty = isPropertyOfGroup(watchedNodeType, parentNodeType);
 
     const treeSelectData = useMemo(() => buildTreeSelectData(treeData), [treeData]);
 
@@ -119,13 +125,22 @@ export default function LayerCreateModal({ open, onClose, onSubmit, treeData = [
                 >
                     <Select options={NODE_TYPE_OPTIONS} />
                 </Form.Item>
-                {help && (
-                    <Alert
+                {help && !willBeProperty && (
+                    <Alert closable
                         type="info"
                         message={help.title}
                         description={help.body}
                         showIcon
                         style={{ marginBottom: 16 }}
+                    />
+                )}
+                {willBeProperty && (
+                    <Alert closable
+                        type="success"
+                        showIcon
+                        style={{ marginBottom: 16 }}
+                        message="Se creará como Propiedad del grupo"
+                        description="El padre seleccionado es un Grupo, así que este nodo cuenta como Propiedad: comparte feature type con el grupo y se enciende automáticamente cuando se enciende el grupo en el visor. Distínguelo de sus hermanas con un Filtro CQL en la pestaña Servicios después de crearlo."
                     />
                 )}
                 <Form.Item

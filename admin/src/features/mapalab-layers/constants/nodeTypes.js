@@ -6,6 +6,16 @@ export const NODE_TYPE_LABELS = {
     leaf: 'Capa',
 };
 
+export const PROPERTY_LABEL = 'Propiedad';
+
+export const isPropertyOfGroup = (nodeType, parentNodeType) =>
+    nodeType === 'leaf' && parentNodeType === 'group';
+
+export const labelForNode = (nodeType, parentNodeType) => {
+    if (isPropertyOfGroup(nodeType, parentNodeType)) return PROPERTY_LABEL;
+    return NODE_TYPE_LABELS[nodeType] || nodeType;
+};
+
 export const NODE_TYPE_OPTIONS = [
     { value: 'tema', label: NODE_TYPE_LABELS.tema },
     { value: 'category', label: NODE_TYPE_LABELS.category },
@@ -26,6 +36,7 @@ export const TAB_VISIBILITY = {
     servicios: ['group', 'leaf'],
     infobox: ['group', 'leaf'],
     metadatos: ['group', 'leaf'],
+    simbologia: ['group', 'leaf'],
 };
 
 export const isFieldVisible = (field, nodeType) => {
