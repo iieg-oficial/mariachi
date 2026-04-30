@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_project_access
@@ -8,6 +9,8 @@ from app.core.database import get_dataengine_db
 from app.models.layer import Workspace
 from app.models.user import Usuario
 from app.services.geoserver_client import GeoServerClient, GeoServerError
+from app.services.palette_service import load_palettes
+from app.services.sld_parser import parse_sld
 
 router = APIRouter(
     prefix='/geoserver',
@@ -103,6 +106,93 @@ async def list_styles(
     client = GeoServerClient()
     try:
         styles = client.list_styles(ws.geoserver_workspace, layer)
-        return {'styles': styles}
+        is_group = False
+        if not styles:
+            try:
+                is_group = client.is_layer_group(ws.geoserver_workspace, layer)
+            except GeoServerError:
+                is_group = False
+        return {'styles': styles, 'isLayerGroup': is_group}
     except GeoServerError as exc:
         raise HTTPException(status_code=502, detail=str(exc))
+
+
+def _strip_workspace_prefix(style_name: str, geoserver_workspace: str) -> str:
+    if ':' not in style_name:
+        return style_name
+    prefix, _, bare = style_name.partition(':')
+    if prefix != geoserver_workspace:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"El style '{style_name}' está calificado con el workspace '{prefix}', "
+                f"pero el alias resolvió a '{geoserver_workspace}'."
+            ),
+        )
+    return bare
+
+
+@router.get('/styles/{alias}/{style_name:path}')
+async def get_style_sld(
+    alias: str,
+    style_name: str,
+    db: Session = Depends(get_dataengine_db),
+    current_user: Usuario = Depends(_require_project_editor),
+    _rl: Usuario = Depends(_read_rate_limit),
+):
+    incr(COUNTER_GEOSERVER_CALLS)
+    ws = _resolve_workspace(db, alias)
+    bare_style = _strip_workspace_prefix(style_name, ws.geoserver_workspace)
+    client = GeoServerClient()
+    try:
+        raw_xml = client.get_sld(ws.geoserver_workspace, bare_style)
+        shared_by = client.find_layers_using_style(ws.geoserver_workspace, bare_style)
+    except GeoServerError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+
+    parsed = parse_sld(raw_xml)
+    return {
+        'workspace': alias,
+        'styleName': bare_style,
+        'rawXml': parsed.raw_xml,
+        'editable': parsed.editable,
+        'shape': parsed.shape,
+        'reason': parsed.reason,
+        'model': parsed.model.model_dump(by_alias=False) if parsed.model else None,
+        'sharedBy': shared_by,
+    }
+
+
+@router.get('/palettes')
+async def list_palettes(
+    current_user: Usuario = Depends(_require_project_editor),
+    _rl: Usuario = Depends(_read_rate_limit),
+):
+    return {'palettes': load_palettes()}
+
+
+@router.get('/legend/{alias}/{layer}/{style_name:path}')
+async def get_legend(
+    alias: str,
+    layer: str,
+    style_name: str,
+    width: int = Query(default=20, ge=8, le=64),
+    height: int = Query(default=20, ge=8, le=64),
+    db: Session = Depends(get_dataengine_db),
+    current_user: Usuario = Depends(_require_project_editor),
+    _rl: Usuario = Depends(_read_rate_limit),
+):
+    incr(COUNTER_GEOSERVER_CALLS)
+    ws = _resolve_workspace(db, alias)
+    if ':' in style_name:
+        prefix, _, bare = style_name.partition(':')
+        if prefix == ws.geoserver_workspace:
+            style_name = bare
+    client = GeoServerClient()
+    try:
+        content, content_type = client.get_legend_graphic(
+            ws.geoserver_workspace, layer, style_name, width=width, height=height,
+        )
+    except GeoServerError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+    return Response(content=content, media_type=content_type)

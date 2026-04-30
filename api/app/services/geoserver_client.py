@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+
 import httpx
 
 from app.core.settings import get_settings
@@ -67,11 +69,135 @@ class GeoServerClient:
             r = c.get(url)
         return r.status_code == 200
 
+    def get_legend_graphic(
+        self,
+        workspace: str,
+        layer: str,
+        style_name: str,
+        width: int = 20,
+        height: int = 20,
+    ) -> tuple[bytes, str]:
+        url = self._ows_url(f"{workspace}/wms")
+        params = {
+            "REQUEST": "GetLegendGraphic",
+            "VERSION": "1.0.0",
+            "FORMAT": "image/png",
+            "WIDTH": str(width),
+            "HEIGHT": str(height),
+            "LAYER": f"{workspace}:{layer}",
+            "STYLE": style_name,
+            "LEGEND_OPTIONS": "fontAntiAliasing:true;fontSize:11;dpi:120",
+        }
+        with httpx.Client(auth=self._auth, timeout=self._timeout) as c:
+            r = c.get(url, params=params)
+            if r.status_code != 200:
+                raise GeoServerError(
+                    f"GetLegendGraphic falló para {workspace}:{layer} style={style_name}: "
+                    f"HTTP {r.status_code}"
+                )
+            content_type = r.headers.get("content-type", "image/png")
+            return r.content, content_type
+
+    def get_sld(self, workspace: str, style_name: str) -> str:
+        url = self._rest_url(f"workspaces/{workspace}/styles/{style_name}.sld")
+        with httpx.Client(auth=self._auth, timeout=self._timeout) as c:
+            r = c.get(url)
+            if r.status_code == 404:
+                raise GeoServerError(
+                    f"SLD no encontrado: {workspace}:{style_name}"
+                )
+            r.raise_for_status()
+            return r.text
+
+    def style_exists(self, workspace: str, style_name: str) -> bool:
+        url = self._rest_url(
+            f"workspaces/{workspace}/styles/{style_name}.xml?quietOnNotFound=true"
+        )
+        with self._client() as c:
+            r = c.get(url)
+        if r.status_code == 200:
+            return True
+        if r.status_code == 404:
+            return False
+        raise GeoServerError(
+            f"Error consultando style {workspace}:{style_name}: HTTP {r.status_code}"
+        )
+
+    def create_style_entry(self, workspace: str, style_name: str) -> None:
+        url = self._rest_url(f"workspaces/{workspace}/styles")
+        payload = (
+            f"<style><name>{style_name}</name>"
+            f"<filename>{style_name}.sld</filename></style>"
+        ).encode("utf-8")
+        with httpx.Client(auth=self._auth, timeout=self._timeout) as c:
+            r = c.post(url, content=payload, headers={"Content-Type": "text/xml"})
+            if r.status_code not in (200, 201):
+                raise GeoServerError(
+                    f"No se pudo crear style entry {workspace}:{style_name}: "
+                    f"HTTP {r.status_code} - {r.text[:200]}"
+                )
+
+    def put_sld(self, workspace: str, style_name: str, xml: str) -> str:
+        local_bytes = xml.encode("utf-8")
+        local_hash = hashlib.sha256(local_bytes).hexdigest()
+
+        if not self.style_exists(workspace, style_name):
+            self.create_style_entry(workspace, style_name)
+
+        put_url = self._rest_url(
+            f"workspaces/{workspace}/styles/{style_name}?raw=true"
+        )
+        with httpx.Client(auth=self._auth, timeout=self._timeout) as c:
+            r = c.put(
+                put_url,
+                content=local_bytes,
+                headers={"Content-Type": "application/vnd.ogc.sld+xml"},
+            )
+            if r.status_code != 200:
+                raise GeoServerError(
+                    f"Fallo PUT {workspace}:{style_name}: "
+                    f"HTTP {r.status_code} - {r.text[:200]}"
+                )
+
+        remote_xml = self.get_sld(workspace, style_name)
+        remote_hash = hashlib.sha256(remote_xml.encode("utf-8")).hexdigest()
+        if local_hash != remote_hash:
+            raise GeoServerError(
+                f"Verificación SHA256 falló tras subir {workspace}:{style_name}. "
+                f"local={local_hash[:12]} remote={remote_hash[:12]}"
+            )
+        return local_hash
+
+    def find_layers_using_style(self, workspace: str, style_name: str) -> list[str]:
+        layer_names = self.list_layers(workspace)
+        sharing: list[str] = []
+        for name in layer_names:
+            try:
+                styles = self.list_styles(workspace, name)
+            except (httpx.HTTPError, GeoServerError):
+                continue
+            if style_name in styles or f"{workspace}:{style_name}" in styles:
+                sharing.append(name)
+        return sharing
+
+    def is_layer_group(self, workspace: str, name: str) -> bool:
+        for url in (
+            self._rest_url(f"workspaces/{workspace}/layergroups/{name}.json?quietOnNotFound=true"),
+            self._rest_url(f"layergroups/{name}.json?quietOnNotFound=true"),
+        ):
+            with self._client() as c:
+                r = c.get(url)
+                if r.status_code == 200:
+                    return True
+        return False
+
     def list_styles(self, workspace: str, layer: str) -> list[str]:
         url = self._rest_url(f"layers/{workspace}:{layer}/styles.json")
         with self._client() as c:
             r = c.get(url)
             if r.status_code == 404:
+                return []
+            if r.status_code >= 500:
                 return []
             r.raise_for_status()
             data = r.json()

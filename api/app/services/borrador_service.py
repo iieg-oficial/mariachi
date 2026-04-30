@@ -9,14 +9,15 @@ from app.core.time import utcnow
 from app.models.borrador import Borrador
 from app.models.evento import Evento
 from app.models.home_section import HomeSection
-from app.models.layer import Layer
+from app.models.layer import Layer, Workspace
 from app.schemas.evento import EventoUpdate
 from app.schemas.home_section import SECTION_SCHEMAS
 from app.schemas.layer import LayerCreate, LayerUpdate
 from app.services import layer_service
-from app.services.geoserver_client import GeoServerError
+from app.services.geoserver_client import GeoServerClient, GeoServerError
 from app.services.mapalab_notifier import notify_tree_changed
 from app.services.mapalab_public_cache import notify_eventos_changed, notify_home_changed
+from app.services.sld_generator import build_boundary_sld_xml, build_sld_xml
 
 ApplyFn = Callable[[Session, Session, Borrador, str], dict]
 
@@ -125,10 +126,109 @@ def _apply_layer(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
+def _apply_sld(
+    _db: Session, dataengine_db: Session, borrador: Borrador, _approver_email: str,
+) -> dict:
+    data = borrador.data or {}
+    resource_id = borrador.resource_id or ''
+    if ':' not in resource_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"resource_id inválido para sld: '{resource_id}' (esperado 'alias:style_name')",
+        )
+    alias, style_name = resource_id.split(':', 1)
+    if ':' in style_name:
+        _prefix, _, bare = style_name.partition(':')
+        style_name = bare
+
+    shape = data.get('shape', 'choropleth')
+
+    if shape == 'boundary':
+        if not data.get('layer_name'):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Falta layer_name en data",
+            )
+        if not data.get('polygon') and not data.get('label'):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="boundary requiere al menos polygon o label",
+            )
+        try:
+            xml = build_boundary_sld_xml(
+                layer_name=data['layer_name'],
+                style_title=data.get('style_title') or '',
+                polygon=data.get('polygon'),
+                label=data.get('label'),
+            )
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Modelo SLD inválido: {exc}",
+            ) from exc
+    else:
+        required = ['layer_name', 'attribute', 'cortes', 'labels', 'colors']
+        missing = [k for k in required if not data.get(k)]
+        if missing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Faltan campos en data: {missing}",
+            )
+
+        null_style = data.get('null_style')
+        if null_style and isinstance(null_style, dict) and null_style.get('enabled', True) is False:
+            null_style_payload: dict = {}
+        else:
+            null_style_payload = null_style or {}
+
+        try:
+            xml = build_sld_xml(
+                layer_name=data['layer_name'],
+                style_title=data.get('style_title') or data['layer_name'],
+                style_abstract=data.get('style_abstract') or '',
+                attribute=data['attribute'],
+                cortes=data['cortes'],
+                labels=data['labels'],
+                colors=data['colors'],
+                stroke=data.get('stroke') or {},
+                null_style=null_style_payload,
+            )
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Modelo SLD inválido: {exc}",
+            ) from exc
+
+    ws = dataengine_db.query(Workspace).filter(Workspace.alias == alias).first()
+    if not ws:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Workspace alias '{alias}' no existe",
+        )
+    workspace = ws.geoserver_workspace
+
+    client = GeoServerClient()
+    try:
+        sha = client.put_sld(workspace, style_name, xml)
+    except GeoServerError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        ) from exc
+
+    notify_tree_changed()
+    return {
+        'workspace': workspace,
+        'style_name': style_name,
+        'sha256': sha,
+    }
+
+
 APPLIERS: dict[str, ApplyFn] = {
     'evento': _apply_evento,
     'home_section': _apply_home_section,
     'layer': _apply_layer,
+    'sld': _apply_sld,
 }
 
 
