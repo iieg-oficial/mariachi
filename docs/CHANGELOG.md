@@ -13,6 +13,83 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.31.0] - 2026-04-30
+
+Feature grande: **editor visual de simbología SLD** integrado al panel admin para que el equipo no técnico pueda editar estilos de capas en GeoServer sin tocar la consola web. Incluye flujo de borradores con aprobación por `tetlamamakani`.
+
+### Editor de simbología (SLD)
+
+Se reescribe el flujo de "qué se ve en el visor" para no requerir intervención del equipo de geografía en cambios cosméticos.
+
+**Backend (`api/`):**
+
+- `app/services/sld_generator.py` — porta la lógica YAML→SLD del repo `estilos-coropleticos-mapalab` (módulo `sld_dump_geom.py`). Mantiene round-trip byte-equal con los 59 SLDs ya generados por el pipeline.
+- `app/services/sld_parser.py` — parser inverso XML→modelo Pydantic. Soporta dos shapes:
+  - **`choropleth`**: rules con `<ogc:Filter>` de rangos numéricos + null rule con hatch (formato del pipeline).
+  - **`boundary`**: rules sin Filter (estilo único + label de TextSymbolizer con halo, placement, vendor options, scale denominators). Cubre límites/regiones/municipios.
+- `app/services/geoserver_client.py` — agregados `get_sld`, `put_sld` (con verificación SHA256 round-trip), `style_exists`, `create_style_entry`, `find_layers_using_style`, `is_layer_group`, `get_legend_graphic`. `list_styles` ahora resiliente a 5xx de GeoServer (devuelve `[]`, típico cuando la "capa" es un layer group).
+- `app/services/palette_service.py` — parser del `paletas_simbologia.csv` (144 paletas oficiales con `oklab` + `tipo` + `severidad`) cacheado con `@lru_cache`.
+- `app/services/borrador_service.py` — handler `_apply_sld` registrado en `APPLIERS['sld']`. Lee `data.shape` del borrador, rutea a `build_sld_xml` o `build_boundary_sld_xml`, hace `put_sld` con verificación, dispara `notify_tree_changed()`. Resuelve `alias` → `geoserver_workspace` via `dataengine_db`.
+- `app/api/routes/geoserver.py` — endpoints nuevos:
+  - `GET /api/administrador/geoserver/styles/{alias}/{style_name}` — devuelve `{rawXml, editable, shape, model, sharedBy, reason}`.
+  - `GET /api/administrador/geoserver/legend/{alias}/{layer}/{style_name}` — proxy a `GetLegendGraphic` (independiente del gateway-hub, funciona en cualquier deploy).
+  - `GET /api/administrador/geoserver/palettes` — lista las 144 paletas oficiales.
+  - `GET /api/administrador/geoserver/workspaces/{alias}/layers/{layer}/styles` — extendido con `isLayerGroup: bool` para detectar layer groups.
+
+**Frontend (`admin/`):**
+
+- `features/mapalab-layers/components/sldEditor/` — editor visual completo:
+  - `SldEditor.jsx` — shell que selecciona estilo y rutea a `<ChoroplethEditor>` o `<BoundaryEditor>` según `data.shape`. Muestra Alert claro si la capa es un Layer Group de GeoServer.
+  - `ChoroplethEditor.jsx` — tabs Cortes / Paleta / Borde / Valor nulo / Metadatos.
+  - `BoundaryEditor.jsx` + `BoundaryLabelTab.jsx` — tabs Polígono / Etiqueta / Metadatos. Editor completo de Stroke, Fill, TextSymbolizer (font, halo, placement, vendor options, geometry function, scale denominators).
+  - `RangesEditor.jsx` — tabla editable de cortes/labels con validación de contigüidad.
+  - `PalettePicker.jsx` — buscador con filtros por tipo/severidad y agrupación visual; `aplicar`/`invertir` por paleta.
+  - `StrokeEditor.jsx`, `NullStyleEditor.jsx` — sub-editores de borde y null rule.
+  - `LegendPreview.jsx` — `<img>` apuntando al endpoint proxy del backend con botón refresh.
+  - `DiffPanel.jsx` — diff visual del modelo editado vs el SLD actual de GeoServer.
+  - `RawXmlFallback.jsx` — fallback para SLDs no editables. Detecta automáticamente si es Layer Group (>1 NamedLayer), Raster, Point, Line, Categorical, o desconocido. Mensajería positiva ("aún no soportado" en lugar de error). Incluye `<LegendPreview>` arriba del XML.
+- `features/mapalab-layers/hooks/useSldEditor.js` — hook que orquesta fetch SLD + draft + save + request review.
+- `features/mapalab-layers/pages/LayerEditPage.jsx` — nuevo tab "Simbología" (visible solo en `group`/`leaf`).
+- `shared/components/StatusBadge.jsx` — componente reutilizable para badges de estado (`beta`/`test`/`dev`/`info`/`new`). Soporta posición absoluta (`top-right`/`top-left`/`bottom-right`/`bottom-left`) con offset configurable. Replica visualmente el `Badge variant="pill"` de mapalab/frontend pero en AntD inline-style (sin Tailwind).
+
+### Modelo conceptual: Propiedades
+
+Refleja la realidad de los hijos de un nodo `group` en mariachi. Sin cambio de schema (display-only).
+
+- `constants/nodeTypes.js` — helpers `isPropertyOfGroup(nodeType, parentNodeType)` y `labelForNode(nodeType, parentNodeType)`. Cuando un `leaf` tiene `parent.nodeType === 'group'`, se trata visualmente como **Propiedad** (cyan tag en árbol, header de página y orden inicial).
+- `LayerEditPage.jsx` — al editar una propiedad: tag "Propiedad" en el header, Select de `nodeType` deshabilitado, Alert info que explica el modelo (comparten feature type/simbología/metadata con el grupo padre, solo se distinguen por CQL filter), tabs `simbologia` y `metadatos` ocultos (se editan en el grupo padre).
+- `LayerCreateModal.jsx` — al crear un nodo bajo un padre `group`: Alert success "Se creará como Propiedad del grupo" explicando el comportamiento (se enciende cuando se enciende el grupo en el visor).
+- `LayersTreeSider.jsx`, `InitialLayerOrderPage.jsx` — tags visuales "Propiedad" cyan en lugar de "Capa" verde cuando aplica.
+- `useLayerTreeAdmin.js` — `toAntTreeData` ahora anota `parentNodeType` en cada nodo del árbol; helper `findNodeContext` para lookup desde otros componentes.
+
+### Workflow de revisión
+
+- Reusa la tabla `borradores` con `resource_type='sld'`, `resource_id='{alias}:{style_name}'`. Sin schema nuevo.
+- Botón "Solicitar revisión" del editor → `tetlamamakani` aprueba en `RevisionQueue` → backend genera SLD → `put_sld` con SHA256 verify → `notify_tree_changed()` invalida cache de mapalab.
+
+### UX general
+
+- **Alerts cerrables (closable)**: sweep automatizado agregó `closable` a 45 alerts en 23 archivos del admin. Toda la interfaz ahora deja al usuario descartar avisos con la X.
+- **`StatusBadge` con posición absoluta**: aplicado al tab "Simbología" y a los radios/botones "Operación simple"/"Fórmula"/"Slot operación"/"Slot fórmula" de Numeralia. Sin afectar el ancho de los componentes contenedores.
+- Endpoint proxy `/geoserver/legend` — funciona en prod-local sin gateway-hub (antes la URL `/geoserver/{ws}/wms` solo resolvía detrás del gateway).
+
+### Tests
+
+- `tests/services/test_sld_parser.py` — round-trip de los 59 SLDs coropleticos (byte-equal) + 1 boundary fixture (semantic equivalence).
+- `tests/services/test_borrador_sld.py` — handler `_apply_sld` con mocks de `GeoServerClient` y resolución de Workspace alias.
+- 129 tests pasan en `tests/services/`.
+
+### Limitaciones conocidas
+
+- El editor visual **solo soporta** `choropleth` (rangos numéricos) y `boundary` (estilo único + label). Otros shapes — `RasterSymbolizer`, `PointSymbolizer`, `LineSymbolizer`, filtros categóricos, layer groups — caen al fallback con mensaje claro y leyenda renderizada por GeoServer; el XML queda en textarea read-only.
+- Numeralia/metadata se almacenan por feature type (`workspace:geoserver_layer`), no por nodo. Implica que las propiedades de un grupo **comparten** numeralia/metadata con el grupo. La UI esconde el tab Metadatos en propiedades para evitar confusión. Soporte de numeralia distinta por propiedad requiere cambio de schema (ver `docs/SLD_EDITOR.md`).
+
+### Documentación
+
+- `docs/SLD_EDITOR.md` — referencia completa por componente (backend + frontend).
+
+---
+
 ## [0.30.51] - 2026-04-29
 
 ### CI — embed Discord mas compacto y consistente

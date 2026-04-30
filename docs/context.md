@@ -2,7 +2,7 @@
 
 > Documento de referencia completo. Leer este archivo proporciona contexto del monorepo sin explorar el codebase.
 
-**Versión:** 0.24.0 · **Última actualización:** 2026-04-24
+**Versión:** 0.31.0 · **Última actualización:** 2026-04-30
 
 ---
 
@@ -327,6 +327,39 @@ Editor UI: `admin/src/pages/MapalabLayers.jsx` con Ant Design Tree + drawer. Com
 
 Ver la documentación interna de mapalab (`/IIEG/mapalab/docs/layers.md`, `infobox.md`) para la arquitectura completa.
 
+### v0.31.0 Editor de simbología (SLD) — implementado
+
+| Metodo | Ruta | Funcion |
+|---|---|---|
+| GET | `/api/administrador/geoserver/styles/{alias}/{style_name}` | Devuelve `{rawXml, editable, shape, model, sharedBy, reason}` con detección automática del shape (choropleth/boundary) |
+| GET | `/api/administrador/geoserver/legend/{alias}/{layer}/{style_name}` | Proxy a `GetLegendGraphic` de GeoServer (independiente del gateway-hub) |
+| GET | `/api/administrador/geoserver/palettes` | Lista las 144 paletas oficiales del CSV `paletas_simbologia.csv` |
+| POST | `/api/administrador/borradores/por-id/{id}/aprobar` | Si `resource_type='sld'`, genera SLD y hace `put_sld` con verificación SHA256 round-trip |
+
+Editor UI: `admin/src/features/mapalab-layers/components/sldEditor/` — tab "Simbología" en `LayerEditPage` (visible solo en `group`/`leaf`). Soporta dos shapes:
+
+- **`choropleth`** — coropleticos por rangos numéricos del pipeline `estilos-coropleticos-mapalab` (formato canónico). Editor visual con cortes/labels/paleta/borde/null_style.
+- **`boundary`** — estilo único + label de TextSymbolizer. Cubre límites/regiones con tabs Polígono / Etiqueta (con halo, placement, vendor options, scale denominators).
+
+Cualquier otro shape (Raster/Point/Line, filtros categóricos, layer groups) cae al fallback `RawXmlFallback` con mensaje claro y leyenda renderizada por GeoServer; el XML se muestra read-only.
+
+Workflow de aprobación: reusa la tabla `borradores` con `resource_type='sld'`, `resource_id='{alias}:{style_name}'`. Sin schema nuevo. Botón "Solicitar revisión" → `tetlamamakani` aprueba en `RevisionQueue` → backend genera SLD → upload a GeoServer → `notify_tree_changed()` invalida cache.
+
+Ver `docs/SLD_EDITOR.md` para la referencia completa por componente.
+
+### v0.31.0 Modelo de Propiedades (display-only)
+
+Los hijos de un nodo `group` son conceptualmente **propiedades** (comparten `geoserver_layer` con el grupo padre, se diferencian solo por `cql_filter`). El schema `mapalab.layers` solo tiene 5 `node_type` (no existe `property`), así que se almacenan como `leaf`.
+
+Inferencia visual (sin cambio de schema):
+
+- Helper `isPropertyOfGroup(nodeType, parentNodeType)` en `admin/src/features/mapalab-layers/constants/nodeTypes.js`.
+- Un `leaf` con padre `group` se renderiza con tag cyan **"Propiedad"** en el árbol, header de la página de edición y orden inicial.
+- En `LayerEditPage` para una propiedad: tabs `simbologia` y `metadatos` ocultos (se editan en el grupo padre, comparten feature type/SLD), Select de `nodeType` deshabilitado, Alert info que explica el modelo.
+- En `LayerCreateModal` al crear bajo un padre `group`: Alert success "Se creará como Propiedad del grupo" explicando el comportamiento (se enciende cuando se enciende el grupo en el visor).
+
+El visor mapalab ya manejaba esto correctamente vía `forceGroup: true` en el árbol (`mapalab/backend/app/services/layer_tree_service.py:101`); el editor mariachi simplemente lo refleja en la UI. Si en el futuro se requiere numeralia/metadata distintas por propiedad, requiere migrar `mapalab.layer_stats` y `mapalab.layer_metadata` de `layer_key` a `layer_id`.
+
 ---
 
 ## Integracion con el gateway externo
@@ -475,6 +508,19 @@ Este repo se integra con otros servicios internos vecinos (CMS, visor de mapas, 
 
 ## Cambios recientes
 
+### 2026-04-30 (v0.31.0)
+
+Detalle completo en `docs/CHANGELOG.md` §[0.31.0]. Resumen:
+
+- **Editor de simbología SLD** integrado al panel admin como tab "Simbología" en `LayerEditPage`. Soporta dos shapes: `choropleth` (rangos numéricos del pipeline) y `boundary` (estilo único + label de TextSymbolizer). Otros shapes (raster/point/line/categorical/layer-group) caen al fallback con leyenda renderizada por GeoServer y mensaje claro.
+- **Backend SLD**: `sld_generator.py` (porta `coropleticos/sld_dump_geom.py`), `sld_parser.py` (orquestador con detección de shape), `palette_service.py` (144 paletas), `geoserver_client.py` extendido con `get_sld`/`put_sld`/`get_legend_graphic`/`is_layer_group`/`find_layers_using_style`. Verificación SHA256 round-trip al subir SLDs.
+- **Workflow de aprobación**: handler `_apply_sld` en `borrador_service.py` registrado en `APPLIERS['sld']`. Reusa la tabla `borradores` con `resource_type='sld'`, sin schema nuevo. `tetlamamakani` aprueba en RevisionQueue → SLD aterriza en GeoServer.
+- **Modelo de Propiedades** (display-only): `leaf` con padre `group` se trata como Propiedad. Tag cyan en árbol/header/orden inicial, tabs `simbologia`/`metadatos` ocultos al editar (la metadata se almacena por feature type y se comparte con el grupo padre y hermanos), Alert explicativo al crear bajo padre `group`.
+- **`StatusBadge` reutilizable** en `shared/components/`. Variantes (`beta`/`test`/`dev`/`info`/`new`) + posición absoluta opcional. Usado en tab "Simbología" y en botones/radios beta de Numeralia.
+- **Alerts cerrables** en toda la interfaz: sweep automatizado agregó `closable` a 45 alerts en 23 archivos.
+- **Endpoint proxy** `/geoserver/legend` para que el preview de leyenda funcione en prod-local sin gateway-hub.
+- **Versión bumpeada**: `0.30.51` → `0.31.0` (admin + api + context.md).
+
 ### 2026-04-23 (v0.13.0)
 
 Detalle completo en `docs/CHANGELOG.md` §[0.13.0]. Resumen:
@@ -538,6 +584,7 @@ Detalle completo en `docs/CHANGELOG.md` §[0.13.0]. Resumen:
 - `docs/ROLES.md` — matriz de roles globales (tetlamamakani, editora, externo) y autorizacion por proyecto via UserProject
 - `docs/DATAENGINE_CREDENTIALS.md` — requerimientos para credenciales DataEngine
 - `docs/ALEMBIC_MULTI_ENV.md` — migraciones en dos BDs (`-x db=mariachi|dataengine`)
+- `docs/SLD_EDITOR.md` — editor visual de simbología SLD: backend (parser/generator/borrador handler) + frontend (componentes choropleth/boundary, hook, fallback, status badge)
 - `scripts/rename-github-repo.sh` — actualiza remote local tras rename en GitHub
 - `scripts/migrate-acervo-bucket.sh` — migra contenido de bucket `portal-dev` a `mariachi-dev`
 - `docs/PENDIENTES.md` — roadmap del CMS
