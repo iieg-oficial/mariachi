@@ -1,14 +1,26 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Modal, Pagination, Table, Tabs, Input, Space, Typography, Empty, Spin } from 'antd';
-import { FolderOpenOutlined } from '@ant-design/icons';
+import { Modal, Pagination, Segmented, Table, Tabs, Input, Space, Typography, Empty, Spin } from 'antd';
+import { AppstoreOutlined, FolderOpenOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import { listBucketObjects } from '@features/media/api/mediaService';
 import { message } from '@shared/services/message';
 
 const { Text } = Typography;
 
 const IMAGE_EXTENSIONS = /\.(jpe?g|png|gif|webp|svg|bmp|avif)$/i;
+const VIEW_MODE_KEY = 'mariachi.bucketFilePicker.viewMode';
 
-export default function BucketFilePicker({ open, onClose, onSelect, bucketId, prefixes, mode = 'list', title = 'Seleccionar archivo' }) {
+function loadViewMode(fallback) {
+    if (typeof window === 'undefined') return fallback;
+    try { return window.localStorage.getItem(VIEW_MODE_KEY) || fallback; } catch { return fallback; }
+}
+
+export default function BucketFilePicker({ open, onClose, onSelect, bucketId, prefixes, mode, title = 'Seleccionar archivo' }) {
+    const [viewMode, setViewMode] = useState(() => mode || loadViewMode('grid'));
+
+    useEffect(() => {
+        if (mode) return;
+        try { window.localStorage.setItem(VIEW_MODE_KEY, viewMode); } catch { /* ignore */ }
+    }, [viewMode, mode]);
     const [activePrefix, setActivePrefix] = useState('');
     const [objects, setObjects] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -122,16 +134,29 @@ export default function BucketFilePicker({ open, onClose, onSelect, bucketId, pr
                             style={{ marginBottom: 8 }}
                         />
                     )}
-                    <Input.Search
-                        placeholder="Buscar por nombre"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        allowClear
-                    />
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                        <Input.Search
+                            placeholder="Buscar por nombre"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            allowClear
+                            style={{ flex: 1 }}
+                        />
+                        {!mode && (
+                            <Segmented
+                                value={viewMode}
+                                onChange={setViewMode}
+                                options={[
+                                    { value: 'grid', icon: <AppstoreOutlined /> },
+                                    { value: 'list', icon: <UnorderedListOutlined /> },
+                                ]}
+                            />
+                        )}
+                    </div>
                 </div>
 
                 <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '0 16px' }}>
-                    {mode === 'grid' ? (
+                    {viewMode === 'grid' ? (
                         loading ? (
                             <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}>
                                 <Spin />
