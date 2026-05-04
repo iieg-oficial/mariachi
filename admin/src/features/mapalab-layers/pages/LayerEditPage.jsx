@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { Alert, AutoComplete, Breadcrumb, Button, Card, Col, Empty, Form, Input, Layout, Row, Select, Space, Spin, Switch, Tabs, Tag, Tooltip, Typography } from 'antd';
-import { LeftOutlined, MenuUnfoldOutlined, PartitionOutlined, SaveOutlined } from '@ant-design/icons';
+import { Alert, AutoComplete, Breadcrumb, Button, Card, Col, Empty, Form, Input, Layout, Result, Row, Select, Space, Spin, Switch, Tabs, Tag, Tooltip, Typography } from 'antd';
+import { LeftOutlined, MenuUnfoldOutlined, PartitionOutlined, ReloadOutlined, SaveOutlined } from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router';
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
 import useIsMobile from '@shared/hooks/useIsMobile';
@@ -63,6 +63,8 @@ export default function LayerEditPage() {
     const [form] = Form.useForm();
     const [layer, setLayer] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState(null);
+    const [reloadKey, setReloadKey] = useState(0);
     const [saving, setSaving] = useState(false);
     const [workspaces, setWorkspaces] = useState([]);
     const [availableStyles, setAvailableStyles] = useState([]);
@@ -160,6 +162,9 @@ export default function LayerEditPage() {
     useEffect(() => {
         if (!layerId) return;
         let cancelled = false;
+        setLoading(true);
+        setLoadError(null);
+        setLayer(null);
         (async () => {
             try {
                 const fresh = await getLayer(layerId);
@@ -173,13 +178,16 @@ export default function LayerEditPage() {
                 }
                 setLayer(fresh);
             } catch (err) {
-                message.error(err?.response?.data?.detail || 'No se pudo cargar la capa');
+                if (cancelled) return;
+                const status = err?.response?.status;
+                const detail = err?.response?.data?.detail || err?.message || 'Error desconocido';
+                setLoadError({ status, detail });
             } finally {
                 if (!cancelled) setLoading(false);
             }
         })();
         return () => { cancelled = true; };
-    }, [layerId, isAdmin, getLayer, getLayerDraft]);
+    }, [layerId, isAdmin, getLayer, getLayerDraft, reloadKey]);
 
     useEffect(() => {
         if (loading || !layer) return;
@@ -344,21 +352,26 @@ export default function LayerEditPage() {
         }
     };
 
+    const saveDisabled = loading || Boolean(loadError) || !layer;
     const actionButtons = layerId && (
         <Space wrap>
             {isAdmin ? (
-                <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={handleSaveDirect}>
-                    Guardar
-                </Button>
+                <Tooltip title={loadError ? 'Datos no cargados — no es seguro guardar' : ''}>
+                    <Button type="primary" icon={<SaveOutlined />} loading={saving} disabled={saveDisabled} onClick={handleSaveDirect}>
+                        Guardar
+                    </Button>
+                </Tooltip>
             ) : (
-                <>
-                    <Button loading={saving} onClick={handleSaveDraft}>
-                        Guardar borrador
-                    </Button>
-                    <Button type="primary" loading={saving} onClick={handleSubmitReview}>
-                        Enviar a revisión
-                    </Button>
-                </>
+                <Tooltip title={loadError ? 'Datos no cargados — no es seguro guardar' : ''}>
+                    <Space>
+                        <Button loading={saving} disabled={saveDisabled} onClick={handleSaveDraft}>
+                            Guardar borrador
+                        </Button>
+                        <Button type="primary" loading={saving} disabled={saveDisabled} onClick={handleSubmitReview}>
+                            Enviar a revisión
+                        </Button>
+                    </Space>
+                </Tooltip>
             )}
         </Space>
     );
@@ -383,6 +396,7 @@ export default function LayerEditPage() {
     const tabItems = [
         {
             key: 'identidad',
+            forceRender: true,
             label: 'Identidad',
             children: (
                 <>
@@ -527,6 +541,7 @@ export default function LayerEditPage() {
         },
         {
             key: 'servicios',
+            forceRender: true,
             label: 'Servicios',
             children: watchedNodeType === 'group' && !selectedWs ? (
                 <GroupServicesReference groupId={layerId} treeData={treeData} />
@@ -656,6 +671,7 @@ export default function LayerEditPage() {
         },
         {
             key: 'infobox',
+            forceRender: true,
             label: 'Tarjeta',
             children: (
                 <Row gutter={24}>
@@ -683,6 +699,7 @@ export default function LayerEditPage() {
         },
         {
             key: 'metadatos',
+            forceRender: true,
             label: 'Metadatos',
             children: layer ? (() => {
                 const ownFeatureType = layer.workspaceAlias && layer.geoserverLayer
@@ -715,6 +732,7 @@ export default function LayerEditPage() {
         },
         {
             key: 'simbologia',
+            forceRender: true,
             label: (
                 <>
                     Simbología
@@ -885,6 +903,32 @@ export default function LayerEditPage() {
                         <Card>
                             {loading ? (
                                 <Spin style={{ display: 'block', margin: '48px auto' }} size="large" />
+                            ) : loadError ? (
+                                <Result
+                                    status={loadError.status === 404 ? '404' : 'error'}
+                                    title={loadError.status === 404 ? 'Capa no encontrada' : 'No se pudo cargar la capa'}
+                                    subTitle={
+                                        <Space orientation="vertical" size={4}>
+                                            <Text type="secondary">{loadError.detail}</Text>
+                                            <Text type="warning" style={{ fontSize: 12 }}>
+                                                No edites todavía: los datos no se cargaron y guardar sobrescribiría el registro con valores en blanco.
+                                            </Text>
+                                        </Space>
+                                    }
+                                    extra={[
+                                        <Button
+                                            key="retry"
+                                            type="primary"
+                                            icon={<ReloadOutlined />}
+                                            onClick={() => setReloadKey((k) => k + 1)}
+                                        >
+                                            Reintentar
+                                        </Button>,
+                                        <Button key="back" onClick={() => navigate('/mapalab/layers')}>
+                                            Volver al árbol
+                                        </Button>,
+                                    ]}
+                                />
                             ) : (
                                 <Form form={form} layout="vertical">
                                     {nodeHelp && (
@@ -903,7 +947,12 @@ export default function LayerEditPage() {
                                             </Text>
                                         </div>
                                     )}
-                                    <Tabs defaultActiveKey="identidad" items={tabItems} />
+                                    <Tabs
+                                        defaultActiveKey="identidad"
+                                        items={tabItems}
+                                        tabPosition={isMobile ? 'top' : 'left'}
+                                        style={{ minHeight: 400 }}
+                                    />
                                 </Form>
                             )}
                         </Card>
