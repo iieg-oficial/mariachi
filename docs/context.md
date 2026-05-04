@@ -508,6 +508,19 @@ Este repo se integra con otros servicios internos vecinos (CMS, visor de mapas, 
 
 ## Cambios recientes
 
+### Unreleased — Editor de eventos: bbox visual, etiquetas, auto-activación
+
+Detalle completo en `docs/CHANGELOG.md` §[Unreleased] "Editor de eventos: bbox visual, etiquetas, auto-activación de capas". Resumen:
+
+- **Schema `CapaRef`** extendido con `tipo: Literal['capa', 'etiqueta']` (las etiquetas son separadores con título dentro del menú del evento, reusan `LabelItem` que mapalab ya pinta para `nodeType='label'`) y `auto_activar: bool` (define si la capa se enciende sola al abrir el evento o requiere click manual).
+- **`BBoxField`** con 3 modos: "Sin zoom" (`bbox=null`), "Coordenadas manuales" con switch CRS **EPSG:4326** ↔ **EPSG:6368** (UTM 14N, reproyección en frontend con `proj4`), y "Dibujar en mapa" con OpenLayers + base CARTO Light. Nuevas deps: `ol@^10.9` y `proj4@^2.20`.
+- **`EventoEditPage`** y **`LayerEditPage`** homologan el patrón de `Tabs` verticales con `tabPosition={isMobile ? 'top' : 'left'}` y `forceRender: true` por item para que los `Form.Item` se registren al primer render (sin esto, `getFieldsValue` devolvía `undefined` para campos en tabs lazy y guardaba vacío al hacer save).
+- **Vista de error `<Result>`** en `LayerEditPage` cuando falla la carga de la capa, con guardas que deshabilitan los botones de guardar para no sobrescribir con valores en blanco.
+- **Selector GeoServer**: `GET /geoserver/workspaces?available_only=true` filtra capas ya registradas en `mapalab.layers`. `LayerCreateModal` y el modal de "Agregar capa al evento" usan esto con un toggle "Solo no registradas".
+- **Drag handle visible** en el árbol de capas (`HolderOutlined` siempre presente, antes oculto por CSS).
+- **`BucketFilePicker`** ahora es **grid por default** + `Segmented` toggle persistente en localStorage (alineado con la página Media). Beneficia a todos los pickers (eventos, home, capas, perfil) sin cambios en cada uno.
+- **Visor (`mapalab/frontend/.../EventoMenu.jsx`)**: renderiza etiquetas como `LabelItem`, auto-activa capas con `autoActivar=true` al abrir el menú (`onToggleLayer(id, true)` — el método espera bool explícito, no es un toggle), y agrega botón "Eliminar (N)" para apagar capas externas activas.
+
 ### 2026-04-30 (v0.31.0)
 
 Detalle completo en `docs/CHANGELOG.md` §[0.31.0]. Resumen:

@@ -11,6 +11,58 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ## [Unreleased]
 
+### Editor de eventos: bbox visual, etiquetas, auto-activación de capas
+
+Iteración del editor de eventos para que los editores no necesiten escribir coordenadas EPSG:4326 a mano y para que el evento controle qué capas se encienden cuando el usuario lo abre en el visor.
+
+**Backend (`api/`):**
+
+- `app/schemas/evento.py` — `CapaRef` extendido:
+  - Campo `tipo: Literal['capa', 'etiqueta']` (default `capa`). Las "etiquetas" son separadores visuales con título dentro del menú del evento; reúsan `LabelItem` que mapalab ya renderiza para `nodeType='label'`.
+  - `workspace`/`layer` ahora opcionales (las etiquetas no los usan; las capas siguen requiriéndolos vía validador).
+  - `auto_activar: bool = True` con `serialization_alias='autoActivar'`. Define si la capa se enciende sola al abrir el evento o si requiere click manual del usuario en el panel.
+  - Compatibilidad: capas existentes en BD sin `tipo`/`auto_activar` se cargan con defaults seguros (`'capa'` / `True`).
+- `app/api/routes/geoserver.py` — `GET /geoserver/workspaces?available_only=true` filtra capas ya registradas en `mapalab.layers`. Permite distinguir "capas nuevas para agregar" vs "todas las del cluster".
+
+**Admin (`admin/`):**
+
+- `features/mapalab-eventos/components/BBoxField.jsx` — refactor completo. 3 modos seleccionables con `Radio.Group`:
+  - **Sin zoom** (`bbox=null`) — el visor abre el evento sin centrar.
+  - **Coordenadas manuales** — los 4 inputs con switch de CRS **EPSG:4326** (lon/lat decimal) ↔ **EPSG:6368** (UTM 14N en metros). La reproyección se hace en el frontend con `proj4`; el backend siempre persiste en EPSG:4326.
+  - **Dibujar en mapa** — mini-mapa con OpenLayers (base CARTO Light, ya permitido por CSP del gateway-hub) con interacción `Draw` tipo `Box` para definir el bbox arrastrando. Botones "Centrar al bbox" y "Limpiar". Si abres un evento con bbox existente, lo pinta como rectángulo.
+  - Nuevas dependencias: `ol@^10.9` y `proj4@^2.20` (definición `EPSG:6368` registrada en `proj4.defs`).
+- `features/mapalab-eventos/components/CapasField.jsx`:
+  - Botón **"+ Agregar etiqueta"** junto a "+ Agregar capa". Las etiquetas se renderizan con tag púrpura distintivo, input de texto grande y sin switch auto-activar (no aplica).
+  - Columna **Auto-activar** (Switch "Auto"/"Manual") por capa, con tooltip que explica el comportamiento.
+  - Botones de mover ↑↓ ahora con iconos visibles (`ArrowUpOutlined`/`ArrowDownOutlined`) — antes eran botones vacíos por bug.
+  - Modal "Agregar capa al evento" ahora consume `/geoserver/workspaces` y permite agregar **cualquier capa de GeoServer** (no solo las registradas en `mapalab.layers`). Tag distintivo en árbol vs solo GeoServer + toggle "Solo no registradas".
+  - Layout del modal con `tableLayout: 'fixed'` y ellipsis con tooltip para nombres largos.
+  - Normalización de capas en `eventoToForm` (`autoActivar` camelCase ← snake_case `auto_activar`) para que el Switch refleje el estado real al recargar.
+- `features/mapalab-eventos/pages/EventoEditPage.jsx` — refactor de `Row/Col` con Cards apilados a `Tabs` verticales (homologado con `HomePage`):
+  - Tabs: Información, Capas, Visibilidad, Apariencia, Geografía con sus iconos.
+  - `tabPosition={isMobile ? 'top' : 'left'}` y `forceRender: true` por item para que los `Form.Item` se registren al primer render (sin esto, `getFieldsValue` devolvía `undefined` para campos en tabs lazy y sobrescribía con vacío al guardar — causa de la pérdida de capas reportada antes del fix).
+  - Vista de error `<Result>` cuando falla la carga del evento, con botón "Reintentar" y guarda de "no es seguro guardar" para evitar sobrescribir el registro con valores en blanco.
+
+### Editor de capas: selector GeoServer + drag handle visible
+
+- `features/mapalab-layers/components/LayersTreeSider.jsx` — `draggable={{ icon: <HolderOutlined /> }}` en el `Tree`. Antes el icono de mover (`.ant-tree-draggable-icon`) se ocultaba por CSS; ahora siempre visible con opacity 0.45 (al 100% en hover).
+- `features/mapalab-layers/components/LayerCreateModal.jsx` — los inputs de texto plano `workspace_alias`/`geoserver_layer` se reemplazan por un `Select` agrupado por workspace (consume `/geoserver/workspaces`) con búsqueda. Switch "Solo no registradas" (default ON) muestra solo capas que aún no están en `mapalab.layers`.
+- `features/mapalab-layers/pages/LayerEditPage.jsx`:
+  - Aplica el mismo patrón de tabs homologado (`tabPosition={isMobile ? 'top' : 'left'}`, `forceRender: true` en los 5 items).
+  - Vista de error `<Result>` al fallar la carga (mismo patrón que eventos), con botones "Reintentar" / "Volver al árbol" y deshabilita los botones de guardar mientras el error persiste.
+
+### Galería de archivos (BucketFilePicker)
+
+- `features/media/components/BucketFilePicker.jsx` — el modal cambia su default de `mode='list'` a `mode='grid'` (alineado con `MediaPage`). Agrega un `Segmented` toggle para alternar grid ↔ lista; la preferencia se persiste en `localStorage.mariachi.bucketFilePicker.viewMode`. Si el consumidor pasa `mode` explícito, el toggle no aparece y se respeta. Beneficia a `EventoIconPicker`, `ImageUrlField`, `TemaIconField`, `LayerMetadataSection` y `PerfilPage` sin cambios en su código.
+
+### Visor mapalab (cambios en repo `mapalab`)
+
+Los cambios anteriores se complementan con un cambio en el frontend del visor (`mapalab/frontend/src/pages/maps/components/EventoMenu.jsx`):
+
+- Renderiza `LabelItem` cuando `capa.tipo === 'etiqueta'` y `LayerItem` para capas — el orden definido en el editor se respeta.
+- Auto-activa capas con `autoActivar=true` al montarse el menú del evento (al abrirlo). Detalle de implementación: `handleToggleLayer(layerId, isActive)` en mapalab no es un toggle (espera bool explícito); pasar `undefined` cae al rama de "desactivar" en modo normal y no hace nada — ahora se llama con `onToggleLayer(id, true)`.
+- Botón "Eliminar (N)" en el header del panel del evento que apaga las capas activas que NO pertenecen al evento (limpieza explícita; no hay efecto al abrir el menú, evita miss-click).
+
 ---
 
 ## [0.31.0] - 2026-04-30
