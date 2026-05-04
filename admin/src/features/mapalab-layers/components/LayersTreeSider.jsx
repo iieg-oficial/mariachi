@@ -6,6 +6,7 @@ import {
     FileOutlined,
     FolderOpenOutlined,
     FolderOutlined,
+    HolderOutlined,
     InfoCircleOutlined,
     PlusOutlined,
     ReloadOutlined,
@@ -390,20 +391,19 @@ export default function LayersTreeSider({
                             width: 24px !important;
                             min-width: 24px !important;
                         }
-                        .layers-tree-compact .ant-tree-draggable-icon {
-                            width: 0 !important;
-                            min-width: 0 !important;
-                            overflow: hidden;
-                            opacity: 0;
-                            transition: width 0.15s, min-width 0.15s, opacity 0.15s;
-                        }
-                        .layers-tree-compact .ant-tree-treenode:hover .ant-tree-draggable-icon {
-                            width: 16px !important;
-                            min-width: 16px !important;
-                            opacity: 1;
-                        }
                     `}</style>
                 )}
+                <style>{`
+                    .layers-tree-compact .ant-tree-draggable-icon {
+                        width: 16px !important;
+                        min-width: 16px !important;
+                        opacity: 0.45;
+                        cursor: grab;
+                    }
+                    .layers-tree-compact .ant-tree-treenode:hover .ant-tree-draggable-icon {
+                        opacity: 1;
+                    }
+                `}</style>
                 {loading ? (
                     <div style={{ textAlign: 'center', padding: 24 }}>
                         <Spin />
@@ -420,7 +420,7 @@ export default function LayersTreeSider({
                         onExpand={(keys) => { setExpandedKeys(keys); setUserTouchedExpansion(true); saveExpandedKeys(keys); }}
                         autoExpandParent={Boolean(q)}
                         expandAction={false}
-                        draggable={canReorder}
+                        draggable={canReorder ? { icon: <HolderOutlined />, nodeDraggable: () => true } : false}
                         onDrop={handleDrop}
                         blockNode
                         virtual

@@ -3,6 +3,7 @@ import { Alert, Form, Input, Modal, Select, Space, Switch, TreeSelect, Typograph
 import { NODE_TYPE_HELP, NODE_TYPE_OPTIONS, isFieldVisible, isPropertyOfGroup } from '@features/mapalab-layers/constants/nodeTypes';
 import { findNodeContext } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
 import { message } from '@shared/services/message';
+import api from '@shared/services/api';
 
 const { Text } = Typography;
 
@@ -31,9 +32,13 @@ export default function LayerCreateModal({ open, onClose, onSubmit, treeData = [
     const [labelTouched, setLabelTouched] = useState(false);
     const [idTouched, setIdTouched] = useState(false);
     const [slugTouched, setSlugTouched] = useState(false);
+    const [availableOnly, setAvailableOnly] = useState(true);
+    const [workspacesData, setWorkspacesData] = useState([]);
+    const [loadingWs, setLoadingWs] = useState(false);
     const watchedNodeType = Form.useWatch('node_type', form);
     const watchedLabel = Form.useWatch('label', form);
     const watchedParentId = Form.useWatch('parent_id', form);
+    const watchedGsRef = Form.useWatch('gs_ref', form);
 
     const parentCtx = watchedParentId ? findNodeContext(treeData, watchedParentId) : null;
     const parentNodeType = parentCtx?.node?.nodeType ?? null;
@@ -49,16 +54,41 @@ export default function LayerCreateModal({ open, onClose, onSubmit, treeData = [
                 label: '',
                 id: '',
                 slug: '',
-                workspace_alias: '',
-                geoserver_layer: '',
+                gs_ref: undefined,
                 hidden_in_menu: false,
                 disabled: false,
             });
             setLabelTouched(false);
             setIdTouched(false);
             setSlugTouched(false);
+            setAvailableOnly(true);
         }
     }, [open, defaultNodeType, defaultParentId, form]);
+
+    useEffect(() => {
+        if (!open) return;
+        if (!['group', 'leaf'].includes(watchedNodeType)) return;
+        let cancelled = false;
+        setLoadingWs(true);
+        api.get('/geoserver/workspaces', { params: availableOnly ? { available_only: true } : {} })
+            .then((res) => { if (!cancelled) setWorkspacesData(res.data || []); })
+            .catch(() => { if (!cancelled) setWorkspacesData([]); })
+            .finally(() => { if (!cancelled) setLoadingWs(false); });
+        return () => { cancelled = true; };
+    }, [open, watchedNodeType, availableOnly]);
+
+    const gsOptions = useMemo(() => (
+        (workspacesData || [])
+            .filter((ws) => (ws.layers || []).length > 0)
+            .map((ws) => ({
+                label: ws.label ? `${ws.alias} — ${ws.label}` : ws.alias,
+                title: ws.alias,
+                options: (ws.layers || []).map((name) => ({
+                    value: `${ws.alias}::${name}`,
+                    label: name,
+                })),
+            }))
+    ), [workspacesData]);
 
     useEffect(() => {
         if (!open || !labelTouched) return;
@@ -86,8 +116,11 @@ export default function LayerCreateModal({ open, onClose, onSubmit, treeData = [
             hidden_in_menu: Boolean(values.hidden_in_menu),
             disabled: Boolean(values.disabled),
         };
-        if (values.workspace_alias) payload.workspace_alias = values.workspace_alias;
-        if (values.geoserver_layer) payload.geoserver_layer = values.geoserver_layer;
+        if (values.gs_ref) {
+            const [alias, layerName] = values.gs_ref.split('::');
+            if (alias) payload.workspace_alias = alias;
+            if (layerName) payload.geoserver_layer = layerName;
+        }
 
         setSubmitting(true);
         try {
@@ -196,14 +229,41 @@ export default function LayerCreateModal({ open, onClose, onSubmit, treeData = [
                     </Form.Item>
                 )}
                 {showWorkspace && (
-                    <Space style={{ width: '100%' }} size="large">
-                        <Form.Item name="workspace_alias" label="Workspace (opcional)" style={{ flex: 1, minWidth: 0 }}>
-                            <Input placeholder="general" />
+                    <>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                            <Text style={{ fontSize: 13 }}>Capa de GeoServer (opcional)</Text>
+                            <Space size={6}>
+                                <Text type="secondary" style={{ fontSize: 11 }}>Solo no registradas</Text>
+                                <Switch
+                                    size="small"
+                                    checked={availableOnly}
+                                    onChange={setAvailableOnly}
+                                />
+                            </Space>
+                        </div>
+                        <Form.Item name="gs_ref" style={{ marginBottom: 16 }}>
+                            <Select
+                                showSearch
+                                allowClear
+                                loading={loadingWs}
+                                placeholder={availableOnly ? 'Buscar capa no registrada...' : 'Buscar entre todas las capas...'}
+                                options={gsOptions}
+                                optionFilterProp="label"
+                                filterOption={(input, option) => {
+                                    if (!option?.value) return false;
+                                    const q = input.toLowerCase();
+                                    return option.label?.toLowerCase().includes(q) || option.value.toLowerCase().includes(q);
+                                }}
+                                notFoundContent={loadingWs ? 'Cargando...' : 'Sin capas disponibles'}
+                                styles={{ popup: { root: { maxHeight: 320 } } }}
+                            />
                         </Form.Item>
-                        <Form.Item name="geoserver_layer" label="GeoServer layer (opcional)" style={{ flex: 1, minWidth: 0 }}>
-                            <Input placeholder="cuerpos_de_agua_50k" />
-                        </Form.Item>
-                    </Space>
+                        {watchedGsRef && (
+                            <Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: -10, marginBottom: 16 }}>
+                                Workspace: <strong>{watchedGsRef.split('::')[0]}</strong> · Layer: <strong>{watchedGsRef.split('::')[1]}</strong>
+                            </Text>
+                        )}
+                    </>
                 )}
                 <Space size="large">
                     <Form.Item name="hidden_in_menu" label="Oculto del menú" valuePropName="checked">

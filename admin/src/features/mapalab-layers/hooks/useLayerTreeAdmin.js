@@ -105,8 +105,9 @@ export const useLayerTreeAdmin = () => {
         await api.delete(`/layers/${layerId}`);
     }, []);
 
-    const listGeoserverWorkspaces = useCallback(async () => {
-        const res = await api.get('/geoserver/workspaces');
+    const listGeoserverWorkspaces = useCallback(async ({ availableOnly = false } = {}) => {
+        const params = availableOnly ? '?available_only=true' : '';
+        const res = await api.get(`/geoserver/workspaces${params}`);
         return res.data;
     }, []);
 

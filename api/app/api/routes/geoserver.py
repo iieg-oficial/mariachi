@@ -31,6 +31,7 @@ def _resolve_workspace(db: Session, alias: str) -> Workspace:
 
 @router.get('/workspaces')
 async def list_workspaces_with_layers(
+    available_only: bool = Query(default=False),
     db: Session = Depends(get_dataengine_db),
     current_user: Usuario = Depends(_require_project_editor),
     _rl: Usuario = Depends(_read_rate_limit),
@@ -38,6 +39,15 @@ async def list_workspaces_with_layers(
     incr(COUNTER_GEOSERVER_CALLS)
     workspaces = db.query(Workspace).order_by(Workspace.alias).all()
     client = GeoServerClient()
+
+    registered: set[tuple[str, str]] = set()
+    if available_only:
+        from app.models.layer import Layer
+        rows = db.query(Layer.workspace_alias, Layer.geoserver_layer).filter(
+            Layer.workspace_alias.isnot(None),
+            Layer.geoserver_layer.isnot(None),
+        ).all()
+        registered = {(alias, name) for alias, name in rows}
 
     result = []
     for ws in workspaces:
@@ -47,6 +57,9 @@ async def list_workspaces_with_layers(
             layers = []
         except Exception:
             layers = []
+
+        if available_only:
+            layers = [name for name in layers if (ws.alias, name) not in registered]
 
         result.append({
             'alias': ws.alias,
