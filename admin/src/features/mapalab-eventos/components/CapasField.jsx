@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
-import { Button, Empty, Input, Modal, Space, Table, Tag, Typography } from 'antd';
-import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
+import { useEffect, useMemo, useState } from 'react';
+import { Button, Empty, Input, Modal, Space, Switch, Table, Tag, Tooltip, Typography } from 'antd';
+import { ArrowDownOutlined, ArrowUpOutlined, DeleteOutlined, PlusOutlined, TagOutlined } from '@ant-design/icons';
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
 import { message } from '@shared/services/message';
+import api from '@shared/services/api';
 
 const { Text } = Typography;
 
@@ -25,32 +26,81 @@ export default function CapasField({ value = [], onChange, disabled }) {
     const { rawTree, loading } = useLayerTreeAdmin();
     const [modalOpen, setModalOpen] = useState(false);
     const [search, setSearch] = useState('');
+    const [onlyUnregistered, setOnlyUnregistered] = useState(false);
+    const [gsWorkspaces, setGsWorkspaces] = useState([]);
+    const [loadingGs, setLoadingGs] = useState(false);
 
-    const allLeaves = useMemo(() => flattenLeaves(rawTree), [rawTree]);
+    const registeredLeaves = useMemo(() => flattenLeaves(rawTree), [rawTree]);
+
+    const labelByKey = useMemo(() => {
+        const m = new Map();
+        for (const l of registeredLeaves) m.set(`${l.workspace}/${l.layer}`, l.label);
+        return m;
+    }, [registeredLeaves]);
+
+    useEffect(() => {
+        if (!modalOpen) return;
+        let cancelled = false;
+        setLoadingGs(true);
+        api.get('/geoserver/workspaces')
+            .then((res) => { if (!cancelled) setGsWorkspaces(res.data || []); })
+            .catch(() => { if (!cancelled) setGsWorkspaces([]); })
+            .finally(() => { if (!cancelled) setLoadingGs(false); });
+        return () => { cancelled = true; };
+    }, [modalOpen]);
 
     const taken = useMemo(
         () => new Set(value.map((c) => `${c.workspace}/${c.layer}`)),
         [value],
     );
 
+    const allCandidates = useMemo(() => {
+        const out = [];
+        for (const ws of gsWorkspaces || []) {
+            for (const layerName of ws.layers || []) {
+                const key = `${ws.alias}/${layerName}`;
+                const registeredLabel = labelByKey.get(key);
+                out.push({
+                    id: key,
+                    workspace: ws.alias,
+                    layer: layerName,
+                    label: registeredLabel || layerName,
+                    registered: Boolean(registeredLabel),
+                });
+            }
+        }
+        return out;
+    }, [gsWorkspaces, labelByKey]);
+
     const available = useMemo(() => {
-        const filtered = allLeaves.filter((l) => !taken.has(`${l.workspace}/${l.layer}`));
-        if (!search) return filtered;
-        const q = search.toLowerCase();
-        return filtered.filter((l) =>
-            l.label.toLowerCase().includes(q) ||
-            l.layer.toLowerCase().includes(q) ||
-            l.workspace.toLowerCase().includes(q),
-        );
-    }, [allLeaves, taken, search]);
+        let filtered = allCandidates.filter((l) => !taken.has(`${l.workspace}/${l.layer}`));
+        if (onlyUnregistered) filtered = filtered.filter((l) => !l.registered);
+        if (search) {
+            const q = search.toLowerCase();
+            filtered = filtered.filter((l) =>
+                l.label.toLowerCase().includes(q) ||
+                l.layer.toLowerCase().includes(q) ||
+                l.workspace.toLowerCase().includes(q),
+            );
+        }
+        return filtered;
+    }, [allCandidates, taken, search, onlyUnregistered]);
 
     const addCapa = (leaf) => {
         const next = [
             ...value,
-            { workspace: leaf.workspace, layer: leaf.layer, alias: leaf.label, orden: value.length },
+            { tipo: 'capa', workspace: leaf.workspace, layer: leaf.layer, alias: leaf.label, orden: value.length, auto_activar: true },
         ];
         onChange?.(next);
         message.success(`"${leaf.label}" agregada`);
+    };
+
+    const addEtiqueta = () => {
+        const next = [
+            ...value,
+            { tipo: 'etiqueta', alias: 'Sección', orden: value.length },
+        ];
+        onChange?.(next);
     };
 
     const removeCapa = (idx) => {
@@ -60,6 +110,11 @@ export default function CapasField({ value = [], onChange, disabled }) {
 
     const updateAlias = (idx, alias) => {
         const next = value.map((c, i) => (i === idx ? { ...c, alias } : c));
+        onChange?.(next);
+    };
+
+    const updateAutoActivar = (idx, val) => {
+        const next = value.map((c, i) => (i === idx ? { ...c, auto_activar: val } : c));
         onChange?.(next);
     };
 
@@ -73,20 +128,58 @@ export default function CapasField({ value = [], onChange, disabled }) {
 
     const columns = [
         {
-            title: 'Capa',
+            title: 'Capa / Etiqueta',
             key: 'capa',
             render: (_, record, idx) => (
-                <Space orientation="vertical" size={0}>
-                    <Tag color="blue">{record.workspace}:{record.layer}</Tag>
-                    <Input
+                record.tipo === 'etiqueta' ? (
+                    <Space size={6} style={{ width: '100%' }}>
+                        <Tag color="purple" style={{ marginRight: 0 }}>Etiqueta</Tag>
+                        <Input
+                            size="small"
+                            placeholder="Texto de la etiqueta (ej. Servicios públicos)"
+                            value={record.alias || ''}
+                            onChange={(e) => updateAlias(idx, e.target.value)}
+                            disabled={disabled}
+                            style={{ minWidth: 240 }}
+                        />
+                    </Space>
+                ) : (
+                    <Space orientation="vertical" size={0}>
+                        <Tag color="blue">{record.workspace}:{record.layer}</Tag>
+                        <Input
+                            size="small"
+                            placeholder="Alias mostrado en el panel"
+                            value={record.alias || ''}
+                            onChange={(e) => updateAlias(idx, e.target.value)}
+                            disabled={disabled}
+                            style={{ marginTop: 4, maxWidth: 320 }}
+                        />
+                    </Space>
+                )
+            ),
+        },
+        {
+            title: (
+                <Tooltip title="Si está activado, la capa se enciende sola al abrir el evento. Si está apagado, el usuario debe activarla manualmente desde el panel.">
+                    <span>Auto-activar</span>
+                </Tooltip>
+            ),
+            key: 'auto_activar',
+            width: 110,
+            align: 'center',
+            render: (_, record, idx) => (
+                record.tipo === 'etiqueta' ? (
+                    <Text type="secondary" style={{ fontSize: 11 }}></Text>
+                ) : (
+                    <Switch
                         size="small"
-                        placeholder="Alias mostrado en el panel"
-                        value={record.alias || ''}
-                        onChange={(e) => updateAlias(idx, e.target.value)}
+                        checked={record.auto_activar !== false}
+                        onChange={(val) => updateAutoActivar(idx, val)}
                         disabled={disabled}
-                        style={{ marginTop: 4, maxWidth: 320 }}
+                        checkedChildren="Auto"
+                        unCheckedChildren="Manual"
                     />
-                </Space>
+                )
             ),
         },
         {
@@ -95,8 +188,8 @@ export default function CapasField({ value = [], onChange, disabled }) {
             width: 110,
             render: (_, record, idx) => (
                 <Space size={2}>
-                    <Button size="small" disabled={disabled || idx === 0} onClick={() => moveCapa(idx, -1)}></Button>
-                    <Button size="small" disabled={disabled || idx === value.length - 1} onClick={() => moveCapa(idx, 1)}></Button>
+                    <Button size="small" icon={<ArrowUpOutlined />} disabled={disabled || idx === 0} onClick={() => moveCapa(idx, -1)} />
+                    <Button size="small" icon={<ArrowDownOutlined />} disabled={disabled || idx === value.length - 1} onClick={() => moveCapa(idx, 1)} />
                 </Space>
             ),
         },
@@ -111,16 +204,36 @@ export default function CapasField({ value = [], onChange, disabled }) {
     ];
 
     const modalColumns = [
-        { title: 'Capa', dataIndex: 'label', key: 'label' },
         {
-            title: 'Workspace:Layer',
-            key: 'wl',
-            render: (_, r) => <Tag>{r.workspace}:{r.layer}</Tag>,
+            title: 'Capa',
+            key: 'label',
+            render: (_, r) => (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                        <Tooltip title={r.label} mouseEnterDelay={0.5}>
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}>
+                                {r.label}
+                            </span>
+                        </Tooltip>
+                        {r.registered ? (
+                            <Tag color="green" style={{ fontSize: 10, marginRight: 0, flexShrink: 0 }}>en árbol</Tag>
+                        ) : (
+                            <Tag color="gold" style={{ fontSize: 10, marginRight: 0, flexShrink: 0 }}>solo GeoServer</Tag>
+                        )}
+                    </div>
+                    <Tooltip title={`${r.workspace}:${r.layer}`} mouseEnterDelay={0.5}>
+                        <Text type="secondary" style={{ fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
+                            {r.workspace}:{r.layer}
+                        </Text>
+                    </Tooltip>
+                </div>
+            ),
         },
         {
             title: '',
             key: 'add',
-            width: 80,
+            width: 110,
+            align: 'right',
             render: (_, r) => (
                 <Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => addCapa(r)}>
                     Agregar
@@ -131,13 +244,18 @@ export default function CapasField({ value = [], onChange, disabled }) {
 
     return (
         <Space orientation="vertical" style={{ width: '100%' }}>
-            <Space style={{ justifyContent: 'space-between', width: '100%' }}>
+            <Space style={{ justifyContent: 'space-between', width: '100%' }} wrap>
                 <Text type="secondary" style={{ fontSize: 12 }}>
-                    Capas que aparecerán en el panel del evento. Reordena con los botones.
+                    Capas y etiquetas que aparecerán en el panel del evento. Reordena con los botones.
                 </Text>
-                <Button icon={<PlusOutlined />} onClick={() => setModalOpen(true)} disabled={disabled || loading}>
-                    Agregar capa
-                </Button>
+                <Space size={6} wrap>
+                    <Button icon={<TagOutlined />} onClick={addEtiqueta} disabled={disabled}>
+                        Agregar etiqueta
+                    </Button>
+                    <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)} disabled={disabled || loading}>
+                        Agregar capa
+                    </Button>
+                </Space>
             </Space>
 
             {value.length === 0 ? (
@@ -166,12 +284,23 @@ export default function CapasField({ value = [], onChange, disabled }) {
                         onChange={(e) => setSearch(e.target.value)}
                         allowClear
                     />
+                    <Space style={{ justifyContent: 'space-between', width: '100%' }}>
+                        <Text type="secondary" style={{ fontSize: 11 }}>
+                            {loadingGs ? 'Cargando capas de GeoServer...' : `${available.length} capas disponibles`}
+                        </Text>
+                        <Space size={6}>
+                            <Text type="secondary" style={{ fontSize: 12 }}>Solo no registradas</Text>
+                            <Switch size="small" checked={onlyUnregistered} onChange={setOnlyUnregistered} />
+                        </Space>
+                    </Space>
                     <Table
                         rowKey="id"
                         columns={modalColumns}
                         dataSource={available}
+                        loading={loadingGs}
                         pagination={{ pageSize: 10, showSizeChanger: false }}
                         size="small"
+                        tableLayout="fixed"
                     />
                 </Space>
             </Modal>

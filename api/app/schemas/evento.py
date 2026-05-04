@@ -7,10 +7,26 @@ from app.core.acervo_url import to_absolute, to_relative
 
 
 class CapaRef(BaseModel):
-    workspace: str = Field(..., min_length=1)
-    layer: str = Field(..., min_length=1)
+    tipo: Literal['capa', 'etiqueta'] = 'capa'
+    workspace: str | None = None
+    layer: str | None = None
     alias: str | None = None
     orden: int = 0
+    auto_activar: bool = Field(default=True, serialization_alias='autoActivar')
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    @field_validator('workspace', 'layer')
+    @classmethod
+    def _required_for_capa(cls, v, info):
+        return v
+
+    @field_validator('alias')
+    @classmethod
+    def _validate_alias(cls, v, info):
+        if info.data.get('tipo') == 'etiqueta' and not (v and v.strip()):
+            raise ValueError('Las etiquetas requieren un texto en alias')
+        return v
 
 
 class BBox(BaseModel):

@@ -1,13 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import dayjs from 'dayjs';
-import { Alert, Button, Card, Col, DatePicker, Form, Input, InputNumber, Layout, Modal, Popconfirm, Row, Space, Spin, Switch, Tag, Typography } from 'antd';
+import { Alert, Button, Card, DatePicker, Form, Input, InputNumber, Layout, Modal, Popconfirm, Space, Spin, Switch, Tabs, Tag, Typography } from 'antd';
 import {
     ArrowLeftOutlined,
     CheckOutlined,
     CloseOutlined,
+    DatabaseOutlined,
     DeleteOutlined,
+    EnvironmentOutlined,
     EyeInvisibleOutlined,
+    EyeOutlined,
+    InfoCircleOutlined,
+    PictureOutlined,
     SaveOutlined,
     SendOutlined,
 } from '@ant-design/icons';
@@ -31,6 +36,17 @@ import { message } from '@shared/services/message';
 const { Content } = Layout;
 const { Title, Text } = Typography;
 
+function normalizeCapas(capas) {
+    return (capas || []).map((c) => ({
+        tipo: c.tipo || 'capa',
+        workspace: c.workspace,
+        layer: c.layer,
+        alias: c.alias,
+        orden: c.orden ?? 0,
+        auto_activar: c.auto_activar ?? c.autoActivar ?? true,
+    }));
+}
+
 function eventoToForm(e) {
     if (!e) return { activo: false, capas: [], orden: 0 };
     return {
@@ -40,7 +56,7 @@ function eventoToForm(e) {
         icono_url: e.iconoUrl ?? e.icono_url,
         imagen_url: e.imagenUrl ?? e.imagen_url,
         bbox: e.bbox,
-        capas: e.capas || [],
+        capas: normalizeCapas(e.capas),
         activo: e.activo,
         fecha_inicio: (e.fechaInicio ?? e.fecha_inicio) ? dayjs(e.fechaInicio ?? e.fecha_inicio) : null,
         fecha_fin: (e.fechaFin ?? e.fecha_fin) ? dayjs(e.fechaFin ?? e.fecha_fin) : null,
@@ -316,75 +332,106 @@ export default function EventoEditPage() {
                 {draft.saving && <Text type="secondary" style={{ fontSize: 12 }}>Guardando borrador…</Text>}
 
                 <Form form={form} layout="vertical" initialValues={initialValues} onValuesChange={handleValuesChange}>
-                    <Row gutter={[16, 16]}>
-                        <Col xs={24} lg={14}>
-                            <Card title="Información">
-                                <Form.Item
-                                    name="titulo"
-                                    label="Título"
-                                    rules={[{ required: true, message: 'El título es obligatorio' }]}
-                                >
-                                    <Input placeholder="Ejemplo: Mundial 2026" />
-                                </Form.Item>
-                                <Form.Item
-                                    name="slug"
-                                    label="Slug (opcional)"
-                                    extra="Si lo dejas vacío, se genera del título. Solo letras, números y guiones."
-                                >
-                                    <Input placeholder="mundial-2026" />
-                                </Form.Item>
-                                <Form.Item name="descripcion" label="Descripción">
-                                    <Input.TextArea rows={4} placeholder="Texto breve que se mostrará al abrir el evento" />
-                                </Form.Item>
-                            </Card>
-
-                            <Card title="Capas asociadas" style={{ marginTop: 16 }}>
-                                <Form.Item name="capas" noStyle>
-                                    <CapasField />
-                                </Form.Item>
-                            </Card>
-                        </Col>
-
-                        <Col xs={24} lg={10}>
-                            <Card title="Visibilidad">
-                                <Form.Item name="activo" label="Activo" valuePropName="checked" extra="Si está apagado no aparece en el visor aunque esté publicado.">
-                                    <Switch />
-                                </Form.Item>
-                                <Form.Item name="fecha_inicio" label="Fecha de inicio (opcional)">
-                                    <DatePicker showTime style={{ width: '100%' }} />
-                                </Form.Item>
-                                <Form.Item name="fecha_fin" label="Fecha de fin (opcional)">
-                                    <DatePicker showTime style={{ width: '100%' }} />
-                                </Form.Item>
-                                <Form.Item name="orden" label="Orden" extra="Si hay varios eventos visibles a la vez, ordena de menor a mayor.">
-                                    <InputNumber min={0} style={{ width: '100%' }} />
-                                </Form.Item>
-                            </Card>
-
-                            <Card title="Apariencia" style={{ marginTop: 16 }}>
-                                <Form.Item
-                                    name="icono_url"
-                                    label="Icono compacto (sider colapsado)"
-                                    extra="Imagen pequeña, idealmente cuadrada (~64×64). Se muestra cuando el sider del visor está colapsado."
-                                >
-                                    <EventoIconPicker />
-                                </Form.Item>
-                                <Form.Item
-                                    name="imagen_url"
-                                    label="Imagen banner (sider expandido)"
-                                    extra="Imagen ancha tipo banner (3:1 o 4:1). Se muestra cuando el sider del visor está expandido."
-                                >
-                                    <EventoIconPicker />
-                                </Form.Item>
-                            </Card>
-
-                            <Card title="Geografía" style={{ marginTop: 16 }}>
-                                <Form.Item name="bbox" noStyle>
-                                    <BBoxField />
-                                </Form.Item>
-                            </Card>
-                        </Col>
-                    </Row>
+                    <Card styles={{ body: { padding: isMobile ? 12 : 16 } }}>
+                        <Tabs
+                            defaultActiveKey="info"
+                            tabPosition={isMobile ? 'top' : 'left'}
+                            destroyOnHidden={false}
+                            style={{ minHeight: 400 }}
+                            items={[
+                                {
+                                    key: 'info',
+                                    forceRender: true,
+                                    label: <span><InfoCircleOutlined /> Información</span>,
+                                    children: (
+                                        <>
+                                            <Form.Item
+                                                name="titulo"
+                                                label="Título"
+                                                rules={[{ required: true, message: 'El título es obligatorio' }]}
+                                            >
+                                                <Input placeholder="Ejemplo: Mundial 2026" />
+                                            </Form.Item>
+                                            <Form.Item
+                                                name="slug"
+                                                label="Slug (opcional)"
+                                                extra="Si lo dejas vacío, se genera del título. Solo letras, números y guiones."
+                                            >
+                                                <Input placeholder="mundial-2026" />
+                                            </Form.Item>
+                                            <Form.Item name="descripcion" label="Descripción">
+                                                <Input.TextArea rows={4} placeholder="Texto breve que se mostrará al abrir el evento" />
+                                            </Form.Item>
+                                        </>
+                                    ),
+                                },
+                                {
+                                    key: 'capas',
+                                    forceRender: true,
+                                    label: <span><DatabaseOutlined /> Capas</span>,
+                                    children: (
+                                        <Form.Item name="capas" noStyle>
+                                            <CapasField />
+                                        </Form.Item>
+                                    ),
+                                },
+                                {
+                                    key: 'visibilidad',
+                                    forceRender: true,
+                                    label: <span><EyeOutlined /> Visibilidad</span>,
+                                    children: (
+                                        <>
+                                            <Form.Item name="activo" label="Activo" valuePropName="checked" extra="Si está apagado no aparece en el visor aunque esté publicado.">
+                                                <Switch />
+                                            </Form.Item>
+                                            <Form.Item name="fecha_inicio" label="Fecha de inicio (opcional)">
+                                                <DatePicker showTime style={{ width: '100%' }} />
+                                            </Form.Item>
+                                            <Form.Item name="fecha_fin" label="Fecha de fin (opcional)">
+                                                <DatePicker showTime style={{ width: '100%' }} />
+                                            </Form.Item>
+                                            <Form.Item name="orden" label="Orden" extra="Si hay varios eventos visibles a la vez, ordena de menor a mayor.">
+                                                <InputNumber min={0} style={{ width: '100%' }} />
+                                            </Form.Item>
+                                        </>
+                                    ),
+                                },
+                                {
+                                    key: 'apariencia',
+                                    forceRender: true,
+                                    label: <span><PictureOutlined /> Apariencia</span>,
+                                    children: (
+                                        <>
+                                            <Form.Item
+                                                name="icono_url"
+                                                label="Icono compacto (sider colapsado)"
+                                                extra="Imagen pequeña, idealmente cuadrada (~64×64). Se muestra cuando el sider del visor está colapsado."
+                                            >
+                                                <EventoIconPicker />
+                                            </Form.Item>
+                                            <Form.Item
+                                                name="imagen_url"
+                                                label="Imagen banner (sider expandido)"
+                                                extra="Imagen ancha tipo banner (3:1 o 4:1). Se muestra cuando el sider del visor está expandido."
+                                            >
+                                                <EventoIconPicker />
+                                            </Form.Item>
+                                        </>
+                                    ),
+                                },
+                                {
+                                    key: 'geografia',
+                                    forceRender: true,
+                                    label: <span><EnvironmentOutlined /> Geografía</span>,
+                                    children: (
+                                        <Form.Item name="bbox" noStyle>
+                                            <BBoxField />
+                                        </Form.Item>
+                                    ),
+                                },
+                            ]}
+                        />
+                    </Card>
                 </Form>
 
                 {!isCreate && evento?.publishedAt && (
