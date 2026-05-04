@@ -7,6 +7,7 @@ from app.models.media_bucket import MediaBucket
 from app.models.menu_item import MenuItem
 from app.models.page import Page
 from app.models.project import Project, UserProject
+from app.models.reporte import Reporte
 from app.models.sieej import (
     BasesDatos,
     BDEjesEstrategicos,
@@ -36,6 +37,7 @@ __all__ = [
     "Project",
     "UserProject",
     "MediaBucket",
+    "Reporte",
     "BDEjesEstrategicos",
     "BasesDatos",
     "CatalogoCalidadDatos",

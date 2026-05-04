@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     admin_prefix: str = "/api/administrador"
     web_prefix: str = "/api/portal"
     mapalab_public_prefix: str = "/api/mapalab"
+    public_prefix: str = "/api/public"
     cookie_name: str = "access_token"
     cookie_max_age: int = 1800
     cookie_domain: str | None = None
@@ -57,6 +58,10 @@ class Settings(BaseSettings):
 
     sentry_dsn: str | None = None
     sentry_traces_sample_rate: float = 0.1
+
+    discord_webhook_mapalab: str | None = None
+    discord_webhook_sieej: str | None = None
+    discord_webhook_portal: str | None = None
 
     @field_validator("cors_origins", mode="before")
     @classmethod

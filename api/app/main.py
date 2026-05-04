@@ -23,6 +23,8 @@ from app.api.routes import (
     preview,
     projects,
     public,
+    reportes,
+    reportes_public,
     sieej_admin,
     sistema,
     users,
@@ -83,10 +85,12 @@ def create_app() -> FastAPI:
     app.include_router(eventos.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(home.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(mapalab_shares.router, prefix=settings.admin_prefix, dependencies=staff_dep)
+    app.include_router(reportes.router, prefix=settings.admin_prefix, dependencies=staff_dep)
 
     app.include_router(preview.public_router, prefix=settings.web_prefix)
     app.include_router(public.router, prefix=settings.web_prefix)
     app.include_router(public.mapalab_router, prefix=settings.mapalab_public_prefix)
+    app.include_router(reportes_public.router, prefix=settings.public_prefix)
     app.include_router(metrics_module.router)
 
     @app.get("/", tags=["health"])

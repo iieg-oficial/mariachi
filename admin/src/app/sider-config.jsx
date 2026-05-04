@@ -2,6 +2,7 @@ import {
     TeamOutlined,
     FileImageOutlined,
     AuditOutlined,
+    BugOutlined,
     MenuOutlined,
     FileTextOutlined,
     PartitionOutlined,
@@ -38,6 +39,14 @@ export const PLATFORM_ITEMS = [
         icon: <AuditOutlined />,
         allowedGlobalRoles: ['tetlamamakani'],
         showBadge: true,
+    },
+    {
+        key: '/reportes',
+        path: '/reportes',
+        label: 'Reportes',
+        icon: <BugOutlined />,
+        allowedGlobalRoles: ['tetlamamakani', 'editora'],
+        showReporteBadge: true,
     },
 ];
 
@@ -116,31 +125,41 @@ export function buildSiderItems({ user, onNavigate, extras = {} }) {
         onClick: () => onNavigate('/inicio'),
     });
 
+    const renderBadgeLabel = (label, count) => (
+        <span>
+            {label}{' '}
+            <span
+                style={{
+                    marginLeft: 6,
+                    background: '#ff4d4f',
+                    color: '#fff',
+                    borderRadius: 10,
+                    padding: '0 6px',
+                    fontSize: 11,
+                }}
+            >
+                {count}
+            </span>
+        </span>
+    );
+
     const platformChildren = PLATFORM_ITEMS
         .filter((item) => item.allowedGlobalRoles.includes(role))
-        .map((item) => ({
-            key: item.key,
-            icon: item.icon,
-            disabled: item.disabled,
-            label: item.showBadge && extras.pendingCount > 0 ? (
-                <span>
-                    {item.label}{' '}
-                    <span
-                        style={{
-                            marginLeft: 6,
-                            background: '#ff4d4f',
-                            color: '#fff',
-                            borderRadius: 10,
-                            padding: '0 6px',
-                            fontSize: 11,
-                        }}
-                    >
-                        {extras.pendingCount}
-                    </span>
-                </span>
-            ) : item.label,
-            onClick: item.disabled ? undefined : () => onNavigate(item.path),
-        }));
+        .map((item) => {
+            let label = item.label;
+            if (item.showBadge && extras.pendingCount > 0) {
+                label = renderBadgeLabel(item.label, extras.pendingCount);
+            } else if (item.showReporteBadge && extras.reportesPendingCount > 0) {
+                label = renderBadgeLabel(item.label, extras.reportesPendingCount);
+            }
+            return {
+                key: item.key,
+                icon: item.icon,
+                disabled: item.disabled,
+                label,
+                onClick: item.disabled ? undefined : () => onNavigate(item.path),
+            };
+        });
 
     if (platformChildren.length > 0) {
         items.push({

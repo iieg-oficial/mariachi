@@ -19,6 +19,15 @@ from app.schemas.menu_item import (
     MenuItemUpdate,
 )
 from app.schemas.page import PageCreate, PageResponse, PageUpdate
+from app.schemas.reporte import (
+    ReporteAdminResponse,
+    ReporteCreate,
+    ReporteCreateResponse,
+    ReporteEstado,
+    ReporteListResponse,
+    ReporteTipo,
+    ReporteUpdate,
+)
 from app.schemas.user import (
     LoginRequest,
     LoginResponse,
@@ -50,4 +59,11 @@ __all__ = [
     "HomeSectionResponse",
     "HomePublicResponse",
     "SECTION_SCHEMAS",
+    "ReporteCreate",
+    "ReporteUpdate",
+    "ReporteAdminResponse",
+    "ReporteListResponse",
+    "ReporteCreateResponse",
+    "ReporteTipo",
+    "ReporteEstado",
 ]

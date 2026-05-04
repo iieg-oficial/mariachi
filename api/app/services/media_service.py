@@ -134,6 +134,14 @@ def listar_media(
     if folder and folder != "/":
         prefix = folder.lstrip("/").rstrip("/") + "/"
     bucket_objects = client.list_objects(prefix=prefix, recursive=recursive)
+
+    hidden_prefixes = ("reportes/",) if bucket.acervo_bucket == "mariachi" and not prefix else ()
+    if hidden_prefixes:
+        bucket_objects = [
+            obj for obj in bucket_objects
+            if not any(obj["name"].startswith(p) for p in hidden_prefixes)
+        ]
+
     for obj in bucket_objects:
         if not obj.get("is_dir") and not obj["name"].endswith("/"):
             obj["url"] = client.get_file_url(obj["name"])

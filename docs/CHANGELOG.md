@@ -11,6 +11,32 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ## [Unreleased]
 
+---
+
+## [0.32.0] - 2026-05-04
+
+### Reportes ciudadanos (transversal)
+
+Sistema único de reportes y sugerencias para todos los proyectos del ecosistema (MapaLab, SIEEJ, Portal). Una sola tabla, una sola feature de admin, distinguible por `source_app`.
+
+**Backend (`api/`):**
+
+- `app/models/reporte.py` — modelo `Reporte` con `tipo` (problema|solicitud|sugerencia|duda|datos_incorrectos|bug), `mensaje`, `email_contacto` opcional, `source_app`/`source_route`/`source_context`, `screenshot_bucket_id`+`screenshot_object_path`, `estado` (nuevo|en_revision|resuelto|descartado), `nota_interna`, `atendido_por_id`. Migración `c4d5e6f7a8b9_add_reportes.py`.
+- `app/api/routes/reportes_public.py` — `POST /api/public/reportes` público con honeypot (`website` field) y rate limit por IP (5 req / 10 min). Acepta `multipart/form-data` con screenshot opcional (PNG/JPEG ≤2MB). Sube al bucket privado `mariachi` en `reportes/AAAA/MM/<uuid>.<ext>`.
+- `app/api/routes/reportes.py` — endpoints admin: `GET` paginado con filtros (`source_app`, `tipo`, `estado`, `q`), `GET /{id}`, `PATCH /{id}` (estado, nota, asignación), `DELETE /{id}` (borra screenshot del bucket también), `GET /stats/contadores` (resumen por proyecto y estado).
+- `app/services/discord_notifier.py` — webhook por `source_app` (env `DISCORD_WEBHOOK_MAPALAB`, `_SIEEJ`, `_PORTAL`). Embed con tipo, ruta, mensaje truncado y email opcional. Falla silenciosamente si no hay webhook configurado.
+- `app/api/rate_limit.py` — agrega `rate_limit_ip(max_requests, window_seconds, scope)` con resolución de IP via `X-Forwarded-For` / `X-Real-IP`.
+- `app/core/settings.py` — agrega `public_prefix = "/api/public"` y los 3 webhooks Discord como settings opcionales.
+- `app/services/media_service.py` — al listar el bucket `mariachi` desde la galería, oculta el prefix `reportes/` para no contaminar Media.
+
+**Admin (`admin/`):**
+
+- `features/reportes/` — nueva sección "Reportes" en el sider (icono `BugOutlined`, ítem en `PLATFORM_ITEMS`) con badge de pendientes (estado=nuevo) sumados de todos los proyectos. Lista AntD con tabs por `source_app` (MapaLab | SIEEJ | Portal), filtros (tipo, estado, búsqueda full-text), drawer detalle con screenshot embebido, cambio de estado, nota interna y abrir `source_route` en pestaña.
+- `app/sider-config.jsx` — soporta nuevo flag `showReporteBadge` y extra `reportesPendingCount`.
+- `app/MainLayout.jsx` — consume `GET /reportes/stats/contadores` para alimentar el badge.
+
+**Cómo se conecta a MapaLab**: el frontend de mapalab postea a `/api/public/reportes` desde 3 puntos de entrada (mapa, InfoBox, Home). El bucket `mariachi` (`is_public=false`) ya existe; no se crea infra nueva.
+
 ### Editor de eventos: bbox visual, etiquetas, auto-activación de capas
 
 Iteración del editor de eventos para que los editores no necesiten escribir coordenadas EPSG:4326 a mano y para que el evento controle qué capas se encienden cuando el usuario lo abre en el visor.

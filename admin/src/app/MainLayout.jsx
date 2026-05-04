@@ -36,11 +36,23 @@ export default function MainLayout() {
     };
 
     const [pendingCount, setPendingCount] = useState(0);
+    const [reportesPendingCount, setReportesPendingCount] = useState(0);
 
     useEffect(() => {
         if (user?.role !== 'tetlamamakani') return;
         api.get('/borradores/pendientes')
             .then(r => setPendingCount(r.data.length))
+            .catch(() => {});
+    }, [user]);
+
+    useEffect(() => {
+        if (!user?.role) return;
+        api.get('/reportes/stats/contadores')
+            .then(r => {
+                const data = r.data || {};
+                const total = Object.values(data).reduce((acc, byEstado) => acc + (byEstado?.nuevo || 0), 0);
+                setReportesPendingCount(total);
+            })
             .catch(() => {});
     }, [user]);
 
@@ -56,7 +68,7 @@ export default function MainLayout() {
     const menuItems = buildSiderItems({
         user,
         onNavigate: handleNav,
-        extras: { pendingCount },
+        extras: { pendingCount, reportesPendingCount },
     });
 
     const userMenuItems = [
