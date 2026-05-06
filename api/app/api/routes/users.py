@@ -3,6 +3,7 @@ import secrets
 import string
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db, require_role, verify_csrf
@@ -27,6 +28,13 @@ _require_admin = require_role(["tetlamamakani"])
 def generate_temp_password(length=12):
     alphabet = string.ascii_letters + string.digits
     return ''.join(secrets.choice(alphabet) for _ in range(length))
+
+
+def _normalize_identifier(value: str | None) -> str | None:
+    if value is None:
+        return None
+    normalized = value.strip().lower()
+    return normalized or None
 
 
 def _user_memberships(db: Session, user_id: int) -> list[dict]:
@@ -111,16 +119,20 @@ async def crear_usuario(
     _csrf: Usuario = Depends(verify_csrf),
     current_user: Usuario = Depends(_require_admin),
 ):
-    if db.query(Usuario).filter(Usuario.username == usuario_in.username).first():
+    username = _normalize_identifier(usuario_in.username)
+    email = _normalize_identifier(usuario_in.email)
+    if db.query(Usuario).filter(func.lower(Usuario.username) == username).first():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="El nombre de usuario ya existe"
         )
-    if db.query(Usuario).filter(Usuario.email == usuario_in.email).first():
+    if db.query(Usuario).filter(func.lower(Usuario.email) == email).first():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="El email ya está registrado"
         )
 
     usuario_data = usuario_in.model_dump(exclude={"password", "project_assignments"})
+    usuario_data["username"] = username
+    usuario_data["email"] = email
     usuario_data["hashed_password"] = hash_password(usuario_in.password)
     usuario_data["must_change_password"] = True
 
@@ -155,24 +167,30 @@ async def actualizar_usuario(
             status_code=status.HTTP_403_FORBIDDEN, detail="Permisos insuficientes"
         )
 
+    new_username = _normalize_identifier(usuario_in.username)
+    new_email = _normalize_identifier(usuario_in.email)
     if (
-        usuario_in.username
-        and usuario_in.username != usuario.username
-        and db.query(Usuario).filter(Usuario.username == usuario_in.username).first()
+        new_username
+        and new_username != usuario.username
+        and db.query(Usuario).filter(func.lower(Usuario.username) == new_username).first()
     ):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="El nombre de usuario ya existe"
         )
     if (
-        usuario_in.email
-        and usuario_in.email != usuario.email
-        and db.query(Usuario).filter(Usuario.email == usuario_in.email).first()
+        new_email
+        and new_email != usuario.email
+        and db.query(Usuario).filter(func.lower(Usuario.email) == new_email).first()
     ):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="El email ya está registrado"
         )
 
     update_data = usuario_in.model_dump(exclude_unset=True, exclude={"project_assignments"})
+    if "username" in update_data:
+        update_data["username"] = new_username
+    if "email" in update_data:
+        update_data["email"] = new_email
     for field, value in update_data.items():
         setattr(usuario, field, value)
 
@@ -217,11 +235,13 @@ async def agregar_dependencia_sieej(
     _csrf: Usuario = Depends(verify_csrf),
     current_user: Usuario = Depends(_require_admin),
 ):
-    if db.query(Usuario).filter(Usuario.username == payload.username).first():
+    username = _normalize_identifier(payload.username)
+    email = _normalize_identifier(payload.email)
+    if db.query(Usuario).filter(func.lower(Usuario.username) == username).first():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="El nombre de usuario ya existe"
         )
-    if db.query(Usuario).filter(Usuario.email == payload.email).first():
+    if db.query(Usuario).filter(func.lower(Usuario.email) == email).first():
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT, detail="El email ya está registrado"
         )
@@ -235,8 +255,8 @@ async def agregar_dependencia_sieej(
 
     temp_password = generate_temp_password()
     nuevo = Usuario(
-        username=payload.username,
-        email=payload.email,
+        username=username,
+        email=email,
         name=payload.name,
         hashed_password=hash_password(temp_password),
         role="externo",

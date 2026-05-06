@@ -112,6 +112,7 @@ export default function Login() {
                                     <Form.Item
                                         label="Usuario o correo electrónico"
                                         name="username"
+                                        normalize={(value) => (value ? value.trim().toLowerCase() : value)}
                                         rules={[{ required: true, message: 'Ingrese su usuario' }]}
                                     >
                                         <Input placeholder="Usuario o correo electrónico" />

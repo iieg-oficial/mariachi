@@ -9,6 +9,29 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.40.7] - 2026-05-06
+
+### Fix: login case-insensitive y normalizacion de username/email
+
+Los usuarios cuyo `username` o `email` se almaceno con mayusculas (ej. `Editora1`, `Edgar.Villarreal@iieg.gob.mx`) no podian entrar a SIEEJ porque el frontend de SIEEJ envia el identificador en lowercase (`Login.jsx` con `normalize="lowercase"`) y el backend filtraba `Usuario.username == credentials.username` case-sensitive. En GCP se manifesto como 401 "Credenciales invalidas" para todos los usuarios SIEEJ con identificadores que no estaban ya en lowercase. Mariachi-admin no normalizaba en su pantalla de login y por eso ahi si entraban.
+
+#### Backend (api)
+
+- `auth.py / iniciar-sesion`: el query ahora hace `func.lower(Usuario.username) == identifier OR func.lower(Usuario.email) == identifier` con `identifier` strip+lower del input. Permite entrar con cualquier capitalizacion y tambien por email (la UI ya decia "Usuario o correo electronico").
+- `users.py / crear_usuario / actualizar_usuario / agregar-dependencia-sieej`: `username` y `email` se persisten siempre en lowercase via helper `_normalize_identifier`. Los checks de unicidad usan `func.lower(...)` para evitar duplicados case-variant (`Edgar`/`edgar`).
+- `auth.py / actualizar_perfil`: misma normalizacion al cambiar email desde el perfil.
+- Migracion `b6c7d8e9f0a1_normalize_usuarios_username_email`: backfill `UPDATE usuarios SET username = lower(trim(username)), email = lower(trim(email))` para alinear datos historicos.
+
+#### Admin (frontend)
+
+- `LoginPage.jsx`: `Form.Item` de username con `normalize={(v) => v?.trim().toLowerCase()}`. UX consistente con SIEEJ y refuerza el contrato de identificador canonico en lowercase.
+
+### Probado
+
+Local: crear usuario con `username="TestMix"` / `email="Test.Mix@Example.com"` queda persistido como `testmix` / `test.mix@example.com`. Login responde 200 con cualquiera de las cuatro variantes (`TestMix`, `testmix`, `Test.Mix@Example.com`, `test.mix@example.com`) y 401 con un identificador inexistente. Migracion aplicada limpiamente sobre la BD de dev.
+
+---
+
 ## [0.40.6] - 2026-05-06
 
 ### Eventos: auto-registro de workspace al asociar capa

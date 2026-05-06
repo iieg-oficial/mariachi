@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.api.deps import (
@@ -32,7 +33,15 @@ async def login(
     response: Response,
     db: Session = Depends(get_db),
 ):
-    usuario = db.query(Usuario).filter(Usuario.username == credentials.username).first()
+    identifier = (credentials.username or "").strip().lower()
+    usuario = (
+        db.query(Usuario)
+        .filter(
+            (func.lower(Usuario.username) == identifier)
+            | (func.lower(Usuario.email) == identifier)
+        )
+        .first()
+    )
 
     if not usuario or not verify_password(credentials.password, usuario.hashed_password):
         raise HTTPException(
@@ -96,10 +105,16 @@ async def actualizar_perfil(
 ):
     data = payload.model_dump(exclude_unset=True)
 
-    if "email" in data and data["email"] != current_user.email:
-        existing = db.query(Usuario).filter(Usuario.email == data["email"], Usuario.id != current_user.id).first()
-        if existing:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email ya está en uso")
+    if "email" in data and data["email"]:
+        data["email"] = data["email"].strip().lower()
+        if data["email"] != current_user.email:
+            existing = (
+                db.query(Usuario)
+                .filter(func.lower(Usuario.email) == data["email"], Usuario.id != current_user.id)
+                .first()
+            )
+            if existing:
+                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email ya está en uso")
 
     for field, value in data.items():
         setattr(current_user, field, value)
