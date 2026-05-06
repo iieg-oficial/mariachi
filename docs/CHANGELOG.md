@@ -9,6 +9,21 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.40.8] - 2026-05-06
+
+### Fix: init_db.py reconoce admin existente despues de normalizacion lowercase
+
+`crear_usuario_admin` en `init_db.py` buscaba `Usuario.username == ADMIN_USERNAME` case-sensitive. Tras la migracion de 0.40.7 que bajo a lowercase los datos historicos, el admin original (ej. `EstoNoEsUnAdmin` en GCP) quedo persistido como `estonoesunadmin` en BD. Al reiniciar el contenedor, `init_db.py` no reconocia el admin (porque el env var sigue con caps), intentaba crear uno nuevo, e impactaba el unique constraint del email — el container moria en bucle.
+
+- `crear_usuario_admin`: lookup ahora con `func.lower(Usuario.username) == admin_username OR func.lower(Usuario.email) == admin_email`, ambos normalizados antes; al crear, persiste username/email en lowercase.
+- `crear_usuarios_ejemplo`: misma normalizacion para que `editora1` no sufra el mismo problema en entornos con `CREATE_SAMPLE_USERS=true`.
+
+### Probado
+
+Local: con BD ya migrada (admin en lowercase) y env vars con mayusculas (`ADMIN_USERNAME=Admin`, `ADMIN_EMAIL=Admin@iieg.gob.mx`), `init_db.py` imprime "Usuario admin ya existe" y el contenedor levanta limpio.
+
+---
+
 ## [0.40.7] - 2026-05-06
 
 ### Fix: login case-insensitive y normalizacion de username/email

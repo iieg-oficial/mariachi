@@ -3,6 +3,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from sqlalchemy import func
+
 sys.path.append(str(Path(__file__).parent.parent))
 
 from app.core.database import SessionLocal
@@ -34,7 +36,8 @@ def aplicar_migraciones():
 def crear_usuario_admin(db):
     print("Creando usuario administrador...")
 
-    admin_username = os.getenv("ADMIN_USERNAME", "admin")
+    admin_username = (os.getenv("ADMIN_USERNAME", "admin") or "").strip().lower()
+    admin_email = (os.getenv("ADMIN_EMAIL", "admin@iieg.gob.mx") or "").strip().lower()
     admin_password = os.getenv("ADMIN_PASSWORD")
 
     if not admin_password:
@@ -42,13 +45,18 @@ def crear_usuario_admin(db):
         return
 
     admin = (
-        db.query(Usuario).filter(Usuario.username == admin_username).first()
+        db.query(Usuario)
+        .filter(
+            (func.lower(Usuario.username) == admin_username)
+            | (func.lower(Usuario.email) == admin_email)
+        )
+        .first()
     )
 
     if not admin:
         admin = Usuario(
             username=admin_username,
-            email=os.getenv("ADMIN_EMAIL", "admin@iieg.gob.mx"),
+            email=admin_email,
             name="Administrador",
             hashed_password=hash_password(admin_password),
             role="tetlamamakani",
@@ -57,7 +65,7 @@ def crear_usuario_admin(db):
         db.commit()
         print(f"✓ Usuario admin creado (usuario: {admin_username})")
     else:
-        print("✓ Usuario admin ya existe")
+        print(f"✓ Usuario admin ya existe (usuario: {admin.username})")
 
 
 def crear_usuarios_ejemplo(db):
@@ -74,7 +82,10 @@ def crear_usuarios_ejemplo(db):
 
     usuario_existente = (
         db.query(Usuario)
-        .filter((Usuario.username == "editora1") | (Usuario.email == "editora@iieg.gob.mx"))
+        .filter(
+            (func.lower(Usuario.username) == "editora1")
+            | (func.lower(Usuario.email) == "editora@iieg.gob.mx")
+        )
         .first()
     )
     if not usuario_existente:
