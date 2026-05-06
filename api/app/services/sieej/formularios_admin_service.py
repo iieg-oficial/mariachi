@@ -25,6 +25,17 @@ from app.services.sieej.definicion_validator import (
     validar_definicion,
 )
 
+SLUGS_RESERVADOS = {
+    "inicio-sesion",
+    "exencion",
+    "cambiar-contrasena",
+    "error",
+    "regisño",
+    "catalogos",
+    "schema",
+    "envio",
+}
+
 
 class FormulariosAdminService:
     def __init__(self, db: Session):
@@ -60,6 +71,12 @@ class FormulariosAdminService:
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=str(exc),
             ) from exc
+
+        if data["slug"] in SLUGS_RESERVADOS:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"El slug '{data['slug']}' esta reservado por el sistema",
+            )
 
         if self.db.query(Formulario).filter(Formulario.slug == data["slug"]).first():
             raise HTTPException(

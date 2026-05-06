@@ -9,6 +9,24 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.39.4] - 2026-05-06
+
+### Backend (api) — slugs reservados al crear formulario SIEEJ
+
+`formularios_admin_service.py.crear()` rechaza con 400 si el `slug`
+solicitado esta en la whitelist `SLUGS_RESERVADOS`: `inicio-sesion`,
+`exencion`, `cambiar-contrasena`, `error`, `regisño`, `catalogos`,
+`schema`, `envio`. Esto previene que el slug colisione con rutas
+literales del frontend SIEEJ (ahora `/<slug>` directo, sin prefix
+`/formularios`) o con sub-paths internos del API.
+
+### Bump
+
+- `api/pyproject.toml` -> 0.39.4.
+- `admin/package.json` -> 0.39.4.
+
+---
+
 ## [0.39.3] - 2026-05-06
 
 ### Fix: cargar SLD de styles globales de GeoServer
