@@ -9,6 +9,19 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.40.3] - 2026-05-06
+
+### Fix(test): sider-config tras habilitar grupo SIEEJ
+
+El test `proyecto con disabled:true se renderiza con flag disabled y sus hijos no tienen onClick` en `src/app/__tests__/sider-config.test.js` aún esperaba `project-sieej.disabled === true`. Tras 0.40.2 (que removió `disabled:true` del proyecto SIEEJ), el assert se rompía.
+
+- Removida la asercion sobre `sieej.disabled`; el caso `disabled:true` queda cubierto por `project-portal` (que sigue disabled).
+- Nuevo test `sub-item con disabled:true queda disabled aunque el proyecto no lo este` que verifica el caso del placeholder `/sieej/agregar-dependencia` (sub-item disabled bajo un proyecto activo).
+
+Sin cambios de comportamiento en runtime; solo alineamiento del test con el state actual de `PROJECT_REGISTRY`.
+
+---
+
 ## [0.40.2] - 2026-05-06
 
 ### Admin (UI) — habilitar grupo SIEEJ en sidebar

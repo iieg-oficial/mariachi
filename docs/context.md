@@ -2,7 +2,7 @@
 
 > Documento de referencia completo. Leer este archivo proporciona contexto del monorepo sin explorar el codebase.
 
-**Versión:** 0.40.2 · **Última actualización:** 2026-05-06
+**Versión:** 0.40.3 · **Última actualización:** 2026-05-06
 
 
 ---

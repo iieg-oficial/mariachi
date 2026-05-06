@@ -114,8 +114,18 @@ describe('buildSiderItems', () => {
             expect(c.disabled).toBe(true);
             expect(c.onClick).toBeUndefined();
         });
+    });
+
+    it('sub-item con disabled:true queda disabled aunque el proyecto no lo este', () => {
+        const items = buildSiderItems({
+            user: { role: 'tetlamamakani', projects: [] },
+            onNavigate: vi.fn(),
+        });
         const sieej = items.find((i) => i.key === 'project-sieej');
-        expect(sieej.disabled).toBe(true);
+        expect(sieej.disabled).toBeFalsy();
+        const agregar = sieej.children.find((c) => c.key === '/sieej/agregar-dependencia');
+        expect(agregar.disabled).toBe(true);
+        expect(agregar.onClick).toBeUndefined();
     });
 
     it('item /inicio dispara onNavigate al click', () => {
