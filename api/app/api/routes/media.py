@@ -188,68 +188,6 @@ async def actualizar_archivo(
     return media_service.serialize_media(item)
 
 
-@router.delete("/{media_id:path}")
-async def eliminar_archivo(
-    media_id: str,
-    db: Session = Depends(get_db),
-    current_user: Usuario = Depends(verify_csrf),
-):
-    if media_id.startswith("dir:"):
-        try:
-            _, bucket_id_str, name = media_id.split(":", 2)
-            bucket_id = int(bucket_id_str)
-        except ValueError:
-            raise HTTPException(status_code=400, detail="ID de directorio invalido")
-        if current_user.role != ADMIN_ROLE:
-            raise HTTPException(status_code=403, detail="Solo admin puede borrar directorios")
-        bucket = media_service.resolve_bucket_or_403(bucket_id, current_user, db)
-        client = AcervoClient.for_bucket(bucket)
-        prefix = name if name.endswith("/") else f"{name}/"
-        deleted = client.delete_prefix(prefix)
-        db.query(Media).filter(
-            Media.bucket_id == bucket.id,
-            Media.name.like(f"{prefix}%"),
-        ).delete(synchronize_session=False)
-        db.commit()
-        incr(COUNTER_MEDIA_DELETES)
-        logger.info(
-            "action=media.delete.dir user_id=%s bucket=%s prefix=%s deleted=%s",
-            current_user.id, bucket.acervo_bucket, prefix, deleted,
-        )
-        return {"message": f"Directorio eliminado ({deleted} objetos)"}
-
-    if media_id.startswith("bucket:"):
-        try:
-            _, bucket_id_str, name = media_id.split(":", 2)
-            bucket_id = int(bucket_id_str)
-        except ValueError:
-            raise HTTPException(status_code=400, detail="ID sintetico invalido")
-        bucket = media_service.resolve_bucket_or_403(bucket_id, current_user, db)
-        client = AcervoClient.for_bucket(bucket)
-        client.delete_file(name)
-        incr(COUNTER_MEDIA_DELETES)
-        logger.info("action=media.delete.bucket_only user_id=%s bucket=%s name=%s", current_user.id, bucket_id, name)
-        return {"message": "Archivo eliminado del bucket"}
-
-    try:
-        media_int = int(media_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="ID invalido")
-
-    item = db.query(Media).filter(Media.id == media_int).first()
-    if not item:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Archivo no encontrado")
-
-    if item.bucket_id:
-        bucket = media_service.resolve_bucket_or_403(item.bucket_id, current_user, db)
-        client = AcervoClient.for_bucket(bucket)
-        client.delete_file(item.name)
-
-    db.delete(item)
-    db.commit()
-    incr(COUNTER_MEDIA_DELETES)
-    logger.info("action=media.delete user_id=%s media_id=%s name=%s", current_user.id, item.id, item.name)
-    return {"message": "Archivo eliminado exitosamente"}
 
 
 @router.post("/carpetas", status_code=status.HTTP_201_CREATED, response_model=FolderResponse)
@@ -318,3 +256,67 @@ async def eliminar_carpeta(
         current_user.id, folder.bucket_id, folder.path,
     )
     return {"message": "Carpeta eliminada"}
+
+
+@router.delete("/{media_id:path}")
+async def eliminar_archivo(
+    media_id: str,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(verify_csrf),
+):
+    if media_id.startswith("dir:"):
+        try:
+            _, bucket_id_str, name = media_id.split(":", 2)
+            bucket_id = int(bucket_id_str)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="ID de directorio invalido")
+        if current_user.role != ADMIN_ROLE:
+            raise HTTPException(status_code=403, detail="Solo admin puede borrar directorios")
+        bucket = media_service.resolve_bucket_or_403(bucket_id, current_user, db)
+        client = AcervoClient.for_bucket(bucket)
+        prefix = name if name.endswith("/") else f"{name}/"
+        deleted = client.delete_prefix(prefix)
+        db.query(Media).filter(
+            Media.bucket_id == bucket.id,
+            Media.name.like(f"{prefix}%"),
+        ).delete(synchronize_session=False)
+        db.commit()
+        incr(COUNTER_MEDIA_DELETES)
+        logger.info(
+            "action=media.delete.dir user_id=%s bucket=%s prefix=%s deleted=%s",
+            current_user.id, bucket.acervo_bucket, prefix, deleted,
+        )
+        return {"message": f"Directorio eliminado ({deleted} objetos)"}
+
+    if media_id.startswith("bucket:"):
+        try:
+            _, bucket_id_str, name = media_id.split(":", 2)
+            bucket_id = int(bucket_id_str)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="ID sintetico invalido")
+        bucket = media_service.resolve_bucket_or_403(bucket_id, current_user, db)
+        client = AcervoClient.for_bucket(bucket)
+        client.delete_file(name)
+        incr(COUNTER_MEDIA_DELETES)
+        logger.info("action=media.delete.bucket_only user_id=%s bucket=%s name=%s", current_user.id, bucket_id, name)
+        return {"message": "Archivo eliminado del bucket"}
+
+    try:
+        media_int = int(media_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="ID invalido")
+
+    item = db.query(Media).filter(Media.id == media_int).first()
+    if not item:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Archivo no encontrado")
+
+    if item.bucket_id:
+        bucket = media_service.resolve_bucket_or_403(item.bucket_id, current_user, db)
+        client = AcervoClient.for_bucket(bucket)
+        client.delete_file(item.name)
+
+    db.delete(item)
+    db.commit()
+    incr(COUNTER_MEDIA_DELETES)
+    logger.info("action=media.delete user_id=%s media_id=%s name=%s", current_user.id, item.id, item.name)
+    return {"message": "Archivo eliminado exitosamente"}

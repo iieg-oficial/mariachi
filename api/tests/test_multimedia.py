@@ -10,11 +10,11 @@ from tests.conftest import ADMIN_PREFIX
 
 
 class FakeAcervoClient:
-    instances: list["FakeAcervoClient"] = []
+    instances: dict[str, "FakeAcervoClient"] = {}
 
-    def __init__(self, *_, **__):
+    def __init__(self, bucket_name: str, *_, **__):
+        self.bucket_name = bucket_name
         self.objects: dict[str, dict] = {}
-        FakeAcervoClient.instances.append(self)
 
     @classmethod
     def reset(cls):
@@ -22,7 +22,10 @@ class FakeAcervoClient:
 
     @classmethod
     def for_bucket(cls, bucket):
-        return cls(bucket.acervo_bucket)
+        name = bucket.acervo_bucket
+        if name not in cls.instances:
+            cls.instances[name] = cls(name)
+        return cls.instances[name]
 
     @classmethod
     def invalidate_cache(cls, bucket_name=None):
