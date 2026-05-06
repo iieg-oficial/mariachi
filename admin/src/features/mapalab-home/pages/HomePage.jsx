@@ -16,7 +16,7 @@ import {
     publicarSeccion,
     saveBorrador,
 } from '@features/mapalab-home/api/homeService';
-import { SECTION_DEFAULTS, SECTION_KEYS, SECTION_REGISTRY } from '@features/mapalab-home/components/sectionEditors';
+import { SECTION_DEFAULTS, SECTION_KEYS, SECTION_REGISTRY } from '@features/mapalab-home/components/sectionRegistry';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import usePresencia from '@shared/hooks/usePresencia';
 import PresenciaIndicator from '@shared/components/PresenciaIndicator';

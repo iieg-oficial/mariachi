@@ -22,7 +22,7 @@ export default function LayerIdsField({ value = [], onChange, disabled }) {
     const [modalOpen, setModalOpen] = useState(false);
     const [search, setSearch] = useState('');
 
-    const ids = Array.isArray(value) ? value : [];
+    const ids = useMemo(() => Array.isArray(value) ? value : [], [value]);
 
     const leaves = useMemo(() => flattenLeaves(rawTree), [rawTree]);
     const byId = useMemo(() => new Map(leaves.map((l) => [l.id, l])), [leaves]);
