@@ -9,6 +9,23 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.40.5] - 2026-05-06
+
+### Fix(admin): warning al re-resetear contraseña pendiente
+
+`handleResetPassword` en `admin/src/features/users/pages/UsersPage.jsx` no advertía al admin cuando el usuario destino ya tenía `must_change_password=true`. El admin podía reiniciar dos veces consecutivas, compartir la primera temp_password al usuario, y dejar la segunda vigente en la BD — el usuario intentaba loguearse con la primera y obtenía 401 "Credenciales inválidas".
+
+- Modal de confirmación ahora muestra aviso visible cuando ya hay un reset pendiente, indicando que la temp anterior dejará de servir al continuar.
+- `okButtonProps: { danger: true }` en ese caso para reforzar visualmente la consecuencia.
+- Tras el reset se llama `fetchUsers()` para que la lista refleje el estado actualizado de `must_change_password`.
+- Texto del modal de éxito reescrito para dejar claro que la contraseña solo se muestra una vez.
+
+### Reproducido
+
+Localmente: dos POST `/usuarios/{id}/restablecer-contrasena` consecutivos producen dos temp distintas; login con la primera devuelve 401, con la segunda 200. Confirma que el bug en GCP era el doble reset humano (logs mostraban dos POST 200 separados por 3:21 min) y no un problema del backend.
+
+---
+
 ## [0.40.4] - 2026-05-06
 
 ### Discord notifier — visibilidad + documentar variables

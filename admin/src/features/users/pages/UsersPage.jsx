@@ -110,26 +110,34 @@ export default function Users() {
     };
 
     const handleResetPassword = (record) => {
+        const hasPendingReset = record.must_change_password;
         Modal.confirm({
             title: '¿Resetear contraseña?',
             content: (
                 <div>
                     <p>Se generará una nueva contraseña temporal para <strong>{record.name}</strong>.</p>
                     <p>El usuario deberá cambiarla en su próximo inicio de sesión.</p>
+                    {hasPendingReset && (
+                        <p style={{ color: '#d4380d', marginTop: 12 }}>
+                            <strong>Atención:</strong> este usuario ya tiene una contraseña temporal pendiente de uso. Si continúas, la anterior dejará de servir y deberás compartir la nueva.
+                        </p>
+                    )}
                 </div>
             ),
             okText: 'Resetear',
             cancelText: 'Cancelar',
+            okButtonProps: { danger: hasPendingReset },
             onOk: async () => {
                 try {
                     const response = await api.post(`/usuarios/${record.id}/restablecer-contrasena`);
+                    fetchUsers();
                     Modal.info({
                         title: 'Contraseña Reseteada',
                         content: (
                             <div>
                                 <p>La nueva contraseña temporal es:</p>
                                 <Title level={4} copyable>{response.data.temp_password}</Title>
-                                <p>Por favor compártela con el usuario de forma segura.</p>
+                                <p>Esta contraseña solo se mostrará una vez. Cópiala y compártela con el usuario antes de cerrar.</p>
                             </div>
                         ),
                         width: isMobile ? '100%' : 400,
