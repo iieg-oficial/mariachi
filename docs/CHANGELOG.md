@@ -9,6 +9,86 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.35.0] - 2026-05-06
+
+### Backend (api) — Plataforma de formularios dinamicos SIEEJ (Fase 2, admin)
+
+Aterriza los endpoints admin del plan en
+`sieej/docs/planes/plataforma-formularios.md` (seccion 5.2). Habilita
+el constructor de formularios desde mariachi/admin (Fase 4).
+
+#### Estructura
+
+- `app/api/routes/sieej_admin.py` (single-file con `/stats`)
+  convertido a paquete `app/api/routes/sieej_admin/` con subrouters:
+  `stats` (existente, sin cambios), `formularios`, `grupos`. Todo
+  bajo el prefix `/sieej`, gateado por `staff_dep` ya registrado a
+  nivel de app (tetlamamakani + editora).
+- `app/services/sieej/formularios_admin_service.py`: CRUD,
+  publicar/cerrar, asignaciones (reemplazo en bloque), listar envios
+  (paginado + filtro por estado), bump de version cuando se edita la
+  definicion de un formulario que ya tiene envios. Delete
+  inteligente: si tiene envios, lo cierra en vez de borrar.
+- `app/services/sieej/grupos_service.py`: CRUD, miembros (reemplazo
+  en bloque), validacion de borrado solo si no hay formularios
+  asignados.
+
+#### Endpoints (17 nuevos)
+
+Formularios:
+- `GET    /sieej/formularios` (filtros: estado, slug)
+- `POST   /sieej/formularios` (estado=borrador, valida definicion)
+- `GET    /sieej/formularios/:id`
+- `PUT    /sieej/formularios/:id` (bumpea version si hay envios)
+- `POST   /sieej/formularios/:id/publicar`
+- `POST   /sieej/formularios/:id/cerrar`
+- `DELETE /sieej/formularios/:id` (cierra si hay envios)
+- `PUT    /sieej/formularios/:id/asignaciones` (grupos+usuarios)
+- `GET    /sieej/formularios/:id/envios` (paginado: total+items)
+- `GET    /sieej/formularios/:id/envios/:envio_id`
+
+Grupos:
+- `GET    /sieej/grupos`
+- `POST   /sieej/grupos`
+- `GET    /sieej/grupos/:id`
+- `PUT    /sieej/grupos/:id`
+- `DELETE /sieej/grupos/:id` (400 si tiene formularios asignados)
+- `PUT    /sieej/grupos/:id/usuarios` (reemplaza miembros)
+- `GET    /sieej/grupos/:id/usuarios`
+
+#### Tests
+
+19 tests nuevos en `tests/test_sieej_admin_formularios.py` (13) y
+`tests/test_sieej_admin_grupos.py` (6). Cubren: CRUD, validacion de
+definicion, publicar/cerrar, asignaciones reemplazo, bump de version
+con/sin cambio de definicion, delete inteligente con/sin envios,
+listar envios paginado, manejo de duplicados (409) y FKs invalidas
+(400). Suite total mariachi: 308 passed, 0 failed.
+
+#### Pendiente
+
+- Fase 3: refactor del frontend SIEEJ (renderer generico de formularios).
+- Fase 4: UI del constructor visual en mariachi/admin
+  (DefinicionEditor, FieldEditor, AsignacionesEditor, EnviosTable).
+- Fase 5: migracion del wizard SIEEJ existente al modelo dinamico.
+
+### Admin (UI) — alineacion de namespace
+
+- `features/sieej-formularios/pages/FormulariosPage.jsx`: las 5
+  llamadas se cambian de `/admin/sieej/formularios` (namespace que
+  el plan original proponia y nadie usa) a `/sieej/formularios`
+  (namespace real, alineado con el `sieej_admin.router` existente).
+  Esto reemplaza el commit anterior `0.33.4` que hizo el ajuste a
+  `/admin/sieej`. Ahora la pagina sí responde porque el backend
+  expone los endpoints.
+
+### Bump
+
+- `api/pyproject.toml` -> 0.35.0.
+- `admin/package.json` -> 0.35.0.
+
+---
+
 ## [0.34.0] - 2026-05-06
 
 ### Backend (api) — Plataforma de formularios dinamicos SIEEJ (Fase 1, respondent)

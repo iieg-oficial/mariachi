@@ -17,7 +17,7 @@ export default function FormulariosPage() {
 
     const loadFormularios = useCallback(async () => {
         try {
-            const res = await api.get('/admin/sieej/formularios');
+            const res = await api.get('/sieej/formularios');
             setFormularios(res.data);
         } catch (err) {
             if (err?.response?.status !== 404) {
@@ -31,7 +31,7 @@ export default function FormulariosPage() {
 
     useEffect(() => {
         let cancelled = false;
-        api.get('/admin/sieej/formularios')
+        api.get('/sieej/formularios')
             .then((res) => { if (!cancelled) setFormularios(res.data); })
             .catch((err) => {
                 if (err?.response?.status !== 404) message.error('Error al cargar formularios');
@@ -62,7 +62,7 @@ export default function FormulariosPage() {
             cancelText: 'Cancelar',
             onOk: async () => {
                 try {
-                    await api.delete(`/admin/sieej/formularios/${record.id}`);
+                    await api.delete(`/sieej/formularios/${record.id}`);
                     message.success('Formulario eliminado');
                     loadFormularios();
                 } catch {
@@ -75,10 +75,10 @@ export default function FormulariosPage() {
     const handleSubmit = async (values) => {
         try {
             if (editing) {
-                await api.put(`/admin/sieej/formularios/${editing.id}`, values);
+                await api.put(`/sieej/formularios/${editing.id}`, values);
                 message.success('Formulario actualizado');
             } else {
-                await api.post('/admin/sieej/formularios', values);
+                await api.post('/sieej/formularios', values);
                 message.success('Formulario creado');
             }
             setModalOpen(false);
@@ -142,7 +142,7 @@ export default function FormulariosPage() {
                 description={
                     <Paragraph style={{ margin: 0 }}>
                         Administrador genérico de formularios. Esta página apunta a
-                        <code> /admin/sieej/formularios</code>; el backend expondrá esos
+                        <code> /sieej/formularios</code>; el backend expondrá esos
                         endpoints en la Fase 2 del plan de plataforma de formularios.
                     </Paragraph>
                 }

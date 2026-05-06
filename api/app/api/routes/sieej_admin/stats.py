@@ -6,7 +6,7 @@ from app.core.database import get_db
 from app.models.project import Project, UserProject
 from app.models.sieej import BasesDatos, Enlace, General
 
-router = APIRouter(prefix="/sieej", tags=["sieej-admin"])
+router = APIRouter()
 
 
 @router.get("/stats")
