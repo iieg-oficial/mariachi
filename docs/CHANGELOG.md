@@ -9,6 +9,64 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.37.0] - 2026-05-06
+
+### Backend (api) — Plataforma de formularios SIEEJ — Fase 5 (seed + backfill)
+
+#### Migration
+
+- `b5c6d7e8f9aa_seed_sieej_levantamiento.py` (down_revision
+  `a4b5c6d7e8f9`): inserta el formulario `sieej-levantamiento` con la
+  definicion JSON completa que replica el wizard SIEEJ existente
+  (4 steps: general form + enlaces repeater + bases_datos repeater
+  con tabs + resumen summary). Estado=activo, version=1. Idempotente.
+  Aplicado en prod local; verificacion ok.
+
+#### Backfill
+
+- `scripts/backfill_sieej_levantamiento.py`: para cada usuario con
+  data en `sieej.general` / `sieej.enlace` / `sieej.bases_datos`,
+  crea (si no existe) un `envio_formulario` apuntando al formulario
+  seed con `datos` JSONB armados a partir de las 3 tablas viejas y
+  `envio_archivo` para diccionarios. Modo `--dry-run` valida sin
+  escribir. Idempotente (skip si ya existe el envio).
+- Heuristica de estado: `enviado` si general + 1+ enlace + 1+ bd;
+  en cualquier otro caso `en_proceso`. Eventos `iniciado` y
+  `enviado` (cuando aplica) registrados en `envio_evento`.
+- 7 tests cubren: seed valido contra validator, backfill completo,
+  parcial (en_proceso), idempotencia, dry-run no-escribe, error
+  cuando falta seed, datos generados pasan `datos_validator`.
+
+### Admin (UI) — Plataforma de formularios SIEEJ — Fase 4 v2 (visual editor)
+
+#### Nuevo
+
+- `features/sieej-formularios/components/visualEditor/`:
+  - `SortableItem.jsx`: wrapper con drag handle (@dnd-kit).
+  - `StepsList.jsx`: lista sortable de steps con add/remove/reorder.
+  - `FieldsList.jsx`: lista sortable de fields por step.
+  - `StepDrawer.jsx`: editor de step (id, type, title, minItems,
+    maxItems, itemLabel, tabs).
+  - `FieldDrawer.jsx`: editor de field con todos los properties
+    (label/type/required, options inline o catalog, validation
+    pattern/min/max/length, showWhen, file bucket/accept/maxSizeMB,
+    tab para repeaters con tabs).
+
+#### Cambiado
+
+- `DefinicionEditor.jsx`: toggle Segmented Visual/JSON. El visual
+  edita la definicion in-memory y la sincroniza con el JSON al
+  cambiar de view. El JSON sigue como escape hatch y como fuente
+  cuando se quiere pegar/editar manualmente. El boton "Guardar"
+  envia siempre el payload actual (sea visual o JSON).
+
+### Bump
+
+- `api/pyproject.toml` -> 0.37.0.
+- `admin/package.json` -> 0.37.0.
+
+---
+
 ## [0.36.0] - 2026-05-06
 
 ### Admin (UI) — Plataforma de formularios SIEEJ (Fase 4, constructor)
