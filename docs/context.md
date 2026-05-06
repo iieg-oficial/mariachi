@@ -2,7 +2,7 @@
 
 > Documento de referencia completo. Leer este archivo proporciona contexto del monorepo sin explorar el codebase.
 
-**Versión:** 0.39.0 · **Última actualización:** 2026-05-06
+**Versión:** 0.39.1 · **Última actualización:** 2026-05-06
 
 ---
 
@@ -529,6 +529,14 @@ Este repo se integra con otros servicios internos vecinos (CMS, visor de mapas, 
 ---
 
 ## Cambios recientes
+
+### 2026-05-06 (v0.39.1)
+
+Detalle completo en `docs/CHANGELOG.md` §[0.39.1]. Resumen:
+
+- **Config ACERVO endpoint**: `ACERVO_PUBLIC_ENDPOINT=/acervo` (path-only) en `.env.staging` y `.env.development`. Antes era `localhost:9000` que solo funcionaba si el browser corria en el mismo host que MinIO; ahora `to_absolute` genera URLs relativas que el navegador resuelve contra el origen actual via el gateway-hub.
+- **`docker-compose.yml`**: removidas interpolaciones `${VAR}` sin default que sobreescribian con vacio lo que el `env_file:` ya habia inyectado al container. Sin pasar `--env-file` al `docker compose up`, esas lineas dejaban `ACERVO_PUBLIC_ENDPOINT=""` aunque `.env.staging` lo tuviera definido.
+- **`MAPALAB_BACKEND_URL`** apunta a `http://host.docker.internal:3006/api` en dev/staging-on-localhost. `mapalab-nginx-1` proxypasa `/api/*` al backend; permite que mariachi-api invalide el cache del visor sin necesitar acceso al puerto interno del backend de mapalab.
 
 ### 2026-05-06 (v0.39.0)
 

@@ -76,10 +76,7 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-iieg_user}:${POSTGRES_PASSWORD:-iieg_password}@postgres:5432/${POSTGRES_DB:-iieg_portal}
       REDIS_URL: redis://redis:6379/0
-      ACERVO_ENDPOINT: ${ACERVO_ENDPOINT}
-      ACERVO_PUBLIC_ENDPOINT: ${ACERVO_PUBLIC_ENDPOINT}
       ACERVO_USE_SSL: ${ACERVO_USE_SSL:-false}
-      SENTRY_DSN: ${SENTRY_DSN:-}
       SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE:-0.1}
     networks:
       - mariachi_network

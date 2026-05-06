@@ -9,6 +9,25 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.39.1] - 2026-05-06
+
+### Config: ACERVO endpoint y MAPALAB cache en staging-on-localhost
+
+Dos correcciones de configuracion que solo aplican al setup local del staging (no afectan staging GCP ni produccion porque ambos usan su propio `.env.staging`/`.env.production`).
+
+#### Cambiado
+
+- `docker-compose.yml`: removidas las lineas del bloque `environment:` que interpolaban `${ACERVO_ENDPOINT}`, `${ACERVO_PUBLIC_ENDPOINT}` y `${SENTRY_DSN}` sin default. Cuando alguien arrancaba con `docker compose up` sin pasar `--env-file`, esas interpolaciones daban string vacio y **sobreescribian** lo que el `env_file:` ya habia inyectado, dejando el container con `acervo_public_endpoint=""`. Las que tienen default (`ACERVO_USE_SSL: ${ACERVO_USE_SSL:-false}`, `SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE:-0.1}`) se preservan porque su default es seguro.
+- `.env.staging` y `.env.development`: `ACERVO_PUBLIC_ENDPOINT` cambia de `localhost:9000` a `/acervo`. El helper `to_absolute` ya soporta path-only endpoints y genera URLs relativas (`/acervo/<bucket>/<path>`) que el navegador resuelve contra el origen actual via el gateway-hub. Esto permite que iconos de eventos como `iconoUrl=/acervo/mapalab/svg/eventos/mundial-2026-icon.svg` carguen correctamente desde `https://<host>/mapalab/mapa` sin Mixed Content ni violaciones de CSP.
+- `.env.staging` y `.env.development`: `MAPALAB_BACKEND_URL` cambia a `http://host.docker.internal:3006/api`. En este setup `mapalab-backend-1` no expone su puerto al host pero `mapalab-nginx-1` proxypasa `/api/*` al backend en `:3006`. Asi `notify_tree_changed()` puede invalidar el cache del visor cuando se crean/editan capas desde mariachi-admin sin esperar el cron diario. En produccion la URL apunta a la red privada entre VMs (no afectado por este cambio).
+
+#### Notas
+
+- El bug de los iconos del evento (`http:///mapalab/...` con tres barras) se debia a que `ACERVO_PUBLIC_ENDPOINT` llegaba vacio al runtime; ya no aplica con esta config.
+- El mensaje "mapalab refresh-cache fallo tras 3 intentos" en logs de mariachi-api debe desaparecer en dev/staging-on-localhost.
+
+---
+
 ## [0.39.0] - 2026-05-06
 
 ### Eventos: edicion completa de capas con workspaces dinamicos
