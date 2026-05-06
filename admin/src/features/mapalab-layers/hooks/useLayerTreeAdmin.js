@@ -18,8 +18,10 @@ const toAntTreeData = (nodes, parentNodeType = null) =>
 
 export const flattenLeaves = (nodes, acc = []) => {
     for (const n of nodes || []) {
-        if (n.nodeType === 'leaf' && n.workspaceAlias && n.geoserverLayer) {
-            acc.push({ id: n.id, label: n.label, workspace: n.workspaceAlias, layer: n.geoserverLayer });
+        const ws = n.workspaceAlias || n.wmsConfig?.workspace;
+        const layer = n.geoserverLayer || n.wmsConfig?.geoserverLayer;
+        if (n.nodeType === 'leaf' && ws && layer) {
+            acc.push({ id: n.id, label: n.label, workspace: ws, layer });
         }
         if (n.children?.length) flattenLeaves(n.children, acc);
     }

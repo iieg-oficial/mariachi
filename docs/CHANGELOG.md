@@ -9,6 +9,19 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.39.2] - 2026-05-06
+
+### Fix: flattenLeaves lee workspace/layer de wmsConfig
+
+`useLayerTreeAdmin.flattenLeaves` esperaba `n.workspaceAlias` y `n.geoserverLayer` flat en cada nodo del arbol, pero el endpoint publico `/mapalab/api/layers/tree` los expone dentro de `n.wmsConfig.workspace` y `n.wmsConfig.geoserverLayer`. Como resultado, ningun leaf se detectaba y:
+
+- El boton "Editar contenido" del drawer en `CapasField` quedaba siempre deshabilitado con tooltip "Agregala al arbol primero", aunque la capa ya estuviera registrada.
+- El `labelByKey` que distingue capas registradas vs "solo GeoServer" siempre venia vacio, asi que todas las capas se mostraban con tag "solo GeoServer" y se invocaba auto-leaf aunque la capa ya estuviera en el arbol (idempotente, sin daño, pero ruidoso).
+
+`flattenLeaves` ahora hace fallback de `n.workspaceAlias` a `n.wmsConfig?.workspace` y de `n.geoserverLayer` a `n.wmsConfig?.geoserverLayer`. Tras este fix, el boton del drawer se habilita correctamente y `CapasField` distingue capas registradas vs no registradas.
+
+---
+
 ## [0.39.1] - 2026-05-06
 
 ### Config: ACERVO endpoint y MAPALAB cache en staging-on-localhost
