@@ -252,20 +252,30 @@ async def get_style_sld(
     client = GeoServerClient()
     try:
         raw_xml = client.get_sld(ws.geoserver_workspace, bare_style)
+        is_global = client.style_is_global(ws.geoserver_workspace, bare_style)
         shared_by = client.find_layers_using_style(ws.geoserver_workspace, bare_style)
     except GeoServerError as exc:
         raise HTTPException(status_code=502, detail=str(exc))
 
     parsed = parse_sld(raw_xml)
+    editable = parsed.editable and not is_global
+    reason = parsed.reason
+    if is_global:
+        reason = (
+            'Style global de GeoServer; editarlo afectaria a todos los workspaces '
+            'que lo usan. Edita desde el panel de GeoServer o duplicalo como style '
+            f"del workspace '{ws.geoserver_workspace}'."
+        )
     return {
         'workspace': alias,
         'styleName': bare_style,
         'rawXml': parsed.raw_xml,
-        'editable': parsed.editable,
+        'editable': editable,
         'shape': parsed.shape,
-        'reason': parsed.reason,
+        'reason': reason,
         'model': parsed.model.model_dump(by_alias=False) if parsed.model else None,
         'sharedBy': shared_by,
+        'isGlobal': is_global,
     }
 
 

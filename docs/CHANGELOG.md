@@ -9,6 +9,20 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.39.3] - 2026-05-06
+
+### Fix: cargar SLD de styles globales de GeoServer
+
+Capas que tenian asignado un style global de GeoServer (ej. `point`, `line`, `polygon`, `raster` — el default que GeoServer aplica cuando se publica una capa sin style propio) daban `502 — SLD no encontrado: <ws>:<style>` al abrir el tab Simbologia. El cliente solo consultaba `/rest/workspaces/<ws>/styles/<name>.sld`, que devuelve 404 cuando el style vive en el catalogo global.
+
+- `GeoServerClient.get_sld`: si la consulta al workspace devuelve 404, hace fallback a `/rest/styles/<name>.sld` (catalogo global). Antes lanzaba `GeoServerError` directo.
+- Nuevo `GeoServerClient.style_is_global` que detecta si el style vive en el catalogo global del servidor.
+- `GET /administrador/geoserver/styles/{alias}/{style_name}` agrega `isGlobal: bool` a la respuesta. Cuando `isGlobal=true`, fuerza `editable=false` con razon explicativa: editar un global afectaria todos los workspaces que lo usan, asi que el frontend cae al fallback (XML read-only + leyenda renderizada por GeoServer). Para personalizar, hay que duplicar el style al workspace o editarlo desde el panel admin de GeoServer.
+
+Sintoma reportado: el evento Mundial 2026 mostraba "Error al cargar el SLD — Request failed with status code 502" al abrir el tab Simbologia de cualquier capa auto. Tras el fix, el editor abre el SLD global (read-only) con leyenda y el admin puede ver el style aplicado sin poder modificar accidentalmente el global.
+
+---
+
 ## [0.39.2] - 2026-05-06
 
 ### Fix: flattenLeaves lee workspace/layer de wmsConfig

@@ -105,15 +105,31 @@ class GeoServerClient:
             return r.content, content_type
 
     def get_sld(self, workspace: str, style_name: str) -> str:
-        url = self._rest_url(f"workspaces/{workspace}/styles/{style_name}.sld")
+        ws_url = self._rest_url(f"workspaces/{workspace}/styles/{style_name}.sld")
+        global_url = self._rest_url(f"styles/{style_name}.sld")
         with httpx.Client(auth=self._auth, timeout=self._timeout) as c:
-            r = c.get(url)
+            r = c.get(ws_url)
             if r.status_code == 404:
-                raise GeoServerError(
-                    f"SLD no encontrado: {workspace}:{style_name}"
-                )
+                r = c.get(global_url)
+                if r.status_code == 404:
+                    raise GeoServerError(
+                        f"SLD no encontrado: {workspace}:{style_name} ni global:{style_name}"
+                    )
             r.raise_for_status()
             return r.text
+
+    def style_is_global(self, workspace: str, style_name: str) -> bool:
+        ws_url = self._rest_url(
+            f"workspaces/{workspace}/styles/{style_name}.xml?quietOnNotFound=true"
+        )
+        with self._client() as c:
+            r = c.get(ws_url)
+            if r.status_code == 200:
+                return False
+        global_url = self._rest_url(f"styles/{style_name}.xml?quietOnNotFound=true")
+        with self._client() as c:
+            r = c.get(global_url)
+            return r.status_code == 200
 
     def style_exists(self, workspace: str, style_name: str) -> bool:
         url = self._rest_url(
