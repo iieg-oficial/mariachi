@@ -47,6 +47,11 @@ def _truncate(text: str | None, length: int) -> str:
 def notify_new_reporte(reporte: Reporte) -> None:
     webhook = _resolve_webhook(reporte.source_app)
     if not webhook:
+        logger.warning(
+            "discord_notifier.no_webhook source_app=%s reporte_id=%s "
+            "(define DISCORD_WEBHOOK_<SOURCE> en el env)",
+            reporte.source_app, reporte.id,
+        )
         return
 
     embed = {

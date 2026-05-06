@@ -9,6 +9,22 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.40.4] - 2026-05-06
+
+### Discord notifier — visibilidad + documentar variables
+
+`notify_new_reporte` antes hacía return silencioso si `DISCORD_WEBHOOK_<SOURCE>` no estaba seteado. Ahora loguea `WARNING` con `source_app` y `reporte_id` para que el operador detecte el missing config sin tener que adivinar por qué no llegan reportes a Discord.
+
+### Documentacion
+
+- `.env.staging.example` y `.env.production.example` ahora documentan las tres variables (`DISCORD_WEBHOOK_MAPALAB`, `_SIEEJ`, `_PORTAL`) con valor vacío como placeholder, alineado con `.env.development.example` que ya las tenía.
+
+### Probado en local
+
+`POST /api/public/reportes` con `source_app=mapalab` y un webhook de Discord seteado en `.env.staging` (no versionado) entrega el embed correctamente al canal (Discord responde 204).
+
+---
+
 ## [0.40.3] - 2026-05-06
 
 ### Fix(test): sider-config tras habilitar grupo SIEEJ
