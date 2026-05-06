@@ -9,6 +9,47 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.40.2] - 2026-05-06
+
+### Admin (UI) — habilitar grupo SIEEJ en sidebar
+
+`app/sider-config.jsx` ahora deja el grupo SIEEJ habilitado
+(`disabled: true` removido) para que `tetlamamakani` y los miembros
+del proyecto vean el menú lateral con:
+
+- **Formularios** (`/sieej/formularios`) — list page del constructor
+  visual + JSON.
+- **Grupos** (`/sieej/grupos`) — CRUD de grupos con miembros (NUEVO
+  item, antes solo estaba la ruta sin entrada en sidebar).
+- *Agregar dependencia* — placeholder permanece pero queda
+  `disabled: true` (no implementado).
+
+Esto permite probar el modo edición de formularios SIEEJ desde la
+UI sin tener que escribir la URL a mano.
+
+### Bump
+
+- `api/pyproject.toml` -> 0.40.2.
+- `admin/package.json` -> 0.40.2.
+
+---
+
+## [0.40.1] - 2026-05-06
+
+### Cleanup: imports tras refactor CamelCaseInput
+
+Tras el refactor del 0.39.0 que cambió la clase base de varios schemas de `BaseModel` a `CamelCaseInput`, quedaron imports de `BaseModel` sin usar y orden de imports fuera de PEP8 en 8 archivos. Ruff/isort limpio:
+
+- `api/app/schemas/{home_section,layer_metadata,media,media_bucket,menu_item,page,project,reporte}.py`: `BaseModel` removido cuando ya no se usaba; `CamelCaseInput` reordenado al bloque correcto.
+
+Sin cambios de comportamiento; solo limpieza estatica.
+
+### Documentacion
+
+- `docs/context.md` actualizado a 0.40.1; agregadas notas sobre 0.39.x (workspaces dinamicos, auto-leaf, drawer reutilizable, fix global camelCase, fix SLD globales) y 0.40.0 (sieej-levantamiento pdfTemplate). Tambien referencia al rename `mundial -> eventos` ahora aplicado por `mapalab-dataengine 1.12.x` en su migrador (`run_migrate_mapalab_card.py`).
+
+---
+
 ## [0.40.0] - 2026-05-06
 
 ### Backend (api) — sieej-levantamiento: pdfTemplate al step resumen

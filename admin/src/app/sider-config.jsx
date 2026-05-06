@@ -93,7 +93,6 @@ export const PROJECT_REGISTRY = {
     sieej: {
         label: 'SIEEJ',
         icon: <ProjectOutlined />,
-        disabled: true,
         items: [
             {
                 key: '/sieej/formularios',
@@ -102,10 +101,17 @@ export const PROJECT_REGISTRY = {
                 icon: <FormOutlined />,
             },
             {
+                key: '/sieej/grupos',
+                path: '/sieej/grupos',
+                label: 'Grupos',
+                icon: <TeamOutlined />,
+            },
+            {
                 key: '/sieej/agregar-dependencia',
                 path: '/sieej/agregar-dependencia',
                 label: 'Agregar dependencia',
                 icon: <UserAddOutlined />,
+                disabled: true,
                 allowedGlobalRoles: ['tetlamamakani'],
             },
         ],
