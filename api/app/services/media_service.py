@@ -2,6 +2,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import ADMIN_ROLE
+from app.core.bucket_policies import get_hidden_prefixes
 from app.models.media import Media, MediaFolder
 from app.models.media_bucket import MediaBucket
 from app.models.project import UserProject
@@ -135,7 +136,7 @@ def listar_media(
         prefix = folder.lstrip("/").rstrip("/") + "/"
     bucket_objects = client.list_objects(prefix=prefix, recursive=recursive)
 
-    hidden_prefixes = ("reportes/",) if bucket.acervo_bucket == "mariachi" and not prefix else ()
+    hidden_prefixes = get_hidden_prefixes(bucket.acervo_bucket) if not prefix else ()
     if hidden_prefixes:
         bucket_objects = [
             obj for obj in bucket_objects
@@ -183,13 +184,31 @@ def listar_media(
     return results
 
 
-def ensure_folder_exists(db: Session, clean_folder: str) -> str | None:
+def serialize_folder(folder: MediaFolder) -> dict:
+    return {
+        "id": str(folder.id),
+        "bucket_id": folder.bucket_id,
+        "name": folder.name,
+        "path": folder.path,
+        "parent": folder.parent,
+    }
+
+
+def ensure_folder_exists(db: Session, bucket_id: int, clean_folder: str) -> str:
     if not clean_folder:
-        return None
+        return "/"
     folder_path = f"{clean_folder}/"
-    existing = db.query(MediaFolder).filter(MediaFolder.path == folder_path).first()
+    existing = (
+        db.query(MediaFolder)
+        .filter(
+            MediaFolder.bucket_id == bucket_id,
+            MediaFolder.path == folder_path,
+        )
+        .first()
+    )
     if not existing:
         new_folder = MediaFolder(
+            bucket_id=bucket_id,
             name=clean_folder.rsplit("/", 1)[-1],
             path=folder_path,
             parent=None,

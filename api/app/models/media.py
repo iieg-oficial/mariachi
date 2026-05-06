@@ -1,4 +1,4 @@
-from sqlalchemy import JSON, Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy import JSON, Column, DateTime, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -7,13 +7,20 @@ from app.core.time import utcnow
 
 class MediaFolder(Base):
     __tablename__ = "media_folders"
+    __table_args__ = (
+        UniqueConstraint("bucket_id", "path", name="uq_media_folders_bucket_path"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
+    bucket_id = Column(
+        Integer,
+        ForeignKey("media_buckets.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     name = Column(String, nullable=False)
-    path = Column(String, unique=True, nullable=False, index=True)
+    path = Column(String, nullable=False, index=True)
     parent = Column(String, nullable=True)
-
-    media = relationship("Media", back_populates="folder_rel")
 
 
 class Media(Base):
@@ -27,10 +34,9 @@ class Media(Base):
     size = Column(Integer, nullable=False)
     url = Column(String, nullable=False)
     thumbnail = Column(String, nullable=True)
-    folder = Column(String, ForeignKey("media_folders.path"), default="/", nullable=False, index=True)
+    folder = Column(String, default="/", nullable=False, index=True)
     uploaded_by = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
     uploaded_at = Column(DateTime, default=utcnow, nullable=False)
     metadata_json = Column("metadata", JSON, default=dict)
 
     uploaded_by_user = relationship("Usuario", back_populates="media_uploads")
-    folder_rel = relationship("MediaFolder", back_populates="media", foreign_keys=[folder])

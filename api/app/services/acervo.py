@@ -1,5 +1,5 @@
+import logging
 import os
-from io import BytesIO
 
 import urllib3
 from fastapi import UploadFile
@@ -10,6 +10,7 @@ from app.core.acervo_url import to_absolute
 from app.core.settings import get_settings
 from app.models.media_bucket import MediaBucket
 
+logger = logging.getLogger(__name__)
 settings = get_settings()
 
 
@@ -65,8 +66,13 @@ class AcervoClient:
         try:
             if not self.client.bucket_exists(self.bucket_name):
                 self.client.make_bucket(self.bucket_name)
-        except S3Error:
-            pass
+        except S3Error as exc:
+            logger.warning(
+                "acervo.ensure_bucket_exists bucket=%s code=%s message=%s",
+                self.bucket_name,
+                exc.code,
+                exc.message,
+            )
 
     @classmethod
     def for_bucket(cls, bucket: MediaBucket) -> "AcervoClient":
@@ -82,19 +88,27 @@ class AcervoClient:
             )
         return cls._cache[key]
 
+    @classmethod
+    def invalidate_cache(cls, bucket_name: str | None = None) -> None:
+        if bucket_name is None:
+            cls._cache.clear()
+            return
+        for key in [k for k in cls._cache if k.startswith(f"{bucket_name}:")]:
+            del cls._cache[key]
+
     async def upload_file(self, file: UploadFile, object_name: str) -> str:
         try:
-            file_data = await file.read()
-            file_size = len(file_data)
-
+            stream = file.file
+            stream.seek(0, os.SEEK_END)
+            size = stream.tell()
+            stream.seek(0)
             self.client.put_object(
                 self.bucket_name,
                 object_name,
-                BytesIO(file_data),
-                file_size,
+                stream,
+                size,
                 content_type=file.content_type,
             )
-
             return self.get_file_url(object_name)
         except S3Error as e:
             raise Exception(f"Error uploading file: {str(e)}")
@@ -104,7 +118,24 @@ class AcervoClient:
             self.client.remove_object(self.bucket_name, object_name)
             return True
         except S3Error:
+            logger.exception("acervo.delete_file bucket=%s object=%s", self.bucket_name, object_name)
             return False
+
+    def delete_prefix(self, prefix: str) -> int:
+        if not prefix:
+            return 0
+        deleted = 0
+        for obj in self.client.list_objects(self.bucket_name, prefix=prefix, recursive=True):
+            try:
+                self.client.remove_object(self.bucket_name, obj.object_name)
+                deleted += 1
+            except S3Error:
+                logger.exception(
+                    "acervo.delete_prefix bucket=%s object=%s",
+                    self.bucket_name,
+                    obj.object_name,
+                )
+        return deleted
 
     def list_objects(self, prefix: str = "", recursive: bool = True) -> list[dict]:
         results = []
@@ -134,5 +165,3 @@ class AcervoClient:
 
     def stat_object(self, object_name: str):
         return self.client.stat_object(self.bucket_name, object_name)
-
-
