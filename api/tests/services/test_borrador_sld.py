@@ -58,9 +58,9 @@ class TestApplySld:
     def test_apply_calls_put_sld_and_notifies(self, pobreza_extrema_model):
         b = _build_borrador('seguridad:pobreza_extrema', pobreza_extrema_model)
         ws_query = _mock_workspace_query('seguridad', 'seguridad_y_proteccion_ciudadana')
-        with patch.object(borrador_service, 'GeoServerClient') as MockClient, \
+        with patch.object(borrador_service, 'GeoServerClient') as mock_client, \
                 patch.object(borrador_service, 'notify_tree_changed') as mock_notify:
-            instance = MockClient.return_value
+            instance = mock_client.return_value
             instance.put_sld.return_value = 'fakehash123'
 
             result = borrador_service.apply_borrador(
@@ -83,8 +83,8 @@ class TestApplySld:
     def test_geoserver_error_returns_502(self, pobreza_extrema_model):
         b = _build_borrador('seguridad:pobreza_extrema', pobreza_extrema_model)
         ws_query = _mock_workspace_query('seguridad', 'seguridad_y_proteccion_ciudadana')
-        with patch.object(borrador_service, 'GeoServerClient') as MockClient:
-            instance = MockClient.return_value
+        with patch.object(borrador_service, 'GeoServerClient') as mock_client:
+            instance = mock_client.return_value
             instance.put_sld.side_effect = GeoServerError(
                 'Verificación SHA256 falló'
             )
@@ -120,12 +120,12 @@ class TestPutSldClientLogic:
             with patch.object(client, 'style_exists', return_value=False) as mock_exists, \
                     patch.object(client, 'create_style_entry') as mock_create, \
                     patch.object(client, 'get_sld') as mock_get, \
-                    patch('httpx.Client') as MockHttpx:
+                    patch('httpx.Client') as mock_httpx:
 
                 xml = '<sld:StyledLayerDescriptor xmlns:sld="http://www.opengis.net/sld"/>'
                 mock_get.return_value = xml
 
-                put_response = MockHttpx.return_value.__enter__.return_value.put
+                put_response = mock_httpx.return_value.__enter__.return_value.put
                 put_response.return_value.status_code = 200
 
                 sha = client.put_sld('seguridad', 'foo', xml)
@@ -145,9 +145,9 @@ class TestPutSldClientLogic:
 
             with patch.object(client, 'style_exists', return_value=True), \
                     patch.object(client, 'get_sld', return_value='<different/>'), \
-                    patch('httpx.Client') as MockHttpx:
+                    patch('httpx.Client') as mock_httpx:
 
-                put_response = MockHttpx.return_value.__enter__.return_value.put
+                put_response = mock_httpx.return_value.__enter__.return_value.put
                 put_response.return_value.status_code = 200
 
                 with pytest.raises(GeoServerError, match='SHA256'):

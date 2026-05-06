@@ -1,7 +1,6 @@
 from unittest.mock import MagicMock
 
 import pytest
-
 from app.core.settings import get_settings
 from app.models.reporte import Reporte
 

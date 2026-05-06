@@ -24,7 +24,6 @@ export const NODE_TYPE_OPTIONS = [
     { value: 'leaf', label: NODE_TYPE_LABELS.leaf },
 ];
 
-export const labelForNodeType = (nodeType) => NODE_TYPE_LABELS[nodeType] || nodeType;
 
 export const FIELD_VISIBILITY = {
     slug: ['group', 'leaf'],

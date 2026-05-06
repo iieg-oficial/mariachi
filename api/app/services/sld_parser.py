@@ -275,7 +275,6 @@ def _parse_choropleth(
 
     for idx, rr in enumerate(range_rules):
         lower = rr["lower"]
-        upper = rr["upper"]
         if idx == 0:
             cortes.append(lower)
         else:
