@@ -2,7 +2,8 @@
 
 > Documento de referencia completo. Leer este archivo proporciona contexto del monorepo sin explorar el codebase.
 
-**Versión:** 0.39.3 · **Última actualización:** 2026-05-06
+**Versión:** 0.40.1 · **Última actualización:** 2026-05-06
+
 
 ---
 
@@ -529,6 +530,36 @@ Este repo se integra con otros servicios internos vecinos (CMS, visor de mapas, 
 ---
 
 ## Cambios recientes
+
+### 2026-05-06 (v0.40.1)
+
+Detalle completo en `docs/CHANGELOG.md` §[0.40.1]. Resumen:
+
+- **Cleanup ruff** post-refactor `CamelCaseInput`: 8 schemas con `BaseModel` no usado removido y orden de imports normalizado. Sin cambios de comportamiento.
+
+### 2026-05-06 (v0.40.0)
+
+Detalle en `docs/CHANGELOG.md` §[0.40.0]. Resumen:
+
+- **SIEEJ levantamiento**: `pdfTemplate='sieej-levantamiento'` y `exportPdf=true` inyectados al step `resumen` del formulario para que el frontend descargue el PDF custom con formato del wizard original.
+
+### 2026-05-06 (v0.39.4)
+
+Detalle en `docs/CHANGELOG.md` §[0.39.4]. Resumen:
+
+- **SIEEJ slugs reservados**: `formularios_admin_service.crear()` rechaza con 400 si el `slug` solicitado colisiona con rutas literales del frontend SIEEJ (`inicio-sesion`, `exencion`, `cambiar-contrasena`, `error`, `regisño`, `catalogos`, `schema`, `envio`).
+
+### 2026-05-06 (v0.39.3)
+
+Detalle en `docs/CHANGELOG.md` §[0.39.3]. Resumen:
+
+- **Fix SLD de styles globales**: capas con style global asignado (ej. `point`, `line`, `polygon`) daban `502` al abrir tab Simbología. `GeoServerClient.get_sld` ahora hace fallback de `/rest/workspaces/<ws>/styles/<name>` a `/rest/styles/<name>` (catálogo global). El endpoint expone `isGlobal: bool` y fuerza `editable=false` con razón explicativa para que el frontend caiga al fallback (XML read-only + leyenda renderizada).
+
+### 2026-05-06 (v0.39.2)
+
+Detalle en `docs/CHANGELOG.md` §[0.39.2]. Resumen:
+
+- **Fix `flattenLeaves`**: el árbol publico `/mapalab/api/layers/tree` expone `workspace`/`geoserverLayer` dentro de `wmsConfig`, no flat. Sin este fix, ningún leaf se detectaba y el botón "Editar contenido" del drawer en `CapasField` quedaba siempre deshabilitado.
 
 ### 2026-05-06 (v0.39.1)
 

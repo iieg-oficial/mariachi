@@ -9,31 +9,6 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
-## [0.40.2] - 2026-05-06
-
-### Admin (UI) — habilitar grupo SIEEJ en sidebar
-
-`app/sider-config.jsx` ahora deja el grupo SIEEJ habilitado
-(`disabled: true` removido) para que `tetlamamakani` y los miembros
-del proyecto vean el menú lateral con:
-
-- **Formularios** (`/sieej/formularios`) — list page del constructor
-  visual + JSON.
-- **Grupos** (`/sieej/grupos`) — CRUD de grupos con miembros (NUEVO
-  item, antes solo estaba la ruta sin entrada en sidebar).
-- *Agregar dependencia* — placeholder permanece pero queda
-  `disabled: true` (no implementado).
-
-Esto permite probar el modo edición de formularios SIEEJ desde la
-UI sin tener que escribir la URL a mano.
-
-### Bump
-
-- `api/pyproject.toml` -> 0.40.2.
-- `admin/package.json` -> 0.40.2.
-
----
-
 ## [0.40.1] - 2026-05-06
 
 ### Cleanup: imports tras refactor CamelCaseInput

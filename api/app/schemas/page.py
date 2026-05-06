@@ -1,9 +1,9 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
-from app.schemas._camel import CamelCaseInput
+from pydantic import ConfigDict, Field, field_serializer, field_validator
 
 from app.core.acervo_url import to_absolute_in, to_relative_in
+from app.schemas._camel import CamelCaseInput
 
 
 class PageBase(CamelCaseInput):

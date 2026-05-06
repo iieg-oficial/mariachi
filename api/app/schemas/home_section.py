@@ -2,9 +2,9 @@ from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
-from app.schemas._camel import CamelCaseInput
 
 from app.core.acervo_url import to_absolute, to_absolute_in, to_relative
+from app.schemas._camel import CamelCaseInput
 
 HomeSectionKey = Literal['banner', 'topics', 'guide', 'select', 'faq', 'video', 'footer']
 

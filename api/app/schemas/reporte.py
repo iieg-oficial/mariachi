@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
+
 from app.schemas._camel import CamelCaseInput
 
 ReporteTipo = Literal[
