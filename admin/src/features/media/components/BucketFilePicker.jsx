@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Modal, Pagination, Segmented, Table, Tabs, Input, Space, Typography, Empty, Spin } from 'antd';
-import { AppstoreOutlined, FolderOpenOutlined, UnorderedListOutlined } from '@ant-design/icons';
+import { Modal, Pagination, Segmented, Select, Tabs, Input, Typography, Button } from 'antd';
+import { AppstoreOutlined, CloudUploadOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import { listBucketObjects } from '@features/media/api/mediaService';
+import useAccessibleBuckets from '@features/media/hooks/useAccessibleBuckets';
+import BucketFileUploader from '@features/media/components/BucketFileUploader';
+import BucketFileGrid from '@features/media/components/BucketFileGrid';
+import BucketFileList from '@features/media/components/BucketFileList';
 import { message } from '@shared/services/message';
 
 const { Text } = Typography;
-
-const IMAGE_EXTENSIONS = /\.(jpe?g|png|gif|webp|svg|bmp|avif)$/i;
 const VIEW_MODE_KEY = 'mariachi.bucketFilePicker.viewMode';
 
 function loadViewMode(fallback) {
@@ -14,32 +16,69 @@ function loadViewMode(fallback) {
     try { return window.localStorage.getItem(VIEW_MODE_KEY) || fallback; } catch { return fallback; }
 }
 
-export default function BucketFilePicker({ open, onClose, onSelect, bucketId, prefixes, mode, title = 'Seleccionar archivo' }) {
-    const [viewMode, setViewMode] = useState(() => mode || loadViewMode('grid'));
+export default function BucketFilePicker({
+    open,
+    onClose,
+    onSelect,
+    bucketId,
+    bucketSlugs,
+    prefixes,
+    mode,
+    title = 'Seleccionar archivo',
+    allowUpload = true,
+    uploadAccept,
+}) {
+    const { buckets: accessibleBuckets, loading: bucketsLoading } = useAccessibleBuckets(bucketSlugs);
 
-    useEffect(() => {
-        if (mode) return;
-        try { window.localStorage.setItem(VIEW_MODE_KEY, viewMode); } catch { /* ignore */ }
-    }, [viewMode, mode]);
+    const [activeBucketId, setActiveBucketId] = useState(bucketId ?? null);
+    const [viewMode, setViewMode] = useState(() => mode || loadViewMode('grid'));
     const [activePrefix, setActivePrefix] = useState('');
     const [objects, setObjects] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
-
-    useEffect(() => { setPage(1); }, [search, activePrefix]);
+    const [uploaderOpen, setUploaderOpen] = useState(false);
+    const [reloadKey, setReloadKey] = useState(0);
 
     useEffect(() => {
-        if (!open || !bucketId) return;
+        if (mode) return;
+        try { window.localStorage.setItem(VIEW_MODE_KEY, viewMode); } catch { /* ignore */ }
+    }, [viewMode, mode]);
+
+    useEffect(() => { setPage(1); }, [search, activePrefix, activeBucketId]);
+
+    useEffect(() => {
+        if (bucketId != null) {
+            setActiveBucketId(bucketId);
+            return;
+        }
+        if (accessibleBuckets.length > 0) {
+            setActiveBucketId((prev) => {
+                if (prev != null && accessibleBuckets.some((b) => b.id === prev)) return prev;
+                return accessibleBuckets[0].id;
+            });
+        } else {
+            setActiveBucketId(null);
+        }
+    }, [bucketId, accessibleBuckets]);
+
+    useEffect(() => {
+        if (!open || !activeBucketId) return;
         let cancelled = false;
         setLoading(true);
-        listBucketObjects(bucketId, '')
+        listBucketObjects(activeBucketId, '')
             .then((data) => { if (!cancelled) setObjects(data); })
             .catch(() => message.error('No se pudieron listar los archivos del bucket'))
             .finally(() => { if (!cancelled) setLoading(false); });
         return () => { cancelled = true; };
-    }, [open, bucketId]);
+    }, [open, activeBucketId, reloadKey]);
+
+    const activeBucket = useMemo(
+        () => accessibleBuckets.find((b) => b.id === activeBucketId) || null,
+        [accessibleBuckets, activeBucketId],
+    );
+    const showBucketSelector = !bucketId && accessibleBuckets.length > 1;
 
     const effectivePrefixes = useMemo(() => {
         if (Array.isArray(prefixes) && prefixes.length > 0) return prefixes;
@@ -57,53 +96,63 @@ export default function BucketFilePicker({ open, onClose, onSelect, bucketId, pr
         }
     }, [effectivePrefixes, activePrefix]);
 
-    const scopedObjects = useMemo(() => (
-        activePrefix ? objects.filter((o) => o.name.startsWith(activePrefix)) : objects
-    ), [objects, activePrefix]);
-
-    const filtered = useMemo(() => (
-        search ? scopedObjects.filter((o) => o.name.toLowerCase().includes(search.toLowerCase())) : scopedObjects
-    ), [search, scopedObjects]);
+    const filtered = useMemo(() => {
+        const scoped = activePrefix ? objects.filter((o) => o.name.startsWith(activePrefix)) : objects;
+        return search ? scoped.filter((o) => o.name.toLowerCase().includes(search.toLowerCase())) : scoped;
+    }, [objects, activePrefix, search]);
 
     const paginated = useMemo(() => {
         const start = (page - 1) * pageSize;
         return filtered.slice(start, start + pageSize);
     }, [filtered, page, pageSize]);
 
-    const columns = [
-        {
-            title: 'Archivo',
-            dataIndex: 'name',
-            key: 'name',
-            render: (name) => {
-                const basename = name.split('/').pop();
-                return (
-                    <Space orientation="vertical" size={0} style={{ width: '100%' }}>
-                        <Text strong style={{ wordBreak: 'break-all' }}>{basename}</Text>
-                        <Text type="secondary" style={{ fontSize: 11, wordBreak: 'break-all' }}>{name}</Text>
-                    </Space>
-                );
-            },
-        },
-        {
-            title: 'Tamaño',
-            dataIndex: 'size',
-            key: 'size',
-            width: 90,
-            align: 'right',
-            responsive: ['sm'],
-            render: (size) => {
-                if (!size) return '—';
-                const kb = size / 1024;
-                return kb > 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${kb.toFixed(0)} KB`;
-            },
-        },
-    ];
-
     const tabItems = effectivePrefixes.map((p) => ({
         key: p || '(root)',
         label: p ? p.replace(/\/$/, '') : 'Todo',
     }));
+
+    const handlePick = (record) => {
+        const basename = record.name.split('/').pop();
+        onSelect({
+            nombre: basename,
+            enlace: `/${record.name.startsWith('/') ? record.name.slice(1) : record.name}`,
+            url: record.url,
+            bucketId: activeBucketId,
+        });
+        onClose();
+    };
+
+    const handleUploaded = (uploaded) => {
+        setUploaderOpen(false);
+        setReloadKey((k) => k + 1);
+        if (uploaded?.enlace) {
+            const prefix = uploaded.enlace.replace(/^\//, '');
+            const idx = prefix.indexOf('/');
+            if (idx > 0) setActivePrefix(prefix.slice(0, idx + 1));
+        }
+    };
+
+    const headerStyle = {
+        position: 'sticky',
+        top: 0,
+        zIndex: 11,
+        background: '#fff',
+        padding: '12px 16px',
+        borderBottom: '1px solid #f0f0f0',
+    };
+    const footerStyle = {
+        position: 'sticky',
+        bottom: 0,
+        zIndex: 11,
+        background: '#fff',
+        padding: '8px 16px',
+        borderTop: '1px solid #f0f0f0',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: 8,
+    };
 
     return (
         <Modal
@@ -117,14 +166,21 @@ export default function BucketFilePicker({ open, onClose, onSelect, bucketId, pr
             destroyOnHidden
         >
             <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                <div style={{
-                    position: 'sticky',
-                    top: 0,
-                    zIndex: 11,
-                    background: '#fff',
-                    padding: '12px 16px',
-                    borderBottom: '1px solid #f0f0f0',
-                }}>
+                <div style={headerStyle}>
+                    {showBucketSelector && (
+                        <div style={{ marginBottom: 8 }}>
+                            <Select
+                                value={activeBucketId}
+                                onChange={setActiveBucketId}
+                                loading={bucketsLoading}
+                                style={{ minWidth: 220 }}
+                                options={accessibleBuckets.map((b) => ({
+                                    value: b.id,
+                                    label: b.display_name,
+                                }))}
+                            />
+                        </div>
+                    )}
                     {effectivePrefixes.length > 1 && (
                         <Tabs
                             activeKey={activePrefix || '(root)'}
@@ -134,14 +190,23 @@ export default function BucketFilePicker({ open, onClose, onSelect, bucketId, pr
                             style={{ marginBottom: 8 }}
                         />
                     )}
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                         <Input.Search
                             placeholder="Buscar por nombre"
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             allowClear
-                            style={{ flex: 1 }}
+                            style={{ flex: '1 1 200px', minWidth: 160 }}
                         />
+                        {allowUpload && (
+                            <Button
+                                icon={<CloudUploadOutlined />}
+                                onClick={() => setUploaderOpen(true)}
+                                disabled={!activeBucketId}
+                            >
+                                Subir
+                            </Button>
+                        )}
                         {!mode && (
                             <Segmented
                                 value={viewMode}
@@ -153,140 +218,25 @@ export default function BucketFilePicker({ open, onClose, onSelect, bucketId, pr
                             />
                         )}
                     </div>
+                    {activeBucket && (
+                        <div style={{ marginTop: 6 }}>
+                            <Text type="secondary" style={{ fontSize: 11 }}>
+                                Bucket: {activeBucket.display_name}
+                            </Text>
+                        </div>
+                    )}
                 </div>
 
                 <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '0 16px' }}>
                     {viewMode === 'grid' ? (
-                        loading ? (
-                            <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}>
-                                <Spin />
-                            </div>
-                        ) : paginated.length === 0 ? (
-                            <Empty
-                                image={<FolderOpenOutlined style={{ fontSize: 48, color: '#8c8c8c' }} />}
-                                description={<Text type="secondary">Sin archivos en esta carpeta</Text>}
-                                style={{ padding: 48 }}
-                            />
-                        ) : (
-                            <div style={{
-                                display: 'grid',
-                                gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
-                                gap: 12,
-                                padding: '12px 0',
-                            }}>
-                                {paginated.map((record) => {
-                                    const basename = record.name.split('/').pop();
-                                    const isImage = IMAGE_EXTENSIONS.test(basename);
-                                    return (
-                                        <button
-                                            key={record.name}
-                                            type="button"
-                                            onClick={() => {
-                                                onSelect({
-                                                    nombre: basename,
-                                                    enlace: `/${record.name.startsWith('/') ? record.name.slice(1) : record.name}`,
-                                                    url: record.url,
-                                                });
-                                                onClose();
-                                            }}
-                                            style={{
-                                                border: '1px solid #f0f0f0',
-                                                borderRadius: 8,
-                                                background: '#fff',
-                                                padding: 8,
-                                                cursor: 'pointer',
-                                                display: 'flex',
-                                                flexDirection: 'column',
-                                                alignItems: 'center',
-                                                gap: 6,
-                                                transition: 'border-color .15s, box-shadow .15s',
-                                            }}
-                                            onMouseEnter={(e) => {
-                                                e.currentTarget.style.borderColor = '#1890ff';
-                                                e.currentTarget.style.boxShadow = '0 2px 8px rgba(24,144,255,0.15)';
-                                            }}
-                                            onMouseLeave={(e) => {
-                                                e.currentTarget.style.borderColor = '#f0f0f0';
-                                                e.currentTarget.style.boxShadow = 'none';
-                                            }}
-                                        >
-                                            <div style={{
-                                                width: '100%',
-                                                aspectRatio: '1 / 1',
-                                                background: '#fafafa',
-                                                borderRadius: 6,
-                                                overflow: 'hidden',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                            }}>
-                                                {isImage && record.url ? (
-                                                    <img
-                                                        src={record.url}
-                                                        alt={basename}
-                                                        loading="lazy"
-                                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                                    />
-                                                ) : (
-                                                    <FolderOpenOutlined style={{ fontSize: 32, color: '#bfbfbf' }} />
-                                                )}
-                                            </div>
-                                            <Text style={{ fontSize: 11, textAlign: 'center', wordBreak: 'break-all' }} ellipsis={{ tooltip: basename }}>
-                                                {basename}
-                                            </Text>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        )
+                        <BucketFileGrid records={paginated} loading={loading} onPick={handlePick} />
                     ) : (
-                        <Table
-                            columns={columns}
-                            dataSource={paginated}
-                            rowKey="name"
-                            loading={loading}
-                            size="small"
-                            sticky={{ offsetHeader: 0 }}
-                            pagination={false}
-                            tableLayout="fixed"
-                            onRow={(record) => ({
-                                onClick: () => {
-                                    const basename = record.name.split('/').pop();
-                                    onSelect({
-                                        nombre: basename,
-                                        enlace: `/${record.name.startsWith('/') ? record.name.slice(1) : record.name}`,
-                                        url: record.url,
-                                    });
-                                    onClose();
-                                },
-                                style: { cursor: 'pointer' },
-                            })}
-                            locale={{
-                                emptyText: (
-                                    <Space orientation="vertical" align="center" style={{ padding: 24 }}>
-                                        <FolderOpenOutlined style={{ fontSize: 32, color: '#8c8c8c' }} />
-                                        <Text type="secondary">Sin archivos en esta carpeta</Text>
-                                    </Space>
-                                ),
-                            }}
-                        />
+                        <BucketFileList records={paginated} loading={loading} onPick={handlePick} />
                     )}
                 </div>
 
                 {filtered.length > 0 && (
-                    <div style={{
-                        position: 'sticky',
-                        bottom: 0,
-                        zIndex: 11,
-                        background: '#fff',
-                        padding: '8px 16px',
-                        borderTop: '1px solid #f0f0f0',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        flexWrap: 'wrap',
-                        gap: 8,
-                    }}>
+                    <div style={footerStyle}>
                         <Text type="secondary" style={{ fontSize: 12 }}>
                             {filtered.length} archivo{filtered.length === 1 ? '' : 's'}
                         </Text>
@@ -302,6 +252,18 @@ export default function BucketFilePicker({ open, onClose, onSelect, bucketId, pr
                     </div>
                 )}
             </div>
+
+            {allowUpload && (
+                <BucketFileUploader
+                    open={uploaderOpen}
+                    onClose={() => setUploaderOpen(false)}
+                    onUploaded={handleUploaded}
+                    bucketId={activeBucketId}
+                    prefixes={effectivePrefixes.length ? effectivePrefixes : ['']}
+                    title={activeBucket ? `Subir a ${activeBucket.display_name}` : 'Subir archivo'}
+                    accept={uploadAccept}
+                />
+            )}
         </Modal>
     );
 }

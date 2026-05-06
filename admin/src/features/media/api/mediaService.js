@@ -112,16 +112,6 @@ export const getMediaFiles = async (filters = {}) => {
     }
 };
 
-export const getMediaFile = async (id) => {
-    try {
-        const response = await api.get(`/multimedia/${id}`);
-        return response.data;
-    } catch (error) {
-        console.error('Error fetching media file:', error);
-        throw error;
-    }
-};
-
 export const uploadMediaFile = async (file, options = {}) => {
     try {
         const formData = new FormData();
@@ -230,9 +220,11 @@ export const deleteMultipleFiles = async (ids) => {
 };
 
 
-export const getFolders = async () => {
+export const getFolders = async (bucketId) => {
     try {
-        const response = await api.get('/multimedia/carpetas');
+        if (!bucketId) return [];
+        const params = new URLSearchParams({ bucket_id: String(bucketId) });
+        const response = await api.get(`/multimedia/carpetas?${params.toString()}`);
         return response.data;
     } catch (error) {
         console.error('Error fetching folders:', error);
@@ -240,9 +232,9 @@ export const getFolders = async () => {
     }
 };
 
-export const createFolder = async (name, parent = null) => {
+export const createFolder = async (bucketId, name, parent = null) => {
     try {
-        const response = await api.post('/multimedia/carpetas', { name, parent });
+        const response = await api.post('/multimedia/carpetas', { bucket_id: bucketId, name, parent });
         return response.data;
     } catch (error) {
         console.error('Error creating folder:', error);
@@ -351,7 +343,6 @@ export default {
     getBuckets,
     listBucketObjects,
     getMediaFiles,
-    getMediaFile,
     uploadMediaFile,
     uploadMultipleFiles,
     updateMediaFile,
