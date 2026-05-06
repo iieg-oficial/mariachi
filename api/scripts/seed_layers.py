@@ -27,12 +27,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from sqlalchemy import delete, text  # noqa: E402
 from sqlalchemy.dialects.postgresql import insert  # noqa: E402
-
-from app.core.database import _ensure_dataengine_engine  # noqa: E402
-import app.core.database as database  # noqa: E402
-from app.models.layer import InitialLayerOrder, Layer, Workspace  # noqa: E402
 from sqlalchemy.orm import Session  # noqa: E402
 
+import app.core.database as database  # noqa: E402
+from app.core.database import _ensure_dataengine_engine  # noqa: E402
+from app.models.layer import InitialLayerOrder, Layer, Workspace  # noqa: E402
 
 VALID_NODE_TYPES = {"tema", "category", "label", "group", "leaf"}
 
@@ -226,7 +225,7 @@ def main() -> int:
     print(f"[seed] temas: {len(trees)}")
     print(f"[seed] total filas: {len(flat)}")
     print(f"[seed] initial_order: {len(initial_order)} capas")
-    print(f"[seed] por node_type: ", end="")
+    print("[seed] por node_type: ", end="")
     counts: dict[str, int] = {}
     for r in flat:
         counts[r["node_type"]] = counts.get(r["node_type"], 0) + 1

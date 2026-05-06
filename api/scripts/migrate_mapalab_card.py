@@ -5,12 +5,10 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from sqlalchemy import text
-from sqlalchemy.dialects.postgresql import insert
-
-from app.core.database import _ensure_dataengine_engine
-import app.core.database as database
 from sqlalchemy.orm import Session
 
+import app.core.database as database
+from app.core.database import _ensure_dataengine_engine
 
 TRUE_VALUES = {'1', 'true', 't', 'yes', 'sí', 'si', 'y'}
 FALSE_VALUES = {'0', 'false', 'f', 'no', 'n'}
