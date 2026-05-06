@@ -43,7 +43,7 @@ export const PLATFORM_ITEMS = [
     {
         key: '/reportes',
         path: '/reportes',
-        label: 'Reportes',
+        label: 'Colibri',
         icon: <BugOutlined />,
         allowedGlobalRoles: ['tetlamamakani', 'editora'],
         showReporteBadge: true,

@@ -12,6 +12,26 @@ const { Dragger } = Upload;
 const { Search } = Input;
 const { Option } = Select;
 
+const isDocumentType = (type) => {
+    if (!type) return false;
+    if (type.startsWith('image/')) return false;
+    const docPrefixes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats',
+        'application/vnd.ms-excel', 'application/vnd.ms-powerpoint',
+        'application/json', 'application/xml', 'application/geo+json',
+        'text/'];
+    return docPrefixes.some((p) => type.startsWith(p));
+};
+
+const renderTypeTag = (type, isDir) => {
+    if (isDir) return <Tag color="orange">CARPETA</Tag>;
+    if (!type) return <Tag>—</Tag>;
+    let color = 'default';
+    if (type.startsWith('image/')) color = 'blue';
+    if (type === 'application/pdf') color = 'red';
+    const label = type.split('/')[1]?.toUpperCase() || type.toUpperCase();
+    return <Tag color={color}>{label}</Tag>;
+};
+
 const Media = () => {
     const { isMobile } = useIsMobile();
     const [loading, setLoading] = useState(true);
@@ -19,6 +39,7 @@ const Media = () => {
     const [selectedBucketId, setSelectedBucketId] = useState(null);
     const [mediaFiles, setMediaFiles] = useState([]);
     const [folders, setFolders] = useState([]);
+    const [bucketStats, setBucketStats] = useState({ total: 0, images: 0, documents: 0, totalSize: 0 });
     const [currentPath, setCurrentPath] = useState('');
     const [selectedType, setSelectedType] = useState(null);
     const [searchText, setSearchText] = useState('');
@@ -33,9 +54,9 @@ const Media = () => {
     const [folderForm] = Form.useForm();
     const [editForm] = Form.useForm();
 
-    const loadFolders = useCallback(async () => {
+    const loadFolders = useCallback(async (bucketId) => {
         try {
-            const data = await mediaService.getFolders();
+            const data = await mediaService.getFolders(bucketId);
             setFolders(data);
         } catch {
             message.error('Error al cargar carpetas');
@@ -43,6 +64,8 @@ const Media = () => {
     }, []);
 
     const loadMediaFiles = useCallback(async () => {
+        if (!selectedBucketId) return;
+        setLoading(true);
         try {
             const data = await mediaService.getMediaFiles({
                 bucketId: selectedBucketId,
@@ -59,13 +82,31 @@ const Media = () => {
         }
     }, [selectedBucketId, currentPath, selectedType, searchText]);
 
+    const loadBucketStats = useCallback(async () => {
+        if (!selectedBucketId) return;
+        try {
+            const data = await mediaService.getMediaFiles({
+                bucketId: selectedBucketId,
+                recursive: true,
+            });
+            const files = (data || []).filter(f => !f.isDir);
+            setBucketStats({
+                total: files.length,
+                images: files.filter(f => f.type?.startsWith('image/')).length,
+                documents: files.filter(f => isDocumentType(f.type)).length,
+                totalSize: files.reduce((sum, f) => sum + (f.size || 0), 0),
+            });
+        } catch {
+            /* stats no críticas */
+        }
+    }, [selectedBucketId]);
+
     useEffect(() => {
         let cancelled = false;
-        Promise.all([mediaService.getBuckets(), mediaService.getFolders()])
-            .then(([bucketsData, foldersData]) => {
+        mediaService.getBuckets()
+            .then((bucketsData) => {
                 if (cancelled) return;
                 setBuckets(bucketsData);
-                setFolders(foldersData);
                 if (bucketsData.length > 0) {
                     setSelectedBucketId((prev) => {
                         if (prev != null) return prev;
@@ -74,58 +115,19 @@ const Media = () => {
                     });
                 }
             })
-            .catch(() => message.error('Error al cargar datos iniciales'));
+            .catch(() => message.error('Error al cargar buckets'));
         return () => { cancelled = true; };
     }, []);
 
-    const [bucketStats, setBucketStats] = useState({ total: 0, images: 0, documents: 0, totalSize: 0 });
-
-    const isDocumentType = (type) => {
-        if (!type) return false;
-        if (type.startsWith('image/')) return false;
-        const docPrefixes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats',
-            'application/vnd.ms-excel', 'application/vnd.ms-powerpoint',
-            'application/json', 'application/xml', 'application/geo+json',
-            'text/'];
-        return docPrefixes.some((p) => type.startsWith(p));
-    };
-
     useEffect(() => {
         if (!selectedBucketId) return;
-        let cancelled = false;
-        mediaService.getMediaFiles({
-            bucketId: selectedBucketId,
-            recursive: true,
-        })
-            .then((data) => {
-                if (cancelled) return;
-                const files = (data || []).filter(f => !f.isDir);
-                setBucketStats({
-                    total: files.length,
-                    images: files.filter(f => f.type?.startsWith('image/')).length,
-                    documents: files.filter(f => isDocumentType(f.type)).length,
-                    totalSize: files.reduce((sum, f) => sum + (f.size || 0), 0),
-                });
-            })
-            .catch(() => {});
-        return () => { cancelled = true; };
-    }, [selectedBucketId]);
+        loadFolders(selectedBucketId);
+        loadBucketStats();
+    }, [selectedBucketId, loadFolders, loadBucketStats]);
 
     useEffect(() => {
-        if (!selectedBucketId) return;
-        let cancelled = false;
-        mediaService.getMediaFiles({
-            bucketId: selectedBucketId,
-            folder: currentPath,
-            type: selectedType,
-            search: searchText,
-            recursive: Boolean(searchText),
-        })
-            .then((data) => { if (!cancelled) setMediaFiles(data); })
-            .catch(() => message.error('Error al cargar archivos'))
-            .finally(() => { if (!cancelled) setLoading(false); });
-        return () => { cancelled = true; };
-    }, [selectedBucketId, currentPath, selectedType, searchText]);
+        loadMediaFiles();
+    }, [loadMediaFiles]);
 
     const visibleMediaFiles = selectedBucketId ? mediaFiles : [];
 
@@ -152,6 +154,7 @@ const Media = () => {
             onSuccess(result);
             message.success(`${file.name} subido exitosamente`);
             loadMediaFiles();
+            loadBucketStats();
         } catch (error) {
             onError(error);
             message.error(`Error al subir ${file.name}`);
@@ -163,6 +166,7 @@ const Media = () => {
             await mediaService.deleteMediaFile(id);
             message.success('Archivo eliminado exitosamente');
             loadMediaFiles();
+            loadBucketStats();
         } catch {
             message.error('Error al eliminar archivo');
         }
@@ -179,6 +183,7 @@ const Media = () => {
             message.success(`${selectedFiles.length} archivos eliminados`);
             setSelectedFiles([]);
             loadMediaFiles();
+            loadBucketStats();
         } catch {
             message.error('Error al eliminar archivos');
         }
@@ -209,13 +214,13 @@ const Media = () => {
     const handleCreateFolder = async () => {
         try {
             const values = await folderForm.validateFields();
-            await mediaService.createFolder(values.name, values.parent);
+            await mediaService.createFolder(selectedBucketId, values.name, values.parent);
             message.success('Carpeta creada exitosamente');
             setFolderModalVisible(false);
             folderForm.resetFields();
-            loadFolders();
-        } catch {
-            message.error('Error al crear carpeta');
+            loadFolders(selectedBucketId);
+        } catch (error) {
+            message.error(error?.response?.data?.detail || 'Error al crear carpeta');
         }
     };
 
@@ -270,7 +275,7 @@ const Media = () => {
     })();
 
     const getFileIcon = (type) => {
-        if (type.startsWith('image/')) return <FileImageOutlined style={{ fontSize: 48, color: '#1890ff' }} />;
+        if (type?.startsWith('image/')) return <FileImageOutlined style={{ fontSize: 48, color: '#1890ff' }} />;
         if (type === 'application/pdf') return <FilePdfOutlined style={{ fontSize: 48, color: '#ff4d4f' }} />;
         return <FileOutlined style={{ fontSize: 48, color: '#8c8c8c' }} />;
     };
@@ -360,12 +365,7 @@ const Media = () => {
             dataIndex: 'type',
             key: 'type',
             width: 150,
-            render: (type) => {
-                let color = 'default';
-                if (type.startsWith('image/')) color = 'blue';
-                if (type === 'application/pdf') color = 'red';
-                return <Tag color={color}>{type.split('/')[1]?.toUpperCase()}</Tag>;
-            }
+            render: (type, record) => renderTypeTag(type, record.isDir),
         },
         {
             title: 'Tamaño',
@@ -396,7 +396,7 @@ const Media = () => {
             key: 'uploadedAt',
             width: 180,
             sorter: (a, b) => new Date(a.uploadedAt) - new Date(b.uploadedAt),
-            render: (date) => new Date(date).toLocaleString('es-MX')
+            render: (date) => date ? new Date(date).toLocaleString('es-MX') : '—'
         },
         {
             title: 'Acciones',
@@ -405,23 +405,27 @@ const Media = () => {
             fixed: 'right',
             render: (_, record) => (
                 <Space>
-                    <Button
-                        type="text"
-                        icon={<EyeOutlined />}
-                        onClick={() => handlePreview(record)}
-                    />
-                    <Button
-                        type="text"
-                        icon={<CopyOutlined />}
-                        onClick={() => handleCopyUrl(record.url)}
-                    />
-                    <Button
-                        type="text"
-                        icon={<EditOutlined />}
-                        onClick={() => handleEdit(record)}
-                    />
+                    {!record.isDir && (
+                        <>
+                            <Button
+                                type="text"
+                                icon={<EyeOutlined />}
+                                onClick={() => handlePreview(record)}
+                            />
+                            <Button
+                                type="text"
+                                icon={<CopyOutlined />}
+                                onClick={() => handleCopyUrl(record.url)}
+                            />
+                            <Button
+                                type="text"
+                                icon={<EditOutlined />}
+                                onClick={() => handleEdit(record)}
+                            />
+                        </>
+                    )}
                     <Popconfirm
-                        title="¿Eliminar este archivo?"
+                        title={record.isDir ? '¿Eliminar carpeta y todo su contenido?' : '¿Eliminar este archivo?'}
                         onConfirm={() => handleDelete(record.id)}
                         okText="Sí"
                         cancelText="No"
@@ -472,6 +476,15 @@ const Media = () => {
                         }
                         actions={file.isDir ? [
                             <FolderOpenOutlined key="open" onClick={() => handleEnterDir(file)} />,
+                            <Popconfirm
+                                key="delete"
+                                title="¿Eliminar carpeta y todo su contenido?"
+                                onConfirm={() => handleDelete(file.id)}
+                                okText="Sí"
+                                cancelText="No"
+                            >
+                                <DeleteOutlined />
+                            </Popconfirm>,
                         ] : [
                             <EyeOutlined key="view" onClick={() => handlePreview(file)} />,
                             <CopyOutlined key="copy" onClick={() => handleCopyUrl(file.url)} />,
@@ -497,7 +510,7 @@ const Media = () => {
                                 <div>
                                     <div>{file.isDir ? 'Carpeta' : mediaService.formatFileSize(file.size)}</div>
                                     <div style={{ fontSize: 11, color: '#8c8c8c' }}>
-                                        {new Date(file.uploadedAt).toLocaleDateString('es-MX')}
+                                        {file.uploadedAt ? new Date(file.uploadedAt).toLocaleDateString('es-MX') : '—'}
                                     </div>
                                 </div>
                             }
@@ -799,7 +812,7 @@ const Media = () => {
             >
                 {currentFile && (
                     <div>
-                        {currentFile.type.startsWith('image/') ? (
+                        {currentFile.type?.startsWith('image/') ? (
                             <Image src={currentFile.url} style={{ width: '100%' }} />
                         ) : (
                             <div style={{ textAlign: 'center', padding: 40 }}>
@@ -815,7 +828,7 @@ const Media = () => {
                         <div style={{ marginTop: 16, padding: 16, background: '#f5f5f5', borderRadius: 4 }}>
                             <div><strong>URL:</strong> {currentFile.url}</div>
                             <div><strong>Subido por:</strong> {currentFile.uploadedByName}</div>
-                            <div><strong>Fecha:</strong> {new Date(currentFile.uploadedAt).toLocaleString('es-MX')}</div>
+                            <div><strong>Fecha:</strong> {currentFile.uploadedAt ? new Date(currentFile.uploadedAt).toLocaleString('es-MX') : '—'}</div>
                             {currentFile.metadata?.alt && (
                                 <div><strong>Alt:</strong> {currentFile.metadata.alt}</div>
                             )}

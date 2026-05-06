@@ -2,17 +2,16 @@ import { useEffect, useState } from 'react';
 import { Layout, Card, Form, Input, Button, Avatar, Space, Typography, Tag, Divider, Upload } from 'antd';
 import { UserOutlined, SaveOutlined, FileImageOutlined, UploadOutlined } from '@ant-design/icons';
 import { useAuth } from '@shared/contexts/useAuth';
-import { BucketFilePicker } from '@features/media';
+import { BucketFilePicker, useAccessibleBuckets } from '@features/media';
 import { uploadMediaFile } from '@features/media/api/mediaService';
 import { message } from '@shared/services/message';
-import api from '@shared/services/api';
 import { actualizarPerfil } from '@features/perfil/api/perfilService';
 
 const { Content } = Layout;
 const { Title, Text } = Typography;
 
-const GENERIC_BUCKET_SLUG = 'iieg';
-const PRIVATE_BUCKET_SLUG = 'mariachi';
+const GENERIC_BUCKET_SLUGS = ['iieg'];
+const PRIVATE_BUCKET_SLUGS = ['mariachi'];
 const GENERIC_PREFIX = 'avatars/';
 
 export default function PerfilPage() {
@@ -21,23 +20,11 @@ export default function PerfilPage() {
     const [saving, setSaving] = useState(false);
     const [pickerOpen, setPickerOpen] = useState(false);
     const [uploading, setUploading] = useState(false);
-    const [genericBucketId, setGenericBucketId] = useState(null);
-    const [privateBucketId, setPrivateBucketId] = useState(null);
+    const { buckets: genericBuckets } = useAccessibleBuckets(GENERIC_BUCKET_SLUGS);
+    const { buckets: privateBuckets } = useAccessibleBuckets(PRIVATE_BUCKET_SLUGS);
+    const genericBucketId = genericBuckets[0]?.id ?? null;
+    const privateBucketId = privateBuckets[0]?.id ?? null;
     const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl || user?.avatar_url || '');
-
-    useEffect(() => {
-        let cancelled = false;
-        api.get('/media-buckets')
-            .then((res) => {
-                if (cancelled) return;
-                const generic = res.data.find((b) => b.acervo_bucket === GENERIC_BUCKET_SLUG);
-                const priv = res.data.find((b) => b.acervo_bucket === PRIVATE_BUCKET_SLUG);
-                if (generic) setGenericBucketId(generic.id);
-                if (priv) setPrivateBucketId(priv.id);
-            })
-            .catch(() => {});
-        return () => { cancelled = true; };
-    }, []);
 
     useEffect(() => {
         form.setFieldsValue({
@@ -205,10 +192,11 @@ export default function PerfilPage() {
                 open={pickerOpen}
                 onClose={() => setPickerOpen(false)}
                 onSelect={onSelectGeneric}
-                bucketId={genericBucketId}
+                bucketSlugs={GENERIC_BUCKET_SLUGS}
                 prefixes={[GENERIC_PREFIX]}
                 mode="grid"
                 title="Elegir avatar genérico"
+                allowUpload={false}
             />
         </Content>
     );
