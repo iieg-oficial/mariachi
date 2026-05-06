@@ -9,6 +9,15 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.33.4] - 2026-05-06
+
+### Admin (UI) — fix namespace de SIEEJ formularios
+
+- `features/sieej-formularios/pages/FormulariosPage.jsx`: las 5 llamadas a la API se cambian de `/formularios` a `/admin/sieej/formularios` para alinearse con el plan de plataforma de formularios (ver `IIEG/sieej/docs/planes/plataforma-formularios.md` seccion 5.2). El path anterior chocaba con el subrouter respondent existente; cuando arranque la Fase 1 del plan eso habria devuelto datos del wizard SIEEJ en lugar del CRUD admin. El backend no expone aun el namespace `/admin/sieej/formularios` — el cambio adelanta el alineamiento, no cambia comportamiento (la pagina sigue mostrando el Alert "modulo en construccion").
+- Alert de la pagina actualizado para citar el path nuevo.
+
+---
+
 ## [0.33.3] - 2026-05-06
 
 ### Admin (UI) — fix react fast refresh y hooks dependencies
