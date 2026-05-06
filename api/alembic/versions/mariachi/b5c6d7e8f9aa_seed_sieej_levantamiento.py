@@ -250,7 +250,13 @@ def _build_definicion() -> dict:
                     },
                 ],
             },
-            {"id": "resumen", "type": "summary", "title": "Resumen", "exportPdf": True},
+            {
+                "id": "resumen",
+                "type": "summary",
+                "title": "Resumen",
+                "exportPdf": True,
+                "pdfTemplate": "sieej-levantamiento",
+            },
         ],
     }
 

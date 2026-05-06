@@ -9,6 +9,33 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.40.0] - 2026-05-06
+
+### Backend (api) — sieej-levantamiento: pdfTemplate al step resumen
+
+#### Migration
+
+- `d7e8f9a0b1c2_sieej_levantamiento_pdf_template.py` (down_revision
+  `c6d7e8f9ab01`): UPDATE de `formulario.definicion` para el slug
+  `sieej-levantamiento`. Inyecta `pdfTemplate: 'sieej-levantamiento'`
+  + `exportPdf: true` al step `resumen`. Idempotente. Aplicada en
+  prod local; el frontend (sieej 1.7.0) usa la flag para descargar
+  el PDF custom (con el formato del wizard original) en lugar del
+  generico.
+
+#### Cambiado
+
+- El seed migration `b5c6d7e8f9aa` actualizado para nuevos deploys
+  (incluye la flag desde el origen, evita correr la migration
+  d7e8f9a0b1c2 sobre instalaciones limpias).
+
+### Bump
+
+- `api/pyproject.toml` -> 0.40.0.
+- `admin/package.json` -> 0.40.0.
+
+---
+
 ## [0.39.4] - 2026-05-06
 
 ### Backend (api) — slugs reservados al crear formulario SIEEJ
