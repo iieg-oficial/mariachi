@@ -2,7 +2,7 @@
 
 > Documento de referencia completo. Leer este archivo proporciona contexto del monorepo sin explorar el codebase.
 
-**Versión:** 0.31.0 · **Última actualización:** 2026-04-30
+**Versión:** 0.31.0 · **Última actualización:** 2026-05-06
 
 ---
 
@@ -255,6 +255,22 @@ acervo/iieg/
 
 Reservado para assets administrativos internos del panel admin que NO se exponen al publico: logs descargables, exportaciones internas, archivos staff-only. NO almacena avatars (esos viven en `iieg`). Acceso requiere autenticacion como staff y mariachi-api debe servirlos via presigned URLs o proxy autenticado, NO con URL publica.
 
+El proxy autenticado vive en `GET /api/administrador/multimedia/proxy/{bucket_id}/{object_path}` y es la ruta por defecto que devuelve `AcervoClient.get_file_url` cuando el bucket está marcado `is_public=false`. Devuelve un `StreamingResponse` con `Cache-Control: private, max-age=300`.
+
+### Sub-rutas reservadas dentro de buckets compartidos
+
+Algunos features escriben en sub-prefijos del bucket que NO deben aparecer en el listado de la página de Multimedia (porque su CRUD se maneja desde otra UI):
+
+| Bucket | Prefijo oculto | Quién lo escribe |
+|---|---|---|
+| `mariachi` | `reportes/` | `routes/reportes_public.py` (screenshots de reportes) |
+
+La lista vive en `app/core/bucket_policies.py::HIDDEN_PREFIXES_BY_BUCKET` y `media_service.listar_media` la consulta cuando se navega la raíz del bucket (no se aplica si el usuario navega explícitamente al prefix oculto, p. ej. `?folder=/reportes`).
+
+### Carpetas del CMS (`media_folders`)
+
+`media_folders` es scoped por bucket: cada fila tiene `bucket_id` (FK CASCADE a `media_buckets`) y la unicidad es `(bucket_id, path)`. Esto permite que dos buckets distintos tengan una carpeta con el mismo nombre/ruta sin colisión. El frontend siempre envía `bucket_id` al listar/crear/eliminar carpetas. La columna `media.folder` ya no es FK a `media_folders.path` (lo era antes del scoping); se persiste como string libre.
+
 ---
 
 ## Autenticación
@@ -302,7 +318,10 @@ Sin auth. `router = APIRouter(tags=["portal público"])` en `routes/public.py`.
 | GET/POST/PUT/DELETE | `/users/*` | Gestión de usuarios |
 | GET/POST/PUT/DELETE | `/pages/*` | Editor de paginas |
 | GET/POST/PUT/DELETE | `/menu/*` | Gestión de menu |
-| GET/POST | `/media/*` | Upload a Acervo |
+| GET/POST/PUT/DELETE | `/multimedia/*` | Upload/listado/edición de archivos por bucket |
+| GET | `/multimedia/proxy/{bucket_id}/{object_path}` | Stream autenticado para buckets privados |
+| GET/POST/DELETE | `/multimedia/carpetas/*` | CRUD de carpetas (scoped a `bucket_id`) |
+| GET/POST/PATCH | `/media-buckets/*` | CRUD de buckets registrados (admin solo en writes) |
 | GET/POST/PATCH | `/borradores/*` | Revision queue |
 | GET | `/preview/*` | Preview de paginas sin publicar |
 
