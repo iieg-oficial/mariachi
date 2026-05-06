@@ -9,6 +9,34 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.33.3] - 2026-05-06
+
+### Admin (UI) — fix react fast refresh y hooks dependencies
+
+- Extraída la configuración y constantes de `mapalab-home/components/sectionEditors.jsx` hacia `sectionRegistry.js` para evitar warnings de react-fast-refresh.
+- Corrección de dependencia faltante en `useEffect` de `sectionEditors.jsx`.
+- Corrección de instanciación en `LayerIdsField.jsx` para evitar recreación de dependencias envolviéndolo en `useMemo`.
+
+---
+
+## [0.33.2] - 2026-05-06
+
+### Backend (api) — fix pruebas de multimedia (route ordering y mock state)
+
+- Se corrigió el ordenamiento de las rutas en `routes/media.py`, posicionando la ruta genérica de `eliminar_archivo` al final para evitar interceptar la eliminación de carpetas.
+- Se ajustó el singleton de `FakeAcervoClient` en las pruebas unitarias de multimedia para que conserve el estado del bucket en caché, resolviendo errores de testing.
+
+---
+
+## [0.33.1] - 2026-05-06
+
+### Calidad de código (Lints y Dead Code)
+
+- Eliminación de código muerto en `mapalab-layers/constants/nodeTypes.js` detectado por `knip`.
+- Reordenamiento de imports en `test_reportes_public.py` para satisfacer la regla `I001` de `Ruff`.
+
+---
+
 ## [0.33.0] - 2026-05-06
 
 ### Multimedia: hardening de endpoints y scoping de carpetas
