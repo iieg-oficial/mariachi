@@ -3,14 +3,14 @@ import { Alert, Button, Card, Form, Input, Select, Space, Spin, Typography } fro
 import { PlusOutlined, MinusCircleOutlined, FolderOpenOutlined, UploadOutlined } from '@ant-design/icons';
 import { Link } from 'react-router';
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
-import { BucketFilePicker, BucketFileUploader } from '@features/media';
+import { BucketFilePicker, BucketFileUploader, useAccessibleBuckets } from '@features/media';
 import LayerStatsSection from '@features/mapalab-layers/components/layersEditor/LayerStatsSection';
-import api from '@shared/services/api';
 import { message } from '@shared/services/message';
 
 const { Text } = Typography;
 
-const MAPALAB_BUCKET_SLUG = 'mapalab';
+const PICKER_BUCKET_SLUGS = ['mapalab', 'iieg'];
+const UPLOAD_BUCKET_SLUGS = ['mapalab'];
 const MAPALAB_PREFIXES = ['metadata/txt/', 'metadata/xlsx/'];
 
 const TIPO_MAPA_OPTIONS = [
@@ -72,19 +72,8 @@ export default function LayerMetadataSection({
     const [pickerOpen, setPickerOpen] = useState(false);
     const [pickerFieldIndex, setPickerFieldIndex] = useState(null);
     const [uploaderOpen, setUploaderOpen] = useState(false);
-    const [mapalabBucketId, setMapalabBucketId] = useState(null);
-
-    useEffect(() => {
-        let cancelled = false;
-        api.get('/media-buckets')
-            .then((res) => {
-                if (cancelled) return;
-                const bucket = res.data.find((b) => b.acervo_bucket === MAPALAB_BUCKET_SLUG);
-                if (bucket) setMapalabBucketId(bucket.id);
-            })
-            .catch(() => {});
-        return () => { cancelled = true; };
-    }, []);
+    const { buckets: uploadBuckets } = useAccessibleBuckets(UPLOAD_BUCKET_SLUGS);
+    const mapalabBucketId = uploadBuckets[0]?.id ?? null;
 
     const [metadata, setMetadata] = useState(null);
 
@@ -158,10 +147,6 @@ export default function LayerMetadataSection({
     };
 
     const openPicker = (index) => {
-        if (!mapalabBucketId) {
-            message.warning('Media mapalab no disponible');
-            return;
-        }
         setPickerFieldIndex(index);
         setPickerOpen(true);
     };
@@ -461,9 +446,10 @@ export default function LayerMetadataSection({
                 open={pickerOpen}
                 onClose={() => setPickerOpen(false)}
                 onSelect={onFileSelected}
-                bucketId={mapalabBucketId}
+                bucketSlugs={PICKER_BUCKET_SLUGS}
                 prefixes={MAPALAB_PREFIXES}
                 title="Elegir archivo"
+                uploadAccept=".txt,.xlsx,.pdf,.csv"
             />
 
             <BucketFileUploader

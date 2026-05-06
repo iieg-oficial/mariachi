@@ -1,27 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Button, Image, Input, Space } from 'antd';
 import { FileImageOutlined } from '@ant-design/icons';
-import api from '@shared/services/api';
 import { BucketFilePicker } from '@features/media';
 
-const MAPALAB_BUCKET_SLUG = 'mapalab';
+const BUCKET_SLUGS = ['mapalab', 'iieg'];
 
 
 export default function ImageUrlField({ value, onChange, disabled, placeholder = 'URL de imagen' }) {
-    const [bucketId, setBucketId] = useState(null);
     const [open, setOpen] = useState(false);
-
-    useEffect(() => {
-        let cancelled = false;
-        api.get('/media-buckets')
-            .then((res) => {
-                if (cancelled) return;
-                const bucket = res.data.find((b) => b.acervo_bucket === MAPALAB_BUCKET_SLUG);
-                if (bucket) setBucketId(bucket.id);
-            })
-            .catch(() => {});
-        return () => { cancelled = true; };
-    }, []);
 
     const onSelect = (file) => {
         if (file?.url) onChange?.(file.url);
@@ -39,7 +25,7 @@ export default function ImageUrlField({ value, onChange, disabled, placeholder =
                 />
                 <Button
                     icon={<FileImageOutlined />}
-                    disabled={disabled || !bucketId}
+                    disabled={disabled}
                     onClick={() => setOpen(true)}
                 >
                     Media
@@ -57,8 +43,9 @@ export default function ImageUrlField({ value, onChange, disabled, placeholder =
                 open={open}
                 onClose={() => setOpen(false)}
                 onSelect={onSelect}
-                bucketId={bucketId}
+                bucketSlugs={BUCKET_SLUGS}
                 title="Elegir imagen"
+                uploadAccept="image/*"
             />
         </Space>
     );

@@ -1,27 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Button, Image, Input, Space } from 'antd';
 import { FileImageOutlined } from '@ant-design/icons';
-import api from '@shared/services/api';
 import { BucketFilePicker } from '@features/media';
 import { message } from '@shared/services/message';
 
-const MAPALAB_BUCKET_SLUG = 'mapalab';
+const BUCKET_SLUGS = ['mapalab', 'iieg'];
 
 export default function TemaIconField({ value, onChange, disabled }) {
-    const [bucketId, setBucketId] = useState(null);
     const [pickerOpen, setPickerOpen] = useState(false);
-
-    useEffect(() => {
-        let cancelled = false;
-        api.get('/media-buckets')
-            .then((res) => {
-                if (cancelled) return;
-                const bucket = res.data.find((b) => b.acervo_bucket === MAPALAB_BUCKET_SLUG);
-                if (bucket) setBucketId(bucket.id);
-            })
-            .catch(() => {});
-        return () => { cancelled = true; };
-    }, []);
 
     const onSelect = (file) => {
         if (!file?.url) {
@@ -43,7 +29,7 @@ export default function TemaIconField({ value, onChange, disabled }) {
                 />
                 <Button
                     icon={<FileImageOutlined />}
-                    disabled={disabled || !bucketId}
+                    disabled={disabled}
                     onClick={() => setPickerOpen(true)}
                 >
                     Media
@@ -63,8 +49,9 @@ export default function TemaIconField({ value, onChange, disabled }) {
                 open={pickerOpen}
                 onClose={() => setPickerOpen(false)}
                 onSelect={onSelect}
-                bucketId={bucketId}
+                bucketSlugs={BUCKET_SLUGS}
                 title="Elegir icono del tema"
+                uploadAccept="image/*"
             />
         </Space>
     );
