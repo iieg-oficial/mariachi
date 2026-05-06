@@ -159,6 +159,91 @@ def create_layer(
     return layer
 
 
+AUTO_PARENT_ID = 'eventos-auto'
+AUTO_PARENT_LABEL = 'Eventos (auto-creado)'
+
+
+def _ensure_auto_parent(session: Session, updated_by: str | None) -> Layer:
+    parent = session.query(Layer).filter(Layer.id == AUTO_PARENT_ID).first()
+    if parent:
+        return parent
+    parent = Layer(
+        id=AUTO_PARENT_ID,
+        parent_id=None,
+        label=AUTO_PARENT_LABEL,
+        sort_order=9999,
+        node_type='tema',
+        hidden_in_menu=True,
+        disabled=False,
+        styles='',
+        cql_filter='',
+        updated_by=updated_by,
+    )
+    session.add(parent)
+    session.flush()
+    return parent
+
+
+def _slugify_id_segment(value: str) -> str:
+    return ''.join(
+        ch if ch.isalnum() or ch == '-' else '-'
+        for ch in value.lower().replace('_', '-')
+    ).strip('-')
+
+
+def find_or_create_auto_leaf(
+    session: Session,
+    workspace_alias: str,
+    geoserver_layer: str,
+    label: str,
+    updated_by: str | None,
+) -> tuple[Layer, bool]:
+    existing = (
+        session.query(Layer)
+        .filter(
+            Layer.workspace_alias == workspace_alias,
+            Layer.geoserver_layer == geoserver_layer,
+            Layer.node_type == 'leaf',
+        )
+        .first()
+    )
+    if existing:
+        return existing, False
+
+    validate_layer_against_geoserver(session, workspace_alias, geoserver_layer)
+
+    parent = _ensure_auto_parent(session, updated_by)
+
+    base_id = f'auto-{_slugify_id_segment(workspace_alias)}-{_slugify_id_segment(geoserver_layer)}'
+    base_id = base_id[:100]
+    candidate = base_id
+    suffix = 2
+    while session.query(Layer.id).filter(Layer.id == candidate).first():
+        tail = f'-{suffix}'
+        candidate = base_id[: 100 - len(tail)] + tail
+        suffix += 1
+
+    leaf = Layer(
+        id=candidate,
+        parent_id=parent.id,
+        label=label or geoserver_layer,
+        sort_order=9999,
+        node_type='leaf',
+        hidden_in_menu=False,
+        disabled=False,
+        workspace_alias=workspace_alias,
+        geoserver_layer=geoserver_layer,
+        styles='',
+        cql_filter='',
+        wfs_available=True,
+        downloadable=True,
+        updated_by=updated_by,
+    )
+    session.add(leaf)
+    session.flush()
+    return leaf, True
+
+
 def update_layer(
     session: Session,
     layer: Layer,

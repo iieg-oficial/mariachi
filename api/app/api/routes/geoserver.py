@@ -2,12 +2,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
-from app.api.deps import require_project_access
+from app.api.deps import require_project_access, require_role, verify_csrf
 from app.api.metrics import COUNTER_GEOSERVER_CALLS, incr
 from app.api.rate_limit import rate_limit
 from app.core.database import get_dataengine_db
 from app.models.layer import Workspace
 from app.models.user import Usuario
+from app.schemas.layer import WorkspaceCreate, WorkspacePending, WorkspaceResponse
 from app.services.geoserver_client import GeoServerClient, GeoServerError
 from app.services.palette_service import load_palettes
 from app.services.sld_parser import parse_sld
@@ -19,7 +20,9 @@ router = APIRouter(
 )
 
 _require_project_editor = require_project_access('mapalab', min_role='editor')
+_require_admin = require_role(['tetlamamakani'])
 _read_rate_limit = rate_limit(max_requests=120, window_seconds=60.0)
+_write_rate_limit = rate_limit(max_requests=60, window_seconds=60.0)
 
 
 def _resolve_workspace(db: Session, alias: str) -> Workspace:
@@ -69,6 +72,96 @@ async def list_workspaces_with_layers(
             'layers': layers,
         })
     return result
+
+
+@router.get('/workspaces/pending', response_model=list[WorkspacePending])
+async def list_pending_workspaces(
+    db: Session = Depends(get_dataengine_db),
+    current_user: Usuario = Depends(_require_admin),
+    _rl: Usuario = Depends(_read_rate_limit),
+):
+    incr(COUNTER_GEOSERVER_CALLS)
+    registered_names = {
+        ws.geoserver_workspace
+        for ws in db.query(Workspace.geoserver_workspace).all()
+    }
+    client = GeoServerClient()
+    try:
+        all_names = client.list_workspaces()
+    except GeoServerError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+
+    pending: list[WorkspacePending] = []
+    for name in all_names:
+        if name in registered_names:
+            continue
+        try:
+            layers = client.list_layers(name)
+        except GeoServerError:
+            layers = []
+        pending.append(
+            WorkspacePending(geoserver_workspace=name, layer_count=len(layers))
+        )
+    pending.sort(key=lambda p: p.geoserver_workspace)
+    return pending
+
+
+@router.post(
+    '/workspaces/register',
+    response_model=WorkspaceResponse,
+    status_code=201,
+)
+async def register_workspace(
+    data: WorkspaceCreate,
+    db: Session = Depends(get_dataengine_db),
+    current_user: Usuario = Depends(verify_csrf),
+    _admin: Usuario = Depends(_require_admin),
+    _rl: Usuario = Depends(_write_rate_limit),
+):
+    incr(COUNTER_GEOSERVER_CALLS)
+
+    existing_alias = db.query(Workspace).filter(Workspace.alias == data.alias).first()
+    if existing_alias:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Ya existe un workspace con alias '{data.alias}'",
+        )
+
+    existing_gs = db.query(Workspace).filter(
+        Workspace.geoserver_workspace == data.geoserver_workspace
+    ).first()
+    if existing_gs:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"El workspace de GeoServer '{data.geoserver_workspace}' ya esta "
+                f"registrado con alias '{existing_gs.alias}'"
+            ),
+        )
+
+    client = GeoServerClient()
+    try:
+        all_names = set(client.list_workspaces())
+    except GeoServerError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+    if data.geoserver_workspace not in all_names:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"El workspace '{data.geoserver_workspace}' no existe en GeoServer"
+            ),
+        )
+
+    workspace = Workspace(
+        alias=data.alias,
+        geoserver_workspace=data.geoserver_workspace,
+        db_schema=data.db_schema,
+        label=data.label,
+    )
+    db.add(workspace)
+    db.commit()
+    db.refresh(workspace)
+    return workspace
 
 
 @router.get('/workspaces/{alias}/layers/{layer}/fields')

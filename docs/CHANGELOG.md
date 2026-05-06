@@ -9,6 +9,45 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.39.0] - 2026-05-06
+
+### Eventos: edicion completa de capas con workspaces dinamicos
+
+Cierra el flujo de capas en eventos: detectar workspaces nuevos en GeoServer, registrarlos sin pasar por la UI de GeoServer, asociar capas como leaves automaticamente y editar su contenido (Tarjeta, Metadatos, Simbologia) sin salir del editor del evento.
+
+#### Backend (api)
+
+- `GET /administrador/geoserver/workspaces/pending` (admin): lista workspaces existentes en GeoServer pero ausentes de `mapalab.workspaces`, con `layerCount`. Permite descubrir workspaces que llegan tras un restore o que se publican manualmente en GeoServer.
+- `POST /administrador/geoserver/workspaces/register` (admin + CSRF): inserta una fila en `mapalab.workspaces` con `{geoserver_workspace, alias, db_schema, label}`. Valida que el workspace exista en GeoServer y que el alias no este tomado.
+- `POST /administrador/layers/auto-leaf` (admin + CSRF): idempotente. Devuelve un leaf existente con `(workspace_alias, geoserver_layer)` o crea uno nuevo bajo el padre `eventos-auto` (tema con `hidden_in_menu=true`, creado on-demand). Permite que asociar una capa "solo GeoServer" al evento la materialice en el arbol sin pasos manuales.
+- `app/services/layer_service.py::find_or_create_auto_leaf` y `_ensure_auto_parent` para la logica idempotente.
+- `app/schemas/layer.py`: nuevos `WorkspaceCreate`, `WorkspacePending`, `AutoLeafRequest`.
+- `app/services/geoserver_client.py`: `list_workspaces` y `list_layers` ahora toleran la respuesta de GeoServer cuando una coleccion esta vacia (`{"layers":""}` como string en vez de objeto). Antes lanzaba AttributeError.
+
+#### Backend (api) — Bug fix global: schemas aceptan input camelCase
+
+Los schemas de Pydantic declaraban `serialization_alias="camelCase"` (para output) pero **no `validation_alias=` ni `alias=`**, asi que el input camelCase del frontend se ignoraba silenciosamente. El editor de capas y otras paginas perdian campos en el PUT/PATCH sin error visible.
+
+- Nuevo `app/schemas/_camel.py` con mixin `CamelCaseInput` que normaliza keys camelCase → snake_case con `model_validator(mode='before')`. Solo convierte si la key snake_case existe como field y la camelCase no es ya un field/alias declarado, asi no rompe aliases custom (`expectedUpdatedAt`).
+- Aplicado a clases que reciben input: `LayerBase`, `LayerUpdate`, `EventoBase`, `EventoUpdate`, `BBox`, `CapaRef`, `PageBase`, `PageUpdate`, `MenuItemBase`, `MenuItemUpdate`, `UsuarioBase`, `UsuarioUpdate`, `PerfilUpdate`, `ReporteCreate`, `ReporteUpdate`, `LayerMetadataBase`, `LayerMetadataUpdate`, `LayerStatsUpdate`, `MediaBucketBase`, `MediaBucketUpdate`, `FolderCreate`, `MediaUpdate`, `ProjectBase`, `ProjectUpdate`, y los 14 payloads de `home_section.py`.
+
+#### Admin (frontend)
+
+- `components/PendingWorkspacesAlert.jsx` + `RegisterWorkspaceModal.jsx`: alert con conteo en `LayerCreateModal` para admins (`tetlamamakani`); abre form con `{geoserver_workspace, alias, db_schema, label}` y POST al endpoint de registro. Auto-fill del alias y schema desde el nombre del workspace.
+- `components/LayerContentDrawer.jsx`: drawer reutilizable con tabs Tarjeta · Metadatos · Simbologia. Recibe `layerId`, carga la capa y monta los componentes existentes de edicion (`LayerMetadataSection`, `SldEditor`) sin tocar el `LayerEditPage`.
+- `components/layersEditor/InfoboxStandalone.jsx`: wrapper local que reusa `InfoBoxBlocksEditor` + `InfoBoxPreview` con `Form` propio y boton Guardar; persiste con `PUT /layers/{id}` enviando `infoboxConfig`. Usado por el drawer.
+- `features/mapalab-eventos/components/CapasField.jsx`:
+  - `addCapa` llama `/layers/auto-leaf` cuando la capa es "solo GeoServer" antes de agregarla al evento.
+  - Nuevo boton `EditOutlined` por capa que abre `LayerContentDrawer` con el `layerId` resuelto del arbol (el boton se deshabilita si la capa no esta en el arbol).
+- `hooks/useLayerTreeAdmin.js`: exporta `flattenLeaves` como utilidad reutilizable; agrega `listPendingWorkspaces` y `registerWorkspace`.
+
+#### Notas
+
+- El cache `layer_tree_cache` de mapalab se invalida via `notify_tree_changed()` tras `auto-leaf`, asi las capas auto-creadas aparecen inmediatamente en el visor.
+- Las capas auto se crean bajo un padre `tema` llamado `eventos-auto` con `hidden_in_menu=true`, asi no inflan el menu principal del visor pero siguen siendo editables desde el admin.
+
+---
+
 ## [0.38.0] - 2026-05-06
 
 ### Backend (api) — Cleanup wizard SIEEJ (Fase 5 cierre)

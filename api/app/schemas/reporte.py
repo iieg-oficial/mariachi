@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from app.schemas._camel import CamelCaseInput
 
 ReporteTipo = Literal[
     "problema",
@@ -14,7 +15,7 @@ ReporteTipo = Literal[
 ReporteEstado = Literal["nuevo", "en_revision", "resuelto", "descartado"]
 
 
-class ReporteCreate(BaseModel):
+class ReporteCreate(CamelCaseInput):
     tipo: ReporteTipo
     mensaje: str = Field(..., min_length=1, max_length=2000)
     email_contacto: EmailStr | None = None
@@ -23,7 +24,7 @@ class ReporteCreate(BaseModel):
     source_context: dict = Field(default_factory=dict)
 
 
-class ReporteUpdate(BaseModel):
+class ReporteUpdate(CamelCaseInput):
     estado: ReporteEstado | None = None
     nota_interna: str | None = None
     atendido_por_id: int | None = Field(default=None, alias="atendidoPorId")

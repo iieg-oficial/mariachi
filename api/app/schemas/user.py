@@ -12,6 +12,7 @@ from pydantic import (
 )
 
 from app.core.acervo_url import to_absolute, to_relative
+from app.schemas._camel import CamelCaseInput
 from app.schemas.project import BucketSummary, UserProjectAssignment, UserProjectMembership
 
 
@@ -24,7 +25,7 @@ def _ensure_has_at(v: str) -> str:
 LaxEmail = Annotated[str, AfterValidator(_ensure_has_at)]
 
 
-class UsuarioBase(BaseModel):
+class UsuarioBase(CamelCaseInput):
     username: str = Field(..., min_length=3, max_length=50)
     email: EmailStr
     name: str = Field(..., min_length=1, max_length=100)
@@ -36,7 +37,7 @@ class UsuarioCreate(UsuarioBase):
     project_assignments: list["UserProjectAssignment"] | None = None
 
 
-class UsuarioUpdate(BaseModel):
+class UsuarioUpdate(CamelCaseInput):
     username: str | None = Field(None, min_length=3, max_length=50)
     email: EmailStr | None = None
     name: str | None = Field(None, min_length=1, max_length=100)
@@ -69,7 +70,7 @@ class UsuarioResponse(UsuarioBase):
         return to_absolute(v)
 
 
-class PerfilUpdate(BaseModel):
+class PerfilUpdate(CamelCaseInput):
     name: str | None = Field(default=None, min_length=1, max_length=100)
     email: EmailStr | None = None
     avatar_url: str | None = Field(default=None, serialization_alias='avatarUrl')

@@ -4,6 +4,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 
 from app.core.acervo_url import to_absolute, to_relative
+from app.schemas._camel import CamelCaseInput
 
 NodeType = Literal["tema", "category", "label", "group", "leaf"]
 
@@ -34,7 +35,41 @@ class WorkspaceResponse(WorkspaceBase):
     created_at: datetime = Field(..., serialization_alias="createdAt")
 
 
-class LayerBase(BaseModel):
+class WorkspaceCreate(BaseModel):
+    geoserver_workspace: str = Field(..., min_length=1, max_length=200)
+    alias: str = Field(..., min_length=1, max_length=50)
+    db_schema: str = Field(..., min_length=1, max_length=200)
+    label: str | None = Field(default=None, max_length=200)
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    @field_validator("alias")
+    @classmethod
+    def _validate_alias_format(cls, v: str) -> str:
+        import re
+        if not re.match(r"^[a-z0-9_-]+$", v):
+            raise ValueError(
+                "Alias invalido: solo minusculas, numeros, guion bajo y guion medio"
+            )
+        return v
+
+
+class WorkspacePending(BaseModel):
+    geoserver_workspace: str = Field(..., serialization_alias="geoserverWorkspace")
+    layer_count: int = Field(..., serialization_alias="layerCount")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class AutoLeafRequest(BaseModel):
+    workspace_alias: str = Field(..., min_length=1, max_length=50)
+    geoserver_layer: str = Field(..., min_length=1, max_length=200)
+    label: str | None = Field(default=None, max_length=255)
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class LayerBase(CamelCaseInput):
     id: str = Field(..., min_length=1, max_length=100)
     slug: str | None = Field(default=None, max_length=60)
     parent_id: str | None = Field(default=None, serialization_alias="parentId")
@@ -100,7 +135,7 @@ class LayerCreate(LayerBase):
     pass
 
 
-class LayerUpdate(BaseModel):
+class LayerUpdate(CamelCaseInput):
     slug: str | None = Field(default=None, max_length=60)
     parent_id: str | None = Field(default=None, serialization_alias="parentId")
     label: str | None = Field(default=None, max_length=255)

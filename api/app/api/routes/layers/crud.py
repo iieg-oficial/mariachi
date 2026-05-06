@@ -12,6 +12,7 @@ from app.core.database import get_dataengine_db
 from app.models.layer import Layer, Workspace
 from app.models.user import Usuario
 from app.schemas.layer import (
+    AutoLeafRequest,
     InitialOrderBody,
     InitialOrderItem,
     LayerCreate,
@@ -33,6 +34,32 @@ async def list_workspaces(
     _editor: Usuario = Depends(require_project_editor),
 ):
     return db.query(Workspace).order_by(Workspace.alias).all()
+
+
+@router.post('/auto-leaf', response_model=LayerResponse)
+async def auto_leaf(
+    data: AutoLeafRequest,
+    db: Session = Depends(get_dataengine_db),
+    current_user: Usuario = Depends(verify_csrf),
+    _admin: Usuario = Depends(require_admin),
+    _rl: Usuario = Depends(write_rate_limit),
+):
+    try:
+        leaf, created = layer_service.find_or_create_auto_leaf(
+            db,
+            workspace_alias=data.workspace_alias,
+            geoserver_layer=data.geoserver_layer,
+            label=data.label or data.geoserver_layer,
+            updated_by=current_user.email,
+        )
+        if created:
+            db.commit()
+            db.refresh(leaf)
+            notify_tree_changed()
+        return leaf
+    except (ValueError, GeoServerError) as exc:
+        db.rollback()
+        raise map_domain_errors(exc) from exc
 
 
 @router.get('/initial-order', response_model=list[InitialOrderItem])

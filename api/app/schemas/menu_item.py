@@ -1,7 +1,8 @@
 from pydantic import BaseModel, ConfigDict, Field
+from app.schemas._camel import CamelCaseInput
 
 
-class MenuItemBase(BaseModel):
+class MenuItemBase(CamelCaseInput):
     label: str = Field(..., min_length=1)
     url: str = Field(..., min_length=1)
     order: int = Field(default=0)
@@ -18,7 +19,7 @@ class MenuItemCreate(MenuItemBase):
     pass
 
 
-class MenuItemUpdate(BaseModel):
+class MenuItemUpdate(CamelCaseInput):
     label: str | None = None
     url: str | None = None
     order: int | None = None

@@ -1,11 +1,12 @@
 from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
+from app.schemas._camel import CamelCaseInput
 
 from app.core.acervo_url import to_absolute_in, to_relative_in
 
 
-class PageBase(BaseModel):
+class PageBase(CamelCaseInput):
     title: str = Field(..., min_length=1)
     slug: str = Field(..., min_length=1)
     sections: list[dict] = Field(default_factory=list)
@@ -30,7 +31,7 @@ class PageCreate(PageBase):
     model_config = ConfigDict(populate_by_name=True)
 
 
-class PageUpdate(BaseModel):
+class PageUpdate(CamelCaseInput):
     title: str | None = None
     slug: str | None = None
     sections: list[dict] | None = None

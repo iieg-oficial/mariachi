@@ -1,26 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Button, Empty, Input, Modal, Space, Switch, Table, Tag, Tooltip, Typography } from 'antd';
-import { ArrowDownOutlined, ArrowUpOutlined, DeleteOutlined, PlusOutlined, TagOutlined } from '@ant-design/icons';
-import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
+import { ArrowDownOutlined, ArrowUpOutlined, DeleteOutlined, EditOutlined, PlusOutlined, TagOutlined } from '@ant-design/icons';
+import LayerContentDrawer from '@features/mapalab-layers/components/LayerContentDrawer';
+import { flattenLeaves, useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
 import { message } from '@shared/services/message';
 import api from '@shared/services/api';
 
 const { Text } = Typography;
-
-function flattenLeaves(nodes, acc = []) {
-    for (const n of nodes || []) {
-        if (n.nodeType === 'leaf' && n.workspaceAlias && n.geoserverLayer) {
-            acc.push({
-                id: n.id,
-                label: n.label,
-                workspace: n.workspaceAlias,
-                layer: n.geoserverLayer,
-            });
-        }
-        if (n.children?.length) flattenLeaves(n.children, acc);
-    }
-    return acc;
-}
 
 export default function CapasField({ value = [], onChange, disabled }) {
     const { rawTree, loading } = useLayerTreeAdmin();
@@ -29,8 +15,14 @@ export default function CapasField({ value = [], onChange, disabled }) {
     const [onlyUnregistered, setOnlyUnregistered] = useState(false);
     const [gsWorkspaces, setGsWorkspaces] = useState([]);
     const [loadingGs, setLoadingGs] = useState(false);
+    const [editingLayerId, setEditingLayerId] = useState(null);
 
     const registeredLeaves = useMemo(() => flattenLeaves(rawTree), [rawTree]);
+
+    const leafIdByKey = useMemo(
+        () => new Map(registeredLeaves.map((l) => [`${l.workspace}/${l.layer}`, l.id])),
+        [registeredLeaves],
+    );
 
     const labelByKey = useMemo(() => {
         const m = new Map();
@@ -86,13 +78,17 @@ export default function CapasField({ value = [], onChange, disabled }) {
         return filtered;
     }, [allCandidates, taken, search, onlyUnregistered]);
 
-    const addCapa = (leaf) => {
-        const next = [
-            ...value,
-            { tipo: 'capa', workspace: leaf.workspace, layer: leaf.layer, alias: leaf.label, orden: value.length, auto_activar: true },
-        ];
-        onChange?.(next);
-        message.success(`"${leaf.label}" agregada`);
+    const addCapa = async (leaf) => {
+        if (!leaf.registered) {
+            try {
+                await api.post('/layers/auto-leaf', { workspace_alias: leaf.workspace, geoserver_layer: leaf.layer, label: leaf.label });
+            } catch (err) {
+                message.error(err?.response?.data?.detail || 'No se pudo registrar la capa en el arbol');
+                return;
+            }
+        }
+        onChange?.([...value, { tipo: 'capa', workspace: leaf.workspace, layer: leaf.layer, alias: leaf.label, orden: value.length, auto_activar: true }]);
+        message.success(leaf.registered ? `"${leaf.label}" agregada` : `"${leaf.label}" registrada y agregada`);
     };
 
     const addEtiqueta = () => {
@@ -196,10 +192,20 @@ export default function CapasField({ value = [], onChange, disabled }) {
         {
             title: '',
             key: 'acciones',
-            width: 50,
-            render: (_, __, idx) => (
-                <Button danger size="small" icon={<DeleteOutlined />} disabled={disabled} onClick={() => removeCapa(idx)} />
-            ),
+            width: 90,
+            render: (_, record, idx) => {
+                const layerId = record.tipo === 'capa' ? leafIdByKey.get(`${record.workspace}/${record.layer}`) : null;
+                return (
+                    <Space size={4}>
+                        {record.tipo === 'capa' && (
+                            <Tooltip title={layerId ? 'Editar tarjeta, metadatos y simbologia' : 'Agregala al arbol primero'}>
+                                <Button size="small" icon={<EditOutlined />} disabled={disabled || !layerId} onClick={() => setEditingLayerId(layerId)} />
+                            </Tooltip>
+                        )}
+                        <Button danger size="small" icon={<DeleteOutlined />} disabled={disabled} onClick={() => removeCapa(idx)} />
+                    </Space>
+                );
+            },
         },
     ];
 
@@ -304,6 +310,11 @@ export default function CapasField({ value = [], onChange, disabled }) {
                     />
                 </Space>
             </Modal>
+            <LayerContentDrawer
+                open={!!editingLayerId}
+                layerId={editingLayerId}
+                onClose={() => setEditingLayerId(null)}
+            />
         </Space>
     );
 }

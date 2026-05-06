@@ -16,6 +16,16 @@ const toAntTreeData = (nodes, parentNodeType = null) =>
         children: n.children && n.children.length > 0 ? toAntTreeData(n.children, n.nodeType) : undefined,
     }));
 
+export const flattenLeaves = (nodes, acc = []) => {
+    for (const n of nodes || []) {
+        if (n.nodeType === 'leaf' && n.workspaceAlias && n.geoserverLayer) {
+            acc.push({ id: n.id, label: n.label, workspace: n.workspaceAlias, layer: n.geoserverLayer });
+        }
+        if (n.children?.length) flattenLeaves(n.children, acc);
+    }
+    return acc;
+};
+
 export const findNodeContext = (treeData, layerId) => {
     for (const n of treeData) {
         if (n.key === layerId) return { node: n, parentNodeType: n.parentNodeType ?? null };
@@ -108,6 +118,16 @@ export const useLayerTreeAdmin = () => {
     const listGeoserverWorkspaces = useCallback(async ({ availableOnly = false } = {}) => {
         const params = availableOnly ? '?available_only=true' : '';
         const res = await api.get(`/geoserver/workspaces${params}`);
+        return res.data;
+    }, []);
+
+    const listPendingWorkspaces = useCallback(async () => {
+        const res = await api.get('/geoserver/workspaces/pending');
+        return res.data;
+    }, []);
+
+    const registerWorkspace = useCallback(async (payload) => {
+        const res = await api.post('/geoserver/workspaces/register', payload);
         return res.data;
     }, []);
 
@@ -223,6 +243,8 @@ export const useLayerTreeAdmin = () => {
         getLayerDraft,
         deleteLayer,
         listGeoserverWorkspaces,
+        listPendingWorkspaces,
+        registerWorkspace,
         listGeoserverFields,
         listGeoserverStyles,
         bulkUpdateTags,

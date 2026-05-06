@@ -2,13 +2,14 @@ from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
+from app.schemas._camel import CamelCaseInput
 
 from app.core.acervo_url import to_absolute, to_absolute_in, to_relative
 
 HomeSectionKey = Literal['banner', 'topics', 'guide', 'select', 'faq', 'video', 'footer']
 
 
-class BannerItem(BaseModel):
+class BannerItem(CamelCaseInput):
     id: str
     titulo: str = ''
     descripcion: str = ''
@@ -30,13 +31,13 @@ class BannerItem(BaseModel):
         return to_absolute(v) if v else v
 
 
-class BannerPayload(BaseModel):
+class BannerPayload(CamelCaseInput):
     items: list[BannerItem] = Field(default_factory=list)
 
     model_config = ConfigDict(extra='forbid')
 
 
-class SubtopicItem(BaseModel):
+class SubtopicItem(CamelCaseInput):
     label: str = ''
     layer_ids: list[str] = Field(default_factory=list, serialization_alias='layerIds')
     link: str = ''
@@ -44,7 +45,7 @@ class SubtopicItem(BaseModel):
     model_config = ConfigDict(populate_by_name=True, extra='forbid')
 
 
-class TopicItem(BaseModel):
+class TopicItem(CamelCaseInput):
     id: str
     titulo: str = ''
     descripcion: str = ''
@@ -67,13 +68,13 @@ class TopicItem(BaseModel):
         return to_absolute(v) if v else v
 
 
-class TopicsPayload(BaseModel):
+class TopicsPayload(CamelCaseInput):
     items: list[TopicItem] = Field(default_factory=list)
 
     model_config = ConfigDict(extra='forbid')
 
 
-class GuideItem(BaseModel):
+class GuideItem(CamelCaseInput):
     id: str
     titulo: str = ''
     descripcion: str = ''
@@ -92,13 +93,13 @@ class GuideItem(BaseModel):
         return to_absolute(v) if v else v
 
 
-class GuidePayload(BaseModel):
+class GuidePayload(CamelCaseInput):
     items: list[GuideItem] = Field(default_factory=list)
 
     model_config = ConfigDict(extra='forbid')
 
 
-class SelectItem(BaseModel):
+class SelectItem(CamelCaseInput):
     id: str
     titulo: str = ''
     descripcion: str = ''
@@ -119,13 +120,13 @@ class SelectItem(BaseModel):
         return to_absolute(v) if v else v
 
 
-class SelectPayload(BaseModel):
+class SelectPayload(CamelCaseInput):
     items: list[SelectItem] = Field(default_factory=list)
 
     model_config = ConfigDict(extra='forbid')
 
 
-class FaqItem(BaseModel):
+class FaqItem(CamelCaseInput):
     id: str
     pregunta: str = ''
     respuesta: str = ''
@@ -134,13 +135,13 @@ class FaqItem(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
 
-class FaqPayload(BaseModel):
+class FaqPayload(CamelCaseInput):
     items: list[FaqItem] = Field(default_factory=list)
 
     model_config = ConfigDict(extra='forbid')
 
 
-class VideoPayload(BaseModel):
+class VideoPayload(CamelCaseInput):
     youtube_id: str = Field(default='', serialization_alias='youtubeId')
     titulo: str = ''
     descripcion: str = ''
@@ -149,7 +150,7 @@ class VideoPayload(BaseModel):
     model_config = ConfigDict(populate_by_name=True, extra='forbid')
 
 
-class FooterLogo(BaseModel):
+class FooterLogo(CamelCaseInput):
     id: str
     name: str = ''
     imagen_url: str = Field(default='', serialization_alias='imagenUrl')
@@ -170,7 +171,7 @@ class FooterLogo(BaseModel):
         return to_absolute(v) if v else v
 
 
-class FooterPayload(BaseModel):
+class FooterPayload(CamelCaseInput):
     copyright: str = ''
     privacy_policy_label: str = Field(default='', serialization_alias='privacyPolicyLabel')
     privacy_policy_href: str = Field(default='', serialization_alias='privacyPolicyHref')

@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
+from app.schemas._camel import CamelCaseInput
 
 
 class Fuentes(BaseModel):
@@ -53,7 +54,7 @@ class StatsConfigItem(BaseModel):
     model_config = ConfigDict(populate_by_name=True, extra='allow')
 
 
-class LayerMetadataBase(BaseModel):
+class LayerMetadataBase(CamelCaseInput):
     layer_key: str = Field(..., serialization_alias='layerKey')
     workspace: str | None = None
     layer_name_db: str | None = Field(default=None, serialization_alias='layerNameDb')
@@ -80,7 +81,7 @@ class LayerMetadataResponse(LayerMetadataBase):
     updated_by: str | None = Field(default=None, serialization_alias='updatedBy')
 
 
-class LayerMetadataUpdate(BaseModel):
+class LayerMetadataUpdate(CamelCaseInput):
     workspace: str | None = None
     layer_name_db: str | None = Field(default=None, serialization_alias='layerNameDb')
     layer_name_usuario: str | None = Field(default=None, serialization_alias='layerNameUsuario')
@@ -111,7 +112,7 @@ class LayerStatsResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True, from_attributes=True)
 
 
-class LayerStatsUpdate(BaseModel):
+class LayerStatsUpdate(CamelCaseInput):
     stats_config: list[StatsConfigItem] | None = Field(default=None, serialization_alias='statsConfig')
     values: list[NumeraliaValue] | None = None
     pie_numeralia: str | None = Field(default=None, serialization_alias='pieNumeralia')

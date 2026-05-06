@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Form, Input, Modal, Select, Space, Switch, TreeSelect, Typography } from 'antd';
 import { NODE_TYPE_HELP, NODE_TYPE_OPTIONS, isFieldVisible, isPropertyOfGroup } from '@features/mapalab-layers/constants/nodeTypes';
 import { findNodeContext } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
+import { useAuth } from '@shared/contexts/useAuth';
 import { message } from '@shared/services/message';
 import api from '@shared/services/api';
+import PendingWorkspacesAlert from './PendingWorkspacesAlert';
 
 const { Text } = Typography;
 
@@ -35,6 +37,10 @@ export default function LayerCreateModal({ open, onClose, onSubmit, treeData = [
     const [availableOnly, setAvailableOnly] = useState(true);
     const [workspacesData, setWorkspacesData] = useState([]);
     const [loadingWs, setLoadingWs] = useState(false);
+    const [pendingWorkspaces, setPendingWorkspaces] = useState([]);
+    const [wsReloadKey, setWsReloadKey] = useState(0);
+    const { user } = useAuth();
+    const isAdmin = user?.role === 'tetlamamakani';
     const watchedNodeType = Form.useWatch('node_type', form);
     const watchedLabel = Form.useWatch('label', form);
     const watchedParentId = Form.useWatch('parent_id', form);
@@ -75,7 +81,21 @@ export default function LayerCreateModal({ open, onClose, onSubmit, treeData = [
             .catch(() => { if (!cancelled) setWorkspacesData([]); })
             .finally(() => { if (!cancelled) setLoadingWs(false); });
         return () => { cancelled = true; };
-    }, [open, watchedNodeType, availableOnly]);
+    }, [open, watchedNodeType, availableOnly, wsReloadKey]);
+
+    useEffect(() => {
+        if (!open || !isAdmin) return;
+        if (!['group', 'leaf'].includes(watchedNodeType)) return;
+        let cancelled = false;
+        api.get('/geoserver/workspaces/pending')
+            .then((res) => { if (!cancelled) setPendingWorkspaces(res.data || []); })
+            .catch(() => { if (!cancelled) setPendingWorkspaces([]); });
+        return () => { cancelled = true; };
+    }, [open, watchedNodeType, isAdmin, wsReloadKey]);
+
+    const handleWorkspaceRegistered = useCallback(() => {
+        setWsReloadKey((k) => k + 1);
+    }, []);
 
     const gsOptions = useMemo(() => (
         (workspacesData || [])
@@ -227,6 +247,12 @@ export default function LayerCreateModal({ open, onClose, onSubmit, treeData = [
                             onChange={() => setSlugTouched(true)}
                         />
                     </Form.Item>
+                )}
+                {showWorkspace && isAdmin && (
+                    <PendingWorkspacesAlert
+                        pending={pendingWorkspaces}
+                        onRegistered={handleWorkspaceRegistered}
+                    />
                 )}
                 {showWorkspace && (
                     <>

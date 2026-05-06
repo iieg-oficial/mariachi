@@ -1,7 +1,8 @@
 from pydantic import BaseModel, Field
+from app.schemas._camel import CamelCaseInput
 
 
-class FolderCreate(BaseModel):
+class FolderCreate(CamelCaseInput):
     bucket_id: int
     name: str = Field(..., min_length=1, max_length=255)
     parent: str | None = None
@@ -17,7 +18,7 @@ class FolderResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class MediaUpdate(BaseModel):
+class MediaUpdate(CamelCaseInput):
     alt: str | None = None
     description: str | None = None
     folder: str | None = None

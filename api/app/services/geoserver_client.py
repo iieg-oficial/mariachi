@@ -49,7 +49,10 @@ class GeoServerClient:
             r = c.get(url)
             r.raise_for_status()
             data = r.json()
-        workspaces = data.get("workspaces", {}).get("workspace", []) or []
+        node = data.get("workspaces")
+        if not isinstance(node, dict):
+            return []
+        workspaces = node.get("workspace", []) or []
         return [w["name"] for w in workspaces]
 
     def list_layers(self, workspace: str) -> list[str]:
@@ -60,7 +63,10 @@ class GeoServerClient:
                 return []
             r.raise_for_status()
             data = r.json()
-        layers = data.get("layers", {}).get("layer", []) or []
+        node = data.get("layers")
+        if not isinstance(node, dict):
+            return []
+        layers = node.get("layer", []) or []
         return [layer["name"] for layer in layers]
 
     def layer_exists(self, workspace: str, layer: str) -> bool:

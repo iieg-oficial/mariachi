@@ -4,9 +4,10 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
 
 from app.core.acervo_url import to_absolute, to_relative
+from app.schemas._camel import CamelCaseInput
 
 
-class CapaRef(BaseModel):
+class CapaRef(CamelCaseInput):
     tipo: Literal['capa', 'etiqueta'] = 'capa'
     workspace: str | None = None
     layer: str | None = None
@@ -29,7 +30,7 @@ class CapaRef(BaseModel):
         return v
 
 
-class BBox(BaseModel):
+class BBox(CamelCaseInput):
     minx: float
     miny: float
     maxx: float
@@ -52,7 +53,7 @@ class BBox(BaseModel):
         return v
 
 
-class EventoBase(BaseModel):
+class EventoBase(CamelCaseInput):
     titulo: str = Field(..., min_length=1, max_length=200)
     descripcion: str | None = None
     icono_url: str | None = Field(default=None, serialization_alias='iconoUrl')
@@ -80,7 +81,7 @@ class EventoCreate(EventoBase):
     slug: str | None = Field(default=None, min_length=1, max_length=120)
 
 
-class EventoUpdate(BaseModel):
+class EventoUpdate(CamelCaseInput):
     titulo: str | None = Field(default=None, min_length=1, max_length=200)
     descripcion: str | None = None
     icono_url: str | None = Field(default=None, serialization_alias='iconoUrl')
