@@ -10,7 +10,15 @@ from app.models.sieej.catalogos import (
     CatalogoUsuariosDatos,
 )
 from app.models.sieej.enlace import Enlace
+from app.models.sieej.envio import EnvioArchivo, EnvioEvento, EnvioFormulario
+from app.models.sieej.formulario import Formulario
 from app.models.sieej.general import General
+from app.models.sieej.grupo import (
+    Grupo,
+    formulario_grupo,
+    formulario_usuario,
+    usuario_grupo,
+)
 
 __all__ = [
     "BDEjesEstrategicos",
@@ -24,5 +32,13 @@ __all__ = [
     "CatalogoUnidadAdmin",
     "CatalogoUsuariosDatos",
     "Enlace",
+    "EnvioArchivo",
+    "EnvioEvento",
+    "EnvioFormulario",
+    "Formulario",
     "General",
+    "Grupo",
+    "formulario_grupo",
+    "formulario_usuario",
+    "usuario_grupo",
 ]

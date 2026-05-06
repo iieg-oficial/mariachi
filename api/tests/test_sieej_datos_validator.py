@@ -1,0 +1,279 @@
+import pytest
+
+from app.services.sieej.datos_validator import DatosInvalidosError, validar_datos
+
+
+def _def_form_simple():
+    return {
+        "version": 1,
+        "steps": [
+            {
+                "id": "general",
+                "type": "form",
+                "title": "General",
+                "fields": [
+                    {"name": "nombre", "label": "Nombre", "type": "text", "required": True},
+                    {
+                        "name": "edad",
+                        "label": "Edad",
+                        "type": "number",
+                        "validation": {"min": 0, "max": 150},
+                    },
+                    {
+                        "name": "email",
+                        "label": "Email",
+                        "type": "email",
+                    },
+                    {
+                        "name": "color",
+                        "label": "Color",
+                        "type": "radio",
+                        "options": [
+                            {"value": "rojo", "label": "Rojo"},
+                            {"value": "azul", "label": "Azul"},
+                        ],
+                    },
+                ],
+            }
+        ],
+    }
+
+
+def test_datos_validos_pasa():
+    datos = {"general": {"nombre": "Edgar", "edad": 32, "email": "e@x.com", "color": "rojo"}}
+    validar_datos(_def_form_simple(), datos, estricto=True)
+
+
+def test_required_faltante_falla_en_estricto():
+    datos = {"general": {"edad": 30}}
+    with pytest.raises(DatosInvalidosError) as exc:
+        validar_datos(_def_form_simple(), datos, estricto=True)
+    paths = {e["path"] for e in exc.value.errores}
+    assert "general.nombre" in paths
+
+
+def test_required_faltante_pasa_en_borrador():
+    datos = {"general": {"edad": 30}}
+    validar_datos(_def_form_simple(), datos, estricto=False)
+
+
+def test_email_invalido_falla():
+    datos = {"general": {"nombre": "x", "email": "no-es-email"}}
+    with pytest.raises(DatosInvalidosError) as exc:
+        validar_datos(_def_form_simple(), datos, estricto=True)
+    msgs = " ".join(e["msg"] for e in exc.value.errores)
+    assert "email" in msgs.lower()
+
+
+def test_number_fuera_de_rango_falla():
+    datos = {"general": {"nombre": "x", "edad": 200}}
+    with pytest.raises(DatosInvalidosError) as exc:
+        validar_datos(_def_form_simple(), datos, estricto=True)
+    paths = {e["path"] for e in exc.value.errores}
+    assert "general.edad" in paths
+
+
+def test_radio_valor_fuera_de_options_falla():
+    datos = {"general": {"nombre": "x", "color": "verde"}}
+    with pytest.raises(DatosInvalidosError):
+        validar_datos(_def_form_simple(), datos, estricto=True)
+
+
+def test_show_when_omite_required():
+    """Si showWhen no se cumple, el campo no es exigible aunque sea required."""
+    d = {
+        "version": 1,
+        "steps": [
+            {
+                "id": "x",
+                "type": "form",
+                "title": "x",
+                "fields": [
+                    {
+                        "name": "tiene",
+                        "label": "Tiene?",
+                        "type": "radio",
+                        "options": [{"value": "true", "label": "Si"}, {"value": "false", "label": "No"}],
+                        "required": True,
+                    },
+                    {
+                        "name": "detalle",
+                        "label": "Detalle",
+                        "type": "text",
+                        "required": True,
+                        "showWhen": {"field": "tiene", "equals": "true"},
+                    },
+                ],
+            }
+        ],
+    }
+    validar_datos(d, {"x": {"tiene": "false"}}, estricto=True)
+
+
+def test_show_when_si_se_cumple_exige_required():
+    d = {
+        "version": 1,
+        "steps": [
+            {
+                "id": "x",
+                "type": "form",
+                "title": "x",
+                "fields": [
+                    {
+                        "name": "tiene",
+                        "label": "Tiene?",
+                        "type": "radio",
+                        "options": [{"value": "true", "label": "Si"}, {"value": "false", "label": "No"}],
+                        "required": True,
+                    },
+                    {
+                        "name": "detalle",
+                        "label": "Detalle",
+                        "type": "text",
+                        "required": True,
+                        "showWhen": {"field": "tiene", "equals": "true"},
+                    },
+                ],
+            }
+        ],
+    }
+    with pytest.raises(DatosInvalidosError) as exc:
+        validar_datos(d, {"x": {"tiene": "true"}}, estricto=True)
+    paths = {e["path"] for e in exc.value.errores}
+    assert "x.detalle" in paths
+
+
+def test_repeater_min_items_falla_en_estricto():
+    d = {
+        "version": 1,
+        "steps": [
+            {
+                "id": "items",
+                "type": "repeater",
+                "title": "Items",
+                "minItems": 2,
+                "fields": [{"name": "nombre", "label": "Nombre", "type": "text", "required": True}],
+            }
+        ],
+    }
+    with pytest.raises(DatosInvalidosError) as exc:
+        validar_datos(d, {"items": [{"nombre": "uno"}]}, estricto=True)
+    msgs = " ".join(e["msg"] for e in exc.value.errores)
+    assert "al menos" in msgs
+
+
+def test_repeater_max_items_falla_siempre():
+    d = {
+        "version": 1,
+        "steps": [
+            {
+                "id": "items",
+                "type": "repeater",
+                "title": "Items",
+                "maxItems": 1,
+                "fields": [{"name": "nombre", "label": "Nombre", "type": "text"}],
+            }
+        ],
+    }
+    with pytest.raises(DatosInvalidosError):
+        validar_datos(
+            d,
+            {"items": [{"nombre": "a"}, {"nombre": "b"}]},
+            estricto=False,
+        )
+
+
+def test_select_multiple_lista():
+    d = {
+        "version": 1,
+        "steps": [
+            {
+                "id": "x",
+                "type": "form",
+                "title": "x",
+                "fields": [
+                    {
+                        "name": "ejes",
+                        "label": "Ejes",
+                        "type": "select_multiple",
+                        "options": [
+                            {"value": "a", "label": "A"},
+                            {"value": "b", "label": "B"},
+                        ],
+                    }
+                ],
+            }
+        ],
+    }
+    validar_datos(d, {"x": {"ejes": ["a"]}}, estricto=True)
+    with pytest.raises(DatosInvalidosError):
+        validar_datos(d, {"x": {"ejes": ["a", "z"]}}, estricto=True)
+
+
+def test_file_field_requiere_objeto_con_url():
+    d = {
+        "version": 1,
+        "steps": [
+            {
+                "id": "x",
+                "type": "form",
+                "title": "x",
+                "fields": [
+                    {
+                        "name": "doc",
+                        "label": "Doc",
+                        "type": "file",
+                        "bucket": "sieej-uploads",
+                        "required": True,
+                    }
+                ],
+            }
+        ],
+    }
+    with pytest.raises(DatosInvalidosError):
+        validar_datos(d, {"x": {"doc": "not-an-object"}}, estricto=True)
+    validar_datos(
+        d,
+        {"x": {"doc": {"url_publica": "https://acervo/sieej-uploads/abc"}}},
+        estricto=True,
+    )
+
+
+def test_repeater_con_show_when_dentro_del_item():
+    d = {
+        "version": 1,
+        "steps": [
+            {
+                "id": "bd",
+                "type": "repeater",
+                "title": "BD",
+                "minItems": 1,
+                "fields": [
+                    {
+                        "name": "tiene_dicc",
+                        "label": "Tiene?",
+                        "type": "radio",
+                        "options": [{"value": "true", "label": "Si"}, {"value": "false", "label": "No"}],
+                        "required": True,
+                    },
+                    {
+                        "name": "url",
+                        "label": "URL",
+                        "type": "text",
+                        "required": True,
+                        "showWhen": {"field": "tiene_dicc", "equals": "true"},
+                    },
+                ],
+            }
+        ],
+    }
+    # primer item dice "false" (no exige url), segundo dice "true" (sin url) → falla
+    with pytest.raises(DatosInvalidosError) as exc:
+        validar_datos(
+            d,
+            {"bd": [{"tiene_dicc": "false"}, {"tiene_dicc": "true"}]},
+            estricto=True,
+        )
+    paths = {e["path"] for e in exc.value.errores}
+    assert "bd[1].url" in paths
+    assert "bd[0].url" not in paths

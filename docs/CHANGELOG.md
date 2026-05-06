@@ -9,6 +9,94 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.34.0] - 2026-05-06
+
+### Backend (api) — Plataforma de formularios dinamicos SIEEJ (Fase 1, respondent)
+
+Aterriza el backend respondent del plan documentado en
+`sieej/docs/planes/plataforma-formularios.md`. Coexiste con el wizard
+SIEEJ existente; ese wizard se desmantela en la Fase 5 del plan.
+
+#### Migration
+
+- `a4b5c6d7e8f9_add_sieej_formularios_dinamicos.py` (down_revision
+  `d3e4f5a6b7c8`). Crea 8 tablas en el schema `sieej`:
+  `formulario`, `grupo`, `usuario_grupo`, `formulario_grupo`,
+  `formulario_usuario`, `envio_formulario`, `envio_archivo`,
+  `envio_evento`. Crea 3 enums Postgres: `sieej_formulario_estado`,
+  `sieej_envio_estado`, `sieej_evento_tipo`. Indices en slug, estado,
+  envio+field_path, envio+ocurrido_en. Unique en
+  `(formulario_id, usuario_id)` para garantizar 1 envio por usuario.
+
+#### Modelos / Schemas / Services
+
+- `app/models/sieej/formulario.py`, `grupo.py`, `envio.py`.
+- `app/schemas/sieej/formulario.py`, `grupo.py`, `envio.py` con
+  `*Create/*Update/*Response` y `ConfigDict(from_attributes=True)`.
+- `app/services/sieej/definicion_validator.py`: valida la estructura
+  JSONB de la definicion al crear/editar el formulario y aplana las
+  reglas a un array plano para el endpoint `/schema`. Aplica el cap
+  absoluto de 100 MB por archivo (alineado al
+  `client_max_body_size` del gateway-hub).
+- `app/services/sieej/datos_validator.py`: valida `envio.datos`
+  contra `definicion_snapshot`. Soporta `showWhen`, repeaters con
+  `min/maxItems`, validaciones por tipo (text/email/tel/number/date/
+  select/select_multiple/radio/checkbox/file). En modo `estricto=False`
+  permite borradores parciales.
+- `app/services/sieej/formularios_dinamicos_service.py`: query de
+  visibilidad combinando asignacion individual + via grupo + bypass
+  para `tetlamamakani`.
+- `app/services/sieej/envios_service.py`: get-or-init del envio
+  (snapshot idempotente al iniciar), guardar parcial, marcar como
+  enviado, upload a Acervo asociado a `envio_archivo`, registro de
+  `envio_evento` (auditoria append-only).
+
+#### Endpoints respondent
+
+Todos bajo el subrouter existente `/formularios` (gateado por
+`require_project_access('sieej')`):
+
+- `GET /formularios` — lista de formularios visibles con
+  `estado_envio` precalculado.
+- `GET /formularios/{slug}` — definicion + estado del envio.
+- `GET /formularios/{slug}/schema` — definicion + reglas de
+  validacion planas (consumido por el frontend).
+- `GET /formularios/{slug}/envio` — datos del envio del usuario
+  actual (lo crea implicitamente si no existe).
+- `PUT /formularios/{slug}/envio` — guarda parcial o envia con
+  `enviar=true`. Valida segun el modo.
+- `POST /formularios/{slug}/envio/upload` — multipart con `field_path`
+  + `file`. Sube a Acervo y registra `envio_archivo`.
+
+El subrouter `dinamicos.router` se incluye **despues** de los
+existentes (`catalogos`, `general`, `enlaces`, `bases_datos`) para
+que las rutas literales del wizard tengan precedencia y no haya
+ambiguedad.
+
+#### Tests
+
+47 tests nuevos (tests/test_sieej_definicion_validator.py — 17 tests,
+tests/test_sieej_datos_validator.py — 14 tests,
+tests/test_sieej_formularios_dinamicos.py — 16 tests). Suite total
+del backend: 289 passed, 0 failed, 0 SAWarnings.
+
+#### Pendiente
+
+- Fase 2: endpoints admin (`/sieej/formularios`, `/sieej/grupos`,
+  asignaciones, listado de envios).
+- Fase 3: refactor del frontend SIEEJ.
+- Fase 4: constructor visual en mariachi/admin (hoy solo hay un
+  esqueleto en `features/sieej-formularios/`).
+- Fase 5: migracion del wizard SIEEJ actual al modelo dinamico
+  + cleanup de las 4 tablas viejas y el wizard frontend.
+
+### Bump
+
+- `api/pyproject.toml` -> 0.34.0.
+- `admin/package.json` -> 0.34.0.
+
+---
+
 ## [0.33.4] - 2026-05-06
 
 ### Admin (UI) — fix namespace de SIEEJ formularios
