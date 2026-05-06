@@ -4,6 +4,7 @@ import BucketFilePicker from '@features/media/components/BucketFilePicker';
 
 vi.mock('@features/media/api/mediaService', () => ({
     listBucketObjects: vi.fn(),
+    getBuckets: vi.fn(() => Promise.resolve([])),
 }));
 
 import { listBucketObjects } from '@features/media/api/mediaService';
@@ -81,6 +82,7 @@ describe('BucketFilePicker', () => {
             nombre: 'perfil.jpg',
             enlace: '/fotos/perfil.jpg',
             url: 'https://acervo.example.com/portal-bucket/fotos/perfil.jpg',
+            bucketId: 1,
         });
         expect(onClose).toHaveBeenCalled();
     });

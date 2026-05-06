@@ -19,7 +19,7 @@ describe('buildSiderItems', () => {
         expect(items[0].label).toBe('Inicio');
         expect(items[1].key).toBe('platform');
         expect(items[1].label).toBe('Plataforma');
-        expect(items[1].children).toHaveLength(3);
+        expect(items[1].children).toHaveLength(4);
 
         const projectKeys = items.slice(2).map((i) => i.key);
         expect(projectKeys).toContain('project-portal');
@@ -36,6 +36,7 @@ describe('buildSiderItems', () => {
             '/users',
             '/media',
             '/revision',
+            '/reportes',
         ]);
     });
 
@@ -52,7 +53,7 @@ describe('buildSiderItems', () => {
 
         const platform = items.find((i) => i.key === 'platform');
         expect(platform).toBeDefined();
-        expect(platform.children.map((c) => c.key)).toEqual(['/media']);
+        expect(platform.children.map((c) => c.key)).toEqual(['/media', '/reportes']);
 
         const portal = items.find((i) => i.key === 'project-portal');
         expect(portal).toBeDefined();
@@ -70,7 +71,7 @@ describe('buildSiderItems', () => {
         expect(items).toHaveLength(2);
         expect(items[0].key).toBe('/inicio');
         expect(items[1].key).toBe('platform');
-        expect(items[1].children.map((c) => c.key)).toEqual(['/media']);
+        expect(items[1].children.map((c) => c.key)).toEqual(['/media', '/reportes']);
     });
 
     it('editora con membership en mapalab y sieej ve ambos grupos', () => {
