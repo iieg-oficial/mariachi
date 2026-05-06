@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.models.project import Project, UserProject
-from app.models.sieej import BasesDatos, Enlace, General
+from app.models.sieej import EnvioArchivo, EnvioFormulario, Formulario
 
 router = APIRouter()
 
@@ -13,60 +13,51 @@ router = APIRouter()
 async def stats(db: Session = Depends(get_db)):
     sieej_project = db.query(Project).filter(Project.slug == "sieej").first()
 
-    if sieej_project is None:
-        return {
-            "dependencias_total": 0,
-            "con_general": 0,
-            "con_enlace": 0,
-            "con_bases_datos": 0,
-            "bases_datos_total": 0,
-            "bases_datos_con_diccionario": 0,
-        }
-
     dependencias_total = (
         db.query(func.count(UserProject.user_id))
         .filter(UserProject.project_id == sieej_project.id)
         .scalar()
+        if sieej_project else 0
     )
 
-    con_general = (
-        db.query(func.count(distinct(General.user_id)))
-        .filter(General.is_active.is_(True))
+    formularios_activos = (
+        db.query(func.count(Formulario.id))
+        .filter(Formulario.estado == "activo")
         .scalar()
     )
 
-    con_enlace = (
-        db.query(func.count(distinct(Enlace.user_id)))
-        .filter(Enlace.is_active.is_(True))
+    envios_total = db.query(func.count(EnvioFormulario.id)).scalar()
+    envios_enviados = (
+        db.query(func.count(EnvioFormulario.id))
+        .filter(EnvioFormulario.estado == "enviado")
+        .scalar()
+    )
+    envios_en_proceso = (
+        db.query(func.count(EnvioFormulario.id))
+        .filter(EnvioFormulario.estado == "en_proceso")
+        .scalar()
+    )
+    envios_expirados = (
+        db.query(func.count(EnvioFormulario.id))
+        .filter(EnvioFormulario.estado == "expirado")
         .scalar()
     )
 
-    con_bases_datos = (
-        db.query(func.count(distinct(BasesDatos.user_id)))
-        .filter(BasesDatos.is_active.is_(True))
+    usuarios_con_envio = (
+        db.query(func.count(distinct(EnvioFormulario.usuario_id)))
+        .filter(EnvioFormulario.usuario_id.isnot(None))
         .scalar()
     )
 
-    bases_datos_total = (
-        db.query(func.count(BasesDatos.id))
-        .filter(BasesDatos.is_active.is_(True))
-        .scalar()
-    )
-
-    bases_datos_con_diccionario = (
-        db.query(func.count(BasesDatos.id))
-        .filter(
-            BasesDatos.is_active.is_(True),
-            BasesDatos.ruta_diccionario.isnot(None),
-        )
-        .scalar()
-    )
+    archivos_total = db.query(func.count(EnvioArchivo.id)).scalar()
 
     return {
         "dependencias_total": dependencias_total or 0,
-        "con_general": con_general or 0,
-        "con_enlace": con_enlace or 0,
-        "con_bases_datos": con_bases_datos or 0,
-        "bases_datos_total": bases_datos_total or 0,
-        "bases_datos_con_diccionario": bases_datos_con_diccionario or 0,
+        "formularios_activos": formularios_activos or 0,
+        "envios_total": envios_total or 0,
+        "envios_enviados": envios_enviados or 0,
+        "envios_en_proceso": envios_en_proceso or 0,
+        "envios_expirados": envios_expirados or 0,
+        "usuarios_con_envio": usuarios_con_envio or 0,
+        "archivos_total": archivos_total or 0,
     }

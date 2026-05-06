@@ -9,8 +9,6 @@ from app.models.page import Page
 from app.models.project import Project, UserProject
 from app.models.reporte import Reporte
 from app.models.sieej import (
-    BasesDatos,
-    BDEjesEstrategicos,
     CatalogoCalidadDatos,
     CatalogoCategoriaDatos,
     CatalogoEjesEstrategicos,
@@ -19,8 +17,11 @@ from app.models.sieej import (
     CatalogoPeriodicidad,
     CatalogoUnidadAdmin,
     CatalogoUsuariosDatos,
-    Enlace,
-    General,
+    EnvioArchivo,
+    EnvioEvento,
+    EnvioFormulario,
+    Formulario,
+    Grupo,
 )
 from app.models.user import Usuario
 
@@ -38,8 +39,6 @@ __all__ = [
     "UserProject",
     "MediaBucket",
     "Reporte",
-    "BDEjesEstrategicos",
-    "BasesDatos",
     "CatalogoCalidadDatos",
     "CatalogoCategoriaDatos",
     "CatalogoEjesEstrategicos",
@@ -48,6 +47,9 @@ __all__ = [
     "CatalogoPeriodicidad",
     "CatalogoUnidadAdmin",
     "CatalogoUsuariosDatos",
-    "Enlace",
-    "General",
+    "EnvioArchivo",
+    "EnvioEvento",
+    "EnvioFormulario",
+    "Formulario",
+    "Grupo",
 ]

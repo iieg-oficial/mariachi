@@ -9,6 +9,62 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.38.0] - 2026-05-06
+
+### Backend (api) — Cleanup wizard SIEEJ (Fase 5 cierre)
+
+Tras validar el cutover en el frontend (sieej 1.4.0), se completa la
+limpieza removiendo modelos, schemas, services, rutas y tablas del
+wizard original. Los catalogos (8 tablas `catalogo_*`) se mantienen
+porque siguen siendo referenciados por la definicion JSON via
+`field.catalog`. Los datos historicos viven en
+`envio_formulario.datos` (JSONB) del formulario `sieej-levantamiento`.
+
+#### Migration
+
+- `c6d7e8f9ab01_drop_wizard_sieej_tables.py` (down_revision
+  `b5c6d7e8f9aa`): drops `general`, `enlace`, `bases_datos`,
+  `bd_ejes_estrategicos`. Aplicada en prod local; sin perdida porque
+  el backfill ya migro los datos a envios.
+
+#### Removido
+
+- Modelos: `app/models/sieej/general.py`, `enlace.py`, `bases_datos.py`
+  (con `BasesDatos` y `BDEjesEstrategicos`).
+- Schemas: `app/schemas/sieej/general.py`, `enlace.py`, `bases_datos.py`.
+- Services: `app/services/sieej/general_service.py`, `enlace_service.py`,
+  `bases_datos_service.py`.
+- Rutas: `app/api/routes/formularios/general.py`, `enlaces.py`,
+  `bases_datos.py`. El subrouter `formularios` ahora solo incluye
+  `catalogos` + `dinamicos`.
+- Tests: `test_sieej_formularios.py` (cubria los endpoints viejos),
+  `test_sieej_backfill.py` (los modelos referenciados ya no existen).
+- Script: `scripts/backfill_sieej_levantamiento.py` (one-time, ya
+  cumplio su funcion). Disponible en git history para auditoria.
+
+#### Cambiado
+
+- `app/api/routes/sieej_admin/stats.py`: refactor de las metricas para
+  consumir `envio_formulario` y `envio_archivo` en vez de las tablas
+  viejas. Nuevas claves: `formularios_activos`, `envios_total`,
+  `envios_enviados`, `envios_en_proceso`, `envios_expirados`,
+  `usuarios_con_envio`, `archivos_total`. Mantiene
+  `dependencias_total`.
+- `app/models/__init__.py` y `app/models/sieej/__init__.py`:
+  removidos los imports/exports de los modelos eliminados.
+
+#### Tests
+
+300 passed (eran 315 antes de borrar 15 tests obsoletos del wizard).
+Lint clean en `app/` y `tests/`.
+
+### Bump
+
+- `api/pyproject.toml` -> 0.38.0.
+- `admin/package.json` -> 0.38.0.
+
+---
+
 ## [0.37.0] - 2026-05-06
 
 ### Backend (api) — Plataforma de formularios SIEEJ — Fase 5 (seed + backfill)
