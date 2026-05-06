@@ -9,6 +9,29 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.40.6] - 2026-05-06
+
+### Eventos: auto-registro de workspace al asociar capa
+
+Al asociar una capa al evento desde `CapasField`, si el workspace al que pertenece **no esta registrado** en `mapalab.workspaces`, se registra automaticamente con valores derivados (`alias=geoserver_workspace`, `db_schema=geoserver_workspace`, `label=Title Case`). Despues continua el flujo `auto-leaf` y la asociacion al evento. Cero clicks extra para el admin.
+
+#### Backend (api)
+
+- `GET /administrador/geoserver/workspaces?include_unregistered=true` tambien lista workspaces existentes en GeoServer pero ausentes de `mapalab.workspaces`, con `registered: false` y `alias: null`. Filtra workspaces sin capas (no tiene sentido como opcion). Cada item ahora incluye siempre `registered: bool`.
+
+#### Admin (frontend)
+
+- `features/mapalab-eventos/helpers/addCapa.js`: nuevo helper `addCapaToEvento(leaf, value, onChange, onAfterRegister)` extraido de `CapasField`. Si `leaf.workspaceRegistered=false`, hace POST `/geoserver/workspaces/register` antes del `auto-leaf`. Toast `"Workspace 'X' registrado automaticamente"` cuando se dispara.
+- `CapasField.jsx`: pasa `?include_unregistered=true` al GET solo si el usuario es admin (`tetlamamakani`). Para editora, comportamiento previo (solo registrados). El `addCapa` queda como wrapper de una linea sobre el helper.
+
+#### Notas operativas
+
+- Si el alias por default no es el deseado, se puede editar despues desde el editor de capas/workspaces.
+- Workspaces sin capas (ej. `egarpruebas`) no aparecen en el listado, asi no se pueden auto-registrar accidentalmente.
+- Editora no admin: no ve workspaces no registrados; si necesita asociar una capa de un workspace pendiente, pide a un admin que lo registre primero.
+
+---
+
 ## [0.40.5] - 2026-05-06
 
 ### Fix(admin): warning al re-resetear contraseña pendiente

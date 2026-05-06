@@ -35,6 +35,7 @@ def _resolve_workspace(db: Session, alias: str) -> Workspace:
 @router.get('/workspaces')
 async def list_workspaces_with_layers(
     available_only: bool = Query(default=False),
+    include_unregistered: bool = Query(default=False),
     db: Session = Depends(get_dataengine_db),
     current_user: Usuario = Depends(_require_project_editor),
     _rl: Usuario = Depends(_read_rate_limit),
@@ -43,14 +44,14 @@ async def list_workspaces_with_layers(
     workspaces = db.query(Workspace).order_by(Workspace.alias).all()
     client = GeoServerClient()
 
-    registered: set[tuple[str, str]] = set()
+    registered_layers: set[tuple[str, str]] = set()
     if available_only:
         from app.models.layer import Layer
         rows = db.query(Layer.workspace_alias, Layer.geoserver_layer).filter(
             Layer.workspace_alias.isnot(None),
             Layer.geoserver_layer.isnot(None),
         ).all()
-        registered = {(alias, name) for alias, name in rows}
+        registered_layers = {(alias, name) for alias, name in rows}
 
     result = []
     for ws in workspaces:
@@ -62,7 +63,7 @@ async def list_workspaces_with_layers(
             layers = []
 
         if available_only:
-            layers = [name for name in layers if (ws.alias, name) not in registered]
+            layers = [name for name in layers if (ws.alias, name) not in registered_layers]
 
         result.append({
             'alias': ws.alias,
@@ -70,7 +71,33 @@ async def list_workspaces_with_layers(
             'dbSchema': ws.db_schema,
             'label': ws.label,
             'layers': layers,
+            'registered': True,
         })
+
+    if include_unregistered:
+        registered_geoserver_names = {ws.geoserver_workspace for ws in workspaces}
+        try:
+            all_geoserver_names = client.list_workspaces()
+        except GeoServerError:
+            all_geoserver_names = []
+        for name in sorted(all_geoserver_names):
+            if name in registered_geoserver_names:
+                continue
+            try:
+                layers = client.list_layers(name)
+            except GeoServerError:
+                layers = []
+            if not layers:
+                continue
+            result.append({
+                'alias': None,
+                'geoserverWorkspace': name,
+                'dbSchema': None,
+                'label': None,
+                'layers': layers,
+                'registered': False,
+            })
+
     return result
 
 
