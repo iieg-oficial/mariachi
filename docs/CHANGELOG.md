@@ -9,7 +9,30 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
-## [Unreleased]
+## [0.33.0] - 2026-05-06
+
+### Multimedia: hardening de endpoints y scoping de carpetas
+
+Limpieza del módulo de media tras la revisión de `context.md`:
+
+**Backend (`api/`):**
+
+- `app/api/routes/media.py` — agrega `PUT /multimedia/{id}` (actualiza `metadata.alt`, `metadata.description`, `folder`) y `DELETE /multimedia/carpetas/{id}` (valida que la carpeta esté vacía, devuelve 409 si tiene archivos). El handler `DELETE /multimedia/{id}` ahora soporta IDs sintéticos `dir:{bucket_id}:{name}` para borrar prefixes recursivos del bucket (solo `tetlamamakani`); también borra los registros locales en `media` que matcheen el prefix.
+- `app/services/media_service.py::ensure_folder_exists` — devuelve `"/"` cuando la carpeta de destino es la raíz (antes devolvía `None` y violaba `media.folder NOT NULL`, rompiendo cada upload a raíz). El listado de buckets ahora consulta `app/core/bucket_policies.py::HIDDEN_PREFIXES_BY_BUCKET` en lugar de tener `('reportes/',)` hardcoded para `mariachi`.
+- `app/services/acervo.py` — `upload_file` ahora hace streaming desde `UploadFile.file` (antes cargaba el archivo entero a memoria). `_ensure_bucket_exists` loggea el `S3Error` en vez de silenciarlo. Nuevo `AcervoClient.invalidate_cache(bucket_name=None)` para rotación de credenciales. Nuevo `delete_prefix(prefix)` usado por el borrado de directorios.
+- `app/models/media.py` — `MediaFolder` agrega `bucket_id` (FK CASCADE a `media_buckets`, NOT NULL) y unicidad `(bucket_id, path)`. Se quita el FK `media.folder → media_folders.path` (la columna sigue siendo string libre, ya no referencia FK).
+- `alembic/versions/mariachi/d3e4f5a6b7c8_scope_media_folders_to_bucket.py` — backfilea `bucket_id` en folders existentes mirando los `media` que apuntan a esa ruta; cae al primer bucket activo si no hay archivos previos.
+- `tests/test_multimedia.py` — cobertura del nuevo flujo (mock `AcervoClient`): listar/crear/eliminar carpetas, upload a raíz y subcarpeta, update de metadata, delete por id int, delete recursivo `dir:`, filtro `reportes/` en `mariachi`, 401 en proxy sin auth.
+
+**Admin (`admin/`):**
+
+- `features/media/components/FilePicker.jsx` y `MediaSelector.jsx` — eliminados (legacy, no usados, rotos por `Tabs.TabPane` deprecado en AntD v6 y por no pasar `bucketId`). Quedan solo `BucketFilePicker` y `BucketFileUploader`.
+- `features/media/api/mediaService.js` — `getMediaFile` (apuntaba a un endpoint inexistente) eliminado. `getFolders(bucketId)`, `createFolder(bucketId, name, parent)` y `deleteFolder(id)` ahora pasan `bucket_id`.
+- `features/media/pages/MediaPage.jsx` — un solo `useEffect` por responsabilidad (carga inicial de buckets, carga de folders+stats al cambiar de bucket, carga de archivos visibles); columna "Tipo" muestra `CARPETA` en filas `isDir` (antes mostraba un Tag vacío); las carpetas también pueden eliminarse desde grid y lista.
+
+**Documentación (`docs/`):**
+
+- `context.md` — corregida la fila `/media/*` (era inexacta) por las rutas reales `/multimedia/*`, `/multimedia/proxy/...`, `/multimedia/carpetas/*`, `/media-buckets/*`. Nueva sección "Sub-rutas reservadas dentro de buckets compartidos" describiendo `HIDDEN_PREFIXES_BY_BUCKET`. Nueva sección "Carpetas del CMS" explicando que ahora son scoped por bucket.
 
 ---
 
