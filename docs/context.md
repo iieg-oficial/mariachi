@@ -2,7 +2,7 @@
 
 > Documento de referencia completo. Leer este archivo proporciona contexto del monorepo sin explorar el codebase.
 
-**Versión:** 0.40.1 · **Última actualización:** 2026-05-06
+**Versión:** 0.40.2 · **Última actualización:** 2026-05-06
 
 
 ---
@@ -530,6 +530,12 @@ Este repo se integra con otros servicios internos vecinos (CMS, visor de mapas, 
 ---
 
 ## Cambios recientes
+
+### 2026-05-06 (v0.40.2)
+
+Detalle en `docs/CHANGELOG.md` §[0.40.2]. Resumen:
+
+- **Admin SIEEJ sidebar habilitado**: `app/sider-config.jsx` deja el grupo SIEEJ visible. Items: Formularios (`/sieej/formularios`) y Grupos (`/sieej/grupos`). "Agregar dependencia" queda disabled (placeholder).
 
 ### 2026-05-06 (v0.40.1)
 
