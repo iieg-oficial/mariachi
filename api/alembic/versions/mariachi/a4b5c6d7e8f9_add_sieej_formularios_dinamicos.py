@@ -32,6 +32,9 @@ SCHEMA = "sieej"
 
 
 def upgrade() -> None:
+    # Cada enum se referencia desde una sola tabla; SQLAlchemy lo crea al
+    # construir la columna. Con `create_type=False` evitamos el doble
+    # CREATE TYPE cuando el codigo de columna lo materializa.
     formulario_estado = sa.Enum(
         'borrador', 'activo', 'cerrado',
         name='sieej_formulario_estado',
@@ -47,9 +50,6 @@ def upgrade() -> None:
         name='sieej_evento_tipo',
         schema=SCHEMA,
     )
-    formulario_estado.create(op.get_bind(), checkfirst=True)
-    envio_estado.create(op.get_bind(), checkfirst=True)
-    evento_tipo.create(op.get_bind(), checkfirst=True)
 
     op.create_table(
         "formulario",
