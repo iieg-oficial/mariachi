@@ -38,7 +38,9 @@ const InitialLayerOrderPage = lazy(() => import('@features/mapalab-layers').then
 const EventosListPage = lazy(() => import('@features/mapalab-eventos').then((m) => ({ default: m.EventosListPage })));
 const EventoEditPage = lazy(() => import('@features/mapalab-eventos').then((m) => ({ default: m.EventoEditPage })));
 const HomePage = lazy(() => import('@features/mapalab-home').then((m) => ({ default: m.HomePage })));
-const FormulariosPage = lazy(() => import('@features/sieej-formularios'));
+const FormulariosListPage = lazy(() => import('@features/sieej-formularios').then((m) => ({ default: m.FormulariosListPage })));
+const FormularioEditorPage = lazy(() => import('@features/sieej-formularios').then((m) => ({ default: m.FormularioEditorPage })));
+const GruposPage = lazy(() => import('@features/sieej-formularios').then((m) => ({ default: m.GruposPage })));
 const Inicio = lazy(() => import('@features/inicio'));
 const Perfil = lazy(() => import('@features/perfil'));
 
@@ -185,7 +187,23 @@ const router = createBrowserRouter([
                         path: 'sieej/formularios',
                         element: withSuspense(
                             <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
-                                <FormulariosPage />
+                                <FormulariosListPage />
+                            </RoleProtectedRoute>
+                        )
+                    },
+                    {
+                        path: 'sieej/formularios/:id',
+                        element: withSuspense(
+                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
+                                <FormularioEditorPage />
+                            </RoleProtectedRoute>
+                        )
+                    },
+                    {
+                        path: 'sieej/grupos',
+                        element: withSuspense(
+                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
+                                <GruposPage />
                             </RoleProtectedRoute>
                         )
                     },

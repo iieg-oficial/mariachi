@@ -9,6 +9,59 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.36.0] - 2026-05-06
+
+### Admin (UI) — Plataforma de formularios SIEEJ (Fase 4, constructor)
+
+Aterriza el constructor visual de formularios en mariachi/admin. Consume
+los endpoints admin de Fase 2 (mariachi 0.35.0). El editor de la
+definicion JSON cubre el MVP; el editor visual con drag-n-drop queda
+para una iteracion posterior.
+
+#### Nuevo
+
+- `features/sieej-formularios/services/formulariosAdminApi.js`:
+  cliente axios para `/sieej/formularios`, `/sieej/grupos` y `/users`.
+- `pages/FormulariosListPage.jsx` (reemplaza `FormulariosPage.jsx`):
+  tabla con estado, version, acciones contextuales (publicar /
+  cerrar / editar / eliminar). Modal "Nuevo" con slug + nombre +
+  descripcion; al crear navega al editor.
+- `pages/FormularioEditorPage.jsx` (`/sieej/formularios/:id`): tabs
+  Definicion | Configuracion | Asignaciones | Envios.
+- `pages/GruposPage.jsx` (`/sieej/grupos`): CRUD de grupos + drawer
+  de miembros (multi-select de usuarios).
+- `components/DefinicionEditor.jsx`: editor JSON crudo con
+  validacion del backend (errores 422 se muestran inline).
+- `components/ConfiguracionEditor.jsx`: nombre, descripcion,
+  vigencia (RangePicker), publico (deshabilitado, v2).
+- `components/AsignacionesEditor.jsx`: select multiple de grupos +
+  usuarios. Reemplazo en bloque al guardar.
+- `components/EnviosTable.jsx`: tabla paginada con filtro por
+  estado, drawer con datos JSON + lista de archivos.
+
+#### Cambiado
+
+- `index.js` ahora exporta `FormulariosListPage`, `FormularioEditorPage`,
+  `GruposPage`. El default sigue siendo la lista para compatibilidad.
+- `main.jsx`: 3 rutas registradas (`sieej/formularios`,
+  `sieej/formularios/:id`, `sieej/grupos`) gateadas con
+  `RoleProtectedRoute(['tetlamamakani', 'editora'])`.
+
+#### Pendiente
+
+- Fase 5: migracion del wizard SIEEJ existente al modelo dinamico
+  (seed `sieej-levantamiento`, backfill de `general` + `enlaces` +
+  `bases_datos` a `envio_formulario.datos`, cleanup de tablas viejas
+  y wizard frontend).
+- Editor visual con drag-n-drop (Fase 4 v2): hoy se usa editor JSON.
+
+### Bump
+
+- `api/pyproject.toml` -> 0.36.0.
+- `admin/package.json` -> 0.36.0.
+
+---
+
 ## [0.35.0] - 2026-05-06
 
 ### Backend (api) — Plataforma de formularios dinamicos SIEEJ (Fase 2, admin)
