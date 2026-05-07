@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db, require_project_access, verify_csrf
+from app.api.rate_limit import rate_limit
 from app.core.eventos import EventoEstado
 from app.core.optimistic import check_concurrent_edit
 from app.core.time import utcnow
@@ -25,6 +26,7 @@ router = APIRouter(
 )
 
 _require_editor = require_project_access("mapalab", min_role="editor")
+_write_rate_limit = rate_limit(max_requests=60, window_seconds=60.0)
 
 
 def _can_edit_mapalab(db: Session, user: Usuario) -> bool:
@@ -108,6 +110,7 @@ async def crear_evento(
     db: Session = Depends(get_db),
     _csrf=Depends(verify_csrf),
     _editor=Depends(_require_editor),
+    _rl=Depends(_write_rate_limit),
 ):
     slug = _ensure_slug(db, evento_in.slug, evento_in.titulo)
     data = evento_in.model_dump(exclude={'slug'})
@@ -147,6 +150,7 @@ async def actualizar_evento(
     db: Session = Depends(get_db),
     _csrf=Depends(verify_csrf),
     _editor=Depends(_require_editor),
+    _rl=Depends(_write_rate_limit),
 ):
     check_concurrent_edit(
         evento.updated_at,
@@ -176,6 +180,7 @@ async def publicar_evento(
     db: Session = Depends(get_db),
     _csrf=Depends(verify_csrf),
     _editor=Depends(_require_editor),
+    _rl=Depends(_write_rate_limit),
 ):
     evento.estado = EventoEstado.PUBLISHED.value
     evento.published_at = utcnow()
@@ -191,6 +196,7 @@ async def despublicar_evento(
     db: Session = Depends(get_db),
     _csrf=Depends(verify_csrf),
     _editor=Depends(_require_editor),
+    _rl=Depends(_write_rate_limit),
 ):
     evento.estado = EventoEstado.DRAFT.value
     db.commit()
@@ -205,6 +211,7 @@ async def eliminar_evento(
     db: Session = Depends(get_db),
     _csrf=Depends(verify_csrf),
     _editor=Depends(_require_editor),
+    _rl=Depends(_write_rate_limit),
 ):
     estaba_publicado = evento.estado == EventoEstado.PUBLISHED.value
     db.delete(evento)
