@@ -116,16 +116,21 @@ describe('buildSiderItems', () => {
         });
     });
 
-    it('sub-item con disabled:true queda disabled aunque el proyecto no lo este', () => {
+    it('items de SIEEJ son Formularios y Grupos (sin item disabled)', () => {
         const items = buildSiderItems({
             user: { role: 'tetlamamakani', projects: [] },
             onNavigate: vi.fn(),
         });
         const sieej = items.find((i) => i.key === 'project-sieej');
         expect(sieej.disabled).toBeFalsy();
-        const agregar = sieej.children.find((c) => c.key === '/sieej/agregar-dependencia');
-        expect(agregar.disabled).toBe(true);
-        expect(agregar.onClick).toBeUndefined();
+        expect(sieej.children.map((c) => c.key)).toEqual([
+            '/sieej/formularios',
+            '/sieej/grupos',
+        ]);
+        sieej.children.forEach((c) => {
+            expect(c.disabled).toBeFalsy();
+            expect(c.onClick).toBeDefined();
+        });
     });
 
     it('item /inicio dispara onNavigate al click', () => {

@@ -2,7 +2,6 @@ import {
     TeamOutlined,
     FileImageOutlined,
     AuditOutlined,
-    BugOutlined,
     MenuOutlined,
     FileTextOutlined,
     PartitionOutlined,
@@ -11,11 +10,14 @@ import {
     ProjectOutlined,
     FormOutlined,
     OrderedListOutlined,
-    UserAddOutlined,
     CalendarOutlined,
     HomeOutlined,
     DashboardOutlined,
+    PieChartOutlined,
+    InboxOutlined,
+    TagsOutlined,
 } from '@ant-design/icons';
+import ColibriIcon from '@shared/components/ColibriIcon';
 
 export const PLATFORM_ITEMS = [
     {
@@ -39,14 +41,6 @@ export const PLATFORM_ITEMS = [
         icon: <AuditOutlined />,
         allowedGlobalRoles: ['tetlamamakani'],
         showBadge: true,
-    },
-    {
-        key: '/reportes',
-        path: '/reportes',
-        label: 'Colibri',
-        icon: <BugOutlined />,
-        allowedGlobalRoles: ['tetlamamakani', 'editora'],
-        showReporteBadge: true,
     },
 ];
 
@@ -106,12 +100,31 @@ export const PROJECT_REGISTRY = {
                 label: 'Grupos',
                 icon: <TeamOutlined />,
             },
+        ],
+    },
+    colibri: {
+        label: 'Colibri',
+        icon: <ColibriIcon size={14} />,
+        allowedGlobalRoles: ['tetlamamakani', 'editora'],
+        items: [
             {
-                key: '/sieej/agregar-dependencia',
-                path: '/sieej/agregar-dependencia',
-                label: 'Agregar dependencia',
-                icon: <UserAddOutlined />,
-                disabled: true,
+                key: '/colibri',
+                path: '/colibri',
+                label: 'Resumen',
+                icon: <PieChartOutlined />,
+            },
+            {
+                key: '/colibri/reportes',
+                path: '/colibri/reportes',
+                label: 'Reportes',
+                icon: <InboxOutlined />,
+                showReporteBadge: true,
+            },
+            {
+                key: '/colibri/tipos',
+                path: '/colibri/tipos',
+                label: 'Tipos',
+                icon: <TagsOutlined />,
                 allowedGlobalRoles: ['tetlamamakani'],
             },
         ],
@@ -181,23 +194,32 @@ export function buildSiderItems({ user, onNavigate, extras = {} }) {
 
     for (const [slug, project] of Object.entries(PROJECT_REGISTRY)) {
         if (project.items.length === 0) continue;
-        if (!isAdmin && !userProjectSlugs.includes(slug)) continue;
+        const grantedByRole = project.allowedGlobalRoles?.includes(role);
+        if (!isAdmin && !grantedByRole && !userProjectSlugs.includes(slug)) continue;
 
         items.push({
             key: `project-${slug}`,
             icon: project.icon,
             label: project.label,
             disabled: project.disabled,
-            children: project.items.map((item) => {
-                const itemDisabled = project.disabled || item.disabled;
-                return {
-                    key: item.key,
-                    icon: item.icon,
-                    label: item.label,
-                    disabled: itemDisabled,
-                    onClick: itemDisabled ? undefined : () => onNavigate(item.path),
-                };
-            }),
+            children: project.items
+                .filter((item) => !item.allowedGlobalRoles || item.allowedGlobalRoles.includes(role))
+                .map((item) => {
+                    const itemDisabled = project.disabled || item.disabled;
+                    let label = item.label;
+                    if (item.showBadge && extras.pendingCount > 0) {
+                        label = renderBadgeLabel(item.label, extras.pendingCount);
+                    } else if (item.showReporteBadge && extras.reportesPendingCount > 0) {
+                        label = renderBadgeLabel(item.label, extras.reportesPendingCount);
+                    }
+                    return {
+                        key: item.key,
+                        icon: item.icon,
+                        label,
+                        disabled: itemDisabled,
+                        onClick: itemDisabled ? undefined : () => onNavigate(item.path),
+                    };
+                }),
         });
     }
 
