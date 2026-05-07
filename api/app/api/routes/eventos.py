@@ -121,7 +121,7 @@ async def crear_evento(
 @router.put("/{evento_id}/presencia")
 async def registrar_presencia_evento(
     evento_id: int,
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(verify_csrf),
 ):
     presence.register("evento", evento_id, current_user.username, current_user.name)
     return {"ok": True}

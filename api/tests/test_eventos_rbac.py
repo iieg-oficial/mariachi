@@ -127,3 +127,23 @@ def test_writes_sin_csrf_403(editora_session, db_session, editora_user):
 def test_proyecto_mapalab_inexistente_404(editora_session, db_session):
     response = editora_session["client"].get(f"{ADMIN_PREFIX}/eventos")
     assert response.status_code == 404
+
+
+def test_presencia_put_sin_csrf_403(editora_session, db_session, editora_user):
+    project = _seed_mapalab(db_session)
+    _grant(db_session, project, editora_user, "editor")
+    evento = _seed_evento(db_session)
+    response = editora_session["client"].put(f"{ADMIN_PREFIX}/eventos/{evento.id}/presencia")
+    assert response.status_code == 403
+
+
+def test_presencia_put_con_csrf_ok(editora_session, db_session, editora_user):
+    project = _seed_mapalab(db_session)
+    _grant(db_session, project, editora_user, "editor")
+    evento = _seed_evento(db_session)
+    response = editora_session["client"].put(
+        f"{ADMIN_PREFIX}/eventos/{evento.id}/presencia",
+        headers={"X-CSRF-Token": editora_session["csrf"]},
+    )
+    assert response.status_code == 200
+    assert response.json()["ok"] is True
