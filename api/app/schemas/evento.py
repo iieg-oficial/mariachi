@@ -1,63 +1,76 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator, model_validator
 
 from app.core.acervo_url import to_absolute, to_relative
 from app.schemas._camel import CamelCaseInput
 
+URL_MAX_LENGTH = 2048
+ALIAS_MAX_LENGTH = 200
+DESCRIPCION_MAX_LENGTH = 2000
+
 
 class CapaRef(CamelCaseInput):
     tipo: Literal['capa', 'etiqueta'] = 'capa'
-    workspace: str | None = None
-    layer: str | None = None
-    alias: str | None = None
+    workspace: str | None = Field(default=None, max_length=200)
+    layer: str | None = Field(default=None, max_length=200)
+    alias: str | None = Field(default=None, max_length=ALIAS_MAX_LENGTH)
     orden: int = 0
     auto_activar: bool = Field(default=True, serialization_alias='autoActivar')
 
     model_config = ConfigDict(populate_by_name=True)
 
-    @field_validator('workspace', 'layer')
-    @classmethod
-    def _required_for_capa(cls, v, info):
-        return v
-
-    @field_validator('alias')
-    @classmethod
-    def _validate_alias(cls, v, info):
-        if info.data.get('tipo') == 'etiqueta' and not (v and v.strip()):
-            raise ValueError('Las etiquetas requieren un texto en alias')
-        return v
+    @model_validator(mode='after')
+    def _validate_consistencia(self):
+        if self.tipo == 'capa':
+            if not (self.workspace and self.workspace.strip()):
+                raise ValueError('Las capas requieren `workspace`')
+            if not (self.layer and self.layer.strip()):
+                raise ValueError('Las capas requieren `layer`')
+        elif self.tipo == 'etiqueta':
+            if not (self.alias and self.alias.strip()):
+                raise ValueError('Las etiquetas requieren un texto en `alias`')
+        return self
 
 
 class BBox(CamelCaseInput):
-    minx: float
-    miny: float
-    maxx: float
-    maxy: float
+    minx: float = Field(ge=-180, le=180)
+    miny: float = Field(ge=-90, le=90)
+    maxx: float = Field(ge=-180, le=180)
+    maxy: float = Field(ge=-90, le=90)
 
-    @field_validator('maxx')
-    @classmethod
-    def validate_x(cls, v, info):
-        minx = info.data.get('minx')
-        if minx is not None and v < minx:
+    @model_validator(mode='after')
+    def _validate_extent(self):
+        if self.maxx < self.minx:
             raise ValueError('maxx debe ser >= minx')
-        return v
-
-    @field_validator('maxy')
-    @classmethod
-    def validate_y(cls, v, info):
-        miny = info.data.get('miny')
-        if miny is not None and v < miny:
+        if self.maxy < self.miny:
             raise ValueError('maxy debe ser >= miny')
-        return v
+        return self
+
+
+def _validate_image_url(v: str | None) -> str | None:
+    if v is None:
+        return None
+    if not isinstance(v, str):
+        raise ValueError('debe ser texto')
+    s = v.strip()
+    if not s:
+        return None
+    if len(s) > URL_MAX_LENGTH:
+        raise ValueError(f'URL excede {URL_MAX_LENGTH} caracteres')
+    lowered = s.lower()
+    allowed_prefixes = ('http://', 'https://', '/acervo/', '/', 'data:image/')
+    if not any(lowered.startswith(p) for p in allowed_prefixes):
+        raise ValueError('URL debe ser http(s), data:image/, o ruta relativa')
+    return s
 
 
 class EventoBase(CamelCaseInput):
     titulo: str = Field(..., min_length=1, max_length=200)
-    descripcion: str | None = None
-    icono_url: str | None = Field(default=None, serialization_alias='iconoUrl')
-    imagen_url: str | None = Field(default=None, serialization_alias='imagenUrl')
+    descripcion: str | None = Field(default=None, max_length=DESCRIPCION_MAX_LENGTH)
+    icono_url: str | None = Field(default=None, max_length=URL_MAX_LENGTH, serialization_alias='iconoUrl')
+    imagen_url: str | None = Field(default=None, max_length=URL_MAX_LENGTH, serialization_alias='imagenUrl')
     bbox: BBox | None = None
     capas: list[CapaRef] = Field(default_factory=list)
     activo: bool = False
@@ -70,7 +83,7 @@ class EventoBase(CamelCaseInput):
     @field_validator('icono_url', 'imagen_url', mode='before')
     @classmethod
     def _store_relative(cls, v):
-        return to_relative(v)
+        return _validate_image_url(to_relative(v))
 
     @field_serializer('icono_url', 'imagen_url', when_used='json-unless-none')
     def _expose_absolute(self, v):
@@ -83,9 +96,9 @@ class EventoCreate(EventoBase):
 
 class EventoUpdate(CamelCaseInput):
     titulo: str | None = Field(default=None, min_length=1, max_length=200)
-    descripcion: str | None = None
-    icono_url: str | None = Field(default=None, serialization_alias='iconoUrl')
-    imagen_url: str | None = Field(default=None, serialization_alias='imagenUrl')
+    descripcion: str | None = Field(default=None, max_length=DESCRIPCION_MAX_LENGTH)
+    icono_url: str | None = Field(default=None, max_length=URL_MAX_LENGTH, serialization_alias='iconoUrl')
+    imagen_url: str | None = Field(default=None, max_length=URL_MAX_LENGTH, serialization_alias='imagenUrl')
     bbox: BBox | None = None
     capas: list[CapaRef] | None = None
     activo: bool | None = None
@@ -100,7 +113,7 @@ class EventoUpdate(CamelCaseInput):
     @field_validator('icono_url', 'imagen_url', mode='before')
     @classmethod
     def _store_relative(cls, v):
-        return to_relative(v)
+        return _validate_image_url(to_relative(v))
 
 
 class EventoResponse(EventoBase):
