@@ -1,6 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
@@ -9,6 +10,10 @@ from app.core.security import hash_password
 from app.core.settings import get_settings
 from app.main import app
 from app.models.user import Usuario
+
+
+def _table_pg_only(table) -> bool:
+    return any(isinstance(col.type, (JSONB, ARRAY)) for col in table.columns)
 
 settings = get_settings()
 ADMIN_PREFIX = settings.admin_prefix
@@ -25,7 +30,10 @@ TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engin
 
 @pytest.fixture(scope="function")
 def db_session():
-    tables = [t for t in Base.metadata.sorted_tables if t.schema is None]
+    tables = [
+        t for t in Base.metadata.sorted_tables
+        if t.schema is None and not _table_pg_only(t)
+    ]
     Base.metadata.create_all(bind=engine, tables=tables)
     session = TestingSessionLocal()
     try:
