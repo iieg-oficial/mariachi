@@ -1,4 +1,14 @@
 # syntax=docker/dockerfile:1
+FROM node:24-alpine AS widget-builder
+WORKDIR /widget
+COPY ./widget/package*.json ./
+RUN --mount=type=cache,target=/root/.npm \
+    npm install --prefer-offline --no-audit --fund=false
+COPY ./widget/ .
+RUN --mount=type=cache,target=/widget/node_modules/.vite \
+    --mount=type=cache,target=/root/.npm \
+    npm run build
+
 FROM node:24-alpine AS admin-builder
 WORKDIR /app
 
@@ -32,5 +42,7 @@ RUN rm -f /etc/nginx/conf.d/default.conf
 COPY ./nginx/nginx.conf /etc/nginx/nginx.conf
 COPY ./nginx/conf.d/mariachi.conf /etc/nginx/conf.d/mariachi.conf
 COPY --from=admin-builder /app/dist /usr/share/nginx/html/mariachi
+COPY --from=widget-builder /widget/dist /usr/share/nginx/html/colibri-widget
+COPY ./nginx/static/colibri-docs /usr/share/nginx/html/colibri-docs
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]

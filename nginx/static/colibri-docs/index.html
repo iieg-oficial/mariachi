@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Colibri Widget — Documentación</title>
+    <meta name="description" content="Colibri es el sistema de reportes embebible del IIEG. Integra un botón flotante, un trigger inline o un formulario completo en una línea de HTML." />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237c3aed' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M16 7h.01'/%3E%3Cpath d='M3.4 18H12a8 8 0 0 0 8-8V7a4 4 0 0 0-7.28-2.3L2 20'/%3E%3Cpath d='m20 7 2 .5-2 .5'/%3E%3Cpath d='M10 18v3'/%3E%3Cpath d='M14 17.75V21'/%3E%3Cpath d='M7 18a6 6 0 0 0 3.84-10.61'/%3E%3C/svg%3E" />
+    <style>
+        :root {
+            --bg: #ffffff;
+            --fg: #1f1f1f;
+            --muted: #6b6b6b;
+            --border: #e5e5e5;
+            --primary: #7c3aed;
+            --primary-fg: #ffffff;
+            --code-bg: #0d1117;
+            --code-fg: #e6edf3;
+            --code-border: #30363d;
+            --max-width: 880px;
+        }
+
+        * { box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            color: var(--fg);
+            background: var(--bg);
+            line-height: 1.6;
+            font-size: 15px;
+        }
+
+        header {
+            background: linear-gradient(180deg, #faf6ff 0%, #ffffff 100%);
+            border-bottom: 1px solid var(--border);
+            padding: 48px 24px 32px;
+        }
+        header .container { max-width: var(--max-width); margin: 0 auto; }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 700;
+            font-size: 18px;
+            margin-bottom: 24px;
+        }
+        .logo svg { width: 28px; height: 28px; color: var(--primary); }
+        h1 { font-size: 36px; line-height: 1.2; margin: 0 0 8px; font-weight: 700; }
+        .lead { font-size: 17px; color: var(--muted); max-width: 640px; margin: 0; }
+
+        nav.toc {
+            position: sticky;
+            top: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(8px);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 24px;
+            z-index: 100;
+            font-size: 13px;
+        }
+        nav.toc .container { max-width: var(--max-width); margin: 0 auto; display: flex; gap: 18px; flex-wrap: wrap; }
+        nav.toc a { color: var(--muted); text-decoration: none; }
+        nav.toc a:hover { color: var(--primary); }
+
+        main { max-width: var(--max-width); margin: 0 auto; padding: 32px 24px 80px; }
+        section { margin-bottom: 56px; }
+        section h2 { font-size: 24px; margin: 0 0 8px; font-weight: 700; scroll-margin-top: 60px; }
+        section h3 { font-size: 17px; margin: 24px 0 6px; font-weight: 600; }
+        p { margin: 0 0 12px; }
+        a { color: var(--primary); }
+
+        .pill {
+            display: inline-block;
+            background: #f4eefe;
+            color: var(--primary);
+            border-radius: 999px;
+            padding: 2px 10px;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        pre, code {
+            font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+            font-size: 13px;
+        }
+        code:not(pre code) {
+            background: #f4f0fc;
+            color: var(--primary);
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        .code-block {
+            position: relative;
+            background: var(--code-bg);
+            color: var(--code-fg);
+            border-radius: 10px;
+            border: 1px solid var(--code-border);
+            margin: 12px 0;
+            overflow: hidden;
+        }
+        .code-block pre {
+            padding: 16px 20px;
+            margin: 0;
+            overflow-x: auto;
+        }
+        .copy-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255,255,255,0.08);
+            color: var(--code-fg);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 4px;
+            padding: 4px 10px;
+            font-size: 11px;
+            font-family: inherit;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .copy-btn:hover { background: rgba(255,255,255,0.15); }
+        .copy-btn.copied { background: rgba(124,58,237,0.4); border-color: var(--primary); }
+
+        table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 13px; }
+        th, td {
+            text-align: left;
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: top;
+        }
+        th { font-weight: 600; background: #fafafa; }
+        td code { white-space: nowrap; }
+
+        .tabs {
+            display: flex;
+            gap: 4px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 16px;
+        }
+        .tabs button {
+            background: none;
+            border: none;
+            padding: 8px 16px;
+            font-size: 14px;
+            font-family: inherit;
+            color: var(--muted);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -1px;
+        }
+        .tabs button.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+            font-weight: 600;
+        }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        .preview {
+            border: 1px dashed var(--border);
+            border-radius: 10px;
+            padding: 24px;
+            margin: 12px 0;
+            background: #fafafa;
+            min-height: 100px;
+            position: relative;
+        }
+        .preview-label {
+            position: absolute;
+            top: 8px;
+            right: 12px;
+            font-size: 10px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .callout {
+            background: #fff8e6;
+            border-left: 3px solid #f59e0b;
+            border-radius: 4px;
+            padding: 12px 16px;
+            margin: 16px 0;
+            font-size: 14px;
+        }
+        .callout strong { color: #b45309; }
+
+        footer {
+            border-top: 1px solid var(--border);
+            padding: 24px;
+            text-align: center;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #1a1a1a;
+                --fg: #f5f5f5;
+                --muted: #aaa;
+                --border: #333;
+            }
+            header { background: linear-gradient(180deg, #2a1f3d 0%, #1a1a1a 100%); }
+            nav.toc { background: rgba(26,26,26,0.95); }
+            th { background: #222; }
+            code:not(pre code) { background: #2a1f3d; }
+            .preview { background: #222; }
+            .pill { background: #2a1f3d; }
+            .callout { background: #2a2010; color: #fbbf24; }
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="container">
+        <div class="logo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M16 7h.01" />
+                <path d="M3.4 18H12a8 8 0 0 0 8-8V7a4 4 0 0 0-7.28-2.3L2 20" />
+                <path d="m20 7 2 .5-2 .5" />
+                <path d="M10 18v3" />
+                <path d="M14 17.75V21" />
+                <path d="M7 18a6 6 0 0 0 3.84-10.61" />
+            </svg>
+            Colibri
+        </div>
+        <span class="pill">Widget v1.0</span>
+        <h1>Reportes embebibles del IIEG</h1>
+        <p class="lead">
+            Centraliza reportes, sugerencias y bugs de cualquier sitio en una sola plataforma.
+            Una línea de HTML para integrar.
+        </p>
+    </div>
+</header>
+
+<nav class="toc">
+    <div class="container">
+        <a href="#quickstart">Inicio rápido</a>
+        <a href="#modos">3 modos</a>
+        <a href="#atributos">Atributos</a>
+        <a href="#eventos">Eventos</a>
+        <a href="#api">API JS</a>
+        <a href="#errores">Errores</a>
+        <a href="#api-key">Obtener API key</a>
+    </div>
+</nav>
+
+<main>
+    <section id="quickstart">
+        <h2>Inicio rápido</h2>
+        <p>
+            Pega este snippet en cualquier página HTML. El botón flotante aparece de inmediato y al hacer click abre el formulario de reporte.
+        </p>
+        <div class="code-block">
+            <button class="copy-btn" data-copy="snippet-quickstart">Copiar</button>
+            <pre id="snippet-quickstart"><code>&lt;script src="https://iieg.gob.mx/colibri/widget/colibri-widget.v1.js" defer&gt;&lt;/script&gt;
+&lt;colibri-button
+  source-app="mi-app"
+  api-key="ck_pub_TU_KEY"
+  label="Reportar"&gt;
+&lt;/colibri-button&gt;</code></pre>
+        </div>
+        <p>
+            Reemplaza <code>mi-app</code> por el slug que el equipo IIEG te asignó y <code>ck_pub_TU_KEY</code> por tu API key pública. Si no las tienes, ver <a href="#api-key">cómo obtener una API key</a>.
+        </p>
+        <div class="callout">
+            <strong>Funciona en:</strong> React, Vue, Astro, Wordpress, Shopify, vanilla HTML, Next.js, sitios estáticos. El widget usa Web Components estándar y Shadow DOM, no contamina los estilos del huésped.
+        </div>
+    </section>
+
+    <section id="modos">
+        <h2>3 modos de visualización</h2>
+        <p>Elige el modo según donde quieras integrar el reporte.</p>
+
+        <div class="tabs" role="tablist">
+            <button data-tab="button" class="active">Botón flotante</button>
+            <button data-tab="trigger">Trigger inline</button>
+            <button data-tab="form">Form embebido</button>
+        </div>
+
+        <div id="tab-button" class="tab-panel active">
+            <h3>&lt;colibri-button&gt;</h3>
+            <p>Botón redondo (FAB) que se posiciona <code>fixed</code> en una esquina y abre un modal con el formulario al hacer click. Ideal para sitios existentes que quieren agregar reporte sin tocar layout.</p>
+            <div class="code-block">
+                <button class="copy-btn" data-copy="snippet-button">Copiar</button>
+                <pre id="snippet-button"><code>&lt;colibri-button
+  source-app="mi-app"
+  api-key="ck_pub_TU_KEY"
+  size="md"
+  position="bottom-right"
+  label="Reportar"
+  icon="bug"&gt;
+&lt;/colibri-button&gt;</code></pre>
+            </div>
+            <div class="preview" id="preview-button">
+                <span class="preview-label">Preview</span>
+                <p style="margin:0;color:var(--muted);font-size:13px;">El botón aparece flotante en la esquina inferior derecha.</p>
+            </div>
+        </div>
+
+        <div id="tab-trigger" class="tab-panel">
+            <h3>&lt;colibri-trigger&gt;</h3>
+            <p>Link, ícono, chip o item de menú inline. Click abre el mismo modal que el botón flotante. Útil para footers, párrafos contextuales, o íconos pequeños junto a un dato sospechoso.</p>
+            <div class="code-block">
+                <button class="copy-btn" data-copy="snippet-trigger">Copiar</button>
+                <pre id="snippet-trigger"><code>&lt;p&gt;
+  Si encontraste un problema,
+  &lt;colibri-trigger
+    source-app="mi-app"
+    api-key="ck_pub_TU_KEY"
+    as="link"
+    label="repórtalo aquí"
+    icon="flag"&gt;
+  &lt;/colibri-trigger&gt;.
+&lt;/p&gt;</code></pre>
+            </div>
+            <div class="preview">
+                <span class="preview-label">Preview</span>
+                <p style="margin:0;font-size:14px;">
+                    Si encontraste un problema,
+                    <colibri-trigger id="demo-trigger" as="link" label="repórtalo aquí" icon="flag"></colibri-trigger>.
+                </p>
+            </div>
+        </div>
+
+        <div id="tab-form" class="tab-panel">
+            <h3>&lt;colibri-form&gt;</h3>
+            <p>Formulario completo embebido inline en el flujo del documento, sin trigger. Para landing pages dedicadas a feedback o secciones tipo "Contáctanos".</p>
+            <div class="code-block">
+                <button class="copy-btn" data-copy="snippet-form">Copiar</button>
+                <pre id="snippet-form"><code>&lt;colibri-form
+  source-app="mi-app"
+  api-key="ck_pub_TU_KEY"
+  layout="card"
+  width="100%"&gt;
+&lt;/colibri-form&gt;</code></pre>
+            </div>
+            <div class="preview">
+                <span class="preview-label">Preview (modo demo, no envía)</span>
+                <p style="margin:0;color:var(--muted);font-size:13px;">El form se renderiza inline aquí. Configura el atributo <code>endpoint</code> apuntando a tu API real.</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="atributos">
+        <h2>Atributos compartidos</h2>
+        <p>Aplican a los tres Custom Elements.</p>
+        <table>
+            <thead><tr><th>Atributo</th><th>Tipo</th><th>Default</th><th>Descripción</th></tr></thead>
+            <tbody>
+                <tr><td><code>source-app</code></td><td>string</td><td>—</td><td><strong>Requerido.</strong> Slug del huésped registrado.</td></tr>
+                <tr><td><code>api-key</code></td><td>string</td><td>—</td><td><strong>Requerido.</strong> API key pública (<code>ck_pub_*</code>).</td></tr>
+                <tr><td><code>endpoint</code></td><td>url</td><td><code>/api/public/reportes</code></td><td>Override del endpoint (útil cross-origin).</td></tr>
+                <tr><td><code>tipos</code></td><td>csv</td><td>todos</td><td>Subset de tipos permitidos.</td></tr>
+                <tr><td><code>theme</code></td><td>enum</td><td><code>auto</code></td><td><code>light</code>, <code>dark</code>, <code>auto</code>.</td></tr>
+                <tr><td><code>email-required</code></td><td>bool</td><td><code>false</code></td><td>Forzar email obligatorio.</td></tr>
+            </tbody>
+        </table>
+
+        <h3>Solo <code>&lt;colibri-button&gt;</code></h3>
+        <table>
+            <thead><tr><th>Atributo</th><th>Default</th><th>Valores</th></tr></thead>
+            <tbody>
+                <tr><td><code>size</code></td><td><code>md</code></td><td><code>sm</code> · <code>md</code> · <code>lg</code></td></tr>
+                <tr><td><code>position</code></td><td><code>bottom-right</code></td><td><code>bottom-right</code> · <code>bottom-left</code> · <code>top-right</code> · <code>top-left</code></td></tr>
+                <tr><td><code>shape</code></td><td><code>circle</code></td><td><code>circle</code> · <code>pill</code> · <code>square</code></td></tr>
+                <tr><td><code>shadow</code></td><td><code>md</code></td><td><code>none</code> · <code>sm</code> · <code>md</code> · <code>lg</code></td></tr>
+                <tr><td><code>icon</code></td><td><code>bug</code></td><td><code>bug</code> · <code>chat</code> · <code>feedback</code> · <code>help</code> · <code>flag</code> · <code>none</code> · URL custom</td></tr>
+                <tr><td><code>label</code></td><td>—</td><td>Texto del botón (vacío = solo ícono)</td></tr>
+                <tr><td><code>color</code></td><td>brand IIEG</td><td>Cualquier color CSS</td></tr>
+                <tr><td><code>offset</code></td><td><code>24px</code></td><td>Distancia desde el borde</td></tr>
+                <tr><td><code>z-index</code></td><td><code>2147483000</code></td><td>Profundidad de stacking</td></tr>
+            </tbody>
+        </table>
+
+        <h3>Solo <code>&lt;colibri-trigger&gt;</code></h3>
+        <table>
+            <thead><tr><th>Atributo</th><th>Default</th><th>Valores</th></tr></thead>
+            <tbody>
+                <tr><td><code>as</code></td><td><code>link</code></td><td><code>link</code> · <code>text</code> · <code>icon</code> · <code>chip</code> · <code>menu-item</code></td></tr>
+                <tr><td><code>label</code></td><td>—</td><td>Texto del trigger</td></tr>
+                <tr><td><code>icon</code></td><td>—</td><td>Igual que en button + URL custom</td></tr>
+                <tr><td><code>icon-position</code></td><td><code>left</code></td><td><code>left</code> · <code>right</code></td></tr>
+                <tr><td><code>underline</code></td><td><code>auto</code></td><td><code>auto</code> · <code>always</code> · <code>hover</code> · <code>never</code></td></tr>
+            </tbody>
+        </table>
+
+        <h3>Solo <code>&lt;colibri-form&gt;</code></h3>
+        <table>
+            <thead><tr><th>Atributo</th><th>Default</th><th>Valores</th></tr></thead>
+            <tbody>
+                <tr><td><code>layout</code></td><td><code>card</code></td><td><code>card</code> · <code>bare</code> · <code>compact</code></td></tr>
+                <tr><td><code>width</code></td><td><code>100%</code></td><td>Cualquier valor CSS</td></tr>
+                <tr><td><code>tipo-selector</code></td><td><code>tabs</code></td><td><code>tabs</code> · <code>dropdown</code> · <code>radio</code> · <code>hidden</code></td></tr>
+                <tr><td><code>tipo-default</code></td><td>primero activo</td><td>Slug del tipo preseleccionado</td></tr>
+            </tbody>
+        </table>
+    </section>
+
+    <section id="eventos">
+        <h2>Eventos DOM</h2>
+        <p>Los Custom Elements emiten eventos para reaccionar desde el huésped.</p>
+        <div class="code-block">
+            <button class="copy-btn" data-copy="snippet-events">Copiar</button>
+            <pre id="snippet-events"><code>const btn = document.querySelector('colibri-button');
+btn.addEventListener('colibri:submitted', (e) =&gt; {
+    console.log('Reporte enviado, id =', e.detail.id);
+});</code></pre>
+        </div>
+        <table>
+            <thead><tr><th>Evento</th><th>detail</th><th>Cuándo</th></tr></thead>
+            <tbody>
+                <tr><td><code>colibri:ready</code></td><td><code>{}</code></td><td>Componente cargó tipos</td></tr>
+                <tr><td><code>colibri:opened</code></td><td><code>{}</code></td><td>Modal abierto (button/trigger)</td></tr>
+                <tr><td><code>colibri:closed</code></td><td><code>{}</code></td><td>Modal cerrado</td></tr>
+                <tr><td><code>colibri:tipo-changed</code></td><td><code>{ tipo }</code></td><td>Usuario cambió el tipo</td></tr>
+                <tr><td><code>colibri:submitted</code></td><td><code>{ id, tipo }</code></td><td>Reporte creado exitosamente</td></tr>
+                <tr><td><code>colibri:error</code></td><td><code>{ message, status }</code></td><td>Falla la creación</td></tr>
+            </tbody>
+        </table>
+    </section>
+
+    <section id="api">
+        <h2>API JavaScript</h2>
+        <h3>Identificar al usuario</h3>
+        <p>Adjunta datos del usuario logueado del huésped a todos los reportes posteriores.</p>
+        <div class="code-block">
+            <button class="copy-btn" data-copy="snippet-identify">Copiar</button>
+            <pre id="snippet-identify"><code>window.colibri.identify({
+    id: 42,
+    email: 'usuario@ejemplo.com',
+    name: 'Usuario Test',
+    role: 'editor',
+    metadata: { plan: 'pro' }
+});</code></pre>
+        </div>
+
+        <h3>Métodos de instancia</h3>
+        <div class="code-block">
+            <button class="copy-btn" data-copy="snippet-methods">Copiar</button>
+            <pre id="snippet-methods"><code>// botón flotante
+const btn = document.querySelector('colibri-button');
+btn.open({ tipo: 'bug' });        // abre con tipo preseleccionado
+btn.close();
+await btn.report({                // headless: envía sin abrir UI
+    tipo: 'sugerencia',
+    mensaje: 'Idea X'
+});
+
+// form inline
+const form = document.querySelector('colibri-form');
+form.setTipo('bug');
+form.setValues({ url_afectada: location.href });
+form.reset();</code></pre>
+        </div>
+    </section>
+
+    <section id="errores">
+        <h2>Errores comunes</h2>
+        <table>
+            <thead><tr><th>Status</th><th>Mensaje</th><th>Causa</th></tr></thead>
+            <tbody>
+                <tr><td><strong>401</strong></td><td>API key inválida</td><td>El prefix no coincide o la key fue rotada</td></tr>
+                <tr><td><strong>403</strong></td><td>Origen no autorizado</td><td>El dominio donde corre el huésped no está en <code>dominios_permitidos</code></td></tr>
+                <tr><td><strong>403</strong></td><td>Source app desactivado</td><td>El admin lo deshabilitó o aún no se activó</td></tr>
+                <tr><td><strong>403</strong></td><td>Tipo no permitido</td><td>El <code>tipo</code> no está en <code>tipos_permitidos</code></td></tr>
+                <tr><td><strong>422</strong></td><td>Campo requerido faltante</td><td>El <code>form_schema</code> tiene un campo required que no llegó</td></tr>
+                <tr><td><strong>429</strong></td><td>Demasiadas solicitudes</td><td>Pasaste el rate limit; ver header <code>Retry-After</code></td></tr>
+                <tr><td><strong>413</strong></td><td>Captura supera 2 MB</td><td>Reduce la imagen del screenshot</td></tr>
+            </tbody>
+        </table>
+    </section>
+
+    <section id="api-key">
+        <h2>Cómo obtener una API key</h2>
+        <p>Las API keys se generan desde el panel de administración de Colibri (acceso solo IIEG). El proceso para integradores externos:</p>
+        <ol>
+            <li>Contacta al equipo IIEG indicando el dominio donde se integrará el widget y el tipo de uso (público o server-side).</li>
+            <li>El admin registra tu app en <code>/colibri/source-apps</code>, configura los dominios permitidos (con wildcards si aplica) y los tipos de reporte habilitados.</li>
+            <li>El admin genera la API key y te la envía por canal seguro (la key se ve solo una vez al generarla).</li>
+            <li>Pégala en el atributo <code>api-key</code> del Custom Element y prueba.</li>
+        </ol>
+        <div class="callout">
+            <strong>Tipos de key:</strong> <code>ck_pub_*</code> para integraciones browser (validan CORS estricto). <code>ck_priv_*</code> para integraciones server-to-server (no validan CORS, se usan en variables de entorno).
+        </div>
+    </section>
+
+    <section id="sdk">
+        <h2>SDK para Node / server-side</h2>
+        <p>Si necesitas reportar programáticamente desde un cron, Lambda, worker o cualquier proceso server-side, usa el SDK npm en lugar del widget.</p>
+        <div class="code-block">
+            <button class="copy-btn" data-copy="snippet-sdk">Copiar</button>
+            <pre id="snippet-sdk"><code>npm install @iieg/colibri-sdk</code></pre>
+        </div>
+        <div class="code-block">
+            <button class="copy-btn" data-copy="snippet-sdk-use">Copiar</button>
+            <pre id="snippet-sdk-use"><code>import { Colibri } from '@iieg/colibri-sdk';
+
+const colibri = new Colibri({
+    sourceApp: 'mi-cron',
+    apiKey: process.env.COLIBRI_API_KEY,
+});
+
+await colibri.report({
+    tipo: 'bug',
+    mensaje: 'Cron job falló en step 3',
+    context: { jobId: 'abc-123' }
+});</code></pre>
+        </div>
+    </section>
+</main>
+
+<footer>
+    Colibri · IIEG · Documentación pública v1.0
+</footer>
+
+<script src="/colibri/widget/colibri-widget.v1.js" defer></script>
+<script>
+    document.querySelectorAll('.copy-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const target = document.getElementById(btn.dataset.copy);
+            if (!target) return;
+            const text = target.textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                const original = btn.textContent;
+                btn.textContent = '✓ Copiado';
+                btn.classList.add('copied');
+                setTimeout(() => {
+                    btn.textContent = original;
+                    btn.classList.remove('copied');
+                }, 1500);
+            });
+        });
+    });
+
+    document.querySelectorAll('.tabs button').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const tab = btn.dataset.tab;
+            const wrapper = btn.closest('section');
+            wrapper.querySelectorAll('.tabs button').forEach((b) => b.classList.toggle('active', b === btn));
+            wrapper.querySelectorAll('.tab-panel').forEach((p) => p.classList.toggle('active', p.id === `tab-${tab}`));
+        });
+    });
+</script>
+
+</body>
+</html>

@@ -9,6 +9,54 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.46.0] - 2026-05-07
+
+### Colibri: docs publicas standalone + integracion del widget en nginx
+
+Cierra el ciclo de "embebible para terceros": ahora cualquier integrador externo puede leer documentacion sin acceder al panel admin, y el bundle del widget se construye e integra automaticamente al levantar la imagen de `mariachi-nginx`.
+
+#### Documentacion publica
+
+`nginx/static/colibri-docs/index.html` (24.7 KB, HTML + CSS + JS plano sin dependencias) servida en `/colibri/docs/` sin autenticacion. Contiene:
+
+- Hero con SVG inline del colibri y descripcion del producto.
+- Nav sticky con TOC de 7 secciones.
+- Quick start con snippet copy-paste (boton "Copiar").
+- Tabs interactivas para los 3 modos (Boton flotante / Trigger inline / Form embebido) con preview en vivo cargando el bundle real desde `/colibri/widget/colibri-widget.v1.js`.
+- Tablas completas: atributos compartidos + atributos por modo (button/trigger/form), eventos DOM, errores comunes (401/403/422/429/413).
+- Snippets de `identify()` + metodos de instancia.
+- Seccion "Como obtener una API key" con flujo formal para integradores externos.
+- Seccion del SDK npm con ejemplos.
+- **Dark mode automatico** via `prefers-color-scheme: dark`.
+
+#### Integracion nginx
+
+- `conf.d/mariachi.conf`: dos `location` blocks nuevos:
+  - `^~ /colibri/widget/` -> `/usr/share/nginx/html/colibri-widget/` con `Cache-Control: public, max-age=86400`, `Access-Control-Allow-Origin: *`, `X-Content-Type-Options: nosniff`. Permite servir el bundle a integraciones cross-origin.
+  - `^~ /colibri/docs` -> `/usr/share/nginx/html/colibri-docs` con `Cache-Control: public, max-age=300` y `try_files` para servir `index.html`.
+- `Dockerfile` ahora es multi-stage con 3 builders:
+  1. `widget-builder` (node:24-alpine): `npm install` + `npm run build` del paquete `widget/`.
+  2. `admin-builder` (node:24-alpine): build del CMS admin (igual que antes).
+  3. Final stage `nginx:alpine`: copia `admin/dist` a `/mariachi`, `widget/dist` a `/colibri-widget`, y `nginx/static/colibri-docs` a `/colibri-docs`.
+
+#### Boton "Docs publicas" en `IntegracionPage` (admin)
+
+Boton con `ExportOutlined` en el header de `/colibri/integracion` que abre `/colibri/docs/` en pestania nueva. Util para que el admin pueda compartir el link directo con integradores externos sin enviarles credenciales del panel.
+
+### Probado
+
+| Endpoint | Status | Tamanio |
+|---|---|---|
+| `/colibri/docs/` | 200 | 24.7 KB |
+| `/colibri/widget/colibri-widget.v1.js` | 200 | 48 KB |
+| `/api/public/reportes/tipos` | 200 | 6 tipos |
+
+Los tres componentes publicos del ecosistema Colibri (docs + widget + API publica) accesibles sin autenticacion. Build del Dockerfile multi-stage probado localmente: el widget se construye y se monta correctamente en el container final.
+
+Bump 0.45.0 -> 0.46.0.
+
+---
+
 ## [0.45.0] - 2026-05-07
 
 ### Colibri: SDK npm @iieg/colibri-sdk para integraciones programaticas
