@@ -16,9 +16,9 @@ def register(scope: str, resource_id: str | int, username: str, name: str) -> No
 
 
 def list_others(scope: str, resource_id: str | int, current_username: str) -> list[dict]:
-    keys = redis_client.keys(f"presencia:{scope}:{resource_id}:*")
+    pattern = f"presencia:{scope}:{resource_id}:*"
     editores = []
-    for key in keys:
+    for key in redis_client.scan_iter(match=pattern, count=100):
         data = get_cache(key)
         if data and data["username"] != current_username:
             editores.append(data)
