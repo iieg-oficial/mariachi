@@ -9,6 +9,51 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.43.0] - 2026-05-07
+
+### Colibri: panel admin con paginas de gestion + reorganizacion del modulo
+
+Frontend admin del modulo Colibri introducido en 0.42.0. Reorganiza `features/reportes` (que era item de plataforma) a `features/colibri` (proyecto del CMS con submenus dedicados) y agrega 6 paginas nuevas para gestionar todas las entidades del backend.
+
+#### Reorganizacion estructural
+
+- `features/reportes/` -> `features/colibri/` (git mv preservando historial). El item plano `/reportes` en `PLATFORM_ITEMS` se mueve a `PROJECT_REGISTRY.colibri` con icono colibri (`shared/components/ColibriIcon.jsx`, SVG extraido de mapalab).
+- `sider-config.jsx` extiende `buildSiderItems` para soportar `allowedGlobalRoles` a nivel de proyecto (bypass de `UserProject` para tetlamamakani/editora) y a nivel de item (admin-only en items sensibles). El badge de pendientes (`showReporteBadge`) ahora funciona dentro de items de proyectos.
+- Ruta legacy `/reportes` redirige a `/colibri/reportes` con `<Navigate replace />` para no romper bookmarks.
+
+#### Paginas nuevas
+
+- `ResumenPage` (`/colibri`): dashboard con cards globales (pendientes, total, % resueltos, tiempo promedio de resolucion), grafica de barras CSS de reportes por dia, breakdown por estado/tipo/aplicacion/direccion (Progress + Tag), top rutas con mas reportes. `Segmented` para alternar ventana (7d/30d/90d/1 anio).
+- `TiposPage` (`/colibri/tipos`, admin): CRUD del catalogo de tipos. Tabla con orden, etiqueta, slug, descripcion, switch activo. Drawer con tabs **General** (label, slug autogenerado del label, ColorPicker como Select, descripcion, orden, activo) y **Formulario** (`FormSchemaEditor` para construir el form dinamico).
+- `DireccionesPage` (`/colibri/direcciones`, admin): CRUD de direcciones organizacionales con nombre, siglas, descripcion, email, responsable, orden y activo.
+- `SourceAppsPage` (`/colibri/source-apps`, admin): CRUD de huespedes registrados. Genera/rota API keys con modal "muestra-una-vez" (warning de no-recuperable + boton copiar). Configura dominios permitidos con tags (acepta wildcards), tipos permitidos, rate limit, branding, modo sin PII, privacy URL, scrubbers personalizados (Form.List con pattern + replacement).
+- `RoutesPage` (`/colibri/routes`, admin): CRUD del fan-out. Drawer dinamico segun destino (email pide `to` con validacion email; otros piden `url` con validacion url). Filtros por estado/tipos opcionales.
+- `IntegracionPage` (`/colibri/integracion`, admin): preview interactivo del widget. Selector de source app, 3 tabs (Boton flotante / Trigger inline / Form embebido) con snippet HTML copy-paste y vista previa en vivo cargando el bundle desde `/colibri/widget/colibri-widget.v1.js`. Boton "Docs publicas" abre `/colibri/docs/` en pestania nueva.
+
+#### Componentes nuevos
+
+- `FormSchemaEditor.jsx`: editor visual de campos dinamicos por tipo. Lista con Card por campo (key autogenerado del label, type Select [text/textarea/email/url/number/select/multiselect/radio/checkbox/file/direccion], required Switch, placeholder, helpText, options para tipos con choices). Reordenar con flechas, agregar/eliminar campos. Detecta keys duplicadas con tag rojo.
+- `SourceContextView.jsx`: render bonito del `source_context` enriquecido en `ReporteDrawer`. Secciones para Usuario (avatar, email copiable, role, metadata), Tecnologia (URL, referrer, UA, viewport, lang, timezone, version), Breadcrumbs como Timeline AntD colapsable con colores por nivel (debug/info/warning/error/critical). Fallback a JSON pretty si llega un dict legacy sin estructura reconocible.
+- `ColibriIcon.jsx` (en `shared/components/`): SVG inline reusable.
+
+#### Refactor de existentes
+
+- `ReportesListPage`: usa tipos dinamicos del catalogo via `useReporteTipos` (con fallback a constants estaticos si la API falla). Toggle `Segmented` "Lista | Agrupados" que alterna entre vista plana y vista agrupada por fingerprint (count desc). Columna "Ocurrencias" con tags de color escalado (default/orange/red).
+- `ReporteDrawer`: muestra "Respuestas del formulario" leyendo `formSchema` del tipo y formateando valores (lista para multiselect, "Si/No" para checkbox, label para select). Selector de direccion asignada. Selectores de severidad/prioridad con tags. InputNumber para `duplicado_de` (con guarda de auto-referencia). Input "bloqueado por". Collapse con Timeline de actividad (avatar + username + diff `anterior -> nuevo`).
+
+#### Services y hooks nuevos
+
+- `tiposService.js`, `direccionesService.js`, `sourceAppsService.js` (con `rotarApiKey`), `routesService.js`, `statsService.js`, extension de `reportesService.js` con `listReportesGrupos` y `getReporteActividad`.
+- `useReporteTipos`, `useDirecciones`, `useColibriStats` con caching y reload manual.
+
+### Probado
+
+`vite build` OK, smoke visual: navegacion a `/colibri/*`, drawer extendido, modal de rotacion de key, generador de API keys, FormSchemaEditor.
+
+Bump 0.42.0 -> 0.43.0.
+
+---
+
 ## [0.42.0] - 2026-05-07
 
 ### Colibri: backend completo del modulo de reportes embebibles

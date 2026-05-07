@@ -32,7 +32,13 @@ const MenuManager = lazy(() => import('@features/portal-menu'));
 const PageEditor = lazy(() => import('@features/portal-pages'));
 const Media = lazy(() => import('@features/media'));
 const RevisionQueue = lazy(() => import('@features/revision'));
-const ReportesListPage = lazy(() => import('@features/reportes').then((m) => ({ default: m.ReportesListPage })));
+const ReportesListPage = lazy(() => import('@features/colibri').then((m) => ({ default: m.ReportesListPage })));
+const ColibriResumenPage = lazy(() => import('@features/colibri').then((m) => ({ default: m.ResumenPage })));
+const ColibriTiposPage = lazy(() => import('@features/colibri').then((m) => ({ default: m.TiposPage })));
+const ColibriDireccionesPage = lazy(() => import('@features/colibri').then((m) => ({ default: m.DireccionesPage })));
+const ColibriSourceAppsPage = lazy(() => import('@features/colibri').then((m) => ({ default: m.SourceAppsPage })));
+const ColibriRoutesPage = lazy(() => import('@features/colibri').then((m) => ({ default: m.RoutesPage })));
+const ColibriIntegracionPage = lazy(() => import('@features/colibri').then((m) => ({ default: m.IntegracionPage })));
 const LayerEditPage = lazy(() => import('@features/mapalab-layers').then((m) => ({ default: m.LayerEditPage })));
 const InitialLayerOrderPage = lazy(() => import('@features/mapalab-layers').then((m) => ({ default: m.InitialLayerOrderPage })));
 const EventosListPage = lazy(() => import('@features/mapalab-eventos').then((m) => ({ default: m.EventosListPage })));
@@ -95,12 +101,64 @@ const router = createBrowserRouter([
                         )
                     },
                     {
-                        path: 'reportes',
+                        path: 'colibri',
+                        element: withSuspense(
+                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
+                                <ColibriResumenPage />
+                            </RoleProtectedRoute>
+                        )
+                    },
+                    {
+                        path: 'colibri/reportes',
                         element: withSuspense(
                             <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
                                 <ReportesListPage />
                             </RoleProtectedRoute>
                         )
+                    },
+                    {
+                        path: 'colibri/tipos',
+                        element: withSuspense(
+                            <RoleProtectedRoute allowedRoles={['tetlamamakani']}>
+                                <ColibriTiposPage />
+                            </RoleProtectedRoute>
+                        )
+                    },
+                    {
+                        path: 'colibri/direcciones',
+                        element: withSuspense(
+                            <RoleProtectedRoute allowedRoles={['tetlamamakani']}>
+                                <ColibriDireccionesPage />
+                            </RoleProtectedRoute>
+                        )
+                    },
+                    {
+                        path: 'colibri/source-apps',
+                        element: withSuspense(
+                            <RoleProtectedRoute allowedRoles={['tetlamamakani']}>
+                                <ColibriSourceAppsPage />
+                            </RoleProtectedRoute>
+                        )
+                    },
+                    {
+                        path: 'colibri/routes',
+                        element: withSuspense(
+                            <RoleProtectedRoute allowedRoles={['tetlamamakani']}>
+                                <ColibriRoutesPage />
+                            </RoleProtectedRoute>
+                        )
+                    },
+                    {
+                        path: 'colibri/integracion',
+                        element: withSuspense(
+                            <RoleProtectedRoute allowedRoles={['tetlamamakani']}>
+                                <ColibriIntegracionPage />
+                            </RoleProtectedRoute>
+                        )
+                    },
+                    {
+                        path: 'reportes',
+                        element: <Navigate to="/colibri/reportes" replace />
                     },
                     {
                         path: 'menu',

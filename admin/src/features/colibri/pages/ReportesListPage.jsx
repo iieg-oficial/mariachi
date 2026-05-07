@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
     Alert,
     Button,
@@ -6,6 +6,7 @@ import {
     Input,
     Layout,
     Popconfirm,
+    Segmented,
     Select,
     Space,
     Spin,
@@ -19,18 +20,18 @@ import {
     eliminarReporte,
     useReportesContadores,
     useReportesList,
-} from '@features/reportes/hooks/useReportes';
+} from '@features/colibri/hooks/useReportes';
+import { listReportesGrupos } from '@features/colibri/api/reportesService';
+import { useReporteTipos } from '@features/colibri/hooks/useReporteTipos';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import { message } from '@shared/services/message';
 import {
     ESTADO_COLORS,
     ESTADO_LABELS,
     SOURCE_APPS,
-    TIPO_COLORS,
-    TIPO_LABELS,
     formatDate,
-} from '@features/reportes/constants';
-import ReporteDrawer from '@features/reportes/components/ReporteDrawer';
+} from '@features/colibri/constants';
+import ReporteDrawer from '@features/colibri/components/ReporteDrawer';
 
 const { Content } = Layout;
 const { Title, Text } = Typography;
@@ -45,6 +46,9 @@ export default function ReportesListPage() {
     const [page, setPage] = useState(1);
     const [openId, setOpenId] = useState(null);
     const [actingId, setActingId] = useState(null);
+    const [view, setView] = useState('flat');
+    const [grupos, setGrupos] = useState({ items: [], total: 0, page: 1, size: 20 });
+    const [gruposLoading, setGruposLoading] = useState(false);
 
     const { data, loading, error, reload, setParams } = useReportesList({
         source_app: sourceApp,
@@ -52,6 +56,18 @@ export default function ReportesListPage() {
         size: 20,
     });
     const { contadores, reload: reloadCounts } = useReportesContadores();
+    const { tipos: tiposCatalogo, labels: TIPO_LABELS, colors: TIPO_COLORS } = useReporteTipos();
+
+    useEffect(() => {
+        if (view !== 'grouped') return;
+        let cancelled = false;
+        setGruposLoading(true);
+        listReportesGrupos({ source_app: sourceApp, page: 1, size: 20 })
+            .then((res) => { if (!cancelled) setGrupos(res); })
+            .catch(() => { if (!cancelled) setGrupos({ items: [], total: 0, page: 1, size: 20 }); })
+            .finally(() => { if (!cancelled) setGruposLoading(false); });
+        return () => { cancelled = true; };
+    }, [view, sourceApp]);
 
     const tabBadge = useMemo(() => {
         const result = {};
@@ -94,7 +110,7 @@ export default function ReportesListPage() {
             title: 'Tipo',
             dataIndex: 'tipo',
             width: 130,
-            render: (t) => <Tag color={TIPO_COLORS[t]}>{TIPO_LABELS[t]}</Tag>,
+            render: (t) => <Tag color={TIPO_COLORS[t] || 'default'}>{TIPO_LABELS[t] || t}</Tag>,
         },
         {
             title: 'Mensaje',
@@ -202,37 +218,112 @@ export default function ReportesListPage() {
                 />
 
                 <Card>
-                    <Space wrap style={{ marginBottom: 16 }}>
-                        <Select
-                            allowClear
-                            placeholder="Tipo"
-                            value={tipo}
-                            style={{ width: 160 }}
-                            onChange={(v) => { setTipo(v); applyFilters({ tipo: v }); }}
-                            options={Object.entries(TIPO_LABELS).map(([value, label]) => ({ value, label }))}
+                    <Space wrap style={{ marginBottom: 16, width: '100%', justifyContent: 'space-between' }}>
+                        <Space wrap>
+                            <Select
+                                allowClear
+                                placeholder="Tipo"
+                                value={tipo}
+                                style={{ width: 160 }}
+                                onChange={(v) => { setTipo(v); applyFilters({ tipo: v }); }}
+                                options={
+                                    tiposCatalogo.length > 0
+                                        ? tiposCatalogo.map((t) => ({ value: t.slug, label: t.label }))
+                                        : Object.entries(TIPO_LABELS).map(([value, label]) => ({ value, label }))
+                                }
+                                disabled={view === 'grouped'}
+                            />
+                            <Select
+                                allowClear
+                                placeholder="Estado"
+                                value={estado}
+                                style={{ width: 160 }}
+                                onChange={(v) => { setEstado(v); applyFilters({ estado: v }); }}
+                                options={Object.entries(ESTADO_LABELS).map(([value, label]) => ({ value, label }))}
+                                disabled={view === 'grouped'}
+                            />
+                            <Input.Search
+                                placeholder="Buscar en mensaje, ruta, email"
+                                allowClear
+                                style={{ width: 280 }}
+                                value={q}
+                                onChange={(e) => setQ(e.target.value)}
+                                onSearch={(value) => applyFilters({ q: value || undefined })}
+                                disabled={view === 'grouped'}
+                            />
+                            <Button icon={<ReloadOutlined />} onClick={() => { reload(); reloadCounts(); }}>
+                                Refrescar
+                            </Button>
+                        </Space>
+                        <Segmented
+                            value={view}
+                            onChange={setView}
+                            options={[
+                                { value: 'flat', label: 'Lista' },
+                                { value: 'grouped', label: 'Agrupados' },
+                            ]}
                         />
-                        <Select
-                            allowClear
-                            placeholder="Estado"
-                            value={estado}
-                            style={{ width: 160 }}
-                            onChange={(v) => { setEstado(v); applyFilters({ estado: v }); }}
-                            options={Object.entries(ESTADO_LABELS).map(([value, label]) => ({ value, label }))}
-                        />
-                        <Input.Search
-                            placeholder="Buscar en mensaje, ruta, email"
-                            allowClear
-                            style={{ width: 280 }}
-                            value={q}
-                            onChange={(e) => setQ(e.target.value)}
-                            onSearch={(value) => applyFilters({ q: value || undefined })}
-                        />
-                        <Button icon={<ReloadOutlined />} onClick={() => { reload(); reloadCounts(); }}>
-                            Refrescar
-                        </Button>
                     </Space>
 
-                    {loading ? (
+                    {view === 'grouped' ? (
+                        gruposLoading ? (
+                            <div style={{ textAlign: 'center', padding: 40 }}><Spin /></div>
+                        ) : (
+                            <Table
+                                rowKey="grupoId"
+                                size={isMobile ? 'small' : 'middle'}
+                                pagination={false}
+                                dataSource={grupos.items}
+                                scroll={{ x: 'max-content' }}
+                                columns={[
+                                    {
+                                        title: 'Tipo',
+                                        dataIndex: 'representanteTipo',
+                                        width: 130,
+                                        render: (t) => <Tag color={TIPO_COLORS[t] || 'default'}>{TIPO_LABELS[t] || t}</Tag>,
+                                    },
+                                    {
+                                        title: 'Mensaje (representante)',
+                                        dataIndex: 'representanteMensaje',
+                                        render: (text, r) => (
+                                            <Space direction="vertical" size={0}>
+                                                <Text ellipsis style={{ maxWidth: 400 }}>{text}</Text>
+                                                {r.representanteSourceRoute && (
+                                                    <Text type="secondary" style={{ fontSize: 11 }} ellipsis>
+                                                        {r.representanteSourceRoute}
+                                                    </Text>
+                                                )}
+                                            </Space>
+                                        ),
+                                    },
+                                    {
+                                        title: 'Ocurrencias',
+                                        dataIndex: 'count',
+                                        width: 110,
+                                        sorter: (a, b) => a.count - b.count,
+                                        defaultSortOrder: 'descend',
+                                        render: (c) => <Tag color={c > 10 ? 'red' : c > 3 ? 'orange' : 'default'}>{c}</Tag>,
+                                    },
+                                    {
+                                        title: 'Último visto',
+                                        dataIndex: 'ultimoVisto',
+                                        width: 150,
+                                        render: (v) => formatDate(v),
+                                    },
+                                    {
+                                        title: '',
+                                        key: 'open',
+                                        width: 110,
+                                        render: (_, r) => (
+                                            <Button size="small" onClick={() => setOpenId(r.representanteId)}>
+                                                Ver representante
+                                            </Button>
+                                        ),
+                                    },
+                                ]}
+                            />
+                        )
+                    ) : loading ? (
                         <div style={{ textAlign: 'center', padding: 40 }}><Spin /></div>
                     ) : (
                         <Table

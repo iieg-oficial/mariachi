@@ -16,6 +16,10 @@ import {
     PieChartOutlined,
     InboxOutlined,
     TagsOutlined,
+    ApartmentOutlined,
+    AppstoreOutlined,
+    BranchesOutlined,
+    CodeOutlined,
 } from '@ant-design/icons';
 import ColibriIcon from '@shared/components/ColibriIcon';
 
@@ -125,6 +129,34 @@ export const PROJECT_REGISTRY = {
                 path: '/colibri/tipos',
                 label: 'Tipos',
                 icon: <TagsOutlined />,
+                allowedGlobalRoles: ['tetlamamakani'],
+            },
+            {
+                key: '/colibri/direcciones',
+                path: '/colibri/direcciones',
+                label: 'Direcciones',
+                icon: <ApartmentOutlined />,
+                allowedGlobalRoles: ['tetlamamakani'],
+            },
+            {
+                key: '/colibri/source-apps',
+                path: '/colibri/source-apps',
+                label: 'Source apps',
+                icon: <AppstoreOutlined />,
+                allowedGlobalRoles: ['tetlamamakani'],
+            },
+            {
+                key: '/colibri/routes',
+                path: '/colibri/routes',
+                label: 'Routes',
+                icon: <BranchesOutlined />,
+                allowedGlobalRoles: ['tetlamamakani'],
+            },
+            {
+                key: '/colibri/integracion',
+                path: '/colibri/integracion',
+                label: 'Integración',
+                icon: <CodeOutlined />,
                 allowedGlobalRoles: ['tetlamamakani'],
             },
         ],

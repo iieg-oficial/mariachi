@@ -5,7 +5,7 @@ import {
     getReportesContadores,
     listReportes,
     updateReporte,
-} from '@features/reportes/api/reportesService';
+} from '@features/colibri/api/reportesService';
 
 
 export function useReportesList(initialParams = {}) {
