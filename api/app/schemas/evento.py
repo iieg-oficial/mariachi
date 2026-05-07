@@ -67,35 +67,45 @@ def _validate_image_url(v: str | None) -> str | None:
     return s
 
 
-class EventoBase(CamelCaseInput):
+class _ImageUrlMixin:
+    @field_validator('icono_url', 'imagen_url', mode='before', check_fields=False)
+    @classmethod
+    def _store_relative(cls, v):
+        return _validate_image_url(to_relative(v))
+
+    @field_serializer('icono_url', 'imagen_url', when_used='json-unless-none', check_fields=False)
+    def _expose_absolute(self, v):
+        return to_absolute(v)
+
+
+class _EventoVisibleFields(CamelCaseInput, _ImageUrlMixin):
+    """Campos del evento expuestos al visor publico y compartidos por
+    EventoBase (admin) y EventoPublicResponse (visor)."""
+
     titulo: str = Field(..., min_length=1, max_length=200)
     descripcion: str | None = Field(default=None, max_length=DESCRIPCION_MAX_LENGTH)
     icono_url: str | None = Field(default=None, max_length=URL_MAX_LENGTH, serialization_alias='iconoUrl')
     imagen_url: str | None = Field(default=None, max_length=URL_MAX_LENGTH, serialization_alias='imagenUrl')
     bbox: BBox | None = None
     capas: list[CapaRef] = Field(default_factory=list)
-    activo: bool = False
     fecha_inicio: datetime | None = Field(default=None, serialization_alias='fechaInicio')
     fecha_fin: datetime | None = Field(default=None, serialization_alias='fechaFin')
     orden: int = 0
 
     model_config = ConfigDict(populate_by_name=True)
 
-    @field_validator('icono_url', 'imagen_url', mode='before')
-    @classmethod
-    def _store_relative(cls, v):
-        return _validate_image_url(to_relative(v))
 
-    @field_serializer('icono_url', 'imagen_url', when_used='json-unless-none')
-    def _expose_absolute(self, v):
-        return to_absolute(v)
+class EventoBase(_EventoVisibleFields):
+    """Campos manipulables por admin (incluye `activo`)."""
+
+    activo: bool = False
 
 
 class EventoCreate(EventoBase):
     slug: str | None = Field(default=None, min_length=1, max_length=120)
 
 
-class EventoUpdate(CamelCaseInput):
+class EventoUpdate(CamelCaseInput, _ImageUrlMixin):
     titulo: str | None = Field(default=None, min_length=1, max_length=200)
     descripcion: str | None = Field(default=None, max_length=DESCRIPCION_MAX_LENGTH)
     icono_url: str | None = Field(default=None, max_length=URL_MAX_LENGTH, serialization_alias='iconoUrl')
@@ -111,11 +121,6 @@ class EventoUpdate(CamelCaseInput):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    @field_validator('icono_url', 'imagen_url', mode='before')
-    @classmethod
-    def _store_relative(cls, v):
-        return _validate_image_url(to_relative(v))
-
 
 class EventoResponse(EventoBase):
     id: int
@@ -128,21 +133,8 @@ class EventoResponse(EventoBase):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 
-class EventoPublicResponse(BaseModel):
+class EventoPublicResponse(_EventoVisibleFields):
     id: int
     slug: str
-    titulo: str
-    descripcion: str | None = None
-    icono_url: str | None = Field(default=None, serialization_alias='iconoUrl')
-    imagen_url: str | None = Field(default=None, serialization_alias='imagenUrl')
-    bbox: BBox | None = None
-    capas: list[CapaRef] = Field(default_factory=list)
-    fecha_inicio: datetime | None = Field(default=None, serialization_alias='fechaInicio')
-    fecha_fin: datetime | None = Field(default=None, serialization_alias='fechaFin')
-    orden: int = 0
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
-
-    @field_serializer('icono_url', 'imagen_url', when_used='json-unless-none')
-    def _expose_absolute(self, v):
-        return to_absolute(v)
