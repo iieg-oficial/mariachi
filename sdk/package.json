@@ -1,0 +1,41 @@
+{
+    "name": "@iieg/colibri-sdk",
+    "version": "1.0.0",
+    "description": "Cliente HTTP minimalista para enviar reportes a Colibri (IIEG).",
+    "type": "module",
+    "main": "./dist/index.js",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js"
+        }
+    },
+    "files": [
+        "dist",
+        "README.md"
+    ],
+    "scripts": {
+        "build": "tsc",
+        "build:watch": "tsc --watch",
+        "clean": "rm -rf dist"
+    },
+    "keywords": [
+        "colibri",
+        "iieg",
+        "feedback",
+        "reportes",
+        "sdk"
+    ],
+    "engines": {
+        "node": ">=18"
+    },
+    "devDependencies": {
+        "typescript": "^5.6.0"
+    },
+    "publishConfig": {
+        "access": "restricted"
+    },
+    "license": "UNLICENSED"
+}

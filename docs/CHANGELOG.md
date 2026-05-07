@@ -9,6 +9,87 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.45.0] - 2026-05-07
+
+### Colibri: SDK npm @iieg/colibri-sdk para integraciones programaticas
+
+Paquete nuevo `sdk/` complementario al widget. Cliente HTTP minimalista TypeScript para Node 18+ y browser. Sin UI, sin DOM, sin React. Bundle final 6.9 KB raw / ~2 KB gzip estimado.
+
+#### Stack
+
+- **TypeScript puro** (sin bundler — `tsc` solo). El consumidor bundlea segun su entorno.
+- **ESM-only** con `exports` en package.json. Requiere Node 18+ (`fetch` global).
+- **Build:** dual `.js` + `.d.ts` + `.d.ts.map` + sourcemaps en `dist/`.
+
+#### Cliente
+
+```typescript
+import { Colibri } from '@iieg/colibri-sdk';
+
+const colibri = new Colibri({
+    sourceApp: 'mi-app',
+    apiKey: process.env.COLIBRI_API_KEY!,
+    baseUrl: 'https://iieg.gob.mx/api/public',  // opcional
+    fetchImpl: customFetch,                      // opcional para Node < 18
+    timeoutMs: 10000,                            // opcional
+});
+
+colibri.identify({ id: 42, email: 'x@y.com', role: 'editor' });
+colibri.setContext('plan', 'pro');
+
+await colibri.report({
+    tipo: 'bug',
+    mensaje: 'Cron fallo',
+    email: 'oncall@iieg.gob.mx',
+    context: { jobId: 'abc-123' },
+    respuestas: { navegador: 'chrome' },         // valida contra form_schema
+});
+
+const tipos = await colibri.tipos();             // cache 5 min
+```
+
+#### Errores tipados
+
+`ColibriError` (base con `status` y `detail`) + 5 subclases especificas: `AuthError` (401), `ForbiddenError` (403), `ValidationError` (422), `RateLimitError` (429 con `retryAfter`), `NetworkError` (sin status, con `cause`). El SDK mapea response codes del backend a errores tipados para que el consumidor pueda reaccionar especificamente:
+
+```typescript
+try { await colibri.report({...}); }
+catch (e) {
+    if (e instanceof RateLimitError) wait(e.retryAfter);
+    else if (e instanceof AuthError) rotateKey();
+    else if (e instanceof NetworkError) retry();
+}
+```
+
+#### Tipos exportados
+
+`IdentifyUser`, `Breadcrumb`, `AutoCaptured`, `SourceContext`, `ReportPayload`, `ReportResponse`, `FormFieldOption`, `FormFieldDef`, `FormSchema`, `ReporteTipo`, `ColibriOptions`.
+
+#### Casos de uso
+
+Cron Node, worker Cloud Run / Lambda, app movil React Native, app con UI custom de reporte (widget oculto + metodos), error JS automatico (escuchar `window.onerror` y reportar via SDK).
+
+#### Estructura
+
+```
+sdk/
+├── package.json (name: @iieg/colibri-sdk v1.0.0, type: module, exports dual)
+├── tsconfig.json (target ES2020, strict, declaration true)
+├── README.md (docs completas con ejemplos)
+└── src/
+    ├── index.ts (Colibri class + createColibri factory + VERSION)
+    ├── errors.ts (5 clases de error tipadas)
+    └── types.ts (10 tipos publicos)
+```
+
+### Probado
+
+`tsc` build OK con `strict: true`. 7/7 smoke tests: validacion de constructor, ValidationError sin tipo, NetworkError contra host inexistente, errores `instanceof ColibriError`, `RateLimitError.retryAfter`. Test real contra backend: `tipos()` devuelve 6 tipos, `report()` con `ck_pub_INVALID` -> AuthError 401.
+
+Bump 0.44.0 -> 0.45.0.
+
+---
+
 ## [0.44.0] - 2026-05-07
 
 ### Colibri: widget Web Components embebibles (button, trigger, form)
