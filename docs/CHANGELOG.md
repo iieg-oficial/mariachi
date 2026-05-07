@@ -9,6 +9,19 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.46.1] - 2026-05-07
+
+### Docs: actualizar context.md y consolidar especificacion del modulo Colibri
+
+- `docs/context.md` actualizado a v0.46.1 con: tabla de productos extendida (Widget, SDK, Docs publicas como entradas), estructura del repo con carpetas `widget/` y `sdk/` documentadas, lista de routers admin extendida con `/colibri/*`, nueva seccion "Colibri publico" en endpoints, lista de tablas BD `iieg_portal` con bullets de Colibri, **nueva seccion "Modulo Colibri (v0.42.0–0.46.1)"** con resumen ejecutivo de los 5 paquetes, multi-tenancy, hardening implementado, y pendiente bloqueado, entry de "Cambios recientes" cubriendo las 6 versiones nuevas, referencia a `docs/colibri.md` en la seccion final.
+- `docs/colibri.md` mantenido como **especificacion canonica** del modulo (estado actual, hardening checklist con todo implementado, roadmap por fases con migraciones reales).
+
+Sin cambios de codigo. Solo docs.
+
+Bump 0.46.0 -> 0.46.1.
+
+---
+
 ## [0.46.0] - 2026-05-07
 
 ### Colibri: docs publicas standalone + integracion del widget en nginx

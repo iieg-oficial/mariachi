@@ -2,7 +2,7 @@
 
 > Documento de referencia completo. Leer este archivo proporciona contexto del monorepo sin explorar el codebase.
 
-**Versión:** 0.41.1 · **Última actualización:** 2026-05-07
+**Versión:** 0.46.1 · **Última actualización:** 2026-05-07
 
 
 ---
@@ -15,10 +15,13 @@ Este monorepo aloja el panel de administración del ecosistema IIEG y el backend
 |---|---|---|---|---|
 | **Mariachi** | Panel de administración del ecosistema IIEG (Ant Design) | `admin/` | `/mariachi/` | Activo |
 | **SIEEJ (frontend)** | Captura de formularios para dependencias de gobierno (otro repo: `iieg-oficial/sieej`) | servido como volumen en `mariachi-nginx` | `/sieej/` | Activo |
+| **Colibri Widget** | Web Components embebibles para reportar desde cualquier sitio (Lit + Vite) | `widget/` | `/colibri/widget/colibri-widget.v1.js` | Activo (v0.46.0) |
+| **Colibri SDK** | Cliente HTTP TypeScript para integraciones server-side y browser custom | `sdk/` | npm `@iieg/colibri-sdk` | Activo (v0.46.0) |
+| **Colibri Docs** | Documentacion publica standalone para integradores externos | `nginx/static/colibri-docs/` | `/colibri/docs/` | Activo (v0.46.0) |
 
 El **Portal público** (sitio web del IIEG) se separó a su propio repo `iieg/portal/` (ver README raíz). Consume `/api/portal/*` de este `api`.
 
-Mariachi y SIEEJ consumen el mismo backend FastAPI en `api/` con el mismo prefijo `admin_prefix` (`/api/administrador`). Mariachi usa los routers `auth`, `users`, `pages`, `menu`, `media`, `borradores`, `layers`, etc. SIEEJ usa exclusivamente `/api/administrador/formularios/*` (ver `docs/sieej.md`).
+Mariachi y SIEEJ consumen el mismo backend FastAPI en `api/` con el mismo prefijo `admin_prefix` (`/api/administrador`). Mariachi usa los routers `auth`, `users`, `pages`, `menu`, `media`, `borradores`, `layers`, `colibri/*`, etc. SIEEJ usa exclusivamente `/api/administrador/formularios/*` (ver `docs/sieej.md`). Los huespedes externos a la sesion (widget + SDK + integraciones server-side) consumen `/api/public/reportes` (ver `docs/colibri.md`).
 
 **Origen del nombre:** la carpeta del repo se llamaba `portal/` originalmente. En 2026-04-22 se renombro a `mariachi/` para reflejar que el CMS es lo único que se sigue desarrollando. El portal publico sigue alli pero congelado.
 
@@ -115,9 +118,9 @@ mariachi/
 │   │   │   ├── database.py       # engine principal + get_dataengine_db (lazy)
 │   │   │   ├── security.py       # JWT + CSRF
 │   │   │   └── cache.py          # Redis helpers
-│   │   ├── models/               # user, page, menu_item, media, borrador
-│   │   ├── schemas/              # Pydantic request/response
-│   │   └── services/             # acervo (MinIO client)
+│   │   ├── models/               # user, page, menu_item, media, borrador, reporte*, tipo, direccion, source_app, route, grupo, actividad
+│   │   ├── schemas/              # Pydantic request/response (incluye form_schema, source_context tipados)
+│   │   └── services/             # acervo, colibri_keys, colibri_fingerprint, pii_scrubber, colibri_router_engine
 │   ├── alembic/                  # Migraciones (solo BD iieg_portal por ahora)
 │   ├── scripts/                  # init_db, generate_secret_key
 │   ├── tests/
@@ -138,13 +141,31 @@ mariachi/
 │   │   ├── components/
 │   │   └── services/apiService.js
 │   └── package.json              # name: portal-web
+├── widget/                       # Web Components embebibles de Colibri (Lit + Vite)
+│   ├── src/
+│   │   ├── colibri-button.js     # Custom Element FAB flotante
+│   │   ├── colibri-trigger.js    # Custom Element link/icono inline
+│   │   ├── colibri-form.js       # Custom Element form embebido
+│   │   ├── index.js              # registra los 3 + window.colibri.identify
+│   │   └── shared/               # api, theme, icons, panel modal, form renderer
+│   ├── dist/                     # bundle servido por mariachi-nginx en /colibri/widget/
+│   ├── vite.config.js            # library mode iife + es
+│   └── package.json              # name: @iieg/colibri-widget (no se publica a npm)
+├── sdk/                          # SDK npm de Colibri (TypeScript puro)
+│   ├── src/
+│   │   ├── index.ts              # class Colibri + factory
+│   │   ├── errors.ts             # ColibriError + 5 subclases (Auth/Validation/RateLimit/...)
+│   │   └── types.ts              # tipos publicos exportados
+│   ├── tsconfig.json             # target ES2020, declaration true
+│   └── package.json              # name: @iieg/colibri-sdk (publicable a npm)
 ├── nginx/                        # Proxy + sirve estáticos
 │   ├── conf.d/mariachi.conf      # Template con envsubst
 │   ├── ssl/
-│   ├── static/                   # robots.txt, sitemap.xml
+│   ├── static/                   # robots.txt, sitemap.xml, colibri-docs/
+│   │   └── colibri-docs/         # documentacion publica standalone (HTML estatico)
 │   ├── nginx.conf
-│   └── Dockerfile                # multi-stage: web-builder, admin-builder, nginx
-├── docs/                         # Este directorio
+│   └── Dockerfile                # multi-stage: widget-builder, admin-builder, nginx
+├── docs/                         # Este directorio (incluye colibri.md)
 ├── docker-compose.yml            # name: mariachi (prod)
 ├── docker-compose.dev.yml        # name: mariachi-dev
 ├── Makefile
@@ -325,8 +346,25 @@ Sin auth. `router = APIRouter(tags=["portal público"])` en `routes/public.py`.
 | GET/POST/PATCH | `/media-buckets/*` | CRUD de buckets registrados (admin solo en writes) |
 | GET/POST/PATCH | `/borradores/*` | Revision queue |
 | GET | `/preview/*` | Preview de paginas sin publicar |
+| GET/POST/PATCH/DELETE | `/colibri/tipos/*` | CRUD de tipos de reporte (admin en writes) |
+| GET/POST/PATCH/DELETE | `/colibri/direcciones/*` | CRUD de direcciones organizacionales |
+| GET/POST/PATCH/DELETE | `/colibri/source-apps/*` | CRUD de huespedes registrados; `POST /:id/rotate-key` devuelve la API key plana una sola vez |
+| GET/POST/PATCH/DELETE | `/colibri/routes/*` | CRUD de rutas de fan-out (Discord/Slack/webhook/email) |
+| GET | `/colibri/stats` | Payload completo de metricas para dashboard Resumen |
+| GET | `/reportes/grupos/lista` | Vista agrupada por fingerprint (count desc) |
+| GET | `/reportes/{id}/actividad` | Timeline de cambios sobre un reporte |
+| PATCH | `/reportes/{id}` | Update extendido: estado, severidad, prioridad, duplicado_de, direccion, etc. Cada campo cambiado registra fila en `reporte_actividad` |
 
 Requieren cookie JWT valida + CSRF en writes.
+
+### Colibri publico (`/api/public/reportes/*`)
+
+| Metodo | Ruta | Funcion |
+|---|---|---|
+| POST | `/api/public/reportes` | Crear reporte. Acepta multipart con screenshot + `respuestas` (JSON validado contra `form_schema` del tipo). Si llega header `X-Colibri-Key`: valida key + CORS dinamico contra `dominios_permitidos` + tipos permitidos + rate limit por (source_app, IP). Aplica scrubbing PII. Calcula fingerprint y agrupa. Dispatcha a routes de fan-out (best-effort). Sin header sigue funcionando legacy. |
+| GET | `/api/public/reportes/tipos` | Lista tipos activos con `formSchema` para que el widget/SDK rendericen forms dinamicos. `Cache-Control: public, max-age=300`. |
+
+Sin cookie JWT — autenticacion exclusivamente por API key del huesped (`ck_pub_*` browser, `ck_priv_*` server). Ver `docs/colibri.md` para arquitectura completa.
 
 ### v1.4.0 MapaLab (capas) — implementado
 
@@ -410,6 +448,14 @@ Tablas existentes (modelos en `api/app/models/`):
 - `menu_items`
 - `media`
 - `borradores`
+- **Colibri** (modulo de reportes embebibles, ver `docs/colibri.md`):
+    - `reportes` (extendida con tipo_id, direccion_id, source_app_id, grupo_id, respuestas jsonb, severidad, prioridad, duplicado_de self-FK, bloqueado_por, sla_at)
+    - `reporte_tipos` — catalogo editable con form_schema jsonb por tipo
+    - `direcciones_organizacionales` — areas internas del IIEG
+    - `source_apps` — huespedes registrados con API keys, dominios CORS, scrubbers PII
+    - `colibri_routes` — reglas de fan-out automatico
+    - `reporte_grupos` — agrupacion por fingerprint sha256 (dedupe)
+    - `reporte_actividad` — audit log de cambios por usuario
 
 Migraciones via Alembic en `api/alembic/versions/`.
 
@@ -523,6 +569,38 @@ Pre-requisitos: credenciales de escritura en DataEngine — ver `docs/DATAENGINE
 
 ---
 
+## Modulo Colibri (v0.42.0–0.46.1)
+
+Colibri es el sistema centralizado de reportes embebibles del IIEG. Vive como modulo dentro de `mariachi/` (no como repo separado) y expone una API publica `/api/public/reportes` consumida por widget + SDK + integraciones server-side. La arquitectura completa esta en `docs/colibri.md`. Resumen de lo que aporta al monorepo:
+
+1. **Backend (`api/app/`)**: 6 modelos nuevos (ReporteTipo, DireccionOrganizacional, SourceApp, ColibriRoute, ReporteGrupo, ReporteActividad) + extension de Reporte con workflow granular. 8 migraciones Alembic con seed/backfill. 5 routers admin (`/colibri/{tipos,direcciones,source-apps,routes,stats}`) + reportes extendido + endpoint publico endurecido. 4 services (`colibri_keys`, `colibri_fingerprint`, `pii_scrubber`, `colibri_router_engine`).
+
+2. **Panel admin (`admin/src/features/colibri/`)**: 7 paginas (Resumen, Reportes con toggle plano/agrupados, Tipos con form builder, Direcciones, SourceApps con rotacion de keys + modal "muestra-una-vez", Routes con fan-out, Integracion con preview en vivo). Sidebar reorganizado: Colibri es proyecto del CMS con `allowedGlobalRoles` para tetlamamakani/editora.
+
+3. **Widget (`widget/`)**: paquete Lit + Vite con 3 Custom Elements (`<colibri-button>`, `<colibri-trigger>`, `<colibri-form>`). Bundle 48 KB / 13.5 KB gzip servido en `/colibri/widget/colibri-widget.v1.js` con CORS abierto. Shadow DOM, form dinamico, identify(), screenshot opcional.
+
+4. **SDK (`sdk/`)**: paquete TypeScript publicable a npm como `@iieg/colibri-sdk`. Cliente HTTP con tipos + 5 errores tipados (Auth/Validation/RateLimit/Forbidden/Network). 6.9 KB raw / ~2 KB gzip.
+
+5. **Docs publicas (`nginx/static/colibri-docs/`)**: HTML standalone 24.7 KB sin dependencias, servido en `/colibri/docs/` sin auth. Live preview, copy-paste snippets, dark mode automatico.
+
+### Integracion con multi-tenancy
+
+Cada huesped es un `source_app` registrado con su propia API key (hash bcrypt sobre sha256 del plaintext, prefix de 12 chars visible para identificar). Las keys `ck_pub_*` validan CORS estricto contra `dominios_permitidos` (soporta wildcards `*.iieg.gob.mx` y `*`). Las `ck_priv_*` no validan CORS pero requieren prefix correcto. Rate limit configurable por huesped y por IP.
+
+### Hardening implementado
+
+- **PII scrubbing**: regex defaults para JWT, tokens en query, Authorization header, CCN. Extensible por `source_app.scrubbers`. Modo `disable_pii` purga UA, viewport, identify, breadcrumbs y email_contacto antes de persistir.
+- **Dedupe**: fingerprint sha256 determinista de `(tipo + source_app + ruta_normalizada + mensaje[:200])` que normaliza queries y path params numericos. Lookup-or-create atomico con `SELECT FOR UPDATE SKIP LOCKED`. Panel admin tiene toggle `Lista | Agrupados`.
+- **Audit log**: cada `PATCH /reportes/{id}` registra una fila por campo cambiado en `reporte_actividad` con `{campo, anterior, nuevo}` y `actor_id`. Drawer admin muestra Timeline.
+- **Workflow granular**: `severidad` (baja/media/alta/critica), `prioridad` (P0..P3), `duplicado_de` self-FK con guarda de auto-referencia, `bloqueado_por` text libre, `sla_at` datetime (calculo automatico pendiente).
+- **Fan-out best-effort**: al crear reporte, dispatcha async a Discord/Slack/webhook generico segun reglas en `colibri_routes`. Errores no bloquean la creacion.
+
+### Pendiente bloqueado
+
+Pagina publica de seguimiento por token: requiere que IIEG defina politicas de retencion de email, uso permitido, consentimiento explicito y derechos ARCO. Implementacion tecnica trivial (1-2 dias) pero el bloqueo es 100% normativo.
+
+---
+
 ## Ecosistema
 
 Este repo se integra con otros servicios internos vecinos (CMS, visor de mapas, DataEngine PostgreSQL+PostGIS, gateway Nginx, almacenamiento S3-compatible, GeoServer, stack de observabilidad) que comparten una red Docker común. Los detalles de topología son internos.
@@ -530,6 +608,19 @@ Este repo se integra con otros servicios internos vecinos (CMS, visor de mapas, 
 ---
 
 ## Cambios recientes
+
+### 2026-05-07 (v0.42.0–0.46.1) — Modulo Colibri introducido
+
+Detalle por version en `docs/CHANGELOG.md` y arquitectura completa en `docs/colibri.md`. Resumen ejecutivo:
+
+- **0.42.0** — Backend completo: 6 modelos + 7 schemas + 4 services + 5 routers admin + endpoint publico endurecido + 8 migraciones con seed/backfill.
+- **0.43.0** — Panel admin: reorganizacion `features/reportes` -> `features/colibri`, 7 paginas (Resumen/Reportes/Tipos/Direcciones/SourceApps/Routes/Integracion), sidebar como proyecto del CMS, drawer extendido con workflow granular + Timeline de actividad.
+- **0.44.0** — Widget `widget/`: paquete nuevo Lit + Vite con 3 Custom Elements (button/trigger/form). Bundle 48 KB / 13.5 KB gzip. Shadow DOM, form dinamico, eventos DOM, theming con dark mode.
+- **0.45.0** — SDK `sdk/`: paquete nuevo TypeScript puro publicable como `@iieg/colibri-sdk`. 6.9 KB raw / ~2 KB gzip. Errores tipados, tipos exportados, AbortController + timeout.
+- **0.46.0** — Docs publicas standalone (HTML 24.7 KB) en `/colibri/docs/`. Nginx multi-stage con `widget-builder`. Boton "Docs publicas" en IntegracionPage del admin.
+- **0.46.1** — Actualizacion de `context.md` y `colibri.md` con estado final del modulo.
+
+Sin cambios disruptivos: el endpoint publico `/api/public/reportes` mantiene compat con clientes legacy (sin header `X-Colibri-Key`); las API keys se generan en el momento que el admin lo decida desde `/colibri/source-apps`.
 
 ### 2026-05-06 (v0.40.2)
 
@@ -696,6 +787,7 @@ Detalle completo en `docs/CHANGELOG.md` §[0.13.0]. Resumen:
 - `docs/DATAENGINE_CREDENTIALS.md` — requerimientos para credenciales DataEngine
 - `docs/ALEMBIC_MULTI_ENV.md` — migraciones en dos BDs (`-x db=mariachi|dataengine`)
 - `docs/SLD_EDITOR.md` — editor visual de simbología SLD: backend (parser/generator/borrador handler) + frontend (componentes choropleth/boundary, hook, fallback, status badge)
+- `docs/colibri.md` — modulo Colibri: arquitectura, multi-tenancy, hardening (PII, dedupe, audit log, fan-out), widget Web Components, SDK npm, docs publicas
 - `scripts/rename-github-repo.sh` — actualiza remote local tras rename en GitHub
 - `scripts/migrate-acervo-bucket.sh` — migra contenido de bucket `portal-dev` a `mariachi-dev`
 - `docs/PENDIENTES.md` — roadmap del CMS
