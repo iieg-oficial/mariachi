@@ -8,12 +8,11 @@ from app.core.cache import redis_client, set_cache
 
 logger = logging.getLogger(__name__)
 
-_DEBOUNCE_WINDOW_SECONDS = 5
-_TTL_DAYS = 60 * 60 * 24 * 30
+_TTL_SECONDS = 60 * 60 * 24 * 30
 
 _KEY_EVENTOS = 'mapalab:public_cache_version:eventos'
 _KEY_HOME = 'mapalab:public_cache_version:home'
-_LOCK_PREFIX = 'mapalab:debounce_lock'
+_PAYLOAD_PREFIX = 'mapalab:public_cache:payload'
 
 
 def _new_token() -> str:
@@ -22,38 +21,74 @@ def _new_token() -> str:
 
 def _bump(redis_key: str) -> None:
     try:
-        set_cache(redis_key, _new_token(), expire=_TTL_DAYS)
+        set_cache(redis_key, _new_token(), expire=_TTL_SECONDS)
     except Exception as exc:
         logger.warning('No se pudo actualizar cache version %s: %s', redis_key, exc)
 
 
-def get_versions() -> dict[str, str]:
-    eventos = redis_client.get(_KEY_EVENTOS)
-    home = redis_client.get(_KEY_HOME)
-    if not eventos:
-        eventos = _new_token()
-        set_cache(_KEY_EVENTOS, eventos, expire=_TTL_DAYS)
-    if not home:
-        home = _new_token()
-        set_cache(_KEY_HOME, home, expire=_TTL_DAYS)
-    return {'eventos': eventos, 'home': home}
-
-
-def _dedup_bump(scope: str, redis_key: str) -> None:
-    lock_key = f"{_LOCK_PREFIX}:{scope}"
+def _current_version(redis_key: str) -> str:
     try:
-        acquired = redis_client.set(lock_key, '1', nx=True, ex=_DEBOUNCE_WINDOW_SECONDS)
+        value = redis_client.get(redis_key)
     except Exception as exc:
-        logger.warning('No se pudo obtener lock de debounce %s: %s', lock_key, exc)
-        _bump(redis_key)
-        return
-    if acquired:
-        _bump(redis_key)
+        logger.warning('No se pudo leer cache version %s: %s', redis_key, exc)
+        return _new_token()
+    if value:
+        return value
+    token = _new_token()
+    try:
+        set_cache(redis_key, token, expire=_TTL_SECONDS)
+    except Exception:
+        pass
+    return token
+
+
+def _payload_key(scope: str, version: str) -> str:
+    return f'{_PAYLOAD_PREFIX}:{scope}:{version}'
+
+
+def _get_cached_payload(scope: str, redis_key: str) -> tuple[str, str | None]:
+    version = _current_version(redis_key)
+    try:
+        payload = redis_client.get(_payload_key(scope, version))
+    except Exception as exc:
+        logger.warning('No se pudo leer payload %s: %s', scope, exc)
+        return version, None
+    return version, payload
+
+
+def _store_payload(scope: str, version: str, payload_json: str) -> None:
+    try:
+        redis_client.setex(_payload_key(scope, version), _TTL_SECONDS, payload_json)
+    except Exception as exc:
+        logger.warning('No se pudo cachear payload %s: %s', scope, exc)
+
+
+def get_versions() -> dict[str, str]:
+    return {
+        'eventos': _current_version(_KEY_EVENTOS),
+        'home': _current_version(_KEY_HOME),
+    }
+
+
+def get_cached_eventos() -> tuple[str, str | None]:
+    return _get_cached_payload('eventos', _KEY_EVENTOS)
+
+
+def store_cached_eventos(version: str, payload_json: str) -> None:
+    _store_payload('eventos', version, payload_json)
+
+
+def get_cached_home() -> tuple[str, str | None]:
+    return _get_cached_payload('home', _KEY_HOME)
+
+
+def store_cached_home(version: str, payload_json: str) -> None:
+    _store_payload('home', version, payload_json)
 
 
 def notify_eventos_changed() -> None:
-    _dedup_bump('eventos', _KEY_EVENTOS)
+    _bump(_KEY_EVENTOS)
 
 
 def notify_home_changed() -> None:
-    _dedup_bump('home', _KEY_HOME)
+    _bump(_KEY_HOME)
