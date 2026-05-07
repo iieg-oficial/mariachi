@@ -282,6 +282,10 @@ export class ColibriFormCore extends LitElement {
             const sourceContext = { auto };
             const userIdentify = window?.colibri?.__userIdentify;
             if (userIdentify) sourceContext.user = userIdentify;
+            const customCtx = window?.colibri?.__customContext;
+            if (customCtx && Object.keys(customCtx).length > 0) {
+                sourceContext.custom = { ...customCtx };
+            }
 
             const result = await postReporte({
                 endpoint: this.endpoint || '/api/public/reportes',

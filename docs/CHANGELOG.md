@@ -9,6 +9,36 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.46.2] - 2026-05-07
+
+### Colibri widget: window.colibri.setContext() para enriquecer reportes desde el huesped
+
+Habilita que el huesped agregue contexto custom (snapshot del mapa, capas activas, sesion del usuario, etc.) que se incluya en `source_context.custom` de cada reporte sin tener que pasarlo por atributo del Custom Element. Util para integraciones con context dinamico (ej. mapalab que cambia de capas/zoom constantemente).
+
+#### Widget
+
+- `widget/src/index.js`: agrega `window.colibri.setContext(key, value)` y `window.colibri.clearContext()`. Pasar `null`/`undefined` como value borra esa key. Persiste en `window.colibri.__customContext`.
+- `widget/src/shared/form.js`: al construir el payload del POST, lee `__customContext` y lo mete en `sourceContext.custom`. Coexiste con `__userIdentify` (que sigue yendo a `sourceContext.user`).
+
+#### Uso
+
+```javascript
+window.colibri.setContext('map', { basemap: 'osm', zoom: 12, center: [-103.4, 20.7] });
+window.colibri.setContext('layers', activeLayerIds);
+// Ahora todo reporte enviado lleva eso en source_context.custom.
+
+window.colibri.setContext('layers', null);  // borra solo esa key
+window.colibri.clearContext();               // borra todo
+```
+
+### Probado
+
+Bundle rebuilt + redesplegado a `mariachi-nginx`. Verificado que `setContext` y `__customContext` aparecen en el bundle minificado.
+
+Bump 0.46.1 -> 0.46.2.
+
+---
+
 ## [0.46.1] - 2026-05-07
 
 ### Docs: actualizar context.md y consolidar especificacion del modulo Colibri

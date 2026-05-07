@@ -19,6 +19,17 @@ if (typeof window !== 'undefined') {
     window.colibri.identify = (user) => {
         window.colibri.__userIdentify = user;
     };
+    window.colibri.setContext = (key, value) => {
+        if (!window.colibri.__customContext) window.colibri.__customContext = {};
+        if (value === null || value === undefined) {
+            delete window.colibri.__customContext[key];
+        } else {
+            window.colibri.__customContext[key] = value;
+        }
+    };
+    window.colibri.clearContext = () => {
+        window.colibri.__customContext = {};
+    };
     window.colibri.version = '1.0.0';
 }
 
