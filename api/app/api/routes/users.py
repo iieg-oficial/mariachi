@@ -12,8 +12,6 @@ from app.core.security import hash_password
 from app.models.project import Project, UserProject
 from app.models.user import Usuario
 from app.schemas.user import (
-    DependenciaSieejCreate,
-    DependenciaSieejResponse,
     UsuarioCreate,
     UsuarioResponse,
     UsuarioUpdate,
@@ -226,57 +224,6 @@ async def resetear_password(
         "message": "Contraseña reseteada exitosamente",
         "temp_password": temp_password
     }
-
-
-@router.post("/agregar-dependencia-sieej", response_model=DependenciaSieejResponse, status_code=status.HTTP_201_CREATED)
-async def agregar_dependencia_sieej(
-    payload: DependenciaSieejCreate,
-    db: Session = Depends(get_db),
-    _csrf: Usuario = Depends(verify_csrf),
-    current_user: Usuario = Depends(_require_admin),
-):
-    username = _normalize_identifier(payload.username)
-    email = _normalize_identifier(payload.email)
-    if db.query(Usuario).filter(func.lower(Usuario.username) == username).first():
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="El nombre de usuario ya existe"
-        )
-    if db.query(Usuario).filter(func.lower(Usuario.email) == email).first():
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail="El email ya está registrado"
-        )
-
-    sieej_project = db.query(Project).filter(Project.slug == "sieej").first()
-    if sieej_project is None:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Proyecto sieej no esta seedeado",
-        )
-
-    temp_password = generate_temp_password()
-    nuevo = Usuario(
-        username=username,
-        email=email,
-        name=payload.name,
-        hashed_password=hash_password(temp_password),
-        role="externo",
-        must_change_password=True,
-    )
-    db.add(nuevo)
-    db.flush()
-
-    db.add(UserProject(user_id=nuevo.id, project_id=sieej_project.id, project_role="editor"))
-    db.commit()
-    db.refresh(nuevo)
-    incr(COUNTER_USER_WRITES)
-    logger.info("action=user.create_dependencia_sieej actor=%s new_user=%s", current_user.id, nuevo.id)
-
-    return DependenciaSieejResponse(
-        user=UsuarioResponse.model_validate(_serialize_user(db, nuevo)),
-        temp_password=temp_password,
-    )
-
-
 
 
 @router.delete("/{usuario_id}")

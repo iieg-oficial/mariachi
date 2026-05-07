@@ -45,10 +45,6 @@ class UsuarioUpdate(CamelCaseInput):
     project_assignments: list["UserProjectAssignment"] | None = None
 
 
-class DependenciaSieejCreate(UsuarioBase):
-    pass
-
-
 class UsuarioResponse(UsuarioBase):
     id: int
     role: str
@@ -109,8 +105,3 @@ class LoginResponse(BaseModel):
 class TokenPayload(BaseModel):
     sub: str
     exp: int
-
-
-class DependenciaSieejResponse(BaseModel):
-    user: UsuarioResponse
-    temp_password: str
