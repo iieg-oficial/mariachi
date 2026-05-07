@@ -5,6 +5,7 @@ from app.api.deps import get_current_user, get_db, require_project_access, verif
 from app.core.optimistic import check_concurrent_edit
 from app.core.time import utcnow
 from app.models.evento import Evento
+from app.models.project import Project, UserProject
 from app.models.user import Usuario
 from app.schemas.evento import (
     EventoCreate,
@@ -23,6 +24,47 @@ router = APIRouter(
 )
 
 _require_editor = require_project_access("mapalab", min_role="editor")
+
+
+def _can_edit_mapalab(db: Session, user: Usuario) -> bool:
+    if user.role == 'tetlamamakani':
+        return True
+    project = (
+        db.query(Project)
+        .filter(Project.slug == 'mapalab', Project.is_active.is_(True))
+        .first()
+    )
+    if not project:
+        return False
+    membership = (
+        db.query(UserProject)
+        .filter(
+            UserProject.user_id == user.id,
+            UserProject.project_id == project.id,
+        )
+        .first()
+    )
+    return bool(membership and membership.project_role == 'editor')
+
+
+def get_evento_or_404(evento_id: int, db: Session = Depends(get_db)) -> Evento:
+    evento = db.query(Evento).filter(Evento.id == evento_id).first()
+    if not evento:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento no encontrado")
+    return evento
+
+
+def get_evento_visible_or_404(
+    evento_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+) -> Evento:
+    evento = db.query(Evento).filter(Evento.id == evento_id).first()
+    if not evento:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento no encontrado")
+    if evento.estado != 'published' and not _can_edit_mapalab(db, current_user):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento no encontrado")
+    return evento
 
 
 def _slug_taken(db: Session, slug: str, exclude_id: int | None = None) -> bool:
@@ -49,16 +91,22 @@ def _ensure_slug(db: Session, raw: str | None, fallback: str, exclude_id: int | 
 
 
 @router.get("", response_model=list[EventoResponse])
-async def listar_eventos(db: Session = Depends(get_db)):
-    return db.query(Evento).order_by(Evento.orden.asc(), Evento.id.desc()).all()
+async def listar_eventos(
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    q = db.query(Evento)
+    if not _can_edit_mapalab(db, current_user):
+        q = q.filter(Evento.estado == 'published')
+    return q.order_by(Evento.orden.asc(), Evento.id.desc()).all()
 
 
 @router.post("", response_model=EventoResponse, status_code=status.HTTP_201_CREATED)
 async def crear_evento(
     evento_in: EventoCreate,
     db: Session = Depends(get_db),
-    _csrf: Usuario = Depends(verify_csrf),
-    _editor: Usuario = Depends(_require_editor),
+    _csrf=Depends(verify_csrf),
+    _editor=Depends(_require_editor),
 ):
     slug = _ensure_slug(db, evento_in.slug, evento_in.titulo)
     data = evento_in.model_dump(exclude={'slug'})
@@ -87,25 +135,18 @@ async def obtener_presencia_evento(
 
 
 @router.get("/{evento_id}", response_model=EventoResponse)
-async def obtener_evento(evento_id: int, db: Session = Depends(get_db)):
-    evento = db.query(Evento).filter(Evento.id == evento_id).first()
-    if not evento:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento no encontrado")
+async def obtener_evento(evento: Evento = Depends(get_evento_visible_or_404)):
     return evento
 
 
 @router.patch("/{evento_id}", response_model=EventoResponse)
 async def actualizar_evento(
-    evento_id: int,
     evento_in: EventoUpdate,
+    evento: Evento = Depends(get_evento_or_404),
     db: Session = Depends(get_db),
-    _csrf: Usuario = Depends(verify_csrf),
-    _editor: Usuario = Depends(_require_editor),
+    _csrf=Depends(verify_csrf),
+    _editor=Depends(_require_editor),
 ):
-    evento = db.query(Evento).filter(Evento.id == evento_id).first()
-    if not evento:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento no encontrado")
-
     check_concurrent_edit(
         evento.updated_at,
         evento_in.expected_updated_at,
@@ -130,14 +171,11 @@ async def actualizar_evento(
 
 @router.post("/{evento_id}/publicar", response_model=EventoResponse)
 async def publicar_evento(
-    evento_id: int,
+    evento: Evento = Depends(get_evento_or_404),
     db: Session = Depends(get_db),
-    _csrf: Usuario = Depends(verify_csrf),
-    _editor: Usuario = Depends(_require_editor),
+    _csrf=Depends(verify_csrf),
+    _editor=Depends(_require_editor),
 ):
-    evento = db.query(Evento).filter(Evento.id == evento_id).first()
-    if not evento:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento no encontrado")
     evento.estado = 'published'
     evento.published_at = utcnow()
     db.commit()
@@ -148,14 +186,11 @@ async def publicar_evento(
 
 @router.post("/{evento_id}/despublicar", response_model=EventoResponse)
 async def despublicar_evento(
-    evento_id: int,
+    evento: Evento = Depends(get_evento_or_404),
     db: Session = Depends(get_db),
-    _csrf: Usuario = Depends(verify_csrf),
-    _editor: Usuario = Depends(_require_editor),
+    _csrf=Depends(verify_csrf),
+    _editor=Depends(_require_editor),
 ):
-    evento = db.query(Evento).filter(Evento.id == evento_id).first()
-    if not evento:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento no encontrado")
     evento.estado = 'draft'
     db.commit()
     db.refresh(evento)
@@ -165,14 +200,11 @@ async def despublicar_evento(
 
 @router.delete("/{evento_id}")
 async def eliminar_evento(
-    evento_id: int,
+    evento: Evento = Depends(get_evento_or_404),
     db: Session = Depends(get_db),
-    _csrf: Usuario = Depends(verify_csrf),
-    _editor: Usuario = Depends(_require_editor),
+    _csrf=Depends(verify_csrf),
+    _editor=Depends(_require_editor),
 ):
-    evento = db.query(Evento).filter(Evento.id == evento_id).first()
-    if not evento:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento no encontrado")
     estaba_publicado = evento.estado == 'published'
     db.delete(evento)
     db.commit()
@@ -182,8 +214,5 @@ async def eliminar_evento(
 
 
 @router.get("/{evento_id}/preview", response_model=EventoPublicResponse)
-async def preview_evento(evento_id: int, db: Session = Depends(get_db)):
-    evento = db.query(Evento).filter(Evento.id == evento_id).first()
-    if not evento:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento no encontrado")
+async def preview_evento(evento: Evento = Depends(get_evento_visible_or_404)):
     return evento
