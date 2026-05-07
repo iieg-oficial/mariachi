@@ -171,7 +171,7 @@ function MiniMap({ value, onChange, disabled }) {
     };
 
     return (
-        <Space orientation="vertical" style={{ width: '100%' }} size={6}>
+        <Space direction="vertical" style={{ width: '100%' }} size={6}>
             <div ref={containerRef} style={{ width: '100%', height: 320, border: '1px solid #d9d9d9', borderRadius: 6 }} />
             <Space size={6} wrap>
                 <Button size="small" icon={<AimOutlined />} disabled={!isCompleteBbox(value)} onClick={fitToBbox}>
@@ -228,7 +228,7 @@ function ManualInputs({ value, onChange, disabled, crs }) {
             {(['minx', 'miny', 'maxx', 'maxy']).map((key) => {
                 const range = ranges?.[key];
                 return (
-                    <Space key={key} orientation="vertical" size={0}>
+                    <Space key={key} direction="vertical" size={0}>
                         <Text style={{ fontSize: 11 }}>{labels[key]}</Text>
                         <InputNumber
                             value={displayed[key]}
@@ -258,7 +258,7 @@ export default function BBoxField({ value, onChange, disabled }) {
     };
 
     return (
-        <Space orientation="vertical" style={{ width: '100%' }} size={10}>
+        <Space direction="vertical" style={{ width: '100%' }} size={10}>
             <Radio.Group value={mode} onChange={handleModeChange} disabled={disabled} optionType="button" buttonStyle="solid" size="small">
                 <Radio.Button value="none">Sin zoom</Radio.Button>
                 <Radio.Button value="manual">Coordenadas manuales</Radio.Button>
@@ -273,7 +273,7 @@ export default function BBoxField({ value, onChange, disabled }) {
             )}
 
             {mode === 'manual' && (
-                <Space orientation="vertical" style={{ width: '100%' }} size={6}>
+                <Space direction="vertical" style={{ width: '100%' }} size={6}>
                     <Space size={6}>
                         <Text type="secondary" style={{ fontSize: 12 }}>Sistema de coordenadas:</Text>
                         <Radio.Group value={crs} onChange={(e) => setCrs(e.target.value)} disabled={disabled} size="small">

@@ -236,8 +236,14 @@ export default function EventoEditPage() {
         const ok = await draft.rechazar(rechazoComentario);
         if (ok) {
             setRechazoModalOpen(false);
+            setRechazoComentario('');
             navigate('/revision');
         }
+    };
+
+    const handleCerrarRechazoModal = () => {
+        setRechazoModalOpen(false);
+        setRechazoComentario('');
     };
 
     if (loading && !isCreate) {
@@ -252,7 +258,7 @@ export default function EventoEditPage() {
 
     return (
         <Content style={{ padding: isMobile ? 12 : 24, maxWidth: 1100, margin: '0 auto', width: '100%' }}>
-            <Space orientation="vertical" size="large" style={{ width: '100%' }}>
+            <Space direction="vertical" size="large" style={{ width: '100%' }}>
                 <Space style={{ justifyContent: 'space-between', width: '100%' }} wrap>
                     <Space>
                         <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(reviewMode ? '/revision' : '/mapalab/eventos')}>
@@ -447,10 +453,11 @@ export default function EventoEditPage() {
                 title="Rechazar borrador"
                 open={rechazoModalOpen}
                 onOk={handleRechazar}
-                onCancel={() => setRechazoModalOpen(false)}
+                onCancel={handleCerrarRechazoModal}
                 okText="Rechazar"
                 okType="danger"
                 cancelText="Cancelar"
+                destroyOnHidden
             >
                 <p>Se notificará a <strong>{draft.reviewAuthor?.name || 'el editor'}</strong> que su borrador fue rechazado.</p>
                 <Input.TextArea

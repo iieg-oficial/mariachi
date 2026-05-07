@@ -69,7 +69,7 @@ export default function CapasField({ value = [], onChange, disabled }) {
                         />
                     </Space>
                 ) : (
-                    <Space orientation="vertical" size={0}>
+                    <Space direction="vertical" size={0}>
                         <Tag color="blue">{record.workspace}:{record.layer}</Tag>
                         <Input
                             size="small"
@@ -137,7 +137,7 @@ export default function CapasField({ value = [], onChange, disabled }) {
     ];
 
     return (
-        <Space orientation="vertical" style={{ width: '100%' }}>
+        <Space direction="vertical" style={{ width: '100%' }}>
             <Space style={{ justifyContent: 'space-between', width: '100%' }} wrap>
                 <Text type="secondary" style={{ fontSize: 12 }}>
                     Capas y etiquetas que aparecerán en el panel del evento. Reordena con los botones.
