@@ -61,6 +61,9 @@ function MiniMap({ value, onChange, disabled }) {
     const mapRef = useRef(null);
     const sourceRef = useRef(null);
     const drawRef = useRef(null);
+    const onChangeRef = useRef(onChange);
+
+    useEffect(() => { onChangeRef.current = onChange; }, [onChange]);
 
     useEffect(() => {
         if (!containerRef.current || mapRef.current) return;
@@ -137,7 +140,7 @@ function MiniMap({ value, onChange, disabled }) {
         draw.on('drawend', (e) => {
             const ext3857 = e.feature.getGeometry().getExtent();
             const ext4326 = transformExtent(ext3857, 'EPSG:3857', 'EPSG:4326');
-            onChange?.({
+            onChangeRef.current?.({
                 minx: round(ext4326[0]),
                 miny: round(ext4326[1]),
                 maxx: round(ext4326[2]),
@@ -150,7 +153,7 @@ function MiniMap({ value, onChange, disabled }) {
             map.removeInteraction(draw);
             drawRef.current = null;
         };
-    }, [disabled, onChange]);
+    }, [disabled]);
 
     const fitToBbox = () => {
         const map = mapRef.current;
@@ -164,7 +167,7 @@ function MiniMap({ value, onChange, disabled }) {
 
     const clear = () => {
         sourceRef.current?.clear();
-        onChange?.(null);
+        onChangeRef.current?.(null);
     };
 
     return (

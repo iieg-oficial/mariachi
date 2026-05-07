@@ -266,7 +266,7 @@ export default function CapasField({ value = [], onChange, disabled }) {
                 <Empty description="Sin capas asignadas" />
             ) : (
                 <Table
-                    rowKey={(r) => `${r.workspace}/${r.layer}`}
+                    rowKey={(r, i) => (r.tipo === 'etiqueta' ? `etiqueta-${i}` : `${r.workspace}/${r.layer}`)}
                     columns={columns}
                     dataSource={value}
                     pagination={false}
