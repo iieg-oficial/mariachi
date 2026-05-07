@@ -1,5 +1,7 @@
 from app.core.database import Base
 from app.models.borrador import Borrador
+from app.models.colibri_route import ColibriRoute
+from app.models.direccion_organizacional import DireccionOrganizacional
 from app.models.evento import Evento
 from app.models.home_section import HomeSection
 from app.models.media import Media, MediaFolder
@@ -8,6 +10,10 @@ from app.models.menu_item import MenuItem
 from app.models.page import Page
 from app.models.project import Project, UserProject
 from app.models.reporte import Reporte
+from app.models.reporte_actividad import ReporteActividad
+from app.models.reporte_grupo import ReporteGrupo
+from app.models.reporte_tipo import ReporteTipo
+from app.models.source_app import SourceApp
 from app.models.sieej import (
     CatalogoCalidadDatos,
     CatalogoCategoriaDatos,
@@ -33,12 +39,18 @@ __all__ = [
     "Media",
     "MediaFolder",
     "Borrador",
+    "ColibriRoute",
+    "DireccionOrganizacional",
     "Evento",
     "HomeSection",
     "Project",
     "UserProject",
     "MediaBucket",
     "Reporte",
+    "ReporteActividad",
+    "ReporteGrupo",
+    "ReporteTipo",
+    "SourceApp",
     "CatalogoCalidadDatos",
     "CatalogoCategoriaDatos",
     "CatalogoEjesEstrategicos",

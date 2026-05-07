@@ -9,6 +9,77 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.42.0] - 2026-05-07
+
+### Colibri: backend completo del modulo de reportes embebibles
+
+Inicia la introduccion del modulo Colibri (sistema centralizado de reportes embebibles del IIEG). Este commit aporta toda la capa backend: modelos, schemas, services, routers admin y endurecimiento del endpoint publico. El frontend admin, widget, sdk y docs publicas vienen en versiones siguientes.
+
+#### Modelos nuevos
+
+- `ReporteTipo` (`reporte_tipos`): catalogo editable de tipos (slug, label, color, icon, descripcion, form_schema jsonb, activo, orden). Reemplaza el enum SQL hardcoded; `reportes.tipo_id` es FK opcional (transicion segura).
+- `DireccionOrganizacional` (`direcciones_organizacionales`): areas internas del IIEG ruteables (nombre, siglas, email_contacto, responsable_nombre, activo, orden).
+- `SourceApp` (`source_apps`): aplicaciones huesped registradas con API key (hash + prefix), dominios_permitidos jsonb (CORS dinamico con wildcards), tipos_permitidos, rate_limit_per_hour, branding, disable_pii, privacy_url, scrubbers personalizados.
+- `ColibriRoute` (`colibri_routes`): reglas de fan-out automatico (source_app_id + tipo_id como filtros, destino enum [discord/slack/webhook/email], config jsonb, filtros adicionales).
+- `ReporteGrupo` (`reporte_grupos`): agrupacion por fingerprint sha256 determinista para dedupe (count, primer_visto, ultimo_visto, primer_reporte_id, ultimo_reporte_id).
+- `ReporteActividad` (`reporte_actividad`): audit log de cambios sobre reportes (reporte_id CASCADE, actor_id, accion, detalle jsonb con `{campo, anterior, nuevo}`, nota, creado_en).
+
+`Reporte` extendido con: `tipo_id`, `direccion_id`, `source_app_id`, `grupo_id`, `respuestas` jsonb (campos dinamicos del form_schema), `severidad` (baja/media/alta/critica), `prioridad` (P0..P3), `duplicado_de` FK auto-referencial, `bloqueado_por` text, `sla_at` datetime.
+
+#### Schemas Pydantic con `CamelCaseInput`
+
+`reporte_tipo.py`, `direccion_organizacional.py`, `source_app.py` (incluye `SourceAppKeyRotateRequest/Response`), `colibri_route.py`, `form_schema.py` (`FormFieldDef`, `FormSchemaDef`, `validate_respuestas` con validacion por tipo de campo y opciones), `source_context.py` (`AutoCaptured`, `IdentifyUser`, `Breadcrumb`, `SourceContext` tipado).
+
+#### Services nuevos
+
+- `colibri_keys.py`: generacion de API keys (`ck_pub_*` para browser, `ck_priv_*` para server), hash con bcrypt sobre sha256 del plaintext, `verify_api_key`, `match_origin` con soporte de wildcards (`*.dominio.com`, `*`).
+- `colibri_fingerprint.py`: hash sha256 determinista con normalizacion de ruta (quita querystring, reemplaza path params numericos como `/eventos/42` -> `/eventos/:id`).
+- `pii_scrubber.py`: scrubbers regex defaults (JWT, tokens en query, Authorization header, CCN) extensibles por `source_app.scrubbers`. Modo `disable_pii` purga UA, viewport, identify y breadcrumbs.
+- `colibri_router_engine.py`: best-effort fan-out async. Errores nunca bloquean creacion del reporte. Dispatchers para Discord (content), Slack (text), webhook generico, email (placeholder).
+
+#### Routers admin
+
+Todos bajo `/api/administrador/`, autenticados, writes admin-only:
+
+- `colibri/tipos` — CRUD + reorder batch.
+- `colibri/direcciones` — CRUD.
+- `colibri/source-apps` — CRUD + `POST /:id/rotate-key` (devuelve plain key una sola vez).
+- `colibri/routes` — CRUD del fan-out.
+- `colibri/stats` — payload completo con totales, breakdown por estado/tipo/app/direccion, serie por dia, top rutas, tiempo promedio de resolucion.
+- `reportes` extendido: acepta `direccion_id`, `severidad`, `prioridad`, `duplicado_de`, `bloqueado_por` en update; serializacion con datos relacionales; nuevos `GET /reportes/grupos/lista` (paginado por count desc) y `GET /reportes/{id}/actividad` (timeline). Cada `PATCH` registra una fila en `reporte_actividad` por cada campo cambiado.
+
+#### Endpoint publico endurecido
+
+`POST /api/public/reportes`:
+
+- Acepta `respuestas` (form-data JSON) validado contra `form_schema` del tipo.
+- Si llega header `X-Colibri-Key`: lookup por prefix + verify hash, valida origen contra `dominios_permitidos`, valida tipo en `tipos_permitidos`, aplica rate limit por (source_app, IP). Sin header sigue funcionando para compat legacy.
+- Aplica scrubbing PII a mensaje, source_route, source_context y respuestas antes de persistir. `disable_pii=true` purga email_contacto.
+- Calcula fingerprint y hace lookup-or-create atomico del grupo (`SELECT FOR UPDATE SKIP LOCKED`). Asigna `grupo_id`.
+- Dispatcha al engine de routes (best-effort) ademas del notifier discord legacy.
+- `GET /api/public/reportes/tipos` con `Cache-Control: public, max-age=300` para que widget/sdk consuman tipos+formSchema sin auth.
+
+#### Migraciones Alembic
+
+Rama mariachi, todas con downgrade:
+
+| Revision | Cambio |
+|---|---|
+| `c8d9e0f1a2b3` | `reporte_tipos` + seed 6 tipos + `reportes.tipo_id` FK + backfill desde enum |
+| `d0e1f2a3b4c5` | `direcciones_organizacionales` + `reportes.direccion_id` FK |
+| `e1f2a3b4c5d6` | `source_apps` + seed 3 (mapalab/sieej/portal sin keys, inactivos) + `reportes.source_app_id` FK + backfill |
+| `f2a3b4c5d6e7` | `reporte_tipos.form_schema` jsonb + `reportes.respuestas` jsonb |
+| `a1b2c3d4e5f7` | `source_apps`: `disable_pii`, `privacy_url`, `scrubbers` |
+| `b1c2d3e4f5a6` | `colibri_routes` |
+| `c1d2e3f4a5b7` | `reporte_grupos` + `reportes.grupo_id` FK |
+| `d2e3f4a5b6c8` | `reportes`: `severidad`, `prioridad`, `duplicado_de` self-FK, `bloqueado_por`, `sla_at` + `reporte_actividad` |
+
+### Probado
+
+Build admin OK, migraciones aplican limpiamente sobre BD dev. Smoke tests: API key invalida → 401; CORS bloqueado → 403; tipo no permitido → 403; respuestas que faltan campo requerido → 422. Fingerprint: 2 reportes identicos sobre `/eventos/42` y `/eventos/99` (mismo bug, distinto id) caen al mismo grupo. PII scrubber: JWT, tokens en query, `Authorization: Bearer` y CCN se anonimizan; `disable_pii=true` purga UA/viewport/user/breadcrumbs. Engine de routes: errores en webhook destino no bloquean creacion del reporte (best-effort).
+
+---
+
 ## [0.41.0] - 2026-05-07
 
 ### Perf: cache server-side de /eventos y /home + indice parcial de eventos publicados

@@ -4,17 +4,35 @@ import uuid
 from datetime import datetime
 from io import BytesIO
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile, status
 from minio.error import S3Error
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
 from app.api.rate_limit import rate_limit_ip
+from app.core.time import utcnow
 from app.models.media_bucket import MediaBucket
 from app.models.reporte import Reporte
+from app.models.reporte_grupo import ReporteGrupo
+from app.models.reporte_tipo import ReporteTipo
+from app.models.source_app import SourceApp
+from app.schemas.form_schema import validate_respuestas
 from app.schemas.reporte import ReporteCreate, ReporteCreateResponse
+from app.schemas.reporte_tipo import ReporteTipoResponse
 from app.services.acervo import AcervoClient
+from app.services.colibri_fingerprint import compute_fingerprint
+from app.services.colibri_keys import (
+    PRIVATE_PREFIX,
+    PUBLIC_PREFIX,
+    match_origin,
+    verify_api_key,
+)
+from app.services.pii_scrubber import (
+    scrub_respuestas,
+    scrub_source_context,
+    scrub_text,
+)
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/reportes", tags=["reportes públicos"])
@@ -23,6 +41,74 @@ _REPORTES_BUCKET = "mariachi"
 _ALLOWED_MIME = {"image/png", "image/jpeg"}
 _MAX_SCREENSHOT_BYTES = 2 * 1024 * 1024
 _EXT_BY_MIME = {"image/png": "png", "image/jpeg": "jpg"}
+
+
+def _resolve_source_app(
+    db: Session, request: Request, source_app_slug: str
+) -> SourceApp | None:
+    """Valida X-Colibri-Key y CORS. Devuelve el SourceApp si todo cuadra.
+
+    Si el header no llega, devuelve None (compat con flujo legacy).
+    Si el header llega pero algo falla (key inválida, CORS bloqueado, app
+    desactivada), levanta 401/403.
+    """
+    plain_key = request.headers.get("X-Colibri-Key") or request.headers.get("x-colibri-key")
+    if not plain_key:
+        return None
+
+    if not (plain_key.startswith(PUBLIC_PREFIX) or plain_key.startswith(PRIVATE_PREFIX)):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="API key con formato inválido",
+        )
+
+    prefix_len = len(PUBLIC_PREFIX) if plain_key.startswith(PUBLIC_PREFIX) else len(PRIVATE_PREFIX)
+    visible_prefix = plain_key[: prefix_len + 4]
+
+    candidates = (
+        db.query(SourceApp)
+        .filter(SourceApp.api_key_prefix == visible_prefix)
+        .all()
+    )
+    matched: SourceApp | None = None
+    for candidate in candidates:
+        if candidate.api_key_hash and verify_api_key(plain_key, candidate.api_key_hash):
+            matched = candidate
+            break
+
+    if matched is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="API key inválida",
+        )
+    if not matched.activo:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Source app desactivado",
+        )
+    if matched.slug != source_app_slug:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"La API key no corresponde al source_app '{source_app_slug}'",
+        )
+
+    is_public_key = plain_key.startswith(PUBLIC_PREFIX)
+    if is_public_key:
+        origin = request.headers.get("origin")
+        patterns = matched.dominios_permitidos or []
+        if not match_origin(origin, patterns):
+            logger.warning(
+                "reportes.cors_blocked source_app=%s origin=%s patterns=%s",
+                matched.slug,
+                origin,
+                patterns,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Origen no autorizado para este source app",
+            )
+
+    return matched
 
 
 def _resolve_reportes_bucket(db: Session) -> MediaBucket | None:
@@ -90,6 +176,7 @@ async def crear_reporte(
     email_contacto: str | None = Form(default=None),
     source_route: str | None = Form(default=None),
     source_context: str | None = Form(default=None),
+    respuestas: str | None = Form(default=None),
     website: str | None = Form(default=None),
     screenshot: UploadFile | None = File(default=None),
     db: Session = Depends(get_db),
@@ -120,6 +207,42 @@ async def crear_reporte(
             detail=exc.errors(),
         )
 
+    respuestas_validadas: dict | None = None
+    tipo_row = (
+        db.query(ReporteTipo)
+        .filter(ReporteTipo.slug == payload.tipo, ReporteTipo.activo.is_(True))
+        .first()
+    )
+    if tipo_row and tipo_row.form_schema:
+        try:
+            raw_respuestas = json.loads(respuestas) if respuestas else {}
+            if not isinstance(raw_respuestas, dict):
+                raw_respuestas = {}
+        except json.JSONDecodeError:
+            raw_respuestas = {}
+        try:
+            respuestas_validadas = validate_respuestas(raw_respuestas, tipo_row.form_schema)
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=str(exc),
+            )
+
+    matched_source_app = _resolve_source_app(db, request, payload.source_app)
+    if matched_source_app is not None:
+        tipos_permitidos = matched_source_app.tipos_permitidos
+        if tipos_permitidos and payload.tipo not in tipos_permitidos:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"El tipo '{payload.tipo}' no está permitido para este source app",
+            )
+        per_app_limiter = rate_limit_ip(
+            max_requests=matched_source_app.rate_limit_per_hour,
+            window_seconds=3600,
+            scope=f'reportes:{matched_source_app.slug}',
+        )
+        await per_app_limiter(request)
+
     screenshot_bucket_id: int | None = None
     screenshot_object_path: str | None = None
     if screenshot is not None and screenshot.filename:
@@ -140,13 +263,29 @@ async def crear_reporte(
                 screenshot_object_path = None
                 screenshot_bucket_id = None
 
+    disable_pii = bool(matched_source_app and matched_source_app.disable_pii)
+    extra_scrubbers = (matched_source_app.scrubbers if matched_source_app else None) or None
+
+    scrubbed_context = scrub_source_context(
+        payload.source_context,
+        disable_pii=disable_pii,
+        extra_scrubbers=extra_scrubbers,
+    )
+    scrubbed_route = scrub_text(payload.source_route, extra_scrubbers=extra_scrubbers)
+    scrubbed_respuestas = scrub_respuestas(
+        respuestas_validadas, extra_scrubbers=extra_scrubbers
+    )
+    final_email = None if disable_pii else payload.email_contacto
+
     reporte = Reporte(
         tipo=payload.tipo,
-        mensaje=payload.mensaje,
-        email_contacto=payload.email_contacto,
+        mensaje=scrub_text(payload.mensaje, extra_scrubbers=extra_scrubbers),
+        email_contacto=final_email,
         source_app=payload.source_app,
-        source_route=payload.source_route,
-        source_context=payload.source_context,
+        source_app_id=matched_source_app.id if matched_source_app else None,
+        source_route=scrubbed_route,
+        source_context=scrubbed_context,
+        respuestas=scrubbed_respuestas,
         screenshot_bucket_id=screenshot_bucket_id,
         screenshot_object_path=screenshot_object_path,
     )
@@ -155,9 +294,59 @@ async def crear_reporte(
     db.refresh(reporte)
 
     try:
+        fp = compute_fingerprint(
+            tipo=reporte.tipo,
+            source_app=reporte.source_app or "",
+            source_route=reporte.source_route,
+            mensaje=reporte.mensaje or "",
+        )
+        grupo = (
+            db.query(ReporteGrupo)
+            .filter(ReporteGrupo.fingerprint == fp)
+            .with_for_update(skip_locked=True)
+            .first()
+        )
+        if grupo is None:
+            grupo = ReporteGrupo(
+                fingerprint=fp,
+                primer_reporte_id=reporte.id,
+                ultimo_reporte_id=reporte.id,
+                count=1,
+            )
+            db.add(grupo)
+            db.flush()
+        else:
+            grupo.count = (grupo.count or 0) + 1
+            grupo.ultimo_reporte_id = reporte.id
+            grupo.ultimo_visto = utcnow()
+        reporte.grupo_id = grupo.id
+        db.commit()
+        db.refresh(reporte)
+    except Exception:
+        logger.exception("reportes.fingerprint reporte_id=%s", reporte.id)
+        db.rollback()
+
+    try:
+        from app.services.colibri_router_engine import dispatch_reporte
+        dispatch_reporte(reporte, db)
+    except Exception:
+        logger.exception("reportes.dispatch_routes reporte_id=%s", reporte.id)
+
+    try:
         from app.services.discord_notifier import notify_new_reporte
         notify_new_reporte(reporte)
     except Exception:
         logger.exception("reportes.discord_notify reporte_id=%s", reporte.id)
 
     return ReporteCreateResponse(id=reporte.id)
+
+
+@router.get("/tipos", response_model=list[ReporteTipoResponse])
+async def listar_tipos_publicos(response: Response, db: Session = Depends(get_db)):
+    response.headers["Cache-Control"] = "public, max-age=300"
+    return (
+        db.query(ReporteTipo)
+        .filter(ReporteTipo.activo.is_(True))
+        .order_by(ReporteTipo.orden.asc(), ReporteTipo.id.asc())
+        .all()
+    )

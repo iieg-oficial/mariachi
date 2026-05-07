@@ -5,10 +5,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db, verify_csrf
+from app.api.deps import get_current_user, get_db, verify_csrf
 from app.core.time import utcnow
+from app.models.direccion_organizacional import DireccionOrganizacional
 from app.models.media_bucket import MediaBucket
 from app.models.reporte import Reporte
+from app.models.reporte_actividad import ReporteActividad
+from app.models.reporte_grupo import ReporteGrupo
 from app.models.user import Usuario
 from app.schemas.reporte import (
     ReporteAdminResponse,
@@ -37,6 +40,14 @@ def _serialize(reporte: Reporte, bucket_lookup: dict[int, MediaBucket]) -> Repor
                     bucket.acervo_bucket,
                 )
 
+    direccion_payload = None
+    if reporte.direccion is not None:
+        direccion_payload = {
+            "id": reporte.direccion.id,
+            "nombre": reporte.direccion.nombre,
+            "siglas": reporte.direccion.siglas,
+        }
+
     return ReporteAdminResponse.model_validate(
         {
             "id": reporte.id,
@@ -50,6 +61,14 @@ def _serialize(reporte: Reporte, bucket_lookup: dict[int, MediaBucket]) -> Repor
             "estado": reporte.estado,
             "nota_interna": reporte.nota_interna,
             "atendido_por_id": reporte.atendido_por_id,
+            "direccion_id": reporte.direccion_id,
+            "direccion": direccion_payload,
+            "severidad": reporte.severidad,
+            "prioridad": reporte.prioridad,
+            "duplicado_de": reporte.duplicado_de,
+            "bloqueado_por": reporte.bloqueado_por,
+            "grupo_id": reporte.grupo_id,
+            "respuestas": reporte.respuestas,
             "creado_en": reporte.creado_en,
             "actualizado_en": reporte.actualizado_en,
         }
@@ -114,11 +133,24 @@ async def obtener_reporte(reporte_id: int, db: Session = Depends(get_db)):
     return _serialize(reporte, lookup)
 
 
+_FIELD_TO_ACTION = {
+    "estado": "estado_cambiado",
+    "nota_interna": "nota_actualizada",
+    "atendido_por_id": "asignado",
+    "direccion_id": "direccion_asignada",
+    "severidad": "severidad_cambiada",
+    "prioridad": "prioridad_cambiada",
+    "duplicado_de": "marcado_duplicado",
+    "bloqueado_por": "bloqueo_cambiado",
+}
+
+
 @router.patch("/{reporte_id}", response_model=ReporteAdminResponse)
 async def actualizar_reporte(
     reporte_id: int,
     payload: ReporteUpdate,
     db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
     _csrf: Usuario = Depends(verify_csrf),
 ):
     reporte = db.query(Reporte).filter(Reporte.id == reporte_id).first()
@@ -130,9 +162,39 @@ async def actualizar_reporte(
         usuario = db.query(Usuario).filter(Usuario.id == payload.atendido_por_id).first()
         if usuario is None:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Usuario asignado no existe")
+    if payload.direccion_id is not None:
+        direccion = (
+            db.query(DireccionOrganizacional)
+            .filter(DireccionOrganizacional.id == payload.direccion_id)
+            .first()
+        )
+        if direccion is None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Dirección no encontrada")
+    if payload.duplicado_de is not None:
+        if payload.duplicado_de == reporte.id:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Un reporte no puede ser duplicado de sí mismo")
+        original = db.query(Reporte).filter(Reporte.id == payload.duplicado_de).first()
+        if original is None:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Reporte original no encontrado")
 
+    actividades: list[ReporteActividad] = []
     for field, value in update_data.items():
+        previous = getattr(reporte, field, None)
+        if previous == value:
+            continue
+        accion = _FIELD_TO_ACTION.get(field, "campo_cambiado")
+        actividades.append(
+            ReporteActividad(
+                reporte_id=reporte.id,
+                actor_id=current_user.id,
+                accion=accion,
+                detalle={"campo": field, "anterior": previous, "nuevo": value},
+            )
+        )
         setattr(reporte, field, value)
+    if actividades:
+        for a in actividades:
+            db.add(a)
     reporte.actualizado_en = utcnow()
     db.commit()
     db.refresh(reporte)
@@ -168,6 +230,67 @@ async def eliminar_reporte(
     db.delete(reporte)
     db.commit()
     return {"message": "Reporte eliminado"}
+
+
+@router.get("/{reporte_id}/actividad")
+async def obtener_actividad(reporte_id: int, db: Session = Depends(get_db)):
+    rows = (
+        db.query(ReporteActividad)
+        .filter(ReporteActividad.reporte_id == reporte_id)
+        .order_by(ReporteActividad.creado_en.desc())
+        .all()
+    )
+    items = []
+    for row in rows:
+        items.append({
+            "id": row.id,
+            "accion": row.accion,
+            "detalle": row.detalle or {},
+            "nota": row.nota,
+            "creadoEn": row.creado_en.isoformat() if row.creado_en else None,
+            "actorId": row.actor_id,
+            "actorUsername": row.actor.username if row.actor else None,
+            "actorAvatarUrl": getattr(row.actor, "avatar_url", None) if row.actor else None,
+        })
+    return items
+
+
+@router.get("/grupos/lista")
+async def listar_grupos(
+    db: Session = Depends(get_db),
+    source_app: str | None = Query(default=None),
+    page: int = Query(default=1, ge=1),
+    size: int = Query(default=20, ge=1, le=100),
+):
+    from sqlalchemy import desc
+
+    query = (
+        db.query(ReporteGrupo, Reporte)
+        .join(Reporte, Reporte.id == ReporteGrupo.ultimo_reporte_id)
+        .order_by(desc(ReporteGrupo.count), desc(ReporteGrupo.ultimo_visto))
+    )
+    if source_app:
+        query = query.filter(Reporte.source_app == source_app)
+
+    total = query.count()
+    rows = query.offset((page - 1) * size).limit(size).all()
+
+    items = []
+    for grupo, representante in rows:
+        items.append({
+            "grupoId": grupo.id,
+            "fingerprint": grupo.fingerprint,
+            "count": grupo.count,
+            "primerVisto": grupo.primer_visto.isoformat() if grupo.primer_visto else None,
+            "ultimoVisto": grupo.ultimo_visto.isoformat() if grupo.ultimo_visto else None,
+            "representanteId": representante.id,
+            "representanteTipo": representante.tipo,
+            "representanteEstado": representante.estado,
+            "representanteMensaje": (representante.mensaje or "")[:200],
+            "representanteSourceApp": representante.source_app,
+            "representanteSourceRoute": representante.source_route,
+        })
+    return {"items": items, "total": total, "page": page, "size": size}
 
 
 @router.get("/stats/contadores")

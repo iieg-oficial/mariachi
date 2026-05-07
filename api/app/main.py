@@ -23,6 +23,11 @@ from app.api.routes import (
     preview,
     projects,
     public,
+    colibri_direcciones,
+    colibri_routes,
+    colibri_source_apps,
+    colibri_stats,
+    colibri_tipos,
     reportes,
     reportes_public,
     sieej_admin,
@@ -86,6 +91,11 @@ def create_app() -> FastAPI:
     app.include_router(home.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(mapalab_shares.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(reportes.router, prefix=settings.admin_prefix, dependencies=staff_dep)
+    app.include_router(colibri_tipos.router, prefix=settings.admin_prefix, dependencies=staff_dep)
+    app.include_router(colibri_direcciones.router, prefix=settings.admin_prefix, dependencies=staff_dep)
+    app.include_router(colibri_source_apps.router, prefix=settings.admin_prefix, dependencies=staff_dep)
+    app.include_router(colibri_stats.router, prefix=settings.admin_prefix, dependencies=staff_dep)
+    app.include_router(colibri_routes.router, prefix=settings.admin_prefix, dependencies=staff_dep)
 
     app.include_router(preview.public_router, prefix=settings.web_prefix)
     app.include_router(public.router, prefix=settings.web_prefix)

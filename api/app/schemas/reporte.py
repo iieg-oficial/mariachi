@@ -4,6 +4,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.schemas._camel import CamelCaseInput
+from app.schemas.direccion_organizacional import DireccionOrganizacionalRef
 
 ReporteTipo = Literal[
     "problema",
@@ -25,10 +26,19 @@ class ReporteCreate(CamelCaseInput):
     source_context: dict = Field(default_factory=dict)
 
 
+ReporteSeveridad = Literal["baja", "media", "alta", "critica"]
+ReportePrioridad = Literal["P0", "P1", "P2", "P3"]
+
+
 class ReporteUpdate(CamelCaseInput):
     estado: ReporteEstado | None = None
     nota_interna: str | None = None
     atendido_por_id: int | None = Field(default=None, alias="atendidoPorId")
+    direccion_id: int | None = Field(default=None, alias="direccionId")
+    severidad: ReporteSeveridad | None = None
+    prioridad: ReportePrioridad | None = None
+    duplicado_de: int | None = Field(default=None, alias="duplicadoDe")
+    bloqueado_por: str | None = Field(default=None, alias="bloqueadoPor")
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -45,6 +55,14 @@ class ReporteAdminResponse(BaseModel):
     estado: ReporteEstado
     nota_interna: str | None = Field(default=None, serialization_alias="notaInterna")
     atendido_por_id: int | None = Field(default=None, serialization_alias="atendidoPorId")
+    direccion_id: int | None = Field(default=None, serialization_alias="direccionId")
+    direccion: DireccionOrganizacionalRef | None = None
+    severidad: ReporteSeveridad | None = None
+    prioridad: ReportePrioridad | None = None
+    duplicado_de: int | None = Field(default=None, serialization_alias="duplicadoDe")
+    bloqueado_por: str | None = Field(default=None, serialization_alias="bloqueadoPor")
+    grupo_id: int | None = Field(default=None, serialization_alias="grupoId")
+    respuestas: dict | None = None
     creado_en: datetime = Field(..., serialization_alias="creadoEn")
     actualizado_en: datetime = Field(..., serialization_alias="actualizadoEn")
 

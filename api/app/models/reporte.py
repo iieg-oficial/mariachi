@@ -21,6 +21,19 @@ class Reporte(Base):
         ),
         nullable=False,
     )
+    tipo_id = Column(
+        Integer, ForeignKey("reporte_tipos.id"), nullable=True, index=True
+    )
+    direccion_id = Column(
+        Integer, ForeignKey("direcciones_organizacionales.id"), nullable=True, index=True
+    )
+    source_app_id = Column(
+        Integer, ForeignKey("source_apps.id"), nullable=True, index=True
+    )
+    grupo_id = Column(
+        Integer, ForeignKey("reporte_grupos.id"), nullable=True, index=True
+    )
+    respuestas = Column(JSON, nullable=True)
     mensaje = Column(Text, nullable=False)
     email_contacto = Column(String(320), nullable=True)
     source_app = Column(String(50), nullable=False, index=True)
@@ -42,11 +55,23 @@ class Reporte(Base):
         default="nuevo",
         index=True,
     )
+    severidad = Column(String(10), nullable=True, index=True)
+    prioridad = Column(String(4), nullable=True, index=True)
+    duplicado_de = Column(
+        Integer, ForeignKey("reportes.id"), nullable=True, index=True
+    )
+    bloqueado_por = Column(Text, nullable=True)
+    sla_at = Column(DateTime, nullable=True)
     nota_interna = Column(Text, nullable=True)
     atendido_por_id = Column(Integer, ForeignKey("usuarios.id"), nullable=True)
     creado_en = Column(DateTime, nullable=False, default=utcnow, index=True)
     actualizado_en = Column(DateTime, nullable=False, default=utcnow, onupdate=utcnow)
 
+    tipo_rel = relationship("ReporteTipo", back_populates="reportes", lazy="select")
+    direccion = relationship(
+        "DireccionOrganizacional", back_populates="reportes", lazy="select"
+    )
+    source_app_rel = relationship("SourceApp", back_populates="reportes", lazy="select")
     screenshot_bucket = relationship("MediaBucket", lazy="select")
     atendido_por = relationship(
         "Usuario", foreign_keys=[atendido_por_id], lazy="select"
