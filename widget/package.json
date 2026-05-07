@@ -1,0 +1,18 @@
+{
+    "name": "@iieg/colibri-widget",
+    "version": "1.0.0",
+    "private": true,
+    "type": "module",
+    "description": "Web Components embebibles para reportar a Colibri (boton flotante, trigger inline, form inline).",
+    "scripts": {
+        "build": "vite build",
+        "build:watch": "vite build --watch",
+        "preview": "vite preview"
+    },
+    "dependencies": {
+        "lit": "^3.2.0"
+    },
+    "devDependencies": {
+        "vite": "^7.3.1"
+    }
+}

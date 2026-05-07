@@ -9,6 +9,75 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.44.0] - 2026-05-07
+
+### Colibri: widget Web Components embebibles (button, trigger, form)
+
+Paquete nuevo `widget/` independiente del CMS admin que expone Colibri como Web Components estandar para integrarse en cualquier sitio (React, Vue, Astro, Wordpress, vanilla HTML). Bundle 48 KB raw / 13.5 KB gzip.
+
+#### Stack
+
+- **Lit 3** + **Vite** en library mode con dos formatos: `iife` (`colibri-widget.v1.js` para `<script src>`) y `es` (`colibri-widget.v1.es.js` para `import`).
+- **Shadow DOM** obligatorio: el CSS del widget no contamina al huesped y viceversa.
+- **0 dependencias de runtime del huesped**, bundle standalone.
+- **CSS theming** con variables (`--colibri-bg`, `--colibri-fg`, `--colibri-primary`, etc.) + soporte de `theme="auto"` con `prefers-color-scheme`.
+
+#### 3 Custom Elements
+
+- `<colibri-button>` (FAB): boton flotante posicionado `fixed`. Atributos: `size` (sm/md/lg), `position` (4 esquinas), `shape` (circle/pill/square), `shadow` (none/sm/md/lg), `label` (texto opcional), `icon` (preset o URL custom), `color`, `offset`, `z-index`. Click abre modal con form dinamico.
+- `<colibri-trigger>` (link/icono/chip inline): trigger inline en flujo del documento. Atributos: `as` (link/text/icon/chip/menu-item), `label`, `icon`, `icon-position`, `color`, `underline`, `font-size`. Click abre el mismo modal del button.
+- `<colibri-form>` (form embebido): formulario completo inline sin trigger. Atributos: `layout` (card/bare/compact), `width`, `tipo-selector` (tabs/dropdown/radio/hidden).
+
+Atributos compartidos: `source-app`, `api-key`, `endpoint`, `tipos` (filtro csv), `theme`, `lang`, `email-required`, `context`.
+
+#### Form dinamico
+
+Carga `formSchema` por tipo de `GET /api/public/reportes/tipos` (cache 5min) y renderiza inputs segun el `type` declarado: `text`, `textarea`, `email`, `url`, `number`, `select`, `multiselect`, `radio`, `checkbox`, `file` (con limite 2MB cliente), `direccion`. Incluye campos base `mensaje` y `email_contacto` siempre.
+
+POST multipart con `X-Colibri-Key` header + screenshot opcional + payload con `source_context` enriquecido (auto-captura de URL, referrer, UA, viewport, lang, timezone, timestamp + `identify()` global del huesped).
+
+#### API JS publica
+
+```javascript
+window.colibri.identify({ id, email, name, role, metadata });
+btn.open({ tipo, context });
+btn.report({ tipo, mensaje, email, context, respuestas }); // headless
+form.setTipo(slug);
+form.setValues({ key: val });
+form.reset();
+```
+
+#### Eventos DOM
+
+`colibri:ready`, `colibri:opened`, `colibri:closed`, `colibri:tipo-changed`, `colibri:submitted`, `colibri:error`. Bubbleable + composable (cruzan Shadow DOM via `composed: true`).
+
+#### Estructura
+
+```
+widget/
+├── package.json (name: @iieg/colibri-widget v1.0.0, deps: lit ^3.2.0)
+├── vite.config.js (library mode iife + es, sourcemaps, esbuild minify)
+├── src/
+│   ├── colibri-button.js
+│   ├── colibri-trigger.js
+│   ├── colibri-form.js
+│   ├── index.js (registra los 3 + define window.colibri.identify)
+│   └── shared/
+│       ├── api.js (fetchTipos con cache, postReporte multipart, captureAuto)
+│       ├── theme.js (CSS vars con dark mode)
+│       ├── icons.js (SVG inline: bug, chat, feedback, help, flag, close, camera, send, check)
+│       ├── form.js (ColibriFormCore - LitElement compartido entre form y panel)
+│       └── panel.js (ColibriPanel - modal flotante usado por button y trigger)
+```
+
+### Probado
+
+`npm install` + `vite build` -> bundle 48 KB / 13.5 KB gzip. Cargado desde nginx con `Cache-Control: public, max-age=86400` y `Access-Control-Allow-Origin: *` para integraciones cross-origin. Validado contra backend real: tipos cargan correctamente, key invalida -> AuthError 401.
+
+Bump 0.43.0 -> 0.44.0.
+
+---
+
 ## [0.43.0] - 2026-05-07
 
 ### Colibri: panel admin con paginas de gestion + reorganizacion del modulo
