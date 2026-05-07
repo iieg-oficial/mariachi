@@ -10,11 +10,13 @@ const { Title } = Typography;
 const roleColors = {
     tetlamamakani: 'red',
     editora: 'blue',
+    externo: 'green',
 };
 
 const roleLabels = {
     tetlamamakani: 'Tetlamamakani',
     editora: 'Editora',
+    externo: 'Externo',
 };
 
 const projectRoleLabels = {
@@ -158,7 +160,7 @@ export default function Users() {
             role: values.role,
         };
         if (values.password) payload.password = values.password;
-        if (values.role === 'editora') {
+        if (values.role === 'editora' || values.role === 'externo') {
             payload.project_assignments = formValueToAssignments(values.project_assignments);
         } else {
             payload.project_assignments = [];
@@ -310,6 +312,7 @@ export default function Users() {
                         <Select>
                             <Select.Option value="tetlamamakani">Tetlamamakani (admin)</Select.Option>
                             <Select.Option value="editora">Editora</Select.Option>
+                            <Select.Option value="externo">Externo (dependencia)</Select.Option>
                         </Select>
                     </Form.Item>
 
@@ -319,7 +322,7 @@ export default function Users() {
                         </Form.Item>
                     )}
 
-                    {selectedRole === 'editora' && projects.length > 0 && (
+                    {(selectedRole === 'editora' || selectedRole === 'externo') && projects.length > 0 && (
                         <>
                             <Divider orientation="left" style={{ marginTop: 8 }}>Proyectos y roles</Divider>
                             {projects.map((project) => {
