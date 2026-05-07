@@ -26,9 +26,13 @@ Reduce trabajo de DB en el endpoint publico mas caliente del visor (mapalab poll
 
 Local: bump de version invalida cache correctamente (verificado con publicar/despublicar evento + curl al endpoint), payload se sirve desde cache en hits subsiguientes hasta el siguiente bump. Migracion aplicada limpiamente sobre la BD de dev.
 
+---
+
+## [0.41.1] - 2026-05-07
+
 ### Audit del modulo Eventos: hardening seguridad/validacion + tests + UX
 
-Auditoria completa de Eventos MapaLab (backend + admin + visor) con 40+ hallazgos. Aplicacion de 10 quick wins + 8 mejoras de impacto medio/alto en commits pequeños separados.
+Auditoria completa de Eventos MapaLab (backend + admin + visor) con 40+ hallazgos. Aplicacion de 10 quick wins + 8 mejoras de impacto medio/alto en 18 commits pequeños separados.
 
 #### Backend (api)
 
@@ -36,6 +40,7 @@ Auditoria completa de Eventos MapaLab (backend + admin + visor) con 40+ hallazgo
 - **RBAC viewer** (`fix(eventos): viewer no puede ver eventos en estado draft`): `listar_eventos` filtra a `published` para viewers; nueva dependency `get_evento_visible_or_404` para `GET /{id}` y `/preview`. Helper `_can_edit_mapalab` centraliza la regla.
 - **CSRF en presencia** (`fix(eventos): exigir CSRF en PUT /eventos/{id}/presencia`): el write de presencia ahora exige `X-CSRF-Token` como el resto de los writes del CMS.
 - **Concurrencia en aprobar borrador** (`fix(borradores): bloquear apply de evento si fue editado en paralelo`): `_apply_evento` devuelve 409 si `evento.updated_at > borrador.actualizado_en + 2s`, evitando que la aprobacion de un borrador sobrescriba cambios concurrentes hechos via PATCH directo.
+- **Rate limit** (`fix(eventos): rate limit en writes`): 60 writes/min por usuario en POST/PATCH/publicar/despublicar/DELETE, mismo patron de layers/layer_metadata. Protege contra loops accidentales que invaliden el cache server-side.
 - **`EventoEstado` enum** (`refactor(eventos): EventoEstado enum como single source of truth`): nuevo `app/core/eventos.py` reemplaza strings literales `'draft'`/`'published'` en model, schema, routes y borrador_service.
 - **Serializers SSoT** (`refactor(eventos): consolidar serializers en _EventoVisibleFields`): `_EventoVisibleFields` y `_ImageUrlMixin` eliminan ~30 lineas de duplicacion entre `EventoResponse` y `EventoPublicResponse`. Agregar campos al modelo ya no requiere editar dos clases.
 - **Datetimes con TZ** (`fix(eventos): datetimes con timezone (timestamp with time zone)`): cinco columnas datetime migradas de `timestamp` a `timestamp with time zone`. Resuelve ambiguedad al comparar con `utcnow()` y al deserializar ISO 8601 con offset desde el frontend.
@@ -50,10 +55,6 @@ Auditoria completa de Eventos MapaLab (backend + admin + visor) con 40+ hallazgo
 - **Lista buscable** (`feat(eventos-admin): busqueda y filtro por estado en EventosListPage`): `Input.Search` por titulo/slug + `Segmented` Todos/Publicados/Borradores.
 - **AntD v6 cleanup + reset modal rechazo** (`chore(eventos-admin): Space direction + reset modal rechazo`): `Space orientation=` (deprecated) reemplazado por `direction=` en los 6 archivos. Modal de rechazo de borrador limpia el comentario al cerrar/cancelar y declara `destroyOnHidden`.
 
-#### Backend rate limit
-
-- **60 writes/min por usuario** (`fix(eventos): rate limit en writes`): mismo patron de layers/layer_metadata aplicado a POST, PATCH, publicar, despublicar y DELETE. Protege contra loops accidentales que invaliden el cache server-side excesivamente.
-
 #### Visor (mapalab/frontend)
 
 - **Cookie quitada en endpoints publicos** (`chore(eventos): quitar credentials include en endpoints publicos`): `/eventos`, `/home`, `/cache-version` consumen con `credentials: 'omit'`. Antes enviaban la cookie sin necesidad y abrian vector si CORS de produccion permitia origin laxo con `credentials:true`.
@@ -61,12 +62,19 @@ Auditoria completa de Eventos MapaLab (backend + admin + visor) con 40+ hallazgo
 
 #### Tests
 
-- **39 tests del modulo Eventos** (`test(eventos): cobertura RBAC, validacion, concurrencia y lifecycle`): 4 archivos cubren RBAC (admin/editor/viewer/no-membership × cada endpoint, CSRF), validacion (CapaRef/BBox/URLs/slug), concurrencia (`expectedUpdatedAt`) y lifecycle (publicar/despublicar/eliminar/preview/orden). Conftest con filtro de tablas `JSONB`/`ARRAY` para que modelos postgres-only no rompan el setup SQLite del suite global.
+- **41 tests del modulo Eventos** (`test(eventos): cobertura RBAC, validacion, concurrencia y lifecycle` + `fix(eventos): exigir CSRF en PUT /eventos/{id}/presencia`): 4 archivos cubren RBAC (admin/editor/viewer/no-membership × cada endpoint, CSRF), validacion (CapaRef/BBox/URLs/slug), concurrencia (`expectedUpdatedAt`) y lifecycle (publicar/despublicar/eliminar/preview/orden). Conftest con filtro de tablas `JSONB`/`ARRAY` para que modelos postgres-only no rompan el setup SQLite del suite global.
 
-#### Docs
+#### Docs y SIEEJ
 
 - `docs/sieej.md` reescrito al modelo dinamico actual (Formulario JSONB + Grupo + Envio). El documento legacy describia las tablas estaticas eliminadas en `c6d7e8f9ab01`.
+- `refactor(sieej)`: removido item placeholder `/sieej/agregar-dependencia` del sider (huerfano, nunca ruteado).
+- `feat(users)`: rol `externo` agregado al Select de UsersPage para crear dependencias SIEEJ desde el flujo estandar; eliminado el componente huerfano `AddSieejDependenciaPage.jsx`.
+- `refactor(api)`: removido endpoint `POST /usuarios/agregar-dependencia-sieej` (absorbido por el flujo estandar de creacion de usuarios).
 - `Evento` model documenta la matriz `estado`/`activo`/vigencias para visibilidad publica.
+
+### Probado
+
+Local: 41 tests del modulo Eventos pasan en SQLite in-memory. Migraciones JSONB y `timestamp with time zone` aplicadas limpiamente sobre la BD de dev. Lint del admin y del visor sin errores nuevos.
 
 ---
 

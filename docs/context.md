@@ -2,7 +2,7 @@
 
 > Documento de referencia completo. Leer este archivo proporciona contexto del monorepo sin explorar el codebase.
 
-**Versión:** 0.40.8 · **Última actualización:** 2026-05-06
+**Versión:** 0.41.1 · **Última actualización:** 2026-05-07
 
 
 ---
@@ -584,6 +584,18 @@ Detalle completo en `docs/CHANGELOG.md` §[0.39.0]. Resumen:
 - **Drawer reutilizable de edicion**: `LayerContentDrawer` con tabs Tarjeta · Metadatos · Simbologia, montado desde `CapasField` (boton `EditOutlined` por capa). Reusa `LayerMetadataSection` y `SldEditor` tal cual; envuelve `InfoBoxBlocksEditor` + `InfoBoxPreview` en un `InfoboxStandalone` con su propio Form. Permite editar contenido sin navegar al `LayerEditPage`.
 - **Fix global camelCase**: nuevo mixin `CamelCaseInput` aplicado a los schemas que reciben input (Layer, Evento, Page, MenuItem, Usuario, Reporte, LayerMetadata, MediaBucket, Media, Project, HomeSection payloads). Antes, los schemas declaraban solo `serialization_alias=` y el input camelCase del frontend se ignoraba silenciosamente, lo que causaba que muchas ediciones perdieran campos en el PUT/PATCH sin error visible.
 - **Fix GeoServer client**: `list_workspaces`/`list_layers` toleran respuesta vacia (`{"layers":""}` como string) que GeoServer devuelve para workspaces sin layers. Antes lanzaba AttributeError.
+
+### 2026-05-07 (v0.41.1) — Audit modulo Eventos: hardening seguridad/validacion + tests + UX
+
+Detalle completo en `docs/CHANGELOG.md` §[0.41.1]. Resumen:
+
+- **Validacion + RBAC + CSRF + concurrencia + rate limit en `/eventos/*`**: `CapaRef` exige workspace+layer si tipo=capa; `BBox` clampa a EPSG:4326; max_length en titulo/descripcion/alias/URLs; `_validate_image_url` bloquea `javascript:`. Viewer no ve eventos en draft (`get_evento_visible_or_404`). `PUT /presencia` exige CSRF. `_apply_evento` rechaza con 409 si el evento se modifico tras "Solicitar revision". 60 writes/min/usuario.
+- **Modelo y serializers**: `EventoEstado` enum como SSoT (model + schema + routes + borrador_service); `_EventoVisibleFields` + `_ImageUrlMixin` deduplican `EventoResponse`/`EventoPublicResponse`; datetimes con timezone; `bbox` y `capas` migrados a JSONB.
+- **Frontend admin**: payload y form fields en camelCase canonico (sin fallbacks legacy snake_case); autosave no persiste sin titulo; `BBoxField` no recrea `Draw` en cada render (memo via ref); `CapasField` rowKey con fallback para etiquetas; `AddCapaModal` extraido y muestra Alert si GeoServer falla; busqueda + filtro estado en `EventosListPage`; modal de rechazo limpia comentario al cerrar.
+- **Frontend visor**: SVG fallback en lugar de "*"; badge "BETA" condicional via `VITE_EVENTOS_BETA_BADGE`; `ExternalEventoWidget` soporta teclado (`onFocus`/`onBlur` con relatedTarget) y `role="region"`; endpoints publicos consumen con `credentials: 'omit'`.
+- **Performance backend**: `presence.list_others` con `SCAN_ITER` en lugar de `KEYS` (no bloqueante).
+- **Tests**: 41 tests cubriendo RBAC, validacion, concurrencia, lifecycle, CSRF en presencia. Conftest filtra tablas `JSONB`/`ARRAY` para que modelos postgres-only no rompan SQLite.
+- **SIEEJ housekeeping** (commits previos al audit): `docs/sieej.md` reescrito al modelo dinamico actual; quitado item placeholder `/sieej/agregar-dependencia` del sider; rol `externo` agregado a `UsersPage` para crear dependencias desde el flujo estandar; eliminado componente huerfano `AddSieejDependenciaPage.jsx` y endpoint `POST /usuarios/agregar-dependencia-sieej`.
 
 ### 2026-05-07 (v0.41.0) — Cache server-side de /eventos y /home + indice parcial
 
