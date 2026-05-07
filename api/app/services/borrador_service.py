@@ -23,6 +23,9 @@ from app.services.sld_generator import build_boundary_sld_xml, build_sld_xml
 ApplyFn = Callable[[Session, Session, Borrador, str], dict]
 
 
+_BORRADOR_STALE_TOLERANCE_SECONDS = 2
+
+
 def _apply_evento(
     db: Session, _dataengine_db: Session, borrador: Borrador, _approver_email: str,
 ) -> dict:
@@ -41,6 +44,19 @@ def _apply_evento(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Evento {evento_id} no existe",
         )
+
+    if borrador.actualizado_en is not None:
+        evento_ts = evento.updated_at.replace(tzinfo=None)
+        borrador_ts = borrador.actualizado_en.replace(tzinfo=None)
+        drift = (evento_ts - borrador_ts).total_seconds()
+        if drift > _BORRADOR_STALE_TOLERANCE_SECONDS:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "El evento fue modificado despues de que se solicito revision. "
+                    "El editor debe regenerar el borrador con los cambios actuales."
+                ),
+            )
 
     try:
         update_payload = EventoUpdate.model_validate(data).model_dump(
