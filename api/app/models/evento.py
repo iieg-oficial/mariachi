@@ -6,6 +6,21 @@ from app.core.time import utcnow
 
 
 class Evento(Base):
+    """Evento del visor MapaLab.
+
+    Visibilidad para el visor publico = AND de tres condiciones:
+      - estado == 'published'
+      - activo == true
+      - fecha_inicio IS NULL OR fecha_inicio <= now
+      - fecha_fin   IS NULL OR fecha_fin   >= now
+
+    `estado` es el flag de publicacion editorial (workflow draft/published).
+    `activo` es un kill-switch independiente: permite ocultar un evento ya
+    publicado sin pasar por la transicion despublicar (que reinicia
+    `published_at`). Usar `activo` para apagar un evento temporalmente
+    durante un incidente; usar `despublicar` para retirarlo definitivamente.
+    """
+
     __tablename__ = "eventos"
 
     id = Column(Integer, primary_key=True, index=True)

@@ -9,6 +9,61 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.41.0] - 2026-05-07
+
+### Perf: cache server-side de /eventos y /home + indice parcial de eventos publicados
+
+Reduce trabajo de DB en el endpoint publico mas caliente del visor (mapalab pollea cada 30s + abre eventos por usuario). Antes cada hit a `/api/mapalab/eventos` corria la query con filtros temporales y serializaba con Pydantic; ahora se cachea la respuesta JSON en Redis bajo el token de version y el endpoint la sirve directo via `Response(content=cached, media_type='application/json')` (skipea la re-validacion del `response_model`).
+
+#### Backend (api)
+
+- `services/mapalab_public_cache.py`: nuevos `get_cached_eventos()` y `get_cached_home()` (devuelven `(version, payload | None)`) + `store_cached_*(version, payload_json)`. Clave Redis: `mapalab:public_cache:payload:{scope}:{version}` con TTL de 30 dias. Si la version cambia (bump por `notify_*_changed`), las nuevas requests caen en el `else` y rebuilden bajo la nueva clave; la vieja queda inalcanzable y expira sola.
+- **Removido el debounce de 5s en `notify_*_changed`**: cada bump ahora es un `SET` directo (operacion barata en Redis). El debounce ocultaba la ultima edicion de una rafaga en publish/unpublish — sin debounce, todas las invalidaciones se reflejan en el siguiente poll de 30s. Eliminados `_DEBOUNCE_WINDOW_SECONDS`, `_LOCK_PREFIX` y `_dedup_bump`.
+- `api/routes/public.py`: `eventos_visibles` y `home_publicado` consumen el cache; en miss serializan via Pydantic, guardan el JSON, y devuelven el `Response` directo.
+- `alembic/versions/mariachi/f3a4b5c6d7e8_add_eventos_publicados_index.py`: nuevo indice parcial `ix_eventos_publicados_visibles ON eventos (orden ASC, id ASC) WHERE estado='published' AND activo=true`. Acelera el filtro tipico del endpoint publico (`eventos.published_at`, `activo`, ventana fechas) sin penalizar escrituras de drafts.
+
+### Probado
+
+Local: bump de version invalida cache correctamente (verificado con publicar/despublicar evento + curl al endpoint), payload se sirve desde cache en hits subsiguientes hasta el siguiente bump. Migracion aplicada limpiamente sobre la BD de dev.
+
+### Audit del modulo Eventos: hardening seguridad/validacion + tests + UX
+
+Auditoria completa de Eventos MapaLab (backend + admin + visor) con 40+ hallazgos. Aplicacion de 10 quick wins + 8 mejoras de impacto medio/alto en commits pequeños separados.
+
+#### Backend (api)
+
+- **Validacion reforzada** (`fix(eventos): hardening validacion schemas`): `CapaRef.model_validator` exige `workspace+layer` si tipo='capa' y `alias` no vacio si tipo='etiqueta' (antes el validador estaba vacio, permitia capas malformadas). `BBox` clampa a EPSG:4326 (-180..180 lon, -90..90 lat). `titulo`/`descripcion`/`alias`/`icono_url`/`imagen_url` con `max_length` explicito. Helper `_validate_image_url` rechaza `javascript:` y otros vectores no-imagen.
+- **RBAC viewer** (`fix(eventos): viewer no puede ver eventos en estado draft`): `listar_eventos` filtra a `published` para viewers; nueva dependency `get_evento_visible_or_404` para `GET /{id}` y `/preview`. Helper `_can_edit_mapalab` centraliza la regla.
+- **CSRF en presencia** (`fix(eventos): exigir CSRF en PUT /eventos/{id}/presencia`): el write de presencia ahora exige `X-CSRF-Token` como el resto de los writes del CMS.
+- **Concurrencia en aprobar borrador** (`fix(borradores): bloquear apply de evento si fue editado en paralelo`): `_apply_evento` devuelve 409 si `evento.updated_at > borrador.actualizado_en + 2s`, evitando que la aprobacion de un borrador sobrescriba cambios concurrentes hechos via PATCH directo.
+- **`EventoEstado` enum** (`refactor(eventos): EventoEstado enum como single source of truth`): nuevo `app/core/eventos.py` reemplaza strings literales `'draft'`/`'published'` en model, schema, routes y borrador_service.
+- **Serializers SSoT** (`refactor(eventos): consolidar serializers en _EventoVisibleFields`): `_EventoVisibleFields` y `_ImageUrlMixin` eliminan ~30 lineas de duplicacion entre `EventoResponse` y `EventoPublicResponse`. Agregar campos al modelo ya no requiere editar dos clases.
+- **Datetimes con TZ** (`fix(eventos): datetimes con timezone (timestamp with time zone)`): cinco columnas datetime migradas de `timestamp` a `timestamp with time zone`. Resuelve ambiguedad al comparar con `utcnow()` y al deserializar ISO 8601 con offset desde el frontend.
+- **JSONB** (`perf(eventos): migrar bbox y capas a JSONB`): `bbox` y `capas` migrados de `JSON` a `JSONB`, habilitando futuros indices GIN sobre el contenido.
+- **Presencia con SCAN_ITER** (`perf(presence): usar SCAN_ITER en vez de KEYS`): `redis.keys()` (O(N) bloqueante) reemplazado por `scan_iter` con cursor. Aplica a presencia de eventos y cualquier otro recurso.
+
+#### Admin (frontend)
+
+- **CamelCase canonico** (`fix(eventos-admin): camelCase canonico + autosave guard + URL validate`): `EventoEditPage` usa camelCase en form fields y payload (`iconoUrl`, `imagenUrl`, `fechaInicio`, `fechaFin`, `autoActivar`). El autosave deja de persistir borradores sin titulo. `handleEliminar` resetea `acting` en `finally`. `EventoIconPicker` valida URL en cliente (status error + mensaje inline).
+- **BBoxField estable** (`fix(eventos-admin): estabilizar BBoxField y rowKey de CapasField`): `Draw` ya no se recrea en cada render del padre — `onChange` se referencia con ref. `CapasField` rowKey con fallback `etiqueta-<idx>` para evitar duplicate keys de React.
+- **GeoServer error visible + a11y + clamp BBox** (`fix(eventos-admin): manejo de errores GeoServer + accesibilidad + clamp BBox`): el modal `AddCapaModal` (extraido de `CapasField`, baja a 183 LOC) muestra Alert cuando `/geoserver/workspaces` falla. Botones reciben `aria-label`. `BBoxField` ManualInputs respetan min/max y bloquean valores fuera de rango con feedback inmediato.
+- **Lista buscable** (`feat(eventos-admin): busqueda y filtro por estado en EventosListPage`): `Input.Search` por titulo/slug + `Segmented` Todos/Publicados/Borradores.
+
+#### Visor (mapalab/frontend)
+
+- **Cookie quitada en endpoints publicos** (`chore(eventos): quitar credentials include en endpoints publicos`): `/eventos`, `/home`, `/cache-version` consumen con `credentials: 'omit'`. Antes enviaban la cookie sin necesidad y abrian vector si CORS de produccion permitia origin laxo con `credentials:true`.
+
+#### Tests
+
+- **39 tests del modulo Eventos** (`test(eventos): cobertura RBAC, validacion, concurrencia y lifecycle`): 4 archivos cubren RBAC (admin/editor/viewer/no-membership × cada endpoint, CSRF), validacion (CapaRef/BBox/URLs/slug), concurrencia (`expectedUpdatedAt`) y lifecycle (publicar/despublicar/eliminar/preview/orden). Conftest con filtro de tablas `JSONB`/`ARRAY` para que modelos postgres-only no rompan el setup SQLite del suite global.
+
+#### Docs
+
+- `docs/sieej.md` reescrito al modelo dinamico actual (Formulario JSONB + Grupo + Envio). El documento legacy describia las tablas estaticas eliminadas en `c6d7e8f9ab01`.
+- `Evento` model documenta la matriz `estado`/`activo`/vigencias para visibilidad publica.
+
+---
+
 ## [0.40.8] - 2026-05-06
 
 ### Fix: init_db.py reconoce admin existente despues de normalizacion lowercase
