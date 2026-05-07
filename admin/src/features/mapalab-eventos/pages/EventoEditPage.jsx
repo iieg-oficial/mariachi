@@ -43,7 +43,7 @@ function normalizeCapas(capas) {
         layer: c.layer,
         alias: c.alias,
         orden: c.orden ?? 0,
-        auto_activar: c.auto_activar ?? c.autoActivar ?? true,
+        autoActivar: c.autoActivar ?? c.auto_activar ?? true,
     }));
 }
 
@@ -53,13 +53,13 @@ function eventoToForm(e) {
         titulo: e.titulo,
         slug: e.slug,
         descripcion: e.descripcion,
-        icono_url: e.iconoUrl ?? e.icono_url,
-        imagen_url: e.imagenUrl ?? e.imagen_url,
+        iconoUrl: e.iconoUrl,
+        imagenUrl: e.imagenUrl,
         bbox: e.bbox,
         capas: normalizeCapas(e.capas),
         activo: e.activo,
-        fecha_inicio: (e.fechaInicio ?? e.fecha_inicio) ? dayjs(e.fechaInicio ?? e.fecha_inicio) : null,
-        fecha_fin: (e.fechaFin ?? e.fecha_fin) ? dayjs(e.fechaFin ?? e.fecha_fin) : null,
+        fechaInicio: e.fechaInicio ? dayjs(e.fechaInicio) : null,
+        fechaFin: e.fechaFin ? dayjs(e.fechaFin) : null,
         orden: e.orden ?? 0,
     };
 }
@@ -77,13 +77,13 @@ function formToPayload(values, { isCreate }) {
     const payload = {
         titulo: values.titulo,
         descripcion: values.descripcion || null,
-        icono_url: values.icono_url || null,
-        imagen_url: values.imagen_url || null,
+        iconoUrl: values.iconoUrl || null,
+        imagenUrl: values.imagenUrl || null,
         bbox: cleanBbox,
         capas: values.capas || [],
         activo: Boolean(values.activo),
-        fecha_inicio: values.fecha_inicio ? values.fecha_inicio.toISOString() : null,
-        fecha_fin: values.fecha_fin ? values.fecha_fin.toISOString() : null,
+        fechaInicio: values.fechaInicio ? values.fechaInicio.toISOString() : null,
+        fechaFin: values.fechaFin ? values.fechaFin.toISOString() : null,
         orden: values.orden ?? 0,
     };
     if (values.slug) payload.slug = values.slug;
@@ -129,6 +129,7 @@ export default function EventoEditPage() {
     const handleValuesChange = () => {
         if (isCreate || reviewMode) return;
         const values = form.getFieldsValue();
+        if (!values.titulo || !String(values.titulo).trim()) return;
         draft.scheduleAutosave(formToPayload(values, { isCreate: false }));
     };
 
@@ -209,6 +210,7 @@ export default function EventoEditPage() {
             navigate('/mapalab/eventos', { replace: true });
         } catch (err) {
             message.error(err?.response?.data?.detail || 'Error al eliminar');
+        } finally {
             setActing(false);
         }
     };
@@ -384,10 +386,10 @@ export default function EventoEditPage() {
                                             <Form.Item name="activo" label="Activo" valuePropName="checked" extra="Si está apagado no aparece en el visor aunque esté publicado.">
                                                 <Switch />
                                             </Form.Item>
-                                            <Form.Item name="fecha_inicio" label="Fecha de inicio (opcional)">
+                                            <Form.Item name="fechaInicio" label="Fecha de inicio (opcional)">
                                                 <DatePicker showTime style={{ width: '100%' }} />
                                             </Form.Item>
-                                            <Form.Item name="fecha_fin" label="Fecha de fin (opcional)">
+                                            <Form.Item name="fechaFin" label="Fecha de fin (opcional)">
                                                 <DatePicker showTime style={{ width: '100%' }} />
                                             </Form.Item>
                                             <Form.Item name="orden" label="Orden" extra="Si hay varios eventos visibles a la vez, ordena de menor a mayor.">
@@ -403,14 +405,14 @@ export default function EventoEditPage() {
                                     children: (
                                         <>
                                             <Form.Item
-                                                name="icono_url"
+                                                name="iconoUrl"
                                                 label="Icono compacto (sider colapsado)"
                                                 extra="Imagen pequeña, idealmente cuadrada (~64×64). Se muestra cuando el sider del visor está colapsado."
                                             >
                                                 <EventoIconPicker />
                                             </Form.Item>
                                             <Form.Item
-                                                name="imagen_url"
+                                                name="imagenUrl"
                                                 label="Imagen banner (sider expandido)"
                                                 extra="Imagen ancha tipo banner (3:1 o 4:1). Se muestra cuando el sider del visor está expandido."
                                             >

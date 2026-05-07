@@ -5,9 +5,17 @@ import { BucketFilePicker } from '@features/media';
 import { message } from '@shared/services/message';
 
 const BUCKET_SLUGS = ['mapalab', 'iieg'];
+const ALLOWED_PREFIXES = ['http://', 'https://', '/acervo/', '/', 'data:image/'];
+
+const isValidImageUrl = (v) => {
+    if (!v) return true;
+    const s = String(v).trim().toLowerCase();
+    return ALLOWED_PREFIXES.some((p) => s.startsWith(p));
+};
 
 export default function EventoIconPicker({ value, onChange, disabled }) {
     const [pickerOpen, setPickerOpen] = useState(false);
+    const invalid = value && !isValidImageUrl(value);
 
     const onSelect = (file) => {
         if (!file?.url) {
@@ -24,6 +32,7 @@ export default function EventoIconPicker({ value, onChange, disabled }) {
                 <Input
                     placeholder="https://… o ruta del bucket"
                     value={value || ''}
+                    status={invalid ? 'error' : undefined}
                     onChange={(e) => onChange?.(e.target.value)}
                     disabled={disabled}
                 />
@@ -35,6 +44,11 @@ export default function EventoIconPicker({ value, onChange, disabled }) {
                     Media
                 </Button>
             </Space.Compact>
+            {invalid && (
+                <span style={{ color: '#ff4d4f', fontSize: 12 }}>
+                    URL no válida — debe empezar con http(s)://, /acervo/ o data:image/
+                </span>
+            )}
             {value && (
                 <div style={{ padding: 8, border: '1px solid #f0f0f0', borderRadius: 4, background: '#fafafa' }}>
                     <Image

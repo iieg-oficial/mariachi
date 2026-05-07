@@ -47,7 +47,7 @@ export async function addCapaToEvento(leaf, currentValue, onChange, onAfterRegis
             layer: leaf.layer,
             alias: leaf.label,
             orden: currentValue.length,
-            auto_activar: true,
+            autoActivar: true,
         },
     ]);
     message.success(`"${leaf.label}" agregada`);

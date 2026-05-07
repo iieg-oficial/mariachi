@@ -108,7 +108,7 @@ export default function CapasField({ value = [], onChange, disabled }) {
     };
 
     const updateAutoActivar = (idx, val) => {
-        const next = value.map((c, i) => (i === idx ? { ...c, auto_activar: val } : c));
+        const next = value.map((c, i) => (i === idx ? { ...c, autoActivar: val } : c));
         onChange?.(next);
     };
 
@@ -158,7 +158,7 @@ export default function CapasField({ value = [], onChange, disabled }) {
                     <span>Auto-activar</span>
                 </Tooltip>
             ),
-            key: 'auto_activar',
+            key: 'autoActivar',
             width: 110,
             align: 'center',
             render: (_, record, idx) => (
@@ -167,7 +167,7 @@ export default function CapasField({ value = [], onChange, disabled }) {
                 ) : (
                     <Switch
                         size="small"
-                        checked={record.auto_activar !== false}
+                        checked={record.autoActivar !== false}
                         onChange={(val) => updateAutoActivar(idx, val)}
                         disabled={disabled}
                         checkedChildren="Auto"
