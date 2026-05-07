@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { Alert, Button, Card, Layout, Modal, Popconfirm, Space, Spin, Table, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Input, Layout, Popconfirm, Segmented, Space, Spin, Table, Tag, Typography } from 'antd';
 import {
     DeleteOutlined,
     EditOutlined,
@@ -29,11 +29,34 @@ function formatDate(value) {
     }
 }
 
+const ESTADO_OPTIONS = [
+    { label: 'Todos', value: 'all' },
+    { label: 'Publicados', value: 'published' },
+    { label: 'Borradores', value: 'draft' },
+];
+
+
 export default function EventosListPage() {
     const { items, loading, error, reload } = useEventosList();
     const navigate = useNavigate();
     const { isMobile } = useIsMobile();
     const [actingId, setActingId] = useState(null);
+    const [search, setSearch] = useState('');
+    const [estadoFilter, setEstadoFilter] = useState('all');
+
+    const filtered = useMemo(() => {
+        let result = items || [];
+        if (estadoFilter !== 'all') {
+            result = result.filter((e) => e.estado === estadoFilter);
+        }
+        if (search.trim()) {
+            const q = search.trim().toLowerCase();
+            result = result.filter((e) =>
+                (e.titulo || '').toLowerCase().includes(q)
+                || (e.slug || '').toLowerCase().includes(q));
+        }
+        return result;
+    }, [items, search, estadoFilter]);
 
     const handlePublicar = async (record) => {
         setActingId(record.id);
@@ -195,7 +218,7 @@ export default function EventosListPage() {
                 {error && <Alert type="error" message={error} showIcon closable />}
 
                 <Card
-                    title={`${items.length} evento${items.length === 1 ? '' : 's'}`}
+                    title={`${filtered.length} de ${items.length} evento${items.length === 1 ? '' : 's'}`}
                     extra={
                         <Button
                             type="primary"
@@ -206,13 +229,28 @@ export default function EventosListPage() {
                         </Button>
                     }
                 >
+                    <Space style={{ marginBottom: 12, width: '100%', justifyContent: 'space-between' }} wrap>
+                        <Input.Search
+                            placeholder="Buscar por título o slug"
+                            aria-label="Buscar evento"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            allowClear
+                            style={{ maxWidth: 320 }}
+                        />
+                        <Segmented
+                            options={ESTADO_OPTIONS}
+                            value={estadoFilter}
+                            onChange={setEstadoFilter}
+                        />
+                    </Space>
                     {loading ? (
                         <div style={{ textAlign: 'center', padding: 40 }}><Spin /></div>
                     ) : (
                         <Table
                             rowKey="id"
                             columns={columns}
-                            dataSource={items}
+                            dataSource={filtered}
                             pagination={{ pageSize: 20, showSizeChanger: false }}
                             size={isMobile ? 'small' : 'middle'}
                             scroll={{ x: 'max-content' }}
