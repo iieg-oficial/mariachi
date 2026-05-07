@@ -193,6 +193,8 @@ function MiniMap({ value, onChange, disabled }) {
     );
 }
 
+const RANGES_4326 = { minx: [-180, 180], miny: [-90, 90], maxx: [-180, 180], maxy: [-90, 90] };
+
 function ManualInputs({ value, onChange, disabled, crs }) {
     const displayed = useMemo(() => bbox4326ToCrs(value, crs), [value, crs]);
 
@@ -203,6 +205,15 @@ function ManualInputs({ value, onChange, disabled, crs }) {
             return;
         }
         const as4326 = bboxCrsTo4326(next, crs);
+        if (crs === 'EPSG:4326') {
+            const [, lonMax] = RANGES_4326.minx;
+            const [, latMax] = RANGES_4326.miny;
+            if (
+                Math.abs(as4326.minx) > lonMax || Math.abs(as4326.maxx) > lonMax
+                || Math.abs(as4326.miny) > latMax || Math.abs(as4326.maxy) > latMax
+            ) return;
+            if (as4326.maxx < as4326.minx || as4326.maxy < as4326.miny) return;
+        }
         onChange?.(as4326);
     };
 
@@ -210,21 +221,28 @@ function ManualInputs({ value, onChange, disabled, crs }) {
         ? { minx: 'min lon (oeste)', miny: 'min lat (sur)', maxx: 'max lon (este)', maxy: 'max lat (norte)' }
         : { minx: 'min X (m)', miny: 'min Y (m)', maxx: 'max X (m)', maxy: 'max Y (m)' };
     const step = crs === 'EPSG:4326' ? 0.0001 : 1;
+    const ranges = crs === 'EPSG:4326' ? RANGES_4326 : null;
 
     return (
         <Space wrap>
-            {(['minx', 'miny', 'maxx', 'maxy']).map((key) => (
-                <Space key={key} orientation="vertical" size={0}>
-                    <Text style={{ fontSize: 11 }}>{labels[key]}</Text>
-                    <InputNumber
-                        value={displayed[key]}
-                        onChange={(val) => update(key, val)}
-                        step={step}
-                        disabled={disabled}
-                        style={{ width: 150 }}
-                    />
-                </Space>
-            ))}
+            {(['minx', 'miny', 'maxx', 'maxy']).map((key) => {
+                const range = ranges?.[key];
+                return (
+                    <Space key={key} orientation="vertical" size={0}>
+                        <Text style={{ fontSize: 11 }}>{labels[key]}</Text>
+                        <InputNumber
+                            value={displayed[key]}
+                            onChange={(val) => update(key, val)}
+                            step={step}
+                            min={range?.[0]}
+                            max={range?.[1]}
+                            disabled={disabled}
+                            aria-label={labels[key]}
+                            style={{ width: 150 }}
+                        />
+                    </Space>
+                );
+            })}
         </Space>
     );
 }
