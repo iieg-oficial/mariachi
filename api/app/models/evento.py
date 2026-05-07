@@ -17,14 +17,14 @@ class Evento(Base):
     bbox = Column(JSON, nullable=True)
     capas = Column(JSON, default=list, nullable=False)
     activo = Column(Boolean, nullable=False, default=False)
-    fecha_inicio = Column(DateTime, nullable=True)
-    fecha_fin = Column(DateTime, nullable=True)
+    fecha_inicio = Column(DateTime(timezone=True), nullable=True)
+    fecha_fin = Column(DateTime(timezone=True), nullable=True)
     orden = Column(Integer, nullable=False, default=0)
     estado = Column(
         Enum(*EventoEstado.values(), name=ENUM_NAME),
         nullable=False,
         default=EventoEstado.DRAFT.value,
     )
-    created_at = Column(DateTime, nullable=False, default=utcnow)
-    updated_at = Column(DateTime, nullable=False, default=utcnow, onupdate=utcnow)
-    published_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=utcnow)
+    updated_at = Column(DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
+    published_at = Column(DateTime(timezone=True), nullable=True)
