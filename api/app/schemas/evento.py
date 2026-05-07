@@ -4,6 +4,7 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator, model_validator
 
 from app.core.acervo_url import to_absolute, to_relative
+from app.core.eventos import EventoEstado
 from app.schemas._camel import CamelCaseInput
 
 URL_MAX_LENGTH = 2048
@@ -119,7 +120,7 @@ class EventoUpdate(CamelCaseInput):
 class EventoResponse(EventoBase):
     id: int
     slug: str
-    estado: Literal['draft', 'published']
+    estado: EventoEstado
     created_at: datetime = Field(..., serialization_alias='createdAt')
     updated_at: datetime = Field(..., serialization_alias='updatedAt')
     published_at: datetime | None = Field(default=None, serialization_alias='publishedAt')

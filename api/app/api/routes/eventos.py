@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db, require_project_access, verify_csrf
+from app.core.eventos import EventoEstado
 from app.core.optimistic import check_concurrent_edit
 from app.core.time import utcnow
 from app.models.evento import Evento
@@ -62,7 +63,7 @@ def get_evento_visible_or_404(
     evento = db.query(Evento).filter(Evento.id == evento_id).first()
     if not evento:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento no encontrado")
-    if evento.estado != 'published' and not _can_edit_mapalab(db, current_user):
+    if evento.estado != EventoEstado.PUBLISHED.value and not _can_edit_mapalab(db, current_user):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento no encontrado")
     return evento
 
@@ -97,7 +98,7 @@ async def listar_eventos(
 ):
     q = db.query(Evento)
     if not _can_edit_mapalab(db, current_user):
-        q = q.filter(Evento.estado == 'published')
+        q = q.filter(Evento.estado == EventoEstado.PUBLISHED.value)
     return q.order_by(Evento.orden.asc(), Evento.id.desc()).all()
 
 
@@ -110,7 +111,7 @@ async def crear_evento(
 ):
     slug = _ensure_slug(db, evento_in.slug, evento_in.titulo)
     data = evento_in.model_dump(exclude={'slug'})
-    evento = Evento(slug=slug, estado='draft', **data)
+    evento = Evento(slug=slug, estado=EventoEstado.DRAFT.value, **data)
     db.add(evento)
     db.commit()
     db.refresh(evento)
@@ -164,7 +165,7 @@ async def actualizar_evento(
     evento.updated_at = utcnow()
     db.commit()
     db.refresh(evento)
-    if evento.estado == 'published':
+    if evento.estado == EventoEstado.PUBLISHED.value:
         notify_eventos_changed()
     return evento
 
@@ -176,7 +177,7 @@ async def publicar_evento(
     _csrf=Depends(verify_csrf),
     _editor=Depends(_require_editor),
 ):
-    evento.estado = 'published'
+    evento.estado = EventoEstado.PUBLISHED.value
     evento.published_at = utcnow()
     db.commit()
     db.refresh(evento)
@@ -191,7 +192,7 @@ async def despublicar_evento(
     _csrf=Depends(verify_csrf),
     _editor=Depends(_require_editor),
 ):
-    evento.estado = 'draft'
+    evento.estado = EventoEstado.DRAFT.value
     db.commit()
     db.refresh(evento)
     notify_eventos_changed()
@@ -205,7 +206,7 @@ async def eliminar_evento(
     _csrf=Depends(verify_csrf),
     _editor=Depends(_require_editor),
 ):
-    estaba_publicado = evento.estado == 'published'
+    estaba_publicado = evento.estado == EventoEstado.PUBLISHED.value
     db.delete(evento)
     db.commit()
     if estaba_publicado:

@@ -1,6 +1,7 @@
 from sqlalchemy import JSON, Boolean, Column, DateTime, Enum, Integer, String, Text
 
 from app.core.database import Base
+from app.core.eventos import ENUM_NAME, EventoEstado
 from app.core.time import utcnow
 
 
@@ -20,9 +21,9 @@ class Evento(Base):
     fecha_fin = Column(DateTime, nullable=True)
     orden = Column(Integer, nullable=False, default=0)
     estado = Column(
-        Enum("draft", "published", name="evento_estado"),
+        Enum(*EventoEstado.values(), name=ENUM_NAME),
         nullable=False,
-        default="draft",
+        default=EventoEstado.DRAFT.value,
     )
     created_at = Column(DateTime, nullable=False, default=utcnow)
     updated_at = Column(DateTime, nullable=False, default=utcnow, onupdate=utcnow)

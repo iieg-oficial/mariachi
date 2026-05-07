@@ -5,6 +5,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 
+from app.core.eventos import EventoEstado
 from app.core.time import utcnow
 from app.models.borrador import Borrador
 from app.models.evento import Evento
@@ -57,7 +58,7 @@ def _apply_evento(
     evento.updated_at = utcnow()
     db.flush()
 
-    if evento.estado == 'published':
+    if evento.estado == EventoEstado.PUBLISHED.value:
         notify_eventos_changed()
     return {'evento_id': evento.id, 'estado': evento.estado}
 
