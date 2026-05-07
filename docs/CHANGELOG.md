@@ -48,10 +48,16 @@ Auditoria completa de Eventos MapaLab (backend + admin + visor) con 40+ hallazgo
 - **BBoxField estable** (`fix(eventos-admin): estabilizar BBoxField y rowKey de CapasField`): `Draw` ya no se recrea en cada render del padre — `onChange` se referencia con ref. `CapasField` rowKey con fallback `etiqueta-<idx>` para evitar duplicate keys de React.
 - **GeoServer error visible + a11y + clamp BBox** (`fix(eventos-admin): manejo de errores GeoServer + accesibilidad + clamp BBox`): el modal `AddCapaModal` (extraido de `CapasField`, baja a 183 LOC) muestra Alert cuando `/geoserver/workspaces` falla. Botones reciben `aria-label`. `BBoxField` ManualInputs respetan min/max y bloquean valores fuera de rango con feedback inmediato.
 - **Lista buscable** (`feat(eventos-admin): busqueda y filtro por estado en EventosListPage`): `Input.Search` por titulo/slug + `Segmented` Todos/Publicados/Borradores.
+- **AntD v6 cleanup + reset modal rechazo** (`chore(eventos-admin): Space direction + reset modal rechazo`): `Space orientation=` (deprecated) reemplazado por `direction=` en los 6 archivos. Modal de rechazo de borrador limpia el comentario al cerrar/cancelar y declara `destroyOnHidden`.
+
+#### Backend rate limit
+
+- **60 writes/min por usuario** (`fix(eventos): rate limit en writes`): mismo patron de layers/layer_metadata aplicado a POST, PATCH, publicar, despublicar y DELETE. Protege contra loops accidentales que invaliden el cache server-side excesivamente.
 
 #### Visor (mapalab/frontend)
 
 - **Cookie quitada en endpoints publicos** (`chore(eventos): quitar credentials include en endpoints publicos`): `/eventos`, `/home`, `/cache-version` consumen con `credentials: 'omit'`. Antes enviaban la cookie sin necesidad y abrian vector si CORS de produccion permitia origin laxo con `credentials:true`.
+- **SVG fallback + Beta flag + a11y** (`fix(eventos): SVG fallback + Beta badge feature flag + a11y widget`): EventoIconButton sustituye el "*" hardcoded por un SVG de marker. Badge "BETA" condicional via `VITE_EVENTOS_BETA_BADGE=false` (documentado en `.env.example`). ExternalEventoWidget agrega `onFocus`/`onBlur` (con check de relatedTarget) y `role="region"` + `aria-label` para soporte de teclado y lectores de pantalla.
 
 #### Tests
 
