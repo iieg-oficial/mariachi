@@ -585,6 +585,15 @@ Detalle completo en `docs/CHANGELOG.md` §[0.39.0]. Resumen:
 - **Fix global camelCase**: nuevo mixin `CamelCaseInput` aplicado a los schemas que reciben input (Layer, Evento, Page, MenuItem, Usuario, Reporte, LayerMetadata, MediaBucket, Media, Project, HomeSection payloads). Antes, los schemas declaraban solo `serialization_alias=` y el input camelCase del frontend se ignoraba silenciosamente, lo que causaba que muchas ediciones perdieran campos en el PUT/PATCH sin error visible.
 - **Fix GeoServer client**: `list_workspaces`/`list_layers` toleran respuesta vacia (`{"layers":""}` como string) que GeoServer devuelve para workspaces sin layers. Antes lanzaba AttributeError.
 
+### 2026-05-07 (v0.41.0) — Cache server-side de /eventos y /home + indice parcial
+
+Detalle completo en `docs/CHANGELOG.md` §[0.41.0]. Resumen:
+
+- **Cache versionado en Redis** para los endpoints publicos `GET /api/mapalab/eventos` y `GET /api/mapalab/home`. Nuevos helpers `get_cached_eventos`/`store_cached_eventos` (idem `home`) en `services/mapalab_public_cache.py`. Clave: `mapalab:public_cache:payload:{scope}:{version}`. En cache hit la ruta sirve `Response(content=cached_json, media_type='application/json')` y skipea la re-validacion de `response_model`. En miss, serializa con Pydantic, guarda y devuelve.
+- **Removido el debounce de 5s** en `notify_eventos_changed` / `notify_home_changed` — cada bump ahora es un `SET` directo en Redis (operacion barata). El debounce anterior ocultaba la ultima edicion de una rafaga; sin el, todas las invalidaciones se reflejan en el siguiente poll de 30s del visor.
+- **Indice parcial** `ix_eventos_publicados_visibles ON eventos (orden ASC, id ASC) WHERE estado='published' AND activo=true` (migracion `f3a4b5c6d7e8`). Acelera el filtro tipico del endpoint publico sin penalizar escrituras de drafts.
+- Lado mapalab (v1.20.0): el polling de `cache-version` se pausa con `visibilitychange→hidden` y reinicia en `→visible`; combinado con el cache de servidor, el costo total del watcher en background cae a cero.
+
 ### Unreleased — Editor de eventos: bbox visual, etiquetas, auto-activación
 
 Detalle completo en `docs/CHANGELOG.md` §[Unreleased] "Editor de eventos: bbox visual, etiquetas, auto-activación de capas". Resumen:
