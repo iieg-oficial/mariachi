@@ -149,3 +149,19 @@ async def reabrir_envio(
     actor: Usuario = Depends(verify_csrf),
 ):
     return FormulariosAdminService(db).reabrir_envio(formulario_id, envio_id, actor)
+
+
+@router.post("/sieej/expirar-envios-pendientes")
+async def expirar_envios_pendientes(
+    db: Session = Depends(get_db),
+    _csrf: Usuario = Depends(verify_csrf),
+):
+    """Bulk-expire de envios en_proceso de formularios fuera de vigencia.
+
+    Idempotente: correr varias veces no afecta envios ya en estado expirado.
+    Pensado para ejecutarse desde un cron externo o manual desde el admin
+    cuando se detecten envios "huerfanos" tras un cierre de vigencia.
+    """
+    from app.services.sieej.envios_service import EnviosService
+    afectados = EnviosService(db).expirar_pendientes_bulk()
+    return {"expirados": afectados}

@@ -174,9 +174,13 @@ La regla central vive en `EnviosService._formulario_acepta_cambios`. Esto evita 
 - Limpia `enviado_en` y `expirado_en`.
 - Registra evento `reabierto` con `actor_usuario_id`. El detalle publico (`/formularios/mis-envios/{id}`) NO expone el actor para no filtrar identidad de admins.
 
-### Auto-expiracion (pendiente)
+### Auto-expiracion (lazy)
 
-La spec define el evento `expirado`, pero hoy ningun proceso lo emite automaticamente. Mientras eso se implementa, las escrituras tardias se rechazan a nivel de endpoint (vigencia evaluada en cada PUT). El estado real del envio sigue siendo `en_proceso` hasta que un admin lo cierre manualmente o se conecte el job de expiracion.
+`EnviosService._expirar_si_corresponde` corre cada vez que un endpoint toca un envio especifico (detalle de respondent, listado de respondent, etc.) y transiciona `en_proceso` -> `expirado` si `formulario.vigencia_fin < now`. Es idempotente: si ya esta `expirado` no hace nada. Registra evento `expirado` con `actor_usuario_id=NULL` (sistema).
+
+Adicionalmente, `POST /sieej/expirar-envios-pendientes` (admin) hace bulk-expire de todos los envios `en_proceso` cuyos formularios pasaron vigencia. Pensado para ejecucion programada (cron externo) o intervencion manual del admin si se detecta un backlog de envios huerfanos. Devuelve `{"expirados": <numero_afectado>}`.
+
+Como no hay scheduler interno corriendo, un envio puede vivir en `en_proceso` despues de pasar vigencia hasta que el respondent o un admin lo consulten. Las escrituras nuevas tardias se rechazan igualmente a nivel de endpoint.
 
 ## Estructura del codigo
 

@@ -32,6 +32,18 @@ _FORMULARIO_NO_ACEPTA_DETAIL = (
 )
 
 
+def _marcar_expirado(envio: EnvioFormulario, db: Session, ahora) -> None:
+    envio.estado = "expirado"
+    envio.expirado_en = ahora
+    db.add(
+        EnvioEvento(
+            envio_id=envio.id,
+            tipo="expirado",
+            actor_usuario_id=None,
+        )
+    )
+
+
 class EnviosService:
     def __init__(self, db: Session):
         self.db = db
@@ -47,6 +59,63 @@ class EnviosService:
         if formulario.vigencia_fin and formulario.vigencia_fin < ahora:
             return False
         return True
+
+    def _expirar_si_corresponde(
+        self,
+        envio: EnvioFormulario,
+        formulario: Formulario | None = None,
+        commit: bool = True,
+    ) -> bool:
+        """Si el envio en_proceso esta fuera de vigencia, marcarlo expirado.
+
+        Lazy expiration: como el sistema no corre un cron, la transicion
+        `en_proceso` -> `expirado` se aplica cuando un endpoint toca el
+        envio. Es idempotente y barato (1 query opcional + 1 update).
+        Devuelve True si se cambio el estado.
+        """
+        if envio.estado != "en_proceso":
+            return False
+        if formulario is None:
+            formulario = (
+                self.db.query(Formulario)
+                .filter(Formulario.id == envio.formulario_id)
+                .first()
+            )
+        if formulario is None:
+            return False
+        if formulario.vigencia_fin is None:
+            return False
+        ahora = utcnow()
+        if formulario.vigencia_fin >= ahora:
+            return False
+        _marcar_expirado(envio, self.db, ahora)
+        if commit:
+            self.db.commit()
+            self.db.refresh(envio)
+        return True
+
+    def expirar_pendientes_bulk(self) -> int:
+        """Marca como expirado todo `en_proceso` cuyo formulario paso vigencia.
+
+        Para correr desde un endpoint admin de mantenimiento. Devuelve el
+        numero de envios afectados.
+        """
+        ahora = utcnow()
+        pendientes = (
+            self.db.query(EnvioFormulario)
+            .join(Formulario, Formulario.id == EnvioFormulario.formulario_id)
+            .filter(
+                EnvioFormulario.estado == "en_proceso",
+                Formulario.vigencia_fin.isnot(None),
+                Formulario.vigencia_fin < ahora,
+            )
+            .all()
+        )
+        for envio in pendientes:
+            _marcar_expirado(envio, self.db, ahora)
+        if pendientes:
+            self.db.commit()
+        return len(pendientes)
 
     def get_o_iniciar(
         self,
@@ -303,6 +372,22 @@ class EnviosService:
         page_size = max(min(page_size, 100), 1)
         offset = (page - 1) * page_size
         items = query.offset(offset).limit(page_size).all()
+
+        ahora = utcnow()
+        cambios = False
+        for item in items:
+            if item.estado != "en_proceso":
+                continue
+            f = next(
+                (f for f in (item.formulario,) if f is not None),
+                None,
+            )
+            if f and f.vigencia_fin and f.vigencia_fin < ahora:
+                _marcar_expirado(item, self.db, ahora)
+                cambios = True
+        if cambios:
+            self.db.commit()
+
         return items, total
 
     def obtener_mi_envio_detalle(
@@ -330,4 +415,5 @@ class EnviosService:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Este envio no te pertenece",
             )
+        self._expirar_si_corresponde(envio)
         return envio
