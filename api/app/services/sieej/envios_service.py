@@ -12,6 +12,7 @@ import uuid
 from typing import Any
 
 from fastapi import HTTPException, UploadFile, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.time import utcnow
@@ -151,21 +152,39 @@ class EnviosService:
                 status_code=status.HTTP_409_CONFLICT,
                 detail=_FORMULARIO_NO_ACEPTA_DETAIL,
             )
-        envio = EnvioFormulario(
-            formulario_id=formulario.id,
-            formulario_version=formulario.version,
-            definicion_snapshot=formulario.definicion,
-            usuario_id=user.id,
-            estado="en_proceso",
-            datos={},
-            paso_actual=0,
-        )
-        self.db.add(envio)
-        self.db.flush()
-        self._registrar_evento(envio, "iniciado", actor=user)
-        self.db.commit()
-        self.db.refresh(envio)
-        return envio
+
+        try:
+            envio = EnvioFormulario(
+                formulario_id=formulario.id,
+                formulario_version=formulario.version,
+                definicion_snapshot=formulario.definicion,
+                usuario_id=user.id,
+                estado="en_proceso",
+                datos={},
+                paso_actual=0,
+            )
+            self.db.add(envio)
+            self.db.flush()
+            self._registrar_evento(envio, "iniciado", actor=user)
+            self.db.commit()
+            self.db.refresh(envio)
+            return envio
+        except IntegrityError:
+            # Race: dos requests del mismo usuario llegaron concurrentes y otro
+            # gano la insercion. La constraint UNIQUE
+            # (formulario_id, usuario_id) bloqueo este. Devolvemos el ya creado.
+            self.db.rollback()
+            existing = (
+                self.db.query(EnvioFormulario)
+                .filter(
+                    EnvioFormulario.formulario_id == formulario.id,
+                    EnvioFormulario.usuario_id == user.id,
+                )
+                .first()
+            )
+            if existing is None:
+                raise
+            return existing
 
     def actualizar(
         self,
