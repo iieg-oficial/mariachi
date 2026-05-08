@@ -204,6 +204,60 @@ class EnviosService:
         self.db.refresh(envio)
         return envio
 
+    @staticmethod
+    def _parse_field_path(field_path: str) -> tuple[str, int | None, str] | None:
+        """Devuelve (step_id, idx_o_None, field_name) o None si invalido.
+
+        - `general.razon_social` -> ('general', None, 'razon_social')
+        - `bases_datos[0].diccionario` -> ('bases_datos', 0, 'diccionario')
+        """
+        partes = field_path.split(".")
+        if len(partes) != 2:
+            return None
+        step_part, field_name = partes
+        if "[" in step_part:
+            try:
+                step_id, rest = step_part.split("[", 1)
+                idx_str = rest.rstrip("]")
+                idx = int(idx_str)
+            except ValueError:
+                return None
+            return step_id, idx, field_name
+        return step_part, None, field_name
+
+    @staticmethod
+    def _set_archivo_en_datos(
+        datos: dict[str, Any],
+        field_path: str,
+        archivo_value: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Inserta `archivo_value` en datos[step][field] (o repeater[idx][field]).
+
+        Crea las claves intermedias si no existen. Devuelve el dict modificado
+        (mismo objeto). Llamar SIEMPRE despues del upload para mantener el
+        contrato `datos[step][field] = {url_publica, ...}` que `validar_datos`
+        espera al cierre del envio.
+        """
+        parsed = EnviosService._parse_field_path(field_path)
+        if parsed is None:
+            return datos
+        step_id, idx, field_name = parsed
+        if idx is None:
+            step_data = datos.setdefault(step_id, {})
+            if not isinstance(step_data, dict):
+                return datos
+            step_data[field_name] = archivo_value
+        else:
+            step_list = datos.setdefault(step_id, [])
+            if not isinstance(step_list, list):
+                return datos
+            while len(step_list) <= idx:
+                step_list.append({})
+            if not isinstance(step_list[idx], dict):
+                step_list[idx] = {}
+            step_list[idx][field_name] = archivo_value
+        return datos
+
     async def upload_archivo(
         self,
         formulario: Formulario,
@@ -278,6 +332,16 @@ class EnviosService:
             size_bytes=size,
         )
         self.db.add(archivo)
+
+        archivo_value = {
+            "url_publica": url,
+            "filename": file.filename or "",
+            "mime": file.content_type or "application/octet-stream",
+            "size_bytes": size,
+        }
+        datos = dict(envio.datos or {})
+        envio.datos = self._set_archivo_en_datos(datos, field_path, archivo_value)
+
         envio.actualizado_en = utcnow()
         self.db.commit()
         self.db.refresh(archivo)
