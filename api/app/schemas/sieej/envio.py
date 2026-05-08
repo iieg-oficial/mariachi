@@ -67,3 +67,74 @@ class EnvioEventoResponse(BaseModel):
     ocurrido_en: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# ---------------------------------------------------------------------------
+# Endpoints respondent: "Mis envios"
+#
+# El respondent ve solo sus envios. No exponemos actor_usuario_id en eventos
+# para no filtrar identidad de admins que puedan reabrir/expirar.
+# ---------------------------------------------------------------------------
+
+
+class MisEnviosFormularioInfo(BaseModel):
+    """Info ligera del formulario padre, usada en lista y detalle."""
+
+    slug: str
+    nombre: str
+    descripcion: str | None = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class MisEnviosEventoResponse(BaseModel):
+    """Evento del envio sin filtrar identidad del actor.
+
+    El respondent solo necesita el tipo y el momento; quien lo dispara
+    (el propio user, admin o sistema) se infiere del tipo desde el frontend.
+    """
+
+    tipo: EventoTipo
+    ocurrido_en: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class MisEnviosListItem(BaseModel):
+    """Item ligero de la lista de mis-envios. Sin definicion ni datos."""
+
+    id: int
+    formulario: MisEnviosFormularioInfo
+    estado: EnvioEstado
+    paso_actual: int
+    iniciado_en: datetime
+    enviado_en: datetime | None
+    actualizado_en: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class MisEnviosListResponse(BaseModel):
+    total: int
+    page: int
+    page_size: int
+    items: list[MisEnviosListItem]
+
+
+class MisEnviosDetalle(BaseModel):
+    """Detalle completo de un envio del propio respondent."""
+
+    id: int
+    formulario: MisEnviosFormularioInfo
+    estado: EnvioEstado
+    paso_actual: int
+    datos: dict[str, Any]
+    definicion_snapshot: dict[str, Any]
+    archivos: list[EnvioArchivoResponse] = []
+    eventos: list[MisEnviosEventoResponse] = []
+    iniciado_en: datetime
+    enviado_en: datetime | None
+    expirado_en: datetime | None
+    actualizado_en: datetime
+
+    model_config = ConfigDict(from_attributes=True)

@@ -216,3 +216,86 @@ class EnviosService:
             actor_usuario_id=actor.id if actor else None,
         )
         self.db.add(evento)
+
+    # ------------------------------------------------------------------
+    # Endpoints respondent: "Mis envios"
+    # ------------------------------------------------------------------
+
+    SORT_OPTIONS = {"-actualizado_en", "-enviado_en", "nombre"}
+
+    def listar_mis_envios(
+        self,
+        user: Usuario,
+        *,
+        estado: str | None = None,
+        q: str | None = None,
+        page: int = 1,
+        page_size: int = 20,
+        sort: str = "-actualizado_en",
+    ) -> tuple[list[EnvioFormulario], int]:
+        """Listado paginado de los envios del propio usuario.
+
+        - Filtra siempre por usuario_id == user.id (NUNCA acepta override).
+        - estado opcional: en_proceso | enviado | expirado.
+        - q opcional: busqueda en formulario.slug y formulario.nombre.
+        - sort: -actualizado_en (default), -enviado_en, nombre.
+        """
+        query = (
+            self.db.query(EnvioFormulario)
+            .join(Formulario, Formulario.id == EnvioFormulario.formulario_id)
+            .filter(EnvioFormulario.usuario_id == user.id)
+        )
+        if estado is not None:
+            query = query.filter(EnvioFormulario.estado == estado)
+        if q:
+            like = f"%{q}%"
+            query = query.filter(
+                Formulario.slug.ilike(like) | Formulario.nombre.ilike(like)
+            )
+
+        total = query.count()
+
+        sort_key = sort if sort in self.SORT_OPTIONS else "-actualizado_en"
+        if sort_key == "-actualizado_en":
+            query = query.order_by(EnvioFormulario.actualizado_en.desc())
+        elif sort_key == "-enviado_en":
+            # Portable NULLS LAST: los no-enviados al final.
+            query = query.order_by(
+                EnvioFormulario.enviado_en.is_(None).asc(),
+                EnvioFormulario.enviado_en.desc(),
+            )
+        else:  # "nombre"
+            query = query.order_by(Formulario.nombre.asc())
+
+        page = max(page, 1)
+        page_size = max(min(page_size, 100), 1)
+        offset = (page - 1) * page_size
+        items = query.offset(offset).limit(page_size).all()
+        return items, total
+
+    def obtener_mi_envio_detalle(
+        self,
+        user: Usuario,
+        envio_id: int,
+    ) -> EnvioFormulario:
+        """Detalle de un envio del propio usuario.
+
+        - 404 si no existe.
+        - 403 si pertenece a otro usuario (no 404 para no filtrar existencia).
+        """
+        envio = (
+            self.db.query(EnvioFormulario)
+            .filter(EnvioFormulario.id == envio_id)
+            .first()
+        )
+        if envio is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Envio no encontrado",
+            )
+        if envio.usuario_id != user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Este envio no te pertenece",
+            )
+        return envio

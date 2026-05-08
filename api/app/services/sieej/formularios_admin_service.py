@@ -34,6 +34,7 @@ SLUGS_RESERVADOS = {
     "catalogos",
     "schema",
     "envio",
+    "mis-envios",
 }
 
 
