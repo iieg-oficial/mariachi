@@ -9,6 +9,105 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.47.0] - 2026-05-08
+
+### SIEEJ: endpoints respondent /mis-envios + UX cards en lista de formularios admin
+
+Habilita la v1 del modulo "Mis envios" en el portal SIEEJ. El respondent
+(rol `externo`) ya puede consultar paginado de su historico y el detalle
+completo desde SIEEJ frontend, sin tocar mariachi/admin. Ademas, en el
+CMS la lista de formularios pasa de tabla a grid de cards con filtros y
+busqueda — y se agrega un atajo "Envios" directo en la accion de cada
+formulario para que no este escondido detras de "Editar > tab Envios".
+
+#### API respondent: `/formularios/mis-envios`
+
+Dos endpoints nuevos en `app/api/routes/formularios/dinamicos.py`,
+declarados antes de `/{slug}` para que FastAPI no los trate como path
+param:
+
+- `GET /formularios/mis-envios?estado=&q=&page=&sort=` — listado paginado
+  del usuario autenticado. Filtros `estado` (en_proceso/enviado/expirado),
+  `q` (busqueda en `formulario.slug` y `formulario.nombre`), `page`,
+  `page_size` (max 100). Sort: `-actualizado_en` (default),
+  `-enviado_en` (NULLS LAST portable), `nombre`. Item ligero
+  (`MisEnviosListItem`) sin `datos` ni `definicion_snapshot`.
+- `GET /formularios/mis-envios/{envio_id}` — detalle completo:
+  `definicion_snapshot` (la del momento del envio, no la actual), `datos`,
+  `archivos[]`, `eventos[]`. 404 si no existe; **403 si pertenece a otro
+  usuario** (no 404 — para no filtrar existencia). Eventos solo exponen
+  `tipo` y `ocurrido_en`; **no incluye `actor_usuario_id`** para no
+  filtrar identidad de admins que reabran/expiren.
+
+Gateados por `Depends(require_project_access('sieej'))` (no
+`require_staff`) — los consume el portal SIEEJ; el rol externo nunca
+toca `mariachi/admin` por T#208 (US#205).
+
+`mis-envios` agregado a `SLUGS_RESERVADOS` en
+`formularios_admin_service.py` para que ningun admin pueda crear un
+formulario con slug colisionante.
+
+#### Schemas
+
+`app/schemas/sieej/envio.py` agrega:
+- `MisEnviosFormularioInfo` (info ligera del padre).
+- `MisEnviosListItem`, `MisEnviosListResponse` (lista paginada).
+- `MisEnviosEventoResponse` (solo `tipo` + `ocurrido_en`).
+- `MisEnviosDetalle` (detalle completo).
+
+#### Service
+
+`app/services/sieej/envios_service.py`:
+- `listar_mis_envios(user, *, estado, q, page, page_size, sort)`.
+- `obtener_mi_envio_detalle(user, envio_id)` con guard 403 cross-user.
+
+#### Tests
+
+`tests/test_sieej_mis_envios.py`: 15 tests pytest. Cubren lista vacia,
+solo propios, filtros estado/q, paginacion, sort, sort invalido (422),
+sin sesion (401), no expone datos en lista, detalle con
+snapshot+datos+archivos+eventos, no expone `actor_usuario_id`,
+cross-user 403, inexistente 404, **fidelidad historica del snapshot**
+(cambia `f.definicion` despues del envio y verifica que el detalle
+conserva la version original), slug reservado.
+
+Para correr: `ENVIRONMENT=development pytest tests/test_sieej_mis_envios.py`
+(el TestClient no persiste cookies con `Secure=True` sobre HTTP, default
+en `environment=production`).
+
+#### CMS admin: cards en lugar de tabla + atajo "Envios"
+
+`mariachi/admin/src/features/sieej-formularios/`:
+
+- `pages/FormulariosListPage.jsx`: refactor de tabla AntD → grid
+  responsive de cards (1 col xs, 2 sm, 3 lg, 4 xl). Agrega busqueda local
+  por nombre/slug/descripcion, filtro por estado y 3 opciones de
+  ordenamiento. Skeleton loading y empty states distintos para
+  "sin formularios" vs "sin resultados con filtros".
+- `components/FormularioCard.jsx` (nuevo): card con titulo, slug+version,
+  descripcion (ellipsis 2 lineas), badge de estado, vigencia (highlight
+  rojo si vencida) y 4 acciones al pie con tooltip — Editar, Envios,
+  Publicar/Cerrar, Eliminar. Card completa clickeable; acciones del pie
+  con `stopPropagation`.
+- `pages/FormularioEditorPage.jsx`: lee `?tab=` de los searchParams y
+  controla el `activeKey` de Tabs; al cambiar de tab actualiza la URL
+  con `replace`. URL queda bookmarkable. Whitelist de tabs validas
+  (`{definicion, configuracion, asignaciones, envios}`); cualquier valor
+  invalido cae a `definicion`.
+
+Esto resuelve la queja de que el acceso a "Envios" estaba muy oculto:
+ahora hay un boton directo en cada card (`?tab=envios`) y la URL es
+compartible.
+
+### Bump
+
+- `api/pyproject.toml` -> 0.47.0.
+- `admin/package.json` -> 0.47.0.
+- `docs/sieej.md`: agregados endpoints `/mis-envios` + actualizada lista
+  de slugs reservados.
+
+---
+
 ## [0.46.2] - 2026-05-07
 
 ### Colibri widget: window.colibri.setContext() para enriquecer reportes desde el huesped

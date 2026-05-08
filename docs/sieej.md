@@ -84,7 +84,7 @@ Atributos comunes: `name` (unico por step), `label`, `required`, `validation` (`
 
 ### Slugs reservados
 `formularios_admin_service.crear()` rechaza con 400 si el slug colisiona con rutas literales del frontend SIEEJ:
-`inicio-sesion`, `exencion`, `cambiar-contrasena`, `error`, `regisño`, `catalogos`, `schema`, `envio`.
+`inicio-sesion`, `exencion`, `cambiar-contrasena`, `error`, `regisño`, `catalogos`, `schema`, `envio`, `mis-envios`.
 
 ### Versionado
 Si una edicion cambia `definicion` y el formulario ya tiene envios, `formulario.version` se incrementa. Los envios existentes mantienen su `formulario_version` y `definicion_snapshot` originales — los cambios solo afectan envios futuros.
@@ -131,6 +131,8 @@ Router: `app/api/routes/formularios/*`. Protegido por `Depends(require_project_a
 | GET | `/formularios/{slug}/envio` | Lee o inicia el envio del usuario actual. |
 | PUT | `/formularios/{slug}/envio` | Guarda (borrador) o cierra (`enviar=true`) el envio. Valida contra `definicion_snapshot`. |
 | POST | `/formularios/{slug}/envio/upload` | Sube un archivo al bucket configurado en el field `file`. Guarda `EnvioArchivo`. |
+| GET | `/formularios/mis-envios` | Listado paginado del **historial del usuario** (filtros `estado`, `q`, `page`, `page_size`, `sort`). Filtra siempre por `usuario_id` de la sesion (no acepta override). Sort soportado: `-actualizado_en` (default), `-enviado_en` (NULLS LAST portable), `nombre`. |
+| GET | `/formularios/mis-envios/{envio_id}` | Detalle del envio del usuario: `definicion_snapshot` + `datos` + `archivos[]` + `eventos[]`. 404 si no existe; 403 si pertenece a otro usuario. **No expone `actor_usuario_id`** en eventos para no filtrar identidad de admins que reabran/expiren. |
 
 ### Visibilidad y RBAC del envio
 
