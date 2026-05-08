@@ -129,6 +129,11 @@ async def verify_token(current_user: Usuario = Depends(get_current_user)):
     return {"valid": True}
 
 
+@router.get("/csrf")
+async def refrescar_csrf(current_user: Usuario = Depends(get_current_user)):
+    return {"csrf_token": crear_csrf_token(current_user.username)}
+
+
 @router.post("/cambiar-contrasena")
 async def cambiar_contrasena(
     password_data: PasswordChange,

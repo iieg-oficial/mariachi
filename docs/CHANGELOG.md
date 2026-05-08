@@ -9,6 +9,29 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.47.3] - 2026-05-08
+
+### Admin: auto-recovery del CSRF token + API_URL como path relativo
+
+Dos fixes que se descubrieron juntos al integrar mapalab:
+
+#### 1. Endpoint nuevo `GET /autenticacion/csrf` (api)
+
+`api/app/api/routes/auth.py`: agrega endpoint que devuelve `{ csrf_token }` para usuarios con sesion valida (cookie JWT). No requiere `verify_csrf` (eso seria circular). Permite refrescar el token sin re-login completo cuando el sessionStorage del browser se vacia (cierre de tab, refresh accidental tras 401, sincronizacion entre pestanas).
+
+#### 2. Auto-retry CSRF + API_URL relativo (admin)
+
+`admin/src/shared/services/api.js`:
+
+- **Auto-recovery**: el response interceptor detecta 403 con `detail` que contiene "csrf" (case-insensitive). Llama `refreshCsrfToken()` (deduped via `csrfRefreshPromise`), guarda el nuevo token en `sessionStorage`, y reintenta el request original UNA vez (flag `__csrfRetried` para evitar loops). Soporta tanto `AxiosHeaders.set()` como objetos plain. Si el refresh falla o el retry tambien falla, propaga el error normal.
+- **API_URL fallback de `http://localhost:8000` a `/api/administrador`** (path relativo). El fallback hardcoded a localhost violaba el CSP `connect-src 'self'` cuando el bundle se servia desde otro origen (ej. el gateway-hub real). Path relativo siempre matchea `'self'` y funciona en todos los entornos sin configurar VITE_ADMIN_API_URL.
+
+Antes: si una editora dejaba la pestana abierta unos minutos y el sessionStorage se invalidaba, las acciones write daban 403 sin recovery posible salvo logout/login. Ahora: invisible al usuario, el bundle reintenta solo y la accion completa.
+
+Bump 0.47.2 -> 0.47.3.
+
+---
+
 ## [0.47.2] - 2026-05-08
 
 ### Admin: sider muestra items inaccesibles deshabilitados con candado y tooltip

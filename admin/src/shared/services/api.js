@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_ADMIN_API_URL || 'http://localhost:8000/api/administrador';
+const API_URL = import.meta.env.VITE_ADMIN_API_URL || '/api/administrador';
 
 const api = axios.create({
     baseURL: API_URL,
@@ -26,18 +26,68 @@ api.interceptors.request.use(
     }
 );
 
+const isCsrfError = (error) => {
+    if (error?.response?.status !== 403) return false;
+    const detail = error?.response?.data?.detail;
+    if (typeof detail !== 'string') return false;
+    return detail.toLowerCase().includes('csrf');
+};
+
+let csrfRefreshPromise = null;
+
+const refreshCsrfToken = async () => {
+    if (csrfRefreshPromise) return csrfRefreshPromise;
+    csrfRefreshPromise = (async () => {
+        try {
+            const { data } = await axios.get(`${API_URL}/autenticacion/csrf`, { withCredentials: true });
+            const newToken = data?.csrf_token;
+            if (newToken) {
+                sessionStorage.setItem('csrf_token', newToken);
+                return newToken;
+            }
+            return null;
+        } catch {
+            return null;
+        } finally {
+            csrfRefreshPromise = null;
+        }
+    })();
+    return csrfRefreshPromise;
+};
+
 api.interceptors.response.use(
-    (response) => {
-        return response;
-    },
-    (error) => {
+    (response) => response,
+    async (error) => {
+        const original = error.config;
+
         if (error.response?.status === 401) {
             sessionStorage.removeItem('csrf_token');
             if (!window.location.pathname.endsWith('/login')) {
                 const base = import.meta.env.BASE_URL || '/';
                 window.location.href = `${base.replace(/\/$/, '')}/administrador/login`;
             }
+            return Promise.reject(error);
         }
+
+        if (error.response?.status === 403 && import.meta.env.DEV) {
+            console.warn('[api] 403 detail:', error.response?.data?.detail, 'isCsrf:', isCsrfError(error), 'retried:', original?.__csrfRetried);
+        }
+
+        if (isCsrfError(error) && original && !original.__csrfRetried) {
+            original.__csrfRetried = true;
+            const newToken = await refreshCsrfToken();
+            if (import.meta.env.DEV) console.warn('[api] csrf refreshed:', Boolean(newToken));
+            if (newToken) {
+                if (original.headers && typeof original.headers.set === 'function') {
+                    original.headers.set('X-CSRF-Token', newToken);
+                } else {
+                    original.headers = original.headers || {};
+                    original.headers['X-CSRF-Token'] = newToken;
+                }
+                return api.request(original);
+            }
+        }
+
         return Promise.reject(error);
     }
 );
