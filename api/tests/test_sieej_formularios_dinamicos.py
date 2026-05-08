@@ -354,6 +354,21 @@ def test_put_envio_falla_si_formulario_cerrado(client, session, admin, responden
     assert "cerrado" in r.json()["detail"].lower()
 
 
+def test_put_envio_payload_excede_limite_falla_413(client, session, admin, respondent_a):
+    """Regresion: payload de `datos` >5 MB se rechaza con 413."""
+    f = crear_formulario(session, admin)
+    asignar_a_usuario(session, f, respondent_a)
+    csrf = login(client, respondent_a.username)
+
+    blob = "x" * (6 * 1024 * 1024)
+    r = client.put(
+        f"{ADMIN_PREFIX}/formularios/{f.slug}/envio",
+        headers={"X-CSRF-Token": csrf},
+        json={"datos": {"general": {"razon_social": blob}}, "paso_actual": 0, "enviar": False},
+    )
+    assert r.status_code == 413
+
+
 def test_put_envio_falla_si_vigencia_fin_pasada(client, session, admin, respondent_a):
     """Regresion: respondent no puede actualizar envio si vigencia_fin paso."""
     from app.core.time import utcnow

@@ -7,6 +7,7 @@ Cambios futuros del formulario no afectan envios existentes.
 """
 from __future__ import annotations
 
+import json
 import uuid
 from typing import Any
 
@@ -30,6 +31,15 @@ from app.services.sieej.datos_validator import DatosInvalidosError, validar_dato
 _FORMULARIO_NO_ACEPTA_DETAIL = (
     "El formulario esta cerrado y no acepta cambios"
 )
+
+DATOS_MAX_BYTES = 5 * 1024 * 1024
+"""Cap de tamano del payload `datos` (JSONB) por envio.
+
+5 MB es generoso para cualquier formulario razonable: 200 fields de texto a
+1 KB cada uno = 200 KB. Repeaters con miles de items o textos enormes son
+indicio de mal diseno (el respondent deberia subirlos como `file`). El
+limite es defensa contra payloads patologicos que llenan disk silenciosamente.
+"""
 
 
 def _marcar_expirado(envio: EnvioFormulario, db: Session, ahora) -> None:
@@ -181,6 +191,16 @@ class EnviosService:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="El envio ya fue enviado y no puede modificarse",
+            )
+
+        payload_bytes = len(json.dumps(datos, default=str).encode("utf-8"))
+        if payload_bytes > DATOS_MAX_BYTES:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=(
+                    f"`datos` excede el limite de "
+                    f"{DATOS_MAX_BYTES // (1024 * 1024)} MB"
+                ),
             )
 
         try:
