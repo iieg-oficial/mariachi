@@ -9,6 +9,25 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.47.4] - 2026-05-08
+
+### Docs: patron estandar para huespedes React en /colibri/docs
+
+Documenta el FAB que mapalab y sieej usan como patron de referencia para futuros integradores React. Snippet copy-paste completo del componente `ColibriReportButton` con:
+
+- **Estilos estandarizados**: `bg-white`, `text-[#6E7477]`, hover `text-[#8936AB]` (morado IIEG), `w-7 h-7 md:w-6 md:h-6`, `rounded-full`, `shadow-[0px_2px_4px_0px_rgba(0,0,0,0.10)]`. Posicion `fixed bottom-4 right-4 z-50`.
+- **Logica**: `useAuth()` para `identify()`, `useLocation()` para `setContext('sourceRoute', ...)`, `window.colibri.openPanel({ sourceApp, apiKey })`.
+- **Variables de entorno** (`VITE_COLIBRI_SOURCE_APP`, `VITE_COLIBRI_API_KEY`).
+- **Proxy Vite** para `/colibri` y `/api/public`.
+- **Script HTML** para el bundle.
+- **Trampa comun documentada**: `style={{ padding: 0, border: 0 }}` inline es necesario porque algunos huespedes (sieej entre ellos) tienen reset CSS global tipo `button { padding: 0.6em 1.2em }` que sobreescribe Tailwind utilities y deforma el FAB en pildora.
+
+Nuevo link en el TOC sticky de la doc publica. Implementaciones de referencia listadas: mapalab `frontend/src/components/ReportButton.jsx` y sieej `frontend/src/components/ColibriReportButton.jsx`.
+
+Bump 0.47.3 -> 0.47.4.
+
+---
+
 ## [0.47.3] - 2026-05-08
 
 ### Admin: auto-recovery del CSRF token + API_URL como path relativo

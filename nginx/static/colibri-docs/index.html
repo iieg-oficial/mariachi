@@ -244,6 +244,7 @@
         <a href="#eventos">Eventos</a>
         <a href="#api">API JS</a>
         <a href="#errores">Errores</a>
+        <a href="#patron-react">Patrón React</a>
         <a href="#api-key">Obtener API key</a>
     </div>
 </nav>
@@ -485,6 +486,106 @@ form.reset();</code></pre>
         </ol>
         <div class="callout">
             <strong>Tipos de key:</strong> <code>ck_pub_*</code> para integraciones browser (validan CORS estricto). <code>ck_priv_*</code> para integraciones server-to-server (no validan CORS, se usan en variables de entorno).
+        </div>
+    </section>
+
+    <section id="patron-react">
+        <h2>Patrón estándar para huéspedes React</h2>
+        <p>
+            Si tu huésped es una app React (mapalab, sieej, etc.), el patrón recomendado es un componente <code>ColibriReportButton</code> que envuelve el FAB con el estilo IIEG estándar (fondo blanco, ícono pequeño morado, hover, sombra sutil) y dispara el panel programáticamente vía <code>window.colibri.openPanel</code>. Lo monta una sola vez en el layout global.
+        </p>
+
+        <div class="code-block">
+            <button class="copy-btn" data-copy="snippet-react-patron">Copiar</button>
+            <pre id="snippet-react-patron"><code>// src/components/ColibriReportButton.jsx
+import { useLocation } from 'react-router';
+import useAuth from '@context/useAuth';
+
+const SOURCE_APP = import.meta.env.VITE_COLIBRI_SOURCE_APP || 'mi-app';
+const API_KEY = import.meta.env.VITE_COLIBRI_API_KEY || '';
+
+const ColibriReportButton = ({ label = 'Reportar problema o sugerencia' }) => {
+    const location = useLocation();
+    const { user } = useAuth();
+
+    const handleClick = () => {
+        if (!window.colibri?.openPanel) return;
+        window.colibri.clearContext?.();
+        if (user) window.colibri.identify?.({
+            id: user.id, email: user.email, name: user.name, role: user.role,
+        });
+        window.colibri.setContext?.('sourceRoute', location.pathname);
+        window.colibri.openPanel({ sourceApp: SOURCE_APP, apiKey: API_KEY });
+    };
+
+    return (
+        &lt;button
+            type="button"
+            onClick={handleClick}
+            aria-label={label}
+            title={label}
+            style={{ padding: 0, border: 0 }}
+            className="fixed bottom-4 right-4 z-50 w-7 h-7 md:w-6 md:h-6 rounded-full bg-white flex items-center justify-center text-[#6E7477] hover:text-[#8936AB] shadow-[0px_2px_4px_0px_rgba(0,0,0,0.10)] transition-colors"
+        &gt;
+            &lt;svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round"
+                 className="w-3.5 h-3.5 md:w-3 md:h-3" aria-hidden="true"&gt;
+                &lt;path d="M16 7h.01" /&gt;
+                &lt;path d="M3.4 18H12a8 8 0 0 0 8-8V7a4 4 0 0 0-7.28-2.3L2 20" /&gt;
+                &lt;path d="m20 7 2 .5-2 .5" /&gt;
+                &lt;path d="M10 18v3" /&gt;
+                &lt;path d="M14 17.75V21" /&gt;
+                &lt;path d="M7 18a6 6 0 0 0 3.84-10.61" /&gt;
+            &lt;/svg&gt;
+        &lt;/button&gt;
+    );
+};
+
+export default ColibriReportButton;</code></pre>
+        </div>
+
+        <p>
+            <strong>Características del estándar:</strong>
+        </p>
+        <ul>
+            <li>Fondo <code>bg-white</code>, ícono <code>text-[#6E7477]</code>, hover <code>text-[#8936AB]</code> (morado IIEG).</li>
+            <li>Tamaño <code>w-7 h-7</code> en mobile, <code>w-6 h-6</code> en desktop. Ícono <code>w-3.5 h-3.5</code> / <code>w-3 h-3</code> respectivamente.</li>
+            <li>Posición <code>fixed bottom-4 right-4 z-50</code>. Ajustable según contexto del huésped.</li>
+            <li>Shadow sutil <code>shadow-[0px_2px_4px_0px_rgba(0,0,0,0.10)]</code> que matchea el lenguaje visual del ecosistema IIEG.</li>
+            <li>Llama <code>window.colibri.identify()</code> con datos del usuario logueado y <code>setContext('sourceRoute', ...)</code> con la ruta actual antes de abrir el panel.</li>
+        </ul>
+
+        <p>
+            <strong>Variables de entorno necesarias</strong> (en <code>.env.production</code> o equivalente):
+        </p>
+        <div class="code-block">
+            <button class="copy-btn" data-copy="snippet-react-env">Copiar</button>
+            <pre id="snippet-react-env"><code>VITE_COLIBRI_SOURCE_APP=mi-app
+VITE_COLIBRI_API_KEY=ck_pub_TU_KEY</code></pre>
+        </div>
+
+        <p>
+            <strong>Montaje:</strong> en el componente Layout autenticado (después de <code>ProtectedRoute</code>), agrega <code>&lt;ColibriReportButton /&gt;</code> como hermano del <code>&lt;Outlet /&gt;</code> o equivalente. Solo aparece tras login y en cualquier ruta interna.
+        </p>
+
+        <p>
+            <strong>Proxy en dev (Vite):</strong> agrega <code>/colibri</code> y <code>/api/public</code> al proxy del <code>vite.config.js</code> apuntando al host de mariachi.
+        </p>
+
+        <p>
+            <strong>Script del bundle</strong> en <code>index.html</code>:
+        </p>
+        <div class="code-block">
+            <button class="copy-btn" data-copy="snippet-react-script">Copiar</button>
+            <pre id="snippet-react-script"><code>&lt;script src="/colibri/widget/colibri-widget.v1.js" defer&gt;&lt;/script&gt;</code></pre>
+        </div>
+
+        <div class="callout">
+            <strong>Implementaciones de referencia:</strong> mapalab (<code>frontend/src/components/ReportButton.jsx</code>) y sieej (<code>frontend/src/components/ColibriReportButton.jsx</code>) usan exactamente este patrón.
+        </div>
+
+        <div class="callout">
+            <strong>Trampa común:</strong> el atributo <code>style={{ padding: 0, border: 0 }}</code> es necesario porque algunos huéspedes (incluyendo SIEEJ) tienen un reset CSS global tipo <code>button { padding: 0.6em 1.2em; border: 1px solid }</code> en su <code>index.css</code>. Esos selectores de tipo pueden ganar specificity sobre las utilities Tailwind y deformar el FAB en píldora. Inline style siempre gana — incluirlo evita el bug.
         </div>
     </section>
 
