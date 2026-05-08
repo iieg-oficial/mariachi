@@ -211,6 +211,65 @@ def test_show_when_sin_field_falla():
         validar_definicion(d)
 
 
+def test_show_when_referencia_field_inexistente_falla():
+    d = _def_minima()
+    d["steps"][0]["fields"].append(
+        {
+            "name": "b",
+            "label": "B",
+            "type": "text",
+            "showWhen": {"field": "campo_que_no_existe", "equals": "true"},
+        }
+    )
+    with pytest.raises(DefinicionInvalidaError, match="no existe"):
+        validar_definicion(d)
+
+
+def test_show_when_referencia_field_de_step_anterior_pasa():
+    """showWhen puede apuntar a un field de un step previo (path step.field)."""
+    d = {
+        "version": 1,
+        "steps": [
+            {
+                "id": "step1",
+                "type": "form",
+                "title": "S1",
+                "fields": [
+                    {"name": "a", "label": "A", "type": "text", "required": True},
+                ],
+            },
+            {
+                "id": "step2",
+                "type": "form",
+                "title": "S2",
+                "fields": [
+                    {
+                        "name": "b",
+                        "label": "B",
+                        "type": "text",
+                        "showWhen": {"field": "step1.a", "equals": "x"},
+                    }
+                ],
+            },
+        ],
+    }
+    validar_definicion(d)
+
+
+def test_show_when_referencia_field_mismo_step_pasa():
+    """showWhen puede apuntar a un field del mismo step (sin prefijo step.)."""
+    d = _def_minima()
+    d["steps"][0]["fields"].append(
+        {
+            "name": "b",
+            "label": "B",
+            "type": "text",
+            "showWhen": {"field": "razon_social", "equals": "x"},
+        }
+    )
+    validar_definicion(d)
+
+
 def test_definicion_completa_wizard_sieej_pasa():
     """Replica los 4 step types del wizard SIEEJ migrado."""
     d = {

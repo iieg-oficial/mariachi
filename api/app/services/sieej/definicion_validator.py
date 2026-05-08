@@ -57,6 +57,31 @@ def validar_definicion(definicion: Any) -> None:
     for idx, step in enumerate(steps):
         _validar_step(step, idx, seen_step_ids, field_paths)
 
+    _validar_show_when_refs(steps, field_paths)
+
+
+def _validar_show_when_refs(steps: list, field_paths: set[str]) -> None:
+    for step in steps:
+        if not isinstance(step, dict):
+            continue
+        step_id = step.get("id", "?")
+        for field in step.get("fields", []) or []:
+            if not isinstance(field, dict):
+                continue
+            show_when = field.get("showWhen")
+            if not isinstance(show_when, dict):
+                continue
+            target = show_when.get("field")
+            if not isinstance(target, str) or not target:
+                continue
+            if "." not in target:
+                target = f"{step_id}.{target}"
+            if target not in field_paths:
+                raise DefinicionInvalidaError(
+                    f"Step `{step_id}` field `{field.get('name', '?')}`: "
+                    f"`showWhen.field` apunta a `{target}` que no existe en el formulario."
+                )
+
 
 def _validar_step(
     step: Any,
