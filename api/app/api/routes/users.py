@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_db, require_role, verify_csrf
+from app.api.deps import ADMIN_ROLE, get_current_user, get_db, require_role, verify_csrf
 from app.api.metrics import COUNTER_USER_WRITES, incr
 from app.core.security import hash_password
 from app.models.project import Project, UserProject
@@ -20,7 +20,9 @@ from app.schemas.user import (
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/usuarios", tags=["usuarios"])
 
-_require_admin = require_role(["tetlamamakani"])
+_require_admin = require_role([ADMIN_ROLE])
+
+_SELF_UPDATE_PRIVILEGED_FIELDS = frozenset({"role", "username", "must_change_password"})
 
 
 def generate_temp_password(length=12):
@@ -160,7 +162,9 @@ async def actualizar_usuario(
             status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado"
         )
 
-    if current_user.role != "tetlamamakani" and current_user.id != usuario_id:
+    is_admin = current_user.role == ADMIN_ROLE
+    is_self = current_user.id == usuario_id
+    if not is_admin and not is_self:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, detail="Permisos insuficientes"
         )
@@ -185,6 +189,9 @@ async def actualizar_usuario(
         )
 
     update_data = usuario_in.model_dump(exclude_unset=True, exclude={"project_assignments"})
+    if not is_admin:
+        for field in _SELF_UPDATE_PRIVILEGED_FIELDS:
+            update_data.pop(field, None)
     if "username" in update_data:
         update_data["username"] = new_username
     if "email" in update_data:
@@ -192,7 +199,7 @@ async def actualizar_usuario(
     for field, value in update_data.items():
         setattr(usuario, field, value)
 
-    if current_user.role == "tetlamamakani" and usuario_in.project_assignments is not None:
+    if is_admin and usuario_in.project_assignments is not None:
         _apply_assignments(db, usuario.id, usuario_in.project_assignments)
 
     db.commit()
@@ -207,7 +214,7 @@ async def resetear_password(
     usuario_id: int,
     db: Session = Depends(get_db),
     _csrf: Usuario = Depends(verify_csrf),
-    _admin: Usuario = Depends(_require_admin),
+    current_user: Usuario = Depends(_require_admin),
 ):
     usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
     if not usuario:
@@ -215,10 +222,19 @@ async def resetear_password(
             status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado"
         )
 
+    from app.core.time import utcnow
+
     temp_password = generate_temp_password()
     usuario.hashed_password = hash_password(temp_password)
     usuario.must_change_password = True
+    usuario.password_changed_at = utcnow()
     db.commit()
+    incr(COUNTER_USER_WRITES)
+    logger.info(
+        "action=user.reset_password actor=%s target=%s",
+        current_user.id,
+        usuario.id,
+    )
 
     return {
         "message": "Contraseña reseteada exitosamente",

@@ -19,5 +19,6 @@ class Usuario(Base):
     must_change_password = Column(Boolean, default=True, nullable=False)
     avatar_url = Column(Text, nullable=True)
     created_at = Column(DateTime, default=utcnow, nullable=False)
+    password_changed_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
 
     media_uploads = relationship("Media", back_populates="uploaded_by_user")

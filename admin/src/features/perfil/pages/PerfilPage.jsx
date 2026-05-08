@@ -3,15 +3,13 @@ import { Layout, Card, Form, Input, Button, Avatar, Space, Typography, Tag, Divi
 import { UserOutlined, SaveOutlined, FileImageOutlined, UploadOutlined } from '@ant-design/icons';
 import { useAuth } from '@shared/contexts/useAuth';
 import { BucketFilePicker, useAccessibleBuckets } from '@features/media';
-import { uploadMediaFile } from '@features/media/api/mediaService';
 import { message } from '@shared/services/message';
-import { actualizarPerfil } from '@features/perfil/api/perfilService';
+import { actualizarPerfil, subirAvatar } from '@features/perfil/api/perfilService';
 
 const { Content } = Layout;
 const { Title, Text } = Typography;
 
 const GENERIC_BUCKET_SLUGS = ['iieg'];
-const PRIVATE_BUCKET_SLUGS = ['mariachi'];
 const GENERIC_PREFIX = 'avatars/';
 
 export default function PerfilPage() {
@@ -21,9 +19,7 @@ export default function PerfilPage() {
     const [pickerOpen, setPickerOpen] = useState(false);
     const [uploading, setUploading] = useState(false);
     const { buckets: genericBuckets } = useAccessibleBuckets(GENERIC_BUCKET_SLUGS);
-    const { buckets: privateBuckets } = useAccessibleBuckets(PRIVATE_BUCKET_SLUGS);
     const genericBucketId = genericBuckets[0]?.id ?? null;
-    const privateBucketId = privateBuckets[0]?.id ?? null;
     const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl || user?.avatar_url || '');
 
     useEffect(() => {
@@ -40,18 +36,13 @@ export default function PerfilPage() {
     };
 
     const onCustomUpload = async ({ file, onSuccess, onError }) => {
-        if (!privateBucketId || !user?.id) {
-            message.error('Bucket privado no disponible');
-            onError?.(new Error('no privateBucketId'));
-            return;
-        }
         try {
             setUploading(true);
-            const result = await uploadMediaFile(file, {
-                bucketId: privateBucketId,
-                folder: `/avatars/u${user.id}/`,
-            });
-            if (result?.url) setAvatarUrl(result.url);
+            const result = await subirAvatar(file);
+            if (result?.avatarUrl || result?.avatar_url) {
+                setAvatarUrl(result.avatarUrl || result.avatar_url);
+            }
+            if (typeof refreshUser === 'function') await refreshUser();
             message.success('Avatar subido');
             onSuccess?.(result);
         } catch (err) {
@@ -63,14 +54,14 @@ export default function PerfilPage() {
     };
 
     const beforeUpload = (file) => {
-        const isImage = file.type.startsWith('image/');
-        if (!isImage) {
-            message.error('Solo se permiten imágenes');
+        const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+        if (!allowed.includes(file.type)) {
+            message.error('Solo JPG, PNG, WebP o GIF');
             return Upload.LIST_IGNORE;
         }
-        const maxBytes = 5 * 1024 * 1024;
+        const maxBytes = 2 * 1024 * 1024;
         if (file.size > maxBytes) {
-            message.error('La imagen debe pesar menos de 5 MB');
+            message.error('La imagen debe pesar menos de 2 MB');
             return Upload.LIST_IGNORE;
         }
         return true;
@@ -120,7 +111,7 @@ export default function PerfilPage() {
                                         Elegir genérico
                                     </Button>
                                     <Upload
-                                        accept="image/*"
+                                        accept="image/jpeg,image/png,image/webp,image/gif"
                                         showUploadList={false}
                                         beforeUpload={beforeUpload}
                                         customRequest={onCustomUpload}
@@ -128,7 +119,6 @@ export default function PerfilPage() {
                                         <Button
                                             icon={<UploadOutlined />}
                                             loading={uploading}
-                                            disabled={!privateBucketId}
                                         >
                                             Subir personalizado
                                         </Button>
@@ -140,7 +130,7 @@ export default function PerfilPage() {
                                     </Button>
                                 )}
                                 <Text type="secondary" style={{ fontSize: 11 }}>
-                                    Genéricos: bucket público compartido. Personalizados: privado, solo accesible con sesión.
+                                    Avatares se almacenan en el bucket público compartido del IIEG (visibles entre productos del ecosistema). JPG/PNG/WebP/GIF, máximo 2 MB.
                                 </Text>
                             </Space>
                         </Space>

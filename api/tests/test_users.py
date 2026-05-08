@@ -129,3 +129,113 @@ def test_eliminar_usuario_propio(admin_session):
         headers={"X-CSRF-Token": admin_session["csrf"]},
     )
     assert response.status_code == 400
+
+
+def test_editora_no_puede_autopromoverse_a_admin(editora_session, db_session):
+    """Regresion: editora editandose a si misma no puede setear role a tetlamamakani."""
+    client = editora_session["client"]
+    editora_id = editora_session["user"].id
+    response = client.put(
+        f"{ADMIN_PREFIX}/usuarios/{editora_id}",
+        headers={"X-CSRF-Token": editora_session["csrf"]},
+        json={"role": "tetlamamakani"},
+    )
+    assert response.status_code == 200
+    db_session.expire_all()
+    refreshed = db_session.query(Usuario).filter(Usuario.id == editora_id).first()
+    assert refreshed.role == "editora"
+
+
+def test_editora_no_puede_cambiar_su_username(editora_session, db_session):
+    """Editora no puede mutar su propio username (campo privilegiado)."""
+    client = editora_session["client"]
+    editora_id = editora_session["user"].id
+    response = client.put(
+        f"{ADMIN_PREFIX}/usuarios/{editora_id}",
+        headers={"X-CSRF-Token": editora_session["csrf"]},
+        json={"username": "editora_renamed"},
+    )
+    assert response.status_code == 200
+    db_session.expire_all()
+    refreshed = db_session.query(Usuario).filter(Usuario.id == editora_id).first()
+    assert refreshed.username == "editora_test"
+
+
+def test_editora_puede_actualizar_su_nombre_y_email(editora_session, db_session):
+    """Self-update legitimo: nombre y email si pasan."""
+    client = editora_session["client"]
+    editora_id = editora_session["user"].id
+    response = client.put(
+        f"{ADMIN_PREFIX}/usuarios/{editora_id}",
+        headers={"X-CSRF-Token": editora_session["csrf"]},
+        json={"name": "Nuevo Nombre", "email": "nuevo@test.com"},
+    )
+    assert response.status_code == 200
+    db_session.expire_all()
+    refreshed = db_session.query(Usuario).filter(Usuario.id == editora_id).first()
+    assert refreshed.name == "Nuevo Nombre"
+    assert refreshed.email == "nuevo@test.com"
+
+
+def test_editora_no_puede_resetear_password_de_otro(editora_session, admin_user):
+    client = editora_session["client"]
+    response = client.post(
+        f"{ADMIN_PREFIX}/usuarios/{admin_user.id}/restablecer-contrasena",
+        headers={"X-CSRF-Token": editora_session["csrf"]},
+    )
+    assert response.status_code == 403
+
+
+def test_editora_no_puede_eliminar_otro_usuario(editora_session, admin_user):
+    client = editora_session["client"]
+    response = client.delete(
+        f"{ADMIN_PREFIX}/usuarios/{admin_user.id}",
+        headers={"X-CSRF-Token": editora_session["csrf"]},
+    )
+    assert response.status_code == 403
+
+
+def test_admin_resetear_password_genera_temp(admin_session, db_session):
+    """Reset por admin: temp_password retornada y must_change_password queda True."""
+    target = Usuario(
+        username="reset_target",
+        email="reset@test.com",
+        name="Target Reset",
+        hashed_password=hash_password("oldpass123"),
+        role="editora",
+        must_change_password=False,
+    )
+    db_session.add(target)
+    db_session.commit()
+    db_session.refresh(target)
+
+    response = admin_session["client"].post(
+        f"{ADMIN_PREFIX}/usuarios/{target.id}/restablecer-contrasena",
+        headers={"X-CSRF-Token": admin_session["csrf"]},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert "temp_password" in body
+    assert len(body["temp_password"]) == 12
+
+    db_session.expire_all()
+    refreshed = db_session.query(Usuario).filter(Usuario.id == target.id).first()
+    assert refreshed.must_change_password is True
+
+
+def test_crear_usuario_con_proyecto_inexistente_falla(admin_session):
+    response = admin_session["client"].post(
+        f"{ADMIN_PREFIX}/usuarios",
+        headers={"X-CSRF-Token": admin_session["csrf"]},
+        json={
+            "username": "asign_test",
+            "email": "asign@test.com",
+            "name": "Asign Test",
+            "password": "password123",
+            "role": "editora",
+            "project_assignments": [
+                {"project_slug": "proyecto-inexistente", "project_role": "editor"}
+            ],
+        },
+    )
+    assert response.status_code == 400

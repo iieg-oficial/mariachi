@@ -47,7 +47,7 @@ class UsuarioUpdate(CamelCaseInput):
 
 class UsuarioResponse(UsuarioBase):
     id: int
-    role: str
+    role: Literal["tetlamamakani", "editora", "externo"]
     must_change_password: bool
     avatar_url: str | None = Field(default=None, serialization_alias='avatarUrl')
     created_at: datetime

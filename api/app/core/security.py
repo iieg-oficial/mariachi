@@ -22,11 +22,12 @@ def hash_password(password: str) -> str:
 
 def crear_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
     to_encode = data.copy()
+    issued = utcnow()
     if expires_delta:
-        expire = utcnow() + expires_delta
+        expire = issued + expires_delta
     else:
-        expire = utcnow() + timedelta(minutes=settings.access_token_expire_minutes)
-    to_encode.update({"exp": expire})
+        expire = issued + timedelta(minutes=settings.access_token_expire_minutes)
+    to_encode.update({"exp": expire, "iat": issued})
     return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
 
 
