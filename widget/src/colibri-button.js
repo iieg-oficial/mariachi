@@ -10,10 +10,10 @@ if (!customElements.get('colibri-panel')) {
 const SIZE_PX = { sm: 36, md: 48, lg: 60 };
 
 const POSITION_STYLES = {
-    'bottom-right': 'bottom: var(--offset); right: var(--offset);',
-    'bottom-left': 'bottom: var(--offset); left: var(--offset);',
-    'top-right': 'top: var(--offset); right: var(--offset);',
-    'top-left': 'top: var(--offset); left: var(--offset);',
+    'bottom-right': 'bottom: var(--offset-y, var(--offset)); right: var(--offset-x, var(--offset));',
+    'bottom-left': 'bottom: var(--offset-y, var(--offset)); left: var(--offset-x, var(--offset));',
+    'top-right': 'top: var(--offset-y, var(--offset)); right: var(--offset-x, var(--offset));',
+    'top-left': 'top: var(--offset-y, var(--offset)); left: var(--offset-x, var(--offset));',
 };
 
 

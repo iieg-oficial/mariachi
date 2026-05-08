@@ -402,7 +402,7 @@ export class ColibriFormCore extends LitElement {
                     </button>
                 </div>
 
-                <div class="powered">Powered by Colibri · IIEG</div>
+                <div class="powered">Impulsado por Colibri</div>
             </form>
         `;
     }

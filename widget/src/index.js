@@ -30,6 +30,26 @@ if (typeof window !== 'undefined') {
     window.colibri.clearContext = () => {
         window.colibri.__customContext = {};
     };
+    window.colibri.openPanel = (opts = {}) => {
+        if (!opts.sourceApp || !opts.apiKey) {
+            console.warn('colibri.openPanel: sourceApp y apiKey son requeridos');
+            return null;
+        }
+        const panel = document.createElement('colibri-panel');
+        panel.setAttribute('source-app', opts.sourceApp);
+        panel.setAttribute('api-key', opts.apiKey);
+        if (opts.endpoint) panel.setAttribute('endpoint', opts.endpoint);
+        if (opts.endpointTipos) panel.setAttribute('endpoint-tipos', opts.endpointTipos);
+        if (opts.tipos) panel.setAttribute('tipos', opts.tipos);
+        if (opts.tipoDefault) panel.setAttribute('tipo-default', opts.tipoDefault);
+        if (opts.emailRequired) panel.setAttribute('email-required', '');
+        document.body.appendChild(panel);
+        panel.addEventListener('colibri:closed', () => {
+            setTimeout(() => panel.remove(), 300);
+        });
+        requestAnimationFrame(() => panel.show?.());
+        return panel;
+    };
     window.colibri.version = '1.0.0';
 }
 

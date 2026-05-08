@@ -9,6 +9,22 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.47.1] - 2026-05-08
+
+### Colibri widget: openPanel programatico + offsets X/Y separados + footer en espanol
+
+Tres mejoras al widget para soportar integraciones React mas robustas (usadas por mapalab y sieej en sus FABs custom).
+
+- `widget/src/index.js`: agrega `window.colibri.openPanel(opts)` que crea un `<colibri-panel>` programaticamente como child de `document.body`, lo abre, y lo remueve al cerrar (300ms despues del evento `colibri:closed`). Desacopla el panel del Custom Element host, eliminando un bug de visibilidad heredada cuando el host estaba oculto con `opacity: 0` o similar. Permite que React wrappers usen un `<button>` HTML nativo con tailwind y disparen el panel sin renderizar `<colibri-button>`/`<colibri-trigger>` visibles.
+- `widget/src/colibri-button.js`: `POSITION_STYLES` ahora lee CSS vars `--offset-x` y `--offset-y` separadas (con fallback a `--offset` legacy). Permite alinear el FAB al lado de elementos existentes del huesped sin que la separacion vertical y horizontal sea identica.
+- `widget/src/shared/form.js`: footer del formulario cambia de `"Powered by Colibri · IIEG"` a `"Impulsado por Colibri"` (espanol, sin marca IIEG redundante).
+
+Bundle 48.31 KB -> 49.47 KB raw / 13.5 KB -> 13.81 KB gzip (+1.16 KB raw por las nuevas funciones, sigue muy debajo del target 30 KB gzip).
+
+Bump 0.47.0 -> 0.47.1.
+
+---
+
 ## [0.47.0] - 2026-05-08
 
 ### SIEEJ: endpoints respondent /mis-envios + UX cards en lista de formularios admin
