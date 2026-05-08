@@ -182,6 +182,21 @@ Adicionalmente, `POST /sieej/expirar-envios-pendientes` (admin) hace bulk-expire
 
 Como no hay scheduler interno corriendo, un envio puede vivir en `en_proceso` despues de pasar vigencia hasta que el respondent o un admin lo consulten. Las escrituras nuevas tardias se rechazan igualmente a nivel de endpoint.
 
+Para correrlo programaticamente sin pasar por el endpoint admin, hay un script CLI que ejecuta el mismo `expirar_pendientes_bulk`:
+
+```sh
+docker exec mariachi-api python scripts/expire_sieej_envios.py
+# {"expirados": 12}
+```
+
+Crontab tipica (cada hora en punto desde el host):
+
+```cron
+0 * * * * docker exec mariachi-api python scripts/expire_sieej_envios.py >> /var/log/sieej-expire.log 2>&1
+```
+
+El script no requiere credenciales (corre en proceso del API con acceso DB) y es idempotente.
+
 ## Estructura del codigo
 
 ```
