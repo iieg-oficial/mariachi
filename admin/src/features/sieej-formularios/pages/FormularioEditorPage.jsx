@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router';
+import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { Breadcrumb, Spin, Tabs, Typography } from 'antd';
 import { message } from '@shared/services/message';
 import { formulariosApi } from '../services/formulariosAdminApi';
@@ -8,11 +8,21 @@ import ConfiguracionEditor from '../components/ConfiguracionEditor';
 import AsignacionesEditor from '../components/AsignacionesEditor';
 import EnviosTable from '../components/EnviosTable';
 
+const VALID_TABS = new Set(['definicion', 'configuracion', 'asignaciones', 'envios']);
+
 export default function FormularioEditorPage() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
     const [formulario, setFormulario] = useState(null);
     const [loading, setLoading] = useState(true);
+
+    const tabFromUrl = searchParams.get('tab');
+    const activeTab = VALID_TABS.has(tabFromUrl) ? tabFromUrl : 'definicion';
+
+    const handleTabChange = (key) => {
+        setSearchParams({ tab: key }, { replace: true });
+    };
 
     useEffect(() => {
         let cancel = false;
@@ -75,7 +85,13 @@ export default function FormularioEditorPage() {
             <Typography.Text type="secondary">
                 slug: <code>{formulario.slug}</code> · estado: {formulario.estado} · v{formulario.version}
             </Typography.Text>
-            <Tabs items={items} style={{ marginTop: 16 }} destroyOnHidden />
+            <Tabs
+                items={items}
+                activeKey={activeTab}
+                onChange={handleTabChange}
+                style={{ marginTop: 16 }}
+                destroyOnHidden
+            />
         </div>
     );
 }

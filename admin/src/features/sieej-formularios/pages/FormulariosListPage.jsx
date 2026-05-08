@@ -5,6 +5,7 @@ import {
 import {
     PlusOutlined, EditOutlined, DeleteOutlined, FormOutlined,
     PlayCircleOutlined, CloseCircleOutlined, TeamOutlined,
+    InboxOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router';
 import useIsMobile from '@shared/hooks/useIsMobile';
@@ -137,6 +138,13 @@ export default function FormulariosListPage() {
                 <Space size="small" wrap>
                     <Button type="link" icon={<EditOutlined />} onClick={() => navigate(`/sieej/formularios/${record.id}`)}>
                         {!isMobile && 'Editar'}
+                    </Button>
+                    <Button
+                        type="link"
+                        icon={<InboxOutlined />}
+                        onClick={() => navigate(`/sieej/formularios/${record.id}?tab=envios`)}
+                    >
+                        {!isMobile && 'Envíos'}
                     </Button>
                     {record.estado === 'borrador' && (
                         <Button type="link" icon={<PlayCircleOutlined />} onClick={() => handlePublicar(record)}>
