@@ -20,8 +20,35 @@ import {
     AppstoreOutlined,
     BranchesOutlined,
     CodeOutlined,
+    LockOutlined,
 } from '@ant-design/icons';
+import { Tooltip } from 'antd';
 import ColibriIcon from '@shared/components/ColibriIcon';
+
+const ROLE_LABELS = {
+    tetlamamakani: 'Administradora',
+    editora: 'Editora',
+    externo: 'Externo',
+};
+
+const formatRolesList = (roles) => {
+    if (!roles || roles.length === 0) return 'Acceso restringido';
+    return roles.map((r) => ROLE_LABELS[r] || r).join(' o ');
+};
+
+const renderDisabledLabel = (label, requiredRoles) => {
+    const tooltip = requiredRoles && requiredRoles.length > 0
+        ? `Solo ${formatRolesList(requiredRoles)}`
+        : 'Acceso restringido';
+    return (
+        <Tooltip title={tooltip} placement="right">
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, opacity: 0.55 }}>
+                <span>{label}</span>
+                <LockOutlined style={{ fontSize: 11 }} />
+            </span>
+        </Tooltip>
+    );
+};
 
 export const PLATFORM_ITEMS = [
     {
@@ -194,23 +221,27 @@ export function buildSiderItems({ user, onNavigate, extras = {} }) {
         </span>
     );
 
-    const platformChildren = PLATFORM_ITEMS
-        .filter((item) => item.allowedGlobalRoles.includes(role))
-        .map((item) => {
-            let label = item.label;
+    const platformChildren = PLATFORM_ITEMS.map((item) => {
+        const allowed = item.allowedGlobalRoles.includes(role);
+        const itemDisabled = item.disabled || !allowed;
+        let label = item.label;
+        if (allowed) {
             if (item.showBadge && extras.pendingCount > 0) {
                 label = renderBadgeLabel(item.label, extras.pendingCount);
             } else if (item.showReporteBadge && extras.reportesPendingCount > 0) {
                 label = renderBadgeLabel(item.label, extras.reportesPendingCount);
             }
-            return {
-                key: item.key,
-                icon: item.icon,
-                disabled: item.disabled,
-                label,
-                onClick: item.disabled ? undefined : () => onNavigate(item.path),
-            };
-        });
+        } else {
+            label = renderDisabledLabel(item.label, item.allowedGlobalRoles);
+        }
+        return {
+            key: item.key,
+            icon: item.icon,
+            disabled: itemDisabled,
+            label,
+            onClick: itemDisabled ? undefined : () => onNavigate(item.path),
+        };
+    });
 
     if (platformChildren.length > 0) {
         items.push({
@@ -227,31 +258,40 @@ export function buildSiderItems({ user, onNavigate, extras = {} }) {
     for (const [slug, project] of Object.entries(PROJECT_REGISTRY)) {
         if (project.items.length === 0) continue;
         const grantedByRole = project.allowedGlobalRoles?.includes(role);
-        if (!isAdmin && !grantedByRole && !userProjectSlugs.includes(slug)) continue;
+        const grantedByMembership = userProjectSlugs.includes(slug);
+        const projectAccessible = isAdmin || grantedByRole || grantedByMembership;
+        const projectDisabled = project.disabled || !projectAccessible;
+        const projectLabel = projectAccessible
+            ? project.label
+            : renderDisabledLabel(project.label, project.allowedGlobalRoles);
 
         items.push({
             key: `project-${slug}`,
             icon: project.icon,
-            label: project.label,
-            disabled: project.disabled,
-            children: project.items
-                .filter((item) => !item.allowedGlobalRoles || item.allowedGlobalRoles.includes(role))
-                .map((item) => {
-                    const itemDisabled = project.disabled || item.disabled;
-                    let label = item.label;
+            label: projectLabel,
+            disabled: projectDisabled,
+            children: project.items.map((item) => {
+                const itemAllowedByRole = !item.allowedGlobalRoles || item.allowedGlobalRoles.includes(role);
+                const itemAccessible = projectAccessible && itemAllowedByRole;
+                const itemDisabled = projectDisabled || item.disabled || !itemAccessible;
+                let label = item.label;
+                if (itemAccessible) {
                     if (item.showBadge && extras.pendingCount > 0) {
                         label = renderBadgeLabel(item.label, extras.pendingCount);
                     } else if (item.showReporteBadge && extras.reportesPendingCount > 0) {
                         label = renderBadgeLabel(item.label, extras.reportesPendingCount);
                     }
-                    return {
-                        key: item.key,
-                        icon: item.icon,
-                        label,
-                        disabled: itemDisabled,
-                        onClick: itemDisabled ? undefined : () => onNavigate(item.path),
-                    };
-                }),
+                } else {
+                    label = renderDisabledLabel(item.label, item.allowedGlobalRoles || project.allowedGlobalRoles);
+                }
+                return {
+                    key: item.key,
+                    icon: item.icon,
+                    label,
+                    disabled: itemDisabled,
+                    onClick: itemDisabled ? undefined : () => onNavigate(item.path),
+                };
+            }),
         });
     }
 

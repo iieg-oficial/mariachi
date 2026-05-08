@@ -9,6 +9,23 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.47.2] - 2026-05-08
+
+### Admin: sider muestra items inaccesibles deshabilitados con candado y tooltip
+
+Antes el sider ocultaba completamente los items que el rol del usuario no podia usar (ej. `Tipos`, `Source apps` para una `editora`). Resultado: la editora no sabia que esas funciones existian, y el admin no podia explicarle "haz click en X" sin pedirle screenshot. Ahora se muestran deshabilitados con candado y tooltip explicativo.
+
+#### Cambios en `admin/src/app/sider-config.jsx`
+
+- **Helper `renderDisabledLabel(label, requiredRoles)`** envuelve el label con icono `LockOutlined`, opacity 0.55 y tooltip `"Solo Administradora"` (o "Editora", "Externo" segun corresponda — los slugs internos `tetlamamakani`/`editora`/`externo` se traducen a labels legibles).
+- **Plataforma**: items con `allowedGlobalRoles` que no incluye el rol actual ya no se filtran del array. Se renderizan con `disabled: true` y label decorado.
+- **Proyectos**: si el usuario no tiene acceso al proyecto entero (no admin + no `allowedGlobalRoles` + no `userProjects`), se muestra el grupo deshabilitado completo. Items dentro de proyectos accesibles que requieren permisos extras (`allowedGlobalRoles` propio del item) se ven con candado individual.
+- Se conserva el badge de pendientes (revisiones, reportes nuevos) solo en items accesibles.
+
+Bump 0.47.1 -> 0.47.2.
+
+---
+
 ## [0.47.1] - 2026-05-08
 
 ### Colibri widget: openPanel programatico + offsets X/Y separados + footer en espanol
