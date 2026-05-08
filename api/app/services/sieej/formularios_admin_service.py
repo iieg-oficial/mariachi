@@ -5,11 +5,14 @@ version cuando un formulario con envios cambia su definicion.
 """
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from fastapi import HTTPException, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
+
+logger = logging.getLogger(__name__)
 
 from app.core.time import utcnow
 from app.models.sieej import (
@@ -101,10 +104,23 @@ class FormulariosAdminService:
         self.db.add(f)
         self.db.commit()
         self.db.refresh(f)
+        logger.info(
+            "action=sieej.formulario.create actor=%s target=%s slug=%s",
+            creador.id,
+            f.id,
+            f.slug,
+        )
         return f
 
-    def actualizar(self, formulario_id: int, data: dict[str, Any]) -> Formulario:
+    def actualizar(
+        self,
+        formulario_id: int,
+        data: dict[str, Any],
+        *,
+        actor: Usuario | None = None,
+    ) -> Formulario:
         f = self.get(formulario_id)
+        version_previa = f.version or 1
 
         nueva_definicion = data.get("definicion")
         if nueva_definicion is not None:
@@ -136,31 +152,72 @@ class FormulariosAdminService:
         f.actualizado_en = utcnow()
         self.db.commit()
         self.db.refresh(f)
+        logger.info(
+            "action=sieej.formulario.update actor=%s target=%s slug=%s "
+            "definicion_changed=%s version_from=%s version_to=%s",
+            actor.id if actor else None,
+            f.id,
+            f.slug,
+            cambia_definicion,
+            version_previa,
+            f.version,
+        )
         return f
 
-    def publicar(self, formulario_id: int) -> Formulario:
+    def publicar(
+        self, formulario_id: int, *, actor: Usuario | None = None
+    ) -> Formulario:
         f = self.get(formulario_id)
+        estado_previo = f.estado
         f.estado = "activo"
         f.actualizado_en = utcnow()
         self.db.commit()
         self.db.refresh(f)
+        logger.info(
+            "action=sieej.formulario.publicar actor=%s target=%s slug=%s "
+            "estado_from=%s estado_to=activo",
+            actor.id if actor else None,
+            f.id,
+            f.slug,
+            estado_previo,
+        )
         return f
 
-    def cerrar(self, formulario_id: int) -> Formulario:
+    def cerrar(
+        self, formulario_id: int, *, actor: Usuario | None = None
+    ) -> Formulario:
         f = self.get(formulario_id)
+        estado_previo = f.estado
         f.estado = "cerrado"
         f.actualizado_en = utcnow()
         self.db.commit()
         self.db.refresh(f)
+        logger.info(
+            "action=sieej.formulario.cerrar actor=%s target=%s slug=%s "
+            "estado_from=%s estado_to=cerrado",
+            actor.id if actor else None,
+            f.id,
+            f.slug,
+            estado_previo,
+        )
         return f
 
-    def eliminar(self, formulario_id: int) -> Formulario | None:
+    def eliminar(
+        self, formulario_id: int, *, actor: Usuario | None = None
+    ) -> Formulario | None:
         f = self.get(formulario_id)
         if self._tiene_envios(f.id):
-            # Si tiene envios, no se borra: se cierra (preserva datos historicos).
-            return self.cerrar(formulario_id)
+            return self.cerrar(formulario_id, actor=actor)
+        f_id = f.id
+        f_slug = f.slug
         self.db.delete(f)
         self.db.commit()
+        logger.info(
+            "action=sieej.formulario.delete actor=%s target=%s slug=%s",
+            actor.id if actor else None,
+            f_id,
+            f_slug,
+        )
         return None
 
     def actualizar_asignaciones(
@@ -293,6 +350,7 @@ class FormulariosAdminService:
                 detail=f"El envio en estado '{envio.estado}' no se puede reabrir",
             )
 
+        estado_previo = envio.estado
         envio.estado = "en_proceso"
         envio.enviado_en = None
         envio.expirado_en = None
@@ -306,6 +364,14 @@ class FormulariosAdminService:
         )
         self.db.commit()
         self.db.refresh(envio)
+        logger.info(
+            "action=sieej.envio.reabrir actor=%s target_envio=%s formulario=%s "
+            "estado_from=%s estado_to=en_proceso",
+            actor.id,
+            envio.id,
+            formulario_id,
+            estado_previo,
+        )
         return envio
 
     def _tiene_envios(self, formulario_id: int) -> bool:

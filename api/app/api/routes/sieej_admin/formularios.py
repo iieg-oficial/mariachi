@@ -51,10 +51,10 @@ async def actualizar_formulario(
     formulario_id: int,
     data: FormularioUpdate,
     db: Session = Depends(get_db),
-    _csrf: Usuario = Depends(verify_csrf),
+    actor: Usuario = Depends(verify_csrf),
 ):
     return FormulariosAdminService(db).actualizar(
-        formulario_id, data.model_dump(exclude_unset=True)
+        formulario_id, data.model_dump(exclude_unset=True), actor=actor
     )
 
 
@@ -62,29 +62,29 @@ async def actualizar_formulario(
 async def publicar_formulario(
     formulario_id: int,
     db: Session = Depends(get_db),
-    _csrf: Usuario = Depends(verify_csrf),
+    actor: Usuario = Depends(verify_csrf),
 ):
-    return FormulariosAdminService(db).publicar(formulario_id)
+    return FormulariosAdminService(db).publicar(formulario_id, actor=actor)
 
 
 @router.post("/formularios/{formulario_id}/cerrar", response_model=FormularioResponse)
 async def cerrar_formulario(
     formulario_id: int,
     db: Session = Depends(get_db),
-    _csrf: Usuario = Depends(verify_csrf),
+    actor: Usuario = Depends(verify_csrf),
 ):
-    return FormulariosAdminService(db).cerrar(formulario_id)
+    return FormulariosAdminService(db).cerrar(formulario_id, actor=actor)
 
 
 @router.delete("/formularios/{formulario_id}")
 async def eliminar_formulario(
     formulario_id: int,
     db: Session = Depends(get_db),
-    _csrf: Usuario = Depends(verify_csrf),
+    actor: Usuario = Depends(verify_csrf),
 ):
     """Borra el formulario si no tiene envios; si tiene, lo cierra
     (preserva datos historicos)."""
-    resultado = FormulariosAdminService(db).eliminar(formulario_id)
+    resultado = FormulariosAdminService(db).eliminar(formulario_id, actor=actor)
     if resultado is None:
         return {"message": "Formulario eliminado"}
     return {
