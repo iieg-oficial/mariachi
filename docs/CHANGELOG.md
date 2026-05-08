@@ -9,6 +9,89 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.48.0] - 2026-05-08
+
+### Hardening del modulo Usuarios + endurecimiento de SIEEJ
+
+Auditoria del submenu "Usuarios" cerro 1 vulnerabilidad de elevacion de
+privilegios y 4 hallazgos importantes; auditoria de reglas de negocio de
+SIEEJ cerro 4 P0/P1 (showWhen colgado, edicion sobre formularios cerrados,
+auto-expiracion sin scheduler, contrato de upload de archivo desacoplado)
+y 2 P2 (race en get_o_iniciar, audit log de operaciones admin).
+
+#### Modulo Usuarios
+
+- **fix vulnerabilidad de autopromocion**: editora podia hacer
+  `PUT /usuarios/{su_id}` con `{"role":"tetlamamakani"}` y elevarse. Ahora
+  se blanquean campos privilegiados (`role`, `username`, `must_change_password`)
+  para no-admin antes del setattr loop. 4 tests nuevos cubren regresion +
+  cambios legitimos de name/email.
+- **rate limit + lockout en login**: 10 req/min/IP via `rate_limit_ip(scope='login')`
+  + 5 fallos por username/email en 5 min lockout con Redis; flush al login
+  exitoso. Logging `action=login.failed/success/locked`.
+- **invalidacion de sesion al cambiar/resetear password**: nueva columna
+  `usuarios.password_changed_at` (migracion `d3e4f5a6b7c9`), JWT incluye
+  `iat`, `get_current_user` rechaza tokens con `iat < password_changed_at`.
+  Resuelve el caso en que la victima de un reset seguia con sesion activa
+  hasta que el JWT expirara.
+- **POST /autenticacion/perfil/avatar**: endpoint dedicado que sube al
+  bucket publico `iieg` en `avatars/u{current_user.id}/{uuid}.{ext}`. Path
+  enforced en servidor (no controla cliente). Valida content-type
+  (jpg/png/webp/gif) y tamano <= 2 MB. Borra avatar previo del mismo
+  usuario. PerfilPage refactor para usar este endpoint en vez del bucket
+  privado `mariachi` (avatares deben ser publicos para verse entre productos
+  del ecosistema).
+- **UsersPage UX**: busqueda local por username/name/email + filtro por rol
+  (Administradora/Editora/Externo) + `roleLabels.tetlamamakani` cambia a
+  `'Administradora'`. Removido `payload.password` muerto en flujo PUT.
+- consistencia: literal `"tetlamamakani"` reemplazado por `ADMIN_ROLE` en
+  `routes/users.py`; `UsuarioResponse.role` pasa de `str` a `Literal`;
+  logger en `reset_password`.
+
+#### Modulo SIEEJ
+
+- **showWhen.field validado contra fields existentes**: `validar_definicion`
+  ahora hace 2-pass — recolecta `field_paths` completo y luego rechaza
+  referencias muertas. Antes el formulario se guardaba sin error y el
+  campo condicional jamas se mostraba al respondent. Soporta `step.field`
+  y `field` (asumido del mismo step).
+- **bloqueo de edicion sobre formulario cerrado o fuera de vigencia**: helper
+  `EnviosService._formulario_acepta_cambios` aplica a `get_o_iniciar`,
+  `actualizar` y `upload_archivo`. Antes el respondent seguia editando
+  indefinidamente envios de formularios cerrados.
+- **endpoint admin de reapertura**:
+  `POST /sieej/formularios/{id}/envios/{envio_id}/reabrir` regresa un envio
+  `enviado` o `expirado` a `en_proceso`. Preserva `definicion_snapshot` y
+  `formulario_version` (fidelidad historica del envio).
+- **auto-expiracion lazy + bulk admin**: `_expirar_si_corresponde` corre
+  cuando un endpoint toca un envio especifico. `POST /sieej/expirar-envios-pendientes`
+  (admin) hace bulk-expire para cron externo o intervencion manual. Antes
+  el evento `expirado` estaba definido pero ningun proceso lo emitia.
+- **upload sincroniza `envio.datos`**: persiste
+  `datos[step][field] = {url_publica, filename, mime, size_bytes}` despues
+  de crear `EnvioArchivo`. Antes el frontend dependia de escribir manualmente
+  la URL y la validacion al cierre fallaba si no lo hacia.
+- **limite de 5 MB en payload `datos`**: `actualizar` rechaza con 413 si
+  `json.dumps(datos)` excede el cap.
+- **race en `get_o_iniciar`**: `IntegrityError` por la constraint UNIQUE
+  `(formulario_id, usuario_id)` se atrapa y devuelve el envio ya creado.
+  Antes el segundo request del mismo usuario daba 500.
+- **audit log estructurado** en `crear`, `actualizar`, `publicar`, `cerrar`,
+  `eliminar`, `reabrir_envio`. Primer pago al backlog de US #148.
+
+#### Documentacion
+
+- `docs/sieej.md`: tabla de workflow de estados, reglas de escritura del
+  respondent, seccion de reapertura admin, contrato sincrono del field
+  `file`, seccion de auto-expiracion lazy + bulk admin, nueva ruta de
+  reapertura en la tabla de endpoints admin.
+- `docs/PENDIENTES.md`: bumped a 0.48.0, cierre de los 4 hallazgos SIEEJ
+  P0/P1 movidos a "Implementado".
+
+Bump 0.47.5 -> 0.48.0.
+
+---
+
 ## [0.47.5] - 2026-05-08
 
 ### Fix: eventos publicados desaparecian de mapalab al guardar tras renombrar el titulo

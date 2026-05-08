@@ -1,6 +1,6 @@
 # Roadmap — Mariachi
 
-**Estado actual:** 0.47.5 · **Ultima revision:** 2026-05-08
+**Estado actual:** 0.48.0 · **Ultima revision:** 2026-05-08
 
 Monorepo del CMS Mariachi + backend FastAPI compartido + 5 paquetes Colibri (widget, SDK, docs publicas, panel, backend) + modulo Eventos + modulo SIEEJ. La version pre-1.0 implica que pueden romperse compats menores entre minor; el versionado es unificado.
 
@@ -21,12 +21,12 @@ Lineas activas por modulo abajo. Roadmap a v1.0 sigue al final.
 - [x] `require_project_access(min_role='editor')` aplicado en writes
 - [x] Buckets publicos/privados + proxy autenticado para privados
 - [x] Carpetas scoped por bucket (`(bucket_id, path)` unique)
-- [x] Avatar URL en `usuarios.avatar_url` (display)
+- [x] **Hardening usuarios v0.48.0**: blanqueo de campos privilegiados en self-update (cierra vulnerabilidad de autopromocion), rate limit + lockout en login, invalidacion de sesion al cambiar/resetear password (`password_changed_at` + `iat` en JWT)
+- [x] **Endpoint upload avatar v0.48.0**: `POST /autenticacion/perfil/avatar` al bucket publico `iieg/avatars/u<id>/` con validacion de tipo y tamano, path enforced en servidor
 
 ### Pendiente
 
-- [ ] **Endpoint upload de avatar** — bucket `iieg/avatars/u<user_id>/` documentado en context.md pero NO implementado. Falta `POST /autenticacion/perfil/avatar` que valide `current_user.id` contra el path del object y suba al bucket `iieg`. Hoy `avatar_url` solo se puede setear via `PUT /perfil` con URL ya existente
-- [ ] Logging estructurado JSON completo: hay `logger.info(action=...)` parcial en `users`/`layers`/`projects`/`media-buckets`; falta cubrir `eventos`/`reportes`/`formularios` con el mismo formato `{user_id, action, target}`
+- [ ] Logging estructurado JSON completo: hay `logger.info(action=...)` parcial en `users`/`layers`/`projects`/`media-buckets`/`sieej` (v0.48.0); falta cubrir `eventos`/`reportes` con el mismo formato `{user_id, action, target}`
 - [ ] `/metrics` counters para endpoints de `eventos`, `home`, `mapalab-shares`, `formularios`
 - [ ] Migrar prefijo `/api/administrador/*` → `/api/mariachi/*` (coordinado con `gateway-hub`)
 - [ ] Tests admin: smoke con Vitest (sider-config con candado, BucketFilePicker, FormularioCard, EventoEditPage)
@@ -92,12 +92,16 @@ Lineas activas por modulo abajo. Roadmap a v1.0 sigue al final.
 - [x] PDF custom para `levantamiento` con formato del wizard original
 - [x] `SLUGS_RESERVADOS` para evitar colisiones con rutas literales del frontend SIEEJ
 - [x] Rol `externo` integrado al flujo `UsersPage` para crear dependencias
+- [x] **Reglas de negocio v0.48.0**: `showWhen.field` validado contra fields existentes (referencias muertas rechazadas); `EnviosService._formulario_acepta_cambios` bloquea PUT/upload sobre formularios cerrados o fuera de vigencia; reapertura admin con preservacion de `definicion_snapshot`; auto-expiracion lazy + bulk admin; upload sincroniza `envio.datos[step][field]` con la URL publica; limite de 5 MB en payload `datos`
+- [x] **Race en `get_o_iniciar` v0.48.0**: catch de `IntegrityError` por constraint UNIQUE devuelve el envio existente (antes daba 500)
+- [x] **Audit log estructurado v0.48.0** en operaciones admin (crear/actualizar/publicar/cerrar/eliminar/reabrir_envio)
 
 ### Pendiente
 
 - [ ] `must_change_password` UX en frontend SIEEJ (hoy solo el admin lo aplica; el usuario externo no ve el flujo de cambio en su primera sesion)
-- [ ] Auditoria de accesos diferenciada staff vs externo (US #148)
+- [ ] Auditoria de accesos diferenciada staff vs externo (US #148): el log estructurado del v0.48.0 es backend solamente; falta UI o endpoint dedicado de consulta de actividad
 - [ ] Soft-delete de envios para que el respondent pueda "ocultar" entradas viejas sin que el admin las pierda
+- [ ] Cron externo o trigger DB que invoque `POST /sieej/expirar-envios-pendientes` periodicamente (hoy es lazy + manual)
 
 ---
 
