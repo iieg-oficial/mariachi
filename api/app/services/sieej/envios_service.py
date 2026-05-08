@@ -27,9 +27,26 @@ from app.services.acervo import AcervoClient
 from app.services.sieej.datos_validator import DatosInvalidosError, validar_datos
 
 
+_FORMULARIO_NO_ACEPTA_DETAIL = (
+    "El formulario esta cerrado y no acepta cambios"
+)
+
+
 class EnviosService:
     def __init__(self, db: Session):
         self.db = db
+
+    @staticmethod
+    def _formulario_acepta_cambios(formulario: Formulario) -> bool:
+        """True si el formulario admite escritura por el respondent."""
+        if formulario.estado != "activo":
+            return False
+        ahora = utcnow()
+        if formulario.vigencia_inicio and formulario.vigencia_inicio > ahora:
+            return False
+        if formulario.vigencia_fin and formulario.vigencia_fin < ahora:
+            return False
+        return True
 
     def get_o_iniciar(
         self,
@@ -50,6 +67,11 @@ class EnviosService:
             return envio
         if not crear_si_falta:
             return None
+        if not self._formulario_acepta_cambios(formulario):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=_FORMULARIO_NO_ACEPTA_DETAIL,
+            )
         envio = EnvioFormulario(
             formulario_id=formulario.id,
             formulario_version=formulario.version,
@@ -75,6 +97,11 @@ class EnviosService:
         *,
         enviar: bool,
     ) -> EnvioFormulario:
+        if not self._formulario_acepta_cambios(formulario):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=_FORMULARIO_NO_ACEPTA_DETAIL,
+            )
         envio = self.get_o_iniciar(formulario, user)
         if envio.estado == "expirado":
             raise HTTPException(
@@ -115,6 +142,11 @@ class EnviosService:
         field_path: str,
         file: UploadFile,
     ) -> EnvioArchivo:
+        if not self._formulario_acepta_cambios(formulario):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=_FORMULARIO_NO_ACEPTA_DETAIL,
+            )
         envio = self.get_o_iniciar(formulario, user)
         if envio.estado in {"enviado", "expirado"}:
             raise HTTPException(

@@ -326,6 +326,61 @@ def test_put_envio_enviado_marca_estado(client, session, admin, respondent_a):
     assert r.json()["estado"] == "enviado"
 
 
+def test_put_envio_falla_si_formulario_cerrado(client, session, admin, respondent_a):
+    """Regresion: respondent no puede actualizar envio si el formulario cambio
+    a estado 'cerrado' (la spec habla de cerrado pero el codigo no validaba)."""
+    f = crear_formulario(session, admin)
+    asignar_a_usuario(session, f, respondent_a)
+    csrf = login(client, respondent_a.username)
+
+    # Crear envio mientras esta activo
+    r0 = client.put(
+        f"{ADMIN_PREFIX}/formularios/{f.slug}/envio",
+        headers={"X-CSRF-Token": csrf},
+        json={"datos": {"general": {"razon_social": "Acme"}}, "paso_actual": 0, "enviar": False},
+    )
+    assert r0.status_code == 200
+
+    # Admin cierra el formulario
+    f.estado = "cerrado"
+    session.commit()
+
+    r = client.put(
+        f"{ADMIN_PREFIX}/formularios/{f.slug}/envio",
+        headers={"X-CSRF-Token": csrf},
+        json={"datos": {"general": {"razon_social": "Acme 2"}}, "paso_actual": 0, "enviar": False},
+    )
+    assert r.status_code == 409
+    assert "cerrado" in r.json()["detail"].lower()
+
+
+def test_put_envio_falla_si_vigencia_fin_pasada(client, session, admin, respondent_a):
+    """Regresion: respondent no puede actualizar envio si vigencia_fin paso."""
+    from app.core.time import utcnow
+    from datetime import timedelta
+
+    f = crear_formulario(session, admin)
+    asignar_a_usuario(session, f, respondent_a)
+    csrf = login(client, respondent_a.username)
+
+    r0 = client.put(
+        f"{ADMIN_PREFIX}/formularios/{f.slug}/envio",
+        headers={"X-CSRF-Token": csrf},
+        json={"datos": {"general": {"razon_social": "Acme"}}, "paso_actual": 0, "enviar": False},
+    )
+    assert r0.status_code == 200
+
+    f.vigencia_fin = utcnow() - timedelta(days=1)
+    session.commit()
+
+    r = client.put(
+        f"{ADMIN_PREFIX}/formularios/{f.slug}/envio",
+        headers={"X-CSRF-Token": csrf},
+        json={"datos": {"general": {"razon_social": "Acme 2"}}, "paso_actual": 0, "enviar": False},
+    )
+    assert r.status_code == 409
+
+
 def test_put_envio_despues_de_enviar_falla_409(client, session, admin, respondent_a):
     f = crear_formulario(session, admin)
     asignar_a_usuario(session, f, respondent_a)
