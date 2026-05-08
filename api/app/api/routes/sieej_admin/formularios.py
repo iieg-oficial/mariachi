@@ -136,3 +136,16 @@ async def obtener_envio(
     db: Session = Depends(get_db),
 ):
     return FormulariosAdminService(db).get_envio(formulario_id, envio_id)
+
+
+@router.post(
+    "/formularios/{formulario_id}/envios/{envio_id}/reabrir",
+    response_model=EnvioResponse,
+)
+async def reabrir_envio(
+    formulario_id: int,
+    envio_id: int,
+    db: Session = Depends(get_db),
+    actor: Usuario = Depends(verify_csrf),
+):
+    return FormulariosAdminService(db).reabrir_envio(formulario_id, envio_id, actor)

@@ -110,6 +110,7 @@ Router: `app/api/routes/sieej_admin/*`. Protegido por `staff_dep` (cualquier usu
 | PUT | `/sieej/formularios/{id}/asignaciones` | Reemplaza grupos y usuarios asignados. |
 | GET | `/sieej/formularios/{id}/envios` | Lista paginada de envios (filtro opcional `estado`). |
 | GET | `/sieej/formularios/{id}/envios/{envio_id}` | Detalle de un envio. |
+| POST | `/sieej/formularios/{id}/envios/{envio_id}/reabrir` | Devuelve un envio `enviado` o `expirado` al estado `en_proceso` para que el respondent pueda corregir y volver a enviar. Registra evento `reabierto` con `actor_usuario_id`. Falla con 409 si el formulario esta `cerrado` o fuera de vigencia, o si el envio no esta en estado reabrible. |
 | GET | `/sieej/grupos` | Lista grupos. |
 | POST | `/sieej/grupos` | Crear grupo. |
 | GET | `/sieej/grupos/{id}` | Detalle. |
@@ -143,6 +144,39 @@ Router: `app/api/routes/formularios/*`. Protegido por `Depends(require_project_a
 3. user es admin global, **o** asignado individualmente, **o** miembro de un grupo asignado
 
 Un envio se crea **lazy** la primera vez que el respondent guarda o consulta el formulario. Al iniciar se congela `formulario_version` y `definicion_snapshot`. Cambios futuros del formulario no afectan envios existentes.
+
+### Workflow de estados del envio
+
+| Estado | Quien lo establece | Quien puede salir y como |
+|---|---|---|
+| `en_proceso` | Sistema, al iniciar lazy | Respondent: pasar a `enviado` con `PUT /envio` y `enviar=true`. Sistema: pasar a `expirado` cuando vencimiento pasa (ver "Auto-expiracion" mas abajo). |
+| `enviado` | Respondent al cerrar | Admin: pasar a `en_proceso` con `POST /envios/{id}/reabrir` (registra evento `reabierto`). |
+| `expirado` | Sistema (auto-expiracion) o admin | Admin: pasar a `en_proceso` con `POST /envios/{id}/reabrir` (mismas reglas). |
+
+### Reglas de escritura del respondent
+
+`PUT /formularios/{slug}/envio` y `POST /envio/upload` rechazan con **409** si:
+
+- `formulario.estado != 'activo'` (esta `borrador` o `cerrado`).
+- `formulario.vigencia_inicio > now` (no ha empezado).
+- `formulario.vigencia_fin < now` (ya cerro vigencia).
+- `envio.estado in {enviado, expirado}` (use reapertura admin si necesita corregir).
+
+La regla central vive en `EnviosService._formulario_acepta_cambios`. Esto evita el caso historico en el que un envio en `en_proceso` quedaba editable indefinidamente despues de que el formulario se cerrara o pasara la vigencia.
+
+### Reapertura (admin)
+
+`POST /sieej/formularios/{id}/envios/{envio_id}/reabrir` devuelve un envio `enviado` o `expirado` a `en_proceso`:
+
+- Solo lo ejecuta staff (`tetlamamakani` o `editora`); el rol `externo` no tiene acceso al router admin.
+- Falla 409 si el formulario esta cerrado o fuera de vigencia (no se puede reabrir hacia un formulario que ya no acepta cambios).
+- `definicion_snapshot` y `formulario_version` se conservan: la reapertura NO migra al envio a la version vigente del formulario; el respondent corrige sobre el snapshot original.
+- Limpia `enviado_en` y `expirado_en`.
+- Registra evento `reabierto` con `actor_usuario_id`. El detalle publico (`/formularios/mis-envios/{id}`) NO expone el actor para no filtrar identidad de admins.
+
+### Auto-expiracion (pendiente)
+
+La spec define el evento `expirado`, pero hoy ningun proceso lo emite automaticamente. Mientras eso se implementa, las escrituras tardias se rechazan a nivel de endpoint (vigencia evaluada en cada PUT). El estado real del envio sigue siendo `en_proceso` hasta que un admin lo cierre manualmente o se conecte el job de expiracion.
 
 ## Estructura del codigo
 

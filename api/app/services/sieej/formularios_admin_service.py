@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.core.time import utcnow
 from app.models.sieej import (
+    EnvioEvento,
     EnvioFormulario,
     Formulario,
     Grupo,
@@ -253,6 +254,58 @@ class FormulariosAdminService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Envio no encontrado",
             )
+        return envio
+
+    def reabrir_envio(
+        self,
+        formulario_id: int,
+        envio_id: int,
+        actor: Usuario,
+    ) -> EnvioFormulario:
+        """Devuelve un envio `enviado` o `expirado` al estado `en_proceso`.
+
+        Reglas:
+        - Solo un admin (caller con `tetlamamakani` o `editora` con acceso a
+          sieej) puede invocarla. La autorizacion se hace en el router.
+        - El formulario no debe estar `cerrado` ni fuera de vigencia.
+        - El envio debe estar en estado `enviado` o `expirado`.
+        - Limpia `enviado_en` y `expirado_en`, deja `definicion_snapshot`
+          intacta (la version del envio NO se actualiza).
+        - Registra evento `reabierto` con `actor_usuario_id` para trazabilidad.
+        """
+        formulario = self.get(formulario_id)
+        if formulario.estado == "cerrado":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="No se puede reabrir un envio de un formulario cerrado",
+            )
+        ahora = utcnow()
+        if formulario.vigencia_fin and formulario.vigencia_fin < ahora:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="No se puede reabrir un envio fuera de vigencia",
+            )
+
+        envio = self.get_envio(formulario_id, envio_id)
+        if envio.estado not in {"enviado", "expirado"}:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"El envio en estado '{envio.estado}' no se puede reabrir",
+            )
+
+        envio.estado = "en_proceso"
+        envio.enviado_en = None
+        envio.expirado_en = None
+        envio.actualizado_en = ahora
+        self.db.add(
+            EnvioEvento(
+                envio_id=envio.id,
+                tipo="reabierto",
+                actor_usuario_id=actor.id,
+            )
+        )
+        self.db.commit()
+        self.db.refresh(envio)
         return envio
 
     def _tiene_envios(self, formulario_id: int) -> bool:
