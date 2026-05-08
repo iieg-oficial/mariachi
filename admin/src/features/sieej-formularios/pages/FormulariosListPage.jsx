@@ -1,20 +1,24 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import {
-    Button, Card, Empty, Form, Input, Modal, Space, Table, Tag, Typography,
+    Button, Card, Col, Empty, Form, Input, Modal, Row, Select, Space,
+    Typography,
 } from 'antd';
 import {
-    PlusOutlined, EditOutlined, DeleteOutlined, FormOutlined,
-    PlayCircleOutlined, CloseCircleOutlined, TeamOutlined,
-    InboxOutlined,
+    PlusOutlined, FormOutlined, TeamOutlined, SearchOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import { message } from '@shared/services/message';
 import { formulariosApi } from '../services/formulariosAdminApi';
+import FormularioCard from '../components/FormularioCard';
 
-const { Title, Paragraph } = Typography;
+const { Title, Text } = Typography;
 
-const ESTADO_COLOR = { borrador: 'default', activo: 'green', cerrado: 'red' };
+const SORT_OPTIONS = [
+    { value: '-actualizado_en', label: 'Más recientes' },
+    { value: 'nombre', label: 'Nombre A-Z' },
+    { value: '-creado_en', label: 'Antiguos primero' },
+];
 
 const DEFAULT_DEFINICION = {
     version: 1,
@@ -30,6 +34,22 @@ const DEFAULT_DEFINICION = {
     ],
 };
 
+const matches = (f, q) => {
+    if (!q) return true;
+    const t = q.trim().toLowerCase();
+    return (
+        f.nombre?.toLowerCase().includes(t) ||
+        f.slug?.toLowerCase().includes(t) ||
+        f.descripcion?.toLowerCase().includes(t)
+    );
+};
+
+const sortFns = {
+    '-actualizado_en': (a, b) => (b.actualizado_en || '').localeCompare(a.actualizado_en || ''),
+    'nombre': (a, b) => (a.nombre || '').localeCompare(b.nombre || ''),
+    '-creado_en': (a, b) => (a.creado_en || '').localeCompare(b.creado_en || ''),
+};
+
 export default function FormulariosListPage() {
     const navigate = useNavigate();
     const { isMobile } = useIsMobile();
@@ -37,6 +57,10 @@ export default function FormulariosListPage() {
     const [loading, setLoading] = useState(true);
     const [modalOpen, setModalOpen] = useState(false);
     const [form] = Form.useForm();
+
+    const [q, setQ] = useState('');
+    const [estadoFiltro, setEstadoFiltro] = useState('');
+    const [sort, setSort] = useState('-actualizado_en');
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -52,6 +76,15 @@ export default function FormulariosListPage() {
     }, []);
 
     useEffect(() => { load(); }, [load]);
+
+    const visibles = useMemo(() => {
+        let list = [...formularios];
+        if (estadoFiltro) list = list.filter((f) => f.estado === estadoFiltro);
+        list = list.filter((f) => matches(f, q));
+        const fn = sortFns[sort] || sortFns['-actualizado_en'];
+        list.sort(fn);
+        return list;
+    }, [formularios, q, estadoFiltro, sort]);
 
     const handleCreate = () => {
         form.resetFields();
@@ -84,7 +117,7 @@ export default function FormulariosListPage() {
         }
     };
 
-    const handleCerrar = async (record) => {
+    const handleCerrar = (record) => {
         Modal.confirm({
             title: '¿Cerrar formulario?',
             content: 'Los respondents ya no podrán enviarlo. Los envíos existentes se mantienen.',
@@ -105,7 +138,7 @@ export default function FormulariosListPage() {
     const handleEliminar = (record) => {
         Modal.confirm({
             title: '¿Eliminar formulario?',
-            content: `Si tiene envíos asociados, se cerrará en vez de eliminarse.`,
+            content: 'Si tiene envíos asociados, se cerrará en vez de eliminarse.',
             okText: 'Eliminar',
             okType: 'danger',
             cancelText: 'Cancelar',
@@ -121,48 +154,7 @@ export default function FormulariosListPage() {
         });
     };
 
-    const columns = [
-        { title: 'Slug', dataIndex: 'slug', key: 'slug' },
-        { title: 'Nombre', dataIndex: 'nombre', key: 'nombre' },
-        {
-            title: 'Estado',
-            dataIndex: 'estado',
-            key: 'estado',
-            render: (v) => <Tag color={ESTADO_COLOR[v]}>{v}</Tag>,
-        },
-        { title: 'Versión', dataIndex: 'version', key: 'version', width: 80 },
-        {
-            title: 'Acciones',
-            key: 'actions',
-            render: (_, record) => (
-                <Space size="small" wrap>
-                    <Button type="link" icon={<EditOutlined />} onClick={() => navigate(`/sieej/formularios/${record.id}`)}>
-                        {!isMobile && 'Editar'}
-                    </Button>
-                    <Button
-                        type="link"
-                        icon={<InboxOutlined />}
-                        onClick={() => navigate(`/sieej/formularios/${record.id}?tab=envios`)}
-                    >
-                        {!isMobile && 'Envíos'}
-                    </Button>
-                    {record.estado === 'borrador' && (
-                        <Button type="link" icon={<PlayCircleOutlined />} onClick={() => handlePublicar(record)}>
-                            {!isMobile && 'Publicar'}
-                        </Button>
-                    )}
-                    {record.estado === 'activo' && (
-                        <Button type="link" icon={<CloseCircleOutlined />} onClick={() => handleCerrar(record)}>
-                            {!isMobile && 'Cerrar'}
-                        </Button>
-                    )}
-                    <Button type="link" danger icon={<DeleteOutlined />} onClick={() => handleEliminar(record)}>
-                        {!isMobile && 'Eliminar'}
-                    </Button>
-                </Space>
-            ),
-        },
-    ];
+    const totalConFiltros = formularios.length > 0;
 
     return (
         <div>
@@ -188,28 +180,81 @@ export default function FormulariosListPage() {
                 </Space>
             </div>
 
-            <Card styles={{ body: { padding: isMobile ? 0 : undefined } }}>
-                <Table
-                    columns={columns}
-                    dataSource={formularios}
-                    rowKey="id"
-                    loading={loading}
-                    size={isMobile ? 'small' : 'middle'}
-                    scroll={{ x: 'max-content' }}
-                    pagination={{ pageSize: 10, simple: isMobile }}
-                    locale={{
-                        emptyText: (
-                            <Empty
-                                description={
-                                    <Paragraph style={{ margin: 0 }}>
-                                        Aún no hay formularios. Usa "Nuevo formulario" para crear el primero.
-                                    </Paragraph>
-                                }
-                            />
-                        ),
-                    }}
-                />
-            </Card>
+            {totalConFiltros && (
+                <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                    <Col xs={24} md={12}>
+                        <Input
+                            allowClear
+                            prefix={<SearchOutlined />}
+                            placeholder="Buscar por nombre, slug o descripción..."
+                            value={q}
+                            onChange={(e) => setQ(e.target.value)}
+                        />
+                    </Col>
+                    <Col xs={12} md={6}>
+                        <Select
+                            value={estadoFiltro}
+                            onChange={setEstadoFiltro}
+                            style={{ width: '100%' }}
+                            options={[
+                                { value: '', label: 'Todos los estados' },
+                                { value: 'borrador', label: 'Borradores' },
+                                { value: 'activo', label: 'Activos' },
+                                { value: 'cerrado', label: 'Cerrados' },
+                            ]}
+                        />
+                    </Col>
+                    <Col xs={12} md={6}>
+                        <Select
+                            value={sort}
+                            onChange={setSort}
+                            style={{ width: '100%' }}
+                            options={SORT_OPTIONS}
+                        />
+                    </Col>
+                </Row>
+            )}
+
+            {loading ? (
+                <Row gutter={[16, 16]}>
+                    {Array.from({ length: 6 }).map((_, i) => (
+                        <Col key={i} xs={24} sm={12} lg={8} xl={6}>
+                            <Card loading />
+                        </Col>
+                    ))}
+                </Row>
+            ) : visibles.length === 0 ? (
+                <Card>
+                    <Empty
+                        description={
+                            formularios.length === 0
+                                ? 'Aún no hay formularios. Usa "Nuevo formulario" para crear el primero.'
+                                : `Sin resultados con los filtros actuales${q ? ` para "${q}"` : ''}.`
+                        }
+                    />
+                </Card>
+            ) : (
+                <>
+                    <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
+                        {visibles.length} formulario{visibles.length === 1 ? '' : 's'}
+                        {(q || estadoFiltro) && ` de ${formularios.length}`}
+                    </Text>
+                    <Row gutter={[16, 16]}>
+                        {visibles.map((f) => (
+                            <Col key={f.id} xs={24} sm={12} lg={8} xl={6}>
+                                <FormularioCard
+                                    formulario={f}
+                                    onEditar={() => navigate(`/sieej/formularios/${f.id}`)}
+                                    onEnvios={() => navigate(`/sieej/formularios/${f.id}?tab=envios`)}
+                                    onPublicar={() => handlePublicar(f)}
+                                    onCerrar={() => handleCerrar(f)}
+                                    onEliminar={() => handleEliminar(f)}
+                                />
+                            </Col>
+                        ))}
+                    </Row>
+                </>
+            )}
 
             <Modal
                 title="Nuevo formulario"
