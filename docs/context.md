@@ -2,7 +2,7 @@
 
 > Documento de referencia completo. Leer este archivo proporciona contexto del monorepo sin explorar el codebase.
 
-**Versión:** 0.46.1 · **Última actualización:** 2026-05-07
+**Versión:** 0.47.5 · **Última actualización:** 2026-05-08
 
 
 ---
@@ -15,9 +15,9 @@ Este monorepo aloja el panel de administración del ecosistema IIEG y el backend
 |---|---|---|---|---|
 | **Mariachi** | Panel de administración del ecosistema IIEG (Ant Design) | `admin/` | `/mariachi/` | Activo |
 | **SIEEJ (frontend)** | Captura de formularios para dependencias de gobierno (otro repo: `iieg-oficial/sieej`) | servido como volumen en `mariachi-nginx` | `/sieej/` | Activo |
-| **Colibri Widget** | Web Components embebibles para reportar desde cualquier sitio (Lit + Vite) | `widget/` | `/colibri/widget/colibri-widget.v1.js` | Activo (v0.46.0) |
+| **Colibri Widget** | Web Components embebibles para reportar desde cualquier sitio (Lit + Vite) | `widget/` | `/colibri/widget/colibri-widget.v1.js` | Activo (v0.47.1) |
 | **Colibri SDK** | Cliente HTTP TypeScript para integraciones server-side y browser custom | `sdk/` | npm `@iieg/colibri-sdk` | Activo (v0.46.0) |
-| **Colibri Docs** | Documentacion publica standalone para integradores externos | `nginx/static/colibri-docs/` | `/colibri/docs/` | Activo (v0.46.0) |
+| **Colibri Docs** | Documentacion publica standalone para integradores externos | `nginx/static/colibri-docs/` | `/colibri/docs/` | Activo (v0.47.4) |
 
 El **Portal público** (sitio web del IIEG) se separó a su propio repo `iieg/portal/` (ver README raíz). Consume `/api/portal/*` de este `api`.
 
@@ -78,7 +78,7 @@ Rutas del backend (prefijos):
 | @dnd-kit core / sortable | 6.3 / 10.0 |
 | Axios | 1.13.3 |
 
-Paginas: `Login`, `PageEditor`, `MenuManager`, `Media`, `RevisionQueue`, `Users`, `ChangePassword`, `MapalabLayers`.
+Estructura de features (`admin/src/features/`): `auth`, `colibri`, `inicio`, `mapalab-eventos`, `mapalab-home`, `mapalab-layers`, `media`, `perfil`, `portal-menu`, `portal-pages`, `revision`, `sieej-formularios`, `users`. Cada feature agrupa `pages/`, `components/`, `hooks/`, `services/`, `constants/`. La estructura `pages/` legada se eliminó.
 
 ### Portal web publico (`web/`) — congelado
 
@@ -128,11 +128,13 @@ mariachi/
 ├── admin/                        # CMS Mariachi (Ant Design)
 │   ├── src/
 │   │   ├── main.jsx
-│   │   ├── pages/                # Login, PageEditor, MenuManager, Media, RevisionQueue, Users
-│   │   ├── components/           # menuManager, MainLayout, etc.
-│   │   ├── hooks/
-│   │   ├── contexts/
-│   │   └── services/             # apiService con axios + interceptors CSRF
+│   │   ├── app/                  # sider-config, router, MainLayout, ProtectedRoute
+│   │   ├── features/             # auth, colibri, inicio, mapalab-eventos, mapalab-home,
+│   │   │                         # mapalab-layers, media, perfil, portal-menu, portal-pages,
+│   │   │                         # revision, sieej-formularios, users
+│   │   ├── shared/               # services/api.js (axios + interceptors CSRF + auto-refresh),
+│   │   │                         # components reutilizables, hooks, providers, constants
+│   │   └── ...
 │   └── package.json              # name: mariachi-admin
 ├── web/                          # Portal publico (congelado)
 │   ├── src/
@@ -336,8 +338,13 @@ Sin auth. `router = APIRouter(tags=["portal público"])` en `routes/public.py`.
 
 | Metodo | Ruta | Funcion |
 |---|---|---|
-| POST | `/auth/login`, `/auth/logout` | |
-| GET/POST/PUT/DELETE | `/users/*` | Gestión de usuarios |
+| POST | `/autenticacion/iniciar-sesion`, `/autenticacion/cerrar-sesion` | Login/logout (cookie JWT + CSRF) |
+| GET | `/autenticacion/perfil` | Perfil del usuario actual + buckets accesibles |
+| PUT | `/autenticacion/perfil` | Actualiza nombre/email/avatar_url del propio usuario |
+| GET | `/autenticacion/csrf` | Refresca CSRF token sin re-login (sesion JWT valida). Usado por el interceptor del admin para auto-recovery cuando sessionStorage se vacia |
+| POST | `/autenticacion/cambiar-contrasena` | Cambio de contrasena (current + new) |
+| GET/POST/PUT/DELETE | `/usuarios/*` | Gestión de usuarios (writes admin-only) |
+| POST | `/usuarios/{id}/restablecer-contrasena` | Reset password con temp_password generada (admin-only) |
 | GET/POST/PUT/DELETE | `/pages/*` | Editor de paginas |
 | GET/POST/PUT/DELETE | `/menu/*` | Gestión de menu |
 | GET/POST/PUT/DELETE | `/multimedia/*` | Upload/listado/edición de archivos por bucket |
@@ -354,6 +361,17 @@ Sin auth. `router = APIRouter(tags=["portal público"])` en `routes/public.py`.
 | GET | `/reportes/grupos/lista` | Vista agrupada por fingerprint (count desc) |
 | GET | `/reportes/{id}/actividad` | Timeline de cambios sobre un reporte |
 | PATCH | `/reportes/{id}` | Update extendido: estado, severidad, prioridad, duplicado_de, direccion, etc. Cada campo cambiado registra fila en `reporte_actividad` |
+| GET/POST/PATCH/DELETE | `/eventos/*` | CRUD de eventos (mapalab-eventos). Workflow draft → review → published con `EventoEstado` enum |
+| POST | `/eventos/{id}/publicar`, `/eventos/{id}/despublicar` | Cambios de estado controlados |
+| GET | `/eventos/{id}/preview` | Vista publica del evento aun en draft |
+| PUT/GET | `/eventos/{id}/presencia` | Coedicion: heartbeat de presencia en Redis (CSRF requerido en PUT) |
+| GET/POST/DELETE | `/formularios/*` | CRUD de formularios SIEEJ (admin) |
+| GET | `/formularios/catalogos` | Catalogo de tipos/dependencias SIEEJ |
+| GET/PUT/POST | `/formularios/{slug}/envio*` | Endpoints respondent: borrador, submit, upload de archivos |
+| GET | `/formularios/mis-envios?estado=&q=&page=&sort=` | Historico paginado del usuario autenticado (sieej respondent) |
+| GET | `/formularios/mis-envios/{id}` | Detalle con `definicion_snapshot` historica + `datos` + `archivos` + `eventos` |
+| GET/POST/PATCH/DELETE | `/home/*` | CRUD de secciones del home publico de mapalab |
+| GET/POST/PATCH/DELETE | `/mapalab-shares/*` | Gestion de share links de visor mapalab |
 
 Requieren cookie JWT valida + CSRF en writes.
 
@@ -577,7 +595,7 @@ Colibri es el sistema centralizado de reportes embebibles del IIEG. Vive como mo
 
 2. **Panel admin (`admin/src/features/colibri/`)**: 7 paginas (Resumen, Reportes con toggle plano/agrupados, Tipos con form builder, Direcciones, SourceApps con rotacion de keys + modal "muestra-una-vez", Routes con fan-out, Integracion con preview en vivo). Sidebar reorganizado: Colibri es proyecto del CMS con `allowedGlobalRoles` para tetlamamakani/editora.
 
-3. **Widget (`widget/`)**: paquete Lit + Vite con 3 Custom Elements (`<colibri-button>`, `<colibri-trigger>`, `<colibri-form>`). Bundle 48 KB / 13.5 KB gzip servido en `/colibri/widget/colibri-widget.v1.js` con CORS abierto. Shadow DOM, form dinamico, identify(), screenshot opcional.
+3. **Widget (`widget/`)**: paquete Lit + Vite con 3 Custom Elements (`<colibri-button>`, `<colibri-trigger>`, `<colibri-form>`). Bundle 49.5 KB / 13.8 KB gzip servido en `/colibri/widget/colibri-widget.v1.js` con CORS abierto. Shadow DOM, form dinamico, screenshot opcional. **API global `window.colibri`**: `identify(user)` para asociar sesion con cada reporte, `setContext(key, value)` y `clearContext()` para enriquecer `source_context.custom` (snapshot de mapa, capas activas, etc.), `openPanel({ sourceApp, apiKey })` para disparar el panel programaticamente desde un boton React/HTML del huesped sin renderizar Custom Elements visibles. CSS vars `--offset-x` y `--offset-y` separadas para alinear el FAB respecto a UI existente.
 
 4. **SDK (`sdk/`)**: paquete TypeScript publicable a npm como `@iieg/colibri-sdk`. Cliente HTTP con tipos + 5 errores tipados (Auth/Validation/RateLimit/Forbidden/Network). 6.9 KB raw / ~2 KB gzip.
 
@@ -601,6 +619,44 @@ Pagina publica de seguimiento por token: requiere que IIEG defina politicas de r
 
 ---
 
+## Modulo Eventos (mapalab-eventos)
+
+Eventos es el modulo del CMS para curar piezas de contenido visual destacadas en el visor de mapalab (campañas tematicas, hitos, lanzamientos). Cada evento agrupa: capas pre-seleccionadas (con auto-activacion), bbox de zoom inicial, etiquetas/separadores en el menu lateral, imagen de portada, y metadata textual. Vive en `api/app/api/routes/eventos.py` + `app/models/evento.py` + `app/schemas/evento.py` y `admin/src/features/mapalab-eventos/`.
+
+### Workflow
+
+`EventoEstado` enum es la single source of truth (`draft` → `review` → `published`). Modelos, schemas, routes y `borrador_service` lo consumen del mismo enum. Combinado con `activo: bool` da la matriz documentada en CHANGELOG §[0.41.0]:
+
+- `draft` + `activo` no visible en viewer (filtrado en `get_evento_visible_or_404`).
+- `published` + `activo=true` indexable por el indice parcial `ix_eventos_publicados_visibles ON eventos (orden ASC, id ASC) WHERE estado='published' AND activo=true`.
+
+Solicitar revision crea un `borrador` con `resource_type='evento'`. `tetlamamakani` aprueba en `RevisionQueue`. `_apply_evento` rechaza con 409 si el evento se modifico en paralelo despues de solicitar la revision (concurrencia optimista).
+
+### Endpoints publicos
+
+`GET /api/mapalab/eventos` y `GET /api/mapalab/home` con cache versionado en Redis (`services/mapalab_public_cache.py`). Clave: `mapalab:public_cache:payload:{scope}:{version}`. Cache hit sirve `Response(content=cached_json, media_type='application/json')` sin re-validar Pydantic. Cualquier write hace bump del `version` de scope (sin debounce — cada bump es un `SET` directo barato). El visor poll `/cache-version` cada 30s, pausando con `visibilitychange→hidden`.
+
+### Hardening
+
+- **RBAC + CSRF + rate limit**: `staff_dep` para todos los writes. CSRF en `PUT /presencia`. 60 writes/min por usuario.
+- **Validacion**: `CapaRef` exige `workspace+geoserverLayer` si `tipo='capa'` (etiquetas tipo separador no necesitan); `BBox` clampa coords a EPSG:4326; `_validate_image_url` permite `http(s)://`, `data:image/`, `/acervo/`, ruta relativa, y paths del acervo `bucket/object` solo si el bucket esta en `KNOWN_ACERVO_BUCKETS` (`api/app/core/bucket_policies.py`: `portal`, `mapalab`, `iieg`, `mariachi`, `sieej`, `dataengine`); rechaza buckets desconocidos, path traversal (`..`), `javascript:` y URLs > URL_MAX_LENGTH.
+- **Robustez del listado publico**: `GET /api/mapalab/eventos` (`routes/public.py`) serializa cada evento dentro de un `try/except` y omite del listado los que fallan validacion (loggeando warning con el `id`), para que un dato malformado puntual no tire el endpoint completo y haga desaparecer todos los eventos del visor.
+- **Performance**: `bbox` y `capas` en JSONB; `presence.list_others` usa `SCAN_ITER` (no bloqueante); datetimes con timezone (`timestamp with time zone`) para evitar drift en comparaciones.
+- **Tests**: 41 tests cubriendo RBAC, validacion, concurrencia, lifecycle, CSRF.
+
+### Editor admin (`admin/src/features/mapalab-eventos/`)
+
+- `EventoEditPage` con `Tabs` verticales y `forceRender: true` por item (sin esto `getFieldsValue` devolvia `undefined` al guardar campos en tabs lazy).
+- `BBoxField` con 3 modos: "Sin zoom" (`bbox=null`), "Coordenadas manuales" con switch CRS **EPSG:4326** ↔ **EPSG:6368** (UTM 14N, reproyeccion frontend con `proj4`), "Dibujar en mapa" con OpenLayers + base CARTO Light. Deps: `ol@^10.9` y `proj4@^2.20`. `BBoxField` memoizado para no recrear `Draw` en cada render.
+- `CapasField` permite agregar capas existentes (registradas en `mapalab.layers`) o materializa una capa "solo GeoServer" como leaf bajo el padre `eventos-auto` via `POST /layers/auto-leaf` (idempotente).
+- `LayerContentDrawer` reusable con tabs Tarjeta · Metadatos · Simbologia, montado desde `CapasField` para editar contenido sin navegar al `LayerEditPage`.
+- `EventosListPage` con busqueda + filtro estado.
+- Visor (`mapalab/frontend/.../EventoMenu.jsx`): renderiza etiquetas como `LabelItem`, auto-activa capas con `autoActivar=true` al abrir el menu, boton "Eliminar (N)" para apagar capas externas activas.
+
+Ver `docs/CHANGELOG.md` §[0.41.x] y §[Unreleased] para detalle de cambios por commit.
+
+---
+
 ## Ecosistema
 
 Este repo se integra con otros servicios internos vecinos (CMS, visor de mapas, DataEngine PostgreSQL+PostGIS, gateway Nginx, almacenamiento S3-compatible, GeoServer, stack de observabilidad) que comparten una red Docker común. Los detalles de topología son internos.
@@ -609,7 +665,18 @@ Este repo se integra con otros servicios internos vecinos (CMS, visor de mapas, 
 
 ## Cambios recientes
 
-### 2026-05-07 (v0.42.0–0.46.1) — Modulo Colibri introducido
+### 2026-05-08 (v0.47.0–0.47.5) — SIEEJ mis-envios + UX cards + Colibri widget v2 + sider con candado + auto-recovery CSRF + fix eventos desaparecidos
+
+Detalle por version en `docs/CHANGELOG.md`. Resumen ejecutivo:
+
+- **0.47.0** — SIEEJ respondent: `GET /formularios/mis-envios` paginado (filtros `estado`/`q`/`sort`) + `GET /formularios/mis-envios/{id}` con `definicion_snapshot` historica (no la actual del formulario), `archivos`, `eventos` (sin `actor_usuario_id`), 403 cross-user. 15 tests pytest cubriendo aislamiento, fidelidad historica, sort invalido, eventos sin actor. CMS admin: `FormulariosListPage` pasa de tabla a grid responsive de cards (1/2/3/4 cols xs/sm/lg/xl) con busqueda local + filtro estado + 3 sorts; `FormularioCard` con accion directa "Envios" (`?tab=envios`); `FormularioEditorPage` con tab persistente en URL bookmarkable. `mis-envios` agregado a `SLUGS_RESERVADOS`.
+- **0.47.1** — Colibri widget: `window.colibri.openPanel({ sourceApp, apiKey })` crea `<colibri-panel>` programatico como child de `body` y lo remueve al cerrar (300ms tras `colibri:closed`). Desacopla el panel del Custom Element host, eliminando bug de visibilidad heredada cuando el host estaba oculto. Permite que React wrappers usen un `<button>` HTML nativo y disparen el panel sin renderizar `<colibri-button>`/`<colibri-trigger>`. CSS vars `--offset-x`/`--offset-y` separadas (fallback a `--offset` legacy). Footer `"Powered by Colibri · IIEG"` → `"Impulsado por Colibri"`. Bundle 49.5 KB raw / 13.81 KB gzip.
+- **0.47.2** — Admin sider: items inaccesibles se muestran **deshabilitados con `LockOutlined` + tooltip "Solo Administradora"/"Solo Editora"** en lugar de filtrarse del menu. Helper `renderDisabledLabel(label, requiredRoles)` traduce slugs internos (`tetlamamakani`/`editora`/`externo`) a labels legibles. Aplica a items de plataforma y a items dentro de proyectos (proyecto entero deshabilitado si el usuario no es admin/no tiene `allowedGlobalRoles`/no tiene `UserProject`). Resuelve queja de discoverability: editoras ya no se quedan ciegas ante features que no pueden usar.
+- **0.47.3** — Auto-recovery del CSRF token: `api/app/api/routes/auth.py` agrega `GET /autenticacion/csrf` que devuelve `{ csrf_token }` con sesion JWT valida (sin `verify_csrf` para evitar circularidad). `admin/src/shared/services/api.js` detecta `403` con `detail` que contiene "csrf" (case-insensitive), llama `refreshCsrfToken()` (deduped via `csrfRefreshPromise`), reintenta el request UNA vez (flag `__csrfRetried`). Soporta `AxiosHeaders.set()` y plain objects. Adicional: `API_URL` fallback `http://localhost:8000/api/administrador` → `/api/administrador` (path relativo) — el hardcoded violaba CSP `connect-src 'self'` cuando el bundle se servia desde otro origen.
+- **0.47.4** — Docs publicas: nueva seccion "Patron estandar para huespedes React" en `/colibri/docs/` con snippet copy-paste del componente `ColibriReportButton` (estilos IIEG, `useAuth`/`useLocation`, `setContext('sourceRoute', ...)`, `openPanel`). Documenta la trampa comun del `style={{ padding: 0, border: 0 }}` inline necesario porque algunos huespedes (sieej) tienen reset CSS global tipo `button { padding: 0.6em 1.2em }` que sobreescribe Tailwind utilities y deforma el FAB en pildora. Implementaciones de referencia: `mapalab/frontend/src/components/ReportButton.jsx` y `sieej/frontend/src/components/ColibriReportButton.jsx`.
+- **0.47.5** — Fix: eventos publicados desaparecian de mapalab al guardar tras renombrar titulo. Causa raiz combinada: (1) `_validate_image_url` en `api/app/schemas/evento.py` rechazaba paths del acervo `bucket/object` (formato que produce `to_relative` en `mode='before'` cuando llega URL absoluta), tirando `ValidationError` al regenerar el listado publico tras cualquier write — invalidando cache → fetch fresco → 500. (2) `GET /api/mapalab/eventos` armaba el listado con list comprehension sin manejo de error, asi un solo evento mal formado tronaba todo el endpoint. Fix: nueva lista canonica `KNOWN_ACERVO_BUCKETS` en `api/app/core/bucket_policies.py` (`portal`, `mapalab`, `iieg`, `mariachi`, `sieej`, `dataengine`); el validador acepta `bucket/object` solo si el bucket esta registrado y rechaza buckets desconocidos + path traversal (`..`). El listado publico envuelve cada `model_validate` en `try/except`, omite y loggea warning con el `id` del evento que falla. 3 tests nuevos en `test_eventos_validation.py`.
+
+### 2026-05-07 (v0.42.0–0.46.2) — Modulo Colibri introducido
 
 Detalle por version en `docs/CHANGELOG.md` y arquitectura completa en `docs/colibri.md`. Resumen ejecutivo:
 
@@ -619,6 +686,7 @@ Detalle por version en `docs/CHANGELOG.md` y arquitectura completa en `docs/coli
 - **0.45.0** — SDK `sdk/`: paquete nuevo TypeScript puro publicable como `@iieg/colibri-sdk`. 6.9 KB raw / ~2 KB gzip. Errores tipados, tipos exportados, AbortController + timeout.
 - **0.46.0** — Docs publicas standalone (HTML 24.7 KB) en `/colibri/docs/`. Nginx multi-stage con `widget-builder`. Boton "Docs publicas" en IntegracionPage del admin.
 - **0.46.1** — Actualizacion de `context.md` y `colibri.md` con estado final del modulo.
+- **0.46.2** — `window.colibri.setContext(key, value)` y `clearContext()` para enriquecer `source_context.custom` desde el huesped sin pasar por atributo del Custom Element. Util para integraciones con context dinamico (mapalab cambiando capas/zoom). Coexiste con `__userIdentify`.
 
 Sin cambios disruptivos: el endpoint publico `/api/public/reportes` mantiene compat con clientes legacy (sin header `X-Colibri-Key`); las API keys se generan en el momento que el admin lo decida desde `/colibri/source-apps`.
 

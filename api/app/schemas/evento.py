@@ -1,9 +1,11 @@
+import re
 from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator, model_validator
 
 from app.core.acervo_url import to_absolute, to_relative
+from app.core.bucket_policies import KNOWN_ACERVO_BUCKETS
 from app.core.eventos import EventoEstado
 from app.schemas._camel import CamelCaseInput
 
@@ -50,6 +52,9 @@ class BBox(CamelCaseInput):
         return self
 
 
+_ACERVO_PATH_RE = re.compile(r'^([a-z0-9][a-z0-9_\-]*)/([\w\-/.]+)$', re.IGNORECASE)
+
+
 def _validate_image_url(v: str | None) -> str | None:
     if v is None:
         return None
@@ -62,9 +67,23 @@ def _validate_image_url(v: str | None) -> str | None:
         raise ValueError(f'URL excede {URL_MAX_LENGTH} caracteres')
     lowered = s.lower()
     allowed_prefixes = ('http://', 'https://', '/acervo/', '/', 'data:image/')
-    if not any(lowered.startswith(p) for p in allowed_prefixes):
-        raise ValueError('URL debe ser http(s), data:image/, o ruta relativa')
-    return s
+    if any(lowered.startswith(p) for p in allowed_prefixes):
+        return s
+    match = _ACERVO_PATH_RE.match(s)
+    if match:
+        bucket = match.group(1).lower()
+        path = match.group(2)
+        if bucket not in KNOWN_ACERVO_BUCKETS:
+            raise ValueError(
+                f'bucket "{bucket}" no es un bucket registrado del acervo'
+            )
+        if '..' in path.split('/'):
+            raise ValueError('path no puede contener ".." (path traversal)')
+        return s
+    raise ValueError(
+        'URL debe ser http(s), data:image/, ruta relativa o path del acervo '
+        '(bucket/object con bucket registrado)'
+    )
 
 
 class _ImageUrlMixin:

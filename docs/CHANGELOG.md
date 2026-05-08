@@ -9,6 +9,40 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.47.5] - 2026-05-08
+
+### Fix: eventos publicados desaparecian de mapalab al guardar tras renombrar el titulo
+
+Bug reportado: al editar el titulo de un evento publicado y dar Guardar, el evento (y de hecho **todos** los eventos) desaparecian del visor de mapalab. Causa raiz combinada en backend, dos defectos sumados:
+
+#### 1. `_validate_image_url` rechazaba paths del acervo en formato `bucket/object`
+
+`api/app/schemas/evento.py` validaba `icono_url`/`imagen_url` contra una lista de prefijos (`http://`, `https://`, `/acervo/`, `/`, `data:image/`). Sin embargo, `_ImageUrlMixin` corre `to_relative()` antes del validador (`mode='before'`): cuando una URL absoluta del acervo (`https://acervo-host/mapalab/icon.png`) llegaba por PATCH, `to_relative` la dejaba como `mapalab/icon.png`, formato que el validador rechazaba. El error se materializaba al regenerar el listado publico (no al guardar) porque `EventoPublicResponse.model_validate(e)` aplica el mismo mixin sobre lo que ya esta persistido en BD: si **un solo** evento tenia `icono_url` con ese formato, `model_validate` lanzaba `ValidationError`.
+
+Fix: aceptar paths relativos del acervo en formato `bucket/object` siempre que el bucket este en `KNOWN_ACERVO_BUCKETS` (lista canonica nueva en `api/app/core/bucket_policies.py`: `portal`, `mapalab`, `iieg`, `mariachi`, `sieej`, `dataengine`). Rechaza buckets desconocidos (`etc/passwd` → 422) y path traversal (`mapalab/../etc/passwd` → 422). Regex `_ACERVO_PATH_RE` reconoce el formato; la validacion del bucket y del `..` se hace en codigo Python para mensajes de error precisos.
+
+#### 2. `GET /api/mapalab/eventos` tiraba 500 si **un solo** evento fallaba serializacion
+
+`api/app/api/routes/public.py` armaba el listado con `[EventoPublicResponse.model_validate(e).model_dump(...) for e in eventos]`. Si la validacion de un evento lanzaba excepcion, todo el endpoint respondia 500 → mapalab no recibia ningun evento → "el evento desaparece".
+
+Fix: reemplazar el list comprehension por un loop con `try/except` por evento. Eventos que fallan validacion se omiten del listado y se loggean como warning con su `id` (`logger.warning('Evento %s omitido del listado público: %s', ...)`). Asi un dato malformado puntual ya no rompe el endpoint completo. Defensa en profundidad: el bucket validator del punto (1) deberia evitar que se persistan datos invalidos, pero datos legados o futuros campos mal validados no derrumban mapalab.
+
+#### Por que se asociaba el bug con el guardado
+
+El primer fetch a `/eventos` cacheaba un payload en Redis (`mapalab_public_cache.py`). Mientras la cache estuviera caliente, mapalab veia el listado viejo. Al guardar (PATCH), `actualizar_evento` invocaba `notify_eventos_changed()` que bumpeaba la version → mapalab detectaba el bump por su poller cada 30s e invalidaba su cache local → el siguiente fetch regeneraba el payload → ese fetch tronaba con 500 si habia algun evento con `icono_url` formato `bucket/object`. Cualquier write sobre un evento publicado (no solo cambiar titulo) reproducia el sintoma.
+
+#### Tests nuevos
+
+`api/tests/test_eventos_validation.py`:
+
+- `test_imagen_url_acervo_bucket_conocido_aceptada`: `mapalab/eventos/portada.jpg` → 201.
+- `test_imagen_url_acervo_bucket_desconocido_rechazada`: `etc/passwd` → 422.
+- `test_imagen_url_path_traversal_rechazado`: `mapalab/../etc/passwd` → 422.
+
+Bump 0.47.4 -> 0.47.5.
+
+---
+
 ## [0.47.4] - 2026-05-08
 
 ### Docs: patron estandar para huespedes React en /colibri/docs

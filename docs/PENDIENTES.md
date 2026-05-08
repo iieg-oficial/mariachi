@@ -1,84 +1,169 @@
 # Roadmap — Mariachi
 
-**Estado actual:** 0.21.0 · Refactor multi-proyecto cerrado (Portalito, MapaLab, SIEEJ); portal extraído a repo propio; admin servido bajo `/mariachi/`.
+**Estado actual:** 0.47.5 · **Ultima revision:** 2026-05-08
 
-## v1.0 — 2026
+Monorepo del CMS Mariachi + backend FastAPI compartido + 5 paquetes Colibri (widget, SDK, docs publicas, panel, backend) + modulo Eventos + modulo SIEEJ. La version pre-1.0 implica que pueden romperse compats menores entre minor; el versionado es unificado.
 
-### v1.0-alpha | Estabilización
+Lineas activas por modulo abajo. Roadmap a v1.0 sigue al final.
 
-- [x] Auth, Usuarios, Páginas, Editor, Menú, Media
-- [x] Migración Alembic alineada con modelos (multi-env `mariachi` + `dataengine`)
-- [x] Alembic como fuente autoritativa del schema (eliminado `create_all` en `init_db.py`)
-- [x] Refactor multi-proyecto: tablas `projects`, `user_projects`, `media_buckets`
-- [x] Viewer-por-proyecto aplicado en writes (`require_project_access(min_role="editor")`)
-- [x] Portal público extraído a repo propio (`iieg/portal`)
-- [x] Admin servido en `/mariachi/` (antes `/administrador/`)
-- [ ] Corregir `start_backend.sh` (quitar `--reload` en producción)
-- [ ] Tests API ampliar cobertura: projects, user_projects, media_buckets, formularios, pages, menu, media, public
-- [ ] Tests Admin: smoke tests con Vitest (LayerEditPage, BucketFilePicker, sider-config)
-- [ ] Pasar `npm run lint` con ESLint 10 + jsx-a11y + no-restricted-imports PNG en todo el admin (puede dispar errores acumulados)
+---
 
-### v1.0-beta | CI/CD y QA
+## Plataforma core (auth, usuarios, paginas, menu, media, buckets)
 
-- [x] GitHub Actions: lint + tests en PR (backend con `ruff` + `pytest`, admin con `lint` + `build`)
+### Implementado
+
+- [x] Auth con cookie JWT + CSRF + roles globales (`tetlamamakani`/`editora`/`externo`)
+- [x] Usuarios CRUD admin-only, profile self-update, reset password
+- [x] **Auto-recovery del CSRF token** (v0.47.3) via `GET /autenticacion/csrf` + interceptor con retry
+- [x] **Sider con candado** (v0.47.2): items inaccesibles visibles + tooltip explicativo
+- [x] Paginas, menu, media (multi-bucket scoped)
+- [x] Multi-proyecto: tablas `projects`, `user_projects`, `media_buckets`
+- [x] `require_project_access(min_role='editor')` aplicado en writes
+- [x] Buckets publicos/privados + proxy autenticado para privados
+- [x] Carpetas scoped por bucket (`(bucket_id, path)` unique)
+- [x] Avatar URL en `usuarios.avatar_url` (display)
+
+### Pendiente
+
+- [ ] **Endpoint upload de avatar** — bucket `iieg/avatars/u<user_id>/` documentado en context.md pero NO implementado. Falta `POST /autenticacion/perfil/avatar` que valide `current_user.id` contra el path del object y suba al bucket `iieg`. Hoy `avatar_url` solo se puede setear via `PUT /perfil` con URL ya existente
+- [ ] Logging estructurado JSON completo: hay `logger.info(action=...)` parcial en `users`/`layers`/`projects`/`media-buckets`; falta cubrir `eventos`/`reportes`/`formularios` con el mismo formato `{user_id, action, target}`
+- [ ] `/metrics` counters para endpoints de `eventos`, `home`, `mapalab-shares`, `formularios`
+- [ ] Migrar prefijo `/api/administrador/*` → `/api/mariachi/*` (coordinado con `gateway-hub`)
+- [ ] Tests admin: smoke con Vitest (sider-config con candado, BucketFilePicker, FormularioCard, EventoEditPage)
+- [ ] `npm run lint` clean en admin con ESLint 10 + jsx-a11y + no-restricted-imports PNG (puede disparar errores acumulados)
+
+---
+
+## Modulo Eventos (mapalab-eventos)
+
+### Implementado
+
+- [x] CRUD + workflow `EventoEstado` enum (`draft`/`review`/`published`)
+- [x] Borradores polimorficos `resource_type='evento'` + concurrencia optimista
+- [x] BBoxField con 3 modos (sin zoom / coordenadas EPSG:4326 ↔ EPSG:6368 / dibujar en mapa) + OpenLayers
+- [x] CapasField con auto-leaf bajo `eventos-auto` para capas "solo GeoServer"
+- [x] LayerContentDrawer reutilizable (Tarjeta/Metadatos/Simbologia)
+- [x] Cache Redis versionado para `/eventos` y `/home` publicos
+- [x] Indice parcial `ix_eventos_publicados_visibles`
+- [x] Audit completo: RBAC + CSRF + rate limit (60/min) + validacion (CapaRef, BBox, image_url)
+- [x] 41 tests pytest cubriendo lifecycle, concurrencia, presence, RBAC
+- [x] Validacion `_validate_image_url` acepta paths del acervo `bucket/object` con bucket validado contra `KNOWN_ACERVO_BUCKETS` y guard de `..` (path traversal). Tests cubren bucket conocido aceptado, desconocido rechazado, y traversal rechazado (v0.47.5)
+- [x] Listado publico `GET /api/mapalab/eventos` envuelve cada `model_validate` en `try/except` y omite del listado los eventos que fallan validacion (logging `warning` con su `id`), evitando que un dato malformado puntual tire el endpoint completo y haga desaparecer todos los eventos del visor (v0.47.5)
+
+### Pendiente
+
+- [ ] SLA / scheduling de publicacion (publicacion programada) — no parte de v1.0
+- [ ] Visor: filtros por categoria/tag de evento (hoy es lista plana)
+
+---
+
+## Modulo Colibri (reportes embebibles)
+
+### Implementado
+
+- [x] Backend completo: 6 modelos + 7 schemas + 4 services + 5 routers admin + endpoint publico endurecido
+- [x] Panel admin: Resumen, Reportes (plano + agrupados), Tipos (form builder), Direcciones, SourceApps con rotacion de keys, Routes con fan-out, Integracion con preview
+- [x] Widget Lit + Vite con 3 Custom Elements + bundle 49.5 KB raw / 13.81 KB gzip
+- [x] **API global `window.colibri`**: `identify`, `setContext`/`clearContext`, `openPanel` programatico (v0.47.1)
+- [x] CSS vars `--offset-x`/`--offset-y` separadas (v0.47.1)
+- [x] SDK npm `@iieg/colibri-sdk` publicable
+- [x] Docs publicas standalone con seccion "Patron React" (v0.47.4) — implementado en mapalab + sieej
+- [x] PII scrubbing, dedupe via fingerprint, audit log, fan-out best-effort
+
+### Pendiente
+
+- [ ] **Pagina publica de seguimiento por token** — bloqueado por normativa: requiere politicas de retencion de email, uso permitido, consentimiento explicito, derechos ARCO. Implementacion tecnica trivial (1-2 dias), bloqueo 100% normativo
+- [ ] Calculo automatico de `sla_at` a partir de `tipo.sla_horas` (hoy se persiste manual)
+- [ ] Notificaciones in-app cuando llega un reporte de severidad `alta`/`critica` (hoy solo via fan-out a Discord/Slack)
+
+---
+
+## Modulo SIEEJ (formularios para dependencias)
+
+### Implementado
+
+- [x] Schema dedicado `sieej.*` con `formularios`, `envios`, `grupos`, `eventos`
+- [x] Catalogos (tipos, dependencias)
+- [x] CRUD admin de formularios + builder de definicion
+- [x] Endpoints respondent: `GET /formularios/{slug}/envio`, `PUT /envio`, `POST /envio/upload`
+- [x] **Endpoints `/mis-envios`** (v0.47.0): listado paginado + detalle con `definicion_snapshot` historica
+- [x] CMS admin grid de cards con busqueda + filtro estado + 3 sorts (v0.47.0)
+- [x] Tabs persistentes en URL bookmarkable (`?tab=envios`)
+- [x] PDF custom para `levantamiento` con formato del wizard original
+- [x] `SLUGS_RESERVADOS` para evitar colisiones con rutas literales del frontend SIEEJ
+- [x] Rol `externo` integrado al flujo `UsersPage` para crear dependencias
+
+### Pendiente
+
+- [ ] `must_change_password` UX en frontend SIEEJ (hoy solo el admin lo aplica; el usuario externo no ve el flujo de cambio en su primera sesion)
+- [ ] Auditoria de accesos diferenciada staff vs externo (US #148)
+- [ ] Soft-delete de envios para que el respondent pueda "ocultar" entradas viejas sin que el admin las pierda
+
+---
+
+## Modulo MapaLab (capas + home + shares)
+
+### Implementado
+
+- [x] CRUD de capas + reorder + bulk-tags + duplicate
+- [x] Editor metadata (`mapalab.layer_metadata`) + numeralia/stats (`mapalab.layer_stats`)
+- [x] Introspeccion GeoServer + `workspaces/pending` + `workspaces/register`
+- [x] Editor SLD con shapes `choropleth` y `boundary` + fallback raw XML + leyenda renderizada
+- [x] Modelo de Propiedades (display-only) para `leaf` con padre `group`
+- [x] Cache versionado para `/eventos` y `/home` publicos
+- [x] Workflow de aprobacion polimorfico (`resource_type` ∈ `{layer, sld, evento, home, ...}`)
+- [x] BucketFilePicker grid + Segmented toggle persistente
+
+### Pendiente
+
+- [ ] **Credenciales DataEngine en produccion** — coordinar con equipo para provisionar rol `mariachi_layers` (mismo SQL de `docs/DATAENGINE_CREDENTIALS.md` pero en VM real + `pg_hba.conf` con IP del servidor mariachi + `sslmode=require`)
+- [ ] Upload directo al bucket mapalab desde `LayerMetadataSection` (hoy hay que ir a Media primero)
+- [ ] Bucket Acervo `mariachi-dev` migrado (`scripts/migrate-acervo-bucket.sh --execute`)
+
+---
+
+## CI / CD / Infra
+
+### Implementado
+
+- [x] GitHub Actions: `ci.yml` con lint (ruff/ESLint) + tests (pytest/vitest)
 - [x] Auto-merge workflow develop → main con tests previos
-- [ ] GitHub Actions: build Docker + push a registry
-- [ ] GitHub Actions: workflow `cd.yml` para deploy automatizado a producción (SSH deploy, health-check con reintentos, notificaciones Discord). Tomar como referencia `mapalab/.github/workflows/cd.yml`. Requiere secrets `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_KEY`, `DISCORD_WEBHOOK`.
-- [ ] Logging estructurado (JSON) en FastAPI — al menos `logger.info` en writes de projects, media-buckets, users, layers (crear/editar/borrar) con contexto `{user_id, action, target}`
-- [ ] `/metrics` counters para endpoints nuevos (projects, media-buckets, formularios, layer-metadata)
-- [ ] Script de deploy automatizado (staging → producción)
-- [x] Revisión de seguridad en backend: CORS sin `*` en producción, `cookie_secure` forzado, `docs_url`/`redoc_url` deshabilitados en prod
-- [ ] QA funcional completo en staging
+- [x] CORS sin `*` en produccion, `cookie_secure` forzado, `docs_url`/`redoc_url` deshabilitados en prod
+- [x] `--proxy-headers --forwarded-allow-ips='*'` en uvicorn/gunicorn
+- [x] `set_real_ip_from` para CIDRs privados en nginx
+- [x] Compatibilidad con `gateway-hub` (HTTP-only en `iieg-network`)
 
-### v1.0-rc | Staging y preparación
+### Pendiente
 
-- [x] Entornos separados: `.env.staging.example` y `.env.production.example` con Makefile `ENV=staging|prod`
-- [x] Compatibilidad con `gateway-hub`: nginx HTTP-only en `iieg-network`
+- [ ] **Workflow `cd.yml`** para deploy automatizado a produccion (SSH deploy, health-check con reintentos, notificacion Discord). Tomar como referencia `mapalab/.github/workflows/cd.yml`. Requiere secrets `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_KEY`, `DISCORD_WEBHOOK`
+- [ ] Build Docker + push a registry en CI
+- [ ] **Renombrar repo en GitHub** `portal/` → `mariachi/`. Correr `scripts/rename-github-repo.sh --execute` despues
 - [ ] Entorno staging con datos reales desplegado
-- [ ] Monitoreo básico (health checks + alertas)
+- [ ] Monitoreo basico (health checks + alertas)
 - [ ] Backup automatizado de PostgreSQL
 - [ ] Pruebas de carga (API timeouts, bucket upload con archivos grandes)
-- [ ] Documentación de deploy en `docs/DEPLOYMENT.md`
+- [ ] `docs/DEPLOYMENT.md`
+- [ ] Corregir `start_backend.sh` (quitar `--reload` en produccion)
 
-### v1.0 | Producción
+---
 
-- [ ] Deploy a producción
-- [ ] Google Analytics validado
-- [ ] Capacitación a usuarios (admin + editora)
-- [ ] Migrar prefijo de API `/api/administrador/*` → `/api/mariachi/*` (coordinado con gateway-hub)
+## Roadmap a v1.0
+
+### v1.0-rc
+
+- [ ] Tests admin Vitest minimo viable (sider, FormularioCard, EventoEditPage, BucketFilePicker)
+- [ ] CD workflow (`cd.yml`) operativo
+- [ ] Endpoint upload de avatar (bucket `iieg/avatars/u<id>/`)
+- [ ] Logging estructurado JSON completo
+- [ ] QA funcional completo en staging
+
+### v1.0
+
+- [ ] Deploy a produccion
+- [ ] Capacitacion a usuarios (admin + editora)
+- [ ] Migrar prefijo `/api/administrador/*` → `/api/mariachi/*` (coordinado con gateway-hub)
 
 > **Nota:** SSL, DNS, `robots.txt` y `sitemap.xml` los gestiona el `gateway-hub` arriba — fuera del scope de este repo.
-
----
-
-## Módulo de capas (integración MapaLab)
-
-- [x] Editor del árbol de capas con drag & drop
-- [x] CRUD de capas, metadata y stats sobre DataEngine
-- [x] Introspección de GeoServer (workspaces, capas, campos, estilos)
-- [x] Aprobación de borradores tipo `layer` (polimórficos con `resource_type`)
-- [x] Rate limiting en memoria para writes y lecturas GeoServer
-- [x] Bulk edit de tags con paste TSV
-- [x] Selector GeoServer dinámico en drawer de edición
-- [x] Editor JSON para `infobox_config` custom
-- [x] Formularios dinámicos por preset InfoBox
-- [x] Preview de InfoBox con datos dummy
-- [x] Observabilidad `/metrics` Prometheus + integración con huachicol
-- [x] Editor de capas como página dedicada con split view
-- [x] Edición de metadatos descriptivos (fuentes, metodología, archivos adjuntos del bucket mapalab)
-- [x] `BucketFilePicker` reusable para archivos del bucket mapalab
-- [ ] Upload directo de archivos al bucket mapalab desde `LayerMetadataSection` (hoy hay que ir a Media primero)
-- [ ] Credenciales DataEngine provisionadas en producción (ver `DATAENGINE_CREDENTIALS.md`)
-
----
-
-## SIEEJ — administrador de formularios
-
-- [x] Feature placeholder en sider (`/sieej/formularios`)
-- [x] Backend stub con `require_project_access('sieej')` (GET devuelve `[]`, writes responden 501)
-- [ ] Modelo de dominio: decidir shape real de un "formulario SIEEJ" (campos, opciones, validaciones)
-- [ ] Tabla `sieej_formularios` + migración + CRUD real en `routes/formularios.py`
-- [ ] Renderer runtime para instancias del formulario (fuera del scope de mariachi probablemente — vive en su propia app pública)
 
 ---
 
@@ -86,36 +171,36 @@
 
 ### v1.1
 
-- Menú: crear items, agregar hijos, eliminar items
-- Menú: editar página desde item
-- Papelera (soft-delete con recuperación)
-- Historial/auditoría de acciones
-- Aislamiento real de `Page` y `MenuItem` por proyecto (hoy solo portal las usa; si un segundo proyecto las requiere, agregar `project_id` FK)
+- Menu: crear items, agregar hijos, eliminar items
+- Menu: editar pagina desde item
+- Papelera (soft-delete con recuperacion) para `pages`, `eventos`, `envios`
+- Historial/auditoria de acciones (US #148)
+- Aislamiento real de `Page` y `MenuItem` por proyecto (hoy solo portal las usa)
 
 ### v1.2
 
-- [x] Aprobaciones y solicitudes de publicación (revision queue)
-- Notificaciones (centro de notificaciones)
-- Rol global `diseñadora` explícito (hoy solo `tetlamamakani` y `editora`)
-- Dashboard de inicio
+- Notificaciones (centro de notificaciones in-app)
+- Rol global `disenadora` explicito (hoy solo `tetlamamakani`/`editora`/`externo`)
+- Dashboard de inicio con KPIs por proyecto
+- Pagina publica de seguimiento de reportes Colibri (desbloquea cuando llegue politica de privacidad)
 
 ### v1.3
 
-- Estilos globales (colores, tipografía)
-- Layouts (header/footer) — hoy solo aplicable a portal, revisar si se mueve al repo `iieg/portal`
-- Gestión de fuentes tipográficas
+- Estilos globales (colores, tipografia)
+- Layouts (header/footer) — solo aplicable a portal, revisar si se mueve al repo `iieg/portal`
+- Gestion de fuentes tipograficas
 - Iconos personalizados (CRUD SVG)
-- Menú: iconos personalizados (banco de iconos)
+- Menu: iconos personalizados (banco de iconos)
 
 ### v1.4
 
-- Búsqueda de contenido (página y global Ctrl+K)
-- Analytics (visitas, dispositivos, tráfico)
+- Busqueda de contenido (pagina y global Ctrl+K)
+- Analytics (visitas, dispositivos, trafico)
 - Redirects (redirecciones URL)
 
 ### v1.5
 
 - Verificador de accesibilidad (PageEditor)
-- Publicación programada (PageEditor)
+- Publicacion programada (PageEditor + Eventos)
 - Import/Export de contenido
-- Documentación in-app
+- Documentacion in-app

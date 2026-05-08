@@ -1,4 +1,5 @@
 import json
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy import or_
@@ -23,6 +24,8 @@ from app.services.mapalab_public_cache import (
     store_cached_home,
 )
 from app.services.menu_tree import build_menu_tree
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["portal público"])
 mapalab_router = APIRouter(tags=["mapalab público"])
@@ -71,10 +74,14 @@ async def eventos_visibles(db: Session = Depends(get_db)):
         .order_by(Evento.orden.asc(), Evento.id.asc())
         .all()
     )
-    serialized = [
-        EventoPublicResponse.model_validate(e).model_dump(by_alias=True, mode='json')
-        for e in eventos
-    ]
+    serialized = []
+    for e in eventos:
+        try:
+            serialized.append(
+                EventoPublicResponse.model_validate(e).model_dump(by_alias=True, mode='json')
+            )
+        except Exception as exc:
+            logger.warning('Evento %s omitido del listado público: %s', getattr(e, 'id', '?'), exc)
     payload_json = json.dumps(serialized, default=str)
     store_cached_eventos(version, payload_json)
     return _json_response(payload_json)

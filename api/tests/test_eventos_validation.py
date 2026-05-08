@@ -140,6 +140,36 @@ def test_icono_url_https_aceptado(admin_session, db_session):
     assert response.status_code == 201
 
 
+def test_imagen_url_acervo_bucket_conocido_aceptada(admin_session, db_session):
+    _seed_mapalab(db_session)
+    response = admin_session["client"].post(
+        f"{ADMIN_PREFIX}/eventos",
+        json={"titulo": "T", "imagenUrl": "mapalab/eventos/portada.jpg"},
+        headers={"X-CSRF-Token": admin_session["csrf"]},
+    )
+    assert response.status_code == 201
+
+
+def test_imagen_url_acervo_bucket_desconocido_rechazada(admin_session, db_session):
+    _seed_mapalab(db_session)
+    response = admin_session["client"].post(
+        f"{ADMIN_PREFIX}/eventos",
+        json={"titulo": "T", "imagenUrl": "etc/passwd"},
+        headers={"X-CSRF-Token": admin_session["csrf"]},
+    )
+    assert response.status_code == 422
+
+
+def test_imagen_url_path_traversal_rechazado(admin_session, db_session):
+    _seed_mapalab(db_session)
+    response = admin_session["client"].post(
+        f"{ADMIN_PREFIX}/eventos",
+        json={"titulo": "T", "imagenUrl": "mapalab/../etc/passwd"},
+        headers={"X-CSRF-Token": admin_session["csrf"]},
+    )
+    assert response.status_code == 422
+
+
 def test_slug_autogenerado_del_titulo(admin_session, db_session):
     _seed_mapalab(db_session)
     response = admin_session["client"].post(
