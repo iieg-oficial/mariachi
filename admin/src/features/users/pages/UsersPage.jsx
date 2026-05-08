@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Table, Card, Typography, Tag, Space, Button, Modal, Form, Input, Select, Checkbox, Row, Col, Divider } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, LockOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, LockOutlined, SearchOutlined } from '@ant-design/icons';
 import api from '@shared/services/api';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import { message } from '@shared/services/message';
@@ -14,7 +14,7 @@ const roleColors = {
 };
 
 const roleLabels = {
-    tetlamamakani: 'Tetlamamakani',
+    tetlamamakani: 'Administradora',
     editora: 'Editora',
     externo: 'Externo',
 };
@@ -34,6 +34,8 @@ export default function Users() {
     const [form] = Form.useForm();
     const selectedRole = Form.useWatch('role', form);
     const projectAssignments = Form.useWatch('project_assignments', form) || {};
+    const [search, setSearch] = useState('');
+    const [roleFilter, setRoleFilter] = useState('');
 
     const fetchUsers = useCallback(async () => {
         try {
@@ -159,7 +161,6 @@ export default function Users() {
             email: values.email,
             role: values.role,
         };
-        if (values.password) payload.password = values.password;
         if (values.role === 'editora' || values.role === 'externo') {
             payload.project_assignments = formValueToAssignments(values.project_assignments);
         } else {
@@ -171,6 +172,7 @@ export default function Users() {
                 await api.put(`/usuarios/${editingUser.id}`, payload);
                 message.success('Usuario actualizado exitosamente');
             } else {
+                payload.password = values.password;
                 await api.post('/usuarios', payload);
                 message.success('Usuario creado exitosamente');
             }
@@ -180,6 +182,19 @@ export default function Users() {
             message.error(editingUser ? 'Error al actualizar usuario' : 'Error al crear usuario');
         }
     };
+
+    const filteredUsers = useMemo(() => {
+        const q = search.trim().toLowerCase();
+        return users.filter((u) => {
+            if (roleFilter && u.role !== roleFilter) return false;
+            if (!q) return true;
+            return (
+                u.username?.toLowerCase().includes(q) ||
+                u.name?.toLowerCase().includes(q) ||
+                u.email?.toLowerCase().includes(q)
+            );
+        });
+    }, [users, search, roleFilter]);
 
     const projectsColumn = useMemo(
         () => ({
@@ -265,9 +280,30 @@ export default function Users() {
             </div>
 
             <Card styles={{ body: { padding: isMobile ? 0 : undefined } }}>
+                <Row gutter={[12, 12]} style={{ padding: isMobile ? 12 : 16, paddingBottom: 0 }}>
+                    <Col xs={24} sm={12} md={14}>
+                        <Input
+                            allowClear
+                            placeholder="Buscar por usuario, nombre o email"
+                            prefix={<SearchOutlined />}
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                        />
+                    </Col>
+                    <Col xs={24} sm={12} md={10}>
+                        <Select
+                            allowClear
+                            placeholder="Filtrar por rol"
+                            value={roleFilter || undefined}
+                            onChange={(v) => setRoleFilter(v || '')}
+                            style={{ width: '100%' }}
+                            options={Object.keys(roleLabels).map((k) => ({ value: k, label: roleLabels[k] }))}
+                        />
+                    </Col>
+                </Row>
                 <Table
                     columns={columns}
-                    dataSource={users}
+                    dataSource={filteredUsers}
                     rowKey="id"
                     loading={loading}
                     scroll={{ x: 'max-content' }}
@@ -276,7 +312,7 @@ export default function Users() {
                         pageSize: 10,
                         showSizeChanger: !isMobile,
                         simple: isMobile,
-                        showTotal: (total) => `Total ${total} usuarios`,
+                        showTotal: (total) => `Mostrando ${total} de ${users.length} usuarios`,
                     }}
                 />
             </Card>
