@@ -12,6 +12,7 @@ from app.schemas.reporte_tipo import (
     ReporteTipoResponse,
     ReporteTipoUpdate,
 )
+from app.services.actividad_service import registrar_actividad
 
 router = APIRouter(prefix="/colibri/tipos", tags=["colibri tipos"])
 
@@ -39,7 +40,7 @@ async def obtener_tipo(tipo_id: int, db: Session = Depends(get_db)):
 async def crear_tipo(
     payload: ReporteTipoCreate,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(verify_csrf),
+    current_user: Usuario = Depends(verify_csrf),
     __: Usuario = Depends(require_role(["tetlamamakani"])),
 ):
     if db.query(ReporteTipo).filter(ReporteTipo.slug == payload.slug).first():
@@ -50,6 +51,15 @@ async def crear_tipo(
 
     tipo = ReporteTipo(**payload.model_dump())
     db.add(tipo)
+    db.flush()
+    registrar_actividad(
+        db,
+        actor=current_user,
+        action="colibri.tipo.create",
+        resource_type="colibri.tipo",
+        resource_id=tipo.id,
+        metadata={"slug": tipo.slug},
+    )
     db.commit()
     db.refresh(tipo)
     return tipo
@@ -60,7 +70,7 @@ async def actualizar_tipo(
     tipo_id: int,
     payload: ReporteTipoUpdate,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(verify_csrf),
+    current_user: Usuario = Depends(verify_csrf),
     __: Usuario = Depends(require_role(["tetlamamakani"])),
 ):
     tipo = db.query(ReporteTipo).filter(ReporteTipo.id == tipo_id).first()
@@ -71,6 +81,14 @@ async def actualizar_tipo(
     for field, value in update_data.items():
         setattr(tipo, field, value)
     tipo.actualizado_en = utcnow()
+    registrar_actividad(
+        db,
+        actor=current_user,
+        action="colibri.tipo.update",
+        resource_type="colibri.tipo",
+        resource_id=tipo.id,
+        metadata={"slug": tipo.slug, "fields": sorted(update_data.keys())},
+    )
     db.commit()
     db.refresh(tipo)
     return tipo
@@ -80,7 +98,7 @@ async def actualizar_tipo(
 async def eliminar_tipo(
     tipo_id: int,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(verify_csrf),
+    current_user: Usuario = Depends(verify_csrf),
     __: Usuario = Depends(require_role(["tetlamamakani"])),
 ):
     tipo = db.query(ReporteTipo).filter(ReporteTipo.id == tipo_id).first()
@@ -94,6 +112,16 @@ async def eliminar_tipo(
             detail=f"No se puede eliminar: {en_uso} reporte(s) usan este tipo. Desactívalo en lugar de eliminar.",
         )
 
+    tipo_id_local = tipo.id
+    tipo_slug = tipo.slug
+    registrar_actividad(
+        db,
+        actor=current_user,
+        action="colibri.tipo.delete",
+        resource_type="colibri.tipo",
+        resource_id=tipo_id_local,
+        metadata={"slug": tipo_slug},
+    )
     db.delete(tipo)
     db.commit()
     return {"message": "Tipo eliminado"}

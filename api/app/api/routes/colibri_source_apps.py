@@ -67,7 +67,7 @@ async def obtener_source_app(source_app_id: int, db: Session = Depends(get_db)):
 async def crear_source_app(
     payload: SourceAppCreate,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(verify_csrf),
+    current_user: Usuario = Depends(verify_csrf),
     __: Usuario = Depends(require_role(["tetlamamakani"])),
 ):
     if db.query(SourceApp).filter(SourceApp.slug == payload.slug).first():
@@ -78,6 +78,15 @@ async def crear_source_app(
 
     source_app = SourceApp(**payload.model_dump())
     db.add(source_app)
+    db.flush()
+    registrar_actividad(
+        db,
+        actor=current_user,
+        action="colibri.source_app.create",
+        resource_type="colibri.source_app",
+        resource_id=source_app.id,
+        metadata={"slug": source_app.slug},
+    )
     db.commit()
     db.refresh(source_app)
     return _to_response(source_app)
@@ -88,7 +97,7 @@ async def actualizar_source_app(
     source_app_id: int,
     payload: SourceAppUpdate,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(verify_csrf),
+    current_user: Usuario = Depends(verify_csrf),
     __: Usuario = Depends(require_role(["tetlamamakani"])),
 ):
     source_app = db.query(SourceApp).filter(SourceApp.id == source_app_id).first()
@@ -105,6 +114,14 @@ async def actualizar_source_app(
     for field, value in update_data.items():
         setattr(source_app, field, value)
     source_app.actualizado_en = utcnow()
+    registrar_actividad(
+        db,
+        actor=current_user,
+        action="colibri.source_app.update",
+        resource_type="colibri.source_app",
+        resource_id=source_app.id,
+        metadata={"slug": source_app.slug, "fields": sorted(update_data.keys())},
+    )
     db.commit()
     db.refresh(source_app)
     return _to_response(source_app)
@@ -114,7 +131,7 @@ async def actualizar_source_app(
 async def eliminar_source_app(
     source_app_id: int,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(verify_csrf),
+    current_user: Usuario = Depends(verify_csrf),
     __: Usuario = Depends(require_role(["tetlamamakani"])),
 ):
     source_app = db.query(SourceApp).filter(SourceApp.id == source_app_id).first()
@@ -128,6 +145,16 @@ async def eliminar_source_app(
             detail=f"No se puede eliminar: {en_uso} reporte(s) referencian este source app. Desactívalo en lugar de eliminar.",
         )
 
+    source_app_id_local = source_app.id
+    source_app_slug = source_app.slug
+    registrar_actividad(
+        db,
+        actor=current_user,
+        action="colibri.source_app.delete",
+        resource_type="colibri.source_app",
+        resource_id=source_app_id_local,
+        metadata={"slug": source_app_slug},
+    )
     db.delete(source_app)
     db.commit()
     return {"message": "Source app eliminado"}

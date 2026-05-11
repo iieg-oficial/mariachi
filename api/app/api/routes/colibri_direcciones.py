@@ -11,6 +11,7 @@ from app.schemas.direccion_organizacional import (
     DireccionOrganizacionalResponse,
     DireccionOrganizacionalUpdate,
 )
+from app.services.actividad_service import registrar_actividad
 
 router = APIRouter(prefix="/colibri/direcciones", tags=["colibri direcciones"])
 
@@ -56,11 +57,20 @@ async def obtener_direccion(direccion_id: int, db: Session = Depends(get_db)):
 async def crear_direccion(
     payload: DireccionOrganizacionalCreate,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(verify_csrf),
+    current_user: Usuario = Depends(verify_csrf),
     __: Usuario = Depends(require_role(["tetlamamakani"])),
 ):
     direccion = DireccionOrganizacional(**payload.model_dump())
     db.add(direccion)
+    db.flush()
+    registrar_actividad(
+        db,
+        actor=current_user,
+        action="colibri.direccion.create",
+        resource_type="colibri.direccion",
+        resource_id=direccion.id,
+        metadata={"nombre": direccion.nombre, "siglas": direccion.siglas},
+    )
     db.commit()
     db.refresh(direccion)
     return direccion
@@ -71,7 +81,7 @@ async def actualizar_direccion(
     direccion_id: int,
     payload: DireccionOrganizacionalUpdate,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(verify_csrf),
+    current_user: Usuario = Depends(verify_csrf),
     __: Usuario = Depends(require_role(["tetlamamakani"])),
 ):
     direccion = (
@@ -86,6 +96,14 @@ async def actualizar_direccion(
     for field, value in update_data.items():
         setattr(direccion, field, value)
     direccion.actualizado_en = utcnow()
+    registrar_actividad(
+        db,
+        actor=current_user,
+        action="colibri.direccion.update",
+        resource_type="colibri.direccion",
+        resource_id=direccion.id,
+        metadata={"fields": sorted(update_data.keys())},
+    )
     db.commit()
     db.refresh(direccion)
     return direccion
@@ -95,7 +113,7 @@ async def actualizar_direccion(
 async def eliminar_direccion(
     direccion_id: int,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(verify_csrf),
+    current_user: Usuario = Depends(verify_csrf),
     __: Usuario = Depends(require_role(["tetlamamakani"])),
 ):
     direccion = (
@@ -113,6 +131,16 @@ async def eliminar_direccion(
             detail=f"No se puede eliminar: {en_uso} reporte(s) referencian esta dirección. Desactívala en lugar de eliminar.",
         )
 
+    direccion_id_local = direccion.id
+    direccion_nombre = direccion.nombre
+    registrar_actividad(
+        db,
+        actor=current_user,
+        action="colibri.direccion.delete",
+        resource_type="colibri.direccion",
+        resource_id=direccion_id_local,
+        metadata={"nombre": direccion_nombre},
+    )
     db.delete(direccion)
     db.commit()
     return {"message": "Dirección eliminada"}

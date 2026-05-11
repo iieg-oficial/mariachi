@@ -10,6 +10,7 @@ from app.schemas.colibri_route import (
     ColibriRouteResponse,
     ColibriRouteUpdate,
 )
+from app.services.actividad_service import registrar_actividad
 
 router = APIRouter(prefix="/colibri/routes", tags=["colibri routes"])
 
@@ -39,11 +40,20 @@ async def obtener_route(route_id: int, db: Session = Depends(get_db)):
 async def crear_route(
     payload: ColibriRouteCreate,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(verify_csrf),
+    current_user: Usuario = Depends(verify_csrf),
     __: Usuario = Depends(require_role(["tetlamamakani"])),
 ):
     route = ColibriRoute(**payload.model_dump())
     db.add(route)
+    db.flush()
+    registrar_actividad(
+        db,
+        actor=current_user,
+        action="colibri.route.create",
+        resource_type="colibri.route",
+        resource_id=route.id,
+        metadata={"nombre": route.nombre, "kind": route.kind},
+    )
     db.commit()
     db.refresh(route)
     return route
@@ -54,7 +64,7 @@ async def actualizar_route(
     route_id: int,
     payload: ColibriRouteUpdate,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(verify_csrf),
+    current_user: Usuario = Depends(verify_csrf),
     __: Usuario = Depends(require_role(["tetlamamakani"])),
 ):
     route = db.query(ColibriRoute).filter(ColibriRoute.id == route_id).first()
@@ -65,6 +75,14 @@ async def actualizar_route(
     for field, value in update_data.items():
         setattr(route, field, value)
     route.actualizado_en = utcnow()
+    registrar_actividad(
+        db,
+        actor=current_user,
+        action="colibri.route.update",
+        resource_type="colibri.route",
+        resource_id=route.id,
+        metadata={"fields": sorted(update_data.keys())},
+    )
     db.commit()
     db.refresh(route)
     return route
@@ -74,12 +92,22 @@ async def actualizar_route(
 async def eliminar_route(
     route_id: int,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(verify_csrf),
+    current_user: Usuario = Depends(verify_csrf),
     __: Usuario = Depends(require_role(["tetlamamakani"])),
 ):
     route = db.query(ColibriRoute).filter(ColibriRoute.id == route_id).first()
     if not route:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Route no encontrada")
+    route_id_local = route.id
+    route_nombre = route.nombre
+    registrar_actividad(
+        db,
+        actor=current_user,
+        action="colibri.route.delete",
+        resource_type="colibri.route",
+        resource_id=route_id_local,
+        metadata={"nombre": route_nombre},
+    )
     db.delete(route)
     db.commit()
     return {"message": "Route eliminada"}

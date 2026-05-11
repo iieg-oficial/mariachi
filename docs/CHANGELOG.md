@@ -9,6 +9,41 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.48.3] - 2026-05-11
+
+### Audit log + counter completos en Colibri admin y mapalab-shares
+
+Cierre fino del backlog menor que quedo abierto tras 0.48.2.
+
+#### Audit log Colibri admin (full coverage)
+
+`registrar_actividad` cableado en TODAS las operaciones write del modulo
+Colibri:
+
+- `colibri.tipo.{create,update,delete}` — antes solo `rotate_key` de
+  source apps tenia audit; ahora cubre tambien CRUD de tipos de reporte.
+- `colibri.route.{create,update,delete}` — fan-out rules a Discord/Slack/
+  webhook quedan registradas con `kind` en metadata para el create.
+- `colibri.direccion.{create,update,delete}` — direcciones organizacionales.
+- `colibri.source_app.{create,update,delete}` (rotate_key ya estaba en
+  0.48.2).
+
+Con esto el dashboard `/mariachi/actividad` tiene visibilidad completa de
+las acciones admin del ecosistema (users, sieej, eventos, home, reportes,
+colibri).
+
+#### Counter mapalab-shares
+
+`mariachi_mapalab_share_writes_total` (definido en 0.48.2 pero sin
+cablear) ahora incrementa en los 3 endpoints write:
+- `POST /mapalab-shares` (crear con/sin permanente)
+- `POST /mapalab-shares/{id}/pin-permanent`
+- `DELETE /mapalab-shares/{id}/pin-permanent`
+
+Bump 0.48.2 -> 0.48.3.
+
+---
+
 ## [0.48.2] - 2026-05-11
 
 ### Instrumentacion + infra: counters Prometheus, audit log extendido, cron sidecar, tests admin, CD workflow
