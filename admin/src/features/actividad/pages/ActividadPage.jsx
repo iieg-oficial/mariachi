@@ -1,0 +1,215 @@
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+    Button, Card, Col, DatePicker, Empty, Input, Pagination, Row, Select, Skeleton,
+    Space, Table, Tag, Typography,
+} from 'antd';
+import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
+import api from '@shared/services/api';
+import useIsMobile from '@shared/hooks/useIsMobile';
+import { message } from '@shared/services/message';
+
+const { Title, Text } = Typography;
+const { RangePicker } = DatePicker;
+
+const ROLE_TAG = {
+    tetlamamakani: { color: 'red', label: 'Administradora' },
+    editora: { color: 'blue', label: 'Editora' },
+    externo: { color: 'green', label: 'Externo' },
+};
+
+const ACTION_PREFIXES = [
+    { value: 'user.', label: 'Usuarios (user.*)' },
+    { value: 'sieej.', label: 'SIEEJ (sieej.*)' },
+    { value: 'login.', label: 'Login (login.*)' },
+];
+
+const PAGE_SIZE = 50;
+
+const formatDate = (iso) => {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleString('es-MX');
+};
+
+export default function ActividadPage() {
+    const { isMobile } = useIsMobile();
+    const [items, setItems] = useState([]);
+    const [total, setTotal] = useState(0);
+    const [loading, setLoading] = useState(true);
+    const [page, setPage] = useState(1);
+    const [filters, setFilters] = useState({
+        action_prefix: '',
+        actor_role: '',
+        actor_id: '',
+        resource_type: '',
+        rango: null,
+    });
+
+    const load = useCallback(async () => {
+        setLoading(true);
+        try {
+            const params = { page, page_size: PAGE_SIZE };
+            if (filters.action_prefix) params.action_prefix = filters.action_prefix;
+            if (filters.actor_role) params.actor_role = filters.actor_role;
+            if (filters.actor_id) params.actor_id = filters.actor_id;
+            if (filters.resource_type) params.resource_type = filters.resource_type;
+            if (filters.rango?.[0]) params.desde = filters.rango[0].toISOString();
+            if (filters.rango?.[1]) params.hasta = filters.rango[1].toISOString();
+            const { data } = await api.get('/actividad', { params });
+            setItems(data.items || []);
+            setTotal(data.total || 0);
+        } catch {
+            message.error('Error al cargar actividad');
+            setItems([]);
+            setTotal(0);
+        } finally {
+            setLoading(false);
+        }
+    }, [filters, page]);
+
+    useEffect(() => { load(); }, [load]);
+    useEffect(() => { setPage(1); }, [filters]);
+
+    const updateFilter = (key) => (value) => setFilters((f) => ({ ...f, [key]: value || '' }));
+
+    const columns = useMemo(() => [
+        {
+            title: 'Fecha',
+            dataIndex: 'created_at',
+            key: 'created_at',
+            render: formatDate,
+            width: 180,
+        },
+        {
+            title: 'Actor',
+            key: 'actor',
+            render: (_, row) => {
+                const role = ROLE_TAG[row.actor_role];
+                return (
+                    <Space size={6}>
+                        <Text code>#{row.actor_id ?? '—'}</Text>
+                        {role && <Tag color={role.color}>{role.label}</Tag>}
+                    </Space>
+                );
+            },
+            width: 180,
+        },
+        {
+            title: 'Accion',
+            dataIndex: 'action',
+            key: 'action',
+            render: (a) => <Text code style={{ fontSize: 12 }}>{a}</Text>,
+            width: 240,
+        },
+        {
+            title: 'Recurso',
+            key: 'recurso',
+            render: (_, row) => row.resource_type
+                ? <Text type="secondary" style={{ fontSize: 12 }}>{row.resource_type}#{row.resource_id ?? '—'}</Text>
+                : <Text type="secondary">—</Text>,
+            width: 200,
+        },
+        {
+            title: 'Metadata',
+            dataIndex: 'metadata',
+            key: 'metadata',
+            render: (m) => {
+                if (!m || Object.keys(m).length === 0) return <Text type="secondary">—</Text>;
+                return (
+                    <Text style={{ fontSize: 11, fontFamily: 'monospace' }} ellipsis>
+                        {JSON.stringify(m)}
+                    </Text>
+                );
+            },
+        },
+    ], []);
+
+    return (
+        <div>
+            <div style={{
+                display: 'flex',
+                flexDirection: isMobile ? 'column' : 'row',
+                justifyContent: 'space-between',
+                alignItems: isMobile ? 'stretch' : 'center',
+                gap: 12,
+                marginBottom: 16,
+            }}>
+                <div>
+                    <Title level={isMobile ? 3 : 2} style={{ margin: 0 }}>Actividad</Title>
+                    <Text type="secondary">Audit log de acciones admin sobre usuarios y formularios SIEEJ.</Text>
+                </div>
+                <Button icon={<ReloadOutlined />} onClick={load} block={isMobile}>Refrescar</Button>
+            </div>
+
+            <Card style={{ marginBottom: 16 }}>
+                <Row gutter={[12, 12]}>
+                    <Col xs={24} sm={12} md={6}>
+                        <Select
+                            allowClear
+                            placeholder="Prefijo de accion"
+                            value={filters.action_prefix || undefined}
+                            onChange={updateFilter('action_prefix')}
+                            options={ACTION_PREFIXES}
+                            style={{ width: '100%' }}
+                        />
+                    </Col>
+                    <Col xs={24} sm={12} md={6}>
+                        <Select
+                            allowClear
+                            placeholder="Rol del actor"
+                            value={filters.actor_role || undefined}
+                            onChange={updateFilter('actor_role')}
+                            style={{ width: '100%' }}
+                            options={Object.entries(ROLE_TAG).map(([v, { label }]) => ({ value: v, label }))}
+                        />
+                    </Col>
+                    <Col xs={24} sm={12} md={6}>
+                        <Input
+                            allowClear
+                            placeholder="ID del actor"
+                            type="number"
+                            prefix={<SearchOutlined />}
+                            value={filters.actor_id}
+                            onChange={(e) => updateFilter('actor_id')(e.target.value)}
+                        />
+                    </Col>
+                    <Col xs={24} sm={12} md={6}>
+                        <RangePicker
+                            showTime
+                            style={{ width: '100%' }}
+                            value={filters.rango}
+                            onChange={(r) => setFilters((f) => ({ ...f, rango: r }))}
+                        />
+                    </Col>
+                </Row>
+            </Card>
+
+            {loading ? (
+                <Card><Skeleton active /></Card>
+            ) : items.length === 0 ? (
+                <Card><Empty description="Sin actividad con los filtros aplicados" /></Card>
+            ) : (
+                <Card styles={{ body: { padding: 0 } }}>
+                    <Table
+                        columns={columns}
+                        dataSource={items}
+                        rowKey="id"
+                        pagination={false}
+                        scroll={{ x: 'max-content' }}
+                        size={isMobile ? 'small' : 'middle'}
+                    />
+                    <div style={{ padding: 16, display: 'flex', justifyContent: 'center' }}>
+                        <Pagination
+                            current={page}
+                            pageSize={PAGE_SIZE}
+                            total={total}
+                            onChange={setPage}
+                            showSizeChanger={false}
+                            showTotal={(t) => `Total ${t} eventos`}
+                            simple={isMobile}
+                        />
+                    </div>
+                </Card>
+            )}
+        </div>
+    );
+}

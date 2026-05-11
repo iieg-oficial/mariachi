@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api import metrics as metrics_module
 from app.api.deps import require_staff
 from app.api.routes import (
+    actividad,
     auth,
     borradores,
     eventos,
@@ -15,6 +16,8 @@ from app.api.routes import (
     home,
     layer_metadata,
     layers,
+    mapalab_api_keys,
+    mapalab_api_keys_internal,
     mapalab_shares,
     media,
     media_buckets,
@@ -75,6 +78,7 @@ def create_app() -> FastAPI:
 
     staff_dep = [Depends(require_staff)]
     app.include_router(users.router, prefix=settings.admin_prefix, dependencies=staff_dep)
+    app.include_router(actividad.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(projects.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(media_buckets.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(pages.router, prefix=settings.admin_prefix, dependencies=staff_dep)
@@ -90,6 +94,8 @@ def create_app() -> FastAPI:
     app.include_router(eventos.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(home.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(mapalab_shares.router, prefix=settings.admin_prefix, dependencies=staff_dep)
+    app.include_router(mapalab_api_keys.router, prefix=settings.admin_prefix, dependencies=staff_dep)
+    app.include_router(mapalab_api_keys_internal.router, prefix=settings.admin_prefix)
     app.include_router(reportes.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(colibri_tipos.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(colibri_direcciones.router, prefix=settings.admin_prefix, dependencies=staff_dep)

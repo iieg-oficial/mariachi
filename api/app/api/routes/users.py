@@ -16,6 +16,7 @@ from app.schemas.user import (
     UsuarioResponse,
     UsuarioUpdate,
 )
+from app.services.actividad_service import registrar_actividad
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/usuarios", tags=["usuarios"])
@@ -174,6 +175,14 @@ async def crear_usuario(
 
     _apply_assignments(db, nuevo_usuario.id, usuario_in.project_assignments)
 
+    registrar_actividad(
+        db,
+        actor=current_user,
+        action="user.create",
+        resource_type="usuario",
+        resource_id=nuevo_usuario.id,
+        metadata={"role": nuevo_usuario.role, "username": nuevo_usuario.username},
+    )
     db.commit()
     db.refresh(nuevo_usuario)
     incr(COUNTER_USER_WRITES)
@@ -234,6 +243,14 @@ async def actualizar_usuario(
     if is_admin and usuario_in.project_assignments is not None:
         _apply_assignments(db, usuario.id, usuario_in.project_assignments)
 
+    registrar_actividad(
+        db,
+        actor=current_user,
+        action="user.update",
+        resource_type="usuario",
+        resource_id=usuario.id,
+        metadata={"fields": sorted(update_data.keys())},
+    )
     db.commit()
     db.refresh(usuario)
     incr(COUNTER_USER_WRITES)
@@ -260,6 +277,13 @@ async def resetear_password(
     usuario.hashed_password = hash_password(temp_password)
     usuario.must_change_password = True
     usuario.password_changed_at = utcnow()
+    registrar_actividad(
+        db,
+        actor=current_user,
+        action="user.reset_password",
+        resource_type="usuario",
+        resource_id=usuario.id,
+    )
     db.commit()
     incr(COUNTER_USER_WRITES)
     logger.info(
@@ -293,8 +317,18 @@ async def eliminar_usuario(
             detail="No puedes eliminar tu propio usuario",
         )
 
+    target_id = usuario.id
+    target_username = usuario.username
+    registrar_actividad(
+        db,
+        actor=current_user,
+        action="user.delete",
+        resource_type="usuario",
+        resource_id=target_id,
+        metadata={"username": target_username},
+    )
     db.delete(usuario)
     db.commit()
     incr(COUNTER_USER_WRITES)
-    logger.info("action=user.delete actor=%s target=%s", current_user.id, usuario.id)
+    logger.info("action=user.delete actor=%s target=%s", current_user.id, target_id)
     return {"message": "Usuario eliminado exitosamente"}

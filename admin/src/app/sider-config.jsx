@@ -20,7 +20,9 @@ import {
     AppstoreOutlined,
     BranchesOutlined,
     CodeOutlined,
+    KeyOutlined,
     LockOutlined,
+    HistoryOutlined,
 } from '@ant-design/icons';
 import { Tooltip } from 'antd';
 import ColibriIcon from '@shared/components/ColibriIcon';
@@ -73,6 +75,13 @@ export const PLATFORM_ITEMS = [
         allowedGlobalRoles: ['tetlamamakani'],
         showBadge: true,
     },
+    {
+        key: '/actividad',
+        path: '/actividad',
+        label: 'Actividad',
+        icon: <HistoryOutlined />,
+        allowedGlobalRoles: ['tetlamamakani'],
+    },
 ];
 
 export const PROJECT_REGISTRY = {
@@ -112,6 +121,20 @@ export const PROJECT_REGISTRY = {
                 path: '/mapalab/home',
                 label: 'Inicio',
                 icon: <HomeOutlined />,
+            },
+            {
+                key: '/mapalab/api-keys',
+                path: '/mapalab/api-keys',
+                label: 'API Keys',
+                icon: <KeyOutlined />,
+                allowedGlobalRoles: ['tetlamamakani'],
+            },
+            {
+                key: '/mapalab/api-keys/playground',
+                path: '/mapalab/api-keys/playground',
+                label: 'Playground widget',
+                icon: <CodeOutlined />,
+                allowedGlobalRoles: ['tetlamamakani'],
             },
         ],
     },

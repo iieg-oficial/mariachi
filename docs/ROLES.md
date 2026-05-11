@@ -113,7 +113,16 @@ WHERE u.username = 'dependencia_x' AND p.slug = 'sieej';
 
 ## Auditoria
 
-US #148 *Registro de auditoria de accesos* (backlog) cubre la trazabilidad. Recomendacion al implementar: registrar al menos `(user_id, role, action, resource, project_slug, timestamp)` para diferenciar accesos de staff vs externo.
+US #148 *Registro de auditoria de accesos* — implementado en v0.48.0+. Tabla `actividad_log` con `(actor_id, actor_role, action, resource_type, resource_id, metadata JSONB, ip, created_at)`. Helper `app.services.actividad_service.registrar_actividad(...)` permite que cualquier service/endpoint persista una entrada (best-effort, no propaga errores).
+
+Acciones cableadas a fecha actual:
+
+- `user.create`, `user.update`, `user.delete`, `user.reset_password`
+- `sieej.formulario.create`, `sieej.formulario.update`, `sieej.envio.reabrir`
+
+`GET /api/administrador/actividad` (admin-only) consume con filtros `actor_id`, `actor_role`, `action_prefix`, `resource_type`, `desde`, `hasta`, `page`, `page_size`. UI en `/mariachi/actividad`.
+
+El `actor_role` permite diferenciar staff vs externo en queries. El campo `metadata` JSONB guarda detalle relevante por accion (campos modificados en update, version_from/to en formulario, estado_from en reapertura, etc.).
 
 ## Validacion de la separacion (smoke)
 

@@ -24,6 +24,7 @@ from app.models.sieej import (
     formulario_usuario,
 )
 from app.models.user import Usuario
+from app.services.actividad_service import registrar_actividad
 from app.services.sieej.definicion_validator import (
     DefinicionInvalidaError,
     validar_definicion,
@@ -102,6 +103,15 @@ class FormulariosAdminService:
             creado_por_id=creador.id,
         )
         self.db.add(f)
+        self.db.flush()
+        registrar_actividad(
+            self.db,
+            actor=creador,
+            action="sieej.formulario.create",
+            resource_type="sieej.formulario",
+            resource_id=f.id,
+            metadata={"slug": f.slug},
+        )
         self.db.commit()
         self.db.refresh(f)
         logger.info(
@@ -150,6 +160,19 @@ class FormulariosAdminService:
                 setattr(f, campo, data[campo])
 
         f.actualizado_en = utcnow()
+        registrar_actividad(
+            self.db,
+            actor=actor,
+            action="sieej.formulario.update",
+            resource_type="sieej.formulario",
+            resource_id=f.id,
+            metadata={
+                "slug": f.slug,
+                "definicion_changed": cambia_definicion,
+                "version_from": version_previa,
+                "version_to": f.version,
+            },
+        )
         self.db.commit()
         self.db.refresh(f)
         logger.info(
@@ -361,6 +384,17 @@ class FormulariosAdminService:
                 tipo="reabierto",
                 actor_usuario_id=actor.id,
             )
+        )
+        registrar_actividad(
+            self.db,
+            actor=actor,
+            action="sieej.envio.reabrir",
+            resource_type="sieej.envio",
+            resource_id=envio.id,
+            metadata={
+                "formulario_id": formulario_id,
+                "estado_from": estado_previo,
+            },
         )
         self.db.commit()
         self.db.refresh(envio)

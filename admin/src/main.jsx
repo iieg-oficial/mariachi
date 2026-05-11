@@ -14,6 +14,7 @@ import MainLayout from '@app/MainLayout';
 import { Navigate } from 'react-router';
 import Login from '@features/auth/pages/LoginPage';
 import ChangePassword from '@features/auth/pages/ChangePasswordPage';
+import { buildMapalabApiKeysRoutes } from '@features/mapalab-api-keys/routes';
 
 const isDev = import.meta.env.DEV;
 
@@ -28,6 +29,7 @@ if (import.meta.env.VITE_SENTRY_DSN) {
 }
 
 const Users = lazy(() => import('@features/users'));
+const Actividad = lazy(() => import('@features/actividad'));
 const MenuManager = lazy(() => import('@features/portal-menu'));
 const PageEditor = lazy(() => import('@features/portal-pages'));
 const Media = lazy(() => import('@features/media'));
@@ -89,6 +91,14 @@ const router = createBrowserRouter([
                         element: withSuspense(
                             <RoleProtectedRoute allowedRoles={['tetlamamakani']}>
                                 <Users />
+                            </RoleProtectedRoute>
+                        )
+                    },
+                    {
+                        path: 'actividad',
+                        element: withSuspense(
+                            <RoleProtectedRoute allowedRoles={['tetlamamakani']}>
+                                <Actividad />
                             </RoleProtectedRoute>
                         )
                     },
@@ -241,6 +251,7 @@ const router = createBrowserRouter([
                             </RoleProtectedRoute>
                         )
                     },
+                    ...buildMapalabApiKeysRoutes(withSuspense),
                     {
                         path: 'sieej/formularios',
                         element: withSuspense(
