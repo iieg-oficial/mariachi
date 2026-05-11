@@ -198,6 +198,21 @@ Crontab tipica (cada hora en punto desde el host):
 
 El script no requiere credenciales (corre en proceso del API con acceso DB) y es idempotente.
 
+### Servicio sidecar `cron-sieej` (auto-expiracion sin crontab del host)
+
+`docker-compose.yml` define el servicio `cron-sieej` que reusa la imagen de `api` y corre un loop bash con sleep configurable:
+
+```yaml
+cron-sieej:
+  command: |
+    while true; do
+      python scripts/expire_sieej_envios.py || true
+      sleep ${CRON_SIEEJ_EXPIRE_INTERVAL:-3600}
+    done
+```
+
+Default: 3600s (cada hora). Para correr mas seguido en staging, setea `CRON_SIEEJ_EXPIRE_INTERVAL=300` en `.env.staging`. Los logs van a `docker logs mariachi-cron-sieej`. Restart policy `unless-stopped`, no requiere cron del host.
+
 ## Estructura del codigo
 
 ```
