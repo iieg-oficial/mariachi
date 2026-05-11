@@ -1,0 +1,140 @@
+name: CD
+
+on:
+  push:
+    branches: [production]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          command_timeout: 20m
+          script: |
+            cd ${{ secrets.PROJECT_PATH }}
+            git config --global --add safe.directory ${{ secrets.PROJECT_PATH }}
+            git fetch origin production
+            git checkout production
+            git reset --hard origin/production
+            git clean -fd -e .env.production -e admin/dist -e nginx/static
+            make deploy
+            docker image prune -f --filter "until=168h"
+
+  health-check:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Health check
+        run: |
+          echo "Esperando que Mariachi responda..."
+          UA="Mozilla/5.0 (compatible; Mariachi-HealthCheck/1.0)"
+          HEALTH_URL="${{ secrets.HEALTH_CHECK_URL }}"
+          if [ -z "$HEALTH_URL" ]; then
+            HEALTH_URL="https://iieg.jalisco.gob.mx/mariachi/"
+          fi
+          for i in $(seq 1 10); do
+            STATUS=$(curl -sL -o /dev/null -w "%{http_code}" -A "$UA" "$HEALTH_URL" || true)
+            if [ "$STATUS" = "200" ]; then
+              echo "Mariachi respondiendo correctamente (HTTP 200)"
+              exit 0
+            fi
+            echo "Intento $i/10 - HTTP $STATUS, reintentando en 15s..."
+            sleep 15
+          done
+          echo "Health check fallo despues de 10 intentos"
+          exit 1
+
+  notify:
+    needs: [deploy, health-check]
+    if: always()
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Compute commit metadata
+        id: meta
+        run: |
+          SHA="${{ github.sha }}"
+          echo "short=${SHA:0:7}" >> "$GITHUB_OUTPUT"
+          MSG=$(echo '${{ github.event.head_commit.message }}' | head -1)
+          MSG_ESC=$(printf '%s' "$MSG" | sed 's/"/\\"/g')
+          echo "msg=$MSG_ESC" >> "$GITHUB_OUTPUT"
+
+          NEW=$(grep '^version =' api/pyproject.toml | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
+          OLD=$(git show HEAD~1:api/pyproject.toml 2>/dev/null | grep '^version =' | head -1 | sed -E 's/.*"([^"]+)".*/\1/' || true)
+          if [ -z "$OLD" ] || [ "$NEW" = "$OLD" ]; then
+            TRANS="$NEW (sin bump)"
+          else
+            TRANS="$OLD → $NEW"
+          fi
+          echo "version=$TRANS" >> "$GITHUB_OUTPUT"
+
+      - name: Notify Discord - Success
+        if: needs.deploy.result == 'success' && needs.health-check.result == 'success'
+        continue-on-error: true
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          COMMIT_URL="${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}"
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          curl -sf -H "Content-Type: application/json" -d '{
+            "embeds": [{
+              "title": "Deploy exitoso",
+              "color": 3066993,
+              "fields": [
+                { "name": "Commit", "value": "[`${{ steps.meta.outputs.short }}`]('"$COMMIT_URL"')", "inline": true },
+                { "name": "Autor", "value": "${{ github.actor }}", "inline": true },
+                { "name": "Branch", "value": "`production`", "inline": true },
+                { "name": "Version", "value": "🟢 `${{ steps.meta.outputs.version }}`", "inline": true },
+                { "name": "Health Check", "value": "Passed", "inline": true },
+                { "name": "Workflow", "value": "[Ver ejecución]('"$RUN_URL"')", "inline": true },
+                { "name": "Cambios", "value": "${{ steps.meta.outputs.msg }}" }
+              ],
+              "footer": { "text": "Mariachi" },
+              "timestamp": "'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"
+            }]
+          }' "$DISCORD_WEBHOOK"
+
+      - name: Notify Discord - Failure
+        if: needs.deploy.result == 'failure' || needs.health-check.result == 'failure'
+        continue-on-error: true
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          COMMIT_URL="${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}"
+          RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          FAILED_STEP="Deploy SSH"
+          if [ "${{ needs.deploy.result }}" = "success" ]; then
+            FAILED_STEP="Health Check"
+          fi
+
+          curl -sf -H "Content-Type: application/json" -d '{
+            "embeds": [{
+              "title": "Deploy fallido",
+              "color": 15158332,
+              "fields": [
+                { "name": "Commit", "value": "[`${{ steps.meta.outputs.short }}`]('"$COMMIT_URL"')", "inline": true },
+                { "name": "Autor", "value": "${{ github.actor }}", "inline": true },
+                { "name": "Branch", "value": "`production`", "inline": true },
+                { "name": "Version", "value": "🔴 `${{ steps.meta.outputs.version }}`", "inline": true },
+                { "name": "Fallo en", "value": "'"$FAILED_STEP"'" },
+                { "name": "Workflow", "value": "[Ver logs]('"$RUN_URL"')", "inline": true },
+                { "name": "Cambios", "value": "${{ steps.meta.outputs.msg }}" }
+              ],
+              "footer": { "text": "Mariachi" },
+              "timestamp": "'"$(date -u +%Y-%m-%dT%H:%M:%SZ)"'"
+            }]
+          }' "$DISCORD_WEBHOOK"

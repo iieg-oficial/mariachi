@@ -139,7 +139,7 @@ Lineas activas por modulo abajo. Roadmap a v1.0 sigue al final.
 
 ### Pendiente
 
-- [ ] **Workflow `cd.yml`** para deploy automatizado a produccion (SSH deploy, health-check con reintentos, notificacion Discord). Tomar como referencia `mapalab/.github/workflows/cd.yml`. Requiere secrets `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_KEY`, `DISCORD_WEBHOOK`
+- [x] **Workflow `cd.yml`** v0.48.x — implementado siguiendo el patron de mapalab. Trigger push a `production`, 3 jobs (deploy SSH + health-check con 10 retries / 15s + notify Discord). Requiere secrets `SSH_HOST`, `SSH_USER`, `SSH_PRIVATE_KEY`, `PROJECT_PATH`, `DISCORD_WEBHOOK_URL` (opcional: `HEALTH_CHECK_URL`). `make deploy` agregado al Makefile para invocacion desde el host
 - [ ] Build Docker + push a registry en CI
 - [ ] **Renombrar repo en GitHub** `portal/` → `mariachi/`. Correr `scripts/rename-github-repo.sh --execute` despues
 - [ ] Entorno staging con datos reales desplegado

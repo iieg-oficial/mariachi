@@ -29,7 +29,7 @@ else
 	MSG_ENV      := Desarrollo
 endif
 
-.PHONY: help up build down logs restart clean shell-api shell-admin setup setup-hooks ensure-networks
+.PHONY: help up build down logs restart clean shell-api shell-admin setup setup-hooks ensure-networks deploy
 
 ## Muestra ayuda de comandos disponibles
 help:
@@ -81,6 +81,17 @@ logs:
 	API_ENV_FILE=$(ENV_FILE) docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) logs -f
 
 restart: down up
+
+# =============================================================================
+# DEPLOY (target invocado por CD desde el host de produccion)
+# =============================================================================
+
+## Deploy de produccion: build + up con el compose de prod
+deploy: ensure-networks
+	@echo "${GREEN}Deploy de produccion${RESET}"
+	@API_ENV_FILE=.env.production docker compose --env-file .env.production -f docker-compose.yml build
+	@API_ENV_FILE=.env.production docker compose --env-file .env.production -f docker-compose.yml up -d
+	@echo "${GREEN}Deploy completado${RESET}"
 
 # =============================================================================
 # UTILIDADES
