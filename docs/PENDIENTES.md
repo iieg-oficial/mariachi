@@ -1,6 +1,6 @@
 # Roadmap — Mariachi
 
-**Estado actual:** 0.48.0 · **Ultima revision:** 2026-05-08
+**Estado actual:** 0.48.1 · **Ultima revision:** 2026-05-11
 
 Monorepo del CMS Mariachi + backend FastAPI compartido + 5 paquetes Colibri (widget, SDK, docs publicas, panel, backend) + modulo Eventos + modulo SIEEJ. La version pre-1.0 implica que pueden romperse compats menores entre minor; el versionado es unificado.
 
@@ -23,10 +23,13 @@ Lineas activas por modulo abajo. Roadmap a v1.0 sigue al final.
 - [x] Carpetas scoped por bucket (`(bucket_id, path)` unique)
 - [x] **Hardening usuarios v0.48.0**: blanqueo de campos privilegiados en self-update (cierra vulnerabilidad de autopromocion), rate limit + lockout en login, invalidacion de sesion al cambiar/resetear password (`password_changed_at` + `iat` en JWT)
 - [x] **Endpoint upload avatar v0.48.0**: `POST /autenticacion/perfil/avatar` al bucket publico `iieg/avatars/u<id>/` con validacion de tipo y tamano, path enforced en servidor
+- [x] **Privacidad GET /usuarios para editora v0.48.1**: email enmascarado y `projects = []` para editora viendo a OTRO; admin y self-view ven todo
+- [x] **UI cards en UsersPage v0.48.1**: refactor de tabla a grid responsive con `UserCard`, search/filter, pagination
+- [x] **Audit log persistido (US #148) v0.48.1**: tabla `actividad_log`, helper `registrar_actividad`, endpoint admin `/actividad`, UI `/mariachi/actividad`. Acciones cableadas: `user.*` y subset de `sieej.*`
 
 ### Pendiente
 
-- [ ] Logging estructurado JSON completo: hay `logger.info(action=...)` parcial en `users`/`layers`/`projects`/`media-buckets`/`sieej` (v0.48.0); falta cubrir `eventos`/`reportes` con el mismo formato `{user_id, action, target}`
+- [ ] Logging estructurado JSON completo: extender `registrar_actividad` a `eventos.*`, `reportes.*`, `colibri.*` (hoy solo cubre `user.*` y subset de `sieej.*`)
 - [ ] `/metrics` counters para endpoints de `eventos`, `home`, `mapalab-shares`, `formularios`
 - [ ] Migrar prefijo `/api/administrador/*` → `/api/mariachi/*` (coordinado con `gateway-hub`)
 - [ ] Tests admin: smoke con Vitest (sider-config con candado, BucketFilePicker, FormularioCard, EventoEditPage)
@@ -95,13 +98,10 @@ Lineas activas por modulo abajo. Roadmap a v1.0 sigue al final.
 - [x] **Reglas de negocio v0.48.0**: `showWhen.field` validado contra fields existentes (referencias muertas rechazadas); `EnviosService._formulario_acepta_cambios` bloquea PUT/upload sobre formularios cerrados o fuera de vigencia; reapertura admin con preservacion de `definicion_snapshot`; auto-expiracion lazy + bulk admin; upload sincroniza `envio.datos[step][field]` con la URL publica; limite de 5 MB en payload `datos`
 - [x] **Race en `get_o_iniciar` v0.48.0**: catch de `IntegrityError` por constraint UNIQUE devuelve el envio existente (antes daba 500)
 - [x] **Audit log estructurado v0.48.0** en operaciones admin (crear/actualizar/publicar/cerrar/eliminar/reabrir_envio)
-
-### Pendiente
-
-- [ ] `must_change_password` UX en frontend SIEEJ (hoy solo el admin lo aplica; el usuario externo no ve el flujo de cambio en su primera sesion)
-- [ ] Auditoria de accesos diferenciada staff vs externo (US #148): el log estructurado del v0.48.0 es backend solamente; falta UI o endpoint dedicado de consulta de actividad
-- [ ] Soft-delete de envios para que el respondent pueda "ocultar" entradas viejas sin que el admin las pierda
-- [ ] Cron externo o trigger DB que invoque `POST /sieej/expirar-envios-pendientes` periodicamente (hoy es lazy + manual)
+- [x] **Audit log persistido v0.48.1** en tabla `actividad_log` con endpoint admin y UI (`sieej.formulario.create/update`, `sieej.envio.reabrir`)
+- [x] **must_change_password UX v0.48.1**: ya estaba implementado en `/IIEG/sieej/frontend/` (ChangePassword.jsx + ProtectedRoute guard + AuthContext redirect post-login). Investigado durante auditoria
+- [x] **Soft-delete de envios v0.48.1**: `DELETE /formularios/mis-envios/{id}` (respondent), `eliminado_en` poblado, admin sigue viendo el envio
+- [x] **Script CLI de auto-expiracion v0.48.1**: `api/scripts/expire_sieej_envios.py` para cron del host
 
 ---
 

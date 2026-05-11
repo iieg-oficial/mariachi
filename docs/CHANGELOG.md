@@ -9,6 +9,59 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.48.1] - 2026-05-11
+
+### Cierre de decisiones abiertas tras la auditoria
+
+Continua el hardening del v0.48.0 cerrando decisiones que quedaron abiertas:
+
+#### SIEEJ
+
+- **script CLI de auto-expiracion** `api/scripts/expire_sieej_envios.py` para
+  invocacion desde cron del host sin pasar por HTTP. Idempotente; salida JSON.
+  Crontab tipica documentada en sieej.md.
+- **soft-delete de envios para respondent** (migracion `d4e5f6a7b8c0`):
+  nueva columna `sieej.envio_formulario.eliminado_en` con indice parcial.
+  `DELETE /formularios/mis-envios/{envio_id}` (CSRF) marca el envio para
+  que el respondent ya no lo vea en `mis-envios` ni en el detalle, mientras
+  el admin sigue viendolo con `eliminado_en` poblado (preserva
+  trazabilidad). 4 tests cubren oculta-del-listado, sigue-en-db,
+  cross-user-403, idempotencia.
+
+#### Usuarios
+
+- **privacidad en GET `/usuarios` para editora**: helper `_serialize_user`
+  ahora aplica enmascarado por rol del viewer. Editora viendo a OTRO
+  usuario ve email enmascarado (`a****@****.gob.mx`) y `projects = []`.
+  Editora viendose a si misma ve todo. Admin ve todo. Resuelve la
+  preocupacion de privacidad documentada como decision de producto:
+  editora ya no puede recolectar emails de otros usuarios via el listado.
+- **UI cards en UsersPage**: refactor de tabla AntD a grid responsive
+  (1/2/3/4 cols xs/sm/lg/xl). Nuevo `UserCard` con avatar, tag de rol,
+  tags de proyectos, badge de must_change_password. Acciones al pie
+  (Editar/Reset/Eliminar) deshabilitadas con tooltip si es el usuario
+  actual. Skeleton loading y empty states diferenciados. Pagination
+  cliente-side 12/pagina.
+
+#### US #148 — Auditoria de accesos diferenciada staff vs externo
+
+Implementacion completa: tabla `actividad_log` (migracion `d5e6f7a8b9c1`),
+helper `registrar_actividad`, endpoint admin `GET /actividad` con
+filtros, UI en `/mariachi/actividad`. Acciones cableadas:
+
+- `user.{create, update, delete, reset_password}`
+- `sieej.formulario.{create, update}`, `sieej.envio.reabrir`
+
+Filtros: `actor_id`, `actor_role`, `action_prefix`, `resource_type`,
+`desde`, `hasta`. `actor_role` permite diferenciar staff vs externo en
+queries. `metadata` JSONB guarda detalle por accion (campos modificados,
+version_from/to, estado_from). FK `actor_id` ON DELETE SET NULL: al
+borrar un usuario sus eventos conservan `actor_role` para audit.
+
+Bump 0.48.0 -> 0.48.1.
+
+---
+
 ## [0.48.0] - 2026-05-08
 
 ### Hardening del modulo Usuarios + endurecimiento de SIEEJ
