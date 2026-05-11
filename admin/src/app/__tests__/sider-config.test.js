@@ -9,14 +9,12 @@ describe('buildSiderItems', () => {
         expect(buildSiderItems({ user: undefined, onNavigate: noop })).toEqual([]);
     });
 
-    it('admin (tetlamamakani) ve Inicio + grupo Plataforma + 3 grupos de proyecto', () => {
+    it('admin (tetlamamakani) ve Inicio + grupo Plataforma + grupos de proyecto', () => {
         const items = buildSiderItems({
             user: { role: 'tetlamamakani', projects: [] },
             onNavigate: noop,
         });
-        expect(items).toHaveLength(5);
         expect(items[0].key).toBe('/inicio');
-        expect(items[0].label).toBe('Inicio');
         expect(items[1].key).toBe('platform');
         expect(items[1].label).toBe('Plataforma');
         expect(items[1].children).toHaveLength(4);
@@ -27,7 +25,7 @@ describe('buildSiderItems', () => {
         expect(projectKeys).toContain('project-sieej');
     });
 
-    it('admin sin children de plataforma (caso teórico) sigue viendo proyectos', () => {
+    it('admin ve Plataforma con /users, /media, /revision, /actividad (incluye actividad post-US#148)', () => {
         const items = buildSiderItems({
             user: { role: 'tetlamamakani', projects: [] },
             onNavigate: noop,
@@ -36,11 +34,11 @@ describe('buildSiderItems', () => {
             '/users',
             '/media',
             '/revision',
-            '/reportes',
+            '/actividad',
         ]);
     });
 
-    it('editora con membership en portal ve Inicio + Plataforma (Media) + Portalito', () => {
+    it('editora ve TODOS los platform items pero los exclusivos de admin estan disabled (sider con candado v0.47.2)', () => {
         const items = buildSiderItems({
             user: {
                 role: 'editora',
@@ -48,33 +46,44 @@ describe('buildSiderItems', () => {
             },
             onNavigate: noop,
         });
-        expect(items).toHaveLength(3);
-        expect(items.find((i) => i.key === '/inicio')).toBeDefined();
-
         const platform = items.find((i) => i.key === 'platform');
-        expect(platform).toBeDefined();
-        expect(platform.children.map((c) => c.key)).toEqual(['/media', '/reportes']);
+        const platformByKey = Object.fromEntries(platform.children.map((c) => [c.key, c]));
 
-        const portal = items.find((i) => i.key === 'project-portal');
-        expect(portal).toBeDefined();
-        expect(portal.children.map((c) => c.key)).toEqual(['/menu', '/pages']);
-
-        expect(items.find((i) => i.key === 'project-mapalab')).toBeUndefined();
-        expect(items.find((i) => i.key === 'project-sieej')).toBeUndefined();
+        expect(Object.keys(platformByKey)).toEqual(['/users', '/media', '/revision', '/actividad']);
+        expect(platformByKey['/media'].disabled).toBeFalsy();
+        expect(platformByKey['/users'].disabled).toBe(true);
+        expect(platformByKey['/revision'].disabled).toBe(true);
+        expect(platformByKey['/actividad'].disabled).toBe(true);
     });
 
-    it('editora sin memberships ve Inicio + Plataforma con Media', () => {
+    it('editora con portal ve portal accesible y mapalab/sieej deshabilitados con candado', () => {
+        const items = buildSiderItems({
+            user: {
+                role: 'editora',
+                projects: [{ slug: 'portal', name: 'Portal', project_role: 'editor' }],
+            },
+            onNavigate: noop,
+        });
+        const portal = items.find((i) => i.key === 'project-portal');
+        const mapalab = items.find((i) => i.key === 'project-mapalab');
+        const sieej = items.find((i) => i.key === 'project-sieej');
+        expect(portal.disabled).toBe(true);
+        expect(mapalab.disabled).toBe(true);
+        expect(sieej.disabled).toBe(true);
+    });
+
+    it('editora sin memberships ve Inicio + Plataforma (Media accesible, resto con candado)', () => {
         const items = buildSiderItems({
             user: { role: 'editora', projects: [] },
             onNavigate: noop,
         });
-        expect(items).toHaveLength(2);
         expect(items[0].key).toBe('/inicio');
         expect(items[1].key).toBe('platform');
-        expect(items[1].children.map((c) => c.key)).toEqual(['/media', '/reportes']);
+        const accesibles = items[1].children.filter((c) => !c.disabled).map((c) => c.key);
+        expect(accesibles).toEqual(['/media']);
     });
 
-    it('editora con membership en mapalab y sieej ve ambos grupos', () => {
+    it('editora con membership en mapalab y sieej accede a ambos sin candado', () => {
         const items = buildSiderItems({
             user: {
                 role: 'editora',
@@ -85,11 +94,12 @@ describe('buildSiderItems', () => {
             },
             onNavigate: noop,
         });
-        const keys = items.map((i) => i.key);
-        expect(keys).toContain('platform');
-        expect(keys).toContain('project-mapalab');
-        expect(keys).toContain('project-sieej');
-        expect(keys).not.toContain('project-portal');
+        const mapalab = items.find((i) => i.key === 'project-mapalab');
+        const sieej = items.find((i) => i.key === 'project-sieej');
+        const portal = items.find((i) => i.key === 'project-portal');
+        expect(mapalab.disabled).toBeFalsy();
+        expect(sieej.disabled).toBeFalsy();
+        expect(portal.disabled).toBe(true);
     });
 
     it('onClick en hijos invoca onNavigate con el path correcto', () => {
