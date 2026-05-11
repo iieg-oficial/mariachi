@@ -134,6 +134,7 @@ Router: `app/api/routes/formularios/*`. Protegido por `Depends(require_project_a
 | POST | `/formularios/{slug}/envio/upload` | Sube un archivo al bucket configurado en el field `file`. Guarda `EnvioArchivo`. |
 | GET | `/formularios/mis-envios` | Listado paginado del **historial del usuario** (filtros `estado`, `q`, `page`, `page_size`, `sort`). Filtra siempre por `usuario_id` de la sesion (no acepta override). Sort soportado: `-actualizado_en` (default), `-enviado_en` (NULLS LAST portable), `nombre`. |
 | GET | `/formularios/mis-envios/{envio_id}` | Detalle del envio del usuario: `definicion_snapshot` + `datos` + `archivos[]` + `eventos[]`. 404 si no existe; 403 si pertenece a otro usuario. **No expone `actor_usuario_id`** en eventos para no filtrar identidad de admins que reabran/expiren. |
+| DELETE | `/formularios/mis-envios/{envio_id}` | Soft-delete del envio para el respondent (`eliminado_en` queda poblado). El envio sigue en la BD para que el admin lo vea con flag. El respondent ya no lo ve en `mis-envios` ni en el detalle. Idempotente: re-DELETE devuelve 404. |
 
 ### Visibilidad y RBAC del envio
 

@@ -55,6 +55,7 @@ class EnvioFormulario(Base):
     iniciado_en = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     enviado_en = Column(DateTime(timezone=True), nullable=True)
     expirado_en = Column(DateTime(timezone=True), nullable=True)
+    eliminado_en = Column(DateTime(timezone=True), nullable=True, index=True)
     actualizado_en = Column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False
     )

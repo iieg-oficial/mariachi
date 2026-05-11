@@ -120,6 +120,22 @@ async def obtener_mi_envio(
     )
 
 
+@router.delete("/mis-envios/{envio_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def eliminar_mi_envio(
+    envio_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(verify_csrf),
+):
+    """Soft-delete del envio para el respondent.
+
+    El admin sigue viendo el envio en `/sieej/formularios/{id}/envios` con
+    `eliminado_en` poblado (preserva trazabilidad). El respondent ya no lo
+    ve en `mis-envios` ni puede pedir el detalle. Idempotente: re-eliminar
+    un envio ya eliminado devuelve 404.
+    """
+    EnviosService(db).eliminar_mi_envio(current_user, envio_id)
+
+
 @router.get("/{slug}", response_model=FormularioDetalle)
 async def obtener_formulario(
     slug: str,

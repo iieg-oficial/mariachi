@@ -415,6 +415,82 @@ def test_detalle_usa_definicion_snapshot_no_actual(
     assert snapshot["steps"][0]["id"] == "general"
 
 
+def test_eliminar_mi_envio_lo_oculta_del_listado(client, session, admin, respondent_a):
+    f = crear_formulario(session, admin)
+    envio = crear_envio(session, f, respondent_a)
+
+    csrf = login(client, respondent_a.username)
+    r0 = client.get(f"{ADMIN_PREFIX}/formularios/mis-envios")
+    assert r0.status_code == 200
+    assert r0.json()["total"] == 1
+
+    r1 = client.delete(
+        f"{ADMIN_PREFIX}/formularios/mis-envios/{envio.id}",
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert r1.status_code == 204
+
+    r2 = client.get(f"{ADMIN_PREFIX}/formularios/mis-envios")
+    assert r2.status_code == 200
+    assert r2.json()["total"] == 0
+
+    r3 = client.get(f"{ADMIN_PREFIX}/formularios/mis-envios/{envio.id}")
+    assert r3.status_code == 404
+
+
+def test_eliminar_mi_envio_no_elimina_db(client, session, admin, respondent_a):
+    """Soft-delete: el envio sigue en la DB para que el admin lo vea."""
+    from app.models.sieej import EnvioFormulario
+
+    f = crear_formulario(session, admin)
+    envio = crear_envio(session, f, respondent_a)
+    envio_id = envio.id
+
+    csrf = login(client, respondent_a.username)
+    client.delete(
+        f"{ADMIN_PREFIX}/formularios/mis-envios/{envio_id}",
+        headers={"X-CSRF-Token": csrf},
+    )
+
+    persistido = (
+        session.query(EnvioFormulario)
+        .filter(EnvioFormulario.id == envio_id)
+        .first()
+    )
+    assert persistido is not None
+    assert persistido.eliminado_en is not None
+
+
+def test_eliminar_mi_envio_de_otro_user_403(client, session, admin, respondent_a, respondent_b):
+    f = crear_formulario(session, admin)
+    envio_b = crear_envio(session, f, respondent_b)
+
+    csrf = login(client, respondent_a.username)
+    r = client.delete(
+        f"{ADMIN_PREFIX}/formularios/mis-envios/{envio_b.id}",
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert r.status_code == 403
+
+
+def test_eliminar_mi_envio_re_eliminar_404(client, session, admin, respondent_a):
+    """Idempotencia: re-DELETE de un envio ya eliminado devuelve 404."""
+    f = crear_formulario(session, admin)
+    envio = crear_envio(session, f, respondent_a)
+
+    csrf = login(client, respondent_a.username)
+    r1 = client.delete(
+        f"{ADMIN_PREFIX}/formularios/mis-envios/{envio.id}",
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert r1.status_code == 204
+    r2 = client.delete(
+        f"{ADMIN_PREFIX}/formularios/mis-envios/{envio.id}",
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert r2.status_code == 404
+
+
 def test_slug_mis_envios_reservado(client, session, admin):
     """Admin no puede crear un formulario con slug `mis-envios`."""
     csrf = login(client, admin.username)

@@ -447,7 +447,10 @@ class EnviosService:
         query = (
             self.db.query(EnvioFormulario)
             .join(Formulario, Formulario.id == EnvioFormulario.formulario_id)
-            .filter(EnvioFormulario.usuario_id == user.id)
+            .filter(
+                EnvioFormulario.usuario_id == user.id,
+                EnvioFormulario.eliminado_en.is_(None),
+            )
         )
         if estado is not None:
             query = query.filter(EnvioFormulario.estado == estado)
@@ -518,5 +521,36 @@ class EnviosService:
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Este envio no te pertenece",
             )
+        if envio.eliminado_en is not None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Envio no encontrado",
+            )
         self._expirar_si_corresponde(envio)
         return envio
+
+    def eliminar_mi_envio(self, user: Usuario, envio_id: int) -> None:
+        """Soft-delete: marca el envio como eliminado para el respondent.
+
+        - El admin sigue viendo el envio (con `eliminado_en` poblado).
+        - El respondent ya no lo ve en `mis-envios` ni en el detalle.
+        - Idempotente: re-eliminar un ya eliminado devuelve 404.
+        - 403 si el envio no le pertenece (sin filtrar existencia).
+        """
+        envio = (
+            self.db.query(EnvioFormulario)
+            .filter(EnvioFormulario.id == envio_id)
+            .first()
+        )
+        if envio is None or envio.eliminado_en is not None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Envio no encontrado",
+            )
+        if envio.usuario_id != user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Este envio no te pertenece",
+            )
+        envio.eliminado_en = utcnow()
+        self.db.commit()
