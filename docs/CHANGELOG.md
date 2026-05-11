@@ -9,6 +9,80 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.48.2] - 2026-05-11
+
+### Instrumentacion + infra: counters Prometheus, audit log extendido, cron sidecar, tests admin, CD workflow
+
+Cierre del backlog de instrumentacion + infra que quedo abierto tras 0.48.1.
+
+#### /metrics counters
+
+`app/api/metrics.py` agrega 11 counters: `evento_writes`, `evento_publish`,
+`home_writes`, `sieej_formulario_writes`, `sieej_envio_writes`,
+`sieej_envio_expired`, `sieej_envio_reabierto`, `login_success`,
+`login_failed`, `login_locked`, `mapalab_share_writes` (reservado).
+Cableado en cada operacion write/publish y en cada path del flujo de
+login para visibilidad de brute-force attempts via Prometheus sin tener
+que parsear logs.
+
+#### Audit log extendido (US #148 cont.)
+
+`registrar_actividad` ahora se invoca tambien en:
+- **eventos**: create, update, publicar, despublicar, delete (metadata
+  con slug, fields modificados, estado).
+- **home**: update_draft, publicar, descartar_borrador (key como
+  resource_id).
+- **reportes**: update con lista de campos cambiados, delete.
+- **colibri.source_app.rotate_key**: la operacion mas sensible del
+  modulo (genera nueva API key plana que se muestra una sola vez); el
+  audit registra prefix + visibility en metadata, sin el plaintext.
+
+#### Cron sidecar `cron-sieej`
+
+`docker-compose.yml` define un servicio sidecar que reusa la imagen de
+`api` y corre `python scripts/expire_sieej_envios.py` en loop bash con
+sleep configurable (`CRON_SIEEJ_EXPIRE_INTERVAL`, default 3600s). Sin
+crontab del host, sin dependencias extra. Logs centralizados en
+`docker logs mariachi-cron-sieej`. Restart `unless-stopped`.
+
+#### Tests Vitest admin
+
+- `sider-config.test.js` actualizado para comportamiento post-v0.47.2
+  (items con candado en lugar de filtrarse del menu).
+- `UserCard.test.jsx` (9 tests): renderiza nombre/username/email/rol,
+  admin global muestra "Administradora" + "Todos los proyectos",
+  placeholders sin asignaciones, tags por proyecto con rol, hint de
+  must_change_password, click invoca onEdit, isSelf deshabilita Reset y
+  Eliminar pero no Editar.
+- `ActividadPage.test.jsx` (5 tests): mocks api+message+useIsMobile;
+  verifica titulo, llamada al endpoint con paginacion default, empty
+  state, render de items, tag de rol del actor.
+
+Suite: 36/36 tests passing.
+
+#### CD workflow `cd.yml`
+
+Portado del patron de mapalab (3 jobs: deploy SSH + health-check +
+notify Discord) adaptado al stack de mariachi:
+
+- Trigger push a `production`.
+- `appleboy/ssh-action` ejecuta `git reset --hard origin/production`
+  preservando `.env.production`, `admin/dist`, `nginx/static`; luego
+  `make deploy` + `docker image prune` >7d.
+- Health-check: 10 reintentos a `HEALTH_CHECK_URL` cada 15s.
+- Notify Discord con embed verde/rojo segun resultado + deteccion de
+  bump leyendo `api/pyproject.toml`.
+
+`make deploy` nuevo en `Makefile` (build + up con compose de prod) para
+que el CD lo invoque y para uso manual desde el host.
+
+Secrets requeridos: `SSH_HOST`, `SSH_USER`, `SSH_PRIVATE_KEY`,
+`PROJECT_PATH`, `DISCORD_WEBHOOK_URL`. Opcional: `HEALTH_CHECK_URL`.
+
+Bump 0.48.1 -> 0.48.2.
+
+---
+
 ## [0.48.1] - 2026-05-11
 
 ### Cierre de decisiones abiertas tras la auditoria

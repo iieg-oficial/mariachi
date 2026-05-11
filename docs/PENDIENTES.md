@@ -1,6 +1,6 @@
 # Roadmap — Mariachi
 
-**Estado actual:** 0.48.1 · **Ultima revision:** 2026-05-11
+**Estado actual:** 0.48.2 · **Ultima revision:** 2026-05-11
 
 Monorepo del CMS Mariachi + backend FastAPI compartido + 5 paquetes Colibri (widget, SDK, docs publicas, panel, backend) + modulo Eventos + modulo SIEEJ. La version pre-1.0 implica que pueden romperse compats menores entre minor; el versionado es unificado.
 
@@ -29,8 +29,10 @@ Lineas activas por modulo abajo. Roadmap a v1.0 sigue al final.
 
 ### Pendiente
 
-- [ ] Logging estructurado JSON completo: extender `registrar_actividad` a `eventos.*`, `reportes.*`, `colibri.*` (hoy solo cubre `user.*` y subset de `sieej.*`)
-- [ ] `/metrics` counters para endpoints de `eventos`, `home`, `mapalab-shares`, `formularios`
+- [x] **Audit log extendido v0.48.2**: `registrar_actividad` cableado en `eventos.*`, `home.*`, `reportes.*`, `colibri.source_app.rotate_key`
+- [x] **/metrics counters v0.48.2**: 11 counters nuevos para eventos, home, sieej (formulario/envio/expired/reabierto), login (success/failed/locked). Mapalab-shares reservado pendiente de cableado
+- [x] **Tests Vitest admin v0.48.2**: UserCard (9 tests) + ActividadPage (5 tests) + sider-config actualizado. Suite 36/36 passing
+- [x] **CD workflow v0.48.2**: `cd.yml` + `make deploy` + `cron-sieej` sidecar
 - [ ] Migrar prefijo `/api/administrador/*` → `/api/mariachi/*` (coordinado con `gateway-hub`)
 - [ ] Tests admin: smoke con Vitest (sider-config con candado, BucketFilePicker, FormularioCard, EventoEditPage)
 - [ ] `npm run lint` clean en admin con ESLint 10 + jsx-a11y + no-restricted-imports PNG (puede disparar errores acumulados)
