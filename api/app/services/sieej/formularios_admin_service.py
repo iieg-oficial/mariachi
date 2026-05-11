@@ -24,6 +24,11 @@ from app.models.sieej import (
     formulario_usuario,
 )
 from app.models.user import Usuario
+from app.api.metrics import (
+    COUNTER_SIEEJ_ENVIO_REABIERTO,
+    COUNTER_SIEEJ_FORMULARIO_WRITES,
+    incr,
+)
 from app.services.actividad_service import registrar_actividad
 from app.services.sieej.definicion_validator import (
     DefinicionInvalidaError,
@@ -114,6 +119,7 @@ class FormulariosAdminService:
         )
         self.db.commit()
         self.db.refresh(f)
+        incr(COUNTER_SIEEJ_FORMULARIO_WRITES)
         logger.info(
             "action=sieej.formulario.create actor=%s target=%s slug=%s",
             creador.id,
@@ -175,6 +181,7 @@ class FormulariosAdminService:
         )
         self.db.commit()
         self.db.refresh(f)
+        incr(COUNTER_SIEEJ_FORMULARIO_WRITES)
         logger.info(
             "action=sieej.formulario.update actor=%s target=%s slug=%s "
             "definicion_changed=%s version_from=%s version_to=%s",
@@ -398,6 +405,7 @@ class FormulariosAdminService:
         )
         self.db.commit()
         self.db.refresh(envio)
+        incr(COUNTER_SIEEJ_ENVIO_REABIERTO)
         logger.info(
             "action=sieej.envio.reabrir actor=%s target_envio=%s formulario=%s "
             "estado_from=%s estado_to=en_proceso",

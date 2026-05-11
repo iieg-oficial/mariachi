@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db, require_project_access, verify_csrf
+from app.api.metrics import COUNTER_EVENTO_PUBLISH, COUNTER_EVENTO_WRITES, incr
 from app.api.rate_limit import rate_limit
 from app.core.eventos import EventoEstado
 from app.core.optimistic import check_concurrent_edit
@@ -16,6 +17,7 @@ from app.schemas.evento import (
     EventoUpdate,
 )
 from app.services import presence
+from app.services.actividad_service import registrar_actividad
 from app.services.mapalab_public_cache import notify_eventos_changed
 from app.services.slug_service import is_valid_slug, slugify
 
@@ -116,8 +118,18 @@ async def crear_evento(
     data = evento_in.model_dump(exclude={'slug'})
     evento = Evento(slug=slug, estado=EventoEstado.DRAFT.value, **data)
     db.add(evento)
+    db.flush()
+    registrar_actividad(
+        db,
+        actor=_editor,
+        action="evento.create",
+        resource_type="evento",
+        resource_id=evento.id,
+        metadata={"slug": slug, "titulo": evento.titulo},
+    )
     db.commit()
     db.refresh(evento)
+    incr(COUNTER_EVENTO_WRITES)
     return evento
 
 
@@ -167,8 +179,17 @@ async def actualizar_evento(
         setattr(evento, field, value)
 
     evento.updated_at = utcnow()
+    registrar_actividad(
+        db,
+        actor=_editor,
+        action="evento.update",
+        resource_type="evento",
+        resource_id=evento.id,
+        metadata={"fields": sorted(update_data.keys())},
+    )
     db.commit()
     db.refresh(evento)
+    incr(COUNTER_EVENTO_WRITES)
     if evento.estado == EventoEstado.PUBLISHED.value:
         notify_eventos_changed()
     return evento
@@ -184,8 +205,17 @@ async def publicar_evento(
 ):
     evento.estado = EventoEstado.PUBLISHED.value
     evento.published_at = utcnow()
+    registrar_actividad(
+        db,
+        actor=_editor,
+        action="evento.publicar",
+        resource_type="evento",
+        resource_id=evento.id,
+        metadata={"slug": evento.slug},
+    )
     db.commit()
     db.refresh(evento)
+    incr(COUNTER_EVENTO_PUBLISH)
     notify_eventos_changed()
     return evento
 
@@ -199,8 +229,17 @@ async def despublicar_evento(
     _rl=Depends(_write_rate_limit),
 ):
     evento.estado = EventoEstado.DRAFT.value
+    registrar_actividad(
+        db,
+        actor=_editor,
+        action="evento.despublicar",
+        resource_type="evento",
+        resource_id=evento.id,
+        metadata={"slug": evento.slug},
+    )
     db.commit()
     db.refresh(evento)
+    incr(COUNTER_EVENTO_WRITES)
     notify_eventos_changed()
     return evento
 
@@ -214,8 +253,19 @@ async def eliminar_evento(
     _rl=Depends(_write_rate_limit),
 ):
     estaba_publicado = evento.estado == EventoEstado.PUBLISHED.value
+    evento_id_local = evento.id
+    evento_slug = evento.slug
+    registrar_actividad(
+        db,
+        actor=_editor,
+        action="evento.delete",
+        resource_type="evento",
+        resource_id=evento_id_local,
+        metadata={"slug": evento_slug, "estaba_publicado": estaba_publicado},
+    )
     db.delete(evento)
     db.commit()
+    incr(COUNTER_EVENTO_WRITES)
     if estaba_publicado:
         notify_eventos_changed()
     return {"message": "Evento eliminado"}

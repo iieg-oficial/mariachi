@@ -6,7 +6,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 
 from app.api.deps import get_current_user, get_db, require_project_access, verify_csrf
+from app.api.metrics import COUNTER_HOME_WRITES, incr
 from app.core.optimistic import check_concurrent_edit
+from app.services.actividad_service import registrar_actividad
 from app.core.settings import get_settings
 from app.core.time import utcnow
 from app.models.home_section import HomeSection
@@ -112,8 +114,16 @@ async def actualizar_borrador(
     section.payload_draft = _validate_payload(key, payload)
     flag_modified(section, 'payload_draft')
     section.updated_at = utcnow()
+    registrar_actividad(
+        db,
+        actor=_editor,
+        action="home.update_draft",
+        resource_type="home_section",
+        resource_id=key,
+    )
     db.commit()
     db.refresh(section)
+    incr(COUNTER_HOME_WRITES)
     if get_settings().environment != "production":
         notify_home_changed()
     return section
@@ -131,8 +141,16 @@ async def publicar_seccion(
     flag_modified(section, 'payload_published')
     section.published_at = utcnow()
     section.updated_at = utcnow()
+    registrar_actividad(
+        db,
+        actor=_editor,
+        action="home.publicar",
+        resource_type="home_section",
+        resource_id=key,
+    )
     db.commit()
     db.refresh(section)
+    incr(COUNTER_HOME_WRITES)
     notify_home_changed()
     return section
 
@@ -148,8 +166,16 @@ async def descartar_borrador(
     section.payload_draft = copy.deepcopy(section.payload_published)
     flag_modified(section, 'payload_draft')
     section.updated_at = utcnow()
+    registrar_actividad(
+        db,
+        actor=_editor,
+        action="home.descartar_borrador",
+        resource_type="home_section",
+        resource_id=key,
+    )
     db.commit()
     db.refresh(section)
+    incr(COUNTER_HOME_WRITES)
     return section
 
 

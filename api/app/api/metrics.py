@@ -20,6 +20,17 @@ COUNTER_MEDIA_BUCKET_WRITES = 'mariachi_media_bucket_writes_total'
 COUNTER_MEDIA_UPLOADS = 'mariachi_media_uploads_total'
 COUNTER_MEDIA_DELETES = 'mariachi_media_deletes_total'
 COUNTER_LAYER_METADATA_WRITES = 'mariachi_layer_metadata_writes_total'
+COUNTER_EVENTO_WRITES = 'mariachi_evento_writes_total'
+COUNTER_EVENTO_PUBLISH = 'mariachi_evento_publish_total'
+COUNTER_HOME_WRITES = 'mariachi_home_writes_total'
+COUNTER_MAPALAB_SHARE_WRITES = 'mariachi_mapalab_share_writes_total'
+COUNTER_SIEEJ_FORMULARIO_WRITES = 'mariachi_sieej_formulario_writes_total'
+COUNTER_SIEEJ_ENVIO_WRITES = 'mariachi_sieej_envio_writes_total'
+COUNTER_SIEEJ_ENVIO_EXPIRED = 'mariachi_sieej_envio_expired_total'
+COUNTER_SIEEJ_ENVIO_REABIERTO = 'mariachi_sieej_envio_reabierto_total'
+COUNTER_LOGIN_SUCCESS = 'mariachi_login_success_total'
+COUNTER_LOGIN_FAILED = 'mariachi_login_failed_total'
+COUNTER_LOGIN_LOCKED = 'mariachi_login_locked_total'
 
 
 def incr(name: str, amount: int = 1) -> None:

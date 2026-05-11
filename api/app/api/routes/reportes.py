@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db, verify_csrf
 from app.core.time import utcnow
+from app.services.actividad_service import registrar_actividad
 from app.models.direccion_organizacional import DireccionOrganizacional
 from app.models.media_bucket import MediaBucket
 from app.models.reporte import Reporte
@@ -195,6 +196,14 @@ async def actualizar_reporte(
     if actividades:
         for a in actividades:
             db.add(a)
+        registrar_actividad(
+            db,
+            actor=current_user,
+            action="reporte.update",
+            resource_type="reporte",
+            resource_id=reporte.id,
+            metadata={"fields": sorted(update_data.keys())},
+        )
     reporte.actualizado_en = utcnow()
     db.commit()
     db.refresh(reporte)
@@ -209,7 +218,7 @@ async def actualizar_reporte(
 async def eliminar_reporte(
     reporte_id: int,
     db: Session = Depends(get_db),
-    _csrf: Usuario = Depends(verify_csrf),
+    current_user: Usuario = Depends(verify_csrf),
 ):
     reporte = db.query(Reporte).filter(Reporte.id == reporte_id).first()
     if not reporte:
@@ -227,6 +236,14 @@ async def eliminar_reporte(
                     reporte.screenshot_object_path,
                 )
 
+    reporte_id_local = reporte.id
+    registrar_actividad(
+        db,
+        actor=current_user,
+        action="reporte.delete",
+        resource_type="reporte",
+        resource_id=reporte_id_local,
+    )
     db.delete(reporte)
     db.commit()
     return {"message": "Reporte eliminado"}

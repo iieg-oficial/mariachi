@@ -6,6 +6,7 @@ from app.core.time import utcnow
 from app.models.reporte import Reporte
 from app.models.source_app import SourceApp
 from app.models.user import Usuario
+from app.services.actividad_service import registrar_actividad
 from app.schemas.source_app import (
     SourceAppCreate,
     SourceAppKeyRotateRequest,
@@ -137,7 +138,7 @@ async def rotar_api_key(
     source_app_id: int,
     payload: SourceAppKeyRotateRequest,
     db: Session = Depends(get_db),
-    _: Usuario = Depends(verify_csrf),
+    current_user: Usuario = Depends(verify_csrf),
     __: Usuario = Depends(require_role(["tetlamamakani"])),
 ):
     source_app = db.query(SourceApp).filter(SourceApp.id == source_app_id).first()
@@ -148,6 +149,14 @@ async def rotar_api_key(
     source_app.api_key_hash = hashed
     source_app.api_key_prefix = prefix
     source_app.actualizado_en = utcnow()
+    registrar_actividad(
+        db,
+        actor=current_user,
+        action="colibri.source_app.rotate_key",
+        resource_type="colibri.source_app",
+        resource_id=source_app.id,
+        metadata={"slug": source_app.slug, "visibility": payload.visibility, "prefix": prefix},
+    )
     db.commit()
 
     return SourceAppKeyRotateResponse(

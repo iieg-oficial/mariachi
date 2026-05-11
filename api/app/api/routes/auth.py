@@ -12,6 +12,12 @@ from app.api.deps import (
     list_user_memberships,
     verify_csrf,
 )
+from app.api.metrics import (
+    COUNTER_LOGIN_FAILED,
+    COUNTER_LOGIN_LOCKED,
+    COUNTER_LOGIN_SUCCESS,
+    incr,
+)
 from app.api.rate_limit import rate_limit_ip
 from app.core.acervo_url import to_relative
 from app.core.cache import redis_client
@@ -69,6 +75,7 @@ async def login(
             ttl = _LOGIN_USERNAME_WINDOW_SECONDS
         retry = ttl if ttl and ttl > 0 else _LOGIN_USERNAME_WINDOW_SECONDS
         logger.warning('login locked identifier=%s fails=%s', identifier, fail_count)
+        incr(COUNTER_LOGIN_LOCKED)
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=f"Cuenta temporalmente bloqueada por intentos fallidos. Intenta en {retry}s.",
@@ -93,6 +100,7 @@ async def login(
         except Exception as exc:
             logger.warning('login lockout incr error identifier=%s: %s', identifier, exc)
         logger.info('action=login.failed identifier=%s', identifier)
+        incr(COUNTER_LOGIN_FAILED)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Credenciales inválidas",
@@ -102,6 +110,7 @@ async def login(
         redis_client.delete(lockout_key)
     except Exception:
         pass
+    incr(COUNTER_LOGIN_SUCCESS)
 
     access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
     access_token = crear_access_token(

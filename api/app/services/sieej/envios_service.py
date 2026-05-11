@@ -15,6 +15,11 @@ from fastapi import HTTPException, UploadFile, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.api.metrics import (
+    COUNTER_SIEEJ_ENVIO_EXPIRED,
+    COUNTER_SIEEJ_ENVIO_WRITES,
+    incr,
+)
 from app.core.time import utcnow
 from app.models.media_bucket import MediaBucket
 from app.models.project import Project
@@ -126,6 +131,7 @@ class EnviosService:
             _marcar_expirado(envio, self.db, ahora)
         if pendientes:
             self.db.commit()
+            incr(COUNTER_SIEEJ_ENVIO_EXPIRED, len(pendientes))
         return len(pendientes)
 
     def get_o_iniciar(
@@ -241,6 +247,7 @@ class EnviosService:
         envio.actualizado_en = utcnow()
         self.db.commit()
         self.db.refresh(envio)
+        incr(COUNTER_SIEEJ_ENVIO_WRITES)
         return envio
 
     @staticmethod
