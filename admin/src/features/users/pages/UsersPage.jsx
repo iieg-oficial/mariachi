@@ -1,17 +1,13 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Table, Card, Typography, Tag, Space, Button, Modal, Form, Input, Select, Checkbox, Row, Col, Divider } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, LockOutlined, SearchOutlined } from '@ant-design/icons';
+import { Card, Col, Empty, Form, Input, Modal, Row, Select, Skeleton, Typography, Button, Checkbox, Divider, Pagination } from 'antd';
+import { PlusOutlined, SearchOutlined } from '@ant-design/icons';
+import { useAuth } from '@shared/contexts/useAuth';
 import api from '@shared/services/api';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import { message } from '@shared/services/message';
+import UserCard from '../components/UserCard';
 
 const { Title } = Typography;
-
-const roleColors = {
-    tetlamamakani: 'red',
-    editora: 'blue',
-    externo: 'green',
-};
 
 const roleLabels = {
     tetlamamakani: 'Administradora',
@@ -19,13 +15,11 @@ const roleLabels = {
     externo: 'Externo',
 };
 
-const projectRoleLabels = {
-    editor: 'Editor',
-    viewer: 'Viewer',
-};
+const PAGE_SIZE = 12;
 
 export default function Users() {
     const { isMobile } = useIsMobile();
+    const { user: currentUser } = useAuth();
     const [users, setUsers] = useState([]);
     const [projects, setProjects] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -36,6 +30,7 @@ export default function Users() {
     const projectAssignments = Form.useWatch('project_assignments', form) || {};
     const [search, setSearch] = useState('');
     const [roleFilter, setRoleFilter] = useState('');
+    const [page, setPage] = useState(1);
 
     const fetchUsers = useCallback(async () => {
         try {
@@ -196,72 +191,12 @@ export default function Users() {
         });
     }, [users, search, roleFilter]);
 
-    const projectsColumn = useMemo(
-        () => ({
-            title: 'Proyectos',
-            dataIndex: 'projects',
-            key: 'projects',
-            render: (projectsList, record) => {
-                if (record.role === 'tetlamamakani') {
-                    return <Tag color="gold">Todos</Tag>;
-                }
-                if (!projectsList || projectsList.length === 0) {
-                    return <Tag>Sin asignar</Tag>;
-                }
-                return (
-                    <Space size={4} wrap>
-                        {projectsList.map((p) => (
-                            <Tag key={p.slug} color={p.project_role === 'editor' ? 'geekblue' : 'default'}>
-                                {p.name}: {projectRoleLabels[p.project_role]}
-                            </Tag>
-                        ))}
-                    </Space>
-                );
-            },
-        }),
-        [],
-    );
+    const paginatedUsers = useMemo(() => {
+        const start = (page - 1) * PAGE_SIZE;
+        return filteredUsers.slice(start, start + PAGE_SIZE);
+    }, [filteredUsers, page]);
 
-    const columns = [
-        { title: 'Usuario', dataIndex: 'username', key: 'username', sorter: (a, b) => a.username.localeCompare(b.username) },
-        { title: 'Nombre', dataIndex: 'name', key: 'name', sorter: (a, b) => a.name.localeCompare(b.name) },
-        { title: 'Email', dataIndex: 'email', key: 'email' },
-        {
-            title: 'Rol',
-            dataIndex: 'role',
-            key: 'role',
-            render: (role) => <Tag color={roleColors[role]}>{roleLabels[role]}</Tag>,
-            filters: Object.keys(roleLabels).map((key) => ({ text: roleLabels[key], value: key })),
-            onFilter: (value, record) => record.role === value,
-        },
-        projectsColumn,
-        {
-            title: 'Fecha de Creación',
-            dataIndex: 'created_at',
-            key: 'created_at',
-            render: (date) => new Date(date).toLocaleDateString('es-MX'),
-            sorter: (a, b) => new Date(a.created_at) - new Date(b.created_at),
-        },
-        {
-            title: 'Acciones',
-            key: 'actions',
-            fixed: isMobile ? undefined : 'right',
-            width: isMobile ? undefined : 280,
-            render: (_, record) => (
-                <Space size={isMobile ? 'small' : 'middle'} wrap>
-                    <Button type="link" icon={<EditOutlined />} onClick={() => handleEdit(record)}>
-                        {isMobile ? '' : 'Editar'}
-                    </Button>
-                    <Button type="link" icon={<LockOutlined />} onClick={() => handleResetPassword(record)}>
-                        {isMobile ? '' : 'Resetear'}
-                    </Button>
-                    <Button type="link" danger icon={<DeleteOutlined />} onClick={() => handleDelete(record)}>
-                        {isMobile ? '' : 'Eliminar'}
-                    </Button>
-                </Space>
-            ),
-        },
-    ];
+    useEffect(() => { setPage(1); }, [search, roleFilter]);
 
     return (
         <div>
@@ -279,43 +214,70 @@ export default function Users() {
                 </Button>
             </div>
 
-            <Card styles={{ body: { padding: isMobile ? 0 : undefined } }}>
-                <Row gutter={[12, 12]} style={{ padding: isMobile ? 12 : 16, paddingBottom: 0 }}>
-                    <Col xs={24} sm={12} md={14}>
-                        <Input
-                            allowClear
-                            placeholder="Buscar por usuario, nombre o email"
-                            prefix={<SearchOutlined />}
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                        />
-                    </Col>
-                    <Col xs={24} sm={12} md={10}>
-                        <Select
-                            allowClear
-                            placeholder="Filtrar por rol"
-                            value={roleFilter || undefined}
-                            onChange={(v) => setRoleFilter(v || '')}
-                            style={{ width: '100%' }}
-                            options={Object.keys(roleLabels).map((k) => ({ value: k, label: roleLabels[k] }))}
-                        />
-                    </Col>
+            <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
+                <Col xs={24} sm={12} md={14}>
+                    <Input
+                        allowClear
+                        placeholder="Buscar por usuario, nombre o email"
+                        prefix={<SearchOutlined />}
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                    />
+                </Col>
+                <Col xs={24} sm={12} md={10}>
+                    <Select
+                        allowClear
+                        placeholder="Filtrar por rol"
+                        value={roleFilter || undefined}
+                        onChange={(v) => setRoleFilter(v || '')}
+                        style={{ width: '100%' }}
+                        options={Object.keys(roleLabels).map((k) => ({ value: k, label: roleLabels[k] }))}
+                    />
+                </Col>
+            </Row>
+
+            {loading ? (
+                <Row gutter={[12, 12]}>
+                    {Array.from({ length: 8 }).map((_, i) => (
+                        <Col key={i} xs={24} sm={12} lg={8} xl={6}>
+                            <Card><Skeleton avatar paragraph={{ rows: 2 }} active /></Card>
+                        </Col>
+                    ))}
                 </Row>
-                <Table
-                    columns={columns}
-                    dataSource={filteredUsers}
-                    rowKey="id"
-                    loading={loading}
-                    scroll={{ x: 'max-content' }}
-                    size={isMobile ? 'small' : 'middle'}
-                    pagination={{
-                        pageSize: 10,
-                        showSizeChanger: !isMobile,
-                        simple: isMobile,
-                        showTotal: (total) => `Mostrando ${total} de ${users.length} usuarios`,
-                    }}
-                />
-            </Card>
+            ) : filteredUsers.length === 0 ? (
+                <Card>
+                    <Empty description={users.length === 0
+                        ? 'No hay usuarios registrados'
+                        : 'Sin resultados con los filtros actuales'} />
+                </Card>
+            ) : (
+                <>
+                    <Row gutter={[12, 12]}>
+                        {paginatedUsers.map((u) => (
+                            <Col key={u.id} xs={24} sm={12} lg={8} xl={6}>
+                                <UserCard
+                                    user={u}
+                                    isSelf={currentUser?.id === u.id}
+                                    onEdit={() => handleEdit(u)}
+                                    onResetPassword={() => handleResetPassword(u)}
+                                    onDelete={() => handleDelete(u)}
+                                />
+                            </Col>
+                        ))}
+                    </Row>
+                    <div style={{ marginTop: 16, display: 'flex', justifyContent: 'center' }}>
+                        <Pagination
+                            current={page}
+                            pageSize={PAGE_SIZE}
+                            total={filteredUsers.length}
+                            onChange={setPage}
+                            showSizeChanger={false}
+                            showTotal={(total) => `Mostrando ${total} de ${users.length} usuarios`}
+                            simple={isMobile}
+                        />
+                    </div>
+                </>
+            )}
 
             <Modal
                 title={editingUser ? 'Editar Usuario' : 'Nuevo Usuario'}
@@ -346,8 +308,8 @@ export default function Users() {
                     </Form.Item>
                     <Form.Item label="Rol" name="role" rules={[{ required: true, message: 'Por favor seleccione el rol' }]}>
                         <Select>
-                            <Select.Option value="tetlamamakani">Tetlamamakani (admin)</Select.Option>
-                            <Select.Option value="editora">Editora</Select.Option>
+                            <Select.Option value="tetlamamakani">Administradora (acceso global)</Select.Option>
+                            <Select.Option value="editora">Editora (staff IIEG)</Select.Option>
                             <Select.Option value="externo">Externo (dependencia)</Select.Option>
                         </Select>
                     </Form.Item>
