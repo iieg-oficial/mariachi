@@ -47,16 +47,48 @@ def _user_memberships(db: Session, user_id: int) -> list[dict]:
     return [{"slug": r.slug, "name": r.name, "project_role": r.project_role} for r in rows]
 
 
-def _serialize_user(db: Session, user: Usuario) -> dict:
+def _mask_email(email: str | None) -> str | None:
+    """Devuelve el email enmascarado: a***@d***.gob.mx -> a***@***.gob.mx."""
+    if not email or "@" not in email:
+        return email
+    local, _, domain = email.partition("@")
+    if len(local) <= 1:
+        masked_local = local
+    else:
+        masked_local = local[0] + "*" * (len(local) - 1)
+    if "." in domain:
+        head, _, tail = domain.partition(".")
+        masked_domain = "*" * max(len(head), 1) + "." + tail
+    else:
+        masked_domain = "*" * len(domain)
+    return f"{masked_local}@{masked_domain}"
+
+
+def _serialize_user(db: Session, user: Usuario, *, viewer: Usuario | None = None) -> dict:
+    """Serializa el usuario aplicando privacidad por rol del viewer.
+
+    - Admin (`tetlamamakani`): ve todo.
+    - Editora viendo a otro: email enmascarado y proyectos ocultos (estos
+      son detalles operativos que la editora no necesita para su trabajo
+      del dia a dia; el admin sigue gestionando asignaciones).
+    - Editora viendose a si misma: ve todo (su propio perfil).
+    """
+    is_admin = viewer is not None and viewer.role == ADMIN_ROLE
+    is_self = viewer is not None and viewer.id == user.id
+    show_full = is_admin or is_self
+
+    email = user.email if show_full else _mask_email(user.email)
+    projects = _user_memberships(db, user.id) if show_full else []
+
     return {
         "id": user.id,
         "username": user.username,
-        "email": user.email,
+        "email": email,
         "name": user.name,
         "role": user.role,
         "must_change_password": user.must_change_password,
         "created_at": user.created_at,
-        "projects": _user_memberships(db, user.id),
+        "projects": projects,
     }
 
 
@@ -95,7 +127,7 @@ async def listar_usuarios(
     current_user: Usuario = Depends(get_current_user),
 ):
     usuarios = db.query(Usuario).offset(skip).limit(limit).all()
-    return [_serialize_user(db, u) for u in usuarios]
+    return [_serialize_user(db, u, viewer=current_user) for u in usuarios]
 
 
 @router.get("/{usuario_id}", response_model=UsuarioResponse)
@@ -109,7 +141,7 @@ async def obtener_usuario(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado"
         )
-    return _serialize_user(db, usuario)
+    return _serialize_user(db, usuario, viewer=current_user)
 
 
 @router.post("", response_model=UsuarioResponse, status_code=status.HTTP_201_CREATED)
@@ -146,7 +178,7 @@ async def crear_usuario(
     db.refresh(nuevo_usuario)
     incr(COUNTER_USER_WRITES)
     logger.info("action=user.create actor=%s new_user=%s role=%s", current_user.id, nuevo_usuario.id, nuevo_usuario.role)
-    return _serialize_user(db, nuevo_usuario)
+    return _serialize_user(db, nuevo_usuario, viewer=current_user)
 
 
 @router.put("/{usuario_id}", response_model=UsuarioResponse)
@@ -206,7 +238,7 @@ async def actualizar_usuario(
     db.refresh(usuario)
     incr(COUNTER_USER_WRITES)
     logger.info("action=user.update actor=%s target=%s", current_user.id, usuario.id)
-    return _serialize_user(db, usuario)
+    return _serialize_user(db, usuario, viewer=current_user)
 
 
 @router.post("/{usuario_id}/restablecer-contrasena")

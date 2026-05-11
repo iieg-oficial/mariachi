@@ -223,6 +223,49 @@ def test_admin_resetear_password_genera_temp(admin_session, db_session):
     assert refreshed.must_change_password is True
 
 
+def test_editora_ve_emails_enmascarados_de_otros(editora_session, admin_user):
+    """Privacidad: editora viendo OTRO usuario ve email enmascarado."""
+    client = editora_session["client"]
+    r = client.get(f"{ADMIN_PREFIX}/usuarios/{admin_user.id}")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["email"] != "admin@test.com"
+    assert "*" in data["email"]
+    assert data["projects"] == []
+
+
+def test_editora_ve_su_propio_email_completo(editora_session):
+    """Editora viendose a si misma: ve todo (incluye email + projects)."""
+    client = editora_session["client"]
+    editora_id = editora_session["user"].id
+    r = client.get(f"{ADMIN_PREFIX}/usuarios/{editora_id}")
+    assert r.status_code == 200
+    data = r.json()
+    assert data["email"] == "editora@test.com"
+    assert "*" not in data["email"]
+
+
+def test_admin_ve_emails_completos(admin_session, db_session):
+    from app.models.user import Usuario
+    from app.core.security import hash_password
+
+    other = Usuario(
+        username="other_user",
+        email="other@test.com",
+        name="Other",
+        hashed_password=hash_password("x"),
+        role="editora",
+    )
+    db_session.add(other)
+    db_session.commit()
+    db_session.refresh(other)
+
+    client = admin_session["client"]
+    r = client.get(f"{ADMIN_PREFIX}/usuarios/{other.id}")
+    assert r.status_code == 200
+    assert r.json()["email"] == "other@test.com"
+
+
 def test_crear_usuario_con_proyecto_inexistente_falla(admin_session):
     response = admin_session["client"].post(
         f"{ADMIN_PREFIX}/usuarios",
