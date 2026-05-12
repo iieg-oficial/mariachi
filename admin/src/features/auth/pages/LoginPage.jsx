@@ -11,6 +11,7 @@ const { useToken } = theme;
 
 export default function Login() {
     const [loading, setLoading] = useState(false);
+    const [form] = Form.useForm();
     const navigate = useNavigate();
     const { login } = useAuth();
     const { token } = useToken();
@@ -36,8 +37,16 @@ export default function Login() {
             }
         } catch (error) {
             console.error(error);
-            const errorMessage = error.response?.data?.detail || 'Error al iniciar sesión';
-            message.error(errorMessage);
+            const status = error.response?.status;
+            const detail = error.response?.data?.detail;
+
+            if (status === 401) {
+                form.setFields([
+                    { name: 'password', errors: [detail || 'Usuario o contraseña incorrectos'] }
+                ]);
+            } else {
+                message.error(detail || 'Error al iniciar sesión');
+            }
         } finally {
             setLoading(false);
         }
@@ -94,6 +103,7 @@ export default function Login() {
                                 </Flex>
 
                                 <Form
+                                    form={form}
                                     name="login"
                                     onFinish={onFinish}
                                     autoComplete="off"

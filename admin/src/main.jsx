@@ -62,19 +62,12 @@ const withSuspense = (node) => <Suspense fallback={<PageFallback />}>{node}</Sus
 
 const router = createBrowserRouter([
     {
-        path: '/login',
-        element: <Login />,
-        errorElement: <ErrorBoundary />
-    }, {
-        element: (
-            <ProtectedRoute>
-                <MainProvider />
-            </ProtectedRoute>
-        ),
+        element: <MainProvider />,
         errorElement: <ErrorBoundary />,
         children: [
+            { path: '/login', element: <Login />, errorElement: <ErrorBoundary /> },
             {
-                element: <MainLayout />,
+                element: (<ProtectedRoute><MainLayout /></ProtectedRoute>),
                 errorElement: <ErrorBoundary />,
                 children: [
                     { index: true, element: <Navigate to="inicio" replace /> },
@@ -306,4 +299,3 @@ createRoot(document.getElementById('root')).render(
         <RouterProvider router={router} />
     </AuthProvider>
 );
-// Wed Apr 29 14:43:53 CST 2026
