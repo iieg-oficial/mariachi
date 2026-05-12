@@ -9,6 +9,32 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.48.5] - 2026-05-12
+
+### Tarjeta "Acervo" sale "no integrada" en `/inicio`
+
+Bug reportado: en la seccion **Plataformas del ecosistema** del home del admin, la tarjeta de Acervo aparecia con badge gris "no integrada", aunque MinIO y el resto del ecosistema estaban arriba.
+
+#### Causa
+
+`api/app/api/routes/sistema.py::_probe_ontoy()` hace `GET {ACERVO_ONTOY_URL}` y espera un JSON con `version`. En ambos `.env.production` / `.env.staging` el valor apuntaba a `http://host.docker.internal:9080/ontoy`, un puerto que **no esta expuesto** por el `acervo-nginx` (que sirve `/ontoy` en el 80/443 dentro de su propio compose y solo en deploys donde se levanta `acervo` standalone). El resto de plataformas (`sieej`, `geoserver`, `gateway-hub`) ya usan el patron `http://gateway-hub-nginx-1/<servicio>/ontoy`, que el gateway-hub-nginx resuelve internamente — incluido `/acervo/ontoy`, definido en `gateway.conf.template:68-71` con un JSON estatico de version.
+
+#### Cambios
+
+- `.env.production.example`, `.env.staging.example`: documentado el patron `http://<gateway_hub_host>/<servicio>/ontoy` para `SIEEJ_ONTOY_URL`, `ACERVO_ONTOY_URL`, `GATEWAY_HUB_ONTOY_URL`, `GEOSERVER_ONTOY_URL`. Los archivos privados (`.env.production`, `.env.staging`) estan en `.gitignore` y se actualizan manualmente en cada VM.
+
+#### Operacional
+
+En cada VM donde mariachi-api ya esta corriendo:
+
+1. Editar el `.env.*` activo y poner `ACERVO_ONTOY_URL=http://gateway-hub-nginx-1/acervo/ontoy` (ajustar el hostname al del contenedor nginx del gateway-hub en esa red).
+2. Recrear el contenedor api: `make restart ENV=prod` (o `ENV=staging`) para que tome el `env_file` actualizado — un `docker compose restart` simple **no** relee `env_file`.
+3. Recargar `/inicio`; la tarjeta de Acervo debe quedar en verde con `v1.20.1`.
+
+Bump 0.48.4 -> 0.48.5.
+
+---
+
 ## [0.48.4] - 2026-05-12
 
 ### Feedback visible al fallar el login
