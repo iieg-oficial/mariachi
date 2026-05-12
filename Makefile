@@ -29,7 +29,7 @@ else
 	MSG_ENV      := Desarrollo
 endif
 
-.PHONY: help up build down logs restart clean shell-api shell-admin setup setup-hooks ensure-networks deploy
+.PHONY: help up build down logs restart clean shell-api shell-admin setup setup-hooks ensure-networks deploy backup-db restore-db install-backup-cron uninstall-backup-cron
 
 ## Muestra ayuda de comandos disponibles
 help:
@@ -52,6 +52,12 @@ help:
 	@echo '  ${YELLOW}make shell-admin${RESET} - Entra a la terminal del contenedor Admin'
 	@echo '  ${YELLOW}make setup${RESET}       - Crea archivos .env iniciales si no existen'
 	@echo '  ${YELLOW}make setup-hooks${RESET} - Configura git hooks del proyecto (core.hooksPath)'
+	@echo ''
+	@echo '${GREEN}Respaldos de Postgres:${RESET}'
+	@echo '  ${YELLOW}make backup-db${RESET}              - Genera respaldo manual (rota daily/weekly/monthly en backups/)'
+	@echo '  ${YELLOW}make restore-db FILE=...${RESET}    - Restaura desde un .sql.gz (busca en restore/ y backups/)'
+	@echo '  ${YELLOW}make install-backup-cron${RESET}    - Instala cronjob diario a las 3 AM (solo correr en produccion)'
+	@echo '  ${YELLOW}make uninstall-backup-cron${RESET}  - Quita el cronjob instalado por install-backup-cron'
 	@echo ''
 
 ensure-networks:
@@ -107,6 +113,37 @@ shell-api:
 
 shell-admin:
 	docker compose -f $(COMPOSE_FILE) exec admin /bin/sh
+
+# =============================================================================
+# RESPALDOS DE POSTGRES
+# =============================================================================
+
+## Genera respaldo de Postgres aplicando rotacion GFS (daily/weekly/monthly).
+## Por defecto usa docker-compose.yml; pasa COMPOSE_FILE=... para otro entorno.
+backup-db:
+	@COMPOSE_FILE=$(COMPOSE_FILE) ./scripts/postgres-backup.sh
+
+## Restaura un dump .sql.gz. Sin FILE muestra lista interactiva si hay varios.
+restore-db:
+	@COMPOSE_FILE=$(COMPOSE_FILE) ./scripts/postgres-restore.sh $(FILE)
+
+## Instala cronjob diario a las 3 AM. SOLO correr en la VM de produccion.
+install-backup-cron:
+	@if [ "$(ENV)" != "prod" ]; then \
+		echo "${YELLOW}Este target solo aplica con ENV=prod. Uso: make install-backup-cron ENV=prod${RESET}"; \
+		exit 1; \
+	fi
+	@mkdir -p $(PWD)/backups
+	@( crontab -l 2>/dev/null | grep -v 'mariachi-backup' ; \
+	   echo "0 3 * * * cd $(PWD) && ./scripts/postgres-backup.sh >> $(PWD)/backups/backup.log 2>&1 # mariachi-backup" \
+	) | crontab -
+	@echo "${GREEN}Cronjob instalado:${RESET}"
+	@crontab -l | grep 'mariachi-backup'
+
+## Quita el cronjob instalado por install-backup-cron.
+uninstall-backup-cron:
+	@( crontab -l 2>/dev/null | grep -v 'mariachi-backup' ) | crontab -
+	@echo "${GREEN}Cronjob de respaldo removido.${RESET}"
 
 setup:
 	@if [ ! -f .env.development ]; then \

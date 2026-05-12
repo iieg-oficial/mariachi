@@ -31,27 +31,66 @@ docker compose -f docker-compose.dev.yml --env-file .env.development up -d postg
 
 **Recuperacion desde respaldo:** ver "Restore Postgres desde backup" mas abajo.
 
+## Respaldos automatizados de Postgres
+
+**Politica GFS (Grandfather-Father-Son):** se mantienen 3 archivos fijos en `backups/`:
+
+| Archivo                       | Cuando se regenera                  | Antigüedad max |
+|-------------------------------|-------------------------------------|----------------|
+| `mariachi-daily.sql.gz`       | Todos los dias a las 3 AM           | 24 h           |
+| `mariachi-weekly.sql.gz`      | Domingos a las 3 AM (sobreescribe)  | ~7 dias        |
+| `mariachi-monthly.sql.gz`     | Dia 1 del mes a las 3 AM            | ~30 dias       |
+
+Los 3 archivos siempre estan presentes; nunca se acumulan mas. Implementacion: `scripts/postgres-backup.sh`.
+
+**Instalacion del cronjob (solo en la VM de produccion):**
+
+```bash
+cd /ruta/a/mariachi
+make install-backup-cron ENV=prod
+crontab -l | grep mariachi-backup   # verificar
+```
+
+**Backup manual (en cualquier momento, cualquier entorno):**
+
+```bash
+make backup-db                 # contra docker-compose.yml (staging/prod)
+make backup-db ENV=dev         # contra docker-compose.dev.yml
+```
+
+**Limitacion conocida:** los respaldos viven en disco local de la VM. Si la VM se pierde, los respaldos tambien. Como mitigacion temprana, copiar `backups/` a almacenamiento externo (GCS) periodicamente. La siguiente iteracion subira esto a un bucket automaticamente.
+
 ## Restore Postgres desde backup
 
 **Antes de empezar:** anunciar el inicio del restore. Cualquier escritura entre el ultimo backup y ahora se pierde.
 
+**Restore con el helper:**
+
 ```bash
-docker compose -f docker-compose.dev.yml --env-file .env.development stop api
-gunzip -c <ruta_al_backup>.sql.gz | docker exec -i mariachi-postgres-dev psql -U iieg_user -d iieg_portal
-docker compose -f docker-compose.dev.yml --env-file .env.development start api
+# coloca el archivo a restaurar en restore/ (o usa uno de backups/)
+make restore-db FILE=mariachi-daily.sql.gz           # busca en restore/ y backups/
+make restore-db FILE=/ruta/absoluta/dump.sql.gz      # ruta absoluta tambien funciona
+make restore-db FILE=mariachi-weekly.sql.gz ENV=dev  # entorno dev
+```
+
+**Restore manual (equivalente, sin Make):**
+
+```bash
+docker compose -f docker-compose.yml stop api
+gunzip -c backups/mariachi-daily.sql.gz | docker compose -f docker-compose.yml exec -T postgres \
+    sh -c 'PGPASSWORD="$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+docker compose -f docker-compose.yml start api
 ```
 
 **Validacion post-restore:**
 
 ```bash
-docker exec mariachi-postgres-dev psql -U iieg_user -d iieg_portal -c "SELECT count(*) FROM usuarios"
-docker exec mariachi-postgres-dev psql -U iieg_user -d iieg_portal -c "SELECT count(*) FROM sieej.bases_datos"
+docker exec mariachi-postgres psql -U iieg_user -d iieg_portal -c "SELECT count(*) FROM usuarios"
+docker exec mariachi-postgres psql -U iieg_user -d iieg_portal -c "SELECT count(*) FROM sieej.bases_datos"
 docker exec mariachi-api alembic -x db=mariachi current
 ```
 
 Si alembic current no coincide con la migration esperada, correr `alembic -x db=mariachi upgrade head`.
-
-**Pendiente:** definir politica de backups automatizados (US #130 en SIIEJ Taiga).
 
 ## Rotar SECRET_KEY
 

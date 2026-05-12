@@ -146,7 +146,7 @@ Lineas activas por modulo abajo. Roadmap a v1.0 sigue al final.
 - [ ] **Renombrar repo en GitHub** `portal/` → `mariachi/`. Correr `scripts/rename-github-repo.sh --execute` despues
 - [ ] Entorno staging con datos reales desplegado
 - [ ] Monitoreo basico (health checks + alertas)
-- [ ] Backup automatizado de PostgreSQL
+- [x] **Backup automatizado de PostgreSQL** — `scripts/postgres-backup.sh` + `make install-backup-cron` (rotacion GFS local: daily/weekly/monthly). Pendiente subir copia a GCS para sobrevivir perdida de la VM.
 - [ ] Pruebas de carga (API timeouts, bucket upload con archivos grandes)
 - [ ] `docs/DEPLOYMENT.md`
 - [ ] Corregir `start_backend.sh` (quitar `--reload` en produccion)

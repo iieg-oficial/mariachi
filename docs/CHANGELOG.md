@@ -9,6 +9,52 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.49.0] - 2026-05-12
+
+### Respaldos automatizados de PostgreSQL con rotacion GFS
+
+Antes de esta version la BD de mariachi solo era reproducible al nivel de esquema (via migraciones Alembic). Los datos vivian unicamente en el volumen Docker `postgres_data` de la VM: si se perdia la VM, se perdia todo el contenido editorial y operativo (usuarios, eventos, paginas, borradores, layers/SLDs, simbolos, API keys de mapalab, logs, respuestas de formularios, etc.). `docs/PENDIENTES.md` listaba "Backup automatizado de PostgreSQL" como item abierto.
+
+#### Politica
+
+Se introduce rotacion GFS (Grandfather-Father-Son) con 3 archivos fijos en `backups/`:
+
+| Archivo                       | Cuando se regenera                  | Antigüedad max |
+|-------------------------------|-------------------------------------|----------------|
+| `mariachi-daily.sql.gz`       | Todos los dias a las 3 AM           | 24 h           |
+| `mariachi-weekly.sql.gz`      | Domingos a las 3 AM                 | ~7 dias        |
+| `mariachi-monthly.sql.gz`     | Dia 1 del mes a las 3 AM            | ~30 dias       |
+
+Nunca se acumulan mas de 3 archivos — cada generacion sobreescribe el slot correspondiente.
+
+#### Cambios
+
+- **`scripts/postgres-backup.sh`** (nuevo): hace `pg_dump --no-owner --no-acl --clean --if-exists` via `docker compose exec postgres`, comprime con `gzip -9`, escribe atomicamente (`.tmp` + `mv`) a `backups/mariachi-daily.sql.gz`. Si `date +%u` es 7 copia a `mariachi-weekly.sql.gz`; si `date +%-d` es 1 copia a `mariachi-monthly.sql.gz`. Acepta `COMPOSE_FILE` y `BACKUP_DIR` por env var.
+- **`scripts/postgres-restore.sh`** (nuevo): resuelve el archivo en ruta literal, `restore/<archivo>` o `backups/<archivo>`. Sin argumento muestra lista interactiva (con tamaño + mtime) si hay 2+ candidatos, o usa el unico candidato si solo hay uno. Aplica con `psql -v ON_ERROR_STOP=1` para abortar al primer error.
+- **`Makefile`**: targets nuevos `backup-db`, `restore-db [FILE=...]`, `install-backup-cron ENV=prod`, `uninstall-backup-cron`. El `install-backup-cron` instala una linea en el `crontab` del usuario (`0 3 * * * cd <repo> && ./scripts/postgres-backup.sh >> backups/backup.log 2>&1 # mariachi-backup`) y falla si `ENV` no es `prod` para evitar instalarlo accidentalmente en staging/dev.
+- **`backups/`, `restore/`** (carpetas nuevas con `.gitkeep`). `.gitignore` ignora `*.sql.gz`, `*.sql.gz.tmp`, `backup.log` en ambas.
+- **`docs/RUNBOOK.md`**: nueva seccion "Respaldos automatizados de Postgres" + actualizacion del flujo de restore (helper `make restore-db` + comando manual equivalente). Se ajustaron los `docker exec mariachi-postgres-dev` a `mariachi-postgres` en los ejemplos de validacion post-restore.
+- **`docs/PENDIENTES.md`**: item de backup automatizado marcado como hecho, con nota sobre la pendiente de subir copia a GCS.
+
+#### Limitacion conocida
+
+Los respaldos viven en disco local de la VM. Si se pierde la VM (problema original que motivo esta tarea), tambien se pierden los respaldos. Mitigacion temprana: copiar `backups/` a almacenamiento externo periodicamente. La siguiente iteracion natural es agregar `gsutil cp backups/*.sql.gz gs://<bucket>/` al final del script para cerrar el bucle de disaster recovery.
+
+#### Operacional
+
+En la VM de production, una sola vez:
+
+```bash
+cd /ruta/a/mariachi
+make install-backup-cron ENV=prod
+make backup-db ENV=prod          # genera el primer daily inmediatamente
+crontab -l | grep mariachi-backup
+```
+
+Bump 0.48.5 -> 0.49.0.
+
+---
+
 ## [0.48.5] - 2026-05-12
 
 ### Tarjeta "Acervo" sale "no integrada" en `/inicio`
