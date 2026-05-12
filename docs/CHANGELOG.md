@@ -9,6 +9,29 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.48.4] - 2026-05-12
+
+### Feedback visible al fallar el login
+
+Bug reportado: al teclear usuario/contrasena incorrectos en `/mariachi/login` el formulario volvia al estado normal sin avisar nada al usuario; solo aparecia el 401 en consola.
+
+#### Causa
+
+`/login` estaba declarada como ruta hermana del bloque protegido en `admin/src/main.jsx`, fuera de `MainProvider`. `MainProvider` es el unico lugar donde se monta `<AntApp />` + `<MessageBridge />`, asi que la llamada a `message.error(...)` desde el catch del `LoginPage` quedaba encolada en `pending` (servicio `@shared/services/message`) sin un `messageApi` que la procesara.
+
+#### Cambios
+
+- `admin/src/main.jsx`: el router ahora envuelve **todas** las rutas con `<MainProvider />` y `<ProtectedRoute>` se mueve a un nivel mas adentro, envolviendo unicamente `<MainLayout />`. Asi `/login` queda bajo el mismo `AntApp` que el resto.
+- `admin/src/features/auth/pages/LoginPage.jsx`: el manejo del 401 cambia de toast a error inline debajo del input de contrasena via `form.setFields([...])`. Mas claro y se autolimpia cuando el usuario corrige el campo. Los demas errores (red, 5xx) mantienen `message.error` como fallback.
+
+#### Operacional
+
+Junto con el fix se identifico que `scripts/init_db.py` solo crea al admin si no existe — no resincroniza el hash cuando cambia `ADMIN_PASSWORD`. Procedimiento agregado en `docs/RUNBOOK.md` (`Resetear password del admin`).
+
+Bump 0.48.3 -> 0.48.4.
+
+---
+
 ## [0.48.3] - 2026-05-11
 
 ### Audit log + counter completos en Colibri admin y mapalab-shares

@@ -201,6 +201,35 @@ Generar bcrypt hash:
 docker exec mariachi-api python3 -c "from passlib.context import CryptContext; print(CryptContext(schemes=['bcrypt']).hash('mi_password'))"
 ```
 
+## Resetear password del admin (o de cualquier usuario)
+
+`scripts/init_db.py:crear_usuario_admin` solo crea al admin **si no existe**: si despues de la primera inicializacion se cambia `ADMIN_PASSWORD` en `.env.production`, el contenedor no resincroniza el hash y el login sigue rechazando las credenciales del `.env`.
+
+Reset directo via Python en el contenedor de la API:
+
+```bash
+docker exec mariachi-api python -c "
+from app.core.security import hash_password
+from app.core.database import SessionLocal
+from app.models import Usuario
+
+db = SessionLocal()
+try:
+    u = db.query(Usuario).filter(Usuario.username == 'admin').first()
+    if u:
+        u.hashed_password = hash_password('<nuevo_password>')
+        u.must_change_password = False
+        db.commit()
+        print(f'OK: password reseteado (id={u.id}, email={u.email})')
+    else:
+        print('ERROR: usuario no encontrado')
+finally:
+    db.close()
+"
+```
+
+Sustituir `'admin'` por el username deseado y `'<nuevo_password>'` por la pass nueva. Si el cambio es para produccion, actualizar tambien `ADMIN_PASSWORD` en `.env.production` para que el valor del archivo y el de la BD esten alineados.
+
 ## Frontend SIEEJ no carga (404 en /sieej/)
 
 **Sintomas:** el browser muestra 404 al cargar `/sieej/`.
