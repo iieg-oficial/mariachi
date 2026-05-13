@@ -1,33 +1,17 @@
 import {
-    TeamOutlined,
-    FileImageOutlined,
     AuditOutlined,
-    MenuOutlined,
-    FileTextOutlined,
-    PartitionOutlined,
-    GlobalOutlined,
-    EnvironmentOutlined,
-    ProjectOutlined,
-    FormOutlined,
-    OrderedListOutlined,
-    CalendarOutlined,
-    HomeOutlined,
     DashboardOutlined,
-    PieChartOutlined,
-    InboxOutlined,
-    TagsOutlined,
-    ApartmentOutlined,
-    AppstoreOutlined,
-    BranchesOutlined,
-    CodeOutlined,
-    KeyOutlined,
-    LockOutlined,
+    FileImageOutlined,
     HistoryOutlined,
-    BarChartOutlined,
+    LockOutlined,
+    ProjectOutlined,
+    TeamOutlined,
 } from '@ant-design/icons';
 import { Tooltip } from 'antd';
-import ColibriIcon from '@shared/components/ColibriIcon';
 import StatusBadge from '@shared/components/StatusBadge';
+import { PROJECT_REGISTRY } from '@app/sider-registry';
+
+export { PROJECT_REGISTRY };
 
 const ROLE_LABELS = {
     tetlamamakani: 'Administradora',
@@ -92,145 +76,6 @@ export const PLATFORM_ITEMS = [
         allowedGlobalRoles: ['tetlamamakani'],
     },
 ];
-
-export const PROJECT_REGISTRY = {
-    portal: {
-        label: 'Portalito',
-        icon: <GlobalOutlined />,
-        disabled: true,
-        items: [
-            { key: '/menu', path: '/menu', label: 'Menú', icon: <MenuOutlined /> },
-            { key: '/pages', path: '/pages', label: 'Páginas', icon: <FileTextOutlined /> },
-        ],
-    },
-    mapalab: {
-        label: 'MapaLab',
-        icon: <EnvironmentOutlined />,
-        items: [
-            {
-                key: '/mapalab/layers',
-                path: '/mapalab/layers',
-                label: 'Capas',
-                icon: <PartitionOutlined />,
-            },
-            {
-                key: '/mapalab/initial-order',
-                path: '/mapalab/initial-order',
-                label: 'Capas iniciales',
-                icon: <OrderedListOutlined />,
-            },
-            {
-                key: '/mapalab/eventos',
-                path: '/mapalab/eventos',
-                label: 'Eventos',
-                icon: <CalendarOutlined />,
-            },
-            {
-                key: '/mapalab/home',
-                path: '/mapalab/home',
-                label: 'Inicio',
-                icon: <HomeOutlined />,
-            },
-            {
-                key: '/mapalab/simbolos',
-                path: '/mapalab/simbolos',
-                label: 'Símbolos',
-                icon: <AppstoreOutlined />,
-                allowedGlobalRoles: ['tetlamamakani'],
-                showBetaBadge: true,
-            },
-            {
-                key: '/mapalab/api-keys',
-                path: '/mapalab/api-keys',
-                label: 'API Keys',
-                icon: <KeyOutlined />,
-                allowedGlobalRoles: ['tetlamamakani'],
-                showBetaBadge: true,
-            },
-            {
-                key: '/mapalab/stats',
-                path: '/mapalab/stats',
-                label: 'Estadísticas',
-                icon: <BarChartOutlined />,
-                showBetaBadge: true,
-            },
-        ],
-    },
-    sieej: {
-        label: 'SIEEJ',
-        icon: <ProjectOutlined />,
-        items: [
-            {
-                key: '/sieej/formularios',
-                path: '/sieej/formularios',
-                label: 'Formularios',
-                icon: <FormOutlined />,
-            },
-            {
-                key: '/sieej/grupos',
-                path: '/sieej/grupos',
-                label: 'Grupos',
-                icon: <TeamOutlined />,
-            },
-        ],
-    },
-    colibri: {
-        label: 'Colibri',
-        icon: <ColibriIcon size={14} />,
-        allowedGlobalRoles: ['tetlamamakani', 'editora'],
-        showBetaBadge: true,
-        items: [
-            {
-                key: '/colibri',
-                path: '/colibri',
-                label: 'Resumen',
-                icon: <PieChartOutlined />,
-            },
-            {
-                key: '/colibri/reportes',
-                path: '/colibri/reportes',
-                label: 'Reportes',
-                icon: <InboxOutlined />,
-                showReporteBadge: true,
-            },
-            {
-                key: '/colibri/tipos',
-                path: '/colibri/tipos',
-                label: 'Tipos',
-                icon: <TagsOutlined />,
-                allowedGlobalRoles: ['tetlamamakani'],
-            },
-            {
-                key: '/colibri/direcciones',
-                path: '/colibri/direcciones',
-                label: 'Direcciones',
-                icon: <ApartmentOutlined />,
-                allowedGlobalRoles: ['tetlamamakani'],
-            },
-            {
-                key: '/colibri/source-apps',
-                path: '/colibri/source-apps',
-                label: 'Source apps',
-                icon: <AppstoreOutlined />,
-                allowedGlobalRoles: ['tetlamamakani'],
-            },
-            {
-                key: '/colibri/routes',
-                path: '/colibri/routes',
-                label: 'Routes',
-                icon: <BranchesOutlined />,
-                allowedGlobalRoles: ['tetlamamakani'],
-            },
-            {
-                key: '/colibri/integracion',
-                path: '/colibri/integracion',
-                label: 'Integración',
-                icon: <CodeOutlined />,
-                allowedGlobalRoles: ['tetlamamakani'],
-            },
-        ],
-    },
-};
 
 export function buildSiderItems({ user, onNavigate, extras = {} }) {
     const role = user?.role;

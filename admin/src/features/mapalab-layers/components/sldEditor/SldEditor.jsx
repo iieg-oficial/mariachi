@@ -1,57 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Col, Empty, Form, Input, Modal, Popconfirm, Row, Segmented, Select, Space, Spin, Tag, Typography } from 'antd';
-import { CheckCircleOutlined, CheckOutlined, CloseOutlined, CloudUploadOutlined, ExclamationCircleOutlined, HistoryOutlined, SaveOutlined, SyncOutlined } from '@ant-design/icons';
+import { Alert, Card, Empty, Form, Segmented, Select, Space, Spin, Tag, Typography } from 'antd';
+import { ExclamationCircleOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router';
 import api from '@shared/services/api';
 import { useSldEditor, fetchStylesForLayer } from '@features/mapalab-layers/hooks/useSldEditor';
 import { message } from '@shared/services/message';
 import { useAuth } from '@shared/contexts/useAuth';
-import LegendPreview from './LegendPreview';
-import RawXmlFallback from './RawXmlFallback';
-import DiffPanel from './DiffPanel';
-import BoundaryEditor from './BoundaryEditor';
-import ChoroplethEditor from './ChoroplethEditor';
-import PointEditor from './PointEditor';
-import BorradorPreview from './BorradorPreview';
 import SldHistoryDrawer from './SldHistoryDrawer';
+import SldNotEditableFallback from './SldNotEditableFallback';
+import SldRejectModal from './SldRejectModal';
+import LayerGroupWarning from './LayerGroupWarning';
+import SldEditorLayout from './SldEditorLayout';
+import { SHAPE_OPTIONS, emptyModelForShape, stripPrefix } from './sldEditorHelpers';
 
 const { Text } = Typography;
-
-const stateColor = {
-    en_progreso: 'blue',
-    pendiente_revision: 'orange',
-    aprobado: 'green',
-    rechazado: 'red',
-};
-
-const SHAPE_OPTIONS = [
-    { label: 'Coroplético', value: 'choropleth' },
-    { label: 'Boundary', value: 'boundary' },
-    { label: 'Punto', value: 'point' },
-];
-
-function emptyModelForShape(shape, layerName, styleTitle) {
-    const base = { layer_name: layerName || '', style_title: styleTitle || '' };
-    if (shape === 'boundary') {
-        return { ...base, polygon: null, label: null };
-    }
-    if (shape === 'point') {
-        return {
-            ...base,
-            point: { symbol_id: null, size: 16, rotation: 0, opacity: 1.0 },
-            label: null,
-        };
-    }
-    return {
-        ...base,
-        attribute: '',
-        cortes: [0, 100],
-        labels: ['Sin definir'],
-        colors: ['#cccccc'],
-        stroke: { color: '#7A7A7A', width: 0.35, opacity: 1, linejoin: 'bevel' },
-        null_style: null,
-    };
-}
 
 export default function SldEditor({ layer, derivedFeatureType }) {
     const workspace = layer?.workspaceAlias || derivedFeatureType?.workspace || null;
@@ -65,7 +27,6 @@ export default function SldEditor({ layer, derivedFeatureType }) {
     const borradorId = searchParams.get('borrador') || null;
     const styleFromQuery = searchParams.get('style') || null;
 
-    const stripPrefix = (s) => (s && s.includes(':') ? s.split(':').slice(1).join(':') : s);
     const [stylesForLayer, setStylesForLayer] = useState(layerStyles.map(stripPrefix));
     const [styleName, setStyleName] = useState(stripPrefix(styleFromQuery) || stripPrefix(layerStyles[0]) || null);
     const [isLayerGroup, setIsLayerGroup] = useState(false);
@@ -97,24 +58,7 @@ export default function SldEditor({ layer, derivedFeatureType }) {
     }
 
     if (isLayerGroup && stylesForLayer.length === 0) {
-        return (
-            <Alert
-                type="info"
-                showIcon
-                closable
-                message="Esta capa es un Layer Group de GeoServer"
-                description={
-                    <div>
-                        <p style={{ marginBottom: 8 }}>
-                            <code>{workspace}:{layerName}</code> está configurado en GeoServer como <strong>Layer Group</strong> (varias capas combinadas en una sola entidad), no como capa individual.
-                        </p>
-                        <p style={{ marginBottom: 0 }}>
-                            El editor solo soporta SLDs de capas individuales. Para modificar la simbología, edita el estilo de cada capa miembro del grupo por separado, o pide apoyo al equipo de geografía.
-                        </p>
-                    </div>
-                }
-            />
-        );
+        return <LayerGroupWarning workspace={workspace} layerName={layerName} />;
     }
 
     return (
@@ -222,23 +166,14 @@ function SldEditorBody({ workspace, layerName, styleName, layerId, reviewMode, b
         }
     };
 
-    const initialModel = useMemo(() => {
-        if (draft?.data) return draft.data;
-        return data?.model || null;
-    }, [data, draft]);
-
-    const initialShape = useMemo(() => {
-        if (draft?.data?.shape) return draft.data.shape;
-        return data?.shape || 'choropleth';
-    }, [data, draft]);
+    const initialModel = useMemo(() => draft?.data || data?.model || null, [data, draft]);
+    const initialShape = useMemo(() => draft?.data?.shape || data?.shape || 'choropleth', [data, draft]);
 
     useEffect(() => {
         setModel(initialModel ? structuredClone(initialModel) : null);
     }, [initialModel]);
 
-    useEffect(() => {
-        setShape(initialShape);
-    }, [initialShape]);
+    useEffect(() => { setShape(initialShape); }, [initialShape]);
 
     const handleShapeChange = (newShape) => {
         if (newShape === shape) return;
@@ -265,36 +200,15 @@ function SldEditorBody({ workspace, layerName, styleName, layerId, reviewMode, b
 
     if (!data.editable && !forcedEditable) {
         return (
-            <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
-                <RawXmlFallback
-                    rawXml={data.rawXml}
-                    reason={data.reason}
-                    workspace={workspace}
-                    styleName={styleName}
-                    layerName={layerName}
-                />
-                <Card size="small" title="Empezar desde cero">
-                    <Space orientation="vertical" size="small" style={{ width: '100%' }}>
-                        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                            El SLD actual no es editable visualmente. Puedes reemplazarlo con un nuevo
-                            estilo desde cero — esto descartará el SLD existente al aprobarse el borrador.
-                        </Typography.Text>
-                        <Popconfirm
-                            title="Reemplazar el estilo con simbología de punto"
-                            description="Se generará un nuevo SLD con PointSymbolizer (emoji o imagen del catálogo). El SLD actual será sobreescrito al aprobarse el borrador."
-                            okText="Empezar"
-                            cancelText="Cancelar"
-                            onConfirm={() => {
-                                setShape('point');
-                                setModel(emptyModelForShape('point', layerName, styleName));
-                                setForcedEditable(true);
-                            }}
-                        >
-                            <Button type="primary">Crear simbología de punto (emoji / imagen)</Button>
-                        </Popconfirm>
-                    </Space>
-                </Card>
-            </Space>
+            <SldNotEditableFallback
+                data={data}
+                workspace={workspace}
+                styleName={styleName}
+                layerName={layerName}
+                setShape={setShape}
+                setModel={setModel}
+                setForcedEditable={setForcedEditable}
+            />
         );
     }
 
@@ -326,12 +240,6 @@ function SldEditorBody({ workspace, layerName, styleName, layerId, reviewMode, b
             setSubmitting(false);
         }
     };
-
-    const draftBadge = draft ? (
-        <Tag color={stateColor[draft.estado] || 'default'}>
-            Borrador: {draft.estado}
-        </Tag>
-    ) : null;
 
     const sharedBy = data.sharedBy || [];
     const sharedByOthers = sharedBy.filter((l) => l !== layerName);
@@ -369,139 +277,34 @@ function SldEditorBody({ workspace, layerName, styleName, layerId, reviewMode, b
             </Card>
 
 
-            <Row gutter={24}>
-                <Col xs={24} lg={16}>
-                    <Card size="small">
-                        {shape === 'boundary' ? (
-                            <BoundaryEditor
-                                model={model}
-                                onChange={setModel}
-                                availableFields={availableFields}
-                            />
-                        ) : shape === 'point' ? (
-                            <PointEditor
-                                model={model}
-                                onChange={setModel}
-                                availableFields={availableFields}
-                            />
-                        ) : (
-                            <ChoroplethEditor model={model} onChange={setModel} />
-                        )}
-                    </Card>
-                </Col>
-                <Col xs={24} lg={8}>
-                    <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
-                        {reviewMode && <BorradorPreview shape={shape} model={model} />}
-                        <LegendPreview
-                            workspace={workspace}
-                            geoserverWorkspace={data.workspace}
-                            styleName={styleName}
-                            layerName={layerName}
-                        />
-                        {shape === 'choropleth' && (
-                            <Card size="small" title="Cambios pendientes">
-                                <DiffPanel baseline={data.model} current={model} />
-                            </Card>
-                        )}
-                        <Card size="small">
-                            <Space orientation="vertical" size={6} style={{ width: '100%' }}>
-                                {draftBadge}
-                                {reviewMode && borradorId ? (
-                                    <>
-                                        <Tag color="orange" style={{ width: '100%', textAlign: 'center', padding: 4 }}>
-                                            Modo revisión
-                                        </Tag>
-                                        <Button
-                                            type="primary"
-                                            icon={<CheckOutlined />}
-                                            onClick={handleAprobar}
-                                            loading={approving}
-                                            block
-                                        >
-                                            Aprobar y aplicar
-                                        </Button>
-                                        <Button
-                                            danger
-                                            icon={<CloseOutlined />}
-                                            onClick={() => setRejectOpen(true)}
-                                            block
-                                        >
-                                            Rechazar
-                                        </Button>
-                                        <Button
-                                            icon={<SyncOutlined />}
-                                            onClick={reload}
-                                            block
-                                        >
-                                            Recargar
-                                        </Button>
-                                    </>
-                                ) : (
-                                    <>
-                                        <Button
-                                            icon={<SaveOutlined />}
-                                            onClick={handleSave}
-                                            loading={saving}
-                                            block
-                                        >
-                                            Guardar borrador
-                                        </Button>
-                                        {isAdmin ? (
-                                            <Popconfirm
-                                                title="Publicar SLD directo"
-                                                description="Se aplicará en GeoServer inmediatamente sin pasar por revisión."
-                                                okText="Publicar"
-                                                cancelText="Cancelar"
-                                                onConfirm={handlePublicarDirecto}
-                                            >
-                                                <Button
-                                                    type="primary"
-                                                    icon={<CheckOutlined />}
-                                                    loading={publishing}
-                                                    block
-                                                >
-                                                    Publicar directo (admin)
-                                                </Button>
-                                            </Popconfirm>
-                                        ) : (
-                                            <Button
-                                                type="primary"
-                                                icon={<CloudUploadOutlined />}
-                                                onClick={handleSubmitReview}
-                                                loading={submitting}
-                                                block
-                                            >
-                                                Solicitar revisión
-                                            </Button>
-                                        )}
-                                        <Button
-                                            icon={<SyncOutlined />}
-                                            onClick={reload}
-                                            block
-                                        >
-                                            Recargar de GeoServer
-                                        </Button>
-                                        {isAdmin && (
-                                            <Button
-                                                icon={<HistoryOutlined />}
-                                                onClick={() => setHistoryOpen(true)}
-                                                block
-                                            >
-                                                Historial
-                                            </Button>
-                                        )}
-                                    </>
-                                )}
-                                {draft?.estado === 'aprobado' && (
-                                    <Tag icon={<CheckCircleOutlined />} color="success" style={{ width: '100%', textAlign: 'center', padding: 4 }}>
-                                        Aprobado y aplicado en GeoServer
-                                    </Tag>
-                                )}
-                            </Space>
-                        </Card>
-                    </Space>
-                </Col>
-            </Row>
+            <SldEditorLayout
+                shape={shape}
+                model={model}
+                setModel={setModel}
+                availableFields={availableFields}
+                data={data}
+                workspace={workspace}
+                styleName={styleName}
+                layerName={layerName}
+                reviewMode={reviewMode}
+                sidebarProps={{
+                    draft,
+                    reviewMode,
+                    borradorId,
+                    isAdmin,
+                    saving,
+                    submitting,
+                    publishing,
+                    approving,
+                    onSave: handleSave,
+                    onSubmitReview: handleSubmitReview,
+                    onPublicar: handlePublicarDirecto,
+                    onAprobar: handleAprobar,
+                    onRechazarOpen: () => setRejectOpen(true),
+                    onReload: reload,
+                    onHistoryOpen: () => setHistoryOpen(true),
+                }}
+            />
 
             <SldHistoryDrawer
                 open={historyOpen}
@@ -511,23 +314,14 @@ function SldEditorBody({ workspace, layerName, styleName, layerId, reviewMode, b
                 onRestored={reload}
             />
 
-            <Modal
-                title="Rechazar borrador"
+            <SldRejectModal
                 open={rejectOpen}
                 onOk={handleRechazar}
                 onCancel={() => setRejectOpen(false)}
-                confirmLoading={rejecting}
-                okText="Rechazar"
-                okType="danger"
-                cancelText="Cancelar"
-            >
-                <Input.TextArea
-                    placeholder="Motivo del rechazo (opcional)"
-                    rows={3}
-                    value={rejectComment}
-                    onChange={(e) => setRejectComment(e.target.value)}
-                />
-            </Modal>
+                loading={rejecting}
+                comment={rejectComment}
+                onCommentChange={setRejectComment}
+            />
         </Space>
     );
 }

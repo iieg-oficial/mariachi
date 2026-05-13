@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-    Avatar,
     Button,
-    Collapse,
     Drawer,
     Image,
     InputNumber,
@@ -11,10 +9,9 @@ import {
     Space,
     Spin,
     Tag,
-    Timeline,
     Typography,
 } from 'antd';
-import { ReloadOutlined, UserOutlined } from '@ant-design/icons';
+import { ReloadOutlined } from '@ant-design/icons';
 import { updateReporte, useReporte } from '@features/colibri/hooks/useReportes';
 import { useReporteTipos } from '@features/colibri/hooks/useReporteTipos';
 import { useDirecciones } from '@features/colibri/hooks/useDirecciones';
@@ -27,6 +24,8 @@ import {
     formatDate,
 } from '@features/colibri/constants';
 import SourceContextView from '@features/colibri/components/SourceContextView';
+import ReporteHistorialPanel from '@features/colibri/components/ReporteHistorialPanel';
+import ReporteRespuestasPanel from '@features/colibri/components/ReporteRespuestasPanel';
 
 const SEVERIDAD_OPTIONS = [
     { value: 'baja', label: 'Baja', color: 'default' },
@@ -41,29 +40,6 @@ const PRIORIDAD_OPTIONS = [
     { value: 'P2', label: 'P2 — media', color: 'blue' },
     { value: 'P3', label: 'P3 — baja', color: 'default' },
 ];
-
-const ACCION_LABEL = {
-    estado_cambiado: 'Cambió estado',
-    nota_actualizada: 'Actualizó nota interna',
-    asignado: 'Asignó usuario',
-    direccion_asignada: 'Asignó dirección',
-    severidad_cambiada: 'Cambió severidad',
-    prioridad_cambiada: 'Cambió prioridad',
-    marcado_duplicado: 'Marcó como duplicado',
-    bloqueo_cambiado: 'Actualizó bloqueo',
-    campo_cambiado: 'Modificó',
-};
-
-const ACCION_COLOR = {
-    estado_cambiado: 'blue',
-    nota_actualizada: 'gray',
-    asignado: 'purple',
-    direccion_asignada: 'cyan',
-    severidad_cambiada: 'orange',
-    prioridad_cambiada: 'orange',
-    marcado_duplicado: 'red',
-    bloqueo_cambiado: 'gold',
-};
 
 const { Text, Paragraph } = Typography;
 
@@ -177,39 +153,10 @@ export default function ReporteDrawer({ id, onClose, onChanged }) {
                         </div>
                     </div>
 
-                    {reporte.respuestas && Object.keys(reporte.respuestas).length > 0 && (() => {
-                        const tipoSchema = TIPOS_BY_SLUG[reporte.tipo]?.formSchema;
-                        const campos = tipoSchema?.campos || [];
-                        const camposByKey = Object.fromEntries(campos.map((c) => [c.key, c]));
-                        return (
-                            <div>
-                                <Text strong>Respuestas del formulario</Text>
-                                <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                    {Object.entries(reporte.respuestas).map(([key, value]) => {
-                                        const campo = camposByKey[key];
-                                        const label = campo?.label || key;
-                                        let displayValue;
-                                        if (Array.isArray(value)) {
-                                            displayValue = value.join(', ');
-                                        } else if (typeof value === 'boolean') {
-                                            displayValue = value ? 'Sí' : 'No';
-                                        } else if (campo?.type === 'select' || campo?.type === 'radio') {
-                                            const opt = campo.options?.find((o) => o.value === value);
-                                            displayValue = opt ? opt.label : String(value);
-                                        } else {
-                                            displayValue = String(value);
-                                        }
-                                        return (
-                                            <div key={key}>
-                                                <Text type="secondary" style={{ fontSize: 12 }}>{label}</Text>
-                                                <div style={{ whiteSpace: 'pre-wrap' }}>{displayValue}</div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        );
-                    })()}
+                    <ReporteRespuestasPanel
+                        respuestas={reporte.respuestas}
+                        tipoSchema={TIPOS_BY_SLUG[reporte.tipo]?.formSchema}
+                    />
 
                     <div>
                         <Text strong>Dirección asignada</Text>
@@ -323,46 +270,7 @@ export default function ReporteDrawer({ id, onClose, onChanged }) {
                         />
                     </div>
 
-                    <Collapse
-                        size="small"
-                        items={[{
-                            key: 'actividad',
-                            label: <Text strong style={{ fontSize: 12 }}>Historial de actividad{actividad.length > 0 && ` (${actividad.length})`}</Text>,
-                            children: actividadLoading ? (
-                                <Spin size="small" />
-                            ) : actividad.length === 0 ? (
-                                <Text type="secondary" style={{ fontSize: 12 }}>Sin actividad registrada todavía. Los cambios futuros aparecerán aquí.</Text>
-                            ) : (
-                                <Timeline
-                                    items={actividad.map((a) => ({
-                                        key: a.id,
-                                        color: ACCION_COLOR[a.accion] || 'gray',
-                                        children: (
-                                            <div style={{ fontSize: 12 }}>
-                                                <Space size={6} align="center">
-                                                    <Avatar size={20} src={a.actorAvatarUrl} icon={<UserOutlined />} />
-                                                    <Text strong>{a.actorUsername || 'sistema'}</Text>
-                                                    <Text type="secondary" style={{ fontSize: 11 }}>{ACCION_LABEL[a.accion] || a.accion}</Text>
-                                                </Space>
-                                                {a.detalle?.campo && (
-                                                    <div style={{ marginTop: 2, color: '#666' }}>
-                                                        <Text code style={{ fontSize: 10 }}>{a.detalle.campo}</Text>
-                                                        {': '}
-                                                        <Text delete style={{ fontSize: 11 }}>{String(a.detalle.anterior ?? '—')}</Text>
-                                                        {' → '}
-                                                        <Text style={{ fontSize: 11 }}>{String(a.detalle.nuevo ?? '—')}</Text>
-                                                    </div>
-                                                )}
-                                                {a.creadoEn && (
-                                                    <Text type="secondary" style={{ fontSize: 10 }}>{formatDate(a.creadoEn)}</Text>
-                                                )}
-                                            </div>
-                                        ),
-                                    }))}
-                                />
-                            ),
-                        }]}
-                    />
+                    <ReporteHistorialPanel actividad={actividad} loading={actividadLoading} />
 
                     <Text type="secondary" style={{ fontSize: 12 }}>
                         Recibido: {formatDate(reporte.creadoEn)} · Actualizado: {formatDate(reporte.actualizadoEn)}
