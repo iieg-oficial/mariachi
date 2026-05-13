@@ -11,8 +11,9 @@ El editor detecta automáticamente el "shape" del SLD y rutea al editor visual a
 | Shape | Cuándo aplica | Editor |
 |---|---|---|
 | `choropleth` | Rules con `<ogc:Filter>` de rangos numéricos + opcional null rule | `<ChoroplethEditor>` |
-| `boundary` | Rules sin Filter (estilo único + label) | `<BoundaryEditor>` |
-| Otros | Raster/Point/Line, categóricos, layer groups, etc. | `<RawXmlFallback>` (read-only + leyenda live) |
+| `boundary` | Rules sin Filter con PolygonSymbolizer (estilo único + label) | `<BoundaryEditor>` |
+| `point` | Rules con PointSymbolizer + ExternalGraphic (símbolo del catálogo + label) | `<PointEditor>` |
+| Otros | Raster/Line, categóricos, layer groups, etc. | `<RawXmlFallback>` (read-only + leyenda live) |
 
 ---
 
@@ -26,6 +27,7 @@ Funciones públicas:
 
 - `build_sld_xml(*, layer_name, style_title, style_abstract, attribute, cortes, labels, colors, stroke, null_style) -> str` — coroplético rangos. Genera reglas con `<ogc:And>` (`PropertyIsGreaterThanOrEqualTo` + `PropertyIsLessThan`/`PropertyIsLessThanOrEqualTo` para la última regla cuando `upper` no es `None`). Soporta regla `null` con dos `PolygonSymbolizer` (fill sólido + GraphicFill con hatch). Geometría dinámica via `env(geom, geom_iieg)`.
 - `build_boundary_sld_xml(*, layer_name, style_title, polygon, label) -> str` — estilo único + label. Genera 0-1 PolygonSymbolizer + 0-1 TextSymbolizer (con halo, placement, vendor options, scale denominators).
+- `build_point_sld_xml(*, layer_name, style_title, point, label) -> str` — capa de puntos. Genera 0-1 PointSymbolizer con `<ExternalGraphic>` (href + Format + Opacity + Size + Rotation) + 0-1 TextSymbolizer. `point.graphic_url` debe estar resuelto (URL pública del bucket Acervo).
 
 ### `app/services/sld_parser.py`
 
@@ -43,9 +45,13 @@ Modelos:
 - `LabelStyleModel` — field/geometry_function/geometry_property/font/fill_color/halo/placement/vendor_options/min_scale/max_scale
 - `PolygonStyleModel` — fill_color/fill_opacity/stroke/rule_name/min_scale/max_scale
 - `BoundaryModel` — layer_name/style_title/polygon/label
-- `ParseResult` — `editable: bool`, `shape: 'choropleth' | 'boundary' | None`, `model`, `raw_xml`, `reason`
+- `PointGraphicModel` — graphic_url/graphic_format/size/rotation/opacity/symbol_id
+- `PointModel` — layer_name/style_title/point/label
+- `ParseResult` — `editable: bool`, `shape: 'choropleth' | 'boundary' | 'point' | None`, `model`, `raw_xml`, `reason`
 
 Función pública: `parse_sld(xml_text) -> ParseResult`.
+
+Para `shape='point'`, el endpoint GET enriquece `model.point.symbol_id` haciendo lookup inverso de `graphic_url` contra `mapalab.symbols` (sufijo `image_object_key` o `png_object_key`) — así el frontend puede preseleccionar el símbolo en el `<SymbolPicker>`.
 
 ### `app/services/palette_service.py`
 
@@ -69,11 +75,12 @@ Función pública: `load_palettes() -> list[dict]` — devuelve cada paleta con 
 Registrado en `APPLIERS['sld']`. Al aprobar un borrador con `resource_type='sld'`:
 
 1. Valida `resource_id == 'alias:style_name'`
-2. Lee `data.shape` ('choropleth' o 'boundary'); para boundary acepta `polygon` y/o `label` opcionales
-3. Llama `build_sld_xml` (choropleth) o `build_boundary_sld_xml` (boundary) según shape
-4. Resuelve `alias` → `geoserver_workspace` via `dataengine_db.query(Workspace)`
-5. `GeoServerClient().put_sld(...)` con verificación SHA256 round-trip
-6. `notify_tree_changed()` para invalidar cache de mapalab
+2. Lee `data.shape` ('choropleth' | 'boundary' | 'point')
+3. Para `point`: lee `point.symbol_id`, lookup en `mapalab.symbols`. Si `kind='emoji'` invoca `symbol_service.ensure_emoji_png(symbol_id)` para rasterizar via OpenMoji y obtener `png_object_key`. Si `kind='image'` usa `image_object_key`. Construye URL pública (`/acervo/mapalab/<key>`) y la pasa a `build_point_sld_xml`. Rechaza `kind='svg'` (SVG inline no es soportado por GeoServer en SLD; el admin debe subir como `image`).
+4. Llama `build_sld_xml` / `build_boundary_sld_xml` / `build_point_sld_xml` según shape
+5. Resuelve `alias` → `geoserver_workspace` via `dataengine_db.query(Workspace)`
+6. `GeoServerClient().put_sld(...)` con verificación SHA256 round-trip
+7. `notify_tree_changed()` para invalidar cache de mapalab
 
 ### Endpoints HTTP
 
@@ -128,7 +135,9 @@ Shell del editor. Recibe `layer` (objeto del nodo) y opcional `derivedFeatureTyp
 - Llama `useSldEditor`
 - Mantiene `model` (estado editable, hidratado de `draft.data` o `data.model`)
 - Si `data.editable === false` → `<RawXmlFallback>`
-- Si `data.shape === 'boundary'` → `<BoundaryEditor>`. Caso contrario → `<ChoroplethEditor>`
+- Si `data.shape === 'boundary'` → `<BoundaryEditor>`
+- Si `data.shape === 'point'` → `<PointEditor>`
+- Caso contrario → `<ChoroplethEditor>`
 - Layout: editor a la izquierda, sidebar derecho con `<LegendPreview>`, `<DiffPanel>` (solo choropleth) y botones (Guardar/Solicitar revisión/Recargar)
 
 ### `components/sldEditor/ChoroplethEditor.jsx`
@@ -146,6 +155,27 @@ Props: `model`, `onChange(model)`, `availableFields`.
 `PolygonTab` (interno) — toggle "Renderizar polígono", relleno (toggle + color + opacity), borde (toggle + StrokeEditor reusado), visibilidad por escala.
 
 Etiqueta delegada a `<BoundaryLabelTab>` (archivo separado por límite de 300 líneas).
+
+### `components/sldEditor/PointEditor.jsx`
+
+Editor visual del shape `point`. Tabs: Símbolo, Etiqueta, Metadatos.
+
+Props: `model`, `onChange(model)`, `availableFields`.
+
+`SymbolTab` (interno) — toggle "Renderizar símbolo de punto" + `<SymbolPicker>` + sliders de tamaño/rotación + InputNumber de opacidad.
+
+Etiqueta reusa `<BoundaryLabelTab>`. Metadatos: título del estilo.
+
+### `components/sldEditor/SymbolPicker.jsx`
+
+Selector de símbolo del catálogo de `mapalab.symbol_categories` / `mapalab.symbols` administrado en `/mapalab/simbolos`.
+
+Props: `value: number | null` (symbol_id), `onChange(symbolId, symbol)`.
+
+- Carga categorías con `listCategories()` y muestra `<Segmented>` arriba.
+- Carga símbolos de la categoría activa con `listSymbols(categoryId)`.
+- Renderiza grid con `<SymbolPreview>`.
+- Los símbolos `kind='svg'` están deshabilitados (no soportados por GeoServer); el admin debe subir como `kind='image'`.
 
 ### `components/sldEditor/BoundaryLabelTab.jsx`
 
@@ -269,6 +299,29 @@ Implicaciones en el editor SLD:
 129 tests pasan en `tests/services/`.
 
 ---
+
+## Requisitos en GeoServer para shape `point`
+
+Dos prerrequisitos de infraestructura deben cumplirse para que los SLDs con `<ExternalGraphic>` apuntando al bucket Acervo (símbolos del catálogo) rendereen correctamente:
+
+1. **Red Docker compartida**: el contenedor `geoserver` debe estar en `iieg-network` para resolver el hostname `acervo-minio`. Configurado en `/IIEG/geoserver/docker-compose.yml` agregando `iieg-network` (external) a los networks del servicio.
+
+2. **URL Check configurado**: GeoServer 2.20+ bloquea todas las URLs externas en SLDs si no hay URL checks definidos. Hay que crear uno que permita el bucket interno:
+
+   ```bash
+   curl -u "$GEOSERVER_ADMIN_USER:$GEOSERVER_ADMIN_PASSWORD" \
+     -H 'Content-Type: application/json' -X POST \
+     "$GEOSERVER_URL/rest/urlchecks" -d '{
+       "regexUrlCheck": {
+         "name": "acervo_mapalab",
+         "description": "Acervo MinIO interno (bucket mapalab)",
+         "enabled": true,
+         "regex": "^http://acervo-minio:9000/mapalab/.+$"
+       }
+     }'
+   ```
+
+   Si en producción Acervo es accesible vía un dominio HTTPS distinto, agregar también un check con el regex correspondiente.
 
 ## Limitaciones conocidas
 

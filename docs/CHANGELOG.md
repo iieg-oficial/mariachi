@@ -9,6 +9,53 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.50.0] - 2026-05-13
+
+### Catalogo de simbolos administrable + shape `point` en SLD editor
+
+Reemplaza el catalogo hardcoded de emojis del panel de mediciones de MapaLab por un catalogo CRUD administrable desde mariachi-admin, y habilita el uso de esos simbolos como simbologia de capas de puntos en GeoServer.
+
+#### Catalogo de simbolos (`/mapalab/simbolos`)
+
+- Nueva feature `admin/src/features/mapalab-symbols/` con sidebar de categorias + grid de simbolos.
+- 3 tipos soportados: `emoji` (caracter Unicode), `svg` (XML inline), `image` (PNG/JPG/SVG/WebP/GIF subido al bucket Acervo `mapalab/simbologia/`).
+- CRUD completo de categorias y simbolos (rol `tetlamamakani`).
+- Drag & drop para reordenar simbolos (via `@dnd-kit/sortable`), persiste en `POST /symbols/reorder`.
+- Endpoints admin bajo `/api/administrador/mapalab/symbol-categories` y `/api/administrador/mapalab/symbols`.
+- Endpoint publico `GET /api/mapalab/symbols/catalog` consumido por MapaLab y por el SLD editor.
+
+#### Shape `point` en el SLD editor
+
+- Parser (`sld_parser.py`): detecta rules con `PointSymbolizer` + `ExternalGraphic`. Nuevos models `PointGraphicModel` y `PointModel`.
+- Generator (`sld_generator.py`): `build_point_sld_xml(...)` emite SLDs con `<ExternalGraphic>` apuntando a URL interna del bucket Acervo.
+- Frontend `<PointEditor>` con tabs Simbolo / Etiqueta / Metadatos. `<SymbolPicker>` consume el catalogo y deshabilita `kind='svg'` (no soportado por GeoServer en SLDs).
+- Selector "Tipo de simbologia" arriba del editor: permite cambiar entre coropletico/boundary/point en capas existentes. Card "Empezar desde cero" en el `RawXmlFallback` para capas no editables que se quieran reemplazar con un point SLD.
+- Emojis usados en SLD se rasterizan automaticamente con Twemoji (CDN `cdnjs.cloudflare.com`) y se suben a `mapalab/simbologia/emoji-png/`. Resuelve la limitacion de Java 2D en GeoServer que no soporta fuentes de color.
+
+#### Modo revision en el SLD editor
+
+- `<SldEditor>` lee `?review=true&borrador=<id>&style=<name>` y muestra botones **Aprobar y aplicar** / **Rechazar** en el sidebar.
+- `<BorradorPreview>` renderiza localmente el modelo del borrador (sin tocar GeoServer) para que el revisor compare con `<LegendPreview>` (que muestra el SLD vigente).
+- `RevisionQueuePage` con soporte para `resource_type='sld'`: tag verde con shape, navegacion correcta al editor en modo review, fallback para borradores viejos sin `layer_id` en data (enrichment en `obtener_pendientes` via `find_layers_using_style`).
+
+#### Publicar directo (admin)
+
+- Para rol `tetlamamakani`, el boton "Solicitar revision" se reemplaza por **Publicar directo (admin)**: guarda borrador + solicita revision + aprueba en una sola operacion. Sin paso por la cola de revision.
+
+#### Historial de SLDs aplicados
+
+- Migracion `d3e4f5a6b7ca`: el unique constraint en `borradores` ahora es parcial (solo aplica a estados activos `en_progreso`/`pendiente_revision`/`rechazado`). Los aprobados acumulan historial.
+- Endpoint `GET /borradores/historial/sld/{resource_id}` lista versiones aprobadas.
+- Endpoint `POST /borradores/por-id/{id}/re-aplicar` re-aplica el `data` del borrador aprobado y crea un duplicado aprobado (la restauracion tambien queda auditada).
+- `<SldHistoryDrawer>` accesible desde boton "Historial" en el sidebar: lista cronologica con preview y boton restaurar por version.
+
+#### Infraestructura
+
+- El contenedor `geoserver` debe estar en `iieg-network` para alcanzar `acervo-minio` cuando renderiza SLDs con `<ExternalGraphic>` (cambio en `/IIEG/geoserver/docker-compose.yml`).
+- GeoServer 2.20+ requiere un `URLCheck` configurado para permitir URLs externas en SLDs. Crear via REST: `POST /rest/urlchecks` con regex `^http://acervo-minio:9000/mapalab/.+$`. Documentado en `docs/SLD_EDITOR.md`.
+
+---
+
 ## [0.49.0] - 2026-05-12
 
 ### Respaldos automatizados de PostgreSQL con rotacion GFS

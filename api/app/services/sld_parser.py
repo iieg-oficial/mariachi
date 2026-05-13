@@ -95,10 +95,26 @@ class BoundaryModel(BaseModel):
     label: LabelStyleModel | None = None
 
 
+class PointGraphicModel(BaseModel):
+    graphic_url: str | None = None
+    graphic_format: str = "image/png"
+    size: float = 16.0
+    rotation: float = 0.0
+    opacity: float = 1.0
+    symbol_id: int | None = None
+
+
+class PointModel(BaseModel):
+    layer_name: str
+    style_title: str = ""
+    point: PointGraphicModel | None = None
+    label: LabelStyleModel | None = None
+
+
 class ParseResult(BaseModel):
     editable: bool
     shape: str | None = None
-    model: ChoroplethModel | BoundaryModel | None = None
+    model: ChoroplethModel | BoundaryModel | PointModel | None = None
     raw_xml: str
     reason: str | None = None
 
@@ -457,6 +473,74 @@ def _parse_boundary(
     ), None
 
 
+def _parse_point_graphic(rule: ET.Element) -> PointGraphicModel | None:
+    point_sym = rule.find(_t("sld:PointSymbolizer"))
+    if point_sym is None:
+        return None
+    graphic = point_sym.find(_t("sld:Graphic"))
+    if graphic is None:
+        return None
+    external = graphic.find(_t("sld:ExternalGraphic"))
+    if external is None:
+        return None
+    online = external.find(_t("sld:OnlineResource"))
+    if online is None:
+        return None
+    href = online.attrib.get("{http://www.w3.org/1999/xlink}href")
+    format_elem = external.find(_t("sld:Format"))
+    fmt = _text(format_elem, "image/png")
+    size_elem = graphic.find(_t("sld:Size"))
+    size = float(_text(size_elem, "16"))
+    rotation_elem = graphic.find(_t("sld:Rotation"))
+    rotation = float(_text(rotation_elem, "0"))
+    opacity_elem = graphic.find(_t("sld:Opacity"))
+    opacity = float(_text(opacity_elem, "1.0"))
+    return PointGraphicModel(
+        graphic_url=href,
+        graphic_format=fmt,
+        size=size,
+        rotation=rotation,
+        opacity=opacity,
+    )
+
+
+def _parse_point(
+    rules: list[ET.Element],
+    layer_name: str,
+    style_title: str,
+) -> tuple[PointModel | None, str | None]:
+    point: PointGraphicModel | None = None
+    label: LabelStyleModel | None = None
+
+    for rule in rules:
+        if rule.find(_t("ogc:Filter")) is not None:
+            return None, "Rule con Filter (no es point single-style)"
+        if rule.find(_t("sld:PointSymbolizer")) is not None:
+            if point is not None:
+                return None, "Múltiples PointSymbolizer; no soportado"
+            point = _parse_point_graphic(rule)
+            if point is None:
+                return None, "PointSymbolizer sin ExternalGraphic"
+        elif rule.find(_t("sld:TextSymbolizer")) is not None:
+            if label is not None:
+                return None, "Múltiples TextSymbolizer; no soportado"
+            label = _parse_text_symbolizer(rule)
+        elif rule.find(_t("sld:PolygonSymbolizer")) is not None:
+            return None, "Rule con PolygonSymbolizer (no es point)"
+        else:
+            return None, "Rule con symbolizer no reconocido"
+
+    if point is None and label is None:
+        return None, "No se detectaron point ni label"
+
+    return PointModel(
+        layer_name=layer_name,
+        style_title=style_title,
+        point=point,
+        label=label,
+    ), None
+
+
 def parse_sld(xml_text: str) -> ParseResult:
     try:
         root = ET.fromstring(xml_text)
@@ -502,8 +586,17 @@ def parse_sld(xml_text: str) -> ParseResult:
             editable=True, shape="boundary", model=bound_model, raw_xml=xml_text,
         )
 
+    point_model, point_reason = _parse_point(rules, layer_name, style_title)
+    if point_model is not None:
+        return ParseResult(
+            editable=True, shape="point", model=point_model, raw_xml=xml_text,
+        )
+
     return ParseResult(
         editable=False,
         raw_xml=xml_text,
-        reason=f"No coincide ningún shape soportado. Coroplético: {chor_reason}. Boundary: {bound_reason}.",
+        reason=(
+            f"No coincide ningún shape soportado. "
+            f"Coroplético: {chor_reason}. Boundary: {bound_reason}. Point: {point_reason}."
+        ),
     )

@@ -18,7 +18,12 @@ from app.services import layer_service
 from app.services.geoserver_client import GeoServerClient, GeoServerError
 from app.services.mapalab_notifier import notify_tree_changed
 from app.services.mapalab_public_cache import notify_eventos_changed, notify_home_changed
-from app.services.sld_generator import build_boundary_sld_xml, build_sld_xml
+from app.services import symbol_service
+from app.services.sld_generator import (
+    build_boundary_sld_xml,
+    build_point_sld_xml,
+    build_sld_xml,
+)
 
 ApplyFn = Callable[[Session, Session, Borrador, str], dict]
 
@@ -160,7 +165,76 @@ def _apply_sld(
 
     shape = data.get('shape', 'choropleth')
 
-    if shape == 'boundary':
+    if shape == 'point':
+        if not data.get('layer_name'):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Falta layer_name en data",
+            )
+        point_data = data.get('point') or None
+        label_data = data.get('label') or None
+        if not point_data and not label_data:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="point requiere al menos un graphic o label",
+            )
+        if point_data:
+            symbol_id = point_data.get('symbol_id')
+            if not symbol_id:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="point.symbol_id es requerido",
+                )
+            symbol = symbol_service.get_symbol(dataengine_db, symbol_id)
+            if symbol.kind == 'emoji':
+                symbol = symbol_service.ensure_emoji_png(dataengine_db, symbol_id, mariachi_db=_db)
+                object_key = symbol.png_object_key
+                fmt = 'image/png'
+            elif symbol.kind == 'image':
+                object_key = symbol.image_object_key
+                ext = (object_key or '').rsplit('.', 1)[-1].lower()
+                fmt = {
+                    'svg': 'image/svg+xml',
+                    'png': 'image/png',
+                    'jpg': 'image/jpeg',
+                    'jpeg': 'image/jpeg',
+                    'webp': 'image/webp',
+                    'gif': 'image/gif',
+                }.get(ext, 'image/png')
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"kind='{symbol.kind}' (svg inline) no soportado en SLD; usa image",
+                )
+            if not object_key:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="No se pudo resolver el object_key del símbolo",
+                )
+            graphic_url = symbol_service._object_geoserver_url(_db, object_key)
+            point_payload = {
+                'graphic_url': graphic_url,
+                'graphic_format': fmt,
+                'size': point_data.get('size', 16),
+                'rotation': point_data.get('rotation', 0),
+                'opacity': point_data.get('opacity', 1.0),
+            }
+        else:
+            point_payload = None
+        try:
+            xml = build_point_sld_xml(
+                layer_name=data['layer_name'],
+                style_title=data.get('style_title') or '',
+                point=point_payload,
+                label=label_data,
+            )
+        except ValueError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Modelo SLD inválido: {exc}",
+            ) from exc
+
+    elif shape == 'boundary':
         if not data.get('layer_name'):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

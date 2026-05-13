@@ -293,6 +293,13 @@ async def get_style_sld(
             'que lo usan. Edita desde el panel de GeoServer o duplicalo como style '
             f"del workspace '{ws.geoserver_workspace}'."
         )
+    model_dict = parsed.model.model_dump(by_alias=False) if parsed.model else None
+    if parsed.shape == 'point' and model_dict and model_dict.get('point'):
+        graphic_url = model_dict['point'].get('graphic_url')
+        from app.services.symbol_service import find_symbol_by_graphic_url
+        symbol = find_symbol_by_graphic_url(db, graphic_url)
+        if symbol is not None:
+            model_dict['point']['symbol_id'] = symbol.id
     return {
         'workspace': alias,
         'styleName': bare_style,
@@ -300,7 +307,7 @@ async def get_style_sld(
         'editable': editable,
         'shape': parsed.shape,
         'reason': reason,
-        'model': parsed.model.model_dump(by_alias=False) if parsed.model else None,
+        'model': model_dict,
         'sharedBy': shared_by,
         'isGlobal': is_global,
     }

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { Alert, AutoComplete, Breadcrumb, Button, Card, Col, Empty, Form, Input, Layout, Result, Row, Select, Space, Spin, Switch, Tabs, Tag, Tooltip, Typography } from 'antd';
 import { LeftOutlined, MenuUnfoldOutlined, PartitionOutlined, ReloadOutlined, SaveOutlined } from '@ant-design/icons';
-import { useNavigate, useParams } from 'react-router';
+import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import { useAuth } from '@shared/contexts/useAuth';
@@ -35,6 +35,8 @@ const { Text, Title, Paragraph } = Typography;
 export default function LayerEditPage() {
     const { id: layerId } = useParams();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const initialTab = searchParams.get('tab') || 'identidad';
     const { isMobile } = useIsMobile();
     const { user } = useAuth();
     const isAdmin = user?.role === 'tetlamamakani';
@@ -948,7 +950,7 @@ export default function LayerEditPage() {
                                         </div>
                                     )}
                                     <Tabs
-                                        defaultActiveKey="identidad"
+                                        defaultActiveKey={initialTab}
                                         items={tabItems}
                                         tabPosition={isMobile ? 'top' : 'left'}
                                         style={{ minHeight: 400 }}

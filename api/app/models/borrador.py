@@ -1,4 +1,4 @@
-from sqlalchemy import JSON, Column, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import JSON, Column, DateTime, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -21,5 +21,12 @@ class Borrador(Base):
     usuario = relationship("Usuario", foreign_keys=[usuario_id], lazy="select")
 
     __table_args__ = (
-        UniqueConstraint("resource_type", "resource_id", "usuario_id", name="uq_borrador_recurso_usuario"),
+        Index(
+            "uq_borrador_recurso_usuario_activos",
+            "resource_type",
+            "resource_id",
+            "usuario_id",
+            unique=True,
+            postgresql_where="estado IN ('en_progreso', 'pendiente_revision', 'rechazado')",
+        ),
     )

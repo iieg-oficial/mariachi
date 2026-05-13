@@ -367,6 +367,63 @@ def _scale_blocks(min_scale: Any, max_scale: Any) -> str:
     return "".join(parts)
 
 
+def _point_block(point: dict[str, Any]) -> str:
+    graphic_url = point.get("graphic_url") or ""
+    fmt = point.get("graphic_format") or "image/png"
+    size = point.get("size", 16)
+    rotation = point.get("rotation", 0)
+    opacity = point.get("opacity", 1.0)
+    return (
+        f"<sld:PointSymbolizer>"
+        f"<sld:Graphic>"
+        f"<sld:ExternalGraphic>"
+        f'<sld:OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" xlink:type="simple" '
+        f'xlink:href="{_escape_text(graphic_url)}"/>'
+        f"<sld:Format>{_escape_text(fmt)}</sld:Format>"
+        f"</sld:ExternalGraphic>"
+        f"<sld:Opacity>{_num(opacity)}</sld:Opacity>"
+        f"<sld:Size>{_num(size)}</sld:Size>"
+        f"<sld:Rotation>{_num(rotation)}</sld:Rotation>"
+        f"</sld:Graphic>"
+        f"</sld:PointSymbolizer>"
+    )
+
+
+def build_point_sld_xml(
+    *,
+    layer_name: str,
+    style_title: str = "",
+    point: dict[str, Any] | None = None,
+    label: dict[str, Any] | None = None,
+) -> str:
+    if point is None and label is None:
+        raise ValueError("point necesita al menos un graphic o label")
+
+    rules: list[str] = []
+    if point:
+        if not point.get("graphic_url"):
+            raise ValueError("point requiere graphic_url")
+        rules.append(f"<sld:Rule>{_point_block(point)}</sld:Rule>")
+    if label:
+        scales_xml = _scale_blocks(label.get("min_scale"), label.get("max_scale"))
+        rules.append(f"<sld:Rule>{scales_xml}{_label_block(label)}</sld:Rule>")
+
+    title_xml = (
+        f"<sld:Name>{_escape_text(layer_name)}</sld:Name>"
+        + (f"<sld:Title>{_escape_text(style_title)}</sld:Title>" if style_title else "")
+    )
+
+    return (
+        f'<?xml version="1.0" encoding="UTF-8"?>'
+        f'<sld:StyledLayerDescriptor xmlns:sld="http://www.opengis.net/sld" xmlns="http://www.opengis.net/sld" xmlns:gml="http://www.opengis.net/gml" xmlns:ogc="http://www.opengis.net/ogc" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.0.0">'
+        f"<sld:NamedLayer>"
+        f"<sld:Name>{_escape_text(layer_name)}</sld:Name>"
+        f"<sld:UserStyle>{title_xml}<sld:FeatureTypeStyle>{''.join(rules)}</sld:FeatureTypeStyle></sld:UserStyle>"
+        f"</sld:NamedLayer>"
+        f"</sld:StyledLayerDescriptor>"
+    )
+
+
 def build_boundary_sld_xml(
     *,
     layer_name: str,

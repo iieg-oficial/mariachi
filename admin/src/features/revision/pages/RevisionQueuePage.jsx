@@ -85,11 +85,17 @@ export default function RevisionQueue() {
     const isMenu = (record) => record?.resource_type === 'elementos-menu';
     const isEvento = (record) => record?.resource_type === 'evento';
     const isHomeSection = (record) => record?.resource_type === 'home_section';
+    const isSld = (record) => record?.resource_type === 'sld';
 
     const tipoTag = (record) => {
         if (isMenu(record)) return <Tag color="purple">Menú de navegación</Tag>;
         if (isEvento(record)) return <Tag color="geekblue">Evento: {record.data?.titulo || record.resource_id}</Tag>;
         if (isHomeSection(record)) return <Tag color="cyan">Home: {record.resource_id}</Tag>;
+        if (isSld(record)) {
+            const shape = record.data?.shape || 'choropleth';
+            const label = shape === 'point' ? 'Punto' : shape === 'boundary' ? 'Boundary' : 'Coroplético';
+            return <Tag color="green">Simbología ({label}): {record.resource_id}</Tag>;
+        }
         return record.data?.title || `Página ${record.resource_id}`;
     };
 
@@ -97,10 +103,24 @@ export default function RevisionQueue() {
         if (isMenu(record)) return `/menu?review=true&borrador=${record.id}`;
         if (isEvento(record)) return `/mapalab/eventos/${record.resource_id}/edit?review=true&borrador=${record.id}`;
         if (isHomeSection(record)) return `/mapalab/home?review=true&borrador=${record.id}`;
+        if (isSld(record)) {
+            const layerId = record.data?.layer_id;
+            const styleName = record.data?.style_name || record.resource_id?.split(':').slice(1).join(':') || '';
+            if (layerId) {
+                const params = new URLSearchParams({
+                    tab: 'simbologia',
+                    review: 'true',
+                    borrador: String(record.id),
+                });
+                if (styleName) params.set('style', styleName);
+                return `/mapalab/layers/${layerId}/edit?${params.toString()}`;
+            }
+            return `/mapalab/layers?review=true&borrador=${record.id}`;
+        }
         return `/pages/edit/${record.resource_id}?review=true&borrador=${record.id}`;
     };
 
-    const supportsPreview = (record) => isMenu(record) || (!isEvento(record) && !isHomeSection(record));
+    const supportsPreview = (record) => isMenu(record) || (!isEvento(record) && !isHomeSection(record) && !isSld(record));
 
     const columns = [
         {
@@ -197,7 +217,8 @@ export default function RevisionQueue() {
                         isMenu(borradorSeleccionado) ? 'Menú de navegación'
                             : isEvento(borradorSeleccionado) ? `evento "${borradorSeleccionado.data?.titulo || borradorSeleccionado.resource_id}"`
                                 : isHomeSection(borradorSeleccionado) ? `sección home "${borradorSeleccionado.resource_id}"`
-                                    : borradorSeleccionado.data?.title
+                                    : isSld(borradorSeleccionado) ? `simbología "${borradorSeleccionado.resource_id}"`
+                                        : borradorSeleccionado.data?.title
                     ) : ''}</strong> fue rechazado.
                 </p>
                 <Input.TextArea

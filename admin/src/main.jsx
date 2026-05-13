@@ -46,6 +46,7 @@ const InitialLayerOrderPage = lazy(() => import('@features/mapalab-layers').then
 const EventosListPage = lazy(() => import('@features/mapalab-eventos').then((m) => ({ default: m.EventosListPage })));
 const EventoEditPage = lazy(() => import('@features/mapalab-eventos').then((m) => ({ default: m.EventoEditPage })));
 const HomePage = lazy(() => import('@features/mapalab-home').then((m) => ({ default: m.HomePage })));
+const SymbolsPage = lazy(() => import('@features/mapalab-symbols').then((m) => ({ default: m.SymbolsPage })));
 const FormulariosListPage = lazy(() => import('@features/sieej-formularios').then((m) => ({ default: m.FormulariosListPage })));
 const FormularioEditorPage = lazy(() => import('@features/sieej-formularios').then((m) => ({ default: m.FormularioEditorPage })));
 const GruposPage = lazy(() => import('@features/sieej-formularios').then((m) => ({ default: m.GruposPage })));
@@ -241,6 +242,14 @@ const router = createBrowserRouter([
                         element: withSuspense(
                             <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
                                 <HomePage />
+                            </RoleProtectedRoute>
+                        )
+                    },
+                    {
+                        path: 'mapalab/simbolos',
+                        element: withSuspense(
+                            <RoleProtectedRoute allowedRoles={['tetlamamakani']}>
+                                <SymbolsPage />
                             </RoleProtectedRoute>
                         )
                     },

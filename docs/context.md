@@ -410,7 +410,7 @@ Ver la documentación interna de mapalab (`/IIEG/mapalab/docs/layers.md`, `infob
 
 | Metodo | Ruta | Funcion |
 |---|---|---|
-| GET | `/api/administrador/geoserver/styles/{alias}/{style_name}` | Devuelve `{rawXml, editable, shape, model, sharedBy, reason}` con detección automática del shape (choropleth/boundary) |
+| GET | `/api/administrador/geoserver/styles/{alias}/{style_name}` | Devuelve `{rawXml, editable, shape, model, sharedBy, reason}` con detección automática del shape (choropleth/boundary/point). Para `shape='point'` enriquece `model.point.symbol_id` con lookup inverso del catálogo |
 | GET | `/api/administrador/geoserver/legend/{alias}/{layer}/{style_name}` | Proxy a `GetLegendGraphic` de GeoServer (independiente del gateway-hub) |
 | GET | `/api/administrador/geoserver/palettes` | Lista las 144 paletas oficiales del CSV `paletas_simbologia.csv` |
 | POST | `/api/administrador/borradores/por-id/{id}/aprobar` | Si `resource_type='sld'`, genera SLD y hace `put_sld` con verificación SHA256 round-trip |
@@ -425,6 +425,40 @@ Cualquier otro shape (Raster/Point/Line, filtros categóricos, layer groups) cae
 Workflow de aprobación: reusa la tabla `borradores` con `resource_type='sld'`, `resource_id='{alias}:{style_name}'`. Sin schema nuevo. Botón "Solicitar revisión" → `tetlamamakani` aprueba en `RevisionQueue` → backend genera SLD → upload a GeoServer → `notify_tree_changed()` invalida cache.
 
 Ver `docs/SLD_EDITOR.md` para la referencia completa por componente.
+
+### v0.50.0 Catálogo de símbolos + shape `point` en SLD editor — implementado
+
+Catálogo administrable de símbolos consumido por el panel de mediciones de MapaLab y por el shape `point` del SLD editor. Incluye flujo de revisión adaptado a SLDs, modo "Publicar directo" para admin, e historial automático de SLDs aplicados con restauración.
+
+#### Endpoints
+
+| Método | Ruta | Función |
+|---|---|---|
+| GET/POST/PUT/DELETE | `/api/administrador/mapalab/symbol-categories[/{id}]` | CRUD de categorías (tetlamamakani) |
+| GET/POST/PUT/DELETE | `/api/administrador/mapalab/symbols[/{id}]` | CRUD de símbolos (tetlamamakani) |
+| POST | `/api/administrador/mapalab/symbols/upload` | Upload multipart de imagen (kind=image) al bucket `mapalab/simbologia/` |
+| POST | `/api/administrador/mapalab/symbols/reorder` | Reordena símbolos en bulk (usado por drag & drop en el admin) |
+| GET | `/api/mapalab/symbols/catalog` | Endpoint público (sin auth) consumido por MapaLab — devuelve `{categories: [{id, slug, name, icon, symbols: [...]}]}` |
+| GET | `/api/administrador/borradores/historial/sld/{resource_id}` | Lista versiones aprobadas de ese style (admin) |
+| POST | `/api/administrador/borradores/por-id/{id}/re-aplicar` | Re-aplica un borrador aprobado y crea duplicado para historial |
+
+#### Tablas en schema `mapalab` (dataengine, migración `0007_symbol_catalog`)
+
+- `mapalab.symbol_categories` — `(id, slug UNIQUE, name, icon, sort_order, timestamps)`
+- `mapalab.symbols` — `(id, category_id FK CASCADE, kind CHECK('emoji'|'svg'|'image'), value TEXT, name, sort_order, image_object_key, png_object_key, timestamps)`
+
+Migración mariachi `d3e4f5a6b7ca`: el unique constraint en `borradores` ahora es parcial (solo aplica a `en_progreso`/`pendiente_revision`/`rechazado`). Los aprobados acumulan historial sin tabla nueva.
+
+#### Rasterización de emojis para GeoServer
+
+Para emojis usados en SLDs, el applier `_apply_sld` invoca `symbol_service.ensure_emoji_png(symbol_id, mariachi_db)` que rasteriza el emoji con **Twemoji** (CDN `cdnjs.cloudflare.com`) y guarda el PNG en `mapalab/simbologia/emoji-png/<codepoint>.png`. `png_object_key` se persiste para no rasterizar dos veces. Esto resuelve la limitación de Java 2D en GeoServer que no soporta fuentes de color.
+
+#### Prerrequisitos de infraestructura
+
+1. El contenedor `geoserver` debe estar en `iieg-network` para resolver `acervo-minio` cuando renderiza el SLD con `<ExternalGraphic>`. Configurado en `/IIEG/geoserver/docker-compose.yml`.
+2. GeoServer 2.20+ bloquea por defecto cualquier URL externa en SLDs. Crear un `URLCheck` vía REST API: `POST /rest/urlchecks` con regex `^http://acervo-minio:9000/mapalab/.+$`. Detalles en `docs/SLD_EDITOR.md`.
+
+UI: `/mapalab/simbolos` (admin tetlamamakani). Features en `admin/src/features/mapalab-symbols/` y `admin/src/features/mapalab-layers/components/sldEditor/`.
 
 ### v0.31.0 Modelo de Propiedades (display-only)
 
