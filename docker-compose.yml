@@ -95,6 +95,8 @@ services:
         while true; do
           echo "[cron-sieej] $$(date -u +%Y-%m-%dT%H:%M:%SZ) running expire_sieej_envios"
           python scripts/expire_sieej_envios.py || echo "[cron-sieej] script fallo, continuando"
+          echo "[cron-sieej] $$(date -u +%Y-%m-%dT%H:%M:%SZ) running purge_mapalab_accesos"
+          python scripts/purge_mapalab_accesos.py || echo "[cron-sieej] purge mapalab fallo, continuando"
           sleep ${CRON_SIEEJ_EXPIRE_INTERVAL:-3600}
         done
     env_file:

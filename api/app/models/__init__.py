@@ -6,6 +6,8 @@ from app.models.direccion_organizacional import DireccionOrganizacional
 from app.models.evento import Evento
 from app.models.home_section import HomeSection
 from app.models.mapalab_api_key import MapalabApiKey
+from app.models.mapalab_api_key_acceso import MapalabApiKeyAcceso
+from app.models.mapalab_api_key_embed import MapalabApiKeyEmbed
 from app.models.mapalab_api_key_evento import MapalabApiKeyEvento
 from app.models.mapalab_api_key_uso import MapalabApiKeyUsoDiario
 from app.models.media import Media, MediaFolder
@@ -56,6 +58,8 @@ __all__ = [
     "ReporteTipo",
     "SourceApp",
     "MapalabApiKey",
+    "MapalabApiKeyAcceso",
+    "MapalabApiKeyEmbed",
     "MapalabApiKeyEvento",
     "MapalabApiKeyUsoDiario",
     "CatalogoCalidadDatos",

@@ -9,7 +9,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 from app.core.database import SessionLocal
 from app.core.security import hash_password
-from app.models import MediaFolder, MenuItem, Usuario
+from app.models import MenuItem, Usuario
 
 API_ROOT = Path(__file__).parent.parent
 
@@ -125,18 +125,6 @@ def crear_menu_items_ejemplo(db):
     print("✓ Items de menú creados")
 
 
-def crear_carpeta_raiz(db):
-    print("Creando carpeta raíz de media...")
-    carpeta = db.query(MediaFolder).filter(MediaFolder.path == "/").first()
-    if not carpeta:
-        carpeta = MediaFolder(name="Root", path="/", parent=None)
-        db.add(carpeta)
-        db.commit()
-        print("✓ Carpeta raíz creada")
-    else:
-        print("✓ Carpeta raíz ya existe")
-
-
 def main():
     print("=" * 60)
     print("Inicializando base de datos — Mariachi API")
@@ -148,7 +136,6 @@ def main():
     db = SessionLocal()
 
     try:
-        crear_carpeta_raiz(db)
         crear_usuario_admin(db)
         crear_usuarios_ejemplo(db)
         crear_menu_items_ejemplo(db)

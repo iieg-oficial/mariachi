@@ -9,6 +9,48 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.51.0] - 2026-05-13
+
+### Llaves MapaLab — auditoría, UX no técnica, generación de mapas inline, defense-in-depth
+
+Refactor del feature `mapalab-api-keys` y endurecimiento del ciclo de embebido. Cierra cuatro puntos de auditoría del widget (fallback, frame-ancestors, auditoría de accesos, Core Web Vitals) y reescribe el lenguaje del panel administrativo en español plano para servidores públicos.
+
+#### Auditoría de accesos al widget (nueva)
+
+- **Modelo:** `mapalab_api_keys_accesos` con columnas para gobernanza ya reservadas (`clasificacion`, `sla_estado`, `linaje_ref`) listas para futuras campañas.
+- **Migración Alembic:** `a9b0c1d2e3f4_add_mapalab_api_key_accesos.py`. Índices sobre `(api_key_id, timestamp)`, `dia`, `origin`, `resultado`.
+- **Endpoint admin:** `GET /api/administrador/mapalab/api-keys/{id}/accesos` con filtros (`desde`, `hasta`, `origin`, `capa`, `resultado`, `endpoint`) y paginación. Devuelve `MapalabApiKeyAccesoPage(items, total, page, size)`.
+- **Endpoint interno:** `POST /api/administrador/internal/mapalab/keys/accesos` para ingest batch desde mapalab-backend (similar al patrón `usage`). Token `X-Internal-Token`.
+- **UI:** nueva tab "Auditoría" dentro del panel inline de cada llave, con tabla filtrable y labels legibles de capas (no slugs).
+- **Retención:** `scripts/purge_mapalab_accesos.py` purga registros > 90 días (configurable con `MAPALAB_ACCESOS_RETENTION_DAYS`). El cron `mariachi-cron-sieej` corre el script en cada ciclo.
+
+#### Defense-in-depth contra clickjacking
+
+- `routers/mapalab_api_keys_internal.py`: `/validate` ahora devuelve `dominiosPermitidos` (además de capas/cuotas) para que mapalab-backend pueda usarlo en `frame-ancestors` y para validación cliente.
+- `schemas/mapalab_api_key.py`: `MapalabApiKeyValidateResponse.dominios_permitidos` agregado.
+
+#### Refactor profundo del feature `admin/src/features/mapalab-api-keys/`
+
+- **Editor inline (fila expandible):** desaparece `ApiKeyEditorDrawer`. La tabla usa `expandable.expandedRowRender` con `ApiKeyEditorForm` embebido. Tres botones de acción (✎ Editar / 👁 Previsualizar / ⋮ Más) abren la fila en tabs distintas, no en drawers laterales.
+- **Tabs unificadas:** `ApiKeyInlinePanel` con `[Datos de la llave] [Armar y previsualizar mapas] [Auditoría]`. Se eliminó la separación entre "Embeds vinculados" y "Playground" (era redundante).
+- **Generación de mapas inline:** la pestaña "Previsualizar y embeber" permite armar un mapa con `LayerTreeSelect` (árbol completo del visor) + capturar la vista vía postMessage del preview + persistir como embed permanente con un solo click. Backend nuevo `POST /api-keys/{id}/embeds/from-layers` que crea el share en mapalab y lo vincula+pinea atómicamente.
+- **PostMessage bidireccional:** el iframe del preview emite `mapalab:viewchange` (admin captura center/zoom en vivo) y escucha `mapalab:setview` (admin puede cargar una vista guardada sin recargar el iframe).
+- **Mapas guardados con summary legible:** la lista muestra capas con labels en español, vista (centro/zoom) y badge "Permanente", no solo el hash. El hash queda como detalle pequeño.
+- **Hash al crear llave:** el form de "Nueva llave" acepta opcionalmente uno o varios hashes existentes para vincular en el mismo paso.
+- **Detección de bloqueos:** si el origin admin o las capas pedidas no están autorizadas para la llave, Alert con botón "Autorizar" que hace `PATCH` y reload.
+- **Sin scroll horizontal en desktop:** `tableLayout: fixed` + widths más compactos + acciones secundarias agrupadas en Dropdown ⋮ con `Modal.confirm` para acciones destructivas.
+
+#### Lenguaje no técnico
+
+Reescritura completa de labels, tooltips, placeholders, alerts y mensajes del feature `mapalab-api-keys` y del backend de errores. Sustituciones tipo: "API key" → "llave", "share/hash" → "código de mapa", "Rotar" → "Generar contraseña nueva", "Embeds vinculados" → "Mapas guardados", "dominios permitidos" → "sitios autorizados". Todos los `Alert` tienen botón × para cerrar excepto el modal de revelación de contraseña (intencional). Tooltips explican el comportamiento sin jerga (sin "bcrypt", "allowlist", "endpoint", "CORS"). Placeholders con `Ejemplo: …` en cada input.
+
+#### Backend mapalab-embed-webhook (servicios)
+
+- `notify_invalidate_cache`, `fetch_share_meta`, `pin_share_permanent`, `unpin_share`, `create_share` ahora comparten cliente HTTP con base URL + token interno.
+- `_summary_from_meta`: extrae layers (slugs) y view del payload del share para llenar `summary` en la respuesta de embeds.
+
+---
+
 ## [0.50.0] - 2026-05-13
 
 ### Catalogo de simbolos administrable + shape `point` en SLD editor
