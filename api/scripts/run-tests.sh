@@ -1,20 +1,25 @@
 #!/usr/bin/env bash
 # Corre el suite de pytest del backend reproduciendo el entorno de CI.
 #
-# Estrategia: si el contenedor mariachi-api está corriendo, ejecutamos pytest
-# adentro con env vars de test (igual al workflow test-backend.yml). Si no
-# está corriendo, intenta un fallback con `python -m pytest` local.
+# Estrategia: arranca un contenedor desechable a partir de la imagen
+# `mariachi-api:latest` (build del Dockerfile) con env vars de test
+# (sqlite:///:memory:, secrets dummy, ENV=test). Si pytest no esta instalado
+# en la imagen lo agrega al vuelo. Si la imagen no existe, intenta `pytest`
+# del PATH local.
 #
 # Variables opcionales:
 #   PYTEST_ARGS  flags extra para pytest (default: "-q")
-#   API_CONTAINER  nombre del contenedor (default: mariachi-api)
+#   API_IMAGE    nombre de la imagen (default: mariachi-api:latest)
 
 set -e
 
-API_CONTAINER="${API_CONTAINER:-mariachi-api}"
+API_IMAGE="${API_IMAGE:-mariachi-api:latest}"
 PYTEST_ARGS="${PYTEST_ARGS:--q}"
 
+API_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+
 TEST_ENV=(
+    -e ENV=test
     -e PROJECT_NAME=mariachi-test
     -e "DATABASE_URL=sqlite:///:memory:"
     -e SECRET_KEY=test-secret-key-do-not-use-in-production
@@ -36,20 +41,26 @@ TEST_ENV=(
     -e ACERVO_IIEG_SECRET_KEY=test-iieg-secret
 )
 
-if docker ps --format '{{.Names}}' 2>/dev/null | grep -q "^${API_CONTAINER}$"; then
-    # Asegura que pytest esté disponible en el contenedor (la imagen de prod
-    # no lo incluye; el container persiste la instalación hasta el siguiente rebuild).
-    if ! docker exec "$API_CONTAINER" python -c "import pytest" 2>/dev/null; then
-        echo "[run-tests] pytest no instalado en el contenedor, instalando..."
-        docker exec "$API_CONTAINER" pip install -q pytest pytest-asyncio >/dev/null
-    fi
-    exec docker exec "${TEST_ENV[@]}" -w /app "$API_CONTAINER" pytest $PYTEST_ARGS
+if docker image inspect "$API_IMAGE" >/dev/null 2>&1; then
+    # Container temporal sobre la imagen prod-ish. Instala pytest al vuelo si
+    # la imagen no lo trae (la imagen `production` del Dockerfile no incluye
+    # los `[dev]` extras). Monta el codigo en /app para que recoja los
+    # cambios locales sin rebuild.
+    PYTEST_CHECK='python -c "import pytest" 2>/dev/null || pip install -q pytest pytest-asyncio >/dev/null'
+    exec docker run --rm \
+        "${TEST_ENV[@]}" \
+        -v "$API_DIR:/app" \
+        -w /app \
+        --entrypoint sh \
+        "$API_IMAGE" \
+        -c "$PYTEST_CHECK && pytest $PYTEST_ARGS"
 fi
 
 # Fallback local: necesita un venv con las deps instaladas.
 if command -v pytest >/dev/null 2>&1; then
-    cd "$(dirname "$0")/.."
+    cd "$API_DIR"
     exec env \
+        ENV=test \
         PROJECT_NAME=mariachi-test \
         DATABASE_URL='sqlite:///:memory:' \
         SECRET_KEY=test-secret-key-do-not-use-in-production \
@@ -72,8 +83,10 @@ if command -v pytest >/dev/null 2>&1; then
         pytest $PYTEST_ARGS
 fi
 
-echo "[run-tests] No pude correr pytest: ni hay contenedor '${API_CONTAINER}' corriendo," >&2
-echo "[run-tests] ni 'pytest' en el PATH. Sugerencias:" >&2
-echo "[run-tests]   - make up   (levanta el contenedor)" >&2
-echo "[run-tests]   - pip install pytest pytest-asyncio   (en venv local)" >&2
+echo "[run-tests] No pude correr pytest:" >&2
+echo "[run-tests]   - imagen Docker '${API_IMAGE}' no existe (corre 'make build' o 'make up')" >&2
+echo "[run-tests]   - y 'pytest' no esta en el PATH" >&2
+echo "[run-tests] Soluciones:" >&2
+echo "[run-tests]   make up   # build + arranca el entorno" >&2
+echo "[run-tests]   o crea un venv:  cd api && python -m venv .venv && source .venv/bin/activate && pip install -e '.[dev]'" >&2
 exit 1
