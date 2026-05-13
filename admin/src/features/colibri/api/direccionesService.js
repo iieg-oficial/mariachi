@@ -6,11 +6,6 @@ export const listDirecciones = async (params = {}) => {
     return res.data;
 };
 
-export const getDireccion = async (id) => {
-    const res = await api.get(`/colibri/direcciones/${id}`);
-    return res.data;
-};
-
 export const crearDireccion = async (payload) => {
     const res = await api.post('/colibri/direcciones', payload);
     return res.data;

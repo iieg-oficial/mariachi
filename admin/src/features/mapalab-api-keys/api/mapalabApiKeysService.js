@@ -6,11 +6,6 @@ export const listApiKeys = async (params = {}) => {
     return res.data;
 };
 
-export const getApiKey = async (id) => {
-    const res = await api.get(`/mapalab/api-keys/${id}`);
-    return res.data;
-};
-
 export const crearApiKey = async (payload) => {
     const res = await api.post('/mapalab/api-keys', payload);
     return res.data;
@@ -44,16 +39,6 @@ export const reactivateApiKey = async (id) => {
 
 export const eliminarApiKey = async (id) => {
     await api.delete(`/mapalab/api-keys/${id}`);
-};
-
-export const listEventos = async (id, limit = 50) => {
-    const res = await api.get(`/mapalab/api-keys/${id}/events`, { params: { limit } });
-    return res.data;
-};
-
-export const listUso = async (id, dias = 30) => {
-    const res = await api.get(`/mapalab/api-keys/${id}/usage`, { params: { dias } });
-    return res.data;
 };
 
 export const listEmbeds = async (id) => {

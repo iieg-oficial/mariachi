@@ -74,7 +74,6 @@ export default function IntegracionPage() {
     const [appLoading, setAppLoading] = useState(true);
     const [selectedSlug, setSelectedSlug] = useState('');
     const [widgetReady, setWidgetReady] = useState(false);
-    const [previewMode, setPreviewMode] = useState('button');
 
     useEffect(() => {
         listSourceApps()
@@ -203,7 +202,6 @@ export default function IntegracionPage() {
 
                 <Tabs
                     defaultActiveKey="button"
-                    onChange={setPreviewMode}
                     items={[
                         {
                             key: 'button',

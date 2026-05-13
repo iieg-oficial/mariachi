@@ -19,7 +19,6 @@ import {
 import { ReloadOutlined } from '@ant-design/icons';
 import { listAccesos } from '@features/mapalab-api-keys/api/mapalabApiKeysService';
 import { useLayerTree } from '@features/mapalab-api-keys/hooks/useLayerTree';
-import { message } from '@shared/services/message';
 
 const { Text } = Typography;
 const { RangePicker } = DatePicker;
@@ -52,8 +51,9 @@ export default function ApiKeyAuditoriaTab({ apiKey }) {
     const [filtroResultado, setFiltroResultado] = useState(null);
     const [filtroEndpoint, setFiltroEndpoint] = useState(null);
 
+    const apiKeyId = apiKey?.id;
     const fetchRows = useCallback(async () => {
-        if (!apiKey?.id) return;
+        if (!apiKeyId) return;
         setLoading(true);
         setError(null);
         try {
@@ -64,7 +64,7 @@ export default function ApiKeyAuditoriaTab({ apiKey }) {
             if (filtroCapa) params.capa = filtroCapa;
             if (filtroResultado) params.resultado = filtroResultado;
             if (filtroEndpoint) params.endpoint = filtroEndpoint;
-            const data = await listAccesos(apiKey.id, params);
+            const data = await listAccesos(apiKeyId, params);
             setRows(Array.isArray(data?.items) ? data.items : []);
             setTotal(data?.total ?? 0);
         } catch (err) {
@@ -72,7 +72,7 @@ export default function ApiKeyAuditoriaTab({ apiKey }) {
         } finally {
             setLoading(false);
         }
-    }, [apiKey?.id, page, size, rango, filtroOrigen, filtroCapa, filtroResultado, filtroEndpoint]);
+    }, [apiKeyId, page, size, rango, filtroOrigen, filtroCapa, filtroResultado, filtroEndpoint]);
 
     useEffect(() => { fetchRows(); }, [fetchRows]);
 

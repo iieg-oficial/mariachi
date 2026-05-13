@@ -20,8 +20,8 @@ export default function SymbolPicker({ value, onChange }) {
             .then((items) => {
                 if (cancelled) return;
                 setCategories(items);
-                if (items.length && activeCategoryId == null) {
-                    setActiveCategoryId(items[0].id);
+                if (items.length) {
+                    setActiveCategoryId((prev) => (prev == null ? items[0].id : prev));
                 }
             })
             .finally(() => { if (!cancelled) setLoadingCats(false); });

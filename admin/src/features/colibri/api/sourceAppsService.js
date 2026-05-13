@@ -6,11 +6,6 @@ export const listSourceApps = async (params = {}) => {
     return res.data;
 };
 
-export const getSourceApp = async (id) => {
-    const res = await api.get(`/colibri/source-apps/${id}`);
-    return res.data;
-};
-
 export const crearSourceApp = async (payload) => {
     const res = await api.post('/colibri/source-apps', payload);
     return res.data;

@@ -6,11 +6,6 @@ export const listTipos = async (params = {}) => {
     return res.data;
 };
 
-export const getTipo = async (id) => {
-    const res = await api.get(`/colibri/tipos/${id}`);
-    return res.data;
-};
-
 export const crearTipo = async (payload) => {
     const res = await api.post('/colibri/tipos', payload);
     return res.data;
@@ -23,9 +18,4 @@ export const actualizarTipo = async (id, payload) => {
 
 export const eliminarTipo = async (id) => {
     await api.delete(`/colibri/tipos/${id}`);
-};
-
-export const reordenarTipos = async (items) => {
-    const res = await api.patch('/colibri/tipos/reorder/batch', { items });
-    return res.data;
 };
