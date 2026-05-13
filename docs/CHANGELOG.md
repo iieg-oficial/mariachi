@@ -9,6 +9,33 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.52.2] - 2026-05-13
+
+### Suite pytest del backend verde + dos bugs reales descubiertos al habilitarla
+
+Al destrabar el lint de CI en `0.52.1`, GitHub Actions volvió a ejecutar `pytest -q` por primera vez en ~14 días. El suite estaba roto (122/341 fallos en limpio) por dos bugs de producción que pasaban inadvertidos y por shims de tipos que faltaban para correr en SQLite. Esta versión deja el suite en **379 / 379 pasando**.
+
+#### Bugs de producción
+
+- **`app/api/deps.py`**: `get_current_user` comparaba `iat` del JWT (segundos enteros) contra `password_changed_at` (datetime con microsegundos). Si un usuario era creado y emitía un token en el mismo segundo, la comparación `iat < password_changed_at` salía verdadera por unos microsegundos y devolvía `401 No se pudo validar las credenciales`. Raro en producción (entre create-user y login suele pasar más de un segundo) pero rompía pytest en cascada. Fix: truncar `password_changed_at` al segundo antes de comparar con `iat`.
+- **`app/api/routes/formularios/dinamicos.py` + `services/sieej/formularios_dinamicos_service.py`**: cuando un respondent intentaba `PUT /{slug}/envio` sobre un formulario cerrado, `get_by_slug_visible` retornaba `None` (porque `estado != "activo"`) y la ruta devolvía `404 Formulario no encontrado`. El servicio `EnviosService.actualizar` ya estaba preparado para emitir `409 El formulario no acepta cambios` con detalle útil, pero nunca se alcanzaba. Nuevo parámetro opcional `include_inactive=True` en `get_by_slug_visible`, usado solo por la ruta `PUT envio` para que el 409 con mensaje claro le llegue al respondent (sigue siendo 404 en `GET`, `POST upload`, etc.).
+
+#### Infra de tests
+
+- **`tests/conftest.py`**: shims globales para que `Base.metadata.create_all` funcione bajo SQLite con todos los modelos del proyecto.
+  - `JSONB` → `JSON`, `ARRAY` → `BLOB`, `BIGINT` → `INTEGER` vía monkey-patch de `SQLiteTypeCompiler` (`visit_JSONB`, `visit_ARRAY`, `visit_BIGINT`).
+  - Traducción de `server_default` Postgres-only: `'X'::jsonb` → `'X'`, `NOW()` → `CURRENT_TIMESTAMP`. Se aplica una vez al cargar conftest, cubriendo también tests que crean su propio `engine()` (`test_sieej_admin_*`, `test_sieej_formularios_dinamicos`, `test_sieej_mis_envios`).
+  - `db_session` deja de filtrar con `_table_pg_only` y crea todas las tablas no-schema (incluyendo `actividad_log`, `mapalab_events`, `layer_metadata` que antes se omitían y causaban `no such table` cuando el código real las usaba).
+- **`api/scripts/run-tests.sh`**: cambia a un contenedor Docker desechable (`docker run --rm` sobre `mariachi-api:latest`) en vez de reusar el contenedor `mariachi-api` corriendo. Ese contenedor tiene `ENV=production`, lo que setea `cookie_secure=True`, y `TestClient` no envía cookies seguras sobre `http://testserver` → 401 en cascada. El contenedor desechable arranca con `ENV=test`. Monta `/IIEG/mariachi/api -> /app` para tomar cambios locales sin rebuild; instala `pytest`/`pytest-asyncio` al vuelo si la imagen no los trae.
+
+#### Resultado
+
+`make test-backend` y el hook pre-push ahora corren `ruff check` + `pytest -q` en local con el mismo entorno que CI y todo pasa. El push deja de fallar por entorno.
+
+Bump 0.52.1 → 0.52.2.
+
+---
+
 ## [0.52.1] - 2026-05-13
 
 ### Lint backend limpio + hook pre-push para detectar fallos de CI
