@@ -95,7 +95,9 @@ class FormulariosDinamicosService:
             )
         return items
 
-    def get_by_slug_visible(self, slug: str, user: Usuario) -> Formulario | None:
+    def get_by_slug_visible(
+        self, slug: str, user: Usuario, *, include_inactive: bool = False
+    ) -> Formulario | None:
         formulario = (
             self.db.query(Formulario).filter(Formulario.slug == slug).first()
         )
@@ -105,7 +107,7 @@ class FormulariosDinamicosService:
             return formulario
         if not self._user_puede_ver(formulario, user):
             return None
-        if formulario.estado != "activo":
+        if not include_inactive and formulario.estado != "activo":
             return None
         return formulario
 

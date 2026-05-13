@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import timezone
 
 from fastapi import Cookie, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
@@ -43,11 +43,14 @@ async def get_current_user(
 
     iat = payload.get("iat")
     if iat is not None and usuario.password_changed_at is not None:
-        issued_at = datetime.fromtimestamp(iat, tz=timezone.utc)
         pwd_changed = usuario.password_changed_at
         if pwd_changed.tzinfo is None:
             pwd_changed = pwd_changed.replace(tzinfo=timezone.utc)
-        if issued_at < pwd_changed:
+        # JWT `iat` se serializa en segundos enteros (sin microsegundos), por
+        # lo que comparamos truncando ambos lados al segundo. Sin esto, un
+        # usuario recien creado falla la validacion porque iat parece "antes"
+        # de password_changed_at por unos microsegundos.
+        if iat < int(pwd_changed.timestamp()):
             raise credentials_exception
 
     return usuario

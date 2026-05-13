@@ -207,7 +207,9 @@ async def actualizar_envio(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
 ):
-    formulario = FormulariosDinamicosService(db).get_by_slug_visible(slug, current_user)
+    formulario = FormulariosDinamicosService(db).get_by_slug_visible(
+        slug, current_user, include_inactive=True
+    )
     if formulario is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
