@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import date, datetime
+from datetime import date
 
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from sqlalchemy.dialects.postgresql import insert as pg_insert

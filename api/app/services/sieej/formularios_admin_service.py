@@ -12,8 +12,11 @@ from fastapi import HTTPException, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-logger = logging.getLogger(__name__)
-
+from app.api.metrics import (
+    COUNTER_SIEEJ_ENVIO_REABIERTO,
+    COUNTER_SIEEJ_FORMULARIO_WRITES,
+    incr,
+)
 from app.core.time import utcnow
 from app.models.sieej import (
     EnvioEvento,
@@ -24,16 +27,13 @@ from app.models.sieej import (
     formulario_usuario,
 )
 from app.models.user import Usuario
-from app.api.metrics import (
-    COUNTER_SIEEJ_ENVIO_REABIERTO,
-    COUNTER_SIEEJ_FORMULARIO_WRITES,
-    incr,
-)
 from app.services.actividad_service import registrar_actividad
 from app.services.sieej.definicion_validator import (
     DefinicionInvalidaError,
     validar_definicion,
 )
+
+logger = logging.getLogger(__name__)
 
 SLUGS_RESERVADOS = {
     "inicio-sesion",

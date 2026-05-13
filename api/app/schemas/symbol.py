@@ -7,7 +7,6 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.schemas._camel import CamelCaseInput
 
-
 SymbolKind = Literal["emoji", "svg", "image"]
 
 

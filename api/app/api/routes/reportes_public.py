@@ -4,7 +4,17 @@ import uuid
 from datetime import datetime
 from io import BytesIO
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Request,
+    Response,
+    UploadFile,
+    status,
+)
 from minio.error import S3Error
 from pydantic import ValidationError
 from sqlalchemy.orm import Session

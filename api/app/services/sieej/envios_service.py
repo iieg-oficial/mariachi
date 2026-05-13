@@ -33,7 +33,6 @@ from app.models.user import Usuario
 from app.services.acervo import AcervoClient
 from app.services.sieej.datos_validator import DatosInvalidosError, validar_datos
 
-
 _FORMULARIO_NO_ACEPTA_DETAIL = (
     "El formulario esta cerrado y no acepta cambios"
 )

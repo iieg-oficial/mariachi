@@ -7,7 +7,6 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db, verify_csrf
 from app.core.time import utcnow
-from app.services.actividad_service import registrar_actividad
 from app.models.direccion_organizacional import DireccionOrganizacional
 from app.models.media_bucket import MediaBucket
 from app.models.reporte import Reporte
@@ -20,6 +19,7 @@ from app.schemas.reporte import (
     ReporteUpdate,
 )
 from app.services.acervo import AcervoClient
+from app.services.actividad_service import registrar_actividad
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/reportes", tags=["reportes admin"])

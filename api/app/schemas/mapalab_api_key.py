@@ -5,7 +5,6 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from app.schemas._camel import CamelCaseInput
 
-
 Visibility = Literal["public", "private"]
 Estado = Literal["active", "suspended", "revoked"]
 

@@ -6,7 +6,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, field_validator
 
-from app.schemas._camel import CamelCaseInput
+from app.schemas._camel import CamelCaseInput, CamelCaseOutput
 
 ALLOWED_EVENT_NAMES = frozenset({
     "session_start",
@@ -84,95 +84,95 @@ class EventBatchResponse(BaseModel):
     inserted: int
 
 
-class StatsOverview(BaseModel):
-    sessions30d: int
-    sessions7d: int
-    sessions1d: int
-    events30d: int
-    avgDurationSec: int
-    swipeSessions30d: int
-    drawingSessions30d: int
-    downloadSessions30d: int
-    shareSessions30d: int
+class StatsOverview(CamelCaseOutput):
+    sessions_30d: int
+    sessions_7d: int
+    sessions_1d: int
+    events_30d: int
+    avg_duration_sec: int
+    swipe_sessions_30d: int
+    drawing_sessions_30d: int
+    download_sessions_30d: int
+    share_sessions_30d: int
 
 
-class LayerStatRow(BaseModel):
-    layerId: str
+class LayerStatRow(CamelCaseOutput):
+    layer_id: str
     activations: int
     downloads: int
-    featureClicks: int
-    detailOpens: int
-    opacityChanges: int
-    uniqueSessions: int
-    lastSeen: datetime | None = None
+    feature_clicks: int
+    detail_opens: int
+    opacity_changes: int
+    unique_sessions: int
+    last_seen: datetime | None = None
     label: str | None = None
     workspace: str | None = None
 
 
-class ButtonStatRow(BaseModel):
-    eventName: str
+class ButtonStatRow(CamelCaseOutput):
+    event_name: str
     clicks: int
-    uniqueSessions: int
+    unique_sessions: int
 
 
-class ToolStatRow(BaseModel):
-    eventName: str
+class ToolStatRow(CamelCaseOutput):
+    event_name: str
     tool: str
     uses: int
-    uniqueSessions: int
+    unique_sessions: int
 
 
-class DailyStatRow(BaseModel):
+class DailyStatRow(CamelCaseOutput):
     dia: str
     source: str
     sessions: int
     events: int
-    sessionsSwipe: int
-    sessionsDrawing: int
-    sessionsMeasurement: int
-    sessionsDownloaded: int
-    sessionsShared: int
-    sessionsReported: int
-    avgDurationSec: int
+    sessions_swipe: int
+    sessions_drawing: int
+    sessions_measurement: int
+    sessions_downloaded: int
+    sessions_shared: int
+    sessions_reported: int
+    avg_duration_sec: int
 
 
-class SessionRow(BaseModel):
-    sessionId: str
-    startedAt: datetime
-    lastSeenAt: datetime
+class SessionRow(CamelCaseOutput):
+    session_id: str
+    started_at: datetime
+    last_seen_at: datetime
     source: str
-    eventsCount: int
-    durationSec: int
-    layersActivated: int
-    usedSwipe: bool
-    usedDrawing: bool
+    events_count: int
+    duration_sec: int
+    layers_activated: int
+    used_swipe: bool
+    used_drawing: bool
     downloaded: bool
     shared: bool
     reported: bool
-    uaFamily: str | None = None
+    ua_family: str | None = None
     referrer: str | None = None
 
 
-class SessionsPage(BaseModel):
+class SessionsPage(CamelCaseOutput):
     items: list[SessionRow]
     total: int
     page: int
-    pageSize: int
+    page_size: int
 
 
-class HighlightLayer(BaseModel):
-    layerId: str
+class HighlightLayer(CamelCaseOutput):
+    layer_id: str
     label: str | None = None
     activations: int
 
 
-class HighlightTool(BaseModel):
+class HighlightTool(CamelCaseOutput):
     tool: str
     uses: int
 
 
-class StatsHighlights(BaseModel):
-    sessions30d: int
-    avgDurationSec: int
-    topLayer: HighlightLayer | None = None
-    topTool: HighlightTool | None = None
+class StatsHighlights(CamelCaseOutput):
+    sessions_30d: int
+    avg_duration_sec: int
+    top_layer: HighlightLayer | None = None
+    top_tool: HighlightTool | None = None

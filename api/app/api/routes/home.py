@@ -8,7 +8,6 @@ from sqlalchemy.orm.attributes import flag_modified
 from app.api.deps import get_current_user, get_db, require_project_access, verify_csrf
 from app.api.metrics import COUNTER_HOME_WRITES, incr
 from app.core.optimistic import check_concurrent_edit
-from app.services.actividad_service import registrar_actividad
 from app.core.settings import get_settings
 from app.core.time import utcnow
 from app.models.home_section import HomeSection
@@ -19,6 +18,7 @@ from app.schemas.home_section import (
     HomeSectionResponse,
 )
 from app.services import presence
+from app.services.actividad_service import registrar_actividad
 from app.services.mapalab_public_cache import notify_home_changed
 
 router = APIRouter(

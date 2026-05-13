@@ -14,7 +14,6 @@ from sqlalchemy.orm import relationship
 from app.core.database import DataEngineBase
 from app.core.time import utcnow
 
-
 SYMBOL_KINDS = ("emoji", "svg", "image")
 
 

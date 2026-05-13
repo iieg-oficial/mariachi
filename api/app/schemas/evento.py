@@ -2,7 +2,13 @@ import re
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator, model_validator
+from pydantic import (
+    ConfigDict,
+    Field,
+    field_serializer,
+    field_validator,
+    model_validator,
+)
 
 from app.core.acervo_url import to_absolute, to_relative
 from app.core.bucket_policies import KNOWN_ACERVO_BUCKETS

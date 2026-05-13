@@ -1,6 +1,4 @@
-from datetime import timedelta
 
-from app.models.evento import Evento
 from app.models.project import Project
 from tests.conftest import ADMIN_PREFIX
 

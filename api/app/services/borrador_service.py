@@ -14,11 +14,10 @@ from app.models.layer import Layer, Workspace
 from app.schemas.evento import EventoUpdate
 from app.schemas.home_section import SECTION_SCHEMAS
 from app.schemas.layer import LayerCreate, LayerUpdate
-from app.services import layer_service
+from app.services import layer_service, symbol_service
 from app.services.geoserver_client import GeoServerClient, GeoServerError
 from app.services.mapalab_notifier import notify_tree_changed
 from app.services.mapalab_public_cache import notify_eventos_changed, notify_home_changed
-from app.services import symbol_service
 from app.services.sld_generator import (
     build_boundary_sld_xml,
     build_point_sld_xml,

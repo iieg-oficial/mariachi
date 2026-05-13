@@ -31,7 +31,7 @@ router = APIRouter(prefix="/mapalab-stats", tags=["mapalab stats"])
 settings = get_settings()
 
 
-@router.get("/overview", response_model=StatsOverview)
+@router.get("/overview", response_model=StatsOverview, response_model_by_alias=True)
 async def overview(
     db: Session = Depends(get_db),
     _current: Usuario = Depends(get_current_user),
@@ -39,20 +39,20 @@ async def overview(
     row = db.execute(text("SELECT * FROM mapalab_stats_overview LIMIT 1")).mappings().first()
     if row is None:
         return StatsOverview(
-            sessions30d=0, sessions7d=0, sessions1d=0, events30d=0,
-            avgDurationSec=0, swipeSessions30d=0, drawingSessions30d=0,
-            downloadSessions30d=0, shareSessions30d=0,
+            sessions_30d=0, sessions_7d=0, sessions_1d=0, events_30d=0,
+            avg_duration_sec=0, swipe_sessions_30d=0, drawing_sessions_30d=0,
+            download_sessions_30d=0, share_sessions_30d=0,
         )
     return StatsOverview(
-        sessions30d=row["sessions_30d"] or 0,
-        sessions7d=row["sessions_7d"] or 0,
-        sessions1d=row["sessions_1d"] or 0,
-        events30d=row["events_30d"] or 0,
-        avgDurationSec=row["avg_duration_sec"] or 0,
-        swipeSessions30d=row["swipe_sessions_30d"] or 0,
-        drawingSessions30d=row["drawing_sessions_30d"] or 0,
-        downloadSessions30d=row["download_sessions_30d"] or 0,
-        shareSessions30d=row["share_sessions_30d"] or 0,
+        sessions_30d=row["sessions_30d"] or 0,
+        sessions_7d=row["sessions_7d"] or 0,
+        sessions_1d=row["sessions_1d"] or 0,
+        events_30d=row["events_30d"] or 0,
+        avg_duration_sec=row["avg_duration_sec"] or 0,
+        swipe_sessions_30d=row["swipe_sessions_30d"] or 0,
+        drawing_sessions_30d=row["drawing_sessions_30d"] or 0,
+        download_sessions_30d=row["download_sessions_30d"] or 0,
+        share_sessions_30d=row["share_sessions_30d"] or 0,
     )
 
 
@@ -92,7 +92,7 @@ async def _fetch_layer_labels(layer_ids: list[str]) -> dict[str, dict]:
     return out
 
 
-@router.get("/layers", response_model=list[LayerStatRow])
+@router.get("/layers", response_model=list[LayerStatRow], response_model_by_alias=True)
 async def top_layers(
     limit: int = Query(default=20, ge=1, le=100),
     db: Session = Depends(get_db),
@@ -116,14 +116,14 @@ async def top_layers(
 
     return [
         LayerStatRow(
-            layerId=r["layer_id"],
+            layer_id=r["layer_id"],
             activations=r["activations"] or 0,
             downloads=r["downloads"] or 0,
-            featureClicks=r["feature_clicks"] or 0,
-            detailOpens=r["detail_opens"] or 0,
-            opacityChanges=r["opacity_changes"] or 0,
-            uniqueSessions=r["unique_sessions"] or 0,
-            lastSeen=r["last_seen"],
+            feature_clicks=r["feature_clicks"] or 0,
+            detail_opens=r["detail_opens"] or 0,
+            opacity_changes=r["opacity_changes"] or 0,
+            unique_sessions=r["unique_sessions"] or 0,
+            last_seen=r["last_seen"],
             label=(labels.get(r["layer_id"]) or {}).get("label"),
             workspace=(labels.get(r["layer_id"]) or {}).get("workspace"),
         )
@@ -131,7 +131,7 @@ async def top_layers(
     ]
 
 
-@router.get("/buttons", response_model=list[ButtonStatRow])
+@router.get("/buttons", response_model=list[ButtonStatRow], response_model_by_alias=True)
 async def buttons(
     db: Session = Depends(get_db),
     _current: Usuario = Depends(get_current_user),
@@ -147,15 +147,15 @@ async def buttons(
     ).mappings().all()
     return [
         ButtonStatRow(
-            eventName=r["event_name"],
+            event_name=r["event_name"],
             clicks=r["clicks"] or 0,
-            uniqueSessions=r["unique_sessions"] or 0,
+            unique_sessions=r["unique_sessions"] or 0,
         )
         for r in rows
     ]
 
 
-@router.get("/tools", response_model=list[ToolStatRow])
+@router.get("/tools", response_model=list[ToolStatRow], response_model_by_alias=True)
 async def tools(
     db: Session = Depends(get_db),
     _current: Usuario = Depends(get_current_user),
@@ -171,16 +171,16 @@ async def tools(
     ).mappings().all()
     return [
         ToolStatRow(
-            eventName=r["event_name"],
+            event_name=r["event_name"],
             tool=r["tool"] or "unknown",
             uses=r["uses"] or 0,
-            uniqueSessions=r["unique_sessions"] or 0,
+            unique_sessions=r["unique_sessions"] or 0,
         )
         for r in rows
     ]
 
 
-@router.get("/daily", response_model=list[DailyStatRow])
+@router.get("/daily", response_model=list[DailyStatRow], response_model_by_alias=True)
 async def daily(
     days: int = Query(default=30, ge=1, le=90),
     db: Session = Depends(get_db),
@@ -206,19 +206,19 @@ async def daily(
             source=r["source"],
             sessions=r["sessions"] or 0,
             events=r["events"] or 0,
-            sessionsSwipe=r["sessions_swipe"] or 0,
-            sessionsDrawing=r["sessions_drawing"] or 0,
-            sessionsMeasurement=r["sessions_measurement"] or 0,
-            sessionsDownloaded=r["sessions_downloaded"] or 0,
-            sessionsShared=r["sessions_shared"] or 0,
-            sessionsReported=r["sessions_reported"] or 0,
-            avgDurationSec=r["avg_duration_sec"] or 0,
+            sessions_swipe=r["sessions_swipe"] or 0,
+            sessions_drawing=r["sessions_drawing"] or 0,
+            sessions_measurement=r["sessions_measurement"] or 0,
+            sessions_downloaded=r["sessions_downloaded"] or 0,
+            sessions_shared=r["sessions_shared"] or 0,
+            sessions_reported=r["sessions_reported"] or 0,
+            avg_duration_sec=r["avg_duration_sec"] or 0,
         )
         for r in rows
     ]
 
 
-@router.get("/sessions", response_model=SessionsPage)
+@router.get("/sessions", response_model=SessionsPage, response_model_by_alias=True)
 async def sessions(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=25, ge=1, le=100),
@@ -254,27 +254,27 @@ async def sessions(
 
     items = [
         SessionRow(
-            sessionId=str(r["session_id"]),
-            startedAt=r["started_at"],
-            lastSeenAt=r["last_seen_at"],
+            session_id=str(r["session_id"]),
+            started_at=r["started_at"],
+            last_seen_at=r["last_seen_at"],
             source=r["source"],
-            eventsCount=r["events_count"] or 0,
-            durationSec=r["duration_sec"] or 0,
-            layersActivated=r["layers_activated"] or 0,
-            usedSwipe=bool(r["used_swipe"]),
-            usedDrawing=bool(r["used_drawing"]),
+            events_count=r["events_count"] or 0,
+            duration_sec=r["duration_sec"] or 0,
+            layers_activated=r["layers_activated"] or 0,
+            used_swipe=bool(r["used_swipe"]),
+            used_drawing=bool(r["used_drawing"]),
             downloaded=bool(r["downloaded"]),
             shared=bool(r["shared"]),
             reported=bool(r["reported"]),
-            uaFamily=r["ua_family"],
+            ua_family=r["ua_family"],
             referrer=r["referrer"],
         )
         for r in rows
     ]
-    return SessionsPage(items=items, total=total, page=page, pageSize=page_size)
+    return SessionsPage(items=items, total=total, page=page, page_size=page_size)
 
 
-@router.get("/highlights", response_model=StatsHighlights)
+@router.get("/highlights", response_model=StatsHighlights, response_model_by_alias=True)
 async def highlights(
     db: Session = Depends(get_db),
     _current: Usuario = Depends(get_current_user),
@@ -305,7 +305,7 @@ async def highlights(
     if top_layer_row and top_layer_row["layer_id"]:
         labels = await _fetch_layer_labels([top_layer_row["layer_id"]])
         top_layer = HighlightLayer(
-            layerId=top_layer_row["layer_id"],
+            layer_id=top_layer_row["layer_id"],
             label=(labels.get(top_layer_row["layer_id"]) or {}).get("label"),
             activations=top_layer_row["activations"] or 0,
         )
@@ -315,10 +315,10 @@ async def highlights(
         top_tool = HighlightTool(tool=top_tool_row["tool"], uses=top_tool_row["uses"] or 0)
 
     return StatsHighlights(
-        sessions30d=(overview_row or {}).get("sessions_30d") or 0,
-        avgDurationSec=(overview_row or {}).get("avg_duration_sec") or 0,
-        topLayer=top_layer,
-        topTool=top_tool,
+        sessions_30d=(overview_row or {}).get("sessions_30d") or 0,
+        avg_duration_sec=(overview_row or {}).get("avg_duration_sec") or 0,
+        top_layer=top_layer,
+        top_tool=top_tool,
     )
 
 

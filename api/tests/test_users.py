@@ -246,8 +246,8 @@ def test_editora_ve_su_propio_email_completo(editora_session):
 
 
 def test_admin_ve_emails_completos(admin_session, db_session):
-    from app.models.user import Usuario
     from app.core.security import hash_password
+    from app.models.user import Usuario
 
     other = Usuario(
         username="other_user",

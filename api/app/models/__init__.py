@@ -20,7 +20,6 @@ from app.models.reporte import Reporte
 from app.models.reporte_actividad import ReporteActividad
 from app.models.reporte_grupo import ReporteGrupo
 from app.models.reporte_tipo import ReporteTipo
-from app.models.source_app import SourceApp
 from app.models.sieej import (
     CatalogoCalidadDatos,
     CatalogoCategoriaDatos,
@@ -36,6 +35,7 @@ from app.models.sieej import (
     Formulario,
     Grupo,
 )
+from app.models.source_app import SourceApp
 from app.models.user import Usuario
 
 __all__ = [
@@ -78,4 +78,5 @@ __all__ = [
     "EnvioFormulario",
     "Formulario",
     "Grupo",
+    "ActividadLog",
 ]

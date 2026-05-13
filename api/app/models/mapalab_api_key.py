@@ -1,13 +1,10 @@
 from sqlalchemy import (
-    Boolean,
     Column,
-    Date,
     DateTime,
     ForeignKey,
     Integer,
     String,
     Text,
-    UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship

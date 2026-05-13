@@ -5,8 +5,6 @@ import json
 import logging
 import re
 from datetime import date, datetime, timezone
-from typing import Iterable
-from uuid import UUID
 
 from sqlalchemy import text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
@@ -14,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.core.time import utcnow
 from app.models.mapalab_event import MapalabEvent, MapalabSession
-from app.schemas.mapalab_event import MAX_PROPS_BYTES, EventBatchIn, EventIn
+from app.schemas.mapalab_event import MAX_PROPS_BYTES, EventBatchIn
 from app.services.pii_scrubber import _compile_patterns, _scrub_walk
 
 logger = logging.getLogger(__name__)

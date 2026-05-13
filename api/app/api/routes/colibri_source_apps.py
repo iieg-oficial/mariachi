@@ -6,7 +6,6 @@ from app.core.time import utcnow
 from app.models.reporte import Reporte
 from app.models.source_app import SourceApp
 from app.models.user import Usuario
-from app.services.actividad_service import registrar_actividad
 from app.schemas.source_app import (
     SourceAppCreate,
     SourceAppKeyRotateRequest,
@@ -14,6 +13,7 @@ from app.schemas.source_app import (
     SourceAppResponse,
     SourceAppUpdate,
 )
+from app.services.actividad_service import registrar_actividad
 from app.services.colibri_keys import generate_api_key
 
 router = APIRouter(prefix="/colibri/source-apps", tags=["colibri source-apps"])

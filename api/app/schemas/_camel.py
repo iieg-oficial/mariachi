@@ -11,6 +11,18 @@ def _camel_to_snake(name: str) -> str:
     return _CAMEL_RE.sub("_", name).lower()
 
 
+def to_camel(name: str) -> str:
+    parts = name.split("_")
+    head, tail = parts[0], parts[1:]
+    out = [head]
+    for part in tail:
+        if part and part[0].isalpha():
+            out.append(part[0].upper() + part[1:])
+        else:
+            out.append(part)
+    return "".join(out)
+
+
 def _normalize_for_cls(cls, data: dict) -> dict:
     field_names = set(getattr(cls, "model_fields", {}).keys())
     out: dict = {}
@@ -38,3 +50,14 @@ class CamelCaseInput(BaseModel):
         if isinstance(data, dict):
             return _normalize_for_cls(cls, data)
         return data
+
+
+class CamelCaseOutput(BaseModel):
+    """Schema base de salida con alias camelCase.
+
+    Define los campos en snake_case (Python) y serializa al JSON con alias
+    camelCase. Las rutas FastAPI deben usar `response_model_by_alias=True`
+    para que la respuesta respete el contrato camelCase.
+    """
+
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True)
