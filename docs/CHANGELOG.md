@@ -9,6 +9,22 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.51.1] - 2026-05-13
+
+### Fix: vistas de `mapalab-stats` sin poblar tras crearlas
+
+Las cinco vistas materializadas (`mapalab_stats_overview`, `_layers`, `_buttons`, `_tools`, `_daily`) se crean con `WITH NO DATA` en la migración `c9d8e7f6a5b4`. Sin un primer `REFRESH`, cualquier `SELECT` lanza `ObjectNotInPrerequisiteState` ("materialized view has not been populated") y los seis endpoints de `/api/administrador/mapalab-stats/*` (`overview`, `layers`, `buttons`, `tools`, `daily`, `highlights`) devuelven 500.
+
+#### Cambiado
+
+- `api/alembic/versions/mariachi/c9d8e7f6a5b4_add_mapalab_events.py`: al final del `upgrade()` se ejecuta `REFRESH MATERIALIZED VIEW` para las cinco vistas. Cubre despliegues nuevos (volúmenes recién creados) sin pasos manuales.
+
+#### Agregado
+
+- `api/alembic/versions/mariachi/d8e7f6a5b4c3_refresh_mapalab_stats_views.py`: migración independiente que sólo ejecuta `REFRESH MATERIALIZED VIEW` para las cinco vistas. Necesaria en ambientes donde la `c9d8e7f6a5b4` ya está aplicada (alembic no la re-corre). Idempotente: el `REFRESH` es seguro de correr aunque la vista ya tenga datos. `downgrade` es no-op.
+
+---
+
 ## [0.51.0] - 2026-05-13
 
 ### Llaves MapaLab — auditoría, UX no técnica, generación de mapas inline, defense-in-depth
