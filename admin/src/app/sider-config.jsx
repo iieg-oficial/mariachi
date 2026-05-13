@@ -23,9 +23,11 @@ import {
     KeyOutlined,
     LockOutlined,
     HistoryOutlined,
+    BarChartOutlined,
 } from '@ant-design/icons';
 import { Tooltip } from 'antd';
 import ColibriIcon from '@shared/components/ColibriIcon';
+import StatusBadge from '@shared/components/StatusBadge';
 
 const ROLE_LABELS = {
     tetlamamakani: 'Administradora',
@@ -51,6 +53,13 @@ const renderDisabledLabel = (label, requiredRoles) => {
         </Tooltip>
     );
 };
+
+const withBetaBadge = (label) => (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+        <span>{label}</span>
+        <StatusBadge variant="beta" size="sm" />
+    </span>
+);
 
 export const PLATFORM_ITEMS = [
     {
@@ -128,6 +137,7 @@ export const PROJECT_REGISTRY = {
                 label: 'Símbolos',
                 icon: <AppstoreOutlined />,
                 allowedGlobalRoles: ['tetlamamakani'],
+                showBetaBadge: true,
             },
             {
                 key: '/mapalab/api-keys',
@@ -135,6 +145,14 @@ export const PROJECT_REGISTRY = {
                 label: 'API Keys',
                 icon: <KeyOutlined />,
                 allowedGlobalRoles: ['tetlamamakani'],
+                showBetaBadge: true,
+            },
+            {
+                key: '/mapalab/stats',
+                path: '/mapalab/stats',
+                label: 'Estadísticas',
+                icon: <BarChartOutlined />,
+                showBetaBadge: true,
             },
         ],
     },
@@ -160,6 +178,7 @@ export const PROJECT_REGISTRY = {
         label: 'Colibri',
         icon: <ColibriIcon size={14} />,
         allowedGlobalRoles: ['tetlamamakani', 'editora'],
+        showBetaBadge: true,
         items: [
             {
                 key: '/colibri',
@@ -227,20 +246,9 @@ export function buildSiderItems({ user, onNavigate, extras = {} }) {
     });
 
     const renderBadgeLabel = (label, count) => (
-        <span>
-            {label}{' '}
-            <span
-                style={{
-                    marginLeft: 6,
-                    background: '#ff4d4f',
-                    color: '#fff',
-                    borderRadius: 10,
-                    padding: '0 6px',
-                    fontSize: 11,
-                }}
-            >
-                {count}
-            </span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <span>{label}</span>
+            <StatusBadge text={String(count)} color="#fff" bg="#ff4d4f" size="sm" />
         </span>
     );
 
@@ -253,6 +261,9 @@ export function buildSiderItems({ user, onNavigate, extras = {} }) {
                 label = renderBadgeLabel(item.label, extras.pendingCount);
             } else if (item.showReporteBadge && extras.reportesPendingCount > 0) {
                 label = renderBadgeLabel(item.label, extras.reportesPendingCount);
+            }
+            if (item.showBetaBadge) {
+                label = withBetaBadge(label);
             }
         } else {
             label = renderDisabledLabel(item.label, item.allowedGlobalRoles);
@@ -285,7 +296,7 @@ export function buildSiderItems({ user, onNavigate, extras = {} }) {
         const projectAccessible = isAdmin || grantedByRole || grantedByMembership;
         const projectDisabled = project.disabled || !projectAccessible;
         const projectLabel = projectAccessible
-            ? project.label
+            ? (project.showBetaBadge ? withBetaBadge(project.label) : project.label)
             : renderDisabledLabel(project.label, project.allowedGlobalRoles);
 
         items.push({
@@ -303,6 +314,9 @@ export function buildSiderItems({ user, onNavigate, extras = {} }) {
                         label = renderBadgeLabel(item.label, extras.pendingCount);
                     } else if (item.showReporteBadge && extras.reportesPendingCount > 0) {
                         label = renderBadgeLabel(item.label, extras.reportesPendingCount);
+                    }
+                    if (item.showBetaBadge) {
+                        label = withBetaBadge(label);
                     }
                 } else {
                     label = renderDisabledLabel(item.label, item.allowedGlobalRoles || project.allowedGlobalRoles);

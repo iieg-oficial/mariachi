@@ -47,6 +47,7 @@ const EventosListPage = lazy(() => import('@features/mapalab-eventos').then((m) 
 const EventoEditPage = lazy(() => import('@features/mapalab-eventos').then((m) => ({ default: m.EventoEditPage })));
 const HomePage = lazy(() => import('@features/mapalab-home').then((m) => ({ default: m.HomePage })));
 const SymbolsPage = lazy(() => import('@features/mapalab-symbols').then((m) => ({ default: m.SymbolsPage })));
+const MapalabStatsPage = lazy(() => import('@features/mapalab-stats').then((m) => ({ default: m.MapalabStatsPage })));
 const FormulariosListPage = lazy(() => import('@features/sieej-formularios').then((m) => ({ default: m.FormulariosListPage })));
 const FormularioEditorPage = lazy(() => import('@features/sieej-formularios').then((m) => ({ default: m.FormularioEditorPage })));
 const GruposPage = lazy(() => import('@features/sieej-formularios').then((m) => ({ default: m.GruposPage })));
@@ -252,6 +253,18 @@ const router = createBrowserRouter([
                                 <SymbolsPage />
                             </RoleProtectedRoute>
                         )
+                    },
+                    {
+                        path: 'mapalab/stats',
+                        element: withSuspense(
+                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
+                                <MapalabStatsPage />
+                            </RoleProtectedRoute>
+                        )
+                    },
+                    {
+                        path: 'mapalab/stats/sesiones',
+                        element: <Navigate to="/mapalab/stats?tab=sesiones" replace />
                     },
                     ...buildMapalabApiKeysRoutes(withSuspense),
                     {

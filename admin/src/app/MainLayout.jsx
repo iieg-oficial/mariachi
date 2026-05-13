@@ -133,7 +133,7 @@ export default function MainLayout() {
     return (
         <Layout style={{ minHeight: '100vh' }}>
             {!isMobile && (
-                <Sider trigger={null} collapsible collapsed={collapsed}>
+                <Sider trigger={null} collapsible collapsed={collapsed} width={280}>
                     {brand(collapsed)}
                     {sideMenu}
                 </Sider>

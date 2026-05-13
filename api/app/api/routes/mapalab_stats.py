@@ -1,0 +1,336 @@
+from __future__ import annotations
+
+import logging
+from datetime import datetime
+from typing import Literal
+
+import httpx
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import text
+from sqlalchemy.orm import Session
+
+from app.api.deps import get_current_user, get_db, verify_csrf
+from app.core.settings import get_settings
+from app.models.user import Usuario
+from app.schemas.mapalab_event import (
+    ButtonStatRow,
+    DailyStatRow,
+    HighlightLayer,
+    HighlightTool,
+    LayerStatRow,
+    SessionRow,
+    SessionsPage,
+    StatsHighlights,
+    StatsOverview,
+    ToolStatRow,
+)
+from app.services.mapalab_telemetry import refresh_stats_views
+
+logger = logging.getLogger(__name__)
+router = APIRouter(prefix="/mapalab-stats", tags=["mapalab stats"])
+settings = get_settings()
+
+
+@router.get("/overview", response_model=StatsOverview)
+async def overview(
+    db: Session = Depends(get_db),
+    _current: Usuario = Depends(get_current_user),
+):
+    row = db.execute(text("SELECT * FROM mapalab_stats_overview LIMIT 1")).mappings().first()
+    if row is None:
+        return StatsOverview(
+            sessions30d=0, sessions7d=0, sessions1d=0, events30d=0,
+            avgDurationSec=0, swipeSessions30d=0, drawingSessions30d=0,
+            downloadSessions30d=0, shareSessions30d=0,
+        )
+    return StatsOverview(
+        sessions30d=row["sessions_30d"] or 0,
+        sessions7d=row["sessions_7d"] or 0,
+        sessions1d=row["sessions_1d"] or 0,
+        events30d=row["events_30d"] or 0,
+        avgDurationSec=row["avg_duration_sec"] or 0,
+        swipeSessions30d=row["swipe_sessions_30d"] or 0,
+        drawingSessions30d=row["drawing_sessions_30d"] or 0,
+        downloadSessions30d=row["download_sessions_30d"] or 0,
+        shareSessions30d=row["share_sessions_30d"] or 0,
+    )
+
+
+async def _fetch_layer_labels(layer_ids: list[str]) -> dict[str, dict]:
+    if not layer_ids or not settings.mapalab_backend_url:
+        return {}
+    url = f"{settings.mapalab_backend_url.rstrip('/')}/layers/tree"
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(url)
+            resp.raise_for_status()
+            tree = resp.json()
+    except Exception:
+        logger.warning("mapalab_stats.fetch_tree_failed", exc_info=True)
+        return {}
+
+    out: dict[str, dict] = {}
+
+    def walk(node: dict):
+        if not isinstance(node, dict):
+            return
+        nid = node.get("id")
+        if nid in layer_ids:
+            wms = node.get("wmsConfig") or {}
+            out[nid] = {
+                "label": node.get("label"),
+                "workspace": wms.get("workspace") or node.get("workspace"),
+            }
+        for child in node.get("children") or []:
+            walk(child)
+
+    if isinstance(tree, list):
+        for n in tree:
+            walk(n)
+    elif isinstance(tree, dict):
+        walk(tree)
+    return out
+
+
+@router.get("/layers", response_model=list[LayerStatRow])
+async def top_layers(
+    limit: int = Query(default=20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    _current: Usuario = Depends(get_current_user),
+):
+    rows = db.execute(
+        text(
+            """
+            SELECT layer_id, activations, downloads, feature_clicks,
+                   detail_opens, opacity_changes, unique_sessions, last_seen
+            FROM mapalab_stats_layers
+            ORDER BY activations DESC, unique_sessions DESC
+            LIMIT :limit
+            """
+        ),
+        {"limit": limit},
+    ).mappings().all()
+
+    layer_ids = [r["layer_id"] for r in rows]
+    labels = await _fetch_layer_labels(layer_ids)
+
+    return [
+        LayerStatRow(
+            layerId=r["layer_id"],
+            activations=r["activations"] or 0,
+            downloads=r["downloads"] or 0,
+            featureClicks=r["feature_clicks"] or 0,
+            detailOpens=r["detail_opens"] or 0,
+            opacityChanges=r["opacity_changes"] or 0,
+            uniqueSessions=r["unique_sessions"] or 0,
+            lastSeen=r["last_seen"],
+            label=(labels.get(r["layer_id"]) or {}).get("label"),
+            workspace=(labels.get(r["layer_id"]) or {}).get("workspace"),
+        )
+        for r in rows
+    ]
+
+
+@router.get("/buttons", response_model=list[ButtonStatRow])
+async def buttons(
+    db: Session = Depends(get_db),
+    _current: Usuario = Depends(get_current_user),
+):
+    rows = db.execute(
+        text(
+            """
+            SELECT event_name, clicks, unique_sessions
+            FROM mapalab_stats_buttons
+            ORDER BY clicks DESC
+            """
+        )
+    ).mappings().all()
+    return [
+        ButtonStatRow(
+            eventName=r["event_name"],
+            clicks=r["clicks"] or 0,
+            uniqueSessions=r["unique_sessions"] or 0,
+        )
+        for r in rows
+    ]
+
+
+@router.get("/tools", response_model=list[ToolStatRow])
+async def tools(
+    db: Session = Depends(get_db),
+    _current: Usuario = Depends(get_current_user),
+):
+    rows = db.execute(
+        text(
+            """
+            SELECT event_name, tool, uses, unique_sessions
+            FROM mapalab_stats_tools
+            ORDER BY uses DESC
+            """
+        )
+    ).mappings().all()
+    return [
+        ToolStatRow(
+            eventName=r["event_name"],
+            tool=r["tool"] or "unknown",
+            uses=r["uses"] or 0,
+            uniqueSessions=r["unique_sessions"] or 0,
+        )
+        for r in rows
+    ]
+
+
+@router.get("/daily", response_model=list[DailyStatRow])
+async def daily(
+    days: int = Query(default=30, ge=1, le=90),
+    db: Session = Depends(get_db),
+    _current: Usuario = Depends(get_current_user),
+):
+    rows = db.execute(
+        text(
+            """
+            SELECT dia, source, sessions, events,
+                   sessions_swipe, sessions_drawing, sessions_measurement,
+                   sessions_downloaded, sessions_shared, sessions_reported,
+                   avg_duration_sec
+            FROM mapalab_stats_daily
+            WHERE dia >= CURRENT_DATE - :days * INTERVAL '1 day'
+            ORDER BY dia ASC, source ASC
+            """
+        ),
+        {"days": days},
+    ).mappings().all()
+    return [
+        DailyStatRow(
+            dia=str(r["dia"]),
+            source=r["source"],
+            sessions=r["sessions"] or 0,
+            events=r["events"] or 0,
+            sessionsSwipe=r["sessions_swipe"] or 0,
+            sessionsDrawing=r["sessions_drawing"] or 0,
+            sessionsMeasurement=r["sessions_measurement"] or 0,
+            sessionsDownloaded=r["sessions_downloaded"] or 0,
+            sessionsShared=r["sessions_shared"] or 0,
+            sessionsReported=r["sessions_reported"] or 0,
+            avgDurationSec=r["avg_duration_sec"] or 0,
+        )
+        for r in rows
+    ]
+
+
+@router.get("/sessions", response_model=SessionsPage)
+async def sessions(
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=25, ge=1, le=100),
+    source: Literal["visor", "embed", "widget", "all"] = Query(default="all"),
+    db: Session = Depends(get_db),
+    _current: Usuario = Depends(get_current_user),
+):
+    where = "WHERE 1=1"
+    params: dict = {"limit": page_size, "offset": (page - 1) * page_size}
+    if source != "all":
+        where += " AND source = :source"
+        params["source"] = source
+
+    total = db.execute(
+        text(f"SELECT COUNT(*) FROM mapalab_sessions {where}"),
+        {k: v for k, v in params.items() if k not in {"limit", "offset"}},
+    ).scalar() or 0
+
+    rows = db.execute(
+        text(
+            f"""
+            SELECT session_id, started_at, last_seen_at, source, events_count,
+                   duration_sec, layers_activated, used_swipe, used_drawing,
+                   downloaded, shared, reported, ua_family, referrer
+            FROM mapalab_sessions
+            {where}
+            ORDER BY started_at DESC
+            LIMIT :limit OFFSET :offset
+            """
+        ),
+        params,
+    ).mappings().all()
+
+    items = [
+        SessionRow(
+            sessionId=str(r["session_id"]),
+            startedAt=r["started_at"],
+            lastSeenAt=r["last_seen_at"],
+            source=r["source"],
+            eventsCount=r["events_count"] or 0,
+            durationSec=r["duration_sec"] or 0,
+            layersActivated=r["layers_activated"] or 0,
+            usedSwipe=bool(r["used_swipe"]),
+            usedDrawing=bool(r["used_drawing"]),
+            downloaded=bool(r["downloaded"]),
+            shared=bool(r["shared"]),
+            reported=bool(r["reported"]),
+            uaFamily=r["ua_family"],
+            referrer=r["referrer"],
+        )
+        for r in rows
+    ]
+    return SessionsPage(items=items, total=total, page=page, pageSize=page_size)
+
+
+@router.get("/highlights", response_model=StatsHighlights)
+async def highlights(
+    db: Session = Depends(get_db),
+    _current: Usuario = Depends(get_current_user),
+):
+    overview_row = db.execute(text("SELECT * FROM mapalab_stats_overview LIMIT 1")).mappings().first()
+    top_layer_row = db.execute(
+        text(
+            """
+            SELECT layer_id, activations
+            FROM mapalab_stats_layers
+            ORDER BY activations DESC, unique_sessions DESC
+            LIMIT 1
+            """
+        )
+    ).mappings().first()
+    top_tool_row = db.execute(
+        text(
+            """
+            SELECT tool, uses
+            FROM mapalab_stats_tools
+            ORDER BY uses DESC
+            LIMIT 1
+            """
+        )
+    ).mappings().first()
+
+    top_layer = None
+    if top_layer_row and top_layer_row["layer_id"]:
+        labels = await _fetch_layer_labels([top_layer_row["layer_id"]])
+        top_layer = HighlightLayer(
+            layerId=top_layer_row["layer_id"],
+            label=(labels.get(top_layer_row["layer_id"]) or {}).get("label"),
+            activations=top_layer_row["activations"] or 0,
+        )
+
+    top_tool = None
+    if top_tool_row and top_tool_row["tool"]:
+        top_tool = HighlightTool(tool=top_tool_row["tool"], uses=top_tool_row["uses"] or 0)
+
+    return StatsHighlights(
+        sessions30d=(overview_row or {}).get("sessions_30d") or 0,
+        avgDurationSec=(overview_row or {}).get("avg_duration_sec") or 0,
+        topLayer=top_layer,
+        topTool=top_tool,
+    )
+
+
+@router.post("/refresh", dependencies=[Depends(verify_csrf)])
+async def refresh(
+    db: Session = Depends(get_db),
+    current: Usuario = Depends(get_current_user),
+):
+    if current.role != "tetlamamakani":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Solo administradoras pueden refrescar vistas",
+        )
+    refreshed = refresh_stats_views(db, concurrent=True)
+    return {"ok": True, "refreshed": refreshed, "ts": datetime.utcnow().isoformat()}

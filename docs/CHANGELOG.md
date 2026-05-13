@@ -9,6 +9,58 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.52.0] - 2026-05-13
+
+### Telemetría MapaLab — ingesta pública, panel admin y respaldos
+
+Sistema de eventos anónimos para entender el uso del visor de MapaLab. Cubre ingesta pública con scrubbing PII, modelo en `iieg_portal`, rollups via vistas materializadas, panel admin con tabs internas, KPIs en el Inicio y política de retención + respaldos.
+
+#### Modelo y migración
+
+- `api/alembic/versions/mariachi/c9d8e7f6a5b4_add_mapalab_events.py`: tablas `mapalab_events` (append-only con `props` JSONB + índice GIN) y `mapalab_sessions` (rollup por sesión con flags `used_swipe`, `used_drawing`, `used_measurement`, `downloaded`, `shared`, `reported`). FK a `mapalab_api_keys` con `ON DELETE SET NULL` para huéspedes embebibles. Cinco vistas materializadas: `mapalab_stats_overview`, `_layers`, `_buttons`, `_tools`, `_daily`. Refresh inicial implícito en el upgrade.
+- `api/alembic/versions/mariachi/d8e7f6a5b4c3_refresh_mapalab_stats_views.py`: migración independiente que sólo dispara `REFRESH MATERIALIZED VIEW` (idempotente).
+- `app/models/mapalab_event.py`: `MapalabEvent`, `MapalabSession`.
+
+#### Backend
+
+- `app/schemas/mapalab_event.py`: `EventBatchIn` con allowlist de 35 event names + `CamelCaseInput`, `props` JSONB máx 4 KB, lote máx 100 eventos.
+- `app/services/mapalab_telemetry.py`: `ingest_batch` con `bulk_insert_mappings` + upsert de sesión vía `ON CONFLICT`. Hash de IP con salt diario, `parse_ua_family` para reducir cardinalidad. Reusa `pii_scrubber` de Colibri sobre `props`. `refresh_stats_views` con `CONCURRENTLY` + fallback no-concurrent para la primera vez.
+- `app/api/routes/mapalab_events_public.py`: `POST /api/public/mapalab/events/batch` con rate limit 120/min/IP (`rate_limit_ip`).
+- `app/api/routes/mapalab_stats.py`: `/overview`, `/layers`, `/buttons`, `/tools`, `/daily`, `/sessions`, `/highlights` (todos `get_current_user`), `/refresh` (admin + CSRF). Top capas se enriquecen con label/workspace consultando `/mapalab/api/layers/tree`.
+- `app/main.py`: routers registrados (`mapalab_events_public` bajo `/api/public`, `mapalab_stats` bajo `/api/administrador`).
+
+#### Panel admin (`admin/src/features/mapalab-stats/`)
+
+- `MapalabStatsPage` con tabs internas que persisten en URL (`?tab=resumen|sesiones`). Resumen visible para `tetlamamakani` y `editora`; Sesiones solo para `tetlamamakani`.
+- `ResumenSection`: 8 tarjetas (sesiones 30d/7d/hoy, eventos 30d, duración media, % swipe, % descargas, % compartidos), gráfica diaria, top capas, barras de botones y herramientas.
+- `SesionesSection`: tabla paginada por origen (`visor`/`embed`/`widget`/all).
+- `InicioHighlights` (en `/inicio`): 4 KPIs compactos justo después de "Plataformas del ecosistema" — Sesiones 30d, Duración media, Capa más usada, Herramienta más usada. Link "Ver detalle →" al panel completo.
+- `useMapalabStats.js`: 6 hooks (`useMapalabOverview`, `useTopLayers`, `useButtonStats`, `useToolStats`, `useDailyStats`, `useSessions`) + `mapalabStatsService.js` con axios.
+
+#### Sider y router
+
+- Una sola entrada **Estadísticas** en el sider bajo MapaLab, con badge BETA. `/mapalab/stats/sesiones` redirige a `/mapalab/stats?tab=sesiones` (compat).
+- `Sider` width subido de 200px (Ant default) → 280px para que badges no se trunquen.
+- Helper `withBetaBadge(label)` reutiliza `StatusBadge` existente. Aplicado a: Estadísticas, API Keys, Símbolos y Colibri (proyecto entero).
+- `renderBadgeLabel` refactorizado para usar también `StatusBadge` con `bg="#ff4d4f"`, así todos los badges del sider comparten estilo base.
+
+#### Operaciones y respaldos
+
+- `scripts/refresh_mapalab_stats.py`: refresh manual/cron de las cinco vistas.
+- `scripts/purge_mapalab_events.py`: retención configurable (`MAPALAB_EVENTS_RETENTION_DAYS` default 90, `MAPALAB_SESSIONS_RETENTION_DAYS` default 180).
+- `scripts/postgres-backup.sh`: corre la purga antes del dump (`MAPALAB_PURGE_ON_BACKUP=false` para saltarla). `pg_dump` sin filtros incluye automáticamente las nuevas tablas y matviews (se repueblan al restaurar).
+- `scripts/postgres-restore.sh`: mensaje final aclarando que las matviews se restauran con datos.
+- `Makefile`: targets nuevos `make refresh-mapalab-stats`, `make purge-mapalab-events`. `install-backup-cron` ahora también instala `*/30 * * * * refresh_mapalab_stats.py` en producción.
+
+#### Privacidad y seguridad
+
+- Eventos anónimos: no se almacena identidad, solo IP hasheada con salt diario + familia del User-Agent.
+- Scrubbing PII reutiliza el de Colibri (regex sobre JWTs, tokens en URL, Authorization, CCN).
+- Endpoint público con rate limit estricto (120/min/IP) y validación de allowlist de event names.
+- El frontend (mapalab v1.27.0) respeta Do-Not-Track del navegador automáticamente.
+
+---
+
 ## [0.51.1] - 2026-05-13
 
 ### Fix: vistas de `mapalab-stats` sin poblar tras crearlas

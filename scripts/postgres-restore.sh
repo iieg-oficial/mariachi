@@ -89,3 +89,5 @@ gunzip -c "$ABS_FILE" | docker compose -f "$COMPOSE_FILE" exec -T postgres sh -c
 
 echo "[restore] done"
 echo "[restore] siguiente paso sugerido: docker compose -f $COMPOSE_FILE exec api alembic -x db=mariachi current"
+echo "[restore] mapalab stats: las vistas materializadas se restauraron con los datos del dump."
+echo "[restore]   si quieres recalcularlas: make refresh-mapalab-stats"

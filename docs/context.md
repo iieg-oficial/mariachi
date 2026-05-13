@@ -2,7 +2,7 @@
 
 > Documento de referencia completo. Leer este archivo proporciona contexto del monorepo sin explorar el codebase.
 
-**Versión:** 0.48.3 · **Última actualización:** 2026-05-11
+**Versión:** 0.52.0 · **Última actualización:** 2026-05-13
 
 
 ---
@@ -704,6 +704,59 @@ Ver `docs/CHANGELOG.md` §[0.41.x] y §[Unreleased] para detalle de cambios por 
 
 ---
 
+## Modulo Telemetría MapaLab (v0.52.0)
+
+Sistema de ingesta de eventos anónimos del visor MapaLab + panel admin con KPIs. Complementa a Colibri (que captura reportes formales del usuario) midiendo uso pasivo: capas más activadas, herramientas, swipe, descargas, etc.
+
+### Modelo y persistencia
+
+- `mapalab_events` (append-only): `id`, `ts`, `event_name`, `session_id` UUID, `source` (`visor`/`embed`/`widget`), `api_key_id` opcional, `layer_id` desnormalizado, `props` JSONB, `ip_hash` (sha256 + salt diario), `ua_family`. Índices: `ts DESC`, `(event_name, ts DESC)`, `session_id`, parcial sobre `layer_id`, GIN sobre `props`.
+- `mapalab_sessions` (rollup por sesión): `session_id` PK, `started_at`, `last_seen_at`, `events_count`, `duration_sec`, `layers_activated`, flags booleanos (`used_swipe`, `used_drawing`, `used_measurement`, `downloaded`, `shared`, `reported`).
+- 5 vistas materializadas: `mapalab_stats_overview` (KPIs globales 30d/7d/1d), `_layers` (top capas), `_buttons` (clicks por evento), `_tools` (uso por herramienta), `_daily` (serie temporal por día y origen). Refresh cada 30 min via cron en producción.
+
+### Endpoints
+
+| Método | Ruta | Función |
+|---|---|---|
+| POST | `/api/public/mapalab/events/batch` | Ingesta pública sin auth, rate limit 120/min/IP. Allowlist de 35 event names. Scrubbing PII con `pii_scrubber` de Colibri. Lote máx 100 eventos, `props` máx 4 KB. |
+| GET | `/api/administrador/mapalab-stats/overview` | KPIs globales (sesiones 30d/7d/1d, eventos, duración media, % swipe/descarga/shared) |
+| GET | `/api/administrador/mapalab-stats/layers?limit=N` | Top capas con label/workspace enriquecidos desde `/mapalab/api/layers/tree` |
+| GET | `/api/administrador/mapalab-stats/buttons` | Clicks por evento (sider_lock, logo_click, share_map, etc.) |
+| GET | `/api/administrador/mapalab-stats/tools` | Uso de herramientas de dibujo/medición |
+| GET | `/api/administrador/mapalab-stats/daily?days=30` | Serie diaria por origen |
+| GET | `/api/administrador/mapalab-stats/sessions?page&page_size&source` | Sesiones paginadas con filtros |
+| GET | `/api/administrador/mapalab-stats/highlights` | Payload compacto (4 KPIs) para el Inicio |
+| POST | `/api/administrador/mapalab-stats/refresh` | Refresh manual de vistas (admin + CSRF) |
+
+### Panel admin (`admin/src/features/mapalab-stats/`)
+
+- `MapalabStatsPage` con tabs internas en URL (`?tab=resumen|sesiones`). Resumen para staff, Sesiones solo admin. Badge BETA inline.
+- `InicioHighlights` montado en `/inicio` después de "Plataformas del ecosistema": 4 KPIs compactos con link "Ver detalle →".
+- 6 hooks de fetching + service axios + catálogo de labels (`BUTTON_LABELS`, `TOOL_LABELS`, `SOURCE_LABELS`).
+
+### Operaciones
+
+- `scripts/refresh_mapalab_stats.py`: refresh manual/cron. `make refresh-mapalab-stats`.
+- `scripts/purge_mapalab_events.py`: retención configurable. `make purge-mapalab-events`.
+- `scripts/postgres-backup.sh`: corre purga antes del dump (skipeable con `MAPALAB_PURGE_ON_BACKUP=false`). `pg_dump` sin filtros incluye tablas + matviews automáticamente.
+- `make install-backup-cron` instala dos cronjobs: `0 3 * * * postgres-backup.sh` (con purga incluida) y `*/30 * * * * refresh_mapalab_stats.py`.
+
+### Variables de entorno relevantes
+
+- `MAPALAB_EVENTS_RETENTION_DAYS` (default 90) — días de retención de eventos crudos antes de purgar
+- `MAPALAB_SESSIONS_RETENTION_DAYS` (default 180) — días de retención de rollups de sesión
+- `MAPALAB_PURGE_ON_BACKUP` (default `true`) — purgar antes de cada backup
+- En mapalab frontend (v1.27.0+): `VITE_MARIACHI_PUBLIC_API_HOST` para apuntar al collector, `VITE_TELEMETRY_ENABLED=false` para apagar el collector dejando GA4 intacto.
+
+### Privacidad
+
+- Anónimo: solo IP hasheada con salt diario + familia del User-Agent
+- Allowlist de event names (35) — rechaza eventos no registrados
+- Scrubbing PII reutiliza el de Colibri (JWTs, tokens en URL, Authorization, CCN)
+- Frontend honra Do-Not-Track del navegador automáticamente
+
+---
+
 ## Ecosistema
 
 Este repo se integra con otros servicios internos vecinos (CMS, visor de mapas, DataEngine PostgreSQL+PostGIS, gateway Nginx, almacenamiento S3-compatible, GeoServer, stack de observabilidad) que comparten una red Docker común. Los detalles de topología son internos.
@@ -711,6 +764,14 @@ Este repo se integra con otros servicios internos vecinos (CMS, visor de mapas, 
 ---
 
 ## Cambios recientes
+
+### 2026-05-13 (v0.52.0) — Telemetría MapaLab end-to-end
+
+Sistema completo de telemetría anónima del visor MapaLab (`mapalab_events`, `mapalab_sessions`, 5 matviews), endpoint público `/api/public/mapalab/events/batch` con rate limit y scrubbing PII, panel admin con tabs internas y KPIs en el Inicio. Sider width ampliado a 280px para acomodar badges BETA. `make backup-db` ahora purga eventos crudos antes del dump y `install-backup-cron` instala también el refresh de vistas cada 30 min. Detalle completo en `docs/CHANGELOG.md` §[0.52.0].
+
+### 2026-05-13 (v0.51.0–0.51.1) — Llaves MapaLab v2 + fix matviews
+
+Ciclo de auditoría del widget y fix de inicialización de vistas materializadas. Detalle en CHANGELOG.
 
 ### 2026-05-08 (v0.47.0–0.47.5) — SIEEJ mis-envios + UX cards + Colibri widget v2 + sider con candado + auto-recovery CSRF + fix eventos desaparecidos
 

@@ -15,6 +15,7 @@ import {
     getPlataformas,
     getNotasVersion,
 } from '@features/inicio/api/inicioService';
+import { MapalabInicioHighlights } from '@features/mapalab-stats';
 
 const { Content } = Layout;
 const { Title, Text } = Typography;
@@ -265,6 +266,8 @@ export default function InicioPage() {
                         </div>
                     )}
                 </div>
+
+                <MapalabInicioHighlights />
 
                 <div>
                     <Title level={4} style={{ marginBottom: 12 }}>

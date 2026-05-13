@@ -29,7 +29,7 @@ else
 	MSG_ENV      := Desarrollo
 endif
 
-.PHONY: help up build down logs restart clean shell-api shell-admin setup setup-hooks ensure-networks deploy backup-db restore-db install-backup-cron uninstall-backup-cron
+.PHONY: help up build down logs restart clean shell-api shell-admin setup setup-hooks ensure-networks deploy backup-db restore-db install-backup-cron uninstall-backup-cron refresh-mapalab-stats purge-mapalab-events
 
 ## Muestra ayuda de comandos disponibles
 help:
@@ -58,6 +58,10 @@ help:
 	@echo '  ${YELLOW}make restore-db FILE=...${RESET}    - Restaura desde un .sql.gz (busca en restore/ y backups/)'
 	@echo '  ${YELLOW}make install-backup-cron${RESET}    - Instala cronjob diario a las 3 AM (solo correr en produccion)'
 	@echo '  ${YELLOW}make uninstall-backup-cron${RESET}  - Quita el cronjob instalado por install-backup-cron'
+	@echo ''
+	@echo '${BLUE}MapaLab — Telemetria${RESET}'
+	@echo '  ${YELLOW}make refresh-mapalab-stats${RESET}  - Refresca las vistas materializadas mapalab_stats_*'
+	@echo '  ${YELLOW}make purge-mapalab-events${RESET}   - Purga eventos crudos mas viejos que la retencion'
 	@echo ''
 
 ensure-networks:
@@ -134,16 +138,31 @@ install-backup-cron:
 		exit 1; \
 	fi
 	@mkdir -p $(PWD)/backups
-	@( crontab -l 2>/dev/null | grep -v 'mariachi-backup' ; \
-	   echo "0 3 * * * cd $(PWD) && ./scripts/postgres-backup.sh >> $(PWD)/backups/backup.log 2>&1 # mariachi-backup" \
+	@( crontab -l 2>/dev/null | grep -v 'mariachi-backup' | grep -v 'mariachi-stats' ; \
+	   echo "0 3 * * * cd $(PWD) && ./scripts/postgres-backup.sh >> $(PWD)/backups/backup.log 2>&1 # mariachi-backup" ; \
+	   echo "*/30 * * * * cd $(PWD) && docker compose -f $(COMPOSE_FILE) exec -T api python scripts/refresh_mapalab_stats.py >> $(PWD)/backups/mapalab-stats.log 2>&1 # mariachi-stats-refresh" \
 	) | crontab -
-	@echo "${GREEN}Cronjob instalado:${RESET}"
-	@crontab -l | grep 'mariachi-backup'
+	@echo "${GREEN}Cronjobs instalados:${RESET}"
+	@crontab -l | grep -E 'mariachi-(backup|stats)'
 
 ## Quita el cronjob instalado por install-backup-cron.
 uninstall-backup-cron:
-	@( crontab -l 2>/dev/null | grep -v 'mariachi-backup' ) | crontab -
-	@echo "${GREEN}Cronjob de respaldo removido.${RESET}"
+	@( crontab -l 2>/dev/null | grep -v 'mariachi-backup' | grep -v 'mariachi-stats' ) | crontab -
+	@echo "${GREEN}Cronjobs de respaldo y stats removidos.${RESET}"
+
+# =============================================================================
+# MAPALAB STATS (telemetria)
+# =============================================================================
+
+## Refresca las vistas materializadas mapalab_stats_*. Se invoca cada 30 min
+## por cron en prod; este target es para refresh manual.
+refresh-mapalab-stats:
+	@docker compose -f $(COMPOSE_FILE) exec -T api python scripts/refresh_mapalab_stats.py
+
+## Purga eventos crudos mas viejos que la retencion configurada (default 90 dias).
+## Usa MAPALAB_EVENTS_RETENTION_DAYS / MAPALAB_SESSIONS_RETENTION_DAYS para ajustar.
+purge-mapalab-events:
+	@docker compose -f $(COMPOSE_FILE) exec -T api python scripts/purge_mapalab_events.py
 
 setup:
 	@if [ ! -f .env.development ]; then \

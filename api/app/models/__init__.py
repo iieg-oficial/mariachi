@@ -10,6 +10,7 @@ from app.models.mapalab_api_key_acceso import MapalabApiKeyAcceso
 from app.models.mapalab_api_key_embed import MapalabApiKeyEmbed
 from app.models.mapalab_api_key_evento import MapalabApiKeyEvento
 from app.models.mapalab_api_key_uso import MapalabApiKeyUsoDiario
+from app.models.mapalab_event import MapalabEvent, MapalabSession
 from app.models.media import Media, MediaFolder
 from app.models.media_bucket import MediaBucket
 from app.models.menu_item import MenuItem
@@ -62,6 +63,8 @@ __all__ = [
     "MapalabApiKeyEmbed",
     "MapalabApiKeyEvento",
     "MapalabApiKeyUsoDiario",
+    "MapalabEvent",
+    "MapalabSession",
     "CatalogoCalidadDatos",
     "CatalogoCategoriaDatos",
     "CatalogoEjesEstrategicos",
