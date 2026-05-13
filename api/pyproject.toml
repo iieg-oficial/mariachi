@@ -1,6 +1,6 @@
 [project]
 name = "mariachi-api"
-version = "0.52.2"
+version = "0.52.3"
 description = "Mariachi — backend API del ecosistema IIEG (admin, MapaLab, SIEEJ)."
 authors = [{name = "Edgar Alejandro Villarreal Padilla", email = "edgar.villarreal@iieg.gob.mx"}]
 requires-python = ">=3.12"
@@ -25,6 +25,7 @@ dependencies = [
     "sentry-sdk[fastapi]>=2.0,<3.0",
     "coloredlogs>=15.0,<16.0",
     "rich>=13.7,<14.0",
+    "prometheus-fastapi-instrumentator>=7.0,<8.0",
 ]
 
 [project.optional-dependencies]

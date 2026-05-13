@@ -9,6 +9,42 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.52.3] - 2026-05-13
+
+### Lint admin limpio + refactor de 9 archivos grandes
+
+Cierra los errores que el job `admin / test` de CI marcaba en rojo: nueve archivos pasando de 300 líneas (regla ESLint `max-lines`), dos `no-unused-vars`, un `react-hooks/exhaustive-deps`, un `react-refresh/only-export-components`, un `Compilation Skipped: existing memoization` del React Compiler, y siete exports muertos que knip detectaba en modo strict.
+
+#### Bug fixes y limpieza
+
+- **`colibri/pages/IntegracionPage.jsx`**: `previewMode` se asignaba pero nunca se leía — el Tabs ya tenía estado interno (`defaultActiveKey`). Eliminado el state.
+- **`mapalab-api-keys/components/ApiKeyAuditoriaTab.jsx`**: dos issues. Import `message` no usado (eliminado). `Compilation Skipped: existing memoization could not be preserved` en el `useCallback` — React Compiler inferia `apiKey` como dep, pero el manual decía `apiKey?.id`. Fix: extraer `apiKeyId = apiKey?.id` a const para que ambas referencias coincidan.
+- **`mapalab-layers/components/sldEditor/SymbolPicker.jsx`**: `useEffect([], () => listCategories().then((items) => { if (activeCategoryId == null) setActiveCategoryId(items[0].id) }))` leía `activeCategoryId` desde el closure. Fix sin agregar dep (no queremos re-cargar categories en cada cambio): functional updater `setActiveCategoryId((prev) => prev == null ? items[0].id : prev)`.
+- **`mapalab-api-keys/routes.jsx`**: el archivo exportaba un `lazy(...)` además de la función `buildMapalabApiKeysRoutes`, lo que rompía Fast Refresh. Movido el `lazy()` dentro del cuerpo de la función para que el módulo solo exporte la función helper.
+- **Exports muertos** (knip strict): `getDireccion`, `getSourceApp`, `getTipo`, `reordenarTipos` en services de Colibri; `getApiKey`, `listEventos`, `listUso` en mapalab-api-keys. Ninguno tenía consumidores en `src/**/*.jsx`.
+
+#### Refactor max-lines
+
+Nueve archivos superaban el cap de 300 líneas (cuenta sin blanks/comments). Solución: partir en sub-componentes/hooks. Sin cambios de comportamiento; sólo separación de responsabilidades.
+
+| Archivo | Antes | Después | Extracciones |
+|---|---|---|---|
+| `main.jsx` | 315 | 246 | Rutas de Colibri → `features/colibri/routes.jsx` (`buildColibriRoutes`, mismo patrón que `buildMapalabApiKeysRoutes`) |
+| `app/sider-config.jsx` | 328 | 161 | `PROJECT_REGISTRY` (datos del menú) → `app/sider-registry.jsx`; sider-config queda con helpers + `buildSiderItems` y re-exporta el registry |
+| `colibri/pages/TiposPage.jsx` | 302 | 213 | Drawer + Form → `components/TipoFormDrawer.jsx` |
+| `colibri/pages/ReportesListPage.jsx` | 342 | 248 | Columnas (plana + agrupada) → `components/reportesTableColumns.jsx` con builders `buildFlatColumns` / `buildGroupedColumns` |
+| `colibri/pages/RoutesPage.jsx` | 347 | 235 | Drawer + Form → `components/RouteFormDrawer.jsx` |
+| `colibri/components/ReporteDrawer.jsx` | 351 | 251 | Historial Timeline → `ReporteHistorialPanel.jsx`; respuestas del formulario → `ReporteRespuestasPanel.jsx` |
+| `colibri/pages/SourceAppsPage.jsx` | 482 | 173 | `SourceAppFormDrawer.jsx` + `ApiKeyRevealModal.jsx` + `sourceAppsTableColumns.jsx` |
+| `mapalab-layers/components/sldEditor/SldEditor.jsx` | 496 | 267 | Seis módulos hermanos: `SldActionsCard`, `SldNotEditableFallback`, `SldRejectModal`, `LayerGroupWarning`, `SldEditorLayout`, `sldEditorHelpers.js` |
+| `mapalab-api-keys/components/ApiKeyPlaygroundTab.jsx` | 664 | 274 | Cinco sub-componentes (`PlaygroundConfigForm`, `PlaygroundPreviewCard`, `SavedEmbedsList`, `PlaygroundAlerts`) + helpers (`playgroundHelpers.js`) + hook (`usePlaygroundMessageBridge.js`) |
+
+Resultado: `npm run lint` → 0 errores (70 warnings preexistentes, ninguno bloqueante). `npm test` → 36/36 pasando. `npm run check:dead-code:strict` → exit 0. `npm run build` → ok.
+
+Bump 0.52.2 → 0.52.3.
+
+---
+
 ## [0.52.2] - 2026-05-13
 
 ### Suite pytest del backend verde + dos bugs reales descubiertos al habilitarla
