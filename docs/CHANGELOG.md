@@ -9,6 +9,40 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.52.1] - 2026-05-13
+
+### Lint backend limpio + hook pre-push para detectar fallos de CI
+
+Cierra el ciclo de `ruff` en la rama de production (que CI marcaba en rojo) y agrega un hook `pre-push` que reproduce el job `backend / test` de GitHub Actions para fallar en local antes de pushear, no después.
+
+#### Lint backend
+
+70 errores reportados por `ruff check app tests` (CI fallaba en el step "Lint (ruff)"):
+
+- **27 autofijables** (`ruff check --fix`): bloques de imports desordenados (`I001`) en `colibri_source_apps.py`, `home.py`, `reportes.py`, `reportes_public.py`, `main.py`, `models/__init__.py`, `symbol.py`, `evento.py`, `mapalab_api_key.py`, `symbol.py` (schemas), `borrador_service.py`, `envios_service.py`, `tests/test_users.py`, `tests/test_sieej_formularios_dinamicos.py`; imports sin uso (`F401`) en `mapalab_api_keys_internal.py`, `symbols.py`, `mapalab_api_key.py` (model), `evento.py` (schema), `source_app.py`, `mapalab_telemetry.py`, `tests/test_eventos_concurrency.py`.
+- **`api/app/models/__init__.py`**: `ActividadLog` se importa solo para registrar el modelo con `Base.metadata`; agregado a `__all__` para que `ruff` no lo marque como import muerto.
+- **`api/app/services/sieej/formularios_admin_service.py`**: `logger = logging.getLogger(__name__)` se reubica después de todos los imports (resuelve seis `E402`).
+- **`api/app/schemas/mapalab_event.py`**: 35 violaciones `N815` por campos `camelCase` en `StatsOverview`, `LayerStatRow`, `ButtonStatRow`, `ToolStatRow`, `DailyStatRow`, `SessionRow`, `SessionsPage`, `HighlightLayer`, `HighlightTool`, `StatsHighlights`. Refactor: campos renombrados a `snake_case` heredando de la nueva clase base `CamelCaseOutput` (`alias_generator=to_camel`, `populate_by_name=True`). El JSON sigue saliendo en camelCase — contrato con el frontend (`admin/src/features/mapalab-stats/`) intacto.
+- **`api/app/schemas/_camel.py`**: nueva `CamelCaseOutput` + helper `to_camel(name)` que respeta segmentos numéricos (`sessions_30d` → `sessions30d`, no `sessions30D`).
+- **`api/app/api/routes/mapalab_stats.py`**: llamadas a los schemas usan `snake_case` (Pythonic) y cada `@router.get` agrega `response_model_by_alias=True` para que FastAPI serialice con alias camelCase.
+
+Resultado: `ruff check app tests` pasa con 0 errores. Stub de `populate_by_name=True` mantiene compatibilidad con cualquier código que aún construya schemas pasando los nombres camelCase originales.
+
+#### Hook pre-push
+
+- **`.githooks/pre-push`**: ejecuta `ruff check --no-cache app tests` + `pytest -q` antes de cada `git push`. Reproduce paso a paso `.github/workflows/test-backend.yml` (mismas env vars: `DATABASE_URL=sqlite:///:memory:`, secrets dummy, etc.). Si falla cualquiera, bloquea el push.
+  - Escapes: `SKIP_PRE_PUSH=1 git push` salta todo; `SKIP_PYTEST=1 git push` corre solo lint.
+- **`api/scripts/run-tests.sh`**: helper invocado por el hook y por `make test-backend`. Si el contenedor `mariachi-api` está corriendo, ejecuta `pytest` adentro instalando `pytest`/`pytest-asyncio` la primera vez (la imagen de prod no los incluye). Fallback a `pytest` del PATH; si nada está disponible, falla con sugerencias claras (`make up` o `pip install pytest pytest-asyncio`).
+- **`Makefile`**: nuevo target `make test-backend` reproduce localmente el job de CI. `setup-hooks` ya existía (configura `core.hooksPath=.githooks`) — basta correrlo una vez por clone.
+
+#### Documentación
+
+- `docs/CONTRIBUTING.md`: setup inicial menciona `make setup-hooks` y `make test-backend`; sección "Estándares de Código" linkea al hook.
+
+Bump 0.52.0 → 0.52.1.
+
+---
+
 ## [0.52.0] - 2026-05-13
 
 ### Telemetría MapaLab — ingesta pública, panel admin y respaldos
