@@ -3,6 +3,8 @@ from contextlib import asynccontextmanager
 import sentry_sdk
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_fastapi_instrumentator import Instrumentator
+from prometheus_fastapi_instrumentator import metrics as fastapi_metrics
 
 from app.api import metrics as metrics_module
 from app.api.deps import require_staff
@@ -75,6 +77,16 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    Instrumentator(
+        excluded_handlers=["^/metrics$", "^/health$", "^/ontoy$", "^/$"],
+        should_group_status_codes=True,
+        should_ignore_untemplated=True,
+    ).add(
+        fastapi_metrics.requests()
+    ).add(
+        fastapi_metrics.latency(buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10))
+    ).instrument(app)
 
     app.include_router(auth.router, prefix=settings.admin_prefix)
     app.include_router(formularios.router, prefix=settings.admin_prefix)

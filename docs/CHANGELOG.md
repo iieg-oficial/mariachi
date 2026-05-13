@@ -9,6 +9,25 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.53.0] - 2026-05-13
+
+### Instrumentación HTTP del API para Prometheus
+
+El endpoint `/metrics` del API ya emitía counters de negocio (`mariachi_login_success_total`, `mariachi_geoserver_calls_total`, etc.) pero no métricas HTTP estándar. Las reglas `HighLatency` y `HighErrorRate` del stack de monitoreo (huachicol) quedaban inactivas para mariachi porque dependen de `http_request_duration_seconds` y `http_requests_total{status}`. Se agrega `prometheus-fastapi-instrumentator` para emitirlas sin romper el render manual existente.
+
+#### Agregado
+
+- **`prometheus-fastapi-instrumentator>=7.0,<8.0`** en `api/pyproject.toml`.
+- **Hook en `api/app/main.py`** dentro de `create_app()` justo después del `CORSMiddleware`: `Instrumentator(...).add(metrics.requests()).add(metrics.latency(...)).instrument(app)`. Buckets de latencia `(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10)`. `excluded_handlers=["^/metrics$", "^/health$", "^/ontoy$", "^/$"]` para no auto-instrumentar scrape ni endpoints de plataforma.
+- **`api/app/api/metrics.py`** concatena `generate_latest(REGISTRY).decode('utf-8')` al final del render manual. El mismo `/metrics` expone counters de negocio + HTTP estándar en un solo scrape.
+
+#### Notas
+
+- **Cuidado con `excluded_handlers`**: usa `re.search`, no match exacto. Un patrón como `"/"` matchea cualquier path que contenga `/` (todos). Usar anclas `^...$`.
+- Mariachi-api no publica puerto al host (solo accesible vía `mariachi-nginx` interno y por `iieg-network`), por lo que `/metrics` no necesita bloqueo nginx adicional — ya no se puede llegar desde fuera.
+
+---
+
 ## [0.52.3] - 2026-05-13
 
 ### Lint admin limpio + refactor de 9 archivos grandes
