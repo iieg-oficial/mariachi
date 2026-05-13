@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# Pre-push hook: corre ruff + pytest del backend antes de permitir push.
+# Reproduce el workflow .github/workflows/test-backend.yml para detectar
+# fallos antes de que CI los marque.
+#
+# Saltar el hook:           SKIP_PRE_PUSH=1 git push
+# Saltar solo pytest:       SKIP_PYTEST=1 git push
+
+set -e
+
+if [ "${SKIP_PRE_PUSH:-}" = "1" ]; then
+    echo "[pre-push] SKIP_PRE_PUSH=1 → omitiendo validaciones"
+    exit 0
+fi
+
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+RED='\033[0;31m'
+RESET='\033[0m'
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+API_DIR="$REPO_ROOT/api"
+API_CONTAINER="${API_CONTAINER:-mariachi-api}"
+
+step() { printf "${YELLOW}[pre-push] %s${RESET}\n" "$1"; }
+ok()   { printf "${GREEN}[pre-push] %s${RESET}\n" "$1"; }
+fail() { printf "${RED}[pre-push] %s${RESET}\n" "$1"; exit 1; }
+
+# 1) Ruff
+step "ruff check app tests"
+if command -v ruff >/dev/null 2>&1; then
+    ( cd "$API_DIR" && ruff check --no-cache app tests ) \
+        || fail "ruff: lint falló (corre 'cd api && ruff check --fix app tests' o usa SKIP_PRE_PUSH=1)"
+elif docker ps --format '{{.Names}}' 2>/dev/null | grep -q "^${API_CONTAINER}$"; then
+    docker exec -w /app "$API_CONTAINER" ruff check --no-cache app tests \
+        || fail "ruff: lint falló (corrido en contenedor)"
+else
+    fail "ruff no disponible localmente y el contenedor ${API_CONTAINER} no corre"
+fi
+ok "ruff ok"
+
+# 2) Pytest backend
+if [ "${SKIP_PYTEST:-}" = "1" ]; then
+    echo "[pre-push] SKIP_PYTEST=1 → omitiendo pytest"
+    exit 0
+fi
+
+step "pytest backend (mismo env que CI)"
+"$API_DIR/scripts/run-tests.sh" \
+    || fail "pytest falló (corrige los tests o usa SKIP_PYTEST=1 para esta vez)"
+
+ok "pytest ok"
+ok "Todo verde — push procediendo"

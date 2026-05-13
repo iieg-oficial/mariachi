@@ -39,6 +39,7 @@ Este proyecto adhiere a un [Código de Conducta](./CODE_OF_CONDUCT.md). Al parti
 git clone https://github.com/IIEG/mariachi.git
 cd mariachi
 make setup            # Crea .env.{development,staging,production}
+make setup-hooks      # Activa el pre-push hook (ruff + pytest del backend)
 make up               # Levanta entorno dev (admin, api, postgres, redis)
 
 # Desarrollo local sin Docker
@@ -55,6 +56,15 @@ npm run dev
 ```
 
 El portal público vive en repo separado (`../portal`); si necesitas levantarlo para testear flujo completo, ve las instrucciones ahí.
+
+### Validación pre-push
+
+El hook `.githooks/pre-push` reproduce el job `backend / test` de CI (`ruff check` + `pytest -q`) antes de cada `git push`. Si CI fallaría, el push se bloquea aquí. Para reproducirlo manualmente: `make test-backend`.
+
+Escapes (úsalos con criterio, CI sigue corriendo):
+
+- `SKIP_PRE_PUSH=1 git push` — salta todo el hook.
+- `SKIP_PYTEST=1 git push` — corre solo `ruff`, salta `pytest`.
 
 ## Proceso de Desarrollo
 

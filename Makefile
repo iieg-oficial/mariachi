@@ -29,7 +29,7 @@ else
 	MSG_ENV      := Desarrollo
 endif
 
-.PHONY: help up build down logs restart clean shell-api shell-admin setup setup-hooks ensure-networks deploy backup-db restore-db install-backup-cron uninstall-backup-cron refresh-mapalab-stats purge-mapalab-events
+.PHONY: help up build down logs restart clean shell-api shell-admin setup setup-hooks test-backend ensure-networks deploy backup-db restore-db install-backup-cron uninstall-backup-cron refresh-mapalab-stats purge-mapalab-events
 
 ## Muestra ayuda de comandos disponibles
 help:
@@ -52,6 +52,7 @@ help:
 	@echo '  ${YELLOW}make shell-admin${RESET} - Entra a la terminal del contenedor Admin'
 	@echo '  ${YELLOW}make setup${RESET}       - Crea archivos .env iniciales si no existen'
 	@echo '  ${YELLOW}make setup-hooks${RESET} - Configura git hooks del proyecto (core.hooksPath)'
+	@echo '  ${YELLOW}make test-backend${RESET} - Corre lint + pytest del backend (mismo entorno que CI)'
 	@echo ''
 	@echo '${GREEN}Respaldos de Postgres:${RESET}'
 	@echo '  ${YELLOW}make backup-db${RESET}              - Genera respaldo manual (rota daily/weekly/monthly en backups/)'
@@ -70,6 +71,12 @@ ensure-networks:
 setup-hooks:
 	@git config core.hooksPath .githooks
 	@echo "${GREEN}Hooks configurados en .githooks/${RESET}"
+
+## Reproduce el job 'backend / test' de CI (ruff + pytest) localmente.
+## Util para validar antes de hacer push (el pre-push hook lo invoca).
+test-backend:
+	@cd api && ruff check --no-cache app tests
+	@./api/scripts/run-tests.sh
 
 # =============================================================================
 # COMANDOS PRINCIPALES
