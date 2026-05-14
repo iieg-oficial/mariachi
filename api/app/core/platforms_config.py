@@ -28,7 +28,7 @@ PLATFORMS: list[PlatformConfig] = [
         "probe_url_template": "{mapalab_backend_url}/ontoy",
     },
     {
-        "slug": "mapalab-dataengine",
+        "slug": "dataengine",
         "label": "DataEngine",
         "url": None,
         "probe": "ontoy",

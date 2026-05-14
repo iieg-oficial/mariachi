@@ -909,7 +909,7 @@ Detalle completo en `docs/CHANGELOG.md` §[0.13.0]. Resumen:
 - **Conectividad dev con mapalab**: proxy Vite `/mapalab/*` + admin en `mapalab-network`. Proxy usado solo en dev (en prod lo resuelve gateway-hub).
 - **Conectividad dev con DataEngine**: `api` en `dataengine-network` + `DATAENGINE_DATABASE_URL` poblado.
 - **`MAPALAB_BACKEND_URL`** agregada — sin ella el cache `layer_tree_cache` no se invalida tras CRUD y los cambios no aparecen hasta el cron diario.
-- **GRANTs sobre `mapalab.*`** automatizados en `mapalab-dataengine` v1.6.0 (paso 3b de `bootstrap-v14.sh`). Sin eso, el editor truena con `permission denied for table layers`. Ver `DATAENGINE_CREDENTIALS.md` §3.1.
+- **GRANTs sobre `mapalab.*`** automatizados en `dataengine` v1.6.0 (paso 3b de `bootstrap-v14.sh`). Sin eso, el editor truena con `permission denied for table layers`. Ver `DATAENGINE_CREDENTIALS.md` §3.1.
 - **Migraciones de deprecaciones AntD v6**: `Alert.message` → `title`, `Drawer.width/height` → `styles.wrapper`, `<Collapse.Panel>` → `items`, `<Spin tip>` reemplazado, wrapper `<App>` en `MainProvider`.
 
 ### 2026-04-22

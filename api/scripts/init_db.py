@@ -29,8 +29,8 @@ def aplicar_migraciones():
         raise RuntimeError("Alembic upgrade fallo")
     print("✓ Migraciones mariachi aplicadas")
     print()
-    print("ℹ Las migraciones del schema mapalab.* viven en mapalab-dataengine.")
-    print("  Aplicalas desde alli con: cd ../mapalab-dataengine && make migrate")
+    print("ℹ Las migraciones del schema mapalab.* viven en dataengine.")
+    print("  Aplicalas desde alli con: cd ../dataengine && make migrate")
 
 
 def crear_usuario_admin(db):

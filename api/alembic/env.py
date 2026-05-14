@@ -14,8 +14,8 @@ settings = get_settings()
 
 # Politica (ecosystem §7.3 v2, 2026-04-24): mariachi gestiona unicamente su
 # propio schema 'mariachi'. Las migraciones del schema 'mapalab' viven en
-# mapalab-dataengine/jobs/alembic/ y se aplican vía `make migrate` desde
-# ese repo. Si necesitas correrlas en dev local: cd ../mapalab-dataengine && make migrate
+# dataengine/jobs/alembic/ y se aplican vía `make migrate` desde
+# ese repo. Si necesitas correrlas en dev local: cd ../dataengine && make migrate
 from app.models import Base as target_base
 target_url = settings.database_url
 version_table = "alembic_version"

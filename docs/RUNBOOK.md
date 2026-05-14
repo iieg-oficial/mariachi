@@ -193,7 +193,7 @@ Buscar la migracion que falla y revisar su SQL.
 
 - Si la migracion es reversible: `alembic -x db=mariachi downgrade <revision_anterior>` y corregir el archivo.
 - Si la migracion no se aplico (transaccion abortada): re-correr `upgrade head` luego de corregir.
-- DataEngine: las migraciones `dataengine` viven en `mapalab-dataengine/jobs/alembic/`. Para ese branch usar `alembic -x db=dataengine` desde ese repo. Cualquier cambio a DataEngine va en rama dedicada `prod-migracion`.
+- DataEngine: las migraciones `dataengine` viven en `dataengine/jobs/alembic/`. Para ese branch usar `alembic -x db=dataengine` desde ese repo. Cualquier cambio a DataEngine va en rama dedicada `prod-migracion`.
 
 ## Sentry no recibe eventos
 

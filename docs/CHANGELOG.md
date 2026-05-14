@@ -9,6 +9,14 @@ Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los ca
 
 ---
 
+## [0.53.1] - 2026-05-14
+
+### Renombrado del repositorio `mapalab-dataengine` → `dataengine`
+
+Se actualizaron las referencias al repo `dataengine` (antes `mapalab-dataengine`) en `api/alembic/env.py`, `api/app/core/platforms_config.py`, `api/scripts/init_db.py` y docs (`ALEMBIC_MULTI_ENV.md`, `DATAENGINE_CREDENTIALS.md`, `RUNBOOK.md`, `context.md`).
+
+---
+
 ## [0.53.0] - 2026-05-13
 
 ### Instrumentación HTTP del API para Prometheus
