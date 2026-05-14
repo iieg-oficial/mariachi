@@ -3,7 +3,7 @@ FROM node:24-alpine AS widget-builder
 WORKDIR /widget
 COPY ./widget/package*.json ./
 RUN --mount=type=cache,target=/root/.npm \
-    npm install --prefer-offline --no-audit --fund=false
+    npm ci --prefer-offline --no-audit --fund=false
 COPY ./widget/ .
 RUN --mount=type=cache,target=/widget/node_modules/.vite \
     --mount=type=cache,target=/root/.npm \

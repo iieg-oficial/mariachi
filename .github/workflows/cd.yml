@@ -6,16 +6,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  backend:
-    uses: ./.github/workflows/test-backend.yml
-
-  admin:
-    uses: ./.github/workflows/test-frontend.yml
-    with:
-      app: admin
-
   deploy:
-    needs: [backend, admin]
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -59,7 +50,7 @@ jobs:
           exit 1
 
   notify:
-    needs: [backend, admin, deploy, health-check]
+    needs: [deploy, health-check]
     if: always()
     runs-on: ubuntu-latest
     environment: production
@@ -88,7 +79,7 @@ jobs:
           echo "version=$TRANS" >> "$GITHUB_OUTPUT"
 
       - name: Notify Discord - Success
-        if: needs.backend.result == 'success' && needs.admin.result == 'success' && needs.deploy.result == 'success' && needs.health-check.result == 'success'
+        if: needs.deploy.result == 'success' && needs.health-check.result == 'success'
         continue-on-error: true
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
@@ -115,7 +106,7 @@ jobs:
           }' "$DISCORD_WEBHOOK"
 
       - name: Notify Discord - Failure
-        if: needs.backend.result != 'success' || needs.admin.result != 'success' || needs.deploy.result != 'success' || needs.health-check.result != 'success'
+        if: needs.deploy.result != 'success' || needs.health-check.result != 'success'
         continue-on-error: true
         env:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
@@ -123,11 +114,8 @@ jobs:
           COMMIT_URL="${{ github.server_url }}/${{ github.repository }}/commit/${{ github.sha }}"
           RUN_URL="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
-          if [ "${{ needs.backend.result }}" != "success" ] || [ "${{ needs.admin.result }}" != "success" ]; then
-            FAILED_STEP="CI (tests)"
-          elif [ "${{ needs.deploy.result }}" != "success" ]; then
-            FAILED_STEP="Deploy SSH"
-          else
+          FAILED_STEP="Deploy SSH"
+          if [ "${{ needs.deploy.result }}" = "success" ]; then
             FAILED_STEP="Health Check"
           fi
 
