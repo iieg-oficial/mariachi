@@ -92,18 +92,20 @@ El Makefile elige el `docker-compose.*.yml` y el `.env.*` según `ENV`. El servi
 
 ---
 
-## CI
+## CI / CD
 
 Workflows en `.github/workflows/`:
 
 | Workflow | Disparador | Qué hace |
 |---|---|---|
 | `commit-lint` | PRs | Valida Conventional Commits |
-| `ci` | Push a ramas ≠ `develop`/`main`, y PRs | Lanza los 3 jobs reusables en paralelo |
+| `ci` | Push a ramas ≠ `production`, y PRs | Lanza los jobs reusables de test en paralelo |
+| `cd` | Push a `production` (o manual) | CI como gate → deploy SSH → health-check → notificación Discord única |
+| `auto-merge` | Push a `develop` | Abre/actualiza PR `develop → production` con auto-merge |
 | `test-backend` | Reusable | `ruff check` + `pytest` sobre `api/` |
 | `test-frontend` | Reusable (`app: admin\|web`) | `npm ci` + `npm run lint` + `npm run build` |
 
-CD queda pendiente hasta que exista un entorno staging activo.
+En `production`, `cd` ejecuta los tests como gate del deploy: si el CI falla no se despliega. Tras el deploy SSH corre un health-check y se envía **una sola notificación a Discord** con el resultado de todo el flujo. El CI no notifica por separado.
 
 ---
 

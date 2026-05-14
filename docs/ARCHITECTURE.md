@@ -203,7 +203,7 @@ mariachi/
 │   └── rename-github-repo.sh
 │
 ├── docs/                             # Esta documentación
-├── .github/workflows/                # CI (commit-lint, ci, test-backend, test-frontend)
+├── .github/workflows/                # CI/CD (commit-lint, ci, cd, auto-merge, test-backend, test-frontend)
 ├── docker-compose.yml                # staging / producción
 ├── docker-compose.dev.yml            # desarrollo local
 ├── Makefile

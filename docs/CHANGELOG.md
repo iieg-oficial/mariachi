@@ -9,6 +9,36 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.0.1] - 2026-05-14
+
+### CI/CD — flujo unificado en `cd.yml` con notificación Discord única
+
+Antes, un push a `production` disparaba dos flujos en paralelo con notificación
+propia cada uno: `ci.yml` corría los tests y `notify-ci.yml` mandaba un embed
+de "CI exitoso/fallido", mientras `cd.yml` desplegaba y mandaba otro embed de
+"Deploy exitoso/fallido". Ya con el CD en producción, la notificación separada
+del CI es ruido: ahora `cd.yml` orquesta todo el flujo y emite una sola
+notificación al final.
+
+#### Cambiado
+
+- **`cd.yml`**: incorpora `backend` y `admin` (workflows reusables de test) como
+  jobs previos. `deploy` ahora declara `needs: [backend, admin]`, por lo que el
+  CI funciona como **gate**: si los tests fallan, no se despliega. El job
+  `notify` depende de `[backend, admin, deploy, health-check]` y sigue siendo la
+  única notificación a Discord. El embed de fallo distingue la etapa
+  (`CI (tests)`, `Deploy SSH`, `Health Check`).
+- **`ci.yml`**: `push` ahora usa `branches-ignore: [production]` para no
+  duplicar los tests, que en `production` ya corren dentro de `cd.yml`. Sigue
+  corriendo en el resto de ramas y en PRs.
+
+#### Eliminado
+
+- **`notify-ci.yml`**: la notificación de Discord del CI se elimina; queda
+  consolidada en el job `notify` de `cd.yml`.
+
+---
+
 ## [1.0.0] - 2026-05-14
 
 ### Lanzamiento a producción
