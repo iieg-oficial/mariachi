@@ -5,7 +5,15 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
-Mientras la versión sea `0.x`, el proyecto se considera pre-producción: los cambios pueden romper compatibilidad entre versiones menores. El versionado se lleva de forma unificada para el monorepo (backend + admin + web + infra). Las versiones previas al monorepo se listan por producto al final como histórico.
+A partir de `1.0.0` el proyecto está en producción: se sigue versionado semántico estándar (los cambios incompatibles suben la versión mayor). El versionado se lleva de forma unificada para el monorepo (backend + admin + web + infra). Las versiones previas al monorepo se listan por producto al final como histórico.
+
+---
+
+## [1.0.0] - 2026-05-14
+
+### Lanzamiento a producción
+
+Primera versión estable del ecosistema Mariachi (backend + admin + web + infra). A partir de aquí el versionado pasa a ser de producción bajo SemVer estándar; las siguientes entradas serán correcciones antes de incorporar características nuevas.
 
 ---
 
