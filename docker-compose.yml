@@ -35,9 +35,10 @@ services:
       - postgres_data:/var/lib/postgresql
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-iieg_user} -d ${POSTGRES_DB:-iieg_portal}" ]
-      interval: 10s
+      interval: 3s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 5s
     networks:
       - mariachi_network
 
@@ -48,9 +49,10 @@ services:
       - redis_data:/data
     healthcheck:
       test: [ "CMD", "redis-cli", "ping" ]
-      interval: 10s
+      interval: 3s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 2s
     networks:
       - mariachi_network
 
@@ -59,6 +61,7 @@ services:
       context: ./api
       dockerfile: Dockerfile
       target: production
+    image: mariachi-api
     container_name: mariachi-api
     command: ./scripts/start_backend.sh
     env_file:
@@ -83,10 +86,7 @@ services:
       - iieg-network
 
   cron-sieej:
-    build:
-      context: ./api
-      dockerfile: Dockerfile
-      target: production
+    image: mariachi-api
     container_name: mariachi-cron-sieej
     command:
       - sh

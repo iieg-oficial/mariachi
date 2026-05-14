@@ -5,6 +5,9 @@
 export UID := $(shell id -u)
 export GID := $(shell id -g)
 
+# Delega los builds a buildx bake: construye nginx y api en paralelo
+export COMPOSE_BAKE := true
+
 # Colores para output
 GREEN  := $(shell tput -Txterm setaf 2)
 YELLOW := $(shell tput -Txterm setaf 3)
