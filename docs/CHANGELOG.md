@@ -9,6 +9,40 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.0.2] - 2026-05-14
+
+### CD sin tests redundantes y builds de Docker optimizados
+
+El gate de tests que `1.0.1` metió dentro de `cd.yml` resultó redundante: el
+flujo real es `develop` → `auto-merge.yml` (corre los tests) → merge a
+`production` → `cd.yml`. Para cuando el CD arranca, los tests ya pasaron en
+`auto-merge`. Repetirlos solo alargaba el deploy. En paralelo se optimizó el
+build de imágenes.
+
+#### Cambiado
+
+- **`cd.yml`**: se eliminan los jobs `backend` y `admin`. `deploy` ya no declara
+  `needs` de tests y `notify` depende solo de `[deploy, health-check]`. El gate
+  de tests vive en `auto-merge.yml`, antes del merge a `production`.
+- **`Makefile`**: `COMPOSE_BAKE=true` delega los builds a `buildx bake`, que
+  construye `nginx` y `api` en paralelo.
+- **`docker-compose.yml` / `docker-compose.dev.yml`**: healthchecks de `postgres`
+  y `redis` más ágiles (`interval` 3s, `start_period`) para que los servicios
+  dependientes arranquen antes.
+- **`docker-compose.yml`**: `cron-sieej` reusa la imagen `mariachi-api` en vez de
+  reconstruirla.
+- **`api/Dockerfile`**: se quita `gcc` de las dependencias del sistema (no se
+  necesita en runtime).
+- **`nginx/Dockerfile`**: `npm install` → `npm ci` en el build del widget para
+  instalaciones reproducibles.
+
+#### Agregado
+
+- **`.dockerignore`**: excluye `node_modules`, artefactos de build, caches y
+  archivos no necesarios del contexto de build.
+
+---
+
 ## [1.0.1] - 2026-05-14
 
 ### CI/CD — flujo unificado en `cd.yml` con notificación Discord única
