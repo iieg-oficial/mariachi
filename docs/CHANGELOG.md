@@ -9,6 +9,27 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.0.3] - 2026-05-15
+
+### `mapalab_notifier` envía `X-Internal-Token` al refresh-cache de mapalab
+
+Hasta `1.0.2` el notifier disparaba `POST /layers/refresh-cache` sin auth: dependía exclusivamente de que el endpoint público estuviera bloqueado en el gateway (`return 403`). Los servicios co-residentes en `iieg-network` podían invalidar el cache de mapalab sin token. Coordinado con mapalab `1.28.5+` que ahora exige el header.
+
+#### Cambiado
+
+- **`app/services/mapalab_notifier.py::_do_notify`**: si `settings.mapalab_internal_token` está definido, se agrega `X-Internal-Token` al header del POST. Si no, mantiene el comportamiento previo (sin header) — útil para entornos legacy o cuando mapalab no exige aún el token. El header se envía en los 3 intentos del retry.
+
+#### Agregado
+
+- **`tests/test_integration_notify.py::test_notifier_sends_internal_token_header`**: valida que cuando `mapalab_internal_token` está seteado, el POST llega con el header `X-Internal-Token` correcto.
+
+#### Notas
+
+- Aplicar con `mapalab >= 1.28.5`. Si mapalab no tiene la dependencia activa todavía, este cambio es no-op (header ignorado).
+- `MAPALAB_INTERNAL_TOKEN` debe ser **idéntico** en `mariachi/.env*` y en `mapalab/.env*` (mismo string).
+
+---
+
 ## [1.0.2] - 2026-05-14
 
 ### CD sin tests redundantes y builds de Docker optimizados

@@ -66,6 +66,30 @@ def test_notifier_posts_to_refresh_cache_endpoint():
         s.mapalab_backend_url = original
 
 
+def test_notifier_sends_internal_token_header():
+    from app.core.settings import get_settings
+    from app.services import mapalab_notifier
+    s, original_url = _mock_settings_with_url()
+    original_token = s.mapalab_internal_token
+    s.mapalab_internal_token = 'test-token-xyz'
+    try:
+        called = {'headers': None}
+
+        def handler(request):
+            called['headers'] = dict(request.headers)
+            return httpx.Response(200, json={'ok': True})
+
+        transport = httpx.MockTransport(handler)
+        real_client = httpx.Client
+        with patch('httpx.Client', lambda **kw: real_client(transport=transport, **{k: v for k, v in kw.items() if k != 'transport'})):
+            mapalab_notifier._do_notify()
+
+        assert called['headers'].get('x-internal-token') == 'test-token-xyz'
+    finally:
+        s.mapalab_backend_url = original_url
+        s.mapalab_internal_token = original_token
+
+
 def test_notifier_retries_on_failure():
     from app.api.metrics import COUNTER_TREE_NOTIFY_FAILED, _counters
     from app.services import mapalab_notifier
