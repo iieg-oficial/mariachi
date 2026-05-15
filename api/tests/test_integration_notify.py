@@ -67,7 +67,6 @@ def test_notifier_posts_to_refresh_cache_endpoint():
 
 
 def test_notifier_sends_internal_token_header():
-    from app.core.settings import get_settings
     from app.services import mapalab_notifier
     s, original_url = _mock_settings_with_url()
     original_token = s.mapalab_internal_token
