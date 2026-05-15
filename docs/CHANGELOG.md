@@ -9,6 +9,19 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.0.10] - 2026-05-15
+
+### Docs alineados: `MinIO` se engloba como `Acervo` + nota del notifier
+
+#### Cambiado
+
+- **`docs/ARCHITECTURE.md`**:
+  - Tabla de tecnologias: `MinIO (driver) 7.2+` → `` `minio` (paquete pip) 7.2+ `` (cliente S3-compatible para Acervo). El paquete pip se llama asi por razones historicas; en docs no se enfatiza la marca.
+  - Diagrama: `Acervo (MinIO S3)` → `Acervo (SeaweedFS S3)`.
+  - Listado de services: `mapalab_notifier` ahora aclara "X-Internal-Token desde 1.0.3".
+
+---
+
 ## [1.0.9] - 2026-05-15
 
 ### Re-sync de `platforms_config.py` por bump de acervo
