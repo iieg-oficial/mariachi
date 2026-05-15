@@ -36,7 +36,7 @@
 | python-jose | 3.3+ | JWT |
 | passlib + bcrypt | 1.7+ / 3.2+ | Hashing de contraseñas |
 | Redis (driver) | 5.0+ | Cache y sesiones |
-| MinIO (driver) | 7.2+ | Cliente S3 para Acervo |
+| `minio` (paquete pip) | 7.2+ | Cliente S3-compatible para Acervo |
 | httpx | 0.26+ | Cliente HTTP (GeoServer REST, notificaciones a mapalab) |
 | psycopg2-binary | 2.9+ | Driver PostgreSQL |
 
@@ -110,7 +110,7 @@ flowchart TB
 
     subgraph EXT["Servicios vecinos"]
         MAPA["mapalab backend"]
-        ACERVO["Acervo (MinIO S3)"]
+        ACERVO["Acervo (SeaweedFS S3)"]
         GSRV["GeoServer"]
         DE["DataEngine<br/>PostgreSQL + PostGIS"]
     end
@@ -171,7 +171,8 @@ mariachi/
 │   │   │                             # sieej/ (schema sieej, 12 tablas)
 │   │   ├── schemas/                  # Pydantic request/response (incl. schemas/sieej/)
 │   │   └── services/                 # acervo, geoserver_client, layer_service,
-│   │                                 # mapalab_notifier, mapalab_public_cache, mapalab_shares,
+│   │                                 # mapalab_notifier (X-Internal-Token desde 1.0.3),
+│   │                                 # mapalab_public_cache, mapalab_shares,
 │   │                                 # stats_templates, slug_service, presence,
 │   │                                 # borrador_service, media_service, menu_tree,
 │   │                                 # sieej/ (general, enlace, bases_datos)

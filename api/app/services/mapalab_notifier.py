@@ -31,11 +31,14 @@ def _do_notify() -> None:
 
     incr(COUNTER_TREE_NOTIFY)
     url = settings.mapalab_backend_url.rstrip('/') + '/layers/refresh-cache'
+    headers = {}
+    if settings.mapalab_internal_token:
+        headers['X-Internal-Token'] = settings.mapalab_internal_token
 
     for attempt in range(1, _MAX_ATTEMPTS + 1):
         try:
             with httpx.Client(timeout=5.0) as c:
-                r = c.post(url)
+                r = c.post(url, headers=headers)
                 r.raise_for_status()
             return
         except Exception as exc:

@@ -9,6 +9,131 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.0.10] - 2026-05-15
+
+### Docs alineados: `MinIO` se engloba como `Acervo` + nota del notifier
+
+#### Cambiado
+
+- **`docs/ARCHITECTURE.md`**:
+  - Tabla de tecnologias: `MinIO (driver) 7.2+` → `` `minio` (paquete pip) 7.2+ `` (cliente S3-compatible para Acervo). El paquete pip se llama asi por razones historicas; en docs no se enfatiza la marca.
+  - Diagrama: `Acervo (MinIO S3)` → `Acervo (SeaweedFS S3)`.
+  - Listado de services: `mapalab_notifier` ahora aclara "X-Internal-Token desde 1.0.3".
+
+---
+
+## [1.0.9] - 2026-05-15
+
+### Re-sync de `platforms_config.py` por bump de acervo
+
+#### Cambiado
+
+- **`api/app/core/platforms_config.py`** (via `scripts/sync-platforms-config.py --apply`):
+  - acervo: `1.22.2` → `1.22.3` (runbook ajustado a los verbos `make deploy` del gateway-hub)
+
+---
+
+## [1.0.8] - 2026-05-15
+
+### Re-sync de `platforms_config.py` por bumps de gateway-hub
+
+#### Cambiado
+
+- **`api/app/core/platforms_config.py`** (via `scripts/sync-platforms-config.py --apply`):
+  - gateway-hub: `1.24.19` → `1.24.20` (refinamiento del orquestador: `make up` deja de rebuildear, nuevo `make deploy`)
+
+---
+
+## [1.0.7] - 2026-05-15
+
+### Re-sync de `platforms_config.py` por bump de gateway-hub
+
+#### Cambiado
+
+- **`api/app/core/platforms_config.py`** (via `scripts/sync-platforms-config.py --apply`):
+  - gateway-hub: `1.24.18` → `1.24.19` (orquestador `ecosystem-up` reescrito)
+
+---
+
+## [1.0.6] - 2026-05-15
+
+### Doc cleanup + re-sync de `platforms_config.py`
+
+#### Cambiado
+
+- **`docs/sieej.md`** (`Auth y RBAC` → manejo de buckets): instrucciones de rotacion de credenciales actualizadas. La referencia a `acervo/scripts/init-buckets.sh --rotate <bucket>` (script removido en acervo 1.22.0 cuando migro a SeaweedFS) se reemplaza por el flujo nuevo: editar `acervo/config/identities.json` + `docker compose restart acervo-seaweedfs`. Se mantiene mencion al comando viejo entre parentesis para que el equipo lo reconozca en docs/notas antiguas.
+- **`api/app/core/platforms_config.py`** (re-sync con `sync-platforms-config.py`):
+  - acervo: `1.22.1` → `1.22.2`
+  - gateway-hub: `1.24.17` → `1.24.18`
+  - huachicol: `1.19.3` → `1.19.4`
+
+---
+
+## [1.0.5] - 2026-05-15
+
+### Script `sync-platforms-config.py` para detectar drift automáticamente
+
+El drift de `static_version` entre `platforms_config.py` y las VERSIONs reales del ecosistema era trabajo manual y se repetía en cada bump de cualquier repo hermano. Este script lo automatiza.
+
+#### Agregado
+
+- **`scripts/sync-platforms-config.py`**: lee el archivo `VERSION` de cada repo hermano en `/IIEG/<repo>/` (acervo, dataengine, gateway-hub, geoserver, huachicol), parsea `api/app/core/platforms_config.py` con AST (no regex frágil — evita falsos negativos con placeholders tipo `{dataengine_ontoy_url}`) y reporta drift. Con `--apply` aplica los reemplazos.
+  - Exit `0` si está alineado, `1` si hay drift (útil para CI / pre-commit).
+  - Imprime los slugs sin `VERSION` localizable (skip silencioso) para revisión manual.
+  - Después de aplicar, recuerda al operador bumpear mariachi y añadir entry al CHANGELOG.
+- **Aplicado en este bump**: huachicol `1.19.2 -> 1.19.3` (alerta `MariachiTreeNotifyFailures` agregada).
+
+#### Notas
+
+- Solo cubre los 5 repos con `VERSION` plano. mapalab, mariachi y sieej se manejan por probe en vivo (ontoy / self).
+- Si en el futuro alguno de esos 5 deja de usar `VERSION`, ampliar `read_version()` o usar el `static_version` manual.
+
+---
+
+## [1.0.4] - 2026-05-15
+
+### `platforms_config.py` sincronizado con versiones reales del ecosistema
+
+El dashboard `/sistema/plataformas` consultaba `static_version` de cada plataforma del ecosistema para reportar su versión, pero los valores estaban congelados meses atrás. Drift detectado durante la auditoría 2026-05-15.
+
+#### Cambiado
+
+- **`api/app/core/platforms_config.py`** (`static_version` por plataforma):
+  - `dataengine`: `1.12.0` → `1.14.3` (+2 minor +3 patch)
+  - `acervo`: `1.20.1` → `1.22.1` (+2 minor +1 patch; cubre la migración MinIO→SeaweedFS)
+  - `gateway-hub`: `1.24.5` → `1.24.16` (+11 patches; incluye WFS-T bloqueado, promtail removido, REAL_IP_FROM parametrizable)
+  - `huachicol`: `1.16.1` → `1.19.2` (+3 minor +2 patch; incluye alloy + alertas afinadas)
+  - `geoserver`: `1.14.1` → `1.20.1` (+6 minor; incluye tuning JVM)
+
+#### Notas
+
+- `mapalab` y `sieej` no usan `static_version` (probe `ontoy` consulta versión en vivo).
+- `mariachi` usa `probe: self` (consulta su propio `pyproject.toml`).
+- Procedimiento recomendado: cada vez que un repo bumpee, sincronizar manualmente esta tabla. Mientras no exista un hook automático, este drift va a regresar.
+
+---
+
+## [1.0.3] - 2026-05-15
+
+### `mapalab_notifier` envía `X-Internal-Token` al refresh-cache de mapalab
+
+Hasta `1.0.2` el notifier disparaba `POST /layers/refresh-cache` sin auth: dependía exclusivamente de que el endpoint público estuviera bloqueado en el gateway (`return 403`). Los servicios co-residentes en `iieg-network` podían invalidar el cache de mapalab sin token. Coordinado con mapalab `1.28.5+` que ahora exige el header.
+
+#### Cambiado
+
+- **`app/services/mapalab_notifier.py::_do_notify`**: si `settings.mapalab_internal_token` está definido, se agrega `X-Internal-Token` al header del POST. Si no, mantiene el comportamiento previo (sin header) — útil para entornos legacy o cuando mapalab no exige aún el token. El header se envía en los 3 intentos del retry.
+
+#### Agregado
+
+- **`tests/test_integration_notify.py::test_notifier_sends_internal_token_header`**: valida que cuando `mapalab_internal_token` está seteado, el POST llega con el header `X-Internal-Token` correcto.
+
+#### Notas
+
+- Aplicar con `mapalab >= 1.28.5`. Si mapalab no tiene la dependencia activa todavía, este cambio es no-op (header ignorado).
+- `MAPALAB_INTERNAL_TOKEN` debe ser **idéntico** en `mariachi/.env*` y en `mapalab/.env*` (mismo string).
+
+---
+
 ## [1.0.2] - 2026-05-14
 
 ### CD sin tests redundantes y builds de Docker optimizados
