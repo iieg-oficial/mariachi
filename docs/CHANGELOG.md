@@ -9,6 +9,32 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.1.1] - 2026-05-18
+
+### Fix: healthcheck de `api` usa `urllib.request` (stdlib) en vez de `import httpx` cada 5s
+
+Diagnostico en staging (`mapalab` GCP, 2c/7.8GB, todo el ecosistema co-residente) mostro `docker stats` reportando `mariachi-api` al **41% CPU sostenido** con los 4 workers gunicorn idle (0.2-0.3% c/u via `docker top`). La diferencia entre "container 41%" y "workers ~1%" venian de procesos efimeros del healthcheck Docker: cada 5s arrancaba un interprete Python que importaba `httpx` (~200-400ms CPU por cold-load de `ssl`, `asyncio`, `urllib3`, `h2`, `cryptography`, `bcrypt`) para hacer un `GET /health` que respondia en <1ms. A 12 ejecuciones/min era ~5-10% CPU sostenido visible en `docker stats` pero invisible en `docker top` por la efimeridad de cada proceso. En produccion S1 (8c/15GB) el sintoma es invisible (sobra CPU); en staging compartido golpeaba a postgres+geoserver+mapalab+gateway.
+
+#### Cambiado
+
+- **`docker-compose.yml`** (servicio `api`, healthcheck):
+  - `test`: `import httpx; httpx.get(...).raise_for_status()` → `import urllib.request; urllib.request.urlopen(...).read()`. `urllib.request` es stdlib core, sin cold-load adicional. `urlopen` lanza `HTTPError` por default en 4xx/5xx — equivalente semantico al `raise_for_status()` previo (Docker interpreta exit code 0 = healthy, ≠ 0 = unhealthy en ambos casos). Costo CPU por ejecucion: ~200-400ms → ~20-40ms.
+  - `interval`: `5s` → `15s`. Menos cold-starts por minuto.
+  - `retries`: `10` → `5`. Tiempo total antes de marcar unhealthy: `5s × 10 = 50s` → `15s × 5 = 75s`. Margen aceptable para un panel admin de bajo trafico, mas tolerante a transientes (GC de Python, picos vecinos en staging compartido).
+  - `timeout` y `start_period` sin cambios.
+
+#### Impacto
+
+- Staging: `mariachi-api` baja de **41% → ~7-10% CPU** sostenido segun la estimacion. Beneficia a postgres+geoserver+mapalab+gateway compitiendo por los 2 cores.
+- Produccion S1: ahorro proporcional pequeno (~5-8% de 1 core sobre 8). No tiene impacto perceptible en latencia ni disponibilidad — solo libera ciclos.
+- Sin regresion funcional: el contrato del healthcheck es identico (200 OK = healthy, error/timeout = unhealthy).
+
+#### Despliegue
+
+`docker compose up -d api` recrea el container y aplica el nuevo healthcheck. No requiere bajar el resto del stack.
+
+---
+
 ## [1.1.0] - 2026-05-18
 
 ### Dashboard de ecosistema: version 100 % en vivo desde `/ontoy` (sin hardcodes)
