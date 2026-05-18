@@ -87,10 +87,10 @@ services:
       ACERVO_USE_SSL: ${ACERVO_USE_SSL:-false}
       SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE:-0.1}
     healthcheck:
-      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health', timeout=3).raise_for_status()"]
-      interval: 5s
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3).read()"]
+      interval: 15s
       timeout: 5s
-      retries: 10
+      retries: 5
       start_period: 15s
     networks:
       - mariachi_network
