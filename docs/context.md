@@ -2,7 +2,7 @@
 
 > Documento de referencia completo. Leer este archivo proporciona contexto del monorepo sin explorar el codebase.
 
-**Versión:** 0.52.0 · **Última actualización:** 2026-05-13
+**Versión:** ver `api/pyproject.toml` (la lee `api/app/core/version.py::get_app_version()`; endpoint en vivo `GET /ontoy`). · **Última actualización:** 2026-05-18
 
 
 ---

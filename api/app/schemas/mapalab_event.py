@@ -44,6 +44,7 @@ ALLOWED_EVENT_NAMES = frozenset({
     "contribute_click",
     "logo_click",
     "embed_view",
+    "tools_panel_open",
 })
 
 MAX_BATCH_EVENTS = 100

@@ -16,6 +16,7 @@ export const BUTTON_LABELS = {
     geolocate: 'Geolocalización',
     map_export: 'Exportar mapa',
     periodicity_advanced: 'Periodicidad avanzada',
+    tools_panel_open: 'Abrir mediciones',
 };
 
 export const TOOL_LABELS = {

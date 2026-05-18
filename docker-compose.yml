@@ -18,7 +18,8 @@ services:
     expose:
       - "80"
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     networks:
       - mariachi_network
       - iieg-network
@@ -27,6 +28,10 @@ services:
   postgres:
     image: postgres:18-alpine
     container_name: mariachi-postgres
+    command: ["postgres",
+              "-c", "max_connections=${POSTGRES_MAX_CONNECTIONS}",
+              "-c", "shared_buffers=${POSTGRES_SHARED_BUFFERS}",
+              "-c", "effective_cache_size=${POSTGRES_EFFECTIVE_CACHE_SIZE}"]
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-iieg_user}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-iieg_password}
@@ -81,6 +86,12 @@ services:
       REDIS_URL: redis://redis:6379/0
       ACERVO_USE_SSL: ${ACERVO_USE_SSL:-false}
       SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE:-0.1}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx; httpx.get('http://localhost:8000/health', timeout=3).raise_for_status()"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
     networks:
       - mariachi_network
       - iieg-network
@@ -97,6 +108,8 @@ services:
           python scripts/expire_sieej_envios.py || echo "[cron-sieej] script fallo, continuando"
           echo "[cron-sieej] $$(date -u +%Y-%m-%dT%H:%M:%SZ) running purge_mapalab_accesos"
           python scripts/purge_mapalab_accesos.py || echo "[cron-sieej] purge mapalab fallo, continuando"
+          echo "[cron-sieej] $$(date -u +%Y-%m-%dT%H:%M:%SZ) running refresh_mapalab_stats"
+          python scripts/refresh_mapalab_stats.py || echo "[cron-sieej] refresh stats fallo, continuando"
           sleep ${CRON_SIEEJ_EXPIRE_INTERVAL:-3600}
         done
     env_file:
