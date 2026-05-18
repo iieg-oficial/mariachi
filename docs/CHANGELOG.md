@@ -9,6 +9,18 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.0.11] - 2026-05-18
+
+### Fix de arranque del stack: `mariachi-nginx` espera a `api` healthy + se silencia warning de `worker_connections`
+
+#### Cambiado
+
+- **`nginx/nginx.conf`**: agregado `worker_rlimit_nofile 8192;` a nivel main. Antes el warning `2048 worker_connections exceed open file resource limit: 1024` aparecia en cada arranque porque `worker_connections 2048` heredaba el limite por defecto del contenedor (1024). El nuevo valor cubre `worker_processes auto × worker_connections × 2 ≈ 8192` y deja margen para rafagas (p.ej. dashboards que cargan ~250 capas en paralelo).
+- **`docker-compose.yml`** (servicio `api`): agregado `healthcheck` con `python -c "import httpx; ..."` contra `http://localhost:8000/health` (que ya existe en `app/main.py`). Se uso `httpx` porque la imagen slim no incluye `curl` ni `wget`. Cadencia conservadora (`interval: 5s`, `retries: 10`, `start_period: 15s`) para tolerar el arranque del worker de gunicorn.
+- **`docker-compose.yml`** (servicio `nginx`): `depends_on: - api` (lista corta, solo orden de inicio) → `depends_on: api: condition: service_healthy`. Elimina el race condition en cold-start: antes `mariachi-nginx` arrancaba antes de que `mariachi-api` apareciera en el DNS de Docker y moria con `[emerg] host not found in upstream "mariachi-api:8000" in /etc/nginx/conf.d/mariachi.conf:2`; el `restart: unless-stopped` lo recuperaba en el segundo intento, pero el log quedaba ruidoso.
+
+---
+
 ## [1.0.10] - 2026-05-15
 
 ### Docs alineados: `MinIO` se engloba como `Acervo` + nota del notifier
