@@ -33,7 +33,6 @@ PLATFORMS: list[PlatformConfig] = [
         "url": None,
         "probe": "ontoy",
         "probe_url_template": "{dataengine_ontoy_url}",
-        "static_version": "1.14.3",
     },
     {
         "slug": "acervo",
@@ -41,7 +40,6 @@ PLATFORMS: list[PlatformConfig] = [
         "url": None,
         "probe": "ontoy",
         "probe_url_template": "{acervo_ontoy_url}",
-        "static_version": "1.22.4",
     },
     {
         "slug": "gateway-hub",
@@ -49,7 +47,6 @@ PLATFORMS: list[PlatformConfig] = [
         "url": None,
         "probe": "ontoy",
         "probe_url_template": "{gateway_hub_ontoy_url}",
-        "static_version": "1.24.21",
     },
     {
         "slug": "huachicol",
@@ -57,7 +54,6 @@ PLATFORMS: list[PlatformConfig] = [
         "url": None,
         "probe": "ontoy",
         "probe_url_template": "{huachicol_ontoy_url}",
-        "static_version": "1.19.5",
     },
     {
         "slug": "geoserver",
@@ -65,7 +61,6 @@ PLATFORMS: list[PlatformConfig] = [
         "url": None,
         "probe": "ontoy",
         "probe_url_template": "{geoserver_ontoy_url}",
-        "static_version": "1.20.1",
     },
     {
         "slug": "sieej",
