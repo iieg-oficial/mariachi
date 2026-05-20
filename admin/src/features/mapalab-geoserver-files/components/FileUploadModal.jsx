@@ -9,7 +9,7 @@ const { Dragger } = Upload;
 const FILE_BASENAME_RE = /^[a-zA-Z0-9._-]+\.(svg|png|jpg|jpeg|webp|gif|tiff|tif)$/i;
 
 
-export default function FileUploadModal({ open, currentPath, onClose, onUploaded }) {
+export default function FileUploadModal({ open, currentPath, workspace, destinationLabel, onClose, onUploaded }) {
     const [form] = Form.useForm();
     const [file, setFile] = useState(null);
     const [submitting, setSubmitting] = useState(false);
@@ -48,7 +48,7 @@ export default function FileUploadModal({ open, currentPath, onClose, onUploaded
             const values = await form.validateFields();
             const fullName = currentPath ? `${currentPath}/${values.basename}` : values.basename;
             setSubmitting(true);
-            const result = await uploadGeoserverFile({ file, name: fullName });
+            const result = await uploadGeoserverFile({ file, name: fullName, workspace });
             message.success(`Subido: ${result.name}`);
             onUploaded?.(result);
             onClose?.();
@@ -81,11 +81,11 @@ export default function FileUploadModal({ open, currentPath, onClose, onUploaded
                         <span>
                             Destino:{' '}
                             <Tag color="gold" style={{ marginInlineStart: 4 }}>
-                                styles/{currentPath || '(raíz)'}
+                                {destinationLabel || 'styles/'}{currentPath ? currentPath + '/' : ''}
                             </Tag>
                         </span>
                     }
-                    description="Si quieres subir a otra carpeta, cierra este modal y navega a esa carpeta primero."
+                    description="Si quieres subir a otra carpeta o ámbito, cierra este modal y cambia la pestaña o navega primero."
                 />
 
                 <Dragger {...draggerProps} style={{ padding: 8 }}>

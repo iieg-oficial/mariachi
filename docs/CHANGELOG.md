@@ -75,6 +75,32 @@ Los analistas geoespaciales editan SLDs directamente desde el GeoServer Web Admi
 
 - GeoServer 1.22.0 expone los URLChecks `acervo_mapalab` y `acervo_iieg_leyendas` automáticamente vía `make up`. Sin estos checks, GeoServer bloquea el `<ExternalGraphic>` que apunta al bucket interno y los SVG no renderean.
 
+#### Iteración: tabs por workspace + búsqueda global + breadcrumb condicional
+
+Tras subir la primera versión al equipo geoespacial salió el descubrimiento de que **GeoServer no hace fallback** al `styles/` global cuando un SLD workspace-scoped referencia un recurso con path relativo (`xlink:href="svg/foo.png"`): los archivos tienen que vivir literalmente en `workspaces/<ws>/styles/...`. La primera versión solo subía al global y los SLDs workspace-scoped no encontraban nada. Esta iteración agrega el ámbito workspace al CRUD y rediseña el explorador.
+
+**Backend**:
+
+- **`api/app/services/geoserver_client.py`**: los 4 métodos (`browse_styles_dir`, `get_style_file_bytes`, `put_style_file`, `delete_style_file`) aceptan parámetro opcional `workspace`. Cuando se pasa, la URL base cambia de `resource/styles/...` a `resource/workspaces/<ws>/styles/...`. Helper privado `_styles_base(workspace)` centraliza esa lógica. Nuevo `list_all_style_files(workspace=None)` recursivo (reusa `browse_styles_dir`) para el search global.
+- **`api/app/schemas/geoserver_file.py`**: `GeoServerFileResponse` y `GeoServerBrowseResponse` exponen `workspace` opcional. Nuevo `GeoServerSearchResponse` con `query`, `results` y `truncated`.
+- **`api/app/api/routes/geoserver.py`**: los endpoints existentes aceptan `workspace` (query en GET/DELETE, Form en POST) validado con regex `[a-zA-Z0-9_-]+`. El `downloadUrl` del response incluye `?workspace=...` automáticamente para que el frontend descargue del lugar correcto. Nuevo endpoint **`GET /geoserver/files/search?q=texto`** que recorre el `styles/` global y cada workspace registrado en `dataengine.mapalab.workspaces`, filtra por substring case-insensitive, limita a 500 resultados (`truncated=true` si pasa).
+
+**Frontend**:
+
+- **`admin/src/features/mapalab-geoserver-files/api/geoserverFilesService.js`**: nuevo `listGeoserverWorkspaces()` (reusa `/geoserver/workspaces` que ya existía) y `searchGeoserverFiles(q)`. Las 3 funciones existentes propagan `workspace`.
+- **`admin/src/features/mapalab-geoserver-files/pages/GeoserverFilesPage.jsx`** (rediseño del layout):
+  - **Buscador grande arriba** (full width, `size="large"`, ícono lupa, debounce 350ms) que busca en TODOS los workspaces + global. Cuando hay texto en el input se entra a "modo búsqueda": se ocultan tabs/breadcrumb/folders, se muestran solo archivos con un `<Tag>` del workspace al que pertenecen (`blue` para workspace específico, `default` para global) y la ruta completa en el tooltip. Botones "Subir/Nueva carpeta/Reload" se deshabilitan en modo búsqueda. Limpiar el input vuelve al modo browse.
+  - **Tabs auto-update**: cada vez que se hace `reload()` (al cambiar de path, subir, borrar o click en refresh) también se re-fetch la lista de workspaces. Si tu equipo registra un workspace nuevo en mapalab, aparece como tab sin recargar la página.
+  - **Breadcrumb condicional**: solo se renderiza cuando `currentPath != ''`. En la raíz de una tab no se ve, queda más limpio. La navegación de regreso se hace por click en folders o cambio de tab.
+  - **Borrar desde resultados de búsqueda** usa el workspace que viene en cada resultado, no el activo.
+  - Tab persistida en `localStorage` (`mapalab.geoserverFiles.workspace`).
+- **`admin/src/features/mapalab-geoserver-files/components/FileUploadModal.jsx`**: recibe `workspace` y `destinationLabel` como props, envía workspace al POST. El `<Tag>` de destino dice `workspaces/<ws>/styles/<currentPath>/` o `styles/<currentPath>/` según corresponda.
+
+#### Caveats descubiertos en deploy
+
+- **GeoServer `2.27.0`** (kartoza image) ocasionalmente crea directorios nuevos con permisos `drw-r--r--` (sin bit `x`), lo que al siguiente restart tira `AccessDeniedException` durante `WMSLifecycleHandler.loadFontsFromDataDirectory`. Fix puntual: `docker exec geoserver chmod 755 <dir>`. Fix preventivo (pendiente en el repo `geoserver/`): setear `umask 0022` en `scripts/entrypoint-wrapper.sh`.
+- **Path resolution de `<ExternalGraphic>` en SLDs workspace-scoped**: GeoServer **NO** sube al `styles/` global como fallback. Tres alternativas: (1) subir el archivo al mismo workspace donde vive el SLD (lo que ahora hace nuestro CRUD via tabs), (2) prefijar el path con `file:styles/...` para que se resuelva relativo al `data_dir`, o (3) symlink `workspaces/<ws>/styles/svg → ../../../styles/svg`. La opción (1) es la que documentamos en la UI.
+
 ### Editor de capas: layout B (sheet inferior) + tabs Capas/Eventos/Papelera + soft-delete con flujo de revisión
 
 #### Layout B y tabs
