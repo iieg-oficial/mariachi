@@ -1,0 +1,286 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, Button, Space, Tag, Typography } from 'antd';
+import { AimOutlined, ArrowDownOutlined, ArrowUpOutlined, ClearOutlined } from '@ant-design/icons';
+import 'ol/ol.css';
+import Map from 'ol/Map';
+import View from 'ol/View';
+import Feature from 'ol/Feature';
+import Point from 'ol/geom/Point';
+import TileLayer from 'ol/layer/Tile';
+import VectorLayer from 'ol/layer/Vector';
+import VectorSource from 'ol/source/Vector';
+import ImageLayer from 'ol/layer/Image';
+import ImageWMS from 'ol/source/ImageWMS';
+import XYZ from 'ol/source/XYZ';
+import { fromLonLat, toLonLat } from 'ol/proj';
+import { Style, Icon as OlIcon, Circle as CircleStyle, Stroke, Fill } from 'ol/style';
+
+const { Text } = Typography;
+
+const JALISCO_CENTER_4326 = [-103.35, 20.66];
+
+const round = (n, dec = 6) => (Number.isFinite(n) ? Number(n.toFixed(dec)) : null);
+
+const markerStyle = new Style({
+    image: new CircleStyle({
+        radius: 8,
+        fill: new Fill({ color: '#FF8300' }),
+        stroke: new Stroke({ color: '#FFFFFF', width: 3 }),
+    }),
+});
+
+export default function NoticeAnchorField({
+    value,
+    onChange,
+    disabled,
+    geoserverUrl,
+    geoserverWorkspace,
+    geoserverLayer,
+    styles,
+    cqlFilter,
+    zoomRange,
+    onZoomRangeChange,
+    defaultZoom,
+}) {
+    const containerRef = useRef(null);
+    const mapRef = useRef(null);
+    const markerSourceRef = useRef(null);
+    const wmsLayerRef = useRef(null);
+    const onChangeRef = useRef(onChange);
+    const onZoomRangeChangeRef = useRef(onZoomRangeChange);
+    const defaultZoomRef = useRef(defaultZoom);
+    const [currentZoom, setCurrentZoom] = useState(null);
+
+    useEffect(() => { onChangeRef.current = onChange; }, [onChange]);
+    useEffect(() => { onZoomRangeChangeRef.current = onZoomRangeChange; }, [onZoomRangeChange]);
+    useEffect(() => { defaultZoomRef.current = defaultZoom; }, [defaultZoom]);
+
+    useEffect(() => {
+        if (!containerRef.current || mapRef.current) return undefined;
+
+        const markerSource = new VectorSource();
+        markerSourceRef.current = markerSource;
+
+        const baseTile = new TileLayer({
+            source: new XYZ({
+                url: 'https://{a-c}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+                maxZoom: 19,
+                attributions: '© OpenStreetMap, © CARTO',
+            }),
+        });
+
+        const markerLayer = new VectorLayer({
+            source: markerSource,
+            style: markerStyle,
+            zIndex: 100,
+        });
+
+        const dz = defaultZoomRef.current;
+        const initialCenter = (dz && Number.isFinite(dz.lon) && Number.isFinite(dz.lat))
+            ? [dz.lon, dz.lat]
+            : JALISCO_CENTER_4326;
+        const initialZoom = (dz && Number.isFinite(dz.zoom)) ? dz.zoom : 7;
+        const map = new Map({
+            target: containerRef.current,
+            layers: [baseTile, markerLayer],
+            view: new View({
+                center: fromLonLat(initialCenter),
+                zoom: initialZoom,
+            }),
+            controls: [],
+        });
+        mapRef.current = map;
+
+        return () => {
+            map.setTarget(null);
+            mapRef.current = null;
+            markerSourceRef.current = null;
+            wmsLayerRef.current = null;
+        };
+    }, []);
+
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map) return undefined;
+        if (wmsLayerRef.current) {
+            map.removeLayer(wmsLayerRef.current);
+            wmsLayerRef.current = null;
+        }
+        if (!geoserverUrl || !geoserverWorkspace || !geoserverLayer) return undefined;
+        const wmsLayer = new ImageLayer({
+            source: new ImageWMS({
+                url: `${geoserverUrl.replace(/\/$/, '')}/${geoserverWorkspace}/wms`,
+                params: {
+                    LAYERS: `${geoserverWorkspace}:${geoserverLayer}`,
+                    STYLES: '',
+                    FORMAT: 'image/png',
+                    TRANSPARENT: true,
+                    VERSION: '1.1.0',
+                },
+                ratio: 1,
+                serverType: 'geoserver',
+            }),
+            opacity: 0.7,
+            zIndex: 10,
+        });
+        map.addLayer(wmsLayer);
+        wmsLayerRef.current = wmsLayer;
+        return () => {
+            map.removeLayer(wmsLayer);
+            wmsLayerRef.current = null;
+        };
+    }, [geoserverUrl, geoserverWorkspace, geoserverLayer]);
+
+    useEffect(() => {
+        const wmsLayer = wmsLayerRef.current;
+        if (!wmsLayer) return undefined;
+        const handle = setTimeout(() => {
+            const source = wmsLayer.getSource();
+            if (!source) return;
+            const params = { STYLES: styles || '' };
+            if (cqlFilter) params.CQL_FILTER = cqlFilter;
+            else params.CQL_FILTER = undefined;
+            source.updateParams(params);
+        }, 250);
+        return () => clearTimeout(handle);
+    }, [styles, cqlFilter]);
+
+    useEffect(() => {
+        const source = markerSourceRef.current;
+        if (!source) return;
+        source.clear();
+        if (value && Number.isFinite(value.lon) && Number.isFinite(value.lat)) {
+            const f = new Feature({ geometry: new Point(fromLonLat([value.lon, value.lat])) });
+            source.addFeature(f);
+        }
+    }, [value]);
+
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map) return undefined;
+        const handler = (evt) => {
+            if (disabled) return;
+            const [lon, lat] = toLonLat(evt.coordinate);
+            onChangeRef.current?.({ lon: round(lon), lat: round(lat) });
+        };
+        map.on('click', handler);
+        return () => map.un('click', handler);
+    }, [disabled]);
+
+    useEffect(() => {
+        const map = mapRef.current;
+        if (!map) return undefined;
+        const view = map.getView();
+        const update = () => {
+            const z = view.getZoom();
+            setCurrentZoom(typeof z === 'number' ? Math.round(z * 10) / 10 : null);
+        };
+        update();
+        view.on('change:resolution', update);
+        return () => view.un('change:resolution', update);
+    }, []);
+
+    const takeZoomAs = (key) => {
+        const map = mapRef.current;
+        if (!map || !onZoomRangeChangeRef.current) return;
+        const z = map.getView().getZoom();
+        if (typeof z !== 'number') return;
+        const rounded = Math.round(z * 10) / 10;
+        const next = { ...(zoomRange || {}), [key]: rounded };
+        const hasAny = next.min != null || next.max != null;
+        onZoomRangeChangeRef.current(hasAny ? next : null);
+    };
+
+    const zoomRangeActive = useMemo(() => {
+        if (currentZoom == null) return null;
+        const min = zoomRange?.min;
+        const max = zoomRange?.max;
+        if (min == null && max == null) return null;
+        if (min != null && currentZoom < min) return false;
+        if (max != null && currentZoom > max) return false;
+        return true;
+    }, [currentZoom, zoomRange?.min, zoomRange?.max]);
+
+    const fitToMarker = () => {
+        const map = mapRef.current;
+        if (!map || !value) return;
+        map.getView().animate({ center: fromLonLat([value.lon, value.lat]), zoom: 12, duration: 300 });
+    };
+
+    const clear = () => onChangeRef.current?.(null);
+
+    return (
+        <Space direction="vertical" style={{ width: '100%' }} size={6}>
+            {!geoserverLayer && (
+                <Alert
+                    type="warning"
+                    showIcon
+                    message="Sin capa configurada"
+                    description="Configura workspace y capa GeoServer en el tab Servicios para ver la capa como referencia."
+                />
+            )}
+            <div style={{ position: 'relative' }}>
+                <div ref={containerRef} style={{ width: '100%', height: 360, border: '1px solid #d9d9d9', borderRadius: 6 }} />
+                {currentZoom != null && (
+                    <div style={{
+                        position: 'absolute',
+                        top: 8,
+                        left: 8,
+                        background: 'rgba(255,255,255,0.92)',
+                        padding: '4px 8px',
+                        borderRadius: 4,
+                        fontSize: 11,
+                        boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
+                        display: 'flex',
+                        gap: 8,
+                        alignItems: 'center',
+                    }}>
+                        <span>Zoom: <strong>{currentZoom}</strong></span>
+                        {(zoomRange?.min != null || zoomRange?.max != null) && (
+                            <Tag
+                                color={zoomRangeActive === false ? 'red' : (zoomRangeActive ? 'green' : 'default')}
+                                style={{ margin: 0 }}
+                            >
+                                Rango: {zoomRange?.min ?? '−∞'} – {zoomRange?.max ?? '+∞'}
+                            </Tag>
+                        )}
+                    </div>
+                )}
+            </div>
+            <Space size={6} wrap>
+                <Button size="small" icon={<AimOutlined />} disabled={!value} onClick={fitToMarker}>
+                    Centrar al punto
+                </Button>
+                <Button size="small" icon={<ClearOutlined />} disabled={!value || disabled} onClick={clear}>
+                    Limpiar punto
+                </Button>
+                <Button
+                    size="small"
+                    icon={<ArrowDownOutlined />}
+                    disabled={disabled || !onZoomRangeChange || currentZoom == null}
+                    onClick={() => takeZoomAs('min')}
+                    title="Usar el zoom actual como límite mínimo de visibilidad"
+                >
+                    Tomar zoom como mínimo
+                </Button>
+                <Button
+                    size="small"
+                    icon={<ArrowUpOutlined />}
+                    disabled={disabled || !onZoomRangeChange || currentZoom == null}
+                    onClick={() => takeZoomAs('max')}
+                    title="Usar el zoom actual como límite máximo de visibilidad"
+                >
+                    Tomar zoom como máximo
+                </Button>
+            </Space>
+            <Text type="secondary" style={{ fontSize: 11 }}>
+                Click sobre el mapa para fijar el punto. Acerca/aleja el mapa y usa los botones para capturar los límites de zoom.
+            </Text>
+            {value && (
+                <Text type="secondary" style={{ fontSize: 11 }}>
+                    lon: {value.lon}, lat: {value.lat}
+                </Text>
+            )}
+        </Space>
+    );
+}

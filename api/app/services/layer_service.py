@@ -6,7 +6,7 @@ from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
 from app.models.layer import InitialLayerOrder, Layer, Workspace
-from app.schemas.layer import LayerCreate, LayerUpdate
+from app.schemas.layer import LayerCreate, LayerNotice, LayerUpdate
 from app.services.geoserver_client import GeoServerClient, GeoServerError
 
 INFOBOX_TEMPLATES = {
@@ -109,12 +109,27 @@ def validate_layer_against_geoserver(
         )
 
 
+def _normalize_notice(value: Any) -> dict[str, Any] | None:
+    if value is None:
+        return None
+    if isinstance(value, dict) and not value.get('enabled'):
+        return None
+    if isinstance(value, LayerNotice):
+        if not value.enabled:
+            return None
+        return value.model_dump(by_alias=True, exclude_none=True)
+    return LayerNotice.model_validate(value).model_dump(by_alias=True, exclude_none=True)
+
+
 def _payload_to_row(payload: dict[str, Any], updated_by: str | None) -> dict[str, Any]:
     row = {k: v for k, v in payload.items() if v is not None}
 
     if 'infobox_template' in row or 'infobox_params' in row:
         resolved = resolve_infobox(row.get('infobox_template'), row.get('infobox_params'))
         row['infobox_config'] = resolved
+
+    if 'notice' in row:
+        row['notice'] = _normalize_notice(row['notice'])
 
     row['updated_by'] = updated_by
     return row
@@ -268,6 +283,9 @@ def update_layer(
         template = payload.get('infobox_template', layer.infobox_template)
         params = payload.get('infobox_params', layer.infobox_params)
         payload['infobox_config'] = resolve_infobox(template, params)
+
+    if 'notice' in payload:
+        payload['notice'] = _normalize_notice(payload['notice'])
 
     for key, value in payload.items():
         setattr(layer, key, value)

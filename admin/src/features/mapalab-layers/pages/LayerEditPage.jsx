@@ -17,6 +17,7 @@ import StatusBadge from '@shared/components/StatusBadge';
 import LayersTreeSider from '@features/mapalab-layers/components/LayersTreeSider';
 import TemaIconField from '@features/mapalab-layers/components/layersEditor/TemaIconField';
 import BulkTagsDrawer from '@features/mapalab-layers/components/layersEditor/BulkTagsDrawer';
+import LayerNoticeSection from '@features/mapalab-layers/components/layersEditor/LayerNoticeSection';
 import {
     NODE_TYPE_OPTIONS,
     NODE_TYPE_HELP,
@@ -158,6 +159,7 @@ export default function LayerEditPage() {
             searchTags: data.searchTags || data.search_tags || data.searchMeta?.tags || [],
             infoboxConfig: data.infoboxConfig || null,
             iconUrl: data.iconUrl ?? data.icon_url ?? '',
+            notice: data.notice ?? null,
         });
     }, [form]);
 
@@ -698,6 +700,33 @@ export default function LayerEditPage() {
                     </Col>
                 </Row>
             ),
+        },
+        {
+            key: 'aviso',
+            forceRender: true,
+            label: 'Aviso',
+            children: (() => {
+                const wsObj = workspaces.find((w) => w.alias === selectedWs);
+                const resolvedWs = wsObj?.geoserverWorkspace || selectedWs || null;
+                const selectedCqlFilter = form.getFieldValue('cqlFilter') || '';
+                const layerDefaultZoom = form.getFieldValue('defaultZoom') || null;
+                return (
+                    <Form.Item
+                        name="notice"
+                        label={null}
+                        valuePropName="value"
+                        trigger="onChange"
+                    >
+                        <LayerNoticeSection
+                            geoserverWorkspace={resolvedWs}
+                            geoserverLayer={selectedGsLayer || null}
+                            styles={(Array.isArray(selectedStyles) ? selectedStyles.join(',') : selectedStyles) || ''}
+                            cqlFilter={selectedCqlFilter}
+                            defaultZoom={layerDefaultZoom}
+                        />
+                    </Form.Item>
+                );
+            })(),
         },
         {
             key: 'metadatos',

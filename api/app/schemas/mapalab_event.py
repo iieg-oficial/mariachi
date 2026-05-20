@@ -45,6 +45,9 @@ ALLOWED_EVENT_NAMES = frozenset({
     "logo_click",
     "embed_view",
     "tools_panel_open",
+    "layer_notice_view",
+    "layer_notice_dismiss",
+    "layer_notice_cta_click",
 })
 
 MAX_BATCH_EVENTS = 100

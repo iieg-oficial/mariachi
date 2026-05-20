@@ -9,6 +9,74 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.2.0] - 2026-05-20
+
+### Editor de avisos por capa (notice) para MapaLab + soporte de telemetría
+
+Coordinado con MapaLab 1.29.0 y dataengine 1.16.0, mariachi agrega el panel
+completo de edición de avisos por capa, persistencia del shape vía Pydantic
+y aceptación de los eventos de telemetría correspondientes.
+
+#### Agregado
+
+- **`api/app/schemas/layer.py`**: tipos `NoticeVariant` (`info`/`warning`/`neutral`/`banner`),
+  `NoticeSize` (`small`/`medium`/`large`), `NoticePosition` (`top-center`/`bottom-center`),
+  `NoticeArrowPosition` (`top`/`right`/`bottom`/`left`), `NoticeAnchorMode`
+  (`viewport`/`coord`), `NoticeDismissPersistence` (`permanent`/`reopen`).
+  Sub-schemas `LayerNoticeAnchorCoord`, `LayerNoticeCta`, `LayerNoticeZoomRange`,
+  `LayerNotice` con validación de fechas ISO, URLs, lon/lat dentro de rango,
+  zoom 0–24. Campo `notice: LayerNotice | None` agregado a `LayerBase` y
+  `LayerUpdate`. Aceptan input en camelCase y serializan con alias.
+- **`api/app/models/layer.py`**: columna `notice = Column(JSONB, nullable=True)`.
+- **`api/app/services/layer_service.py`**: `_normalize_notice(value)` que
+  convierte el sub-modelo a dict camelCase via `model_dump(by_alias=True)` antes
+  de persistir, y descarta valores con `enabled: false` (los guarda como
+  `None`). Aplicado tanto en `create_layer` (vía `_payload_to_row`) como en
+  `update_layer`.
+- **Schema de telemetría** (`api/app/schemas/mapalab_event.py`): `ALLOWED_EVENT_NAMES`
+  incluye `layer_notice_view`, `layer_notice_dismiss`, `layer_notice_cta_click`.
+  Sin esto, el collector retorna 422 y los eventos de notice no entran a la
+  base de telemetría.
+
+#### Admin (UI)
+
+- **Nuevo tab "Aviso"** en `LayerEditPage` (visible para `group` y `leaf`).
+  Bumpea `admin/package.json` a `1.2.0`.
+- **`LayerNoticeSection.jsx`**: form completo con habilitar/deshabilitar,
+  contenido (título o "Mensaje del banner"; descripción para no-banner;
+  icono via `BucketFilePicker`), presentación (variante info/warning/neutral/banner,
+  tamaño Compacto/Estándar/Destacado *— sólo visible cuando el aviso está
+  anclado a un punto del mapa*, anclaje viewport/coord, posición top-center/
+  bottom-center, posición de flecha si coord, dismissible con Radio.Group de
+  permanencia con default `reopen`), visibilidad por zoom como subsección de
+  Presentación (hereda del zoom de la capa si vacío), vigencia con fechas,
+  enlace opcional con validación URL. Soporta `**negritas**` inline en título
+  y descripción (parser markdown simple, no HTML).
+- **`NoticeAnchorField.jsx`**: mini-mapa OpenLayers de 360px con WMS de la
+  capa activa como referencia visual; click sobre el mapa fija el punto del
+  aviso. Botones para tomar el zoom actual como mín/máx del `zoomRange`.
+  Indicador en vivo del zoom actual y badge del rango (verde/rojo según si
+  está dentro). Usa `defaultZoom` de la capa como vista inicial cuando está
+  configurado. Debounce de 250ms en `updateParams` cuando cambian styles/cqlFilter
+  para evitar flicker.
+- **`NoticeIconField.jsx`**: clon de `TemaIconField` pero filtrado al bucket
+  `iieg`, dirigido a la carpeta convencional `iconos/`.
+- **Preview en vivo** del notice (sticky en desktop) con los mismos estilos
+  finales que MapaLab (border-radius 8, shadow `0px 3px 24px #00000029`,
+  icono 74px, título 18px/26px). Preview del banner es independiente (franja
+  horizontal con marquee implícito). Badges de metadata bajo el preview
+  muestran vigencia, persistencia del cierre, zoom range y coordenadas si
+  aplica.
+- **Cambio de variante preserva config**: al alternar entre info ↔ banner
+  no se borran description/icon/anchorCoord — el frontend ignora lo que no
+  aplica a cada variante.
+- **`MediaPage.jsx`**: Alert closable que aparece cuando el bucket seleccionado
+  es `iieg`, explicando la convención `iconos/` para iconos compartidos.
+
+#### Backend (telemetría)
+
+- Bumpea `api/pyproject.toml` a `1.2.0`.
+
 ## [1.1.1] - 2026-05-18
 
 ### Fix: healthcheck de `api` usa `urllib.request` (stdlib) en vez de `import httpx` cada 5s
