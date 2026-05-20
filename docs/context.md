@@ -442,10 +442,16 @@ Catálogo administrable de símbolos consumido por el panel de mediciones de Map
 | GET | `/api/administrador/borradores/historial/sld/{resource_id}` | Lista versiones aprobadas de ese style (admin) |
 | POST | `/api/administrador/borradores/por-id/{id}/re-aplicar` | Re-aplica un borrador aprobado y crea duplicado para historial |
 
-#### Tablas en schema `mapalab` (dataengine, migración `0007_symbol_catalog`)
+#### Tablas en schema `mapalab` (dataengine, migración `0007_symbol_catalog` + `0010_symbol_bucket_slug`)
 
 - `mapalab.symbol_categories` — `(id, slug UNIQUE, name, icon, sort_order, timestamps)`
-- `mapalab.symbols` — `(id, category_id FK CASCADE, kind CHECK('emoji'|'svg'|'image'), value TEXT, name, sort_order, image_object_key, png_object_key, timestamps)`
+- `mapalab.symbols` — `(id, category_id FK CASCADE, kind CHECK('emoji'|'svg'|'image'), value TEXT, name, sort_order, bucket_slug DEFAULT 'mapalab', image_object_key, png_object_key, timestamps)`
+
+`bucket_slug` indica en qué bucket de Acervo vive el archivo del símbolo. Convención por kind:
+
+- `emoji` — `value` tiene el carácter Unicode; `png_object_key` (rasterizado via Twemoji) vive en `mapalab/simbologia/emoji-png/`.
+- `image` (PNG/JPG/WebP/GIF) — `image_object_key` vive en `mapalab/simbologia/` (bucket `mapalab`).
+- `svg` — `image_object_key` vive en `iieg/leyendas/` (bucket `iieg`). Subido como archivo, no como XML inline. Requiere URLCheck en GeoServer para el bucket `iieg`.
 
 Migración mariachi `d3e4f5a6b7ca`: el unique constraint en `borradores` ahora es parcial (solo aplica a `en_progreso`/`pendiente_revision`/`rechazado`). Los aprobados acumulan historial sin tabla nueva.
 

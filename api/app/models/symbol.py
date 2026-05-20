@@ -68,6 +68,7 @@ class Symbol(DataEngineBase):
     value = Column(Text, nullable=True)
     name = Column(String(200), nullable=True)
     sort_order = Column(Integer, server_default="0", nullable=False)
+    bucket_slug = Column(String(50), server_default="mapalab", nullable=False)
     image_object_key = Column(Text, nullable=True)
     png_object_key = Column(Text, nullable=True)
     created_at = Column(

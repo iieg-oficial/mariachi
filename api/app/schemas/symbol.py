@@ -55,13 +55,10 @@ class SymbolCreate(SymbolBase):
         if self.kind == "emoji":
             if not self.value or not self.value.strip():
                 raise ValueError("kind=emoji requiere `value` con el caracter Unicode")
-        elif self.kind == "svg":
-            if not self.value or "<svg" not in self.value.lower():
-                raise ValueError("kind=svg requiere `value` con el XML del SVG")
-        elif self.kind == "image":
+        elif self.kind in ("image", "svg"):
             if self.value:
                 raise ValueError(
-                    "kind=image no debe enviar `value`; el archivo se sube por el endpoint multipart"
+                    f"kind={self.kind} no debe enviar `value`; el archivo se sube por el endpoint multipart"
                 )
         return self
 
@@ -80,6 +77,7 @@ class SymbolResponse(BaseModel):
     value: str | None = None
     name: str | None = None
     sort_order: int = Field(..., serialization_alias="sortOrder")
+    bucket_slug: str = Field(..., serialization_alias="bucketSlug")
     image_url: str | None = Field(default=None, serialization_alias="imageUrl")
     png_url: str | None = Field(default=None, serialization_alias="pngUrl")
     created_at: datetime = Field(..., serialization_alias="createdAt")

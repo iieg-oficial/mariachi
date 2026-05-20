@@ -71,25 +71,18 @@ export default function SymbolPicker({ value, onChange }) {
                     }}
                 >
                     {symbols.map((sym) => {
-                        const disabled = sym.kind === 'svg';
                         const selected = value === sym.id;
                         return (
                             <button
                                 key={sym.id}
                                 type="button"
-                                disabled={disabled}
-                                onClick={() => !disabled && onChange?.(sym.id, sym)}
-                                title={
-                                    disabled
-                                        ? 'SVG inline no soportado en SLD; usa imagen'
-                                        : (sym.name || sym.value || '')
-                                }
+                                onClick={() => onChange?.(sym.id, sym)}
+                                title={sym.name || sym.value || ''}
                                 style={{
                                     padding: 6,
                                     border: selected ? '2px solid #fa8c16' : '1px solid #f0f0f0',
-                                    background: disabled ? '#fafafa' : '#fff',
-                                    opacity: disabled ? 0.4 : 1,
-                                    cursor: disabled ? 'not-allowed' : 'pointer',
+                                    background: '#fff',
+                                    cursor: 'pointer',
                                     borderRadius: 6,
                                     display: 'flex',
                                     alignItems: 'center',
@@ -104,9 +97,9 @@ export default function SymbolPicker({ value, onChange }) {
                 </div>
             )}
             <div style={{ fontSize: 11, color: '#888', marginTop: 4 }}>
-                <Tag color="blue" style={{ fontSize: 10 }}>emoji</Tag> y{' '}
-                <Tag color="green" style={{ fontSize: 10 }}>image</Tag> soportados en SLD.
-                Los <Tag color="purple" style={{ fontSize: 10 }}>svg inline</Tag> solo funcionan en MapaLab.
+                <Tag color="blue" style={{ fontSize: 10 }}>emoji</Tag>,{' '}
+                <Tag color="green" style={{ fontSize: 10 }}>image</Tag> y{' '}
+                <Tag color="purple" style={{ fontSize: 10 }}>svg</Tag> soportados en SLD.
             </div>
         </div>
     );

@@ -1,4 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+import re
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
@@ -8,6 +11,12 @@ from app.api.rate_limit import rate_limit
 from app.core.database import get_dataengine_db
 from app.models.layer import Workspace
 from app.models.user import Usuario
+from app.schemas.geoserver_file import (
+    GeoServerBrowseResponse,
+    GeoServerFileResponse,
+    GeoServerFilesListResponse,
+    GeoServerFolderResponse,
+)
 from app.schemas.layer import WorkspaceCreate, WorkspacePending, WorkspaceResponse
 from app.services.geoserver_client import GeoServerClient, GeoServerError
 from app.services.palette_service import load_palettes
@@ -346,3 +355,176 @@ async def get_legend(
     except GeoServerError as exc:
         raise HTTPException(status_code=502, detail=str(exc))
     return Response(content=content, media_type=content_type)
+
+
+_GEOSERVER_FILE_SEGMENT_RE = re.compile(r'^[a-zA-Z0-9._-]+$')
+_GEOSERVER_FILE_ALLOWED_EXT = {'svg', 'png', 'jpg', 'jpeg', 'webp', 'gif', 'tiff', 'tif'}
+_GEOSERVER_FILE_MAX_BYTES = 5 * 1024 * 1024
+_GEOSERVER_FILE_MIME_BY_EXT = {
+    'svg': 'image/svg+xml',
+    'png': 'image/png',
+    'jpg': 'image/jpeg',
+    'jpeg': 'image/jpeg',
+    'webp': 'image/webp',
+    'gif': 'image/gif',
+    'tiff': 'image/tiff',
+    'tif': 'image/tiff',
+}
+
+
+def _validate_file_name(name: str) -> tuple[str, str]:
+    if not name:
+        raise HTTPException(status_code=400, detail="Nombre vacio")
+    if '..' in name or name.startswith('/') or name.endswith('/'):
+        raise HTTPException(status_code=400, detail="Nombre invalido (path traversal)")
+    for seg in name.split('/'):
+        if not _GEOSERVER_FILE_SEGMENT_RE.match(seg):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Segmento invalido '{seg}': solo letras, numeros, guion, guion bajo y punto",
+            )
+    ext = Path(name).suffix.lower().lstrip('.')
+    if ext not in _GEOSERVER_FILE_ALLOWED_EXT:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Extension '.{ext}' no permitida. Soportadas: {sorted(_GEOSERVER_FILE_ALLOWED_EXT)}",
+        )
+    return name, ext
+
+
+def _build_file_response(name: str, content_type: str | None) -> GeoServerFileResponse:
+    ext = Path(name).suffix.lower().lstrip('.')
+    fmt = content_type or _GEOSERVER_FILE_MIME_BY_EXT.get(ext, 'application/octet-stream')
+    snippet = (
+        '<ExternalGraphic xmlns="http://www.opengis.net/sld">'
+        f'<OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" '
+        f'xlink:type="simple" xlink:href="{name}"/>'
+        f'<Format>{fmt}</Format>'
+        '</ExternalGraphic>'
+    )
+    return GeoServerFileResponse(
+        name=name,
+        content_type=content_type,
+        download_url=f"/api/administrador/geoserver/files/{name}",
+        sld_snippet=snippet,
+    )
+
+
+def _validate_folder_path(path: str) -> str:
+    if not path:
+        return ""
+    if '..' in path or path.startswith('/') or path.endswith('/'):
+        raise HTTPException(status_code=400, detail="Path invalido (path traversal)")
+    for seg in path.split('/'):
+        if not _GEOSERVER_FILE_SEGMENT_RE.match(seg):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Segmento invalido '{seg}': solo letras, numeros, guion, guion bajo y punto",
+            )
+    return path
+
+
+@router.get('/files', response_model=GeoServerBrowseResponse)
+async def browse_geoserver_files(
+    path: str = Query(default=''),
+    current_user: Usuario = Depends(_require_project_editor),
+    _rl: Usuario = Depends(_read_rate_limit),
+):
+    incr(COUNTER_GEOSERVER_CALLS)
+    clean_path = _validate_folder_path(path.strip().strip('/'))
+    client = GeoServerClient()
+    try:
+        result = client.browse_styles_dir(clean_path)
+    except GeoServerError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+
+    folders = sorted(
+        (
+            GeoServerFolderResponse(
+                name=full_path.rsplit('/', 1)[-1],
+                path=full_path,
+            )
+            for full_path in result['folders']
+        ),
+        key=lambda f: f.name.lower(),
+    )
+    files = sorted(
+        (
+            _build_file_response(it['name'], it.get('content_type'))
+            for it in result['files']
+            if Path(it['name']).suffix.lower().lstrip('.') in _GEOSERVER_FILE_ALLOWED_EXT
+        ),
+        key=lambda f: f.name.lower(),
+    )
+    return GeoServerBrowseResponse(path=clean_path, folders=folders, files=files)
+
+
+@router.post('/files', response_model=GeoServerFileResponse, status_code=201)
+async def upload_geoserver_file(
+    file: UploadFile = File(...),
+    name: str | None = Form(default=None),
+    current_user: Usuario = Depends(_require_project_editor),
+    _csrf: Usuario = Depends(verify_csrf),
+    _rl: Usuario = Depends(_write_rate_limit),
+):
+    incr(COUNTER_GEOSERVER_CALLS)
+    target_name = name or file.filename or ''
+    target_name = target_name.strip()
+    target_name, ext = _validate_file_name(target_name)
+
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=400, detail="Archivo vacio")
+    if len(content) > _GEOSERVER_FILE_MAX_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Archivo excede el limite ({_GEOSERVER_FILE_MAX_BYTES} bytes)",
+        )
+
+    content_type = _GEOSERVER_FILE_MIME_BY_EXT[ext]
+    client = GeoServerClient()
+    try:
+        client.put_style_file(target_name, content, content_type)
+    except GeoServerError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+    return _build_file_response(target_name, content_type)
+
+
+@router.get('/files/{name:path}')
+async def download_geoserver_file(
+    name: str,
+    current_user: Usuario = Depends(_require_project_editor),
+    _rl: Usuario = Depends(_read_rate_limit),
+):
+    incr(COUNTER_GEOSERVER_CALLS)
+    _validate_file_name(name)
+    client = GeoServerClient()
+    try:
+        content, content_type = client.get_style_file_bytes(name)
+    except GeoServerError as exc:
+        if 'no encontrado' in str(exc).lower():
+            raise HTTPException(status_code=404, detail=str(exc))
+        raise HTTPException(status_code=502, detail=str(exc))
+    return Response(
+        content=content,
+        media_type=content_type or 'application/octet-stream',
+        headers={'Cache-Control': 'public, max-age=300'},
+    )
+
+
+@router.delete('/files/{name:path}', status_code=204)
+async def delete_geoserver_file(
+    name: str,
+    current_user: Usuario = Depends(_require_project_editor),
+    _csrf: Usuario = Depends(verify_csrf),
+    _rl: Usuario = Depends(_write_rate_limit),
+):
+    incr(COUNTER_GEOSERVER_CALLS)
+    _validate_file_name(name)
+    client = GeoServerClient()
+    try:
+        deleted = client.delete_style_file(name)
+    except GeoServerError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+    if not deleted:
+        raise HTTPException(status_code=404, detail=f"Recurso no existe: styles/{name}")

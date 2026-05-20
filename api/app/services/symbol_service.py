@@ -27,29 +27,33 @@ from app.services.acervo import AcervoClient
 logger = logging.getLogger(__name__)
 
 MAPALAB_BUCKET_SLUG = "mapalab"
+IIEG_BUCKET_SLUG = "iieg"
 IMAGE_PREFIX = "simbologia/"
 EMOJI_PNG_PREFIX = "simbologia/emoji-png/"
-ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "svg", "webp", "gif"}
+SVG_PREFIX = "leyendas/"
+ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "webp", "gif"}
+ALLOWED_SVG_EXTENSIONS = {"svg"}
 MAX_IMAGE_SIZE = 5 * 1024 * 1024
 TWEMOJI_BASE_URL = "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72"
 
 
-def _mapalab_bucket(mariachi_db: Session) -> MediaBucket:
+def _get_media_bucket(mariachi_db: Session, bucket_slug: str) -> MediaBucket:
     bucket = (
         mariachi_db.query(MediaBucket)
-        .filter(MediaBucket.acervo_bucket == MAPALAB_BUCKET_SLUG)
+        .filter(MediaBucket.acervo_bucket == bucket_slug)
         .first()
     )
     if not bucket:
         raise RuntimeError(
-            f"MediaBucket '{MAPALAB_BUCKET_SLUG}' no registrado en mariachi. "
-            "Verifica que la migracion c0d1e2f3a4b5 haya corrido."
+            f"MediaBucket '{bucket_slug}' no registrado en mariachi. "
+            "Verifica que el bucket exista en la tabla media_buckets y que "
+            "ACERVO_<REF>_ACCESS_KEY/SECRET_KEY esten en el entorno."
         )
     return bucket
 
 
-def _acervo_client(mariachi_db: Session) -> AcervoClient:
-    return AcervoClient.for_bucket(_mapalab_bucket(mariachi_db))
+def _acervo_client(mariachi_db: Session, bucket_slug: str = MAPALAB_BUCKET_SLUG) -> AcervoClient:
+    return AcervoClient.for_bucket(_get_media_bucket(mariachi_db, bucket_slug))
 
 
 def list_categories(db: Session) -> list[SymbolCategory]:
@@ -108,17 +112,26 @@ def update_category(
 
 def delete_category(db: Session, category_id: int, mariachi_db: Session) -> None:
     entity = get_category(db, category_id)
-    keys_to_remove = [
-        key
-        for sym in entity.symbols
-        for key in (sym.image_object_key, sym.png_object_key)
-        if key
-    ]
+    objects_to_remove: list[tuple[str, str]] = []
+    for sym in entity.symbols:
+        if sym.image_object_key:
+            objects_to_remove.append((sym.bucket_slug, sym.image_object_key))
+        if sym.png_object_key:
+            objects_to_remove.append((MAPALAB_BUCKET_SLUG, sym.png_object_key))
     db.delete(entity)
     db.commit()
-    if keys_to_remove:
-        client = _acervo_client(mariachi_db)
-        for key in keys_to_remove:
+    _delete_objects(mariachi_db, objects_to_remove)
+
+
+def _delete_objects(mariachi_db: Session, objects: list[tuple[str, str]]) -> None:
+    if not objects:
+        return
+    by_bucket: dict[str, list[str]] = {}
+    for bucket_slug, key in objects:
+        by_bucket.setdefault(bucket_slug, []).append(key)
+    for bucket_slug, keys in by_bucket.items():
+        client = _acervo_client(mariachi_db, bucket_slug)
+        for key in keys:
             client.delete_file(key)
 
 
@@ -137,10 +150,10 @@ def get_symbol(db: Session, symbol_id: int) -> Symbol:
 
 
 def create_symbol_from_payload(db: Session, payload: SymbolCreate) -> Symbol:
-    if payload.kind == "image":
+    if payload.kind in ("image", "svg"):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="kind=image se crea con el endpoint multipart de upload",
+            detail=f"kind={payload.kind} se crea con el endpoint multipart de upload",
         )
     get_category(db, payload.category_id)
     entity = Symbol(
@@ -149,6 +162,76 @@ def create_symbol_from_payload(db: Session, payload: SymbolCreate) -> Symbol:
         value=payload.value,
         name=payload.name,
         sort_order=payload.sort_order,
+        bucket_slug=MAPALAB_BUCKET_SLUG,
+    )
+    db.add(entity)
+    db.commit()
+    db.refresh(entity)
+    return entity
+
+
+def _upload_file_symbol(
+    db: Session,
+    *,
+    file: UploadFile,
+    category_id: int,
+    name: str | None,
+    sort_order: int,
+    mariachi_db: Session,
+    kind: str,
+    bucket_slug: str,
+    prefix: str,
+    allowed_extensions: set[str],
+) -> Symbol:
+    get_category(db, category_id)
+
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="Archivo sin nombre")
+
+    extension = Path(file.filename).suffix.lower().lstrip(".") or "bin"
+    if extension not in allowed_extensions:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Extension '{extension}' no permitida para kind={kind}. Aceptadas: {sorted(allowed_extensions)}",
+        )
+
+    stream = file.file
+    stream.seek(0, os.SEEK_END)
+    size = stream.tell()
+    stream.seek(0)
+    if size <= 0:
+        raise HTTPException(status_code=400, detail="Archivo vacio")
+    if size > MAX_IMAGE_SIZE:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Archivo excede el limite ({MAX_IMAGE_SIZE} bytes)",
+        )
+
+    object_key = f"{prefix}{uuid.uuid4().hex}.{extension}"
+    client = _acervo_client(mariachi_db, bucket_slug)
+    try:
+        client.client.put_object(
+            client.bucket_name,
+            object_key,
+            stream,
+            size,
+            content_type=file.content_type or "application/octet-stream",
+        )
+    except S3Error as exc:
+        logger.exception("symbol_service.upload bucket=%s key=%s", client.bucket_name, object_key)
+        raise HTTPException(
+            status_code=502,
+            detail=f"Error subiendo archivo a Acervo: {exc.code}",
+        ) from exc
+
+    entity = Symbol(
+        category_id=category_id,
+        kind=kind,
+        value=None,
+        name=name,
+        sort_order=sort_order,
+        bucket_slug=bucket_slug,
+        image_object_key=object_key,
     )
     db.add(entity)
     db.commit()
@@ -165,59 +248,41 @@ def create_image_symbol(
     sort_order: int,
     mariachi_db: Session,
 ) -> Symbol:
-    get_category(db, category_id)
-
-    if not file.filename:
-        raise HTTPException(status_code=400, detail="Archivo sin nombre")
-
-    extension = Path(file.filename).suffix.lower().lstrip(".") or "bin"
-    if extension not in ALLOWED_IMAGE_EXTENSIONS:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Extension '{extension}' no permitida. Aceptadas: {sorted(ALLOWED_IMAGE_EXTENSIONS)}",
-        )
-
-    stream = file.file
-    stream.seek(0, os.SEEK_END)
-    size = stream.tell()
-    stream.seek(0)
-    if size <= 0:
-        raise HTTPException(status_code=400, detail="Archivo vacio")
-    if size > MAX_IMAGE_SIZE:
-        raise HTTPException(
-            status_code=413,
-            detail=f"Archivo excede el limite ({MAX_IMAGE_SIZE} bytes)",
-        )
-
-    object_key = f"{IMAGE_PREFIX}{uuid.uuid4().hex}.{extension}"
-    client = _acervo_client(mariachi_db)
-    try:
-        client.client.put_object(
-            client.bucket_name,
-            object_key,
-            stream,
-            size,
-            content_type=file.content_type or "application/octet-stream",
-        )
-    except S3Error as exc:
-        logger.exception("symbol_service.upload_image bucket=%s", client.bucket_name)
-        raise HTTPException(
-            status_code=502,
-            detail=f"Error subiendo imagen a Acervo: {exc.code}",
-        ) from exc
-
-    entity = Symbol(
+    return _upload_file_symbol(
+        db,
+        file=file,
         category_id=category_id,
-        kind="image",
-        value=None,
         name=name,
         sort_order=sort_order,
-        image_object_key=object_key,
+        mariachi_db=mariachi_db,
+        kind="image",
+        bucket_slug=MAPALAB_BUCKET_SLUG,
+        prefix=IMAGE_PREFIX,
+        allowed_extensions=ALLOWED_IMAGE_EXTENSIONS,
     )
-    db.add(entity)
-    db.commit()
-    db.refresh(entity)
-    return entity
+
+
+def create_svg_symbol(
+    db: Session,
+    *,
+    file: UploadFile,
+    category_id: int,
+    name: str | None,
+    sort_order: int,
+    mariachi_db: Session,
+) -> Symbol:
+    return _upload_file_symbol(
+        db,
+        file=file,
+        category_id=category_id,
+        name=name,
+        sort_order=sort_order,
+        mariachi_db=mariachi_db,
+        kind="svg",
+        bucket_slug=IIEG_BUCKET_SLUG,
+        prefix=SVG_PREFIX,
+        allowed_extensions=ALLOWED_SVG_EXTENSIONS,
+    )
 
 
 def update_symbol(db: Session, symbol_id: int, payload: SymbolUpdate) -> Symbol:
@@ -227,10 +292,10 @@ def update_symbol(db: Session, symbol_id: int, payload: SymbolUpdate) -> Symbol:
     if "category_id" in data:
         get_category(db, data["category_id"])
 
-    if "value" in data and symbol.kind == "image":
+    if "value" in data and symbol.kind in ("image", "svg"):
         raise HTTPException(
             status_code=400,
-            detail="kind=image no permite editar `value`; reemplaza la imagen creando un nuevo simbolo",
+            detail=f"kind={symbol.kind} no permite editar `value`; reemplaza el archivo creando un nuevo simbolo",
         )
 
     for field, value in data.items():
@@ -243,17 +308,14 @@ def update_symbol(db: Session, symbol_id: int, payload: SymbolUpdate) -> Symbol:
 
 def delete_symbol(db: Session, symbol_id: int, mariachi_db: Session) -> None:
     symbol = get_symbol(db, symbol_id)
-    keys = [
-        key
-        for key in (symbol.image_object_key, symbol.png_object_key)
-        if key
-    ]
+    objects: list[tuple[str, str]] = []
+    if symbol.image_object_key:
+        objects.append((symbol.bucket_slug, symbol.image_object_key))
+    if symbol.png_object_key:
+        objects.append((MAPALAB_BUCKET_SLUG, symbol.png_object_key))
     db.delete(symbol)
     db.commit()
-    if keys:
-        client = _acervo_client(mariachi_db)
-        for key in keys:
-            client.delete_file(key)
+    _delete_objects(mariachi_db, objects)
 
 
 def reorder_symbols(db: Session, items: list[tuple[int, int]]) -> None:
@@ -280,24 +342,24 @@ def to_response(symbol: Symbol, mariachi_db: Session) -> SymbolResponse:
         value=symbol.value,
         name=symbol.name,
         sort_order=symbol.sort_order,
-        image_url=_object_public_url(mariachi_db, symbol.image_object_key),
-        png_url=_object_public_url(mariachi_db, symbol.png_object_key),
+        bucket_slug=symbol.bucket_slug,
+        image_url=_object_public_url(symbol.bucket_slug, symbol.image_object_key),
+        png_url=_object_public_url(MAPALAB_BUCKET_SLUG, symbol.png_object_key),
         created_at=symbol.created_at,
         updated_at=symbol.updated_at,
     )
 
 
-def _object_public_url(mariachi_db: Session, object_key: str | None) -> str | None:  # noqa: ARG001
+def _object_public_url(bucket_slug: str, object_key: str | None) -> str | None:
     """URL pública del objeto via gateway. No requiere credenciales del bucket;
-    solo construye `{acervo_public_endpoint}/{bucket}/{key}`. El parámetro
-    `mariachi_db` queda por compat con callers existentes."""
+    solo construye `{acervo_public_endpoint}/{bucket}/{key}`."""
     if not object_key:
         return None
     from app.core.acervo_url import to_absolute
-    return to_absolute(f"{MAPALAB_BUCKET_SLUG}/{object_key}")
+    return to_absolute(f"{bucket_slug}/{object_key}")
 
 
-def _object_geoserver_url(mariachi_db: Session, object_key: str | None) -> str | None:  # noqa: ARG001
+def _object_geoserver_url(bucket_slug: str, object_key: str | None) -> str | None:
     """URL interna del bucket Acervo accesible desde el contenedor de GeoServer.
     Necesario porque GeoServer hace fetch del PNG/SVG al renderizar el SLD y
     no entiende rutas relativas tipo /acervo/... que sí resuelve el gateway.
@@ -307,7 +369,7 @@ def _object_geoserver_url(mariachi_db: Session, object_key: str | None) -> str |
     from app.core.settings import get_settings as _get_settings
     settings = _get_settings()
     scheme = "https" if settings.acervo_use_ssl else "http"
-    return f"{scheme}://{settings.acervo_endpoint}/{MAPALAB_BUCKET_SLUG}/{object_key}"
+    return f"{scheme}://{settings.acervo_endpoint}/{bucket_slug}/{object_key}"
 
 
 def build_catalog(db: Session, mariachi_db: Session) -> list[SymbolCatalogCategory]:
@@ -330,18 +392,23 @@ def build_catalog(db: Session, mariachi_db: Session) -> list[SymbolCatalogCatego
 def find_symbol_by_graphic_url(db: Session, url: str | None) -> Symbol | None:
     if not url:
         return None
-    marker = f"/{MAPALAB_BUCKET_SLUG}/"
-    idx = url.find(marker)
-    if idx < 0:
-        return None
-    object_key = url[idx + len(marker):]
-    return (
-        db.query(Symbol)
-        .filter(
-            (Symbol.image_object_key == object_key) | (Symbol.png_object_key == object_key)
+    for bucket_slug in (MAPALAB_BUCKET_SLUG, IIEG_BUCKET_SLUG):
+        marker = f"/{bucket_slug}/"
+        idx = url.find(marker)
+        if idx < 0:
+            continue
+        object_key = url[idx + len(marker):]
+        hit = (
+            db.query(Symbol)
+            .filter(
+                Symbol.bucket_slug == bucket_slug,
+                (Symbol.image_object_key == object_key) | (Symbol.png_object_key == object_key),
+            )
+            .first()
         )
-        .first()
-    )
+        if hit:
+            return hit
+    return None
 
 
 def emoji_to_twemoji_key(emoji: str) -> str:
@@ -400,7 +467,7 @@ def ensure_emoji_png(db: Session, symbol_id: int, mariachi_db: Session) -> Symbo
         )
 
     object_key = f"{EMOJI_PNG_PREFIX}{used_key}.png"
-    client = _acervo_client(mariachi_db)
+    client = _acervo_client(mariachi_db, MAPALAB_BUCKET_SLUG)
     try:
         client.client.put_object(
             client.bucket_name,

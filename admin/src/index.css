@@ -208,3 +208,11 @@ img {
         font-size: 14px;
     }
 }
+
+/* Sider: permitir que el badge BETA se vea aunque el label se desborde del item.
+   Aplica solo cuando el sider NO está colapsado para no afectar el modo icon-only. */
+.ant-layout-sider:not(.ant-layout-sider-collapsed) .ant-menu-item,
+.ant-layout-sider:not(.ant-layout-sider-collapsed) .ant-menu-submenu-title,
+.ant-layout-sider:not(.ant-layout-sider-collapsed) .ant-menu-title-content {
+    overflow: visible !important;
+}

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, require_role, verify_csrf
@@ -106,25 +106,41 @@ async def create_symbol(
 
 
 @router.post("/symbols/upload", response_model=SymbolResponse, status_code=201)
-async def upload_image_symbol(
+async def upload_file_symbol(
     file: UploadFile = File(...),
     category_id: int = Form(...),
     name: str | None = Form(default=None),
     sort_order: int = Form(default=0),
+    kind: str = Form(default="image"),
     db: Session = Depends(get_dataengine_db),
     mariachi_db: Session = Depends(get_db),
     _csrf: Usuario = Depends(verify_csrf),
     _admin: Usuario = Depends(_require_admin),
     _rl: Usuario = Depends(_write_rate_limit),
 ):
-    symbol = symbol_service.create_image_symbol(
-        db,
-        file=file,
-        category_id=category_id,
-        name=name,
-        sort_order=sort_order,
-        mariachi_db=mariachi_db,
-    )
+    if kind == "svg":
+        symbol = symbol_service.create_svg_symbol(
+            db,
+            file=file,
+            category_id=category_id,
+            name=name,
+            sort_order=sort_order,
+            mariachi_db=mariachi_db,
+        )
+    elif kind == "image":
+        symbol = symbol_service.create_image_symbol(
+            db,
+            file=file,
+            category_id=category_id,
+            name=name,
+            sort_order=sort_order,
+            mariachi_db=mariachi_db,
+        )
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail=f"kind='{kind}' no soportado en upload; usa 'image' o 'svg'",
+        )
     return symbol_service.to_response(symbol, mariachi_db)
 
 

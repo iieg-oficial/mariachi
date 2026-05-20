@@ -294,6 +294,72 @@ class GeoServerClient:
         return seen
 
 
+    def browse_styles_dir(self, prefix: str = "") -> dict:
+        path = "resource/styles" + (f"/{prefix.strip('/')}" if prefix else "")
+        url = self._rest_url(path)
+        with self._client() as c:
+            r = c.get(url)
+            if r.status_code == 404:
+                return {"folders": [], "files": []}
+            r.raise_for_status()
+            data = r.json()
+        directory = data.get("ResourceDirectory") or {}
+        children_node = directory.get("children") or {}
+        raw = children_node.get("child") or []
+        if isinstance(raw, dict):
+            raw = [raw]
+        folders: list[str] = []
+        files: list[dict] = []
+        for child in raw:
+            name = child.get("name")
+            if not name:
+                continue
+            link = child.get("link") or {}
+            ctype = link.get("type")
+            full_name = f"{prefix.strip('/')}/{name}" if prefix else name
+            is_dir = ctype == "text/html" and "." not in name
+            if is_dir:
+                folders.append(full_name)
+            else:
+                files.append({
+                    "name": full_name,
+                    "href": link.get("href"),
+                    "content_type": ctype,
+                })
+        return {"folders": folders, "files": files}
+
+    def get_style_file_bytes(self, name: str) -> tuple[bytes, str]:
+        url = f"{self._base_url}/rest/resource/styles/{name.lstrip('/')}"
+        with httpx.Client(auth=self._auth, timeout=self._timeout) as c:
+            r = c.get(url)
+            if r.status_code == 404:
+                raise GeoServerError(f"recurso no encontrado: styles/{name}")
+            r.raise_for_status()
+            ctype = r.headers.get("Content-Type", "application/octet-stream")
+            return r.content, ctype
+
+    def put_style_file(self, name: str, content: bytes, content_type: str) -> None:
+        url = f"{self._base_url}/rest/resource/styles/{name.lstrip('/')}"
+        with httpx.Client(auth=self._auth, timeout=self._timeout) as c:
+            r = c.put(url, content=content, headers={"Content-Type": content_type})
+            if r.status_code not in (200, 201):
+                raise GeoServerError(
+                    f"upload fallido styles/{name} (HTTP {r.status_code}): {r.text[:200]}"
+                )
+
+    def delete_style_file(self, name: str) -> bool:
+        url = f"{self._base_url}/rest/resource/styles/{name.lstrip('/')}"
+        with httpx.Client(auth=self._auth, timeout=self._timeout) as c:
+            r = c.delete(url)
+            if r.status_code == 404:
+                return False
+            if r.status_code not in (200, 204):
+                raise GeoServerError(
+                    f"delete fallido styles/{name} (HTTP {r.status_code}): {r.text[:200]}"
+                )
+            return True
+
+
 def _normalize_type(raw: str | None) -> str:
     if not raw:
         return "unknown"

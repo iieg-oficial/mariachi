@@ -1,14 +1,4 @@
-import { useMemo } from 'react';
-
-
 export default function SymbolPreview({ symbol, size = 32 }) {
-    const innerHtml = useMemo(() => {
-        if (symbol?.kind === 'svg' && symbol.value) {
-            return { __html: symbol.value };
-        }
-        return null;
-    }, [symbol]);
-
     if (!symbol) return null;
 
     if (symbol.kind === 'emoji') {
@@ -27,16 +17,7 @@ export default function SymbolPreview({ symbol, size = 32 }) {
         );
     }
 
-    if (symbol.kind === 'svg') {
-        return (
-            <span
-                style={{ display: 'inline-block', width: size, height: size }}
-                dangerouslySetInnerHTML={innerHtml}
-            />
-        );
-    }
-
-    if (symbol.kind === 'image') {
+    if (symbol.kind === 'svg' || symbol.kind === 'image') {
         return (
             <img
                 src={symbol.imageUrl || symbol.image_url}
