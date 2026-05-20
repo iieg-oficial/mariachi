@@ -246,9 +246,7 @@ export default function InitialLayerOrderPage() {
 
     return (
         <Content style={{
-            padding: isMobile ? 12 : 24,
-            maxWidth: 900,
-            margin: '0 auto',
+            padding: isMobile ? 6 : 24,
             width: '100%',
             boxSizing: 'border-box',
         }}>
@@ -269,7 +267,7 @@ export default function InitialLayerOrderPage() {
                         : `${items.length} capa${items.length === 1 ? '' : 's'} activa${items.length === 1 ? '' : 's'}`}
                     extra={cardActions}
                     styles={{
-                        body: { padding: isMobile ? 12 : 24 },
+                        body: { padding: isMobile ? 6 : 24 },
                         header: { padding: isMobile ? '8px 12px' : '12px 24px' },
                     }}
                 >

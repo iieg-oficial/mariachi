@@ -391,7 +391,7 @@ export default function GeoserverFilesPage() {
     };
 
     return (
-        <Content style={{ padding: isMobile ? 12 : 24 }}>
+        <Content style={{ padding: isMobile ? 6 : 24 }}>
             <Space direction="vertical" style={{ width: '100%' }} size="middle">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
                     <div>

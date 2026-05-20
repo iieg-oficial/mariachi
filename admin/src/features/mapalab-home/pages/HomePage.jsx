@@ -304,7 +304,7 @@ export default function HomePage() {
     if (reviewMode && reviewSectionKey) {
         const seccion = seccionesByKey[reviewSectionKey];
         return (
-            <Content style={{ padding: isMobile ? 12 : 24, maxWidth: 1100, margin: '0 auto', width: '100%' }}>
+            <Content style={{ padding: isMobile ? 6 : 24, width: '100%' }}>
                 <Space orientation="vertical" size="large" style={{ width: '100%' }}>
                     <Title level={isMobile ? 4 : 3} style={{ margin: 0 }}>
                         Revisar sección: {SECTION_REGISTRY[reviewSectionKey]?.label || reviewSectionKey}
@@ -340,7 +340,7 @@ export default function HomePage() {
         });
 
     return (
-        <Content style={{ padding: isMobile ? 12 : 24, maxWidth: 1100, margin: '0 auto', width: '100%' }}>
+        <Content style={{ padding: isMobile ? 6 : 24, width: '100%' }}>
             <Space orientation="vertical" size="large" style={{ width: '100%' }}>
                 <Space style={{ justifyContent: 'space-between', width: '100%' }} wrap>
                     <div>

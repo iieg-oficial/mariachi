@@ -214,7 +214,7 @@ export default function MapalabApiKeysPage() {
     };
 
     return (
-        <Content style={{ padding: isMobile ? 12 : 24, maxWidth: 1280, margin: '0 auto', width: '100%' }}>
+        <Content style={{ padding: isMobile ? 6 : 24, width: '100%' }}>
             <Space direction="vertical" size="large" style={{ width: '100%' }}>
                 <div>
                     <Title level={isMobile ? 4 : 3} style={{ marginBottom: 4 }}>Llaves para mostrar mapas en otros sitios</Title>
