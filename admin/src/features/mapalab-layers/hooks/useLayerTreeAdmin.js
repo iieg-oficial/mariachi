@@ -113,8 +113,33 @@ export const useLayerTreeAdmin = () => {
         return res.data;
     }, []);
 
-    const deleteLayer = useCallback(async (layerId) => {
-        await api.delete(`/layers/${layerId}`);
+    const deleteLayer = useCallback(async (layerId, { force = false } = {}) => {
+        const res = await api.delete(`/layers/${layerId}`, { params: { force } });
+        return res.data;
+    }, []);
+
+    const restoreLayer = useCallback(async (layerId) => {
+        const res = await api.post(`/layers/${layerId}/restore`);
+        return res.data;
+    }, []);
+
+    const purgeLayer = useCallback(async (layerId) => {
+        await api.delete(`/layers/${layerId}/purge`);
+    }, []);
+
+    const listDeletedLayers = useCallback(async () => {
+        const res = await api.get('/layers/deleted');
+        return res.data;
+    }, []);
+
+    const getLayerReferences = useCallback(async (layerId) => {
+        const res = await api.get(`/layers/${layerId}/references`);
+        return res.data;
+    }, []);
+
+    const requestLayerDeletion = useCallback(async (layerId) => {
+        const res = await api.post(`/borradores/layer/${layerId}/solicitar-eliminacion`);
+        return res.data;
     }, []);
 
     const listGeoserverWorkspaces = useCallback(async ({ availableOnly = false } = {}) => {
@@ -244,6 +269,11 @@ export const useLayerTreeAdmin = () => {
         requestReview,
         getLayerDraft,
         deleteLayer,
+        restoreLayer,
+        purgeLayer,
+        listDeletedLayers,
+        getLayerReferences,
+        requestLayerDeletion,
         listGeoserverWorkspaces,
         listPendingWorkspaces,
         registerWorkspace,

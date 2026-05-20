@@ -256,6 +256,27 @@ class LayerResponse(LayerBase):
     created_at: datetime = Field(..., serialization_alias="createdAt")
     updated_at: datetime = Field(..., serialization_alias="updatedAt")
     updated_by: str | None = Field(default=None, serialization_alias="updatedBy")
+    deleted_at: datetime | None = Field(default=None, serialization_alias="deletedAt")
+    deleted_by: str | None = Field(default=None, serialization_alias="deletedBy")
+
+
+class DeletedLayerSummary(BaseModel):
+    id: str
+    label: str
+    node_type: str = Field(..., serialization_alias="nodeType")
+    parent_id: str | None = Field(default=None, serialization_alias="parentId")
+    deleted_at: datetime = Field(..., serialization_alias="deletedAt")
+    deleted_by: str | None = Field(default=None, serialization_alias="deletedBy")
+
+    model_config = ConfigDict(populate_by_name=True, from_attributes=True)
+
+
+class LayerReferencesResponse(BaseModel):
+    children_count: int = Field(..., serialization_alias="childrenCount")
+    in_initial_order: bool = Field(..., serialization_alias="inInitialOrder")
+    eventos: list[dict] = Field(default_factory=list)
+
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class LayerTreeNode(LayerBase):

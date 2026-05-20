@@ -245,6 +245,50 @@ async def guardar_borrador(
     return borrador
 
 
+@router.post("/layer/{layer_id}/solicitar-eliminacion")
+async def solicitar_eliminacion_capa(
+    layer_id: str,
+    db: Session = Depends(get_db),
+    dataengine_db: Session = Depends(get_dataengine_db),
+    current_user: Usuario = Depends(verify_csrf),
+):
+    """Crea/actualiza un borrador con action='delete' y lo deja en
+    pendiente_revision. Es el flujo que usan los editores no-admin para pedir
+    que un admin apruebe el archivado de una capa."""
+    layer = dataengine_db.query(Layer).filter(Layer.id == layer_id).first()
+    if not layer:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Capa '{layer_id}' no encontrada")
+
+    borrador = (
+        db.query(Borrador)
+        .filter(
+            Borrador.resource_type == 'layer',
+            Borrador.resource_id == layer_id,
+            Borrador.usuario_id == current_user.id,
+            _ACTIVO_FILTER,
+        )
+        .first()
+    )
+    payload = {'action': 'delete'}
+    if borrador:
+        borrador.data = payload
+        borrador.estado = 'pendiente_revision'
+        borrador.comentario_rechazo = None
+        borrador.actualizado_en = utcnow()
+    else:
+        borrador = Borrador(
+            resource_type='layer',
+            resource_id=layer_id,
+            usuario_id=current_user.id,
+            data=payload,
+            estado='pendiente_revision',
+        )
+        db.add(borrador)
+    db.commit()
+    db.refresh(borrador)
+    return {'ok': True, 'borrador_id': borrador.id, 'estado': borrador.estado}
+
+
 @router.post("/{resource_type}/{resource_id}/solicitar-revision")
 async def solicitar_revision(
     resource_type: str,

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.api.deps import verify_csrf
+from app.api.deps import get_db, verify_csrf
 from app.api.routes.layers._deps import (
     map_domain_errors,
     require_admin,
@@ -9,13 +9,16 @@ from app.api.routes.layers._deps import (
     write_rate_limit,
 )
 from app.core.database import get_dataengine_db
+from app.models.evento import Evento
 from app.models.layer import Layer, Workspace
 from app.models.user import Usuario
 from app.schemas.layer import (
     AutoLeafRequest,
+    DeletedLayerSummary,
     InitialOrderBody,
     InitialOrderItem,
     LayerCreate,
+    LayerReferencesResponse,
     LayerResponse,
     LayerUpdate,
     ReorderBody,
@@ -26,6 +29,50 @@ from app.services.geoserver_client import GeoServerError
 from app.services.mapalab_notifier import notify_tree_changed
 
 router = APIRouter(prefix='/layers')
+
+
+def _capa_references_layer(capa: dict, workspace_alias: str, geoserver_layer: str) -> bool:
+    """Recorre recursivamente eventos.capas (incluye sub-capas de categorias)."""
+    if not isinstance(capa, dict):
+        return False
+    if (capa.get('tipo') in (None, 'capa')
+            and capa.get('workspace') == workspace_alias
+            and capa.get('layer') == geoserver_layer):
+        return True
+    if capa.get('tipo') == 'categoria':
+        for sub in (capa.get('capas') or []):
+            if _capa_references_layer(sub, workspace_alias, geoserver_layer):
+                return True
+    return False
+
+
+def _compute_references(
+    dataengine_db: Session, mariachi_db: Session, layer: Layer,
+) -> dict:
+    children_count = layer_service.count_alive_children(dataengine_db, layer.id)
+    in_initial_order = layer_service.is_in_initial_order(dataengine_db, layer.id)
+    eventos_refs: list[dict] = []
+    if layer.workspace_alias and layer.geoserver_layer:
+        eventos = (
+            mariachi_db.query(Evento)
+            .filter(Evento.estado == 'published')
+            .all()
+        )
+        for evento in eventos:
+            for capa in (evento.capas or []):
+                if _capa_references_layer(capa, layer.workspace_alias, layer.geoserver_layer):
+                    eventos_refs.append({
+                        'id': evento.id,
+                        'titulo': evento.titulo,
+                        'slug': evento.slug,
+                        'activo': evento.activo,
+                    })
+                    break
+    return {
+        'children_count': children_count,
+        'in_initial_order': in_initial_order,
+        'eventos': eventos_refs,
+    }
 
 
 @router.get('/workspaces', response_model=list[WorkspaceResponse])
@@ -68,6 +115,27 @@ async def list_initial_order(
     _admin: Usuario = Depends(require_admin),
 ):
     return layer_service.list_initial_order(db)
+
+
+@router.get('/deleted', response_model=list[DeletedLayerSummary])
+async def list_deleted_layers(
+    db: Session = Depends(get_dataengine_db),
+    _editor: Usuario = Depends(require_project_editor),
+):
+    return layer_service.list_deleted_layers(db)
+
+
+@router.get('/{layer_id}/references', response_model=LayerReferencesResponse)
+async def get_layer_references(
+    layer_id: str,
+    db: Session = Depends(get_dataengine_db),
+    mariachi_db: Session = Depends(get_db),
+    _editor: Usuario = Depends(require_project_editor),
+):
+    layer = db.query(Layer).filter(Layer.id == layer_id).first()
+    if not layer:
+        raise HTTPException(status_code=404, detail=f"Capa '{layer_id}' no encontrada")
+    return _compute_references(db, mariachi_db, layer)
 
 
 @router.get('/{layer_id}', response_model=LayerResponse)
@@ -133,20 +201,94 @@ async def update_layer(
         raise map_domain_errors(exc) from exc
 
 
-@router.delete('/{layer_id}', status_code=204)
+@router.delete('/{layer_id}', status_code=200)
 async def delete_layer(
     layer_id: str,
+    force: bool = False,
     db: Session = Depends(get_dataengine_db),
-    _csrf: Usuario = Depends(verify_csrf),
+    mariachi_db: Session = Depends(get_db),
+    current_user: Usuario = Depends(verify_csrf),
+    _admin: Usuario = Depends(require_admin),
+    _rl: Usuario = Depends(write_rate_limit),
+):
+    """Soft-delete (admin). Marca deleted_at sin borrar la fila. Si tiene hijos
+    no eliminados o referencias en eventos publicados, requiere `?force=true`
+    para forzar (excepto hijos: nunca se fuerza, hay que vaciarlos primero).
+    """
+    layer = db.query(Layer).filter(Layer.id == layer_id).first()
+    if not layer:
+        raise HTTPException(status_code=404, detail=f"Capa '{layer_id}' no encontrada")
+    if layer.deleted_at is not None:
+        raise HTTPException(status_code=409, detail='La capa ya está en papelera')
+
+    refs = _compute_references(db, mariachi_db, layer)
+    if refs['children_count'] > 0:
+        raise HTTPException(
+            status_code=409,
+            detail=f"La capa tiene {refs['children_count']} hijo(s) activo(s). Elimina o mueve los hijos primero.",
+        )
+    if not force and (refs['in_initial_order'] or refs['eventos']):
+        raise HTTPException(
+            status_code=409,
+            detail={
+                'message': 'La capa está referenciada. Reenvía con ?force=true para archivar de todos modos.',
+                'references': refs,
+            },
+        )
+
+    layer_service.soft_delete_layer(db, layer, deleted_by=current_user.email)
+    db.commit()
+    notify_tree_changed()
+    return {'id': layer_id, 'deletedAt': layer.deleted_at, 'references': refs}
+
+
+@router.post('/{layer_id}/restore', response_model=LayerResponse)
+async def restore_layer(
+    layer_id: str,
+    db: Session = Depends(get_dataengine_db),
+    current_user: Usuario = Depends(verify_csrf),
     _admin: Usuario = Depends(require_admin),
     _rl: Usuario = Depends(write_rate_limit),
 ):
     layer = db.query(Layer).filter(Layer.id == layer_id).first()
     if not layer:
         raise HTTPException(status_code=404, detail=f"Capa '{layer_id}' no encontrada")
-    layer_service.delete_layer(db, layer)
+    if layer.deleted_at is None:
+        raise HTTPException(status_code=409, detail='La capa no está en papelera')
+
+    if layer.parent_id:
+        parent = db.query(Layer).filter(Layer.id == layer.parent_id).first()
+        if parent is None or parent.deleted_at is not None:
+            raise HTTPException(
+                status_code=409,
+                detail=f"El padre '{layer.parent_id}' no existe o también está en papelera. Restaura el padre primero.",
+            )
+    layer_service.restore_layer(db, layer, restored_by=current_user.email)
     db.commit()
+    db.refresh(layer)
     notify_tree_changed()
+    return layer
+
+
+@router.delete('/{layer_id}/purge', status_code=204)
+async def purge_layer(
+    layer_id: str,
+    db: Session = Depends(get_dataengine_db),
+    _csrf: Usuario = Depends(verify_csrf),
+    _admin: Usuario = Depends(require_admin),
+    _rl: Usuario = Depends(write_rate_limit),
+):
+    """Hard delete real. Solo permitido sobre capas ya en papelera."""
+    layer = db.query(Layer).filter(Layer.id == layer_id).first()
+    if not layer:
+        raise HTTPException(status_code=404, detail=f"Capa '{layer_id}' no encontrada")
+    try:
+        layer_service.purge_layer(db, layer)
+        db.commit()
+        notify_tree_changed()
+    except ValueError as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     return None
 
 

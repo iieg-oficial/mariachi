@@ -106,6 +106,9 @@ class Layer(DataEngineBase):
     )
     updated_by = Column(String(100), nullable=True)
 
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+    deleted_by = Column(String(100), nullable=True)
+
     workspace = relationship("Workspace", lazy="joined")
     children = relationship(
         "Layer",
