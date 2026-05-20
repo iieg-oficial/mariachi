@@ -14,7 +14,6 @@ from app.models.user import Usuario
 from app.schemas.geoserver_file import (
     GeoServerBrowseResponse,
     GeoServerFileResponse,
-    GeoServerFilesListResponse,
     GeoServerFolderResponse,
     GeoServerSearchResponse,
 )
