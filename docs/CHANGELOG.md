@@ -9,7 +9,84 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
-## [No publicado]
+## [1.4.0] - 2026-05-20
+
+### MapaLab admin: soft delete reversible de capas
+
+Hasta ahora no había forma de borrar capas, temas, etiquetas, categorías ni grupos del árbol. Se agrega un sistema de **soft delete** reversible, con check de referencias y flujo de revisión para editores no-admin.
+
+**Backend**:
+
+- **Migración alembic** `dataengine/0011_layer_deleted_at`: agrega `deleted_at TIMESTAMPTZ NULL` y `deleted_by VARCHAR(100) NULL` a `mapalab.layers`. Índices parciales `ix_layers_alive WHERE deleted_at IS NULL` y `ix_layers_deleted WHERE deleted_at IS NOT NULL` para queries rápidos en ambos lados.
+- **`api/app/models/layer.py`**: columnas `deleted_at` y `deleted_by` en el modelo `Layer`.
+- **`api/app/schemas/layer.py`**: `LayerResponse` expone `deletedAt`/`deletedBy`. Schemas nuevos `DeletedLayerSummary` y `LayerReferencesResponse`.
+- **`api/app/services/layer_service.py`**: funciones `soft_delete_layer`, `restore_layer`, `purge_layer` (hard delete, sólo sobre capas archivadas), `list_deleted_layers`, `count_alive_children`, `is_in_initial_order`. `find_or_create_auto_leaf` filtra `deleted_at IS NULL` al buscar capas existentes.
+- **`api/app/api/routes/layers/crud.py`**: endpoints nuevos:
+  - `DELETE /layers/{id}?force=false` (admin): soft-delete. Bloquea si hay hijos activos (409). Advierte con `references` en el detail si está en `initial_layer_order` o en eventos publicados; `force=true` lo archiva ignorando refs no bloqueantes.
+  - `POST /layers/{id}/restore` (admin): rechaza si el padre también está archivado.
+  - `DELETE /layers/{id}/purge` (admin): hard delete real, sólo sobre archivadas.
+  - `GET /layers/deleted` (editor+): lista la papelera.
+  - `GET /layers/{id}/references` (editor+): devuelve `childrenCount`, `inInitialOrder` y eventos publicados que la usan. Helper `_capa_references_layer` recursivo (recorre sub-`capas` de categorías).
+  - Rutas reordenadas: `/deleted` y `/{layer_id}/references` ahora se declaran ANTES de `/{layer_id}` para que FastAPI matchee correctamente (sin esto, "deleted" se interpretaba como id literal y devolvía 500).
+- **`api/app/api/routes/borradores.py`**: nuevo endpoint `POST /borradores/layer/{layer_id}/solicitar-eliminacion` para que editores no-admin pidan archivado. Crea/actualiza borrador con `data={action: 'delete'}` en estado `pendiente_revision`.
+- **`api/app/services/borrador_service.py::_apply_layer`**: detecta `data.action` `'delete'` o `'restore'` y delega a `soft_delete_layer` / `restore_layer` al aprobar. El caso default sigue siendo update/create.
+
+**Filtrado del cache de árbol** (para que las archivadas no aparezcan en el visor):
+
+- **`mapalab/backend/app/repositories/layers_repository.py`**: `get_all_layers`, `get_max_updated_at`, `count_layers`, `search_layers` filtran `deleted_at IS NULL`.
+- **`dataengine/jobs/run_refresh_layer_tree.py`**: `_fetch_layers` y `_max_updated_at` filtran `deleted_at IS NULL`. El cron diario y el refresh manual ya no incluyen capas archivadas.
+
+**Frontend admin**:
+
+- **`admin/src/features/mapalab-layers/hooks/useLayerTreeAdmin.js`**: hooks nuevos `restoreLayer`, `purgeLayer`, `listDeletedLayers`, `getLayerReferences`, `requestLayerDeletion`. `deleteLayer` acepta `{ force }` opcional.
+- **`admin/src/features/mapalab-layers/components/DeleteLayerModal.jsx`** (nuevo): modal con patrón **confirm-by-name** (estilo GitHub). El admin/editor debe escribir el nombre exacto de la capa para habilitar el botón; texto copiable. Muestra refs bloqueantes (hijos activos → rojo) vs advertencias (initial_order, eventos publicados → naranja). Si no es admin, el botón dice "Solicitar archivado" y dispara el flujo de borrador en revisión. Si es admin con refs no bloqueantes, "Archivar de todos modos" manda `?force=true`.
+- **`admin/src/features/mapalab-layers/components/DeletedLayersList.jsx`** (nuevo): tabla de papelera con `Restaurar` + `Purgar` (con `Popconfirm`). Solo admin actúa; editor ve readonly. Container con `height: 100%` + `overflow: auto` para que la tabla scrollee verticalmente dentro del tab.
+
+### MapaLab admin: editor inline en el árbol de capas (accordion) + tabs Capas/Eventos/Papelera
+
+Rediseño completo de `/mapalab/layers`. El árbol pasa de vivir en un `<Sider>` lateral a ocupar todo el ancho; al hacer click sobre un nodo, el editor de esa capa se abre **inline** debajo del item (accordion), sin sheet inferior ni drawer. Tabs internas para alternar entre Capas, Eventos y Papelera.
+
+- **`admin/src/features/mapalab-layers/components/LayersTreeListInline.jsx`** (nuevo): lista recursiva custom que reemplaza al `<Tree>` virtual de AntD en la tab de Capas. Filtro por búsqueda con auto-expand de ramas que matchean. Auto-expand de ancestros al cargar desde URL. Persistencia de keys expandidas en `localStorage` (`mapalab_layers_inline_expanded`). Soporta `editorContent` prop para inyectar el editor inline y `actionButtons` para los botones de acción que viven en el row del item seleccionado.
+- **`admin/src/features/mapalab-layers/components/LayersTreeBranch.jsx`** (nuevo): `NodeRow` + `NodeBranch` recursivo extraídos para mantener `LayersTreeListInline` bajo 300 líneas. Render detallado por nodo: título (line-clamp 2 desktop, 1 mobile) + tag de tipo + workspace alias + geoserver layer + tags `oculto`/`disabled`. Botón colapsar/expandir editor (`▴/▾`) inline en el row seleccionado. En mobile + seleccionado, el row apila vertical: título arriba, action buttons abajo (evita el bug de `flexWrap` que crecía el row a varias líneas).
+- **`admin/src/features/mapalab-eventos/hooks/useEventoTreeNodes.js`** (nuevo): convierte eventos a tree nodes para la tab Eventos. Recursivo para categorías. Keys namespaceadas con `__eventos_root__`, `evento-{id}`, `evento-{id}-cat-{i}`, `evento-{id}-eti-{i}`, `evento-{id}-cap-{i}-{ws}/{layer}`.
+- **`admin/src/features/mapalab-layers/pages/LayerEditPage.jsx`**: rediseño:
+  - Eliminados `useResizableWidth`, `siderCollapsed/siderWidth`, sheet inferior, imports `Layout`/`Sider`/`MenuUnfoldOutlined`/`LeftOutlined`/`DownOutlined`/`UpOutlined`.
+  - `editorBody` se compone como `Form` con tabs `tabPosition="top"` siempre (antes alternaba con `left` en desktop).
+  - Tab "Capas" usa `LayersTreeListInline` con `editorContent={editorBody}` y `actionButtons` (Archivar + Guardar, o Borrador + Revisión para no-admin).
+  - Tab "Eventos" usa `LayersTreeListInline` (sin editor inline, sólo navegación) con el sub-árbol de `useEventosTreeNode`. Auto-switch a esta tab cuando se navega a un nodo de evento desde URL.
+  - Tab "Papelera" con `DeletedLayersList`.
+  - Tab activa persiste en `localStorage` (`mapalab.layerEditor.treeTab`).
+  - `handleSelectFromTree` maneja keys `evento-*` y navega al editor de evento o a la capa real según corresponda.
+  - `actionButtons` (Archivar/Guardar) movidos al row del item seleccionado, no en el header del editor. `size="small"` y labels acortados (`Archivar`/`Solicitar`/`Borrador`/`Revisión`) para que no compitan con las tags.
+- **`admin/src/features/mapalab-layers/components/LayersTreeSider.jsx`**: limpieza — eliminado el `viewMode` (compact/detailed), `DetailedNodeTitle`, `VIEW_MODE_KEY`, `NODE_COLORS`/`NODE_ICONS`/`NODE_TAG_COLORS`/`PROPERTY_TAG_COLOR` ya no usados, imports muertos. `itemHeight` fijo en 44.
+- **`admin/src/features/mapalab-layers/constants/nodeTypes.js`**: agregadas entradas en `NODE_TYPE_LABELS` para los 5 tipos nuevos (`evento-root`, `evento`, `evento-categoria`, `evento-etiqueta`, `evento-capa`).
+
+### MapaLab admin: UX del editor de eventos (BBox, icon picker, refactor)
+
+- **`admin/src/features/mapalab-eventos/components/BBoxField.jsx`** — reescrito. Top-level pasa de 3 opciones (`Sin zoom` / `Coordenadas manuales` / `Dibujar en mapa`) a 2 (`Sin zoom` / `Vista del mapa`). Las coordenadas manuales se fusionaron como sección colapsable (`<Collapse>`) debajo del mini-mapa. El modo Draw eliminado. Dentro de "Vista del mapa" hay dos modos de captura: `Usar esta vista` (botón explícito que captura el `view.calculateExtent()` actual) o `Automático` (escucha `moveend` con debounce 250ms y actualiza en vivo). El `MapPicker` sustituye al `MiniMap`.
+- **`admin/src/features/mapalab-eventos/components/EventoIconPicker.jsx`** — alineado con `NoticeIconField`: botón `<ClearOutlined>` inline en el `Space.Compact` cuando hay valor. Texto de convención: `mapalab/eventos/` como prefijo recomendado; `iieg/iconos/` queda como alternativa para iconos compartidos entre dependencias.
+- **`admin/src/features/mapalab-eventos/hooks/useEventos.js`** + **`admin/src/features/mapalab-eventos/components/AddCapaModal.jsx`** — refactor de `useState` + `useCallback` que disparaba la regla `react-hooks/set-state-in-effect` (3 warnings preexistentes). Sustituidos por `useReducer` con acciones `fetching` / `success` / `error`; el `setState` síncrono dentro del effect se reemplaza por `dispatch`. Se eliminó el `setEvento` del return de `useEvento` (no se usaba fuera del módulo).
+- **`admin/src/features/mapalab-eventos/components/CapasField.jsx`** — botón "Agregar categoría" en el toolbar raíz; las categorías se renderizan como filas expandibles (AntD `expandable.expandedRowRender`) con su propia sub-tabla. El modal de agregar capa reutiliza `AddCapaModal` con contexto (`addingToCategoria`) para insertar en raíz o en una categoría. Las claves duplicadas se previenen recorriendo recursivamente `value` (`collectTaken`).
+- **`admin/src/features/mapalab-eventos/components/capasTableColumns.jsx`** (nuevo): `buildCapasColumns(...)` extraído para reusar columnas entre tabla raíz y sub-tabla de cada categoría.
+- **`admin/src/features/mapalab-eventos/components/CapasSortableRow.jsx`** (nuevo): wrapper de `<tr>` con `useSortable` de `@dnd-kit/sortable` y `RowContext` que expone `listeners` + `setActivatorNodeRef` para que el handle `<DragHandleCell>` viva en una celda específica.
+- **Drag-and-drop intra-container** + **dropdown "Mover a..."** para cross-container (root ↔ categorías). `arrayMove` para reorder; `moveItemAcrossContainers` para los 3 casos (root→cat, cat→root, cat→cat), preservando orden y ajustando índices para evitar shift.
+- **`api/app/schemas/evento.py::CapaRef`**: `tipo` ahora acepta `'categoria'` además de `'capa'` y `'etiqueta'`; campo recursivo `capas: list[CapaRef] | None` con `model_rebuild()`. El validador rechaza categorías anidadas (profundidad > 1), categorías sin `alias`, y capas/etiquetas con `capas` definido.
+- **`api/tests/test_eventos_validation.py`**: nuevos tests `test_categoria_sin_alias_rechazada`, `test_categoria_con_subcapas_aceptada`, `test_categoria_anidada_rechazada`, `test_capa_con_subcapas_rechazada`.
+
+### MapaLab admin: aprovechar ancho completo + paddings mobile a la mitad
+
+- **`admin/src/app/MainLayout.jsx`**: el `<Content>` global del admin pasa de `margin: '12px 8px'` + `padding: 12` a `margin: '6px 4px'` + `padding: 6` en mobile (desktop sin cambios). Recupera ~16px de ancho útil en mobile.
+- **`admin/src/index.css`**: la media query `@media (max-width: 767px)` global tenía overrides con `!important` (`.ant-layout-content`, `.ant-card-head`, `.ant-card-head-wrapper`, `.ant-card-body`) que ganaban contra el inline style del MainLayout. Reducidos todos a la mitad: `12px → 6px`.
+- **`admin/src/features/inicio/pages/InicioPage.jsx`**: tabla "Mis borradores" con `scroll={{ x: 'max-content' }}` para que tenga scroll horizontal interno en mobile en lugar de empujar el viewport.
+- **Páginas del submenu mapalab**: quitados `maxWidth` + `margin: '0 auto'` de los `<Content>` para que aprovechen el ancho de pantalla. `padding mobile: 12 → 6` también:
+  - `mapalab-eventos/pages/EventoEditPage.jsx` (maxWidth 1100)
+  - `mapalab-eventos/pages/EventosListPage.jsx` (maxWidth 1200)
+  - `mapalab-symbols/pages/SymbolsPage.jsx` (maxWidth 1400)
+  - `mapalab-stats/pages/MapalabStatsPage.jsx` (maxWidth 1400)
+  - `mapalab-api-keys/pages/MapalabApiKeysPage.jsx` (maxWidth 1280)
+  - `mapalab-home/pages/HomePage.jsx` (maxWidth 1100, dos lugares)
+  - `mapalab-layers/pages/InitialLayerOrderPage.jsx` (maxWidth 900)
+  - `mapalab-geoserver-files/pages/GeoserverFilesPage.jsx` (sólo padding mobile)
 
 ### Catálogo de símbolos SVG como archivo + módulo "Recursos GeoServer"
 
