@@ -1,52 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Button, Empty, Input, Space, Spin, Tag, Tooltip, Tree, Typography } from 'antd';
+import { Alert, Button, Empty, Input, Space, Spin, Tooltip, Tree, Typography } from 'antd';
 import {
-    AppstoreOutlined,
     EyeInvisibleOutlined,
-    FileOutlined,
-    FolderOpenOutlined,
-    FolderOutlined,
     HolderOutlined,
-    InfoCircleOutlined,
     PlusOutlined,
     ReloadOutlined,
     SearchOutlined,
     StopOutlined,
     TagsOutlined,
 } from '@ant-design/icons';
-import { labelForNode, isPropertyOfGroup } from '@features/mapalab-layers/constants/nodeTypes';
 import LayerCreateModal from '@features/mapalab-layers/components/LayerCreateModal';
 import { message } from '@shared/services/message';
 
-const { Text, Title } = Typography;
+const { Title } = Typography;
 
-const NODE_COLORS = {
-    tema: '#722ed1',
-    category: '#1677ff',
-    label: '#8c8c8c',
-    group: '#faad14',
-    leaf: '#52c41a',
-};
+const isEventoNode = (nodeType) => typeof nodeType === 'string' && nodeType.startsWith('evento');
 
-const NODE_ICONS = {
-    tema: <FolderOutlined style={{ color: NODE_COLORS.tema }} />,
-    category: <FolderOpenOutlined style={{ color: NODE_COLORS.category }} />,
-    label: <TagsOutlined style={{ color: NODE_COLORS.label }} />,
-    group: <AppstoreOutlined style={{ color: NODE_COLORS.group }} />,
-    leaf: <FileOutlined style={{ color: NODE_COLORS.leaf }} />,
-};
-
-const NODE_TAG_COLORS = {
-    tema: 'purple',
-    category: 'blue',
-    label: 'default',
-    group: 'gold',
-    leaf: 'green',
-};
-
-const PROPERTY_TAG_COLOR = 'cyan';
-
-const VIEW_MODE_KEY = 'mapalab_layers_view_mode';
 const EXPANDED_KEYS_STORAGE = 'mapalab_layers_expanded';
 
 function loadExpandedKeys() {
@@ -133,38 +102,6 @@ function CompactNodeTitle({ node, onEdit }) {
     );
 }
 
-function DetailedNodeTitle({ node }) {
-    const { title, nodeType, parentNodeType, workspaceAlias, geoserverLayer, disabled, hiddenInMenu } = node;
-    const isProperty = isPropertyOfGroup(nodeType, parentNodeType);
-    const tagColor = isProperty ? PROPERTY_TAG_COLOR : (NODE_TAG_COLORS[nodeType] || 'default');
-    return (
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', minWidth: 0, width: '100%' }}>
-            <span style={{
-                opacity: disabled ? 0.5 : 1,
-                display: '-webkit-box',
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: 'vertical',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                wordBreak: 'break-word',
-                lineHeight: '18px',
-                minWidth: 0,
-                flex: '1 1 auto',
-            }}>{title}</span>
-            <Tag color={tagColor} style={{ fontSize: 10, marginRight: 0 }}>
-                {labelForNode(nodeType, parentNodeType)}
-            </Tag>
-            {workspaceAlias && (
-                <Tag color="blue" style={{ fontSize: 10, marginRight: 0 }}>{workspaceAlias}</Tag>
-            )}
-            {geoserverLayer && (
-                <Text type="secondary" style={{ fontSize: 11 }}>{geoserverLayer}</Text>
-            )}
-            {hiddenInMenu && <Tag color="orange" style={{ fontSize: 10, marginRight: 0 }}>oculto</Tag>}
-            {disabled && <Tag color="red" style={{ fontSize: 10, marginRight: 0 }}>disabled</Tag>}
-        </span>
-    );
-}
 
 const filterTree = (nodes, q) => {
     if (!q) return nodes;
@@ -214,19 +151,9 @@ export default function LayersTreeSider({
     const [q, setQ] = useState('');
     const [expandedKeys, setExpandedKeys] = useState(() => loadExpandedKeys() || []);
     const [userTouchedExpansion, setUserTouchedExpansion] = useState(() => loadExpandedKeys() !== null);
-    const [viewMode, setViewMode] = useState(() => {
-        if (typeof window === 'undefined') return 'compact';
-        return localStorage.getItem(VIEW_MODE_KEY) || 'compact';
-    });
 
     const visibleTree = useMemo(() => filterTree(treeData, q), [treeData, q]);
     const canReorder = isAdmin && !q;
-
-    const toggleViewMode = () => {
-        const next = viewMode === 'compact' ? 'detailed' : 'compact';
-        setViewMode(next);
-        try { localStorage.setItem(VIEW_MODE_KEY, next); } catch { /* ignore */ }
-    };
 
     useEffect(() => {
         if (userTouchedExpansion) return;
@@ -276,17 +203,9 @@ export default function LayersTreeSider({
         }
     };
 
-    const renderTitle = useCallback((node) => {
-        if (viewMode === 'detailed') {
-            return <DetailedNodeTitle node={node} />;
-        }
-        return (
-            <CompactNodeTitle
-                node={node}
-                onEdit={() => onSelect?.(node.key)}
-            />
-        );
-    }, [viewMode, onSelect]);
+    const renderTitle = useCallback((node) => (
+        <CompactNodeTitle node={node} onEdit={() => onSelect?.(node.key)} />
+    ), [onSelect]);
 
     const containerRef = useRef(null);
     const [containerHeight, setContainerHeight] = useState(400);
@@ -305,16 +224,7 @@ export default function LayersTreeSider({
     }, []);
 
     return (
-        <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 12, height: '100%', position: 'relative' }}>
-            <Tooltip title={viewMode === 'compact' ? 'Cambiar a vista detallada' : 'Cambiar a vista compacta'}>
-                <Button
-                    size="small"
-                    type="text"
-                    icon={<InfoCircleOutlined />}
-                    onClick={toggleViewMode}
-                    style={{ position: 'absolute', top: 8, right: 36, zIndex: 3 }}
-                />
-            </Tooltip>
+        <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 12, height: '100%', minHeight: 0 }}>
             {showHeader && (
                 <Title level={5} style={{ margin: 0 }}>Árbol de capas</Title>
             )}
@@ -377,22 +287,20 @@ export default function LayersTreeSider({
                         line-height: 1.4;
                     }
                 `}</style>
-                {viewMode === 'compact' && (
-                    <style>{`
-                        .layers-tree-compact .ant-tree-switcher_open,
-                        .layers-tree-compact .ant-tree-switcher_close {
-                            width: 0 !important;
-                            min-width: 0 !important;
-                            overflow: hidden;
-                            transition: width 0.15s, min-width 0.15s;
-                        }
-                        .layers-tree-compact .ant-tree-treenode:hover .ant-tree-switcher_open,
-                        .layers-tree-compact .ant-tree-treenode:hover .ant-tree-switcher_close {
-                            width: 24px !important;
-                            min-width: 24px !important;
-                        }
-                    `}</style>
-                )}
+                <style>{`
+                    .layers-tree-compact .ant-tree-switcher_open,
+                    .layers-tree-compact .ant-tree-switcher_close {
+                        width: 0 !important;
+                        min-width: 0 !important;
+                        overflow: hidden;
+                        transition: width 0.15s, min-width 0.15s;
+                    }
+                    .layers-tree-compact .ant-tree-treenode:hover .ant-tree-switcher_open,
+                    .layers-tree-compact .ant-tree-treenode:hover .ant-tree-switcher_close {
+                        width: 24px !important;
+                        min-width: 24px !important;
+                    }
+                `}</style>
                 <style>{`
                     .layers-tree-compact .ant-tree-draggable-icon {
                         width: 16px !important;
@@ -420,12 +328,12 @@ export default function LayersTreeSider({
                         onExpand={(keys) => { setExpandedKeys(keys); setUserTouchedExpansion(true); saveExpandedKeys(keys); }}
                         autoExpandParent={Boolean(q)}
                         expandAction={false}
-                        draggable={canReorder ? { icon: <HolderOutlined />, nodeDraggable: () => true } : false}
+                        draggable={canReorder ? { icon: <HolderOutlined />, nodeDraggable: (node) => !isEventoNode(node?.nodeType) } : false}
                         onDrop={handleDrop}
                         blockNode
                         virtual
                         height={containerHeight}
-                        itemHeight={viewMode === 'detailed' ? 64 : 44}
+                        itemHeight={44}
                     />
                 )}
             </div>
