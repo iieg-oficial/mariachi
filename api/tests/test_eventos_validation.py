@@ -81,6 +81,79 @@ def test_capa_completa_aceptada(admin_session, db_session):
     assert response.status_code == 201
 
 
+def test_categoria_sin_alias_rechazada(admin_session, db_session):
+    _seed_mapalab(db_session)
+    response = admin_session["client"].post(
+        f"{ADMIN_PREFIX}/eventos",
+        json={"titulo": "T", "capas": [{"tipo": "categoria", "alias": ""}]},
+        headers={"X-CSRF-Token": admin_session["csrf"]},
+    )
+    assert response.status_code == 422
+
+
+def test_categoria_con_subcapas_aceptada(admin_session, db_session):
+    _seed_mapalab(db_session)
+    response = admin_session["client"].post(
+        f"{ADMIN_PREFIX}/eventos",
+        json={
+            "titulo": "T",
+            "capas": [
+                {
+                    "tipo": "categoria",
+                    "alias": "Indicadores",
+                    "capas": [
+                        {"tipo": "etiqueta", "alias": "Demografia"},
+                        {"tipo": "capa", "workspace": "ws", "layer": "lyr"},
+                    ],
+                },
+            ],
+        },
+        headers={"X-CSRF-Token": admin_session["csrf"]},
+    )
+    assert response.status_code == 201
+
+
+def test_categoria_anidada_rechazada(admin_session, db_session):
+    _seed_mapalab(db_session)
+    response = admin_session["client"].post(
+        f"{ADMIN_PREFIX}/eventos",
+        json={
+            "titulo": "T",
+            "capas": [
+                {
+                    "tipo": "categoria",
+                    "alias": "Outer",
+                    "capas": [
+                        {"tipo": "categoria", "alias": "Inner"},
+                    ],
+                },
+            ],
+        },
+        headers={"X-CSRF-Token": admin_session["csrf"]},
+    )
+    assert response.status_code == 422
+
+
+def test_capa_con_subcapas_rechazada(admin_session, db_session):
+    _seed_mapalab(db_session)
+    response = admin_session["client"].post(
+        f"{ADMIN_PREFIX}/eventos",
+        json={
+            "titulo": "T",
+            "capas": [
+                {
+                    "tipo": "capa",
+                    "workspace": "ws",
+                    "layer": "lyr",
+                    "capas": [{"tipo": "etiqueta", "alias": "x"}],
+                },
+            ],
+        },
+        headers={"X-CSRF-Token": admin_session["csrf"]},
+    )
+    assert response.status_code == 422
+
+
 def test_bbox_fuera_de_rango_rechazado(admin_session, db_session):
     _seed_mapalab(db_session)
     response = admin_session["client"].post(

@@ -1,21 +1,56 @@
 import { useMemo, useState } from 'react';
-import { Button, Empty, Input, Space, Switch, Table, Tag, Tooltip, Typography } from 'antd';
-import { ArrowDownOutlined, ArrowUpOutlined, DeleteOutlined, EditOutlined, PlusOutlined, TagOutlined } from '@ant-design/icons';
+import { Button, Empty, Space, Table, Typography } from 'antd';
+import { ApartmentOutlined, PlusOutlined, TagOutlined } from '@ant-design/icons';
+import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
+import { SortableContext, arrayMove, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import LayerContentDrawer from '@features/mapalab-layers/components/LayerContentDrawer';
 import { addCapaToEvento } from '@features/mapalab-eventos/helpers/addCapa';
 import { flattenLeaves, useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
 import { useAuth } from '@shared/contexts/useAuth';
 import AddCapaModal from './AddCapaModal';
+import { buildCapasColumns } from './capasTableColumns';
+import { CapasSortableRow } from './CapasSortableRow';
 
 const { Text } = Typography;
+
+const reorder = (list) => list.map((c, i) => ({ ...c, orden: i }));
+
+const collectTaken = (list) => {
+    const set = new Set();
+    const walk = (items) => {
+        for (const c of items || []) {
+            if (c.tipo === 'capa') set.add(`${c.workspace}/${c.layer}`);
+            if (c.tipo === 'categoria') walk(c.capas);
+        }
+    };
+    walk(list);
+    return set;
+};
+
+const itemKey = (r, i) => {
+    if (r.tipo === 'etiqueta') return `etiqueta-${i}`;
+    if (r.tipo === 'categoria') return `categoria-${i}`;
+    return `${r.workspace}/${r.layer}`;
+};
+
+const rootRowKey = (r, i) => `root::${itemKey(r, i)}`;
+const childRowKey = (catIdx) => (r, i) => `cat-${catIdx}::${itemKey(r, i)}`;
+
+const TABLE_COMPONENTS = { body: { row: CapasSortableRow } };
 
 export default function CapasField({ value = [], onChange, disabled }) {
     const { rawTree, loading } = useLayerTreeAdmin();
     const { user } = useAuth();
     const isAdmin = user?.role === 'tetlamamakani';
     const [modalOpen, setModalOpen] = useState(false);
+    const [addingToCategoria, setAddingToCategoria] = useState(null);
     const [editingLayerId, setEditingLayerId] = useState(null);
     const [reloadKey, setReloadKey] = useState(0);
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    );
 
     const registeredIndex = useMemo(() => {
         const m = new Map();
@@ -23,130 +58,169 @@ export default function CapasField({ value = [], onChange, disabled }) {
         return m;
     }, [rawTree]);
 
-    const taken = useMemo(
-        () => new Set(value.map((c) => `${c.workspace}/${c.layer}`)),
-        [value],
-    );
+    const taken = useMemo(() => collectTaken(value), [value]);
 
-    const addCapa = (leaf) => addCapaToEvento(leaf, value, onChange, () => setReloadKey((k) => k + 1));
+    const replaceChildren = (catIdx, nextChildren) => {
+        onChange?.(value.map((c, i) => (
+            i === catIdx ? { ...c, capas: reorder(nextChildren) } : c
+        )));
+    };
 
-    const addEtiqueta = () => {
+    const containerItems = (containerId) => (containerId === 'root'
+        ? value
+        : (value[parseInt(containerId.split('-')[1], 10)]?.capas || []));
+
+    const replaceContainer = (containerId, nextList) => {
+        if (containerId === 'root') return onChange?.(reorder(nextList));
+        const idx = parseInt(containerId.split('-')[1], 10);
+        return replaceChildren(idx, nextList);
+    };
+
+    const moveItemAcrossContainers = (srcContainer, srcIdx, dstContainer) => {
+        if (srcContainer === dstContainer) return;
+        const srcList = containerItems(srcContainer);
+        const item = srcList[srcIdx];
+        if (!item) return;
+        if (item.tipo === 'categoria' && dstContainer !== 'root') return;
+        const dstList = containerItems(dstContainer);
+        const removed = srcList.filter((_, i) => i !== srcIdx);
+        const inserted = [...dstList, item];
+        if (srcContainer === 'root' && dstContainer.startsWith('cat-')) {
+            const dstIdx = parseInt(dstContainer.split('-')[1], 10);
+            const adjustedDst = srcIdx < dstIdx ? dstIdx - 1 : dstIdx;
+            const nextRoot = removed.map((c, i) => (
+                i === adjustedDst ? { ...c, capas: reorder(inserted) } : c
+            ));
+            return onChange?.(reorder(nextRoot));
+        }
+        if (srcContainer.startsWith('cat-') && dstContainer === 'root') {
+            const srcCatIdx = parseInt(srcContainer.split('-')[1], 10);
+            const nextRoot = value.map((c, i) => (
+                i === srcCatIdx ? { ...c, capas: reorder(removed) } : c
+            ));
+            return onChange?.(reorder([...nextRoot, item]));
+        }
+        const srcCatIdx = parseInt(srcContainer.split('-')[1], 10);
+        const dstCatIdx = parseInt(dstContainer.split('-')[1], 10);
+        const nextRoot = value.map((c, i) => {
+            if (i === srcCatIdx) return { ...c, capas: reorder(removed) };
+            if (i === dstCatIdx) return { ...c, capas: reorder(inserted) };
+            return c;
+        });
+        return onChange?.(nextRoot);
+    };
+
+    const handleDragEnd = (containerId) => (event) => {
+        const { active, over } = event;
+        if (!over || active.id === over.id) return;
+        const list = containerItems(containerId);
+        const oldIndex = list.findIndex((r, i) => itemKey(r, i) === active.id.split('::')[1]);
+        const newIndex = list.findIndex((r, i) => itemKey(r, i) === over.id.split('::')[1]);
+        if (oldIndex < 0 || newIndex < 0) return;
+        replaceContainer(containerId, arrayMove(list, oldIndex, newIndex));
+    };
+
+    const onAddCapa = (leaf) => {
+        if (addingToCategoria === null) {
+            return addCapaToEvento(leaf, value, (next) => onChange?.(next), () => setReloadKey((k) => k + 1));
+        }
+        const children = value[addingToCategoria]?.capas || [];
+        return addCapaToEvento(
+            leaf,
+            children,
+            (next) => replaceChildren(addingToCategoria, next),
+            () => setReloadKey((k) => k + 1),
+        );
+    };
+
+    const openAddCapaModal = (catIdx = null) => {
+        setAddingToCategoria(catIdx);
+        setModalOpen(true);
+    };
+
+    const addEtiquetaRoot = () => {
         onChange?.([...value, { tipo: 'etiqueta', alias: 'Sección', orden: value.length }]);
     };
 
-    const removeCapa = (idx) => {
-        const next = value.filter((_, i) => i !== idx).map((c, i) => ({ ...c, orden: i }));
-        onChange?.(next);
+    const addCategoria = () => {
+        onChange?.([
+            ...value,
+            { tipo: 'categoria', alias: 'Categoría', orden: value.length, capas: [] },
+        ]);
     };
 
-    const updateField = (idx, patch) => {
-        onChange?.(value.map((c, i) => (i === idx ? { ...c, ...patch } : c)));
+    const addEtiquetaIn = (catIdx) => {
+        const children = value[catIdx]?.capas || [];
+        replaceChildren(catIdx, [...children, { tipo: 'etiqueta', alias: 'Sección', orden: children.length }]);
     };
 
-    const moveCapa = (idx, dir) => {
-        const target = idx + dir;
-        if (target < 0 || target >= value.length) return;
-        const next = [...value];
-        [next[idx], next[target]] = [next[target], next[idx]];
-        onChange?.(next.map((c, i) => ({ ...c, orden: i })));
+    const handlersFor = (containerId) => {
+        const list = containerItems(containerId);
+        const setList = (next) => replaceContainer(containerId, next);
+        return {
+            onUpdate: (idx, patch) => setList(list.map((c, i) => (i === idx ? { ...c, ...patch } : c))),
+            onRemove: (idx) => setList(list.filter((_, i) => i !== idx)),
+            onMoveTo: (idx, dst) => moveItemAcrossContainers(containerId, idx, dst),
+        };
     };
 
-    const columns = [
-        {
-            title: 'Capa / Etiqueta',
-            key: 'capa',
-            render: (_, record, idx) => (
-                record.tipo === 'etiqueta' ? (
-                    <Space size={6} style={{ width: '100%' }}>
-                        <Tag color="purple" style={{ marginRight: 0 }}>Etiqueta</Tag>
-                        <Input
-                            size="small"
-                            placeholder="Texto de la etiqueta (ej. Servicios públicos)"
-                            value={record.alias || ''}
-                            onChange={(e) => updateField(idx, { alias: e.target.value })}
-                            disabled={disabled}
-                            style={{ minWidth: 240 }}
-                        />
-                    </Space>
-                ) : (
-                    <Space direction="vertical" size={0}>
-                        <Tag color="blue">{record.workspace}:{record.layer}</Tag>
-                        <Input
-                            size="small"
-                            placeholder="Alias mostrado en el panel"
-                            value={record.alias || ''}
-                            onChange={(e) => updateField(idx, { alias: e.target.value })}
-                            disabled={disabled}
-                            style={{ marginTop: 4, maxWidth: 320 }}
-                        />
-                    </Space>
-                )
-            ),
-        },
-        {
-            title: (
-                <Tooltip title="Si está activado, la capa se enciende sola al abrir el evento. Si está apagado, el usuario debe activarla manualmente desde el panel.">
-                    <span>Auto-activar</span>
-                </Tooltip>
-            ),
-            key: 'autoActivar',
-            width: 110,
-            align: 'center',
-            render: (_, record, idx) => (
-                record.tipo === 'etiqueta' ? null : (
-                    <Switch
-                        size="small"
-                        checked={record.autoActivar !== false}
-                        onChange={(val) => updateField(idx, { autoActivar: val })}
-                        disabled={disabled}
-                        checkedChildren="Auto"
-                        unCheckedChildren="Manual"
-                    />
-                )
-            ),
-        },
-        {
-            title: 'Orden',
-            key: 'orden',
-            width: 110,
-            render: (_, _record, idx) => (
-                <Space size={2}>
-                    <Button size="small" icon={<ArrowUpOutlined />} aria-label="Mover hacia arriba" disabled={disabled || idx === 0} onClick={() => moveCapa(idx, -1)} />
-                    <Button size="small" icon={<ArrowDownOutlined />} aria-label="Mover hacia abajo" disabled={disabled || idx === value.length - 1} onClick={() => moveCapa(idx, 1)} />
+    const columnsFor = (containerId) => buildCapasColumns({
+        ...handlersFor(containerId),
+        disabled,
+        registeredIndex,
+        onEditLayer: setEditingLayerId,
+        containerId,
+        rootValue: value,
+    });
+
+    const renderCategoriaChildren = (record, catIdx) => {
+        const children = record.capas || [];
+        const containerId = `cat-${catIdx}`;
+        return (
+            <div style={{ padding: '8px 0 8px 24px', background: '#fafafa' }}>
+                <Space style={{ justifyContent: 'flex-end', width: '100%', marginBottom: 8 }} wrap>
+                    <Button size="small" icon={<TagOutlined />} onClick={() => addEtiquetaIn(catIdx)} disabled={disabled}>
+                        Agregar etiqueta
+                    </Button>
+                    <Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => openAddCapaModal(catIdx)} disabled={disabled || loading}>
+                        Agregar capa
+                    </Button>
                 </Space>
-            ),
-        },
-        {
-            title: '',
-            key: 'acciones',
-            width: 90,
-            render: (_, record, idx) => {
-                const layerId = record.tipo === 'capa' ? registeredIndex.get(`${record.workspace}/${record.layer}`)?.id : null;
-                return (
-                    <Space size={4}>
-                        {record.tipo === 'capa' && (
-                            <Tooltip title={layerId ? 'Editar tarjeta, metadatos y simbologia' : 'Agregala al arbol primero'}>
-                                <Button size="small" icon={<EditOutlined />} aria-label="Editar capa" disabled={disabled || !layerId} onClick={() => setEditingLayerId(layerId)} />
-                            </Tooltip>
-                        )}
-                        <Button danger size="small" icon={<DeleteOutlined />} aria-label="Eliminar capa" disabled={disabled} onClick={() => removeCapa(idx)} />
-                    </Space>
-                );
-            },
-        },
-    ];
+                {children.length === 0 ? (
+                    <Empty description="Sin elementos en esta categoría" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                ) : (
+                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd(containerId)}>
+                        <SortableContext items={children.map((r, i) => childRowKey(catIdx)(r, i))} strategy={verticalListSortingStrategy}>
+                            <Table
+                                rowKey={childRowKey(catIdx)}
+                                columns={columnsFor(containerId)}
+                                dataSource={children}
+                                pagination={false}
+                                size="small"
+                                showHeader={false}
+                                components={TABLE_COMPONENTS}
+                            />
+                        </SortableContext>
+                    </DndContext>
+                )}
+            </div>
+        );
+    };
 
     return (
         <Space direction="vertical" style={{ width: '100%' }}>
             <Space style={{ justifyContent: 'space-between', width: '100%' }} wrap>
                 <Text type="secondary" style={{ fontSize: 12 }}>
-                    Capas y etiquetas que aparecerán en el panel del evento. Reordena con los botones.
+                    Arrastra el handle (≡) para reordenar. Usa el botón mover para cambiar de contenedor (raíz ↔ categorías). Las categorías solo viven en la raíz.
                 </Text>
                 <Space size={6} wrap>
-                    <Button icon={<TagOutlined />} onClick={addEtiqueta} disabled={disabled}>
+                    <Button icon={<TagOutlined />} onClick={addEtiquetaRoot} disabled={disabled}>
                         Agregar etiqueta
                     </Button>
-                    <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalOpen(true)} disabled={disabled || loading}>
+                    <Button icon={<ApartmentOutlined />} onClick={addCategoria} disabled={disabled}>
+                        Agregar categoría
+                    </Button>
+                    <Button type="primary" icon={<PlusOutlined />} onClick={() => openAddCapaModal(null)} disabled={disabled || loading}>
                         Agregar capa
                     </Button>
                 </Space>
@@ -155,19 +229,29 @@ export default function CapasField({ value = [], onChange, disabled }) {
             {value.length === 0 ? (
                 <Empty description="Sin capas asignadas" />
             ) : (
-                <Table
-                    rowKey={(r, i) => (r.tipo === 'etiqueta' ? `etiqueta-${i}` : `${r.workspace}/${r.layer}`)}
-                    columns={columns}
-                    dataSource={value}
-                    pagination={false}
-                    size="small"
-                />
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd('root')}>
+                    <SortableContext items={value.map((r, i) => rootRowKey(r, i))} strategy={verticalListSortingStrategy}>
+                        <Table
+                            rowKey={rootRowKey}
+                            columns={columnsFor('root')}
+                            dataSource={value}
+                            pagination={false}
+                            size="small"
+                            components={TABLE_COMPONENTS}
+                            expandable={{
+                                expandedRowRender: (record, idx) => renderCategoriaChildren(record, idx),
+                                rowExpandable: (record) => record.tipo === 'categoria',
+                                defaultExpandAllRows: true,
+                            }}
+                        />
+                    </SortableContext>
+                </DndContext>
             )}
 
             <AddCapaModal
                 open={modalOpen}
                 onClose={() => setModalOpen(false)}
-                onAdd={addCapa}
+                onAdd={onAddCapa}
                 isAdmin={isAdmin}
                 labelByKey={registeredIndex}
                 taken={taken}

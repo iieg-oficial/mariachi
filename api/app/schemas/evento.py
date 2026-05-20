@@ -21,12 +21,13 @@ DESCRIPCION_MAX_LENGTH = 2000
 
 
 class CapaRef(CamelCaseInput):
-    tipo: Literal['capa', 'etiqueta'] = 'capa'
+    tipo: Literal['capa', 'etiqueta', 'categoria'] = 'capa'
     workspace: str | None = Field(default=None, max_length=200)
     layer: str | None = Field(default=None, max_length=200)
     alias: str | None = Field(default=None, max_length=ALIAS_MAX_LENGTH)
     orden: int = 0
     auto_activar: bool = Field(default=True, serialization_alias='autoActivar')
+    capas: list['CapaRef'] | None = None
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -37,10 +38,23 @@ class CapaRef(CamelCaseInput):
                 raise ValueError('Las capas requieren `workspace`')
             if not (self.layer and self.layer.strip()):
                 raise ValueError('Las capas requieren `layer`')
+            if self.capas is not None:
+                raise ValueError('Las capas no pueden contener sub-`capas`')
         elif self.tipo == 'etiqueta':
             if not (self.alias and self.alias.strip()):
                 raise ValueError('Las etiquetas requieren un texto en `alias`')
+            if self.capas is not None:
+                raise ValueError('Las etiquetas no pueden contener sub-`capas`')
+        elif self.tipo == 'categoria':
+            if not (self.alias and self.alias.strip()):
+                raise ValueError('Las categorias requieren un texto en `alias`')
+            for child in self.capas or []:
+                if child.tipo == 'categoria':
+                    raise ValueError('Las categorias no pueden anidarse (profundidad maxima: 1)')
         return self
+
+
+CapaRef.model_rebuild()
 
 
 class BBox(CamelCaseInput):

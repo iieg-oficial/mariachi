@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { Button, Image, Input, Space } from 'antd';
-import { FileImageOutlined } from '@ant-design/icons';
+import { Button, Image, Input, Space, Typography } from 'antd';
+import { ClearOutlined, FileImageOutlined } from '@ant-design/icons';
 import { BucketFilePicker } from '@features/media';
 import { message } from '@shared/services/message';
 
+const { Text } = Typography;
 const BUCKET_SLUGS = ['mapalab', 'iieg'];
+const RECOMMENDED_PREFIX = 'eventos/';
 const ALLOWED_PREFIXES = ['http://', 'https://', '/acervo/', '/', 'data:image/'];
 
 const isValidImageUrl = (v) => {
@@ -43,7 +45,18 @@ export default function EventoIconPicker({ value, onChange, disabled }) {
                 >
                     Media
                 </Button>
+                {value && (
+                    <Button
+                        icon={<ClearOutlined />}
+                        disabled={disabled}
+                        onClick={() => onChange?.(null)}
+                        title="Quitar imagen"
+                    />
+                )}
             </Space.Compact>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+                Convención: subir a <code>mapalab/{RECOMMENDED_PREFIX}</code>. Para iconos compartidos entre secciones del IIEG, usar <code>iieg/iconos/</code>.
+            </Text>
             {invalid && (
                 <span style={{ color: '#ff4d4f', fontSize: 12 }}>
                     URL no válida — debe empezar con http(s)://, /acervo/ o data:image/
@@ -64,7 +77,7 @@ export default function EventoIconPicker({ value, onChange, disabled }) {
                 onClose={() => setPickerOpen(false)}
                 onSelect={onSelect}
                 bucketSlugs={BUCKET_SLUGS}
-                title="Elegir icono del evento"
+                title="Elegir imagen del evento"
                 uploadAccept="image/*"
             />
         </Space>

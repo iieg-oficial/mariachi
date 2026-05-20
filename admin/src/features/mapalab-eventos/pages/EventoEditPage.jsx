@@ -37,14 +37,27 @@ const { Content } = Layout;
 const { Title, Text } = Typography;
 
 function normalizeCapas(capas) {
-    return (capas || []).map((c) => ({
-        tipo: c.tipo || 'capa',
-        workspace: c.workspace,
-        layer: c.layer,
-        alias: c.alias,
-        orden: c.orden ?? 0,
-        autoActivar: c.autoActivar ?? c.auto_activar ?? true,
-    }));
+    return (capas || []).map((c) => {
+        const tipo = c.tipo || 'capa';
+        if (tipo === 'categoria') {
+            return {
+                tipo,
+                alias: c.alias,
+                orden: c.orden ?? 0,
+                capas: normalizeCapas(c.capas).map((child) => (
+                    child.tipo === 'categoria' ? { ...child, tipo: 'etiqueta', capas: undefined } : child
+                )),
+            };
+        }
+        return {
+            tipo,
+            workspace: c.workspace,
+            layer: c.layer,
+            alias: c.alias,
+            orden: c.orden ?? 0,
+            autoActivar: c.autoActivar ?? c.auto_activar ?? true,
+        };
+    });
 }
 
 function eventoToForm(e) {
@@ -257,7 +270,7 @@ export default function EventoEditPage() {
     const estado = evento?.estado;
 
     return (
-        <Content style={{ padding: isMobile ? 12 : 24, maxWidth: 1100, margin: '0 auto', width: '100%' }}>
+        <Content style={{ padding: isMobile ? 6 : 24, width: '100%' }}>
             <Space direction="vertical" size="large" style={{ width: '100%' }}>
                 <Space style={{ justifyContent: 'space-between', width: '100%' }} wrap>
                     <Space>
@@ -340,7 +353,7 @@ export default function EventoEditPage() {
                 {draft.saving && <Text type="secondary" style={{ fontSize: 12 }}>Guardando borrador…</Text>}
 
                 <Form form={form} layout="vertical" initialValues={initialValues} onValuesChange={handleValuesChange}>
-                    <Card styles={{ body: { padding: isMobile ? 12 : 16 } }}>
+                    <Card styles={{ body: { padding: isMobile ? 6 : 16 } }}>
                         <Tabs
                             defaultActiveKey="info"
                             tabPosition={isMobile ? 'top' : 'left'}

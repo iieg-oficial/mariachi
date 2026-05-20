@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useReducer, useState } from 'react';
 import { Alert, Button, Input, Modal, Space, Switch, Table, Tag, Tooltip, Typography } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import api from '@shared/services/api';
@@ -6,6 +6,19 @@ import api from '@shared/services/api';
 const { Text } = Typography;
 
 const ELLIPSIS = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 };
+
+function workspacesReducer(state, action) {
+    switch (action.type) {
+    case 'fetching':
+        return { ...state, loading: true, error: null };
+    case 'success':
+        return { data: action.data, loading: false, error: null };
+    case 'error':
+        return { data: [], loading: false, error: action.error };
+    default:
+        return state;
+    }
+}
 
 export default function AddCapaModal({
     open,
@@ -18,24 +31,24 @@ export default function AddCapaModal({
 }) {
     const [search, setSearch] = useState('');
     const [onlyUnregistered, setOnlyUnregistered] = useState(false);
-    const [gsWorkspaces, setGsWorkspaces] = useState([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
+    const [{ data: gsWorkspaces, loading, error }, dispatch] = useReducer(
+        workspacesReducer,
+        { data: [], loading: false, error: null },
+    );
 
     useEffect(() => {
         if (!open) return undefined;
         let cancelled = false;
-        setLoading(true);
-        setError(null);
+        dispatch({ type: 'fetching' });
         const params = isAdmin ? { include_unregistered: true } : {};
         api.get('/geoserver/workspaces', { params })
-            .then((res) => { if (!cancelled) setGsWorkspaces(res.data || []); })
+            .then((res) => { if (!cancelled) dispatch({ type: 'success', data: res.data || [] }); })
             .catch((err) => {
-                if (cancelled) return;
-                setGsWorkspaces([]);
-                setError(err?.response?.data?.detail || 'No se pudo conectar a GeoServer. Reintenta o avisa al admin.');
-            })
-            .finally(() => { if (!cancelled) setLoading(false); });
+                if (!cancelled) dispatch({
+                    type: 'error',
+                    error: err?.response?.data?.detail || 'No se pudo conectar a GeoServer. Reintenta o avisa al admin.',
+                });
+            });
         return () => { cancelled = true; };
     }, [open, isAdmin, reloadKey]);
 
