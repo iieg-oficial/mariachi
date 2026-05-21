@@ -56,6 +56,7 @@ export function buildEventosTreeNode(eventos, rawTree) {
                 key: eKey,
                 title: e.titulo || `Evento ${e.id}`,
                 nodeType: 'evento',
+                iconUrl: e.iconoUrl,
                 raw: { kind: 'evento', id: e.id, estado: e.estado, activo: e.activo },
                 children: capaNodes(e.capas, eKey, layerLookup),
             };

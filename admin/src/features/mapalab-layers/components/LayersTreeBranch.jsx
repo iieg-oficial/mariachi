@@ -1,6 +1,7 @@
 import { Tag, Typography } from 'antd';
 import { CaretDownOutlined, CaretRightOutlined, DownOutlined, UpOutlined } from '@ant-design/icons';
 import { isPropertyOfGroup, labelForNode } from '@features/mapalab-layers/constants/nodeTypes';
+import { resolveAcervoUrl } from '@shared/utils/acervoUrl';
 
 const { Text } = Typography;
 
@@ -21,8 +22,20 @@ function TitleBlock({ node, selected, isMobile }) {
     const tagColor = NODE_TAG_COLORS[node.nodeType] || 'default';
     const isProperty = isPropertyOfGroup(node.nodeType, node.parentNodeType);
     const { workspaceAlias, geoserverLayer, disabled, hiddenInMenu } = node;
+    const showIcon = (node.nodeType === 'tema' || node.nodeType === 'evento') && node.iconUrl;
+    const iconSrc = showIcon ? resolveAcervoUrl(node.iconUrl) : null;
     return (
         <span style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: isMobile ? 'nowrap' : 'wrap', minWidth: 0, flex: '1 1 auto', overflow: 'hidden' }}>
+            {iconSrc && (
+                <img
+                    src={iconSrc}
+                    alt=""
+                    width={18}
+                    height={18}
+                    style={{ flexShrink: 0, objectFit: 'contain', borderRadius: 2 }}
+                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                />
+            )}
             <Text strong={selected} style={{
                 minWidth: 0,
                 flex: '1 1 auto',

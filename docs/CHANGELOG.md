@@ -11,6 +11,15 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ## [1.6.0] - 2026-05-21
 
+### MapaLab admin: iconos visibles en el árbol de capas y eventos
+
+El árbol de `/mapalab/layers` ahora muestra junto al título de cada **tema** y de cada **evento** el icono que tienen asignado, igual que el visor público. Antes ese icono solo era visible al abrir el editor del tema/evento, no en la navegación del árbol.
+
+- **`admin/src/shared/utils/acervoUrl.js`** (nuevo): helper `resolveAcervoUrl(url)` que deja absolutas las URLs que ya lo son (`http(s)://`, `data:`, `/acervo/`, `/api/`) y prepende `/acervo/` a las relativas. Necesario porque el endpoint `/mapalab/api/layers/tree` viene del backend de mapalab, que no aplica `to_absolute` sobre `icon_url` antes de exponerlo (lo devuelve tal cual de DB, en formato `bucket/key`).
+- **`admin/src/features/mapalab-layers/hooks/useLayerTreeAdmin.js`**: `toAntTreeData` ahora propaga `iconUrl` del nodo crudo al nodo del árbol.
+- **`admin/src/features/mapalab-eventos/hooks/useEventoTreeNodes.js`**: `buildEventosTreeNode` ahora propaga `iconoUrl` del evento al nodo del árbol (mariachi sí serializa este campo absoluto, así que `resolveAcervoUrl` solo actúa como passthrough).
+- **`admin/src/features/mapalab-layers/components/LayersTreeBranch.jsx::TitleBlock`**: cuando `nodeType` es `tema` o `evento` y hay `iconUrl`, renderiza un `<img>` de 18×18 px antes del título (con `objectFit: contain`, `flexShrink: 0` y `onError` que oculta el `<img>` si el recurso falla, para no romper la fila).
+
 ### Inicio: enlaces a repositorio y tablero Taiga en cards de plataformas
 
 Las cards de la sección "Plataformas del ecosistema" en `/inicio` ahora muestran enlaces directos al repo de GitHub y al tablero Taiga de cada plataforma, además del enlace para visitar la app. La información vive hardcoded en `platforms_config.py` (única fuente de verdad para topología del ecosistema); no se consulta a ningún servicio remoto.

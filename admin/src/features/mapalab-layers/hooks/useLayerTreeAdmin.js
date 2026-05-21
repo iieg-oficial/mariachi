@@ -12,6 +12,7 @@ const toAntTreeData = (nodes, parentNodeType = null) =>
         geoserverLayer: n.geoserverLayer,
         disabled: n.disabled,
         hiddenInMenu: n.hiddenInMenu,
+        iconUrl: n.iconUrl,
         raw: n,
         children: n.children && n.children.length > 0 ? toAntTreeData(n.children, n.nodeType) : undefined,
     }));
