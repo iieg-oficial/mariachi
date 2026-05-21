@@ -33,6 +33,7 @@ class Evento(Base):
     capas = Column(JSON, default=list, nullable=False)
     facts = Column(JSON, default=list, nullable=False)
     fun_icon = Column(JSON, nullable=True)
+    basemap_id = Column(String(50), nullable=True)
     activo = Column(Boolean, nullable=False, default=False)
     fecha_inicio = Column(DateTime(timezone=True), nullable=True)
     fecha_fin = Column(DateTime(timezone=True), nullable=True)

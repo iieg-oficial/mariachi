@@ -153,6 +153,7 @@ class _EventoVisibleFields(CamelCaseInput, _ImageUrlMixin):
     capas: list[CapaRef] = Field(default_factory=list)
     facts: list[FactRef] = Field(default_factory=list)
     fun_icon: SymbolSnapshot | None = Field(default=None, serialization_alias='funIcon')
+    basemap_id: str | None = Field(default=None, max_length=50, serialization_alias='basemapId')
     fecha_inicio: datetime | None = Field(default=None, serialization_alias='fechaInicio')
     fecha_fin: datetime | None = Field(default=None, serialization_alias='fechaFin')
     orden: int = 0
@@ -179,6 +180,7 @@ class EventoUpdate(CamelCaseInput, _ImageUrlMixin):
     capas: list[CapaRef] | None = None
     facts: list[FactRef] | None = None
     fun_icon: SymbolSnapshot | None = Field(default=None, serialization_alias='funIcon')
+    basemap_id: str | None = Field(default=None, max_length=50, serialization_alias='basemapId')
     activo: bool | None = None
     fecha_inicio: datetime | None = Field(default=None, serialization_alias='fechaInicio')
     fecha_fin: datetime | None = Field(default=None, serialization_alias='fechaFin')

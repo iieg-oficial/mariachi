@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import dayjs from 'dayjs';
-import { Alert, Button, Card, DatePicker, Form, Input, InputNumber, Layout, Modal, Popconfirm, Space, Spin, Switch, Tabs, Tag, Typography } from 'antd';
+import { Alert, Button, Card, DatePicker, Form, Input, InputNumber, Layout, Modal, Popconfirm, Select, Space, Spin, Switch, Tabs, Tag, Typography } from 'antd';
 import {
     ArrowLeftOutlined,
     CheckOutlined,
@@ -77,6 +77,7 @@ function eventoToForm(e) {
             ? e.facts.map((f) => (typeof f === 'string' ? { text: f, symbol: null } : { text: f?.text || '', symbol: f?.symbol || null }))
             : [],
         funIcon: e.funIcon || null,
+        basemapId: e.basemapId || null,
         activo: e.activo,
         fechaInicio: e.fechaInicio ? dayjs(e.fechaInicio) : null,
         fechaFin: e.fechaFin ? dayjs(e.fechaFin) : null,
@@ -118,6 +119,7 @@ function formToPayload(values, { isCreate }) {
         capas: values.capas || [],
         facts: cleanFacts,
         funIcon: values.funIcon || null,
+        basemapId: values.basemapId || null,
         activo: Boolean(values.activo),
         fechaInicio: values.fechaInicio ? values.fechaInicio.toISOString() : null,
         fechaFin: values.fechaFin ? values.fechaFin.toISOString() : null,
@@ -460,6 +462,21 @@ export default function EventoEditPage() {
                                                 extra="Imagen ancha tipo banner (3:1 o 4:1). Se muestra cuando el sider del visor está expandido."
                                             >
                                                 <EventoIconPicker />
+                                            </Form.Item>
+                                            <Form.Item
+                                                name="basemapId"
+                                                label="Mapa base al abrir el evento"
+                                                extra="Si lo dejas vacío, el visor respeta el mapa base activo del usuario. Si eliges uno, se aplica al abrir el evento y se restaura al cerrarlo."
+                                            >
+                                                <Select
+                                                    allowClear
+                                                    placeholder="No forzar (respeta la elección del usuario)"
+                                                    options={[
+                                                        { value: 'voyager', label: 'Carto Voyager (default)' },
+                                                        { value: 'position', label: 'Carto Light' },
+                                                        { value: 'sin_mapalab', label: 'Sin mapa base' },
+                                                    ]}
+                                                />
                                             </Form.Item>
                                         </>
                                     ),
