@@ -26,6 +26,7 @@ from app.api.routes import (
     mapalab_api_keys,
     mapalab_api_keys_internal,
     mapalab_events_public,
+    mapalab_mcp_internal,
     mapalab_shares,
     mapalab_stats,
     media,
@@ -112,6 +113,7 @@ def create_app() -> FastAPI:
     app.include_router(mapalab_shares.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(mapalab_api_keys.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(mapalab_api_keys_internal.router, prefix=settings.admin_prefix)
+    app.include_router(mapalab_mcp_internal.router, prefix=settings.admin_prefix)
     app.include_router(mapalab_stats.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(reportes.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(colibri_tipos.router, prefix=settings.admin_prefix, dependencies=staff_dep)
