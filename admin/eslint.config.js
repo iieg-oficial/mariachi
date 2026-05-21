@@ -74,6 +74,7 @@ export default [
     },
     {
         files: [
+            'src/features/inicio/pages/InicioPage.jsx',
             'src/features/mapalab-eventos/pages/EventoEditPage.jsx',
             'src/features/mapalab-home/components/sectionEditors.jsx',
             'src/features/mapalab-home/pages/HomePage.jsx',

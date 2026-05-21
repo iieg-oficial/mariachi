@@ -11,6 +11,14 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ## [1.7.0] - 2026-05-21
 
+### MapaLab admin: toolbar de markdown inline en el editor de avisos
+
+Hasta ahora la descripción de avisos sólo soportaba **negritas** entre dobles asteriscos (regex casero en el visor). Se amplía a **negritas**, *cursivas*, ~~tachado~~ y [enlaces](url), todos como markdown inline. El editor del admin gana una toolbar con botones que envuelven la selección actual con la sintaxis correspondiente; soporta atajos `Ctrl/Cmd+B` y `Ctrl/Cmd+I`.
+
+- **`admin/src/shared/components/MarkdownTextArea.jsx`** (nuevo): wrappea `Input.TextArea` con una toolbar configurable (`features=['bold','italic','strike','link']`). Los botones llaman a `wrapSelection` que envuelve la selección actual (o inserta un placeholder si no hay selección) con los delimitadores correspondientes; `onMouseDown` previene la pérdida de foco para que la inserción se aplique sobre la selección. El botón de enlace inserta `[texto](https://)` y deja el cursor sobre `https://` listo para reemplazar.
+- **`admin/src/features/mapalab-layers/components/layersEditor/LayerNoticeSection.jsx`**: los `Input.TextArea` de "Descripción" y "Mensaje del banner" se reemplazan por `MarkdownTextArea`. Help text actualizado para listar los formatos soportados. (El parser correspondiente en el visor mapalab — `renderInlineMarkdown` — se centraliza en `mapalab/frontend/src/utils/inlineMarkdown.jsx` y soporta los 4 formatos; cambio en repo `mapalab`.)
+- **`admin/eslint.config.js`**: `src/features/inicio/pages/InicioPage.jsx` añadido al override `max-lines: 'off'` (crecimiento natural por features acumuladas de Taiga + Colibri).
+
 ### Inicio: botón "Reportar" con Colibri en cards de plataformas
 
 Cada card de "Plataformas del ecosistema" gana un cuarto icono `MessageOutlined` que abre el panel de Colibri (mismo widget que se ofrece a terceros) para enviar una sugerencia, bug, problema, duda, solicitud o reporte de datos incorrectos contra esa plataforma. Todos los reportes se registran bajo el source-app `mariachi` con el slug y el label de la plataforma reportada anexados como `source_context.custom.plataforma_slug` / `plataforma_label`.

@@ -19,6 +19,7 @@ import dayjs from 'dayjs';
 import { BellOutlined, ExclamationCircleOutlined, InfoCircleOutlined, WarningOutlined } from '@ant-design/icons';
 import NoticeIconField from './NoticeIconField';
 import NoticeAnchorField from './NoticeAnchorField';
+import MarkdownTextArea from '@shared/components/MarkdownTextArea';
 
 const GEOSERVER_BASE = '/geoserver';
 
@@ -331,14 +332,14 @@ export default function LayerNoticeSection({
                                 <Form.Item
                                     label="Mensaje del banner"
                                     required
-                                    help="Texto único del banner (máx 500 caracteres). Soporta **negritas** entre dobles asteriscos."
+                                    help="Texto único del banner (máx 500 caracteres). Soporta **negritas**, *cursivas*, ~~tachado~~ y [enlaces](url)."
                                 >
-                                    <Input.TextArea
+                                    <MarkdownTextArea
                                         rows={3}
                                         maxLength={500}
                                         showCount
                                         value={safeValue?.title || ''}
-                                        onChange={(e) => setField({ title: e.target.value, description: null })}
+                                        onChange={(v) => setField({ title: v, description: null })}
                                         placeholder="Ej. El ingreso a esta área será únicamente para personas que cuenten con boleto al estadio."
                                     />
                                 </Form.Item>
@@ -347,7 +348,7 @@ export default function LayerNoticeSection({
                                     <Form.Item
                                         label="Título"
                                         required
-                                        help="Texto principal (máx 120 caracteres). Soporta **negritas**."
+                                        help="Texto principal (máx 120 caracteres). Soporta **negritas**, *cursivas* y ~~tachado~~."
                                     >
                                         <Input
                                             maxLength={120}
@@ -357,13 +358,13 @@ export default function LayerNoticeSection({
                                             placeholder="Ej. Datos preliminares"
                                         />
                                     </Form.Item>
-                                    <Form.Item label="Descripción" help="Opcional, máx 500 caracteres. Soporta **negritas**.">
-                                        <Input.TextArea
+                                    <Form.Item label="Descripción" help="Opcional, máx 500 caracteres. Soporta **negritas**, *cursivas*, ~~tachado~~ y [enlaces](url).">
+                                        <MarkdownTextArea
                                             rows={3}
                                             maxLength={500}
                                             showCount
                                             value={safeValue?.description || ''}
-                                            onChange={(e) => setField({ description: e.target.value })}
+                                            onChange={(v) => setField({ description: v })}
                                             placeholder="Detalle del aviso"
                                         />
                                     </Form.Item>
