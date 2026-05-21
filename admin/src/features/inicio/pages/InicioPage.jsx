@@ -6,6 +6,9 @@ import {
     EditOutlined,
     AppstoreOutlined,
     FileTextOutlined,
+    GithubOutlined,
+    ProjectOutlined,
+    LinkOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '@shared/contexts/useAuth';
 import Markdown from '@shared/components/Markdown';
@@ -46,8 +49,24 @@ const tituloRecurso = (record) => {
 };
 
 
+const IconLink = ({ href, title, icon, external = false }) => {
+    const trigger = (
+        <Button
+            type="text"
+            size="small"
+            icon={icon}
+            aria-label={title}
+            style={{ color: 'rgba(0,0,0,0.45)' }}
+        />
+    );
+    const wrapper = external
+        ? <a href={href} target="_blank" rel="noopener noreferrer">{trigger}</a>
+        : <Link to={href}>{trigger}</Link>;
+    return <Tooltip title={title}>{wrapper}</Tooltip>;
+};
+
 const PlataformaCard = ({ plataforma }) => {
-    const { slug, label, url, version, healthy } = plataforma;
+    const { slug, label, url, repo, taiga, version, healthy } = plataforma;
     const versionTag = version
         ? <Tag color="blue">v{version}</Tag>
         : <Tag color="default">sin versión</Tag>;
@@ -55,25 +74,32 @@ const PlataformaCard = ({ plataforma }) => {
         ? <Badge status="success" text="activa" />
         : <Tooltip title="No respondió al endpoint /ontoy"><Badge status="default" text="no integrada" /></Tooltip>;
 
-    const body = (
-        <Space orientation="vertical" size={8} style={{ width: '100%' }}>
-            <Space style={{ justifyContent: 'space-between', width: '100%' }}>
-                <Text strong style={{ fontSize: 16 }}>{label}</Text>
-                {versionTag}
-            </Space>
-            <Text type="secondary" style={{ fontSize: 12 }}>{slug}</Text>
-            {statusBadge}
-        </Space>
+    const acciones = [];
+    if (url && healthy) acciones.push(
+        <IconLink key="visit" href={url} title={`Abrir ${label}`} icon={<LinkOutlined />} />
+    );
+    if (repo) acciones.push(
+        <IconLink key="repo" href={repo} title="Repositorio" icon={<GithubOutlined />} external />
+    );
+    if (taiga) acciones.push(
+        <IconLink key="taiga" href={taiga} title="Tablero Taiga" icon={<ProjectOutlined />} external />
     );
 
-    if (url && healthy) {
-        return (
-            <Link to={url} style={{ display: 'block', height: '100%' }}>
-                <Card hoverable size="small" styles={{ body: { padding: 16 } }}>{body}</Card>
-            </Link>
-        );
-    }
-    return <Card size="small" styles={{ body: { padding: 16 } }}>{body}</Card>;
+    return (
+        <Card size="small" styles={{ body: { padding: 16 } }}>
+            <Space orientation="vertical" size={8} style={{ width: '100%' }}>
+                <Space style={{ justifyContent: 'space-between', width: '100%' }}>
+                    <Text strong style={{ fontSize: 16 }}>{label}</Text>
+                    {versionTag}
+                </Space>
+                <Text type="secondary" style={{ fontSize: 12 }}>{slug}</Text>
+                <Space style={{ justifyContent: 'space-between', width: '100%' }}>
+                    {statusBadge}
+                    {acciones.length > 0 && <Space size={0}>{acciones}</Space>}
+                </Space>
+            </Space>
+        </Card>
+    );
 };
 
 

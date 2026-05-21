@@ -106,6 +106,8 @@ async def listar_plataformas(_: Usuario = Depends(get_current_user)):
             "slug": slug,
             "label": label,
             "url": url,
+            "repo": plat.get("repo"),
+            "taiga": plat.get("taiga"),
             "version": version,
             "healthy": ok,
         })

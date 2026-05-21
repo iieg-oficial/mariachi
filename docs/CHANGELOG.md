@@ -9,6 +9,24 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.6.0] - 2026-05-21
+
+### Inicio: enlaces a repositorio y tablero Taiga en cards de plataformas
+
+Las cards de la sección "Plataformas del ecosistema" en `/inicio` ahora muestran enlaces directos al repo de GitHub y al tablero Taiga de cada plataforma, además del enlace para visitar la app. La información vive hardcoded en `platforms_config.py` (única fuente de verdad para topología del ecosistema); no se consulta a ningún servicio remoto.
+
+#### Añadido
+
+- **`api/app/core/platforms_config.py`**: campos opcionales `repo` y `taiga` en `PlatformConfig`. Constantes `_GITHUB_ORG` (`https://github.com/iieg-oficial`) y `_TAIGA_BASE` (`https://proyectosiieg.jalisco.gob.mx/project`) arriba para construir las URLs. Las 8 plataformas declaran su repo en `iieg-oficial`; tres (`mariachi`, `mapalab`, `sieej`) declaran también su proyecto Taiga (slugs `nuevo-sitio-del-iieg`, `mapalab`, `siiej` respectivamente). Las demás dejan `taiga: None`.
+- **`api/app/api/routes/sistema.py`** (`GET /sistema/plataformas`): la respuesta ahora incluye `repo` y `taiga` por plataforma (pueden ser `null`).
+- **`admin/src/features/inicio/pages/InicioPage.jsx`**: nuevo componente reutilizable `IconLink` que envuelve un `Button type="text"` icono-only con `Tooltip` y soporta navegación interna (`react-router`) o externa (`target="_blank"`). `PlataformaCard` se rediseña: ya no envuelve la card entera en un `<Link>` (evita anidación de `<a>`); el footer muestra un grupo horizontal de iconos minimalistas SVG de Ant Design — `LinkOutlined` para visitar la app (sólo si `url && healthy`), `GithubOutlined` para el repo, `ProjectOutlined` para el tablero Taiga. Cada icono se renderiza únicamente si el campo correspondiente está poblado.
+
+#### Por qué bump minor
+
+Nueva característica visible al usuario en la pantalla de Inicio del admin, sin romper compatibilidad de APIs ni schemas.
+
+---
+
 ## [1.5.0] - 2026-05-21
 
 ### Admin: limpieza de lint (159 → 0 problemas)
