@@ -19,8 +19,7 @@
         "src/features/portal-pages/constants/pageTemplates.js",
         "src/features/portal-pages/hooks/fontService.js",
         "src/features/portal-pages/hooks/searchService.js",
-        "src/features/portal-pages/hooks/useContentSearch.js",
-        "src/features/users/pages/AddSieejDependenciaPage.jsx"
+        "src/features/portal-pages/hooks/useContentSearch.js"
     ],
     "ignoreDependencies": [
         "lint-staged",

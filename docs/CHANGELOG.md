@@ -9,6 +9,27 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.9.1] - 2026-05-21
+
+### Dead code limpio + pre-push hook con lint y knip del admin
+
+Saneamiento del workflow de desarrollo: el job `Dead code check` del CI estaba fallando en `develop` por archivos huérfanos de reestructuraciones pasadas y un export sin consumir. En paralelo se extiende el `pre-push` hook para reproducir localmente las mismas validaciones de `test-frontend.yml`, evitando que un push contamine la rama con errores que CI rechazaría.
+
+#### Quitado
+
+- **`admin/src/features/mapalab-layers/components/LayersTreeSider.jsx`**: resto del antiguo sider de capas (vivía en un `<Sider>` lateral antes de la reestructuración inline 1.4.0). Ya no se importa desde ningún archivo.
+- **`admin/src/shared/hooks/useResizableWidth.js`**: hook que servía al ancho redimensionable del sider eliminado. Sin consumidores.
+- **`NOTICE_DISMISS_PERSISTENCE`** en `admin/src/features/mapalab-layers/components/layersEditor/LayerNoticeSection.jsx`: constante exportada pero no importada — las opciones se hardcodean inline en los `Radio.Button` del editor.
+- **`admin/eslint.config.js`**: `LayersTreeSider.jsx` retirado del override `max-lines: 'off'` (archivo ya no existe).
+- **`admin/knip.json`**: entrada `src/features/users/pages/AddSieejDependenciaPage.jsx` removida del `ignore` (archivo borrado en un commit anterior, la entrada quedó huérfana).
+
+#### Añadido
+
+- **`.githooks/pre-push`**: extendido con dos pasos nuevos antes de pytest, replicando `test-frontend.yml`:
+  1. `npm run lint` en `admin/`.
+  2. `npm run check:dead-code:strict` en `admin/` (knip).
+  Ambos abortan el push si fallan. Nueva variable de entorno `SKIP_FRONTEND=1` para saltarlos en casos puntuales (igual que la `SKIP_PYTEST=1` existente). El hook se invoca con `npm --silent` para que el output del push solo muestre las fallas reales, sin el ruido del header `> mariachi-admin@x lint`.
+
 ## [1.9.0] - 2026-05-21
 
 ### MapaLab admin: UX del editor de avisos y datos curiosos

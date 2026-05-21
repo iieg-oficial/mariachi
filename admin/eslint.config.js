@@ -78,7 +78,6 @@ export default [
             'src/features/mapalab-eventos/pages/EventoEditPage.jsx',
             'src/features/mapalab-home/components/sectionEditors.jsx',
             'src/features/mapalab-home/pages/HomePage.jsx',
-            'src/features/mapalab-layers/components/LayersTreeSider.jsx',
             'src/features/mapalab-layers/components/layersEditor/CqlFilterBuilder.jsx',
             'src/features/mapalab-geoserver-files/pages/GeoserverFilesPage.jsx',
             'src/features/mapalab-layers/components/layersEditor/InfoBoxBlocksEditor.jsx',

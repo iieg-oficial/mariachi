@@ -54,11 +54,6 @@ export const NOTICE_POSITIONS = [
     { value: 'bottom-center', label: 'Abajo centro' },
 ];
 
-export const NOTICE_DISMISS_PERSISTENCE = [
-    { value: 'permanent', label: 'Recordar siempre' },
-    { value: 'reopen', label: 'Volver a mostrar al abrir la capa' },
-];
-
 const DISMISS_PERSISTENCE_HELP = {
     permanent: 'El aviso queda cerrado para siempre en el navegador (localStorage). Sólo vuelve a aparecer si editas el texto, descripción, ícono, variante o enlace del aviso (el navegador detecta el cambio como un aviso nuevo).',
     reopen: 'El aviso vuelve a aparecer cuando: (a) el usuario recarga la página, o (b) desactiva la capa y la vuelve a activar. Útil para avisos que el visitante puede ignorar momentáneamente pero queremos que vea cada vez que entra al tema.',
