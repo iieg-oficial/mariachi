@@ -9,7 +9,7 @@ import {
 } from '@ant-design/icons';
 import { Tooltip } from 'antd';
 import StatusBadge from '@shared/components/StatusBadge';
-import { PROJECT_REGISTRY } from '@app/sider-registry';
+import { FOOTER_ITEMS, PROJECT_REGISTRY } from '@app/sider-registry';
 
 export { PROJECT_REGISTRY };
 
@@ -177,6 +177,23 @@ export function buildSiderItems({ user, onNavigate, extras = {} }) {
         });
     }
 
+    return items;
+}
+
+export function buildSiderFooterItems({ user, onNavigate }) {
+    const role = user?.role;
+    if (!role) return [];
+    const items = [];
+    for (const item of FOOTER_ITEMS) {
+        const allowed = !item.allowedGlobalRoles || item.allowedGlobalRoles.includes(role);
+        if (!allowed) continue;
+        items.push({
+            key: item.key,
+            icon: item.icon,
+            label: item.label,
+            onClick: () => onNavigate(item.path),
+        });
+    }
     return items;
 }
 
