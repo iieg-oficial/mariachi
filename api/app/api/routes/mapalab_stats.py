@@ -24,6 +24,12 @@ from app.schemas.mapalab_event import (
     StatsOverview,
     ToolStatRow,
 )
+from app.schemas.mapalab_mcp import (
+    McpClientStatRow,
+    McpDailyStatRow,
+    McpStatsOverview,
+    McpToolStatRow,
+)
 from app.services.mapalab_telemetry import refresh_stats_views
 
 logger = logging.getLogger(__name__)
@@ -320,6 +326,113 @@ async def highlights(
         top_layer=top_layer,
         top_tool=top_tool,
     )
+
+
+@router.get("/mcp/overview", response_model=McpStatsOverview, response_model_by_alias=True)
+async def mcp_overview(
+    db: Session = Depends(get_db),
+    _current: Usuario = Depends(get_current_user),
+):
+    row = db.execute(text("SELECT * FROM mapalab_mcp_stats_overview LIMIT 1")).mappings().first()
+    if row is None:
+        return McpStatsOverview()
+    return McpStatsOverview(
+        calls_30d=row["calls_30d"] or 0,
+        calls_7d=row["calls_7d"] or 0,
+        calls_1d=row["calls_1d"] or 0,
+        errors_30d=row["errors_30d"] or 0,
+        sessions_30d=row["sessions_30d"] or 0,
+        clients_30d=row["clients_30d"] or 0,
+        avg_tool_duration_ms=row["avg_tool_duration_ms"] or 0,
+        tool_calls_30d=row["tool_calls_30d"] or 0,
+    )
+
+
+@router.get("/mcp/tools", response_model=list[McpToolStatRow], response_model_by_alias=True)
+async def mcp_tools(
+    limit: int = Query(default=30, ge=1, le=100),
+    db: Session = Depends(get_db),
+    _current: Usuario = Depends(get_current_user),
+):
+    rows = db.execute(
+        text(
+            """
+            SELECT tool, uses, errors, unique_sessions, avg_duration_ms, p95_duration_ms, last_seen
+            FROM mapalab_mcp_stats_tools
+            ORDER BY uses DESC, last_seen DESC
+            LIMIT :limit
+            """
+        ),
+        {"limit": limit},
+    ).mappings().all()
+    return [
+        McpToolStatRow(
+            tool=r["tool"],
+            uses=r["uses"] or 0,
+            errors=r["errors"] or 0,
+            unique_sessions=r["unique_sessions"] or 0,
+            avg_duration_ms=r["avg_duration_ms"] or 0,
+            p95_duration_ms=r["p95_duration_ms"] or 0,
+            last_seen=r["last_seen"],
+        )
+        for r in rows
+    ]
+
+
+@router.get("/mcp/daily", response_model=list[McpDailyStatRow], response_model_by_alias=True)
+async def mcp_daily(
+    days: int = Query(default=30, ge=1, le=90),
+    db: Session = Depends(get_db),
+    _current: Usuario = Depends(get_current_user),
+):
+    rows = db.execute(
+        text(
+            """
+            SELECT dia, calls, tool_calls, errors, unique_sessions, avg_duration_ms
+            FROM mapalab_mcp_stats_daily
+            WHERE dia >= CURRENT_DATE - :days * INTERVAL '1 day'
+            ORDER BY dia ASC
+            """
+        ),
+        {"days": days},
+    ).mappings().all()
+    return [
+        McpDailyStatRow(
+            dia=str(r["dia"]),
+            calls=r["calls"] or 0,
+            tool_calls=r["tool_calls"] or 0,
+            errors=r["errors"] or 0,
+            unique_sessions=r["unique_sessions"] or 0,
+            avg_duration_ms=r["avg_duration_ms"] or 0,
+        )
+        for r in rows
+    ]
+
+
+@router.get("/mcp/clients", response_model=list[McpClientStatRow], response_model_by_alias=True)
+async def mcp_clients(
+    db: Session = Depends(get_db),
+    _current: Usuario = Depends(get_current_user),
+):
+    rows = db.execute(
+        text(
+            """
+            SELECT client_name, client_version, calls, unique_sessions, last_seen
+            FROM mapalab_mcp_stats_clients
+            ORDER BY calls DESC, last_seen DESC
+            """
+        )
+    ).mappings().all()
+    return [
+        McpClientStatRow(
+            client_name=r["client_name"],
+            client_version=r["client_version"] or "",
+            calls=r["calls"] or 0,
+            unique_sessions=r["unique_sessions"] or 0,
+            last_seen=r["last_seen"],
+        )
+        for r in rows
+    ]
 
 
 @router.post("/refresh", dependencies=[Depends(verify_csrf)])
