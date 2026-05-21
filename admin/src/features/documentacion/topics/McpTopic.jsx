@@ -50,13 +50,6 @@ const TOOLS_BY_ROUTER = {
         { tool: 'refresh_layer_tree_cache', route: 'POST /layers/refresh-cache', desc: 'Regenera la cache materializada. Requiere X-Internal-Token.' },
         { tool: 'invalidate_layer_tree_memory_cache', route: 'POST /layers/invalidate-cache', desc: 'Invalida solo memoria del worker. Requiere X-Internal-Token.' },
     ],
-    shares: [
-        { tool: 'create_share', route: 'POST /shares', desc: 'Crea share determinístico del estado del mapa (rate limit 10/min/IP).' },
-        { tool: 'get_share', route: 'GET /shares/{id}', desc: 'Lee un share por ID e incrementa contador de accesos.' },
-        { tool: 'pin_share', route: 'POST /shares/{id}/pin', desc: 'Pin por 365 días (sin auth).' },
-        { tool: 'unpin_share', route: 'DELETE /shares/{id}/pin', desc: 'Quita el pin (permanente requiere token interno).' },
-        { tool: 'pin_share_permanent', route: 'POST /shares/{id}/pin-permanent', desc: 'Pin permanente. Requiere X-Internal-Token.' },
-    ],
 };
 
 const TOOL_COLUMNS = [
@@ -98,7 +91,7 @@ const FIELD_COLUMNS = [
 
 
 const URLS = [
-    { contexto: 'Entre containers', url: 'http://backend:8000/mcp/' },
+    { contexto: 'Entre containers', url: 'http://mapalab-mcp:8000/mcp/' },
     { contexto: 'Local / dev (puerto publicado)', url: LOCAL_MCP_URL },
     { contexto: 'Producción / staging', url: PUBLIC_MCP_URL },
 ];
@@ -201,9 +194,10 @@ export default function McpTopic() {
             <div>
                 <Title level={4}>Tools disponibles</Title>
                 <Text type="secondary">
-                    17 tools agrupados por router. El más útil para un agente es{' '}
+                    11 tools de lectura agrupados por router. El más útil para un agente es{' '}
                     <Text code strong>search_layers</Text>: resuelve el ID de una capa por su nombre
-                    visible y devuelve el path jerárquico.
+                    visible y devuelve el path jerárquico. Los tools de escritura de{' '}
+                    <Text code>shares</Text> no se exponen al MCP — siguen disponibles en REST.
                 </Text>
             </div>
 
