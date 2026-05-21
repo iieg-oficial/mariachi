@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import dayjs from 'dayjs';
-import { Alert, Button, Card, DatePicker, Form, Input, InputNumber, Layout, Modal, Popconfirm, Space, Spin, Switch, Tabs, Tag, Typography } from 'antd';
+import { Alert, Button, Card, DatePicker, Form, Input, InputNumber, Layout, Modal, Popconfirm, Select, Space, Spin, Switch, Tabs, Tag, Typography } from 'antd';
 import {
     ArrowLeftOutlined,
     CheckOutlined,
@@ -15,6 +15,7 @@ import {
     PictureOutlined,
     SaveOutlined,
     SendOutlined,
+    SmileOutlined,
 } from '@ant-design/icons';
 import {
     createEvento,
@@ -27,6 +28,7 @@ import {
 import EventoIconPicker from '@features/mapalab-eventos/components/EventoIconPicker';
 import BBoxField from '@features/mapalab-eventos/components/BBoxField';
 import CapasField from '@features/mapalab-eventos/components/CapasField';
+import FactsField from '@features/mapalab-eventos/components/FactsField';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import usePresencia from '@shared/hooks/usePresencia';
 import PresenciaIndicator from '@shared/components/PresenciaIndicator';
@@ -61,7 +63,7 @@ function normalizeCapas(capas) {
 }
 
 function eventoToForm(e) {
-    if (!e) return { activo: false, capas: [], orden: 0 };
+    if (!e) return { activo: false, capas: [], facts: [], funIcon: null, orden: 0 };
     return {
         titulo: e.titulo,
         slug: e.slug,
@@ -70,6 +72,8 @@ function eventoToForm(e) {
         imagenUrl: e.imagenUrl,
         bbox: e.bbox,
         capas: normalizeCapas(e.capas),
+        facts: Array.isArray(e.facts) ? e.facts : [],
+        funIcon: e.funIcon || null,
         activo: e.activo,
         fechaInicio: e.fechaInicio ? dayjs(e.fechaInicio) : null,
         fechaFin: e.fechaFin ? dayjs(e.fechaFin) : null,
@@ -87,6 +91,10 @@ function formToPayload(values, { isCreate }) {
             maxy: Number(values.bbox.maxy),
         } : null;
 
+    const cleanFacts = Array.isArray(values.facts)
+        ? values.facts.map((s) => (typeof s === 'string' ? s.trim() : '')).filter(Boolean)
+        : [];
+
     const payload = {
         titulo: values.titulo,
         descripcion: values.descripcion || null,
@@ -94,6 +102,8 @@ function formToPayload(values, { isCreate }) {
         imagenUrl: values.imagenUrl || null,
         bbox: cleanBbox,
         capas: values.capas || [],
+        facts: cleanFacts,
+        funIcon: values.funIcon || null,
         activo: Boolean(values.activo),
         fechaInicio: values.fechaInicio ? values.fechaInicio.toISOString() : null,
         fechaFin: values.fechaFin ? values.fechaFin.toISOString() : null,
@@ -133,7 +143,7 @@ export default function EventoEditPage() {
         if (!isCreate && evento) {
             form.setFieldsValue(eventoToForm(evento));
         } else if (isCreate) {
-            form.setFieldsValue({ activo: false, capas: [], orden: 0 });
+            form.setFieldsValue({ activo: false, capas: [], facts: [], funIcon: null, orden: 0 });
         }
     }, [evento, isCreate, form]);
 
@@ -436,6 +446,46 @@ export default function EventoEditPage() {
                                                 extra="Imagen ancha tipo banner (3:1 o 4:1). Se muestra cuando el sider del visor está expandido."
                                             >
                                                 <EventoIconPicker />
+                                            </Form.Item>
+                                        </>
+                                    ),
+                                },
+                                {
+                                    key: 'diversion',
+                                    forceRender: true,
+                                    label: <span><SmileOutlined /> Diversión</span>,
+                                    children: (
+                                        <>
+                                            <Alert
+                                                type="info"
+                                                showIcon
+                                                style={{ marginBottom: 16 }}
+                                                message="Botón lúdico del evento"
+                                                description="Cuando el evento tiene al menos un dato curioso, el visor muestra un botón pequeño en la barra de acciones. Al presionarlo, sale el ícono rebotando hacia abajo y aparece un mensaje con un dato del pool. Los datos se muestran sin repetir hasta agotar el pool."
+                                            />
+                                            <Form.Item
+                                                name="funIcon"
+                                                label="Ícono del botón lúdico"
+                                                extra="Por defecto es un balón de fútbol. Cambialo según el tema del evento."
+                                            >
+                                                <Select
+                                                    allowClear
+                                                    placeholder="⚽ Balón (default)"
+                                                    options={[
+                                                        { value: 'soccer', label: '⚽ Balón de fútbol' },
+                                                        { value: 'star', label: '⭐ Estrella' },
+                                                        { value: 'party', label: '🎉 Fiesta' },
+                                                        { value: 'book', label: '📘 Libro' },
+                                                        { value: 'bulb', label: '💡 Foco' },
+                                                    ]}
+                                                />
+                                            </Form.Item>
+                                            <Form.Item
+                                                name="facts"
+                                                label="Datos curiosos"
+                                                extra="Si dejas la lista vacía, el botón no aparece en el visor."
+                                            >
+                                                <FactsField />
                                             </Form.Item>
                                         </>
                                     ),
