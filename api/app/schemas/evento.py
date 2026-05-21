@@ -21,12 +21,13 @@ DESCRIPCION_MAX_LENGTH = 2000
 
 
 class CapaRef(CamelCaseInput):
-    tipo: Literal['capa', 'etiqueta'] = 'capa'
+    tipo: Literal['capa', 'etiqueta', 'categoria'] = 'capa'
     workspace: str | None = Field(default=None, max_length=200)
     layer: str | None = Field(default=None, max_length=200)
     alias: str | None = Field(default=None, max_length=ALIAS_MAX_LENGTH)
     orden: int = 0
     auto_activar: bool = Field(default=True, serialization_alias='autoActivar')
+    capas: list['CapaRef'] | None = None
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -37,10 +38,47 @@ class CapaRef(CamelCaseInput):
                 raise ValueError('Las capas requieren `workspace`')
             if not (self.layer and self.layer.strip()):
                 raise ValueError('Las capas requieren `layer`')
+            if self.capas is not None:
+                raise ValueError('Las capas no pueden contener sub-`capas`')
         elif self.tipo == 'etiqueta':
             if not (self.alias and self.alias.strip()):
                 raise ValueError('Las etiquetas requieren un texto en `alias`')
+            if self.capas is not None:
+                raise ValueError('Las etiquetas no pueden contener sub-`capas`')
+        elif self.tipo == 'categoria':
+            if not (self.alias and self.alias.strip()):
+                raise ValueError('Las categorias requieren un texto en `alias`')
+            for child in self.capas or []:
+                if child.tipo == 'categoria':
+                    raise ValueError('Las categorias no pueden anidarse (profundidad maxima: 1)')
         return self
+
+
+CapaRef.model_rebuild()
+
+
+class SymbolSnapshot(CamelCaseInput):
+    symbol_id: int | None = Field(default=None, serialization_alias='symbolId')
+    kind: Literal['emoji', 'svg', 'image']
+    value: str | None = None
+    image_url: str | None = Field(default=None, max_length=URL_MAX_LENGTH, serialization_alias='imageUrl')
+    name: str | None = Field(default=None, max_length=200)
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class FactRef(CamelCaseInput):
+    text: str = Field(min_length=1, max_length=500)
+    symbol: SymbolSnapshot | None = None
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    @model_validator(mode='before')
+    @classmethod
+    def _accept_string_legacy(cls, data):
+        if isinstance(data, str):
+            return {'text': data}
+        return data
 
 
 class BBox(CamelCaseInput):
@@ -113,6 +151,9 @@ class _EventoVisibleFields(CamelCaseInput, _ImageUrlMixin):
     imagen_url: str | None = Field(default=None, max_length=URL_MAX_LENGTH, serialization_alias='imagenUrl')
     bbox: BBox | None = None
     capas: list[CapaRef] = Field(default_factory=list)
+    facts: list[FactRef] = Field(default_factory=list)
+    fun_icon: SymbolSnapshot | None = Field(default=None, serialization_alias='funIcon')
+    basemap_id: str | None = Field(default=None, max_length=50, serialization_alias='basemapId')
     fecha_inicio: datetime | None = Field(default=None, serialization_alias='fechaInicio')
     fecha_fin: datetime | None = Field(default=None, serialization_alias='fechaFin')
     orden: int = 0
@@ -137,6 +178,9 @@ class EventoUpdate(CamelCaseInput, _ImageUrlMixin):
     imagen_url: str | None = Field(default=None, max_length=URL_MAX_LENGTH, serialization_alias='imagenUrl')
     bbox: BBox | None = None
     capas: list[CapaRef] | None = None
+    facts: list[FactRef] | None = None
+    fun_icon: SymbolSnapshot | None = Field(default=None, serialization_alias='funIcon')
+    basemap_id: str | None = Field(default=None, max_length=50, serialization_alias='basemapId')
     activo: bool | None = None
     fecha_inicio: datetime | None = Field(default=None, serialization_alias='fechaInicio')
     fecha_fin: datetime | None = Field(default=None, serialization_alias='fechaFin')

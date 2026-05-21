@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { Alert, AutoComplete, Breadcrumb, Button, Card, Col, Empty, Form, Input, Layout, Result, Row, Select, Space, Spin, Switch, Tabs, Tag, Tooltip, Typography } from 'antd';
-import { LeftOutlined, MenuUnfoldOutlined, PartitionOutlined, ReloadOutlined, SaveOutlined } from '@ant-design/icons';
+import { Alert, AutoComplete, Breadcrumb, Button, Card, Col, Empty, Form, Input, Result, Row, Select, Space, Spin, Switch, Tabs, Tag, Tooltip, Typography } from 'antd';
+import { DeleteOutlined, PartitionOutlined, ReloadOutlined, SaveOutlined } from '@ant-design/icons';
+import DeleteLayerModal from '@features/mapalab-layers/components/DeleteLayerModal';
+import DeletedLayersList from '@features/mapalab-layers/components/DeletedLayersList';
+import LayersTreeListInline from '@features/mapalab-layers/components/LayersTreeListInline';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
 import useIsMobile from '@shared/hooks/useIsMobile';
@@ -14,22 +17,21 @@ import WmsGroupField from '@features/mapalab-layers/components/layersEditor/WmsG
 import GroupServicesReference from '@features/mapalab-layers/components/layersEditor/GroupServicesReference';
 import SldEditor from '@features/mapalab-layers/components/sldEditor/SldEditor';
 import StatusBadge from '@shared/components/StatusBadge';
-import LayersTreeSider from '@features/mapalab-layers/components/LayersTreeSider';
 import TemaIconField from '@features/mapalab-layers/components/layersEditor/TemaIconField';
 import BulkTagsDrawer from '@features/mapalab-layers/components/layersEditor/BulkTagsDrawer';
+import LayerNoticeSection from '@features/mapalab-layers/components/layersEditor/LayerNoticeSection';
+import { useEventosList } from '@features/mapalab-eventos/hooks/useEventos';
+import { useEventosTreeNode } from '@features/mapalab-eventos/hooks/useEventoTreeNodes';
 import {
     NODE_TYPE_OPTIONS,
     NODE_TYPE_HELP,
     isFieldVisible,
     isTabVisible,
     isPropertyOfGroup,
-    labelForNode,
 } from '@features/mapalab-layers/constants/nodeTypes';
 import { findNodeContext } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
-import useResizableWidth from '@shared/hooks/useResizableWidth';
 import { message } from '@shared/services/message';
 
-const { Content, Sider } = Layout;
 const { Text, Title, Paragraph } = Typography;
 
 export default function LayerEditPage() {
@@ -43,9 +45,16 @@ export default function LayerEditPage() {
 
     const {
         treeData,
+        rawTree,
         loading: treeLoading,
         error: treeError,
         reload,
+        deleteLayer,
+        restoreLayer,
+        purgeLayer,
+        listDeletedLayers,
+        getLayerReferences,
+        requestLayerDeletion,
         getLayer,
         updateLayer,
         saveLayerDraft,
@@ -58,7 +67,6 @@ export default function LayerEditPage() {
         createLayerAlias,
         deleteLayerAlias,
         suggestSlug,
-        reorderLayers,
         createLayer,
     } = useLayerTreeAdmin();
 
@@ -72,25 +80,57 @@ export default function LayerEditPage() {
     const [availableStyles, setAvailableStyles] = useState([]);
     const [availableFields, setAvailableFields] = useState([]);
     const [bulkTagsOpen, setBulkTagsOpen] = useState(false);
-    const { width: siderWidth, handleStart: handleSiderResize } = useResizableWidth({
-        initialWidth: 320,
-        storageKey: 'mapalab.layerEditor.siderWidth',
-        min: 240,
-        max: 600,
-    });
-    const [siderCollapsed, setSiderCollapsed] = useState(() => {
-        if (typeof window === 'undefined') return false;
-        const stored = window.localStorage.getItem('mapalab.layerEditor.siderCollapsed');
-        if (stored !== null) return stored === 'true';
-        return window.matchMedia('(max-width: 991.98px)').matches;
-    });
-    const toggleSider = () => {
-        setSiderCollapsed((prev) => {
-            const next = !prev;
-            window.localStorage.setItem('mapalab.layerEditor.siderCollapsed', String(next));
-            return next;
-        });
+
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [deleteReferences, setDeleteReferences] = useState(null);
+    const [deleteReferencesLoading, setDeleteReferencesLoading] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+
+    const openDeleteModal = async () => {
+        if (!layerId) return;
+        setDeleteModalOpen(true);
+        setDeleteReferences(null);
+        setDeleteReferencesLoading(true);
+        try {
+            const refs = await getLayerReferences(layerId);
+            setDeleteReferences(refs);
+        } catch (err) {
+            message.error(err?.response?.data?.detail || 'No se pudieron leer las referencias de la capa');
+        } finally {
+            setDeleteReferencesLoading(false);
+        }
     };
+
+    const handleDeleteAdmin = async ({ force }) => {
+        setDeleting(true);
+        try {
+            await deleteLayer(layerId, { force });
+            message.success('Capa archivada — puedes restaurarla desde la papelera');
+            setDeleteModalOpen(false);
+            await reload();
+            navigate('/mapalab/layers');
+        } catch (err) {
+            const detail = err?.response?.data?.detail;
+            const msg = typeof detail === 'string' ? detail : detail?.message || 'No se pudo archivar la capa';
+            message.error(msg);
+        } finally {
+            setDeleting(false);
+        }
+    };
+
+    const handleDeleteEditor = async () => {
+        setDeleting(true);
+        try {
+            await requestLayerDeletion(layerId);
+            message.success('Solicitud de archivado enviada a revisión');
+            setDeleteModalOpen(false);
+        } catch (err) {
+            message.error(err?.response?.data?.detail || 'No se pudo enviar la solicitud');
+        } finally {
+            setDeleting(false);
+        }
+    };
+
 
     const selectedWs = Form.useWatch('workspaceAlias', form);
     const selectedGsLayer = Form.useWatch('geoserverLayer', form);
@@ -102,6 +142,27 @@ export default function LayerEditPage() {
         const ctx = findNodeContext(treeData, layerId);
         return ctx?.parentNodeType ?? null;
     }, [layerId, treeData]);
+
+    const { items: eventos } = useEventosList();
+    const eventosNode = useEventosTreeNode(eventos, rawTree);
+    const eventosChildren = useMemo(() => eventosNode?.children || [], [eventosNode]);
+    const selectedEventoKey = useMemo(() => {
+        if (!layerId) return null;
+        if (layerId === '__eventos_root__') return layerId;
+        if (layerId.startsWith('evento-')) return layerId;
+        return null;
+    }, [layerId]);
+    const [treeTab, setTreeTab] = useState(() => {
+        if (typeof window === 'undefined') return 'layers';
+        return window.localStorage.getItem('mapalab.layerEditor.treeTab') || 'layers';
+    });
+    useEffect(() => {
+        if (selectedEventoKey) setTreeTab('eventos');
+    }, [selectedEventoKey]);
+    const onTreeTabChange = (next) => {
+        setTreeTab(next);
+        window.localStorage.setItem('mapalab.layerEditor.treeTab', next);
+    };
     const isProperty = isPropertyOfGroup(watchedNodeType, parentNodeType);
 
     useEffect(() => {
@@ -158,6 +219,7 @@ export default function LayerEditPage() {
             searchTags: data.searchTags || data.search_tags || data.searchMeta?.tags || [],
             infoboxConfig: data.infoboxConfig || null,
             iconUrl: data.iconUrl ?? data.icon_url ?? '',
+            notice: data.notice ?? null,
         });
     }, [form]);
 
@@ -346,31 +408,61 @@ export default function LayerEditPage() {
         return opts;
     })();
 
-    const handleSelectFromTree = (key) => {
-        if (!key) {
-            navigate('/mapalab/layers');
-        } else {
-            navigate(`/mapalab/layers/${encodeURIComponent(key)}/edit`);
+    const findLeafByWsLayer = (nodes, wsLayer) => {
+        for (const n of nodes || []) {
+            const ws = n.workspaceAlias || n.wmsConfig?.workspace;
+            const lyr = n.geoserverLayer || n.wmsConfig?.geoserverLayer;
+            if (n.nodeType === 'leaf' && ws && lyr && `${ws}/${lyr}` === wsLayer) return n;
+            const found = n.children ? findLeafByWsLayer(n.children, wsLayer) : null;
+            if (found) return found;
         }
+        return null;
+    };
+
+    const handleSelectFromTree = (key) => {
+        if (!key) { navigate('/mapalab/layers'); return; }
+        if (key === '__eventos_root__') { navigate('/mapalab/eventos'); return; }
+        const eventoMatch = /^evento-(\d+)$/.exec(key);
+        if (eventoMatch) { navigate(`/mapalab/eventos/${eventoMatch[1]}/edit`); return; }
+        const leafMatch = /^evento-\d+(?:-cat-\d+)?-cap-\d+-(.+)$/.exec(key);
+        if (leafMatch) {
+            const leaf = findLeafByWsLayer(rawTree, leafMatch[1]);
+            if (leaf?.id) navigate(`/mapalab/layers/${encodeURIComponent(leaf.id)}/edit`);
+            return;
+        }
+        if (key.startsWith('evento-')) return;
+        navigate(`/mapalab/layers/${encodeURIComponent(key)}/edit`);
     };
 
     const saveDisabled = loading || Boolean(loadError) || !layer;
+    const deleteDisabled = loading || Boolean(loadError) || !layer || Boolean(layer?.deletedAt);
     const actionButtons = layerId && (
-        <Space wrap>
+        <Space size={4} wrap>
+            <Tooltip title={isAdmin ? 'Archivar capa (soft delete)' : 'Solicitar archivado a un admin'}>
+                <Button
+                    danger
+                    size="small"
+                    icon={<DeleteOutlined />}
+                    disabled={deleteDisabled}
+                    onClick={openDeleteModal}
+                >
+                    {isAdmin ? 'Archivar' : 'Solicitar'}
+                </Button>
+            </Tooltip>
             {isAdmin ? (
                 <Tooltip title={loadError ? 'Datos no cargados — no es seguro guardar' : ''}>
-                    <Button type="primary" icon={<SaveOutlined />} loading={saving} disabled={saveDisabled} onClick={handleSaveDirect}>
+                    <Button size="small" type="primary" icon={<SaveOutlined />} loading={saving} disabled={saveDisabled} onClick={handleSaveDirect}>
                         Guardar
                     </Button>
                 </Tooltip>
             ) : (
                 <Tooltip title={loadError ? 'Datos no cargados — no es seguro guardar' : ''}>
-                    <Space>
-                        <Button loading={saving} disabled={saveDisabled} onClick={handleSaveDraft}>
-                            Guardar borrador
+                    <Space size={4}>
+                        <Button size="small" loading={saving} disabled={saveDisabled} onClick={handleSaveDraft}>
+                            Borrador
                         </Button>
-                        <Button type="primary" loading={saving} disabled={saveDisabled} onClick={handleSubmitReview}>
-                            Enviar a revisión
+                        <Button size="small" type="primary" loading={saving} disabled={saveDisabled} onClick={handleSubmitReview}>
+                            Revisión
                         </Button>
                     </Space>
                 </Tooltip>
@@ -691,13 +783,42 @@ export default function LayerEditPage() {
                         </Form.Item>
                     </Col>
                     <Col xs={24} md={10}>
-                        <Text strong style={{ display: 'block', marginBottom: 8 }}>Vista previa</Text>
-                        <InfoBoxPreview
-                            value={watchedConfig || inheritedInfobox?.config || null}
-                        />
+                        <div style={{ position: 'sticky', top: 0 }}>
+                            <Text strong style={{ display: 'block', marginBottom: 8 }}>Vista previa</Text>
+                            <InfoBoxPreview
+                                value={watchedConfig || inheritedInfobox?.config || null}
+                            />
+                        </div>
                     </Col>
                 </Row>
             ),
+        },
+        {
+            key: 'aviso',
+            forceRender: true,
+            label: 'Aviso',
+            children: (() => {
+                const wsObj = workspaces.find((w) => w.alias === selectedWs);
+                const resolvedWs = wsObj?.geoserverWorkspace || selectedWs || null;
+                const selectedCqlFilter = form.getFieldValue('cqlFilter') || '';
+                const layerDefaultZoom = form.getFieldValue('defaultZoom') || null;
+                return (
+                    <Form.Item
+                        name="notice"
+                        label={null}
+                        valuePropName="value"
+                        trigger="onChange"
+                    >
+                        <LayerNoticeSection
+                            geoserverWorkspace={resolvedWs}
+                            geoserverLayer={selectedGsLayer || null}
+                            styles={(Array.isArray(selectedStyles) ? selectedStyles.join(',') : selectedStyles) || ''}
+                            cqlFilter={selectedCqlFilter}
+                            defaultZoom={layerDefaultZoom}
+                        />
+                    </Form.Item>
+                );
+            })(),
         },
         {
             key: 'metadatos',
@@ -766,207 +887,139 @@ export default function LayerEditPage() {
 
     const nodeHelp = NODE_TYPE_HELP[watchedNodeType];
 
-    return (
-        <Layout style={{ minHeight: 'calc(100vh - 112px)', background: 'transparent' }}>
-            {!isMobile && (
-                <Sider
-                    width={siderCollapsed ? 40 : siderWidth}
-                    theme="light"
-                    style={{
-                        background: '#fff',
-                        borderRight: '1px solid #f0f0f0',
-                        overflow: 'hidden',
-                        position: 'relative',
-                        transition: 'width 0.2s ease',
-                    }}
-                >
-                    <Button
-                        type="text"
-                        size="small"
-                        icon={siderCollapsed ? <MenuUnfoldOutlined /> : <LeftOutlined />}
-                        onClick={toggleSider}
-                        aria-label={siderCollapsed ? 'Mostrar árbol' : 'Ocultar árbol'}
-                        style={{
-                            position: 'absolute',
-                            top: 8,
-                            right: 4,
-                            zIndex: 3,
-                        }}
-                    />
-                    <div style={{ display: siderCollapsed ? 'none' : 'block', height: '100%' }}>
-                        <LayersTreeSider
-                            treeData={treeData}
-                            loading={treeLoading}
-                            error={treeError}
-                            selectedKey={layerId || null}
-                            onSelect={handleSelectFromTree}
-                            onReload={reload}
-                            onReorder={reorderLayers}
-                            onCreate={createLayer}
-                            isAdmin={isAdmin}
-                            onBulkTagsClick={() => setBulkTagsOpen(true)}
-                        />
-                        <button
-                            type="button"
-                            aria-label="Redimensionar árbol"
-                            onMouseDown={handleSiderResize}
-                            style={{
-                                position: 'absolute',
-                                top: 0,
-                                right: -3,
-                                bottom: 0,
-                                width: 6,
-                                cursor: 'col-resize',
-                                zIndex: 2,
-                                background: 'transparent',
-                                border: 'none',
-                                padding: 0,
-                            }}
-                        />
-                    </div>
-                </Sider>
+    const editorBody = !layerId ? null : loading ? (
+        <Spin style={{ display: 'block', margin: '48px auto' }} size="large" />
+    ) : loadError ? (
+        <Result
+            status={loadError.status === 404 ? '404' : 'error'}
+            title={loadError.status === 404 ? 'Capa no encontrada' : 'No se pudo cargar la capa'}
+            subTitle={
+                <Space orientation="vertical" size={4}>
+                    <Text type="secondary">{loadError.detail}</Text>
+                    <Text type="warning" style={{ fontSize: 12 }}>
+                        No edites todavía: los datos no se cargaron y guardar sobrescribiría el registro con valores en blanco.
+                    </Text>
+                </Space>
+            }
+            extra={[
+                <Button key="retry" type="primary" icon={<ReloadOutlined />} onClick={() => setReloadKey((k) => k + 1)}>Reintentar</Button>,
+                <Button key="back" onClick={() => navigate('/mapalab/layers')}>Volver al árbol</Button>,
+            ]}
+        />
+    ) : (
+        <Form form={form} layout="vertical">
+            {nodeHelp && (
+                <div style={{ background: '#E6F4FF', border: '1px solid #91CAFF', borderRadius: 6, padding: '8px 12px', marginBottom: 16 }}>
+                    <Text strong style={{ display: 'block', marginBottom: 2 }}>{nodeHelp.title}</Text>
+                    <Text type="secondary" style={{ fontSize: 12 }}>{nodeHelp.body}</Text>
+                </div>
             )}
-            <Content style={{ padding: isMobile ? 12 : 24 }}>
-                {isMobile && (
-                    <Card style={{ marginBottom: 16 }} styles={{ body: { padding: 0 } }}>
-                        <LayersTreeSider
-                            treeData={treeData}
-                            loading={treeLoading}
-                            error={treeError}
-                            selectedKey={layerId || null}
-                            onSelect={handleSelectFromTree}
-                            onReload={reload}
-                            onReorder={reorderLayers}
-                            onCreate={createLayer}
-                            isAdmin={isAdmin}
-                            onBulkTagsClick={() => setBulkTagsOpen(true)}
-                            showHeader
-                        />
-                    </Card>
-                )}
+            <Tabs defaultActiveKey={initialTab} items={tabItems} tabPosition="top" style={{ minHeight: 400 }} />
+        </Form>
+    );
 
-                {!layerId ? (
-                    <Card>
-                        <Empty
-                            image={<PartitionOutlined style={{ fontSize: 56, color: '#d9d9d9' }} />}
-                            description={
-                                <Space orientation="vertical" align="center" size={4}>
-                                    <Title level={4} style={{ margin: 0 }}>Editor de capas MapaLab</Title>
-                                    <Paragraph type="secondary" style={{ margin: 0, maxWidth: 480, textAlign: 'center' }}>
-                                        Selecciona una capa del árbol para editar sus propiedades.
-                                        Los nodos hoja (Capa) son las capas WMS reales; los demás organizan la jerarquía.
-                                    </Paragraph>
-                                </Space>
-                            }
-                        />
-                    </Card>
-                ) : (
-                    <>
-                        <div style={{ marginBottom: 16 }}>
-                            <Breadcrumb
-                                items={[
-                                    { title: <Button type="link" size="small" style={{ padding: 0 }} onClick={() => navigate('/mapalab/layers')}>Capas</Button> },
-                                    ...breadcrumbPath.slice(0, -1).map((n) => ({
-                                        title: (
-                                            <Button
-                                                type="link"
-                                                size="small"
-                                                style={{ padding: 0 }}
-                                                onClick={() => navigate(`/mapalab/layers/${encodeURIComponent(n.key)}/edit`)}
-                                            >
-                                                {n.title}
-                                            </Button>
-                                        ),
-                                    })),
-                                    { title: breadcrumbPath.at(-1)?.title || layer?.label || layerId },
-                                ]}
-                                style={{ marginBottom: 8 }}
-                            />
-                            <div style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                flexWrap: 'wrap',
-                                gap: 12,
-                            }}>
-                                <Space wrap>
-                                    <Title level={isMobile ? 4 : 3} style={{ margin: 0 }}>
-                                        {layer?.label || 'Editar capa'}
-                                    </Title>
-                                    <Tag color="purple">{layerId}</Tag>
-                                    {isProperty && (
-                                        <Tag color="cyan">{labelForNode(watchedNodeType, parentNodeType)}</Tag>
-                                    )}
-                                </Space>
-                                {actionButtons}
-                            </div>
-                        </div>
-
-                        <Card>
-                            {loading ? (
-                                <Spin style={{ display: 'block', margin: '48px auto' }} size="large" />
-                            ) : loadError ? (
-                                <Result
-                                    status={loadError.status === 404 ? '404' : 'error'}
-                                    title={loadError.status === 404 ? 'Capa no encontrada' : 'No se pudo cargar la capa'}
-                                    subTitle={
-                                        <Space orientation="vertical" size={4}>
-                                            <Text type="secondary">{loadError.detail}</Text>
-                                            <Text type="warning" style={{ fontSize: 12 }}>
-                                                No edites todavía: los datos no se cargaron y guardar sobrescribiría el registro con valores en blanco.
-                                            </Text>
-                                        </Space>
-                                    }
-                                    extra={[
-                                        <Button
-                                            key="retry"
-                                            type="primary"
-                                            icon={<ReloadOutlined />}
-                                            onClick={() => setReloadKey((k) => k + 1)}
-                                        >
-                                            Reintentar
-                                        </Button>,
-                                        <Button key="back" onClick={() => navigate('/mapalab/layers')}>
-                                            Volver al árbol
-                                        </Button>,
-                                    ]}
-                                />
-                            ) : (
-                                <Form form={form} layout="vertical">
-                                    {nodeHelp && (
-                                        <div style={{
-                                            background: '#E6F4FF',
-                                            border: '1px solid #91CAFF',
-                                            borderRadius: 6,
-                                            padding: '8px 12px',
-                                            marginBottom: 16,
-                                        }}>
-                                            <Text strong style={{ display: 'block', marginBottom: 2 }}>
-                                                {nodeHelp.title}
-                                            </Text>
-                                            <Text type="secondary" style={{ fontSize: 12 }}>
-                                                {nodeHelp.body}
-                                            </Text>
-                                        </div>
-                                    )}
-                                    <Tabs
-                                        defaultActiveKey={initialTab}
-                                        items={tabItems}
-                                        tabPosition={isMobile ? 'top' : 'left'}
-                                        style={{ minHeight: 400 }}
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 112px)' }}>
+            <div style={{ padding: isMobile ? '8px 8px 0' : '24px 24px 0', flexShrink: 0 }}>
+                <Title level={isMobile ? 4 : 3} style={{ margin: 0 }}>Capas MapaLab</Title>
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                    Árbol del visor. Click sobre un nodo para abrir el editor inline; click sobre el triángulo para expandir/colapsar la rama.
+                </Text>
+            </div>
+            <div style={{ flex: 1, minHeight: 0, padding: isMobile ? 6 : 24, paddingBottom: layerId ? (isMobile ? 6 : 12) : (isMobile ? 6 : 24), overflow: 'hidden' }}>
+                <Card style={{ height: '100%', display: 'flex', flexDirection: 'column' }} styles={{ body: { padding: 0, height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' } }}>
+                    <style>{`
+                        .layers-tree-tabs { height: 100%; display: flex; flex-direction: column; min-height: 0; }
+                        .layers-tree-tabs > .ant-tabs-content-holder { flex: 1; min-height: 0; overflow: hidden; }
+                        .layers-tree-tabs > .ant-tabs-content-holder > .ant-tabs-content { height: 100%; }
+                        .layers-tree-tabs .ant-tabs-tabpane { height: 100%; overflow: hidden; }
+                    `}</style>
+                    <Tabs
+                        className="layers-tree-tabs"
+                        activeKey={treeTab}
+                        onChange={onTreeTabChange}
+                        size="small"
+                        tabBarStyle={{ padding: '0 12px', marginBottom: 0, flexShrink: 0 }}
+                        items={[
+                            {
+                                key: 'layers',
+                                label: `Capas (${treeData?.length || 0})`,
+                                children: (
+                                    <LayersTreeListInline
+                                        treeData={treeData}
+                                        loading={treeLoading}
+                                        error={treeError}
+                                        selectedKey={selectedEventoKey ? null : (layerId || null)}
+                                        onSelect={handleSelectFromTree}
+                                        onReload={reload}
+                                        onCreate={createLayer}
+                                        isAdmin={isAdmin}
+                                        onBulkTagsClick={() => setBulkTagsOpen(true)}
+                                        editorContent={layerId && !selectedEventoKey ? editorBody : null}
+                                        actionButtons={layerId && !selectedEventoKey ? actionButtons : null}
                                     />
-                                </Form>
-                            )}
-                        </Card>
-                    </>
-                )}
-            </Content>
+                                ),
+                            },
+                            {
+                                key: 'eventos',
+                                label: `Eventos (${eventos?.length || 0})`,
+                                children: eventosChildren.length === 0 ? (
+                                    <div style={{ padding: 24 }}>
+                                        <Empty
+                                            description="Sin eventos publicados"
+                                            image={Empty.PRESENTED_IMAGE_SIMPLE}
+                                        >
+                                            <Button type="primary" onClick={() => navigate('/mapalab/eventos')}>
+                                                Ir al editor de eventos
+                                            </Button>
+                                        </Empty>
+                                    </div>
+                                ) : (
+                                    <LayersTreeListInline
+                                        treeData={eventosChildren}
+                                        loading={treeLoading}
+                                        error={treeError}
+                                        selectedKey={selectedEventoKey}
+                                        onSelect={handleSelectFromTree}
+                                        isAdmin={false}
+                                    />
+                                ),
+                            },
+                            {
+                                key: 'papelera',
+                                label: 'Papelera',
+                                children: (
+                                    <DeletedLayersList
+                                        isAdmin={isAdmin}
+                                        listDeleted={listDeletedLayers}
+                                        onRestore={restoreLayer}
+                                        onPurge={purgeLayer}
+                                        onAfterAction={reload}
+                                    />
+                                ),
+                            },
+                        ]}
+                    />
+                </Card>
+            </div>
 
             <BulkTagsDrawer
                 open={bulkTagsOpen}
                 onClose={() => setBulkTagsOpen(false)}
                 onDone={reload}
             />
-        </Layout>
+
+            <DeleteLayerModal
+                open={deleteModalOpen}
+                onClose={() => (deleting ? null : setDeleteModalOpen(false))}
+                layer={layer}
+                isAdmin={isAdmin}
+                references={deleteReferences}
+                referencesLoading={deleteReferencesLoading}
+                onConfirmAdmin={handleDeleteAdmin}
+                onConfirmEditor={handleDeleteEditor}
+                submitting={deleting}
+            />
+        </div>
     );
 }

@@ -5,6 +5,7 @@ import {
     BranchesOutlined,
     CalendarOutlined,
     CodeOutlined,
+    DashboardOutlined,
     EnvironmentOutlined,
     FileTextOutlined,
     FormOutlined,
@@ -32,6 +33,14 @@ export const PROJECT_REGISTRY = {
             { key: '/pages', path: '/pages', label: 'Páginas', icon: <FileTextOutlined /> },
         ],
     },
+    tablerillos: {
+        label: 'Tablerillos',
+        icon: <DashboardOutlined />,
+        disabled: true,
+        items: [
+            { key: '/tablerillos', path: '/tablerillos', label: 'Tableros', icon: <DashboardOutlined /> },
+        ],
+    },
     mapalab: {
         label: 'MapaLab',
         icon: <EnvironmentOutlined />,
@@ -43,6 +52,10 @@ export const PROJECT_REGISTRY = {
             {
                 key: '/mapalab/simbolos', path: '/mapalab/simbolos', label: 'Símbolos',
                 icon: <AppstoreOutlined />, allowedGlobalRoles: ['tetlamamakani'], showBetaBadge: true,
+            },
+            {
+                key: '/mapalab/recursos-geoserver', path: '/mapalab/recursos-geoserver', label: 'Recursos GeoServer',
+                icon: <FileTextOutlined />, showBetaBadge: true,
             },
             {
                 key: '/mapalab/api-keys', path: '/mapalab/api-keys', label: 'API Keys',

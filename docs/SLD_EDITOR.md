@@ -76,7 +76,7 @@ Registrado en `APPLIERS['sld']`. Al aprobar un borrador con `resource_type='sld'
 
 1. Valida `resource_id == 'alias:style_name'`
 2. Lee `data.shape` ('choropleth' | 'boundary' | 'point')
-3. Para `point`: lee `point.symbol_id`, lookup en `mapalab.symbols`. Si `kind='emoji'` invoca `symbol_service.ensure_emoji_png(symbol_id)` para rasterizar via OpenMoji y obtener `png_object_key`. Si `kind='image'` usa `image_object_key`. Construye URL pública (`/acervo/mapalab/<key>`) y la pasa a `build_point_sld_xml`. Rechaza `kind='svg'` (SVG inline no es soportado por GeoServer en SLD; el admin debe subir como `image`).
+3. Para `point`: lee `point.symbol_id`, lookup en `mapalab.symbols`. Si `kind='emoji'` invoca `symbol_service.ensure_emoji_png(symbol_id)` para rasterizar via Twemoji y obtener `png_object_key` (siempre en bucket `mapalab`). Si `kind='image'` o `kind='svg'` usa `image_object_key` + `bucket_slug` del símbolo (bucket `mapalab` para image, bucket `iieg` para svg). Construye URL pública con el bucket correspondiente (`http://acervo-minio:9000/<bucket>/<key>`) y la pasa a `build_point_sld_xml`.
 4. Llama `build_sld_xml` / `build_boundary_sld_xml` / `build_point_sld_xml` según shape
 5. Resuelve `alias` → `geoserver_workspace` via `dataengine_db.query(Workspace)`
 6. `GeoServerClient().put_sld(...)` con verificación SHA256 round-trip
@@ -175,7 +175,7 @@ Props: `value: number | null` (symbol_id), `onChange(symbolId, symbol)`.
 - Carga categorías con `listCategories()` y muestra `<Segmented>` arriba.
 - Carga símbolos de la categoría activa con `listSymbols(categoryId)`.
 - Renderiza grid con `<SymbolPreview>`.
-- Los símbolos `kind='svg'` están deshabilitados (no soportados por GeoServer); el admin debe subir como `kind='image'`.
+- Los tres kinds (`emoji`, `image`, `svg`) son seleccionables. `svg` desde v0.x vive en bucket `iieg/leyendas/` y GeoServer lo lee via Batik renderer.
 
 ### `components/sldEditor/BoundaryLabelTab.jsx`
 
@@ -306,9 +306,10 @@ Dos prerrequisitos de infraestructura deben cumplirse para que los SLDs con `<Ex
 
 1. **Red Docker compartida**: el contenedor `geoserver` debe estar en `iieg-network` para resolver el hostname `acervo-minio`. Configurado en `/IIEG/geoserver/docker-compose.yml` agregando `iieg-network` (external) a los networks del servicio.
 
-2. **URL Check configurado**: GeoServer 2.20+ bloquea todas las URLs externas en SLDs si no hay URL checks definidos. Hay que crear uno que permita el bucket interno:
+2. **URL Checks configurados**: GeoServer 2.20+ bloquea todas las URLs externas en SLDs si no hay URL checks definidos. Hay que crear **dos** checks, uno por cada bucket destino de símbolos:
 
    ```bash
+   # Bucket mapalab (emoji-png + image: PNG/JPG/WebP/GIF)
    curl -u "$GEOSERVER_ADMIN_USER:$GEOSERVER_ADMIN_PASSWORD" \
      -H 'Content-Type: application/json' -X POST \
      "$GEOSERVER_URL/rest/urlchecks" -d '{
@@ -319,9 +320,21 @@ Dos prerrequisitos de infraestructura deben cumplirse para que los SLDs con `<Ex
          "regex": "^http://acervo-minio:9000/mapalab/.+$"
        }
      }'
+
+   # Bucket iieg (svg subidos por el admin a leyendas/)
+   curl -u "$GEOSERVER_ADMIN_USER:$GEOSERVER_ADMIN_PASSWORD" \
+     -H 'Content-Type: application/json' -X POST \
+     "$GEOSERVER_URL/rest/urlchecks" -d '{
+       "regexUrlCheck": {
+         "name": "acervo_iieg_leyendas",
+         "description": "Acervo MinIO interno (bucket iieg, prefijo leyendas/)",
+         "enabled": true,
+         "regex": "^http://acervo-minio:9000/iieg/leyendas/.+$"
+       }
+     }'
    ```
 
-   Si en producción Acervo es accesible vía un dominio HTTPS distinto, agregar también un check con el regex correspondiente.
+   Si en producción Acervo es accesible vía un dominio HTTPS distinto, agregar también checks con los regex correspondientes.
 
 ## Limitaciones conocidas
 

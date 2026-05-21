@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useReducer, useState } from 'react';
 import {
     createEvento,
     despublicarEvento,
@@ -10,49 +10,62 @@ import {
 } from '@features/mapalab-eventos/api/eventosService';
 
 
+function fetchReducer(state, action) {
+    switch (action.type) {
+    case 'fetching':
+        return { ...state, loading: true, error: null };
+    case 'success':
+        return { data: action.data, loading: false, error: null };
+    case 'error':
+        return { ...state, loading: false, error: action.error };
+    default:
+        return state;
+    }
+}
+
+const formatError = (err, fallback) =>
+    err?.response?.data?.detail || err?.message || fallback;
+
+
 export function useEventosList() {
-    const [items, setItems] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    const [state, dispatch] = useReducer(fetchReducer, { data: [], loading: true, error: null });
+    const [reloadKey, setReloadKey] = useState(0);
 
-    const reload = useCallback(async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            setItems(await listEventos());
-        } catch (err) {
-            setError(err?.response?.data?.detail || err?.message || 'Error al cargar eventos');
-        } finally {
-            setLoading(false);
-        }
-    }, []);
+    const reload = useCallback(() => setReloadKey((k) => k + 1), []);
 
-    useEffect(() => { reload(); }, [reload]);
+    useEffect(() => {
+        let cancelled = false;
+        dispatch({ type: 'fetching' });
+        listEventos()
+            .then((data) => { if (!cancelled) dispatch({ type: 'success', data }); })
+            .catch((err) => {
+                if (!cancelled) dispatch({ type: 'error', error: formatError(err, 'Error al cargar eventos') });
+            });
+        return () => { cancelled = true; };
+    }, [reloadKey]);
 
-    return { items, loading, error, reload };
+    return { items: state.data, loading: state.loading, error: state.error, reload };
 }
 
 export function useEvento(id) {
-    const [evento, setEvento] = useState(null);
-    const [loading, setLoading] = useState(Boolean(id));
-    const [error, setError] = useState(null);
+    const [state, dispatch] = useReducer(fetchReducer, { data: null, loading: Boolean(id), error: null });
+    const [reloadKey, setReloadKey] = useState(0);
 
-    const reload = useCallback(async () => {
-        if (!id) return;
-        setLoading(true);
-        setError(null);
-        try {
-            setEvento(await getEvento(id));
-        } catch (err) {
-            setError(err?.response?.data?.detail || err?.message || 'Error al cargar evento');
-        } finally {
-            setLoading(false);
-        }
-    }, [id]);
+    const reload = useCallback(() => setReloadKey((k) => k + 1), []);
 
-    useEffect(() => { reload(); }, [reload]);
+    useEffect(() => {
+        if (!id) return undefined;
+        let cancelled = false;
+        dispatch({ type: 'fetching' });
+        getEvento(id)
+            .then((data) => { if (!cancelled) dispatch({ type: 'success', data }); })
+            .catch((err) => {
+                if (!cancelled) dispatch({ type: 'error', error: formatError(err, 'Error al cargar evento') });
+            });
+        return () => { cancelled = true; };
+    }, [id, reloadKey]);
 
-    return { evento, loading, error, reload, setEvento };
+    return { evento: state.data, loading: state.loading, error: state.error, reload };
 }
 
 export {

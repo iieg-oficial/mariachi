@@ -35,6 +35,15 @@ const ESTADO_OPTIONS = [
     { label: 'Borradores', value: 'draft' },
 ];
 
+function contarCapas(items) {
+    let n = 0;
+    for (const c of items || []) {
+        if (c.tipo === 'capa') n += 1;
+        else if (c.tipo === 'categoria') n += contarCapas(c.capas);
+    }
+    return n;
+}
+
 
 export default function EventosListPage() {
     const { items, loading, error, reload } = useEventosList();
@@ -141,7 +150,7 @@ export default function EventosListPage() {
             key: 'capas',
             width: 70,
             align: 'center',
-            render: (_, record) => <Tag>{(record.capas || []).length}</Tag>,
+            render: (_, record) => <Tag>{contarCapas(record.capas)}</Tag>,
         },
         {
             title: 'Orden',
@@ -205,7 +214,7 @@ export default function EventosListPage() {
     ];
 
     return (
-        <Content style={{ padding: isMobile ? 12 : 24, maxWidth: 1200, margin: '0 auto', width: '100%' }}>
+        <Content style={{ padding: isMobile ? 6 : 24, width: '100%' }}>
             <Space direction="vertical" size="large" style={{ width: '100%' }}>
                 <div>
                     <Title level={isMobile ? 4 : 3} style={{ marginBottom: 4 }}>Eventos MapaLab</Title>

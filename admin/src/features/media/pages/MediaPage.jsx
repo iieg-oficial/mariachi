@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Card, Button, Upload, Table, Image, Space, Modal, Form, Input, Select, Tag, Popconfirm, Row, Col, Statistic, Segmented, Empty, Spin, Breadcrumb } from 'antd';
+import { Alert, Card, Button, Upload, Table, Image, Space, Modal, Form, Input, Select, Tag, Popconfirm, Row, Col, Statistic, Segmented, Empty, Spin, Breadcrumb } from 'antd';
 import {
     InboxOutlined, DeleteOutlined, EditOutlined, FolderOutlined, FolderOpenOutlined, FolderAddOutlined, FileImageOutlined, FilePdfOutlined,
     FileOutlined, AppstoreOutlined, BarsOutlined, DownloadOutlined, CopyOutlined, EyeOutlined, HomeOutlined
@@ -582,6 +582,21 @@ const Media = () => {
                         />
                     </Col>
                 </Row>
+
+                {currentBucket?.acervo_bucket === 'iieg' && (
+                    <Alert
+                        type="info"
+                        showIcon
+                        style={{ marginBottom: 12 }}
+                        message="Convención del bucket IIEG"
+                        description={
+                            <span>
+                                Este bucket es <strong>global y compartido</strong> entre secciones. Los iconos reutilizables (avisos, marcadores, etc.) viven en
+                                {' '}<code>iconos/</code>. Si subes un icono, hazlo dentro de esa carpeta para evitar duplicación.
+                            </span>
+                        }
+                    />
+                )}
 
                 <div style={{ marginBottom: 12 }}>
                     <Breadcrumb items={breadcrumbItems} />

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import dayjs from 'dayjs';
-import { Alert, Button, Card, DatePicker, Form, Input, InputNumber, Layout, Modal, Popconfirm, Space, Spin, Switch, Tabs, Tag, Typography } from 'antd';
+import { Alert, Button, Card, DatePicker, Form, Input, InputNumber, Layout, Modal, Popconfirm, Select, Space, Spin, Switch, Tabs, Tag, Typography } from 'antd';
 import {
     ArrowLeftOutlined,
     CheckOutlined,
@@ -15,6 +15,7 @@ import {
     PictureOutlined,
     SaveOutlined,
     SendOutlined,
+    SmileOutlined,
 } from '@ant-design/icons';
 import {
     createEvento,
@@ -27,6 +28,9 @@ import {
 import EventoIconPicker from '@features/mapalab-eventos/components/EventoIconPicker';
 import BBoxField from '@features/mapalab-eventos/components/BBoxField';
 import CapasField from '@features/mapalab-eventos/components/CapasField';
+import FactsField from '@features/mapalab-eventos/components/FactsField';
+import MarkdownTextArea from '@shared/components/MarkdownTextArea';
+import SymbolSnapshotField from '@features/mapalab-eventos/components/SymbolSnapshotField';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import usePresencia from '@shared/hooks/usePresencia';
 import PresenciaIndicator from '@shared/components/PresenciaIndicator';
@@ -37,18 +41,31 @@ const { Content } = Layout;
 const { Title, Text } = Typography;
 
 function normalizeCapas(capas) {
-    return (capas || []).map((c) => ({
-        tipo: c.tipo || 'capa',
-        workspace: c.workspace,
-        layer: c.layer,
-        alias: c.alias,
-        orden: c.orden ?? 0,
-        autoActivar: c.autoActivar ?? c.auto_activar ?? true,
-    }));
+    return (capas || []).map((c) => {
+        const tipo = c.tipo || 'capa';
+        if (tipo === 'categoria') {
+            return {
+                tipo,
+                alias: c.alias,
+                orden: c.orden ?? 0,
+                capas: normalizeCapas(c.capas).map((child) => (
+                    child.tipo === 'categoria' ? { ...child, tipo: 'etiqueta', capas: undefined } : child
+                )),
+            };
+        }
+        return {
+            tipo,
+            workspace: c.workspace,
+            layer: c.layer,
+            alias: c.alias,
+            orden: c.orden ?? 0,
+            autoActivar: c.autoActivar ?? c.auto_activar ?? true,
+        };
+    });
 }
 
 function eventoToForm(e) {
-    if (!e) return { activo: false, capas: [], orden: 0 };
+    if (!e) return { activo: false, capas: [], facts: [], funIcon: null, orden: 0 };
     return {
         titulo: e.titulo,
         slug: e.slug,
@@ -57,6 +74,11 @@ function eventoToForm(e) {
         imagenUrl: e.imagenUrl,
         bbox: e.bbox,
         capas: normalizeCapas(e.capas),
+        facts: Array.isArray(e.facts)
+            ? e.facts.map((f) => (typeof f === 'string' ? { text: f, symbol: null } : { text: f?.text || '', symbol: f?.symbol || null }))
+            : [],
+        funIcon: e.funIcon || null,
+        basemapId: e.basemapId || null,
         activo: e.activo,
         fechaInicio: e.fechaInicio ? dayjs(e.fechaInicio) : null,
         fechaFin: e.fechaFin ? dayjs(e.fechaFin) : null,
@@ -74,6 +96,21 @@ function formToPayload(values, { isCreate }) {
             maxy: Number(values.bbox.maxy),
         } : null;
 
+    const cleanFacts = Array.isArray(values.facts)
+        ? values.facts
+            .map((f) => {
+                if (!f) return null;
+                if (typeof f === 'string') {
+                    const t = f.trim();
+                    return t ? { text: t, symbol: null } : null;
+                }
+                const text = typeof f.text === 'string' ? f.text.trim() : '';
+                if (!text) return null;
+                return { text, symbol: f.symbol || null };
+            })
+            .filter(Boolean)
+        : [];
+
     const payload = {
         titulo: values.titulo,
         descripcion: values.descripcion || null,
@@ -81,6 +118,9 @@ function formToPayload(values, { isCreate }) {
         imagenUrl: values.imagenUrl || null,
         bbox: cleanBbox,
         capas: values.capas || [],
+        facts: cleanFacts,
+        funIcon: values.funIcon || null,
+        basemapId: values.basemapId || null,
         activo: Boolean(values.activo),
         fechaInicio: values.fechaInicio ? values.fechaInicio.toISOString() : null,
         fechaFin: values.fechaFin ? values.fechaFin.toISOString() : null,
@@ -120,7 +160,7 @@ export default function EventoEditPage() {
         if (!isCreate && evento) {
             form.setFieldsValue(eventoToForm(evento));
         } else if (isCreate) {
-            form.setFieldsValue({ activo: false, capas: [], orden: 0 });
+            form.setFieldsValue({ activo: false, capas: [], facts: [], funIcon: null, orden: 0 });
         }
     }, [evento, isCreate, form]);
 
@@ -257,7 +297,7 @@ export default function EventoEditPage() {
     const estado = evento?.estado;
 
     return (
-        <Content style={{ padding: isMobile ? 12 : 24, maxWidth: 1100, margin: '0 auto', width: '100%' }}>
+        <Content style={{ padding: isMobile ? 6 : 24, width: '100%' }}>
             <Space direction="vertical" size="large" style={{ width: '100%' }}>
                 <Space style={{ justifyContent: 'space-between', width: '100%' }} wrap>
                     <Space>
@@ -340,7 +380,7 @@ export default function EventoEditPage() {
                 {draft.saving && <Text type="secondary" style={{ fontSize: 12 }}>Guardando borrador…</Text>}
 
                 <Form form={form} layout="vertical" initialValues={initialValues} onValuesChange={handleValuesChange}>
-                    <Card styles={{ body: { padding: isMobile ? 12 : 16 } }}>
+                    <Card styles={{ body: { padding: isMobile ? 6 : 16 } }}>
                         <Tabs
                             defaultActiveKey="info"
                             tabPosition={isMobile ? 'top' : 'left'}
@@ -368,7 +408,10 @@ export default function EventoEditPage() {
                                                 <Input placeholder="mundial-2026" />
                                             </Form.Item>
                                             <Form.Item name="descripcion" label="Descripción">
-                                                <Input.TextArea rows={4} placeholder="Texto breve que se mostrará al abrir el evento" />
+                                                <MarkdownTextArea
+                                                    rows={4}
+                                                    placeholder="Texto breve que se mostrará al abrir el evento. Soporta **negritas**, *cursivas*, ~~tachado~~ y [enlaces](url)."
+                                                />
                                             </Form.Item>
                                         </>
                                     ),
@@ -423,6 +466,51 @@ export default function EventoEditPage() {
                                                 extra="Imagen ancha tipo banner (3:1 o 4:1). Se muestra cuando el sider del visor está expandido."
                                             >
                                                 <EventoIconPicker />
+                                            </Form.Item>
+                                            <Form.Item
+                                                name="basemapId"
+                                                label="Mapa base al abrir el evento"
+                                                extra="Si lo dejas vacío, el visor respeta el mapa base activo del usuario. Si eliges uno, se aplica al abrir el evento y se restaura al cerrarlo."
+                                            >
+                                                <Select
+                                                    allowClear
+                                                    placeholder="No forzar (respeta la elección del usuario)"
+                                                    options={[
+                                                        { value: 'voyager', label: 'Carto Voyager (default)' },
+                                                        { value: 'position', label: 'Carto Light' },
+                                                        { value: 'sin_mapalab', label: 'Sin mapa base' },
+                                                    ]}
+                                                />
+                                            </Form.Item>
+                                        </>
+                                    ),
+                                },
+                                {
+                                    key: 'diversion',
+                                    forceRender: true,
+                                    label: <span><SmileOutlined /> Diversión</span>,
+                                    children: (
+                                        <>
+                                            <Alert
+                                                type="info"
+                                                showIcon
+                                                style={{ marginBottom: 16 }}
+                                                message="Botón lúdico del evento"
+                                                description="Cuando el evento tiene al menos un dato curioso, el visor muestra un botón pequeño en la barra de acciones. Al presionarlo, sale el ícono rebotando hacia abajo y aparece un mensaje con un dato del pool. Los datos se muestran sin repetir hasta agotar el pool."
+                                            />
+                                            <Form.Item
+                                                name="funIcon"
+                                                label="Ícono del botón lúdico"
+                                                extra="Símbolo del catálogo de MapaLab. Si no eliges nada, el visor usa un balón ⚽ por defecto."
+                                            >
+                                                <SymbolSnapshotField placeholder="⚽ Balón (default)" />
+                                            </Form.Item>
+                                            <Form.Item
+                                                name="facts"
+                                                label="Datos curiosos"
+                                                extra="Si dejas la lista vacía, el botón no aparece en el visor."
+                                            >
+                                                <FactsField />
                                             </Form.Item>
                                         </>
                                     ),

@@ -5,18 +5,33 @@ import {
     createSymbol,
     updateSymbol,
     uploadImageSymbol,
+    uploadSvgSymbol,
 } from '@features/mapalab-symbols/api/symbolsService';
 import SymbolPreview from '@features/mapalab-symbols/components/SymbolPreview';
 import { message } from '@shared/services/message';
 
 const { Dragger } = Upload;
-const { TextArea } = Input;
 
 const KIND_OPTIONS = [
     { label: 'Emoji', value: 'emoji' },
     { label: 'SVG', value: 'svg' },
     { label: 'Imagen', value: 'image' },
 ];
+
+const KIND_UPLOAD_CONFIG = {
+    image: {
+        uploader: uploadImageSymbol,
+        accept: '.png,.jpg,.jpeg,.webp,.gif',
+        helpText: 'PNG, JPG, WebP, GIF · máx 5 MB',
+        bucketLabel: 'mapalab/simbologia/',
+    },
+    svg: {
+        uploader: uploadSvgSymbol,
+        accept: '.svg',
+        helpText: 'SVG · máx 5 MB · destino: iieg/leyendas/',
+        bucketLabel: 'iieg/leyendas/',
+    },
+};
 
 
 export default function SymbolFormModal({ open, categoryId, symbol, onClose, onSaved }) {
@@ -45,41 +60,43 @@ export default function SymbolFormModal({ open, categoryId, symbol, onClose, onS
         }
     }, [open, symbol, isEdit, form]);
 
+    const uploadConfig = KIND_UPLOAD_CONFIG[kind];
+    const isUploadKind = Boolean(uploadConfig);
+
     const previewSymbol = useMemo(() => {
         if (kind === 'emoji') return { kind: 'emoji', value: previewValue };
-        if (kind === 'svg') return { kind: 'svg', value: previewValue };
-        if (kind === 'image' && isEdit) {
-            return { kind: 'image', imageUrl: symbol?.imageUrl || symbol?.image_url };
+        if (isUploadKind && isEdit) {
+            return { kind, imageUrl: symbol?.imageUrl || symbol?.image_url };
         }
-        if (kind === 'image' && file) {
-            return { kind: 'image', imageUrl: URL.createObjectURL(file) };
+        if (isUploadKind && file) {
+            return { kind, imageUrl: URL.createObjectURL(file) };
         }
         return null;
-    }, [kind, previewValue, file, isEdit, symbol]);
+    }, [kind, previewValue, file, isEdit, symbol, isUploadKind]);
 
     const handleOk = async () => {
         try {
             const values = await form.validateFields();
             if (isEdit) {
-                if (kind === 'image' && 'value' in values) delete values.value;
+                if (isUploadKind && 'value' in values) delete values.value;
                 await updateSymbol(symbol.id, {
                     name: values.name || null,
-                    value: kind === 'image' ? undefined : values.value,
+                    value: isUploadKind ? undefined : values.value,
                     sortOrder: values.sortOrder ?? 0,
                 });
                 message.success('Símbolo actualizado');
-            } else if (kind === 'image') {
+            } else if (isUploadKind) {
                 if (!file) {
-                    message.error('Selecciona un archivo de imagen');
+                    message.error('Selecciona un archivo');
                     return;
                 }
-                await uploadImageSymbol({
+                await uploadConfig.uploader({
                     file,
                     categoryId,
                     name: values.name,
                     sortOrder: values.sortOrder ?? 0,
                 });
-                message.success('Imagen subida');
+                message.success('Archivo subido');
             } else {
                 await createSymbol({
                     categoryId,
@@ -110,7 +127,7 @@ export default function SymbolFormModal({ open, categoryId, symbol, onClose, onS
             return true;
         },
         maxCount: 1,
-        accept: '.png,.jpg,.jpeg,.svg,.webp,.gif',
+        accept: uploadConfig?.accept || '',
         fileList: file ? [{ uid: '-1', name: file.name, status: 'done' }] : [],
     };
 
@@ -140,8 +157,8 @@ export default function SymbolFormModal({ open, categoryId, symbol, onClose, onS
                         showIcon
                         message={`Tipo: ${kind}`}
                         description={
-                            kind === 'image'
-                                ? 'Para reemplazar la imagen, borra este símbolo y crea uno nuevo.'
+                            isUploadKind
+                                ? 'Para reemplazar el archivo, borra este símbolo y crea uno nuevo.'
                                 : null
                         }
                     />
@@ -163,36 +180,13 @@ export default function SymbolFormModal({ open, categoryId, symbol, onClose, onS
                         </Form.Item>
                     )}
 
-                    {kind === 'svg' && (
-                        <Form.Item
-                            name="value"
-                            label="SVG (XML inline)"
-                            rules={[
-                                { required: true, message: 'Requerido' },
-                                {
-                                    validator: (_, v) =>
-                                        !v || /<svg/i.test(v)
-                                            ? Promise.resolve()
-                                            : Promise.reject(new Error('Debe contener una etiqueta <svg>')),
-                                },
-                            ]}
-                        >
-                            <TextArea
-                                onChange={(e) => setPreviewValue(e.target.value)}
-                                placeholder='<svg viewBox="0 0 24 24">…</svg>'
-                                autoSize={{ minRows: 4, maxRows: 10 }}
-                                style={{ fontFamily: 'monospace', fontSize: 12 }}
-                            />
-                        </Form.Item>
-                    )}
-
-                    {kind === 'image' && !isEdit && (
-                        <Form.Item label="Archivo de imagen" required>
+                    {isUploadKind && !isEdit && (
+                        <Form.Item label={`Archivo (${uploadConfig.bucketLabel})`} required>
                             <Dragger {...draggerProps} style={{ padding: 8 }}>
                                 <p style={{ marginBottom: 8 }}><InboxOutlined style={{ fontSize: 28 }} /></p>
                                 <p>Click o arrastra el archivo</p>
                                 <p style={{ fontSize: 11, color: '#888' }}>
-                                    PNG, JPG, SVG, WebP, GIF · máx 5 MB
+                                    {uploadConfig.helpText}
                                 </p>
                             </Dragger>
                         </Form.Item>

@@ -10,6 +10,62 @@ NodeType = Literal["tema", "category", "label", "group", "leaf"]
 
 SLUG_PATTERN = r"^[a-z0-9-]+$"
 
+NoticeVariant = Literal["info", "warning", "neutral", "banner"]
+NoticeSize = Literal["small", "medium", "large"]
+NoticePosition = Literal["top-center", "bottom-center"]
+NoticeDismissPersistence = Literal["permanent", "reopen"]
+NoticeAnchorMode = Literal["viewport", "coord"]
+NoticeArrowPosition = Literal["top", "right", "bottom", "left"]
+
+
+class LayerNoticeAnchorCoord(CamelCaseInput):
+    lon: float = Field(..., ge=-180, le=180)
+    lat: float = Field(..., ge=-90, le=90)
+
+
+class LayerNoticeCta(CamelCaseInput):
+    label: str = Field(..., min_length=1, max_length=80)
+    url: str = Field(..., min_length=1, max_length=500)
+
+
+class LayerNoticeZoomRange(CamelCaseInput):
+    min: float | None = Field(default=None, ge=0, le=24)
+    max: float | None = Field(default=None, ge=0, le=24)
+
+
+class LayerNotice(CamelCaseInput):
+    enabled: bool = False
+    title: str = Field(..., min_length=1, max_length=120)
+    description: str | None = Field(default=None, max_length=500)
+    icon: str | None = Field(default=None, max_length=60)
+    variant: NoticeVariant = "info"
+    size: NoticeSize = "large"
+    position: NoticePosition = "top-center"
+    dismissible: bool = True
+    dismiss_persistence: NoticeDismissPersistence = Field(
+        default="reopen", serialization_alias="dismissPersistence"
+    )
+    anchor_mode: NoticeAnchorMode = Field(default="viewport", serialization_alias="anchorMode")
+    anchor_coord: LayerNoticeAnchorCoord | None = Field(default=None, serialization_alias="anchorCoord")
+    arrow_position: NoticeArrowPosition = Field(default="bottom", serialization_alias="arrowPosition")
+    valid_from: str | None = Field(default=None, serialization_alias="validFrom")
+    valid_until: str | None = Field(default=None, serialization_alias="validUntil")
+    zoom_range: LayerNoticeZoomRange | None = Field(default=None, serialization_alias="zoomRange")
+    cta: LayerNoticeCta | None = None
+
+    @field_validator("valid_from", "valid_until", mode="before")
+    @classmethod
+    def _validate_date(cls, v):
+        if v in (None, ""):
+            return None
+        if isinstance(v, str):
+            try:
+                datetime.fromisoformat(v)
+            except ValueError as exc:
+                raise ValueError("Fecha invalida (esperado ISO 8601 YYYY-MM-DD)") from exc
+            return v
+        raise ValueError("Fecha debe ser string ISO 8601")
+
 
 def _validate_slug(value: str | None) -> str | None:
     if value is None or value == "":
@@ -114,6 +170,8 @@ class LayerBase(CamelCaseInput):
 
     icon_url: str | None = Field(default=None, serialization_alias="iconUrl")
 
+    notice: LayerNotice | None = None
+
     model_config = ConfigDict(populate_by_name=True, from_attributes=True)
 
     @field_validator("slug")
@@ -179,6 +237,8 @@ class LayerUpdate(CamelCaseInput):
 
     icon_url: str | None = Field(default=None, serialization_alias="iconUrl")
 
+    notice: LayerNotice | None = None
+
     model_config = ConfigDict(populate_by_name=True)
 
     @field_validator("slug")
@@ -196,6 +256,27 @@ class LayerResponse(LayerBase):
     created_at: datetime = Field(..., serialization_alias="createdAt")
     updated_at: datetime = Field(..., serialization_alias="updatedAt")
     updated_by: str | None = Field(default=None, serialization_alias="updatedBy")
+    deleted_at: datetime | None = Field(default=None, serialization_alias="deletedAt")
+    deleted_by: str | None = Field(default=None, serialization_alias="deletedBy")
+
+
+class DeletedLayerSummary(BaseModel):
+    id: str
+    label: str
+    node_type: str = Field(..., serialization_alias="nodeType")
+    parent_id: str | None = Field(default=None, serialization_alias="parentId")
+    deleted_at: datetime = Field(..., serialization_alias="deletedAt")
+    deleted_by: str | None = Field(default=None, serialization_alias="deletedBy")
+
+    model_config = ConfigDict(populate_by_name=True, from_attributes=True)
+
+
+class LayerReferencesResponse(BaseModel):
+    children_count: int = Field(..., serialization_alias="childrenCount")
+    in_initial_order: bool = Field(..., serialization_alias="inInitialOrder")
+    eventos: list[dict] = Field(default_factory=list)
+
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class LayerTreeNode(LayerBase):

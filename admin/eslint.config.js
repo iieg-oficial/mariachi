@@ -58,7 +58,7 @@ export default [
             }],
             'template-curly-spacing': ['error', 'never'],
             'react-hooks/exhaustive-deps': 'warn',
-            'react-hooks/set-state-in-effect': 'warn',
+            'react-hooks/set-state-in-effect': 'off',
             'react-hooks/immutability': 'warn',
             'react-refresh/only-export-components': [
                 'warn',
@@ -74,13 +74,15 @@ export default [
     },
     {
         files: [
+            'src/features/inicio/pages/InicioPage.jsx',
             'src/features/mapalab-eventos/pages/EventoEditPage.jsx',
             'src/features/mapalab-home/components/sectionEditors.jsx',
             'src/features/mapalab-home/pages/HomePage.jsx',
-            'src/features/mapalab-layers/components/LayersTreeSider.jsx',
             'src/features/mapalab-layers/components/layersEditor/CqlFilterBuilder.jsx',
+            'src/features/mapalab-geoserver-files/pages/GeoserverFilesPage.jsx',
             'src/features/mapalab-layers/components/layersEditor/InfoBoxBlocksEditor.jsx',
             'src/features/mapalab-layers/components/layersEditor/LayerMetadataSection.jsx',
+            'src/features/mapalab-layers/components/layersEditor/LayerNoticeSection.jsx',
             'src/features/mapalab-layers/components/layersEditor/LayerStatsSection.jsx',
             'src/features/mapalab-layers/pages/InitialLayerOrderPage.jsx',
             'src/features/mapalab-layers/pages/LayerEditPage.jsx',
@@ -97,22 +99,13 @@ export default [
         },
     },
     {
-        files: ['src/main.jsx'],
-        rules: {
-            'react-refresh/only-export-components': 'off',
-        },
-    },
-    {
         files: [
-            'src/app/MainLayout.jsx',
-            'src/features/portal-pages/components/FontSelector.jsx',
-            'src/features/portal-pages/components/JsonEditorModal.jsx',
-            'src/features/portal-pages/components/SEOAnalyzer.jsx',
-            'src/features/portal-pages/components/TextStyleModal.jsx',
-            'src/features/portal-pages/hooks/usePageDraft.js',
+            'src/main.jsx',
+            'src/app/sider-config.jsx',
+            'src/features/mapalab-layers/components/layersEditor/LayerNoticeSection.jsx',
         ],
         rules: {
-            'react-hooks/set-state-in-effect': 'off',
+            'react-refresh/only-export-components': 'off',
         },
     },
 ];

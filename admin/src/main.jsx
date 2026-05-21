@@ -41,6 +41,7 @@ const EventosListPage = lazy(() => import('@features/mapalab-eventos').then((m) 
 const EventoEditPage = lazy(() => import('@features/mapalab-eventos').then((m) => ({ default: m.EventoEditPage })));
 const HomePage = lazy(() => import('@features/mapalab-home').then((m) => ({ default: m.HomePage })));
 const SymbolsPage = lazy(() => import('@features/mapalab-symbols').then((m) => ({ default: m.SymbolsPage })));
+const GeoserverFilesPage = lazy(() => import('@features/mapalab-geoserver-files').then((m) => ({ default: m.GeoserverFilesPage })));
 const MapalabStatsPage = lazy(() => import('@features/mapalab-stats').then((m) => ({ default: m.MapalabStatsPage })));
 const FormulariosListPage = lazy(() => import('@features/sieej-formularios').then((m) => ({ default: m.FormulariosListPage })));
 const FormularioEditorPage = lazy(() => import('@features/sieej-formularios').then((m) => ({ default: m.FormularioEditorPage })));
@@ -186,6 +187,14 @@ const router = createBrowserRouter([
                         element: withSuspense(
                             <RoleProtectedRoute allowedRoles={['tetlamamakani']}>
                                 <SymbolsPage />
+                            </RoleProtectedRoute>
+                        )
+                    },
+                    {
+                        path: 'mapalab/recursos-geoserver',
+                        element: withSuspense(
+                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
+                                <GeoserverFilesPage />
                             </RoleProtectedRoute>
                         )
                     },

@@ -5,8 +5,9 @@ from typing import Any
 from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
+from app.core.time import utcnow
 from app.models.layer import InitialLayerOrder, Layer, Workspace
-from app.schemas.layer import LayerCreate, LayerUpdate
+from app.schemas.layer import LayerCreate, LayerNotice, LayerUpdate
 from app.services.geoserver_client import GeoServerClient, GeoServerError
 
 INFOBOX_TEMPLATES = {
@@ -109,12 +110,27 @@ def validate_layer_against_geoserver(
         )
 
 
+def _normalize_notice(value: Any) -> dict[str, Any] | None:
+    if value is None:
+        return None
+    if isinstance(value, dict) and not value.get('enabled'):
+        return None
+    if isinstance(value, LayerNotice):
+        if not value.enabled:
+            return None
+        return value.model_dump(by_alias=True, exclude_none=True)
+    return LayerNotice.model_validate(value).model_dump(by_alias=True, exclude_none=True)
+
+
 def _payload_to_row(payload: dict[str, Any], updated_by: str | None) -> dict[str, Any]:
     row = {k: v for k, v in payload.items() if v is not None}
 
     if 'infobox_template' in row or 'infobox_params' in row:
         resolved = resolve_infobox(row.get('infobox_template'), row.get('infobox_params'))
         row['infobox_config'] = resolved
+
+    if 'notice' in row:
+        row['notice'] = _normalize_notice(row['notice'])
 
     row['updated_by'] = updated_by
     return row
@@ -204,6 +220,7 @@ def find_or_create_auto_leaf(
             Layer.workspace_alias == workspace_alias,
             Layer.geoserver_layer == geoserver_layer,
             Layer.node_type == 'leaf',
+            Layer.deleted_at.is_(None),
         )
         .first()
     )
@@ -269,6 +286,9 @@ def update_layer(
         params = payload.get('infobox_params', layer.infobox_params)
         payload['infobox_config'] = resolve_infobox(template, params)
 
+    if 'notice' in payload:
+        payload['notice'] = _normalize_notice(payload['notice'])
+
     for key, value in payload.items():
         setattr(layer, key, value)
     layer.updated_by = updated_by
@@ -276,9 +296,63 @@ def update_layer(
     return layer
 
 
-def delete_layer(session: Session, layer: Layer) -> None:
+def soft_delete_layer(session: Session, layer: Layer, deleted_by: str | None) -> None:
+    """Marca la capa como eliminada sin borrar la fila. Reversible vía restore."""
+    if layer.deleted_at is not None:
+        return
+    layer.deleted_at = utcnow()
+    layer.deleted_by = deleted_by
+    layer.updated_by = deleted_by
+    session.flush()
+
+
+def restore_layer(session: Session, layer: Layer, restored_by: str | None) -> None:
+    """Restaura una capa previamente eliminada (deleted_at=None)."""
+    if layer.deleted_at is None:
+        return
+    layer.deleted_at = None
+    layer.deleted_by = None
+    layer.updated_by = restored_by
+    session.flush()
+
+
+def purge_layer(session: Session, layer: Layer) -> None:
+    """Hard delete real. Solo permitido sobre capas ya en papelera."""
+    if layer.deleted_at is None:
+        raise ValueError("Solo se pueden purgar capas que ya están en papelera (deleted_at != NULL)")
     session.delete(layer)
     session.flush()
+
+
+def list_deleted_layers(session: Session) -> list[Layer]:
+    return (
+        session.query(Layer)
+        .filter(Layer.deleted_at.is_not(None))
+        .order_by(Layer.deleted_at.desc())
+        .all()
+    )
+
+
+def count_alive_children(session: Session, layer_id: str) -> int:
+    return (
+        session.query(Layer)
+        .filter(Layer.parent_id == layer_id, Layer.deleted_at.is_(None))
+        .count()
+    )
+
+
+def is_in_initial_order(session: Session, layer_id: str) -> bool:
+    return (
+        session.query(InitialLayerOrder.layer_id)
+        .filter(InitialLayerOrder.layer_id == layer_id)
+        .first()
+        is not None
+    )
+
+
+# Compat: nombres viejos siguen apuntando al nuevo comportamiento.
+def delete_layer(session: Session, layer: Layer, deleted_by: str | None = None) -> None:
+    soft_delete_layer(session, layer, deleted_by)
 
 
 def reorder_children(session: Session, parent_id: str | None, ordered_ids: list[str]) -> int:

@@ -4,6 +4,11 @@ export const NODE_TYPE_LABELS = {
     label: 'Etiqueta',
     group: 'Grupo',
     leaf: 'Capa',
+    'evento-root': 'Eventos',
+    'evento': 'Evento',
+    'evento-categoria': 'Categoría (evento)',
+    'evento-etiqueta': 'Etiqueta (evento)',
+    'evento-capa': 'Capa (evento)',
 };
 
 export const PROPERTY_LABEL = 'Propiedad';
@@ -36,6 +41,7 @@ export const TAB_VISIBILITY = {
     infobox: ['group', 'leaf'],
     metadatos: ['group', 'leaf'],
     simbologia: ['group', 'leaf'],
+    aviso: ['group', 'leaf'],
 };
 
 export const isFieldVisible = (field, nodeType) => {

@@ -33,21 +33,23 @@ export default function SldEditorLayout({
                 </Card>
             </Col>
             <Col xs={24} lg={8}>
-                <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
-                    {reviewMode && <BorradorPreview shape={shape} model={model} />}
-                    <LegendPreview
-                        workspace={workspace}
-                        geoserverWorkspace={data.workspace}
-                        styleName={styleName}
-                        layerName={layerName}
-                    />
-                    {shape === 'choropleth' && (
-                        <Card size="small" title="Cambios pendientes">
-                            <DiffPanel baseline={data.model} current={model} />
-                        </Card>
-                    )}
-                    <SldActionsCard {...sidebarProps} />
-                </Space>
+                <div style={{ position: 'sticky', top: 0 }}>
+                    <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
+                        {reviewMode && <BorradorPreview shape={shape} model={model} />}
+                        <LegendPreview
+                            workspace={workspace}
+                            geoserverWorkspace={data.workspace}
+                            styleName={styleName}
+                            layerName={layerName}
+                        />
+                        {shape === 'choropleth' && (
+                            <Card size="small" title="Cambios pendientes">
+                                <DiffPanel baseline={data.model} current={model} />
+                            </Card>
+                        )}
+                        <SldActionsCard {...sidebarProps} />
+                    </Space>
+                </div>
             </Col>
         </Row>
     );

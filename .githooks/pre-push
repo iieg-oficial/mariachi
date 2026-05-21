@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Pre-push hook: corre ruff + pytest del backend antes de permitir push.
-# Reproduce el workflow .github/workflows/test-backend.yml para detectar
-# fallos antes de que CI los marque.
+# Pre-push hook: corre validaciones de backend y frontend antes de permitir push.
+# Reproduce los workflows de CI para detectar fallos antes de que los marque.
 #
-# Saltar el hook:           SKIP_PRE_PUSH=1 git push
-# Saltar solo pytest:       SKIP_PYTEST=1 git push
+# Saltar todo el hook:        SKIP_PRE_PUSH=1 git push
+# Saltar pytest:              SKIP_PYTEST=1 git push
+# Saltar frontend:            SKIP_FRONTEND=1 git push
 
 set -e
 
@@ -20,6 +20,7 @@ RESET='\033[0m'
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 API_DIR="$REPO_ROOT/api"
+ADMIN_DIR="$REPO_ROOT/admin"
 API_CONTAINER="${API_CONTAINER:-mariachi-api}"
 
 step() { printf "${YELLOW}[pre-push] %s${RESET}\n" "$1"; }
@@ -39,7 +40,24 @@ else
 fi
 ok "ruff ok"
 
-# 2) Pytest backend
+# 2) Frontend admin: lint + knip strict (reproduce test-frontend.yml)
+if [ "${SKIP_FRONTEND:-}" = "1" ]; then
+    echo "[pre-push] SKIP_FRONTEND=1 → omitiendo validaciones frontend"
+else
+    if [ -d "$ADMIN_DIR" ]; then
+        step "eslint admin"
+        ( cd "$ADMIN_DIR" && npm run lint --silent ) \
+            || fail "eslint admin falló (corre 'cd admin && npm run lint' o usa SKIP_FRONTEND=1)"
+        ok "eslint admin ok"
+
+        step "knip strict admin (dead code)"
+        ( cd "$ADMIN_DIR" && npm run check:dead-code:strict --silent ) \
+            || fail "knip strict reportó dead code (corre 'cd admin && npm run check:dead-code' para ver detalle o usa SKIP_FRONTEND=1)"
+        ok "knip strict admin ok"
+    fi
+fi
+
+# 3) Pytest backend
 if [ "${SKIP_PYTEST:-}" = "1" ]; then
     echo "[pre-push] SKIP_PYTEST=1 → omitiendo pytest"
     exit 0

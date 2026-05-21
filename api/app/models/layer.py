@@ -95,6 +95,8 @@ class Layer(DataEngineBase):
 
     icon_url = Column(Text, nullable=True)
 
+    notice = Column(JSONB, nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=text("NOW()"), nullable=False)
     updated_at = Column(
         DateTime(timezone=True),
@@ -103,6 +105,9 @@ class Layer(DataEngineBase):
         nullable=False,
     )
     updated_by = Column(String(100), nullable=True)
+
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+    deleted_by = Column(String(100), nullable=True)
 
     workspace = relationship("Workspace", lazy="joined")
     children = relationship(

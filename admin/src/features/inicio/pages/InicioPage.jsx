@@ -6,6 +6,10 @@ import {
     EditOutlined,
     AppstoreOutlined,
     FileTextOutlined,
+    GithubOutlined,
+    ProjectOutlined,
+    LinkOutlined,
+    MessageOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '@shared/contexts/useAuth';
 import Markdown from '@shared/components/Markdown';
@@ -14,7 +18,10 @@ import {
     getBorradoresPendientes,
     getPlataformas,
     getNotasVersion,
+    getColibriConfig,
 } from '@features/inicio/api/inicioService';
+
+const COLIBRI_WIDGET_URL = '/colibri/widget/colibri-widget.v1.js';
 import { MapalabInicioHighlights } from '@features/mapalab-stats';
 
 const { Content } = Layout;
@@ -46,8 +53,24 @@ const tituloRecurso = (record) => {
 };
 
 
-const PlataformaCard = ({ plataforma }) => {
-    const { slug, label, url, version, healthy } = plataforma;
+const IconLink = ({ href, title, icon, external = false }) => {
+    const trigger = (
+        <Button
+            type="text"
+            size="small"
+            icon={icon}
+            aria-label={title}
+            style={{ color: 'rgba(0,0,0,0.45)' }}
+        />
+    );
+    const wrapper = external
+        ? <a href={href} target="_blank" rel="noopener noreferrer">{trigger}</a>
+        : <Link to={href}>{trigger}</Link>;
+    return <Tooltip title={title}>{wrapper}</Tooltip>;
+};
+
+const PlataformaCard = ({ plataforma, colibriConfig }) => {
+    const { slug, label, url, repo, taiga, version, healthy } = plataforma;
     const versionTag = version
         ? <Tag color="blue">v{version}</Tag>
         : <Tag color="default">sin versión</Tag>;
@@ -55,25 +78,54 @@ const PlataformaCard = ({ plataforma }) => {
         ? <Badge status="success" text="activa" />
         : <Tooltip title="No respondió al endpoint /ontoy"><Badge status="default" text="no integrada" /></Tooltip>;
 
-    const body = (
-        <Space orientation="vertical" size={8} style={{ width: '100%' }}>
-            <Space style={{ justifyContent: 'space-between', width: '100%' }}>
-                <Text strong style={{ fontSize: 16 }}>{label}</Text>
-                {versionTag}
-            </Space>
-            <Text type="secondary" style={{ fontSize: 12 }}>{slug}</Text>
-            {statusBadge}
-        </Space>
+    const openColibri = () => {
+        if (!window.colibri?.openPanel || !colibriConfig?.api_key) return;
+        window.colibri.setContext('plataforma_slug', slug);
+        window.colibri.setContext('plataforma_label', label);
+        window.colibri.openPanel({
+            sourceApp: colibriConfig.source_app,
+            apiKey: colibriConfig.api_key,
+        });
+    };
+
+    const acciones = [];
+    if (url && healthy) acciones.push(
+        <IconLink key="visit" href={url} title={`Abrir ${label}`} icon={<LinkOutlined />} />
+    );
+    if (repo) acciones.push(
+        <IconLink key="repo" href={repo} title="Repositorio" icon={<GithubOutlined />} external />
+    );
+    if (taiga) acciones.push(
+        <IconLink key="taiga" href={taiga} title="Tablero Taiga" icon={<ProjectOutlined />} external />
+    );
+    if (colibriConfig?.api_key) acciones.push(
+        <Tooltip key="reportar" title={`Reportar sobre ${label}`}>
+            <Button
+                type="text"
+                size="small"
+                icon={<MessageOutlined />}
+                aria-label={`Reportar sobre ${label}`}
+                onClick={openColibri}
+                style={{ color: 'rgba(0,0,0,0.45)' }}
+            />
+        </Tooltip>
     );
 
-    if (url && healthy) {
-        return (
-            <Link to={url} style={{ display: 'block', height: '100%' }}>
-                <Card hoverable size="small" styles={{ body: { padding: 16 } }}>{body}</Card>
-            </Link>
-        );
-    }
-    return <Card size="small" styles={{ body: { padding: 16 } }}>{body}</Card>;
+    return (
+        <Card size="small" styles={{ body: { padding: 16 } }}>
+            <Space orientation="vertical" size={8} style={{ width: '100%' }}>
+                <Space style={{ justifyContent: 'space-between', width: '100%' }}>
+                    <Text strong style={{ fontSize: 16 }}>{label}</Text>
+                    {versionTag}
+                </Space>
+                <Text type="secondary" style={{ fontSize: 12 }}>{slug}</Text>
+                <Space style={{ justifyContent: 'space-between', width: '100%' }}>
+                    {statusBadge}
+                    {acciones.length > 0 && <Space size={0}>{acciones}</Space>}
+                </Space>
+            </Space>
+        </Card>
+    );
 };
 
 
@@ -83,6 +135,7 @@ export default function InicioPage() {
     const [pendientes, setPendientes] = useState([]);
     const [plataformas, setPlataformas] = useState([]);
     const [notasVersion, setNotasVersion] = useState([]);
+    const [colibriConfig, setColibriConfig] = useState(null);
     const [loadingBorradores, setLoadingBorradores] = useState(true);
     const [loadingPlataformas, setLoadingPlataformas] = useState(true);
     const [loadingNotas, setLoadingNotas] = useState(true);
@@ -120,6 +173,24 @@ export default function InicioPage() {
             .then((data) => { if (!cancelled) setNotasVersion(data); })
             .catch(() => {})
             .finally(() => { if (!cancelled) setLoadingNotas(false); });
+        return () => { cancelled = true; };
+    }, []);
+
+    useEffect(() => {
+        let cancelled = false;
+        getColibriConfig()
+            .then((data) => {
+                if (cancelled || !data?.api_key) return;
+                setColibriConfig(data);
+                if (!document.querySelector('script[data-colibri-widget]')) {
+                    const script = document.createElement('script');
+                    script.src = COLIBRI_WIDGET_URL;
+                    script.defer = true;
+                    script.dataset.colibriWidget = 'true';
+                    document.head.appendChild(script);
+                }
+            })
+            .catch(() => {});
         return () => { cancelled = true; };
     }, []);
 
@@ -246,6 +317,7 @@ export default function InicioPage() {
                             rowKey="id"
                             pagination={false}
                             size="small"
+                            scroll={{ x: 'max-content' }}
                         />
                     )}
                 </Card>
@@ -262,7 +334,9 @@ export default function InicioPage() {
                             gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
                             gap: 16,
                         }}>
-                            {plataformas.map((p) => <PlataformaCard key={p.slug} plataforma={p} />)}
+                            {plataformas.map((p) => (
+                                <PlataformaCard key={p.slug} plataforma={p} colibriConfig={colibriConfig} />
+                            ))}
                         </div>
                     )}
                 </div>

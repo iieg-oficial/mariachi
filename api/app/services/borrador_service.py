@@ -125,9 +125,26 @@ def _apply_layer(
     data = borrador.data or {}
     layer_id = borrador.resource_id
     existing = dataengine_db.query(Layer).filter(Layer.id == layer_id).first()
+    action_flag = (data.get('action') or '').lower() if isinstance(data, dict) else ''
 
     try:
-        if existing:
+        if action_flag == 'delete':
+            if not existing:
+                raise ValueError(f"Capa '{layer_id}' no existe")
+            if existing.deleted_at is None:
+                layer_service.soft_delete_layer(
+                    dataengine_db, existing, deleted_by=approver_email,
+                )
+            action = 'deleted'
+        elif action_flag == 'restore':
+            if not existing:
+                raise ValueError(f"Capa '{layer_id}' no existe")
+            if existing.deleted_at is not None:
+                layer_service.restore_layer(
+                    dataengine_db, existing, restored_by=approver_email,
+                )
+            action = 'restored'
+        elif existing:
             update_payload = LayerUpdate.model_validate(data)
             layer_service.update_layer(
                 dataengine_db, existing, update_payload, updated_by=approver_email,
@@ -188,9 +205,11 @@ def _apply_sld(
             if symbol.kind == 'emoji':
                 symbol = symbol_service.ensure_emoji_png(dataengine_db, symbol_id, mariachi_db=_db)
                 object_key = symbol.png_object_key
+                bucket_slug = symbol_service.MAPALAB_BUCKET_SLUG
                 fmt = 'image/png'
-            elif symbol.kind == 'image':
+            elif symbol.kind in ('image', 'svg'):
                 object_key = symbol.image_object_key
+                bucket_slug = symbol.bucket_slug
                 ext = (object_key or '').rsplit('.', 1)[-1].lower()
                 fmt = {
                     'svg': 'image/svg+xml',
@@ -203,14 +222,14 @@ def _apply_sld(
             else:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"kind='{symbol.kind}' (svg inline) no soportado en SLD; usa image",
+                    detail=f"kind='{symbol.kind}' no soportado en SLD",
                 )
             if not object_key:
                 raise HTTPException(
                     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                     detail="No se pudo resolver el object_key del símbolo",
                 )
-            graphic_url = symbol_service._object_geoserver_url(_db, object_key)
+            graphic_url = symbol_service._object_geoserver_url(bucket_slug, object_key)
             point_payload = {
                 'graphic_url': graphic_url,
                 'graphic_format': fmt,

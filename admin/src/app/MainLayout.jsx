@@ -189,8 +189,8 @@ export default function MainLayout() {
                     </Dropdown>
                 </Header>
                 <Content style={{
-                    margin: isMobile ? '12px 8px' : '24px 16px',
-                    padding: isMobile ? 12 : 24,
+                    margin: isMobile ? '6px 4px' : '24px 16px',
+                    padding: isMobile ? 6 : 24,
                     background: '#fff',
                     minHeight: 280,
                 }}>

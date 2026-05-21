@@ -33,10 +33,11 @@ export const createSymbol = async (payload) => {
     return res.data;
 };
 
-export const uploadImageSymbol = async ({ file, categoryId, name, sortOrder = 0 }) => {
+export const uploadFileSymbol = async ({ file, categoryId, name, sortOrder = 0, kind = 'image' }) => {
     const form = new FormData();
     form.append('file', file);
     form.append('category_id', String(categoryId));
+    form.append('kind', kind);
     if (name) form.append('name', name);
     form.append('sort_order', String(sortOrder));
     const res = await api.post(`${BASE}/symbols/upload`, form, {
@@ -44,6 +45,9 @@ export const uploadImageSymbol = async ({ file, categoryId, name, sortOrder = 0 
     });
     return res.data;
 };
+
+export const uploadImageSymbol = (args) => uploadFileSymbol({ ...args, kind: 'image' });
+export const uploadSvgSymbol = (args) => uploadFileSymbol({ ...args, kind: 'svg' });
 
 export const updateSymbol = async (id, payload) => {
     const res = await api.put(`${BASE}/symbols/${id}`, payload);
