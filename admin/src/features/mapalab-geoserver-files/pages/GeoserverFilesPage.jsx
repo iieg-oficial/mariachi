@@ -446,7 +446,7 @@ export default function GeoserverFilesPage() {
                                 items={crumbs.map((c, idx) => ({
                                     title: idx === crumbs.length - 1
                                         ? <Text strong>{c.title}</Text>
-                                        : <a onClick={c.onClick}>{c.title}</a>,
+                                        : <Button type="link" size="small" onClick={c.onClick} style={{ padding: 0, height: 'auto' }}>{c.title}</Button>,
                                 }))}
                             />
                         )}

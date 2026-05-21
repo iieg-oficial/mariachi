@@ -9,6 +9,26 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.5.0] - 2026-05-21
+
+### Admin: limpieza de lint (159 → 0 problemas)
+
+CI venía bloqueado en `npm run lint` con 78 errores + 81 warnings de `eslint-plugin-react-hooks@7` (reglas pensadas para React Compiler, que no está activado en `vite.config.js`).
+
+- **`--fix` automático** resolvió 71 errores menores (indent, quotes, etc.) en muchos archivos.
+- **`admin/src/features/mapalab-geoserver-files/pages/GeoserverFilesPage.jsx`**: el `<a onClick>` del Breadcrumb se reemplazó por `<Button type="link" size="small">`, eliminando los 3 errores `jsx-a11y` de la línea 449 (anchor-is-valid, click-events-have-key-events, no-static-element-interactions).
+- **`admin/src/features/mapalab-layers/components/layersEditor/LayerNoticeSection.jsx`**: se eliminaron los dos `useMemo` que envolvían `dayjs(...)` para `validFromValue`/`validUntilValue` (resolvían `react-hooks/preserve-manual-memoization`). Se quitó el import `useMemo` ya no usado.
+- **`admin/eslint.config.js`**:
+  - `react-hooks/set-state-in-effect` pasa de `'warn'` a `'off'` global (regla orientada a React Compiler que generaba 81 warnings en patrones legítimos de data fetching). Se elimina el override redundante para 6 archivos.
+  - `GeoserverFilesPage.jsx` y `LayerNoticeSection.jsx` se añaden al override de `max-lines: 'off'` (ambos pasan de 300 líneas, refactor fuera del scope).
+  - `sider-config.jsx` y `LayerNoticeSection.jsx` se añaden al override de `react-refresh/only-export-components: 'off'` (exportan constantes/funciones junto al componente).
+
+### Backend: HUACHICOL_ONTOY_URL apuntaba a Grafana
+
+En `.env.production` el `HUACHICOL_ONTOY_URL` estaba apuntando a `http://host.docker.internal:3000/api/health` (Grafana), cuyo JSON devuelve `{"version": "12.x.x"}`. Esto provocaba que la sección "Plataformas del ecosistema" del admin mostrara Huachicol como **v12** en lugar de la versión real del stack.
+
+- **`.env.production.example`** ya tenía el patrón correcto (`http://<gateway_hub_host>/huachicol/ontoy`); los `.env` reales habían quedado desincronizados. El fix consiste en alinear `HUACHICOL_ONTOY_URL` con el patrón usado por acervo, geoserver, sieej y gateway-hub (`http://gateway-hub-nginx-1/huachicol/ontoy`), que sirve el sidecar `huachicol-version-api` y devuelve la versión del stack desde `huachicol/VERSION` (`1.20.3`).
+
 ## [1.4.0] - 2026-05-20
 
 ### MapaLab admin: soft delete reversible de capas

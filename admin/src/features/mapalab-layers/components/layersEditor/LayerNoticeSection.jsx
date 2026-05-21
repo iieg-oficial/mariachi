@@ -1,4 +1,3 @@
-import { useMemo } from 'react';
 import {
     Alert,
     Card,
@@ -82,15 +81,15 @@ const previewArrowStyle = (position, color) => {
     const t = `${PREVIEW_ARROW_SIZE}px solid transparent`;
     const s = `${PREVIEW_ARROW_SIZE}px solid ${color}`;
     switch (position) {
-        case 'top':
-            return { position: 'absolute', left: '50%', transform: 'translateX(-50%)', top: -PREVIEW_ARROW_SIZE, width: 0, height: 0, borderLeft: t, borderRight: t, borderBottom: s };
-        case 'left':
-            return { position: 'absolute', top: '50%', transform: 'translateY(-50%)', left: -PREVIEW_ARROW_SIZE, width: 0, height: 0, borderTop: t, borderBottom: t, borderRight: s };
-        case 'right':
-            return { position: 'absolute', top: '50%', transform: 'translateY(-50%)', right: -PREVIEW_ARROW_SIZE, width: 0, height: 0, borderTop: t, borderBottom: t, borderLeft: s };
-        case 'bottom':
-        default:
-            return { position: 'absolute', left: '50%', transform: 'translateX(-50%)', bottom: -PREVIEW_ARROW_SIZE, width: 0, height: 0, borderLeft: t, borderRight: t, borderTop: s };
+    case 'top':
+        return { position: 'absolute', left: '50%', transform: 'translateX(-50%)', top: -PREVIEW_ARROW_SIZE, width: 0, height: 0, borderLeft: t, borderRight: t, borderBottom: s };
+    case 'left':
+        return { position: 'absolute', top: '50%', transform: 'translateY(-50%)', left: -PREVIEW_ARROW_SIZE, width: 0, height: 0, borderTop: t, borderBottom: t, borderRight: s };
+    case 'right':
+        return { position: 'absolute', top: '50%', transform: 'translateY(-50%)', right: -PREVIEW_ARROW_SIZE, width: 0, height: 0, borderTop: t, borderBottom: t, borderLeft: s };
+    case 'bottom':
+    default:
+        return { position: 'absolute', left: '50%', transform: 'translateX(-50%)', bottom: -PREVIEW_ARROW_SIZE, width: 0, height: 0, borderLeft: t, borderRight: t, borderTop: s };
     }
 };
 
@@ -141,68 +140,68 @@ function NoticePreview({ value }) {
     return (
         <div style={{ display: 'inline-block', maxWidth: sizePreset.maxWidth, width: '100%' }}>
             <div style={{ position: 'relative', ...arrowMargin }}>
-            <div
-                style={{
-                    width: '100%',
-                    borderRadius: 8,
-                    background: 'white',
-                    padding: sizePreset.padding,
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: sizePreset.gap,
-                    border: styles.border,
-                    boxShadow: '0px 3px 24px #00000029',
-                }}
-            >
-                {icon
-                    ? (isUrl
-                        ? <img src={icon} alt="" style={{ width: sizePreset.iconSize, height: sizePreset.iconSize, objectFit: 'contain', flexShrink: 0, alignSelf: 'center' }} />
-                        : <span style={{ lineHeight: 1, flexShrink: 0, alignSelf: 'center' }}>{styles.icon}</span>
-                    )
-                    : null
-                }
-                <div style={{ minWidth: 0, flex: 1, alignSelf: 'center' }}>
-                    <div style={{ fontWeight: 700, color: styles.titleColor, fontSize: sizePreset.titleSize, lineHeight: `${sizePreset.titleLh}px` }}>
-                        {value?.title || 'Título del aviso'}
+                <div
+                    style={{
+                        width: '100%',
+                        borderRadius: 8,
+                        background: 'white',
+                        padding: sizePreset.padding,
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: sizePreset.gap,
+                        border: styles.border,
+                        boxShadow: '0px 3px 24px #00000029',
+                    }}
+                >
+                    {icon
+                        ? (isUrl
+                            ? <img src={icon} alt="" style={{ width: sizePreset.iconSize, height: sizePreset.iconSize, objectFit: 'contain', flexShrink: 0, alignSelf: 'center' }} />
+                            : <span style={{ lineHeight: 1, flexShrink: 0, alignSelf: 'center' }}>{styles.icon}</span>
+                        )
+                        : null
+                    }
+                    <div style={{ minWidth: 0, flex: 1, alignSelf: 'center' }}>
+                        <div style={{ fontWeight: 700, color: styles.titleColor, fontSize: sizePreset.titleSize, lineHeight: `${sizePreset.titleLh}px` }}>
+                            {value?.title || 'Título del aviso'}
+                        </div>
+                        {value?.description && (
+                            <div style={{ color: '#465055', fontSize: sizePreset.descSize, lineHeight: `${sizePreset.descLh}px`, marginTop: 4, fontWeight: 500 }}>
+                                {value.description}
+                            </div>
+                        )}
+                        {value?.cta?.label && value?.cta?.url && (
+                            <div style={{ marginTop: 6 }}>
+                                <Text style={{ color: '#5C2472', fontSize: 12, textDecoration: 'underline', fontWeight: 700 }}>
+                                    {value.cta.label} →
+                                </Text>
+                            </div>
+                        )}
                     </div>
-                    {value?.description && (
-                        <div style={{ color: '#465055', fontSize: sizePreset.descSize, lineHeight: `${sizePreset.descLh}px`, marginTop: 4, fontWeight: 500 }}>
-                            {value.description}
-                        </div>
-                    )}
-                    {value?.cta?.label && value?.cta?.url && (
-                        <div style={{ marginTop: 6 }}>
-                            <Text style={{ color: '#5C2472', fontSize: 12, textDecoration: 'underline', fontWeight: 700 }}>
-                                {value.cta.label} →
-                            </Text>
-                        </div>
+                    {value?.dismissible !== false && (
+                        <span style={{
+                            alignSelf: 'center',
+                            width: 24, height: 24,
+                            borderRadius: '50%',
+                            background: '#F0F0F0',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#465055',
+                            fontSize: 14,
+                            fontWeight: 700,
+                            flexShrink: 0,
+                        }}>×</span>
                     )}
                 </div>
-                {value?.dismissible !== false && (
-                    <span style={{
-                        alignSelf: 'center',
-                        width: 24, height: 24,
-                        borderRadius: '50%',
-                        background: '#F0F0F0',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#465055',
-                        fontSize: 14,
-                        fontWeight: 700,
-                        flexShrink: 0,
-                    }}>×</span>
+                {anchored && (
+                    <div
+                        aria-hidden="true"
+                        style={{
+                            ...previewArrowStyle(arrowPos, styles.accent),
+                            filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.2))',
+                        }}
+                    />
                 )}
-            </div>
-            {anchored && (
-                <div
-                    aria-hidden="true"
-                    style={{
-                        ...previewArrowStyle(arrowPos, styles.accent),
-                        filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.2))',
-                    }}
-                />
-            )}
             </div>
             <PreviewMetadata value={value} />
         </div>
@@ -266,14 +265,8 @@ export default function LayerNoticeSection({
         onChange?.({ ...base, ...patch });
     };
 
-    const validFromValue = useMemo(
-        () => (safeValue?.validFrom ? dayjs(safeValue.validFrom) : null),
-        [safeValue?.validFrom],
-    );
-    const validUntilValue = useMemo(
-        () => (safeValue?.validUntil ? dayjs(safeValue.validUntil) : null),
-        [safeValue?.validUntil],
-    );
+    const validFromValue = safeValue?.validFrom ? dayjs(safeValue.validFrom) : null;
+    const validUntilValue = safeValue?.validUntil ? dayjs(safeValue.validUntil) : null;
 
     const setCta = (patch) => {
         const cta = { ...(safeValue?.cta || {}), ...patch };
