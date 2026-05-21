@@ -35,7 +35,6 @@ const TOOLS_BY_ROUTER = {
     metadata: [
         { tool: 'get_metadata', route: 'GET /metadata/', desc: 'Metadata completa de una capa (descripción, fuentes, downloadable, URLs TXT/XLSX).' },
         { tool: 'get_sources_batch', route: 'GET /metadata/sources', desc: 'Fuentes de varias capas en lote ("workspace:layer" separadas por coma).' },
-        { tool: 'get_database_stats', route: 'GET /metadata/database-stats', desc: 'Conteo total de registros del schema mapalab (cache 1 h).' },
     ],
     periodicity: [
         { tool: 'get_periodicity', route: 'GET /periodicity/', desc: 'Fechas disponibles year/month/day de una capa temporal.' },
@@ -164,8 +163,11 @@ export default function McpTopic() {
                 <Title level={3} style={{ marginBottom: 4 }}>Servidor MCP</Title>
                 <Text type="secondary">
                     El servidor MCP de MapaLab expone el catálogo de capas como tools que un agente
-                    LLM (Claude Desktop, IGIBot, etc.) puede consultar. Está embebido en el backend
-                    de MapaLab — no necesita una segunda pieza de infraestructura.
+                    LLM (Claude Desktop, IGIBot, etc.) puede consultar. Vive en un container dedicado
+                    (<Text code>mapalab-mcp</Text> en <Text code>iieg-network</Text>), separado del
+                    backend principal — comparte la imagen base y los servicios pero corre su propio
+                    lifecycle. Antes del release <Text code>1.35.0</Text> de mapalab estaba embebido
+                    en el backend.
                 </Text>
             </div>
 
@@ -194,10 +196,13 @@ export default function McpTopic() {
             <div>
                 <Title level={4}>Tools disponibles</Title>
                 <Text type="secondary">
-                    11 tools de lectura agrupados por router. El más útil para un agente es{' '}
-                    <Text code strong>search_layers</Text>: resuelve el ID de una capa por su nombre
-                    visible y devuelve el path jerárquico. Los tools de escritura de{' '}
-                    <Text code>shares</Text> no se exponen al MCP — siguen disponibles en REST.
+                    11 tools manuales (<Text code>@mcp.tool()</Text> en{' '}
+                    <Text code>servers/mapalab.py</Text>) agrupados por router REST equivalente. El
+                    más útil para un agente es <Text code strong>search_layers</Text>: resuelve el ID
+                    de una capa por su nombre visible y devuelve el path jerárquico. Los endpoints
+                    REST de <Text code>shares</Text> (writes), <Text code>download</Text> (streams) y{' '}
+                    <Text code>get_database_stats</Text> no se exponen al MCP — siguen disponibles
+                    en REST normal.
                 </Text>
             </div>
 
@@ -285,12 +290,13 @@ export default function McpTopic() {
                     <Col xs={24} md={12}>
                         <Title level={5} style={{ marginTop: 0 }}>Qué incluye</Title>
                         <ul style={{ marginTop: 0, paddingLeft: 18, color: '#444' }}>
-                            <li>17 tools con descripción en español</li>
+                            <li>11 tools manuales con descripción en español</li>
+                            <li>Container dedicado <Text code>mapalab-mcp</Text> (red <Text code>iieg-network</Text>)</li>
                             <li>Transporte HTTP streamable (SSE)</li>
-                            <li>Telemetría → mariachi (sin identidad)</li>
+                            <li>Telemetría → mariachi (sin identidad) vía middleware ASGI en <Text code>servers/telemetry.py</Text></li>
                             <li>Métricas Prometheus + alertas en huachicol</li>
                             <li>Dashboard /administrador/mapalab/stats?tab=mcp</li>
-                            <li>Lifespan compuesto con el backend (warmup, scheduler, leader election)</li>
+                            <li>Imagen base + <Text code>requirements.txt</Text> compartidos con el backend (sin duplicar deps)</li>
                         </ul>
                     </Col>
                     <Col xs={24} md={12}>

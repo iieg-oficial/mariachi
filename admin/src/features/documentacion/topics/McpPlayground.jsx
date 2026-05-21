@@ -34,13 +34,6 @@ const PROBES = [
         inputs: [],
     },
     {
-        tool: 'get_database_stats',
-        method: 'GET',
-        path: '/metadata/database-stats',
-        description: 'Conteo total de registros del schema mapalab (cache 1 h).',
-        inputs: [],
-    },
-    {
         tool: 'get_metadata',
         method: 'GET',
         path: '/metadata/',
