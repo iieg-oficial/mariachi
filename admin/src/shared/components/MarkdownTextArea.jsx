@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button, Form, Input, Modal, Space, Tooltip } from 'antd';
 import { BoldOutlined, ItalicOutlined, LinkOutlined, StrikethroughOutlined } from '@ant-design/icons';
+import SymbolInsertButton from '@features/mapalab-symbols/components/SymbolInsertButton';
 
 const WRAPPERS = {
     bold: { open: '**', close: '**', placeholder: 'texto en negrita', label: 'Negrita', icon: <BoldOutlined />, shortcut: 'Ctrl/Cmd+B' },
@@ -26,10 +27,18 @@ const insertLinkAt = (value, start, end, text, url) => {
     return { next, selectionStart: cursor, selectionEnd: cursor };
 };
 
+const insertAt = (value, start, end, text) => {
+    const before = value.slice(0, start);
+    const after = value.slice(end);
+    const next = `${before}${text}${after}`;
+    const cursor = before.length + text.length;
+    return { next, selectionStart: cursor, selectionEnd: cursor };
+};
+
 export default function MarkdownTextArea({
     value = '',
     onChange,
-    features = ['bold', 'italic', 'strike', 'link'],
+    features = ['bold', 'italic', 'strike', 'link', 'symbol'],
     disabled,
     rows = 3,
     extraActions = null,
@@ -56,6 +65,16 @@ export default function MarkdownTextArea({
         const start = el.selectionStart ?? 0;
         const end = el.selectionEnd ?? 0;
         const { next, selectionStart, selectionEnd } = wrapSelection(value, start, end, wrapper);
+        onChange?.(next);
+        focusTextArea(selectionStart, selectionEnd);
+    }, [value, onChange, focusTextArea]);
+
+    const insertSymbol = useCallback((symbolValue) => {
+        const el = textAreaRef.current?.resizableTextArea?.textArea;
+        if (!el || !symbolValue) return;
+        const start = el.selectionStart ?? value.length;
+        const end = el.selectionEnd ?? value.length;
+        const { next, selectionStart, selectionEnd } = insertAt(value, start, end, symbolValue);
         onChange?.(next);
         focusTextArea(selectionStart, selectionEnd);
     }, [value, onChange, focusTextArea]);
@@ -132,6 +151,13 @@ export default function MarkdownTextArea({
                             aria-label="Enlace"
                         />
                     </Tooltip>
+                )}
+                {features.includes('symbol') && (
+                    <SymbolInsertButton
+                        disabled={disabled}
+                        onInsert={insertSymbol}
+                        onMouseDown={(e) => e.preventDefault()}
+                    />
                 )}
                 {extraActions && (
                     <>

@@ -20,6 +20,7 @@ import { BellOutlined, ExclamationCircleOutlined, InfoCircleOutlined, WarningOut
 import NoticeIconField from './NoticeIconField';
 import NoticeAnchorField from './NoticeAnchorField';
 import MarkdownTextArea from '@shared/components/MarkdownTextArea';
+import { renderInlineMarkdown } from '@shared/utils/inlineMarkdown';
 
 const GEOSERVER_BASE = '/geoserver';
 
@@ -97,9 +98,8 @@ const previewArrowStyle = (position, color) => {
 function NoticePreview({ value }) {
     const variant = value?.variant || 'info';
     if (variant === 'banner') {
-        const title = value?.title || 'Título del aviso';
-        const description = value?.description || '';
-        const text = description ? `${title} — ${description}` : title;
+        const rawTitle = value?.title || 'Título del aviso';
+        const rawDescription = value?.description || '';
         return (
             <div style={{ width: '100%' }}>
                 <div style={{
@@ -112,7 +112,8 @@ function NoticePreview({ value }) {
                     minHeight: 44,
                 }}>
                     <div style={{ flex: 1, padding: '8px 16px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: 14, color: '#465055', fontWeight: 500 }}>
-                        {text}
+                        {renderInlineMarkdown(rawTitle)}
+                        {rawDescription && <> — {renderInlineMarkdown(rawDescription)}</>}
                     </div>
                     <span style={{ marginRight: 12, fontSize: 18, color: '#465055', fontWeight: 700, cursor: 'pointer' }}>×</span>
                 </div>
@@ -163,11 +164,11 @@ function NoticePreview({ value }) {
                     }
                     <div style={{ minWidth: 0, flex: 1, alignSelf: 'center' }}>
                         <div style={{ fontWeight: 700, color: styles.titleColor, fontSize: sizePreset.titleSize, lineHeight: `${sizePreset.titleLh}px` }}>
-                            {value?.title || 'Título del aviso'}
+                            {renderInlineMarkdown(value?.title || 'Título del aviso')}
                         </div>
                         {value?.description && (
                             <div style={{ color: '#465055', fontSize: sizePreset.descSize, lineHeight: `${sizePreset.descLh}px`, marginTop: 4, fontWeight: 500 }}>
-                                {value.description}
+                                {renderInlineMarkdown(value.description)}
                             </div>
                         )}
                         {value?.cta?.label && value?.cta?.url && (
@@ -569,7 +570,7 @@ export default function LayerNoticeSection({
                         </Card>
                     </Col>
                     <Col xs={24} md={10}>
-                        <div style={{ position: 'sticky', top: 96 }}>
+                        <div style={{ position: 'sticky', top: 0 }}>
                             <Text strong style={{ display: 'block', marginBottom: 8 }}>
                                 Vista previa
                             </Text>

@@ -29,6 +29,7 @@ import EventoIconPicker from '@features/mapalab-eventos/components/EventoIconPic
 import BBoxField from '@features/mapalab-eventos/components/BBoxField';
 import CapasField from '@features/mapalab-eventos/components/CapasField';
 import FactsField from '@features/mapalab-eventos/components/FactsField';
+import MarkdownTextArea from '@shared/components/MarkdownTextArea';
 import SymbolSnapshotField from '@features/mapalab-eventos/components/SymbolSnapshotField';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import usePresencia from '@shared/hooks/usePresencia';
@@ -407,7 +408,10 @@ export default function EventoEditPage() {
                                                 <Input placeholder="mundial-2026" />
                                             </Form.Item>
                                             <Form.Item name="descripcion" label="Descripción">
-                                                <Input.TextArea rows={4} placeholder="Texto breve que se mostrará al abrir el evento" />
+                                                <MarkdownTextArea
+                                                    rows={4}
+                                                    placeholder="Texto breve que se mostrará al abrir el evento. Soporta **negritas**, *cursivas*, ~~tachado~~ y [enlaces](url)."
+                                                />
                                             </Form.Item>
                                         </>
                                     ),

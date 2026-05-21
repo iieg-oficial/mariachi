@@ -9,6 +9,35 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.9.0] - 2026-05-21
+
+### MapaLab admin: UX del editor de avisos y datos curiosos
+
+Batería de mejoras a la herramienta de texto enriquecido (`MarkdownTextArea`) y al preview del editor de avisos, además de la integración del catálogo de símbolos como inserción inline.
+
+#### Añadido
+
+- **`admin/src/shared/utils/inlineMarkdown.jsx`** (nuevo): helper `renderInlineMarkdown(text)` espejo del de mapalab (`mapalab/frontend/src/utils/inlineMarkdown.jsx`). Una sola regex consume tokens (`[texto](url)`, `**bold**`, `~~strike~~`, `*italic*`) en orden de aparición; nueva instancia de `RegExp` por llamada para no acarrear `lastIndex` entre invocaciones. Estilos se aplican con `style` inline (`fontWeight`, `fontStyle`, `textDecoration`) en vez de `className`, para que el preview del admin no dependa de utilidades CSS del visor.
+- **`admin/src/features/mapalab-symbols/components/SymbolInsertButton.jsx`** (nuevo): botón `<Popover>` que muestra grid de emojis del catálogo (`/mapalab/symbols` filtrado por `kind === 'emoji'`). Cache module-level (`cacheRef`) para no re-fetchear entre clicks. Al elegir, llama `onInsert(value)` con el caracter Unicode.
+
+#### Cambiado
+
+- **`admin/src/shared/components/MarkdownTextArea.jsx`**:
+  - El botón de enlace ya no inserta `[texto](https://)` con la URL incompleta; ahora abre un `Modal` con dos campos (`Texto visible` y `URL`) validados via `Form`. Si el texto seleccionado no está vacío se prepobla `Texto visible`; si queda vacío se usa la URL como texto. URL obligatoria con patrón `^https?://.+`. Atajo `Ctrl/Cmd+K` también abre el modal.
+  - Nuevo feature `symbol` (incluido por defecto en `features`): renderiza `SymbolInsertButton` al final de la toolbar. Inserta emojis del catálogo como caracteres Unicode planos (sin sintaxis especial), funcionando inmediatamente en cualquier consumidor de `MarkdownTextArea`. Para SVG/imagen inline se requeriría un campo aparte en el schema (`inline_symbols: dict[slug, snapshot]`) y queda fuera de este alcance.
+- **`admin/src/features/mapalab-layers/components/layersEditor/LayerNoticeSection.jsx::NoticePreview`**: antes mostraba `value.title` y `value.description` crudos, así que `*italica*` se veía con asteriscos literales. Ahora pasa ambos por `renderInlineMarkdown` — el preview es WYSIWYG con el visor real. Aplica a la variante `banner` y a la normal.
+- **`admin/src/features/mapalab-layers/pages/LayerEditPage.jsx`**: la columna `Vista previa` de la pestaña InfoBox se envuelve en `<div style={{position:'sticky', top:0}}>` para que el preview siga visible al scrollear el editor de bloques. Antes era sticky con `top: 96` en el viejo sider, perdió esa propiedad con la reestructuración inline del árbol de capas (1.4.0).
+- **`admin/src/features/mapalab-layers/components/layersEditor/LayerNoticeSection.jsx`**: sticky del preview ajustado de `top: 96` (offset del viejo header del sider) a `top: 0` para alinear con el nuevo scroll container del árbol inline.
+- **`admin/src/features/mapalab-layers/components/sldEditor/SldEditorLayout.jsx`**: la columna derecha (BorradorPreview + LegendPreview + DiffPanel + SldActionsCard) envuelta en sticky para que la leyenda y el botón Guardar queden visibles mientras se ajusta la simbología.
+- **`admin/src/features/mapalab-eventos/pages/EventoEditPage.jsx`**: el campo "Descripción" del evento (tab Apariencia) pasa de `Input.TextArea` a `MarkdownTextArea` — ahora soporta los 4 formatos markdown inline + emojis del catálogo, igual que los datos curiosos.
+
+#### Corregido (visor: ver `mapalab/docs/CHANGELOG.md [1.33.0]`)
+
+- Cursivas y tachado del visor no se veían: la fuente custom `Garet` declara todos sus `@font-face` como `font-style: normal` y el CSS global tenía `font-synthesis: none`, lo que impedía al browser sintetizar el oblicuo. Se aplica `fontSynthesis: 'style'` inline al `<em>` para autorizar la síntesis sólo donde se necesita.
+- El símbolo del fact se mostraba dos veces (en la pelota animada y arriba del popover de texto). Se quita del popover; queda únicamente en la pelota.
+
+---
+
 ## [1.8.0] - 2026-05-21
 
 ### MapaLab eventos: facts, símbolos del catálogo, ícono lúdico, mapa base por evento
