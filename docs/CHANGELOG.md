@@ -9,6 +9,35 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.8.0] - 2026-05-21
+
+### MapaLab eventos: facts, símbolos del catálogo, ícono lúdico, mapa base por evento
+
+Tres mejoras complementarias en el modelo de `eventos` para alimentar la nueva barra de acciones del submenu del visor (ver `mapalab/docs/CHANGELOG.md [1.32.0]`): datos curiosos enriquecidos por evento, símbolo del catálogo MapaLab → Símbolos (en lugar de un enum hardcoded) y mapa base opcional que el visor fuerza al abrir el evento.
+
+#### Añadido
+
+- **`api/alembic/versions/mariachi/a8b9c0d1e2f4_add_facts_to_eventos.py`**: nueva columna `eventos.facts JSONB DEFAULT '[]'::jsonb`. Cada evento puede listar datos curiosos consumidos por el visor.
+- **`api/alembic/versions/mariachi/a8b9c0d1e2f6_fun_icon_to_jsonb.py`**: columna `eventos.fun_icon` se reemplaza por `JSONB` (era VARCHAR enum). Guarda el snapshot del símbolo seleccionado del catálogo (`{symbolId, kind, value, imageUrl, name}`) para evitar cross-DB FK con `dataengine.mapalab.symbols`.
+- **`api/alembic/versions/mariachi/a8b9c0d1e2f7_add_basemap_id_to_eventos.py`**: columna `eventos.basemap_id VARCHAR(50) NULL`. Si está definido, el visor lo aplica al montar el menú del evento y lo restaura al cerrarlo.
+- **`api/app/schemas/evento.py`**:
+  - Nuevo `SymbolSnapshot` (`{symbolId, kind, value, imageUrl, name}`) reutilizable para `fun_icon` y `fact.symbol`.
+  - Nuevo `FactRef` (`{text, symbol?}`) con `@model_validator(mode='before')` que acepta strings legacy (`"texto"` → `{text: "texto"}`) para compatibilidad con facts ya capturados como strings sueltos.
+  - `EventoBase`/`EventoUpdate` exponen `facts: list[FactRef]`, `funIcon: SymbolSnapshot | None` y `basemapId: str | None` (todos con `serialization_alias` camelCase para el contrato público).
+- **`admin/src/features/mapalab-eventos/components/FactsField.jsx`** (nuevo): editor de la lista de facts. Cada item es un card con:
+  - `<MarkdownTextArea>` reutilizado del editor de avisos (markdown inline: `**bold**`, `*italic*`, `~~strike~~`, `[link](url)`) con `showCount`, `maxLength=500`.
+  - Toolbar combinada gracias a nueva prop `extraActions` en `MarkdownTextArea`: los botones subir/bajar/eliminar viven junto a los de markdown, separados por divider.
+  - `<SymbolSnapshotField>` opcional por fact (cabecera del card) para asignarle un símbolo propio. Si se deja vacío, el visor muestra el texto sin símbolo.
+- **`admin/src/features/mapalab-eventos/components/SymbolSnapshotField.jsx`** (nuevo): button + `Popover` que envuelve `<SymbolPicker>` del catálogo (`features/mapalab-layers/components/sldEditor/SymbolPicker`). Al seleccionar arma el snapshot completo del símbolo y lo persiste como JSONB; botón "limpiar" para volver a sin símbolo.
+- **`admin/src/features/mapalab-eventos/pages/EventoEditPage.jsx`**:
+  - Nuevo tab "Diversión" (ícono carita `SmileOutlined`) entre "Apariencia" y "Geografía": `SymbolSnapshotField` para `funIcon` (con fallback a balón ⚽ en el visor) + `<FactsField>` para los datos curiosos. Alert explicativo arriba del tab.
+  - En el tab "Apariencia": nuevo selector de `basemapId` con las 3 opciones de mapalab (Carto Voyager, Carto Light, Sin mapa base); `allowClear` para volver a "respetar elección del usuario".
+  - `eventoToForm`/`formToPayload` normalizan: strings legacy en `facts` se promueven a `{text, symbol:null}`, strings vacíos se filtran al guardar.
+
+#### Cambiado
+
+- **`admin/src/shared/components/MarkdownTextArea.jsx`**: nueva prop opcional `extraActions` que se renderiza al final de la toolbar separada por un divider vertical. Backward-compatible — los consumidores existentes (LayerNoticeSection) no la pasan y siguen igual.
+
 ## [1.7.0] - 2026-05-21
 
 ### MapaLab admin: toolbar de markdown inline en el editor de avisos
