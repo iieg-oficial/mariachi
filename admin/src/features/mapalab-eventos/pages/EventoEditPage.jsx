@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import dayjs from 'dayjs';
-import { Alert, Button, Card, DatePicker, Form, Input, InputNumber, Layout, Modal, Popconfirm, Select, Space, Spin, Switch, Tabs, Tag, Typography } from 'antd';
+import { Alert, Button, Card, DatePicker, Form, Input, InputNumber, Layout, Modal, Popconfirm, Space, Spin, Switch, Tabs, Tag, Typography } from 'antd';
 import {
     ArrowLeftOutlined,
     CheckOutlined,
@@ -29,6 +29,7 @@ import EventoIconPicker from '@features/mapalab-eventos/components/EventoIconPic
 import BBoxField from '@features/mapalab-eventos/components/BBoxField';
 import CapasField from '@features/mapalab-eventos/components/CapasField';
 import FactsField from '@features/mapalab-eventos/components/FactsField';
+import SymbolSnapshotField from '@features/mapalab-eventos/components/SymbolSnapshotField';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import usePresencia from '@shared/hooks/usePresencia';
 import PresenciaIndicator from '@shared/components/PresenciaIndicator';
@@ -72,7 +73,9 @@ function eventoToForm(e) {
         imagenUrl: e.imagenUrl,
         bbox: e.bbox,
         capas: normalizeCapas(e.capas),
-        facts: Array.isArray(e.facts) ? e.facts : [],
+        facts: Array.isArray(e.facts)
+            ? e.facts.map((f) => (typeof f === 'string' ? { text: f, symbol: null } : { text: f?.text || '', symbol: f?.symbol || null }))
+            : [],
         funIcon: e.funIcon || null,
         activo: e.activo,
         fechaInicio: e.fechaInicio ? dayjs(e.fechaInicio) : null,
@@ -92,7 +95,18 @@ function formToPayload(values, { isCreate }) {
         } : null;
 
     const cleanFacts = Array.isArray(values.facts)
-        ? values.facts.map((s) => (typeof s === 'string' ? s.trim() : '')).filter(Boolean)
+        ? values.facts
+            .map((f) => {
+                if (!f) return null;
+                if (typeof f === 'string') {
+                    const t = f.trim();
+                    return t ? { text: t, symbol: null } : null;
+                }
+                const text = typeof f.text === 'string' ? f.text.trim() : '';
+                if (!text) return null;
+                return { text, symbol: f.symbol || null };
+            })
+            .filter(Boolean)
         : [];
 
     const payload = {
@@ -466,19 +480,9 @@ export default function EventoEditPage() {
                                             <Form.Item
                                                 name="funIcon"
                                                 label="Ícono del botón lúdico"
-                                                extra="Por defecto es un balón de fútbol. Cambialo según el tema del evento."
+                                                extra="Símbolo del catálogo de MapaLab. Si no eliges nada, el visor usa un balón ⚽ por defecto."
                                             >
-                                                <Select
-                                                    allowClear
-                                                    placeholder="⚽ Balón (default)"
-                                                    options={[
-                                                        { value: 'soccer', label: '⚽ Balón de fútbol' },
-                                                        { value: 'star', label: '⭐ Estrella' },
-                                                        { value: 'party', label: '🎉 Fiesta' },
-                                                        { value: 'book', label: '📘 Libro' },
-                                                        { value: 'bulb', label: '💡 Foco' },
-                                                    ]}
-                                                />
+                                                <SymbolSnapshotField placeholder="⚽ Balón (default)" />
                                             </Form.Item>
                                             <Form.Item
                                                 name="facts"

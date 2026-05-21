@@ -32,7 +32,7 @@ class Evento(Base):
     bbox = Column(JSON, nullable=True)
     capas = Column(JSON, default=list, nullable=False)
     facts = Column(JSON, default=list, nullable=False)
-    fun_icon = Column(String(32), nullable=True)
+    fun_icon = Column(JSON, nullable=True)
     activo = Column(Boolean, nullable=False, default=False)
     fecha_inicio = Column(DateTime(timezone=True), nullable=True)
     fecha_fin = Column(DateTime(timezone=True), nullable=True)

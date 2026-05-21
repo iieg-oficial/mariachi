@@ -57,6 +57,30 @@ class CapaRef(CamelCaseInput):
 CapaRef.model_rebuild()
 
 
+class SymbolSnapshot(CamelCaseInput):
+    symbol_id: int | None = Field(default=None, serialization_alias='symbolId')
+    kind: Literal['emoji', 'svg', 'image']
+    value: str | None = None
+    image_url: str | None = Field(default=None, max_length=URL_MAX_LENGTH, serialization_alias='imageUrl')
+    name: str | None = Field(default=None, max_length=200)
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class FactRef(CamelCaseInput):
+    text: str = Field(min_length=1, max_length=500)
+    symbol: SymbolSnapshot | None = None
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    @model_validator(mode='before')
+    @classmethod
+    def _accept_string_legacy(cls, data):
+        if isinstance(data, str):
+            return {'text': data}
+        return data
+
+
 class BBox(CamelCaseInput):
     minx: float = Field(ge=-180, le=180)
     miny: float = Field(ge=-90, le=90)
@@ -127,8 +151,8 @@ class _EventoVisibleFields(CamelCaseInput, _ImageUrlMixin):
     imagen_url: str | None = Field(default=None, max_length=URL_MAX_LENGTH, serialization_alias='imagenUrl')
     bbox: BBox | None = None
     capas: list[CapaRef] = Field(default_factory=list)
-    facts: list[str] = Field(default_factory=list)
-    fun_icon: str | None = Field(default=None, max_length=32, serialization_alias='funIcon')
+    facts: list[FactRef] = Field(default_factory=list)
+    fun_icon: SymbolSnapshot | None = Field(default=None, serialization_alias='funIcon')
     fecha_inicio: datetime | None = Field(default=None, serialization_alias='fechaInicio')
     fecha_fin: datetime | None = Field(default=None, serialization_alias='fechaFin')
     orden: int = 0
@@ -153,8 +177,8 @@ class EventoUpdate(CamelCaseInput, _ImageUrlMixin):
     imagen_url: str | None = Field(default=None, max_length=URL_MAX_LENGTH, serialization_alias='imagenUrl')
     bbox: BBox | None = None
     capas: list[CapaRef] | None = None
-    facts: list[str] | None = None
-    fun_icon: str | None = Field(default=None, max_length=32, serialization_alias='funIcon')
+    facts: list[FactRef] | None = None
+    fun_icon: SymbolSnapshot | None = Field(default=None, serialization_alias='funIcon')
     activo: bool | None = None
     fecha_inicio: datetime | None = Field(default=None, serialization_alias='fechaInicio')
     fecha_fin: datetime | None = Field(default=None, serialization_alias='fechaFin')

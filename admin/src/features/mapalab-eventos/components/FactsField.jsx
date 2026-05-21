@@ -1,20 +1,34 @@
-import { Button, Empty, Input, Space, Typography } from 'antd';
+import { Button, Empty, Tooltip, Typography } from 'antd';
 import { ArrowDownOutlined, ArrowUpOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
+import MarkdownTextArea from '@shared/components/MarkdownTextArea';
+import SymbolSnapshotField from './SymbolSnapshotField';
 
 const { Text } = Typography;
 
 const MAX_LENGTH = 500;
+const EMPTY_FACT = { text: '', symbol: null };
+
+const normalizeFact = (f) => {
+    if (!f) return { ...EMPTY_FACT };
+    if (typeof f === 'string') return { text: f, symbol: null };
+    return { text: f.text || '', symbol: f.symbol || null };
+};
 
 const FactsField = ({ value, onChange }) => {
-    const facts = Array.isArray(value) ? value : [];
+    const facts = Array.isArray(value) ? value.map(normalizeFact) : [];
 
     const update = (next) => onChange?.(next);
 
-    const handleAdd = () => update([...facts, '']);
+    const handleAdd = () => update([...facts, { ...EMPTY_FACT }]);
     const handleRemove = (idx) => update(facts.filter((_, i) => i !== idx));
-    const handleChange = (idx, text) => {
+    const handleChangeText = (idx, text) => {
         const next = [...facts];
-        next[idx] = text;
+        next[idx] = { ...next[idx], text };
+        update(next);
+    };
+    const handleChangeSymbol = (idx, symbol) => {
+        const next = [...facts];
+        next[idx] = { ...next[idx], symbol };
         update(next);
     };
     const handleMove = (idx, delta) => {
@@ -40,41 +54,74 @@ const FactsField = ({ value, onChange }) => {
     }
 
     return (
-        <Space direction="vertical" style={{ width: '100%' }} size="small">
-            {facts.map((text, idx) => (
-                <Space.Compact key={idx} style={{ width: '100%' }} block>
-                    <Input.TextArea
-                        value={text}
-                        onChange={(e) => handleChange(idx, e.target.value)}
-                        placeholder={`Dato curioso #${idx + 1}`}
-                        rows={2}
+        <div>
+            {facts.map((fact, idx) => (
+                <div
+                    key={idx}
+                    style={{
+                        marginBottom: 24,
+                        padding: 12,
+                        background: '#FAFAFA',
+                        borderRadius: 6,
+                        border: '1px solid #F0F0F0',
+                    }}
+                >
+                    <div style={{ marginBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                            Dato curioso #{idx + 1}
+                        </Text>
+                        <SymbolSnapshotField
+                            value={fact.symbol}
+                            onChange={(symbol) => handleChangeSymbol(idx, symbol)}
+                            size={20}
+                            placeholder="Sin símbolo (usa el del evento)"
+                        />
+                    </div>
+                    <MarkdownTextArea
+                        value={fact.text}
+                        onChange={(v) => handleChangeText(idx, v)}
+                        rows={3}
                         maxLength={MAX_LENGTH}
                         showCount
+                        placeholder="Texto del dato curioso. Puedes usar **negrita**, *cursiva* y enlaces."
+                        extraActions={
+                            <>
+                                <Tooltip title="Subir">
+                                    <Button
+                                        size="small"
+                                        icon={<ArrowUpOutlined />}
+                                        disabled={idx === 0}
+                                        onClick={() => handleMove(idx, -1)}
+                                        aria-label="Subir"
+                                    />
+                                </Tooltip>
+                                <Tooltip title="Bajar">
+                                    <Button
+                                        size="small"
+                                        icon={<ArrowDownOutlined />}
+                                        disabled={idx === facts.length - 1}
+                                        onClick={() => handleMove(idx, 1)}
+                                        aria-label="Bajar"
+                                    />
+                                </Tooltip>
+                                <Tooltip title="Eliminar">
+                                    <Button
+                                        size="small"
+                                        icon={<DeleteOutlined />}
+                                        danger
+                                        onClick={() => handleRemove(idx)}
+                                        aria-label="Eliminar"
+                                    />
+                                </Tooltip>
+                            </>
+                        }
                     />
-                    <Button
-                        onClick={() => handleMove(idx, -1)}
-                        disabled={idx === 0}
-                        icon={<ArrowUpOutlined />}
-                        title="Subir"
-                    />
-                    <Button
-                        onClick={() => handleMove(idx, 1)}
-                        disabled={idx === facts.length - 1}
-                        icon={<ArrowDownOutlined />}
-                        title="Bajar"
-                    />
-                    <Button
-                        onClick={() => handleRemove(idx)}
-                        icon={<DeleteOutlined />}
-                        danger
-                        title="Eliminar"
-                    />
-                </Space.Compact>
+                </div>
             ))}
             <Button type="dashed" onClick={handleAdd} icon={<PlusOutlined />} block>
                 Agregar dato curioso
             </Button>
-        </Space>
+        </div>
     );
 };
 
