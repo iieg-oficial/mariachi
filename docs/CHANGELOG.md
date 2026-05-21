@@ -9,6 +9,27 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.10.0] - 2026-05-21
+
+### Agregado: panel de telemetría del servidor MCP de MapaLab + documentación interna
+
+- **Endpoint interno nuevo** `POST /api/administrador/internal/mapalab/mcp/events` (con `X-Internal-Token`, mismo patrón que `mapalab_api_keys_internal`). Recibe lotes de eventos del middleware MCP del backend de MapaLab y los persiste en la tabla `mapalab_mcp_events` (modelo nuevo `MapalabMcpEvent`). Sin identidad: `session_hash` e `ip_hash` ya vienen SHA-256 desde el origen.
+
+- **4 vistas materializadas nuevas** (`mapalab_mcp_stats_overview`, `mapalab_mcp_stats_tools`, `mapalab_mcp_stats_daily`, `mapalab_mcp_stats_clients`) que agregan los eventos para alimentar el dashboard. Se sumaron al array `REFRESH_VIEWS` de `mapalab_telemetry.py` — el botón "Refrescar vistas" del panel de estadísticas las regenera junto con las del visor. `mapalab_mcp_stats_overview` queda en la lista `_VIEWS_WITHOUT_UNIQUE_INDEX` para evitar el `CONCURRENTLY` que requiere índice único.
+
+- **Tab MCP en `/administrador/mapalab/stats`**: tarjetas (llamadas 30d/7d/hoy, tasa de error, latencia media tool, latencia media en ms, sesiones únicas, clientes distintos, calls a tools), gráfica de llamadas por día con stack visual de errores en rojo, tabla por tool (usos, errores, p95, sesiones únicas, última actividad), tabla de clientes MCP (nombre, versión, calls, sesiones). Endpoints: `GET /mapalab-stats/mcp/{overview,tools,daily,clients}`.
+
+- **Página de Documentación nueva** `/administrador/documentacion` con tabs verticales por tema. Primer tema "Servidor MCP" con explicación qué es, tabla de URLs por contexto (containers / local / producción usando `VITE_MAPALAB_PROXY_URL` y `VITE_WEB_URL` + fallback a `window.location.origin`), tabla de los 17 tools agrupados por router con énfasis en `search_layers`, ejemplos de cliente Claude Desktop + LangChain, campos de telemetría persistidos, y un **playground interactivo** que llama los endpoints REST equivalentes vía el proxy `/mapalab/*` (Vite en dev, gateway-hub en prod). Cada tool sin efectos secundarios tiene su tarjeta con form, botón "Probar" y display de respuesta con HTTP status, latencia y JSON formateado.
+
+- **Item "Documentación" anclado al footer del sider**: `FOOTER_ITEMS` nuevo en `sider-registry`, función `buildSiderFooterItems` en `sider-config`, y en `MainLayout` el menú principal va en un wrapper scrolleable con `position: absolute; top: 64; bottom: <footer-height>` y el menú de footer queda con `position: absolute; bottom: 0` siempre visible. En mobile (Drawer) los items se concatenan sin sticky.
+
+#### Migraciones
+
+- `b9c0d1e2f3a5_add_mapalab_mcp_events.py` — tabla + 4 índices.
+- `c0d1e2f3a4b6_add_mapalab_mcp_stats_views.py` — 4 vistas materializadas + 3 índices únicos.
+
+---
+
 ## [1.9.1] - 2026-05-21
 
 ### Dead code limpio + pre-push hook con lint y knip del admin
