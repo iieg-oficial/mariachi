@@ -11,7 +11,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router';
 import { useAuth } from '@shared/contexts/useAuth';
 import api from '@shared/services/api';
 import { BRAND } from '@app/providers/brand';
-import { buildSiderItems, defaultOpenKeyForPath } from '@app/sider-config';
+import { buildSiderFooterItems, buildSiderItems, defaultOpenKeyForPath } from '@app/sider-config';
 
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
@@ -70,6 +70,7 @@ export default function MainLayout() {
         onNavigate: handleNav,
         extras: { pendingCount, reportesPendingCount },
     });
+    const footerMenuItems = buildSiderFooterItems({ user, onNavigate: handleNav });
 
     const userMenuItems = [
         {
@@ -120,22 +121,72 @@ export default function MainLayout() {
         </div>
     );
 
-    const sideMenu = (
-        <Menu
-            theme="dark"
-            mode="inline"
-            selectedKeys={[location.pathname]}
-            defaultOpenKeys={[defaultOpenKeyForPath(location.pathname)]}
-            items={menuItems}
-        />
+    const FOOTER_HEIGHT = footerMenuItems.length > 0 ? 48 * footerMenuItems.length : 0;
+
+    const renderSiderContent = () => (
+        <div style={{ position: 'relative', height: '100%' }}>
+            {brand(collapsed)}
+            <div
+                style={{
+                    position: 'absolute',
+                    top: 64,
+                    left: 0,
+                    right: 0,
+                    bottom: FOOTER_HEIGHT,
+                    overflowY: 'auto',
+                }}
+            >
+                <Menu
+                    theme="dark"
+                    mode="inline"
+                    selectedKeys={[location.pathname]}
+                    defaultOpenKeys={[defaultOpenKeyForPath(location.pathname)]}
+                    items={menuItems}
+                    style={{ borderInlineEnd: 'none' }}
+                />
+            </div>
+            {footerMenuItems.length > 0 && (
+                <Menu
+                    theme="dark"
+                    mode="inline"
+                    selectedKeys={[location.pathname]}
+                    items={footerMenuItems}
+                    style={{
+                        position: 'absolute',
+                        bottom: 0,
+                        left: 0,
+                        right: 0,
+                        borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                        borderInlineEnd: 'none',
+                    }}
+                />
+            )}
+        </div>
+    );
+
+    const renderMobileSiderContent = () => (
+        <>
+            {brand(false)}
+            <Menu
+                theme="dark"
+                mode="inline"
+                selectedKeys={[location.pathname]}
+                defaultOpenKeys={[defaultOpenKeyForPath(location.pathname)]}
+                items={[...menuItems, ...footerMenuItems]}
+            />
+        </>
     );
 
     return (
         <Layout style={{ minHeight: '100vh' }}>
             {!isMobile && (
-                <Sider trigger={null} collapsible collapsed={collapsed} width={280}>
-                    {brand(collapsed)}
-                    {sideMenu}
+                <Sider
+                    trigger={null}
+                    collapsible
+                    collapsed={collapsed}
+                    width={280}
+                >
+                    {renderSiderContent()}
                 </Sider>
             )}
 
@@ -151,8 +202,7 @@ export default function MainLayout() {
                         header: { display: 'none' },
                     }}
                 >
-                    {brand(false)}
-                    {sideMenu}
+                    {renderMobileSiderContent()}
                 </Drawer>
             )}
 

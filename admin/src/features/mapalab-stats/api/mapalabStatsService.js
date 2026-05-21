@@ -42,3 +42,23 @@ export const getHighlights = async () => {
     const res = await api.get('/mapalab-stats/highlights');
     return res.data;
 };
+
+export const getMcpOverview = async () => {
+    const res = await api.get('/mapalab-stats/mcp/overview');
+    return res.data;
+};
+
+export const getMcpTools = async (limit = 30) => {
+    const res = await api.get('/mapalab-stats/mcp/tools', { params: { limit } });
+    return res.data;
+};
+
+export const getMcpDaily = async (days = 30) => {
+    const res = await api.get('/mapalab-stats/mcp/daily', { params: { days } });
+    return res.data;
+};
+
+export const getMcpClients = async () => {
+    const res = await api.get('/mapalab-stats/mcp/clients');
+    return res.data;
+};

@@ -2,6 +2,7 @@ import {
     ApartmentOutlined,
     AppstoreOutlined,
     BarChartOutlined,
+    BookOutlined,
     BranchesOutlined,
     CalendarOutlined,
     CodeOutlined,
@@ -46,6 +47,10 @@ export const PROJECT_REGISTRY = {
         icon: <EnvironmentOutlined />,
         items: [
             { key: '/mapalab/layers', path: '/mapalab/layers', label: 'Capas', icon: <PartitionOutlined /> },
+            {
+                key: '/mapalab/layers/ingesta-masiva', path: '/mapalab/layers/ingesta-masiva',
+                label: 'Ingesta masiva', icon: <InboxOutlined />, showBetaBadge: true,
+            },
             { key: '/mapalab/initial-order', path: '/mapalab/initial-order', label: 'Capas iniciales', icon: <OrderedListOutlined /> },
             { key: '/mapalab/eventos', path: '/mapalab/eventos', label: 'Eventos', icon: <CalendarOutlined /> },
             { key: '/mapalab/home', path: '/mapalab/home', label: 'Inicio', icon: <HomeOutlined /> },
@@ -109,3 +114,13 @@ export const PROJECT_REGISTRY = {
         ],
     },
 };
+
+export const FOOTER_ITEMS = [
+    {
+        key: '/documentacion',
+        path: '/documentacion',
+        label: 'Documentación',
+        icon: <BookOutlined />,
+        allowedGlobalRoles: ['tetlamamakani', 'editora'],
+    },
+];

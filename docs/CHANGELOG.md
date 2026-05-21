@@ -9,6 +9,47 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.10.0] - 2026-05-21
+
+### Agregado: panel de telemetría del servidor MCP de MapaLab + documentación interna
+
+- **Endpoint interno nuevo** `POST /api/administrador/internal/mapalab/mcp/events` (con `X-Internal-Token`, mismo patrón que `mapalab_api_keys_internal`). Recibe lotes de eventos del middleware MCP del backend de MapaLab y los persiste en la tabla `mapalab_mcp_events` (modelo nuevo `MapalabMcpEvent`). Sin identidad: `session_hash` e `ip_hash` ya vienen SHA-256 desde el origen.
+
+- **4 vistas materializadas nuevas** (`mapalab_mcp_stats_overview`, `mapalab_mcp_stats_tools`, `mapalab_mcp_stats_daily`, `mapalab_mcp_stats_clients`) que agregan los eventos para alimentar el dashboard. Se sumaron al array `REFRESH_VIEWS` de `mapalab_telemetry.py` — el botón "Refrescar vistas" del panel de estadísticas las regenera junto con las del visor. `mapalab_mcp_stats_overview` queda en la lista `_VIEWS_WITHOUT_UNIQUE_INDEX` para evitar el `CONCURRENTLY` que requiere índice único.
+
+- **Tab MCP en `/administrador/mapalab/stats`**: tarjetas (llamadas 30d/7d/hoy, tasa de error, latencia media tool, latencia media en ms, sesiones únicas, clientes distintos, calls a tools), gráfica de llamadas por día con stack visual de errores en rojo, tabla por tool (usos, errores, p95, sesiones únicas, última actividad), tabla de clientes MCP (nombre, versión, calls, sesiones). Endpoints: `GET /mapalab-stats/mcp/{overview,tools,daily,clients}`.
+
+- **Página de Documentación nueva** `/administrador/documentacion` con tabs verticales por tema. Primer tema "Servidor MCP" con explicación qué es, tabla de URLs por contexto (containers / local / producción usando `VITE_MAPALAB_PROXY_URL` y `VITE_WEB_URL` + fallback a `window.location.origin`), tabla de los 17 tools agrupados por router con énfasis en `search_layers`, ejemplos de cliente Claude Desktop + LangChain, campos de telemetría persistidos, y un **playground interactivo** que llama los endpoints REST equivalentes vía el proxy `/mapalab/*` (Vite en dev, gateway-hub en prod). Cada tool sin efectos secundarios tiene su tarjeta con form, botón "Probar" y display de respuesta con HTTP status, latencia y JSON formateado.
+
+- **Item "Documentación" anclado al footer del sider**: `FOOTER_ITEMS` nuevo en `sider-registry`, función `buildSiderFooterItems` en `sider-config`, y en `MainLayout` el menú principal va en un wrapper scrolleable con `position: absolute; top: 64; bottom: <footer-height>` y el menú de footer queda con `position: absolute; bottom: 0` siempre visible. En mobile (Drawer) los items se concatenan sin sticky.
+
+#### Migraciones MCP
+
+- `b9c0d1e2f3a5_add_mapalab_mcp_events.py` — tabla + 4 índices.
+- `c0d1e2f3a4b6_add_mapalab_mcp_stats_views.py` — 4 vistas materializadas + 3 índices únicos.
+
+### MapaLab admin: ingesta masiva de metadatos (CSV/XLSX)
+
+Nueva pestaña `/mariachi/mapalab/layers/ingesta-masiva` para subir un Excel/CSV del catálogo MapaLab y aplicar metadatos a múltiples capas en una sola operación, sin tocar el editor de cada una. Flujo de 3 pasos: subida + mapeo de columnas → preview del plan con diff por capa → apply atómico con optimistic locking.
+
+- **`api/app/api/routes/bulk_ingest.py`** (nuevo): 5 endpoints bajo `/layer-metadata/bulk` — `column-presets` (presets de mapeo Excel→técnico), `upload` (multipart CSV/XLSX + `dependencia` + `column_mapping`, genera plan persistido), `plan/{id}` (GET, TTL 24h), `plan/{id}/apply` (admin-only, optimistic locking con `IS NOT DISTINCT FROM`), `plan/{id}` (DELETE, cancela).
+- **`api/app/services/bulk_ingest_parser.py`** (nuevo): parsing CSV (UTF-8) y XLSX (dep nueva `openpyxl>=3.1`). Builders de `layer_metadata`, fuentes, metodología y numeralia con preset `mapalab-excel`.
+- **`api/app/services/bulk_ingest_planner.py`** (nuevo): genera plan con diff por capa (`insert` / `update` / `no-change`) persistido en `mapalab.bulk_ingest_plans` como `plan_json` JSONB. Archivo original subido al acervo bucket privado `mariachi/bulk-ingest/<plan_id>/`. Best-effort: si falla la subida, el plan se genera igual.
+- **`api/app/models/bulk_ingest_plan.py`** (nuevo, `DataEngineBase`) + **`api/app/schemas/bulk_ingest.py`** (Pydantic).
+- **`api/tests/services/test_bulk_ingest_parser.py`** (nuevo): tests de parsing, mapping y builders del preset MapaLab.
+- **`admin/src/features/mapalab-layers/pages/BulkIngestPage.jsx`** (nuevo) — orquestador del flujo de 3 pasos.
+- **`admin/src/features/mapalab-layers/components/bulkIngest/{UploadForm,MappingModal,PreviewPlan,ChangeDetail,ResultView}.jsx`** (nuevos) — UI por paso.
+- **`admin/src/features/mapalab-layers/constants/bulkIngestFields.js`** (nuevo) — preset visible y catálogo de campos técnicos.
+- **`admin/src/features/mapalab-layers/services/bulkIngestService.js`** (nuevo) — cliente axios.
+- **Counters Prometheus**: `mariachi_bulk_ingest_uploads_total`, `mariachi_bulk_ingest_applies_total`.
+- Item "Ingesta masiva" agregado al sider de MapaLab (con badge beta), accesible a roles `tetlamamakani` y `editora`.
+
+#### Migraciones bulk-ingest
+
+- `0012_bulk_ingest_plans` en dataengine (repo separado) — tabla `mapalab.bulk_ingest_plans` con `plan_json JSONB`, `status` (`pending`/`applied`/`cancelled`/`expired`), TTL 24h.
+
+---
+
 ## [1.9.1] - 2026-05-21
 
 ### Dead code limpio + pre-push hook con lint y knip del admin

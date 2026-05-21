@@ -37,12 +37,14 @@ const Media = lazy(() => import('@features/media'));
 const RevisionQueue = lazy(() => import('@features/revision'));
 const LayerEditPage = lazy(() => import('@features/mapalab-layers').then((m) => ({ default: m.LayerEditPage })));
 const InitialLayerOrderPage = lazy(() => import('@features/mapalab-layers').then((m) => ({ default: m.InitialLayerOrderPage })));
+const BulkIngestPage = lazy(() => import('@features/mapalab-layers').then((m) => ({ default: m.BulkIngestPage })));
 const EventosListPage = lazy(() => import('@features/mapalab-eventos').then((m) => ({ default: m.EventosListPage })));
 const EventoEditPage = lazy(() => import('@features/mapalab-eventos').then((m) => ({ default: m.EventoEditPage })));
 const HomePage = lazy(() => import('@features/mapalab-home').then((m) => ({ default: m.HomePage })));
 const SymbolsPage = lazy(() => import('@features/mapalab-symbols').then((m) => ({ default: m.SymbolsPage })));
 const GeoserverFilesPage = lazy(() => import('@features/mapalab-geoserver-files').then((m) => ({ default: m.GeoserverFilesPage })));
 const MapalabStatsPage = lazy(() => import('@features/mapalab-stats').then((m) => ({ default: m.MapalabStatsPage })));
+const DocumentacionPage = lazy(() => import('@features/documentacion').then((m) => ({ default: m.DocumentacionPage })));
 const FormulariosListPage = lazy(() => import('@features/sieej-formularios').then((m) => ({ default: m.FormulariosListPage })));
 const FormularioEditorPage = lazy(() => import('@features/sieej-formularios').then((m) => ({ default: m.FormularioEditorPage })));
 const GruposPage = lazy(() => import('@features/sieej-formularios').then((m) => ({ default: m.GruposPage })));
@@ -151,6 +153,14 @@ const router = createBrowserRouter([
                         )
                     },
                     {
+                        path: 'mapalab/layers/ingesta-masiva',
+                        element: withSuspense(
+                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
+                                <BulkIngestPage />
+                            </RoleProtectedRoute>
+                        )
+                    },
+                    {
                         path: 'mapalab/eventos',
                         element: withSuspense(
                             <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
@@ -234,6 +244,10 @@ const router = createBrowserRouter([
                                 <GruposPage />
                             </RoleProtectedRoute>
                         )
+                    },
+                    {
+                        path: 'documentacion',
+                        element: withSuspense(<DocumentacionPage />)
                     },
                     {
                         path: 'change-password',

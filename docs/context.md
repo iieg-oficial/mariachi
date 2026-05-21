@@ -372,6 +372,11 @@ Sin auth. `router = APIRouter(tags=["portal público"])` en `routes/public.py`.
 | GET | `/formularios/mis-envios/{id}` | Detalle con `definicion_snapshot` historica + `datos` + `archivos` + `eventos` |
 | GET/POST/PATCH/DELETE | `/home/*` | CRUD de secciones del home publico de mapalab |
 | GET/POST/PATCH/DELETE | `/mapalab-shares/*` | Gestion de share links de visor mapalab |
+| GET | `/layer-metadata/bulk/column-presets` | Presets de mapeo Excel→técnico para ingesta masiva |
+| POST | `/layer-metadata/bulk/upload` | Multipart CSV/XLSX + `dependencia` + `column_mapping`. Genera plan persistido (no aplica). Sube original al bucket `mariachi/bulk-ingest/<plan_id>/...` |
+| GET | `/layer-metadata/bulk/plan/{plan_id}` | Recupera plan generado (24h TTL) |
+| POST | `/layer-metadata/bulk/plan/{plan_id}/apply` | Aplica el plan persistido (admin-only). Optimistic locking con `IS NOT DISTINCT FROM` |
+| DELETE | `/layer-metadata/bulk/plan/{plan_id}` | Cancela plan |
 
 Requieren cookie JWT valida + CSRF en writes.
 
@@ -383,6 +388,36 @@ Requieren cookie JWT valida + CSRF en writes.
 | GET | `/api/public/reportes/tipos` | Lista tipos activos con `formSchema` para que el widget/SDK rendericen forms dinamicos. `Cache-Control: public, max-age=300`. |
 
 Sin cookie JWT — autenticacion exclusivamente por API key del huesped (`ck_pub_*` browser, `ck_priv_*` server). Ver `docs/colibri.md` para arquitectura completa.
+
+### Ingesta masiva de metadatos (CSV/XLSX) — implementado
+
+Pestaña `/mariachi/mapalab/layers/ingesta-masiva` en el feature `mapalab-layers`. Sube CSV/XLSX, mapea columnas humanas del Excel del MapaLab a campos técnicos, previsualiza el plan con diff por capa, y aplica.
+
+| Feature | Archivos |
+|---|---|
+| Backend service de parsing CSV/XLSX | `api/app/services/bulk_ingest_parser.py` |
+| Backend service planner + applier | `api/app/services/bulk_ingest_planner.py` |
+| Router | `api/app/api/routes/bulk_ingest.py` (`/layer-metadata/bulk/*`) |
+| Modelo SQLAlchemy | `api/app/models/bulk_ingest_plan.py` (DataEngineBase) |
+| Schemas Pydantic | `api/app/schemas/bulk_ingest.py` |
+| Tabla persistencia | `mapalab.bulk_ingest_plans` (dataengine, migración `0012_bulk_ingest_plans`) |
+| Frontend orquestador | `admin/src/features/mapalab-layers/pages/BulkIngestPage.jsx` |
+| Frontend sub-componentes | `admin/src/features/mapalab-layers/components/bulkIngest/{UploadForm,MappingModal,PreviewPlan,ChangeDetail,ResultView}.jsx` |
+| Constantes de mapping | `admin/src/features/mapalab-layers/constants/bulkIngestFields.js` |
+| Servicio axios | `admin/src/features/mapalab-layers/services/bulkIngestService.js` |
+
+Características clave:
+
+- **Soporta CSV (UTF-8) y XLSX** (dep nueva `openpyxl>=3.1`). Sheets se descarga primero como CSV/XLSX (no integración directa).
+- **Preset `mapalab-excel`** pre-cargado con el mapeo derivado de `dataengine/jobs/bootstrap/run_migrate_mapalab_card.py`. UI permite ajustar mapeo columna por columna en un modal.
+- **Plan persistente** en `mapalab.bulk_ingest_plans` con TTL de 24h (`status IN ('pending','applied','cancelled','expired')`). El plan completo se guarda como JSONB (`plan_json`) — preview→apply son operaciones separadas, idempotentes con optimistic locking (`IS NOT DISTINCT FROM`).
+- **Cubre dos tablas**: `mapalab.layer_metadata` (descripción, fuentes JSONB, metodología, metadato, downloadable, etc.) y `mapalab.layer_stats` (numeralia 1-8 + pie_numeralia). El planner emite changes con `table: 'layer_metadata' | 'layer_stats'` por diff.
+- **Audit con email del usuario real** (`updated_by = current_user.email`), no etiqueta generica.
+- **Archivo original al bucket privado `mariachi`** en `bulk-ingest/<plan_id>/<filename>`; recuperable vía `/api/administrador/multimedia/proxy/{bucket_id}/{object_key}` (best-effort: si falla la subida, el plan se genera igual).
+- **RBAC**: editor/`tetlamamakani` pueden subir y previsualizar; solo `tetlamamakani` puede aplicar. Rate limit 20 writes/min.
+- **Métricas**: `mariachi_bulk_ingest_uploads_total` y `mariachi_bulk_ingest_applies_total`.
+
+Tests en `api/tests/services/test_bulk_ingest_parser.py` (parsing, mapping, builders de fuentes/metodología/metadato/numeralia, validación del preset MapaLab).
 
 ### v1.4.0 MapaLab (capas) — implementado
 

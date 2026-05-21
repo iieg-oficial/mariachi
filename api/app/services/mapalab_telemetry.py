@@ -193,13 +193,20 @@ REFRESH_VIEWS = (
     "mapalab_stats_buttons",
     "mapalab_stats_tools",
     "mapalab_stats_daily",
+    "mapalab_mcp_stats_overview",
+    "mapalab_mcp_stats_tools",
+    "mapalab_mcp_stats_daily",
+    "mapalab_mcp_stats_clients",
 )
+
+
+_VIEWS_WITHOUT_UNIQUE_INDEX = {"mapalab_stats_overview", "mapalab_mcp_stats_overview"}
 
 
 def refresh_stats_views(db: Session, *, concurrent: bool = True) -> list[str]:
     refreshed: list[str] = []
     for view in REFRESH_VIEWS:
-        mode = "CONCURRENTLY" if concurrent and view != "mapalab_stats_overview" else ""
+        mode = "CONCURRENTLY" if concurrent and view not in _VIEWS_WITHOUT_UNIQUE_INDEX else ""
         stmt = f"REFRESH MATERIALIZED VIEW {mode} {view}".strip()
         try:
             db.execute(text(stmt))

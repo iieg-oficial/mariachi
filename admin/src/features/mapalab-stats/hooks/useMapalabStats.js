@@ -2,6 +2,10 @@ import { useCallback, useEffect, useState } from 'react';
 import {
     getButtons,
     getDaily,
+    getMcpClients,
+    getMcpDaily,
+    getMcpOverview,
+    getMcpTools,
     getOverview,
     getSessions,
     getTools,
@@ -122,6 +126,102 @@ export function useDailyStats({ days = 30 } = {}) {
             setLoading(false);
         }
     }, [days]);
+
+    useEffect(() => { reload(); }, [reload]);
+
+    return { rows, loading, error, reload };
+}
+
+
+export function useMcpOverview() {
+    const [overview, setOverview] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    const reload = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            setOverview(await getMcpOverview());
+        } catch (err) {
+            setError(err?.response?.data?.detail || err?.message || 'Error al cargar overview MCP');
+            setOverview(null);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => { reload(); }, [reload]);
+
+    return { overview, loading, error, reload };
+}
+
+
+export function useMcpTools({ limit = 30 } = {}) {
+    const [rows, setRows] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    const reload = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            setRows(await getMcpTools(limit));
+        } catch (err) {
+            setError(err?.response?.data?.detail || err?.message || 'Error al cargar tools MCP');
+            setRows([]);
+        } finally {
+            setLoading(false);
+        }
+    }, [limit]);
+
+    useEffect(() => { reload(); }, [reload]);
+
+    return { rows, loading, error, reload };
+}
+
+
+export function useMcpDaily({ days = 30 } = {}) {
+    const [rows, setRows] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    const reload = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            setRows(await getMcpDaily(days));
+        } catch (err) {
+            setError(err?.response?.data?.detail || err?.message || 'Error al cargar serie diaria MCP');
+            setRows([]);
+        } finally {
+            setLoading(false);
+        }
+    }, [days]);
+
+    useEffect(() => { reload(); }, [reload]);
+
+    return { rows, loading, error, reload };
+}
+
+
+export function useMcpClients() {
+    const [rows, setRows] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    const reload = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            setRows(await getMcpClients());
+        } catch (err) {
+            setError(err?.response?.data?.detail || err?.message || 'Error al cargar clientes MCP');
+            setRows([]);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
 
     useEffect(() => { reload(); }, [reload]);
 

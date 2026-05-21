@@ -5,11 +5,12 @@ import useIsMobile from '@shared/hooks/useIsMobile';
 import { useAuth } from '@shared/contexts/useAuth';
 import ResumenSection from '@features/mapalab-stats/components/ResumenSection';
 import SesionesSection from '@features/mapalab-stats/components/SesionesSection';
+import McpSection from '@features/mapalab-stats/components/McpSection';
 
 const { Content } = Layout;
 const { Title, Text } = Typography;
 
-const VALID_TABS = new Set(['resumen', 'sesiones']);
+const VALID_TABS = new Set(['resumen', 'sesiones', 'mcp']);
 
 export default function MapalabStatsPage() {
     const { isMobile } = useIsMobile();
@@ -30,6 +31,11 @@ export default function MapalabStatsPage() {
             key: 'resumen',
             label: 'Resumen',
             children: <ResumenSection canRefresh={isAdmin} />,
+        },
+        {
+            key: 'mcp',
+            label: 'MCP',
+            children: <McpSection />,
         },
     ];
     if (isAdmin) {
