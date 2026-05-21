@@ -115,6 +115,15 @@ async def listar_plataformas(_: Usuario = Depends(get_current_user)):
     return results
 
 
+@router.get("/colibri-config")
+async def colibri_config(_: Usuario = Depends(get_current_user)):
+    settings = get_settings()
+    return {
+        "source_app": "mariachi",
+        "api_key": settings.colibri_api_key_mariachi,
+    }
+
+
 @router.get("/notas-version")
 async def listar_notas_version(
     limit: int = Query(default=5, ge=1, le=20),

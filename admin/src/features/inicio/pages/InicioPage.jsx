@@ -9,6 +9,7 @@ import {
     GithubOutlined,
     ProjectOutlined,
     LinkOutlined,
+    MessageOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '@shared/contexts/useAuth';
 import Markdown from '@shared/components/Markdown';
@@ -17,7 +18,10 @@ import {
     getBorradoresPendientes,
     getPlataformas,
     getNotasVersion,
+    getColibriConfig,
 } from '@features/inicio/api/inicioService';
+
+const COLIBRI_WIDGET_URL = '/colibri/widget/colibri-widget.v1.js';
 import { MapalabInicioHighlights } from '@features/mapalab-stats';
 
 const { Content } = Layout;
@@ -65,7 +69,7 @@ const IconLink = ({ href, title, icon, external = false }) => {
     return <Tooltip title={title}>{wrapper}</Tooltip>;
 };
 
-const PlataformaCard = ({ plataforma }) => {
+const PlataformaCard = ({ plataforma, colibriConfig }) => {
     const { slug, label, url, repo, taiga, version, healthy } = plataforma;
     const versionTag = version
         ? <Tag color="blue">v{version}</Tag>
@@ -73,6 +77,16 @@ const PlataformaCard = ({ plataforma }) => {
     const statusBadge = healthy
         ? <Badge status="success" text="activa" />
         : <Tooltip title="No respondió al endpoint /ontoy"><Badge status="default" text="no integrada" /></Tooltip>;
+
+    const openColibri = () => {
+        if (!window.colibri?.openPanel || !colibriConfig?.api_key) return;
+        window.colibri.setContext('plataforma_slug', slug);
+        window.colibri.setContext('plataforma_label', label);
+        window.colibri.openPanel({
+            sourceApp: colibriConfig.source_app,
+            apiKey: colibriConfig.api_key,
+        });
+    };
 
     const acciones = [];
     if (url && healthy) acciones.push(
@@ -83,6 +97,18 @@ const PlataformaCard = ({ plataforma }) => {
     );
     if (taiga) acciones.push(
         <IconLink key="taiga" href={taiga} title="Tablero Taiga" icon={<ProjectOutlined />} external />
+    );
+    if (colibriConfig?.api_key) acciones.push(
+        <Tooltip key="reportar" title={`Reportar sobre ${label}`}>
+            <Button
+                type="text"
+                size="small"
+                icon={<MessageOutlined />}
+                aria-label={`Reportar sobre ${label}`}
+                onClick={openColibri}
+                style={{ color: 'rgba(0,0,0,0.45)' }}
+            />
+        </Tooltip>
     );
 
     return (
@@ -109,6 +135,7 @@ export default function InicioPage() {
     const [pendientes, setPendientes] = useState([]);
     const [plataformas, setPlataformas] = useState([]);
     const [notasVersion, setNotasVersion] = useState([]);
+    const [colibriConfig, setColibriConfig] = useState(null);
     const [loadingBorradores, setLoadingBorradores] = useState(true);
     const [loadingPlataformas, setLoadingPlataformas] = useState(true);
     const [loadingNotas, setLoadingNotas] = useState(true);
@@ -146,6 +173,24 @@ export default function InicioPage() {
             .then((data) => { if (!cancelled) setNotasVersion(data); })
             .catch(() => {})
             .finally(() => { if (!cancelled) setLoadingNotas(false); });
+        return () => { cancelled = true; };
+    }, []);
+
+    useEffect(() => {
+        let cancelled = false;
+        getColibriConfig()
+            .then((data) => {
+                if (cancelled || !data?.api_key) return;
+                setColibriConfig(data);
+                if (!document.querySelector('script[data-colibri-widget]')) {
+                    const script = document.createElement('script');
+                    script.src = COLIBRI_WIDGET_URL;
+                    script.defer = true;
+                    script.dataset.colibriWidget = 'true';
+                    document.head.appendChild(script);
+                }
+            })
+            .catch(() => {});
         return () => { cancelled = true; };
     }, []);
 
@@ -289,7 +334,9 @@ export default function InicioPage() {
                             gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
                             gap: 16,
                         }}>
-                            {plataformas.map((p) => <PlataformaCard key={p.slug} plataforma={p} />)}
+                            {plataformas.map((p) => (
+                                <PlataformaCard key={p.slug} plataforma={p} colibriConfig={colibriConfig} />
+                            ))}
                         </div>
                     )}
                 </div>

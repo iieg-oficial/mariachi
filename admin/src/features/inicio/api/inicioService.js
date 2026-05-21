@@ -19,3 +19,8 @@ export const getNotasVersion = async (limit = 5) => {
     const res = await api.get(`/sistema/notas-version?limit=${limit}`);
     return res.data;
 };
+
+export const getColibriConfig = async () => {
+    const res = await api.get('/sistema/colibri-config');
+    return res.data;
+};

@@ -9,6 +9,26 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.7.0] - 2026-05-21
+
+### Inicio: botón "Reportar" con Colibri en cards de plataformas
+
+Cada card de "Plataformas del ecosistema" gana un cuarto icono `MessageOutlined` que abre el panel de Colibri (mismo widget que se ofrece a terceros) para enviar una sugerencia, bug, problema, duda, solicitud o reporte de datos incorrectos contra esa plataforma. Todos los reportes se registran bajo el source-app `mariachi` con el slug y el label de la plataforma reportada anexados como `source_context.custom.plataforma_slug` / `plataforma_label`.
+
+#### Añadido
+
+- **`api/app/core/settings.py`**: nuevo setting `colibri_api_key_mariachi: str | None`. Si queda en `None`, el frontend simplemente no muestra el botón.
+- **`api/app/api/routes/sistema.py`** (`GET /sistema/colibri-config`): endpoint nuevo, autenticado, devuelve `{source_app: "mariachi", api_key: <env>}` para que el frontend pueda invocar `window.colibri.openPanel()` sin embeber la key en el bundle.
+- **`admin/src/features/inicio/api/inicioService.js`**: nuevo `getColibriConfig()`.
+- **`admin/src/features/inicio/pages/InicioPage.jsx`**: nuevo `useEffect` que carga el bundle del widget (`/colibri/widget/colibri-widget.v1.js`) sólo cuando hay api-key configurada. `PlataformaCard` acepta `colibriConfig` como prop; al hacer click en el botón llama `window.colibri.setContext('plataforma_slug', slug)` + `setContext('plataforma_label', label)` y luego `window.colibri.openPanel({sourceApp, apiKey})`.
+- **`.env.development.example`, `.env.staging.example`, `.env.production.example`** + reales: nueva var `COLIBRI_API_KEY_MARIACHI` documentada (vacía por defecto). El operador rota la key del source-app `mariachi` desde `/colibri/source-apps` y la pega aquí.
+
+#### Por qué bump minor
+
+Nueva característica visible al usuario sin romper compatibilidad. Es opcional: sin la env var, el botón no aparece y el resto del Inicio funciona igual.
+
+---
+
 ## [1.6.0] - 2026-05-21
 
 ### MapaLab admin: iconos visibles en el árbol de capas y eventos

@@ -56,6 +56,8 @@ class Settings(BaseSettings):
     gateway_hub_ontoy_url: str | None = None
     huachicol_ontoy_url: str | None = None
 
+    colibri_api_key_mariachi: str | None = None
+
     sentry_dsn: str | None = None
     sentry_traces_sample_rate: float = 0.1
 
