@@ -31,6 +31,7 @@ class Evento(Base):
     imagen_url = Column(Text, nullable=True)
     bbox = Column(JSON, nullable=True)
     capas = Column(JSON, default=list, nullable=False)
+    facts = Column(JSON, default=list, nullable=False)
     activo = Column(Boolean, nullable=False, default=False)
     fecha_inicio = Column(DateTime(timezone=True), nullable=True)
     fecha_fin = Column(DateTime(timezone=True), nullable=True)

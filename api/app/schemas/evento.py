@@ -127,6 +127,7 @@ class _EventoVisibleFields(CamelCaseInput, _ImageUrlMixin):
     imagen_url: str | None = Field(default=None, max_length=URL_MAX_LENGTH, serialization_alias='imagenUrl')
     bbox: BBox | None = None
     capas: list[CapaRef] = Field(default_factory=list)
+    facts: list[str] = Field(default_factory=list)
     fecha_inicio: datetime | None = Field(default=None, serialization_alias='fechaInicio')
     fecha_fin: datetime | None = Field(default=None, serialization_alias='fechaFin')
     orden: int = 0
@@ -151,6 +152,7 @@ class EventoUpdate(CamelCaseInput, _ImageUrlMixin):
     imagen_url: str | None = Field(default=None, max_length=URL_MAX_LENGTH, serialization_alias='imagenUrl')
     bbox: BBox | None = None
     capas: list[CapaRef] | None = None
+    facts: list[str] | None = None
     activo: bool | None = None
     fecha_inicio: datetime | None = Field(default=None, serialization_alias='fechaInicio')
     fecha_fin: datetime | None = Field(default=None, serialization_alias='fechaFin')
