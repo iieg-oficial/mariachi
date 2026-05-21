@@ -26,6 +26,7 @@ dependencies = [
     "coloredlogs>=15.0,<16.0",
     "rich>=13.7,<14.0",
     "prometheus-fastapi-instrumentator>=7.0,<8.0",
+    "openpyxl>=3.1,<4.0",
 ]
 
 [project.optional-dependencies]
