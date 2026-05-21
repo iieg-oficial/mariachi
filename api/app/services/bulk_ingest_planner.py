@@ -7,7 +7,6 @@ from typing import Any
 from sqlalchemy import text
 from sqlalchemy.engine import Connection
 
-
 METADATA_SCALAR_COLUMNS = (
     'workspace',
     'layer_name_db',

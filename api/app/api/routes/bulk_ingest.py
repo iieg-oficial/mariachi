@@ -34,7 +34,8 @@ from app.services.bulk_ingest_parser import (
     apply_mapping,
     parse_source,
 )
-from app.services.bulk_ingest_planner import build_plan, apply_plan as run_apply_plan
+from app.services.bulk_ingest_planner import apply_plan as run_apply_plan
+from app.services.bulk_ingest_planner import build_plan
 
 logger = logging.getLogger(__name__)
 

@@ -4,7 +4,6 @@ import csv
 import io
 from typing import Any, Iterator
 
-
 TRUE_VALUES = {'1', 'true', 't', 'yes', 'sí', 'si', 'y', 'sÍ', 'verdadero'}
 FALSE_VALUES = {'0', 'false', 'f', 'no', 'n', 'falso'}
 
