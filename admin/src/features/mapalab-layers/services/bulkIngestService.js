@@ -24,11 +24,6 @@ export const uploadAndPlan = async ({ file, dependencia, columnMapping, onProgre
     return res.data;
 };
 
-export const fetchPlan = async (planId) => {
-    const res = await api.get(`${BASE}/plan/${planId}`);
-    return res.data;
-};
-
 export const applyPlan = async (planId, layerKeys) => {
     const payload = layerKeys ? { layerKeys } : {};
     const res = await api.post(`${BASE}/plan/${planId}/apply`, payload);

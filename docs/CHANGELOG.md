@@ -23,10 +23,30 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 - **Item "Documentación" anclado al footer del sider**: `FOOTER_ITEMS` nuevo en `sider-registry`, función `buildSiderFooterItems` en `sider-config`, y en `MainLayout` el menú principal va en un wrapper scrolleable con `position: absolute; top: 64; bottom: <footer-height>` y el menú de footer queda con `position: absolute; bottom: 0` siempre visible. En mobile (Drawer) los items se concatenan sin sticky.
 
-#### Migraciones
+#### Migraciones MCP
 
 - `b9c0d1e2f3a5_add_mapalab_mcp_events.py` — tabla + 4 índices.
 - `c0d1e2f3a4b6_add_mapalab_mcp_stats_views.py` — 4 vistas materializadas + 3 índices únicos.
+
+### MapaLab admin: ingesta masiva de metadatos (CSV/XLSX)
+
+Nueva pestaña `/mariachi/mapalab/layers/ingesta-masiva` para subir un Excel/CSV del catálogo MapaLab y aplicar metadatos a múltiples capas en una sola operación, sin tocar el editor de cada una. Flujo de 3 pasos: subida + mapeo de columnas → preview del plan con diff por capa → apply atómico con optimistic locking.
+
+- **`api/app/api/routes/bulk_ingest.py`** (nuevo): 5 endpoints bajo `/layer-metadata/bulk` — `column-presets` (presets de mapeo Excel→técnico), `upload` (multipart CSV/XLSX + `dependencia` + `column_mapping`, genera plan persistido), `plan/{id}` (GET, TTL 24h), `plan/{id}/apply` (admin-only, optimistic locking con `IS NOT DISTINCT FROM`), `plan/{id}` (DELETE, cancela).
+- **`api/app/services/bulk_ingest_parser.py`** (nuevo): parsing CSV (UTF-8) y XLSX (dep nueva `openpyxl>=3.1`). Builders de `layer_metadata`, fuentes, metodología y numeralia con preset `mapalab-excel`.
+- **`api/app/services/bulk_ingest_planner.py`** (nuevo): genera plan con diff por capa (`insert` / `update` / `no-change`) persistido en `mapalab.bulk_ingest_plans` como `plan_json` JSONB. Archivo original subido al acervo bucket privado `mariachi/bulk-ingest/<plan_id>/`. Best-effort: si falla la subida, el plan se genera igual.
+- **`api/app/models/bulk_ingest_plan.py`** (nuevo, `DataEngineBase`) + **`api/app/schemas/bulk_ingest.py`** (Pydantic).
+- **`api/tests/services/test_bulk_ingest_parser.py`** (nuevo): tests de parsing, mapping y builders del preset MapaLab.
+- **`admin/src/features/mapalab-layers/pages/BulkIngestPage.jsx`** (nuevo) — orquestador del flujo de 3 pasos.
+- **`admin/src/features/mapalab-layers/components/bulkIngest/{UploadForm,MappingModal,PreviewPlan,ChangeDetail,ResultView}.jsx`** (nuevos) — UI por paso.
+- **`admin/src/features/mapalab-layers/constants/bulkIngestFields.js`** (nuevo) — preset visible y catálogo de campos técnicos.
+- **`admin/src/features/mapalab-layers/services/bulkIngestService.js`** (nuevo) — cliente axios.
+- **Counters Prometheus**: `mariachi_bulk_ingest_uploads_total`, `mariachi_bulk_ingest_applies_total`.
+- Item "Ingesta masiva" agregado al sider de MapaLab (con badge beta), accesible a roles `tetlamamakani` y `editora`.
+
+#### Migraciones bulk-ingest
+
+- `0012_bulk_ingest_plans` en dataengine (repo separado) — tabla `mapalab.bulk_ingest_plans` con `plan_json JSONB`, `status` (`pending`/`applied`/`cancelled`/`expired`), TTL 24h.
 
 ---
 
