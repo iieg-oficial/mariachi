@@ -9,22 +9,22 @@ const WEB_URL = import.meta.env.VITE_WEB_URL || '';
 
 const buildLocalMcpUrl = () => {
     if (PROXY_URL) {
-        return `${PROXY_URL.replace(/\/+$/, '')}/api/mcp/`;
+        return `${PROXY_URL.replace(/\/+$/, '')}/api/mcp`;
     }
     if (typeof window !== 'undefined' && window.location?.origin) {
-        return `${window.location.origin}/mapalab/api/mcp/`;
+        return `${window.location.origin}/mapalab/api/mcp`;
     }
-    return 'http://<host>:<port>/api/mcp/';
+    return 'http://<host>:<port>/api/mcp';
 };
 
 const buildPublicMcpUrl = () => {
     if (WEB_URL && /^https?:\/\//i.test(WEB_URL)) {
-        return `${WEB_URL.replace(/\/+$/, '')}/mapalab/api/mcp/`;
+        return `${WEB_URL.replace(/\/+$/, '')}/mapalab/api/mcp`;
     }
     if (typeof window !== 'undefined' && window.location?.origin) {
-        return `${window.location.origin}/mapalab/api/mcp/`;
+        return `${window.location.origin}/mapalab/api/mcp`;
     }
-    return 'https://<dominio>/mapalab/api/mcp/';
+    return 'https://<dominio>/mapalab/api/mcp';
 };
 
 const LOCAL_MCP_URL = buildLocalMcpUrl();
@@ -90,7 +90,7 @@ const FIELD_COLUMNS = [
 
 
 const URLS = [
-    { contexto: 'Entre containers', url: 'http://mapalab-mcp:8000/mcp/' },
+    { contexto: 'Entre containers', url: 'http://mapalab-mcp:8000/mcp' },
     { contexto: 'Local / dev (puerto publicado)', url: LOCAL_MCP_URL },
     { contexto: 'Producción / staging', url: PUBLIC_MCP_URL },
 ];
