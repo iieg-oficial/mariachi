@@ -210,6 +210,115 @@ const ProbeCard = ({ probe }) => {
 };
 
 
+const McpRootProbe = () => {
+    const [loading, setLoading] = useState(false);
+    const [result, setResult] = useState(null);
+    const [error, setError] = useState(null);
+
+    const handleRun = async () => {
+        setLoading(true);
+        setError(null);
+        const url = `${MAPALAB_BASE}/mcp`;
+        const body = {
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'initialize',
+            params: {
+                protocolVersion: '2024-11-05',
+                capabilities: {},
+                clientInfo: { name: 'mariachi-admin-playground', version: '1.0' },
+            },
+        };
+        const start = performance.now();
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                redirect: 'follow',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json, text/event-stream',
+                },
+                body: JSON.stringify(body),
+                credentials: 'omit',
+            });
+            const elapsedMs = Math.round(performance.now() - start);
+            const text = await response.text();
+            let parsed;
+            try { parsed = JSON.parse(text); } catch { parsed = text; }
+            setResult({
+                status: response.status,
+                ok: response.ok,
+                body: parsed,
+                elapsedMs,
+                url,
+                finalUrl: response.url,
+                redirected: response.redirected,
+            });
+            if (!response.ok) message.warning(`HTTP ${response.status} — revisa el cuerpo`);
+        } catch (err) {
+            setResult(null);
+            setError(err?.message || 'Error al llamar el endpoint');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <Card
+            size="small"
+            title={
+                <Space size={8}>
+                    <Tag color="magenta">POST</Tag>
+                    <Text code>mcp.initialize</Text>
+                    <Text type="secondary" style={{ fontSize: 12 }}>/mcp (sin slash final)</Text>
+                </Space>
+            }
+            extra={
+                <Button type="primary" size="small" icon={<PlayCircleOutlined />} onClick={handleRun} loading={loading}>
+                    Probar
+                </Button>
+            }
+        >
+            <Text type="secondary" style={{ display: 'block', marginBottom: 12, fontSize: 12 }}>
+                JSON-RPC <Text code>initialize</Text> contra el endpoint raíz <Text code>{MAPALAB_BASE}/mcp</Text> (<strong>sin</strong> slash). El server responde con <Text code>307 → /mcp/</Text>; <Text code>fetch</Text> sigue el redirect automáticamente y obtiene la respuesta SSE/JSON. Útil para verificar que el container <Text code>mapalab-mcp</Text> está vivo y responde el handshake MCP.
+            </Text>
+
+            {error && <Alert type="error" message={error} showIcon style={{ marginTop: 8 }} />}
+
+            {result && (
+                <div style={{ marginTop: 12 }}>
+                    <Space size={8} style={{ marginBottom: 6 }} wrap>
+                        <Tag color={result.ok ? 'green' : 'red'}>HTTP {result.status}</Tag>
+                        <Text type="secondary" style={{ fontSize: 12 }}>{result.elapsedMs} ms</Text>
+                        {result.redirected && <Tag color="gold">redirect → {result.finalUrl}</Tag>}
+                        <Text type="secondary" style={{ fontSize: 11 }} copyable={{ text: result.url }}>
+                            {result.url}
+                        </Text>
+                    </Space>
+                    <pre
+                        style={{
+                            background: '#1f1f1f',
+                            color: '#f5f5f5',
+                            padding: '12px 14px',
+                            borderRadius: 6,
+                            fontSize: 11,
+                            lineHeight: 1.5,
+                            maxHeight: 260,
+                            overflow: 'auto',
+                            margin: 0,
+                        }}
+                    >
+                        <code>
+                            {typeof result.body === 'string' ? result.body : JSON.stringify(result.body, null, 2)}
+                        </code>
+                    </pre>
+                </div>
+            )}
+        </Card>
+    );
+};
+
+
 export default function McpPlayground() {
     return (
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
@@ -220,12 +329,12 @@ export default function McpPlayground() {
                 description={
                     <>
                         Los tools del MCP son re-exposiciones de los endpoints REST de MapaLab.
-                        Estos botones llaman al REST directamente vía <Text code>{MAPALAB_BASE}/*</Text> —
-                        la misma data que un agente vería a través del MCP, sin pasar por JSON-RPC ni SSE.
-                        Solo se exponen tools de lectura sin efectos secundarios.
+                        La primera tarjeta llama al protocolo MCP directamente (JSON-RPC) usando la URL <strong>sin slash</strong> que pegarías en un cliente; el resto llaman al REST equivalente vía <Text code>{MAPALAB_BASE}/*</Text>, la misma data que un agente vería a través del MCP. Solo se exponen tools de lectura sin efectos secundarios.
                     </>
                 }
             />
+
+            <McpRootProbe />
 
             {PROBES.map((probe) => (
                 <ProbeCard key={probe.tool} probe={probe} />
