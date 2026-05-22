@@ -19,3 +19,23 @@ export const normalizeTextBlocks = (cfg) => {
     }
     return next;
 };
+
+const LEGACY_LABELS_STYLE = { color: '#7B61FF', bg: '#F3F0FF' };
+
+export const normalizeLegacyLabels = (cfg) => {
+    if (!cfg || typeof cfg !== 'object' || !Array.isArray(cfg.labels) || cfg.labels.length === 0) {
+        return cfg;
+    }
+    const migrated = { fields: cfg.labels.slice(), ...LEGACY_LABELS_STYLE };
+    const labelGroups = Array.isArray(cfg.labelGroups) ? [migrated, ...cfg.labelGroups] : [migrated];
+    const { labels: _drop, ...rest } = cfg;
+    const next = { ...rest, labelGroups };
+    if (Array.isArray(cfg.blockOrder)) {
+        const filtered = cfg.blockOrder.filter((k) => k !== 'labels');
+        next.blockOrder = filtered.length ? filtered : undefined;
+        if (!next.blockOrder) delete next.blockOrder;
+    }
+    return next;
+};
+
+export const normalizeInfoboxConfig = (cfg) => normalizeLegacyLabels(normalizeTextBlocks(cfg));

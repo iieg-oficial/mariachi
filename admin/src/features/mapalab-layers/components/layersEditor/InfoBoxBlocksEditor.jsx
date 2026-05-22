@@ -21,7 +21,7 @@ import {
     genTextId,
     isTextKey,
     mkTextKey,
-    normalizeTextBlocks,
+    normalizeInfoboxConfig,
     textIdOf,
 } from './infoBoxTextBlocks';
 
@@ -720,15 +720,14 @@ const TextBlock = ({ block, onChange, onRemove, availableFields }) => {
 
 const BLOCK_DEFS = [
     { key: 'headerField', label: 'Encabezado', defaultValue: '' },
-    { key: 'labels', label: 'Etiquetas (legacy)', defaultValue: [] },
-    { key: 'labelGroups', label: 'Etiquetas (labelGroups)', defaultValue: [{ fields: [], color: '#FF8300', bg: '#FFF2E5' }] },
+    { key: 'labelGroups', label: 'Etiquetas', defaultValue: [{ fields: [], color: '#FF8300', bg: '#FFF2E5' }] },
     { key: 'cards', label: 'Cards (estadísticas)', defaultValue: [{ field: '', label: '' }], extras: { cardsColumns: 1 } },
     { key: 'list', label: 'Lista', defaultValue: [{ field: '', label: '' }] },
     { key: 'iconText', label: 'Íconos con texto', defaultValue: [{ icon: 'ubicacion', field: '' }] },
     { key: 'text', label: 'Texto (párrafos)', defaultValue: [{ label: '' }] },
 ];
 
-const SORTABLE_KEYS = ['labels', 'labelGroups', 'list', 'iconText', 'text', 'cards'];
+const SORTABLE_KEYS = ['labelGroups', 'list', 'iconText', 'text', 'cards'];
 
 const expandSortableKeys = (config) => {
     const out = [];
@@ -758,7 +757,7 @@ const arraysEqual = (a, b) => {
 };
 
 export default function InfoBoxBlocksEditor({ value, onChange, availableFields = [], inherited = null, nodeType = null }) {
-    const config = useMemo(() => normalizeTextBlocks(value || {}), [value]);
+    const config = useMemo(() => normalizeInfoboxConfig(value || {}), [value]);
 
     const update = useCallback((patch) => {
         const next = { ...config, ...patch };
@@ -817,25 +816,6 @@ export default function InfoBoxBlocksEditor({ value, onChange, availableFields =
     };
 
     const renderBodyBlock = (key) => {
-        if (key === 'labels') {
-            return (
-                <BlockShell title="Etiquetas (legacy)" onRemove={() => removeBlock('labels')} hint="Bloque legacy: array plano de campos como Labels">
-                    <Select
-                        mode="multiple"
-                        value={config.labels || []}
-                        onChange={(v) => update({ labels: v.length ? v : undefined })}
-                        options={fieldOptionsFor(availableFields, config.labels || [])}
-                        placeholder="Campos a mostrar"
-                        style={{ width: '100%' }}
-                        showSearch
-                        allowClear
-                        filterOption={(input, option) =>
-                            String(option.value).toLowerCase().includes(input.toLowerCase())
-                        }
-                    />
-                </BlockShell>
-            );
-        }
         if (key === 'labelGroups') {
             return (
                 <LabelGroupsBlock

@@ -9,6 +9,21 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.14.1] - 2026-05-22
+
+### Removido: bloque `labels` (legacy) del editor de InfoBox
+
+`infobox_config.labels` (array plano de campos, sin colores configurables) era un bloque legacy que coexistía con `labelGroups` desde el commit `a34c7e1`. Verificación en BD: **0 capas** lo usaban en producción (`labelGroups` lo había suplantado completamente al ser superset estricto). Se elimina la ruta muerta en editor + preview + visor para que el catálogo de bloques no muestre opciones no usadas.
+
+- **`admin/src/features/mapalab-layers/components/layersEditor/InfoBoxBlocksEditor.jsx`**: removida la entrada `labels` de `BLOCK_DEFS` y `SORTABLE_KEYS`, removido el branch `if (key === 'labels')` en `renderBodyBlock` (Select inline con tag morado fijo). `labelGroups` renombrado de "Etiquetas (labelGroups)" a "Etiquetas" — ya no hay legacy con qué confundirlo.
+- **`admin/src/features/mapalab-layers/components/layersEditor/InfoBoxPreview.jsx`**: `'labels'` fuera de `DEFAULT_BODY_ORDER` y del dispatcher `renderBodyBlock`.
+- **`mapalab/frontend/src/pages/maps/components/InfoBox/utils/renderCard.jsx` (mapalab 1.38.1)**: removida `renderLabels`, entrada `labels` en `BODY_RENDERERS`, `'labels'` de `DEFAULT_BODY_ORDER` y el import unused de `CARACTERISTICA_STYLE`.
+- **Normalizador defensivo `normalizeLegacyLabels`** en los helpers compartidos (`infoBoxTextBlocks.js` de mariachi y mapalab): si llega un `infobox_config` con `labels` (por ejemplo desde un restore de backup antiguo), lo convierte on-read a `labelGroups: [{fields: labels, color: '#7B61FF', bg: '#F3F0FF'}]` y limpia `'labels'` de `blockOrder`. Compose con el de `text` legacy bajo un único `normalizeInfoboxConfig` para que editor/preview/visor apliquen ambos transparentemente.
+
+Sin impacto en datos vivos (0 capas afectadas). El normalizador hace la transición invisible si en el futuro aparece data antigua.
+
+---
+
 ## [1.14.0] - 2026-05-22
 
 ### Agregado: campo `z` explícito por capa en CapasField del evento

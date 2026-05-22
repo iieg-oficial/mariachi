@@ -1,6 +1,6 @@
 import { Card, Empty, Space, Tag, Typography } from 'antd';
 
-import { isTextKey, mkTextKey, normalizeTextBlocks, textIdOf } from './infoBoxTextBlocks';
+import { isTextKey, mkTextKey, normalizeInfoboxConfig, textIdOf } from './infoBoxTextBlocks';
 
 const { Title, Text } = Typography;
 
@@ -187,7 +187,7 @@ const IconTexts = ({ items }) => (
 );
 
 
-const DEFAULT_BODY_ORDER = ['labels', 'labelGroups', 'list', 'iconText', 'text', 'cards'];
+const DEFAULT_BODY_ORDER = ['labelGroups', 'list', 'iconText', 'text', 'cards'];
 
 const expandPresentKeys = (cfg) => {
     const out = [];
@@ -235,26 +235,6 @@ const renderBodyBlock = (key, cfg) => {
     if (isTextKey(key)) {
         return renderTextBlock(key, cfg);
     }
-    if (key === 'labels' && cfg.labels?.length) {
-        return (
-            <Space key="labels" size={4} wrap style={{ marginBottom: 8 }}>
-                {cfg.labels.map((f, i) => (
-                    <Tag
-                        key={i}
-                        style={{
-                            background: '#F3F0FF',
-                            color: '#7B61FF',
-                            border: 'none',
-                            borderRadius: 12,
-                            padding: '2px 10px',
-                        }}
-                    >
-                        {resolveValue(f)}
-                    </Tag>
-                ))}
-            </Space>
-        );
-    }
     if (key === 'labelGroups' && cfg.labelGroups?.length) {
         return (
             <Space key="labelGroups" orientation="vertical" size={4} style={{ width: '100%', marginBottom: 8 }}>
@@ -277,7 +257,7 @@ const renderBodyBlock = (key, cfg) => {
 
 export default function InfoBoxPreview({ params, value }) {
     const raw = value ?? params ?? null;
-    const cfg = normalizeTextBlocks(raw);
+    const cfg = normalizeInfoboxConfig(raw);
 
     if (!cfg || (typeof cfg === 'object' && Object.keys(cfg).length === 0)) {
         return (
