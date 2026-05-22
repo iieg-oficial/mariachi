@@ -1,5 +1,5 @@
-import { Button, Dropdown, Input, Space, Switch, Tag, Tooltip, Typography } from 'antd';
-import { DeleteOutlined, EditOutlined, MenuOutlined } from '@ant-design/icons';
+import { Button, Dropdown, Input, InputNumber, Space, Switch, Tag, Tooltip, Typography } from 'antd';
+import { DeleteOutlined, EditOutlined, MenuOutlined, VerticalAlignTopOutlined } from '@ant-design/icons';
 import { DragHandleCell } from './CapasSortableRow';
 
 const { Text } = Typography;
@@ -118,6 +118,52 @@ export const buildCapasColumns = ({
                     checkedChildren="Auto"
                     unCheckedChildren="Manual"
                 />
+            );
+        },
+    },
+    {
+        title: (
+            <Tooltip
+                title={(
+                    <div style={{ maxWidth: 280 }}>
+                        <strong>¿Qué capa se ve encima de cuál en el mapa?</strong>
+                        <p style={{ margin: '6px 0' }}>
+                            Escribe un número para forzar el apilado: <strong>mayor número = más al frente</strong> (encima de las demás).
+                        </p>
+                        <p style={{ margin: '6px 0' }}>
+                            Ejemplo: si pones <em>Accesos = 5</em> y <em>Rutas = 2</em>, Accesos tapa a Rutas en el mapa.
+                        </p>
+                        <p style={{ margin: '6px 0 0' }}>
+                            <strong>Déjalo vacío</strong> para usar el orden natural (las últimas filas de la tabla quedan arriba). Solo úsalo cuando necesites alterar ese default.
+                        </p>
+                    </div>
+                )}
+            >
+                <span><VerticalAlignTopOutlined style={{ marginRight: 4 }} />Encima (Z)</span>
+            </Tooltip>
+        ),
+        key: 'z',
+        width: 110,
+        align: 'center',
+        render: (_, record, idx) => {
+            if (record.tipo !== 'capa') return null;
+            const value = typeof record.z === 'number' ? record.z : null;
+            return (
+                <Tooltip title={value !== null
+                    ? `Z=${value}: se renderiza encima de capas con Z menor o vacío`
+                    : 'Sin Z: se renderiza según orden de la tabla (las últimas quedan arriba)'}>
+                    <InputNumber
+                        size="small"
+                        value={value}
+                        placeholder="auto"
+                        min={-9999}
+                        max={9999}
+                        controls={false}
+                        disabled={disabled}
+                        onChange={(val) => onUpdate(idx, { z: typeof val === 'number' ? val : null })}
+                        style={{ width: 70 }}
+                    />
+                </Tooltip>
             );
         },
     },

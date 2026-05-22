@@ -439,6 +439,12 @@ Rate limiting: writes en 60 req/min por usuario, reads de GeoServer en 120 req/m
 
 Editor UI: `admin/src/pages/MapalabLayers.jsx` con Ant Design Tree + drawer. Componentes del drawer de InfoBox en `admin/src/components/layersEditor/`: `InfoBoxPresetForm`, `InfoBoxPreview`, `InfoBoxJsonEditor`.
 
+#### Bloques del InfoBox editor (`features/mapalab-layers/components/layersEditor/`)
+
+- `InfoBoxBlocksEditor.jsx` + `InfoBoxPreview.jsx` soportan **múltiples bloques `text` independientes**, identificados por `id` y referenciados en `blockOrder` como `text:<id>`. Cada item de un bloque puede ser **texto fijo** (`label`) o **campo dinámico** (`field`) — el preview renderiza el campo como `<strong>{field}: </strong>{valor}`.
+- Items de `text` y `list` aceptan un **`href` opcional** con tokens del feature tipo `https://catastro.gob.mx/{clave_catastral}`. El preview los pinta subrayados (`#5C2472`). El visor mapalab los renderiza como `<a target="_blank">`.
+- `infoBoxTextBlocks.js` expone `mkTextKey`, `isTextKey`, `textIdOf`, `genTextId` y `normalizeTextBlocks`. La normalización migra el formato legacy (`text: [{label}, ...]`) al nuevo (`text: [{id, items: [...]}, ...]`) en cada render — sin migración de BD ni cambio de schema (`infobox_config` es `JSONB`).
+
 Ver la documentación interna de mapalab (`/IIEG/mapalab/docs/layers.md`, `infobox.md`) para la arquitectura completa.
 
 ### v0.31.0 Editor de simbología (SLD) — implementado
@@ -736,10 +742,10 @@ Solicitar revision crea un `borrador` con `resource_type='evento'`. `tetlamamaka
 
 - `EventoEditPage` con `Tabs` verticales y `forceRender: true` por item (sin esto `getFieldsValue` devolvia `undefined` al guardar campos en tabs lazy).
 - `BBoxField` con 3 modos: "Sin zoom" (`bbox=null`), "Coordenadas manuales" con switch CRS **EPSG:4326** ↔ **EPSG:6368** (UTM 14N, reproyeccion frontend con `proj4`), "Dibujar en mapa" con OpenLayers + base CARTO Light. Deps: `ol@^10.9` y `proj4@^2.20`. `BBoxField` memoizado para no recrear `Draw` en cada render.
-- `CapasField` permite agregar capas existentes (registradas en `mapalab.layers`) o materializa una capa "solo GeoServer" como leaf bajo el padre `eventos-auto` via `POST /layers/auto-leaf` (idempotente).
+- `CapasField` permite agregar capas existentes (registradas en `mapalab.layers`) o materializa una capa "solo GeoServer" como leaf bajo el padre `eventos-auto` via `POST /layers/auto-leaf` (idempotente). El orden definido en la tabla (drag & drop via `@dnd-kit/sortable`) controla el Z del mapa cuando el evento se abre: primera fila = al frente, última = al fondo. Texto secundario sobre la tabla lo documenta para el editor.
 - `LayerContentDrawer` reusable con tabs Tarjeta · Metadatos · Simbologia, montado desde `CapasField` para editar contenido sin navegar al `LayerEditPage`.
 - `EventosListPage` con busqueda + filtro estado.
-- Visor (`mapalab/frontend/.../EventoMenu.jsx`): renderiza etiquetas como `LabelItem`, auto-activa capas con `autoActivar=true` al abrir el menu, boton "Eliminar (N)" para apagar capas externas activas.
+- Visor (`mapalab/frontend/.../EventoMenu.jsx`): renderiza etiquetas como `LabelItem`, auto-activa capas con `autoActivar=true` al abrir el menu (itera `toActivate` en orden inverso para que el primer ítem del editor quede al frente en `activeLayerIds` — compensación al `unshift` de `handleToggleLayer`), boton "Eliminar (N)" para apagar capas externas activas.
 
 Ver `docs/CHANGELOG.md` §[0.41.x] y §[Unreleased] para detalle de cambios por commit.
 

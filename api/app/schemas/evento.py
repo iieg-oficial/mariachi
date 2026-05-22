@@ -27,6 +27,7 @@ class CapaRef(CamelCaseInput):
     alias: str | None = Field(default=None, max_length=ALIAS_MAX_LENGTH)
     orden: int = 0
     auto_activar: bool = Field(default=True, serialization_alias='autoActivar')
+    z: int | None = Field(default=None, ge=-9999, le=9999)
     capas: list['CapaRef'] | None = None
 
     model_config = ConfigDict(populate_by_name=True)
@@ -45,9 +46,13 @@ class CapaRef(CamelCaseInput):
                 raise ValueError('Las etiquetas requieren un texto en `alias`')
             if self.capas is not None:
                 raise ValueError('Las etiquetas no pueden contener sub-`capas`')
+            if self.z is not None:
+                raise ValueError('Las etiquetas no admiten `z` (no se renderizan en el mapa)')
         elif self.tipo == 'categoria':
             if not (self.alias and self.alias.strip()):
                 raise ValueError('Las categorias requieren un texto en `alias`')
+            if self.z is not None:
+                raise ValueError('Las categorias no admiten `z` (no se renderizan en el mapa)')
             for child in self.capas or []:
                 if child.tipo == 'categoria':
                     raise ValueError('Las categorias no pueden anidarse (profundidad maxima: 1)')
@@ -207,3 +212,19 @@ class EventoPublicResponse(_EventoVisibleFields):
     slug: str
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+
+class OrphanLayerInfo(CamelCaseInput):
+    id: str
+    label: str | None = None
+    workspace: str
+    layer: str
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+
+class EventoDeleteResponse(CamelCaseInput):
+    message: str
+    orphan_layers_deleted: int = Field(default=0, serialization_alias='orphanLayersDeleted')
+
+    model_config = ConfigDict(populate_by_name=True)

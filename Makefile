@@ -32,7 +32,7 @@ else
 	MSG_ENV      := Desarrollo
 endif
 
-.PHONY: help up build down logs restart clean shell-api shell-admin setup setup-hooks test-backend ensure-networks deploy backup-db restore-db install-backup-cron uninstall-backup-cron refresh-mapalab-stats purge-mapalab-events
+.PHONY: help up build down logs restart clean shell-api shell-admin setup setup-hooks test-backend ensure-networks deploy backup-db restore-db install-backup-cron uninstall-backup-cron refresh-mapalab-stats purge-mapalab-events backup-tarjetitas restore-tarjetitas
 
 ## Muestra ayuda de comandos disponibles
 help:
@@ -62,6 +62,14 @@ help:
 	@echo '  ${YELLOW}make restore-db FILE=...${RESET}    - Restaura desde un .sql.gz (busca en restore/ y backups/)'
 	@echo '  ${YELLOW}make install-backup-cron${RESET}    - Instala cronjob diario a las 3 AM (solo correr en produccion)'
 	@echo '  ${YELLOW}make uninstall-backup-cron${RESET}  - Quita el cronjob instalado por install-backup-cron'
+	@echo ''
+	@echo '${GREEN}Tarjetitas (infobox_config de capas en DataEngine):${RESET}'
+	@echo '  ${YELLOW}make backup-tarjetitas${RESET}              - Exporta infobox_config de TODAS las capas a backups/tarjetitas/'
+	@echo '  ${YELLOW}make restore-tarjetitas [FILE=...]${RESET} - Aplica un export (selector si omites FILE; backup previo + confirmacion + apply)'
+	@echo '                                       ${YELLOW}Solo lee DATAENGINE_DATABASE_URL de .env.production${RESET} (no de dev/staging).'
+	@echo '                                       Override consciente: DATAENGINE_URL='"'"'postgres://...'"'"' make backup-tarjetitas'
+	@echo '                                       Solo mueve la columna infobox_config: nada del shape de la capa.'
+	@echo '                                       Las capas destino deben existir con el mismo id (PK de mapalab.layers).'
 	@echo ''
 	@echo '${BLUE}MapaLab — Telemetria${RESET}'
 	@echo '  ${YELLOW}make refresh-mapalab-stats${RESET}  - Refresca las vistas materializadas mapalab_stats_*'
@@ -159,6 +167,57 @@ install-backup-cron:
 uninstall-backup-cron:
 	@( crontab -l 2>/dev/null | grep -v 'mariachi-backup' | grep -v 'mariachi-stats' ) | crontab -
 	@echo "${GREEN}Cronjobs de respaldo y stats removidos.${RESET}"
+
+# =============================================================================
+# TARJETITAS (infobox_config en DataEngine)
+# =============================================================================
+
+TARJETITAS_DIR := backups/tarjetitas
+
+# Lee DATAENGINE_DATABASE_URL EXCLUSIVAMENTE de .env.production.
+# Las tarjetitas siempre se mueven contra prod (fuente de verdad); usar dev/staging
+# por accidente puede sobrescribir capas reales. Override consciente:
+# DATAENGINE_URL='postgres://...' make ...
+define resolve_dataengine_url
+DE_URL="$${DATAENGINE_URL:-}"; \
+if [ -z "$$DE_URL" ]; then \
+	f=.env.production; \
+	if [ -f "$$f" ]; then \
+		DE_URL="$$(grep -E '^DATAENGINE_DATABASE_URL=' "$$f" 2>/dev/null | head -1 | sed -E 's/^DATAENGINE_DATABASE_URL=//; s/^[\"\x27]//; s/[\"\x27]$$//')"; \
+		[ -n "$$DE_URL" ] && echo "[tarjetitas] usando DATAENGINE_DATABASE_URL de $$f"; \
+	fi; \
+fi; \
+if [ -z "$$DE_URL" ]; then \
+	echo "${YELLOW}No se encontro DATAENGINE_DATABASE_URL en .env.production (las tarjetitas solo se leen de ese archivo).${RESET}"; \
+	echo "Uso: DATAENGINE_URL='postgres://...' make $@"; \
+	exit 1; \
+fi
+endef
+
+## Exporta infobox_config de mapalab.layers a backups/tarjetitas/ (JSON + SQL).
+## Auto-detecta DATAENGINE_DATABASE_URL del primer .env.* que la tenga.
+## Override: DATAENGINE_URL='postgres://...' make backup-tarjetitas
+backup-tarjetitas:
+	@mkdir -p $(TARJETITAS_DIR)
+	@$(resolve_dataengine_url); \
+	DATAENGINE_URL="$$DE_URL" OUT_DIR=$(TARJETITAS_DIR) ./scripts/dataengine-export-infobox.sh
+
+## Aplica un export de tarjetitas en la BD destino. Hace backup reverso primero.
+## Sin FILE: muestra selector interactivo de los exports en backups/tarjetitas/.
+## Con FILE: usa el archivo explicito (saltea el selector).
+## Override de URL: DATAENGINE_URL='postgres://...' make restore-tarjetitas [FILE=...]
+restore-tarjetitas:
+	@if [ -n "$(FILE)" ]; then \
+		FILE_SEL="$(FILE)"; \
+	else \
+		FILE_SEL=$$(./scripts/pick-tarjetita.sh) || exit $$?; \
+	fi; \
+	if [ -z "$$FILE_SEL" ]; then \
+		echo "${YELLOW}No se selecciono ningun archivo.${RESET}"; \
+		exit 1; \
+	fi; \
+	$(resolve_dataengine_url); \
+	DATAENGINE_URL="$$DE_URL" ./scripts/dataengine-apply-infobox.sh "$$FILE_SEL"
 
 # =============================================================================
 # MAPALAB STATS (telemetria)

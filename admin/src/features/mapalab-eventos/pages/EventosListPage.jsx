@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { Alert, Button, Card, Input, Layout, Popconfirm, Segmented, Space, Spin, Table, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Input, Layout, Segmented, Space, Spin, Table, Tag, Typography } from 'antd';
 import {
     DeleteOutlined,
     EditOutlined,
@@ -8,6 +8,7 @@ import {
     PlusOutlined,
     SendOutlined,
 } from '@ant-design/icons';
+import DeleteEventoModal from '@features/mapalab-eventos/components/DeleteEventoModal';
 import {
     despublicarEvento,
     eliminarEvento,
@@ -52,6 +53,7 @@ export default function EventosListPage() {
     const [actingId, setActingId] = useState(null);
     const [search, setSearch] = useState('');
     const [estadoFilter, setEstadoFilter] = useState('all');
+    const [deletingEvento, setDeletingEvento] = useState(null);
 
     const filtered = useMemo(() => {
         let result = items || [];
@@ -93,11 +95,19 @@ export default function EventosListPage() {
         }
     };
 
-    const handleEliminar = async (record) => {
+    const handleEliminar = async ({ deleteOrphanLayers }) => {
+        if (!deletingEvento) return;
+        const record = deletingEvento;
         setActingId(record.id);
         try {
-            await eliminarEvento(record.id);
-            message.success(`Evento "${record.titulo}" eliminado`);
+            const result = await eliminarEvento(record.id, { deleteOrphanLayers });
+            const archived = result?.orphanLayersDeleted ?? 0;
+            message.success(
+                archived > 0
+                    ? `Evento "${record.titulo}" eliminado (+${archived} capa${archived === 1 ? '' : 's'} archivada${archived === 1 ? '' : 's'})`
+                    : `Evento "${record.titulo}" eliminado`,
+            );
+            setDeletingEvento(null);
             await reload();
         } catch (err) {
             message.error(err?.response?.data?.detail || 'Error al eliminar');
@@ -193,21 +203,13 @@ export default function EventosListPage() {
                             {!isMobile && 'Publicar'}
                         </Button>
                     )}
-                    <Popconfirm
-                        title="¿Eliminar evento?"
-                        description="Esta acción no se puede deshacer."
-                        okText="Eliminar"
-                        cancelText="Cancelar"
-                        okButtonProps={{ danger: true }}
-                        onConfirm={() => handleEliminar(record)}
-                    >
-                        <Button
-                            size="small"
-                            danger
-                            icon={<DeleteOutlined />}
-                            loading={actingId === record.id}
-                        />
-                    </Popconfirm>
+                    <Button
+                        size="small"
+                        danger
+                        icon={<DeleteOutlined />}
+                        loading={actingId === record.id}
+                        onClick={() => setDeletingEvento(record)}
+                    />
                 </Space>
             ),
         },
@@ -267,6 +269,13 @@ export default function EventosListPage() {
                     )}
                 </Card>
             </Space>
+            <DeleteEventoModal
+                open={!!deletingEvento}
+                evento={deletingEvento}
+                onCancel={() => setDeletingEvento(null)}
+                onConfirm={handleEliminar}
+                loading={actingId === deletingEvento?.id}
+            />
         </Content>
     );
 }

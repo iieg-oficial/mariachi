@@ -9,6 +9,179 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.14.2] - 2026-05-22
+
+### Corregido: sticky en preview del drawer + render fiel del bloque text
+
+Dos ajustes al editor de tarjetas que el `LayerEditPage` ya tenía pero faltaban en el drawer reutilizable y en el render del bloque `text` del preview.
+
+- **`InfoboxStandalone.jsx`**: la columna "Vista previa" ahora se envuelve en `<div style={{position:'sticky', top:0}}>` igual que `LayerEditPage`. En el drawer del editor de eventos (`CapasField → LayerContentDrawer → tab Tarjeta`) el preview se queda anclado al tope mientras el admin scrollea los bloques.
+- **`InfoBoxPreview.jsx`**: `renderTextItem` y `renderTextBlock` reescritos para reflejar lo que el visor renderiza (`Text.jsx` de mapalab):
+  - Para items con `field`: solo el valor resuelto, sin `<strong>nombre_campo</strong>:` (era un cue de debug que el admin no veía en producción).
+  - Para items con `label`: solo el texto fijo.
+  - Items con `label` **y** `value` (caso teórico): `<strong>label</strong>: value` igual que el visor.
+  - Cada item es su propio `<div>` con `marginBottom: 8` y color `#465055` (matchea `text-[#465055]` del visor), no spans dentro de un `<Text type="secondary">` único.
+
+Sin cambios de schema. Solo render visual.
+
+---
+
+## [1.14.1] - 2026-05-22
+
+### Removido: bloque `labels` (legacy) del editor de InfoBox
+
+`infobox_config.labels` (array plano de campos, sin colores configurables) era un bloque legacy que coexistía con `labelGroups` desde el commit `a34c7e1`. Verificación en BD: **0 capas** lo usaban en producción (`labelGroups` lo había suplantado completamente al ser superset estricto). Se elimina la ruta muerta en editor + preview + visor para que el catálogo de bloques no muestre opciones no usadas.
+
+- **`admin/src/features/mapalab-layers/components/layersEditor/InfoBoxBlocksEditor.jsx`**: removida la entrada `labels` de `BLOCK_DEFS` y `SORTABLE_KEYS`, removido el branch `if (key === 'labels')` en `renderBodyBlock` (Select inline con tag morado fijo). `labelGroups` renombrado de "Etiquetas (labelGroups)" a "Etiquetas" — ya no hay legacy con qué confundirlo.
+- **`admin/src/features/mapalab-layers/components/layersEditor/InfoBoxPreview.jsx`**: `'labels'` fuera de `DEFAULT_BODY_ORDER` y del dispatcher `renderBodyBlock`.
+- **`mapalab/frontend/src/pages/maps/components/InfoBox/utils/renderCard.jsx` (mapalab 1.38.1)**: removida `renderLabels`, entrada `labels` en `BODY_RENDERERS`, `'labels'` de `DEFAULT_BODY_ORDER` y el import unused de `CARACTERISTICA_STYLE`.
+- **Normalizador defensivo `normalizeLegacyLabels`** en los helpers compartidos (`infoBoxTextBlocks.js` de mariachi y mapalab): si llega un `infobox_config` con `labels` (por ejemplo desde un restore de backup antiguo), lo convierte on-read a `labelGroups: [{fields: labels, color: '#7B61FF', bg: '#F3F0FF'}]` y limpia `'labels'` de `blockOrder`. Compose con el de `text` legacy bajo un único `normalizeInfoboxConfig` para que editor/preview/visor apliquen ambos transparentemente.
+
+Sin impacto en datos vivos (0 capas afectadas). El normalizador hace la transición invisible si en el futuro aparece data antigua.
+
+---
+
+## [1.14.0] - 2026-05-22
+
+### Agregado: campo `z` explícito por capa en CapasField del evento
+
+Desacoplado el orden visual del submenú del Z de renderizado en el mapa. La tabla del CapasField sigue controlando con su drag handle (≡) el orden del submenú lateral del evento en el visor; el nuevo campo `z` (opcional, integer) por capa controla quién va encima en el mapa.
+
+#### Schema (`api/app/schemas/evento.py`)
+
+- `CapaRef.z: int | None` con `Field(default=None, ge=-9999, le=9999)`.
+- Validator rechaza `z` en `etiqueta` y `categoria` (no se renderizan).
+- Sin migración: `eventos.capas` ya es JSONB. Eventos existentes simplemente no traen `z` → se interpretan como `null` → orden natural de la tabla.
+
+#### Editor admin (`admin/src/features/mapalab-eventos/`)
+
+- **Nueva columna "Encima (Z)"** en [capasTableColumns.jsx](admin/src/features/mapalab-eventos/components/capasTableColumns.jsx) entre Auto-activar y Acciones. Header con icono `VerticalAlignTopOutlined` + tooltip detallado de 3 párrafos: qué significa Z, ejemplo concreto ("Accesos=5, Rutas=2 → Accesos tapa Rutas"), y la regla de "vacío = orden natural".
+- Celda con `InputNumber size=small` (placeholder `auto`, `controls=false`, rango ±9999). Solo se muestra para filas `tipo='capa'`; etiquetas y categorías la dejan vacía.
+- Tooltip individual por capa dinámico: "Z=N: se renderiza encima de capas con Z menor o vacío" o "Sin Z: se renderiza según orden de la tabla".
+- Texto secundario del CapasField actualizado: aclara que el drag handle reordena el submenú y la columna Z controla el apilado del mapa.
+- `normalizeCapas` en [EventoEditPage](admin/src/features/mapalab-eventos/pages/EventoEditPage.jsx#L57-L66) y [addCapa.js](admin/src/features/mapalab-eventos/helpers/addCapa.js) inicializan `z: null` por consistencia con Ant Form.
+
+#### Convención resultante
+
+| Caso | Z del mapa |
+|---|---|
+| Sin Z en ninguna capa | Última fila de la tabla queda al frente, primera al fondo (orden natural por `handleToggleLayer` unshift) |
+| Capa A con Z=5, resto sin Z | A al frente; las demás se ordenan entre sí por su posición en la tabla |
+| A z=1, B z=3, C z=2 | B al frente (Z mayor), después C, después A al fondo |
+| Mezcla: A sin Z, B z=2, C sin Z | B al frente; A y C entre sí por posición de tabla |
+
+#### Revert del fix erróneo de 1.10.x
+
+La inversión del `forEach` en `EventoMenu.jsx` del visor (mapalab `1.36.0`) asumía "primera fila = al frente". Ahora se revirtió ese comportamiento y el visor ordena `toActivate` por `z` ascendente antes del forEach: las sin Z van primero (al fondo) y las con Z explícito se procesan después de menor a mayor, dejando la de mayor Z al frente con el `unshift`. Cambio funcional en mapalab paquete separado (ver mapalab CHANGELOG).
+
+Bump unificado: 1.13.0 → 1.14.0.
+
+---
+
+## [1.13.0] - 2026-05-22
+
+### Agregado: eliminar evento ofreciendo archivar capas auto-creadas huérfanas
+
+Al eliminar un evento, el admin ahora puede archivar también las capas auto-leaf (bajo `eventos-auto`) que **solo ese evento referenciaba**. Resuelve el "limbo" de capas auto-creadas que quedaban activas sin uso, ensuciando el árbol y el contador del tab Eventos en `/mapalab/layers`.
+
+#### Backend
+
+- **Nuevo endpoint** `GET /api/administrador/eventos/{id}/orphan-layers-preview` → devuelve `[{id, label, workspace, layer}]` con las capas auto-leaf que solo este evento usa. Requiere editor.
+- **`DELETE /api/administrador/eventos/{id}?delete_orphan_layers=true`** ahora soft-deletea esas capas (vía `soft_delete_layer`) y dispara `notify_tree_changed()` para invalidar el cache del visor. Sin el param, comportamiento idéntico al anterior. Response actualizado: `{message, orphanLayersDeleted}`.
+- **`api/app/services/layer_service.py`**: helper `find_orphan_auto_leaves(mariachi_db, dataengine_db, evento)` cross-database: aplana `evento.capas` (incluyendo categorías), compara contra el resto de eventos en mariachi DB, y filtra solo las que viven bajo `parent_id='eventos-auto'` con `deleted_at IS NULL`. Helper privado `_flatten_evento_capa_refs` para tests futuros.
+- **`api/app/schemas/evento.py`**: `OrphanLayerInfo` y `EventoDeleteResponse` con `serialization_alias='orphanLayersDeleted'`.
+
+GeoServer no se toca — el `soft_delete_layer` solo cambia `mapalab.layers.deleted_at`. Las capas siguen disponibles en GeoServer y pueden re-asociarse a otro evento; `find_or_create_auto_leaf` (mejorado en 1.12.1) las restaurará al primer uso.
+
+#### Frontend admin
+
+- **Nuevo componente** `admin/src/features/mapalab-eventos/components/DeleteEventoModal.jsx`: modal reusable que al abrirse llama al endpoint preview, lista las capas huérfanas con `Tag workspace:layer` y label, y ofrece checkbox "Archivar también estas capas auto-creadas". Si no hay huérfanas muestra `Alert info` neutral.
+- **`pages/EventosListPage.jsx`**: reemplaza el `Popconfirm` por el nuevo modal (estado `deletingEvento`). Toast del éxito incluye contador de capas archivadas cuando aplica.
+- **`pages/EventoEditPage.jsx`**: mismo cambio en el botón "Eliminar" del header del editor.
+- **`api/eventosService.js`**: `eliminarEvento(id, { deleteOrphanLayers })` ahora acepta opciones y devuelve el body; nuevo `previewOrphanLayers(id)`.
+
+Bump unificado: 1.12.1 → 1.13.0.
+
+---
+
+## [1.12.1] - 2026-05-22
+
+### Corregido: idempotencia robusta de `auto-leaf` + auto-restore del padre `eventos-auto`
+
+`POST /layers/auto-leaf` quedaba "atrapado" si alguien archivaba (soft-delete) capas o el padre `eventos-auto` desde la papelera. Caso real: el visor dejaba de renderizar las capas auto-creadas de un evento porque el padre quedó con `deleted_at != NULL`, y el árbol público (`LayersRepository.get_all_layers` filtra `deleted_at IS NULL`) descartaba el subárbol entero, dejando huérfanas todas sus capas hijas. Adicionalmente, cada nueva llamada generaba duplicados con sufijos `-2`, `-3`, etc. porque `find_or_create_auto_leaf` filtraba `deleted_at IS NULL` en su búsqueda inicial y no encontraba la versión vieja archivada.
+
+#### Qué cambió en `api/app/services/layer_service.py`
+
+- **`_ensure_auto_parent`**: ahora detecta `deleted_at != NULL` en el padre `eventos-auto` y lo restaura automáticamente (set `deleted_at = NULL`, actualiza `updated_by`). Si alguien lo archiva por error en la papelera, la siguiente llamada a `auto-leaf` lo recupera sin intervención manual.
+- **`find_or_create_auto_leaf`**: orden de operaciones revisado:
+  1. **Primero** garantiza el padre activo (`_ensure_auto_parent`) — antes solo se llamaba al crear leaf nuevo, ahora siempre.
+  2. Busca leaf activo con `(workspace_alias, geoserver_layer)` → si existe, lo devuelve (sin cambios).
+  3. Si no existe activo, busca el **más reciente soft-deleted** con misma `(workspace_alias, geoserver_layer)` y lo **restaura** (set `deleted_at = NULL`, re-engancha a `parent_id`, refresca `label`/`updated_by`). Devuelve `(layer, created=True)`.
+  4. Solo si no encontró nada (ni activo ni soft-deleted), procede al flujo original: valida contra GeoServer, genera id `auto-<workspace>-<layer>` con sufijo `-N` si colisiona, e inserta nueva fila.
+
+Resultado: agregar una capa a un evento que se había eliminado antes ya no crea duplicados `-2`/`-3`, recupera la fila original con su `infobox_config`, metadata y SLD intactos.
+
+Sin cambios de schema. Sin migración. Sin endpoints nuevos. El visor recupera las capas en el siguiente refresh del cache (`notify_tree_changed()` se sigue invocando como antes).
+
+---
+
+## [1.12.0] - 2026-05-22
+
+### Agregado: backup/restore parcial de `infobox_config` entre instancias de DataEngine
+
+Operación nueva para mover las "tarjetas" (`mapalab.layers.infobox_config`) entre instancias de DataEngine sin tocar el resto del shape de la capa. Pensado para deploys puntuales donde el contenido del cuadro de información se cura en staging y se promueve a producción sin reconstruir el árbol de capas a mano. No es un patrón recurrente: bulk_ingest sigue siendo el camino para metadata/numeralia.
+
+- **`scripts/dataengine-export-infobox.sh`**: lee `mapalab.layers` con `DATAENGINE_URL` y genera dos archivos en `backups/tarjetitas/`: un `.json` legible con `{id: infobox_config}` ordenado por id y un `.sql` con `UPDATE ... WHERE id = ...` idempotentes envueltos en `BEGIN/COMMIT`. Solo exporta filas con `infobox_config IS NOT NULL`.
+- **`scripts/dataengine-apply-infobox.sh`**: aplica un export en la BD destino con tres safeguards: (1) backup reverso de los `id` que el SQL va a tocar, con `NULL` literal preservado para columnas que estaban vacías; (2) preview de cuántos `id` del archivo existen en destino + listado de faltantes; (3) confirmación interactiva (`si` para continuar, `ASSUME_YES=1` para CI). El apply corre en `--single-transaction` con `ON_ERROR_STOP=1`.
+- **Targets Makefile**: `make backup-tarjetitas` y `make restore-tarjetitas FILE=...`. **No** dependen de `ENV=` — auto-detectan `DATAENGINE_DATABASE_URL` recorriendo `.env.development → .env.staging → .env.production` y eligen la primera que la tenga (en cada máquina suele existir solo una). Override explícito con `DATAENGINE_URL='postgres://...'` cuando se quiera mezclar (ej. apuntar desde dev a la BD de staging).
+- **Documentación en `make help`**: nueva sección "Tarjetitas" que enumera ambos comandos y deja claro que solo mueve la columna `infobox_config` — las capas destino deben existir con el mismo `id` (PK de `mapalab.layers`); las que no existan se omiten sin error.
+- **`.gitignore`**: agrega `backups/tarjetitas/` para que los exports locales no entren al repo.
+
+Verificación contra DataEngine local: 187 capas exportadas, preview detectó las 187 en destino, diff entre export y backup reverso vacío (idempotencia confirmada cuando origen = destino).
+
+---
+
+## [1.11.1] - 2026-05-22
+
+### Corregido: ocultar tema `eventos-auto` de la tab "Capas" del panel admin
+
+El árbol admin de `/mapalab/layers` exponía el tema oculto `eventos-auto` (donde viven las capas "solo GeoServer" materializadas por `POST /layers/auto-leaf`) en la tab "Capas", contaminando el catálogo regular con leafs one-off de eventos.
+
+- **`admin/src/features/mapalab-layers/pages/LayerEditPage.jsx`**: nuevo `catalogTreeData = useMemo(() => treeData.filter((n) => n.key !== 'eventos-auto'), [treeData])`. La tab "Capas" usa `catalogTreeData` (con su contador actualizado); el resto del componente (`findNodeContext`, `flattenLeaves`, `useEventosTreeNode`) sigue usando `treeData`/`rawTree` sin filtro para que la resolución por URL directa y la búsqueda en el árbol de eventos no se rompan.
+
+La tab "Eventos" ya consume `useEventosTreeNode(eventos, rawTree)` que lista todas las capas referenciadas por algún evento (catálogo + auto-leaf), agrupadas por evento. Una capa de catálogo en un evento aparece en ambas tabs editando la misma fila de `mapalab.layers` — single source of truth.
+
+Sin cambios en backend ni en el endpoint `/mapalab/api/layers/tree` (el visor lo sigue consumiendo completo).
+
+---
+
+## [1.11.0] - 2026-05-22
+
+### Agregado: múltiples bloques de texto en InfoBox editor + items tipo "campo dinámico" + link opcional por item
+
+Editor de InfoBox (`admin/src/features/mapalab-layers/components/layersEditor/`) ahora soporta múltiples bloques `text` independientes (antes era uno único, que solo podía moverse como bloque). Cada bloque tiene su propio `id` y se identifica en `blockOrder` con la clave `text:<id>` para preservar el orden frente al drag & drop. Cada **item** de un bloque puede ser:
+
+- **Texto fijo** (`label`): párrafo libre escrito por el editor.
+- **Campo dinámico** (`field`): valor del feature resuelto en runtime; el preview lo renderiza como `<strong>{field}: </strong>{valor}`.
+
+Cada item — tanto en `text` como en `list` — puede definir un `href` opcional con soporte de **tokens del feature** (ej. `https://catastro.gob.mx/{clave_catastral}`). El preview pinta esos items subrayados con color `#5C2472`.
+
+#### Qué cambió
+
+- **`InfoBoxBlocksEditor.jsx`**: `BLOCK_DEFS.text` ahora se trata como colección. `addBlock('text')` crea `{id: genTextId(), items: [{label: ''}]}`; `removeBlock('text:<id>')` quita por id y limpia `blockOrder`. `TextItemRow` con `Radio.Group` para alternar `Texto fijo ↔ Campo dinámico`, y un Input adicional para `href` con placeholder de ejemplo de token. Cada item de `list` también recibió el Input de `href`.
+- **`InfoBoxPreview.jsx`**: `expandPresentKeys` expande `text` a `text:<id>` para que el orden y filtro `length` funcionen bien con múltiples bloques. `renderTextItem` decide entre campo (con `<strong>field:</strong>`) o texto fijo, y aplica estilo de link cuando hay `href`. `ListItems` también muestra subrayado púrpura en items con `href`.
+- **`infoBoxTextBlocks.js` (nuevo)**: helpers `mkTextKey`, `isTextKey`, `textIdOf`, `genTextId` y `normalizeTextBlocks` para migrar el formato legacy (`text: [{label}, ...]`) al nuevo (`text: [{id, items: [...]}, ...]`) leyendo desde DataEngine sin migración de BD — la normalización corre en cada render del editor y del preview, manteniendo retro-compatibilidad con InfoBoxes existentes en `mapalab.layers.infobox_config`.
+
+El visor mapalab ya consume `href` y múltiples bloques de texto vía su propio `pages/maps/components/InfoBox/utils/infoBoxTextBlocks.js` y `InfoBox/components/Text.jsx` (subrayado con `<a target="_blank">`). Sin cambios de schema en backend (`infobox_config` es `JSONB` sin contrato estricto).
+
+### Documentado: convención de orden Z en CapasField del editor de eventos
+
+- **`admin/src/features/mapalab-eventos/components/CapasField.jsx`**: el texto secundario sobre la tabla ahora explica que el orden definido en el editor controla el Z del mapa (primera = al frente, última = al fondo). El fix funcional vive en mapalab `1.36.0` (`EventoMenu.jsx` itera la auto-activación en orden inverso para respetar este orden).
+
+Sin cambios en backend ni schema. Drag & drop entre raíz y categorías (vía `@dnd-kit/sortable`) no cambia.
+
+---
+
 ## [1.10.0] - 2026-05-21
 
 ### Agregado: panel de telemetría del servidor MCP de MapaLab + documentación interna

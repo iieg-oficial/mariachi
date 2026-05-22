@@ -17,6 +17,14 @@ import {
 } from 'antd';
 import { ArrowDownOutlined, ArrowUpOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 
+import {
+    genTextId,
+    isTextKey,
+    mkTextKey,
+    normalizeInfoboxConfig,
+    textIdOf,
+} from './infoBoxTextBlocks';
+
 const { Text } = Typography;
 
 const STYLE_PRESETS = [
@@ -490,41 +498,62 @@ const ListBlock = ({ value = [], onChange, onRemove, availableFields }) => {
         const next = value.map((it, i) => (i === idx ? { ...it, ...patch } : it));
         onChange(next);
     };
+    const setHref = (idx, v) => {
+        const it = value[idx];
+        if (v) {
+            updateItem(idx, { href: v });
+        } else {
+            const { href: _h, ...rest } = it;
+            const next = value.map((curr, i) => (i === idx ? rest : curr));
+            onChange(next);
+        }
+    };
     const removeItem = (idx) => onChange(value.filter((_, i) => i !== idx));
     const addItem = () => onChange([...value, { field: '', label: '' }]);
 
     return (
-        <BlockShell title="Lista (list)" onRemove={onRemove} hint="Pares label/valor (formatea fechas y números)">
+        <BlockShell title="Lista (list)" onRemove={onRemove} hint="Pares label/valor (formatea fechas y números, link opcional)">
             <Space orientation="vertical" size="small" style={{ width: '100%' }}>
                 {value.map((it, idx) => (
-                    <Space.Compact key={idx} style={{ width: '100%' }}>
-                        <Select
-                            style={{ width: 220 }}
-                            value={it.field || undefined}
-                            onChange={(v) => updateItem(idx, { field: v ?? '' })}
-                            options={fieldOptionsFor(availableFields, it.field)}
-                            placeholder="Campo"
-                            showSearch
-                            allowClear
-                            filterOption={(input, option) =>
-                                String(option.value).toLowerCase().includes(input.toLowerCase())
-                            }
-                        />
-                        <Input
-                            value={it.label || ''}
-                            onChange={(e) => updateItem(idx, { label: e.target.value })}
-                            placeholder="Label visible"
-                        />
-                        <Tooltip title="raw=true: no formatea (muestra tal cual)">
-                            <Button
-                                type={it.raw ? 'primary' : 'default'}
-                                onClick={() => updateItem(idx, { raw: !it.raw })}
-                            >
-                                raw
-                            </Button>
-                        </Tooltip>
-                        <Button danger icon={<DeleteOutlined />} onClick={() => removeItem(idx)} />
-                    </Space.Compact>
+                    <div key={idx} style={{ border: '1px dashed #f0f0f0', borderRadius: 4, padding: 8 }}>
+                        <Space orientation="vertical" size={6} style={{ width: '100%' }}>
+                            <Space.Compact style={{ width: '100%' }}>
+                                <Select
+                                    style={{ width: 220 }}
+                                    value={it.field || undefined}
+                                    onChange={(v) => updateItem(idx, { field: v ?? '' })}
+                                    options={fieldOptionsFor(availableFields, it.field)}
+                                    placeholder="Campo"
+                                    showSearch
+                                    allowClear
+                                    filterOption={(input, option) =>
+                                        String(option.value).toLowerCase().includes(input.toLowerCase())
+                                    }
+                                />
+                                <Input
+                                    value={it.label || ''}
+                                    onChange={(e) => updateItem(idx, { label: e.target.value })}
+                                    placeholder="Label visible"
+                                />
+                                <Tooltip title="raw=true: no formatea (muestra tal cual)">
+                                    <Button
+                                        type={it.raw ? 'primary' : 'default'}
+                                        onClick={() => updateItem(idx, { raw: !it.raw })}
+                                    >
+                                        raw
+                                    </Button>
+                                </Tooltip>
+                                <Button danger icon={<DeleteOutlined />} onClick={() => removeItem(idx)} />
+                            </Space.Compact>
+                            <Input
+                                size="small"
+                                value={it.href || ''}
+                                onChange={(e) => setHref(idx, e.target.value)}
+                                placeholder="Link (opcional). Soporta tokens: https://ejemplo.gob.mx/{clave_catastral}"
+                                addonBefore={<Text type="secondary" style={{ fontSize: 11 }}>Link</Text>}
+                            />
+                        </Space>
+                    </div>
                 ))}
                 <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={addItem} block>
                     Agregar fila
@@ -581,27 +610,105 @@ const IconTextBlock = ({ value = [], onChange, onRemove, availableFields }) => {
     );
 };
 
-const TextBlock = ({ value = [], onChange, onRemove }) => {
-    const updateItem = (idx, patch) => {
-        const next = value.map((it, i) => (i === idx ? { ...it, ...patch } : it));
-        onChange(next);
+const TextItemRow = ({ item, onChange, onRemove, availableFields }) => {
+    const mode = item.field !== undefined ? 'field' : 'static';
+
+    const handleToggle = (e) => {
+        const next = e.target.value;
+        if (next === 'field') {
+            const { label: _l, ...rest } = item;
+            onChange({ ...rest, field: rest.field || '' });
+        } else {
+            const { field: _f, ...rest } = item;
+            onChange({ ...rest, label: rest.label || '' });
+        }
     };
-    const removeItem = (idx) => onChange(value.filter((_, i) => i !== idx));
-    const addItem = () => onChange([...value, { label: '' }]);
+
+    const setValue = (v) => onChange({ ...item, [mode === 'field' ? 'field' : 'label']: v ?? '' });
+
+    const setHref = (value) => {
+        if (value) {
+            onChange({ ...item, href: value });
+        } else {
+            const { href: _h, ...rest } = item;
+            onChange(rest);
+        }
+    };
 
     return (
-        <BlockShell title="Texto (text)" onRemove={onRemove} hint="Párrafos libres (ej. descripción metodológica)">
+        <div style={{ border: '1px dashed #f0f0f0', borderRadius: 4, padding: 8 }}>
+            <Space orientation="vertical" size={6} style={{ width: '100%' }}>
+                <Space size={6} style={{ width: '100%', justifyContent: 'space-between' }}>
+                    <Radio.Group
+                        size="small"
+                        value={mode}
+                        onChange={handleToggle}
+                        optionType="button"
+                        options={[
+                            { label: 'Texto fijo', value: 'static' },
+                            { label: 'Campo dinámico', value: 'field' },
+                        ]}
+                    />
+                    <Button
+                        danger
+                        size="small"
+                        type="text"
+                        icon={<DeleteOutlined />}
+                        onClick={onRemove}
+                        aria-label="Quitar párrafo"
+                    />
+                </Space>
+                {mode === 'field' ? (
+                    <Select
+                        value={item.field || undefined}
+                        onChange={setValue}
+                        options={fieldOptionsFor(availableFields, item.field)}
+                        placeholder="Selecciona un campo del feature"
+                        showSearch
+                        allowClear
+                        style={{ width: '100%' }}
+                        filterOption={(input, option) =>
+                            String(option.value).toLowerCase().includes(input.toLowerCase())
+                        }
+                    />
+                ) : (
+                    <Input.TextArea
+                        value={item.label || ''}
+                        onChange={(e) => setValue(e.target.value)}
+                        autoSize={{ minRows: 1, maxRows: 4 }}
+                        placeholder="Texto del párrafo"
+                    />
+                )}
+                <Input
+                    size="small"
+                    value={item.href || ''}
+                    onChange={(e) => setHref(e.target.value)}
+                    placeholder="Link (opcional). Soporta tokens: https://ejemplo.gob.mx/{clave_catastral}"
+                    addonBefore={<Text type="secondary" style={{ fontSize: 11 }}>Link</Text>}
+                />
+            </Space>
+        </div>
+    );
+};
+
+const TextBlock = ({ block, onChange, onRemove, availableFields }) => {
+    const items = block?.items || [];
+    const updateItems = (next) => onChange({ ...block, items: next });
+    const updateItem = (idx, value) => updateItems(items.map((it, i) => (i === idx ? value : it)));
+    const removeItem = (idx) => updateItems(items.filter((_, i) => i !== idx));
+    const addItem = () => updateItems([...items, { label: '' }]);
+
+    return (
+        <BlockShell title="Texto (párrafos)" onRemove={onRemove} hint="Cada párrafo: texto fijo o valor de un campo">
             <Space orientation="vertical" size="small" style={{ width: '100%' }}>
-                {value.map((it, idx) => (
-                    <Space.Compact key={idx} style={{ width: '100%' }}>
-                        <Input.TextArea
-                            value={it.label || ''}
-                            onChange={(e) => updateItem(idx, { label: e.target.value })}
-                            autoSize={{ minRows: 1, maxRows: 4 }}
-                            placeholder="Texto del párrafo"
-                        />
-                        <Button danger icon={<DeleteOutlined />} onClick={() => removeItem(idx)} />
-                    </Space.Compact>
+                {items.map((it, idx) => (
+                    <TextItemRow
+                        key={idx}
+                        item={it}
+                        onChange={(next) => updateItem(idx, next)}
+                        onRemove={() => removeItem(idx)}
+                        availableFields={availableFields}
+                    />
                 ))}
                 <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={addItem} block>
                     Agregar párrafo
@@ -613,18 +720,29 @@ const TextBlock = ({ value = [], onChange, onRemove }) => {
 
 const BLOCK_DEFS = [
     { key: 'headerField', label: 'Encabezado', defaultValue: '' },
-    { key: 'labels', label: 'Etiquetas (legacy)', defaultValue: [] },
-    { key: 'labelGroups', label: 'Etiquetas (labelGroups)', defaultValue: [{ fields: [], color: '#FF8300', bg: '#FFF2E5' }] },
+    { key: 'labelGroups', label: 'Etiquetas', defaultValue: [{ fields: [], color: '#FF8300', bg: '#FFF2E5' }] },
     { key: 'cards', label: 'Cards (estadísticas)', defaultValue: [{ field: '', label: '' }], extras: { cardsColumns: 1 } },
     { key: 'list', label: 'Lista', defaultValue: [{ field: '', label: '' }] },
     { key: 'iconText', label: 'Íconos con texto', defaultValue: [{ icon: 'ubicacion', field: '' }] },
     { key: 'text', label: 'Texto (párrafos)', defaultValue: [{ label: '' }] },
 ];
 
-const SORTABLE_KEYS = ['labels', 'labelGroups', 'list', 'iconText', 'text', 'cards'];
+const SORTABLE_KEYS = ['labelGroups', 'list', 'iconText', 'text', 'cards'];
+
+const expandSortableKeys = (config) => {
+    const out = [];
+    for (const k of SORTABLE_KEYS) {
+        if (k === 'text') {
+            (config.text || []).forEach((b) => out.push(mkTextKey(b.id)));
+        } else if (config[k] !== undefined) {
+            out.push(k);
+        }
+    }
+    return out;
+};
 
 const resolveBodyOrder = (config) => {
-    const present = SORTABLE_KEYS.filter((k) => config[k] !== undefined);
+    const present = expandSortableKeys(config);
     const explicit = Array.isArray(config.blockOrder)
         ? config.blockOrder.filter((k) => present.includes(k))
         : [];
@@ -639,7 +757,7 @@ const arraysEqual = (a, b) => {
 };
 
 export default function InfoBoxBlocksEditor({ value, onChange, availableFields = [], inherited = null, nodeType = null }) {
-    const config = useMemo(() => value || {}, [value]);
+    const config = useMemo(() => normalizeInfoboxConfig(value || {}), [value]);
 
     const update = useCallback((patch) => {
         const next = { ...config, ...patch };
@@ -651,10 +769,21 @@ export default function InfoBoxBlocksEditor({ value, onChange, availableFields =
 
     const bodyOrder = resolveBodyOrder(config);
     const headerPresent = config.headerField !== undefined;
-    const missingBlocks = BLOCK_DEFS.filter((b) => config[b.key] === undefined);
+    const missingBlocks = BLOCK_DEFS.filter((b) => b.key === 'text' || config[b.key] === undefined);
     const hasAnyBlock = headerPresent || bodyOrder.length > 0;
 
     const removeBlock = (key) => {
+        if (isTextKey(key)) {
+            const id = textIdOf(key);
+            const nextText = (config.text || []).filter((b) => b.id !== id);
+            const patch = { text: nextText.length ? nextText : undefined };
+            if (Array.isArray(config.blockOrder) && config.blockOrder.includes(key)) {
+                const nextOrder = config.blockOrder.filter((k) => k !== key);
+                patch.blockOrder = nextOrder.length ? nextOrder : undefined;
+            }
+            update(patch);
+            return;
+        }
         const patch = { [key]: undefined };
         if (key === 'cards') patch.cardsColumns = undefined;
         if (Array.isArray(config.blockOrder) && config.blockOrder.includes(key)) {
@@ -665,6 +794,12 @@ export default function InfoBoxBlocksEditor({ value, onChange, availableFields =
     };
 
     const addBlock = (key) => {
+        if (key === 'text') {
+            const newBlock = { id: genTextId(), items: [{ label: '' }] };
+            const nextText = Array.isArray(config.text) ? [...config.text, newBlock] : [newBlock];
+            update({ text: nextText });
+            return;
+        }
         const def = BLOCK_DEFS.find((b) => b.key === key);
         if (!def) return;
         const patch = { [key]: def.defaultValue };
@@ -676,30 +811,11 @@ export default function InfoBoxBlocksEditor({ value, onChange, availableFields =
         const target = idx + delta;
         if (target < 0 || target >= bodyOrder.length) return;
         const nextOrder = arrayMove(bodyOrder, idx, target);
-        const defaultOrder = SORTABLE_KEYS.filter((k) => config[k] !== undefined);
+        const defaultOrder = expandSortableKeys(config);
         update({ blockOrder: arraysEqual(nextOrder, defaultOrder) ? undefined : nextOrder });
     };
 
     const renderBodyBlock = (key) => {
-        if (key === 'labels') {
-            return (
-                <BlockShell title="Etiquetas (legacy)" onRemove={() => removeBlock('labels')} hint="Bloque legacy: array plano de campos como Labels">
-                    <Select
-                        mode="multiple"
-                        value={config.labels || []}
-                        onChange={(v) => update({ labels: v.length ? v : undefined })}
-                        options={fieldOptionsFor(availableFields, config.labels || [])}
-                        placeholder="Campos a mostrar"
-                        style={{ width: '100%' }}
-                        showSearch
-                        allowClear
-                        filterOption={(input, option) =>
-                            String(option.value).toLowerCase().includes(input.toLowerCase())
-                        }
-                    />
-                </BlockShell>
-            );
-        }
         if (key === 'labelGroups') {
             return (
                 <LabelGroupsBlock
@@ -742,12 +858,19 @@ export default function InfoBoxBlocksEditor({ value, onChange, availableFields =
                 />
             );
         }
-        if (key === 'text') {
+        if (isTextKey(key)) {
+            const id = textIdOf(key);
+            const block = (config.text || []).find((b) => b.id === id);
+            if (!block) return null;
             return (
                 <TextBlock
-                    value={config.text}
-                    onChange={(v) => update({ text: v.length ? v : undefined })}
-                    onRemove={() => removeBlock('text')}
+                    block={block}
+                    onChange={(nextBlock) => {
+                        const nextText = (config.text || []).map((b) => (b.id === id ? nextBlock : b));
+                        update({ text: nextText });
+                    }}
+                    onRemove={() => removeBlock(key)}
+                    availableFields={availableFields}
                 />
             );
         }

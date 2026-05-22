@@ -182,6 +182,10 @@ AUTO_PARENT_LABEL = 'Eventos (auto-creado)'
 def _ensure_auto_parent(session: Session, updated_by: str | None) -> Layer:
     parent = session.query(Layer).filter(Layer.id == AUTO_PARENT_ID).first()
     if parent:
+        if parent.deleted_at is not None:
+            parent.deleted_at = None
+            parent.updated_by = updated_by
+            session.flush()
         return parent
     parent = Layer(
         id=AUTO_PARENT_ID,
@@ -214,6 +218,8 @@ def find_or_create_auto_leaf(
     label: str,
     updated_by: str | None,
 ) -> tuple[Layer, bool]:
+    parent = _ensure_auto_parent(session, updated_by)
+
     existing = (
         session.query(Layer)
         .filter(
@@ -227,9 +233,27 @@ def find_or_create_auto_leaf(
     if existing:
         return existing, False
 
-    validate_layer_against_geoserver(session, workspace_alias, geoserver_layer)
+    soft_deleted = (
+        session.query(Layer)
+        .filter(
+            Layer.workspace_alias == workspace_alias,
+            Layer.geoserver_layer == geoserver_layer,
+            Layer.node_type == 'leaf',
+            Layer.deleted_at.is_not(None),
+        )
+        .order_by(Layer.deleted_at.desc())
+        .first()
+    )
+    if soft_deleted is not None:
+        soft_deleted.deleted_at = None
+        soft_deleted.parent_id = parent.id
+        soft_deleted.updated_by = updated_by
+        if label:
+            soft_deleted.label = label
+        session.flush()
+        return soft_deleted, True
 
-    parent = _ensure_auto_parent(session, updated_by)
+    validate_layer_against_geoserver(session, workspace_alias, geoserver_layer)
 
     base_id = f'auto-{_slugify_id_segment(workspace_alias)}-{_slugify_id_segment(geoserver_layer)}'
     base_id = base_id[:100]
@@ -304,6 +328,69 @@ def soft_delete_layer(session: Session, layer: Layer, deleted_by: str | None) ->
     layer.deleted_by = deleted_by
     layer.updated_by = deleted_by
     session.flush()
+
+
+def _flatten_evento_capa_refs(capas_json: Any) -> list[tuple[str, str]]:
+    out: list[tuple[str, str]] = []
+    if not isinstance(capas_json, list):
+        return out
+    for c in capas_json:
+        if not isinstance(c, dict):
+            continue
+        tipo = c.get('tipo')
+        if tipo == 'categoria':
+            out.extend(_flatten_evento_capa_refs(c.get('capas') or []))
+        elif tipo == 'capa':
+            ws = c.get('workspace')
+            gl = c.get('layer')
+            if ws and gl:
+                out.append((ws, gl))
+    return out
+
+
+def find_orphan_auto_leaves(
+    mariachi_session: Session,
+    dataengine_session: Session,
+    evento: Any,
+) -> list[Layer]:
+    """Capas auto-leaf bajo `eventos-auto` que solo este evento referencia.
+
+    Una capa es huérfana si:
+      - Vive bajo `parent_id=eventos-auto` (creada via auto-leaf, no catálogo).
+      - Está activa (`deleted_at IS NULL`).
+      - El par `(workspace, layer)` aparece en `evento.capas` y en NINGÚN otro
+        evento de mariachi DB.
+    """
+    from app.models.evento import Evento
+
+    this_pairs = set(_flatten_evento_capa_refs(evento.capas))
+    if not this_pairs:
+        return []
+
+    other_rows = mariachi_session.query(Evento.capas).filter(Evento.id != evento.id).all()
+    other_pairs: set[tuple[str, str]] = set()
+    for (capas_json,) in other_rows:
+        other_pairs.update(_flatten_evento_capa_refs(capas_json))
+
+    candidate_pairs = this_pairs - other_pairs
+    if not candidate_pairs:
+        return []
+
+    orphans: list[Layer] = []
+    for ws, gl in candidate_pairs:
+        layer = (
+            dataengine_session.query(Layer)
+            .filter(
+                Layer.workspace_alias == ws,
+                Layer.geoserver_layer == gl,
+                Layer.parent_id == AUTO_PARENT_ID,
+                Layer.deleted_at.is_(None),
+            )
+            .first()
+        )
+        if layer is not None:
+            orphans.append(layer)
+    return orphans
 
 
 def restore_layer(session: Session, layer: Layer, restored_by: str | None) -> None:

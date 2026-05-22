@@ -1,3 +1,5 @@
+from unittest.mock import MagicMock
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -5,7 +7,7 @@ from sqlalchemy.dialects.sqlite.base import SQLiteTypeCompiler
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from app.core.database import Base, get_db
+from app.core.database import Base, get_dataengine_db, get_db
 from app.core.security import hash_password
 from app.core.settings import get_settings
 from app.main import app
@@ -107,7 +109,11 @@ def client(db_session):
         finally:
             pass
 
+    def override_get_dataengine_db():
+        yield MagicMock()
+
     app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_dataengine_db] = override_get_dataengine_db
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
