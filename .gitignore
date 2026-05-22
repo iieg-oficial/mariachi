@@ -137,3 +137,5 @@ restore/*.sql
 
 # Exports locales de infobox_config (ver scripts/dataengine-export-infobox.sh)
 backups/tarjetitas/
+# Backups reversos generados por dataengine-apply-infobox.sh (BACKUP_DIR default)
+infobox-backups/
