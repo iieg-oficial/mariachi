@@ -74,6 +74,7 @@ export default [
     },
     {
         files: [
+            'src/features/documentacion/topics/McpPlayground.jsx',
             'src/features/inicio/pages/InicioPage.jsx',
             'src/features/mapalab-eventos/pages/EventoEditPage.jsx',
             'src/features/mapalab-home/components/sectionEditors.jsx',

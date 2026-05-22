@@ -187,7 +187,7 @@ export default function McpTopic() {
                     columns={URL_COLUMNS}
                 />
                 <Paragraph type="secondary" style={{ marginTop: 12, marginBottom: 0, fontSize: 12 }}>
-                    El path final lleva slash. El cliente FastMCP lo agrega solo, pero <Text code>curl</Text> necesita escribirlo.
+                    Pega la URL <strong>sin slash final</strong> en la configuración del cliente MCP — los clientes (Claude Desktop, FastMCP, langchain-mcp-adapters) agregan el slash internamente. Si llamas con <Text code>curl</Text>, recuerda que el endpoint real es <Text code>/mcp/</Text> con slash (sin él recibes un HTTP 307 redirect que <Text code>curl -X POST</Text> no sigue por defecto; usa <Text code>-L</Text> o escribe el slash).
                 </Paragraph>
             </Card>
 
