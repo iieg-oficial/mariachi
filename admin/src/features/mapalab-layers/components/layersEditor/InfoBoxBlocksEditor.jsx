@@ -568,39 +568,67 @@ const IconTextBlock = ({ value = [], onChange, onRemove, availableFields }) => {
         const next = value.map((it, i) => (i === idx ? { ...it, ...patch } : it));
         onChange(next);
     };
+    const setOptional = (idx, key, v) => {
+        const it = value[idx];
+        if (v) {
+            updateItem(idx, { [key]: v });
+        } else {
+            const { [key]: _drop, ...rest } = it;
+            const next = value.map((curr, i) => (i === idx ? rest : curr));
+            onChange(next);
+        }
+    };
     const removeItem = (idx) => onChange(value.filter((_, i) => i !== idx));
     const addItem = () => onChange([...value, { icon: 'ubicacion', field: '' }]);
 
     return (
-        <BlockShell title="Íconos con texto (iconText)" onRemove={onRemove} hint="Ícono + valor del campo (ubicación abre Maps, celular abre marcador)">
+        <BlockShell title="Íconos con texto (iconText)" onRemove={onRemove} hint="Ícono + valor del campo (web/ubicación/celular abren link automático)">
             <Space orientation="vertical" size="small" style={{ width: '100%' }}>
                 {value.map((it, idx) => (
-                    <Space.Compact key={idx} style={{ width: '100%' }}>
-                        <Select
-                            style={{ width: 220 }}
-                            value={it.icon || 'ubicacion'}
-                            onChange={(v) => updateItem(idx, { icon: v })}
-                            options={ICON_CATALOG}
-                            showSearch
-                            mode="combobox"
-                            filterOption={(input, option) =>
-                                String(option.value).toLowerCase().includes(input.toLowerCase())
-                            }
-                        />
-                        <Select
-                            style={{ flex: 1 }}
-                            value={it.field || undefined}
-                            onChange={(v) => updateItem(idx, { field: v ?? '' })}
-                            options={fieldOptionsFor(availableFields, it.field)}
-                            placeholder="Campo a mostrar"
-                            showSearch
-                            allowClear
-                            filterOption={(input, option) =>
-                                String(option.value).toLowerCase().includes(input.toLowerCase())
-                            }
-                        />
-                        <Button danger icon={<DeleteOutlined />} onClick={() => removeItem(idx)} />
-                    </Space.Compact>
+                    <div key={idx} style={{ border: '1px dashed #f0f0f0', borderRadius: 4, padding: 8 }}>
+                        <Space orientation="vertical" size={6} style={{ width: '100%' }}>
+                            <Space.Compact style={{ width: '100%' }}>
+                                <Select
+                                    style={{ width: 220 }}
+                                    value={it.icon || 'ubicacion'}
+                                    onChange={(v) => updateItem(idx, { icon: v })}
+                                    options={ICON_CATALOG}
+                                    showSearch
+                                    mode="combobox"
+                                    filterOption={(input, option) =>
+                                        String(option.value).toLowerCase().includes(input.toLowerCase())
+                                    }
+                                />
+                                <Select
+                                    style={{ flex: 1 }}
+                                    value={it.field || undefined}
+                                    onChange={(v) => updateItem(idx, { field: v ?? '' })}
+                                    options={fieldOptionsFor(availableFields, it.field)}
+                                    placeholder={it.icon === 'web' ? 'Campo con la URL' : 'Campo a mostrar'}
+                                    showSearch
+                                    allowClear
+                                    filterOption={(input, option) =>
+                                        String(option.value).toLowerCase().includes(input.toLowerCase())
+                                    }
+                                />
+                                <Button danger icon={<DeleteOutlined />} onClick={() => removeItem(idx)} />
+                            </Space.Compact>
+                            <Input
+                                size="small"
+                                value={it.label || ''}
+                                onChange={(e) => setOptional(idx, 'label', e.target.value)}
+                                placeholder={it.icon === 'web' ? 'Texto visible (ej. "Sitio oficial"). Si lo dejas vacío, muestra la URL.' : 'Texto visible (opcional, sobrescribe el valor del campo)'}
+                                addonBefore={<Text type="secondary" style={{ fontSize: 11 }}>Texto</Text>}
+                            />
+                            <Input
+                                size="small"
+                                value={it.href || ''}
+                                onChange={(e) => setOptional(idx, 'href', e.target.value)}
+                                placeholder="Link explícito (opcional). Soporta tokens: https://ejemplo.gob.mx/{clave_catastral}"
+                                addonBefore={<Text type="secondary" style={{ fontSize: 11 }}>Link</Text>}
+                            />
+                        </Space>
+                    </div>
                 ))}
                 <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={addItem} block>
                     Agregar ícono
