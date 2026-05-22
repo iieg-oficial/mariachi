@@ -28,6 +28,12 @@ Cada item — tanto en `text` como en `list` — puede definir un `href` opciona
 
 El visor mapalab ya consume `href` y múltiples bloques de texto vía su propio `pages/maps/components/InfoBox/utils/infoBoxTextBlocks.js` y `InfoBox/components/Text.jsx` (subrayado con `<a target="_blank">`). Sin cambios de schema en backend (`infobox_config` es `JSONB` sin contrato estricto).
 
+### Documentado: convención de orden Z en CapasField del editor de eventos
+
+- **`admin/src/features/mapalab-eventos/components/CapasField.jsx`**: el texto secundario sobre la tabla ahora explica que el orden definido en el editor controla el Z del mapa (primera = al frente, última = al fondo). El fix funcional vive en mapalab `1.36.0` (`EventoMenu.jsx` itera la auto-activación en orden inverso para respetar este orden).
+
+Sin cambios en backend ni schema. Drag & drop entre raíz y categorías (vía `@dnd-kit/sortable`) no cambia.
+
 ---
 
 ## [1.10.0] - 2026-05-21

@@ -211,7 +211,7 @@ export default function CapasField({ value = [], onChange, disabled }) {
         <Space direction="vertical" style={{ width: '100%' }}>
             <Space style={{ justifyContent: 'space-between', width: '100%' }} wrap>
                 <Text type="secondary" style={{ fontSize: 12 }}>
-                    Arrastra el handle (≡) para reordenar. Usa el botón mover para cambiar de contenedor (raíz ↔ categorías). Las categorías solo viven en la raíz.
+                    Arrastra el handle (≡) para reordenar. Usa el botón mover para cambiar de contenedor (raíz ↔ categorías). Las categorías solo viven en la raíz. El orden aquí define el Z del mapa: la primera capa se renderiza al frente, la última al fondo.
                 </Text>
                 <Space size={6} wrap>
                     <Button icon={<TagOutlined />} onClick={addEtiquetaRoot} disabled={disabled}>
