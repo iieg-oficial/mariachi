@@ -33,11 +33,11 @@ const PUBLIC_MCP_URL = buildPublicMcpUrl();
 
 const TOOLS_BY_ROUTER = {
     metadata: [
-        { tool: 'get_metadata', route: 'GET /metadata/', desc: 'Metadata completa de una capa (descripción, fuentes, downloadable, URLs TXT/XLSX).' },
+        { tool: 'get_metadata', route: 'GET /metadata/', desc: 'Metadata completa de una capa (descripción, fuentes, downloadable, URLs TXT/XLSX). Acepta el id del visor o el geoserver_layer.' },
         { tool: 'get_sources_batch', route: 'GET /metadata/sources', desc: 'Fuentes de varias capas en lote ("workspace:layer" separadas por coma).' },
     ],
     periodicity: [
-        { tool: 'get_periodicity', route: 'GET /periodicity/', desc: 'Fechas disponibles year/month/day de una capa temporal.' },
+        { tool: 'get_periodicity', route: 'GET /periodicity/', desc: 'Fechas disponibles year/month/day de una capa temporal. Acepta alias o geoserver_workspace + Layer.id o geoserver_layer.' },
         { tool: 'get_periodicities_batch', route: 'GET /periodicity/batch', desc: 'Periodicidad de varias capas en una sola llamada.' },
     ],
     layers: [
@@ -45,7 +45,7 @@ const TOOLS_BY_ROUTER = {
         { tool: 'get_initial_order', route: 'GET /layers/initial-order', desc: 'Capas activas al cargar el visor.' },
         { tool: 'get_workspaces', route: 'GET /layers/workspaces', desc: 'Workspaces con alias + schema en DataEngine.' },
         { tool: 'search_layers', route: 'GET /layers/search', desc: 'Busca por label, tags o id. Devuelve label + path jerárquico.', highlight: true },
-        { tool: 'resolve_layer_ref', route: 'GET /layers/resolve', desc: 'Slug o alias público → capa.' },
+        { tool: 'resolve_layer_ref', route: 'GET /layers/resolve', desc: 'Slug, alias público o id del visor → capa.' },
         { tool: 'refresh_layer_tree_cache', route: 'POST /layers/refresh-cache', desc: 'Regenera la cache materializada. Requiere X-Internal-Token.' },
         { tool: 'invalidate_layer_tree_memory_cache', route: 'POST /layers/invalidate-cache', desc: 'Invalida solo memoria del worker. Requiere X-Internal-Token.' },
     ],
@@ -280,6 +280,17 @@ export default function McpTopic() {
                     real. Útil para entender qué devuelve cada tool antes de cablearlo a un agente.
                 </Text>
             </div>
+
+            <Alert
+                type="success"
+                showIcon
+                message="Contrato robusto desde mapalab 1.40.1"
+                description={
+                    <>
+                        <Text code>get_metadata</Text>, <Text code>resolve_layer_ref</Text> y <Text code>get_periodicity</Text> aceptan tanto el <Text code>id</Text> que devuelve <Text code>search_layers</Text> (p. ej. <Text code>tasa_homicidio_doloso</Text>) como el <Text code>geoserver_layer</Text>/<Text code>slug</Text>. Encadenar <Text code>search_layers → get_metadata</Text> ahora funciona pegando los valores tal cual.
+                    </>
+                }
+            />
 
             <McpPlayground />
 

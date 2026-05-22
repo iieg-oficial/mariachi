@@ -9,6 +9,19 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [admin 1.14.4] - 2026-05-22
+
+### Documentación: defaults reales en el McpPlayground + nota del contrato robusto
+
+El playground de `/administrador/documentacion` venía con defaults que no existían en la BD: `tasa_trabajadores_asegurados_hombres`/`raster:temperaturas`/`tasa_homicidio_doloso` daban `[]` o 404. Como mapalab 1.40.1 corrigió el contrato de `get_metadata`, `resolve_layer_ref` y `get_periodicity` para que acepten también el `id` del visor (no solo `geoserver_layer`/`slug`), aprovechamos para realinear los defaults a capas que existen y aclarar el contrato en la UI.
+
+- **`admin/src/features/documentacion/topics/McpPlayground.jsx`**: defaults a `seguridad:tasa_homicidio_doloso` (get_metadata, resolve_layer_ref) y `demografia:poblacion` (get_periodicity), `q='homicidio'` para `search_layers`. Descripciones de cada probe mencionan que aceptan tanto id del visor como geoserver_layer.
+- **`admin/src/features/documentacion/topics/McpTopic.jsx`**: tabla de tools con la nota de aceptación bilingüe (id ↔ geoserver_layer). Alert nuevo arriba del playground explicando que `search_layers → get_metadata` se encadena sin transformaciones desde mapalab 1.40.1.
+
+Sin cambios en backend (mariachi solo persiste telemetría MCP, no expone los tools). El comportamiento corregido vive en mapalab 1.40.1.
+
+---
+
 ## [1.14.2] - 2026-05-22
 
 ### Corregido: sticky en preview del drawer + render fiel del bloque text
