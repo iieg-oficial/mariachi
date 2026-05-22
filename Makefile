@@ -65,7 +65,7 @@ help:
 	@echo ''
 	@echo '${GREEN}Tarjetitas (infobox_config de capas en DataEngine):${RESET}'
 	@echo '  ${YELLOW}make backup-tarjetitas${RESET}              - Exporta infobox_config de TODAS las capas a backups/tarjetitas/'
-	@echo '  ${YELLOW}make restore-tarjetitas FILE=...${RESET}    - Aplica un export (backup previo + confirmacion + apply)'
+	@echo '  ${YELLOW}make restore-tarjetitas [FILE=...]${RESET} - Aplica un export (selector si omites FILE; backup previo + confirmacion + apply)'
 	@echo '                                       ${YELLOW}Solo lee DATAENGINE_DATABASE_URL de .env.production${RESET} (no de dev/staging).'
 	@echo '                                       Override consciente: DATAENGINE_URL='"'"'postgres://...'"'"' make backup-tarjetitas'
 	@echo '                                       Solo mueve la columna infobox_config: nada del shape de la capa.'
@@ -203,15 +203,21 @@ backup-tarjetitas:
 	DATAENGINE_URL="$$DE_URL" OUT_DIR=$(TARJETITAS_DIR) ./scripts/dataengine-export-infobox.sh
 
 ## Aplica un export de tarjetitas en la BD destino. Hace backup reverso primero.
-## Uso: make restore-tarjetitas FILE=backups/tarjetitas/infobox-<ts>.sql
-## Override de URL: DATAENGINE_URL='postgres://...' make restore-tarjetitas FILE=...
+## Sin FILE: muestra selector interactivo de los exports en backups/tarjetitas/.
+## Con FILE: usa el archivo explicito (saltea el selector).
+## Override de URL: DATAENGINE_URL='postgres://...' make restore-tarjetitas [FILE=...]
 restore-tarjetitas:
-	@if [ -z "$(FILE)" ]; then \
-		echo "${YELLOW}Falta FILE. Uso: make restore-tarjetitas FILE=backups/tarjetitas/infobox-<ts>.sql${RESET}"; \
+	@if [ -n "$(FILE)" ]; then \
+		FILE_SEL="$(FILE)"; \
+	else \
+		FILE_SEL=$$(./scripts/pick-tarjetita.sh) || exit $$?; \
+	fi; \
+	if [ -z "$$FILE_SEL" ]; then \
+		echo "${YELLOW}No se selecciono ningun archivo.${RESET}"; \
 		exit 1; \
-	fi
-	@$(resolve_dataengine_url); \
-	DATAENGINE_URL="$$DE_URL" ./scripts/dataengine-apply-infobox.sh $(FILE)
+	fi; \
+	$(resolve_dataengine_url); \
+	DATAENGINE_URL="$$DE_URL" ./scripts/dataengine-apply-infobox.sh "$$FILE_SEL"
 
 # =============================================================================
 # MAPALAB STATS (telemetria)
