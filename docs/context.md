@@ -439,6 +439,12 @@ Rate limiting: writes en 60 req/min por usuario, reads de GeoServer en 120 req/m
 
 Editor UI: `admin/src/pages/MapalabLayers.jsx` con Ant Design Tree + drawer. Componentes del drawer de InfoBox en `admin/src/components/layersEditor/`: `InfoBoxPresetForm`, `InfoBoxPreview`, `InfoBoxJsonEditor`.
 
+#### Bloques del InfoBox editor (`features/mapalab-layers/components/layersEditor/`)
+
+- `InfoBoxBlocksEditor.jsx` + `InfoBoxPreview.jsx` soportan **múltiples bloques `text` independientes**, identificados por `id` y referenciados en `blockOrder` como `text:<id>`. Cada item de un bloque puede ser **texto fijo** (`label`) o **campo dinámico** (`field`) — el preview renderiza el campo como `<strong>{field}: </strong>{valor}`.
+- Items de `text` y `list` aceptan un **`href` opcional** con tokens del feature tipo `https://catastro.gob.mx/{clave_catastral}`. El preview los pinta subrayados (`#5C2472`). El visor mapalab los renderiza como `<a target="_blank">`.
+- `infoBoxTextBlocks.js` expone `mkTextKey`, `isTextKey`, `textIdOf`, `genTextId` y `normalizeTextBlocks`. La normalización migra el formato legacy (`text: [{label}, ...]`) al nuevo (`text: [{id, items: [...]}, ...]`) en cada render — sin migración de BD ni cambio de schema (`infobox_config` es `JSONB`).
+
 Ver la documentación interna de mapalab (`/IIEG/mapalab/docs/layers.md`, `infobox.md`) para la arquitectura completa.
 
 ### v0.31.0 Editor de simbología (SLD) — implementado

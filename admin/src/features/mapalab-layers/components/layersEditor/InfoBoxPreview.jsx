@@ -1,5 +1,7 @@
 import { Card, Empty, Space, Tag, Typography } from 'antd';
 
+import { isTextKey, mkTextKey, normalizeTextBlocks, textIdOf } from './infoBoxTextBlocks';
+
 const { Title, Text } = Typography;
 
 const DUMMY = {
@@ -139,18 +141,24 @@ const Cards = ({ items, columns = 1 }) => (
 
 const ListItems = ({ items }) => (
     <div>
-        {items.map((it, i) => (
-            <div key={i} style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                gap: 8,
-                padding: '4px 0',
-                borderBottom: i < items.length - 1 ? '1px dashed #f0f0f0' : 'none',
-            }}>
-                <Text type="secondary" style={{ fontSize: 12 }}>{it.label}</Text>
-                <Text style={{ fontSize: 12 }}>{resolveValue(it.field)}</Text>
-            </div>
-        ))}
+        {items.map((it, i) => {
+            const value = resolveValue(it.field);
+            const valueEl = it.href
+                ? <span style={{ fontSize: 12, color: '#5C2472', textDecoration: 'underline' }}>{value}</span>
+                : <Text style={{ fontSize: 12 }}>{value}</Text>;
+            return (
+                <div key={i} style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: 8,
+                    padding: '4px 0',
+                    borderBottom: i < items.length - 1 ? '1px dashed #f0f0f0' : 'none',
+                }}>
+                    <Text type="secondary" style={{ fontSize: 12 }}>{it.label}</Text>
+                    {valueEl}
+                </div>
+            );
+        })}
     </div>
 );
 
@@ -181,8 +189,22 @@ const IconTexts = ({ items }) => (
 
 const DEFAULT_BODY_ORDER = ['labels', 'labelGroups', 'list', 'iconText', 'text', 'cards'];
 
+const expandPresentKeys = (cfg) => {
+    const out = [];
+    for (const k of DEFAULT_BODY_ORDER) {
+        if (k === 'text') {
+            (cfg.text || []).forEach((b) => {
+                if (b?.items?.length) out.push(mkTextKey(b.id));
+            });
+        } else if (cfg[k]?.length) {
+            out.push(k);
+        }
+    }
+    return out;
+};
+
 const resolveBodyOrder = (cfg) => {
-    const present = DEFAULT_BODY_ORDER.filter((k) => cfg[k]?.length);
+    const present = expandPresentKeys(cfg);
     const explicit = Array.isArray(cfg.blockOrder)
         ? cfg.blockOrder.filter((k) => present.includes(k))
         : [];
@@ -190,7 +212,29 @@ const resolveBodyOrder = (cfg) => {
     return [...explicit, ...remaining];
 };
 
+const renderTextItem = (it, idx) => {
+    const linkStyle = { color: '#5C2472', textDecoration: 'underline' };
+    if (it.field) {
+        const content = <><strong>{it.field}: </strong>{resolveValue(it.field)}</>;
+        return <span key={idx} style={{ display: 'block', ...(it.href ? linkStyle : null) }}>{content}</span>;
+    }
+    if (it.label) {
+        return <span key={idx} style={{ display: 'block', ...(it.href ? linkStyle : null) }}>{it.label}</span>;
+    }
+    return null;
+};
+
+const renderTextBlock = (key, cfg) => {
+    const block = (cfg.text || []).find((b) => b.id === textIdOf(key));
+    const rendered = (block?.items || []).map(renderTextItem).filter(Boolean);
+    if (!rendered.length) return null;
+    return <Text key={key} type="secondary" style={{ display: 'block', fontSize: 11, marginBottom: 8 }}>{rendered}</Text>;
+};
+
 const renderBodyBlock = (key, cfg) => {
+    if (isTextKey(key)) {
+        return renderTextBlock(key, cfg);
+    }
     if (key === 'labels' && cfg.labels?.length) {
         return (
             <Space key="labels" size={4} wrap style={{ marginBottom: 8 }}>
@@ -224,13 +268,6 @@ const renderBodyBlock = (key, cfg) => {
     if (key === 'iconText' && cfg.iconText?.length) {
         return <div key="iconText" style={{ marginBottom: 8 }}><IconTexts items={cfg.iconText} /></div>;
     }
-    if (key === 'text' && cfg.text?.length) {
-        return (
-            <Text key="text" type="secondary" style={{ display: 'block', fontSize: 11, marginBottom: 8 }}>
-                {cfg.text.map((t) => t.label).join(' ')}
-            </Text>
-        );
-    }
     if (key === 'cards' && cfg.cards?.length) {
         return <div key="cards"><Cards items={cfg.cards} columns={cfg.cardsColumns || 1} /></div>;
     }
@@ -239,7 +276,8 @@ const renderBodyBlock = (key, cfg) => {
 
 
 export default function InfoBoxPreview({ params, value }) {
-    const cfg = value ?? params ?? null;
+    const raw = value ?? params ?? null;
+    const cfg = normalizeTextBlocks(raw);
 
     if (!cfg || (typeof cfg === 'object' && Object.keys(cfg).length === 0)) {
         return (

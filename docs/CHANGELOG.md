@@ -9,6 +9,27 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.11.0] - 2026-05-22
+
+### Agregado: múltiples bloques de texto en InfoBox editor + items tipo "campo dinámico" + link opcional por item
+
+Editor de InfoBox (`admin/src/features/mapalab-layers/components/layersEditor/`) ahora soporta múltiples bloques `text` independientes (antes era uno único, que solo podía moverse como bloque). Cada bloque tiene su propio `id` y se identifica en `blockOrder` con la clave `text:<id>` para preservar el orden frente al drag & drop. Cada **item** de un bloque puede ser:
+
+- **Texto fijo** (`label`): párrafo libre escrito por el editor.
+- **Campo dinámico** (`field`): valor del feature resuelto en runtime; el preview lo renderiza como `<strong>{field}: </strong>{valor}`.
+
+Cada item — tanto en `text` como en `list` — puede definir un `href` opcional con soporte de **tokens del feature** (ej. `https://catastro.gob.mx/{clave_catastral}`). El preview pinta esos items subrayados con color `#5C2472`.
+
+#### Qué cambió
+
+- **`InfoBoxBlocksEditor.jsx`**: `BLOCK_DEFS.text` ahora se trata como colección. `addBlock('text')` crea `{id: genTextId(), items: [{label: ''}]}`; `removeBlock('text:<id>')` quita por id y limpia `blockOrder`. `TextItemRow` con `Radio.Group` para alternar `Texto fijo ↔ Campo dinámico`, y un Input adicional para `href` con placeholder de ejemplo de token. Cada item de `list` también recibió el Input de `href`.
+- **`InfoBoxPreview.jsx`**: `expandPresentKeys` expande `text` a `text:<id>` para que el orden y filtro `length` funcionen bien con múltiples bloques. `renderTextItem` decide entre campo (con `<strong>field:</strong>`) o texto fijo, y aplica estilo de link cuando hay `href`. `ListItems` también muestra subrayado púrpura en items con `href`.
+- **`infoBoxTextBlocks.js` (nuevo)**: helpers `mkTextKey`, `isTextKey`, `textIdOf`, `genTextId` y `normalizeTextBlocks` para migrar el formato legacy (`text: [{label}, ...]`) al nuevo (`text: [{id, items: [...]}, ...]`) leyendo desde DataEngine sin migración de BD — la normalización corre en cada render del editor y del preview, manteniendo retro-compatibilidad con InfoBoxes existentes en `mapalab.layers.infobox_config`.
+
+El visor mapalab ya consume `href` y múltiples bloques de texto vía su propio `pages/maps/components/InfoBox/utils/infoBoxTextBlocks.js` y `InfoBox/components/Text.jsx` (subrayado con `<a target="_blank">`). Sin cambios de schema en backend (`infobox_config` es `JSONB` sin contrato estricto).
+
+---
+
 ## [1.10.0] - 2026-05-21
 
 ### Agregado: panel de telemetría del servidor MCP de MapaLab + documentación interna
