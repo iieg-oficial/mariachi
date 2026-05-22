@@ -182,6 +182,10 @@ AUTO_PARENT_LABEL = 'Eventos (auto-creado)'
 def _ensure_auto_parent(session: Session, updated_by: str | None) -> Layer:
     parent = session.query(Layer).filter(Layer.id == AUTO_PARENT_ID).first()
     if parent:
+        if parent.deleted_at is not None:
+            parent.deleted_at = None
+            parent.updated_by = updated_by
+            session.flush()
         return parent
     parent = Layer(
         id=AUTO_PARENT_ID,
@@ -214,6 +218,8 @@ def find_or_create_auto_leaf(
     label: str,
     updated_by: str | None,
 ) -> tuple[Layer, bool]:
+    parent = _ensure_auto_parent(session, updated_by)
+
     existing = (
         session.query(Layer)
         .filter(
@@ -227,9 +233,27 @@ def find_or_create_auto_leaf(
     if existing:
         return existing, False
 
-    validate_layer_against_geoserver(session, workspace_alias, geoserver_layer)
+    soft_deleted = (
+        session.query(Layer)
+        .filter(
+            Layer.workspace_alias == workspace_alias,
+            Layer.geoserver_layer == geoserver_layer,
+            Layer.node_type == 'leaf',
+            Layer.deleted_at.is_not(None),
+        )
+        .order_by(Layer.deleted_at.desc())
+        .first()
+    )
+    if soft_deleted is not None:
+        soft_deleted.deleted_at = None
+        soft_deleted.parent_id = parent.id
+        soft_deleted.updated_by = updated_by
+        if label:
+            soft_deleted.label = label
+        session.flush()
+        return soft_deleted, True
 
-    parent = _ensure_auto_parent(session, updated_by)
+    validate_layer_against_geoserver(session, workspace_alias, geoserver_layer)
 
     base_id = f'auto-{_slugify_id_segment(workspace_alias)}-{_slugify_id_segment(geoserver_layer)}'
     base_id = base_id[:100]

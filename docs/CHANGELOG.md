@@ -9,6 +9,27 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.12.1] - 2026-05-22
+
+### Corregido: idempotencia robusta de `auto-leaf` + auto-restore del padre `eventos-auto`
+
+`POST /layers/auto-leaf` quedaba "atrapado" si alguien archivaba (soft-delete) capas o el padre `eventos-auto` desde la papelera. Caso real: el visor dejaba de renderizar las capas auto-creadas de un evento porque el padre quedó con `deleted_at != NULL`, y el árbol público (`LayersRepository.get_all_layers` filtra `deleted_at IS NULL`) descartaba el subárbol entero, dejando huérfanas todas sus capas hijas. Adicionalmente, cada nueva llamada generaba duplicados con sufijos `-2`, `-3`, etc. porque `find_or_create_auto_leaf` filtraba `deleted_at IS NULL` en su búsqueda inicial y no encontraba la versión vieja archivada.
+
+#### Qué cambió en `api/app/services/layer_service.py`
+
+- **`_ensure_auto_parent`**: ahora detecta `deleted_at != NULL` en el padre `eventos-auto` y lo restaura automáticamente (set `deleted_at = NULL`, actualiza `updated_by`). Si alguien lo archiva por error en la papelera, la siguiente llamada a `auto-leaf` lo recupera sin intervención manual.
+- **`find_or_create_auto_leaf`**: orden de operaciones revisado:
+  1. **Primero** garantiza el padre activo (`_ensure_auto_parent`) — antes solo se llamaba al crear leaf nuevo, ahora siempre.
+  2. Busca leaf activo con `(workspace_alias, geoserver_layer)` → si existe, lo devuelve (sin cambios).
+  3. Si no existe activo, busca el **más reciente soft-deleted** con misma `(workspace_alias, geoserver_layer)` y lo **restaura** (set `deleted_at = NULL`, re-engancha a `parent_id`, refresca `label`/`updated_by`). Devuelve `(layer, created=True)`.
+  4. Solo si no encontró nada (ni activo ni soft-deleted), procede al flujo original: valida contra GeoServer, genera id `auto-<workspace>-<layer>` con sufijo `-N` si colisiona, e inserta nueva fila.
+
+Resultado: agregar una capa a un evento que se había eliminado antes ya no crea duplicados `-2`/`-3`, recupera la fila original con su `infobox_config`, metadata y SLD intactos.
+
+Sin cambios de schema. Sin migración. Sin endpoints nuevos. El visor recupera las capas en el siguiente refresh del cache (`notify_tree_changed()` se sigue invocando como antes).
+
+---
+
 ## [1.12.0] - 2026-05-22
 
 ### Agregado: backup/restore parcial de `infobox_config` entre instancias de DataEngine
