@@ -134,3 +134,6 @@ backups/*.sql.gz.tmp
 backups/backup.log
 restore/*.sql.gz
 restore/*.sql
+
+# Exports locales de infobox_config (ver scripts/dataengine-export-infobox.sh)
+backups/tarjetitas/

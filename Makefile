@@ -32,7 +32,7 @@ else
 	MSG_ENV      := Desarrollo
 endif
 
-.PHONY: help up build down logs restart clean shell-api shell-admin setup setup-hooks test-backend ensure-networks deploy backup-db restore-db install-backup-cron uninstall-backup-cron refresh-mapalab-stats purge-mapalab-events
+.PHONY: help up build down logs restart clean shell-api shell-admin setup setup-hooks test-backend ensure-networks deploy backup-db restore-db install-backup-cron uninstall-backup-cron refresh-mapalab-stats purge-mapalab-events backup-tarjetitas restore-tarjetitas
 
 ## Muestra ayuda de comandos disponibles
 help:
@@ -62,6 +62,14 @@ help:
 	@echo '  ${YELLOW}make restore-db FILE=...${RESET}    - Restaura desde un .sql.gz (busca en restore/ y backups/)'
 	@echo '  ${YELLOW}make install-backup-cron${RESET}    - Instala cronjob diario a las 3 AM (solo correr en produccion)'
 	@echo '  ${YELLOW}make uninstall-backup-cron${RESET}  - Quita el cronjob instalado por install-backup-cron'
+	@echo ''
+	@echo '${GREEN}Tarjetitas (infobox_config de capas en DataEngine):${RESET}'
+	@echo '  ${YELLOW}make backup-tarjetitas${RESET}              - Exporta infobox_config de TODAS las capas a backups/tarjetitas/'
+	@echo '  ${YELLOW}make restore-tarjetitas FILE=...${RESET}    - Aplica un export (backup previo + confirmacion + apply)'
+	@echo '                                       Auto-detecta DATAENGINE_DATABASE_URL del primer .env.* que la tenga.'
+	@echo '                                       Override: DATAENGINE_URL='"'"'postgres://...'"'"' make backup-tarjetitas'
+	@echo '                                       Solo mueve la columna infobox_config: nada del shape de la capa.'
+	@echo '                                       Las capas destino deben existir con el mismo id (PK de mapalab.layers).'
 	@echo ''
 	@echo '${BLUE}MapaLab — Telemetria${RESET}'
 	@echo '  ${YELLOW}make refresh-mapalab-stats${RESET}  - Refresca las vistas materializadas mapalab_stats_*'
@@ -159,6 +167,50 @@ install-backup-cron:
 uninstall-backup-cron:
 	@( crontab -l 2>/dev/null | grep -v 'mariachi-backup' | grep -v 'mariachi-stats' ) | crontab -
 	@echo "${GREEN}Cronjobs de respaldo y stats removidos.${RESET}"
+
+# =============================================================================
+# TARJETITAS (infobox_config en DataEngine)
+# =============================================================================
+
+TARJETITAS_DIR := backups/tarjetitas
+
+# Encuentra DATAENGINE_DATABASE_URL en el primer .env.* que la tenga.
+# El target NO depende de la variable ENV: las tarjetitas son de DataEngine,
+# no del stack mariachi. Override con DATAENGINE_URL='postgres://...' make ...
+define resolve_dataengine_url
+DE_URL="$${DATAENGINE_URL:-}"; \
+if [ -z "$$DE_URL" ]; then \
+	for f in .env.development .env.staging .env.production; do \
+		[ -f "$$f" ] || continue; \
+		DE_URL="$$(grep -E '^DATAENGINE_DATABASE_URL=' "$$f" 2>/dev/null | head -1 | sed -E 's/^DATAENGINE_DATABASE_URL=//; s/^[\"\x27]//; s/[\"\x27]$$//')"; \
+		[ -n "$$DE_URL" ] && { echo "[tarjetitas] usando DATAENGINE_DATABASE_URL de $$f"; break; }; \
+	done; \
+fi; \
+if [ -z "$$DE_URL" ]; then \
+	echo "${YELLOW}No se encontro DATAENGINE_URL ni DATAENGINE_DATABASE_URL en .env.development/.env.staging/.env.production.${RESET}"; \
+	echo "Uso: DATAENGINE_URL='postgres://...' make $@"; \
+	exit 1; \
+fi
+endef
+
+## Exporta infobox_config de mapalab.layers a backups/tarjetitas/ (JSON + SQL).
+## Auto-detecta DATAENGINE_DATABASE_URL del primer .env.* que la tenga.
+## Override: DATAENGINE_URL='postgres://...' make backup-tarjetitas
+backup-tarjetitas:
+	@mkdir -p $(TARJETITAS_DIR)
+	@$(resolve_dataengine_url); \
+	DATAENGINE_URL="$$DE_URL" OUT_DIR=$(TARJETITAS_DIR) ./scripts/dataengine-export-infobox.sh
+
+## Aplica un export de tarjetitas en la BD destino. Hace backup reverso primero.
+## Uso: make restore-tarjetitas FILE=backups/tarjetitas/infobox-<ts>.sql
+## Override de URL: DATAENGINE_URL='postgres://...' make restore-tarjetitas FILE=...
+restore-tarjetitas:
+	@if [ -z "$(FILE)" ]; then \
+		echo "${YELLOW}Falta FILE. Uso: make restore-tarjetitas FILE=backups/tarjetitas/infobox-<ts>.sql${RESET}"; \
+		exit 1; \
+	fi
+	@$(resolve_dataengine_url); \
+	DATAENGINE_URL="$$DE_URL" ./scripts/dataengine-apply-infobox.sh $(FILE)
 
 # =============================================================================
 # MAPALAB STATS (telemetria)

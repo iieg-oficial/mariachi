@@ -9,6 +9,22 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.12.0] - 2026-05-22
+
+### Agregado: backup/restore parcial de `infobox_config` entre instancias de DataEngine
+
+Operación nueva para mover las "tarjetas" (`mapalab.layers.infobox_config`) entre instancias de DataEngine sin tocar el resto del shape de la capa. Pensado para deploys puntuales donde el contenido del cuadro de información se cura en staging y se promueve a producción sin reconstruir el árbol de capas a mano. No es un patrón recurrente: bulk_ingest sigue siendo el camino para metadata/numeralia.
+
+- **`scripts/dataengine-export-infobox.sh`**: lee `mapalab.layers` con `DATAENGINE_URL` y genera dos archivos en `backups/tarjetitas/`: un `.json` legible con `{id: infobox_config}` ordenado por id y un `.sql` con `UPDATE ... WHERE id = ...` idempotentes envueltos en `BEGIN/COMMIT`. Solo exporta filas con `infobox_config IS NOT NULL`.
+- **`scripts/dataengine-apply-infobox.sh`**: aplica un export en la BD destino con tres safeguards: (1) backup reverso de los `id` que el SQL va a tocar, con `NULL` literal preservado para columnas que estaban vacías; (2) preview de cuántos `id` del archivo existen en destino + listado de faltantes; (3) confirmación interactiva (`si` para continuar, `ASSUME_YES=1` para CI). El apply corre en `--single-transaction` con `ON_ERROR_STOP=1`.
+- **Targets Makefile**: `make backup-tarjetitas` y `make restore-tarjetitas FILE=...`. **No** dependen de `ENV=` — auto-detectan `DATAENGINE_DATABASE_URL` recorriendo `.env.development → .env.staging → .env.production` y eligen la primera que la tenga (en cada máquina suele existir solo una). Override explícito con `DATAENGINE_URL='postgres://...'` cuando se quiera mezclar (ej. apuntar desde dev a la BD de staging).
+- **Documentación en `make help`**: nueva sección "Tarjetitas" que enumera ambos comandos y deja claro que solo mueve la columna `infobox_config` — las capas destino deben existir con el mismo `id` (PK de `mapalab.layers`); las que no existan se omiten sin error.
+- **`.gitignore`**: agrega `backups/tarjetitas/` para que los exports locales no entren al repo.
+
+Verificación contra DataEngine local: 187 capas exportadas, preview detectó las 187 en destino, diff entre export y backup reverso vacío (idempotencia confirmada cuando origen = destino).
+
+---
+
 ## [1.11.1] - 2026-05-22
 
 ### Corregido: ocultar tema `eventos-auto` de la tab "Capas" del panel admin
