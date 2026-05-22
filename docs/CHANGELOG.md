@@ -9,6 +9,20 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.11.1] - 2026-05-22
+
+### Corregido: ocultar tema `eventos-auto` de la tab "Capas" del panel admin
+
+El árbol admin de `/mapalab/layers` exponía el tema oculto `eventos-auto` (donde viven las capas "solo GeoServer" materializadas por `POST /layers/auto-leaf`) en la tab "Capas", contaminando el catálogo regular con leafs one-off de eventos.
+
+- **`admin/src/features/mapalab-layers/pages/LayerEditPage.jsx`**: nuevo `catalogTreeData = useMemo(() => treeData.filter((n) => n.key !== 'eventos-auto'), [treeData])`. La tab "Capas" usa `catalogTreeData` (con su contador actualizado); el resto del componente (`findNodeContext`, `flattenLeaves`, `useEventosTreeNode`) sigue usando `treeData`/`rawTree` sin filtro para que la resolución por URL directa y la búsqueda en el árbol de eventos no se rompan.
+
+La tab "Eventos" ya consume `useEventosTreeNode(eventos, rawTree)` que lista todas las capas referenciadas por algún evento (catálogo + auto-leaf), agrupadas por evento. Una capa de catálogo en un evento aparece en ambas tabs editando la misma fila de `mapalab.layers` — single source of truth.
+
+Sin cambios en backend ni en el endpoint `/mapalab/api/layers/tree` (el visor lo sigue consumiendo completo).
+
+---
+
 ## [1.11.0] - 2026-05-22
 
 ### Agregado: múltiples bloques de texto en InfoBox editor + items tipo "campo dinámico" + link opcional por item

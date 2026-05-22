@@ -146,6 +146,10 @@ export default function LayerEditPage() {
     const { items: eventos } = useEventosList();
     const eventosNode = useEventosTreeNode(eventos, rawTree);
     const eventosChildren = useMemo(() => eventosNode?.children || [], [eventosNode]);
+    const catalogTreeData = useMemo(
+        () => (treeData || []).filter((n) => n.key !== 'eventos-auto'),
+        [treeData],
+    );
     const selectedEventoKey = useMemo(() => {
         if (!layerId) return null;
         if (layerId === '__eventos_root__') return layerId;
@@ -943,10 +947,10 @@ export default function LayerEditPage() {
                         items={[
                             {
                                 key: 'layers',
-                                label: `Capas (${treeData?.length || 0})`,
+                                label: `Capas (${catalogTreeData?.length || 0})`,
                                 children: (
                                     <LayersTreeListInline
-                                        treeData={treeData}
+                                        treeData={catalogTreeData}
                                         loading={treeLoading}
                                         error={treeError}
                                         selectedKey={selectedEventoKey ? null : (layerId || null)}
