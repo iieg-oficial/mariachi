@@ -19,6 +19,14 @@ set -eu
 
 : "${DATAENGINE_URL:?DATAENGINE_URL no definido}"
 OUT_DIR="${OUT_DIR:-./infobox-exports}"
+PSQL_IMAGE="${PSQL_IMAGE:-postgres:18-alpine}"
+
+psql() {
+    docker run --rm -i \
+        --network=host \
+        --add-host=host.docker.internal:host-gateway \
+        "$PSQL_IMAGE" psql "$@"
+}
 TIMESTAMP="$(date -u +%Y%m%d-%H%M%S)"
 JSON_OUT="$OUT_DIR/infobox-$TIMESTAMP.json"
 SQL_OUT="$OUT_DIR/infobox-$TIMESTAMP.sql"

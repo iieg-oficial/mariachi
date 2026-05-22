@@ -31,6 +31,15 @@ if [ -z "$SQL_FILE" ] || [ ! -f "$SQL_FILE" ]; then
 fi
 : "${DATAENGINE_URL:?DATAENGINE_URL no definido}"
 
+PSQL_IMAGE="${PSQL_IMAGE:-postgres:18-alpine}"
+
+psql() {
+    docker run --rm -i \
+        --network=host \
+        --add-host=host.docker.internal:host-gateway \
+        "$PSQL_IMAGE" psql "$@"
+}
+
 BACKUP_DIR="${BACKUP_DIR:-./infobox-backups}"
 TIMESTAMP="$(date -u +%Y%m%d-%H%M%S)"
 BACKUP_FILE="$BACKUP_DIR/infobox-prev-$TIMESTAMP.sql"
@@ -96,7 +105,7 @@ if [ "${ASSUME_YES:-0}" != "1" ]; then
 fi
 
 echo "[3/4] Aplicando $SQL_FILE..."
-psql "$DATAENGINE_URL" -v ON_ERROR_STOP=1 -f "$SQL_FILE"
+psql "$DATAENGINE_URL" -v ON_ERROR_STOP=1 < "$SQL_FILE"
 
 echo "[4/4] Estado final en destino:"
 psql "$DATAENGINE_URL" -c "

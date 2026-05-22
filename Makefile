@@ -66,8 +66,8 @@ help:
 	@echo '${GREEN}Tarjetitas (infobox_config de capas en DataEngine):${RESET}'
 	@echo '  ${YELLOW}make backup-tarjetitas${RESET}              - Exporta infobox_config de TODAS las capas a backups/tarjetitas/'
 	@echo '  ${YELLOW}make restore-tarjetitas FILE=...${RESET}    - Aplica un export (backup previo + confirmacion + apply)'
-	@echo '                                       Auto-detecta DATAENGINE_DATABASE_URL del primer .env.* que la tenga.'
-	@echo '                                       Override: DATAENGINE_URL='"'"'postgres://...'"'"' make backup-tarjetitas'
+	@echo '                                       ${YELLOW}Solo lee DATAENGINE_DATABASE_URL de .env.production${RESET} (no de dev/staging).'
+	@echo '                                       Override consciente: DATAENGINE_URL='"'"'postgres://...'"'"' make backup-tarjetitas'
 	@echo '                                       Solo mueve la columna infobox_config: nada del shape de la capa.'
 	@echo '                                       Las capas destino deben existir con el mismo id (PK de mapalab.layers).'
 	@echo ''
@@ -174,20 +174,21 @@ uninstall-backup-cron:
 
 TARJETITAS_DIR := backups/tarjetitas
 
-# Encuentra DATAENGINE_DATABASE_URL en el primer .env.* que la tenga.
-# El target NO depende de la variable ENV: las tarjetitas son de DataEngine,
-# no del stack mariachi. Override con DATAENGINE_URL='postgres://...' make ...
+# Lee DATAENGINE_DATABASE_URL EXCLUSIVAMENTE de .env.production.
+# Las tarjetitas siempre se mueven contra prod (fuente de verdad); usar dev/staging
+# por accidente puede sobrescribir capas reales. Override consciente:
+# DATAENGINE_URL='postgres://...' make ...
 define resolve_dataengine_url
 DE_URL="$${DATAENGINE_URL:-}"; \
 if [ -z "$$DE_URL" ]; then \
-	for f in .env.development .env.staging .env.production; do \
-		[ -f "$$f" ] || continue; \
+	f=.env.production; \
+	if [ -f "$$f" ]; then \
 		DE_URL="$$(grep -E '^DATAENGINE_DATABASE_URL=' "$$f" 2>/dev/null | head -1 | sed -E 's/^DATAENGINE_DATABASE_URL=//; s/^[\"\x27]//; s/[\"\x27]$$//')"; \
-		[ -n "$$DE_URL" ] && { echo "[tarjetitas] usando DATAENGINE_DATABASE_URL de $$f"; break; }; \
-	done; \
+		[ -n "$$DE_URL" ] && echo "[tarjetitas] usando DATAENGINE_DATABASE_URL de $$f"; \
+	fi; \
 fi; \
 if [ -z "$$DE_URL" ]; then \
-	echo "${YELLOW}No se encontro DATAENGINE_URL ni DATAENGINE_DATABASE_URL en .env.development/.env.staging/.env.production.${RESET}"; \
+	echo "${YELLOW}No se encontro DATAENGINE_DATABASE_URL en .env.production (las tarjetitas solo se leen de ese archivo).${RESET}"; \
 	echo "Uso: DATAENGINE_URL='postgres://...' make $@"; \
 	exit 1; \
 fi
