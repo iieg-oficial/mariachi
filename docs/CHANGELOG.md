@@ -9,6 +9,43 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.14.0] - 2026-05-22
+
+### Agregado: campo `z` explícito por capa en CapasField del evento
+
+Desacoplado el orden visual del submenú del Z de renderizado en el mapa. La tabla del CapasField sigue controlando con su drag handle (≡) el orden del submenú lateral del evento en el visor; el nuevo campo `z` (opcional, integer) por capa controla quién va encima en el mapa.
+
+#### Schema (`api/app/schemas/evento.py`)
+
+- `CapaRef.z: int | None` con `Field(default=None, ge=-9999, le=9999)`.
+- Validator rechaza `z` en `etiqueta` y `categoria` (no se renderizan).
+- Sin migración: `eventos.capas` ya es JSONB. Eventos existentes simplemente no traen `z` → se interpretan como `null` → orden natural de la tabla.
+
+#### Editor admin (`admin/src/features/mapalab-eventos/`)
+
+- **Nueva columna "Encima (Z)"** en [capasTableColumns.jsx](admin/src/features/mapalab-eventos/components/capasTableColumns.jsx) entre Auto-activar y Acciones. Header con icono `VerticalAlignTopOutlined` + tooltip detallado de 3 párrafos: qué significa Z, ejemplo concreto ("Accesos=5, Rutas=2 → Accesos tapa Rutas"), y la regla de "vacío = orden natural".
+- Celda con `InputNumber size=small` (placeholder `auto`, `controls=false`, rango ±9999). Solo se muestra para filas `tipo='capa'`; etiquetas y categorías la dejan vacía.
+- Tooltip individual por capa dinámico: "Z=N: se renderiza encima de capas con Z menor o vacío" o "Sin Z: se renderiza según orden de la tabla".
+- Texto secundario del CapasField actualizado: aclara que el drag handle reordena el submenú y la columna Z controla el apilado del mapa.
+- `normalizeCapas` en [EventoEditPage](admin/src/features/mapalab-eventos/pages/EventoEditPage.jsx#L57-L66) y [addCapa.js](admin/src/features/mapalab-eventos/helpers/addCapa.js) inicializan `z: null` por consistencia con Ant Form.
+
+#### Convención resultante
+
+| Caso | Z del mapa |
+|---|---|
+| Sin Z en ninguna capa | Última fila de la tabla queda al frente, primera al fondo (orden natural por `handleToggleLayer` unshift) |
+| Capa A con Z=5, resto sin Z | A al frente; las demás se ordenan entre sí por su posición en la tabla |
+| A z=1, B z=3, C z=2 | B al frente (Z mayor), después C, después A al fondo |
+| Mezcla: A sin Z, B z=2, C sin Z | B al frente; A y C entre sí por posición de tabla |
+
+#### Revert del fix erróneo de 1.10.x
+
+La inversión del `forEach` en `EventoMenu.jsx` del visor (mapalab `1.36.0`) asumía "primera fila = al frente". Ahora se revirtió ese comportamiento y el visor ordena `toActivate` por `z` ascendente antes del forEach: las sin Z van primero (al fondo) y las con Z explícito se procesan después de menor a mayor, dejando la de mayor Z al frente con el `unshift`. Cambio funcional en mapalab paquete separado (ver mapalab CHANGELOG).
+
+Bump unificado: 1.13.0 → 1.14.0.
+
+---
+
 ## [1.13.0] - 2026-05-22
 
 ### Agregado: eliminar evento ofreciendo archivar capas auto-creadas huérfanas

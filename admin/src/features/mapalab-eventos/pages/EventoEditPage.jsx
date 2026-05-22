@@ -61,6 +61,7 @@ function normalizeCapas(capas) {
             alias: c.alias,
             orden: c.orden ?? 0,
             autoActivar: c.autoActivar ?? c.auto_activar ?? true,
+            z: typeof c.z === 'number' ? c.z : null,
         };
     });
 }
