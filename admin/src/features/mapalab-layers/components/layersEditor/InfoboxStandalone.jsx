@@ -84,8 +84,10 @@ export default function InfoboxStandalone({ layer, inherited = null, onSaved }) 
                     </Form.Item>
                 </Col>
                 <Col xs={24} md={10}>
-                    <Text strong style={{ display: 'block', marginBottom: 8 }}>Vista previa</Text>
-                    <InfoBoxPreview value={watchedConfig || inherited?.config || null} />
+                    <div style={{ position: 'sticky', top: 0 }}>
+                        <Text strong style={{ display: 'block', marginBottom: 8 }}>Vista previa</Text>
+                        <InfoBoxPreview value={watchedConfig || inherited?.config || null} />
+                    </div>
                 </Col>
             </Row>
         </Form>

@@ -9,6 +9,23 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.14.2] - 2026-05-22
+
+### Corregido: sticky en preview del drawer + render fiel del bloque text
+
+Dos ajustes al editor de tarjetas que el `LayerEditPage` ya tenía pero faltaban en el drawer reutilizable y en el render del bloque `text` del preview.
+
+- **`InfoboxStandalone.jsx`**: la columna "Vista previa" ahora se envuelve en `<div style={{position:'sticky', top:0}}>` igual que `LayerEditPage`. En el drawer del editor de eventos (`CapasField → LayerContentDrawer → tab Tarjeta`) el preview se queda anclado al tope mientras el admin scrollea los bloques.
+- **`InfoBoxPreview.jsx`**: `renderTextItem` y `renderTextBlock` reescritos para reflejar lo que el visor renderiza (`Text.jsx` de mapalab):
+  - Para items con `field`: solo el valor resuelto, sin `<strong>nombre_campo</strong>:` (era un cue de debug que el admin no veía en producción).
+  - Para items con `label`: solo el texto fijo.
+  - Items con `label` **y** `value` (caso teórico): `<strong>label</strong>: value` igual que el visor.
+  - Cada item es su propio `<div>` con `marginBottom: 8` y color `#465055` (matchea `text-[#465055]` del visor), no spans dentro de un `<Text type="secondary">` único.
+
+Sin cambios de schema. Solo render visual.
+
+---
+
 ## [1.14.1] - 2026-05-22
 
 ### Removido: bloque `labels` (legacy) del editor de InfoBox

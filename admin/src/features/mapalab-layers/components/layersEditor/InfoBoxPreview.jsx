@@ -213,22 +213,23 @@ const resolveBodyOrder = (cfg) => {
 };
 
 const renderTextItem = (it, idx) => {
-    const linkStyle = { color: '#5C2472', textDecoration: 'underline' };
-    if (it.field) {
-        const content = <><strong>{it.field}: </strong>{resolveValue(it.field)}</>;
-        return <span key={idx} style={{ display: 'block', ...(it.href ? linkStyle : null) }}>{content}</span>;
-    }
-    if (it.label) {
-        return <span key={idx} style={{ display: 'block', ...(it.href ? linkStyle : null) }}>{it.label}</span>;
-    }
-    return null;
+    const value = it.field ? resolveValue(it.field) : null;
+    const label = it.label || null;
+    if (!label && !value) return null;
+    const content = label && value ? <><strong>{label}</strong>: {value}</> : (value || label);
+    const linkStyle = it.href ? { color: '#5C2472', textDecoration: 'underline' } : null;
+    return (
+        <div key={idx} style={{ fontSize: 11, color: '#465055', marginBottom: 8, ...linkStyle }}>
+            {content}
+        </div>
+    );
 };
 
 const renderTextBlock = (key, cfg) => {
     const block = (cfg.text || []).find((b) => b.id === textIdOf(key));
     const rendered = (block?.items || []).map(renderTextItem).filter(Boolean);
     if (!rendered.length) return null;
-    return <Text key={key} type="secondary" style={{ display: 'block', fontSize: 11, marginBottom: 8 }}>{rendered}</Text>;
+    return <div key={key}>{rendered}</div>;
 };
 
 const renderBodyBlock = (key, cfg) => {
