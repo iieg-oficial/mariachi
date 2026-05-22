@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user, get_db, require_project_access, verify_csrf
 from app.api.metrics import COUNTER_EVENTO_PUBLISH, COUNTER_EVENTO_WRITES, incr
 from app.api.rate_limit import rate_limit
+from app.core.database import get_dataengine_db
 from app.core.eventos import EventoEstado
 from app.core.optimistic import check_concurrent_edit
 from app.core.time import utcnow
@@ -12,12 +13,16 @@ from app.models.project import Project, UserProject
 from app.models.user import Usuario
 from app.schemas.evento import (
     EventoCreate,
+    EventoDeleteResponse,
     EventoPublicResponse,
     EventoResponse,
     EventoUpdate,
+    OrphanLayerInfo,
 )
 from app.services import presence
 from app.services.actividad_service import registrar_actividad
+from app.services.layer_service import find_orphan_auto_leaves, soft_delete_layer
+from app.services.mapalab_notifier import notify_tree_changed
 from app.services.mapalab_public_cache import notify_eventos_changed
 from app.services.slug_service import is_valid_slug, slugify
 
@@ -244,10 +249,31 @@ async def despublicar_evento(
     return evento
 
 
-@router.delete("/{evento_id}")
-async def eliminar_evento(
+@router.get("/{evento_id}/orphan-layers-preview", response_model=list[OrphanLayerInfo])
+async def preview_orphan_auto_layers(
     evento: Evento = Depends(get_evento_or_404),
     db: Session = Depends(get_db),
+    dataengine_db: Session = Depends(get_dataengine_db),
+    _editor=Depends(_require_editor),
+):
+    orphans = find_orphan_auto_leaves(db, dataengine_db, evento)
+    return [
+        OrphanLayerInfo(
+            id=layer.id,
+            label=layer.label,
+            workspace=layer.workspace_alias,
+            layer=layer.geoserver_layer,
+        )
+        for layer in orphans
+    ]
+
+
+@router.delete("/{evento_id}", response_model=EventoDeleteResponse)
+async def eliminar_evento(
+    delete_orphan_layers: bool = False,
+    evento: Evento = Depends(get_evento_or_404),
+    db: Session = Depends(get_db),
+    dataengine_db: Session = Depends(get_dataengine_db),
     _csrf=Depends(verify_csrf),
     _editor=Depends(_require_editor),
     _rl=Depends(_write_rate_limit),
@@ -255,20 +281,41 @@ async def eliminar_evento(
     estaba_publicado = evento.estado == EventoEstado.PUBLISHED.value
     evento_id_local = evento.id
     evento_slug = evento.slug
+
+    orphans_to_delete = (
+        find_orphan_auto_leaves(db, dataengine_db, evento)
+        if delete_orphan_layers
+        else []
+    )
+
     registrar_actividad(
         db,
         actor=_editor,
         action="evento.delete",
         resource_type="evento",
         resource_id=evento_id_local,
-        metadata={"slug": evento_slug, "estaba_publicado": estaba_publicado},
+        metadata={
+            "slug": evento_slug,
+            "estaba_publicado": estaba_publicado,
+            "orphan_layers_deleted": [layer.id for layer in orphans_to_delete],
+        },
     )
     db.delete(evento)
     db.commit()
+
+    for layer in orphans_to_delete:
+        soft_delete_layer(dataengine_db, layer, _editor.email)
+    if orphans_to_delete:
+        dataengine_db.commit()
+        notify_tree_changed()
+
     incr(COUNTER_EVENTO_WRITES)
     if estaba_publicado:
         notify_eventos_changed()
-    return {"message": "Evento eliminado"}
+    return EventoDeleteResponse(
+        message="Evento eliminado",
+        orphan_layers_deleted=len(orphans_to_delete),
+    )
 
 
 @router.get("/{evento_id}/preview", response_model=EventoPublicResponse)

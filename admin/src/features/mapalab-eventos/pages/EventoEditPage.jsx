@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import dayjs from 'dayjs';
-import { Alert, Button, Card, DatePicker, Form, Input, InputNumber, Layout, Modal, Popconfirm, Select, Space, Spin, Switch, Tabs, Tag, Typography } from 'antd';
+import { Alert, Button, Card, DatePicker, Form, Input, InputNumber, Layout, Modal, Select, Space, Spin, Switch, Tabs, Tag, Typography } from 'antd';
 import {
     ArrowLeftOutlined,
     CheckOutlined,
@@ -28,6 +28,7 @@ import {
 import EventoIconPicker from '@features/mapalab-eventos/components/EventoIconPicker';
 import BBoxField from '@features/mapalab-eventos/components/BBoxField';
 import CapasField from '@features/mapalab-eventos/components/CapasField';
+import DeleteEventoModal from '@features/mapalab-eventos/components/DeleteEventoModal';
 import FactsField from '@features/mapalab-eventos/components/FactsField';
 import MarkdownTextArea from '@shared/components/MarkdownTextArea';
 import SymbolSnapshotField from '@features/mapalab-eventos/components/SymbolSnapshotField';
@@ -140,6 +141,7 @@ export default function EventoEditPage() {
     const [form] = Form.useForm();
     const [saving, setSaving] = useState(false);
     const [acting, setActing] = useState(false);
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [rechazoModalOpen, setRechazoModalOpen] = useState(false);
     const [rechazoComentario, setRechazoComentario] = useState('');
     const editores = usePresencia(isCreate ? null : `/eventos/${id}`, !isCreate);
@@ -242,11 +244,17 @@ export default function EventoEditPage() {
         }
     };
 
-    const handleEliminar = async () => {
+    const handleEliminar = async ({ deleteOrphanLayers }) => {
         setActing(true);
         try {
-            await eliminarEvento(id);
-            message.success('Evento eliminado');
+            const result = await eliminarEvento(id, { deleteOrphanLayers });
+            const archived = result?.orphanLayersDeleted ?? 0;
+            message.success(
+                archived > 0
+                    ? `Evento eliminado (+${archived} capa${archived === 1 ? '' : 's'} archivada${archived === 1 ? '' : 's'})`
+                    : 'Evento eliminado',
+            );
+            setDeleteModalOpen(false);
             navigate('/mapalab/eventos', { replace: true });
         } catch (err) {
             message.error(err?.response?.data?.detail || 'Error al eliminar');
@@ -347,17 +355,14 @@ export default function EventoEditPage() {
                                     </Button>
                                 )}
                                 {!isCreate && (
-                                    <Popconfirm
-                                        title="¿Eliminar evento?"
-                                        okText="Eliminar"
-                                        cancelText="Cancelar"
-                                        okButtonProps={{ danger: true }}
-                                        onConfirm={handleEliminar}
+                                    <Button
+                                        danger
+                                        icon={<DeleteOutlined />}
+                                        loading={acting}
+                                        onClick={() => setDeleteModalOpen(true)}
                                     >
-                                        <Button danger icon={<DeleteOutlined />} loading={acting}>
-                                            Eliminar
-                                        </Button>
-                                    </Popconfirm>
+                                        Eliminar
+                                    </Button>
                                 )}
                                 <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={handleSave}>
                                     {isCreate ? 'Crear' : 'Guardar'}
@@ -555,6 +560,13 @@ export default function EventoEditPage() {
                     rows={3}
                 />
             </Modal>
+            <DeleteEventoModal
+                open={deleteModalOpen}
+                evento={evento}
+                onCancel={() => setDeleteModalOpen(false)}
+                onConfirm={handleEliminar}
+                loading={acting}
+            />
         </Content>
     );
 }

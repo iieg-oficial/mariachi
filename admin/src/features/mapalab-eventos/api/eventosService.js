@@ -31,6 +31,14 @@ export const despublicarEvento = async (id) => {
     return res.data;
 };
 
-export const eliminarEvento = async (id) => {
-    await api.delete(`/eventos/${id}`);
+export const eliminarEvento = async (id, { deleteOrphanLayers = false } = {}) => {
+    const res = await api.delete(`/eventos/${id}`, {
+        params: deleteOrphanLayers ? { delete_orphan_layers: true } : undefined,
+    });
+    return res.data;
+};
+
+export const previewOrphanLayers = async (id) => {
+    const res = await api.get(`/eventos/${id}/orphan-layers-preview`);
+    return res.data;
 };

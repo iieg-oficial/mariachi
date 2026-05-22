@@ -207,3 +207,19 @@ class EventoPublicResponse(_EventoVisibleFields):
     slug: str
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+
+class OrphanLayerInfo(CamelCaseInput):
+    id: str
+    label: str | None = None
+    workspace: str
+    layer: str
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+
+class EventoDeleteResponse(CamelCaseInput):
+    message: str
+    orphan_layers_deleted: int = Field(default=0, serialization_alias='orphanLayersDeleted')
+
+    model_config = ConfigDict(populate_by_name=True)

@@ -9,6 +9,32 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.13.0] - 2026-05-22
+
+### Agregado: eliminar evento ofreciendo archivar capas auto-creadas huérfanas
+
+Al eliminar un evento, el admin ahora puede archivar también las capas auto-leaf (bajo `eventos-auto`) que **solo ese evento referenciaba**. Resuelve el "limbo" de capas auto-creadas que quedaban activas sin uso, ensuciando el árbol y el contador del tab Eventos en `/mapalab/layers`.
+
+#### Backend
+
+- **Nuevo endpoint** `GET /api/administrador/eventos/{id}/orphan-layers-preview` → devuelve `[{id, label, workspace, layer}]` con las capas auto-leaf que solo este evento usa. Requiere editor.
+- **`DELETE /api/administrador/eventos/{id}?delete_orphan_layers=true`** ahora soft-deletea esas capas (vía `soft_delete_layer`) y dispara `notify_tree_changed()` para invalidar el cache del visor. Sin el param, comportamiento idéntico al anterior. Response actualizado: `{message, orphanLayersDeleted}`.
+- **`api/app/services/layer_service.py`**: helper `find_orphan_auto_leaves(mariachi_db, dataengine_db, evento)` cross-database: aplana `evento.capas` (incluyendo categorías), compara contra el resto de eventos en mariachi DB, y filtra solo las que viven bajo `parent_id='eventos-auto'` con `deleted_at IS NULL`. Helper privado `_flatten_evento_capa_refs` para tests futuros.
+- **`api/app/schemas/evento.py`**: `OrphanLayerInfo` y `EventoDeleteResponse` con `serialization_alias='orphanLayersDeleted'`.
+
+GeoServer no se toca — el `soft_delete_layer` solo cambia `mapalab.layers.deleted_at`. Las capas siguen disponibles en GeoServer y pueden re-asociarse a otro evento; `find_or_create_auto_leaf` (mejorado en 1.12.1) las restaurará al primer uso.
+
+#### Frontend admin
+
+- **Nuevo componente** `admin/src/features/mapalab-eventos/components/DeleteEventoModal.jsx`: modal reusable que al abrirse llama al endpoint preview, lista las capas huérfanas con `Tag workspace:layer` y label, y ofrece checkbox "Archivar también estas capas auto-creadas". Si no hay huérfanas muestra `Alert info` neutral.
+- **`pages/EventosListPage.jsx`**: reemplaza el `Popconfirm` por el nuevo modal (estado `deletingEvento`). Toast del éxito incluye contador de capas archivadas cuando aplica.
+- **`pages/EventoEditPage.jsx`**: mismo cambio en el botón "Eliminar" del header del editor.
+- **`api/eventosService.js`**: `eliminarEvento(id, { deleteOrphanLayers })` ahora acepta opciones y devuelve el body; nuevo `previewOrphanLayers(id)`.
+
+Bump unificado: 1.12.1 → 1.13.0.
+
+---
+
 ## [1.12.1] - 2026-05-22
 
 ### Corregido: idempotencia robusta de `auto-leaf` + auto-restore del padre `eventos-auto`
