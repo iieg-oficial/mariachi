@@ -267,7 +267,7 @@ def find_or_create_auto_leaf(
     leaf = Layer(
         id=candidate,
         parent_id=parent.id,
-        label=label or geoserver_layer,
+        label=label,
         sort_order=9999,
         node_type='leaf',
         hidden_in_menu=False,

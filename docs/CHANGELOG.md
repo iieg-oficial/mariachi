@@ -9,6 +9,38 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.15.0] - 2026-05-22
+
+### Agregado: iconText con texto visible separado y link explícito con tokens
+
+El bloque "Íconos con texto" del editor de InfoBox ahora expone dos campos opcionales por item: **Texto** (label visible que sobreescribe el valor del campo) y **Link** (URL explícita con soporte de tokens `{campo}`). Pensado para el caso típico del icono `web`: el campo dinámico apunta a una columna con la URL (`sitio_web`) y el admin quiere mostrar "Sitio oficial" en lugar de la URL larga.
+
+#### Qué cambió
+
+- **`admin/src/features/mapalab-layers/components/layersEditor/InfoBoxBlocksEditor.jsx`**: `IconTextBlock` pasa de fila compacta a card vertical (igual patrón que `TextItemRow`). Dos inputs nuevos por item: `addonBefore="Texto"` (opcional, sobreescribe el valor visible) y `addonBefore="Link"` (opcional, URL explícita con tokens, mismo helper `resolveHref` que usan `text`/`list`). El placeholder del Select de campo se adapta al icono: para `web` dice "Campo con la URL" en vez de "Campo a mostrar".
+- **`admin/src/features/mapalab-layers/components/layersEditor/InfoBoxPreview.jsx`**: `IconTexts` ahora usa `item.label || resolveValue(item.field)` como texto visible y aplica estilo de link (color `#5C2472` + underline) cuando hay `href` explícito o el icono es `ubicacion`/`celular`/`web` (que generan link automático en el visor).
+
+Acompaña al commit de mapalab 1.41.0 que añade soporte en `IconText.jsx` y `renderCard.jsx` del visor para que el `label` gane sobre el valor del campo y el icono `web` resuelva auto-href cuando el field apunta a una URL.
+
+#### Backward compat
+
+Items existentes sin `label` o `href` siguen comportándose igual. La única diferencia visible nueva del visor: el icono `web` ahora genera link automáticamente cuando el `field` contiene una URL (antes solo si había `href` explícito).
+
+---
+
+## [admin 1.14.4] - 2026-05-22
+
+### Documentación: defaults reales en el McpPlayground + nota del contrato robusto
+
+El playground de `/administrador/documentacion` venía con defaults que no existían en la BD: `tasa_trabajadores_asegurados_hombres`/`raster:temperaturas`/`tasa_homicidio_doloso` daban `[]` o 404. Como mapalab 1.40.1 corrigió el contrato de `get_metadata`, `resolve_layer_ref` y `get_periodicity` para que acepten también el `id` del visor (no solo `geoserver_layer`/`slug`), aprovechamos para realinear los defaults a capas que existen y aclarar el contrato en la UI.
+
+- **`admin/src/features/documentacion/topics/McpPlayground.jsx`**: defaults a `seguridad:tasa_homicidio_doloso` (get_metadata, resolve_layer_ref) y `demografia:poblacion` (get_periodicity), `q='homicidio'` para `search_layers`. Descripciones de cada probe mencionan que aceptan tanto id del visor como geoserver_layer.
+- **`admin/src/features/documentacion/topics/McpTopic.jsx`**: tabla de tools con la nota de aceptación bilingüe (id ↔ geoserver_layer). Alert nuevo arriba del playground explicando que `search_layers → get_metadata` se encadena sin transformaciones desde mapalab 1.40.1.
+
+Sin cambios en backend (mariachi solo persiste telemetría MCP, no expone los tools). El comportamiento corregido vive en mapalab 1.40.1.
+
+---
+
 ## [1.14.2] - 2026-05-22
 
 ### Corregido: sticky en preview del drawer + render fiel del bloque text

@@ -175,14 +175,18 @@ const ICON_GLYPH = {
 
 const IconTexts = ({ items }) => (
     <Space orientation="vertical" size={4} style={{ width: '100%' }}>
-        {items.map((it, i) => (
-            <Space key={i} size={6}>
-                <span style={{ fontSize: 14 }}>{ICON_GLYPH[it.icon] || '•'}</span>
-                <Text style={{ fontSize: 12, color: '#5C2472', textDecoration: 'underline' }}>
-                    {resolveValue(it.field)}
-                </Text>
-            </Space>
-        ))}
+        {items.map((it, i) => {
+            const display = it.label || resolveValue(it.field);
+            const isLink = !!it.href || ['ubicacion', 'celular', 'web'].includes(it.icon);
+            return (
+                <Space key={i} size={6}>
+                    <span style={{ fontSize: 14 }}>{ICON_GLYPH[it.icon] || '•'}</span>
+                    <Text style={{ fontSize: 12, ...(isLink ? { color: '#5C2472', textDecoration: 'underline' } : { color: '#465055' }) }}>
+                        {display}
+                    </Text>
+                </Space>
+            );
+        })}
     </Space>
 );
 

@@ -8,6 +8,8 @@ from app.services.bulk_ingest_parser import (
     BulkIngestParseError,
     apply_mapping,
     parse_bool,
+    parse_date_iso,
+    parse_number_with_symbol,
     parse_source,
     unknown_targets,
 )
@@ -197,3 +199,113 @@ class TestUnknownTargets:
     def test_ignores_empty(self):
         mapping = {'a': 'layer_key', 'b': ''}
         assert unknown_targets(mapping) == []
+
+
+class TestParseDateIso:
+    @pytest.mark.parametrize('value,expected', [
+        ('2026-05-22', '2026-05-22'),
+        ('2026-5-2', '2026-05-02'),
+        ('2026-05-22T10:30:00', '2026-05-22'),
+        ('2026-05', '2026-05-01'),
+        ('2026/05', '2026-05-01'),
+        ('2026', '2026-01-01'),
+        ('22/05/2026', '2026-05-22'),
+        ('22-05-2026', '2026-05-22'),
+        ('22.05.2026', '2026-05-22'),
+        ('05/05/26', '2026-05-05'),
+        ('05/05/85', '1985-05-05'),
+        ('22-may-2026', '2026-05-22'),
+        ('22 Mayo 2026', '2026-05-22'),
+        ('22/septiembre/2026', '2026-09-22'),
+        ('Mayo 2026', '2026-05-01'),
+        ('may-2026', '2026-05-01'),
+        ('septiembre 2024', '2024-09-01'),
+    ])
+    def test_known_formats_normalize_to_iso(self, value, expected):
+        assert parse_date_iso(value) == expected
+
+    def test_invalid_date_passes_through(self):
+        assert parse_date_iso('texto raro') == 'texto raro'
+
+    def test_31_de_febrero_rejected_passthrough(self):
+        assert parse_date_iso('31/02/2026') == '31/02/2026'
+
+    def test_none_returns_none(self):
+        assert parse_date_iso(None) is None
+        assert parse_date_iso('') is None
+
+    def test_trim_whitespace(self):
+        assert parse_date_iso('  2026-05-22  ') == '2026-05-22'
+
+
+class TestParseNumberWithSymbol:
+    @pytest.mark.parametrize('value,expected_num,expected_sym', [
+        ('1234', '1234', None),
+        ('1,234', '1234', None),
+        ('1,234,567', '1234567', None),
+        ('1.234.567', '1234567', None),
+        ('1,234.56', '1234.56', None),
+        ('1.234,56', '1234.56', None),
+        ('1 234 567', '1234567', None),
+        ('1 234 567', '1234567', None),
+        ('1.5', '1.5', None),
+        ('1,5', '1.5', None),
+        ('98.5%', '98.5', '%'),
+        ('98,5%', '98.5', '%'),
+        ('$45.50', '45.50', '$'),
+        ('$ 1,234.50', '1234.50', '$'),
+        ('-1234', '-1234', None),
+        ('-1,234.50', '-1234.50', None),
+    ])
+    def test_known_numeric_formats(self, value, expected_num, expected_sym):
+        num, sym = parse_number_with_symbol(value)
+        assert num == expected_num
+        assert sym == expected_sym
+
+    def test_non_numeric_passes_through(self):
+        num, sym = parse_number_with_symbol('N/A')
+        assert num == 'N/A'
+        assert sym is None
+
+    def test_empty_returns_none(self):
+        assert parse_number_with_symbol(None) == (None, None)
+        assert parse_number_with_symbol('') == (None, None)
+
+
+class TestApplyMappingIIEGStandard:
+    def test_fecha_ultima_normalized_to_iso(self):
+        rows = [{'Fecha': '22/05/2026', 'Capa': 'ws:layer'}]
+        out = apply_mapping(['Fecha', 'Capa'], rows, {'Fecha': 'fecha_ultima', 'Capa': 'layer_key'})
+        assert out[0]['fecha_ultima'] == '2026-05-22'
+
+    def test_numeralia_extracts_symbol_when_not_mapped(self):
+        rows = [{'Valor1': '98.5%', 'Capa': 'ws:layer'}]
+        out = apply_mapping(
+            ['Valor1', 'Capa'], rows,
+            {'Valor1': 'numeralia_01_valor', 'Capa': 'layer_key'},
+        )
+        numeralia = out[0]['values']
+        assert numeralia[0]['valor'] == '98.5'
+        assert numeralia[0]['simbolo'] == '%'
+
+    def test_numeralia_respects_explicit_symbol_mapping(self):
+        rows = [{'Valor1': '98.5%', 'Simbolo1': 'pct', 'Capa': 'ws:layer'}]
+        out = apply_mapping(
+            ['Valor1', 'Simbolo1', 'Capa'], rows,
+            {
+                'Valor1': 'numeralia_01_valor',
+                'Simbolo1': 'numeralia_01_simbolo',
+                'Capa': 'layer_key',
+            },
+        )
+        numeralia = out[0]['values']
+        assert numeralia[0]['valor'] == '98.5'
+        assert numeralia[0]['simbolo'] == 'pct'
+
+    def test_numeralia_strips_thousands_separator(self):
+        rows = [{'Valor1': '1,234,567', 'Capa': 'ws:layer'}]
+        out = apply_mapping(
+            ['Valor1', 'Capa'], rows,
+            {'Valor1': 'numeralia_01_valor', 'Capa': 'layer_key'},
+        )
+        assert out[0]['values'][0]['valor'] == '1234567'

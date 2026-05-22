@@ -15,7 +15,7 @@ const PROBES = [
         path: '/layers/search',
         description: 'Busca capas por label, tags o id. Devuelve label + path jerárquico.',
         inputs: [
-            { key: 'q', label: 'Texto', placeholder: 'p. ej. seguridad', required: true, type: 'string', default: 'poblacion' },
+            { key: 'q', label: 'Texto', placeholder: 'p. ej. seguridad', required: true, type: 'string', default: 'homicidio' },
             { key: 'limit', label: 'Límite', type: 'number', min: 1, max: 50, default: 5 },
         ],
     },
@@ -37,10 +37,10 @@ const PROBES = [
         tool: 'get_metadata',
         method: 'GET',
         path: '/metadata/',
-        description: 'Metadata completa de una capa identificada por workspace + layer.',
+        description: 'Metadata completa de una capa identificada por workspace + layer. Acepta el id del visor (p. ej. tasa_homicidio_doloso) o el geoserver_layer.',
         inputs: [
-            { key: 'workspace', label: 'Workspace (alias)', placeholder: 'p. ej. seguridad', required: true, type: 'string', default: 'economia' },
-            { key: 'layer', label: 'Layer', placeholder: 'p. ej. tasa_homicidio_doloso', required: true, type: 'string', default: 'tasa_trabajadores_asegurados_hombres' },
+            { key: 'workspace', label: 'Workspace (alias)', placeholder: 'p. ej. seguridad', required: true, type: 'string', default: 'seguridad' },
+            { key: 'layer', label: 'Layer', placeholder: 'p. ej. tasa_homicidio_doloso', required: true, type: 'string', default: 'tasa_homicidio_doloso' },
         ],
     },
     {
@@ -49,17 +49,17 @@ const PROBES = [
         path: '/periodicity/',
         description: 'Fechas year/month/day disponibles para una capa temporal.',
         inputs: [
-            { key: 'workspace', label: 'Workspace', required: true, type: 'string', default: 'raster' },
-            { key: 'layer', label: 'Layer', required: true, type: 'string', default: 'temperaturas' },
+            { key: 'workspace', label: 'Workspace', required: true, type: 'string', default: 'demografia' },
+            { key: 'layer', label: 'Layer', required: true, type: 'string', default: 'poblacion' },
         ],
     },
     {
         tool: 'resolve_layer_ref',
         method: 'GET',
         path: '/layers/resolve',
-        description: 'Resuelve un slug o alias público a una capa concreta.',
+        description: 'Resuelve un slug, alias público o id de capa. Devuelve la capa correspondiente.',
         inputs: [
-            { key: 'ref', label: 'Slug / alias', required: true, type: 'string', default: 'tasa_homicidio_doloso' },
+            { key: 'ref', label: 'Slug / alias / id', required: true, type: 'string', default: 'tasa_homicidio_doloso' },
         ],
     },
 ];

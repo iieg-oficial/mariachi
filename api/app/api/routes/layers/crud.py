@@ -96,7 +96,7 @@ async def auto_leaf(
             db,
             workspace_alias=data.workspace_alias,
             geoserver_layer=data.geoserver_layer,
-            label=data.label or data.geoserver_layer,
+            label=data.label,
             updated_by=current_user.email,
         )
         if created:

@@ -7,6 +7,8 @@ from typing import Any
 from sqlalchemy import text
 from sqlalchemy.engine import Connection
 
+from app.services.bulk_ingest_parser import parse_date_iso, parse_number_with_symbol
+
 METADATA_SCALAR_COLUMNS = (
     'workspace',
     'layer_name_db',
@@ -35,7 +37,36 @@ METADATA_MERGEABLE = (
 STATS_MERGEABLE = (*STATS_SCALAR_COLUMNS, *STATS_JSONB_COLUMNS)
 
 
-def _normalize_for_compare(value: Any) -> Any:
+def _canon_numeralia_item(item: Any) -> Any:
+    if not isinstance(item, dict):
+        return item
+    out: dict = {}
+    for k, v in item.items():
+        if v is None or v == '':
+            continue
+        if k == 'valor':
+            num, _ = parse_number_with_symbol(v)
+            out[k] = num if num is not None else v
+        else:
+            out[k] = v
+    return out
+
+
+def _normalize_for_compare(col: str, value: Any) -> Any:
+    """Normaliza un valor a forma canonica para comparar contra otro.
+
+    El proposito es que dos valores que representan lo mismo semanticamente
+    pero con formato distinto (`'31/12/2023'` vs `'2023-12-31'`, `'1,234.50'`
+    vs `'1234.50'`) se consideren iguales y no marquen diff espurio en el
+    plan. Solo afecta la comparacion; lo que se persiste sigue siendo lo que
+    produjo el parser (ya normalizado al estandar IIEG).
+    """
+    if value is None:
+        return None
+    if col == 'fecha_ultima':
+        return parse_date_iso(value)
+    if col == 'values' and isinstance(value, list):
+        return json.dumps([_canon_numeralia_item(it) for it in value], sort_keys=True, ensure_ascii=False)
     if isinstance(value, (dict, list)):
         return json.dumps(value, sort_keys=True, ensure_ascii=False)
     return value
@@ -140,7 +171,7 @@ def build_plan(
             op = 'update'
             for col, new_val in meta_values.items():
                 old_val = current_meta.get(col)
-                if _normalize_for_compare(new_val) == _normalize_for_compare(old_val):
+                if _normalize_for_compare(col, new_val) == _normalize_for_compare(col, old_val):
                     continue
                 diffs.append({
                     'column': col,
@@ -159,7 +190,7 @@ def build_plan(
                 stats_diffs: list[dict] = []
                 for col, new_val in stats_values_raw.items():
                     old_val = current_stats.get(col)
-                    if _normalize_for_compare(new_val) == _normalize_for_compare(old_val):
+                    if _normalize_for_compare(col, new_val) == _normalize_for_compare(col, old_val):
                         continue
                     stats_diffs.append({
                         'column': col,
