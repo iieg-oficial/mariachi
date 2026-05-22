@@ -2,10 +2,161 @@ from __future__ import annotations
 
 import csv
 import io
+import re
+from datetime import date
 from typing import Any, Iterator
 
 TRUE_VALUES = {'1', 'true', 't', 'yes', 'sí', 'si', 'y', 'sÍ', 'verdadero'}
 FALSE_VALUES = {'0', 'false', 'f', 'no', 'n', 'falso'}
+
+_MONTH_ES = {
+    'ene': 1, 'enero': 1,
+    'feb': 2, 'febrero': 2,
+    'mar': 3, 'marzo': 3,
+    'abr': 4, 'abril': 4,
+    'may': 5, 'mayo': 5,
+    'jun': 6, 'junio': 6,
+    'jul': 7, 'julio': 7,
+    'ago': 8, 'agosto': 8,
+    'sep': 9, 'sept': 9, 'septiembre': 9,
+    'oct': 10, 'octubre': 10,
+    'nov': 11, 'noviembre': 11,
+    'dic': 12, 'diciembre': 12,
+}
+
+_DATE_ISO_FULL = re.compile(r'^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s].*)?$')
+_DATE_YYYY_MM = re.compile(r'^(\d{4})[-/](\d{1,2})$')
+_DATE_YYYY = re.compile(r'^(\d{4})$')
+_DATE_DMY_NUM = re.compile(r'^(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{2,4})$')
+_DATE_DMY_NAMED = re.compile(r'^(\d{1,2})[/\s\-]+([A-Za-zÁÉÍÓÚáéíóú]+)[/\s\-]+(\d{2,4})$')
+_DATE_MY_NAMED = re.compile(r'^([A-Za-zÁÉÍÓÚáéíóú]+)[/\s\-]+(\d{4})$')
+
+_NUM_PREFIX_SYM = re.compile(r'^([$])\s*')
+_NUM_SUFFIX_SYM = re.compile(r'\s*([%])$')
+
+
+def _valid_ymd(y: int, mo: int, d: int) -> bool:
+    try:
+        date(y, mo, d)
+    except ValueError:
+        return False
+    return True
+
+
+def _expand_two_digit_year(y: int) -> int:
+    return y + (2000 if y < 70 else 1900) if y < 100 else y
+
+
+def parse_date_iso(value: Any) -> str | None:
+    """Convierte entradas de fecha al estandar IIEG (ISO 8601, YYYY-MM-DD).
+
+    Reconoce: ISO completo, YYYY-MM, YYYY, DD/MM/YYYY (es-MX), DD-MMM-YYYY,
+    'Mes YYYY'. Si la entrada no parsea, devuelve el string limpio sin tocar
+    (preserva data ya en BD con formatos no estandar).
+    """
+    s = clean(value)
+    if s is None:
+        return None
+
+    m = _DATE_ISO_FULL.match(s)
+    if m:
+        y, mo, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
+        if _valid_ymd(y, mo, d):
+            return f'{y:04d}-{mo:02d}-{d:02d}'
+
+    m = _DATE_YYYY_MM.match(s)
+    if m:
+        y, mo = int(m.group(1)), int(m.group(2))
+        if 1 <= mo <= 12:
+            return f'{y:04d}-{mo:02d}-01'
+
+    m = _DATE_YYYY.match(s)
+    if m:
+        return f'{int(m.group(1)):04d}-01-01'
+
+    m = _DATE_DMY_NUM.match(s)
+    if m:
+        d, mo, y = int(m.group(1)), int(m.group(2)), _expand_two_digit_year(int(m.group(3)))
+        if _valid_ymd(y, mo, d):
+            return f'{y:04d}-{mo:02d}-{d:02d}'
+
+    m = _DATE_DMY_NAMED.match(s)
+    if m:
+        d, mname, y = int(m.group(1)), m.group(2).lower(), _expand_two_digit_year(int(m.group(3)))
+        mo = _MONTH_ES.get(mname) or _MONTH_ES.get(mname[:3])
+        if mo and _valid_ymd(y, mo, d):
+            return f'{y:04d}-{mo:02d}-{d:02d}'
+
+    m = _DATE_MY_NAMED.match(s)
+    if m:
+        mname, y = m.group(1).lower(), int(m.group(2))
+        mo = _MONTH_ES.get(mname) or _MONTH_ES.get(mname[:3])
+        if mo:
+            return f'{y:04d}-{mo:02d}-01'
+
+    return s
+
+
+def parse_number_with_symbol(value: Any) -> tuple[str | None, str | None]:
+    """Devuelve (valor_crudo, simbolo) siguiendo el estandar IIEG.
+
+    Estandar: el valor se persiste sin separadores de miles, con punto como
+    decimal. El simbolo `$` / `%` (prefijo o sufijo en la entrada) se extrae
+    aparte. Si la entrada no es numerica (ej 'N/A', texto), se devuelve
+    `(string_limpio, None)` para no perder data.
+    """
+    s = clean(value)
+    if s is None:
+        return (None, None)
+
+    sym = None
+    work = s
+
+    m = _NUM_PREFIX_SYM.match(work)
+    if m:
+        sym = m.group(1)
+        work = _NUM_PREFIX_SYM.sub('', work).strip()
+
+    m = _NUM_SUFFIX_SYM.search(work)
+    if m:
+        sym = m.group(1)
+        work = _NUM_SUFFIX_SYM.sub('', work).strip()
+
+    work = work.replace(' ', '').replace(' ', '')
+    if not work:
+        return (s, sym)
+
+    negative = work.startswith('-')
+    if negative:
+        work = work[1:]
+
+    has_comma = ',' in work
+    has_dot = '.' in work
+
+    if has_comma and has_dot:
+        if work.rfind('.') > work.rfind(','):
+            cleaned = work.replace(',', '')
+        else:
+            cleaned = work.replace('.', '').replace(',', '.')
+    elif has_comma:
+        parts = work.split(',')
+        cleaned = work.replace(',', '') if len(parts) > 2 or (len(parts) == 2 and len(parts[1]) == 3 and parts[0]) else work.replace(',', '.')
+    elif has_dot:
+        parts = work.split('.')
+        cleaned = work.replace('.', '') if len(parts) > 2 or (len(parts) == 2 and len(parts[1]) == 3 and parts[0]) else work
+    else:
+        cleaned = work
+
+    if not re.match(r'^\d+(\.\d+)?$', cleaned):
+        return (s, None)
+
+    if negative:
+        cleaned = f'-{cleaned}'
+    return (cleaned, sym)
+
+
+def _is_numeralia_valor(field: str) -> bool:
+    return field.startswith('numeralia_') and field.endswith('_valor')
 
 TECHNICAL_FIELDS = {
     'layer_key',
@@ -224,6 +375,7 @@ def apply_mapping(
     headers: list[str], rows: list[dict], mapping: dict[str, str]
 ) -> list[dict]:
     active = {src: dst for src, dst in mapping.items() if dst and src in headers}
+    mapped_fields = set(active.values())
     normalized: list[dict] = []
     for raw in rows:
         mapped: dict[str, Any] = {}
@@ -236,8 +388,15 @@ def apply_mapping(
                 parsed = parse_bool(value)
                 if parsed is not None:
                     row_out[field] = parsed
-            elif field.startswith('numeralia_') or field == 'nombre_pie_numeralia' or field.startswith('fuentes_') or field.startswith('metodologia_') or field.startswith('metadato_'):
-                row_out[field] = clean(value)
+            elif field == 'fecha_ultima':
+                row_out[field] = parse_date_iso(value)
+            elif _is_numeralia_valor(field):
+                num, sym = parse_number_with_symbol(value)
+                row_out[field] = num
+                if sym:
+                    sym_field = field.replace('_valor', '_simbolo')
+                    if sym_field not in mapped_fields:
+                        row_out[sym_field] = sym
             else:
                 row_out[field] = clean(value)
 

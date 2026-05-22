@@ -1,8 +1,10 @@
 from datetime import datetime
+from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.schemas._camel import CamelCaseInput
+from app.services.bulk_ingest_parser import parse_date_iso, parse_number_with_symbol
 
 
 class Fuentes(BaseModel):
@@ -31,6 +33,30 @@ class NumeraliaValue(BaseModel):
     valor: str | None = None
     nombre: str | None = None
     simbolo: str | None = None
+
+
+class NumeraliaValueInput(BaseModel):
+    """Variante de input: aplica estandar IIEG al valor y separa simbolo."""
+
+    posicion: int
+    valor: str | None = None
+    nombre: str | None = None
+    simbolo: str | None = None
+
+    @model_validator(mode='before')
+    @classmethod
+    def _normalize_value_symbol(cls, data: Any) -> Any:
+        if not isinstance(data, dict):
+            return data
+        valor = data.get('valor')
+        if valor in (None, ''):
+            return data
+        num, sym = parse_number_with_symbol(valor)
+        out = dict(data)
+        out['valor'] = num
+        if sym and not out.get('simbolo'):
+            out['simbolo'] = sym
+        return out
 
 
 class StatsConfigItem(BaseModel):
@@ -101,6 +127,11 @@ class LayerMetadataUpdate(CamelCaseInput):
 
     model_config = ConfigDict(populate_by_name=True)
 
+    @field_validator('fecha_ultima', mode='before')
+    @classmethod
+    def _normalize_fecha_ultima(cls, v: Any) -> Any:
+        return parse_date_iso(v) if v not in (None, '') else v
+
 
 class LayerStatsResponse(BaseModel):
     layer_key: str = Field(..., serialization_alias='layerKey')
@@ -115,7 +146,7 @@ class LayerStatsResponse(BaseModel):
 
 class LayerStatsUpdate(CamelCaseInput):
     stats_config: list[StatsConfigItem] | None = Field(default=None, serialization_alias='statsConfig')
-    values: list[NumeraliaValue] | None = None
+    values: list[NumeraliaValueInput] | None = None
     pie_numeralia: str | None = Field(default=None, serialization_alias='pieNumeralia')
     ttl_minutes: int | None = Field(default=None, serialization_alias='ttlMinutes')
 
