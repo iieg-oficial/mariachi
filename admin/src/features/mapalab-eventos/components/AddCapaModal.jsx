@@ -31,6 +31,7 @@ export default function AddCapaModal({
 }) {
     const [search, setSearch] = useState('');
     const [onlyUnregistered, setOnlyUnregistered] = useState(false);
+    const [draftLabels, setDraftLabels] = useState({});
     const [{ data: gsWorkspaces, loading, error }, dispatch] = useReducer(
         workspacesReducer,
         { data: [], loading: false, error: null },
@@ -38,6 +39,7 @@ export default function AddCapaModal({
 
     useEffect(() => {
         if (!open) return undefined;
+        setDraftLabels({});
         let cancelled = false;
         dispatch({ type: 'fetching' });
         const params = isAdmin ? { include_unregistered: true } : {};
@@ -51,6 +53,23 @@ export default function AddCapaModal({
             });
         return () => { cancelled = true; };
     }, [open, isAdmin, reloadKey]);
+
+    const normalizeForCompare = (value) =>
+        (value || '').trim().toLowerCase().replace(/[_\s-]/g, '');
+
+    const getDraftLabel = (r) => (r.registered ? r.label : (draftLabels[r.id] ?? ''));
+
+    const isLabelValid = (r) => {
+        if (r.registered) return true;
+        const candidate = (draftLabels[r.id] || '').trim();
+        if (!candidate) return false;
+        return normalizeForCompare(candidate) !== normalizeForCompare(r.layer);
+    };
+
+    const handleAdd = (r) => {
+        const finalLabel = r.registered ? r.label : (draftLabels[r.id] || '').trim();
+        onAdd({ ...r, label: finalLabel });
+    };
 
     const available = useMemo(() => {
         const out = [];
@@ -66,7 +85,7 @@ export default function AddCapaModal({
                     geoserverWorkspace: ws.geoserverWorkspace,
                     workspaceRegistered: ws.registered !== false,
                     layer: layerName,
-                    label: reg?.label || layerName,
+                    label: reg?.label || '',
                     registered: Boolean(reg),
                 });
             }
@@ -88,11 +107,22 @@ export default function AddCapaModal({
             title: 'Capa',
             key: 'label',
             render: (_, r) => (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
-                        <Tooltip title={r.label} mouseEnterDelay={0.5}>
-                            <span style={ELLIPSIS}>{r.label}</span>
-                        </Tooltip>
+                        {r.registered ? (
+                            <Tooltip title={r.label} mouseEnterDelay={0.5}>
+                                <span style={ELLIPSIS}>{r.label}</span>
+                            </Tooltip>
+                        ) : (
+                            <Input
+                                size="small"
+                                placeholder="Escribe un nombre humano (distinto al identificador)"
+                                value={getDraftLabel(r)}
+                                onChange={(e) => setDraftLabels((prev) => ({ ...prev, [r.id]: e.target.value }))}
+                                status={(draftLabels[r.id] ?? '') && !isLabelValid(r) ? 'error' : ''}
+                                style={{ flex: 1, minWidth: 0 }}
+                            />
+                        )}
                         {r.registered ? (
                             <Tag color="green" style={{ fontSize: 10, marginRight: 0, flexShrink: 0 }}>en árbol</Tag>
                         ) : (
@@ -112,11 +142,25 @@ export default function AddCapaModal({
             key: 'add',
             width: 110,
             align: 'right',
-            render: (_, r) => (
-                <Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => onAdd(r)}>
-                    Agregar
-                </Button>
-            ),
+            render: (_, r) => {
+                const valid = isLabelValid(r);
+                const tooltip = r.registered
+                    ? ''
+                    : (!draftLabels[r.id] ? 'Escribe un nombre para esta capa' : (!valid ? 'El nombre debe ser distinto al identificador GeoServer' : ''));
+                return (
+                    <Tooltip title={tooltip}>
+                        <Button
+                            size="small"
+                            type="primary"
+                            icon={<PlusOutlined />}
+                            disabled={!valid}
+                            onClick={() => handleAdd(r)}
+                        >
+                            Agregar
+                        </Button>
+                    </Tooltip>
+                );
+            },
         },
     ];
 

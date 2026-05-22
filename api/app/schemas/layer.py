@@ -117,12 +117,34 @@ class WorkspacePending(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
+def _normalize_label_for_compare(value: str) -> str:
+    return value.strip().lower().replace('_', '').replace('-', '').replace(' ', '')
+
+
 class AutoLeafRequest(BaseModel):
     workspace_alias: str = Field(..., min_length=1, max_length=50)
     geoserver_layer: str = Field(..., min_length=1, max_length=200)
-    label: str | None = Field(default=None, max_length=255)
+    label: str = Field(..., min_length=1, max_length=255)
 
     model_config = ConfigDict(populate_by_name=True)
+
+    @field_validator('label')
+    @classmethod
+    def _label_not_blank(cls, value: str) -> str:
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError('El nombre de la capa no puede estar vacio')
+        return stripped
+
+    @field_validator('label')
+    @classmethod
+    def _label_distinct_from_slug(cls, value: str, info) -> str:
+        gs_layer = info.data.get('geoserver_layer')
+        if gs_layer and _normalize_label_for_compare(value) == _normalize_label_for_compare(gs_layer):
+            raise ValueError(
+                'El nombre de la capa debe ser distinto al identificador GeoServer'
+            )
+        return value
 
 
 class LayerBase(CamelCaseInput):
