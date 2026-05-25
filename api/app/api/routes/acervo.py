@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import ADMIN_ROLE, get_current_user, get_db, verify_csrf
 from app.api.metrics import COUNTER_MEDIA_DELETES, COUNTER_MEDIA_UPLOADS, incr
+from app.api.rate_limit import rate_limit
 from app.models.acervo import AcervoFile, AcervoFolder
 from app.models.user import Usuario
 from app.schemas.acervo import AcervoFileUpdate, FolderCreate, FolderResponse
@@ -16,6 +17,8 @@ from app.services.acervo import AcervoClient
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/acervo", tags=["acervo"])
+
+_write_rate_limit = rate_limit(max_requests=60, window_seconds=60.0, scope='acervo_write')
 
 
 @router.get("", response_model=list[dict])
@@ -109,6 +112,7 @@ async def subir_archivo(
     bucket_id: int = Form(...),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
+    _rl: Usuario = Depends(_write_rate_limit),
 ):
     bucket = acervo_file_service.resolve_bucket_or_403(bucket_id, current_user, db)
     client = AcervoClient.for_bucket(bucket)
@@ -158,6 +162,7 @@ async def actualizar_archivo(
     payload: AcervoFileUpdate,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
+    _rl: Usuario = Depends(_write_rate_limit),
 ):
     item = db.query(AcervoFile).filter(AcervoFile.id == media_id).first()
     if not item:
@@ -195,6 +200,7 @@ async def crear_carpeta(
     folder_data: FolderCreate,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
+    _rl: Usuario = Depends(_write_rate_limit),
 ):
     bucket = acervo_file_service.resolve_bucket_or_403(folder_data.bucket_id, current_user, db)
 
@@ -231,6 +237,7 @@ async def eliminar_carpeta(
     folder_id: int,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
+    _rl: Usuario = Depends(_write_rate_limit),
 ):
     folder = db.query(AcervoFolder).filter(AcervoFolder.id == folder_id).first()
     if not folder:
@@ -263,6 +270,7 @@ async def eliminar_archivo(
     media_id: str,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
+    _rl: Usuario = Depends(_write_rate_limit),
 ):
     if media_id.startswith("dir:"):
         try:
