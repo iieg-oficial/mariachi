@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { Alert, AutoComplete, Breadcrumb, Button, Card, Col, Empty, Form, Input, Result, Row, Select, Space, Spin, Switch, Tabs, Tag, Tooltip, Typography } from 'antd';
-import { DeleteOutlined, PartitionOutlined, ReloadOutlined, SaveOutlined } from '@ant-design/icons';
+import { DeleteOutlined, PartitionOutlined, ReloadOutlined, SaveOutlined, SettingOutlined } from '@ant-design/icons';
 import DeleteLayerModal from '@features/mapalab-layers/components/DeleteLayerModal';
 import DeletedLayersList from '@features/mapalab-layers/components/DeletedLayersList';
 import LayersTreeListInline from '@features/mapalab-layers/components/LayersTreeListInline';
@@ -21,6 +21,7 @@ import TemaIconField from '@features/mapalab-layers/components/layersEditor/Tema
 import BulkTagsDrawer from '@features/mapalab-layers/components/layersEditor/BulkTagsDrawer';
 import LayerNoticeSection from '@features/mapalab-layers/components/layersEditor/LayerNoticeSection';
 import LayerHighlightField from '@features/mapalab-layers/components/layersEditor/LayerHighlightField';
+import LayerHighlightGlobalSettings from '@features/mapalab-layers/components/LayerHighlightGlobalSettings';
 import { useEventosList } from '@features/mapalab-eventos/hooks/useEventos';
 import { useEventosTreeNode } from '@features/mapalab-eventos/hooks/useEventoTreeNodes';
 import {
@@ -81,6 +82,7 @@ export default function LayerEditPage() {
     const [availableStyles, setAvailableStyles] = useState([]);
     const [availableFields, setAvailableFields] = useState([]);
     const [bulkTagsOpen, setBulkTagsOpen] = useState(false);
+    const [highlightSettingsOpen, setHighlightSettingsOpen] = useState(false);
 
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [deleteReferences, setDeleteReferences] = useState(null);
@@ -944,7 +946,17 @@ export default function LayerEditPage() {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 112px)' }}>
             <div style={{ padding: isMobile ? '8px 8px 0' : '24px 24px 0', flexShrink: 0 }}>
-                <Title level={isMobile ? 4 : 3} style={{ margin: 0 }}>Capas MapaLab</Title>
+                <Space align="center" style={{ width: '100%', justifyContent: 'space-between' }}>
+                    <Title level={isMobile ? 4 : 3} style={{ margin: 0 }}>Capas MapaLab</Title>
+                    <Tooltip title="Configuración global del resaltado de features">
+                        <Button
+                            icon={<SettingOutlined />}
+                            onClick={() => setHighlightSettingsOpen(true)}
+                            shape="circle"
+                            aria-label="Configuración global del resaltado"
+                        />
+                    </Tooltip>
+                </Space>
                 <Text type="secondary" style={{ fontSize: 12 }}>
                     Árbol del visor. Click sobre un nodo para abrir el editor inline; click sobre el triángulo para expandir/colapsar la rama.
                 </Text>
@@ -1030,6 +1042,12 @@ export default function LayerEditPage() {
                 open={bulkTagsOpen}
                 onClose={() => setBulkTagsOpen(false)}
                 onDone={reload}
+            />
+
+            <LayerHighlightGlobalSettings
+                open={highlightSettingsOpen}
+                onClose={() => { setHighlightSettingsOpen(false); reload(); }}
+                treeData={treeData}
             />
 
             <DeleteLayerModal

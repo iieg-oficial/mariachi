@@ -1,63 +1,60 @@
-import { Form, Radio, Typography } from 'antd';
+import { ColorPicker, Form, Radio, Typography } from 'antd';
+import { HIGHLIGHT_COLORS, HIGHLIGHT_SHAPES, isHexHighlight, resolveColorEntry } from './highlightConstants';
+import { HighlightSwatch } from './highlightShared';
 
 const { Text } = Typography;
 
-const COLORS = [
-    { value: null, label: 'Morado (default)', stroke: '#5C2472', fill: 'rgba(92, 36, 114, 0.18)' },
-    { value: 'naranja', label: 'Naranja institucional', stroke: '#FF8300', fill: 'rgba(255, 131, 0, 0.18)' },
-    { value: 'sombreado', label: 'Sombreado discreto', stroke: 'rgba(46, 67, 114, 0.55)', fill: 'rgba(46, 67, 114, 0.18)' },
-];
-
-const SHAPES = [
-    { value: null, label: 'Área + línea', preview: 'area' },
-    { value: 'linea', label: 'Solo línea', preview: 'linea' },
-    { value: 'off', label: 'Sin resaltar', preview: 'off' },
-];
-
-const Swatch = ({ stroke, fill, shape = 'area' }) => {
-    const baseStyle = {
-        display: 'inline-block',
-        width: 22,
-        height: 22,
-        marginRight: 8,
-        verticalAlign: 'middle',
-        borderRadius: 4,
+const ColorChoice = ({ value, onChange, currentShape }) => {
+    const isCustomValue = isHexHighlight(value);
+    const selectedKey = isCustomValue ? '__custom__' : (value === undefined ? null : value);
+    const handleRadio = (e) => {
+        const next = e.target.value;
+        if (next === '__custom__') {
+            onChange?.(isCustomValue ? value : '#5C2472');
+            return;
+        }
+        onChange?.(next);
     };
-    if (shape === 'off') {
-        return <span aria-hidden="true" style={{ ...baseStyle, border: '1px dashed #d9d9d9', background: 'transparent' }} />;
-    }
-    if (shape === 'linea') {
-        return <span aria-hidden="true" style={{ ...baseStyle, border: `2px solid ${stroke}`, background: 'transparent' }} />;
-    }
-    return <span aria-hidden="true" style={{ ...baseStyle, border: `2px solid ${stroke}`, background: fill }} />;
+    return (
+        <Radio.Group
+            value={selectedKey}
+            onChange={handleRadio}
+            style={{ display: 'flex', flexDirection: 'column', gap: 6 }}
+        >
+            {HIGHLIGHT_COLORS.map((opt) => {
+                const isCustomRow = opt.value === '__custom__';
+                const swatchStroke = isCustomRow && isCustomValue ? value : opt.stroke;
+                const swatchFill = isCustomRow && isCustomValue ? `${value}2D` : opt.fill;
+                return (
+                    <Radio key={String(opt.value)} value={opt.value}>
+                        <HighlightSwatch stroke={swatchStroke} fill={swatchFill} shape={currentShape || 'area'} />
+                        <Text>{opt.label}</Text>
+                        {isCustomRow && selectedKey === '__custom__' && (
+                            <ColorPicker
+                                value={isCustomValue ? value : '#5C2472'}
+                                onChange={(c) => onChange?.(c.toHexString().toUpperCase())}
+                                size="small"
+                                style={{ marginLeft: 8 }}
+                            />
+                        )}
+                    </Radio>
+                );
+            })}
+        </Radio.Group>
+    );
 };
 
-const ColorPicker = ({ value, onChange, currentShape }) => (
-    <Radio.Group
-        value={value === undefined ? null : value}
-        onChange={(e) => onChange?.(e.target.value)}
-        style={{ display: 'flex', flexDirection: 'column', gap: 6 }}
-    >
-        {COLORS.map((opt) => (
-            <Radio key={String(opt.value)} value={opt.value}>
-                <Swatch stroke={opt.stroke} fill={opt.fill} shape={currentShape || 'area'} />
-                <Text>{opt.label}</Text>
-            </Radio>
-        ))}
-    </Radio.Group>
-);
-
-const ShapePicker = ({ value, onChange, currentColor }) => {
-    const colorEntry = COLORS.find((c) => c.value === (currentColor ?? null)) || COLORS[0];
+const ShapeChoice = ({ value, onChange, currentColor }) => {
+    const entry = resolveColorEntry(currentColor);
     return (
         <Radio.Group
             value={value === undefined ? null : value}
             onChange={(e) => onChange?.(e.target.value)}
             style={{ display: 'flex', flexDirection: 'column', gap: 6 }}
         >
-            {SHAPES.map((opt) => (
+            {HIGHLIGHT_SHAPES.map((opt) => (
                 <Radio key={String(opt.value)} value={opt.value}>
-                    <Swatch stroke={colorEntry.stroke} fill={colorEntry.fill} shape={opt.preview} />
+                    <HighlightSwatch stroke={entry.stroke} fill={entry.fill} shape={opt.preview} />
                     <Text>{opt.label}</Text>
                 </Radio>
             ))}
@@ -73,13 +70,13 @@ export default function LayerHighlightField({ colorName = 'highlightColor', shap
             <div style={{ flex: '1 1 220px', minWidth: 220 }}>
                 <Text strong style={{ display: 'block', marginBottom: 8 }}>Color</Text>
                 <Form.Item name={colorName} noStyle valuePropName="value" trigger="onChange">
-                    <ColorPicker currentShape={shapeValue} />
+                    <ColorChoice currentShape={shapeValue} />
                 </Form.Item>
             </div>
             <div style={{ flex: '1 1 220px', minWidth: 220 }}>
                 <Text strong style={{ display: 'block', marginBottom: 8 }}>Forma</Text>
                 <Form.Item name={shapeName} noStyle valuePropName="value" trigger="onChange">
-                    <ShapePicker currentColor={colorValue} />
+                    <ShapeChoice currentColor={colorValue} />
                 </Form.Item>
             </div>
         </div>

@@ -10,8 +10,23 @@ NodeType = Literal["tema", "category", "label", "group", "leaf"]
 
 SLUG_PATTERN = r"^[a-z0-9-]+$"
 
-HighlightColor = Literal["morado", "naranja", "sombreado"]
+HIGHLIGHT_COLOR_PRESETS = {"morado", "naranja", "sombreado"}
+HEX_COLOR_PATTERN = r"^#[0-9A-Fa-f]{6}$"
+HighlightColor = str
 HighlightShape = Literal["area", "linea", "off"]
+
+
+def _validate_highlight_color(value: str | None) -> str | None:
+    if value is None or value == "":
+        return None
+    import re
+    if value in HIGHLIGHT_COLOR_PRESETS:
+        return value
+    if re.match(HEX_COLOR_PATTERN, value):
+        return value.upper() if value.startswith("#") else value
+    raise ValueError(
+        f"highlight_color invalido: '{value}'. Use uno de {sorted(HIGHLIGHT_COLOR_PRESETS)} o un hex #RRGGBB."
+    )
 
 NoticeVariant = Literal["info", "warning", "neutral", "banner"]
 NoticeSize = Literal["small", "medium", "large"]
@@ -206,6 +221,11 @@ class LayerBase(CamelCaseInput):
     def _validate_slug_field(cls, v: str | None) -> str | None:
         return _validate_slug(v)
 
+    @field_validator("highlight_color", mode="before")
+    @classmethod
+    def _validate_highlight_color_base(cls, v):
+        return _validate_highlight_color(v)
+
     @field_validator("icon_url", mode="before")
     @classmethod
     def _store_icon_relative(cls, v):
@@ -269,6 +289,11 @@ class LayerUpdate(CamelCaseInput):
     highlight_shape: HighlightShape | None = Field(default=None, serialization_alias="highlightShape")
 
     model_config = ConfigDict(populate_by_name=True)
+
+    @field_validator("highlight_color", mode="before")
+    @classmethod
+    def _validate_highlight_color_update(cls, v):
+        return _validate_highlight_color(v)
 
     @field_validator("slug")
     @classmethod
@@ -379,3 +404,56 @@ class BulkSlugGenerateResponse(BaseModel):
     assigned: int
     skipped: int
     results: list[BulkSlugGenerateResult]
+
+
+class HighlightStats(BaseModel):
+    total_leaves: int = Field(..., serialization_alias="totalLeaves")
+    by_color: dict[str, int] = Field(default_factory=dict, serialization_alias="byColor")
+    by_shape: dict[str, int] = Field(default_factory=dict, serialization_alias="byShape")
+    fully_default: int = Field(..., serialization_alias="fullyDefault")
+    with_color_override: int = Field(..., serialization_alias="withColorOverride")
+    with_shape_override: int = Field(..., serialization_alias="withShapeOverride")
+    with_custom_hex: int = Field(..., serialization_alias="withCustomHex")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class HighlightBulkApplyBody(BaseModel):
+    color: HighlightColor | None = None
+    shape: HighlightShape | None = None
+    apply_to: Literal["all", "defaults"] = Field(..., serialization_alias="applyTo")
+    theme_ids: list[str] | None = Field(default=None, serialization_alias="themeIds")
+    dry_run: bool = Field(default=False, serialization_alias="dryRun")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    @field_validator("color", mode="before")
+    @classmethod
+    def _validate_color(cls, v):
+        return _validate_highlight_color(v)
+
+
+class HighlightBulkSnapshot(BaseModel):
+    layer_id: str = Field(..., serialization_alias="layerId")
+    color: str | None
+    shape: str | None
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class HighlightBulkApplyResult(BaseModel):
+    affected: int
+    snapshot: list[HighlightBulkSnapshot]
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class HighlightBulkRestoreBody(BaseModel):
+    snapshot: list[HighlightBulkSnapshot]
+
+
+class HighlightResetBody(BaseModel):
+    theme_ids: list[str] | None = Field(default=None, serialization_alias="themeIds")
+    dry_run: bool = Field(default=False, serialization_alias="dryRun")
+
+    model_config = ConfigDict(populate_by_name=True)

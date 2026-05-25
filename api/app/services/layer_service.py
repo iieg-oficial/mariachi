@@ -510,3 +510,185 @@ def duplicate_layer(session: Session, layer: Layer, new_id_suffix: str = '_copy'
     session.add(new_layer)
     session.flush()
     return new_layer
+
+
+def get_highlight_stats(session: Session) -> dict:
+    from sqlalchemy import case, func
+    leaves = session.query(Layer).filter(
+        Layer.node_type == 'leaf',
+        Layer.deleted_at.is_(None),
+    )
+    total = leaves.count()
+    rows_color = (
+        session.query(
+            case(
+                (Layer.highlight_color.is_(None), 'default'),
+                else_=Layer.highlight_color,
+            ).label('bucket'),
+            func.count().label('n'),
+        )
+        .filter(Layer.node_type == 'leaf', Layer.deleted_at.is_(None))
+        .group_by('bucket')
+        .all()
+    )
+    rows_shape = (
+        session.query(
+            case(
+                (Layer.highlight_shape.is_(None), 'default'),
+                else_=Layer.highlight_shape,
+            ).label('bucket'),
+            func.count().label('n'),
+        )
+        .filter(Layer.node_type == 'leaf', Layer.deleted_at.is_(None))
+        .group_by('bucket')
+        .all()
+    )
+    by_color = {bucket: n for bucket, n in rows_color}
+    by_shape = {bucket: n for bucket, n in rows_shape}
+    fully_default = (
+        session.query(func.count())
+        .filter(
+            Layer.node_type == 'leaf',
+            Layer.deleted_at.is_(None),
+            Layer.highlight_color.is_(None),
+            Layer.highlight_shape.is_(None),
+        )
+        .scalar()
+        or 0
+    )
+    with_color_override = (
+        session.query(func.count())
+        .filter(
+            Layer.node_type == 'leaf',
+            Layer.deleted_at.is_(None),
+            Layer.highlight_color.isnot(None),
+        )
+        .scalar()
+        or 0
+    )
+    with_shape_override = (
+        session.query(func.count())
+        .filter(
+            Layer.node_type == 'leaf',
+            Layer.deleted_at.is_(None),
+            Layer.highlight_shape.isnot(None),
+        )
+        .scalar()
+        or 0
+    )
+    with_custom_hex = (
+        session.query(func.count())
+        .filter(
+            Layer.node_type == 'leaf',
+            Layer.deleted_at.is_(None),
+            Layer.highlight_color.like('#%'),
+        )
+        .scalar()
+        or 0
+    )
+    return {
+        'total_leaves': total,
+        'by_color': by_color,
+        'by_shape': by_shape,
+        'fully_default': fully_default,
+        'with_color_override': with_color_override,
+        'with_shape_override': with_shape_override,
+        'with_custom_hex': with_custom_hex,
+    }
+
+
+def _collect_descendant_leaves(session: Session, root_ids: list[str]) -> list[str]:
+    if not root_ids:
+        return []
+    sql = (
+        "WITH RECURSIVE subtree AS ("
+        "  SELECT id, node_type, parent_id FROM mapalab.layers WHERE id = ANY(:roots) "
+        "  UNION ALL "
+        "  SELECT l.id, l.node_type, l.parent_id FROM mapalab.layers l "
+        "  JOIN subtree s ON l.parent_id = s.id "
+        ") "
+        "SELECT id FROM subtree WHERE node_type = 'leaf'"
+    )
+    from sqlalchemy import text
+    rows = session.execute(text(sql), {'roots': root_ids}).fetchall()
+    return [r[0] for r in rows]
+
+
+def _highlight_target_leaves(session: Session, apply_to: str, theme_ids: list[str] | None):
+    q = session.query(Layer).filter(
+        Layer.node_type == 'leaf',
+        Layer.deleted_at.is_(None),
+    )
+    if theme_ids:
+        scoped_ids = _collect_descendant_leaves(session, theme_ids)
+        if not scoped_ids:
+            return []
+        q = q.filter(Layer.id.in_(scoped_ids))
+    if apply_to == 'defaults':
+        q = q.filter(Layer.highlight_color.is_(None), Layer.highlight_shape.is_(None))
+    return q.all()
+
+
+def bulk_apply_highlight(
+    session: Session,
+    color: str | None,
+    shape: str | None,
+    apply_to: str,
+    theme_ids: list[str] | None,
+    dry_run: bool,
+    updated_by: str | None,
+) -> dict:
+    targets = _highlight_target_leaves(session, apply_to, theme_ids)
+    snapshot = [
+        {'layer_id': t.id, 'color': t.highlight_color, 'shape': t.highlight_shape}
+        for t in targets
+    ]
+    if dry_run:
+        return {'affected': len(targets), 'snapshot': snapshot}
+    for t in targets:
+        if color is not None or apply_to == 'all':
+            t.highlight_color = color
+        if shape is not None or apply_to == 'all':
+            t.highlight_shape = shape
+        t.updated_by = updated_by
+    session.flush()
+    return {'affected': len(targets), 'snapshot': snapshot}
+
+
+def restore_highlight_snapshot(
+    session: Session,
+    snapshot: list[dict],
+    updated_by: str | None,
+) -> int:
+    if not snapshot:
+        return 0
+    ids = [s['layer_id'] for s in snapshot]
+    layers_by_id = {
+        l.id: l
+        for l in session.query(Layer)
+        .filter(Layer.id.in_(ids), Layer.deleted_at.is_(None))
+        .all()
+    }
+    affected = 0
+    for s in snapshot:
+        layer = layers_by_id.get(s['layer_id'])
+        if not layer:
+            continue
+        layer.highlight_color = s.get('color')
+        layer.highlight_shape = s.get('shape')
+        layer.updated_by = updated_by
+        affected += 1
+    session.flush()
+    return affected
+
+
+def reset_highlight(
+    session: Session,
+    theme_ids: list[str] | None,
+    dry_run: bool,
+    updated_by: str | None,
+) -> dict:
+    return bulk_apply_highlight(
+        session, color=None, shape=None, apply_to='all',
+        theme_ids=theme_ids, dry_run=dry_run, updated_by=updated_by,
+    )

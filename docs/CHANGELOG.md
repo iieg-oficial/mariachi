@@ -9,6 +9,61 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [admin 1.17.0] - 2026-05-25
+
+### Agregado: configuración global del resaltado (color custom hex + bulk apply + undo)
+
+#### Botón engranaje en el header del árbol
+
+Nuevo botón circular con ícono ⚙ al lado derecho del título "Capas MapaLab" en la página `/administrador/mapalab/layers`. Abre el modal "Configuración global del resaltado". Visible para admins.
+
+#### Color custom hex en `LayerHighlightField`
+
+Cuarta opción "Personalizado (hex)" en el `Radio.Group` de color (junto a morado/naranja/sombreado). Al seleccionarla aparece un `<ColorPicker>` de antd inline; el valor se persiste como hex `#RRGGBB` en `mapalab.layers.highlight_color` (la columna ya es `VARCHAR(20)`). El visor lee la cadena y, si matchea el patrón hex, genera el preset dinámicamente: stroke con ese color exacto y fill con alpha 15% (`${hex}26`).
+
+`api/app/schemas/layer.py`: `HighlightColor` cambió de `Literal["morado","naranja","sombreado"]` a `str` con validator que acepta los presets o un hex `#RRGGBB` (normalizado a uppercase). Mensaje de error específico si recibe algo inválido.
+
+#### Modal "Configuración global del resaltado"
+
+Tres secciones:
+
+1. **Estado actual** (`GET /administrador/layers/highlight/stats`): contadores por color y por forma, más métricas clave (`fully_default`, `with_color_override`, `with_shape_override`, `with_custom_hex`). Botón "Recargar" para refresh manual.
+
+2. **Aplicar masivo**: selectores de color (con opción de mantener el actual de cada capa) + forma (idem) + `apply_to` (`defaults` no toca overrides; `all` sobrescribe todo) + filtro multi-select por temas. Mientras el admin ajusta, un `useEffect` lanza un dry-run (`POST .../bulk` con `dryRun: true`) y muestra el count: "Vas a actualizar N capas". El botón "Aplicar" abre un modal de confirmación con el resumen del cambio antes de ejecutar.
+
+3. **Restablecer todas a default**: botón danger que pone `highlight_color` y `highlight_shape` en `NULL` para todas las leaves del scope (con filtro de tema opcional). Modal de confirmación previo. Internamente usa `POST .../highlight/reset`.
+
+#### Deshacer cambio masivo
+
+Después de un bulk apply o reset, la `notification.success` incluye un botón "Deshacer" disponible por 5 minutos. La acción restaura el estado anterior exacto de cada capa afectada (color + shape) usando el snapshot que el backend devuelve en la respuesta (`affected: number, snapshot: Array<{layerId, color, shape}>`). El snapshot se guarda en memoria del hook `useHighlightBulk` (no se persiste, vive solo en la sesión activa).
+
+`POST /administrador/layers/highlight/restore` recibe el snapshot y restaura.
+
+#### Endpoints nuevos
+
+- `GET  /administrador/layers/highlight/stats` → `HighlightStats`.
+- `POST /administrador/layers/highlight/bulk` body `{ color, shape, applyTo, themeIds, dryRun }` → `{ affected, snapshot }`.
+- `POST /administrador/layers/highlight/restore` body `{ snapshot }` → `{ affected }`.
+- `POST /administrador/layers/highlight/reset` body `{ themeIds, dryRun }` → `{ affected, snapshot }`.
+
+Todos requieren admin + CSRF + write rate limit. El bulk usa CTE recursivo (`WITH RECURSIVE`) para resolver los descendientes leaf del filtro de temas. Cada operación dispara `notify_tree_changed` para invalidar el cache del visor.
+
+#### Que cambio
+
+- **`api/app/schemas/layer.py`**: `HighlightColor` ahora libre `str` validado. Tipos nuevos `HighlightStats`, `HighlightBulkApplyBody`, `HighlightBulkApplyResult`, `HighlightBulkSnapshot`, `HighlightBulkRestoreBody`, `HighlightResetBody`.
+- **`api/app/services/layer_service.py`**: `get_highlight_stats`, `bulk_apply_highlight`, `restore_highlight_snapshot`, `reset_highlight`, helpers `_collect_descendant_leaves` y `_highlight_target_leaves`.
+- **`api/app/api/routes/layers/highlight.py`** (nuevo): router con los 4 endpoints.
+- **`api/app/api/routes/layers/__init__.py`**: include del nuevo router.
+- **`admin/src/features/mapalab-layers/components/LayerHighlightGlobalSettings.jsx`** (nuevo): modal principal.
+- **`admin/src/features/mapalab-layers/components/LayerHighlightConfirmModal.jsx`** (nuevo): modales de confirmación apply + reset extraídos.
+- **`admin/src/features/mapalab-layers/components/layersEditor/highlightConstants.js`** (nuevo): `HIGHLIGHT_COLORS`, `HIGHLIGHT_SHAPES`, `isHexHighlight`, `resolveColorEntry`.
+- **`admin/src/features/mapalab-layers/components/layersEditor/highlightShared.jsx`** (nuevo): `HighlightSwatch` componente.
+- **`admin/src/features/mapalab-layers/components/layersEditor/LayerHighlightField.jsx`**: imports actualizados; nueva opción "Personalizado" con `ColorPicker` inline.
+- **`admin/src/features/mapalab-layers/hooks/useHighlightBulk.js`** (nuevo): wrapper de los 4 endpoints + manejo del snapshot/undo con timer de 5 minutos.
+- **`admin/src/features/mapalab-layers/pages/LayerEditPage.jsx`**: import del modal, estado `highlightSettingsOpen`, botón `SettingOutlined` en el header, render del modal al final.
+
+---
+
 ## [admin 1.16.0] - 2026-05-25
 
 ### Agregado: tab "Apariencia" con resaltado de feature + DnD en editor InfoBox
