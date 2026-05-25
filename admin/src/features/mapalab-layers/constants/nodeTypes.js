@@ -42,6 +42,7 @@ export const TAB_VISIBILITY = {
     metadatos: ['group', 'leaf'],
     simbologia: ['group', 'leaf'],
     aviso: ['group', 'leaf'],
+    apariencia: ['tema', 'category', 'label', 'group', 'leaf'],
 };
 
 export const isFieldVisible = (field, nodeType) => {

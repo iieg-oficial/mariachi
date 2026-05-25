@@ -20,6 +20,7 @@ import StatusBadge from '@shared/components/StatusBadge';
 import TemaIconField from '@features/mapalab-layers/components/layersEditor/TemaIconField';
 import BulkTagsDrawer from '@features/mapalab-layers/components/layersEditor/BulkTagsDrawer';
 import LayerNoticeSection from '@features/mapalab-layers/components/layersEditor/LayerNoticeSection';
+import LayerHighlightField from '@features/mapalab-layers/components/layersEditor/LayerHighlightField';
 import { useEventosList } from '@features/mapalab-eventos/hooks/useEventos';
 import { useEventosTreeNode } from '@features/mapalab-eventos/hooks/useEventoTreeNodes';
 import {
@@ -224,6 +225,8 @@ export default function LayerEditPage() {
             infoboxConfig: data.infoboxConfig || null,
             iconUrl: data.iconUrl ?? data.icon_url ?? '',
             notice: data.notice ?? null,
+            highlightColor: data.highlightColor ?? data.highlight_color ?? null,
+            highlightShape: data.highlightShape ?? data.highlight_shape ?? null,
         });
     }, [form]);
 
@@ -566,15 +569,6 @@ export default function LayerEditPage() {
                             description={`Las propiedades comparten feature type, simbología, metadatos y numeralia con su grupo padre (todo se almacena por feature type, no por propiedad). Solo se distinguen entre hermanas por su CQL filter. Cambia el "Filtro CQL" en la pestaña Servicios para ajustar qué features se incluyen en esta propiedad. La metadata, numeralia y simbología se editan una sola vez en el grupo padre.`}
                         />
                     )}
-                    {watchedNodeType === 'tema' && (
-                        <Form.Item
-                            label="Icono"
-                            name="iconUrl"
-                            extra="Icono SVG/PNG mostrado en el sider del visor para este tema."
-                        >
-                            <TemaIconField />
-                        </Form.Item>
-                    )}
                     {isFieldVisible('searchTags', watchedNodeType) && (
                         <Form.Item
                             label="Etiquetas de búsqueda"
@@ -635,6 +629,31 @@ export default function LayerEditPage() {
                         <Switch />
                     </Form.Item>
                 </>
+            ),
+        },
+        {
+            key: 'apariencia',
+            forceRender: true,
+            label: 'Apariencia',
+            children: (
+                <Space orientation="vertical" size="middle" style={{ width: '100%', maxWidth: 720 }}>
+                    {watchedNodeType === 'tema' && (
+                        <Card size="small" title="Icono del tema" extra={<Text type="secondary" style={{ fontSize: 11 }}>Aparece en el sider del visor</Text>}>
+                            <Form.Item name="iconUrl" noStyle>
+                                <TemaIconField />
+                            </Form.Item>
+                        </Card>
+                    )}
+                    {watchedNodeType !== 'tema' && (
+                        <Card
+                            size="small"
+                            title="Resaltado al hacer clic en una feature"
+                            extra={<Text type="secondary" style={{ fontSize: 11 }}>{watchedNodeType === 'leaf' ? 'Aplica a esta capa' : 'Se propaga a las capas hijas que no tengan su propio resaltado'}</Text>}
+                        >
+                            <LayerHighlightField />
+                        </Card>
+                    )}
+                </Space>
             ),
         },
         {

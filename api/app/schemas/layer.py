@@ -10,6 +10,9 @@ NodeType = Literal["tema", "category", "label", "group", "leaf"]
 
 SLUG_PATTERN = r"^[a-z0-9-]+$"
 
+HighlightColor = Literal["morado", "naranja", "sombreado"]
+HighlightShape = Literal["area", "linea", "off"]
+
 NoticeVariant = Literal["info", "warning", "neutral", "banner"]
 NoticeSize = Literal["small", "medium", "large"]
 NoticePosition = Literal["top-center", "bottom-center"]
@@ -193,6 +196,8 @@ class LayerBase(CamelCaseInput):
     icon_url: str | None = Field(default=None, serialization_alias="iconUrl")
 
     notice: LayerNotice | None = None
+    highlight_color: HighlightColor | None = Field(default=None, serialization_alias="highlightColor")
+    highlight_shape: HighlightShape | None = Field(default=None, serialization_alias="highlightShape")
 
     model_config = ConfigDict(populate_by_name=True, from_attributes=True)
 
@@ -260,6 +265,8 @@ class LayerUpdate(CamelCaseInput):
     icon_url: str | None = Field(default=None, serialization_alias="iconUrl")
 
     notice: LayerNotice | None = None
+    highlight_color: HighlightColor | None = Field(default=None, serialization_alias="highlightColor")
+    highlight_shape: HighlightShape | None = Field(default=None, serialization_alias="highlightShape")
 
     model_config = ConfigDict(populate_by_name=True)
 

@@ -73,7 +73,9 @@ class GeoServerClient:
         url = self._rest_url(f"workspaces/{workspace}/layers/{layer}.json")
         with self._client() as c:
             r = c.get(url)
-        return r.status_code == 200
+        if r.status_code == 200:
+            return True
+        return self.is_layer_group(workspace, layer)
 
     def get_legend_graphic(
         self,
@@ -239,6 +241,8 @@ class GeoServerClient:
         return names
 
     def list_fields(self, workspace: str, layer: str) -> list[dict]:
+        if self.is_layer_group(workspace, layer):
+            return []
         url = self._ows_url()
         params = {
             "service": "WFS",

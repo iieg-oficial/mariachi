@@ -9,6 +9,42 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [admin 1.16.0] - 2026-05-25
+
+### Agregado: tab "Apariencia" con resaltado de feature + DnD en editor InfoBox
+
+#### Tab "Apariencia" (nuevo)
+
+Nuevo tab en `/administrador/mapalab/layers` que agrupa todo lo visual de una capa/nodo. Visible para `tema`, `category`, `label`, `group` y `leaf`. Contenido condicional según `nodeType`:
+
+- **`tema`**: mueve el campo **Icono del tema** (`TemaIconField`) que vivía en el tab "Identidad". El icono sigue siendo el SVG/PNG del sider del visor.
+- **`leaf` / `group` / `category` / `label`**: nuevo control **Resaltado al hacer clic en una feature** (`LayerHighlightField`). Dos sub-controles independientes con preview en vivo cruzado:
+  - **Color**: morado (default) / naranja institucional / sombreado discreto.
+  - **Forma**: área + línea (default) / solo línea / sin resaltar.
+
+Cuando se configura en un nivel ancestro (ej. `group "Establecimiento de salud"`), las leaves hijas **heredan** el resaltado automáticamente desde el visor (lo aplica `useFeatureHighlight` en mapalab). Una leaf que define sus propios `highlightColor`/`highlightShape` los gana por encima del ancestro.
+
+`api/app/schemas/layer.py`: nuevos campos `highlight_color` (Literal `morado|naranja|sombreado`) y `highlight_shape` (Literal `area|linea|off`) con `serialization_alias` camelCase. Ambos optional, default NULL = heredar/usar default.
+
+`api/app/services/geoserver_client.py`: `layer_exists` ahora cae a `is_layer_group` cuando la consulta a `/layers/{layer}` retorna 404. `list_fields` retorna `[]` si la capa es un layer group (no tiene feature type propio). Antes el editor petaba con 500/400 sobre capas tipo `general:limite_iieg` que son layer groups (no WFS feature types).
+
+#### Drag-and-drop en `InfoBoxBlocksEditor`
+
+Reemplazo del sistema de flechas ↑↓ por `@dnd-kit/sortable` en dos niveles:
+
+1. **Bloques del cuerpo** (labelGroups, list, cards, iconText, textBlocks): arrastra el ícono ⋮⋮ en la esquina del bloque para reordenar el `blockOrder` del template.
+2. **Items dentro de cada bloque** (filas de list, cards, iconText, párrafos de TextBlock): arrastra el ícono ⋮⋮ a la izquierda de cada item para reordenar.
+
+#### Que cambio
+
+- **`admin/src/features/mapalab-layers/components/layersEditor/LayerHighlightField.jsx`** (nuevo): dos `Radio.Group` lado a lado (color + forma) con swatches visuales que cruzan ambas dimensiones (el swatch del color refleja la forma seleccionada y viceversa).
+- **`admin/src/features/mapalab-layers/components/layersEditor/InfoBoxBlocksEditor.jsx`**: imports de `@dnd-kit/{core,sortable,utilities}`, helpers `SortableBlock` / `SortableItem` / `DragHandle`, refactor de `ListBlock`/`CardsBlock`/`IconTextBlock`/`TextBlock` para envolver items en `SortableContext`.
+- **`admin/src/features/mapalab-layers/constants/nodeTypes.js`**: nueva entrada en `TAB_VISIBILITY` para `apariencia` aplicable a los 5 tipos de nodo.
+- **`admin/src/features/mapalab-layers/pages/LayerEditPage.jsx`**: import `LayerHighlightField`; nuevo tab `apariencia` entre `identidad` y `servicios`; campo `iconUrl` removido del tab `identidad` y reubicado en `apariencia`; `setFieldsValue` incluye `highlightColor` y `highlightShape`.
+- **`api/app/models/layer.py`**: columnas `highlight_color` y `highlight_shape` en el modelo SQLAlchemy.
+
+---
+
 ## [admin 1.15.8] - 2026-05-25
 
 ### Documentación: tema `Telemetría` separado de `Servidor MCP`
