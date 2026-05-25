@@ -29,8 +29,6 @@ const TOOLS = [
     { router: 'layers', tool: 'get_workspaces', route: 'GET /layers/workspaces', desc: 'Workspaces con alias + schema en DataEngine.' },
     { router: 'layers', tool: 'search_layers', route: 'GET /layers/search', desc: 'Busca por label, tags o id. Devuelve label + path jerárquico.', highlight: true },
     { router: 'layers', tool: 'resolve_layer_ref', route: 'GET /layers/resolve', desc: 'Slug, alias público o id del visor → capa.' },
-    { router: 'layers', tool: 'refresh_layer_tree_cache', route: 'POST /layers/refresh-cache', desc: 'Regenera la cache materializada. Requiere X-Internal-Token.' },
-    { router: 'layers', tool: 'invalidate_layer_tree_memory_cache', route: 'POST /layers/invalidate-cache', desc: 'Invalida solo memoria del worker. Requiere X-Internal-Token.' },
     { router: 'shares + medición', tool: 'create_single_share', route: 'POST /shares (kind=single)', desc: 'Crea share del visor con capas y annotations opcionales. Devuelve {id, url, embed_html}.', highlight: true },
     { router: 'shares + medición', tool: 'create_swipe_share', route: 'POST /shares (kind=swipe)', desc: 'Crea share en modo swipe A|B para comparación.' },
     { router: 'shares + medición', tool: 'measure_geometry', route: 'PostGIS ST_Length/ST_Area::geography', desc: 'Longitud (LineString) o área (Polygon) geodésica en metros/m² reales.' },

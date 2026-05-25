@@ -9,6 +9,18 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [admin 1.17.1] - 2026-05-25
+
+### Sincronización con mapalab 1.48.1: tabla de tools MCP 14 → 12
+
+mapalab 1.48.1 quitó del MCP los tools `refresh_layer_tree_cache` e `invalidate_layer_tree_memory_cache` porque siempre devolvían 401 (los endpoints REST subyacentes requieren `X-Internal-Token` que el MCP no inyecta). El tab "Servidor MCP" de `/administrador/documentacion` se actualiza para reflejar la lista real.
+
+- **`admin/src/features/documentacion/topics/McpTopic.jsx`**: removidas las 2 entradas correspondientes del array `TOOLS`. El `<Tag>` de count en el header de la Card ahora muestra **12** automáticamente.
+
+Sin cambios en backend ni en otros componentes. El playground sigue funcional — el `tools/list` que muestra el MCP real ya devuelve 12 desde el restart del container `mapalab-mcp`.
+
+---
+
 ## [admin 1.17.0] - 2026-05-25
 
 ### Agregado: configuración global del resaltado (color custom hex + bulk apply + undo)
