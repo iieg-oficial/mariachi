@@ -9,6 +9,20 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [admin 1.15.2] - 2026-05-25
+
+### Playground: probes `tools/call` JSON-RPC para los 3 tools nuevos de mapalab 1.44.0
+
+Los tools `create_single_share`, `create_swipe_share` y `measure_geometry` (mapalab 1.44.0) no tienen REST equivalente directo — son orquestación específica del servidor MCP. El playground de `/administrador/documentacion` solo probaba endpoints REST, así que estos quedaban indocumentados en la práctica.
+
+- **`admin/src/features/documentacion/topics/McpPlayground.jsx`**: nuevo componente `McpToolProbe` que llama directamente vía JSON-RPC `tools/call` al endpoint `/mcp/`, parsea la respuesta SSE (`event: message\ndata: {...}`) y extrae el payload del tool (`result.content[0].text` → `JSON.parse`).
+- Tres probes pre-configurados con `defaultArguments` editables en un `TextArea` (JSON con `autoSize`): `measure_geometry` (default LineString Guadalajara→Zapopan), `create_single_share` (con annotation Polygon de ejemplo), `create_swipe_share` (homicidio vs población).
+- El playground ahora tiene dos secciones claras: **"Tools del MCP (`tools/call`)"** con los 3 nuevos, y **"Tools de lectura (REST equivalente)"** con los probes preexistentes. La descripción del Alert principal actualizada.
+
+Sin cambios en backend. Útil para QA post-deploy: cualquier admin puede confirmar que el MCP responde, sin necesidad de levantar el inspector de modelcontextprotocol ni un cliente Python.
+
+---
+
 ## [admin 1.15.1] - 2026-05-25
 
 ### Documentación: McpTopic refleja los 3 tools nuevos de mapalab 1.44.0

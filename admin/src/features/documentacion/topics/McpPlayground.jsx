@@ -319,6 +319,160 @@ const McpRootProbe = () => {
 };
 
 
+const MCP_TOOL_PROBES = [
+    {
+        tool: 'measure_geometry',
+        description: 'Calcula longitud (LineString) o área (Polygon) geodésica en metros/m² reales sobre WGS84. Default: línea Guadalajara → Zapopan (~8.26 km).',
+        defaultArguments: {
+            geometry: {
+                type: 'LineString',
+                coordinates: [[-103.349, 20.677], [-103.413, 20.721]],
+            },
+        },
+    },
+    {
+        tool: 'create_single_share',
+        description: 'Crea un share del visor con capas y anotaciones opcionales. Devuelve {id, url, embed_html} listo para pegar.',
+        defaultArguments: {
+            layers: ['tasa_homicidio_doloso'],
+            view: { zoom: 9, lat: 20.6, lon: -103.4 },
+            basemap: 'osm',
+            annotations: [{
+                id: 'zona1',
+                type: 'Polygon',
+                geometry: { type: 'Polygon', coordinates: [[[-103.4, 20.6], [-103.3, 20.6], [-103.3, 20.7], [-103.4, 20.7], [-103.4, 20.6]]] },
+                label: 'Zona analizada',
+            }],
+        },
+    },
+    {
+        tool: 'create_swipe_share',
+        description: 'Crea un share en modo swipe (comparación A|B). Ideal para preguntas comparativas del usuario.',
+        defaultArguments: {
+            pane_a_layers: ['tasa_homicidio_doloso'],
+            pane_b_layers: ['poblacion'],
+            position: 0.5,
+            view: { zoom: 8, lat: 20.6, lon: -103.4 },
+            label_a: 'Homicidio',
+            label_b: 'Población',
+        },
+    },
+];
+
+
+const parseSseResponse = (text) => {
+    const dataLine = text.split('\n').find((line) => line.startsWith('data: '));
+    const raw = dataLine ? dataLine.slice(6) : text;
+    try { return JSON.parse(raw); } catch { return raw; }
+};
+
+
+const extractToolPayload = (jsonRpcResponse) => {
+    const content = jsonRpcResponse?.result?.content?.[0]?.text;
+    if (typeof content !== 'string') return jsonRpcResponse;
+    try { return JSON.parse(content); } catch { return content; }
+};
+
+
+const McpToolProbe = ({ probe }) => {
+    const [args, setArgs] = useState(JSON.stringify(probe.defaultArguments, null, 2));
+    const [loading, setLoading] = useState(false);
+    const [result, setResult] = useState(null);
+    const [error, setError] = useState(null);
+
+    const handleRun = async () => {
+        let parsedArgs;
+        try {
+            parsedArgs = JSON.parse(args);
+        } catch (err) {
+            setError(`JSON inválido en arguments: ${err.message}`);
+            setResult(null);
+            return;
+        }
+        setLoading(true);
+        setError(null);
+        const url = `${MAPALAB_BASE}/mcp`;
+        const body = {
+            jsonrpc: '2.0',
+            id: Date.now(),
+            method: 'tools/call',
+            params: { name: probe.tool, arguments: parsedArgs },
+        };
+        const start = performance.now();
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                redirect: 'follow',
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' },
+                body: JSON.stringify(body),
+                credentials: 'omit',
+            });
+            const elapsedMs = Math.round(performance.now() - start);
+            const text = await response.text();
+            const jsonRpc = parseSseResponse(text);
+            const toolPayload = extractToolPayload(jsonRpc);
+            setResult({ status: response.status, ok: response.ok, body: toolPayload, elapsedMs, url });
+            if (!response.ok) message.warning(`HTTP ${response.status}`);
+        } catch (err) {
+            setResult(null);
+            setError(err?.message || 'Error al llamar el endpoint');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    return (
+        <Card
+            size="small"
+            title={
+                <Space size={8}>
+                    <Tag color="magenta">tools/call</Tag>
+                    <Text code>{probe.tool}</Text>
+                </Space>
+            }
+            extra={
+                <Button type="primary" size="small" icon={<PlayCircleOutlined />} onClick={handleRun} loading={loading}>
+                    Probar
+                </Button>
+            }
+        >
+            <Text type="secondary" style={{ display: 'block', marginBottom: 8, fontSize: 12 }}>{probe.description}</Text>
+            <Input.TextArea
+                value={args}
+                onChange={(e) => setArgs(e.target.value)}
+                autoSize={{ minRows: 5, maxRows: 14 }}
+                style={{ fontFamily: 'monospace', fontSize: 11 }}
+                spellCheck={false}
+            />
+            {error && <Alert type="error" message={error} showIcon style={{ marginTop: 8 }} />}
+            {result && (
+                <div style={{ marginTop: 12 }}>
+                    <Space size={8} style={{ marginBottom: 6 }} wrap>
+                        <Tag color={result.ok ? 'green' : 'red'}>HTTP {result.status}</Tag>
+                        <Text type="secondary" style={{ fontSize: 12 }}>{result.elapsedMs} ms</Text>
+                    </Space>
+                    <pre
+                        style={{
+                            background: '#1f1f1f',
+                            color: '#f5f5f5',
+                            padding: '12px 14px',
+                            borderRadius: 6,
+                            fontSize: 11,
+                            lineHeight: 1.5,
+                            maxHeight: 320,
+                            overflow: 'auto',
+                            margin: 0,
+                        }}
+                    >
+                        <code>{typeof result.body === 'string' ? result.body : JSON.stringify(result.body, null, 2)}</code>
+                    </pre>
+                </div>
+            )}
+        </Card>
+    );
+};
+
+
 export default function McpPlayground() {
     return (
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
@@ -328,13 +482,30 @@ export default function McpPlayground() {
                 message="Playground"
                 description={
                     <>
-                        Los tools del MCP son re-exposiciones de los endpoints REST de MapaLab.
-                        La primera tarjeta llama al protocolo MCP directamente (JSON-RPC) usando la URL <strong>sin slash</strong> que pegarías en un cliente; el resto llaman al REST equivalente vía <Text code>{MAPALAB_BASE}/*</Text>, la misma data que un agente vería a través del MCP. Solo se exponen tools de lectura sin efectos secundarios.
+                        La primera tarjeta llama al protocolo MCP directamente (JSON-RPC <Text code>initialize</Text>) usando la URL <strong>sin slash</strong> que pegarías en un cliente. Las tarjetas <Text code>tools/call</Text> ejecutan los tools del MCP directamente vía JSON-RPC. Las tarjetas REST llaman al endpoint equivalente vía <Text code>{MAPALAB_BASE}/*</Text>. Solo se exponen tools sin efectos destructivos.
                     </>
                 }
             />
 
             <McpRootProbe />
+
+            <div style={{ marginTop: 8 }}>
+                <Text strong style={{ fontSize: 13 }}>Tools del MCP (JSON-RPC <Text code>tools/call</Text>)</Text>
+                <Text type="secondary" style={{ display: 'block', fontSize: 12 }}>
+                    Los 3 tools de mapalab 1.44.0 — no tienen REST equivalente. Edita el JSON de <Text code>arguments</Text> antes de "Probar".
+                </Text>
+            </div>
+
+            {MCP_TOOL_PROBES.map((probe) => (
+                <McpToolProbe key={probe.tool} probe={probe} />
+            ))}
+
+            <div style={{ marginTop: 8 }}>
+                <Text strong style={{ fontSize: 13 }}>Tools de lectura (REST equivalente)</Text>
+                <Text type="secondary" style={{ display: 'block', fontSize: 12 }}>
+                    Mismo dato que un agente vería a través del MCP, pero invocado por su endpoint REST para facilitar la prueba.
+                </Text>
+            </div>
 
             {PROBES.map((probe) => (
                 <ProbeCard key={probe.tool} probe={probe} />
