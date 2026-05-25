@@ -185,6 +185,12 @@ export default function MainLayout() {
                     collapsible
                     collapsed={collapsed}
                     width={280}
+                    style={{
+                        position: 'sticky',
+                        top: 0,
+                        height: '100vh',
+                        overflow: 'hidden',
+                    }}
                 >
                     {renderSiderContent()}
                 </Sider>

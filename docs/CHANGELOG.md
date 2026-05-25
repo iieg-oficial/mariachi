@@ -9,6 +9,30 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [admin 1.15.5] - 2026-05-25
+
+### Sider sticky al viewport: "Documentación" siempre visible al fondo + menú normal scrolleable
+
+El sider del admin tenía la lógica para mantener el footer (Documentación) anclado al `bottom: 0` con `position: absolute`, y la lista de items scrolleable con `overflowY: auto`. Pero al `<Sider>` le faltaba la pieza que hace que todo esto funcione: una altura fija anclada al viewport. Sin eso, el sider crecía junto al contenido del Layout (`minHeight: 100vh` lo dejaba flotar), y al hacer scroll del content "Documentación" se iba hasta abajo del documento — invisible salvo que el usuario scrolleara hasta el fondo.
+
+#### Fix
+
+- **`admin/src/app/MainLayout.jsx`** (Sider desktop): agregadas 4 props de style:
+  - `position: 'sticky'` + `top: 0` — el sider se queda pegado al top del viewport sin importar el scroll del content.
+  - `height: '100vh'` — altura fija. El `renderSiderContent` que ya tenía `height: '100%'` con `position: 'relative'` y dos hijos `position: 'absolute'` (lista de items + footer) ahora se calculan contra los 100vh reales.
+  - `overflow: 'hidden'` — la lista de items tiene su propio `overflowY: 'auto'` y los tooltips de Ant son portal-based, así que cortar el overflow del Sider no rompe nada y previene scroll bars duplicadas.
+
+#### Comportamiento resultante
+
+- Sider siempre visible mientras hacen scroll del content.
+- "Documentación" pegado al bottom del viewport.
+- Lista de items del medio (grupos plataforma + proyectos) scrolleable verticalmente si excede el espacio disponible — el scroll está acotado al área entre el brand (top: 64px) y el footer (FOOTER_HEIGHT).
+- En mobile (Drawer) no aplica — sigue comportamiento previo.
+
+Sin cambios en lógica de menú, registros ni roles. Solo 4 líneas de style en el `<Sider>`.
+
+---
+
 ## [admin 1.15.4] - 2026-05-25
 
 ### Playground del MCP: previsualización embebida del share creado vía `<iieg-mapalab>`
