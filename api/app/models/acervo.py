@@ -5,16 +5,16 @@ from app.core.database import Base
 from app.core.time import utcnow
 
 
-class MediaFolder(Base):
-    __tablename__ = "media_folders"
+class AcervoFolder(Base):
+    __tablename__ = "acervo_folders"
     __table_args__ = (
-        UniqueConstraint("bucket_id", "path", name="uq_media_folders_bucket_path"),
+        UniqueConstraint("bucket_id", "path", name="uq_acervo_folders_bucket_path"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
     bucket_id = Column(
         Integer,
-        ForeignKey("media_buckets.id", ondelete="CASCADE"),
+        ForeignKey("acervo_buckets.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
@@ -23,11 +23,11 @@ class MediaFolder(Base):
     parent = Column(String, nullable=True)
 
 
-class Media(Base):
-    __tablename__ = "media"
+class AcervoFile(Base):
+    __tablename__ = "acervo_files"
 
     id = Column(Integer, primary_key=True, index=True)
-    bucket_id = Column(Integer, ForeignKey("media_buckets.id"), nullable=True, index=True)
+    bucket_id = Column(Integer, ForeignKey("acervo_buckets.id"), nullable=True, index=True)
     name = Column(String, nullable=False, index=True)
     original_name = Column(String, nullable=False)
     type = Column(String, nullable=False)
@@ -39,4 +39,4 @@ class Media(Base):
     uploaded_at = Column(DateTime, default=utcnow, nullable=False)
     metadata_json = Column("metadata", JSON, default=dict)
 
-    uploaded_by_user = relationship("Usuario", back_populates="media_uploads")
+    uploaded_by_user = relationship("Usuario", back_populates="acervo_uploads")

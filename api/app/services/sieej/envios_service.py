@@ -21,7 +21,7 @@ from app.api.metrics import (
     incr,
 )
 from app.core.time import utcnow
-from app.models.media_bucket import MediaBucket
+from app.models.acervo_bucket import AcervoBucket
 from app.models.project import Project
 from app.models.sieej import (
     EnvioArchivo,
@@ -330,11 +330,11 @@ class EnviosService:
             )
 
         bucket = (
-            self.db.query(MediaBucket)
-            .join(Project, Project.id == MediaBucket.project_id)
+            self.db.query(AcervoBucket)
+            .join(Project, Project.id == AcervoBucket.project_id)
             .filter(
-                MediaBucket.acervo_bucket == bucket_name,
-                MediaBucket.is_active.is_(True),
+                AcervoBucket.acervo_bucket == bucket_name,
+                AcervoBucket.is_active.is_(True),
             )
             .first()
         )

@@ -12,7 +12,7 @@ from minio.error import S3Error
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.models.media_bucket import MediaBucket
+from app.models.acervo_bucket import AcervoBucket
 from app.models.symbol import Symbol, SymbolCategory
 from app.schemas.symbol import (
     SymbolCatalogCategory,
@@ -37,16 +37,16 @@ MAX_IMAGE_SIZE = 5 * 1024 * 1024
 TWEMOJI_BASE_URL = "https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72"
 
 
-def _get_media_bucket(mariachi_db: Session, bucket_slug: str) -> MediaBucket:
+def _get_media_bucket(mariachi_db: Session, bucket_slug: str) -> AcervoBucket:
     bucket = (
-        mariachi_db.query(MediaBucket)
-        .filter(MediaBucket.acervo_bucket == bucket_slug)
+        mariachi_db.query(AcervoBucket)
+        .filter(AcervoBucket.acervo_bucket == bucket_slug)
         .first()
     )
     if not bucket:
         raise RuntimeError(
-            f"MediaBucket '{bucket_slug}' no registrado en mariachi. "
-            "Verifica que el bucket exista en la tabla media_buckets y que "
+            f"AcervoBucket '{bucket_slug}' no registrado en mariachi. "
+            "Verifica que el bucket exista en la tabla acervo_buckets y que "
             "ACERVO_<REF>_ACCESS_KEY/SECRET_KEY esten en el entorno."
         )
     return bucket

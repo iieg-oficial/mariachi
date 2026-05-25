@@ -40,7 +40,7 @@ class Reporte(Base):
     source_route = Column(String(500), nullable=True)
     source_context = Column(JSON, default=dict, nullable=False)
     screenshot_bucket_id = Column(
-        Integer, ForeignKey("media_buckets.id"), nullable=True, index=True
+        Integer, ForeignKey("acervo_buckets.id"), nullable=True, index=True
     )
     screenshot_object_path = Column(String(500), nullable=True)
     estado = Column(
@@ -72,7 +72,7 @@ class Reporte(Base):
         "DireccionOrganizacional", back_populates="reportes", lazy="select"
     )
     source_app_rel = relationship("SourceApp", back_populates="reportes", lazy="select")
-    screenshot_bucket = relationship("MediaBucket", lazy="select")
+    screenshot_bucket = relationship("AcervoBucket", lazy="select")
     atendido_por = relationship(
         "Usuario", foreign_keys=[atendido_por_id], lazy="select"
     )

@@ -22,7 +22,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db
 from app.api.rate_limit import rate_limit_ip
 from app.core.time import utcnow
-from app.models.media_bucket import MediaBucket
+from app.models.acervo_bucket import AcervoBucket
 from app.models.reporte import Reporte
 from app.models.reporte_grupo import ReporteGrupo
 from app.models.reporte_tipo import ReporteTipo
@@ -121,12 +121,12 @@ def _resolve_source_app(
     return matched
 
 
-def _resolve_reportes_bucket(db: Session) -> MediaBucket | None:
+def _resolve_reportes_bucket(db: Session) -> AcervoBucket | None:
     return (
-        db.query(MediaBucket)
+        db.query(AcervoBucket)
         .filter(
-            MediaBucket.acervo_bucket == _REPORTES_BUCKET,
-            MediaBucket.is_active.is_(True),
+            AcervoBucket.acervo_bucket == _REPORTES_BUCKET,
+            AcervoBucket.is_active.is_(True),
         )
         .first()
     )
@@ -139,7 +139,7 @@ def _build_object_path(mime: str) -> str:
 
 
 async def _upload_screenshot(
-    bucket: MediaBucket, screenshot: UploadFile
+    bucket: AcervoBucket, screenshot: UploadFile
 ) -> str:
     data = await screenshot.read()
     if len(data) > _MAX_SCREENSHOT_BYTES:

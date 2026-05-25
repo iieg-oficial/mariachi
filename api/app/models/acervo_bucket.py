@@ -5,8 +5,8 @@ from app.core.database import Base
 from app.core.time import utcnow
 
 
-class MediaBucket(Base):
-    __tablename__ = "media_buckets"
+class AcervoBucket(Base):
+    __tablename__ = "acervo_buckets"
 
     id = Column(Integer, primary_key=True, index=True)
     project_id = Column(

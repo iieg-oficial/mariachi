@@ -7,8 +7,8 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db, verify_csrf
 from app.core.time import utcnow
+from app.models.acervo_bucket import AcervoBucket
 from app.models.direccion_organizacional import DireccionOrganizacional
-from app.models.media_bucket import MediaBucket
 from app.models.reporte import Reporte
 from app.models.reporte_actividad import ReporteActividad
 from app.models.reporte_grupo import ReporteGrupo
@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/reportes", tags=["reportes admin"])
 
 
-def _serialize(reporte: Reporte, bucket_lookup: dict[int, MediaBucket]) -> ReporteAdminResponse:
+def _serialize(reporte: Reporte, bucket_lookup: dict[int, AcervoBucket]) -> ReporteAdminResponse:
     screenshot_url: str | None = None
     if reporte.screenshot_object_path and reporte.screenshot_bucket_id:
         bucket = bucket_lookup.get(reporte.screenshot_bucket_id)
@@ -76,10 +76,10 @@ def _serialize(reporte: Reporte, bucket_lookup: dict[int, MediaBucket]) -> Repor
     )
 
 
-def _bucket_lookup(db: Session, ids: set[int]) -> dict[int, MediaBucket]:
+def _bucket_lookup(db: Session, ids: set[int]) -> dict[int, AcervoBucket]:
     if not ids:
         return {}
-    rows = db.query(MediaBucket).filter(MediaBucket.id.in_(ids)).all()
+    rows = db.query(AcervoBucket).filter(AcervoBucket.id.in_(ids)).all()
     return {b.id: b for b in rows}
 
 
@@ -225,7 +225,7 @@ async def eliminar_reporte(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Reporte no encontrado")
 
     if reporte.screenshot_object_path and reporte.screenshot_bucket_id:
-        bucket = db.query(MediaBucket).filter(MediaBucket.id == reporte.screenshot_bucket_id).first()
+        bucket = db.query(AcervoBucket).filter(AcervoBucket.id == reporte.screenshot_bucket_id).first()
         if bucket is not None:
             try:
                 AcervoClient.for_bucket(bucket).delete_file(reporte.screenshot_object_path)

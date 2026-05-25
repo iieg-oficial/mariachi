@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.core.security import decodificar_token, verificar_csrf_token
 from app.core.settings import get_settings
-from app.models.media_bucket import MediaBucket
+from app.models.acervo_bucket import AcervoBucket
 from app.models.project import Project, UserProject
 from app.models.user import Usuario
 
@@ -112,9 +112,9 @@ def list_user_memberships(db: Session, user: Usuario) -> list[dict]:
 
 def list_user_accessible_buckets(db: Session, user: Usuario) -> list[dict]:
     query = (
-        db.query(MediaBucket, Project.slug)
-        .join(Project, Project.id == MediaBucket.project_id)
-        .filter(MediaBucket.is_active.is_(True), Project.is_active.is_(True))
+        db.query(AcervoBucket, Project.slug)
+        .join(Project, Project.id == AcervoBucket.project_id)
+        .filter(AcervoBucket.is_active.is_(True), Project.is_active.is_(True))
     )
     if user.role != ADMIN_ROLE:
         query = query.join(
@@ -201,7 +201,7 @@ def require_bucket_access(bucket_id_param: str = "bucket_id"):
         request: Request,
         current_user: Usuario = Depends(get_current_user),
         db: Session = Depends(get_db),
-    ) -> MediaBucket:
+    ) -> AcervoBucket:
         bucket_id = request.path_params.get(bucket_id_param) or request.query_params.get(
             bucket_id_param
         )
@@ -212,8 +212,8 @@ def require_bucket_access(bucket_id_param: str = "bucket_id"):
             )
 
         bucket = (
-            db.query(MediaBucket)
-            .filter(MediaBucket.id == int(bucket_id), MediaBucket.is_active.is_(True))
+            db.query(AcervoBucket)
+            .filter(AcervoBucket.id == int(bucket_id), AcervoBucket.is_active.is_(True))
             .first()
         )
         if bucket is None:

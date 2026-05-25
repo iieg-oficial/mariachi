@@ -16,8 +16,8 @@ from app.api.metrics import (
 )
 from app.api.rate_limit import rate_limit
 from app.core.database import get_dataengine_db, get_db
+from app.models.acervo_bucket import AcervoBucket
 from app.models.bulk_ingest_plan import BulkIngestPlan
-from app.models.media_bucket import MediaBucket
 from app.models.user import Usuario
 from app.schemas.bulk_ingest import (
     BulkIngestApplyResult,
@@ -58,16 +58,16 @@ def _now_utc() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def _get_mariachi_bucket(db: Session) -> MediaBucket:
+def _get_mariachi_bucket(db: Session) -> AcervoBucket:
     bucket = (
-        db.query(MediaBucket)
-        .filter(MediaBucket.acervo_bucket == 'mariachi', MediaBucket.is_active.is_(True))
+        db.query(AcervoBucket)
+        .filter(AcervoBucket.acervo_bucket == 'mariachi', AcervoBucket.is_active.is_(True))
         .first()
     )
     if bucket is None:
         raise HTTPException(
             status_code=500,
-            detail="Bucket 'mariachi' no configurado en media_buckets",
+            detail="Bucket 'mariachi' no configurado en acervo_buckets",
         )
     return bucket
 

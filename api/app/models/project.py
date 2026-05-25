@@ -16,7 +16,7 @@ class Project(Base):
     created_at = Column(DateTime, default=utcnow, nullable=False)
 
     memberships = relationship("UserProject", back_populates="project", cascade="all, delete-orphan")
-    buckets = relationship("MediaBucket", back_populates="project", cascade="all, delete-orphan")
+    buckets = relationship("AcervoBucket", back_populates="project", cascade="all, delete-orphan")
 
 
 class UserProject(Base):

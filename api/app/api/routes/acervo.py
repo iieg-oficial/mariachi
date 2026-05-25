@@ -8,14 +8,14 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import ADMIN_ROLE, get_current_user, get_db, verify_csrf
 from app.api.metrics import COUNTER_MEDIA_DELETES, COUNTER_MEDIA_UPLOADS, incr
-from app.models.media import Media, MediaFolder
+from app.models.acervo import AcervoFile, AcervoFolder
 from app.models.user import Usuario
-from app.schemas.media import FolderCreate, FolderResponse, MediaUpdate
-from app.services import media_service
+from app.schemas.acervo import AcervoFileUpdate, FolderCreate, FolderResponse
+from app.services import acervo_file_service
 from app.services.acervo import AcervoClient
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/multimedia", tags=["media"])
+router = APIRouter(prefix="/acervo", tags=["acervo"])
 
 
 @router.get("", response_model=list[dict])
@@ -28,8 +28,8 @@ async def listar_media(
     search: str | None = Query(None),
     recursive: bool = Query(False, description="Si false, devuelve solo el primer nivel del prefix (incluye carpetas)"),
 ):
-    bucket = media_service.resolve_bucket_or_403(bucket_id, current_user, db)
-    return media_service.listar_media(db, bucket, folder, type, search, recursive)
+    bucket = acervo_file_service.resolve_bucket_or_403(bucket_id, current_user, db)
+    return acervo_file_service.listar_media(db, bucket, folder, type, search, recursive)
 
 
 @router.get("/proxy/{bucket_id}/{object_path:path}")
@@ -39,14 +39,14 @@ async def proxy_object(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    bucket = media_service.resolve_bucket_or_403(bucket_id, current_user, db)
+    bucket = acervo_file_service.resolve_bucket_or_403(bucket_id, current_user, db)
     client = AcervoClient.for_bucket(bucket)
     try:
         stat = client.stat_object(object_path)
     except S3Error as exc:
         if exc.code in {"NoSuchKey", "NoSuchBucket"}:
             raise HTTPException(status_code=404, detail="Archivo no encontrado")
-        logger.exception("action=media.proxy.stat user_id=%s bucket=%s key=%s", current_user.id, bucket.acervo_bucket, object_path)
+        logger.exception("action=acervo.proxy.stat user_id=%s bucket=%s key=%s", current_user.id, bucket.acervo_bucket, object_path)
         raise HTTPException(status_code=502, detail="Error consultando acervo")
 
     response = client.get_object_stream(object_path)
@@ -77,7 +77,7 @@ async def listar_objetos_bucket(
     bucket_id: int = Query(...),
     prefix: str = Query(""),
 ):
-    bucket = media_service.resolve_bucket_or_403(bucket_id, current_user, db)
+    bucket = acervo_file_service.resolve_bucket_or_403(bucket_id, current_user, db)
     client = AcervoClient.for_bucket(bucket)
     objects = client.list_objects(prefix=prefix)
     for obj in objects:
@@ -91,14 +91,14 @@ async def listar_carpetas(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
-    bucket = media_service.resolve_bucket_or_403(bucket_id, current_user, db)
+    bucket = acervo_file_service.resolve_bucket_or_403(bucket_id, current_user, db)
     folders = (
-        db.query(MediaFolder)
-        .filter(MediaFolder.bucket_id == bucket.id)
-        .order_by(MediaFolder.path)
+        db.query(AcervoFolder)
+        .filter(AcervoFolder.bucket_id == bucket.id)
+        .order_by(AcervoFolder.path)
         .all()
     )
-    return [media_service.serialize_folder(f) for f in folders]
+    return [acervo_file_service.serialize_folder(f) for f in folders]
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
@@ -110,7 +110,7 @@ async def subir_archivo(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
 ):
-    bucket = media_service.resolve_bucket_or_403(bucket_id, current_user, db)
+    bucket = acervo_file_service.resolve_bucket_or_403(bucket_id, current_user, db)
     client = AcervoClient.for_bucket(bucket)
 
     file_extension = file.filename.split(".")[-1] if "." in file.filename else ""
@@ -118,12 +118,12 @@ async def subir_archivo(
 
     clean_folder = (folder or "").strip().strip("/")
     object_key = f"{clean_folder}/{base}" if clean_folder else base
-    folder_path = media_service.ensure_folder_exists(db, bucket.id, clean_folder)
+    folder_path = acervo_file_service.ensure_folder_exists(db, bucket.id, clean_folder)
 
     try:
         url = await client.upload_file(file, object_key)
 
-        nuevo = Media(
+        nuevo = AcervoFile(
             bucket_id=bucket.id,
             name=object_key,
             original_name=file.filename,
@@ -140,12 +140,12 @@ async def subir_archivo(
         db.refresh(nuevo)
         incr(COUNTER_MEDIA_UPLOADS)
         logger.info(
-            "action=media.upload user_id=%s bucket=%s size=%s name=%s",
+            "action=acervo.upload user_id=%s bucket=%s size=%s name=%s",
             current_user.id, bucket.acervo_bucket, nuevo.size, nuevo.original_name,
         )
-        return media_service.serialize_media(nuevo)
+        return acervo_file_service.serialize_acervo_file(nuevo)
     except Exception:
-        logger.exception("action=media.upload.error user_id=%s bucket=%s", current_user.id, bucket.acervo_bucket)
+        logger.exception("action=acervo.upload.error user_id=%s bucket=%s", current_user.id, bucket.acervo_bucket)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error al subir archivo",
@@ -155,15 +155,15 @@ async def subir_archivo(
 @router.put("/{media_id}", response_model=dict)
 async def actualizar_archivo(
     media_id: int,
-    payload: MediaUpdate,
+    payload: AcervoFileUpdate,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
 ):
-    item = db.query(Media).filter(Media.id == media_id).first()
+    item = db.query(AcervoFile).filter(AcervoFile.id == media_id).first()
     if not item:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Archivo no encontrado")
     if item.bucket_id:
-        media_service.resolve_bucket_or_403(item.bucket_id, current_user, db)
+        acervo_file_service.resolve_bucket_or_403(item.bucket_id, current_user, db)
 
     data = payload.model_dump(exclude_unset=True)
     metadata = dict(item.metadata_json or {})
@@ -185,7 +185,7 @@ async def actualizar_archivo(
 
     db.commit()
     db.refresh(item)
-    return media_service.serialize_media(item)
+    return acervo_file_service.serialize_acervo_file(item)
 
 
 
@@ -196,7 +196,7 @@ async def crear_carpeta(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
 ):
-    bucket = media_service.resolve_bucket_or_403(folder_data.bucket_id, current_user, db)
+    bucket = acervo_file_service.resolve_bucket_or_403(folder_data.bucket_id, current_user, db)
 
     if folder_data.parent:
         path = f"{folder_data.parent}{folder_data.name}" if folder_data.parent.endswith('/') else f"{folder_data.parent}/{folder_data.name}"
@@ -204,17 +204,17 @@ async def crear_carpeta(
         path = f"/{folder_data.name}"
 
     duplicate = (
-        db.query(MediaFolder)
+        db.query(AcervoFolder)
         .filter(
-            MediaFolder.bucket_id == bucket.id,
-            MediaFolder.path == path,
+            AcervoFolder.bucket_id == bucket.id,
+            AcervoFolder.path == path,
         )
         .first()
     )
     if duplicate:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Carpeta ya existe en este bucket")
 
-    nueva = MediaFolder(
+    nueva = AcervoFolder(
         bucket_id=bucket.id,
         name=folder_data.name,
         path=path,
@@ -223,7 +223,7 @@ async def crear_carpeta(
     db.add(nueva)
     db.commit()
     db.refresh(nueva)
-    return media_service.serialize_folder(nueva)
+    return acervo_file_service.serialize_folder(nueva)
 
 
 @router.delete("/carpetas/{folder_id}")
@@ -232,15 +232,15 @@ async def eliminar_carpeta(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
 ):
-    folder = db.query(MediaFolder).filter(MediaFolder.id == folder_id).first()
+    folder = db.query(AcervoFolder).filter(AcervoFolder.id == folder_id).first()
     if not folder:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Carpeta no encontrada")
 
-    media_service.resolve_bucket_or_403(folder.bucket_id, current_user, db)
+    acervo_file_service.resolve_bucket_or_403(folder.bucket_id, current_user, db)
 
     media_count = (
-        db.query(Media)
-        .filter(Media.bucket_id == folder.bucket_id, Media.folder == folder.path)
+        db.query(AcervoFile)
+        .filter(AcervoFile.bucket_id == folder.bucket_id, AcervoFile.folder == folder.path)
         .count()
     )
     if media_count > 0:
@@ -252,7 +252,7 @@ async def eliminar_carpeta(
     db.delete(folder)
     db.commit()
     logger.info(
-        "action=media.folder.delete user_id=%s bucket_id=%s folder=%s",
+        "action=acervo.folder.delete user_id=%s bucket_id=%s folder=%s",
         current_user.id, folder.bucket_id, folder.path,
     )
     return {"message": "Carpeta eliminada"}
@@ -272,18 +272,18 @@ async def eliminar_archivo(
             raise HTTPException(status_code=400, detail="ID de directorio invalido")
         if current_user.role != ADMIN_ROLE:
             raise HTTPException(status_code=403, detail="Solo admin puede borrar directorios")
-        bucket = media_service.resolve_bucket_or_403(bucket_id, current_user, db)
+        bucket = acervo_file_service.resolve_bucket_or_403(bucket_id, current_user, db)
         client = AcervoClient.for_bucket(bucket)
         prefix = name if name.endswith("/") else f"{name}/"
         deleted = client.delete_prefix(prefix)
-        db.query(Media).filter(
-            Media.bucket_id == bucket.id,
-            Media.name.like(f"{prefix}%"),
+        db.query(AcervoFile).filter(
+            AcervoFile.bucket_id == bucket.id,
+            AcervoFile.name.like(f"{prefix}%"),
         ).delete(synchronize_session=False)
         db.commit()
         incr(COUNTER_MEDIA_DELETES)
         logger.info(
-            "action=media.delete.dir user_id=%s bucket=%s prefix=%s deleted=%s",
+            "action=acervo.delete.dir user_id=%s bucket=%s prefix=%s deleted=%s",
             current_user.id, bucket.acervo_bucket, prefix, deleted,
         )
         return {"message": f"Directorio eliminado ({deleted} objetos)"}
@@ -294,11 +294,11 @@ async def eliminar_archivo(
             bucket_id = int(bucket_id_str)
         except ValueError:
             raise HTTPException(status_code=400, detail="ID sintetico invalido")
-        bucket = media_service.resolve_bucket_or_403(bucket_id, current_user, db)
+        bucket = acervo_file_service.resolve_bucket_or_403(bucket_id, current_user, db)
         client = AcervoClient.for_bucket(bucket)
         client.delete_file(name)
         incr(COUNTER_MEDIA_DELETES)
-        logger.info("action=media.delete.bucket_only user_id=%s bucket=%s name=%s", current_user.id, bucket_id, name)
+        logger.info("action=acervo.delete.bucket_only user_id=%s bucket=%s name=%s", current_user.id, bucket_id, name)
         return {"message": "Archivo eliminado del bucket"}
 
     try:
@@ -306,17 +306,17 @@ async def eliminar_archivo(
     except ValueError:
         raise HTTPException(status_code=400, detail="ID invalido")
 
-    item = db.query(Media).filter(Media.id == media_int).first()
+    item = db.query(AcervoFile).filter(AcervoFile.id == media_int).first()
     if not item:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Archivo no encontrado")
 
     if item.bucket_id:
-        bucket = media_service.resolve_bucket_or_403(item.bucket_id, current_user, db)
+        bucket = acervo_file_service.resolve_bucket_or_403(item.bucket_id, current_user, db)
         client = AcervoClient.for_bucket(bucket)
         client.delete_file(item.name)
 
     db.delete(item)
     db.commit()
     incr(COUNTER_MEDIA_DELETES)
-    logger.info("action=media.delete user_id=%s media_id=%s name=%s", current_user.id, item.id, item.name)
+    logger.info("action=acervo.delete user_id=%s media_id=%s name=%s", current_user.id, item.id, item.name)
     return {"message": "Archivo eliminado exitosamente"}
