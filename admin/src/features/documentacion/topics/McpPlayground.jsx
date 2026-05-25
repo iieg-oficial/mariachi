@@ -5,7 +5,8 @@ import { PlayCircleOutlined } from '@ant-design/icons';
 const { Text } = Typography;
 
 
-const MAPALAB_BASE = '/mapalab/api';
+const MAPALAB_REST_BASE = '/mapalab/api';
+const MAPALAB_MCP_URL = '/mapalab/mcp';
 
 
 const PROBES = [
@@ -78,7 +79,7 @@ const buildQueryString = (inputs, values) => {
 
 
 const callRest = async ({ method, path, queryString }) => {
-    const url = `${MAPALAB_BASE}${path}${queryString}`;
+    const url = `${MAPALAB_REST_BASE}${path}${queryString}`;
     const start = performance.now();
     const response = await fetch(url, {
         method,
@@ -218,7 +219,7 @@ const McpRootProbe = () => {
     const handleRun = async () => {
         setLoading(true);
         setError(null);
-        const url = `${MAPALAB_BASE}/mcp`;
+        const url = MAPALAB_MCP_URL;
         const body = {
             jsonrpc: '2.0',
             id: 1,
@@ -280,7 +281,7 @@ const McpRootProbe = () => {
             }
         >
             <Text type="secondary" style={{ display: 'block', marginBottom: 12, fontSize: 12 }}>
-                JSON-RPC <Text code>initialize</Text> contra el endpoint raíz <Text code>{MAPALAB_BASE}/mcp</Text> (<strong>sin</strong> slash). El server responde con <Text code>307 → /mcp/</Text>; <Text code>fetch</Text> sigue el redirect automáticamente y obtiene la respuesta SSE/JSON. Útil para verificar que el container <Text code>mapalab-mcp</Text> está vivo y responde el handshake MCP.
+                JSON-RPC <Text code>initialize</Text> contra el endpoint raíz <Text code>{MAPALAB_MCP_URL}</Text> (<strong>sin</strong> slash). Desde mapalab 1.45.0 el MCP vive al nivel de <Text code>/mapalab/</Text>, no debajo de <Text code>/mapalab/api/</Text>. Útil para verificar que el container <Text code>mapalab-mcp</Text> está vivo y responde el handshake MCP.
             </Text>
 
             {error && <Alert type="error" message={error} showIcon style={{ marginTop: 8 }} />}
@@ -391,7 +392,7 @@ const McpToolProbe = ({ probe }) => {
         }
         setLoading(true);
         setError(null);
-        const url = `${MAPALAB_BASE}/mcp`;
+        const url = MAPALAB_MCP_URL;
         const body = {
             jsonrpc: '2.0',
             id: Date.now(),
@@ -482,7 +483,7 @@ export default function McpPlayground() {
                 message="Playground"
                 description={
                     <>
-                        La primera tarjeta llama al protocolo MCP directamente (JSON-RPC <Text code>initialize</Text>) usando la URL <strong>sin slash</strong> que pegarías en un cliente. Las tarjetas <Text code>tools/call</Text> ejecutan los tools del MCP directamente vía JSON-RPC. Las tarjetas REST llaman al endpoint equivalente vía <Text code>{MAPALAB_BASE}/*</Text>. Solo se exponen tools sin efectos destructivos.
+                        La primera tarjeta llama al protocolo MCP directamente (JSON-RPC <Text code>initialize</Text>) usando <Text code>{MAPALAB_MCP_URL}</Text> — la URL sin slash que pegarías en un cliente. Las tarjetas <Text code>tools/call</Text> ejecutan los tools del MCP directamente vía JSON-RPC. Las tarjetas REST llaman al endpoint equivalente vía <Text code>{MAPALAB_REST_BASE}/*</Text>. Solo se exponen tools sin efectos destructivos.
                     </>
                 }
             />

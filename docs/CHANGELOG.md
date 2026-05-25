@@ -9,6 +9,23 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [admin 1.15.3] - 2026-05-25
+
+### Alineación con mapalab 1.45.0: URLs del MCP migradas de `/mapalab/api/mcp` → `/mapalab/mcp`
+
+mapalab 1.45.0 movió las URLs públicas del MCP fuera del prefijo `/api` para alinear con la convención industrial (FastMCP default, Cloudflare remote MCP, etc.). El admin de Mariachi consumía las viejas y se actualiza en este release.
+
+- **`admin/src/features/documentacion/topics/McpTopic.jsx`**: `buildLocalMcpUrl` y `buildPublicMcpUrl` cambiaron sus tres ramas (con `VITE_MAPALAB_PROXY_URL`, con `window.location.origin`, fallback) para usar `/mcp` y `/mapalab/mcp`. La tabla "Endpoints / URL del MCP" mostrada en `/administrador/documentacion` ya muestra los paths nuevos.
+- **`admin/src/features/documentacion/topics/McpPlayground.jsx`**: la constante única `MAPALAB_BASE = '/mapalab/api'` se separó en dos:
+  - `MAPALAB_REST_BASE = '/mapalab/api'` para los probes REST (sin cambios)
+  - `MAPALAB_MCP_URL = '/mapalab/mcp'` para los probes JSON-RPC (`initialize` + `tools/call` de los 3 tools nuevos)
+
+  El Alert principal actualizado para reflejar que el MCP vive al nivel de `/mapalab/` ahora, no debajo de `/mapalab/api/`.
+
+Sin cambios en backend de Mariachi. La telemetría del MCP (POST internal a `/api/administrador/internal/mapalab/mcp/events`) sigue igual — ese endpoint sí está bajo `/api/administrador/` porque es la API admin de Mariachi, no el endpoint del MCP server.
+
+---
+
 ## [admin 1.15.2] - 2026-05-25
 
 ### Playground: probes `tools/call` JSON-RPC para los 3 tools nuevos de mapalab 1.44.0

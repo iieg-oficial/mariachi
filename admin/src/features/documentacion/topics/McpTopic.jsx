@@ -9,22 +9,22 @@ const WEB_URL = import.meta.env.VITE_WEB_URL || '';
 
 const buildLocalMcpUrl = () => {
     if (PROXY_URL) {
-        return `${PROXY_URL.replace(/\/+$/, '')}/api/mcp`;
+        return `${PROXY_URL.replace(/\/+$/, '')}/mcp`;
     }
     if (typeof window !== 'undefined' && window.location?.origin) {
-        return `${window.location.origin}/mapalab/api/mcp`;
+        return `${window.location.origin}/mapalab/mcp`;
     }
-    return 'http://<host>:<port>/api/mcp';
+    return 'http://<host>:<port>/mcp';
 };
 
 const buildPublicMcpUrl = () => {
     if (WEB_URL && /^https?:\/\//i.test(WEB_URL)) {
-        return `${WEB_URL.replace(/\/+$/, '')}/mapalab/api/mcp`;
+        return `${WEB_URL.replace(/\/+$/, '')}/mapalab/mcp`;
     }
     if (typeof window !== 'undefined' && window.location?.origin) {
-        return `${window.location.origin}/mapalab/api/mcp`;
+        return `${window.location.origin}/mapalab/mcp`;
     }
-    return 'https://<dominio>/mapalab/api/mcp';
+    return 'https://<dominio>/mapalab/mcp';
 };
 
 const LOCAL_MCP_URL = buildLocalMcpUrl();
