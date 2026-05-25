@@ -346,23 +346,29 @@ const MCP_TOOL_PROBES = [
         },
     },
     {
+        tool: 'resolve_municipios',
+        description: 'Busca municipios de Jalisco por nombre o clave parcial. Útil para mapear "Guadalajara y Zapopan" a [{clave:"14039",nombre:"Guadalajara"},{clave:"14120",nombre:"Zapopan"}].',
+        defaultArguments: {
+            query: 'guadalajara',
+            limit: 5,
+        },
+    },
+    {
         tool: 'create_single_share',
-        description: 'Crea un share del visor con capas y anotaciones opcionales. Devuelve {id, url, embed_html} listo para pegar.',
+        description: 'Crea un share del visor con capas, anotaciones y municipios opcionales. Devuelve {id, url, embed_html} listo para pegar.',
         defaultArguments: {
             layers: ['tasa_homicidio_doloso'],
-            view: { zoom: 9, lat: 20.6, lon: -103.4 },
+            view: { zoom: 11, lat: 20.66, lon: -103.35 },
             basemap: 'osm',
-            annotations: [{
-                id: 'zona1',
-                type: 'Polygon',
-                geometry: { type: 'Polygon', coordinates: [[[-103.4, 20.6], [-103.3, 20.6], [-103.3, 20.7], [-103.4, 20.7], [-103.4, 20.6]]] },
-                label: 'Zona analizada',
-            }],
+            municipios: {
+                source: 'iieg',
+                selected: ['14039', '14120'],
+            },
         },
     },
     {
         tool: 'create_swipe_share',
-        description: 'Crea un share en modo swipe (comparación A|B). Ideal para preguntas comparativas del usuario.',
+        description: 'Crea un share en modo swipe (comparación A|B). Ideal para preguntas comparativas del usuario. municipios se aplica a ambos paneles.',
         defaultArguments: {
             pane_a_layers: ['tasa_homicidio_doloso'],
             pane_b_layers: ['poblacion'],

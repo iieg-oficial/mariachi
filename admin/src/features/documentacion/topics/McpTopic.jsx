@@ -16,6 +16,7 @@ const ROUTER_COLOR = {
     metadata: 'purple',
     periodicity: 'magenta',
     layers: 'geekblue',
+    municipios: 'cyan',
     'shares + medición': 'volcano',
 };
 
@@ -29,8 +30,10 @@ const TOOLS = [
     { router: 'layers', tool: 'get_workspaces', route: 'GET /layers/workspaces', desc: 'Workspaces con alias + schema en DataEngine.' },
     { router: 'layers', tool: 'search_layers', route: 'GET /layers/search', desc: 'Busca por label, tags o id. Devuelve label + path jerárquico.', highlight: true },
     { router: 'layers', tool: 'resolve_layer_ref', route: 'GET /layers/resolve', desc: 'Slug, alias público o id del visor → capa.' },
-    { router: 'shares + medición', tool: 'create_single_share', route: 'POST /shares (kind=single)', desc: 'Crea share del visor con capas y annotations opcionales. Devuelve {id, url, embed_html}.', highlight: true },
-    { router: 'shares + medición', tool: 'create_swipe_share', route: 'POST /shares (kind=swipe)', desc: 'Crea share en modo swipe A|B para comparación.' },
+    { router: 'municipios', tool: 'list_municipios', route: 'GET /municipios/', desc: 'Lista los 125 municipios de Jalisco con {clave, nombre, region, áreas}.' },
+    { router: 'municipios', tool: 'resolve_municipios', route: 'búsqueda substring sobre list', desc: 'Mapea nombre o clave parcial → matches. Ej: "guadalajara" → [{clave:"14039", nombre:"Guadalajara"}].', highlight: true },
+    { router: 'shares + medición', tool: 'create_single_share', route: 'POST /shares (kind=single)', desc: 'Crea share del visor con capas, annotations y municipios opcionales. Devuelve {id, url, embed_html}.', highlight: true },
+    { router: 'shares + medición', tool: 'create_swipe_share', route: 'POST /shares (kind=swipe)', desc: 'Crea share en modo swipe A|B. Acepta municipios (estado compartido).' },
     { router: 'shares + medición', tool: 'measure_geometry', route: 'PostGIS ST_Length/ST_Area::geography', desc: 'Longitud (LineString) o área (Polygon) geodésica en metros/m² reales.' },
 ];
 

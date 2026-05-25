@@ -9,6 +9,19 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [admin 1.17.2] - 2026-05-25
+
+### Sincronización con mapalab 1.49.0: 2 tools MCP de municipios + probe `resolve_municipios`
+
+mapalab 1.49.0 agregó al MCP los tools `list_municipios` y `resolve_municipios` para que un agente conversacional pueda activar el modo Vista por municipio en los shares. El tab "Servidor MCP" de `/administrador/documentacion` se actualiza para reflejar los 14 tools y el playground gana un probe nuevo para probar la búsqueda fuzzy.
+
+- **`McpTopic.jsx`**: 2 entradas nuevas en el array `TOOLS` (router nuevo `municipios` con color cyan). Las descripciones de `create_single_share` y `create_swipe_share` ahora mencionan que aceptan `municipios`.
+- **`McpPlayground.jsx`**: probe nuevo `resolve_municipios` con default `query: "guadalajara"`, `limit: 5`. El default de `create_single_share` se actualizó para incluir `municipios: {source:"iieg", selected:["14039","14120"]}` y view zoom 11 sobre el área metropolitana — el admin puede probar el flujo end-to-end y ver el mapa embebido filtrado a Guadalajara + Zapopan si tiene API key pegada.
+
+Sin cambios en backend de mariachi.
+
+---
+
 ## [admin 1.17.1] - 2026-05-25
 
 ### Sincronización con mapalab 1.48.1: tabla de tools MCP 14 → 12
