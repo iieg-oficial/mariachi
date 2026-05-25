@@ -255,6 +255,8 @@ export default function GeoserverFilesPage() {
                         <img
                             src={f.downloadUrl}
                             alt={basename(f.name)}
+                            loading="lazy"
+                            decoding="async"
                             style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
                         />
                     ) : (

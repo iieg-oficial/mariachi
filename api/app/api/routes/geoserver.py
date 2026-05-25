@@ -1,3 +1,4 @@
+import hashlib
 import re
 from pathlib import Path
 
@@ -30,8 +31,9 @@ router = APIRouter(
 
 _require_project_editor = require_project_access('mapalab', min_role='editor')
 _require_admin = require_role(['tetlamamakani'])
-_read_rate_limit = rate_limit(max_requests=120, window_seconds=60.0)
-_write_rate_limit = rate_limit(max_requests=60, window_seconds=60.0)
+_read_rate_limit = rate_limit(max_requests=120, window_seconds=60.0, scope='geoserver_read')
+_write_rate_limit = rate_limit(max_requests=60, window_seconds=60.0, scope='geoserver_write')
+_download_rate_limit = rate_limit(max_requests=600, window_seconds=60.0, scope='geoserver_download')
 
 
 def _resolve_workspace(db: Session, alias: str) -> Workspace:
@@ -558,7 +560,7 @@ async def download_geoserver_file(
     name: str,
     workspace: str | None = Query(default=None),
     current_user: Usuario = Depends(_require_project_editor),
-    _rl: Usuario = Depends(_read_rate_limit),
+    _rl: Usuario = Depends(_download_rate_limit),
 ):
     incr(COUNTER_GEOSERVER_CALLS)
     _validate_file_name(name)
@@ -573,7 +575,10 @@ async def download_geoserver_file(
     return Response(
         content=content,
         media_type=content_type or 'application/octet-stream',
-        headers={'Cache-Control': 'public, max-age=300'},
+        headers={
+            'Cache-Control': 'public, max-age=86400, immutable',
+            'ETag': f'"{hashlib.md5(content).hexdigest()}"',
+        },
     )
 
 
