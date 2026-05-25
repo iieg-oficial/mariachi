@@ -104,6 +104,62 @@ async def listar_carpetas(
     return [acervo_file_service.serialize_folder(f) for f in folders]
 
 
+@router.get("/carpetas/{bucket_id}/zip")
+async def descargar_carpeta_zip(
+    bucket_id: int,
+    prefix: str = Query("", description="Prefijo dentro del bucket (sin / inicial)"),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    bucket = acervo_file_service.resolve_bucket_or_403(bucket_id, current_user, db)
+    client = AcervoClient.for_bucket(bucket)
+
+    normalized_prefix = prefix.strip("/")
+    listing = client.list_objects(
+        prefix=f"{normalized_prefix}/" if normalized_prefix else "",
+        recursive=True,
+    )
+    files_only = [o for o in listing if not o["is_dir"]]
+    if not files_only:
+        raise HTTPException(status_code=404, detail="Carpeta vacia o no encontrada")
+
+    total_size = sum(o["size"] for o in files_only)
+    if total_size > acervo_file_service.ZIP_MAX_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=(
+                f"Carpeta excede el limite de {acervo_file_service.ZIP_MAX_BYTES // (1024 * 1024)} MB "
+                f"(es {total_size // (1024 * 1024)} MB). Descarga subcarpetas individuales."
+            ),
+        )
+
+    base_strip = f"{normalized_prefix}/" if normalized_prefix else ""
+
+    def _entries():
+        for obj in files_only:
+            name = obj["name"]
+            arcname = name[len(base_strip):] if base_strip and name.startswith(base_strip) else name
+            yield arcname, lambda n=name: client.get_object_stream(n)
+
+    folder_label = normalized_prefix.split("/")[-1] if normalized_prefix else bucket.acervo_bucket
+    safe_label = "".join(c if c.isalnum() or c in "._-" else "_" for c in folder_label) or "acervo"
+    zip_filename = f"{safe_label}.zip"
+
+    logger.info(
+        "action=acervo.folder.zip user_id=%s bucket_id=%s prefix=%s files=%d size=%d",
+        current_user.id, bucket.id, normalized_prefix or "/", len(files_only), total_size,
+    )
+
+    return StreamingResponse(
+        acervo_file_service.stream_zip(_entries()),
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f'attachment; filename="{zip_filename}"',
+            "Cache-Control": "no-store",
+        },
+    )
+
+
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def subir_archivo(
     file: UploadFile = File(...),

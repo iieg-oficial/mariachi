@@ -1,3 +1,8 @@
+import io
+import zipfile
+from collections.abc import Iterator
+from typing import Callable
+
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -8,6 +13,65 @@ from app.models.acervo_bucket import AcervoBucket
 from app.models.project import UserProject
 from app.models.user import Usuario
 from app.services.acervo import AcervoClient
+
+ZIP_MAX_BYTES = 500 * 1024 * 1024  # 500 MB
+_ZIP_CHUNK = 64 * 1024
+
+
+class _ZipStreamBuffer(io.RawIOBase):
+    """Buffer write-only que acumula bytes y permite flushearlos en chunks."""
+
+    def __init__(self) -> None:
+        self._buf = bytearray()
+
+    def writable(self) -> bool:
+        return True
+
+    def write(self, b) -> int:
+        self._buf += b
+        return len(b)
+
+    def flush_bytes(self) -> bytes:
+        data = bytes(self._buf)
+        self._buf.clear()
+        return data
+
+
+def stream_zip(
+    entries: Iterator[tuple[str, Callable[[], object]]],
+) -> Iterator[bytes]:
+    """Genera un ZIP streaming. `entries` produce (arcname, stream_factory).
+
+    `stream_factory()` debe retornar un file-like con `.read(size)`; se cierra
+    al terminar cada archivo. Idoneo para servir archivos grandes sin cargar
+    todo el ZIP a memoria.
+    """
+    buf = _ZipStreamBuffer()
+    with zipfile.ZipFile(buf, mode="w", compression=zipfile.ZIP_DEFLATED, allowZip64=True) as zf:
+        for arcname, factory in entries:
+            with zf.open(arcname, mode="w", force_zip64=True) as entry:
+                stream = factory()
+                try:
+                    while True:
+                        chunk = stream.read(_ZIP_CHUNK)
+                        if not chunk:
+                            break
+                        entry.write(chunk)
+                        flushed = buf.flush_bytes()
+                        if flushed:
+                            yield flushed
+                finally:
+                    for closer in ("close", "release_conn"):
+                        try:
+                            getattr(stream, closer, lambda: None)()
+                        except Exception:
+                            pass
+            flushed = buf.flush_bytes()
+            if flushed:
+                yield flushed
+    final = buf.flush_bytes()
+    if final:
+        yield final
 
 _MIME_BY_EXT = {
     "txt": "text/plain", "csv": "text/csv", "pdf": "application/pdf",

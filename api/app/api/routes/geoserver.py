@@ -3,7 +3,7 @@ import re
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
-from fastapi.responses import Response
+from fastapi.responses import Response, StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_project_access, require_role, verify_csrf
@@ -19,6 +19,7 @@ from app.schemas.geoserver_file import (
     GeoServerSearchResponse,
 )
 from app.schemas.layer import WorkspaceCreate, WorkspacePending, WorkspaceResponse
+from app.services.acervo_file_service import ZIP_MAX_BYTES, stream_zip
 from app.services.geoserver_client import GeoServerClient, GeoServerError
 from app.services.palette_service import load_palettes
 from app.services.sld_parser import parse_sld
@@ -553,6 +554,71 @@ async def upload_geoserver_file(
     except GeoServerError as exc:
         raise HTTPException(status_code=502, detail=str(exc))
     return _build_file_response(target_name, content_type, workspace=clean_ws)
+
+
+@router.get('/files/zip')
+async def download_geoserver_folder_zip(
+    path: str = Query(default=''),
+    workspace: str | None = Query(default=None),
+    current_user: Usuario = Depends(_require_project_editor),
+    _rl: Usuario = Depends(_download_rate_limit),
+):
+    """Descarga ZIP streaming de una carpeta de `styles/` recursivamente."""
+    import io as _io
+
+    incr(COUNTER_GEOSERVER_CALLS)
+    clean_path = _validate_folder_path(path.strip().strip('/'))
+    clean_ws = _validate_workspace(workspace)
+    client = GeoServerClient()
+    items: list[dict] = []
+    try:
+        client._walk_styles_recursive(clean_path, clean_ws, items)
+    except GeoServerError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+
+    if not items:
+        raise HTTPException(status_code=404, detail="Carpeta vacia o no encontrada")
+
+    base_strip = f"{clean_path}/" if clean_path else ""
+
+    # Eagerly fetch para validar tamaño total antes de iniciar streaming.
+    # Trade-off: usa RAM hasta 500MB; OK para la mayoria de carpetas SLD.
+    total = 0
+    fetched: list[tuple[str, bytes]] = []
+    for it in items:
+        name = it['name']
+        try:
+            content, _ = client.get_style_file_bytes(name, workspace=clean_ws)
+        except GeoServerError:
+            continue
+        total += len(content)
+        if total > ZIP_MAX_BYTES:
+            raise HTTPException(
+                status_code=413,
+                detail=(
+                    f"Carpeta excede el limite de {ZIP_MAX_BYTES // (1024 * 1024)} MB. "
+                    "Descarga subcarpetas individuales."
+                ),
+            )
+        arcname = name[len(base_strip):] if base_strip and name.startswith(base_strip) else name
+        fetched.append((arcname, content))
+
+    folder_label = clean_path.split("/")[-1] if clean_path else (clean_ws or "global")
+    safe_label = "".join(c if c.isalnum() or c in "._-" else "_" for c in folder_label) or "geoserver"
+    zip_filename = f"{safe_label}.zip"
+
+    def _entries():
+        for arcname, content in fetched:
+            yield arcname, lambda c=content: _io.BytesIO(c)
+
+    return StreamingResponse(
+        stream_zip(_entries()),
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f'attachment; filename="{zip_filename}"',
+            "Cache-Control": "no-store",
+        },
+    )
 
 
 @router.get('/files/{name:path}')

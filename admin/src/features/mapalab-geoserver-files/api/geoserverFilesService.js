@@ -38,3 +38,11 @@ export const deleteGeoserverFile = async (name, workspace = '') => {
     const params = workspace ? { workspace } : {};
     await api.delete(`${BASE}/${parts}`, { params });
 };
+
+export const buildGeoserverFolderZipUrl = (path = '', workspace = '') => {
+    const qs = new URLSearchParams();
+    if (path) qs.set('path', path);
+    if (workspace) qs.set('workspace', workspace);
+    const suffix = qs.toString() ? `?${qs.toString()}` : '';
+    return `${api.defaults.baseURL}${BASE}/zip${suffix}`;
+};

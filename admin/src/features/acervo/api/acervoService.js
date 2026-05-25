@@ -208,6 +208,12 @@ export const deleteAcervoFile = async (id) => {
     }
 };
 
+export const buildFolderZipUrl = (bucketId, prefix = '') => {
+    const cleaned = (prefix || '').replace(/^\/+|\/+$/g, '');
+    const qs = cleaned ? `?prefix=${encodeURIComponent(cleaned)}` : '';
+    return `${api.defaults.baseURL}/acervo/carpetas/${bucketId}/zip${qs}`;
+};
+
 export const deleteMultipleFiles = async (ids) => {
     try {
         const deletePromises = ids.map(id => deleteAcervoFile(id));
@@ -348,6 +354,7 @@ export default {
     updateAcervoFile,
     deleteAcervoFile,
     deleteMultipleFiles,
+    buildFolderZipUrl,
     getFolders,
     createFolder,
     deleteFolder,
