@@ -9,6 +9,18 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [admin 1.15.1] - 2026-05-25
+
+### Documentación: McpTopic refleja los 3 tools nuevos de mapalab 1.44.0
+
+mapalab 1.44.0 agregó al MCP los tools `create_single_share`, `create_swipe_share` y `measure_geometry` (pensados para que agentes conversacionales como IGIBot entreguen mapas interactivos en lugar de solo descripciones). El tab "Servidor MCP" de `/administrador/documentacion` se actualiza para que el equipo descubra y entienda el nuevo flujo.
+
+- **`admin/src/features/documentacion/topics/McpTopic.jsx`**: nuevo grupo en la tabla de tools "shares + medición" con los 3 endpoints (`create_single_share`, `create_swipe_share`, `measure_geometry`). Texto introductorio actualizado: 11 → 14 tools, con mención explícita del caso de uso de mapas embebidos vía `<iieg-mapalab>`. Alert verde extendido para cubrir también el contrato de annotations/shares desde mapalab 1.43.0 y los tools de share/medición desde 1.44.0.
+
+Sin cambios en backend. El playground del admin sigue probando los endpoints REST equivalentes; los 3 nuevos tools no tienen REST equivalente directo (son orquestación específica del MCP) y se documentan solo en la tabla por ahora.
+
+---
+
 ## [1.15.0] - 2026-05-22
 
 ### Agregado: iconText con texto visible separado y link explícito con tokens

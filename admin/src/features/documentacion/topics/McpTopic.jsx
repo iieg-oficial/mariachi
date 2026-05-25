@@ -49,6 +49,11 @@ const TOOLS_BY_ROUTER = {
         { tool: 'refresh_layer_tree_cache', route: 'POST /layers/refresh-cache', desc: 'Regenera la cache materializada. Requiere X-Internal-Token.' },
         { tool: 'invalidate_layer_tree_memory_cache', route: 'POST /layers/invalidate-cache', desc: 'Invalida solo memoria del worker. Requiere X-Internal-Token.' },
     ],
+    'shares + medición': [
+        { tool: 'create_single_share', route: 'POST /shares (kind=single)', desc: 'Crea un share del visor con capas y annotations opcionales. Devuelve {id, url, embed_html}. Pensado para agentes conversacionales (IGIBot).', highlight: true },
+        { tool: 'create_swipe_share', route: 'POST /shares (kind=swipe)', desc: 'Crea un share en modo swipe A|B para comparación. Devuelve {id, url, embed_html}.' },
+        { tool: 'measure_geometry', route: 'PostGIS ST_Length/ST_Area::geography', desc: 'Calcula longitud (LineString) o área (Polygon) geodésica en metros/m² reales sobre WGS84.' },
+    ],
 };
 
 const TOOL_COLUMNS = [
@@ -196,11 +201,17 @@ export default function McpTopic() {
             <div>
                 <Title level={4}>Tools disponibles</Title>
                 <Text type="secondary">
-                    11 tools manuales (<Text code>@mcp.tool()</Text> en{' '}
+                    14 tools manuales (<Text code>@mcp.tool()</Text> en{' '}
                     <Text code>servers/mapalab.py</Text>) agrupados por router REST equivalente. El
                     más útil para un agente es <Text code strong>search_layers</Text>: resuelve el ID
-                    de una capa por su nombre visible y devuelve el path jerárquico. Los endpoints
-                    REST de <Text code>shares</Text> (writes), <Text code>download</Text> (streams) y{' '}
+                    de una capa por su nombre visible y devuelve el path jerárquico. Desde mapalab{' '}
+                    <Text code>1.44.0</Text>, los tres tools{' '}
+                    <Text code strong>create_single_share</Text>,{' '}
+                    <Text code strong>create_swipe_share</Text> y{' '}
+                    <Text code strong>measure_geometry</Text> permiten que un agente entregue mapas
+                    interactivos como respuesta (vía el widget <Text code>&lt;iieg-mapalab&gt;</Text>),
+                    no solo descripciones de texto. Los endpoints REST de{' '}
+                    <Text code>download</Text> (streams) y{' '}
                     <Text code>get_database_stats</Text> no se exponen al MCP — siguen disponibles
                     en REST normal.
                 </Text>
@@ -284,10 +295,12 @@ export default function McpTopic() {
             <Alert
                 type="success"
                 showIcon
-                message="Contrato robusto desde mapalab 1.40.1"
+                message="Contrato robusto desde mapalab 1.40.1 + share/medición desde 1.44.0"
                 description={
                     <>
                         <Text code>get_metadata</Text>, <Text code>resolve_layer_ref</Text> y <Text code>get_periodicity</Text> aceptan tanto el <Text code>id</Text> que devuelve <Text code>search_layers</Text> (p. ej. <Text code>tasa_homicidio_doloso</Text>) como el <Text code>geoserver_layer</Text>/<Text code>slug</Text>. Encadenar <Text code>search_layers → get_metadata</Text> ahora funciona pegando los valores tal cual.
+                        <br /><br />
+                        Desde mapalab 1.43.0 los shares persisten también <strong>mediciones y anotaciones</strong> (líneas, polígonos, textos, emojis) en GeoJSON. Y desde 1.44.0, el MCP expone <Text code>create_single_share</Text>, <Text code>create_swipe_share</Text> y <Text code>measure_geometry</Text> — un agente puede armar el mapa, pre-pintar geometrías de su análisis y devolver el snippet <Text code>&lt;iieg-mapalab share="..."&gt;</Text> al usuario para que interactúe.
                     </>
                 }
             />
