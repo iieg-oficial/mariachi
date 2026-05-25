@@ -43,7 +43,7 @@ En `api/app/api/deps.py`:
 - `require_role(["tetlamamakani"])` — restringe a una lista explicita de roles globales. Devuelve 403 si no coincide.
 - `require_staff` — atajo para `require_role([tetlamamakani, editora])`. Bloquea el rol externo. Se usa a nivel de `include_router` para proteger todos los endpoints del admin CMS.
 - `require_project_access(slug, min_role=None)` — valida que el usuario tenga membership en el proyecto `slug`. Bypass automatico para `tetlamamakani`. Cuando `min_role='editor'` exige `project_role='editor'`.
-- `require_bucket_access` — valida acceso al MediaBucket asociado a un proyecto.
+- `require_bucket_access` — valida acceso al AcervoBucket asociado a un proyecto.
 
 ## Aplicacion en routers
 

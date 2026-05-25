@@ -17,7 +17,7 @@ Lineas activas por modulo abajo. Roadmap a v1.0 sigue al final.
 - [x] **Auto-recovery del CSRF token** (v0.47.3) via `GET /autenticacion/csrf` + interceptor con retry
 - [x] **Sider con candado** (v0.47.2): items inaccesibles visibles + tooltip explicativo
 - [x] Paginas, menu, media (multi-bucket scoped)
-- [x] Multi-proyecto: tablas `projects`, `user_projects`, `media_buckets`
+- [x] Multi-proyecto: tablas `projects`, `user_projects`, `acervo_buckets`
 - [x] `require_project_access(min_role='editor')` aplicado en writes
 - [x] Buckets publicos/privados + proxy autenticado para privados
 - [x] Carpetas scoped por bucket (`(bucket_id, path)` unique)

@@ -111,7 +111,7 @@ Mismo procedimiento que SECRET_KEY pero invalida los tokens CSRF en lugar de las
 
 ## Acervo (MinIO) lleno
 
-**Sintomas:** uploads via `POST /multimedia` o `POST /formularios/bases-datos/{id}/diccionario` devuelven 500 con mensaje "no space left" o similares en logs.
+**Sintomas:** uploads via `POST /acervo` o `POST /formularios/bases-datos/{id}/diccionario` devuelven 500 con mensaje "no space left" o similares en logs.
 
 **Diagnostico:**
 
@@ -128,13 +128,13 @@ docker exec acervo-minio mc du local --depth 2
 
 **Recuperacion definitiva:** ampliar el volumen de Acervo o aplicar lifecycle policies (mover objetos antiguos a cold storage). Documentar la ampliacion en este runbook.
 
-## Recrear un MediaBucket
+## Recrear un AcervoBucket
 
-Si un MediaBucket de la tabla `media_buckets` se borro accidentalmente o nunca se creo en MinIO, recrear:
+Si un AcervoBucket de la tabla `acervo_buckets` se borro accidentalmente o nunca se creo en MinIO, recrear:
 
 ```sql
 -- en mariachi/iieg_portal:
-INSERT INTO media_buckets (project_id, acervo_bucket, access_key_ref, display_name, is_public, is_active, created_at)
+INSERT INTO acervo_buckets (project_id, acervo_bucket, access_key_ref, display_name, is_public, is_active, created_at)
 SELECT p.id, '<nombre_bucket>', '<KEY_REF>', '<display name>', false, true, NOW()
 FROM projects p WHERE p.slug = '<slug>'
 ON CONFLICT DO NOTHING;
