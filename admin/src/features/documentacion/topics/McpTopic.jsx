@@ -4,31 +4,12 @@ import McpPlayground from '@features/documentacion/topics/McpPlayground';
 const { Title, Paragraph, Text } = Typography;
 
 
-const PROXY_URL = import.meta.env.VITE_MAPALAB_PROXY_URL || '';
-const WEB_URL = import.meta.env.VITE_WEB_URL || '';
-
-const buildLocalMcpUrl = () => {
-    if (PROXY_URL) {
-        return `${PROXY_URL.replace(/\/+$/, '')}/mcp`;
-    }
-    if (typeof window !== 'undefined' && window.location?.origin) {
-        return `${window.location.origin}/mapalab/mcp`;
-    }
-    return 'http://<host>:<port>/mcp';
-};
-
-const buildPublicMcpUrl = () => {
-    if (WEB_URL && /^https?:\/\//i.test(WEB_URL)) {
-        return `${WEB_URL.replace(/\/+$/, '')}/mapalab/mcp`;
-    }
+const MCP_URL = (() => {
     if (typeof window !== 'undefined' && window.location?.origin) {
         return `${window.location.origin}/mapalab/mcp`;
     }
     return 'https://<dominio>/mapalab/mcp';
-};
-
-const LOCAL_MCP_URL = buildLocalMcpUrl();
-const PUBLIC_MCP_URL = buildPublicMcpUrl();
+})();
 
 
 const ROUTER_COLOR = {
@@ -102,40 +83,18 @@ const FIELD_COLUMNS = [
 ];
 
 
-const URLS = [
-    { contexto: 'Entre containers', url: 'http://mapalab-mcp:8000/mcp' },
-    { contexto: 'Local / dev (puerto publicado)', url: LOCAL_MCP_URL },
-    { contexto: 'Producción / staging', url: PUBLIC_MCP_URL },
-];
-
-const URL_COLUMNS = [
-    { title: 'Contexto', dataIndex: 'contexto', key: 'contexto', width: 220 },
-    { title: 'URL', dataIndex: 'url', key: 'url', render: (v) => <Text code>{v}</Text> },
-];
-
-
 export default function McpTopic() {
     return (
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
             <div>
                 <Title level={3} style={{ marginBottom: 4 }}>Servidor MCP</Title>
                 <Text type="secondary">
-                    El servidor MCP de MapaLab expone el catálogo de capas y operaciones de share/medición como tools que un agente LLM (Claude Desktop, IGIBot, etc.) puede consultar. Vive en un container dedicado <Text code>mapalab-mcp</Text>.
+                    El servidor MCP de MapaLab expone el catálogo de capas y operaciones de share/medición como tools que un agente LLM (Claude Desktop, IGIBot, etc.) puede consultar.
                 </Text>
-            </div>
-
-            <Card title="Endpoints / URL del MCP" size="small">
-                <Table
-                    rowKey="contexto"
-                    size="small"
-                    pagination={false}
-                    dataSource={URLS}
-                    columns={URL_COLUMNS}
-                />
-                <Paragraph type="secondary" style={{ marginTop: 12, marginBottom: 0, fontSize: 12 }}>
-                    Pega la URL <strong>sin slash final</strong> en la configuración del cliente MCP. Para <Text code>curl</Text> usa <Text code>-L</Text> o agrega el slash (<Text code>/mcp/</Text>) para evitar el 307 redirect.
+                <Paragraph style={{ marginTop: 12, marginBottom: 0, fontSize: 13 }} copyable={{ text: MCP_URL }}>
+                    URL del entorno actual: <Text code>{MCP_URL}</Text>
                 </Paragraph>
-            </Card>
+            </div>
 
             <Card
                 title={<>Tools disponibles <Tag style={{ marginLeft: 8 }}>{TOOLS.length}</Tag></>}

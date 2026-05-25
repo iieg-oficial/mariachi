@@ -498,13 +498,9 @@ const McpToolProbe = ({ probe, apiKey }) => {
                                 />
                             </div>
                         ) : (
-                            <Alert
-                                type="info"
-                                showIcon
-                                style={{ marginTop: 12 }}
-                                message="Pega una API key arriba para ver el share embebido"
-                                description="Sin la key solo ves el JSON. Pega una mk_pub_… en el input superior para que el playground monte el widget con el share recién creado."
-                            />
+                            <Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: 8 }}>
+                                Pega una <Text code>mk_pub_…</Text> arriba para ver este share embebido.
+                            </Text>
                         )
                     )}
                 </div>
@@ -531,17 +527,6 @@ export default function McpPlayground() {
 
     return (
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-            <Alert
-                type="info"
-                showIcon
-                message="Playground"
-                description={
-                    <>
-                        La primera tarjeta llama al protocolo MCP directamente (JSON-RPC <Text code>initialize</Text>) usando <Text code>{MAPALAB_MCP_URL}</Text> — la URL sin slash que pegarías en un cliente. Las tarjetas <Text code>tools/call</Text> ejecutan los tools del MCP directamente vía JSON-RPC. Las tarjetas REST llaman al endpoint equivalente vía <Text code>{MAPALAB_REST_BASE}/*</Text>. Solo se exponen tools sin efectos destructivos.
-                    </>
-                }
-            />
-
             <Card size="small" title="API key del widget (opcional)">
                 <Input.Password
                     placeholder="mk_pub_xxxxx..."

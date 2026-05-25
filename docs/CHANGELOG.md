@@ -9,6 +9,20 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [admin 1.15.7] - 2026-05-25
+
+### Página MCP de documentación: segunda pasada de compresión
+
+Tres recortes adicionales sobre `admin 1.15.6` para que la página quepa más cómoda:
+
+- **Card "Endpoints / URL del MCP" eliminada** y reemplazada por un `<Paragraph copyable>` debajo de la intro: solo muestra **la URL del entorno actual** (`window.location.origin + '/mapalab/mcp'`), con botón de copia inline. Quitadas las constantes `LOCAL_MCP_URL`/`PUBLIC_MCP_URL`/`URLS`/`URL_COLUMNS` y los `buildLocalMcpUrl`/`buildPublicMcpUrl` (cada admin trabaja en su entorno; las otras URLs viven en `docs/mcp.md` del repo).
+- **Alert "Playground" inicial removido** del `McpPlayground`. Era texto explicativo sobre cómo funcionan las tarjetas — los títulos de cada tarjeta ya lo dejan claro.
+- **Alert "Pega una API key arriba..."** dentro de las tarjetas `create_*_share` → `<Text type="secondary">` de una línea (`Pega una mk_pub_… arriba para ver este share embebido.`). Mismo mensaje, sin la caja azul gigante que ocupaba 80 px verticales por cada tarjeta de share.
+
+`McpTopic.jsx`: 340 → 177 → 136 líneas. La página ahora cabe casi entera en un viewport sin scrollear.
+
+---
+
 ## [admin 1.15.6] - 2026-05-25
 
 ### Página MCP de documentación: ~48% más corta
