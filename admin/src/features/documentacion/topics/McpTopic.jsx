@@ -61,28 +61,6 @@ const TOOL_COLUMNS = [
 ];
 
 
-const FIELDS_TELEMETRY = [
-    { campo: 'timestamp', tipo: 'datetime', origen: 'reloj del backend al recibir el request' },
-    { campo: 'dia', tipo: 'date', origen: 'fecha de timestamp (para particionar consultas)' },
-    { campo: 'method', tipo: 'string', origen: 'JSON-RPC: initialize, tools/list, tools/call, notifications/initialized' },
-    { campo: 'tool', tipo: 'string | null', origen: 'params.name cuando method = "tools/call"' },
-    { campo: 'status', tipo: 'ok | error', origen: 'ok si HTTP < 400; error si ≥ 400' },
-    { campo: 'error_code', tipo: 'int | null', origen: 'status HTTP cuando hay error' },
-    { campo: 'duration_ms', tipo: 'int', origen: 'time.monotonic() antes/después del downstream' },
-    { campo: 'bytes_out', tipo: 'int', origen: 'suma de chunks del response (incluye SSE)' },
-    { campo: 'session_hash', tipo: 'sha-256', origen: 'salt + mcp-session-id (no se guarda en claro)' },
-    { campo: 'ip_hash', tipo: 'sha-256', origen: 'salt + IP del cliente' },
-    { campo: 'client_name', tipo: 'string | null', origen: 'params.clientInfo.name del initialize' },
-    { campo: 'client_version', tipo: 'string | null', origen: 'params.clientInfo.version del initialize' },
-];
-
-const FIELD_COLUMNS = [
-    { title: 'Campo', dataIndex: 'campo', key: 'campo', render: (v) => <Text code>{v}</Text> },
-    { title: 'Tipo', dataIndex: 'tipo', key: 'tipo' },
-    { title: 'Origen', dataIndex: 'origen', key: 'origen' },
-];
-
-
 export default function McpTopic() {
     return (
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
@@ -110,23 +88,10 @@ export default function McpTopic() {
                 />
             </Card>
 
-            <Card title="Telemetría — campos persistidos en mapalab_mcp_events" size="small">
-                <Table
-                    rowKey="campo"
-                    size="small"
-                    pagination={false}
-                    dataSource={FIELDS_TELEMETRY}
-                    columns={FIELD_COLUMNS}
-                />
-                <Paragraph type="secondary" style={{ marginTop: 12, marginBottom: 0, fontSize: 12 }}>
-                    Buffer en memoria, flush async cada 30 s a <Text code>POST /api/administrador/internal/mapalab/mcp/events</Text>. Sin identidad: session id e IP se guardan hasheados con SHA-256. Estadísticas agregadas en el tab MCP de Estadísticas.
-                </Paragraph>
-            </Card>
-
             <div>
                 <Title level={4} style={{ marginBottom: 4 }}>Probar endpoints</Title>
                 <Text type="secondary">
-                    Llama los tools del MCP vía JSON-RPC o los endpoints REST equivalentes. Las tarjetas <Text code>create_*_share</Text> embeben el mapa resultante si pegas una API key arriba.
+                    Llama los tools del MCP vía JSON-RPC o los endpoints REST equivalentes. Las tarjetas <Text code>create_*_share</Text> embeben el mapa resultante si pegas una API key arriba. Telemetría persistida en el tema <Text code>Telemetría</Text>.
                 </Text>
             </div>
 

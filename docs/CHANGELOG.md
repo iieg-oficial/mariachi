@@ -9,6 +9,20 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [admin 1.15.8] - 2026-05-25
+
+### Documentación: tema `Telemetría` separado de `Servidor MCP`
+
+Telemetría es un tema transversal del ecosistema (hoy MCP, mañana visor, sieej, etc.), no algo específico del MCP. Se separa en su propio tema dentro de `/administrador/documentacion` para que el tab "Servidor MCP" quede enfocado y `Telemetría` pueda crecer con secciones por fuente sin volverse un mega-tab.
+
+- **`admin/src/features/documentacion/topics/TelemetryTopic.jsx`** (nuevo): componente con intro general "Registro de eventos sin identidad…" y por ahora una Card por fuente — primera: "Servidor MCP de MapaLab — `mapalab_mcp_events`" con la tabla de 12 campos y descripción del flujo (middleware ASGI → flush 30 s → endpoint internal). Diseñado para sumar más Cards (telemetría del visor, sieej, etc.) sin reestructurar.
+- **`McpTopic.jsx`**: removida la Card "Telemetría — campos persistidos…" y constantes asociadas (`FIELDS_TELEMETRY`, `FIELD_COLUMNS`). El párrafo de intro al playground menciona "Telemetría persistida en el tema `Telemetría`" para que el lector sepa a dónde ir.
+- **`DocumentacionPage.jsx`**: nuevo item en `TOPICS` con `key='telemetria'`, label `Telemetría`. URL bookmarkable via `?topic=telemetria` (igual que el tema MCP existente).
+
+`McpTopic.jsx`: 340 → 177 → 136 → **101 líneas**.
+
+---
+
 ## [admin 1.15.7] - 2026-05-25
 
 ### Página MCP de documentación: segunda pasada de compresión
