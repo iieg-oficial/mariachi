@@ -1,12 +1,26 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, Button, Card, Col, Form, Input, InputNumber, Row, Space, Tag, Typography, message } from 'antd';
 import { PlayCircleOutlined } from '@ant-design/icons';
+import { Link } from 'react-router';
 
 const { Text } = Typography;
 
 
 const MAPALAB_REST_BASE = '/mapalab/api';
 const MAPALAB_MCP_URL = '/mapalab/mcp';
+const WIDGET_SCRIPT_URL = '/mapalab/widget/v1/mapalab.js';
+const API_KEY_STORAGE_KEY = 'mariachi.mcp_playground.api_key';
+
+const useMapalabWidgetScript = () => {
+    useEffect(() => {
+        if (document.querySelector('script[data-mapalab-widget]')) return;
+        const s = document.createElement('script');
+        s.src = WIDGET_SCRIPT_URL;
+        s.defer = true;
+        s.dataset.mapalabWidget = 'true';
+        document.head.appendChild(s);
+    }, []);
+};
 
 
 const PROBES = [
@@ -375,7 +389,10 @@ const extractToolPayload = (jsonRpcResponse) => {
 };
 
 
-const McpToolProbe = ({ probe }) => {
+const SHARE_TOOLS = new Set(['create_single_share', 'create_swipe_share']);
+
+
+const McpToolProbe = ({ probe, apiKey }) => {
     const [args, setArgs] = useState(JSON.stringify(probe.defaultArguments, null, 2));
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState(null);
@@ -467,6 +484,29 @@ const McpToolProbe = ({ probe }) => {
                     >
                         <code>{typeof result.body === 'string' ? result.body : JSON.stringify(result.body, null, 2)}</code>
                     </pre>
+                    {SHARE_TOOLS.has(probe.tool) && result.body?.id && (
+                        apiKey ? (
+                            <div style={{ marginTop: 12 }}>
+                                <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 4 }}>
+                                    Previsualización del share <Text code>{result.body.id}</Text> con tu API key:
+                                </Text>
+                                <iieg-mapalab
+                                    api-key={apiKey}
+                                    share={result.body.id}
+                                    height="450"
+                                    controls="zoom"
+                                />
+                            </div>
+                        ) : (
+                            <Alert
+                                type="info"
+                                showIcon
+                                style={{ marginTop: 12 }}
+                                message="Pega una API key arriba para ver el share embebido"
+                                description="Sin la key solo ves el JSON. Pega una mk_pub_… en el input superior para que el playground monte el widget con el share recién creado."
+                            />
+                        )
+                    )}
                 </div>
             )}
         </Card>
@@ -475,6 +515,20 @@ const McpToolProbe = ({ probe }) => {
 
 
 export default function McpPlayground() {
+    useMapalabWidgetScript();
+    const [apiKey, setApiKey] = useState(() => {
+        try { return localStorage.getItem(API_KEY_STORAGE_KEY) || ''; } catch { return ''; }
+    });
+
+    const handleApiKeyChange = (value) => {
+        const trimmed = (value || '').trim();
+        setApiKey(trimmed);
+        try {
+            if (trimmed) localStorage.setItem(API_KEY_STORAGE_KEY, trimmed);
+            else localStorage.removeItem(API_KEY_STORAGE_KEY);
+        } catch { /* localStorage no disponible */ }
+    };
+
     return (
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
             <Alert
@@ -488,6 +542,19 @@ export default function McpPlayground() {
                 }
             />
 
+            <Card size="small" title="API key del widget (opcional)">
+                <Input.Password
+                    placeholder="mk_pub_xxxxx..."
+                    value={apiKey}
+                    onChange={(e) => handleApiKeyChange(e.target.value)}
+                    autoComplete="off"
+                    allowClear
+                />
+                <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 6 }}>
+                    Necesaria solo para previsualizar los shares de <Text code>create_single_share</Text> y <Text code>create_swipe_share</Text> embebidos debajo del JSON de respuesta. Genera o rota una key en <Link to="/mapalab/api-keys">Llaves del visor MapaLab</Link> con el dominio del admin en sitios autorizados. La key se guarda en <Text code>localStorage</Text> de este navegador.
+                </Text>
+            </Card>
+
             <McpRootProbe />
 
             <div style={{ marginTop: 8 }}>
@@ -498,7 +565,7 @@ export default function McpPlayground() {
             </div>
 
             {MCP_TOOL_PROBES.map((probe) => (
-                <McpToolProbe key={probe.tool} probe={probe} />
+                <McpToolProbe key={probe.tool} probe={probe} apiKey={apiKey} />
             ))}
 
             <div style={{ marginTop: 8 }}>

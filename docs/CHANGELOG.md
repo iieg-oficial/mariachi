@@ -9,6 +9,26 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [admin 1.15.4] - 2026-05-25
+
+### Playground del MCP: previsualización embebida del share creado vía `<iieg-mapalab>`
+
+Cuando un admin probaba `create_single_share` o `create_swipe_share` desde `/administrador/documentacion`, el playground devolvía un JSON `{id, url, embed_html}` y obligaba a copiar la `url` y abrirla en otra pestaña para verificar a ojo que el mapa salió bien. Ahora el widget se monta inline debajo del JSON con la API key del admin.
+
+#### Cambios en `admin/src/features/documentacion/topics/McpPlayground.jsx`
+
+- **Hook `useMapalabWidgetScript`**: inserta una sola vez `<script src="/mapalab/widget/v1/mapalab.js" defer data-mapalab-widget>` al `document.head`. Idempotente — los re-renders no duplican.
+- **Input "API key del widget"**: nueva card al inicio con `<Input.Password>` para pegar una `mk_pub_…`. Persistida en `localStorage` (`mariachi.mcp_playground.api_key`) para no repetir cada visita. Link al feature [Llaves del visor MapaLab](/mariachi/mapalab/api-keys) (`@features/mapalab-api-keys/MapalabApiKeysPage`) para crear/rotar una con el dominio del admin autorizado.
+- **Render condicional en `McpToolProbe`**: si el tool ejecutado es `create_single_share` o `create_swipe_share` (set `SHARE_TOOLS`) y la respuesta trae `id`, debajo del `<pre>` con el JSON se monta `<iieg-mapalab api-key={apiKey} share={result.body.id} height="450" controls="zoom" />`. Si no hay key, en su lugar se muestra un `Alert` info explicando cómo activar la previsualización.
+
+#### Por qué API key
+
+El widget requiere `mk_pub_…` para validar CORS y emitir el iframe (mismo flujo que cuando un huésped externo embebe el visor en su sitio). La key plana no se almacena en backend después del reveal único, así que el playground tampoco la guarda — vive solo en `localStorage` del navegador del admin que la pegó. Cada admin usa la suya.
+
+Sin cambios en backend. El widget se sirve desde la imagen de `mariachi-nginx` (que copia `widget/dist/`); no requiere cambios de infra.
+
+---
+
 ## [admin 1.15.3] - 2026-05-25
 
 ### Alineación con mapalab 1.45.0: URLs del MCP migradas de `/mapalab/api/mcp` → `/mapalab/mcp`
