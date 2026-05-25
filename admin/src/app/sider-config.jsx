@@ -54,9 +54,9 @@ export const PLATFORM_ITEMS = [
         allowedGlobalRoles: ['tetlamamakani'],
     },
     {
-        key: '/media',
-        path: '/media',
-        label: 'Media',
+        key: '/acervo',
+        path: '/acervo',
+        label: 'Acervo',
         icon: <FileImageOutlined />,
         allowedGlobalRoles: ['tetlamamakani', 'editora'],
     },

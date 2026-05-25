@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Layout, Card, Form, Input, Button, Avatar, Space, Typography, Tag, Divider, Upload } from 'antd';
 import { UserOutlined, SaveOutlined, FileImageOutlined, UploadOutlined } from '@ant-design/icons';
 import { useAuth } from '@shared/contexts/useAuth';
-import { BucketFilePicker, useAccessibleBuckets } from '@features/media';
+import { BucketFilePicker, useAccessibleBuckets } from '@features/acervo';
 import { message } from '@shared/services/message';
 import { actualizarPerfil, subirAvatar } from '@features/perfil/api/perfilService';
 

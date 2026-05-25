@@ -33,7 +33,7 @@ const Users = lazy(() => import('@features/users'));
 const Actividad = lazy(() => import('@features/actividad'));
 const MenuManager = lazy(() => import('@features/portal-menu'));
 const PageEditor = lazy(() => import('@features/portal-pages'));
-const Media = lazy(() => import('@features/media'));
+const Acervo = lazy(() => import('@features/acervo'));
 const RevisionQueue = lazy(() => import('@features/revision'));
 const LayerEditPage = lazy(() => import('@features/mapalab-layers').then((m) => ({ default: m.LayerEditPage })));
 const InitialLayerOrderPage = lazy(() => import('@features/mapalab-layers').then((m) => ({ default: m.InitialLayerOrderPage })));
@@ -121,10 +121,10 @@ const router = createBrowserRouter([
                         )
                     },
                     {
-                        path: 'media',
+                        path: 'acervo',
                         element: withSuspense(
                             <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
-                                <Media />
+                                <Acervo />
                             </RoleProtectedRoute>
                         )
                     },

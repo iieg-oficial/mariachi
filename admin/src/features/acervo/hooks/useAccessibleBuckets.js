@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getBuckets } from '@features/media/api/mediaService';
+import { getBuckets } from '@features/acervo/api/acervoService';
 
 let bucketsCache = null;
 let bucketsPromise = null;

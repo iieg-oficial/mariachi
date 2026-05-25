@@ -3,7 +3,7 @@ import { Alert, Button, Card, Form, Input, Select, Space, Spin, Typography } fro
 import { PlusOutlined, MinusCircleOutlined, FolderOpenOutlined, UploadOutlined } from '@ant-design/icons';
 import { Link } from 'react-router';
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
-import { BucketFilePicker, BucketFileUploader, useAccessibleBuckets } from '@features/media';
+import { BucketFilePicker, BucketFileUploader, useAccessibleBuckets } from '@features/acervo';
 import LayerStatsSection from '@features/mapalab-layers/components/layersEditor/LayerStatsSection';
 import { message } from '@shared/services/message';
 
@@ -429,7 +429,7 @@ export default function LayerMetadataSection({
                         )}
                     </Form.List>
                     <div style={{ marginTop: 12, textAlign: 'right' }}>
-                        <Link to="/media" style={{ fontSize: 12 }}>
+                        <Link to="/acervo" style={{ fontSize: 12 }}>
                             Administrar todos los archivos →
                         </Link>
                     </div>

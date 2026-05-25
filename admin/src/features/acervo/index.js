@@ -1,5 +1,5 @@
-export { default } from './pages/MediaPage';
-export { default as MediaPage } from './pages/MediaPage';
+export { default } from './pages/AcervoPage';
+export { default as AcervoPage } from './pages/AcervoPage';
 export { default as BucketFilePicker } from './components/BucketFilePicker';
 export { default as BucketFileUploader } from './components/BucketFileUploader';
 export { default as useAccessibleBuckets, invalidateAccessibleBucketsCache } from './hooks/useAccessibleBuckets';

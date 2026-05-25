@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Button, Image, Input, Space, Typography } from 'antd';
 import { ClearOutlined, FileImageOutlined } from '@ant-design/icons';
-import { BucketFilePicker } from '@features/media';
+import { BucketFilePicker } from '@features/acervo';
 import { message } from '@shared/services/message';
 
 const { Text } = Typography;

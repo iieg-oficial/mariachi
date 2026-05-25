@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
-import BucketFilePicker from '@features/media/components/BucketFilePicker';
+import BucketFilePicker from '@features/acervo/components/BucketFilePicker';
 
-vi.mock('@features/media/api/mediaService', () => ({
+vi.mock('@features/acervo/api/acervoService', () => ({
     listBucketObjects: vi.fn(),
     getBuckets: vi.fn(() => Promise.resolve([])),
 }));
 
-import { listBucketObjects } from '@features/media/api/mediaService';
+import { listBucketObjects } from '@features/acervo/api/acervoService';
 
 const SAMPLE_OBJECTS = [
     {
