@@ -9,6 +9,36 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [admin 1.15.6] - 2026-05-25
+
+### Página MCP de documentación: ~48% más corta
+
+El `McpTopic` venía con 340 líneas, varias secciones redundantes o que nadie leía en la práctica. Recortado a 177 líneas dejando solo lo accionable.
+
+#### Quitado
+
+- **Alert "¿Para qué sirve?"** y **Alert "Contrato robusto desde mapalab 1.40.1 + share/medición desde 1.44.0"** — texto explicativo que el lector no leía. La info relevante está en `docs/mcp.md` del repo y en el playground en vivo.
+- **Sección "Cómo se usa"** completa, con los dos cards de Claude Desktop config + Python LangChain snippet. Pertenece al `docs/mcp.md` del repo (lectura por integrador externo), no al panel admin.
+- **Card "Ejemplo de respuesta: search_layers"** — el playground tiene el botón "Probar" para `search_layers` que devuelve respuesta real y viva. Estático arriba era redundante.
+- **Card "Características"** final con dos listas de bullets "Qué incluye / Qué NO incluye" — resumen redundante de todo lo ya explicado en otras secciones.
+- **4 Cards de "Tools por router"** (metadata, periodicity, layers, shares+medición) → **1 sola tabla** con columna `Router` (con filtros nativos de Ant Table en el header). Mismo info, una sola lista ordenable.
+- 3 constantes muertas: `SEARCH_EXAMPLE`, `CLIENT_DESKTOP_EXAMPLE`, `CLIENT_PY_EXAMPLE`, helper `CodeBlock`.
+- Imports muertos: `Alert`, `Col`, `Divider`, `Row`.
+
+#### Resultado
+
+Estructura final del tab "Servidor MCP" en `/administrador/documentacion`:
+
+1. Título + intro 1 línea
+2. Card "Endpoints / URL del MCP" (sin cambios)
+3. Card "Tools disponibles" con tabla consolidada filtrable por router
+4. Card "Telemetría — campos persistidos" (sin cambios)
+5. Sección "Probar endpoints" + `<McpPlayground />` (sin cambios)
+
+Sin pérdida de info accionable. Toda la info quitada vive en `docs/mcp.md` del repo de mapalab, que es la referencia canónica para integradores.
+
+---
+
 ## [admin 1.15.5] - 2026-05-25
 
 ### Sider sticky al viewport: "Documentación" siempre visible al fondo + menú normal scrolleable
