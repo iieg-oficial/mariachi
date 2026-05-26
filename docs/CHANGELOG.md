@@ -9,27 +9,7 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
-## [admin 1.18.1] - 2026-05-26
-
-### Corregido: endpoints de `/layers/highlight` ahora responden y aceptan el body
-
-Tres bugs encadenados que impedían usar el modal "Configuración global del resaltado" introducido en `admin 1.17.0`:
-
-1. **Path duplicado**: `useHighlightBulk.js` definía `BASE = '/administrador/layers/highlight'`, pero el `api` client de mariachi-admin ya incluye `/administrador/` en su baseURL. Resultado: `/api/administrador/administrador/layers/highlight/stats` → 404. Cambio: `BASE = '/layers/highlight'` (consistente con `useLayerTreeAdmin.js`).
-
-2. **Prefix del router faltaba `/layers`**: `APIRouter(prefix='/highlight')` resultaba en `/administrador/highlight/...` cuando los hermanos (`crud.py`, `aliases.py`) usan `prefix='/layers'`. Cambio: `APIRouter(prefix='/layers/highlight')`.
-
-3. **Body camelCase rechazado con 422**: `HighlightBulkApplyBody`, `HighlightBulkRestoreBody`, `HighlightResetBody`, `HighlightBulkSnapshot` heredaban de `BaseModel` con solo `serialization_alias`. Eso convierte snake_case → camelCase **al serializar respuestas**, pero NO al **deserializar requests** — Pydantic esperaba `apply_to`/`theme_ids`/`dry_run` en snake y rechazaba el body camelCase del frontend. Cambio: heredan de `CamelCaseInput` (el mixin del repo con `model_validator` para normalizar camelCase → snake_case en input). El `serialization_alias` se mantiene para que la respuesta siga siendo camelCase.
-
-#### Que cambio
-
-- **`admin/src/features/mapalab-layers/hooks/useHighlightBulk.js`**: `BASE` sin prefijo `/administrador/`.
-- **`api/app/api/routes/layers/highlight.py`**: prefix corregido a `/layers/highlight`.
-- **`api/app/schemas/layer.py`**: los 4 schemas de input ahora heredan de `CamelCaseInput`.
-
----
-
-## [admin 1.18.0] - 2026-05-26
+## [admin 1.19.0] - 2026-05-26
 
 ### Editor de capas: filtro por municipio con picker inteligente de columna
 
@@ -49,12 +29,32 @@ Sincronización con mapalab 1.50.0 que ahora aplica filtros CQL por capa según 
 
 ---
 
-## [api 1.18.0] - 2026-05-26
+## [api 1.19.0] - 2026-05-26
 
 ### Schema: `municipio_field_type` para LayerBase y LayerUpdate
 
 - **`api/app/models/layer.py`**: nueva columna `municipio_field_type = Column(String(20), nullable=True)`. Backed por la migration `0017_layer_municipio_field_type` en dataengine.
 - **`api/app/schemas/layer.py`**: campo agregado a `LayerBase` (con `max_length=20, serialization_alias="municipioFieldType"`) y a `LayerUpdate` (nullable). El service `update_layer` ya hacía `setattr` genérico sobre el payload, así que persiste sin cambios adicionales.
+
+---
+
+## [admin 1.18.1] - 2026-05-26
+
+### Corregido: endpoints de `/layers/highlight` ahora responden y aceptan el body
+
+Tres bugs encadenados que impedían usar el modal "Configuración global del resaltado" introducido en `admin 1.17.0`:
+
+1. **Path duplicado**: `useHighlightBulk.js` definía `BASE = '/administrador/layers/highlight'`, pero el `api` client de mariachi-admin ya incluye `/administrador/` en su baseURL. Resultado: `/api/administrador/administrador/layers/highlight/stats` → 404. Cambio: `BASE = '/layers/highlight'` (consistente con `useLayerTreeAdmin.js`).
+
+2. **Prefix del router faltaba `/layers`**: `APIRouter(prefix='/highlight')` resultaba en `/administrador/highlight/...` cuando los hermanos (`crud.py`, `aliases.py`) usan `prefix='/layers'`. Cambio: `APIRouter(prefix='/layers/highlight')`.
+
+3. **Body camelCase rechazado con 422**: `HighlightBulkApplyBody`, `HighlightBulkRestoreBody`, `HighlightResetBody`, `HighlightBulkSnapshot` heredaban de `BaseModel` con solo `serialization_alias`. Eso convierte snake_case → camelCase **al serializar respuestas**, pero NO al **deserializar requests** — Pydantic esperaba `apply_to`/`theme_ids`/`dry_run` en snake y rechazaba el body camelCase del frontend. Cambio: heredan de `CamelCaseInput` (el mixin del repo con `model_validator` para normalizar camelCase → snake_case en input). El `serialization_alias` se mantiene para que la respuesta siga siendo camelCase.
+
+#### Que cambio
+
+- **`admin/src/features/mapalab-layers/hooks/useHighlightBulk.js`**: `BASE` sin prefijo `/administrador/`.
+- **`api/app/api/routes/layers/highlight.py`**: prefix corregido a `/layers/highlight`.
+- **`api/app/schemas/layer.py`**: los 4 schemas de input ahora heredan de `CamelCaseInput`.
 
 ---
 
