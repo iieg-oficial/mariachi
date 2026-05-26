@@ -16,7 +16,7 @@ from app.services import layer_service
 from app.services.mapalab_notifier import notify_tree_changed
 
 
-router = APIRouter(prefix='/highlight')
+router = APIRouter(prefix='/layers/highlight')
 
 
 @router.get('/stats', response_model=HighlightStats)

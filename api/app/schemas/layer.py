@@ -202,6 +202,7 @@ class LayerBase(CamelCaseInput):
     has_municipio: bool = Field(default=False, serialization_alias="hasMunicipio")
     has_direccion: bool = Field(default=False, serialization_alias="hasDireccion")
     municipio_field: str | None = Field(default=None, max_length=100, serialization_alias="municipioField")
+    municipio_field_type: str | None = Field(default=None, max_length=20, serialization_alias="municipioFieldType")
     direccion_field: str | None = Field(default=None, max_length=100, serialization_alias="direccionField")
 
     infobox_template: str | None = Field(default=None, max_length=50, serialization_alias="infoboxTemplate")
@@ -276,6 +277,7 @@ class LayerUpdate(CamelCaseInput):
     has_municipio: bool | None = Field(default=None, serialization_alias="hasMunicipio")
     has_direccion: bool | None = Field(default=None, serialization_alias="hasDireccion")
     municipio_field: str | None = Field(default=None, serialization_alias="municipioField")
+    municipio_field_type: str | None = Field(default=None, max_length=20, serialization_alias="municipioFieldType")
     direccion_field: str | None = Field(default=None, serialization_alias="direccionField")
 
     infobox_template: str | None = Field(default=None, serialization_alias="infoboxTemplate")
@@ -418,14 +420,12 @@ class HighlightStats(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
-class HighlightBulkApplyBody(BaseModel):
+class HighlightBulkApplyBody(CamelCaseInput):
     color: HighlightColor | None = None
     shape: HighlightShape | None = None
     apply_to: Literal["all", "defaults"] = Field(..., serialization_alias="applyTo")
     theme_ids: list[str] | None = Field(default=None, serialization_alias="themeIds")
     dry_run: bool = Field(default=False, serialization_alias="dryRun")
-
-    model_config = ConfigDict(populate_by_name=True)
 
     @field_validator("color", mode="before")
     @classmethod
@@ -433,12 +433,10 @@ class HighlightBulkApplyBody(BaseModel):
         return _validate_highlight_color(v)
 
 
-class HighlightBulkSnapshot(BaseModel):
+class HighlightBulkSnapshot(CamelCaseInput):
     layer_id: str = Field(..., serialization_alias="layerId")
-    color: str | None
-    shape: str | None
-
-    model_config = ConfigDict(populate_by_name=True)
+    color: str | None = None
+    shape: str | None = None
 
 
 class HighlightBulkApplyResult(BaseModel):
@@ -448,12 +446,10 @@ class HighlightBulkApplyResult(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
 
-class HighlightBulkRestoreBody(BaseModel):
+class HighlightBulkRestoreBody(CamelCaseInput):
     snapshot: list[HighlightBulkSnapshot]
 
 
-class HighlightResetBody(BaseModel):
+class HighlightResetBody(CamelCaseInput):
     theme_ids: list[str] | None = Field(default=None, serialization_alias="themeIds")
     dry_run: bool = Field(default=False, serialization_alias="dryRun")
-
-    model_config = ConfigDict(populate_by_name=True)

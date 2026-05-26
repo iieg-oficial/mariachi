@@ -9,6 +9,55 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [admin 1.18.1] - 2026-05-26
+
+### Corregido: endpoints de `/layers/highlight` ahora responden y aceptan el body
+
+Tres bugs encadenados que impedían usar el modal "Configuración global del resaltado" introducido en `admin 1.17.0`:
+
+1. **Path duplicado**: `useHighlightBulk.js` definía `BASE = '/administrador/layers/highlight'`, pero el `api` client de mariachi-admin ya incluye `/administrador/` en su baseURL. Resultado: `/api/administrador/administrador/layers/highlight/stats` → 404. Cambio: `BASE = '/layers/highlight'` (consistente con `useLayerTreeAdmin.js`).
+
+2. **Prefix del router faltaba `/layers`**: `APIRouter(prefix='/highlight')` resultaba en `/administrador/highlight/...` cuando los hermanos (`crud.py`, `aliases.py`) usan `prefix='/layers'`. Cambio: `APIRouter(prefix='/layers/highlight')`.
+
+3. **Body camelCase rechazado con 422**: `HighlightBulkApplyBody`, `HighlightBulkRestoreBody`, `HighlightResetBody`, `HighlightBulkSnapshot` heredaban de `BaseModel` con solo `serialization_alias`. Eso convierte snake_case → camelCase **al serializar respuestas**, pero NO al **deserializar requests** — Pydantic esperaba `apply_to`/`theme_ids`/`dry_run` en snake y rechazaba el body camelCase del frontend. Cambio: heredan de `CamelCaseInput` (el mixin del repo con `model_validator` para normalizar camelCase → snake_case en input). El `serialization_alias` se mantiene para que la respuesta siga siendo camelCase.
+
+#### Que cambio
+
+- **`admin/src/features/mapalab-layers/hooks/useHighlightBulk.js`**: `BASE` sin prefijo `/administrador/`.
+- **`api/app/api/routes/layers/highlight.py`**: prefix corregido a `/layers/highlight`.
+- **`api/app/schemas/layer.py`**: los 4 schemas de input ahora heredan de `CamelCaseInput`.
+
+---
+
+## [admin 1.18.0] - 2026-05-26
+
+### Editor de capas: filtro por municipio con picker inteligente de columna
+
+Sincronización con mapalab 1.50.0 que ahora aplica filtros CQL por capa según metadata declarada por el admin. La UI nueva en `LayerEditPage` permite configurar `hasMunicipio + municipioField + municipioFieldType` sin necesidad de SQL manual ni conocer los nombres exactos de columnas de la tabla.
+
+#### Agregado
+
+- **`features/mapalab-layers/components/MunicipioFieldPicker.jsx`** (nuevo):
+  - Dropdown con las columnas reales de la tabla del WMS, obtenidas vía el endpoint existente `/geoserver/workspaces/{alias}/layers/{layer}/fields?include_samples=true` (reusa el patrón de `CqlFilterBuilder`).
+  - Filtra solo columnas de tipo `string`, `integer`, `number`.
+  - Auto-detección del `municipioFieldType` analizando muestras de la columna: ≥80% match `/^14\d{3}$/` → `clave`; ≥80% texto alfabético → `nombre`. Preselecciona el form field, override manual disponible.
+  - Avisos en tiempo real con `<Alert>` de antd: success verde con tipo detectado + confianza; warning amarillo si la columna no parece ser de municipio; info azul cuando el nodo no tiene `geoserver_layer` propio y la config aplicará a N descendientes.
+  - Resolución de columnas desde **descendientes** cuando el nodo siendo editado es un `group`/`label` sin `geoserver_layer` propio (caso real: `establecimientos_salud` group con hijos labels y nietos leafs). Función `collectDescendantLeavesWithWms` busca el primer descendiente con WMS y cuenta cuántos hereda.
+  - Fallback a input modo `tags` si el endpoint de fields falla.
+- **`features/mapalab-layers/constants/nodeTypes.js`**: nuevo entry `municipioFilter: ['group', 'leaf']` en `FIELD_VISIBILITY` y constante `MUNICIPIO_FIELD_TYPE_OPTIONS`.
+- **`features/mapalab-layers/pages/LayerEditPage.jsx`**: sección "Filtro por municipio" en el tab Identidad con Switch `hasMunicipio` + `MunicipioFieldPicker` cuando está activo. Pasa `rawTree` y `layerId` al picker para la resolución de descendientes. `populate(data)` mapea los 3 campos al state del form.
+
+---
+
+## [api 1.18.0] - 2026-05-26
+
+### Schema: `municipio_field_type` para LayerBase y LayerUpdate
+
+- **`api/app/models/layer.py`**: nueva columna `municipio_field_type = Column(String(20), nullable=True)`. Backed por la migration `0017_layer_municipio_field_type` en dataengine.
+- **`api/app/schemas/layer.py`**: campo agregado a `LayerBase` (con `max_length=20, serialization_alias="municipioFieldType"`) y a `LayerUpdate` (nullable). El service `update_layer` ya hacía `setattr` genérico sobre el payload, así que persiste sin cambios adicionales.
+
+---
+
 ## [admin 1.17.2] - 2026-05-25
 
 ### Sincronización con mapalab 1.49.0: 2 tools MCP de municipios + probe `resolve_municipios`

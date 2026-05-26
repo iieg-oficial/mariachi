@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import api from '@shared/services/api';
 
-const BASE = '/administrador/layers/highlight';
+const BASE = '/layers/highlight';
 
 export function useHighlightBulk() {
     const [stats, setStats] = useState(null);
