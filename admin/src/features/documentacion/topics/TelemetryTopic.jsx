@@ -24,6 +24,35 @@ const FIELD_COLUMNS = [
     { title: 'Origen', dataIndex: 'origen', key: 'origen' },
 ];
 
+const MUNICIPIO_EVENTS = [
+    {
+        evento: 'municipio_mode_enter',
+        cuando: 'El usuario activa el modo Vista por municipio (manual, desde URL o desde share)',
+        params: 'source (iieg|inegi), count (n.º de municipios), from_url (bool)',
+    },
+    {
+        evento: 'municipio_mode_exit',
+        cuando: 'El usuario sale del modo (cierra desde el panel o se desactiva por código)',
+        params: 'duration_sec (segundos que duró el modo), source',
+    },
+    {
+        evento: 'municipio_mode_change',
+        cuando: 'Cambia la selección de municipios mientras el modo está activo',
+        params: 'source, count, action (add | remove | set | clear)',
+    },
+    {
+        evento: 'municipio_panel_open',
+        cuando: 'El usuario abre el panel selector desde el botón "Jalisco / N municipios"',
+        params: 'source, active (bool, si el modo ya estaba activo al abrir)',
+    },
+];
+
+const MUNICIPIO_EVENT_COLUMNS = [
+    { title: 'Evento', dataIndex: 'evento', key: 'evento', render: (v) => <Text code>{v}</Text> },
+    { title: 'Cuándo se dispara', dataIndex: 'cuando', key: 'cuando' },
+    { title: 'Parámetros', dataIndex: 'params', key: 'params', render: (v) => <Text code style={{ fontSize: 11 }}>{v}</Text> },
+];
+
 
 export default function TelemetryTopic() {
     return (
@@ -49,6 +78,25 @@ export default function TelemetryTopic() {
                     dataSource={MCP_FIELDS}
                     columns={FIELD_COLUMNS}
                 />
+            </Card>
+
+            <Card
+                title={<>Visor MapaLab — Modo Vista por municipio (beta)</>}
+                size="small"
+            >
+                <Paragraph type="secondary" style={{ marginTop: 0, marginBottom: 12, fontSize: 12 }}>
+                    Eventos emitidos por el visor cuando el usuario activa el modo Vista por municipio (gated por <Text code>VITE_APP_ENV in [dev, beta]</Text>). Se envían vía <Text code>analyticsService.trackEvent</Text> al collector propio (Mariachi) y a GA4. La fuente <Text code>source</Text> indica si los polígonos se piden de <Text code>general:limite_municipal</Text> (iieg) o <Text code>general:limite_municipal_inegi</Text> (inegi), derivado del switch IIEG/INEGI del panel de capas activas.
+                </Paragraph>
+                <Table
+                    rowKey="evento"
+                    size="small"
+                    pagination={false}
+                    dataSource={MUNICIPIO_EVENTS}
+                    columns={MUNICIPIO_EVENT_COLUMNS}
+                />
+                <Paragraph type="secondary" style={{ marginTop: 12, marginBottom: 0, fontSize: 12 }}>
+                    Para que una capa participe del filtro, debe tener <Text code>hasMunicipio = true</Text> y un <Text code>municipioField</Text> definido en el editor de capas (tab Apariencia). El visor construye un CQL <Text code>{'{field} IN (\'014\',\'067\')'}</Text> por capa. Las capas activas que no soporten el filtro se ocultan temporalmente y se marcan como deshabilitadas en el sider.
+                </Paragraph>
             </Card>
         </Space>
     );

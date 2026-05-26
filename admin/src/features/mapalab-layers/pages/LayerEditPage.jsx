@@ -31,6 +31,7 @@ import {
     isTabVisible,
     isPropertyOfGroup,
 } from '@features/mapalab-layers/constants/nodeTypes';
+import MunicipioFieldPicker from '@features/mapalab-layers/components/MunicipioFieldPicker';
 import { findNodeContext } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
 import { message } from '@shared/services/message';
 
@@ -224,6 +225,9 @@ export default function LayerEditPage() {
             timeStylePattern: data.timeStylePattern ?? data.time_style_pattern ?? '',
             hidePeriodicity: data.hidePeriodicity ?? data.hide_periodicity ?? false,
             searchTags: data.searchTags || data.search_tags || data.searchMeta?.tags || [],
+            hasMunicipio: data.hasMunicipio ?? data.has_municipio ?? data.searchMeta?.hasMunicipio ?? false,
+            municipioField: data.municipioField ?? data.municipio_field ?? data.searchMeta?.municipioField ?? '',
+            municipioFieldType: data.municipioFieldType ?? data.municipio_field_type ?? data.searchMeta?.municipioFieldType ?? null,
             infoboxConfig: data.infoboxConfig || null,
             iconUrl: data.iconUrl ?? data.icon_url ?? '',
             notice: data.notice ?? null,
@@ -613,6 +617,30 @@ export default function LayerEditPage() {
                                 )}
                             />
                         </Form.Item>
+                    )}
+                    {isFieldVisible('municipioFilter', watchedNodeType) && (
+                        <>
+                            <Form.Item
+                                label="Filtro por municipio"
+                                name="hasMunicipio"
+                                valuePropName="checked"
+                                extra="Si está activa, la capa se filtra por municipio en el visor usando el campo declarado abajo. Si no, cae en filtro espacial BBOX (rectángulo)."
+                            >
+                                <Switch />
+                            </Form.Item>
+                            <Form.Item noStyle shouldUpdate={(prev, cur) => prev.hasMunicipio !== cur.hasMunicipio}>
+                                {({ getFieldValue }) => getFieldValue('hasMunicipio') && (
+                                    <MunicipioFieldPicker
+                                        workspaceAlias={selectedWs}
+                                        geoserverLayer={selectedGsLayer}
+                                        listFields={listGeoserverFields}
+                                        form={form}
+                                        rawTree={rawTree}
+                                        layerId={layerId}
+                                    />
+                                )}
+                            </Form.Item>
+                        </>
                     )}
                     <Form.Item
                         label="Oculta en menú"
