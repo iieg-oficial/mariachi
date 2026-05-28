@@ -46,7 +46,7 @@ BACKUP_FILE="$BACKUP_DIR/infobox-prev-$TIMESTAMP.sql"
 
 mkdir -p "$BACKUP_DIR"
 
-INCOMING_KEYS=$(grep -oE "WHERE id = '[^']+'" "$SQL_FILE" | sed "s/WHERE id = '//; s/'$//" | sort -u)
+INCOMING_KEYS=$(grep -oE "WHERE id = '[^']+'" "$SQL_FILE" | sed "s/WHERE id = '//; s/'$//" | LC_ALL=C sort -u)
 if [ -z "$INCOMING_KEYS" ]; then
     echo "El archivo no contiene UPDATEs con id reconocibles." >&2
     exit 1
@@ -84,13 +84,16 @@ echo "  Existen en destino: $BACKUP_COUNT (los demas se omitiran sin error)"
 
 if [ "$BACKUP_COUNT" -lt "$INCOMING_COUNT" ]; then
     EXISTING_KEYS_FILE="$(mktemp)"
+    INCOMING_KEYS_FILE="$(mktemp)"
     psql "$DATAENGINE_URL" -A -t -c "
-        SELECT id FROM mapalab.layers WHERE id IN ($KEY_LIST) ORDER BY id
-    " 2>/dev/null | sort -u > "$EXISTING_KEYS_FILE"
-    MISSING=$(echo "$INCOMING_KEYS" | comm -23 - "$EXISTING_KEYS_FILE")
-    rm -f "$EXISTING_KEYS_FILE"
+        SELECT id FROM mapalab.layers WHERE id IN ($KEY_LIST)
+    " 2>/dev/null | LC_ALL=C sort -u > "$EXISTING_KEYS_FILE"
+    printf '%s\n' "$INCOMING_KEYS" | LC_ALL=C sort -u > "$INCOMING_KEYS_FILE"
+    MISSING=$(LC_ALL=C comm -23 "$INCOMING_KEYS_FILE" "$EXISTING_KEYS_FILE")
+    rm -f "$EXISTING_KEYS_FILE" "$INCOMING_KEYS_FILE"
     if [ -n "$MISSING" ]; then
-        echo "  Faltantes en destino:"
+        MISSING_COUNT=$(printf '%s\n' "$MISSING" | wc -l | tr -d ' ')
+        echo "  Faltantes en destino ($MISSING_COUNT capas no recibiran update):"
         echo "$MISSING" | sed 's/^/    - /'
     fi
 fi

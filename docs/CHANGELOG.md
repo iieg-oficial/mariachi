@@ -9,6 +9,16 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [admin 1.19.2] - 2026-05-28
+
+### Fix: `restore-tarjetitas` rompía por mismatch de orden entre host y contenedor + búsqueda en `restore/`
+
+`scripts/dataengine-apply-infobox.sh` fallaba con `comm: file 1/2 is not in sorted order` al listar capas faltantes. La causa: `INCOMING_KEYS` se ordenaba con el locale del host (`en_US.UTF-8`) mientras la lista de ids existentes salía del `sort` dentro del contenedor `postgres:18-alpine` (locale `C`); luego `comm` comparaba ambos con un orden distinto. Ahora ambos lados ordenan con `LC_ALL=C` y el `comm` también corre bajo `LC_ALL=C`, así que el bloque "Faltantes en destino" se imprime correctamente y muestra cuántas capas se omitirán.
+
+`scripts/pick-tarjetita.sh` ahora sigue el mismo patrón que `postgres-restore.sh`: busca primero en `restore/` (archivos curados, listos para aplicar) y cae a `backups/tarjetitas/` (snapshots históricos) solo si la primera está vacía. Si ambas están vacías, sugiere colocar el archivo en `restore/` en lugar de pedir un backup nuevo.
+
+---
+
 ## [admin 1.19.1] - 2026-05-28
 
 ### Perf: borrador del editor de Home solo se carga para el tab activo
