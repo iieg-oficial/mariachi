@@ -9,6 +9,324 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [admin 1.19.1] - 2026-05-28
+
+### Perf: borrador del editor de Home solo se carga para el tab activo
+
+`HomePage.jsx > SectionTab` montaba un `useResourceDraft` por cada sección de Home con `enabled: true`. Eso disparaba la suscripción de borrador (poll + websocket según `useResourceDraft`) para todas las secciones aunque el admin estuviera viendo solo una. Cambio: `enabled: active || reviewMode`. La pestaña activa sigue trayendo borrador en vivo; la pantalla de review (que renderiza todas las secciones para previsualizar el changeset completo) también lo necesita. Las inactivas quedan dormidas y se reactivan al click del tab.
+
+---
+
+## [admin 1.19.0] - 2026-05-26
+
+### Editor de capas: filtro por municipio con picker inteligente de columna
+
+Sincronización con mapalab 1.50.0 que ahora aplica filtros CQL por capa según metadata declarada por el admin. La UI nueva en `LayerEditPage` permite configurar `hasMunicipio + municipioField + municipioFieldType` sin necesidad de SQL manual ni conocer los nombres exactos de columnas de la tabla.
+
+#### Agregado
+
+- **`features/mapalab-layers/components/MunicipioFieldPicker.jsx`** (nuevo):
+  - Dropdown con las columnas reales de la tabla del WMS, obtenidas vía el endpoint existente `/geoserver/workspaces/{alias}/layers/{layer}/fields?include_samples=true` (reusa el patrón de `CqlFilterBuilder`).
+  - Filtra solo columnas de tipo `string`, `integer`, `number`.
+  - Auto-detección del `municipioFieldType` analizando muestras de la columna: ≥80% match `/^14\d{3}$/` → `clave`; ≥80% texto alfabético → `nombre`. Preselecciona el form field, override manual disponible.
+  - Avisos en tiempo real con `<Alert>` de antd: success verde con tipo detectado + confianza; warning amarillo si la columna no parece ser de municipio; info azul cuando el nodo no tiene `geoserver_layer` propio y la config aplicará a N descendientes.
+  - Resolución de columnas desde **descendientes** cuando el nodo siendo editado es un `group`/`label` sin `geoserver_layer` propio (caso real: `establecimientos_salud` group con hijos labels y nietos leafs). Función `collectDescendantLeavesWithWms` busca el primer descendiente con WMS y cuenta cuántos hereda.
+  - Fallback a input modo `tags` si el endpoint de fields falla.
+- **`features/mapalab-layers/constants/nodeTypes.js`**: nuevo entry `municipioFilter: ['group', 'leaf']` en `FIELD_VISIBILITY` y constante `MUNICIPIO_FIELD_TYPE_OPTIONS`.
+- **`features/mapalab-layers/pages/LayerEditPage.jsx`**: sección "Filtro por municipio" en el tab Identidad con Switch `hasMunicipio` + `MunicipioFieldPicker` cuando está activo. Pasa `rawTree` y `layerId` al picker para la resolución de descendientes. `populate(data)` mapea los 3 campos al state del form.
+
+---
+
+## [api 1.19.0] - 2026-05-26
+
+### Schema: `municipio_field_type` para LayerBase y LayerUpdate
+
+- **`api/app/models/layer.py`**: nueva columna `municipio_field_type = Column(String(20), nullable=True)`. Backed por la migration `0017_layer_municipio_field_type` en dataengine.
+- **`api/app/schemas/layer.py`**: campo agregado a `LayerBase` (con `max_length=20, serialization_alias="municipioFieldType"`) y a `LayerUpdate` (nullable). El service `update_layer` ya hacía `setattr` genérico sobre el payload, así que persiste sin cambios adicionales.
+
+---
+
+## [admin 1.18.1] - 2026-05-26
+
+### Corregido: endpoints de `/layers/highlight` ahora responden y aceptan el body
+
+Tres bugs encadenados que impedían usar el modal "Configuración global del resaltado" introducido en `admin 1.17.0`:
+
+1. **Path duplicado**: `useHighlightBulk.js` definía `BASE = '/administrador/layers/highlight'`, pero el `api` client de mariachi-admin ya incluye `/administrador/` en su baseURL. Resultado: `/api/administrador/administrador/layers/highlight/stats` → 404. Cambio: `BASE = '/layers/highlight'` (consistente con `useLayerTreeAdmin.js`).
+
+2. **Prefix del router faltaba `/layers`**: `APIRouter(prefix='/highlight')` resultaba en `/administrador/highlight/...` cuando los hermanos (`crud.py`, `aliases.py`) usan `prefix='/layers'`. Cambio: `APIRouter(prefix='/layers/highlight')`.
+
+3. **Body camelCase rechazado con 422**: `HighlightBulkApplyBody`, `HighlightBulkRestoreBody`, `HighlightResetBody`, `HighlightBulkSnapshot` heredaban de `BaseModel` con solo `serialization_alias`. Eso convierte snake_case → camelCase **al serializar respuestas**, pero NO al **deserializar requests** — Pydantic esperaba `apply_to`/`theme_ids`/`dry_run` en snake y rechazaba el body camelCase del frontend. Cambio: heredan de `CamelCaseInput` (el mixin del repo con `model_validator` para normalizar camelCase → snake_case en input). El `serialization_alias` se mantiene para que la respuesta siga siendo camelCase.
+
+#### Que cambio
+
+- **`admin/src/features/mapalab-layers/hooks/useHighlightBulk.js`**: `BASE` sin prefijo `/administrador/`.
+- **`api/app/api/routes/layers/highlight.py`**: prefix corregido a `/layers/highlight`.
+- **`api/app/schemas/layer.py`**: los 4 schemas de input ahora heredan de `CamelCaseInput`.
+
+---
+
+## [admin 1.17.2] - 2026-05-25
+
+### Sincronización con mapalab 1.49.0: 2 tools MCP de municipios + probe `resolve_municipios`
+
+mapalab 1.49.0 agregó al MCP los tools `list_municipios` y `resolve_municipios` para que un agente conversacional pueda activar el modo Vista por municipio en los shares. El tab "Servidor MCP" de `/administrador/documentacion` se actualiza para reflejar los 14 tools y el playground gana un probe nuevo para probar la búsqueda fuzzy.
+
+- **`McpTopic.jsx`**: 2 entradas nuevas en el array `TOOLS` (router nuevo `municipios` con color cyan). Las descripciones de `create_single_share` y `create_swipe_share` ahora mencionan que aceptan `municipios`.
+- **`McpPlayground.jsx`**: probe nuevo `resolve_municipios` con default `query: "guadalajara"`, `limit: 5`. El default de `create_single_share` se actualizó para incluir `municipios: {source:"iieg", selected:["14039","14120"]}` y view zoom 11 sobre el área metropolitana — el admin puede probar el flujo end-to-end y ver el mapa embebido filtrado a Guadalajara + Zapopan si tiene API key pegada.
+
+Sin cambios en backend de mariachi.
+
+---
+
+## [admin 1.17.1] - 2026-05-25
+
+### Sincronización con mapalab 1.48.1: tabla de tools MCP 14 → 12
+
+mapalab 1.48.1 quitó del MCP los tools `refresh_layer_tree_cache` e `invalidate_layer_tree_memory_cache` porque siempre devolvían 401 (los endpoints REST subyacentes requieren `X-Internal-Token` que el MCP no inyecta). El tab "Servidor MCP" de `/administrador/documentacion` se actualiza para reflejar la lista real.
+
+- **`admin/src/features/documentacion/topics/McpTopic.jsx`**: removidas las 2 entradas correspondientes del array `TOOLS`. El `<Tag>` de count en el header de la Card ahora muestra **12** automáticamente.
+
+Sin cambios en backend ni en otros componentes. El playground sigue funcional — el `tools/list` que muestra el MCP real ya devuelve 12 desde el restart del container `mapalab-mcp`.
+
+---
+
+## [admin 1.17.0] - 2026-05-25
+
+### Agregado: configuración global del resaltado (color custom hex + bulk apply + undo)
+
+#### Botón engranaje en el header del árbol
+
+Nuevo botón circular con ícono ⚙ al lado derecho del título "Capas MapaLab" en la página `/administrador/mapalab/layers`. Abre el modal "Configuración global del resaltado". Visible para admins.
+
+#### Color custom hex en `LayerHighlightField`
+
+Cuarta opción "Personalizado (hex)" en el `Radio.Group` de color (junto a morado/naranja/sombreado). Al seleccionarla aparece un `<ColorPicker>` de antd inline; el valor se persiste como hex `#RRGGBB` en `mapalab.layers.highlight_color` (la columna ya es `VARCHAR(20)`). El visor lee la cadena y, si matchea el patrón hex, genera el preset dinámicamente: stroke con ese color exacto y fill con alpha 15% (`${hex}26`).
+
+`api/app/schemas/layer.py`: `HighlightColor` cambió de `Literal["morado","naranja","sombreado"]` a `str` con validator que acepta los presets o un hex `#RRGGBB` (normalizado a uppercase). Mensaje de error específico si recibe algo inválido.
+
+#### Modal "Configuración global del resaltado"
+
+Tres secciones:
+
+1. **Estado actual** (`GET /administrador/layers/highlight/stats`): contadores por color y por forma, más métricas clave (`fully_default`, `with_color_override`, `with_shape_override`, `with_custom_hex`). Botón "Recargar" para refresh manual.
+
+2. **Aplicar masivo**: selectores de color (con opción de mantener el actual de cada capa) + forma (idem) + `apply_to` (`defaults` no toca overrides; `all` sobrescribe todo) + filtro multi-select por temas. Mientras el admin ajusta, un `useEffect` lanza un dry-run (`POST .../bulk` con `dryRun: true`) y muestra el count: "Vas a actualizar N capas". El botón "Aplicar" abre un modal de confirmación con el resumen del cambio antes de ejecutar.
+
+3. **Restablecer todas a default**: botón danger que pone `highlight_color` y `highlight_shape` en `NULL` para todas las leaves del scope (con filtro de tema opcional). Modal de confirmación previo. Internamente usa `POST .../highlight/reset`.
+
+#### Deshacer cambio masivo
+
+Después de un bulk apply o reset, la `notification.success` incluye un botón "Deshacer" disponible por 5 minutos. La acción restaura el estado anterior exacto de cada capa afectada (color + shape) usando el snapshot que el backend devuelve en la respuesta (`affected: number, snapshot: Array<{layerId, color, shape}>`). El snapshot se guarda en memoria del hook `useHighlightBulk` (no se persiste, vive solo en la sesión activa).
+
+`POST /administrador/layers/highlight/restore` recibe el snapshot y restaura.
+
+#### Endpoints nuevos
+
+- `GET  /administrador/layers/highlight/stats` → `HighlightStats`.
+- `POST /administrador/layers/highlight/bulk` body `{ color, shape, applyTo, themeIds, dryRun }` → `{ affected, snapshot }`.
+- `POST /administrador/layers/highlight/restore` body `{ snapshot }` → `{ affected }`.
+- `POST /administrador/layers/highlight/reset` body `{ themeIds, dryRun }` → `{ affected, snapshot }`.
+
+Todos requieren admin + CSRF + write rate limit. El bulk usa CTE recursivo (`WITH RECURSIVE`) para resolver los descendientes leaf del filtro de temas. Cada operación dispara `notify_tree_changed` para invalidar el cache del visor.
+
+#### Que cambio
+
+- **`api/app/schemas/layer.py`**: `HighlightColor` ahora libre `str` validado. Tipos nuevos `HighlightStats`, `HighlightBulkApplyBody`, `HighlightBulkApplyResult`, `HighlightBulkSnapshot`, `HighlightBulkRestoreBody`, `HighlightResetBody`.
+- **`api/app/services/layer_service.py`**: `get_highlight_stats`, `bulk_apply_highlight`, `restore_highlight_snapshot`, `reset_highlight`, helpers `_collect_descendant_leaves` y `_highlight_target_leaves`.
+- **`api/app/api/routes/layers/highlight.py`** (nuevo): router con los 4 endpoints.
+- **`api/app/api/routes/layers/__init__.py`**: include del nuevo router.
+- **`admin/src/features/mapalab-layers/components/LayerHighlightGlobalSettings.jsx`** (nuevo): modal principal.
+- **`admin/src/features/mapalab-layers/components/LayerHighlightConfirmModal.jsx`** (nuevo): modales de confirmación apply + reset extraídos.
+- **`admin/src/features/mapalab-layers/components/layersEditor/highlightConstants.js`** (nuevo): `HIGHLIGHT_COLORS`, `HIGHLIGHT_SHAPES`, `isHexHighlight`, `resolveColorEntry`.
+- **`admin/src/features/mapalab-layers/components/layersEditor/highlightShared.jsx`** (nuevo): `HighlightSwatch` componente.
+- **`admin/src/features/mapalab-layers/components/layersEditor/LayerHighlightField.jsx`**: imports actualizados; nueva opción "Personalizado" con `ColorPicker` inline.
+- **`admin/src/features/mapalab-layers/hooks/useHighlightBulk.js`** (nuevo): wrapper de los 4 endpoints + manejo del snapshot/undo con timer de 5 minutos.
+- **`admin/src/features/mapalab-layers/pages/LayerEditPage.jsx`**: import del modal, estado `highlightSettingsOpen`, botón `SettingOutlined` en el header, render del modal al final.
+
+---
+
+## [admin 1.16.0] - 2026-05-25
+
+### Agregado: tab "Apariencia" con resaltado de feature + DnD en editor InfoBox
+
+#### Tab "Apariencia" (nuevo)
+
+Nuevo tab en `/administrador/mapalab/layers` que agrupa todo lo visual de una capa/nodo. Visible para `tema`, `category`, `label`, `group` y `leaf`. Contenido condicional según `nodeType`:
+
+- **`tema`**: mueve el campo **Icono del tema** (`TemaIconField`) que vivía en el tab "Identidad". El icono sigue siendo el SVG/PNG del sider del visor.
+- **`leaf` / `group` / `category` / `label`**: nuevo control **Resaltado al hacer clic en una feature** (`LayerHighlightField`). Dos sub-controles independientes con preview en vivo cruzado:
+  - **Color**: morado (default) / naranja institucional / sombreado discreto.
+  - **Forma**: área + línea (default) / solo línea / sin resaltar.
+
+Cuando se configura en un nivel ancestro (ej. `group "Establecimiento de salud"`), las leaves hijas **heredan** el resaltado automáticamente desde el visor (lo aplica `useFeatureHighlight` en mapalab). Una leaf que define sus propios `highlightColor`/`highlightShape` los gana por encima del ancestro.
+
+`api/app/schemas/layer.py`: nuevos campos `highlight_color` (Literal `morado|naranja|sombreado`) y `highlight_shape` (Literal `area|linea|off`) con `serialization_alias` camelCase. Ambos optional, default NULL = heredar/usar default.
+
+`api/app/services/geoserver_client.py`: `layer_exists` ahora cae a `is_layer_group` cuando la consulta a `/layers/{layer}` retorna 404. `list_fields` retorna `[]` si la capa es un layer group (no tiene feature type propio). Antes el editor petaba con 500/400 sobre capas tipo `general:limite_iieg` que son layer groups (no WFS feature types).
+
+#### Drag-and-drop en `InfoBoxBlocksEditor`
+
+Reemplazo del sistema de flechas ↑↓ por `@dnd-kit/sortable` en dos niveles:
+
+1. **Bloques del cuerpo** (labelGroups, list, cards, iconText, textBlocks): arrastra el ícono ⋮⋮ en la esquina del bloque para reordenar el `blockOrder` del template.
+2. **Items dentro de cada bloque** (filas de list, cards, iconText, párrafos de TextBlock): arrastra el ícono ⋮⋮ a la izquierda de cada item para reordenar.
+
+#### Que cambio
+
+- **`admin/src/features/mapalab-layers/components/layersEditor/LayerHighlightField.jsx`** (nuevo): dos `Radio.Group` lado a lado (color + forma) con swatches visuales que cruzan ambas dimensiones (el swatch del color refleja la forma seleccionada y viceversa).
+- **`admin/src/features/mapalab-layers/components/layersEditor/InfoBoxBlocksEditor.jsx`**: imports de `@dnd-kit/{core,sortable,utilities}`, helpers `SortableBlock` / `SortableItem` / `DragHandle`, refactor de `ListBlock`/`CardsBlock`/`IconTextBlock`/`TextBlock` para envolver items en `SortableContext`.
+- **`admin/src/features/mapalab-layers/constants/nodeTypes.js`**: nueva entrada en `TAB_VISIBILITY` para `apariencia` aplicable a los 5 tipos de nodo.
+- **`admin/src/features/mapalab-layers/pages/LayerEditPage.jsx`**: import `LayerHighlightField`; nuevo tab `apariencia` entre `identidad` y `servicios`; campo `iconUrl` removido del tab `identidad` y reubicado en `apariencia`; `setFieldsValue` incluye `highlightColor` y `highlightShape`.
+- **`api/app/models/layer.py`**: columnas `highlight_color` y `highlight_shape` en el modelo SQLAlchemy.
+
+---
+
+## [admin 1.15.8] - 2026-05-25
+
+### Documentación: tema `Telemetría` separado de `Servidor MCP`
+
+Telemetría es un tema transversal del ecosistema (hoy MCP, mañana visor, sieej, etc.), no algo específico del MCP. Se separa en su propio tema dentro de `/administrador/documentacion` para que el tab "Servidor MCP" quede enfocado y `Telemetría` pueda crecer con secciones por fuente sin volverse un mega-tab.
+
+- **`admin/src/features/documentacion/topics/TelemetryTopic.jsx`** (nuevo): componente con intro general "Registro de eventos sin identidad…" y por ahora una Card por fuente — primera: "Servidor MCP de MapaLab — `mapalab_mcp_events`" con la tabla de 12 campos y descripción del flujo (middleware ASGI → flush 30 s → endpoint internal). Diseñado para sumar más Cards (telemetría del visor, sieej, etc.) sin reestructurar.
+- **`McpTopic.jsx`**: removida la Card "Telemetría — campos persistidos…" y constantes asociadas (`FIELDS_TELEMETRY`, `FIELD_COLUMNS`). El párrafo de intro al playground menciona "Telemetría persistida en el tema `Telemetría`" para que el lector sepa a dónde ir.
+- **`DocumentacionPage.jsx`**: nuevo item en `TOPICS` con `key='telemetria'`, label `Telemetría`. URL bookmarkable via `?topic=telemetria` (igual que el tema MCP existente).
+
+`McpTopic.jsx`: 340 → 177 → 136 → **101 líneas**.
+
+---
+
+## [admin 1.15.7] - 2026-05-25
+
+### Página MCP de documentación: segunda pasada de compresión
+
+Tres recortes adicionales sobre `admin 1.15.6` para que la página quepa más cómoda:
+
+- **Card "Endpoints / URL del MCP" eliminada** y reemplazada por un `<Paragraph copyable>` debajo de la intro: solo muestra **la URL del entorno actual** (`window.location.origin + '/mapalab/mcp'`), con botón de copia inline. Quitadas las constantes `LOCAL_MCP_URL`/`PUBLIC_MCP_URL`/`URLS`/`URL_COLUMNS` y los `buildLocalMcpUrl`/`buildPublicMcpUrl` (cada admin trabaja en su entorno; las otras URLs viven en `docs/mcp.md` del repo).
+- **Alert "Playground" inicial removido** del `McpPlayground`. Era texto explicativo sobre cómo funcionan las tarjetas — los títulos de cada tarjeta ya lo dejan claro.
+- **Alert "Pega una API key arriba..."** dentro de las tarjetas `create_*_share` → `<Text type="secondary">` de una línea (`Pega una mk_pub_… arriba para ver este share embebido.`). Mismo mensaje, sin la caja azul gigante que ocupaba 80 px verticales por cada tarjeta de share.
+
+`McpTopic.jsx`: 340 → 177 → 136 líneas. La página ahora cabe casi entera en un viewport sin scrollear.
+
+---
+
+## [admin 1.15.6] - 2026-05-25
+
+### Página MCP de documentación: ~48% más corta
+
+El `McpTopic` venía con 340 líneas, varias secciones redundantes o que nadie leía en la práctica. Recortado a 177 líneas dejando solo lo accionable.
+
+#### Quitado
+
+- **Alert "¿Para qué sirve?"** y **Alert "Contrato robusto desde mapalab 1.40.1 + share/medición desde 1.44.0"** — texto explicativo que el lector no leía. La info relevante está en `docs/mcp.md` del repo y en el playground en vivo.
+- **Sección "Cómo se usa"** completa, con los dos cards de Claude Desktop config + Python LangChain snippet. Pertenece al `docs/mcp.md` del repo (lectura por integrador externo), no al panel admin.
+- **Card "Ejemplo de respuesta: search_layers"** — el playground tiene el botón "Probar" para `search_layers` que devuelve respuesta real y viva. Estático arriba era redundante.
+- **Card "Características"** final con dos listas de bullets "Qué incluye / Qué NO incluye" — resumen redundante de todo lo ya explicado en otras secciones.
+- **4 Cards de "Tools por router"** (metadata, periodicity, layers, shares+medición) → **1 sola tabla** con columna `Router` (con filtros nativos de Ant Table en el header). Mismo info, una sola lista ordenable.
+- 3 constantes muertas: `SEARCH_EXAMPLE`, `CLIENT_DESKTOP_EXAMPLE`, `CLIENT_PY_EXAMPLE`, helper `CodeBlock`.
+- Imports muertos: `Alert`, `Col`, `Divider`, `Row`.
+
+#### Resultado
+
+Estructura final del tab "Servidor MCP" en `/administrador/documentacion`:
+
+1. Título + intro 1 línea
+2. Card "Endpoints / URL del MCP" (sin cambios)
+3. Card "Tools disponibles" con tabla consolidada filtrable por router
+4. Card "Telemetría — campos persistidos" (sin cambios)
+5. Sección "Probar endpoints" + `<McpPlayground />` (sin cambios)
+
+Sin pérdida de info accionable. Toda la info quitada vive en `docs/mcp.md` del repo de mapalab, que es la referencia canónica para integradores.
+
+---
+
+## [admin 1.15.5] - 2026-05-25
+
+### Sider sticky al viewport: "Documentación" siempre visible al fondo + menú normal scrolleable
+
+El sider del admin tenía la lógica para mantener el footer (Documentación) anclado al `bottom: 0` con `position: absolute`, y la lista de items scrolleable con `overflowY: auto`. Pero al `<Sider>` le faltaba la pieza que hace que todo esto funcione: una altura fija anclada al viewport. Sin eso, el sider crecía junto al contenido del Layout (`minHeight: 100vh` lo dejaba flotar), y al hacer scroll del content "Documentación" se iba hasta abajo del documento — invisible salvo que el usuario scrolleara hasta el fondo.
+
+#### Fix
+
+- **`admin/src/app/MainLayout.jsx`** (Sider desktop): agregadas 4 props de style:
+  - `position: 'sticky'` + `top: 0` — el sider se queda pegado al top del viewport sin importar el scroll del content.
+  - `height: '100vh'` — altura fija. El `renderSiderContent` que ya tenía `height: '100%'` con `position: 'relative'` y dos hijos `position: 'absolute'` (lista de items + footer) ahora se calculan contra los 100vh reales.
+  - `overflow: 'hidden'` — la lista de items tiene su propio `overflowY: 'auto'` y los tooltips de Ant son portal-based, así que cortar el overflow del Sider no rompe nada y previene scroll bars duplicadas.
+
+#### Comportamiento resultante
+
+- Sider siempre visible mientras hacen scroll del content.
+- "Documentación" pegado al bottom del viewport.
+- Lista de items del medio (grupos plataforma + proyectos) scrolleable verticalmente si excede el espacio disponible — el scroll está acotado al área entre el brand (top: 64px) y el footer (FOOTER_HEIGHT).
+- En mobile (Drawer) no aplica — sigue comportamiento previo.
+
+Sin cambios en lógica de menú, registros ni roles. Solo 4 líneas de style en el `<Sider>`.
+
+---
+
+## [admin 1.15.4] - 2026-05-25
+
+### Playground del MCP: previsualización embebida del share creado vía `<iieg-mapalab>`
+
+Cuando un admin probaba `create_single_share` o `create_swipe_share` desde `/administrador/documentacion`, el playground devolvía un JSON `{id, url, embed_html}` y obligaba a copiar la `url` y abrirla en otra pestaña para verificar a ojo que el mapa salió bien. Ahora el widget se monta inline debajo del JSON con la API key del admin.
+
+#### Cambios en `admin/src/features/documentacion/topics/McpPlayground.jsx`
+
+- **Hook `useMapalabWidgetScript`**: inserta una sola vez `<script src="/mapalab/widget/v1/mapalab.js" defer data-mapalab-widget>` al `document.head`. Idempotente — los re-renders no duplican.
+- **Input "API key del widget"**: nueva card al inicio con `<Input.Password>` para pegar una `mk_pub_…`. Persistida en `localStorage` (`mariachi.mcp_playground.api_key`) para no repetir cada visita. Link al feature [Llaves del visor MapaLab](/mariachi/mapalab/api-keys) (`@features/mapalab-api-keys/MapalabApiKeysPage`) para crear/rotar una con el dominio del admin autorizado.
+- **Render condicional en `McpToolProbe`**: si el tool ejecutado es `create_single_share` o `create_swipe_share` (set `SHARE_TOOLS`) y la respuesta trae `id`, debajo del `<pre>` con el JSON se monta `<iieg-mapalab api-key={apiKey} share={result.body.id} height="450" controls="zoom" />`. Si no hay key, en su lugar se muestra un `Alert` info explicando cómo activar la previsualización.
+
+#### Por qué API key
+
+El widget requiere `mk_pub_…` para validar CORS y emitir el iframe (mismo flujo que cuando un huésped externo embebe el visor en su sitio). La key plana no se almacena en backend después del reveal único, así que el playground tampoco la guarda — vive solo en `localStorage` del navegador del admin que la pegó. Cada admin usa la suya.
+
+Sin cambios en backend. El widget se sirve desde la imagen de `mariachi-nginx` (que copia `widget/dist/`); no requiere cambios de infra.
+
+---
+
+## [admin 1.15.3] - 2026-05-25
+
+### Alineación con mapalab 1.45.0: URLs del MCP migradas de `/mapalab/api/mcp` → `/mapalab/mcp`
+
+mapalab 1.45.0 movió las URLs públicas del MCP fuera del prefijo `/api` para alinear con la convención industrial (FastMCP default, Cloudflare remote MCP, etc.). El admin de Mariachi consumía las viejas y se actualiza en este release.
+
+- **`admin/src/features/documentacion/topics/McpTopic.jsx`**: `buildLocalMcpUrl` y `buildPublicMcpUrl` cambiaron sus tres ramas (con `VITE_MAPALAB_PROXY_URL`, con `window.location.origin`, fallback) para usar `/mcp` y `/mapalab/mcp`. La tabla "Endpoints / URL del MCP" mostrada en `/administrador/documentacion` ya muestra los paths nuevos.
+- **`admin/src/features/documentacion/topics/McpPlayground.jsx`**: la constante única `MAPALAB_BASE = '/mapalab/api'` se separó en dos:
+  - `MAPALAB_REST_BASE = '/mapalab/api'` para los probes REST (sin cambios)
+  - `MAPALAB_MCP_URL = '/mapalab/mcp'` para los probes JSON-RPC (`initialize` + `tools/call` de los 3 tools nuevos)
+
+  El Alert principal actualizado para reflejar que el MCP vive al nivel de `/mapalab/` ahora, no debajo de `/mapalab/api/`.
+
+Sin cambios en backend de Mariachi. La telemetría del MCP (POST internal a `/api/administrador/internal/mapalab/mcp/events`) sigue igual — ese endpoint sí está bajo `/api/administrador/` porque es la API admin de Mariachi, no el endpoint del MCP server.
+
+---
+
+## [admin 1.15.2] - 2026-05-25
+
+### Playground: probes `tools/call` JSON-RPC para los 3 tools nuevos de mapalab 1.44.0
+
+Los tools `create_single_share`, `create_swipe_share` y `measure_geometry` (mapalab 1.44.0) no tienen REST equivalente directo — son orquestación específica del servidor MCP. El playground de `/administrador/documentacion` solo probaba endpoints REST, así que estos quedaban indocumentados en la práctica.
+
+- **`admin/src/features/documentacion/topics/McpPlayground.jsx`**: nuevo componente `McpToolProbe` que llama directamente vía JSON-RPC `tools/call` al endpoint `/mcp/`, parsea la respuesta SSE (`event: message\ndata: {...}`) y extrae el payload del tool (`result.content[0].text` → `JSON.parse`).
+- Tres probes pre-configurados con `defaultArguments` editables en un `TextArea` (JSON con `autoSize`): `measure_geometry` (default LineString Guadalajara→Zapopan), `create_single_share` (con annotation Polygon de ejemplo), `create_swipe_share` (homicidio vs población).
+- El playground ahora tiene dos secciones claras: **"Tools del MCP (`tools/call`)"** con los 3 nuevos, y **"Tools de lectura (REST equivalente)"** con los probes preexistentes. La descripción del Alert principal actualizada.
+
+Sin cambios en backend. Útil para QA post-deploy: cualquier admin puede confirmar que el MCP responde, sin necesidad de levantar el inspector de modelcontextprotocol ni un cliente Python.
+
+---
+
+## [admin 1.15.1] - 2026-05-25
+
+### Documentación: McpTopic refleja los 3 tools nuevos de mapalab 1.44.0
+
+mapalab 1.44.0 agregó al MCP los tools `create_single_share`, `create_swipe_share` y `measure_geometry` (pensados para que agentes conversacionales como IGIBot entreguen mapas interactivos en lugar de solo descripciones). El tab "Servidor MCP" de `/administrador/documentacion` se actualiza para que el equipo descubra y entienda el nuevo flujo.
+
+- **`admin/src/features/documentacion/topics/McpTopic.jsx`**: nuevo grupo en la tabla de tools "shares + medición" con los 3 endpoints (`create_single_share`, `create_swipe_share`, `measure_geometry`). Texto introductorio actualizado: 11 → 14 tools, con mención explícita del caso de uso de mapas embebidos vía `<iieg-mapalab>`. Alert verde extendido para cubrir también el contrato de annotations/shares desde mapalab 1.43.0 y los tools de share/medición desde 1.44.0.
+
+Sin cambios en backend. El playground del admin sigue probando los endpoints REST equivalentes; los 3 nuevos tools no tienen REST equivalente directo (son orquestación específica del MCP) y se documentan solo en la tabla por ahora.
+
+---
+
 ## [1.15.0] - 2026-05-22
 
 ### Agregado: iconText con texto visible separado y link explícito con tokens

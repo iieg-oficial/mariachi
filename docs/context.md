@@ -97,7 +97,7 @@ Estructura de features (`admin/src/features/`): `auth`, `colibri`, `inicio`, `ma
 | Proxy interno | Nginx | sirve `web/dist` en `/`, `admin/dist` en `/mariachi/`, proxea `api/` a backend |
 | BD | PostgreSQL 18 (prod y dev) | DB: `iieg_portal` |
 | Cache/sessions | Redis 7 | |
-| Almacenamiento | Acervo (MinIO S3-compatible) | buckets por proyecto en `media_buckets`. **Publicos** (anonymous GetObject): `portal`, `mapalab`, `iieg`. **Privados**: `mariachi`, `sieej`, `dataengine` (deshabilitado). Cada bucket usa `<REF>_user` con policy attached al bucket; sin fallback a creds root. |
+| Almacenamiento | Acervo (MinIO S3-compatible) | buckets por proyecto en `acervo_buckets`. **Publicos** (anonymous GetObject): `portal`, `mapalab`, `iieg`. **Privados**: `mariachi`, `sieej`, `dataengine` (deshabilitado). Cada bucket usa `<REF>_user` con policy attached al bucket; sin fallback a creds root. |
 | DataEngine (solo v1.4.0+ MapaLab) | PostgreSQL + PostGIS externo | Segunda conexión para tabla `layers` |
 | Contenedores | Docker Compose | profiles: prod (`docker-compose.yml`), dev (`docker-compose.dev.yml`) |
 
@@ -238,7 +238,7 @@ Redes: `mariachi_network_dev` (propia) + `mapalab-network` (external, para que e
 | `ADMIN_PREFIX` | `/api/administrador` | Ruta del CMS |
 | `WEB_PREFIX` | `/api/portal` | Ruta del sitio publico |
 | `ACERVO_ENDPOINT` / `ACERVO_PUBLIC_ENDPOINT` / `ACERVO_USE_SSL` / `ACERVO_VERIFY_SSL` | — | MinIO S3 (host y publico, sin creds globales) |
-| `ACERVO_<REF>_ACCESS_KEY` / `ACERVO_<REF>_SECRET_KEY` | — | Creds **por bucket** (REF coincide con `media_buckets.access_key_ref`). Sin fallback a creds root del cluster: cada bucket activo requiere su par. |
+| `ACERVO_<REF>_ACCESS_KEY` / `ACERVO_<REF>_SECRET_KEY` | — | Creds **por bucket** (REF coincide con `acervo_buckets.access_key_ref`). Sin fallback a creds root del cluster: cada bucket activo requiere su par. |
 
 ### Frontend (Vite)
 
@@ -270,7 +270,7 @@ acervo/iieg/
 - En **dev local** cada frontend corre en su propio puerto sin gateway-hub. Si el frontend necesita el bucket en dev, define `VITE_IIEG_ASSETS_URL=http://localhost:9080/iieg` en su `.env.development` y usa `import.meta.env.VITE_IIEG_ASSETS_URL || '/acervo/iieg'` como fallback.
 
 **Como subir**:
-- Assets institucionales (`logos/`, `icons/`, `fonts/`, `docs/`): solo el rol global `tetlamamakani` puede subir (control via `media_buckets` y permisos del proyecto `iieg`).
+- Assets institucionales (`logos/`, `icons/`, `fonts/`, `docs/`): solo el rol global `tetlamamakani` puede subir (control via `acervo_buckets` y permisos del proyecto `iieg`).
 - Avatars de usuarios (`avatars/u<id>/...`): cualquier usuario autenticado sube SU PROPIO avatar via el endpoint de perfil; mariachi-api valida que el `user_id` del path coincida con `current_user.id`.
 
 **Convencion de versionado** (assets institucionales): usar paths inmutables (`logos/v1/logo.svg`, `logos/v2/logo.svg`) en lugar de sobreescribir, para no invalidar cache de browsers ni romper frontends que apunten a una version especifica.
@@ -279,11 +279,11 @@ acervo/iieg/
 
 Reservado para assets administrativos internos del panel admin que NO se exponen al publico: logs descargables, exportaciones internas, archivos staff-only. NO almacena avatars (esos viven en `iieg`). Acceso requiere autenticacion como staff y mariachi-api debe servirlos via presigned URLs o proxy autenticado, NO con URL publica.
 
-El proxy autenticado vive en `GET /api/administrador/multimedia/proxy/{bucket_id}/{object_path}` y es la ruta por defecto que devuelve `AcervoClient.get_file_url` cuando el bucket está marcado `is_public=false`. Devuelve un `StreamingResponse` con `Cache-Control: private, max-age=300`.
+El proxy autenticado vive en `GET /api/administrador/acervo/proxy/{bucket_id}/{object_path}` y es la ruta por defecto que devuelve `AcervoClient.get_file_url` cuando el bucket está marcado `is_public=false`. Devuelve un `StreamingResponse` con `Cache-Control: private, max-age=300`.
 
 ### Sub-rutas reservadas dentro de buckets compartidos
 
-Algunos features escriben en sub-prefijos del bucket que NO deben aparecer en el listado de la página de Multimedia (porque su CRUD se maneja desde otra UI):
+Algunos features escriben en sub-prefijos del bucket que NO deben aparecer en el listado de la página de Acervo (porque su CRUD se maneja desde otra UI):
 
 | Bucket | Prefijo oculto | Quién lo escribe |
 |---|---|---|
@@ -291,9 +291,9 @@ Algunos features escriben en sub-prefijos del bucket que NO deben aparecer en el
 
 La lista vive en `app/core/bucket_policies.py::HIDDEN_PREFIXES_BY_BUCKET` y `media_service.listar_media` la consulta cuando se navega la raíz del bucket (no se aplica si el usuario navega explícitamente al prefix oculto, p. ej. `?folder=/reportes`).
 
-### Carpetas del CMS (`media_folders`)
+### Carpetas del CMS (`acervo_folders`)
 
-`media_folders` es scoped por bucket: cada fila tiene `bucket_id` (FK CASCADE a `media_buckets`) y la unicidad es `(bucket_id, path)`. Esto permite que dos buckets distintos tengan una carpeta con el mismo nombre/ruta sin colisión. El frontend siempre envía `bucket_id` al listar/crear/eliminar carpetas. La columna `media.folder` ya no es FK a `media_folders.path` (lo era antes del scoping); se persiste como string libre.
+`acervo_folders` es scoped por bucket: cada fila tiene `bucket_id` (FK CASCADE a `acervo_buckets`) y la unicidad es `(bucket_id, path)`. Esto permite que dos buckets distintos tengan una carpeta con el mismo nombre/ruta sin colisión. El frontend siempre envía `bucket_id` al listar/crear/eliminar carpetas. La columna `media.folder` ya no es FK a `acervo_folders.path` (lo era antes del scoping); se persiste como string libre.
 
 ---
 
@@ -347,10 +347,10 @@ Sin auth. `router = APIRouter(tags=["portal público"])` en `routes/public.py`.
 | POST | `/usuarios/{id}/restablecer-contrasena` | Reset password con temp_password generada (admin-only) |
 | GET/POST/PUT/DELETE | `/pages/*` | Editor de paginas |
 | GET/POST/PUT/DELETE | `/menu/*` | Gestión de menu |
-| GET/POST/PUT/DELETE | `/multimedia/*` | Upload/listado/edición de archivos por bucket |
-| GET | `/multimedia/proxy/{bucket_id}/{object_path}` | Stream autenticado para buckets privados |
-| GET/POST/DELETE | `/multimedia/carpetas/*` | CRUD de carpetas (scoped a `bucket_id`) |
-| GET/POST/PATCH | `/media-buckets/*` | CRUD de buckets registrados (admin solo en writes) |
+| GET/POST/PUT/DELETE | `/acervo/*` | Upload/listado/edición de archivos por bucket |
+| GET | `/acervo/proxy/{bucket_id}/{object_path}` | Stream autenticado para buckets privados |
+| GET/POST/DELETE | `/acervo/carpetas/*` | CRUD de carpetas (scoped a `bucket_id`) |
+| GET/POST/PATCH | `/acervo-buckets/*` | CRUD de buckets registrados (admin solo en writes) |
 | GET/POST/PATCH | `/borradores/*` | Revision queue |
 | GET | `/preview/*` | Preview de paginas sin publicar |
 | GET/POST/PATCH/DELETE | `/colibri/tipos/*` | CRUD de tipos de reporte (admin en writes) |
@@ -413,7 +413,7 @@ Características clave:
 - **Plan persistente** en `mapalab.bulk_ingest_plans` con TTL de 24h (`status IN ('pending','applied','cancelled','expired')`). El plan completo se guarda como JSONB (`plan_json`) — preview→apply son operaciones separadas, idempotentes con optimistic locking (`IS NOT DISTINCT FROM`).
 - **Cubre dos tablas**: `mapalab.layer_metadata` (descripción, fuentes JSONB, metodología, metadato, downloadable, etc.) y `mapalab.layer_stats` (numeralia 1-8 + pie_numeralia). El planner emite changes con `table: 'layer_metadata' | 'layer_stats'` por diff.
 - **Audit con email del usuario real** (`updated_by = current_user.email`), no etiqueta generica.
-- **Archivo original al bucket privado `mariachi`** en `bulk-ingest/<plan_id>/<filename>`; recuperable vía `/api/administrador/multimedia/proxy/{bucket_id}/{object_key}` (best-effort: si falla la subida, el plan se genera igual).
+- **Archivo original al bucket privado `mariachi`** en `bulk-ingest/<plan_id>/<filename>`; recuperable vía `/api/administrador/acervo/proxy/{bucket_id}/{object_key}` (best-effort: si falla la subida, el plan se genera igual).
 - **RBAC**: editor/`tetlamamakani` pueden subir y previsualizar; solo `tetlamamakani` puede aplicar. Rate limit 20 writes/min.
 - **Métricas**: `mariachi_bulk_ingest_uploads_total` y `mariachi_bulk_ingest_applies_total`.
 
@@ -896,7 +896,7 @@ Detalle completo en `docs/CHANGELOG.md` §[0.39.0]. Resumen:
 - **Workspaces dinamicos**: `GET /geoserver/workspaces/pending` lista workspaces presentes en GeoServer pero no en `mapalab.workspaces`. `POST /geoserver/workspaces/register` (admin + CSRF) los registra. Resuelve el caso de workspaces nuevos que llegan tras un restore (ej. `eventos`). UI: Alert + modal en `LayerCreateModal` para admins.
 - **Auto-leaf en eventos**: `POST /layers/auto-leaf` idempotente que materializa una capa "solo GeoServer" como leaf bajo el padre `eventos-auto` (tema oculto, on-demand). `CapasField.addCapa` lo invoca antes de asociar la capa al evento, asi el visor de mapalab encuentra la capa en su arbol y la renderiza. Desde `api 1.14.5` el `label` es obligatorio y debe diferir del `geoserver_layer` (validación normalizada en `AutoLeafRequest`); evita registrar capas con el slug como nombre visible, lo que antes hacía que mapalab mostrara el id en lugar del nombre en el panel de capas activas.
 - **Drawer reutilizable de edicion**: `LayerContentDrawer` con tabs Tarjeta · Metadatos · Simbologia, montado desde `CapasField` (boton `EditOutlined` por capa). Reusa `LayerMetadataSection` y `SldEditor` tal cual; envuelve `InfoBoxBlocksEditor` + `InfoBoxPreview` en un `InfoboxStandalone` con su propio Form. Permite editar contenido sin navegar al `LayerEditPage`.
-- **Fix global camelCase**: nuevo mixin `CamelCaseInput` aplicado a los schemas que reciben input (Layer, Evento, Page, MenuItem, Usuario, Reporte, LayerMetadata, MediaBucket, Media, Project, HomeSection payloads). Antes, los schemas declaraban solo `serialization_alias=` y el input camelCase del frontend se ignoraba silenciosamente, lo que causaba que muchas ediciones perdieran campos en el PUT/PATCH sin error visible.
+- **Fix global camelCase**: nuevo mixin `CamelCaseInput` aplicado a los schemas que reciben input (Layer, Evento, Page, MenuItem, Usuario, Reporte, LayerMetadata, AcervoBucket, Media, Project, HomeSection payloads). Antes, los schemas declaraban solo `serialization_alias=` y el input camelCase del frontend se ignoraba silenciosamente, lo que causaba que muchas ediciones perdieran campos en el PUT/PATCH sin error visible.
 - **Fix GeoServer client**: `list_workspaces`/`list_layers` toleran respuesta vacia (`{"layers":""}` como string) que GeoServer devuelve para workspaces sin layers. Antes lanzaba AttributeError.
 
 ### 2026-05-07 (v0.41.1) — Audit modulo Eventos: hardening seguridad/validacion + tests + UX

@@ -24,7 +24,7 @@ from app.core.cache import redis_client
 from app.core.database import get_db
 from app.core.security import crear_access_token, crear_csrf_token, hash_password, verify_password
 from app.core.settings import get_settings
-from app.models.media_bucket import MediaBucket
+from app.models.acervo_bucket import AcervoBucket
 from app.models.user import Usuario
 from app.schemas.user import (
     CurrentUserResponse,
@@ -239,8 +239,8 @@ async def subir_avatar(
         )
 
     bucket = (
-        db.query(MediaBucket)
-        .filter(MediaBucket.acervo_bucket == "iieg", MediaBucket.is_active.is_(True))
+        db.query(AcervoBucket)
+        .filter(AcervoBucket.acervo_bucket == "iieg", AcervoBucket.is_active.is_(True))
         .first()
     )
     if bucket is None:

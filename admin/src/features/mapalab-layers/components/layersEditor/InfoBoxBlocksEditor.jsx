@@ -15,7 +15,10 @@ import {
     Tooltip,
     Typography,
 } from 'antd';
-import { ArrowDownOutlined, ArrowUpOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
+import { DeleteOutlined, HolderOutlined, PlusOutlined } from '@ant-design/icons';
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove as dndArrayMove } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 import {
     genTextId,
@@ -140,43 +143,56 @@ const BlockShell = ({ title, onRemove, children, hint }) => (
     </Card>
 );
 
-const ReorderableBlock = ({ canMoveUp, canMoveDown, onMoveUp, onMoveDown, children }) => (
-    <div style={{ position: 'relative' }}>
-        <div style={{
-            display: 'flex',
-            gap: 4,
-            position: 'absolute',
-            top: 4,
-            right: 36,
-            zIndex: 1,
-        }}>
-            <Button
-                size="small"
-                type="text"
-                disabled={!canMoveUp}
-                icon={<ArrowUpOutlined />}
-                onClick={onMoveUp}
-                aria-label="Subir bloque"
-            />
-            <Button
-                size="small"
-                type="text"
-                disabled={!canMoveDown}
-                icon={<ArrowDownOutlined />}
-                onClick={onMoveDown}
-                aria-label="Bajar bloque"
-            />
-        </div>
-        {children}
-    </div>
+const DragHandle = ({ attributes, listeners, label = 'Arrastrar para reordenar', style: extraStyle = {} }) => (
+    <Button
+        type="text"
+        size="small"
+        icon={<HolderOutlined />}
+        aria-label={label}
+        {...attributes}
+        {...listeners}
+        style={{ cursor: 'grab', touchAction: 'none', ...extraStyle }}
+    />
 );
 
-const arrayMove = (arr, from, to) => {
-    const next = [...arr];
-    const [moved] = next.splice(from, 1);
-    next.splice(to, 0, moved);
-    return next;
+const SortableBlock = ({ id, children }) => {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.6 : 1,
+        position: 'relative',
+    };
+    return (
+        <div ref={setNodeRef} style={style}>
+            <div style={{ position: 'absolute', top: 4, right: 36, zIndex: 1 }}>
+                <DragHandle attributes={attributes} listeners={listeners} label="Arrastrar bloque" />
+            </div>
+            {children}
+        </div>
+    );
 };
+
+const SortableItem = ({ id, children }) => {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.6 : 1,
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 4,
+    };
+    return (
+        <div ref={setNodeRef} style={style}>
+            <DragHandle attributes={attributes} listeners={listeners} label="Arrastrar item" style={{ marginTop: 4 }} />
+            <div style={{ flex: 1, minWidth: 0 }}>{children}</div>
+        </div>
+    );
+};
+
+const itemIdsFor = (arr) => arr.map((_, idx) => `item-${idx}`);
+const indexFromItemId = (id) => Number(String(id).replace(/^item-/, ''));
 
 const computeHeaderMode = (val, fields) => {
     if (!val) return 'field';
@@ -445,46 +461,62 @@ const CardsBlock = ({ value = [], columns = 1, onChange, onColumnsChange, onRemo
     };
     const removeItem = (idx) => onChange(value.filter((_, i) => i !== idx));
     const addItem = () => onChange([...value, { field: '', label: '' }]);
+    const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+    const itemIds = itemIdsFor(value);
+    const handleDragEnd = ({ active, over }) => {
+        if (!over || active.id === over.id) return;
+        const oldIdx = indexFromItemId(active.id);
+        const newIdx = indexFromItemId(over.id);
+        onChange(dndArrayMove(value, oldIdx, newIdx));
+    };
 
     return (
-        <BlockShell title="Cards (estadísticas)" onRemove={onRemove} hint="Grid de valores numéricos con label">
+        <BlockShell title="Cards (estadísticas)" onRemove={onRemove} hint="Grid de valores numéricos con label. Arrastra el ícono ⋮⋮ para reordenar.">
             <Space orientation="vertical" size="small" style={{ width: '100%' }}>
                 <Space size={6}>
                     <Text type="secondary" style={{ fontSize: 12 }}>Columnas:</Text>
                     <InputNumber size="small" min={1} max={4} value={columns} onChange={(v) => onColumnsChange(v ?? 1)} />
                 </Space>
-                {value.map((it, idx) => (
-                    <Space.Compact key={idx} style={{ width: '100%' }}>
-                        <Select
-                            style={{ width: 220 }}
-                            value={it.field || undefined}
-                            onChange={(v) => updateItem(idx, { field: v ?? '' })}
-                            options={fieldOptionsFor(availableFields, it.field)}
-                            placeholder="Campo"
-                            showSearch
-                            allowClear
-                            filterOption={(input, option) =>
-                                String(option.value).toLowerCase().includes(input.toLowerCase())
-                            }
-                        />
-                        <Input
-                            value={it.label || ''}
-                            onChange={(e) => updateItem(idx, { label: e.target.value })}
-                            placeholder="Label visible (ej. Razón de dependencia)"
-                        />
-                        <Tooltip title="Decimales para formatear (vacío = sin formateo)">
-                            <InputNumber
-                                style={{ width: 90 }}
-                                min={0}
-                                max={6}
-                                value={it.decimals ?? null}
-                                placeholder="dec."
-                                onChange={(v) => updateItem(idx, { decimals: v ?? undefined })}
-                            />
-                        </Tooltip>
-                        <Button danger icon={<DeleteOutlined />} onClick={() => removeItem(idx)} />
-                    </Space.Compact>
-                ))}
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                    <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
+                        <Space orientation="vertical" size="small" style={{ width: '100%' }}>
+                            {value.map((it, idx) => (
+                                <SortableItem key={itemIds[idx]} id={itemIds[idx]}>
+                                    <Space.Compact style={{ width: '100%' }}>
+                                        <Select
+                                            style={{ width: 220 }}
+                                            value={it.field || undefined}
+                                            onChange={(v) => updateItem(idx, { field: v ?? '' })}
+                                            options={fieldOptionsFor(availableFields, it.field)}
+                                            placeholder="Campo"
+                                            showSearch
+                                            allowClear
+                                            filterOption={(input, option) =>
+                                                String(option.value).toLowerCase().includes(input.toLowerCase())
+                                            }
+                                        />
+                                        <Input
+                                            value={it.label || ''}
+                                            onChange={(e) => updateItem(idx, { label: e.target.value })}
+                                            placeholder="Label visible (ej. Razón de dependencia)"
+                                        />
+                                        <Tooltip title="Decimales para formatear (vacío = sin formateo)">
+                                            <InputNumber
+                                                style={{ width: 90 }}
+                                                min={0}
+                                                max={6}
+                                                value={it.decimals ?? null}
+                                                placeholder="dec."
+                                                onChange={(v) => updateItem(idx, { decimals: v ?? undefined })}
+                                            />
+                                        </Tooltip>
+                                        <Button danger icon={<DeleteOutlined />} onClick={() => removeItem(idx)} />
+                                    </Space.Compact>
+                                </SortableItem>
+                            ))}
+                        </Space>
+                    </SortableContext>
+                </DndContext>
                 <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={addItem} block>
                     Agregar card
                 </Button>
@@ -510,55 +542,69 @@ const ListBlock = ({ value = [], onChange, onRemove, availableFields }) => {
     };
     const removeItem = (idx) => onChange(value.filter((_, i) => i !== idx));
     const addItem = () => onChange([...value, { field: '', label: '' }]);
+    const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+    const itemIds = itemIdsFor(value);
+    const handleDragEnd = ({ active, over }) => {
+        if (!over || active.id === over.id) return;
+        const oldIdx = indexFromItemId(active.id);
+        const newIdx = indexFromItemId(over.id);
+        onChange(dndArrayMove(value, oldIdx, newIdx));
+    };
 
     return (
-        <BlockShell title="Lista (list)" onRemove={onRemove} hint="Pares label/valor (formatea fechas y números, link opcional)">
-            <Space orientation="vertical" size="small" style={{ width: '100%' }}>
-                {value.map((it, idx) => (
-                    <div key={idx} style={{ border: '1px dashed #f0f0f0', borderRadius: 4, padding: 8 }}>
-                        <Space orientation="vertical" size={6} style={{ width: '100%' }}>
-                            <Space.Compact style={{ width: '100%' }}>
-                                <Select
-                                    style={{ width: 220 }}
-                                    value={it.field || undefined}
-                                    onChange={(v) => updateItem(idx, { field: v ?? '' })}
-                                    options={fieldOptionsFor(availableFields, it.field)}
-                                    placeholder="Campo"
-                                    showSearch
-                                    allowClear
-                                    filterOption={(input, option) =>
-                                        String(option.value).toLowerCase().includes(input.toLowerCase())
-                                    }
-                                />
-                                <Input
-                                    value={it.label || ''}
-                                    onChange={(e) => updateItem(idx, { label: e.target.value })}
-                                    placeholder="Label visible"
-                                />
-                                <Tooltip title="raw=true: no formatea (muestra tal cual)">
-                                    <Button
-                                        type={it.raw ? 'primary' : 'default'}
-                                        onClick={() => updateItem(idx, { raw: !it.raw })}
-                                    >
-                                        raw
-                                    </Button>
-                                </Tooltip>
-                                <Button danger icon={<DeleteOutlined />} onClick={() => removeItem(idx)} />
-                            </Space.Compact>
-                            <Input
-                                size="small"
-                                value={it.href || ''}
-                                onChange={(e) => setHref(idx, e.target.value)}
-                                placeholder="Link (opcional). Soporta tokens: https://ejemplo.gob.mx/{clave_catastral}"
-                                addonBefore={<Text type="secondary" style={{ fontSize: 11 }}>Link</Text>}
-                            />
-                        </Space>
-                    </div>
-                ))}
-                <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={addItem} block>
-                    Agregar fila
-                </Button>
-            </Space>
+        <BlockShell title="Lista (list)" onRemove={onRemove} hint="Pares label/valor (formatea fechas y números, link opcional). Arrastra el ícono ⋮⋮ para reordenar.">
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
+                    <Space orientation="vertical" size="small" style={{ width: '100%' }}>
+                        {value.map((it, idx) => (
+                            <SortableItem key={itemIds[idx]} id={itemIds[idx]}>
+                                <div style={{ border: '1px dashed #f0f0f0', borderRadius: 4, padding: 8 }}>
+                                    <Space orientation="vertical" size={6} style={{ width: '100%' }}>
+                                        <Space.Compact style={{ width: '100%' }}>
+                                            <Select
+                                                style={{ width: 220 }}
+                                                value={it.field || undefined}
+                                                onChange={(v) => updateItem(idx, { field: v ?? '' })}
+                                                options={fieldOptionsFor(availableFields, it.field)}
+                                                placeholder="Campo"
+                                                showSearch
+                                                allowClear
+                                                filterOption={(input, option) =>
+                                                    String(option.value).toLowerCase().includes(input.toLowerCase())
+                                                }
+                                            />
+                                            <Input
+                                                value={it.label || ''}
+                                                onChange={(e) => updateItem(idx, { label: e.target.value })}
+                                                placeholder="Label visible"
+                                            />
+                                            <Tooltip title="raw=true: no formatea (muestra tal cual)">
+                                                <Button
+                                                    type={it.raw ? 'primary' : 'default'}
+                                                    onClick={() => updateItem(idx, { raw: !it.raw })}
+                                                >
+                                                    raw
+                                                </Button>
+                                            </Tooltip>
+                                            <Button danger icon={<DeleteOutlined />} onClick={() => removeItem(idx)} />
+                                        </Space.Compact>
+                                        <Input
+                                            size="small"
+                                            value={it.href || ''}
+                                            onChange={(e) => setHref(idx, e.target.value)}
+                                            placeholder="Link (opcional). Soporta tokens: https://ejemplo.gob.mx/{clave_catastral}"
+                                            addonBefore={<Text type="secondary" style={{ fontSize: 11 }}>Link</Text>}
+                                        />
+                                    </Space>
+                                </div>
+                            </SortableItem>
+                        ))}
+                        <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={addItem} block>
+                            Agregar fila
+                        </Button>
+                    </Space>
+                </SortableContext>
+            </DndContext>
         </BlockShell>
     );
 };
@@ -580,60 +626,74 @@ const IconTextBlock = ({ value = [], onChange, onRemove, availableFields }) => {
     };
     const removeItem = (idx) => onChange(value.filter((_, i) => i !== idx));
     const addItem = () => onChange([...value, { icon: 'ubicacion', field: '' }]);
+    const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+    const itemIds = itemIdsFor(value);
+    const handleDragEnd = ({ active, over }) => {
+        if (!over || active.id === over.id) return;
+        const oldIdx = indexFromItemId(active.id);
+        const newIdx = indexFromItemId(over.id);
+        onChange(dndArrayMove(value, oldIdx, newIdx));
+    };
 
     return (
-        <BlockShell title="Íconos con texto (iconText)" onRemove={onRemove} hint="Ícono + valor del campo (web/ubicación/celular abren link automático)">
-            <Space orientation="vertical" size="small" style={{ width: '100%' }}>
-                {value.map((it, idx) => (
-                    <div key={idx} style={{ border: '1px dashed #f0f0f0', borderRadius: 4, padding: 8 }}>
-                        <Space orientation="vertical" size={6} style={{ width: '100%' }}>
-                            <Space.Compact style={{ width: '100%' }}>
-                                <Select
-                                    style={{ width: 220 }}
-                                    value={it.icon || 'ubicacion'}
-                                    onChange={(v) => updateItem(idx, { icon: v })}
-                                    options={ICON_CATALOG}
-                                    showSearch
-                                    mode="combobox"
-                                    filterOption={(input, option) =>
-                                        String(option.value).toLowerCase().includes(input.toLowerCase())
-                                    }
-                                />
-                                <Select
-                                    style={{ flex: 1 }}
-                                    value={it.field || undefined}
-                                    onChange={(v) => updateItem(idx, { field: v ?? '' })}
-                                    options={fieldOptionsFor(availableFields, it.field)}
-                                    placeholder={it.icon === 'web' ? 'Campo con la URL' : 'Campo a mostrar'}
-                                    showSearch
-                                    allowClear
-                                    filterOption={(input, option) =>
-                                        String(option.value).toLowerCase().includes(input.toLowerCase())
-                                    }
-                                />
-                                <Button danger icon={<DeleteOutlined />} onClick={() => removeItem(idx)} />
-                            </Space.Compact>
-                            <Input
-                                size="small"
-                                value={it.label || ''}
-                                onChange={(e) => setOptional(idx, 'label', e.target.value)}
-                                placeholder={it.icon === 'web' ? 'Texto visible (ej. "Sitio oficial"). Si lo dejas vacío, muestra la URL.' : 'Texto visible (opcional, sobrescribe el valor del campo)'}
-                                addonBefore={<Text type="secondary" style={{ fontSize: 11 }}>Texto</Text>}
-                            />
-                            <Input
-                                size="small"
-                                value={it.href || ''}
-                                onChange={(e) => setOptional(idx, 'href', e.target.value)}
-                                placeholder="Link explícito (opcional). Soporta tokens: https://ejemplo.gob.mx/{clave_catastral}"
-                                addonBefore={<Text type="secondary" style={{ fontSize: 11 }}>Link</Text>}
-                            />
-                        </Space>
-                    </div>
-                ))}
-                <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={addItem} block>
-                    Agregar ícono
-                </Button>
-            </Space>
+        <BlockShell title="Íconos con texto (iconText)" onRemove={onRemove} hint="Ícono + valor del campo (web/ubicación/celular abren link automático). Arrastra el ícono ⋮⋮ para reordenar.">
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
+                    <Space orientation="vertical" size="small" style={{ width: '100%' }}>
+                        {value.map((it, idx) => (
+                            <SortableItem key={itemIds[idx]} id={itemIds[idx]}>
+                                <div style={{ border: '1px dashed #f0f0f0', borderRadius: 4, padding: 8 }}>
+                                    <Space orientation="vertical" size={6} style={{ width: '100%' }}>
+                                        <Space.Compact style={{ width: '100%' }}>
+                                            <Select
+                                                style={{ width: 220 }}
+                                                value={it.icon || 'ubicacion'}
+                                                onChange={(v) => updateItem(idx, { icon: v })}
+                                                options={ICON_CATALOG}
+                                                showSearch
+                                                mode="combobox"
+                                                filterOption={(input, option) =>
+                                                    String(option.value).toLowerCase().includes(input.toLowerCase())
+                                                }
+                                            />
+                                            <Select
+                                                style={{ flex: 1 }}
+                                                value={it.field || undefined}
+                                                onChange={(v) => updateItem(idx, { field: v ?? '' })}
+                                                options={fieldOptionsFor(availableFields, it.field)}
+                                                placeholder={it.icon === 'web' ? 'Campo con la URL' : 'Campo a mostrar'}
+                                                showSearch
+                                                allowClear
+                                                filterOption={(input, option) =>
+                                                    String(option.value).toLowerCase().includes(input.toLowerCase())
+                                                }
+                                            />
+                                            <Button danger icon={<DeleteOutlined />} onClick={() => removeItem(idx)} />
+                                        </Space.Compact>
+                                        <Input
+                                            size="small"
+                                            value={it.label || ''}
+                                            onChange={(e) => setOptional(idx, 'label', e.target.value)}
+                                            placeholder={it.icon === 'web' ? 'Texto visible (ej. "Sitio oficial"). Si lo dejas vacío, muestra la URL.' : 'Texto visible (opcional, sobrescribe el valor del campo)'}
+                                            addonBefore={<Text type="secondary" style={{ fontSize: 11 }}>Texto</Text>}
+                                        />
+                                        <Input
+                                            size="small"
+                                            value={it.href || ''}
+                                            onChange={(e) => setOptional(idx, 'href', e.target.value)}
+                                            placeholder="Link explícito (opcional). Soporta tokens: https://ejemplo.gob.mx/{clave_catastral}"
+                                            addonBefore={<Text type="secondary" style={{ fontSize: 11 }}>Link</Text>}
+                                        />
+                                    </Space>
+                                </div>
+                            </SortableItem>
+                        ))}
+                        <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={addItem} block>
+                            Agregar ícono
+                        </Button>
+                    </Space>
+                </SortableContext>
+            </DndContext>
         </BlockShell>
     );
 };
@@ -725,23 +785,36 @@ const TextBlock = ({ block, onChange, onRemove, availableFields }) => {
     const updateItem = (idx, value) => updateItems(items.map((it, i) => (i === idx ? value : it)));
     const removeItem = (idx) => updateItems(items.filter((_, i) => i !== idx));
     const addItem = () => updateItems([...items, { label: '' }]);
+    const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+    const itemIds = itemIdsFor(items);
+    const handleDragEnd = ({ active, over }) => {
+        if (!over || active.id === over.id) return;
+        const oldIdx = indexFromItemId(active.id);
+        const newIdx = indexFromItemId(over.id);
+        updateItems(dndArrayMove(items, oldIdx, newIdx));
+    };
 
     return (
-        <BlockShell title="Texto (párrafos)" onRemove={onRemove} hint="Cada párrafo: texto fijo o valor de un campo">
-            <Space orientation="vertical" size="small" style={{ width: '100%' }}>
-                {items.map((it, idx) => (
-                    <TextItemRow
-                        key={idx}
-                        item={it}
-                        onChange={(next) => updateItem(idx, next)}
-                        onRemove={() => removeItem(idx)}
-                        availableFields={availableFields}
-                    />
-                ))}
-                <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={addItem} block>
-                    Agregar párrafo
-                </Button>
-            </Space>
+        <BlockShell title="Texto (párrafos)" onRemove={onRemove} hint="Cada párrafo: texto fijo o valor de un campo. Arrastra el ícono ⋮⋮ para reordenar.">
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
+                    <Space orientation="vertical" size="small" style={{ width: '100%' }}>
+                        {items.map((it, idx) => (
+                            <SortableItem key={itemIds[idx]} id={itemIds[idx]}>
+                                <TextItemRow
+                                    item={it}
+                                    onChange={(next) => updateItem(idx, next)}
+                                    onRemove={() => removeItem(idx)}
+                                    availableFields={availableFields}
+                                />
+                            </SortableItem>
+                        ))}
+                        <Button type="dashed" size="small" icon={<PlusOutlined />} onClick={addItem} block>
+                            Agregar párrafo
+                        </Button>
+                    </Space>
+                </SortableContext>
+            </DndContext>
         </BlockShell>
     );
 };
@@ -835,10 +908,14 @@ export default function InfoBoxBlocksEditor({ value, onChange, availableFields =
         update(patch);
     };
 
-    const moveBlock = (idx, delta) => {
-        const target = idx + delta;
-        if (target < 0 || target >= bodyOrder.length) return;
-        const nextOrder = arrayMove(bodyOrder, idx, target);
+    const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
+
+    const handleBlocksDragEnd = ({ active, over }) => {
+        if (!over || active.id === over.id) return;
+        const oldIdx = bodyOrder.indexOf(active.id);
+        const newIdx = bodyOrder.indexOf(over.id);
+        if (oldIdx === -1 || newIdx === -1) return;
+        const nextOrder = dndArrayMove(bodyOrder, oldIdx, newIdx);
         const defaultOrder = expandSortableKeys(config);
         update({ blockOrder: arraysEqual(nextOrder, defaultOrder) ? undefined : nextOrder });
     };
@@ -1068,21 +1145,23 @@ export default function InfoBoxBlocksEditor({ value, onChange, availableFields =
             {bodyOrder.length > 0 && (
                 <div>
                     <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 4 }}>
-                        Bloques del cuerpo (usa las flechas para reordenar):
+                        Bloques del cuerpo (arrastra el ícono ⋮⋮ para reordenar):
                     </Text>
-                    <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
-                        {bodyOrder.map((key, idx) => (
-                            <ReorderableBlock
-                                key={key}
-                                canMoveUp={idx > 0}
-                                canMoveDown={idx < bodyOrder.length - 1}
-                                onMoveUp={() => moveBlock(idx, -1)}
-                                onMoveDown={() => moveBlock(idx, 1)}
-                            >
-                                {renderBodyBlock(key)}
-                            </ReorderableBlock>
-                        ))}
-                    </Space>
+                    <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleBlocksDragEnd}
+                    >
+                        <SortableContext items={bodyOrder} strategy={verticalListSortingStrategy}>
+                            <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
+                                {bodyOrder.map((key) => (
+                                    <SortableBlock key={key} id={key}>
+                                        {renderBodyBlock(key)}
+                                    </SortableBlock>
+                                ))}
+                            </Space>
+                        </SortableContext>
+                    </DndContext>
                 </div>
             )}
         </Space>

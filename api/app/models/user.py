@@ -21,4 +21,4 @@ class Usuario(Base):
     created_at = Column(DateTime, default=utcnow, nullable=False)
     password_changed_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
 
-    media_uploads = relationship("Media", back_populates="uploaded_by_user")
+    acervo_uploads = relationship("AcervoFile", back_populates="uploaded_by_user")

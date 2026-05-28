@@ -48,6 +48,10 @@ ALLOWED_EVENT_NAMES = frozenset({
     "layer_notice_view",
     "layer_notice_dismiss",
     "layer_notice_cta_click",
+    "municipio_mode_enter",
+    "municipio_mode_exit",
+    "municipio_mode_change",
+    "municipio_panel_open",
 })
 
 MAX_BATCH_EVENTS = 100

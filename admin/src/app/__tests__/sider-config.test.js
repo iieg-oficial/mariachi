@@ -32,7 +32,7 @@ describe('buildSiderItems', () => {
         });
         expect(items.find((i) => i.key === 'platform').children.map((c) => c.key)).toEqual([
             '/users',
-            '/media',
+            '/acervo',
             '/revision',
             '/actividad',
         ]);
@@ -49,8 +49,8 @@ describe('buildSiderItems', () => {
         const platform = items.find((i) => i.key === 'platform');
         const platformByKey = Object.fromEntries(platform.children.map((c) => [c.key, c]));
 
-        expect(Object.keys(platformByKey)).toEqual(['/users', '/media', '/revision', '/actividad']);
-        expect(platformByKey['/media'].disabled).toBeFalsy();
+        expect(Object.keys(platformByKey)).toEqual(['/users', '/acervo', '/revision', '/actividad']);
+        expect(platformByKey['/acervo'].disabled).toBeFalsy();
         expect(platformByKey['/users'].disabled).toBe(true);
         expect(platformByKey['/revision'].disabled).toBe(true);
         expect(platformByKey['/actividad'].disabled).toBe(true);
@@ -80,7 +80,7 @@ describe('buildSiderItems', () => {
         expect(items[0].key).toBe('/inicio');
         expect(items[1].key).toBe('platform');
         const accesibles = items[1].children.filter((c) => !c.disabled).map((c) => c.key);
-        expect(accesibles).toEqual(['/media']);
+        expect(accesibles).toEqual(['/acervo']);
     });
 
     it('editora con membership en mapalab y sieej accede a ambos sin candado', () => {
@@ -183,7 +183,7 @@ describe('defaultOpenKeyForPath', () => {
 
     it('devuelve platform para rutas no asociadas a un proyecto', () => {
         expect(defaultOpenKeyForPath('/users')).toBe('platform');
-        expect(defaultOpenKeyForPath('/media')).toBe('platform');
+        expect(defaultOpenKeyForPath('/acervo')).toBe('platform');
         expect(defaultOpenKeyForPath('/')).toBe('platform');
     });
 });

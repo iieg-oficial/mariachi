@@ -1,13 +1,77 @@
+import io
+import zipfile
+from collections.abc import Iterator
+from typing import Callable
+
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import ADMIN_ROLE
 from app.core.bucket_policies import get_hidden_prefixes
-from app.models.media import Media, MediaFolder
-from app.models.media_bucket import MediaBucket
+from app.models.acervo import AcervoFile, AcervoFolder
+from app.models.acervo_bucket import AcervoBucket
 from app.models.project import UserProject
 from app.models.user import Usuario
 from app.services.acervo import AcervoClient
+
+ZIP_MAX_BYTES = 500 * 1024 * 1024  # 500 MB
+_ZIP_CHUNK = 64 * 1024
+
+
+class _ZipStreamBuffer(io.RawIOBase):
+    """Buffer write-only que acumula bytes y permite flushearlos en chunks."""
+
+    def __init__(self) -> None:
+        self._buf = bytearray()
+
+    def writable(self) -> bool:
+        return True
+
+    def write(self, b) -> int:
+        self._buf += b
+        return len(b)
+
+    def flush_bytes(self) -> bytes:
+        data = bytes(self._buf)
+        self._buf.clear()
+        return data
+
+
+def stream_zip(
+    entries: Iterator[tuple[str, Callable[[], object]]],
+) -> Iterator[bytes]:
+    """Genera un ZIP streaming. `entries` produce (arcname, stream_factory).
+
+    `stream_factory()` debe retornar un file-like con `.read(size)`; se cierra
+    al terminar cada archivo. Idoneo para servir archivos grandes sin cargar
+    todo el ZIP a memoria.
+    """
+    buf = _ZipStreamBuffer()
+    with zipfile.ZipFile(buf, mode="w", compression=zipfile.ZIP_DEFLATED, allowZip64=True) as zf:
+        for arcname, factory in entries:
+            with zf.open(arcname, mode="w", force_zip64=True) as entry:
+                stream = factory()
+                try:
+                    while True:
+                        chunk = stream.read(_ZIP_CHUNK)
+                        if not chunk:
+                            break
+                        entry.write(chunk)
+                        flushed = buf.flush_bytes()
+                        if flushed:
+                            yield flushed
+                finally:
+                    for closer in ("close", "release_conn"):
+                        try:
+                            getattr(stream, closer, lambda: None)()
+                        except Exception:
+                            pass
+            flushed = buf.flush_bytes()
+            if flushed:
+                yield flushed
+    final = buf.flush_bytes()
+    if final:
+        yield final
 
 _MIME_BY_EXT = {
     "txt": "text/plain", "csv": "text/csv", "pdf": "application/pdf",
@@ -34,10 +98,10 @@ def folder_from_path(path: str) -> str:
     return "/" + path.rsplit("/", 1)[0]
 
 
-def resolve_bucket_or_403(bucket_id: int, current_user: Usuario, db: Session) -> MediaBucket:
+def resolve_bucket_or_403(bucket_id: int, current_user: Usuario, db: Session) -> AcervoBucket:
     bucket = (
-        db.query(MediaBucket)
-        .filter(MediaBucket.id == bucket_id, MediaBucket.is_active.is_(True))
+        db.query(AcervoBucket)
+        .filter(AcervoBucket.id == bucket_id, AcervoBucket.is_active.is_(True))
         .first()
     )
     if bucket is None:
@@ -59,7 +123,7 @@ def resolve_bucket_or_403(bucket_id: int, current_user: Usuario, db: Session) ->
     return bucket
 
 
-def serialize_media(item: Media) -> dict:
+def serialize_acervo_file(item: AcervoFile) -> dict:
     return {
         "id": str(item.id),
         "bucket_id": item.bucket_id,
@@ -124,7 +188,7 @@ def serialize_bucket_only(bucket_id: int, obj: dict) -> dict:
 
 def listar_media(
     db: Session,
-    bucket: MediaBucket,
+    bucket: AcervoBucket,
     folder: str | None,
     type_filter: str | None,
     search: str | None,
@@ -147,7 +211,7 @@ def listar_media(
         if not obj.get("is_dir") and not obj["name"].endswith("/"):
             obj["url"] = client.get_file_url(obj["name"])
 
-    local_items = db.query(Media).filter(Media.bucket_id == bucket.id).all()
+    local_items = db.query(AcervoFile).filter(AcervoFile.bucket_id == bucket.id).all()
     local_by_name = {item.name: item for item in local_items}
 
     results: list[dict] = []
@@ -157,7 +221,7 @@ def listar_media(
         seen_names.add(name)
         local = local_by_name.get(name)
         if local is not None:
-            entry = serialize_media(local)
+            entry = serialize_acervo_file(local)
             entry["url"] = obj.get("url") or entry["url"]
             entry["size"] = obj.get("size", entry["size"])
             results.append(entry)
@@ -167,7 +231,7 @@ def listar_media(
     if recursive:
         for item in local_items:
             if item.name not in seen_names:
-                entry = serialize_media(item)
+                entry = serialize_acervo_file(item)
                 entry["orphan"] = True
                 results.append(entry)
 
@@ -184,7 +248,7 @@ def listar_media(
     return results
 
 
-def serialize_folder(folder: MediaFolder) -> dict:
+def serialize_folder(folder: AcervoFolder) -> dict:
     return {
         "id": str(folder.id),
         "bucket_id": folder.bucket_id,
@@ -199,15 +263,15 @@ def ensure_folder_exists(db: Session, bucket_id: int, clean_folder: str) -> str:
         return "/"
     folder_path = f"{clean_folder}/"
     existing = (
-        db.query(MediaFolder)
+        db.query(AcervoFolder)
         .filter(
-            MediaFolder.bucket_id == bucket_id,
-            MediaFolder.path == folder_path,
+            AcervoFolder.bucket_id == bucket_id,
+            AcervoFolder.path == folder_path,
         )
         .first()
     )
     if not existing:
-        new_folder = MediaFolder(
+        new_folder = AcervoFolder(
             bucket_id=bucket_id,
             name=clean_folder.rsplit("/", 1)[-1],
             path=folder_path,

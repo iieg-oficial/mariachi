@@ -1,8 +1,8 @@
 import api from '@shared/services/api';
 
-const DB_NAME = 'Mariachi_MediaStorage';
+const DB_NAME = 'Mariachi_AcervoStorage';
 const DB_VERSION = 1;
-const STORE_NAME = 'media_files';
+const STORE_NAME = 'acervo_files';
 
 let dbInstance = null;
 
@@ -72,7 +72,7 @@ const deleteFromIndexedDB = async (id) => {
 
 export const getBuckets = async () => {
     try {
-        const response = await api.get('/media-buckets');
+        const response = await api.get('/acervo-buckets');
         return response.data;
     } catch (error) {
         console.error('Error fetching buckets:', error);
@@ -84,7 +84,7 @@ export const listBucketObjects = async (bucketId, prefix = '') => {
     try {
         const params = new URLSearchParams({ bucket_id: String(bucketId) });
         if (prefix) params.append('prefix', prefix);
-        const response = await api.get(`/multimedia/objetos-bucket?${params.toString()}`);
+        const response = await api.get(`/acervo/objetos-bucket?${params.toString()}`);
         return response.data;
     } catch (error) {
         console.error('Error listing bucket objects:', error);
@@ -92,7 +92,7 @@ export const listBucketObjects = async (bucketId, prefix = '') => {
     }
 };
 
-export const getMediaFiles = async (filters = {}) => {
+export const getAcervoFiles = async (filters = {}) => {
     try {
         if (!filters.bucketId) {
             return [];
@@ -104,7 +104,7 @@ export const getMediaFiles = async (filters = {}) => {
         if (filters.search) params.append('search', filters.search);
         if (filters.recursive !== undefined) params.append('recursive', String(filters.recursive));
 
-        const response = await api.get(`/multimedia?${params.toString()}`);
+        const response = await api.get(`/acervo?${params.toString()}`);
         return response.data;
     } catch (error) {
         console.error('Error fetching media files:', error);
@@ -112,7 +112,7 @@ export const getMediaFiles = async (filters = {}) => {
     }
 };
 
-export const uploadMediaFile = async (file, options = {}) => {
+export const uploadAcervoFile = async (file, options = {}) => {
     try {
         const formData = new FormData();
         formData.append('file', file);
@@ -130,7 +130,7 @@ export const uploadMediaFile = async (file, options = {}) => {
             formData.append('alt', options.alt);
         }
 
-        const response = await api.post('/multimedia', formData, {
+        const response = await api.post('/acervo', formData, {
             headers: {
                 'Content-Type': 'multipart/form-data',
             },
@@ -158,7 +158,7 @@ export const uploadMediaFile = async (file, options = {}) => {
 export const uploadMultipleFiles = async (files, options = {}) => {
     try {
         const uploadPromises = files.map(file =>
-            uploadMediaFile(file, {
+            uploadAcervoFile(file, {
                 ...options,
                 onProgress: (percent) => {
                     if (options.onProgress) {
@@ -185,9 +185,9 @@ export const uploadMultipleFiles = async (files, options = {}) => {
     }
 };
 
-export const updateMediaFile = async (id, updates) => {
+export const updateAcervoFile = async (id, updates) => {
     try {
-        const response = await api.put(`/multimedia/${id}`, updates);
+        const response = await api.put(`/acervo/${id}`, updates);
         return response.data;
     } catch (error) {
         console.error('Error updating media file:', error);
@@ -195,9 +195,9 @@ export const updateMediaFile = async (id, updates) => {
     }
 };
 
-export const deleteMediaFile = async (id) => {
+export const deleteAcervoFile = async (id) => {
     try {
-        await api.delete(`/multimedia/${id}`);
+        await api.delete(`/acervo/${id}`);
 
         await deleteFromIndexedDB(id);
 
@@ -208,9 +208,15 @@ export const deleteMediaFile = async (id) => {
     }
 };
 
+export const buildFolderZipUrl = (bucketId, prefix = '') => {
+    const cleaned = (prefix || '').replace(/^\/+|\/+$/g, '');
+    const qs = cleaned ? `?prefix=${encodeURIComponent(cleaned)}` : '';
+    return `${api.defaults.baseURL}/acervo/carpetas/${bucketId}/zip${qs}`;
+};
+
 export const deleteMultipleFiles = async (ids) => {
     try {
-        const deletePromises = ids.map(id => deleteMediaFile(id));
+        const deletePromises = ids.map(id => deleteAcervoFile(id));
         await Promise.all(deletePromises);
         return true;
     } catch (error) {
@@ -224,7 +230,7 @@ export const getFolders = async (bucketId) => {
     try {
         if (!bucketId) return [];
         const params = new URLSearchParams({ bucket_id: String(bucketId) });
-        const response = await api.get(`/multimedia/carpetas?${params.toString()}`);
+        const response = await api.get(`/acervo/carpetas?${params.toString()}`);
         return response.data;
     } catch (error) {
         console.error('Error fetching folders:', error);
@@ -234,7 +240,7 @@ export const getFolders = async (bucketId) => {
 
 export const createFolder = async (bucketId, name, parent = null) => {
     try {
-        const response = await api.post('/multimedia/carpetas', { bucket_id: bucketId, name, parent });
+        const response = await api.post('/acervo/carpetas', { bucket_id: bucketId, name, parent });
         return response.data;
     } catch (error) {
         console.error('Error creating folder:', error);
@@ -244,7 +250,7 @@ export const createFolder = async (bucketId, name, parent = null) => {
 
 export const deleteFolder = async (id) => {
     try {
-        await api.delete(`/multimedia/carpetas/${id}`);
+        await api.delete(`/acervo/carpetas/${id}`);
         return true;
     } catch (error) {
         console.error('Error deleting folder:', error);
@@ -342,12 +348,13 @@ export const getImageDimensions = (file) => {
 export default {
     getBuckets,
     listBucketObjects,
-    getMediaFiles,
-    uploadMediaFile,
+    getAcervoFiles,
+    uploadAcervoFile,
     uploadMultipleFiles,
-    updateMediaFile,
-    deleteMediaFile,
+    updateAcervoFile,
+    deleteAcervoFile,
     deleteMultipleFiles,
+    buildFolderZipUrl,
     getFolders,
     createFolder,
     deleteFolder,

@@ -1,0 +1,103 @@
+import { Card, Space, Table, Typography } from 'antd';
+
+const { Title, Paragraph, Text } = Typography;
+
+
+const MCP_FIELDS = [
+    { campo: 'timestamp', tipo: 'datetime', origen: 'reloj del backend al recibir el request' },
+    { campo: 'dia', tipo: 'date', origen: 'fecha de timestamp (para particionar consultas)' },
+    { campo: 'method', tipo: 'string', origen: 'JSON-RPC: initialize, tools/list, tools/call, notifications/initialized' },
+    { campo: 'tool', tipo: 'string | null', origen: 'params.name cuando method = "tools/call"' },
+    { campo: 'status', tipo: 'ok | error', origen: 'ok si HTTP < 400; error si ≥ 400' },
+    { campo: 'error_code', tipo: 'int | null', origen: 'status HTTP cuando hay error' },
+    { campo: 'duration_ms', tipo: 'int', origen: 'time.monotonic() antes/después del downstream' },
+    { campo: 'bytes_out', tipo: 'int', origen: 'suma de chunks del response (incluye SSE)' },
+    { campo: 'session_hash', tipo: 'sha-256', origen: 'salt + mcp-session-id (no se guarda en claro)' },
+    { campo: 'ip_hash', tipo: 'sha-256', origen: 'salt + IP del cliente' },
+    { campo: 'client_name', tipo: 'string | null', origen: 'params.clientInfo.name del initialize' },
+    { campo: 'client_version', tipo: 'string | null', origen: 'params.clientInfo.version del initialize' },
+];
+
+const FIELD_COLUMNS = [
+    { title: 'Campo', dataIndex: 'campo', key: 'campo', render: (v) => <Text code>{v}</Text> },
+    { title: 'Tipo', dataIndex: 'tipo', key: 'tipo' },
+    { title: 'Origen', dataIndex: 'origen', key: 'origen' },
+];
+
+const MUNICIPIO_EVENTS = [
+    {
+        evento: 'municipio_mode_enter',
+        cuando: 'El usuario activa el modo Vista por municipio (manual, desde URL o desde share)',
+        params: 'source (iieg|inegi), count (n.º de municipios), from_url (bool)',
+    },
+    {
+        evento: 'municipio_mode_exit',
+        cuando: 'El usuario sale del modo (cierra desde el panel o se desactiva por código)',
+        params: 'duration_sec (segundos que duró el modo), source',
+    },
+    {
+        evento: 'municipio_mode_change',
+        cuando: 'Cambia la selección de municipios mientras el modo está activo',
+        params: 'source, count, action (add | remove | set | clear)',
+    },
+    {
+        evento: 'municipio_panel_open',
+        cuando: 'El usuario abre el panel selector desde el botón "Jalisco / N municipios"',
+        params: 'source, active (bool, si el modo ya estaba activo al abrir)',
+    },
+];
+
+const MUNICIPIO_EVENT_COLUMNS = [
+    { title: 'Evento', dataIndex: 'evento', key: 'evento', render: (v) => <Text code>{v}</Text> },
+    { title: 'Cuándo se dispara', dataIndex: 'cuando', key: 'cuando' },
+    { title: 'Parámetros', dataIndex: 'params', key: 'params', render: (v) => <Text code style={{ fontSize: 11 }}>{v}</Text> },
+];
+
+
+export default function TelemetryTopic() {
+    return (
+        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+            <div>
+                <Title level={3} style={{ marginBottom: 4 }}>Telemetría</Title>
+                <Text type="secondary">
+                    Registro de eventos sin identidad de los servicios del ecosistema. Cada fuente persiste sus propios campos; las estadísticas agregadas viven en el dashboard de Estadísticas correspondiente.
+                </Text>
+            </div>
+
+            <Card
+                title={<>Servidor MCP de MapaLab — <Text code>mapalab_mcp_events</Text></>}
+                size="small"
+            >
+                <Paragraph type="secondary" style={{ marginTop: 0, marginBottom: 12, fontSize: 12 }}>
+                    Middleware ASGI en el container <Text code>mapalab-mcp</Text> intercepta cada request al endpoint <Text code>/mcp/</Text>, parsea el JSON-RPC y empuja al buffer. Flush async cada 30 s a <Text code>POST /api/administrador/internal/mapalab/mcp/events</Text>. Sin identidad: <Text code>session_hash</Text> e <Text code>ip_hash</Text> son SHA-256 + salt del token interno. Dashboard en el tab MCP de <Text code>/administrador/mapalab/stats</Text>.
+                </Paragraph>
+                <Table
+                    rowKey="campo"
+                    size="small"
+                    pagination={false}
+                    dataSource={MCP_FIELDS}
+                    columns={FIELD_COLUMNS}
+                />
+            </Card>
+
+            <Card
+                title={<>Visor MapaLab — Modo Vista por municipio (beta)</>}
+                size="small"
+            >
+                <Paragraph type="secondary" style={{ marginTop: 0, marginBottom: 12, fontSize: 12 }}>
+                    Eventos emitidos por el visor cuando el usuario activa el modo Vista por municipio (gated por <Text code>VITE_APP_ENV in [dev, beta]</Text>). Se envían vía <Text code>analyticsService.trackEvent</Text> al collector propio (Mariachi) y a GA4. La fuente <Text code>source</Text> indica si los polígonos se piden de <Text code>general:limite_municipal</Text> (iieg) o <Text code>general:limite_municipal_inegi</Text> (inegi), derivado del switch IIEG/INEGI del panel de capas activas.
+                </Paragraph>
+                <Table
+                    rowKey="evento"
+                    size="small"
+                    pagination={false}
+                    dataSource={MUNICIPIO_EVENTS}
+                    columns={MUNICIPIO_EVENT_COLUMNS}
+                />
+                <Paragraph type="secondary" style={{ marginTop: 12, marginBottom: 0, fontSize: 12 }}>
+                    Para que una capa participe del filtro, debe tener <Text code>hasMunicipio = true</Text> y un <Text code>municipioField</Text> definido en el editor de capas (tab Apariencia). El visor construye un CQL <Text code>{'{field} IN (\'014\',\'067\')'}</Text> por capa. Las capas activas que no soporten el filtro se ocultan temporalmente y se marcan como deshabilitadas en el sider.
+                </Paragraph>
+            </Card>
+        </Space>
+    );
+}

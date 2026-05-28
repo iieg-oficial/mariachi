@@ -34,7 +34,13 @@ export const FIELD_VISIBILITY = {
     slug: ['group', 'leaf'],
     alias: ['group', 'leaf'],
     searchTags: ['group', 'leaf'],
+    municipioFilter: ['group', 'leaf'],
 };
+
+export const MUNICIPIO_FIELD_TYPE_OPTIONS = [
+    { value: 'clave', label: 'Clave INEGI (ej. 14039)' },
+    { value: 'nombre', label: 'Nombre (ej. Guadalajara)' },
+];
 
 export const TAB_VISIBILITY = {
     servicios: ['group', 'leaf'],
@@ -42,6 +48,7 @@ export const TAB_VISIBILITY = {
     metadatos: ['group', 'leaf'],
     simbologia: ['group', 'leaf'],
     aviso: ['group', 'leaf'],
+    apariencia: ['tema', 'category', 'label', 'group', 'leaf'],
 };
 
 export const isFieldVisible = (field, nodeType) => {

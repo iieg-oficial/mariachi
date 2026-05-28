@@ -3,6 +3,7 @@ import { BookOutlined } from '@ant-design/icons';
 import { useSearchParams } from 'react-router';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import McpTopic from '@features/documentacion/topics/McpTopic';
+import TelemetryTopic from '@features/documentacion/topics/TelemetryTopic';
 
 const { Content } = Layout;
 const { Title, Text } = Typography;
@@ -13,6 +14,11 @@ const TOPICS = [
         key: 'mcp',
         label: 'Servidor MCP',
         children: <McpTopic />,
+    },
+    {
+        key: 'telemetria',
+        label: 'Telemetría',
+        children: <TelemetryTopic />,
     },
 ];
 

@@ -26,9 +26,10 @@ def _client_ip(request: Request) -> str:
     return request.client.host if request.client else 'unknown'
 
 
-def rate_limit(max_requests: int, window_seconds: float):
+def rate_limit(max_requests: int, window_seconds: float, scope: str | None = None):
     async def _limiter(current_user: Usuario = Depends(get_current_user)):
-        key = f'{_KEY_PREFIX}:user:{current_user.id}'
+        scope_suffix = f':{scope}' if scope else ''
+        key = f'{_KEY_PREFIX}:user:{current_user.id}{scope_suffix}'
         now = time.time()
         window_ms = int(window_seconds * 1000)
         cutoff = now - window_seconds

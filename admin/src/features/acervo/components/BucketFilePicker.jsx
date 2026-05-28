@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Modal, Pagination, Segmented, Select, Tabs, Input, Typography, Button } from 'antd';
 import { AppstoreOutlined, CloudUploadOutlined, UnorderedListOutlined } from '@ant-design/icons';
-import { listBucketObjects } from '@features/media/api/mediaService';
-import useAccessibleBuckets from '@features/media/hooks/useAccessibleBuckets';
-import BucketFileUploader from '@features/media/components/BucketFileUploader';
-import BucketFileGrid from '@features/media/components/BucketFileGrid';
-import BucketFileList from '@features/media/components/BucketFileList';
+import { listBucketObjects } from '@features/acervo/api/acervoService';
+import useAccessibleBuckets from '@features/acervo/hooks/useAccessibleBuckets';
+import BucketFileUploader from '@features/acervo/components/BucketFileUploader';
+import BucketFileGrid from '@features/acervo/components/BucketFileGrid';
+import BucketFileList from '@features/acervo/components/BucketFileList';
 import { message } from '@shared/services/message';
 
 const { Text } = Typography;

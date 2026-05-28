@@ -1,4 +1,6 @@
 from app.core.database import Base
+from app.models.acervo import AcervoFile, AcervoFolder
+from app.models.acervo_bucket import AcervoBucket
 from app.models.actividad_log import ActividadLog
 from app.models.borrador import Borrador
 from app.models.colibri_route import ColibriRoute
@@ -12,8 +14,6 @@ from app.models.mapalab_api_key_evento import MapalabApiKeyEvento
 from app.models.mapalab_api_key_uso import MapalabApiKeyUsoDiario
 from app.models.mapalab_event import MapalabEvent, MapalabSession
 from app.models.mapalab_mcp_event import MapalabMcpEvent
-from app.models.media import Media, MediaFolder
-from app.models.media_bucket import MediaBucket
 from app.models.menu_item import MenuItem
 from app.models.page import Page
 from app.models.project import Project, UserProject
@@ -44,8 +44,8 @@ __all__ = [
     "Usuario",
     "Page",
     "MenuItem",
-    "Media",
-    "MediaFolder",
+    "AcervoFile",
+    "AcervoFolder",
     "Borrador",
     "ColibriRoute",
     "DireccionOrganizacional",
@@ -53,7 +53,7 @@ __all__ = [
     "HomeSection",
     "Project",
     "UserProject",
-    "MediaBucket",
+    "AcervoBucket",
     "Reporte",
     "ReporteActividad",
     "ReporteGrupo",

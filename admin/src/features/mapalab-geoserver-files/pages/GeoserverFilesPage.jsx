@@ -19,6 +19,7 @@ import {
 import {
     CodeOutlined,
     DeleteOutlined,
+    DownloadOutlined,
     FileImageOutlined,
     FolderAddOutlined,
     FolderOpenOutlined,
@@ -30,6 +31,7 @@ import {
 } from '@ant-design/icons';
 import {
     browseGeoserverFiles,
+    buildGeoserverFolderZipUrl,
     deleteGeoserverFile,
     listGeoserverWorkspaces,
     searchGeoserverFiles,
@@ -255,6 +257,8 @@ export default function GeoserverFilesPage() {
                         <img
                             src={f.downloadUrl}
                             alt={basename(f.name)}
+                            loading="lazy"
+                            decoding="async"
                             style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
                         />
                     ) : (
@@ -353,12 +357,27 @@ export default function GeoserverFilesPage() {
                                 <Text type="warning" style={{ fontSize: 10 }}>(pendiente)</Text>
                             )}
                         </div>
-                        <Tooltip title={f.path}>
-                            <Text ellipsis style={{ display: 'block', fontSize: 12 }}>
-                                <FolderOutlined style={{ marginRight: 4 }} />
-                                {f.name}
-                            </Text>
-                        </Tooltip>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <Tooltip title={f.path}>
+                                <Text ellipsis style={{ flex: 1, fontSize: 12, minWidth: 0 }}>
+                                    <FolderOutlined style={{ marginRight: 4 }} />
+                                    {f.name}
+                                </Text>
+                            </Tooltip>
+                            {!f.pending && (
+                                <Tooltip title="Descargar carpeta como ZIP">
+                                    <Button
+                                        size="small"
+                                        type="text"
+                                        icon={<DownloadOutlined />}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            window.open(buildGeoserverFolderZipUrl(f.path, workspace), '_blank');
+                                        }}
+                                    />
+                                </Tooltip>
+                            )}
+                        </div>
                     </Card>
                 ))}
                 {data.files.map((f) => renderFileCard(f, false))}

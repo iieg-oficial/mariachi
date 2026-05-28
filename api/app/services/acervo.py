@@ -8,7 +8,7 @@ from minio.error import S3Error
 
 from app.core.acervo_url import to_absolute
 from app.core.settings import get_settings
-from app.models.media_bucket import MediaBucket
+from app.models.acervo_bucket import AcervoBucket
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -75,7 +75,7 @@ class AcervoClient:
             )
 
     @classmethod
-    def for_bucket(cls, bucket: MediaBucket) -> "AcervoClient":
+    def for_bucket(cls, bucket: AcervoBucket) -> "AcervoClient":
         key = f"{bucket.acervo_bucket}:{bucket.access_key_ref}"
         if key not in cls._cache:
             ak, sk = resolve_bucket_credentials(bucket.access_key_ref)
@@ -157,7 +157,7 @@ class AcervoClient:
                 raise RuntimeError(
                     f"AcervoClient para bucket privado '{self.bucket_name}' sin bucket_id"
                 )
-            return f"/api/administrador/multimedia/proxy/{self.bucket_id}/{object_name.lstrip('/')}"
+            return f"/api/administrador/acervo/proxy/{self.bucket_id}/{object_name.lstrip('/')}"
         return to_absolute(f"{self.bucket_name}/{object_name}")
 
     def get_object_stream(self, object_name: str):

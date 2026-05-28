@@ -5,7 +5,7 @@ Cada feature que reserva una sub-ruta dentro de un bucket compartido (p. ej.
 reportes guarda screenshots en `mariachi/reportes/`) registra aquí su prefijo
 para que la página de Multimedia no lo exponga al usuario final.
 
-`KNOWN_ACERVO_BUCKETS` enumera los buckets registrables desde `media_buckets`.
+`KNOWN_ACERVO_BUCKETS` enumera los buckets registrables desde `acervo_buckets`.
 Es la fuente que usan los validators de schemas (eventos, home, etc.) para
 aceptar paths relativos del acervo en formato `bucket/object` sin habilitar
 escritura de paths arbitrarios. La lista coincide con la documentada en

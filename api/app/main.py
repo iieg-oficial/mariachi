@@ -9,6 +9,8 @@ from prometheus_fastapi_instrumentator import metrics as fastapi_metrics
 from app.api import metrics as metrics_module
 from app.api.deps import require_staff
 from app.api.routes import (
+    acervo,
+    acervo_buckets,
     actividad,
     auth,
     borradores,
@@ -30,8 +32,6 @@ from app.api.routes import (
     mapalab_mcp_internal,
     mapalab_shares,
     mapalab_stats,
-    media,
-    media_buckets,
     menu,
     pages,
     preview,
@@ -97,10 +97,10 @@ def create_app() -> FastAPI:
     app.include_router(users.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(actividad.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(projects.router, prefix=settings.admin_prefix, dependencies=staff_dep)
-    app.include_router(media_buckets.router, prefix=settings.admin_prefix, dependencies=staff_dep)
+    app.include_router(acervo_buckets.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(pages.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(menu.router, prefix=settings.admin_prefix, dependencies=staff_dep)
-    app.include_router(media.router, prefix=settings.admin_prefix, dependencies=staff_dep)
+    app.include_router(acervo.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(borradores.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(sistema.router, prefix=settings.admin_prefix)
     app.include_router(layers.router, prefix=settings.admin_prefix, dependencies=staff_dep)

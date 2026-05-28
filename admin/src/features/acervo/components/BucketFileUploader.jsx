@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Modal, Upload, Select, Form, Button, Space, Typography } from 'antd';
 import { InboxOutlined } from '@ant-design/icons';
-import { uploadMediaFile } from '@features/media/api/mediaService';
+import { uploadAcervoFile } from '@features/acervo/api/acervoService';
 import { message } from '@shared/services/message';
 
 const { Dragger } = Upload;
@@ -37,7 +37,7 @@ export default function BucketFileUploader({
         }
         setUploading(true);
         try {
-            const result = await uploadMediaFile(file, {
+            const result = await uploadAcervoFile(file, {
                 bucketId,
                 folder: values.folder || undefined,
                 onProgress: setProgress,

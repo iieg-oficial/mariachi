@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Alert, Card, Button, Upload, Table, Image, Space, Modal, Form, Input, Select, Tag, Popconfirm, Row, Col, Statistic, Segmented, Empty, Spin, Breadcrumb } from 'antd';
+import { Alert, Card, Button, Upload, Table, Image, Space, Modal, Form, Input, Select, Tabs, Tag, Popconfirm, Row, Col, Statistic, Segmented, Empty, Spin, Breadcrumb } from 'antd';
 import {
     InboxOutlined, DeleteOutlined, EditOutlined, FolderOutlined, FolderOpenOutlined, FolderAddOutlined, FileImageOutlined, FilePdfOutlined,
-    FileOutlined, AppstoreOutlined, BarsOutlined, DownloadOutlined, CopyOutlined, EyeOutlined, HomeOutlined
+    FileOutlined, AppstoreOutlined, BarsOutlined, DownloadOutlined, CopyOutlined, EyeOutlined, HomeOutlined, DragOutlined
 } from '@ant-design/icons';
-import mediaService from '@features/media/api/mediaService';
+import acervoService from '@features/acervo/api/acervoService';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import { message } from '@shared/services/message';
 
@@ -32,12 +32,12 @@ const renderTypeTag = (type, isDir) => {
     return <Tag color={color}>{label}</Tag>;
 };
 
-const Media = () => {
+const Acervo = () => {
     const { isMobile } = useIsMobile();
     const [loading, setLoading] = useState(true);
     const [buckets, setBuckets] = useState([]);
     const [selectedBucketId, setSelectedBucketId] = useState(null);
-    const [mediaFiles, setMediaFiles] = useState([]);
+    const [acervoFiles, setAcervoFiles] = useState([]);
     const [folders, setFolders] = useState([]);
     const [bucketStats, setBucketStats] = useState({ total: 0, images: 0, documents: 0, totalSize: 0 });
     const [currentPath, setCurrentPath] = useState('');
@@ -49,6 +49,8 @@ const Media = () => {
     const [folderModalVisible, setFolderModalVisible] = useState(false);
     const [editModalVisible, setEditModalVisible] = useState(false);
     const [previewVisible, setPreviewVisible] = useState(false);
+    const [moveModalVisible, setMoveModalVisible] = useState(false);
+    const [moveTargetFolder, setMoveTargetFolder] = useState('/');
     const [currentFile, setCurrentFile] = useState(null);
     const [form] = Form.useForm();
     const [folderForm] = Form.useForm();
@@ -56,25 +58,25 @@ const Media = () => {
 
     const loadFolders = useCallback(async (bucketId) => {
         try {
-            const data = await mediaService.getFolders(bucketId);
+            const data = await acervoService.getFolders(bucketId);
             setFolders(data);
         } catch {
             message.error('Error al cargar carpetas');
         }
     }, []);
 
-    const loadMediaFiles = useCallback(async () => {
+    const loadAcervoFiles = useCallback(async () => {
         if (!selectedBucketId) return;
         setLoading(true);
         try {
-            const data = await mediaService.getMediaFiles({
+            const data = await acervoService.getAcervoFiles({
                 bucketId: selectedBucketId,
                 folder: currentPath,
                 type: selectedType,
                 search: searchText,
                 recursive: Boolean(searchText),
             });
-            setMediaFiles(data);
+            setAcervoFiles(data);
         } catch {
             message.error('Error al cargar archivos');
         } finally {
@@ -85,7 +87,7 @@ const Media = () => {
     const loadBucketStats = useCallback(async () => {
         if (!selectedBucketId) return;
         try {
-            const data = await mediaService.getMediaFiles({
+            const data = await acervoService.getAcervoFiles({
                 bucketId: selectedBucketId,
                 recursive: true,
             });
@@ -103,13 +105,18 @@ const Media = () => {
 
     useEffect(() => {
         let cancelled = false;
-        mediaService.getBuckets()
+        acervoService.getBuckets()
             .then((bucketsData) => {
                 if (cancelled) return;
                 setBuckets(bucketsData);
                 if (bucketsData.length > 0) {
                     setSelectedBucketId((prev) => {
                         if (prev != null) return prev;
+                        try {
+                            const saved = Number(localStorage.getItem('mariachi.acervo.lastBucketId'));
+                            const match = saved && bucketsData.find((b) => b.id === saved);
+                            if (match) return match.id;
+                        } catch { /* noop */ }
                         const mapalab = bucketsData.find((b) => b.acervo_bucket === 'mapalab');
                         return (mapalab || bucketsData[0]).id;
                     });
@@ -119,6 +126,13 @@ const Media = () => {
         return () => { cancelled = true; };
     }, []);
 
+    const handleBucketChange = useCallback((nextId) => {
+        const id = Number(nextId);
+        setSelectedBucketId(id);
+        setCurrentPath('');
+        try { localStorage.setItem('mariachi.acervo.lastBucketId', String(id)); } catch { /* noop */ }
+    }, []);
+
     useEffect(() => {
         if (!selectedBucketId) return;
         loadFolders(selectedBucketId);
@@ -126,10 +140,10 @@ const Media = () => {
     }, [selectedBucketId, loadFolders, loadBucketStats]);
 
     useEffect(() => {
-        loadMediaFiles();
-    }, [loadMediaFiles]);
+        loadAcervoFiles();
+    }, [loadAcervoFiles]);
 
-    const visibleMediaFiles = selectedBucketId ? mediaFiles : [];
+    const visibleAcervoFiles = selectedBucketId ? acervoFiles : [];
 
     const handleUpload = async (options) => {
         const { file, onSuccess, onError, onProgress } = options;
@@ -150,10 +164,10 @@ const Media = () => {
                 },
             };
 
-            const result = await mediaService.uploadMediaFile(file, uploadOptions);
+            const result = await acervoService.uploadAcervoFile(file, uploadOptions);
             onSuccess(result);
             message.success(`${file.name} subido exitosamente`);
-            loadMediaFiles();
+            loadAcervoFiles();
             loadBucketStats();
         } catch (error) {
             onError(error);
@@ -163,9 +177,9 @@ const Media = () => {
 
     const handleDelete = async (id) => {
         try {
-            await mediaService.deleteMediaFile(id);
+            await acervoService.deleteAcervoFile(id);
             message.success('Archivo eliminado exitosamente');
-            loadMediaFiles();
+            loadAcervoFiles();
             loadBucketStats();
         } catch {
             message.error('Error al eliminar archivo');
@@ -179,10 +193,10 @@ const Media = () => {
         }
 
         try {
-            await mediaService.deleteMultipleFiles(selectedFiles);
+            await acervoService.deleteMultipleFiles(selectedFiles);
             message.success(`${selectedFiles.length} archivos eliminados`);
             setSelectedFiles([]);
-            loadMediaFiles();
+            loadAcervoFiles();
             loadBucketStats();
         } catch {
             message.error('Error al eliminar archivos');
@@ -202,10 +216,10 @@ const Media = () => {
     const handleEditSubmit = async () => {
         try {
             const values = await editForm.validateFields();
-            await mediaService.updateMediaFile(currentFile.id, values);
+            await acervoService.updateAcervoFile(currentFile.id, values);
             message.success('Archivo actualizado exitosamente');
             setEditModalVisible(false);
-            loadMediaFiles();
+            loadAcervoFiles();
         } catch {
             message.error('Error al actualizar archivo');
         }
@@ -214,7 +228,7 @@ const Media = () => {
     const handleCreateFolder = async () => {
         try {
             const values = await folderForm.validateFields();
-            await mediaService.createFolder(selectedBucketId, values.name, values.parent);
+            await acervoService.createFolder(selectedBucketId, values.name, values.parent);
             message.success('Carpeta creada exitosamente');
             setFolderModalVisible(false);
             folderForm.resetFields();
@@ -234,10 +248,34 @@ const Media = () => {
         setPreviewVisible(true);
     };
 
+    const handleOpenMove = (file) => {
+        setCurrentFile(file);
+        setMoveTargetFolder(file.folder || '/');
+        setMoveModalVisible(true);
+    };
+
+    const handleMoveSubmit = async () => {
+        if (!currentFile) return;
+        try {
+            await acervoService.updateAcervoFile(currentFile.id, { folder: moveTargetFolder });
+            message.success('Archivo movido');
+            setMoveModalVisible(false);
+            loadAcervoFiles();
+        } catch (error) {
+            message.error(error?.response?.data?.detail || 'Error al mover archivo');
+        }
+    };
+
     const handleEnterDir = (file) => {
         const cleanName = file.name.endsWith('/') ? file.name : `${file.name}/`;
         setCurrentPath(cleanName);
         setSelectedFiles([]);
+    };
+
+    const handleDownloadFolder = (folder) => {
+        const prefix = (currentPath || '') + (folder.name || '').replace(/\/$/, '');
+        const url = acervoService.buildFolderZipUrl(selectedBucketId, prefix);
+        window.open(url, '_blank');
     };
 
     const currentBucket = buckets.find((b) => b.id === selectedBucketId);
@@ -373,7 +411,7 @@ const Media = () => {
             key: 'size',
             width: 120,
             sorter: (a, b) => (a.size || 0) - (b.size || 0),
-            render: (size, record) => record.isDir ? '—' : mediaService.formatFileSize(size)
+            render: (size, record) => record.isDir ? '—' : acervoService.formatFileSize(size)
         },
         {
             title: 'Carpeta',
@@ -441,7 +479,7 @@ const Media = () => {
         }
     ];
 
-    const sortedFiles = [...visibleMediaFiles].sort((a, b) => {
+    const sortedFiles = [...visibleAcervoFiles].sort((a, b) => {
         if (a.isDir && !b.isDir) return -1;
         if (!a.isDir && b.isDir) return 1;
         return (a.originalName || '').localeCompare(b.originalName || '');
@@ -453,7 +491,7 @@ const Media = () => {
                 <Col key={file.id} xs={24} sm={12} md={8} lg={6} xl={4}>
                     <Card
                         hoverable
-                        onClick={file.isDir ? () => handleEnterDir(file) : undefined}
+                        onClick={file.isDir ? () => handleEnterDir(file) : () => handlePreview(file)}
                         cover={
                             file.isDir ? (
                                 <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FFF2E5', cursor: 'pointer' }}>
@@ -465,7 +503,6 @@ const Media = () => {
                                         src={file.thumbnail}
                                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                         preview={false}
-                                        onClick={() => handlePreview(file)}
                                     />
                                 </div>
                             ) : (
@@ -475,28 +512,31 @@ const Media = () => {
                             )
                         }
                         actions={file.isDir ? [
-                            <FolderOpenOutlined key="open" onClick={() => handleEnterDir(file)} />,
+                            <FolderOpenOutlined key="open" onClick={(e) => { e.stopPropagation(); handleEnterDir(file); }} />,
+                            <DownloadOutlined key="download" title="Descargar ZIP" onClick={(e) => { e.stopPropagation(); handleDownloadFolder(file); }} />,
                             <Popconfirm
                                 key="delete"
                                 title="¿Eliminar carpeta y todo su contenido?"
-                                onConfirm={() => handleDelete(file.id)}
+                                onConfirm={(e) => { e?.stopPropagation?.(); handleDelete(file.id); }}
+                                onCancel={(e) => e?.stopPropagation?.()}
                                 okText="Sí"
                                 cancelText="No"
                             >
-                                <DeleteOutlined />
+                                <DeleteOutlined onClick={(e) => e.stopPropagation()} />
                             </Popconfirm>,
                         ] : [
-                            <EyeOutlined key="view" onClick={() => handlePreview(file)} />,
-                            <CopyOutlined key="copy" onClick={() => handleCopyUrl(file.url)} />,
-                            <EditOutlined key="edit" onClick={() => handleEdit(file)} />,
+                            <DragOutlined key="move" title="Mover a carpeta" onClick={(e) => { e.stopPropagation(); handleOpenMove(file); }} />,
+                            <CopyOutlined key="copy" onClick={(e) => { e.stopPropagation(); handleCopyUrl(file.url); }} />,
+                            <EditOutlined key="edit" onClick={(e) => { e.stopPropagation(); handleEdit(file); }} />,
                             <Popconfirm
                                 key="delete"
                                 title="¿Eliminar?"
-                                onConfirm={() => handleDelete(file.id)}
+                                onConfirm={(e) => { e?.stopPropagation?.(); handleDelete(file.id); }}
+                                onCancel={(e) => e?.stopPropagation?.()}
                                 okText="Sí"
                                 cancelText="No"
                             >
-                                <DeleteOutlined />
+                                <DeleteOutlined onClick={(e) => e.stopPropagation()} />
                             </Popconfirm>
                         ]}
                     >
@@ -508,7 +548,7 @@ const Media = () => {
                             }
                             description={
                                 <div>
-                                    <div>{file.isDir ? 'Carpeta' : mediaService.formatFileSize(file.size)}</div>
+                                    <div>{file.isDir ? 'Carpeta' : acervoService.formatFileSize(file.size)}</div>
                                     <div style={{ fontSize: 11, color: '#8c8c8c' }}>
                                         {file.uploadedAt ? new Date(file.uploadedAt).toLocaleDateString('es-MX') : '—'}
                                     </div>
@@ -524,7 +564,7 @@ const Media = () => {
     return (
         <div>
             <Card
-                title="Multimedia"
+                title="Acervo"
                 extra={
                     <Space wrap size={[8, 8]} style={{ width: isMobile ? '100%' : 'auto' }}>
                         <Button
@@ -578,7 +618,7 @@ const Media = () => {
                     <Col xs={12} sm={12} md={6}>
                         <Statistic
                             title="Tamaño total"
-                            value={mediaService.formatFileSize(bucketStats.totalSize)}
+                            value={acervoService.formatFileSize(bucketStats.totalSize)}
                         />
                     </Col>
                 </Row>
@@ -602,27 +642,24 @@ const Media = () => {
                     <Breadcrumb items={breadcrumbItems} />
                 </div>
 
+                {buckets.length > 0 && (
+                    <Tabs
+                        activeKey={selectedBucketId != null ? String(selectedBucketId) : undefined}
+                        onChange={handleBucketChange}
+                        size="small"
+                        tabBarStyle={{ marginBottom: 12 }}
+                        items={buckets.map((b) => ({
+                            key: String(b.id),
+                            label: b.display_name,
+                        }))}
+                    />
+                )}
                 <div style={{
                     display: 'flex',
                     flexWrap: 'wrap',
                     gap: 8,
                     marginBottom: 16
                 }}>
-                    <div style={{ flex: isMobile ? '1 1 100%' : '0 0 240px' }}>
-                        <Select
-                            placeholder="Media"
-                            value={selectedBucketId}
-                            onChange={(id) => {
-                                setSelectedBucketId(id);
-                                setCurrentPath('');
-                            }}
-                            style={{ width: '100%' }}
-                            options={buckets.map((b) => ({
-                                value: b.id,
-                                label: b.display_name,
-                            }))}
-                        />
-                    </div>
                     <div style={{ flex: isMobile ? '1 1 100%' : '1 1 240px', minWidth: 0 }}>
                         <Search
                             placeholder="Buscar archivos..."
@@ -659,7 +696,7 @@ const Media = () => {
                 </div>
 
                 <Spin spinning={loading}>
-                    {visibleMediaFiles.length === 0 ? (
+                    {visibleAcervoFiles.length === 0 ? (
                         <Empty description="No hay archivos" />
                     ) : viewMode === 'grid' ? (
                         renderGridView()
@@ -811,6 +848,35 @@ const Media = () => {
             </Modal>
 
             <Modal
+                title="Mover a carpeta"
+                open={moveModalVisible}
+                onCancel={() => setMoveModalVisible(false)}
+                onOk={handleMoveSubmit}
+                okText="Mover"
+                cancelText="Cancelar"
+                destroyOnHidden
+            >
+                <Space direction="vertical" style={{ width: '100%' }}>
+                    <div style={{ color: '#8c8c8c', fontSize: 12 }}>
+                        Archivo: <strong>{currentFile?.originalName}</strong>
+                        <br />
+                        Ubicación actual: <code>{currentFile?.folder || '/'}</code>
+                    </div>
+                    <Select
+                        value={moveTargetFolder}
+                        onChange={setMoveTargetFolder}
+                        style={{ width: '100%' }}
+                        showSearch
+                        placeholder="Selecciona carpeta destino"
+                        options={[
+                            { value: '/', label: '/ (raíz del bucket)' },
+                            ...folders.map((f) => ({ value: f.path, label: f.path })),
+                        ]}
+                    />
+                </Space>
+            </Modal>
+
+            <Modal
                 title={currentFile?.originalName}
                 open={previewVisible}
                 onCancel={() => setPreviewVisible(false)}
@@ -836,7 +902,7 @@ const Media = () => {
                                     <Tag>{currentFile.type}</Tag>
                                 </div>
                                 <div style={{ marginTop: 8 }}>
-                                    {mediaService.formatFileSize(currentFile.size)}
+                                    {acervoService.formatFileSize(currentFile.size)}
                                 </div>
                             </div>
                         )}
@@ -855,4 +921,4 @@ const Media = () => {
     );
 };
 
-export default Media;
+export default Acervo;

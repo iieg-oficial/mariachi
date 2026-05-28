@@ -19,7 +19,7 @@ class FolderResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class MediaUpdate(CamelCaseInput):
+class AcervoFileUpdate(CamelCaseInput):
     alt: str | None = None
     description: str | None = None
     folder: str | None = None
