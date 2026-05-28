@@ -14,6 +14,11 @@ class BannerItem(CamelCaseInput):
     titulo: str = ''
     descripcion: str = ''
     imagen_url: str = Field(default='', serialization_alias='imagenUrl')
+    imagen_url_mobile: str = Field(default='', serialization_alias='imagenUrlMobile')
+    imagen_url_desktop: str = Field(default='', serialization_alias='imagenUrlDesktop')
+    gradient_from: str = Field(default='', serialization_alias='gradientFrom')
+    gradient_to: str = Field(default='', serialization_alias='gradientTo')
+    gradient_angle: str = Field(default='', serialization_alias='gradientAngle')
     logo_url: str = Field(default='', serialization_alias='logoUrl')
     cta_label: str = Field(default='', serialization_alias='ctaLabel')
     cta_href: str = Field(default='', serialization_alias='ctaHref')
@@ -21,12 +26,12 @@ class BannerItem(CamelCaseInput):
 
     model_config = ConfigDict(populate_by_name=True, extra='forbid')
 
-    @field_validator('imagen_url', 'logo_url', mode='before')
+    @field_validator('imagen_url', 'imagen_url_mobile', 'imagen_url_desktop', 'logo_url', mode='before')
     @classmethod
     def _store_relative(cls, v):
         return to_relative(v) or ''
 
-    @field_serializer('imagen_url', 'logo_url', when_used='json')
+    @field_serializer('imagen_url', 'imagen_url_mobile', 'imagen_url_desktop', 'logo_url', when_used='json')
     def _expose_absolute(self, v):
         return to_absolute(v) if v else v
 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import api from '@shared/services/api';
+import api, { refreshCsrfToken } from '@shared/services/api';
 import { AuthContext } from '@shared/contexts/useAuth';
 
 export const AuthProvider = ({ children }) => {
@@ -10,6 +10,9 @@ export const AuthProvider = ({ children }) => {
         try {
             const response = await api.get('/autenticacion/perfil');
             setUser(response.data);
+            if (!sessionStorage.getItem('csrf_token')) {
+                await refreshCsrfToken();
+            }
         } catch {
             setUser(null);
         } finally {
@@ -20,7 +23,13 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
         let cancelled = false;
         api.get('/autenticacion/perfil')
-            .then((res) => { if (!cancelled) setUser(res.data); })
+            .then(async (res) => {
+                if (cancelled) return;
+                setUser(res.data);
+                if (!sessionStorage.getItem('csrf_token')) {
+                    await refreshCsrfToken();
+                }
+            })
             .catch(() => { if (!cancelled) setUser(null); })
             .finally(() => { if (!cancelled) setLoading(false); });
         return () => { cancelled = true; };

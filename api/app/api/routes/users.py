@@ -27,8 +27,18 @@ _SELF_UPDATE_PRIVILEGED_FIELDS = frozenset({"role", "username", "must_change_pas
 
 
 def generate_temp_password(length=12):
-    alphabet = string.ascii_letters + string.digits
-    return ''.join(secrets.choice(alphabet) for _ in range(length))
+    specials = "!@#$%^&*-_=+?"
+    guaranteed = [
+        secrets.choice(string.ascii_lowercase),
+        secrets.choice(string.ascii_uppercase),
+        secrets.choice(string.digits),
+        secrets.choice(specials),
+    ]
+    pool = string.ascii_letters + string.digits + specials
+    remaining = [secrets.choice(pool) for _ in range(max(length, len(guaranteed)) - len(guaranteed))]
+    chars = guaranteed + remaining
+    secrets.SystemRandom().shuffle(chars)
+    return ''.join(chars)
 
 
 def _normalize_identifier(value: str | None) -> str | None:

@@ -52,6 +52,20 @@ export default function AsignacionesEditor({ formulario }) {
 
     return (
         <Space direction="vertical" style={{ width: '100%' }} size="middle">
+            {formulario.estado === 'borrador' && (
+                <Alert
+                    type="warning"
+                    showIcon
+                    message="Este formulario está en borrador"
+                    description={
+                        <Paragraph style={{ margin: 0 }}>
+                            Los usuarios y grupos que asignes aquí no verán el formulario en SIEEJ
+                            hasta que lo publiques. Puedes publicarlo desde el botón <strong>Publicar formulario</strong>
+                            {' '}en la parte superior de esta página.
+                        </Paragraph>
+                    }
+                />
+            )}
             <Alert
                 type="info"
                 showIcon

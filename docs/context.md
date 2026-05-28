@@ -2,7 +2,7 @@
 
 > Documento de referencia completo. Leer este archivo proporciona contexto del monorepo sin explorar el codebase.
 
-**Versión:** ver `api/pyproject.toml` (la lee `api/app/core/version.py::get_app_version()`; endpoint en vivo `GET /ontoy`). · **Última actualización:** 2026-05-18
+**Versión:** ver `api/pyproject.toml` (la lee `api/app/core/version.py::get_app_version()`; endpoint en vivo `GET /ontoy`). · **Última actualización:** 2026-05-28
 
 
 ---
@@ -811,6 +811,10 @@ Este repo se integra con otros servicios internos vecinos (CMS, visor de mapas, 
 ---
 
 ## Cambios recientes
+
+### 2026-05-28 (v1.20.0) — Banner del home con fondo personalizable (imagen + gradient editable)
+
+El banner del home de MapaLab (`HomeSectionsPage` → sección `banner`) ahora permite subir imagen de fondo distinta para mobile y desktop, además de editar los colores y ángulo del gradiente que se aplica cuando no hay imagen. Schema `BannerItem` extendido con 5 campos opcionales (`imagen_url_mobile`, `imagen_url_desktop`, `gradient_from`, `gradient_to`, `gradient_angle`), sin migración porque el payload es JSON. Editor admin con 3 `ImageUrlField`, 2 `ColorPicker` y 1 `Select` de ángulo. Visor mapalab con lógica condicional por breakpoint: si hay imagen aplica `linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.35)), url(bg)` (scrim fijo para legibilidad); si no hay imagen aplica el gradient editable. El mockup flotante de desktop (`imagen_url`) pasa a ser opcional. Lado mapalab: v1.57.0. Detalle completo en CHANGELOG §[1.20.0].
 
 ### 2026-05-13 (v0.52.0) — Telemetría MapaLab end-to-end
 

@@ -5,6 +5,8 @@ import { useNavigate } from 'react-router';
 import api from '@shared/services/api';
 import { useAuth } from '@shared/contexts/useAuth';
 import { message } from '@shared/services/message';
+import PasswordStrengthIndicator from '@shared/components/PasswordStrengthIndicator';
+import { isStrongEnough } from '@shared/helpers/passwordStrength';
 
 const { Title, Text } = Typography;
 
@@ -13,6 +15,7 @@ export default function ChangePassword() {
     const { user, refreshUser } = useAuth();
     const navigate = useNavigate();
     const [form] = Form.useForm();
+    const newPasswordWatch = Form.useWatch('new_password', form) || '';
 
     const onFinish = async (values) => {
         if (values.new_password !== values.confirm_password) {
@@ -89,11 +92,20 @@ export default function ChangePassword() {
                         label="Nueva Contraseña"
                         rules={[
                             { required: true, message: 'Ingresa la nueva contraseña' },
-                            { min: 8, message: 'La contraseña debe tener al menos 8 caracteres' }
+                            {
+                                validator: (_, value) => (
+                                    !value || isStrongEnough(value)
+                                        ? Promise.resolve()
+                                        : Promise.reject(new Error('La contraseña no cumple con los requisitos mínimos.'))
+                                ),
+                            },
                         ]}
                     >
                         <Input.Password prefix={<LockOutlined />} placeholder="Nueva contraseña" />
                     </Form.Item>
+
+                    <PasswordStrengthIndicator password={newPasswordWatch} />
+
 
                     <Form.Item
                         name="confirm_password"
