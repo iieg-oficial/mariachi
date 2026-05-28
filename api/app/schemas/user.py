@@ -12,8 +12,12 @@ from pydantic import (
 )
 
 from app.core.acervo_url import to_absolute, to_relative
+from app.core.password_policy import validate_password_strength
 from app.schemas._camel import CamelCaseInput
 from app.schemas.project import BucketSummary, UserProjectAssignment, UserProjectMembership
+
+
+StrongPassword = Annotated[str, AfterValidator(validate_password_strength)]
 
 
 def _ensure_has_at(v: str) -> str:
@@ -32,7 +36,7 @@ class UsuarioBase(CamelCaseInput):
 
 
 class UsuarioCreate(UsuarioBase):
-    password: str = Field(..., min_length=8)
+    password: StrongPassword
     role: Literal["tetlamamakani", "editora", "externo"]
     project_assignments: list["UserProjectAssignment"] | None = None
 
@@ -85,7 +89,7 @@ class CurrentUserResponse(UsuarioResponse):
 
 class PasswordChange(BaseModel):
     current_password: str
-    new_password: str = Field(..., min_length=8)
+    new_password: StrongPassword
 
 
 class PasswordReset(BaseModel):
