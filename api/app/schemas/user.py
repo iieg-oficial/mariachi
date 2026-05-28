@@ -16,7 +16,6 @@ from app.core.password_policy import validate_password_strength
 from app.schemas._camel import CamelCaseInput
 from app.schemas.project import BucketSummary, UserProjectAssignment, UserProjectMembership
 
-
 StrongPassword = Annotated[str, AfterValidator(validate_password_strength)]
 
 
