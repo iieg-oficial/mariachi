@@ -9,6 +9,61 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.21.0] - 2026-05-28
+
+### Resuelve los hallazgos U9, U10, U11, G2, A3, A4 del documento de pruebas SIEEJ + endurecimiento de la política de contraseñas
+
+Se atendieron los casos numerados del documento de pruebas del tester (28 de mayo de 2026). El hilo principal es **liberar el flujo end-to-end** para que una dependencia externa pueda llenar un formulario de SIEEJ: estaba bloqueado por tres bugs distintos (no podía cambiar contraseña, no se podían asignar usuarios/grupos, el admin no veía mensajes de error claros).
+
+#### Feat: política de contraseñas unificada mariachi/sieej (api 1.21.0)
+
+- **`api/app/core/password_policy.py`** (nuevo): `validate_password_strength(pwd)` con la misma política que SIEEJ usa en su `passwordStrength.js`: longitud mínima 8 (obligatorio) y al menos 3 de las 4 categorías (mayús+minús, dígitos, especiales). Antes, mariachi solo validaba `min_length=8` y SIEEJ rechazaba al primer login porque pedía más.
+- **`api/app/schemas/user.py`**: `UsuarioCreate.password` y `PasswordChange.new_password` ahora usan `StrongPassword = Annotated[str, AfterValidator(validate_password_strength)]`. El detalle del 422 indica el motivo específico (longitud o reglas) en lugar del genérico de Pydantic.
+- **`api/app/api/routes/users.py::generate_temp_password`**: re-escrita para garantizar por construcción que la contraseña temporal siempre cumple la política (1 minúscula + 1 mayúscula + 1 dígito + 1 especial + relleno aleatorio, barajado con `secrets.SystemRandom().shuffle`). Antes solo usaba `ascii_letters + digits`, así que una contraseña temporal podía no cumplir la nueva política.
+
+#### Feat: pre-fetch del CSRF al cargar sesión (admin 1.21.0)
+
+Complementa el auto-recovery reactivo que ya existía en el interceptor de axios. Antes, en cualquier reload o pestaña nueva con cookie válida, la primera mutación devolvía 403 y se reintentaba transparentemente; ahora ni siquiera dispara el 403.
+
+- **`admin/src/shared/services/api.js`**: `refreshCsrfToken` pasa de función privada del módulo a `export const` para poder llamarse desde fuera del interceptor.
+- **`admin/src/shared/contexts/AuthContext.jsx`**: tras un `/autenticacion/perfil` exitoso, si `sessionStorage['csrf_token']` está vacío, llama `refreshCsrfToken()` y guarda el token. Aplicado tanto en el `useEffect` de bootstrap como en `checkAuth` para mantener consistencia.
+
+#### Feat: indicador visual de fortaleza de contraseña (admin 1.21.0)
+
+Replica el sistema que SIEEJ ya tenía en su pantalla "Define tu contraseña" para que el admin del CMS no quede inferior cuando crea usuarios o cambia su propia contraseña. La inconsistencia anterior generaba el escenario de admin creando contraseñas de 8 caracteres planos que SIEEJ rechazaba al primer login del nuevo usuario.
+
+- **`admin/src/shared/helpers/passwordStrength.js`** (nuevo): copia exacta de `computePasswordStrength` y `isStrongEnough` de SIEEJ. Score 0–4 según cuántas reglas cumplen (length, case, number, special).
+- **`admin/src/shared/components/PasswordStrengthIndicator.jsx`** (nuevo): barra de 4 segmentos coloreados (gris → rojo → naranja → amarillo → verde según score) + checklist con icono check/circle por regla. Usa colores inline equivalentes al SIEEJ pero con iconos de Ant Design (`CheckCircleFilled`, `MinusCircleOutlined`) para integrarse al CMS sin Tailwind.
+- **`admin/src/features/users/pages/UsersPage.jsx`**:
+    - Campo `password` ahora tiene `validator` custom con `isStrongEnough` que muestra el mensaje "La contraseña no cumple con los requisitos mínimos." antes de enviar al backend.
+    - `Form.useWatch('password')` alimenta el `<PasswordStrengthIndicator>` en vivo, debajo del input.
+    - **`formatBackendError(error, fallback)`**: helper que parsea `error.response.data.detail`. Lista de errores Pydantic (422) → traduce `loc[-1]` a label legible (Usuario / Email / Contraseña / etc.) y los concatena con `·`. String simple (409) → muestra directo el detalle. Otros → fallback genérico. Resuelve la queja del tester (U10, U11) sobre mensajes genéricos cuando el backend ya entregaba detalle.
+    - Reglas `min: 3, max: 50` para username y `max: 100` para name añadidas al `Form.Item` para no llegar al backend con valores fuera de rango y caer en 422 silencioso.
+- **`admin/src/features/auth/pages/ChangePasswordPage.jsx`**: mismo patrón — `validator` con `isStrongEnough`, `Form.useWatch('new_password')` para el `<PasswordStrengthIndicator>` visible debajo del campo.
+
+#### Fix: endpoint `/users` → `/usuarios` en service de SIEEJ (admin 1.21.0)
+
+- **`admin/src/features/sieej-formularios/services/formulariosAdminApi.js`**: `usuariosApi.list()` pedía `/users` (inglés) cuando el router del backend está en `/usuarios` (español) — typo del que nadie se había dado cuenta porque solo se invoca al abrir el panel de Miembros o Asignaciones. Resultado documentado por el tester: "404 endpoint /users" bloqueaba G2 (agregar miembros a grupo), A3 (asignar grupos al formulario) y A4 (asignar usuarios al formulario). Una línea corrige el path. Consecuencia real: ahora se pueden asignar formularios a usuarios/grupos, lo que desbloquea el flujo end-to-end de SIEEJ.
+
+#### Feat: botón publicar y alert de borrador en editor SIEEJ (admin 1.21.0)
+
+Surgió del flujo de pruebas: el tester asignó un formulario a un externo y el formulario no aparecía en SIEEJ porque seguía en `borrador`. El listado público (`FormulariosDinamicosService.listar_visibles`) filtra por `estado == 'activo'`, así que un admin de buena fe puede asignar usuarios sin entender por qué no ven nada.
+
+- **`admin/src/features/sieej-formularios/pages/FormularioEditorPage.jsx`**:
+    - Header del editor pasa de `Typography.Title` solo a un `Flex` con título + meta a la izquierda y un botón `Publicar formulario` a la derecha cuando `estado === 'borrador'`.
+    - El botón dispara `Modal.confirm` con el copy "Los usuarios asignados podrán verlo y responderlo a partir de este momento. Asegúrate de que la definición y las asignaciones estén listas." → llama `formulariosApi.publicar(id)` → actualiza el estado in-place via `setFormulario(updated)` (no recarga la página, el botón se oculta y el Tag cambia de color automáticamente).
+    - Estado del formulario ahora se muestra como `<Tag>` con color (gris para `borrador`, verde para `activo`, rojo para `cerrado`) en vez de texto plano. Mucho más visible que la línea anterior `slug: x · estado: borrador · v1`.
+- **`admin/src/features/sieej-formularios/components/AsignacionesEditor.jsx`**: cuando `formulario.estado === 'borrador'` se renderiza un `Alert` tipo `warning` arriba del editor que explica que los usuarios asignados no verán el formulario hasta publicarlo, con referencia explícita al botón "Publicar formulario" del header. Cuando el formulario ya está publicado, el Alert desaparece automáticamente — solo se muestra cuando hay riesgo de configurar en vano.
+
+#### Decisiones tomadas en este release
+
+- **Política de contraseñas igual en ambos lados, no más estricta en uno**: SIEEJ ya pedía las 4 reglas con `score >= 3`; mariachi solo pedía 8 chars. Subir mariachi a la política de SIEEJ es la dirección correcta (no bajar SIEEJ). Quien crea un usuario en el admin ya no genera contraseñas que SIEEJ rechazará al primer login.
+- **Pre-fetch + auto-recovery en lugar de solo uno**: el reactivo arregla 403 en mutaciones después del primer fallo, pero deja un 403 visible en logs (ruido para monitoring). El pre-fetch lo evita anticipadamente. Paridad entre admin y SIEEJ en este aspecto.
+- **`/users` → `/usuarios`**: típico typo de un service auto-completado en inglés. Se considera bug bloqueante porque rompía la única forma de hacer asignaciones desde el CMS.
+- **Botón publicar al lado del editor, no solo en la lista**: WordPress, Strapi, Sanity tienen este patrón. Con `Modal.confirm` y el botón visible solo en estado `borrador` no hay riesgo de publicar accidentalmente.
+
+---
+
 ## [1.20.0] - 2026-05-28
 
 ### Feat: banner del home con fondo personalizable (imagen + gradient editable)
