@@ -9,6 +9,14 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [admin 1.19.1] - 2026-05-28
+
+### Perf: borrador del editor de Home solo se carga para el tab activo
+
+`HomePage.jsx > SectionTab` montaba un `useResourceDraft` por cada sección de Home con `enabled: true`. Eso disparaba la suscripción de borrador (poll + websocket según `useResourceDraft`) para todas las secciones aunque el admin estuviera viendo solo una. Cambio: `enabled: active || reviewMode`. La pestaña activa sigue trayendo borrador en vivo; la pantalla de review (que renderiza todas las secciones para previsualizar el changeset completo) también lo necesita. Las inactivas quedan dormidas y se reactivan al click del tab.
+
+---
+
 ## [admin 1.19.0] - 2026-05-26
 
 ### Editor de capas: filtro por municipio con picker inteligente de columna

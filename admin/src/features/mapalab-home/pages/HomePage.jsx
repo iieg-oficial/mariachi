@@ -52,7 +52,7 @@ function SectionTab({ seccion, onUpdated, active, reviewMode = false, borradorId
     const draft = useResourceDraft({
         resourceType: 'home_section',
         resourceId: seccion.key,
-        enabled: true,
+        enabled: active || reviewMode,
         reviewMode,
         borradorId,
         onApplyDraft: (data) => form.setFieldsValue({ ...defaultsForKey(seccion.key), ...data }),
