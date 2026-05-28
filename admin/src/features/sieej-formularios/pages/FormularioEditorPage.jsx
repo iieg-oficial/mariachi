@@ -1,12 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
-import { Breadcrumb, Spin, Tabs, Typography } from 'antd';
+import { Breadcrumb, Button, Flex, Modal, Spin, Tabs, Tag, Typography } from 'antd';
+import { PlayCircleOutlined } from '@ant-design/icons';
 import { message } from '@shared/services/message';
 import { formulariosApi } from '../services/formulariosAdminApi';
 import DefinicionEditor from '../components/DefinicionEditor';
 import ConfiguracionEditor from '../components/ConfiguracionEditor';
 import AsignacionesEditor from '../components/AsignacionesEditor';
 import EnviosTable from '../components/EnviosTable';
+
+const ESTADO_COLOR = { borrador: 'default', activo: 'green', cerrado: 'red' };
 
 const VALID_TABS = new Set(['definicion', 'configuracion', 'asignaciones', 'envios']);
 
@@ -39,6 +42,25 @@ export default function FormularioEditorPage() {
         })();
         return () => { cancel = true; };
     }, [id, navigate]);
+
+    const handlePublicar = () => {
+        Modal.confirm({
+            title: '¿Publicar formulario?',
+            content: 'Los usuarios asignados podrán verlo y responderlo a partir de este momento. Asegúrate de que la definición y las asignaciones estén listas.',
+            okText: 'Publicar',
+            okType: 'primary',
+            cancelText: 'Cancelar',
+            onOk: async () => {
+                try {
+                    const updated = await formulariosApi.publicar(id);
+                    setFormulario(updated);
+                    message.success('Formulario publicado');
+                } catch (err) {
+                    message.error(err?.response?.data?.detail || 'Error al publicar');
+                }
+            },
+        });
+    };
 
     if (loading) return <div style={{ textAlign: 'center', padding: 48 }}><Spin size="large" /></div>;
     if (!formulario) return null;
@@ -79,12 +101,30 @@ export default function FormularioEditorPage() {
                 ]}
                 style={{ marginBottom: 12 }}
             />
-            <Typography.Title level={2} style={{ marginTop: 0 }}>
-                {formulario.nombre}
-            </Typography.Title>
-            <Typography.Text type="secondary">
-                slug: <code>{formulario.slug}</code> · estado: {formulario.estado} · v{formulario.version}
-            </Typography.Text>
+            <Flex justify="space-between" align="flex-start" gap={12} wrap="wrap">
+                <div style={{ minWidth: 0, flex: 1 }}>
+                    <Typography.Title level={2} style={{ marginTop: 0, marginBottom: 4 }}>
+                        {formulario.nombre}
+                    </Typography.Title>
+                    <Typography.Text type="secondary">
+                        slug: <code>{formulario.slug}</code> ·
+                        {' '}
+                        <Tag color={ESTADO_COLOR[formulario.estado] || 'default'} style={{ marginInline: 4 }}>
+                            {formulario.estado}
+                        </Tag>
+                        · v{formulario.version}
+                    </Typography.Text>
+                </div>
+                {formulario.estado === 'borrador' && (
+                    <Button
+                        type="primary"
+                        icon={<PlayCircleOutlined />}
+                        onClick={handlePublicar}
+                    >
+                        Publicar formulario
+                    </Button>
+                )}
+            </Flex>
             <Tabs
                 items={items}
                 activeKey={activeTab}
