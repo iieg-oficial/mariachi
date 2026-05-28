@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Button, Empty, Form, Input, Space, Switch, Tabs, Typography } from 'antd';
+import { Button, ColorPicker, Empty, Form, Input, Select, Space, Switch, Tabs, Typography } from 'antd';
 import { ArrowDownOutlined, ArrowUpOutlined, DeleteOutlined, LinkOutlined, PlusOutlined } from '@ant-design/icons';
 import api from '@shared/services/api';
 import ImageUrlField from '@features/mapalab-home/components/ImageUrlField';
@@ -138,11 +138,66 @@ export function BannerEditor() {
                     <Form.Item name={[field.name, 'id']} hidden><Input /></Form.Item>
                     <Form.Item name={[field.name, 'titulo']} label="Título"><Input /></Form.Item>
                     <Form.Item name={[field.name, 'descripcion']} label="Descripción"><Input.TextArea rows={3} /></Form.Item>
-                    <Form.Item name={[field.name, 'imagen_url']} label="Imagen de fondo">
-                        <ImageUrlField placeholder="URL de la imagen del banner" />
+                    <Form.Item
+                        name={[field.name, 'imagen_url']}
+                        label="Mockup/ilustración (opcional)"
+                        help="Se muestra como ilustración flotante a la derecha en desktop y como fondo en tablet. Si lo dejas vacío, no aparece mockup."
+                    >
+                        <ImageUrlField placeholder="URL de la ilustración" />
+                    </Form.Item>
+                    <Form.Item
+                        name={[field.name, 'imagen_url_desktop']}
+                        label="Fondo desktop (opcional)"
+                        help="Imagen de fondo full-width en desktop (≥1280px). Si lo dejas vacío, se usa el gradiente morado de marca."
+                    >
+                        <ImageUrlField placeholder="URL de la imagen de fondo para desktop" />
+                    </Form.Item>
+                    <Form.Item
+                        name={[field.name, 'imagen_url_mobile']}
+                        label="Fondo mobile (opcional)"
+                        help="Imagen de fondo para mobile (<768px). Recomendado en formato vertical/cuadrado. Si lo dejas vacío, se usa el gradiente morado."
+                    >
+                        <ImageUrlField placeholder="URL de la imagen de fondo para mobile" />
                     </Form.Item>
                     <Form.Item name={[field.name, 'logo_url']} label="Logo del visor (icono MapaLab)">
                         <ImageUrlField placeholder="URL del logo. Si vacío, se usa el logo bundled." />
+                    </Form.Item>
+                    <Form.Item
+                        name={[field.name, 'gradient_from']}
+                        label="Color inicial del gradiente"
+                        help="Solo aplica si no hay imagen de fondo. Vacío = morado IIEG (#5C2472)."
+                        getValueFromEvent={(color) => (typeof color === 'string' ? color : color?.toHexString?.() || '')}
+                    >
+                        <ColorPicker format="hex" showText allowClear />
+                    </Form.Item>
+                    <Form.Item
+                        name={[field.name, 'gradient_to']}
+                        label="Color final del gradiente"
+                        help="Vacío = morado IIEG claro (#963CBA)."
+                        getValueFromEvent={(color) => (typeof color === 'string' ? color : color?.toHexString?.() || '')}
+                    >
+                        <ColorPicker format="hex" showText allowClear />
+                    </Form.Item>
+                    <Form.Item
+                        name={[field.name, 'gradient_angle']}
+                        label="Dirección del gradiente"
+                        help="Vacío = vertical IIEG (de abajo hacia arriba)."
+                    >
+                        <Select
+                            allowClear
+                            placeholder="Default IIEG (vertical ↑)"
+                            options={[
+                                { value: '0deg', label: '0° — vertical, abajo → arriba' },
+                                { value: '45deg', label: '45° — diagonal ↗' },
+                                { value: '90deg', label: '90° — horizontal, izq → der' },
+                                { value: '135deg', label: '135° — diagonal ↘' },
+                                { value: '180deg', label: '180° — vertical, arriba → abajo' },
+                                { value: '225deg', label: '225° — diagonal ↙' },
+                                { value: '270deg', label: '270° — horizontal, der → izq' },
+                                { value: '315deg', label: '315° — diagonal ↖' },
+                                { value: '359deg', label: '359° — casi vertical (default actual)' },
+                            ]}
+                        />
                     </Form.Item>
                     <Form.Item name={[field.name, 'cta_label']} label="Texto del botón (CTA)"><Input placeholder="Ej: Explorar mapas" /></Form.Item>
                     <Form.Item name={[field.name, 'cta_href']} label="Enlace del botón"><Input placeholder="/mapa o https://…" /></Form.Item>

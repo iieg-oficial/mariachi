@@ -9,6 +9,50 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.20.0] - 2026-05-28
+
+### Feat: banner del home con fondo personalizable (imagen + gradient editable)
+
+El banner del home de MapaLab solo permitía cambiar el mockup/ilustración y el texto; el fondo estaba fijo al gradiente morado IIEG (`#5C2472` → `#963CBA` 359°) en código del visor. Ahora cada item del banner puede tener su propio fondo, configurable desde el admin del CMS y respondiendo distinto en mobile, tablet y desktop sin recortes feos en pantallas chicas.
+
+#### Schema `BannerItem` extendido (api 1.20.0)
+
+- **`api/app/schemas/home_section.py::BannerItem`**: 5 campos string opcionales nuevos.
+    - `imagen_url_mobile` (alias `imagenUrlMobile`) — imagen de fondo para `<768px`.
+    - `imagen_url_desktop` (alias `imagenUrlDesktop`) — imagen de fondo full-width para tablet/desktop.
+    - `gradient_from` / `gradient_to` (aliases `gradientFrom`, `gradientTo`) — colores hex del gradiente cuando NO hay imagen de fondo.
+    - `gradient_angle` (alias `gradientAngle`) — dirección CSS del gradiente (ej. `'135deg'`).
+- Los 3 campos de imagen comparten `_store_relative` (validator `mode='before'`) y `_expose_absolute` (serializer JSON) con `imagen_url` y `logo_url`, así el `to_relative`/`to_absolute` del acervo persiste paths relativos y devuelve URLs absolutas en el endpoint público.
+- Sin migración Alembic: el payload se guarda como JSON en `home_sections.payload_published`/`payload_draft`. Banners existentes reciben `''` como default en los campos nuevos al validar, sin perder datos.
+- El campo `imagen_url` mantiene su semántica histórica (mockup flotante a la derecha en desktop + fondo en tablet, comportamiento legacy del seed `b8c9d0e1f2a3`).
+
+#### Editor admin con 3 slots de imagen + gradiente editable (admin 1.20.0)
+
+- **`admin/src/features/mapalab-home/components/sectionEditors.jsx::BannerEditor`**: tres `ImageUrlField` separados con `help` que explica para qué sirve cada uno y qué pasa si se deja vacío.
+    - "Mockup/ilustración (opcional)" → `imagen_url` (legacy).
+    - "Fondo desktop (opcional)" → `imagen_url_desktop`.
+    - "Fondo mobile (opcional)" → `imagen_url_mobile`.
+- Dos `ColorPicker` (format `hex`, `showText`, `allowClear`) para `gradient_from` y `gradient_to` con `getValueFromEvent` que extrae el hex string del Color object al cambiar (el ColorPicker recibe string y emite objeto).
+- `Select` con 9 ángulos prácticos pre-etiquetados con dirección visual (`0° — vertical, abajo → arriba`, `90° — horizontal, izq → der`, `135° — diagonal ↘`, etc.) para `gradient_angle`. `allowClear` vuelve al default IIEG (`359deg`).
+- Texto de `help` aclara en los 3 campos de gradiente: "Solo aplica si no hay imagen de fondo. Vacío = morado IIEG".
+
+#### Visor: lógica condicional por breakpoint con scrim oscuro fijo (mapalab 1.57.0)
+
+`mapalab/frontend/src/pages/home/components/Header.jsx`:
+
+- `banners.map` ahora propaga `mobileBgUrl`, `desktopBgUrl` y un objeto `gradient` con merge contra el fallback de `bannerConfig.js` (`api.gradientFrom || fallback.gradient.from`, etc.). El `image.src` deja de hacer fallback al bundled — queda vacío si la API no manda `imagenUrl`, y el mockup flotante de desktop se renderiza solo si hay valor (`{mockupSrc && <div>…</div>}`).
+- 3 `mobileStyle`/`tableStyle`/`desktopStyle` con la misma forma: **si hay imagen → `linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.35)), url(bg)` con `cover, cover`** (scrim oscuro fijo independiente del gradient editable para legibilidad del texto blanco encima). Si no hay imagen → `linear-gradient(angle, from, to)` con el `activeBanner.gradient` editable.
+- `tableStyle` mantiene un nivel intermedio para no romper el seed: si no hay `desktopBgUrl`, cae al comportamiento legacy donde `imagen_url` (mockup) se usaba como fondo con el gradient como overlay (`E6` alpha).
+- El `mobileStyle` que tenía colores hardcoded (`rgba(92,36,114,0.9)`, `359deg`) ahora usa `activeBanner.gradient` igual que desktop. Los 3 breakpoints respetan el override del editor.
+
+#### Decisiones tomadas con el editor
+
+- **Imagen siempre gana sobre gradient editable**: cuando hay imagen, el gradient de colores se ignora y solo se aplica un velo oscuro fijo. Más predecible que dos controles que compiten.
+- **3 imágenes opcionales independientes** en vez de una sola con `object-position`. Mobile portrait y desktop landscape son composiciones distintas; recortar la misma imagen en ambos casi siempre se ve mal.
+- **`imagen_url` no se renombró ni se migró**: sigue siendo el mockup flotante. Agregar dos campos nuevos preserva todo el seed y los banners ya configurados sin tocar BD.
+
+---
+
 ## [admin 1.19.2] - 2026-05-28
 
 ### Fix: `restore-tarjetitas` rompía por mismatch de orden entre host y contenedor + búsqueda en `restore/`
