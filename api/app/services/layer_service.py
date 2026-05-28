@@ -664,8 +664,8 @@ def restore_highlight_snapshot(
         return 0
     ids = [s['layer_id'] for s in snapshot]
     layers_by_id = {
-        l.id: l
-        for l in session.query(Layer)
+        row.id: row
+        for row in session.query(Layer)
         .filter(Layer.id.in_(ids), Layer.deleted_at.is_(None))
         .all()
     }
