@@ -24,5 +24,5 @@ export const gruposApi = {
 };
 
 export const usuariosApi = {
-    list: () => api.get('/users').then((r) => r.data),
+    list: () => api.get('/usuarios').then((r) => r.data),
 };
