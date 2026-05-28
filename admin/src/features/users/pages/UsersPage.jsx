@@ -5,6 +5,8 @@ import { useAuth } from '@shared/contexts/useAuth';
 import api from '@shared/services/api';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import { message } from '@shared/services/message';
+import PasswordStrengthIndicator from '@shared/components/PasswordStrengthIndicator';
+import { isStrongEnough } from '@shared/helpers/passwordStrength';
 import UserCard from '../components/UserCard';
 
 const { Title } = Typography;
@@ -17,6 +19,29 @@ const roleLabels = {
 
 const PAGE_SIZE = 12;
 
+const FIELD_LABEL = {
+    username: 'Usuario',
+    name: 'Nombre',
+    email: 'Email',
+    password: 'Contraseña',
+    role: 'Rol',
+    project_assignments: 'Proyectos',
+};
+
+const formatBackendError = (error, fallback) => {
+    const detail = error?.response?.data?.detail;
+    if (Array.isArray(detail)) {
+        const lines = detail.map((d) => {
+            const field = Array.isArray(d.loc) ? d.loc[d.loc.length - 1] : null;
+            const label = FIELD_LABEL[field] || field || 'campo';
+            return `${label}: ${d.msg}`;
+        });
+        return lines.join(' · ');
+    }
+    if (typeof detail === 'string') return detail;
+    return fallback;
+};
+
 export default function Users() {
     const { isMobile } = useIsMobile();
     const { user: currentUser } = useAuth();
@@ -27,6 +52,7 @@ export default function Users() {
     const [editingUser, setEditingUser] = useState(null);
     const [form] = Form.useForm();
     const selectedRole = Form.useWatch('role', form);
+    const passwordWatch = Form.useWatch('password', form) || '';
     const projectAssignments = Form.useWatch('project_assignments', form) || {};
     const [search, setSearch] = useState('');
     const [roleFilter, setRoleFilter] = useState('');
@@ -173,8 +199,9 @@ export default function Users() {
             }
             setModalVisible(false);
             fetchUsers();
-        } catch {
-            message.error(editingUser ? 'Error al actualizar usuario' : 'Error al crear usuario');
+        } catch (error) {
+            const fallback = editingUser ? 'Error al actualizar usuario' : 'Error al crear usuario';
+            message.error(formatBackendError(error, fallback));
         }
     };
 
@@ -290,10 +317,24 @@ export default function Users() {
                 centered={isMobile}
             >
                 <Form form={form} layout="vertical" onFinish={handleSubmit}>
-                    <Form.Item label="Usuario" name="username" rules={[{ required: true, message: 'Por favor ingrese el usuario' }]}>
+                    <Form.Item
+                        label="Usuario"
+                        name="username"
+                        rules={[
+                            { required: true, message: 'Por favor ingrese el usuario' },
+                            { min: 3, max: 50, message: 'El usuario debe tener entre 3 y 50 caracteres' },
+                        ]}
+                    >
                         <Input />
                     </Form.Item>
-                    <Form.Item label="Nombre" name="name" rules={[{ required: true, message: 'Por favor ingrese el nombre' }]}>
+                    <Form.Item
+                        label="Nombre"
+                        name="name"
+                        rules={[
+                            { required: true, message: 'Por favor ingrese el nombre' },
+                            { max: 100, message: 'El nombre no puede exceder 100 caracteres' },
+                        ]}
+                    >
                         <Input />
                     </Form.Item>
                     <Form.Item
@@ -315,10 +356,24 @@ export default function Users() {
                     </Form.Item>
 
                     {!editingUser && (
-                        <Form.Item label="Contraseña" name="password" rules={[{ required: true, message: 'Por favor ingrese la contraseña' }]}>
-                            <Input.Password />
+                        <Form.Item
+                            label="Contraseña"
+                            name="password"
+                            rules={[
+                                { required: true, message: 'Por favor ingrese la contraseña' },
+                                {
+                                    validator: (_, value) => (
+                                        !value || isStrongEnough(value)
+                                            ? Promise.resolve()
+                                            : Promise.reject(new Error('La contraseña no cumple con los requisitos mínimos.'))
+                                    ),
+                                },
+                            ]}
+                        >
+                            <Input.Password placeholder="Crea una contraseña segura" />
                         </Form.Item>
                     )}
+                    {!editingUser && <PasswordStrengthIndicator password={passwordWatch} />}
 
                     {(selectedRole === 'editora' || selectedRole === 'externo') && projects.length > 0 && (
                         <>
