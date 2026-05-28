@@ -36,7 +36,7 @@ def test_crear_usuario_admin(admin_session):
             "username": "nuevo_usuario",
             "email": "nuevo@test.com",
             "name": "Nuevo Usuario",
-            "password": "password123",
+            "password": "Password123!",
             "role": "editora",
         },
     )
@@ -55,7 +55,7 @@ def test_crear_usuario_sin_permisos(editora_session):
             "username": "nuevo_usuario",
             "email": "nuevo@test.com",
             "name": "Nuevo Usuario",
-            "password": "password123",
+            "password": "Password123!",
             "role": "editora",
         },
     )
@@ -71,7 +71,7 @@ def test_crear_usuario_duplicado(admin_session):
             "username": "admin_test",
             "email": "otro@test.com",
             "name": "Otro Usuario",
-            "password": "password123",
+            "password": "Password123!",
             "role": "editora",
         },
     )
@@ -274,7 +274,7 @@ def test_crear_usuario_con_proyecto_inexistente_falla(admin_session):
             "username": "asign_test",
             "email": "asign@test.com",
             "name": "Asign Test",
-            "password": "password123",
+            "password": "Password123!",
             "role": "editora",
             "project_assignments": [
                 {"project_slug": "proyecto-inexistente", "project_role": "editor"}
