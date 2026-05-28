@@ -65,7 +65,7 @@ help:
 	@echo ''
 	@echo '${GREEN}Tarjetitas (infobox_config de capas en DataEngine):${RESET}'
 	@echo '  ${YELLOW}make backup-tarjetitas${RESET}              - Exporta infobox_config de TODAS las capas a backups/tarjetitas/'
-	@echo '  ${YELLOW}make restore-tarjetitas [FILE=...]${RESET} - Aplica un export (selector si omites FILE; backup previo + confirmacion + apply)'
+	@echo '  ${YELLOW}make restore-tarjetitas [FILE=...]${RESET} - Aplica un export (busca en restore/ y backups/tarjetitas/; backup previo + confirmacion + apply)'
 	@echo '                                       ${YELLOW}Solo lee DATAENGINE_DATABASE_URL de .env.production${RESET} (no de dev/staging).'
 	@echo '                                       Override consciente: DATAENGINE_URL='"'"'postgres://...'"'"' make backup-tarjetitas'
 	@echo '                                       Solo mueve la columna infobox_config: nada del shape de la capa.'
@@ -203,7 +203,7 @@ backup-tarjetitas:
 	DATAENGINE_URL="$$DE_URL" OUT_DIR=$(TARJETITAS_DIR) ./scripts/dataengine-export-infobox.sh
 
 ## Aplica un export de tarjetitas en la BD destino. Hace backup reverso primero.
-## Sin FILE: muestra selector interactivo de los exports en backups/tarjetitas/.
+## Sin FILE: selector interactivo; busca en restore/ primero, fallback a backups/tarjetitas/.
 ## Con FILE: usa el archivo explicito (saltea el selector).
 ## Override de URL: DATAENGINE_URL='postgres://...' make restore-tarjetitas [FILE=...]
 restore-tarjetitas:
