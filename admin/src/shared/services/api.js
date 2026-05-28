@@ -35,7 +35,7 @@ const isCsrfError = (error) => {
 
 let csrfRefreshPromise = null;
 
-const refreshCsrfToken = async () => {
+export const refreshCsrfToken = async () => {
     if (csrfRefreshPromise) return csrfRefreshPromise;
     csrfRefreshPromise = (async () => {
         try {
