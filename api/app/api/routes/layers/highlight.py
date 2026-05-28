@@ -15,7 +15,6 @@ from app.schemas.layer import (
 from app.services import layer_service
 from app.services.mapalab_notifier import notify_tree_changed
 
-
 router = APIRouter(prefix='/layers/highlight')
 
 
