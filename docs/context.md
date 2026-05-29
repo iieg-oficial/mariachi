@@ -2,7 +2,7 @@
 
 > Documento de referencia completo. Leer este archivo proporciona contexto del monorepo sin explorar el codebase.
 
-**Versión:** ver `api/pyproject.toml` (la lee `api/app/core/version.py::get_app_version()`; endpoint en vivo `GET /ontoy`). · **Última actualización:** 2026-05-28
+**Versión:** ver `api/pyproject.toml` (la lee `api/app/core/version.py::get_app_version()`; endpoint en vivo `GET /ontoy`). · **Última actualización:** 2026-05-29
 
 
 ---
@@ -811,6 +811,10 @@ Este repo se integra con otros servicios internos vecinos (CMS, visor de mapas, 
 ---
 
 ## Cambios recientes
+
+### 2026-05-29 (admin v1.22.0) — Banner del home: logo por item respetado en mobile + descripción y CTA opcionales
+
+Iteración sobre el banner del home (introducido en `[1.20.0]`). En mobile y tablet el logo del banner estaba hardcoded al `<Logo name="mapalab">` bundled aunque cada banner del carrusel traía su propio `logoUrl`; ahora aplica el mismo patrón condicional que ya existía en desktop XXL (si hay `logoUrl` usa `<img>`, si no cae al `<Logo>` bundled). Descripción y CTA pasan a ser realmente opcionales: el `banners.map` del visor deja de hacer fallback al texto bundled, y el render del `<p>` de descripción y del `<Link>` del botón se hace condicional (el botón solo aparece si están los dos campos del CTA). Editor admin actualizado con labels "(opcional)" y `help` texts explicando el comportamiento. Sin cambios de schema (el backend ya aceptaba `''` como default en estos 3 campos). Lado mapalab: v1.59.0. Detalle completo en CHANGELOG §[admin 1.22.0].
 
 ### 2026-05-28 (v1.20.0) — Banner del home con fondo personalizable (imagen + gradient editable)
 

@@ -137,7 +137,13 @@ export function BannerEditor() {
                 <>
                     <Form.Item name={[field.name, 'id']} hidden><Input /></Form.Item>
                     <Form.Item name={[field.name, 'titulo']} label="Título"><Input /></Form.Item>
-                    <Form.Item name={[field.name, 'descripcion']} label="Descripción"><Input.TextArea rows={3} /></Form.Item>
+                    <Form.Item
+                        name={[field.name, 'descripcion']}
+                        label="Descripción (opcional)"
+                        help="Si lo dejas vacío, el banner solo muestra el título."
+                    >
+                        <Input.TextArea rows={3} />
+                    </Form.Item>
                     <Form.Item
                         name={[field.name, 'imagen_url']}
                         label="Mockup/ilustración (opcional)"
@@ -159,8 +165,12 @@ export function BannerEditor() {
                     >
                         <ImageUrlField placeholder="URL de la imagen de fondo para mobile" />
                     </Form.Item>
-                    <Form.Item name={[field.name, 'logo_url']} label="Logo del visor (icono MapaLab)">
-                        <ImageUrlField placeholder="URL del logo. Si vacío, se usa el logo bundled." />
+                    <Form.Item
+                        name={[field.name, 'logo_url']}
+                        label="Logo del banner (opcional)"
+                        help="Se muestra arriba del título en mobile y a la izquierda en desktop XXL. Si lo dejas vacío, se usa el logo bundled de MapaLab."
+                    >
+                        <ImageUrlField placeholder="URL del logo del banner" />
                     </Form.Item>
                     <Form.Item
                         name={[field.name, 'gradient_from']}
@@ -199,8 +209,20 @@ export function BannerEditor() {
                             ]}
                         />
                     </Form.Item>
-                    <Form.Item name={[field.name, 'cta_label']} label="Texto del botón (CTA)"><Input placeholder="Ej: Explorar mapas" /></Form.Item>
-                    <Form.Item name={[field.name, 'cta_href']} label="Enlace del botón"><Input placeholder="/mapa o https://…" /></Form.Item>
+                    <Form.Item
+                        name={[field.name, 'cta_label']}
+                        label="Texto del botón (opcional)"
+                        help="El botón solo aparece si llenas este campo Y el enlace."
+                    >
+                        <Input placeholder="Ej: Explorar mapas" />
+                    </Form.Item>
+                    <Form.Item
+                        name={[field.name, 'cta_href']}
+                        label="Enlace del botón (opcional)"
+                        help="El botón solo aparece si llenas este campo Y el texto."
+                    >
+                        <Input placeholder="/mapa o https://…" />
+                    </Form.Item>
                     <Form.Item name={[field.name, 'activo']} label="Activo (solo el primero activo se muestra)" valuePropName="checked"><Switch /></Form.Item>
                 </>
             )}
