@@ -9,6 +9,25 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [admin 1.22.0] - 2026-05-29
+
+### Feat: logo del banner respeta el `logoUrl` por item + descripción y CTA opcionales
+
+Iteración sobre el banner del home (introducido en `[1.20.0]`). Dos cambios de UX que faltaban para que cada banner del carrusel se sienta realmente independiente.
+
+#### Logo del banner ahora respeta el `logoUrl` configurado por item
+
+- **`admin/src/features/mapalab-home/components/sectionEditors.jsx`**: el `Form.Item` de `logo_url` cambia su label a "Logo del banner (opcional)" y agrega `help` aclarando que se muestra arriba del título en mobile y a la izquierda en desktop XXL. Antes el label decía "Logo del visor (icono MapaLab)", lo que sugería que era un logo institucional global y no por banner.
+- Lado mapalab (v1.59.0): hasta antes, el render en mobile (`<768px`) y tablet hardcodeaba `<Logo name="mapalab" variant="dark" ...>` aunque cada banner traía su propio `logoUrl`. Ahora el bloque mobile aplica el mismo patrón condicional que el bloque de desktop XXL: si `activeBanner.logoUrl` está set, renderiza `<img src={activeBanner.logoUrl}>`; si no, cae al `<Logo>` bundled. Así un banner de evento que sube su propio logo lo ve reflejado en todos los breakpoints, no solo en el área desktop XXL.
+
+#### Descripción y CTA opcionales
+
+- **`admin/.../sectionEditors.jsx`**: labels actualizados a "Descripción (opcional)", "Texto del botón (opcional)" y "Enlace del botón (opcional)", con `help` que explica el comportamiento (botón solo aparece si están los dos campos del CTA).
+- El schema (`BannerItem` en `api/app/schemas/home_section.py`) ya aceptaba `''` como default en estos 3 campos — no requirió cambios backend. El bump es solo de admin.
+- Lado mapalab (v1.59.0): el `banners.map` deja de hacer fallback al texto del banner bundled cuando descripción/CTA están vacíos (antes: `api.descripcion || fallback.content.description`; ahora: `api.descripcion || ''`). El render del `<p>` y del `<Link>` se vuelve condicional: el párrafo solo se monta si hay descripción; el `<Link>` solo se monta si hay label Y href. Esto permite banners minimalistas con solo título e imagen de fondo (ej. anuncios cortos de evento).
+
+---
+
 ## [1.21.0] - 2026-05-28
 
 ### Resuelve los hallazgos U9, U10, U11, G2, A3, A4 del documento de pruebas SIEEJ + endurecimiento de la política de contraseñas
