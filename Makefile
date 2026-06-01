@@ -143,11 +143,11 @@ shell-admin:
 ## Genera respaldo de Postgres aplicando rotacion GFS (daily/weekly/monthly).
 ## Por defecto usa docker-compose.yml; pasa COMPOSE_FILE=... para otro entorno.
 backup-db:
-	@COMPOSE_FILE=$(COMPOSE_FILE) ./scripts/postgres-backup.sh
+	@API_ENV_FILE=$(ENV_FILE) COMPOSE_FILE=$(COMPOSE_FILE) ./scripts/postgres-backup.sh
 
 ## Restaura un dump .sql.gz. Sin FILE muestra lista interactiva si hay varios.
 restore-db:
-	@COMPOSE_FILE=$(COMPOSE_FILE) ./scripts/postgres-restore.sh $(FILE)
+	@API_ENV_FILE=$(ENV_FILE) COMPOSE_FILE=$(COMPOSE_FILE) ./scripts/postgres-restore.sh $(FILE)
 
 ## Instala cronjob diario a las 3 AM. SOLO correr en la VM de produccion.
 install-backup-cron:
@@ -157,8 +157,8 @@ install-backup-cron:
 	fi
 	@mkdir -p $(PWD)/backups
 	@( crontab -l 2>/dev/null | grep -v 'mariachi-backup' | grep -v 'mariachi-stats' ; \
-	   echo "0 3 * * * cd $(PWD) && ./scripts/postgres-backup.sh >> $(PWD)/backups/backup.log 2>&1 # mariachi-backup" ; \
-	   echo "*/30 * * * * cd $(PWD) && docker compose -f $(COMPOSE_FILE) exec -T api python scripts/refresh_mapalab_stats.py >> $(PWD)/backups/mapalab-stats.log 2>&1 # mariachi-stats-refresh" \
+	   echo "0 3 * * * cd $(PWD) && API_ENV_FILE=$(ENV_FILE) COMPOSE_FILE=$(COMPOSE_FILE) ./scripts/postgres-backup.sh >> $(PWD)/backups/backup.log 2>&1 # mariachi-backup" ; \
+	   echo "*/30 * * * * cd $(PWD) && API_ENV_FILE=$(ENV_FILE) docker compose -f $(COMPOSE_FILE) exec -T api python scripts/refresh_mapalab_stats.py >> $(PWD)/backups/mapalab-stats.log 2>&1 # mariachi-stats-refresh" \
 	) | crontab -
 	@echo "${GREEN}Cronjobs instalados:${RESET}"
 	@crontab -l | grep -E 'mariachi-(backup|stats)'
