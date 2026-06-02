@@ -4,6 +4,7 @@ import { DeleteOutlined, PartitionOutlined, ReloadOutlined, SaveOutlined, Settin
 import DeleteLayerModal from '@features/mapalab-layers/components/DeleteLayerModal';
 import DeletedLayersList from '@features/mapalab-layers/components/DeletedLayersList';
 import LayersTreeListInline from '@features/mapalab-layers/components/LayersTreeListInline';
+import LayerContentDrawer from '@features/mapalab-layers/components/LayerContentDrawer';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
 import useIsMobile from '@shared/hooks/useIsMobile';
@@ -84,6 +85,7 @@ export default function LayerEditPage() {
     const [availableFields, setAvailableFields] = useState([]);
     const [bulkTagsOpen, setBulkTagsOpen] = useState(false);
     const [highlightSettingsOpen, setHighlightSettingsOpen] = useState(false);
+    const [eventoLayerId, setEventoLayerId] = useState(null);
 
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [deleteReferences, setDeleteReferences] = useState(null);
@@ -440,7 +442,7 @@ export default function LayerEditPage() {
         const leafMatch = /^evento-\d+(?:-cat-\d+)?-cap-\d+-(.+)$/.exec(key);
         if (leafMatch) {
             const leaf = findLeafByWsLayer(rawTree, leafMatch[1]);
-            if (leaf?.id) navigate(`/mapalab/layers/${encodeURIComponent(leaf.id)}/edit`);
+            if (leaf?.id) setEventoLayerId(leaf.id);
             return;
         }
         if (key.startsWith('evento-')) return;
@@ -1065,6 +1067,13 @@ export default function LayerEditPage() {
                     />
                 </Card>
             </div>
+
+            <LayerContentDrawer
+                open={!!eventoLayerId}
+                layerId={eventoLayerId}
+                onClose={() => setEventoLayerId(null)}
+                onSaved={reload}
+            />
 
             <BulkTagsDrawer
                 open={bulkTagsOpen}

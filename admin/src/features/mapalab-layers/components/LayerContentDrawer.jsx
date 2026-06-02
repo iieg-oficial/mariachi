@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Drawer, Empty, Spin, Tabs, Tag, Typography } from 'antd';
 import InfoboxStandalone from '@features/mapalab-layers/components/layersEditor/InfoboxStandalone';
+import NoticeStandalone from '@features/mapalab-layers/components/layersEditor/NoticeStandalone';
 import LayerMetadataSection from '@features/mapalab-layers/components/layersEditor/LayerMetadataSection';
 import SldEditor from '@features/mapalab-layers/components/sldEditor/SldEditor';
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
@@ -65,6 +66,11 @@ export default function LayerContentDrawer({ open, layerId, onClose, onSaved }) 
             key: 'infobox',
             label: 'Tarjeta',
             children: <InfoboxStandalone layer={layer} onSaved={reload} />,
+        },
+        {
+            key: 'aviso',
+            label: 'Aviso',
+            children: <NoticeStandalone layer={layer} onSaved={reload} />,
         },
         {
             key: 'metadatos',

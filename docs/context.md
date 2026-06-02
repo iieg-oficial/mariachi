@@ -2,7 +2,7 @@
 
 > Documento de referencia completo. Leer este archivo proporciona contexto del monorepo sin explorar el codebase.
 
-**Versión:** ver `api/pyproject.toml` (la lee `api/app/core/version.py::get_app_version()`; endpoint en vivo `GET /ontoy`). · **Última actualización:** 2026-05-29
+**Versión:** ver `api/pyproject.toml` (la lee `api/app/core/version.py::get_app_version()`; endpoint en vivo `GET /ontoy`). · **Última actualización:** 2026-06-01
 
 
 ---
@@ -743,7 +743,7 @@ Solicitar revision crea un `borrador` con `resource_type='evento'`. `tetlamamaka
 - `EventoEditPage` con `Tabs` verticales y `forceRender: true` por item (sin esto `getFieldsValue` devolvia `undefined` al guardar campos en tabs lazy).
 - `BBoxField` con 3 modos: "Sin zoom" (`bbox=null`), "Coordenadas manuales" con switch CRS **EPSG:4326** ↔ **EPSG:6368** (UTM 14N, reproyeccion frontend con `proj4`), "Dibujar en mapa" con OpenLayers + base CARTO Light. Deps: `ol@^10.9` y `proj4@^2.20`. `BBoxField` memoizado para no recrear `Draw` en cada render.
 - `CapasField` permite agregar capas existentes (registradas en `mapalab.layers`) o materializa una capa "solo GeoServer" como leaf bajo el padre `eventos-auto` via `POST /layers/auto-leaf` (idempotente). `AddCapaModal` exige un **nombre humano** distinto al identificador GeoServer para capas no registradas — input inline con validación case/`_`/`-`/espacios y botón "Agregar" deshabilitado con tooltip si está vacío o coincide con el slug; las capas ya registradas mantienen su `label` del catálogo. El orden definido en la tabla (drag & drop via `@dnd-kit/sortable`) controla el Z del mapa cuando el evento se abre: primera fila = al frente, última = al fondo. Texto secundario sobre la tabla lo documenta para el editor.
-- `LayerContentDrawer` reusable con tabs Tarjeta · Metadatos · Simbologia, montado desde `CapasField` para editar contenido sin navegar al `LayerEditPage`.
+- `LayerContentDrawer` reusable con tabs Tarjeta · Aviso · Metadatos · Simbologia, montado desde `CapasField` para editar contenido sin navegar al `LayerEditPage`. La tab Aviso usa `NoticeStandalone` (espejo de `InfoboxStandalone`) que guarda `notice` vía `updateLayer` (PUT parcial). El mismo drawer se monta desde la pestaña "Eventos" del árbol de capas (`LayerEditPage`): click en una capa de evento abre el drawer (`setEventoLayerId`) en lugar de navegar — antes el click no mostraba nada porque el tab del árbol no cambiaba y las auto-leaves bajo `eventos-auto` están filtradas del catálogo.
 - `EventosListPage` con busqueda + filtro estado.
 - Visor (`mapalab/frontend/.../EventoMenu.jsx`): renderiza etiquetas como `LabelItem`, auto-activa capas con `autoActivar=true` al abrir el menu (itera `toActivate` en orden inverso para que el primer ítem del editor quede al frente en `activeLayerIds` — compensación al `unshift` de `handleToggleLayer`), boton "Eliminar (N)" para apagar capas externas activas.
 
@@ -811,6 +811,10 @@ Este repo se integra con otros servicios internos vecinos (CMS, visor de mapas, 
 ---
 
 ## Cambios recientes
+
+### 2026-06-01 (admin v1.23.0) — Edición de capas de eventos desde el árbol + tab "Aviso" en el drawer
+
+Dos fixes en el flujo de edición de capas asociadas a eventos. (1) En la pestaña "Eventos" del árbol de capas (`LayerEditPage`), hacer click en una capa de un evento ahora abre el `LayerContentDrawer` (`setEventoLayerId`) en lugar de navegar a `/mapalab/layers/<id>/edit`: antes el click no mostraba nada porque el tab del árbol permanecía en "Eventos" (sin editor inline) y las auto-leaves bajo `eventos-auto` están filtradas de `catalogTreeData`. (2) Nueva tab "Aviso" en el `LayerContentDrawer` vía `NoticeStandalone` (espejo de `InfoboxStandalone`), que guarda `notice` con `updateLayer` (PUT parcial, `exclude_unset=True`). Como `CapasField` reusa el drawer, la tab aparece también en el editor del evento. Sin cambios de backend ni schema (`LayerUpdate.notice` ya existía). Detalle en CHANGELOG §[admin 1.23.0].
 
 ### 2026-05-29 (admin v1.22.0) — Banner del home: logo por item respetado en mobile + descripción y CTA opcionales
 
