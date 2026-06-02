@@ -2,7 +2,7 @@
 
 > Documento de referencia completo. Leer este archivo proporciona contexto del monorepo sin explorar el codebase.
 
-**Versión:** ver `api/pyproject.toml` (la lee `api/app/core/version.py::get_app_version()`; endpoint en vivo `GET /ontoy`). · **Última actualización:** 2026-06-01
+**Versión:** ver `api/pyproject.toml` (la lee `api/app/core/version.py::get_app_version()`; endpoint en vivo `GET /ontoy`). · **Última actualización:** 2026-06-02
 
 
 ---
@@ -816,6 +816,10 @@ Este repo se integra con otros servicios internos vecinos (CMS, visor de mapas, 
 ### 2026-06-01 (admin v1.24.0 + api v1.23.0) — Ocultar capas dentro de un evento sin quitarlas
 
 `CapaRef` gana el flag `oculto: bool = False`. En el editor de Eventos (`CapasField`) cada fila (capa/etiqueta/categoría) tiene un toggle "Visible" (`Switch` con íconos de ojo) que la oculta del visor público sin removerla del evento; las filas ocultas muestran un tag naranja "Oculto". El backend filtra recursivamente las entradas `oculto=true` en `EventoPublicResponse` (usado por `GET /api/mapalab/eventos` y `GET /eventos/{id}/preview`), incluyendo capas dentro de categorías y descartando categorías/etiquetas ocultas con su subárbol; `EventoResponse` (admin) las conserva. `normalizeCapas` en `EventoEditPage` preserva `oculto` al cargar. Sin migración (`capas` es JSONB). Detalle en CHANGELOG §[admin 1.24.0] y §[api 1.23.0].
+
+### 2026-06-02 (admin v1.25.0 + api v1.24.0) — Desactivar items del Home de MapaLab sin eliminarlos
+
+Cada item de las secciones `guide` (Guía), `select` (Opciones), `faq` (Preguntas) y los `subtopics` de `topics` (Temas) gana un toggle "Activo" en el editor del Inicio (`sectionEditors.jsx`), para "apagarlos" temporalmente del home público sin borrarlos ni perder su orden/configuración. Banner, Temas y Video ya lo tenían vía su `Switch`. Schema (`schemas/home_section.py`): `GuideItem`/`SelectItem`/`FaqItem`/`SubtopicItem` ganan `activo: bool = True` (sin migración — el payload es JSON; los items sin el campo se interpretan como activos). El filtrado efectivo lo hace el visor de MapaLab (v1.65.0): `buildGuide`/`buildSelect`/subtopics filtran `activo !== false`, y `buildFaqContent` devuelve `null` si no queda ninguna pregunta activa (cae al FAQ bundled). El `ItemListEditor` acepta `newItemDefaults` para que los items nuevos nazcan activos. Detalle en CHANGELOG §[admin 1.25.0] y §[api 1.24.0].
 
 ### 2026-06-01 (api v1.22.0) — Perf + resiliencia: `/sistema/plataformas` paralelizado + engine DataEngine con `connect_timeout`
 

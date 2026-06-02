@@ -9,6 +9,30 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [admin 1.25.0] - 2026-06-02
+
+### Feat: desactivar items del Home de MapaLab sin eliminarlos (Guía, Opciones, Preguntas y Subtemas)
+
+En el editor del Inicio de MapaLab (`HomePage` → secciones `guide`, `select`, `faq` y los subtemas de `topics`) cada item gana un toggle "Activo" que lo oculta del home público sin removerlo de la sección: sigue editable en el admin y se vuelve a mostrar con un clic. Resuelve el caso de querer "apagar" temporalmente un paso de la guía, una opción, una pregunta o un subtema (p. ej. mientras se resuelve un dato) sin perder su configuración ni su orden. Banner, Temas y Video ya lo permitían vía su `Switch` "Activo".
+
+- **`admin/src/features/mapalab-home/components/sectionEditors.jsx`**: `GuideEditor`, `SelectEditor` y `FaqEditor` agregan un `Form.Item` con `Switch` "Activo"; `SubtopicEditor` agrega el mismo toggle por subtema. `ItemListEditor` acepta una prop `newItemDefaults` para que los items nuevos de esas secciones nazcan activos (`activo: true`), igual que el subtema nuevo. Banner/Temas/Video conservan su comportamiento previo.
+
+Sin migración: el payload de las secciones es JSON y el flag viaja dentro de cada item. Los datos existentes (sin el campo) se interpretan como activos. Requiere `api 1.24.0` para que el flag se persista y el visor de MapaLab (`1.65.0`) para que se filtre del home público.
+
+---
+
+## [api 1.24.0] - 2026-06-02
+
+### Feat: campo `activo` en items de secciones del Home de MapaLab
+
+Soporta el nuevo toggle "Activo" del editor del Inicio (admin 1.25.0): un paso de guía, opción, pregunta o subtema marcado como inactivo sigue persistido en la sección pero no se muestra al público.
+
+- **`api/app/schemas/home_section.py`**: `GuideItem`, `SelectItem`, `FaqItem` y `SubtopicItem` ganan `activo: bool = True`. Se serializa en `HomeSectionResponse` (editor admin) y en `HomePublicResponse` (home público), de modo que el visor recibe el flag por item.
+
+Sin migración (`payload_published`/`payload_draft` son JSON). El default `True` mantiene visible todo el contenido existente que no traía el campo. El filtrado efectivo lo hace el visor de MapaLab (1.65.0).
+
+---
+
 ## [admin 1.24.0] - 2026-06-01
 
 ### Feat: ocultar capas dentro de un evento sin quitarlas de la lista
