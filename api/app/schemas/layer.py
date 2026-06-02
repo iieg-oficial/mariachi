@@ -29,7 +29,7 @@ def _validate_highlight_color(value: str | None) -> str | None:
     )
 
 NoticeVariant = Literal["info", "warning", "neutral", "banner"]
-NoticeSize = Literal["small", "medium", "large"]
+NoticeSize = Literal["compact", "small", "medium", "large"]
 NoticePosition = Literal["top-center", "bottom-center"]
 NoticeDismissPersistence = Literal["permanent", "reopen"]
 NoticeAnchorMode = Literal["viewport", "coord"]

@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Button, Empty, Form, Space } from 'antd';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Button, Empty, Form, Grid } from 'antd';
 import { SaveOutlined } from '@ant-design/icons';
 import LayerNoticeSection from './LayerNoticeSection';
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
@@ -10,6 +10,23 @@ export default function NoticeStandalone({ layer, onSaved }) {
     const [notice, setNotice] = useState(null);
     const [workspaces, setWorkspaces] = useState([]);
     const [saving, setSaving] = useState(false);
+    const screens = Grid.useBreakpoint();
+    const isMobile = !screens.md;
+    const barRef = useRef(null);
+    const [barHeight, setBarHeight] = useState(0);
+
+    useLayoutEffect(() => {
+        const el = barRef.current;
+        if (!el || isMobile) {
+            setBarHeight(0);
+            return undefined;
+        }
+        const update = () => setBarHeight(el.offsetHeight);
+        update();
+        const ro = new ResizeObserver(update);
+        ro.observe(el);
+        return () => ro.disconnect();
+    }, [isMobile]);
 
     useEffect(() => {
         setNotice(layer?.notice || null);
@@ -44,11 +61,20 @@ export default function NoticeStandalone({ layer, onSaved }) {
 
     return (
         <Form layout="vertical">
-            <Space style={{ width: '100%', justifyContent: 'flex-end', marginBottom: 12 }}>
+            <div
+                ref={barRef}
+                style={{
+                    display: 'flex',
+                    justifyContent: 'flex-end',
+                    padding: '8px 0',
+                    marginBottom: 12,
+                    ...(isMobile ? {} : { position: 'sticky', top: 0, zIndex: 10, background: '#fff' }),
+                }}
+            >
                 <Button type="primary" icon={<SaveOutlined />} onClick={handleSave} loading={saving}>
                     Guardar aviso
                 </Button>
-            </Space>
+            </div>
             <LayerNoticeSection
                 value={notice}
                 onChange={setNotice}
@@ -57,6 +83,8 @@ export default function NoticeStandalone({ layer, onSaved }) {
                 styles={styles}
                 cqlFilter={layer.cqlFilter || ''}
                 defaultZoom={layer.defaultZoom ?? null}
+                previewSticky={!isMobile}
+                previewStickyTop={barHeight}
             />
         </Form>
     );

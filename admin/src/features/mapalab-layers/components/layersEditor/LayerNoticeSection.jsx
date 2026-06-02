@@ -44,6 +44,7 @@ export const NOTICE_VARIANTS = [
 ];
 
 export const NOTICE_SIZES = [
+    { value: 'compact', label: 'Mínimo' },
     { value: 'small', label: 'Compacto' },
     { value: 'medium', label: 'Estándar' },
     { value: 'large', label: 'Destacado (recomendado)' },
@@ -129,10 +130,13 @@ function NoticePreview({ value }) {
     } : {};
     const size = value?.size || 'large';
     const sizePreset = {
+        compact: { iconSize: 32, titleSize: 14, titleLh: 18, descSize: 12, descLh: 16, padding: '10px 12px', gap: 10, maxWidth: 300 },
         small: { iconSize: 40, titleSize: 14, titleLh: 20, descSize: 12, descLh: 16, padding: '12px 14px', gap: 12, maxWidth: 360 },
         medium: { iconSize: 56, titleSize: 16, titleLh: 24, descSize: 13, descLh: 18, padding: '16px 16px', gap: 14, maxWidth: 440 },
         large: { iconSize: 74, titleSize: 18, titleLh: 26, descSize: 14, descLh: 20, padding: '20px 16px', gap: 16, maxWidth: 507 },
-    }[size];
+    }[size] || {
+        large: true, iconSize: 74, titleSize: 18, titleLh: 26, descSize: 14, descLh: 20, padding: '20px 16px', gap: 16, maxWidth: 507,
+    };
 
     return (
         <div style={{ display: 'inline-block', maxWidth: sizePreset.maxWidth, width: '100%' }}>
@@ -246,6 +250,8 @@ export default function LayerNoticeSection({
     styles,
     cqlFilter,
     defaultZoom,
+    previewSticky = true,
+    previewStickyTop = 0,
 }) {
     const safeValue = value || null;
     const enabled = Boolean(safeValue?.enabled);
@@ -276,21 +282,6 @@ export default function LayerNoticeSection({
 
     return (
         <div>
-            <Alert
-                style={{ marginBottom: 16 }}
-                type="info"
-                showIcon
-                closable
-                message="Mensaje contextual de capa"
-                description={
-                    <>
-                        Aparece sobre el mapa cuando la capa está activa y dentro de su rango de zoom.
-                        Útil para advertir sobre datos preliminares, vigencia, cambios recientes o
-                        enlaces a la fuente. El usuario puede cerrarlo si lo configuras como descartable.
-                    </>
-                }
-            />
-
             <Form.Item label={<Text strong>Habilitar aviso</Text>} style={{ marginBottom: 16 }}>
                 <Switch
                     checked={enabled}
@@ -533,7 +524,7 @@ export default function LayerNoticeSection({
                         </Card>
                     </Col>
                     <Col xs={24} md={10}>
-                        <div style={{ position: 'sticky', top: 0 }}>
+                        <div style={{ position: previewSticky ? 'sticky' : 'static', top: previewStickyTop }}>
                             <Text strong style={{ display: 'block', marginBottom: 8 }}>
                                 Vista previa
                             </Text>
