@@ -9,6 +9,30 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [admin 1.26.0] - 2026-06-02
+
+### Feat: editor de avisos por capa — escalas de zoom calibradas, tamaño "Mínimo" y mejoras UX
+
+Mejoras al editor del aviso por capa (`LayerNoticeSection`, montado en capas y en capas de evento vía `NoticeStandalone`/`CapasField`).
+
+- **Control de zoom como slider de rango reutilizable** (`shared/components/ZoomRangeField` + `shared/utils/zoomScale`): reemplaza los dos `InputNumber` mín/máx por un `Slider` de rango con marcas semánticas (Estado · Municipio · Ciudad · Colonia · Calle). Elimina la confusión de "mayor nivel = más acercado" y hace imposible invertir mín/máx. Modos `range` (aviso) y `single` (reutilizado en el zoom inicial del playground de API keys).
+- **Escalas calibradas al rango real del visor**: el slider va de `8` a `18` (antes 0–20), alineado a `minZoom 8` / `maxZoom 18` de MapaLab. Antes, el tramo 0–8 era inalcanzable y cualquier rango que lo incluyera se veía siempre. La lectura normaliza `min/max` para mostrar bien datos legacy invertidos.
+- **Tamaño "Mínimo"** (`compact`) en el selector de tamaño del aviso anclado.
+- **Botón "Guardar aviso" sticky** en el drawer, con el `top` de la vista previa calculado a partir de la altura real de la barra (no se traslapan); desactivado en mobile.
+- Se quitó el banner contextual "Mensaje contextual de capa" del editor.
+
+Requiere `api 1.25.0` (valor `compact` en `NoticeSize`). El visor de MapaLab (`1.66.0`) tolera rangos invertidos y renderiza el tamaño `compact`.
+
+---
+
+## [api 1.25.0] - 2026-06-02
+
+### Feat: tamaño `compact` en avisos por capa
+
+`NoticeSize` (`api/app/schemas/layer.py`) acepta el nuevo valor `"compact"` además de `small`/`medium`/`large`, para el tamaño "Mínimo" del editor (admin 1.26.0). Cambio aditivo y retrocompatible: los avisos existentes conservan su tamaño.
+
+---
+
 ## [admin 1.25.0] - 2026-06-02
 
 ### Feat: desactivar items del Home de MapaLab sin eliminarlos (Guía, Opciones, Preguntas y Subtemas)
