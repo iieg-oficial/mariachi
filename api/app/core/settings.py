@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     dataengine_database_url: str | None = None
     dataengine_pool_size: int = 5
     dataengine_max_overflow: int = 5
+    dataengine_connect_timeout: int = 3
+    dataengine_pool_recycle: int = 1800
     secret_key: str
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30

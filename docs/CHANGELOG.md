@@ -9,6 +9,24 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.22.0] - 2026-06-01
+
+### Perf + resiliencia: `/sistema/plataformas` paralelizado y engine de DataEngine con `connect_timeout`
+
+Origen: alertas `HighLatency` en producción mostraban p95 ~4.9s en mariachi-api. El `topk` por handler señaló `/api/administrador/sistema/plataformas` como el cuello de botella (~10× sobre el resto). Causa: health-checks secuenciales a 7 servicios vecinos, agravado por un puerto de DataEngine aún no abierto en prod (los probes/conexiones colgaban).
+
+#### `/sistema/plataformas` paralelizado
+
+- **`api/app/api/routes/sistema.py`**: los probes pasaban por un loop secuencial con `httpx.Client` **síncrono** dentro de un `async def` — el tiempo total era la suma de los 7 probes (hasta 14s con 2 o 3 lentos) y además bloqueaba el event loop del worker. Ahora `_probe_ontoy`/`_probe_http_health` son `async` sobre un `httpx.AsyncClient` compartido, el probe de DataEngine (SQL síncrono) corre en `asyncio.to_thread`, y los 8 se lanzan con `asyncio.gather`. El tiempo total pasa a ser ~el del probe más lento (≈timeout 2s en el peor caso) en vez de la suma. Contrato de respuesta sin cambios (mismo JSON por plataforma).
+
+#### Engine de DataEngine endurecido
+
+- **`api/app/core/database.py`** + **`api/app/core/settings.py`**: el engine secundario tenía `pool_pre_ping=True` pero **sin `connect_timeout`**. Con un puerto filtrado (firewall que DROPea), el `connect()` de libpq quedaba colgado durante las retransmisiones de TCP SYN del SO, y el pre-ping reintentaba (duplicando el cuelgue) en cada request que tocaba DataEngine (`/layers/*`, `/eventos`, `/geoserver/workspaces`). Se agregó `connect_args={"connect_timeout": DATAENGINE_CONNECT_TIMEOUT}` (default 3s) + `pool_recycle=DATAENGINE_POOL_RECYCLE` (default 1800s). Ahora un DataEngine inalcanzable degrada de forma controlada (falla en ~3s) en lugar de colgar el worker. Nuevos settings con default sensato (no requieren `.env`).
+
+Sin cambios de contrato ni de schema. El bump es solo de api.
+
+---
+
 ## [admin 1.23.0] - 2026-06-01
 
 ### Feat: edición de capas de eventos desde el árbol + tab "Aviso" en el drawer de contenido
