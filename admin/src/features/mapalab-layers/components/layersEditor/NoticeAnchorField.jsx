@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Button, Space, Tag, Typography } from 'antd';
-import { AimOutlined, ArrowDownOutlined, ArrowUpOutlined, ClearOutlined } from '@ant-design/icons';
+import { AimOutlined, ClearOutlined } from '@ant-design/icons';
 import 'ol/ol.css';
 import Map from 'ol/Map';
 import View from 'ol/View';
@@ -39,7 +39,6 @@ export default function NoticeAnchorField({
     styles,
     cqlFilter,
     zoomRange,
-    onZoomRangeChange,
     defaultZoom,
 }) {
     const containerRef = useRef(null);
@@ -47,12 +46,10 @@ export default function NoticeAnchorField({
     const markerSourceRef = useRef(null);
     const wmsLayerRef = useRef(null);
     const onChangeRef = useRef(onChange);
-    const onZoomRangeChangeRef = useRef(onZoomRangeChange);
     const defaultZoomRef = useRef(defaultZoom);
     const [currentZoom, setCurrentZoom] = useState(null);
 
     useEffect(() => { onChangeRef.current = onChange; }, [onChange]);
-    useEffect(() => { onZoomRangeChangeRef.current = onZoomRangeChange; }, [onZoomRangeChange]);
     useEffect(() => { defaultZoomRef.current = defaultZoom; }, [defaultZoom]);
 
     useEffect(() => {
@@ -180,17 +177,6 @@ export default function NoticeAnchorField({
         return () => view.un('change:resolution', update);
     }, []);
 
-    const takeZoomAs = (key) => {
-        const map = mapRef.current;
-        if (!map || !onZoomRangeChangeRef.current) return;
-        const z = map.getView().getZoom();
-        if (typeof z !== 'number') return;
-        const rounded = Math.round(z * 10) / 10;
-        const next = { ...(zoomRange || {}), [key]: rounded };
-        const hasAny = next.min != null || next.max != null;
-        onZoomRangeChangeRef.current(hasAny ? next : null);
-    };
-
     const zoomRangeActive = useMemo(() => {
         if (currentZoom == null) return null;
         const min = zoomRange?.min;
@@ -254,27 +240,9 @@ export default function NoticeAnchorField({
                 <Button size="small" icon={<ClearOutlined />} disabled={!value || disabled} onClick={clear}>
                     Limpiar punto
                 </Button>
-                <Button
-                    size="small"
-                    icon={<ArrowDownOutlined />}
-                    disabled={disabled || !onZoomRangeChange || currentZoom == null}
-                    onClick={() => takeZoomAs('min')}
-                    title="Usar el zoom actual como límite mínimo de visibilidad"
-                >
-                    Tomar zoom como mínimo
-                </Button>
-                <Button
-                    size="small"
-                    icon={<ArrowUpOutlined />}
-                    disabled={disabled || !onZoomRangeChange || currentZoom == null}
-                    onClick={() => takeZoomAs('max')}
-                    title="Usar el zoom actual como límite máximo de visibilidad"
-                >
-                    Tomar zoom como máximo
-                </Button>
             </Space>
             <Text type="secondary" style={{ fontSize: 11 }}>
-                Click sobre el mapa para fijar el punto. Acerca/aleja el mapa y usa los botones para capturar los límites de zoom.
+                Click sobre el mapa para fijar el punto. El rango de zoom se define en el control de abajo.
             </Text>
             {value && (
                 <Text type="secondary" style={{ fontSize: 11 }}>

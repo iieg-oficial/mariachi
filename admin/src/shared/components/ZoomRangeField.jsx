@@ -42,7 +42,7 @@ function RangeSlider({ value, onChange, defaultZoom }) {
                     range
                     min={ZOOM_MIN}
                     max={ZOOM_MAX}
-                    step={0.5}
+                    step={1}
                     marks={ZOOM_MARKS}
                     value={[min, max]}
                     onChange={([a, b]) => onChange?.({ min: a, max: b })}
@@ -64,7 +64,7 @@ function SingleSlider({ value, onChange }) {
             <Slider
                 min={ZOOM_MIN}
                 max={ZOOM_MAX}
-                step={0.5}
+                step={1}
                 marks={ZOOM_MARKS}
                 value={current}
                 onChange={(z) => onChange?.(z)}

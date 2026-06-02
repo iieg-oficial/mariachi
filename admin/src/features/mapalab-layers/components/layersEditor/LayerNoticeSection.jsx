@@ -434,7 +434,6 @@ export default function LayerNoticeSection({
                                             styles={styles}
                                             cqlFilter={cqlFilter}
                                             zoomRange={safeValue?.zoomRange}
-                                            onZoomRangeChange={(zr) => setField({ zoomRange: zr })}
                                             defaultZoom={defaultZoom}
                                         />
                                     </Form.Item>
