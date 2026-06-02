@@ -49,6 +49,7 @@ function normalizeCapas(capas) {
                 tipo,
                 alias: c.alias,
                 orden: c.orden ?? 0,
+                oculto: c.oculto ?? false,
                 capas: normalizeCapas(c.capas).map((child) => (
                     child.tipo === 'categoria' ? { ...child, tipo: 'etiqueta', capas: undefined } : child
                 )),
@@ -61,6 +62,7 @@ function normalizeCapas(capas) {
             alias: c.alias,
             orden: c.orden ?? 0,
             autoActivar: c.autoActivar ?? c.auto_activar ?? true,
+            oculto: c.oculto ?? false,
             z: typeof c.z === 'number' ? c.z : null,
         };
     });

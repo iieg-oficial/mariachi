@@ -1,4 +1,5 @@
 from app.models.project import Project
+from app.schemas.evento import EventoPublicResponse
 from tests.conftest import ADMIN_PREFIX
 
 
@@ -275,3 +276,44 @@ def test_slug_explicito_respetado(admin_session, db_session):
         headers={"X-CSRF-Token": admin_session["csrf"]},
     )
     assert response.json()["slug"] == "mi-evento"
+
+
+def test_capa_oculta_excluida_del_publico():
+    capas = [
+        {"tipo": "capa", "workspace": "w", "layer": "l1", "oculto": False},
+        {"tipo": "capa", "workspace": "w", "layer": "l2", "oculto": True},
+        {
+            "tipo": "categoria",
+            "alias": "Cat",
+            "capas": [
+                {"tipo": "capa", "workspace": "w", "layer": "l3", "oculto": True},
+                {"tipo": "capa", "workspace": "w", "layer": "l4", "oculto": False},
+            ],
+        },
+    ]
+    pub = EventoPublicResponse.model_validate(
+        {"id": 1, "slug": "s", "titulo": "T", "capas": capas}
+    )
+    top_layers = [c.layer for c in pub.capas if c.tipo == "capa"]
+    assert "l1" in top_layers
+    assert "l2" not in top_layers
+    categoria = next(c for c in pub.capas if c.tipo == "categoria")
+    assert [c.layer for c in categoria.capas] == ["l4"]
+
+
+def test_categoria_oculta_excluida_del_publico():
+    capas = [
+        {
+            "tipo": "categoria",
+            "alias": "Cat oculta",
+            "oculto": True,
+            "capas": [{"tipo": "capa", "workspace": "w", "layer": "l1"}],
+        },
+        {"tipo": "etiqueta", "alias": "Sección", "oculto": True},
+        {"tipo": "capa", "workspace": "w", "layer": "l2"},
+    ]
+    pub = EventoPublicResponse.model_validate(
+        {"id": 1, "slug": "s", "titulo": "T", "capas": capas}
+    )
+    assert len(pub.capas) == 1
+    assert pub.capas[0].layer == "l2"
