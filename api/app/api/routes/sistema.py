@@ -1,3 +1,5 @@
+import asyncio
+
 import httpx
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import text
@@ -39,22 +41,20 @@ def _resolve_template(template: str | None, settings) -> str | None:
     return resolved
 
 
-def _probe_ontoy(url: str) -> tuple[str | None, bool]:
+async def _probe_ontoy(client: httpx.AsyncClient, url: str) -> tuple[str | None, bool]:
     try:
-        with httpx.Client(timeout=_TIMEOUT_SECONDS) as c:
-            r = c.get(url)
-            r.raise_for_status()
-            return r.json().get("version"), True
+        r = await client.get(url)
+        r.raise_for_status()
+        return r.json().get("version"), True
     except Exception:
         return None, False
 
 
-def _probe_http_health(url: str) -> tuple[str | None, bool]:
+async def _probe_http_health(client: httpx.AsyncClient, url: str) -> tuple[str | None, bool]:
     try:
-        with httpx.Client(timeout=_TIMEOUT_SECONDS, follow_redirects=True) as c:
-            r = c.get(url, headers={"Host": "localhost"})
-            r.raise_for_status()
-            return None, True
+        r = await client.get(url, headers={"Host": "localhost"}, follow_redirects=True)
+        r.raise_for_status()
+        return None, True
     except Exception:
         return None, False
 
@@ -76,36 +76,38 @@ def _probe_dataengine(db_factory) -> tuple[str | None, bool]:
         return None, False
 
 
+async def _probe_plataforma(plat, settings, client: httpx.AsyncClient) -> tuple[str | None, bool]:
+    probe = plat["probe"]
+    if probe == "self":
+        return get_app_version(), True
+    if probe == "none":
+        return None, True
+    if probe == "dataengine":
+        return await asyncio.to_thread(_probe_dataengine, get_dataengine_db)
+    resolved = _resolve_template(plat.get("probe_url_template"), settings)
+    if not resolved:
+        return None, False
+    if probe == "ontoy":
+        return await _probe_ontoy(client, resolved)
+    return await _probe_http_health(client, resolved)
+
+
 @router.get("/plataformas")
 async def listar_plataformas(_: Usuario = Depends(get_current_user)):
     settings = get_settings()
+
+    async with httpx.AsyncClient(timeout=_TIMEOUT_SECONDS) as client:
+        probes = await asyncio.gather(
+            *(_probe_plataforma(plat, settings, client) for plat in PLATFORMS)
+        )
+
     results = []
-
-    for plat in PLATFORMS:
-        slug, label, url = plat["slug"], plat["label"], plat["url"]
-        probe = plat["probe"]
-        static_version = plat.get("static_version")
-
-        if probe == "self":
-            v_probe, ok = get_app_version(), True
-        elif probe == "none":
-            v_probe, ok = None, True
-        elif probe == "dataengine":
-            v_probe, ok = _probe_dataengine(get_dataengine_db)
-        else:
-            resolved = _resolve_template(plat.get("probe_url_template"), settings)
-            if not resolved:
-                v_probe, ok = None, False
-            elif probe == "ontoy":
-                v_probe, ok = _probe_ontoy(resolved)
-            else:
-                v_probe, ok = _probe_http_health(resolved)
-
-        version = static_version or v_probe
+    for plat, (v_probe, ok) in zip(PLATFORMS, probes):
+        version = plat.get("static_version") or v_probe
         results.append({
-            "slug": slug,
-            "label": label,
-            "url": url,
+            "slug": plat["slug"],
+            "label": plat["label"],
+            "url": plat["url"],
             "repo": plat.get("repo"),
             "taiga": plat.get("taiga"),
             "version": version,

@@ -35,6 +35,8 @@ def _ensure_dataengine_engine():
             pool_pre_ping=True,
             pool_size=settings.dataengine_pool_size,
             max_overflow=settings.dataengine_max_overflow,
+            pool_recycle=settings.dataengine_pool_recycle,
+            connect_args={"connect_timeout": settings.dataengine_connect_timeout},
         )
         DataEngineSessionLocal = sessionmaker(
             autocommit=False, autoflush=False, bind=dataengine_engine
