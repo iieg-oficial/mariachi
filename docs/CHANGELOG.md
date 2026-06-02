@@ -9,6 +9,31 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [admin 1.24.0] - 2026-06-01
+
+### Feat: ocultar capas dentro de un evento sin quitarlas de la lista
+
+En el editor de Eventos (`CapasField`), cada fila (capa, etiqueta o categoría) tiene ahora un toggle "Visible" que la oculta del visor público sin removerla del evento: sigue editable en el admin y se puede volver a mostrar con un clic. Resuelve el caso de querer "apagar" temporalmente una capa de una campaña (p. ej. mientras se prepara su contenido o se valida un dato) sin perder su configuración ni su orden.
+
+- **`admin/src/features/mapalab-eventos/components/capasTableColumns.jsx`**: nueva columna "Visible" con un `Switch` (íconos `EyeOutlined`/`EyeInvisibleOutlined`) que escribe `oculto` vía `onUpdate(idx, { oculto })`. Aplica a los tres tipos de fila. Las filas ocultas muestran un tag naranja "Oculto" junto a su tag de tipo.
+- **`admin/src/features/mapalab-eventos/pages/EventoEditPage.jsx`**: `normalizeCapas` preserva `oculto` al cargar el evento (antes reconstruía cada fila campo por campo y lo habría descartado), tanto en capas/etiquetas como en categorías.
+
+Sin migración: `capas` es JSONB y el flag viaja dentro de cada `CapaRef`. Requiere el backend `api 1.23.0` para que las capas ocultas se filtren del payload público.
+
+---
+
+## [api 1.23.0] - 2026-06-01
+
+### Feat: campo `oculto` en `CapaRef` + filtrado en el listado y preview público de eventos
+
+Soporta el nuevo control "Visible" del editor de Eventos (admin 1.24.0): una capa marcada como oculta sigue persistida en el evento pero no se muestra al público.
+
+- **`api/app/schemas/evento.py`**: `CapaRef` gana `oculto: bool = False`. `EventoPublicResponse` (que usan tanto `GET /api/mapalab/eventos` como `GET /api/administrador/eventos/{id}/preview`) filtra recursivamente las entradas con `oculto=true` — incluidas las capas dentro de una categoría, y descartando categorías/etiquetas ocultas con todo su subárbol. `EventoResponse` (editor admin) las conserva intactas.
+
+Sin migración (`capas` es JSONB). El cache versionado en Redis ya se invalida en cada write del evento, así que el cambio de visibilidad se refleja en el siguiente poll del visor sin trabajo extra. Cubierto por 2 tests nuevos en `tests/test_eventos_validation.py`.
+
+---
+
 ## [api 1.22.0] - 2026-06-01
 
 ### Perf + resiliencia: `/sistema/plataformas` paralelizado y engine de DataEngine con `connect_timeout`

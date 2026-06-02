@@ -744,6 +744,7 @@ Solicitar revision crea un `borrador` con `resource_type='evento'`. `tetlamamaka
 - `BBoxField` con 3 modos: "Sin zoom" (`bbox=null`), "Coordenadas manuales" con switch CRS **EPSG:4326** ↔ **EPSG:6368** (UTM 14N, reproyeccion frontend con `proj4`), "Dibujar en mapa" con OpenLayers + base CARTO Light. Deps: `ol@^10.9` y `proj4@^2.20`. `BBoxField` memoizado para no recrear `Draw` en cada render.
 - `CapasField` permite agregar capas existentes (registradas en `mapalab.layers`) o materializa una capa "solo GeoServer" como leaf bajo el padre `eventos-auto` via `POST /layers/auto-leaf` (idempotente). `AddCapaModal` exige un **nombre humano** distinto al identificador GeoServer para capas no registradas — input inline con validación case/`_`/`-`/espacios y botón "Agregar" deshabilitado con tooltip si está vacío o coincide con el slug; las capas ya registradas mantienen su `label` del catálogo. El orden definido en la tabla (drag & drop via `@dnd-kit/sortable`) controla el Z del mapa cuando el evento se abre: primera fila = al frente, última = al fondo. Texto secundario sobre la tabla lo documenta para el editor.
 - `LayerContentDrawer` reusable con tabs Tarjeta · Aviso · Metadatos · Simbologia, montado desde `CapasField` para editar contenido sin navegar al `LayerEditPage`. La tab Aviso usa `NoticeStandalone` (espejo de `InfoboxStandalone`) que guarda `notice` vía `updateLayer` (PUT parcial). El mismo drawer se monta desde la pestaña "Eventos" del árbol de capas (`LayerEditPage`): click en una capa de evento abre el drawer (`setEventoLayerId`) en lugar de navegar — antes el click no mostraba nada porque el tab del árbol no cambiaba y las auto-leaves bajo `eventos-auto` están filtradas del catálogo.
+- Cada fila de `CapasField` tiene un toggle **"Visible"** (`oculto` en `CapaRef`) que la oculta del visor sin quitarla del evento. El filtrado vive en `EventoPublicResponse._drop_hidden` (recursivo: capas, y categorías/etiquetas con su subárbol); el editor admin (`EventoResponse`) las conserva. Sin migración (JSONB).
 - `EventosListPage` con busqueda + filtro estado.
 - Visor (`mapalab/frontend/.../EventoMenu.jsx`): renderiza etiquetas como `LabelItem`, auto-activa capas con `autoActivar=true` al abrir el menu (itera `toActivate` en orden inverso para que el primer ítem del editor quede al frente en `activeLayerIds` — compensación al `unshift` de `handleToggleLayer`), boton "Eliminar (N)" para apagar capas externas activas.
 
@@ -811,6 +812,10 @@ Este repo se integra con otros servicios internos vecinos (CMS, visor de mapas, 
 ---
 
 ## Cambios recientes
+
+### 2026-06-01 (admin v1.24.0 + api v1.23.0) — Ocultar capas dentro de un evento sin quitarlas
+
+`CapaRef` gana el flag `oculto: bool = False`. En el editor de Eventos (`CapasField`) cada fila (capa/etiqueta/categoría) tiene un toggle "Visible" (`Switch` con íconos de ojo) que la oculta del visor público sin removerla del evento; las filas ocultas muestran un tag naranja "Oculto". El backend filtra recursivamente las entradas `oculto=true` en `EventoPublicResponse` (usado por `GET /api/mapalab/eventos` y `GET /eventos/{id}/preview`), incluyendo capas dentro de categorías y descartando categorías/etiquetas ocultas con su subárbol; `EventoResponse` (admin) las conserva. `normalizeCapas` en `EventoEditPage` preserva `oculto` al cargar. Sin migración (`capas` es JSONB). Detalle en CHANGELOG §[admin 1.24.0] y §[api 1.23.0].
 
 ### 2026-06-01 (api v1.22.0) — Perf + resiliencia: `/sistema/plataformas` paralelizado + engine DataEngine con `connect_timeout`
 

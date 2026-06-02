@@ -1,5 +1,5 @@
 import { Button, Dropdown, Input, InputNumber, Space, Switch, Tag, Tooltip, Typography } from 'antd';
-import { DeleteOutlined, EditOutlined, MenuOutlined, VerticalAlignTopOutlined } from '@ant-design/icons';
+import { DeleteOutlined, EditOutlined, EyeInvisibleOutlined, EyeOutlined, MenuOutlined, VerticalAlignTopOutlined } from '@ant-design/icons';
 import { DragHandleCell } from './CapasSortableRow';
 
 const { Text } = Typography;
@@ -53,6 +53,7 @@ export const buildCapasColumns = ({
                 return (
                     <Space size={6} style={{ width: '100%' }}>
                         <Tag color="purple" style={{ marginRight: 0 }}>Etiqueta</Tag>
+                        {record.oculto && <Tag color="orange" style={{ marginRight: 0 }}>Oculto</Tag>}
                         <Input
                             size="small"
                             placeholder="Texto de la etiqueta (ej. Servicios públicos)"
@@ -69,6 +70,7 @@ export const buildCapasColumns = ({
                 return (
                     <Space size={6} style={{ width: '100%' }} wrap>
                         <Tag color="geekblue" style={{ marginRight: 0 }}>Categoría</Tag>
+                        {record.oculto && <Tag color="orange" style={{ marginRight: 0 }}>Oculto</Tag>}
                         <Input
                             size="small"
                             placeholder="Nombre de la categoría (carpeta)"
@@ -85,7 +87,10 @@ export const buildCapasColumns = ({
             }
             return (
                 <Space direction="vertical" size={0}>
-                    <Tag color="blue">{record.workspace}:{record.layer}</Tag>
+                    <Space size={6}>
+                        <Tag color="blue" style={{ marginRight: 0 }}>{record.workspace}:{record.layer}</Tag>
+                        {record.oculto && <Tag color="orange" style={{ marginRight: 0 }}>Oculto</Tag>}
+                    </Space>
                     <Input
                         size="small"
                         placeholder="Alias mostrado en el panel"
@@ -162,6 +167,31 @@ export const buildCapasColumns = ({
                         disabled={disabled}
                         onChange={(val) => onUpdate(idx, { z: typeof val === 'number' ? val : null })}
                         style={{ width: 70 }}
+                    />
+                </Tooltip>
+            );
+        },
+    },
+    {
+        title: (
+            <Tooltip title="Oculta el elemento en el visor sin quitarlo del evento. Sigue editable aquí; solo deja de mostrarse al público.">
+                <span>Visible</span>
+            </Tooltip>
+        ),
+        key: 'oculto',
+        width: 90,
+        align: 'center',
+        render: (_, record, idx) => {
+            const oculto = record.oculto === true;
+            return (
+                <Tooltip title={oculto ? 'Oculto en el visor — clic para mostrar' : 'Visible en el visor — clic para ocultar'}>
+                    <Switch
+                        size="small"
+                        checked={!oculto}
+                        onChange={(visible) => onUpdate(idx, { oculto: !visible })}
+                        disabled={disabled}
+                        checkedChildren={<EyeOutlined />}
+                        unCheckedChildren={<EyeInvisibleOutlined />}
                     />
                 </Tooltip>
             );

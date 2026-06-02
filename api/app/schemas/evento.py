@@ -27,6 +27,7 @@ class CapaRef(CamelCaseInput):
     alias: str | None = Field(default=None, max_length=ALIAS_MAX_LENGTH)
     orden: int = 0
     auto_activar: bool = Field(default=True, serialization_alias='autoActivar')
+    oculto: bool = False
     z: int | None = Field(default=None, ge=-9999, le=9999)
     capas: list['CapaRef'] | None = None
 
@@ -212,6 +213,18 @@ class EventoPublicResponse(_EventoVisibleFields):
     slug: str
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+    @field_validator('capas', mode='after')
+    @classmethod
+    def _drop_hidden(cls, capas: list[CapaRef]) -> list[CapaRef]:
+        visibles = []
+        for capa in capas:
+            if capa.oculto:
+                continue
+            if capa.capas:
+                capa.capas = [child for child in capa.capas if not child.oculto]
+            visibles.append(capa)
+        return visibles
 
 
 class OrphanLayerInfo(CamelCaseInput):
