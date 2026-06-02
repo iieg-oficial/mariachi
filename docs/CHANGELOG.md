@@ -9,6 +9,25 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [admin 1.23.0] - 2026-06-01
+
+### Feat: edición de capas de eventos desde el árbol + tab "Aviso" en el drawer de contenido
+
+Dos fixes en el flujo de edición de capas asociadas a eventos de MapaLab.
+
+#### Edición de capas de eventos desde la pestaña "Eventos" del árbol
+
+- **`admin/src/features/mapalab-layers/pages/LayerEditPage.jsx`**: al hacer click sobre una capa dentro de la pestaña "Eventos" del árbol de capas, antes se navegaba a `/mapalab/layers/<id>/edit`, pero el tab activo del árbol permanecía en "Eventos" (que no monta el editor inline) y las auto-leaves bajo `eventos-auto` están filtradas de `catalogTreeData`, así que el editor nunca se mostraba: el click no hacía nada visible. Ahora el branch de leaf (`/^evento-\d+(?:-cat-\d+)?-cap-\d+-(.+)$/`) abre el `LayerContentDrawer` con `setEventoLayerId(leaf.id)` en lugar de navegar — mismo patrón que ya usa `CapasField` en el editor del evento. La navegación de capas normales del catálogo no cambia.
+
+#### Tab "Aviso" en el `LayerContentDrawer`
+
+- **`admin/src/features/mapalab-layers/components/layersEditor/NoticeStandalone.jsx`** (nuevo): editor autocontenido del aviso de capa (espejo de `InfoboxStandalone`). Carga `layer.notice`, lo edita con `LayerNoticeSection` resolviendo el `geoserverWorkspace` real desde `listGeoserverWorkspaces`, y lo guarda con `updateLayer(id, { notice })` (PUT parcial: `update_layer` usa `exclude_unset=True`, no toca otros campos).
+- **`admin/src/features/mapalab-layers/components/LayerContentDrawer.jsx`**: se agregó la pestaña "Aviso" entre "Tarjeta" y "Metadatos", homologando el orden de tabs de `LayerEditPage`. Como `CapasField` (editor del evento) reusa este drawer, la tab aparece también ahí.
+
+Sin cambios de backend ni de schema: `LayerUpdate.notice` ya existía y la edición del aviso usa la superficie de `updateLayer` que ya consumían las otras tabs del drawer.
+
+---
+
 ## [admin 1.22.0] - 2026-05-29
 
 ### Feat: logo del banner respeta el `logoUrl` por item + descripción y CTA opcionales
