@@ -6,7 +6,6 @@ import {
     Divider,
     Form,
     Input,
-    InputNumber,
     Radio,
     Row,
     Select,
@@ -19,6 +18,7 @@ import dayjs from 'dayjs';
 import { BellOutlined, ExclamationCircleOutlined, InfoCircleOutlined, WarningOutlined } from '@ant-design/icons';
 import NoticeIconField from './NoticeIconField';
 import NoticeAnchorField from './NoticeAnchorField';
+import ZoomRangeField from '@shared/components/ZoomRangeField';
 import MarkdownTextArea from '@shared/components/MarkdownTextArea';
 import { renderInlineMarkdown } from '@shared/utils/inlineMarkdown';
 
@@ -274,13 +274,6 @@ export default function LayerNoticeSection({
         }
     };
 
-    const setZoomRange = (patch) => {
-        const current = safeValue?.zoomRange || {};
-        const next = { ...current, ...patch };
-        const hasAny = next.min != null || next.max != null;
-        setField({ zoomRange: hasAny ? next : null });
-    };
-
     return (
         <div>
             <Alert
@@ -460,38 +453,13 @@ export default function LayerNoticeSection({
                             <Divider style={{ margin: '12px 0' }} orientation="left" orientationMargin={0} plain>
                                 <Text strong>Visibilidad por zoom (opcional)</Text>
                             </Divider>
-                            <Space size={12} wrap style={{ marginBottom: 16 }} align="start">
-                                <Form.Item
-                                    label="Zoom mínimo"
-                                    style={{ marginBottom: 0, maxWidth: 240 }}
-                                    help="Vacío = hereda el zoom de la capa (tab Servicios)."
-                                >
-                                    <InputNumber
-                                        min={0}
-                                        max={24}
-                                        step={0.5}
-                                        value={safeValue?.zoomRange?.min ?? null}
-                                        onChange={(v) => setZoomRange({ min: v ?? null })}
-                                        placeholder="hereda"
-                                        style={{ width: 180 }}
-                                    />
-                                </Form.Item>
-                                <Form.Item
-                                    label="Zoom máximo"
-                                    style={{ marginBottom: 0, maxWidth: 240 }}
-                                    help="Vacío = hereda el zoom de la capa. Si tampoco hay, siempre visible."
-                                >
-                                    <InputNumber
-                                        min={0}
-                                        max={24}
-                                        step={0.5}
-                                        value={safeValue?.zoomRange?.max ?? null}
-                                        onChange={(v) => setZoomRange({ max: v ?? null })}
-                                        placeholder="hereda"
-                                        style={{ width: 180 }}
-                                    />
-                                </Form.Item>
-                            </Space>
+                            <div style={{ marginBottom: 16 }}>
+                                <ZoomRangeField
+                                    value={safeValue?.zoomRange}
+                                    onChange={(zr) => setField({ zoomRange: zr })}
+                                    defaultZoom={defaultZoom}
+                                />
+                            </div>
 
                             <Form.Item label="¿Permitir que el usuario lo cierre?">
                                 <Switch

@@ -11,6 +11,7 @@ import {
 } from 'antd';
 import { SaveOutlined } from '@ant-design/icons';
 import LayerTreeSelect from '@features/mapalab-api-keys/components/LayerTreeSelect';
+import ZoomRangeField from '@shared/components/ZoomRangeField';
 
 const { Text } = Typography;
 
@@ -83,28 +84,16 @@ export default function PlaygroundConfigForm({
                             tooltip="Es la ubicación y qué tan cerca se ve el mapa cuando alguien lo abre por primera vez. La forma más fácil de ajustarla es mover y hacer zoom en la previsualización de la derecha; estos valores se llenan solos."
                             extra={<Text type="secondary" style={{ fontSize: 11 }}>Estos valores se actualizan automáticamente al mover el mapa de la derecha. También puedes ajustarlos a mano.</Text>}
                         >
-                            <Row gutter={[8, 8]}>
-                                <Col xs={24} sm={16}>
-                                    <Input
-                                        value={center}
-                                        onChange={(e) => setCenter(e.target.value)}
-                                        placeholder="Ejemplo: 20.67,-103.35"
-                                        addonBefore="Centro"
-                                    />
-                                </Col>
-                                <Col xs={24} sm={8}>
-                                    <InputNumber
-                                        min={1}
-                                        max={20}
-                                        step={0.5}
-                                        value={zoom}
-                                        onChange={setZoom}
-                                        style={{ width: '100%' }}
-                                        addonBefore="Acercamiento"
-                                        placeholder="Ejemplo: 9"
-                                    />
-                                </Col>
-                            </Row>
+                            <Input
+                                value={center}
+                                onChange={(e) => setCenter(e.target.value)}
+                                placeholder="Ejemplo: 20.67,-103.35"
+                                addonBefore="Centro"
+                            />
+                            <div style={{ marginTop: 12 }}>
+                                <Text type="secondary" style={{ fontSize: 12 }}>Nivel de acercamiento</Text>
+                                <ZoomRangeField mode="single" value={zoom} onChange={setZoom} />
+                            </div>
                         </Form.Item>
                     </>
                 ) : (
