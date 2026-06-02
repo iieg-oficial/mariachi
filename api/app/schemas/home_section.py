@@ -46,6 +46,7 @@ class SubtopicItem(CamelCaseInput):
     label: str = ''
     layer_ids: list[str] = Field(default_factory=list, serialization_alias='layerIds')
     link: str = ''
+    activo: bool = True
 
     model_config = ConfigDict(populate_by_name=True, extra='forbid')
 
@@ -84,6 +85,7 @@ class GuideItem(CamelCaseInput):
     titulo: str = ''
     descripcion: str = ''
     imagen_url: str = Field(default='', serialization_alias='imagenUrl')
+    activo: bool = True
     orden: int = 0
 
     model_config = ConfigDict(populate_by_name=True, extra='forbid')
@@ -111,6 +113,7 @@ class SelectItem(CamelCaseInput):
     imagen_url: str = Field(default='', serialization_alias='imagenUrl')
     color: str = ''
     link: str = ''
+    activo: bool = True
     orden: int = 0
 
     model_config = ConfigDict(populate_by_name=True, extra='forbid')
@@ -135,6 +138,7 @@ class FaqItem(CamelCaseInput):
     id: str
     pregunta: str = ''
     respuesta: str = ''
+    activo: bool = True
     orden: int = 0
 
     model_config = ConfigDict(extra='forbid')

@@ -54,6 +54,11 @@ export default function ApiKeyEditorForm({
                 name="visibility"
                 label="Tipo de llave"
                 tooltip="Pública: se usa en páginas web normales (la llave va dentro del HTML que ve cualquier visitante; por eso requiere lista de sitios permitidos). Privada: solo para sistemas que llaman al mapa desde su servidor (más estricta, con lista de direcciones IP)."
+                extra={
+                    <Text type="secondary" style={{ fontSize: 11 }}>
+                        ¿Es para un agente o IA (servidor MCP)? Usa <Text strong>Privada</Text>, o Pública con el sitio <Text code>*</Text>: el MCP no envía un dominio, así que una llave pública con sitios concretos será rechazada.
+                    </Text>
+                }
                 rules={[{ required: true, message: 'Selecciona el tipo' }]}
             >
                 <Select

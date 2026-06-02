@@ -6,7 +6,6 @@ import {
     Divider,
     Form,
     Input,
-    InputNumber,
     Radio,
     Row,
     Select,
@@ -19,6 +18,7 @@ import dayjs from 'dayjs';
 import { BellOutlined, ExclamationCircleOutlined, InfoCircleOutlined, WarningOutlined } from '@ant-design/icons';
 import NoticeIconField from './NoticeIconField';
 import NoticeAnchorField from './NoticeAnchorField';
+import ZoomRangeField from '@shared/components/ZoomRangeField';
 import MarkdownTextArea from '@shared/components/MarkdownTextArea';
 import { renderInlineMarkdown } from '@shared/utils/inlineMarkdown';
 
@@ -44,6 +44,7 @@ export const NOTICE_VARIANTS = [
 ];
 
 export const NOTICE_SIZES = [
+    { value: 'compact', label: 'Mínimo' },
     { value: 'small', label: 'Compacto' },
     { value: 'medium', label: 'Estándar' },
     { value: 'large', label: 'Destacado (recomendado)' },
@@ -129,10 +130,13 @@ function NoticePreview({ value }) {
     } : {};
     const size = value?.size || 'large';
     const sizePreset = {
+        compact: { iconSize: 32, titleSize: 14, titleLh: 18, descSize: 12, descLh: 16, padding: '10px 12px', gap: 10, maxWidth: 300 },
         small: { iconSize: 40, titleSize: 14, titleLh: 20, descSize: 12, descLh: 16, padding: '12px 14px', gap: 12, maxWidth: 360 },
         medium: { iconSize: 56, titleSize: 16, titleLh: 24, descSize: 13, descLh: 18, padding: '16px 16px', gap: 14, maxWidth: 440 },
         large: { iconSize: 74, titleSize: 18, titleLh: 26, descSize: 14, descLh: 20, padding: '20px 16px', gap: 16, maxWidth: 507 },
-    }[size];
+    }[size] || {
+        large: true, iconSize: 74, titleSize: 18, titleLh: 26, descSize: 14, descLh: 20, padding: '20px 16px', gap: 16, maxWidth: 507,
+    };
 
     return (
         <div style={{ display: 'inline-block', maxWidth: sizePreset.maxWidth, width: '100%' }}>
@@ -246,6 +250,8 @@ export default function LayerNoticeSection({
     styles,
     cqlFilter,
     defaultZoom,
+    previewSticky = true,
+    previewStickyTop = 0,
 }) {
     const safeValue = value || null;
     const enabled = Boolean(safeValue?.enabled);
@@ -274,30 +280,8 @@ export default function LayerNoticeSection({
         }
     };
 
-    const setZoomRange = (patch) => {
-        const current = safeValue?.zoomRange || {};
-        const next = { ...current, ...patch };
-        const hasAny = next.min != null || next.max != null;
-        setField({ zoomRange: hasAny ? next : null });
-    };
-
     return (
         <div>
-            <Alert
-                style={{ marginBottom: 16 }}
-                type="info"
-                showIcon
-                closable
-                message="Mensaje contextual de capa"
-                description={
-                    <>
-                        Aparece sobre el mapa cuando la capa está activa y dentro de su rango de zoom.
-                        Útil para advertir sobre datos preliminares, vigencia, cambios recientes o
-                        enlaces a la fuente. El usuario puede cerrarlo si lo configuras como descartable.
-                    </>
-                }
-            />
-
             <Form.Item label={<Text strong>Habilitar aviso</Text>} style={{ marginBottom: 16 }}>
                 <Switch
                     checked={enabled}
@@ -450,7 +434,6 @@ export default function LayerNoticeSection({
                                             styles={styles}
                                             cqlFilter={cqlFilter}
                                             zoomRange={safeValue?.zoomRange}
-                                            onZoomRangeChange={(zr) => setField({ zoomRange: zr })}
                                             defaultZoom={defaultZoom}
                                         />
                                     </Form.Item>
@@ -460,38 +443,13 @@ export default function LayerNoticeSection({
                             <Divider style={{ margin: '12px 0' }} orientation="left" orientationMargin={0} plain>
                                 <Text strong>Visibilidad por zoom (opcional)</Text>
                             </Divider>
-                            <Space size={12} wrap style={{ marginBottom: 16 }} align="start">
-                                <Form.Item
-                                    label="Zoom mínimo"
-                                    style={{ marginBottom: 0, maxWidth: 240 }}
-                                    help="Vacío = hereda el zoom de la capa (tab Servicios)."
-                                >
-                                    <InputNumber
-                                        min={0}
-                                        max={24}
-                                        step={0.5}
-                                        value={safeValue?.zoomRange?.min ?? null}
-                                        onChange={(v) => setZoomRange({ min: v ?? null })}
-                                        placeholder="hereda"
-                                        style={{ width: 180 }}
-                                    />
-                                </Form.Item>
-                                <Form.Item
-                                    label="Zoom máximo"
-                                    style={{ marginBottom: 0, maxWidth: 240 }}
-                                    help="Vacío = hereda el zoom de la capa. Si tampoco hay, siempre visible."
-                                >
-                                    <InputNumber
-                                        min={0}
-                                        max={24}
-                                        step={0.5}
-                                        value={safeValue?.zoomRange?.max ?? null}
-                                        onChange={(v) => setZoomRange({ max: v ?? null })}
-                                        placeholder="hereda"
-                                        style={{ width: 180 }}
-                                    />
-                                </Form.Item>
-                            </Space>
+                            <div style={{ marginBottom: 16 }}>
+                                <ZoomRangeField
+                                    value={safeValue?.zoomRange}
+                                    onChange={(zr) => setField({ zoomRange: zr })}
+                                    defaultZoom={defaultZoom}
+                                />
+                            </div>
 
                             <Form.Item label="¿Permitir que el usuario lo cierre?">
                                 <Switch
@@ -565,7 +523,7 @@ export default function LayerNoticeSection({
                         </Card>
                     </Col>
                     <Col xs={24} md={10}>
-                        <div style={{ position: 'sticky', top: 0 }}>
+                        <div style={{ position: previewSticky ? 'sticky' : 'static', top: previewStickyTop }}>
                             <Text strong style={{ display: 'block', marginBottom: 8 }}>
                                 Vista previa
                             </Text>

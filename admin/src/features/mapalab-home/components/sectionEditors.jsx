@@ -37,7 +37,7 @@ function newId() {
     return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function ItemListEditor({ name, label, addLabel, renderFields, tabKeyField = 'titulo', maxItems = null }) {
+function ItemListEditor({ name, label, addLabel, renderFields, tabKeyField = 'titulo', maxItems = null, newItemDefaults = {} }) {
     const [activeKey, setActiveKey] = useState(null);
 
     return (
@@ -46,7 +46,7 @@ function ItemListEditor({ name, label, addLabel, renderFields, tabKeyField = 'ti
                 const atCapacity = maxItems != null && fields.length >= maxItems;
                 const handleAdd = () => {
                     if (atCapacity) return;
-                    add({ id: newId(), orden: fields.length });
+                    add({ id: newId(), orden: fields.length, ...newItemDefaults });
                 };
                 const handleRemove = (fieldKey, fieldName) => {
                     remove(fieldName);
@@ -288,7 +288,7 @@ function SubtopicEditor({ parentName, subName, sIdx, total, onMove, onRemove }) 
                 name={[subName, 'link']}
                 label="Link (opcional)"
                 extra="Si está vacío, el visor usa /mapa?layers=… con las capas de arriba. Si tiene un share del visor (?s=ABC) se marca permanente al guardar; si lo borras o cambias, se libera."
-                style={{ marginBottom: 0 }}
+                style={{ marginBottom: 8 }}
             >
                 <Input
                     size="small"
@@ -297,6 +297,9 @@ function SubtopicEditor({ parentName, subName, sIdx, total, onMove, onRemove }) 
                     onBlur={(e) => syncShareIfNeeded(e.target.value)}
                     suffix={syncing ? <Text type="secondary" style={{ fontSize: 11 }}>sincronizando…</Text> : null}
                 />
+            </Form.Item>
+            <Form.Item name={[subName, 'activo']} label="Activo" valuePropName="checked" style={{ marginBottom: 0 }}>
+                <Switch size="small" />
             </Form.Item>
         </div>
     );
@@ -322,7 +325,7 @@ function SubtopicsList({ parentName }) {
                             onRemove={remove}
                         />
                     ))}
-                    <Button size="small" type="dashed" icon={<PlusOutlined />} onClick={() => add({ label: '', layer_ids: [], link: '' })} block>
+                    <Button size="small" type="dashed" icon={<PlusOutlined />} onClick={() => add({ label: '', layer_ids: [], link: '', activo: true })} block>
                         Agregar subtema
                     </Button>
                 </Space>
@@ -363,6 +366,7 @@ export function GuideEditor() {
             name="items"
             label="Paso"
             addLabel="Agregar paso"
+            newItemDefaults={{ activo: true }}
             renderFields={(field) => (
                 <>
                     <Form.Item name={[field.name, 'id']} hidden><Input /></Form.Item>
@@ -371,6 +375,7 @@ export function GuideEditor() {
                     <Form.Item name={[field.name, 'imagen_url']} label="Imagen">
                         <ImageUrlField />
                     </Form.Item>
+                    <Form.Item name={[field.name, 'activo']} label="Activo" valuePropName="checked"><Switch /></Form.Item>
                 </>
             )}
         />
@@ -383,6 +388,7 @@ export function SelectEditor() {
             name="items"
             label="Opción"
             addLabel="Agregar opción"
+            newItemDefaults={{ activo: true }}
             renderFields={(field) => (
                 <>
                     <Form.Item name={[field.name, 'id']} hidden><Input /></Form.Item>
@@ -395,6 +401,7 @@ export function SelectEditor() {
                         <Input placeholder="#FFB98E" />
                     </Form.Item>
                     <Form.Item name={[field.name, 'link']} label="Enlace"><Input /></Form.Item>
+                    <Form.Item name={[field.name, 'activo']} label="Activo" valuePropName="checked"><Switch /></Form.Item>
                 </>
             )}
         />
@@ -408,11 +415,13 @@ export function FaqEditor() {
             label="Pregunta"
             addLabel="Agregar pregunta"
             tabKeyField="pregunta"
+            newItemDefaults={{ activo: true }}
             renderFields={(field) => (
                 <>
                     <Form.Item name={[field.name, 'id']} hidden><Input /></Form.Item>
                     <Form.Item name={[field.name, 'pregunta']} label="Pregunta"><Input /></Form.Item>
                     <Form.Item name={[field.name, 'respuesta']} label="Respuesta"><Input.TextArea rows={4} /></Form.Item>
+                    <Form.Item name={[field.name, 'activo']} label="Activo" valuePropName="checked"><Switch /></Form.Item>
                 </>
             )}
         />
