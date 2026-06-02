@@ -7,7 +7,7 @@ function RangeSlider({ value, onChange, defaultZoom }) {
     const hasRange = value?.min != null || value?.max != null;
 
     const enable = () => {
-        const center = clampZoom(defaultZoom, 10);
+        const center = clampZoom(defaultZoom, 13);
         onChange?.({
             min: clampZoom(center - 3, ZOOM_MIN),
             max: clampZoom(center + 3, ZOOM_MAX),
@@ -26,8 +26,10 @@ function RangeSlider({ value, onChange, defaultZoom }) {
         );
     }
 
-    const min = clampZoom(value?.min, ZOOM_MIN);
-    const max = clampZoom(value?.max, ZOOM_MAX);
+    const rawMin = clampZoom(value?.min, ZOOM_MIN);
+    const rawMax = clampZoom(value?.max, ZOOM_MAX);
+    const min = Math.min(rawMin, rawMax);
+    const max = Math.max(rawMin, rawMax);
 
     return (
         <div>
@@ -56,7 +58,7 @@ function RangeSlider({ value, onChange, defaultZoom }) {
 }
 
 function SingleSlider({ value, onChange }) {
-    const current = clampZoom(value, 10);
+    const current = clampZoom(value, 13);
     return (
         <div style={{ padding: '0 12px', marginTop: 24 }}>
             <Slider

@@ -1,19 +1,20 @@
-export const ZOOM_MIN = 0;
-export const ZOOM_MAX = 20;
+// Alineado al rango real del visor MapaLab: minZoom 8 (desktop) / maxZoom 18.
+export const ZOOM_MIN = 8;
+export const ZOOM_MAX = 18;
 
 export const ZOOM_MARKS = {
-    0: 'Estado',
-    6: 'Municipio',
-    10: 'Ciudad',
-    14: 'Colonia',
+    8: 'Estado',
+    11: 'Municipio',
+    13: 'Ciudad',
+    16: 'Colonia',
     18: 'Calle',
 };
 
 const SCALE_STEPS = [
-    { z: 0, label: 'Estado' },
-    { z: 6, label: 'Municipio' },
-    { z: 10, label: 'Ciudad' },
-    { z: 14, label: 'Colonia' },
+    { z: 8, label: 'Estado' },
+    { z: 11, label: 'Municipio' },
+    { z: 13, label: 'Ciudad' },
+    { z: 16, label: 'Colonia' },
     { z: 18, label: 'Calle' },
 ];
 
