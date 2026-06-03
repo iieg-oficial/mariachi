@@ -348,6 +348,52 @@ def _flatten_evento_capa_refs(capas_json: Any) -> list[tuple[str, str]]:
     return out
 
 
+def _flatten_evento_capa_aliases(capas_json: Any) -> list[tuple[str, str, str | None]]:
+    out: list[tuple[str, str, str | None]] = []
+    if not isinstance(capas_json, list):
+        return out
+    for c in capas_json:
+        if not isinstance(c, dict):
+            continue
+        tipo = c.get('tipo')
+        if tipo == 'categoria':
+            out.extend(_flatten_evento_capa_aliases(c.get('capas') or []))
+        elif tipo == 'capa':
+            ws = c.get('workspace')
+            gl = c.get('layer')
+            if ws and gl:
+                out.append((ws, gl, c.get('alias')))
+    return out
+
+
+def sync_auto_leaf_labels(
+    dataengine_session: Session,
+    capas_json: Any,
+    updated_by: str | None,
+) -> int:
+    updated = 0
+    for ws, gl, alias in _flatten_evento_capa_aliases(capas_json):
+        if not alias:
+            continue
+        layer = (
+            dataengine_session.query(Layer)
+            .filter(
+                Layer.workspace_alias == ws,
+                Layer.geoserver_layer == gl,
+                Layer.parent_id == AUTO_PARENT_ID,
+                Layer.deleted_at.is_(None),
+            )
+            .first()
+        )
+        if layer is not None and layer.label != alias:
+            layer.label = alias
+            layer.updated_by = updated_by
+            updated += 1
+    if updated:
+        dataengine_session.flush()
+    return updated
+
+
 def find_orphan_auto_leaves(
     mariachi_session: Session,
     dataengine_session: Session,

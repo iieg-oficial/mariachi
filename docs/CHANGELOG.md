@@ -9,6 +9,18 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.26.0] - 2026-06-03
+
+### Fix: renombrar una capa de evento ahora sincroniza el `label` del catálogo
+
+Al renombrar una capa asociada a un evento solo se actualizaba `evento.capas[].alias`; el catálogo (`mapalab.layers.label`, fuente del árbol de `mapalab-backend` y de las estadísticas) conservaba el valor original. Por eso una capa mostrada con su nombre nuevo en el mapa/drawer seguía apareciendo con el nombre viejo (p. ej. un número, cuando se nombró así al agregarla) en el árbol y en **Estadísticas de MapaLab**: `find_or_create_auto_leaf` fija el `label` solo al crear la auto-leaf y no se vuelve a tocar; renombrar nunca lo reescribía y no existía resync.
+
+Nueva función `sync_auto_leaf_labels(dataengine_session, capas_json, updated_by)` en `api/app/services/layer_service.py`: recorre las capas del evento (incluidas categorías anidadas vía `_flatten_evento_capa_aliases`) y para cada auto-leaf bajo `eventos-auto` pone `label = alias` cuando difieren. Es idempotente (no escribe ni hace flush si ya coinciden). Se invoca al **crear** y **actualizar** un evento (`crear_evento`, `actualizar_evento` en `routes/eventos.py`; en update solo si `capas` viene en el cambio); cuando sincroniza algo hace `commit` en el DataEngine y dispara `notify_tree_changed()` para refrescar la caché del árbol. Sin migración (`capas` es JSONB; `mapalab.layers.label` ya existía).
+
+Los datos ya desincronizados en producción se corrigieron por separado (UPDATE puntual de las auto-leaf de eventos + `refresh-cache`); este cambio evita que se repita.
+
+---
+
 ## [admin 1.26.0] - 2026-06-02
 
 ### Feat: editor de avisos por capa — escalas de zoom calibradas, tamaño "Mínimo" y mejoras UX
