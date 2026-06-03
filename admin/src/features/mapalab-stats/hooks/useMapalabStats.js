@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import {
     getButtons,
     getDaily,
+    getEventos,
     getMcpClients,
     getMcpDaily,
     getMcpOverview,
@@ -49,6 +50,30 @@ export function useTopLayers({ limit = 20 } = {}) {
             setRows(await getTopLayers(limit));
         } catch (err) {
             setError(err?.response?.data?.detail || err?.message || 'Error al cargar top capas');
+            setRows([]);
+        } finally {
+            setLoading(false);
+        }
+    }, [limit]);
+
+    useEffect(() => { reload(); }, [reload]);
+
+    return { rows, loading, error, reload };
+}
+
+
+export function useEventoStats({ limit = 50 } = {}) {
+    const [rows, setRows] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    const reload = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            setRows(await getEventos(limit));
+        } catch (err) {
+            setError(err?.response?.data?.detail || err?.message || 'Error al cargar eventos');
             setRows([]);
         } finally {
             setLoading(false);

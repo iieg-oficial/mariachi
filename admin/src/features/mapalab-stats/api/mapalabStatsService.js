@@ -16,6 +16,11 @@ export const getButtons = async () => {
     return res.data;
 };
 
+export const getEventos = async (limit = 50) => {
+    const res = await api.get('/mapalab-stats/eventos', { params: { limit } });
+    return res.data;
+};
+
 export const getTools = async () => {
     const res = await api.get('/mapalab-stats/tools');
     return res.data;

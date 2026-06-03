@@ -9,6 +9,32 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [admin 1.27.0] - 2026-06-03
+
+### Feat: panel de estadísticas de eventos + fix de la gráfica "Sesiones por día"
+
+- **Nuevo panel "Eventos más abiertos"** en la pestaña Resumen de Estadísticas de MapaLab (`EventosTable`, hook `useEventoStats`, `getEventos`): aperturas, cierres y sesiones únicas por evento (vista `mapalab_stats_eventos`, api 1.27.0). El título se resuelve al nombre actual del evento.
+- **Fix gráfica "Sesiones por día"** (`DailyChart`): las barras no se veían porque la columna contenedora no tenía altura definida y el `height: %` de cada barra colapsaba a 0. Se le fija `height: 100%` a la columna para que el porcentaje resuelva contra los 160px del contenedor. No era falta de datos.
+
+Requiere `api 1.27.0` (endpoint `/mapalab-stats/eventos`).
+
+---
+
+## [api 1.27.0] - 2026-06-03
+
+### Feat: telemetría de eventos como una sola estadística (no infla las capas)
+
+Abrir un evento en el visor auto-activa sus capas, y cada activación emitía un `layer_toggle` que se contaba como activación de capa, inflando las estadísticas (una capa de evento acumulaba ~1 activación por sesión que abría el evento). Ahora el visor (mapalab 1.67.0) etiqueta esas auto-activaciones con `props.source='evento_open'` + `evento_id`, y el backend las trata como contexto del evento, no de la capa.
+
+- `mapalab_stats_layers` (migración `f7a8b9c0d1e2`): el conteo de `activations` excluye `props.source='evento_open'` (con `IS DISTINCT FROM` para que los toggles manuales —sin `source`— sigan contando). El switch manual de una capa de evento sí cuenta para esa capa.
+- Ingesta (`mapalab_telemetry.py`): el contador `layers_activated` de sesión aplica la misma exclusión.
+- Nueva vista materializada `mapalab_stats_eventos` (aperturas/cierres/sesiones únicas por `evento_id`, ventana 30 días) registrada en `REFRESH_VIEWS`, y endpoint `GET /mapalab-stats/eventos` (`EventoStatRow`, resuelve `titulo` desde la tabla `eventos`).
+- La función de auto-activación del visor **no cambia**: las capas se siguen prendiendo igual; solo cambia cómo se contabiliza la telemetría.
+
+Limpieza histórica de las activaciones ya infladas: heurística (borrar `layer_toggle/activar` de capas `auto-eventos-*` que co-ocurren con un `evento_open` en la misma sesión); se corre por separado en prod.
+
+---
+
 ## [api 1.26.0] - 2026-06-03
 
 ### Fix: renombrar una capa de evento ahora sincroniza el `label` del catálogo

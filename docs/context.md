@@ -769,7 +769,8 @@ Sistema de ingesta de eventos anónimos del visor MapaLab + panel admin con KPIs
 |---|---|---|
 | POST | `/api/public/mapalab/events/batch` | Ingesta pública sin auth, rate limit 120/min/IP. Allowlist de 35 event names. Scrubbing PII con `pii_scrubber` de Colibri. Lote máx 100 eventos, `props` máx 4 KB. |
 | GET | `/api/administrador/mapalab-stats/overview` | KPIs globales (sesiones 30d/7d/1d, eventos, duración media, % swipe/descarga/shared) |
-| GET | `/api/administrador/mapalab-stats/layers?limit=N` | Top capas con label/workspace enriquecidos desde `/mapalab/api/layers/tree` |
+| GET | `/api/administrador/mapalab-stats/layers?limit=N` | Top capas con label/workspace enriquecidos desde `/mapalab/api/layers/tree`. `activations` excluye auto-activaciones de evento (`props.source='evento_open'`, vía `IS DISTINCT FROM`); el toggle manual sí cuenta (`api 1.27.0+`) |
+| GET | `/api/administrador/mapalab-stats/eventos?limit=N` | Top eventos por aperturas (`mapalab_stats_eventos`): opens/closes/sesiones únicas por `evento_id`. Abrir un evento cuenta como una sola estadística; el `titulo` se resuelve al nombre actual desde `eventos` (`api 1.27.0+`) |
 | GET | `/api/administrador/mapalab-stats/buttons` | Clicks por evento (sider_lock, logo_click, share_map, etc.) |
 | GET | `/api/administrador/mapalab-stats/tools` | Uso de herramientas de dibujo/medición |
 | GET | `/api/administrador/mapalab-stats/daily?days=30` | Serie diaria por origen |
@@ -781,7 +782,7 @@ Sistema de ingesta de eventos anónimos del visor MapaLab + panel admin con KPIs
 
 - `MapalabStatsPage` con tabs internas en URL (`?tab=resumen|sesiones`). Resumen para staff, Sesiones solo admin. Badge BETA inline.
 - `InicioHighlights` montado en `/inicio` después de "Plataformas del ecosistema": 4 KPIs compactos con link "Ver detalle →".
-- 6 hooks de fetching + service axios + catálogo de labels (`BUTTON_LABELS`, `TOOL_LABELS`, `SOURCE_LABELS`).
+- Hooks de fetching (incluye `useEventoStats` → `EventosTable` "Eventos más abiertos") + service axios + catálogo de labels (`BUTTON_LABELS`, `TOOL_LABELS`, `SOURCE_LABELS`).
 
 ### Operaciones
 

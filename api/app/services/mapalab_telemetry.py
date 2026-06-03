@@ -126,7 +126,11 @@ def ingest_batch(
             shared = True
         if name in _EVENTS_REPORTED:
             reported = True
-        if name in _EVENTS_LAYER_ACTIVATED and (evt.props or {}).get("action") == "activar":
+        if (
+            name in _EVENTS_LAYER_ACTIVATED
+            and (evt.props or {}).get("action") == "activar"
+            and (evt.props or {}).get("source") != "evento_open"
+        ):
             layers_activated_inc += 1
 
     if not rows:
@@ -190,6 +194,7 @@ def ingest_batch(
 REFRESH_VIEWS = (
     "mapalab_stats_overview",
     "mapalab_stats_layers",
+    "mapalab_stats_eventos",
     "mapalab_stats_buttons",
     "mapalab_stats_tools",
     "mapalab_stats_daily",

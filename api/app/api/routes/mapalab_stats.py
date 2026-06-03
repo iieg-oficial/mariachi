@@ -6,7 +6,7 @@ from typing import Literal
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import text
+from sqlalchemy import bindparam, text
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db, verify_csrf
@@ -15,6 +15,7 @@ from app.models.user import Usuario
 from app.schemas.mapalab_event import (
     ButtonStatRow,
     DailyStatRow,
+    EventoStatRow,
     HighlightLayer,
     HighlightTool,
     LayerStatRow,
@@ -132,6 +133,52 @@ async def top_layers(
             last_seen=r["last_seen"],
             label=(labels.get(r["layer_id"]) or {}).get("label"),
             workspace=(labels.get(r["layer_id"]) or {}).get("workspace"),
+        )
+        for r in rows
+    ]
+
+
+@router.get("/eventos", response_model=list[EventoStatRow], response_model_by_alias=True)
+async def top_eventos(
+    limit: int = Query(default=50, ge=1, le=200),
+    db: Session = Depends(get_db),
+    _current: Usuario = Depends(get_current_user),
+):
+    rows = db.execute(
+        text(
+            """
+            SELECT evento_id, titulo, opens, closes, unique_sessions, last_seen
+            FROM mapalab_stats_eventos
+            ORDER BY opens DESC, unique_sessions DESC
+            LIMIT :limit
+            """
+        ),
+        {"limit": limit},
+    ).mappings().all()
+
+    ids: list[int] = []
+    for r in rows:
+        try:
+            ids.append(int(r["evento_id"]))
+        except (TypeError, ValueError):
+            continue
+
+    titulos: dict[str, str] = {}
+    if ids:
+        stmt = text("SELECT id, titulo FROM eventos WHERE id IN :ids").bindparams(
+            bindparam("ids", expanding=True)
+        )
+        for ev_id, titulo in db.execute(stmt, {"ids": ids}).all():
+            titulos[str(ev_id)] = titulo
+
+    return [
+        EventoStatRow(
+            evento_id=r["evento_id"],
+            titulo=titulos.get(r["evento_id"]) or r["titulo"],
+            opens=r["opens"] or 0,
+            closes=r["closes"] or 0,
+            unique_sessions=r["unique_sessions"] or 0,
+            last_seen=r["last_seen"],
         )
         for r in rows
     ]

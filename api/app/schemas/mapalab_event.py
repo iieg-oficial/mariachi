@@ -117,6 +117,15 @@ class LayerStatRow(CamelCaseOutput):
     workspace: str | None = None
 
 
+class EventoStatRow(CamelCaseOutput):
+    evento_id: str
+    titulo: str | None = None
+    opens: int
+    closes: int
+    unique_sessions: int
+    last_seen: datetime | None = None
+
+
 class ButtonStatRow(CamelCaseOutput):
     event_name: str
     clicks: int

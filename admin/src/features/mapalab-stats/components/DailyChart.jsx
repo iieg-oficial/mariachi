@@ -31,6 +31,7 @@ const DailyChart = ({ rows = [], loading }) => {
                         title={`${d.dia}: ${d.sessions} sesiones · ${d.events} eventos`}
                         style={{
                             flex: 1,
+                            height: '100%',
                             display: 'flex',
                             flexDirection: 'column',
                             justifyContent: 'flex-end',
