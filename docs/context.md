@@ -361,7 +361,7 @@ Sin auth. `router = APIRouter(tags=["portal público"])` en `routes/public.py`.
 | GET | `/reportes/grupos/lista` | Vista agrupada por fingerprint (count desc) |
 | GET | `/reportes/{id}/actividad` | Timeline de cambios sobre un reporte |
 | PATCH | `/reportes/{id}` | Update extendido: estado, severidad, prioridad, duplicado_de, direccion, etc. Cada campo cambiado registra fila en `reporte_actividad` |
-| GET/POST/PATCH/DELETE | `/eventos/*` | CRUD de eventos (mapalab-eventos). Workflow draft → review → published con `EventoEstado` enum |
+| GET/POST/PATCH/DELETE | `/eventos/*` | CRUD de eventos (mapalab-eventos). Workflow draft → review → published con `EventoEstado` enum. Al crear/actualizar (si cambia `capas`) resincroniza `mapalab.layers.label` de las auto-leaf bajo `eventos-auto` con el `alias` del evento vía `sync_auto_leaf_labels`, y dispara `notify_tree_changed` si hubo cambios (`api 1.26.0+`) |
 | POST | `/eventos/{id}/publicar`, `/eventos/{id}/despublicar` | Cambios de estado controlados |
 | GET | `/eventos/{id}/preview` | Vista publica del evento aun en draft |
 | PUT/GET | `/eventos/{id}/presencia` | Coedicion: heartbeat de presencia en Redis (CSRF requerido en PUT) |
@@ -769,7 +769,8 @@ Sistema de ingesta de eventos anónimos del visor MapaLab + panel admin con KPIs
 |---|---|---|
 | POST | `/api/public/mapalab/events/batch` | Ingesta pública sin auth, rate limit 120/min/IP. Allowlist de 35 event names. Scrubbing PII con `pii_scrubber` de Colibri. Lote máx 100 eventos, `props` máx 4 KB. |
 | GET | `/api/administrador/mapalab-stats/overview` | KPIs globales (sesiones 30d/7d/1d, eventos, duración media, % swipe/descarga/shared) |
-| GET | `/api/administrador/mapalab-stats/layers?limit=N` | Top capas con label/workspace enriquecidos desde `/mapalab/api/layers/tree` |
+| GET | `/api/administrador/mapalab-stats/layers?limit=N` | Top capas con label/workspace enriquecidos desde `/mapalab/api/layers/tree`. `activations` excluye auto-activaciones de evento (`props.source='evento_open'`, vía `IS DISTINCT FROM`); el toggle manual sí cuenta (`api 1.27.0+`) |
+| GET | `/api/administrador/mapalab-stats/eventos?limit=N` | Top eventos por aperturas (`mapalab_stats_eventos`): opens/closes/sesiones únicas por `evento_id`. Abrir un evento cuenta como una sola estadística; el `titulo` se resuelve al nombre actual desde `eventos` (`api 1.27.0+`) |
 | GET | `/api/administrador/mapalab-stats/buttons` | Clicks por evento (sider_lock, logo_click, share_map, etc.) |
 | GET | `/api/administrador/mapalab-stats/tools` | Uso de herramientas de dibujo/medición |
 | GET | `/api/administrador/mapalab-stats/daily?days=30` | Serie diaria por origen |
@@ -781,7 +782,7 @@ Sistema de ingesta de eventos anónimos del visor MapaLab + panel admin con KPIs
 
 - `MapalabStatsPage` con tabs internas en URL (`?tab=resumen|sesiones`). Resumen para staff, Sesiones solo admin. Badge BETA inline.
 - `InicioHighlights` montado en `/inicio` después de "Plataformas del ecosistema": 4 KPIs compactos con link "Ver detalle →".
-- 6 hooks de fetching + service axios + catálogo de labels (`BUTTON_LABELS`, `TOOL_LABELS`, `SOURCE_LABELS`).
+- Hooks de fetching (incluye `useEventoStats` → `EventosTable` "Eventos más abiertos") + service axios + catálogo de labels (`BUTTON_LABELS`, `TOOL_LABELS`, `SOURCE_LABELS`).
 
 ### Operaciones
 
@@ -920,7 +921,7 @@ Detalle completo en `docs/CHANGELOG.md` §[0.39.1]. Resumen:
 Detalle completo en `docs/CHANGELOG.md` §[0.39.0]. Resumen:
 
 - **Workspaces dinamicos**: `GET /geoserver/workspaces/pending` lista workspaces presentes en GeoServer pero no en `mapalab.workspaces`. `POST /geoserver/workspaces/register` (admin + CSRF) los registra. Resuelve el caso de workspaces nuevos que llegan tras un restore (ej. `eventos`). UI: Alert + modal en `LayerCreateModal` para admins.
-- **Auto-leaf en eventos**: `POST /layers/auto-leaf` idempotente que materializa una capa "solo GeoServer" como leaf bajo el padre `eventos-auto` (tema oculto, on-demand). `CapasField.addCapa` lo invoca antes de asociar la capa al evento, asi el visor de mapalab encuentra la capa en su arbol y la renderiza. Desde `api 1.14.5` el `label` es obligatorio y debe diferir del `geoserver_layer` (validación normalizada en `AutoLeafRequest`); evita registrar capas con el slug como nombre visible, lo que antes hacía que mapalab mostrara el id en lugar del nombre en el panel de capas activas.
+- **Auto-leaf en eventos**: `POST /layers/auto-leaf` idempotente que materializa una capa "solo GeoServer" como leaf bajo el padre `eventos-auto` (tema oculto, on-demand). `CapasField.addCapa` lo invoca antes de asociar la capa al evento, asi el visor de mapalab encuentra la capa en su arbol y la renderiza. Desde `api 1.14.5` el `label` es obligatorio y debe diferir del `geoserver_layer` (validación normalizada en `AutoLeafRequest`); evita registrar capas con el slug como nombre visible, lo que antes hacía que mapalab mostrara el id en lugar del nombre en el panel de capas activas. `find_or_create_auto_leaf` fija el `label` solo al crear (no lo reescribe si la auto-leaf ya existe), así que renombrar la capa en el evento desincronizaba el catálogo respecto al `alias` (el árbol y Estadísticas seguían con el nombre viejo). Desde `api 1.26.0` el guardado del evento (`crear_evento`/`actualizar_evento`) llama a `sync_auto_leaf_labels` para realinear `mapalab.layers.label` con el `alias` y refresca la caché del árbol (`notify_tree_changed`).
 - **Drawer reutilizable de edicion**: `LayerContentDrawer` con tabs Tarjeta · Metadatos · Simbologia, montado desde `CapasField` (boton `EditOutlined` por capa). Reusa `LayerMetadataSection` y `SldEditor` tal cual; envuelve `InfoBoxBlocksEditor` + `InfoBoxPreview` en un `InfoboxStandalone` con su propio Form. Permite editar contenido sin navegar al `LayerEditPage`.
 - **Fix global camelCase**: nuevo mixin `CamelCaseInput` aplicado a los schemas que reciben input (Layer, Evento, Page, MenuItem, Usuario, Reporte, LayerMetadata, AcervoBucket, Media, Project, HomeSection payloads). Antes, los schemas declaraban solo `serialization_alias=` y el input camelCase del frontend se ignoraba silenciosamente, lo que causaba que muchas ediciones perdieran campos en el PUT/PATCH sin error visible.
 - **Fix GeoServer client**: `list_workspaces`/`list_layers` toleran respuesta vacia (`{"layers":""}` como string) que GeoServer devuelve para workspaces sin layers. Antes lanzaba AttributeError.

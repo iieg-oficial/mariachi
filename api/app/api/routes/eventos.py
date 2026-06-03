@@ -21,7 +21,11 @@ from app.schemas.evento import (
 )
 from app.services import presence
 from app.services.actividad_service import registrar_actividad
-from app.services.layer_service import find_orphan_auto_leaves, soft_delete_layer
+from app.services.layer_service import (
+    find_orphan_auto_leaves,
+    soft_delete_layer,
+    sync_auto_leaf_labels,
+)
 from app.services.mapalab_notifier import notify_tree_changed
 from app.services.mapalab_public_cache import notify_eventos_changed
 from app.services.slug_service import is_valid_slug, slugify
@@ -115,6 +119,7 @@ async def listar_eventos(
 async def crear_evento(
     evento_in: EventoCreate,
     db: Session = Depends(get_db),
+    dataengine_db: Session = Depends(get_dataengine_db),
     _csrf=Depends(verify_csrf),
     _editor=Depends(_require_editor),
     _rl=Depends(_write_rate_limit),
@@ -135,6 +140,9 @@ async def crear_evento(
     db.commit()
     db.refresh(evento)
     incr(COUNTER_EVENTO_WRITES)
+    if sync_auto_leaf_labels(dataengine_db, evento.capas, _editor.email):
+        dataengine_db.commit()
+        notify_tree_changed()
     return evento
 
 
@@ -165,6 +173,7 @@ async def actualizar_evento(
     evento_in: EventoUpdate,
     evento: Evento = Depends(get_evento_or_404),
     db: Session = Depends(get_db),
+    dataengine_db: Session = Depends(get_dataengine_db),
     _csrf=Depends(verify_csrf),
     _editor=Depends(_require_editor),
     _rl=Depends(_write_rate_limit),
@@ -195,6 +204,10 @@ async def actualizar_evento(
     db.commit()
     db.refresh(evento)
     incr(COUNTER_EVENTO_WRITES)
+    if 'capas' in update_data:
+        if sync_auto_leaf_labels(dataengine_db, evento.capas, _editor.email):
+            dataengine_db.commit()
+            notify_tree_changed()
     if evento.estado == EventoEstado.PUBLISHED.value:
         notify_eventos_changed()
     return evento
