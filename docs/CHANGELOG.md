@@ -9,6 +9,18 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.28.0 / admin 1.28.0] - 2026-06-04
+
+### Feat: elegir qué capa abre su detalle al abrir un evento
+
+En el visor, al abrir un evento se auto-activan varias capas y el `LayerDetailModal` quedaba mostrando el de la última activada (orden arbitrario). Ahora se puede elegir, por evento, cuál capa abre su detalle.
+
+- **`api/app/schemas/evento.py`**: `CapaRef` gana `abrir_detalle: bool = False` (alias `abrirDetalle`), válido solo para `tipo='capa'` (guards en etiqueta/categoría). Sin migración (`capas` es JSONB); el endpoint público ya re-serializa por `CapaRef`, así que se propaga al visor.
+- **`admin/src/features/mapalab-eventos/components/CapasField.jsx`**: Select "Capa cuyo detalle se abre automáticamente al abrir el evento" arriba de la tabla (single-select excluyente, recorre también las capas anidadas en categorías, opción "Ninguna").
+- Lado mapalab (frontend 1.68.0): `EventoMenu` abre el `LayerDetailModal` de la capa marcada tras auto-activar. Además, la apertura **automática** del modal (al abrir un evento o al activar una capa) deja de contar para la telemetría (`trackLayerDetailOpen`): solo cuenta el click explícito en el botón de detalles del panel de capas activas.
+
+---
+
 ## [admin 1.27.0] - 2026-06-03
 
 ### Feat: panel de estadísticas de eventos + fix de la gráfica "Sesiones por día"

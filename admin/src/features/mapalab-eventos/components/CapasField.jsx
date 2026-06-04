@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Button, Empty, Space, Table, Typography } from 'antd';
+import { Button, Empty, Select, Space, Table, Typography } from 'antd';
 import { ApartmentOutlined, PlusOutlined, TagOutlined } from '@ant-design/icons';
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
@@ -33,6 +33,23 @@ const itemKey = (r, i) => {
     return `${r.workspace}/${r.layer}`;
 };
 
+const collectCapas = (list, out = []) => {
+    for (const c of list || []) {
+        if (c.tipo === 'capa') out.push(c);
+        if (c.tipo === 'categoria') collectCapas(c.capas, out);
+    }
+    return out;
+};
+
+const setAbrirDetalleExclusivo = (list, targetKey) => (list || []).map((c) => {
+    if (c.tipo === 'categoria') {
+        return { ...c, capas: setAbrirDetalleExclusivo(c.capas, targetKey) };
+    }
+    if (c.tipo !== 'capa') return c;
+    const should = `${c.workspace}/${c.layer}` === targetKey;
+    return !!c.abrirDetalle === should ? c : { ...c, abrirDetalle: should };
+});
+
 const rootRowKey = (r, i) => `root::${itemKey(r, i)}`;
 const childRowKey = (catIdx) => (r, i) => `cat-${catIdx}::${itemKey(r, i)}`;
 
@@ -59,6 +76,13 @@ export default function CapasField({ value = [], onChange, disabled }) {
     }, [rawTree]);
 
     const taken = useMemo(() => collectTaken(value), [value]);
+
+    const detalleCapas = useMemo(() => collectCapas(value), [value]);
+    const detalleValue = useMemo(() => {
+        const found = detalleCapas.find((c) => c.abrirDetalle);
+        return found ? `${found.workspace}/${found.layer}` : undefined;
+    }, [detalleCapas]);
+    const handleDetalleChange = (key) => onChange?.(setAbrirDetalleExclusivo(value, key ?? null));
 
     const replaceChildren = (catIdx, nextChildren) => {
         onChange?.(value.map((c, i) => (
@@ -225,6 +249,27 @@ export default function CapasField({ value = [], onChange, disabled }) {
                     </Button>
                 </Space>
             </Space>
+
+            {detalleCapas.length > 0 && (
+                <Space size={8} align="center" wrap>
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                        Capa cuyo detalle se abre automáticamente al abrir el evento:
+                    </Text>
+                    <Select
+                        size="small"
+                        allowClear
+                        placeholder="Ninguna"
+                        style={{ minWidth: 280 }}
+                        value={detalleValue}
+                        onChange={handleDetalleChange}
+                        options={detalleCapas.map((c) => ({
+                            value: `${c.workspace}/${c.layer}`,
+                            label: c.alias || c.layer,
+                        }))}
+                        disabled={disabled}
+                    />
+                </Space>
+            )}
 
             {value.length === 0 ? (
                 <Empty description="Sin capas asignadas" />
