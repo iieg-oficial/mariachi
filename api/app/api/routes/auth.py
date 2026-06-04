@@ -2,7 +2,7 @@ import logging
 import uuid
 from datetime import timedelta
 
-from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -18,7 +18,7 @@ from app.api.metrics import (
     COUNTER_LOGIN_SUCCESS,
     incr,
 )
-from app.api.rate_limit import rate_limit_ip
+from app.api.rate_limit import _client_ip, rate_limit_ip
 from app.core.acervo_url import to_relative
 from app.core.cache import redis_client
 from app.core.database import get_db
@@ -35,6 +35,7 @@ from app.schemas.user import (
     UsuarioResponse,
 )
 from app.services.acervo import AcervoClient
+from app.services.actividad_service import registrar_actividad
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/autenticacion", tags=["autenticación"])
@@ -57,6 +58,7 @@ def _username_lockout_key(identifier: str) -> str:
 async def login(
     credentials: LoginRequest,
     response: Response,
+    request: Request,
     db: Session = Depends(get_db),
 ):
     identifier = (credentials.username or "").strip().lower()
@@ -100,6 +102,20 @@ async def login(
         except Exception as exc:
             logger.warning('login lockout incr error identifier=%s: %s', identifier, exc)
         logger.info('action=login.failed identifier=%s', identifier)
+        try:
+            registrar_actividad(
+                db,
+                actor=usuario,
+                action="login.failed",
+                resource_type="usuario",
+                resource_id=usuario.id if usuario else None,
+                metadata={"identifier": identifier},
+                ip=_client_ip(request),
+            )
+            db.commit()
+        except Exception as exc:
+            db.rollback()
+            logger.warning('actividad login.failed fallo identifier=%s: %s', identifier, exc)
         incr(COUNTER_LOGIN_FAILED)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -133,6 +149,20 @@ async def login(
     user_payload["projects"] = list_user_memberships(db, usuario)
 
     logger.info('action=login.success user_id=%s role=%s', usuario.id, usuario.role)
+    try:
+        registrar_actividad(
+            db,
+            actor=usuario,
+            action="login.success",
+            resource_type="usuario",
+            resource_id=usuario.id,
+            metadata={"role": usuario.role},
+            ip=_client_ip(request),
+        )
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        logger.warning('actividad login.success fallo user_id=%s: %s', usuario.id, exc)
 
     return LoginResponse(
         csrf_token=csrf_token,
@@ -143,7 +173,9 @@ async def login(
 @router.post("/cerrar-sesion")
 async def logout(
     response: Response,
+    request: Request,
     current_user: Usuario = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ):
     response.delete_cookie(
         key=settings.cookie_name,
@@ -152,6 +184,19 @@ async def logout(
         samesite=settings.cookie_samesite,
         domain=settings.cookie_domain,
     )
+    try:
+        registrar_actividad(
+            db,
+            actor=current_user,
+            action="login.logout",
+            resource_type="usuario",
+            resource_id=current_user.id,
+            ip=_client_ip(request),
+        )
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        logger.warning('actividad login.logout fallo user_id=%s: %s', current_user.id, exc)
     return {"message": "Sesión cerrada exitosamente"}
 
 

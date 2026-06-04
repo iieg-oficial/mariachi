@@ -242,7 +242,7 @@ def _build_definicion() -> dict:
                         "name": "diccionario",
                         "label": "Archivo del diccionario",
                         "type": "file",
-                        "bucket": "sieej-diccionarios",
+                        "bucket": "sieej",
                         "accept": [".csv", ".xlsx", ".xls", ".pdf"],
                         "maxSizeMB": 10,
                         "showWhen": {"field": "tiene_diccionario", "equals": "true"},
