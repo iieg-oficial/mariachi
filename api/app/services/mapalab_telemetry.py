@@ -191,40 +191,177 @@ def ingest_batch(
     return len(rows)
 
 
-REFRESH_VIEWS = (
-    "mapalab_stats_overview",
-    "mapalab_stats_layers",
-    "mapalab_stats_eventos",
-    "mapalab_stats_buttons",
-    "mapalab_stats_tools",
-    "mapalab_stats_daily",
-    "mapalab_mcp_stats_overview",
-    "mapalab_mcp_stats_tools",
-    "mapalab_mcp_stats_daily",
-    "mapalab_mcp_stats_clients",
+_VISOR_BUTTON_NAMES = (
+    "'sider_lock','logo_click','contribute_click','share_map','info_open',"
+    "'report_submitted','layer_download','opacity_change','legends_toggle',"
+    "'infobox_action','home_action','theme_change','layer_reorder','basemap_change',"
+    "'geolocate','map_export','periodicity_advanced'"
+)
+
+# (nombre, tabla rollup, columna fecha del crudo, INSERT ... SELECT sin WHERE de fecha)
+# El servicio agrega el filtro `>= CURRENT_DATE - :days` y un DELETE de la misma
+# ventana para que cada corrida sea idempotente y capture eventos tardíos.
+_ROLLUP_STEPS: tuple[tuple[str, str, str], ...] = (
+    (
+        "mapalab_rollup_daily",
+        """
+        INSERT INTO mapalab_rollup_daily
+            (dia, source, sessions, events, dur_sum, swipe, drawing, measurement,
+             downloaded, shared, reported)
+        SELECT
+            DATE(started_at), source,
+            COUNT(*), COALESCE(SUM(events_count), 0), COALESCE(SUM(duration_sec), 0),
+            SUM(CASE WHEN used_swipe THEN 1 ELSE 0 END),
+            SUM(CASE WHEN used_drawing THEN 1 ELSE 0 END),
+            SUM(CASE WHEN used_measurement THEN 1 ELSE 0 END),
+            SUM(CASE WHEN downloaded THEN 1 ELSE 0 END),
+            SUM(CASE WHEN shared THEN 1 ELSE 0 END),
+            SUM(CASE WHEN reported THEN 1 ELSE 0 END)
+        FROM mapalab_sessions
+        WHERE started_at >= CURRENT_DATE - :days
+        GROUP BY DATE(started_at), source
+        """,
+        "started_at",
+    ),
+    (
+        "mapalab_rollup_layers",
+        """
+        INSERT INTO mapalab_rollup_layers
+            (dia, layer_id, activations, downloads, feature_clicks, detail_opens,
+             opacity_changes, unique_sessions, last_seen)
+        SELECT
+            DATE(ts), layer_id,
+            COUNT(*) FILTER (
+                WHERE event_name = 'layer_toggle'
+                  AND (props->>'action') = 'activar'
+                  AND (props->>'source') IS DISTINCT FROM 'evento_open'),
+            COUNT(*) FILTER (WHERE event_name = 'layer_download'),
+            COUNT(*) FILTER (WHERE event_name = 'feature_click'),
+            COUNT(*) FILTER (WHERE event_name = 'layer_detail_open'),
+            COUNT(*) FILTER (WHERE event_name = 'opacity_change'),
+            COUNT(DISTINCT session_id), MAX(ts)
+        FROM mapalab_events
+        WHERE layer_id IS NOT NULL AND ts >= CURRENT_DATE - :days
+        GROUP BY DATE(ts), layer_id
+        """,
+        "ts",
+    ),
+    (
+        "mapalab_rollup_buttons",
+        f"""
+        INSERT INTO mapalab_rollup_buttons (dia, event_name, clicks, unique_sessions)
+        SELECT DATE(ts), event_name, COUNT(*), COUNT(DISTINCT session_id)
+        FROM mapalab_events
+        WHERE event_name IN ({_VISOR_BUTTON_NAMES}) AND ts >= CURRENT_DATE - :days
+        GROUP BY DATE(ts), event_name
+        """,
+        "ts",
+    ),
+    (
+        "mapalab_rollup_tools",
+        """
+        INSERT INTO mapalab_rollup_tools (dia, event_name, tool, uses, unique_sessions)
+        SELECT DATE(ts), event_name, COALESCE(props->>'tool', 'unknown'),
+               COUNT(*), COUNT(DISTINCT session_id)
+        FROM mapalab_events
+        WHERE event_name IN ('drawing_tool_use', 'measurement_tool_use')
+          AND ts >= CURRENT_DATE - :days
+        GROUP BY DATE(ts), event_name, COALESCE(props->>'tool', 'unknown')
+        """,
+        "ts",
+    ),
+    (
+        "mapalab_rollup_eventos",
+        """
+        INSERT INTO mapalab_rollup_eventos
+            (dia, evento_id, titulo, opens, closes, unique_sessions, last_seen)
+        SELECT
+            DATE(ts), (props->>'evento_id'), MAX(props->>'titulo'),
+            COUNT(*) FILTER (WHERE event_name = 'evento_open'),
+            COUNT(*) FILTER (WHERE event_name = 'evento_close'),
+            COUNT(DISTINCT session_id), MAX(ts)
+        FROM mapalab_events
+        WHERE event_name IN ('evento_open', 'evento_close')
+          AND (props->>'evento_id') IS NOT NULL AND ts >= CURRENT_DATE - :days
+        GROUP BY DATE(ts), (props->>'evento_id')
+        """,
+        "ts",
+    ),
+    (
+        "mapalab_mcp_rollup_daily",
+        """
+        INSERT INTO mapalab_mcp_rollup_daily
+            (dia, calls, tool_calls, errors, unique_sessions, dur_sum, dur_count,
+             tool_dur_sum, tool_dur_count)
+        SELECT
+            dia, COUNT(*),
+            COUNT(*) FILTER (WHERE method = 'tools/call'),
+            COUNT(*) FILTER (WHERE status = 'error'),
+            COUNT(DISTINCT session_hash) FILTER (WHERE session_hash IS NOT NULL),
+            COALESCE(SUM(duration_ms) FILTER (WHERE duration_ms IS NOT NULL), 0),
+            COUNT(*) FILTER (WHERE duration_ms IS NOT NULL),
+            COALESCE(SUM(duration_ms) FILTER (WHERE method = 'tools/call' AND duration_ms IS NOT NULL), 0),
+            COUNT(*) FILTER (WHERE method = 'tools/call' AND duration_ms IS NOT NULL)
+        FROM mapalab_mcp_events
+        WHERE dia >= CURRENT_DATE - :days
+        GROUP BY dia
+        """,
+        "dia",
+    ),
+    (
+        "mapalab_mcp_rollup_tools",
+        """
+        INSERT INTO mapalab_mcp_rollup_tools
+            (dia, tool, uses, errors, unique_sessions, dur_sum, dur_count, last_seen)
+        SELECT
+            dia, tool, COUNT(*),
+            COUNT(*) FILTER (WHERE status = 'error'),
+            COUNT(DISTINCT session_hash) FILTER (WHERE session_hash IS NOT NULL),
+            COALESCE(SUM(duration_ms) FILTER (WHERE duration_ms IS NOT NULL), 0),
+            COUNT(*) FILTER (WHERE duration_ms IS NOT NULL),
+            MAX(timestamp)
+        FROM mapalab_mcp_events
+        WHERE tool IS NOT NULL AND dia >= CURRENT_DATE - :days
+        GROUP BY dia, tool
+        """,
+        "dia",
+    ),
+    (
+        "mapalab_mcp_rollup_clients",
+        """
+        INSERT INTO mapalab_mcp_rollup_clients
+            (dia, client_name, client_version, calls, unique_sessions, last_seen)
+        SELECT
+            dia, COALESCE(client_name, 'unknown'), COALESCE(client_version, ''),
+            COUNT(*),
+            COUNT(DISTINCT session_hash) FILTER (WHERE session_hash IS NOT NULL),
+            MAX(timestamp)
+        FROM mapalab_mcp_events
+        WHERE dia >= CURRENT_DATE - :days
+        GROUP BY dia, COALESCE(client_name, 'unknown'), COALESCE(client_version, '')
+        """,
+        "dia",
+    ),
 )
 
 
-_VIEWS_WITHOUT_UNIQUE_INDEX = {"mapalab_stats_overview", "mapalab_mcp_stats_overview"}
-
-
-def refresh_stats_views(db: Session, *, concurrent: bool = True) -> list[str]:
+def rollup_stats(db: Session, *, since_days: int = 3) -> list[str]:
+    """Recomputa los rollups diarios de los últimos `since_days` días desde los
+    crudos y hace upsert idempotente (DELETE + INSERT de la ventana). Captura
+    eventos tardíos y el día en curso; las filas históricas fuera de la ventana
+    persisten indefinidamente (no se purgan). Reemplaza al refresh de matviews.
+    """
     refreshed: list[str] = []
-    for view in REFRESH_VIEWS:
-        mode = "CONCURRENTLY" if concurrent and view not in _VIEWS_WITHOUT_UNIQUE_INDEX else ""
-        stmt = f"REFRESH MATERIALIZED VIEW {mode} {view}".strip()
+    for name, insert_sql, _date_col in _ROLLUP_STEPS:
         try:
-            db.execute(text(stmt))
+            db.execute(
+                text(f"DELETE FROM {name} WHERE dia >= CURRENT_DATE - :days"),
+                {"days": since_days},
+            )
+            db.execute(text(insert_sql), {"days": since_days})
             db.commit()
-            refreshed.append(view)
+            refreshed.append(name)
         except Exception:
-            logger.exception("mapalab_telemetry.refresh_failed view=%s", view)
+            logger.exception("mapalab_telemetry.rollup_failed step=%s", name)
             db.rollback()
-            try:
-                db.execute(text(f"REFRESH MATERIALIZED VIEW {view}"))
-                db.commit()
-                refreshed.append(view)
-            except Exception:
-                logger.exception("mapalab_telemetry.refresh_failed_fallback view=%s", view)
-                db.rollback()
     return refreshed

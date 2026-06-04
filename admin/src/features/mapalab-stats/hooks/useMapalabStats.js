@@ -13,24 +13,27 @@ import {
     getTopLayers,
 } from '@features/mapalab-stats/api/mapalabStatsService';
 
+const periodKey = (period) => `${period?.grain || ''}|${period?.dateFrom || ''}|${period?.dateTo || ''}`;
 
-export function useMapalabOverview() {
+
+export function useMapalabOverview(period) {
     const [overview, setOverview] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    const key = periodKey(period);
     const reload = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
-            setOverview(await getOverview());
+            setOverview(await getOverview(period));
         } catch (err) {
             setError(err?.response?.data?.detail || err?.message || 'Error al cargar overview');
             setOverview(null);
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => { reload(); }, [reload]);
 
@@ -38,23 +41,24 @@ export function useMapalabOverview() {
 }
 
 
-export function useTopLayers({ limit = 20 } = {}) {
+export function useTopLayers({ limit = 20, period } = {}) {
     const [rows, setRows] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    const key = periodKey(period);
     const reload = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
-            setRows(await getTopLayers(limit));
+            setRows(await getTopLayers(limit, period));
         } catch (err) {
             setError(err?.response?.data?.detail || err?.message || 'Error al cargar top capas');
             setRows([]);
         } finally {
             setLoading(false);
         }
-    }, [limit]);
+    }, [limit, key]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => { reload(); }, [reload]);
 
@@ -62,23 +66,24 @@ export function useTopLayers({ limit = 20 } = {}) {
 }
 
 
-export function useEventoStats({ limit = 50 } = {}) {
+export function useEventoStats({ limit = 50, period } = {}) {
     const [rows, setRows] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    const key = periodKey(period);
     const reload = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
-            setRows(await getEventos(limit));
+            setRows(await getEventos(limit, period));
         } catch (err) {
             setError(err?.response?.data?.detail || err?.message || 'Error al cargar eventos');
             setRows([]);
         } finally {
             setLoading(false);
         }
-    }, [limit]);
+    }, [limit, key]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => { reload(); }, [reload]);
 
@@ -86,23 +91,24 @@ export function useEventoStats({ limit = 50 } = {}) {
 }
 
 
-export function useButtonStats() {
+export function useButtonStats(period) {
     const [rows, setRows] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    const key = periodKey(period);
     const reload = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
-            setRows(await getButtons());
+            setRows(await getButtons(period));
         } catch (err) {
             setError(err?.response?.data?.detail || err?.message || 'Error al cargar botones');
             setRows([]);
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => { reload(); }, [reload]);
 
@@ -110,23 +116,24 @@ export function useButtonStats() {
 }
 
 
-export function useToolStats() {
+export function useToolStats(period) {
     const [rows, setRows] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    const key = periodKey(period);
     const reload = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
-            setRows(await getTools());
+            setRows(await getTools(period));
         } catch (err) {
             setError(err?.response?.data?.detail || err?.message || 'Error al cargar herramientas');
             setRows([]);
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => { reload(); }, [reload]);
 
@@ -134,23 +141,24 @@ export function useToolStats() {
 }
 
 
-export function useDailyStats({ days = 30 } = {}) {
+export function useDailyStats(period) {
     const [rows, setRows] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    const key = periodKey(period);
     const reload = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
-            setRows(await getDaily(days));
+            setRows(await getDaily(period));
         } catch (err) {
-            setError(err?.response?.data?.detail || err?.message || 'Error al cargar serie diaria');
+            setError(err?.response?.data?.detail || err?.message || 'Error al cargar serie temporal');
             setRows([]);
         } finally {
             setLoading(false);
         }
-    }, [days]);
+    }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => { reload(); }, [reload]);
 
@@ -158,23 +166,24 @@ export function useDailyStats({ days = 30 } = {}) {
 }
 
 
-export function useMcpOverview() {
+export function useMcpOverview(period) {
     const [overview, setOverview] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    const key = periodKey(period);
     const reload = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
-            setOverview(await getMcpOverview());
+            setOverview(await getMcpOverview(period));
         } catch (err) {
             setError(err?.response?.data?.detail || err?.message || 'Error al cargar overview MCP');
             setOverview(null);
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => { reload(); }, [reload]);
 
@@ -182,23 +191,24 @@ export function useMcpOverview() {
 }
 
 
-export function useMcpTools({ limit = 30 } = {}) {
+export function useMcpTools({ limit = 30, period } = {}) {
     const [rows, setRows] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    const key = periodKey(period);
     const reload = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
-            setRows(await getMcpTools(limit));
+            setRows(await getMcpTools(limit, period));
         } catch (err) {
             setError(err?.response?.data?.detail || err?.message || 'Error al cargar tools MCP');
             setRows([]);
         } finally {
             setLoading(false);
         }
-    }, [limit]);
+    }, [limit, key]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => { reload(); }, [reload]);
 
@@ -206,23 +216,24 @@ export function useMcpTools({ limit = 30 } = {}) {
 }
 
 
-export function useMcpDaily({ days = 30 } = {}) {
+export function useMcpDaily(period) {
     const [rows, setRows] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    const key = periodKey(period);
     const reload = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
-            setRows(await getMcpDaily(days));
+            setRows(await getMcpDaily(period));
         } catch (err) {
-            setError(err?.response?.data?.detail || err?.message || 'Error al cargar serie diaria MCP');
+            setError(err?.response?.data?.detail || err?.message || 'Error al cargar serie temporal MCP');
             setRows([]);
         } finally {
             setLoading(false);
         }
-    }, [days]);
+    }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => { reload(); }, [reload]);
 
@@ -230,23 +241,24 @@ export function useMcpDaily({ days = 30 } = {}) {
 }
 
 
-export function useMcpClients() {
+export function useMcpClients(period) {
     const [rows, setRows] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    const key = periodKey(period);
     const reload = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
-            setRows(await getMcpClients());
+            setRows(await getMcpClients(period));
         } catch (err) {
             setError(err?.response?.data?.detail || err?.message || 'Error al cargar clientes MCP');
             setRows([]);
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => { reload(); }, [reload]);
 
@@ -254,23 +266,24 @@ export function useMcpClients() {
 }
 
 
-export function useSessions({ page = 1, pageSize = 25, source = 'all' } = {}) {
+export function useSessions({ page = 1, pageSize = 25, source = 'all', period } = {}) {
     const [data, setData] = useState({ items: [], total: 0, page, pageSize });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    const key = periodKey(period);
     const reload = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
-            setData(await getSessions({ page, pageSize, source }));
+            setData(await getSessions({ page, pageSize, source, period }));
         } catch (err) {
             setError(err?.response?.data?.detail || err?.message || 'Error al cargar sesiones');
             setData({ items: [], total: 0, page, pageSize });
         } finally {
             setLoading(false);
         }
-    }, [page, pageSize, source]);
+    }, [page, pageSize, source, key]); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => { reload(); }, [reload]);
 

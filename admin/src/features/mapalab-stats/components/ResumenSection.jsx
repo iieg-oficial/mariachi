@@ -17,13 +17,15 @@ import ButtonsBar from '@features/mapalab-stats/components/ButtonsBar';
 import ToolsBar from '@features/mapalab-stats/components/ToolsBar';
 import DailyChart from '@features/mapalab-stats/components/DailyChart';
 
-export default function ResumenSection({ canRefresh = false }) {
-    const { overview, loading: loadingOverview, error: errorOverview, reload: reloadOverview } = useMapalabOverview();
-    const { rows: topLayers, loading: loadingLayers, reload: reloadLayers } = useTopLayers({ limit: 20 });
-    const { rows: eventoRows, loading: loadingEventos, reload: reloadEventos } = useEventoStats({ limit: 50 });
-    const { rows: buttonRows, loading: loadingButtons, reload: reloadButtons } = useButtonStats();
-    const { rows: toolRows, loading: loadingTools, reload: reloadTools } = useToolStats();
-    const { rows: dailyRows, loading: loadingDaily, reload: reloadDaily } = useDailyStats({ days: 30 });
+const pct = (part, total) => (total ? Math.round((part / total) * 100) : 0);
+
+export default function ResumenSection({ period, canRefresh = false }) {
+    const { overview, loading: loadingOverview, error: errorOverview, reload: reloadOverview } = useMapalabOverview(period);
+    const { rows: topLayers, loading: loadingLayers, reload: reloadLayers } = useTopLayers({ limit: 20, period });
+    const { rows: eventoRows, loading: loadingEventos, reload: reloadEventos } = useEventoStats({ limit: 50, period });
+    const { rows: buttonRows, loading: loadingButtons, reload: reloadButtons } = useButtonStats(period);
+    const { rows: toolRows, loading: loadingTools, reload: reloadTools } = useToolStats(period);
+    const { rows: dailyRows, loading: loadingDaily, reload: reloadDaily } = useDailyStats(period);
     const [refreshing, setRefreshing] = useState(false);
 
     const handleRefresh = async () => {
@@ -40,7 +42,7 @@ export default function ResumenSection({ canRefresh = false }) {
             ]);
             message.success('Estadísticas actualizadas');
         } catch (err) {
-            message.error(err?.response?.data?.detail || 'No se pudieron refrescar las vistas');
+            message.error(err?.response?.data?.detail || 'No se pudieron refrescar las estadísticas');
         } finally {
             setRefreshing(false);
         }
@@ -54,74 +56,59 @@ export default function ResumenSection({ canRefresh = false }) {
         );
     }
 
-    const swipePercent = overview?.sessions30d
-        ? Math.round((overview.swipeSessions30d / overview.sessions30d) * 100)
-        : 0;
-    const downloadPercent = overview?.sessions30d
-        ? Math.round((overview.downloadSessions30d / overview.sessions30d) * 100)
-        : 0;
-    const sharePercent = overview?.sessions30d
-        ? Math.round((overview.shareSessions30d / overview.sessions30d) * 100)
-        : 0;
+    const sessions = overview?.sessions ?? 0;
+    const swipePercent = pct(overview?.swipeSessions ?? 0, sessions);
+    const drawingPercent = pct(overview?.drawingSessions ?? 0, sessions);
+    const downloadPercent = pct(overview?.downloadSessions ?? 0, sessions);
+    const sharePercent = pct(overview?.shareSessions ?? 0, sessions);
 
     return (
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
             {canRefresh && (
                 <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                     <Button icon={<ReloadOutlined />} onClick={handleRefresh} loading={refreshing}>
-                        Refrescar vistas
+                        Refrescar estadísticas
                     </Button>
                 </div>
             )}
 
             <Row gutter={[16, 16]}>
-                <Col xs={12} md={6}><StatCard title="Sesiones 30d" value={overview?.sessions30d ?? 0} /></Col>
-                <Col xs={12} md={6}><StatCard title="Sesiones 7d" value={overview?.sessions7d ?? 0} /></Col>
-                <Col xs={12} md={6}><StatCard title="Sesiones hoy" value={overview?.sessions1d ?? 0} color="#3f8600" /></Col>
-                <Col xs={12} md={6}><StatCard title="Eventos 30d" value={(overview?.events30d ?? 0).toLocaleString()} /></Col>
-            </Row>
-
-            <Row gutter={[16, 16]}>
+                <Col xs={12} md={6}><StatCard title="Sesiones" value={sessions.toLocaleString()} /></Col>
+                <Col xs={12} md={6}><StatCard title="Eventos" value={(overview?.events ?? 0).toLocaleString()} /></Col>
                 <Col xs={12} md={6}>
-                    <StatCard
-                        title="Duración media"
-                        value={overview?.avgDurationSec ?? 0}
-                        format="duration"
-                        hint="Por sesión, últimos 30 días"
-                    />
+                    <StatCard title="Duración media" value={overview?.avgDurationSec ?? 0} format="duration" hint="Por sesión" />
                 </Col>
                 <Col xs={12} md={6}>
                     <StatCard
                         title="Usaron swipe"
                         value={swipePercent}
                         format="percent"
-                        hint={`${overview?.swipeSessions30d ?? 0} de ${overview?.sessions30d ?? 0} sesiones`}
+                        hint={`${overview?.swipeSessions ?? 0} de ${sessions} sesiones`}
                         color="#FF8300"
-                    />
-                </Col>
-                <Col xs={12} md={6}>
-                    <StatCard
-                        title="Descargaron"
-                        value={downloadPercent}
-                        format="percent"
-                        hint={`${overview?.downloadSessions30d ?? 0} sesiones`}
-                    />
-                </Col>
-                <Col xs={12} md={6}>
-                    <StatCard
-                        title="Compartieron"
-                        value={sharePercent}
-                        format="percent"
-                        hint={`${overview?.shareSessions30d ?? 0} sesiones`}
                     />
                 </Col>
             </Row>
 
-            <DailyChart rows={dailyRows} loading={loadingDaily} />
+            <Row gutter={[16, 16]}>
+                <Col xs={12} md={6}>
+                    <StatCard title="Dibujaron" value={drawingPercent} format="percent" hint={`${overview?.drawingSessions ?? 0} sesiones`} />
+                </Col>
+                <Col xs={12} md={6}>
+                    <StatCard title="Descargaron" value={downloadPercent} format="percent" hint={`${overview?.downloadSessions ?? 0} sesiones`} />
+                </Col>
+                <Col xs={12} md={6}>
+                    <StatCard title="Compartieron" value={sharePercent} format="percent" hint={`${overview?.shareSessions ?? 0} sesiones`} />
+                </Col>
+                <Col xs={12} md={6}>
+                    <StatCard title="Reportaron" value={overview?.reportedSessions ?? 0} hint="Sesiones con reporte" />
+                </Col>
+            </Row>
 
-            <TopLayersTable rows={topLayers} loading={loadingLayers} />
+            <DailyChart rows={dailyRows} loading={loadingDaily} grain={period?.grain} />
 
             <EventosTable rows={eventoRows} loading={loadingEventos} />
+
+            <TopLayersTable rows={topLayers} loading={loadingLayers} />
 
             <Row gutter={[16, 16]}>
                 <Col xs={24} lg={14}>

@@ -2,7 +2,7 @@
 
 > Documento de referencia completo. Leer este archivo proporciona contexto del monorepo sin explorar el codebase.
 
-**Versión:** ver `api/pyproject.toml` (la lee `api/app/core/version.py::get_app_version()`; endpoint en vivo `GET /ontoy`). · **Última actualización:** 2026-06-02
+**Versión:** ver `api/pyproject.toml` (la lee `api/app/core/version.py::get_app_version()`; endpoint en vivo `GET /ontoy`). · **Última actualización:** 2026-06-04
 
 
 ---
@@ -761,32 +761,38 @@ Sistema de ingesta de eventos anónimos del visor MapaLab + panel admin con KPIs
 
 - `mapalab_events` (append-only): `id`, `ts`, `event_name`, `session_id` UUID, `source` (`visor`/`embed`/`widget`), `api_key_id` opcional, `layer_id` desnormalizado, `props` JSONB, `ip_hash` (sha256 + salt diario), `ua_family`. Índices: `ts DESC`, `(event_name, ts DESC)`, `session_id`, parcial sobre `layer_id`, GIN sobre `props`.
 - `mapalab_sessions` (rollup por sesión): `session_id` PK, `started_at`, `last_seen_at`, `events_count`, `duration_sec`, `layers_activated`, flags booleanos (`used_swipe`, `used_drawing`, `used_measurement`, `downloaded`, `shared`, `reported`).
-- 5 vistas materializadas: `mapalab_stats_overview` (KPIs globales 30d/7d/1d), `_layers` (top capas), `_buttons` (clicks por evento), `_tools` (uso por herramienta), `_daily` (serie temporal por día y origen). Refresh cada 30 min via cron en producción.
+- **Rollups diarios persistentes** (tablas, no matviews; nunca se purgan): `mapalab_rollup_{daily,layers,buttons,tools,eventos}` y MCP `mapalab_mcp_rollup_{daily,tools,clients}`. El job `rollup_stats` (servicio `mapalab_telemetry`) recomputa los últimos 3 días desde los crudos y hace upsert idempotente (DELETE+INSERT de la ventana), corre cada 30 min via cron. Las filas históricas persisten indefinidamente aunque los crudos se purguen, lo que permite consultar **cualquier rango histórico con granularidad día/mes/año**. Reemplazó a las matviews de ventana fija (30d/7d/1d/90d), eliminadas en la migración `f8b9c0d1e2f3` (con backfill desde los crudos). `unique_sessions`/`clients`/latencias agregados sobre varios días son aproximaciones (una sesión a caballo entre dos días se cuenta en ambos); se quitó `p95` de tools MCP por no ser sumable. Migración previa: `c9d8e7f6a5b4` creó las tablas crudas.
 
 ### Endpoints
 
 | Método | Ruta | Función |
 |---|---|---|
 | POST | `/api/public/mapalab/events/batch` | Ingesta pública sin auth, rate limit 120/min/IP. Allowlist de 35 event names. Scrubbing PII con `pii_scrubber` de Colibri. Lote máx 100 eventos, `props` máx 4 KB. |
-| GET | `/api/administrador/mapalab-stats/overview` | KPIs globales (sesiones 30d/7d/1d, eventos, duración media, % swipe/descarga/shared) |
-| GET | `/api/administrador/mapalab-stats/layers?limit=N` | Top capas con label/workspace enriquecidos desde `/mapalab/api/layers/tree`. `activations` excluye auto-activaciones de evento (`props.source='evento_open'`, vía `IS DISTINCT FROM`); el toggle manual sí cuenta (`api 1.27.0+`) |
-| GET | `/api/administrador/mapalab-stats/eventos?limit=N` | Top eventos por aperturas (`mapalab_stats_eventos`): opens/closes/sesiones únicas por `evento_id`. Abrir un evento cuenta como una sola estadística; el `titulo` se resuelve al nombre actual desde `eventos` (`api 1.27.0+`) |
+Todos los GET de lectura (excepto `/highlights`) aceptan `date_from`, `date_to` (YYYY-MM-DD) y `grain` (`day`/`month`/`year`); default = últimos 30 días, grain día. `grain` solo afecta el bucketing de las series `/daily` y `/mcp/daily`; el resto solo usa el rango.
+
+| Método | Ruta | Función |
+|---|---|---|
+| GET | `/api/administrador/mapalab-stats/overview` | KPIs del rango (sesiones, eventos, duración media, % swipe/dibujo/descarga/compartir, reportaron) |
+| GET | `/api/administrador/mapalab-stats/layers?limit=N` | Top capas del rango con label/workspace enriquecidos desde `/mapalab/api/layers/tree`. `activations` excluye auto-activaciones de evento (`props.source='evento_open'`); el toggle manual sí cuenta |
+| GET | `/api/administrador/mapalab-stats/eventos?limit=N` | Top eventos por aperturas (`mapalab_rollup_eventos`): opens/closes/sesiones únicas por `evento_id`. El `titulo` se resuelve al nombre actual desde `eventos` |
 | GET | `/api/administrador/mapalab-stats/buttons` | Clicks por evento (sider_lock, logo_click, share_map, etc.) |
 | GET | `/api/administrador/mapalab-stats/tools` | Uso de herramientas de dibujo/medición |
-| GET | `/api/administrador/mapalab-stats/daily?days=30` | Serie diaria por origen |
-| GET | `/api/administrador/mapalab-stats/sessions?page&page_size&source` | Sesiones paginadas con filtros |
-| GET | `/api/administrador/mapalab-stats/highlights` | Payload compacto (4 KPIs) para el Inicio |
-| POST | `/api/administrador/mapalab-stats/refresh` | Refresh manual de vistas (admin + CSRF) |
+| GET | `/api/administrador/mapalab-stats/daily` | Serie temporal por origen, bucketeada por `grain` |
+| GET | `/api/administrador/mapalab-stats/sessions?page&page_size&source` | Sesiones paginadas con filtros + rango (lee crudos, limitado a la retención de `mapalab_sessions`) |
+| GET | `/api/administrador/mapalab-stats/mcp/{overview,tools,daily,clients}` | Telemetría del servidor MCP, también por rango |
+| GET | `/api/administrador/mapalab-stats/highlights` | Payload compacto (4 KPIs, fijo 30d) para el Inicio |
+| POST | `/api/administrador/mapalab-stats/refresh` | Recompute manual de rollups (admin + CSRF) |
 
 ### Panel admin (`admin/src/features/mapalab-stats/`)
 
-- `MapalabStatsPage` con tabs internas en URL (`?tab=resumen|sesiones`). Resumen para staff, Sesiones solo admin. Badge BETA inline.
-- `InicioHighlights` montado en `/inicio` después de "Plataformas del ecosistema": 4 KPIs compactos con link "Ver detalle →".
-- Hooks de fetching (incluye `useEventoStats` → `EventosTable` "Eventos más abiertos") + service axios + catálogo de labels (`BUTTON_LABELS`, `TOOL_LABELS`, `SOURCE_LABELS`).
+- `MapalabStatsPage` con tabs internas en URL (`?tab=resumen|mcp|sesiones`) y un `PeriodSelector` global (granularidad Día/Mes/Año + `RangePicker` que conmuta a picker month/year) en la cabecera; el rango/granularidad seleccionados se propagan a las 3 tabs (Resumen, MCP, Sesiones). Resumen y MCP para staff, Sesiones solo admin. El subtítulo muestra el rango activo.
+- La sección Eventos ("Eventos más abiertos") va **arriba** de "Capas más usadas" en Resumen.
+- `InicioHighlights` montado en `/inicio` después de "Plataformas del ecosistema": 4 KPIs compactos (fijo 30d) con link "Ver detalle →".
+- Hooks de fetching reciben `period` (cache key por `grain|from|to`) + service axios que manda `date_from`/`date_to`/`grain` + catálogo de labels (`BUTTON_LABELS`, `TOOL_LABELS`, `SOURCE_LABELS`).
 
 ### Operaciones
 
-- `scripts/refresh_mapalab_stats.py`: refresh manual/cron. `make refresh-mapalab-stats`.
+- `scripts/refresh_mapalab_stats.py`: recompute de rollups (`rollup_stats`) manual/cron. `make refresh-mapalab-stats`.
 - `scripts/purge_mapalab_events.py`: retención configurable. `make purge-mapalab-events`.
 - `scripts/postgres-backup.sh`: corre purga antes del dump (skipeable con `MAPALAB_PURGE_ON_BACKUP=false`). `pg_dump` sin filtros incluye tablas + matviews automáticamente.
 - `make install-backup-cron` instala dos cronjobs: `0 3 * * * postgres-backup.sh` (con purga incluida) y `*/30 * * * * refresh_mapalab_stats.py`.

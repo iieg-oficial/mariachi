@@ -10,19 +10,22 @@ import {
 
 const { Text } = Typography;
 
+const GRAIN_TITLE = { day: 'Llamadas por día (MCP)', month: 'Llamadas por mes (MCP)', year: 'Llamadas por año (MCP)' };
 
-const McpDailyChart = ({ rows = [], loading }) => {
+
+const McpDailyChart = ({ rows = [], loading, grain = 'day' }) => {
+    const title = GRAIN_TITLE[grain] || 'Llamadas por periodo (MCP)';
     const series = useMemo(() => [...rows].sort((a, b) => a.dia.localeCompare(b.dia)), [rows]);
     if (!loading && series.length === 0) {
         return (
-            <Card title="Llamadas por día (MCP)" size="small">
+            <Card title={title} size="small">
                 <Empty description="Sin llamadas registradas" />
             </Card>
         );
     }
     const max = Math.max(...series.map((d) => d.calls), 1);
     return (
-        <Card title="Llamadas por día (MCP)" size="small" loading={loading}>
+        <Card title={title} size="small" loading={loading}>
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 160, paddingTop: 8 }}>
                 {series.map((d) => (
                     <div
@@ -91,13 +94,6 @@ const ToolsTable = ({ rows = [], loading }) => {
             render: (v) => `${v} ms`,
         },
         {
-            title: 'p95',
-            dataIndex: 'p95DurationMs',
-            key: 'p95DurationMs',
-            align: 'right',
-            render: (v) => `${v} ms`,
-        },
-        {
             title: 'Última',
             dataIndex: 'lastSeen',
             key: 'lastSeen',
@@ -105,7 +101,7 @@ const ToolsTable = ({ rows = [], loading }) => {
         },
     ];
     return (
-        <Card title="Uso por tool (últimos 30 días)" size="small">
+        <Card title="Uso por tool" size="small">
             <Table
                 rowKey="tool"
                 size="small"
@@ -113,7 +109,7 @@ const ToolsTable = ({ rows = [], loading }) => {
                 columns={columns}
                 loading={loading}
                 pagination={false}
-                locale={{ emptyText: 'Sin llamadas a tools en los últimos 30 días' }}
+                locale={{ emptyText: 'Sin llamadas a tools en el periodo' }}
             />
         </Card>
     );
@@ -134,7 +130,7 @@ const ClientsTable = ({ rows = [], loading }) => {
         },
     ];
     return (
-        <Card title="Clientes MCP (últimos 30 días)" size="small">
+        <Card title="Clientes MCP" size="small">
             <Table
                 rowKey={(r) => `${r.clientName}-${r.clientVersion}`}
                 size="small"
@@ -149,11 +145,11 @@ const ClientsTable = ({ rows = [], loading }) => {
 };
 
 
-export default function McpSection() {
-    const { overview, loading: loadingOverview, error: errorOverview } = useMcpOverview();
-    const { rows: tools, loading: loadingTools } = useMcpTools({ limit: 30 });
-    const { rows: daily, loading: loadingDaily } = useMcpDaily({ days: 30 });
-    const { rows: clients, loading: loadingClients } = useMcpClients();
+export default function McpSection({ period }) {
+    const { overview, loading: loadingOverview, error: errorOverview } = useMcpOverview(period);
+    const { rows: tools, loading: loadingTools } = useMcpTools({ limit: 30, period });
+    const { rows: daily, loading: loadingDaily } = useMcpDaily(period);
+    const { rows: clients, loading: loadingClients } = useMcpClients(period);
 
     if (loadingOverview && !overview) {
         return (
@@ -163,8 +159,8 @@ export default function McpSection() {
         );
     }
 
-    const errorRate = overview?.calls30d
-        ? Math.round((overview.errors30d / overview.calls30d) * 100)
+    const errorRate = overview?.calls
+        ? Math.round((overview.errors / overview.calls) * 100)
         : 0;
 
     return (
@@ -173,39 +169,33 @@ export default function McpSection() {
                 type="info"
                 showIcon
                 message="Telemetría del servidor MCP de MapaLab"
-                description="Cada llamada al endpoint /mcp/ se registra en mariachi con method, tool, status, latencia y bytes de salida. Sin identidad: session_id e IP se guardan hasheadas. Las vistas se refrescan con el botón 'Refrescar vistas' del tab Resumen."
+                description="Cada llamada al endpoint /mcp/ se registra en mariachi con method, tool, status, latencia y bytes de salida. Sin identidad: session_id e IP se guardan hasheadas. Las estadísticas se actualizan con el botón 'Refrescar estadísticas' del tab Resumen."
             />
 
             <Row gutter={[16, 16]}>
                 <Col xs={12} md={6}>
-                    <StatCard title="Llamadas 30d" value={(overview?.calls30d ?? 0).toLocaleString()} />
+                    <StatCard title="Llamadas" value={(overview?.calls ?? 0).toLocaleString()} />
                 </Col>
                 <Col xs={12} md={6}>
-                    <StatCard title="Llamadas 7d" value={(overview?.calls7d ?? 0).toLocaleString()} />
+                    <StatCard title="Llamadas a tools" value={(overview?.toolCalls ?? 0).toLocaleString()} />
                 </Col>
                 <Col xs={12} md={6}>
-                    <StatCard title="Llamadas hoy" value={(overview?.calls1d ?? 0).toLocaleString()} color="#3f8600" />
+                    <StatCard title="Sesiones únicas" value={(overview?.sessions ?? 0).toLocaleString()} />
                 </Col>
                 <Col xs={12} md={6}>
-                    <StatCard
-                        title="Tasa de error"
-                        value={errorRate}
-                        format="percent"
-                        hint={`${(overview?.errors30d ?? 0).toLocaleString()} errores en 30d`}
-                        color={errorRate > 5 ? '#cf1322' : undefined}
-                    />
+                    <StatCard title="Clientes distintos" value={(overview?.clients ?? 0).toLocaleString()} />
                 </Col>
             </Row>
 
             <Row gutter={[16, 16]}>
                 <Col xs={12} md={6}>
-                    <StatCard title="Llamadas a tools 30d" value={(overview?.toolCalls30d ?? 0).toLocaleString()} />
-                </Col>
-                <Col xs={12} md={6}>
-                    <StatCard title="Sesiones únicas 30d" value={(overview?.sessions30d ?? 0).toLocaleString()} />
-                </Col>
-                <Col xs={12} md={6}>
-                    <StatCard title="Clientes distintos" value={(overview?.clients30d ?? 0).toLocaleString()} />
+                    <StatCard
+                        title="Tasa de error"
+                        value={errorRate}
+                        format="percent"
+                        hint={`${(overview?.errors ?? 0).toLocaleString()} errores`}
+                        color={errorRate > 5 ? '#cf1322' : undefined}
+                    />
                 </Col>
                 <Col xs={12} md={6}>
                     <StatCard
@@ -216,7 +206,7 @@ export default function McpSection() {
                 </Col>
             </Row>
 
-            <McpDailyChart rows={daily} loading={loadingDaily} />
+            <McpDailyChart rows={daily} loading={loadingDaily} grain={period?.grain} />
 
             <ToolsTable rows={tools} loading={loadingTools} />
 

@@ -28,14 +28,12 @@ class MapalabMcpEventBatch(CamelCaseInput):
 
 
 class McpStatsOverview(CamelCaseOutput):
-    calls_30d: int = 0
-    calls_7d: int = 0
-    calls_1d: int = 0
-    errors_30d: int = 0
-    sessions_30d: int = 0
-    clients_30d: int = 0
+    calls: int = 0
+    tool_calls: int = 0
+    errors: int = 0
+    sessions: int = 0
+    clients: int = 0
     avg_tool_duration_ms: int = 0
-    tool_calls_30d: int = 0
 
 
 class McpToolStatRow(CamelCaseOutput):
@@ -44,7 +42,6 @@ class McpToolStatRow(CamelCaseOutput):
     errors: int = 0
     unique_sessions: int = 0
     avg_duration_ms: int = 0
-    p95_duration_ms: int = 0
     last_seen: datetime | None = None
 
 

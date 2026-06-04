@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from typing import Literal
 
 import httpx
@@ -31,35 +31,92 @@ from app.schemas.mapalab_mcp import (
     McpStatsOverview,
     McpToolStatRow,
 )
-from app.services.mapalab_telemetry import refresh_stats_views
+from app.services.mapalab_telemetry import rollup_stats
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/mapalab-stats", tags=["mapalab stats"])
 settings = get_settings()
 
+Grain = Literal["day", "month", "year"]
+_GRAIN_FORMAT = {"day": "YYYY-MM-DD", "month": "YYYY-MM", "year": "YYYY"}
+
+
+class Period:
+    """Rango y granularidad seleccionados, derivados de los query params."""
+
+    def __init__(self, df: date, dt: date, grain: Grain):
+        self.df = df
+        self.dt = dt
+        self.grain = grain
+
+    @property
+    def range_params(self) -> dict:
+        return {"df": self.df, "dt": self.dt}
+
+    @property
+    def bucket_sql(self) -> str:
+        return f"to_char(dia, '{_GRAIN_FORMAT[self.grain]}')"
+
+
+def get_period(
+    date_from: str | None = Query(default=None),
+    date_to: str | None = Query(default=None),
+    grain: Grain = Query(default="day"),
+) -> Period:
+    today = date.today()
+    try:
+        df = date.fromisoformat(date_from) if date_from else today - timedelta(days=29)
+    except ValueError:
+        df = today - timedelta(days=29)
+    try:
+        dt = date.fromisoformat(date_to) if date_to else today
+    except ValueError:
+        dt = today
+    if df > dt:
+        df, dt = dt, df
+    return Period(df, dt, grain)
+
 
 @router.get("/overview", response_model=StatsOverview, response_model_by_alias=True)
 async def overview(
+    period: Period = Depends(get_period),
     db: Session = Depends(get_db),
     _current: Usuario = Depends(get_current_user),
 ):
-    row = db.execute(text("SELECT * FROM mapalab_stats_overview LIMIT 1")).mappings().first()
+    row = db.execute(
+        text(
+            """
+            SELECT
+                COALESCE(SUM(sessions), 0) AS sessions,
+                COALESCE(SUM(events), 0) AS events,
+                CASE WHEN SUM(sessions) > 0
+                     THEN (SUM(dur_sum) / SUM(sessions))::int ELSE 0 END AS avg_duration_sec,
+                COALESCE(SUM(swipe), 0) AS swipe_sessions,
+                COALESCE(SUM(drawing), 0) AS drawing_sessions,
+                COALESCE(SUM(downloaded), 0) AS download_sessions,
+                COALESCE(SUM(shared), 0) AS share_sessions,
+                COALESCE(SUM(reported), 0) AS reported_sessions
+            FROM mapalab_rollup_daily
+            WHERE dia BETWEEN :df AND :dt
+            """
+        ),
+        period.range_params,
+    ).mappings().first()
     if row is None:
         return StatsOverview(
-            sessions_30d=0, sessions_7d=0, sessions_1d=0, events_30d=0,
-            avg_duration_sec=0, swipe_sessions_30d=0, drawing_sessions_30d=0,
-            download_sessions_30d=0, share_sessions_30d=0,
+            sessions=0, events=0, avg_duration_sec=0, swipe_sessions=0,
+            drawing_sessions=0, download_sessions=0, share_sessions=0,
+            reported_sessions=0,
         )
     return StatsOverview(
-        sessions_30d=row["sessions_30d"] or 0,
-        sessions_7d=row["sessions_7d"] or 0,
-        sessions_1d=row["sessions_1d"] or 0,
-        events_30d=row["events_30d"] or 0,
+        sessions=row["sessions"] or 0,
+        events=row["events"] or 0,
         avg_duration_sec=row["avg_duration_sec"] or 0,
-        swipe_sessions_30d=row["swipe_sessions_30d"] or 0,
-        drawing_sessions_30d=row["drawing_sessions_30d"] or 0,
-        download_sessions_30d=row["download_sessions_30d"] or 0,
-        share_sessions_30d=row["share_sessions_30d"] or 0,
+        swipe_sessions=row["swipe_sessions"] or 0,
+        drawing_sessions=row["drawing_sessions"] or 0,
+        download_sessions=row["download_sessions"] or 0,
+        share_sessions=row["share_sessions"] or 0,
+        reported_sessions=row["reported_sessions"] or 0,
     )
 
 
@@ -102,20 +159,29 @@ async def _fetch_layer_labels(layer_ids: list[str]) -> dict[str, dict]:
 @router.get("/layers", response_model=list[LayerStatRow], response_model_by_alias=True)
 async def top_layers(
     limit: int = Query(default=20, ge=1, le=100),
+    period: Period = Depends(get_period),
     db: Session = Depends(get_db),
     _current: Usuario = Depends(get_current_user),
 ):
     rows = db.execute(
         text(
             """
-            SELECT layer_id, activations, downloads, feature_clicks,
-                   detail_opens, opacity_changes, unique_sessions, last_seen
-            FROM mapalab_stats_layers
+            SELECT layer_id,
+                   SUM(activations) AS activations,
+                   SUM(downloads) AS downloads,
+                   SUM(feature_clicks) AS feature_clicks,
+                   SUM(detail_opens) AS detail_opens,
+                   SUM(opacity_changes) AS opacity_changes,
+                   SUM(unique_sessions) AS unique_sessions,
+                   MAX(last_seen) AS last_seen
+            FROM mapalab_rollup_layers
+            WHERE dia BETWEEN :df AND :dt
+            GROUP BY layer_id
             ORDER BY activations DESC, unique_sessions DESC
             LIMIT :limit
             """
         ),
-        {"limit": limit},
+        {**period.range_params, "limit": limit},
     ).mappings().all()
 
     layer_ids = [r["layer_id"] for r in rows]
@@ -141,19 +207,27 @@ async def top_layers(
 @router.get("/eventos", response_model=list[EventoStatRow], response_model_by_alias=True)
 async def top_eventos(
     limit: int = Query(default=50, ge=1, le=200),
+    period: Period = Depends(get_period),
     db: Session = Depends(get_db),
     _current: Usuario = Depends(get_current_user),
 ):
     rows = db.execute(
         text(
             """
-            SELECT evento_id, titulo, opens, closes, unique_sessions, last_seen
-            FROM mapalab_stats_eventos
+            SELECT evento_id,
+                   MAX(titulo) AS titulo,
+                   SUM(opens) AS opens,
+                   SUM(closes) AS closes,
+                   SUM(unique_sessions) AS unique_sessions,
+                   MAX(last_seen) AS last_seen
+            FROM mapalab_rollup_eventos
+            WHERE dia BETWEEN :df AND :dt
+            GROUP BY evento_id
             ORDER BY opens DESC, unique_sessions DESC
             LIMIT :limit
             """
         ),
-        {"limit": limit},
+        {**period.range_params, "limit": limit},
     ).mappings().all()
 
     ids: list[int] = []
@@ -186,17 +260,23 @@ async def top_eventos(
 
 @router.get("/buttons", response_model=list[ButtonStatRow], response_model_by_alias=True)
 async def buttons(
+    period: Period = Depends(get_period),
     db: Session = Depends(get_db),
     _current: Usuario = Depends(get_current_user),
 ):
     rows = db.execute(
         text(
             """
-            SELECT event_name, clicks, unique_sessions
-            FROM mapalab_stats_buttons
+            SELECT event_name,
+                   SUM(clicks) AS clicks,
+                   SUM(unique_sessions) AS unique_sessions
+            FROM mapalab_rollup_buttons
+            WHERE dia BETWEEN :df AND :dt
+            GROUP BY event_name
             ORDER BY clicks DESC
             """
-        )
+        ),
+        period.range_params,
     ).mappings().all()
     return [
         ButtonStatRow(
@@ -210,17 +290,24 @@ async def buttons(
 
 @router.get("/tools", response_model=list[ToolStatRow], response_model_by_alias=True)
 async def tools(
+    period: Period = Depends(get_period),
     db: Session = Depends(get_db),
     _current: Usuario = Depends(get_current_user),
 ):
     rows = db.execute(
         text(
             """
-            SELECT event_name, tool, uses, unique_sessions
-            FROM mapalab_stats_tools
+            SELECT event_name,
+                   tool,
+                   SUM(uses) AS uses,
+                   SUM(unique_sessions) AS unique_sessions
+            FROM mapalab_rollup_tools
+            WHERE dia BETWEEN :df AND :dt
+            GROUP BY event_name, tool
             ORDER BY uses DESC
             """
-        )
+        ),
+        period.range_params,
     ).mappings().all()
     return [
         ToolStatRow(
@@ -235,23 +322,32 @@ async def tools(
 
 @router.get("/daily", response_model=list[DailyStatRow], response_model_by_alias=True)
 async def daily(
-    days: int = Query(default=30, ge=1, le=90),
+    period: Period = Depends(get_period),
     db: Session = Depends(get_db),
     _current: Usuario = Depends(get_current_user),
 ):
+    bucket = period.bucket_sql
     rows = db.execute(
         text(
-            """
-            SELECT dia, source, sessions, events,
-                   sessions_swipe, sessions_drawing, sessions_measurement,
-                   sessions_downloaded, sessions_shared, sessions_reported,
-                   avg_duration_sec
-            FROM mapalab_stats_daily
-            WHERE dia >= CURRENT_DATE - :days * INTERVAL '1 day'
-            ORDER BY dia ASC, source ASC
+            f"""
+            SELECT {bucket} AS dia, source,
+                   SUM(sessions) AS sessions,
+                   SUM(events) AS events,
+                   SUM(swipe) AS sessions_swipe,
+                   SUM(drawing) AS sessions_drawing,
+                   SUM(measurement) AS sessions_measurement,
+                   SUM(downloaded) AS sessions_downloaded,
+                   SUM(shared) AS sessions_shared,
+                   SUM(reported) AS sessions_reported,
+                   CASE WHEN SUM(sessions) > 0
+                        THEN (SUM(dur_sum) / SUM(sessions))::int ELSE 0 END AS avg_duration_sec
+            FROM mapalab_rollup_daily
+            WHERE dia BETWEEN :df AND :dt
+            GROUP BY {bucket}, source
+            ORDER BY {bucket} ASC, source ASC
             """
         ),
-        {"days": days},
+        period.range_params,
     ).mappings().all()
     return [
         DailyStatRow(
@@ -276,18 +372,25 @@ async def sessions(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=25, ge=1, le=100),
     source: Literal["visor", "embed", "widget", "all"] = Query(default="all"),
+    period: Period = Depends(get_period),
     db: Session = Depends(get_db),
     _current: Usuario = Depends(get_current_user),
 ):
-    where = "WHERE 1=1"
-    params: dict = {"limit": page_size, "offset": (page - 1) * page_size}
+    where = "WHERE started_at >= :df AND started_at < :dt_excl"
+    params: dict = {
+        "limit": page_size,
+        "offset": (page - 1) * page_size,
+        "df": period.df,
+        "dt_excl": period.dt + timedelta(days=1),
+    }
     if source != "all":
         where += " AND source = :source"
         params["source"] = source
 
+    count_params = {k: v for k, v in params.items() if k not in {"limit", "offset"}}
     total = db.execute(
         text(f"SELECT COUNT(*) FROM mapalab_sessions {where}"),
-        {k: v for k, v in params.items() if k not in {"limit", "offset"}},
+        count_params,
     ).scalar() or 0
 
     rows = db.execute(
@@ -332,13 +435,25 @@ async def highlights(
     db: Session = Depends(get_db),
     _current: Usuario = Depends(get_current_user),
 ):
-    overview_row = db.execute(text("SELECT * FROM mapalab_stats_overview LIMIT 1")).mappings().first()
+    overview_row = db.execute(
+        text(
+            """
+            SELECT COALESCE(SUM(sessions), 0) AS sessions_30d,
+                   CASE WHEN SUM(sessions) > 0
+                        THEN (SUM(dur_sum) / SUM(sessions))::int ELSE 0 END AS avg_duration_sec
+            FROM mapalab_rollup_daily
+            WHERE dia >= CURRENT_DATE - 29
+            """
+        )
+    ).mappings().first()
     top_layer_row = db.execute(
         text(
             """
-            SELECT layer_id, activations
-            FROM mapalab_stats_layers
-            ORDER BY activations DESC, unique_sessions DESC
+            SELECT layer_id, SUM(activations) AS activations
+            FROM mapalab_rollup_layers
+            WHERE dia >= CURRENT_DATE - 29
+            GROUP BY layer_id
+            ORDER BY activations DESC, SUM(unique_sessions) DESC
             LIMIT 1
             """
         )
@@ -346,8 +461,10 @@ async def highlights(
     top_tool_row = db.execute(
         text(
             """
-            SELECT tool, uses
-            FROM mapalab_stats_tools
+            SELECT tool, SUM(uses) AS uses
+            FROM mapalab_rollup_tools
+            WHERE dia >= CURRENT_DATE - 29
+            GROUP BY tool
             ORDER BY uses DESC
             LIMIT 1
             """
@@ -377,40 +494,73 @@ async def highlights(
 
 @router.get("/mcp/overview", response_model=McpStatsOverview, response_model_by_alias=True)
 async def mcp_overview(
+    period: Period = Depends(get_period),
     db: Session = Depends(get_db),
     _current: Usuario = Depends(get_current_user),
 ):
-    row = db.execute(text("SELECT * FROM mapalab_mcp_stats_overview LIMIT 1")).mappings().first()
+    row = db.execute(
+        text(
+            """
+            SELECT
+                COALESCE(SUM(calls), 0) AS calls,
+                COALESCE(SUM(tool_calls), 0) AS tool_calls,
+                COALESCE(SUM(errors), 0) AS errors,
+                COALESCE(SUM(unique_sessions), 0) AS sessions,
+                CASE WHEN SUM(tool_dur_count) > 0
+                     THEN (SUM(tool_dur_sum) / SUM(tool_dur_count))::int ELSE 0 END AS avg_tool_duration_ms
+            FROM mapalab_mcp_rollup_daily
+            WHERE dia BETWEEN :df AND :dt
+            """
+        ),
+        period.range_params,
+    ).mappings().first()
+    clients = db.execute(
+        text(
+            """
+            SELECT COUNT(DISTINCT client_name) AS clients
+            FROM mapalab_mcp_rollup_clients
+            WHERE dia BETWEEN :df AND :dt AND client_name <> 'unknown'
+            """
+        ),
+        period.range_params,
+    ).scalar() or 0
     if row is None:
-        return McpStatsOverview()
+        return McpStatsOverview(clients=clients)
     return McpStatsOverview(
-        calls_30d=row["calls_30d"] or 0,
-        calls_7d=row["calls_7d"] or 0,
-        calls_1d=row["calls_1d"] or 0,
-        errors_30d=row["errors_30d"] or 0,
-        sessions_30d=row["sessions_30d"] or 0,
-        clients_30d=row["clients_30d"] or 0,
+        calls=row["calls"] or 0,
+        tool_calls=row["tool_calls"] or 0,
+        errors=row["errors"] or 0,
+        sessions=row["sessions"] or 0,
+        clients=clients,
         avg_tool_duration_ms=row["avg_tool_duration_ms"] or 0,
-        tool_calls_30d=row["tool_calls_30d"] or 0,
     )
 
 
 @router.get("/mcp/tools", response_model=list[McpToolStatRow], response_model_by_alias=True)
 async def mcp_tools(
     limit: int = Query(default=30, ge=1, le=100),
+    period: Period = Depends(get_period),
     db: Session = Depends(get_db),
     _current: Usuario = Depends(get_current_user),
 ):
     rows = db.execute(
         text(
             """
-            SELECT tool, uses, errors, unique_sessions, avg_duration_ms, p95_duration_ms, last_seen
-            FROM mapalab_mcp_stats_tools
+            SELECT tool,
+                   SUM(uses) AS uses,
+                   SUM(errors) AS errors,
+                   SUM(unique_sessions) AS unique_sessions,
+                   CASE WHEN SUM(dur_count) > 0
+                        THEN (SUM(dur_sum) / SUM(dur_count))::int ELSE 0 END AS avg_duration_ms,
+                   MAX(last_seen) AS last_seen
+            FROM mapalab_mcp_rollup_tools
+            WHERE dia BETWEEN :df AND :dt
+            GROUP BY tool
             ORDER BY uses DESC, last_seen DESC
             LIMIT :limit
             """
         ),
-        {"limit": limit},
+        {**period.range_params, "limit": limit},
     ).mappings().all()
     return [
         McpToolStatRow(
@@ -419,7 +569,6 @@ async def mcp_tools(
             errors=r["errors"] or 0,
             unique_sessions=r["unique_sessions"] or 0,
             avg_duration_ms=r["avg_duration_ms"] or 0,
-            p95_duration_ms=r["p95_duration_ms"] or 0,
             last_seen=r["last_seen"],
         )
         for r in rows
@@ -428,20 +577,28 @@ async def mcp_tools(
 
 @router.get("/mcp/daily", response_model=list[McpDailyStatRow], response_model_by_alias=True)
 async def mcp_daily(
-    days: int = Query(default=30, ge=1, le=90),
+    period: Period = Depends(get_period),
     db: Session = Depends(get_db),
     _current: Usuario = Depends(get_current_user),
 ):
+    bucket = period.bucket_sql
     rows = db.execute(
         text(
-            """
-            SELECT dia, calls, tool_calls, errors, unique_sessions, avg_duration_ms
-            FROM mapalab_mcp_stats_daily
-            WHERE dia >= CURRENT_DATE - :days * INTERVAL '1 day'
-            ORDER BY dia ASC
+            f"""
+            SELECT {bucket} AS dia,
+                   SUM(calls) AS calls,
+                   SUM(tool_calls) AS tool_calls,
+                   SUM(errors) AS errors,
+                   SUM(unique_sessions) AS unique_sessions,
+                   CASE WHEN SUM(dur_count) > 0
+                        THEN (SUM(dur_sum) / SUM(dur_count))::int ELSE 0 END AS avg_duration_ms
+            FROM mapalab_mcp_rollup_daily
+            WHERE dia BETWEEN :df AND :dt
+            GROUP BY {bucket}
+            ORDER BY {bucket} ASC
             """
         ),
-        {"days": days},
+        period.range_params,
     ).mappings().all()
     return [
         McpDailyStatRow(
@@ -458,17 +615,25 @@ async def mcp_daily(
 
 @router.get("/mcp/clients", response_model=list[McpClientStatRow], response_model_by_alias=True)
 async def mcp_clients(
+    period: Period = Depends(get_period),
     db: Session = Depends(get_db),
     _current: Usuario = Depends(get_current_user),
 ):
     rows = db.execute(
         text(
             """
-            SELECT client_name, client_version, calls, unique_sessions, last_seen
-            FROM mapalab_mcp_stats_clients
+            SELECT client_name,
+                   client_version,
+                   SUM(calls) AS calls,
+                   SUM(unique_sessions) AS unique_sessions,
+                   MAX(last_seen) AS last_seen
+            FROM mapalab_mcp_rollup_clients
+            WHERE dia BETWEEN :df AND :dt
+            GROUP BY client_name, client_version
             ORDER BY calls DESC, last_seen DESC
             """
-        )
+        ),
+        period.range_params,
     ).mappings().all()
     return [
         McpClientStatRow(
@@ -490,7 +655,7 @@ async def refresh(
     if current.role != "tetlamamakani":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Solo administradoras pueden refrescar vistas",
+            detail="Solo administradoras pueden refrescar las estadísticas",
         )
-    refreshed = refresh_stats_views(db, concurrent=True)
+    refreshed = rollup_stats(db)
     return {"ok": True, "refreshed": refreshed, "ts": datetime.utcnow().isoformat()}

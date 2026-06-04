@@ -94,15 +94,14 @@ class EventBatchResponse(BaseModel):
 
 
 class StatsOverview(CamelCaseOutput):
-    sessions_30d: int
-    sessions_7d: int
-    sessions_1d: int
-    events_30d: int
+    sessions: int
+    events: int
     avg_duration_sec: int
-    swipe_sessions_30d: int
-    drawing_sessions_30d: int
-    download_sessions_30d: int
-    share_sessions_30d: int
+    swipe_sessions: int
+    drawing_sessions: int
+    download_sessions: int
+    share_sessions: int
+    reported_sessions: int
 
 
 class LayerStatRow(CamelCaseOutput):
