@@ -19,6 +19,21 @@ class DatosInvalidosError(ValueError):
         super().__init__(f"{len(errores)} error(es) de validacion")
 
 
+_JS_FLAG_MAP = {"i": re.IGNORECASE, "m": re.MULTILINE, "s": re.DOTALL}
+
+
+def _compilar_pattern(raw: str) -> re.Pattern[str]:
+    cuerpo = raw
+    flags = 0
+    if len(raw) >= 2 and raw.startswith("/"):
+        cierre = raw.rfind("/")
+        if cierre > 0:
+            cuerpo = raw[1:cierre]
+            for modificador in raw[cierre + 1:]:
+                flags |= _JS_FLAG_MAP.get(modificador, 0)
+    return re.compile(cuerpo, flags)
+
+
 def validar_datos(
     definicion: dict[str, Any],
     datos: dict[str, Any],
@@ -156,7 +171,7 @@ def _validar_field_value(
             )
         if "pattern" in validation:
             try:
-                if not re.match(validation["pattern"], value):
+                if not _compilar_pattern(validation["pattern"]).match(value):
                     errores.append({"path": path, "msg": "formato invalido"})
             except re.error:
                 errores.append({"path": path, "msg": "patron invalido en definicion"})
