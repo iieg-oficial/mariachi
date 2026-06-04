@@ -20,7 +20,7 @@ from app.api.metrics import (
     COUNTER_SIEEJ_ENVIO_WRITES,
     incr,
 )
-from app.core.time import utcnow
+from app.core.time import to_naive_utc, utcnow
 from app.models.acervo_bucket import AcervoBucket
 from app.models.project import Project
 from app.models.sieej import (
@@ -69,9 +69,11 @@ class EnviosService:
         if formulario.estado != "activo":
             return False
         ahora = utcnow()
-        if formulario.vigencia_inicio and formulario.vigencia_inicio > ahora:
+        vigencia_inicio = to_naive_utc(formulario.vigencia_inicio)
+        vigencia_fin = to_naive_utc(formulario.vigencia_fin)
+        if vigencia_inicio and vigencia_inicio > ahora:
             return False
-        if formulario.vigencia_fin and formulario.vigencia_fin < ahora:
+        if vigencia_fin and vigencia_fin < ahora:
             return False
         return True
 
@@ -101,7 +103,7 @@ class EnviosService:
         if formulario.vigencia_fin is None:
             return False
         ahora = utcnow()
-        if formulario.vigencia_fin >= ahora:
+        if to_naive_utc(formulario.vigencia_fin) >= ahora:
             return False
         _marcar_expirado(envio, self.db, ahora)
         if commit:
@@ -350,9 +352,9 @@ class EnviosService:
             else ""
         )
         object_key = (
-            f"envio{envio.id}/{uuid.uuid4()}.{ext}"
+            f"{formulario.slug}/envio{envio.id}/{uuid.uuid4()}.{ext}"
             if ext
-            else f"envio{envio.id}/{uuid.uuid4()}"
+            else f"{formulario.slug}/envio{envio.id}/{uuid.uuid4()}"
         )
 
         client = AcervoClient.for_bucket(bucket)
