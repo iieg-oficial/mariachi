@@ -72,7 +72,7 @@ help:
 	@echo '                                       Las capas destino deben existir con el mismo id (PK de mapalab.layers).'
 	@echo ''
 	@echo '${BLUE}MapaLab — Telemetria${RESET}'
-	@echo '  ${YELLOW}make refresh-mapalab-stats${RESET}  - Refresca las vistas materializadas mapalab_stats_*'
+	@echo '  ${YELLOW}make refresh-mapalab-stats${RESET}  - Recomputa los rollups diarios de mapalab-stats'
 	@echo '  ${YELLOW}make purge-mapalab-events${RESET}   - Purga eventos crudos mas viejos que la retencion'
 	@echo ''
 
@@ -223,8 +223,8 @@ restore-tarjetitas:
 # MAPALAB STATS (telemetria)
 # =============================================================================
 
-## Refresca las vistas materializadas mapalab_stats_*. Se invoca cada 30 min
-## por cron en prod; este target es para refresh manual.
+## Recomputa los rollups diarios persistentes de mapalab-stats. Se invoca cada
+## 30 min por cron en prod; este target es para refresh manual.
 refresh-mapalab-stats:
 	@docker compose -f $(COMPOSE_FILE) exec -T api python scripts/refresh_mapalab_stats.py
 

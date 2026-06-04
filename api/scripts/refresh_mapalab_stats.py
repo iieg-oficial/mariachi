@@ -1,4 +1,4 @@
-"""Refresca las vistas materializadas de mapalab-stats.
+"""Recomputa los rollups diarios persistentes de mapalab-stats.
 
 Pensado para invocarse desde cron cada 30 minutos:
     */30 * * * * cd /app && python scripts/refresh_mapalab_stats.py
@@ -9,15 +9,15 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
 from app.core.database import SessionLocal
-from app.services.mapalab_telemetry import refresh_stats_views
+from app.services.mapalab_telemetry import rollup_stats
 
 
 def main() -> None:
     session = SessionLocal()
     try:
-        refreshed = refresh_stats_views(session, concurrent=True)
+        refreshed = rollup_stats(session)
         print(
-            f"[refresh_mapalab_stats] refreshed={','.join(refreshed)}",
+            f"[refresh_mapalab_stats] rolled_up={','.join(refreshed)}",
             flush=True,
         )
     finally:

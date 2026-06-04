@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Card, Segmented, Space, Table, Tag, Typography } from 'antd';
 import { useSessions } from '@features/mapalab-stats/hooks/useMapalabStats';
 import { SOURCE_LABELS } from '@features/mapalab-stats/constants';
@@ -22,11 +22,13 @@ const SOURCE_OPTIONS = [
     { value: 'widget', label: 'Widget' },
 ];
 
-export default function SesionesSection({ isMobile = false }) {
+export default function SesionesSection({ period, isMobile = false }) {
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(25);
     const [source, setSource] = useState('all');
-    const { data, loading } = useSessions({ page, pageSize, source });
+    const { data, loading } = useSessions({ page, pageSize, source, period });
+
+    useEffect(() => { setPage(1); }, [period?.dateFrom, period?.dateTo]);
 
     const columns = [
         { title: 'Sesión', dataIndex: 'sessionId', key: 'sessionId', width: 140,

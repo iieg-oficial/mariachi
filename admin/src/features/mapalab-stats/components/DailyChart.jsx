@@ -1,7 +1,10 @@
 import { Card, Empty } from 'antd';
 import { useMemo } from 'react';
 
-const DailyChart = ({ rows = [], loading }) => {
+const GRAIN_TITLE = { day: 'Sesiones por día', month: 'Sesiones por mes', year: 'Sesiones por año' };
+
+const DailyChart = ({ rows = [], loading, grain = 'day' }) => {
+    const title = GRAIN_TITLE[grain] || 'Sesiones por periodo';
     const series = useMemo(() => {
         const grouped = {};
         for (const row of rows) {
@@ -14,7 +17,7 @@ const DailyChart = ({ rows = [], loading }) => {
 
     if (!loading && series.length === 0) {
         return (
-            <Card title="Sesiones por día" size="small">
+            <Card title={title} size="small">
                 <Empty description="Sin datos aún" />
             </Card>
         );
@@ -23,7 +26,7 @@ const DailyChart = ({ rows = [], loading }) => {
     const max = Math.max(...series.map((d) => d.sessions), 1);
 
     return (
-        <Card title="Sesiones por día" size="small" loading={loading}>
+        <Card title={title} size="small" loading={loading}>
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 160, paddingTop: 8 }}>
                 {series.map((d) => (
                     <div
