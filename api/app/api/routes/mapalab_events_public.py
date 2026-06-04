@@ -48,7 +48,7 @@ async def ingerir_batch(
     except ValidationError as exc:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=exc.errors(),
+            detail=exc.errors(include_url=False, include_context=False),
         )
 
     try:

@@ -52,6 +52,7 @@ ALLOWED_EVENT_NAMES = frozenset({
     "municipio_mode_exit",
     "municipio_mode_change",
     "municipio_panel_open",
+    "evento_fun_fact",
 })
 
 MAX_BATCH_EVENTS = 100
