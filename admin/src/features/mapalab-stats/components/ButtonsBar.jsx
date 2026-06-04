@@ -6,7 +6,7 @@ const { Text } = Typography;
 const ButtonsBar = ({ rows = [], loading }) => {
     if (!loading && rows.length === 0) {
         return (
-            <Card title="Uso de botones (últimos 30 días)" size="small">
+            <Card title="Uso de botones" size="small">
                 <Empty description="Sin clicks registrados aún" />
             </Card>
         );

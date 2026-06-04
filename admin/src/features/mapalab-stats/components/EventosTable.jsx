@@ -5,7 +5,7 @@ const { Text } = Typography;
 const EventosTable = ({ rows = [], loading }) => {
     if (!loading && rows.length === 0) {
         return (
-            <Card title="Eventos más abiertos (últimos 30 días)" size="small">
+            <Card title="Eventos más abiertos" size="small">
                 <Empty description="Sin datos aún. Abrir un evento en el visor cuenta como una apertura." />
             </Card>
         );
@@ -32,7 +32,7 @@ const EventosTable = ({ rows = [], loading }) => {
     ];
 
     return (
-        <Card title="Eventos más abiertos (últimos 30 días)" size="small">
+        <Card title="Eventos más abiertos" size="small">
             <Table
                 rowKey="eventoId"
                 size="small"

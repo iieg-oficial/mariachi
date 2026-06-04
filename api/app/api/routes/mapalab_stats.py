@@ -23,6 +23,7 @@ from app.schemas.mapalab_event import (
     SessionsPage,
     StatsHighlights,
     StatsOverview,
+    ThemeStatRow,
     ToolStatRow,
 )
 from app.schemas.mapalab_mcp import (
@@ -135,7 +136,7 @@ async def _fetch_layer_labels(layer_ids: list[str]) -> dict[str, dict]:
 
     out: dict[str, dict] = {}
 
-    def walk(node: dict):
+    def walk(node: dict, parent_id: str | None = None):
         if not isinstance(node, dict):
             return
         nid = node.get("id")
@@ -144,9 +145,10 @@ async def _fetch_layer_labels(layer_ids: list[str]) -> dict[str, dict]:
             out[nid] = {
                 "label": node.get("label"),
                 "workspace": wms.get("workspace") or node.get("workspace"),
+                "parent_id": parent_id,
             }
         for child in node.get("children") or []:
-            walk(child)
+            walk(child, nid)
 
     if isinstance(tree, list):
         for n in tree:
@@ -255,6 +257,48 @@ async def top_eventos(
             last_seen=r["last_seen"],
         )
         for r in rows
+    ]
+
+
+@router.get("/themes", response_model=list[ThemeStatRow], response_model_by_alias=True)
+async def top_themes(
+    limit: int = Query(default=50, ge=1, le=200),
+    period: Period = Depends(get_period),
+    db: Session = Depends(get_db),
+    _current: Usuario = Depends(get_current_user),
+):
+    rows = db.execute(
+        text(
+            """
+            SELECT theme_id,
+                   SUM(views) AS views,
+                   SUM(unique_sessions) AS unique_sessions,
+                   MAX(last_seen) AS last_seen
+            FROM mapalab_rollup_themes
+            WHERE dia BETWEEN :df AND :dt
+            GROUP BY theme_id
+            ORDER BY views DESC, unique_sessions DESC
+            LIMIT :limit
+            """
+        ),
+        {**period.range_params, "limit": limit},
+    ).mappings().all()
+
+    theme_ids = [r["theme_id"] for r in rows]
+    labels = await _fetch_layer_labels(theme_ids)
+
+    return [
+        ThemeStatRow(
+            theme_id=r["theme_id"],
+            views=r["views"] or 0,
+            unique_sessions=r["unique_sessions"] or 0,
+            last_seen=r["last_seen"],
+            label=(labels.get(r["theme_id"]) or {}).get("label"),
+            workspace=(labels.get(r["theme_id"]) or {}).get("workspace"),
+        )
+        for r in rows
+        if (labels.get(r["theme_id"]) or {}).get("label")
+        and (labels.get(r["theme_id"]) or {}).get("parent_id") != "eventos-auto"
     ]
 
 

@@ -6,6 +6,7 @@ import {
     useDailyStats,
     useEventoStats,
     useMapalabOverview,
+    useThemeStats,
     useToolStats,
     useTopLayers,
 } from '@features/mapalab-stats/hooks/useMapalabStats';
@@ -13,6 +14,7 @@ import { refreshStats } from '@features/mapalab-stats/api/mapalabStatsService';
 import StatCard from '@features/mapalab-stats/components/StatCard';
 import TopLayersTable from '@features/mapalab-stats/components/TopLayersTable';
 import EventosTable from '@features/mapalab-stats/components/EventosTable';
+import ThemesTable from '@features/mapalab-stats/components/ThemesTable';
 import ButtonsBar from '@features/mapalab-stats/components/ButtonsBar';
 import ToolsBar from '@features/mapalab-stats/components/ToolsBar';
 import DailyChart from '@features/mapalab-stats/components/DailyChart';
@@ -23,6 +25,7 @@ export default function ResumenSection({ period, canRefresh = false }) {
     const { overview, loading: loadingOverview, error: errorOverview, reload: reloadOverview } = useMapalabOverview(period);
     const { rows: topLayers, loading: loadingLayers, reload: reloadLayers } = useTopLayers({ limit: 20, period });
     const { rows: eventoRows, loading: loadingEventos, reload: reloadEventos } = useEventoStats({ limit: 50, period });
+    const { rows: themeRows, loading: loadingThemes, reload: reloadThemes } = useThemeStats({ limit: 50, period });
     const { rows: buttonRows, loading: loadingButtons, reload: reloadButtons } = useButtonStats(period);
     const { rows: toolRows, loading: loadingTools, reload: reloadTools } = useToolStats(period);
     const { rows: dailyRows, loading: loadingDaily, reload: reloadDaily } = useDailyStats(period);
@@ -36,6 +39,7 @@ export default function ResumenSection({ period, canRefresh = false }) {
                 reloadOverview(),
                 reloadLayers(),
                 reloadEventos(),
+                reloadThemes(),
                 reloadButtons(),
                 reloadTools(),
                 reloadDaily(),
@@ -107,6 +111,8 @@ export default function ResumenSection({ period, canRefresh = false }) {
             <DailyChart rows={dailyRows} loading={loadingDaily} grain={period?.grain} />
 
             <EventosTable rows={eventoRows} loading={loadingEventos} />
+
+            <ThemesTable rows={themeRows} loading={loadingThemes} />
 
             <TopLayersTable rows={topLayers} loading={loadingLayers} />
 

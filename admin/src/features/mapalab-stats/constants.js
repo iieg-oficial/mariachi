@@ -10,7 +10,7 @@ export const BUTTON_LABELS = {
     legends_toggle: 'Toggle leyendas',
     infobox_action: 'Acciones del InfoBox',
     home_action: 'Botones del Home',
-    theme_change: 'Cambio de tema',
+    theme_change: 'Apertura de tema',
     layer_reorder: 'Reordenar capas',
     basemap_change: 'Cambio de basemap',
     geolocate: 'Geolocalización',

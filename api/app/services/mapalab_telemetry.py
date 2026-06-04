@@ -194,7 +194,7 @@ def ingest_batch(
 _VISOR_BUTTON_NAMES = (
     "'sider_lock','logo_click','contribute_click','share_map','info_open',"
     "'report_submitted','layer_download','opacity_change','legends_toggle',"
-    "'infobox_action','home_action','theme_change','layer_reorder','basemap_change',"
+    "'infobox_action','home_action','layer_reorder','basemap_change',"
     "'geolocate','map_export','periodicity_advanced'"
 )
 
@@ -341,6 +341,21 @@ _ROLLUP_STEPS: tuple[tuple[str, str, str], ...] = (
         GROUP BY dia, COALESCE(client_name, 'unknown'), COALESCE(client_version, '')
         """,
         "dia",
+    ),
+    (
+        "mapalab_rollup_themes",
+        """
+        INSERT INTO mapalab_rollup_themes
+            (dia, theme_id, views, unique_sessions, last_seen)
+        SELECT
+            DATE(ts), props->>'theme',
+            COUNT(*), COUNT(DISTINCT session_id), MAX(ts)
+        FROM mapalab_events
+        WHERE event_name = 'theme_change'
+          AND props->>'theme' IS NOT NULL AND ts >= CURRENT_DATE - :days
+        GROUP BY DATE(ts), props->>'theme'
+        """,
+        "ts",
     ),
 )
 

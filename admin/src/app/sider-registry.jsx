@@ -68,7 +68,7 @@ export const PROJECT_REGISTRY = {
             },
             {
                 key: '/mapalab/stats', path: '/mapalab/stats', label: 'Estadísticas',
-                icon: <BarChartOutlined />, showBetaBadge: true,
+                icon: <BarChartOutlined />,
             },
         ],
     },

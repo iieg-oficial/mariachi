@@ -193,3 +193,12 @@ class StatsHighlights(CamelCaseOutput):
     avg_duration_sec: int
     top_layer: HighlightLayer | None = None
     top_tool: HighlightTool | None = None
+
+
+class ThemeStatRow(CamelCaseOutput):
+    theme_id: str
+    label: str | None = None
+    workspace: str | None = None
+    views: int
+    unique_sessions: int
+    last_seen: datetime | None = None

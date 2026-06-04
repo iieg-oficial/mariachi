@@ -109,7 +109,7 @@ export default function InicioHighlights() {
             <Space align="center" style={{ width: '100%', justifyContent: 'space-between', marginBottom: 12 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <BarChartOutlined style={{ fontSize: 20, color: '#5C2472' }} />
-                    <Text strong style={{ fontSize: 18 }}>MapaLab — Uso en los últimos 30 días</Text>
+                    <Text strong style={{ fontSize: 18 }}>MapaLab — Uso</Text>
                 </div>
                 <Link to="/mapalab/stats">
                     <Text type="secondary" style={{ fontSize: 12 }}>Ver detalle →</Text>
