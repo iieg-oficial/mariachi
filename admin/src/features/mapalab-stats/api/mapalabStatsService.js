@@ -26,6 +26,11 @@ export const getEventos = async (limit = 50, period) => {
     return res.data;
 };
 
+export const getThemes = async (limit = 50, period) => {
+    const res = await api.get('/mapalab-stats/themes', { params: { limit, ...periodParams(period) } });
+    return res.data;
+};
+
 export const getTools = async (period) => {
     const res = await api.get('/mapalab-stats/tools', { params: periodParams(period) });
     return res.data;

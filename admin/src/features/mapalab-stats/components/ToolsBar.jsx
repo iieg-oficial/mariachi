@@ -6,7 +6,7 @@ const { Text } = Typography;
 const ToolsBar = ({ rows = [], loading }) => {
     if (!loading && rows.length === 0) {
         return (
-            <Card title="Herramientas (últimos 30 días)" size="small">
+            <Card title="Herramientas" size="small">
                 <Empty description="Sin uso de herramientas registrado" />
             </Card>
         );

@@ -5,7 +5,7 @@ const { Text } = Typography;
 const TopLayersTable = ({ rows = [], loading }) => {
     if (!loading && rows.length === 0) {
         return (
-            <Card title="Capas más usadas (últimos 30 días)" size="small">
+            <Card title="Capas más usadas" size="small">
                 <Empty description="Sin datos aún. Los eventos del visor toman unos minutos en agregarse." />
             </Card>
         );
@@ -36,7 +36,7 @@ const TopLayersTable = ({ rows = [], loading }) => {
     ];
 
     return (
-        <Card title="Capas más usadas (últimos 30 días)" size="small">
+        <Card title="Capas más usadas" size="small">
             <Table
                 rowKey="layerId"
                 size="small"

@@ -9,6 +9,7 @@ import {
     getMcpTools,
     getOverview,
     getSessions,
+    getThemes,
     getTools,
     getTopLayers,
 } from '@features/mapalab-stats/api/mapalabStatsService';
@@ -79,6 +80,31 @@ export function useEventoStats({ limit = 50, period } = {}) {
             setRows(await getEventos(limit, period));
         } catch (err) {
             setError(err?.response?.data?.detail || err?.message || 'Error al cargar eventos');
+            setRows([]);
+        } finally {
+            setLoading(false);
+        }
+    }, [limit, key]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    useEffect(() => { reload(); }, [reload]);
+
+    return { rows, loading, error, reload };
+}
+
+
+export function useThemeStats({ limit = 50, period } = {}) {
+    const [rows, setRows] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+
+    const key = periodKey(period);
+    const reload = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            setRows(await getThemes(limit, period));
+        } catch (err) {
+            setError(err?.response?.data?.detail || err?.message || 'Error al cargar temas');
             setRows([]);
         } finally {
             setLoading(false);

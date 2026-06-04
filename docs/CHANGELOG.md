@@ -9,6 +9,20 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.30.0 / admin 1.30.0] - 2026-06-04
+
+### Feat: temas más vistos desde theme_change
+
+Nueva tabla `mapalab_rollup_themes` que desglosa el evento `theme_change` por tema (id del tema temático del árbol). Enriquecida con label/workspace desde el árbol de capas de MapaLab, igual que TopLayers.
+
+- **Migración `a0f1e2d3c4b5`**: crea `mapalab_rollup_themes(dia, theme_id, views, unique_sessions, last_seen)` con backfill desde `mapalab_events WHERE event_name='theme_change'`. Limpia `theme_change` de `mapalab_rollup_buttons` (se mueve a su propia tabla).
+- **`api/app/services/mapalab_telemetry.py`**: agrega paso `mapalab_rollup_themes` a `_ROLLUP_STEPS`. Quita `theme_change` de `_VISOR_BUTTON_NAMES`.
+- **`api/app/api/routes/mapalab_stats.py`**: endpoint `GET /mapalab-stats/themes` (limit + period), enriquece `theme_id` con `_fetch_layer_labels`.
+- **`api/app/schemas/mapalab_event.py`**: nuevo `ThemeStatRow` (theme_id, label, workspace, views, unique_sessions, last_seen).
+- **Admin**: `ThemesTable` + `useThemeStats` + `getThemes`, montado en `ResumenSection` entre Eventos y Capas. Label `theme_change`: "Cambio de tema" → "Apertura de tema".
+
+---
+
 ## [api 1.29.0 / admin 1.29.0] - 2026-06-04
 
 ### Feat: estadísticas de MapaLab con historial permanente y selector de rango día/mes/año
