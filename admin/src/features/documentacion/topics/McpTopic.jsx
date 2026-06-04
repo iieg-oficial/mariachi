@@ -32,8 +32,8 @@ const TOOLS = [
     { router: 'layers', tool: 'resolve_layer_ref', route: 'GET /layers/resolve', desc: 'Slug, alias público o id del visor → capa.' },
     { router: 'municipios', tool: 'list_municipios', route: 'GET /municipios/', desc: 'Lista los 125 municipios de Jalisco con {clave, nombre, region, áreas}.' },
     { router: 'municipios', tool: 'resolve_municipios', route: 'búsqueda substring sobre list', desc: 'Mapea nombre o clave parcial → matches. Ej: "guadalajara" → [{clave:"14039", nombre:"Guadalajara"}].', highlight: true },
-    { router: 'shares + medición', tool: 'create_single_share', route: 'POST /shares (kind=single)', desc: 'Crea share del visor con capas, annotations y municipios opcionales. Devuelve {id, url, embed_html}.', highlight: true },
-    { router: 'shares + medición', tool: 'create_swipe_share', route: 'POST /shares (kind=swipe)', desc: 'Crea share en modo swipe A|B. Acepta municipios (estado compartido).' },
+    { router: 'shares + medición', tool: 'create_single_share', route: 'POST /shares (kind=single)', desc: 'Crea share del visor. Acepta filters fecha (CQL), annotations (LineString/Polygon/Emoji/Text) y municipios. Basemap: voyager o position.', highlight: true },
+    { router: 'shares + medición', tool: 'create_swipe_share', route: 'POST /shares (kind=swipe)', desc: 'Comparador A|B con barra divisora. Annotations globales (ambos lados). Mismo formato de filters y basemaps que single.' },
     { router: 'shares + medición', tool: 'measure_geometry', route: 'PostGIS ST_Length/ST_Area::geography', desc: 'Longitud (LineString) o área (Polygon) geodésica en metros/m² reales.' },
 ];
 
@@ -95,6 +95,16 @@ export default function McpTopic() {
                     Llama los tools del MCP vía JSON-RPC o los endpoints REST equivalentes. Las tarjetas <Text code>create_*_share</Text> embeben el mapa resultante si pegas una API key arriba. Telemetría persistida en el tema <Text code>Telemetría</Text>.
                 </Text>
             </div>
+
+            <Card title="Guía rápida para agentes" size="small" style={{ marginTop: 0 }}>
+                <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13 }}>
+                    <li><Text strong>Basemaps:</Text> <Text code>voyager</Text> (recomendado) o <Text code>position</Text>. No usar <Text code>osm</Text>.</li>
+                    <li><Text strong>Filtros de fecha:</Text> obtener años con <Text code>get_periodicity</Text>, luego CQL: <Text code>{'(fecha >= \\'2025-01-01\\' AND fecha < \\'2026-01-01\\')'}</Text>. Se pasa como <Text code>{'filters: {date: "..."}'}</Text> en el objeto de capa.</li>
+                    <li><Text strong>Anotaciones:</Text> <Text code>LineString</Text>, <Text code>Polygon</Text>, <Text code>Emoji</Text> (<Text code>textLabel: "📍"</Text>), <Text code>Text</Text>. En swipe son globales (ambos lados).</li>
+                    <li><Text strong>Municipios:</Text> <Text code>resolve_municipios("Guadalajara")</Text> → clave, luego <Text code>municipios: {'{source:"iieg", selected:["14039"]}'}</Text>.</li>
+                    <li><Text strong>Flujo típico:</Text> <Text code>search_layers → get_periodicity → resolve_municipios → measure_geometry → create_single_share</Text></li>
+                </ul>
+            </Card>
 
             <McpPlayground />
         </Space>
