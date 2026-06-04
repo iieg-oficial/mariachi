@@ -9,6 +9,21 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.31.0 / admin 1.31.0] - 2026-06-04
+
+### Feat: subida de archivos de formularios SIEEJ por encuesta + bucket `sieej` homologado
+
+Cierra el flujo de subida de archivos de formularios SIEEJ. El bucket Acervo se renombró a `sieej` (migración `a1b2c3d4e5f6`) pero las definiciones de formularios seguían apuntando a `sieej-uploads`/`sieej-diccionarios`, por lo que `POST /formularios/:slug/envio/upload` respondía 500. Además la comparación de vigencia reventaba con `TypeError` (naive vs aware) en formularios con `vigencia_inicio`/`vigencia_fin`.
+
+- **`app/services/sieej/envios_service.py`**: el `object_key` ahora incluye el slug del formulario (`{slug}/envio{id}/{uuid}.{ext}`), para escalar a múltiples encuestas subiendo archivos sobre el mismo bucket `sieej`.
+- **Migración `c2d3e4f5a6b7`**: homologa las definiciones existentes (`sieej-uploads`/`sieej-diccionarios` → `sieej`) en `sieej.formulario.definicion` y `sieej.envio_formulario.definicion_snapshot`.
+- **`app/core/time.py::to_naive_utc`**: normaliza datetimes aware (columnas `timestamptz`) a naive UTC; aplicado en `_formulario_acepta_cambios` y `_expirar_si_corresponde` para evitar el `TypeError` 500 al aceptar cambios.
+- **Seed `b5c6d7e8f9aa`** y placeholder del constructor visual (`FieldDrawer.jsx`) usan `sieej`, para que las futuras encuestas no nazcan apuntando a un bucket inexistente.
+
+Se libera en paralelo con SIEEJ `1.15.0` (fix del Dragger que conserva la respuesta del backend). Ver `sieej/docs/CHANGELOG.md` §[1.15.0].
+
+---
+
 ## [api 1.30.0 / admin 1.30.0] - 2026-06-04
 
 ### Feat: temas más vistos desde theme_change
