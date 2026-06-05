@@ -104,7 +104,7 @@ export default function McpTopic() {
             <Card title="Guía rápida para agentes" size="small" style={{ marginTop: 0 }}>
                 <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13 }}>
                     <li><Text strong>Basemaps:</Text> <Text code>voyager</Text> (recomendado) o <Text code>position</Text>. No usar <Text code>osm</Text>.</li>
-                    <li><Text strong>Filtros de fecha:</Text> obtener años con <Text code>get_periodicity</Text>, luego CQL: <Text code>{'(fecha >= \\'2025-01-01\\' AND fecha < \\'2026-01-01\\')'}</Text>. Se pasa como <Text code>{'filters: {date: "..."}'}</Text> en el objeto de capa.</li>
+                    <li><Text strong>Filtros de fecha:</Text> obtener años con <Text code>get_periodicity</Text>, luego CQL: <Text code>{'(fecha >= \'2025-01-01\' AND fecha < \'2026-01-01\')'}</Text>. Se pasa como <Text code>{'filters: {date: "..."}'}</Text> en el objeto de capa.</li>
                     <li><Text strong>Anotaciones:</Text> <Text code>LineString</Text>, <Text code>Polygon</Text>, <Text code>Emoji</Text> (<Text code>textLabel: "📍"</Text>), <Text code>Text</Text>. En swipe son globales (ambos lados).</li>
                     <li><Text strong>Municipios:</Text> <Text code>resolve_municipios("Guadalajara")</Text> → clave, luego <Text code>municipios: {'{source:"iieg", selected:["14039"]}'}</Text>.</li>
                     <li><Text strong>Flujo típico:</Text> <Text code>search_layers → get_periodicity → resolve_municipios → measure_geometry → create_single_share</Text></li>
