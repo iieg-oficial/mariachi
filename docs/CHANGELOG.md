@@ -9,6 +9,25 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.32.0 / admin 1.32.0] - 2026-06-05
+
+### Feat: mover capas entre temas/categorías desde el árbol de capas
+
+Agrega la capacidad de reasignar el padre de una capa, categoría o grupo sin tener que recrearla. Antes solo la creación permitía elegir el padre (`LayerCreateModal`); la edición no exponía `parentId` y `reorder` solo ordenaba hermanas dentro del mismo padre, por lo que un nodo que quedaba en la raíz del árbol no se podía regresar a su tema desde la interfaz.
+
+- **`admin/.../pages/LayerEditPage.jsx`**: nuevo botón "Mover" (solo admin) en la barra de acciones del nodo seleccionado, que abre el modal de movimiento y al confirmar hace `PUT /layers/:id` con el nuevo `parentId` y recarga el árbol.
+- **`admin/.../components/LayerMoveModal.jsx`** (nuevo): `TreeSelect` de destino con opción "raíz"; excluye el propio subárbol para impedir mover un nodo dentro de sí mismo.
+- **`admin/.../utils/treeSelect.js`** (nuevo): helpers `buildTreeSelectData` y `buildMoveTreeData` reutilizados por `LayerCreateModal` y `LayerMoveModal`.
+- **`app/services/layer_service.py::update_layer`**: al cambiar `parent_id` valida que el destino exista, que no sea el propio nodo ni un descendiente (CTE recursivo `_collect_descendant_ids`, evita ciclos) y recalcula `sort_order` al final de las hermanas del destino. El `PUT` ya dispara `notify_tree_changed()`, por lo que la caché del visor se refresca sola.
+
+### UX: la pantalla de Actividad muestra el nombre del usuario y acciones legibles
+
+El audit log (`GET /actividad`) solo devolvía `actor_id`, así que la tabla mostraba `#3`, el código crudo de la acción (`sieej.formulario.update`) y la metadata como JSON.
+
+- **`app/api/routes/actividad.py`**: la consulta hace `LEFT JOIN` con `usuarios` y devuelve `actor_name`, `actor_username` y `actor_avatar_url`.
+- **`admin/.../actividad/pages/ActividadPage.jsx`**: la columna "Usuario" muestra avatar + nombre + `@username` + rol (o "Sistema" si no hay actor); la acción se muestra como etiqueta legible (con el código en el tooltip), el recurso traducido y la metadata como pares `clave: valor` legibles más la IP. Se agregan filtros por prefijo de Reportes, Colibrí, Eventos y Home.
+- **`admin/.../actividad/constants.js`** (nuevo): catálogos de etiquetas (`ACTION_LABELS`, `RESOURCE_LABELS`, `META_KEY_LABELS`) y helpers, reutilizables y para mantener el componente bajo el límite de líneas del lint.
+
 ## [api 1.31.0 / admin 1.31.0] - 2026-06-04
 
 ### Feat: subida de archivos de formularios SIEEJ por encuesta + bucket `sieej` homologado
