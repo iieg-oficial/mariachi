@@ -26,8 +26,17 @@ Atiende hallazgos del documento de pruebas del tester (casos L4 y de envío de C
 
 - **`app/api/routes/auth.py`**: el login (éxito/fallo) y el logout ahora registran en `actividad_log` (`login.success`, `login.failed`, `login.logout`) con actor, rol e IP. Antes solo escribían al logger de aplicación, por lo que el filtro `Login (login.*)` de la interfaz de Actividad salía vacío. Cada registro va protegido con `try/except` para no afectar la autenticación si el log falla.
 - **`app/services/sieej/datos_validator.py`**: `_compilar_pattern` normaliza el `validation.pattern` estilo JS (`/cuerpo/flags`) quitando los delimitadores `/.../` antes de `re.match`. Antes, `re.match("/^...$/", value)` interpretaba el `/` inicial como literal y rechazaba **toda** entrada (p. ej. CURPs válidas). El regex de CURP de las definiciones ya era correcto; el formato de 18 caracteres no cambió (lo nuevo en 2025-2026 es la CURP biométrica, no el algoritmo).
+- **`app/services/sieej/envios_service.py`**: `upload_archivo` ahora valida el archivo recibido contra la definición del campo — rechaza con `413` si excede `maxSizeMB` y con `415` si la extensión/MIME no está en `accept` (defense-in-depth; antes solo validaba el frontend). Helpers `_field_para_path` y `_formato_permitido`.
 
-Se libera en paralelo con SIEEJ `1.15.0` (fix del Dragger que conserva la respuesta del backend). Ver `sieej/docs/CHANGELOG.md` §[1.15.0].
+### UX: ajustes del panel admin (hallazgos del tester)
+
+- **`sieej-formularios/pages/GruposPage.jsx`**: el botón "Nuevo grupo" enfoca el campo Nombre (antes no daba feedback visible porque el formulario inline siempre está presente).
+- **`users/components/UserCard.jsx`** y **`sieej-formularios/components/FormularioCard.jsx`**: `body { flex: 1 }` para que el footer de acciones quede alineado al fondo en tarjetas de distinto alto.
+- **`users/pages/UsersPage.jsx`**: `handleEdit` hace `resetFields()` antes de `setFieldsValue`, evitando que el modal arrastre los `project_assignments` del usuario abierto previamente (`setFieldsValue` hace merge, no reemplazo).
+- **`actividad/pages/ActividadPage.jsx`**: la paginación muestra el rango actual (`X–Y de N eventos`) en vez de solo el total.
+- **`auth/pages/LoginPage.jsx`**: el identificador elimina todos los espacios (`replace(/\s/g, '')`), no solo los de los extremos (`trim`).
+
+Se libera en paralelo con SIEEJ `1.15.0` (fix del Dragger + login sin espacios). Ver `sieej/docs/CHANGELOG.md` §[1.15.0].
 
 ---
 
