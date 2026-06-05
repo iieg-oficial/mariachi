@@ -55,6 +55,8 @@ export default function LayerEditPage() {
         error: treeError,
         reload,
         optimisticMoveParent,
+        optimisticReorderChildren,
+        reorderLayers,
         deleteLayer,
         restoreLayer,
         purgeLayer,
@@ -467,6 +469,15 @@ export default function LayerEditPage() {
             throw err;
         }
     };
+
+    const handleReorder = useCallback(async (parentId, orderedIds) => {
+        optimisticReorderChildren(parentId, orderedIds);
+        try {
+            await reorderLayers(parentId, orderedIds);
+        } catch (err) {
+            message.error(err?.response?.data?.detail || 'Error al reordenar');
+        }
+    }, [optimisticReorderChildren, reorderLayers]);
 
     const actionButtons = layerId && (
         <Space size={4} wrap>
@@ -1049,6 +1060,7 @@ export default function LayerEditPage() {
                                         onCreate={createLayer}
                                         isAdmin={isAdmin}
                                         onBulkTagsClick={() => setBulkTagsOpen(true)}
+                                        onReorder={isAdmin ? handleReorder : null}
                                         editorContent={layerId && !selectedEventoKey ? editorBody : null}
                                         actionButtons={layerId && !selectedEventoKey ? actionButtons : null}
                                     />
@@ -1076,6 +1088,7 @@ export default function LayerEditPage() {
                                         selectedKey={selectedEventoKey}
                                         onSelect={handleSelectFromTree}
                                         isAdmin={false}
+                                        onReorder={null}
                                     />
                                 ),
                             },

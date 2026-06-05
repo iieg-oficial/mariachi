@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import api from '@shared/services/api';
+import { optimisticMoveRawTree, optimisticReorderRawTree } from '@features/mapalab-layers/utils/treeOptimistic';
 
 
 const toAntTreeData = (nodes, parentNodeType = null) =>
@@ -249,47 +250,18 @@ export const useLayerTreeAdmin = () => {
 
     const optimisticMoveParent = useCallback((layerId, newParentId) => {
         setRawTree(prev => {
-            const clone = JSON.parse(JSON.stringify(prev));
+            const result = optimisticMoveRawTree(prev, layerId, newParentId);
+            if (!result) return prev;
+            setTreeData(toAntTreeData(result));
+            return result;
+        });
+    }, []);
 
-            let movedNode = null;
-
-            const extractNode = (children) => {
-                for (let i = 0; i < children.length; i++) {
-                    if (children[i].id === layerId) {
-                        return children.splice(i, 1)[0];
-                    }
-                    if (children[i].children?.length) {
-                        const found = extractNode(children[i].children);
-                        if (found) return found;
-                    }
-                }
-                return null;
-            };
-
-            movedNode = extractNode(clone);
-            if (!movedNode) return prev;
-
-            movedNode.parent_id = newParentId ?? null;
-
-            if (!newParentId) {
-                clone.push(movedNode);
-            } else {
-                const addToParent = (children) => {
-                    for (const node of children) {
-                        if (node.id === newParentId) {
-                            if (!node.children) node.children = [];
-                            node.children.push(movedNode);
-                            return true;
-                        }
-                        if (node.children?.length && addToParent(node.children)) return true;
-                    }
-                    return false;
-                };
-                if (!addToParent(clone)) return prev;
-            }
-
-            setTreeData(toAntTreeData(clone));
-            return clone;
+    const optimisticReorderChildren = useCallback((parentId, orderedIds) => {
+        setRawTree(prev => {
+            const result = optimisticReorderRawTree(prev, parentId, orderedIds);
+            setTreeData(toAntTreeData(result));
+            return result;
         });
     }, []);
 
@@ -310,6 +282,7 @@ export const useLayerTreeAdmin = () => {
         error,
         reload,
         optimisticMoveParent,
+        optimisticReorderChildren,
         getLayer,
         createLayer,
         updateLayer,

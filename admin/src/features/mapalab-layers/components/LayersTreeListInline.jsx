@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Empty, Grid, Input, Space, Spin, Tooltip } from 'antd';
-import { InfoCircleOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, TagsOutlined } from '@ant-design/icons';
+import { HolderOutlined, InfoCircleOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, TagsOutlined } from '@ant-design/icons';
+import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
+import { SortableContext, arrayMove, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import LayerCreateModal from '@features/mapalab-layers/components/LayerCreateModal';
-import LayersTreeBranch from './LayersTreeBranch';
+import LayersTreeBranch, { SortableTreeBranch } from './LayersTreeBranch';
 
 const { useBreakpoint } = Grid;
 
@@ -60,6 +63,7 @@ export default function LayersTreeListInline({
     onCreate,
     isAdmin = false,
     onBulkTagsClick,
+    onReorder,
     editorContent,
     actionButtons,
 }) {
@@ -69,12 +73,28 @@ export default function LayersTreeListInline({
     const [expanded, setExpanded] = useState(() => loadExpanded());
     const [createOpen, setCreateOpen] = useState(false);
     const [editorOpen, setEditorOpen] = useState(true);
+    const [reorderDragEnabled, setReorderDragEnabled] = useState(false);
 
     useEffect(() => { setEditorOpen(true); }, [selectedKey]);
 
     const toggleEditor = useCallback(() => setEditorOpen((v) => !v), []);
 
     const visibleTree = useMemo(() => filterTree(treeData, q), [treeData, q]);
+
+    const rootSensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    );
+
+    const handleRootDragEnd = useCallback((event) => {
+        const { active, over } = event;
+        if (!over || active.id === over.id) return;
+        const oldIndex = visibleTree.findIndex((n) => n.key === active.id);
+        const newIndex = visibleTree.findIndex((n) => n.key === over.id);
+        if (oldIndex < 0 || newIndex < 0) return;
+        const reordered = arrayMove(visibleTree, oldIndex, newIndex);
+        onReorder?.(null, reordered.map((n) => n.key));
+    }, [visibleTree, onReorder]);
 
     useEffect(() => {
         if (q) {
@@ -119,10 +139,20 @@ export default function LayersTreeListInline({
                 {isAdmin && onBulkTagsClick && (
                     <Button size="small" icon={<TagsOutlined />} onClick={onBulkTagsClick}>Etiquetas en lote</Button>
                 )}
+                {isAdmin && onReorder && (
+                    <Button
+                        size="small"
+                        icon={<HolderOutlined />}
+                        type={reorderDragEnabled ? 'primary' : 'default'}
+                        onClick={() => setReorderDragEnabled((v) => !v)}
+                    >
+                        Reordenar
+                    </Button>
+                )}
                 {onReload && (
                     <Button size="small" icon={<ReloadOutlined />} onClick={onReload}>Recargar</Button>
                 )}
-                <Tooltip title="Click sobre un nodo lo selecciona y abre el editor inline debajo. Click sobre el triángulo lo expande sin abrir el editor.">
+                <Tooltip title="Click sobre un nodo lo selecciona y abre el editor inline debajo. Click sobre el triangulo lo expande sin abrir el editor.">
                     <Button size="small" icon={<InfoCircleOutlined />} aria-label="Ayuda" />
                 </Tooltip>
             </Space>
@@ -132,6 +162,29 @@ export default function LayersTreeListInline({
                     <div style={{ textAlign: 'center', padding: 24 }}><Spin /></div>
                 ) : visibleTree.length === 0 ? (
                     <Empty description="Sin resultados" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+                ) : reorderDragEnabled && onReorder ? (
+                    <DndContext sensors={rootSensors} collisionDetection={closestCenter} onDragEnd={handleRootDragEnd}>
+                        <SortableContext items={visibleTree.map((n) => n.key)} strategy={verticalListSortingStrategy}>
+                            {visibleTree.map((node) => (
+                                <SortableTreeBranch
+                                    key={node.key}
+                                    node={node}
+                                    depth={0}
+                                    expanded={expanded}
+                                    selectedKey={selectedKey}
+                                    editorOpen={editorOpen}
+                                    editorContent={editorContent}
+                                    actionButtons={actionButtons}
+                                    isMobile={isMobile}
+                                    toggleExpanded={toggleExpanded}
+                                    onSelect={onSelect}
+                                    onToggleEditor={toggleEditor}
+                                    enableDrag={reorderDragEnabled}
+                                    onReorder={onReorder}
+                                />
+                            ))}
+                        </SortableContext>
+                    </DndContext>
                 ) : (
                     visibleTree.map((node) => (
                         <LayersTreeBranch
