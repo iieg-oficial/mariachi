@@ -1,10 +1,10 @@
 import { Empty, Spin, Typography } from 'antd';
-import { FolderOpenOutlined } from '@ant-design/icons';
+import { FolderOpenOutlined, FolderOutlined } from '@ant-design/icons';
 
 const { Text } = Typography;
 const IMAGE_EXTENSIONS = /\.(jpe?g|png|gif|webp|svg|bmp|avif)$/i;
 
-export default function BucketFileGrid({ records, loading, onPick }) {
+export default function BucketFileGrid({ records, loading, onPick, onEnterDir }) {
     if (loading) {
         return (
             <div style={{ display: 'flex', justifyContent: 'center', padding: 48 }}>
@@ -29,17 +29,19 @@ export default function BucketFileGrid({ records, loading, onPick }) {
             padding: '12px 0',
         }}>
             {records.map((record) => {
-                const basename = record.name.split('/').pop();
-                const isImage = IMAGE_EXTENSIONS.test(basename);
+                const basename = record.originalName || record.name.split('/').pop();
+                const isDir = record.isDir;
+                const isImage = !isDir && IMAGE_EXTENSIONS.test(basename);
+                const handleClick = isDir && onEnterDir ? () => onEnterDir(record) : () => onPick(record);
                 return (
                     <button
-                        key={record.name}
+                        key={record.name || record.id}
                         type="button"
-                        onClick={() => onPick(record)}
+                        onClick={handleClick}
                         style={{
                             border: '1px solid #f0f0f0',
                             borderRadius: 8,
-                            background: '#fff',
+                            background: isDir ? '#FFF2E5' : '#fff',
                             padding: 8,
                             cursor: 'pointer',
                             display: 'flex',
@@ -49,7 +51,7 @@ export default function BucketFileGrid({ records, loading, onPick }) {
                             transition: 'border-color .15s, box-shadow .15s',
                         }}
                         onMouseEnter={(e) => {
-                            e.currentTarget.style.borderColor = '#1890ff';
+                            e.currentTarget.style.borderColor = isDir ? '#FF8300' : '#1890ff';
                             e.currentTarget.style.boxShadow = '0 2px 8px rgba(24,144,255,0.15)';
                         }}
                         onMouseLeave={(e) => {
@@ -60,14 +62,16 @@ export default function BucketFileGrid({ records, loading, onPick }) {
                         <div style={{
                             width: '100%',
                             aspectRatio: '1 / 1',
-                            background: '#fafafa',
+                            background: isDir ? '#FFF2E5' : '#fafafa',
                             borderRadius: 6,
                             overflow: 'hidden',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                         }}>
-                            {isImage && record.url ? (
+                            {isDir ? (
+                                <FolderOutlined style={{ fontSize: 40, color: '#FF8300' }} />
+                            ) : isImage && record.url ? (
                                 <img
                                     src={record.url}
                                     alt={basename}
@@ -78,8 +82,8 @@ export default function BucketFileGrid({ records, loading, onPick }) {
                                 <FolderOpenOutlined style={{ fontSize: 32, color: '#bfbfbf' }} />
                             )}
                         </div>
-                        <Text style={{ fontSize: 11, textAlign: 'center', wordBreak: 'break-all' }} ellipsis={{ tooltip: basename }}>
-                            {basename}
+                        <Text style={{ fontSize: 11, textAlign: 'center', wordBreak: 'break-all', color: isDir ? '#5C2472' : undefined }} ellipsis={{ tooltip: basename }}>
+                            {isDir ? `📁 ${basename}` : basename}
                         </Text>
                     </button>
                 );
