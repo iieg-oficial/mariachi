@@ -204,7 +204,7 @@ export default function ActividadPage() {
                             total={total}
                             onChange={setPage}
                             showSizeChanger={false}
-                            showTotal={(t) => `Total ${t} eventos`}
+                            showTotal={(t, range) => `${range[0]}–${range[1]} de ${t} eventos`}
                             simple={isMobile}
                         />
                     </div>

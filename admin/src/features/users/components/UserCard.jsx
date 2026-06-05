@@ -62,7 +62,7 @@ const UserCard = ({ user, onEdit, onResetPassword, onDelete, isSelf }) => {
             hoverable
             onClick={onEdit}
             actions={actions}
-            styles={{ body: { padding: 16 } }}
+            styles={{ body: { padding: 16, flex: 1 } }}
             style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
         >
             <Space align="start" size={12} style={{ width: '100%' }}>
