@@ -70,7 +70,7 @@ const FormularioCard = ({
             hoverable
             onClick={onEditar}
             actions={actions}
-            styles={{ body: { padding: 16 } }}
+            styles={{ body: { padding: 16, flex: 1 } }}
             style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
         >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, marginBottom: 8 }}>

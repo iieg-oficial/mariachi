@@ -5,6 +5,7 @@ import DeleteLayerModal from '@features/mapalab-layers/components/DeleteLayerMod
 import DeletedLayersList from '@features/mapalab-layers/components/DeletedLayersList';
 import LayersTreeListInline from '@features/mapalab-layers/components/LayersTreeListInline';
 import LayerContentDrawer from '@features/mapalab-layers/components/LayerContentDrawer';
+import LayerMoveModal from '@features/mapalab-layers/components/LayerMoveModal';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
 import useIsMobile from '@shared/hooks/useIsMobile';
@@ -53,6 +54,7 @@ export default function LayerEditPage() {
         loading: treeLoading,
         error: treeError,
         reload,
+        optimisticMoveParent,
         deleteLayer,
         restoreLayer,
         purgeLayer,
@@ -87,6 +89,7 @@ export default function LayerEditPage() {
     const [highlightSettingsOpen, setHighlightSettingsOpen] = useState(false);
     const [eventoLayerId, setEventoLayerId] = useState(null);
 
+    const [moveOpen, setMoveOpen] = useState(false);
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [deleteReferences, setDeleteReferences] = useState(null);
     const [deleteReferencesLoading, setDeleteReferencesLoading] = useState(false);
@@ -451,8 +454,34 @@ export default function LayerEditPage() {
 
     const saveDisabled = loading || Boolean(loadError) || !layer;
     const deleteDisabled = loading || Boolean(loadError) || !layer || Boolean(layer?.deletedAt);
+    const moveDisabled = loading || Boolean(loadError) || !layer || Boolean(layer?.deletedAt);
+
+    const handleMove = async (parentId) => {
+        try {
+            await updateLayer(layerId, { parentId });
+            message.success('Capa movida');
+            optimisticMoveParent(layerId, parentId);
+            setReloadKey(k => k + 1);
+        } catch (err) {
+            message.error(err?.response?.data?.detail || 'Error al mover la capa');
+            throw err;
+        }
+    };
+
     const actionButtons = layerId && (
         <Space size={4} wrap>
+            {isAdmin && (
+                <Tooltip title="Mover esta capa a otro tema o categoría">
+                    <Button
+                        size="small"
+                        icon={<PartitionOutlined />}
+                        disabled={moveDisabled}
+                        onClick={() => setMoveOpen(true)}
+                    >
+                        Mover
+                    </Button>
+                </Tooltip>
+            )}
             <Tooltip title={isAdmin ? 'Archivar capa (soft delete)' : 'Solicitar archivado a un admin'}>
                 <Button
                     danger
@@ -1097,6 +1126,15 @@ export default function LayerEditPage() {
                 onConfirmAdmin={handleDeleteAdmin}
                 onConfirmEditor={handleDeleteEditor}
                 submitting={deleting}
+            />
+            <LayerMoveModal
+                open={moveOpen}
+                onClose={() => setMoveOpen(false)}
+                onSubmit={handleMove}
+                treeData={treeData}
+                layerId={layerId}
+                layerLabel={layer?.label}
+                currentParentId={layer?.parentId ?? null}
             />
         </div>
     );

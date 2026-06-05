@@ -168,7 +168,7 @@ export default function FieldDrawer({
                 {showFile && (
                     <>
                         <Form.Item label="Bucket Acervo" name="bucket" rules={[{ required: true }]}>
-                            <Input placeholder="sieej-uploads" />
+                            <Input placeholder="sieej" />
                         </Form.Item>
                         <Form.Item label="Extensiones aceptadas (coma)" name="accept">
                             <Input placeholder=".pdf,.csv,.xlsx" />

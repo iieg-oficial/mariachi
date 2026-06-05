@@ -9,6 +9,56 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.32.0 / admin 1.32.0] - 2026-06-05
+
+### Feat: mover capas entre temas/categorías desde el árbol de capas
+
+Agrega la capacidad de reasignar el padre de una capa, categoría o grupo sin tener que recrearla. Antes solo la creación permitía elegir el padre (`LayerCreateModal`); la edición no exponía `parentId` y `reorder` solo ordenaba hermanas dentro del mismo padre, por lo que un nodo que quedaba en la raíz del árbol no se podía regresar a su tema desde la interfaz.
+
+- **`admin/.../pages/LayerEditPage.jsx`**: nuevo botón "Mover" (solo admin) en la barra de acciones del nodo seleccionado, que abre el modal de movimiento y al confirmar hace `PUT /layers/:id` con el nuevo `parentId` y recarga el árbol.
+- **`admin/.../components/LayerMoveModal.jsx`** (nuevo): `TreeSelect` de destino con opción "raíz"; excluye el propio subárbol para impedir mover un nodo dentro de sí mismo.
+- **`admin/.../utils/treeSelect.js`** (nuevo): helpers `buildTreeSelectData` y `buildMoveTreeData` reutilizados por `LayerCreateModal` y `LayerMoveModal`.
+- **`app/services/layer_service.py::update_layer`**: al cambiar `parent_id` valida que el destino exista, que no sea el propio nodo ni un descendiente (CTE recursivo `_collect_descendant_ids`, evita ciclos) y recalcula `sort_order` al final de las hermanas del destino. El `PUT` ya dispara `notify_tree_changed()`, por lo que la caché del visor se refresca sola.
+
+### UX: la pantalla de Actividad muestra el nombre del usuario y acciones legibles
+
+El audit log (`GET /actividad`) solo devolvía `actor_id`, así que la tabla mostraba `#3`, el código crudo de la acción (`sieej.formulario.update`) y la metadata como JSON.
+
+- **`app/api/routes/actividad.py`**: la consulta hace `LEFT JOIN` con `usuarios` y devuelve `actor_name`, `actor_username` y `actor_avatar_url`.
+- **`admin/.../actividad/pages/ActividadPage.jsx`**: la columna "Usuario" muestra avatar + nombre + `@username` + rol (o "Sistema" si no hay actor); la acción se muestra como etiqueta legible (con el código en el tooltip), el recurso traducido y la metadata como pares `clave: valor` legibles más la IP. Se agregan filtros por prefijo de Reportes, Colibrí, Eventos y Home.
+- **`admin/.../actividad/constants.js`** (nuevo): catálogos de etiquetas (`ACTION_LABELS`, `RESOURCE_LABELS`, `META_KEY_LABELS`) y helpers, reutilizables y para mantener el componente bajo el límite de líneas del lint.
+
+## [api 1.31.0 / admin 1.31.0] - 2026-06-04
+
+### Feat: subida de archivos de formularios SIEEJ por encuesta + bucket `sieej` homologado
+
+Cierra el flujo de subida de archivos de formularios SIEEJ. El bucket Acervo se renombró a `sieej` (migración `a1b2c3d4e5f6`) pero las definiciones de formularios seguían apuntando a `sieej-uploads`/`sieej-diccionarios`, por lo que `POST /formularios/:slug/envio/upload` respondía 500. Además la comparación de vigencia reventaba con `TypeError` (naive vs aware) en formularios con `vigencia_inicio`/`vigencia_fin`.
+
+- **`app/services/sieej/envios_service.py`**: el `object_key` ahora incluye el slug del formulario (`{slug}/envio{id}/{uuid}.{ext}`), para escalar a múltiples encuestas subiendo archivos sobre el mismo bucket `sieej`.
+- **Migración `c2d3e4f5a6b7`**: homologa las definiciones existentes (`sieej-uploads`/`sieej-diccionarios` → `sieej`) en `sieej.formulario.definicion` y `sieej.envio_formulario.definicion_snapshot`.
+- **`app/core/time.py::to_naive_utc`**: normaliza datetimes aware (columnas `timestamptz`) a naive UTC; aplicado en `_formulario_acepta_cambios` y `_expirar_si_corresponde` para evitar el `TypeError` 500 al aceptar cambios.
+- **Seed `b5c6d7e8f9aa`** y placeholder del constructor visual (`FieldDrawer.jsx`) usan `sieej`, para que las futuras encuestas no nazcan apuntando a un bucket inexistente.
+
+### Fix: logs de inicio de sesión y normalización de `pattern` en la validación
+
+Atiende hallazgos del documento de pruebas del tester (casos L4 y de envío de CURP).
+
+- **`app/api/routes/auth.py`**: el login (éxito/fallo) y el logout ahora registran en `actividad_log` (`login.success`, `login.failed`, `login.logout`) con actor, rol e IP. Antes solo escribían al logger de aplicación, por lo que el filtro `Login (login.*)` de la interfaz de Actividad salía vacío. Cada registro va protegido con `try/except` para no afectar la autenticación si el log falla.
+- **`app/services/sieej/datos_validator.py`**: `_compilar_pattern` normaliza el `validation.pattern` estilo JS (`/cuerpo/flags`) quitando los delimitadores `/.../` antes de `re.match`. Antes, `re.match("/^...$/", value)` interpretaba el `/` inicial como literal y rechazaba **toda** entrada (p. ej. CURPs válidas). El regex de CURP de las definiciones ya era correcto; el formato de 18 caracteres no cambió (lo nuevo en 2025-2026 es la CURP biométrica, no el algoritmo).
+- **`app/services/sieej/envios_service.py`**: `upload_archivo` ahora valida el archivo recibido contra la definición del campo — rechaza con `413` si excede `maxSizeMB` y con `415` si la extensión/MIME no está en `accept` (defense-in-depth; antes solo validaba el frontend). Helpers `_field_para_path` y `_formato_permitido`.
+
+### UX: ajustes del panel admin (hallazgos del tester)
+
+- **`sieej-formularios/pages/GruposPage.jsx`**: el botón "Nuevo grupo" enfoca el campo Nombre (antes no daba feedback visible porque el formulario inline siempre está presente).
+- **`users/components/UserCard.jsx`** y **`sieej-formularios/components/FormularioCard.jsx`**: `body { flex: 1 }` para que el footer de acciones quede alineado al fondo en tarjetas de distinto alto.
+- **`users/pages/UsersPage.jsx`**: `handleEdit` hace `resetFields()` antes de `setFieldsValue`, evitando que el modal arrastre los `project_assignments` del usuario abierto previamente (`setFieldsValue` hace merge, no reemplazo).
+- **`actividad/pages/ActividadPage.jsx`**: la paginación muestra el rango actual (`X–Y de N eventos`) en vez de solo el total.
+- **`auth/pages/LoginPage.jsx`**: el identificador elimina todos los espacios (`replace(/\s/g, '')`), no solo los de los extremos (`trim`).
+
+Se libera en paralelo con SIEEJ `1.15.0` (fix del Dragger + login sin espacios). Ver `sieej/docs/CHANGELOG.md` §[1.15.0].
+
+---
+
 ## [api 1.30.0 / admin 1.30.0] - 2026-06-04
 
 ### Feat: temas más vistos desde theme_change

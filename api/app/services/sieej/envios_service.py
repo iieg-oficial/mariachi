@@ -20,7 +20,7 @@ from app.api.metrics import (
     COUNTER_SIEEJ_ENVIO_WRITES,
     incr,
 )
-from app.core.time import utcnow
+from app.core.time import to_naive_utc, utcnow
 from app.models.acervo_bucket import AcervoBucket
 from app.models.project import Project
 from app.models.sieej import (
@@ -69,9 +69,11 @@ class EnviosService:
         if formulario.estado != "activo":
             return False
         ahora = utcnow()
-        if formulario.vigencia_inicio and formulario.vigencia_inicio > ahora:
+        vigencia_inicio = to_naive_utc(formulario.vigencia_inicio)
+        vigencia_fin = to_naive_utc(formulario.vigencia_fin)
+        if vigencia_inicio and vigencia_inicio > ahora:
             return False
-        if formulario.vigencia_fin and formulario.vigencia_fin < ahora:
+        if vigencia_fin and vigencia_fin < ahora:
             return False
         return True
 
@@ -101,7 +103,7 @@ class EnviosService:
         if formulario.vigencia_fin is None:
             return False
         ahora = utcnow()
-        if formulario.vigencia_fin >= ahora:
+        if to_naive_utc(formulario.vigencia_fin) >= ahora:
             return False
         _marcar_expirado(envio, self.db, ahora)
         if commit:
@@ -322,12 +324,13 @@ class EnviosService:
                 detail="El envio no acepta cambios",
             )
 
-        bucket_name = self._bucket_para_field(envio.definicion_snapshot, field_path)
-        if bucket_name is None:
+        field_def = self._field_para_path(envio.definicion_snapshot, field_path)
+        if field_def is None or not field_def.get("bucket"):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"field_path '{field_path}' no es un campo `file` valido",
             )
+        bucket_name = field_def["bucket"]
 
         bucket = (
             self.db.query(AcervoBucket)
@@ -349,22 +352,34 @@ class EnviosService:
             if file.filename and "." in file.filename
             else ""
         )
+        size = file.size if getattr(file, "size", None) is not None else None
+
+        max_mb = field_def.get("maxSizeMB")
+        if isinstance(max_mb, (int, float)) and max_mb > 0 and size is not None:
+            if size > int(max_mb * 1024 * 1024):
+                raise HTTPException(
+                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                    detail=f"El archivo excede el limite de {max_mb} MB",
+                )
+
+        accept = field_def.get("accept")
+        if accept and not self._formato_permitido(ext, file.content_type, accept):
+            raise HTTPException(
+                status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+                detail=f"Formato no permitido. Aceptados: {', '.join(accept)}",
+            )
+
         object_key = (
-            f"envio{envio.id}/{uuid.uuid4()}.{ext}"
+            f"{formulario.slug}/envio{envio.id}/{uuid.uuid4()}.{ext}"
             if ext
-            else f"envio{envio.id}/{uuid.uuid4()}"
+            else f"{formulario.slug}/envio{envio.id}/{uuid.uuid4()}"
         )
 
         client = AcervoClient.for_bucket(bucket)
         url = await client.upload_file(file, object_key)
 
-        size = 0
-        if hasattr(file, "size") and file.size is not None:
-            size = file.size
-        else:
-            await file.seek(0, 2)
-            size = await file.tell() if hasattr(file, "tell") else 0
-            await file.seek(0)
+        if size is None:
+            size = 0
 
         archivo = EnvioArchivo(
             envio_id=envio.id,
@@ -392,10 +407,10 @@ class EnviosService:
         self.db.refresh(archivo)
         return archivo
 
-    def _bucket_para_field(
+    def _field_para_path(
         self, definicion: dict[str, Any], field_path: str
-    ) -> str | None:
-        """Resuelve el bucket de un field_path como `step.field` o
+    ) -> dict[str, Any] | None:
+        """Resuelve el campo `file` de un field_path como `step.field` o
         `step[idx].field` (repeater).
         """
         partes = field_path.split(".")
@@ -408,8 +423,35 @@ class EnviosService:
                 continue
             for field in step.get("fields", []):
                 if field.get("name") == field_name and field.get("type") == "file":
-                    return field.get("bucket")
+                    return field
         return None
+
+    def _bucket_para_field(
+        self, definicion: dict[str, Any], field_path: str
+    ) -> str | None:
+        field = self._field_para_path(definicion, field_path)
+        return field.get("bucket") if field else None
+
+    @staticmethod
+    def _formato_permitido(ext: str, mime: str | None, accept: list[str]) -> bool:
+        ext_norm = ("." + ext).lower() if ext else ""
+        mime_norm = (mime or "").lower()
+        for raw in accept:
+            a = str(raw).strip().lower()
+            if not a:
+                continue
+            if a.startswith("."):
+                if ext_norm == a:
+                    return True
+            elif a.endswith("/*"):
+                if mime_norm.startswith(a[:-1]):
+                    return True
+            elif "/" in a:
+                if mime_norm == a:
+                    return True
+            elif ext and ext.lower() == a:
+                return True
+        return False
 
     def _registrar_evento(
         self,

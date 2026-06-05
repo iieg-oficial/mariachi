@@ -5,17 +5,10 @@ import { findNodeContext } from '@features/mapalab-layers/hooks/useLayerTreeAdmi
 import { useAuth } from '@shared/contexts/useAuth';
 import { message } from '@shared/services/message';
 import api from '@shared/services/api';
+import { buildTreeSelectData } from '@features/mapalab-layers/utils/treeSelect';
 import PendingWorkspacesAlert from './PendingWorkspacesAlert';
 
 const { Text } = Typography;
-
-function buildTreeSelectData(nodes) {
-    return (nodes || []).map((n) => ({
-        value: n.key,
-        title: n.title,
-        children: n.children?.length ? buildTreeSelectData(n.children) : undefined,
-    }));
-}
 
 function slugify(text) {
     if (!text) return '';

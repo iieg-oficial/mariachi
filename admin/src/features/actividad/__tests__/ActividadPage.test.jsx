@@ -21,6 +21,9 @@ const sampleItems = [
         id: 100,
         actor_id: 1,
         actor_role: 'tetlamamakani',
+        actor_name: 'Ana Pérez',
+        actor_username: 'ana',
+        actor_avatar_url: null,
         action: 'user.create',
         resource_type: 'usuario',
         resource_id: '5',
@@ -32,6 +35,9 @@ const sampleItems = [
         id: 101,
         actor_id: 1,
         actor_role: 'tetlamamakani',
+        actor_name: 'Ana Pérez',
+        actor_username: 'ana',
+        actor_avatar_url: null,
         action: 'sieej.formulario.update',
         resource_type: 'sieej.formulario',
         resource_id: '12',
@@ -72,15 +78,14 @@ describe('ActividadPage', () => {
         });
     });
 
-    it('renderiza items con accion, actor y recurso', async () => {
+    it('renderiza items con accion legible, nombre del actor y recurso', async () => {
         api.get.mockResolvedValueOnce({ data: { total: 2, items: sampleItems } });
         render(<ActividadPage />);
         await waitFor(() => {
-            expect(screen.getByText('user.create')).toBeInTheDocument();
-            expect(screen.getByText('sieej.formulario.update')).toBeInTheDocument();
-            expect(screen.getByText('usuario#5')).toBeInTheDocument();
-            expect(screen.getByText('sieej.formulario#12')).toBeInTheDocument();
-            expect(screen.getByText('Total 2 eventos')).toBeInTheDocument();
+            expect(screen.getByText('Usuario creado')).toBeInTheDocument();
+            expect(screen.getByText('Formulario SIEEJ actualizado')).toBeInTheDocument();
+            expect(screen.getAllByText('Ana Pérez').length).toBeGreaterThan(0);
+            expect(screen.getByText(/1.2 de 2 eventos/)).toBeInTheDocument();
         });
     });
 

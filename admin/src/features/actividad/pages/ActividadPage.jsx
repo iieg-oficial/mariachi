@@ -1,34 +1,21 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-    Button, Card, Col, DatePicker, Empty, Input, Pagination, Row, Select, Skeleton,
-    Space, Table, Tag, Typography,
+    Avatar, Button, Card, Col, DatePicker, Empty, Input, Pagination, Row, Select, Skeleton,
+    Space, Table, Tag, Tooltip, Typography,
 } from 'antd';
-import { ReloadOutlined, SearchOutlined } from '@ant-design/icons';
+import { ReloadOutlined, SearchOutlined, UserOutlined } from '@ant-design/icons';
 import api from '@shared/services/api';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import { message } from '@shared/services/message';
+import {
+    ACTION_LABELS, ACTION_PREFIXES, META_KEY_LABELS, RESOURCE_LABELS, ROLE_TAG,
+    formatActividadDate, formatMetaValue,
+} from '@features/actividad/constants';
 
 const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
 
-const ROLE_TAG = {
-    tetlamamakani: { color: 'red', label: 'Administradora' },
-    editora: { color: 'blue', label: 'Editora' },
-    externo: { color: 'green', label: 'Externo' },
-};
-
-const ACTION_PREFIXES = [
-    { value: 'user.', label: 'Usuarios (user.*)' },
-    { value: 'sieej.', label: 'SIEEJ (sieej.*)' },
-    { value: 'login.', label: 'Login (login.*)' },
-];
-
 const PAGE_SIZE = 50;
-
-const formatDate = (iso) => {
-    if (!iso) return '—';
-    return new Date(iso).toLocaleString('es-MX');
-};
 
 export default function ActividadPage() {
     const { isMobile } = useIsMobile();
@@ -76,48 +63,86 @@ export default function ActividadPage() {
             title: 'Fecha',
             dataIndex: 'created_at',
             key: 'created_at',
-            render: formatDate,
+            render: formatActividadDate,
             width: 180,
         },
         {
-            title: 'Actor',
+            title: 'Usuario',
             key: 'actor',
             render: (_, row) => {
                 const role = ROLE_TAG[row.actor_role];
+                if (!row.actor_id) {
+                    return <Text type="secondary">Sistema</Text>;
+                }
+                const displayName = row.actor_name || row.actor_username || `#${row.actor_id}`;
                 return (
-                    <Space size={6}>
-                        <Text code>#{row.actor_id ?? '—'}</Text>
-                        {role && <Tag color={role.color}>{role.label}</Tag>}
+                    <Space size={8}>
+                        <Avatar size="small" src={row.actor_avatar_url} icon={<UserOutlined />} />
+                        <Space direction="vertical" size={0}>
+                            <Space size={6}>
+                                <Text strong style={{ fontSize: 13 }}>{displayName}</Text>
+                                {role && <Tag color={role.color} style={{ marginInlineEnd: 0 }}>{role.label}</Tag>}
+                            </Space>
+                            {row.actor_username && row.actor_name && (
+                                <Text type="secondary" style={{ fontSize: 11 }}>@{row.actor_username}</Text>
+                            )}
+                        </Space>
                     </Space>
                 );
             },
-            width: 180,
+            width: 240,
         },
         {
             title: 'Accion',
             dataIndex: 'action',
             key: 'action',
-            render: (a) => <Text code style={{ fontSize: 12 }}>{a}</Text>,
-            width: 240,
+            render: (a) => {
+                const meta = ACTION_LABELS[a];
+                if (!meta) return <Text code style={{ fontSize: 12 }}>{a}</Text>;
+                return (
+                    <Tooltip title={a}>
+                        <Tag color={meta.color}>{meta.text}</Tag>
+                    </Tooltip>
+                );
+            },
+            width: 220,
         },
         {
             title: 'Recurso',
             key: 'recurso',
-            render: (_, row) => row.resource_type
-                ? <Text type="secondary" style={{ fontSize: 12 }}>{row.resource_type}#{row.resource_id ?? '—'}</Text>
-                : <Text type="secondary">—</Text>,
-            width: 200,
+            render: (_, row) => {
+                if (!row.resource_type) return <Text type="secondary">—</Text>;
+                const label = RESOURCE_LABELS[row.resource_type] || row.resource_type;
+                return (
+                    <Text style={{ fontSize: 12 }}>
+                        {label}
+                        {row.resource_id != null && (
+                            <Text type="secondary"> #{row.resource_id}</Text>
+                        )}
+                    </Text>
+                );
+            },
+            width: 180,
         },
         {
-            title: 'Metadata',
+            title: 'Detalle',
             dataIndex: 'metadata',
             key: 'metadata',
-            render: (m) => {
-                if (!m || Object.keys(m).length === 0) return <Text type="secondary">—</Text>;
+            render: (m, row) => {
+                const entries = m ? Object.entries(m) : [];
+                if (entries.length === 0 && !row.ip) return <Text type="secondary">—</Text>;
                 return (
-                    <Text style={{ fontSize: 11, fontFamily: 'monospace' }} ellipsis>
-                        {JSON.stringify(m)}
-                    </Text>
+                    <Space direction="vertical" size={2}>
+                        {entries.map(([k, v]) => (
+                            <Text key={k} style={{ fontSize: 12 }}>
+                                <Text type="secondary">{META_KEY_LABELS[k] || k}:</Text>{' '}
+                                {formatMetaValue(v)}
+                            </Text>
+                        ))}
+                        {row.ip && (
+                            <Text type="secondary" style={{ fontSize: 11 }}>IP: {row.ip}</Text>
+                        )}
+                    </Space>
                 );
             },
         },
@@ -204,7 +229,7 @@ export default function ActividadPage() {
                             total={total}
                             onChange={setPage}
                             showSizeChanger={false}
-                            showTotal={(t) => `Total ${t} eventos`}
+                            showTotal={(t, range) => `${range[0]}–${range[1]} de ${t} eventos`}
                             simple={isMobile}
                         />
                     </div>

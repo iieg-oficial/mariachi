@@ -105,6 +105,7 @@ export default function Users() {
 
     const handleEdit = (record) => {
         setEditingUser(record);
+        form.resetFields();
         form.setFieldsValue({
             username: record.username,
             name: record.name,

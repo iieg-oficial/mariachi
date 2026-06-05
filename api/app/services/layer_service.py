@@ -285,6 +285,38 @@ def find_or_create_auto_leaf(
     return leaf, True
 
 
+def _collect_descendant_ids(session: Session, root_id: str) -> set[str]:
+    from sqlalchemy import text
+
+    sql = (
+        "WITH RECURSIVE subtree AS ("
+        "  SELECT id FROM mapalab.layers WHERE id = :root "
+        "  UNION ALL "
+        "  SELECT l.id FROM mapalab.layers l JOIN subtree s ON l.parent_id = s.id"
+        ") SELECT id FROM subtree"
+    )
+    return {row[0] for row in session.execute(text(sql), {'root': root_id}).fetchall()}
+
+
+def _apply_parent_change(session: Session, layer: Layer, new_parent_id: str | None, payload: dict) -> None:
+    from sqlalchemy import func
+
+    if new_parent_id == layer.id:
+        raise ValueError('Una capa no puede ser su propio padre')
+    if new_parent_id is not None:
+        parent = session.query(Layer).filter(Layer.id == new_parent_id).first()
+        if parent is None or parent.deleted_at is not None:
+            raise ValueError(f"El destino '{new_parent_id}' no existe")
+        if new_parent_id in _collect_descendant_ids(session, layer.id):
+            raise ValueError('No puedes mover una capa dentro de sí misma o de una de sus subcapas')
+    max_order = (
+        session.query(func.max(Layer.sort_order))
+        .filter(Layer.parent_id == new_parent_id, Layer.id != layer.id)
+        .scalar()
+    )
+    payload['sort_order'] = (max_order + 1) if max_order is not None else 0
+
+
 def update_layer(
     session: Session,
     layer: Layer,
@@ -293,6 +325,9 @@ def update_layer(
     skip_geoserver_validation: bool = False,
 ) -> Layer:
     payload = data.model_dump(exclude_unset=True, by_alias=False)
+
+    if 'parent_id' in payload and payload['parent_id'] != layer.parent_id:
+        _apply_parent_change(session, layer, payload['parent_id'], payload)
 
     new_workspace = payload.get('workspace_alias', layer.workspace_alias)
     new_geoserver_layer = payload.get('geoserver_layer', layer.geoserver_layer)

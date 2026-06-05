@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import {
     Breadcrumb, Button, Card, Drawer, Empty, Form, Input, Modal, Select,
     Space, Spin, Table, Typography,
@@ -18,6 +18,7 @@ export default function GruposPage() {
     const [loading, setLoading] = useState(true);
     const [editing, setEditing] = useState(null);
     const [form] = Form.useForm();
+    const nombreRef = useRef(null);
     const [drawerGrupo, setDrawerGrupo] = useState(null);
     const [usuarios, setUsuarios] = useState([]);
     const [miembros, setMiembros] = useState([]);
@@ -59,6 +60,7 @@ export default function GruposPage() {
     const handleNew = () => {
         setEditing(null);
         form.resetFields();
+        nombreRef.current?.focus();
     };
 
     const handleEdit = (record) => {
@@ -170,7 +172,7 @@ export default function GruposPage() {
             <Card>
                 <Form form={form} layout="inline" onFinish={handleSubmit} style={{ marginBottom: 16 }}>
                     <Form.Item name="nombre" rules={[{ required: true }]}>
-                        <Input placeholder="Nombre del grupo" />
+                        <Input ref={nombreRef} placeholder="Nombre del grupo" />
                     </Form.Item>
                     <Form.Item name="descripcion">
                         <Input placeholder="Descripción (opcional)" />
