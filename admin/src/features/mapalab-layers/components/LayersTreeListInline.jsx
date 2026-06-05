@@ -157,7 +157,7 @@ export default function LayersTreeListInline({
                 </Tooltip>
             </Space>
             {error && <Alert closable type="error" message={error} />}
-            <div style={{ flex: 1, minHeight: 0, overflow: 'auto', border: '1px solid #f0f0f0', borderRadius: 6, background: '#fff' }}>
+            <div style={{ flex: 1, minHeight: 0, overflowY: 'scroll', overflowX: 'auto', border: '1px solid #f0f0f0', borderRadius: 6, background: '#fff' }}>
                 {loading ? (
                     <div style={{ textAlign: 'center', padding: 24 }}><Spin /></div>
                 ) : visibleTree.length === 0 ? (
