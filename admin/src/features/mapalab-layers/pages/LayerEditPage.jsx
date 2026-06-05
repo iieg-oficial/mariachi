@@ -54,6 +54,7 @@ export default function LayerEditPage() {
         loading: treeLoading,
         error: treeError,
         reload,
+        optimisticMoveParent,
         deleteLayer,
         restoreLayer,
         purgeLayer,
@@ -459,7 +460,8 @@ export default function LayerEditPage() {
         try {
             await updateLayer(layerId, { parentId });
             message.success('Capa movida');
-            await reload();
+            optimisticMoveParent(layerId, parentId);
+            setReloadKey(k => k + 1);
         } catch (err) {
             message.error(err?.response?.data?.detail || 'Error al mover la capa');
             throw err;

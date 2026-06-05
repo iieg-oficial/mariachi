@@ -247,6 +247,52 @@ export const useLayerTreeAdmin = () => {
         await api.delete(`/layers/${layerId}/aliases/${encodeURIComponent(alias)}`);
     }, []);
 
+    const optimisticMoveParent = useCallback((layerId, newParentId) => {
+        setRawTree(prev => {
+            const clone = JSON.parse(JSON.stringify(prev));
+
+            let movedNode = null;
+
+            const extractNode = (children) => {
+                for (let i = 0; i < children.length; i++) {
+                    if (children[i].id === layerId) {
+                        return children.splice(i, 1)[0];
+                    }
+                    if (children[i].children?.length) {
+                        const found = extractNode(children[i].children);
+                        if (found) return found;
+                    }
+                }
+                return null;
+            };
+
+            movedNode = extractNode(clone);
+            if (!movedNode) return prev;
+
+            movedNode.parent_id = newParentId ?? null;
+
+            if (!newParentId) {
+                clone.push(movedNode);
+            } else {
+                const addToParent = (children) => {
+                    for (const node of children) {
+                        if (node.id === newParentId) {
+                            if (!node.children) node.children = [];
+                            node.children.push(movedNode);
+                            return true;
+                        }
+                        if (node.children?.length && addToParent(node.children)) return true;
+                    }
+                    return false;
+                };
+                if (!addToParent(clone)) return prev;
+            }
+
+            setTreeData(toAntTreeData(clone));
+            return clone;
+        });
+    }, []);
+
     const suggestSlug = useCallback(async (label) => {
         const res = await api.post('/layers/slugs/suggest', { label });
         return res.data;
@@ -263,6 +309,7 @@ export const useLayerTreeAdmin = () => {
         loading,
         error,
         reload,
+        optimisticMoveParent,
         getLayer,
         createLayer,
         updateLayer,
