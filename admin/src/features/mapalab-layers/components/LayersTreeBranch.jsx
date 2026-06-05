@@ -1,5 +1,8 @@
 import { Tag, Typography } from 'antd';
-import { CaretDownOutlined, CaretRightOutlined, DownOutlined, UpOutlined } from '@ant-design/icons';
+import { CaretDownOutlined, CaretRightOutlined, DownOutlined, HolderOutlined, UpOutlined } from '@ant-design/icons';
+import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
+import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { isPropertyOfGroup, labelForNode } from '@features/mapalab-layers/constants/nodeTypes';
 import { resolveAcervoUrl } from '@shared/utils/acervoUrl';
 
@@ -68,7 +71,7 @@ function TitleBlock({ node, selected, isMobile }) {
     );
 }
 
-function NodeRow({ node, depth, expanded, selected, editorOpen, onToggle, onSelect, onToggleEditor, canShowEditorToggle, actionButtons, isMobile }) {
+function NodeRow({ node, depth, expanded, selected, editorOpen, onToggle, onSelect, onToggleEditor, canShowEditorToggle, actionButtons, isMobile, dragHandle }) {
     const hasChildren = (node.children?.length || 0) > 0;
     const indentStep = isMobile ? 12 : 18;
     const stackOnMobile = isMobile && selected && (actionButtons || canShowEditorToggle);
@@ -126,6 +129,7 @@ function NodeRow({ node, depth, expanded, selected, editorOpen, onToggle, onSele
             {stackOnMobile ? (
                 <>
                     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 6, minWidth: 0 }}>
+                        {dragHandle}
                         {ExpandToggle}
                         <TitleBlock node={node} selected={selected} isMobile={isMobile} />
                     </div>
@@ -133,6 +137,7 @@ function NodeRow({ node, depth, expanded, selected, editorOpen, onToggle, onSele
                 </>
             ) : (
                 <>
+                    {dragHandle}
                     {ExpandToggle}
                     <TitleBlock node={node} selected={selected} isMobile={isMobile} />
                     {ActionsBlock}
@@ -142,10 +147,75 @@ function NodeRow({ node, depth, expanded, selected, editorOpen, onToggle, onSele
     );
 }
 
-export default function LayersTreeBranch({ node, depth, expanded, selectedKey, editorOpen, editorContent, actionButtons, isMobile, toggleExpanded, onSelect, onToggleEditor }) {
+export default function LayersTreeBranch({ node, depth, expanded, selectedKey, editorOpen, editorContent, actionButtons, isMobile, toggleExpanded, onSelect, onToggleEditor, enableDrag, onReorder, dragHandle }) {
     const isExpanded = expanded.has(node.key);
     const isSelected = node.key === selectedKey;
     const canShowEditorToggle = Boolean(editorContent) && isSelected;
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    );
+
+    const handleDragEnd = (event) => {
+        const { active, over } = event;
+        if (!over || active.id === over.id) return;
+        const children = node.children || [];
+        const oldIndex = children.findIndex((c) => c.key === active.id);
+        const newIndex = children.findIndex((c) => c.key === over.id);
+        if (oldIndex < 0 || newIndex < 0) return;
+        const reordered = arrayMove(children, oldIndex, newIndex);
+        onReorder(node.key, reordered.map((c) => c.key));
+    };
+
+    const renderChildren = (children) => {
+        if (!children || children.length === 0) return null;
+        if (!onReorder || !enableDrag) {
+            return children.map((child) => (
+                <LayersTreeBranch
+                    key={child.key}
+                    node={child}
+                    depth={depth + 1}
+                    expanded={expanded}
+                    selectedKey={selectedKey}
+                    editorOpen={editorOpen}
+                    editorContent={editorContent}
+                    actionButtons={actionButtons}
+                    isMobile={isMobile}
+                    toggleExpanded={toggleExpanded}
+                    onSelect={onSelect}
+                    onToggleEditor={onToggleEditor}
+                    enableDrag={enableDrag}
+                    onReorder={onReorder}
+                />
+            ));
+        }
+        return (
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext items={children.map((c) => c.key)} strategy={verticalListSortingStrategy}>
+                    {children.map((child) => (
+                        <SortableTreeBranch
+                            key={child.key}
+                            node={child}
+                            depth={depth + 1}
+                            expanded={expanded}
+                            selectedKey={selectedKey}
+                            editorOpen={editorOpen}
+                            editorContent={editorContent}
+                            actionButtons={actionButtons}
+                            isMobile={isMobile}
+                            toggleExpanded={toggleExpanded}
+                            onSelect={onSelect}
+                            onToggleEditor={onToggleEditor}
+                            enableDrag={enableDrag}
+                            onReorder={onReorder}
+                        />
+                    ))}
+                </SortableContext>
+            </DndContext>
+        );
+    };
+
     return (
         <>
             <NodeRow
@@ -160,28 +230,47 @@ export default function LayersTreeBranch({ node, depth, expanded, selectedKey, e
                 onToggle={toggleExpanded}
                 onSelect={onSelect}
                 onToggleEditor={onToggleEditor}
+                dragHandle={dragHandle}
             />
             {isSelected && editorContent && editorOpen && (
                 <div style={{ borderTop: '1px solid #f0f0f0', borderBottom: '1px solid #f0f0f0', padding: isMobile ? '8px 4px' : '12px 16px' }}>
                     {editorContent}
                 </div>
             )}
-            {isExpanded && node.children?.map((child) => (
-                <LayersTreeBranch
-                    key={child.key}
-                    node={child}
-                    depth={depth + 1}
-                    expanded={expanded}
-                    selectedKey={selectedKey}
-                    editorOpen={editorOpen}
-                    editorContent={editorContent}
-                    actionButtons={actionButtons}
-                    isMobile={isMobile}
-                    toggleExpanded={toggleExpanded}
-                    onSelect={onSelect}
-                    onToggleEditor={onToggleEditor}
-                />
-            ))}
+            {isExpanded && renderChildren(node.children)}
         </>
+    );
+}
+
+export function SortableTreeBranch(props) {
+    const {
+        attributes,
+        listeners,
+        setNodeRef,
+        transform,
+        transition,
+        isDragging,
+    } = useSortable({ id: props.node.key, disabled: !props.enableDrag });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.4 : 1,
+    };
+
+    const dragHandle = props.enableDrag ? (
+        <span
+            {...attributes}
+            {...listeners}
+            style={{ cursor: 'grab', color: '#8c8c8c', fontSize: 14, flexShrink: 0, padding: '0 2px', lineHeight: 0 }}
+        >
+            <HolderOutlined />
+        </span>
+    ) : null;
+
+    return (
+        <div ref={setNodeRef} style={style}>
+            <LayersTreeBranch {...props} dragHandle={dragHandle} />
+        </div>
     );
 }
