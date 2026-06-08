@@ -237,6 +237,7 @@ export default function LayerEditPage() {
             municipioFieldType: data.municipioFieldType ?? data.municipio_field_type ?? data.searchMeta?.municipioFieldType ?? null,
             infoboxConfig: data.infoboxConfig || null,
             iconUrl: data.iconUrl ?? data.icon_url ?? '',
+            iconOverrides: data.iconOverrides ?? null,
             notice: data.notice ?? null,
             highlightColor: data.highlightColor ?? data.highlight_color ?? null,
             highlightShape: data.highlightShape ?? data.highlight_shape ?? null,
@@ -710,8 +711,8 @@ export default function LayerEditPage() {
             children: (
                 <Space orientation="vertical" size="middle" style={{ width: '100%', maxWidth: 720 }}>
                     {watchedNodeType === 'tema' && (
-                        <Card size="small" title="Icono del tema" extra={<Text type="secondary" style={{ fontSize: 11 }}>Aparece en el sider del visor</Text>}>
-                            <Form.Item name="iconUrl" noStyle>
+                        <Card size="small" title="Iconos por estado" extra={<Text type="secondary" style={{ fontSize: 11 }}>Aparece en el sider del visor</Text>}>
+                            <Form.Item name="iconOverrides" noStyle>
                                 <TemaIconField />
                             </Form.Item>
                         </Card>

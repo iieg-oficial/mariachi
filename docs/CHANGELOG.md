@@ -9,6 +9,21 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.33.0 / admin 1.33.0] - 2026-06-08
+
+### Feat: iconos por estado (normal/hover) en temas del sider
+
+Permite definir iconos distintos para cada estado visual de un tema en el sider del visor MapaLab. Antes solo se podía elegir un único `icon_url` estático; ahora se puede asignar una imagen para el estado normal (sider colapsado) y otra para hover/activo (sider expandido o capas activas).
+
+- **`api/app/models/layer.py`**: nueva columna `icon_overrides` (JSONB) en el modelo `Layer`.
+- **`api/app/schemas/layer.py`**: campo `iconOverrides` en `LayerBase` y `LayerUpdate`, con validación `to_relative` por valor y serialización `to_absolute`.
+- **`admin/.../TemaIconField.jsx`**: reescrito con `Segmented` para seleccionar estado (`normal` / `hover`) y previsualizar en vivo. Mantiene el `BucketFilePicker` de Acervo.
+- **`admin/.../LayerEditPage.jsx`**: tab Apariencia para temas usa `Form.Item name="iconOverrides"` en vez de `iconUrl`. La función `populate()` incluye `iconOverrides`.
+
+### Notas de deploy
+
+- **Migración requerida**: `dataengine` 1.21.0 — `mapalab.layers.icon_overrides` (JSONB). Ejecutar `make migrate` desde `/IIEG/dataengine`.
+
 ## [api 1.32.0 / admin 1.32.0] - 2026-06-05
 
 ### Feat: mover capas entre temas/categorías desde el árbol de capas
