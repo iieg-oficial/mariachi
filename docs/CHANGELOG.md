@@ -9,6 +9,16 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.34.0 / admin 1.34.0] - 2026-06-08
+
+### Feat: estadísticas de temas filtran por nodeType
+
+El endpoint `GET /mapalab-stats/themes` ahora solo devuelve nodos raíz de tipo `tema`, excluyendo categorías, capas, grupos o labels que hayan quedado desplazados a la raíz del árbol (por bugs de reordenamiento previos). Antes cualquier nodo con `theme_change` en la raíz se contaba como "tema más visto".
+
+- **`api/app/api/routes/mapalab_stats.py`**: `_fetch_layer_labels` recolecta `nodeType` desde el árbol de capas. `top_themes` filtra `nodeType == 'tema'` además de los filtros existentes (`label` presente, `parent_id != 'eventos-auto'`).
+
+Sin migración ni cambios de schema.
+
 ## [api 1.33.0 / admin 1.33.0] - 2026-06-08
 
 ### Feat: iconos por estado (normal/hover) en temas del sider

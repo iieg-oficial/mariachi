@@ -146,6 +146,7 @@ async def _fetch_layer_labels(layer_ids: list[str]) -> dict[str, dict]:
                 "label": node.get("label"),
                 "workspace": wms.get("workspace") or node.get("workspace"),
                 "parent_id": parent_id,
+                "nodeType": node.get("nodeType"),
             }
         for child in node.get("children") or []:
             walk(child, nid)
@@ -299,6 +300,7 @@ async def top_themes(
         for r in rows
         if (labels.get(r["theme_id"]) or {}).get("label")
         and (labels.get(r["theme_id"]) or {}).get("parent_id") != "eventos-auto"
+        and (labels.get(r["theme_id"]) or {}).get("nodeType") == "tema"
     ]
 
 
