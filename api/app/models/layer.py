@@ -95,6 +95,7 @@ class Layer(DataEngineBase):
     infobox_config = Column(JSONB, nullable=True)
 
     icon_url = Column(Text, nullable=True)
+    icon_overrides = Column(JSONB, nullable=True)
 
     notice = Column(JSONB, nullable=True)
     highlight_color = Column(String(20), nullable=True)

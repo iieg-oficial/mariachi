@@ -210,6 +210,7 @@ class LayerBase(CamelCaseInput):
     infobox_config: dict | None = Field(default=None, serialization_alias="infoboxConfig")
 
     icon_url: str | None = Field(default=None, serialization_alias="iconUrl")
+    icon_overrides: dict | None = Field(default=None, serialization_alias="iconOverrides")
 
     notice: LayerNotice | None = None
     highlight_color: HighlightColor | None = Field(default=None, serialization_alias="highlightColor")
@@ -232,9 +233,26 @@ class LayerBase(CamelCaseInput):
     def _store_icon_relative(cls, v):
         return to_relative(v)
 
+    @field_validator("icon_overrides", mode="before")
+    @classmethod
+    def _store_icon_overrides_relative(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, dict):
+            return {k: to_relative(val) for k, val in v.items()}
+        return v
+
     @field_serializer("icon_url", when_used="json-unless-none")
     def _expose_icon_absolute(self, v):
         return to_absolute(v)
+
+    @field_serializer("icon_overrides", when_used="json-unless-none")
+    def _expose_icon_overrides_absolute(self, v):
+        if v is None:
+            return None
+        if isinstance(v, dict):
+            return {k: to_absolute(val) for k, val in v.items()}
+        return v
 
 
 class LayerCreate(LayerBase):
@@ -285,6 +303,7 @@ class LayerUpdate(CamelCaseInput):
     infobox_config: dict | None = Field(default=None, serialization_alias="infoboxConfig")
 
     icon_url: str | None = Field(default=None, serialization_alias="iconUrl")
+    icon_overrides: dict | None = Field(default=None, serialization_alias="iconOverrides")
 
     notice: LayerNotice | None = None
     highlight_color: HighlightColor | None = Field(default=None, serialization_alias="highlightColor")
@@ -306,6 +325,15 @@ class LayerUpdate(CamelCaseInput):
     @classmethod
     def _store_icon_relative(cls, v):
         return to_relative(v)
+
+    @field_validator("icon_overrides", mode="before")
+    @classmethod
+    def _store_icon_overrides_relative(cls, v):
+        if v is None:
+            return None
+        if isinstance(v, dict):
+            return {k: to_relative(val) for k, val in v.items()}
+        return v
 
 
 class LayerResponse(LayerBase):

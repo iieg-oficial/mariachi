@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Modal, Pagination, Segmented, Select, Tabs, Input, Typography, Button } from 'antd';
-import { AppstoreOutlined, CloudUploadOutlined, UnorderedListOutlined } from '@ant-design/icons';
-import { listBucketObjects } from '@features/acervo/api/acervoService';
+import { Breadcrumb, Button, Input, Modal, Pagination, Segmented, Select, Typography } from 'antd';
+import { AppstoreOutlined, CloudUploadOutlined, HomeOutlined, UnorderedListOutlined } from '@ant-design/icons';
+import { getAcervoFiles } from '@features/acervo/api/acervoService';
 import useAccessibleBuckets from '@features/acervo/hooks/useAccessibleBuckets';
 import BucketFileUploader from '@features/acervo/components/BucketFileUploader';
 import BucketFileGrid from '@features/acervo/components/BucketFileGrid';
@@ -22,7 +22,6 @@ export default function BucketFilePicker({
     onSelect,
     bucketId,
     bucketSlugs,
-    prefixes,
     mode,
     title = 'Seleccionar archivo',
     allowUpload = true,
@@ -32,7 +31,7 @@ export default function BucketFilePicker({
 
     const [activeBucketId, setActiveBucketId] = useState(bucketId ?? null);
     const [viewMode, setViewMode] = useState(() => mode || loadViewMode('grid'));
-    const [activePrefix, setActivePrefix] = useState('');
+    const [currentPath, setCurrentPath] = useState('');
     const [objects, setObjects] = useState([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
@@ -46,7 +45,7 @@ export default function BucketFilePicker({
         try { window.localStorage.setItem(VIEW_MODE_KEY, viewMode); } catch { /* ignore */ }
     }, [viewMode, mode]);
 
-    useEffect(() => { setPage(1); }, [search, activePrefix, activeBucketId]);
+    useEffect(() => { setPage(1); }, [search, currentPath, activeBucketId]);
 
     useEffect(() => {
         if (bucketId != null) {
@@ -64,15 +63,25 @@ export default function BucketFilePicker({
     }, [bucketId, accessibleBuckets]);
 
     useEffect(() => {
+        if (currentPath !== '') setCurrentPath('');
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeBucketId]);
+
+    useEffect(() => {
         if (!open || !activeBucketId) return;
         let cancelled = false;
         setLoading(true);
-        listBucketObjects(activeBucketId, '')
-            .then((data) => { if (!cancelled) setObjects(data); })
+        getAcervoFiles({
+            bucketId: activeBucketId,
+            folder: currentPath || undefined,
+            search: search || undefined,
+            recursive: Boolean(search),
+        })
+            .then((data) => { if (!cancelled) setObjects(data || []); })
             .catch(() => message.error('No se pudieron listar los archivos del bucket'))
             .finally(() => { if (!cancelled) setLoading(false); });
         return () => { cancelled = true; };
-    }, [open, activeBucketId, reloadKey]);
+    }, [open, activeBucketId, currentPath, search, reloadKey]);
 
     const activeBucket = useMemo(
         () => accessibleBuckets.find((b) => b.id === activeBucketId) || null,
@@ -80,39 +89,46 @@ export default function BucketFilePicker({
     );
     const showBucketSelector = !bucketId && accessibleBuckets.length > 1;
 
-    const effectivePrefixes = useMemo(() => {
-        if (Array.isArray(prefixes) && prefixes.length > 0) return prefixes;
-        const set = new Set(['']);
-        for (const o of objects) {
-            const idx = o.name.indexOf('/');
-            if (idx > 0) set.add(o.name.slice(0, idx + 1));
-        }
-        return Array.from(set).sort((a, b) => (a === '' ? -1 : b === '' ? 1 : a.localeCompare(b)));
-    }, [prefixes, objects]);
+    const sortedFiles = useMemo(() =>
+        [...objects].sort((a, b) => {
+            if (a.isDir && !b.isDir) return -1;
+            if (!a.isDir && b.isDir) return 1;
+            return (a.originalName || a.name || '').localeCompare(b.originalName || b.name || '');
+        }),
+    [objects]);
 
-    useEffect(() => {
-        if (effectivePrefixes.length && !effectivePrefixes.includes(activePrefix)) {
-            setActivePrefix(effectivePrefixes[0]);
+    const breadcrumbItems = useMemo(() => {
+        const linkStyle = { cursor: 'pointer', background: 'none', border: 'none', padding: 0, color: 'inherit', font: 'inherit' };
+        const items = [{
+            title: (
+                <button type="button" style={linkStyle} onClick={() => setCurrentPath('')}>
+                    <HomeOutlined /> {activeBucket?.display_name || 'Raíz'}
+                </button>
+            ),
+        }];
+        if (currentPath) {
+            const parts = currentPath.replace(/\/$/, '').split('/');
+            let acc = '';
+            parts.forEach((p, i) => {
+                acc += `${p}/`;
+                const path = acc;
+                items.push({
+                    title: i === parts.length - 1 ? p : (
+                        <button type="button" style={linkStyle} onClick={() => setCurrentPath(path)}>{p}</button>
+                    ),
+                });
+            });
         }
-    }, [effectivePrefixes, activePrefix]);
-
-    const filtered = useMemo(() => {
-        const scoped = activePrefix ? objects.filter((o) => o.name.startsWith(activePrefix)) : objects;
-        return search ? scoped.filter((o) => o.name.toLowerCase().includes(search.toLowerCase())) : scoped;
-    }, [objects, activePrefix, search]);
+        return items;
+    }, [currentPath, activeBucket]);
 
     const paginated = useMemo(() => {
         const start = (page - 1) * pageSize;
-        return filtered.slice(start, start + pageSize);
-    }, [filtered, page, pageSize]);
-
-    const tabItems = effectivePrefixes.map((p) => ({
-        key: p || '(root)',
-        label: p ? p.replace(/\/$/, '') : 'Todo',
-    }));
+        return sortedFiles.slice(start, start + pageSize);
+    }, [sortedFiles, page, pageSize]);
 
     const handlePick = (record) => {
-        const basename = record.name.split('/').pop();
+        const basename = record.originalName || record.name.split('/').pop();
         onSelect({
             nombre: basename,
             enlace: `/${record.name.startsWith('/') ? record.name.slice(1) : record.name}`,
@@ -122,14 +138,15 @@ export default function BucketFilePicker({
         onClose();
     };
 
-    const handleUploaded = (uploaded) => {
+    const handleEnterDir = (record) => {
+        const cleanName = record.name.endsWith('/') ? record.name : `${record.name}/`;
+        setCurrentPath(cleanName);
+        setPage(1);
+    };
+
+    const handleUploaded = () => {
         setUploaderOpen(false);
         setReloadKey((k) => k + 1);
-        if (uploaded?.enlace) {
-            const prefix = uploaded.enlace.replace(/^\//, '');
-            const idx = prefix.indexOf('/');
-            if (idx > 0) setActivePrefix(prefix.slice(0, idx + 1));
-        }
     };
 
     const headerStyle = {
@@ -181,15 +198,9 @@ export default function BucketFilePicker({
                             />
                         </div>
                     )}
-                    {effectivePrefixes.length > 1 && (
-                        <Tabs
-                            activeKey={activePrefix || '(root)'}
-                            onChange={(k) => setActivePrefix(k === '(root)' ? '' : k)}
-                            items={tabItems}
-                            size="small"
-                            style={{ marginBottom: 8 }}
-                        />
-                    )}
+                    <div style={{ marginBottom: 8 }}>
+                        <Breadcrumb items={breadcrumbItems} />
+                    </div>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                         <Input.Search
                             placeholder="Buscar por nombre"
@@ -229,21 +240,21 @@ export default function BucketFilePicker({
 
                 <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '0 16px' }}>
                     {viewMode === 'grid' ? (
-                        <BucketFileGrid records={paginated} loading={loading} onPick={handlePick} />
+                        <BucketFileGrid records={paginated} loading={loading} onPick={handlePick} onEnterDir={handleEnterDir} />
                     ) : (
-                        <BucketFileList records={paginated} loading={loading} onPick={handlePick} />
+                        <BucketFileList records={paginated} loading={loading} onPick={handlePick} onEnterDir={handleEnterDir} />
                     )}
                 </div>
 
-                {filtered.length > 0 && (
+                {sortedFiles.length > 0 && (
                     <div style={footerStyle}>
                         <Text type="secondary" style={{ fontSize: 12 }}>
-                            {filtered.length} archivo{filtered.length === 1 ? '' : 's'}
+                            {sortedFiles.length} elemento{sortedFiles.length === 1 ? '' : 's'}
                         </Text>
                         <Pagination
                             current={page}
                             pageSize={pageSize}
-                            total={filtered.length}
+                            total={sortedFiles.length}
                             onChange={(p, ps) => { setPage(p); setPageSize(ps); }}
                             showSizeChanger
                             pageSizeOptions={[10, 25, 50, 100]}
@@ -259,7 +270,7 @@ export default function BucketFilePicker({
                     onClose={() => setUploaderOpen(false)}
                     onUploaded={handleUploaded}
                     bucketId={activeBucketId}
-                    prefixes={effectivePrefixes.length ? effectivePrefixes : ['']}
+                    prefixes={currentPath ? [currentPath] : ['']}
                     title={activeBucket ? `Subir a ${activeBucket.display_name}` : 'Subir archivo'}
                     accept={uploadAccept}
                 />

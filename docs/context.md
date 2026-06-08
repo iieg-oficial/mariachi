@@ -2,7 +2,7 @@
 
 > Documento de referencia completo. Leer este archivo proporciona contexto del monorepo sin explorar el codebase.
 
-**Versión:** ver `api/pyproject.toml` (la lee `api/app/core/version.py::get_app_version()`; endpoint en vivo `GET /ontoy`). · **Última actualización:** 2026-06-04
+**Versión:** ver `api/pyproject.toml` (la lee `api/app/core/version.py::get_app_version()`; endpoint en vivo `GET /ontoy`). · **Última actualización:** 2026-06-08
 
 
 ---
@@ -775,7 +775,7 @@ Todos los GET de lectura (excepto `/highlights`) aceptan `date_from`, `date_to` 
 | GET | `/api/administrador/mapalab-stats/overview` | KPIs del rango (sesiones, eventos, duración media, % swipe/dibujo/descarga/compartir, reportaron) |
 | GET | `/api/administrador/mapalab-stats/layers?limit=N` | Top capas del rango con label/workspace enriquecidos desde `/mapalab/api/layers/tree`. `activations` excluye auto-activaciones de evento (`props.source='evento_open'`); el toggle manual sí cuenta |
 | GET | `/api/administrador/mapalab-stats/eventos?limit=N` | Top eventos por aperturas (`mapalab_rollup_eventos`): opens/closes/sesiones únicas por `evento_id`. El `titulo` se resuelve al nombre actual desde `eventos` |
-| GET | `/api/administrador/mapalab-stats/themes?limit=N` | Top temas por aperturas (`mapalab_rollup_themes`): views/sesiones únicas por `theme_id`. Enriquecido con label/workspace desde `/mapalab/api/layers/tree` |
+| GET | `/api/administrador/mapalab-stats/themes?limit=N` | Top temas por aperturas (`mapalab_rollup_themes`): views/sesiones únicas por `theme_id`. Enriquecido con label/workspace/nodeType desde `/mapalab/api/layers/tree`. Filtra solo nodos raíz de tipo `tema` (excluye categorías/capas desplazadas a raíz) |
 | GET | `/api/administrador/mapalab-stats/buttons` | Clicks por evento (sider_lock, logo_click, share_map, etc.) |
 | GET | `/api/administrador/mapalab-stats/tools` | Uso de herramientas de dibujo/medición |
 | GET | `/api/administrador/mapalab-stats/daily` | Serie temporal por origen, bucketeada por `grain` |
