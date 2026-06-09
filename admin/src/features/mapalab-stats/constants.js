@@ -17,6 +17,9 @@ export const BUTTON_LABELS = {
     map_export: 'Exportar mapa',
     periodicity_advanced: 'Periodicidad avanzada',
     tools_panel_open: 'Abrir mediciones',
+    evento_fun_fact: 'Datos curiosos del evento',
+    evento_center: 'Centrar evento',
+    evento_share: 'Compartir evento',
 };
 
 export const TOOL_LABELS = {

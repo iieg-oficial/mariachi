@@ -15,7 +15,7 @@ const ToolsBar = ({ rows = [], loading }) => {
     const max = Math.max(...rows.map((r) => r.uses), 1);
 
     return (
-        <Card title="Herramientas (últimos 30 días)" size="small" loading={loading}>
+        <Card title="Herramientas" size="small" loading={loading}>
             <Space direction="vertical" size={8} style={{ width: '100%' }}>
                 {rows.map((row) => (
                     <div key={`${row.eventName}-${row.tool}`}>

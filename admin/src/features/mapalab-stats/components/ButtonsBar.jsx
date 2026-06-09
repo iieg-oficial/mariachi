@@ -15,7 +15,7 @@ const ButtonsBar = ({ rows = [], loading }) => {
     const max = Math.max(...rows.map((r) => r.clicks), 1);
 
     return (
-        <Card title="Uso de botones (últimos 30 días)" size="small" loading={loading}>
+        <Card title="Uso de botones" size="small" loading={loading}>
             <Space direction="vertical" size={8} style={{ width: '100%' }}>
                 {rows.map((row) => {
                     const label = BUTTON_LABELS[row.eventName] || row.eventName;
