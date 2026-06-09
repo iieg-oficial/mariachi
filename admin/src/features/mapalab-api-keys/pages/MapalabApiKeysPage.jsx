@@ -267,6 +267,7 @@ export default function MapalabApiKeysPage() {
                             expandable={expandable}
                             onEdit={(r) => toggleRow(r, 'edit')}
                             onPreview={(r) => toggleRow(r, 'playground')}
+                            onAudit={(r) => toggleRow(r, 'auditoria')}
                             onRotate={handleRotate}
                             onSuspend={(r) => handleAction(r, suspendApiKey, 'Llave pausada temporalmente')}
                             onReactivate={(r) => handleAction(r, reactivateApiKey, 'Llave reactivada')}

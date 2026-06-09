@@ -34,6 +34,7 @@ const ENDPOINT_LABEL = {
     config: 'Carga inicial',
     tree: 'Árbol de capas',
     wms: 'Mapa (WMS)',
+    mcp: 'Agente / MCP',
 };
 
 
@@ -145,8 +146,8 @@ export default function ApiKeyAuditoriaTab({ apiKey }) {
                 type="info"
                 showIcon
                 closable
-                message="Historial de accesos al mapa con esta llave"
-                description="Cada vez que un visitante carga el mapa, queda un registro aquí (sitio que lo pidió, capas mostradas, resultado y motivo si fue rechazado). Útil para auditoría y para responder solicitudes del área jurídica. Los registros se conservan 90 días."
+                message="Historial de uso de esta llave"
+                description="Cada vez que se usa la llave queda un registro aquí: visitantes que cargan el mapa embebido (sitio, capas, resultado) y llamadas de agentes vía MCP (tipo de acción 'Agente / MCP', con la herramienta usada en la columna Motivo). Útil para auditoría y para responder solicitudes del área jurídica. Los registros se conservan 90 días."
             />
 
             <Card size="small" title="Filtros">
@@ -198,6 +199,7 @@ export default function ApiKeyAuditoriaTab({ apiKey }) {
                                         { value: 'config', label: 'Carga inicial del visor' },
                                         { value: 'tree', label: 'Listado de capas' },
                                         { value: 'wms', label: 'Imagen del mapa (WMS)' },
+                                        { value: 'mcp', label: 'Llamada de agente (MCP)' },
                                     ]}
                                 />
                             </Form.Item>
