@@ -9,6 +9,16 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.34.4 / admin 1.34.4] - 2026-06-09
+
+### Fix: labels legibles de evento_fun_fact/center/share y quitar "(últimos 30 días)" de secciones
+
+- **`admin/src/features/mapalab-stats/constants.js`**: `BUTTON_LABELS` ahora incluye `evento_fun_fact`, `evento_center`, `evento_share` con nombres legibles en español.
+- **`admin/src/features/mapalab-stats/components/ButtonsBar.jsx`**: título simplificado a `"Uso de botones"`.
+- **`admin/src/features/mapalab-stats/components/ToolsBar.jsx`**: título simplificado a `"Herramientas"`.
+
+---
+
 ## [api 1.34.3 / admin 1.34.3] - 2026-06-09
 
 ### Fix: telemetria evento_fun_fact, evento_center, evento_share no aparecian en estadisticas
