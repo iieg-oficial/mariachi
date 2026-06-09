@@ -35,13 +35,6 @@ const PROBES = [
         ],
     },
     {
-        tool: 'get_workspaces',
-        method: 'GET',
-        path: '/layers/workspaces',
-        description: 'Lista workspaces de GeoServer con sus alias.',
-        inputs: [],
-    },
-    {
         tool: 'get_initial_order',
         method: 'GET',
         path: '/layers/initial-order',
@@ -52,29 +45,20 @@ const PROBES = [
         tool: 'get_metadata',
         method: 'GET',
         path: '/metadata/',
-        description: 'Metadata completa de una capa identificada por workspace + layer. Acepta el id del visor (p. ej. tasa_homicidio_doloso) o el geoserver_layer.',
+        description: 'Metadata completa de una capa. Vía MCP basta el id del visor (workspace resuelto solo); este probe REST pide ambos por compatibilidad.',
         inputs: [
             { key: 'workspace', label: 'Workspace (alias)', placeholder: 'p. ej. seguridad', required: true, type: 'string', default: 'seguridad' },
-            { key: 'layer', label: 'Layer', placeholder: 'p. ej. tasa_homicidio_doloso', required: true, type: 'string', default: 'tasa_homicidio_doloso' },
+            { key: 'layer', label: 'Layer (id del visor)', placeholder: 'p. ej. tasa_homicidio_doloso', required: true, type: 'string', default: 'tasa_homicidio_doloso' },
         ],
     },
     {
         tool: 'get_periodicity',
         method: 'GET',
         path: '/periodicity/',
-        description: 'Fechas year/month/day disponibles para una capa temporal.',
+        description: 'Fechas year/month/day disponibles para una capa temporal. Vía MCP acepta uno o varios id separados por coma.',
         inputs: [
             { key: 'workspace', label: 'Workspace', required: true, type: 'string', default: 'demografia' },
-            { key: 'layer', label: 'Layer', required: true, type: 'string', default: 'poblacion' },
-        ],
-    },
-    {
-        tool: 'resolve_layer_ref',
-        method: 'GET',
-        path: '/layers/resolve',
-        description: 'Resuelve un slug, alias público o id de capa. Devuelve la capa correspondiente.',
-        inputs: [
-            { key: 'ref', label: 'Slug / alias / id', required: true, type: 'string', default: 'tasa_homicidio_doloso' },
+            { key: 'layer', label: 'Layer (id del visor)', required: true, type: 'string', default: 'poblacion' },
         ],
     },
 ];
@@ -346,20 +330,46 @@ const MCP_TOOL_PROBES = [
         },
     },
     {
-        tool: 'resolve_municipios',
-        description: 'Busca municipios de Jalisco por nombre o clave parcial. Útil para mapear "Guadalajara y Zapopan" a [{clave:"14039",nombre:"Guadalajara"},{clave:"14120",nombre:"Zapopan"}].',
+        tool: 'municipios',
+        description: 'Lista los 125 municipios de Jalisco (query vacío) o filtra por nombre/clave parcial. Devuelve {items:[{clave,nombre,...}], count}. Las claves se usan en create_*_share(municipios=...).',
         defaultArguments: {
             query: 'guadalajara',
             limit: 5,
         },
     },
     {
+        tool: 'query_wfs',
+        description: 'Features (registros) de una capa del visor por su id. Usa srs_name="EPSG:4326" para lat/lon. CQL opcional (se sanitiza).',
+        defaultArguments: {
+            layer: 'homicidio_doloso',
+            limit: 5,
+            srs_name: 'EPSG:4326',
+        },
+    },
+    {
+        tool: 'get_layer_stats',
+        description: 'Numeralia precalculada de una capa (totales, promedios, ranking) desde mapalab.layer_stats. Vacío si no hay datos.',
+        defaultArguments: {
+            layer: 'homicidio_doloso',
+        },
+    },
+    {
+        tool: 'compare_years',
+        description: 'Atajo: swipe A|B de una capa entre dos años, con municipio opcional. Devuelve {id, url, embed_html}. Arma los filtros de fecha por ti.',
+        defaultArguments: {
+            layer: 'homicidio_doloso',
+            year_a: '2024',
+            year_b: '2023',
+            municipio: 'Guadalajara',
+        },
+    },
+    {
         tool: 'create_single_share',
         description: 'Crea un share del visor con capas, anotaciones y municipios opcionales. Devuelve {id, url, embed_html} listo para pegar.',
         defaultArguments: {
-            layers: ['tasa_homicidio_doloso'],
+            layers: ['homicidio_doloso'],
             view: { zoom: 11, lat: 20.66, lon: -103.35 },
-            basemap: 'osm',
+            basemap: 'voyager',
             municipios: {
                 source: 'iieg',
                 selected: ['14039', '14120'],
@@ -370,7 +380,7 @@ const MCP_TOOL_PROBES = [
         tool: 'create_swipe_share',
         description: 'Crea un share en modo swipe (comparación A|B). Ideal para preguntas comparativas del usuario. municipios se aplica a ambos paneles.',
         defaultArguments: {
-            pane_a_layers: ['tasa_homicidio_doloso'],
+            pane_a_layers: ['homicidio_doloso'],
             pane_b_layers: ['poblacion'],
             position: 0.5,
             view: { zoom: 8, lat: 20.6, lon: -103.4 },
@@ -551,7 +561,7 @@ export default function McpPlayground() {
             <div style={{ marginTop: 8 }}>
                 <Text strong style={{ fontSize: 13 }}>Tools del MCP (JSON-RPC <Text code>tools/call</Text>)</Text>
                 <Text type="secondary" style={{ display: 'block', fontSize: 12 }}>
-                    Los 3 tools de mapalab 1.44.0 — no tienen REST equivalente. Edita el JSON de <Text code>arguments</Text> antes de "Probar".
+                    Tools del MCP sin REST equivalente directo (shares, medición, WFS, municipios, comparativas y numeralia). Edita el JSON de <Text code>arguments</Text> antes de "Probar".
                 </Text>
             </div>
 

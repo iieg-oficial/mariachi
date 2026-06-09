@@ -22,24 +22,19 @@ const ROUTER_COLOR = {
 };
 
 const TOOLS = [
-    { router: 'metadata', tool: 'get_metadata', route: 'GET /metadata/', desc: 'Metadata completa de una capa.' },
-    { router: 'metadata', tool: 'get_sources_batch', route: 'GET /metadata/sources', desc: 'Fuentes de varias capas en lote.' },
-    { router: 'periodicity', tool: 'get_periodicity', route: 'GET /periodicity/', desc: 'Fechas year/month/day de una capa temporal.' },
-    { router: 'periodicity', tool: 'get_periodicities_batch', route: 'GET /periodicity/batch', desc: 'Periodicidad de varias capas.' },
-    { router: 'layers', tool: 'get_layer_tree', route: 'GET /layers/tree', desc: 'Árbol jerárquico completo.' },
-    { router: 'layers', tool: 'search_by_theme', route: 'filtra árbol cacheado', desc: 'Capas hoja de un tema. Ej: "seguridad".', highlight: true },
+    { router: 'metadata', tool: 'get_metadata', route: 'GET /metadata/', desc: 'Metadata completa de una capa (por id; workspace resuelto solo).' },
+    { router: 'metadata', tool: 'get_sources_batch', route: 'GET /metadata/sources', desc: 'Fuentes de varias capas (ids separados por coma).' },
+    { router: 'metadata', tool: 'get_layer_stats', route: 'mapalab.layer_stats', desc: 'Numeralia: totales, ranking, promedios.' },
+    { router: 'periodicity', tool: 'get_periodicity', route: 'GET /periodicity/ (1 o N)', desc: 'Fechas year/month/day de una o varias capas. Absorbe el antiguo batch.' },
+    { router: 'layers', tool: 'search_layers', route: 'GET /layers/search (+ theme)', desc: 'Punto de entrada: busca por texto/id/slug y/o por tema. Absorbe search_by_theme y resolve_layer_ref.', highlight: true },
+    { router: 'layers', tool: 'get_layer_tree', route: 'GET /layers/tree', desc: 'Árbol jerárquico completo + workspaces en la misma respuesta.' },
     { router: 'layers', tool: 'get_initial_order', route: 'GET /layers/initial-order', desc: 'Capas activas al cargar el visor.' },
-    { router: 'layers', tool: 'get_workspaces', route: 'GET /layers/workspaces', desc: 'Workspaces con alias + schema.' },
-    { router: 'layers', tool: 'search_layers', route: 'GET /layers/search', desc: 'Busca por label, tags o id.', highlight: true },
-    { router: 'layers', tool: 'resolve_layer_ref', route: 'GET /layers/resolve', desc: 'Slug/alias/id → capa.' },
-    { router: 'municipios', tool: 'list_municipios', route: 'GET /municipios/', desc: '125 municipios con clave INEGI.' },
-    { router: 'municipios', tool: 'resolve_municipios', route: 'substring sobre list', desc: 'Nombre/clave → matches. Ej: "guadalajara".', highlight: true },
+    { router: 'municipios', tool: 'municipios', route: 'GET /municipios/ (+ query)', desc: 'Lista los 125 o filtra por nombre/clave. Absorbe list + resolve.', highlight: true },
     { router: 'shares', tool: 'create_single_share', route: 'POST /shares (single)', desc: 'Share con capas, annotations, fecha y municipio. Basemap: voyager.', highlight: true },
     { router: 'shares', tool: 'create_swipe_share', route: 'POST /shares (swipe)', desc: 'Comparador A|B. Annotations globales, misma API de filtros.' },
     { router: 'shares', tool: 'compare_years', route: 'atajo create_swipe_share', desc: 'Swipe año A vs año B con municipio opcional. Una llamada.', highlight: true },
-    { router: 'shares', tool: 'get_layer_stats', route: 'mapalab.layer_stats', desc: 'Numeralia: totales, ranking, promedios.' },
-    { router: 'geo', tool: 'measure_geometry', route: 'PostGIS geography', desc: 'Longitud/área geodésica en m/m² reales.' },
-    { router: 'geo', tool: 'query_wfs', route: 'GeoServer WFS GetFeature', desc: 'Features de capa del visor con CQL. Reproyección PostGIS.' },
+    { router: 'geo', tool: 'measure_geometry', route: 'PostGIS geography', desc: 'Longitud/área geodésica en m/m² reales (cap 2000 coords).' },
+    { router: 'geo', tool: 'query_wfs', route: 'GeoServer WFS GetFeature', desc: 'Features de una capa por id con CQL opcional. Reproyección PostGIS.' },
 ];
 
 const TOOL_COLUMNS = [
@@ -103,11 +98,12 @@ export default function McpTopic() {
 
             <Card title="Guía rápida para agentes" size="small" style={{ marginTop: 0 }}>
                 <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13 }}>
+                    <li><Text strong>Identificadores:</Text> usa siempre el <Text code>id</Text> que devuelve <Text code>search_layers</Text> (p. ej. <Text code>homicidio_doloso</Text>). El workspace se resuelve solo; no hace falta pasarlo.</li>
                     <li><Text strong>Basemaps:</Text> <Text code>voyager</Text> (recomendado) o <Text code>position</Text>. No usar <Text code>osm</Text>.</li>
-                    <li><Text strong>Filtros de fecha:</Text> obtener años con <Text code>get_periodicity</Text>, luego CQL: <Text code>{'(fecha >= \'2025-01-01\' AND fecha < \'2026-01-01\')'}</Text>. Se pasa como <Text code>{'filters: {date: "..."}'}</Text> en el objeto de capa.</li>
+                    <li><Text strong>Filtros de fecha:</Text> obtener años con <Text code>get_periodicity</Text>, luego CQL: <Text code>{'(fecha >= \'2025-01-01\' AND fecha < \'2026-01-01\')'}</Text>. Se pasa como <Text code>{'filters: {date: "..."}'}</Text> en el objeto de capa. Para comparar dos años usa <Text code>compare_years</Text>.</li>
                     <li><Text strong>Anotaciones:</Text> <Text code>LineString</Text>, <Text code>Polygon</Text>, <Text code>Emoji</Text> (<Text code>textLabel: "📍"</Text>), <Text code>Text</Text>. En swipe son globales (ambos lados).</li>
-                    <li><Text strong>Municipios:</Text> <Text code>resolve_municipios("Guadalajara")</Text> → clave, luego <Text code>municipios: {'{source:"iieg", selected:["14039"]}'}</Text>.</li>
-                    <li><Text strong>Flujo típico:</Text> <Text code>search_layers → get_periodicity → resolve_municipios → measure_geometry → create_single_share</Text></li>
+                    <li><Text strong>Municipios:</Text> <Text code>municipios("Guadalajara")</Text> → clave, luego <Text code>municipios: {'{source:"iieg", selected:["14039"]}'}</Text>.</li>
+                    <li><Text strong>Flujo típico:</Text> <Text code>search_layers → get_metadata / get_periodicity → municipios → create_single_share</Text></li>
                 </ul>
             </Card>
 

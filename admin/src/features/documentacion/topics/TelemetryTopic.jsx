@@ -81,6 +81,15 @@ export default function TelemetryTopic() {
             </Card>
 
             <Card
+                title={<>Auditoría por API key — <Text code>mapalab_api_keys_accesos</Text> (endpoint = mcp)</>}
+                size="small"
+            >
+                <Paragraph type="secondary" style={{ marginTop: 0, marginBottom: 0, fontSize: 12 }}>
+                    Además de la telemetría anónima de arriba, cada <Text code>tools/call</Text> se registra <strong>atribuido a la API key</strong> en la misma tabla que usa el widget embebido (<Text code>mapalab_api_keys_accesos</Text>), con <Text code>endpoint = mcp</Text>, <Text code>resultado</Text> (allowed | denied | quota_exceeded), la herramienta en <Text code>motivo</Text> e <Text code>ip_hash</Text>; <Text code>origin</Text> va nulo (el MCP no tiene dominio). Se reúsa <Text code>access_logger</Text> (flush a <Text code>POST /api/administrador/internal/mapalab/keys/accesos</Text>). Se ve por llave en la pestaña <Text code>Auditoría</Text> de <Text code>/mapalab/api-keys</Text>, junto con los accesos del embed (distinguidos por la columna Acción). Solo se registran los <Text code>tools/call</Text>; no se guardan los argumentos.
+                </Paragraph>
+            </Card>
+
+            <Card
                 title={<>Visor MapaLab — Modo Vista por municipio (beta)</>}
                 size="small"
             >
