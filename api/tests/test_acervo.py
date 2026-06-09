@@ -44,9 +44,31 @@ class FakeAcervoClient:
         return f"http://fake/{object_name}"
 
     def list_objects(self, prefix="", recursive=True):
-        return [
-            v for k, v in self.objects.items() if k.startswith(prefix or "")
-        ]
+        prefix = prefix or ""
+        if recursive:
+            return [v for k, v in self.objects.items() if k.startswith(prefix)]
+        results = []
+        seen_dirs = set()
+        for k, v in self.objects.items():
+            if not k.startswith(prefix):
+                continue
+            rest = k[len(prefix):]
+            slash = rest.find("/")
+            if slash == -1:
+                results.append(v)
+            else:
+                dirkey = prefix + rest[: slash + 1]
+                if dirkey not in seen_dirs:
+                    seen_dirs.add(dirkey)
+                    results.append({
+                        "name": dirkey,
+                        "size": 0,
+                        "last_modified": None,
+                        "etag": "",
+                        "is_dir": True,
+                        "url": f"http://fake/{dirkey}",
+                    })
+        return results
 
     def get_file_url(self, object_name):
         return f"http://fake/{object_name}"
@@ -60,6 +82,16 @@ class FakeAcervoClient:
         for k in keys:
             del self.objects[k]
         return len(keys)
+
+    def put_empty_object(self, object_name):
+        self.objects[object_name] = {
+            "name": object_name,
+            "size": 0,
+            "last_modified": None,
+            "etag": "fake",
+            "is_dir": object_name.endswith("/"),
+            "url": f"http://fake/{object_name}",
+        }
 
 
 @pytest.fixture(autouse=True)
@@ -121,14 +153,14 @@ def test_crear_carpeta_scoped_to_bucket(admin_session, db_session):
         headers={"X-CSRF-Token": admin_session["csrf"]},
     )
     assert response.status_code == 201
-    assert response.json()["path"] == "/videos"
+    assert response.json()["path"] == "videos/"
     assert response.json()["bucket_id"] == bucket.id
 
 
 def test_crear_carpeta_duplicada_409(admin_session, db_session):
     _, bucket = _seed_bucket(db_session, name="x")
     db_session.add(
-        AcervoFolder(bucket_id=bucket.id, name="videos", path="/videos", parent=None)
+        AcervoFolder(bucket_id=bucket.id, name="videos", path="videos/", parent=None)
     )
     db_session.commit()
 
@@ -322,6 +354,24 @@ def test_listar_media_oculta_reportes_en_mariachi(admin_session, db_session, adm
     names = [item["name"] for item in response.json()]
     assert "docs/manual.pdf" in names
     assert all(not n.startswith("reportes/") for n in names)
+
+
+def test_crear_carpeta_vacia_visible_y_oculta_marker(admin_session, db_session):
+    _, bucket = _seed_bucket(db_session, name="x")
+    client = admin_session["client"]
+
+    response = client.post(
+        f"{ADMIN_PREFIX}/acervo/carpetas",
+        json={"bucket_id": bucket.id, "name": "iconos", "parent": None},
+        headers={"X-CSRF-Token": admin_session["csrf"]},
+    )
+    assert response.status_code == 201
+
+    listado = client.get(f"{ADMIN_PREFIX}/acervo?bucket_id={bucket.id}")
+    assert listado.status_code == 200
+    names = [item["name"] for item in listado.json()]
+    assert "iconos/" in names
+    assert all(not n.endswith("/.keep") for n in names)
 
 
 def test_proxy_object_unauth_401(client, db_session):

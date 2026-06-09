@@ -233,6 +233,7 @@ const Acervo = () => {
             setFolderModalVisible(false);
             folderForm.resetFields();
             loadFolders(selectedBucketId);
+            loadAcervoFiles();
         } catch (error) {
             message.error(error?.response?.data?.detail || 'Error al crear carpeta');
         }

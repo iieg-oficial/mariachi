@@ -2,7 +2,7 @@
 
 > Documento de referencia completo. Leer este archivo proporciona contexto del monorepo sin explorar el codebase.
 
-**Versión:** ver `api/pyproject.toml` (la lee `api/app/core/version.py::get_app_version()`; endpoint en vivo `GET /ontoy`). · **Última actualización:** 2026-06-08
+**Versión:** ver `api/pyproject.toml` (la lee `api/app/core/version.py::get_app_version()`; endpoint en vivo `GET /ontoy`). · **Última actualización:** 2026-06-09
 
 
 ---
@@ -59,7 +59,7 @@ El rename fue **solo de carpeta e identificadores internos de infra** (docker co
 | python-jose | 3.3+ (JWT) |
 | passlib + bcrypt | Hashing |
 | Redis client | 5.0+ |
-| MinIO client | 7.2+ (Acervo) |
+| minio (SDK S3) | 7.2+ — cliente S3 del Acervo, apunta al gateway S3 de **SeaweedFS** |
 | psycopg2-binary | 2.9+ |
 
 Rutas del backend (prefijos):
@@ -97,7 +97,7 @@ Estructura de features (`admin/src/features/`): `auth`, `colibri`, `inicio`, `ma
 | Proxy interno | Nginx | sirve `web/dist` en `/`, `admin/dist` en `/mariachi/`, proxea `api/` a backend |
 | BD | PostgreSQL 18 (prod y dev) | DB: `iieg_portal` |
 | Cache/sessions | Redis 7 | |
-| Almacenamiento | Acervo (MinIO S3-compatible) | buckets por proyecto en `acervo_buckets`. **Publicos** (anonymous GetObject): `portal`, `mapalab`, `iieg`. **Privados**: `mariachi`, `sieej`, `dataengine` (deshabilitado). Cada bucket usa `<REF>_user` con policy attached al bucket; sin fallback a creds root. |
+| Almacenamiento | Acervo (**SeaweedFS**, S3-compatible vía su gateway S3) | buckets por proyecto en `acervo_buckets`. **Publicos** (anonymous GetObject): `portal`, `mapalab`, `iieg`. **Privados**: `mariachi`, `sieej`, `dataengine` (deshabilitado). Cada bucket usa `<REF>_user` con policy attached al bucket; sin fallback a creds root. |
 | DataEngine (solo v1.4.0+ MapaLab) | PostgreSQL + PostGIS externo | Segunda conexión para tabla `layers` |
 | Contenedores | Docker Compose | profiles: prod (`docker-compose.yml`), dev (`docker-compose.dev.yml`) |
 
@@ -237,7 +237,7 @@ Redes: `mariachi_network_dev` (propia) + `mapalab-network` (external, para que e
 | `CORS_ORIGINS` | JSON array | |
 | `ADMIN_PREFIX` | `/api/administrador` | Ruta del CMS |
 | `WEB_PREFIX` | `/api/portal` | Ruta del sitio publico |
-| `ACERVO_ENDPOINT` / `ACERVO_PUBLIC_ENDPOINT` / `ACERVO_USE_SSL` / `ACERVO_VERIFY_SSL` | — | MinIO S3 (host y publico, sin creds globales) |
+| `ACERVO_ENDPOINT` / `ACERVO_PUBLIC_ENDPOINT` / `ACERVO_USE_SSL` / `ACERVO_VERIFY_SSL` | — | Endpoint S3 de SeaweedFS (host y publico, sin creds globales) |
 | `ACERVO_<REF>_ACCESS_KEY` / `ACERVO_<REF>_SECRET_KEY` | — | Creds **por bucket** (REF coincide con `acervo_buckets.access_key_ref`). Sin fallback a creds root del cluster: cada bucket activo requiere su par. |
 
 ### Frontend (Vite)

@@ -260,10 +260,9 @@ async def crear_carpeta(
 ):
     bucket = acervo_file_service.resolve_bucket_or_403(folder_data.bucket_id, current_user, db)
 
-    if folder_data.parent:
-        path = f"{folder_data.parent}{folder_data.name}" if folder_data.parent.endswith('/') else f"{folder_data.parent}/{folder_data.name}"
-    else:
-        path = f"/{folder_data.name}"
+    path, name, parent = acervo_file_service.normalize_folder_path(folder_data.parent, folder_data.name)
+    if not name:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Nombre de carpeta invalido")
 
     duplicate = (
         db.query(AcervoFolder)
@@ -278,13 +277,21 @@ async def crear_carpeta(
 
     nueva = AcervoFolder(
         bucket_id=bucket.id,
-        name=folder_data.name,
+        name=name,
         path=path,
-        parent=folder_data.parent,
+        parent=parent,
     )
     db.add(nueva)
+
+    client = AcervoClient.for_bucket(bucket)
+    client.put_empty_object(acervo_file_service.folder_marker_key(path))
+
     db.commit()
     db.refresh(nueva)
+    logger.info(
+        "action=acervo.folder.create user_id=%s bucket_id=%s folder=%s",
+        current_user.id, bucket.id, path,
+    )
     return acervo_file_service.serialize_folder(nueva)
 
 
@@ -299,7 +306,7 @@ async def eliminar_carpeta(
     if not folder:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Carpeta no encontrada")
 
-    acervo_file_service.resolve_bucket_or_403(folder.bucket_id, current_user, db)
+    bucket = acervo_file_service.resolve_bucket_or_403(folder.bucket_id, current_user, db)
 
     media_count = (
         db.query(AcervoFile)
@@ -311,6 +318,9 @@ async def eliminar_carpeta(
             status_code=status.HTTP_409_CONFLICT,
             detail="La carpeta contiene archivos; muévelos o elimínalos primero",
         )
+
+    client = AcervoClient.for_bucket(bucket)
+    client.delete_file(acervo_file_service.folder_marker_key(folder.path))
 
     db.delete(folder)
     db.commit()
