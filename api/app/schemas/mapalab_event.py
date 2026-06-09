@@ -33,6 +33,8 @@ ALLOWED_EVENT_NAMES = frozenset({
     "report_submitted",
     "evento_open",
     "evento_close",
+    "evento_center",
+    "evento_share",
     "theme_change",
     "opacity_change",
     "legends_toggle",
@@ -122,6 +124,9 @@ class EventoStatRow(CamelCaseOutput):
     titulo: str | None = None
     opens: int
     closes: int
+    fun_facts: int
+    centers: int
+    shares: int
     unique_sessions: int
     last_seen: datetime | None = None
 
