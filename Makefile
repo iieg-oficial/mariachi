@@ -143,11 +143,11 @@ shell-admin:
 ## Genera respaldo de Postgres aplicando rotacion GFS (daily/weekly/monthly).
 ## Por defecto usa docker-compose.yml; pasa COMPOSE_FILE=... para otro entorno.
 backup-db:
-	@API_ENV_FILE=$(ENV_FILE) COMPOSE_FILE=$(COMPOSE_FILE) ./scripts/postgres-backup.sh
+	@API_ENV_FILE=$(ENV_FILE) COMPOSE_FILE=$(COMPOSE_FILE) COMPOSE_ENV_FILE=$(ENV_FILE) ./scripts/postgres-backup.sh
 
 ## Restaura un dump .sql.gz. Sin FILE muestra lista interactiva si hay varios.
 restore-db:
-	@API_ENV_FILE=$(ENV_FILE) COMPOSE_FILE=$(COMPOSE_FILE) ./scripts/postgres-restore.sh $(FILE)
+	@API_ENV_FILE=$(ENV_FILE) COMPOSE_FILE=$(COMPOSE_FILE) COMPOSE_ENV_FILE=$(ENV_FILE) ./scripts/postgres-restore.sh $(FILE)
 
 ## Instala cronjob diario a las 3 AM. SOLO correr en la VM de produccion.
 install-backup-cron:
@@ -157,8 +157,8 @@ install-backup-cron:
 	fi
 	@mkdir -p $(PWD)/backups
 	@( crontab -l 2>/dev/null | grep -v 'mariachi-backup' | grep -v 'mariachi-stats' ; \
-	   echo "0 3 * * * cd $(PWD) && API_ENV_FILE=$(ENV_FILE) COMPOSE_FILE=$(COMPOSE_FILE) ./scripts/postgres-backup.sh >> $(PWD)/backups/backup.log 2>&1 # mariachi-backup" ; \
-	   echo "*/30 * * * * cd $(PWD) && API_ENV_FILE=$(ENV_FILE) docker compose -f $(COMPOSE_FILE) exec -T api python scripts/refresh_mapalab_stats.py >> $(PWD)/backups/mapalab-stats.log 2>&1 # mariachi-stats-refresh" \
+	   echo "0 3 * * * cd $(PWD) && API_ENV_FILE=$(ENV_FILE) COMPOSE_FILE=$(COMPOSE_FILE) COMPOSE_ENV_FILE=$(ENV_FILE) ./scripts/postgres-backup.sh >> $(PWD)/backups/backup.log 2>&1 # mariachi-backup" ; \
+	   echo "*/30 * * * * cd $(PWD) && API_ENV_FILE=$(ENV_FILE) docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) exec -T api python scripts/refresh_mapalab_stats.py >> $(PWD)/backups/mapalab-stats.log 2>&1 # mariachi-stats-refresh" \
 	) | crontab -
 	@echo "${GREEN}Cronjobs instalados:${RESET}"
 	@crontab -l | grep -E 'mariachi-(backup|stats)'
@@ -226,12 +226,12 @@ restore-tarjetitas:
 ## Recomputa los rollups diarios persistentes de mapalab-stats. Se invoca cada
 ## 30 min por cron en prod; este target es para refresh manual.
 refresh-mapalab-stats:
-	@docker compose -f $(COMPOSE_FILE) exec -T api python scripts/refresh_mapalab_stats.py
+	@docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) exec -T api python scripts/refresh_mapalab_stats.py
 
 ## Purga eventos crudos mas viejos que la retencion configurada (default 90 dias).
 ## Usa MAPALAB_EVENTS_RETENTION_DAYS / MAPALAB_SESSIONS_RETENTION_DAYS para ajustar.
 purge-mapalab-events:
-	@docker compose -f $(COMPOSE_FILE) exec -T api python scripts/purge_mapalab_events.py
+	@docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) exec -T api python scripts/purge_mapalab_events.py
 
 setup:
 	@if [ ! -f .env.development ]; then \

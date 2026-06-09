@@ -30,6 +30,12 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 BACKUP_DIR="${BACKUP_DIR:-$ROOT_DIR/backups}"
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml}"
+COMPOSE_ENV_FILE="${COMPOSE_ENV_FILE:-}"
+
+COMPOSE_CMD="docker compose"
+if [ -n "$COMPOSE_ENV_FILE" ]; then
+    COMPOSE_CMD="$COMPOSE_CMD --env-file $COMPOSE_ENV_FILE"
+fi
 
 mkdir -p "$BACKUP_DIR"
 
@@ -53,11 +59,11 @@ log "compose=$COMPOSE_FILE destino=$DAILY"
 
 if [ "${MAPALAB_PURGE_ON_BACKUP:-true}" != "false" ]; then
     log "purgando eventos viejos de mapalab antes del dump (set MAPALAB_PURGE_ON_BACKUP=false para saltar)"
-    docker compose -f "$COMPOSE_FILE" exec -T api python scripts/purge_mapalab_events.py 2>&1 \
+    $COMPOSE_CMD -f "$COMPOSE_FILE" exec -T api python scripts/purge_mapalab_events.py 2>&1 \
         | sed 's/^/[backup] /' || log "WARN: purga fallo, sigue con el dump"
 fi
 
-docker compose -f "$COMPOSE_FILE" exec -T postgres sh -c \
+$COMPOSE_CMD -f "$COMPOSE_FILE" exec -T postgres sh -c \
     'PGPASSWORD="$POSTGRES_PASSWORD" pg_dump --no-owner --no-acl --clean --if-exists -U "$POSTGRES_USER" -d "$POSTGRES_DB"' \
     | gzip -9 > "$TMP"
 

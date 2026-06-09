@@ -9,6 +9,18 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.34.2 / admin 1.34.2] - 2026-06-09
+
+### Fix: docker compose exec sin --env-file generaba warnings en backup/restore
+
+`docker compose exec` no carga `--env-file` (solo `up` lo hace). Al ejecutar `make backup-db ENV=prod`, las variables `POSTGRES_MAX_CONNECTIONS`, `POSTGRES_SHARED_BUFFERS` y `POSTGRES_EFFECTIVE_CACHE_SIZE` de `.env.production` no se inyectaban al parsear `docker-compose.yml`, generando warnings aunque el dump funcionaba correctamente. Lo mismo afectaba a `restore-db`, `refresh-mapalab-stats`, `purge-mapalab-events` y el cronjob de `install-backup-cron`.
+
+- **`scripts/postgres-backup.sh`**: nueva variable `COMPOSE_ENV_FILE`; si está seteada se agrega `--env-file` a todas las llamadas a `docker compose`.
+- **`scripts/postgres-restore.sh`**: mismo tratamiento.
+- **`Makefile`**: los targets `backup-db`, `restore-db`, `refresh-mapalab-stats`, `purge-mapalab-events` e `install-backup-cron` pasan `COMPOSE_ENV_FILE=$(ENV_FILE)` o `--env-file $(ENV_FILE)` según corresponda.
+
+---
+
 ## [api 1.34.1 / admin 1.34.1] - 2026-06-09
 
 ### Fix: crear carpeta en Acervo daba 409 y la carpeta quedaba invisible
