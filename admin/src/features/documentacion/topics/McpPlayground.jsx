@@ -354,6 +354,22 @@ const MCP_TOOL_PROBES = [
         },
     },
     {
+        tool: 'describe_layer',
+        description: 'Macro para modelos chicos: metadata + stats + periodicity en una sola llamada. Soporta ids difusos (slug, alias, nombre parcial).',
+        defaultArguments: {
+            layer: 'homicidio_doloso',
+        },
+    },
+    {
+        tool: 'make_map',
+        description: 'Macro: search_layers + create_single_share en un paso. Con municipio y año opcionales. Auto-encuadre. Ideal para entregas rápidas.',
+        defaultArguments: {
+            query: 'homicidio',
+            municipio: 'Guadalajara',
+            year: '2024',
+        },
+    },
+    {
         tool: 'compare_years',
         description: 'Atajo: swipe A|B de una capa entre dos años, con municipio opcional. Devuelve {id, url, embed_html}. Arma los filtros de fecha por ti.',
         defaultArguments: {
@@ -405,7 +421,7 @@ const extractToolPayload = (jsonRpcResponse) => {
 };
 
 
-const SHARE_TOOLS = new Set(['create_single_share', 'create_swipe_share']);
+const SHARE_TOOLS = new Set(['create_single_share', 'create_swipe_share', 'make_map']);
 
 
 const McpToolProbe = ({ probe, apiKey }) => {
