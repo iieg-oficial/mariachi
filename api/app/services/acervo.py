@@ -1,3 +1,4 @@
+import io
 import logging
 import os
 
@@ -25,7 +26,7 @@ def resolve_bucket_credentials(access_key_ref: str | None) -> tuple[str, str]:
     if not ak or not sk:
         raise RuntimeError(
             f"Faltan {access_key_ref}_ACCESS_KEY/{access_key_ref}_SECRET_KEY en el "
-            f"entorno. Mariachi ya no hace fallback a las credenciales root de MinIO; "
+            f"entorno. Mariachi ya no hace fallback a las credenciales root del almacenamiento; "
             f"cada bucket activo debe tener sus propias credenciales por bucket."
         )
     return ak, sk
@@ -112,6 +113,15 @@ class AcervoClient:
             return self.get_file_url(object_name)
         except S3Error as e:
             raise Exception(f"Error uploading file: {str(e)}")
+
+    def put_empty_object(self, object_name: str) -> None:
+        self.client.put_object(
+            self.bucket_name,
+            object_name,
+            io.BytesIO(b""),
+            0,
+            content_type="application/x-empty",
+        )
 
     def delete_file(self, object_name: str) -> bool:
         try:

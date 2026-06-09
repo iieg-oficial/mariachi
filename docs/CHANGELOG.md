@@ -9,6 +9,22 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.34.1 / admin 1.34.1] - 2026-06-09
+
+### Fix: crear carpeta en Acervo daba 409 y la carpeta quedaba invisible
+
+Crear una carpeta desde la página de Acervo (p. ej. `iconos` en el bucket `iieg`) podía responder `409 Conflict` aunque la carpeta no apareciera en la rejilla. La causa era que `crear_carpeta` solo insertaba una fila en `acervo_folders` sin escribir ningún objeto en el almacenamiento (SeaweedFS): como la rejilla se llena con los objetos reales del bucket, las carpetas vacías quedaban invisibles y el siguiente intento de crearlas chocaba con la fila fantasma. Además la convención de `path` era inconsistente (`/iconos` en raíz, `iconos/sub` anidado) vs. la canónica `iconos/` que usan los uploads y la navegación, lo que también rompía el check de borrado (`AcervoFile.folder == folder.path`).
+
+- **`app/api/routes/acervo.py::crear_carpeta`**: usa el path canónico (`iconos/`, sin slash inicial, con final) vía `normalize_folder_path` y crea un objeto marcador de 0 bytes (`<carpeta>/.keep`) para que la carpeta vacía sea visible en la rejilla. `eliminar_carpeta` borra también el marcador.
+- **`app/services/acervo.py`**: nuevo `AcervoClient.put_empty_object`.
+- **`app/services/acervo_file_service.py`**: `FOLDER_PLACEHOLDER='.keep'`, helpers `normalize_folder_path`/`folder_marker_key`/`is_folder_marker`; `listar_media` filtra los marcadores para que no aparezcan como archivos ni cuenten en estadísticas.
+- **`admin/.../acervo/pages/AcervoPage.jsx`**: tras crear una carpeta refresca la rejilla (`loadAcervoFiles`) además del árbol de carpetas.
+- **Docs**: `docs/context.md` corregido — el almacenamiento del Acervo es **SeaweedFS** (S3-compatible vía su gateway), no MinIO; lo que el código usa es el SDK `minio` apuntado a ese endpoint.
+
+### Notas de deploy
+
+- **Migración requerida**: `mariachi` `d9e0f1a2b3c4` — normaliza `acervo_folders.path`/`parent` al formato canónico y elimina filas fantasma de carpetas vacías (en todos los buckets) que nunca tuvieron objeto en el almacenamiento. Ejecutar `docker exec mariachi-api alembic -x db=mariachi upgrade head`.
+
 ## [api 1.34.0 / admin 1.34.0] - 2026-06-08
 
 ### Feat: estadísticas de temas filtran por nodeType

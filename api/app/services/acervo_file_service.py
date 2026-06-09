@@ -17,6 +17,24 @@ from app.services.acervo import AcervoClient
 ZIP_MAX_BYTES = 500 * 1024 * 1024  # 500 MB
 _ZIP_CHUNK = 64 * 1024
 
+FOLDER_PLACEHOLDER = ".keep"
+
+
+def normalize_folder_path(parent: str | None, name: str) -> tuple[str, str, str | None]:
+    name_clean = name.strip().strip("/")
+    parent_clean = (parent or "").strip().strip("/")
+    if parent_clean:
+        return f"{parent_clean}/{name_clean}/", name_clean, f"{parent_clean}/"
+    return f"{name_clean}/", name_clean, None
+
+
+def folder_marker_key(path: str) -> str:
+    return f"{path}{FOLDER_PLACEHOLDER}"
+
+
+def is_folder_marker(name: str) -> bool:
+    return name == FOLDER_PLACEHOLDER or name.endswith(f"/{FOLDER_PLACEHOLDER}")
+
 
 class _ZipStreamBuffer(io.RawIOBase):
     """Buffer write-only que acumula bytes y permite flushearlos en chunks."""
@@ -199,6 +217,8 @@ def listar_media(
     if folder and folder != "/":
         prefix = folder.lstrip("/").rstrip("/") + "/"
     bucket_objects = client.list_objects(prefix=prefix, recursive=recursive)
+
+    bucket_objects = [obj for obj in bucket_objects if not is_folder_marker(obj["name"])]
 
     hidden_prefixes = get_hidden_prefixes(bucket.acervo_bucket) if not prefix else ()
     if hidden_prefixes:
