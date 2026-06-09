@@ -221,6 +221,9 @@ async def top_eventos(
                    MAX(titulo) AS titulo,
                    SUM(opens) AS opens,
                    SUM(closes) AS closes,
+                   SUM(fun_facts) AS fun_facts,
+                   SUM(centers) AS centers,
+                   SUM(shares) AS shares,
                    SUM(unique_sessions) AS unique_sessions,
                    MAX(last_seen) AS last_seen
             FROM mapalab_rollup_eventos
@@ -254,6 +257,9 @@ async def top_eventos(
             titulo=titulos.get(r["evento_id"]) or r["titulo"],
             opens=r["opens"] or 0,
             closes=r["closes"] or 0,
+            fun_facts=r["fun_facts"] or 0,
+            centers=r["centers"] or 0,
+            shares=r["shares"] or 0,
             unique_sessions=r["unique_sessions"] or 0,
             last_seen=r["last_seen"],
         )

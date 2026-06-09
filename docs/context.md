@@ -767,14 +767,14 @@ Sistema de ingesta de eventos anónimos del visor MapaLab + panel admin con KPIs
 
 | Método | Ruta | Función |
 |---|---|---|
-| POST | `/api/public/mapalab/events/batch` | Ingesta pública sin auth, rate limit 120/min/IP. Allowlist de 35 event names. Scrubbing PII con `pii_scrubber` de Colibri. Lote máx 100 eventos, `props` máx 4 KB. |
+| POST | `/api/public/mapalab/events/batch` | Ingesta pública sin auth, rate limit 120/min/IP. Allowlist de 37 event names. Scrubbing PII con `pii_scrubber` de Colibri. Lote máx 100 eventos, `props` máx 4 KB. |
 Todos los GET de lectura (excepto `/highlights`) aceptan `date_from`, `date_to` (YYYY-MM-DD) y `grain` (`day`/`month`/`year`); default = últimos 30 días, grain día. `grain` solo afecta el bucketing de las series `/daily` y `/mcp/daily`; el resto solo usa el rango.
 
 | Método | Ruta | Función |
 |---|---|---|
 | GET | `/api/administrador/mapalab-stats/overview` | KPIs del rango (sesiones, eventos, duración media, % swipe/dibujo/descarga/compartir, reportaron) |
 | GET | `/api/administrador/mapalab-stats/layers?limit=N` | Top capas del rango con label/workspace enriquecidos desde `/mapalab/api/layers/tree`. `activations` excluye auto-activaciones de evento (`props.source='evento_open'`); el toggle manual sí cuenta |
-| GET | `/api/administrador/mapalab-stats/eventos?limit=N` | Top eventos por aperturas (`mapalab_rollup_eventos`): opens/closes/sesiones únicas por `evento_id`. El `titulo` se resuelve al nombre actual desde `eventos` |
+| GET | `/api/administrador/mapalab-stats/eventos?limit=N` | Top eventos (`mapalab_rollup_eventos`): opens/closes/fun_facts/centers/shares/sesiones unicas por `evento_id`. El `titulo` se resuelve al nombre actual desde `eventos` |
 | GET | `/api/administrador/mapalab-stats/themes?limit=N` | Top temas por aperturas (`mapalab_rollup_themes`): views/sesiones únicas por `theme_id`. Enriquecido con label/workspace/nodeType desde `/mapalab/api/layers/tree`. Filtra solo nodos raíz de tipo `tema` (excluye categorías/capas desplazadas a raíz) |
 | GET | `/api/administrador/mapalab-stats/buttons` | Clicks por evento (sider_lock, logo_click, share_map, etc.) |
 | GET | `/api/administrador/mapalab-stats/tools` | Uso de herramientas de dibujo/medición |

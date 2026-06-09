@@ -20,6 +20,12 @@ FILE="${1:-}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml}"
+COMPOSE_ENV_FILE="${COMPOSE_ENV_FILE:-}"
+
+COMPOSE_CMD="docker compose"
+if [ -n "$COMPOSE_ENV_FILE" ]; then
+    COMPOSE_CMD="$COMPOSE_CMD --env-file $COMPOSE_ENV_FILE"
+fi
 
 resolve_file() {
     if [ -f "$1" ]; then
@@ -84,10 +90,10 @@ printf "[restore] Ctrl+C para cancelar, ENTER para continuar... "
 read -r _CONFIRM
 
 echo "[restore] aplicando dump..."
-gunzip -c "$ABS_FILE" | docker compose -f "$COMPOSE_FILE" exec -T postgres sh -c \
+gunzip -c "$ABS_FILE" | $COMPOSE_CMD -f "$COMPOSE_FILE" exec -T postgres sh -c \
     'PGPASSWORD="$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 --quiet -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
 
 echo "[restore] done"
-echo "[restore] siguiente paso sugerido: docker compose -f $COMPOSE_FILE exec api alembic -x db=mariachi current"
+echo "[restore] siguiente paso sugerido: $COMPOSE_CMD -f $COMPOSE_FILE exec api alembic -x db=mariachi current"
 echo "[restore] mapalab stats: las vistas materializadas se restauraron con los datos del dump."
 echo "[restore]   si quieres recalcularlas: make refresh-mapalab-stats"

@@ -9,6 +9,34 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.34.3 / admin 1.34.3] - 2026-06-09
+
+### Fix: telemetria evento_fun_fact, evento_center, evento_share no aparecian en estadisticas
+
+- `evento_center` y `evento_share` eran emitidos por el frontend de mapalab pero rechazados al ingestar porque no estaban en `ALLOWED_EVENT_NAMES`. `evento_fun_fact` si se almacenaba pero no se rolleaba a ninguna tabla de estadisticas.
+- **`api/app/schemas/mapalab_event.py`**: `evento_center` y `evento_share` agregados a `ALLOWED_EVENT_NAMES` (37 eventos ahora).
+- **`api/app/services/mapalab_telemetry.py`**: los 3 eventos agregados a `_VISOR_BUTTON_NAMES` (aparecen en pestana Botones). Rollup `mapalab_rollup_eventos` extendido con columnas `fun_facts`, `centers`, `shares` (Ademas de `opens`/`closes`).
+- **`api/app/api/routes/mapalab_stats.py`**: endpoint `/eventos` lee y devuelve los 3 campos nuevos.
+- **Migracion**: `f9c0d1e2f3a4` — `ALTER TABLE mapalab_rollup_eventos ADD COLUMN fun_facts/centers/shares` + backfill de datos historicos.
+
+### Notas de deploy
+
+- **Migracion requerida**: `mariachi` `f9c0d1e2f3a4`. Ejecutar `docker exec mariachi-api alembic -x db=mariachi upgrade head`.
+
+---
+
+## [api 1.34.2 / admin 1.34.2] - 2026-06-09
+
+### Fix: docker compose exec sin --env-file generaba warnings en backup/restore
+
+`docker compose exec` no carga `--env-file` (solo `up` lo hace). Al ejecutar `make backup-db ENV=prod`, las variables `POSTGRES_MAX_CONNECTIONS`, `POSTGRES_SHARED_BUFFERS` y `POSTGRES_EFFECTIVE_CACHE_SIZE` de `.env.production` no se inyectaban al parsear `docker-compose.yml`, generando warnings aunque el dump funcionaba correctamente. Lo mismo afectaba a `restore-db`, `refresh-mapalab-stats`, `purge-mapalab-events` y el cronjob de `install-backup-cron`.
+
+- **`scripts/postgres-backup.sh`**: nueva variable `COMPOSE_ENV_FILE`; si está seteada se agrega `--env-file` a todas las llamadas a `docker compose`.
+- **`scripts/postgres-restore.sh`**: mismo tratamiento.
+- **`Makefile`**: los targets `backup-db`, `restore-db`, `refresh-mapalab-stats`, `purge-mapalab-events` e `install-backup-cron` pasan `COMPOSE_ENV_FILE=$(ENV_FILE)` o `--env-file $(ENV_FILE)` según corresponda.
+
+---
+
 ## [api 1.34.1 / admin 1.34.1] - 2026-06-09
 
 ### Fix: crear carpeta en Acervo daba 409 y la carpeta quedaba invisible

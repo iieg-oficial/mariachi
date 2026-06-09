@@ -195,7 +195,8 @@ _VISOR_BUTTON_NAMES = (
     "'sider_lock','logo_click','contribute_click','share_map','info_open',"
     "'report_submitted','layer_download','opacity_change','legends_toggle',"
     "'infobox_action','home_action','layer_reorder','basemap_change',"
-    "'geolocate','map_export','periodicity_advanced'"
+    "'geolocate','map_export','periodicity_advanced',"
+    "'evento_fun_fact','evento_center','evento_share'"
 )
 
 # (nombre, tabla rollup, columna fecha del crudo, INSERT ... SELECT sin WHERE de fecha)
@@ -274,14 +275,21 @@ _ROLLUP_STEPS: tuple[tuple[str, str, str], ...] = (
         "mapalab_rollup_eventos",
         """
         INSERT INTO mapalab_rollup_eventos
-            (dia, evento_id, titulo, opens, closes, unique_sessions, last_seen)
+            (dia, evento_id, titulo, opens, closes, fun_facts, centers, shares,
+             unique_sessions, last_seen)
         SELECT
             DATE(ts), (props->>'evento_id'), MAX(props->>'titulo'),
             COUNT(*) FILTER (WHERE event_name = 'evento_open'),
             COUNT(*) FILTER (WHERE event_name = 'evento_close'),
+            COUNT(*) FILTER (WHERE event_name = 'evento_fun_fact'),
+            COUNT(*) FILTER (WHERE event_name = 'evento_center'),
+            COUNT(*) FILTER (WHERE event_name = 'evento_share'),
             COUNT(DISTINCT session_id), MAX(ts)
         FROM mapalab_events
-        WHERE event_name IN ('evento_open', 'evento_close')
+        WHERE event_name IN (
+            'evento_open', 'evento_close',
+            'evento_fun_fact', 'evento_center', 'evento_share'
+        )
           AND (props->>'evento_id') IS NOT NULL AND ts >= CURRENT_DATE - :days
         GROUP BY DATE(ts), (props->>'evento_id')
         """,
