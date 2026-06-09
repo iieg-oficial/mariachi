@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Button, Dropdown, Modal, Space, Table, Tag, Tooltip, Typography } from 'antd';
 import { ExclamationCircleOutlined } from '@ant-design/icons';
 import {
+    AuditOutlined,
     DeleteOutlined,
     EditOutlined,
     EyeOutlined,
@@ -35,6 +36,7 @@ export default function ApiKeysTable({
     expandable,
     onEdit,
     onPreview,
+    onAudit,
     onRotate,
     onSuspend,
     onReactivate,
@@ -109,7 +111,7 @@ export default function ApiKeysTable({
         {
             title: 'Acciones',
             key: 'acciones',
-            width: 175,
+            width: 205,
             render: (_, record) => {
                 const isRevoked = record.estado === 'revoked';
                 const isSuspended = record.estado === 'suspended';
@@ -210,6 +212,16 @@ export default function ApiKeysTable({
                                 />
                             </Tooltip>
                         )}
+                        {onAudit && (
+                            <Tooltip title={activeTab === 'auditoria' ? 'Cerrar la auditoría' : 'Ver historial de accesos al mapa con esta llave'}>
+                                <Button
+                                    size="small"
+                                    type={activeTab === 'auditoria' ? 'primary' : 'default'}
+                                    icon={<AuditOutlined />}
+                                    onClick={() => onAudit(record)}
+                                />
+                            </Tooltip>
+                        )}
                         <Tooltip title="Más acciones (pausar, generar contraseña nueva, cancelar…)">
                             <Dropdown
                                 menu={{ items: menuItems }}
@@ -223,7 +235,7 @@ export default function ApiKeysTable({
                 );
             },
         },
-    ], [actingId, expandedRowId, expandedTab, onEdit, onPreview, onRotate, onSuspend, onReactivate, onRevoke, onDelete]);
+    ], [actingId, expandedRowId, expandedTab, onEdit, onPreview, onAudit, onRotate, onSuspend, onReactivate, onRevoke, onDelete]);
 
     return (
         <Table
