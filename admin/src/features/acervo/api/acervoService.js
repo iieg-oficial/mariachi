@@ -131,6 +131,7 @@ export const uploadAcervoFile = async (file, options = {}) => {
         }
 
         const response = await api.post('/acervo', formData, {
+            timeout: 300000,
             headers: {
                 'Content-Type': 'multipart/form-data',
             },

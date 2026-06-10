@@ -34,6 +34,7 @@ const isCsrfError = (error) => {
 };
 
 let csrfRefreshPromise = null;
+let redirectingToLogin = false;
 
 export const refreshCsrfToken = async () => {
     if (csrfRefreshPromise) return csrfRefreshPromise;
@@ -62,9 +63,11 @@ api.interceptors.response.use(
 
         if (error.response?.status === 401) {
             sessionStorage.removeItem('csrf_token');
-            if (!window.location.pathname.endsWith('/login')) {
+            if (!redirectingToLogin && !window.location.pathname.endsWith('/login')) {
+                redirectingToLogin = true;
                 const base = import.meta.env.BASE_URL || '/';
-                window.location.href = `${base.replace(/\/$/, '')}/administrador/login`;
+                const target = `${base.replace(/\/$/, '')}/administrador/login`;
+                setTimeout(() => { window.location.href = target; }, 0);
             }
             return Promise.reject(error);
         }

@@ -9,6 +9,19 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.34.7 / admin 1.34.7] - 2026-06-10
+
+### Fix: subidas de Acervo abortaban por timeout y el 401 mid-batch crasheaba con React #185
+
+Dos bugs en la subida múltiple de Acervo, independientes del storm de render ya corregido:
+
+- **Timeout de 10s heredado de la instancia axios** ([`shared/services/api.js`](../admin/src/shared/services/api.js) define `timeout: 10000`) aplicaba también a los `POST /acervo`. Archivos pesados o lotes grandes excedían los 10s y axios abortaba esas peticiones → "unas se suben, otras no". **`admin/.../acervo/api/acervoService.js`**: `uploadAcervoFile` ahora pasa `timeout: 300000` (5 min) en el `POST`.
+- **El interceptor redirigía a login con `window.location.href` síncrono ante cualquier 401.** Si una petición 401eaba a mitad de un batch (p. ej. el JWT expira), esa navegación corría mientras el `Upload` de antd hacía `flushSync` sobre un árbol desmontándose → `Minified React error #185` y spinner pegado. **`admin/.../shared/services/api.js`**: guard `redirectingToLogin` para que N respuestas 401 no disparen N redirects, y la navegación se difiere con `setTimeout(…, 0)` para dejar que el stack de React termine antes.
+
+Sin migración ni cambios de schema.
+
+---
+
 ## [api 1.34.6 / admin 1.34.6] - 2026-06-10
 
 ### Mejora: limitar la concurrencia de subida en Acervo a 3 archivos a la vez
