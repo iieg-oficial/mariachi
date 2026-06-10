@@ -166,13 +166,20 @@ const Acervo = () => {
 
             const result = await acervoService.uploadAcervoFile(file, uploadOptions);
             onSuccess(result);
-            message.success(`${file.name} subido exitosamente`);
-            loadAcervoFiles();
-            loadBucketStats();
         } catch (error) {
             onError(error);
-            message.error(`Error al subir ${file.name}`);
         }
+    };
+
+    const handleUploadChange = (info) => {
+        const stillUploading = info.fileList.some((f) => f.status === 'uploading');
+        if (stillUploading || info.fileList.length === 0) return;
+        const done = info.fileList.filter((f) => f.status === 'done').length;
+        const failed = info.fileList.filter((f) => f.status === 'error').length;
+        if (done > 0) message.success(`${done} archivo(s) subido(s) exitosamente`);
+        if (failed > 0) message.error(`${failed} archivo(s) no se pudieron subir`);
+        loadAcervoFiles();
+        loadBucketStats();
     };
 
     const handleDelete = async (id) => {
@@ -756,6 +763,7 @@ const Acervo = () => {
                             name="file"
                             multiple
                             customRequest={handleUpload}
+                            onChange={handleUploadChange}
                             showUploadList={{
                                 showRemoveIcon: true
                             }}

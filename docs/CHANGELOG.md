@@ -9,6 +9,18 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.34.5 / admin 1.34.5] - 2026-06-10
+
+### Fix: subir muchos archivos a Acervo crasheaba con React #185 y dejaba el spinner pegado
+
+Al arrastrar varios archivos (p. ej. un set de iconos) al uploader de Acervo, solo se subían algunos y el resto fallaba con `Minified React error #185` ("Maximum update depth exceeded"); la página quedaba cargando. La causa: el `Dragger` es `multiple`, así que cada archivo corría su propio `customRequest` y al terminar llamaba a `loadAcervoFiles()` + `loadBucketStats()` (este último lista el bucket completo recursivo) y mostraba un `message.success`. Con N archivos eso eran N×2 listados concurrentes y un storm de `setState` que chocaba con el `flushSync` interno del `Upload`; al crashear React el `setLoading(false)` final no se aplicaba y el spinner se quedaba pegado. El bombardeo de peticiones también disparaba carreras del interceptor de sesión (401 en `/autenticacion/perfil`).
+
+- **`admin/.../acervo/pages/AcervoPage.jsx`**: `handleUpload` (customRequest) ya no recarga ni notifica por archivo; solo resuelve `onSuccess`/`onError`. Nuevo `handleUploadChange` en el `Dragger` recarga la rejilla y las estadísticas **una sola vez** cuando el batch completo termina, con un único `message` de resumen (subidos / fallidos).
+
+Sin migración ni cambios de schema.
+
+---
+
 ## [api 1.34.4 / admin 1.34.4] - 2026-06-09
 
 ### Fix: labels legibles de evento_fun_fact/center/share y quitar "(últimos 30 días)" de secciones
