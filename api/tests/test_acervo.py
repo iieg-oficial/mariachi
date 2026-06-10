@@ -462,6 +462,35 @@ def test_eliminar_directorio_limpia_acervo_folders(admin_session, db_session):
     assert remaining == 0
 
 
+def test_subir_archivo_duplicado_409(admin_session, db_session):
+    _, bucket = _seed_bucket(db_session, name="x")
+    client = admin_session["client"]
+    primera = client.post(
+        f"{ADMIN_PREFIX}/acervo",
+        data={"folder": "iconos", "alt": "", "bucket_id": str(bucket.id)},
+        files={"file": ("logo.svg", io.BytesIO(b"<svg/>"), "image/svg+xml")},
+        headers={"X-CSRF-Token": admin_session["csrf"]},
+    )
+    assert primera.status_code == 201
+
+    repetida = client.post(
+        f"{ADMIN_PREFIX}/acervo",
+        data={"folder": "iconos", "alt": "", "bucket_id": str(bucket.id)},
+        files={"file": ("logo.svg", io.BytesIO(b"<svg/>"), "image/svg+xml")},
+        headers={"X-CSRF-Token": admin_session["csrf"]},
+    )
+    assert repetida.status_code == 409
+    assert "Ya existe" in repetida.json()["detail"]
+
+    otra_carpeta = client.post(
+        f"{ADMIN_PREFIX}/acervo",
+        data={"folder": "otra", "alt": "", "bucket_id": str(bucket.id)},
+        files={"file": ("logo.svg", io.BytesIO(b"<svg/>"), "image/svg+xml")},
+        headers={"X-CSRF-Token": admin_session["csrf"]},
+    )
+    assert otra_carpeta.status_code == 201
+
+
 def test_proxy_object_unauth_401(client, db_session):
     _, bucket = _seed_bucket(db_session, name="x")
     response = client.get(f"{ADMIN_PREFIX}/acervo/proxy/{bucket.id}/a.txt")

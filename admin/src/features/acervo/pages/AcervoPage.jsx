@@ -61,7 +61,7 @@ const Acervo = () => {
     const [editForm] = Form.useForm();
 
     const uploadSemaphore = useRef({ active: 0, queue: [], max: 3 });
-    const uploadBatch = useRef({ pending: 0, done: 0, failed: 0 });
+    const uploadBatch = useRef({ pending: 0, done: 0, failed: 0, lastError: null });
 
     const acquireSlot = () => new Promise((resolve) => {
         const sem = uploadSemaphore.current;
@@ -173,12 +173,15 @@ const Acervo = () => {
         const batch = uploadBatch.current;
         batch.pending -= 1;
         if (batch.pending > 0) return;
-        const { done, failed } = batch;
+        const { done, failed, lastError } = batch;
         batch.done = 0;
         batch.failed = 0;
+        batch.lastError = null;
         setTimeout(() => {
             if (done > 0) message.success(`${done} archivo(s) subido(s) exitosamente`);
-            if (failed > 0) message.error(`${failed} archivo(s) no se pudieron subir`);
+            if (failed > 0) {
+                message.error(`${failed} archivo(s) no se pudieron subir${lastError ? ` — ${lastError}` : ''}`);
+            }
             setUploadProgress(null);
             loadAcervoFiles();
             loadBucketStats();
@@ -213,6 +216,8 @@ const Acervo = () => {
                         continue;
                     }
                     uploadBatch.current.failed += 1;
+                    const detail = error?.response?.data?.detail;
+                    if (detail) uploadBatch.current.lastError = detail;
                     setUploadProgress((prev) => prev && { ...prev, failed: prev.failed + 1 });
                     break;
                 }
@@ -235,7 +240,17 @@ const Acervo = () => {
     const handleDelete = async (id) => {
         try {
             await acervoService.deleteAcervoFile(id);
-            message.success(String(id).startsWith('dir:') ? 'Carpeta eliminada' : 'Archivo eliminado exitosamente');
+            const idStr = String(id);
+            if (idStr.startsWith('dir:')) {
+                message.success('Carpeta eliminada');
+                const name = idStr.split(':').slice(2).join(':');
+                const prefix = name.endsWith('/') ? name : `${name}/`;
+                if (currentPath && currentPath.startsWith(prefix)) {
+                    setCurrentPath(prefix.replace(/[^/]+\/$/, ''));
+                }
+            } else {
+                message.success('Archivo eliminado exitosamente');
+            }
             loadAcervoFiles();
             loadBucketStats();
             loadFolders(selectedBucketId);

@@ -9,6 +9,23 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.35.2 / admin 1.35.2] - 2026-06-10
+
+### Fix: rechazar subidas duplicadas (mismo nombre original en la misma carpeta)
+
+Cada subida genera un object key UUID, así que el mismo archivo podía subirse infinitas veces a la misma carpeta sin aviso.
+
+- **`api/app/api/routes/acervo.py::subir_archivo`**: si ya existe un registro con el mismo `original_name` en el mismo bucket/carpeta responde `409` con detalle "Ya existe '<archivo>' en esta carpeta". El mismo nombre en carpetas distintas sigue permitido.
+- **`admin/.../acervo/pages/AcervoPage.jsx`**: el resumen del batch incluye el motivo del último error (p. ej. el detalle del 409) y el retry no reintenta duplicados (solo 429).
+
+### UX: al eliminar la carpeta en la que estás navegando, la vista regresa al padre
+
+El borrado de carpetas funcionaba (objetos + filas eliminados), pero si el `currentPath` apuntaba a la carpeta borrada la rejilla quedaba "dentro" de una ruta fantasma vacía y parecía que el borrado no había ocurrido. Ahora `handleDelete` detecta que el path actual cuelga del prefijo borrado y navega al padre.
+
+Sin migración ni cambios de schema.
+
+---
+
 ## [api 1.35.1 / admin 1.35.1] - 2026-06-10
 
 ### Fix: thumbnails de carpetas grandes en Acervo recibían 429 del gateway

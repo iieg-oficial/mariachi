@@ -181,6 +181,21 @@ async def subir_archivo(
     object_key = f"{clean_folder}/{base}" if clean_folder else base
     folder_path = acervo_file_service.ensure_folder_exists(db, bucket.id, clean_folder)
 
+    duplicate = (
+        db.query(AcervoFile)
+        .filter(
+            AcervoFile.bucket_id == bucket.id,
+            AcervoFile.folder == folder_path,
+            AcervoFile.original_name == file.filename,
+        )
+        .first()
+    )
+    if duplicate:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Ya existe '{file.filename}' en esta carpeta",
+        )
+
     try:
         url = await client.upload_file(file, object_key)
 
