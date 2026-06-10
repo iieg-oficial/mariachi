@@ -9,6 +9,18 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.34.8 / admin 1.34.8] - 2026-06-10
+
+### Fix: subida múltiple en Acervo seguía con React #185 (recarga acoplada al onChange de antd)
+
+La recarga post-subida vivía en el `onChange` del `Dragger`, que antd invoca dentro de su `flushSync`; al llamar ahí a `loadAcervoFiles()`/`loadBucketStats()` (que hacen `setState`) se re-entraba el ciclo de updates de antd → `Minified React error #185` y spinner pegado (reproducible al subir dentro de una carpeta, con varios archivos).
+
+- **`admin/.../acervo/pages/AcervoPage.jsx`**: se elimina el handler `onChange` del `Dragger`. La recarga se desacopla por completo del ciclo de antd: un ref `uploadBatch` (`pending`/`done`/`failed`) cuenta las subidas en `handleUpload` (el `customRequest`), y cuando el contador llega a 0 se difiere la recarga + el `message` de resumen con `setTimeout(0)`, de modo que el `setState` corre **fuera** del `flushSync` de antd.
+
+Sin migración ni cambios de schema.
+
+---
+
 ## [api 1.34.7 / admin 1.34.7] - 2026-06-10
 
 ### Fix: subidas de Acervo abortaban por timeout y el 401 mid-batch crasheaba con React #185

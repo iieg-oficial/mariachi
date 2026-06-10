@@ -57,6 +57,7 @@ const Acervo = () => {
     const [editForm] = Form.useForm();
 
     const uploadSemaphore = useRef({ active: 0, queue: [], max: 3 });
+    const uploadBatch = useRef({ pending: 0, done: 0, failed: 0 });
 
     const acquireSlot = () => new Promise((resolve) => {
         const sem = uploadSemaphore.current;
@@ -164,6 +165,21 @@ const Acervo = () => {
 
     const visibleAcervoFiles = selectedBucketId ? acervoFiles : [];
 
+    const finishUpload = () => {
+        const batch = uploadBatch.current;
+        batch.pending -= 1;
+        if (batch.pending > 0) return;
+        const { done, failed } = batch;
+        batch.done = 0;
+        batch.failed = 0;
+        setTimeout(() => {
+            if (done > 0) message.success(`${done} archivo(s) subido(s) exitosamente`);
+            if (failed > 0) message.error(`${failed} archivo(s) no se pudieron subir`);
+            loadAcervoFiles();
+            loadBucketStats();
+        }, 0);
+    };
+
     const handleUpload = async (options) => {
         const { file, onSuccess, onError, onProgress } = options;
 
@@ -173,6 +189,7 @@ const Acervo = () => {
             return;
         }
 
+        uploadBatch.current.pending += 1;
         await acquireSlot();
         try {
             const uploadOptions = {
@@ -185,23 +202,15 @@ const Acervo = () => {
             };
 
             const result = await acervoService.uploadAcervoFile(file, uploadOptions);
+            uploadBatch.current.done += 1;
             onSuccess(result);
         } catch (error) {
+            uploadBatch.current.failed += 1;
             onError(error);
         } finally {
             releaseSlot();
+            finishUpload();
         }
-    };
-
-    const handleUploadChange = (info) => {
-        const stillUploading = info.fileList.some((f) => f.status === 'uploading');
-        if (stillUploading || info.fileList.length === 0) return;
-        const done = info.fileList.filter((f) => f.status === 'done').length;
-        const failed = info.fileList.filter((f) => f.status === 'error').length;
-        if (done > 0) message.success(`${done} archivo(s) subido(s) exitosamente`);
-        if (failed > 0) message.error(`${failed} archivo(s) no se pudieron subir`);
-        loadAcervoFiles();
-        loadBucketStats();
     };
 
     const handleDelete = async (id) => {
@@ -785,7 +794,6 @@ const Acervo = () => {
                             name="file"
                             multiple
                             customRequest={handleUpload}
-                            onChange={handleUploadChange}
                             showUploadList={{
                                 showRemoveIcon: true
                             }}
