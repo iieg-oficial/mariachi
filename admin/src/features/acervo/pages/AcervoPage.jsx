@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Alert, Card, Button, Upload, Table, Image, Space, Modal, Form, Input, Select, Tabs, Tag, Popconfirm, Row, Col, Statistic, Segmented, Empty, Spin, Breadcrumb } from 'antd';
+import { Alert, Card, Button, Upload, Table, Image, Space, Modal, Form, Input, Select, Tabs, Tag, Popconfirm, Row, Col, Statistic, Segmented, Empty, Spin, Breadcrumb, Progress } from 'antd';
 import {
     InboxOutlined, DeleteOutlined, EditOutlined, FolderOutlined, FolderOpenOutlined, FolderAddOutlined, FileImageOutlined, FilePdfOutlined,
     FileOutlined, AppstoreOutlined, BarsOutlined, DownloadOutlined, CopyOutlined, EyeOutlined, HomeOutlined, DragOutlined
@@ -46,6 +46,7 @@ const Acervo = () => {
     const [viewMode, setViewMode] = useState('grid');
     const [selectedFiles, setSelectedFiles] = useState([]);
     const [uploadModalVisible, setUploadModalVisible] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(null);
     const [folderModalVisible, setFolderModalVisible] = useState(false);
     const [editModalVisible, setEditModalVisible] = useState(false);
     const [previewVisible, setPreviewVisible] = useState(false);
@@ -175,42 +176,44 @@ const Acervo = () => {
         setTimeout(() => {
             if (done > 0) message.success(`${done} archivo(s) subido(s) exitosamente`);
             if (failed > 0) message.error(`${failed} archivo(s) no se pudieron subir`);
+            setUploadProgress(null);
             loadAcervoFiles();
             loadBucketStats();
         }, 0);
     };
 
-    const handleUpload = async (options) => {
-        const { file, onSuccess, onError, onProgress } = options;
-
-        if (!selectedBucketId) {
-            onError(new Error('Selecciona un bucket primero'));
-            message.error('Selecciona un bucket primero');
-            return;
-        }
-
+    const startUpload = async (file) => {
         uploadBatch.current.pending += 1;
+        setUploadProgress((prev) => ({
+            total: (prev?.total || 0) + 1,
+            done: prev?.done || 0,
+            failed: prev?.failed || 0,
+        }));
         await acquireSlot();
         try {
-            const uploadOptions = {
+            await acervoService.uploadAcervoFile(file, {
                 bucketId: selectedBucketId,
                 folder: form.getFieldValue('folder') || '/',
                 alt: form.getFieldValue('alt') || '',
-                onProgress: (percent) => {
-                    onProgress({ percent });
-                },
-            };
-
-            const result = await acervoService.uploadAcervoFile(file, uploadOptions);
+            });
             uploadBatch.current.done += 1;
-            onSuccess(result);
-        } catch (error) {
+            setUploadProgress((prev) => prev && { ...prev, done: prev.done + 1 });
+        } catch {
             uploadBatch.current.failed += 1;
-            onError(error);
+            setUploadProgress((prev) => prev && { ...prev, failed: prev.failed + 1 });
         } finally {
             releaseSlot();
             finishUpload();
         }
+    };
+
+    const handleBeforeUpload = (file) => {
+        if (!selectedBucketId) {
+            message.error('Selecciona un bucket primero');
+            return Upload.LIST_IGNORE;
+        }
+        startUpload(file);
+        return Upload.LIST_IGNORE;
     };
 
     const handleDelete = async (id) => {
@@ -793,10 +796,8 @@ const Acervo = () => {
                         <Dragger
                             name="file"
                             multiple
-                            customRequest={handleUpload}
-                            showUploadList={{
-                                showRemoveIcon: true
-                            }}
+                            beforeUpload={handleBeforeUpload}
+                            showUploadList={false}
                         >
                             <p className="ant-upload-drag-icon">
                                 <InboxOutlined />
@@ -809,6 +810,19 @@ const Acervo = () => {
                             </p>
                         </Dragger>
                     </Form.Item>
+
+                    {uploadProgress && (
+                        <Form.Item>
+                            <Progress
+                                percent={Math.round(((uploadProgress.done + uploadProgress.failed) / uploadProgress.total) * 100)}
+                                status={uploadProgress.failed > 0 ? 'exception' : 'active'}
+                            />
+                            <div style={{ textAlign: 'center', color: '#8c8c8c', fontSize: 12 }}>
+                                {uploadProgress.done + uploadProgress.failed} de {uploadProgress.total} archivo(s)
+                                {uploadProgress.failed > 0 ? ` (${uploadProgress.failed} con error)` : ''}
+                            </div>
+                        </Form.Item>
+                    )}
                 </Form>
             </Modal>
 

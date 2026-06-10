@@ -9,6 +9,24 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.34.9 / admin 1.34.9] - 2026-06-10
+
+### Fix: causa raíz del React #185 al soltar muchos archivos en Acervo — bypass del fileList interno de antd
+
+Diagnóstico definitivo del crash de subida masiva: ocurría **al soltar el batch**, no durante las subidas. rc-upload/antd procesa el drop llamando `flushSync` (render síncrono forzado) **una vez por archivo** dentro de un `forEach` (stack: `onChange` del input nativo → `uploadFiles` → forEach → `flushSync`); React corta a los ~50 renders síncronos consecutivos sin paint → `Maximum update depth exceeded` (#185) → crashea el árbol, el spinner queda pegado y las subidas restantes mueren. Por eso los fixes de 1.34.5–1.34.8 (que operaban después del drop) no lo resolvían.
+
+- **`admin/.../acervo/pages/AcervoPage.jsx`**: los archivos ya no entran al pipeline interno de antd. `beforeUpload` devuelve `Upload.LIST_IGNORE` por cada archivo (cero `flushSync`, sin `fileList` interno) y dispara `startUpload`, que sube con el semáforo de 3 concurrentes existente. Progreso propio con estado `uploadProgress` (`total`/`done`/`failed`) renderizado como `<Progress>` + contador bajo el Dragger (reemplaza la lista de items de antd). El resumen y la recarga única al terminar el batch se mantienen.
+
+### Fix: index.html del admin se cacheaba indefinidamente (bundles viejos tras deploy)
+
+`location /mariachi` servía `index.html` sin `Cache-Control`, y los assets `.js/.css` van con `public, immutable` + 1 año. El navegador cacheaba heurísticamente el HTML viejo, que apuntaba a bundles viejos inmutables → tras un deploy se seguía sirviendo la app anterior incluso con recargas normales.
+
+- **`nginx/conf.d/mariachi.conf`**: `add_header Cache-Control "no-cache" always` en `location /mariachi` (el HTML se revalida siempre; los assets con hash siguen immutable).
+
+Sin migración ni cambios de schema.
+
+---
+
 ## [api 1.34.8 / admin 1.34.8] - 2026-06-10
 
 ### Fix: subida múltiple en Acervo seguía con React #185 (recarga acoplada al onChange de antd)
