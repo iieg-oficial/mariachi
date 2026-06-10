@@ -9,6 +9,19 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.35.1 / admin 1.35.1] - 2026-06-10
+
+### Fix: thumbnails de carpetas grandes en Acervo recibían 429 del gateway
+
+Al entrar a una carpeta con muchos archivos, el navegador pedía todos los thumbnails de golpe. El `location ^~ /acervo/` del **gateway-hub** usaba la zona `api` (10 req/s, burst 100): los primeros ~100 GETs pasaban y el resto recibía `429 Too Many Requests` — la mitad de las imágenes no cargaba.
+
+- **gateway-hub `nginx/templates/gateway.conf.template`**: `/acervo/` ahora usa la zona `static` (50 req/s, burst 200), consistente con el resto del contenido estático del gateway. (Cambio en el repo `gateway-hub`.)
+- **`admin/.../acervo/pages/AcervoPage.jsx`**: `loading="lazy"` en los thumbnails de la rejilla y la tabla — el navegador solo pide las imágenes visibles en viewport, reduciendo el burst de raíz.
+
+Sin migración ni cambios de schema.
+
+---
+
 ## [api 1.35.0 / admin 1.35.0] - 2026-06-10
 
 ### Fix: "Mover a carpeta" en Acervo no movía nada

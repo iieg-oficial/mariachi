@@ -425,6 +425,7 @@ const Acervo = () => {
                         height={60}
                         style={{ objectFit: 'cover', borderRadius: 4 }}
                         preview={false}
+                        loading="lazy"
                         onClick={() => handlePreview(record)}
                     />
                 ) : (
@@ -586,6 +587,7 @@ const Acervo = () => {
                                         src={file.thumbnail}
                                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                         preview={false}
+                                        loading="lazy"
                                     />
                                 </div>
                             ) : (
