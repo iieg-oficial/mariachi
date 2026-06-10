@@ -191,16 +191,29 @@ const Acervo = () => {
         }));
         await acquireSlot();
         try {
-            await acervoService.uploadAcervoFile(file, {
-                bucketId: selectedBucketId,
-                folder: form.getFieldValue('folder') || '/',
-                alt: form.getFieldValue('alt') || '',
-            });
-            uploadBatch.current.done += 1;
-            setUploadProgress((prev) => prev && { ...prev, done: prev.done + 1 });
-        } catch {
-            uploadBatch.current.failed += 1;
-            setUploadProgress((prev) => prev && { ...prev, failed: prev.failed + 1 });
+            let attempts = 0;
+            for (;;) {
+                try {
+                    await acervoService.uploadAcervoFile(file, {
+                        bucketId: selectedBucketId,
+                        folder: form.getFieldValue('folder') || '/',
+                        alt: form.getFieldValue('alt') || '',
+                    });
+                    uploadBatch.current.done += 1;
+                    setUploadProgress((prev) => prev && { ...prev, done: prev.done + 1 });
+                    break;
+                } catch (error) {
+                    attempts += 1;
+                    if (error?.response?.status === 429 && attempts <= 5) {
+                        const retryAfter = Number(error.response.headers?.['retry-after']) || 5;
+                        await new Promise((resolve) => setTimeout(resolve, (retryAfter + 1) * 1000));
+                        continue;
+                    }
+                    uploadBatch.current.failed += 1;
+                    setUploadProgress((prev) => prev && { ...prev, failed: prev.failed + 1 });
+                    break;
+                }
+            }
         } finally {
             releaseSlot();
             finishUpload();

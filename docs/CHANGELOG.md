@@ -9,6 +9,19 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.34.10 / admin 1.34.10] - 2026-06-10
+
+### Fix: subida masiva en Acervo fallaba a partir del archivo ~61 por rate limit (429)
+
+Con el crash de antd resuelto (1.34.9), los logs del API mostraron la causa de los archivos restantes que no subían: el endpoint `POST /acervo` compartía el rate limit `acervo_write` (60 req/min por usuario), y un lote de iconos pequeños con 3 subidas concurrentes supera 60/min fácilmente — del archivo ~61 en adelante el backend respondía `429 Too Many Requests` dentro de la misma ventana.
+
+- **`api/app/api/routes/acervo.py`**: la subida de archivos usa su propio límite `acervo_upload` (240 req/min); el resto de escrituras (carpetas, ediciones, borrados) mantienen `acervo_write` (60 req/min).
+- **`admin/.../acervo/pages/AcervoPage.jsx`**: `startUpload` reintenta automáticamente ante `429`, esperando el `Retry-After` del backend (+1s de margen), hasta 5 intentos por archivo. Lotes que excedan la ventana terminan completos en vez de marcar errores.
+
+Sin migración ni cambios de schema.
+
+---
+
 ## [api 1.34.9 / admin 1.34.9] - 2026-06-10
 
 ### Fix: causa raíz del React #185 al soltar muchos archivos en Acervo — bypass del fileList interno de antd
