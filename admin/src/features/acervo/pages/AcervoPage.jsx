@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Alert, Card, Button, Upload, Table, Image, Space, Modal, Form, Input, Select, Tabs, Tag, Popconfirm, Row, Col, Statistic, Segmented, Empty, Spin, Breadcrumb, Progress } from 'antd';
+import { Alert, Card, Button, Upload, Table, Image, Space, Modal, Form, Input, Select, Tabs, Tag, Popconfirm, Row, Col, Statistic, Segmented, Empty, Spin, Breadcrumb, Progress, Descriptions } from 'antd';
 import {
     InboxOutlined, DeleteOutlined, EditOutlined, FolderOutlined, FolderOpenOutlined, FolderAddOutlined, FileImageOutlined, FilePdfOutlined,
-    FileOutlined, AppstoreOutlined, BarsOutlined, DownloadOutlined, CopyOutlined, EyeOutlined, HomeOutlined, DragOutlined
+    FileOutlined, AppstoreOutlined, BarsOutlined, DownloadOutlined, CopyOutlined, EyeOutlined, HomeOutlined, DragOutlined,
+    InfoCircleOutlined
 } from '@ant-design/icons';
 import acervoService from '@features/acervo/api/acervoService';
 import useIsMobile from '@shared/hooks/useIsMobile';
@@ -53,6 +54,8 @@ const Acervo = () => {
     const [moveModalVisible, setMoveModalVisible] = useState(false);
     const [moveTargetFolder, setMoveTargetFolder] = useState('/');
     const [currentFile, setCurrentFile] = useState(null);
+    const [folderInfo, setFolderInfo] = useState(null);
+    const [folderInfoLoading, setFolderInfoLoading] = useState(false);
     const [form] = Form.useForm();
     const [folderForm] = Form.useForm();
     const [editForm] = Form.useForm();
@@ -232,11 +235,12 @@ const Acervo = () => {
     const handleDelete = async (id) => {
         try {
             await acervoService.deleteAcervoFile(id);
-            message.success('Archivo eliminado exitosamente');
+            message.success(String(id).startsWith('dir:') ? 'Carpeta eliminada' : 'Archivo eliminado exitosamente');
             loadAcervoFiles();
             loadBucketStats();
-        } catch {
-            message.error('Error al eliminar archivo');
+            loadFolders(selectedBucketId);
+        } catch (error) {
+            message.error(error?.response?.data?.detail || 'Error al eliminar');
         }
     };
 
@@ -312,10 +316,11 @@ const Acervo = () => {
     const handleMoveSubmit = async () => {
         if (!currentFile) return;
         try {
-            await acervoService.updateAcervoFile(currentFile.id, { folder: moveTargetFolder });
+            await acervoService.moveAcervoFile(currentFile.id, moveTargetFolder);
             message.success('Archivo movido');
             setMoveModalVisible(false);
             loadAcervoFiles();
+            loadFolders(selectedBucketId);
         } catch (error) {
             message.error(error?.response?.data?.detail || 'Error al mover archivo');
         }
@@ -328,9 +333,24 @@ const Acervo = () => {
     };
 
     const handleDownloadFolder = (folder) => {
-        const prefix = (currentPath || '') + (folder.name || '').replace(/\/$/, '');
+        const prefix = (folder.name || '').replace(/\/$/, '');
         const url = acervoService.buildFolderZipUrl(selectedBucketId, prefix);
         window.open(url, '_blank');
+    };
+
+    const handleFolderInfo = async (folder) => {
+        const prefix = (folder.name || '').replace(/\/$/, '');
+        setFolderInfo({ name: prefix.split('/').pop(), prefix });
+        setFolderInfoLoading(true);
+        try {
+            const data = await acervoService.getFolderInfo(selectedBucketId, prefix);
+            setFolderInfo((prev) => prev && { ...prev, ...data });
+        } catch {
+            message.error('Error al obtener información de la carpeta');
+            setFolderInfo(null);
+        } finally {
+            setFolderInfoLoading(false);
+        }
     };
 
     const currentBucket = buckets.find((b) => b.id === selectedBucketId);
@@ -498,6 +518,14 @@ const Acervo = () => {
             fixed: 'right',
             render: (_, record) => (
                 <Space>
+                    {record.isDir && (
+                        <Button
+                            type="text"
+                            icon={<InfoCircleOutlined />}
+                            title="Información de la carpeta"
+                            onClick={() => handleFolderInfo(record)}
+                        />
+                    )}
                     {!record.isDir && (
                         <>
                             <Button
@@ -568,6 +596,7 @@ const Acervo = () => {
                         }
                         actions={file.isDir ? [
                             <FolderOpenOutlined key="open" onClick={(e) => { e.stopPropagation(); handleEnterDir(file); }} />,
+                            <InfoCircleOutlined key="info" title="Información de la carpeta" onClick={(e) => { e.stopPropagation(); handleFolderInfo(file); }} />,
                             <DownloadOutlined key="download" title="Descargar ZIP" onClick={(e) => { e.stopPropagation(); handleDownloadFolder(file); }} />,
                             <Popconfirm
                                 key="delete"
@@ -940,6 +969,40 @@ const Acervo = () => {
                         ]}
                     />
                 </Space>
+            </Modal>
+
+            <Modal
+                title={`Carpeta: ${folderInfo?.name || ''}`}
+                open={Boolean(folderInfo)}
+                onCancel={() => setFolderInfo(null)}
+                footer={[
+                    <Button key="close" onClick={() => setFolderInfo(null)}>Cerrar</Button>
+                ]}
+                width={isMobile ? '100%' : 480}
+                centered={isMobile}
+            >
+                <Spin spinning={folderInfoLoading}>
+                    <Descriptions column={1} bordered size="small">
+                        <Descriptions.Item label="Ruta">
+                            <code>{folderInfo?.prefix || '/'}</code>
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Archivos">
+                            {folderInfo?.fileCount ?? '—'}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Imágenes">
+                            {folderInfo?.imageCount ?? '—'}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Subcarpetas">
+                            {folderInfo?.subfolderCount ?? '—'}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Peso total">
+                            {folderInfo?.totalSize != null ? acervoService.formatFileSize(folderInfo.totalSize) : '—'}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Última modificación">
+                            {folderInfo?.lastModified ? new Date(folderInfo.lastModified).toLocaleString('es-MX') : '—'}
+                        </Descriptions.Item>
+                    </Descriptions>
+                </Spin>
             </Modal>
 
             <Modal

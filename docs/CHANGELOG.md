@@ -9,6 +9,38 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.35.0 / admin 1.35.0] - 2026-06-10
+
+### Fix: "Mover a carpeta" en Acervo no movía nada
+
+El modal de mover llamaba a `PUT /acervo/{id}` que solo actualizaba la columna `folder` en la BD; el objeto físico nunca cambiaba de ruta en el almacenamiento y, como la rejilla lista los objetos reales del bucket, no se veía ningún cambio. Además los archivos sin registro local (id sintético `bucket:N:key`) ni siquiera eran aceptados por ese endpoint.
+
+- **`api/app/api/routes/acervo.py`**: nuevo `POST /acervo/mover` (`{id, folder}`) que mueve el objeto físico (CopyObject + delete del original vía `AcervoClient.copy_file`), registra la carpeta destino y actualiza `name`/`folder`/`url` del registro local si existe. Acepta ids enteros y sintéticos `bucket:N:key`.
+- **`api/app/services/acervo.py`**: nuevo `AcervoClient.copy_file` (operación S3 `CopyObject` del SDK contra SeaweedFS).
+- **`admin/.../acervo/pages/AcervoPage.jsx`**: `handleMoveSubmit` usa el endpoint nuevo y refresca rejilla + carpetas.
+
+### Fix: eliminar carpeta dejaba la fila en `acervo_folders` y no refrescaba
+
+Borrar una carpeta desde la rejilla (`DELETE /acervo/dir:N:prefix/`) eliminaba los objetos del bucket y las filas de `acervo_files`, pero dejaba huérfanas las filas de `acervo_folders` — la carpeta "eliminada" seguía apareciendo en los selectores de carpetas (mover, editar, subir), lo que daba la impresión de que a veces no se borraba.
+
+- **`api/app/api/routes/acervo.py`**: el branch `dir:` borra también las filas de `acervo_folders` del prefijo (incluye subcarpetas).
+- **`admin/.../acervo/pages/AcervoPage.jsx`**: `handleDelete` recarga también la lista de carpetas (`loadFolders`) y muestra mensaje específico al borrar carpetas.
+
+### Feat: botón de información en carpetas
+
+Nuevo botón ⓘ en las carpetas (vista grid y tabla) que abre un modal con: ruta, cantidad de archivos, cantidad de imágenes, subcarpetas, peso total y última modificación.
+
+- **`api/app/api/routes/acervo.py`**: nuevo `GET /acervo/carpetas/{bucket_id}/info?prefix=` — agrega los datos listando el prefijo recursivamente (excluye marcadores `.keep`).
+- **`admin/.../acervo/pages/AcervoPage.jsx`**: handler `handleFolderInfo` + modal con `Descriptions`.
+
+### Fix: descargar ZIP de una subcarpeta duplicaba el prefijo
+
+`handleDownloadFolder` concatenaba `currentPath` al `name` de la carpeta, pero `name` ya incluye la ruta completa — dentro de una subcarpeta el ZIP apuntaba a un prefijo inexistente. Ahora usa `name` directo.
+
+Sin migración ni cambios de schema. Tests nuevos: mover (registrado y bucket-only), info de carpeta, limpieza de `acervo_folders` al borrar directorio.
+
+---
+
 ## [api 1.34.10 / admin 1.34.10] - 2026-06-10
 
 ### Fix: subida masiva en Acervo fallaba a partir del archivo ~61 por rate limit (429)

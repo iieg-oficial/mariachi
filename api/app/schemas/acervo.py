@@ -23,3 +23,8 @@ class AcervoFileUpdate(CamelCaseInput):
     alt: str | None = None
     description: str | None = None
     folder: str | None = None
+
+
+class FileMoveRequest(CamelCaseInput):
+    id: str = Field(..., min_length=1)
+    folder: str = Field("")

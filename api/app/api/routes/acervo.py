@@ -11,7 +11,7 @@ from app.api.metrics import COUNTER_MEDIA_DELETES, COUNTER_MEDIA_UPLOADS, incr
 from app.api.rate_limit import rate_limit
 from app.models.acervo import AcervoFile, AcervoFolder
 from app.models.user import Usuario
-from app.schemas.acervo import AcervoFileUpdate, FolderCreate, FolderResponse
+from app.schemas.acervo import AcervoFileUpdate, FileMoveRequest, FolderCreate, FolderResponse
 from app.services import acervo_file_service
 from app.services.acervo import AcervoClient
 
@@ -213,6 +213,116 @@ async def subir_archivo(
         )
 
 
+@router.post("/mover", response_model=dict)
+async def mover_archivo(
+    payload: FileMoveRequest,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(verify_csrf),
+    _rl: Usuario = Depends(_write_rate_limit),
+):
+    target_folder = (payload.folder or "").strip().strip("/")
+
+    item = None
+    if payload.id.startswith("bucket:"):
+        try:
+            _, bucket_id_str, src_name = payload.id.split(":", 2)
+            bucket_id = int(bucket_id_str)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="ID sintetico invalido")
+    else:
+        try:
+            media_int = int(payload.id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="ID invalido")
+        item = db.query(AcervoFile).filter(AcervoFile.id == media_int).first()
+        if not item or not item.bucket_id:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Archivo no encontrado")
+        bucket_id = item.bucket_id
+        src_name = item.name
+
+    bucket = acervo_file_service.resolve_bucket_or_403(bucket_id, current_user, db)
+    client = AcervoClient.for_bucket(bucket)
+
+    basename = src_name.rsplit("/", 1)[-1]
+    dest_name = f"{target_folder}/{basename}" if target_folder else basename
+    if dest_name == src_name:
+        return item and acervo_file_service.serialize_acervo_file(item) or {"name": src_name}
+
+    try:
+        client.copy_file(src_name, dest_name)
+    except S3Error as exc:
+        if exc.code in {"NoSuchKey", "NoSuchBucket"}:
+            raise HTTPException(status_code=404, detail="Archivo no encontrado en el bucket")
+        logger.exception("action=acervo.move.copy user_id=%s bucket=%s src=%s", current_user.id, bucket.acervo_bucket, src_name)
+        raise HTTPException(status_code=502, detail="Error moviendo archivo en el acervo")
+    client.delete_file(src_name)
+
+    folder_path = acervo_file_service.ensure_folder_exists(db, bucket.id, target_folder)
+    if item is not None:
+        item.name = dest_name
+        item.folder = folder_path
+        item.url = client.get_file_url(dest_name)
+        if item.thumbnail:
+            item.thumbnail = item.url
+        db.commit()
+        db.refresh(item)
+        result = acervo_file_service.serialize_acervo_file(item)
+    else:
+        db.commit()
+        result = {"id": f"bucket:{bucket.id}:{dest_name}", "name": dest_name, "folder": folder_path}
+
+    logger.info(
+        "action=acervo.move user_id=%s bucket=%s src=%s dest=%s",
+        current_user.id, bucket.acervo_bucket, src_name, dest_name,
+    )
+    return result
+
+
+@router.get("/carpetas/{bucket_id}/info", response_model=dict)
+async def info_carpeta(
+    bucket_id: int,
+    prefix: str = Query("", description="Prefijo dentro del bucket (sin / inicial)"),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    bucket = acervo_file_service.resolve_bucket_or_403(bucket_id, current_user, db)
+    client = AcervoClient.for_bucket(bucket)
+
+    normalized_prefix = prefix.strip("/")
+    listing = client.list_objects(
+        prefix=f"{normalized_prefix}/" if normalized_prefix else "",
+        recursive=True,
+    )
+    files = [
+        o for o in listing
+        if not o["is_dir"] and not acervo_file_service.is_folder_marker(o["name"])
+    ]
+
+    image_exts = {"png", "jpg", "jpeg", "gif", "webp", "svg", "ico", "avif"}
+    image_count = sum(
+        1 for o in files
+        if "." in o["name"] and o["name"].rsplit(".", 1)[-1].lower() in image_exts
+    )
+
+    base_strip = f"{normalized_prefix}/" if normalized_prefix else ""
+    subfolders = set()
+    for o in files:
+        rest = o["name"][len(base_strip):] if base_strip and o["name"].startswith(base_strip) else o["name"]
+        if "/" in rest:
+            subfolders.add(rest.split("/", 1)[0])
+
+    last_modified = max((o["last_modified"] for o in files if o["last_modified"]), default=None)
+
+    return {
+        "prefix": normalized_prefix,
+        "fileCount": len(files),
+        "totalSize": sum(o["size"] for o in files),
+        "imageCount": image_count,
+        "subfolderCount": len(subfolders),
+        "lastModified": last_modified,
+    }
+
+
 @router.put("/{media_id}", response_model=dict)
 async def actualizar_archivo(
     media_id: int,
@@ -354,6 +464,10 @@ async def eliminar_archivo(
         db.query(AcervoFile).filter(
             AcervoFile.bucket_id == bucket.id,
             AcervoFile.name.like(f"{prefix}%"),
+        ).delete(synchronize_session=False)
+        db.query(AcervoFolder).filter(
+            AcervoFolder.bucket_id == bucket.id,
+            AcervoFolder.path.like(f"{prefix}%"),
         ).delete(synchronize_session=False)
         db.commit()
         incr(COUNTER_MEDIA_DELETES)

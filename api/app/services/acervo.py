@@ -5,6 +5,7 @@ import os
 import urllib3
 from fastapi import UploadFile
 from minio import Minio
+from minio.commonconfig import CopySource
 from minio.error import S3Error
 
 from app.core.acervo_url import to_absolute
@@ -113,6 +114,13 @@ class AcervoClient:
             return self.get_file_url(object_name)
         except S3Error as e:
             raise Exception(f"Error uploading file: {str(e)}")
+
+    def copy_file(self, source_name: str, dest_name: str) -> None:
+        self.client.copy_object(
+            self.bucket_name,
+            dest_name,
+            CopySource(self.bucket_name, source_name),
+        )
 
     def put_empty_object(self, object_name: str) -> None:
         self.client.put_object(
