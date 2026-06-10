@@ -9,6 +9,18 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.34.6 / admin 1.34.6] - 2026-06-10
+
+### Mejora: limitar la concurrencia de subida en Acervo a 3 archivos a la vez
+
+Complementa el fix de 1.34.5. antd dispara `customRequest` para todos los archivos soltados al mismo tiempo, así que un set grande de iconos abría decenas de subidas simultáneas y presionaba al backend (y al interceptor de sesión). Se agrega un semáforo que limita a 3 subidas en vuelo; las demás esperan turno.
+
+- **`admin/.../acervo/pages/AcervoPage.jsx`**: `uploadSemaphore` (`useRef` con `active`/`queue`/`max: 3`) más `acquireSlot`/`releaseSlot`. `handleUpload` adquiere una ranura antes de subir y la libera en `finally`. `onProgress` y el resumen del batch (`handleUploadChange`) siguen igual.
+
+Sin migración ni cambios de schema.
+
+---
+
 ## [api 1.34.5 / admin 1.34.5] - 2026-06-10
 
 ### Fix: subir muchos archivos a Acervo crasheaba con React #185 y dejaba el spinner pegado

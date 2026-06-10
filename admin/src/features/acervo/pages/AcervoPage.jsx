@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Alert, Card, Button, Upload, Table, Image, Space, Modal, Form, Input, Select, Tabs, Tag, Popconfirm, Row, Col, Statistic, Segmented, Empty, Spin, Breadcrumb } from 'antd';
 import {
     InboxOutlined, DeleteOutlined, EditOutlined, FolderOutlined, FolderOpenOutlined, FolderAddOutlined, FileImageOutlined, FilePdfOutlined,
@@ -55,6 +55,25 @@ const Acervo = () => {
     const [form] = Form.useForm();
     const [folderForm] = Form.useForm();
     const [editForm] = Form.useForm();
+
+    const uploadSemaphore = useRef({ active: 0, queue: [], max: 3 });
+
+    const acquireSlot = () => new Promise((resolve) => {
+        const sem = uploadSemaphore.current;
+        if (sem.active < sem.max) {
+            sem.active++;
+            resolve();
+        } else {
+            sem.queue.push(resolve);
+        }
+    });
+
+    const releaseSlot = () => {
+        const sem = uploadSemaphore.current;
+        const next = sem.queue.shift();
+        if (next) next();
+        else sem.active--;
+    };
 
     const loadFolders = useCallback(async (bucketId) => {
         try {
@@ -154,6 +173,7 @@ const Acervo = () => {
             return;
         }
 
+        await acquireSlot();
         try {
             const uploadOptions = {
                 bucketId: selectedBucketId,
@@ -168,6 +188,8 @@ const Acervo = () => {
             onSuccess(result);
         } catch (error) {
             onError(error);
+        } finally {
+            releaseSlot();
         }
     };
 
