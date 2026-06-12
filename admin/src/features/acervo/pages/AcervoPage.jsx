@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Alert, Card, Button, Upload, Table, Image, Space, Modal, Form, Input, Select, Tabs, Tag, Popconfirm, Row, Col, Statistic, Segmented, Empty, Spin, Breadcrumb } from 'antd';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Alert, Card, Button, Upload, Table, Image, Space, Modal, Form, Input, Select, Tabs, Tag, Popconfirm, Row, Col, Statistic, Segmented, Empty, Spin, Breadcrumb, Progress, Descriptions } from 'antd';
 import {
     InboxOutlined, DeleteOutlined, EditOutlined, FolderOutlined, FolderOpenOutlined, FolderAddOutlined, FileImageOutlined, FilePdfOutlined,
-    FileOutlined, AppstoreOutlined, BarsOutlined, DownloadOutlined, CopyOutlined, EyeOutlined, HomeOutlined, DragOutlined
+    FileOutlined, AppstoreOutlined, BarsOutlined, DownloadOutlined, CopyOutlined, EyeOutlined, HomeOutlined, DragOutlined,
+    InfoCircleOutlined
 } from '@ant-design/icons';
 import acervoService from '@features/acervo/api/acervoService';
 import useIsMobile from '@shared/hooks/useIsMobile';
@@ -46,15 +47,41 @@ const Acervo = () => {
     const [viewMode, setViewMode] = useState('grid');
     const [selectedFiles, setSelectedFiles] = useState([]);
     const [uploadModalVisible, setUploadModalVisible] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(null);
+    const [uploadResult, setUploadResult] = useState(null);
     const [folderModalVisible, setFolderModalVisible] = useState(false);
     const [editModalVisible, setEditModalVisible] = useState(false);
     const [previewVisible, setPreviewVisible] = useState(false);
     const [moveModalVisible, setMoveModalVisible] = useState(false);
     const [moveTargetFolder, setMoveTargetFolder] = useState('/');
     const [currentFile, setCurrentFile] = useState(null);
+    const [folderInfo, setFolderInfo] = useState(null);
+    const [folderInfoLoading, setFolderInfoLoading] = useState(false);
+    const [dragActive, setDragActive] = useState(false);
+    const dragCounter = useRef(0);
     const [form] = Form.useForm();
     const [folderForm] = Form.useForm();
     const [editForm] = Form.useForm();
+
+    const uploadSemaphore = useRef({ active: 0, queue: [], max: 3 });
+    const uploadBatch = useRef({ pending: 0, done: 0, failed: 0, lastError: null });
+
+    const acquireSlot = () => new Promise((resolve) => {
+        const sem = uploadSemaphore.current;
+        if (sem.active < sem.max) {
+            sem.active++;
+            resolve();
+        } else {
+            sem.queue.push(resolve);
+        }
+    });
+
+    const releaseSlot = () => {
+        const sem = uploadSemaphore.current;
+        const next = sem.queue.shift();
+        if (next) next();
+        else sem.active--;
+    };
 
     const loadFolders = useCallback(async (bucketId) => {
         try {
@@ -145,44 +172,125 @@ const Acervo = () => {
 
     const visibleAcervoFiles = selectedBucketId ? acervoFiles : [];
 
-    const handleUpload = async (options) => {
-        const { file, onSuccess, onError, onProgress } = options;
+    const finishUpload = () => {
+        const batch = uploadBatch.current;
+        batch.pending -= 1;
+        if (batch.pending > 0) return;
+        const { done, failed, lastError } = batch;
+        batch.done = 0;
+        batch.failed = 0;
+        batch.lastError = null;
+        setTimeout(() => {
+            if (done > 0) message.success(`${done} archivo(s) subido(s) exitosamente`);
+            if (failed > 0) {
+                message.error(`${failed} archivo(s) no se pudieron subir${lastError ? ` — ${lastError}` : ''}`);
+            }
+            setUploadProgress(null);
+            setUploadResult({ done, failed, lastError });
+            loadAcervoFiles();
+            loadBucketStats();
+        }, 0);
+    };
 
+    const startUpload = async (file, folder) => {
+        if (uploadBatch.current.pending === 0) setUploadResult(null);
+        uploadBatch.current.pending += 1;
+        setUploadProgress((prev) => ({
+            total: (prev?.total || 0) + 1,
+            done: prev?.done || 0,
+            failed: prev?.failed || 0,
+        }));
+        await acquireSlot();
+        try {
+            let attempts = 0;
+            for (;;) {
+                try {
+                    await acervoService.uploadAcervoFile(file, {
+                        bucketId: selectedBucketId,
+                        folder: folder || '/',
+                        alt: form.getFieldValue('alt') || '',
+                    });
+                    uploadBatch.current.done += 1;
+                    setUploadProgress((prev) => prev && { ...prev, done: prev.done + 1 });
+                    break;
+                } catch (error) {
+                    attempts += 1;
+                    if (error?.response?.status === 429 && attempts <= 5) {
+                        const retryAfter = Number(error.response.headers?.['retry-after']) || 5;
+                        await new Promise((resolve) => setTimeout(resolve, (retryAfter + 1) * 1000));
+                        continue;
+                    }
+                    uploadBatch.current.failed += 1;
+                    const detail = error?.response?.data?.detail;
+                    if (detail) uploadBatch.current.lastError = detail;
+                    setUploadProgress((prev) => prev && { ...prev, failed: prev.failed + 1 });
+                    break;
+                }
+            }
+        } finally {
+            releaseSlot();
+            finishUpload();
+        }
+    };
+
+    const handleBeforeUpload = (file) => {
         if (!selectedBucketId) {
-            onError(new Error('Selecciona un bucket primero'));
+            message.error('Selecciona un bucket primero');
+            return Upload.LIST_IGNORE;
+        }
+        startUpload(file, form.getFieldValue('folder') || '/');
+        return Upload.LIST_IGNORE;
+    };
+
+    const handleDragEnter = (e) => {
+        e.preventDefault();
+        if (!Array.from(e.dataTransfer?.types || []).includes('Files')) return;
+        dragCounter.current += 1;
+        setDragActive(true);
+    };
+
+    const handleDragOver = (e) => {
+        e.preventDefault();
+    };
+
+    const handleDragLeave = (e) => {
+        e.preventDefault();
+        dragCounter.current = Math.max(0, dragCounter.current - 1);
+        if (dragCounter.current === 0) setDragActive(false);
+    };
+
+    const handleDrop = (e) => {
+        e.preventDefault();
+        dragCounter.current = 0;
+        setDragActive(false);
+        const files = Array.from(e.dataTransfer?.files || []);
+        if (files.length === 0) return;
+        if (!selectedBucketId) {
             message.error('Selecciona un bucket primero');
             return;
         }
-
-        try {
-            const uploadOptions = {
-                bucketId: selectedBucketId,
-                folder: form.getFieldValue('folder') || '/',
-                alt: form.getFieldValue('alt') || '',
-                onProgress: (percent) => {
-                    onProgress({ percent });
-                },
-            };
-
-            const result = await acervoService.uploadAcervoFile(file, uploadOptions);
-            onSuccess(result);
-            message.success(`${file.name} subido exitosamente`);
-            loadAcervoFiles();
-            loadBucketStats();
-        } catch (error) {
-            onError(error);
-            message.error(`Error al subir ${file.name}`);
-        }
+        files.forEach((file) => startUpload(file, currentPath || '/'));
     };
 
     const handleDelete = async (id) => {
         try {
             await acervoService.deleteAcervoFile(id);
-            message.success('Archivo eliminado exitosamente');
+            const idStr = String(id);
+            if (idStr.startsWith('dir:')) {
+                message.success('Carpeta eliminada');
+                const name = idStr.split(':').slice(2).join(':');
+                const prefix = name.endsWith('/') ? name : `${name}/`;
+                if (currentPath && currentPath.startsWith(prefix)) {
+                    setCurrentPath(prefix.replace(/[^/]+\/$/, ''));
+                }
+            } else {
+                message.success('Archivo eliminado exitosamente');
+            }
             loadAcervoFiles();
             loadBucketStats();
-        } catch {
-            message.error('Error al eliminar archivo');
+            loadFolders(selectedBucketId);
+        } catch (error) {
+            message.error(error?.response?.data?.detail || 'Error al eliminar');
         }
     };
 
@@ -258,10 +366,11 @@ const Acervo = () => {
     const handleMoveSubmit = async () => {
         if (!currentFile) return;
         try {
-            await acervoService.updateAcervoFile(currentFile.id, { folder: moveTargetFolder });
+            await acervoService.moveAcervoFile(currentFile.id, moveTargetFolder);
             message.success('Archivo movido');
             setMoveModalVisible(false);
             loadAcervoFiles();
+            loadFolders(selectedBucketId);
         } catch (error) {
             message.error(error?.response?.data?.detail || 'Error al mover archivo');
         }
@@ -274,9 +383,24 @@ const Acervo = () => {
     };
 
     const handleDownloadFolder = (folder) => {
-        const prefix = (currentPath || '') + (folder.name || '').replace(/\/$/, '');
+        const prefix = (folder.name || '').replace(/\/$/, '');
         const url = acervoService.buildFolderZipUrl(selectedBucketId, prefix);
         window.open(url, '_blank');
+    };
+
+    const handleFolderInfo = async (folder) => {
+        const prefix = (folder.name || '').replace(/\/$/, '');
+        setFolderInfo({ name: prefix.split('/').pop(), prefix });
+        setFolderInfoLoading(true);
+        try {
+            const data = await acervoService.getFolderInfo(selectedBucketId, prefix);
+            setFolderInfo((prev) => prev && { ...prev, ...data });
+        } catch {
+            message.error('Error al obtener información de la carpeta');
+            setFolderInfo(null);
+        } finally {
+            setFolderInfoLoading(false);
+        }
     };
 
     const currentBucket = buckets.find((b) => b.id === selectedBucketId);
@@ -351,6 +475,7 @@ const Acervo = () => {
                         height={60}
                         style={{ objectFit: 'cover', borderRadius: 4 }}
                         preview={false}
+                        loading="lazy"
                         onClick={() => handlePreview(record)}
                     />
                 ) : (
@@ -444,6 +569,14 @@ const Acervo = () => {
             fixed: 'right',
             render: (_, record) => (
                 <Space>
+                    {record.isDir && (
+                        <Button
+                            type="text"
+                            icon={<InfoCircleOutlined />}
+                            title="Información de la carpeta"
+                            onClick={() => handleFolderInfo(record)}
+                        />
+                    )}
                     {!record.isDir && (
                         <>
                             <Button
@@ -504,6 +637,7 @@ const Acervo = () => {
                                         src={file.thumbnail}
                                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                         preview={false}
+                                        loading="lazy"
                                     />
                                 </div>
                             ) : (
@@ -514,6 +648,7 @@ const Acervo = () => {
                         }
                         actions={file.isDir ? [
                             <FolderOpenOutlined key="open" onClick={(e) => { e.stopPropagation(); handleEnterDir(file); }} />,
+                            <InfoCircleOutlined key="info" title="Información de la carpeta" onClick={(e) => { e.stopPropagation(); handleFolderInfo(file); }} />,
                             <DownloadOutlined key="download" title="Descargar ZIP" onClick={(e) => { e.stopPropagation(); handleDownloadFolder(file); }} />,
                             <Popconfirm
                                 key="delete"
@@ -696,26 +831,70 @@ const Acervo = () => {
                     </div>
                 </div>
 
-                <Spin spinning={loading}>
-                    {visibleAcervoFiles.length === 0 ? (
-                        <Empty description="No hay archivos" />
-                    ) : viewMode === 'grid' ? (
-                        renderGridView()
-                    ) : (
-                        <Table
-                            columns={columns}
-                            dataSource={sortedFiles}
-                            rowKey="id"
-                            size={isMobile ? 'small' : 'middle'}
-                            rowSelection={{
-                                selectedRowKeys: selectedFiles,
-                                onChange: setSelectedFiles
-                            }}
-                            scroll={{ x: 'max-content' }}
-                            pagination={{ simple: isMobile }}
+                {uploadProgress && !uploadModalVisible && (
+                    <div style={{ marginBottom: 12 }}>
+                        <Progress
+                            percent={Math.round(((uploadProgress.done + uploadProgress.failed) / uploadProgress.total) * 100)}
+                            status={uploadProgress.failed > 0 ? 'exception' : 'active'}
                         />
+                        <div style={{ textAlign: 'center', color: '#8c8c8c', fontSize: 12 }}>
+                            Subiendo {uploadProgress.done + uploadProgress.failed} de {uploadProgress.total} archivo(s)
+                            {uploadProgress.failed > 0 ? ` (${uploadProgress.failed} con error)` : ''}
+                        </div>
+                    </div>
+                )}
+
+                <div
+                    onDragEnter={handleDragEnter}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    style={{ position: 'relative', minHeight: 200 }}
+                >
+                    {dragActive && (
+                        <div
+                            style={{
+                                position: 'absolute',
+                                inset: 0,
+                                zIndex: 10,
+                                background: 'rgba(92, 36, 114, 0.08)',
+                                border: '2px dashed #5C2472',
+                                borderRadius: 8,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 8,
+                                pointerEvents: 'none',
+                            }}
+                        >
+                            <InboxOutlined style={{ fontSize: 40, color: '#5C2472' }} />
+                            <span style={{ fontSize: 16, fontWeight: 600, color: '#5C2472' }}>
+                                Suelta para subir a {currentPath ? `"${currentPath.replace(/\/$/, '')}"` : 'la raíz'}
+                            </span>
+                        </div>
                     )}
-                </Spin>
+                    <Spin spinning={loading}>
+                        {visibleAcervoFiles.length === 0 ? (
+                            <Empty description="No hay archivos" />
+                        ) : viewMode === 'grid' ? (
+                            renderGridView()
+                        ) : (
+                            <Table
+                                columns={columns}
+                                dataSource={sortedFiles}
+                                rowKey="id"
+                                size={isMobile ? 'small' : 'middle'}
+                                rowSelection={{
+                                    selectedRowKeys: selectedFiles,
+                                    onChange: setSelectedFiles
+                                }}
+                                scroll={{ x: 'max-content' }}
+                                pagination={{ simple: isMobile }}
+                            />
+                        )}
+                    </Spin>
+                </div>
             </Card>
 
             <Modal
@@ -723,6 +902,7 @@ const Acervo = () => {
                 open={uploadModalVisible}
                 onCancel={() => {
                     setUploadModalVisible(false);
+                    setUploadResult(null);
                     form.resetFields();
                 }}
                 footer={null}
@@ -755,10 +935,8 @@ const Acervo = () => {
                         <Dragger
                             name="file"
                             multiple
-                            customRequest={handleUpload}
-                            showUploadList={{
-                                showRemoveIcon: true
-                            }}
+                            beforeUpload={handleBeforeUpload}
+                            showUploadList={false}
                         >
                             <p className="ant-upload-drag-icon">
                                 <InboxOutlined />
@@ -771,6 +949,47 @@ const Acervo = () => {
                             </p>
                         </Dragger>
                     </Form.Item>
+
+                    {uploadProgress && (
+                        <Form.Item>
+                            <Progress
+                                percent={Math.round(((uploadProgress.done + uploadProgress.failed) / uploadProgress.total) * 100)}
+                                status={uploadProgress.failed > 0 ? 'exception' : 'active'}
+                            />
+                            <div style={{ textAlign: 'center', color: '#8c8c8c', fontSize: 12 }}>
+                                {uploadProgress.done + uploadProgress.failed} de {uploadProgress.total} archivo(s)
+                                {uploadProgress.failed > 0 ? ` (${uploadProgress.failed} con error)` : ''}
+                            </div>
+                        </Form.Item>
+                    )}
+
+                    {uploadResult && !uploadProgress && (
+                        <Form.Item>
+                            <Alert
+                                type={uploadResult.failed > 0 ? 'warning' : 'success'}
+                                showIcon
+                                closable
+                                onClose={() => setUploadResult(null)}
+                                message={uploadResult.failed > 0
+                                    ? `${uploadResult.done} archivo(s) subido(s), ${uploadResult.failed} con error`
+                                    : `¡Listo! ${uploadResult.done} archivo(s) subido(s) correctamente`}
+                                description={uploadResult.failed > 0 ? uploadResult.lastError : undefined}
+                                action={
+                                    <Button
+                                        size="small"
+                                        type="primary"
+                                        onClick={() => {
+                                            setUploadModalVisible(false);
+                                            setUploadResult(null);
+                                            form.resetFields();
+                                        }}
+                                    >
+                                        Ver archivos
+                                    </Button>
+                                }
+                            />
+                        </Form.Item>
+                    )}
                 </Form>
             </Modal>
 
@@ -875,6 +1094,40 @@ const Acervo = () => {
                         ]}
                     />
                 </Space>
+            </Modal>
+
+            <Modal
+                title={`Carpeta: ${folderInfo?.name || ''}`}
+                open={Boolean(folderInfo)}
+                onCancel={() => setFolderInfo(null)}
+                footer={[
+                    <Button key="close" onClick={() => setFolderInfo(null)}>Cerrar</Button>
+                ]}
+                width={isMobile ? '100%' : 480}
+                centered={isMobile}
+            >
+                <Spin spinning={folderInfoLoading}>
+                    <Descriptions column={1} bordered size="small">
+                        <Descriptions.Item label="Ruta">
+                            <code>{folderInfo?.prefix || '/'}</code>
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Archivos">
+                            {folderInfo?.fileCount ?? '—'}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Imágenes">
+                            {folderInfo?.imageCount ?? '—'}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Subcarpetas">
+                            {folderInfo?.subfolderCount ?? '—'}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Peso total">
+                            {folderInfo?.totalSize != null ? acervoService.formatFileSize(folderInfo.totalSize) : '—'}
+                        </Descriptions.Item>
+                        <Descriptions.Item label="Última modificación">
+                            {folderInfo?.lastModified ? new Date(folderInfo.lastModified).toLocaleString('es-MX') : '—'}
+                        </Descriptions.Item>
+                    </Descriptions>
+                </Spin>
             </Modal>
 
             <Modal

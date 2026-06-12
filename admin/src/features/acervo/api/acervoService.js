@@ -131,6 +131,7 @@ export const uploadAcervoFile = async (file, options = {}) => {
         }
 
         const response = await api.post('/acervo', formData, {
+            timeout: 300000,
             headers: {
                 'Content-Type': 'multipart/form-data',
             },
@@ -258,6 +259,27 @@ export const deleteFolder = async (id) => {
     }
 };
 
+export const moveAcervoFile = async (id, folder) => {
+    try {
+        const response = await api.post('/acervo/mover', { id: String(id), folder: folder || '' });
+        return response.data;
+    } catch (error) {
+        console.error('Error moving file:', error);
+        throw error;
+    }
+};
+
+export const getFolderInfo = async (bucketId, prefix) => {
+    try {
+        const params = new URLSearchParams({ prefix: prefix || '' });
+        const response = await api.get(`/acervo/carpetas/${bucketId}/info?${params.toString()}`);
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching folder info:', error);
+        throw error;
+    }
+};
+
 
 export const formatFileSize = (bytes) => {
     if (bytes === 0) return '0 Bytes';
@@ -358,6 +380,8 @@ export default {
     getFolders,
     createFolder,
     deleteFolder,
+    moveAcervoFile,
+    getFolderInfo,
 
     formatFileSize,
     getFileIcon,

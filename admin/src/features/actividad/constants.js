@@ -12,6 +12,7 @@ export const ACTION_PREFIXES = [
     { value: 'colibri.', label: 'Colibrí (colibri.*)' },
     { value: 'evento.', label: 'Eventos (evento.*)' },
     { value: 'home.', label: 'Home (home.*)' },
+    { value: 'acervo.', label: 'Acervo (acervo.*)' },
 ];
 
 export const ACTION_LABELS = {
@@ -48,6 +49,11 @@ export const ACTION_LABELS = {
     'home.update_draft': { text: 'Borrador de home actualizado', color: 'blue' },
     'home.publicar': { text: 'Home publicado', color: 'green' },
     'home.descartar_borrador': { text: 'Borrador de home descartado', color: 'orange' },
+    'acervo.file.upload': { text: 'Archivo subido al Acervo', color: 'green' },
+    'acervo.file.move': { text: 'Archivo movido de carpeta', color: 'blue' },
+    'acervo.file.delete': { text: 'Archivo eliminado del Acervo', color: 'red' },
+    'acervo.folder.create': { text: 'Carpeta creada en el Acervo', color: 'green' },
+    'acervo.folder.delete': { text: 'Carpeta eliminada del Acervo', color: 'red' },
 };
 
 export const RESOURCE_LABELS = {
@@ -61,6 +67,8 @@ export const RESOURCE_LABELS = {
     'colibri.route': 'Ruta',
     'colibri.source_app': 'App origen',
     'colibri.tipo': 'Tipo',
+    'acervo.file': 'Archivo de Acervo',
+    'acervo.folder': 'Carpeta de Acervo',
 };
 
 export const META_KEY_LABELS = {
@@ -76,6 +84,12 @@ export const META_KEY_LABELS = {
     definicion_changed: 'Definición modificada',
     campos: 'Campos modificados',
     fields: 'Campos modificados',
+    nombre: 'Nombre',
+    bucket: 'Bucket',
+    carpeta: 'Carpeta',
+    de: 'De',
+    a: 'A',
+    objetos: 'Objetos eliminados',
 };
 
 export const formatActividadDate = (iso) => {

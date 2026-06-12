@@ -83,6 +83,10 @@ class FakeAcervoClient:
             del self.objects[k]
         return len(keys)
 
+    def copy_file(self, source_name, dest_name):
+        src = self.objects[source_name]
+        self.objects[dest_name] = {**src, "name": dest_name, "url": f"http://fake/{dest_name}"}
+
     def put_empty_object(self, object_name):
         self.objects[object_name] = {
             "name": object_name,
@@ -372,6 +376,153 @@ def test_crear_carpeta_vacia_visible_y_oculta_marker(admin_session, db_session):
     names = [item["name"] for item in listado.json()]
     assert "iconos/" in names
     assert all(not n.endswith("/.keep") for n in names)
+
+
+def test_mover_archivo_registrado(admin_session, db_session, admin_user):
+    _, bucket = _seed_bucket(db_session, name="x")
+    fake = FakeAcervoClient.for_bucket(bucket)
+    fake.objects["logo.png"] = {"name": "logo.png", "size": 5, "is_dir": False, "last_modified": None, "etag": "e", "url": "http://fake/logo.png"}
+    media = AcervoFile(
+        bucket_id=bucket.id,
+        name="logo.png",
+        original_name="logo.png",
+        type="image/png",
+        size=5,
+        url="http://fake/logo.png",
+        folder="/",
+        uploaded_by=admin_user.id,
+    )
+    db_session.add(media)
+    db_session.commit()
+    db_session.refresh(media)
+
+    client = admin_session["client"]
+    response = client.post(
+        f"{ADMIN_PREFIX}/acervo/mover",
+        json={"id": str(media.id), "folder": "iconos/"},
+        headers={"X-CSRF-Token": admin_session["csrf"]},
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["name"] == "iconos/logo.png"
+    assert "iconos/logo.png" in fake.objects
+    assert "logo.png" not in fake.objects
+    db_session.refresh(media)
+    assert media.folder == "iconos/"
+
+
+def test_mover_archivo_bucket_only(admin_session, db_session):
+    _, bucket = _seed_bucket(db_session, name="x")
+    fake = FakeAcervoClient.for_bucket(bucket)
+    fake.objects["a.svg"] = {"name": "a.svg", "size": 2, "is_dir": False, "last_modified": None, "etag": "e", "url": "http://fake/a.svg"}
+
+    client = admin_session["client"]
+    response = client.post(
+        f"{ADMIN_PREFIX}/acervo/mover",
+        json={"id": f"bucket:{bucket.id}:a.svg", "folder": "iconos"},
+        headers={"X-CSRF-Token": admin_session["csrf"]},
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["name"] == "iconos/a.svg"
+    assert "iconos/a.svg" in fake.objects
+    assert "a.svg" not in fake.objects
+
+
+def test_info_carpeta(admin_session, db_session):
+    _, bucket = _seed_bucket(db_session, name="x")
+    fake = FakeAcervoClient.for_bucket(bucket)
+    fake.objects["iconos/.keep"] = {"name": "iconos/.keep", "size": 0, "is_dir": False, "last_modified": None, "etag": "e"}
+    fake.objects["iconos/a.png"] = {"name": "iconos/a.png", "size": 10, "is_dir": False, "last_modified": "2026-06-10T12:00:00", "etag": "e"}
+    fake.objects["iconos/docs/b.pdf"] = {"name": "iconos/docs/b.pdf", "size": 20, "is_dir": False, "last_modified": "2026-06-09T12:00:00", "etag": "e"}
+
+    client = admin_session["client"]
+    response = client.get(f"{ADMIN_PREFIX}/acervo/carpetas/{bucket.id}/info?prefix=iconos")
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["fileCount"] == 2
+    assert body["totalSize"] == 30
+    assert body["imageCount"] == 1
+    assert body["subfolderCount"] == 1
+    assert body["lastModified"] == "2026-06-10T12:00:00"
+
+
+def test_eliminar_directorio_limpia_acervo_folders(admin_session, db_session):
+    _, bucket = _seed_bucket(db_session, name="x")
+    fake = FakeAcervoClient.for_bucket(bucket)
+    fake.objects["tmp/.keep"] = {"name": "tmp/.keep", "size": 0, "is_dir": False, "last_modified": None, "etag": "e"}
+    db_session.add(AcervoFolder(bucket_id=bucket.id, name="tmp", path="tmp/", parent=None))
+    db_session.commit()
+
+    client = admin_session["client"]
+    response = client.delete(
+        f"{ADMIN_PREFIX}/acervo/dir:{bucket.id}:tmp/",
+        headers={"X-CSRF-Token": admin_session["csrf"]},
+    )
+    assert response.status_code == 200
+    remaining = db_session.query(AcervoFolder).filter(AcervoFolder.bucket_id == bucket.id).count()
+    assert remaining == 0
+
+
+def test_acervo_registra_actividad(admin_session, db_session):
+    from app.models.actividad_log import ActividadLog
+
+    _, bucket = _seed_bucket(db_session, name="x")
+    client = admin_session["client"]
+
+    client.post(
+        f"{ADMIN_PREFIX}/acervo",
+        data={"folder": "iconos", "alt": "", "bucket_id": str(bucket.id)},
+        files={"file": ("logo.svg", io.BytesIO(b"<svg/>"), "image/svg+xml")},
+        headers={"X-CSRF-Token": admin_session["csrf"]},
+    )
+    media = db_session.query(AcervoFile).filter(AcervoFile.bucket_id == bucket.id).first()
+
+    client.post(
+        f"{ADMIN_PREFIX}/acervo/mover",
+        json={"id": str(media.id), "folder": "otra"},
+        headers={"X-CSRF-Token": admin_session["csrf"]},
+    )
+    client.delete(
+        f"{ADMIN_PREFIX}/acervo/{media.id}",
+        headers={"X-CSRF-Token": admin_session["csrf"]},
+    )
+
+    actions = [a.action for a in db_session.query(ActividadLog).order_by(ActividadLog.id).all()]
+    assert "acervo.file.upload" in actions
+    assert "acervo.file.move" in actions
+    assert "acervo.file.delete" in actions
+
+    upload = db_session.query(ActividadLog).filter(ActividadLog.action == "acervo.file.upload").first()
+    assert upload.log_metadata["nombre"] == "logo.svg"
+    assert upload.log_metadata["bucket"] == "x"
+
+
+def test_subir_archivo_duplicado_409(admin_session, db_session):
+    _, bucket = _seed_bucket(db_session, name="x")
+    client = admin_session["client"]
+    primera = client.post(
+        f"{ADMIN_PREFIX}/acervo",
+        data={"folder": "iconos", "alt": "", "bucket_id": str(bucket.id)},
+        files={"file": ("logo.svg", io.BytesIO(b"<svg/>"), "image/svg+xml")},
+        headers={"X-CSRF-Token": admin_session["csrf"]},
+    )
+    assert primera.status_code == 201
+
+    repetida = client.post(
+        f"{ADMIN_PREFIX}/acervo",
+        data={"folder": "iconos", "alt": "", "bucket_id": str(bucket.id)},
+        files={"file": ("logo.svg", io.BytesIO(b"<svg/>"), "image/svg+xml")},
+        headers={"X-CSRF-Token": admin_session["csrf"]},
+    )
+    assert repetida.status_code == 409
+    assert "Ya existe" in repetida.json()["detail"]
+
+    otra_carpeta = client.post(
+        f"{ADMIN_PREFIX}/acervo",
+        data={"folder": "otra", "alt": "", "bucket_id": str(bucket.id)},
+        files={"file": ("logo.svg", io.BytesIO(b"<svg/>"), "image/svg+xml")},
+        headers={"X-CSRF-Token": admin_session["csrf"]},
+    )
+    assert otra_carpeta.status_code == 201
 
 
 def test_proxy_object_unauth_401(client, db_session):

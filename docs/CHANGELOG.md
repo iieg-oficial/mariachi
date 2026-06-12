@@ -9,6 +9,198 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.37.0 / admin 1.37.0] - 2026-06-12
+
+### Feat: registro de actividad para operaciones de Acervo
+
+Las operaciones de Acervo ahora se registran en el audit log (`actividad_log`) y aparecen en la pantalla **Actividad** con etiquetas legibles y filtro propio:
+
+| Acción | Cuándo | Metadata |
+|---|---|---|
+| `acervo.file.upload` | Subida de archivo (modal o drag & drop) | nombre, bucket, carpeta |
+| `acervo.file.move` | Mover archivo de carpeta | de, a, bucket |
+| `acervo.file.delete` | Eliminar archivo (registrado o solo-bucket) | nombre, bucket, carpeta |
+| `acervo.folder.create` | Crear carpeta | bucket |
+| `acervo.folder.delete` | Eliminar carpeta (vacía o recursiva) | bucket, objetos eliminados |
+
+- **`api/app/api/routes/acervo.py`**: llamadas a `registrar_actividad` (best-effort, mismo commit que la operación) en subir, mover, eliminar archivo (3 variantes), crear y eliminar carpeta.
+- **`admin/.../actividad/constants.js`**: `ACTION_LABELS`/`RESOURCE_LABELS`/`META_KEY_LABELS` para las acciones de acervo + filtro por prefijo "Acervo (acervo.*)".
+
+Sin migración (la tabla `actividad_log` ya existía). Test nuevo: upload/move/delete generan las filas con su metadata.
+
+---
+
+## [api 1.36.0 / admin 1.36.0] - 2026-06-12
+
+### Feat: drag & drop directo sobre la rejilla de Acervo
+
+Ya no es necesario abrir el modal de subida: se pueden arrastrar archivos desde el escritorio y soltarlos directamente sobre el área de archivos. Suben a la **carpeta actual** del navegador de archivos (la del breadcrumb), pasando por el mismo pipeline de subida (semáforo de 3 concurrentes, retry en 429, rechazo de duplicados, recarga única al terminar).
+
+- **`admin/.../acervo/pages/AcervoPage.jsx`**: la zona de la rejilla/tabla es un drop target (`dragenter`/`dragover`/`dragleave`/`drop` con contador para evitar parpadeo); overlay punteado "Suelta para subir a <carpeta>" mientras se arrastra. La barra de progreso se muestra también fuera del modal cuando la subida viene del drop. `startUpload` recibe la carpeta destino explícita (modal → campo del form; drop → `currentPath`).
+
+### UX: resultado visible en el modal al terminar la subida
+
+Al terminar el batch solo aparecían toasts flotantes y el modal quedaba igual ("parece que no se hizo nada"). Ahora dentro del modal aparece un `Alert` con el resultado — éxito ("¡Listo! N archivo(s) subido(s)") o warning con el conteo de errores y el motivo — con botón "Ver archivos" que cierra el modal. Se limpia al iniciar otra subida o cerrar.
+
+Sin migración ni cambios de schema.
+
+---
+
+## [api 1.35.3 / admin 1.35.3] - 2026-06-12
+
+### Fix: la carpeta eliminada seguía apareciendo en el listado durante minutos
+
+El borrado de objetos era inmediato, pero SeaweedFS mantiene los directorios como **entradas reales del filer**: al borrar solo los objetos, el listado seguía devolviendo la carpeta vacía como prefijo hasta que el cleanup asíncrono del filer la recogía (minutos después). Reproducido con un experimento: tras `delete_prefix`, el prefijo seguía en el listado de la raíz indefinidamente; un `DeleteObject` explícito de la key del directorio (`carpeta/`) lo elimina al instante.
+
+- **`api/app/services/acervo.py::delete_prefix`**: tras borrar los objetos, borra también las entradas de directorio derivadas (subcarpetas, de hoja a raíz) y la del propio prefijo.
+- **`api/app/api/routes/acervo.py::eliminar_carpeta`**: borra la entrada del directorio además del marcador `.keep`.
+
+Sin migración ni cambios de schema.
+
+---
+
+## [api 1.35.2 / admin 1.35.2] - 2026-06-10
+
+### Fix: rechazar subidas duplicadas (mismo nombre original en la misma carpeta)
+
+Cada subida genera un object key UUID, así que el mismo archivo podía subirse infinitas veces a la misma carpeta sin aviso.
+
+- **`api/app/api/routes/acervo.py::subir_archivo`**: si ya existe un registro con el mismo `original_name` en el mismo bucket/carpeta responde `409` con detalle "Ya existe '<archivo>' en esta carpeta". El mismo nombre en carpetas distintas sigue permitido.
+- **`admin/.../acervo/pages/AcervoPage.jsx`**: el resumen del batch incluye el motivo del último error (p. ej. el detalle del 409) y el retry no reintenta duplicados (solo 429).
+
+### UX: al eliminar la carpeta en la que estás navegando, la vista regresa al padre
+
+El borrado de carpetas funcionaba (objetos + filas eliminados), pero si el `currentPath` apuntaba a la carpeta borrada la rejilla quedaba "dentro" de una ruta fantasma vacía y parecía que el borrado no había ocurrido. Ahora `handleDelete` detecta que el path actual cuelga del prefijo borrado y navega al padre.
+
+Sin migración ni cambios de schema.
+
+---
+
+## [api 1.35.1 / admin 1.35.1] - 2026-06-10
+
+### Fix: thumbnails de carpetas grandes en Acervo recibían 429 del gateway
+
+Al entrar a una carpeta con muchos archivos, el navegador pedía todos los thumbnails de golpe. El `location ^~ /acervo/` del **gateway-hub** usaba la zona `api` (10 req/s, burst 100): los primeros ~100 GETs pasaban y el resto recibía `429 Too Many Requests` — la mitad de las imágenes no cargaba.
+
+- **gateway-hub `nginx/templates/gateway.conf.template`**: `/acervo/` ahora usa la zona `static` (50 req/s, burst 200), consistente con el resto del contenido estático del gateway. (Cambio en el repo `gateway-hub`.)
+- **`admin/.../acervo/pages/AcervoPage.jsx`**: `loading="lazy"` en los thumbnails de la rejilla y la tabla — el navegador solo pide las imágenes visibles en viewport, reduciendo el burst de raíz.
+
+Sin migración ni cambios de schema.
+
+---
+
+## [api 1.35.0 / admin 1.35.0] - 2026-06-10
+
+### Fix: "Mover a carpeta" en Acervo no movía nada
+
+El modal de mover llamaba a `PUT /acervo/{id}` que solo actualizaba la columna `folder` en la BD; el objeto físico nunca cambiaba de ruta en el almacenamiento y, como la rejilla lista los objetos reales del bucket, no se veía ningún cambio. Además los archivos sin registro local (id sintético `bucket:N:key`) ni siquiera eran aceptados por ese endpoint.
+
+- **`api/app/api/routes/acervo.py`**: nuevo `POST /acervo/mover` (`{id, folder}`) que mueve el objeto físico (CopyObject + delete del original vía `AcervoClient.copy_file`), registra la carpeta destino y actualiza `name`/`folder`/`url` del registro local si existe. Acepta ids enteros y sintéticos `bucket:N:key`.
+- **`api/app/services/acervo.py`**: nuevo `AcervoClient.copy_file` (operación S3 `CopyObject` del SDK contra SeaweedFS).
+- **`admin/.../acervo/pages/AcervoPage.jsx`**: `handleMoveSubmit` usa el endpoint nuevo y refresca rejilla + carpetas.
+
+### Fix: eliminar carpeta dejaba la fila en `acervo_folders` y no refrescaba
+
+Borrar una carpeta desde la rejilla (`DELETE /acervo/dir:N:prefix/`) eliminaba los objetos del bucket y las filas de `acervo_files`, pero dejaba huérfanas las filas de `acervo_folders` — la carpeta "eliminada" seguía apareciendo en los selectores de carpetas (mover, editar, subir), lo que daba la impresión de que a veces no se borraba.
+
+- **`api/app/api/routes/acervo.py`**: el branch `dir:` borra también las filas de `acervo_folders` del prefijo (incluye subcarpetas).
+- **`admin/.../acervo/pages/AcervoPage.jsx`**: `handleDelete` recarga también la lista de carpetas (`loadFolders`) y muestra mensaje específico al borrar carpetas.
+
+### Feat: botón de información en carpetas
+
+Nuevo botón ⓘ en las carpetas (vista grid y tabla) que abre un modal con: ruta, cantidad de archivos, cantidad de imágenes, subcarpetas, peso total y última modificación.
+
+- **`api/app/api/routes/acervo.py`**: nuevo `GET /acervo/carpetas/{bucket_id}/info?prefix=` — agrega los datos listando el prefijo recursivamente (excluye marcadores `.keep`).
+- **`admin/.../acervo/pages/AcervoPage.jsx`**: handler `handleFolderInfo` + modal con `Descriptions`.
+
+### Fix: descargar ZIP de una subcarpeta duplicaba el prefijo
+
+`handleDownloadFolder` concatenaba `currentPath` al `name` de la carpeta, pero `name` ya incluye la ruta completa — dentro de una subcarpeta el ZIP apuntaba a un prefijo inexistente. Ahora usa `name` directo.
+
+Sin migración ni cambios de schema. Tests nuevos: mover (registrado y bucket-only), info de carpeta, limpieza de `acervo_folders` al borrar directorio.
+
+---
+
+## [api 1.34.10 / admin 1.34.10] - 2026-06-10
+
+### Fix: subida masiva en Acervo fallaba a partir del archivo ~61 por rate limit (429)
+
+Con el crash de antd resuelto (1.34.9), los logs del API mostraron la causa de los archivos restantes que no subían: el endpoint `POST /acervo` compartía el rate limit `acervo_write` (60 req/min por usuario), y un lote de iconos pequeños con 3 subidas concurrentes supera 60/min fácilmente — del archivo ~61 en adelante el backend respondía `429 Too Many Requests` dentro de la misma ventana.
+
+- **`api/app/api/routes/acervo.py`**: la subida de archivos usa su propio límite `acervo_upload` (240 req/min); el resto de escrituras (carpetas, ediciones, borrados) mantienen `acervo_write` (60 req/min).
+- **`admin/.../acervo/pages/AcervoPage.jsx`**: `startUpload` reintenta automáticamente ante `429`, esperando el `Retry-After` del backend (+1s de margen), hasta 5 intentos por archivo. Lotes que excedan la ventana terminan completos en vez de marcar errores.
+
+Sin migración ni cambios de schema.
+
+---
+
+## [api 1.34.9 / admin 1.34.9] - 2026-06-10
+
+### Fix: causa raíz del React #185 al soltar muchos archivos en Acervo — bypass del fileList interno de antd
+
+Diagnóstico definitivo del crash de subida masiva: ocurría **al soltar el batch**, no durante las subidas. rc-upload/antd procesa el drop llamando `flushSync` (render síncrono forzado) **una vez por archivo** dentro de un `forEach` (stack: `onChange` del input nativo → `uploadFiles` → forEach → `flushSync`); React corta a los ~50 renders síncronos consecutivos sin paint → `Maximum update depth exceeded` (#185) → crashea el árbol, el spinner queda pegado y las subidas restantes mueren. Por eso los fixes de 1.34.5–1.34.8 (que operaban después del drop) no lo resolvían.
+
+- **`admin/.../acervo/pages/AcervoPage.jsx`**: los archivos ya no entran al pipeline interno de antd. `beforeUpload` devuelve `Upload.LIST_IGNORE` por cada archivo (cero `flushSync`, sin `fileList` interno) y dispara `startUpload`, que sube con el semáforo de 3 concurrentes existente. Progreso propio con estado `uploadProgress` (`total`/`done`/`failed`) renderizado como `<Progress>` + contador bajo el Dragger (reemplaza la lista de items de antd). El resumen y la recarga única al terminar el batch se mantienen.
+
+### Fix: index.html del admin se cacheaba indefinidamente (bundles viejos tras deploy)
+
+`location /mariachi` servía `index.html` sin `Cache-Control`, y los assets `.js/.css` van con `public, immutable` + 1 año. El navegador cacheaba heurísticamente el HTML viejo, que apuntaba a bundles viejos inmutables → tras un deploy se seguía sirviendo la app anterior incluso con recargas normales.
+
+- **`nginx/conf.d/mariachi.conf`**: `add_header Cache-Control "no-cache" always` en `location /mariachi` (el HTML se revalida siempre; los assets con hash siguen immutable).
+
+Sin migración ni cambios de schema.
+
+---
+
+## [api 1.34.8 / admin 1.34.8] - 2026-06-10
+
+### Fix: subida múltiple en Acervo seguía con React #185 (recarga acoplada al onChange de antd)
+
+La recarga post-subida vivía en el `onChange` del `Dragger`, que antd invoca dentro de su `flushSync`; al llamar ahí a `loadAcervoFiles()`/`loadBucketStats()` (que hacen `setState`) se re-entraba el ciclo de updates de antd → `Minified React error #185` y spinner pegado (reproducible al subir dentro de una carpeta, con varios archivos).
+
+- **`admin/.../acervo/pages/AcervoPage.jsx`**: se elimina el handler `onChange` del `Dragger`. La recarga se desacopla por completo del ciclo de antd: un ref `uploadBatch` (`pending`/`done`/`failed`) cuenta las subidas en `handleUpload` (el `customRequest`), y cuando el contador llega a 0 se difiere la recarga + el `message` de resumen con `setTimeout(0)`, de modo que el `setState` corre **fuera** del `flushSync` de antd.
+
+Sin migración ni cambios de schema.
+
+---
+
+## [api 1.34.7 / admin 1.34.7] - 2026-06-10
+
+### Fix: subidas de Acervo abortaban por timeout y el 401 mid-batch crasheaba con React #185
+
+Dos bugs en la subida múltiple de Acervo, independientes del storm de render ya corregido:
+
+- **Timeout de 10s heredado de la instancia axios** ([`shared/services/api.js`](../admin/src/shared/services/api.js) define `timeout: 10000`) aplicaba también a los `POST /acervo`. Archivos pesados o lotes grandes excedían los 10s y axios abortaba esas peticiones → "unas se suben, otras no". **`admin/.../acervo/api/acervoService.js`**: `uploadAcervoFile` ahora pasa `timeout: 300000` (5 min) en el `POST`.
+- **El interceptor redirigía a login con `window.location.href` síncrono ante cualquier 401.** Si una petición 401eaba a mitad de un batch (p. ej. el JWT expira), esa navegación corría mientras el `Upload` de antd hacía `flushSync` sobre un árbol desmontándose → `Minified React error #185` y spinner pegado. **`admin/.../shared/services/api.js`**: guard `redirectingToLogin` para que N respuestas 401 no disparen N redirects, y la navegación se difiere con `setTimeout(…, 0)` para dejar que el stack de React termine antes.
+
+Sin migración ni cambios de schema.
+
+---
+
+## [api 1.34.6 / admin 1.34.6] - 2026-06-10
+
+### Mejora: limitar la concurrencia de subida en Acervo a 3 archivos a la vez
+
+Complementa el fix de 1.34.5. antd dispara `customRequest` para todos los archivos soltados al mismo tiempo, así que un set grande de iconos abría decenas de subidas simultáneas y presionaba al backend (y al interceptor de sesión). Se agrega un semáforo que limita a 3 subidas en vuelo; las demás esperan turno.
+
+- **`admin/.../acervo/pages/AcervoPage.jsx`**: `uploadSemaphore` (`useRef` con `active`/`queue`/`max: 3`) más `acquireSlot`/`releaseSlot`. `handleUpload` adquiere una ranura antes de subir y la libera en `finally`. `onProgress` y el resumen del batch (`handleUploadChange`) siguen igual.
+
+Sin migración ni cambios de schema.
+
+---
+
+## [api 1.34.5 / admin 1.34.5] - 2026-06-10
+
+### Fix: subir muchos archivos a Acervo crasheaba con React #185 y dejaba el spinner pegado
+
+Al arrastrar varios archivos (p. ej. un set de iconos) al uploader de Acervo, solo se subían algunos y el resto fallaba con `Minified React error #185` ("Maximum update depth exceeded"); la página quedaba cargando. La causa: el `Dragger` es `multiple`, así que cada archivo corría su propio `customRequest` y al terminar llamaba a `loadAcervoFiles()` + `loadBucketStats()` (este último lista el bucket completo recursivo) y mostraba un `message.success`. Con N archivos eso eran N×2 listados concurrentes y un storm de `setState` que chocaba con el `flushSync` interno del `Upload`; al crashear React el `setLoading(false)` final no se aplicaba y el spinner se quedaba pegado. El bombardeo de peticiones también disparaba carreras del interceptor de sesión (401 en `/autenticacion/perfil`).
+
+- **`admin/.../acervo/pages/AcervoPage.jsx`**: `handleUpload` (customRequest) ya no recarga ni notifica por archivo; solo resuelve `onSuccess`/`onError`. Nuevo `handleUploadChange` en el `Dragger` recarga la rejilla y las estadísticas **una sola vez** cuando el batch completo termina, con un único `message` de resumen (subidos / fallidos).
+
+Sin migración ni cambios de schema.
+
+---
+
 ## [api 1.34.4 / admin 1.34.4] - 2026-06-09
 
 ### Fix: labels legibles de evento_fun_fact/center/share y quitar "(últimos 30 días)" de secciones
