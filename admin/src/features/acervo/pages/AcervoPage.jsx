@@ -48,6 +48,7 @@ const Acervo = () => {
     const [selectedFiles, setSelectedFiles] = useState([]);
     const [uploadModalVisible, setUploadModalVisible] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(null);
+    const [uploadResult, setUploadResult] = useState(null);
     const [folderModalVisible, setFolderModalVisible] = useState(false);
     const [editModalVisible, setEditModalVisible] = useState(false);
     const [previewVisible, setPreviewVisible] = useState(false);
@@ -56,6 +57,8 @@ const Acervo = () => {
     const [currentFile, setCurrentFile] = useState(null);
     const [folderInfo, setFolderInfo] = useState(null);
     const [folderInfoLoading, setFolderInfoLoading] = useState(false);
+    const [dragActive, setDragActive] = useState(false);
+    const dragCounter = useRef(0);
     const [form] = Form.useForm();
     const [folderForm] = Form.useForm();
     const [editForm] = Form.useForm();
@@ -183,12 +186,14 @@ const Acervo = () => {
                 message.error(`${failed} archivo(s) no se pudieron subir${lastError ? ` — ${lastError}` : ''}`);
             }
             setUploadProgress(null);
+            setUploadResult({ done, failed, lastError });
             loadAcervoFiles();
             loadBucketStats();
         }, 0);
     };
 
-    const startUpload = async (file) => {
+    const startUpload = async (file, folder) => {
+        if (uploadBatch.current.pending === 0) setUploadResult(null);
         uploadBatch.current.pending += 1;
         setUploadProgress((prev) => ({
             total: (prev?.total || 0) + 1,
@@ -202,7 +207,7 @@ const Acervo = () => {
                 try {
                     await acervoService.uploadAcervoFile(file, {
                         bucketId: selectedBucketId,
-                        folder: form.getFieldValue('folder') || '/',
+                        folder: folder || '/',
                         alt: form.getFieldValue('alt') || '',
                     });
                     uploadBatch.current.done += 1;
@@ -233,8 +238,38 @@ const Acervo = () => {
             message.error('Selecciona un bucket primero');
             return Upload.LIST_IGNORE;
         }
-        startUpload(file);
+        startUpload(file, form.getFieldValue('folder') || '/');
         return Upload.LIST_IGNORE;
+    };
+
+    const handleDragEnter = (e) => {
+        e.preventDefault();
+        if (!Array.from(e.dataTransfer?.types || []).includes('Files')) return;
+        dragCounter.current += 1;
+        setDragActive(true);
+    };
+
+    const handleDragOver = (e) => {
+        e.preventDefault();
+    };
+
+    const handleDragLeave = (e) => {
+        e.preventDefault();
+        dragCounter.current = Math.max(0, dragCounter.current - 1);
+        if (dragCounter.current === 0) setDragActive(false);
+    };
+
+    const handleDrop = (e) => {
+        e.preventDefault();
+        dragCounter.current = 0;
+        setDragActive(false);
+        const files = Array.from(e.dataTransfer?.files || []);
+        if (files.length === 0) return;
+        if (!selectedBucketId) {
+            message.error('Selecciona un bucket primero');
+            return;
+        }
+        files.forEach((file) => startUpload(file, currentPath || '/'));
     };
 
     const handleDelete = async (id) => {
@@ -796,26 +831,70 @@ const Acervo = () => {
                     </div>
                 </div>
 
-                <Spin spinning={loading}>
-                    {visibleAcervoFiles.length === 0 ? (
-                        <Empty description="No hay archivos" />
-                    ) : viewMode === 'grid' ? (
-                        renderGridView()
-                    ) : (
-                        <Table
-                            columns={columns}
-                            dataSource={sortedFiles}
-                            rowKey="id"
-                            size={isMobile ? 'small' : 'middle'}
-                            rowSelection={{
-                                selectedRowKeys: selectedFiles,
-                                onChange: setSelectedFiles
-                            }}
-                            scroll={{ x: 'max-content' }}
-                            pagination={{ simple: isMobile }}
+                {uploadProgress && !uploadModalVisible && (
+                    <div style={{ marginBottom: 12 }}>
+                        <Progress
+                            percent={Math.round(((uploadProgress.done + uploadProgress.failed) / uploadProgress.total) * 100)}
+                            status={uploadProgress.failed > 0 ? 'exception' : 'active'}
                         />
+                        <div style={{ textAlign: 'center', color: '#8c8c8c', fontSize: 12 }}>
+                            Subiendo {uploadProgress.done + uploadProgress.failed} de {uploadProgress.total} archivo(s)
+                            {uploadProgress.failed > 0 ? ` (${uploadProgress.failed} con error)` : ''}
+                        </div>
+                    </div>
+                )}
+
+                <div
+                    onDragEnter={handleDragEnter}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    style={{ position: 'relative', minHeight: 200 }}
+                >
+                    {dragActive && (
+                        <div
+                            style={{
+                                position: 'absolute',
+                                inset: 0,
+                                zIndex: 10,
+                                background: 'rgba(92, 36, 114, 0.08)',
+                                border: '2px dashed #5C2472',
+                                borderRadius: 8,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 8,
+                                pointerEvents: 'none',
+                            }}
+                        >
+                            <InboxOutlined style={{ fontSize: 40, color: '#5C2472' }} />
+                            <span style={{ fontSize: 16, fontWeight: 600, color: '#5C2472' }}>
+                                Suelta para subir a {currentPath ? `"${currentPath.replace(/\/$/, '')}"` : 'la raíz'}
+                            </span>
+                        </div>
                     )}
-                </Spin>
+                    <Spin spinning={loading}>
+                        {visibleAcervoFiles.length === 0 ? (
+                            <Empty description="No hay archivos" />
+                        ) : viewMode === 'grid' ? (
+                            renderGridView()
+                        ) : (
+                            <Table
+                                columns={columns}
+                                dataSource={sortedFiles}
+                                rowKey="id"
+                                size={isMobile ? 'small' : 'middle'}
+                                rowSelection={{
+                                    selectedRowKeys: selectedFiles,
+                                    onChange: setSelectedFiles
+                                }}
+                                scroll={{ x: 'max-content' }}
+                                pagination={{ simple: isMobile }}
+                            />
+                        )}
+                    </Spin>
+                </div>
             </Card>
 
             <Modal
@@ -823,6 +902,7 @@ const Acervo = () => {
                 open={uploadModalVisible}
                 onCancel={() => {
                     setUploadModalVisible(false);
+                    setUploadResult(null);
                     form.resetFields();
                 }}
                 footer={null}
@@ -880,6 +960,34 @@ const Acervo = () => {
                                 {uploadProgress.done + uploadProgress.failed} de {uploadProgress.total} archivo(s)
                                 {uploadProgress.failed > 0 ? ` (${uploadProgress.failed} con error)` : ''}
                             </div>
+                        </Form.Item>
+                    )}
+
+                    {uploadResult && !uploadProgress && (
+                        <Form.Item>
+                            <Alert
+                                type={uploadResult.failed > 0 ? 'warning' : 'success'}
+                                showIcon
+                                closable
+                                onClose={() => setUploadResult(null)}
+                                message={uploadResult.failed > 0
+                                    ? `${uploadResult.done} archivo(s) subido(s), ${uploadResult.failed} con error`
+                                    : `¡Listo! ${uploadResult.done} archivo(s) subido(s) correctamente`}
+                                description={uploadResult.failed > 0 ? uploadResult.lastError : undefined}
+                                action={
+                                    <Button
+                                        size="small"
+                                        type="primary"
+                                        onClick={() => {
+                                            setUploadModalVisible(false);
+                                            setUploadResult(null);
+                                            form.resetFields();
+                                        }}
+                                    >
+                                        Ver archivos
+                                    </Button>
+                                }
+                            />
                         </Form.Item>
                     )}
                 </Form>

@@ -9,6 +9,22 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.36.0 / admin 1.36.0] - 2026-06-12
+
+### Feat: drag & drop directo sobre la rejilla de Acervo
+
+Ya no es necesario abrir el modal de subida: se pueden arrastrar archivos desde el escritorio y soltarlos directamente sobre el área de archivos. Suben a la **carpeta actual** del navegador de archivos (la del breadcrumb), pasando por el mismo pipeline de subida (semáforo de 3 concurrentes, retry en 429, rechazo de duplicados, recarga única al terminar).
+
+- **`admin/.../acervo/pages/AcervoPage.jsx`**: la zona de la rejilla/tabla es un drop target (`dragenter`/`dragover`/`dragleave`/`drop` con contador para evitar parpadeo); overlay punteado "Suelta para subir a <carpeta>" mientras se arrastra. La barra de progreso se muestra también fuera del modal cuando la subida viene del drop. `startUpload` recibe la carpeta destino explícita (modal → campo del form; drop → `currentPath`).
+
+### UX: resultado visible en el modal al terminar la subida
+
+Al terminar el batch solo aparecían toasts flotantes y el modal quedaba igual ("parece que no se hizo nada"). Ahora dentro del modal aparece un `Alert` con el resultado — éxito ("¡Listo! N archivo(s) subido(s)") o warning con el conteo de errores y el motivo — con botón "Ver archivos" que cierra el modal. Se limpia al iniciar otra subida o cerrar.
+
+Sin migración ni cambios de schema.
+
+---
+
 ## [api 1.35.3 / admin 1.35.3] - 2026-06-12
 
 ### Fix: la carpeta eliminada seguía apareciendo en el listado durante minutos
