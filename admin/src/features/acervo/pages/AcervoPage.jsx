@@ -58,10 +58,25 @@ const Acervo = () => {
     const [folderInfo, setFolderInfo] = useState(null);
     const [folderInfoLoading, setFolderInfoLoading] = useState(false);
     const [dragActive, setDragActive] = useState(false);
+    const [dndUnsupported, setDndUnsupported] = useState(() => {
+        try { return localStorage.getItem('mariachi.acervo.dndUnsupported') === '1'; } catch { return false; }
+    });
     const dragCounter = useRef(0);
     const [form] = Form.useForm();
     const [folderForm] = Form.useForm();
     const [editForm] = Form.useForm();
+
+    const MAX_FILE_SIZE = 500 * 1024 * 1024;
+
+    useEffect(() => {
+        const preventDefaults = (e) => { e.preventDefault(); };
+        window.addEventListener('dragover', preventDefaults);
+        window.addEventListener('drop', preventDefaults);
+        return () => {
+            window.removeEventListener('dragover', preventDefaults);
+            window.removeEventListener('drop', preventDefaults);
+        };
+    }, []);
 
     const uploadSemaphore = useRef({ active: 0, queue: [], max: 3 });
     const uploadBatch = useRef({ pending: 0, done: 0, failed: 0, lastError: null });
@@ -192,7 +207,68 @@ const Acervo = () => {
         }, 0);
     };
 
+    const CHUNK_SIZE = 50 * 1024 * 1024;
+
+    const startChunkedUpload = async (file, folder) => {
+        if (uploadBatch.current.pending === 0) setUploadResult(null);
+        uploadBatch.current.pending += 1;
+        setUploadProgress((prev) => ({
+            total: (prev?.total || 0) + 1,
+            done: prev?.done || 0,
+            failed: prev?.failed || 0,
+        }));
+        await acquireSlot();
+        try {
+            const init = await acervoService.initChunkedUpload(file.name, file.type, file.size, {
+                bucketId: selectedBucketId,
+                folder: folder || '/',
+                alt: form.getFieldValue('alt') || '',
+            });
+            const { session_id } = init;
+            const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+            for (let i = 0; i < totalChunks; i++) {
+                const start = i * CHUNK_SIZE;
+                const end = Math.min(start + CHUNK_SIZE, file.size);
+                const chunkBlob = file.slice(start, end);
+                let attempts = 0;
+                for (;;) {
+                    try {
+                        await acervoService.uploadChunk(session_id, i + 1, chunkBlob);
+                        setUploadProgress((prev) => prev && {
+                            ...prev,
+                            chunkInfo: `${file.name}: parte ${i + 1}/${totalChunks}`,
+                        });
+                        break;
+                    } catch (error) {
+                        attempts += 1;
+                        if (error?.response?.status === 429 && attempts <= 5) {
+                            const retryAfter = Number(error.response.headers?.['retry-after']) || 5;
+                            await new Promise((resolve) => setTimeout(resolve, (retryAfter + 1) * 1000));
+                            continue;
+                        }
+                        throw error;
+                    }
+                }
+            }
+            await acervoService.completeChunkedUpload(session_id);
+            uploadBatch.current.done += 1;
+            setUploadProgress((prev) => prev && { ...prev, done: prev.done + 1, chunkInfo: null });
+        } catch (error) {
+            uploadBatch.current.failed += 1;
+            const detail = error?.response?.data?.detail;
+            if (detail) uploadBatch.current.lastError = detail;
+            setUploadProgress((prev) => prev && { ...prev, failed: prev.failed + 1, chunkInfo: null });
+        } finally {
+            releaseSlot();
+            finishUpload();
+        }
+    };
+
     const startUpload = async (file, folder) => {
+        if (file.size > MAX_FILE_SIZE) {
+            startChunkedUpload(file, folder);
+            return;
+        }
         if (uploadBatch.current.pending === 0) setUploadResult(null);
         uploadBatch.current.pending += 1;
         setUploadProgress((prev) => ({
@@ -242,9 +318,63 @@ const Acervo = () => {
         return Upload.LIST_IGNORE;
     };
 
+    const STABILIZE_MAX_BYTES = 100 * 1024 * 1024;
+
+    // Los File de un drag & drop en Linux (document portal / GVFS) pueden
+    // apuntar a un temporal que caduca en segundos: Chrome lanza
+    // net::ERR_FILE_NOT_FOUND al serializar el FormData. Se leen los bytes
+    // de inmediato y se reconstruye el archivo en memoria.
+    const setDndSupport = (unsupported) => {
+        setDndUnsupported(unsupported);
+        try { localStorage.setItem('mariachi.acervo.dndUnsupported', unsupported ? '1' : '0'); } catch { /* noop */ }
+    };
+
+    const stabilizeAndUpload = async (files, folder) => {
+        const unreadable = [];
+        let readable = 0;
+        await Promise.all(files.map(async (file) => {
+            if (file.size > STABILIZE_MAX_BYTES) {
+                readable += 1;
+                startUpload(file, folder);
+                return;
+            }
+            try {
+                const buffer = await file.arrayBuffer();
+                const stable = new File([buffer], file.name, {
+                    type: file.type,
+                    lastModified: file.lastModified,
+                });
+                readable += 1;
+                startUpload(stable, folder);
+            } catch {
+                unreadable.push(file.name);
+            }
+        }));
+        if (readable > 0 && dndUnsupported) {
+            setDndSupport(false);
+        }
+        if (unreadable.length === files.length) {
+            setDndSupport(true);
+            message.error(
+                'Este navegador no entrega los archivos arrastrados (sandbox, p. ej. instalado como snap). '
+                + 'La zona de arrastre se deshabilitó; usa el botón Subir.'
+            );
+            return;
+        }
+        if (unreadable.length > 0) {
+            const muestra = unreadable.slice(0, 3).join(', ');
+            message.error(
+                `No se pudieron leer ${unreadable.length} archivo(s) del arrastre (${muestra}${unreadable.length > 3 ? '…' : ''}). `
+                + 'El origen no entrega archivos persistentes; usa el botón Subir.'
+            );
+        }
+    };
+
     const handleDragEnter = (e) => {
         e.preventDefault();
-        if (!Array.from(e.dataTransfer?.types || []).includes('Files')) return;
+        if (dndUnsupported) return;
+        const types = e.dataTransfer?.types || [];
+        if (types.length === 0 || types.every((t) => t === 'text/plain' || t === 'text/uri-list' || t === 'text/html')) return;
         dragCounter.current += 1;
         setDragActive(true);
     };
@@ -263,13 +393,29 @@ const Acervo = () => {
         e.preventDefault();
         dragCounter.current = 0;
         setDragActive(false);
-        const files = Array.from(e.dataTransfer?.files || []);
-        if (files.length === 0) return;
+        const dt = e.dataTransfer;
+        let files = [];
+        if (dt?.files && dt.files.length > 0) {
+            files = Array.from(dt.files);
+        } else if (dt?.items && dt.items.length > 0) {
+            files = Array.from(dt.items)
+                .filter((item) => item.kind === 'file')
+                .map((item) => item.getAsFile())
+                .filter(Boolean);
+        }
+        if (files.length === 0) {
+            const types = Array.from(dt?.types || []);
+            if (types.length > 0) {
+                console.warn('[acervo] drop sin archivos; dataTransfer.types =', types);
+                message.warning('El origen del arrastre no entregó archivos. Si vienen de un ZIP, extráelos primero, o usa el botón Subir.');
+            }
+            return;
+        }
         if (!selectedBucketId) {
             message.error('Selecciona un bucket primero');
             return;
         }
-        files.forEach((file) => startUpload(file, currentPath || '/'));
+        stabilizeAndUpload(files, currentPath || '/');
     };
 
     const handleDelete = async (id) => {
@@ -840,11 +986,13 @@ const Acervo = () => {
                         <div style={{ textAlign: 'center', color: '#8c8c8c', fontSize: 12 }}>
                             Subiendo {uploadProgress.done + uploadProgress.failed} de {uploadProgress.total} archivo(s)
                             {uploadProgress.failed > 0 ? ` (${uploadProgress.failed} con error)` : ''}
+                            {uploadProgress.chunkInfo ? ` — ${uploadProgress.chunkInfo}` : ''}
                         </div>
                     </div>
                 )}
 
                 <div
+                    data-testid="acervo-drop-zone"
                     onDragEnter={handleDragEnter}
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
@@ -959,6 +1107,7 @@ const Acervo = () => {
                             <div style={{ textAlign: 'center', color: '#8c8c8c', fontSize: 12 }}>
                                 {uploadProgress.done + uploadProgress.failed} de {uploadProgress.total} archivo(s)
                                 {uploadProgress.failed > 0 ? ` (${uploadProgress.failed} con error)` : ''}
+                                {uploadProgress.chunkInfo ? ` — ${uploadProgress.chunkInfo}` : ''}
                             </div>
                         </Form.Item>
                     )}

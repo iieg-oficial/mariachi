@@ -130,8 +130,10 @@ export const uploadAcervoFile = async (file, options = {}) => {
             formData.append('alt', options.alt);
         }
 
+        const timeout = Math.max(300000, Math.ceil((file.size || 0) / 1024) * 2);
+
         const response = await api.post('/acervo', formData, {
-            timeout: 300000,
+            timeout,
             headers: {
                 'Content-Type': 'multipart/form-data',
             },
@@ -281,6 +283,44 @@ export const getFolderInfo = async (bucketId, prefix) => {
 };
 
 
+export const initChunkedUpload = async (fileName, fileType, fileSize, options) => {
+    const totalChunks = Math.ceil(fileSize / (50 * 1024 * 1024));
+    const formData = new FormData();
+    formData.append('original_name', fileName);
+    formData.append('content_type', fileType || 'application/octet-stream');
+    formData.append('bucket_id', String(options.bucketId));
+    formData.append('folder', options.folder || '/');
+    formData.append('alt', options.alt || '');
+    formData.append('total_size', String(fileSize));
+    formData.append('total_chunks', String(totalChunks));
+
+    const response = await api.post('/acervo/chunked/init', formData, {
+        timeout: 30000,
+        headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+};
+
+export const uploadChunk = async (sessionId, partNumber, chunkBlob) => {
+    const formData = new FormData();
+    formData.append('part_number', String(partNumber));
+    formData.append('chunk', chunkBlob, `chunk.${partNumber}`);
+
+    const timeout = Math.max(120000, Math.ceil((chunkBlob.size || 0) / 1024) * 2);
+    const response = await api.post(`/acervo/chunked/${sessionId}/part`, formData, {
+        timeout,
+        headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+};
+
+export const completeChunkedUpload = async (sessionId) => {
+    const response = await api.post(`/acervo/chunked/${sessionId}/complete`, null, {
+        timeout: 60000,
+    });
+    return response.data;
+};
+
 export const formatFileSize = (bytes) => {
     if (bytes === 0) return '0 Bytes';
 
@@ -382,6 +422,9 @@ export default {
     deleteFolder,
     moveAcervoFile,
     getFolderInfo,
+    initChunkedUpload,
+    uploadChunk,
+    completeChunkedUpload,
 
     formatFileSize,
     getFileIcon,

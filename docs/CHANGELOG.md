@@ -9,6 +9,69 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.38.3 / admin 1.38.3] - 2026-06-12
+
+### UX: deshabilitar la zona de arrastre cuando el navegador no entrega archivos (snap)
+
+Diagnóstico cerrado del drag & drop que no subía: el navegador del usuario es **Brave instalado como snap** en sesión Wayland — el sandbox de AppArmor del snap no puede leer los archivos referenciados por el protocolo de DnD (llega el nombre/tamaño pero toda lectura falla), mientras que el file picker funciona porque pasa por el portal XDG. No es detectable a priori (mismo user-agent que un Brave normal) ni evitable desde la app; tampoco lo resuelve ninguna librería (dnd-kit es drag interno de DOM con pointer events, no recibe archivos del SO).
+
+- **`admin/.../acervo/pages/AcervoPage.jsx`**: detección empírica con auto-recuperación. Si un lote de drop resulta **completamente ilegible**, se marca el navegador (`localStorage: mariachi.acervo.dndUnsupported`), deja de mostrarse el overlay "Suelta para subir" y el aviso indica usar el botón Subir. El drop se sigue procesando: si en el futuro un drop entrega archivos legibles (p. ej. navegador no-snap), el flag se limpia y la zona de arrastre revive sola.
+- Tests nuevos: lote ilegible marca y oculta el overlay; drop legible re-habilita.
+
+Sin migración ni cambios de schema.
+
+---
+
+## [api 1.38.2 / admin 1.38.2] - 2026-06-12
+
+### Fix: drag & drop fallaba con `net::ERR_FILE_NOT_FOUND` — estabilizar archivos del drop en memoria
+
+Causa raíz encontrada (consola del usuario): los `POST /acervo` del drop fallaban con `net::ERR_FILE_NOT_FOUND` — el evento y la lógica funcionaban, pero los `File` de un arrastre en Linux (document portal / GVFS, p. ej. Nautilus en Wayland o ZIPs abiertos) apuntan a un temporal que **caduca en segundos**, y Chrome ya no puede leer el archivo al serializar el FormData. El file picker no lo sufre porque entrega handles persistentes.
+
+- **`admin/.../acervo/pages/AcervoPage.jsx`**: `stabilizeAndUpload` — al soltar, se leen los bytes de inmediato (`file.arrayBuffer()`) y se reconstruye cada archivo en memoria (`new File([...])`) antes de encolarlo al pipeline de subida. Archivos > 100 MB no se bufferizan (van directo, el chunked upload los maneja). Si la lectura inmediata también falla, mensaje claro con los nombres afectados y no bloquea al resto del lote.
+- Test nuevo: un archivo volátil (lectura rechazada) no se sube ni bloquea a los demás.
+
+Sin migración ni cambios de schema.
+
+---
+
+## [api 1.38.1 / admin 1.38.1] - 2026-06-12
+
+### Fix/diag: drop multi-archivo en Acervo — lógica verificada con tests y aviso cuando el origen no entrega archivos
+
+Análisis del reporte "el drag & drop multi-archivo no sube nada (ni en el Dragger ni en la rejilla), pero seleccionar sí funciona": se agregó un test de componente (`AcervoPage.dnd.test.jsx`, vitest + testing-library) que simula el drop con múltiples archivos y confirma que la lógica dispara una subida por archivo (vía `dataTransfer.files` y vía el fallback `items.getAsFile()`). Que falle también el Dragger de antd (drop independiente del código propio) indica causa **ambiental**: orígenes de arrastre que no entregan `Files` (p. ej. arrastrar desde un ZIP abierto entrega solo `text/uri-list`) o DnD roto entre apps en Linux Wayland↔XWayland.
+
+- **`admin/.../acervo/pages/AcervoPage.jsx`**: cuando un drop llega sin archivos pero con `types` (caso ZIP/uri-list), se muestra warning explicativo ("extráelos primero o usa el botón Subir") y se loguea `dataTransfer.types` en consola para diagnóstico; antes el drop se ignoraba en silencio. `data-testid` en la zona de drop.
+- **`admin/.../acervo/pages/__tests__/AcervoPage.dnd.test.jsx`** (nuevo): 3 escenarios de drop.
+
+Sin migración ni cambios de schema.
+
+---
+
+## [api 1.38.0 / admin 1.38.0] - 2026-06-12
+
+### Feat: chunked upload para archivos > 500 MB
+
+- **backend**: endpoints `POST /acervo/chunked/{init,{id}/part,{id}/complete}` que usan el API multipart nativo de SeaweedFS vía `minio._create_multipart_upload` / `_upload_part` / `_complete_multipart_upload`. Sesiones en Redis con TTL de 2 h. El archivo se parte en chunks de 50 MB subidos secuencialmente; al completar se registra en BD con auditoría, igual que la subida directa.
+- **frontend**: `startUpload` detecta archivos > 500 MB y los enruta a `startChunkedUpload`, que divide con `File.slice()` en chunks de 50 MB y los sube secuencialmente. Progreso visible con indicador `parte N/T` en el modal y sobre la rejilla. Retry en 429 por chunk.
+- Archivos ≤ 500 MB siguen usando la subida directa existente (sin cambios).
+
+### Feat: soporte para archivos pesados en Acervo (límite 500 MB directa, chunked ilimitado)
+
+- **gateway-hub** (`nginx/templates/gateway.conf.template`): nuevo `location ^~ /api/administrador/acervo` con `client_max_body_size 1G`, `proxy_request_buffering off` y timeouts 600s.
+- **mariachi-nginx** (`nginx/conf.d/mariachi.conf`): location `^~ /api/administrador/acervo` reemplaza al obsoleto `^~ /api/administrador/media/` (renombrado). `proxy_request_buffering off`, `proxy_buffering off`, timeouts 600s.
+- **gunicorn**: timeout aumentado de 120s a 300s.
+
+### Fix: arreglar drag & drop de carga múltiple sobre la rejilla
+
+- Bloqueo global de `dragover`/`drop` del navegador vía `window.addEventListener` con cleanup.
+- `handleDragEnter`: filtro relajado de `dataTransfer.types` (antes exigía `'Files'` exacto).
+- `handleDrop`: fallback a `e.dataTransfer.items` + `getAsFile()` cuando `files` está vacío.
+
+Sin migración.
+
+---
+
 ## [api 1.37.0 / admin 1.37.0] - 2026-06-12
 
 ### Feat: registro de actividad para operaciones de Acervo

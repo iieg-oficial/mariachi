@@ -78,7 +78,7 @@ Rutas del backend (prefijos):
 | @dnd-kit core / sortable | 6.3 / 10.0 |
 | Axios | 1.13.3 |
 
-Estructura de features (`admin/src/features/`): `auth`, `colibri`, `inicio`, `mapalab-eventos`, `mapalab-home`, `mapalab-layers`, `media`, `perfil`, `portal-menu`, `portal-pages`, `revision`, `sieej-formularios`, `users`. Cada feature agrupa `pages/`, `components/`, `hooks/`, `services/`, `constants/`. La estructura `pages/` legada se eliminó.
+Estructura de features (`admin/src/features/`): `acervo`, `auth`, `colibri`, `inicio`, `mapalab-api-keys`, `mapalab-eventos`, `mapalab-home`, `mapalab-layers`, `mapalab-shares`, `mapalab-symbols`, `perfil`, `portal-menu`, `portal-pages`, `revision`, `sieej-formularios`, `users`. Cada feature agrupa `pages/`, `components/`, `hooks/`, `services/`, `constants/`. La estructura `pages/` legada se eliminó.
 
 ### Portal web publico (`web/`) — congelado
 
@@ -606,6 +606,11 @@ Implicaciones para el código y la configuración:
 - **No exponer puertos al host** desde `docker-compose.yml` (prod). Solo `expose: 80` en `iieg-network` para que el gateway pueda alcanzar a mariachi-nginx.
 - **`cookie_secure=true`** en `.env.production`: el gateway termina TLS y la cookie se envía sobre HTTPS al cliente. Internamente entre containers la cookie ya está set (no se vuelve a enviar al gateway).
 - **CORS**: `cors_origins` en `.env.production` se restringe a los dominios públicos del gateway (`https://iieg.jalisco.gob.mx`), no a IPs internos.
+- **Límites de subida de archivos** (v1.38.0+):
+    - **Subida directa** (≤ 500 MB): un solo `POST /acervo` con `multipart/form-data`. Timeout de axios = `max(300000, ceil(size/1024) * 2)` ms.
+    - **Subida por chunks** (> 500 MB): `POST /acervo/chunked/init` → `POST /acervo/chunked/{session}/part` (chunks de 50 MB, secuenciales) → `POST /acervo/chunked/{session}/complete`. Usa el API multipart nativo de SeaweedFS (S3 `CreateMultipartUpload` / `UploadPart` / `CompleteMultipartUpload`). Sesiones en Redis con TTL de 2 h.
+    - **Cadena de proxy**: gateway-hub `client_max_body_size 1G` + `proxy_request_buffering off` en `location ^~ /api/administrador/acervo`. mariachi-nginx idem con timeouts 600s. Gunicorn `--timeout 300`.
+- **Drag & drop de archivos en Acervo** (v1.38.2+): los `File` del drop se leen de inmediato (`arrayBuffer`) y se reconstruyen en memoria antes de encolarlos — los arrastres vía document portal/GVFS en Linux caducan en segundos (`net::ERR_FILE_NOT_FOUND`). Archivos > 100 MB no se bufferizan. **Limitación conocida**: navegadores Chromium instalados como **snap** (sandbox AppArmor) nunca pueden leer los archivos arrastrados (el picker sí funciona, va por portal XDG); el frontend lo detecta empíricamente (lote completo ilegible → `localStorage mariachi.acervo.dndUnsupported`), oculta el overlay de arrastre y se auto-rehabilita si un drop posterior entrega archivos legibles. No es detectable por user-agent ni evitable con otra librería (dnd-kit es drag interno de DOM, no recibe archivos del SO).
 
 En **dev** (`docker-compose.dev.yml`) no hay gateway: Vite expone `:3011`, API expone `:8010`. El admin se conecta directo al API por `localhost`. La regla `--proxy-headers` con `--forwarded-allow-ips='*'` sigue activa pero como nadie envía headers, no afecta.
 
