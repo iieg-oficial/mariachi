@@ -9,6 +9,27 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.37.0 / admin 1.37.0] - 2026-06-12
+
+### Feat: registro de actividad para operaciones de Acervo
+
+Las operaciones de Acervo ahora se registran en el audit log (`actividad_log`) y aparecen en la pantalla **Actividad** con etiquetas legibles y filtro propio:
+
+| Acción | Cuándo | Metadata |
+|---|---|---|
+| `acervo.file.upload` | Subida de archivo (modal o drag & drop) | nombre, bucket, carpeta |
+| `acervo.file.move` | Mover archivo de carpeta | de, a, bucket |
+| `acervo.file.delete` | Eliminar archivo (registrado o solo-bucket) | nombre, bucket, carpeta |
+| `acervo.folder.create` | Crear carpeta | bucket |
+| `acervo.folder.delete` | Eliminar carpeta (vacía o recursiva) | bucket, objetos eliminados |
+
+- **`api/app/api/routes/acervo.py`**: llamadas a `registrar_actividad` (best-effort, mismo commit que la operación) en subir, mover, eliminar archivo (3 variantes), crear y eliminar carpeta.
+- **`admin/.../actividad/constants.js`**: `ACTION_LABELS`/`RESOURCE_LABELS`/`META_KEY_LABELS` para las acciones de acervo + filtro por prefijo "Acervo (acervo.*)".
+
+Sin migración (la tabla `actividad_log` ya existía). Test nuevo: upload/move/delete generan las filas con su metadata.
+
+---
+
 ## [api 1.36.0 / admin 1.36.0] - 2026-06-12
 
 ### Feat: drag & drop directo sobre la rejilla de Acervo

@@ -14,6 +14,7 @@ from app.models.user import Usuario
 from app.schemas.acervo import AcervoFileUpdate, FileMoveRequest, FolderCreate, FolderResponse
 from app.services import acervo_file_service
 from app.services.acervo import AcervoClient
+from app.services.actividad_service import registrar_actividad
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/acervo", tags=["acervo"])
@@ -212,6 +213,19 @@ async def subir_archivo(
             metadata_json={"alt": alt} if alt else {},
         )
         db.add(nuevo)
+        db.flush()
+        registrar_actividad(
+            db,
+            actor=current_user,
+            action="acervo.file.upload",
+            resource_type="acervo.file",
+            resource_id=nuevo.id,
+            metadata={
+                "nombre": file.filename,
+                "bucket": bucket.acervo_bucket,
+                "carpeta": folder_path,
+            },
+        )
         db.commit()
         db.refresh(nuevo)
         incr(COUNTER_MEDIA_UPLOADS)
@@ -273,6 +287,18 @@ async def mover_archivo(
     client.delete_file(src_name)
 
     folder_path = acervo_file_service.ensure_folder_exists(db, bucket.id, target_folder)
+    registrar_actividad(
+        db,
+        actor=current_user,
+        action="acervo.file.move",
+        resource_type="acervo.file",
+        resource_id=item.id if item is not None else payload.id,
+        metadata={
+            "de": src_name,
+            "a": dest_name,
+            "bucket": bucket.acervo_bucket,
+        },
+    )
     if item is not None:
         item.name = dest_name
         item.folder = folder_path
@@ -412,6 +438,14 @@ async def crear_carpeta(
     client = AcervoClient.for_bucket(bucket)
     client.put_empty_object(acervo_file_service.folder_marker_key(path))
 
+    registrar_actividad(
+        db,
+        actor=current_user,
+        action="acervo.folder.create",
+        resource_type="acervo.folder",
+        resource_id=path,
+        metadata={"bucket": bucket.acervo_bucket},
+    )
     db.commit()
     db.refresh(nueva)
     logger.info(
@@ -450,6 +484,14 @@ async def eliminar_carpeta(
     client.delete_file(folder.path)
 
     db.delete(folder)
+    registrar_actividad(
+        db,
+        actor=current_user,
+        action="acervo.folder.delete",
+        resource_type="acervo.folder",
+        resource_id=folder.path,
+        metadata={"bucket": bucket.acervo_bucket},
+    )
     db.commit()
     logger.info(
         "action=acervo.folder.delete user_id=%s bucket_id=%s folder=%s",
@@ -485,6 +527,14 @@ async def eliminar_archivo(
             AcervoFolder.bucket_id == bucket.id,
             AcervoFolder.path.like(f"{prefix}%"),
         ).delete(synchronize_session=False)
+        registrar_actividad(
+            db,
+            actor=current_user,
+            action="acervo.folder.delete",
+            resource_type="acervo.folder",
+            resource_id=prefix,
+            metadata={"bucket": bucket.acervo_bucket, "objetos": deleted},
+        )
         db.commit()
         incr(COUNTER_MEDIA_DELETES)
         logger.info(
@@ -502,6 +552,15 @@ async def eliminar_archivo(
         bucket = acervo_file_service.resolve_bucket_or_403(bucket_id, current_user, db)
         client = AcervoClient.for_bucket(bucket)
         client.delete_file(name)
+        registrar_actividad(
+            db,
+            actor=current_user,
+            action="acervo.file.delete",
+            resource_type="acervo.file",
+            resource_id=name,
+            metadata={"nombre": name.rsplit("/", 1)[-1], "bucket": bucket.acervo_bucket},
+        )
+        db.commit()
         incr(COUNTER_MEDIA_DELETES)
         logger.info("action=acervo.delete.bucket_only user_id=%s bucket=%s name=%s", current_user.id, bucket_id, name)
         return {"message": "Archivo eliminado del bucket"}
@@ -515,12 +574,25 @@ async def eliminar_archivo(
     if not item:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Archivo no encontrado")
 
+    bucket = None
     if item.bucket_id:
         bucket = acervo_file_service.resolve_bucket_or_403(item.bucket_id, current_user, db)
         client = AcervoClient.for_bucket(bucket)
         client.delete_file(item.name)
 
     db.delete(item)
+    registrar_actividad(
+        db,
+        actor=current_user,
+        action="acervo.file.delete",
+        resource_type="acervo.file",
+        resource_id=item.id,
+        metadata={
+            "nombre": item.original_name,
+            "bucket": bucket.acervo_bucket if bucket else None,
+            "carpeta": item.folder,
+        },
+    )
     db.commit()
     incr(COUNTER_MEDIA_DELETES)
     logger.info("action=acervo.delete user_id=%s media_id=%s name=%s", current_user.id, item.id, item.name)

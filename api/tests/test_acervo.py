@@ -462,6 +462,40 @@ def test_eliminar_directorio_limpia_acervo_folders(admin_session, db_session):
     assert remaining == 0
 
 
+def test_acervo_registra_actividad(admin_session, db_session):
+    from app.models.actividad_log import ActividadLog
+
+    _, bucket = _seed_bucket(db_session, name="x")
+    client = admin_session["client"]
+
+    client.post(
+        f"{ADMIN_PREFIX}/acervo",
+        data={"folder": "iconos", "alt": "", "bucket_id": str(bucket.id)},
+        files={"file": ("logo.svg", io.BytesIO(b"<svg/>"), "image/svg+xml")},
+        headers={"X-CSRF-Token": admin_session["csrf"]},
+    )
+    media = db_session.query(AcervoFile).filter(AcervoFile.bucket_id == bucket.id).first()
+
+    client.post(
+        f"{ADMIN_PREFIX}/acervo/mover",
+        json={"id": str(media.id), "folder": "otra"},
+        headers={"X-CSRF-Token": admin_session["csrf"]},
+    )
+    client.delete(
+        f"{ADMIN_PREFIX}/acervo/{media.id}",
+        headers={"X-CSRF-Token": admin_session["csrf"]},
+    )
+
+    actions = [a.action for a in db_session.query(ActividadLog).order_by(ActividadLog.id).all()]
+    assert "acervo.file.upload" in actions
+    assert "acervo.file.move" in actions
+    assert "acervo.file.delete" in actions
+
+    upload = db_session.query(ActividadLog).filter(ActividadLog.action == "acervo.file.upload").first()
+    assert upload.log_metadata["nombre"] == "logo.svg"
+    assert upload.log_metadata["bucket"] == "x"
+
+
 def test_subir_archivo_duplicado_409(admin_session, db_session):
     _, bucket = _seed_bucket(db_session, name="x")
     client = admin_session["client"]
