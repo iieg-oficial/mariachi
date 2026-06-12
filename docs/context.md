@@ -78,7 +78,7 @@ Rutas del backend (prefijos):
 | @dnd-kit core / sortable | 6.3 / 10.0 |
 | Axios | 1.13.3 |
 
-Estructura de features (`admin/src/features/`): `auth`, `colibri`, `inicio`, `mapalab-eventos`, `mapalab-home`, `mapalab-layers`, `media`, `perfil`, `portal-menu`, `portal-pages`, `revision`, `sieej-formularios`, `users`. Cada feature agrupa `pages/`, `components/`, `hooks/`, `services/`, `constants/`. La estructura `pages/` legada se eliminó.
+Estructura de features (`admin/src/features/`): `acervo`, `auth`, `colibri`, `inicio`, `mapalab-api-keys`, `mapalab-eventos`, `mapalab-home`, `mapalab-layers`, `mapalab-shares`, `mapalab-symbols`, `perfil`, `portal-menu`, `portal-pages`, `revision`, `sieej-formularios`, `users`. Cada feature agrupa `pages/`, `components/`, `hooks/`, `services/`, `constants/`. La estructura `pages/` legada se eliminó.
 
 ### Portal web publico (`web/`) — congelado
 
