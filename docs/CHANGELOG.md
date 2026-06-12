@@ -9,6 +9,19 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.35.3 / admin 1.35.3] - 2026-06-12
+
+### Fix: la carpeta eliminada seguía apareciendo en el listado durante minutos
+
+El borrado de objetos era inmediato, pero SeaweedFS mantiene los directorios como **entradas reales del filer**: al borrar solo los objetos, el listado seguía devolviendo la carpeta vacía como prefijo hasta que el cleanup asíncrono del filer la recogía (minutos después). Reproducido con un experimento: tras `delete_prefix`, el prefijo seguía en el listado de la raíz indefinidamente; un `DeleteObject` explícito de la key del directorio (`carpeta/`) lo elimina al instante.
+
+- **`api/app/services/acervo.py::delete_prefix`**: tras borrar los objetos, borra también las entradas de directorio derivadas (subcarpetas, de hoja a raíz) y la del propio prefijo.
+- **`api/app/api/routes/acervo.py::eliminar_carpeta`**: borra la entrada del directorio además del marcador `.keep`.
+
+Sin migración ni cambios de schema.
+
+---
+
 ## [api 1.35.2 / admin 1.35.2] - 2026-06-10
 
 ### Fix: rechazar subidas duplicadas (mismo nombre original en la misma carpeta)

@@ -143,16 +143,28 @@ class AcervoClient:
         if not prefix:
             return 0
         deleted = 0
+        dir_entries: set[str] = set()
         for obj in self.client.list_objects(self.bucket_name, prefix=prefix, recursive=True):
+            name = obj.object_name
             try:
-                self.client.remove_object(self.bucket_name, obj.object_name)
+                self.client.remove_object(self.bucket_name, name)
                 deleted += 1
             except S3Error:
                 logger.exception(
                     "acervo.delete_prefix bucket=%s object=%s",
                     self.bucket_name,
-                    obj.object_name,
+                    name,
                 )
+            parent = f"{name.rsplit('/', 1)[0]}/" if "/" in name else ""
+            while len(parent) > len(prefix):
+                dir_entries.add(parent)
+                parent = f"{parent[:-1].rsplit('/', 1)[0]}/" if "/" in parent[:-1] else ""
+        # SeaweedFS mantiene los directorios como entradas del filer; si no se
+        # borran explicitamente, el listado los sigue mostrando hasta que el
+        # cleanup asincrono los recoja (minutos despues).
+        for entry in sorted(dir_entries, reverse=True):
+            self.delete_file(entry)
+        self.delete_file(prefix)
         return deleted
 
     def list_objects(self, prefix: str = "", recursive: bool = True) -> list[dict]:

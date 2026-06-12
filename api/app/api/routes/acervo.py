@@ -447,6 +447,7 @@ async def eliminar_carpeta(
 
     client = AcervoClient.for_bucket(bucket)
     client.delete_file(acervo_file_service.folder_marker_key(folder.path))
+    client.delete_file(folder.path)
 
     db.delete(folder)
     db.commit()
