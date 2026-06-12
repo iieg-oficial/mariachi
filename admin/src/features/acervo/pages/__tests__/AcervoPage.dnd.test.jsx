@@ -92,6 +92,38 @@ describe('AcervoPage drag & drop', () => {
         expect(uploaded.name).toBe('sano.svg');
     });
 
+    it('lote completamente ilegible deshabilita la zona de arrastre (persistido)', async () => {
+        render(<AcervoPage />);
+        const zone = await screen.findByTestId('acervo-drop-zone');
+        await waitFor(() => expect(acervoService.getAcervoFiles).toHaveBeenCalled());
+
+        const files = [mkFile('a.svg'), mkFile('b.svg')];
+        files.forEach((f) => {
+            f.arrayBuffer = () => Promise.reject(new DOMException('not found', 'NotFoundError'));
+        });
+        fireEvent.drop(zone, { dataTransfer: { files, items: [], types: ['Files'] } });
+
+        await waitFor(() => expect(localStorage.getItem('mariachi.acervo.dndUnsupported')).toBe('1'));
+        expect(acervoService.uploadAcervoFile).not.toHaveBeenCalled();
+
+        fireEvent.dragEnter(zone, { dataTransfer: { types: ['Files'] } });
+        expect(screen.queryByText(/Suelta para subir/)).toBeNull();
+    });
+
+    it('un drop legible re-habilita la zona de arrastre', async () => {
+        localStorage.setItem('mariachi.acervo.dndUnsupported', '1');
+        render(<AcervoPage />);
+        const zone = await screen.findByTestId('acervo-drop-zone');
+        await waitFor(() => expect(acervoService.getAcervoFiles).toHaveBeenCalled());
+
+        fireEvent.drop(zone, {
+            dataTransfer: { files: [mkFile('ok.svg')], items: [], types: ['Files'] },
+        });
+
+        await waitFor(() => expect(acervoService.uploadAcervoFile).toHaveBeenCalledTimes(1));
+        await waitFor(() => expect(localStorage.getItem('mariachi.acervo.dndUnsupported')).toBe('0'));
+    });
+
     it('drop sin archivos no dispara subidas', async () => {
         render(<AcervoPage />);
         const zone = await screen.findByTestId('acervo-drop-zone');

@@ -9,6 +9,19 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.38.3 / admin 1.38.3] - 2026-06-12
+
+### UX: deshabilitar la zona de arrastre cuando el navegador no entrega archivos (snap)
+
+Diagnóstico cerrado del drag & drop que no subía: el navegador del usuario es **Brave instalado como snap** en sesión Wayland — el sandbox de AppArmor del snap no puede leer los archivos referenciados por el protocolo de DnD (llega el nombre/tamaño pero toda lectura falla), mientras que el file picker funciona porque pasa por el portal XDG. No es detectable a priori (mismo user-agent que un Brave normal) ni evitable desde la app; tampoco lo resuelve ninguna librería (dnd-kit es drag interno de DOM con pointer events, no recibe archivos del SO).
+
+- **`admin/.../acervo/pages/AcervoPage.jsx`**: detección empírica con auto-recuperación. Si un lote de drop resulta **completamente ilegible**, se marca el navegador (`localStorage: mariachi.acervo.dndUnsupported`), deja de mostrarse el overlay "Suelta para subir" y el aviso indica usar el botón Subir. El drop se sigue procesando: si en el futuro un drop entrega archivos legibles (p. ej. navegador no-snap), el flag se limpia y la zona de arrastre revive sola.
+- Tests nuevos: lote ilegible marca y oculta el overlay; drop legible re-habilita.
+
+Sin migración ni cambios de schema.
+
+---
+
 ## [api 1.38.2 / admin 1.38.2] - 2026-06-12
 
 ### Fix: drag & drop fallaba con `net::ERR_FILE_NOT_FOUND` — estabilizar archivos del drop en memoria

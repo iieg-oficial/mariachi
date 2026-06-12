@@ -58,6 +58,9 @@ const Acervo = () => {
     const [folderInfo, setFolderInfo] = useState(null);
     const [folderInfoLoading, setFolderInfoLoading] = useState(false);
     const [dragActive, setDragActive] = useState(false);
+    const [dndUnsupported, setDndUnsupported] = useState(() => {
+        try { return localStorage.getItem('mariachi.acervo.dndUnsupported') === '1'; } catch { return false; }
+    });
     const dragCounter = useRef(0);
     const [form] = Form.useForm();
     const [folderForm] = Form.useForm();
@@ -321,10 +324,17 @@ const Acervo = () => {
     // apuntar a un temporal que caduca en segundos: Chrome lanza
     // net::ERR_FILE_NOT_FOUND al serializar el FormData. Se leen los bytes
     // de inmediato y se reconstruye el archivo en memoria.
+    const setDndSupport = (unsupported) => {
+        setDndUnsupported(unsupported);
+        try { localStorage.setItem('mariachi.acervo.dndUnsupported', unsupported ? '1' : '0'); } catch { /* noop */ }
+    };
+
     const stabilizeAndUpload = async (files, folder) => {
         const unreadable = [];
+        let readable = 0;
         await Promise.all(files.map(async (file) => {
             if (file.size > STABILIZE_MAX_BYTES) {
+                readable += 1;
                 startUpload(file, folder);
                 return;
             }
@@ -334,11 +344,23 @@ const Acervo = () => {
                     type: file.type,
                     lastModified: file.lastModified,
                 });
+                readable += 1;
                 startUpload(stable, folder);
             } catch {
                 unreadable.push(file.name);
             }
         }));
+        if (readable > 0 && dndUnsupported) {
+            setDndSupport(false);
+        }
+        if (unreadable.length === files.length) {
+            setDndSupport(true);
+            message.error(
+                'Este navegador no entrega los archivos arrastrados (sandbox, p. ej. instalado como snap). '
+                + 'La zona de arrastre se deshabilitó; usa el botón Subir.'
+            );
+            return;
+        }
         if (unreadable.length > 0) {
             const muestra = unreadable.slice(0, 3).join(', ');
             message.error(
@@ -350,6 +372,7 @@ const Acervo = () => {
 
     const handleDragEnter = (e) => {
         e.preventDefault();
+        if (dndUnsupported) return;
         const types = e.dataTransfer?.types || [];
         if (types.length === 0 || types.every((t) => t === 'text/plain' || t === 'text/uri-list' || t === 'text/html')) return;
         dragCounter.current += 1;
