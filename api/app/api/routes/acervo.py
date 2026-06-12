@@ -242,6 +242,174 @@ async def subir_archivo(
         )
 
 
+@router.post("/chunked/init", status_code=status.HTTP_201_CREATED)
+async def chunked_upload_init(
+    original_name: str = Form(...),
+    content_type: str = Form("application/octet-stream"),
+    folder: str = Form("/"),
+    alt: str = Form(""),
+    bucket_id: int = Form(...),
+    total_size: int = Form(...),
+    total_chunks: int = Form(...),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(verify_csrf),
+    _rl: Usuario = Depends(_upload_rate_limit),
+):
+    from app.services.acervo_chunked import CHUNK_SIZE, create_session
+
+    bucket = acervo_file_service.resolve_bucket_or_403(bucket_id, current_user, db)
+    client = AcervoClient.for_bucket(bucket)
+
+    file_extension = original_name.split(".")[-1] if "." in original_name else ""
+    base = f"{uuid.uuid4()}.{file_extension}" if file_extension else str(uuid.uuid4())
+    clean_folder = (folder or "").strip().strip("/")
+    object_key = f"{clean_folder}/{base}" if clean_folder else base
+
+    upload_id = client.init_multipart_upload(object_key, content_type)
+
+    session_id = create_session({
+        'object_key': object_key,
+        'upload_id': upload_id,
+        'bucket_id': bucket.id,
+        'bucket_name': bucket.acervo_bucket,
+        'original_name': original_name,
+        'content_type': content_type,
+        'folder': folder,
+        'alt': alt,
+        'total_size': total_size,
+        'total_chunks': total_chunks,
+        'access_key_ref': bucket.access_key_ref,
+    })
+
+    return {
+        'session_id': session_id,
+        'chunk_size': CHUNK_SIZE,
+    }
+
+
+@router.post("/chunked/{session_id}/part")
+async def chunked_upload_part(
+    session_id: str,
+    chunk: UploadFile = File(...),
+    part_number: int = Form(...),
+    current_user: Usuario = Depends(verify_csrf),
+    _rl: Usuario = Depends(_upload_rate_limit),
+):
+    from app.services.acervo_chunked import get_session, update_session
+
+    session = get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Sesion de subida no encontrada o expirada")
+
+    client = AcervoClient._cache.get(f"{session['bucket_name']}:{session['access_key_ref']}")
+    if not client:
+        raise HTTPException(status_code=500, detail="Cliente acervo no disponible")
+
+    data = await chunk.read()
+    etag = client.upload_part(session['object_key'], session['upload_id'], part_number, data)
+
+    parts = session.get('parts', [])
+    parts.append({'part_number': part_number, 'etag': etag})
+    session['parts'] = parts
+    update_session(session_id, session)
+
+    logger.info(
+        "action=acervo.chunked.part user_id=%s session=%s part=%d size=%d",
+        current_user.id, session_id, part_number, len(data),
+    )
+
+    return {'part_number': part_number, 'etag': etag}
+
+
+@router.post("/chunked/{session_id}/complete", status_code=status.HTTP_201_CREATED)
+async def chunked_upload_complete(
+    session_id: str,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(verify_csrf),
+    _rl: Usuario = Depends(_upload_rate_limit),
+):
+    from app.services.acervo_chunked import delete_session, get_session
+
+    session = get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Sesion de subida no encontrada o expirada")
+
+    bucket_id = session['bucket_id']
+    bucket = acervo_file_service.resolve_bucket_or_403(bucket_id, current_user, db)
+    client = AcervoClient._cache.get(f"{session['bucket_name']}:{session['access_key_ref']}")
+    if not client:
+        client = AcervoClient.for_bucket(bucket)
+
+    parts = sorted(session.get('parts', []), key=lambda p: p['part_number'])
+    if len(parts) != session['total_chunks']:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Faltan partes: recibidas {len(parts)} de {session['total_chunks']}",
+        )
+
+    client.complete_multipart_upload(session['object_key'], session['upload_id'], parts)
+
+    clean_folder = (session['folder'] or "").strip().strip("/")
+    folder_path = acervo_file_service.ensure_folder_exists(db, bucket.id, clean_folder)
+
+    duplicate = (
+        db.query(AcervoFile)
+        .filter(
+            AcervoFile.bucket_id == bucket.id,
+            AcervoFile.folder == folder_path,
+            AcervoFile.original_name == session['original_name'],
+        )
+        .first()
+    )
+    if duplicate:
+        client.delete_file(session['object_key'])
+        delete_session(session_id)
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Ya existe '{session['original_name']}' en esta carpeta",
+        )
+
+    url = client.get_file_url(session['object_key'])
+
+    nuevo = AcervoFile(
+        bucket_id=bucket.id,
+        name=session['object_key'],
+        original_name=session['original_name'],
+        type=session['content_type'],
+        size=session['total_size'],
+        url=url,
+        thumbnail=url if session['content_type'] and session['content_type'].startswith("image/") else None,
+        folder=folder_path,
+        uploaded_by=current_user.id,
+        metadata_json={"alt": session.get('alt')} if session.get('alt') else {},
+    )
+    db.add(nuevo)
+    db.flush()
+    registrar_actividad(
+        db,
+        actor=current_user,
+        action="acervo.file.upload",
+        resource_type="acervo.file",
+        resource_id=nuevo.id,
+        metadata={
+            "nombre": session['original_name'],
+            "bucket": bucket.acervo_bucket,
+            "carpeta": folder_path,
+        },
+    )
+    db.commit()
+    db.refresh(nuevo)
+    incr(COUNTER_MEDIA_UPLOADS)
+    delete_session(session_id)
+
+    logger.info(
+        "action=acervo.chunked.complete user_id=%s bucket=%s size=%s name=%s",
+        current_user.id, bucket.acervo_bucket, nuevo.size, nuevo.original_name,
+    )
+
+    return acervo_file_service.serialize_acervo_file(nuevo)
+
+
 @router.post("/mover", response_model=dict)
 async def mover_archivo(
     payload: FileMoveRequest,

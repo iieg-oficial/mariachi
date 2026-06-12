@@ -9,6 +9,30 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.38.0 / admin 1.38.0] - 2026-06-12
+
+### Feat: chunked upload para archivos > 500 MB
+
+- **backend**: endpoints `POST /acervo/chunked/{init,{id}/part,{id}/complete}` que usan el API multipart nativo de SeaweedFS vía `minio._create_multipart_upload` / `_upload_part` / `_complete_multipart_upload`. Sesiones en Redis con TTL de 2 h. El archivo se parte en chunks de 50 MB subidos secuencialmente; al completar se registra en BD con auditoría, igual que la subida directa.
+- **frontend**: `startUpload` detecta archivos > 500 MB y los enruta a `startChunkedUpload`, que divide con `File.slice()` en chunks de 50 MB y los sube secuencialmente. Progreso visible con indicador `parte N/T` en el modal y sobre la rejilla. Retry en 429 por chunk.
+- Archivos ≤ 500 MB siguen usando la subida directa existente (sin cambios).
+
+### Feat: soporte para archivos pesados en Acervo (límite 500 MB directa, chunked ilimitado)
+
+- **gateway-hub** (`nginx/templates/gateway.conf.template`): nuevo `location ^~ /api/administrador/acervo` con `client_max_body_size 1G`, `proxy_request_buffering off` y timeouts 600s.
+- **mariachi-nginx** (`nginx/conf.d/mariachi.conf`): location `^~ /api/administrador/acervo` reemplaza al obsoleto `^~ /api/administrador/media/` (renombrado). `proxy_request_buffering off`, `proxy_buffering off`, timeouts 600s.
+- **gunicorn**: timeout aumentado de 120s a 300s.
+
+### Fix: arreglar drag & drop de carga múltiple sobre la rejilla
+
+- Bloqueo global de `dragover`/`drop` del navegador vía `window.addEventListener` con cleanup.
+- `handleDragEnter`: filtro relajado de `dataTransfer.types` (antes exigía `'Files'` exacto).
+- `handleDrop`: fallback a `e.dataTransfer.items` + `getAsFile()` cuando `files` está vacío.
+
+Sin migración.
+
+---
+
 ## [api 1.37.0 / admin 1.37.0] - 2026-06-12
 
 ### Feat: registro de actividad para operaciones de Acervo

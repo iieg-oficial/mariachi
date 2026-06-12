@@ -6,6 +6,7 @@ import urllib3
 from fastapi import UploadFile
 from minio import Minio
 from minio.commonconfig import CopySource
+from minio.datatypes import Part
 from minio.error import S3Error
 
 from app.core.acervo_url import to_absolute
@@ -195,3 +196,26 @@ class AcervoClient:
 
     def stat_object(self, object_name: str):
         return self.client.stat_object(self.bucket_name, object_name)
+
+    def init_multipart_upload(self, object_name: str, content_type: str | None = None) -> str:
+        headers = {}
+        if content_type:
+            headers['Content-Type'] = content_type
+        return self.client._create_multipart_upload(
+            self.bucket_name, object_name, headers,
+        )
+
+    def upload_part(self, object_name: str, upload_id: str, part_number: int, data: bytes) -> str:
+        return self.client._upload_part(
+            self.bucket_name, object_name, data, None, upload_id, part_number,
+        )
+
+    def complete_multipart_upload(self, object_name: str, upload_id: str, parts: list[dict]) -> str:
+        part_objects = [Part(part_number=p['part_number'], etag=p['etag']) for p in parts]
+        result = self.client._complete_multipart_upload(
+            self.bucket_name, object_name, upload_id, part_objects,
+        )
+        return result.object_name
+
+    def abort_multipart_upload(self, object_name: str, upload_id: str) -> None:
+        self.client._abort_multipart_upload(self.bucket_name, object_name, upload_id)
