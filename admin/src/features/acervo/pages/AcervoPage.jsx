@@ -347,7 +347,14 @@ const Acervo = () => {
                 .map((item) => item.getAsFile())
                 .filter(Boolean);
         }
-        if (files.length === 0) return;
+        if (files.length === 0) {
+            const types = Array.from(dt?.types || []);
+            if (types.length > 0) {
+                console.warn('[acervo] drop sin archivos; dataTransfer.types =', types);
+                message.warning('El origen del arrastre no entregó archivos. Si vienen de un ZIP, extráelos primero, o usa el botón Subir.');
+            }
+            return;
+        }
         if (!selectedBucketId) {
             message.error('Selecciona un bucket primero');
             return;
@@ -929,6 +936,7 @@ const Acervo = () => {
                 )}
 
                 <div
+                    data-testid="acervo-drop-zone"
                     onDragEnter={handleDragEnter}
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}

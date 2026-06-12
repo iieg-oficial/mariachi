@@ -9,6 +9,19 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.38.1 / admin 1.38.1] - 2026-06-12
+
+### Fix/diag: drop multi-archivo en Acervo — lógica verificada con tests y aviso cuando el origen no entrega archivos
+
+Análisis del reporte "el drag & drop multi-archivo no sube nada (ni en el Dragger ni en la rejilla), pero seleccionar sí funciona": se agregó un test de componente (`AcervoPage.dnd.test.jsx`, vitest + testing-library) que simula el drop con múltiples archivos y confirma que la lógica dispara una subida por archivo (vía `dataTransfer.files` y vía el fallback `items.getAsFile()`). Que falle también el Dragger de antd (drop independiente del código propio) indica causa **ambiental**: orígenes de arrastre que no entregan `Files` (p. ej. arrastrar desde un ZIP abierto entrega solo `text/uri-list`) o DnD roto entre apps en Linux Wayland↔XWayland.
+
+- **`admin/.../acervo/pages/AcervoPage.jsx`**: cuando un drop llega sin archivos pero con `types` (caso ZIP/uri-list), se muestra warning explicativo ("extráelos primero o usa el botón Subir") y se loguea `dataTransfer.types` en consola para diagnóstico; antes el drop se ignoraba en silencio. `data-testid` en la zona de drop.
+- **`admin/.../acervo/pages/__tests__/AcervoPage.dnd.test.jsx`** (nuevo): 3 escenarios de drop.
+
+Sin migración ni cambios de schema.
+
+---
+
 ## [api 1.38.0 / admin 1.38.0] - 2026-06-12
 
 ### Feat: chunked upload para archivos > 500 MB
