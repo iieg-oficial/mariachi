@@ -9,6 +9,19 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.38.2 / admin 1.38.2] - 2026-06-12
+
+### Fix: drag & drop fallaba con `net::ERR_FILE_NOT_FOUND` — estabilizar archivos del drop en memoria
+
+Causa raíz encontrada (consola del usuario): los `POST /acervo` del drop fallaban con `net::ERR_FILE_NOT_FOUND` — el evento y la lógica funcionaban, pero los `File` de un arrastre en Linux (document portal / GVFS, p. ej. Nautilus en Wayland o ZIPs abiertos) apuntan a un temporal que **caduca en segundos**, y Chrome ya no puede leer el archivo al serializar el FormData. El file picker no lo sufre porque entrega handles persistentes.
+
+- **`admin/.../acervo/pages/AcervoPage.jsx`**: `stabilizeAndUpload` — al soltar, se leen los bytes de inmediato (`file.arrayBuffer()`) y se reconstruye cada archivo en memoria (`new File([...])`) antes de encolarlo al pipeline de subida. Archivos > 100 MB no se bufferizan (van directo, el chunked upload los maneja). Si la lectura inmediata también falla, mensaje claro con los nombres afectados y no bloquea al resto del lote.
+- Test nuevo: un archivo volátil (lectura rechazada) no se sube ni bloquea a los demás.
+
+Sin migración ni cambios de schema.
+
+---
+
 ## [api 1.38.1 / admin 1.38.1] - 2026-06-12
 
 ### Fix/diag: drop multi-archivo en Acervo — lógica verificada con tests y aviso cuando el origen no entrega archivos

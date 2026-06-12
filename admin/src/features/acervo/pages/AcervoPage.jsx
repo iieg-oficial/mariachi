@@ -315,6 +315,39 @@ const Acervo = () => {
         return Upload.LIST_IGNORE;
     };
 
+    const STABILIZE_MAX_BYTES = 100 * 1024 * 1024;
+
+    // Los File de un drag & drop en Linux (document portal / GVFS) pueden
+    // apuntar a un temporal que caduca en segundos: Chrome lanza
+    // net::ERR_FILE_NOT_FOUND al serializar el FormData. Se leen los bytes
+    // de inmediato y se reconstruye el archivo en memoria.
+    const stabilizeAndUpload = async (files, folder) => {
+        const unreadable = [];
+        await Promise.all(files.map(async (file) => {
+            if (file.size > STABILIZE_MAX_BYTES) {
+                startUpload(file, folder);
+                return;
+            }
+            try {
+                const buffer = await file.arrayBuffer();
+                const stable = new File([buffer], file.name, {
+                    type: file.type,
+                    lastModified: file.lastModified,
+                });
+                startUpload(stable, folder);
+            } catch {
+                unreadable.push(file.name);
+            }
+        }));
+        if (unreadable.length > 0) {
+            const muestra = unreadable.slice(0, 3).join(', ');
+            message.error(
+                `No se pudieron leer ${unreadable.length} archivo(s) del arrastre (${muestra}${unreadable.length > 3 ? '…' : ''}). `
+                + 'El origen no entrega archivos persistentes; usa el botón Subir.'
+            );
+        }
+    };
+
     const handleDragEnter = (e) => {
         e.preventDefault();
         const types = e.dataTransfer?.types || [];
@@ -359,7 +392,7 @@ const Acervo = () => {
             message.error('Selecciona un bucket primero');
             return;
         }
-        files.forEach((file) => startUpload(file, currentPath || '/'));
+        stabilizeAndUpload(files, currentPath || '/');
     };
 
     const handleDelete = async (id) => {

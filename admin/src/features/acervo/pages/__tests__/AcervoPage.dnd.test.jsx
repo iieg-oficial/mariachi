@@ -75,6 +75,23 @@ describe('AcervoPage drag & drop', () => {
         await waitFor(() => expect(acervoService.uploadAcervoFile).toHaveBeenCalledTimes(2));
     });
 
+    it('archivo volátil (lectura falla) no se sube y no bloquea a los demás', async () => {
+        render(<AcervoPage />);
+        const zone = await screen.findByTestId('acervo-drop-zone');
+        await waitFor(() => expect(acervoService.getAcervoFiles).toHaveBeenCalled());
+
+        const volatil = mkFile('caduco.svg');
+        volatil.arrayBuffer = () => Promise.reject(new DOMException('not found', 'NotFoundError'));
+        const files = [volatil, mkFile('sano.svg')];
+        fireEvent.drop(zone, {
+            dataTransfer: { files, items: [], types: ['Files'] },
+        });
+
+        await waitFor(() => expect(acervoService.uploadAcervoFile).toHaveBeenCalledTimes(1));
+        const [uploaded] = acervoService.uploadAcervoFile.mock.calls[0];
+        expect(uploaded.name).toBe('sano.svg');
+    });
+
     it('drop sin archivos no dispara subidas', async () => {
         render(<AcervoPage />);
         const zone = await screen.findByTestId('acervo-drop-zone');
