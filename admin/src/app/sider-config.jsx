@@ -205,3 +205,20 @@ export function defaultOpenKeyForPath(pathname) {
     }
     return 'platform';
 }
+
+const ALL_NAV_ITEMS = [
+    { key: '/inicio', path: '/inicio' },
+    ...PLATFORM_ITEMS,
+    ...Object.values(PROJECT_REGISTRY).flatMap((project) => project.items),
+    ...FOOTER_ITEMS,
+];
+
+export function selectedKeyForPath(pathname) {
+    let best = null;
+    for (const item of ALL_NAV_ITEMS) {
+        if (pathname === item.path || pathname.startsWith(`${item.path}/`)) {
+            if (!best || item.path.length > best.path.length) best = item;
+        }
+    }
+    return best ? best.key : pathname;
+}

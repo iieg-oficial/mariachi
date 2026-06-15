@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { buildSiderItems, defaultOpenKeyForPath } from '@app/sider-config';
+import { buildSiderItems, defaultOpenKeyForPath, selectedKeyForPath } from '@app/sider-config';
 
 const noop = () => {};
 
@@ -185,5 +185,27 @@ describe('defaultOpenKeyForPath', () => {
         expect(defaultOpenKeyForPath('/users')).toBe('platform');
         expect(defaultOpenKeyForPath('/acervo')).toBe('platform');
         expect(defaultOpenKeyForPath('/')).toBe('platform');
+    });
+});
+
+describe('selectedKeyForPath', () => {
+    it('coincide exactamente con un item del sider', () => {
+        expect(selectedKeyForPath('/inicio')).toBe('/inicio');
+        expect(selectedKeyForPath('/mapalab/eventos')).toBe('/mapalab/eventos');
+    });
+
+    it('resalta el item base en rutas de detalle', () => {
+        expect(selectedKeyForPath('/mapalab/eventos/123/edit')).toBe('/mapalab/eventos');
+        expect(selectedKeyForPath('/sieej/formularios/5')).toBe('/sieej/formularios');
+        expect(selectedKeyForPath('/mapalab/layers/5/edit')).toBe('/mapalab/layers');
+    });
+
+    it('prefiere el prefijo mas largo cuando hay items anidados', () => {
+        expect(selectedKeyForPath('/mapalab/layers/ingesta-masiva')).toBe('/mapalab/layers/ingesta-masiva');
+    });
+
+    it('devuelve el pathname cuando no hay item que coincida', () => {
+        expect(selectedKeyForPath('/perfil')).toBe('/perfil');
+        expect(selectedKeyForPath('/ruta-inexistente')).toBe('/ruta-inexistente');
     });
 });

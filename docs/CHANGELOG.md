@@ -9,6 +9,42 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.39.0 / admin 1.39.0] - 2026-06-15
+
+### Hardening de routing y autorización del CMS
+
+Lote de correcciones derivado de una auditoría del enrutamiento (frontend, backend y borde).
+Documentación nueva en `docs/ROUTER.md`.
+
+#### Seguridad
+
+- **Lecturas admin-only sin guard en backend**: `GET /colibri/source-apps` y `GET /colibri/routes`
+  (lista y detalle) pasan a exigir `require_role(['tetlamamakani'])`. Antes solo requerían staff
+  (vía `staff_dep` a nivel de router), de modo que una `editora` podía leer por API directa la
+  configuración sensible de huéspedes (dominios CORS, prefijos de API key, scrubbers PII) y las
+  URLs de webhooks de fan-out, aunque la UI le ocultara esas páginas. Los writes ya estaban
+  protegidos. **No** se tocaron `GET /usuarios` (privacidad por rol en `_serialize_user`; lo
+  consume SIEEJ-grupos), `GET /colibri/tipos` ni `/direcciones` (los consumen páginas staff).
+
+#### Corregido
+
+- **Redirect de sesión expirada**: el interceptor de `admin/src/shared/services/api.js` redirige
+  el `401` a `/mariachi/login`. Antes apuntaba a `/mariachi/administrador/login` (ruta inexistente)
+  y solo funcionaba por rebote vía el catch-all 404.
+- **`/administrador` legacy en `mariachi-nginx`**: `location /administrador` sustituye el prefijo
+  (`rewrite ^/administrador(/.*)?$ /mariachi$1 permanent`) en vez de anteponerlo. Repara los deep
+  links legacy (`/administrador/mapalab/layers`, `/administrador/documentacion`, etc.) que caían en
+  404, y alinea con las URLs referenciadas en otros repos.
+- **Resaltado del sider en rutas de detalle**: nueva `selectedKeyForPath` en `app/sider-config.jsx`
+  (prefijo más largo) usada por `MainLayout`. Rutas como `/mapalab/eventos/:id/edit` o
+  `/sieej/formularios/:id` ahora resaltan su ítem padre; `/mapalab/layers/ingesta-masiva` gana
+  sobre `/mapalab/layers`. Tests nuevos en `app/__tests__/sider-config.test.js`.
+
+Sin migración ni cambios de schema. El fix del `429` en assets del admin vive en `gateway-hub`
+(ver su CHANGELOG `1.27.1`).
+
+---
+
 ## [api 1.38.3 / admin 1.38.3] - 2026-06-12
 
 ### UX: deshabilitar la zona de arrastre cuando el navegador no entrega archivos (snap)
