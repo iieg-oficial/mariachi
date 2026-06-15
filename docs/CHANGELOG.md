@@ -9,6 +9,52 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.40.0 / admin 1.40.0] - 2026-06-15
+
+### Rediseño de la pantalla de Usuarios, roles por proyecto y dependencia SIEEJ para externos
+
+Lote de cambios en el panel de administración de usuarios que mejora el rendimiento del modal, clarifica los roles y agrega soporte para la dependencia (grupo SIEEJ) de usuarios externos.
+
+#### Rendimiento del modal
+
+- El formulario de crear/editar usuario se extrajo a `UserFormModal.jsx`. Los `Form.useWatch` (role, password, project_assignments) viven dentro del modal con `destroyOnHidden`, evitando que el tecleo re-renderice toda la lista de usuarios.
+- `UserCard` memoizado con `React.memo` y callbacks estabilizadas (`onEdit`, `onDelete`, `onResetPassword` reciben el `user`).
+- En `MainProvider.jsx` el objeto `theme` del `ConfigProvider` se movió a una constante module-level (`THEME`), evitando regenerar CSS-in-JS de Ant Design en cada render.
+- La contraseña se movió arriba del selector de rol para evitar que se pierda entre los inputs dinámicos de asignación de proyectos. Los campos usuario, nombre y email ahora incluyen una descripción breve con ejemplo.
+
+#### Selector de rol global
+
+- `Segmented` (Administradora / Editora / Externo) con descripción dinámica debajo. Obligatorio sin preselección.
+
+#### Secciones para editora: Plataformas y Acervo
+
+- **Plataformas y acceso** (portal, mapalab, sieej): Switch para activar + `Segmented` Editor / Solo lectura + descripción del rol elegido. Una nota aclara que el acceso a un proyecto incluye sus archivos en el Acervo.
+- **Acervo** (iieg, mariachi): chips `Tag.CheckableTag` en fila (no switches).
+
+#### Fix del refresco
+
+- `buildAssignmentsValue()` en `UsersPage` siembra el estado completo de todos los proyectos en cada apertura del modal, eliminando residuos entre usuarios.
+
+#### Rol externo: solo SIEEJ + dependencia
+
+- Un usuario externo solo puede activar SIEEJ (responder formularios) en la sección **Acceso**. No se ofrecen plataformas ni Acervo.
+- **Dependencia** (selector de grupo SIEEJ) aparece debajo del ítem SIEEJ, indentada, solo cuando el switch está activado. Se puede elegir un grupo existente o crear uno nuevo. Es opcional.
+- El filtrado de `handleSubmit` usa `allowedSlugsForRole()` para que un externo solo persista los proyectos permitidos.
+- La asociación de sub-configuraciones por slug (`EXTERNAL_SUBS`) es extensible: hoy solo `sieej` despliega el selector de dependencia.
+
+#### Backend: dependencia = grupo SIEEJ
+
+- `schemas/user.py`: `UsuarioCreate` y `UsuarioUpdate` aceptan `sieej_grupo_id` (existente) o `sieej_grupo_nombre` (nuevo). `UsuarioResponse` devuelve `sieej_grupo {id, nombre}`.
+- `users.py`: helper `_set_sieej_grupo()` resuelve/crea el grupo (`sieej.grupo`) y lo asocia como dependencia única del externo (borra membresías + inserta), en la misma transacción. Se llama al crear (si rol externo) y al actualizar solo si el campo vino en el payload (`model_fields_set`). `_serialize_user` incluye el grupo actual del externo.
+
+#### Documentación
+
+- `docs/ROLES.md`: nueva sección "Dependencia de usuarios externos (grupo SIEEJ)" que explica el modelado, la gestión desde el CMS, el backend y las limitaciones del rol externo en el modal.
+
+Sin migración ni cambios de schema.
+
+---
+
 ## [api 1.39.0 / admin 1.39.0] - 2026-06-15
 
 ### Hardening de routing y autorización del CMS

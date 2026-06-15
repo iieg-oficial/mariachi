@@ -34,10 +34,19 @@ class UsuarioBase(CamelCaseInput):
     name: str = Field(..., min_length=1, max_length=100)
 
 
+class SieejGrupoRef(BaseModel):
+    id: int
+    nombre: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class UsuarioCreate(UsuarioBase):
     password: StrongPassword
     role: Literal["tetlamamakani", "editora", "externo"]
     project_assignments: list["UserProjectAssignment"] | None = None
+    sieej_grupo_id: int | None = None
+    sieej_grupo_nombre: str | None = Field(None, max_length=128)
 
 
 class UsuarioUpdate(CamelCaseInput):
@@ -46,6 +55,8 @@ class UsuarioUpdate(CamelCaseInput):
     name: str | None = Field(None, min_length=1, max_length=100)
     role: Literal["tetlamamakani", "editora", "externo"] | None = None
     project_assignments: list["UserProjectAssignment"] | None = None
+    sieej_grupo_id: int | None = None
+    sieej_grupo_nombre: str | None = Field(None, max_length=128)
 
 
 class UsuarioResponse(UsuarioBase):
@@ -56,6 +67,7 @@ class UsuarioResponse(UsuarioBase):
     created_at: datetime
     email: LaxEmail
     projects: list["UserProjectMembership"] = []
+    sieej_grupo: SieejGrupoRef | None = None
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 

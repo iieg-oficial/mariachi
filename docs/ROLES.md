@@ -105,6 +105,34 @@ FROM usuarios u, projects p
 WHERE u.username = 'dependencia_x' AND p.slug = 'sieej';
 ```
 
+## Dependencia de usuarios externos (grupo SIEEJ)
+
+La dependencia de un usuario externo se modela como un **grupo de SIEEJ** (`sieej.grupo`), vinculado al usuario mediante la tabla M2M `usuario_grupo`. Este grupo permite que el externo herede los formularios asignados a su dependencia sin necesidad de asignarle formularios uno a uno.
+
+### Gestión desde el CMS
+
+Desde el modal de **Usuarios** del panel admin, al crear o editar un usuario con rol **Externo** y con SIEEJ activado:
+
+- Se muestra un selector **Dependencia (opcional)** debajo del ítem SIEEJ.
+- Se puede elegir un grupo existente o escribir el nombre de uno nuevo (se crea al guardar).
+- Es **opcional**: un externo puede existir sin dependencia, respondiendo los formularios asignados a su usuario directamente.
+- La dependencia se trata como **única**: al cambiarla, se reemplaza la membresía anterior (no se acumulan grupos).
+
+### Backend
+
+- `_set_sieej_grupo()` en `api/app/api/routes/users.py` resuelve el grupo (por id existente o creando uno nuevo) y reemplaza la membresía `usuario_grupo` del usuario en la misma transacción.
+- Se invoca al crear un externo y al actualizar solo si vino `sieej_grupo_id` o `sieej_grupo_nombre` en el payload.
+- `_serialize_user()` incluye `sieej_grupo: {id, nombre}` en la respuesta del externo.
+
+### Limitaciones del rol externo en el modal
+
+El rol externo en el modal de Usuarios **solo** ofrece:
+
+- Acceso a **SIEEJ** (responder formularios, vía Switch).
+- Su **dependencia** (grupo SIEEJ), mostrada debajo de SIEEJ al activarlo.
+
+**No** se ofrecen plataformas (portal, mapalab) ni Acervo (iieg, mariachi) porque el externo no accede al panel administrativo.
+
 ## Casos de uso planeados
 
 - **SIEEJ**: usuarios externos = dependencias de gobierno cargando informacion estadistica de sus bases de datos.

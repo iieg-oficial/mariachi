@@ -10,6 +10,7 @@ from app.api.deps import ADMIN_ROLE, get_current_user, get_db, require_role, ver
 from app.api.metrics import COUNTER_USER_WRITES, incr
 from app.core.security import hash_password
 from app.models.project import Project, UserProject
+from app.models.sieej import Grupo, usuario_grupo
 from app.models.user import Usuario
 from app.schemas.user import (
     UsuarioCreate,
@@ -91,6 +92,18 @@ def _serialize_user(db: Session, user: Usuario, *, viewer: Usuario | None = None
     email = user.email if show_full else _mask_email(user.email)
     projects = _user_memberships(db, user.id) if show_full else []
 
+    sieej_grupo = None
+    if user.role == "externo":
+        grupo = (
+            db.query(Grupo)
+            .join(usuario_grupo, usuario_grupo.c.grupo_id == Grupo.id)
+            .filter(usuario_grupo.c.usuario_id == user.id)
+            .order_by(Grupo.nombre.asc())
+            .first()
+        )
+        if grupo is not None:
+            sieej_grupo = {"id": grupo.id, "nombre": grupo.nombre}
+
     return {
         "id": user.id,
         "username": user.username,
@@ -100,6 +113,7 @@ def _serialize_user(db: Session, user: Usuario, *, viewer: Usuario | None = None
         "must_change_password": user.must_change_password,
         "created_at": user.created_at,
         "projects": projects,
+        "sieej_grupo": sieej_grupo,
     }
 
 
@@ -128,6 +142,31 @@ def _apply_assignments(
         )
     if commit:
         db.commit()
+
+
+def _set_sieej_grupo(
+    db: Session, usuario: Usuario, grupo_id: int | None, grupo_nombre: str | None
+) -> None:
+    grupo = None
+    if grupo_id is not None:
+        grupo = db.query(Grupo).filter(Grupo.id == grupo_id).first()
+        if grupo is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Grupo no encontrado"
+            )
+    elif grupo_nombre and grupo_nombre.strip():
+        nombre = grupo_nombre.strip()
+        grupo = db.query(Grupo).filter(func.lower(Grupo.nombre) == nombre.lower()).first()
+        if grupo is None:
+            grupo = Grupo(nombre=nombre)
+            db.add(grupo)
+            db.flush()
+
+    db.execute(usuario_grupo.delete().where(usuario_grupo.c.usuario_id == usuario.id))
+    if grupo is not None:
+        db.execute(
+            usuario_grupo.insert().values(usuario_id=usuario.id, grupo_id=grupo.id)
+        )
 
 
 @router.get("", response_model=list[UsuarioResponse])
@@ -173,7 +212,9 @@ async def crear_usuario(
             status_code=status.HTTP_409_CONFLICT, detail="El email ya está registrado"
         )
 
-    usuario_data = usuario_in.model_dump(exclude={"password", "project_assignments"})
+    usuario_data = usuario_in.model_dump(
+        exclude={"password", "project_assignments", "sieej_grupo_id", "sieej_grupo_nombre"}
+    )
     usuario_data["username"] = username
     usuario_data["email"] = email
     usuario_data["hashed_password"] = hash_password(usuario_in.password)
@@ -184,6 +225,11 @@ async def crear_usuario(
     db.flush()
 
     _apply_assignments(db, nuevo_usuario.id, usuario_in.project_assignments)
+
+    if nuevo_usuario.role == "externo":
+        _set_sieej_grupo(
+            db, nuevo_usuario, usuario_in.sieej_grupo_id, usuario_in.sieej_grupo_nombre
+        )
 
     registrar_actividad(
         db,
@@ -239,7 +285,10 @@ async def actualizar_usuario(
             status_code=status.HTTP_409_CONFLICT, detail="El email ya está registrado"
         )
 
-    update_data = usuario_in.model_dump(exclude_unset=True, exclude={"project_assignments"})
+    update_data = usuario_in.model_dump(
+        exclude_unset=True,
+        exclude={"project_assignments", "sieej_grupo_id", "sieej_grupo_nombre"},
+    )
     if not is_admin:
         for field in _SELF_UPDATE_PRIVILEGED_FIELDS:
             update_data.pop(field, None)
@@ -252,6 +301,12 @@ async def actualizar_usuario(
 
     if is_admin and usuario_in.project_assignments is not None:
         _apply_assignments(db, usuario.id, usuario_in.project_assignments)
+
+    grupo_fields = usuario_in.model_fields_set & {"sieej_grupo_id", "sieej_grupo_nombre"}
+    if is_admin and usuario.role == "externo" and grupo_fields:
+        _set_sieej_grupo(
+            db, usuario, usuario_in.sieej_grupo_id, usuario_in.sieej_grupo_nombre
+        )
 
     registrar_actividad(
         db,
