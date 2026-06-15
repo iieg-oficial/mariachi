@@ -48,6 +48,7 @@ def _to_response(source_app: SourceApp) -> SourceAppResponse:
 async def listar_source_apps(
     db: Session = Depends(get_db),
     activo: bool | None = Query(default=None),
+    _admin: Usuario = Depends(require_role(["tetlamamakani"])),
 ):
     query = db.query(SourceApp)
     if activo is not None:
@@ -56,7 +57,11 @@ async def listar_source_apps(
 
 
 @router.get("/{source_app_id}", response_model=SourceAppResponse)
-async def obtener_source_app(source_app_id: int, db: Session = Depends(get_db)):
+async def obtener_source_app(
+    source_app_id: int,
+    db: Session = Depends(get_db),
+    _admin: Usuario = Depends(require_role(["tetlamamakani"])),
+):
     source_app = db.query(SourceApp).filter(SourceApp.id == source_app_id).first()
     if not source_app:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source app no encontrado")

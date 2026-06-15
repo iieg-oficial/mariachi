@@ -9,6 +9,104 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.40.0 / admin 1.40.0] - 2026-06-15
+
+### Rediseño de la pantalla de Usuarios, roles por proyecto y dependencia SIEEJ para externos
+
+Lote de cambios en el panel de administración de usuarios que mejora el rendimiento del modal, clarifica los roles y agrega soporte para la dependencia (grupo SIEEJ) de usuarios externos.
+
+#### Rendimiento del modal
+
+- El formulario de crear/editar usuario se extrajo a `UserFormModal.jsx`. Los `Form.useWatch` (role, password, project_assignments) viven dentro del modal con `destroyOnHidden`, evitando que el tecleo re-renderice toda la lista de usuarios.
+- `UserCard` memoizado con `React.memo` y callbacks estabilizadas (`onEdit`, `onDelete`, `onResetPassword` reciben el `user`).
+- En `MainProvider.jsx` el objeto `theme` del `ConfigProvider` se movió a una constante module-level (`THEME`), evitando regenerar CSS-in-JS de Ant Design en cada render.
+- La contraseña se movió arriba del selector de rol para evitar que se pierda entre los inputs dinámicos de asignación de proyectos. Los campos usuario, nombre y email ahora incluyen una descripción breve con ejemplo.
+
+#### Selector de rol global
+
+- `Segmented` (Administradora / Editora / Externo) con descripción dinámica debajo. Obligatorio sin preselección.
+
+#### Secciones para editora: Plataformas y Acervo
+
+- **Plataformas y acceso** (portal, mapalab, sieej): Switch para activar + `Segmented` Editor / Solo lectura + descripción del rol elegido. Una nota aclara que el acceso a un proyecto incluye sus archivos en el Acervo.
+- **Acervo** (iieg, mariachi): chips `Tag.CheckableTag` en fila (no switches).
+
+#### Fix del refresco
+
+- `buildAssignmentsValue()` en `UsersPage` siembra el estado completo de todos los proyectos en cada apertura del modal, eliminando residuos entre usuarios.
+
+#### Rol externo: solo SIEEJ + dependencia
+
+- Un usuario externo solo puede activar SIEEJ (responder formularios) en la sección **Acceso**. No se ofrecen plataformas ni Acervo.
+- **Dependencia** (selector de grupo SIEEJ) aparece debajo del ítem SIEEJ, indentada, solo cuando el switch está activado. Se puede elegir un grupo existente o crear uno nuevo. Es opcional.
+- El filtrado de `handleSubmit` usa `allowedSlugsForRole()` para que un externo solo persista los proyectos permitidos.
+- La asociación de sub-configuraciones por slug (`EXTERNAL_SUBS`) es extensible: hoy solo `sieej` despliega el selector de dependencia.
+
+#### Backend: dependencia = grupo SIEEJ
+
+- `schemas/user.py`: `UsuarioCreate` y `UsuarioUpdate` aceptan `sieej_grupo_id` (existente) o `sieej_grupo_nombre` (nuevo). `UsuarioResponse` devuelve `sieej_grupo {id, nombre}`.
+- `users.py`: helper `_set_sieej_grupo()` resuelve/crea el grupo (`sieej.grupo`) y lo asocia como dependencia única del externo (borra membresías + inserta), en la misma transacción. Se llama al crear (si rol externo) y al actualizar solo si el campo vino en el payload (`model_fields_set`). `_serialize_user` incluye el grupo actual del externo.
+
+#### Documentación
+
+- `docs/ROLES.md`: nueva sección "Dependencia de usuarios externos (grupo SIEEJ)" que explica el modelado, la gestión desde el CMS, el backend y las limitaciones del rol externo en el modal.
+
+#### UX: validación de nombre de usuario en el modal
+
+- Nuevo endpoint `GET /usuarios/check-usuario/{username}` que devuelve disponibilidad (`{ available: true/false }`) consultando la BD sin exponer datos.
+- En el modal, un `useEffect` con debounce de 400 ms consulta el endpoint mientras se escribe y muestra un indicador visual: ícono dentro de un contenedor estable en el input (spinner / check verde / X roja) más un texto `help` debajo del campo ("Verificando…", "Usuario disponible" o "Este usuario ya existe"). El indicador es informativo — no bloquea la escritura ni usa validación del form.
+- El input de usuario elimina espacios automáticamente vía `getValueFromEvent` en vez de `normalize` (más estable en antd 6).
+- `DependenciaSelect` se extrajo a su propio componente (`components/DependenciaSelect.jsx`).
+
+#### Fix: chips de Acervo
+
+- Los `Tag.CheckableTag` de iieg/mariachi ahora están vinculados al `Form` mediante `<Form.Item name={...} valuePropName="checked" noStyle>` (antes usaban `checked`/`onChange` manuales con `setFieldValue`, y no respondían correctamente). El diseño diferencia seleccionado (fondo brand sólido, texto blanco) de no seleccionado (borde punteado gris, texto gris).
+- `formValueToAssignments()` en `UsersPage` ya no exige `project_role` para persistir la asignación (los chips de Acervo solo requieren `enabled`).
+
+#### Fix: refresh de sesión tras cambio de contraseña
+
+- `POST /autenticacion/cambiar-contrasena` ahora emite una nueva cookie JWT y devuelve un `csrf_token` fresco, evitando que la sesión quede inválida tras el cambio de contraseña.
+
+Sin migración ni cambios de schema.
+
+---
+
+## [api 1.39.0 / admin 1.39.0] - 2026-06-15
+
+### Hardening de routing y autorización del CMS
+
+Lote de correcciones derivado de una auditoría del enrutamiento (frontend, backend y borde).
+Documentación nueva en `docs/ROUTER.md`.
+
+#### Seguridad
+
+- **Lecturas admin-only sin guard en backend**: `GET /colibri/source-apps` y `GET /colibri/routes`
+  (lista y detalle) pasan a exigir `require_role(['tetlamamakani'])`. Antes solo requerían staff
+  (vía `staff_dep` a nivel de router), de modo que una `editora` podía leer por API directa la
+  configuración sensible de huéspedes (dominios CORS, prefijos de API key, scrubbers PII) y las
+  URLs de webhooks de fan-out, aunque la UI le ocultara esas páginas. Los writes ya estaban
+  protegidos. **No** se tocaron `GET /usuarios` (privacidad por rol en `_serialize_user`; lo
+  consume SIEEJ-grupos), `GET /colibri/tipos` ni `/direcciones` (los consumen páginas staff).
+
+#### Corregido
+
+- **Redirect de sesión expirada**: el interceptor de `admin/src/shared/services/api.js` redirige
+  el `401` a `/mariachi/login`. Antes apuntaba a `/mariachi/administrador/login` (ruta inexistente)
+  y solo funcionaba por rebote vía el catch-all 404.
+- **`/administrador` legacy en `mariachi-nginx`**: `location /administrador` sustituye el prefijo
+  (`rewrite ^/administrador(/.*)?$ /mariachi$1 permanent`) en vez de anteponerlo. Repara los deep
+  links legacy (`/administrador/mapalab/layers`, `/administrador/documentacion`, etc.) que caían en
+  404, y alinea con las URLs referenciadas en otros repos.
+- **Resaltado del sider en rutas de detalle**: nueva `selectedKeyForPath` en `app/sider-config.jsx`
+  (prefijo más largo) usada por `MainLayout`. Rutas como `/mapalab/eventos/:id/edit` o
+  `/sieej/formularios/:id` ahora resaltan su ítem padre; `/mapalab/layers/ingesta-masiva` gana
+  sobre `/mapalab/layers`. Tests nuevos en `app/__tests__/sider-config.test.js`.
+
+Sin migración ni cambios de schema. El fix del `429` en assets del admin vive en `gateway-hub`
+(ver su CHANGELOG `1.27.1`).
+
+---
+
 ## [api 1.38.3 / admin 1.38.3] - 2026-06-12
 
 ### UX: deshabilitar la zona de arrastre cuando el navegador no entrega archivos (snap)

@@ -316,6 +316,7 @@ async def subir_avatar(
 @router.post("/cambiar-contrasena")
 async def cambiar_contrasena(
     password_data: PasswordChange,
+    response: Response,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
 ):
@@ -333,4 +334,22 @@ async def cambiar_contrasena(
     db.commit()
     logger.info('action=user.change_password user_id=%s', current_user.id)
 
-    return {"message": "Contraseña actualizada exitosamente"}
+    access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
+    access_token = crear_access_token(
+        data={"sub": current_user.username}, expires_delta=access_token_expires
+    )
+    response.set_cookie(
+        key=settings.cookie_name,
+        value=access_token,
+        max_age=settings.cookie_max_age,
+        httponly=settings.cookie_httponly,
+        secure=settings.cookie_secure,
+        samesite=settings.cookie_samesite,
+        domain=settings.cookie_domain,
+    )
+    csrf_token = crear_csrf_token(current_user.username)
+
+    return {
+        "message": "Contraseña actualizada exitosamente",
+        "csrf_token": csrf_token,
+    }

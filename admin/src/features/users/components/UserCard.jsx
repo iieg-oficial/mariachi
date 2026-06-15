@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Avatar, Button, Card, Space, Tag, Tooltip, Typography } from 'antd';
 import {
     DeleteOutlined,
@@ -15,7 +16,7 @@ const PROJECT_ROLE_LABEL = { editor: 'Editor', viewer: 'Viewer' };
 const UserCard = ({ user, onEdit, onResetPassword, onDelete, isSelf }) => {
     const stop = (handler) => (e) => {
         e.stopPropagation();
-        handler();
+        handler(user);
     };
 
     const projectsTags = (() => {
@@ -60,7 +61,7 @@ const UserCard = ({ user, onEdit, onResetPassword, onDelete, isSelf }) => {
     return (
         <Card
             hoverable
-            onClick={onEdit}
+            onClick={() => onEdit(user)}
             actions={actions}
             styles={{ body: { padding: 16, flex: 1 } }}
             style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
@@ -105,4 +106,4 @@ const UserCard = ({ user, onEdit, onResetPassword, onDelete, isSelf }) => {
     );
 };
 
-export default UserCard;
+export default memo(UserCard);

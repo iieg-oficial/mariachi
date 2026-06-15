@@ -11,7 +11,7 @@ import { Outlet, useNavigate, useLocation } from 'react-router';
 import { useAuth } from '@shared/contexts/useAuth';
 import api from '@shared/services/api';
 import { BRAND } from '@app/providers/brand';
-import { buildSiderFooterItems, buildSiderItems, defaultOpenKeyForPath } from '@app/sider-config';
+import { buildSiderFooterItems, buildSiderItems, defaultOpenKeyForPath, selectedKeyForPath } from '@app/sider-config';
 
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
@@ -71,6 +71,7 @@ export default function MainLayout() {
         extras: { pendingCount, reportesPendingCount },
     });
     const footerMenuItems = buildSiderFooterItems({ user, onNavigate: handleNav });
+    const selectedKey = selectedKeyForPath(location.pathname);
 
     const userMenuItems = [
         {
@@ -139,7 +140,7 @@ export default function MainLayout() {
                 <Menu
                     theme="dark"
                     mode="inline"
-                    selectedKeys={[location.pathname]}
+                    selectedKeys={[selectedKey]}
                     defaultOpenKeys={[defaultOpenKeyForPath(location.pathname)]}
                     items={menuItems}
                     style={{ borderInlineEnd: 'none' }}
@@ -149,7 +150,7 @@ export default function MainLayout() {
                 <Menu
                     theme="dark"
                     mode="inline"
-                    selectedKeys={[location.pathname]}
+                    selectedKeys={[selectedKey]}
                     items={footerMenuItems}
                     style={{
                         position: 'absolute',
@@ -170,7 +171,7 @@ export default function MainLayout() {
             <Menu
                 theme="dark"
                 mode="inline"
-                selectedKeys={[location.pathname]}
+                selectedKeys={[selectedKey]}
                 defaultOpenKeys={[defaultOpenKeyForPath(location.pathname)]}
                 items={[...menuItems, ...footerMenuItems]}
             />

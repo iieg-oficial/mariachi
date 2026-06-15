@@ -1,13 +1,13 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Card, Col, Empty, Form, Input, Modal, Row, Select, Skeleton, Typography, Button, Checkbox, Divider, Pagination } from 'antd';
+import { Card, Col, Empty, Form, Input, Modal, Row, Select, Skeleton, Typography, Button, Pagination } from 'antd';
 import { PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import { useAuth } from '@shared/contexts/useAuth';
 import api from '@shared/services/api';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import { message } from '@shared/services/message';
-import PasswordStrengthIndicator from '@shared/components/PasswordStrengthIndicator';
-import { isStrongEnough } from '@shared/helpers/passwordStrength';
 import UserCard from '../components/UserCard';
+import UserFormModal from '../components/UserFormModal';
+import { allowedSlugsForRole } from '../constants/projectAccess';
 
 const { Title } = Typography;
 
@@ -47,13 +47,11 @@ export default function Users() {
     const { user: currentUser } = useAuth();
     const [users, setUsers] = useState([]);
     const [projects, setProjects] = useState([]);
+    const [grupos, setGrupos] = useState([]);
     const [loading, setLoading] = useState(true);
     const [modalVisible, setModalVisible] = useState(false);
     const [editingUser, setEditingUser] = useState(null);
     const [form] = Form.useForm();
-    const selectedRole = Form.useWatch('role', form);
-    const passwordWatch = Form.useWatch('password', form) || '';
-    const projectAssignments = Form.useWatch('project_assignments', form) || {};
     const [search, setSearch] = useState('');
     const [roleFilter, setRoleFilter] = useState('');
     const [page, setPage] = useState(1);
@@ -82,28 +80,40 @@ export default function Users() {
         return () => { cancelled = true; };
     }, []);
 
-    const assignmentsToFormValue = (projectsList) => {
+    useEffect(() => {
+        let cancelled = false;
+        api.get('/sieej/grupos')
+            .then((r) => { if (!cancelled) setGrupos(r.data); })
+            .catch(() => {});
+        return () => { cancelled = true; };
+    }, []);
+
+    const buildAssignmentsValue = (projectsList, userProjects) => {
+        const assigned = new Map((userProjects || []).map((p) => [p.slug, p.project_role]));
         const value = {};
         for (const p of projectsList || []) {
-            value[p.slug] = { enabled: true, project_role: p.project_role };
+            value[p.slug] = {
+                enabled: assigned.has(p.slug),
+                project_role: assigned.get(p.slug) || 'editor',
+            };
         }
         return value;
     };
 
     const formValueToAssignments = (value) => {
         return Object.entries(value || {})
-            .filter(([, v]) => v?.enabled && v?.project_role)
-            .map(([slug, v]) => ({ project_slug: slug, project_role: v.project_role }));
+            .filter(([, v]) => v?.enabled)
+            .map(([slug, v]) => ({ project_slug: slug, project_role: v?.project_role || 'editor' }));
     };
 
-    const handleCreate = () => {
+    const handleCreate = useCallback(() => {
         setEditingUser(null);
         form.resetFields();
-        form.setFieldsValue({ project_assignments: {} });
+        form.setFieldsValue({ project_assignments: buildAssignmentsValue(projects, []) });
         setModalVisible(true);
-    };
+    }, [form, projects]);
 
-    const handleEdit = (record) => {
+    const handleEdit = useCallback((record) => {
         setEditingUser(record);
         form.resetFields();
         form.setFieldsValue({
@@ -111,12 +121,14 @@ export default function Users() {
             name: record.name,
             email: record.email,
             role: record.role,
-            project_assignments: assignmentsToFormValue(record.projects),
+            project_assignments: buildAssignmentsValue(projects, record.projects),
+            sieej_grupo_id: record.sieej_grupo?.id,
+            sieej_grupo_nombre: undefined,
         });
         setModalVisible(true);
-    };
+    }, [form, projects]);
 
-    const handleDelete = (record) => {
+    const handleDelete = useCallback((record) => {
         Modal.confirm({
             title: '¿Está seguro de eliminar este usuario?',
             content: `Se eliminará el usuario: ${record.name}`,
@@ -133,9 +145,9 @@ export default function Users() {
                 }
             },
         });
-    };
+    }, [fetchUsers]);
 
-    const handleResetPassword = (record) => {
+    const handleResetPassword = useCallback((record) => {
         const hasPendingReset = record.must_change_password;
         Modal.confirm({
             title: '¿Resetear contraseña?',
@@ -174,9 +186,9 @@ export default function Users() {
                 }
             },
         });
-    };
+    }, [fetchUsers, isMobile]);
 
-    const handleSubmit = async (values) => {
+    const handleSubmit = useCallback(async (values) => {
         const payload = {
             username: values.username,
             name: values.name,
@@ -184,9 +196,18 @@ export default function Users() {
             role: values.role,
         };
         if (values.role === 'editora' || values.role === 'externo') {
-            payload.project_assignments = formValueToAssignments(values.project_assignments);
+            const allowed = new Set(allowedSlugsForRole(values.role, projects));
+            const scoped = Object.fromEntries(
+                Object.entries(values.project_assignments || {}).filter(([slug]) => allowed.has(slug)),
+            );
+            payload.project_assignments = formValueToAssignments(scoped);
         } else {
             payload.project_assignments = [];
+        }
+
+        if (values.role === 'externo') {
+            payload.sieej_grupo_id = values.sieej_grupo_id ?? null;
+            payload.sieej_grupo_nombre = values.sieej_grupo_nombre ?? null;
         }
 
         try {
@@ -204,7 +225,7 @@ export default function Users() {
             const fallback = editingUser ? 'Error al actualizar usuario' : 'Error al crear usuario';
             message.error(formatBackendError(error, fallback));
         }
-    };
+    }, [editingUser, fetchUsers, projects]);
 
     const filteredUsers = useMemo(() => {
         const q = search.trim().toLowerCase();
@@ -286,9 +307,9 @@ export default function Users() {
                                 <UserCard
                                     user={u}
                                     isSelf={currentUser?.id === u.id}
-                                    onEdit={() => handleEdit(u)}
-                                    onResetPassword={() => handleResetPassword(u)}
-                                    onDelete={() => handleDelete(u)}
+                                    onEdit={handleEdit}
+                                    onResetPassword={handleResetPassword}
+                                    onDelete={handleDelete}
                                 />
                             </Col>
                         ))}
@@ -307,125 +328,16 @@ export default function Users() {
                 </>
             )}
 
-            <Modal
-                title={editingUser ? 'Editar Usuario' : 'Nuevo Usuario'}
+            <UserFormModal
                 open={modalVisible}
+                editingUser={editingUser}
+                projects={projects}
+                grupos={grupos}
+                isMobile={isMobile}
+                form={form}
                 onCancel={() => setModalVisible(false)}
-                onOk={() => form.submit()}
-                okText={editingUser ? 'Actualizar' : 'Crear'}
-                cancelText="Cancelar"
-                width={isMobile ? '100%' : 560}
-                centered={isMobile}
-            >
-                <Form form={form} layout="vertical" onFinish={handleSubmit}>
-                    <Form.Item
-                        label="Usuario"
-                        name="username"
-                        rules={[
-                            { required: true, message: 'Por favor ingrese el usuario' },
-                            { min: 3, max: 50, message: 'El usuario debe tener entre 3 y 50 caracteres' },
-                        ]}
-                    >
-                        <Input />
-                    </Form.Item>
-                    <Form.Item
-                        label="Nombre"
-                        name="name"
-                        rules={[
-                            { required: true, message: 'Por favor ingrese el nombre' },
-                            { max: 100, message: 'El nombre no puede exceder 100 caracteres' },
-                        ]}
-                    >
-                        <Input />
-                    </Form.Item>
-                    <Form.Item
-                        label="Email"
-                        name="email"
-                        rules={[
-                            { required: true, message: 'Por favor ingrese el email' },
-                            { type: 'email', message: 'Email no válido' },
-                        ]}
-                    >
-                        <Input />
-                    </Form.Item>
-                    <Form.Item label="Rol" name="role" rules={[{ required: true, message: 'Por favor seleccione el rol' }]}>
-                        <Select>
-                            <Select.Option value="tetlamamakani">Administradora (acceso global)</Select.Option>
-                            <Select.Option value="editora">Editora (staff IIEG)</Select.Option>
-                            <Select.Option value="externo">Externo (dependencia)</Select.Option>
-                        </Select>
-                    </Form.Item>
-
-                    {!editingUser && (
-                        <Form.Item
-                            label="Contraseña"
-                            name="password"
-                            rules={[
-                                { required: true, message: 'Por favor ingrese la contraseña' },
-                                {
-                                    validator: (_, value) => (
-                                        !value || isStrongEnough(value)
-                                            ? Promise.resolve()
-                                            : Promise.reject(new Error('La contraseña no cumple con los requisitos mínimos.'))
-                                    ),
-                                },
-                            ]}
-                        >
-                            <Input.Password placeholder="Crea una contraseña segura" />
-                        </Form.Item>
-                    )}
-                    {!editingUser && <PasswordStrengthIndicator password={passwordWatch} />}
-
-                    {(selectedRole === 'editora' || selectedRole === 'externo') && projects.length > 0 && (
-                        <>
-                            <Divider orientation="left" style={{ marginTop: 8 }}>Proyectos y roles</Divider>
-                            {projects.map((project) => {
-                                const enabled = projectAssignments?.[project.slug]?.enabled;
-                                return (
-                                    <Row key={project.slug} gutter={8} align="middle" style={{ marginBottom: 8 }}>
-                                        <Col span={10}>
-                                            <Form.Item
-                                                name={['project_assignments', project.slug, 'enabled']}
-                                                valuePropName="checked"
-                                                noStyle
-                                            >
-                                                <Checkbox>{project.name}</Checkbox>
-                                            </Form.Item>
-                                        </Col>
-                                        <Col span={14}>
-                                            <Form.Item
-                                                name={['project_assignments', project.slug, 'project_role']}
-                                                noStyle
-                                                initialValue={enabled ? 'editor' : undefined}
-                                            >
-                                                <Select
-                                                    placeholder="Rol en el proyecto"
-                                                    disabled={!enabled}
-                                                    allowClear={false}
-                                                >
-                                                    <Select.Option value="editor">Editor</Select.Option>
-                                                    <Select.Option value="viewer">Viewer (solo preview)</Select.Option>
-                                                </Select>
-                                            </Form.Item>
-                                        </Col>
-                                    </Row>
-                                );
-                            })}
-                        </>
-                    )}
-
-                    {selectedRole === 'tetlamamakani' && (
-                        <div style={{
-                            padding: 10,
-                            background: '#fffbe6',
-                            border: '1px solid #ffe58f',
-                            borderRadius: 4,
-                        }}>
-                            Los admins tienen acceso global a todos los proyectos.
-                        </div>
-                    )}
-                </Form>
-            </Modal>
+                onSubmit={handleSubmit}
+            />
         </div>
     );
 }

@@ -19,6 +19,7 @@ router = APIRouter(prefix="/colibri/routes", tags=["colibri routes"])
 async def listar_routes(
     db: Session = Depends(get_db),
     activo: bool | None = Query(default=None),
+    _admin: Usuario = Depends(require_role(["tetlamamakani"])),
 ):
     query = db.query(ColibriRoute)
     if activo is not None:
@@ -29,7 +30,11 @@ async def listar_routes(
 
 
 @router.get("/{route_id}", response_model=ColibriRouteResponse)
-async def obtener_route(route_id: int, db: Session = Depends(get_db)):
+async def obtener_route(
+    route_id: int,
+    db: Session = Depends(get_db),
+    _admin: Usuario = Depends(require_role(["tetlamamakani"])),
+):
     route = db.query(ColibriRoute).filter(ColibriRoute.id == route_id).first()
     if not route:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Route no encontrada")
