@@ -1,54 +1,13 @@
-import { useState } from 'react';
-import { Modal, Form, Input, Divider, Segmented, Select, Switch, Tag, Tooltip, Typography } from 'antd';
+import { useState, useEffect, useRef } from 'react';
+import { Modal, Form, Input, Divider, Segmented, Switch, Tag, Tooltip, Typography } from 'antd';
+import { LoadingOutlined, CheckCircleFilled, CloseCircleFilled } from '@ant-design/icons';
 import PasswordStrengthIndicator from '@shared/components/PasswordStrengthIndicator';
 import { isStrongEnough } from '@shared/helpers/passwordStrength';
+import api from '@shared/services/api';
+import DependenciaSelect from './DependenciaSelect';
 import { metaFor, EXTERNAL_SUBS } from '../constants/projectAccess';
 
 const { Text } = Typography;
-
-function DependenciaSelect({ form, grupos }) {
-    const grupoId = Form.useWatch('sieej_grupo_id', form);
-    const grupoNombre = Form.useWatch('sieej_grupo_nombre', form);
-    const [search, setSearch] = useState('');
-
-    const trimmed = search.trim();
-    const existsByName = (name) => grupos.some((g) => g.nombre.toLowerCase() === name.toLowerCase());
-
-    const options = grupos.map((g) => ({ value: g.id, label: g.nombre }));
-    if (grupoNombre && !existsByName(grupoNombre)) {
-        options.unshift({ value: `new:${grupoNombre}`, label: `${grupoNombre} (nueva)` });
-    }
-    if (trimmed && !existsByName(trimmed) && trimmed !== grupoNombre) {
-        options.unshift({ value: `new:${trimmed}`, label: `Crear "${trimmed}"` });
-    }
-
-    const value = grupoId ?? (grupoNombre ? `new:${grupoNombre}` : undefined);
-
-    const handleChange = (val) => {
-        if (typeof val === 'string' && val.startsWith('new:')) {
-            form.setFieldsValue({ sieej_grupo_id: undefined, sieej_grupo_nombre: val.slice(4) });
-        } else {
-            form.setFieldsValue({ sieej_grupo_id: val ?? undefined, sieej_grupo_nombre: undefined });
-        }
-        setSearch('');
-    };
-
-    return (
-        <Select
-            showSearch
-            allowClear
-            value={value}
-            placeholder="Buscar o crear dependencia…"
-            searchValue={search}
-            onSearch={setSearch}
-            onChange={handleChange}
-            onClear={() => form.setFieldsValue({ sieej_grupo_id: undefined, sieej_grupo_nombre: undefined })}
-            filterOption={(input, opt) => String(opt?.label ?? '').toLowerCase().includes(input.toLowerCase())}
-            options={options}
-            style={{ width: '100%' }}
-        />
-    );
-}
 
 const ROLE_OPTIONS = [
     {
@@ -70,26 +29,38 @@ const ROLE_OPTIONS = [
 
 const roleDescription = (role) => ROLE_OPTIONS.find((o) => o.value === role)?.description;
 
-function renderSubConfig(form, grupos, slug) {
-    const sub = EXTERNAL_SUBS[slug];
-    if (!sub) return null;
-    if (sub === 'dependency') {
-        return (
-            <Form.Item
-                label="Dependencia (opcional)"
-                tooltip="Agrupa al usuario por dependencia. Hereda los formularios de SIEEJ asignados a ese grupo."
-            >
-                <DependenciaSelect form={form} grupos={grupos} />
-            </Form.Item>
-        );
-    }
-    return null;
-}
-
 export default function UserFormModal({ open, editingUser, projects, grupos = [], isMobile, form, onCancel, onSubmit }) {
     const selectedRole = Form.useWatch('role', form);
     const passwordWatch = Form.useWatch('password', form) || '';
     const projectAssignments = Form.useWatch('project_assignments', form) || {};
+    const usernameWatch = Form.useWatch('username', form);
+
+    const [usernameStatus, setUsernameStatus] = useState(null);
+    const checkRef = useRef(null);
+
+    useEffect(() => {
+        const value = (usernameWatch || '').trim().toLowerCase();
+        if (!value || value.length < 3) {
+            setUsernameStatus(null);
+            return;
+        }
+        const current = (editingUser?.username || '').toLowerCase();
+        if (current && value === current) {
+            setUsernameStatus('available');
+            return;
+        }
+        setUsernameStatus('checking');
+        const tid = setTimeout(async () => {
+            try {
+                const res = await api.get(`/usuarios/check-usuario/${encodeURIComponent(value)}`);
+                setUsernameStatus(res.data.available ? 'available' : 'taken');
+            } catch {
+                setUsernameStatus(null);
+            }
+        }, 400);
+        checkRef.current = tid;
+        return () => clearTimeout(tid);
+    }, [usernameWatch, editingUser]);
 
     const isEditora = selectedRole === 'editora';
     const isExterno = selectedRole === 'externo';
@@ -119,15 +90,31 @@ export default function UserFormModal({ open, editingUser, projects, grupos = []
                 <Form.Item
                     label="Usuario"
                     name="username"
+                    getValueFromEvent={(e) => e.target.value?.replace(/\s/g, '')}
                     rules={[
                         { required: true, message: 'Por favor ingrese el usuario' },
                         { min: 3, max: 50, message: 'El usuario debe tener entre 3 y 50 caracteres' },
                     ]}
                 >
-                    <Input placeholder="ej. maria.lopez" />
+                    <Input
+                        placeholder="ej. maria.lopez"
+                        suffix={
+                            <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 14, height: 14 }}>
+                                {usernameStatus === 'checking' && <LoadingOutlined style={{ color: '#8c8c8c' }} />}
+                                {usernameStatus === 'available' && <CheckCircleFilled style={{ color: '#52c41a' }} />}
+                                {usernameStatus === 'taken' && <CloseCircleFilled style={{ color: '#ff4d4f' }} />}
+                            </span>
+                        }
+                    />
                 </Form.Item>
                 <Text type="secondary" style={{ display: 'block', marginTop: -16, marginBottom: 16, fontSize: 12 }}>
-                    Identificador único para iniciar sesión, sin espacios.
+                    {usernameStatus === 'checking'
+                        ? 'Verificando disponibilidad…'
+                        : usernameStatus === 'available'
+                            ? 'Usuario disponible'
+                            : usernameStatus === 'taken'
+                                ? 'Este usuario ya existe'
+                                : 'Identificador único para iniciar sesión, sin espacios.'}
                 </Text>
                 <Form.Item
                     label="Nombre"
@@ -245,13 +232,32 @@ export default function UserFormModal({ open, editingUser, projects, grupos = []
                                 const checked = !!projectAssignments?.[project.slug]?.enabled;
                                 return (
                                     <Tooltip key={project.slug} title={metaFor(project.slug).note}>
-                                        <Tag.CheckableTag
-                                            checked={checked}
-                                            onChange={(c) => form.setFieldValue(['project_assignments', project.slug, 'enabled'], c)}
-                                            style={{ padding: '4px 12px', fontSize: 13, cursor: 'pointer', userSelect: 'none' }}
-                                        >
-                                            {project.name}
-                                        </Tag.CheckableTag>
+                                        <Form.Item name={['project_assignments', project.slug, 'enabled']} valuePropName="checked" noStyle>
+                                            <Tag.CheckableTag
+                                                style={{
+                                                    padding: '5px 14px',
+                                                    fontSize: 13,
+                                                    cursor: 'pointer',
+                                                    userSelect: 'none',
+                                                    borderRadius: 6,
+                                                    transition: 'all 0.2s',
+                                                    ...(checked
+                                                        ? {
+                                                            background: '#2e4372',
+                                                            color: '#fff',
+                                                            borderColor: '#2e4372',
+                                                        }
+                                                        : {
+                                                            background: '#fff',
+                                                            color: '#8c8c8c',
+                                                            borderColor: '#d9d9d9',
+                                                            borderStyle: 'dashed',
+                                                        }),
+                                                }}
+                                            >
+                                                {project.name}
+                                            </Tag.CheckableTag>
+                                        </Form.Item>
                                     </Tooltip>
                                 );
                             })}
@@ -279,9 +285,14 @@ export default function UserFormModal({ open, editingUser, projects, grupos = []
                                             </Text>
                                         </div>
                                     </div>
-                                    {enabled && sub && (
+                                    {enabled && sub && sub === 'dependency' && (
                                         <div style={{ marginLeft: 44, marginTop: 12 }}>
-                                            {renderSubConfig(form, grupos, project.slug)}
+                                            <Form.Item
+                                                label="Dependencia (opcional)"
+                                                tooltip="Agrupa al usuario por dependencia. Hereda los formularios de SIEEJ asignados a ese grupo."
+                                            >
+                                                <DependenciaSelect form={form} grupos={grupos} />
+                                            </Form.Item>
                                         </div>
                                     )}
                                 </div>

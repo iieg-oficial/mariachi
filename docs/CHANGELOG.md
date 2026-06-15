@@ -51,6 +51,22 @@ Lote de cambios en el panel de administración de usuarios que mejora el rendimi
 
 - `docs/ROLES.md`: nueva sección "Dependencia de usuarios externos (grupo SIEEJ)" que explica el modelado, la gestión desde el CMS, el backend y las limitaciones del rol externo en el modal.
 
+#### UX: validación de nombre de usuario en el modal
+
+- Nuevo endpoint `GET /usuarios/check-usuario/{username}` que devuelve disponibilidad (`{ available: true/false }`) consultando la BD sin exponer datos.
+- En el modal, un `useEffect` con debounce de 400 ms consulta el endpoint mientras se escribe y muestra un indicador visual: ícono dentro de un contenedor estable en el input (spinner / check verde / X roja) más un texto `help` debajo del campo ("Verificando…", "Usuario disponible" o "Este usuario ya existe"). El indicador es informativo — no bloquea la escritura ni usa validación del form.
+- El input de usuario elimina espacios automáticamente vía `getValueFromEvent` en vez de `normalize` (más estable en antd 6).
+- `DependenciaSelect` se extrajo a su propio componente (`components/DependenciaSelect.jsx`).
+
+#### Fix: chips de Acervo
+
+- Los `Tag.CheckableTag` de iieg/mariachi ahora están vinculados al `Form` mediante `<Form.Item name={...} valuePropName="checked" noStyle>` (antes usaban `checked`/`onChange` manuales con `setFieldValue`, y no respondían correctamente). El diseño diferencia seleccionado (fondo brand sólido, texto blanco) de no seleccionado (borde punteado gris, texto gris).
+- `formValueToAssignments()` en `UsersPage` ya no exige `project_role` para persistir la asignación (los chips de Acervo solo requieren `enabled`).
+
+#### Fix: refresh de sesión tras cambio de contraseña
+
+- `POST /autenticacion/cambiar-contrasena` ahora emite una nueva cookie JWT y devuelve un `csrf_token` fresco, evitando que la sesión quede inválida tras el cambio de contraseña.
+
 Sin migración ni cambios de schema.
 
 ---

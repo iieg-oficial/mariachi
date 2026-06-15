@@ -180,6 +180,23 @@ async def listar_usuarios(
     return [_serialize_user(db, u, viewer=current_user) for u in usuarios]
 
 
+@router.get("/check-usuario/{username}")
+async def check_username(
+    username: str,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    normalized = _normalize_identifier(username)
+    if not normalized:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="nombre de usuario vacío"
+        )
+    exists = (
+        db.query(Usuario).filter(func.lower(Usuario.username) == normalized).first()
+    )
+    return {"available": exists is None, "username": normalized}
+
+
 @router.get("/{usuario_id}", response_model=UsuarioResponse)
 async def obtener_usuario(
     usuario_id: int,

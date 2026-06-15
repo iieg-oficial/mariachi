@@ -102,8 +102,8 @@ export default function Users() {
 
     const formValueToAssignments = (value) => {
         return Object.entries(value || {})
-            .filter(([, v]) => v?.enabled && v?.project_role)
-            .map(([slug, v]) => ({ project_slug: slug, project_role: v.project_role }));
+            .filter(([, v]) => v?.enabled)
+            .map(([slug, v]) => ({ project_slug: slug, project_role: v?.project_role || 'editor' }));
     };
 
     const handleCreate = useCallback(() => {
