@@ -529,3 +529,76 @@ def test_proxy_object_unauth_401(client, db_session):
     _, bucket = _seed_bucket(db_session, name="x")
     response = client.get(f"{ADMIN_PREFIX}/acervo/proxy/{bucket.id}/a.txt")
     assert response.status_code == 401
+
+
+@pytest.mark.parametrize(
+    "entrada,esperado",
+    [
+        ("Mi Archivo.SVG", "mi-archivo.svg"),
+        ("foto (1).PNG", "foto-1.png"),
+        ("Niño Año.jpeg", "nino-ano.jpeg"),
+        ("../../etc/passwd", "passwd"),
+        ("___.pdf", "archivo.pdf"),
+        ("sin-extension", "sin-extension"),
+    ],
+)
+def test_sanitize_filename(entrada, esperado):
+    from app.services.acervo_file_service import sanitize_filename
+
+    assert sanitize_filename(entrada) == esperado
+
+
+def test_subir_usa_nombre_original_como_key(admin_session, db_session):
+    _, bucket = _seed_bucket(db_session, name="x")
+    client = admin_session["client"]
+    response = client.post(
+        f"{ADMIN_PREFIX}/acervo",
+        data={"folder": "iconos", "alt": "", "bucket_id": str(bucket.id)},
+        files={"file": ("Mi Logo.SVG", io.BytesIO(b"<svg/>"), "image/svg+xml")},
+        headers={"X-CSRF-Token": admin_session["csrf"]},
+    )
+    assert response.status_code == 201, response.text
+    body = response.json()
+    assert body["name"] == "iconos/mi-logo.svg"
+    assert body["originalName"] == "mi-logo.svg"
+
+
+def test_subir_con_uuid_genera_key_aleatorio(admin_session, db_session):
+    _, bucket = _seed_bucket(db_session, name="x")
+    client = admin_session["client"]
+    response = client.post(
+        f"{ADMIN_PREFIX}/acervo",
+        data={"folder": "iconos", "alt": "", "bucket_id": str(bucket.id), "use_uuid": "true"},
+        files={"file": ("logo.svg", io.BytesIO(b"<svg/>"), "image/svg+xml")},
+        headers={"X-CSRF-Token": admin_session["csrf"]},
+    )
+    assert response.status_code == 201, response.text
+    body = response.json()
+    assert body["originalName"] == "logo.svg"
+    assert body["name"] != "iconos/logo.svg"
+    assert body["name"].startswith("iconos/")
+    assert body["name"].endswith(".svg")
+
+
+def test_subir_on_conflict_rename_agrega_consecutivo(admin_session, db_session):
+    _, bucket = _seed_bucket(db_session, name="x")
+    client = admin_session["client"]
+    primera = client.post(
+        f"{ADMIN_PREFIX}/acervo",
+        data={"folder": "iconos", "alt": "", "bucket_id": str(bucket.id)},
+        files={"file": ("logo.svg", io.BytesIO(b"<svg/>"), "image/svg+xml")},
+        headers={"X-CSRF-Token": admin_session["csrf"]},
+    )
+    assert primera.status_code == 201
+    assert primera.json()["name"] == "iconos/logo.svg"
+
+    segunda = client.post(
+        f"{ADMIN_PREFIX}/acervo",
+        data={"folder": "iconos", "alt": "", "bucket_id": str(bucket.id), "on_conflict": "rename"},
+        files={"file": ("logo.svg", io.BytesIO(b"<svg/>"), "image/svg+xml")},
+        headers={"X-CSRF-Token": admin_session["csrf"]},
+    )
+    assert segunda.status_code == 201, segunda.text
+    body = segunda.json()
+    assert body["name"] == "iconos/logo-2.svg"
+    assert body["originalName"] == "logo-2.svg"

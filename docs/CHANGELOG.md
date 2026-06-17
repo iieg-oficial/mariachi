@@ -9,6 +9,41 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.41.0 / admin 1.41.0] - 2026-06-17
+
+### Acervo: nombre original del archivo por defecto, UUID opcional y resolución de conflictos en carga masiva
+
+Cambio en la convención de nombrado de las subidas al Acervo y mejoras en el flujo de carga masiva.
+
+#### Nombre del archivo (backend)
+
+- Por defecto el object key ahora **conserva el nombre original** del archivo (saneado), en vez de un UUID aleatorio. URLs legibles tipo `/acervo/iieg/iconos/marcador-mapa.svg`.
+- Nuevo helper `sanitize_filename()` en `services/acervo_file_service.py`: normaliza acentos (NFKD→ASCII), pasa a minúsculas, reemplaza caracteres inseguros por `-`, bloquea path-traversal (`../`) y colapsa la extensión a minúsculas. El `original_name` mostrado coincide con la ruta.
+- `POST /acervo` y `POST /acervo/chunked/init` aceptan `use_uuid` (`Form`, default `false`): si se activa, se vuelve al nombre aleatorio (UUID) conservando el `original_name` real. Útil para evitar problemas de caché del navegador al reemplazar o no exponer el nombre real.
+
+#### Resolución de conflictos
+
+- `POST /acervo` y chunked aceptan `on_conflict` (`reject` | `rename`, default `reject`). Nuevo helper `resolve_upload_name()`: con `rename` agrega un sufijo consecutivo (`nombre-2.ext`, `nombre-3.ext`) hasta encontrar uno libre, comparando contra `original_name` y `name` en la carpeta.
+- En chunked la validación de duplicado se movió a `init` (rechaza/resuelve **antes** de subir los chunks, no en `complete`).
+
+#### Frontend (carga masiva)
+
+- Modal de subida: nuevo checkbox **"Usar identificador único (UUID)"** (desmarcado por defecto) con tooltip explicando el beneficio.
+- Las colisiones (`409`) ya no detienen el lote: se acumulan y, al terminar, un **modal de resolución** lista los archivos con opción **Renombrar** (consecutivo) u **Omitir** por archivo, más botones globales. "Renombrar" re-sube con `on_conflict=rename`.
+- Las URLs que se **copian** (acciones e ítem) y la mostrada en la previsualización ahora incluyen el **dominio** (`toPublicUrl()`: `VITE_ACERVO_PUBLIC_URL` con fallback a `window.location.origin`).
+- Tooltips descriptivos en los botones de acciones de cada ítem (lista y grid).
+
+#### Fix: carga masiva no refrescaba el listado y mostraba error
+
+- **Frontend**: el contador del lote podía llegar a 0 entre oleadas (el drag & drop encolaba subidas después de `await arrayBuffer`), disparando un refresco prematuro y mensajes confusos. Ahora el drag & drop lee todos los buffers y encola las subidas en un solo paso síncrono, y el cierre del lote se difiere 200 ms para garantizar un único refresco fiable al terminar.
+- **Backend**: `ensure_folder_exists()` aísla el `INSERT` de carpeta en un savepoint (`begin_nested`) y captura `IntegrityError` — varias subidas concurrentes a una carpeta nueva (`uq_acervo_folders_bucket_path`) ya no abortan con 500.
+
+#### Tests
+
+- `tests/test_acervo.py`: `sanitize_filename` parametrizado, key = nombre original, `use_uuid` → key aleatorio, `on_conflict=rename` → consecutivo.
+
+---
+
 ## [api 1.40.0 / admin 1.40.0] - 2026-06-15
 
 ### Rediseño de la pantalla de Usuarios, roles por proyecto y dependencia SIEEJ para externos

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Alert, Card, Button, Upload, Table, Image, Space, Modal, Form, Input, Select, Tabs, Tag, Popconfirm, Row, Col, Statistic, Segmented, Empty, Spin, Breadcrumb, Progress, Descriptions } from 'antd';
+import { Alert, Card, Button, Upload, Table, Image, Space, Modal, Form, Input, Select, Tabs, Tag, Popconfirm, Row, Col, Statistic, Segmented, Empty, Spin, Breadcrumb, Progress, Descriptions, Checkbox, Tooltip, List, Radio } from 'antd';
 import {
     InboxOutlined, DeleteOutlined, EditOutlined, FolderOutlined, FolderOpenOutlined, FolderAddOutlined, FileImageOutlined, FilePdfOutlined,
     FileOutlined, AppstoreOutlined, BarsOutlined, DownloadOutlined, CopyOutlined, EyeOutlined, HomeOutlined, DragOutlined,
@@ -79,7 +79,16 @@ const Acervo = () => {
     }, []);
 
     const uploadSemaphore = useRef({ active: 0, queue: [], max: 3 });
-    const uploadBatch = useRef({ pending: 0, done: 0, failed: 0, lastError: null });
+    const uploadBatch = useRef({ pending: 0, done: 0, failed: 0, conflicts: 0, lastError: null });
+    const finalizeTimer = useRef(null);
+    const conflictFilesRef = useRef([]);
+    const [conflictModal, setConflictModal] = useState({ open: false, items: [] });
+
+    const currentUploadOptions = () => ({
+        alt: form.getFieldValue('alt') || '',
+        useUuid: Boolean(form.getFieldValue('useUuid')),
+        onConflict: 'reject',
+    });
 
     const acquireSlot = () => new Promise((resolve) => {
         const sem = uploadSemaphore.current;
@@ -187,42 +196,89 @@ const Acervo = () => {
 
     const visibleAcervoFiles = selectedBucketId ? acervoFiles : [];
 
+    const finalizeBatch = async () => {
+        const batch = uploadBatch.current;
+        const { done, failed, lastError } = batch;
+        const conflictItems = conflictFilesRef.current;
+        conflictFilesRef.current = [];
+        batch.done = 0;
+        batch.failed = 0;
+        batch.conflicts = 0;
+        batch.lastError = null;
+        if (done > 0) message.success(`${done} archivo(s) subido(s) exitosamente`);
+        if (failed > 0) {
+            message.error(`${failed} archivo(s) no se pudieron subir${lastError ? ` — ${lastError}` : ''}`);
+        }
+        setUploadProgress(null);
+        setUploadResult({ done, failed, conflicts: conflictItems.length, lastError });
+        await loadAcervoFiles();
+        loadBucketStats();
+        if (conflictItems.length > 0) {
+            setConflictModal({
+                open: true,
+                items: conflictItems.map((c, i) => ({ ...c, id: i, action: 'rename' })),
+            });
+        }
+    };
+
+    // El cierre del lote se difiere brevemente: la programacion de subidas
+    // (lectura de buffers en drag & drop, microtasks de antd) puede dejar el
+    // contador en 0 momentaneamente entre oleadas. Esperar a que se estabilice
+    // garantiza un unico refresco del listado al terminar de verdad.
     const finishUpload = () => {
         const batch = uploadBatch.current;
         batch.pending -= 1;
         if (batch.pending > 0) return;
-        const { done, failed, lastError } = batch;
-        batch.done = 0;
-        batch.failed = 0;
-        batch.lastError = null;
-        setTimeout(() => {
-            if (done > 0) message.success(`${done} archivo(s) subido(s) exitosamente`);
-            if (failed > 0) {
-                message.error(`${failed} archivo(s) no se pudieron subir${lastError ? ` — ${lastError}` : ''}`);
-            }
-            setUploadProgress(null);
-            setUploadResult({ done, failed, lastError });
-            loadAcervoFiles();
-            loadBucketStats();
-        }, 0);
+        if (finalizeTimer.current) clearTimeout(finalizeTimer.current);
+        finalizeTimer.current = setTimeout(() => {
+            finalizeTimer.current = null;
+            if (uploadBatch.current.pending > 0) return;
+            finalizeBatch();
+        }, 200);
+    };
+
+    const handleConflictActionChange = (id, action) => {
+        setConflictModal((prev) => ({
+            ...prev,
+            items: prev.items.map((it) => (it.id === id ? { ...it, action } : it)),
+        }));
+    };
+
+    const handleConflictAll = (action) => {
+        setConflictModal((prev) => ({
+            ...prev,
+            items: prev.items.map((it) => ({ ...it, action })),
+        }));
+    };
+
+    const handleResolveConflicts = () => {
+        const toRename = conflictModal.items.filter((it) => it.action === 'rename');
+        setConflictModal({ open: false, items: [] });
+        toRename.forEach((it) => {
+            startUpload(it.file, it.folder, { alt: it.alt, useUuid: it.useUuid, onConflict: 'rename' });
+        });
     };
 
     const CHUNK_SIZE = 50 * 1024 * 1024;
 
-    const startChunkedUpload = async (file, folder) => {
+    const startChunkedUpload = async (file, folder, opts = {}) => {
+        const uploadOpts = { alt: '', useUuid: false, onConflict: 'reject', ...opts };
         if (uploadBatch.current.pending === 0) setUploadResult(null);
         uploadBatch.current.pending += 1;
         setUploadProgress((prev) => ({
             total: (prev?.total || 0) + 1,
             done: prev?.done || 0,
             failed: prev?.failed || 0,
+            conflicts: prev?.conflicts || 0,
         }));
         await acquireSlot();
         try {
             const init = await acervoService.initChunkedUpload(file.name, file.type, file.size, {
                 bucketId: selectedBucketId,
                 folder: folder || '/',
-                alt: form.getFieldValue('alt') || '',
+                alt: uploadOpts.alt,
+                useUuid: uploadOpts.useUuid,
+                onConflict: uploadOpts.onConflict,
             });
             const { session_id } = init;
             const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
@@ -254,19 +310,28 @@ const Acervo = () => {
             uploadBatch.current.done += 1;
             setUploadProgress((prev) => prev && { ...prev, done: prev.done + 1, chunkInfo: null });
         } catch (error) {
-            uploadBatch.current.failed += 1;
-            const detail = error?.response?.data?.detail;
-            if (detail) uploadBatch.current.lastError = detail;
-            setUploadProgress((prev) => prev && { ...prev, failed: prev.failed + 1, chunkInfo: null });
+            if (error?.response?.status === 409 && uploadOpts.onConflict !== 'rename') {
+                uploadBatch.current.conflicts += 1;
+                conflictFilesRef.current.push({
+                    file, folder, alt: uploadOpts.alt, useUuid: uploadOpts.useUuid, name: file.name,
+                });
+                setUploadProgress((prev) => prev && { ...prev, conflicts: (prev.conflicts || 0) + 1, chunkInfo: null });
+            } else {
+                uploadBatch.current.failed += 1;
+                const detail = error?.response?.data?.detail;
+                if (detail) uploadBatch.current.lastError = detail;
+                setUploadProgress((prev) => prev && { ...prev, failed: prev.failed + 1, chunkInfo: null });
+            }
         } finally {
             releaseSlot();
             finishUpload();
         }
     };
 
-    const startUpload = async (file, folder) => {
+    const startUpload = async (file, folder, opts = {}) => {
+        const uploadOpts = { alt: '', useUuid: false, onConflict: 'reject', ...opts };
         if (file.size > MAX_FILE_SIZE) {
-            startChunkedUpload(file, folder);
+            startChunkedUpload(file, folder, uploadOpts);
             return;
         }
         if (uploadBatch.current.pending === 0) setUploadResult(null);
@@ -275,6 +340,7 @@ const Acervo = () => {
             total: (prev?.total || 0) + 1,
             done: prev?.done || 0,
             failed: prev?.failed || 0,
+            conflicts: prev?.conflicts || 0,
         }));
         await acquireSlot();
         try {
@@ -284,7 +350,9 @@ const Acervo = () => {
                     await acervoService.uploadAcervoFile(file, {
                         bucketId: selectedBucketId,
                         folder: folder || '/',
-                        alt: form.getFieldValue('alt') || '',
+                        alt: uploadOpts.alt,
+                        useUuid: uploadOpts.useUuid,
+                        onConflict: uploadOpts.onConflict,
                     });
                     uploadBatch.current.done += 1;
                     setUploadProgress((prev) => prev && { ...prev, done: prev.done + 1 });
@@ -295,6 +363,14 @@ const Acervo = () => {
                         const retryAfter = Number(error.response.headers?.['retry-after']) || 5;
                         await new Promise((resolve) => setTimeout(resolve, (retryAfter + 1) * 1000));
                         continue;
+                    }
+                    if (error?.response?.status === 409 && uploadOpts.onConflict !== 'rename') {
+                        uploadBatch.current.conflicts += 1;
+                        conflictFilesRef.current.push({
+                            file, folder, alt: uploadOpts.alt, useUuid: uploadOpts.useUuid, name: file.name,
+                        });
+                        setUploadProgress((prev) => prev && { ...prev, conflicts: (prev.conflicts || 0) + 1 });
+                        break;
                     }
                     uploadBatch.current.failed += 1;
                     const detail = error?.response?.data?.detail;
@@ -314,7 +390,7 @@ const Acervo = () => {
             message.error('Selecciona un bucket primero');
             return Upload.LIST_IGNORE;
         }
-        startUpload(file, form.getFieldValue('folder') || '/');
+        startUpload(file, form.getFieldValue('folder') || '/', currentUploadOptions());
         return Upload.LIST_IGNORE;
     };
 
@@ -331,25 +407,27 @@ const Acervo = () => {
 
     const stabilizeAndUpload = async (files, folder) => {
         const unreadable = [];
-        let readable = 0;
-        await Promise.all(files.map(async (file) => {
-            if (file.size > STABILIZE_MAX_BYTES) {
-                readable += 1;
-                startUpload(file, folder);
-                return;
-            }
+        const opts = currentUploadOptions();
+        // Se leen primero todos los buffers; recien al final se encolan las
+        // subidas en un solo paso sincrono para que el contador del lote no
+        // toque 0 entre archivo y archivo (lo que dispararia un refresco
+        // prematuro y un cierre de lote anticipado).
+        const ready = await Promise.all(files.map(async (file) => {
+            if (file.size > STABILIZE_MAX_BYTES) return file;
             try {
                 const buffer = await file.arrayBuffer();
-                const stable = new File([buffer], file.name, {
+                return new File([buffer], file.name, {
                     type: file.type,
                     lastModified: file.lastModified,
                 });
-                readable += 1;
-                startUpload(stable, folder);
             } catch {
                 unreadable.push(file.name);
+                return null;
             }
         }));
+        const readableFiles = ready.filter(Boolean);
+        readableFiles.forEach((f) => startUpload(f, folder, opts));
+        const readable = readableFiles.length;
         if (readable > 0 && dndUnsupported) {
             setDndSupport(false);
         }
@@ -494,7 +572,8 @@ const Acervo = () => {
     };
 
     const handleCopyUrl = (url) => {
-        navigator.clipboard.writeText(url);
+        const absolute = acervoService.toPublicUrl(url);
+        navigator.clipboard.writeText(absolute);
         message.success('URL copiada al portapapeles');
     };
 
@@ -716,30 +795,37 @@ const Acervo = () => {
             render: (_, record) => (
                 <Space>
                     {record.isDir && (
-                        <Button
-                            type="text"
-                            icon={<InfoCircleOutlined />}
-                            title="Información de la carpeta"
-                            onClick={() => handleFolderInfo(record)}
-                        />
+                        <Tooltip title="Ver información de la carpeta (archivos, peso, subcarpetas)">
+                            <Button
+                                type="text"
+                                icon={<InfoCircleOutlined />}
+                                onClick={() => handleFolderInfo(record)}
+                            />
+                        </Tooltip>
                     )}
                     {!record.isDir && (
                         <>
-                            <Button
-                                type="text"
-                                icon={<EyeOutlined />}
-                                onClick={() => handlePreview(record)}
-                            />
-                            <Button
-                                type="text"
-                                icon={<CopyOutlined />}
-                                onClick={() => handleCopyUrl(record.url)}
-                            />
-                            <Button
-                                type="text"
-                                icon={<EditOutlined />}
-                                onClick={() => handleEdit(record)}
-                            />
+                            <Tooltip title="Previsualizar el archivo">
+                                <Button
+                                    type="text"
+                                    icon={<EyeOutlined />}
+                                    onClick={() => handlePreview(record)}
+                                />
+                            </Tooltip>
+                            <Tooltip title="Copiar la URL pública (con dominio) al portapapeles">
+                                <Button
+                                    type="text"
+                                    icon={<CopyOutlined />}
+                                    onClick={() => handleCopyUrl(record.url)}
+                                />
+                            </Tooltip>
+                            <Tooltip title="Editar texto alternativo, descripción y carpeta">
+                                <Button
+                                    type="text"
+                                    icon={<EditOutlined />}
+                                    onClick={() => handleEdit(record)}
+                                />
+                            </Tooltip>
                         </>
                     )}
                     <Popconfirm
@@ -748,11 +834,13 @@ const Acervo = () => {
                         okText="Sí"
                         cancelText="No"
                     >
-                        <Button
-                            type="text"
-                            danger
-                            icon={<DeleteOutlined />}
-                        />
+                        <Tooltip title={record.isDir ? 'Eliminar la carpeta y su contenido' : 'Eliminar el archivo'}>
+                            <Button
+                                type="text"
+                                danger
+                                icon={<DeleteOutlined />}
+                            />
+                        </Tooltip>
                     </Popconfirm>
                 </Space>
             )
@@ -793,9 +881,15 @@ const Acervo = () => {
                             )
                         }
                         actions={file.isDir ? [
-                            <FolderOpenOutlined key="open" onClick={(e) => { e.stopPropagation(); handleEnterDir(file); }} />,
-                            <InfoCircleOutlined key="info" title="Información de la carpeta" onClick={(e) => { e.stopPropagation(); handleFolderInfo(file); }} />,
-                            <DownloadOutlined key="download" title="Descargar ZIP" onClick={(e) => { e.stopPropagation(); handleDownloadFolder(file); }} />,
+                            <Tooltip key="open" title="Abrir la carpeta">
+                                <FolderOpenOutlined onClick={(e) => { e.stopPropagation(); handleEnterDir(file); }} />
+                            </Tooltip>,
+                            <Tooltip key="info" title="Ver información de la carpeta (archivos, peso, subcarpetas)">
+                                <InfoCircleOutlined onClick={(e) => { e.stopPropagation(); handleFolderInfo(file); }} />
+                            </Tooltip>,
+                            <Tooltip key="download" title="Descargar la carpeta completa como ZIP">
+                                <DownloadOutlined onClick={(e) => { e.stopPropagation(); handleDownloadFolder(file); }} />
+                            </Tooltip>,
                             <Popconfirm
                                 key="delete"
                                 title="¿Eliminar carpeta y todo su contenido?"
@@ -804,12 +898,20 @@ const Acervo = () => {
                                 okText="Sí"
                                 cancelText="No"
                             >
-                                <DeleteOutlined onClick={(e) => e.stopPropagation()} />
+                                <Tooltip title="Eliminar la carpeta y su contenido">
+                                    <DeleteOutlined onClick={(e) => e.stopPropagation()} />
+                                </Tooltip>
                             </Popconfirm>,
                         ] : [
-                            <DragOutlined key="move" title="Mover a carpeta" onClick={(e) => { e.stopPropagation(); handleOpenMove(file); }} />,
-                            <CopyOutlined key="copy" onClick={(e) => { e.stopPropagation(); handleCopyUrl(file.url); }} />,
-                            <EditOutlined key="edit" onClick={(e) => { e.stopPropagation(); handleEdit(file); }} />,
+                            <Tooltip key="move" title="Mover a otra carpeta">
+                                <DragOutlined onClick={(e) => { e.stopPropagation(); handleOpenMove(file); }} />
+                            </Tooltip>,
+                            <Tooltip key="copy" title="Copiar la URL pública (con dominio) al portapapeles">
+                                <CopyOutlined onClick={(e) => { e.stopPropagation(); handleCopyUrl(file.url); }} />
+                            </Tooltip>,
+                            <Tooltip key="edit" title="Editar texto alternativo, descripción y carpeta">
+                                <EditOutlined onClick={(e) => { e.stopPropagation(); handleEdit(file); }} />
+                            </Tooltip>,
                             <Popconfirm
                                 key="delete"
                                 title="¿Eliminar?"
@@ -818,7 +920,9 @@ const Acervo = () => {
                                 okText="Sí"
                                 cancelText="No"
                             >
-                                <DeleteOutlined onClick={(e) => e.stopPropagation()} />
+                                <Tooltip title="Eliminar el archivo">
+                                    <DeleteOutlined onClick={(e) => e.stopPropagation()} />
+                                </Tooltip>
                             </Popconfirm>
                         ]}
                     >
@@ -980,12 +1084,13 @@ const Acervo = () => {
                 {uploadProgress && !uploadModalVisible && (
                     <div style={{ marginBottom: 12 }}>
                         <Progress
-                            percent={Math.round(((uploadProgress.done + uploadProgress.failed) / uploadProgress.total) * 100)}
+                            percent={Math.round(((uploadProgress.done + uploadProgress.failed + (uploadProgress.conflicts || 0)) / uploadProgress.total) * 100)}
                             status={uploadProgress.failed > 0 ? 'exception' : 'active'}
                         />
                         <div style={{ textAlign: 'center', color: '#8c8c8c', fontSize: 12 }}>
-                            Subiendo {uploadProgress.done + uploadProgress.failed} de {uploadProgress.total} archivo(s)
+                            Subiendo {uploadProgress.done + uploadProgress.failed + (uploadProgress.conflicts || 0)} de {uploadProgress.total} archivo(s)
                             {uploadProgress.failed > 0 ? ` (${uploadProgress.failed} con error)` : ''}
+                            {uploadProgress.conflicts > 0 ? ` (${uploadProgress.conflicts} en conflicto)` : ''}
                             {uploadProgress.chunkInfo ? ` — ${uploadProgress.chunkInfo}` : ''}
                         </div>
                     </div>
@@ -1079,6 +1184,17 @@ const Acervo = () => {
                         <Input.TextArea rows={2} placeholder="Descripción del archivo para accesibilidad" />
                     </Form.Item>
 
+                    <Form.Item name="useUuid" valuePropName="checked" initialValue={false} style={{ marginBottom: 8 }}>
+                        <Checkbox>
+                            Usar identificador único (UUID) en vez del nombre del archivo
+                            <Tooltip
+                                title="Por defecto la ruta conserva el nombre del archivo (más legible). Activa esta opción para generar un nombre aleatorio: evita problemas de caché del navegador cuando se reemplaza el archivo y no expone el nombre real en la URL pública."
+                            >
+                                <InfoCircleOutlined style={{ marginLeft: 6, color: '#8c8c8c' }} />
+                            </Tooltip>
+                        </Checkbox>
+                    </Form.Item>
+
                     <Form.Item>
                         <Dragger
                             name="file"
@@ -1101,12 +1217,13 @@ const Acervo = () => {
                     {uploadProgress && (
                         <Form.Item>
                             <Progress
-                                percent={Math.round(((uploadProgress.done + uploadProgress.failed) / uploadProgress.total) * 100)}
+                                percent={Math.round(((uploadProgress.done + uploadProgress.failed + (uploadProgress.conflicts || 0)) / uploadProgress.total) * 100)}
                                 status={uploadProgress.failed > 0 ? 'exception' : 'active'}
                             />
                             <div style={{ textAlign: 'center', color: '#8c8c8c', fontSize: 12 }}>
-                                {uploadProgress.done + uploadProgress.failed} de {uploadProgress.total} archivo(s)
+                                {uploadProgress.done + uploadProgress.failed + (uploadProgress.conflicts || 0)} de {uploadProgress.total} archivo(s)
                                 {uploadProgress.failed > 0 ? ` (${uploadProgress.failed} con error)` : ''}
+                                {uploadProgress.conflicts > 0 ? ` (${uploadProgress.conflicts} en conflicto)` : ''}
                                 {uploadProgress.chunkInfo ? ` — ${uploadProgress.chunkInfo}` : ''}
                             </div>
                         </Form.Item>
@@ -1115,12 +1232,14 @@ const Acervo = () => {
                     {uploadResult && !uploadProgress && (
                         <Form.Item>
                             <Alert
-                                type={uploadResult.failed > 0 ? 'warning' : 'success'}
+                                type={uploadResult.failed > 0 || uploadResult.conflicts > 0 ? 'warning' : 'success'}
                                 showIcon
                                 closable
                                 onClose={() => setUploadResult(null)}
-                                message={uploadResult.failed > 0
-                                    ? `${uploadResult.done} archivo(s) subido(s), ${uploadResult.failed} con error`
+                                message={uploadResult.failed > 0 || uploadResult.conflicts > 0
+                                    ? `${uploadResult.done} archivo(s) subido(s)`
+                                        + `${uploadResult.failed > 0 ? `, ${uploadResult.failed} con error` : ''}`
+                                        + `${uploadResult.conflicts > 0 ? `, ${uploadResult.conflicts} en conflicto de nombre` : ''}`
                                     : `¡Listo! ${uploadResult.done} archivo(s) subido(s) correctamente`}
                                 description={uploadResult.failed > 0 ? uploadResult.lastError : undefined}
                                 action={
@@ -1310,7 +1429,7 @@ const Acervo = () => {
                             </div>
                         )}
                         <div style={{ marginTop: 16, padding: 16, background: '#f5f5f5', borderRadius: 4 }}>
-                            <div><strong>URL:</strong> {currentFile.url}</div>
+                            <div style={{ wordBreak: 'break-all' }}><strong>URL:</strong> {acervoService.toPublicUrl(currentFile.url)}</div>
                             <div><strong>Subido por:</strong> {currentFile.uploadedByName}</div>
                             <div><strong>Fecha:</strong> {currentFile.uploadedAt ? new Date(currentFile.uploadedAt).toLocaleString('es-MX') : '—'}</div>
                             {currentFile.metadata?.alt && (
@@ -1319,6 +1438,61 @@ const Acervo = () => {
                         </div>
                     </div>
                 )}
+            </Modal>
+
+            <Modal
+                title="Conflictos de nombre"
+                open={conflictModal.open}
+                onCancel={() => setConflictModal({ open: false, items: [] })}
+                footer={[
+                    <Button key="cancel" onClick={() => setConflictModal({ open: false, items: [] })}>
+                        Cancelar
+                    </Button>,
+                    <Button key="apply" type="primary" onClick={handleResolveConflicts}>
+                        Aplicar
+                    </Button>,
+                ]}
+                width={isMobile ? '100%' : 560}
+                centered={isMobile}
+            >
+                <div style={{ color: '#8c8c8c', fontSize: 13, marginBottom: 12 }}>
+                    Estos archivos ya existen en la carpeta. Elige <strong>Renombrar</strong> (se agrega
+                    un número consecutivo, p. ej. <code>nombre-2.ext</code>) u <strong>Omitir</strong> para
+                    no subirlos.
+                </div>
+                <Space style={{ marginBottom: 12 }}>
+                    <Button size="small" onClick={() => handleConflictAll('rename')}>Renombrar todos</Button>
+                    <Button size="small" onClick={() => handleConflictAll('skip')}>Omitir todos</Button>
+                </Space>
+                <List
+                    size="small"
+                    dataSource={conflictModal.items}
+                    rowKey="id"
+                    renderItem={(item) => (
+                        <List.Item
+                            actions={[
+                                <Radio.Group
+                                    key="action"
+                                    size="small"
+                                    value={item.action}
+                                    onChange={(e) => handleConflictActionChange(item.id, e.target.value)}
+                                    optionType="button"
+                                    buttonStyle="solid"
+                                    options={[
+                                        { label: 'Renombrar', value: 'rename' },
+                                        { label: 'Omitir', value: 'skip' },
+                                    ]}
+                                />,
+                            ]}
+                        >
+                            <List.Item.Meta
+                                avatar={<FileOutlined style={{ fontSize: 20, color: '#8c8c8c' }} />}
+                                title={<span style={{ wordBreak: 'break-all' }}>{item.name}</span>}
+                                description={item.folder && item.folder !== '/' ? `Carpeta: ${item.folder}` : 'Raíz'}
+                            />
+                        </List.Item>
+                    )}
+                />
             </Modal>
         </div>
     );

@@ -2,7 +2,7 @@
 
 > Documento de referencia completo. Leer este archivo proporciona contexto del monorepo sin explorar el codebase.
 
-**Versión:** ver `api/pyproject.toml` (la lee `api/app/core/version.py::get_app_version()`; endpoint en vivo `GET /ontoy`). · **Última actualización:** 2026-06-09
+**Versión:** ver `api/pyproject.toml` (la lee `api/app/core/version.py::get_app_version()`; endpoint en vivo `GET /ontoy`). · **Última actualización:** 2026-06-17
 
 
 ---
@@ -611,6 +611,8 @@ Implicaciones para el código y la configuración:
     - **Subida por chunks** (> 500 MB): `POST /acervo/chunked/init` → `POST /acervo/chunked/{session}/part` (chunks de 50 MB, secuenciales) → `POST /acervo/chunked/{session}/complete`. Usa el API multipart nativo de SeaweedFS (S3 `CreateMultipartUpload` / `UploadPart` / `CompleteMultipartUpload`). Sesiones en Redis con TTL de 2 h.
     - **Cadena de proxy**: gateway-hub `client_max_body_size 1G` + `proxy_request_buffering off` en `location ^~ /api/administrador/acervo`. mariachi-nginx idem con timeouts 600s. Gunicorn `--timeout 300`.
 - **Drag & drop de archivos en Acervo** (v1.38.2+): los `File` del drop se leen de inmediato (`arrayBuffer`) y se reconstruyen en memoria antes de encolarlos — los arrastres vía document portal/GVFS en Linux caducan en segundos (`net::ERR_FILE_NOT_FOUND`). Archivos > 100 MB no se bufferizan. **Limitación conocida**: navegadores Chromium instalados como **snap** (sandbox AppArmor) nunca pueden leer los archivos arrastrados (el picker sí funciona, va por portal XDG); el frontend lo detecta empíricamente (lote completo ilegible → `localStorage mariachi.acervo.dndUnsupported`), oculta el overlay de arrastre y se auto-rehabilita si un drop posterior entrega archivos legibles. No es detectable por user-agent ni evitable con otra librería (dnd-kit es drag interno de DOM, no recibe archivos del SO).
+- **Nombrado del object key** (v1.41.0+): por defecto el key **conserva el nombre original** saneado (`sanitize_filename` en `acervo_file_service.py`: NFKD→ASCII, minúsculas, caracteres inseguros→`-`, bloquea `../`); el `original_name` mostrado coincide con la ruta. El modal ofrece un checkbox `use_uuid` para volver al UUID aleatorio (evita caché obsoleta al reemplazar / no expone el nombre real). `POST /acervo` y `/chunked/init` aceptan `use_uuid` y `on_conflict` (`reject`|`rename`); `resolve_upload_name()` resuelve el sufijo consecutivo (`nombre-2.ext`) cuando `rename`. En chunked la validación de duplicado vive en `init` (antes de subir los chunks).
+- **Carga masiva** (v1.41.0+): las colisiones `409` no detienen el lote; se acumulan y al terminar un modal ofrece renombrar/omitir por archivo. El cierre del lote se difiere 200 ms y el drag & drop encola las subidas en un solo paso síncrono para garantizar **un único refresco** del listado al terminar (antes el contador podía tocar 0 entre oleadas → refresco prematuro). `ensure_folder_exists()` crea la carpeta en un savepoint con captura de `IntegrityError` para tolerar subidas concurrentes a una carpeta nueva. Las URLs copiadas/previsualizadas incluyen el dominio vía `toPublicUrl()` (`VITE_ACERVO_PUBLIC_URL` → fallback `window.location.origin`).
 
 En **dev** (`docker-compose.dev.yml`) no hay gateway: Vite expone `:3011`, API expone `:8010`. El admin se conecta directo al API por `localhost`. La regla `--proxy-headers` con `--forwarded-allow-ips='*'` sigue activa pero como nadie envía headers, no afecta.
 
@@ -826,6 +828,10 @@ Este repo se integra con otros servicios internos vecinos (CMS, visor de mapas, 
 ---
 
 ## Cambios recientes
+
+### 2026-06-17 (admin v1.41.0 + api v1.41.0) — Acervo: nombre original por defecto, UUID opcional y carga masiva robusta
+
+Las subidas al Acervo conservan por defecto el **nombre original** saneado en el object key (URLs legibles); un checkbox `use_uuid` en el modal permite volver al UUID aleatorio. `POST /acervo` y `/chunked/init` aceptan `use_uuid` y `on_conflict` (`reject`|`rename`); con `rename` se agrega sufijo consecutivo (`nombre-2.ext`) vía `resolve_upload_name()`. En carga masiva las colisiones `409` ya no detienen el lote: se acumulan y al terminar un modal ofrece **renombrar u omitir** por archivo. Fix del refresco: el cierre del lote se difiere 200 ms y el drag & drop encola síncronamente (antes el contador tocaba 0 entre oleadas → refresco prematuro + error); `ensure_folder_exists()` usa savepoint + `IntegrityError` para subidas concurrentes a carpeta nueva. Las URLs copiadas/previsualizadas incluyen el dominio (`toPublicUrl()`). Detalle en CHANGELOG §[api 1.41.0 / admin 1.41.0].
 
 ### 2026-06-01 (admin v1.24.0 + api v1.23.0) — Ocultar capas dentro de un evento sin quitarlas
 

@@ -168,6 +168,8 @@ async def subir_archivo(
     folder: str = Form("/"),
     alt: str = Form(""),
     bucket_id: int = Form(...),
+    use_uuid: bool = Form(False),
+    on_conflict: str = Form("reject"),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
     _rl: Usuario = Depends(_upload_rate_limit),
@@ -176,26 +178,25 @@ async def subir_archivo(
     client = AcervoClient.for_bucket(bucket)
 
     file_extension = file.filename.split(".")[-1] if "." in file.filename else ""
-    base = f"{uuid.uuid4()}.{file_extension}" if file_extension else str(uuid.uuid4())
-
     clean_folder = (folder or "").strip().strip("/")
-    object_key = f"{clean_folder}/{base}" if clean_folder else base
     folder_path = acervo_file_service.ensure_folder_exists(db, bucket.id, clean_folder)
 
-    duplicate = (
-        db.query(AcervoFile)
-        .filter(
-            AcervoFile.bucket_id == bucket.id,
-            AcervoFile.folder == folder_path,
-            AcervoFile.original_name == file.filename,
-        )
-        .first()
+    if use_uuid:
+        key_basename = f"{uuid.uuid4()}.{file_extension}" if file_extension else str(uuid.uuid4())
+        desired_original = file.filename
+    else:
+        key_basename = acervo_file_service.sanitize_filename(file.filename)
+        desired_original = key_basename
+
+    final_original, object_key = acervo_file_service.resolve_upload_name(
+        db,
+        bucket.id,
+        folder_path,
+        clean_folder,
+        original_name=desired_original,
+        key_basename=key_basename,
+        on_conflict=on_conflict,
     )
-    if duplicate:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=f"Ya existe '{file.filename}' en esta carpeta",
-        )
 
     try:
         url = await client.upload_file(file, object_key)
@@ -203,7 +204,7 @@ async def subir_archivo(
         nuevo = AcervoFile(
             bucket_id=bucket.id,
             name=object_key,
-            original_name=file.filename,
+            original_name=final_original,
             type=file.content_type or "application/octet-stream",
             size=file.size or 0,
             url=url,
@@ -221,7 +222,7 @@ async def subir_archivo(
             resource_type="acervo.file",
             resource_id=nuevo.id,
             metadata={
-                "nombre": file.filename,
+                "nombre": final_original,
                 "bucket": bucket.acervo_bucket,
                 "carpeta": folder_path,
             },
@@ -251,6 +252,8 @@ async def chunked_upload_init(
     bucket_id: int = Form(...),
     total_size: int = Form(...),
     total_chunks: int = Form(...),
+    use_uuid: bool = Form(False),
+    on_conflict: str = Form("reject"),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
     _rl: Usuario = Depends(_upload_rate_limit),
@@ -261,9 +264,25 @@ async def chunked_upload_init(
     client = AcervoClient.for_bucket(bucket)
 
     file_extension = original_name.split(".")[-1] if "." in original_name else ""
-    base = f"{uuid.uuid4()}.{file_extension}" if file_extension else str(uuid.uuid4())
     clean_folder = (folder or "").strip().strip("/")
-    object_key = f"{clean_folder}/{base}" if clean_folder else base
+    folder_path = acervo_file_service.ensure_folder_exists(db, bucket.id, clean_folder)
+
+    if use_uuid:
+        key_basename = f"{uuid.uuid4()}.{file_extension}" if file_extension else str(uuid.uuid4())
+        desired_original = original_name
+    else:
+        key_basename = acervo_file_service.sanitize_filename(original_name)
+        desired_original = key_basename
+
+    final_original, object_key = acervo_file_service.resolve_upload_name(
+        db,
+        bucket.id,
+        folder_path,
+        clean_folder,
+        original_name=desired_original,
+        key_basename=key_basename,
+        on_conflict=on_conflict,
+    )
 
     upload_id = client.init_multipart_upload(object_key, content_type)
 
@@ -272,7 +291,7 @@ async def chunked_upload_init(
         'upload_id': upload_id,
         'bucket_id': bucket.id,
         'bucket_name': bucket.acervo_bucket,
-        'original_name': original_name,
+        'original_name': final_original,
         'content_type': content_type,
         'folder': folder,
         'alt': alt,
