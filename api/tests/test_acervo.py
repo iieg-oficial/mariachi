@@ -1,12 +1,35 @@
 import io
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
+from minio.error import S3Error
 
 from app.models.acervo import AcervoFile, AcervoFolder
 from app.models.acervo_bucket import AcervoBucket
 from app.models.project import Project, UserProject
 from tests.conftest import ADMIN_PREFIX
+
+
+class _FakeStream:
+    def __init__(self, data: bytes):
+        self._data = data
+
+    def read(self):
+        return self._data
+
+    def stream(self, _size):
+        yield self._data
+
+    def close(self):
+        pass
+
+    def release_conn(self):
+        pass
+
+
+def _s3_missing(object_name: str) -> S3Error:
+    return S3Error("NoSuchKey", "not found", object_name, "", "", None)
 
 
 class FakeAcervoClient:
@@ -40,8 +63,38 @@ class FakeAcervoClient:
             "etag": "fake",
             "is_dir": False,
             "url": f"http://fake/{object_name}",
+            "data": data,
+            "content_type": getattr(file, "content_type", None),
         }
         return f"http://fake/{object_name}"
+
+    def stat_object(self, object_name):
+        obj = self.objects.get(object_name)
+        if obj is None:
+            raise _s3_missing(object_name)
+        return SimpleNamespace(
+            size=obj.get("size", 0),
+            etag=obj.get("etag", "fake"),
+            content_type=obj.get("content_type"),
+        )
+
+    def get_object_stream(self, object_name):
+        obj = self.objects.get(object_name)
+        if obj is None:
+            raise _s3_missing(object_name)
+        return _FakeStream(obj.get("data", b""))
+
+    def put_bytes(self, object_name, data, content_type):
+        self.objects[object_name] = {
+            "name": object_name,
+            "size": len(data),
+            "last_modified": None,
+            "etag": "fake",
+            "is_dir": False,
+            "url": f"http://fake/{object_name}",
+            "data": data,
+            "content_type": content_type,
+        }
 
     def list_objects(self, prefix="", recursive=True):
         prefix = prefix or ""
@@ -602,3 +655,91 @@ def test_subir_on_conflict_rename_agrega_consecutivo(admin_session, db_session):
     body = segunda.json()
     assert body["name"] == "iconos/logo-2.svg"
     assert body["originalName"] == "logo-2.svg"
+
+
+def _png_bytes(w=800, h=600, color=(200, 30, 30)):
+    from PIL import Image
+
+    buf = io.BytesIO()
+    Image.new("RGB", (w, h), color).save(buf, format="PNG")
+    return buf.getvalue()
+
+
+def _subir(client, csrf, bucket_id, filename, data, content_type, folder="mapas"):
+    return client.post(
+        f"{ADMIN_PREFIX}/acervo",
+        data={"folder": folder, "alt": "", "bucket_id": str(bucket_id)},
+        files={"file": (filename, io.BytesIO(data), content_type)},
+        headers={"X-CSRF-Token": csrf},
+    )
+
+
+def test_thumbnail_raster_genera_webp(admin_session, db_session):
+    _, bucket = _seed_bucket(db_session, name="x")
+    client = admin_session["client"]
+    subida = _subir(client, admin_session["csrf"], bucket.id, "mapa.png", _png_bytes(), "image/png")
+    assert subida.status_code == 201, subida.text
+    name = subida.json()["name"]  # mapas/mapa.png
+
+    resp = client.get(f"{ADMIN_PREFIX}/acervo/thumb/{bucket.id}/{name}?w=400")
+    assert resp.status_code == 200, resp.text
+    assert resp.headers["content-type"] == "image/webp"
+    assert resp.content[:4] == b"RIFF" and resp.content[8:12] == b"WEBP"
+
+    fake = FakeAcervoClient.for_bucket(bucket)
+    assert any(k.startswith(".thumbs/") for k in fake.objects), "no se cacheó la miniatura"
+
+
+def test_thumbnail_svg_passthrough(admin_session, db_session):
+    _, bucket = _seed_bucket(db_session, name="x")
+    client = admin_session["client"]
+    svg = b"<svg xmlns='http://www.w3.org/2000/svg'><rect width='10' height='10'/></svg>"
+    subida = _subir(client, admin_session["csrf"], bucket.id, "icono.svg", svg, "image/svg+xml")
+    assert subida.status_code == 201
+    name = subida.json()["name"]
+
+    resp = client.get(f"{ADMIN_PREFIX}/acervo/thumb/{bucket.id}/{name}?w=400")
+    assert resp.status_code == 200
+    assert resp.headers["content-type"] == "image/svg+xml"
+    assert resp.content == svg
+    fake = FakeAcervoClient.for_bucket(bucket)
+    assert not any(k.startswith(".thumbs/") for k in fake.objects), "el SVG no debe rasterizarse"
+
+
+def test_thumbnail_requires_auth(client, db_session):
+    _, bucket = _seed_bucket(db_session, name="x")
+    resp = client.get(f"{ADMIN_PREFIX}/acervo/thumb/{bucket.id}/mapas/x.png")
+    assert resp.status_code == 401
+
+
+def test_serialize_thumbnail_por_tipo(admin_session, db_session):
+    _, bucket = _seed_bucket(db_session, name="x")
+    client = admin_session["client"]
+    _subir(client, admin_session["csrf"], bucket.id, "mapa.png", _png_bytes(), "image/png")
+    _subir(client, admin_session["csrf"], bucket.id, "icono.svg",
+           b"<svg xmlns='http://www.w3.org/2000/svg'/>", "image/svg+xml")
+
+    listado = client.get(f"{ADMIN_PREFIX}/acervo?bucket_id={bucket.id}&folder=mapas&recursive=true")
+    assert listado.status_code == 200
+    by_name = {item["originalName"]: item for item in listado.json()}
+    assert f"/acervo/thumb/{bucket.id}/" in by_name["mapa.png"]["thumbnail"]
+    assert by_name["icono.svg"]["thumbnail"] == by_name["icono.svg"]["url"]
+
+
+def test_thumbnail_cleanup_on_delete(admin_session, db_session):
+    _, bucket = _seed_bucket(db_session, name="x")
+    client = admin_session["client"]
+    subida = _subir(client, admin_session["csrf"], bucket.id, "mapa.png", _png_bytes(), "image/png")
+    media_id = subida.json()["id"]
+    name = subida.json()["name"]
+
+    client.get(f"{ADMIN_PREFIX}/acervo/thumb/{bucket.id}/{name}?w=400")
+    fake = FakeAcervoClient.for_bucket(bucket)
+    assert any(k.startswith(".thumbs/") for k in fake.objects)
+
+    resp = client.delete(
+        f"{ADMIN_PREFIX}/acervo/{media_id}",
+        headers={"X-CSRF-Token": admin_session["csrf"]},
+    )
+    assert resp.status_code == 200
+    assert not any(k.startswith(".thumbs/") for k in fake.objects), "no se limpió la caché de miniaturas"

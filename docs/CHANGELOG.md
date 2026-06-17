@@ -9,6 +9,33 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.42.0 / admin 1.42.0] - 2026-06-17
+
+### Acervo: miniaturas WebP on-the-fly con caché + sección de documentación
+
+Las imágenes del Acervo dejan de descargarse completas para mostrarse en miniatura: se generan al vuelo, en WebP, y se cachean.
+
+#### Miniaturas on-the-fly (backend)
+
+- Dependencia **Pillow** (`pillow>=10,<12`) → **requiere reconstruir la imagen `mariachi-api`**.
+- Módulo `services/acervo_thumbnails.py`: resize a WebP q80, anchos permitidos `{120, 400, 1280}`, guarda anti decompression-bomb (`MAX_IMAGE_PIXELS`).
+- Endpoint `GET /acervo/thumb/{bucket_id}/{path}?w=`: el SVG se sirve tal cual (vectorial); para raster busca en caché `.thumbs/{path}/{etag}-w{w}.webp`, si no existe la genera, la guarda y la sirve con `Cache-Control: immutable` + `ETag`. El ETag del original va en la ruta → caché auto-invalidante (si el original cambia, su ETag cambia y se regenera).
+- `.thumbs/` se agrega a los prefijos ocultos globales (`bucket_policies.GLOBAL_HIDDEN_PREFIXES`), no aparece en el listado del Acervo.
+- El campo `thumbnail` ahora se **deriva** por tipo en la serialización (cubre archivos ya existentes, sin migración): raster → endpoint, SVG → la URL, resto → `null`.
+- **Cleanup** dirigido (`delete_prefix(".thumbs/{path}/")`) al borrar archivo, borrar bucket-only, borrar carpeta/directorio y mover. Las variantes huérfanas se limpian en el mismo punto donde ya se toca SeaweedFS.
+- Nuevo `AcervoClient.put_bytes()`. 5 tests nuevos (genera WebP, SVG passthrough, requiere auth, serialización por tipo, cleanup al borrar).
+
+#### Frontend
+
+- Grid pide `w=400`, lista `w=120` y la previsualización muestra `w=1280` con botón **"Ver original"** (helper `acervoService.thumbVariant`). La galería ya no baja el archivo completo.
+
+#### Documentación
+
+- Nueva sección **Acervo** en `/mariachi/documentacion` (tab) con instrucciones concisas de todas las herramientas (navegación, subir, acciones, carpetas, miniaturas/URLs), al estilo de MCP/Telemetría.
+- Incluye un **diagnóstico de miniaturas en vivo** (componente `acervo/components/ThumbnailDiagnostics`): por cada imagen compara original vs `w=120/400/1280`, con peso de cada variante, % respecto al original y la URL copiable de cada tipo.
+
+---
+
 ## [api 1.41.0 / admin 1.41.0] - 2026-06-17
 
 ### Acervo: nombre original del archivo por defecto, UUID opcional y resolución de conflictos en carga masiva

@@ -345,6 +345,15 @@ export const toPublicUrl = (url) => {
     return `${base}${url.startsWith('/') ? '' : '/'}${url}`;
 };
 
+// Deriva una variante de la miniatura con otro ancho a partir del `thumbnail`
+// serializado (que ya trae `?w=400`). Para SVG/no-imagen (sin `?w=`) o sin
+// thumbnail, devuelve la miniatura tal cual.
+export const thumbVariant = (file, width) => {
+    const thumb = file?.thumbnail;
+    if (!thumb) return file?.url;
+    return /[?&]w=\d+/.test(thumb) ? thumb.replace(/([?&]w=)\d+/, `$1${width}`) : thumb;
+};
+
 export const formatFileSize = (bytes) => {
     if (bytes === 0) return '0 Bytes';
 
@@ -450,6 +459,7 @@ export default {
     uploadChunk,
     completeChunkedUpload,
     toPublicUrl,
+    thumbVariant,
 
     formatFileSize,
     getFileIcon,

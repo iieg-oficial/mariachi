@@ -16,6 +16,7 @@ from app.models.acervo import AcervoFile, AcervoFolder
 from app.models.acervo_bucket import AcervoBucket
 from app.models.project import UserProject
 from app.models.user import Usuario
+from app.services import acervo_thumbnails
 from app.services.acervo import AcervoClient
 
 ZIP_MAX_BYTES = 500 * 1024 * 1024  # 500 MB
@@ -211,6 +212,24 @@ def resolve_bucket_or_403(bucket_id: int, current_user: Usuario, db: Session) ->
     return bucket
 
 
+def thumbnail_for(bucket_id: int | None, object_name: str, content_type: str | None, url: str | None) -> str | None:
+    """Deriva la URL de miniatura según el tipo (no usa el valor persistido):
+
+    - raster (PNG/JPEG/GIF/WebP) → endpoint on-the-fly que devuelve WebP escalado
+    - SVG → la propia URL (vectorial, no se rasteriza)
+    - resto → sin miniatura
+    """
+    ctype = (content_type or "").lower()
+    if ctype == "image/svg+xml":
+        return url
+    if bucket_id is not None and acervo_thumbnails.is_raster_image(ctype):
+        return (
+            f"/api/administrador/acervo/thumb/{bucket_id}/{object_name}"
+            f"?w={acervo_thumbnails.DEFAULT_WIDTH}"
+        )
+    return None
+
+
 def serialize_acervo_file(item: AcervoFile) -> dict:
     return {
         "id": str(item.id),
@@ -220,7 +239,7 @@ def serialize_acervo_file(item: AcervoFile) -> dict:
         "type": item.type,
         "size": item.size,
         "url": item.url,
-        "thumbnail": item.thumbnail,
+        "thumbnail": thumbnail_for(item.bucket_id, item.name, item.type, item.url),
         "folder": item.folder,
         "uploadedBy": str(item.uploaded_by),
         "uploadedByName": item.uploaded_by_user.name if item.uploaded_by_user else "Unknown",
@@ -263,7 +282,7 @@ def serialize_bucket_only(bucket_id: int, obj: dict) -> dict:
         "type": mime,
         "size": obj.get("size", 0),
         "url": obj.get("url"),
-        "thumbnail": obj.get("url") if mime.startswith("image/") else None,
+        "thumbnail": thumbnail_for(bucket_id, name, mime, obj.get("url")),
         "folder": folder_from_path(name),
         "uploadedBy": None,
         "uploadedByName": "—",

@@ -695,7 +695,7 @@ const Acervo = () => {
                 }
                 return record.type?.startsWith('image/') ? (
                     <Image
-                        src={thumbnail}
+                        src={acervoService.thumbVariant(record, 120)}
                         width={60}
                         height={60}
                         style={{ objectFit: 'cover', borderRadius: 4 }}
@@ -1403,6 +1403,11 @@ const Acervo = () => {
                 open={previewVisible}
                 onCancel={() => setPreviewVisible(false)}
                 footer={[
+                    currentFile?.type?.startsWith('image/') && !currentFile?.type?.includes('svg') && (
+                        <Button key="original" icon={<EyeOutlined />} href={acervoService.toPublicUrl(currentFile?.url)} target="_blank" rel="noreferrer">
+                            Ver original
+                        </Button>
+                    ),
                     <Button key="copy" icon={<CopyOutlined />} onClick={() => handleCopyUrl(currentFile?.url)}>
                         Copiar URL
                     </Button>,
@@ -1416,7 +1421,7 @@ const Acervo = () => {
                 {currentFile && (
                     <div>
                         {currentFile.type?.startsWith('image/') ? (
-                            <Image src={currentFile.url} style={{ width: '100%' }} />
+                            <Image src={acervoService.thumbVariant(currentFile, 1280)} style={{ width: '100%' }} />
                         ) : (
                             <div style={{ textAlign: 'center', padding: 40 }}>
                                 {getFileIcon(currentFile.type)}

@@ -4,12 +4,18 @@ import { useSearchParams } from 'react-router';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import McpTopic from '@features/documentacion/topics/McpTopic';
 import TelemetryTopic from '@features/documentacion/topics/TelemetryTopic';
+import AcervoTopic from '@features/documentacion/topics/AcervoTopic';
 
 const { Content } = Layout;
 const { Title, Text } = Typography;
 
 
 const TOPICS = [
+    {
+        key: 'acervo',
+        label: 'Acervo',
+        children: <AcervoTopic />,
+    },
     {
         key: 'mcp',
         label: 'Servidor MCP',
