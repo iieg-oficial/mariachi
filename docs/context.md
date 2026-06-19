@@ -831,6 +831,10 @@ Este repo se integra con otros servicios internos vecinos (CMS, visor de mapas, 
 
 ## Cambios recientes
 
+### 2026-06-19 (admin v1.43.0 + api v1.43.0) — Diagnóstico de miniaturas: omitir SVG
+
+El diagnóstico en vivo del tab Acervo de `/mariachi/documentacion` ahora **excluye los SVG** y solo evalúa imágenes raster (PNG/JPG/GIF/WebP), que es lo que de verdad se comprime a WebP; el SVG se sirve tal cual. Cambio acotado a `ThumbnailDiagnostics` + texto de la sección. Detalle en CHANGELOG §[api 1.43.0 / admin 1.43.0].
+
 ### 2026-06-19 (admin v1.42.1 + api v1.42.1) — Fix 429 en miniaturas del Acervo (gateway) + concurrencia acotada
 
 Al abrir buckets con muchas imágenes (`portal`) algunas miniaturas daban `429`. Causa de fondo en **gateway-hub** (rate-limit bajo de la zona `api` + `Cache-Control: no-store` que impedía cachear → cada render repetía la ráfaga); corregido en gateway-hub `1.27.2` con zona `acervo_thumb` (30 r/s) y `location ^~ /api/administrador/acervo/thumb` (burst 120, sin `no-store`). En mariachi, el diagnóstico de miniaturas pasa a un **pool de concurrencia de 6** (antes hacía hasta 48 sondas simultáneas). Requiere redeploy del gateway-hub. Detalle en CHANGELOG §[api 1.42.1 / admin 1.42.1].

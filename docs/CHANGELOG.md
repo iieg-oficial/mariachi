@@ -9,6 +9,14 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.43.0 / admin 1.43.0] - 2026-06-19
+
+### Diagnóstico de miniaturas: omitir SVG (solo raster)
+
+El diagnóstico de miniaturas en vivo (`/mariachi/documentacion`, tab Acervo) listaba todas las imágenes, incluidos los SVG. Como los SVG son vectoriales y se sirven tal cual (no se comprimen a WebP), no aportan nada a una prueba de compresión. Ahora el filtro de `ThumbnailDiagnostics` excluye `image/svg+xml` y solo evalúa imágenes raster (PNG/JPG/GIF/WebP); el texto de la sección lo aclara.
+
+---
+
 ## [api 1.42.1 / admin 1.42.1] - 2026-06-19
 
 ### Fix: 429 en miniaturas del Acervo (gateway) + concurrencia acotada en el diagnóstico

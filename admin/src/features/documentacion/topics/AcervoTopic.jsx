@@ -65,7 +65,7 @@ export default function AcervoTopic() {
                 )}
             >
                 <Paragraph type="secondary" style={{ marginTop: 0, marginBottom: showDiag ? 12 : 0, fontSize: 12 }}>
-                    Compara, por cada imagen del bucket, el original contra las variantes <Text code>w=120</Text>, <Text code>w=400</Text> y <Text code>w=1280</Text>: muestra el peso de cada una, su % respecto al original y la URL para pedirla. Las raster deben llegar como <Text code>image/webp</Text>; los SVG pasan tal cual.
+                    Compara, por cada imagen <strong>raster</strong> del bucket, el original contra las variantes <Text code>w=120</Text>, <Text code>w=400</Text> y <Text code>w=1280</Text>: muestra el peso de cada una, su % respecto al original y la URL para pedirla. Deben llegar como <Text code>image/webp</Text>. Los SVG se omiten (son vectoriales, no se comprimen).
                 </Paragraph>
                 {showDiag && <ThumbnailDiagnostics />}
             </Card>
