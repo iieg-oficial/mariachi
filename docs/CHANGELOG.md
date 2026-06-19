@@ -9,6 +9,16 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.42.1 / admin 1.42.1] - 2026-06-19
+
+### Fix: 429 en miniaturas del Acervo (gateway) + concurrencia acotada en el diagnóstico
+
+Al abrir buckets con muchas imágenes (p. ej. `portal`), algunas miniaturas devolvían `429`. La causa de fondo está en el **gateway-hub** (rate-limit bajo + `Cache-Control: no-store` que impedía cachear) y se corrige ahí (gateway-hub `1.27.2`: zona `acervo_thumb` + `location ^~ /api/administrador/acervo/thumb` con burst alto y sin `no-store`).
+
+Lado mariachi (defensa en profundidad): el diagnóstico de miniaturas (`acervo/components/ThumbnailDiagnostics`) hacía `Promise.all` de hasta 16×3 = 48 sondas simultáneas (los IIFE arrancaban al construir el arreglo). Ahora encola *thunks* y los corre con un **pool de concurrencia de 6**, evitando la ráfaga que disparaba el rate limit.
+
+---
+
 ## [api 1.42.0 / admin 1.42.0] - 2026-06-17
 
 ### Acervo: miniaturas WebP on-the-fly con caché + sección de documentación

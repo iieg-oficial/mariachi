@@ -7,6 +7,7 @@ const { Text } = Typography;
 
 const MAX_ITEMS = 16;
 const WIDTHS = [120, 400, 1280];
+const CONCURRENCY = 6;
 
 const Box = ({ label, src }) => (
     <div style={{ textAlign: 'center' }}>
@@ -62,7 +63,7 @@ export default function ThumbnailDiagnostics() {
             setImages(imgs);
             const jobs = [];
             imgs.forEach((f) => WIDTHS.forEach((w) => {
-                jobs.push((async () => {
+                jobs.push(async () => {
                     const url = acervoService.thumbVariant(f, w);
                     try {
                         const res = await fetch(url, { credentials: 'include' });
@@ -79,9 +80,18 @@ export default function ThumbnailDiagnostics() {
                     } catch {
                         setProbes((p) => ({ ...p, [`${f.id}|${w}`]: { status: 'error' } }));
                     }
-                })());
+                });
             }));
-            await Promise.all(jobs);
+            // Pool de concurrencia: corre como máximo CONCURRENCY sondas a la vez
+            // para no disparar el rate limit del gateway con buckets grandes.
+            let cursor = 0;
+            const runNext = async () => {
+                while (cursor < jobs.length) {
+                    const job = jobs[cursor++];
+                    await job();
+                }
+            };
+            await Promise.all(Array.from({ length: Math.min(CONCURRENCY, jobs.length) }, runNext));
         } finally {
             setLoading(false);
         }
