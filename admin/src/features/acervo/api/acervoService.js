@@ -130,6 +130,14 @@ export const uploadAcervoFile = async (file, options = {}) => {
             formData.append('alt', options.alt);
         }
 
+        if (options.useUuid) {
+            formData.append('use_uuid', 'true');
+        }
+
+        if (options.onConflict) {
+            formData.append('on_conflict', options.onConflict);
+        }
+
         const timeout = Math.max(300000, Math.ceil((file.size || 0) / 1024) * 2);
 
         const response = await api.post('/acervo', formData, {
@@ -293,6 +301,12 @@ export const initChunkedUpload = async (fileName, fileType, fileSize, options) =
     formData.append('alt', options.alt || '');
     formData.append('total_size', String(fileSize));
     formData.append('total_chunks', String(totalChunks));
+    if (options.useUuid) {
+        formData.append('use_uuid', 'true');
+    }
+    if (options.onConflict) {
+        formData.append('on_conflict', options.onConflict);
+    }
 
     const response = await api.post('/acervo/chunked/init', formData, {
         timeout: 30000,
@@ -319,6 +333,25 @@ export const completeChunkedUpload = async (sessionId) => {
         timeout: 60000,
     });
     return response.data;
+};
+
+const ACERVO_PUBLIC_BASE = (import.meta.env.VITE_ACERVO_PUBLIC_URL || '').replace(/\/+$/, '');
+
+export const toPublicUrl = (url) => {
+    if (!url) return url;
+    if (/^https?:\/\//i.test(url)) return url;
+    const base = ACERVO_PUBLIC_BASE || (typeof window !== 'undefined' ? window.location.origin : '');
+    if (!base) return url;
+    return `${base}${url.startsWith('/') ? '' : '/'}${url}`;
+};
+
+// Deriva una variante de la miniatura con otro ancho a partir del `thumbnail`
+// serializado (que ya trae `?w=400`). Para SVG/no-imagen (sin `?w=`) o sin
+// thumbnail, devuelve la miniatura tal cual.
+export const thumbVariant = (file, width) => {
+    const thumb = file?.thumbnail;
+    if (!thumb) return file?.url;
+    return /[?&]w=\d+/.test(thumb) ? thumb.replace(/([?&]w=)\d+/, `$1${width}`) : thumb;
 };
 
 export const formatFileSize = (bytes) => {
@@ -425,6 +458,8 @@ export default {
     initChunkedUpload,
     uploadChunk,
     completeChunkedUpload,
+    toPublicUrl,
+    thumbVariant,
 
     formatFileSize,
     getFileIcon,

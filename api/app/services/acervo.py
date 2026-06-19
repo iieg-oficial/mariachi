@@ -123,6 +123,15 @@ class AcervoClient:
             CopySource(self.bucket_name, source_name),
         )
 
+    def put_bytes(self, object_name: str, data: bytes, content_type: str) -> None:
+        self.client.put_object(
+            self.bucket_name,
+            object_name,
+            io.BytesIO(data),
+            len(data),
+            content_type=content_type,
+        )
+
     def put_empty_object(self, object_name: str) -> None:
         self.client.put_object(
             self.bucket_name,

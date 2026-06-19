@@ -1,9 +1,13 @@
 import io
+import re
+import unicodedata
 import zipfile
 from collections.abc import Iterator
 from typing import Callable
 
 from fastapi import HTTPException, status
+from sqlalchemy import or_
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.deps import ADMIN_ROLE
@@ -12,12 +16,79 @@ from app.models.acervo import AcervoFile, AcervoFolder
 from app.models.acervo_bucket import AcervoBucket
 from app.models.project import UserProject
 from app.models.user import Usuario
+from app.services import acervo_thumbnails
 from app.services.acervo import AcervoClient
 
 ZIP_MAX_BYTES = 500 * 1024 * 1024  # 500 MB
 _ZIP_CHUNK = 64 * 1024
 
 FOLDER_PLACEHOLDER = ".keep"
+
+_SAFE_NAME_RE = re.compile(r"[^a-zA-Z0-9._-]+")
+
+
+def split_ext(filename: str) -> tuple[str, str]:
+    if "." in filename:
+        base, ext = filename.rsplit(".", 1)
+        return base, f".{ext}"
+    return filename, ""
+
+
+def sanitize_filename(filename: str) -> str:
+    raw = (filename or "").rsplit("/", 1)[-1].rsplit("\\", 1)[-1]
+    base, ext = split_ext(raw)
+    base = unicodedata.normalize("NFKD", base).encode("ascii", "ignore").decode("ascii")
+    base = _SAFE_NAME_RE.sub("-", base).strip("-._").lower()
+    if not base:
+        base = "archivo"
+    ext = unicodedata.normalize("NFKD", ext).encode("ascii", "ignore").decode("ascii")
+    ext = _SAFE_NAME_RE.sub("", ext).lower()
+    return f"{base}{ext}" if ext else base
+
+
+def resolve_upload_name(
+    db: Session,
+    bucket_id: int,
+    folder_path: str,
+    clean_folder: str,
+    *,
+    original_name: str,
+    key_basename: str,
+    on_conflict: str,
+) -> tuple[str, str]:
+    """Resuelve el `original_name` y el object key definitivos de una subida.
+
+    Si ya existe un archivo con el mismo `original_name` o el mismo object key en
+    la carpeta, se aplica `on_conflict`: 'reject' lanza 409; 'rename' agrega un
+    sufijo consecutivo (`nombre-2.ext`) hasta encontrar uno libre.
+    """
+    base_o, ext_o = split_ext(original_name)
+    base_k, ext_k = split_ext(key_basename)
+    n = 1
+    while True:
+        cand_original = original_name if n == 1 else f"{base_o}-{n}{ext_o}"
+        cand_key_name = key_basename if n == 1 else f"{base_k}-{n}{ext_k}"
+        cand_key = f"{clean_folder}/{cand_key_name}" if clean_folder else cand_key_name
+        exists = (
+            db.query(AcervoFile)
+            .filter(
+                AcervoFile.bucket_id == bucket_id,
+                AcervoFile.folder == folder_path,
+                or_(
+                    AcervoFile.original_name == cand_original,
+                    AcervoFile.name == cand_key,
+                ),
+            )
+            .first()
+        )
+        if not exists:
+            return cand_original, cand_key
+        if on_conflict != "rename":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Ya existe '{original_name}' en esta carpeta",
+            )
+        n += 1
 
 
 def normalize_folder_path(parent: str | None, name: str) -> tuple[str, str, str | None]:
@@ -141,6 +212,24 @@ def resolve_bucket_or_403(bucket_id: int, current_user: Usuario, db: Session) ->
     return bucket
 
 
+def thumbnail_for(bucket_id: int | None, object_name: str, content_type: str | None, url: str | None) -> str | None:
+    """Deriva la URL de miniatura según el tipo (no usa el valor persistido):
+
+    - raster (PNG/JPEG/GIF/WebP) → endpoint on-the-fly que devuelve WebP escalado
+    - SVG → la propia URL (vectorial, no se rasteriza)
+    - resto → sin miniatura
+    """
+    ctype = (content_type or "").lower()
+    if ctype == "image/svg+xml":
+        return url
+    if bucket_id is not None and acervo_thumbnails.is_raster_image(ctype):
+        return (
+            f"/api/administrador/acervo/thumb/{bucket_id}/{object_name}"
+            f"?w={acervo_thumbnails.DEFAULT_WIDTH}"
+        )
+    return None
+
+
 def serialize_acervo_file(item: AcervoFile) -> dict:
     return {
         "id": str(item.id),
@@ -150,7 +239,7 @@ def serialize_acervo_file(item: AcervoFile) -> dict:
         "type": item.type,
         "size": item.size,
         "url": item.url,
-        "thumbnail": item.thumbnail,
+        "thumbnail": thumbnail_for(item.bucket_id, item.name, item.type, item.url),
         "folder": item.folder,
         "uploadedBy": str(item.uploaded_by),
         "uploadedByName": item.uploaded_by_user.name if item.uploaded_by_user else "Unknown",
@@ -193,7 +282,7 @@ def serialize_bucket_only(bucket_id: int, obj: dict) -> dict:
         "type": mime,
         "size": obj.get("size", 0),
         "url": obj.get("url"),
-        "thumbnail": obj.get("url") if mime.startswith("image/") else None,
+        "thumbnail": thumbnail_for(bucket_id, name, mime, obj.get("url")),
         "folder": folder_from_path(name),
         "uploadedBy": None,
         "uploadedByName": "—",
@@ -297,6 +386,14 @@ def ensure_folder_exists(db: Session, bucket_id: int, clean_folder: str) -> str:
             path=folder_path,
             parent=None,
         )
-        db.add(new_folder)
-        db.flush()
+        # Varias subidas concurrentes a una carpeta nueva pueden intentar crear
+        # la misma fila (uq_acervo_folders_bucket_path). Se aisla el INSERT en un
+        # savepoint: si otra request ya la creo, se ignora la colision sin
+        # abortar la transaccion de la subida en curso.
+        try:
+            with db.begin_nested():
+                db.add(new_folder)
+                db.flush()
+        except IntegrityError:
+            pass
     return folder_path

@@ -9,6 +9,105 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.43.0 / admin 1.43.0] - 2026-06-19
+
+### Recursos GeoServer: carga múltiple y de archivos grandes (chunks)
+
+La página **Recursos GeoServer** (`/mapalab/recursos-geoserver`) ahora permite subir **varios archivos a la vez** y **archivos grandes**, replicando el patrón robusto del Acervo.
+
+#### Backend
+
+- Nuevo módulo `services/geoserver_chunked.py`: sesiones de subida por partes respaldadas en Redis. A diferencia del Acervo (multipart S3 de SeaweedFS), las partes se guardan como bytes en Redis porque GeoServer REST hace un único PUT. Chunk de 25 MB, tope total **200 MB**, TTL 2 h.
+- `GeoServerClient.put_style_file_streaming()`: PUT único a GeoServer consumiendo las partes en *streaming* (sin cargar el archivo completo en memoria), con `Content-Length` explícito y `timeout=None`.
+- Tres endpoints nuevos en `routes/geoserver.py` (editor de proyecto + CSRF):
+  - `POST /geoserver/files/chunked/init` — valida nombre/extensión/workspace/tamaño y crea la sesión.
+  - `POST /geoserver/files/chunked/{session_id}/part` — guarda una parte (rate limit dedicado `geoserver_chunk`, 600/min).
+  - `POST /geoserver/files/chunked/{session_id}/complete` — valida partes completas, ensambla en *streaming* hacia GeoServer y limpia la sesión.
+- El endpoint single (`POST /geoserver/files`, cap 5 MB) queda intacto: archivos ≤5 MB siguen por ahí, los mayores se trocean. Trocear evita límites de body del `gateway-hub` y timeouts, igual que el Acervo.
+
+#### Frontend
+
+- `geoserverFilesService`: `initChunkedGeoserverUpload` / `uploadGeoserverChunk` / `completeChunkedGeoserverUpload` + `uploadGeoserverFileSmart()`, que elige single vs chunked por tamaño (umbral 5 MB), reintenta ante `429` respetando `Retry-After` y reporta progreso.
+- `FileUploadModal` reescrito: dragger `multiple`, lista de archivos con tamaño/estado/progreso por archivo, normalización automática de nombres, validación por archivo (extensión + tope 200 MB) y subida secuencial con resumen.
+
+### Diagnóstico de miniaturas: omitir SVG (solo raster)
+
+El diagnóstico de miniaturas en vivo (`/mariachi/documentacion`, tab Acervo) listaba todas las imágenes, incluidos los SVG. Como los SVG son vectoriales y se sirven tal cual (no se comprimen a WebP), no aportan nada a una prueba de compresión. Ahora el filtro de `ThumbnailDiagnostics` excluye `image/svg+xml` y solo evalúa imágenes raster (PNG/JPG/GIF/WebP); el texto de la sección lo aclara.
+
+---
+
+## [api 1.42.1 / admin 1.42.1] - 2026-06-19
+
+### Fix: 429 en miniaturas del Acervo (gateway) + concurrencia acotada en el diagnóstico
+
+Al abrir buckets con muchas imágenes (p. ej. `portal`), algunas miniaturas devolvían `429`. La causa de fondo está en el **gateway-hub** (rate-limit bajo + `Cache-Control: no-store` que impedía cachear) y se corrige ahí (gateway-hub `1.27.2`: zona `acervo_thumb` + `location ^~ /api/administrador/acervo/thumb` con burst alto y sin `no-store`).
+
+Lado mariachi (defensa en profundidad): el diagnóstico de miniaturas (`acervo/components/ThumbnailDiagnostics`) hacía `Promise.all` de hasta 16×3 = 48 sondas simultáneas (los IIFE arrancaban al construir el arreglo). Ahora encola *thunks* y los corre con un **pool de concurrencia de 6**, evitando la ráfaga que disparaba el rate limit.
+
+---
+
+## [api 1.42.0 / admin 1.42.0] - 2026-06-17
+
+### Acervo: miniaturas WebP on-the-fly con caché + sección de documentación
+
+Las imágenes del Acervo dejan de descargarse completas para mostrarse en miniatura: se generan al vuelo, en WebP, y se cachean.
+
+#### Miniaturas on-the-fly (backend)
+
+- Dependencia **Pillow** (`pillow>=10,<12`) → **requiere reconstruir la imagen `mariachi-api`**.
+- Módulo `services/acervo_thumbnails.py`: resize a WebP q80, anchos permitidos `{120, 400, 1280}`, guarda anti decompression-bomb (`MAX_IMAGE_PIXELS`).
+- Endpoint `GET /acervo/thumb/{bucket_id}/{path}?w=`: el SVG se sirve tal cual (vectorial); para raster busca en caché `.thumbs/{path}/{etag}-w{w}.webp`, si no existe la genera, la guarda y la sirve con `Cache-Control: immutable` + `ETag`. El ETag del original va en la ruta → caché auto-invalidante (si el original cambia, su ETag cambia y se regenera).
+- `.thumbs/` se agrega a los prefijos ocultos globales (`bucket_policies.GLOBAL_HIDDEN_PREFIXES`), no aparece en el listado del Acervo.
+- El campo `thumbnail` ahora se **deriva** por tipo en la serialización (cubre archivos ya existentes, sin migración): raster → endpoint, SVG → la URL, resto → `null`.
+- **Cleanup** dirigido (`delete_prefix(".thumbs/{path}/")`) al borrar archivo, borrar bucket-only, borrar carpeta/directorio y mover. Las variantes huérfanas se limpian en el mismo punto donde ya se toca SeaweedFS.
+- Nuevo `AcervoClient.put_bytes()`. 5 tests nuevos (genera WebP, SVG passthrough, requiere auth, serialización por tipo, cleanup al borrar).
+
+#### Frontend
+
+- Grid pide `w=400`, lista `w=120` y la previsualización muestra `w=1280` con botón **"Ver original"** (helper `acervoService.thumbVariant`). La galería ya no baja el archivo completo.
+
+#### Documentación
+
+- Nueva sección **Acervo** en `/mariachi/documentacion` (tab) con instrucciones concisas de todas las herramientas (navegación, subir, acciones, carpetas, miniaturas/URLs), al estilo de MCP/Telemetría.
+- Incluye un **diagnóstico de miniaturas en vivo** (componente `acervo/components/ThumbnailDiagnostics`): por cada imagen compara original vs `w=120/400/1280`, con peso de cada variante, % respecto al original y la URL copiable de cada tipo.
+
+---
+
+## [api 1.41.0 / admin 1.41.0] - 2026-06-17
+
+### Acervo: nombre original del archivo por defecto, UUID opcional y resolución de conflictos en carga masiva
+
+Cambio en la convención de nombrado de las subidas al Acervo y mejoras en el flujo de carga masiva.
+
+#### Nombre del archivo (backend)
+
+- Por defecto el object key ahora **conserva el nombre original** del archivo (saneado), en vez de un UUID aleatorio. URLs legibles tipo `/acervo/iieg/iconos/marcador-mapa.svg`.
+- Nuevo helper `sanitize_filename()` en `services/acervo_file_service.py`: normaliza acentos (NFKD→ASCII), pasa a minúsculas, reemplaza caracteres inseguros por `-`, bloquea path-traversal (`../`) y colapsa la extensión a minúsculas. El `original_name` mostrado coincide con la ruta.
+- `POST /acervo` y `POST /acervo/chunked/init` aceptan `use_uuid` (`Form`, default `false`): si se activa, se vuelve al nombre aleatorio (UUID) conservando el `original_name` real. Útil para evitar problemas de caché del navegador al reemplazar o no exponer el nombre real.
+
+#### Resolución de conflictos
+
+- `POST /acervo` y chunked aceptan `on_conflict` (`reject` | `rename`, default `reject`). Nuevo helper `resolve_upload_name()`: con `rename` agrega un sufijo consecutivo (`nombre-2.ext`, `nombre-3.ext`) hasta encontrar uno libre, comparando contra `original_name` y `name` en la carpeta.
+- En chunked la validación de duplicado se movió a `init` (rechaza/resuelve **antes** de subir los chunks, no en `complete`).
+
+#### Frontend (carga masiva)
+
+- Modal de subida: nuevo checkbox **"Usar identificador único (UUID)"** (desmarcado por defecto) con tooltip explicando el beneficio.
+- Las colisiones (`409`) ya no detienen el lote: se acumulan y, al terminar, un **modal de resolución** lista los archivos con opción **Renombrar** (consecutivo) u **Omitir** por archivo, más botones globales. "Renombrar" re-sube con `on_conflict=rename`.
+- Las URLs que se **copian** (acciones e ítem) y la mostrada en la previsualización ahora incluyen el **dominio** (`toPublicUrl()`: `VITE_ACERVO_PUBLIC_URL` con fallback a `window.location.origin`).
+- Tooltips descriptivos en los botones de acciones de cada ítem (lista y grid).
+
+#### Fix: carga masiva no refrescaba el listado y mostraba error
+
+- **Frontend**: el contador del lote podía llegar a 0 entre oleadas (el drag & drop encolaba subidas después de `await arrayBuffer`), disparando un refresco prematuro y mensajes confusos. Ahora el drag & drop lee todos los buffers y encola las subidas en un solo paso síncrono, y el cierre del lote se difiere 200 ms para garantizar un único refresco fiable al terminar.
+- **Backend**: `ensure_folder_exists()` aísla el `INSERT` de carpeta en un savepoint (`begin_nested`) y captura `IntegrityError` — varias subidas concurrentes a una carpeta nueva (`uq_acervo_folders_bucket_path`) ya no abortan con 500.
+
+#### Tests
+
+- `tests/test_acervo.py`: `sanitize_filename` parametrizado, key = nombre original, `use_uuid` → key aleatorio, `on_conflict=rename` → consecutivo.
+
+---
+
 ## [api 1.40.0 / admin 1.40.0] - 2026-06-15
 
 ### Rediseño de la pantalla de Usuarios, roles por proyecto y dependencia SIEEJ para externos

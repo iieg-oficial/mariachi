@@ -2,7 +2,7 @@
 
 > Documento de referencia completo. Leer este archivo proporciona contexto del monorepo sin explorar el codebase.
 
-**Versión:** ver `api/pyproject.toml` (la lee `api/app/core/version.py::get_app_version()`; endpoint en vivo `GET /ontoy`). · **Última actualización:** 2026-06-09
+**Versión:** ver `api/pyproject.toml` (la lee `api/app/core/version.py::get_app_version()`; endpoint en vivo `GET /ontoy`). · **Última actualización:** 2026-06-19
 
 
 ---
@@ -611,6 +611,10 @@ Implicaciones para el código y la configuración:
     - **Subida por chunks** (> 500 MB): `POST /acervo/chunked/init` → `POST /acervo/chunked/{session}/part` (chunks de 50 MB, secuenciales) → `POST /acervo/chunked/{session}/complete`. Usa el API multipart nativo de SeaweedFS (S3 `CreateMultipartUpload` / `UploadPart` / `CompleteMultipartUpload`). Sesiones en Redis con TTL de 2 h.
     - **Cadena de proxy**: gateway-hub `client_max_body_size 1G` + `proxy_request_buffering off` en `location ^~ /api/administrador/acervo`. mariachi-nginx idem con timeouts 600s. Gunicorn `--timeout 300`.
 - **Drag & drop de archivos en Acervo** (v1.38.2+): los `File` del drop se leen de inmediato (`arrayBuffer`) y se reconstruyen en memoria antes de encolarlos — los arrastres vía document portal/GVFS en Linux caducan en segundos (`net::ERR_FILE_NOT_FOUND`). Archivos > 100 MB no se bufferizan. **Limitación conocida**: navegadores Chromium instalados como **snap** (sandbox AppArmor) nunca pueden leer los archivos arrastrados (el picker sí funciona, va por portal XDG); el frontend lo detecta empíricamente (lote completo ilegible → `localStorage mariachi.acervo.dndUnsupported`), oculta el overlay de arrastre y se auto-rehabilita si un drop posterior entrega archivos legibles. No es detectable por user-agent ni evitable con otra librería (dnd-kit es drag interno de DOM, no recibe archivos del SO).
+- **Nombrado del object key** (v1.41.0+): por defecto el key **conserva el nombre original** saneado (`sanitize_filename` en `acervo_file_service.py`: NFKD→ASCII, minúsculas, caracteres inseguros→`-`, bloquea `../`); el `original_name` mostrado coincide con la ruta. El modal ofrece un checkbox `use_uuid` para volver al UUID aleatorio (evita caché obsoleta al reemplazar / no expone el nombre real). `POST /acervo` y `/chunked/init` aceptan `use_uuid` y `on_conflict` (`reject`|`rename`); `resolve_upload_name()` resuelve el sufijo consecutivo (`nombre-2.ext`) cuando `rename`. En chunked la validación de duplicado vive en `init` (antes de subir los chunks).
+- **Carga masiva** (v1.41.0+): las colisiones `409` no detienen el lote; se acumulan y al terminar un modal ofrece renombrar/omitir por archivo. El cierre del lote se difiere 200 ms y el drag & drop encola las subidas en un solo paso síncrono para garantizar **un único refresco** del listado al terminar (antes el contador podía tocar 0 entre oleadas → refresco prematuro). `ensure_folder_exists()` crea la carpeta en un savepoint con captura de `IntegrityError` para tolerar subidas concurrentes a una carpeta nueva. Las URLs copiadas/previsualizadas incluyen el dominio vía `toPublicUrl()` (`VITE_ACERVO_PUBLIC_URL` → fallback `window.location.origin`).
+- **Miniaturas on-the-fly** (v1.42.0+): `GET /acervo/thumb/{bucket_id}/{path}?w=` genera WebP escalado con **Pillow** (anchos `{120,400,1280}`, q80) y lo cachea en SeaweedFS bajo `.thumbs/{path}/{etag}-w{w}.webp` (ETag en la ruta → auto-invalidante). El SVG se sirve tal cual. `.thumbs/` es prefijo oculto global (`bucket_policies.GLOBAL_HIDDEN_PREFIXES`). El campo `thumbnail` se **deriva** por tipo en `serialize_acervo_file` (raster→endpoint, svg→url, resto→null), sin migración. Cleanup dirigido (`delete_prefix(".thumbs/{path}/")`) en borrar/mover/borrar-carpeta. Front: grid `w=400`, lista `w=120`, preview `w=1280` + "Ver original" (`acervoService.thumbVariant`). **Despliegue:** requiere rebuild de la imagen `mariachi-api` (dep Pillow). Guía de uso y diagnóstico en vivo en `/mariachi/documentacion` (tab Acervo).
+- **429 en miniaturas — fix en el gateway** (v1.42.1+): la ráfaga de miniaturas en buckets grandes (p. ej. `portal`) chocaba con el rate limit del **gateway-hub** y el `Cache-Control: no-store` de la location `^~ /api/administrador/acervo` impedía cachear (cada render repetía la ráfaga). Fix en `gateway-hub` (`1.27.2`): zona `acervo_thumb` (30 r/s) + `location ^~ /api/administrador/acervo/thumb` (burst 120, **sin** `no-store`, deja pasar el `immutable` del thumbnail). En mariachi, el diagnóstico (`ThumbnailDiagnostics`) acota las sondas a un **pool de concurrencia de 6** (antes 48 simultáneas). Requiere redeploy del gateway-hub (`make deploy`).
 
 En **dev** (`docker-compose.dev.yml`) no hay gateway: Vite expone `:3011`, API expone `:8010`. El admin se conecta directo al API por `localhost`. La regla `--proxy-headers` con `--forwarded-allow-ips='*'` sigue activa pero como nadie envía headers, no afecta.
 
@@ -826,6 +830,26 @@ Este repo se integra con otros servicios internos vecinos (CMS, visor de mapas, 
 ---
 
 ## Cambios recientes
+
+### 2026-06-19 (admin v1.43.0 + api v1.43.0) — Recursos GeoServer: carga múltiple y por chunks
+
+La página **Recursos GeoServer** (`/mapalab/recursos-geoserver`, feature `mapalab-geoserver-files`) ahora sube **varios archivos a la vez** y **archivos grandes** (hasta 200 MB) replicando el patrón del Acervo. Como GeoServer REST hace un único PUT (no multipart S3), las partes se acumulan en Redis (`services/geoserver_chunked.py`, chunks de 25 MB, TTL 2 h) y al completar se ensamblan en *streaming* hacia GeoServer (`GeoServerClient.put_style_file_streaming`). Endpoints nuevos: `POST /geoserver/files/chunked/{init,/{session}/part,/{session}/complete}` (rate limit `geoserver_chunk`). El endpoint single (`POST /geoserver/files`, ≤5 MB) queda intacto; el front (`uploadGeoserverFileSmart`) elige single vs chunked por tamaño, reintenta ante `429` y reporta progreso por archivo. Detalle en CHANGELOG §[api 1.43.0 / admin 1.43.0].
+
+### 2026-06-19 (admin v1.43.0 + api v1.43.0) — Diagnóstico de miniaturas: omitir SVG
+
+El diagnóstico en vivo del tab Acervo de `/mariachi/documentacion` ahora **excluye los SVG** y solo evalúa imágenes raster (PNG/JPG/GIF/WebP), que es lo que de verdad se comprime a WebP; el SVG se sirve tal cual. Cambio acotado a `ThumbnailDiagnostics` + texto de la sección. Detalle en CHANGELOG §[api 1.43.0 / admin 1.43.0].
+
+### 2026-06-19 (admin v1.42.1 + api v1.42.1) — Fix 429 en miniaturas del Acervo (gateway) + concurrencia acotada
+
+Al abrir buckets con muchas imágenes (`portal`) algunas miniaturas daban `429`. Causa de fondo en **gateway-hub** (rate-limit bajo de la zona `api` + `Cache-Control: no-store` que impedía cachear → cada render repetía la ráfaga); corregido en gateway-hub `1.27.2` con zona `acervo_thumb` (30 r/s) y `location ^~ /api/administrador/acervo/thumb` (burst 120, sin `no-store`). En mariachi, el diagnóstico de miniaturas pasa a un **pool de concurrencia de 6** (antes hacía hasta 48 sondas simultáneas). Requiere redeploy del gateway-hub. Detalle en CHANGELOG §[api 1.42.1 / admin 1.42.1].
+
+### 2026-06-17 (admin v1.42.0 + api v1.42.0) — Acervo: miniaturas WebP on-the-fly + sección de documentación
+
+Las imágenes del Acervo ya no se descargan completas para mostrarse: `GET /acervo/thumb/{bucket_id}/{path}?w=` genera miniaturas **WebP** con Pillow (anchos `{120,400,1280}`) y las cachea en SeaweedFS bajo `.thumbs/{path}/{etag}-w{w}.webp` (ETag en la ruta → auto-invalidante; prefijo oculto global). El SVG se sirve tal cual. El `thumbnail` se deriva por tipo en la serialización (sin migración) y se limpia la caché al borrar/mover. Front: grid `w=400`, lista `w=120`, preview `w=1280` + "Ver original". Nueva sección **Acervo** en `/mariachi/documentacion` con guía de herramientas y un **diagnóstico de miniaturas en vivo** (peso por variante, % vs original, URL copiable). **Requiere rebuild de `mariachi-api`** (dep Pillow). Detalle en CHANGELOG §[api 1.42.0 / admin 1.42.0].
+
+### 2026-06-17 (admin v1.41.0 + api v1.41.0) — Acervo: nombre original por defecto, UUID opcional y carga masiva robusta
+
+Las subidas al Acervo conservan por defecto el **nombre original** saneado en el object key (URLs legibles); un checkbox `use_uuid` en el modal permite volver al UUID aleatorio. `POST /acervo` y `/chunked/init` aceptan `use_uuid` y `on_conflict` (`reject`|`rename`); con `rename` se agrega sufijo consecutivo (`nombre-2.ext`) vía `resolve_upload_name()`. En carga masiva las colisiones `409` ya no detienen el lote: se acumulan y al terminar un modal ofrece **renombrar u omitir** por archivo. Fix del refresco: el cierre del lote se difiere 200 ms y el drag & drop encola síncronamente (antes el contador tocaba 0 entre oleadas → refresco prematuro + error); `ensure_folder_exists()` usa savepoint + `IntegrityError` para subidas concurrentes a carpeta nueva. Las URLs copiadas/previsualizadas incluyen el dominio (`toPublicUrl()`). Detalle en CHANGELOG §[api 1.41.0 / admin 1.41.0].
 
 ### 2026-06-01 (admin v1.24.0 + api v1.23.0) — Ocultar capas dentro de un evento sin quitarlas
 

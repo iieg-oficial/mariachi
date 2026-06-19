@@ -14,6 +14,10 @@ escritura de paths arbitrarios. La lista coincide con la documentada en
 
 from __future__ import annotations
 
+# Prefijos ocultos en TODOS los buckets (independiente del bucket).
+# `.thumbs/` guarda la caché de miniaturas on-the-fly del Acervo.
+GLOBAL_HIDDEN_PREFIXES: tuple[str, ...] = (".thumbs/",)
+
 HIDDEN_PREFIXES_BY_BUCKET: dict[str, tuple[str, ...]] = {
     "mariachi": ("reportes/",),
 }
@@ -30,4 +34,4 @@ KNOWN_ACERVO_BUCKETS: frozenset[str] = frozenset({
 
 
 def get_hidden_prefixes(acervo_bucket: str) -> tuple[str, ...]:
-    return HIDDEN_PREFIXES_BY_BUCKET.get(acervo_bucket, ())
+    return GLOBAL_HIDDEN_PREFIXES + HIDDEN_PREFIXES_BY_BUCKET.get(acervo_bucket, ())

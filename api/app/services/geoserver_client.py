@@ -371,6 +371,24 @@ class GeoServerClient:
                     f"upload fallido {base}/{name} (HTTP {r.status_code}): {r.text[:200]}"
                 )
 
+    def put_style_file_streaming(
+        self,
+        name: str,
+        content,
+        content_type: str,
+        content_length: int,
+        workspace: str | None = None,
+    ) -> None:
+        base = self._styles_base(workspace)
+        url = f"{self._base_url}/rest/{base}/{name.lstrip('/')}"
+        headers = {"Content-Type": content_type, "Content-Length": str(content_length)}
+        with httpx.Client(auth=self._auth, timeout=None) as c:
+            r = c.put(url, content=content, headers=headers)
+            if r.status_code not in (200, 201):
+                raise GeoServerError(
+                    f"upload fallido {base}/{name} (HTTP {r.status_code}): {r.text[:200]}"
+                )
+
     def delete_style_file(self, name: str, workspace: str | None = None) -> bool:
         base = self._styles_base(workspace)
         url = f"{self._base_url}/rest/{base}/{name.lstrip('/')}"
