@@ -432,7 +432,7 @@ export default function GeoserverFilesPage() {
                             onClick={() => setUploadOpen(true)}
                             disabled={isSearchMode}
                         >
-                            Subir archivo
+                            Subir archivos
                         </Button>
                     </Space>
                 </div>
@@ -481,8 +481,9 @@ export default function GeoserverFilesPage() {
                 workspace={workspace}
                 destinationLabel={destinationLabel}
                 onClose={() => setUploadOpen(false)}
-                onUploaded={(result) => {
-                    setPendingFolders((prev) => prev.filter((p) => !result.name.startsWith(`${p}/`)));
+                onUploaded={(results) => {
+                    const names = (results || []).map((r) => r.name);
+                    setPendingFolders((prev) => prev.filter((p) => !names.some((n) => n.startsWith(`${p}/`))));
                     reload();
                 }}
             />

@@ -2,7 +2,7 @@
 
 > Documento de referencia completo. Leer este archivo proporciona contexto del monorepo sin explorar el codebase.
 
-**Versión:** ver `api/pyproject.toml` (la lee `api/app/core/version.py::get_app_version()`; endpoint en vivo `GET /ontoy`). · **Última actualización:** 2026-06-17
+**Versión:** ver `api/pyproject.toml` (la lee `api/app/core/version.py::get_app_version()`; endpoint en vivo `GET /ontoy`). · **Última actualización:** 2026-06-19
 
 
 ---
@@ -830,6 +830,10 @@ Este repo se integra con otros servicios internos vecinos (CMS, visor de mapas, 
 ---
 
 ## Cambios recientes
+
+### 2026-06-19 (admin v1.43.0 + api v1.43.0) — Recursos GeoServer: carga múltiple y por chunks
+
+La página **Recursos GeoServer** (`/mapalab/recursos-geoserver`, feature `mapalab-geoserver-files`) ahora sube **varios archivos a la vez** y **archivos grandes** (hasta 200 MB) replicando el patrón del Acervo. Como GeoServer REST hace un único PUT (no multipart S3), las partes se acumulan en Redis (`services/geoserver_chunked.py`, chunks de 25 MB, TTL 2 h) y al completar se ensamblan en *streaming* hacia GeoServer (`GeoServerClient.put_style_file_streaming`). Endpoints nuevos: `POST /geoserver/files/chunked/{init,/{session}/part,/{session}/complete}` (rate limit `geoserver_chunk`). El endpoint single (`POST /geoserver/files`, ≤5 MB) queda intacto; el front (`uploadGeoserverFileSmart`) elige single vs chunked por tamaño, reintenta ante `429` y reporta progreso por archivo. Detalle en CHANGELOG §[api 1.43.0 / admin 1.43.0].
 
 ### 2026-06-19 (admin v1.43.0 + api v1.43.0) — Diagnóstico de miniaturas: omitir SVG
 

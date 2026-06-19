@@ -11,6 +11,25 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ## [api 1.43.0 / admin 1.43.0] - 2026-06-19
 
+### Recursos GeoServer: carga múltiple y de archivos grandes (chunks)
+
+La página **Recursos GeoServer** (`/mapalab/recursos-geoserver`) ahora permite subir **varios archivos a la vez** y **archivos grandes**, replicando el patrón robusto del Acervo.
+
+#### Backend
+
+- Nuevo módulo `services/geoserver_chunked.py`: sesiones de subida por partes respaldadas en Redis. A diferencia del Acervo (multipart S3 de SeaweedFS), las partes se guardan como bytes en Redis porque GeoServer REST hace un único PUT. Chunk de 25 MB, tope total **200 MB**, TTL 2 h.
+- `GeoServerClient.put_style_file_streaming()`: PUT único a GeoServer consumiendo las partes en *streaming* (sin cargar el archivo completo en memoria), con `Content-Length` explícito y `timeout=None`.
+- Tres endpoints nuevos en `routes/geoserver.py` (editor de proyecto + CSRF):
+  - `POST /geoserver/files/chunked/init` — valida nombre/extensión/workspace/tamaño y crea la sesión.
+  - `POST /geoserver/files/chunked/{session_id}/part` — guarda una parte (rate limit dedicado `geoserver_chunk`, 600/min).
+  - `POST /geoserver/files/chunked/{session_id}/complete` — valida partes completas, ensambla en *streaming* hacia GeoServer y limpia la sesión.
+- El endpoint single (`POST /geoserver/files`, cap 5 MB) queda intacto: archivos ≤5 MB siguen por ahí, los mayores se trocean. Trocear evita límites de body del `gateway-hub` y timeouts, igual que el Acervo.
+
+#### Frontend
+
+- `geoserverFilesService`: `initChunkedGeoserverUpload` / `uploadGeoserverChunk` / `completeChunkedGeoserverUpload` + `uploadGeoserverFileSmart()`, que elige single vs chunked por tamaño (umbral 5 MB), reintenta ante `429` respetando `Retry-After` y reporta progreso.
+- `FileUploadModal` reescrito: dragger `multiple`, lista de archivos con tamaño/estado/progreso por archivo, normalización automática de nombres, validación por archivo (extensión + tope 200 MB) y subida secuencial con resumen.
+
 ### Diagnóstico de miniaturas: omitir SVG (solo raster)
 
 El diagnóstico de miniaturas en vivo (`/mariachi/documentacion`, tab Acervo) listaba todas las imágenes, incluidos los SVG. Como los SVG son vectoriales y se sirven tal cual (no se comprimen a WebP), no aportan nada a una prueba de compresión. Ahora el filtro de `ThumbnailDiagnostics` excluye `image/svg+xml` y solo evalúa imágenes raster (PNG/JPG/GIF/WebP); el texto de la sección lo aclara.

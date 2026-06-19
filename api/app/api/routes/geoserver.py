@@ -35,6 +35,7 @@ _require_admin = require_role(['tetlamamakani'])
 _read_rate_limit = rate_limit(max_requests=120, window_seconds=60.0, scope='geoserver_read')
 _write_rate_limit = rate_limit(max_requests=60, window_seconds=60.0, scope='geoserver_write')
 _download_rate_limit = rate_limit(max_requests=600, window_seconds=60.0, scope='geoserver_download')
+_chunk_rate_limit = rate_limit(max_requests=600, window_seconds=60.0, scope='geoserver_chunk')
 
 
 def _resolve_workspace(db: Session, alias: str) -> Workspace:
@@ -554,6 +555,117 @@ async def upload_geoserver_file(
     except GeoServerError as exc:
         raise HTTPException(status_code=502, detail=str(exc))
     return _build_file_response(target_name, content_type, workspace=clean_ws)
+
+
+@router.post('/files/chunked/init', status_code=201)
+async def init_chunked_geoserver_upload(
+    name: str = Form(...),
+    workspace: str | None = Form(default=None),
+    content_type: str | None = Form(default=None),
+    total_size: int = Form(...),
+    total_chunks: int = Form(...),
+    current_user: Usuario = Depends(_require_project_editor),
+    _csrf: Usuario = Depends(verify_csrf),
+    _rl: Usuario = Depends(_write_rate_limit),
+):
+    from app.services.geoserver_chunked import (
+        CHUNK_SIZE,
+        MAX_TOTAL_BYTES,
+        create_session,
+    )
+
+    incr(COUNTER_GEOSERVER_CALLS)
+    clean_ws = _validate_workspace(workspace)
+    target_name, ext = _validate_file_name((name or '').strip())
+    if total_size <= 0:
+        raise HTTPException(status_code=400, detail="Tamano invalido")
+    if total_size > MAX_TOTAL_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Archivo excede el limite ({MAX_TOTAL_BYTES // (1024 * 1024)} MB)",
+        )
+    if total_chunks < 1:
+        raise HTTPException(status_code=400, detail="total_chunks invalido")
+
+    resolved_ct = content_type or _GEOSERVER_FILE_MIME_BY_EXT[ext]
+    session_id = create_session({
+        'name': target_name,
+        'workspace': clean_ws,
+        'content_type': resolved_ct,
+        'total_size': total_size,
+        'total_chunks': total_chunks,
+    })
+    return {'session_id': session_id, 'chunk_size': CHUNK_SIZE}
+
+
+@router.post('/files/chunked/{session_id}/part')
+async def upload_chunked_geoserver_part(
+    session_id: str,
+    chunk: UploadFile = File(...),
+    part_number: int = Form(...),
+    current_user: Usuario = Depends(_require_project_editor),
+    _csrf: Usuario = Depends(verify_csrf),
+    _rl: Usuario = Depends(_chunk_rate_limit),
+):
+    from app.services.geoserver_chunked import get_session, store_part
+
+    incr(COUNTER_GEOSERVER_CALLS)
+    session = get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Sesion de subida no encontrada o expirada")
+    if part_number < 1 or part_number > session['total_chunks']:
+        raise HTTPException(status_code=400, detail="part_number fuera de rango")
+
+    data = await chunk.read()
+    if not data:
+        raise HTTPException(status_code=400, detail="Parte vacia")
+    store_part(session_id, part_number, data)
+    return {'part_number': part_number}
+
+
+@router.post('/files/chunked/{session_id}/complete', response_model=GeoServerFileResponse, status_code=201)
+async def complete_chunked_geoserver_upload(
+    session_id: str,
+    current_user: Usuario = Depends(_require_project_editor),
+    _csrf: Usuario = Depends(verify_csrf),
+    _rl: Usuario = Depends(_write_rate_limit),
+):
+    from app.services.geoserver_chunked import (
+        delete_session,
+        get_session,
+        iter_parts,
+        missing_parts,
+    )
+
+    incr(COUNTER_GEOSERVER_CALLS)
+    session = get_session(session_id)
+    if not session:
+        raise HTTPException(status_code=404, detail="Sesion de subida no encontrada o expirada")
+
+    total_chunks = session['total_chunks']
+    missing = missing_parts(session_id, total_chunks)
+    if missing:
+        raise HTTPException(status_code=400, detail=f"Faltan partes: {missing}")
+
+    name = session['name']
+    clean_ws = session.get('workspace')
+    content_type = session['content_type']
+    total_size = session['total_size']
+
+    client = GeoServerClient()
+    try:
+        client.put_style_file_streaming(
+            name,
+            iter_parts(session_id, total_chunks),
+            content_type,
+            total_size,
+            workspace=clean_ws,
+        )
+    except GeoServerError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+
+    delete_session(session_id, total_chunks)
+    return _build_file_response(name, content_type, workspace=clean_ws)
 
 
 @router.get('/files/zip')
