@@ -22,6 +22,7 @@ import StatusBadge from '@shared/components/StatusBadge';
 import TemaIconField from '@features/mapalab-layers/components/layersEditor/TemaIconField';
 import BulkTagsDrawer from '@features/mapalab-layers/components/layersEditor/BulkTagsDrawer';
 import LayerNoticeSection from '@features/mapalab-layers/components/layersEditor/LayerNoticeSection';
+import LayerBadgeSection from '@features/mapalab-layers/components/layersEditor/LayerBadgeSection';
 import LayerHighlightField from '@features/mapalab-layers/components/layersEditor/LayerHighlightField';
 import LayerHighlightGlobalSettings from '@features/mapalab-layers/components/LayerHighlightGlobalSettings';
 import { useEventosList } from '@features/mapalab-eventos/hooks/useEventos';
@@ -239,6 +240,7 @@ export default function LayerEditPage() {
             iconUrl: data.iconUrl ?? data.icon_url ?? '',
             iconOverrides: data.iconOverrides ?? null,
             notice: data.notice ?? null,
+            badge: data.badge ?? null,
             highlightColor: data.highlightColor ?? data.highlight_color ?? null,
             highlightShape: data.highlightShape ?? data.highlight_shape ?? null,
         });
@@ -915,6 +917,21 @@ export default function LayerEditPage() {
                     </Form.Item>
                 );
             })(),
+        },
+        {
+            key: 'badge',
+            forceRender: true,
+            label: 'Badge',
+            children: (
+                <Form.Item
+                    name="badge"
+                    label={null}
+                    valuePropName="value"
+                    trigger="onChange"
+                >
+                    <LayerBadgeSection />
+                </Form.Item>
+            ),
         },
         {
             key: 'metadatos',

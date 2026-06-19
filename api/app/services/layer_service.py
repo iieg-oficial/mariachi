@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.core.time import utcnow
 from app.models.layer import InitialLayerOrder, Layer, Workspace
-from app.schemas.layer import LayerCreate, LayerNotice, LayerUpdate
+from app.schemas.layer import LayerBadge, LayerCreate, LayerNotice, LayerUpdate
 from app.services.geoserver_client import GeoServerClient, GeoServerError
 
 INFOBOX_TEMPLATES = {
@@ -122,6 +122,18 @@ def _normalize_notice(value: Any) -> dict[str, Any] | None:
     return LayerNotice.model_validate(value).model_dump(by_alias=True, exclude_none=True)
 
 
+def _normalize_badge(value: Any) -> dict[str, Any] | None:
+    if value is None:
+        return None
+    if isinstance(value, dict) and not value.get('enabled'):
+        return None
+    if isinstance(value, LayerBadge):
+        if not value.enabled:
+            return None
+        return value.model_dump(by_alias=True, exclude_none=True)
+    return LayerBadge.model_validate(value).model_dump(by_alias=True, exclude_none=True)
+
+
 def _payload_to_row(payload: dict[str, Any], updated_by: str | None) -> dict[str, Any]:
     row = {k: v for k, v in payload.items() if v is not None}
 
@@ -131,6 +143,9 @@ def _payload_to_row(payload: dict[str, Any], updated_by: str | None) -> dict[str
 
     if 'notice' in row:
         row['notice'] = _normalize_notice(row['notice'])
+
+    if 'badge' in row:
+        row['badge'] = _normalize_badge(row['badge'])
 
     row['updated_by'] = updated_by
     return row
@@ -347,6 +362,9 @@ def update_layer(
 
     if 'notice' in payload:
         payload['notice'] = _normalize_notice(payload['notice'])
+
+    if 'badge' in payload:
+        payload['badge'] = _normalize_badge(payload['badge'])
 
     for key, value in payload.items():
         setattr(layer, key, value)

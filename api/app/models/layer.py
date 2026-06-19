@@ -98,6 +98,7 @@ class Layer(DataEngineBase):
     icon_overrides = Column(JSONB, nullable=True)
 
     notice = Column(JSONB, nullable=True)
+    badge = Column(JSONB, nullable=True)
     highlight_color = Column(String(20), nullable=True)
     highlight_shape = Column(String(20), nullable=True)
 

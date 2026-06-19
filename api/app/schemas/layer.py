@@ -85,6 +85,36 @@ class LayerNotice(CamelCaseInput):
         raise ValueError("Fecha debe ser string ISO 8601")
 
 
+BadgeVariant = Literal["new", "updated", "soon", "custom"]
+
+
+class LayerBadge(CamelCaseInput):
+    enabled: bool = False
+    variant: BadgeVariant = "new"
+    label: str | None = Field(default=None, max_length=40)
+    color: str | None = Field(default=None, pattern=HEX_COLOR_PATTERN)
+    valid_from: str | None = Field(default=None, serialization_alias="validFrom")
+    valid_until: str | None = Field(default=None, serialization_alias="validUntil")
+
+    @field_validator("valid_from", "valid_until", mode="before")
+    @classmethod
+    def _validate_date(cls, v):
+        if v in (None, ""):
+            return None
+        if isinstance(v, str):
+            try:
+                datetime.fromisoformat(v)
+            except ValueError as exc:
+                raise ValueError("Fecha invalida (esperado ISO 8601 YYYY-MM-DD)") from exc
+            return v
+        raise ValueError("Fecha debe ser string ISO 8601")
+
+    @field_validator("color", mode="before")
+    @classmethod
+    def _empty_color_to_none(cls, v):
+        return None if v in (None, "") else v
+
+
 def _validate_slug(value: str | None) -> str | None:
     if value is None or value == "":
         return None
@@ -213,6 +243,7 @@ class LayerBase(CamelCaseInput):
     icon_overrides: dict | None = Field(default=None, serialization_alias="iconOverrides")
 
     notice: LayerNotice | None = None
+    badge: LayerBadge | None = None
     highlight_color: HighlightColor | None = Field(default=None, serialization_alias="highlightColor")
     highlight_shape: HighlightShape | None = Field(default=None, serialization_alias="highlightShape")
 
@@ -306,6 +337,7 @@ class LayerUpdate(CamelCaseInput):
     icon_overrides: dict | None = Field(default=None, serialization_alias="iconOverrides")
 
     notice: LayerNotice | None = None
+    badge: LayerBadge | None = None
     highlight_color: HighlightColor | None = Field(default=None, serialization_alias="highlightColor")
     highlight_shape: HighlightShape | None = Field(default=None, serialization_alias="highlightShape")
 
