@@ -9,6 +9,18 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.44.0 / admin 1.44.0] - 2026-06-29
+
+### Resaltado de capa al hacer clic: switch maestro en vez de opción escondida
+
+El editor de capas (`/mariachi/mapalab/layers`, tab **Apariencia**) presentaba el resaltado al hacer clic como dos columnas independientes (**Color** y **Forma**), con "Sin resaltar" enterrado como tercera opción de **Forma**. Era fácil tocar solo el Color creyendo que eso lo apagaba y dejar el resaltado activo sin querer.
+
+- `LayerHighlightField` ahora tiene un **switch maestro "Activar resaltado"**. Apagado fija `highlightShape='off'` de forma inequívoca y oculta Color/Forma; encendido revela Color + Forma (solo **Área + línea** / **Solo línea**, ya que "Sin resaltar" pasó a ser el switch).
+- El switch recuerda la última forma elegida: apagar y reencender restaura la selección previa en vez de resetear.
+- Sin cambios de backend ni de schema: `'off'` ya se persistía y el visor de MapaLab ya lo respetaba. (El que las capas con `off` siguieran resaltándose en el visor era un caché stale del árbol reconstruido por el cron de `dataengine-jobs`, corregido por separado en ese repo.)
+
+---
+
 ## [api 1.43.0 / admin 1.43.0] - 2026-06-19
 
 ### Recursos GeoServer: carga múltiple y de archivos grandes (chunks)
