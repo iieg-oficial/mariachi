@@ -9,6 +9,23 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.45.0 / admin 1.45.0] - 2026-06-30
+
+### Toggle "Servir por tiles (caché)" en el editor de capas
+
+El editor de capas ahora permite activar por capa el modo `TileWMS` (cacheable en GeoWebCache), reemplazando la lista local `TILED_LAYERS` del frontend de MapaLab.
+
+#### Agregado
+
+- **API** (`models/layer.py`, `schemas/layer.py`): columna `tiled` en el modelo ORM y campo en los esquemas `LayerBase` / `LayerUpdate`.
+- **Admin** (`LayerEditPage.jsx`): nuevo `Switch` "Servir por tiles (caché)" en el formulario de edición, envío del campo `tiled` al guardar.
+
+#### Notas
+
+- Sin migración propia: la columna `mapalab.layers.tiled` la crea la migración `0024_layers_tiled.py` de dataengine sobre la tabla compartida.
+
+---
+
 ## [api 1.44.0 / admin 1.44.0] - 2026-06-29
 
 ### Resaltado de capa al hacer clic: switch maestro en vez de opción escondida
