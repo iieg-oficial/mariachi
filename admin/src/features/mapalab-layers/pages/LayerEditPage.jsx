@@ -226,6 +226,7 @@ export default function LayerEditPage() {
             styles: data.styles,
             cqlFilter: data.cqlFilter,
             wmsGroup: data.wmsGroup,
+            tiled: data.tiled ?? false,
             wfsAvailable: data.wfsAvailable,
             downloadable: data.downloadable,
             timeEnabled: data.timeEnabled,
@@ -812,6 +813,14 @@ export default function LayerEditPage() {
                         name="downloadable"
                         valuePropName="checked"
                         extra="Habilita el botón de descarga (Shapefile/CSV/GeoJSON) en el visor para esta capa."
+                    >
+                        <Switch />
+                    </Form.Item>
+                    <Form.Item
+                        label="Servir por tiles (caché)"
+                        name="tiled"
+                        valuePropName="checked"
+                        extra="Sirve la capa como TileWMS cacheable en GeoWebCache en vez de ImageWMS. Recomendado para capas grandes y estáticas: la navegación (pan/zoom) es mucho más fluida. Para capas que cambian seguido, dejar desactivado."
                     >
                         <Switch />
                     </Form.Item>
