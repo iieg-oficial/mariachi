@@ -21,7 +21,13 @@ from app.api.metrics import COUNTER_MEDIA_DELETES, COUNTER_MEDIA_UPLOADS, incr
 from app.api.rate_limit import rate_limit
 from app.models.acervo import AcervoFile, AcervoFolder
 from app.models.user import Usuario
-from app.schemas.acervo import AcervoFileUpdate, FileMoveRequest, FolderCreate, FolderResponse
+from app.schemas.acervo import (
+    AcervoFileUpdate,
+    BulkFileMoveRequest,
+    FileMoveRequest,
+    FolderCreate,
+    FolderResponse,
+)
 from app.services import acervo_file_service, acervo_thumbnails
 from app.services.acervo import AcervoClient
 from app.services.actividad_service import registrar_actividad
@@ -599,6 +605,109 @@ async def mover_archivo(
         current_user.id, bucket.acervo_bucket, src_name, dest_name,
     )
     return result
+
+
+@router.post("/mover-lote", response_model=dict)
+async def mover_archivos_lote(
+    payload: BulkFileMoveRequest,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(verify_csrf),
+    _rl: Usuario = Depends(_write_rate_limit),
+):
+    target_folder = (payload.folder or "").strip().strip("/")
+    movidos = 0
+    fallos = 0
+    errores: list[str] = []
+
+    for item_id in payload.ids:
+        try:
+            item = None
+            bucket_id: int
+            src_name: str
+
+            if item_id.startswith("bucket:"):
+                try:
+                    _, bid_str, name = item_id.split(":", 2)
+                    bucket_id = int(bid_str)
+                    src_name = name
+                except ValueError:
+                    fallos += 1
+                    errores.append(f"{item_id}: ID sintetico invalido")
+                    continue
+            else:
+                try:
+                    media_int = int(item_id)
+                except ValueError:
+                    fallos += 1
+                    errores.append(f"{item_id}: ID invalido")
+                    continue
+                item = db.query(AcervoFile).filter(AcervoFile.id == media_int).first()
+                if not item or not item.bucket_id:
+                    fallos += 1
+                    errores.append(f"{item_id}: no encontrado")
+                    continue
+                bucket_id = item.bucket_id
+                src_name = item.name
+
+            bucket = acervo_file_service.resolve_bucket_or_403(bucket_id, current_user, db)
+            client = AcervoClient.for_bucket(bucket)
+
+            basename = src_name.rsplit("/", 1)[-1]
+            dest_name = f"{target_folder}/{basename}" if target_folder else basename
+            if dest_name == src_name:
+                continue
+
+            try:
+                client.copy_file(src_name, dest_name)
+            except S3Error as exc:
+                fallos += 1
+                errores.append(f"{basename}: error copiando ({exc.code})")
+                continue
+
+            client.delete_file(src_name)
+            acervo_thumbnails.cleanup(client, src_name)
+
+            folder_path = acervo_file_service.ensure_folder_exists(db, bucket.id, target_folder)
+            if item is not None:
+                item.name = dest_name
+                item.folder = folder_path
+                item.url = client.get_file_url(dest_name)
+                if item.thumbnail:
+                    item.thumbnail = item.url
+
+            registrar_actividad(
+                db,
+                actor=current_user,
+                action="acervo.file.move",
+                resource_type="acervo.file",
+                resource_id=item.id if item is not None else item_id,
+                metadata={
+                    "de": src_name,
+                    "a": dest_name,
+                    "bucket": bucket.acervo_bucket,
+                },
+            )
+            movidos += 1
+            logger.info(
+                "action=acervo.move_lote user_id=%s bucket=%s src=%s dest=%s",
+                current_user.id, bucket.acervo_bucket, src_name, dest_name,
+            )
+        except HTTPException:
+            raise
+        except Exception:
+            fallos += 1
+            logger.exception(
+                "action=acervo.move_lote.error user_id=%s item_id=%s",
+                current_user.id, item_id,
+            )
+
+    db.commit()
+
+    return {
+        "movidos": movidos,
+        "fallos": fallos,
+        "errores": errores,
+    }
 
 
 @router.get("/carpetas/{bucket_id}/info", response_model=dict)

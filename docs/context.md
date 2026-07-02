@@ -2,7 +2,7 @@
 
 > Documento de referencia completo. Leer este archivo proporciona contexto del monorepo sin explorar el codebase.
 
-**Versión:** ver `api/pyproject.toml` (la lee `api/app/core/version.py::get_app_version()`; endpoint en vivo `GET /ontoy`). · **Última actualización:** 2026-06-19
+**Versión:** ver `api/pyproject.toml` (la lee `api/app/core/version.py::get_app_version()`; endpoint en vivo `GET /ontoy`). · **Última actualización:** 2026-07-02
 
 
 ---
@@ -349,6 +349,7 @@ Sin auth. `router = APIRouter(tags=["portal público"])` en `routes/public.py`.
 | GET/POST/PUT/DELETE | `/menu/*` | Gestión de menu |
 | GET/POST/PUT/DELETE | `/acervo/*` | Upload/listado/edición de archivos por bucket |
 | GET | `/acervo/proxy/{bucket_id}/{object_path}` | Stream autenticado para buckets privados |
+| POST | `/acervo/mover-lote` | Mueve múltiples archivos a una carpeta en una sola llamada |
 | GET/POST/DELETE | `/acervo/carpetas/*` | CRUD de carpetas (scoped a `bucket_id`) |
 | GET/POST/PATCH | `/acervo-buckets/*` | CRUD de buckets registrados (admin solo en writes) |
 | GET/POST/PATCH | `/borradores/*` | Revision queue |

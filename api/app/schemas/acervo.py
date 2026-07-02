@@ -28,3 +28,8 @@ class AcervoFileUpdate(CamelCaseInput):
 class FileMoveRequest(CamelCaseInput):
     id: str = Field(..., min_length=1)
     folder: str = Field("")
+
+
+class BulkFileMoveRequest(CamelCaseInput):
+    ids: list[str] = Field(..., min_length=1)
+    folder: str = Field("")
