@@ -54,6 +54,8 @@ const Acervo = () => {
     const [previewVisible, setPreviewVisible] = useState(false);
     const [moveModalVisible, setMoveModalVisible] = useState(false);
     const [moveTargetFolder, setMoveTargetFolder] = useState('/');
+    const [bulkMoveModalVisible, setBulkMoveModalVisible] = useState(false);
+    const [bulkMoveTargetFolder, setBulkMoveTargetFolder] = useState('/');
     const [currentFile, setCurrentFile] = useState(null);
     const [folderInfo, setFolderInfo] = useState(null);
     const [folderInfoLoading, setFolderInfoLoading] = useState(false);
@@ -601,6 +603,30 @@ const Acervo = () => {
         }
     };
 
+    const handleBulkMoveOpen = () => {
+        setBulkMoveTargetFolder('/');
+        setBulkMoveModalVisible(true);
+    };
+
+    const handleBulkMoveSubmit = async () => {
+        try {
+            const result = await acervoService.moveMultipleFiles(selectedFiles, bulkMoveTargetFolder);
+            if (result.movidos > 0) {
+                message.success(`${result.movidos} archivo(s) movido(s)`);
+            }
+            if (result.fallos > 0) {
+                const muestra = result.errores.slice(0, 3).join(', ');
+                message.warning(`${result.fallos} archivo(s) no se pudieron mover${muestra ? `: ${muestra}` : ''}`);
+            }
+            setSelectedFiles([]);
+            setBulkMoveModalVisible(false);
+            loadAcervoFiles();
+            loadFolders(selectedBucketId);
+        } catch (error) {
+            message.error(error?.response?.data?.detail || 'Error al mover archivos');
+        }
+    };
+
     const handleEnterDir = (file) => {
         const cleanName = file.name.endsWith('/') ? file.name : `${file.name}/`;
         setCurrentPath(cleanName);
@@ -977,16 +1003,25 @@ const Acervo = () => {
                             Nueva Carpeta
                         </Button>
                         {selectedFiles.length > 0 && (
-                            <Popconfirm
-                                title={`¿Eliminar ${selectedFiles.length} archivos?`}
-                                onConfirm={handleDeleteMultiple}
-                                okText="Sí"
-                                cancelText="No"
-                            >
-                                <Button danger icon={<DeleteOutlined />} block={isMobile}>
-                                    Eliminar Seleccionados
+                            <>
+                                <Button
+                                    icon={<DragOutlined />}
+                                    onClick={handleBulkMoveOpen}
+                                    block={isMobile}
+                                >
+                                    Mover Seleccionados
                                 </Button>
-                            </Popconfirm>
+                                <Popconfirm
+                                    title={`¿Eliminar ${selectedFiles.length} archivos?`}
+                                    onConfirm={handleDeleteMultiple}
+                                    okText="Sí"
+                                    cancelText="No"
+                                >
+                                    <Button danger icon={<DeleteOutlined />} block={isMobile}>
+                                        Eliminar Seleccionados
+                                    </Button>
+                                </Popconfirm>
+                            </>
                         )}
                     </Space>
                 }
@@ -1353,6 +1388,33 @@ const Acervo = () => {
                     <Select
                         value={moveTargetFolder}
                         onChange={setMoveTargetFolder}
+                        style={{ width: '100%' }}
+                        showSearch
+                        placeholder="Selecciona carpeta destino"
+                        options={[
+                            { value: '/', label: '/ (raíz del bucket)' },
+                            ...folders.map((f) => ({ value: f.path, label: f.path })),
+                        ]}
+                    />
+                </Space>
+            </Modal>
+
+            <Modal
+                title={`Mover ${selectedFiles.length} archivo(s)`}
+                open={bulkMoveModalVisible}
+                onCancel={() => setBulkMoveModalVisible(false)}
+                onOk={handleBulkMoveSubmit}
+                okText="Mover"
+                cancelText="Cancelar"
+                destroyOnHidden
+            >
+                <Space direction="vertical" style={{ width: '100%' }}>
+                    <div style={{ color: '#8c8c8c', fontSize: 12, marginBottom: 8 }}>
+                        Se moverán {selectedFiles.length} archivo(s) a la carpeta seleccionada.
+                    </div>
+                    <Select
+                        value={bulkMoveTargetFolder}
+                        onChange={setBulkMoveTargetFolder}
                         style={{ width: '100%' }}
                         showSearch
                         placeholder="Selecciona carpeta destino"

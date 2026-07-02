@@ -279,6 +279,19 @@ export const moveAcervoFile = async (id, folder) => {
     }
 };
 
+export const moveMultipleFiles = async (ids, folder) => {
+    try {
+        const response = await api.post('/acervo/mover-lote', {
+            ids: ids.map(String),
+            folder: folder || '',
+        });
+        return response.data;
+    } catch (error) {
+        console.error('Error moving multiple files:', error);
+        throw error;
+    }
+};
+
 export const getFolderInfo = async (bucketId, prefix) => {
     try {
         const params = new URLSearchParams({ prefix: prefix || '' });
@@ -454,6 +467,7 @@ export default {
     createFolder,
     deleteFolder,
     moveAcervoFile,
+    moveMultipleFiles,
     getFolderInfo,
     initChunkedUpload,
     uploadChunk,

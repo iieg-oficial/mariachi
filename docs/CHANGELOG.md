@@ -9,6 +9,19 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.45.0 / admin 1.46.0] - 2026-07-02
+
+### Acervo: mover archivos en lote
+
+Los archivos seleccionados en la vista de tabla del Acervo ahora pueden moverse todos juntos a una misma carpeta, además de la eliminación múltiple que ya existía.
+
+#### Agregado
+
+- **API** (`schemas/acervo.py`, `routes/acervo.py`): nuevo `BulkFileMoveRequest` y endpoint `POST /acervo/mover-lote` que procesa múltiples IDs en una sola llamada, con registro de actividad por archivo y conteo de movidos/fallos/errores.
+- **Admin** (`acervoService.js`, `AcervoPage.jsx`): función `moveMultipleFiles`, botón "Mover Seleccionados" en la cabecera al tener archivos marcados, y modal de selección de carpeta destino.
+
+---
+
 ## [api 1.45.0 / admin 1.45.0] - 2026-06-30
 
 ### Toggle "Servir por tiles (caché)" en el editor de capas
