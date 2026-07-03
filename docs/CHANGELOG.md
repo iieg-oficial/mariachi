@@ -9,6 +9,19 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.47.0 / admin 1.47.0] - 2026-07-03
+
+### Rename de la base de datos: iieg_portal → mariachi
+
+La BD principal deja su nombre legacy `iieg_portal` y pasa a llamarse `mariachi`. El rename ya se aplicó en el entorno local (`ALTER DATABASE ... RENAME`, schemas `public` y `sieej` intactos); en producción se aplica con el procedimiento documentado en el RUNBOOK.
+
+#### Cambiado
+
+- **Infra** (`docker-compose.yml`, `docker-compose.dev.yml`): `POSTGRES_USER`, `POSTGRES_PASSWORD` y `POSTGRES_DB` ya no tienen defaults inline; ahora son `${VAR:?}` y el compose falla explícitamente si faltan en el `.env`.
+- **Docs** (`RUNBOOK.md`): nueva sección "Rename de la base de datos (iieg_portal → mariachi)" con procedimiento para producción y rollback; comandos existentes actualizados al nombre nuevo.
+
+---
+
 ## [api 1.46.0 / admin 1.47.0] - 2026-07-03
 
 ### Acervo: seleccion multiple en vista grid
