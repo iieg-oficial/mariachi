@@ -9,6 +9,18 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.46.0 / admin 1.47.0] - 2026-07-03
+
+### Acervo: seleccion multiple en vista grid
+
+La vista de tarjetas del Acervo ahora permite seleccion multiple via checkboxes en cada tarjeta, igual que la vista de tabla. El boton "Mover" del toolbar se unifico para operar sobre la seleccion activa en ambas vistas.
+
+#### Cambiado
+
+- **Admin** (`AcervoPage.jsx`): checkbox posicionado sobre el cover de cada card en grid. Click en el card sigue abriendo previsualizacion/carpeta; el checkbox solo alterna seleccion. Tarjetas seleccionadas muestran outline purpura. Boton "Mover (N)" + "Eliminar (N)" reemplazan los labels genericos cuando hay seleccion activa.
+
+---
+
 ## [api 1.45.0 / admin 1.46.0] - 2026-07-02
 
 ### Acervo: mover archivos en lote
