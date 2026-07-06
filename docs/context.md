@@ -2,7 +2,7 @@
 
 > Documento de referencia completo. Leer este archivo proporciona contexto del monorepo sin explorar el codebase.
 
-**Versión:** ver `api/pyproject.toml` (la lee `api/app/core/version.py::get_app_version()`; endpoint en vivo `GET /ontoy`). · **Última actualización:** 2026-07-03
+**Versión:** ver `api/pyproject.toml` (la lee `api/app/core/version.py::get_app_version()`; endpoint en vivo `GET /ontoy`). · **Última actualización:** 2026-07-06
 
 
 ---
@@ -831,6 +831,18 @@ Este repo se integra con otros servicios internos vecinos (CMS, visor de mapas, 
 ---
 
 ## Cambios recientes
+
+### 2026-07-06 (admin v1.48.0 + api v1.48.0) — SIEEJ: MemberPicker + incompleteNotice + tabs en editor + Reabrir envios + grupos con miembros
+
+Lote de mejoras en el modulo SIEEJ del admin y backend. Detalle por feature en CHANGELOG §[api 1.48.0 / admin 1.48.0]. Resumen ejecutivo:
+
+- **MemberPicker** (`components/MemberPicker.jsx`): `Transfer` de AntD con busqueda por `username`/`name`/`email` reemplaza los `Select mode="multiple"` en `GruposPage` y `AsignacionesEditor` que no escalaban con muchos usuarios. Reutilizable, compatible con `Form.Item`.
+- **Editor visual** (`StepsList.jsx`): pasos en **tabs** horizontales con drag & drop en las pestañas (dnd-kit), tags mini de tipo y aviso, botones solo-icono en mobile. Tipos en español via `definitionTypes.js`.
+- **incompleteNotice**: validacion backend (`_validar_incomplete_notice`) + UI en `StepDrawer`. El respondent ve un modal no bloqueante al avanzar con campos vacios.
+- **Reabrir envios** (`EnviosTable.jsx`): boton "Reabrir" con confirmacion que devuelve un envio `enviado`/`expirado` a `en_proceso`. Deshabilitado si formulario cerrado/fuera de vigencia. Columna Usuario con nombre + email en tooltip.
+- **Grupos con miembros atomicos**: `POST /sieej/grupos` acepta `usuarios: int[]`, validacion 400 si IDs inexistentes, transaccion atomica. Creacion/edicion por modal con `MemberPicker`.
+- **FormularioResponse** incluye `grupos` y `usuarios_asignados` (schemas `GrupoRef`/`UsuarioRef` + `selectinload`), corrigiendo bug de selects vacios.
+- **usuario_nombre/usuario_email** resueltos en lote en `listar_envios`.
 
 ### 2026-06-19 (admin v1.43.0 + api v1.43.0) — Recursos GeoServer: carga múltiple y por chunks
 

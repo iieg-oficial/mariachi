@@ -9,6 +9,77 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.48.0 / admin 1.48.0] - 2026-07-06
+
+### SIEEJ: creador visual de definiciones con pestañas arrastrables
+
+El editor de la definicion JSONB deja de mostrar los pasos como lista vertical con drag & drop y los presenta en **tabs** horizontales. Cada pestaña muestra el titulo en dos lineas con tags mini (tipo de paso + aviso si tiene `incompleteNotice`). Las pestañas se reordenan con dnd-kit. En mobile, los botones "Paso" y "Agregar paso" son solo-icono.
+
+#### Cambiado
+
+- **Admin** (`StepsList.jsx`): pasos renderizados como items de `Tabs` con `SortableContext` horizontal y `DraggableTabNode` via dnd-kit. Se removio `SortableItem` y la estrategia vertical. El boton "Agregar paso" queda en `tabBarExtraContent`.
+- **Admin** (`DefinicionEditor.jsx`): removido el Alert informativo "Editor de la definicion"; boton "Guardar definicion" solo-icono en mobile via `useIsMobile`.
+- **Admin** (`definitionTypes.js`): nuevo modulo con `STEP_TYPES`, `FIELD_TYPES` y helpers `stepTypeLabel`/`fieldTypeLabel` (labels en español). Compartido entre `StepsList`, `StepDrawer` y `FieldDrawer`.
+
+### SIEEJ: incompleteNotice por paso
+
+Cada paso `form` o `repeater` puede declarar `incompleteNotice: {title?, message}`. Al avanzar con campos visibles sin llenar en ese paso, el respondent ve un modal de advertencia con ese mensaje **sin bloquear** la navegacion ni el envio ("Revisar" / "Continuar de todos modos"). Pensado para pasos 100% opcionales tipo checklist.
+
+#### Agregado
+
+- **API** (`definicion_validator.py`): `_validar_incomplete_notice` valida que `incompleteNotice` sea un objeto con `title`/`message` strings no vacios. Se ejecuta desde `_validar_step` para pasos `form` y `repeater`.
+- **Admin** (`StepDrawer.jsx`): campos "Aviso si el paso queda incompleto" (`Input.TextArea`) y "Titulo del aviso" (`Input`), visibles solo cuando `type !== 'summary'`.
+- **Tests** (`test_sieej_definicion_validator.py`): 4 tests (incomplete_notice valido, solo message, no_dict falla, message vacio falla).
+
+### SIEEJ: Reabrir envios desde el panel admin
+
+La tabla de envios (`EnviosTable`) ahora muestra un boton **Reabrir** en cada fila con estado `enviado` o `expirado`. Al hacer clic, un `Modal.confirm` devuelve el envio a `en_proceso` para que la dependencia pueda corregir y volver a enviar. Conserva la version del formulario con la que se lleno.
+
+#### Agregado
+
+- **Admin** (`EnviosTable.jsx`): boton "Reabrir" con `UndoOutlined`, deshabilitado con tooltip si el formulario esta `cerrado` o fuera de vigencia. Columna Usuario muestra `usuario_nombre` con `usuario_email` en tooltip. Estados en español (`ESTADO_LABEL`).
+
+### SIEEJ: usuario_nombre/usuario_email en listado de envios
+
+El endpoint `GET /sieej/formularios/{id}/envios` ahora resuelve `usuario_nombre` y `usuario_email` en lote a partir de `usuario_id`, evitando N+1 queries en el frontend.
+
+#### Agregado
+
+- **API** (`schemas/sieej/envio.py`): `EnvioResponse` gana `usuario_nombre` y `usuario_email` (opcionales, poblados solo en el listado admin).
+- **API** (`routes/sieej_admin/formularios.py`): `listar_envios` consulta `Usuario` en lote por `usuario_id` y enriquece cada item antes de serializar.
+
+### SIEEJ: FormularioResponse incluye grupos y usuarios asignados
+
+`GET /sieej/formularios` y `GET /sieej/formularios/{id}` ahora incluyen `grupos: GrupoRef[]` y `usuarios_asignados: UsuarioRef[]` en la respuesta, poblando con `selectinload`. Esto corrige el bug de selects vacios en el editor de asignaciones (`AsignacionesEditor`).
+
+#### Agregado
+
+- **API** (`schemas/sieej/formulario.py`): nuevos schemas `GrupoRef` (`id`, `nombre`) y `UsuarioRef` (`id`, `name`, `email`). `FormularioResponse` gana `grupos` y `usuarios_asignados`.
+- **API** (`formularios_admin_service.py`): `listar()` carga grupos y usuarios asignados con `selectinload`.
+- **Admin** (`AsignacionesEditor.jsx`): removido el Alert "Visibilidad del formulario".
+
+### SIEEJ: Grupos con miembros al crearlos
+
+`POST /sieej/grupos` ahora acepta `usuarios: int[]` para asignar miembros al crear el grupo de forma atomica. Si algun ID no existe, falla con 400. La creacion y las membresias se ejecutan en una sola transaccion.
+
+#### Agregado
+
+- **API** (`schemas/sieej/grupo.py`): `GrupoCreate.usuarios: list[int]` (default `[]`).
+- **API** (`grupos_service.py`): `crear()` acepta `member_ids`, valida existencia de usuarios con 400, inserta `usuario_grupo` via `flush` + `execute`.
+- **Admin** (`GruposPage.jsx`): creacion y edicion ahora usan un **Modal** con `MemberPicker` (Transfer de AntD) en lugar del formulario inline anterior. La edicion precarga los miembros actuales.
+- **Tests** (`test_sieej_admin_grupos.py`): 2 tests (crear con miembros, miembro inexistente 400).
+
+### SIEEJ: MemberPicker con Transfer de AntD
+
+El `Select mode="multiple"` usado en `GruposPage` y `AsignacionesEditor` para elegir miembros no escalaba con muchos usuarios en el sistema. Se reemplaza por `MemberPicker`, un componente reutilizable basado en `Transfer` de AntD con busqueda por `username`, `name` y `email`. Dos paneles (disponibles/seleccionados) con filtro en ambos.
+
+#### Agregado
+
+- **Admin** (`components/MemberPicker.jsx`): `Transfer` con `showSearch`, `filterOption` en tres campos, `selectAllLabels`, labels custom con nombre + email por fila. Compatible con `Form.Item` (value/onChange).
+- **Admin** (`GruposPage.jsx`, `AsignacionesEditor.jsx`): usan `MemberPicker` en lugar de `Select mode="multiple"`. Las columnas de Transfer requirieron aumentar el ancho del modal y drawer.
+
+---
+
 ## [api 1.47.0 / admin 1.47.0] - 2026-07-03
 
 ### Rename de la base de datos: iieg_portal → mariachi
