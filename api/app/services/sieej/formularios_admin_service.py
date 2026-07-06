@@ -10,7 +10,7 @@ from typing import Any
 
 from fastapi import HTTPException, status
 from sqlalchemy import func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.api.metrics import (
     COUNTER_SIEEJ_ENVIO_REABIERTO,
@@ -58,7 +58,10 @@ class FormulariosAdminService:
         estado: str | None = None,
         slug: str | None = None,
     ) -> list[Formulario]:
-        q = self.db.query(Formulario)
+        q = self.db.query(Formulario).options(
+            selectinload(Formulario.grupos),
+            selectinload(Formulario.usuarios_asignados),
+        )
         if estado is not None:
             q = q.filter(Formulario.estado == estado)
         if slug is not None:
