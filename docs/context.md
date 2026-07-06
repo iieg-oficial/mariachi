@@ -39,7 +39,7 @@ El rename fue **solo de carpeta e identificadores internos de infra** (docker co
 
 - Branding publico "Portal IIEG", "CMS Portal" en UI
 - Rutas URL (`/api/portal`, `/api/administrador`)
-- Nombre de BD `iieg_portal`
+- Nombre de BD `mariachi`
 - Upstream `portal` en el gateway externo (se mantiene por conflicto de nombres con otro upstream ya existente)
 
 ---
@@ -95,7 +95,7 @@ Estructura de features (`admin/src/features/`): `acervo`, `auth`, `colibri`, `in
 | Componente | Tecnologia | Notas |
 |---|---|---|
 | Proxy interno | Nginx | sirve `web/dist` en `/`, `admin/dist` en `/mariachi/`, proxea `api/` a backend |
-| BD | PostgreSQL 18 (prod y dev) | DB: `iieg_portal` |
+| BD | PostgreSQL 18 (prod y dev) | DB: `mariachi` |
 | Cache/sessions | Redis 7 | |
 | Almacenamiento | Acervo (**SeaweedFS**, S3-compatible vía su gateway S3) | buckets por proyecto en `acervo_buckets`. **Publicos** (anonymous GetObject): `portal`, `mapalab`, `iieg`. **Privados**: `mariachi`, `sieej`, `dataengine` (deshabilitado). Cada bucket usa `<REF>_user` con policy attached al bucket; sin fallback a creds root. |
 | DataEngine (solo v1.4.0+ MapaLab) | PostgreSQL + PostGIS externo | Segunda conexión para tabla `layers` |
@@ -121,7 +121,7 @@ mariachi/
 │   │   ├── models/               # user, page, menu_item, media, borrador, reporte*, tipo, direccion, source_app, route, grupo, actividad
 │   │   ├── schemas/              # Pydantic request/response (incluye form_schema, source_context tipados)
 │   │   └── services/             # acervo, colibri_keys, colibri_fingerprint, pii_scrubber, colibri_router_engine
-│   ├── alembic/                  # Migraciones (solo BD iieg_portal por ahora)
+│   ├── alembic/                  # Migraciones (solo BD mariachi por ahora)
 │   ├── scripts/                  # init_db, generate_secret_key
 │   ├── tests/
 │   └── pyproject.toml            # name: mariachi-api
@@ -222,7 +222,7 @@ Redes: `mariachi_network_dev` (propia) + `mapalab-network` (external, para que e
 
 | Variable | Ejemplo | Descripcion |
 |---|---|---|
-| `DATABASE_URL` | `postgresql://user:pass@postgres:5432/iieg_portal` | BD principal del CMS |
+| `DATABASE_URL` | `postgresql://user:pass@postgres:5432/mariachi` | BD principal del CMS |
 | `DATAENGINE_DATABASE_URL` | `postgresql://mariachi_layers:***@dataengine:5432/db` | **Opcional**, solo para v1.4.0 de MapaLab (modulo de capas). Ver `DATAENGINE_CREDENTIALS.md` |
 | `DATAENGINE_POOL_SIZE` | `5` | Pool size del engine secundario |
 | `DATAENGINE_MAX_OVERFLOW` | `5` | Max overflow del engine secundario |
@@ -369,8 +369,8 @@ Sin auth. `router = APIRouter(tags=["portal público"])` en `routes/public.py`.
 | GET/POST/DELETE | `/formularios/*` | CRUD de formularios SIEEJ (admin) |
 | GET | `/formularios/catalogos` | Catalogo de tipos/dependencias SIEEJ |
 | GET/PUT/POST | `/formularios/{slug}/envio*` | Endpoints respondent: borrador, submit, upload de archivos |
-| GET | `/formularios/mis-envios?estado=&q=&page=&sort=` | Historico paginado del usuario autenticado (sieej respondent) |
 | GET | `/formularios/mis-envios/{id}` | Detalle con `definicion_snapshot` historica + `datos` + `archivos` + `eventos` |
+| DELETE | `/formularios/mis-envios/{id}` | Soft-delete del envio para el respondent |
 | GET/POST/PATCH/DELETE | `/home/*` | CRUD de secciones del home publico de mapalab |
 | GET/POST/PATCH/DELETE | `/mapalab-shares/*` | Gestion de share links de visor mapalab |
 | GET | `/layer-metadata/bulk/column-presets` | Presets de mapeo Excel→técnico para ingesta masiva |
@@ -539,7 +539,7 @@ La variable `PORTAL_HOST` del gateway sigue apuntando al container de este repo 
 
 ---
 
-## BD iieg_portal
+## BD mariachi
 
 Tablas existentes (modelos en `api/app/models/`):
 
@@ -559,7 +559,7 @@ Tablas existentes (modelos en `api/app/models/`):
 
 Migraciones via Alembic en `api/alembic/versions/`.
 
-**v1.4.0 de MapaLab agrega** 3 tablas a **otra BD** (DataEngine, no a `iieg_portal`):
+**v1.4.0 de MapaLab agrega** 3 tablas a **otra BD** (DataEngine, no a `mariachi`):
 
 - `layers`
 - `workspaces`

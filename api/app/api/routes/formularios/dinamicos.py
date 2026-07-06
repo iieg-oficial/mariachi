@@ -5,7 +5,7 @@ Coexiste con el wizard SIEEJ original (rutas `general`, `enlaces`,
 precedencia sobre las dinamicas porque se incluyen primero en
 `formularios/__init__.py`.
 """
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, verify_csrf
@@ -16,7 +16,6 @@ from app.schemas.sieej.envio import (
     EnvioUpdate,
     EnvioUploadResponse,
     MisEnviosDetalle,
-    MisEnviosListResponse,
 )
 from app.schemas.sieej.formulario import FormularioDetalle, FormularioListItem
 from app.services.sieej.definicion_validator import definicion_to_validation_rules
@@ -40,48 +39,6 @@ async def listar_formularios(
 # "Mis envios" — IMPORTANTE: estas rutas deben declararse ANTES de /{slug}
 # para que FastAPI no las trate como path param.
 # ---------------------------------------------------------------------------
-
-
-@router.get("/mis-envios", response_model=MisEnviosListResponse)
-async def listar_mis_envios(
-    estado: str | None = Query(default=None, pattern=r"^(en_proceso|enviado|expirado)$"),
-    q: str | None = Query(default=None, max_length=128),
-    page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=20, ge=1, le=100),
-    sort: str = Query(default="-actualizado_en", pattern=r"^(-actualizado_en|-enviado_en|nombre)$"),
-    db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
-):
-    """Listado paginado de los envios del usuario autenticado."""
-    items, total = EnviosService(db).listar_mis_envios(
-        current_user,
-        estado=estado,
-        q=q,
-        page=page,
-        page_size=page_size,
-        sort=sort,
-    )
-    return MisEnviosListResponse(
-        total=total,
-        page=page,
-        page_size=page_size,
-        items=[
-            {
-                "id": e.id,
-                "estado": e.estado,
-                "paso_actual": e.paso_actual,
-                "iniciado_en": e.iniciado_en,
-                "enviado_en": e.enviado_en,
-                "actualizado_en": e.actualizado_en,
-                "formulario": {
-                    "slug": e.formulario.slug,
-                    "nombre": e.formulario.nombre,
-                    "descripcion": e.formulario.descripcion,
-                },
-            }
-            for e in items
-        ],
-    )
 
 
 @router.get("/mis-envios/{envio_id}", response_model=MisEnviosDetalle)
