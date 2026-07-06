@@ -2,21 +2,7 @@ import { useEffect } from 'react';
 import {
     Button, Drawer, Form, Input, InputNumber, Select, Switch, Space,
 } from 'antd';
-
-const FIELD_TYPES = [
-    { value: 'text', label: 'Texto' },
-    { value: 'textarea', label: 'Texto largo' },
-    { value: 'number', label: 'Número' },
-    { value: 'email', label: 'Email' },
-    { value: 'tel', label: 'Teléfono' },
-    { value: 'date', label: 'Fecha' },
-    { value: 'select', label: 'Selección' },
-    { value: 'select_multiple', label: 'Selección múltiple' },
-    { value: 'radio', label: 'Radio' },
-    { value: 'checkbox', label: 'Checkbox' },
-    { value: 'file', label: 'Archivo' },
-    { value: 'info', label: 'Texto informativo' },
-];
+import { FIELD_TYPES } from '../../constants/definitionTypes';
 
 const slugify = (text) => text
     .toLowerCase()
