@@ -30,7 +30,7 @@ async def crear_grupo(
     db: Session = Depends(get_db),
     _csrf: Usuario = Depends(verify_csrf),
 ):
-    return GruposService(db).crear(data.nombre, data.descripcion)
+    return GruposService(db).crear(data.nombre, data.descripcion, data.usuarios)
 
 
 @router.get("/grupos/{grupo_id}", response_model=GrupoResponse)

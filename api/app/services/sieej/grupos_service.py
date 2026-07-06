@@ -29,14 +29,32 @@ class GruposService:
             )
         return g
 
-    def crear(self, nombre: str, descripcion: str | None = None) -> Grupo:
+    def crear(
+        self,
+        nombre: str,
+        descripcion: str | None = None,
+        member_ids: list[int] | None = None,
+    ) -> Grupo:
         if self.db.query(Grupo).filter(Grupo.nombre == nombre).first():
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=f"Ya existe un grupo con nombre '{nombre}'",
             )
+        members = set(member_ids or [])
+        if members:
+            found = self.db.query(Usuario.id).filter(Usuario.id.in_(members)).all()
+            if len(found) != len(members):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Algun usuario no existe",
+                )
         g = Grupo(nombre=nombre, descripcion=descripcion)
         self.db.add(g)
+        self.db.flush()
+        for uid in members:
+            self.db.execute(
+                usuario_grupo.insert().values(usuario_id=uid, grupo_id=g.id)
+            )
         self.db.commit()
         self.db.refresh(g)
         return g

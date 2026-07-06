@@ -126,6 +126,33 @@ def test_admin_crud_basico_grupos(client, admin):
     assert r4.status_code == 200
 
 
+def test_admin_crear_grupo_con_miembros(client, admin, usuarios_externos):
+    csrf = login(client, admin.username)
+    ids = [u.id for u in usuarios_externos[:2]]
+
+    r = client.post(
+        f"{ADMIN_PREFIX}/sieej/grupos",
+        headers={"X-CSRF-Token": csrf},
+        json={"nombre": "Con miembros", "usuarios": ids},
+    )
+    assert r.status_code == 201, r.text
+    gid = r.json()["id"]
+
+    r2 = client.get(f"{ADMIN_PREFIX}/sieej/grupos/{gid}/usuarios")
+    assert r2.status_code == 200
+    assert sorted(u["id"] for u in r2.json()) == sorted(ids)
+
+
+def test_admin_crear_grupo_con_miembro_inexistente_400(client, admin):
+    csrf = login(client, admin.username)
+    r = client.post(
+        f"{ADMIN_PREFIX}/sieej/grupos",
+        headers={"X-CSRF-Token": csrf},
+        json={"nombre": "Miembro fantasma", "usuarios": [99999]},
+    )
+    assert r.status_code == 400
+
+
 def test_admin_crear_grupo_duplicado_409(client, admin, session):
     session.add(Grupo(nombre="dup"))
     session.commit()

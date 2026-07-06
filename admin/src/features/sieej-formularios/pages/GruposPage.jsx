@@ -1,6 +1,6 @@
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
-    Breadcrumb, Button, Card, Drawer, Empty, Form, Input, Modal, Select,
+    Breadcrumb, Button, Card, Drawer, Empty, Form, Input, Modal,
     Space, Spin, Table, Typography,
 } from 'antd';
 import {
@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import { message } from '@shared/services/message';
 import { gruposApi, usuariosApi } from '../services/formulariosAdminApi';
+import MemberPicker from '../components/MemberPicker';
 
 export default function GruposPage() {
     const navigate = useNavigate();
@@ -18,7 +19,8 @@ export default function GruposPage() {
     const [loading, setLoading] = useState(true);
     const [editing, setEditing] = useState(null);
     const [form] = Form.useForm();
-    const nombreRef = useRef(null);
+    const [modalOpen, setModalOpen] = useState(false);
+    const [savingModal, setSavingModal] = useState(false);
     const [drawerGrupo, setDrawerGrupo] = useState(null);
     const [usuarios, setUsuarios] = useState([]);
     const [miembros, setMiembros] = useState([]);
@@ -39,17 +41,25 @@ export default function GruposPage() {
     useEffect(() => { load(); }, [load]);
 
     useEffect(() => {
+        let cancel = false;
+        (async () => {
+            try {
+                const u = await usuariosApi.list();
+                if (!cancel) setUsuarios(u);
+            } catch {
+                message.error('Error al cargar usuarios');
+            }
+        })();
+        return () => { cancel = true; };
+    }, []);
+
+    useEffect(() => {
         if (!drawerGrupo) return;
         let cancel = false;
         (async () => {
             try {
-                const [u, m] = await Promise.all([
-                    usuariosApi.list(),
-                    gruposApi.listMiembros(drawerGrupo.id),
-                ]);
-                if (cancel) return;
-                setUsuarios(u);
-                setMiembros(m.map((x) => x.id));
+                const m = await gruposApi.listMiembros(drawerGrupo.id);
+                if (!cancel) setMiembros(m.map((x) => x.id));
             } catch {
                 message.error('Error al cargar miembros');
             }
@@ -60,28 +70,41 @@ export default function GruposPage() {
     const handleNew = () => {
         setEditing(null);
         form.resetFields();
-        nombreRef.current?.focus();
+        setModalOpen(true);
     };
 
-    const handleEdit = (record) => {
+    const handleEdit = async (record) => {
         setEditing(record);
-        form.setFieldsValue(record);
+        form.setFieldsValue({ nombre: record.nombre, descripcion: record.descripcion, miembros: [] });
+        setModalOpen(true);
+        try {
+            const members = await gruposApi.listMiembros(record.id);
+            form.setFieldValue('miembros', members.map((m) => m.id));
+        } catch {
+            message.error('Error al cargar miembros');
+        }
     };
 
     const handleSubmit = async (values) => {
+        setSavingModal(true);
         try {
+            const { miembros: memberIds = [], ...data } = values;
             if (editing) {
-                await gruposApi.update(editing.id, values);
+                await gruposApi.update(editing.id, data);
+                await gruposApi.actualizarMiembros(editing.id, memberIds);
                 message.success('Grupo actualizado');
             } else {
-                await gruposApi.create(values);
+                await gruposApi.create({ ...data, usuarios: memberIds });
                 message.success('Grupo creado');
             }
+            setModalOpen(false);
             setEditing(null);
             form.resetFields();
             load();
         } catch (err) {
             message.error(err?.response?.data?.detail || 'Error al guardar');
+        } finally {
+            setSavingModal(false);
         }
     };
 
@@ -170,18 +193,6 @@ export default function GruposPage() {
             </div>
 
             <Card>
-                <Form form={form} layout="inline" onFinish={handleSubmit} style={{ marginBottom: 16 }}>
-                    <Form.Item name="nombre" rules={[{ required: true }]}>
-                        <Input ref={nombreRef} placeholder="Nombre del grupo" />
-                    </Form.Item>
-                    <Form.Item name="descripcion">
-                        <Input placeholder="Descripción (opcional)" />
-                    </Form.Item>
-                    <Form.Item>
-                        <Button type="primary" htmlType="submit">{editing ? 'Actualizar' : 'Crear'}</Button>
-                        {editing && <Button onClick={() => { setEditing(null); form.resetFields(); }} style={{ marginLeft: 8 }}>Cancelar</Button>}
-                    </Form.Item>
-                </Form>
                 <Table
                     columns={columns}
                     dataSource={grupos}
@@ -193,11 +204,38 @@ export default function GruposPage() {
                 />
             </Card>
 
+            <Modal
+                title={editing ? `Editar grupo: ${editing.nombre}` : 'Nuevo grupo'}
+                open={modalOpen}
+                onCancel={() => { setModalOpen(false); setEditing(null); }}
+                onOk={() => form.submit()}
+                okText={editing ? 'Actualizar' : 'Crear grupo'}
+                cancelText="Cancelar"
+                confirmLoading={savingModal}
+                width={isMobile ? '100%' : 720}
+            >
+                <Form form={form} layout="vertical" onFinish={handleSubmit}>
+                    <Form.Item
+                        label="Nombre"
+                        name="nombre"
+                        rules={[{ required: true, message: 'Nombre requerido' }]}
+                    >
+                        <Input placeholder="Ejemplo: Secretaría de Salud" />
+                    </Form.Item>
+                    <Form.Item label="Descripción (opcional)" name="descripcion">
+                        <Input.TextArea rows={2} />
+                    </Form.Item>
+                    <Form.Item label="Miembros (opcional)" name="miembros">
+                        <MemberPicker usuarios={usuarios} />
+                    </Form.Item>
+                </Form>
+            </Modal>
+
             <Drawer
                 open={!!drawerGrupo}
                 onClose={() => setDrawerGrupo(null)}
                 title={drawerGrupo ? `Miembros: ${drawerGrupo.nombre}` : ''}
-                width={Math.min(560, window.innerWidth)}
+                width={Math.min(700, window.innerWidth)}
                 extra={
                     <Button type="primary" loading={savingMiembros} onClick={handleSaveMiembros}>
                         Guardar
@@ -205,17 +243,10 @@ export default function GruposPage() {
                 }
             >
                 {drawerGrupo ? (
-                    <Select
-                        mode="multiple"
-                        style={{ width: '100%' }}
-                        placeholder="Selecciona usuarios"
+                    <MemberPicker
+                        usuarios={usuarios}
                         value={miembros}
                         onChange={setMiembros}
-                        optionFilterProp="label"
-                        options={usuarios.map((u) => ({
-                            value: u.id,
-                            label: `${u.username} (${u.name})`,
-                        }))}
                     />
                 ) : <Spin />}
             </Drawer>
