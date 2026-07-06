@@ -203,6 +203,22 @@ def test_lista_incluye_formularios_asignados_individualmente(
     assert len(items) == 1
     assert items[0]["slug"] == f.slug
     assert items[0]["estado_envio"] == "no_iniciado"
+    assert items[0]["envio_id"] is None
+
+
+def test_list_exposes_envio_id_when_envio_exists(client, session, admin, respondent_a):
+    f = crear_formulario(session, admin)
+    asignar_a_usuario(session, f, respondent_a)
+
+    login(client, respondent_a.username)
+    r = client.get(f"{ADMIN_PREFIX}/formularios/{f.slug}/envio")
+    envio_id = r.json()["id"]
+
+    r = client.get(f"{ADMIN_PREFIX}/formularios")
+    items = r.json()
+    assert len(items) == 1
+    assert items[0]["estado_envio"] == "en_proceso"
+    assert items[0]["envio_id"] == envio_id
 
 
 def test_lista_incluye_formularios_via_grupo(client, session, admin, respondent_a):

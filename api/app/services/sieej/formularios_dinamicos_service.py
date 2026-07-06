@@ -91,6 +91,7 @@ class FormulariosDinamicosService:
                     "vigencia_inicio": f.vigencia_inicio,
                     "vigencia_fin": f.vigencia_fin,
                     "estado_envio": estado_envio,
+                    "envio_id": envio.id if envio is not None else None,
                 }
             )
         return items

@@ -29,6 +29,21 @@ class FormularioUpdate(BaseModel):
     publico: bool | None = None
 
 
+class GrupoRef(BaseModel):
+    id: int
+    nombre: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UsuarioRef(BaseModel):
+    id: int
+    name: str
+    email: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class FormularioResponse(FormularioBase):
     id: int
     estado: FormularioEstado
@@ -36,6 +51,8 @@ class FormularioResponse(FormularioBase):
     creado_por_id: int
     creado_en: datetime
     actualizado_en: datetime
+    grupos: list[GrupoRef] = []
+    usuarios_asignados: list[UsuarioRef] = []
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -51,6 +68,7 @@ class FormularioListItem(BaseModel):
     vigencia_inicio: datetime | None
     vigencia_fin: datetime | None
     estado_envio: Literal["no_iniciado", "en_proceso", "enviado", "expirado"]
+    envio_id: int | None
 
     model_config = ConfigDict(from_attributes=True)
 
