@@ -333,6 +333,35 @@ def test_definicion_completa_wizard_sieej_pasa():
     validar_definicion(d)
 
 
+def test_incomplete_notice_valido_pasa():
+    d = _def_minima()
+    d["steps"][0]["incompleteNotice"] = {
+        "title": "Checklist sin completar",
+        "message": "Puedes continuar, pero revisa los puntos pendientes.",
+    }
+    validar_definicion(d)
+
+
+def test_incomplete_notice_solo_message_pasa():
+    d = _def_minima()
+    d["steps"][0]["incompleteNotice"] = {"message": "Revisa los puntos pendientes."}
+    validar_definicion(d)
+
+
+def test_incomplete_notice_no_dict_falla():
+    d = _def_minima()
+    d["steps"][0]["incompleteNotice"] = "texto plano"
+    with pytest.raises(DefinicionInvalidaError, match="incompleteNotice"):
+        validar_definicion(d)
+
+
+def test_incomplete_notice_message_vacio_falla():
+    d = _def_minima()
+    d["steps"][0]["incompleteNotice"] = {"message": ""}
+    with pytest.raises(DefinicionInvalidaError, match="incompleteNotice.message"):
+        validar_definicion(d)
+
+
 def test_validation_rules_required_when():
     d = _def_minima()
     d["steps"][0]["fields"].append(

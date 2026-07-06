@@ -1,11 +1,6 @@
 import { useEffect } from 'react';
 import { Button, Drawer, Form, Input, InputNumber, Select, Space } from 'antd';
-
-const STEP_TYPES = [
-    { value: 'form', label: 'Formulario plano' },
-    { value: 'repeater', label: 'Lista repetible' },
-    { value: 'summary', label: 'Resumen final' },
-];
+import { STEP_TYPES } from '../../constants/definitionTypes';
 
 const tabsToText = (tabs) => (tabs ?? []).map((t) => `${t.id} | ${t.title}`).join('\n');
 const tabsFromText = (text) => (text ?? '')
@@ -30,6 +25,8 @@ export default function StepDrawer({ open, step, onSave, onClose }) {
             itemLabel: step?.itemLabel ?? '',
             tabs_text: tabsToText(step?.tabs),
             exportPdf: step?.exportPdf ?? false,
+            incomplete_title: step?.incompleteNotice?.title ?? '',
+            incomplete_message: step?.incompleteNotice?.message ?? '',
         });
     }, [open, step, form]);
 
@@ -54,6 +51,14 @@ export default function StepDrawer({ open, step, onSave, onClose }) {
         } else {
             if (values.exportPdf) out.exportPdf = true;
         }
+        if (values.type !== 'summary') {
+            out.incompleteNotice = values.incomplete_message
+                ? {
+                    ...(values.incomplete_title ? { title: values.incomplete_title } : {}),
+                    message: values.incomplete_message,
+                }
+                : undefined;
+        }
         onSave?.(out);
         onClose?.();
     };
@@ -62,7 +67,7 @@ export default function StepDrawer({ open, step, onSave, onClose }) {
         <Drawer
             open={open}
             onClose={onClose}
-            title={step?.id ? `Editar step: ${step.id}` : 'Nuevo step'}
+            title={step?.id ? `Editar paso: ${step.id}` : 'Nuevo paso'}
             width={Math.min(560, window.innerWidth)}
             extra={
                 <Space>
@@ -108,6 +113,20 @@ export default function StepDrawer({ open, step, onSave, onClose }) {
                             extra="Vacio = sin tabs"
                         >
                             <Input.TextArea rows={3} placeholder={'datos | Datos generales\ndiccionario | Diccionario'} />
+                        </Form.Item>
+                    </>
+                )}
+                {watchType !== 'summary' && (
+                    <>
+                        <Form.Item
+                            label="Aviso si el paso queda incompleto (opcional)"
+                            name="incomplete_message"
+                            extra="Si se define, al avanzar con campos sin llenar el respondent ve un aviso con este mensaje, sin bloquear el paso siguiente ni el envío."
+                        >
+                            <Input.TextArea rows={2} placeholder="Aún hay puntos sin marcar. Puedes continuar, pero te recomendamos revisarlos." />
+                        </Form.Item>
+                        <Form.Item label="Título del aviso" name="incomplete_title">
+                            <Input placeholder="Sección incompleta" />
                         </Form.Item>
                     </>
                 )}

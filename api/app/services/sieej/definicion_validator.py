@@ -108,6 +108,8 @@ def _validar_step(
     if not isinstance(step.get("title"), str) or not step["title"]:
         raise DefinicionInvalidaError(f"Step `{step_id}`: `title` requerido.")
 
+    _validar_incomplete_notice(step, step_id)
+
     if step_type == "summary":
         return
 
@@ -161,6 +163,23 @@ def _validar_step(
     for field_idx, field in enumerate(fields):
         _validar_field(field, step_id, step_type, step.get("tabs"), field_idx, field_names)
         field_paths.add(f"{step_id}.{field['name']}")
+
+
+def _validar_incomplete_notice(step: dict[str, Any], step_id: str) -> None:
+    notice = step.get("incompleteNotice")
+    if notice is None:
+        return
+    if not isinstance(notice, dict):
+        raise DefinicionInvalidaError(
+            f"Step `{step_id}`: `incompleteNotice` debe ser objeto."
+        )
+    for key in ("title", "message"):
+        if key in notice and (
+            not isinstance(notice[key], str) or not notice[key]
+        ):
+            raise DefinicionInvalidaError(
+                f"Step `{step_id}`: `incompleteNotice.{key}` debe ser string no vacio."
+            )
 
 
 def _validar_field(
