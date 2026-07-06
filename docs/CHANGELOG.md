@@ -22,6 +22,32 @@ La BD principal deja su nombre legacy `iieg_portal` y pasa a llamarse `mariachi`
 
 ---
 
+## [api 1.48.0 / admin 1.47.0] - 2026-07-06
+
+### SIEEJ: enviado abre resumen
+
+Los formularios con estado `enviado` del listado de respondents exponen el `envio_id`, permitiendo al frontend navegar directamente al resumen de solo lectura en lugar del wizard de captura.
+
+#### Agregado
+
+- **API** (`schemas/sieej/formulario.py`): `FormularioListItem.envio_id: int | None`.
+- **API** (`services/sieej/formularios_dinamicos_service.py`): el listado `GET /formularios/` incluye `envio_id` (el envio ya se cargaba para calcular `estado_envio`).
+- **Tests** (`test_sieej_formularios_dinamicos.py`): assert `envio_id is None` cuando no hay envio + test nuevo `test_list_exposes_envio_id_when_envio_exists`.
+
+### SIEEJ: eliminado listado mis-envios
+
+El endpoint paginado `GET /formularios/mis-envios` se elimina por redundante (la pantalla "Mis envios" del frontend duplicaba la informacion de estado que ya muestra "Mis formularios"). Se conservan el detalle individual y el soft-delete.
+
+#### Eliminado
+
+- **API** (`routes/formularios/dinamicos.py`): removido `GET /formularios/mis-envios` y limpiados imports `Query`/`MisEnviosListResponse`.
+- **API** (`services/sieej/envios_service.py`): removidos `listar_mis_envios` y `SORT_OPTIONS`.
+- **API** (`schemas/sieej/envio.py`): removidos `MisEnviosListItem` y `MisEnviosListResponse`; ajustado docstring de `MisEnviosFormularioInfo`.
+- **Tests** (`test_sieej_mis_envios.py`): suite reducida a detalle + soft-delete (test de delete renombrado a `test_eliminar_mi_envio_lo_oculta_del_detalle`, agregado `test_detalle_sin_sesion_401`).
+- **Docs** (`docs/sieej.md`): tabla de endpoints sin el GET lista, con nota de eliminacion en 1.47+.
+
+---
+
 ## [api 1.46.0 / admin 1.47.0] - 2026-07-03
 
 ### Acervo: seleccion multiple en vista grid
