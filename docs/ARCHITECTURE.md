@@ -55,7 +55,7 @@
 
 | Tecnología | Uso |
 |---|---|
-| PostgreSQL 16 (prod) / 18 (dev) | BD principal del CMS (`iieg_portal`) |
+| PostgreSQL 16 (prod) / 18 (dev) | BD principal del CMS (`mariachi`) |
 | PostgreSQL + PostGIS (externa, DataEngine) | Tablas `layers`, `workspaces`, `layer_metadata`, etc. del módulo de capas |
 
 ### Infraestructura
@@ -104,7 +104,7 @@ flowchart TB
         end
 
         API_SVC["mariachi-api :8000 (FastAPI)"]
-        PG["mariachi-postgres :5432<br/>DB: iieg_portal"]
+        PG["mariachi-postgres :5432<br/>DB: mariachi"]
         RD["mariachi-redis :6379"]
     end
 
@@ -177,7 +177,7 @@ mariachi/
 │   │                                 # borrador_service, media_service, menu_tree,
 │   │                                 # sieej/ (general, enlace, bases_datos)
 │   ├── alembic/
-│   │   ├── versions/mariachi/        # Migraciones de iieg_portal
+│   │   ├── versions/mariachi/        # Migraciones de mariachi
 │   │   └── versions/dataengine/      # Migraciones del schema mapalab en DataEngine
 │   ├── scripts/                      # init_db, seed_layers, migrate_mapalab_card
 │   └── tests/

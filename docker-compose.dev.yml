@@ -8,15 +8,15 @@ services:
     image: mariachi-postgres-dev
     container_name: mariachi-postgres-dev
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-iieg_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-iieg_password}
-      POSTGRES_DB: ${POSTGRES_DB:-iieg_portal}
+      POSTGRES_USER: ${POSTGRES_USER:?}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      POSTGRES_DB: ${POSTGRES_DB:?}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data_dev:/var/lib/postgresql
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-iieg_user} -d ${POSTGRES_DB:-iieg_portal}" ]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:?} -d ${POSTGRES_DB:?}" ]
       interval: 3s
       timeout: 5s
       retries: 10
@@ -66,7 +66,7 @@ services:
       redis:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-iieg_user}:${POSTGRES_PASSWORD:-iieg_password}@postgres:5432/${POSTGRES_DB:-iieg_portal}
+      DATABASE_URL: postgresql://${POSTGRES_USER:?}:${POSTGRES_PASSWORD:?}@postgres:5432/${POSTGRES_DB:?}
       REDIS_URL: redis://redis:6379/0
       ACERVO_ENDPOINT: ${ACERVO_ENDPOINT}
       ACERVO_PUBLIC_ENDPOINT: ${ACERVO_PUBLIC_ENDPOINT}

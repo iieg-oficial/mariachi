@@ -603,11 +603,6 @@ const Acervo = () => {
         }
     };
 
-    const handleBulkMoveOpen = () => {
-        setBulkMoveTargetFolder('/');
-        setBulkMoveModalVisible(true);
-    };
-
     const handleBulkMoveSubmit = async () => {
         try {
             const result = await acervoService.moveMultipleFiles(selectedFiles, bulkMoveTargetFolder);
@@ -881,95 +876,121 @@ const Acervo = () => {
 
     const renderGridView = () => (
         <Row gutter={[16, 16]}>
-            {sortedFiles.map(file => (
-                <Col key={file.id} xs={24} sm={12} md={8} lg={6} xl={4}>
-                    <Card
-                        hoverable
-                        onClick={file.isDir ? () => handleEnterDir(file) : () => handlePreview(file)}
-                        cover={
-                            file.isDir ? (
-                                <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FFF2E5', cursor: 'pointer' }}>
-                                    <FolderOutlined style={{ fontSize: 80, color: '#FF8300' }} />
-                                </div>
-                            ) : file.type?.startsWith('image/') ? (
-                                <div style={{ height: 200, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f0f0f0' }}>
-                                    <Image
-                                        src={file.thumbnail}
-                                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                        preview={false}
-                                        loading="lazy"
+            {sortedFiles.map(file => {
+                const isSelected = selectedFiles.includes(file.id);
+                return (
+                    <Col key={file.id} xs={24} sm={12} md={8} lg={6} xl={4}>
+                        <Card
+                            hoverable
+                            style={isSelected ? { outline: '2px solid #5C2472', outlineOffset: -2 } : undefined}
+                            onClick={(e) => {
+                                if (e.target.closest?.('.ant-checkbox-wrapper')) return;
+                                if (file.isDir) handleEnterDir(file);
+                                else handlePreview(file);
+                            }}
+                            cover={
+                                <div style={{ position: 'relative' }}>
+                                    <Checkbox
+                                        checked={isSelected}
+                                        onChange={() => {
+                                            setSelectedFiles(prev =>
+                                                prev.includes(file.id)
+                                                    ? prev.filter(id => id !== file.id)
+                                                    : [...prev, file.id]
+                                            );
+                                        }}
+                                        style={{
+                                            position: 'absolute',
+                                            top: 4,
+                                            left: 4,
+                                            zIndex: 2,
+                                        }}
                                     />
-                                </div>
-                            ) : (
-                                <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f0f0f0' }}>
-                                    {getFileIcon(file.type)}
-                                </div>
-                            )
-                        }
-                        actions={file.isDir ? [
-                            <Tooltip key="open" title="Abrir la carpeta">
-                                <FolderOpenOutlined onClick={(e) => { e.stopPropagation(); handleEnterDir(file); }} />
-                            </Tooltip>,
-                            <Tooltip key="info" title="Ver información de la carpeta (archivos, peso, subcarpetas)">
-                                <InfoCircleOutlined onClick={(e) => { e.stopPropagation(); handleFolderInfo(file); }} />
-                            </Tooltip>,
-                            <Tooltip key="download" title="Descargar la carpeta completa como ZIP">
-                                <DownloadOutlined onClick={(e) => { e.stopPropagation(); handleDownloadFolder(file); }} />
-                            </Tooltip>,
-                            <Popconfirm
-                                key="delete"
-                                title="¿Eliminar carpeta y todo su contenido?"
-                                onConfirm={(e) => { e?.stopPropagation?.(); handleDelete(file.id); }}
-                                onCancel={(e) => e?.stopPropagation?.()}
-                                okText="Sí"
-                                cancelText="No"
-                            >
-                                <Tooltip title="Eliminar la carpeta y su contenido">
-                                    <DeleteOutlined onClick={(e) => e.stopPropagation()} />
-                                </Tooltip>
-                            </Popconfirm>,
-                        ] : [
-                            <Tooltip key="move" title="Mover a otra carpeta">
-                                <DragOutlined onClick={(e) => { e.stopPropagation(); handleOpenMove(file); }} />
-                            </Tooltip>,
-                            <Tooltip key="copy" title="Copiar la URL pública (con dominio) al portapapeles">
-                                <CopyOutlined onClick={(e) => { e.stopPropagation(); handleCopyUrl(file.url); }} />
-                            </Tooltip>,
-                            <Tooltip key="edit" title="Editar texto alternativo, descripción y carpeta">
-                                <EditOutlined onClick={(e) => { e.stopPropagation(); handleEdit(file); }} />
-                            </Tooltip>,
-                            <Popconfirm
-                                key="delete"
-                                title="¿Eliminar?"
-                                onConfirm={(e) => { e?.stopPropagation?.(); handleDelete(file.id); }}
-                                onCancel={(e) => e?.stopPropagation?.()}
-                                okText="Sí"
-                                cancelText="No"
-                            >
-                                <Tooltip title="Eliminar el archivo">
-                                    <DeleteOutlined onClick={(e) => e.stopPropagation()} />
-                                </Tooltip>
-                            </Popconfirm>
-                        ]}
-                    >
-                        <Card.Meta
-                            title={
-                                <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                    {file.originalName}
+                                    {file.isDir ? (
+                                        <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FFF2E5', cursor: 'pointer' }}>
+                                            <FolderOutlined style={{ fontSize: 80, color: '#FF8300' }} />
+                                        </div>
+                                    ) : file.type?.startsWith('image/') ? (
+                                        <div style={{ height: 200, overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f0f0f0' }}>
+                                            <Image
+                                                src={file.thumbnail}
+                                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                                preview={false}
+                                                loading="lazy"
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f0f0f0' }}>
+                                            {getFileIcon(file.type)}
+                                        </div>
+                                    )}
                                 </div>
                             }
-                            description={
-                                <div>
-                                    <div>{file.isDir ? 'Carpeta' : acervoService.formatFileSize(file.size)}</div>
-                                    <div style={{ fontSize: 11, color: '#8c8c8c' }}>
-                                        {file.uploadedAt ? new Date(file.uploadedAt).toLocaleDateString('es-MX') : '—'}
+                            actions={file.isDir ? [
+                                <Tooltip key="open" title="Abrir la carpeta">
+                                    <FolderOpenOutlined onClick={(e) => { e.stopPropagation(); handleEnterDir(file); }} />
+                                </Tooltip>,
+                                <Tooltip key="info" title="Ver información de la carpeta (archivos, peso, subcarpetas)">
+                                    <InfoCircleOutlined onClick={(e) => { e.stopPropagation(); handleFolderInfo(file); }} />
+                                </Tooltip>,
+                                <Tooltip key="download" title="Descargar la carpeta completa como ZIP">
+                                    <DownloadOutlined onClick={(e) => { e.stopPropagation(); handleDownloadFolder(file); }} />
+                                </Tooltip>,
+                                <Popconfirm
+                                    key="delete"
+                                    title="¿Eliminar carpeta y todo su contenido?"
+                                    onConfirm={(e) => { e?.stopPropagation?.(); handleDelete(file.id); }}
+                                    onCancel={(e) => e?.stopPropagation?.()}
+                                    okText="Sí"
+                                    cancelText="No"
+                                >
+                                    <Tooltip title="Eliminar la carpeta y su contenido">
+                                        <DeleteOutlined onClick={(e) => e.stopPropagation()} />
+                                    </Tooltip>
+                                </Popconfirm>,
+                            ] : [
+                                <Tooltip key="move" title="Mover a otra carpeta">
+                                    <DragOutlined onClick={(e) => { e.stopPropagation(); handleOpenMove(file); }} />
+                                </Tooltip>,
+                                <Tooltip key="copy" title="Copiar la URL pública (con dominio) al portapapeles">
+                                    <CopyOutlined onClick={(e) => { e.stopPropagation(); handleCopyUrl(file.url); }} />
+                                </Tooltip>,
+                                <Tooltip key="edit" title="Editar texto alternativo, descripción y carpeta">
+                                    <EditOutlined onClick={(e) => { e.stopPropagation(); handleEdit(file); }} />
+                                </Tooltip>,
+                                <Popconfirm
+                                    key="delete"
+                                    title="¿Eliminar?"
+                                    onConfirm={(e) => { e?.stopPropagation?.(); handleDelete(file.id); }}
+                                    onCancel={(e) => e?.stopPropagation?.()}
+                                    okText="Sí"
+                                    cancelText="No"
+                                >
+                                    <Tooltip title="Eliminar el archivo">
+                                        <DeleteOutlined onClick={(e) => e.stopPropagation()} />
+                                    </Tooltip>
+                                </Popconfirm>
+                            ]}
+                        >
+                            <Card.Meta
+                                title={
+                                    <div style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        {file.originalName}
                                     </div>
-                                </div>
-                            }
-                        />
-                    </Card>
-                </Col>
-            ))}
+                                }
+                                description={
+                                    <div>
+                                        <div>{file.isDir ? 'Carpeta' : acervoService.formatFileSize(file.size)}</div>
+                                        <div style={{ fontSize: 11, color: '#8c8c8c' }}>
+                                            {file.uploadedAt ? new Date(file.uploadedAt).toLocaleDateString('es-MX') : '—'}
+                                        </div>
+                                    </div>
+                                }
+                            />
+                        </Card>
+                    </Col>
+                );
+            })}
         </Row>
     );
 
@@ -1006,10 +1027,13 @@ const Acervo = () => {
                             <>
                                 <Button
                                     icon={<DragOutlined />}
-                                    onClick={handleBulkMoveOpen}
+                                    onClick={() => {
+                                        setBulkMoveTargetFolder('/');
+                                        setBulkMoveModalVisible(true);
+                                    }}
                                     block={isMobile}
                                 >
-                                    Mover Seleccionados
+                                    Mover ({selectedFiles.length})
                                 </Button>
                                 <Popconfirm
                                     title={`¿Eliminar ${selectedFiles.length} archivos?`}
@@ -1018,7 +1042,7 @@ const Acervo = () => {
                                     cancelText="No"
                                 >
                                     <Button danger icon={<DeleteOutlined />} block={isMobile}>
-                                        Eliminar Seleccionados
+                                        Eliminar ({selectedFiles.length})
                                     </Button>
                                 </Popconfirm>
                             </>
@@ -1043,21 +1067,6 @@ const Acervo = () => {
                         />
                     </Col>
                 </Row>
-
-                {currentBucket?.acervo_bucket === 'iieg' && (
-                    <Alert
-                        type="info"
-                        showIcon
-                        style={{ marginBottom: 12 }}
-                        message="Convención del bucket IIEG"
-                        description={
-                            <span>
-                                Este bucket es <strong>global y compartido</strong> entre secciones. Los iconos reutilizables (avisos, marcadores, etc.) viven en
-                                {' '}<code>iconos/</code>. Si subes un icono, hazlo dentro de esa carpeta para evitar duplicación.
-                            </span>
-                        }
-                    />
-                )}
 
                 <div style={{ marginBottom: 12 }}>
                     <Breadcrumb items={breadcrumbItems} />

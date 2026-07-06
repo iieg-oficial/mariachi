@@ -18,7 +18,7 @@ El backend antes vivia en un repositorio aparte como FastAPI/SQLModel. En 2026-0
 
 ## Modelo de datos
 
-Schema dedicado `sieej` en la BD `iieg_portal`. Tablas vigentes:
+Schema dedicado `sieej` en la BD `mariachi`. Tablas vigentes:
 
 | Tabla | Tipo | Descripcion |
 |---|---|---|
@@ -68,6 +68,8 @@ Cada `formulario.definicion` es un objeto con esta forma minima:
 - `repeater` — lista de objetos en `datos[step.id]`. Soporta `minItems`, `maxItems` y `tabs` (agrupa fields en pestañas dentro de cada item).
 - `summary` — pantalla final de resumen; no captura datos. Soporta `pdfTemplate` y `exportPdf` (por ejemplo, el step `resumen` del seed `sieej-levantamiento` usa `pdfTemplate: "sieej-levantamiento"`).
 
+Los steps `form` y `repeater` aceptan `incompleteNotice` opcional (`{title?, message}`): si el respondent avanza (o envía) con campos visibles sin llenar en ese step, el frontend muestra un modal de advertencia con ese mensaje **sin bloquear** la navegación ni el envío ("Revisar" / "Continuar de todos modos"). Pensado para steps 100% opcionales tipo checklist. Los campos `info` y los ocultos por `showWhen` no cuentan como incompletos; un `checkbox` sin marcar sí cuenta. Se edita desde el `StepDrawer` del CMS.
+
 ### Tipos de field
 `text`, `textarea`, `number`, `email`, `tel`, `date`, `select`, `select_multiple`, `radio`, `checkbox`, `file`, `info`.
 
@@ -102,17 +104,17 @@ Router: `app/api/routes/sieej_admin/*`. Protegido por `staff_dep` (cualquier usu
 | GET | `/sieej/stats` | Conteos: dependencias en sieej, formularios activos, envios por estado, archivos. Consumido por el dashboard de SIEEJ. |
 | GET | `/sieej/formularios` | Lista (filtro opcional `estado`, `slug`). |
 | POST | `/sieej/formularios` | Crear formulario (estado inicial `borrador`). |
-| GET | `/sieej/formularios/{id}` | Detalle. |
+| GET | `/sieej/formularios/{id}` | Detalle. Incluye `grupos` y `usuarios_asignados` con `selectinload`. |
 | PUT | `/sieej/formularios/{id}` | Editar. Bumpea `version` si cambia `definicion` y hay envios. |
 | POST | `/sieej/formularios/{id}/publicar` | `borrador` → `activo`. |
 | POST | `/sieej/formularios/{id}/cerrar` | `activo` → `cerrado`. |
 | DELETE | `/sieej/formularios/{id}` | Si no tiene envios, borra; si tiene, lo cierra (preserva historico). |
 | PUT | `/sieej/formularios/{id}/asignaciones` | Reemplaza grupos y usuarios asignados. |
-| GET | `/sieej/formularios/{id}/envios` | Lista paginada de envios (filtro opcional `estado`). |
+| GET | `/sieej/formularios/{id}/envios` | Lista paginada de envios (filtro opcional `estado`). Cada item incluye `usuario_nombre` y `usuario_email` resueltos en lote. |
 | GET | `/sieej/formularios/{id}/envios/{envio_id}` | Detalle de un envio. |
 | POST | `/sieej/formularios/{id}/envios/{envio_id}/reabrir` | Devuelve un envio `enviado` o `expirado` al estado `en_proceso` para que el respondent pueda corregir y volver a enviar. Registra evento `reabierto` con `actor_usuario_id`. Falla con 409 si el formulario esta `cerrado` o fuera de vigencia, o si el envio no esta en estado reabrible. |
 | GET | `/sieej/grupos` | Lista grupos. |
-| POST | `/sieej/grupos` | Crear grupo. |
+| POST | `/sieej/grupos` | Crear grupo. Acepta `usuarios: int[]` para asignar miembros al crearlo atómicamente. Si algún ID no existe, falla con 400. |
 | GET | `/sieej/grupos/{id}` | Detalle. |
 | PUT | `/sieej/grupos/{id}` | Editar nombre/descripcion. |
 | DELETE | `/sieej/grupos/{id}` | 400 si tiene formularios asignados. |
@@ -132,9 +134,8 @@ Router: `app/api/routes/formularios/*`. Protegido por `Depends(require_project_a
 | GET | `/formularios/{slug}/envio` | Lee o inicia el envio del usuario actual. |
 | PUT | `/formularios/{slug}/envio` | Guarda (borrador) o cierra (`enviar=true`) el envio. Valida contra `definicion_snapshot`. |
 | POST | `/formularios/{slug}/envio/upload` | Sube un archivo al bucket configurado en el field `file`. Guarda `EnvioArchivo`. |
-| GET | `/formularios/mis-envios` | Listado paginado del **historial del usuario** (filtros `estado`, `q`, `page`, `page_size`, `sort`). Filtra siempre por `usuario_id` de la sesion (no acepta override). Sort soportado: `-actualizado_en` (default), `-enviado_en` (NULLS LAST portable), `nombre`. |
-| GET | `/formularios/mis-envios/{envio_id}` | Detalle del envio del usuario: `definicion_snapshot` + `datos` + `archivos[]` + `eventos[]`. 404 si no existe; 403 si pertenece a otro usuario. **No expone `actor_usuario_id`** en eventos para no filtrar identidad de admins que reabran/expiren. |
-| DELETE | `/formularios/mis-envios/{envio_id}` | Soft-delete del envio para el respondent (`eliminado_en` queda poblado). El envio sigue en la BD para que el admin lo vea con flag. El respondent ya no lo ve en `mis-envios` ni en el detalle. Idempotente: re-DELETE devuelve 404. |
+| GET | `/formularios/mis-envios/{envio_id}` | Detalle del envio del usuario: `definicion_snapshot` + `datos` + `archivos[]` + `eventos[]`. 404 si no existe; 403 si pertenece a otro usuario. **No expone `actor_usuario_id`** en eventos para no filtrar identidad de admins que reabran/expiren. Se llega desde la lista de formularios (estado `enviado`). El listado `GET /mis-envios` se elimino en 1.47+ (la pantalla "Mis envios" del frontend era redundante con "Mis formularios"). |
+| DELETE | `/formularios/mis-envios/{envio_id}` | Soft-delete del envio para el respondent (`eliminado_en` queda poblado). El envio sigue en la BD para que el admin lo vea con flag. El respondent ya no puede pedir el detalle. Idempotente: re-DELETE devuelve 404. |
 
 ### Visibilidad y RBAC del envio
 
@@ -268,7 +269,9 @@ api/
 
 Los items aparecen en el sider bajo el grupo "SIEEJ" del `PROJECT_REGISTRY` (`admin/src/app/sider-config.jsx`). La gestion de **dependencias** (crear usuarios `role='externo'` con asignacion a `sieej:editor`) vive en `/users` — no es parte del project registry de SIEEJ porque `usuarios` es una entidad global del CMS.
 
-El editor visual de la definicion JSONB esta en `components/visualEditor/` (StepsList + FieldsList + drawers).
+El editor visual de la definicion JSONB esta en `components/visualEditor/` (StepsList + FieldsList + drawers). Los pasos se muestran en **tabs** con drag & drop en las pestañas (dnd-kit), labels en dos lineas con tags mini de tipo y aviso, botones icono en mobile. Los tipos de paso y campo estan en `constants/definitionTypes.js` (compartidos con los drawers, labels en español).
+
+La seleccion de miembros en `GruposPage` y `AsignacionesEditor` usa `MemberPicker` — un `Transfer` de AntD con busqueda por `username`, `name` y `email`, que reemplaza los `Select mode="multiple"` anteriores que no escalaban con muchos usuarios.
 
 ## Frontend respondent (`iieg-oficial/sieej`)
 
@@ -311,4 +314,4 @@ El flujo del wizard se basa en `user_id`: cada `EnvioFormulario` referencia al u
 
 ## DataEngine
 
-SIEEJ no toca DataEngine. Las tablas viven en `iieg_portal`, no en la BD externa con PostGIS. Cualquier cambio futuro que toque DataEngine va en rama dedicada `prod-migracion` y se aplica con `alembic -x db=dataengine upgrade head`.
+SIEEJ no toca DataEngine. Las tablas viven en `mariachi`, no en la BD externa con PostGIS. Cualquier cambio futuro que toque DataEngine va en rama dedicada `prod-migracion` y se aplica con `alembic -x db=dataengine upgrade head`.

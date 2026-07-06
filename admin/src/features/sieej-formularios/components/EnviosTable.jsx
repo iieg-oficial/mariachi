@@ -1,9 +1,11 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Drawer, Empty, Select, Space, Table, Tag, Typography } from 'antd';
+import { Button, Drawer, Empty, Modal, Select, Space, Table, Tag, Tooltip, Typography } from 'antd';
+import { UndoOutlined } from '@ant-design/icons';
 import { message } from '@shared/services/message';
 import { formulariosApi } from '../services/formulariosAdminApi';
 
 const ESTADO_COLOR = { en_proceso: 'orange', enviado: 'green', expirado: 'red' };
+const ESTADO_LABEL = { en_proceso: 'En proceso', enviado: 'Enviado', expirado: 'Expirado' };
 
 export default function EnviosTable({ formulario }) {
     const [items, setItems] = useState([]);
@@ -33,15 +35,46 @@ export default function EnviosTable({ formulario }) {
 
     useEffect(() => { load(); }, [load]);
 
+    const fueraDeVigencia = formulario.vigencia_fin && new Date(formulario.vigencia_fin) < new Date();
+    const reabrirBloqueado = formulario.estado === 'cerrado'
+        ? 'No se puede reabrir: el formulario está cerrado'
+        : fueraDeVigencia
+            ? 'No se puede reabrir: el formulario está fuera de vigencia'
+            : null;
+
+    const handleReabrir = (record) => {
+        Modal.confirm({
+            title: `¿Reabrir el envío #${record.id}?`,
+            content: 'El envío regresará a "En proceso" y la dependencia podrá corregirlo y volver a enviarlo. Conserva la versión del formulario con la que se llenó.',
+            okText: 'Reabrir',
+            cancelText: 'Cancelar',
+            onOk: async () => {
+                try {
+                    await formulariosApi.reabrirEnvio(formulario.id, record.id);
+                    message.success(`Envío #${record.id} reabierto`);
+                    load();
+                } catch (err) {
+                    message.error(err?.response?.data?.detail || 'Error al reabrir el envío');
+                }
+            },
+        });
+    };
+
     const columns = [
         { title: 'ID', dataIndex: 'id', key: 'id', width: 80 },
-        { title: 'Usuario', dataIndex: 'usuario_id', key: 'usuario_id', width: 100 },
+        {
+            title: 'Usuario',
+            key: 'usuario',
+            render: (_, r) => r.usuario_nombre
+                ? <Tooltip title={r.usuario_email}>{r.usuario_nombre}</Tooltip>
+                : `#${r.usuario_id ?? '—'}`,
+        },
         { title: 'Versión', dataIndex: 'formulario_version', key: 'formulario_version', width: 100 },
         {
             title: 'Estado',
             dataIndex: 'estado',
             key: 'estado',
-            render: (v) => <Tag color={ESTADO_COLOR[v]}>{v}</Tag>,
+            render: (v) => <Tag color={ESTADO_COLOR[v]}>{ESTADO_LABEL[v] || v}</Tag>,
         },
         {
             title: 'Iniciado',
@@ -60,6 +93,30 @@ export default function EnviosTable({ formulario }) {
             dataIndex: 'actualizado_en',
             key: 'actualizado_en',
             render: (v) => v ? new Date(v).toLocaleString() : '—',
+        },
+        {
+            title: 'Acciones',
+            key: 'acciones',
+            width: 120,
+            render: (_, record) => {
+                if (record.estado !== 'enviado' && record.estado !== 'expirado') return null;
+                return (
+                    <Tooltip title={reabrirBloqueado}>
+                        <Button
+                            type="link"
+                            size="small"
+                            icon={<UndoOutlined />}
+                            disabled={!!reabrirBloqueado}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleReabrir(record);
+                            }}
+                        >
+                            Reabrir
+                        </Button>
+                    </Tooltip>
+                );
+            },
         },
     ];
 
@@ -98,7 +155,7 @@ export default function EnviosTable({ formulario }) {
             <Drawer
                 open={!!drawer}
                 onClose={() => setDrawer(null)}
-                title={drawer ? `Envio #${drawer.id}` : ''}
+                title={drawer ? `Envío #${drawer.id}${drawer.usuario_nombre ? ` — ${drawer.usuario_nombre}` : ''}` : ''}
                 width={Math.min(720, window.innerWidth)}
             >
                 {drawer && (

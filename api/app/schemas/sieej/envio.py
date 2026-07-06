@@ -26,6 +26,8 @@ class EnvioResponse(BaseModel):
     formulario_id: int
     formulario_version: int
     usuario_id: int | None
+    usuario_nombre: str | None = None
+    usuario_email: str | None = None
     estado: EnvioEstado
     datos: dict[str, Any]
     paso_actual: int
@@ -78,7 +80,7 @@ class EnvioEventoResponse(BaseModel):
 
 
 class MisEnviosFormularioInfo(BaseModel):
-    """Info ligera del formulario padre, usada en lista y detalle."""
+    """Info ligera del formulario padre, usada en el detalle."""
 
     slug: str
     nombre: str
@@ -98,27 +100,6 @@ class MisEnviosEventoResponse(BaseModel):
     ocurrido_en: datetime
 
     model_config = ConfigDict(from_attributes=True)
-
-
-class MisEnviosListItem(BaseModel):
-    """Item ligero de la lista de mis-envios. Sin definicion ni datos."""
-
-    id: int
-    formulario: MisEnviosFormularioInfo
-    estado: EnvioEstado
-    paso_actual: int
-    iniciado_en: datetime
-    enviado_en: datetime | None
-    actualizado_en: datetime
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-class MisEnviosListResponse(BaseModel):
-    total: int
-    page: int
-    page_size: int
-    items: list[MisEnviosListItem]
 
 
 class MisEnviosDetalle(BaseModel):

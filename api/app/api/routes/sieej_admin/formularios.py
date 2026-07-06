@@ -120,10 +120,26 @@ async def listar_envios(
     items, total = FormulariosAdminService(db).listar_envios(
         formulario_id, estado=estado, offset=offset, limit=limit
     )
-    return {
-        "total": total,
-        "items": [EnvioResponse.model_validate(e).model_dump(mode="json") for e in items],
-    }
+    usuario_ids = {e.usuario_id for e in items if e.usuario_id is not None}
+    usuarios = (
+        {u.id: u for u in db.query(Usuario).filter(Usuario.id.in_(usuario_ids)).all()}
+        if usuario_ids
+        else {}
+    )
+    serializados = []
+    for e in items:
+        u = usuarios.get(e.usuario_id)
+        serializados.append(
+            EnvioResponse.model_validate(e)
+            .model_copy(
+                update={
+                    "usuario_nombre": u.name if u else None,
+                    "usuario_email": u.email if u else None,
+                }
+            )
+            .model_dump(mode="json")
+        )
+    return {"total": total, "items": serializados}
 
 
 @router.get(

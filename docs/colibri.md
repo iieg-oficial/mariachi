@@ -568,7 +568,7 @@ Las fases 1-5 son independientes del objetivo embebible. Las 5.1-5.3 fueron bloq
 
 Colibri vive como modulo dentro del monorepo `mariachi/`, no como repositorio separado. Razones:
 
-- Reusa auth (cookie HttpOnly + CSRF), BD `iieg_portal`, `AcervoClient`, modelos `Usuario`/`AcervoBucket`, Discord notifier, Alembic, ruff y eslint ya configurados.
+- Reusa auth (cookie HttpOnly + CSRF), BD `mariachi`, `AcervoClient`, modelos `Usuario`/`AcervoBucket`, Discord notifier, Alembic, ruff y eslint ya configurados.
 - Cambios atomicos backend + admin + embed + sdk en un solo PR.
 - Una sola pipeline CI, un solo deploy.
 - El equipo es pequeño; partir el repo prematuramente cuesta mas que mantenerlo unido.

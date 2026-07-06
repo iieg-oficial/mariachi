@@ -1,4 +1,4 @@
-"""Tests del endpoint respondent /formularios/mis-envios y /:id."""
+"""Tests del detalle y soft-delete respondent /formularios/mis-envios/{id}."""
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
@@ -9,7 +9,6 @@ from sqlalchemy.pool import StaticPool
 from app.core.database import Base, get_db
 from app.core.security import hash_password
 from app.core.settings import get_settings
-from app.core.time import utcnow
 from app.main import app
 from app.models.project import Project, UserProject
 from app.models.sieej import (
@@ -197,124 +196,15 @@ def crear_envio(
 
 
 # ---------------------------------------------------------------------------
-# Listado
-# ---------------------------------------------------------------------------
-
-
-def test_lista_vacia_si_sin_envios(client, session, admin, respondent_a):
-    crear_formulario(session, admin)
-    login(client, respondent_a.username)
-    r = client.get(f"{ADMIN_PREFIX}/formularios/mis-envios")
-    assert r.status_code == 200
-    body = r.json()
-    assert body["total"] == 0
-    assert body["page"] == 1
-    assert body["items"] == []
-
-
-def test_lista_solo_los_propios(client, session, admin, respondent_a, respondent_b):
-    f = crear_formulario(session, admin)
-    crear_envio(session, f, respondent_a)
-    crear_envio(session, f, respondent_b)
-    login(client, respondent_a.username)
-    r = client.get(f"{ADMIN_PREFIX}/formularios/mis-envios")
-    assert r.status_code == 200
-    body = r.json()
-    assert body["total"] == 1
-    assert len(body["items"]) == 1
-    assert body["items"][0]["formulario"]["slug"] == f.slug
-
-
-def test_lista_filtra_por_estado(client, session, admin, respondent_a):
-    f1 = crear_formulario(session, admin, slug="f-uno")
-    f2 = crear_formulario(session, admin, slug="f-dos")
-    f3 = crear_formulario(session, admin, slug="f-tres")
-    crear_envio(session, f1, respondent_a, estado="en_proceso")
-    crear_envio(session, f2, respondent_a, estado="enviado", enviado_en=utcnow())
-    crear_envio(session, f3, respondent_a, estado="expirado")
-
-    login(client, respondent_a.username)
-    r = client.get(f"{ADMIN_PREFIX}/formularios/mis-envios?estado=enviado")
-    assert r.json()["total"] == 1
-    assert r.json()["items"][0]["estado"] == "enviado"
-
-    r = client.get(f"{ADMIN_PREFIX}/formularios/mis-envios?estado=expirado")
-    assert r.json()["total"] == 1
-
-
-def test_lista_busqueda_q(client, session, admin, respondent_a):
-    f1 = crear_formulario(session, admin, slug="levantamiento-anual", nombre="Levantamiento Anual")
-    f2 = crear_formulario(session, admin, slug="reporte-trim", nombre="Reporte Trimestral")
-    crear_envio(session, f1, respondent_a)
-    crear_envio(session, f2, respondent_a)
-
-    login(client, respondent_a.username)
-    r = client.get(f"{ADMIN_PREFIX}/formularios/mis-envios?q=levant")
-    assert r.json()["total"] == 1
-    assert r.json()["items"][0]["formulario"]["slug"] == "levantamiento-anual"
-
-
-def test_lista_paginacion(client, session, admin, respondent_a):
-    for i in range(5):
-        f = crear_formulario(session, admin, slug=f"f-{i}", nombre=f"Form {i}")
-        crear_envio(session, f, respondent_a)
-
-    login(client, respondent_a.username)
-    r = client.get(f"{ADMIN_PREFIX}/formularios/mis-envios?page=1&page_size=2")
-    assert r.json()["total"] == 5
-    assert len(r.json()["items"]) == 2
-
-    r = client.get(f"{ADMIN_PREFIX}/formularios/mis-envios?page=3&page_size=2")
-    assert len(r.json()["items"]) == 1  # 2+2+1
-
-
-def test_lista_sort_nombre(client, session, admin, respondent_a):
-    f1 = crear_formulario(session, admin, slug="z-form", nombre="Z Form")
-    f2 = crear_formulario(session, admin, slug="a-form", nombre="A Form")
-    f3 = crear_formulario(session, admin, slug="m-form", nombre="M Form")
-    crear_envio(session, f1, respondent_a)
-    crear_envio(session, f2, respondent_a)
-    crear_envio(session, f3, respondent_a)
-
-    login(client, respondent_a.username)
-    r = client.get(f"{ADMIN_PREFIX}/formularios/mis-envios?sort=nombre")
-    nombres = [it["formulario"]["nombre"] for it in r.json()["items"]]
-    assert nombres == ["A Form", "M Form", "Z Form"]
-
-
-def test_lista_sort_invalido_cae_a_default(client, session, admin, respondent_a):
-    f = crear_formulario(session, admin)
-    crear_envio(session, f, respondent_a)
-    login(client, respondent_a.username)
-    r = client.get(f"{ADMIN_PREFIX}/formularios/mis-envios?sort=hack")
-    # 422 porque el pattern del Query no permite valores arbitrarios
-    assert r.status_code == 422
-
-
-def test_lista_no_expone_datos_ni_definicion(client, session, admin, respondent_a):
-    f = crear_formulario(session, admin)
-    crear_envio(session, f, respondent_a, datos={"general": {"razon_social": "Acme"}})
-    login(client, respondent_a.username)
-    r = client.get(f"{ADMIN_PREFIX}/formularios/mis-envios")
-    item = r.json()["items"][0]
-    assert "datos" not in item
-    assert "definicion_snapshot" not in item
-    assert set(item.keys()) == {
-        "id", "formulario", "estado", "paso_actual",
-        "iniciado_en", "enviado_en", "actualizado_en",
-    }
-
-
-def test_lista_sin_sesion_401(client, session, admin, respondent_a):
-    f = crear_formulario(session, admin)
-    crear_envio(session, f, respondent_a)
-    r = client.get(f"{ADMIN_PREFIX}/formularios/mis-envios")
-    assert r.status_code == 401
-
-
-# ---------------------------------------------------------------------------
 # Detalle
 # ---------------------------------------------------------------------------
+
+
+def test_detalle_sin_sesion_401(client, session, admin, respondent_a):
+    f = crear_formulario(session, admin)
+    envio = crear_envio(session, f, respondent_a)
+    r = client.get(f"{ADMIN_PREFIX}/formularios/mis-envios/{envio.id}")
+    assert r.status_code == 401
 
 
 def test_detalle_propio_devuelve_snapshot_datos_archivos_eventos(
@@ -415,14 +305,13 @@ def test_detalle_usa_definicion_snapshot_no_actual(
     assert snapshot["steps"][0]["id"] == "general"
 
 
-def test_eliminar_mi_envio_lo_oculta_del_listado(client, session, admin, respondent_a):
+def test_eliminar_mi_envio_lo_oculta_del_detalle(client, session, admin, respondent_a):
     f = crear_formulario(session, admin)
     envio = crear_envio(session, f, respondent_a)
 
     csrf = login(client, respondent_a.username)
-    r0 = client.get(f"{ADMIN_PREFIX}/formularios/mis-envios")
+    r0 = client.get(f"{ADMIN_PREFIX}/formularios/mis-envios/{envio.id}")
     assert r0.status_code == 200
-    assert r0.json()["total"] == 1
 
     r1 = client.delete(
         f"{ADMIN_PREFIX}/formularios/mis-envios/{envio.id}",
@@ -430,12 +319,8 @@ def test_eliminar_mi_envio_lo_oculta_del_listado(client, session, admin, respond
     )
     assert r1.status_code == 204
 
-    r2 = client.get(f"{ADMIN_PREFIX}/formularios/mis-envios")
-    assert r2.status_code == 200
-    assert r2.json()["total"] == 0
-
-    r3 = client.get(f"{ADMIN_PREFIX}/formularios/mis-envios/{envio.id}")
-    assert r3.status_code == 404
+    r2 = client.get(f"{ADMIN_PREFIX}/formularios/mis-envios/{envio.id}")
+    assert r2.status_code == 404
 
 
 def test_eliminar_mi_envio_no_elimina_db(client, session, admin, respondent_a):

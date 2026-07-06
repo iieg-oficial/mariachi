@@ -33,13 +33,13 @@ services:
               "-c", "shared_buffers=${POSTGRES_SHARED_BUFFERS}",
               "-c", "effective_cache_size=${POSTGRES_EFFECTIVE_CACHE_SIZE}"]
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-iieg_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-iieg_password}
-      POSTGRES_DB: ${POSTGRES_DB:-iieg_portal}
+      POSTGRES_USER: ${POSTGRES_USER:?}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      POSTGRES_DB: ${POSTGRES_DB:?}
     volumes:
       - postgres_data:/var/lib/postgresql
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-iieg_user} -d ${POSTGRES_DB:-iieg_portal}" ]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:?} -d ${POSTGRES_DB:?}" ]
       interval: 3s
       timeout: 5s
       retries: 10
@@ -82,7 +82,7 @@ services:
       redis:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-iieg_user}:${POSTGRES_PASSWORD:-iieg_password}@postgres:5432/${POSTGRES_DB:-iieg_portal}
+      DATABASE_URL: postgresql://${POSTGRES_USER:?}:${POSTGRES_PASSWORD:?}@postgres:5432/${POSTGRES_DB:?}
       REDIS_URL: redis://redis:6379/0
       ACERVO_USE_SSL: ${ACERVO_USE_SSL:-false}
       SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE:-0.1}
@@ -120,7 +120,7 @@ services:
       api:
         condition: service_started
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:-iieg_user}:${POSTGRES_PASSWORD:-iieg_password}@postgres:5432/${POSTGRES_DB:-iieg_portal}
+      DATABASE_URL: postgresql://${POSTGRES_USER:?}:${POSTGRES_PASSWORD:?}@postgres:5432/${POSTGRES_DB:?}
       REDIS_URL: redis://redis:6379/0
     networks:
       - mariachi_network

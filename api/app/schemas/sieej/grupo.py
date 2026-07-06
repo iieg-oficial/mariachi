@@ -9,7 +9,7 @@ class GrupoBase(BaseModel):
 
 
 class GrupoCreate(GrupoBase):
-    pass
+    usuarios: list[int] = Field(default_factory=list)
 
 
 class GrupoUpdate(BaseModel):

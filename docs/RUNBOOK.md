@@ -8,7 +8,7 @@ Cada seccion sigue el patron: que sintomas indican el problema, como diagnostica
 
 - Todos los comandos se asumen ejecutados en la maquina/VM donde corre el servicio. Si necesitas conectarte: `ssh <usuario>@<host>`.
 - Carpeta de mariachi: `/home/egar/IIEG/mariachi` en dev local; en staging/prod ajustar al path real del despliegue.
-- Comandos Postgres asumen el container dev `mariachi-postgres-dev` y BD `iieg_portal`. En prod el nombre del container sera `mariachi-postgres`.
+- Comandos Postgres asumen el container dev `mariachi-postgres-dev` y BD `mariachi` (antes `iieg_portal`, ver seccion de rename). En prod el nombre del container sera `mariachi-postgres`.
 - Cuando un procedimiento involucre rotacion de secretos o downtime planeado, anunciar en el canal correspondiente antes y despues.
 
 ## Postgres no responde
@@ -19,7 +19,7 @@ Cada seccion sigue el patron: que sintomas indican el problema, como diagnostica
 
 ```bash
 docker ps --format '{{.Names}}\t{{.Status}}' | grep postgres
-docker exec mariachi-postgres-dev pg_isready -U iieg_user -d iieg_portal
+docker exec mariachi-postgres-dev pg_isready -U iieg_user -d mariachi
 docker logs mariachi-postgres-dev --tail 50
 ```
 
@@ -85,12 +85,57 @@ docker compose -f docker-compose.yml start api
 **Validacion post-restore:**
 
 ```bash
-docker exec mariachi-postgres psql -U iieg_user -d iieg_portal -c "SELECT count(*) FROM usuarios"
-docker exec mariachi-postgres psql -U iieg_user -d iieg_portal -c "SELECT count(*) FROM sieej.bases_datos"
+docker exec mariachi-postgres psql -U iieg_user -d mariachi -c "SELECT count(*) FROM usuarios"
+docker exec mariachi-postgres psql -U iieg_user -d mariachi -c "SELECT count(*) FROM sieej.bases_datos"
 docker exec mariachi-api alembic -x db=mariachi current
 ```
 
 Si alembic current no coincide con la migration esperada, correr `alembic -x db=mariachi upgrade head`.
+
+## Rename de la base de datos (iieg_portal → mariachi)
+
+La BD principal se llamaba `iieg_portal` (nombre legacy). El 2026-07-03 se renombro a `mariachi` en el entorno local; en la VM de produccion queda pendiente y debe aplicarse con este procedimiento. El rename es un cambio de catalogo instantaneo: no copia datos, conserva schemas (`public`, `sieej`), owners y permisos.
+
+**Prerrequisitos:** ventana de mantenimiento anunciada (~2-3 min de downtime del portal) y el codigo con los compose actualizados (`POSTGRES_*` sin defaults inline) ya mergeado.
+
+**Procedimiento:**
+
+```bash
+# 1. Backup ANTES de tocar el .env (el script lee $POSTGRES_DB, que aun apunta al nombre viejo)
+make backup-db
+
+# 2. Bajar los clientes de la BD
+docker stop mariachi-api mariachi-cron-sieej
+
+# 3. Renombrar (conectado a la BD administrativa "postgres")
+docker exec mariachi-postgres sh -c 'psql -U "$POSTGRES_USER" -d postgres \
+  -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '"'"'iieg_portal'"'"';" \
+  -c "ALTER DATABASE iieg_portal RENAME TO mariachi;"'
+
+# 4. Editar .env.production: POSTGRES_DB=mariachi
+# 5. git pull para traer los compose actualizados
+
+# 6. Levantar y verificar
+make deploy
+docker exec mariachi-postgres sh -c 'psql -U "$POSTGRES_USER" -d mariachi -c "\dn"'
+docker exec mariachi-api alembic current
+curl -s http://localhost:8000/health
+```
+
+**Notas:**
+
+- Al cambiar `POSTGRES_DB` compose recrea el container de postgres; los datos viven en el volumen `postgres_data` y no se tocan.
+- El healthcheck (`pg_isready -d $POSTGRES_DB`) falla si el `.env` y el nombre real de la BD no coinciden: es el primer sintoma de un paso a medias.
+- `sitio2026/alembic.ini` tiene la URL de esta BD hardcodeada; debe desplegarse junto con el rename.
+
+**Rollback (instantaneo, sin perdida de datos):**
+
+```bash
+docker stop mariachi-api mariachi-cron-sieej
+docker exec mariachi-postgres sh -c 'psql -U "$POSTGRES_USER" -d postgres \
+  -c "ALTER DATABASE mariachi RENAME TO iieg_portal;"'
+# revertir POSTGRES_DB en .env.production y levantar de nuevo
+```
 
 ## Rotar SECRET_KEY
 
@@ -133,7 +178,7 @@ docker exec acervo-minio mc du local --depth 2
 Si un AcervoBucket de la tabla `acervo_buckets` se borro accidentalmente o nunca se creo en MinIO, recrear:
 
 ```sql
--- en mariachi/iieg_portal:
+-- en la BD mariachi:
 INSERT INTO acervo_buckets (project_id, acervo_bucket, access_key_ref, display_name, is_public, is_active, created_at)
 SELECT p.id, '<nombre_bucket>', '<KEY_REF>', '<display name>', false, true, NOW()
 FROM projects p WHERE p.slug = '<slug>'

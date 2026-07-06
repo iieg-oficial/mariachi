@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Input, Segmented, Space, Typography } from 'antd';
+import { Alert, Button, Input, Segmented, Space } from 'antd';
 import { SaveOutlined, BlockOutlined, CodeOutlined } from '@ant-design/icons';
+import useIsMobile from '@shared/hooks/useIsMobile';
 import { message } from '@shared/services/message';
 import { formulariosApi } from '../services/formulariosAdminApi';
 import StepsList from './visualEditor/StepsList';
 
-const { Paragraph, Text } = Typography;
-
 const EMPTY_DEFINICION = { version: 1, steps: [] };
 
 export default function DefinicionEditor({ formulario, onSaved }) {
+    const { isMobile } = useIsMobile();
     const [view, setView] = useState('visual');
     const [definicion, setDefinicion] = useState(EMPTY_DEFINICION);
     const [jsonText, setJsonText] = useState('');
@@ -75,18 +75,6 @@ export default function DefinicionEditor({ formulario, onSaved }) {
 
     return (
         <Space direction="vertical" style={{ width: '100%' }} size="middle">
-            <Alert
-                type="info"
-                showIcon
-                message="Editor de la definición"
-                description={
-                    <Paragraph style={{ margin: 0 }}>
-                        El backend valida la estructura antes de guardar. Si el formulario ya tiene envíos
-                        y la <Text code>definición</Text> cambia, la versión se incrementa y los envíos
-                        existentes mantienen su snapshot.
-                    </Paragraph>
-                }
-            />
             {error && <Alert type="error" showIcon message={error} closable onClose={() => setError(null)} />}
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
@@ -99,7 +87,7 @@ export default function DefinicionEditor({ formulario, onSaved }) {
                     ]}
                 />
                 <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={handleSave}>
-                    Guardar definición
+                    {isMobile ? null : 'Guardar definición'}
                 </Button>
             </div>
 

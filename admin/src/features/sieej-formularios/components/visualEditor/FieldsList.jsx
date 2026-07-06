@@ -9,6 +9,7 @@ import { Button, Card, Empty, Space, Tag } from 'antd';
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
 import SortableItem from './SortableItem';
 import FieldDrawer from './FieldDrawer';
+import { fieldTypeLabel } from '../../constants/definitionTypes';
 
 const fieldKey = (field, idx) => `field-${field?.name ?? idx}`;
 
@@ -75,7 +76,7 @@ export default function FieldsList({ step, onChange }) {
                                         <div style={{ minWidth: 0 }}>
                                             <strong>{f.label || f.name}</strong>{' '}
                                             <code style={{ fontSize: 12 }}>{f.name}</code>{' '}
-                                            <Tag color="blue">{f.type}</Tag>
+                                            <Tag color="blue">{fieldTypeLabel(f.type)}</Tag>
                                             {f.required && <Tag color="red">requerido</Tag>}
                                             {f.tab && <Tag>tab: {f.tab}</Tag>}
                                             {f.showWhen && <Tag color="purple">condicional</Tag>}

@@ -2,7 +2,7 @@
 
 > Documento de referencia completo. Leer este archivo proporciona contexto del monorepo sin explorar el codebase.
 
-**Versión:** ver `api/pyproject.toml` (la lee `api/app/core/version.py::get_app_version()`; endpoint en vivo `GET /ontoy`). · **Última actualización:** 2026-07-02
+**Versión:** ver `api/pyproject.toml` (la lee `api/app/core/version.py::get_app_version()`; endpoint en vivo `GET /ontoy`). · **Última actualización:** 2026-07-06
 
 
 ---
@@ -39,7 +39,7 @@ El rename fue **solo de carpeta e identificadores internos de infra** (docker co
 
 - Branding publico "Portal IIEG", "CMS Portal" en UI
 - Rutas URL (`/api/portal`, `/api/administrador`)
-- Nombre de BD `iieg_portal`
+- Nombre de BD `mariachi`
 - Upstream `portal` en el gateway externo (se mantiene por conflicto de nombres con otro upstream ya existente)
 
 ---
@@ -95,7 +95,7 @@ Estructura de features (`admin/src/features/`): `acervo`, `auth`, `colibri`, `in
 | Componente | Tecnologia | Notas |
 |---|---|---|
 | Proxy interno | Nginx | sirve `web/dist` en `/`, `admin/dist` en `/mariachi/`, proxea `api/` a backend |
-| BD | PostgreSQL 18 (prod y dev) | DB: `iieg_portal` |
+| BD | PostgreSQL 18 (prod y dev) | DB: `mariachi` |
 | Cache/sessions | Redis 7 | |
 | Almacenamiento | Acervo (**SeaweedFS**, S3-compatible vía su gateway S3) | buckets por proyecto en `acervo_buckets`. **Publicos** (anonymous GetObject): `portal`, `mapalab`, `iieg`. **Privados**: `mariachi`, `sieej`, `dataengine` (deshabilitado). Cada bucket usa `<REF>_user` con policy attached al bucket; sin fallback a creds root. |
 | DataEngine (solo v1.4.0+ MapaLab) | PostgreSQL + PostGIS externo | Segunda conexión para tabla `layers` |
@@ -121,7 +121,7 @@ mariachi/
 │   │   ├── models/               # user, page, menu_item, media, borrador, reporte*, tipo, direccion, source_app, route, grupo, actividad
 │   │   ├── schemas/              # Pydantic request/response (incluye form_schema, source_context tipados)
 │   │   └── services/             # acervo, colibri_keys, colibri_fingerprint, pii_scrubber, colibri_router_engine
-│   ├── alembic/                  # Migraciones (solo BD iieg_portal por ahora)
+│   ├── alembic/                  # Migraciones (solo BD mariachi por ahora)
 │   ├── scripts/                  # init_db, generate_secret_key
 │   ├── tests/
 │   └── pyproject.toml            # name: mariachi-api
@@ -222,7 +222,7 @@ Redes: `mariachi_network_dev` (propia) + `mapalab-network` (external, para que e
 
 | Variable | Ejemplo | Descripcion |
 |---|---|---|
-| `DATABASE_URL` | `postgresql://user:pass@postgres:5432/iieg_portal` | BD principal del CMS |
+| `DATABASE_URL` | `postgresql://user:pass@postgres:5432/mariachi` | BD principal del CMS |
 | `DATAENGINE_DATABASE_URL` | `postgresql://mariachi_layers:***@dataengine:5432/db` | **Opcional**, solo para v1.4.0 de MapaLab (modulo de capas). Ver `DATAENGINE_CREDENTIALS.md` |
 | `DATAENGINE_POOL_SIZE` | `5` | Pool size del engine secundario |
 | `DATAENGINE_MAX_OVERFLOW` | `5` | Max overflow del engine secundario |
@@ -369,8 +369,8 @@ Sin auth. `router = APIRouter(tags=["portal público"])` en `routes/public.py`.
 | GET/POST/DELETE | `/formularios/*` | CRUD de formularios SIEEJ (admin) |
 | GET | `/formularios/catalogos` | Catalogo de tipos/dependencias SIEEJ |
 | GET/PUT/POST | `/formularios/{slug}/envio*` | Endpoints respondent: borrador, submit, upload de archivos |
-| GET | `/formularios/mis-envios?estado=&q=&page=&sort=` | Historico paginado del usuario autenticado (sieej respondent) |
 | GET | `/formularios/mis-envios/{id}` | Detalle con `definicion_snapshot` historica + `datos` + `archivos` + `eventos` |
+| DELETE | `/formularios/mis-envios/{id}` | Soft-delete del envio para el respondent |
 | GET/POST/PATCH/DELETE | `/home/*` | CRUD de secciones del home publico de mapalab |
 | GET/POST/PATCH/DELETE | `/mapalab-shares/*` | Gestion de share links de visor mapalab |
 | GET | `/layer-metadata/bulk/column-presets` | Presets de mapeo Excel→técnico para ingesta masiva |
@@ -539,7 +539,7 @@ La variable `PORTAL_HOST` del gateway sigue apuntando al container de este repo 
 
 ---
 
-## BD iieg_portal
+## BD mariachi
 
 Tablas existentes (modelos en `api/app/models/`):
 
@@ -559,7 +559,7 @@ Tablas existentes (modelos en `api/app/models/`):
 
 Migraciones via Alembic en `api/alembic/versions/`.
 
-**v1.4.0 de MapaLab agrega** 3 tablas a **otra BD** (DataEngine, no a `iieg_portal`):
+**v1.4.0 de MapaLab agrega** 3 tablas a **otra BD** (DataEngine, no a `mariachi`):
 
 - `layers`
 - `workspaces`
@@ -831,6 +831,18 @@ Este repo se integra con otros servicios internos vecinos (CMS, visor de mapas, 
 ---
 
 ## Cambios recientes
+
+### 2026-07-06 (admin v1.48.0 + api v1.48.0) — SIEEJ: MemberPicker + incompleteNotice + tabs en editor + Reabrir envios + grupos con miembros
+
+Lote de mejoras en el modulo SIEEJ del admin y backend. Detalle por feature en CHANGELOG §[api 1.48.0 / admin 1.48.0]. Resumen ejecutivo:
+
+- **MemberPicker** (`components/MemberPicker.jsx`): `Transfer` de AntD con busqueda por `username`/`name`/`email` reemplaza los `Select mode="multiple"` en `GruposPage` y `AsignacionesEditor` que no escalaban con muchos usuarios. Reutilizable, compatible con `Form.Item`.
+- **Editor visual** (`StepsList.jsx`): pasos en **tabs** horizontales con drag & drop en las pestañas (dnd-kit), tags mini de tipo y aviso, botones solo-icono en mobile. Tipos en español via `definitionTypes.js`.
+- **incompleteNotice**: validacion backend (`_validar_incomplete_notice`) + UI en `StepDrawer`. El respondent ve un modal no bloqueante al avanzar con campos vacios.
+- **Reabrir envios** (`EnviosTable.jsx`): boton "Reabrir" con confirmacion que devuelve un envio `enviado`/`expirado` a `en_proceso`. Deshabilitado si formulario cerrado/fuera de vigencia. Columna Usuario con nombre + email en tooltip.
+- **Grupos con miembros atomicos**: `POST /sieej/grupos` acepta `usuarios: int[]`, validacion 400 si IDs inexistentes, transaccion atomica. Creacion/edicion por modal con `MemberPicker`.
+- **FormularioResponse** incluye `grupos` y `usuarios_asignados` (schemas `GrupoRef`/`UsuarioRef` + `selectinload`), corrigiendo bug de selects vacios.
+- **usuario_nombre/usuario_email** resueltos en lote en `listar_envios`.
 
 ### 2026-06-19 (admin v1.43.0 + api v1.43.0) — Recursos GeoServer: carga múltiple y por chunks
 
