@@ -182,7 +182,7 @@ const ProbeCard = ({ probe }) => {
 };
 
 
-const McpRootProbe = () => {
+const McpRootProbe = ({ apiKey }) => {
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState(null);
     const [error, setError] = useState(null);
@@ -209,6 +209,7 @@ const McpRootProbe = () => {
                 headers: {
                     'Content-Type': 'application/json',
                     Accept: 'application/json, text/event-stream',
+                    ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
                 },
                 body: JSON.stringify(body),
                 credentials: 'omit',
@@ -389,7 +390,11 @@ const McpToolProbe = ({ probe, apiKey }) => {
             const response = await fetch(url, {
                 method: 'POST',
                 redirect: 'follow',
-                headers: { 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json, text/event-stream',
+                    ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+                },
                 body: JSON.stringify(body),
                 credentials: 'omit',
             });
@@ -495,20 +500,20 @@ export default function McpPlayground() {
 
     return (
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-            <Card size="small" title="API key del widget (opcional)">
+            <Card size="small" title="API key del MCP (requerida para los ejemplos)">
                 <Input.Password
-                    placeholder="mk_pub_xxxxx..."
+                    placeholder="mk_priv_xxxxx... o mk_pub_xxxxx..."
                     value={apiKey}
                     onChange={(e) => handleApiKeyChange(e.target.value)}
                     autoComplete="off"
                     allowClear
                 />
                 <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 6 }}>
-                    Necesaria solo para previsualizar los mapas de <Text code>create_map</Text> y <Text code>create_swipe</Text> embebidos debajo del JSON de respuesta. Genera o rota una key en <Link to="/mapalab/api-keys">Llaves del visor MapaLab</Link> con el dominio del admin en sitios autorizados. La key se guarda en <Text code>localStorage</Text> de este navegador.
+                    El MCP exige autenticación: la key se envía como <Text code>Authorization: Bearer</Text> en cada llamada de abajo (sin ella responden 401). Usa una key que el MCP acepte: <Text code>mk_priv_</Text> (recomendada) o <Text code>mk_pub_</Text> con dominios <Text code>["*"]</Text>. Para la previsualización embebida del mapa se necesita una <Text code>mk_pub_</Text>. Genera o rota una en <Link to="/mapalab/api-keys">Llaves del visor MapaLab</Link>. La key se guarda en <Text code>localStorage</Text> de este navegador.
                 </Text>
             </Card>
 
-            <McpRootProbe />
+            <McpRootProbe apiKey={apiKey} />
 
             <div style={{ marginTop: 8 }}>
                 <Text strong style={{ fontSize: 13 }}>Tools del MCP (JSON-RPC <Text code>tools/call</Text>)</Text>
