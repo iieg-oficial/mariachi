@@ -5,11 +5,14 @@ Coexiste con el wizard SIEEJ original (rutas `general`, `enlaces`,
 precedencia sobre las dinamicas porque se incluyen primero en
 `formularios/__init__.py`.
 """
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from urllib.parse import quote
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, verify_csrf
 from app.core.database import get_db
+from app.core.time import utcnow
 from app.models.user import Usuario
 from app.schemas.sieej.envio import (
     EnvioResponse,
@@ -23,6 +26,7 @@ from app.services.sieej.envios_service import EnviosService
 from app.services.sieej.formularios_dinamicos_service import (
     FormulariosDinamicosService,
 )
+from app.services.sieej.pdf_service import render_envio_pdf
 
 router = APIRouter()
 
@@ -91,6 +95,37 @@ async def eliminar_mi_envio(
     un envio ya eliminado devuelve 404.
     """
     EnviosService(db).eliminar_mi_envio(current_user, envio_id)
+
+
+@router.get("/mis-envios/{envio_id}/pdf")
+async def descargar_mi_envio_pdf(
+    envio_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    envio = EnviosService(db).obtener_mi_envio_detalle(current_user, envio_id)
+    definicion = envio.definicion_snapshot or {}
+    pdf_bytes = render_envio_pdf(definicion, envio.datos or {})
+
+    usuario_nombre = current_user.name or current_user.nombre or f"usuario_{current_user.id}"
+    usuario_slug = "".join(
+        c if c.isalnum() or c in "-_ " else "" for c in usuario_nombre
+    ).strip().replace(" ", "_") or "usuario"
+    formulario_slug = "".join(
+        c if c.isalnum() or c in "-_ " else ""
+        for c in (definicion.get("nombre") or "formulario")
+    ).strip().replace(" ", "_") or "formulario"
+    fecha_dt = envio.enviado_en or envio.actualizado_en or envio.iniciado_en or utcnow()
+    fecha = fecha_dt.strftime("%Y-%m-%d")
+    filename = f"{usuario_slug}_{formulario_slug}_{fecha}.pdf"
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}"
+        },
+    )
 
 
 @router.get("/{slug}", response_model=FormularioDetalle)
