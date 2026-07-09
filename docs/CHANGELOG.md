@@ -9,6 +9,46 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.49.0 / admin 1.49.0] - 2026-07-09
+
+### SIEEJ: editor de campos inline colapsable con vista previa
+
+El editor de campos del creador visual deja de abrir un `Drawer` modal y se **colapsa sobre el propio item**. Al pulsar editar, el campo se expande mostrando el formulario; "Agregar campo" abre un editor inline al final.
+
+#### Agregado
+
+- **Admin** (`FieldForm.jsx`): formulario de campo embebido (extraído del antiguo `FieldDrawer`) con footer Guardar/Cancelar y botón Guardar también en las acciones del item. Flujo **tipo primero**: solo se muestra el selector de tipo hasta elegirlo. Layout de dos columnas: campos a la izquierda, **vista previa sticky** a la derecha; en móvil, una sola columna.
+- **Admin** (`FieldPreview.jsx` + `fieldUtils.js`): vista previa en vivo de **todos** los tipos de campo con componentes AntD fieles al renderer, incluyendo pistas de validación (tel "10 dígitos", email, patrón, longitudes) y formatos/tamaño para archivo.
+- **Admin** (tipo archivo en `FieldForm`): **bucket Acervo** como `Select` poblado desde `useAccessibleBuckets` (ya no se escribe a mano) y **extensiones** como `Select mode="tags"`. **`patternMessage`** configurable para text/textarea/email/tel.
+
+#### Cambiado
+
+- **Admin** (`FieldsList.jsx`): edición inline colapsable, botón Guardar en las acciones del campo (instancia de `Form` compartida) y **confirmación** (`Popconfirm`) al eliminar un campo. Se elimina `FieldDrawer.jsx`.
+
+#### Corregido
+
+- **Admin** (`FieldForm.jsx`): el **nombre interno** se autocompleta con el slug de la etiqueta completa (antes se quedaba en la primera letra porque dejaba de sincronizar en cuanto el campo tenía valor).
+
+### SIEEJ: tabs internos del repeater como editor de filas + acciones de paso
+
+#### Cambiado
+
+- **Admin** (`StepDrawer.jsx`): los tabs internos de un paso `repeater` se editan con un `Form.List` (una fila por tab con id/título validados y agregar/eliminar) en vez de un textarea `id | titulo`.
+- **Admin** (`StepsList.jsx`): los botones de acción del paso pasan a la **izquierda** del título (evita toques accidentales), el botón de editar paso queda solo-icono y se agrega **confirmación** (`Popconfirm`) al eliminar un paso.
+
+### SIEEJ: `validation.pattern` y `patternMessage` personalizables por campo
+
+#### Agregado
+
+- **API** (`definicion_validator.py`): valida que `validation.pattern` sea un string con una regex **compilable** y que `validation.patternMessage` sea string no vacío (para text/textarea/email/tel). `definicion_to_validation_rules` exporta el `patternMessage` junto a la regla `pattern`.
+- Homologa con el frontend de SIEEJ (`1.20.0`), que aplica esos patrones en cliente y muestra el mensaje personalizado.
+
+### Por qué bump minor
+
+- Agrega funcionalidad visible nueva (edición inline, vista previa, editor de tabs, validación de patrón) compatible hacia atrás.
+
+---
+
 ## [api 1.48.0 / admin 1.48.0] - 2026-07-06
 
 ### SIEEJ: creador visual de definiciones con pestañas arrastrables

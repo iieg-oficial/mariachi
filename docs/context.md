@@ -832,6 +832,14 @@ Este repo se integra con otros servicios internos vecinos (CMS, visor de mapas, 
 
 ## Cambios recientes
 
+### 2026-07-09 (admin v1.49.0 + api v1.49.0) — SIEEJ: editor de campos inline con vista previa + tabs del repeater + validation.pattern
+
+Lote de mejoras en el creador visual de definiciones SIEEJ del admin y en el validador del backend. Detalle por feature en CHANGELOG §[api 1.49.0 / admin 1.49.0]. Resumen ejecutivo:
+
+- **Editor de campos inline** (`FieldForm.jsx`, `FieldPreview.jsx`, `fieldUtils.js`, `FieldsList.jsx`): el editor deja de ser un Drawer modal y se colapsa sobre el propio item. Vista previa en vivo de todos los tipos de campo en una segunda columna sticky. Para el tipo archivo, bucket Acervo como `Select` (desde `useAccessibleBuckets`) y extensiones como tags multi. `patternMessage` configurable. Flujo "tipo primero". Fix del autocompletado del nombre interno. Confirmación al eliminar campo. Se elimina `FieldDrawer.jsx`.
+- **Tabs internos del repeater** (`StepDrawer.jsx`): editor de filas (`Form.List`) con id/título validados en vez del textarea `id | titulo`. `StepsList.jsx`: acciones a la izquierda del título del paso, editar solo-icono y confirmación al eliminar paso.
+- **API** (`definicion_validator.py`): valida `validation.pattern` (regex compilable) y `validation.patternMessage` (string) para text/textarea/email/tel; `definicion_to_validation_rules` exporta el `patternMessage`.
+
 ### 2026-07-06 (admin v1.48.0 + api v1.48.0) — SIEEJ: MemberPicker + incompleteNotice + tabs en editor + Reabrir envios + grupos con miembros
 
 Lote de mejoras en el modulo SIEEJ del admin y backend. Detalle por feature en CHANGELOG §[api 1.48.0 / admin 1.48.0]. Resumen ejecutivo:
