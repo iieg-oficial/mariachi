@@ -5,17 +5,19 @@ import {
 import {
     SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, arrayMove,
 } from '@dnd-kit/sortable';
-import { Button, Card, Empty, Space, Tag } from 'antd';
-import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
+import { Button, Card, Empty, Form, Popconfirm, Space, Tag } from 'antd';
+import {
+    DeleteOutlined, EditOutlined, PlusOutlined, SaveOutlined, UpOutlined,
+} from '@ant-design/icons';
 import SortableItem from './SortableItem';
-import FieldDrawer from './FieldDrawer';
+import FieldForm from './FieldForm';
 import { fieldTypeLabel } from '../../constants/definitionTypes';
 
 const fieldKey = (field, idx) => `field-${field?.name ?? idx}`;
 
 export default function FieldsList({ step, onChange }) {
-    const [drawerOpen, setDrawerOpen] = useState(false);
-    const [editingIdx, setEditingIdx] = useState(null);
+    const [editingKey, setEditingKey] = useState(null);
+    const [fieldForm] = Form.useForm();
 
     const fields = step.fields ?? [];
     const sensors = useSensors(
@@ -31,35 +33,29 @@ export default function FieldsList({ step, onChange }) {
         onChange?.({ ...step, fields: arrayMove(fields, fromIdx, toIdx) });
     };
 
-    const handleNew = () => {
-        setEditingIdx(null);
-        setDrawerOpen(true);
-    };
-
-    const handleEdit = (idx) => {
-        setEditingIdx(idx);
-        setDrawerOpen(true);
-    };
+    const handleToggleEdit = (idx) => setEditingKey((prev) => (prev === idx ? null : idx));
 
     const handleDelete = (idx) => {
+        if (editingKey === idx) setEditingKey(null);
         onChange?.({ ...step, fields: fields.filter((_, i) => i !== idx) });
     };
 
     const handleSaveField = (newField) => {
         const next = [...fields];
-        if (editingIdx === null) {
+        if (editingKey === 'new') {
             next.push(newField);
         } else {
-            next[editingIdx] = newField;
+            next[editingKey] = newField;
         }
         onChange?.({ ...step, fields: next });
+        setEditingKey(null);
     };
 
-    const ids = fields.map(fieldKey);
-    const editingField = editingIdx === null ? null : fields[editingIdx];
-    const otherFieldNames = fields
-        .map((f, i) => i !== editingIdx ? f.name : null)
+    const otherFieldNames = (idx) => fields
+        .map((f, i) => (i !== idx ? f.name : null))
         .filter(Boolean);
+
+    const ids = fields.map(fieldKey);
 
     return (
         <div>
@@ -69,40 +65,88 @@ export default function FieldsList({ step, onChange }) {
                         {fields.length === 0 && (
                             <Empty description="Sin campos" image={Empty.PRESENTED_IMAGE_SIMPLE} />
                         )}
-                        {fields.map((f, idx) => (
-                            <SortableItem key={fieldKey(f, idx)} id={fieldKey(f, idx)}>
-                                <Card size="small" styles={{ body: { padding: 8 } }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                                        <div style={{ minWidth: 0 }}>
-                                            <strong>{f.label || f.name}</strong>{' '}
-                                            <code style={{ fontSize: 12 }}>{f.name}</code>{' '}
-                                            <Tag color="blue">{fieldTypeLabel(f.type)}</Tag>
-                                            {f.required && <Tag color="red">requerido</Tag>}
-                                            {f.tab && <Tag>tab: {f.tab}</Tag>}
-                                            {f.showWhen && <Tag color="purple">condicional</Tag>}
+                        {fields.map((f, idx) => {
+                            const isEditing = editingKey === idx;
+                            return (
+                                <SortableItem key={fieldKey(f, idx)} id={fieldKey(f, idx)}>
+                                    <Card size="small" styles={{ body: { padding: 8 } }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                                            <div style={{ minWidth: 0 }}>
+                                                <strong>{f.label || f.name}</strong>{' '}
+                                                <code style={{ fontSize: 12 }}>{f.name}</code>{' '}
+                                                <Tag color="blue">{fieldTypeLabel(f.type)}</Tag>
+                                                {f.required && <Tag color="red">requerido</Tag>}
+                                                {f.tab && <Tag>tab: {f.tab}</Tag>}
+                                                {f.showWhen && <Tag color="purple">condicional</Tag>}
+                                            </div>
+                                            <Space size="small">
+                                                {isEditing && (
+                                                    <Button
+                                                        type="primary"
+                                                        size="small"
+                                                        icon={<SaveOutlined />}
+                                                        onClick={() => fieldForm.submit()}
+                                                    >
+                                                        Guardar
+                                                    </Button>
+                                                )}
+                                                <Button
+                                                    type={isEditing ? 'default' : 'link'}
+                                                    size="small"
+                                                    icon={isEditing ? <UpOutlined /> : <EditOutlined />}
+                                                    onClick={() => handleToggleEdit(idx)}
+                                                />
+                                                <Popconfirm
+                                                    title="¿Eliminar este campo?"
+                                                    okText="Eliminar"
+                                                    okButtonProps={{ danger: true }}
+                                                    cancelText="Cancelar"
+                                                    onConfirm={() => handleDelete(idx)}
+                                                >
+                                                    <Button type="link" size="small" danger icon={<DeleteOutlined />} />
+                                                </Popconfirm>
+                                            </Space>
                                         </div>
-                                        <Space size="small">
-                                            <Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleEdit(idx)} />
-                                            <Button type="link" size="small" danger icon={<DeleteOutlined />} onClick={() => handleDelete(idx)} />
-                                        </Space>
-                                    </div>
-                                </Card>
-                            </SortableItem>
-                        ))}
+                                        {isEditing && (
+                                            <FieldForm
+                                                form={fieldForm}
+                                                field={f}
+                                                availableTabs={step.tabs ?? []}
+                                                availableShowWhenFields={otherFieldNames(idx)}
+                                                onSave={handleSaveField}
+                                                onCancel={() => setEditingKey(null)}
+                                            />
+                                        )}
+                                    </Card>
+                                </SortableItem>
+                            );
+                        })}
                     </Space>
                 </SortableContext>
             </DndContext>
-            <Button type="dashed" icon={<PlusOutlined />} block style={{ marginTop: 8 }} onClick={handleNew}>
-                Agregar campo
-            </Button>
-            <FieldDrawer
-                open={drawerOpen}
-                field={editingField}
-                availableTabs={step.tabs ?? []}
-                availableShowWhenFields={otherFieldNames}
-                onSave={handleSaveField}
-                onClose={() => setDrawerOpen(false)}
-            />
+
+            {editingKey === 'new' ? (
+                <Card size="small" style={{ marginTop: 8 }} styles={{ body: { padding: 8 } }} title="Nuevo campo">
+                    <FieldForm
+                        form={fieldForm}
+                        field={null}
+                        availableTabs={step.tabs ?? []}
+                        availableShowWhenFields={otherFieldNames(null)}
+                        onSave={handleSaveField}
+                        onCancel={() => setEditingKey(null)}
+                    />
+                </Card>
+            ) : (
+                <Button
+                    type="dashed"
+                    icon={<PlusOutlined />}
+                    block
+                    style={{ marginTop: 8 }}
+                    onClick={() => setEditingKey('new')}
+                >
+                    Agregar campo
+                </Button>
+            )}
         </div>
     );
 }
