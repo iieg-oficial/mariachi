@@ -6,7 +6,7 @@ import {
     SortableContext, arrayMove, horizontalListSortingStrategy, useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Button, Card, Empty, Space, Tabs, Tag } from 'antd';
+import { Button, Card, Empty, Popconfirm, Space, Tabs, Tag } from 'antd';
 import {
     DeleteOutlined, EditOutlined, PlusOutlined,
 } from '@ant-design/icons';
@@ -116,17 +116,24 @@ export default function StepsList({ steps, onChange }) {
         ),
         children: (
             <Card size="small">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <Space size="small">
+                        <Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleEdit(idx)} />
+                        <Popconfirm
+                            title="¿Eliminar este paso?"
+                            description="Se eliminará el paso y todos sus campos."
+                            okText="Eliminar"
+                            okButtonProps={{ danger: true }}
+                            cancelText="Cancelar"
+                            onConfirm={() => handleDelete(idx)}
+                        >
+                            <Button type="link" size="small" danger icon={<DeleteOutlined />} />
+                        </Popconfirm>
+                    </Space>
                     <div>
                         <code style={{ fontSize: 12 }}>{s.id}</code>
                         {s.tabs?.length > 0 && <Tag style={{ marginInlineStart: 8 }}>{s.tabs.length} tabs</Tag>}
                     </div>
-                    <Space size="small">
-                        <Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleEdit(idx)}>
-                            {isMobile ? null : 'Paso'}
-                        </Button>
-                        <Button type="link" size="small" danger icon={<DeleteOutlined />} onClick={() => handleDelete(idx)} />
-                    </Space>
                 </div>
                 {s.type !== 'summary' && (
                     <FieldsList

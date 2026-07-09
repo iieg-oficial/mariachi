@@ -1,14 +1,7 @@
 import { useEffect } from 'react';
 import { Button, Drawer, Form, Input, InputNumber, Select, Space } from 'antd';
+import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { STEP_TYPES } from '../../constants/definitionTypes';
-
-const tabsToText = (tabs) => (tabs ?? []).map((t) => `${t.id} | ${t.title}`).join('\n');
-const tabsFromText = (text) => (text ?? '')
-    .split('\n').map((l) => l.trim()).filter(Boolean)
-    .map((line) => {
-        const [id, ...rest] = line.split('|');
-        return { id: id.trim(), title: (rest.join('|') || id).trim() };
-    });
 
 export default function StepDrawer({ open, step, onSave, onClose }) {
     const [form] = Form.useForm();
@@ -23,7 +16,7 @@ export default function StepDrawer({ open, step, onSave, onClose }) {
             minItems: step?.minItems,
             maxItems: step?.maxItems,
             itemLabel: step?.itemLabel ?? '',
-            tabs_text: tabsToText(step?.tabs),
+            tabs: step?.tabs ?? [],
             exportPdf: step?.exportPdf ?? false,
             incomplete_title: step?.incompleteNotice?.title ?? '',
             incomplete_message: step?.incompleteNotice?.message ?? '',
@@ -43,7 +36,9 @@ export default function StepDrawer({ open, step, onSave, onClose }) {
             if (values.minItems != null) out.minItems = values.minItems;
             if (values.maxItems != null) out.maxItems = values.maxItems;
             if (values.itemLabel) out.itemLabel = values.itemLabel;
-            const tabs = tabsFromText(values.tabs_text);
+            const tabs = (values.tabs ?? [])
+                .map((t) => ({ id: t?.id?.trim(), title: (t?.title || t?.id || '').trim() }))
+                .filter((t) => t.id);
             if (tabs.length > 0) out.tabs = tabs;
             out.fields = step?.fields ?? [];
         } else if (values.type === 'form') {
@@ -107,13 +102,53 @@ export default function StepDrawer({ open, step, onSave, onClose }) {
                             extra='Usa "{{index}}" para el numero. Ej: "Base de datos {{index}}"'>
                             <Input />
                         </Form.Item>
-                        <Form.Item
-                            label="Tabs internos (una por linea: id | titulo)"
-                            name="tabs_text"
-                            extra="Vacio = sin tabs"
-                        >
-                            <Input.TextArea rows={3} placeholder={'datos | Datos generales\ndiccionario | Diccionario'} />
-                        </Form.Item>
+                        <div style={{ marginBottom: 4 }}>Tabs internos (agrupan los campos dentro de cada item)</div>
+                        <div style={{ color: '#888', fontSize: 12, marginBottom: 8 }}>
+                            Sin tabs = todos los campos juntos. Cada campo se asigna a un tab por su id.
+                        </div>
+                        <Form.List name="tabs">
+                            {(rows, { add, remove }) => (
+                                <div style={{ marginBottom: 16 }}>
+                                    {rows.map(({ key, name, ...rest }) => (
+                                        <Space key={key} align="baseline" style={{ display: 'flex', marginBottom: 8 }}>
+                                            <Form.Item
+                                                {...rest}
+                                                name={[name, 'id']}
+                                                style={{ marginBottom: 0 }}
+                                                rules={[
+                                                    { required: true, message: 'id requerido' },
+                                                    { pattern: /^[a-z0-9_]+$/, message: 'Solo minúsculas, dígitos y _' },
+                                                ]}
+                                            >
+                                                <Input placeholder="id (ej. datos)" />
+                                            </Form.Item>
+                                            <Form.Item
+                                                {...rest}
+                                                name={[name, 'title']}
+                                                style={{ marginBottom: 0 }}
+                                                rules={[{ required: true, message: 'título requerido' }]}
+                                            >
+                                                <Input placeholder="Título (ej. Datos generales)" />
+                                            </Form.Item>
+                                            <Button
+                                                type="link"
+                                                danger
+                                                icon={<DeleteOutlined />}
+                                                onClick={() => remove(name)}
+                                            />
+                                        </Space>
+                                    ))}
+                                    <Button
+                                        type="dashed"
+                                        icon={<PlusOutlined />}
+                                        onClick={() => add({ id: '', title: '' })}
+                                        block
+                                    >
+                                        Agregar tab
+                                    </Button>
+                                </div>
+                            )}
+                        </Form.List>
                     </>
                 )}
                 {watchType !== 'summary' && (
