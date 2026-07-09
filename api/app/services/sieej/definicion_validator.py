@@ -13,6 +13,7 @@ Lanza `DefinicionInvalidaError` con mensaje descriptivo en el primer error.
 """
 from __future__ import annotations
 
+import re
 from typing import Any
 
 FIELD_TYPES = {
@@ -290,6 +291,25 @@ def _validar_field(
                 raise DefinicionInvalidaError(
                     f"Step `{step_id}` field `{name}`: `validation.{key}` debe ser entero >= 0."
                 )
+        if "pattern" in validation:
+            pattern = validation["pattern"]
+            if not isinstance(pattern, str) or not pattern:
+                raise DefinicionInvalidaError(
+                    f"Step `{step_id}` field `{name}`: `validation.pattern` debe ser string no vacio."
+                )
+            try:
+                re.compile(pattern)
+            except re.error:
+                raise DefinicionInvalidaError(
+                    f"Step `{step_id}` field `{name}`: `validation.pattern` no es una expresion regular valida."
+                )
+        if "patternMessage" in validation and (
+            not isinstance(validation["patternMessage"], str)
+            or not validation["patternMessage"]
+        ):
+            raise DefinicionInvalidaError(
+                f"Step `{step_id}` field `{name}`: `validation.patternMessage` debe ser string no vacio."
+            )
 
     if step_type == "repeater" and isinstance(step_tabs, list) and step_tabs:
         tab_ref = field.get("tab")
@@ -351,7 +371,10 @@ def definicion_to_validation_rules(
             validation = field.get("validation") or {}
             for key in ("minLength", "maxLength", "pattern", "min", "max"):
                 if key in validation:
-                    rules.append({**base, "rule": key, "value": validation[key]})
+                    rule = {**base, "rule": key, "value": validation[key]}
+                    if key == "pattern" and "patternMessage" in validation:
+                        rule["message"] = validation["patternMessage"]
+                    rules.append(rule)
 
             if field.get("type") == "file":
                 if "maxSizeMB" in field:
