@@ -77,6 +77,20 @@ class FormulariosAdminService:
             )
         return f
 
+    def get_by_slug(self, slug: str) -> Formulario:
+        f = self.db.query(Formulario).filter(Formulario.slug == slug).first()
+        if f is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Formulario no encontrado",
+            )
+        return f
+
+    def get_by_id_or_slug(self, id_or_slug: str) -> Formulario:
+        if id_or_slug.isdigit():
+            return self.get(int(id_or_slug))
+        return self.get_by_slug(id_or_slug)
+
     def crear(self, data: dict[str, Any], creador: Usuario) -> Formulario:
         try:
             validar_definicion(data["definicion"])

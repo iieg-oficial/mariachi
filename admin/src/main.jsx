@@ -230,7 +230,7 @@ const router = createBrowserRouter([
                         )
                     },
                     {
-                        path: 'sieej/formularios/:id',
+                        path: 'sieej/formularios/:slug',
                         element: withSuspense(
                             <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
                                 <FormularioEditorPage />

@@ -2,7 +2,7 @@ import api from '@shared/services/api';
 
 export const formulariosApi = {
     list: (params = {}) => api.get('/sieej/formularios', { params }).then((r) => r.data),
-    get: (id) => api.get(`/sieej/formularios/${id}`).then((r) => r.data),
+    get: (idOrSlug) => api.get(`/sieej/formularios/${idOrSlug}`).then((r) => r.data),
     create: (data) => api.post('/sieej/formularios', data).then((r) => r.data),
     update: (id, data) => api.put(`/sieej/formularios/${id}`, data).then((r) => r.data),
     publicar: (id) => api.post(`/sieej/formularios/${id}/publicar`).then((r) => r.data),

@@ -14,7 +14,7 @@ const ESTADO_COLOR = { borrador: 'default', activo: 'green', cerrado: 'red' };
 const VALID_TABS = new Set(['definicion', 'configuracion', 'asignaciones', 'envios']);
 
 export default function FormularioEditorPage() {
-    const { id } = useParams();
+    const { slug } = useParams();
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
     const [formulario, setFormulario] = useState(null);
@@ -31,7 +31,7 @@ export default function FormularioEditorPage() {
         let cancel = false;
         (async () => {
             try {
-                const data = await formulariosApi.get(id);
+                const data = await formulariosApi.get(slug);
                 if (!cancel) setFormulario(data);
             } catch {
                 message.error('Formulario no encontrado');
@@ -41,7 +41,7 @@ export default function FormularioEditorPage() {
             }
         })();
         return () => { cancel = true; };
-    }, [id, navigate]);
+    }, [slug, navigate]);
 
     const handlePublicar = () => {
         Modal.confirm({
@@ -52,7 +52,7 @@ export default function FormularioEditorPage() {
             cancelText: 'Cancelar',
             onOk: async () => {
                 try {
-                    const updated = await formulariosApi.publicar(id);
+                    const updated = await formulariosApi.publicar(formulario.id);
                     setFormulario(updated);
                     message.success('Formulario publicado');
                 } catch (err) {

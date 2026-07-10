@@ -9,6 +9,16 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.54.2 / admin 1.52.1] - 2026-07-10
+
+### SIEEJ: ruta de edicion usa slug en vez de id numerico
+
+- **`api/app/api/routes/sieej_admin/formularios.py`**: `GET /formularios/{formulario_id_or_slug}` ahora acepta string (slug o id numerico) en vez de `int`.
+- **`api/app/services/sieej/formularios_admin_service.py`**: `get_by_slug()` y `get_by_id_or_slug()` resuelven formulario por slug o id.
+- **Admin**: ruta `sieej/formularios/:slug`, navegacion con `f.slug` en `FormulariosListPage`, `FormularioEditorPage` usa `slug` de `useParams()`.
+
+---
+
 ## [api 1.54.1 / admin 1.52.0] - 2026-07-10
 
 ### Acervo miniaturas + export SIEEJ: seguridad y fidelidad

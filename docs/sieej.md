@@ -104,7 +104,7 @@ Router: `app/api/routes/sieej_admin/*`. Protegido por `staff_dep` (cualquier usu
 | GET | `/sieej/stats` | Conteos: dependencias en sieej, formularios activos, envios por estado, archivos. Consumido por el dashboard de SIEEJ. |
 | GET | `/sieej/formularios` | Lista (filtro opcional `estado`, `slug`). |
 | POST | `/sieej/formularios` | Crear formulario (estado inicial `borrador`). |
-| GET | `/sieej/formularios/{id}` | Detalle. Incluye `grupos` y `usuarios_asignados` con `selectinload`. |
+| GET | `/sieej/formularios/{id_or_slug}` | Detalle. Acepta id numerico o slug. Incluye `grupos` y `usuarios_asignados` con `selectinload`. |
 | PUT | `/sieej/formularios/{id}` | Editar. Bumpea `version` si cambia `definicion` y hay envios. |
 | POST | `/sieej/formularios/{id}/publicar` | `borrador` → `activo`. |
 | POST | `/sieej/formularios/{id}/cerrar` | `activo` → `cerrado`. |

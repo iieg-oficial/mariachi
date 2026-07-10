@@ -52,12 +52,12 @@ async def crear_formulario(
     return FormulariosAdminService(db).crear(data.model_dump(), current_user)
 
 
-@router.get("/formularios/{formulario_id}", response_model=FormularioResponse)
+@router.get("/formularios/{formulario_id_or_slug}", response_model=FormularioResponse)
 async def obtener_formulario(
-    formulario_id: int,
+    formulario_id_or_slug: str,
     db: Session = Depends(get_db),
 ):
-    return FormulariosAdminService(db).get(formulario_id)
+    return FormulariosAdminService(db).get_by_id_or_slug(formulario_id_or_slug)
 
 
 @router.put("/formularios/{formulario_id}", response_model=FormularioResponse)
