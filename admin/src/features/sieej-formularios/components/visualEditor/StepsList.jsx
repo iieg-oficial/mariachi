@@ -1,4 +1,4 @@
-import { cloneElement, useState } from 'react';
+import { cloneElement, useEffect, useState } from 'react';
 import {
     DndContext, PointerSensor, closestCenter, useSensor, useSensors,
 } from '@dnd-kit/core';
@@ -45,7 +45,7 @@ function DraggableTabNode(props) {
     });
 }
 
-export default function StepsList({ steps, onChange }) {
+export default function StepsList({ steps, onChange, stepAddTrigger }) {
     const { isMobile } = useIsMobile();
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [editingIdx, setEditingIdx] = useState(null);
@@ -55,6 +55,10 @@ export default function StepsList({ steps, onChange }) {
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     );
+
+    useEffect(() => {
+        if (stepAddTrigger) handleNew();
+    }, [stepAddTrigger]);
 
     const ids = steps.map(stepKey);
     const currentKey = ids.includes(activeKey) ? activeKey : ids[0];
@@ -167,16 +171,6 @@ export default function StepsList({ steps, onChange }) {
                         activeKey={currentKey}
                         onChange={setActiveKey}
                         items={items}
-                        tabBarExtraContent={(
-                            <Button
-                                type="dashed"
-                                icon={<PlusOutlined />}
-                                onClick={handleNew}
-                                style={isMobile ? { marginInlineStart: 8 } : undefined}
-                            >
-                                {isMobile ? null : 'Agregar paso'}
-                            </Button>
-                        )}
                         renderTabBar={(tabBarProps, DefaultTabBar) => (
                             <DndContext
                                 sensors={sensors}

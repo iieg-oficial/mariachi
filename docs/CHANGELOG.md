@@ -9,6 +9,14 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.54.3 / admin 1.52.2] - 2026-07-10
+
+### SIEEJ: barra de herramientas unificada en editor de definicion
+
+- **Admin**: botones Guardar formulario y Agregar paso unificados en barra superior junto al Segmented Visual/JSON, homologados a altura del Segmented, con `flexWrap` para mobile. StepsList recibe `stepAddTrigger` para abrir el drawer desde fuera. Limpiados imports no usados.
+
+---
+
 ## [api 1.54.2 / admin 1.52.1] - 2026-07-10
 
 ### SIEEJ: ruta de edicion usa slug en vez de id numerico
