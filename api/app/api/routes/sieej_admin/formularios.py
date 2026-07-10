@@ -27,7 +27,7 @@ def _slug_filename(nombre: str) -> str:
 
 
 def _content_disposition(filename: str) -> str:
-    return f"attachment; filename*=UTF-8''{quote(filename)}"
+    return f"attachment; filename=\"{filename}\"; filename*=UTF-8''{quote(filename)}"
 
 
 @router.get("/formularios", response_model=list[FormularioResponse])
@@ -230,9 +230,10 @@ async def exportar_envios_xlsx(
                 "estado": e.estado,
                 "enviado_en": e.enviado_en.strftime("%Y-%m-%d %H:%M") if e.enviado_en else "",
                 "datos": e.datos or {},
+                "definicion": e.definicion_snapshot or formulario.definicion or {},
             }
         )
-    xlsx_bytes = build_envios_xlsx(formulario.definicion or {}, filas)
+    xlsx_bytes = build_envios_xlsx(filas)
     nombre = _slug_filename(formulario.nombre)
     filename = f"{nombre}_envios.xlsx"
     return Response(

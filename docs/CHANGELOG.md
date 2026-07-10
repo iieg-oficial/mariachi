@@ -9,6 +9,25 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.54.1 / admin 1.52.0] - 2026-07-10
+
+### Acervo miniaturas + export SIEEJ: seguridad y fidelidad
+
+Correcciones sobre las features del día (miniaturas anónimas de Acervo y descargas de envíos SIEEJ).
+
+#### Seguridad
+
+- **`api/app/api/routes/acervo.py`**: las miniaturas de la ruta **autenticada** vuelven a `Cache-Control: private` (el refactor de `_serve_thumbnail` las marcaba `public`, arriesgando el cacheo de imágenes de buckets privados en proxies/CDN). La ruta pública sigue en `public`. El SVG anónimo se sirve con `X-Content-Type-Options: nosniff` y `Content-Security-Policy: script-src 'none'; sandbox` (evita ejecución de scripts al abrir el SVG directo en el origen del gateway); `nosniff` también en la respuesta raster.
+
+#### Corregido
+
+- **`api/app/services/sieej/xlsx_service.py`** + **`api/app/api/routes/sieej_admin/formularios.py`**: el Excel de envíos arma las columnas por **unión de los `definicion_snapshot`** de cada envío, en vez de la definición vigente del formulario. Antes, los envíos capturados con una definición anterior (campos renombrados/eliminados) quedaban desalineados; ahora queda homologado con el PDF, que ya usaba el snapshot.
+- **`api/app/services/acervo_file_service.py`**: `joinedload(AcervoFile.bucket)` al listar media (evita el lazy-load implícito del `bucket` introducido con la relación nueva).
+- **`api/app/api/routes/sieej_admin/formularios.py`**: `Content-Disposition` incluye fallback `filename="..."` además de `filename*=UTF-8''`.
+- **`nginx/conf.d/mariachi.conf`**: elimina el `add_header Cache-Control ... always` duplicado en `/acervo/thumb/` (deja pasar el header del app y evita cachear respuestas 404).
+
+---
+
 ## [api 1.49.0 / admin 1.49.0] - 2026-07-09
 
 ### SIEEJ: editor de campos inline colapsable con vista previa

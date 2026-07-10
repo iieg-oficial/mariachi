@@ -25,20 +25,45 @@ def _cell(field: dict[str, Any], value: Any) -> str:
     return format_value(field, value) or ""
 
 
-def _form_fields(definicion: dict[str, Any]) -> list[tuple[dict, dict]]:
-    pairs: list[tuple[dict, dict]] = []
-    for step in definicion.get("steps", []):
-        if step.get("type") in ("summary", "repeater"):
-            continue
-        for field in step.get("fields", []):
-            if field.get("type") == "info":
+def _form_fields(definiciones: list[dict[str, Any]]) -> list[tuple[dict, dict]]:
+    seen: dict[tuple, tuple[dict, dict]] = {}
+    order: list[tuple] = []
+    for definicion in definiciones:
+        for step in (definicion or {}).get("steps", []):
+            if step.get("type") in ("summary", "repeater"):
                 continue
-            pairs.append((step, field))
-    return pairs
+            for field in step.get("fields", []):
+                if field.get("type") == "info":
+                    continue
+                key = (step.get("id"), field.get("name"))
+                if key not in seen:
+                    seen[key] = (step, field)
+                    order.append(key)
+    return [seen[k] for k in order]
 
 
-def _repeater_steps(definicion: dict[str, Any]) -> list[dict]:
-    return [s for s in definicion.get("steps", []) if s.get("type") == "repeater"]
+def _repeater_steps(definiciones: list[dict[str, Any]]) -> list[tuple[dict, list[dict]]]:
+    steps: dict[Any, dict] = {}
+    order: list[Any] = []
+    fields: dict[Any, tuple[dict, list]] = {}
+    for definicion in definiciones:
+        for step in (definicion or {}).get("steps", []):
+            if step.get("type") != "repeater":
+                continue
+            sid = step.get("id")
+            if sid not in steps:
+                steps[sid] = step
+                order.append(sid)
+                fields[sid] = ({}, [])
+            fmap, forder = fields[sid]
+            for field in step.get("fields", []):
+                if field.get("type") == "info":
+                    continue
+                fname = field.get("name")
+                if fname not in fmap:
+                    fmap[fname] = field
+                    forder.append(fname)
+    return [(steps[sid], [fields[sid][0][n] for n in fields[sid][1]]) for sid in order]
 
 
 def _unique_sheet_title(wb: Workbook, base: str) -> str:
@@ -57,13 +82,13 @@ def _bold_header(ws) -> None:
         cell.font = Font(bold=True)
 
 
-def build_envios_xlsx(definicion: dict[str, Any], envios: list[dict[str, Any]]) -> bytes:
-    definicion = definicion or {}
+def build_envios_xlsx(envios: list[dict[str, Any]]) -> bytes:
+    definiciones = [e.get("definicion") or {} for e in envios]
     wb = Workbook()
     ws = wb.active
     ws.title = "Envios"
 
-    form_fields = _form_fields(definicion)
+    form_fields = _form_fields(definiciones)
     meta = ["ID", "Usuario", "Email", "Estado", "Enviado"]
     ws.append(meta + [f.get("label") or f.get("name") for _, f in form_fields])
     _bold_header(ws)
@@ -78,17 +103,17 @@ def build_envios_xlsx(definicion: dict[str, Any], envios: list[dict[str, Any]]) 
             envio.get("enviado_en") or "",
         ]
         for step, field in form_fields:
-            step_data = datos.get(step["id"]) if isinstance(datos.get(step["id"]), dict) else {}
+            raw = datos.get(step.get("id"))
+            step_data = raw if isinstance(raw, dict) else {}
             row.append(_cell(field, step_data.get(field.get("name"))))
         ws.append(row)
 
-    for step in _repeater_steps(definicion):
+    for step, fields in _repeater_steps(definiciones):
         rs = wb.create_sheet(_unique_sheet_title(wb, step.get("title") or step.get("id")))
-        fields = [f for f in step.get("fields", []) if f.get("type") != "info"]
         rs.append(["Envio ID", "Usuario", "#"] + [f.get("label") or f.get("name") for f in fields])
         _bold_header(rs)
         for envio in envios:
-            items = (envio.get("datos") or {}).get(step["id"])
+            items = (envio.get("datos") or {}).get(step.get("id"))
             if not isinstance(items, list):
                 continue
             for i, item in enumerate(items):

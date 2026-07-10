@@ -101,7 +101,15 @@ def _read_object_bytes(client: AcervoClient, object_name: str) -> bytes:
         response.release_conn()
 
 
-def _serve_thumbnail(client: AcervoClient, bucket_name: str, object_path: str, w: int, *, user_id: str | None = None):
+def _serve_thumbnail(
+    client: AcervoClient,
+    bucket_name: str,
+    object_path: str,
+    w: int,
+    *,
+    user_id: str | None = None,
+    cache_visibility: str = "private",
+):
     try:
         stat = client.stat_object(object_path)
     except S3Error as exc:
@@ -120,7 +128,11 @@ def _serve_thumbnail(client: AcervoClient, bucket_name: str, object_path: str, w
         return Response(
             content=data,
             media_type="image/svg+xml",
-            headers={"Cache-Control": "public, max-age=86400"},
+            headers={
+                "Cache-Control": f"{cache_visibility}, max-age=86400",
+                "X-Content-Type-Options": "nosniff",
+                "Content-Security-Policy": "script-src 'none'; sandbox",
+            },
         )
 
     if not acervo_thumbnails.is_raster_image(content_type):
@@ -130,7 +142,8 @@ def _serve_thumbnail(client: AcervoClient, bucket_name: str, object_path: str, w
     etag = stat.etag
     key = acervo_thumbnails.thumb_key(object_path, etag, width)
     headers = {
-        "Cache-Control": "public, max-age=86400, immutable",
+        "Cache-Control": f"{cache_visibility}, max-age=86400, immutable",
+        "X-Content-Type-Options": "nosniff",
         "ETag": f'"{acervo_thumbnails._clean_etag(etag)}-w{width}"',
     }
 
@@ -1016,4 +1029,4 @@ async def public_thumbnail(
     if not bucket.is_public:
         raise HTTPException(status_code=404, detail="Bucket no encontrado")
     client = AcervoClient.for_bucket(bucket)
-    return _serve_thumbnail(client, bucket.acervo_bucket, object_path, w)
+    return _serve_thumbnail(client, bucket.acervo_bucket, object_path, w, cache_visibility="public")

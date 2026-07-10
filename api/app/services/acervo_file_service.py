@@ -8,7 +8,7 @@ from typing import Callable
 from fastapi import HTTPException, status
 from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import ADMIN_ROLE
 from app.core.bucket_policies import get_hidden_prefixes
@@ -333,7 +333,12 @@ def listar_media(
         if not obj.get("is_dir") and not obj["name"].endswith("/"):
             obj["url"] = client.get_file_url(obj["name"])
 
-    local_items = db.query(AcervoFile).filter(AcervoFile.bucket_id == bucket.id).all()
+    local_items = (
+        db.query(AcervoFile)
+        .options(joinedload(AcervoFile.bucket))
+        .filter(AcervoFile.bucket_id == bucket.id)
+        .all()
+    )
     local_by_name = {item.name: item for item in local_items}
 
     results: list[dict] = []
