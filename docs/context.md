@@ -841,7 +841,16 @@ La miniatura serializada en `thumbnail` pasa de la ruta autenticada `/api/admini
 
 - **Backend**: nuevo `acervo.public_router` (`GET /acervo/thumb/{bucket_name}/{path}?w=`, sin auth) que reusa `_serve_thumbnail`; devuelve `404` si el bucket no es público. `thumbnail_for(...)` recibe `is_public`: raster público → ruta pública, SVG → `url`, **privado → `null`** (los privados no llevan previsualización, por decisión de producto). La ruta autenticada por `bucket_id` sigue disponible para staff. Fix: `eliminar_archivo` recupera su `return` (se había quedado sin valor).
 - **Gateway-hub**: nueva `location ^~ /acervo/thumb/` → `mariachi-nginx` (antes que `^~ /acervo/` → SeaweedFS, que si no devolvía `403`). Requiere `make deploy` del gateway-hub.
-- **Admin — snippets contextuales por archivo**: cada imagen del Acervo tiene un botón `</>` (`CodeOutlined`, en vista lista y grid) que abre `FileSnippetsModal` con los snippets **generados desde la ruta real** del archivo (`<img>` directo, miniatura WebP, `srcSet` 120/400/1280 y `<Image>` de AntD con preview), copiables con un clic; usa `toPublicUrl`/`thumbVariant`. Para buckets privados solo ofrece la URL del proxy (sin miniatura). La doc `/mariachi/documentacion` (tab Acervo) se reorganizó en **2 pestañas** ("Uso del panel" y "Miniaturas y URLs"); se eliminó la pestaña de ejemplos estáticos en favor del botón por archivo.
+- **Admin — snippets contextuales por archivo**: cada imagen del Acervo tiene un botón `</>` (`CodeOutlined`, en vista lista y grid) que abre `FileSnippetsModal` con los snippets **generados desde la ruta real** del archivo (`<img>` directo, miniatura WebP, `srcSet` 120/400/1280, componente React JSX y `<Image>` de AntD con preview), copiables con un clic (botón Copiar en el título de cada panel); usa `toPublicUrl`/`thumbVariant`. Para buckets privados solo ofrece la URL del proxy (sin miniatura). La doc `/mariachi/documentacion` (tab Acervo) se reorganizó en **2 pestañas** ("Uso del panel" y "Miniaturas y URLs"); se eliminó la pestaña de ejemplos estáticos en favor del botón por archivo.
+
+### 2026-07-10 (admin v1.52.0 + api v1.52.0) — Acervo: ayuda contextual (botón Documentación + modal + deep-links)
+
+Ayuda contextual desde el gestor `/mariachi/acervo` hacia la documentación, sin salir de la página. Solo admin.
+
+- Botón **Documentación** en el encabezado de `/mariachi/acervo` que abre `AcervoHelpModal` (`features/documentacion/components/AcervoHelpModal.jsx`), un modal que renderiza `AcervoTopic` en la pestaña pedida. Abre en "Uso del panel".
+- `AcervoTopic` acepta `defaultActiveTab` (`uso`|`thumbs`) y `showHeader` (oculta su título dentro del modal).
+- Los bloques de snippets (fila expandible en Lista y modal `</>` en Grid) muestran un link **"Guía de miniaturas y URLs"** (`FileSnippets` recibe `onHelp`) que abre el modal en "Miniaturas y URLs"; en el diagnóstico no, para no anidar.
+- `DocumentacionPage` respeta `?topic=acervo&sec=uso|thumbs` para deep-links directos a la sub-pestaña.
 
 ### 2026-07-09 (admin v1.49.0 + api v1.49.0) — SIEEJ: editor de campos inline con vista previa + tabs del repeater + validation.pattern
 
