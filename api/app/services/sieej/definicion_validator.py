@@ -183,6 +183,21 @@ def _validar_incomplete_notice(step: dict[str, Any], step_id: str) -> None:
             )
 
 
+def _validate_layout(field: dict[str, Any], step_id: str, name: str) -> None:
+    layout = field.get("layout")
+    if layout is None:
+        return
+    if not isinstance(layout, dict):
+        raise DefinicionInvalidaError(
+            f"Step `{step_id}` field `{name}`: `layout` debe ser un objeto."
+        )
+    col_span = layout.get("colSpan")
+    if col_span is not None and (not isinstance(col_span, int) or col_span < 1 or col_span > 3):
+        raise DefinicionInvalidaError(
+            f"Step `{step_id}` field `{name}`: `layout.colSpan` debe ser 1, 2 o 3."
+        )
+
+
 def _validar_field(
     field: Any,
     step_id: str,
@@ -214,6 +229,7 @@ def _validar_field(
         )
 
     if field_type == "info":
+        _validate_layout(field, step_id, name)
         return
 
     label = field.get("label")
@@ -273,6 +289,8 @@ def _validar_field(
             raise DefinicionInvalidaError(
                 f"Step `{step_id}` field `{name}`: `bucket` requerido para tipo `file`."
             )
+
+    _validate_layout(field, step_id, name)
 
     if field_type == "number":
         validation = field.get("validation") or {}

@@ -73,7 +73,7 @@ export default function FieldPreview({ values }) {
         );
         break;
     case 'info':
-        control = <div style={{ color: '#555' }}>{label || 'Texto informativo'}</div>;
+        control = <div style={{ color: '#7C7C7C', fontStyle: 'italic' }}>{label || 'Texto informativo'}</div>;
         break;
     default:
         control = <Input disabled placeholder={ph} />;

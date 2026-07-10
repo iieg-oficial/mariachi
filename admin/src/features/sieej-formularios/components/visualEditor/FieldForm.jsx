@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-    Button, Col, Form, Input, InputNumber, Row, Select, Switch, Space,
+    Button, Col, Form, Input, InputNumber, Row, Segmented, Select, Switch, Space,
 } from 'antd';
 import useAccessibleBuckets from '@features/acervo/hooks/useAccessibleBuckets';
 import useIsMobile from '@shared/hooks/useIsMobile';
@@ -36,6 +36,8 @@ const fromForm = (values) => {
         ? values.accept.map((x) => x.trim()).filter(Boolean)
         : [];
 
+    const colSpan = values.colSpan ?? 1;
+
     return {
         name: values.name,
         label: values.label,
@@ -51,6 +53,7 @@ const fromForm = (values) => {
         ...(values.bucket ? { bucket: values.bucket } : {}),
         ...(accept.length > 0 ? { accept } : {}),
         ...(values.maxSizeMB != null ? { maxSizeMB: values.maxSizeMB } : {}),
+        layout: { colSpan },
     };
 };
 
@@ -75,6 +78,7 @@ const toForm = (field) => ({
     bucket: field?.bucket ?? undefined,
     accept: field?.accept ?? [],
     maxSizeMB: field?.maxSizeMB,
+    colSpan: field?.layout?.colSpan ?? 1,
 });
 
 export default function FieldForm({
@@ -148,6 +152,15 @@ export default function FieldForm({
                             <Select allowClear options={availableTabs.map((t) => ({ value: t.id, label: t.title }))} />
                         </Form.Item>
                     )}
+                    <Form.Item label="Ancho en columnas" name="colSpan">
+                        <Segmented
+                            options={[
+                                { value: 1, label: 'Grande' },
+                                { value: 2, label: 'Mediano' },
+                                { value: 3, label: 'Chico' },
+                            ]}
+                        />
+                    </Form.Item>
                     {showOptions && (
                         <>
                             <Form.Item
@@ -245,22 +258,27 @@ export default function FieldForm({
     return (
         <Form layout="vertical" form={form} onFinish={handleFinish} style={{ marginTop: 12 }}>
             <Row gutter={16}>
-                <Col xs={24} md={14}>
-                    {formFields}
-                </Col>
-                <Col xs={24} md={10}>
-                    <div style={{ position: isMobile ? 'static' : 'sticky', top: 16 }}>
-                        <div style={{ fontWeight: 500, marginBottom: 8, color: '#191919' }}>
-                            Vista previa (como lo verá el usuario)
-                        </div>
-                        {watchType ? (
-                            <FieldPreview values={previewValues} />
-                        ) : (
-                            <div style={{ color: '#999', fontSize: 12, border: '1px dashed #d9d9d9', borderRadius: 8, padding: 16 }}>
-                                Elige un tipo de campo para ver la vista previa.
+                {watchType && (
+                    <Col xs={24} md={24} xl={10}>
+                        <div style={{
+                            position: 'sticky',
+                            top: 16,
+                            marginBottom: isMobile ? 12 : 0,
+                        }}>
+                            <div style={{ fontWeight: 500, marginBottom: 8, color: '#191919' }}>
+                                Vista previa
                             </div>
-                        )}
-                    </div>
+                            <FieldPreview values={previewValues} />
+                        </div>
+                    </Col>
+                )}
+                <Col xs={24} md={24} xl={watchType ? 14 : 24}>
+                    {!watchType && (
+                        <div style={{ color: '#999', fontSize: 12, border: '1px dashed #d9d9d9', borderRadius: 8, padding: 16, marginBottom: 12 }}>
+                            Elige un tipo de campo para ver la vista previa.
+                        </div>
+                    )}
+                    {formFields}
                 </Col>
             </Row>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 8 }}>

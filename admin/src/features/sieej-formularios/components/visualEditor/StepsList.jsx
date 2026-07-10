@@ -6,7 +6,7 @@ import {
     SortableContext, arrayMove, horizontalListSortingStrategy, useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Button, Card, Empty, Popconfirm, Space, Tabs, Tag } from 'antd';
+import { Button, Card, Empty, Popconfirm, Space, Tabs, Tag, Tooltip } from 'antd';
 import {
     DeleteOutlined, EditOutlined, PlusOutlined,
 } from '@ant-design/icons';
@@ -50,6 +50,7 @@ export default function StepsList({ steps, onChange }) {
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [editingIdx, setEditingIdx] = useState(null);
     const [activeKey, setActiveKey] = useState(null);
+    const [fieldAddTarget, setFieldAddTarget] = useState(null);
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -118,7 +119,12 @@ export default function StepsList({ steps, onChange }) {
             <Card size="small">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                     <Space size="small">
-                        <Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleEdit(idx)} />
+                        <Tooltip title="Agregar campo">
+                            <Button type="link" size="small" icon={<PlusOutlined />} onClick={() => setFieldAddTarget({ idx, ts: Date.now() })} />
+                        </Tooltip>
+                        <Tooltip title="Editar paso">
+                            <Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleEdit(idx)} />
+                        </Tooltip>
                         <Popconfirm
                             title="¿Eliminar este paso?"
                             description="Se eliminará el paso y todos sus campos."
@@ -139,6 +145,7 @@ export default function StepsList({ steps, onChange }) {
                     <FieldsList
                         step={s}
                         onChange={(updated) => handleStepFieldsChange(idx, updated)}
+                        addTrigger={fieldAddTarget?.idx === idx ? fieldAddTarget : null}
                     />
                 )}
             </Card>
