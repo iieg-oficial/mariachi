@@ -1,11 +1,30 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Button, Drawer, Empty, Modal, Select, Space, Table, Tag, Tooltip, Typography } from 'antd';
-import { UndoOutlined } from '@ant-design/icons';
+import { FileExcelOutlined, FilePdfOutlined, UndoOutlined } from '@ant-design/icons';
 import { message } from '@shared/services/message';
 import { formulariosApi } from '../services/formulariosAdminApi';
 
 const ESTADO_COLOR = { en_proceso: 'orange', enviado: 'green', expirado: 'red' };
 const ESTADO_LABEL = { en_proceso: 'En proceso', enviado: 'Enviado', expirado: 'Expirado' };
+
+const filenameFromHeaders = (headers, fallback) => {
+    const cd = headers?.['content-disposition'] || '';
+    const utf8 = /filename\*=UTF-8''([^;]+)/i.exec(cd);
+    if (utf8) return decodeURIComponent(utf8[1]);
+    const plain = /filename="?([^";]+)"?/i.exec(cd);
+    return plain ? plain[1] : fallback;
+};
+
+const triggerDownload = (response, fallback) => {
+    const url = URL.createObjectURL(response.data);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filenameFromHeaders(response.headers, fallback);
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+};
 
 export default function EnviosTable({ formulario }) {
     const [items, setItems] = useState([]);
@@ -15,6 +34,8 @@ export default function EnviosTable({ formulario }) {
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(20);
     const [drawer, setDrawer] = useState(null);
+    const [exporting, setExporting] = useState(false);
+    const [pdfLoadingId, setPdfLoadingId] = useState(null);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -41,6 +62,30 @@ export default function EnviosTable({ formulario }) {
         : fueraDeVigencia
             ? 'No se puede reabrir: el formulario está fuera de vigencia'
             : null;
+
+    const handleExcel = async () => {
+        setExporting(true);
+        try {
+            const res = await formulariosApi.exportarEnvios(formulario.id);
+            triggerDownload(res, `${formulario.slug || 'formulario'}_envios.xlsx`);
+        } catch {
+            message.error('Error al exportar el Excel');
+        } finally {
+            setExporting(false);
+        }
+    };
+
+    const handlePdf = async (record) => {
+        setPdfLoadingId(record.id);
+        try {
+            const res = await formulariosApi.descargarEnvioPdf(formulario.id, record.id);
+            triggerDownload(res, `envio_${record.id}.pdf`);
+        } catch {
+            message.error('Error al generar el PDF');
+        } finally {
+            setPdfLoadingId(null);
+        }
+    };
 
     const handleReabrir = (record) => {
         Modal.confirm({
@@ -97,46 +142,69 @@ export default function EnviosTable({ formulario }) {
         {
             title: 'Acciones',
             key: 'acciones',
-            width: 120,
-            render: (_, record) => {
-                if (record.estado !== 'enviado' && record.estado !== 'expirado') return null;
-                return (
-                    <Tooltip title={reabrirBloqueado}>
+            width: 170,
+            render: (_, record) => (
+                <Space size="small">
+                    <Tooltip title="Descargar PDF">
                         <Button
                             type="link"
                             size="small"
-                            icon={<UndoOutlined />}
-                            disabled={!!reabrirBloqueado}
+                            icon={<FilePdfOutlined />}
+                            loading={pdfLoadingId === record.id}
                             onClick={(e) => {
                                 e.stopPropagation();
-                                handleReabrir(record);
+                                handlePdf(record);
                             }}
-                        >
-                            Reabrir
-                        </Button>
+                        />
                     </Tooltip>
-                );
-            },
+                    {(record.estado === 'enviado' || record.estado === 'expirado') && (
+                        <Tooltip title={reabrirBloqueado}>
+                            <Button
+                                type="link"
+                                size="small"
+                                icon={<UndoOutlined />}
+                                disabled={!!reabrirBloqueado}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleReabrir(record);
+                                }}
+                            >
+                                Reabrir
+                            </Button>
+                        </Tooltip>
+                    )}
+                </Space>
+            ),
         },
     ];
 
     return (
         <>
-            <Space style={{ marginBottom: 12 }}>
-                <Typography.Text>Filtrar por estado:</Typography.Text>
-                <Select
-                    allowClear
-                    placeholder="Todos"
-                    style={{ minWidth: 180 }}
-                    value={estado}
-                    onChange={(v) => { setEstado(v); setPage(1); }}
-                    options={[
-                        { value: 'en_proceso', label: 'En proceso' },
-                        { value: 'enviado', label: 'Enviado' },
-                        { value: 'expirado', label: 'Expirado' },
-                    ]}
-                />
-            </Space>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+                <Space>
+                    <Typography.Text>Filtrar por estado:</Typography.Text>
+                    <Select
+                        allowClear
+                        placeholder="Todos"
+                        style={{ minWidth: 180 }}
+                        value={estado}
+                        onChange={(v) => { setEstado(v); setPage(1); }}
+                        options={[
+                            { value: 'en_proceso', label: 'En proceso' },
+                            { value: 'enviado', label: 'Enviado' },
+                            { value: 'expirado', label: 'Expirado' },
+                        ]}
+                    />
+                </Space>
+                <Button
+                    icon={<FileExcelOutlined />}
+                    loading={exporting}
+                    disabled={total === 0}
+                    onClick={handleExcel}
+                >
+                    Descargar Excel
+                </Button>
+            </div>
             <Table
                 columns={columns}
                 dataSource={items}

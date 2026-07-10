@@ -1,8 +1,11 @@
-from fastapi import APIRouter, Depends, Query, status
+from urllib.parse import quote
+
+from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, verify_csrf
 from app.core.database import get_db
+from app.models.sieej.envio import EnvioFormulario
 from app.models.user import Usuario
 from app.schemas.sieej.envio import EnvioResponse
 from app.schemas.sieej.formulario import (
@@ -12,8 +15,19 @@ from app.schemas.sieej.formulario import (
 )
 from app.schemas.sieej.grupo import FormularioAsignacionesUpdate
 from app.services.sieej.formularios_admin_service import FormulariosAdminService
+from app.services.sieej.pdf_service import render_envio_pdf
+from app.services.sieej.xlsx_service import build_envios_xlsx
 
 router = APIRouter()
+
+
+def _slug_filename(nombre: str) -> str:
+    base = "".join(c if c.isalnum() or c in "-_ " else "" for c in (nombre or "formulario"))
+    return base.strip().replace(" ", "_") or "formulario"
+
+
+def _content_disposition(filename: str) -> str:
+    return f"attachment; filename*=UTF-8''{quote(filename)}"
 
 
 @router.get("/formularios", response_model=list[FormularioResponse])
@@ -152,6 +166,80 @@ async def obtener_envio(
     db: Session = Depends(get_db),
 ):
     return FormulariosAdminService(db).get_envio(formulario_id, envio_id)
+
+
+@router.get("/formularios/{formulario_id}/envios/{envio_id}/pdf")
+async def descargar_envio_pdf(
+    formulario_id: int,
+    envio_id: int,
+    db: Session = Depends(get_db),
+    _user: Usuario = Depends(get_current_user),
+):
+    envio = FormulariosAdminService(db).get_envio(formulario_id, envio_id)
+    definicion = envio.definicion_snapshot or {}
+    pdf_bytes = render_envio_pdf(definicion, envio.datos or {})
+    usuario = (
+        db.query(Usuario).filter(Usuario.id == envio.usuario_id).first()
+        if envio.usuario_id
+        else None
+    )
+    usuario_slug = _slug_filename(
+        usuario.name if usuario and usuario.name else f"usuario_{envio.usuario_id or envio.id}"
+    )
+    formulario_slug = _slug_filename(definicion.get("nombre") or "formulario")
+    fecha_dt = envio.enviado_en or envio.actualizado_en or envio.iniciado_en
+    fecha = fecha_dt.strftime("%Y-%m-%d") if fecha_dt else "sin_fecha"
+    filename = f"{usuario_slug}_{formulario_slug}_{fecha}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": _content_disposition(filename)},
+    )
+
+
+@router.get("/formularios/{formulario_id}/exportar-envios")
+async def exportar_envios_xlsx(
+    formulario_id: int,
+    db: Session = Depends(get_db),
+    _user: Usuario = Depends(get_current_user),
+):
+    formulario = FormulariosAdminService(db).get(formulario_id)
+    envios = (
+        db.query(EnvioFormulario)
+        .filter(
+            EnvioFormulario.formulario_id == formulario_id,
+            EnvioFormulario.eliminado_en.is_(None),
+        )
+        .order_by(EnvioFormulario.id)
+        .all()
+    )
+    usuario_ids = {e.usuario_id for e in envios if e.usuario_id is not None}
+    usuarios = (
+        {u.id: u for u in db.query(Usuario).filter(Usuario.id.in_(usuario_ids)).all()}
+        if usuario_ids
+        else {}
+    )
+    filas = []
+    for e in envios:
+        u = usuarios.get(e.usuario_id)
+        filas.append(
+            {
+                "id": e.id,
+                "usuario_nombre": u.name if u else None,
+                "usuario_email": u.email if u else None,
+                "estado": e.estado,
+                "enviado_en": e.enviado_en.strftime("%Y-%m-%d %H:%M") if e.enviado_en else "",
+                "datos": e.datos or {},
+            }
+        )
+    xlsx_bytes = build_envios_xlsx(formulario.definicion or {}, filas)
+    nombre = _slug_filename(formulario.nombre)
+    filename = f"{nombre}_envios.xlsx"
+    return Response(
+        content=xlsx_bytes,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": _content_disposition(filename)},
+    )
 
 
 @router.post(
