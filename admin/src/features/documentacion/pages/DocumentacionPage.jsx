@@ -10,25 +10,7 @@ const { Content } = Layout;
 const { Title, Text } = Typography;
 
 
-const TOPICS = [
-    {
-        key: 'acervo',
-        label: 'Acervo',
-        children: <AcervoTopic />,
-    },
-    {
-        key: 'mcp',
-        label: 'Servidor MCP',
-        children: <McpTopic />,
-    },
-    {
-        key: 'telemetria',
-        label: 'Telemetría',
-        children: <TelemetryTopic />,
-    },
-];
-
-const VALID_KEYS = new Set(TOPICS.map((t) => t.key));
+const VALID_KEYS = new Set(['acervo', 'mcp', 'telemetria']);
 
 
 export default function DocumentacionPage() {
@@ -36,7 +18,14 @@ export default function DocumentacionPage() {
     const [searchParams, setSearchParams] = useSearchParams();
 
     const topicFromUrl = searchParams.get('topic');
-    const activeKey = VALID_KEYS.has(topicFromUrl) ? topicFromUrl : TOPICS[0].key;
+    const activeKey = VALID_KEYS.has(topicFromUrl) ? topicFromUrl : 'acervo';
+    const sec = searchParams.get('sec') === 'thumbs' ? 'thumbs' : 'uso';
+
+    const TOPICS = [
+        { key: 'acervo', label: 'Acervo', children: <AcervoTopic defaultActiveTab={sec} /> },
+        { key: 'mcp', label: 'Servidor MCP', children: <McpTopic /> },
+        { key: 'telemetria', label: 'Telemetría', children: <TelemetryTopic /> },
+    ];
 
     const handleChange = (key) => {
         setSearchParams({ topic: key }, { replace: true });

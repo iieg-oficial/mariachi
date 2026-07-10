@@ -3,11 +3,12 @@ import { Alert, Card, Button, Upload, Table, Image, Space, Modal, Form, Input, S
 import {
     InboxOutlined, DeleteOutlined, EditOutlined, FolderOutlined, FolderOpenOutlined, FolderAddOutlined, FileImageOutlined, FilePdfOutlined,
     FileOutlined, AppstoreOutlined, BarsOutlined, DownloadOutlined, CopyOutlined, EyeOutlined, HomeOutlined, DragOutlined,
-    InfoCircleOutlined, CodeOutlined
+    InfoCircleOutlined, CodeOutlined, BookOutlined
 } from '@ant-design/icons';
 import acervoService from '@features/acervo/api/acervoService';
 import FileSnippetsModal from '@features/acervo/components/FileSnippetsModal';
 import FileSnippets from '@features/acervo/components/FileSnippets';
+import AcervoHelpModal from '@features/documentacion/components/AcervoHelpModal';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import { message } from '@shared/services/message';
 
@@ -60,6 +61,12 @@ const Acervo = () => {
     const [bulkMoveTargetFolder, setBulkMoveTargetFolder] = useState('/');
     const [currentFile, setCurrentFile] = useState(null);
     const [snippetsFile, setSnippetsFile] = useState(null);
+    const [helpTab, setHelpTab] = useState(null);
+
+    const openHelp = (tab) => {
+        setSnippetsFile(null);
+        setHelpTab(tab);
+    };
     const [folderInfo, setFolderInfo] = useState(null);
     const [folderInfoLoading, setFolderInfoLoading] = useState(false);
     const [dragActive, setDragActive] = useState(false);
@@ -1042,6 +1049,15 @@ const Acervo = () => {
                         >
                             Nueva Carpeta
                         </Button>
+                        <Tooltip title="Abrir la guía de uso del Acervo">
+                            <Button
+                                icon={<BookOutlined />}
+                                onClick={() => openHelp('uso')}
+                                block={isMobile}
+                            >
+                                Documentación
+                            </Button>
+                        </Tooltip>
                         {selectedFiles.length > 0 && (
                             <>
                                 <Button
@@ -1207,7 +1223,7 @@ const Acervo = () => {
                                 }}
                                 expandable={{
                                     rowExpandable: (record) => record.type?.startsWith('image/'),
-                                    expandedRowRender: (record) => <FileSnippets file={record} />,
+                                    expandedRowRender: (record) => <FileSnippets file={record} onHelp={() => openHelp('thumbs')} />,
                                     expandIcon: ({ expanded, onExpand, record }) => (
                                         record.type?.startsWith('image/') ? (
                                             <Tooltip title="Ver snippets de código para incrustar esta imagen">
@@ -1509,6 +1525,13 @@ const Acervo = () => {
                 file={snippetsFile}
                 open={!!snippetsFile}
                 onClose={() => setSnippetsFile(null)}
+                onHelp={() => openHelp('thumbs')}
+            />
+
+            <AcervoHelpModal
+                open={!!helpTab}
+                tab={helpTab || 'uso'}
+                onClose={() => setHelpTab(null)}
             />
 
             <Modal

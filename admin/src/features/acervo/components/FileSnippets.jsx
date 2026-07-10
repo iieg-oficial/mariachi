@@ -1,5 +1,5 @@
 import { Button, Collapse, Space, Tag, Typography } from 'antd';
-import { CopyOutlined } from '@ant-design/icons';
+import { CopyOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import { toPublicUrl, thumbVariant } from '@features/acervo/api/acervoService';
 import { message } from '@shared/services/message';
 
@@ -130,12 +130,23 @@ function buildFileSnippets(file) {
     return { snippets, isSvg, hasThumb };
 }
 
-export default function FileSnippets({ file }) {
+export default function FileSnippets({ file, onHelp }) {
     if (!file) return null;
     const { snippets, isSvg, hasThumb } = buildFileSnippets(file);
 
     return (
         <Space direction="vertical" size="small" style={{ width: '100%' }}>
+            {onHelp && (
+                <Button
+                    type="link"
+                    size="small"
+                    icon={<QuestionCircleOutlined />}
+                    onClick={onHelp}
+                    style={{ padding: 0, height: 'auto', fontSize: 12 }}
+                >
+                    Guía de miniaturas y URLs
+                </Button>
+            )}
             <Paragraph type="secondary" style={{ margin: 0, fontSize: 12 }}>
                 {hasThumb ? (
                     <><Tag color="blue">público</Tag> Rutas listas para pegar en cualquier frontend del ecosistema. La miniatura WebP se genera al vuelo.</>

@@ -16,6 +16,7 @@ const NAV = [
     { que: 'Buscar', como: 'Caja "Buscar archivos": filtra por nombre en todo el bucket (recursivo).' },
     { que: 'Filtrar por tipo', como: 'Selector Tipo (Imágenes / Documentos / Videos / Audio).' },
     { que: 'Vista', como: 'Conmutador Grid / Lista.' },
+    { que: 'Documentación', como: 'Botón 📖 en el encabezado: abre esta guía en un modal. Los snippets de cada imagen enlazan directo a la pestaña "Miniaturas y URLs".' },
 ];
 
 const UPLOAD = [
@@ -51,7 +52,7 @@ function TablaSeccion({ titulo, data }) {
     );
 }
 
-export default function AcervoTopic() {
+export default function AcervoTopic({ defaultActiveTab = 'uso', showHeader = true }) {
     const [showDiag, setShowDiag] = useState(false);
 
     const usoTab = (
@@ -102,15 +103,17 @@ export default function AcervoTopic() {
 
     return (
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
-            <div>
-                <Title level={3} style={{ marginBottom: 4 }}>Acervo</Title>
-                <Text type="secondary">
-                    Gestor de archivos del ecosistema (imágenes, documentos, íconos) sobre SeaweedFS. Guía rápida de las herramientas de la página <Text code>/mariachi/acervo</Text>.
-                </Text>
-            </div>
+            {showHeader && (
+                <div>
+                    <Title level={3} style={{ marginBottom: 4 }}>Acervo</Title>
+                    <Text type="secondary">
+                        Gestor de archivos del ecosistema (imágenes, documentos, íconos) sobre SeaweedFS. Guía rápida de las herramientas de la página <Text code>/mariachi/acervo</Text>.
+                    </Text>
+                </div>
+            )}
 
             <Tabs
-                defaultActiveKey="uso"
+                defaultActiveKey={defaultActiveTab}
                 items={[
                     { key: 'uso', label: 'Uso del panel', children: usoTab },
                     { key: 'thumbs', label: 'Miniaturas y URLs', children: miniaturasTab },

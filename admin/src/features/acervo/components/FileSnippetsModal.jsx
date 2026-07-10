@@ -1,7 +1,7 @@
 import { Modal } from 'antd';
 import FileSnippets from '@features/acervo/components/FileSnippets';
 
-export default function FileSnippetsModal({ file, open, onClose }) {
+export default function FileSnippetsModal({ file, open, onClose, onHelp }) {
     return (
         <Modal
             open={open}
@@ -10,7 +10,7 @@ export default function FileSnippetsModal({ file, open, onClose }) {
             footer={null}
             width={640}
         >
-            <FileSnippets file={file} />
+            <FileSnippets file={file} onHelp={onHelp} />
         </Modal>
     );
 }
