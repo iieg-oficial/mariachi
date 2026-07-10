@@ -40,3 +40,4 @@ class AcervoFile(Base):
     metadata_json = Column("metadata", JSON, default=dict)
 
     uploaded_by_user = relationship("Usuario", back_populates="acervo_uploads")
+    bucket = relationship("AcervoBucket", foreign_keys=[bucket_id])

@@ -713,7 +713,7 @@ def test_thumbnail_requires_auth(client, db_session):
 
 
 def test_serialize_thumbnail_por_tipo(admin_session, db_session):
-    _, bucket = _seed_bucket(db_session, name="x")
+    _, bucket = _seed_bucket(db_session, name="x", is_public=True)
     client = admin_session["client"]
     _subir(client, admin_session["csrf"], bucket.id, "mapa.png", _png_bytes(), "image/png")
     _subir(client, admin_session["csrf"], bucket.id, "icono.svg",
@@ -722,8 +722,34 @@ def test_serialize_thumbnail_por_tipo(admin_session, db_session):
     listado = client.get(f"{ADMIN_PREFIX}/acervo?bucket_id={bucket.id}&folder=mapas&recursive=true")
     assert listado.status_code == 200
     by_name = {item["originalName"]: item for item in listado.json()}
-    assert f"/acervo/thumb/{bucket.id}/" in by_name["mapa.png"]["thumbnail"]
+    assert f"/acervo/thumb/{bucket.acervo_bucket}/" in by_name["mapa.png"]["thumbnail"]
     assert by_name["icono.svg"]["thumbnail"] == by_name["icono.svg"]["url"]
+
+
+def test_serialize_thumbnail_privado_sin_miniatura(admin_session, db_session):
+    _, bucket = _seed_bucket(db_session, name="x", is_public=False)
+    client = admin_session["client"]
+    _subir(client, admin_session["csrf"], bucket.id, "mapa.png", _png_bytes(), "image/png")
+
+    listado = client.get(f"{ADMIN_PREFIX}/acervo?bucket_id={bucket.id}&folder=mapas&recursive=true")
+    assert listado.status_code == 200
+    by_name = {item["originalName"]: item for item in listado.json()}
+    assert by_name["mapa.png"]["thumbnail"] is None
+
+
+def test_public_thumbnail_solo_buckets_publicos(client, db_session):
+    _, publico = _seed_bucket(db_session, name="pub", is_public=True)
+    _, privado = _seed_bucket(db_session, name="priv", is_public=False)
+    name = "mapas/x.png"
+    for bucket in (publico, privado):
+        FakeAcervoClient.for_bucket(bucket).put_bytes(name, _png_bytes(), "image/png")
+
+    ok = client.get(f"/acervo/thumb/{publico.acervo_bucket}/{name}?w=400")
+    assert ok.status_code == 200
+    assert ok.headers["content-type"] == "image/webp"
+
+    denied = client.get(f"/acervo/thumb/{privado.acervo_bucket}/{name}?w=400")
+    assert denied.status_code == 404
 
 
 def test_thumbnail_cleanup_on_delete(admin_session, db_session):

@@ -55,6 +55,10 @@ export default defineConfig(({ mode }) => {
                 usePolling: true,
             },
             proxy: {
+                '/acervo/thumb': {
+                    target: env.VITE_ACERVO_THUMB_PROXY_URL || 'http://api:8000',
+                    changeOrigin: true,
+                },
                 '/mapalab': {
                     target: mapalabTarget,
                     changeOrigin: false,

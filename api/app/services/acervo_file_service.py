@@ -212,19 +212,26 @@ def resolve_bucket_or_403(bucket_id: int, current_user: Usuario, db: Session) ->
     return bucket
 
 
-def thumbnail_for(bucket_id: int | None, object_name: str, content_type: str | None, url: str | None) -> str | None:
+def thumbnail_for(
+    bucket_name: str | None,
+    object_name: str,
+    content_type: str | None,
+    url: str | None,
+    is_public: bool = False,
+) -> str | None:
     """Deriva la URL de miniatura según el tipo (no usa el valor persistido):
 
-    - raster (PNG/JPEG/GIF/WebP) → endpoint on-the-fly que devuelve WebP escalado
+    - raster (PNG/JPEG/GIF/WebP) en bucket público → endpoint on-the-fly que
+      devuelve WebP escalado (ruta pública, sin auth: /acervo/thumb/...)
     - SVG → la propia URL (vectorial, no se rasteriza)
-    - resto → sin miniatura
+    - bucket privado o resto → sin miniatura
     """
     ctype = (content_type or "").lower()
     if ctype == "image/svg+xml":
         return url
-    if bucket_id is not None and acervo_thumbnails.is_raster_image(ctype):
+    if is_public and bucket_name is not None and acervo_thumbnails.is_raster_image(ctype):
         return (
-            f"/api/administrador/acervo/thumb/{bucket_id}/{object_name}"
+            f"/acervo/thumb/{bucket_name}/{object_name}"
             f"?w={acervo_thumbnails.DEFAULT_WIDTH}"
         )
     return None
@@ -239,7 +246,13 @@ def serialize_acervo_file(item: AcervoFile) -> dict:
         "type": item.type,
         "size": item.size,
         "url": item.url,
-        "thumbnail": thumbnail_for(item.bucket_id, item.name, item.type, item.url),
+        "thumbnail": thumbnail_for(
+            item.bucket.acervo_bucket if item.bucket else None,
+            item.name,
+            item.type,
+            item.url,
+            is_public=bool(item.bucket.is_public) if item.bucket else False,
+        ),
         "folder": item.folder,
         "uploadedBy": str(item.uploaded_by),
         "uploadedByName": item.uploaded_by_user.name if item.uploaded_by_user else "Unknown",
@@ -248,7 +261,7 @@ def serialize_acervo_file(item: AcervoFile) -> dict:
     }
 
 
-def serialize_bucket_only(bucket_id: int, obj: dict) -> dict:
+def serialize_bucket_only(bucket_id: int, bucket_name: str | None, obj: dict, is_public: bool = False) -> dict:
     name = obj["name"]
     is_dir = bool(obj.get("is_dir") or name.endswith("/"))
     last_modified = obj.get("last_modified")
@@ -282,7 +295,7 @@ def serialize_bucket_only(bucket_id: int, obj: dict) -> dict:
         "type": mime,
         "size": obj.get("size", 0),
         "url": obj.get("url"),
-        "thumbnail": thumbnail_for(bucket_id, name, mime, obj.get("url")),
+        "thumbnail": thumbnail_for(bucket_name, name, mime, obj.get("url"), is_public=is_public),
         "folder": folder_from_path(name),
         "uploadedBy": None,
         "uploadedByName": "—",
@@ -335,7 +348,7 @@ def listar_media(
             entry["size"] = obj.get("size", entry["size"])
             results.append(entry)
         else:
-            results.append(serialize_bucket_only(bucket.id, obj))
+            results.append(serialize_bucket_only(bucket.id, bucket.acervo_bucket, obj, is_public=bool(bucket.is_public)))
 
     if recursive:
         for item in local_items:
