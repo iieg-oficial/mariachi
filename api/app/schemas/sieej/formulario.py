@@ -57,6 +57,21 @@ class FormularioResponse(FormularioBase):
     model_config = ConfigDict(from_attributes=True)
 
 
+class UltimoCambioInfo(BaseModel):
+    """Resultado de clasificar el ultimo cambio de definicion."""
+
+    tipo: Literal["menor", "rompe"]
+    afectados: int
+    reabiertos: int = 0
+
+
+class FormularioUpdateResponse(FormularioResponse):
+    """Respuesta del PUT admin: incluye la clasificacion del ultimo cambio
+    para el feedback del editor (menor propagado vs estructural)."""
+
+    ultimo_cambio: UltimoCambioInfo | None = None
+
+
 class FormularioListItem(BaseModel):
     """Item de la lista de formularios visibles para el respondent."""
 
@@ -69,6 +84,7 @@ class FormularioListItem(BaseModel):
     vigencia_fin: datetime | None
     estado_envio: Literal["no_iniciado", "en_proceso", "enviado", "expirado"]
     envio_id: int | None
+    actualizacion_disponible: bool = False
 
     model_config = ConfigDict(from_attributes=True)
 

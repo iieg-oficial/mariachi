@@ -4,8 +4,11 @@ Se ejecuta al crear/editar un formulario. Garantiza que:
   - El root tiene `version` y `steps` no vacios.
   - Cada step es de tipo `form`, `repeater` o `summary`.
   - Cada field tiene tipo conocido y no mezcla `options` con `catalog`.
-  - Los `showWhen.field` apuntan a un field existente (no necesariamente
-    en el mismo step; puede referenciar steps anteriores).
+  - Los `showWhen.field` apuntan a un field existente del *mismo* step. No se
+    permiten rutas `otro_step.campo`: tanto el renderer como `datos_validator`
+    evaluan la condicion contra los datos del step actual, asi que una
+    referencia cruzada nunca se cumpliria y el campo quedaria oculto en
+    silencio.
   - `maxSizeMB` no excede el cap absoluto de 100 MB.
   - `name` de fields y `id` de steps son unicos por scope.
 
@@ -13,6 +16,7 @@ Lanza `DefinicionInvalidaError` con mensaje descriptivo en el primer error.
 """
 from __future__ import annotations
 
+import re
 from typing import Any
 
 FIELD_TYPES = {
@@ -74,12 +78,16 @@ def _validar_show_when_refs(steps: list, field_paths: set[str]) -> None:
             target = show_when.get("field")
             if not isinstance(target, str) or not target:
                 continue
-            if "." not in target:
-                target = f"{step_id}.{target}"
-            if target not in field_paths:
+            if "." in target:
                 raise DefinicionInvalidaError(
                     f"Step `{step_id}` field `{field.get('name', '?')}`: "
-                    f"`showWhen.field` apunta a `{target}` que no existe en el formulario."
+                    f"`showWhen.field` no puede referenciar otro step (`{target}`). "
+                    "La condicion se evalua solo con los datos del step actual."
+                )
+            if f"{step_id}.{target}" not in field_paths:
+                raise DefinicionInvalidaError(
+                    f"Step `{step_id}` field `{field.get('name', '?')}`: "
+                    f"`showWhen.field` apunta a `{target}` que no existe en este step."
                 )
 
 
@@ -182,6 +190,21 @@ def _validar_incomplete_notice(step: dict[str, Any], step_id: str) -> None:
             )
 
 
+def _validate_layout(field: dict[str, Any], step_id: str, name: str) -> None:
+    layout = field.get("layout")
+    if layout is None:
+        return
+    if not isinstance(layout, dict):
+        raise DefinicionInvalidaError(
+            f"Step `{step_id}` field `{name}`: `layout` debe ser un objeto."
+        )
+    col_span = layout.get("colSpan")
+    if col_span is not None and (not isinstance(col_span, int) or col_span < 1 or col_span > 3):
+        raise DefinicionInvalidaError(
+            f"Step `{step_id}` field `{name}`: `layout.colSpan` debe ser 1, 2 o 3."
+        )
+
+
 def _validar_field(
     field: Any,
     step_id: str,
@@ -213,6 +236,7 @@ def _validar_field(
         )
 
     if field_type == "info":
+        _validate_layout(field, step_id, name)
         return
 
     label = field.get("label")
@@ -273,6 +297,8 @@ def _validar_field(
                 f"Step `{step_id}` field `{name}`: `bucket` requerido para tipo `file`."
             )
 
+    _validate_layout(field, step_id, name)
+
     if field_type == "number":
         validation = field.get("validation") or {}
         for key in ("min", "max"):
@@ -290,6 +316,25 @@ def _validar_field(
                 raise DefinicionInvalidaError(
                     f"Step `{step_id}` field `{name}`: `validation.{key}` debe ser entero >= 0."
                 )
+        if "pattern" in validation:
+            pattern = validation["pattern"]
+            if not isinstance(pattern, str) or not pattern:
+                raise DefinicionInvalidaError(
+                    f"Step `{step_id}` field `{name}`: `validation.pattern` debe ser string no vacio."
+                )
+            try:
+                re.compile(pattern)
+            except re.error:
+                raise DefinicionInvalidaError(
+                    f"Step `{step_id}` field `{name}`: `validation.pattern` no es una expresion regular valida."
+                )
+        if "patternMessage" in validation and (
+            not isinstance(validation["patternMessage"], str)
+            or not validation["patternMessage"]
+        ):
+            raise DefinicionInvalidaError(
+                f"Step `{step_id}` field `{name}`: `validation.patternMessage` debe ser string no vacio."
+            )
 
     if step_type == "repeater" and isinstance(step_tabs, list) and step_tabs:
         tab_ref = field.get("tab")
@@ -351,7 +396,10 @@ def definicion_to_validation_rules(
             validation = field.get("validation") or {}
             for key in ("minLength", "maxLength", "pattern", "min", "max"):
                 if key in validation:
-                    rules.append({**base, "rule": key, "value": validation[key]})
+                    rule = {**base, "rule": key, "value": validation[key]}
+                    if key == "pattern" and "patternMessage" in validation:
+                        rule["message"] = validation["patternMessage"]
+                    rules.append(rule)
 
             if field.get("type") == "file":
                 if "maxSizeMB" in field:

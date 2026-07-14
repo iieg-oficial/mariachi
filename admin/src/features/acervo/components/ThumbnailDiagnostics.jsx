@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Card, Select, Button, Space, Typography, Tag, Row, Col, Image, Statistic, Empty, Spin, Alert, Table } from 'antd';
+import { Card, Select, Button, Space, Typography, Tag, Row, Col, Image, Statistic, Empty, Spin, Alert, Table, Collapse } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import acervoService from '@features/acervo/api/acervoService';
+import FileSnippets from '@features/acervo/components/FileSnippets';
 
 const { Text } = Typography;
 
@@ -178,6 +179,15 @@ export default function ThumbnailDiagnostics() {
                                         pagination={false}
                                         dataSource={buildRows(f)}
                                         columns={VARIANT_COLUMNS}
+                                    />
+                                    <Collapse
+                                        size="small"
+                                        style={{ marginTop: 12 }}
+                                        items={[{
+                                            key: 'snippets',
+                                            label: 'Snippets de código',
+                                            children: <FileSnippets file={f} />,
+                                        }]}
                                     />
                                 </Card>
                             </Col>

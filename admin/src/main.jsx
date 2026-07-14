@@ -48,6 +48,7 @@ const DocumentacionPage = lazy(() => import('@features/documentacion').then((m) 
 const FormulariosListPage = lazy(() => import('@features/sieej-formularios').then((m) => ({ default: m.FormulariosListPage })));
 const FormularioEditorPage = lazy(() => import('@features/sieej-formularios').then((m) => ({ default: m.FormularioEditorPage })));
 const GruposPage = lazy(() => import('@features/sieej-formularios').then((m) => ({ default: m.GruposPage })));
+const CatalogosPage = lazy(() => import('@features/sieej-formularios').then((m) => ({ default: m.CatalogosPage })));
 const Inicio = lazy(() => import('@features/inicio'));
 const Perfil = lazy(() => import('@features/perfil'));
 
@@ -230,7 +231,7 @@ const router = createBrowserRouter([
                         )
                     },
                     {
-                        path: 'sieej/formularios/:id',
+                        path: 'sieej/formularios/:slug',
                         element: withSuspense(
                             <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
                                 <FormularioEditorPage />
@@ -242,6 +243,14 @@ const router = createBrowserRouter([
                         element: withSuspense(
                             <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
                                 <GruposPage />
+                            </RoleProtectedRoute>
+                        )
+                    },
+                    {
+                        path: 'sieej/catalogos',
+                        element: withSuspense(
+                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
+                                <CatalogosPage />
                             </RoleProtectedRoute>
                         )
                     },

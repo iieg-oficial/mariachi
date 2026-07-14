@@ -28,10 +28,12 @@ from app.models.sieej import (
 )
 from app.models.user import Usuario
 from app.services.actividad_service import registrar_actividad
+from app.services.sieej.cambio_classifier import clasificar_cambio
 from app.services.sieej.definicion_validator import (
     DefinicionInvalidaError,
     validar_definicion,
 )
+from app.services.sieej.envios_service import EnviosService
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +78,20 @@ class FormulariosAdminService:
                 detail="Formulario no encontrado",
             )
         return f
+
+    def get_by_slug(self, slug: str) -> Formulario:
+        f = self.db.query(Formulario).filter(Formulario.slug == slug).first()
+        if f is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Formulario no encontrado",
+            )
+        return f
+
+    def get_by_id_or_slug(self, id_or_slug: str) -> Formulario:
+        if id_or_slug.isdigit():
+            return self.get(int(id_or_slug))
+        return self.get_by_slug(id_or_slug)
 
     def crear(self, data: dict[str, Any], creador: Usuario) -> Formulario:
         try:
@@ -137,7 +153,15 @@ class FormulariosAdminService:
         data: dict[str, Any],
         *,
         actor: Usuario | None = None,
-    ) -> Formulario:
+    ) -> tuple[Formulario, dict[str, Any] | None]:
+        """Actualiza el formulario. Si cambia la definicion y ya hay envios,
+        clasifica el cambio: uno `menor` se propaga a los envios en proceso al
+        dia (sin subir version); uno que `rompe` sube version y congela a
+        quien ya empezo (lo vera como actualizacion disponible).
+
+        Devuelve `(formulario, cambio_info)` donde `cambio_info` es
+        `{tipo, afectados}` o None si no cambio la definicion.
+        """
         f = self.get(formulario_id)
         version_previa = f.version or 1
 
@@ -154,8 +178,13 @@ class FormulariosAdminService:
         else:
             cambia_definicion = False
 
+        cambio_info: dict[str, Any] | None = None
+        tipo_cambio: str | None = None
+        definicion_previa = f.definicion
         if cambia_definicion and self._tiene_envios(f.id):
-            f.version = (f.version or 1) + 1
+            tipo_cambio = clasificar_cambio(definicion_previa, nueva_definicion)
+            if tipo_cambio == "rompe":
+                f.version = (f.version or 1) + 1
 
         for campo in (
             "nombre",
@@ -168,6 +197,41 @@ class FormulariosAdminService:
             if campo in data and data[campo] is not None:
                 setattr(f, campo, data[campo])
 
+        afectados = 0
+        if tipo_cambio == "menor":
+            afectados = (
+                self.db.query(EnvioFormulario)
+                .filter(
+                    EnvioFormulario.formulario_id == f.id,
+                    EnvioFormulario.estado == "en_proceso",
+                    EnvioFormulario.formulario_version == f.version,
+                )
+                .update(
+                    {"definicion_snapshot": nueva_definicion},
+                    synchronize_session=False,
+                )
+            )
+        reabiertos = 0
+        if tipo_cambio == "rompe":
+            afectados = (
+                self.db.query(func.count(EnvioFormulario.id))
+                .filter(
+                    EnvioFormulario.formulario_id == f.id,
+                    EnvioFormulario.estado == "en_proceso",
+                    EnvioFormulario.formulario_version < f.version,
+                )
+                .scalar()
+            ) or 0
+            reabiertos = EnviosService(self.db).reabrir_enviados_por_cambio(
+                f, actor=actor
+            )
+        if tipo_cambio is not None:
+            cambio_info = {
+                "tipo": tipo_cambio,
+                "afectados": afectados,
+                "reabiertos": reabiertos,
+            }
+
         f.actualizado_en = utcnow()
         registrar_actividad(
             self.db,
@@ -178,6 +242,8 @@ class FormulariosAdminService:
             metadata={
                 "slug": f.slug,
                 "definicion_changed": cambia_definicion,
+                "tipo_cambio": tipo_cambio,
+                "reabiertos": reabiertos,
                 "version_from": version_previa,
                 "version_to": f.version,
             },
@@ -187,15 +253,16 @@ class FormulariosAdminService:
         incr(COUNTER_SIEEJ_FORMULARIO_WRITES)
         logger.info(
             "action=sieej.formulario.update actor=%s target=%s slug=%s "
-            "definicion_changed=%s version_from=%s version_to=%s",
+            "definicion_changed=%s tipo_cambio=%s version_from=%s version_to=%s",
             actor.id if actor else None,
             f.id,
             f.slug,
             cambia_definicion,
+            tipo_cambio,
             version_previa,
             f.version,
         )
-        return f
+        return f, cambio_info
 
     def publicar(
         self, formulario_id: int, *, actor: Usuario | None = None
@@ -418,6 +485,19 @@ class FormulariosAdminService:
             estado_previo,
         )
         return envio
+
+    def contar_desactualizados(self, formulario_id: int, version_actual: int) -> int:
+        """Cuenta los envios que se llenaron con una version anterior de la
+        definicion (su snapshot ya no coincide con la definicion vigente)."""
+        count = (
+            self.db.query(func.count(EnvioFormulario.id))
+            .filter(
+                EnvioFormulario.formulario_id == formulario_id,
+                EnvioFormulario.formulario_version < version_actual,
+            )
+            .scalar()
+        )
+        return count or 0
 
     def _tiene_envios(self, formulario_id: int) -> bool:
         count = (

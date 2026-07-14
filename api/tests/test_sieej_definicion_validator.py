@@ -225,8 +225,9 @@ def test_show_when_referencia_field_inexistente_falla():
         validar_definicion(d)
 
 
-def test_show_when_referencia_field_de_step_anterior_pasa():
-    """showWhen puede apuntar a un field de un step previo (path step.field)."""
+def test_show_when_referencia_otro_step_falla():
+    """Una ruta `step.campo` se rechaza: la condicion se evalua solo con los
+    datos del step actual, asi que nunca se cumpliria."""
     d = {
         "version": 1,
         "steps": [
@@ -253,7 +254,8 @@ def test_show_when_referencia_field_de_step_anterior_pasa():
             },
         ],
     }
-    validar_definicion(d)
+    with pytest.raises(DefinicionInvalidaError, match="otro step"):
+        validar_definicion(d)
 
 
 def test_show_when_referencia_field_mismo_step_pasa():

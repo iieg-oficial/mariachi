@@ -247,7 +247,10 @@ def test_admin_actualizar_definicion_bumpea_version_si_hay_envios(
                 "id": "general",
                 "type": "form",
                 "title": "General mod",
-                "fields": [{"name": "razon", "label": "R", "type": "text"}],
+                "fields": [
+                    {"name": "razon", "label": "Razon", "type": "text", "required": True},
+                    {"name": "rfc", "label": "RFC", "type": "text", "required": True},
+                ],
             }
         ],
     }

@@ -20,6 +20,7 @@ from app.api.deps import ADMIN_ROLE, get_current_user, get_db, verify_csrf
 from app.api.metrics import COUNTER_MEDIA_DELETES, COUNTER_MEDIA_UPLOADS, incr
 from app.api.rate_limit import rate_limit
 from app.models.acervo import AcervoFile, AcervoFolder
+from app.models.acervo_bucket import AcervoBucket
 from app.models.user import Usuario
 from app.schemas.acervo import (
     AcervoFileUpdate,
@@ -100,6 +101,82 @@ def _read_object_bytes(client: AcervoClient, object_name: str) -> bytes:
         response.release_conn()
 
 
+def _serve_thumbnail(
+    client: AcervoClient,
+    bucket_name: str,
+    object_path: str,
+    w: int,
+    *,
+    user_id: str | None = None,
+    cache_visibility: str = "private",
+):
+    try:
+        stat = client.stat_object(object_path)
+    except S3Error as exc:
+        if exc.code in {"NoSuchKey", "NoSuchBucket"}:
+            raise HTTPException(status_code=404, detail="Archivo no encontrado")
+        logger.exception(
+            "action=acervo.thumb.stat user_id=%s bucket=%s key=%s",
+            user_id, bucket_name, object_path,
+        )
+        raise HTTPException(status_code=502, detail="Error consultando acervo")
+
+    content_type = stat.content_type or acervo_file_service.guess_mime(object_path)
+
+    if content_type == "image/svg+xml" or object_path.lower().endswith(".svg"):
+        data = _read_object_bytes(client, object_path)
+        return Response(
+            content=data,
+            media_type="image/svg+xml",
+            headers={
+                "Cache-Control": f"{cache_visibility}, max-age=86400",
+                "X-Content-Type-Options": "nosniff",
+                "Content-Security-Policy": "script-src 'none'; sandbox",
+            },
+        )
+
+    if not acervo_thumbnails.is_raster_image(content_type):
+        raise HTTPException(status_code=415, detail="Tipo no soportado para miniatura")
+
+    width = acervo_thumbnails.normalize_width(w)
+    etag = stat.etag
+    key = acervo_thumbnails.thumb_key(object_path, etag, width)
+    headers = {
+        "Cache-Control": f"{cache_visibility}, max-age=86400, immutable",
+        "X-Content-Type-Options": "nosniff",
+        "ETag": f'"{acervo_thumbnails._clean_etag(etag)}-w{width}"',
+    }
+
+    try:
+        client.stat_object(key)
+        cached = _read_object_bytes(client, key)
+        return Response(content=cached, media_type="image/webp", headers=headers)
+    except S3Error:
+        pass
+
+    try:
+        original = _read_object_bytes(client, object_path)
+        webp = acervo_thumbnails.generate_webp(original, width)
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception(
+            "action=acervo.thumb.generate user_id=%s bucket=%s key=%s",
+            user_id, bucket_name, object_path,
+        )
+        raise HTTPException(status_code=502, detail="No se pudo generar la miniatura")
+
+    try:
+        client.put_bytes(key, webp, "image/webp")
+    except Exception:
+        logger.warning(
+            "action=acervo.thumb.cache_put bucket=%s key=%s falló (se sirve igual)",
+            bucket_name, key,
+        )
+
+    return Response(content=webp, media_type="image/webp", headers=headers)
+
+
 @router.get("/thumb/{bucket_id}/{object_path:path}")
 async def thumbnail_object(
     bucket_id: int,
@@ -110,69 +187,7 @@ async def thumbnail_object(
 ):
     bucket = acervo_file_service.resolve_bucket_or_403(bucket_id, current_user, db)
     client = AcervoClient.for_bucket(bucket)
-    try:
-        stat = client.stat_object(object_path)
-    except S3Error as exc:
-        if exc.code in {"NoSuchKey", "NoSuchBucket"}:
-            raise HTTPException(status_code=404, detail="Archivo no encontrado")
-        logger.exception(
-            "action=acervo.thumb.stat user_id=%s bucket=%s key=%s",
-            current_user.id, bucket.acervo_bucket, object_path,
-        )
-        raise HTTPException(status_code=502, detail="Error consultando acervo")
-
-    content_type = stat.content_type or acervo_file_service.guess_mime(object_path)
-
-    # SVG: vectorial, se sirve tal cual (sin rasterizar).
-    if content_type == "image/svg+xml" or object_path.lower().endswith(".svg"):
-        data = _read_object_bytes(client, object_path)
-        return Response(
-            content=data,
-            media_type="image/svg+xml",
-            headers={"Cache-Control": "private, max-age=86400"},
-        )
-
-    if not acervo_thumbnails.is_raster_image(content_type):
-        raise HTTPException(status_code=415, detail="Tipo no soportado para miniatura")
-
-    width = acervo_thumbnails.normalize_width(w)
-    etag = stat.etag
-    key = acervo_thumbnails.thumb_key(object_path, etag, width)
-    headers = {
-        "Cache-Control": "private, max-age=86400, immutable",
-        "ETag": f'"{acervo_thumbnails._clean_etag(etag)}-w{width}"',
-    }
-
-    # ¿ya cacheada?
-    try:
-        client.stat_object(key)
-        cached = _read_object_bytes(client, key)
-        return Response(content=cached, media_type="image/webp", headers=headers)
-    except S3Error:
-        pass
-
-    # Generar, cachear (best-effort) y devolver.
-    try:
-        original = _read_object_bytes(client, object_path)
-        webp = acervo_thumbnails.generate_webp(original, width)
-    except HTTPException:
-        raise
-    except Exception:
-        logger.exception(
-            "action=acervo.thumb.generate user_id=%s bucket=%s key=%s",
-            current_user.id, bucket.acervo_bucket, object_path,
-        )
-        raise HTTPException(status_code=502, detail="No se pudo generar la miniatura")
-
-    try:
-        client.put_bytes(key, webp, "image/webp")
-    except Exception:
-        logger.warning(
-            "action=acervo.thumb.cache_put bucket=%s key=%s falló (se sirve igual)",
-            bucket.acervo_bucket, key,
-        )
-
-    return Response(content=webp, media_type="image/webp", headers=headers)
+    return _serve_thumbnail(client, bucket.acervo_bucket, object_path, w, user_id=str(current_user.id))
 
 
 @router.get("/objetos-bucket", response_model=list[dict])
@@ -992,3 +1007,26 @@ async def eliminar_archivo(
     incr(COUNTER_MEDIA_DELETES)
     logger.info("action=acervo.delete user_id=%s media_id=%s name=%s", current_user.id, item.id, item.name)
     return {"message": "Archivo eliminado exitosamente"}
+
+
+public_router = APIRouter(prefix="/acervo", tags=["acervo-public"])
+
+
+@public_router.get("/thumb/{bucket_name}/{object_path:path}")
+async def public_thumbnail(
+    bucket_name: str,
+    object_path: str,
+    w: int = Query(acervo_thumbnails.DEFAULT_WIDTH, ge=16, le=2048),
+    db: Session = Depends(get_db),
+):
+    bucket = (
+        db.query(AcervoBucket)
+        .filter(AcervoBucket.acervo_bucket == bucket_name, AcervoBucket.is_active.is_(True))
+        .first()
+    )
+    if bucket is None:
+        raise HTTPException(status_code=404, detail="Bucket no encontrado")
+    if not bucket.is_public:
+        raise HTTPException(status_code=404, detail="Bucket no encontrado")
+    client = AcervoClient.for_bucket(bucket)
+    return _serve_thumbnail(client, bucket.acervo_bucket, object_path, w, cache_visibility="public")

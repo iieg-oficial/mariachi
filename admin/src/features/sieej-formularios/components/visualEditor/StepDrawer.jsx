@@ -1,14 +1,6 @@
 import { useEffect } from 'react';
-import { Button, Drawer, Form, Input, InputNumber, Select, Space } from 'antd';
+import { Alert, Button, Drawer, Form, Input, InputNumber, Select, Space } from 'antd';
 import { STEP_TYPES } from '../../constants/definitionTypes';
-
-const tabsToText = (tabs) => (tabs ?? []).map((t) => `${t.id} | ${t.title}`).join('\n');
-const tabsFromText = (text) => (text ?? '')
-    .split('\n').map((l) => l.trim()).filter(Boolean)
-    .map((line) => {
-        const [id, ...rest] = line.split('|');
-        return { id: id.trim(), title: (rest.join('|') || id).trim() };
-    });
 
 export default function StepDrawer({ open, step, onSave, onClose }) {
     const [form] = Form.useForm();
@@ -23,7 +15,6 @@ export default function StepDrawer({ open, step, onSave, onClose }) {
             minItems: step?.minItems,
             maxItems: step?.maxItems,
             itemLabel: step?.itemLabel ?? '',
-            tabs_text: tabsToText(step?.tabs),
             exportPdf: step?.exportPdf ?? false,
             incomplete_title: step?.incompleteNotice?.title ?? '',
             incomplete_message: step?.incompleteNotice?.message ?? '',
@@ -43,12 +34,13 @@ export default function StepDrawer({ open, step, onSave, onClose }) {
             if (values.minItems != null) out.minItems = values.minItems;
             if (values.maxItems != null) out.maxItems = values.maxItems;
             if (values.itemLabel) out.itemLabel = values.itemLabel;
-            const tabs = tabsFromText(values.tabs_text);
-            if (tabs.length > 0) out.tabs = tabs;
+            if (step?.tabs?.length) out.tabs = step.tabs;
             out.fields = step?.fields ?? [];
         } else if (values.type === 'form') {
+            out.tabs = undefined;
             out.fields = step?.fields ?? [];
         } else {
+            out.tabs = undefined;
             if (values.exportPdf) out.exportPdf = true;
         }
         if (values.type !== 'summary') {
@@ -107,13 +99,12 @@ export default function StepDrawer({ open, step, onSave, onClose }) {
                             extra='Usa "{{index}}" para el numero. Ej: "Base de datos {{index}}"'>
                             <Input />
                         </Form.Item>
-                        <Form.Item
-                            label="Tabs internos (una por linea: id | titulo)"
-                            name="tabs_text"
-                            extra="Vacio = sin tabs"
-                        >
-                            <Input.TextArea rows={3} placeholder={'datos | Datos generales\ndiccionario | Diccionario'} />
-                        </Form.Item>
+                        <Alert
+                            type="info"
+                            showIcon
+                            style={{ marginBottom: 16 }}
+                            message="Los tabs internos se administran junto a los campos del paso, en la pestaña que agrupa cada uno."
+                        />
                     </>
                 )}
                 {watchType !== 'summary' && (

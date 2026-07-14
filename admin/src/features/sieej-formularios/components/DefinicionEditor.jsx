@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Input, Segmented, Space } from 'antd';
-import { SaveOutlined, BlockOutlined, CodeOutlined } from '@ant-design/icons';
+import { SaveOutlined, BlockOutlined, CodeOutlined, PlusOutlined } from '@ant-design/icons';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import { message } from '@shared/services/message';
+import useSearchParamState from '../hooks/useSearchParamState';
 import { formulariosApi } from '../services/formulariosAdminApi';
 import StepsList from './visualEditor/StepsList';
 
@@ -10,11 +11,13 @@ const EMPTY_DEFINICION = { version: 1, steps: [] };
 
 export default function DefinicionEditor({ formulario, onSaved }) {
     const { isMobile } = useIsMobile();
-    const [view, setView] = useState('visual');
+    const [viewFromUrl, setView] = useSearchParamState('vista', 'visual');
+    const view = viewFromUrl === 'json' ? 'json' : 'visual';
     const [definicion, setDefinicion] = useState(EMPTY_DEFINICION);
     const [jsonText, setJsonText] = useState('');
     const [error, setError] = useState(null);
     const [saving, setSaving] = useState(false);
+    const [stepAddTrigger, setStepAddTrigger] = useState(null);
 
     useEffect(() => {
         if (formulario?.definicion) {
@@ -42,7 +45,7 @@ export default function DefinicionEditor({ formulario, onSaved }) {
             }
         }
         setError(null);
-        setView(next);
+        setView(next === 'visual' ? null : next);
     };
 
     const payload = useMemo(() => {
@@ -61,7 +64,22 @@ export default function DefinicionEditor({ formulario, onSaved }) {
         setSaving(true);
         try {
             const updated = await formulariosApi.update(formulario.id, { definicion: payload });
-            message.success('Definición actualizada');
+            const cambio = updated?.ultimo_cambio;
+            if (!cambio) {
+                message.success('Definición actualizada');
+            } else if (cambio.tipo === 'menor') {
+                message.success('Cambio menor aplicado a todos los envíos en proceso');
+            } else {
+                const partes = [`Cambio estructural (v${updated.version}).`];
+                if (cambio.afectados) {
+                    partes.push(`Se avisará a ${cambio.afectados} persona(s) que lo están llenando.`);
+                }
+                if (cambio.reabiertos) {
+                    partes.push(`${cambio.reabiertos} envío(s) ya completados se reabrieron para reenvío.`);
+                }
+                partes.push('Las respuestas capturadas se conservan.');
+                message.warning(partes.join(' '));
+            }
             onSaved?.(updated);
             setDefinicion(updated.definicion);
             setJsonText(JSON.stringify(updated.definicion, null, 2));
@@ -77,7 +95,7 @@ export default function DefinicionEditor({ formulario, onSaved }) {
         <Space direction="vertical" style={{ width: '100%' }} size="middle">
             {error && <Alert type="error" showIcon message={error} closable onClose={() => setError(null)} />}
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                 <Segmented
                     value={view}
                     onChange={handleViewChange}
@@ -86,15 +104,32 @@ export default function DefinicionEditor({ formulario, onSaved }) {
                         { value: 'json', label: 'JSON', icon: <CodeOutlined /> },
                     ]}
                 />
-                <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={handleSave}>
-                    {isMobile ? null : 'Guardar definición'}
-                </Button>
+                <Space size="small">
+                    {view === 'visual' && (
+                        <Button
+                            type="dashed"
+                            icon={<PlusOutlined />}
+                            onClick={() => setStepAddTrigger({ ts: Date.now() })}
+                        >
+                            {isMobile ? null : 'Agregar paso'}
+                        </Button>
+                    )}
+                    <Button
+                        type="primary"
+                        icon={<SaveOutlined />}
+                        loading={saving}
+                        onClick={handleSave}
+                    >
+                        {isMobile ? null : 'Guardar formulario'}
+                    </Button>
+                </Space>
             </div>
 
             {view === 'visual' ? (
                 <StepsList
                     steps={definicion.steps ?? []}
                     onChange={handleStepsChange}
+                    stepAddTrigger={stepAddTrigger}
                 />
             ) : (
                 <Input.TextArea

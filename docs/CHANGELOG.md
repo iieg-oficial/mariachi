@@ -9,6 +9,162 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.56.0 / admin 1.55.0] - 2026-07-14
+
+### SIEEJ admin: editor visual — tabs del repeater, selectores en línea, vista previa y estado en URL
+
+#### Agregado
+
+- **Admin** (`TabsManager.jsx`): administración de los tabs internos de un paso `repeater` junto a los campos que agrupan (crear, renombrar, eliminar). Los campos se listan agrupados por tab, con contador por pestaña. La pestaña **Comunes** reúne los campos sin `tab` — que el renderer muestra en *todos* los tabs — y solo aparece cuando tiene campos (o cuando el paso aún no define tabs). Eliminar un tab con campos pregunta si moverlos a Comunes o borrarlos con él.
+- **Admin** (`FieldCard.jsx`): tarjeta de campo extraída de `FieldsList`. Selectores en línea para reasignar el **tab** y el **ancho en columnas** sin abrir el editor. Tags nuevos: `Activa N` en los campos actuadores, y `Tab «x» no existe` en campos cuyo `tab` fue eliminado (el renderer no los muestra en ninguna pestaña).
+- **Admin** (`fieldUtils.js`): `placeAfterTrigger` (reubica un campo condicionado junto a su actuador), `reorderWithinTab`, `assignTab`, `assignColSpan`, `renameTabInFields`, `detachFieldsFromTab`, `dropFieldsOfTab`, `describeCondition`, `dependentsOf`, `conditionValueOptions`.
+- **Admin** (`useSearchParamState.js`): estado de navegación en la query string con *merge* sobre los parámetros existentes y `replace: true`. El editor queda direccionable: `?tab=definicion&vista=json&paso=bases_datos&subtab=diccionario`. Recargar ya no pierde la ubicación. Valores por defecto no se escriben; `subtab` se descarta al cambiar de paso.
+- **Admin** (`FieldPreview.jsx`): la vista previa refleja el **ancho en columnas** (Grande 100% / Mediano 50% / Chico 33%, igual que el grid de 6 columnas del renderer) dibujando el espacio restante como "Otros campos". Si el campo tiene condición, muestra la regla en lenguaje legible y un switch **Se cumple / No se cumple** que simula la visibilidad real.
+- **Admin** (`ShowWhenField.jsx`): además de la condición que rige al campo, lista los campos que **dependen** de él con el valor que los dispara, y advierte que renombrar su nombre interno, tipo u opciones rompe esas reglas.
+
+#### Cambiado
+
+- **Admin** (`FieldsList.jsx`): al guardar un campo con actuador, se reubica automáticamente debajo de él (al final del grupo que ya depende del mismo actuador). No se mueve si ya está bien colocado, ni cuando el actuador vive en otro tab. Crear un campo dentro de un tab lo asigna a ese tab.
+- **Admin** (`StepDrawer.jsx`): se retira el `Form.List` de tabs; ahora se administran junto a los campos (fuente única). El drawer conserva `minItems`/`maxItems`/`itemLabel`.
+- **Admin** (`FieldForm.jsx`): la vista previa sticky se ancla debajo del header (64px + 16px) — antes quedaba tapada por él al hacer scroll.
+
+---
+
+## [api 1.56.0 / admin 1.54.0] - 2026-07-14
+
+### SIEEJ: catálogos administrables desde el admin
+
+#### Agregado
+
+- **API** (`catalogos_service.py`, `routes/sieej_admin/catalogos.py`): CRUD de los catálogos SIEEJ. `GET /sieej/catalogos` (resumen con conteos), `GET|POST /sieej/catalogos/{clave}`, `PUT|DELETE /sieej/catalogos/{clave}/{item_id}`. Bajo `staff_dep` + `verify_csrf`.
+- **API** (`schemas/sieej/catalogos.py`): `CatalogoResumen`, `CatalogoAdminItem`, `CatalogoItemPayload`.
+- **Admin** (`CatalogosPage.jsx`, `components/catalogos/`): pantalla de administración de catálogos (lista, items, alta/renombrado/borrado) e ítem en el sider.
+- **Admin** (`hooks/useCatalogos.js`): catálogos cacheados en memoria y compartidos entre componentes, con `invalidateCatalogos()` tras cada mutación.
+- **Admin** (`CatalogPicker.jsx`, `OptionsSource.jsx`): en el editor de campos, la fuente de opciones se elige entre **lista propia** y **catálogo**, con acceso directo a administrar el catálogo seleccionado.
+
+#### Corregido
+
+- **API** (`definicion_validator.py`): `showWhen.field` ahora debe apuntar a un campo del **mismo step**. Las rutas `otro_step.campo` se rechazan: tanto el renderer como `datos_validator` evalúan la condición contra los datos del step actual, así que una referencia cruzada nunca se cumpliría y el campo quedaría oculto en silencio.
+
+#### Tests
+
+- **API** (`test_sieej_catalogos.py`): CRUD de catálogos.
+- **API** (`test_sieej_definicion_validator.py`): `showWhen` cruzado entre steps se rechaza.
+
+---
+
+## [api 1.55.0 / admin 1.53.0] - 2026-07-13
+
+### SIEEJ: reorganiza versiones — clasifica cambios menor/rompe, propaga y avisa actualización
+
+El modelo de versionado de formularios se reorganiza con clasificación automática de cambios, propagación a envíos en proceso y aviso al respondent con distintivos.
+
+#### Agregado
+
+- **API** (`cambio_classifier.py`): `clasificar_cambio(old, new) -> "menor"|"rompe"`, `es_rompe`, `diff_definiciones(old, new) -> [{step_id, field_name|null, tipo}]`. Reglas: rompe = eliminar campo/step, agregar campo/step obligatorio, opcional→obligatorio, cambiar type, quitar/renombrar opciones, endurecer validación, cambiar catalog, cambiar type de step. Todo lo demás = menor.
+- **API** (`envio.py`): columna `cambios_pendientes` JSONB en `sieej.envio_formulario`.
+- **API** (`formularios_admin_service.actualizar()`): clasifica cambio, propaga menores a envíos `en_proceso` al día reescribiendo `definicion_snapshot` SIN subir versión, sube versión SOLO en `rompe`. Devuelve `tuple[Formulario, cambio_info|None]`.
+- **API** (`envios_service`): `actualizar_version()` reescribe snapshot conservando datos, `info_cambios()` devuelve `actualizacion_disponible`, `cambios_preview` y `cambios_aplicados`, `_descartar_cambios_vistos()` limpia marcadores.
+- **API** (`envios_service.reabrir_enviados_por_cambio()`): un cambio `rompe` reabre a `en_proceso` los envíos ya `enviado` de versión anterior, reescribe su snapshot a la vigente conservando `datos`, guarda el diff en `cambios_pendientes` y registra evento `reabierto`. Distinto de la reapertura manual individual del admin (que conserva la versión con la que se llenó).
+- **API** (`schemas`): `CambioRef`, `UltimoCambioInfo` (con `reabiertos`), `FormularioUpdateResponse`; `EnvioResponse` gana `actualizacion_disponible`, `cambios_preview`, `cambios_aplicados`; `EnvioUpdate` gana `cambios_vistos`.
+- **API** (`dinamicos.py`): endpoint `POST /formularios/{slug}/envio/actualizar-version`; se pueblan campos de cambios en GET de formulario y envio.
+- **Admin** (`DefinicionEditor.jsx`): toast feedback según clasificación del cambio (menor propagado vs rompe con conteo de afectados y de envíos reabiertos).
+
+#### Tests
+
+- **API** (`test_sieej_cambio_classifier.py`): 12 tests de clasificación de cambios.
+
+### SIEEJ admin: visor de respuestas de envío con diff de versión y tag desactualizado
+
+- **API** (`schemas/envio.py`): `EnvioDetalleResponse` con `definicion_snapshot`.
+- **API** (`formularios_admin_service`): `contar_desactualizados()`.
+- **Admin** (`snapshotUtils.js`): `buildRespuestas`, `diffDefiniciones`, `formatFieldValue`.
+- **Admin** (`EnvioDetalleDrawer.jsx`): drawer con render legible del snapshot y diff contra definición vigente.
+- **Admin** (`EnviosTable.jsx`): tag "Desactualizado" y banner de conteo de envíos atrás en versión.
+
+### SIEEJ admin: bucket sieej por defecto y descripción en editor de campos
+
+- **Admin** (`FieldForm.jsx`): default `sieej` al elegir tipo archivo, texto descriptivo y gating de props de archivo a `type==='file'`.
+
+---
+
+## [api 1.54.3 / admin 1.52.2] - 2026-07-10
+
+### SIEEJ: barra de herramientas unificada en editor de definicion
+
+- **Admin**: botones Guardar formulario y Agregar paso unificados en barra superior junto al Segmented Visual/JSON, homologados a altura del Segmented, con `flexWrap` para mobile. StepsList recibe `stepAddTrigger` para abrir el drawer desde fuera. Limpiados imports no usados.
+
+---
+
+## [api 1.54.2 / admin 1.52.1] - 2026-07-10
+
+### SIEEJ: ruta de edicion usa slug en vez de id numerico
+
+- **`api/app/api/routes/sieej_admin/formularios.py`**: `GET /formularios/{formulario_id_or_slug}` ahora acepta string (slug o id numerico) en vez de `int`.
+- **`api/app/services/sieej/formularios_admin_service.py`**: `get_by_slug()` y `get_by_id_or_slug()` resuelven formulario por slug o id.
+- **Admin**: ruta `sieej/formularios/:slug`, navegacion con `f.slug` en `FormulariosListPage`, `FormularioEditorPage` usa `slug` de `useParams()`.
+
+---
+
+## [api 1.54.1 / admin 1.52.0] - 2026-07-10
+
+### Acervo miniaturas + export SIEEJ: seguridad y fidelidad
+
+Correcciones sobre las features del día (miniaturas anónimas de Acervo y descargas de envíos SIEEJ).
+
+#### Seguridad
+
+- **`api/app/api/routes/acervo.py`**: las miniaturas de la ruta **autenticada** vuelven a `Cache-Control: private` (el refactor de `_serve_thumbnail` las marcaba `public`, arriesgando el cacheo de imágenes de buckets privados en proxies/CDN). La ruta pública sigue en `public`. El SVG anónimo se sirve con `X-Content-Type-Options: nosniff` y `Content-Security-Policy: script-src 'none'; sandbox` (evita ejecución de scripts al abrir el SVG directo en el origen del gateway); `nosniff` también en la respuesta raster.
+
+#### Corregido
+
+- **`api/app/services/sieej/xlsx_service.py`** + **`api/app/api/routes/sieej_admin/formularios.py`**: el Excel de envíos arma las columnas por **unión de los `definicion_snapshot`** de cada envío, en vez de la definición vigente del formulario. Antes, los envíos capturados con una definición anterior (campos renombrados/eliminados) quedaban desalineados; ahora queda homologado con el PDF, que ya usaba el snapshot.
+- **`api/app/services/acervo_file_service.py`**: `joinedload(AcervoFile.bucket)` al listar media (evita el lazy-load implícito del `bucket` introducido con la relación nueva).
+- **`api/app/api/routes/sieej_admin/formularios.py`**: `Content-Disposition` incluye fallback `filename="..."` además de `filename*=UTF-8''`.
+- **`nginx/conf.d/mariachi.conf`**: elimina el `add_header Cache-Control ... always` duplicado en `/acervo/thumb/` (deja pasar el header del app y evita cachear respuestas 404).
+
+---
+
+## [api 1.49.0 / admin 1.49.0] - 2026-07-09
+
+### SIEEJ: editor de campos inline colapsable con vista previa
+
+El editor de campos del creador visual deja de abrir un `Drawer` modal y se **colapsa sobre el propio item**. Al pulsar editar, el campo se expande mostrando el formulario; "Agregar campo" abre un editor inline al final.
+
+#### Agregado
+
+- **Admin** (`FieldForm.jsx`): formulario de campo embebido (extraído del antiguo `FieldDrawer`) con footer Guardar/Cancelar y botón Guardar también en las acciones del item. Flujo **tipo primero**: solo se muestra el selector de tipo hasta elegirlo. Layout de dos columnas: campos a la izquierda, **vista previa sticky** a la derecha; en móvil, una sola columna.
+- **Admin** (`FieldPreview.jsx` + `fieldUtils.js`): vista previa en vivo de **todos** los tipos de campo con componentes AntD fieles al renderer, incluyendo pistas de validación (tel "10 dígitos", email, patrón, longitudes) y formatos/tamaño para archivo.
+- **Admin** (tipo archivo en `FieldForm`): **bucket Acervo** como `Select` poblado desde `useAccessibleBuckets` (ya no se escribe a mano) y **extensiones** como `Select mode="tags"`. **`patternMessage`** configurable para text/textarea/email/tel.
+
+#### Cambiado
+
+- **Admin** (`FieldsList.jsx`): edición inline colapsable, botón Guardar en las acciones del campo (instancia de `Form` compartida) y **confirmación** (`Popconfirm`) al eliminar un campo. Se elimina `FieldDrawer.jsx`.
+
+#### Corregido
+
+- **Admin** (`FieldForm.jsx`): el **nombre interno** se autocompleta con el slug de la etiqueta completa (antes se quedaba en la primera letra porque dejaba de sincronizar en cuanto el campo tenía valor).
+
+### SIEEJ: tabs internos del repeater como editor de filas + acciones de paso
+
+#### Cambiado
+
+- **Admin** (`StepDrawer.jsx`): los tabs internos de un paso `repeater` se editan con un `Form.List` (una fila por tab con id/título validados y agregar/eliminar) en vez de un textarea `id | titulo`.
+- **Admin** (`StepsList.jsx`): los botones de acción del paso pasan a la **izquierda** del título (evita toques accidentales), el botón de editar paso queda solo-icono y se agrega **confirmación** (`Popconfirm`) al eliminar un paso.
+
+### SIEEJ: `validation.pattern` y `patternMessage` personalizables por campo
+
+#### Agregado
+
+- **API** (`definicion_validator.py`): valida que `validation.pattern` sea un string con una regex **compilable** y que `validation.patternMessage` sea string no vacío (para text/textarea/email/tel). `definicion_to_validation_rules` exporta el `patternMessage` junto a la regla `pattern`.
+- Homologa con el frontend de SIEEJ (`1.20.0`), que aplica esos patrones en cliente y muestra el mensaje personalizado.
+
+### Por qué bump minor
+
+- Agrega funcionalidad visible nueva (edición inline, vista previa, editor de tabs, validación de patrón) compatible hacia atrás.
+
+---
+
 ## [api 1.48.0 / admin 1.48.0] - 2026-07-06
 
 ### SIEEJ: creador visual de definiciones con pestañas arrastrables

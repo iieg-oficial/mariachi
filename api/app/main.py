@@ -127,6 +127,7 @@ def create_app() -> FastAPI:
     app.include_router(preview.public_router, prefix=settings.web_prefix)
     app.include_router(public.router, prefix=settings.web_prefix)
     app.include_router(public.mapalab_router, prefix=settings.mapalab_public_prefix)
+    app.include_router(acervo.public_router)
     app.include_router(symbols.mapalab_router, prefix=settings.mapalab_public_prefix)
     app.include_router(reportes_public.router, prefix=settings.public_prefix)
     app.include_router(mapalab_events_public.router, prefix=settings.public_prefix)

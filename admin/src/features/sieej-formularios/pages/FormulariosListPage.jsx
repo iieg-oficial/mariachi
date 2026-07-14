@@ -101,7 +101,7 @@ export default function FormulariosListPage() {
             });
             message.success('Formulario creado');
             setModalOpen(false);
-            navigate(`/sieej/formularios/${created.id}`);
+            navigate(`/sieej/formularios/${created.slug}`);
         } catch (err) {
             message.error(err?.response?.data?.detail || 'Error al crear');
         }
@@ -244,8 +244,8 @@ export default function FormulariosListPage() {
                             <Col key={f.id} xs={24} sm={12} lg={8} xl={6}>
                                 <FormularioCard
                                     formulario={f}
-                                    onEditar={() => navigate(`/sieej/formularios/${f.id}`)}
-                                    onEnvios={() => navigate(`/sieej/formularios/${f.id}?tab=envios`)}
+                                    onEditar={() => navigate(`/sieej/formularios/${f.slug}`)}
+                                    onEnvios={() => navigate(`/sieej/formularios/${f.slug}?tab=envios`)}
                                     onPublicar={() => handlePublicar(f)}
                                     onCerrar={() => handleCerrar(f)}
                                     onEliminar={() => handleEliminar(f)}

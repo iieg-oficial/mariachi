@@ -31,6 +31,7 @@ from app.models.sieej import (
 )
 from app.models.user import Usuario
 from app.services.acervo import AcervoClient
+from app.services.sieej.cambio_classifier import diff_definiciones
 from app.services.sieej.datos_validator import DatosInvalidosError, validar_datos
 
 _FORMULARIO_NO_ACEPTA_DETAIL = (
@@ -201,6 +202,7 @@ class EnviosService:
         paso_actual: int,
         *,
         enviar: bool,
+        cambios_vistos: list[str] | None = None,
     ) -> EnvioFormulario:
         if not self._formulario_acepta_cambios(formulario):
             raise HTTPException(
@@ -242,14 +244,148 @@ class EnviosService:
         if enviar:
             envio.estado = "enviado"
             envio.enviado_en = utcnow()
+            envio.cambios_pendientes = None
             self._registrar_evento(envio, "enviado", actor=user)
         else:
+            self._descartar_cambios_vistos(envio, cambios_vistos)
             self._registrar_evento(envio, "guardado", actor=user)
         envio.actualizado_en = utcnow()
         self.db.commit()
         self.db.refresh(envio)
         incr(COUNTER_SIEEJ_ENVIO_WRITES)
         return envio
+
+    def actualizar_version(
+        self, formulario: Formulario, user: Usuario
+    ) -> EnvioFormulario:
+        """Reescribe el snapshot del envio en proceso a la definicion vigente.
+
+        Conserva `datos` (indexados por nombre de campo) y guarda el diff en
+        `cambios_pendientes` para que el frontend marque en el sider/paso/campo
+        que cambio. Solo aplica a envios `en_proceso`.
+        """
+        if not self._formulario_acepta_cambios(formulario):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=_FORMULARIO_NO_ACEPTA_DETAIL,
+            )
+        envio = self.get_o_iniciar(formulario, user, crear_si_falta=False)
+        if envio is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No tienes un envio de este formulario",
+            )
+        if envio.estado != "en_proceso":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Solo un envio en proceso puede actualizarse",
+            )
+        cambios = diff_definiciones(
+            envio.definicion_snapshot or {}, formulario.definicion or {}
+        )
+        envio.definicion_snapshot = formulario.definicion
+        envio.formulario_version = formulario.version
+        envio.cambios_pendientes = cambios or None
+        envio.actualizado_en = utcnow()
+        self.db.commit()
+        self.db.refresh(envio)
+        incr(COUNTER_SIEEJ_ENVIO_WRITES)
+        return envio
+
+    def reabrir_enviados_por_cambio(
+        self, formulario: Formulario, *, actor: Usuario | None = None
+    ) -> int:
+        """Reabre a `en_proceso` los envios ya `enviado` de version anterior.
+
+        Se invoca cuando el admin publica un cambio que `rompe`: el envio deja
+        de ser un registro final y vuelve a pendiente para que el respondent
+        reenvie sobre la definicion vigente. Conserva `datos`, reescribe el
+        snapshot y guarda el diff en `cambios_pendientes`. No hace commit: el
+        caller lo hace dentro de su misma transaccion.
+        """
+        enviados = (
+            self.db.query(EnvioFormulario)
+            .filter(
+                EnvioFormulario.formulario_id == formulario.id,
+                EnvioFormulario.estado == "enviado",
+                EnvioFormulario.formulario_version < (formulario.version or 0),
+            )
+            .all()
+        )
+        for envio in enviados:
+            cambios = diff_definiciones(
+                envio.definicion_snapshot or {}, formulario.definicion or {}
+            )
+            envio.definicion_snapshot = formulario.definicion
+            envio.formulario_version = formulario.version
+            envio.cambios_pendientes = cambios or None
+            envio.estado = "en_proceso"
+            envio.enviado_en = None
+            envio.actualizado_en = utcnow()
+            self._registrar_evento(envio, "reabierto", actor=actor)
+        return len(enviados)
+
+    @staticmethod
+    def info_cambios(
+        formulario: Formulario, envio: EnvioFormulario | None
+    ) -> dict[str, Any]:
+        """Estado de cambios de version del envio para el frontend respondent.
+
+        - `actualizacion_disponible`: hay una version mas nueva que la del
+          snapshot (solo pasa tras un cambio que rompe).
+        - `cambios_preview`: diff entre lo que el respondent tiene y lo vigente
+          (para el banner "ver que cambio").
+        - `cambios_aplicados`: distintivos persistidos tras la ultima
+          actualizacion (para marcar sider/paso/campo).
+        """
+        if envio is None:
+            return {
+                "actualizacion_disponible": False,
+                "cambios_preview": [],
+                "cambios_aplicados": [],
+            }
+        disponible = envio.estado == "en_proceso" and (
+            (envio.formulario_version or 0) < (formulario.version or 0)
+        )
+        preview = (
+            diff_definiciones(
+                envio.definicion_snapshot or {}, formulario.definicion or {}
+            )
+            if disponible
+            else []
+        )
+        return {
+            "actualizacion_disponible": disponible,
+            "cambios_preview": preview,
+            "cambios_aplicados": envio.cambios_pendientes or [],
+        }
+
+    @staticmethod
+    def _descartar_cambios_vistos(
+        envio: EnvioFormulario, cambios_vistos: list[str] | None
+    ) -> None:
+        """Quita de `cambios_pendientes` los marcadores que el usuario ya vio.
+
+        Cada marcador se identifica por `step_id.field_name` (o `step_id` para
+        marcadores de paso). Al vaciarse, deja la columna en None.
+        """
+        if not cambios_vistos or not envio.cambios_pendientes:
+            return
+        vistos = set(cambios_vistos)
+
+        def _key(c: dict[str, Any]) -> str:
+            return (
+                f"{c.get('step_id')}.{c.get('field_name')}"
+                if c.get("field_name")
+                else str(c.get("step_id"))
+            )
+
+        restantes = [
+            c
+            for c in envio.cambios_pendientes
+            if _key(c) not in vistos and str(c.get("step_id")) not in vistos
+        ]
+        envio.cambios_pendientes = restantes or None
 
     @staticmethod
     def _parse_field_path(field_path: str) -> tuple[str, int | None, str] | None:

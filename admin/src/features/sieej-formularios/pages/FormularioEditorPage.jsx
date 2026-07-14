@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router';
+import { useNavigate, useParams } from 'react-router';
 import { Breadcrumb, Button, Flex, Modal, Spin, Tabs, Tag, Typography } from 'antd';
 import { PlayCircleOutlined } from '@ant-design/icons';
 import { message } from '@shared/services/message';
+import useSearchParamState from '../hooks/useSearchParamState';
 import { formulariosApi } from '../services/formulariosAdminApi';
 import DefinicionEditor from '../components/DefinicionEditor';
 import ConfiguracionEditor from '../components/ConfiguracionEditor';
@@ -14,24 +15,23 @@ const ESTADO_COLOR = { borrador: 'default', activo: 'green', cerrado: 'red' };
 const VALID_TABS = new Set(['definicion', 'configuracion', 'asignaciones', 'envios']);
 
 export default function FormularioEditorPage() {
-    const { id } = useParams();
+    const { slug } = useParams();
     const navigate = useNavigate();
-    const [searchParams, setSearchParams] = useSearchParams();
+    const [tabFromUrl, setTab] = useSearchParamState('tab', 'definicion');
     const [formulario, setFormulario] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    const tabFromUrl = searchParams.get('tab');
     const activeTab = VALID_TABS.has(tabFromUrl) ? tabFromUrl : 'definicion';
 
     const handleTabChange = (key) => {
-        setSearchParams({ tab: key }, { replace: true });
+        setTab(key, { paso: null, subtab: null });
     };
 
     useEffect(() => {
         let cancel = false;
         (async () => {
             try {
-                const data = await formulariosApi.get(id);
+                const data = await formulariosApi.get(slug);
                 if (!cancel) setFormulario(data);
             } catch {
                 message.error('Formulario no encontrado');
@@ -41,7 +41,7 @@ export default function FormularioEditorPage() {
             }
         })();
         return () => { cancel = true; };
-    }, [id, navigate]);
+    }, [slug, navigate]);
 
     const handlePublicar = () => {
         Modal.confirm({
@@ -52,7 +52,7 @@ export default function FormularioEditorPage() {
             cancelText: 'Cancelar',
             onOk: async () => {
                 try {
-                    const updated = await formulariosApi.publicar(id);
+                    const updated = await formulariosApi.publicar(formulario.id);
                     setFormulario(updated);
                     message.success('Formulario publicado');
                 } catch (err) {

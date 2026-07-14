@@ -1,4 +1,4 @@
-import { cloneElement, useState } from 'react';
+import { cloneElement, useEffect, useState } from 'react';
 import {
     DndContext, PointerSensor, closestCenter, useSensor, useSensors,
 } from '@dnd-kit/core';
@@ -6,11 +6,11 @@ import {
     SortableContext, arrayMove, horizontalListSortingStrategy, useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Button, Card, Empty, Space, Tabs, Tag } from 'antd';
+import { Button, Card, Empty, Popconfirm, Space, Tabs, Tag, Tooltip } from 'antd';
 import {
     DeleteOutlined, EditOutlined, PlusOutlined,
 } from '@ant-design/icons';
-import useIsMobile from '@shared/hooks/useIsMobile';
+import useSearchParamState from '../../hooks/useSearchParamState';
 import FieldsList from './FieldsList';
 import StepDrawer from './StepDrawer';
 import { stepTypeLabel } from '../../constants/definitionTypes';
@@ -45,18 +45,33 @@ function DraggableTabNode(props) {
     });
 }
 
-export default function StepsList({ steps, onChange }) {
-    const { isMobile } = useIsMobile();
+export default function StepsList({ steps, onChange, stepAddTrigger }) {
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [editingIdx, setEditingIdx] = useState(null);
-    const [activeKey, setActiveKey] = useState(null);
+    const [pasoFromUrl, setPaso] = useSearchParamState('paso');
+    const [fieldAddTarget, setFieldAddTarget] = useState(null);
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     );
 
+    const handleNew = () => {
+        setEditingIdx(null);
+        setDrawerOpen(true);
+    };
+
+    useEffect(() => {
+        if (stepAddTrigger) handleNew();
+    }, [stepAddTrigger]);
+
     const ids = steps.map(stepKey);
-    const currentKey = ids.includes(activeKey) ? activeKey : ids[0];
+    const keyFromUrl = steps.some((s) => s.id === pasoFromUrl) ? `step-${pasoFromUrl}` : null;
+    const currentKey = keyFromUrl ?? ids[0];
+
+    const handleActiveKey = (key) => {
+        const step = steps.find((s, idx) => stepKey(s, idx) === key);
+        setPaso(step?.id ?? null, { subtab: null });
+    };
 
     const handleDragEnd = ({ active, over }) => {
         if (!over || active.id === over.id) return;
@@ -64,11 +79,6 @@ export default function StepsList({ steps, onChange }) {
         const toIdx = ids.indexOf(over.id);
         if (fromIdx < 0 || toIdx < 0) return;
         onChange?.(arrayMove(steps, fromIdx, toIdx));
-    };
-
-    const handleNew = () => {
-        setEditingIdx(null);
-        setDrawerOpen(true);
     };
 
     const handleEdit = (idx) => {
@@ -88,7 +98,7 @@ export default function StepsList({ steps, onChange }) {
             next[editingIdx] = { ...next[editingIdx], ...newStep };
         }
         onChange?.(next);
-        setActiveKey(stepKey(newStep, editingIdx ?? next.length - 1));
+        setPaso(newStep.id ?? null, { subtab: null });
     };
 
     const handleStepFieldsChange = (idx, updatedStep) => {
@@ -116,22 +126,35 @@ export default function StepsList({ steps, onChange }) {
         ),
         children: (
             <Card size="small">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                    <Space size="small">
+                        <Tooltip title="Agregar campo">
+                            <Button type="link" size="small" icon={<PlusOutlined />} onClick={() => setFieldAddTarget({ idx, ts: Date.now() })} />
+                        </Tooltip>
+                        <Tooltip title="Editar paso">
+                            <Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleEdit(idx)} />
+                        </Tooltip>
+                        <Popconfirm
+                            title="¿Eliminar este paso?"
+                            description="Se eliminará el paso y todos sus campos."
+                            okText="Eliminar"
+                            okButtonProps={{ danger: true }}
+                            cancelText="Cancelar"
+                            onConfirm={() => handleDelete(idx)}
+                        >
+                            <Button type="link" size="small" danger icon={<DeleteOutlined />} />
+                        </Popconfirm>
+                    </Space>
                     <div>
                         <code style={{ fontSize: 12 }}>{s.id}</code>
                         {s.tabs?.length > 0 && <Tag style={{ marginInlineStart: 8 }}>{s.tabs.length} tabs</Tag>}
                     </div>
-                    <Space size="small">
-                        <Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleEdit(idx)}>
-                            {isMobile ? null : 'Paso'}
-                        </Button>
-                        <Button type="link" size="small" danger icon={<DeleteOutlined />} onClick={() => handleDelete(idx)} />
-                    </Space>
                 </div>
                 {s.type !== 'summary' && (
                     <FieldsList
                         step={s}
                         onChange={(updated) => handleStepFieldsChange(idx, updated)}
+                        addTrigger={fieldAddTarget?.idx === idx ? fieldAddTarget : null}
                     />
                 )}
             </Card>
@@ -151,18 +174,8 @@ export default function StepsList({ steps, onChange }) {
                 <>
                     <Tabs
                         activeKey={currentKey}
-                        onChange={setActiveKey}
+                        onChange={handleActiveKey}
                         items={items}
-                        tabBarExtraContent={(
-                            <Button
-                                type="dashed"
-                                icon={<PlusOutlined />}
-                                onClick={handleNew}
-                                style={isMobile ? { marginInlineStart: 8 } : undefined}
-                            >
-                                {isMobile ? null : 'Agregar paso'}
-                            </Button>
-                        )}
                         renderTabBar={(tabBarProps, DefaultTabBar) => (
                             <DndContext
                                 sensors={sensors}

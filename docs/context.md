@@ -2,7 +2,7 @@
 
 > Documento de referencia completo. Leer este archivo proporciona contexto del monorepo sin explorar el codebase.
 
-**Versión:** ver `api/pyproject.toml` (la lee `api/app/core/version.py::get_app_version()`; endpoint en vivo `GET /ontoy`). · **Última actualización:** 2026-07-06
+**Versión:** ver `api/pyproject.toml` (la lee `api/app/core/version.py::get_app_version()`; endpoint en vivo `GET /ontoy`). · **Última actualización:** 2026-07-10
 
 
 ---
@@ -370,6 +370,7 @@ Sin auth. `router = APIRouter(tags=["portal público"])` en `routes/public.py`.
 | GET | `/formularios/catalogos` | Catalogo de tipos/dependencias SIEEJ |
 | GET/PUT/POST | `/formularios/{slug}/envio*` | Endpoints respondent: borrador, submit, upload de archivos |
 | GET | `/formularios/mis-envios/{id}` | Detalle con `definicion_snapshot` historica + `datos` + `archivos` + `eventos` |
+| POST | `/formularios/{slug}/envio/actualizar-version` | Actualiza envio `en_proceso` a la definicion vigente conservando `datos` |
 | DELETE | `/formularios/mis-envios/{id}` | Soft-delete del envio para el respondent |
 | GET/POST/PATCH/DELETE | `/home/*` | CRUD de secciones del home publico de mapalab |
 | GET/POST/PATCH/DELETE | `/mapalab-shares/*` | Gestion de share links de visor mapalab |
@@ -614,7 +615,10 @@ Implicaciones para el código y la configuración:
 - **Drag & drop de archivos en Acervo** (v1.38.2+): los `File` del drop se leen de inmediato (`arrayBuffer`) y se reconstruyen en memoria antes de encolarlos — los arrastres vía document portal/GVFS en Linux caducan en segundos (`net::ERR_FILE_NOT_FOUND`). Archivos > 100 MB no se bufferizan. **Limitación conocida**: navegadores Chromium instalados como **snap** (sandbox AppArmor) nunca pueden leer los archivos arrastrados (el picker sí funciona, va por portal XDG); el frontend lo detecta empíricamente (lote completo ilegible → `localStorage mariachi.acervo.dndUnsupported`), oculta el overlay de arrastre y se auto-rehabilita si un drop posterior entrega archivos legibles. No es detectable por user-agent ni evitable con otra librería (dnd-kit es drag interno de DOM, no recibe archivos del SO).
 - **Nombrado del object key** (v1.41.0+): por defecto el key **conserva el nombre original** saneado (`sanitize_filename` en `acervo_file_service.py`: NFKD→ASCII, minúsculas, caracteres inseguros→`-`, bloquea `../`); el `original_name` mostrado coincide con la ruta. El modal ofrece un checkbox `use_uuid` para volver al UUID aleatorio (evita caché obsoleta al reemplazar / no expone el nombre real). `POST /acervo` y `/chunked/init` aceptan `use_uuid` y `on_conflict` (`reject`|`rename`); `resolve_upload_name()` resuelve el sufijo consecutivo (`nombre-2.ext`) cuando `rename`. En chunked la validación de duplicado vive en `init` (antes de subir los chunks).
 - **Carga masiva** (v1.41.0+): las colisiones `409` no detienen el lote; se acumulan y al terminar un modal ofrece renombrar/omitir por archivo. El cierre del lote se difiere 200 ms y el drag & drop encola las subidas en un solo paso síncrono para garantizar **un único refresco** del listado al terminar (antes el contador podía tocar 0 entre oleadas → refresco prematuro). `ensure_folder_exists()` crea la carpeta en un savepoint con captura de `IntegrityError` para tolerar subidas concurrentes a una carpeta nueva. Las URLs copiadas/previsualizadas incluyen el dominio vía `toPublicUrl()` (`VITE_ACERVO_PUBLIC_URL` → fallback `window.location.origin`).
-- **Miniaturas on-the-fly** (v1.42.0+): `GET /acervo/thumb/{bucket_id}/{path}?w=` genera WebP escalado con **Pillow** (anchos `{120,400,1280}`, q80) y lo cachea en SeaweedFS bajo `.thumbs/{path}/{etag}-w{w}.webp` (ETag en la ruta → auto-invalidante). El SVG se sirve tal cual. `.thumbs/` es prefijo oculto global (`bucket_policies.GLOBAL_HIDDEN_PREFIXES`). El campo `thumbnail` se **deriva** por tipo en `serialize_acervo_file` (raster→endpoint, svg→url, resto→null), sin migración. Cleanup dirigido (`delete_prefix(".thumbs/{path}/")`) en borrar/mover/borrar-carpeta. Front: grid `w=400`, lista `w=120`, preview `w=1280` + "Ver original" (`acervoService.thumbVariant`). **Despliegue:** requiere rebuild de la imagen `mariachi-api` (dep Pillow). Guía de uso y diagnóstico en vivo en `/mariachi/documentacion` (tab Acervo).
+- **Miniaturas on-the-fly** (v1.42.0+): genera WebP escalado con **Pillow** (anchos `{120,400,1280}`, q80) y lo cachea en SeaweedFS bajo `.thumbs/{path}/{etag}-w{w}.webp` (ETag en la ruta → auto-invalidante). El SVG se sirve tal cual. `.thumbs/` es prefijo oculto global (`bucket_policies.GLOBAL_HIDDEN_PREFIXES`). Cleanup dirigido (`delete_prefix(".thumbs/{path}/")`) en borrar/mover/borrar-carpeta. Front: grid `w=400`, lista `w=120`, preview `w=1280` + "Ver original" (`acervoService.thumbVariant`). **Despliegue:** requiere rebuild de la imagen `mariachi-api` (dep Pillow). Guía de uso y diagnóstico en vivo en `/mariachi/documentacion` (tab Acervo).
+    - **Ruta pública por bucket público** (v1.51.0+): la miniatura que se serializa en `thumbnail` es la ruta **anónima** `GET /acervo/thumb/{bucket_name}/{path}?w=` (router `acervo.public_router`, montado sin `admin_prefix` ni auth). Solo responde para buckets **públicos** (`is_public=true`); un bucket privado devuelve `404`. Así cualquier frontend del ecosistema incrusta miniaturas sin sesión. Sigue existiendo la ruta autenticada `GET /api/administrador/acervo/thumb/{bucket_id}/{path}?w=` (staff); ambas comparten el helper `_serve_thumbnail`.
+    - **Derivación por tipo**: `thumbnail_for(bucket_name, name, type, url, is_public)` en `serialize_acervo_file`/`serialize_bucket_only`: raster en bucket **público** → ruta pública; **SVG** → la propia `url`; bucket **privado** o resto → `null` (los privados **no** llevan previsualización, por decisión de producto). Sin migración.
+    - **Gateway-hub**: como `location ^~ /acervo/` reescribe y proxya todo a SeaweedFS, se requiere una `location ^~ /acervo/thumb/` (prefijo más largo → gana el matcheo `^~`) apuntando a `mariachi-nginx`. Sin ella `/acervo/thumb/...` llega a SeaweedFS y da `403`. Reusa la zona `acervo_thumb`.
 - **429 en miniaturas — fix en el gateway** (v1.42.1+): la ráfaga de miniaturas en buckets grandes (p. ej. `portal`) chocaba con el rate limit del **gateway-hub** y el `Cache-Control: no-store` de la location `^~ /api/administrador/acervo` impedía cachear (cada render repetía la ráfaga). Fix en `gateway-hub` (`1.27.2`): zona `acervo_thumb` (30 r/s) + `location ^~ /api/administrador/acervo/thumb` (burst 120, **sin** `no-store`, deja pasar el `immutable` del thumbnail). En mariachi, el diagnóstico (`ThumbnailDiagnostics`) acota las sondas a un **pool de concurrencia de 6** (antes 48 simultáneas). Requiere redeploy del gateway-hub (`make deploy`).
 
 En **dev** (`docker-compose.dev.yml`) no hay gateway: Vite expone `:3011`, API expone `:8010`. El admin se conecta directo al API por `localhost`. La regla `--proxy-headers` con `--forwarded-allow-ips='*'` sigue activa pero como nadie envía headers, no afecta.
@@ -831,6 +835,42 @@ Este repo se integra con otros servicios internos vecinos (CMS, visor de mapas, 
 ---
 
 ## Cambios recientes
+
+### 2026-07-13 (api 1.55.0 + admin 1.53.0) — SIEEJ: reorganiza versiones — clasifica cambios menor/rompe, propaga y avisa actualización
+
+El modelo de versionado de formularios SIEEJ se reorganiza con clasificación automática de cambios, propagación a envíos en proceso y aviso al respondent con distintivos en sider/paso/campo.
+
+- **Clasificador** (`cambio_classifier.py`): distingue cambios `menor` (se propagan a `en_proceso` sin subir versión: label, tooltip, layout, orden, agregar opcional, aflojar validación) de `rompe` (sube versión y congela a quien ya empezó: eliminar/agregar campo obligatorio, opcional→obligatorio, cambiar type, quitar opciones, endurecer validación, cambiar catalog/type de step).
+- **Propagación**: al editar definición, `formularios_admin_service.actualizar()` devuelve `tuple[Formulario, cambio_info|None]` con la clasificación. El admin muestra toast diferenciado según el tipo.
+- **Aviso al respondent**: `EnviosService` expone `actualizar_version()` (conserva `datos`, persiste diff en `cambios_pendientes`) e `info_cambios()` que devuelve `actualizacion_disponible`, `cambios_preview` y `cambios_aplicados`. Endpoint `POST /formularios/{slug}/envio/actualizar-version`.
+- **Respuesta del frontend** (sieej v1.26.0): banner "El formulario se actualizó" con Ver qué cambió · Actualizar. Badges en StepIndicator, chip "Actualizado" en FormStep, badges "Nuevo"/"Cambió" en FieldRenderer. Los distintivos se limpian al visitar/editar cada campo.
+- **BD**: columna `cambios_pendientes` JSONB en `sieej.envio_formulario` (migración `a0b1c2d3e4f5`). En staging/prod correr `alembic -x db=mariachi upgrade head`.
+- **Admin visor de envíos** (incluido en este release): `EnvioDetalleDrawer` con `snapshotUtils` (buildRespuestas, diffDefiniciones), tag "Desactualizado" en `EnviosTable`, bucket `sieej` por defecto en `FieldForm`.
+
+### 2026-07-10 (admin v1.51.0 + api v1.51.0) — Acervo: miniaturas por ruta pública anónima (buckets públicos) + snippets de integración
+
+La miniatura serializada en `thumbnail` pasa de la ruta autenticada `/api/administrador/acervo/thumb/{bucket_id}/...` a la ruta **pública anónima** `/acervo/thumb/{bucket_name}/{path}?w=`, para que cualquier frontend del ecosistema incruste miniaturas de buckets **públicos** sin sesión. Puntos clave:
+
+- **Backend**: nuevo `acervo.public_router` (`GET /acervo/thumb/{bucket_name}/{path}?w=`, sin auth) que reusa `_serve_thumbnail`; devuelve `404` si el bucket no es público. `thumbnail_for(...)` recibe `is_public`: raster público → ruta pública, SVG → `url`, **privado → `null`** (los privados no llevan previsualización, por decisión de producto). La ruta autenticada por `bucket_id` sigue disponible para staff. Fix: `eliminar_archivo` recupera su `return` (se había quedado sin valor).
+- **Gateway-hub**: nueva `location ^~ /acervo/thumb/` → `mariachi-nginx` (antes que `^~ /acervo/` → SeaweedFS, que si no devolvía `403`). Requiere `make deploy` del gateway-hub.
+- **Admin — snippets contextuales por archivo**: cada imagen del Acervo tiene un botón `</>` (`CodeOutlined`, en vista lista y grid) que abre `FileSnippetsModal` con los snippets **generados desde la ruta real** del archivo (`<img>` directo, miniatura WebP, `srcSet` 120/400/1280, componente React JSX y `<Image>` de AntD con preview), copiables con un clic (botón Copiar en el título de cada panel); usa `toPublicUrl`/`thumbVariant`. Para buckets privados solo ofrece la URL del proxy (sin miniatura). La doc `/mariachi/documentacion` (tab Acervo) se reorganizó en **2 pestañas** ("Uso del panel" y "Miniaturas y URLs"); se eliminó la pestaña de ejemplos estáticos en favor del botón por archivo.
+
+### 2026-07-10 (admin v1.52.0 + api v1.52.0) — Acervo: ayuda contextual (botón Documentación + modal + deep-links)
+
+Ayuda contextual desde el gestor `/mariachi/acervo` hacia la documentación, sin salir de la página. Solo admin.
+
+- Botón **Documentación** en el encabezado de `/mariachi/acervo` que abre `AcervoHelpModal` (`features/documentacion/components/AcervoHelpModal.jsx`), un modal que renderiza `AcervoTopic` en la pestaña pedida. Abre en "Uso del panel".
+- `AcervoTopic` acepta `defaultActiveTab` (`uso`|`thumbs`) y `showHeader` (oculta su título dentro del modal).
+- Los bloques de snippets (fila expandible en Lista y modal `</>` en Grid) muestran un link **"Guía de miniaturas y URLs"** (`FileSnippets` recibe `onHelp`) que abre el modal en "Miniaturas y URLs"; en el diagnóstico no, para no anidar.
+- `DocumentacionPage` respeta `?topic=acervo&sec=uso|thumbs` para deep-links directos a la sub-pestaña.
+
+### 2026-07-09 (admin v1.49.0 + api v1.49.0) — SIEEJ: editor de campos inline con vista previa + tabs del repeater + validation.pattern
+
+Lote de mejoras en el creador visual de definiciones SIEEJ del admin y en el validador del backend. Detalle por feature en CHANGELOG §[api 1.49.0 / admin 1.49.0]. Resumen ejecutivo:
+
+- **Editor de campos inline** (`FieldForm.jsx`, `FieldPreview.jsx`, `fieldUtils.js`, `FieldsList.jsx`): el editor deja de ser un Drawer modal y se colapsa sobre el propio item. Vista previa en vivo de todos los tipos de campo en una segunda columna sticky. Para el tipo archivo, bucket Acervo como `Select` (desde `useAccessibleBuckets`) y extensiones como tags multi. `patternMessage` configurable. Flujo "tipo primero". Fix del autocompletado del nombre interno. Confirmación al eliminar campo. Se elimina `FieldDrawer.jsx`.
+- **Tabs internos del repeater** (`StepDrawer.jsx`): editor de filas (`Form.List`) con id/título validados en vez del textarea `id | titulo`. `StepsList.jsx`: acciones a la izquierda del título del paso, editar solo-icono y confirmación al eliminar paso.
+- **API** (`definicion_validator.py`): valida `validation.pattern` (regex compilable) y `validation.patternMessage` (string) para text/textarea/email/tel; `definicion_to_validation_rules` exporta el `patternMessage`.
 
 ### 2026-07-06 (admin v1.48.0 + api v1.48.0) — SIEEJ: MemberPicker + incompleteNotice + tabs en editor + Reabrir envios + grupos con miembros
 

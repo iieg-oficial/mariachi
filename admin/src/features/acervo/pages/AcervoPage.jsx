@@ -3,9 +3,12 @@ import { Alert, Card, Button, Upload, Table, Image, Space, Modal, Form, Input, S
 import {
     InboxOutlined, DeleteOutlined, EditOutlined, FolderOutlined, FolderOpenOutlined, FolderAddOutlined, FileImageOutlined, FilePdfOutlined,
     FileOutlined, AppstoreOutlined, BarsOutlined, DownloadOutlined, CopyOutlined, EyeOutlined, HomeOutlined, DragOutlined,
-    InfoCircleOutlined
+    InfoCircleOutlined, CodeOutlined, BookOutlined
 } from '@ant-design/icons';
 import acervoService from '@features/acervo/api/acervoService';
+import FileSnippetsModal from '@features/acervo/components/FileSnippetsModal';
+import FileSnippets from '@features/acervo/components/FileSnippets';
+import AcervoHelpModal from '@features/documentacion/components/AcervoHelpModal';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import { message } from '@shared/services/message';
 
@@ -57,6 +60,13 @@ const Acervo = () => {
     const [bulkMoveModalVisible, setBulkMoveModalVisible] = useState(false);
     const [bulkMoveTargetFolder, setBulkMoveTargetFolder] = useState('/');
     const [currentFile, setCurrentFile] = useState(null);
+    const [snippetsFile, setSnippetsFile] = useState(null);
+    const [helpTab, setHelpTab] = useState(null);
+
+    const openHelp = (tab) => {
+        setSnippetsFile(null);
+        setHelpTab(tab);
+    };
     const [folderInfo, setFolderInfo] = useState(null);
     const [folderInfoLoading, setFolderInfoLoading] = useState(false);
     const [dragActive, setDragActive] = useState(false);
@@ -906,6 +916,22 @@ const Acervo = () => {
                                             zIndex: 2,
                                         }}
                                     />
+                                    {!file.isDir && file.type?.startsWith('image/') && (
+                                        <Tooltip title="Generar snippets de código para incrustar esta imagen">
+                                            <Button
+                                                size="small"
+                                                icon={<CodeOutlined />}
+                                                onClick={(e) => { e.stopPropagation(); setSnippetsFile(file); }}
+                                                style={{
+                                                    position: 'absolute',
+                                                    top: 4,
+                                                    right: 4,
+                                                    zIndex: 2,
+                                                    background: 'rgba(255, 255, 255, 0.85)',
+                                                }}
+                                            />
+                                        </Tooltip>
+                                    )}
                                     {file.isDir ? (
                                         <div style={{ height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FFF2E5', cursor: 'pointer' }}>
                                             <FolderOutlined style={{ fontSize: 80, color: '#FF8300' }} />
@@ -1023,6 +1049,15 @@ const Acervo = () => {
                         >
                             Nueva Carpeta
                         </Button>
+                        <Tooltip title="Abrir la guía de uso del Acervo">
+                            <Button
+                                icon={<BookOutlined />}
+                                onClick={() => openHelp('uso')}
+                                block={isMobile}
+                            >
+                                Documentación
+                            </Button>
+                        </Tooltip>
                         {selectedFiles.length > 0 && (
                             <>
                                 <Button
@@ -1185,6 +1220,23 @@ const Acervo = () => {
                                 rowSelection={{
                                     selectedRowKeys: selectedFiles,
                                     onChange: setSelectedFiles
+                                }}
+                                expandable={{
+                                    rowExpandable: (record) => record.type?.startsWith('image/'),
+                                    expandedRowRender: (record) => <FileSnippets file={record} onHelp={() => openHelp('thumbs')} />,
+                                    expandIcon: ({ expanded, onExpand, record }) => (
+                                        record.type?.startsWith('image/') ? (
+                                            <Tooltip title="Ver snippets de código para incrustar esta imagen">
+                                                <Button
+                                                    type="text"
+                                                    size="small"
+                                                    icon={<CodeOutlined />}
+                                                    style={{ color: expanded ? '#1890ff' : undefined }}
+                                                    onClick={(e) => onExpand(record, e)}
+                                                />
+                                            </Tooltip>
+                                        ) : null
+                                    ),
                                 }}
                                 scroll={{ x: 'max-content' }}
                                 pagination={{ simple: isMobile }}
@@ -1468,6 +1520,19 @@ const Acervo = () => {
                     </Descriptions>
                 </Spin>
             </Modal>
+
+            <FileSnippetsModal
+                file={snippetsFile}
+                open={!!snippetsFile}
+                onClose={() => setSnippetsFile(null)}
+                onHelp={() => openHelp('thumbs')}
+            />
+
+            <AcervoHelpModal
+                open={!!helpTab}
+                tab={helpTab || 'uso'}
+                onClose={() => setHelpTab(null)}
+            />
 
             <Modal
                 title={currentFile?.originalName}

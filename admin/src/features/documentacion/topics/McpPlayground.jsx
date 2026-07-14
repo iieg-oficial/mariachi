@@ -28,37 +28,10 @@ const PROBES = [
         tool: 'search_layers',
         method: 'GET',
         path: '/layers/search',
-        description: 'Busca capas por label, tags o id. Devuelve label + path jerárquico.',
+        description: 'Punto de entrada del MCP: busca capas por label, tags o id. Devuelve el id + path jerárquico que usan los demás tools.',
         inputs: [
             { key: 'q', label: 'Texto', placeholder: 'p. ej. seguridad', required: true, type: 'string', default: 'homicidio' },
             { key: 'limit', label: 'Límite', type: 'number', min: 1, max: 50, default: 5 },
-        ],
-    },
-    {
-        tool: 'get_initial_order',
-        method: 'GET',
-        path: '/layers/initial-order',
-        description: 'IDs de las capas activas al cargar el visor.',
-        inputs: [],
-    },
-    {
-        tool: 'get_metadata',
-        method: 'GET',
-        path: '/metadata/',
-        description: 'Metadata completa de una capa. Vía MCP basta el id del visor (workspace resuelto solo); este probe REST pide ambos por compatibilidad.',
-        inputs: [
-            { key: 'workspace', label: 'Workspace (alias)', placeholder: 'p. ej. seguridad', required: true, type: 'string', default: 'seguridad' },
-            { key: 'layer', label: 'Layer (id del visor)', placeholder: 'p. ej. tasa_homicidio_doloso', required: true, type: 'string', default: 'tasa_homicidio_doloso' },
-        ],
-    },
-    {
-        tool: 'get_periodicity',
-        method: 'GET',
-        path: '/periodicity/',
-        description: 'Fechas year/month/day disponibles para una capa temporal. Vía MCP acepta uno o varios id separados por coma.',
-        inputs: [
-            { key: 'workspace', label: 'Workspace', required: true, type: 'string', default: 'demografia' },
-            { key: 'layer', label: 'Layer (id del visor)', required: true, type: 'string', default: 'poblacion' },
         ],
     },
 ];
@@ -209,7 +182,7 @@ const ProbeCard = ({ probe }) => {
 };
 
 
-const McpRootProbe = () => {
+const McpRootProbe = ({ apiKey }) => {
     const [loading, setLoading] = useState(false);
     const [result, setResult] = useState(null);
     const [error, setError] = useState(null);
@@ -236,6 +209,7 @@ const McpRootProbe = () => {
                 headers: {
                     'Content-Type': 'application/json',
                     Accept: 'application/json, text/event-stream',
+                    ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
                 },
                 body: JSON.stringify(body),
                 credentials: 'omit',
@@ -320,18 +294,15 @@ const McpRootProbe = () => {
 
 const MCP_TOOL_PROBES = [
     {
-        tool: 'measure_geometry',
-        description: 'Calcula longitud (LineString) o área (Polygon) geodésica en metros/m² reales sobre WGS84. Default: línea Guadalajara → Zapopan (~8.26 km).',
+        tool: 'describe_layer',
+        description: 'Retrato completo de una capa en una llamada: capabilities (temporal, hasMunicipio, descargable, zoomRange) + metadata + numeralia + periodicidad (años/meses). Soporta ids difusos (slug, alias, nombre parcial).',
         defaultArguments: {
-            geometry: {
-                type: 'LineString',
-                coordinates: [[-103.349, 20.677], [-103.413, 20.721]],
-            },
+            layer: 'homicidio_doloso',
         },
     },
     {
         tool: 'municipios',
-        description: 'Lista los 125 municipios de Jalisco (query vacío) o filtra por nombre/clave parcial. Devuelve {items:[{clave,nombre,...}], count}. Las claves se usan en create_*_share(municipios=...).',
+        description: 'Lista los 125 municipios de Jalisco (query vacío) o filtra por nombre/clave parcial. Devuelve {items:[{clave,nombre,...}], count}. Las claves se usan en create_map/create_swipe(municipio=...).',
         defaultArguments: {
             query: 'guadalajara',
             limit: 5,
@@ -339,69 +310,35 @@ const MCP_TOOL_PROBES = [
     },
     {
         tool: 'query_wfs',
-        description: 'Features (registros) de una capa del visor por su id. Usa srs_name="EPSG:4326" para lat/lon. CQL opcional (se sanitiza).',
+        description: 'Features (registros) reales de una capa por su id. Filtra por municipio/year/month sin escribir CQL, o cql_filter avanzado (se sanitiza). Usa srs_name="EPSG:4326" para lat/lon.',
         defaultArguments: {
             layer: 'homicidio_doloso',
+            year: '2024',
             limit: 5,
             srs_name: 'EPSG:4326',
         },
     },
     {
-        tool: 'get_layer_stats',
-        description: 'Numeralia precalculada de una capa (totales, promedios, ranking) desde mapalab.layer_stats. Vacío si no hay datos.',
+        tool: 'create_map',
+        description: 'Crea un mapa de un panel. Modo búsqueda (query/theme) o directo (layers). Valida el año contra la periodicidad y resuelve el municipio. Devuelve {id, url, embed_html, layer?}.',
         defaultArguments: {
-            layer: 'homicidio_doloso',
-        },
-    },
-    {
-        tool: 'describe_layer',
-        description: 'Macro para modelos chicos: metadata + stats + periodicity en una sola llamada. Soporta ids difusos (slug, alias, nombre parcial).',
-        defaultArguments: {
-            layer: 'homicidio_doloso',
-        },
-    },
-    {
-        tool: 'make_map',
-        description: 'Macro: search_layers + create_single_share en un paso. Con municipio y año opcionales. Auto-encuadre. Ideal para entregas rápidas.',
-        defaultArguments: {
-            query: 'homicidio',
+            query: 'homicidio_doloso',
             municipio: 'Guadalajara',
             year: '2024',
-        },
-    },
-    {
-        tool: 'compare_years',
-        description: 'Atajo: swipe A|B de una capa entre dos años, con municipio opcional. Devuelve {id, url, embed_html}. Arma los filtros de fecha por ti.',
-        defaultArguments: {
-            layer: 'homicidio_doloso',
-            year_a: '2024',
-            year_b: '2023',
-            municipio: 'Guadalajara',
-        },
-    },
-    {
-        tool: 'create_single_share',
-        description: 'Crea un share del visor con capas, anotaciones y municipios opcionales. Devuelve {id, url, embed_html} listo para pegar.',
-        defaultArguments: {
-            layers: ['homicidio_doloso'],
-            view: { zoom: 11, lat: 20.66, lon: -103.35 },
             basemap: 'voyager',
-            municipios: {
-                source: 'iieg',
-                selected: ['14039', '14120'],
-            },
         },
     },
     {
-        tool: 'create_swipe_share',
-        description: 'Crea un share en modo swipe (comparación A|B). Ideal para preguntas comparativas del usuario. municipios se aplica a ambos paneles.',
+        tool: 'create_swipe',
+        description: 'Crea un comparativo A|B (swipe). Modo una capa en dos años (layer + year_a/year_b) o dos capas (pane_a/pane_b, con año por lado opcional). El server arma y valida los filtros de fecha. Default: robo 2026 vs homicidio 2025 con mapa gris.',
         defaultArguments: {
-            pane_a_layers: ['homicidio_doloso'],
-            pane_b_layers: ['poblacion'],
-            position: 0.5,
-            view: { zoom: 8, lat: 20.6, lon: -103.4 },
-            label_a: 'Homicidio',
-            label_b: 'Población',
+            pane_a_layers: ['robos_casa_habitacion_con_violencia'],
+            pane_b_layers: ['homicidio_doloso'],
+            year_a: '2026',
+            year_b: '2025',
+            basemap: 'position',
+            label_a: 'Robo casa habitación',
+            label_b: 'Homicidio doloso',
         },
     },
 ];
@@ -421,7 +358,7 @@ const extractToolPayload = (jsonRpcResponse) => {
 };
 
 
-const SHARE_TOOLS = new Set(['create_single_share', 'create_swipe_share', 'make_map']);
+const SHARE_TOOLS = new Set(['create_map', 'create_swipe']);
 
 
 const McpToolProbe = ({ probe, apiKey }) => {
@@ -453,7 +390,11 @@ const McpToolProbe = ({ probe, apiKey }) => {
             const response = await fetch(url, {
                 method: 'POST',
                 redirect: 'follow',
-                headers: { 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json, text/event-stream',
+                    ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
+                },
                 body: JSON.stringify(body),
                 credentials: 'omit',
             });
@@ -559,25 +500,25 @@ export default function McpPlayground() {
 
     return (
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-            <Card size="small" title="API key del widget (opcional)">
+            <Card size="small" title="API key del MCP (requerida para los ejemplos)">
                 <Input.Password
-                    placeholder="mk_pub_xxxxx..."
+                    placeholder="mk_priv_xxxxx... o mk_pub_xxxxx..."
                     value={apiKey}
                     onChange={(e) => handleApiKeyChange(e.target.value)}
                     autoComplete="off"
                     allowClear
                 />
                 <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 6 }}>
-                    Necesaria solo para previsualizar los shares de <Text code>create_single_share</Text> y <Text code>create_swipe_share</Text> embebidos debajo del JSON de respuesta. Genera o rota una key en <Link to="/mapalab/api-keys">Llaves del visor MapaLab</Link> con el dominio del admin en sitios autorizados. La key se guarda en <Text code>localStorage</Text> de este navegador.
+                    El MCP exige autenticación: la key se envía como <Text code>Authorization: Bearer</Text> en cada llamada de abajo (sin ella responden 401). Usa una key que el MCP acepte: <Text code>mk_priv_</Text> (recomendada) o <Text code>mk_pub_</Text> con dominios <Text code>["*"]</Text>. Para la previsualización embebida del mapa se necesita una <Text code>mk_pub_</Text>. Genera o rota una en <Link to="/mapalab/api-keys">Llaves del visor MapaLab</Link>. La key se guarda en <Text code>localStorage</Text> de este navegador.
                 </Text>
             </Card>
 
-            <McpRootProbe />
+            <McpRootProbe apiKey={apiKey} />
 
             <div style={{ marginTop: 8 }}>
                 <Text strong style={{ fontSize: 13 }}>Tools del MCP (JSON-RPC <Text code>tools/call</Text>)</Text>
                 <Text type="secondary" style={{ display: 'block', fontSize: 12 }}>
-                    Tools del MCP sin REST equivalente directo (shares, medición, WFS, municipios, comparativas y numeralia). Edita el JSON de <Text code>arguments</Text> antes de "Probar".
+                    Retrato de capa, municipios, features WFS y creación de mapas (simple y swipe). Edita el JSON de <Text code>arguments</Text> antes de "Probar".
                 </Text>
             </div>
 

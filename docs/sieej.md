@@ -89,7 +89,19 @@ Atributos comunes: `name` (unico por step), `label`, `required`, `validation` (`
 `inicio-sesion`, `exencion`, `cambiar-contrasena`, `error`, `regisño`, `catalogos`, `schema`, `envio`, `mis-envios`.
 
 ### Versionado
-Si una edicion cambia `definicion` y el formulario ya tiene envios, `formulario.version` se incrementa. Los envios existentes mantienen su `formulario_version` y `definicion_snapshot` originales — los cambios solo afectan envios futuros.
+
+El backend clasifica cada cambio de definicion en **`menor`** o **`rompe`** comparando la definicion anterior con la nueva (`cambio_classifier.py`):
+
+- **Cambio `menor`**: se propaga automaticamente a todos los envios `en_proceso` al dia, reescribiendo su `definicion_snapshot` y `formulario_version`. No incrementa `formulario.version` (romperia la comparacion con envios ya enviados que comparten el mismo numero de version). Ejemplos: cambiar label/tooltip/layout/orden, agregar campo opcional, agregar opciones, aflojar validacion.
+- **Cambio `rompe`**: incrementa `formulario.version` y **congela** a los envios `en_proceso` que ya empezaron (siguen con su snapshot anterior). El respondent ve un banner "El formulario se actualizo" con el diff de cambios y un boton **Actualizar** que migra su envio a la version vigente conservando `datos`. Tras actualizar, los campos nuevos/eliminados/modificados aparecen con distintivos en el sider (badge naranja), el paso (chip "Actualizado") y el campo (badge "Nuevo"/"Cambio"), que se limpian al visitar/editar cada campo y todos al enviar. Ademas, los envios ya **`enviado`** de una version anterior se **reabren** automaticamente a `en_proceso` (`reabrir_enviados_por_cambio()`, evento `reabierto`): dejan de ser un registro final y el respondent debe reenviar sobre la definicion vigente, conservando `datos` y con los mismos distintivos de cambio. `UltimoCambioInfo.reabiertos` reporta cuantos se reabrieron para el aviso al admin en el editor.
+
+> La reapertura automatica masiva (por cambio `rompe`) reescribe el snapshot a la version vigente. Es distinta de la reapertura **manual** individual que un admin dispara desde la tabla de envios (`POST .../envios/{id}/reabrir`), que conserva la version con la que se lleno.
+
+**Columna `cambios_pendientes`** (`sieej.envio_formulario`, JSONB): almacena el diff entre el snapshot anterior y la definicion vigente que el usuario ya acepto. El frontend lo consume como `cambios_aplicados` para los distintivos; manda `cambios_vistos` al guardar para que el backend descarte los marcadores ya visitados.
+
+**Migracion**: `a0b1c2d3e4f5_add_cambios_pendientes_envio_sieej.py` agrega la columna `cambios_pendientes` JSONB a `sieej.envio_formulario`. En staging/prod correr `alembic -x db=mariachi upgrade head` al desplegar.
+
+El nuevo modelo reemplaza el versionado anterior donde cada edicion de definicion incrementaba `formulario.version` ciegamente y los envios existentes mantenian su snapshot original sin posibilidad de actualizarse.
 
 ## Endpoints
 
@@ -104,7 +116,7 @@ Router: `app/api/routes/sieej_admin/*`. Protegido por `staff_dep` (cualquier usu
 | GET | `/sieej/stats` | Conteos: dependencias en sieej, formularios activos, envios por estado, archivos. Consumido por el dashboard de SIEEJ. |
 | GET | `/sieej/formularios` | Lista (filtro opcional `estado`, `slug`). |
 | POST | `/sieej/formularios` | Crear formulario (estado inicial `borrador`). |
-| GET | `/sieej/formularios/{id}` | Detalle. Incluye `grupos` y `usuarios_asignados` con `selectinload`. |
+| GET | `/sieej/formularios/{id_or_slug}` | Detalle. Acepta id numerico o slug. Incluye `grupos` y `usuarios_asignados` con `selectinload`. |
 | PUT | `/sieej/formularios/{id}` | Editar. Bumpea `version` si cambia `definicion` y hay envios. |
 | POST | `/sieej/formularios/{id}/publicar` | `borrador` → `activo`. |
 | POST | `/sieej/formularios/{id}/cerrar` | `activo` → `cerrado`. |
@@ -132,7 +144,8 @@ Router: `app/api/routes/formularios/*`. Protegido por `Depends(require_project_a
 | GET | `/formularios/{slug}` | Definicion (snapshot si ya hay envio) + envio actual. |
 | GET | `/formularios/{slug}/schema` | Definicion + reglas de validacion planas para feedback inline. |
 | GET | `/formularios/{slug}/envio` | Lee o inicia el envio del usuario actual. |
-| PUT | `/formularios/{slug}/envio` | Guarda (borrador) o cierra (`enviar=true`) el envio. Valida contra `definicion_snapshot`. |
+| PUT | `/formularios/{slug}/envio` | Guarda (borrador) o cierra (`enviar=true`) el envio. Valida contra `definicion_snapshot`. Acepta `cambios_vistos` para limpiar marcadores de cambios. |
+| POST | `/formularios/{slug}/envio/actualizar-version` | Actualiza el envio `en_proceso` a la definicion vigente del formulario. Conserva `datos` y persiste el diff en `cambios_pendientes`. |
 | POST | `/formularios/{slug}/envio/upload` | Sube un archivo al bucket configurado en el field `file`. Guarda `EnvioArchivo`. |
 | GET | `/formularios/mis-envios/{envio_id}` | Detalle del envio del usuario: `definicion_snapshot` + `datos` + `archivos[]` + `eventos[]`. 404 si no existe; 403 si pertenece a otro usuario. **No expone `actor_usuario_id`** en eventos para no filtrar identidad de admins que reabran/expiren. Se llega desde la lista de formularios (estado `enviado`). El listado `GET /mis-envios` se elimino en 1.47+ (la pantalla "Mis envios" del frontend era redundante con "Mis formularios"). |
 | DELETE | `/formularios/mis-envios/{envio_id}` | Soft-delete del envio para el respondent (`eliminado_en` queda poblado). El envio sigue en la BD para que el admin lo vea con flag. El respondent ya no puede pedir el detalle. Idempotente: re-DELETE devuelve 404. |
