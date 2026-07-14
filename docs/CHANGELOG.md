@@ -9,6 +9,29 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.56.0 / admin 1.54.0] - 2026-07-14
+
+### SIEEJ: catálogos administrables desde el admin
+
+#### Agregado
+
+- **API** (`catalogos_service.py`, `routes/sieej_admin/catalogos.py`): CRUD de los catálogos SIEEJ. `GET /sieej/catalogos` (resumen con conteos), `GET|POST /sieej/catalogos/{clave}`, `PUT|DELETE /sieej/catalogos/{clave}/{item_id}`. Bajo `staff_dep` + `verify_csrf`.
+- **API** (`schemas/sieej/catalogos.py`): `CatalogoResumen`, `CatalogoAdminItem`, `CatalogoItemPayload`.
+- **Admin** (`CatalogosPage.jsx`, `components/catalogos/`): pantalla de administración de catálogos (lista, items, alta/renombrado/borrado) e ítem en el sider.
+- **Admin** (`hooks/useCatalogos.js`): catálogos cacheados en memoria y compartidos entre componentes, con `invalidateCatalogos()` tras cada mutación.
+- **Admin** (`CatalogPicker.jsx`, `OptionsSource.jsx`): en el editor de campos, la fuente de opciones se elige entre **lista propia** y **catálogo**, con acceso directo a administrar el catálogo seleccionado.
+
+#### Corregido
+
+- **API** (`definicion_validator.py`): `showWhen.field` ahora debe apuntar a un campo del **mismo step**. Las rutas `otro_step.campo` se rechazan: tanto el renderer como `datos_validator` evalúan la condición contra los datos del step actual, así que una referencia cruzada nunca se cumpliría y el campo quedaría oculto en silencio.
+
+#### Tests
+
+- **API** (`test_sieej_catalogos.py`): CRUD de catálogos.
+- **API** (`test_sieej_definicion_validator.py`): `showWhen` cruzado entre steps se rechaza.
+
+---
+
 ## [api 1.55.0 / admin 1.53.0] - 2026-07-13
 
 ### SIEEJ: reorganiza versiones — clasifica cambios menor/rompe, propaga y avisa actualización

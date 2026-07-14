@@ -21,6 +21,7 @@ import {
     ProjectOutlined,
     TagsOutlined,
     TeamOutlined,
+    UnorderedListOutlined,
 } from '@ant-design/icons';
 import ColibriIcon from '@shared/components/ColibriIcon';
 
@@ -78,6 +79,7 @@ export const PROJECT_REGISTRY = {
         items: [
             { key: '/sieej/formularios', path: '/sieej/formularios', label: 'Formularios', icon: <FormOutlined /> },
             { key: '/sieej/grupos', path: '/sieej/grupos', label: 'Grupos', icon: <TeamOutlined /> },
+            { key: '/sieej/catalogos', path: '/sieej/catalogos', label: 'Catálogos', icon: <UnorderedListOutlined /> },
         ],
     },
     colibri: {

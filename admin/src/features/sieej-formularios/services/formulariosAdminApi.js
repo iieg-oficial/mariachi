@@ -16,6 +16,15 @@ export const formulariosApi = {
     exportarEnvios: (id) => api.get(`/sieej/formularios/${id}/exportar-envios`, { responseType: 'blob' }),
 };
 
+export const catalogosApi = {
+    get: () => api.get('/formularios/catalogos').then((r) => r.data),
+    listar: () => api.get('/sieej/catalogos').then((r) => r.data),
+    items: (clave) => api.get(`/sieej/catalogos/${clave}`).then((r) => r.data),
+    crear: (clave, value) => api.post(`/sieej/catalogos/${clave}`, { value }).then((r) => r.data),
+    renombrar: (clave, id, value) => api.put(`/sieej/catalogos/${clave}/${id}`, { value }).then((r) => r.data),
+    eliminar: (clave, id) => api.delete(`/sieej/catalogos/${clave}/${id}`).then((r) => r.data),
+};
+
 export const gruposApi = {
     list: () => api.get('/sieej/grupos').then((r) => r.data),
     get: (id) => api.get(`/sieej/grupos/${id}`).then((r) => r.data),

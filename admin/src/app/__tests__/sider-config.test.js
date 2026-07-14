@@ -126,7 +126,7 @@ describe('buildSiderItems', () => {
         });
     });
 
-    it('items de SIEEJ son Formularios y Grupos (sin item disabled)', () => {
+    it('items de SIEEJ son Formularios, Grupos y Catálogos (sin item disabled)', () => {
         const items = buildSiderItems({
             user: { role: 'tetlamamakani', projects: [] },
             onNavigate: vi.fn(),
@@ -136,6 +136,7 @@ describe('buildSiderItems', () => {
         expect(sieej.children.map((c) => c.key)).toEqual([
             '/sieej/formularios',
             '/sieej/grupos',
+            '/sieej/catalogos',
         ]);
         sieej.children.forEach((c) => {
             expect(c.disabled).toBeFalsy();
