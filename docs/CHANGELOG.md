@@ -9,6 +9,41 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.55.0 / admin 1.53.0] - 2026-07-13
+
+### SIEEJ: reorganiza versiones — clasifica cambios menor/rompe, propaga y avisa actualización
+
+El modelo de versionado de formularios se reorganiza con clasificación automática de cambios, propagación a envíos en proceso y aviso al respondent con distintivos.
+
+#### Agregado
+
+- **API** (`cambio_classifier.py`): `clasificar_cambio(old, new) -> "menor"|"rompe"`, `es_rompe`, `diff_definiciones(old, new) -> [{step_id, field_name|null, tipo}]`. Reglas: rompe = eliminar campo/step, agregar campo/step obligatorio, opcional→obligatorio, cambiar type, quitar/renombrar opciones, endurecer validación, cambiar catalog, cambiar type de step. Todo lo demás = menor.
+- **API** (`envio.py`): columna `cambios_pendientes` JSONB en `sieej.envio_formulario`.
+- **API** (`formularios_admin_service.actualizar()`): clasifica cambio, propaga menores a envíos `en_proceso` al día reescribiendo `definicion_snapshot` SIN subir versión, sube versión SOLO en `rompe`. Devuelve `tuple[Formulario, cambio_info|None]`.
+- **API** (`envios_service`): `actualizar_version()` reescribe snapshot conservando datos, `info_cambios()` devuelve `actualizacion_disponible`, `cambios_preview` y `cambios_aplicados`, `_descartar_cambios_vistos()` limpia marcadores.
+- **API** (`envios_service.reabrir_enviados_por_cambio()`): un cambio `rompe` reabre a `en_proceso` los envíos ya `enviado` de versión anterior, reescribe su snapshot a la vigente conservando `datos`, guarda el diff en `cambios_pendientes` y registra evento `reabierto`. Distinto de la reapertura manual individual del admin (que conserva la versión con la que se llenó).
+- **API** (`schemas`): `CambioRef`, `UltimoCambioInfo` (con `reabiertos`), `FormularioUpdateResponse`; `EnvioResponse` gana `actualizacion_disponible`, `cambios_preview`, `cambios_aplicados`; `EnvioUpdate` gana `cambios_vistos`.
+- **API** (`dinamicos.py`): endpoint `POST /formularios/{slug}/envio/actualizar-version`; se pueblan campos de cambios en GET de formulario y envio.
+- **Admin** (`DefinicionEditor.jsx`): toast feedback según clasificación del cambio (menor propagado vs rompe con conteo de afectados y de envíos reabiertos).
+
+#### Tests
+
+- **API** (`test_sieej_cambio_classifier.py`): 12 tests de clasificación de cambios.
+
+### SIEEJ admin: visor de respuestas de envío con diff de versión y tag desactualizado
+
+- **API** (`schemas/envio.py`): `EnvioDetalleResponse` con `definicion_snapshot`.
+- **API** (`formularios_admin_service`): `contar_desactualizados()`.
+- **Admin** (`snapshotUtils.js`): `buildRespuestas`, `diffDefiniciones`, `formatFieldValue`.
+- **Admin** (`EnvioDetalleDrawer.jsx`): drawer con render legible del snapshot y diff contra definición vigente.
+- **Admin** (`EnviosTable.jsx`): tag "Desactualizado" y banner de conteo de envíos atrás en versión.
+
+### SIEEJ admin: bucket sieej por defecto y descripción en editor de campos
+
+- **Admin** (`FieldForm.jsx`): default `sieej` al elegir tipo archivo, texto descriptivo y gating de props de archivo a `type==='file'`.
+
+---
+
 ## [api 1.54.3 / admin 1.52.2] - 2026-07-10
 
 ### SIEEJ: barra de herramientas unificada en editor de definicion

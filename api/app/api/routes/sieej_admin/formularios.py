@@ -7,11 +7,12 @@ from app.api.deps import get_current_user, verify_csrf
 from app.core.database import get_db
 from app.models.sieej.envio import EnvioFormulario
 from app.models.user import Usuario
-from app.schemas.sieej.envio import EnvioResponse
+from app.schemas.sieej.envio import EnvioDetalleResponse, EnvioResponse
 from app.schemas.sieej.formulario import (
     FormularioCreate,
     FormularioResponse,
     FormularioUpdate,
+    FormularioUpdateResponse,
 )
 from app.schemas.sieej.grupo import FormularioAsignacionesUpdate
 from app.services.sieej.formularios_admin_service import FormulariosAdminService
@@ -60,15 +61,18 @@ async def obtener_formulario(
     return FormulariosAdminService(db).get_by_id_or_slug(formulario_id_or_slug)
 
 
-@router.put("/formularios/{formulario_id}", response_model=FormularioResponse)
+@router.put("/formularios/{formulario_id}", response_model=FormularioUpdateResponse)
 async def actualizar_formulario(
     formulario_id: int,
     data: FormularioUpdate,
     db: Session = Depends(get_db),
     actor: Usuario = Depends(verify_csrf),
 ):
-    return FormulariosAdminService(db).actualizar(
+    formulario, cambio = FormulariosAdminService(db).actualizar(
         formulario_id, data.model_dump(exclude_unset=True), actor=actor
+    )
+    return FormularioUpdateResponse.model_validate(formulario).model_copy(
+        update={"ultimo_cambio": cambio}
     )
 
 
@@ -131,7 +135,9 @@ async def listar_envios(
     db: Session = Depends(get_db),
     _user: Usuario = Depends(get_current_user),
 ):
-    items, total = FormulariosAdminService(db).listar_envios(
+    service = FormulariosAdminService(db)
+    formulario = service.get(formulario_id)
+    items, total = service.listar_envios(
         formulario_id, estado=estado, offset=offset, limit=limit
     )
     usuario_ids = {e.usuario_id for e in items if e.usuario_id is not None}
@@ -153,19 +159,37 @@ async def listar_envios(
             )
             .model_dump(mode="json")
         )
-    return {"total": total, "items": serializados}
+    return {
+        "total": total,
+        "items": serializados,
+        "version_actual": formulario.version,
+        "desactualizados": service.contar_desactualizados(
+            formulario_id, formulario.version
+        ),
+    }
 
 
 @router.get(
     "/formularios/{formulario_id}/envios/{envio_id}",
-    response_model=EnvioResponse,
+    response_model=EnvioDetalleResponse,
 )
 async def obtener_envio(
     formulario_id: int,
     envio_id: int,
     db: Session = Depends(get_db),
 ):
-    return FormulariosAdminService(db).get_envio(formulario_id, envio_id)
+    envio = FormulariosAdminService(db).get_envio(formulario_id, envio_id)
+    usuario = (
+        db.query(Usuario).filter(Usuario.id == envio.usuario_id).first()
+        if envio.usuario_id
+        else None
+    )
+    return EnvioDetalleResponse.model_validate(envio).model_copy(
+        update={
+            "usuario_nombre": usuario.name if usuario else None,
+            "usuario_email": usuario.email if usuario else None,
+        }
+    )
 
 
 @router.get("/formularios/{formulario_id}/envios/{envio_id}/pdf")

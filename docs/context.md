@@ -370,6 +370,7 @@ Sin auth. `router = APIRouter(tags=["portal público"])` en `routes/public.py`.
 | GET | `/formularios/catalogos` | Catalogo de tipos/dependencias SIEEJ |
 | GET/PUT/POST | `/formularios/{slug}/envio*` | Endpoints respondent: borrador, submit, upload de archivos |
 | GET | `/formularios/mis-envios/{id}` | Detalle con `definicion_snapshot` historica + `datos` + `archivos` + `eventos` |
+| POST | `/formularios/{slug}/envio/actualizar-version` | Actualiza envio `en_proceso` a la definicion vigente conservando `datos` |
 | DELETE | `/formularios/mis-envios/{id}` | Soft-delete del envio para el respondent |
 | GET/POST/PATCH/DELETE | `/home/*` | CRUD de secciones del home publico de mapalab |
 | GET/POST/PATCH/DELETE | `/mapalab-shares/*` | Gestion de share links de visor mapalab |
@@ -834,6 +835,17 @@ Este repo se integra con otros servicios internos vecinos (CMS, visor de mapas, 
 ---
 
 ## Cambios recientes
+
+### 2026-07-13 (api 1.55.0 + admin 1.53.0) — SIEEJ: reorganiza versiones — clasifica cambios menor/rompe, propaga y avisa actualización
+
+El modelo de versionado de formularios SIEEJ se reorganiza con clasificación automática de cambios, propagación a envíos en proceso y aviso al respondent con distintivos en sider/paso/campo.
+
+- **Clasificador** (`cambio_classifier.py`): distingue cambios `menor` (se propagan a `en_proceso` sin subir versión: label, tooltip, layout, orden, agregar opcional, aflojar validación) de `rompe` (sube versión y congela a quien ya empezó: eliminar/agregar campo obligatorio, opcional→obligatorio, cambiar type, quitar opciones, endurecer validación, cambiar catalog/type de step).
+- **Propagación**: al editar definición, `formularios_admin_service.actualizar()` devuelve `tuple[Formulario, cambio_info|None]` con la clasificación. El admin muestra toast diferenciado según el tipo.
+- **Aviso al respondent**: `EnviosService` expone `actualizar_version()` (conserva `datos`, persiste diff en `cambios_pendientes`) e `info_cambios()` que devuelve `actualizacion_disponible`, `cambios_preview` y `cambios_aplicados`. Endpoint `POST /formularios/{slug}/envio/actualizar-version`.
+- **Respuesta del frontend** (sieej v1.26.0): banner "El formulario se actualizó" con Ver qué cambió · Actualizar. Badges en StepIndicator, chip "Actualizado" en FormStep, badges "Nuevo"/"Cambió" en FieldRenderer. Los distintivos se limpian al visitar/editar cada campo.
+- **BD**: columna `cambios_pendientes` JSONB en `sieej.envio_formulario` (migración `a0b1c2d3e4f5`). En staging/prod correr `alembic -x db=mariachi upgrade head`.
+- **Admin visor de envíos** (incluido en este release): `EnvioDetalleDrawer` con `snapshotUtils` (buildRespuestas, diffDefiniciones), tag "Desactualizado" en `EnviosTable`, bucket `sieej` por defecto en `FieldForm`.
 
 ### 2026-07-10 (admin v1.51.0 + api v1.51.0) — Acervo: miniaturas por ruta pública anónima (buckets públicos) + snippets de integración
 

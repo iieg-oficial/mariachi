@@ -127,6 +127,8 @@ def _evaluar_show_when(field: dict[str, Any], scope: dict[str, Any]) -> bool:
     target = show_when.get("field")
     expected = show_when.get("equals")
     actual = scope.get(target)
+    if isinstance(actual, list):
+        return any(str(item) == str(expected) for item in actual)
     if isinstance(actual, bool):
         actual = "true" if actual else "false"
     return str(actual) == str(expected)

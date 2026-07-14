@@ -81,6 +81,12 @@ class FormulariosDinamicosService:
         for f in formularios:
             envio = envios.get(f.id)
             estado_envio = "no_iniciado" if envio is None else envio.estado
+            actualizacion = False
+            if envio is not None and envio.estado == "en_proceso":
+                from app.services.sieej.envios_service import EnviosService
+
+                info = EnviosService.info_cambios(f, envio)
+                actualizacion = info["actualizacion_disponible"]
             items.append(
                 {
                     "id": f.id,
@@ -92,6 +98,7 @@ class FormulariosDinamicosService:
                     "vigencia_fin": f.vigencia_fin,
                     "estado_envio": estado_envio,
                     "envio_id": envio.id if envio is not None else None,
+                    "actualizacion_disponible": actualizacion,
                 }
             )
         return items

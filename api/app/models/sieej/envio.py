@@ -51,6 +51,7 @@ class EnvioFormulario(Base):
         index=True,
     )
     datos = Column(JSON, nullable=False, default=dict)
+    cambios_pendientes = Column(JSON, nullable=True)
     paso_actual = Column(Integer, nullable=False, default=0)
     iniciado_en = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     enviado_en = Column(DateTime(timezone=True), nullable=True)

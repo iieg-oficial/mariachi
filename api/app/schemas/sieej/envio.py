@@ -7,6 +7,14 @@ EnvioEstado = Literal["en_proceso", "enviado", "expirado"]
 EventoTipo = Literal["iniciado", "guardado", "enviado", "expirado", "reabierto"]
 
 
+class CambioRef(BaseModel):
+    """Un cambio de definicion visible para el respondent (banner/distintivos)."""
+
+    step_id: str
+    field_name: str | None = None
+    tipo: Literal["nuevo", "eliminado", "modificado"]
+
+
 class EnvioArchivoResponse(BaseModel):
     id: int
     field_path: str
@@ -36,8 +44,19 @@ class EnvioResponse(BaseModel):
     expirado_en: datetime | None
     actualizado_en: datetime
     archivos: list[EnvioArchivoResponse] = []
+    actualizacion_disponible: bool = False
+    cambios_preview: list[CambioRef] = []
+    cambios_aplicados: list[CambioRef] = []
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class EnvioDetalleResponse(EnvioResponse):
+    """Detalle de un envio para el admin, con el snapshot de la definicion
+    con la que se lleno (para render legible y diff contra la version actual).
+    """
+
+    definicion_snapshot: dict[str, Any]
 
 
 class EnvioUpdate(BaseModel):
@@ -50,6 +69,7 @@ class EnvioUpdate(BaseModel):
     datos: dict[str, Any] = Field(default_factory=dict)
     paso_actual: int = Field(default=0, ge=0)
     enviar: bool = False
+    cambios_vistos: list[str] = Field(default_factory=list)
 
 
 class EnvioUploadResponse(BaseModel):

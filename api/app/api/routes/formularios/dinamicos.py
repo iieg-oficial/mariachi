@@ -15,6 +15,7 @@ from app.core.database import get_db
 from app.core.time import utcnow
 from app.models.user import Usuario
 from app.schemas.sieej.envio import (
+    CambioRef,
     EnvioResponse,
     EnvioUpdate,
     EnvioUploadResponse,
@@ -29,6 +30,20 @@ from app.services.sieej.formularios_dinamicos_service import (
 from app.services.sieej.pdf_service import render_envio_pdf
 
 router = APIRouter()
+
+
+def _envio_response(formulario, envio) -> EnvioResponse | None:
+    """Serializa el envio agregando el estado de cambios de version."""
+    if envio is None:
+        return None
+    info = EnviosService.info_cambios(formulario, envio)
+    return EnvioResponse.model_validate(envio).model_copy(
+        update={
+            "actualizacion_disponible": info["actualizacion_disponible"],
+            "cambios_preview": [CambioRef(**c) for c in info["cambios_preview"]],
+            "cambios_aplicados": [CambioRef(**c) for c in info["cambios_aplicados"]],
+        }
+    )
 
 
 @router.get("/", response_model=list[FormularioListItem])
@@ -151,7 +166,7 @@ async def obtener_formulario(
         vigencia_fin=formulario.vigencia_fin,
         version=formulario.version,
         definicion=envio.definicion_snapshot if envio else formulario.definicion,
-        envio=EnvioResponse.model_validate(envio) if envio else None,
+        envio=_envio_response(formulario, envio),
     )
 
 
@@ -189,7 +204,7 @@ async def obtener_envio(
             detail="Formulario no encontrado o no asignado",
         )
     envio = EnviosService(db).get_o_iniciar(formulario, current_user)
-    return EnvioResponse.model_validate(envio)
+    return _envio_response(formulario, envio)
 
 
 @router.put("/{slug}/envio", response_model=EnvioResponse)
@@ -213,8 +228,32 @@ async def actualizar_envio(
         datos=body.datos,
         paso_actual=body.paso_actual,
         enviar=body.enviar,
+        cambios_vistos=body.cambios_vistos,
     )
-    return EnvioResponse.model_validate(envio)
+    return _envio_response(formulario, envio)
+
+
+@router.post("/{slug}/envio/actualizar-version", response_model=EnvioResponse)
+async def actualizar_version_envio(
+    slug: str,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(verify_csrf),
+):
+    """Aplica la definicion vigente al envio en proceso del respondent.
+
+    Conserva las respuestas capturadas y persiste el diff en
+    `cambios_pendientes` para marcar en el sider/paso/campo que cambio.
+    """
+    formulario = FormulariosDinamicosService(db).get_by_slug_visible(
+        slug, current_user, include_inactive=True
+    )
+    if formulario is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Formulario no encontrado o no asignado",
+        )
+    envio = EnviosService(db).actualizar_version(formulario, current_user)
+    return _envio_response(formulario, envio)
 
 
 @router.post("/{slug}/envio/upload", response_model=EnvioUploadResponse)

@@ -1,8 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Button, Drawer, Empty, Modal, Select, Space, Table, Tag, Tooltip, Typography } from 'antd';
+import { Alert, Button, Empty, Modal, Select, Space, Table, Tag, Tooltip, Typography } from 'antd';
 import { FileExcelOutlined, FilePdfOutlined, UndoOutlined } from '@ant-design/icons';
 import { message } from '@shared/services/message';
 import { formulariosApi } from '../services/formulariosAdminApi';
+import EnvioDetalleDrawer from './EnvioDetalleDrawer';
 
 const ESTADO_COLOR = { en_proceso: 'orange', enviado: 'green', expirado: 'red' };
 const ESTADO_LABEL = { en_proceso: 'En proceso', enviado: 'Enviado', expirado: 'Expirado' };
@@ -29,6 +30,7 @@ const triggerDownload = (response, fallback) => {
 export default function EnviosTable({ formulario }) {
     const [items, setItems] = useState([]);
     const [total, setTotal] = useState(0);
+    const [desactualizados, setDesactualizados] = useState(0);
     const [loading, setLoading] = useState(true);
     const [estado, setEstado] = useState(undefined);
     const [page, setPage] = useState(1);
@@ -47,6 +49,7 @@ export default function EnviosTable({ formulario }) {
             });
             setItems(data.items);
             setTotal(data.total);
+            setDesactualizados(data.desactualizados ?? 0);
         } catch {
             message.error('Error al cargar envios');
         } finally {
@@ -114,7 +117,22 @@ export default function EnviosTable({ formulario }) {
                 ? <Tooltip title={r.usuario_email}>{r.usuario_nombre}</Tooltip>
                 : `#${r.usuario_id ?? '—'}`,
         },
-        { title: 'Versión', dataIndex: 'formulario_version', key: 'formulario_version', width: 100 },
+        {
+            title: 'Versión',
+            dataIndex: 'formulario_version',
+            key: 'formulario_version',
+            width: 150,
+            render: (v) => (
+                <Space size={4}>
+                    v{v}
+                    {v < formulario.version && (
+                        <Tooltip title={`Se llenó con una versión anterior (actual: v${formulario.version})`}>
+                            <Tag color="orange">Desactualizado</Tag>
+                        </Tooltip>
+                    )}
+                </Space>
+            ),
+        },
         {
             title: 'Estado',
             dataIndex: 'estado',
@@ -180,6 +198,16 @@ export default function EnviosTable({ formulario }) {
 
     return (
         <>
+            {desactualizados > 0 && (
+                <Alert
+                    type="warning"
+                    showIcon
+                    closable
+                    style={{ marginBottom: 12 }}
+                    message={`${desactualizados} ${desactualizados === 1 ? 'envío se llenó' : 'envíos se llenaron'} con una versión anterior del formulario (actual: v${formulario.version}).`}
+                    description="Abre un envío marcado como «Desactualizado» para ver los cambios de la definición desde que se respondió."
+                />
+            )}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
                 <Space>
                     <Typography.Text>Filtrar por estado:</Typography.Text>
@@ -220,33 +248,12 @@ export default function EnviosTable({ formulario }) {
                 locale={{ emptyText: <Empty description="Sin envios" /> }}
                 scroll={{ x: 'max-content' }}
             />
-            <Drawer
+            <EnvioDetalleDrawer
+                formulario={formulario}
+                envio={drawer}
                 open={!!drawer}
                 onClose={() => setDrawer(null)}
-                title={drawer ? `Envío #${drawer.id}${drawer.usuario_nombre ? ` — ${drawer.usuario_nombre}` : ''}` : ''}
-                width={Math.min(720, window.innerWidth)}
-            >
-                {drawer && (
-                    <pre style={{ background: '#f5f5f5', padding: 12, fontSize: 12 }}>
-                        {JSON.stringify(drawer.datos, null, 2)}
-                    </pre>
-                )}
-                {drawer?.archivos?.length > 0 && (
-                    <div style={{ marginTop: 16 }}>
-                        <Typography.Title level={5}>Archivos</Typography.Title>
-                        <ul>
-                            {drawer.archivos.map((a) => (
-                                <li key={a.id}>
-                                    <Typography.Text code>{a.field_path}</Typography.Text>:{' '}
-                                    {a.url_publica
-                                        ? <a href={a.url_publica} target="_blank" rel="noreferrer">{a.filename_original}</a>
-                                        : a.filename_original}
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                )}
-            </Drawer>
+            />
         </>
     );
 }

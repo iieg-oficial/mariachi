@@ -62,7 +62,22 @@ export default function DefinicionEditor({ formulario, onSaved }) {
         setSaving(true);
         try {
             const updated = await formulariosApi.update(formulario.id, { definicion: payload });
-            message.success('Definición actualizada');
+            const cambio = updated?.ultimo_cambio;
+            if (!cambio) {
+                message.success('Definición actualizada');
+            } else if (cambio.tipo === 'menor') {
+                message.success('Cambio menor aplicado a todos los envíos en proceso');
+            } else {
+                const partes = [`Cambio estructural (v${updated.version}).`];
+                if (cambio.afectados) {
+                    partes.push(`Se avisará a ${cambio.afectados} persona(s) que lo están llenando.`);
+                }
+                if (cambio.reabiertos) {
+                    partes.push(`${cambio.reabiertos} envío(s) ya completados se reabrieron para reenvío.`);
+                }
+                partes.push('Las respuestas capturadas se conservan.');
+                message.warning(partes.join(' '));
+            }
             onSaved?.(updated);
             setDefinicion(updated.definicion);
             setJsonText(JSON.stringify(updated.definicion, null, 2));
