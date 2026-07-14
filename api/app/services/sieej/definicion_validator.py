@@ -4,8 +4,11 @@ Se ejecuta al crear/editar un formulario. Garantiza que:
   - El root tiene `version` y `steps` no vacios.
   - Cada step es de tipo `form`, `repeater` o `summary`.
   - Cada field tiene tipo conocido y no mezcla `options` con `catalog`.
-  - Los `showWhen.field` apuntan a un field existente (no necesariamente
-    en el mismo step; puede referenciar steps anteriores).
+  - Los `showWhen.field` apuntan a un field existente del *mismo* step. No se
+    permiten rutas `otro_step.campo`: tanto el renderer como `datos_validator`
+    evaluan la condicion contra los datos del step actual, asi que una
+    referencia cruzada nunca se cumpliria y el campo quedaria oculto en
+    silencio.
   - `maxSizeMB` no excede el cap absoluto de 100 MB.
   - `name` de fields y `id` de steps son unicos por scope.
 
@@ -75,12 +78,16 @@ def _validar_show_when_refs(steps: list, field_paths: set[str]) -> None:
             target = show_when.get("field")
             if not isinstance(target, str) or not target:
                 continue
-            if "." not in target:
-                target = f"{step_id}.{target}"
-            if target not in field_paths:
+            if "." in target:
                 raise DefinicionInvalidaError(
                     f"Step `{step_id}` field `{field.get('name', '?')}`: "
-                    f"`showWhen.field` apunta a `{target}` que no existe en el formulario."
+                    f"`showWhen.field` no puede referenciar otro step (`{target}`). "
+                    "La condicion se evalua solo con los datos del step actual."
+                )
+            if f"{step_id}.{target}" not in field_paths:
+                raise DefinicionInvalidaError(
+                    f"Step `{step_id}` field `{field.get('name', '?')}`: "
+                    f"`showWhen.field` apunta a `{target}` que no existe en este step."
                 )
 
 
