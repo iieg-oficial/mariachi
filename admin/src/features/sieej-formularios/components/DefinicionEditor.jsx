@@ -3,6 +3,7 @@ import { Alert, Button, Input, Segmented, Space } from 'antd';
 import { SaveOutlined, BlockOutlined, CodeOutlined, PlusOutlined } from '@ant-design/icons';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import { message } from '@shared/services/message';
+import useSearchParamState from '../hooks/useSearchParamState';
 import { formulariosApi } from '../services/formulariosAdminApi';
 import StepsList from './visualEditor/StepsList';
 
@@ -10,7 +11,8 @@ const EMPTY_DEFINICION = { version: 1, steps: [] };
 
 export default function DefinicionEditor({ formulario, onSaved }) {
     const { isMobile } = useIsMobile();
-    const [view, setView] = useState('visual');
+    const [viewFromUrl, setView] = useSearchParamState('vista', 'visual');
+    const view = viewFromUrl === 'json' ? 'json' : 'visual';
     const [definicion, setDefinicion] = useState(EMPTY_DEFINICION);
     const [jsonText, setJsonText] = useState('');
     const [error, setError] = useState(null);
@@ -43,7 +45,7 @@ export default function DefinicionEditor({ formulario, onSaved }) {
             }
         }
         setError(null);
-        setView(next);
+        setView(next === 'visual' ? null : next);
     };
 
     const payload = useMemo(() => {

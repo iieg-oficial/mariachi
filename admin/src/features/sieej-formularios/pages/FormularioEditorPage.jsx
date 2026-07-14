@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useNavigate, useParams, useSearchParams } from 'react-router';
+import { useNavigate, useParams } from 'react-router';
 import { Breadcrumb, Button, Flex, Modal, Spin, Tabs, Tag, Typography } from 'antd';
 import { PlayCircleOutlined } from '@ant-design/icons';
 import { message } from '@shared/services/message';
+import useSearchParamState from '../hooks/useSearchParamState';
 import { formulariosApi } from '../services/formulariosAdminApi';
 import DefinicionEditor from '../components/DefinicionEditor';
 import ConfiguracionEditor from '../components/ConfiguracionEditor';
@@ -16,15 +17,14 @@ const VALID_TABS = new Set(['definicion', 'configuracion', 'asignaciones', 'envi
 export default function FormularioEditorPage() {
     const { slug } = useParams();
     const navigate = useNavigate();
-    const [searchParams, setSearchParams] = useSearchParams();
+    const [tabFromUrl, setTab] = useSearchParamState('tab', 'definicion');
     const [formulario, setFormulario] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    const tabFromUrl = searchParams.get('tab');
     const activeTab = VALID_TABS.has(tabFromUrl) ? tabFromUrl : 'definicion';
 
     const handleTabChange = (key) => {
-        setSearchParams({ tab: key }, { replace: true });
+        setTab(key, { paso: null, subtab: null });
     };
 
     useEffect(() => {

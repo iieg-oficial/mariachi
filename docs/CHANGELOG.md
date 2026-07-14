@@ -9,6 +9,27 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.56.0 / admin 1.55.0] - 2026-07-14
+
+### SIEEJ admin: editor visual — tabs del repeater, selectores en línea, vista previa y estado en URL
+
+#### Agregado
+
+- **Admin** (`TabsManager.jsx`): administración de los tabs internos de un paso `repeater` junto a los campos que agrupan (crear, renombrar, eliminar). Los campos se listan agrupados por tab, con contador por pestaña. La pestaña **Comunes** reúne los campos sin `tab` — que el renderer muestra en *todos* los tabs — y solo aparece cuando tiene campos (o cuando el paso aún no define tabs). Eliminar un tab con campos pregunta si moverlos a Comunes o borrarlos con él.
+- **Admin** (`FieldCard.jsx`): tarjeta de campo extraída de `FieldsList`. Selectores en línea para reasignar el **tab** y el **ancho en columnas** sin abrir el editor. Tags nuevos: `Activa N` en los campos actuadores, y `Tab «x» no existe` en campos cuyo `tab` fue eliminado (el renderer no los muestra en ninguna pestaña).
+- **Admin** (`fieldUtils.js`): `placeAfterTrigger` (reubica un campo condicionado junto a su actuador), `reorderWithinTab`, `assignTab`, `assignColSpan`, `renameTabInFields`, `detachFieldsFromTab`, `dropFieldsOfTab`, `describeCondition`, `dependentsOf`, `conditionValueOptions`.
+- **Admin** (`useSearchParamState.js`): estado de navegación en la query string con *merge* sobre los parámetros existentes y `replace: true`. El editor queda direccionable: `?tab=definicion&vista=json&paso=bases_datos&subtab=diccionario`. Recargar ya no pierde la ubicación. Valores por defecto no se escriben; `subtab` se descarta al cambiar de paso.
+- **Admin** (`FieldPreview.jsx`): la vista previa refleja el **ancho en columnas** (Grande 100% / Mediano 50% / Chico 33%, igual que el grid de 6 columnas del renderer) dibujando el espacio restante como "Otros campos". Si el campo tiene condición, muestra la regla en lenguaje legible y un switch **Se cumple / No se cumple** que simula la visibilidad real.
+- **Admin** (`ShowWhenField.jsx`): además de la condición que rige al campo, lista los campos que **dependen** de él con el valor que los dispara, y advierte que renombrar su nombre interno, tipo u opciones rompe esas reglas.
+
+#### Cambiado
+
+- **Admin** (`FieldsList.jsx`): al guardar un campo con actuador, se reubica automáticamente debajo de él (al final del grupo que ya depende del mismo actuador). No se mueve si ya está bien colocado, ni cuando el actuador vive en otro tab. Crear un campo dentro de un tab lo asigna a ese tab.
+- **Admin** (`StepDrawer.jsx`): se retira el `Form.List` de tabs; ahora se administran junto a los campos (fuente única). El drawer conserva `minItems`/`maxItems`/`itemLabel`.
+- **Admin** (`FieldForm.jsx`): la vista previa sticky se ancla debajo del header (64px + 16px) — antes quedaba tapada por él al hacer scroll.
+
+---
+
 ## [api 1.56.0 / admin 1.54.0] - 2026-07-14
 
 ### SIEEJ: catálogos administrables desde el admin

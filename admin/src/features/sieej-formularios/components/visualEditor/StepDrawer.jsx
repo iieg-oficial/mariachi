@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
-import { Button, Drawer, Form, Input, InputNumber, Select, Space } from 'antd';
-import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
+import { Alert, Button, Drawer, Form, Input, InputNumber, Select, Space } from 'antd';
 import { STEP_TYPES } from '../../constants/definitionTypes';
 
 export default function StepDrawer({ open, step, onSave, onClose }) {
@@ -16,7 +15,6 @@ export default function StepDrawer({ open, step, onSave, onClose }) {
             minItems: step?.minItems,
             maxItems: step?.maxItems,
             itemLabel: step?.itemLabel ?? '',
-            tabs: step?.tabs ?? [],
             exportPdf: step?.exportPdf ?? false,
             incomplete_title: step?.incompleteNotice?.title ?? '',
             incomplete_message: step?.incompleteNotice?.message ?? '',
@@ -36,14 +34,13 @@ export default function StepDrawer({ open, step, onSave, onClose }) {
             if (values.minItems != null) out.minItems = values.minItems;
             if (values.maxItems != null) out.maxItems = values.maxItems;
             if (values.itemLabel) out.itemLabel = values.itemLabel;
-            const tabs = (values.tabs ?? [])
-                .map((t) => ({ id: t?.id?.trim(), title: (t?.title || t?.id || '').trim() }))
-                .filter((t) => t.id);
-            if (tabs.length > 0) out.tabs = tabs;
+            if (step?.tabs?.length) out.tabs = step.tabs;
             out.fields = step?.fields ?? [];
         } else if (values.type === 'form') {
+            out.tabs = undefined;
             out.fields = step?.fields ?? [];
         } else {
+            out.tabs = undefined;
             if (values.exportPdf) out.exportPdf = true;
         }
         if (values.type !== 'summary') {
@@ -102,53 +99,12 @@ export default function StepDrawer({ open, step, onSave, onClose }) {
                             extra='Usa "{{index}}" para el numero. Ej: "Base de datos {{index}}"'>
                             <Input />
                         </Form.Item>
-                        <div style={{ marginBottom: 4 }}>Tabs internos (agrupan los campos dentro de cada item)</div>
-                        <div style={{ color: '#888', fontSize: 12, marginBottom: 8 }}>
-                            Sin tabs = todos los campos juntos. Cada campo se asigna a un tab por su id.
-                        </div>
-                        <Form.List name="tabs">
-                            {(rows, { add, remove }) => (
-                                <div style={{ marginBottom: 16 }}>
-                                    {rows.map(({ key, name, ...rest }) => (
-                                        <Space key={key} align="baseline" style={{ display: 'flex', marginBottom: 8 }}>
-                                            <Form.Item
-                                                {...rest}
-                                                name={[name, 'id']}
-                                                style={{ marginBottom: 0 }}
-                                                rules={[
-                                                    { required: true, message: 'id requerido' },
-                                                    { pattern: /^[a-z0-9_]+$/, message: 'Solo minúsculas, dígitos y _' },
-                                                ]}
-                                            >
-                                                <Input placeholder="id (ej. datos)" />
-                                            </Form.Item>
-                                            <Form.Item
-                                                {...rest}
-                                                name={[name, 'title']}
-                                                style={{ marginBottom: 0 }}
-                                                rules={[{ required: true, message: 'título requerido' }]}
-                                            >
-                                                <Input placeholder="Título (ej. Datos generales)" />
-                                            </Form.Item>
-                                            <Button
-                                                type="link"
-                                                danger
-                                                icon={<DeleteOutlined />}
-                                                onClick={() => remove(name)}
-                                            />
-                                        </Space>
-                                    ))}
-                                    <Button
-                                        type="dashed"
-                                        icon={<PlusOutlined />}
-                                        onClick={() => add({ id: '', title: '' })}
-                                        block
-                                    >
-                                        Agregar tab
-                                    </Button>
-                                </div>
-                            )}
-                        </Form.List>
+                        <Alert
+                            type="info"
+                            showIcon
+                            style={{ marginBottom: 16 }}
+                            message="Los tabs internos se administran junto a los campos del paso, en la pestaña que agrupa cada uno."
+                        />
                     </>
                 )}
                 {watchType !== 'summary' && (

@@ -2,16 +2,28 @@ import { useEffect, useState } from 'react';
 import {
     Button, Col, Form, Input, InputNumber, Row, Segmented, Select, Switch, Space,
 } from 'antd';
+import OptionsSource from './OptionsSource';
+import ShowWhenField from './ShowWhenField';
 import useAccessibleBuckets from '@features/acervo/hooks/useAccessibleBuckets';
+import useCatalogos from '../../hooks/useCatalogos';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import { FIELD_TYPES } from '../../constants/definitionTypes';
+import { describeCondition } from './fieldUtils';
 import FieldPreview from './FieldPreview';
-import { parseOptions } from './fieldUtils';
 
 const EXTENSION_OPTIONS = [
     '.pdf', '.csv', '.xlsx', '.xls', '.doc', '.docx', '.txt',
     '.jpg', '.jpeg', '.png', '.zip', '.json', '.geojson', '.kml', '.shp',
 ].map((ext) => ({ value: ext, label: ext }));
+
+const COLSPAN_HINT = {
+    1: 'Grande · ocupa la fila completa',
+    2: 'Mediano · ocupa 1/2 de la fila',
+    3: 'Chico · ocupa 1/3 de la fila',
+};
+
+const HEADER_HEIGHT = 64;
+const PREVIEW_STICKY_TOP = HEADER_HEIGHT + 16;
 
 const slugify = (text) => text
     .toLowerCase()
@@ -20,7 +32,15 @@ const slugify = (text) => text
     .replace(/_+/g, '_').replace(/^_|_$/g, '');
 
 const fromForm = (values) => {
-    const options = parseOptions(values.options_text);
+    const source = values.option_source ?? (values.catalog ? 'catalog' : 'options');
+    const options = source === 'catalog' ? [] : (values.options_list ?? [])
+        .map((o) => ({
+            value: String(o?.value ?? '').trim(),
+            label: String(o?.label ?? '').trim(),
+        }))
+        .filter((o) => o.value)
+        .map((o) => ({ value: o.value, label: o.label || o.value }));
+    const catalog = source === 'catalog' ? values.catalog : null;
     const showWhen = values.showWhen_field
         ? { field: values.showWhen_field, equals: values.showWhen_equals ?? '' }
         : undefined;
@@ -47,12 +67,12 @@ const fromForm = (values) => {
         ...(values.tooltip ? { tooltip: values.tooltip } : {}),
         ...(values.tab ? { tab: values.tab } : {}),
         ...(options.length > 0 ? { options } : {}),
-        ...(values.catalog ? { catalog: values.catalog } : {}),
+        ...(catalog ? { catalog } : {}),
         ...(showWhen ? { showWhen } : {}),
         ...(Object.keys(validation).length > 0 ? { validation } : {}),
-        ...(values.bucket ? { bucket: values.bucket } : {}),
-        ...(accept.length > 0 ? { accept } : {}),
-        ...(values.maxSizeMB != null ? { maxSizeMB: values.maxSizeMB } : {}),
+        ...(values.type === 'file' && values.bucket ? { bucket: values.bucket } : {}),
+        ...(values.type === 'file' && accept.length > 0 ? { accept } : {}),
+        ...(values.type === 'file' && values.maxSizeMB != null ? { maxSizeMB: values.maxSizeMB } : {}),
         layout: { colSpan },
     };
 };
@@ -65,10 +85,14 @@ const toForm = (field) => ({
     placeholder: field?.placeholder ?? '',
     tooltip: field?.tooltip ?? '',
     tab: field?.tab ?? undefined,
-    options_text: (field?.options ?? []).map((o) => `${o.value} | ${o.label}`).join('\n'),
+    options_list: (field?.options ?? []).map((o) => ({
+        value: String(o.value),
+        label: o.label ?? String(o.value),
+    })),
     catalog: field?.catalog ?? '',
+    option_source: field?.catalog ? 'catalog' : 'options',
     showWhen_field: field?.showWhen?.field ?? '',
-    showWhen_equals: field?.showWhen?.equals ?? '',
+    showWhen_equals: field?.showWhen?.equals != null ? String(field.showWhen.equals) : '',
     minLength: field?.validation?.minLength,
     maxLength: field?.validation?.maxLength,
     pattern: field?.validation?.pattern ?? '',
@@ -88,6 +112,7 @@ export default function FieldForm({
     const form = externalForm || internalForm;
     const [nameTouched, setNameTouched] = useState(!!field?.name);
     const { buckets, loading: bucketsLoading } = useAccessibleBuckets();
+    const { catalogos } = useCatalogos();
     const { isMobile } = useIsMobile();
 
     useEffect(() => {
@@ -97,6 +122,7 @@ export default function FieldForm({
 
     const watchType = Form.useWatch('type', form);
     const watchLabel = Form.useWatch('label', form);
+    const watchColSpan = Form.useWatch('colSpan', form);
     const previewValues = Form.useWatch((v) => v, form) || {};
 
     useEffect(() => {
@@ -105,7 +131,23 @@ export default function FieldForm({
         }
     }, [watchLabel, nameTouched, form]);
 
+    useEffect(() => {
+        if (
+            watchType === 'file'
+            && !form.getFieldValue('bucket')
+            && buckets.some((b) => b.acervo_bucket === 'sieej')
+        ) {
+            form.setFieldsValue({ bucket: 'sieej' });
+        }
+    }, [watchType, buckets, form]);
+
     const handleFinish = (values) => onSave?.(fromForm(values));
+
+    const previewCondition = describeCondition(
+        { field: previewValues.showWhen_field, equals: previewValues.showWhen_equals },
+        availableShowWhenFields,
+        catalogos,
+    );
 
     const showOptions = ['select', 'select_multiple', 'radio', 'checkbox'].includes(watchType);
     const showFile = watchType === 'file';
@@ -152,7 +194,11 @@ export default function FieldForm({
                             <Select allowClear options={availableTabs.map((t) => ({ value: t.id, label: t.title }))} />
                         </Form.Item>
                     )}
-                    <Form.Item label="Ancho en columnas" name="colSpan">
+                    <Form.Item
+                        label="Ancho en columnas"
+                        name="colSpan"
+                        extra={COLSPAN_HINT[watchColSpan] ?? COLSPAN_HINT[1]}
+                    >
                         <Segmented
                             options={[
                                 { value: 1, label: 'Grande' },
@@ -161,23 +207,15 @@ export default function FieldForm({
                             ]}
                         />
                     </Form.Item>
-                    {showOptions && (
-                        <>
-                            <Form.Item
-                                label="Opciones (una por línea, formato: valor | etiqueta)"
-                                name="options_text"
-                                extra='Ejemplo: "true | Sí" en una línea, "false | No" en otra. Vacio si usas catálogo.'
-                            >
-                                <Input.TextArea rows={4} placeholder={'true | Sí\nfalse | No'} />
-                            </Form.Item>
-                            <Form.Item label="Catálogo (alternativa a opciones)" name="catalog">
-                                <Input placeholder="unidades_admin" />
-                            </Form.Item>
-                        </>
-                    )}
+                    {showOptions && <OptionsSource form={form} />}
                     {showFile && (
                         <>
-                            <Form.Item label="Bucket Acervo" name="bucket" rules={[{ required: true }]}>
+                            <Form.Item
+                                label="Bucket Acervo"
+                                name="bucket"
+                                rules={[{ required: true }]}
+                                extra="Carpeta del Acervo donde se guardan los archivos que suba quien responde el formulario. Por defecto se usa «sieej»."
+                            >
                                 <Select
                                     placeholder="Selecciona un bucket"
                                     loading={bucketsLoading}
@@ -240,16 +278,7 @@ export default function FieldForm({
                             </Form.Item>
                         </>
                     )}
-                    {availableShowWhenFields.length > 0 && (
-                        <Space.Compact block>
-                            <Form.Item label="Mostrar cuando: campo" name="showWhen_field" style={{ flex: 1 }}>
-                                <Select allowClear options={availableShowWhenFields.map((n) => ({ value: n, label: n }))} />
-                            </Form.Item>
-                            <Form.Item label="...es igual a" name="showWhen_equals" style={{ flex: 1 }}>
-                                <Input placeholder="true" />
-                            </Form.Item>
-                        </Space.Compact>
-                    )}
+                    <ShowWhenField form={form} availableFields={availableShowWhenFields} />
                 </>
             )}
         </>
@@ -262,13 +291,14 @@ export default function FieldForm({
                     <Col xs={24} md={24} xl={10}>
                         <div style={{
                             position: 'sticky',
-                            top: 16,
+                            top: PREVIEW_STICKY_TOP,
+                            paddingTop: 8,
                             marginBottom: isMobile ? 12 : 0,
                         }}>
                             <div style={{ fontWeight: 500, marginBottom: 8, color: '#191919' }}>
                                 Vista previa
                             </div>
-                            <FieldPreview values={previewValues} />
+                            <FieldPreview values={previewValues} condition={previewCondition} />
                         </div>
                     </Col>
                 )}

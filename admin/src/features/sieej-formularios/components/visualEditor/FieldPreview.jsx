@@ -1,16 +1,24 @@
+import { useState } from 'react';
 import {
-    Checkbox, DatePicker, Input, InputNumber, Radio, Select, Tooltip,
+    Checkbox, DatePicker, Input, InputNumber, Radio, Select, Switch, Tooltip,
 } from 'antd';
 import { InboxOutlined, QuestionCircleOutlined } from '@ant-design/icons';
-import { parseOptions } from './fieldUtils';
 
-export default function FieldPreview({ values }) {
+const COLSPAN_WIDTH = { 1: 100, 2: 50, 3: 33.333 };
+
+export default function FieldPreview({ values, condition }) {
+    const [conditionMet, setConditionMet] = useState(true);
+    const hidden = !!condition && !conditionMet;
     const {
         type, label, placeholder, required, tooltip,
-        options_text, catalog, pattern, accept, maxSizeMB, minLength, maxLength,
+        options_list, catalog, pattern, accept, maxSizeMB, minLength, maxLength, colSpan,
     } = values || {};
 
-    const options = parseOptions(options_text);
+    const widthPct = COLSPAN_WIDTH[colSpan] ?? 100;
+
+    const options = (options_list ?? [])
+        .filter((o) => o?.value)
+        .map((o) => ({ value: String(o.value), label: o.label || String(o.value) }));
     const hasCatalog = !options.length && !!catalog;
     const ph = placeholder || label || '';
     const catalogPlaceholder = hasCatalog ? `Opciones del catálogo: ${catalog}` : 'Selecciona';
@@ -93,13 +101,64 @@ export default function FieldPreview({ values }) {
 
     return (
         <div style={{ border: '1px dashed #d9d9d9', borderRadius: 8, padding: 16, background: '#fafafa' }}>
-            {type !== 'info' && type !== 'checkbox' && (
-                <div style={{ marginBottom: 8 }}>{labelNode}</div>
+            {condition && (
+                <div style={{
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                    gap: 8, flexWrap: 'wrap', marginBottom: 12, paddingBottom: 12,
+                    borderBottom: '1px dashed #e5e5e5',
+                }}>
+                    <span style={{ fontSize: 12, color: '#888', minWidth: 0 }}>
+                        «{condition.triggerLabel}» {condition.isMulti ? 'incluye' : '='}{' '}
+                        <strong style={{ color: '#191919' }}>«{condition.valueLabel}»</strong>
+                    </span>
+                    <Switch
+                        size="small"
+                        checked={conditionMet}
+                        onChange={setConditionMet}
+                        checkedChildren="Se cumple"
+                        unCheckedChildren="No se cumple"
+                    />
+                </div>
             )}
-            {control}
-            {hints.length > 0 && (
-                <div style={{ marginTop: 8, fontSize: 12, color: '#888' }}>{hints.join(' · ')}</div>
-            )}
+            <div style={{ display: 'flex', alignItems: 'stretch', gap: 8 }}>
+                <div style={{
+                    width: `${widthPct}%`,
+                    minWidth: 0,
+                    transition: 'width 0.2s ease, opacity 0.2s ease',
+                    opacity: hidden ? 0.35 : 1,
+                }}>
+                    {type !== 'info' && type !== 'checkbox' && (
+                        <div style={{ marginBottom: 8 }}>{labelNode}</div>
+                    )}
+                    {control}
+                    {hidden && (
+                        <div style={{ marginTop: 8, fontSize: 12, color: '#fa8c16' }}>
+                            No se muestra al respondent.
+                        </div>
+                    )}
+                    {!hidden && hints.length > 0 && (
+                        <div style={{ marginTop: 8, fontSize: 12, color: '#888' }}>{hints.join(' · ')}</div>
+                    )}
+                </div>
+                {widthPct < 100 && (
+                    <div style={{
+                        flex: 1,
+                        minHeight: 56,
+                        borderRadius: 8,
+                        border: '1px dashed #e5e5e5',
+                        background: 'repeating-linear-gradient(45deg, #f2f2f2, #f2f2f2 6px, #fafafa 6px, #fafafa 12px)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#bbb',
+                        fontSize: 12,
+                        textAlign: 'center',
+                        padding: 4,
+                    }}>
+                        Otros campos
+                    </div>
+                )}
+            </div>
         </div>
     );
 }
