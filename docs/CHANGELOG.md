@@ -9,6 +9,27 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.57.0 / admin 1.56.0] - 2026-07-16
+
+### SIEEJ: historial de definiciones + export con versiones y CSV
+
+#### Agregado
+
+- **API** (`models/sieej/formulario.py`, migración `b2c3d4e5f6a7`): tabla `sieej.formulario_version`. Al publicar un cambio de definición clasificado como `rompe`, se archiva la definición previa con su número de versión (`UNIQUE(formulario_id, version)`, con actor y fecha de archivado). La fila `version=N` guarda la definición tal como quedó al final de esa versión — los cambios `menores` intermedios no generan filas; la vigente sigue viviendo en `formulario.definicion`.
+- **API** (`formularios_admin_service.py`): el PUT admin inserta el registro del historial en la misma transacción que el bump de versión y la reapertura de envíos.
+- **API** (`xlsx_service.py`, `routes/sieej_admin/formularios.py`): `GET /sieej/formularios/{id}/exportar-envios` acepta `?formato=csv|xlsx` (default `xlsx`, solo staff como todo el router). El CSV es plano cuando el formulario solo tiene la tabla principal y un ZIP con un CSV por tabla cuando hay pasos `repeater`; codificado UTF-8 con BOM para abrirse bien en Excel.
+- **Admin** (`EnviosTable.jsx`): botón **Descargar CSV** junto a **Descargar Excel** en la sección de envíos.
+
+#### Cambiado
+
+- **API** (`xlsx_service.py`): el export contempla versiones. Las columnas se arman con la unión de los snapshots de los envíos, la definición vigente y las históricas de `formulario_version`: los valores de campos que ya no existen en la definición vigente siguen saliendo, con el sufijo **"(eliminado)"** en el encabezado. Nueva columna **Versión** (la `formulario_version` con la que se llenó cada envío) en la tabla principal.
+
+#### Notas
+
+- Motivación del historial: los valores de campos eliminados permanecen en `envio_formulario.datos` (ningún flujo los poda), pero al migrar los snapshots la definición vieja se perdía y esos valores quedaban sin metadatos (label, tipo, catálogo) ni salida en los exports. Con el historial siempre se pueden interpretar y exportar. Complementa el auto-update del respondent en sieej 1.28.0.
+
+---
+
 ## [api 1.56.0 / admin 1.55.0] - 2026-07-14
 
 ### SIEEJ admin: editor visual — tabs del repeater, selectores en línea, vista previa y estado en URL
