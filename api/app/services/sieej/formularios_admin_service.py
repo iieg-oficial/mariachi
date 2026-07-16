@@ -22,6 +22,7 @@ from app.models.sieej import (
     EnvioEvento,
     EnvioFormulario,
     Formulario,
+    FormularioVersion,
     Grupo,
     formulario_grupo,
     formulario_usuario,
@@ -184,7 +185,15 @@ class FormulariosAdminService:
         if cambia_definicion and self._tiene_envios(f.id):
             tipo_cambio = clasificar_cambio(definicion_previa, nueva_definicion)
             if tipo_cambio == "rompe":
-                f.version = (f.version or 1) + 1
+                self.db.add(
+                    FormularioVersion(
+                        formulario_id=f.id,
+                        version=version_previa,
+                        definicion=definicion_previa,
+                        actor_usuario_id=actor.id if actor else None,
+                    )
+                )
+                f.version = version_previa + 1
 
         for campo in (
             "nombre",
