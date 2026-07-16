@@ -15,7 +15,7 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 #### Agregado
 
-- **API** (`models/sieej/formulario.py`, migración `b2c3d4e5f6a7`): tabla `sieej.formulario_version`. Al publicar un cambio de definición clasificado como `rompe`, se archiva la definición previa con su número de versión (`UNIQUE(formulario_id, version)`, con actor y fecha de archivado). La fila `version=N` guarda la definición tal como quedó al final de esa versión — los cambios `menores` intermedios no generan filas; la vigente sigue viviendo en `formulario.definicion`.
+- **API** (`models/sieej/formulario.py`, migración `b3c4d5e6f7a8`): tabla `sieej.formulario_version`. Al publicar un cambio de definición clasificado como `rompe`, se archiva la definición previa con su número de versión (`UNIQUE(formulario_id, version)`, con actor y fecha de archivado). La fila `version=N` guarda la definición tal como quedó al final de esa versión — los cambios `menores` intermedios no generan filas; la vigente sigue viviendo en `formulario.definicion`.
 - **API** (`formularios_admin_service.py`): el PUT admin inserta el registro del historial en la misma transacción que el bump de versión y la reapertura de envíos.
 - **API** (`xlsx_service.py`, `routes/sieej_admin/formularios.py`): `GET /sieej/formularios/{id}/exportar-envios` acepta `?formato=csv|xlsx` (default `xlsx`, solo staff como todo el router). El CSV es plano cuando el formulario solo tiene la tabla principal y un ZIP con un CSV por tabla cuando hay pasos `repeater`; codificado UTF-8 con BOM para abrirse bien en Excel.
 - **Admin** (`EnviosTable.jsx`): botón **Descargar CSV** junto a **Descargar Excel** en la sección de envíos.
