@@ -6,14 +6,14 @@ services:
       context: .
       dockerfile: ./nginx/Dockerfile
       args:
-        VITE_NODE_ENV: ${VITE_NODE_ENV:-production}
-        VITE_ADMIN_API_URL: ${VITE_ADMIN_API_URL:-/api/administrador}
-        VITE_WEB_URL: ${VITE_WEB_URL:-}
-        VITE_SENTRY_DSN: ${VITE_SENTRY_DSN:-}
-        SENTRY_AUTH_TOKEN: ${SENTRY_AUTH_TOKEN:-}
-        SENTRY_ORG: ${SENTRY_ORG:-}
-        SENTRY_PROJECT: ${SENTRY_PROJECT:-}
-        BUILD_STATS: ${BUILD_STATS:-}
+        VITE_NODE_ENV: ${VITE_NODE_ENV:?}
+        VITE_ADMIN_API_URL: ${VITE_ADMIN_API_URL:?}
+        VITE_WEB_URL: ${VITE_WEB_URL}
+        VITE_SENTRY_DSN: ${VITE_SENTRY_DSN}
+        SENTRY_AUTH_TOKEN: ${SENTRY_AUTH_TOKEN}
+        SENTRY_ORG: ${SENTRY_ORG}
+        SENTRY_PROJECT: ${SENTRY_PROJECT}
+        BUILD_STATS: ${BUILD_STATS}
     container_name: mariachi-nginx
     expose:
       - "80"
@@ -70,7 +70,7 @@ services:
     container_name: mariachi-api
     command: ./scripts/start_backend.sh
     env_file:
-      - ${API_ENV_FILE:-./.env.staging}
+      - ${API_ENV_FILE:?}
     volumes:
       - ./api:/app
       - ./docs/CHANGELOG.md:/app/_docs/CHANGELOG.md:ro
@@ -84,8 +84,8 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:?}:${POSTGRES_PASSWORD:?}@postgres:5432/${POSTGRES_DB:?}
       REDIS_URL: redis://redis:6379/0
-      ACERVO_USE_SSL: ${ACERVO_USE_SSL:-false}
-      SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE:-0.1}
+      ACERVO_USE_SSL: ${ACERVO_USE_SSL:?}
+      SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE:?}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3).read()"]
       interval: 15s
@@ -110,10 +110,10 @@ services:
           python scripts/purge_mapalab_accesos.py || echo "[cron-sieej] purge mapalab fallo, continuando"
           echo "[cron-sieej] $$(date -u +%Y-%m-%dT%H:%M:%SZ) running refresh_mapalab_stats"
           python scripts/refresh_mapalab_stats.py || echo "[cron-sieej] refresh stats fallo, continuando"
-          sleep ${CRON_SIEEJ_EXPIRE_INTERVAL:-3600}
+          sleep ${CRON_SIEEJ_EXPIRE_INTERVAL:?}
         done
     env_file:
-      - ${API_ENV_FILE:-./.env.staging}
+      - ${API_ENV_FILE:?}
     volumes:
       - ./api:/app
     depends_on:

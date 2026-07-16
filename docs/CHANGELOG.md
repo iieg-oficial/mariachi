@@ -9,6 +9,19 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.57.1 / admin 1.56.1] - 2026-07-16
+
+### Infra: eliminar defaults inline del compose
+
+Sin cambios de runtime. Continúa la limpieza iniciada con `POSTGRES_*` (ver más abajo).
+
+#### Cambiado
+
+- **`docker-compose.yml`**: eliminados los defaults inline `${VAR:-valor}` restantes. Los build args opcionales (`VITE_WEB_URL`, `SENTRY_*`, `BUILD_STATS`) pasan a `${VAR}`; `API_ENV_FILE` a `${VAR:?}` (el Makefile siempre lo setea, y se elimina el default a `.env.staging`); `VITE_NODE_ENV`, `VITE_ADMIN_API_URL`, `ACERVO_USE_SSL`, `SENTRY_TRACES_SAMPLE_RATE` y `CRON_SIEEJ_EXPIRE_INTERVAL` a `${VAR:?}`.
+- **`.env.production.example` / `.env.development.example`**: agregadas las variables que faltaban (`VITE_NODE_ENV`, `VITE_ADMIN_API_URL`, `CRON_SIEEJ_EXPIRE_INTERVAL`) para que el fail-fast no rompa el deploy.
+
+---
+
 ## [api 1.57.0 / admin 1.56.0] - 2026-07-16
 
 ### SIEEJ: historial de definiciones + export con versiones y CSV
