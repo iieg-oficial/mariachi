@@ -13,7 +13,7 @@ export const formulariosApi = {
     getEnvio: (id, envioId) => api.get(`/sieej/formularios/${id}/envios/${envioId}`).then((r) => r.data),
     reabrirEnvio: (id, envioId) => api.post(`/sieej/formularios/${id}/envios/${envioId}/reabrir`).then((r) => r.data),
     descargarEnvioPdf: (id, envioId) => api.get(`/sieej/formularios/${id}/envios/${envioId}/pdf`, { responseType: 'blob' }),
-    exportarEnvios: (id) => api.get(`/sieej/formularios/${id}/exportar-envios`, { responseType: 'blob' }),
+    exportarEnvios: (id, formato = 'xlsx') => api.get(`/sieej/formularios/${id}/exportar-envios`, { params: { formato }, responseType: 'blob' }),
 };
 
 export const catalogosApi = {

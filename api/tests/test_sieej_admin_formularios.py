@@ -12,6 +12,7 @@ from app.models.project import Project, UserProject
 from app.models.sieej import (
     EnvioFormulario,
     Formulario,
+    FormularioVersion,
     formulario_usuario,
 )
 from app.models.user import Usuario
@@ -280,6 +281,153 @@ def test_admin_actualizar_sin_cambiar_definicion_no_bumpea(client, session, admi
     )
     assert r.status_code == 200
     assert r.json()["version"] == 1
+
+
+def test_admin_cambio_rompe_archiva_definicion_previa(
+    client, session, admin, respondent
+):
+    f = Formulario(
+        slug="hist", nombre="Hist", definicion=DEFINICION_OK, estado="activo", version=1, creado_por_id=admin.id
+    )
+    session.add(f)
+    session.commit()
+    session.refresh(f)
+
+    session.add(
+        EnvioFormulario(
+            formulario_id=f.id,
+            formulario_version=1,
+            definicion_snapshot=DEFINICION_OK,
+            usuario_id=respondent.id,
+            estado="en_proceso",
+            datos={},
+            paso_actual=0,
+        )
+    )
+    session.commit()
+
+    nueva_def = {
+        "version": 1,
+        "steps": [
+            {
+                "id": "general",
+                "type": "form",
+                "title": "General",
+                "fields": [
+                    {"name": "razon", "label": "Razon", "type": "text", "required": True},
+                    {"name": "rfc", "label": "RFC", "type": "text", "required": True},
+                ],
+            }
+        ],
+    }
+    csrf = login(client, admin.username)
+    r = client.put(
+        f"{ADMIN_PREFIX}/sieej/formularios/{f.id}",
+        headers={"X-CSRF-Token": csrf},
+        json={"definicion": nueva_def},
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["version"] == 2
+
+    archivadas = (
+        session.query(FormularioVersion)
+        .filter(FormularioVersion.formulario_id == f.id)
+        .all()
+    )
+    assert len(archivadas) == 1
+    assert archivadas[0].version == 1
+    assert archivadas[0].definicion == DEFINICION_OK
+    assert archivadas[0].actor_usuario_id == admin.id
+
+
+def test_admin_cambio_menor_no_archiva(client, session, admin, respondent):
+    f = Formulario(
+        slug="hist-m", nombre="HistM", definicion=DEFINICION_OK, estado="activo", version=1, creado_por_id=admin.id
+    )
+    session.add(f)
+    session.commit()
+    session.refresh(f)
+
+    session.add(
+        EnvioFormulario(
+            formulario_id=f.id,
+            formulario_version=1,
+            definicion_snapshot=DEFINICION_OK,
+            usuario_id=respondent.id,
+            estado="en_proceso",
+            datos={},
+            paso_actual=0,
+        )
+    )
+    session.commit()
+
+    nueva_def = {
+        "version": 1,
+        "steps": [
+            {
+                "id": "general",
+                "type": "form",
+                "title": "General",
+                "fields": [
+                    {"name": "razon", "label": "Razon social", "type": "text", "required": True},
+                ],
+            }
+        ],
+    }
+    csrf = login(client, admin.username)
+    r = client.put(
+        f"{ADMIN_PREFIX}/sieej/formularios/{f.id}",
+        headers={"X-CSRF-Token": csrf},
+        json={"definicion": nueva_def},
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["version"] == 1
+    assert (
+        session.query(FormularioVersion)
+        .filter(FormularioVersion.formulario_id == f.id)
+        .count()
+    ) == 0
+
+
+def test_admin_exportar_envios_formatos(client, session, admin, respondent):
+    f = Formulario(
+        slug="exp", nombre="Exp", definicion=DEFINICION_OK, estado="activo", version=1, creado_por_id=admin.id
+    )
+    session.add(f)
+    session.commit()
+    session.refresh(f)
+
+    session.add(
+        EnvioFormulario(
+            formulario_id=f.id,
+            formulario_version=1,
+            definicion_snapshot=DEFINICION_OK,
+            usuario_id=respondent.id,
+            estado="enviado",
+            datos={"general": {"razon": "ACME"}},
+            paso_actual=0,
+        )
+    )
+    session.commit()
+
+    login(client, admin.username)
+    r = client.get(f"{ADMIN_PREFIX}/sieej/formularios/{f.id}/exportar-envios")
+    assert r.status_code == 200
+    assert "spreadsheetml" in r.headers["content-type"]
+
+    r = client.get(
+        f"{ADMIN_PREFIX}/sieej/formularios/{f.id}/exportar-envios",
+        params={"formato": "csv"},
+    )
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("text/csv")
+    assert "ACME" in r.content.decode("utf-8-sig")
+
+    r = client.get(
+        f"{ADMIN_PREFIX}/sieej/formularios/{f.id}/exportar-envios",
+        params={"formato": "pdf"},
+    )
+    assert r.status_code == 422
 
 
 def test_admin_delete_sin_envios_borra(client, session, admin):

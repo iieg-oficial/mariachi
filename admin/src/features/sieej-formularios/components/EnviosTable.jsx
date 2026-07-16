@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Alert, Button, Empty, Modal, Select, Space, Table, Tag, Tooltip, Typography } from 'antd';
-import { FileExcelOutlined, FilePdfOutlined, UndoOutlined } from '@ant-design/icons';
+import { FileExcelOutlined, FilePdfOutlined, FileTextOutlined, UndoOutlined } from '@ant-design/icons';
 import { message } from '@shared/services/message';
 import { formulariosApi } from '../services/formulariosAdminApi';
 import EnvioDetalleDrawer from './EnvioDetalleDrawer';
@@ -36,7 +36,7 @@ export default function EnviosTable({ formulario }) {
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(20);
     const [drawer, setDrawer] = useState(null);
-    const [exporting, setExporting] = useState(false);
+    const [exporting, setExporting] = useState(null);
     const [pdfLoadingId, setPdfLoadingId] = useState(null);
 
     const load = useCallback(async () => {
@@ -66,15 +66,15 @@ export default function EnviosTable({ formulario }) {
             ? 'No se puede reabrir: el formulario está fuera de vigencia'
             : null;
 
-    const handleExcel = async () => {
-        setExporting(true);
+    const handleExport = async (formato) => {
+        setExporting(formato);
         try {
-            const res = await formulariosApi.exportarEnvios(formulario.id);
-            triggerDownload(res, `${formulario.slug || 'formulario'}_envios.xlsx`);
+            const res = await formulariosApi.exportarEnvios(formulario.id, formato);
+            triggerDownload(res, `${formulario.slug || 'formulario'}_envios.${formato}`);
         } catch {
-            message.error('Error al exportar el Excel');
+            message.error(formato === 'csv' ? 'Error al exportar el CSV' : 'Error al exportar el Excel');
         } finally {
-            setExporting(false);
+            setExporting(null);
         }
     };
 
@@ -224,14 +224,24 @@ export default function EnviosTable({ formulario }) {
                         ]}
                     />
                 </Space>
-                <Button
-                    icon={<FileExcelOutlined />}
-                    loading={exporting}
-                    disabled={total === 0}
-                    onClick={handleExcel}
-                >
-                    Descargar Excel
-                </Button>
+                <Space>
+                    <Button
+                        icon={<FileExcelOutlined />}
+                        loading={exporting === 'xlsx'}
+                        disabled={total === 0}
+                        onClick={() => handleExport('xlsx')}
+                    >
+                        Descargar Excel
+                    </Button>
+                    <Button
+                        icon={<FileTextOutlined />}
+                        loading={exporting === 'csv'}
+                        disabled={total === 0}
+                        onClick={() => handleExport('csv')}
+                    >
+                        Descargar CSV
+                    </Button>
+                </Space>
             </div>
             <Table
                 columns={columns}

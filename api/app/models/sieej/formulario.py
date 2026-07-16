@@ -65,3 +65,37 @@ class Formulario(Base):
         secondary=f"{SCHEMA}.formulario_usuario",
         lazy="select",
     )
+
+
+class FormularioVersion(Base):
+    """Historial de definiciones: la fila `version=N` guarda la definicion
+    tal como quedo al final de esa version, archivada al publicarse el
+    cambio `rompe` que creo la version N+1. La vigente vive en
+    `Formulario.definicion`."""
+
+    __tablename__ = "formulario_version"
+    __table_args__ = (
+        UniqueConstraint(
+            "formulario_id", "version", name="uq_formulario_version"
+        ),
+        {"schema": SCHEMA},
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    formulario_id = Column(
+        Integer,
+        ForeignKey(f"{SCHEMA}.formulario.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    version = Column(Integer, nullable=False)
+    definicion = Column(JSON, nullable=False)
+    archivado_en = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    actor_usuario_id = Column(
+        Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True
+    )
+
+    formulario = relationship("Formulario", lazy="select")
+    actor = relationship(
+        "Usuario", foreign_keys=[actor_usuario_id], lazy="select"
+    )

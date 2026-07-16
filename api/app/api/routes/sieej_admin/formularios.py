@@ -1,3 +1,4 @@
+from typing import Literal
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, Query, Response, status
@@ -6,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_current_user, verify_csrf
 from app.core.database import get_db
 from app.models.sieej.envio import EnvioFormulario
+from app.models.sieej.formulario import FormularioVersion
 from app.models.user import Usuario
 from app.schemas.sieej.envio import EnvioDetalleResponse, EnvioResponse
 from app.schemas.sieej.formulario import (
@@ -17,7 +19,7 @@ from app.schemas.sieej.formulario import (
 from app.schemas.sieej.grupo import FormularioAsignacionesUpdate
 from app.services.sieej.formularios_admin_service import FormulariosAdminService
 from app.services.sieej.pdf_service import render_envio_pdf
-from app.services.sieej.xlsx_service import build_envios_xlsx
+from app.services.sieej.xlsx_service import build_envios_csv, build_envios_xlsx
 
 router = APIRouter()
 
@@ -222,8 +224,9 @@ async def descargar_envio_pdf(
 
 
 @router.get("/formularios/{formulario_id}/exportar-envios")
-async def exportar_envios_xlsx(
+async def exportar_envios(
     formulario_id: int,
+    formato: Literal["xlsx", "csv"] = Query("xlsx"),
     db: Session = Depends(get_db),
     _user: Usuario = Depends(get_current_user),
 ):
@@ -252,13 +255,37 @@ async def exportar_envios_xlsx(
                 "usuario_nombre": u.name if u else None,
                 "usuario_email": u.email if u else None,
                 "estado": e.estado,
+                "formulario_version": e.formulario_version,
                 "enviado_en": e.enviado_en.strftime("%Y-%m-%d %H:%M") if e.enviado_en else "",
                 "datos": e.datos or {},
                 "definicion": e.definicion_snapshot or formulario.definicion or {},
             }
         )
-    xlsx_bytes = build_envios_xlsx(filas)
+    historicas = [
+        fv.definicion
+        for fv in db.query(FormularioVersion)
+        .filter(FormularioVersion.formulario_id == formulario_id)
+        .order_by(FormularioVersion.version)
+        .all()
+    ]
     nombre = _slug_filename(formulario.nombre)
+    if formato == "csv":
+        contenido, es_zip = build_envios_csv(
+            filas,
+            definiciones_historicas=historicas,
+            definicion_vigente=formulario.definicion,
+        )
+        filename = f"{nombre}_envios.{'zip' if es_zip else 'csv'}"
+        return Response(
+            content=contenido,
+            media_type="application/zip" if es_zip else "text/csv; charset=utf-8",
+            headers={"Content-Disposition": _content_disposition(filename)},
+        )
+    xlsx_bytes = build_envios_xlsx(
+        filas,
+        definiciones_historicas=historicas,
+        definicion_vigente=formulario.definicion,
+    )
     filename = f"{nombre}_envios.xlsx"
     return Response(
         content=xlsx_bytes,
