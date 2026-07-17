@@ -9,6 +9,20 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.58.1 / admin 1.57.1] - 2026-07-17
+
+### Admin: volver a la ruta original tras iniciar sesión
+
+#### Corregido
+
+- **Admin** (`shared/helpers/loginRedirect.js`, `shared/services/api.js`, `app/guards/`, `LoginPage.jsx`): al expirar la sesión, el interceptor 401 y los guards redirigen a `/login?next=<ruta+query>` y tras autenticarse se navega de vuelta a esa ruta (sanitizada: solo paths internos, nunca `/login`). Antes siempre se caía en `/inicio` y había que navegar a mano hasta la página en la que se estaba. Complementa el fix de gateway-hub 1.27.9 (502 por IP obsoleta mostrados como página 500 al restaurar una pestaña guardada).
+
+#### Eliminado
+
+- **Infra** (`nginx/conf.d/mariachi.conf`): redirect legado `/administrador` → `/mariachi` (renombrado en v0.21.0; tráfico 0 en 14 días). gateway-hub 1.28.1 liberó el namespace de cara a la futura app raíz de terceros.
+
+---
+
 ## [api 1.58.0 / admin 1.57.0] - 2026-07-17
 
 ### SIEEJ: catálogos administrables (CRUD con tablas genéricas)
