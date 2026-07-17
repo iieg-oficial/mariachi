@@ -17,9 +17,10 @@ function EnvioRespuestasExpandida({ estado, record }) {
         <>
             <Descriptions
                 size="small"
-                column={{ xs: 1, sm: 3 }}
+                column={4}
                 style={{ marginBottom: 12 }}
                 items={[
+                    { key: 'usuario', label: 'Usuario', children: record.usuario_nombre || `#${record.usuario_id ?? '—'}` },
                     { key: 'iniciado', label: 'Iniciado', children: fmtFecha(record.iniciado_en) },
                     { key: 'enviado', label: 'Enviado', children: fmtFecha(record.enviado_en) },
                     { key: 'actualizado', label: 'Actualizado', children: fmtFecha(record.actualizado_en) },
@@ -160,6 +161,7 @@ export default function EnviosTable({ formulario }) {
         {
             title: 'Usuario',
             key: 'usuario',
+            width: 200,
             render: (_, r) => r.usuario_nombre
                 ? <Tooltip title={r.usuario_email}>{r.usuario_nombre}</Tooltip>
                 : `#${r.usuario_id ?? '—'}`,
@@ -184,6 +186,7 @@ export default function EnviosTable({ formulario }) {
             title: 'Estado',
             dataIndex: 'estado',
             key: 'estado',
+            width: 120,
             render: (v) => <Tag color={ESTADO_COLOR[v]}>{ESTADO_LABEL[v] || v}</Tag>,
         },
         {
@@ -215,9 +218,7 @@ export default function EnviosTable({ formulario }) {
                                     e.stopPropagation();
                                     handleReabrir(record);
                                 }}
-                            >
-                                Reabrir
-                            </Button>
+                            />
                         </Tooltip>
                     )}
                 </Space>
@@ -279,7 +280,7 @@ export default function EnviosTable({ formulario }) {
                     onChange: (p, ps) => { setPage(p); setPageSize(ps); },
                 }}
                 locale={{ emptyText: <Empty description="Sin envios" /> }}
-                scroll={{ x: 'max-content' }}
+                scroll={{ x: 'min-content' }}
             />
             <EnvioDetalleDrawer
                 formulario={formulario}

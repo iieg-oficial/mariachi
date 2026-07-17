@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, Button, Select, Space, Spin, Typography } from 'antd';
-import { SaveOutlined } from '@ant-design/icons';
+import { Alert, Select, Space, Spin, Typography } from 'antd';
 import { message } from '@shared/services/message';
 import { formulariosApi, gruposApi, usuariosApi } from '../services/formulariosAdminApi';
 import MemberPicker from './MemberPicker';
@@ -13,7 +12,6 @@ export default function AsignacionesEditor({ formulario }) {
     const [grupoIds, setGrupoIds] = useState([]);
     const [usuarioIds, setUsuarioIds] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
 
     useEffect(() => {
         let cancel = false;
@@ -34,18 +32,15 @@ export default function AsignacionesEditor({ formulario }) {
         return () => { cancel = true; };
     }, [formulario]);
 
-    const handleSave = async () => {
-        setSaving(true);
+    const save = async (gIds, uIds) => {
         try {
             await formulariosApi.asignaciones(formulario.id, {
-                grupos: grupoIds,
-                usuarios: usuarioIds,
+                grupos: gIds,
+                usuarios: uIds,
             });
             message.success('Asignaciones guardadas');
         } catch (err) {
             message.error(err?.response?.data?.detail || 'Error al guardar');
-        } finally {
-            setSaving(false);
         }
     };
 
@@ -74,7 +69,7 @@ export default function AsignacionesEditor({ formulario }) {
                     style={{ width: '100%', marginTop: 8 }}
                     placeholder="Selecciona grupos"
                     value={grupoIds}
-                    onChange={setGrupoIds}
+                    onChange={(ids) => { setGrupoIds(ids); save(ids, usuarioIds); }}
                     optionFilterProp="label"
                     options={grupos.map((g) => ({ value: g.id, label: g.nombre }))}
                 />
@@ -85,13 +80,10 @@ export default function AsignacionesEditor({ formulario }) {
                     <MemberPicker
                         usuarios={usuarios}
                         value={usuarioIds}
-                        onChange={setUsuarioIds}
+                        onChange={(ids) => { setUsuarioIds(ids); save(grupoIds, ids); }}
                     />
                 </div>
             </div>
-            <Button type="primary" icon={<SaveOutlined />} loading={saving} onClick={handleSave}>
-                Guardar asignaciones
-            </Button>
         </Space>
     );
 }

@@ -9,6 +9,23 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.59.0 / admin 1.58.1] - 2026-07-17
+
+### Admin: mejoras en formularios SIEEJ
+
+#### Agregado
+
+- **FormularioCard**: botón "Asignaciones" (`TeamOutlined`) en las acciones que navega directo a la pestaña de asignaciones del formulario.
+- **MemberPicker**: adaptación mobile — en pantallas `< md` se usa `Select mode="multiple"` con búsqueda en vez del `Transfer` de dos columnas.
+
+#### Cambiado
+
+- **AsignacionesEditor**: el guardado es automático al seleccionar grupos o mover usuarios; se eliminó el botón "Guardar asignaciones".
+- **MemberPicker**: ocupa todo el ancho disponible en desktop (`flex: 1` en vez de ancho fijo).
+- **EnviosTable**: el contenido expandido muestra el nombre del usuario junto con las fechas (Iniciado/Enviado/Actualizado) en una sola fila; columnas con ancho fijo para evitar espacio excesivo.
+
+---
+
 ## [api 1.59.0 / admin 1.58.0] - 2026-07-17
 
 ### SIEEJ: campo de rango de fechas y visibilidad condicional multi-valor

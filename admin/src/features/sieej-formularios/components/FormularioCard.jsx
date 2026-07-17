@@ -1,7 +1,7 @@
 import { Button, Card, Tag, Tooltip, Typography } from 'antd';
 import {
     EditOutlined, DeleteOutlined, PlayCircleOutlined,
-    CloseCircleOutlined, InboxOutlined,
+    CloseCircleOutlined, InboxOutlined, TeamOutlined,
 } from '@ant-design/icons';
 
 const { Title, Paragraph, Text } = Typography;
@@ -35,7 +35,7 @@ const Vigencia = ({ inicio, fin }) => {
 };
 
 const FormularioCard = ({
-    formulario, onEditar, onEnvios, onPublicar, onCerrar, onEliminar,
+    formulario, onEditar, onEnvios, onPublicar, onCerrar, onEliminar, onAsignaciones,
 }) => {
     const stop = (handler) => (e) => {
         e.stopPropagation();
@@ -48,6 +48,9 @@ const FormularioCard = ({
         </Tooltip>,
         <Tooltip key="envios" title="Envíos">
             <Button type="text" icon={<InboxOutlined />} onClick={stop(onEnvios)} aria-label="Envíos" />
+        </Tooltip>,
+        <Tooltip key="asignaciones" title="Asignaciones">
+            <Button type="text" icon={<TeamOutlined />} onClick={stop(onAsignaciones)} aria-label="Asignaciones" />
         </Tooltip>,
         formulario.estado === 'borrador' ? (
             <Tooltip key="publicar" title="Publicar">

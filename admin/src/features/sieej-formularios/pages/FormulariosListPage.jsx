@@ -246,6 +246,7 @@ export default function FormulariosListPage() {
                                     formulario={f}
                                     onEditar={() => navigate(`/sieej/formularios/${f.slug}`)}
                                     onEnvios={() => navigate(`/sieej/formularios/${f.slug}?tab=envios`)}
+                                    onAsignaciones={() => navigate(`/sieej/formularios/${f.slug}?tab=asignaciones`)}
                                     onPublicar={() => handlePublicar(f)}
                                     onCerrar={() => handleCerrar(f)}
                                     onEliminar={() => handleEliminar(f)}
