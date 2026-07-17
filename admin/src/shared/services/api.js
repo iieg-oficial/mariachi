@@ -66,7 +66,12 @@ api.interceptors.response.use(
             if (!redirectingToLogin && !window.location.pathname.endsWith('/login')) {
                 redirectingToLogin = true;
                 const base = import.meta.env.BASE_URL || '/';
-                const target = `${base.replace(/\/$/, '')}/login`;
+                const basePath = base.replace(/\/$/, '');
+                const current = window.location.pathname + window.location.search;
+                const next = current.startsWith(basePath) ? current.slice(basePath.length) : current;
+                const target = next && next !== '/'
+                    ? `${basePath}/login?next=${encodeURIComponent(next)}`
+                    : `${basePath}/login`;
                 setTimeout(() => { window.location.href = target; }, 0);
             }
             return Promise.reject(error);

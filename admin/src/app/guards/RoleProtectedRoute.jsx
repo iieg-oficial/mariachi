@@ -1,14 +1,16 @@
-import { Navigate } from 'react-router';
+import { Navigate, useLocation } from 'react-router';
 import { Result, Button } from 'antd';
 import { useAuth } from '@shared/contexts/useAuth';
 import { useNavigate } from 'react-router';
+import { buildLoginPath } from '@shared/helpers/loginRedirect';
 
 export default function RoleProtectedRoute({ children, allowedRoles = [] }) {
     const { user } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
 
     if (!user) {
-        return <Navigate to="/login" replace />;
+        return <Navigate to={buildLoginPath(location)} replace />;
     }
 
     if (!allowedRoles.includes(user.role)) {
