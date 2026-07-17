@@ -11,6 +11,7 @@ export const FIELD_TYPES = [
     { value: 'email', label: 'Correo electrónico' },
     { value: 'tel', label: 'Teléfono' },
     { value: 'date', label: 'Fecha' },
+    { value: 'date_range', label: 'Rango de fechas' },
     { value: 'select', label: 'Selección' },
     { value: 'select_multiple', label: 'Selección múltiple' },
     { value: 'radio', label: 'Opción única (radio)' },

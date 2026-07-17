@@ -26,6 +26,7 @@ FIELD_TYPES = {
     "email",
     "tel",
     "date",
+    "date_range",
     "select",
     "select_multiple",
     "radio",
@@ -357,6 +358,12 @@ def _validar_field(
         if "equals" not in show_when:
             raise DefinicionInvalidaError(
                 f"Step `{step_id}` field `{name}`: `showWhen.equals` requerido."
+            )
+        equals = show_when.get("equals")
+        if isinstance(equals, list) and not equals:
+            raise DefinicionInvalidaError(
+                f"Step `{step_id}` field `{name}`: `showWhen.equals` no puede ser "
+                "lista vacia."
             )
 
 

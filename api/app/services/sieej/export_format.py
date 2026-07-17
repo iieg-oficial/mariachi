@@ -34,6 +34,14 @@ def format_value(field: dict[str, Any], value: Any) -> str | None:
             return None
         opts = resolve_options(field)
         return ", ".join(opts.get(str(v), str(v)) for v in value)
+    if field_type == "date_range":
+        if not isinstance(value, dict):
+            return None
+        start = value.get("start") or ""
+        end = value.get("end") or ""
+        if not start and not end:
+            return None
+        return f"{start} – {end}"
     if field_type == "file":
         if isinstance(value, dict):
             return value.get("filename_original") or value.get("url_publica")

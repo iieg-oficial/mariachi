@@ -30,16 +30,10 @@ Schema dedicado `sieej` en la BD `mariachi`. Tablas vigentes:
 | `sieej.envio_formulario` | entidad | Un envio por usuario × formulario (UNIQUE). Estado `en_proceso`/`enviado`/`expirado`. Campos: `formulario_version`, `definicion_snapshot` (JSONB), `datos` (JSONB), `paso_actual`. |
 | `sieej.envio_archivo` | entidad | Archivos subidos en campos `file` del envio. Guarda `bucket`, `object_key`, `url_publica`, `mime`, `size_bytes`. |
 | `sieej.envio_evento` | entidad | Auditoria del envio. Tipos: `iniciado`, `guardado`, `enviado`, `expirado`, `reabierto`. |
-| `sieej.catalogo_unidad_admin` | catalogo | Unidades administrativas del estado (~85 valores). |
-| `sieej.catalogo_categoria_datos` | catalogo | Publicos, Internos, Personales, Sensibles, Confidenciales, Reservados. |
-| `sieej.catalogo_herramientas_gestion` | catalogo | ERP, CRM, Excel, Otro. |
-| `sieej.catalogo_calidad_datos` | catalogo | Verificacion manual, Herramientas automaticas, Ambas. |
-| `sieej.catalogo_periodicidad` | catalogo | Diario, Semanal, Mensual, Anual, Indeterminado, Otro. |
-| `sieej.catalogo_objetivo_uso` | catalogo | Toma de decisiones, Politicas publicas, Informes, Otro. |
-| `sieej.catalogo_usuarios_datos` | catalogo | Generados internamente, Proveedores externos, Ambos. |
-| `sieej.catalogo_ejes_estrategicos` | catalogo | Ejes del Plan Estatal (Salud, Empleo, Innovacion, etc.). |
+| `sieej.catalogo` | catalogo | Un registro por catalogo global: `clave` UNIQUE (lo que referencia `field.catalog`) + `label`. CRUD completo desde el admin. |
+| `sieej.catalogo_opcion` | catalogo | Opciones `{catalogo_id, value}`. UNIQUE por catalogo; CASCADE al borrar el catalogo. |
 
-Los catalogos se siembran desde `api/data/sieej/*.json` en la migracion `e7f8a9b0c1d2_init_sieej_schema`. El proyecto `Project(slug='sieej')` se crea en `c0d1e2f3a4b5_add_projects_user_projects_media_buckets` y la misma migracion `e7f8a9b0c1d2` siembra el `AcervoBucket(acervo_bucket='sieej-diccionarios')`.
+Los catalogos originales (unidades_admin, categoria_datos, herramientas_gestion, calidad_datos, periodicidad, objetivo_uso, usuarios_datos, ejes_estrategicos) se sembraron desde `api/data/sieej/*.json` en la migracion `e7f8a9b0c1d2_init_sieej_schema` con una tabla fisica por catalogo; la migracion `d4e5f6a7b8c9_generic_sieej_catalogos` los consolido en el par generico `catalogo` + `catalogo_opcion` (conservando claves y opciones) y elimino las 8 tablas `catalogo_*`. El proyecto `Project(slug='sieej')` se crea en `c0d1e2f3a4b5_add_projects_user_projects_media_buckets` y la misma migracion `e7f8a9b0c1d2` siembra el `AcervoBucket(acervo_bucket='sieej-diccionarios')`.
 
 Todas las tablas referencian `public.usuarios.id` con `ON DELETE CASCADE` (excepto `formulario.creado_por_id` que es RESTRICT). Los catalogos siguen disponibles porque la definicion JSONB puede referenciarlos por nombre (`field.catalog: "unidades_admin"`).
 
@@ -71,12 +65,13 @@ Cada `formulario.definicion` es un objeto con esta forma minima:
 Los steps `form` y `repeater` aceptan `incompleteNotice` opcional (`{title?, message}`): si el respondent avanza (o envía) con campos visibles sin llenar en ese step, el frontend muestra un modal de advertencia con ese mensaje **sin bloquear** la navegación ni el envío ("Revisar" / "Continuar de todos modos"). Pensado para steps 100% opcionales tipo checklist. Los campos `info` y los ocultos por `showWhen` no cuentan como incompletos; un `checkbox` sin marcar sí cuenta. Se edita desde el `StepDrawer` del CMS.
 
 ### Tipos de field
-`text`, `textarea`, `number`, `email`, `tel`, `date`, `select`, `select_multiple`, `radio`, `checkbox`, `file`, `info`.
+`text`, `textarea`, `number`, `email`, `tel`, `date`, `date_range`, `select`, `select_multiple`, `radio`, `checkbox`, `file`, `info`.
 
-Atributos comunes: `name` (unico por step), `label`, `required`, `validation` (`minLength`, `maxLength`, `pattern`, `min`, `max`), `showWhen` (`{ field, equals }`).
+Atributos comunes: `name` (unico por step), `label`, `required`, `validation` (`minLength`, `maxLength`, `pattern`, `min`, `max`), `showWhen` (`{ field, equals }`; `equals` puede ser un valor o una lista de valores, y la condicion se cumple si el campo disparador coincide con cualquiera).
 
 - **`select`/`select_multiple`/`radio`/`checkbox`**: requieren `options` (`[{value, label}]`) o `catalog` (string que identifica un catalogo). No pueden mezclar ambos.
 - **`file`**: requiere `bucket` (Acervo). Acepta `maxSizeMB` (cap absoluto 100 MB) y `accept` (lista de MIME/extensions). Al subir via `POST /formularios/{slug}/envio/upload` el backend persiste **dos** registros sincronizados: una fila en `sieej.envio_archivo` (con `bucket`, `object_key`, `url_publica`, `mime`, `size_bytes`, `field_path`) y una entrada en `envio.datos[step][field] = {url_publica, filename, mime, size_bytes}` que es lo que valida `datos_validator` al cierre del envio. El frontend NO debe sobrescribir manualmente la entrada en `datos` (la fuente de verdad la pone el endpoint de upload).
+- **`date_range`**: rango de fechas. El valor en `datos` es `{start, end}` con fechas `YYYY-MM-DD`; `datos_validator` exige ambas fechas si alguna esta presente (incluso en borrador) y rechaza `start > end`. En exports/PDF/resumen se formatea `start – end`.
 - **`info`**: campo informativo (HTML/markdown), no captura datos.
 
 ### Validacion
@@ -107,7 +102,7 @@ El nuevo modelo reemplaza el versionado anterior donde cada edicion de definicio
 
 Todo cuelga de `admin_prefix` (`/api/administrador` por default). Las mutaciones requieren `verify_csrf` (cabecera `X-CSRF-Token`). Cookie JWT siempre obligatoria.
 
-### Admin (`/sieej/*`) — gestion de formularios y grupos
+### Admin (`/sieej/*`) — gestion de formularios, grupos y catalogos
 
 Router: `app/api/routes/sieej_admin/*`. Protegido por `staff_dep` (cualquier usuario autenticado en el monorepo). El admin global (`role='tetlamamakani'`) tiene acceso completo.
 
@@ -132,6 +127,14 @@ Router: `app/api/routes/sieej_admin/*`. Protegido por `staff_dep` (cualquier usu
 | DELETE | `/sieej/grupos/{id}` | 400 si tiene formularios asignados. |
 | GET | `/sieej/grupos/{id}/usuarios` | Miembros. |
 | PUT | `/sieej/grupos/{id}/usuarios` | Reemplaza miembros. |
+| GET | `/sieej/catalogos` | Lista catalogos (mas recientes primero) con total de opciones y campos enlazados por formulario. |
+| POST | `/sieej/catalogos` | Crear catalogo (`label`; `clave` opcional, se deriva del label). |
+| PUT | `/sieej/catalogos/{clave}` | Renombrar el `label` (la `clave` es inmutable: la referencian las definiciones JSONB). |
+| DELETE | `/sieej/catalogos/{clave}` | 409 si algun campo lo referencia o alguna opcion esta en uso por envios. |
+| GET | `/sieej/catalogos/{clave}` | Opciones del catalogo con conteo `en_uso`. |
+| POST | `/sieej/catalogos/{clave}` | Agregar opcion. |
+| PUT | `/sieej/catalogos/{clave}/{item_id}` | Renombrar opcion; propaga el nuevo valor a los envios que la usan. |
+| DELETE | `/sieej/catalogos/{clave}/{item_id}` | 409 si la opcion esta en uso por algun envio. |
 
 ### Respondent (`/formularios/*`) — captura
 
@@ -139,7 +142,7 @@ Router: `app/api/routes/formularios/*`. Protegido por `Depends(require_project_a
 
 | Metodo | Ruta | Funcion |
 |---|---|---|
-| GET | `/formularios/catalogos` | Bundle con las ocho colecciones de catalogos. Reduce roundtrips desde el wizard. |
+| GET | `/formularios/catalogos` | Bundle dinamico `{clave: [{id, value}]}` con todos los catalogos. Reduce roundtrips desde el wizard. |
 | GET | `/formularios/` | Lista de formularios visibles (activos + dentro de vigencia + asignados al user o a un grupo del user). |
 | GET | `/formularios/{slug}` | Definicion (snapshot si ya hay envio) + envio actual. |
 | GET | `/formularios/{slug}/schema` | Definicion + reglas de validacion planas para feedback inline. |
@@ -243,6 +246,7 @@ api/
     ├── api/routes/
     │   ├── sieej_admin/                             # Gestion (admin)
     │   │   ├── __init__.py
+    │   │   ├── catalogos.py                         # CRUD catalogos + opciones
     │   │   ├── formularios.py                       # CRUD + publicar/cerrar/asignaciones/envios
     │   │   ├── grupos.py                            # CRUD grupos + miembros
     │   │   └── stats.py                             # GET /sieej/stats
@@ -252,7 +256,7 @@ api/
     │       └── dinamicos.py                         # Lista, detalle, schema, envio, upload
     ├── models/sieej/
     │   ├── __init__.py
-    │   ├── catalogos.py                             # 8 catalogos
+    │   ├── catalogos.py                             # Catalogo + CatalogoOpcion (genericos)
     │   ├── formulario.py                            # Formulario
     │   ├── grupo.py                                 # Grupo + tablas N:M
     │   └── envio.py                                 # EnvioFormulario, EnvioArchivo, EnvioEvento
