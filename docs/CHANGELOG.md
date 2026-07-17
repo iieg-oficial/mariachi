@@ -9,6 +9,26 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.58.0 / admin 1.57.0] - 2026-07-17
+
+### SIEEJ: catálogos administrables (CRUD con tablas genéricas)
+
+#### Agregado
+
+- **API** (`models/sieej/catalogos.py`, migración `d4e5f6a7b8c9`): par genérico `sieej.catalogo` (`clave` UNIQUE + `label`) + `sieej.catalogo_opcion` (`value` UNIQUE por catálogo, `ON DELETE CASCADE`) que reemplaza las 8 tablas fijas `catalogo_*`. La migración copia claves, labels y opciones existentes y elimina las tablas legacy.
+- **API** (`services/sieej/catalogos_service.py`, `routes/sieej_admin/catalogos.py`): `POST/PUT/DELETE /sieej/catalogos[/{clave}]` para crear (clave derivada del label), renombrar (el `label`; la `clave` es inmutable porque la referencian las definiciones JSONB) y eliminar catálogos. El borrado responde 409 si algún campo lo referencia o alguna opción está en uso por envíos. El listado devuelve los catálogos más recientes primero.
+- **Admin** (`CatalogosManager.jsx`, `CatalogosPage.jsx`): alta de catálogo inline (botón que revela el input, sin modal) y el recién creado aparece primero; renombrado inline y eliminación con bloqueo cuando hay campos enlazados.
+
+#### Cambiado
+
+- **API** (`routes/formularios/catalogos.py`): el bundle `GET /formularios/catalogos` pasa a ser dinámico `{clave: [{id, value}]}` en lugar del objeto fijo con las ocho colecciones. El frontend ya lo consumía por clave, sin cambios de contrato para los campos existentes.
+
+#### Migración
+
+- Correr `alembic -x db=mariachi upgrade head` **y reiniciar la API en el mismo paso** (Gunicorn sin reload mantiene en memoria el código que apunta a las tablas `catalogo_*` ya eliminadas).
+
+---
+
 ## [api 1.57.2 / admin 1.56.2] - 2026-07-17
 
 ### MapaLab: purgar una capa borraba su tema ancestro
