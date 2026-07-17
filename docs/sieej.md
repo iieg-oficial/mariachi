@@ -288,6 +288,8 @@ Los items aparecen en el sider bajo el grupo "SIEEJ" del `PROJECT_REGISTRY` (`ad
 
 El editor visual de la definicion JSONB esta en `components/visualEditor/` (StepsList + FieldsList + drawers). Los pasos se muestran en **tabs** con drag & drop en las pestañas (dnd-kit), labels en dos lineas con tags mini de tipo y aviso, botones icono en mobile. Los tipos de paso y campo estan en `constants/definitionTypes.js` (compartidos con los drawers, labels en español).
 
+La pestaña de Envios del editor permite expandir cada envio para ver sus respuestas organizadas en pestañas (una por step del formulario) sin necesidad de descargar el PDF. Las fechas de Iniciado, Enviado y Actualizado se muestran dentro del detalle expandido como metadatos.
+
 La seleccion de miembros en `GruposPage` y `AsignacionesEditor` usa `MemberPicker` — un `Transfer` de AntD con busqueda por `username`, `name` y `email`, que reemplaza los `Select mode="multiple"` anteriores que no escalaban con muchos usuarios.
 
 ## Frontend respondent (`iieg-oficial/sieej`)

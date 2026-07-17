@@ -1,12 +1,49 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Alert, Button, Empty, Modal, Select, Space, Table, Tag, Tooltip, Typography } from 'antd';
+import { Button, Descriptions, Empty, Modal, Select, Skeleton, Space, Table, Tabs, Tag, Tooltip, Typography } from 'antd';
 import { FileExcelOutlined, FilePdfOutlined, FileTextOutlined, UndoOutlined } from '@ant-design/icons';
 import { message } from '@shared/services/message';
 import { formulariosApi } from '../services/formulariosAdminApi';
+import { buildRespuestas } from './snapshotUtils';
+import { SeccionContenido } from './RespuestasView';
 import EnvioDetalleDrawer from './EnvioDetalleDrawer';
 
 const ESTADO_COLOR = { en_proceso: 'orange', enviado: 'green', expirado: 'red' };
 const ESTADO_LABEL = { en_proceso: 'En proceso', enviado: 'Enviado', expirado: 'Expirado' };
+
+const fmtFecha = (v) => (v ? new Date(v).toLocaleString() : '—');
+
+function EnvioRespuestasExpandida({ estado, record }) {
+    return (
+        <>
+            <Descriptions
+                size="small"
+                column={{ xs: 1, sm: 3 }}
+                style={{ marginBottom: 12 }}
+                items={[
+                    { key: 'iniciado', label: 'Iniciado', children: fmtFecha(record.iniciado_en) },
+                    { key: 'enviado', label: 'Enviado', children: fmtFecha(record.enviado_en) },
+                    { key: 'actualizado', label: 'Actualizado', children: fmtFecha(record.actualizado_en) },
+                ]}
+            />
+            {(!estado || estado.loading) && <Skeleton active paragraph={{ rows: 4 }} />}
+            {estado?.error && <Typography.Text type="danger">Error al cargar el envío</Typography.Text>}
+            {estado && !estado.loading && !estado.error && (() => {
+                const secciones = buildRespuestas(estado.data.definicion_snapshot, estado.data.datos);
+                if (!secciones.length) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Sin respuestas" />;
+                return (
+                    <Tabs
+                        destroyOnHidden
+                        items={secciones.map((sec) => ({
+                            key: sec.id,
+                            label: sec.title,
+                            children: <SeccionContenido sec={sec} />,
+                        }))}
+                    />
+                );
+            })()}
+        </>
+    );
+}
 
 const filenameFromHeaders = (headers, fallback) => {
     const cd = headers?.['content-disposition'] || '';
@@ -30,7 +67,6 @@ const triggerDownload = (response, fallback) => {
 export default function EnviosTable({ formulario }) {
     const [items, setItems] = useState([]);
     const [total, setTotal] = useState(0);
-    const [desactualizados, setDesactualizados] = useState(0);
     const [loading, setLoading] = useState(true);
     const [estado, setEstado] = useState(undefined);
     const [page, setPage] = useState(1);
@@ -38,6 +74,18 @@ export default function EnviosTable({ formulario }) {
     const [drawer, setDrawer] = useState(null);
     const [exporting, setExporting] = useState(null);
     const [pdfLoadingId, setPdfLoadingId] = useState(null);
+    const [detalles, setDetalles] = useState({});
+
+    const cargarDetalle = useCallback(async (id) => {
+        if (detalles[id]) return;
+        setDetalles((prev) => ({ ...prev, [id]: { loading: true } }));
+        try {
+            const data = await formulariosApi.getEnvio(formulario.id, id);
+            setDetalles((prev) => ({ ...prev, [id]: { loading: false, data } }));
+        } catch {
+            setDetalles((prev) => ({ ...prev, [id]: { loading: false, error: true } }));
+        }
+    }, [detalles, formulario.id]);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -49,7 +97,6 @@ export default function EnviosTable({ formulario }) {
             });
             setItems(data.items);
             setTotal(data.total);
-            setDesactualizados(data.desactualizados ?? 0);
         } catch {
             message.error('Error al cargar envios');
         } finally {
@@ -140,24 +187,6 @@ export default function EnviosTable({ formulario }) {
             render: (v) => <Tag color={ESTADO_COLOR[v]}>{ESTADO_LABEL[v] || v}</Tag>,
         },
         {
-            title: 'Iniciado',
-            dataIndex: 'iniciado_en',
-            key: 'iniciado_en',
-            render: (v) => v ? new Date(v).toLocaleString() : '—',
-        },
-        {
-            title: 'Enviado',
-            dataIndex: 'enviado_en',
-            key: 'enviado_en',
-            render: (v) => v ? new Date(v).toLocaleString() : '—',
-        },
-        {
-            title: 'Actualizado',
-            dataIndex: 'actualizado_en',
-            key: 'actualizado_en',
-            render: (v) => v ? new Date(v).toLocaleString() : '—',
-        },
-        {
             title: 'Acciones',
             key: 'acciones',
             width: 170,
@@ -198,16 +227,6 @@ export default function EnviosTable({ formulario }) {
 
     return (
         <>
-            {desactualizados > 0 && (
-                <Alert
-                    type="warning"
-                    showIcon
-                    closable
-                    style={{ marginBottom: 12 }}
-                    message={`${desactualizados} ${desactualizados === 1 ? 'envío se llenó' : 'envíos se llenaron'} con una versión anterior del formulario (actual: v${formulario.version}).`}
-                    description="Abre un envío marcado como «Desactualizado» para ver los cambios de la definición desde que se respondió."
-                />
-            )}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
                 <Space>
                     <Typography.Text>Filtrar por estado:</Typography.Text>
@@ -231,7 +250,7 @@ export default function EnviosTable({ formulario }) {
                         disabled={total === 0}
                         onClick={() => handleExport('xlsx')}
                     >
-                        Descargar Excel
+                        Descargar XLSX
                     </Button>
                     <Button
                         icon={<FileTextOutlined />}
@@ -249,6 +268,10 @@ export default function EnviosTable({ formulario }) {
                 rowKey="id"
                 loading={loading}
                 onRow={(record) => ({ onClick: () => setDrawer(record) })}
+                expandable={{
+                    expandedRowRender: (record) => <EnvioRespuestasExpandida estado={detalles[record.id]} record={record} />,
+                    onExpand: (expanded, record) => { if (expanded) cargarDetalle(record.id); },
+                }}
                 pagination={{
                     current: page,
                     pageSize,

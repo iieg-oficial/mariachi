@@ -3,6 +3,7 @@ import { Alert, Descriptions, Drawer, Empty, List, Segmented, Skeleton, Space, T
 import { message } from '@shared/services/message';
 import { formulariosApi } from '../services/formulariosAdminApi';
 import { buildRespuestas, diffDefiniciones } from './snapshotUtils';
+import { SeccionContenido } from './RespuestasView';
 
 const ESTADO_COLOR = { en_proceso: 'orange', enviado: 'green', expirado: 'red' };
 const ESTADO_LABEL = { en_proceso: 'En proceso', enviado: 'Enviado', expirado: 'Expirado' };
@@ -16,30 +17,7 @@ function Respuestas({ definicion, datos }) {
             {secciones.map((sec) => (
                 <div key={sec.id}>
                     <Typography.Title level={5} style={{ marginBottom: 8 }}>{sec.title}</Typography.Title>
-                    {sec.repeater ? (
-                        sec.items.length === 0 ? (
-                            <Typography.Text type="secondary">Sin elementos</Typography.Text>
-                        ) : (
-                            sec.items.map((item, idx) => (
-                                <Descriptions
-                                    key={item.key}
-                                    size="small"
-                                    bordered
-                                    column={1}
-                                    title={`#${idx + 1}`}
-                                    style={{ marginBottom: 12 }}
-                                    items={item.entries.map((e) => ({ key: e.key, label: e.label, children: e.value }))}
-                                />
-                            ))
-                        )
-                    ) : (
-                        <Descriptions
-                            size="small"
-                            bordered
-                            column={1}
-                            items={sec.entries.map((e) => ({ key: e.key, label: e.label, children: e.value }))}
-                        />
-                    )}
+                    <SeccionContenido sec={sec} />
                 </div>
             ))}
         </Space>
