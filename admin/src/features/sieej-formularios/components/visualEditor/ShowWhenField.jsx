@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Alert, Form, Input, Select, Tag } from 'antd';
+import { Alert, Form, Select, Tag } from 'antd';
 import useCatalogos from '../../hooks/useCatalogos';
 import { conditionValueOptions, describeCondition, dependentsOf } from './fieldUtils';
 
@@ -65,28 +65,34 @@ const ShowWhenField = ({ form, availableFields = [] }) => {
             </Form.Item>
             {watchField && (
                 <Form.Item
-                    label={isMultiSource ? '…incluya la opción' : '…tenga el valor'}
+                    label={isMultiSource ? '…incluya alguna de estas opciones' : '…tenga alguno de estos valores'}
                     name="showWhen_equals"
                     style={{ marginBottom: 12 }}
-                    rules={[{ required: true, message: 'Elige el valor que activa este campo.' }]}
+                    rules={[{ required: true, message: 'Elige al menos un valor que active este campo.' }]}
                     extra={usesCatalog
-                        ? `Opciones del catálogo «${source.catalog}».`
+                        ? `Opciones del catálogo «${source.catalog}». El campo aparece si coincide con cualquiera.`
                         : (valueOptions
-                            ? undefined
-                            : 'Este campo es de texto libre: escribe el valor exacto que debe coincidir.')}
+                            ? 'El campo aparece si coincide con cualquiera de los valores elegidos.'
+                            : 'Este campo es de texto libre: escribe uno o varios valores exactos (Enter para agregar).')}
                 >
                     {valueOptions || usesCatalog ? (
                         <Select
+                            mode="multiple"
                             showSearch
                             optionFilterProp="label"
                             loading={usesCatalog && catalogosLoading}
                             placeholder={usesCatalog && catalogosLoading
                                 ? 'Cargando catálogo…'
-                                : 'Elige una opción'}
+                                : 'Elige una o varias opciones'}
                             options={valueOptions ?? []}
                         />
                     ) : (
-                        <Input placeholder="otro" />
+                        <Select
+                            mode="tags"
+                            open={false}
+                            placeholder="Escribe un valor y Enter"
+                            suffixIcon={null}
+                        />
                     )}
                 </Form.Item>
             )}
@@ -95,7 +101,7 @@ const ShowWhenField = ({ form, availableFields = [] }) => {
                     type="info"
                     showIcon
                     message={`Este campo solo se mostrará cuando «${condition.triggerLabel}» `
-                        + `${condition.isMulti ? 'incluya' : 'sea'} «${condition.valueLabel}».`}
+                        + `${condition.isMulti ? 'incluya' : 'sea'} ${condition.valueText}.`}
                 />
             )}
             {dependents.length > 0 && (
@@ -115,7 +121,7 @@ const ShowWhenField = ({ form, availableFields = [] }) => {
                                     return (
                                         <Tag key={d.name} color="purple">
                                             {d.label || d.name}
-                                            {dc ? ` · si ${dc.isMulti ? 'incluye' : '='} «${dc.valueLabel}»` : ''}
+                                            {dc ? ` · si ${dc.isMulti ? 'incluye' : '='} ${dc.valueText}` : ''}
                                         </Tag>
                                     );
                                 })}
