@@ -9,6 +9,17 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.57.2 / admin 1.56.2] - 2026-07-17
+
+### MapaLab: purgar una capa borraba su tema ancestro
+
+#### Corregido
+
+- **API** (`models/layer.py`): la relación `children` del árbol de capas estaba definida con `remote_side` hacia el padre y `cascade="all, delete-orphan"`, invirtiendo la dirección padre-hijo en el ORM. Al purgar una capa de la papelera, SQLAlchemy borraba en cadena sus ancestros (subtema, tema, hasta la raíz) y desplazaba a raíz (`parent_id=NULL`) al resto de sus hijos. Se redefine como `parent`/`children` con `back_populates` y `passive_deletes=True`; el borrado en cascada queda solo en el FK de la BD (siempre hacia descendientes).
+- **API** (`layer_service.py`): `purge_layer` ahora rechaza (409) purgar una capa que todavía tenga hijos, incluyendo hijos en papelera, para que el `ON DELETE CASCADE` de la BD no elimine descendientes en silencio. Antes solo el soft-delete validaba hijos activos.
+
+---
+
 ## [api 1.57.1 / admin 1.56.1] - 2026-07-16
 
 ### Infra: eliminar defaults inline del compose

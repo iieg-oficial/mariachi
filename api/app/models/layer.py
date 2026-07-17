@@ -116,13 +116,8 @@ class Layer(DataEngineBase):
     deleted_by = Column(String(100), nullable=True)
 
     workspace = relationship("Workspace", lazy="joined")
-    children = relationship(
-        "Layer",
-        backref="parent",
-        remote_side="Layer.id",
-        cascade="all, delete-orphan",
-        single_parent=True,
-    )
+    parent = relationship("Layer", remote_side="Layer.id", back_populates="children")
+    children = relationship("Layer", back_populates="parent", passive_deletes=True)
     aliases = relationship(
         "LayerAlias",
         back_populates="layer",
