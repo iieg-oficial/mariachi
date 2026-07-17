@@ -9,6 +9,28 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.59.0 / admin 1.58.0] - 2026-07-17
+
+### SIEEJ: campo de rango de fechas y visibilidad condicional multi-valor
+
+#### Agregado
+
+- **API** (`datos_validator.py`, `definicion_validator.py`, `export_format.py`): tipo de campo `date_range` con validación de ambas fechas y `start <= end`, formato `start – end` en export/PDF/resumen.
+- **Admin** (`definitionTypes.js`, `snapshotUtils.js`, `FieldForm.jsx`, `FieldPreview.jsx`): opción "Rango de fechas" en el editor, preview con `RangePicker` y tooltip al enfocar un campo.
+- `showWhen.equals` ahora acepta una lista de valores (la condición se cumple si el campo disparador coincide con cualquiera); el validador de definición rechaza listas vacías.
+
+### SIEEJ: respuestas de envío inline en el CMS
+
+#### Agregado
+
+- **Admin** (`EnviosTable.jsx`, `RespuestasView.jsx`): filas expandibles en la tabla de envíos con pestañas por step para ver las respuestas sin descargar el PDF. Las fechas de Iniciado, Enviado y Actualizado se movieron al detalle expandido como metadatos.
+
+#### Cambiado
+
+- **Admin** (`EnviosTable.jsx`): el banner de "envíos desactualizados" se eliminó (el tag por fila ya lo indica). El botón "Descargar Excel" pasó a llamarse "Descargar XLSX".
+
+---
+
 ## [api 1.58.1 / admin 1.57.1] - 2026-07-17
 
 ### Admin: volver a la ruta original tras iniciar sesión
