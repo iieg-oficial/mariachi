@@ -39,14 +39,8 @@ class CatalogoItemPayload(BaseModel):
     value: str = Field(min_length=1, max_length=255)
 
 
-class CatalogosResponse(BaseModel):
-    """Bundle con todos los catálogos SIEEJ; reduce roundtrips desde el wizard."""
+class CatalogoPayload(BaseModel):
+    """Alta/edición de un catálogo; `clave` se deriva del label si falta."""
 
-    unidades_admin: list[CatalogoItem]
-    categoria_datos: list[CatalogoItem]
-    herramientas_gestion: list[CatalogoItem]
-    calidad_datos: list[CatalogoItem]
-    periodicidad: list[CatalogoItem]
-    objetivo_uso: list[CatalogoItem]
-    usuarios_datos: list[CatalogoItem]
-    ejes_estrategicos: list[CatalogoItem]
+    label: str = Field(min_length=1, max_length=255)
+    clave: str | None = Field(default=None, max_length=64)

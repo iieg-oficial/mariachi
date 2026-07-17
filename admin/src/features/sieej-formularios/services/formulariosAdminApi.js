@@ -23,6 +23,9 @@ export const catalogosApi = {
     crear: (clave, value) => api.post(`/sieej/catalogos/${clave}`, { value }).then((r) => r.data),
     renombrar: (clave, id, value) => api.put(`/sieej/catalogos/${clave}/${id}`, { value }).then((r) => r.data),
     eliminar: (clave, id) => api.delete(`/sieej/catalogos/${clave}/${id}`).then((r) => r.data),
+    createCatalog: (label, clave) => api.post('/sieej/catalogos', { label, clave: clave || null }).then((r) => r.data),
+    updateCatalog: (clave, label) => api.put(`/sieej/catalogos/${clave}`, { label }).then((r) => r.data),
+    deleteCatalog: (clave) => api.delete(`/sieej/catalogos/${clave}`).then((r) => r.data),
 };
 
 export const gruposApi = {

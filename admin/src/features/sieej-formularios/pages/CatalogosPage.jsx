@@ -31,7 +31,8 @@ export default function CatalogosPage() {
                 <Typography.Paragraph type="secondary" style={{ margin: '8px 0 0' }}>
                     Listas globales compartidas entre formularios: editar una afecta a todos
                     los campos enlazados. Renombrar una opción actualiza también los envíos
-                    que ya la eligieron; borrarla se bloquea si está en uso.
+                    que ya la eligieron; borrarla se bloquea si está en uso. Puedes crear
+                    catálogos nuevos y eliminar los que ningún campo use.
                 </Typography.Paragraph>
             </div>
 
