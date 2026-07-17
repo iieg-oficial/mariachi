@@ -87,6 +87,14 @@ def test_field_type_desconocido_falla():
         validar_definicion(d)
 
 
+def test_field_date_range_pasa():
+    d = _def_minima()
+    d["steps"][0]["fields"].append(
+        {"name": "periodo", "label": "Periodo", "type": "date_range"}
+    )
+    validar_definicion(d)
+
+
 def test_select_sin_options_ni_catalog_falla():
     d = {
         "version": 1,
@@ -270,6 +278,34 @@ def test_show_when_referencia_field_mismo_step_pasa():
         }
     )
     validar_definicion(d)
+
+
+def test_show_when_equals_lista_pasa():
+    """`showWhen.equals` puede ser una lista de valores (OR)."""
+    d = _def_minima()
+    d["steps"][0]["fields"].append(
+        {
+            "name": "b",
+            "label": "B",
+            "type": "text",
+            "showWhen": {"field": "razon_social", "equals": ["x", "y"]},
+        }
+    )
+    validar_definicion(d)
+
+
+def test_show_when_equals_lista_vacia_falla():
+    d = _def_minima()
+    d["steps"][0]["fields"].append(
+        {
+            "name": "b",
+            "label": "B",
+            "type": "text",
+            "showWhen": {"field": "razon_social", "equals": []},
+        }
+    )
+    with pytest.raises(DefinicionInvalidaError, match="lista vacia"):
+        validar_definicion(d)
 
 
 def test_definicion_completa_wizard_sieej_pasa():

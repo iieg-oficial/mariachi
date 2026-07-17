@@ -1,3 +1,86 @@
+const equalsToList = (equals) => (Array.isArray(equals) ? equals : [equals])
+    .filter((v) => v !== undefined && v !== null && v !== '')
+    .map(String);
+
+const normalizeEquals = (raw) => {
+    const list = equalsToList(raw);
+    return list.length > 1 ? list : (list[0] ?? '');
+};
+
+export const fieldFromFormValues = (values) => {
+    const source = values.option_source ?? (values.catalog ? 'catalog' : 'options');
+    const options = source === 'catalog' ? [] : (values.options_list ?? [])
+        .map((o) => ({
+            value: String(o?.value ?? '').trim(),
+            label: String(o?.label ?? '').trim(),
+        }))
+        .filter((o) => o.value)
+        .map((o) => ({ value: o.value, label: o.label || o.value }));
+    const catalog = source === 'catalog' ? values.catalog : null;
+    const showWhen = values.showWhen_field
+        ? { field: values.showWhen_field, equals: normalizeEquals(values.showWhen_equals) }
+        : undefined;
+    const validation = {};
+    if (values.minLength != null) validation.minLength = values.minLength;
+    if (values.maxLength != null) validation.maxLength = values.maxLength;
+    if (values.pattern) validation.pattern = values.pattern;
+    if (values.pattern && values.patternMessage) validation.patternMessage = values.patternMessage;
+    if (values.min != null) validation.min = values.min;
+    if (values.max != null) validation.max = values.max;
+
+    const accept = Array.isArray(values.accept)
+        ? values.accept.map((x) => x.trim()).filter(Boolean)
+        : [];
+
+    const colSpan = values.colSpan ?? 1;
+
+    return {
+        name: values.name,
+        label: values.label,
+        type: values.type,
+        ...(values.required ? { required: true } : {}),
+        ...(values.placeholder ? { placeholder: values.placeholder } : {}),
+        ...(values.tooltip ? { tooltip: values.tooltip } : {}),
+        ...(values.tab ? { tab: values.tab } : {}),
+        ...(options.length > 0 ? { options } : {}),
+        ...(catalog ? { catalog } : {}),
+        ...(showWhen ? { showWhen } : {}),
+        ...(Object.keys(validation).length > 0 ? { validation } : {}),
+        ...(values.type === 'file' && values.bucket ? { bucket: values.bucket } : {}),
+        ...(values.type === 'file' && accept.length > 0 ? { accept } : {}),
+        ...(values.type === 'file' && values.maxSizeMB != null ? { maxSizeMB: values.maxSizeMB } : {}),
+        layout: { colSpan },
+    };
+};
+
+export const fieldToFormValues = (field) => ({
+    name: field?.name ?? '',
+    label: field?.label ?? '',
+    type: field?.type ?? undefined,
+    required: !!field?.required,
+    placeholder: field?.placeholder ?? '',
+    tooltip: field?.tooltip ?? '',
+    tab: field?.tab ?? undefined,
+    options_list: (field?.options ?? []).map((o) => ({
+        value: String(o.value),
+        label: o.label ?? String(o.value),
+    })),
+    catalog: field?.catalog ?? '',
+    option_source: field?.catalog ? 'catalog' : 'options',
+    showWhen_field: field?.showWhen?.field ?? '',
+    showWhen_equals: equalsToList(field?.showWhen?.equals),
+    minLength: field?.validation?.minLength,
+    maxLength: field?.validation?.maxLength,
+    pattern: field?.validation?.pattern ?? '',
+    patternMessage: field?.validation?.patternMessage ?? '',
+    min: field?.validation?.min,
+    max: field?.validation?.max,
+    bucket: field?.bucket ?? undefined,
+    accept: field?.accept ?? [],
+    maxSizeMB: field?.maxSizeMB,
+    colSpan: field?.layout?.colSpan ?? 1,
+});
+
 export const conditionValueOptions = (source, catalogos = {}) => {
     if (!source) return null;
     if (source.type === 'checkbox') {
@@ -22,14 +105,19 @@ export const conditionValueOptions = (source, catalogos = {}) => {
 };
 
 export const describeCondition = (showWhen, sources = [], catalogos = {}) => {
-    if (!showWhen?.field || showWhen.equals === undefined || showWhen.equals === '') return null;
+    if (!showWhen?.field) return null;
+    const values = equalsToList(showWhen.equals);
+    if (values.length === 0) return null;
     const source = sources.find((f) => f.name === showWhen.field) ?? null;
     const options = conditionValueOptions(source, catalogos);
+    const valueLabels = values.map(
+        (v) => options?.find((o) => o.value === v)?.label ?? v,
+    );
     return {
         triggerName: showWhen.field,
         triggerLabel: source?.label || showWhen.field,
-        valueLabel: options?.find((o) => o.value === String(showWhen.equals))?.label
-            ?? String(showWhen.equals),
+        valueLabels,
+        valueText: valueLabels.map((l) => `«${l}»`).join(' o '),
         isMulti: source?.type === 'select_multiple',
     };
 };

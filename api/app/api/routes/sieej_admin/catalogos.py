@@ -7,6 +7,7 @@ from app.models.user import Usuario
 from app.schemas.sieej.catalogos import (
     CatalogoAdminItem,
     CatalogoItemPayload,
+    CatalogoPayload,
     CatalogoResumen,
 )
 from app.services.sieej.catalogos_service import CatalogosService
@@ -17,6 +18,38 @@ router = APIRouter()
 @router.get("/catalogos", response_model=list[CatalogoResumen])
 async def listar_catalogos(db: Session = Depends(get_db)):
     return CatalogosService(db).listar_catalogos()
+
+
+@router.post(
+    "/catalogos",
+    response_model=CatalogoResumen,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_catalog(
+    payload: CatalogoPayload,
+    db: Session = Depends(get_db),
+    _csrf: Usuario = Depends(verify_csrf),
+):
+    return CatalogosService(db).create_catalog(payload.label, payload.clave)
+
+
+@router.put("/catalogos/{clave}", response_model=CatalogoResumen)
+async def update_catalog(
+    clave: str,
+    payload: CatalogoPayload,
+    db: Session = Depends(get_db),
+    _csrf: Usuario = Depends(verify_csrf),
+):
+    return CatalogosService(db).update_catalog(clave, payload.label)
+
+
+@router.delete("/catalogos/{clave}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_catalog(
+    clave: str,
+    db: Session = Depends(get_db),
+    _csrf: Usuario = Depends(verify_csrf),
+):
+    CatalogosService(db).delete_catalog(clave)
 
 
 @router.get("/catalogos/{clave}", response_model=list[CatalogoAdminItem])

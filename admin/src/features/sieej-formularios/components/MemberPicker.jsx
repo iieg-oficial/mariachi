@@ -1,9 +1,8 @@
-import { Transfer } from 'antd';
+import { Select, Transfer } from 'antd';
+import useIsMobile from '@shared/hooks/useIsMobile';
 
 export default function MemberPicker({ usuarios = [], value, onChange }) {
-    const handleChange = (keys) => {
-        onChange?.(keys);
-    };
+    const { isMobile } = useIsMobile();
 
     const dataSource = usuarios.map((u) => ({
         key: u.id,
@@ -13,12 +12,31 @@ export default function MemberPicker({ usuarios = [], value, onChange }) {
             : u.username,
     }));
 
+    if (isMobile) {
+        return (
+            <Select
+                mode="multiple"
+                style={{ width: '100%' }}
+                placeholder="Buscar usuarios"
+                value={value ?? []}
+                onChange={onChange}
+                filterOption={(input, option) =>
+                    option.label.toLowerCase().includes(input.toLowerCase())
+                }
+                options={usuarios.map((u) => ({
+                    value: u.id,
+                    label: u.name || u.username,
+                }))}
+            />
+        );
+    }
+
     return (
         <Transfer
             dataSource={dataSource}
             titles={['Disponibles', 'Seleccionados']}
             targetKeys={value ?? []}
-            onChange={handleChange}
+            onChange={onChange}
             render={(item) => (
                 <div>
                     <div>{item.title}</div>
@@ -31,7 +49,7 @@ export default function MemberPicker({ usuarios = [], value, onChange }) {
                 return item.title.toLowerCase().includes(q)
                     || item.description.toLowerCase().includes(q);
             }}
-            listStyle={{ width: 240, height: 320 }}
+            listStyle={{ flex: 1, height: 320 }}
             selectAllLabels={[
                 ({ selectedCount, totalCount }) => `${selectedCount}/${totalCount}`,
                 ({ selectedCount, totalCount }) => `${selectedCount}/${totalCount}`,

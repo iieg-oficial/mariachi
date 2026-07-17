@@ -1,69 +1,41 @@
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy.orm import relationship
 
 from app.core.database import Base
 
 SCHEMA = "sieej"
 
 
-class CatalogoUnidadAdmin(Base):
-    __tablename__ = "catalogo_unidad_admin"
+class Catalogo(Base):
+    __tablename__ = "catalogo"
     __table_args__ = {"schema": SCHEMA}
 
     id = Column(Integer, primary_key=True, index=True)
-    value = Column(String, unique=True, index=True, nullable=False)
+    clave = Column(String(64), unique=True, index=True, nullable=False)
+    label = Column(String(255), nullable=False)
+
+    opciones = relationship(
+        "CatalogoOpcion",
+        back_populates="catalogo",
+        cascade="all, delete-orphan",
+        order_by="CatalogoOpcion.id",
+    )
 
 
-class CatalogoCategoriaDatos(Base):
-    __tablename__ = "catalogo_categoria_datos"
-    __table_args__ = {"schema": SCHEMA}
-
-    id = Column(Integer, primary_key=True, index=True)
-    value = Column(String, unique=True, index=True, nullable=False)
-
-
-class CatalogoHerramientasGestion(Base):
-    __tablename__ = "catalogo_herramientas_gestion"
-    __table_args__ = {"schema": SCHEMA}
-
-    id = Column(Integer, primary_key=True, index=True)
-    value = Column(String, unique=True, index=True, nullable=False)
-
-
-class CatalogoCalidadDatos(Base):
-    __tablename__ = "catalogo_calidad_datos"
-    __table_args__ = {"schema": SCHEMA}
+class CatalogoOpcion(Base):
+    __tablename__ = "catalogo_opcion"
+    __table_args__ = (
+        UniqueConstraint("catalogo_id", "value", name="uq_catalogo_opcion_value"),
+        {"schema": SCHEMA},
+    )
 
     id = Column(Integer, primary_key=True, index=True)
-    value = Column(String, unique=True, index=True, nullable=False)
+    catalogo_id = Column(
+        Integer,
+        ForeignKey(f"{SCHEMA}.catalogo.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    value = Column(String, nullable=False)
 
-
-class CatalogoPeriodicidad(Base):
-    __tablename__ = "catalogo_periodicidad"
-    __table_args__ = {"schema": SCHEMA}
-
-    id = Column(Integer, primary_key=True, index=True)
-    value = Column(String, unique=True, index=True, nullable=False)
-
-
-class CatalogoObjetivoUso(Base):
-    __tablename__ = "catalogo_objetivo_uso"
-    __table_args__ = {"schema": SCHEMA}
-
-    id = Column(Integer, primary_key=True, index=True)
-    value = Column(String, unique=True, index=True, nullable=False)
-
-
-class CatalogoUsuariosDatos(Base):
-    __tablename__ = "catalogo_usuarios_datos"
-    __table_args__ = {"schema": SCHEMA}
-
-    id = Column(Integer, primary_key=True, index=True)
-    value = Column(String, unique=True, index=True, nullable=False)
-
-
-class CatalogoEjesEstrategicos(Base):
-    __tablename__ = "catalogo_ejes_estrategicos"
-    __table_args__ = {"schema": SCHEMA}
-
-    id = Column(Integer, primary_key=True, index=True)
-    value = Column(String, unique=True, index=True, nullable=False)
+    catalogo = relationship("Catalogo", back_populates="opciones")

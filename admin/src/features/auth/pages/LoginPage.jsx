@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Form, Input, Button, Typography, Flex, Row, Col, theme } from 'antd';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { useAuth } from '@shared/contexts/useAuth';
+import { resolveNextPath } from '@shared/helpers/loginRedirect';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import { BRAND } from '@app/providers/brand';
 import { message } from '@shared/services/message';
@@ -13,6 +14,7 @@ export default function Login() {
     const [loading, setLoading] = useState(false);
     const [form] = Form.useForm();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const { login } = useAuth();
     const { token } = useToken();
     const { isMobile } = useIsMobile();
@@ -33,7 +35,7 @@ export default function Login() {
             if (data.user.must_change_password) {
                 navigate('/change-password');
             } else {
-                navigate('/');
+                navigate(resolveNextPath(searchParams.get('next')));
             }
         } catch (error) {
             console.error(error);

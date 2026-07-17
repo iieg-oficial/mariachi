@@ -8,7 +8,7 @@ import useAccessibleBuckets from '@features/acervo/hooks/useAccessibleBuckets';
 import useCatalogos from '../../hooks/useCatalogos';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import { FIELD_TYPES } from '../../constants/definitionTypes';
-import { describeCondition } from './fieldUtils';
+import { describeCondition, fieldFromFormValues, fieldToFormValues } from './fieldUtils';
 import FieldPreview from './FieldPreview';
 
 const EXTENSION_OPTIONS = [
@@ -31,92 +31,19 @@ const slugify = (text) => text
     .replace(/[^a-z0-9_]+/g, '_')
     .replace(/_+/g, '_').replace(/^_|_$/g, '');
 
-const fromForm = (values) => {
-    const source = values.option_source ?? (values.catalog ? 'catalog' : 'options');
-    const options = source === 'catalog' ? [] : (values.options_list ?? [])
-        .map((o) => ({
-            value: String(o?.value ?? '').trim(),
-            label: String(o?.label ?? '').trim(),
-        }))
-        .filter((o) => o.value)
-        .map((o) => ({ value: o.value, label: o.label || o.value }));
-    const catalog = source === 'catalog' ? values.catalog : null;
-    const showWhen = values.showWhen_field
-        ? { field: values.showWhen_field, equals: values.showWhen_equals ?? '' }
-        : undefined;
-    const validation = {};
-    if (values.minLength != null) validation.minLength = values.minLength;
-    if (values.maxLength != null) validation.maxLength = values.maxLength;
-    if (values.pattern) validation.pattern = values.pattern;
-    if (values.pattern && values.patternMessage) validation.patternMessage = values.patternMessage;
-    if (values.min != null) validation.min = values.min;
-    if (values.max != null) validation.max = values.max;
-
-    const accept = Array.isArray(values.accept)
-        ? values.accept.map((x) => x.trim()).filter(Boolean)
-        : [];
-
-    const colSpan = values.colSpan ?? 1;
-
-    return {
-        name: values.name,
-        label: values.label,
-        type: values.type,
-        ...(values.required ? { required: true } : {}),
-        ...(values.placeholder ? { placeholder: values.placeholder } : {}),
-        ...(values.tooltip ? { tooltip: values.tooltip } : {}),
-        ...(values.tab ? { tab: values.tab } : {}),
-        ...(options.length > 0 ? { options } : {}),
-        ...(catalog ? { catalog } : {}),
-        ...(showWhen ? { showWhen } : {}),
-        ...(Object.keys(validation).length > 0 ? { validation } : {}),
-        ...(values.type === 'file' && values.bucket ? { bucket: values.bucket } : {}),
-        ...(values.type === 'file' && accept.length > 0 ? { accept } : {}),
-        ...(values.type === 'file' && values.maxSizeMB != null ? { maxSizeMB: values.maxSizeMB } : {}),
-        layout: { colSpan },
-    };
-};
-
-const toForm = (field) => ({
-    name: field?.name ?? '',
-    label: field?.label ?? '',
-    type: field?.type ?? undefined,
-    required: !!field?.required,
-    placeholder: field?.placeholder ?? '',
-    tooltip: field?.tooltip ?? '',
-    tab: field?.tab ?? undefined,
-    options_list: (field?.options ?? []).map((o) => ({
-        value: String(o.value),
-        label: o.label ?? String(o.value),
-    })),
-    catalog: field?.catalog ?? '',
-    option_source: field?.catalog ? 'catalog' : 'options',
-    showWhen_field: field?.showWhen?.field ?? '',
-    showWhen_equals: field?.showWhen?.equals != null ? String(field.showWhen.equals) : '',
-    minLength: field?.validation?.minLength,
-    maxLength: field?.validation?.maxLength,
-    pattern: field?.validation?.pattern ?? '',
-    patternMessage: field?.validation?.patternMessage ?? '',
-    min: field?.validation?.min,
-    max: field?.validation?.max,
-    bucket: field?.bucket ?? undefined,
-    accept: field?.accept ?? [],
-    maxSizeMB: field?.maxSizeMB,
-    colSpan: field?.layout?.colSpan ?? 1,
-});
-
 export default function FieldForm({
     form: externalForm, field, availableTabs = [], availableShowWhenFields = [], onSave, onCancel,
 }) {
     const [internalForm] = Form.useForm();
     const form = externalForm || internalForm;
     const [nameTouched, setNameTouched] = useState(!!field?.name);
+    const [tooltipFocused, setTooltipFocused] = useState(false);
     const { buckets, loading: bucketsLoading } = useAccessibleBuckets();
     const { catalogos } = useCatalogos();
     const { isMobile } = useIsMobile();
 
     useEffect(() => {
-        form.setFieldsValue(toForm(field));
+        form.setFieldsValue(fieldToFormValues(field));
         setNameTouched(!!field?.name);
     }, [field, form]);
 
@@ -141,7 +68,7 @@ export default function FieldForm({
         }
     }, [watchType, buckets, form]);
 
-    const handleFinish = (values) => onSave?.(fromForm(values));
+    const handleFinish = (values) => onSave?.(fieldFromFormValues(values));
 
     const previewCondition = describeCondition(
         { field: previewValues.showWhen_field, equals: previewValues.showWhen_equals },
@@ -187,7 +114,10 @@ export default function FieldForm({
                         <Input />
                     </Form.Item>
                     <Form.Item label="Tooltip" name="tooltip">
-                        <Input />
+                        <Input
+                            onFocus={() => setTooltipFocused(true)}
+                            onBlur={() => setTooltipFocused(false)}
+                        />
                     </Form.Item>
                     {availableTabs.length > 0 && (
                         <Form.Item label="Tab" name="tab">
@@ -298,7 +228,7 @@ export default function FieldForm({
                             <div style={{ fontWeight: 500, marginBottom: 8, color: '#191919' }}>
                                 Vista previa
                             </div>
-                            <FieldPreview values={previewValues} condition={previewCondition} />
+                            <FieldPreview values={previewValues} condition={previewCondition} tooltipActive={tooltipFocused} />
                         </div>
                     </Col>
                 )}

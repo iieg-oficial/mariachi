@@ -4,6 +4,7 @@ import zipfile
 
 from openpyxl import load_workbook
 
+from app.services.sieej.export_format import format_value
 from app.services.sieej.xlsx_service import (
     build_envios_csv,
     build_envios_tables,
@@ -71,6 +72,13 @@ def _envio(**overrides):
     }
     base.update(overrides)
     return base
+
+
+def test_format_value_date_range():
+    field = {"name": "periodo", "type": "date_range"}
+    assert format_value(field, {"start": "2026-01-01", "end": "2026-01-31"}) == "2026-01-01 – 2026-01-31"
+    assert format_value(field, {"start": "", "end": ""}) is None
+    assert format_value(field, "2026-01-01") is None
 
 
 def test_tables_incluyen_campos_eliminados_via_historicas():

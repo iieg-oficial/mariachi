@@ -1,13 +1,4 @@
-from app.models.sieej.catalogos import (
-    CatalogoCalidadDatos,
-    CatalogoCategoriaDatos,
-    CatalogoEjesEstrategicos,
-    CatalogoHerramientasGestion,
-    CatalogoObjetivoUso,
-    CatalogoPeriodicidad,
-    CatalogoUnidadAdmin,
-    CatalogoUsuariosDatos,
-)
+from app.models.sieej.catalogos import Catalogo, CatalogoOpcion
 from app.models.sieej.envio import EnvioArchivo, EnvioEvento, EnvioFormulario
 from app.models.sieej.formulario import Formulario, FormularioVersion
 from app.models.sieej.grupo import (
@@ -18,14 +9,8 @@ from app.models.sieej.grupo import (
 )
 
 __all__ = [
-    "CatalogoCalidadDatos",
-    "CatalogoCategoriaDatos",
-    "CatalogoEjesEstrategicos",
-    "CatalogoHerramientasGestion",
-    "CatalogoObjetivoUso",
-    "CatalogoPeriodicidad",
-    "CatalogoUnidadAdmin",
-    "CatalogoUsuariosDatos",
+    "Catalogo",
+    "CatalogoOpcion",
     "EnvioArchivo",
     "EnvioEvento",
     "EnvioFormulario",

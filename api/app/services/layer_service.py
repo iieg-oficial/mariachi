@@ -506,6 +506,14 @@ def purge_layer(session: Session, layer: Layer) -> None:
     """Hard delete real. Solo permitido sobre capas ya en papelera."""
     if layer.deleted_at is None:
         raise ValueError("Solo se pueden purgar capas que ya están en papelera (deleted_at != NULL)")
+    children_count = (
+        session.query(Layer).filter(Layer.parent_id == layer.id).count()
+    )
+    if children_count:
+        raise ValueError(
+            f"La capa tiene {children_count} hijo(s) (incluyendo papelera). "
+            "Purga o mueve los hijos primero."
+        )
     session.delete(layer)
     session.flush()
 

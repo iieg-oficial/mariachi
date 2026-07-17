@@ -6,7 +6,7 @@ import { InboxOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 
 const COLSPAN_WIDTH = { 1: 100, 2: 50, 3: 33.333 };
 
-export default function FieldPreview({ values, condition }) {
+export default function FieldPreview({ values, condition, tooltipActive = false }) {
     const [conditionMet, setConditionMet] = useState(true);
     const hidden = !!condition && !conditionMet;
     const {
@@ -28,7 +28,7 @@ export default function FieldPreview({ values, condition }) {
             {label || 'Etiqueta del campo'}
             {required && <span style={{ color: '#ff4d4f' }}> *</span>}
             {tooltip && (
-                <Tooltip title={tooltip}>
+                <Tooltip title={tooltip} open={tooltipActive || undefined}>
                     <QuestionCircleOutlined style={{ marginLeft: 6, color: '#999' }} />
                 </Tooltip>
             )}
@@ -52,6 +52,9 @@ export default function FieldPreview({ values, condition }) {
     case 'date':
         control = <DatePicker disabled style={{ width: '100%' }} />;
         break;
+    case 'date_range':
+        control = <DatePicker.RangePicker disabled style={{ width: '100%' }} placeholder={['Fecha inicial', 'Fecha final']} />;
+        break;
     case 'select':
         control = <Select disabled placeholder={catalogPlaceholder} options={options} style={{ width: '100%' }} />;
         break;
@@ -64,7 +67,16 @@ export default function FieldPreview({ values, condition }) {
             : <Radio.Group disabled options={options} />;
         break;
     case 'checkbox':
-        control = <Checkbox disabled>{label || 'Casilla'}</Checkbox>;
+        control = (
+            <Checkbox disabled>
+                {label || 'Casilla'}
+                {tooltip && (
+                    <Tooltip title={tooltip} open={tooltipActive || undefined}>
+                        <QuestionCircleOutlined style={{ marginLeft: 6, color: '#999' }} />
+                    </Tooltip>
+                )}
+            </Checkbox>
+        );
         break;
     case 'file':
         control = (
@@ -109,7 +121,7 @@ export default function FieldPreview({ values, condition }) {
                 }}>
                     <span style={{ fontSize: 12, color: '#888', minWidth: 0 }}>
                         «{condition.triggerLabel}» {condition.isMulti ? 'incluye' : '='}{' '}
-                        <strong style={{ color: '#191919' }}>«{condition.valueLabel}»</strong>
+                        <strong style={{ color: '#191919' }}>{condition.valueText}</strong>
                     </span>
                     <Switch
                         size="small"

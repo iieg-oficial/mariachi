@@ -1,9 +1,11 @@
-import { useEffect } from 'react';
-import { Alert, Button, Drawer, Form, Input, InputNumber, Select, Space } from 'antd';
+import { useEffect, useState } from 'react';
+import { Alert, Button, Drawer, Form, Input, InputNumber, Select, Space, Tooltip } from 'antd';
+import { QuestionCircleOutlined } from '@ant-design/icons';
 import { STEP_TYPES } from '../../constants/definitionTypes';
 
 export default function StepDrawer({ open, step, onSave, onClose }) {
     const [form] = Form.useForm();
+    const [tooltipFocused, setTooltipFocused] = useState(false);
 
     useEffect(() => {
         if (!open) return;
@@ -12,6 +14,7 @@ export default function StepDrawer({ open, step, onSave, onClose }) {
             type: step?.type ?? 'form',
             title: step?.title ?? '',
             icon: step?.icon ?? '',
+            tooltip: step?.tooltip ?? '',
             minItems: step?.minItems,
             maxItems: step?.maxItems,
             itemLabel: step?.itemLabel ?? '',
@@ -22,6 +25,8 @@ export default function StepDrawer({ open, step, onSave, onClose }) {
     }, [open, step, form]);
 
     const watchType = Form.useWatch('type', form);
+    const watchTitle = Form.useWatch('title', form);
+    const watchTooltip = Form.useWatch('tooltip', form);
 
     const handleFinish = (values) => {
         const out = {
@@ -29,6 +34,7 @@ export default function StepDrawer({ open, step, onSave, onClose }) {
             type: values.type,
             title: values.title,
             ...(values.icon ? { icon: values.icon } : {}),
+            ...(values.tooltip ? { tooltip: values.tooltip } : {}),
         };
         if (values.type === 'repeater') {
             if (values.minItems != null) out.minItems = values.minItems;
@@ -85,6 +91,31 @@ export default function StepDrawer({ open, step, onSave, onClose }) {
                 <Form.Item label="Ícono (opcional)" name="icon">
                     <Input />
                 </Form.Item>
+                <Form.Item
+                    label="Tooltip (opcional)"
+                    name="tooltip"
+                    extra="Ícono de ayuda junto al título del paso; el respondent ve este texto al pasar el cursor."
+                >
+                    <Input
+                        onFocus={() => setTooltipFocused(true)}
+                        onBlur={() => setTooltipFocused(false)}
+                    />
+                </Form.Item>
+                {watchTooltip && (
+                    <div style={{ marginBottom: 24 }}>
+                        <div style={{ fontWeight: 500, marginBottom: 8, color: '#191919' }}>
+                            Vista previa
+                        </div>
+                        <div style={{ border: '1px dashed #d9d9d9', borderRadius: 8, padding: 16, background: '#fafafa' }}>
+                            <span style={{ fontWeight: 600, fontSize: 18, color: '#5C2472' }}>
+                                {watchTitle || 'Título del paso'}
+                                <Tooltip title={watchTooltip} open={tooltipFocused || undefined}>
+                                    <QuestionCircleOutlined style={{ marginLeft: 8, fontSize: 15, color: '#999' }} />
+                                </Tooltip>
+                            </span>
+                        </div>
+                    </div>
+                )}
                 {watchType === 'repeater' && (
                     <>
                         <Space.Compact block>

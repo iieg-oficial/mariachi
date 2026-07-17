@@ -126,12 +126,25 @@ def _evaluar_show_when(field: dict[str, Any], scope: dict[str, Any]) -> bool:
         return True
     target = show_when.get("field")
     expected = show_when.get("equals")
+    expected_set = (
+        {str(v) for v in expected}
+        if isinstance(expected, list)
+        else {str(expected)}
+    )
     actual = scope.get(target)
     if isinstance(actual, list):
-        return any(str(item) == str(expected) for item in actual)
+        return any(str(item) in expected_set for item in actual)
     if isinstance(actual, bool):
         actual = "true" if actual else "false"
-    return str(actual) == str(expected)
+    return str(actual) in expected_set
+
+
+def _es_valor_vacio(field_type: str, value: Any) -> bool:
+    if value is None or (isinstance(value, str) and not value.strip()):
+        return True
+    if field_type == "date_range" and isinstance(value, dict):
+        return not value.get("start") and not value.get("end")
+    return False
 
 
 def _validar_field_value(
@@ -148,7 +161,7 @@ def _validar_field_value(
         return
 
     value = scope.get(name)
-    is_blank = value is None or (isinstance(value, str) and not value.strip())
+    is_blank = _es_valor_vacio(field_type, value)
 
     if estricto and field.get("required") and is_blank:
         errores.append({"path": f"{parent_path}.{name}", "msg": "requerido"})
@@ -199,6 +212,25 @@ def _validar_field_value(
             r"^\d{4}-\d{2}-\d{2}", value
         ):
             errores.append({"path": path, "msg": "fecha invalida (YYYY-MM-DD)"})
+
+    elif field_type == "date_range":
+        if not isinstance(value, dict):
+            errores.append({"path": path, "msg": "rango de fechas debe ser objeto"})
+            return
+        start = value.get("start")
+        end = value.get("end")
+        formato_ok = all(
+            isinstance(v, str) and re.match(r"^\d{4}-\d{2}-\d{2}", v)
+            for v in (start, end)
+        )
+        if not formato_ok:
+            errores.append(
+                {"path": path, "msg": "rango de fechas invalido (YYYY-MM-DD)"}
+            )
+        elif start[:10] > end[:10]:
+            errores.append(
+                {"path": path, "msg": "la fecha inicial no puede ser mayor que la final"}
+            )
 
     elif field_type in {"select", "radio"}:
         valid = _valid_option_values(field)

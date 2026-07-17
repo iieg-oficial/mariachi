@@ -10,7 +10,8 @@ from app.core.settings import get_settings
 from app.main import app
 from app.models.project import Project, UserProject
 from app.models.sieej import (
-    CatalogoEjesEstrategicos,
+    Catalogo,
+    CatalogoOpcion,
     EnvioFormulario,
     Formulario,
 )
@@ -137,8 +138,19 @@ def login(client, username, password="testpass123"):
     return r.json()["csrf_token"]
 
 
-def _seed_eje(session, value: str) -> CatalogoEjesEstrategicos:
-    item = CatalogoEjesEstrategicos(value=value)
+def _seed_catalog(session, clave: str, label: str | None = None) -> Catalogo:
+    catalogo = session.query(Catalogo).filter(Catalogo.clave == clave).first()
+    if catalogo is None:
+        catalogo = Catalogo(clave=clave, label=label or clave)
+        session.add(catalogo)
+        session.commit()
+        session.refresh(catalogo)
+    return catalogo
+
+
+def _seed_eje(session, value: str) -> CatalogoOpcion:
+    catalogo = _seed_catalog(session, "ejes_estrategicos", "Ejes estratégicos")
+    item = CatalogoOpcion(catalogo_id=catalogo.id, value=value)
     session.add(item)
     session.commit()
     session.refresh(item)
@@ -172,18 +184,23 @@ def _seed_envio(session, admin, respondent, datos: dict) -> EnvioFormulario:
     return envio
 
 
-def test_listar_catalogos_devuelve_los_ocho(client, admin):
+def test_listar_catalogos_devuelve_los_sembrados_recientes_primero(
+    client, admin, session
+):
+    _seed_catalog(session, "ejes_estrategicos", "Ejes estratégicos")
+    _seed_catalog(session, "periodicidad", "Periodicidad")
     login(client, admin.username)
     r = client.get(f"{ADMIN_PREFIX}/sieej/catalogos")
     assert r.status_code == 200, r.text
-    claves = {c["clave"] for c in r.json()}
-    assert "ejes_estrategicos" in claves
-    assert len(claves) == 8
+    claves = [c["clave"] for c in r.json()]
+    assert claves == ["periodicidad", "ejes_estrategicos"]
 
 
 def test_listar_catalogos_incluye_campos_enlazados(
     client, admin, respondent, session
 ):
+    _seed_catalog(session, "ejes_estrategicos", "Ejes estratégicos")
+    _seed_catalog(session, "periodicidad", "Periodicidad")
     _seed_envio(session, admin, respondent, {})
     login(client, admin.username)
     r = client.get(f"{ADMIN_PREFIX}/sieej/catalogos")
@@ -203,7 +220,8 @@ def test_catalogo_desconocido_da_404(client, admin):
     assert r.status_code == 404
 
 
-def test_crear_opcion(client, admin):
+def test_crear_opcion(client, admin, session):
+    _seed_catalog(session, "ejes_estrategicos", "Ejes estratégicos")
     csrf = login(client, admin.username)
     r = client.post(
         f"{ADMIN_PREFIX}/sieej/catalogos/ejes_estrategicos",
@@ -268,7 +286,7 @@ def test_borrar_opcion_sin_uso_funciona(client, admin, session):
         headers={"X-CSRF-Token": csrf},
     )
     assert r.status_code == 204
-    assert session.query(CatalogoEjesEstrategicos).count() == 0
+    assert session.query(CatalogoOpcion).count() == 0
 
 
 def test_renombrar_propaga_a_envios(client, admin, respondent, session):
@@ -307,3 +325,138 @@ def test_renombrar_a_valor_existente_da_409(client, admin, session):
         json={"value": "Seguridad"},
     )
     assert r.status_code == 409
+
+
+def test_create_catalog_derives_clave_from_label(client, admin):
+    csrf = login(client, admin.username)
+    r = client.post(
+        f"{ADMIN_PREFIX}/sieej/catalogos",
+        headers={"X-CSRF-Token": csrf},
+        json={"label": "Municipios de Jalisco"},
+    )
+    assert r.status_code == 201, r.text
+    body = r.json()
+    assert body["clave"] == "municipios_de_jalisco"
+    assert body["label"] == "Municipios de Jalisco"
+    assert body["total"] == 0
+    assert body["campos"] == []
+
+
+def test_create_catalog_with_explicit_clave(client, admin):
+    csrf = login(client, admin.username)
+    r = client.post(
+        f"{ADMIN_PREFIX}/sieej/catalogos",
+        headers={"X-CSRF-Token": csrf},
+        json={"label": "Regiones", "clave": "regiones_jalisco"},
+    )
+    assert r.status_code == 201, r.text
+    assert r.json()["clave"] == "regiones_jalisco"
+
+
+def test_create_catalog_duplicate_clave_conflicts(client, admin, session):
+    _seed_catalog(session, "periodicidad", "Periodicidad")
+    csrf = login(client, admin.username)
+    r = client.post(
+        f"{ADMIN_PREFIX}/sieej/catalogos",
+        headers={"X-CSRF-Token": csrf},
+        json={"label": "Periodicidad"},
+    )
+    assert r.status_code == 409
+
+
+def test_create_catalog_invalid_clave_rejected(client, admin):
+    csrf = login(client, admin.username)
+    r = client.post(
+        f"{ADMIN_PREFIX}/sieej/catalogos",
+        headers={"X-CSRF-Token": csrf},
+        json={"label": "Bad", "clave": "9 Mala-Clave"},
+    )
+    assert r.status_code == 400
+
+
+def test_update_catalog_changes_label_keeps_clave(client, admin, session):
+    _seed_catalog(session, "periodicidad", "Periodicidad")
+    csrf = login(client, admin.username)
+    r = client.put(
+        f"{ADMIN_PREFIX}/sieej/catalogos/periodicidad",
+        headers={"X-CSRF-Token": csrf},
+        json={"label": "Frecuencia de actualización"},
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["clave"] == "periodicidad"
+    assert r.json()["label"] == "Frecuencia de actualización"
+
+
+def test_delete_catalog_without_usage(client, admin, session):
+    catalogo = _seed_catalog(session, "temporal", "Temporal")
+    session.add(CatalogoOpcion(catalogo_id=catalogo.id, value="A"))
+    session.commit()
+    csrf = login(client, admin.username)
+    r = client.delete(
+        f"{ADMIN_PREFIX}/sieej/catalogos/temporal",
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert r.status_code == 204
+    assert session.query(Catalogo).filter_by(clave="temporal").first() is None
+    assert session.query(CatalogoOpcion).count() == 0
+
+
+def test_delete_catalog_linked_to_fields_conflicts(
+    client, admin, respondent, session
+):
+    _seed_catalog(session, "ejes_estrategicos", "Ejes estratégicos")
+    _seed_envio(session, admin, respondent, {})
+    csrf = login(client, admin.username)
+    r = client.delete(
+        f"{ADMIN_PREFIX}/sieej/catalogos/ejes_estrategicos",
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert r.status_code == 409
+    assert "Cat" in r.json()["detail"]
+
+
+def test_delete_catalog_used_by_envios_conflicts(
+    client, admin, respondent, session
+):
+    _seed_eje(session, "Salud")
+    f = Formulario(
+        slug="sin-catalogo",
+        nombre="Sin catalogo",
+        definicion={"version": 1, "steps": []},
+        estado="activo",
+        version=1,
+        creado_por_id=admin.id,
+    )
+    session.add(f)
+    session.commit()
+    session.refresh(f)
+    envio = EnvioFormulario(
+        formulario_id=f.id,
+        formulario_version=1,
+        usuario_id=respondent.id,
+        definicion_snapshot=DEFINICION,
+        estado="en_proceso",
+        datos={"general": {"ejes": ["Salud"]}},
+    )
+    session.add(envio)
+    session.commit()
+
+    csrf = login(client, admin.username)
+    r = client.delete(
+        f"{ADMIN_PREFIX}/sieej/catalogos/ejes_estrategicos",
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert r.status_code == 409
+    assert "en uso" in r.json()["detail"]
+
+
+def test_bundle_returns_dynamic_catalogs(client, respondent, session):
+    _seed_eje(session, "Salud")
+    _seed_catalog(session, "periodicidad", "Periodicidad")
+    login(client, respondent.username)
+    r = client.get(f"{ADMIN_PREFIX}/formularios/catalogos")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert set(body.keys()) == {"ejes_estrategicos", "periodicidad"}
+    assert body["ejes_estrategicos"][0]["value"] == "Salud"
+    assert body["periodicidad"] == []

@@ -1,12 +1,14 @@
-import { Navigate } from 'react-router';
+import { Navigate, useLocation } from 'react-router';
 import { Spin, Result, Button } from 'antd';
 import { useAuth } from '@shared/contexts/useAuth';
+import { buildLoginPath } from '@shared/helpers/loginRedirect';
 
 const STAFF_ROLES = ['tetlamamakani', 'editora'];
 const SIEEJ_LOGIN_PATH = '/sieej/inicio-sesion';
 
 export default function ProtectedRoute({ children }) {
     const { isAuthenticated, loading, user, logout } = useAuth();
+    const location = useLocation();
 
     if (loading) {
         return (
@@ -24,7 +26,7 @@ export default function ProtectedRoute({ children }) {
     }
 
     if (!isAuthenticated()) {
-        return <Navigate to="/login" replace />;
+        return <Navigate to={buildLoginPath(location)} replace />;
     }
 
     if (user && !STAFF_ROLES.includes(user.role)) {

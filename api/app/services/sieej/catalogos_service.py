@@ -1,15 +1,21 @@
 """Servicio admin de los catalogos SIEEJ.
 
-Los catalogos son tablas globales `{id, value}` que cualquier field `select` o
-`select_multiple` puede referenciar via `catalog`. En los envios se guarda el
-`value` (no el `id`), asi que:
+Los catalogos son listas globales `{id, value}` que cualquier field
+`select` o `select_multiple` puede referenciar via `catalog` usando la
+`clave` del catalogo. Viven en el par generico `sieej.catalogo` +
+`sieej.catalogo_opcion`, asi que se pueden crear/renombrar/eliminar
+desde el admin. En los envios se guarda el `value` (no el `id`):
 
-  - Renombrar propaga el nuevo valor a los envios que ya lo usan, para no
-    dejarlos huerfanos.
-  - Borrar se bloquea (409) si la opcion esta en uso por algun envio.
+  - Renombrar una opcion propaga el nuevo valor a los envios que ya lo
+    usan, para no dejarlos huerfanos.
+  - Borrar una opcion se bloquea (409) si esta en uso por algun envio.
+  - Borrar un catalogo se bloquea (409) si algun field lo referencia o
+    si alguna de sus opciones esta en uso por algun envio.
 """
 from __future__ import annotations
 
+import re
+import unicodedata
 from typing import Any
 
 from fastapi import HTTPException, status
@@ -17,43 +23,20 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 
 from app.models.sieej import (
-    CatalogoCalidadDatos,
-    CatalogoCategoriaDatos,
-    CatalogoEjesEstrategicos,
-    CatalogoHerramientasGestion,
-    CatalogoObjetivoUso,
-    CatalogoPeriodicidad,
-    CatalogoUnidadAdmin,
-    CatalogoUsuariosDatos,
+    Catalogo,
+    CatalogoOpcion,
     EnvioFormulario,
     Formulario,
 )
 
-CATALOGOS: dict[str, dict[str, Any]] = {
-    "unidades_admin": {
-        "model": CatalogoUnidadAdmin,
-        "label": "Unidades administrativas",
-    },
-    "categoria_datos": {
-        "model": CatalogoCategoriaDatos,
-        "label": "Categoria de datos",
-    },
-    "herramientas_gestion": {
-        "model": CatalogoHerramientasGestion,
-        "label": "Herramientas de gestion",
-    },
-    "calidad_datos": {"model": CatalogoCalidadDatos, "label": "Calidad de datos"},
-    "periodicidad": {"model": CatalogoPeriodicidad, "label": "Periodicidad"},
-    "objetivo_uso": {"model": CatalogoObjetivoUso, "label": "Objetivo de uso"},
-    "usuarios_datos": {
-        "model": CatalogoUsuariosDatos,
-        "label": "Usuarios de los datos",
-    },
-    "ejes_estrategicos": {
-        "model": CatalogoEjesEstrategicos,
-        "label": "Ejes estrategicos",
-    },
-}
+CLAVE_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
+
+
+def _slugify(label: str) -> str:
+    normalized = unicodedata.normalize("NFKD", label)
+    ascii_label = normalized.encode("ascii", "ignore").decode("ascii").lower()
+    slug = re.sub(r"[^a-z0-9]+", "_", ascii_label).strip("_")
+    return slug[:64]
 
 
 def _rutas_catalogo(definicion: dict[str, Any], clave: str) -> list[tuple[str, str, str]]:
@@ -106,22 +89,28 @@ class CatalogosService:
     def __init__(self, db: Session):
         self.db = db
 
-    def _config(self, clave: str) -> dict[str, Any]:
-        config = CATALOGOS.get(clave)
-        if config is None:
+    def _catalogo(self, clave: str) -> Catalogo:
+        catalogo = self.db.query(Catalogo).filter(Catalogo.clave == clave).first()
+        if catalogo is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Catalogo `{clave}` no existe.",
             )
-        return config
+        return catalogo
 
-    def _item(self, clave: str, item_id: int) -> Any:
-        model = self._config(clave)["model"]
-        item = self.db.query(model).filter(model.id == item_id).first()
+    def _item(self, catalogo: Catalogo, item_id: int) -> CatalogoOpcion:
+        item = (
+            self.db.query(CatalogoOpcion)
+            .filter(
+                CatalogoOpcion.catalogo_id == catalogo.id,
+                CatalogoOpcion.id == item_id,
+            )
+            .first()
+        )
         if item is None:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"La opcion {item_id} no existe en `{clave}`.",
+                detail=f"La opcion {item_id} no existe en `{catalogo.clave}`.",
             )
         return item
 
@@ -158,48 +147,139 @@ class CatalogosService:
                     })
         return refs
 
+    def _resumen(self, catalogo: Catalogo, campos: list[dict[str, Any]]) -> dict[str, Any]:
+        total = (
+            self.db.query(CatalogoOpcion)
+            .filter(CatalogoOpcion.catalogo_id == catalogo.id)
+            .count()
+        )
+        return {
+            "clave": catalogo.clave,
+            "label": catalogo.label,
+            "total": total,
+            "campos": campos,
+        }
+
     def listar_catalogos(self) -> list[dict[str, Any]]:
         refs = self._campos_por_catalogo()
         return [
-            {
-                "clave": clave,
-                "label": config["label"],
-                "total": self.db.query(config["model"]).count(),
-                "campos": refs.get(clave, []),
-            }
-            for clave, config in CATALOGOS.items()
+            self._resumen(catalogo, refs.get(catalogo.clave, []))
+            for catalogo in self.db.query(Catalogo).order_by(Catalogo.id.desc()).all()
         ]
 
+    def bundle(self) -> dict[str, list[dict[str, Any]]]:
+        """Todos los catalogos como `{clave: [{id, value}, ...]}`."""
+        return {
+            catalogo.clave: [
+                {"id": opcion.id, "value": opcion.value}
+                for opcion in catalogo.opciones
+            ]
+            for catalogo in self.db.query(Catalogo).order_by(Catalogo.id).all()
+        }
+
+    def create_catalog(self, label: str, clave: str | None = None) -> dict[str, Any]:
+        label = label.strip()
+        if not label:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El nombre del catalogo no puede estar vacio.",
+            )
+        clave = (clave or "").strip() or _slugify(label)
+        if not CLAVE_PATTERN.match(clave):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=(
+                    f"Clave `{clave}` invalida: usa minusculas, numeros y guion "
+                    "bajo, empezando con letra."
+                ),
+            )
+        if self.db.query(Catalogo).filter(Catalogo.clave == clave).first():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Ya existe un catalogo con la clave `{clave}`.",
+            )
+        catalogo = Catalogo(clave=clave, label=label)
+        self.db.add(catalogo)
+        self.db.commit()
+        self.db.refresh(catalogo)
+        return self._resumen(catalogo, [])
+
+    def update_catalog(self, clave: str, label: str) -> dict[str, Any]:
+        catalogo = self._catalogo(clave)
+        label = label.strip()
+        if not label:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El nombre del catalogo no puede estar vacio.",
+            )
+        catalogo.label = label
+        self.db.commit()
+        self.db.refresh(catalogo)
+        campos = self._campos_por_catalogo().get(clave, [])
+        return self._resumen(catalogo, campos)
+
+    def delete_catalog(self, clave: str) -> None:
+        catalogo = self._catalogo(clave)
+        campos = self._campos_por_catalogo().get(clave, [])
+        if campos:
+            formularios = sorted({c["formulario"] for c in campos})
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    f"No se puede eliminar `{catalogo.label}`: lo usan campos de "
+                    f"{', '.join(formularios)}. Desenlaza esos campos primero."
+                ),
+            )
+        en_uso = self._conteo_uso(clave)
+        if en_uso:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    f"No se puede eliminar `{catalogo.label}`: {len(en_uso)} "
+                    "opcion(es) estan en uso por envios existentes."
+                ),
+            )
+        self.db.delete(catalogo)
+        self.db.commit()
+
     def listar_items(self, clave: str) -> list[dict[str, Any]]:
-        model = self._config(clave)["model"]
+        catalogo = self._catalogo(clave)
         conteos = self._conteo_uso(clave)
         return [
-            {"id": row.id, "value": row.value, "en_uso": conteos.get(row.value, 0)}
-            for row in self.db.query(model).order_by(model.id).all()
+            {"id": opcion.id, "value": opcion.value, "en_uso": conteos.get(opcion.value, 0)}
+            for opcion in catalogo.opciones
         ]
 
     def crear(self, clave: str, value: str) -> dict[str, Any]:
-        model = self._config(clave)["model"]
+        catalogo = self._catalogo(clave)
         value = value.strip()
         if not value:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="El valor no puede estar vacio.",
             )
-        if self.db.query(model).filter(model.value == value).first():
+        duplicado = (
+            self.db.query(CatalogoOpcion)
+            .filter(
+                CatalogoOpcion.catalogo_id == catalogo.id,
+                CatalogoOpcion.value == value,
+            )
+            .first()
+        )
+        if duplicado:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail=f"La opcion `{value}` ya existe en este catalogo.",
             )
-        item = model(value=value)
+        item = CatalogoOpcion(catalogo_id=catalogo.id, value=value)
         self.db.add(item)
         self.db.commit()
         self.db.refresh(item)
         return {"id": item.id, "value": item.value, "en_uso": 0}
 
     def renombrar(self, clave: str, item_id: int, value: str) -> dict[str, Any]:
-        model = self._config(clave)["model"]
-        item = self._item(clave, item_id)
+        catalogo = self._catalogo(clave)
+        item = self._item(catalogo, item_id)
         value = value.strip()
         if not value:
             raise HTTPException(
@@ -216,8 +296,12 @@ class CatalogosService:
             }
 
         duplicado = (
-            self.db.query(model)
-            .filter(model.value == value, model.id != item_id)
+            self.db.query(CatalogoOpcion)
+            .filter(
+                CatalogoOpcion.catalogo_id == catalogo.id,
+                CatalogoOpcion.value == value,
+                CatalogoOpcion.id != item_id,
+            )
             .first()
         )
         if duplicado:
@@ -252,7 +336,8 @@ class CatalogosService:
         return actualizados
 
     def eliminar(self, clave: str, item_id: int) -> None:
-        item = self._item(clave, item_id)
+        catalogo = self._catalogo(clave)
+        item = self._item(catalogo, item_id)
         en_uso = self._conteo_uso(clave).get(item.value, 0)
         if en_uso:
             raise HTTPException(

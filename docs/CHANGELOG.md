@@ -9,6 +9,90 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.59.0 / admin 1.58.1] - 2026-07-17
+
+### Admin: mejoras en formularios SIEEJ
+
+#### Agregado
+
+- **FormularioCard**: botón "Asignaciones" (`TeamOutlined`) en las acciones que navega directo a la pestaña de asignaciones del formulario.
+- **MemberPicker**: adaptación mobile — en pantallas `< md` se usa `Select mode="multiple"` con búsqueda en vez del `Transfer` de dos columnas.
+
+#### Cambiado
+
+- **AsignacionesEditor**: el guardado es automático al seleccionar grupos o mover usuarios; se eliminó el botón "Guardar asignaciones".
+- **MemberPicker**: ocupa todo el ancho disponible en desktop (`flex: 1` en vez de ancho fijo).
+- **EnviosTable**: el contenido expandido muestra el nombre del usuario junto con las fechas (Iniciado/Enviado/Actualizado) en una sola fila; columnas con ancho fijo para evitar espacio excesivo.
+
+---
+
+## [api 1.59.0 / admin 1.58.0] - 2026-07-17
+
+### SIEEJ: campo de rango de fechas y visibilidad condicional multi-valor
+
+#### Agregado
+
+- **API** (`datos_validator.py`, `definicion_validator.py`, `export_format.py`): tipo de campo `date_range` con validación de ambas fechas y `start <= end`, formato `start – end` en export/PDF/resumen.
+- **Admin** (`definitionTypes.js`, `snapshotUtils.js`, `FieldForm.jsx`, `FieldPreview.jsx`): opción "Rango de fechas" en el editor, preview con `RangePicker` y tooltip al enfocar un campo.
+- `showWhen.equals` ahora acepta una lista de valores (la condición se cumple si el campo disparador coincide con cualquiera); el validador de definición rechaza listas vacías.
+
+### SIEEJ: respuestas de envío inline en el CMS
+
+#### Agregado
+
+- **Admin** (`EnviosTable.jsx`, `RespuestasView.jsx`): filas expandibles en la tabla de envíos con pestañas por step para ver las respuestas sin descargar el PDF. Las fechas de Iniciado, Enviado y Actualizado se movieron al detalle expandido como metadatos.
+
+#### Cambiado
+
+- **Admin** (`EnviosTable.jsx`): el banner de "envíos desactualizados" se eliminó (el tag por fila ya lo indica). El botón "Descargar Excel" pasó a llamarse "Descargar XLSX".
+
+---
+
+## [api 1.58.1 / admin 1.57.1] - 2026-07-17
+
+### Admin: volver a la ruta original tras iniciar sesión
+
+#### Corregido
+
+- **Admin** (`shared/helpers/loginRedirect.js`, `shared/services/api.js`, `app/guards/`, `LoginPage.jsx`): al expirar la sesión, el interceptor 401 y los guards redirigen a `/login?next=<ruta+query>` y tras autenticarse se navega de vuelta a esa ruta (sanitizada: solo paths internos, nunca `/login`). Antes siempre se caía en `/inicio` y había que navegar a mano hasta la página en la que se estaba. Complementa el fix de gateway-hub 1.27.9 (502 por IP obsoleta mostrados como página 500 al restaurar una pestaña guardada).
+
+#### Eliminado
+
+- **Infra** (`nginx/conf.d/mariachi.conf`): redirect legado `/administrador` → `/mariachi` (renombrado en v0.21.0; tráfico 0 en 14 días). gateway-hub 1.28.1 liberó el namespace de cara a la futura app raíz de terceros.
+
+---
+
+## [api 1.58.0 / admin 1.57.0] - 2026-07-17
+
+### SIEEJ: catálogos administrables (CRUD con tablas genéricas)
+
+#### Agregado
+
+- **API** (`models/sieej/catalogos.py`, migración `d4e5f6a7b8c9`): par genérico `sieej.catalogo` (`clave` UNIQUE + `label`) + `sieej.catalogo_opcion` (`value` UNIQUE por catálogo, `ON DELETE CASCADE`) que reemplaza las 8 tablas fijas `catalogo_*`. La migración copia claves, labels y opciones existentes y elimina las tablas legacy.
+- **API** (`services/sieej/catalogos_service.py`, `routes/sieej_admin/catalogos.py`): `POST/PUT/DELETE /sieej/catalogos[/{clave}]` para crear (clave derivada del label), renombrar (el `label`; la `clave` es inmutable porque la referencian las definiciones JSONB) y eliminar catálogos. El borrado responde 409 si algún campo lo referencia o alguna opción está en uso por envíos. El listado devuelve los catálogos más recientes primero.
+- **Admin** (`CatalogosManager.jsx`, `CatalogosPage.jsx`): alta de catálogo inline (botón que revela el input, sin modal) y el recién creado aparece primero; renombrado inline y eliminación con bloqueo cuando hay campos enlazados.
+
+#### Cambiado
+
+- **API** (`routes/formularios/catalogos.py`): el bundle `GET /formularios/catalogos` pasa a ser dinámico `{clave: [{id, value}]}` en lugar del objeto fijo con las ocho colecciones. El frontend ya lo consumía por clave, sin cambios de contrato para los campos existentes.
+
+#### Migración
+
+- Correr `alembic -x db=mariachi upgrade head` **y reiniciar la API en el mismo paso** (Gunicorn sin reload mantiene en memoria el código que apunta a las tablas `catalogo_*` ya eliminadas).
+
+---
+
+## [api 1.57.2 / admin 1.56.2] - 2026-07-17
+
+### MapaLab: purgar una capa borraba su tema ancestro
+
+#### Corregido
+
+- **API** (`models/layer.py`): la relación `children` del árbol de capas estaba definida con `remote_side` hacia el padre y `cascade="all, delete-orphan"`, invirtiendo la dirección padre-hijo en el ORM. Al purgar una capa de la papelera, SQLAlchemy borraba en cadena sus ancestros (subtema, tema, hasta la raíz) y desplazaba a raíz (`parent_id=NULL`) al resto de sus hijos. Se redefine como `parent`/`children` con `back_populates` y `passive_deletes=True`; el borrado en cascada queda solo en el FK de la BD (siempre hacia descendientes).
+- **API** (`layer_service.py`): `purge_layer` ahora rechaza (409) purgar una capa que todavía tenga hijos, incluyendo hijos en papelera, para que el `ON DELETE CASCADE` de la BD no elimine descendientes en silencio. Antes solo el soft-delete validaba hijos activos.
+
+---
+
 ## [api 1.57.1 / admin 1.56.1] - 2026-07-16
 
 ### Infra: eliminar defaults inline del compose

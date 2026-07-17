@@ -143,6 +143,117 @@ def test_show_when_si_se_cumple_exige_required():
     assert "x.detalle" in paths
 
 
+def _def_show_when_lista():
+    return {
+        "version": 1,
+        "steps": [
+            {
+                "id": "x",
+                "type": "form",
+                "title": "x",
+                "fields": [
+                    {
+                        "name": "categoria",
+                        "label": "Categoria",
+                        "type": "select",
+                        "options": [
+                            {"value": "salud", "label": "Salud"},
+                            {"value": "seguridad", "label": "Seguridad"},
+                            {"value": "empleo", "label": "Empleo"},
+                        ],
+                        "required": True,
+                    },
+                    {
+                        "name": "detalle",
+                        "label": "Detalle",
+                        "type": "text",
+                        "required": True,
+                        "showWhen": {
+                            "field": "categoria",
+                            "equals": ["salud", "seguridad"],
+                        },
+                    },
+                ],
+            }
+        ],
+    }
+
+
+def test_show_when_lista_no_exige_si_valor_fuera():
+    validar_datos(_def_show_when_lista(), {"x": {"categoria": "empleo"}}, estricto=True)
+
+
+def test_show_when_lista_exige_si_valor_dentro():
+    with pytest.raises(DatosInvalidosError) as exc:
+        validar_datos(
+            _def_show_when_lista(), {"x": {"categoria": "seguridad"}}, estricto=True
+        )
+    assert "x.detalle" in {e["path"] for e in exc.value.errores}
+
+
+def _def_con_rango(required: bool = True):
+    return {
+        "version": 1,
+        "steps": [
+            {
+                "id": "general",
+                "type": "form",
+                "title": "General",
+                "fields": [
+                    {
+                        "name": "periodo",
+                        "label": "Periodo",
+                        "type": "date_range",
+                        "required": required,
+                    }
+                ],
+            }
+        ],
+    }
+
+
+def test_date_range_valido_pasa():
+    datos = {"general": {"periodo": {"start": "2026-01-01", "end": "2026-01-31"}}}
+    validar_datos(_def_con_rango(), datos, estricto=True)
+
+
+def test_date_range_mismo_dia_pasa():
+    datos = {"general": {"periodo": {"start": "2026-01-01", "end": "2026-01-01"}}}
+    validar_datos(_def_con_rango(), datos, estricto=True)
+
+
+def test_date_range_invertido_falla():
+    datos = {"general": {"periodo": {"start": "2026-02-01", "end": "2026-01-01"}}}
+    with pytest.raises(DatosInvalidosError) as exc:
+        validar_datos(_def_con_rango(), datos, estricto=True)
+    msgs = " ".join(e["msg"] for e in exc.value.errores)
+    assert "inicial" in msgs
+
+
+def test_date_range_incompleto_falla_incluso_en_borrador():
+    datos = {"general": {"periodo": {"start": "2026-01-01", "end": ""}}}
+    with pytest.raises(DatosInvalidosError):
+        validar_datos(_def_con_rango(required=False), datos, estricto=False)
+
+
+def test_date_range_no_objeto_falla():
+    datos = {"general": {"periodo": "2026-01-01"}}
+    with pytest.raises(DatosInvalidosError):
+        validar_datos(_def_con_rango(), datos, estricto=True)
+
+
+def test_date_range_vacio_required_falla_en_estricto():
+    datos = {"general": {"periodo": {"start": "", "end": ""}}}
+    with pytest.raises(DatosInvalidosError) as exc:
+        validar_datos(_def_con_rango(), datos, estricto=True)
+    assert exc.value.errores[0]["msg"] == "requerido"
+
+
+def test_date_range_vacio_pasa_en_borrador():
+    datos = {"general": {"periodo": {"start": "", "end": ""}}}
+    validar_datos(_def_con_rango(), datos, estricto=False)
+
+
 def test_repeater_min_items_falla_en_estricto():
     d = {
         "version": 1,
