@@ -5,11 +5,17 @@ import { catalogosApi } from '../../services/formulariosAdminApi';
 import useCatalogos from '../../hooks/useCatalogos';
 import CatalogosDrawer from '../catalogos/CatalogosDrawer';
 
-export default function CatalogPicker({ form }) {
+export default function CatalogPicker({
+    form,
+    name = 'catalog',
+    label = 'Catálogo',
+    extra,
+    rules = [{ required: true, message: 'Elige un catálogo o cambia el origen a «Lista fija».' }],
+}) {
     const [catalogos, setCatalogos] = useState([]);
     const [drawerOpen, setDrawerOpen] = useState(false);
     const { catalogos: bundle } = useCatalogos();
-    const clave = Form.useWatch('catalog', form);
+    const clave = Form.useWatch(name, form);
 
     const cargarCatalogos = useCallback(() => {
         catalogosApi.listar().then(setCatalogos).catch(() => setCatalogos([]));
@@ -22,9 +28,10 @@ export default function CatalogPicker({ form }) {
     return (
         <>
             <Form.Item
-                label="Catálogo"
-                name="catalog"
-                rules={[{ required: true, message: 'Elige un catálogo o cambia el origen a «Lista fija».' }]}
+                label={label}
+                name={name}
+                extra={extra}
+                rules={rules}
             >
                 <Select
                     allowClear

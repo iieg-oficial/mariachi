@@ -3,6 +3,7 @@ import {
     Button, Col, Form, Input, InputNumber, Row, Segmented, Select, Switch, Space,
 } from 'antd';
 import OptionsSource from './OptionsSource';
+import OpenRangeConfig from './OpenRangeConfig';
 import ShowWhenField from './ShowWhenField';
 import useAccessibleBuckets from '@features/acervo/hooks/useAccessibleBuckets';
 import useCatalogos from '../../hooks/useCatalogos';
@@ -77,6 +78,7 @@ export default function FieldForm({
     );
 
     const showOptions = ['select', 'select_multiple', 'radio', 'checkbox'].includes(watchType);
+    const showDateRange = watchType === 'date_range';
     const showFile = watchType === 'file';
     const showNumberValidation = watchType === 'number';
     const showLengthValidation = ['text', 'textarea', 'email', 'tel'].includes(watchType);
@@ -138,6 +140,7 @@ export default function FieldForm({
                         />
                     </Form.Item>
                     {showOptions && <OptionsSource form={form} />}
+                    {showDateRange && <OpenRangeConfig form={form} />}
                     {showFile && (
                         <>
                             <Form.Item

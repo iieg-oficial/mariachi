@@ -20,6 +20,8 @@ export const FIELD_TYPES = [
     { value: 'info', label: 'Texto informativo' },
 ];
 
+export const DEFAULT_OPEN_RANGE_CATALOG = 'estatus_fecha';
+
 export const stepTypeLabel = (type) => STEP_TYPES.find((t) => t.value === type)?.label ?? type;
 
 export const fieldTypeLabel = (type) => FIELD_TYPES.find((t) => t.value === type)?.label ?? type;

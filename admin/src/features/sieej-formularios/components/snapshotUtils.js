@@ -17,10 +17,11 @@ export const formatFieldValue = (field, value) => {
         return Array.isArray(value) && value.length
             ? value.map((v) => optionLabel(field, v)).join(', ')
             : '—';
-    case 'date_range':
-        return value?.start || value?.end
-            ? `${value.start || ''} – ${value.end || ''}`
-            : '—';
+    case 'date_range': {
+        const inicio = value?.startOption || value?.start || '';
+        const fin = value?.endOption || value?.end || '';
+        return inicio || fin ? `${inicio} – ${fin}` : '—';
+    }
     case 'file':
         return value?.filename_original || value?.url_publica || '—';
     default:
