@@ -2,7 +2,7 @@
 
 > Documento de referencia completo. Leer este archivo proporciona contexto del monorepo sin explorar el codebase.
 
-**Versión:** ver `api/pyproject.toml` (la lee `api/app/core/version.py::get_app_version()`; endpoint en vivo `GET /ontoy`). · **Última actualización:** 2026-07-10
+**Versión:** ver `api/pyproject.toml` (la lee `api/app/core/version.py::get_app_version()`; endpoint en vivo `GET /ontoy`). · **Última actualización:** 2026-07-20
 
 
 ---
@@ -835,6 +835,17 @@ Este repo se integra con otros servicios internos vecinos (CMS, visor de mapas, 
 ---
 
 ## Cambios recientes
+
+### 2026-07-20 (api 1.60.0 + admin 1.59.0) — SIEEJ: fechas abiertas en el campo de rango
+
+Un `date_range` puede sustituir un extremo por una opción de catálogo cuando no hay fecha exacta (`10/02/1992 – NO DETERMINADO`). Opt-in por campo vía `openStart` / `openEnd`; `openCatalog` elige el catálogo y cae al del sistema `estatus_fecha` si se omite.
+
+- **Catálogos del sistema**: nuevo `app/services/sieej/catalogos_sistema.py` como fuente de verdad (sin columna en BD) de los catálogos que no se pueden eliminar. `delete_catalog` da 409; renombrar y editar opciones sigue permitido. Sembrado por la migración idempotente `b7c8d9e0f1a2`. El admin los marca con tag "Sistema".
+- **Contrato**: el valor gana `startOption` / `endOption`; cada extremo lleva fecha **u** opción, y `start <= end` solo se compara si ambos son fechas. Sin migración de datos — los envíos previos siguen válidos.
+- **Integridad**: un `date_range` con fecha abierta cuenta como campo enlazado al catálogo (`claves_referenciadas`), así que hereda la propagación de renombres y el bloqueo de borrado que ya tenían los `select`. Apagar un extremo abierto se clasifica como cambio que rompe.
+- Lado respondent (`iieg-oficial/sieej` 1.32.0): el selector de estatus vive **dentro** del panel del calendario, no como control aparte.
+
+Detalle en CHANGELOG §[api 1.60.0 / admin 1.59.0] y contrato completo en `docs/sieej.md`.
 
 ### 2026-07-13 (api 1.55.0 + admin 1.53.0) — SIEEJ: reorganiza versiones — clasifica cambios menor/rompe, propaga y avisa actualización
 

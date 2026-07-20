@@ -37,6 +37,14 @@ Los catalogos originales (unidades_admin, categoria_datos, herramientas_gestion,
 
 Todas las tablas referencian `public.usuarios.id` con `ON DELETE CASCADE` (excepto `formulario.creado_por_id` que es RESTRICT). Los catalogos siguen disponibles porque la definicion JSONB puede referenciarlos por nombre (`field.catalog: "unidades_admin"`).
 
+### Catalogos del sistema
+
+`app/services/sieej/catalogos_sistema.py` lista los catalogos que el producto necesita para funcionar. Hoy solo `estatus_fecha` («Estatus de fecha»), sembrado por la migracion `b7c8d9e0f1a2` con NO DETERMINADO, EN PROCESO, VIGENTE, SIN FECHA DE TÉRMINO y PENDIENTE; alimenta las [fechas abiertas](#tipos-de-field) de los campos `date_range`.
+
+No hay columna en BD que los marque: **la fuente de verdad es ese modulo**, para que no exista un estado que pueda desincronizarse del codigo que depende de ellos. `delete_catalog` responde 409 si la clave esta listada ahi; renombrar el `label` y editar sus opciones sigue permitido con las reglas normales (renombrar propaga a los envios, borrar una opcion en uso da 409). `CatalogoResumen` expone `sistema: bool` para que el admin lo distinga con un tag y deshabilite el boton de eliminar.
+
+La migracion del seed es **idempotente**: si la clave ya existe no la duplica ni toca sus opciones, para no revertir ediciones hechas desde el admin.
+
 ## Definicion JSONB
 
 Cada `formulario.definicion` es un objeto con esta forma minima:
@@ -72,6 +80,7 @@ Atributos comunes: `name` (unico por step), `label`, `required`, `validation` (`
 - **`select`/`select_multiple`/`radio`/`checkbox`**: requieren `options` (`[{value, label}]`) o `catalog` (string que identifica un catalogo). No pueden mezclar ambos.
 - **`file`**: requiere `bucket` (Acervo). Acepta `maxSizeMB` (cap absoluto 100 MB) y `accept` (lista de MIME/extensions). Al subir via `POST /formularios/{slug}/envio/upload` el backend persiste **dos** registros sincronizados: una fila en `sieej.envio_archivo` (con `bucket`, `object_key`, `url_publica`, `mime`, `size_bytes`, `field_path`) y una entrada en `envio.datos[step][field] = {url_publica, filename, mime, size_bytes}` que es lo que valida `datos_validator` al cierre del envio. El frontend NO debe sobrescribir manualmente la entrada en `datos` (la fuente de verdad la pone el endpoint de upload).
 - **`date_range`**: rango de fechas. El valor en `datos` es `{start, end}` con fechas `YYYY-MM-DD`; `datos_validator` exige ambas fechas si alguna esta presente (incluso en borrador) y rechaza `start > end`. En exports/PDF/resumen se formatea `start – end`.
+    - **Fechas abiertas** (`api 1.60.0+`): `openStart` / `openEnd` (bool, opt-in por campo) permiten que ese extremo sea una opcion de catalogo en vez de una fecha, para periodos sin termino conocido (`10/02/1992 – NO DETERMINADO`). `openCatalog` fija de que catalogo salen las opciones; si se omite se usa el del sistema `estatus_fecha`. El valor gana las claves hermanas `startOption` / `endOption`: un extremo lleva **fecha u opcion, nunca ambas**, y el orden `start <= end` solo se compara cuando los dos extremos son fechas. Los envios previos (sin las claves nuevas) siguen validando igual. Las opciones **no** se validan contra el catalogo en el backend, por la misma razon que `select`/`radio` con `catalog` tampoco lo hacen (`datos_validator` es puro y no toca la BD).
 - **`info`**: campo informativo (HTML/markdown), no captura datos.
 
 ### Validacion
