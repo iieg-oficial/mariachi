@@ -206,6 +206,24 @@ def _validate_layout(field: dict[str, Any], step_id: str, name: str) -> None:
         )
 
 
+def _validar_date_range_config(field: dict[str, Any], step_id: str, name: str) -> None:
+    for key in ("openStart", "openEnd"):
+        if key in field and not isinstance(field[key], bool):
+            raise DefinicionInvalidaError(
+                f"Step `{step_id}` field `{name}`: `{key}` debe ser booleano."
+            )
+    catalog = field.get("openCatalog")
+    if catalog is not None and (not isinstance(catalog, str) or not catalog):
+        raise DefinicionInvalidaError(
+            f"Step `{step_id}` field `{name}`: `openCatalog` debe ser string no vacio."
+        )
+    if catalog and not field.get("openStart") and not field.get("openEnd"):
+        raise DefinicionInvalidaError(
+            f"Step `{step_id}` field `{name}`: `openCatalog` requiere "
+            "`openStart` o `openEnd` activado."
+        )
+
+
 def _validar_field(
     field: Any,
     step_id: str,
@@ -271,6 +289,9 @@ def _validar_field(
                     raise DefinicionInvalidaError(
                         f"Step `{step_id}` field `{name}`: option {opt_idx} sin `label`."
                     )
+
+    if field_type == "date_range":
+        _validar_date_range_config(field, step_id, name)
 
     if field_type == "file":
         max_size = field.get("maxSizeMB")

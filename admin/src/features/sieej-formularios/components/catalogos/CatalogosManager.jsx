@@ -9,11 +9,14 @@ import {
     Tooltip,
     Typography,
 } from 'antd';
-import { CloseOutlined, DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
+import {
+    CloseOutlined, DeleteOutlined, EditOutlined, LockOutlined, PlusOutlined,
+} from '@ant-design/icons';
 import { message } from '@shared/services/message';
 import { catalogosApi } from '../../services/formulariosAdminApi';
 import { invalidateCatalogos } from '../../hooks/useCatalogos';
 import CatalogoItems from './CatalogoItems';
+import CatalogoCamposCell from './CatalogoCamposCell';
 
 const errorDetail = (err, fallback) => err?.response?.data?.detail || fallback;
 
@@ -24,17 +27,6 @@ const slugify = (label) => label
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '')
     .slice(0, 64);
-
-const agruparPorFormulario = (campos) => {
-    const grupos = new Map();
-    campos.forEach((c) => {
-        const grupo = grupos.get(c.formulario_id)
-            ?? { id: c.formulario_id, formulario: c.formulario, campos: [] };
-        grupo.campos.push(c);
-        grupos.set(c.formulario_id, grupo);
-    });
-    return [...grupos.values()];
-};
 
 export default function CatalogosManager({ clave: claveInicial }) {
     const [catalogos, setCatalogos] = useState([]);
@@ -132,7 +124,16 @@ export default function CatalogosManager({ clave: claveInicial }) {
                             onClick={(e) => e.stopPropagation()}
                         />
                     ) : (
-                        <div style={{ fontWeight: 500 }}>{label}</div>
+                        <div style={{ fontWeight: 500 }}>
+                            {label}
+                            {c.sistema && (
+                                <Tooltip title="Catálogo del sistema: puedes editar sus opciones y renombrarlo, pero no eliminarlo.">
+                                    <Tag color="purple" style={{ marginLeft: 8 }}>
+                                        <LockOutlined /> Sistema
+                                    </Tag>
+                                </Tooltip>
+                            )}
+                        </div>
                     )}
                     <Typography.Text type="secondary" style={{ fontSize: 12 }} copyable>
                         {c.clave}
@@ -152,52 +153,17 @@ export default function CatalogosManager({ clave: claveInicial }) {
         {
             title: 'Campos enlazados',
             dataIndex: 'campos',
-            render: (campos = []) => {
-                if (campos.length === 0) {
-                    return (
-                        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                            Ningún campo lo usa
-                        </Typography.Text>
-                    );
-                }
-                return (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        {agruparPorFormulario(campos).map(({ id, formulario, campos: lista }) => (
-                            <div key={id}>
-                                <Typography.Text
-                                    type="secondary"
-                                    style={{ fontSize: 12, display: 'block' }}
-                                >
-                                    {formulario}
-                                </Typography.Text>
-                                <div style={{
-                                    display: 'flex',
-                                    flexWrap: 'wrap',
-                                    gap: 4,
-                                    marginTop: 2,
-                                }}>
-                                    {lista.map((c) => (
-                                        <Tooltip
-                                            key={`${c.step_id}-${c.field_name}`}
-                                            title={`Paso: ${c.step_id} · campo: ${c.field_name}`}
-                                        >
-                                            <Tag style={{ margin: 0 }}>
-                                                {c.field_label || c.field_name}
-                                            </Tag>
-                                        </Tooltip>
-                                    ))}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                );
-            },
+            render: (campos = []) => <CatalogoCamposCell campos={campos} />,
         },
         {
             title: '',
             width: 90,
             render: (_, c) => {
                 const enlazado = (c.campos ?? []).length > 0;
+                const bloqueado = enlazado || c.sistema;
+                const motivo = c.sistema
+                    ? 'Catálogo del sistema, no se puede eliminar'
+                    : 'En uso por campos, no se puede eliminar';
                 return (
                     <Space size={4}>
                         <Tooltip title="Renombrar catálogo">
@@ -212,22 +178,18 @@ export default function CatalogosManager({ clave: claveInicial }) {
                             />
                         </Tooltip>
                         <Popconfirm
-                            title={enlazado
-                                ? 'No se puede eliminar: hay campos enlazados a este catálogo'
+                            title={bloqueado
+                                ? motivo
                                 : `¿Eliminar el catálogo «${c.label}» y sus opciones?`}
-                            okButtonProps={{ disabled: enlazado, danger: true }}
+                            okButtonProps={{ disabled: bloqueado, danger: true }}
                             onConfirm={() => handleDelete(c)}
                         >
-                            <Tooltip
-                                title={enlazado
-                                    ? 'En uso por campos, no se puede eliminar'
-                                    : 'Eliminar catálogo'}
-                            >
+                            <Tooltip title={bloqueado ? motivo : 'Eliminar catálogo'}>
                                 <Button
                                     type="text"
                                     size="small"
                                     danger
-                                    disabled={enlazado}
+                                    disabled={bloqueado}
                                     icon={<DeleteOutlined />}
                                 />
                             </Tooltip>

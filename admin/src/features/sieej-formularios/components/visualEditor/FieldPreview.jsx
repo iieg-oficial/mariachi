@@ -12,6 +12,7 @@ export default function FieldPreview({ values, condition, tooltipActive = false 
     const {
         type, label, placeholder, required, tooltip,
         options_list, catalog, pattern, accept, maxSizeMB, minLength, maxLength, colSpan,
+        openStart, openEnd, openCatalog,
     } = values || {};
 
     const widthPct = COLSPAN_WIDTH[colSpan] ?? 100;
@@ -53,7 +54,23 @@ export default function FieldPreview({ values, condition, tooltipActive = false 
         control = <DatePicker disabled style={{ width: '100%' }} />;
         break;
     case 'date_range':
-        control = <DatePicker.RangePicker disabled style={{ width: '100%' }} placeholder={['Fecha inicial', 'Fecha final']} />;
+        control = (openStart || openEnd) ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <DatePicker
+                    disabled
+                    style={{ flex: 1, minWidth: 120 }}
+                    placeholder={openStart ? 'Fecha inicial o estatus' : 'Fecha inicial'}
+                />
+                <span style={{ color: '#888' }}>a</span>
+                <DatePicker
+                    disabled
+                    style={{ flex: 1, minWidth: 120 }}
+                    placeholder={openEnd ? 'Fecha final o estatus' : 'Fecha final'}
+                />
+            </div>
+        ) : (
+            <DatePicker.RangePicker disabled style={{ width: '100%' }} placeholder={['Fecha inicial', 'Fecha final']} />
+        );
         break;
     case 'select':
         control = <Select disabled placeholder={catalogPlaceholder} options={options} style={{ width: '100%' }} />;
@@ -100,6 +117,10 @@ export default function FieldPreview({ values, condition, tooltipActive = false 
     }
 
     const hints = [];
+    if (type === 'date_range' && (openStart || openEnd)) {
+        const extremos = [openStart && 'inicial', openEnd && 'final'].filter(Boolean);
+        hints.push(`Fecha ${extremos.join(' y ')}: el calendario incluye las opciones de «${openCatalog || 'estatus_fecha'}»`);
+    }
     if (type === 'tel' && !pattern) hints.push('Formato: 10 dígitos');
     if (type === 'email' && !pattern) hints.push('Formato de correo válido');
     if (pattern) hints.push(`Patrón: ${pattern}`);

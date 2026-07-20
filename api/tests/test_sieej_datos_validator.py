@@ -254,6 +254,69 @@ def test_date_range_vacio_pasa_en_borrador():
     validar_datos(_def_con_rango(), datos, estricto=False)
 
 
+def _def_con_rango_abierto(**extra):
+    definicion = _def_con_rango()
+    definicion["steps"][0]["fields"][0].update({"openEnd": True, **extra})
+    return definicion
+
+
+def test_date_range_fin_abierto_pasa():
+    datos = {
+        "general": {"periodo": {"start": "1992-02-10", "endOption": "NO DETERMINADO"}}
+    }
+    validar_datos(_def_con_rango_abierto(), datos, estricto=True)
+
+
+def test_date_range_fin_abierto_no_compara_orden():
+    datos = {
+        "general": {"periodo": {"start": "2030-01-01", "endOption": "EN PROCESO"}}
+    }
+    validar_datos(_def_con_rango_abierto(), datos, estricto=True)
+
+
+def test_date_range_opcion_sin_permiso_falla():
+    datos = {
+        "general": {"periodo": {"start": "1992-02-10", "endOption": "NO DETERMINADO"}}
+    }
+    with pytest.raises(DatosInvalidosError) as exc:
+        validar_datos(_def_con_rango(), datos, estricto=True)
+    msgs = " ".join(e["msg"] for e in exc.value.errores)
+    assert "no admite opciones" in msgs
+
+
+def test_date_range_fecha_y_opcion_juntas_falla():
+    datos = {
+        "general": {
+            "periodo": {
+                "start": "1992-02-10",
+                "end": "1995-01-01",
+                "endOption": "NO DETERMINADO",
+            }
+        }
+    }
+    with pytest.raises(DatosInvalidosError) as exc:
+        validar_datos(_def_con_rango_abierto(), datos, estricto=True)
+    msgs = " ".join(e["msg"] for e in exc.value.errores)
+    assert "fecha y opcion" in msgs
+
+
+def test_date_range_inicio_abierto_pasa():
+    definicion = _def_con_rango()
+    definicion["steps"][0]["fields"][0]["openStart"] = True
+    datos = {
+        "general": {"periodo": {"startOption": "NO DETERMINADO", "end": "2026-01-31"}}
+    }
+    validar_datos(definicion, datos, estricto=True)
+
+
+def test_date_range_solo_opciones_no_es_vacio():
+    datos = {"general": {"periodo": {"endOption": "NO DETERMINADO"}}}
+    with pytest.raises(DatosInvalidosError) as exc:
+        validar_datos(_def_con_rango_abierto(), datos, estricto=True)
+    msgs = " ".join(e["msg"] for e in exc.value.errores)
+    assert "fecha inicial invalida" in msgs
+
+
 def test_repeater_min_items_falla_en_estricto():
     d = {
         "version": 1,

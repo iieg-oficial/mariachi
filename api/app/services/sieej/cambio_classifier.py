@@ -23,6 +23,9 @@ _CAMPOS_SIGNIFICATIVOS = (
     "placeholder",
     "tooltip",
     "showWhen",
+    "openStart",
+    "openEnd",
+    "openCatalog",
 )
 
 
@@ -79,7 +82,25 @@ def _campo_rompe(old: dict[str, Any], new: dict[str, Any]) -> bool:
         return True
     if _option_values(old) - _option_values(new):
         return True
+    if _fecha_abierta_mas_estricta(old, new):
+        return True
     if _validacion_mas_estricta(old, new):
+        return True
+    return False
+
+
+def _fecha_abierta_mas_estricta(old: dict[str, Any], new: dict[str, Any]) -> bool:
+    """Apagar un extremo abierto invalida los envios que ya eligieron una
+    opcion ahi; encenderlo solo agrega alternativas. Cambiar el catalogo
+    tambien rompe: las opciones capturadas pueden no existir en el nuevo."""
+    if new.get("type") != "date_range":
+        return False
+    for key in ("openStart", "openEnd"):
+        if bool(old.get(key)) and not bool(new.get(key)):
+            return True
+    if (old.get("openStart") or old.get("openEnd")) and (
+        old.get("openCatalog") != new.get("openCatalog")
+    ):
         return True
     return False
 

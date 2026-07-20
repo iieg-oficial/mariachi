@@ -9,6 +9,41 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [api 1.60.0 / admin 1.59.0] - 2026-07-20
+
+### SIEEJ: fechas abiertas en el campo de rango con catálogo del sistema
+
+Un `date_range` puede dejar un extremo sin fecha exacta y sustituirlo por una opción de catálogo, para periodos que siguen vigentes o cuyo término no se ha determinado (`10/02/1992 – NO DETERMINADO`). Es **opt-in por campo**: los formularios ya publicados no cambian de comportamiento.
+
+#### Agregado
+
+- **`catalogos_sistema.py`** (nuevo): registro de catálogos que el producto necesita y el admin no puede eliminar. Hoy solo `estatus_fecha`. La fuente de verdad es el módulo, no una columna en BD.
+- **Migración `b7c8d9e0f1a2`**: siembra el catálogo `estatus_fecha` con NO DETERMINADO, EN PROCESO, VIGENTE, SIN FECHA DE TÉRMINO y PENDIENTE. Idempotente: si la clave ya existe no la duplica ni toca sus opciones, para no revertir ediciones del admin.
+- **`definicion_validator.py`**: el field `date_range` acepta `openStart` / `openEnd` (bool) y `openCatalog` (string). Valida tipos y que `openCatalog` no llegue sin ningún extremo abierto.
+- **`datos_validator.py`**: cada extremo del rango es fecha **u** opción, nunca ambas; una opción exige que el campo permita ese extremo abierto; el orden `start <= end` solo se compara cuando los dos extremos son fechas. El valor se considera vacío solo si no hay ninguna de las cuatro claves.
+- **Admin** (`OpenRangeConfig.jsx` nuevo): sección "Fechas abiertas" en el editor de campo, con el mismo tratamiento visual que "Visibilidad condicional" — dos switches y el selector de catálogo, con tooltip en el título que advierte que el catálogo es compartido.
+- **Admin** (`CatalogosManager.jsx`): tag "Sistema" con candado en `/sieej/catalogos` y botón de eliminar deshabilitado para esos catálogos.
+
+#### Cambiado
+
+- **`catalogos_service.py`**: un `date_range` con fecha abierta ahora cuenta como campo enlazado al catálogo, así que renombrar una opción propaga a los envíos que la eligieron y borrarla da 409 si está en uso — mismo trato que ya tenían `select` / `radio`. `delete_catalog` responde 409 en catálogos del sistema.
+- **`cambio_classifier.py`**: apagar un extremo abierto (o cambiarle el catálogo) se clasifica como cambio que **rompe**, porque invalida los envíos que ya eligieron una opción ahí; encenderlo es **menor**.
+- **`export_format.py`** y **`snapshotUtils.js`**: la opción se muestra en lugar de la fecha en export/PDF/resumen y en el visor de envíos del CMS.
+- **`CatalogPicker.jsx`**: acepta `name` / `label` / `extra` / `rules` para reutilizarse fuera del campo `catalog` (lo consume el selector de fechas abiertas).
+
+#### Notas
+
+- El valor persiste con las claves hermanas `startOption` / `endOption`; **los envíos previos siguen validando sin migración de datos**.
+- Las opciones no se validan contra el catálogo en el backend, igual que `select` / `radio` con `catalog`: `datos_validator` es puro y no toca la BD.
+- **Despliegue**: correr `alembic -x db=mariachi upgrade head`. El frontend respondent vive en el repo `iieg-oficial/sieej` (release 1.32.0).
+
+#### Interno
+
+- `CatalogoCamposCell.jsx` extraído de `CatalogosManager.jsx` (superaba el límite de 300 líneas del ESLint).
+- 11 tests nuevos en `test_sieej_datos_validator.py` y `test_sieej_definicion_validator.py`.
+
+---
+
 ## [api 1.59.0 / admin 1.58.1] - 2026-07-17
 
 ### Admin: mejoras en formularios SIEEJ

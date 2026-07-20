@@ -1,3 +1,5 @@
+import { DEFAULT_OPEN_RANGE_CATALOG } from '../../constants/definitionTypes';
+
 const equalsToList = (equals) => (Array.isArray(equals) ? equals : [equals])
     .filter((v) => v !== undefined && v !== null && v !== '')
     .map(String);
@@ -49,6 +51,13 @@ export const fieldFromFormValues = (values) => {
         ...(values.type === 'file' && values.bucket ? { bucket: values.bucket } : {}),
         ...(values.type === 'file' && accept.length > 0 ? { accept } : {}),
         ...(values.type === 'file' && values.maxSizeMB != null ? { maxSizeMB: values.maxSizeMB } : {}),
+        ...(values.type === 'date_range' && values.openStart ? { openStart: true } : {}),
+        ...(values.type === 'date_range' && values.openEnd ? { openEnd: true } : {}),
+        ...(values.type === 'date_range'
+            && (values.openStart || values.openEnd)
+            && values.openCatalog
+            ? { openCatalog: values.openCatalog }
+            : {}),
         layout: { colSpan },
     };
 };
@@ -78,6 +87,9 @@ export const fieldToFormValues = (field) => ({
     bucket: field?.bucket ?? undefined,
     accept: field?.accept ?? [],
     maxSizeMB: field?.maxSizeMB,
+    openStart: !!field?.openStart,
+    openEnd: !!field?.openEnd,
+    openCatalog: field?.openCatalog ?? DEFAULT_OPEN_RANGE_CATALOG,
     colSpan: field?.layout?.colSpan ?? 1,
 });
 

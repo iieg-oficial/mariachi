@@ -10,6 +10,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
+from app.services.sieej.catalogos_sistema import OPTION_KEYS, permite_extremo_abierto
 from app.services.sieej.definicion_validator import FIELD_TYPES
 
 
@@ -143,7 +144,8 @@ def _es_valor_vacio(field_type: str, value: Any) -> bool:
     if value is None or (isinstance(value, str) and not value.strip()):
         return True
     if field_type == "date_range" and isinstance(value, dict):
-        return not value.get("start") and not value.get("end")
+        claves = ("start", "end", *OPTION_KEYS.values())
+        return not any(value.get(clave) for clave in claves)
     return False
 
 
@@ -214,23 +216,7 @@ def _validar_field_value(
             errores.append({"path": path, "msg": "fecha invalida (YYYY-MM-DD)"})
 
     elif field_type == "date_range":
-        if not isinstance(value, dict):
-            errores.append({"path": path, "msg": "rango de fechas debe ser objeto"})
-            return
-        start = value.get("start")
-        end = value.get("end")
-        formato_ok = all(
-            isinstance(v, str) and re.match(r"^\d{4}-\d{2}-\d{2}", v)
-            for v in (start, end)
-        )
-        if not formato_ok:
-            errores.append(
-                {"path": path, "msg": "rango de fechas invalido (YYYY-MM-DD)"}
-            )
-        elif start[:10] > end[:10]:
-            errores.append(
-                {"path": path, "msg": "la fecha inicial no puede ser mayor que la final"}
-            )
+        _validar_date_range(field, value, path, errores)
 
     elif field_type in {"select", "radio"}:
         valid = _valid_option_values(field)
@@ -259,6 +245,68 @@ def _validar_field_value(
             return
         if not isinstance(value.get("url_publica"), str):
             errores.append({"path": path, "msg": "file sin `url_publica`"})
+
+
+_EXTREMO_LABEL = {"start": "inicial", "end": "final"}
+
+
+def _validar_extremo(
+    field: dict[str, Any],
+    value: dict[str, Any],
+    extremo: str,
+    path: str,
+    errores: list[dict[str, str]],
+) -> bool:
+    """Valida un extremo del rango. Devuelve True si quedo como fecha
+    (comparable), False si quedo como opcion de catalogo o invalido."""
+    etiqueta = _EXTREMO_LABEL[extremo]
+    fecha = value.get(extremo)
+    opcion = value.get(OPTION_KEYS[extremo])
+
+    if opcion is not None and opcion != "":
+        if not isinstance(opcion, str):
+            errores.append({"path": path, "msg": f"la opcion {etiqueta} debe ser texto"})
+            return False
+        if not permite_extremo_abierto(field, extremo):
+            errores.append(
+                {"path": path, "msg": f"la fecha {etiqueta} no admite opciones"}
+            )
+            return False
+        if fecha:
+            errores.append(
+                {
+                    "path": path,
+                    "msg": f"la fecha {etiqueta} no puede tener fecha y opcion a la vez",
+                }
+            )
+            return False
+        return False
+
+    if not isinstance(fecha, str) or not re.match(r"^\d{4}-\d{2}-\d{2}", fecha):
+        errores.append(
+            {"path": path, "msg": f"fecha {etiqueta} invalida (YYYY-MM-DD)"}
+        )
+        return False
+    return True
+
+
+def _validar_date_range(
+    field: dict[str, Any],
+    value: Any,
+    path: str,
+    errores: list[dict[str, str]],
+) -> None:
+    if not isinstance(value, dict):
+        errores.append({"path": path, "msg": "rango de fechas debe ser objeto"})
+        return
+
+    start_es_fecha = _validar_extremo(field, value, "start", path, errores)
+    end_es_fecha = _validar_extremo(field, value, "end", path, errores)
+
+    if start_es_fecha and end_es_fecha and value["start"][:10] > value["end"][:10]:
+        errores.append(
+            {"path": path, "msg": "la fecha inicial no puede ser mayor que la final"}
+        )
 
 
 def _valid_option_values(field: dict[str, Any]) -> set[str] | None:
