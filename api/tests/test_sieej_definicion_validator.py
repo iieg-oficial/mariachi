@@ -95,6 +95,32 @@ def test_field_date_range_pasa():
     validar_definicion(d)
 
 
+def _def_con_rango(**config):
+    d = _def_minima()
+    d["steps"][0]["fields"].append(
+        {"name": "periodo", "label": "Periodo", "type": "date_range", **config}
+    )
+    return d
+
+
+def test_date_range_abierto_pasa():
+    validar_definicion(_def_con_rango(openStart=True, openEnd=True))
+
+
+def test_date_range_con_catalogo_propio_pasa():
+    validar_definicion(_def_con_rango(openEnd=True, openCatalog="estatus_obra"))
+
+
+def test_date_range_open_no_booleano_falla():
+    with pytest.raises(DefinicionInvalidaError):
+        validar_definicion(_def_con_rango(openEnd="si"))
+
+
+def test_date_range_catalogo_sin_extremo_abierto_falla():
+    with pytest.raises(DefinicionInvalidaError):
+        validar_definicion(_def_con_rango(openCatalog="estatus_obra"))
+
+
 def test_select_sin_options_ni_catalog_falla():
     d = {
         "version": 1,

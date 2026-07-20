@@ -9,8 +9,9 @@ desde el admin. En los envios se guarda el `value` (no el `id`):
   - Renombrar una opcion propaga el nuevo valor a los envios que ya lo
     usan, para no dejarlos huerfanos.
   - Borrar una opcion se bloquea (409) si esta en uso por algun envio.
-  - Borrar un catalogo se bloquea (409) si algun field lo referencia o
-    si alguna de sus opciones esta en uso por algun envio.
+  - Borrar un catalogo se bloquea (409) si algun field lo referencia,
+    si alguna de sus opciones esta en uso por algun envio, o si es un
+    catalogo del sistema (`catalogos_sistema.SYSTEM_CATALOGS`).
 """
 from __future__ import annotations
 
@@ -28,6 +29,11 @@ from app.models.sieej import (
     EnvioFormulario,
     Formulario,
 )
+from app.services.sieej.catalogos_sistema import (
+    OPTION_KEYS,
+    es_catalogo_sistema,
+    open_range_catalog,
+)
 
 CLAVE_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
 
@@ -39,17 +45,36 @@ def _slugify(label: str) -> str:
     return slug[:64]
 
 
-def _rutas_catalogo(definicion: dict[str, Any], clave: str) -> list[tuple[str, str, str]]:
-    """(step_id, field_name, step_type) de los fields que referencian `clave`."""
-    rutas: list[tuple[str, str, str]] = []
+def claves_referenciadas(field: dict[str, Any]) -> set[str]:
+    """Catalogos que consume un field: el de sus opciones (`catalog`) y el
+    de la fecha abierta de un `date_range` (`openCatalog`)."""
+    claves: set[str] = set()
+    catalog = field.get("catalog")
+    if isinstance(catalog, str) and catalog:
+        claves.add(catalog)
+    if field.get("type") == "date_range" and (
+        field.get("openStart") or field.get("openEnd")
+    ):
+        claves.add(open_range_catalog(field))
+    return claves
+
+
+def _rutas_catalogo(
+    definicion: dict[str, Any], clave: str
+) -> list[tuple[str, str, str, str]]:
+    """(step_id, field_name, step_type, field_type) de los fields que
+    referencian `clave`."""
+    rutas: list[tuple[str, str, str, str]] = []
     for step in definicion.get("steps") or []:
         step_id = step.get("id")
         step_type = step.get("type")
         if not step_id or step_type == "summary":
             continue
         for field in step.get("fields") or []:
-            if field.get("catalog") == clave and field.get("name"):
-                rutas.append((step_id, field["name"], step_type))
+            if clave in claves_referenciadas(field) and field.get("name"):
+                rutas.append(
+                    (step_id, field["name"], step_type, field.get("type") or "")
+                )
     return rutas
 
 
@@ -63,17 +88,40 @@ def _scopes(datos: dict[str, Any], step_id: str, step_type: str) -> list[dict[st
     return [valor] if isinstance(valor, dict) else []
 
 
-def _valores(scope: dict[str, Any], field_name: str) -> list[str]:
+def _valores(scope: dict[str, Any], field_name: str, field_type: str = "") -> list[str]:
     actual = scope.get(field_name)
     if actual is None or actual == "":
         return []
+    if field_type == "date_range":
+        if not isinstance(actual, dict):
+            return []
+        return [
+            str(actual[key])
+            for key in OPTION_KEYS.values()
+            if actual.get(key)
+        ]
     if isinstance(actual, list):
         return [str(v) for v in actual if v is not None and v != ""]
     return [str(actual)]
 
 
-def _reemplazar(scope: dict[str, Any], field_name: str, anterior: str, nuevo: str) -> bool:
+def _reemplazar(
+    scope: dict[str, Any],
+    field_name: str,
+    anterior: str,
+    nuevo: str,
+    field_type: str = "",
+) -> bool:
     actual = scope.get(field_name)
+    if field_type == "date_range":
+        if not isinstance(actual, dict):
+            return False
+        cambiado = False
+        for key in OPTION_KEYS.values():
+            if actual.get(key) is not None and str(actual[key]) == anterior:
+                actual[key] = nuevo
+                cambiado = True
+        return cambiado
     if isinstance(actual, list):
         if not any(str(v) == anterior for v in actual):
             return False
@@ -122,9 +170,9 @@ class CatalogosService:
             if not rutas:
                 continue
             usados: set[str] = set()
-            for step_id, field_name, step_type in rutas:
+            for step_id, field_name, step_type, field_type in rutas:
                 for scope in _scopes(envio.datos or {}, step_id, step_type):
-                    usados.update(_valores(scope, field_name))
+                    usados.update(_valores(scope, field_name, field_type))
             for value in usados:
                 conteos[value] = conteos.get(value, 0) + 1
         return conteos
@@ -135,16 +183,14 @@ class CatalogosService:
         for formulario in self.db.query(Formulario).all():
             for step in (formulario.definicion or {}).get("steps") or []:
                 for field in step.get("fields") or []:
-                    clave = field.get("catalog")
-                    if not clave:
-                        continue
-                    refs.setdefault(clave, []).append({
-                        "formulario": formulario.nombre,
-                        "formulario_id": formulario.id,
-                        "step_id": step.get("id"),
-                        "field_name": field.get("name"),
-                        "field_label": field.get("label"),
-                    })
+                    for clave in claves_referenciadas(field):
+                        refs.setdefault(clave, []).append({
+                            "formulario": formulario.nombre,
+                            "formulario_id": formulario.id,
+                            "step_id": step.get("id"),
+                            "field_name": field.get("name"),
+                            "field_label": field.get("label"),
+                        })
         return refs
 
     def _resumen(self, catalogo: Catalogo, campos: list[dict[str, Any]]) -> dict[str, Any]:
@@ -158,6 +204,7 @@ class CatalogosService:
             "label": catalogo.label,
             "total": total,
             "campos": campos,
+            "sistema": es_catalogo_sistema(catalogo.clave),
         }
 
     def listar_catalogos(self) -> list[dict[str, Any]]:
@@ -220,6 +267,14 @@ class CatalogosService:
 
     def delete_catalog(self, clave: str) -> None:
         catalogo = self._catalogo(clave)
+        if es_catalogo_sistema(clave):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    f"`{catalogo.label}` es un catalogo del sistema y no se "
+                    "puede eliminar. Si puedes renombrarlo y editar sus opciones."
+                ),
+            )
         campos = self._campos_por_catalogo().get(clave, [])
         if campos:
             formularios = sorted({c["formulario"] for c in campos})
@@ -325,9 +380,9 @@ class CatalogosService:
                 continue
             datos = envio.datos or {}
             cambiado = False
-            for step_id, field_name, step_type in rutas:
+            for step_id, field_name, step_type, field_type in rutas:
                 for scope in _scopes(datos, step_id, step_type):
-                    if _reemplazar(scope, field_name, anterior, nuevo):
+                    if _reemplazar(scope, field_name, anterior, nuevo, field_type):
                         cambiado = True
             if cambiado:
                 envio.datos = datos

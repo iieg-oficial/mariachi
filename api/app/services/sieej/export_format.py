@@ -37,8 +37,8 @@ def format_value(field: dict[str, Any], value: Any) -> str | None:
     if field_type == "date_range":
         if not isinstance(value, dict):
             return None
-        start = value.get("start") or ""
-        end = value.get("end") or ""
+        start = value.get("startOption") or value.get("start") or ""
+        end = value.get("endOption") or value.get("end") or ""
         if not start and not end:
             return None
         return f"{start} – {end}"

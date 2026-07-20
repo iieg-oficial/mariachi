@@ -25,6 +25,7 @@ class CatalogoResumen(BaseModel):
     label: str
     total: int
     campos: list[CatalogoCampoRef] = []
+    sistema: bool = False
 
 
 class CatalogoAdminItem(BaseModel):
