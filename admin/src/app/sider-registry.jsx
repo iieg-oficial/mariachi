@@ -2,7 +2,6 @@ import {
     ApartmentOutlined,
     AppstoreOutlined,
     AuditOutlined,
-    BarChartOutlined,
     BookOutlined,
     BranchesOutlined,
     CalendarOutlined,
@@ -48,10 +47,7 @@ export const PROJECT_REGISTRY = {
                 key: '/mapalab/api-keys', path: '/mapalab/api-keys', label: 'API Keys',
                 icon: <KeyOutlined />, allowedGlobalRoles: ['tetlamamakani'], showBetaBadge: true,
             },
-            {
-                key: '/mapalab/stats', path: '/mapalab/stats', label: 'Estadísticas',
-                icon: <BarChartOutlined />,
-            },
+
         ],
     },
     sieej: {

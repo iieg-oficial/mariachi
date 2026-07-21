@@ -12,7 +12,7 @@ const fallback = <div style={{ textAlign: 'center', padding: 48 }}><Spin /></div
 
 export default function TelemetriaPage() {
     const [searchParams, setSearchParams] = useSearchParams();
-    const fuente = searchParams.get('fuente') || 'uso';
+    const fuente = searchParams.get('fuente') || 'mapalab';
 
     const handleChange = (key) => {
         setSearchParams((prev) => {
@@ -23,8 +23,8 @@ export default function TelemetriaPage() {
 
     const items = [
         {
-            key: 'uso',
-            label: 'Uso',
+            key: 'mapalab',
+            label: 'MapaLab',
             children: <UsoSection />,
         },
         {

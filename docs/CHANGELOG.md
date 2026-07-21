@@ -9,6 +9,12 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.63.1] - 2026-07-21
+
+### Cambios
+
+-
+
 ## [1.63.0] - 2026-07-21
 
 ### Huachicol absorbe la telemetría (Observabilidad + Telemetría)

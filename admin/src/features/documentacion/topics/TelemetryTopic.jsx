@@ -69,7 +69,7 @@ export default function TelemetryTopic() {
                 size="small"
             >
                 <Paragraph type="secondary" style={{ marginTop: 0, marginBottom: 12, fontSize: 12 }}>
-                    Middleware ASGI en el container <Text code>mapalab-mcp</Text> intercepta cada request al endpoint <Text code>/mcp/</Text>, parsea el JSON-RPC y empuja al buffer. Flush async cada 30 s a <Text code>POST /api/administrador/internal/mapalab/mcp/events</Text>. Sin identidad: <Text code>session_hash</Text> e <Text code>ip_hash</Text> son SHA-256 + salt del token interno. Dashboard en el tab MCP de <Text code>/administrador/mapalab/stats</Text>.
+                    Middleware ASGI en el container <Text code>mapalab-mcp</Text> intercepta cada request al endpoint <Text code>/mcp/</Text>, parsea el JSON-RPC y empuja al buffer. Flush async cada 30 s a <Text code>POST /api/administrador/internal/mapalab/mcp/events</Text>. Sin identidad: <Text code>session_hash</Text> e <Text code>ip_hash</Text> son SHA-256 + salt del token interno. Dashboard en el tab MCP de <Text code>/huachicol/telemetria?fuente=mapalab</Text>.
                 </Paragraph>
                 <Table
                     rowKey="campo"

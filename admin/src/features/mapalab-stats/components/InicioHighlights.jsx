@@ -110,7 +110,7 @@ export default function InicioHighlights() {
                 icon={<EnvironmentOutlined />}
                 title="MapaLab"
                 subtitle="Resumen de uso"
-                to="/mapalab/stats"
+                to="/huachicol/telemetria?fuente=mapalab"
             />
             {loading ? (
                 <div style={{ textAlign: 'center', padding: 24 }}><Spin /></div>

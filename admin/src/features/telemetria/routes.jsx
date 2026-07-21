@@ -22,10 +22,10 @@ export const buildHuachicolRoutes = (withSuspense) => {
         route('huachicol/actividad', Actividad),
         { path: 'monitoreo', element: <Navigate to="/huachicol/observabilidad" replace /> },
         { path: 'actividad', element: <Navigate to="/huachicol/actividad" replace /> },
-        { path: 'mapalab/stats', element: <Navigate to="/huachicol/telemetria?fuente=uso" replace /> },
+        { path: 'mapalab/stats', element: <Navigate to="/huachicol/telemetria?fuente=mapalab" replace /> },
         {
             path: 'mapalab/stats/sesiones',
-            element: <Navigate to="/huachicol/telemetria?fuente=uso&tab=sesiones" replace />,
+            element: <Navigate to="/huachicol/telemetria?fuente=mapalab&tab=sesiones" replace />,
         },
     ];
 };
