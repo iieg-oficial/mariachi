@@ -16,6 +16,7 @@ import Login from '@features/auth/pages/LoginPage';
 import ChangePassword from '@features/auth/pages/ChangePasswordPage';
 import { buildMapalabApiKeysRoutes } from '@features/mapalab-api-keys/routes';
 import { buildColibriRoutes } from '@features/colibri/routes';
+import { buildHuachicolRoutes } from '@features/telemetria/routes';
 
 const isDev = import.meta.env.DEV;
 
@@ -30,10 +31,10 @@ if (import.meta.env.VITE_SENTRY_DSN) {
 }
 
 const Users = lazy(() => import('@features/users'));
-const Actividad = lazy(() => import('@features/actividad'));
 const MenuManager = lazy(() => import('@features/portal-menu'));
 const PageEditor = lazy(() => import('@features/portal-pages'));
 const Acervo = lazy(() => import('@features/acervo'));
+const AcervoBuckets = lazy(() => import('@features/acervo').then((m) => ({ default: m.BucketsPage })));
 const RevisionQueue = lazy(() => import('@features/revision'));
 const LayerEditPage = lazy(() => import('@features/mapalab-layers').then((m) => ({ default: m.LayerEditPage })));
 const InitialLayerOrderPage = lazy(() => import('@features/mapalab-layers').then((m) => ({ default: m.InitialLayerOrderPage })));
@@ -43,7 +44,6 @@ const EventoEditPage = lazy(() => import('@features/mapalab-eventos').then((m) =
 const HomePage = lazy(() => import('@features/mapalab-home').then((m) => ({ default: m.HomePage })));
 const SymbolsPage = lazy(() => import('@features/mapalab-symbols').then((m) => ({ default: m.SymbolsPage })));
 const GeoserverFilesPage = lazy(() => import('@features/mapalab-geoserver-files').then((m) => ({ default: m.GeoserverFilesPage })));
-const MapalabStatsPage = lazy(() => import('@features/mapalab-stats').then((m) => ({ default: m.MapalabStatsPage })));
 const DocumentacionPage = lazy(() => import('@features/documentacion').then((m) => ({ default: m.DocumentacionPage })));
 const FormulariosListPage = lazy(() => import('@features/sieej-formularios').then((m) => ({ default: m.FormulariosListPage })));
 const FormularioEditorPage = lazy(() => import('@features/sieej-formularios').then((m) => ({ default: m.FormularioEditorPage })));
@@ -88,14 +88,6 @@ const router = createBrowserRouter([
                         )
                     },
                     {
-                        path: 'actividad',
-                        element: withSuspense(
-                            <RoleProtectedRoute allowedRoles={['tetlamamakani']}>
-                                <Actividad />
-                            </RoleProtectedRoute>
-                        )
-                    },
-                    {
                         path: 'revision',
                         element: withSuspense(
                             <RoleProtectedRoute allowedRoles={['tetlamamakani']}>
@@ -126,6 +118,14 @@ const router = createBrowserRouter([
                         element: withSuspense(
                             <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
                                 <Acervo />
+                            </RoleProtectedRoute>
+                        )
+                    },
+                    {
+                        path: 'acervo/buckets',
+                        element: withSuspense(
+                            <RoleProtectedRoute allowedRoles={['tetlamamakani']}>
+                                <AcervoBuckets />
                             </RoleProtectedRoute>
                         )
                     },
@@ -209,18 +209,7 @@ const router = createBrowserRouter([
                             </RoleProtectedRoute>
                         )
                     },
-                    {
-                        path: 'mapalab/stats',
-                        element: withSuspense(
-                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
-                                <MapalabStatsPage />
-                            </RoleProtectedRoute>
-                        )
-                    },
-                    {
-                        path: 'mapalab/stats/sesiones',
-                        element: <Navigate to="/mapalab/stats?tab=sesiones" replace />
-                    },
+                    ...buildHuachicolRoutes(withSuspense),
                     ...buildMapalabApiKeysRoutes(withSuspense),
                     {
                         path: 'sieej/formularios',

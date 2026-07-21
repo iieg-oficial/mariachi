@@ -1,6 +1,6 @@
 # Mariachi
 
-**Versión:** 0.30.24 ([changelog](docs/CHANGELOG.md))
+**Versión:** número único del monorepo en `api/pyproject.toml` ([changelog](docs/CHANGELOG.md))
 
 <div align="center">
 

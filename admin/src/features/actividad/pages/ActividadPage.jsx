@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     Avatar, Button, Card, Col, DatePicker, Empty, Input, Pagination, Row, Select, Skeleton,
-    Space, Table, Tag, Tooltip, Typography,
+    Space, Table, Tabs, Tag, Tooltip, Typography,
 } from 'antd';
 import { ReloadOutlined, SearchOutlined, UserOutlined } from '@ant-design/icons';
 import api from '@shared/services/api';
@@ -16,6 +16,11 @@ const { Title, Text } = Typography;
 const { RangePicker } = DatePicker;
 
 const PAGE_SIZE = 50;
+
+const TAB_ITEMS = [
+    { key: '', label: 'Todo' },
+    ...ACTION_PREFIXES.map((p) => ({ key: p.value, label: p.label.replace(/\s*\(.*\)$/, '') })),
+];
 
 export default function ActividadPage() {
     const { isMobile } = useIsMobile();
@@ -165,19 +170,16 @@ export default function ActividadPage() {
                 <Button icon={<ReloadOutlined />} onClick={load} block={isMobile}>Refrescar</Button>
             </div>
 
+            <Tabs
+                activeKey={filters.action_prefix}
+                onChange={updateFilter('action_prefix')}
+                items={TAB_ITEMS}
+                style={{ marginBottom: 8 }}
+            />
+
             <Card style={{ marginBottom: 16 }}>
                 <Row gutter={[12, 12]}>
-                    <Col xs={24} sm={12} md={6}>
-                        <Select
-                            allowClear
-                            placeholder="Prefijo de accion"
-                            value={filters.action_prefix || undefined}
-                            onChange={updateFilter('action_prefix')}
-                            options={ACTION_PREFIXES}
-                            style={{ width: '100%' }}
-                        />
-                    </Col>
-                    <Col xs={24} sm={12} md={6}>
+                    <Col xs={24} sm={12} md={8}>
                         <Select
                             allowClear
                             placeholder="Rol del actor"
@@ -187,7 +189,7 @@ export default function ActividadPage() {
                             options={Object.entries(ROLE_TAG).map(([v, { label }]) => ({ value: v, label }))}
                         />
                     </Col>
-                    <Col xs={24} sm={12} md={6}>
+                    <Col xs={24} sm={12} md={8}>
                         <Input
                             allowClear
                             placeholder="ID del actor"
@@ -197,7 +199,7 @@ export default function ActividadPage() {
                             onChange={(e) => updateFilter('actor_id')(e.target.value)}
                         />
                     </Col>
-                    <Col xs={24} sm={12} md={6}>
+                    <Col xs={24} sm={12} md={8}>
                         <RangePicker
                             showTime
                             style={{ width: '100%' }}

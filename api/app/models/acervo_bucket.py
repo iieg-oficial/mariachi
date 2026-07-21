@@ -4,9 +4,12 @@ from sqlalchemy.orm import relationship
 from app.core.database import Base
 from app.core.time import utcnow
 
+SCHEMA = "acervo"
+
 
 class AcervoBucket(Base):
-    __tablename__ = "acervo_buckets"
+    __tablename__ = "buckets"
+    __table_args__ = {"schema": SCHEMA}
 
     id = Column(Integer, primary_key=True, index=True)
     project_id = Column(

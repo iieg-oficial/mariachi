@@ -1,15 +1,17 @@
 import {
-    AuditOutlined,
+    BarChartOutlined,
+    ClusterOutlined,
     DashboardOutlined,
+    DatabaseOutlined,
     FileImageOutlined,
     HistoryOutlined,
     LockOutlined,
-    ProjectOutlined,
+    PictureOutlined,
     TeamOutlined,
 } from '@ant-design/icons';
 import { Tooltip } from 'antd';
 import StatusBadge from '@shared/components/StatusBadge';
-import { FOOTER_ITEMS, PROJECT_REGISTRY } from '@app/sider-registry';
+import { FOOTER_RAIL_ITEMS, PROJECT_REGISTRY } from '@app/sider-registry';
 
 export { PROJECT_REGISTRY };
 
@@ -45,7 +47,87 @@ const withBetaBadge = (label) => (
     </span>
 );
 
-export const PLATFORM_ITEMS = [
+const renderBadgeLabel = (label, count) => (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+        <span>{label}</span>
+        <StatusBadge text={String(count)} color="#fff" bg="#ff4d4f" size="sm" />
+    </span>
+);
+
+function buildLeafItem(item, role, onNavigate, extras) {
+    const allowed = !item.allowedGlobalRoles || item.allowedGlobalRoles.includes(role);
+    const itemDisabled = item.disabled || !allowed;
+    let label = item.label;
+    if (allowed) {
+        if (item.showBadge && extras.pendingCount > 0) {
+            label = renderBadgeLabel(item.label, extras.pendingCount);
+        } else if (item.showReporteBadge && extras.reportesPendingCount > 0) {
+            label = renderBadgeLabel(item.label, extras.reportesPendingCount);
+        }
+        if (item.showBetaBadge) {
+            label = withBetaBadge(label);
+        }
+    } else {
+        label = renderDisabledLabel(item.label, item.allowedGlobalRoles);
+    }
+    return {
+        key: item.key,
+        icon: item.icon,
+        disabled: itemDisabled,
+        label,
+        onClick: itemDisabled ? undefined : () => onNavigate(item.path),
+    };
+}
+
+function buildChildItem(item, parentAccessible, parentDisabled, role, onNavigate, extras, parentRoles) {
+    const itemAllowedByRole = !item.allowedGlobalRoles || item.allowedGlobalRoles.includes(role);
+    const itemAccessible = parentAccessible && itemAllowedByRole;
+    const itemDisabled = parentDisabled || item.disabled || !itemAccessible;
+    let label = item.label;
+    if (itemAccessible) {
+        if (item.showBadge && extras.pendingCount > 0) {
+            label = renderBadgeLabel(item.label, extras.pendingCount);
+        } else if (item.showReporteBadge && extras.reportesPendingCount > 0) {
+            label = renderBadgeLabel(item.label, extras.reportesPendingCount);
+        }
+        if (item.showBetaBadge) {
+            label = withBetaBadge(label);
+        }
+    } else {
+        label = renderDisabledLabel(item.label, item.allowedGlobalRoles || parentRoles);
+    }
+    return {
+        key: item.key,
+        icon: item.icon,
+        label,
+        disabled: itemDisabled,
+        onClick: itemDisabled ? undefined : () => onNavigate(item.path),
+    };
+}
+
+function buildParentItem(item, role, onNavigate, extras) {
+    const allowed = !item.allowedGlobalRoles || item.allowedGlobalRoles.includes(role);
+    const parentDisabled = item.disabled || !allowed;
+    const label = allowed
+        ? (item.showBetaBadge ? withBetaBadge(item.label) : item.label)
+        : renderDisabledLabel(item.label, item.allowedGlobalRoles);
+    return {
+        key: item.key,
+        icon: item.icon,
+        label,
+        disabled: parentDisabled,
+        children: item.children.map((child) =>
+            buildChildItem(child, allowed, parentDisabled, role, onNavigate, extras, item.allowedGlobalRoles)),
+    };
+}
+
+export const MAIN_ITEMS = [
+    {
+        key: '/inicio',
+        path: '/inicio',
+        label: 'Inicio',
+        icon: <DashboardOutlined />,
+    },
     {
         key: '/users',
         path: '/users',
@@ -54,26 +136,37 @@ export const PLATFORM_ITEMS = [
         allowedGlobalRoles: ['tetlamamakani'],
     },
     {
-        key: '/acervo',
-        path: '/acervo',
+        key: 'group-huachicol',
+        label: 'Huachicol',
+        icon: <ClusterOutlined />,
+        allowedGlobalRoles: ['tetlamamakani'],
+        children: [
+            {
+                key: '/huachicol/observabilidad', path: '/huachicol/observabilidad',
+                label: 'Observabilidad', icon: <DashboardOutlined />,
+            },
+            {
+                key: '/huachicol/telemetria', path: '/huachicol/telemetria',
+                label: 'Telemetría', icon: <BarChartOutlined />,
+            },
+            {
+                key: '/huachicol/actividad', path: '/huachicol/actividad',
+                label: 'Actividad', icon: <HistoryOutlined />,
+            },
+        ],
+    },
+    {
+        key: 'group-acervo',
         label: 'Acervo',
         icon: <FileImageOutlined />,
         allowedGlobalRoles: ['tetlamamakani', 'editora'],
-    },
-    {
-        key: '/revision',
-        path: '/revision',
-        label: 'Revisiones',
-        icon: <AuditOutlined />,
-        allowedGlobalRoles: ['tetlamamakani'],
-        showBadge: true,
-    },
-    {
-        key: '/actividad',
-        path: '/actividad',
-        label: 'Actividad',
-        icon: <HistoryOutlined />,
-        allowedGlobalRoles: ['tetlamamakani'],
+        children: [
+            { key: '/acervo', path: '/acervo', label: 'Media', icon: <PictureOutlined /> },
+            {
+                key: '/acervo/buckets', path: '/acervo/buckets', label: 'Buckets',
+                icon: <DatabaseOutlined />, allowedGlobalRoles: ['tetlamamakani'],
+            },
+        ],
     },
 ];
 
@@ -83,52 +176,12 @@ export function buildSiderItems({ user, onNavigate, extras = {} }) {
 
     const items = [];
 
-    items.push({
-        key: '/inicio',
-        icon: <DashboardOutlined />,
-        label: 'Inicio',
-        onClick: () => onNavigate('/inicio'),
-    });
-
-    const renderBadgeLabel = (label, count) => (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-            <span>{label}</span>
-            <StatusBadge text={String(count)} color="#fff" bg="#ff4d4f" size="sm" />
-        </span>
-    );
-
-    const platformChildren = PLATFORM_ITEMS.map((item) => {
-        const allowed = item.allowedGlobalRoles.includes(role);
-        const itemDisabled = item.disabled || !allowed;
-        let label = item.label;
-        if (allowed) {
-            if (item.showBadge && extras.pendingCount > 0) {
-                label = renderBadgeLabel(item.label, extras.pendingCount);
-            } else if (item.showReporteBadge && extras.reportesPendingCount > 0) {
-                label = renderBadgeLabel(item.label, extras.reportesPendingCount);
-            }
-            if (item.showBetaBadge) {
-                label = withBetaBadge(label);
-            }
+    for (const item of MAIN_ITEMS) {
+        if (item.children) {
+            items.push(buildParentItem(item, role, onNavigate, extras));
         } else {
-            label = renderDisabledLabel(item.label, item.allowedGlobalRoles);
+            items.push(buildLeafItem(item, role, onNavigate, extras));
         }
-        return {
-            key: item.key,
-            icon: item.icon,
-            disabled: itemDisabled,
-            label,
-            onClick: itemDisabled ? undefined : () => onNavigate(item.path),
-        };
-    });
-
-    if (platformChildren.length > 0) {
-        items.push({
-            key: 'platform',
-            icon: <ProjectOutlined />,
-            label: 'Plataforma',
-            children: platformChildren,
-        });
     }
 
     const isAdmin = role === 'tetlamamakani';
@@ -149,48 +202,30 @@ export function buildSiderItems({ user, onNavigate, extras = {} }) {
             icon: project.icon,
             label: projectLabel,
             disabled: projectDisabled,
-            children: project.items.map((item) => {
-                const itemAllowedByRole = !item.allowedGlobalRoles || item.allowedGlobalRoles.includes(role);
-                const itemAccessible = projectAccessible && itemAllowedByRole;
-                const itemDisabled = projectDisabled || item.disabled || !itemAccessible;
-                let label = item.label;
-                if (itemAccessible) {
-                    if (item.showBadge && extras.pendingCount > 0) {
-                        label = renderBadgeLabel(item.label, extras.pendingCount);
-                    } else if (item.showReporteBadge && extras.reportesPendingCount > 0) {
-                        label = renderBadgeLabel(item.label, extras.reportesPendingCount);
-                    }
-                    if (item.showBetaBadge) {
-                        label = withBetaBadge(label);
-                    }
-                } else {
-                    label = renderDisabledLabel(item.label, item.allowedGlobalRoles || project.allowedGlobalRoles);
-                }
-                return {
-                    key: item.key,
-                    icon: item.icon,
-                    label,
-                    disabled: itemDisabled,
-                    onClick: itemDisabled ? undefined : () => onNavigate(item.path),
-                };
-            }),
+            children: project.items.map((item) =>
+                buildChildItem(
+                    item, projectAccessible, projectDisabled, role, onNavigate, extras,
+                    project.allowedGlobalRoles,
+                )),
         });
     }
 
     return items;
 }
 
-export function buildSiderFooterItems({ user, onNavigate }) {
+export function buildSiderFooterRail({ user, onNavigate, extras = {} }) {
     const role = user?.role;
     if (!role) return [];
     const items = [];
-    for (const item of FOOTER_ITEMS) {
+    for (const item of FOOTER_RAIL_ITEMS) {
         const allowed = !item.allowedGlobalRoles || item.allowedGlobalRoles.includes(role);
         if (!allowed) continue;
         items.push({
             key: item.key,
-            icon: item.icon,
+            path: item.path,
             label: item.label,
+            icon: item.icon,
+            badgeCount: item.showBadge ? (extras.pendingCount || 0) : 0,
             onClick: () => onNavigate(item.path),
         });
     }
@@ -198,19 +233,23 @@ export function buildSiderFooterItems({ user, onNavigate }) {
 }
 
 export function defaultOpenKeyForPath(pathname) {
+    for (const item of MAIN_ITEMS) {
+        if (item.children && item.children.some((child) => pathname.startsWith(child.path))) {
+            return item.key;
+        }
+    }
     for (const [slug, project] of Object.entries(PROJECT_REGISTRY)) {
         if (project.items.some((item) => pathname.startsWith(item.path))) {
             return `project-${slug}`;
         }
     }
-    return 'platform';
+    return null;
 }
 
 const ALL_NAV_ITEMS = [
-    { key: '/inicio', path: '/inicio' },
-    ...PLATFORM_ITEMS,
+    ...MAIN_ITEMS.flatMap((item) => (item.children ? item.children : [item])),
     ...Object.values(PROJECT_REGISTRY).flatMap((project) => project.items),
-    ...FOOTER_ITEMS,
+    ...FOOTER_RAIL_ITEMS,
 ];
 
 export function selectedKeyForPath(pathname) {

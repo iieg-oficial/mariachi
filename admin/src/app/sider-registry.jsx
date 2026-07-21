@@ -1,20 +1,17 @@
 import {
     ApartmentOutlined,
     AppstoreOutlined,
-    BarChartOutlined,
+    AuditOutlined,
     BookOutlined,
     BranchesOutlined,
     CalendarOutlined,
     CodeOutlined,
-    DashboardOutlined,
     EnvironmentOutlined,
     FileTextOutlined,
     FormOutlined,
-    GlobalOutlined,
     HomeOutlined,
     InboxOutlined,
     KeyOutlined,
-    MenuOutlined,
     OrderedListOutlined,
     PartitionOutlined,
     PieChartOutlined,
@@ -26,23 +23,6 @@ import {
 import ColibriIcon from '@shared/components/ColibriIcon';
 
 export const PROJECT_REGISTRY = {
-    portal: {
-        label: 'Portalito',
-        icon: <GlobalOutlined />,
-        disabled: true,
-        items: [
-            { key: '/menu', path: '/menu', label: 'Menú', icon: <MenuOutlined /> },
-            { key: '/pages', path: '/pages', label: 'Páginas', icon: <FileTextOutlined /> },
-        ],
-    },
-    tablerillos: {
-        label: 'Tablerillos',
-        icon: <DashboardOutlined />,
-        disabled: true,
-        items: [
-            { key: '/tablerillos', path: '/tablerillos', label: 'Tableros', icon: <DashboardOutlined /> },
-        ],
-    },
     mapalab: {
         label: 'MapaLab',
         icon: <EnvironmentOutlined />,
@@ -67,10 +47,7 @@ export const PROJECT_REGISTRY = {
                 key: '/mapalab/api-keys', path: '/mapalab/api-keys', label: 'API Keys',
                 icon: <KeyOutlined />, allowedGlobalRoles: ['tetlamamakani'], showBetaBadge: true,
             },
-            {
-                key: '/mapalab/stats', path: '/mapalab/stats', label: 'Estadísticas',
-                icon: <BarChartOutlined />,
-            },
+
         ],
     },
     sieej: {
@@ -117,12 +94,20 @@ export const PROJECT_REGISTRY = {
     },
 };
 
-export const FOOTER_ITEMS = [
+export const FOOTER_RAIL_ITEMS = [
     {
         key: '/documentacion',
         path: '/documentacion',
         label: 'Documentación',
         icon: <BookOutlined />,
         allowedGlobalRoles: ['tetlamamakani', 'editora'],
+    },
+    {
+        key: '/revision',
+        path: '/revision',
+        label: 'Revisiones',
+        icon: <AuditOutlined />,
+        allowedGlobalRoles: ['tetlamamakani'],
+        showBadge: true,
     },
 ];

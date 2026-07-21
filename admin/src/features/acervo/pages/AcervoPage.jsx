@@ -3,9 +3,10 @@ import { Alert, Card, Button, Upload, Table, Image, Space, Modal, Form, Input, S
 import {
     InboxOutlined, DeleteOutlined, EditOutlined, FolderOutlined, FolderOpenOutlined, FolderAddOutlined, FileImageOutlined, FilePdfOutlined,
     FileOutlined, AppstoreOutlined, BarsOutlined, DownloadOutlined, CopyOutlined, EyeOutlined, HomeOutlined, DragOutlined,
-    InfoCircleOutlined, CodeOutlined, BookOutlined
+    InfoCircleOutlined, CodeOutlined, BookOutlined, PictureOutlined
 } from '@ant-design/icons';
 import acervoService from '@features/acervo/api/acervoService';
+import AcervoSectionHeader from '@features/acervo/components/AcervoSectionHeader';
 import FileSnippetsModal from '@features/acervo/components/FileSnippetsModal';
 import FileSnippets from '@features/acervo/components/FileSnippets';
 import AcervoHelpModal from '@features/documentacion/components/AcervoHelpModal';
@@ -1020,71 +1021,84 @@ const Acervo = () => {
         </Row>
     );
 
+    const crearActions = (
+        <Space wrap size={[8, 8]} style={{ width: isMobile ? '100%' : 'auto' }}>
+            <Button
+                icon={<FolderAddOutlined />}
+                onClick={() => {
+                    folderForm.setFieldsValue({ parent: currentPath || undefined });
+                    setFolderModalVisible(true);
+                }}
+                disabled={!selectedBucketId}
+                block={isMobile}
+            >
+                Nueva Carpeta
+            </Button>
+            <Button
+                type="primary"
+                icon={<InboxOutlined />}
+                onClick={() => {
+                    form.setFieldsValue({ folder: currentPath || '/' });
+                    setUploadModalVisible(true);
+                }}
+                disabled={!selectedBucketId}
+                block={isMobile}
+            >
+                Subir Archivos
+            </Button>
+        </Space>
+    );
+
+    const mediaActions = (
+        <Space wrap size={[8, 8]} style={{ width: isMobile ? '100%' : 'auto' }}>
+            {selectedFiles.length > 0 && (
+                <>
+                    <Button
+                        icon={<DragOutlined />}
+                        onClick={() => {
+                            setBulkMoveTargetFolder('/');
+                            setBulkMoveModalVisible(true);
+                        }}
+                        block={isMobile}
+                    >
+                        Mover ({selectedFiles.length})
+                    </Button>
+                    <Popconfirm
+                        title={`¿Eliminar ${selectedFiles.length} archivos?`}
+                        onConfirm={handleDeleteMultiple}
+                        okText="Sí"
+                        cancelText="No"
+                    >
+                        <Button danger icon={<DeleteOutlined />} block={isMobile}>
+                            Eliminar ({selectedFiles.length})
+                        </Button>
+                    </Popconfirm>
+                </>
+            )}
+        </Space>
+    );
+
     return (
         <div>
-            <Card
-                title="Acervo"
-                extra={
-                    <Space wrap size={[8, 8]} style={{ width: isMobile ? '100%' : 'auto' }}>
-                        <Button
-                            type="primary"
-                            icon={<InboxOutlined />}
-                            onClick={() => {
-                                form.setFieldsValue({ folder: currentPath || '/' });
-                                setUploadModalVisible(true);
-                            }}
-                            disabled={!selectedBucketId}
-                            block={isMobile}
-                        >
-                            Subir Archivos
-                        </Button>
-                        <Button
-                            icon={<FolderAddOutlined />}
-                            onClick={() => {
-                                folderForm.setFieldsValue({ parent: currentPath || undefined });
-                                setFolderModalVisible(true);
-                            }}
-                            disabled={!selectedBucketId}
-                            block={isMobile}
-                        >
-                            Nueva Carpeta
-                        </Button>
-                        <Tooltip title="Abrir la guía de uso del Acervo">
-                            <Button
-                                icon={<BookOutlined />}
-                                onClick={() => openHelp('uso')}
-                                block={isMobile}
-                            >
-                                Documentación
-                            </Button>
-                        </Tooltip>
-                        {selectedFiles.length > 0 && (
-                            <>
-                                <Button
-                                    icon={<DragOutlined />}
-                                    onClick={() => {
-                                        setBulkMoveTargetFolder('/');
-                                        setBulkMoveModalVisible(true);
-                                    }}
-                                    block={isMobile}
-                                >
-                                    Mover ({selectedFiles.length})
-                                </Button>
-                                <Popconfirm
-                                    title={`¿Eliminar ${selectedFiles.length} archivos?`}
-                                    onConfirm={handleDeleteMultiple}
-                                    okText="Sí"
-                                    cancelText="No"
-                                >
-                                    <Button danger icon={<DeleteOutlined />} block={isMobile}>
-                                        Eliminar ({selectedFiles.length})
-                                    </Button>
-                                </Popconfirm>
-                            </>
-                        )}
-                    </Space>
-                }
-            >
+            <div style={{
+                display: 'flex',
+                alignItems: 'flex-start',
+                justifyContent: 'space-between',
+                gap: 12,
+                marginBottom: 16,
+            }}>
+                <AcervoSectionHeader
+                    icon={<PictureOutlined />}
+                    title="Media"
+                    description="Sube, organiza y consulta los archivos del Acervo por bucket y carpeta."
+                />
+                <Tooltip title="Abrir la guía de uso del Acervo">
+                    <Button icon={<BookOutlined />} onClick={() => openHelp('uso')}>
+                        {isMobile ? '' : 'Documentación'}
+                    </Button>
+                </Tooltip>
+            </div>
+            <Card>
                 <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
                     <Col xs={12} sm={12} md={6}>
                         <Statistic title="Total de archivos (bucket)" value={bucketStats.total} />
@@ -1103,8 +1117,16 @@ const Acervo = () => {
                     </Col>
                 </Row>
 
-                <div style={{ marginBottom: 12 }}>
+                <div style={{
+                    display: 'flex',
+                    flexDirection: isMobile ? 'column-reverse' : 'row',
+                    justifyContent: 'space-between',
+                    alignItems: isMobile ? 'stretch' : 'center',
+                    gap: 8,
+                    marginBottom: 12,
+                }}>
                     <Breadcrumb items={breadcrumbItems} />
+                    {mediaActions}
                 </div>
 
                 {buckets.length > 0 && (
@@ -1123,40 +1145,54 @@ const Acervo = () => {
                     display: 'flex',
                     flexWrap: 'wrap',
                     gap: 8,
-                    marginBottom: 16
+                    marginBottom: 16,
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
                 }}>
-                    <div style={{ flex: isMobile ? '1 1 100%' : '1 1 240px', minWidth: 0 }}>
-                        <Search
-                            placeholder="Buscar archivos..."
-                            allowClear
-                            onSearch={setSearchText}
-                            style={{ width: '100%' }}
-                        />
-                    </div>
-                    <div style={{ flex: isMobile ? '1 1 calc(50% - 4px)' : '0 0 auto' }}>
-                        <Select
-                            placeholder="Tipo"
-                            allowClear
-                            style={{ width: isMobile ? '100%' : 150 }}
-                            onChange={setSelectedType}
-                            value={selectedType}
-                        >
-                            <Option value="image">Imágenes</Option>
-                            <Option value="application">Documentos</Option>
-                            <Option value="video">Videos</Option>
-                            <Option value="audio">Audio</Option>
-                        </Select>
+                    <div style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: 8,
+                        alignItems: 'center',
+                        flex: '1 1 auto',
+                        minWidth: 0,
+                    }}>
+                        <div style={{ flex: isMobile ? '1 1 100%' : '1 1 240px', minWidth: 0 }}>
+                            <Search
+                                placeholder="Buscar archivos..."
+                                allowClear
+                                onSearch={setSearchText}
+                                style={{ width: '100%' }}
+                            />
+                        </div>
+                        <div style={{ flex: isMobile ? '1 1 calc(50% - 4px)' : '0 0 auto' }}>
+                            <Select
+                                placeholder="Tipo"
+                                allowClear
+                                style={{ width: isMobile ? '100%' : 150 }}
+                                onChange={setSelectedType}
+                                value={selectedType}
+                            >
+                                <Option value="image">Imágenes</Option>
+                                <Option value="application">Documentos</Option>
+                                <Option value="video">Videos</Option>
+                                <Option value="audio">Audio</Option>
+                            </Select>
+                        </div>
+                        <div style={{ flex: isMobile ? '1 1 100%' : '0 0 auto' }}>
+                            <Segmented
+                                block={isMobile}
+                                options={[
+                                    { label: 'Grid', value: 'grid', icon: <AppstoreOutlined /> },
+                                    { label: 'Lista', value: 'list', icon: <BarsOutlined /> }
+                                ]}
+                                value={viewMode}
+                                onChange={setViewMode}
+                            />
+                        </div>
                     </div>
                     <div style={{ flex: isMobile ? '1 1 100%' : '0 0 auto' }}>
-                        <Segmented
-                            block={isMobile}
-                            options={[
-                                { label: 'Grid', value: 'grid', icon: <AppstoreOutlined /> },
-                                { label: 'Lista', value: 'list', icon: <BarsOutlined /> }
-                            ]}
-                            value={viewMode}
-                            onChange={setViewMode}
-                        />
+                        {crearActions}
                     </div>
                 </div>
 

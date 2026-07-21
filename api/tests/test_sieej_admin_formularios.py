@@ -21,6 +21,7 @@ settings = get_settings()
 ADMIN_PREFIX = settings.admin_prefix
 SIEEJ_TABLES = [t for t in Base.metadata.sorted_tables if t.schema == "sieej"]
 PUBLIC_TABLES = [t for t in Base.metadata.sorted_tables if t.schema is None]
+HUACHICOL_TABLES = [t for t in Base.metadata.sorted_tables if t.schema == "huachicol"]
 
 
 DEFINICION_OK = {
@@ -45,10 +46,11 @@ def engine():
     )
     with eng.connect() as conn:
         conn.execute(text("ATTACH DATABASE ':memory:' AS sieej"))
+        conn.execute(text("ATTACH DATABASE ':memory:' AS huachicol"))
         conn.commit()
-    Base.metadata.create_all(bind=eng, tables=PUBLIC_TABLES + SIEEJ_TABLES)
+    Base.metadata.create_all(bind=eng, tables=PUBLIC_TABLES + SIEEJ_TABLES + HUACHICOL_TABLES)
     yield eng
-    Base.metadata.drop_all(bind=eng, tables=SIEEJ_TABLES + PUBLIC_TABLES)
+    Base.metadata.drop_all(bind=eng, tables=SIEEJ_TABLES + PUBLIC_TABLES + HUACHICOL_TABLES)
 
 
 @pytest.fixture(scope="function")

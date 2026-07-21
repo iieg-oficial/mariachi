@@ -4,17 +4,20 @@ from sqlalchemy.orm import relationship
 from app.core.database import Base
 from app.core.time import utcnow
 
+SCHEMA = "acervo"
+
 
 class AcervoFolder(Base):
-    __tablename__ = "acervo_folders"
+    __tablename__ = "folders"
     __table_args__ = (
-        UniqueConstraint("bucket_id", "path", name="uq_acervo_folders_bucket_path"),
+        UniqueConstraint("bucket_id", "path", name="uq_folders_bucket_path"),
+        {"schema": SCHEMA},
     )
 
     id = Column(Integer, primary_key=True, index=True)
     bucket_id = Column(
         Integer,
-        ForeignKey("acervo_buckets.id", ondelete="CASCADE"),
+        ForeignKey(f"{SCHEMA}.buckets.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
     )
@@ -24,10 +27,11 @@ class AcervoFolder(Base):
 
 
 class AcervoFile(Base):
-    __tablename__ = "acervo_files"
+    __tablename__ = "files"
+    __table_args__ = {"schema": SCHEMA}
 
     id = Column(Integer, primary_key=True, index=True)
-    bucket_id = Column(Integer, ForeignKey("acervo_buckets.id"), nullable=True, index=True)
+    bucket_id = Column(Integer, ForeignKey(f"{SCHEMA}.buckets.id"), nullable=True, index=True)
     name = Column(String, nullable=False, index=True)
     original_name = Column(String, nullable=False)
     type = Column(String, nullable=False)

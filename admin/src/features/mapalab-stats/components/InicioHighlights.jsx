@@ -1,14 +1,14 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router';
 import { Card, Space, Spin, Statistic, Tooltip, Typography } from 'antd';
 import {
-    BarChartOutlined,
+    EnvironmentOutlined,
     PartitionOutlined,
     ToolOutlined,
     ClockCircleOutlined,
     UserOutlined,
 } from '@ant-design/icons';
 import { getHighlights } from '@features/mapalab-stats/api/mapalabStatsService';
+import SectionHeader from '@shared/components/SectionHeader';
 
 const { Text } = Typography;
 
@@ -106,15 +106,12 @@ export default function InicioHighlights() {
 
     return (
         <div>
-            <Space align="center" style={{ width: '100%', justifyContent: 'space-between', marginBottom: 12 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <BarChartOutlined style={{ fontSize: 20, color: '#5C2472' }} />
-                    <Text strong style={{ fontSize: 18 }}>MapaLab — Uso</Text>
-                </div>
-                <Link to="/mapalab/stats">
-                    <Text type="secondary" style={{ fontSize: 12 }}>Ver detalle →</Text>
-                </Link>
-            </Space>
+            <SectionHeader
+                icon={<EnvironmentOutlined />}
+                title="MapaLab"
+                subtitle="Resumen de uso"
+                to="/huachicol/telemetria?fuente=mapalab"
+            />
             {loading ? (
                 <div style={{ textAlign: 'center', padding: 24 }}><Spin /></div>
             ) : cards}

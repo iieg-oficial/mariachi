@@ -5,9 +5,98 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
-A partir de `1.0.0` el proyecto está en producción: se sigue versionado semántico estándar (los cambios incompatibles suben la versión mayor). El versionado se lleva de forma unificada para el monorepo (backend + admin + web + infra). Las versiones previas al monorepo se listan por producto al final como histórico.
+A partir de `1.0.0` el proyecto está en producción: se sigue versionado semántico estándar (los cambios incompatibles suben la versión mayor). El versionado se lleva de forma unificada para el monorepo (backend + admin + web + infra): **desde `1.61.0` cada release usa un único número**, con `api/pyproject.toml` como fuente de la verdad (es lo que `get_app_version()` reporta en `GET /ontoy`). Las entradas previas con `[api X / admin Y]` reflejan la etapa en que backend y admin se numeraban por separado y quedan como histórico. Las versiones previas al monorepo se listan por producto al final como histórico.
 
 ---
+
+## [1.63.1] - 2026-07-21
+
+### Cambios
+
+-
+
+## [1.63.0] - 2026-07-21
+
+### Huachicol absorbe la telemetría (Observabilidad + Telemetría)
+
+El menú "Huachicol" del admin pasa a ser un grupo con dos subpáginas: **Observabilidad** (el
+monitoreo `/ontoy` que ya existía) y **Telemetría** (estadísticas de uso). La telemetría se
+consolida bajo un schema propio `huachicol` en la BD.
+
+- **BD** (`api/alembic/versions/mariachi/c0ffee1de2a3_...`): nuevo schema `huachicol`. Se
+  mueven ahí las 12 tablas de telemetría de mapalab (`events`, `sessions`, `mcp_events`,
+  `rollup_*`, `mcp_rollup_*`), renombradas sin el prefijo de app. `SET SCHEMA` + `RENAME` es
+  metadata-only: preserva todos los datos. Las FK a `public.mapalab_api_keys` quedan
+  cross-schema. Aplicar con `make migrate`.
+- **Backend**: modelos (`MapalabEvent`, `MapalabSession`, `MapalabMcpEvent`) y el SQL raw de
+  rollups/stats (`mapalab_telemetry.py`, `mapalab_stats.py`) apuntan a `huachicol.*`.
+- **Multi-plataforma** (`dab0c01a99ee_...`): columna discriminadora `app` (default `mapalab`)
+  en `events`, `sessions`, `mcp_events` y en el grano (PK) de todos los rollups, para distinguir
+  plataformas en las mismas tablas (patron de product analytics). `source` queda como sub-canal
+  dentro de cada app. El refresh de rollups agrupa por `app`, los endpoints de stats filtran por
+  `app` (vía `Period.app`, default `mapalab`) y exponen `/mapalab-stats/apps`. Aditivo, sin
+  perder datos.
+- **Admin**: nueva página **Telemetría** (`features/telemetria`) con tabs por fuente —
+  MapaLab (reutiliza `mapalab-stats`), Colibri (reutiliza `colibri/ResumenPage`) y SIEEJ
+  (nuevo, consume `/sieej/stats`). Rutas `/huachicol/observabilidad` y `/huachicol/telemetria`
+  (builder `buildHuachicolRoutes`), con redirects de `/monitoreo` y `/mapalab/stats`. La página
+  tiene header propio y las pestañas se homologan con un componente `SectionHeading`. El tab de
+  MapaLab pasa a **Uso**, con sub-tabs por plataforma (`UsoSection`, dinámicos desde `/apps`).
+- **Menú Huachicol**: **Actividad** (auditoría) se mueve del footer rail al grupo Huachicol
+  como tercera subpágina (`/huachicol/actividad`, con redirect de `/actividad`), junto a
+  Observabilidad y Telemetría. El footer rail queda con Documentación y Revisiones. La página
+  de Actividad segmenta el audit log en **pestañas por dominio** (Todo por defecto, más
+  Usuarios, SIEEJ, Login, Reportes, Colibrí, Eventos, Home, Acervo) en lugar del selector.
+- **BD (actividad)** (`dab0act1v1dad_...`): el audit log `actividad_log` (public) pasa a
+  `huachicol.actividad`; el schema `huachicol` unifica telemetría y auditoría. Todo el acceso
+  es ORM (helper de registro + endpoint de listado), así que solo cambia el schema del modelo;
+  `SET SCHEMA` + `RENAME` preserva los datos. FK a `public.usuarios` cross-schema.
+
+### UI del admin — homologación y pulido (Inicio, Observabilidad, Acervo)
+
+- **Inicio**: nuevo componente reutilizable `SectionHeader` (`shared/components`). Los
+  encabezados de sección homologan los iconos del sider —Huachicol (`ClusterOutlined`) y
+  MapaLab (`EnvironmentOutlined`)— con enlace "Ver detalles". Las cards de estatus del
+  ecosistema (`PlataformaCard`) quitan el slug y muestran el badge de estado abajo a la
+  izquierda con el contador de contenedores enfrente.
+- **Observabilidad** (`MonitoreoPage`): título "Observabilidad" con su icono del sider
+  (`DashboardOutlined`) y encabezado en dos filas (título + Actualizar arriba, descripción +
+  fecha abajo). En desktop la tabla de servicios y los eventos se muestran en dos columnas; en
+  mobile una sola, con el scroll horizontal contenido dentro de la tabla.
+- **Eventos** (`EventosPanel`): panel con altura acotada al viewport y scroll infinito, filtro
+  por día/rango con `RangePicker` (presets Hoy/Ayer/7/30 días) y título "Eventos".
+- **Acervo Media**: iconos del sider en los títulos de submenús (Media `PictureOutlined`,
+  Buckets `DatabaseOutlined`); "Documentación" pasa a la derecha del título y los botones
+  "Nueva carpeta"/"Subir archivos" se agrupan a la derecha del toolbar (búsqueda / grid / lista).
+
+---
+
+## [1.62.0] - 2026-07-21
+
+### Monitor como fuente única del estado del ecosistema
+
+Se elimina el sistema propio de sondeo de plataformas del backend, redundante desde que el
+monitor de huachicol reporta todo el ecosistema con histéresis.
+
+- **Backend**: eliminados el endpoint `GET /sistema/plataformas`, `core/platforms_config.py`,
+  los probes (`_probe_ontoy`, `_probe_http_health`, `_probe_dataengine`) y las settings
+  `*_ontoy_url`. El script `scripts/sync-platforms-config.py` queda sin objeto y se retira.
+- **Admin**: el widget "Plataformas del ecosistema" del Inicio consume
+  `/sistema/monitor/status`; la metadata estática (repo, Taiga, url) pasa al frontend.
+- Removidas las variables `*_ONTOY_URL` de los `.env*.example`.
+
+## [1.61.0] - 2026-07-21
+
+### Footer del sider unificado + notas de versión en modal
+
+- El pie del sider pasa de dos bloques separados (icon-rail de Revisiones/Actividad + menú de Documentación) a **una sola fila** que abarca el ancho, con Documentación · Actividad · Revisiones · Notas de versión separados por dividers y cada uno con tooltip; iconos en blanco. Reemplaza `buildIconRailItems`/`buildSiderFooterItems` por `buildSiderFooterRail`, y `FOOTER_ITEMS`/`ICON_RAIL_ITEMS` por un único `FOOTER_RAIL_ITEMS`.
+- **Notas de versión** deja de vivir en el Inicio y se abre como modal (`VersionNotesModal`) desde el footer; reutiliza `getNotasVersion` + `Markdown` con el mismo `Collapse` de releases.
+
+### Versión unificada del monorepo (fusión api + admin)
+
+- Se elimina el doble número `api X / admin Y`: el repo lleva **un solo número** con `api/pyproject.toml` como única fuente de la verdad (lo que `get_app_version()` reporta en `GET /ontoy`, `/`, el `release` de Sentry y la versión de los docs OpenAPI). `admin/package.json` se alinea al mismo número, más compatible con el contrato v2 de `/ontoy`.
+- Nuevo `scripts/bump-version.sh <x.y.z>`: sincroniza `api/pyproject.toml` + `admin/package.json` y abre la entrada del `CHANGELOG`. Una entrada, un número.
+- `changelog_parser` normaliza la versión de cada release (extrae el semver) para que el modal muestre `1.60.0` en vez de `api 1.60.0 / admin 1.59.0`; las entradas dual previas se conservan como histórico.
 
 ## [api 1.60.0 / admin 1.59.0] - 2026-07-20
 

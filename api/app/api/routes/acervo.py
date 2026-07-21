@@ -802,6 +802,14 @@ async def actualizar_archivo(
         new_folder = data["folder"].strip()
         item.folder = new_folder if new_folder.endswith("/") else f"{new_folder}/" if new_folder != "/" else "/"
 
+    registrar_actividad(
+        db,
+        actor=current_user,
+        action="acervo.file.update",
+        resource_type="acervo.file",
+        resource_id=item.id,
+        metadata={"fields": sorted(data.keys()), "bucket_id": item.bucket_id},
+    )
     db.commit()
     db.refresh(item)
     return acervo_file_service.serialize_acervo_file(item)

@@ -143,12 +143,58 @@ def create_app() -> FastAPI:
 
     @app.get("/ontoy", tags=["health"])
     async def ontoy():
+        import os
+        from datetime import datetime, timezone
+        from pathlib import Path
+
+        from fastapi.responses import JSONResponse
+        from sqlalchemy import text
+
+        from app.core.cache import redis_client
+        from app.core.database import SessionLocal
         from app.core.version import get_app_version
-        return {
+
+        checks = {}
+        try:
+            db = SessionLocal()
+            try:
+                db.execute(text("SELECT 1"))
+            finally:
+                db.close()
+            checks["db"] = {"status": "ok"}
+        except Exception as exc:
+            checks["db"] = {"status": "down", "detail": str(exc)[:120]}
+
+        try:
+            redis_client.ping()
+            checks["redis"] = {"status": "ok"}
+        except Exception as exc:
+            checks["redis"] = {"status": "degraded", "detail": str(exc)[:120]}
+
+        severity = {"ok": 0, "degraded": 1, "down": 2}
+        status = max(
+            (c["status"] for c in checks.values()),
+            key=lambda s: severity.get(s, 0),
+            default="ok",
+        )
+
+        try:
+            pyproject = Path(__file__).resolve().parent.parent / "pyproject.toml"
+            mtime = os.path.getmtime(pyproject)
+            deployed_at = datetime.fromtimestamp(mtime, tz=timezone.utc) \
+                .isoformat(timespec="seconds").replace("+00:00", "Z")
+        except OSError:
+            deployed_at = None
+
+        payload = {
             "slug": "mariachi-api",
             "label": "Mariachi API",
             "version": get_app_version(),
+            "deployed_at": deployed_at,
+            "status": status,
+            "checks": checks,
         }
+        return JSONResponse(payload, status_code=503 if status == "down" else 200)
 
     @app.get("/health", tags=["health"])
     async def health():

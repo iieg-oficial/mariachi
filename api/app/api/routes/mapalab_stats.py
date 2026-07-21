@@ -45,14 +45,15 @@ _GRAIN_FORMAT = {"day": "YYYY-MM-DD", "month": "YYYY-MM", "year": "YYYY"}
 class Period:
     """Rango y granularidad seleccionados, derivados de los query params."""
 
-    def __init__(self, df: date, dt: date, grain: Grain):
+    def __init__(self, df: date, dt: date, grain: Grain, app: str = "mapalab"):
         self.df = df
         self.dt = dt
         self.grain = grain
+        self.app = app
 
     @property
     def range_params(self) -> dict:
-        return {"df": self.df, "dt": self.dt}
+        return {"df": self.df, "dt": self.dt, "app": self.app}
 
     @property
     def bucket_sql(self) -> str:
@@ -63,6 +64,7 @@ def get_period(
     date_from: str | None = Query(default=None),
     date_to: str | None = Query(default=None),
     grain: Grain = Query(default="day"),
+    app: str = Query(default="mapalab"),
 ) -> Period:
     today = date.today()
     try:
@@ -75,7 +77,22 @@ def get_period(
         dt = today
     if df > dt:
         df, dt = dt, df
-    return Period(df, dt, grain)
+    return Period(df, dt, grain, app)
+
+
+_APP_LABELS = {"mapalab": "MapaLab"}
+
+
+@router.get("/apps")
+async def apps(
+    db: Session = Depends(get_db),
+    _current: Usuario = Depends(get_current_user),
+):
+    rows = db.execute(
+        text("SELECT DISTINCT app FROM huachicol.events ORDER BY app")
+    ).scalars().all()
+    disponibles = list(rows) or ["mapalab"]
+    return [{"key": a, "label": _APP_LABELS.get(a, a.capitalize())} for a in disponibles]
 
 
 @router.get("/overview", response_model=StatsOverview, response_model_by_alias=True)
@@ -97,8 +114,8 @@ async def overview(
                 COALESCE(SUM(downloaded), 0) AS download_sessions,
                 COALESCE(SUM(shared), 0) AS share_sessions,
                 COALESCE(SUM(reported), 0) AS reported_sessions
-            FROM mapalab_rollup_daily
-            WHERE dia BETWEEN :df AND :dt
+            FROM huachicol.rollup_daily
+            WHERE dia BETWEEN :df AND :dt AND app = :app
             """
         ),
         period.range_params,
@@ -177,8 +194,8 @@ async def top_layers(
                    SUM(opacity_changes) AS opacity_changes,
                    SUM(unique_sessions) AS unique_sessions,
                    MAX(last_seen) AS last_seen
-            FROM mapalab_rollup_layers
-            WHERE dia BETWEEN :df AND :dt
+            FROM huachicol.rollup_layers
+            WHERE dia BETWEEN :df AND :dt AND app = :app
             GROUP BY layer_id
             ORDER BY activations DESC, unique_sessions DESC
             LIMIT :limit
@@ -226,8 +243,8 @@ async def top_eventos(
                    SUM(shares) AS shares,
                    SUM(unique_sessions) AS unique_sessions,
                    MAX(last_seen) AS last_seen
-            FROM mapalab_rollup_eventos
-            WHERE dia BETWEEN :df AND :dt
+            FROM huachicol.rollup_eventos
+            WHERE dia BETWEEN :df AND :dt AND app = :app
             GROUP BY evento_id
             ORDER BY opens DESC, unique_sessions DESC
             LIMIT :limit
@@ -281,8 +298,8 @@ async def top_themes(
                    SUM(views) AS views,
                    SUM(unique_sessions) AS unique_sessions,
                    MAX(last_seen) AS last_seen
-            FROM mapalab_rollup_themes
-            WHERE dia BETWEEN :df AND :dt
+            FROM huachicol.rollup_themes
+            WHERE dia BETWEEN :df AND :dt AND app = :app
             GROUP BY theme_id
             ORDER BY views DESC, unique_sessions DESC
             LIMIT :limit
@@ -322,8 +339,8 @@ async def buttons(
             SELECT event_name,
                    SUM(clicks) AS clicks,
                    SUM(unique_sessions) AS unique_sessions
-            FROM mapalab_rollup_buttons
-            WHERE dia BETWEEN :df AND :dt
+            FROM huachicol.rollup_buttons
+            WHERE dia BETWEEN :df AND :dt AND app = :app
             GROUP BY event_name
             ORDER BY clicks DESC
             """
@@ -353,8 +370,8 @@ async def tools(
                    tool,
                    SUM(uses) AS uses,
                    SUM(unique_sessions) AS unique_sessions
-            FROM mapalab_rollup_tools
-            WHERE dia BETWEEN :df AND :dt
+            FROM huachicol.rollup_tools
+            WHERE dia BETWEEN :df AND :dt AND app = :app
             GROUP BY event_name, tool
             ORDER BY uses DESC
             """
@@ -393,8 +410,8 @@ async def daily(
                    SUM(reported) AS sessions_reported,
                    CASE WHEN SUM(sessions) > 0
                         THEN (SUM(dur_sum) / SUM(sessions))::int ELSE 0 END AS avg_duration_sec
-            FROM mapalab_rollup_daily
-            WHERE dia BETWEEN :df AND :dt
+            FROM huachicol.rollup_daily
+            WHERE dia BETWEEN :df AND :dt AND app = :app
             GROUP BY {bucket}, source
             ORDER BY {bucket} ASC, source ASC
             """
@@ -428,12 +445,13 @@ async def sessions(
     db: Session = Depends(get_db),
     _current: Usuario = Depends(get_current_user),
 ):
-    where = "WHERE started_at >= :df AND started_at < :dt_excl"
+    where = "WHERE started_at >= :df AND started_at < :dt_excl AND app = :app"
     params: dict = {
         "limit": page_size,
         "offset": (page - 1) * page_size,
         "df": period.df,
         "dt_excl": period.dt + timedelta(days=1),
+        "app": period.app,
     }
     if source != "all":
         where += " AND source = :source"
@@ -441,7 +459,7 @@ async def sessions(
 
     count_params = {k: v for k, v in params.items() if k not in {"limit", "offset"}}
     total = db.execute(
-        text(f"SELECT COUNT(*) FROM mapalab_sessions {where}"),
+        text(f"SELECT COUNT(*) FROM huachicol.sessions {where}"),
         count_params,
     ).scalar() or 0
 
@@ -451,7 +469,7 @@ async def sessions(
             SELECT session_id, started_at, last_seen_at, source, events_count,
                    duration_sec, layers_activated, used_swipe, used_drawing,
                    downloaded, shared, reported, ua_family, referrer
-            FROM mapalab_sessions
+            FROM huachicol.sessions
             {where}
             ORDER BY started_at DESC
             LIMIT :limit OFFSET :offset
@@ -484,6 +502,7 @@ async def sessions(
 
 @router.get("/highlights", response_model=StatsHighlights, response_model_by_alias=True)
 async def highlights(
+    app: str = Query(default="mapalab"),
     db: Session = Depends(get_db),
     _current: Usuario = Depends(get_current_user),
 ):
@@ -493,34 +512,37 @@ async def highlights(
             SELECT COALESCE(SUM(sessions), 0) AS sessions_30d,
                    CASE WHEN SUM(sessions) > 0
                         THEN (SUM(dur_sum) / SUM(sessions))::int ELSE 0 END AS avg_duration_sec
-            FROM mapalab_rollup_daily
-            WHERE dia >= CURRENT_DATE - 29
+            FROM huachicol.rollup_daily
+            WHERE dia >= CURRENT_DATE - 29 AND app = :app
             """
-        )
+        ),
+        {"app": app},
     ).mappings().first()
     top_layer_row = db.execute(
         text(
             """
             SELECT layer_id, SUM(activations) AS activations
-            FROM mapalab_rollup_layers
-            WHERE dia >= CURRENT_DATE - 29
+            FROM huachicol.rollup_layers
+            WHERE dia >= CURRENT_DATE - 29 AND app = :app
             GROUP BY layer_id
             ORDER BY activations DESC, SUM(unique_sessions) DESC
             LIMIT 1
             """
-        )
+        ),
+        {"app": app},
     ).mappings().first()
     top_tool_row = db.execute(
         text(
             """
             SELECT tool, SUM(uses) AS uses
-            FROM mapalab_rollup_tools
-            WHERE dia >= CURRENT_DATE - 29
+            FROM huachicol.rollup_tools
+            WHERE dia >= CURRENT_DATE - 29 AND app = :app
             GROUP BY tool
             ORDER BY uses DESC
             LIMIT 1
             """
-        )
+        ),
+        {"app": app},
     ).mappings().first()
 
     top_layer = None
@@ -560,8 +582,8 @@ async def mcp_overview(
                 COALESCE(SUM(unique_sessions), 0) AS sessions,
                 CASE WHEN SUM(tool_dur_count) > 0
                      THEN (SUM(tool_dur_sum) / SUM(tool_dur_count))::int ELSE 0 END AS avg_tool_duration_ms
-            FROM mapalab_mcp_rollup_daily
-            WHERE dia BETWEEN :df AND :dt
+            FROM huachicol.mcp_rollup_daily
+            WHERE dia BETWEEN :df AND :dt AND app = :app
             """
         ),
         period.range_params,
@@ -570,8 +592,8 @@ async def mcp_overview(
         text(
             """
             SELECT COUNT(DISTINCT client_name) AS clients
-            FROM mapalab_mcp_rollup_clients
-            WHERE dia BETWEEN :df AND :dt AND client_name <> 'unknown'
+            FROM huachicol.mcp_rollup_clients
+            WHERE dia BETWEEN :df AND :dt AND app = :app AND client_name <> 'unknown'
             """
         ),
         period.range_params,
@@ -605,8 +627,8 @@ async def mcp_tools(
                    CASE WHEN SUM(dur_count) > 0
                         THEN (SUM(dur_sum) / SUM(dur_count))::int ELSE 0 END AS avg_duration_ms,
                    MAX(last_seen) AS last_seen
-            FROM mapalab_mcp_rollup_tools
-            WHERE dia BETWEEN :df AND :dt
+            FROM huachicol.mcp_rollup_tools
+            WHERE dia BETWEEN :df AND :dt AND app = :app
             GROUP BY tool
             ORDER BY uses DESC, last_seen DESC
             LIMIT :limit
@@ -644,8 +666,8 @@ async def mcp_daily(
                    SUM(unique_sessions) AS unique_sessions,
                    CASE WHEN SUM(dur_count) > 0
                         THEN (SUM(dur_sum) / SUM(dur_count))::int ELSE 0 END AS avg_duration_ms
-            FROM mapalab_mcp_rollup_daily
-            WHERE dia BETWEEN :df AND :dt
+            FROM huachicol.mcp_rollup_daily
+            WHERE dia BETWEEN :df AND :dt AND app = :app
             GROUP BY {bucket}
             ORDER BY {bucket} ASC
             """
@@ -679,8 +701,8 @@ async def mcp_clients(
                    SUM(calls) AS calls,
                    SUM(unique_sessions) AS unique_sessions,
                    MAX(last_seen) AS last_seen
-            FROM mapalab_mcp_rollup_clients
-            WHERE dia BETWEEN :df AND :dt
+            FROM huachicol.mcp_rollup_clients
+            WHERE dia BETWEEN :df AND :dt AND app = :app
             GROUP BY client_name, client_version
             ORDER BY calls DESC, last_seen DESC
             """

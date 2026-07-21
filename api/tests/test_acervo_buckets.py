@@ -1,4 +1,5 @@
 from app.models.acervo_bucket import AcervoBucket
+from app.models.actividad_log import ActividadLog
 from app.models.project import Project, UserProject
 from tests.conftest import ADMIN_PREFIX
 
@@ -49,6 +50,31 @@ def test_list_buckets_admin_sees_all_active(admin_session, db_session):
     assert response.status_code == 200
     names = sorted([b["acervo_bucket"] for b in response.json()])
     assert names == ["mapalab-bucket", "portal-bucket"]
+
+
+def test_list_buckets_admin_include_inactive(admin_session, db_session):
+    _seed_buckets(db_session)
+    client = admin_session["client"]
+    response = client.get(f"{ADMIN_PREFIX}/acervo-buckets?include_inactive=true")
+    assert response.status_code == 200
+    names = sorted([b["acervo_bucket"] for b in response.json()])
+    assert names == ["inactivo-bucket", "mapalab-bucket", "portal-bucket"]
+
+
+def test_list_buckets_editora_ignores_include_inactive(
+    editora_session, db_session, editora_user
+):
+    portal, _, _, _ = _seed_buckets(db_session)
+    db_session.add(
+        UserProject(user_id=editora_user.id, project_id=portal.id, project_role="editor")
+    )
+    db_session.commit()
+
+    client = editora_session["client"]
+    response = client.get(f"{ADMIN_PREFIX}/acervo-buckets?include_inactive=true")
+    assert response.status_code == 200
+    names = [b["acervo_bucket"] for b in response.json()]
+    assert names == ["portal-bucket"]
 
 
 def test_list_buckets_editora_filtered_by_membership(
@@ -144,3 +170,46 @@ def test_update_bucket_editora_forbidden(editora_session, db_session):
         headers={"X-CSRF-Token": editora_session["csrf"]},
     )
     assert response.status_code == 403
+
+
+def test_create_bucket_registra_actividad(admin_session, db_session):
+    portal, _, _, _ = _seed_buckets(db_session)
+    client = admin_session["client"]
+    response = client.post(
+        f"{ADMIN_PREFIX}/acervo-buckets",
+        json={
+            "project_id": portal.id,
+            "acervo_bucket": "actividad-bucket",
+            "access_key_ref": "actividad-key",
+            "display_name": "Actividad Bucket",
+        },
+        headers={"X-CSRF-Token": admin_session["csrf"]},
+    )
+    assert response.status_code == 201
+    logs = (
+        db_session.query(ActividadLog)
+        .filter(ActividadLog.action == "acervo.bucket.create")
+        .all()
+    )
+    assert len(logs) == 1
+    assert logs[0].resource_type == "acervo.bucket"
+    assert logs[0].resource_id == str(response.json()["id"])
+
+
+def test_update_bucket_registra_actividad(admin_session, db_session):
+    _, _, portal_bucket, _ = _seed_buckets(db_session)
+    client = admin_session["client"]
+    response = client.patch(
+        f"{ADMIN_PREFIX}/acervo-buckets/{portal_bucket.id}",
+        json={"is_active": False},
+        headers={"X-CSRF-Token": admin_session["csrf"]},
+    )
+    assert response.status_code == 200
+    logs = (
+        db_session.query(ActividadLog)
+        .filter(ActividadLog.action == "acervo.bucket.update")
+        .all()
+    )
+    assert len(logs) == 1
+    assert logs[0].resource_id == str(portal_bucket.id)
+    assert "is_active" in logs[0].log_metadata.get("fields", [])

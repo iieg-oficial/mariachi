@@ -14,7 +14,7 @@ import {
     getTopLayers,
 } from '@features/mapalab-stats/api/mapalabStatsService';
 
-const periodKey = (period) => `${period?.grain || ''}|${period?.dateFrom || ''}|${period?.dateTo || ''}`;
+const periodKey = (period) => `${period?.app || ''}|${period?.grain || ''}|${period?.dateFrom || ''}|${period?.dateTo || ''}`;
 
 
 export function useMapalabOverview(period) {

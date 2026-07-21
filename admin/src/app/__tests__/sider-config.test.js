@@ -1,5 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
-import { buildSiderItems, defaultOpenKeyForPath, selectedKeyForPath } from '@app/sider-config';
+import {
+    buildSiderFooterRail,
+    buildSiderItems,
+    defaultOpenKeyForPath,
+    selectedKeyForPath,
+} from '@app/sider-config';
 
 const noop = () => {};
 
@@ -9,78 +14,61 @@ describe('buildSiderItems', () => {
         expect(buildSiderItems({ user: undefined, onNavigate: noop })).toEqual([]);
     });
 
-    it('admin (tetlamamakani) ve Inicio + grupo Plataforma + grupos de proyecto', () => {
+    it('admin ve Inicio, Usuarios, Huachicol y Acervo como items principales, luego proyectos', () => {
         const items = buildSiderItems({
             user: { role: 'tetlamamakani', projects: [] },
             onNavigate: noop,
         });
         expect(items[0].key).toBe('/inicio');
-        expect(items[1].key).toBe('platform');
-        expect(items[1].label).toBe('Plataforma');
-        expect(items[1].children).toHaveLength(4);
+        expect(items[1].key).toBe('/users');
+        expect(items[2].key).toBe('group-huachicol');
+        expect(items[2].label).toBe('Huachicol');
+        expect(items[2].children.map((c) => c.key)).toEqual(['/huachicol/observabilidad', '/huachicol/telemetria', '/huachicol/actividad']);
+        expect(items[3].key).toBe('group-acervo');
+        expect(items[3].children.map((c) => c.key)).toEqual(['/acervo', '/acervo/buckets']);
 
-        const projectKeys = items.slice(2).map((i) => i.key);
-        expect(projectKeys).toContain('project-portal');
+        const keys = items.map((i) => i.key);
+        expect(keys).not.toContain('platform');
+
+        const projectKeys = items.slice(4).map((i) => i.key);
         expect(projectKeys).toContain('project-mapalab');
         expect(projectKeys).toContain('project-sieej');
+        expect(projectKeys).not.toContain('project-portal');
+        expect(projectKeys).not.toContain('project-tablerillos');
     });
 
-    it('admin ve Plataforma con /users, /media, /revision, /actividad (incluye actividad post-US#148)', () => {
+    it('Acervo: admin ve Media y Buckets habilitados', () => {
         const items = buildSiderItems({
             user: { role: 'tetlamamakani', projects: [] },
             onNavigate: noop,
         });
-        expect(items.find((i) => i.key === 'platform').children.map((c) => c.key)).toEqual([
-            '/users',
-            '/acervo',
-            '/revision',
-            '/actividad',
-        ]);
-    });
-
-    it('editora ve TODOS los platform items pero los exclusivos de admin estan disabled (sider con candado v0.47.2)', () => {
-        const items = buildSiderItems({
-            user: {
-                role: 'editora',
-                projects: [{ slug: 'portal', name: 'Portal', project_role: 'editor' }],
-            },
-            onNavigate: noop,
+        const acervo = items.find((i) => i.key === 'group-acervo');
+        acervo.children.forEach((c) => {
+            expect(c.disabled).toBeFalsy();
+            expect(c.onClick).toBeDefined();
         });
-        const platform = items.find((i) => i.key === 'platform');
-        const platformByKey = Object.fromEntries(platform.children.map((c) => [c.key, c]));
-
-        expect(Object.keys(platformByKey)).toEqual(['/users', '/acervo', '/revision', '/actividad']);
-        expect(platformByKey['/acervo'].disabled).toBeFalsy();
-        expect(platformByKey['/users'].disabled).toBe(true);
-        expect(platformByKey['/revision'].disabled).toBe(true);
-        expect(platformByKey['/actividad'].disabled).toBe(true);
     });
 
-    it('editora con portal ve portal accesible y mapalab/sieej deshabilitados con candado', () => {
-        const items = buildSiderItems({
-            user: {
-                role: 'editora',
-                projects: [{ slug: 'portal', name: 'Portal', project_role: 'editor' }],
-            },
-            onNavigate: noop,
-        });
-        const portal = items.find((i) => i.key === 'project-portal');
-        const mapalab = items.find((i) => i.key === 'project-mapalab');
-        const sieej = items.find((i) => i.key === 'project-sieej');
-        expect(portal.disabled).toBe(true);
-        expect(mapalab.disabled).toBe(true);
-        expect(sieej.disabled).toBe(true);
-    });
-
-    it('editora sin memberships ve Inicio + Plataforma (Media accesible, resto con candado)', () => {
+    it('Usuarios y Huachicol son admin-only: editora los ve deshabilitados; Acervo no', () => {
         const items = buildSiderItems({
             user: { role: 'editora', projects: [] },
             onNavigate: noop,
         });
-        expect(items[0].key).toBe('/inicio');
-        expect(items[1].key).toBe('platform');
-        const accesibles = items[1].children.filter((c) => !c.disabled).map((c) => c.key);
-        expect(accesibles).toEqual(['/acervo']);
+        const byKey = Object.fromEntries(items.map((i) => [i.key, i]));
+        expect(byKey['/users'].disabled).toBe(true);
+        expect(byKey['group-huachicol'].disabled).toBe(true);
+        expect(byKey['group-acervo'].disabled).toBeFalsy();
+    });
+
+    it('Acervo: editora ve Media pero Buckets deshabilitado (admin-only)', () => {
+        const items = buildSiderItems({
+            user: { role: 'editora', projects: [] },
+            onNavigate: noop,
+        });
+        const acervo = items.find((i) => i.key === 'group-acervo');
+        const byKey = Object.fromEntries(acervo.children.map((c) => [c.key, c]));
+        expect(byKey['/acervo'].disabled).toBeFalsy();
+        expect(byKey['/acervo/buckets'].disabled).toBe(true);
     });
 
     it('editora con membership en mapalab y sieej accede a ambos sin candado', () => {
@@ -96,34 +84,19 @@ describe('buildSiderItems', () => {
         });
         const mapalab = items.find((i) => i.key === 'project-mapalab');
         const sieej = items.find((i) => i.key === 'project-sieej');
-        const portal = items.find((i) => i.key === 'project-portal');
         expect(mapalab.disabled).toBeFalsy();
         expect(sieej.disabled).toBeFalsy();
-        expect(portal.disabled).toBe(true);
     });
 
-    it('onClick en hijos invoca onNavigate con el path correcto', () => {
-        const onNavigate = vi.fn();
+    it('editora sin membership ve mapalab/sieej deshabilitados con candado', () => {
         const items = buildSiderItems({
-            user: { role: 'tetlamamakani', projects: [] },
-            onNavigate,
+            user: { role: 'editora', projects: [] },
+            onNavigate: noop,
         });
-        const platform = items.find((i) => i.key === 'platform');
-        platform.children[0].onClick();
-        expect(onNavigate).toHaveBeenCalledWith('/users');
-    });
-
-    it('proyecto con disabled:true se renderiza con flag disabled y sus hijos no tienen onClick', () => {
-        const items = buildSiderItems({
-            user: { role: 'tetlamamakani', projects: [] },
-            onNavigate: vi.fn(),
-        });
-        const portal = items.find((i) => i.key === 'project-portal');
-        expect(portal.disabled).toBe(true);
-        portal.children.forEach((c) => {
-            expect(c.disabled).toBe(true);
-            expect(c.onClick).toBeUndefined();
-        });
+        const mapalab = items.find((i) => i.key === 'project-mapalab');
+        const sieej = items.find((i) => i.key === 'project-sieej');
+        expect(mapalab.disabled).toBe(true);
+        expect(sieej.disabled).toBe(true);
     });
 
     it('items de SIEEJ son Formularios, Grupos y Catálogos (sin item disabled)', () => {
@@ -144,36 +117,67 @@ describe('buildSiderItems', () => {
         });
     });
 
-    it('item /inicio dispara onNavigate al click', () => {
+    it('items principales disparan onNavigate al click', () => {
         const onNavigate = vi.fn();
         const items = buildSiderItems({
-            user: { role: 'editora', projects: [] },
+            user: { role: 'tetlamamakani', projects: [] },
             onNavigate,
         });
-        const inicio = items.find((i) => i.key === '/inicio');
-        expect(inicio).toBeDefined();
-        inicio.onClick();
+        items.find((i) => i.key === '/inicio').onClick();
         expect(onNavigate).toHaveBeenCalledWith('/inicio');
+        const huachicol = items.find((i) => i.key === 'group-huachicol');
+        huachicol.children.find((c) => c.key === '/huachicol/observabilidad').onClick();
+        expect(onNavigate).toHaveBeenCalledWith('/huachicol/observabilidad');
+        const acervo = items.find((i) => i.key === 'group-acervo');
+        acervo.children.find((c) => c.key === '/acervo').onClick();
+        expect(onNavigate).toHaveBeenCalledWith('/acervo');
     });
 
-    it('badge de revisiones aparece cuando pendingCount > 0', () => {
-        const items = buildSiderItems({
+});
+
+describe('buildSiderFooterRail', () => {
+    it('admin ve Documentación y Revisiones en la fila', () => {
+        const rail = buildSiderFooterRail({
+            user: { role: 'tetlamamakani', projects: [] },
+            onNavigate: noop,
+        });
+        expect(rail.map((i) => i.key)).toEqual(['/documentacion', '/revision']);
+    });
+
+    it('editora solo ve Documentación (Actividad y Revisiones admin-only)', () => {
+        const rail = buildSiderFooterRail({
+            user: { role: 'editora', projects: [] },
+            onNavigate: noop,
+        });
+        expect(rail.map((i) => i.key)).toEqual(['/documentacion']);
+    });
+
+    it('el badge de revisiones refleja pendingCount', () => {
+        const rail = buildSiderFooterRail({
             user: { role: 'tetlamamakani', projects: [] },
             onNavigate: noop,
             extras: { pendingCount: 5 },
         });
-        const platform = items.find((i) => i.key === 'platform');
-        const revision = platform.children.find((c) => c.key === '/revision');
-        expect(revision).toBeDefined();
-        expect(revision.label).not.toBe('Revisiones');
+        const revision = rail.find((i) => i.key === '/revision');
+        expect(revision.badgeCount).toBe(5);
+    });
+
+    it('onClick invoca onNavigate con el path', () => {
+        const onNavigate = vi.fn();
+        const rail = buildSiderFooterRail({
+            user: { role: 'tetlamamakani', projects: [] },
+            onNavigate,
+        });
+        rail.find((i) => i.key === '/revision').onClick();
+        expect(onNavigate).toHaveBeenCalledWith('/revision');
+    });
+
+    it('devuelve [] cuando no hay user', () => {
+        expect(buildSiderFooterRail({ user: null, onNavigate: noop })).toEqual([]);
     });
 });
 
 describe('defaultOpenKeyForPath', () => {
-    it('devuelve project-portal para /pages/edit/1', () => {
-        expect(defaultOpenKeyForPath('/pages/edit/1')).toBe('project-portal');
-    });
-
     it('devuelve project-mapalab para /mapalab/layers', () => {
         expect(defaultOpenKeyForPath('/mapalab/layers')).toBe('project-mapalab');
     });
@@ -182,16 +186,22 @@ describe('defaultOpenKeyForPath', () => {
         expect(defaultOpenKeyForPath('/sieej/formularios')).toBe('project-sieej');
     });
 
-    it('devuelve platform para rutas no asociadas a un proyecto', () => {
-        expect(defaultOpenKeyForPath('/users')).toBe('platform');
-        expect(defaultOpenKeyForPath('/acervo')).toBe('platform');
-        expect(defaultOpenKeyForPath('/')).toBe('platform');
+    it('devuelve group-acervo para rutas de acervo', () => {
+        expect(defaultOpenKeyForPath('/acervo')).toBe('group-acervo');
+        expect(defaultOpenKeyForPath('/acervo/buckets')).toBe('group-acervo');
+    });
+
+    it('devuelve null para rutas no asociadas a un proyecto', () => {
+        expect(defaultOpenKeyForPath('/users')).toBeNull();
+        expect(defaultOpenKeyForPath('/')).toBeNull();
     });
 });
 
 describe('selectedKeyForPath', () => {
     it('coincide exactamente con un item del sider', () => {
         expect(selectedKeyForPath('/inicio')).toBe('/inicio');
+        expect(selectedKeyForPath('/huachicol/observabilidad')).toBe('/huachicol/observabilidad');
+        expect(selectedKeyForPath('/acervo')).toBe('/acervo');
         expect(selectedKeyForPath('/mapalab/eventos')).toBe('/mapalab/eventos');
     });
 

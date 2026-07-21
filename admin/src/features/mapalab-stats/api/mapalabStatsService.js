@@ -4,6 +4,7 @@ const periodParams = (period = {}) => ({
     date_from: period.dateFrom,
     date_to: period.dateTo,
     grain: period.grain,
+    app: period.app,
 });
 
 export const getOverview = async (period) => {

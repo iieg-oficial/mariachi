@@ -17,7 +17,7 @@ from app.core.database import Base
 
 
 class MapalabEvent(Base):
-    __tablename__ = "mapalab_events"
+    __tablename__ = "events"
     __table_args__ = (
         Index("ix_mapalab_events_ts", text("ts DESC")),
         Index("ix_mapalab_events_name_ts", "event_name", text("ts DESC")),
@@ -29,12 +29,14 @@ class MapalabEvent(Base):
         ),
         Index("ix_mapalab_events_source", "source"),
         Index("ix_mapalab_events_props_gin", "props", postgresql_using="gin"),
+        {"schema": "huachicol"},
     )
 
     id = Column(BigInteger, primary_key=True)
     ts = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     event_name = Column(String(50), nullable=False)
     session_id = Column(UUID(as_uuid=True), nullable=False)
+    app = Column(String(40), nullable=False, server_default="mapalab")
     source = Column(String(20), nullable=False, server_default="visor")
     api_key_id = Column(
         Integer,
@@ -50,16 +52,18 @@ class MapalabEvent(Base):
 
 
 class MapalabSession(Base):
-    __tablename__ = "mapalab_sessions"
+    __tablename__ = "sessions"
     __table_args__ = (
         Index("ix_mapalab_sessions_started_at", text("started_at DESC")),
         Index("ix_mapalab_sessions_source", "source"),
         Index("ix_mapalab_sessions_last_seen", text("last_seen_at DESC")),
+        {"schema": "huachicol"},
     )
 
     session_id = Column(UUID(as_uuid=True), primary_key=True)
     started_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     last_seen_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    app = Column(String(40), nullable=False, server_default="mapalab")
     source = Column(String(20), nullable=False, server_default="visor")
     api_key_id = Column(
         Integer,

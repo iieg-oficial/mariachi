@@ -1,23 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
-import { Layout, Card, Typography, Space, Tag, Table, Button, Empty, Spin, Alert, Collapse, Badge, Tooltip } from 'antd';
+import { Layout, Card, Typography, Space, Tag, Table, Button, Empty, Spin, Alert, Badge, Tooltip } from 'antd';
 import {
     AuditOutlined,
     EditOutlined,
-    AppstoreOutlined,
-    FileTextOutlined,
+    ClusterOutlined,
     GithubOutlined,
     ProjectOutlined,
     LinkOutlined,
     MessageOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '@shared/contexts/useAuth';
-import Markdown from '@shared/components/Markdown';
+import SectionHeader from '@shared/components/SectionHeader';
 import {
     getMisBorradores,
     getBorradoresPendientes,
     getPlataformas,
-    getNotasVersion,
     getColibriConfig,
 } from '@features/inicio/api/inicioService';
 
@@ -69,14 +67,54 @@ const IconLink = ({ href, title, icon, external = false }) => {
     return <Tooltip title={title}>{wrapper}</Tooltip>;
 };
 
+const STATUS_BADGE = {
+    ok: { status: 'success', text: 'operativa' },
+    degraded: { status: 'warning', text: 'degradada' },
+    down: { status: 'error', text: 'caída' },
+    unreachable: { status: 'error', text: 'no responde' },
+};
+
 const PlataformaCard = ({ plataforma, colibriConfig }) => {
-    const { slug, label, url, repo, taiga, version, healthy } = plataforma;
+    const {
+        slug, label, url, repo, taiga, version, healthy,
+        status, since_human: sinceHuman, uptime_24h: uptime24h,
+        containers, detail, monitored,
+    } = plataforma;
+
     const versionTag = version
         ? <Tag color="blue">v{version}</Tag>
         : <Tag color="default">sin versión</Tag>;
-    const statusBadge = healthy
-        ? <Badge status="success" text="activa" />
-        : <Tooltip title="No respondió al endpoint /ontoy"><Badge status="default" text="no integrada" /></Tooltip>;
+
+    let statusBadge;
+    if (monitored && status) {
+        const badge = STATUS_BADGE[status] ?? { status: 'default', text: status };
+        const tip = [
+            sinceHuman && `Desde ${sinceHuman}`,
+            detail,
+            uptime24h != null && `Disponibilidad 24 h: ${uptime24h}%`,
+        ].filter(Boolean).join(' · ');
+        statusBadge = tip
+            ? <Tooltip title={tip}><Badge status={badge.status} text={badge.text} /></Tooltip>
+            : <Badge status={badge.status} text={badge.text} />;
+    } else if (healthy) {
+        statusBadge = <Badge status="success" text="activa" />;
+    } else {
+        statusBadge = (
+            <Tooltip title="No respondió al endpoint /ontoy">
+                <Badge status="default" text="no integrada" />
+            </Tooltip>
+        );
+    }
+
+    const contadorContenedores = containers?.total
+        ? (
+            <Tooltip title={`${containers.running} de ${containers.total} contenedores corriendo`}>
+                <Text type="secondary" style={{ fontSize: 11 }}>
+                    {containers.running}/{containers.total} cont.
+                </Text>
+            </Tooltip>
+        )
+        : null;
 
     const openColibri = () => {
         if (!window.colibri?.openPanel || !colibriConfig?.api_key) return;
@@ -118,10 +156,12 @@ const PlataformaCard = ({ plataforma, colibriConfig }) => {
                     <Text strong style={{ fontSize: 16 }}>{label}</Text>
                     {versionTag}
                 </Space>
-                <Text type="secondary" style={{ fontSize: 12 }}>{slug}</Text>
+                {acciones.length > 0 && (
+                    <Space style={{ justifyContent: 'flex-end', width: '100%' }} size={0}>{acciones}</Space>
+                )}
                 <Space style={{ justifyContent: 'space-between', width: '100%' }}>
                     {statusBadge}
-                    {acciones.length > 0 && <Space size={0}>{acciones}</Space>}
+                    {contadorContenedores}
                 </Space>
             </Space>
         </Card>
@@ -134,11 +174,9 @@ export default function InicioPage() {
     const [misBorradores, setMisBorradores] = useState([]);
     const [pendientes, setPendientes] = useState([]);
     const [plataformas, setPlataformas] = useState([]);
-    const [notasVersion, setNotasVersion] = useState([]);
     const [colibriConfig, setColibriConfig] = useState(null);
     const [loadingBorradores, setLoadingBorradores] = useState(true);
     const [loadingPlataformas, setLoadingPlataformas] = useState(true);
-    const [loadingNotas, setLoadingNotas] = useState(true);
     const isAdmin = user?.role === 'tetlamamakani';
 
     useEffect(() => {
@@ -164,15 +202,6 @@ export default function InicioPage() {
             .then((data) => { if (!cancelled) setPlataformas(data); })
             .catch(() => {})
             .finally(() => { if (!cancelled) setLoadingPlataformas(false); });
-        return () => { cancelled = true; };
-    }, []);
-
-    useEffect(() => {
-        let cancelled = false;
-        getNotasVersion(5)
-            .then((data) => { if (!cancelled) setNotasVersion(data); })
-            .catch(() => {})
-            .finally(() => { if (!cancelled) setLoadingNotas(false); });
         return () => { cancelled = true; };
     }, []);
 
@@ -237,26 +266,6 @@ export default function InicioPage() {
             ),
         },
     ];
-
-    const notasItems = notasVersion.map((release) => ({
-        key: release.version,
-        label: (
-            <Space>
-                <Tag color="blue">v{release.version}</Tag>
-                {release.fecha && <Text type="secondary" style={{ fontSize: 12 }}>{release.fecha}</Text>}
-            </Space>
-        ),
-        children: (
-            <Space orientation="vertical" size={12} style={{ width: '100%' }}>
-                {release.secciones.map((sec, i) => (
-                    <div key={i}>
-                        {sec.titulo && <Text strong>{sec.titulo}</Text>}
-                        <Markdown text={sec.contenido} />
-                    </div>
-                ))}
-            </Space>
-        ),
-    }));
 
     return (
         <Content style={{ padding: 24, maxWidth: 1200, margin: '0 auto', width: '100%' }}>
@@ -323,9 +332,12 @@ export default function InicioPage() {
                 </Card>
 
                 <div>
-                    <Title level={4} style={{ marginBottom: 12 }}>
-                        <AppstoreOutlined /> Plataformas del ecosistema
-                    </Title>
+                    <SectionHeader
+                        icon={<ClusterOutlined />}
+                        title="Huachicol"
+                        subtitle="Estatus de ecosistema"
+                        to="/huachicol/observabilidad"
+                    />
                     {loadingPlataformas ? (
                         <div style={{ textAlign: 'center', padding: 24 }}><Spin /></div>
                     ) : (
@@ -342,19 +354,6 @@ export default function InicioPage() {
                 </div>
 
                 <MapalabInicioHighlights />
-
-                <div>
-                    <Title level={4} style={{ marginBottom: 12 }}>
-                        <FileTextOutlined /> Notas de versión
-                    </Title>
-                    {loadingNotas ? (
-                        <div style={{ textAlign: 'center', padding: 24 }}><Spin /></div>
-                    ) : notasVersion.length === 0 ? (
-                        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Sin notas disponibles" />
-                    ) : (
-                        <Collapse items={notasItems} defaultActiveKey={[notasVersion[0]?.version]} />
-                    )}
-                </div>
             </Space>
         </Content>
     );
