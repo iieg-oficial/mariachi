@@ -9,7 +9,7 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
-## [No publicado]
+## [1.63.0] - 2026-07-21
 
 ### Huachicol absorbe la telemetría (Observabilidad + Telemetría)
 
@@ -45,6 +45,23 @@ consolida bajo un schema propio `huachicol` en la BD.
   `huachicol.actividad`; el schema `huachicol` unifica telemetría y auditoría. Todo el acceso
   es ORM (helper de registro + endpoint de listado), así que solo cambia el schema del modelo;
   `SET SCHEMA` + `RENAME` preserva los datos. FK a `public.usuarios` cross-schema.
+
+### UI del admin — homologación y pulido (Inicio, Observabilidad, Acervo)
+
+- **Inicio**: nuevo componente reutilizable `SectionHeader` (`shared/components`). Los
+  encabezados de sección homologan los iconos del sider —Huachicol (`ClusterOutlined`) y
+  MapaLab (`EnvironmentOutlined`)— con enlace "Ver detalles". Las cards de estatus del
+  ecosistema (`PlataformaCard`) quitan el slug y muestran el badge de estado abajo a la
+  izquierda con el contador de contenedores enfrente.
+- **Observabilidad** (`MonitoreoPage`): título "Observabilidad" con su icono del sider
+  (`DashboardOutlined`) y encabezado en dos filas (título + Actualizar arriba, descripción +
+  fecha abajo). En desktop la tabla de servicios y los eventos se muestran en dos columnas; en
+  mobile una sola, con el scroll horizontal contenido dentro de la tabla.
+- **Eventos** (`EventosPanel`): panel con altura acotada al viewport y scroll infinito, filtro
+  por día/rango con `RangePicker` (presets Hoy/Ayer/7/30 días) y título "Eventos".
+- **Acervo Media**: iconos del sider en los títulos de submenús (Media `PictureOutlined`,
+  Buckets `DatabaseOutlined`); "Documentación" pasa a la derecha del título y los botones
+  "Nueva carpeta"/"Subir archivos" se agrupan a la derecha del toolbar (búsqueda / grid / lista).
 
 ---
 
