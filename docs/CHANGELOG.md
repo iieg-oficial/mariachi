@@ -9,6 +9,20 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.62.0] - 2026-07-21
+
+### Monitor como fuente única del estado del ecosistema
+
+Se elimina el sistema propio de sondeo de plataformas del backend, redundante desde que el
+monitor de huachicol reporta todo el ecosistema con histéresis.
+
+- **Backend**: eliminados el endpoint `GET /sistema/plataformas`, `core/platforms_config.py`,
+  los probes (`_probe_ontoy`, `_probe_http_health`, `_probe_dataengine`) y las settings
+  `*_ontoy_url`. El script `scripts/sync-platforms-config.py` queda sin objeto y se retira.
+- **Admin**: el widget "Plataformas del ecosistema" del Inicio consume
+  `/sistema/monitor/status`; la metadata estática (repo, Taiga, url) pasa al frontend.
+- Removidas las variables `*_ONTOY_URL` de los `.env*.example`.
+
 ## [1.61.0] - 2026-07-21
 
 ### Footer del sider unificado + notas de versión en modal
