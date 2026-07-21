@@ -17,7 +17,7 @@ const VALID_TABS = new Set(['resumen', 'sesiones', 'mcp']);
 
 const unitOf = (grain) => (grain === 'day' ? 'day' : grain);
 
-export default function MapalabStatsPage() {
+export default function MapalabStatsPage({ app = 'mapalab' }) {
     const { isMobile } = useIsMobile();
     const { user } = useAuth();
     const [searchParams, setSearchParams] = useSearchParams();
@@ -30,10 +30,11 @@ export default function MapalabStatsPage() {
         const u = unitOf(grain);
         return {
             grain,
+            app,
             dateFrom: range[0].startOf(u).format('YYYY-MM-DD'),
             dateTo: range[1].endOf(u).format('YYYY-MM-DD'),
         };
-    }, [grain, range]);
+    }, [grain, range, app]);
 
     const handlePeriodChange = ({ grain: g, range: r }) => {
         setGrain(g);

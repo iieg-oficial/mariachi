@@ -67,7 +67,7 @@ def _get_mariachi_bucket(db: Session) -> AcervoBucket:
     if bucket is None:
         raise HTTPException(
             status_code=500,
-            detail="Bucket 'mariachi' no configurado en acervo_buckets",
+            detail="Bucket 'mariachi' no configurado en acervo.buckets",
         )
     return bucket
 

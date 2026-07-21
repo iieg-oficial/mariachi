@@ -14,6 +14,7 @@ from app.schemas.acervo_bucket import (
     AcervoBucketResponse,
     AcervoBucketUpdate,
 )
+from app.services.actividad_service import registrar_actividad
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/acervo-buckets", tags=["acervo-buckets"])
@@ -21,15 +22,17 @@ router = APIRouter(prefix="/acervo-buckets", tags=["acervo-buckets"])
 
 @router.get("", response_model=list[AcervoBucketResponse])
 async def list_accessible_buckets(
+    include_inactive: bool = False,
     current_user: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    query = (
-        db.query(AcervoBucket)
-        .join(Project, Project.id == AcervoBucket.project_id)
-        .filter(AcervoBucket.is_active.is_(True), Project.is_active.is_(True))
-    )
-    if current_user.role != ADMIN_ROLE:
+    is_admin = current_user.role == ADMIN_ROLE
+    show_inactive = include_inactive and is_admin
+
+    query = db.query(AcervoBucket).join(Project, Project.id == AcervoBucket.project_id)
+    if not show_inactive:
+        query = query.filter(AcervoBucket.is_active.is_(True), Project.is_active.is_(True))
+    if not is_admin:
         query = query.join(
             UserProject,
             (UserProject.project_id == Project.id)
@@ -51,6 +54,15 @@ async def create_bucket(
         raise HTTPException(status.HTTP_400_BAD_REQUEST, detail="project_id inválido")
     bucket = AcervoBucket(**payload.model_dump())
     db.add(bucket)
+    db.flush()
+    registrar_actividad(
+        db,
+        actor=_,
+        action="acervo.bucket.create",
+        resource_type="acervo.bucket",
+        resource_id=bucket.id,
+        metadata={"acervo_bucket": bucket.acervo_bucket, "project_id": bucket.project_id},
+    )
     db.commit()
     db.refresh(bucket)
     incr(COUNTER_MEDIA_BUCKET_WRITES)
@@ -69,8 +81,17 @@ async def update_bucket(
     bucket = db.query(AcervoBucket).filter(AcervoBucket.id == bucket_id).first()
     if bucket is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="bucket no encontrado")
-    for field, value in payload.model_dump(exclude_unset=True).items():
+    update_data = payload.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
         setattr(bucket, field, value)
+    registrar_actividad(
+        db,
+        actor=_,
+        action="acervo.bucket.update",
+        resource_type="acervo.bucket",
+        resource_id=bucket.id,
+        metadata={"acervo_bucket": bucket.acervo_bucket, "fields": sorted(update_data.keys())},
+    )
     db.commit()
     db.refresh(bucket)
     incr(COUNTER_MEDIA_BUCKET_WRITES)

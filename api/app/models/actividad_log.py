@@ -5,7 +5,8 @@ from app.core.database import Base
 
 
 class ActividadLog(Base):
-    __tablename__ = "actividad_log"
+    __tablename__ = "actividad"
+    __table_args__ = {"schema": "huachicol"}
 
     id = Column(BigInteger, primary_key=True, index=True)
     actor_id = Column(

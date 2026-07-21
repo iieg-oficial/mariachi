@@ -40,7 +40,7 @@ class Reporte(Base):
     source_route = Column(String(500), nullable=True)
     source_context = Column(JSON, default=dict, nullable=False)
     screenshot_bucket_id = Column(
-        Integer, ForeignKey("acervo_buckets.id"), nullable=True, index=True
+        Integer, ForeignKey("acervo.buckets.id"), nullable=True, index=True
     )
     screenshot_object_path = Column(String(500), nullable=True)
     estado = Column(

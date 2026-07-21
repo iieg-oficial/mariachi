@@ -80,6 +80,38 @@ export const getBuckets = async () => {
     }
 };
 
+export const getAllBuckets = async () => {
+    try {
+        const response = await api.get('/acervo-buckets', {
+            params: { include_inactive: true },
+        });
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching all buckets:', error);
+        throw error;
+    }
+};
+
+export const createBucket = async (payload) => {
+    try {
+        const response = await api.post('/acervo-buckets', payload);
+        return response.data;
+    } catch (error) {
+        console.error('Error creating bucket:', error);
+        throw error;
+    }
+};
+
+export const updateBucket = async (id, payload) => {
+    try {
+        const response = await api.patch(`/acervo-buckets/${id}`, payload);
+        return response.data;
+    } catch (error) {
+        console.error('Error updating bucket:', error);
+        throw error;
+    }
+};
+
 export const listBucketObjects = async (bucketId, prefix = '') => {
     try {
         const params = new URLSearchParams({ bucket_id: String(bucketId) });
@@ -455,6 +487,9 @@ export const getImageDimensions = (file) => {
 
 export default {
     getBuckets,
+    getAllBuckets,
+    createBucket,
+    updateBucket,
     listBucketObjects,
     getAcervoFiles,
     uploadAcervoFile,

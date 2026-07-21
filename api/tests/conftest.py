@@ -2,7 +2,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.dialects.sqlite.base import SQLiteTypeCompiler
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -86,12 +86,21 @@ engine = create_engine(
     connect_args={"check_same_thread": False},
     poolclass=StaticPool,
 )
+
+_TEST_SCHEMAS = (None, "acervo", "huachicol")
+
+with engine.connect() as _conn:
+    for _schema in _TEST_SCHEMAS:
+        if _schema is not None:
+            _conn.execute(text(f"ATTACH DATABASE ':memory:' AS {_schema}"))
+    _conn.commit()
+
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
 @pytest.fixture(scope="function")
 def db_session():
-    tables = [t for t in Base.metadata.sorted_tables if t.schema is None]
+    tables = [t for t in Base.metadata.sorted_tables if t.schema in _TEST_SCHEMAS]
     Base.metadata.create_all(bind=engine, tables=tables)
     session = TestingSessionLocal()
     try:

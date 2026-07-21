@@ -10,7 +10,6 @@ import {
     EnvironmentOutlined,
     FileTextOutlined,
     FormOutlined,
-    HistoryOutlined,
     HomeOutlined,
     InboxOutlined,
     KeyOutlined,
@@ -106,13 +105,6 @@ export const FOOTER_RAIL_ITEMS = [
         label: 'Documentación',
         icon: <BookOutlined />,
         allowedGlobalRoles: ['tetlamamakani', 'editora'],
-    },
-    {
-        key: '/actividad',
-        path: '/actividad',
-        label: 'Actividad',
-        icon: <HistoryOutlined />,
-        allowedGlobalRoles: ['tetlamamakani'],
     },
     {
         key: '/revision',

@@ -4,7 +4,13 @@ const periodParams = (period = {}) => ({
     date_from: period.dateFrom,
     date_to: period.dateTo,
     grain: period.grain,
+    app: period.app,
 });
+
+export const getApps = async () => {
+    const res = await api.get('/mapalab-stats/apps');
+    return res.data;
+};
 
 export const getOverview = async (period) => {
     const res = await api.get('/mapalab-stats/overview', { params: periodParams(period) });

@@ -204,13 +204,13 @@ _VISOR_BUTTON_NAMES = (
 # ventana para que cada corrida sea idempotente y capture eventos tardíos.
 _ROLLUP_STEPS: tuple[tuple[str, str, str], ...] = (
     (
-        "mapalab_rollup_daily",
+        "huachicol.rollup_daily",
         """
-        INSERT INTO mapalab_rollup_daily
-            (dia, source, sessions, events, dur_sum, swipe, drawing, measurement,
+        INSERT INTO huachicol.rollup_daily
+            (dia, app, source, sessions, events, dur_sum, swipe, drawing, measurement,
              downloaded, shared, reported)
         SELECT
-            DATE(started_at), source,
+            DATE(started_at), app, source,
             COUNT(*), COALESCE(SUM(events_count), 0), COALESCE(SUM(duration_sec), 0),
             SUM(CASE WHEN used_swipe THEN 1 ELSE 0 END),
             SUM(CASE WHEN used_drawing THEN 1 ELSE 0 END),
@@ -218,20 +218,20 @@ _ROLLUP_STEPS: tuple[tuple[str, str, str], ...] = (
             SUM(CASE WHEN downloaded THEN 1 ELSE 0 END),
             SUM(CASE WHEN shared THEN 1 ELSE 0 END),
             SUM(CASE WHEN reported THEN 1 ELSE 0 END)
-        FROM mapalab_sessions
+        FROM huachicol.sessions
         WHERE started_at >= CURRENT_DATE - :days
-        GROUP BY DATE(started_at), source
+        GROUP BY DATE(started_at), app, source
         """,
         "started_at",
     ),
     (
-        "mapalab_rollup_layers",
+        "huachicol.rollup_layers",
         """
-        INSERT INTO mapalab_rollup_layers
-            (dia, layer_id, activations, downloads, feature_clicks, detail_opens,
+        INSERT INTO huachicol.rollup_layers
+            (dia, app, layer_id, activations, downloads, feature_clicks, detail_opens,
              opacity_changes, unique_sessions, last_seen)
         SELECT
-            DATE(ts), layer_id,
+            DATE(ts), app, layer_id,
             COUNT(*) FILTER (
                 WHERE event_name = 'layer_toggle'
                   AND (props->>'action') = 'activar'
@@ -241,68 +241,68 @@ _ROLLUP_STEPS: tuple[tuple[str, str, str], ...] = (
             COUNT(*) FILTER (WHERE event_name = 'layer_detail_open'),
             COUNT(*) FILTER (WHERE event_name = 'opacity_change'),
             COUNT(DISTINCT session_id), MAX(ts)
-        FROM mapalab_events
+        FROM huachicol.events
         WHERE layer_id IS NOT NULL AND ts >= CURRENT_DATE - :days
-        GROUP BY DATE(ts), layer_id
+        GROUP BY DATE(ts), app, layer_id
         """,
         "ts",
     ),
     (
-        "mapalab_rollup_buttons",
+        "huachicol.rollup_buttons",
         f"""
-        INSERT INTO mapalab_rollup_buttons (dia, event_name, clicks, unique_sessions)
-        SELECT DATE(ts), event_name, COUNT(*), COUNT(DISTINCT session_id)
-        FROM mapalab_events
+        INSERT INTO huachicol.rollup_buttons (dia, app, event_name, clicks, unique_sessions)
+        SELECT DATE(ts), app, event_name, COUNT(*), COUNT(DISTINCT session_id)
+        FROM huachicol.events
         WHERE event_name IN ({_VISOR_BUTTON_NAMES}) AND ts >= CURRENT_DATE - :days
-        GROUP BY DATE(ts), event_name
+        GROUP BY DATE(ts), app, event_name
         """,
         "ts",
     ),
     (
-        "mapalab_rollup_tools",
+        "huachicol.rollup_tools",
         """
-        INSERT INTO mapalab_rollup_tools (dia, event_name, tool, uses, unique_sessions)
-        SELECT DATE(ts), event_name, COALESCE(props->>'tool', 'unknown'),
+        INSERT INTO huachicol.rollup_tools (dia, app, event_name, tool, uses, unique_sessions)
+        SELECT DATE(ts), app, event_name, COALESCE(props->>'tool', 'unknown'),
                COUNT(*), COUNT(DISTINCT session_id)
-        FROM mapalab_events
+        FROM huachicol.events
         WHERE event_name IN ('drawing_tool_use', 'measurement_tool_use')
           AND ts >= CURRENT_DATE - :days
-        GROUP BY DATE(ts), event_name, COALESCE(props->>'tool', 'unknown')
+        GROUP BY DATE(ts), app, event_name, COALESCE(props->>'tool', 'unknown')
         """,
         "ts",
     ),
     (
-        "mapalab_rollup_eventos",
+        "huachicol.rollup_eventos",
         """
-        INSERT INTO mapalab_rollup_eventos
-            (dia, evento_id, titulo, opens, closes, fun_facts, centers, shares,
+        INSERT INTO huachicol.rollup_eventos
+            (dia, app, evento_id, titulo, opens, closes, fun_facts, centers, shares,
              unique_sessions, last_seen)
         SELECT
-            DATE(ts), (props->>'evento_id'), MAX(props->>'titulo'),
+            DATE(ts), app, (props->>'evento_id'), MAX(props->>'titulo'),
             COUNT(*) FILTER (WHERE event_name = 'evento_open'),
             COUNT(*) FILTER (WHERE event_name = 'evento_close'),
             COUNT(*) FILTER (WHERE event_name = 'evento_fun_fact'),
             COUNT(*) FILTER (WHERE event_name = 'evento_center'),
             COUNT(*) FILTER (WHERE event_name = 'evento_share'),
             COUNT(DISTINCT session_id), MAX(ts)
-        FROM mapalab_events
+        FROM huachicol.events
         WHERE event_name IN (
             'evento_open', 'evento_close',
             'evento_fun_fact', 'evento_center', 'evento_share'
         )
           AND (props->>'evento_id') IS NOT NULL AND ts >= CURRENT_DATE - :days
-        GROUP BY DATE(ts), (props->>'evento_id')
+        GROUP BY DATE(ts), app, (props->>'evento_id')
         """,
         "ts",
     ),
     (
-        "mapalab_mcp_rollup_daily",
+        "huachicol.mcp_rollup_daily",
         """
-        INSERT INTO mapalab_mcp_rollup_daily
-            (dia, calls, tool_calls, errors, unique_sessions, dur_sum, dur_count,
+        INSERT INTO huachicol.mcp_rollup_daily
+            (dia, app, calls, tool_calls, errors, unique_sessions, dur_sum, dur_count,
              tool_dur_sum, tool_dur_count)
         SELECT
-            dia, COUNT(*),
+            dia, app, COUNT(*),
             COUNT(*) FILTER (WHERE method = 'tools/call'),
             COUNT(*) FILTER (WHERE status = 'error'),
             COUNT(DISTINCT session_hash) FILTER (WHERE session_hash IS NOT NULL),
@@ -310,58 +310,58 @@ _ROLLUP_STEPS: tuple[tuple[str, str, str], ...] = (
             COUNT(*) FILTER (WHERE duration_ms IS NOT NULL),
             COALESCE(SUM(duration_ms) FILTER (WHERE method = 'tools/call' AND duration_ms IS NOT NULL), 0),
             COUNT(*) FILTER (WHERE method = 'tools/call' AND duration_ms IS NOT NULL)
-        FROM mapalab_mcp_events
+        FROM huachicol.mcp_events
         WHERE dia >= CURRENT_DATE - :days
-        GROUP BY dia
+        GROUP BY dia, app
         """,
         "dia",
     ),
     (
-        "mapalab_mcp_rollup_tools",
+        "huachicol.mcp_rollup_tools",
         """
-        INSERT INTO mapalab_mcp_rollup_tools
-            (dia, tool, uses, errors, unique_sessions, dur_sum, dur_count, last_seen)
+        INSERT INTO huachicol.mcp_rollup_tools
+            (dia, app, tool, uses, errors, unique_sessions, dur_sum, dur_count, last_seen)
         SELECT
-            dia, tool, COUNT(*),
+            dia, app, tool, COUNT(*),
             COUNT(*) FILTER (WHERE status = 'error'),
             COUNT(DISTINCT session_hash) FILTER (WHERE session_hash IS NOT NULL),
             COALESCE(SUM(duration_ms) FILTER (WHERE duration_ms IS NOT NULL), 0),
             COUNT(*) FILTER (WHERE duration_ms IS NOT NULL),
             MAX(timestamp)
-        FROM mapalab_mcp_events
+        FROM huachicol.mcp_events
         WHERE tool IS NOT NULL AND dia >= CURRENT_DATE - :days
-        GROUP BY dia, tool
+        GROUP BY dia, app, tool
         """,
         "dia",
     ),
     (
-        "mapalab_mcp_rollup_clients",
+        "huachicol.mcp_rollup_clients",
         """
-        INSERT INTO mapalab_mcp_rollup_clients
-            (dia, client_name, client_version, calls, unique_sessions, last_seen)
+        INSERT INTO huachicol.mcp_rollup_clients
+            (dia, app, client_name, client_version, calls, unique_sessions, last_seen)
         SELECT
-            dia, COALESCE(client_name, 'unknown'), COALESCE(client_version, ''),
+            dia, app, COALESCE(client_name, 'unknown'), COALESCE(client_version, ''),
             COUNT(*),
             COUNT(DISTINCT session_hash) FILTER (WHERE session_hash IS NOT NULL),
             MAX(timestamp)
-        FROM mapalab_mcp_events
+        FROM huachicol.mcp_events
         WHERE dia >= CURRENT_DATE - :days
-        GROUP BY dia, COALESCE(client_name, 'unknown'), COALESCE(client_version, '')
+        GROUP BY dia, app, COALESCE(client_name, 'unknown'), COALESCE(client_version, '')
         """,
         "dia",
     ),
     (
-        "mapalab_rollup_themes",
+        "huachicol.rollup_themes",
         """
-        INSERT INTO mapalab_rollup_themes
-            (dia, theme_id, views, unique_sessions, last_seen)
+        INSERT INTO huachicol.rollup_themes
+            (dia, app, theme_id, views, unique_sessions, last_seen)
         SELECT
-            DATE(ts), props->>'theme',
+            DATE(ts), app, props->>'theme',
             COUNT(*), COUNT(DISTINCT session_id), MAX(ts)
-        FROM mapalab_events
+        FROM huachicol.events
         WHERE event_name = 'theme_change'
           AND props->>'theme' IS NOT NULL AND ts >= CURRENT_DATE - :days
-        GROUP BY DATE(ts), props->>'theme'
+        GROUP BY DATE(ts), app, props->>'theme'
         """,
         "ts",
     ),

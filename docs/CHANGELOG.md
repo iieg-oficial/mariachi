@@ -9,6 +9,45 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [No publicado]
+
+### Huachicol absorbe la telemetría (Observabilidad + Telemetría)
+
+El menú "Huachicol" del admin pasa a ser un grupo con dos subpáginas: **Observabilidad** (el
+monitoreo `/ontoy` que ya existía) y **Telemetría** (estadísticas de uso). La telemetría se
+consolida bajo un schema propio `huachicol` en la BD.
+
+- **BD** (`api/alembic/versions/mariachi/c0ffee1de2a3_...`): nuevo schema `huachicol`. Se
+  mueven ahí las 12 tablas de telemetría de mapalab (`events`, `sessions`, `mcp_events`,
+  `rollup_*`, `mcp_rollup_*`), renombradas sin el prefijo de app. `SET SCHEMA` + `RENAME` es
+  metadata-only: preserva todos los datos. Las FK a `public.mapalab_api_keys` quedan
+  cross-schema. Aplicar con `make migrate`.
+- **Backend**: modelos (`MapalabEvent`, `MapalabSession`, `MapalabMcpEvent`) y el SQL raw de
+  rollups/stats (`mapalab_telemetry.py`, `mapalab_stats.py`) apuntan a `huachicol.*`.
+- **Multi-plataforma** (`dab0c01a99ee_...`): columna discriminadora `app` (default `mapalab`)
+  en `events`, `sessions`, `mcp_events` y en el grano (PK) de todos los rollups, para distinguir
+  plataformas en las mismas tablas (patron de product analytics). `source` queda como sub-canal
+  dentro de cada app. El refresh de rollups agrupa por `app`, los endpoints de stats filtran por
+  `app` (vía `Period.app`, default `mapalab`) y exponen `/mapalab-stats/apps`. Aditivo, sin
+  perder datos.
+- **Admin**: nueva página **Telemetría** (`features/telemetria`) con tabs por fuente —
+  MapaLab (reutiliza `mapalab-stats`), Colibri (reutiliza `colibri/ResumenPage`) y SIEEJ
+  (nuevo, consume `/sieej/stats`). Rutas `/huachicol/observabilidad` y `/huachicol/telemetria`
+  (builder `buildHuachicolRoutes`), con redirects de `/monitoreo` y `/mapalab/stats`. La página
+  tiene header propio y las pestañas se homologan con un componente `SectionHeading`. El tab de
+  MapaLab pasa a **Uso**, con sub-tabs por plataforma (`UsoSection`, dinámicos desde `/apps`).
+- **Menú Huachicol**: **Actividad** (auditoría) se mueve del footer rail al grupo Huachicol
+  como tercera subpágina (`/huachicol/actividad`, con redirect de `/actividad`), junto a
+  Observabilidad y Telemetría. El footer rail queda con Documentación y Revisiones. La página
+  de Actividad segmenta el audit log en **pestañas por dominio** (Todo por defecto, más
+  Usuarios, SIEEJ, Login, Reportes, Colibrí, Eventos, Home, Acervo) en lugar del selector.
+- **BD (actividad)** (`dab0act1v1dad_...`): el audit log `actividad_log` (public) pasa a
+  `huachicol.actividad`; el schema `huachicol` unifica telemetría y auditoría. Todo el acceso
+  es ORM (helper de registro + endpoint de listado), así que solo cambia el schema del modelo;
+  `SET SCHEMA` + `RENAME` preserva los datos. FK a `public.usuarios` cross-schema.
+
+---
+
 ## [1.62.0] - 2026-07-21
 
 ### Monitor como fuente única del estado del ecosistema

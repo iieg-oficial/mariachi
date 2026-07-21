@@ -46,7 +46,7 @@ def _get_media_bucket(mariachi_db: Session, bucket_slug: str) -> AcervoBucket:
     if not bucket:
         raise RuntimeError(
             f"AcervoBucket '{bucket_slug}' no registrado en mariachi. "
-            "Verifica que el bucket exista en la tabla acervo_buckets y que "
+            "Verifica que el bucket exista en la tabla acervo.buckets y que "
             "ACERVO_<REF>_ACCESS_KEY/SECRET_KEY esten en el entorno."
         )
     return bucket

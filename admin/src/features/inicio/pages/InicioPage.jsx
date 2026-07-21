@@ -4,13 +4,14 @@ import { Layout, Card, Typography, Space, Tag, Table, Button, Empty, Spin, Alert
 import {
     AuditOutlined,
     EditOutlined,
-    AppstoreOutlined,
+    ClusterOutlined,
     GithubOutlined,
     ProjectOutlined,
     LinkOutlined,
     MessageOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '@shared/contexts/useAuth';
+import SectionHeader from '@shared/components/SectionHeader';
 import {
     getMisBorradores,
     getBorradoresPendientes,
@@ -155,13 +156,12 @@ const PlataformaCard = ({ plataforma, colibriConfig }) => {
                     <Text strong style={{ fontSize: 16 }}>{label}</Text>
                     {versionTag}
                 </Space>
-                <Space style={{ justifyContent: 'space-between', width: '100%' }}>
-                    <Text type="secondary" style={{ fontSize: 12 }}>{slug}</Text>
-                    {contadorContenedores}
-                </Space>
+                {acciones.length > 0 && (
+                    <Space style={{ justifyContent: 'flex-end', width: '100%' }} size={0}>{acciones}</Space>
+                )}
                 <Space style={{ justifyContent: 'space-between', width: '100%' }}>
                     {statusBadge}
-                    {acciones.length > 0 && <Space size={0}>{acciones}</Space>}
+                    {contadorContenedores}
                 </Space>
             </Space>
         </Card>
@@ -332,9 +332,12 @@ export default function InicioPage() {
                 </Card>
 
                 <div>
-                    <Title level={4} style={{ marginBottom: 12 }}>
-                        <AppstoreOutlined /> Plataformas del ecosistema
-                    </Title>
+                    <SectionHeader
+                        icon={<ClusterOutlined />}
+                        title="Huachicol"
+                        subtitle="Estatus de ecosistema"
+                        to="/huachicol/observabilidad"
+                    />
                     {loadingPlataformas ? (
                         <div style={{ textAlign: 'center', padding: 24 }}><Spin /></div>
                     ) : (
