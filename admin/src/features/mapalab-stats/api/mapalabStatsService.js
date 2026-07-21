@@ -7,11 +7,6 @@ const periodParams = (period = {}) => ({
     app: period.app,
 });
 
-export const getApps = async () => {
-    const res = await api.get('/mapalab-stats/apps');
-    return res.data;
-};
-
 export const getOverview = async (period) => {
     const res = await api.get('/mapalab-stats/overview', { params: periodParams(period) });
     return res.data;
