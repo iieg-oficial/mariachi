@@ -2,7 +2,7 @@
 
 > Documento de referencia completo. Leer este archivo proporciona contexto del monorepo sin explorar el codebase.
 
-**Versión:** ver `api/pyproject.toml` (la lee `api/app/core/version.py::get_app_version()`; endpoint en vivo `GET /ontoy`). · **Última actualización:** 2026-07-20
+**Versión:** número único del monorepo (desde `1.61.0` se fusionaron los antiguos `api`/`admin`). Fuente de la verdad: `api/pyproject.toml` (la lee `api/app/core/version.py::get_app_version()`; endpoint en vivo `GET /ontoy`). Bump con `scripts/bump-version.sh <x.y.z>` (sincroniza `pyproject.toml` + `admin/package.json` y abre la entrada del CHANGELOG). · **Última actualización:** 2026-07-21
 
 
 ---
@@ -835,6 +835,12 @@ Este repo se integra con otros servicios internos vecinos (CMS, visor de mapas, 
 ---
 
 ## Cambios recientes
+
+### 2026-07-21 (1.61.0) — Footer del sider unificado + notas de versión en modal + fusión de versiones
+
+Dos frentes. **UI:** el pie del sider pasa de dos bloques (icon-rail de Revisiones/Actividad + menú de Documentación) a **una sola fila** que abarca el ancho, con Documentación · Actividad · Revisiones · Notas de versión separados por dividers y cada uno con tooltip (iconos blancos). `buildIconRailItems`/`buildSiderFooterItems` → `buildSiderFooterRail`; `FOOTER_ITEMS`/`ICON_RAIL_ITEMS` → `FOOTER_RAIL_ITEMS`. Notas de versión sale del Inicio y se abre como modal (`VersionNotesModal`) reutilizando `getNotasVersion` + `Markdown`.
+
+**Versionado:** se **fusiona el doble número** `api X / admin Y` en uno solo para el monorepo. `api/pyproject.toml` es la única fuente de la verdad (lo que `get_app_version()` reporta en `/ontoy`, `/`, Sentry y docs); `admin/package.json` se alinea. Nuevo `scripts/bump-version.sh <x.y.z>` sincroniza ambos y abre la entrada del CHANGELOG. `changelog_parser` normaliza la versión (extrae el semver) para que el modal muestre `1.60.0` en vez del label dual legacy. Los headers `[api X / admin Y]` previos quedan como histórico. Detalle en CHANGELOG §[1.61.0].
 
 ### 2026-07-20 (api 1.60.0 + admin 1.59.0) — SIEEJ: fechas abiertas en el campo de rango
 

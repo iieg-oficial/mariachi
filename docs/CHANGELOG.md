@@ -5,9 +5,22 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 El formato está basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.0.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
-A partir de `1.0.0` el proyecto está en producción: se sigue versionado semántico estándar (los cambios incompatibles suben la versión mayor). El versionado se lleva de forma unificada para el monorepo (backend + admin + web + infra). Las versiones previas al monorepo se listan por producto al final como histórico.
+A partir de `1.0.0` el proyecto está en producción: se sigue versionado semántico estándar (los cambios incompatibles suben la versión mayor). El versionado se lleva de forma unificada para el monorepo (backend + admin + web + infra): **desde `1.61.0` cada release usa un único número**, con `api/pyproject.toml` como fuente de la verdad (es lo que `get_app_version()` reporta en `GET /ontoy`). Las entradas previas con `[api X / admin Y]` reflejan la etapa en que backend y admin se numeraban por separado y quedan como histórico. Las versiones previas al monorepo se listan por producto al final como histórico.
 
 ---
+
+## [1.61.0] - 2026-07-21
+
+### Footer del sider unificado + notas de versión en modal
+
+- El pie del sider pasa de dos bloques separados (icon-rail de Revisiones/Actividad + menú de Documentación) a **una sola fila** que abarca el ancho, con Documentación · Actividad · Revisiones · Notas de versión separados por dividers y cada uno con tooltip; iconos en blanco. Reemplaza `buildIconRailItems`/`buildSiderFooterItems` por `buildSiderFooterRail`, y `FOOTER_ITEMS`/`ICON_RAIL_ITEMS` por un único `FOOTER_RAIL_ITEMS`.
+- **Notas de versión** deja de vivir en el Inicio y se abre como modal (`VersionNotesModal`) desde el footer; reutiliza `getNotasVersion` + `Markdown` con el mismo `Collapse` de releases.
+
+### Versión unificada del monorepo (fusión api + admin)
+
+- Se elimina el doble número `api X / admin Y`: el repo lleva **un solo número** con `api/pyproject.toml` como única fuente de la verdad (lo que `get_app_version()` reporta en `GET /ontoy`, `/`, el `release` de Sentry y la versión de los docs OpenAPI). `admin/package.json` se alinea al mismo número, más compatible con el contrato v2 de `/ontoy`.
+- Nuevo `scripts/bump-version.sh <x.y.z>`: sincroniza `api/pyproject.toml` + `admin/package.json` y abre la entrada del `CHANGELOG`. Una entrada, un número.
+- `changelog_parser` normaliza la versión de cada release (extrae el semver) para que el modal muestre `1.60.0` en vez de `api 1.60.0 / admin 1.59.0`; las entradas dual previas se conservan como histórico.
 
 ## [api 1.60.0 / admin 1.59.0] - 2026-07-20
 

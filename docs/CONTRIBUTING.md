@@ -174,6 +174,20 @@ fix(media): corregir validación de tipos de archivo
 docs(readme): actualizar instrucciones de instalación
 ```
 
+## Versionado y releases
+
+El monorepo lleva **un único número de versión** (backend + admin + infra). La fuente de la verdad es `api/pyproject.toml`: es lo que `get_app_version()` reporta en `GET /ontoy`, en `/`, en el `release` de Sentry y en la versión de los docs OpenAPI.
+
+Para subir de versión usa el script, que sincroniza todo desde un solo comando:
+
+```bash
+./scripts/bump-version.sh 1.62.0
+```
+
+Actualiza `api/pyproject.toml` y `admin/package.json`, y abre la entrada `## [1.62.0] - <fecha>` al inicio de `docs/CHANGELOG.md` para que la rellenes con las secciones del release.
+
+Las entradas antiguas con `[api X / admin Y]` son históricas: reflejan la etapa en que backend y admin se numeraban por separado.
+
 ## Pull Requests
 
 ### Antes de Crear PR

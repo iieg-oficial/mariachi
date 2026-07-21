@@ -12,6 +12,12 @@ from pathlib import Path
 
 _RELEASE_HEADER = re.compile(r"^##\s*\[(?P<version>[^\]]+)\](?:\s*-\s*(?P<fecha>[\d-]+))?\s*$")
 _SECTION_HEADER = re.compile(r"^###\s+(?P<titulo>.+?)\s*$")
+_SEMVER = re.compile(r"\d+\.\d+\.\d+")
+
+
+def _normalize_version(label: str) -> str:
+    match = _SEMVER.search(label)
+    return match.group(0) if match else label
 
 
 def _find_changelog() -> Path | None:
@@ -46,7 +52,7 @@ def parse_changelog(limit: int = 5) -> list[dict]:
                 current_section = None
                 continue
             current = {
-                "version": version_label,
+                "version": _normalize_version(version_label),
                 "fecha": (m_release.group("fecha") or "").strip() or None,
                 "secciones": [],
             }
