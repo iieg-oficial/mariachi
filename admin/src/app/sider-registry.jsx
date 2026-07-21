@@ -1,20 +1,19 @@
 import {
     ApartmentOutlined,
     AppstoreOutlined,
+    AuditOutlined,
     BarChartOutlined,
     BookOutlined,
     BranchesOutlined,
     CalendarOutlined,
     CodeOutlined,
-    DashboardOutlined,
     EnvironmentOutlined,
     FileTextOutlined,
     FormOutlined,
-    GlobalOutlined,
+    HistoryOutlined,
     HomeOutlined,
     InboxOutlined,
     KeyOutlined,
-    MenuOutlined,
     OrderedListOutlined,
     PartitionOutlined,
     PieChartOutlined,
@@ -26,23 +25,6 @@ import {
 import ColibriIcon from '@shared/components/ColibriIcon';
 
 export const PROJECT_REGISTRY = {
-    portal: {
-        label: 'Portalito',
-        icon: <GlobalOutlined />,
-        disabled: true,
-        items: [
-            { key: '/menu', path: '/menu', label: 'Menú', icon: <MenuOutlined /> },
-            { key: '/pages', path: '/pages', label: 'Páginas', icon: <FileTextOutlined /> },
-        ],
-    },
-    tablerillos: {
-        label: 'Tablerillos',
-        icon: <DashboardOutlined />,
-        disabled: true,
-        items: [
-            { key: '/tablerillos', path: '/tablerillos', label: 'Tableros', icon: <DashboardOutlined /> },
-        ],
-    },
     mapalab: {
         label: 'MapaLab',
         icon: <EnvironmentOutlined />,
@@ -117,12 +99,27 @@ export const PROJECT_REGISTRY = {
     },
 };
 
-export const FOOTER_ITEMS = [
+export const FOOTER_RAIL_ITEMS = [
     {
         key: '/documentacion',
         path: '/documentacion',
         label: 'Documentación',
         icon: <BookOutlined />,
         allowedGlobalRoles: ['tetlamamakani', 'editora'],
+    },
+    {
+        key: '/actividad',
+        path: '/actividad',
+        label: 'Actividad',
+        icon: <HistoryOutlined />,
+        allowedGlobalRoles: ['tetlamamakani'],
+    },
+    {
+        key: '/revision',
+        path: '/revision',
+        label: 'Revisiones',
+        icon: <AuditOutlined />,
+        allowedGlobalRoles: ['tetlamamakani'],
+        showBadge: true,
     },
 ];

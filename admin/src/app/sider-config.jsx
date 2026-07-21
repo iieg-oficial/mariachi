@@ -1,15 +1,13 @@
 import {
-    AuditOutlined,
+    ClusterOutlined,
     DashboardOutlined,
     FileImageOutlined,
-    HistoryOutlined,
     LockOutlined,
-    ProjectOutlined,
     TeamOutlined,
 } from '@ant-design/icons';
 import { Tooltip } from 'antd';
 import StatusBadge from '@shared/components/StatusBadge';
-import { FOOTER_ITEMS, PROJECT_REGISTRY } from '@app/sider-registry';
+import { FOOTER_RAIL_ITEMS, PROJECT_REGISTRY } from '@app/sider-registry';
 
 export { PROJECT_REGISTRY };
 
@@ -45,12 +43,57 @@ const withBetaBadge = (label) => (
     </span>
 );
 
-export const PLATFORM_ITEMS = [
+const renderBadgeLabel = (label, count) => (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+        <span>{label}</span>
+        <StatusBadge text={String(count)} color="#fff" bg="#ff4d4f" size="sm" />
+    </span>
+);
+
+function buildLeafItem(item, role, onNavigate, extras) {
+    const allowed = !item.allowedGlobalRoles || item.allowedGlobalRoles.includes(role);
+    const itemDisabled = item.disabled || !allowed;
+    let label = item.label;
+    if (allowed) {
+        if (item.showBadge && extras.pendingCount > 0) {
+            label = renderBadgeLabel(item.label, extras.pendingCount);
+        } else if (item.showReporteBadge && extras.reportesPendingCount > 0) {
+            label = renderBadgeLabel(item.label, extras.reportesPendingCount);
+        }
+        if (item.showBetaBadge) {
+            label = withBetaBadge(label);
+        }
+    } else {
+        label = renderDisabledLabel(item.label, item.allowedGlobalRoles);
+    }
+    return {
+        key: item.key,
+        icon: item.icon,
+        disabled: itemDisabled,
+        label,
+        onClick: itemDisabled ? undefined : () => onNavigate(item.path),
+    };
+}
+
+export const MAIN_ITEMS = [
+    {
+        key: '/inicio',
+        path: '/inicio',
+        label: 'Inicio',
+        icon: <DashboardOutlined />,
+    },
     {
         key: '/users',
         path: '/users',
         label: 'Usuarios',
         icon: <TeamOutlined />,
+        allowedGlobalRoles: ['tetlamamakani'],
+    },
+    {
+        key: '/monitoreo',
+        path: '/monitoreo',
+        label: 'Huachicol',
+        icon: <ClusterOutlined />,
         allowedGlobalRoles: ['tetlamamakani'],
     },
     {
@@ -60,21 +103,6 @@ export const PLATFORM_ITEMS = [
         icon: <FileImageOutlined />,
         allowedGlobalRoles: ['tetlamamakani', 'editora'],
     },
-    {
-        key: '/revision',
-        path: '/revision',
-        label: 'Revisiones',
-        icon: <AuditOutlined />,
-        allowedGlobalRoles: ['tetlamamakani'],
-        showBadge: true,
-    },
-    {
-        key: '/actividad',
-        path: '/actividad',
-        label: 'Actividad',
-        icon: <HistoryOutlined />,
-        allowedGlobalRoles: ['tetlamamakani'],
-    },
 ];
 
 export function buildSiderItems({ user, onNavigate, extras = {} }) {
@@ -83,52 +111,8 @@ export function buildSiderItems({ user, onNavigate, extras = {} }) {
 
     const items = [];
 
-    items.push({
-        key: '/inicio',
-        icon: <DashboardOutlined />,
-        label: 'Inicio',
-        onClick: () => onNavigate('/inicio'),
-    });
-
-    const renderBadgeLabel = (label, count) => (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-            <span>{label}</span>
-            <StatusBadge text={String(count)} color="#fff" bg="#ff4d4f" size="sm" />
-        </span>
-    );
-
-    const platformChildren = PLATFORM_ITEMS.map((item) => {
-        const allowed = item.allowedGlobalRoles.includes(role);
-        const itemDisabled = item.disabled || !allowed;
-        let label = item.label;
-        if (allowed) {
-            if (item.showBadge && extras.pendingCount > 0) {
-                label = renderBadgeLabel(item.label, extras.pendingCount);
-            } else if (item.showReporteBadge && extras.reportesPendingCount > 0) {
-                label = renderBadgeLabel(item.label, extras.reportesPendingCount);
-            }
-            if (item.showBetaBadge) {
-                label = withBetaBadge(label);
-            }
-        } else {
-            label = renderDisabledLabel(item.label, item.allowedGlobalRoles);
-        }
-        return {
-            key: item.key,
-            icon: item.icon,
-            disabled: itemDisabled,
-            label,
-            onClick: itemDisabled ? undefined : () => onNavigate(item.path),
-        };
-    });
-
-    if (platformChildren.length > 0) {
-        items.push({
-            key: 'platform',
-            icon: <ProjectOutlined />,
-            label: 'Plataforma',
-            children: platformChildren,
-        });
+    for (const item of MAIN_ITEMS) {
+        items.push(buildLeafItem(item, role, onNavigate, extras));
     }
 
     const isAdmin = role === 'tetlamamakani';
@@ -180,17 +164,19 @@ export function buildSiderItems({ user, onNavigate, extras = {} }) {
     return items;
 }
 
-export function buildSiderFooterItems({ user, onNavigate }) {
+export function buildSiderFooterRail({ user, onNavigate, extras = {} }) {
     const role = user?.role;
     if (!role) return [];
     const items = [];
-    for (const item of FOOTER_ITEMS) {
+    for (const item of FOOTER_RAIL_ITEMS) {
         const allowed = !item.allowedGlobalRoles || item.allowedGlobalRoles.includes(role);
         if (!allowed) continue;
         items.push({
             key: item.key,
-            icon: item.icon,
+            path: item.path,
             label: item.label,
+            icon: item.icon,
+            badgeCount: item.showBadge ? (extras.pendingCount || 0) : 0,
             onClick: () => onNavigate(item.path),
         });
     }
@@ -203,14 +189,13 @@ export function defaultOpenKeyForPath(pathname) {
             return `project-${slug}`;
         }
     }
-    return 'platform';
+    return null;
 }
 
 const ALL_NAV_ITEMS = [
-    { key: '/inicio', path: '/inicio' },
-    ...PLATFORM_ITEMS,
+    ...MAIN_ITEMS,
     ...Object.values(PROJECT_REGISTRY).flatMap((project) => project.items),
-    ...FOOTER_ITEMS,
+    ...FOOTER_RAIL_ITEMS,
 ];
 
 export function selectedKeyForPath(pathname) {

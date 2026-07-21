@@ -1,17 +1,24 @@
 import { useState, useEffect } from 'react';
-import { Layout, Menu, Button, Avatar, Dropdown, Typography, Drawer, Grid } from 'antd';
+import { Layout, Menu, Button, Avatar, Badge, Dropdown, Tooltip, Typography, Drawer, Grid } from 'antd';
 import {
     MenuFoldOutlined,
     MenuUnfoldOutlined,
     UserOutlined,
     LogoutOutlined,
     LockOutlined,
+    FileTextOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router';
 import { useAuth } from '@shared/contexts/useAuth';
 import api from '@shared/services/api';
+import VersionNotesModal from '@features/inicio/components/VersionNotesModal';
 import { BRAND } from '@app/providers/brand';
-import { buildSiderFooterItems, buildSiderItems, defaultOpenKeyForPath, selectedKeyForPath } from '@app/sider-config';
+import {
+    buildSiderFooterRail,
+    buildSiderItems,
+    defaultOpenKeyForPath,
+    selectedKeyForPath,
+} from '@app/sider-config';
 
 const { Header, Sider, Content } = Layout;
 const { Text } = Typography;
@@ -20,6 +27,7 @@ const { useBreakpoint } = Grid;
 export default function MainLayout() {
     const [collapsed, setCollapsed] = useState(false);
     const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+    const [versionNotesOpen, setVersionNotesOpen] = useState(false);
     const screens = useBreakpoint();
     const isMobile = !screens.md;
     const navigate = useNavigate();
@@ -70,7 +78,19 @@ export default function MainLayout() {
         onNavigate: handleNav,
         extras: { pendingCount, reportesPendingCount },
     });
-    const footerMenuItems = buildSiderFooterItems({ user, onNavigate: handleNav });
+    const footerRailItems = [
+        ...buildSiderFooterRail({ user, onNavigate: handleNav, extras: { pendingCount } }),
+        {
+            key: 'version-notes',
+            label: 'Notas de versión',
+            icon: <FileTextOutlined />,
+            badgeCount: 0,
+            onClick: () => {
+                setVersionNotesOpen(true);
+                if (isMobile) setMobileDrawerOpen(false);
+            },
+        },
+    ];
     const selectedKey = selectedKeyForPath(location.pathname);
 
     const userMenuItems = [
@@ -122,48 +142,75 @@ export default function MainLayout() {
         </div>
     );
 
-    const FOOTER_HEIGHT = footerMenuItems.length > 0 ? 48 * footerMenuItems.length : 0;
+    const openKey = defaultOpenKeyForPath(location.pathname);
+    const defaultOpenKeys = openKey ? [openKey] : [];
+
+    const renderFooterRail = () => (
+        <div
+            style={{
+                display: 'flex',
+                alignItems: 'stretch',
+                borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+            }}
+        >
+            {footerRailItems.map((item, index) => {
+                const active = selectedKey === item.key;
+                return (
+                    <Tooltip key={item.key} title={item.label} placement="top">
+                        <Button
+                            type="text"
+                            onClick={item.onClick}
+                            aria-label={item.label}
+                            style={{
+                                flex: 1,
+                                minWidth: 0,
+                                height: 44,
+                                borderRadius: 0,
+                                borderInlineStart: index > 0 ? '1px solid rgba(255, 255, 255, 0.08)' : 'none',
+                            }}
+                        >
+                            <Badge count={item.badgeCount} size="small" offset={[6, -2]}>
+                                <span style={{
+                                    color: '#fff',
+                                    opacity: active ? 1 : 0.75,
+                                    fontSize: 16,
+                                    display: 'inline-flex',
+                                }}>
+                                    {item.icon}
+                                </span>
+                            </Badge>
+                        </Button>
+                    </Tooltip>
+                );
+            })}
+        </div>
+    );
 
     const renderSiderContent = () => (
-        <div style={{ position: 'relative', height: '100%' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             {brand(collapsed)}
-            <div
-                style={{
-                    position: 'absolute',
-                    top: 64,
-                    left: 0,
-                    right: 0,
-                    bottom: FOOTER_HEIGHT,
-                    overflowY: 'auto',
-                }}
-            >
+            <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
                 <Menu
                     theme="dark"
                     mode="inline"
                     selectedKeys={[selectedKey]}
-                    defaultOpenKeys={[defaultOpenKeyForPath(location.pathname)]}
+                    defaultOpenKeys={defaultOpenKeys}
                     items={menuItems}
                     style={{ borderInlineEnd: 'none' }}
                 />
             </div>
-            {footerMenuItems.length > 0 && (
-                <Menu
-                    theme="dark"
-                    mode="inline"
-                    selectedKeys={[selectedKey]}
-                    items={footerMenuItems}
-                    style={{
-                        position: 'absolute',
-                        bottom: 0,
-                        left: 0,
-                        right: 0,
-                        borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-                        borderInlineEnd: 'none',
-                    }}
-                />
-            )}
+            {footerRailItems.length > 0 && renderFooterRail()}
         </div>
     );
+
+    const footerRailAsMenuItems = footerRailItems.map((item) => ({
+        key: item.key,
+        icon: item.badgeCount > 0
+            ? <Badge count={item.badgeCount} size="small" offset={[6, -2]}>{item.icon}</Badge>
+            : item.icon,
+        label: item.label,
+        onClick: item.onClick,
+    }));
 
     const renderMobileSiderContent = () => (
         <>
@@ -172,8 +219,8 @@ export default function MainLayout() {
                 theme="dark"
                 mode="inline"
                 selectedKeys={[selectedKey]}
-                defaultOpenKeys={[defaultOpenKeyForPath(location.pathname)]}
-                items={[...menuItems, ...footerMenuItems]}
+                defaultOpenKeys={defaultOpenKeys}
+                items={[...menuItems, ...footerRailAsMenuItems]}
             />
         </>
     );
@@ -254,6 +301,11 @@ export default function MainLayout() {
                     <Outlet />
                 </Content>
             </Layout>
+
+            <VersionNotesModal
+                open={versionNotesOpen}
+                onClose={() => setVersionNotesOpen(false)}
+            />
         </Layout>
     );
 }
