@@ -146,11 +146,13 @@ def create_app() -> FastAPI:
         import os
         from datetime import datetime, timezone
         from pathlib import Path
-        from sqlalchemy import text
+
         from fastapi.responses import JSONResponse
-        from app.core.version import get_app_version
-        from app.core.database import SessionLocal
+        from sqlalchemy import text
+
         from app.core.cache import redis_client
+        from app.core.database import SessionLocal
+        from app.core.version import get_app_version
 
         checks = {}
         try:
