@@ -1,7 +1,7 @@
 import asyncio
 
 import httpx
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
@@ -92,19 +92,37 @@ async def _probe_plataforma(plat, settings, client: httpx.AsyncClient) -> tuple[
     return await _probe_http_health(client, resolved)
 
 
+async def _fetch_monitor(client: httpx.AsyncClient, settings) -> dict[str, dict]:
+    base = (settings.huachicol_monitor_url or "").rstrip("/")
+    if not base:
+        return {}
+    try:
+        response = await client.get(f"{base}/api/status")
+        response.raise_for_status()
+        payload = response.json()
+    except Exception:
+        return {}
+
+    services = payload.get("services") or []
+    return {s["slug"]: s for s in services if isinstance(s, dict) and s.get("slug")}
+
+
 @router.get("/plataformas")
 async def listar_plataformas(_: Usuario = Depends(get_current_user)):
     settings = get_settings()
 
     async with httpx.AsyncClient(timeout=_TIMEOUT_SECONDS) as client:
-        probes = await asyncio.gather(
-            *(_probe_plataforma(plat, settings, client) for plat in PLATFORMS)
+        probes, monitor = await asyncio.gather(
+            asyncio.gather(
+                *(_probe_plataforma(plat, settings, client) for plat in PLATFORMS)
+            ),
+            _fetch_monitor(client, settings),
         )
 
     results = []
     for plat, (v_probe, ok) in zip(PLATFORMS, probes):
         version = plat.get("static_version") or v_probe
-        results.append({
+        entry = {
             "slug": plat["slug"],
             "label": plat["label"],
             "url": plat["url"],
@@ -112,9 +130,66 @@ async def listar_plataformas(_: Usuario = Depends(get_current_user)):
             "taiga": plat.get("taiga"),
             "version": version,
             "healthy": ok,
-        })
+        }
+
+        observed = monitor.get(plat["slug"])
+        if observed:
+            entry.update({
+                "status": observed.get("status"),
+                "since": observed.get("since"),
+                "since_human": observed.get("since_human"),
+                "deployed_at": observed.get("deployed_at"),
+                "uptime_24h": observed.get("uptime_24h"),
+                "containers": observed.get("container_summary"),
+                "detail": observed.get("detail"),
+                "monitored": True,
+            })
+            if not entry["version"]:
+                entry["version"] = observed.get("version")
+        else:
+            entry["monitored"] = False
+
+        results.append(entry)
 
     return results
+
+
+async def _proxy_monitor(path: str) -> dict | list:
+    settings = get_settings()
+    base = (settings.huachicol_monitor_url or "").rstrip("/")
+    if not base:
+        raise HTTPException(status_code=503, detail="monitor no configurado")
+    try:
+        async with httpx.AsyncClient(timeout=_TIMEOUT_SECONDS) as client:
+            response = await client.get(f"{base}{path}")
+            response.raise_for_status()
+            return response.json()
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(status_code=exc.response.status_code, detail="monitor respondió con error")
+    except Exception:
+        raise HTTPException(status_code=502, detail="monitor no alcanzable")
+
+
+@router.get("/monitor/status")
+async def monitor_status(_: Usuario = Depends(get_current_user)):
+    return await _proxy_monitor("/api/status")
+
+
+@router.get("/monitor/status/{slug}")
+async def monitor_status_detalle(
+    slug: str,
+    limit: int = Query(default=100, ge=1, le=500),
+    _: Usuario = Depends(get_current_user),
+):
+    return await _proxy_monitor(f"/api/status/{slug}?limit={limit}")
+
+
+@router.get("/monitor/events")
+async def monitor_events(
+    limit: int = Query(default=50, ge=1, le=200),
+    _: Usuario = Depends(get_current_user),
+):
+    return await _proxy_monitor(f"/api/events?limit={limit}")
 
 
 @router.get("/colibri-config")

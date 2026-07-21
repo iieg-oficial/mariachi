@@ -57,6 +57,7 @@ class Settings(BaseSettings):
     geoserver_ontoy_url: str | None = None
     gateway_hub_ontoy_url: str | None = None
     huachicol_ontoy_url: str | None = None
+    huachicol_monitor_url: str | None = None
 
     colibri_api_key_mariachi: str | None = None
 

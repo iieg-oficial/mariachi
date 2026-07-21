@@ -50,6 +50,7 @@ const FormularioEditorPage = lazy(() => import('@features/sieej-formularios').th
 const GruposPage = lazy(() => import('@features/sieej-formularios').then((m) => ({ default: m.GruposPage })));
 const CatalogosPage = lazy(() => import('@features/sieej-formularios').then((m) => ({ default: m.CatalogosPage })));
 const Inicio = lazy(() => import('@features/inicio'));
+const Monitoreo = lazy(() => import('@features/monitoreo').then((m) => ({ default: m.MonitoreoPage })));
 const Perfil = lazy(() => import('@features/perfil'));
 
 const PageFallback = () => (
@@ -251,6 +252,14 @@ const router = createBrowserRouter([
                         element: withSuspense(
                             <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
                                 <CatalogosPage />
+                            </RoleProtectedRoute>
+                        )
+                    },
+                    {
+                        path: 'monitoreo',
+                        element: withSuspense(
+                            <RoleProtectedRoute allowedRoles={['tetlamamakani']}>
+                                <Monitoreo />
                             </RoleProtectedRoute>
                         )
                     },
