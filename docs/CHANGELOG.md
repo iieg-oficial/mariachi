@@ -9,6 +9,17 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.64.0] - 2026-07-22
+
+### Subida interna al Acervo para plataformas externas (`POST /api/internal/acervo/upload`)
+
+Nuevo endpoint interno **upload-only** para que una plataforma externa del ecosistema (hoy el Portal) suba archivos al Acervo sin sesión de Mariachi, autenticándose con el header `X-Internal-Token` = `ACERVO_INTERNAL_TOKEN` (mismo patrón service-to-service que `MAPALAB_INTERNAL_TOKEN`).
+
+- **Solo sube**: el borrado, la edición y la vista siguen en Mariachi. Solo permite el bucket `portal`; valida tamaño (25 MB) y MIME, sanea el nombre y renombra en conflicto (`on_conflict=rename`). No persiste `AcervoFile` (el objeto se lista igual como *bucketOnly*). Registra actividad `acervo.file.upload_internal` y la métrica `mariachi_media_uploads_total`.
+- **Seam de escalabilidad**: la política (buckets/límites) la resuelve `resolve_upload_client()` en `services/acervo_upload_clients.py`; hoy un token fijo del entorno, a futuro un registro de clientes con key rotable por plataforma (patrón `source_apps`) sin tocar el endpoint.
+- **Documentación** en Mariachi → Documentación → Acervo → "Subida externa" (sub-pestaña en `AcervoTopic`) y en `docs/acervo-subida-externa.md`. Nueva variable `ACERVO_INTERNAL_TOKEN` en `settings.py` y los `.env.*.example`.
+- Requiere en gateway-hub (`>= 1.30.0`) la `location ^~ /api/internal/acervo/` sin bot-protection para el acceso cross-server.
+
 ## [1.63.1] - 2026-07-21
 
 ### Cambios
