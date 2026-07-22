@@ -9,6 +9,12 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.68.0] - 2026-07-22
+
+### Documentación consolidada del rename `/api/administrador` → `/api/mariachi`
+
+Se consolida el estado de las 3 fases del rename (versiones, ramas, orden de deploy y gate) en el `RUNBOOK.md` del ecosistema y en `docs/PENDIENTES.md`. Sin cambios de código en `develop`. La Fase 3 (retiro del compat, **1.67.0** en mariachi y **1.32.0** en gateway-hub) sigue aislada en la rama `chore/rename-fase3-retiro-compat` hasta cumplir el gate — de ahí el salto de `1.66.0` a `1.68.0` en `develop`.
+
 ## [1.66.0] - 2026-07-22
 
 ### Rename `/api/administrador` → `/api/mariachi`: el admin consume el prefijo nuevo (Fase 2)
