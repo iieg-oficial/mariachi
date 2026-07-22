@@ -9,6 +9,12 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.66.0] - 2026-07-22
+
+### Rename `/api/administrador` → `/api/mariachi`: el admin consume el prefijo nuevo (Fase 2)
+
+El panel admin pasa a llamar al prefijo nuevo: `VITE_ADMIN_API_URL = /api/mariachi` en los `.env.*` y el fallback de `admin/src/shared/services/api.js`. El prefijo viejo sigue funcionando por el rewrite compat de `mariachi-nginx` (1.65.0), así que no depende del orden de deploy con el api. **Requiere `gateway-hub >= 1.31.0`** desplegado antes (locations `/api/mariachi/acervo*`), o las miniaturas caerían al catch-all `/api/` y perderían su rate-limit dedicado. Falta la Fase 2 de SIEEJ (`VITE_BACKEND_API_HOST` + rebuild del dist) y la Fase 3 (retiro del compat).
+
 ## [1.65.0] - 2026-07-22
 
 ### Rename del prefijo de administración (`/api/administrador` → `/api/mariachi`)
