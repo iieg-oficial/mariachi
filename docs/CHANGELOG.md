@@ -9,6 +9,12 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.67.0] - 2026-07-22
+
+### Rename `/api/administrador` → `/api/mariachi`: retiro del compat (Fase 3)
+
+Se retira la red de compatibilidad del rename, dejando `/api/mariachi` como único prefijo: el doble-montaje `admin_prefix_legacy` de `main.py`, el setting `admin_prefix_legacy` y las 2 locations de rewrite `^~ /api/administrador/(acervo|)` de `mariachi-nginx`. **No desplegar hasta cumplir el gate**: Fase 2 (admin + SIEEJ) desplegada y sin tráfico a `/api/administrador/*` en los logs del gateway (bundles del staff refrescados). Las imágenes del portal público no se ven afectadas (usan `/acervo/<bucket>/...`, no el prefijo admin). En `gateway-hub` va el retiro paralelo de sus locations viejas de `/api/administrador/acervo*`.
+
 ## [1.66.0] - 2026-07-22
 
 ### Rename `/api/administrador` → `/api/mariachi`: el admin consume el prefijo nuevo (Fase 2)
