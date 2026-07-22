@@ -72,8 +72,6 @@ services:
       ACERVO_PUBLIC_ENDPOINT: ${ACERVO_PUBLIC_ENDPOINT}
       ACERVO_USE_SSL: ${ACERVO_USE_SSL:-false}
       ACERVO_VERIFY_SSL: ${ACERVO_VERIFY_SSL:-true}
-      SENTRY_DSN: ${SENTRY_DSN:-}
-      SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE:-1.0}
     networks:
       - mariachi_network_dev
       - dataengine-network

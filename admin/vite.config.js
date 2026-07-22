@@ -1,7 +1,5 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
-import { visualizer } from 'rollup-plugin-visualizer';
-import { sentryVitePlugin } from '@sentry/vite-plugin';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -14,35 +12,11 @@ export default defineConfig(({ mode }) => {
         VITE_ADMIN_PORT,
         VITE_ADMIN_HOST,
         VITE_MAPALAB_PROXY_URL,
-        SENTRY_AUTH_TOKEN,
-        SENTRY_ORG,
-        SENTRY_PROJECT,
     } = env;
 
     const mapalabTarget = VITE_MAPALAB_PROXY_URL || 'http://mapalab-dev-frontend-1:3006';
-    const sentryEnabled = Boolean(SENTRY_AUTH_TOKEN && SENTRY_ORG && SENTRY_PROJECT);
-    const statsEnabled = env.BUILD_STATS === '1' || env.BUILD_STATS === 'true';
 
     const plugins = [react()];
-
-    if (statsEnabled) {
-        plugins.push(visualizer({
-            filename: 'dist/stats.html',
-            gzipSize: true,
-            brotliSize: true,
-            template: 'treemap',
-        }));
-    }
-
-    if (sentryEnabled) {
-        plugins.push(
-            sentryVitePlugin({
-                org: SENTRY_ORG,
-                project: SENTRY_PROJECT,
-                authToken: SENTRY_AUTH_TOKEN,
-            }),
-        );
-    }
 
     return {
         plugins,
@@ -70,14 +44,13 @@ export default defineConfig(({ mode }) => {
         base: '/mariachi/',
         build: {
             outDir: 'dist',
-            sourcemap: sentryEnabled,
+            sourcemap: false,
             rollupOptions: {
                 output: {
                     manualChunks: {
                         'react-vendor': ['react', 'react-dom', 'react-router'],
                         'antd': ['antd', '@ant-design/icons'],
                         'dnd-kit': ['@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities'],
-                        'sentry': ['@sentry/react'],
                     },
                 },
             },

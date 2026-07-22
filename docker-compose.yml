@@ -9,11 +9,6 @@ services:
         VITE_NODE_ENV: ${VITE_NODE_ENV:?}
         VITE_ADMIN_API_URL: ${VITE_ADMIN_API_URL:?}
         VITE_WEB_URL: ${VITE_WEB_URL}
-        VITE_SENTRY_DSN: ${VITE_SENTRY_DSN}
-        SENTRY_AUTH_TOKEN: ${SENTRY_AUTH_TOKEN}
-        SENTRY_ORG: ${SENTRY_ORG}
-        SENTRY_PROJECT: ${SENTRY_PROJECT}
-        BUILD_STATS: ${BUILD_STATS}
     container_name: mariachi-nginx
     expose:
       - "80"
@@ -85,7 +80,6 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:?}:${POSTGRES_PASSWORD:?}@postgres:5432/${POSTGRES_DB:?}
       REDIS_URL: redis://redis:6379/0
       ACERVO_USE_SSL: ${ACERVO_USE_SSL:?}
-      SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE:?}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3).read()"]
       interval: 15s

@@ -1,6 +1,5 @@
 from contextlib import asynccontextmanager
 
-import sentry_sdk
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from prometheus_fastapi_instrumentator import Instrumentator
@@ -11,10 +10,12 @@ from app.api.deps import require_staff
 from app.api.routes import (
     acervo,
     acervo_buckets,
+    acervo_internal,
     actividad,
     auth,
     borradores,
     bulk_ingest,
+    capas_catalogo,
     colibri_direcciones,
     colibri_routes,
     colibri_source_apps,
@@ -47,14 +48,6 @@ from app.api.routes import (
 from app.core.settings import get_settings
 
 settings = get_settings()
-
-if settings.sentry_dsn:
-    sentry_sdk.init(
-        dsn=settings.sentry_dsn,
-        environment=settings.environment,
-        release=f"mariachi-api@{settings.version}",
-        traces_sample_rate=settings.sentry_traces_sample_rate,
-    )
 
 
 @asynccontextmanager
@@ -104,6 +97,7 @@ def create_app() -> FastAPI:
     app.include_router(borradores.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(sistema.router, prefix=settings.admin_prefix)
     app.include_router(layers.router, prefix=settings.admin_prefix, dependencies=staff_dep)
+    app.include_router(capas_catalogo.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(bulk_ingest.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(layer_metadata.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(symbols.router, prefix=settings.admin_prefix, dependencies=staff_dep)
@@ -116,6 +110,8 @@ def create_app() -> FastAPI:
     app.include_router(mapalab_api_keys.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(mapalab_api_keys_internal.router, prefix=settings.admin_prefix)
     app.include_router(mapalab_mcp_internal.router, prefix=settings.admin_prefix)
+    app.include_router(mapalab_api_keys_internal.router, prefix=settings.admin_prefix_legacy)
+    app.include_router(mapalab_mcp_internal.router, prefix=settings.admin_prefix_legacy)
     app.include_router(mapalab_stats.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(reportes.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(colibri_tipos.router, prefix=settings.admin_prefix, dependencies=staff_dep)
@@ -128,6 +124,7 @@ def create_app() -> FastAPI:
     app.include_router(public.router, prefix=settings.web_prefix)
     app.include_router(public.mapalab_router, prefix=settings.mapalab_public_prefix)
     app.include_router(acervo.public_router)
+    app.include_router(acervo_internal.router)
     app.include_router(symbols.mapalab_router, prefix=settings.mapalab_public_prefix)
     app.include_router(reportes_public.router, prefix=settings.public_prefix)
     app.include_router(mapalab_events_public.router, prefix=settings.public_prefix)

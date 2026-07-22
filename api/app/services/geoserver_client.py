@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import xml.etree.ElementTree as ET
 
 import httpx
 
@@ -68,6 +69,55 @@ class GeoServerClient:
             return []
         layers = node.get("layer", []) or []
         return [layer["name"] for layer in layers]
+
+    def get_layer_title(self, workspace: str, layer: str) -> str | None:
+        for kind, key in (("featuretypes", "featureType"), ("coverages", "coverage")):
+            url = self._rest_url(f"workspaces/{workspace}/{kind}/{layer}.json")
+            with self._client() as c:
+                r = c.get(url)
+                if r.status_code == 404:
+                    continue
+                r.raise_for_status()
+                data = r.json()
+            title = (data.get(key) or {}).get("title")
+            if title:
+                return title
+        return None
+
+    def get_layers_with_titles(self, workspace: str) -> list[dict]:
+        url = self._ows_url(f"{workspace}/wms")
+        params = {"service": "WMS", "version": "1.3.0", "request": "GetCapabilities"}
+        with httpx.Client(auth=self._auth, timeout=self._timeout) as c:
+            r = c.get(url, params=params)
+            r.raise_for_status()
+            content = r.content
+        try:
+            root = ET.fromstring(content)
+        except ET.ParseError:
+            return []
+        seen: set[str] = set()
+        result: list[dict] = []
+        for layer_el in root.iter():
+            if layer_el.tag.rsplit("}", 1)[-1] != "Layer":
+                continue
+            name_el = next(
+                (ch for ch in layer_el if ch.tag.rsplit("}", 1)[-1] == "Name"), None
+            )
+            if name_el is None or not (name_el.text or "").strip():
+                continue
+            name = name_el.text.strip()
+            if ":" in name:
+                name = name.split(":", 1)[1]
+            if name in seen:
+                continue
+            seen.add(name)
+            title_el = next(
+                (ch for ch in layer_el if ch.tag.rsplit("}", 1)[-1] == "Title"), None
+            )
+            title = title_el.text.strip() if title_el is not None and title_el.text else None
+            result.append({"name": name, "title": title})
+        result.sort(key=lambda item: item["name"])
+        return result
 
     def layer_exists(self, workspace: str, layer: str) -> bool:
         url = self._rest_url(f"workspaces/{workspace}/layers/{layer}.json")

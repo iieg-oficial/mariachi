@@ -81,7 +81,7 @@ app.include_router(preview.public_router, prefix=settings.web_prefix)
 
 ## Frontend SIEEJ (`iieg-oficial/sieej`)
 
-No requiere distinguir rol explicitamente. Su `AuthContext` solo necesita que `/api/administrador/autenticacion/perfil` devuelva 200 y que `/formularios/*` no devuelva 403. Cualquier rol con `UserProject(project='sieej')` valido funciona, incluido `externo`.
+No requiere distinguir rol explicitamente. Su `AuthContext` solo necesita que `/api/mariachi/autenticacion/perfil` devuelva 200 y que `/formularios/*` no devuelva 403. Cualquier rol con `UserProject(project='sieej')` valido funciona, incluido `externo`.
 
 ## Onboarding de un usuario externo
 
@@ -148,7 +148,7 @@ Acciones cableadas a fecha actual:
 - `user.create`, `user.update`, `user.delete`, `user.reset_password`
 - `sieej.formulario.create`, `sieej.formulario.update`, `sieej.envio.reabrir`
 
-`GET /api/administrador/actividad` (admin-only) consume con filtros `actor_id`, `actor_role`, `action_prefix`, `resource_type`, `desde`, `hasta`, `page`, `page_size`. UI en `/mariachi/actividad`.
+`GET /api/mariachi/actividad` (admin-only) consume con filtros `actor_id`, `actor_role`, `action_prefix`, `resource_type`, `desde`, `hasta`, `page`, `page_size`. UI en `/mariachi/actividad`.
 
 El `actor_role` permite diferenciar staff vs externo en queries. El campo `metadata` JSONB guarda detalle relevante por accion (campos modificados en update, version_from/to en formulario, estado_from en reapertura, etc.).
 

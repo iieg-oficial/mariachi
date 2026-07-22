@@ -27,7 +27,8 @@ class Settings(BaseSettings):
     acervo_use_ssl: bool = False
     acervo_verify_ssl: bool = True
     cors_origins: list[str]
-    admin_prefix: str = "/api/administrador"
+    admin_prefix: str = "/api/mariachi"
+    admin_prefix_legacy: str = "/api/administrador"
     web_prefix: str = "/api/portal"
     mapalab_public_prefix: str = "/api/mapalab"
     public_prefix: str = "/api/public"
@@ -50,13 +51,11 @@ class Settings(BaseSettings):
 
     mapalab_backend_url: str | None = None
     mapalab_internal_token: str | None = None
+    acervo_internal_token: str | None = None
     sieej_url: str | None = None
     huachicol_monitor_url: str | None = None
 
     colibri_api_key_mariachi: str | None = None
-
-    sentry_dsn: str | None = None
-    sentry_traces_sample_rate: float = 0.1
 
     discord_webhook_mapalab: str | None = None
     discord_webhook_sieej: str | None = None

@@ -391,6 +391,14 @@ Requieren cookie JWT valida + CSRF en writes.
 
 Sin cookie JWT — autenticacion exclusivamente por API key del huesped (`ck_pub_*` browser, `ck_priv_*` server). Ver `docs/colibri.md` para arquitectura completa.
 
+### Subida interna al Acervo (`/api/internal/acervo/*`)
+
+| Metodo | Ruta | Funcion |
+|---|---|---|
+| POST | `/api/internal/acervo/upload` | Subida **upload-only** para plataformas externas (hoy el Portal). Autenticada por header `X-Internal-Token` = `ACERVO_INTERNAL_TOKEN` (mismo patron service-to-service que `MAPALAB_INTERNAL_TOKEN`). Solo bucket `portal`; valida tamaño (25 MB) y MIME, sanea el nombre y renombra en conflicto; **no persiste `AcervoFile`** (el objeto se lista igual como bucketOnly). Registra actividad `acervo.file.upload_internal` + metrica `mariachi_media_uploads_total`. |
+
+Sin cookie JWT. La politica (buckets permitidos, limites) la resuelve `resolve_upload_client()` en `services/acervo_upload_clients.py` — hoy un token fijo del entorno, a futuro un registro de clientes con key rotable por plataforma (patron `source_apps`). El borrado, la edicion y la vista se hacen desde Mariachi. Alcanzable por `iieg-network` (`http://mariachi-api:8000/...`) o por el gateway (`location ^~ /api/internal/acervo/`, sin bot-protection). Ver `docs/acervo-subida-externa.md`.
+
 ### Ingesta masiva de metadatos (CSV/XLSX) — implementado
 
 Pestaña `/mariachi/mapalab/layers/ingesta-masiva` en el feature `mapalab-layers`. Sube CSV/XLSX, mapea columnas humanas del Excel del MapaLab a campos técnicos, previsualiza el plan con diff por capa, y aplica.
@@ -840,7 +848,7 @@ Este repo se integra con otros servicios internos vecinos (CMS, visor de mapas, 
 
 Dos frentes. **UI:** el pie del sider pasa de dos bloques (icon-rail de Revisiones/Actividad + menú de Documentación) a **una sola fila** que abarca el ancho, con Documentación · Actividad · Revisiones · Notas de versión separados por dividers y cada uno con tooltip (iconos blancos). `buildIconRailItems`/`buildSiderFooterItems` → `buildSiderFooterRail`; `FOOTER_ITEMS`/`ICON_RAIL_ITEMS` → `FOOTER_RAIL_ITEMS`. Notas de versión sale del Inicio y se abre como modal (`VersionNotesModal`) reutilizando `getNotasVersion` + `Markdown`.
 
-**Versionado:** se **fusiona el doble número** `api X / admin Y` en uno solo para el monorepo. `api/pyproject.toml` es la única fuente de la verdad (lo que `get_app_version()` reporta en `/ontoy`, `/`, Sentry y docs); `admin/package.json` se alinea. Nuevo `scripts/bump-version.sh <x.y.z>` sincroniza ambos y abre la entrada del CHANGELOG. `changelog_parser` normaliza la versión (extrae el semver) para que el modal muestre `1.60.0` en vez del label dual legacy. Los headers `[api X / admin Y]` previos quedan como histórico. Detalle en CHANGELOG §[1.61.0].
+**Versionado:** se **fusiona el doble número** `api X / admin Y` en uno solo para el monorepo. `api/pyproject.toml` es la única fuente de la verdad (lo que `get_app_version()` reporta en `/ontoy`, `/` y docs); `admin/package.json` se alinea. Nuevo `scripts/bump-version.sh <x.y.z>` sincroniza ambos y abre la entrada del CHANGELOG. `changelog_parser` normaliza la versión (extrae el semver) para que el modal muestre `1.60.0` en vez del label dual legacy. Los headers `[api X / admin Y]` previos quedan como histórico. Detalle en CHANGELOG §[1.61.0].
 
 ### 2026-07-20 (api 1.60.0 + admin 1.59.0) — SIEEJ: fechas abiertas en el campo de rango
 

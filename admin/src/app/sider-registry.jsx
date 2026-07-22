@@ -32,6 +32,10 @@ export const PROJECT_REGISTRY = {
                 key: '/mapalab/layers/ingesta-masiva', path: '/mapalab/layers/ingesta-masiva',
                 label: 'Ingesta masiva', icon: <InboxOutlined />, showBetaBadge: true,
             },
+            {
+                key: '/mapalab/catalogo', path: '/mapalab/catalogo', label: 'Catálogo',
+                icon: <UnorderedListOutlined />, showBetaBadge: true,
+            },
             { key: '/mapalab/initial-order', path: '/mapalab/initial-order', label: 'Capas iniciales', icon: <OrderedListOutlined /> },
             { key: '/mapalab/eventos', path: '/mapalab/eventos', label: 'Eventos', icon: <CalendarOutlined /> },
             { key: '/mapalab/home', path: '/mapalab/home', label: 'Inicio', icon: <HomeOutlined /> },

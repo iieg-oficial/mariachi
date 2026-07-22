@@ -1,13 +1,22 @@
 import { useState } from 'react';
 import { Button, Card, Space, Table, Tabs, Tag, Typography } from 'antd';
-import { ExperimentOutlined } from '@ant-design/icons';
+import { CopyOutlined, ExperimentOutlined } from '@ant-design/icons';
 import ThumbnailDiagnostics from '@features/acervo/components/ThumbnailDiagnostics';
+import { toPublicUrl } from '@features/acervo/api/acervoService';
+import { message } from '@shared/services/message';
 
 const { Title, Paragraph, Text } = Typography;
+
+const UPLOAD_PATH = '/api/internal/acervo/upload';
 
 const HOW_COLUMNS = [
     { title: 'Herramienta', dataIndex: 'que', key: 'que', width: 220, render: (v) => <Text strong>{v}</Text> },
     { title: 'Cómo se usa', dataIndex: 'como', key: 'como' },
+];
+
+const CAMPO_COLUMNS = [
+    { title: 'Campo', dataIndex: 'campo', key: 'campo', width: 160, render: (v) => <Text code>{v}</Text> },
+    { title: 'Descripción', dataIndex: 'desc', key: 'desc' },
 ];
 
 const NAV = [
@@ -43,17 +52,103 @@ const FOLDERS = [
     { que: 'Eliminar carpeta', como: 'Debe estar vacía; mueve o elimina sus archivos primero.' },
 ];
 
-function TablaSeccion({ titulo, data }) {
+const SUBIDA_CAMPOS = [
+    { campo: 'file', desc: 'Archivo. Obligatorio. Máx 25 MB.' },
+    { campo: 'bucket_name', desc: 'Obligatorio. Debe ser portal.' },
+    { campo: 'folder', desc: 'Carpeta destino (opcional).' },
+    { campo: 'on_conflict', desc: 'rename (default, agrega sufijo) o reject (409 si ya existe).' },
+    { campo: 'use_uuid', desc: 'true para nombre de objeto aleatorio (opcional).' },
+    { campo: 'alt', desc: 'Texto alternativo (opcional).' },
+];
+
+function CodeBlock({ code }) {
+    const handleCopy = () => {
+        navigator.clipboard.writeText(code).then(
+            () => message.success('Copiado'),
+            () => message.error('No se pudo copiar'),
+        );
+    };
+    return (
+        <div style={{ position: 'relative' }}>
+            <pre
+                style={{
+                    background: '#0d1117',
+                    color: '#e6edf3',
+                    padding: 16,
+                    borderRadius: 8,
+                    fontSize: 12,
+                    overflow: 'auto',
+                    margin: 0,
+                    fontFamily: "ui-monospace, 'SF Mono', Menlo, monospace",
+                }}
+            >
+                {code}
+            </pre>
+            <button
+                onClick={handleCopy}
+                style={{
+                    position: 'absolute',
+                    top: 8,
+                    right: 8,
+                    background: 'rgba(255,255,255,0.1)',
+                    color: '#e6edf3',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: 4,
+                    padding: '4px 8px',
+                    fontSize: 11,
+                    cursor: 'pointer',
+                }}
+            >
+                <CopyOutlined /> Copiar
+            </button>
+        </div>
+    );
+}
+
+function TablaSeccion({ titulo, data, columns = HOW_COLUMNS, rowKey = 'que' }) {
     return (
         <div>
             <Text strong style={{ display: 'block', marginBottom: 8 }}>{titulo}</Text>
-            <Table rowKey="que" size="small" pagination={false} dataSource={data} columns={HOW_COLUMNS} />
+            <Table rowKey={rowKey} size="small" pagination={false} dataSource={data} columns={columns} />
         </div>
     );
 }
 
 export default function AcervoTopic({ defaultActiveTab = 'uso', showHeader = true }) {
     const [showDiag, setShowDiag] = useState(false);
+
+    const gatewayUrl = `${window.location.origin}${UPLOAD_PATH}`;
+    const exampleUrl = toPublicUrl('/acervo/portal/branding/logo.png');
+
+    const snippetCurl = `curl -X POST "${gatewayUrl}" \\
+  -H "X-Internal-Token: $ACERVO_INTERNAL_TOKEN" \\
+  -F "file=@logo.png" \\
+  -F "bucket_name=portal" \\
+  -F "folder=branding"`;
+
+    const snippetFetch = `const fd = new FormData();
+fd.append('file', archivo);            // File / Blob
+fd.append('bucket_name', 'portal');    // unico bucket permitido
+fd.append('folder', 'branding');       // opcional
+
+const res = await fetch('${UPLOAD_PATH}', {
+    method: 'POST',
+    headers: { 'X-Internal-Token': ACERVO_INTERNAL_TOKEN },
+    body: fd,
+});
+const data = await res.json();`;
+
+    const snippetResponse = `{
+  "name": "branding/logo.png",
+  "originalName": "logo.png",
+  "url": "${exampleUrl}",
+  "thumbnailUrl": "/acervo/thumb/portal/branding/logo.png?w=320",
+  "bucket": "portal",
+  "bucketId": 1,
+  "folder": "branding/",
+  "size": 12345,
+  "type": "image/png"
+}`;
 
     const usoTab = (
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
@@ -101,6 +196,39 @@ export default function AcervoTopic({ defaultActiveTab = 'uso', showHeader = tru
         </Space>
     );
 
+    const subidaExternaTab = (
+        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+            <Paragraph type="secondary" style={{ margin: 0, fontSize: 12 }}>
+                Endpoint interno <Text code>POST {UPLOAD_PATH}</Text> para que una plataforma externa (el <strong>Portal</strong>) suba archivos al bucket <Text code>portal</Text> sin sesión de Mariachi. <strong>Solo sube</strong>: el borrado, la edición y la vista se hacen desde el Acervo de Mariachi. Se autentica con el header <Text code>X-Internal-Token</Text> (valor de <Text code>ACERVO_INTERNAL_TOKEN</Text> en mariachi-api); no usa lista de IPs.
+            </Paragraph>
+
+            <TablaSeccion titulo="Campos (multipart/form-data)" data={SUBIDA_CAMPOS} columns={CAMPO_COLUMNS} rowKey="campo" />
+
+            <Card size="small" title="Ejemplo (curl)">
+                <CodeBlock code={snippetCurl} />
+            </Card>
+
+            <Card size="small" title="Ejemplo (JavaScript / fetch)">
+                <CodeBlock code={snippetFetch} />
+            </Card>
+
+            <Card size="small" title="Respuesta (201)">
+                <CodeBlock code={snippetResponse} />
+            </Card>
+
+            <div>
+                <Text strong style={{ display: 'block', marginBottom: 8 }}>Notas</Text>
+                <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
+                    <li>Cómo llegar: en la misma red (iieg-network), <Text code>http://mariachi-api:8000{UPLOAD_PATH}</Text>; desde otro servidor, por el gateway <Text code>{gatewayUrl}</Text>.</li>
+                    <li>Único bucket permitido: <Text code>portal</Text>. Para <Text code>iieg</Text> u otro, sube desde Mariachi.</li>
+                    <li>Máx 25 MB. Tipos: imágenes (PNG/JPG/GIF/WebP/SVG), PDF, documentos de oficina, texto/CSV/JSON y ZIP.</li>
+                    <li>Nombres saneados; si el archivo ya existe se renombra (<Text code>logo-2.png</Text>) salvo <Text code>on_conflict=reject</Text>.</li>
+                    <li>El token se rota editando <Text code>ACERVO_INTERNAL_TOKEN</Text> en el <Text code>.env</Text> de mariachi-api y reiniciando el servicio.</li>
+                </ul>
+            </div>
+        </Space>
+    );
+
     return (
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
             {showHeader && (
@@ -117,6 +245,7 @@ export default function AcervoTopic({ defaultActiveTab = 'uso', showHeader = tru
                 items={[
                     { key: 'uso', label: 'Uso del panel', children: usoTab },
                     { key: 'thumbs', label: 'Miniaturas y URLs', children: miniaturasTab },
+                    { key: 'subida-externa', label: 'Subida externa', children: subidaExternaTab },
                 ]}
             />
         </Space>

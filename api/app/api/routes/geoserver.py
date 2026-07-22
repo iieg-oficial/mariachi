@@ -10,6 +10,7 @@ from app.api.deps import require_project_access, require_role, verify_csrf
 from app.api.metrics import COUNTER_GEOSERVER_CALLS, incr
 from app.api.rate_limit import rate_limit
 from app.core.database import get_dataengine_db
+from app.core.settings import get_settings
 from app.models.layer import Workspace
 from app.models.user import Usuario
 from app.schemas.geoserver_file import (
@@ -23,6 +24,8 @@ from app.services.acervo_file_service import ZIP_MAX_BYTES, stream_zip
 from app.services.geoserver_client import GeoServerClient, GeoServerError
 from app.services.palette_service import load_palettes
 from app.services.sld_parser import parse_sld
+
+settings = get_settings()
 
 router = APIRouter(
     prefix='/geoserver',
@@ -423,7 +426,7 @@ def _build_file_response(name: str, content_type: str | None, workspace: str | N
     return GeoServerFileResponse(
         name=name,
         content_type=content_type,
-        download_url=f"/api/administrador/geoserver/files/{name}{ws_qs}",
+        download_url=f"{settings.admin_prefix}/geoserver/files/{name}{ws_qs}",
         sld_snippet=snippet,
         workspace=workspace,
     )

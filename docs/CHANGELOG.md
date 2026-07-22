@@ -9,6 +9,66 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.70.0] - 2026-07-22
+
+### Rediseño de la subpágina de Catálogo (admin)
+
+Solo admin (sin cambios de API). Se reemplazan las tabs y los modales por una experiencia con paneles inline y acciones en lote.
+
+- **Sin tabs**: título + descripción y una botonera con tres acciones que **despliegan un panel inline** (no modal): **Agregar capa** (`CapaFormPanel`, el form que antes era modal), **Importar workspace** (`ImportWorkspacePanel`, importa todas las capas nuevas de un workspace) y **Agregar múltiples capas** (`BulkAddPanel`, `Transfer` de dos paneles).
+- **Filtros por columna** en la tabla (búsqueda en nombre/slug/capa, filtro por lista en workspace/etiquetas/habilitada); se elimina el `Select` de filtro por workspace.
+- **Selección múltiple** (checkboxes) con barra de acciones: **eliminar en lote** y **etiquetar** (suma etiquetas a las seleccionadas vía PUT parcial `searchTags`).
+- **Edición por doble clic** en la fila (se quita el botón editar); se deshabilita mientras hay selección activa.
+- Se extrae el hook compartido `useGeoserverLayers`; se elimina `BulkByWorkspace`.
+
+## [1.69.0] - 2026-07-22
+
+### Agregado: gestión del Catálogo de Mapalab
+
+CRUD y alta masiva de capas del catálogo (tabla `mapalab.catalogo_capas` en DataEngine). Requiere la migración `0025_catalogo_capas`.
+
+- **API**: router `/catalogo` (montado con `staff_dep`; lectura y escritura con `require_project_editor` + CSRF + rate-limit). CRUD con `nombre`/`slug` opcionales (derivados del título/nombre de GeoServer, con resolución de colisión de slug); alta masiva `POST /catalogo/bulk` (usa **WMS GetCapabilities** del workspace para nombres+títulos), `POST /catalogo/bulk-delete`, `GET /catalogo/tags`. Valida contra GeoServer (reusa `validate_layer_against_geoserver`). Nuevos `GeoServerClient.get_layer_title` / `get_layers_with_titles`.
+- **Admin**: subpágina "Catálogo" (grupo Mapalab): tabla CRUD (form con selector de capa de GeoServer + autocompletado de etiquetas) + pestaña "Alta por workspace" (Ant Design `Transfer` + botón "Importar todo").
+
+## [1.68.0] - 2026-07-22
+
+### Documentación consolidada del rename `/api/administrador` → `/api/mariachi`
+
+Se consolida el estado de las 3 fases del rename (versiones, ramas, orden de deploy y gate) en el `RUNBOOK.md` del ecosistema y en `docs/PENDIENTES.md`. Sin cambios de código en `develop`. La Fase 3 (retiro del compat, **1.67.0** en mariachi y **1.32.0** en gateway-hub) sigue aislada en la rama `chore/rename-fase3-retiro-compat` hasta cumplir el gate — de ahí el salto de `1.66.0` a `1.68.0` en `develop`.
+
+## [1.66.0] - 2026-07-22
+
+### Rename `/api/administrador` → `/api/mariachi`: el admin consume el prefijo nuevo (Fase 2)
+
+El panel admin pasa a llamar al prefijo nuevo: `VITE_ADMIN_API_URL = /api/mariachi` en los `.env.*` y el fallback de `admin/src/shared/services/api.js`. El prefijo viejo sigue funcionando por el rewrite compat de `mariachi-nginx` (1.65.0), así que no depende del orden de deploy con el api. **Requiere `gateway-hub >= 1.31.0`** desplegado antes (locations `/api/mariachi/acervo*`), o las miniaturas caerían al catch-all `/api/` y perderían su rate-limit dedicado. Falta la Fase 2 de SIEEJ (`VITE_BACKEND_API_HOST` + rebuild del dist) y la Fase 3 (retiro del compat).
+
+## [1.65.0] - 2026-07-22
+
+### Rename del prefijo de administración (`/api/administrador` → `/api/mariachi`)
+
+`admin_prefix` pasa de `/api/administrador` a `/api/mariachi`. El prefijo viejo mentía: además del panel admin lo consumen el frontend público de SIEEJ y **mapalab por llamadas internas directas al backend** (validación de API keys de embeds + telemetría). Es higiene de nombres; **no** libera la raíz del dominio (`/api/` completo ya está reservado en el gateway, la app raíz de terceros nunca lo toca).
+
+- **api**: `admin_prefix = "/api/mariachi"` reubica los ~30 routers; nuevo `admin_prefix_legacy = "/api/administrador"`. Las URLs hardcodeadas de `acervo.py` y `geoserver.py` pasan a usar el setting.
+- **Compat sin deploy atómico**: `mariachi-nginx` reescribe `^~ /api/administrador/(acervo|)` → `/api/mariachi/$1` (cubre bundles viejos del admin/SIEEJ y URLs persistidas en contenido; la de acervo conserva `proxy_request_buffering off`). Los 2 routers internos de mapalab (`internal/mapalab/keys` y `internal/mapalab/mcp`) se montan bajo **ambos** prefijos: como mapalab llama directo al backend (sin pasar por nginx), esto evita el único gap peligroso —la validación de embeds no se cae aunque mapalab se despliegue después—.
+- **mapalab**: sus 4 referencias internas (`access_logger`, `api_key_validator`, `api_key_quota`, `telemetry`) apuntan a `/api/mariachi/internal/mapalab/*`.
+- **Sin afectación**: ingesta del visor público (`/api/public/mapalab/events`), schema `huachicol` de la BD y `/metrics` intactos.
+- **Pendiente (Fases 2-3)**: `VITE_ADMIN_API_URL` (admin) y `VITE_BACKEND_API_HOST` (SIEEJ) + rebuild; duplicar las 2 locations de acervo en `gateway-hub`; y en un release posterior, retirar el compat. Procedimiento de producción en `RUNBOOK.md`.
+
+### Sentry y `BUILD_STATS` retirados
+
+Sentry se elimina de mariachi (api + admin) por ser de paga; su monitoreo lo absorberá `huachicol` más adelante. Se quitaron el SDK (`sentry-sdk[fastapi]`, `@sentry/react`, `@sentry/vite-plugin`), los `Sentry.init(...)`, `sentry_dsn` / `sentry_traces_sample_rate` de `settings.py`, y todas las variables `SENTRY_*` / `VITE_SENTRY_DSN` de código, ambos compose y los `.env.*`. En la misma pasada se retiró `BUILD_STATS` (el `rollup-plugin-visualizer`), que ensuciaba el build de Docker con un aviso de variable no definida y no se usaba.
+
+## [1.64.0] - 2026-07-22
+
+### Subida interna al Acervo para plataformas externas (`POST /api/internal/acervo/upload`)
+
+Nuevo endpoint interno **upload-only** para que una plataforma externa del ecosistema (hoy el Portal) suba archivos al Acervo sin sesión de Mariachi, autenticándose con el header `X-Internal-Token` = `ACERVO_INTERNAL_TOKEN` (mismo patrón service-to-service que `MAPALAB_INTERNAL_TOKEN`).
+
+- **Solo sube**: el borrado, la edición y la vista siguen en Mariachi. Solo permite el bucket `portal`; valida tamaño (25 MB) y MIME, sanea el nombre y renombra en conflicto (`on_conflict=rename`). No persiste `AcervoFile` (el objeto se lista igual como *bucketOnly*). Registra actividad `acervo.file.upload_internal` y la métrica `mariachi_media_uploads_total`.
+- **Seam de escalabilidad**: la política (buckets/límites) la resuelve `resolve_upload_client()` en `services/acervo_upload_clients.py`; hoy un token fijo del entorno, a futuro un registro de clientes con key rotable por plataforma (patrón `source_apps`) sin tocar el endpoint.
+- **Documentación** en Mariachi → Documentación → Acervo → "Subida externa" (sub-pestaña en `AcervoTopic`) y en `docs/acervo-subida-externa.md`. Nueva variable `ACERVO_INTERNAL_TOKEN` en `settings.py` y los `.env.*.example`.
+- Requiere en gateway-hub (`>= 1.30.0`) la `location ^~ /api/internal/acervo/` sin bot-protection para el acceso cross-server.
+
 ## [1.63.1] - 2026-07-21
 
 ### Cambios

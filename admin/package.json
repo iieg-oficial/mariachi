@@ -3,7 +3,7 @@
     "description": "Mariachi — panel de administración del ecosistema IIEG",
     "license": "MIT",
     "author": "Edgar Alejandro Villarreal Padilla <edgar.villarreal@iieg.gob.mx>",
-    "version": "1.63.1",
+    "version": "1.70.0",
     "private": true,
     "type": "module",
     "scripts": {
@@ -26,7 +26,6 @@
         "@dnd-kit/core": "6.3.1",
         "@dnd-kit/sortable": "10.0.0",
         "@dnd-kit/utilities": "3.2.2",
-        "@sentry/react": "10.49.0",
         "antd": "6.2.2",
         "axios": "1.16.1",
         "dayjs": "1.11.20",
@@ -38,7 +37,6 @@
     },
     "devDependencies": {
         "@eslint/js": "10.0.1",
-        "@sentry/vite-plugin": "^5.2.0",
         "@testing-library/dom": "10.4.1",
         "@testing-library/jest-dom": "6.9.1",
         "@testing-library/react": "16.3.2",
@@ -56,7 +54,6 @@
         "knip": "6.6.0",
         "lint-staged": "^16.4.0",
         "msw": "2.12.7",
-        "rollup-plugin-visualizer": "7.0.1",
         "vite": "7.3.2",
         "vitest": "4.1.5"
     },
