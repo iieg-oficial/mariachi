@@ -56,9 +56,6 @@ class Settings(BaseSettings):
 
     colibri_api_key_mariachi: str | None = None
 
-    sentry_dsn: str | None = None
-    sentry_traces_sample_rate: float = 0.1
-
     discord_webhook_mapalab: str | None = None
     discord_webhook_sieej: str | None = None
     discord_webhook_portal: str | None = None

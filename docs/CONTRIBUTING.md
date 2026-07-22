@@ -176,7 +176,7 @@ docs(readme): actualizar instrucciones de instalación
 
 ## Versionado y releases
 
-El monorepo lleva **un único número de versión** (backend + admin + infra). La fuente de la verdad es `api/pyproject.toml`: es lo que `get_app_version()` reporta en `GET /ontoy`, en `/`, en el `release` de Sentry y en la versión de los docs OpenAPI.
+El monorepo lleva **un único número de versión** (backend + admin + infra). La fuente de la verdad es `api/pyproject.toml`: es lo que `get_app_version()` reporta en `GET /ontoy`, en `/` y en la versión de los docs OpenAPI.
 
 Para subir de versión usa el script, que sincroniza todo desde un solo comando:
 
