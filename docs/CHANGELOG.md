@@ -9,6 +9,22 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.65.0] - 2026-07-22
+
+### Rename del prefijo de administración (`/api/administrador` → `/api/mariachi`)
+
+`admin_prefix` pasa de `/api/administrador` a `/api/mariachi`. El prefijo viejo mentía: además del panel admin lo consumen el frontend público de SIEEJ y **mapalab por llamadas internas directas al backend** (validación de API keys de embeds + telemetría). Es higiene de nombres; **no** libera la raíz del dominio (`/api/` completo ya está reservado en el gateway, la app raíz de terceros nunca lo toca).
+
+- **api**: `admin_prefix = "/api/mariachi"` reubica los ~30 routers; nuevo `admin_prefix_legacy = "/api/administrador"`. Las URLs hardcodeadas de `acervo.py` y `geoserver.py` pasan a usar el setting.
+- **Compat sin deploy atómico**: `mariachi-nginx` reescribe `^~ /api/administrador/(acervo|)` → `/api/mariachi/$1` (cubre bundles viejos del admin/SIEEJ y URLs persistidas en contenido; la de acervo conserva `proxy_request_buffering off`). Los 2 routers internos de mapalab (`internal/mapalab/keys` y `internal/mapalab/mcp`) se montan bajo **ambos** prefijos: como mapalab llama directo al backend (sin pasar por nginx), esto evita el único gap peligroso —la validación de embeds no se cae aunque mapalab se despliegue después—.
+- **mapalab**: sus 4 referencias internas (`access_logger`, `api_key_validator`, `api_key_quota`, `telemetry`) apuntan a `/api/mariachi/internal/mapalab/*`.
+- **Sin afectación**: ingesta del visor público (`/api/public/mapalab/events`), schema `huachicol` de la BD y `/metrics` intactos.
+- **Pendiente (Fases 2-3)**: `VITE_ADMIN_API_URL` (admin) y `VITE_BACKEND_API_HOST` (SIEEJ) + rebuild; duplicar las 2 locations de acervo en `gateway-hub`; y en un release posterior, retirar el compat. Procedimiento de producción en `RUNBOOK.md`.
+
+### Sentry y `BUILD_STATS` retirados
+
+Sentry se elimina de mariachi (api + admin) por ser de paga; su monitoreo lo absorberá `huachicol` más adelante. Se quitaron el SDK (`sentry-sdk[fastapi]`, `@sentry/react`, `@sentry/vite-plugin`), los `Sentry.init(...)`, `sentry_dsn` / `sentry_traces_sample_rate` de `settings.py`, y todas las variables `SENTRY_*` / `VITE_SENTRY_DSN` de código, ambos compose y los `.env.*`. En la misma pasada se retiró `BUILD_STATS` (el `rollup-plugin-visualizer`), que ensuciaba el build de Docker con un aviso de variable no definida y no se usaba.
+
 ## [1.64.0] - 2026-07-22
 
 ### Subida interna al Acervo para plataformas externas (`POST /api/internal/acervo/upload`)
