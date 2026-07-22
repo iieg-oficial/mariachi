@@ -26,6 +26,7 @@ const RevisionQueue = lazy(() => import('@features/revision'));
 const LayerEditPage = lazy(() => import('@features/mapalab-layers').then((m) => ({ default: m.LayerEditPage })));
 const InitialLayerOrderPage = lazy(() => import('@features/mapalab-layers').then((m) => ({ default: m.InitialLayerOrderPage })));
 const BulkIngestPage = lazy(() => import('@features/mapalab-layers').then((m) => ({ default: m.BulkIngestPage })));
+const CatalogoCapasPage = lazy(() => import('@features/mapalab-catalogo').then((m) => ({ default: m.CatalogoCapasPage })));
 const EventosListPage = lazy(() => import('@features/mapalab-eventos').then((m) => ({ default: m.EventosListPage })));
 const EventoEditPage = lazy(() => import('@features/mapalab-eventos').then((m) => ({ default: m.EventoEditPage })));
 const HomePage = lazy(() => import('@features/mapalab-home').then((m) => ({ default: m.HomePage })));
@@ -145,6 +146,14 @@ const router = createBrowserRouter([
                         element: withSuspense(
                             <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
                                 <BulkIngestPage />
+                            </RoleProtectedRoute>
+                        )
+                    },
+                    {
+                        path: 'mapalab/catalogo',
+                        element: withSuspense(
+                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
+                                <CatalogoCapasPage />
                             </RoleProtectedRoute>
                         )
                     },

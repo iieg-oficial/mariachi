@@ -15,6 +15,7 @@ from app.api.routes import (
     auth,
     borradores,
     bulk_ingest,
+    capas_catalogo,
     colibri_direcciones,
     colibri_routes,
     colibri_source_apps,
@@ -96,6 +97,7 @@ def create_app() -> FastAPI:
     app.include_router(borradores.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(sistema.router, prefix=settings.admin_prefix)
     app.include_router(layers.router, prefix=settings.admin_prefix, dependencies=staff_dep)
+    app.include_router(capas_catalogo.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(bulk_ingest.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(layer_metadata.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(symbols.router, prefix=settings.admin_prefix, dependencies=staff_dep)

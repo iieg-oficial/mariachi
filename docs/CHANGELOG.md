@@ -9,6 +9,15 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.69.0] - 2026-07-22
+
+### Agregado: gestión del Catálogo de Mapalab
+
+CRUD y alta masiva de capas del catálogo (tabla `mapalab.catalogo_capas` en DataEngine). Requiere la migración `0025_catalogo_capas`.
+
+- **API**: router `/catalogo` (montado con `staff_dep`; lectura y escritura con `require_project_editor` + CSRF + rate-limit). CRUD con `nombre`/`slug` opcionales (derivados del título/nombre de GeoServer, con resolución de colisión de slug); alta masiva `POST /catalogo/bulk` (usa **WMS GetCapabilities** del workspace para nombres+títulos), `POST /catalogo/bulk-delete`, `GET /catalogo/tags`. Valida contra GeoServer (reusa `validate_layer_against_geoserver`). Nuevos `GeoServerClient.get_layer_title` / `get_layers_with_titles`.
+- **Admin**: subpágina "Catálogo" (grupo Mapalab): tabla CRUD (form con selector de capa de GeoServer + autocompletado de etiquetas) + pestaña "Alta por workspace" (Ant Design `Transfer` + botón "Importar todo").
+
 ## [1.68.0] - 2026-07-22
 
 ### Documentación consolidada del rename `/api/administrador` → `/api/mariachi`
