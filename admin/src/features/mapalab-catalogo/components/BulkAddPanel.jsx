@@ -1,25 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Button, Select, Space, Transfer, Typography, message } from 'antd';
-import { ImportOutlined } from '@ant-design/icons';
-import { bulkCreate, bulkDelete, listGeoserverLayers } from '../api/catalogoService';
+import { Card, Select, Space, Transfer, Typography, message } from 'antd';
+import { bulkCreate, bulkDelete } from '../api/catalogoService';
+import { useGeoserverLayers } from '../hooks/useGeoserverLayers';
 
 const { Text } = Typography;
 
-const BulkByWorkspace = ({ workspaces, capas, tagOptions, onChanged }) => {
+const BulkAddPanel = ({ workspaceOptions, tagOptions, capas, onChanged }) => {
     const [selectedWs, setSelectedWs] = useState();
-    const [gsLayers, setGsLayers] = useState([]);
-    const [loadingLayers, setLoadingLayers] = useState(false);
     const [targetKeys, setTargetKeys] = useState([]);
     const [busy, setBusy] = useState(false);
     const [tags, setTags] = useState([]);
-
-    const workspaceOptions = useMemo(
-        () => workspaces.map((w) => ({
-            value: w.alias,
-            label: w.label ? `${w.alias} — ${w.label}` : w.alias,
-        })),
-        [workspaces],
-    );
+    const { layers: gsLayers, loading: loadingLayers } = useGeoserverLayers(selectedWs);
 
     const nameToId = useMemo(() => {
         const map = {};
@@ -28,18 +19,6 @@ const BulkByWorkspace = ({ workspaces, capas, tagOptions, onChanged }) => {
             .forEach((c) => { map[c.geoserverLayer] = c.id; });
         return map;
     }, [capas, selectedWs]);
-
-    useEffect(() => {
-        if (!selectedWs) {
-            setGsLayers([]);
-            return;
-        }
-        setLoadingLayers(true);
-        listGeoserverLayers(selectedWs)
-            .then(setGsLayers)
-            .catch(() => setGsLayers([]))
-            .finally(() => setLoadingLayers(false));
-    }, [selectedWs]);
 
     useEffect(() => {
         const inCatalogo = new Set(Object.keys(nameToId));
@@ -76,31 +55,8 @@ const BulkByWorkspace = ({ workspaces, capas, tagOptions, onChanged }) => {
         }
     };
 
-    const handleImportAll = async () => {
-        const nuevas = gsLayers.map((l) => l.name).filter((n) => !nameToId[n]);
-        if (!nuevas.length) {
-            message.info('No hay capas nuevas por importar');
-            return;
-        }
-        setBusy(true);
-        try {
-            const res = await bulkCreate({
-                workspaceAlias: selectedWs,
-                geoserverLayers: nuevas,
-                searchTags: tags.length ? tags : undefined,
-            });
-            const extra = res.skipped ? `, ${res.skipped} omitidas` : '';
-            message.success(`Importadas ${res.created} capa(s)${extra}`);
-            onChanged?.();
-        } catch (err) {
-            message.error(err?.response?.data?.detail || 'Error al importar');
-        } finally {
-            setBusy(false);
-        }
-    };
-
     return (
-        <div>
+        <Card size="small" title="Agregar múltiples capas" style={{ marginBottom: 16 }}>
             <Space wrap style={{ marginBottom: 16 }}>
                 <Select
                     showSearch
@@ -119,14 +75,6 @@ const BulkByWorkspace = ({ workspaces, capas, tagOptions, onChanged }) => {
                     options={tagOptions.map((t) => ({ value: t, label: t }))}
                     placeholder="Etiquetas para las capas agregadas (opcional)"
                 />
-                <Button
-                    icon={<ImportOutlined />}
-                    onClick={handleImportAll}
-                    disabled={!selectedWs || busy || !gsLayers.length}
-                    loading={busy}
-                >
-                    Importar todo
-                </Button>
             </Space>
 
             {selectedWs ? (
@@ -150,8 +98,8 @@ const BulkByWorkspace = ({ workspaces, capas, tagOptions, onChanged }) => {
                     <Text type="secondary">Cargando capas…</Text>
                 </div>
             )}
-        </div>
+        </Card>
     );
 };
 
-export default BulkByWorkspace;
+export default BulkAddPanel;

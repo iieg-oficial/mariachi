@@ -9,6 +9,18 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.70.0] - 2026-07-22
+
+### Rediseño de la subpágina de Catálogo (admin)
+
+Solo admin (sin cambios de API). Se reemplazan las tabs y los modales por una experiencia con paneles inline y acciones en lote.
+
+- **Sin tabs**: título + descripción y una botonera con tres acciones que **despliegan un panel inline** (no modal): **Agregar capa** (`CapaFormPanel`, el form que antes era modal), **Importar workspace** (`ImportWorkspacePanel`, importa todas las capas nuevas de un workspace) y **Agregar múltiples capas** (`BulkAddPanel`, `Transfer` de dos paneles).
+- **Filtros por columna** en la tabla (búsqueda en nombre/slug/capa, filtro por lista en workspace/etiquetas/habilitada); se elimina el `Select` de filtro por workspace.
+- **Selección múltiple** (checkboxes) con barra de acciones: **eliminar en lote** y **etiquetar** (suma etiquetas a las seleccionadas vía PUT parcial `searchTags`).
+- **Edición por doble clic** en la fila (se quita el botón editar); se deshabilita mientras hay selección activa.
+- Se extrae el hook compartido `useGeoserverLayers`; se elimina `BulkByWorkspace`.
+
 ## [1.69.0] - 2026-07-22
 
 ### Agregado: gestión del Catálogo de Mapalab

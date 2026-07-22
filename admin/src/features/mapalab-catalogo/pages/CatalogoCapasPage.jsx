@@ -1,61 +1,40 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Button, Popconfirm, Select, Space, Table, Typography, message } from 'antd';
 import {
-    Button,
-    Form,
-    Input,
-    Modal,
-    Select,
-    Space,
-    Switch,
-    Table,
-    Tabs,
-    Typography,
-    message,
-} from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+    AppstoreAddOutlined,
+    DeleteOutlined,
+    ImportOutlined,
+    PlusOutlined,
+    TagsOutlined,
+} from '@ant-design/icons';
 import { buildColumns } from '../components/catalogoColumns';
+import CapaFormPanel from '../components/CapaFormPanel';
+import ImportWorkspacePanel from '../components/ImportWorkspacePanel';
+import BulkAddPanel from '../components/BulkAddPanel';
 import {
     actualizarCapa,
-    crearCapa,
+    bulkDelete,
     eliminarCapa,
     listCapas,
-    listGeoserverLayers,
     listTags,
     listWorkspaces,
 } from '../api/catalogoService';
-import BulkByWorkspace from '../components/BulkByWorkspace';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
-const EMPTY_FORM = {
-    slug: '',
-    nombre: '',
-    workspaceAlias: undefined,
-    geoserverLayer: undefined,
-    searchTags: [],
-    enabled: true,
-};
-
-const slugify = (text) => (text || '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 100);
+const uniqueSorted = (values) => Array.from(new Set(values.filter(Boolean))).sort((a, b) => a.localeCompare(b));
 
 const CatalogoCapasPage = () => {
-    const [form] = Form.useForm();
     const [capas, setCapas] = useState([]);
     const [workspaces, setWorkspaces] = useState([]);
     const [tagOptions, setTagOptions] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [modalOpen, setModalOpen] = useState(false);
+    const [activePanel, setActivePanel] = useState(null);
     const [editing, setEditing] = useState(null);
-    const [saving, setSaving] = useState(false);
-    const [workspaceFilter, setWorkspaceFilter] = useState(null);
-    const [gsLayers, setGsLayers] = useState([]);
-    const [gsLoading, setGsLoading] = useState(false);
-
-    const watchedWorkspace = Form.useWatch('workspaceAlias', form);
+    const [selectedRowKeys, setSelectedRowKeys] = useState([]);
+    const [bulkTagOpen, setBulkTagOpen] = useState(false);
+    const [bulkTags, setBulkTags] = useState([]);
+    const [bulkBusy, setBulkBusy] = useState(false);
 
     const loadCapas = async () => {
         setLoading(true);
@@ -68,23 +47,13 @@ const CatalogoCapasPage = () => {
         }
     };
 
+    const reloadTags = () => listTags().then(setTagOptions).catch(() => {});
+
     useEffect(() => {
         loadCapas();
         listWorkspaces().then(setWorkspaces).catch(() => {});
-        listTags().then(setTagOptions).catch(() => {});
+        reloadTags();
     }, []);
-
-    useEffect(() => {
-        if (!modalOpen || !watchedWorkspace) {
-            setGsLayers([]);
-            return;
-        }
-        setGsLoading(true);
-        listGeoserverLayers(watchedWorkspace)
-            .then(setGsLayers)
-            .catch(() => setGsLayers([]))
-            .finally(() => setGsLoading(false));
-    }, [watchedWorkspace, modalOpen]);
 
     const workspaceOptions = useMemo(
         () => workspaces.map((w) => ({
@@ -94,70 +63,44 @@ const CatalogoCapasPage = () => {
         [workspaces],
     );
 
-    const filtered = useMemo(
-        () => (workspaceFilter ? capas.filter((c) => c.workspaceAlias === workspaceFilter) : capas),
-        [capas, workspaceFilter],
+    const workspaceFilters = useMemo(
+        () => uniqueSorted(capas.map((c) => c.workspaceAlias)).map((v) => ({ text: v, value: v })),
+        [capas],
     );
 
-    const openCreate = () => {
+    const tagFilters = useMemo(
+        () => uniqueSorted(capas.flatMap((c) => c.searchTags || [])).map((v) => ({ text: v, value: v })),
+        [capas],
+    );
+
+    const openCreatePanel = () => {
+        if (activePanel === 'create' && !editing) {
+            setActivePanel(null);
+            return;
+        }
         setEditing(null);
-        form.setFieldsValue(EMPTY_FORM);
-        setModalOpen(true);
+        setActivePanel('create');
+    };
+
+    const togglePanel = (name) => {
+        setEditing(null);
+        setActivePanel((prev) => (prev === name ? null : name));
     };
 
     const openEdit = (capa) => {
         setEditing(capa);
-        setGsLayers(capa.geoserverLayer ? [{ name: capa.geoserverLayer, title: capa.nombre }] : []);
-        form.setFieldsValue({
-            slug: capa.slug,
-            nombre: capa.nombre,
-            workspaceAlias: capa.workspaceAlias,
-            geoserverLayer: capa.geoserverLayer,
-            searchTags: capa.searchTags || [],
-            enabled: capa.enabled,
-        });
-        setModalOpen(true);
+        setActivePanel('create');
     };
 
-    const handleWorkspaceChange = () => {
-        form.setFieldValue('geoserverLayer', undefined);
+    const closePanel = () => {
+        setActivePanel(null);
+        setEditing(null);
     };
 
-    const handleLayerChange = (layerName) => {
-        if (!layerName) return;
-        const selected = gsLayers.find((l) => l.name === layerName);
-        if (!form.getFieldValue('nombre')) {
-            form.setFieldValue('nombre', selected?.title || layerName);
-        }
-        if (!form.getFieldValue('slug')) {
-            form.setFieldValue('slug', slugify(layerName));
-        }
-    };
-
-    const handleSave = async () => {
-        let values;
-        try {
-            values = await form.validateFields();
-        } catch {
-            return;
-        }
-        setSaving(true);
-        try {
-            if (editing) {
-                await actualizarCapa(editing.id, values);
-                message.success('Capa actualizada');
-            } else {
-                await crearCapa(values);
-                message.success('Capa creada');
-            }
-            setModalOpen(false);
-            loadCapas();
-            listTags().then(setTagOptions).catch(() => {});
-        } catch (err) {
-            message.error(err?.response?.data?.detail || 'Error al guardar la capa');
-        } finally {
-            setSaving(false);
-        }
+    const afterMutation = () => {
+        closePanel();
+        loadCapas();
+        reloadTags();
     };
 
     const handleDelete = async (capa) => {
@@ -170,118 +113,154 @@ const CatalogoCapasPage = () => {
         }
     };
 
-    const columns = buildColumns({ onEdit: openEdit, onDelete: handleDelete });
+    const handleBulkDelete = async () => {
+        setBulkBusy(true);
+        try {
+            await bulkDelete(selectedRowKeys);
+            message.success(`${selectedRowKeys.length} capa(s) eliminada(s)`);
+            setSelectedRowKeys([]);
+            loadCapas();
+        } catch {
+            message.error('No se pudieron eliminar las capas');
+        } finally {
+            setBulkBusy(false);
+        }
+    };
+
+    const handleBulkTag = async () => {
+        setBulkBusy(true);
+        try {
+            const byId = new Map(capas.map((c) => [c.id, c]));
+            await Promise.all(selectedRowKeys.map((id) => {
+                const capa = byId.get(id);
+                if (!capa) return null;
+                const merged = Array.from(new Set([...(capa.searchTags || []), ...bulkTags]));
+                return actualizarCapa(id, { searchTags: merged });
+            }));
+            message.success(`Etiquetas agregadas a ${selectedRowKeys.length} capa(s)`);
+            setBulkTags([]);
+            setBulkTagOpen(false);
+            setSelectedRowKeys([]);
+            loadCapas();
+            reloadTags();
+        } catch (err) {
+            message.error(err?.response?.data?.detail || 'No se pudieron etiquetar las capas');
+        } finally {
+            setBulkBusy(false);
+        }
+    };
+
+    const columns = buildColumns({ onDelete: handleDelete, workspaceFilters, tagFilters });
+
+    const hasSelection = selectedRowKeys.length > 0;
 
     return (
         <div style={{ padding: 24 }}>
-            <Title level={3} style={{ marginTop: 0 }}>Catálogo de capas</Title>
-            <Tabs
-                items={[
-                    {
-                        key: 'lista',
-                        label: 'Capas',
-                        children: (
-                            <>
-                                <Space style={{ width: '100%', justifyContent: 'flex-end', marginBottom: 16 }}>
-                                    <Select
-                                        allowClear
-                                        placeholder="Filtrar por workspace"
-                                        style={{ width: 220 }}
-                                        options={workspaceOptions}
-                                        value={workspaceFilter}
-                                        onChange={setWorkspaceFilter}
-                                    />
-                                    <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-                                        Agregar capa
-                                    </Button>
-                                </Space>
-                                <Table
-                                    rowKey="id"
-                                    loading={loading}
-                                    columns={columns}
-                                    dataSource={filtered}
-                                    pagination={{ pageSize: 20 }}
-                                />
-                            </>
-                        ),
-                    },
-                    {
-                        key: 'bulk',
-                        label: 'Alta por workspace',
-                        children: (
-                            <BulkByWorkspace
-                                workspaces={workspaces}
-                                capas={capas}
-                                tagOptions={tagOptions}
-                                onChanged={loadCapas}
-                            />
-                        ),
-                    },
-                ]}
-            />
+            <div style={{ marginBottom: 16 }}>
+                <Title level={2} style={{ margin: 0 }}>Catálogo de capas</Title>
+                <Text type="secondary">
+                    Capas sueltas que se publican en la vista pública de catálogo de Mapalab para consulta y descarga directa.
+                </Text>
+            </div>
 
-            <Modal
-                title={editing ? 'Editar capa' : 'Agregar capa'}
-                open={modalOpen}
-                onOk={handleSave}
-                onCancel={() => setModalOpen(false)}
-                confirmLoading={saving}
-                okText="Guardar"
-                cancelText="Cancelar"
-            >
-                <Form form={form} layout="vertical" initialValues={EMPTY_FORM}>
-                    <Form.Item name="workspaceAlias" label="Workspace" rules={[{ required: true, message: 'Workspace requerido' }]}>
-                        <Select
-                            showSearch
-                            optionFilterProp="label"
-                            options={workspaceOptions}
-                            placeholder="Selecciona workspace"
-                            onChange={handleWorkspaceChange}
-                        />
-                    </Form.Item>
-                    <Form.Item name="geoserverLayer" label="Capa de GeoServer" rules={[{ required: true, message: 'Capa requerida' }]}>
-                        <Select
-                            showSearch
-                            loading={gsLoading}
-                            disabled={!watchedWorkspace}
-                            options={gsLayers.map((l) => ({ value: l.name, label: l.title ? `${l.name} — ${l.title}` : l.name }))}
-                            placeholder={watchedWorkspace ? 'Selecciona una capa' : 'Elige un workspace primero'}
-                            onChange={handleLayerChange}
-                            notFoundContent={gsLoading ? 'Cargando…' : 'Sin capas'}
-                        />
-                    </Form.Item>
-                    <Form.Item
-                        name="nombre"
-                        label="Nombre"
-                        tooltip="Si lo dejas vacío se toma el título que tiene la capa en GeoServer."
+            <Space wrap style={{ marginBottom: 16 }}>
+                <Button
+                    type={activePanel === 'create' && !editing ? 'primary' : 'default'}
+                    icon={<PlusOutlined />}
+                    onClick={openCreatePanel}
+                >
+                    Agregar capa
+                </Button>
+                <Button
+                    type={activePanel === 'import' ? 'primary' : 'default'}
+                    icon={<ImportOutlined />}
+                    onClick={() => togglePanel('import')}
+                >
+                    Importar workspace
+                </Button>
+                <Button
+                    type={activePanel === 'bulk' ? 'primary' : 'default'}
+                    icon={<AppstoreAddOutlined />}
+                    onClick={() => togglePanel('bulk')}
+                >
+                    Agregar múltiples capas
+                </Button>
+            </Space>
+
+            {activePanel === 'create' && (
+                <CapaFormPanel
+                    workspaceOptions={workspaceOptions}
+                    tagOptions={tagOptions}
+                    editing={editing}
+                    onCancel={closePanel}
+                    onSaved={afterMutation}
+                />
+            )}
+            {activePanel === 'import' && (
+                <ImportWorkspacePanel
+                    workspaceOptions={workspaceOptions}
+                    tagOptions={tagOptions}
+                    capas={capas}
+                    onChanged={() => { loadCapas(); reloadTags(); }}
+                />
+            )}
+            {activePanel === 'bulk' && (
+                <BulkAddPanel
+                    workspaceOptions={workspaceOptions}
+                    tagOptions={tagOptions}
+                    capas={capas}
+                    onChanged={() => { loadCapas(); reloadTags(); }}
+                />
+            )}
+
+            {hasSelection && (
+                <Space wrap style={{ marginBottom: 12 }}>
+                    <Text strong>{selectedRowKeys.length} seleccionada(s)</Text>
+                    <Popconfirm
+                        title={`¿Eliminar ${selectedRowKeys.length} capa(s) del catálogo?`}
+                        okText="Eliminar"
+                        cancelText="Cancelar"
+                        okButtonProps={{ danger: true }}
+                        onConfirm={handleBulkDelete}
                     >
-                        <Input placeholder="Se toma de GeoServer si lo dejas vacío" />
-                    </Form.Item>
-                    <Form.Item
-                        name="slug"
-                        label="Slug"
-                        tooltip="Si lo dejas vacío se genera a partir del nombre de la capa."
-                        rules={[{
-                            validator: (_, v) => (!v || /^[a-z0-9-]+$/.test(v)
-                                ? Promise.resolve()
-                                : Promise.reject(new Error('Solo minúsculas, números y guiones'))),
-                        }]}
-                    >
-                        <Input placeholder="Se genera de la capa si lo dejas vacío" />
-                    </Form.Item>
-                    <Form.Item name="searchTags" label="Etiquetas de búsqueda">
-                        <Select
-                            mode="tags"
-                            tokenSeparators={[',']}
-                            options={tagOptions.map((t) => ({ value: t, label: t }))}
-                            placeholder="Reutiliza etiquetas existentes o crea nuevas"
-                        />
-                    </Form.Item>
-                    <Form.Item name="enabled" label="Habilitada" valuePropName="checked">
-                        <Switch />
-                    </Form.Item>
-                </Form>
-            </Modal>
+                        <Button danger icon={<DeleteOutlined />} loading={bulkBusy}>Eliminar</Button>
+                    </Popconfirm>
+                    <Button icon={<TagsOutlined />} onClick={() => setBulkTagOpen((o) => !o)}>Etiquetar</Button>
+                    <Button type="text" onClick={() => setSelectedRowKeys([])}>Cancelar selección</Button>
+                    {bulkTagOpen && (
+                        <>
+                            <Select
+                                mode="tags"
+                                style={{ minWidth: 240 }}
+                                value={bulkTags}
+                                onChange={setBulkTags}
+                                options={tagOptions.map((t) => ({ value: t, label: t }))}
+                                placeholder="Etiquetas a agregar"
+                            />
+                            <Button
+                                type="primary"
+                                onClick={handleBulkTag}
+                                loading={bulkBusy}
+                                disabled={!bulkTags.length}
+                            >
+                                Aplicar
+                            </Button>
+                        </>
+                    )}
+                </Space>
+            )}
+
+            <Table
+                rowKey="id"
+                loading={loading}
+                columns={columns}
+                dataSource={capas}
+                pagination={{ pageSize: 20 }}
+                rowSelection={{ selectedRowKeys, onChange: setSelectedRowKeys }}
+                onRow={(record) => ({
+                    onDoubleClick: () => { if (!hasSelection) openEdit(record); },
+                })}
+            />
         </div>
     );
 };
