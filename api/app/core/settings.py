@@ -50,6 +50,7 @@ class Settings(BaseSettings):
 
     mapalab_backend_url: str | None = None
     mapalab_internal_token: str | None = None
+    acervo_internal_token: str | None = None
     sieej_url: str | None = None
     huachicol_monitor_url: str | None = None
 
