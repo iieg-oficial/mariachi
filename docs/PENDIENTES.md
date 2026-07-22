@@ -33,7 +33,7 @@ Lineas activas por modulo abajo. Roadmap a v1.0 sigue al final.
 - [x] **/metrics counters v0.48.2-0.48.3**: 11 counters nuevos cableados (eventos, home, sieej, login, mapalab-shares)
 - [x] **Tests Vitest admin v0.48.2**: UserCard (9 tests) + ActividadPage (5 tests) + sider-config actualizado. Suite 36/36 passing
 - [x] **CD workflow v0.48.2**: `cd.yml` + `make deploy` + `cron-sieej` sidecar
-- [ ] Migrar prefijo `/api/administrador/*` → `/api/mariachi/*` (coordinado con `gateway-hub`)
+- [~] Migrar prefijo `/api/administrador/*` → `/api/mariachi/*` (coordinado con `gateway-hub`). **Fase 1 en 1.65.0** (api + nginx rewrite compat + doble-montaje interno + refs de mapalab). Pendiente: Fase 2 (`VITE_ADMIN_API_URL` admin, `VITE_BACKEND_API_HOST` sieej + rebuild, 2 locations de acervo en gateway) y Fase 3 (retiro del compat). Procedimiento de prod en `RUNBOOK.md`
 - [ ] Tests admin: smoke con Vitest (sider-config con candado, BucketFilePicker, FormularioCard, EventoEditPage)
 - [ ] `npm run lint` clean en admin con ESLint 10 + jsx-a11y + no-restricted-imports PNG (puede disparar errores acumulados)
 
@@ -167,7 +167,7 @@ Lineas activas por modulo abajo. Roadmap a v1.0 sigue al final.
 
 - [ ] Deploy a produccion
 - [ ] Capacitacion a usuarios (admin + editora)
-- [ ] Migrar prefijo `/api/administrador/*` → `/api/mariachi/*` (coordinado con gateway-hub)
+- [~] Migrar prefijo `/api/administrador/*` → `/api/mariachi/*` (coordinado con gateway-hub) — Fase 1 hecha en 1.65.0 con compat; faltan Fase 2 (VITE admin/sieej + gateway) y Fase 3 (retiro compat). Ver `RUNBOOK.md`
 
 > **Nota:** SSL, DNS, `robots.txt` y `sitemap.xml` los gestiona el `gateway-hub` arriba — fuera del scope de este repo.
 

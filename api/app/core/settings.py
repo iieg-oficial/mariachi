@@ -27,7 +27,8 @@ class Settings(BaseSettings):
     acervo_use_ssl: bool = False
     acervo_verify_ssl: bool = True
     cors_origins: list[str]
-    admin_prefix: str = "/api/administrador"
+    admin_prefix: str = "/api/mariachi"
+    admin_prefix_legacy: str = "/api/administrador"
     web_prefix: str = "/api/portal"
     mapalab_public_prefix: str = "/api/mapalab"
     public_prefix: str = "/api/public"

@@ -197,7 +197,7 @@ class AcervoClient:
                 raise RuntimeError(
                     f"AcervoClient para bucket privado '{self.bucket_name}' sin bucket_id"
                 )
-            return f"/api/administrador/acervo/proxy/{self.bucket_id}/{object_name.lstrip('/')}"
+            return f"{settings.admin_prefix}/acervo/proxy/{self.bucket_id}/{object_name.lstrip('/')}"
         return to_absolute(f"{self.bucket_name}/{object_name}")
 
     def get_object_stream(self, object_name: str):

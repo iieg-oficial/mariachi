@@ -109,7 +109,7 @@ El nuevo modelo reemplaza el versionado anterior donde cada edicion de definicio
 
 ## Endpoints
 
-Todo cuelga de `admin_prefix` (`/api/administrador` por default). Las mutaciones requieren `verify_csrf` (cabecera `X-CSRF-Token`). Cookie JWT siempre obligatoria.
+Todo cuelga de `admin_prefix` (`/api/mariachi` por default; `/api/administrador` sigue vivo por compat durante la transición). Las mutaciones requieren `verify_csrf` (cabecera `X-CSRF-Token`). Cookie JWT siempre obligatoria.
 
 ### Admin (`/sieej/*`) — gestion de formularios, grupos y catalogos
 

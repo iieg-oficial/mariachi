@@ -98,7 +98,7 @@ mariachi:
 
 | Ruta pública | Upstream | Notas |
 |---|---|---|
-| `/api/administrador/acervo` | mariachi | `^~`, body 1G, buffering off (uploads grandes) |
+| `/api/mariachi/acervo` | mariachi | `^~`, body 1G, buffering off (uploads grandes); `/api/administrador/acervo` reescribe aquí por compat |
 | `/api/` | mariachi | backend FastAPI |
 | `/mariachi/assets/` | mariachi | `^~`, rate-limit zona `static` + cache `immutable` |
 | `/mariachi/` | mariachi | bundle del admin (SPA) |
