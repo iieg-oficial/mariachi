@@ -94,7 +94,7 @@ class EventIn(CamelCaseInput):
 
 class EventBatchIn(CamelCaseInput):
     session_id: UUID
-    source: Literal["visor", "embed", "widget"] = "visor"
+    source: Literal["visor", "embed", "widget", "catalogo"] = "visor"
     referrer: str | None = Field(default=None, max_length=500)
     pathname: str | None = Field(default=None, max_length=200)
     events: list[EventIn] = Field(..., min_length=1, max_length=MAX_BATCH_EVENTS)
