@@ -9,6 +9,18 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.72.2] - 2026-07-23
+
+### Corregido: los cambios del panel no llegaban al visor por timestamps 6 horas en el futuro
+
+`app/core/time.py:utcnow()` devuelve un datetime **naive** que representa UTC. El engine de DataEngine se conectaba sin fijar timezone contra `dataengine-primary`, que corre en `America/Mexico_City`, así que Postgres interpretaba ese naive como hora local y lo guardaba **6 horas adelantado** en las columnas `timestamptz` de `mapalab.layers`.
+
+Consecuencia: `layer_tree_cache.etag` se calcula como `md5(max(updated_at) | count)`, así que bastaba **una** capa editada desde el panel para congelar el etag hasta que pasara esa hora — el visor seguía recibiendo el árbol viejo. Detectado en `cuerpos_de_agua_50k`, con `updated_at` 5h18m en el futuro tras editarla desde el admin.
+
+- **Fix**: `options: -c timezone=utc` en `connect_args` del engine de DataEngine (`app/core/database.py`). Verificado: el desfase pasa de 6 h a 0.02 s. Se corrigieron los `updated_at` ya adelantados.
+- No es un reloj desincronizado: host y contenedores coinciden al segundo con NTP activo. `mariachi-postgres` corre en `UTC` y `dataengine-primary` en `America/Mexico_City`; solo el segundo engine estaba afectado.
+- Se acotó el arreglo a la conexión en vez de tocar `utcnow()` (151 usos en 52 archivos, 26 modelos con `onupdate=utcnow`) o el timezone del servidor, que también consumen GeoServer y los jobs de dataengine.
+
 ## [1.72.1] - 2026-07-23
 
 ### Corregido: telemetría del catálogo de MapaLab rechazada con 422
