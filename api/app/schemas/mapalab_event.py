@@ -55,6 +55,16 @@ ALLOWED_EVENT_NAMES = frozenset({
     "municipio_mode_change",
     "municipio_panel_open",
     "evento_fun_fact",
+    "catalogo_open",
+    "catalogo_back",
+    "catalogo_search",
+    "catalogo_layer_select",
+    "catalogo_layer_close",
+    "catalogo_feature_click",
+    "catalogo_info_open",
+    "catalogo_download",
+    "catalogo_tools_toggle",
+    "catalogo_slug_not_found",
 })
 
 MAX_BATCH_EVENTS = 100

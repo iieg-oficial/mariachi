@@ -9,6 +9,12 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.72.1] - 2026-07-23
+
+### Corregido: telemetría del catálogo de MapaLab rechazada con 422
+
+`POST /api/public/mapalab/events/batch` devolvía 422 en cada envío desde `/mapalab/catalogo`. El visor emite 10 eventos `catalogo_*` (`open`, `back`, `search`, `layer_select`, `layer_close`, `feature_click`, `info_open`, `download`, `tools_toggle`, `slug_not_found`) que no estaban en `ALLOWED_EVENT_NAMES`, y el validador de `EventIn` rechaza el batch completo si un solo `event_name` no está en la lista. Drift entre repos: la telemetría del catálogo se agregó en el visor sin registrarla aquí. Allowlist pasa de 46 a 56 nombres; ya no queda ningún evento emitido por el visor sin permitir.
+
 ## [1.72.0] - 2026-07-23
 
 ### Corregido: respaldos alineados a la organización por schemas
