@@ -18,7 +18,7 @@ class Catalogo(Base):
         "CatalogoOpcion",
         back_populates="catalogo",
         cascade="all, delete-orphan",
-        order_by="CatalogoOpcion.id",
+        order_by="CatalogoOpcion.posicion, CatalogoOpcion.id",
     )
 
 
@@ -37,5 +37,6 @@ class CatalogoOpcion(Base):
         index=True,
     )
     value = Column(String, nullable=False)
+    posicion = Column(Integer, nullable=False, server_default="0")
 
     catalogo = relationship("Catalogo", back_populates="opciones")

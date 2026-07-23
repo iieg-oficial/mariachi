@@ -38,8 +38,14 @@ class Settings(BaseSettings):
     cookie_secure: bool = False
     cookie_httponly: bool = True
     cookie_samesite: str = "lax"
+    refresh_cookie_name: str = "refresh_token"
+    refresh_token_expire_minutes: int = 480
     csrf_secret_key: str
     csrf_token_expire_minutes: int = 60
+
+    @property
+    def refresh_cookie_max_age(self) -> int:
+        return self.refresh_token_expire_minutes * 60
     docs_url: str | None = None
     redoc_url: str | None = None
     openapi_url: str | None = None

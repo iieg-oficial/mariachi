@@ -2,14 +2,17 @@ import { useEffect, useMemo, useState } from 'react';
 import { Button, Popconfirm, Space, Table, Typography, message } from 'antd';
 import {
     AppstoreAddOutlined,
+    CheckOutlined,
     DeleteOutlined,
     ImportOutlined,
+    OrderedListOutlined,
     PlusOutlined,
 } from '@ant-design/icons';
 import { buildColumns } from '../components/catalogoColumns';
 import CapaFormPanel from '../components/CapaFormPanel';
 import ImportWorkspacePanel from '../components/ImportWorkspacePanel';
 import BulkAddPanel from '../components/BulkAddPanel';
+import CapasReorderTable from '../components/CapasReorderTable';
 import {
     actualizarCapa,
     bulkDelete,
@@ -32,6 +35,7 @@ const CatalogoCapasPage = () => {
     const [editing, setEditing] = useState(null);
     const [selectedRowKeys, setSelectedRowKeys] = useState([]);
     const [bulkBusy, setBulkBusy] = useState(false);
+    const [reordering, setReordering] = useState(false);
 
     const loadCapas = async () => {
         setLoading(true);
@@ -145,6 +149,12 @@ const CatalogoCapasPage = () => {
         }
     };
 
+    const toggleReordering = () => {
+        setSelectedRowKeys([]);
+        closePanel();
+        setReordering((prev) => !prev);
+    };
+
     const columns = buildColumns({
         onDelete: handleDelete,
         workspaceFilters,
@@ -184,8 +194,16 @@ const CatalogoCapasPage = () => {
                     type={activePanel === 'bulk' ? 'primary' : 'default'}
                     icon={<AppstoreAddOutlined />}
                     onClick={() => togglePanel('bulk')}
+                    disabled={reordering}
                 >
                     Agregar múltiples capas
+                </Button>
+                <Button
+                    type={reordering ? 'primary' : 'default'}
+                    icon={reordering ? <CheckOutlined /> : <OrderedListOutlined />}
+                    onClick={toggleReordering}
+                >
+                    {reordering ? 'Listo' : 'Reordenar'}
                 </Button>
             </Space>
 
@@ -213,7 +231,7 @@ const CatalogoCapasPage = () => {
                 />
             )}
 
-            {hasSelection && (
+            {hasSelection && !reordering && (
                 <div
                     style={{
                         position: 'sticky',
@@ -250,17 +268,21 @@ const CatalogoCapasPage = () => {
                 </div>
             )}
 
-            <Table
-                rowKey="id"
-                loading={loading}
-                columns={columns}
-                dataSource={capas}
-                pagination={{ pageSize: 20 }}
-                rowSelection={{ selectedRowKeys, onChange: setSelectedRowKeys }}
-                onRow={(record) => ({
-                    onDoubleClick: () => { if (!hasSelection) openEdit(record); },
-                })}
-            />
+            {reordering ? (
+                <CapasReorderTable capas={capas} loading={loading} onReorder={setCapas} />
+            ) : (
+                <Table
+                    rowKey="id"
+                    loading={loading}
+                    columns={columns}
+                    dataSource={capas}
+                    pagination={{ pageSize: 20 }}
+                    rowSelection={{ selectedRowKeys, onChange: setSelectedRowKeys }}
+                    onRow={(record) => ({
+                        onDoubleClick: () => { if (!hasSelection) openEdit(record); },
+                    })}
+                />
+            )}
         </div>
     );
 };

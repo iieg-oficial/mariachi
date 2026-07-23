@@ -244,6 +244,49 @@ def test_crear_opcion_duplicada_da_409(client, admin, session):
     assert r.status_code == 409
 
 
+def test_crear_opcion_queda_al_final(client, admin, session):
+    _seed_eje(session, "A")
+    _seed_eje(session, "B")
+    csrf = login(client, admin.username)
+    r = client.post(
+        f"{ADMIN_PREFIX}/sieej/catalogos/ejes_estrategicos",
+        headers={"X-CSRF-Token": csrf},
+        json={"value": "C"},
+    )
+    assert r.status_code == 201, r.text
+    lista = client.get(f"{ADMIN_PREFIX}/sieej/catalogos/ejes_estrategicos")
+    assert [i["value"] for i in lista.json()] == ["A", "B", "C"]
+
+
+def test_reordenar_opciones_persiste_el_nuevo_orden(client, admin, session):
+    a = _seed_eje(session, "A")
+    b = _seed_eje(session, "B")
+    c = _seed_eje(session, "C")
+    csrf = login(client, admin.username)
+    r = client.put(
+        f"{ADMIN_PREFIX}/sieej/catalogos/ejes_estrategicos/reordenar",
+        headers={"X-CSRF-Token": csrf},
+        json={"orden": [c.id, a.id, b.id]},
+    )
+    assert r.status_code == 200, r.text
+    assert [i["value"] for i in r.json()] == ["C", "A", "B"]
+
+    lista = client.get(f"{ADMIN_PREFIX}/sieej/catalogos/ejes_estrategicos")
+    assert [i["value"] for i in lista.json()] == ["C", "A", "B"]
+
+
+def test_reordenar_con_ids_incompletos_da_400(client, admin, session):
+    a = _seed_eje(session, "A")
+    _seed_eje(session, "B")
+    csrf = login(client, admin.username)
+    r = client.put(
+        f"{ADMIN_PREFIX}/sieej/catalogos/ejes_estrategicos/reordenar",
+        headers={"X-CSRF-Token": csrf},
+        json={"orden": [a.id]},
+    )
+    assert r.status_code == 400
+
+
 def test_en_uso_cuenta_envios_en_form_y_repeater(
     client, admin, respondent, session
 ):

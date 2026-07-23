@@ -20,6 +20,7 @@ import unicodedata
 from typing import Any
 
 from fastapi import HTTPException, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 
@@ -326,11 +327,36 @@ class CatalogosService:
                 status_code=status.HTTP_409_CONFLICT,
                 detail=f"La opcion `{value}` ya existe en este catalogo.",
             )
-        item = CatalogoOpcion(catalogo_id=catalogo.id, value=value)
+        siguiente = (
+            self.db.query(func.coalesce(func.max(CatalogoOpcion.posicion), -1))
+            .filter(CatalogoOpcion.catalogo_id == catalogo.id)
+            .scalar()
+        ) + 1
+        item = CatalogoOpcion(
+            catalogo_id=catalogo.id, value=value, posicion=siguiente
+        )
         self.db.add(item)
         self.db.commit()
         self.db.refresh(item)
         return {"id": item.id, "value": item.value, "en_uso": 0}
+
+    def reordenar(self, clave: str, orden: list[int]) -> list[dict[str, Any]]:
+        catalogo = self._catalogo(clave)
+        opciones = (
+            self.db.query(CatalogoOpcion)
+            .filter(CatalogoOpcion.catalogo_id == catalogo.id)
+            .all()
+        )
+        por_id = {opcion.id: opcion for opcion in opciones}
+        if set(orden) != set(por_id):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El orden debe incluir exactamente las opciones del catalogo.",
+            )
+        for posicion, item_id in enumerate(orden):
+            por_id[item_id].posicion = posicion
+        self.db.commit()
+        return self.listar_items(clave)
 
     def renombrar(self, clave: str, item_id: int, value: str) -> dict[str, Any]:
         catalogo = self._catalogo(clave)

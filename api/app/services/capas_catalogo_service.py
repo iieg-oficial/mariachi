@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.capas_catalogo import CapaCatalogo
@@ -50,9 +51,32 @@ def get_capas(session: Session) -> list[CapaCatalogo]:
     return (
         session.query(CapaCatalogo)
         .filter(CapaCatalogo.deleted_at.is_(None))
-        .order_by(CapaCatalogo.nombre)
+        .order_by(CapaCatalogo.orden, CapaCatalogo.nombre)
         .all()
     )
+
+
+def _siguiente_orden(session: Session) -> int:
+    actual = (
+        session.query(func.max(CapaCatalogo.orden))
+        .filter(CapaCatalogo.deleted_at.is_(None))
+        .scalar()
+    )
+    return (actual + 1) if actual is not None else 0
+
+
+def reorder_capas(session: Session, ids: list[int]) -> list[CapaCatalogo]:
+    capas = (
+        session.query(CapaCatalogo)
+        .filter(CapaCatalogo.id.in_(ids), CapaCatalogo.deleted_at.is_(None))
+        .all()
+    )
+    por_id = {capa.id: capa for capa in capas}
+    posicion = {capa_id: i for i, capa_id in enumerate(ids)}
+    for capa in capas:
+        capa.orden = posicion[capa.id]
+    session.flush()
+    return [por_id[capa_id] for capa_id in ids if capa_id in por_id]
 
 
 def get_capa(session: Session, capa_id: int) -> CapaCatalogo | None:
@@ -88,6 +112,7 @@ def create_capa(
         geoserver_layer=data.geoserver_layer,
         search_tags=data.search_tags,
         enabled=data.enabled,
+        orden=_siguiente_orden(session),
         updated_by=updated_by,
     )
     session.add(capa)
@@ -164,6 +189,7 @@ def bulk_create_capas(
 
     created = 0
     skipped = 0
+    orden = _siguiente_orden(session)
     for layer in geoserver_layers:
         if not layer or layer in existing:
             skipped += 1
@@ -181,9 +207,11 @@ def bulk_create_capas(
                 geoserver_layer=layer,
                 search_tags=search_tags,
                 enabled=True,
+                orden=orden,
                 updated_by=updated_by,
             )
         )
+        orden += 1
         existing.add(layer)
         created += 1
 

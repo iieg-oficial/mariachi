@@ -1,11 +1,20 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Button, Input, Popconfirm, Space, Table, Tag, Tooltip } from 'antd';
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
+import {
+    DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors,
+} from '@dnd-kit/core';
+import {
+    SortableContext, arrayMove, sortableKeyboardCoordinates, verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
 import { message } from '@shared/services/message';
+import { DragHandleCell, SortableTableRow } from '@shared/components/SortableTableRow';
 import { catalogosApi } from '../../services/formulariosAdminApi';
 import { invalidateCatalogos } from '../../hooks/useCatalogos';
 
 const errorDetail = (err, fallback) => err?.response?.data?.detail || fallback;
+
+const TABLE_COMPONENTS = { body: { row: SortableTableRow } };
 
 export default function CatalogoItems({ clave, onChange }) {
     const [items, setItems] = useState([]);
@@ -13,6 +22,11 @@ export default function CatalogoItems({ clave, onChange }) {
     const [nuevo, setNuevo] = useState('');
     const [editandoId, setEditandoId] = useState(null);
     const [editValue, setEditValue] = useState('');
+
+    const sensors = useSensors(
+        useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    );
 
     const cargar = useCallback(() => {
         setLoading(true);
@@ -71,7 +85,31 @@ export default function CatalogoItems({ clave, onChange }) {
         }
     };
 
+    const handleDragEnd = async ({ active, over }) => {
+        if (!over || active.id === over.id) return;
+        const from = items.findIndex((i) => i.id === active.id);
+        const to = items.findIndex((i) => i.id === over.id);
+        if (from < 0 || to < 0) return;
+        const previo = items;
+        const ordenado = arrayMove(items, from, to);
+        setItems(ordenado);
+        try {
+            await catalogosApi.reordenar(clave, ordenado.map((i) => i.id));
+            invalidateCatalogos();
+            onChange?.();
+        } catch (err) {
+            setItems(previo);
+            message.error(errorDetail(err, 'No se pudo reordenar las opciones'));
+        }
+    };
+
     const columns = [
+        {
+            title: '',
+            key: 'sort',
+            width: 40,
+            render: () => <DragHandleCell disabled={editandoId !== null} />,
+        },
         {
             title: 'Opción',
             dataIndex: 'value',
@@ -149,15 +187,27 @@ export default function CatalogoItems({ clave, onChange }) {
                 </Button>
             </Space.Compact>
 
-            <Table
-                size="small"
-                rowKey="id"
-                loading={loading}
-                columns={columns}
-                dataSource={items}
-                pagination={false}
-                locale={{ emptyText: 'Este catálogo aún no tiene opciones' }}
-            />
+            <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+            >
+                <SortableContext
+                    items={items.map((i) => i.id)}
+                    strategy={verticalListSortingStrategy}
+                >
+                    <Table
+                        size="small"
+                        rowKey="id"
+                        loading={loading}
+                        columns={columns}
+                        dataSource={items}
+                        pagination={false}
+                        components={TABLE_COMPONENTS}
+                        locale={{ emptyText: 'Este catálogo aún no tiene opciones' }}
+                    />
+                </SortableContext>
+            </DndContext>
         </>
     );
 }

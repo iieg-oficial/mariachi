@@ -14,6 +14,7 @@ from app.schemas.capas_catalogo import (
     CapaCatalogoBulkCreate,
     CapaCatalogoBulkDelete,
     CapaCatalogoCreate,
+    CapaCatalogoReorder,
     CapaCatalogoResponse,
     CapaCatalogoUpdate,
 )
@@ -144,6 +145,19 @@ async def bulk_delete(
     )
     db.commit()
     return result
+
+
+@router.put("/reorder", response_model=list[CapaCatalogoResponse])
+async def reorder_capas(
+    data: CapaCatalogoReorder,
+    db: Session = Depends(get_dataengine_db),
+    _current_user: Usuario = Depends(verify_csrf),
+    _editor: Usuario = Depends(require_project_editor),
+    _rl: Usuario = Depends(write_rate_limit),
+):
+    capas = capas_catalogo_service.reorder_capas(db, data.ids)
+    db.commit()
+    return capas
 
 
 @router.put("/{capa_id}", response_model=CapaCatalogoResponse)

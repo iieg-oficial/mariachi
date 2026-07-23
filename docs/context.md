@@ -845,6 +845,17 @@ Este repo se integra con otros servicios internos vecinos (CMS, visor de mapas, 
 
 ## Cambios recientes
 
+### 2026-07-23 (1.74.0) — Reordenamiento drag & drop de capas del catálogo y opciones de catálogos SIEEJ
+
+Dos features de reordenamiento conectadas por un componente genérico compartido.
+
+- **Catálogo de capas:** nueva columna `orden` en `mapalab.catalogo_capas` y endpoint `PUT /catalogo/reorder`. El admin gana un botón "Reordenar" que activa una tabla con drag & drop (`CapasReorderTable`). Las capas nuevas y de alta masiva reciben `MAX(orden)+1`.
+- **Catálogos SIEEJ:** nueva columna `posicion` en `sieej.catalogo_opcion` (migración `e1a2b3c4d5f6`) y endpoint `PUT /sieej/catalogos/{clave}/reordenar`. La tabla de opciones dentro de cada catálogo gana una columna drag handle. Las opciones nuevas quedan al final.
+- **Componente compartido:** `SortableTableRow` + `DragHandleCell` en `admin/src/shared/components/SortableTableRow.jsx`. Extraídos de `CapasSortableRow` (eventos), que ahora es un re-export. Lo consumen catálogo de capas, catálogos SIEEJ y cualquier tabla futura con drag & drop.
+- **Tests:** 3 tests nuevos en `test_sieej_catalogos.py` (creación ordenada, reordenar persiste, IDs incompletos da 400).
+
+Detalle en CHANGELOG §[1.74.0] y procedimientos de deploy en RUNBOOK.md.
+
 ### 2026-07-21 (1.61.0) — Footer del sider unificado + notas de versión en modal + fusión de versiones
 
 Dos frentes. **UI:** el pie del sider pasa de dos bloques (icon-rail de Revisiones/Actividad + menú de Documentación) a **una sola fila** que abarca el ancho, con Documentación · Actividad · Revisiones · Notas de versión separados por dividers y cada uno con tooltip (iconos blancos). `buildIconRailItems`/`buildSiderFooterItems` → `buildSiderFooterRail`; `FOOTER_ITEMS`/`ICON_RAIL_ITEMS` → `FOOTER_RAIL_ITEMS`. Notas de versión sale del Inicio y se abre como modal (`VersionNotesModal`) reutilizando `getNotasVersion` + `Markdown`.

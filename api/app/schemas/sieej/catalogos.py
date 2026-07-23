@@ -40,6 +40,10 @@ class CatalogoItemPayload(BaseModel):
     value: str = Field(min_length=1, max_length=255)
 
 
+class CatalogoReordenarPayload(BaseModel):
+    orden: list[int] = Field(min_length=1)
+
+
 class CatalogoPayload(BaseModel):
     """Alta/edición de un catálogo; `clave` se deriva del label si falta."""
 

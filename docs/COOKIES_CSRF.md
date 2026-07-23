@@ -1,8 +1,10 @@
 # Autenticación con httpOnly Cookies + CSRF
 
-> Guía completa del sistema de autenticación con cookies `HttpOnly` + tokens CSRF firmados.
+> Guía completa del sistema de autenticación con cookies `HttpOnly` + tokens CSRF firmados + refresh token rotativo.
 
-**Versión:** 0.14.0 · **Última actualización:** 2026-04-24
+**Versión:** 1.73.0 · **Última actualización:** 2026-07-23
+
+> **Nota:** desde `1.73.0` la sesión ya no es un tope fijo de 30 min. Ver [Refresh Token (renovación de sesión)](#refresh-token-renovación-de-sesión) más abajo.
 
 ---
 
@@ -55,6 +57,76 @@ sequenceDiagram
 
 ---
 
+## Refresh Token (renovación de sesión)
+
+> Desde **1.73.0**. Antes la sesión era un tope fijo de 30 min desde el login, sin renovación: el JWT de acceso se emitía solo al iniciar sesión y nadie lo reemitía, así que a los 30 min exactos el backend respondía `401` y el interceptor mandaba a `/login` aunque estuvieras trabajando.
+
+### Modelo de dos cookies
+
+| Cookie | Contenido | Vida | Uso |
+|--------|-----------|------|-----|
+| `access_token` | JWT firmado (`HS256`) | corta (30 min) | se envía en **cada** request; valida la sesión |
+| `refresh_token` | opaco aleatorio (`token_urlsafe(32)`) | **8 h deslizantes** de inactividad | solo lo usa `POST /autenticacion/refrescar` para emitir un access nuevo |
+
+Ambas son `HttpOnly` (no accesibles por JavaScript). Mientras uses el panel, el front renueva el access en silencio contra el refresh; **solo te saca tras 8 h sin actividad**.
+
+### Rotación + detección de reúso (Redis)
+
+El refresh **no** vive en un JWT ni en Postgres: se guarda **hasheado (SHA-256)** en Redis, agrupado por *familia* (`app/core/refresh_token.py`).
+
+| Llave Redis | Valor | TTL |
+|-------------|-------|-----|
+| `rt:tok:{sha256}` | `{u: username, f: family, used: bool}` | 8 h |
+| `rt:fam:{family}` | set de hashes de la familia | 8 h |
+| `rt:user:{username}` | set de familias del usuario | 8 h |
+
+- **Rotación**: cada llamada a `/refrescar` marca el token actual como `used`, emite uno nuevo en la misma familia y **refresca los TTL a 8 h** (de ahí lo "deslizante").
+- **Detección de reúso**: si llega un refresh ya rotado (`used=True`) — posible robo — se **revoca toda la familia** y se rechaza con `401`.
+- `cerrar-sesion` revoca la familia del refresh presentado; `cambiar-contrasena` revoca **todas** las familias del usuario (`revoke_user`) para que un refresh robado no pueda emitir accesos que evadan la invalidación por cambio de contraseña.
+
+### Flujo de renovación
+
+```mermaid
+sequenceDiagram
+    participant FE as Frontend (admin)
+    participant BE as Backend (FastAPI)
+    participant RD as Redis
+
+    FE->>BE: request con access_token expirado
+    BE-->>FE: 401
+    FE->>BE: POST /autenticacion/refrescar<br/>Cookie: refresh_token (auto)
+    BE->>RD: rotate(refresh) — valida, marca usado, emite nuevo
+    RD-->>BE: nuevo refresh (misma familia)
+    BE-->>FE: Set-Cookie access_token + refresh_token<br/>Body {csrf_token}
+    FE->>BE: reintenta la request original (1 vez)
+    BE-->>FE: 200
+```
+
+El interceptor de `admin/src/shared/services/api.js` dedup­lica las renovaciones concurrentes con una promesa única y solo reintenta **una vez**; si el refresh falla, cae al flujo actual de redirección a `/login`.
+
+### Endpoint
+
+```python
+@router.post(
+    "/refrescar",
+    dependencies=[Depends(rate_limit_ip(max_requests=30, window_seconds=60, scope='refresh'))],
+)
+async def refrescar_sesion(response, db, refresh_cookie=Cookie(alias=settings.refresh_cookie_name)):
+    if not refresh_cookie:
+        _clear_session_cookies(response); raise HTTPException(401, "Sesión expirada")
+    try:
+        new_raw, username = refresh_token.rotate(refresh_cookie)
+    except refresh_token.RefreshError as exc:
+        _clear_session_cookies(response); raise HTTPException(401, str(exc))
+    # ... valida usuario, set access + refresh cookies, devuelve csrf_token nuevo
+```
+
+No exige `X-CSRF-Token`: la posesión de la cookie `refresh_token` (`HttpOnly` + `SameSite`) es la prueba, y la CSRF pudo haber expirado (60 min) antes que la sesión.
+
+**Limitación conocida**: el access token sigue siendo JWT stateless; `cerrar-sesion` revoca el refresh pero el access vigente muere por su propio TTL (≤30 min) — no hay blacklist por `jti`.
+
+---
+
 ## Configuración Backend
 
 ### 1. Variables de Entorno (`.env`)
@@ -72,6 +144,10 @@ COOKIE_DOMAIN=
 COOKIE_SECURE=false
 COOKIE_HTTPONLY=true
 COOKIE_SAMESITE=lax
+
+# Refresh Token (renovación de sesión; ventana de inactividad)
+# El max_age de la cookie refresh_token se DERIVA de esta variable (× 60 s).
+REFRESH_TOKEN_EXPIRE_MINUTES=480
 
 # CSRF Token
 CSRF_SECRET_KEY=your-csrf-secret-key
@@ -484,8 +560,13 @@ VITE_API_URL=https://api.iieg.gob.mx/api/administrador
 - Sí, configurando `COOKIE_DOMAIN=.iieg.gob.mx`
 
 **¿Qué pasa si CSRF token expira?**
-- Usuario debe hacer login nuevamente
+- El front lo re-solicita en línea (`GET /autenticacion/csrf`) sin cerrar sesión; `/autenticacion/refrescar` también devuelve uno fresco
 - Tiempo de vida: 60 minutos (configurable)
+
+**¿Cuánto dura la sesión?**
+- Desde `1.73.0`: **8 h de inactividad** (deslizantes). Mientras uses el panel se renueva sola vía el `refresh_token`; solo te saca tras 8 h sin actividad
+- El `access_token` sigue expirando a los 30 min, pero se renueva de forma transparente contra el `refresh_token`
+- Configurable con `REFRESH_TOKEN_EXPIRE_MINUTES` (default 480)
 
 **¿Puedo usar esto con mobile apps?**
 - No recomendado (cookies son para navegadores)
@@ -493,5 +574,5 @@ VITE_API_URL=https://api.iieg.gob.mx/api/administrador
 
 ---
 
-**Actualizado:** 2024-11-05
-**Versión:** 1.0.0
+**Actualizado:** 2026-07-23
+**Versión:** 1.73.0

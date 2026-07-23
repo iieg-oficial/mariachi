@@ -21,6 +21,7 @@ export const catalogosApi = {
     listar: () => api.get('/sieej/catalogos').then((r) => r.data),
     items: (clave) => api.get(`/sieej/catalogos/${clave}`).then((r) => r.data),
     crear: (clave, value) => api.post(`/sieej/catalogos/${clave}`, { value }).then((r) => r.data),
+    reordenar: (clave, orden) => api.put(`/sieej/catalogos/${clave}/reordenar`, { orden }).then((r) => r.data),
     renombrar: (clave, id, value) => api.put(`/sieej/catalogos/${clave}/${id}`, { value }).then((r) => r.data),
     eliminar: (clave, id) => api.delete(`/sieej/catalogos/${clave}/${id}`).then((r) => r.data),
     createCatalog: (label, clave) => api.post('/sieej/catalogos', { label, clave: clave || null }).then((r) => r.data),
