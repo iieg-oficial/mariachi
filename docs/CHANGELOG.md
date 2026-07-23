@@ -9,6 +9,19 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.73.0] - 2026-07-23
+
+### Agregado: sesión con refresh token rotativo (deja de expirar a media chamba)
+
+La sesión del panel era un tope fijo de **30 min desde el login, sin renovación**: el JWT de acceso se emitía solo al iniciar sesión y nadie lo reemitía, así que a los 30 min exactos el backend respondía 401 y el interceptor mandaba a `/login` aunque estuvieras trabajando. Ahora hay dos cookies httponly: el **access token** sigue corto (30 min, se usa en cada request) y un **refresh token** opaco con **ventana deslizante de 8 h de inactividad**. Mientras uses el panel, el front renueva el acceso en silencio; solo te saca tras 8 h sin actividad.
+
+- **`POST /autenticacion/refrescar`** (nuevo): lee la cookie de refresh, la **rota** (emite una nueva y revoca la anterior) y devuelve un access token nuevo + `csrf_token` fresco. Rate-limit por IP (30/60s).
+- **Rotación + detección de reúso** (`app/core/refresh_token.py`): cada refresh se guarda hasheado en Redis con familia (`rt:tok`/`rt:fam`/`rt:user`) y TTL de 8 h que se refresca en cada uso. Reusar un token ya rotado revoca **toda la familia** (posible robo). Login emite el refresh; `cerrar-sesion` revoca su familia; `cambiar-contrasena` revoca todas las familias del usuario y emite una sesión nueva, para que un refresh robado no evada la invalidación por cambio de contraseña.
+- **Front** (`admin/src/shared/services/api.js`): el interceptor intercepta el 401, llama a `/refrescar` (dedup con promesa única) y **reintenta la request original una vez**; si el refresh falla, conserva el flujo actual de redirección a `/login`.
+- **Config**: `REFRESH_TOKEN_EXPIRE_MINUTES` (default 480 = 8 h) en `.env.development`/`.env.staging`; prod usa el default. El `max_age` de la cookie de refresh se **deriva** de esa variable para no desacoplar dos valores.
+- **Limitación conocida**: el access token sigue siendo JWT stateless; `cerrar-sesion` revoca el refresh, pero el access vigente muere por su propio TTL (≤30 min) — no se agregó blacklist por `jti`.
+- Sin migración (el estado vive en Redis): en prod basta rebuild del `api` + restart. 8 tests nuevos (`test_refresh.py`) con Redis simulado; suite completa en verde (579).
+
 ## [1.72.2] - 2026-07-23
 
 ### Corregido: los cambios del panel no llegaban al visor por timestamps 6 horas en el futuro

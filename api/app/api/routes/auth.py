@@ -1,8 +1,17 @@
 import logging
 import uuid
-from datetime import timedelta
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile, status
+from fastapi import (
+    APIRouter,
+    Cookie,
+    Depends,
+    File,
+    HTTPException,
+    Request,
+    Response,
+    UploadFile,
+    status,
+)
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -19,6 +28,7 @@ from app.api.metrics import (
     incr,
 )
 from app.api.rate_limit import _client_ip, rate_limit_ip
+from app.core import refresh_token
 from app.core.acervo_url import to_relative
 from app.core.cache import redis_client
 from app.core.database import get_db
@@ -48,6 +58,48 @@ _LOGIN_USERNAME_WINDOW_SECONDS = 300
 
 def _username_lockout_key(identifier: str) -> str:
     return _LOGIN_USERNAME_LOCKOUT_KEY.format(identifier)
+
+
+def _set_access_cookie(response: Response, username: str) -> None:
+    response.set_cookie(
+        key=settings.cookie_name,
+        value=crear_access_token(data={"sub": username}),
+        max_age=settings.cookie_max_age,
+        httponly=settings.cookie_httponly,
+        secure=settings.cookie_secure,
+        samesite=settings.cookie_samesite,
+        domain=settings.cookie_domain,
+    )
+
+
+def _set_refresh_cookie(response: Response, raw: str) -> None:
+    response.set_cookie(
+        key=settings.refresh_cookie_name,
+        value=raw,
+        max_age=settings.refresh_cookie_max_age,
+        httponly=settings.cookie_httponly,
+        secure=settings.cookie_secure,
+        samesite=settings.cookie_samesite,
+        domain=settings.cookie_domain,
+    )
+
+
+def _issue_session_cookies(response: Response, username: str) -> None:
+    _set_access_cookie(response, username)
+    raw = refresh_token.issue(username)
+    if raw:
+        _set_refresh_cookie(response, raw)
+
+
+def _clear_session_cookies(response: Response) -> None:
+    for key in (settings.cookie_name, settings.refresh_cookie_name):
+        response.delete_cookie(
+            key=key,
+            httponly=settings.cookie_httponly,
+            secure=settings.cookie_secure,
+            samesite=settings.cookie_samesite,
+            domain=settings.cookie_domain,
+        )
 
 
 @router.post(
@@ -128,20 +180,7 @@ async def login(
         pass
     incr(COUNTER_LOGIN_SUCCESS)
 
-    access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
-    access_token = crear_access_token(
-        data={"sub": usuario.username}, expires_delta=access_token_expires
-    )
-
-    response.set_cookie(
-        key=settings.cookie_name,
-        value=access_token,
-        max_age=settings.cookie_max_age,
-        httponly=settings.cookie_httponly,
-        secure=settings.cookie_secure,
-        samesite=settings.cookie_samesite,
-        domain=settings.cookie_domain,
-    )
+    _issue_session_cookies(response, usuario.username)
 
     csrf_token = crear_csrf_token(usuario.username)
 
@@ -176,14 +215,11 @@ async def logout(
     request: Request,
     current_user: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db),
+    refresh_cookie: str | None = Cookie(default=None, alias=settings.refresh_cookie_name),
 ):
-    response.delete_cookie(
-        key=settings.cookie_name,
-        httponly=settings.cookie_httponly,
-        secure=settings.cookie_secure,
-        samesite=settings.cookie_samesite,
-        domain=settings.cookie_domain,
-    )
+    if refresh_cookie:
+        refresh_token.revoke(refresh_cookie)
+    _clear_session_cookies(response)
     try:
         registrar_actividad(
             db,
@@ -242,6 +278,39 @@ async def verify_token(current_user: Usuario = Depends(get_current_user)):
 @router.get("/csrf")
 async def refrescar_csrf(current_user: Usuario = Depends(get_current_user)):
     return {"csrf_token": crear_csrf_token(current_user.username)}
+
+
+@router.post(
+    "/refrescar",
+    dependencies=[Depends(rate_limit_ip(max_requests=30, window_seconds=60, scope='refresh'))],
+)
+async def refrescar_sesion(
+    response: Response,
+    db: Session = Depends(get_db),
+    refresh_cookie: str | None = Cookie(default=None, alias=settings.refresh_cookie_name),
+):
+    if not refresh_cookie:
+        _clear_session_cookies(response)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Sesión expirada")
+
+    try:
+        new_raw, username = refresh_token.rotate(refresh_cookie)
+    except refresh_token.RefreshError as exc:
+        _clear_session_cookies(response)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
+
+    usuario = db.query(Usuario).filter(Usuario.username == username).first()
+    if usuario is None:
+        refresh_token.revoke(new_raw)
+        _clear_session_cookies(response)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="No se pudo validar las credenciales",
+        )
+
+    _set_access_cookie(response, username)
+    _set_refresh_cookie(response, new_raw)
+    return {"csrf_token": crear_csrf_token(username)}
 
 
 _AVATAR_ALLOWED_CONTENT_TYPES = {
@@ -334,19 +403,8 @@ async def cambiar_contrasena(
     db.commit()
     logger.info('action=user.change_password user_id=%s', current_user.id)
 
-    access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
-    access_token = crear_access_token(
-        data={"sub": current_user.username}, expires_delta=access_token_expires
-    )
-    response.set_cookie(
-        key=settings.cookie_name,
-        value=access_token,
-        max_age=settings.cookie_max_age,
-        httponly=settings.cookie_httponly,
-        secure=settings.cookie_secure,
-        samesite=settings.cookie_samesite,
-        domain=settings.cookie_domain,
-    )
+    refresh_token.revoke_user(current_user.username)
+    _issue_session_cookies(response, current_user.username)
     csrf_token = crear_csrf_token(current_user.username)
 
     return {

@@ -34,6 +34,7 @@ const isCsrfError = (error) => {
 };
 
 let csrfRefreshPromise = null;
+let sessionRefreshPromise = null;
 let redirectingToLogin = false;
 
 export const refreshCsrfToken = async () => {
@@ -56,24 +57,56 @@ export const refreshCsrfToken = async () => {
     return csrfRefreshPromise;
 };
 
+const refreshSession = async () => {
+    if (sessionRefreshPromise) return sessionRefreshPromise;
+    sessionRefreshPromise = (async () => {
+        try {
+            const { data } = await axios.post(`${API_URL}/autenticacion/refrescar`, null, { withCredentials: true });
+            const newCsrf = data?.csrf_token;
+            if (newCsrf) sessionStorage.setItem('csrf_token', newCsrf);
+            return true;
+        } catch {
+            return false;
+        } finally {
+            sessionRefreshPromise = null;
+        }
+    })();
+    return sessionRefreshPromise;
+};
+
+const isAuthEndpoint = (url) =>
+    typeof url === 'string' &&
+    (url.includes('/autenticacion/refrescar') || url.includes('/autenticacion/iniciar-sesion'));
+
+const redirectToLogin = () => {
+    sessionStorage.removeItem('csrf_token');
+    if (!redirectingToLogin && !window.location.pathname.endsWith('/login')) {
+        redirectingToLogin = true;
+        const base = import.meta.env.BASE_URL || '/';
+        const basePath = base.replace(/\/$/, '');
+        const current = window.location.pathname + window.location.search;
+        const next = current.startsWith(basePath) ? current.slice(basePath.length) : current;
+        const target = next && next !== '/'
+            ? `${basePath}/login?next=${encodeURIComponent(next)}`
+            : `${basePath}/login`;
+        setTimeout(() => { window.location.href = target; }, 0);
+    }
+};
+
 api.interceptors.response.use(
     (response) => response,
     async (error) => {
         const original = error.config;
 
         if (error.response?.status === 401) {
-            sessionStorage.removeItem('csrf_token');
-            if (!redirectingToLogin && !window.location.pathname.endsWith('/login')) {
-                redirectingToLogin = true;
-                const base = import.meta.env.BASE_URL || '/';
-                const basePath = base.replace(/\/$/, '');
-                const current = window.location.pathname + window.location.search;
-                const next = current.startsWith(basePath) ? current.slice(basePath.length) : current;
-                const target = next && next !== '/'
-                    ? `${basePath}/login?next=${encodeURIComponent(next)}`
-                    : `${basePath}/login`;
-                setTimeout(() => { window.location.href = target; }, 0);
+            if (original && !original.__refreshRetried && !isAuthEndpoint(original.url)) {
+                original.__refreshRetried = true;
+                const refreshed = await refreshSession();
+                if (refreshed) {
+                    return api.request(original);
+                }
             }
+            redirectToLogin();
             return Promise.reject(error);
         }
 
