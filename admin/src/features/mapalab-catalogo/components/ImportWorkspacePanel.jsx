@@ -6,9 +6,8 @@ import { useGeoserverLayers } from '../hooks/useGeoserverLayers';
 
 const { Text } = Typography;
 
-const ImportWorkspacePanel = ({ workspaceOptions, tagOptions, capas, onChanged }) => {
+const ImportWorkspacePanel = ({ workspaceOptions, capas, onChanged }) => {
     const [selectedWs, setSelectedWs] = useState();
-    const [tags, setTags] = useState([]);
     const [busy, setBusy] = useState(false);
     const { layers: gsLayers, loading } = useGeoserverLayers(selectedWs);
 
@@ -28,7 +27,6 @@ const ImportWorkspacePanel = ({ workspaceOptions, tagOptions, capas, onChanged }
             const res = await bulkCreate({
                 workspaceAlias: selectedWs,
                 geoserverLayers: nuevas.map((l) => l.name),
-                searchTags: tags.length ? tags : undefined,
             });
             const extra = res.skipped ? `, ${res.skipped} omitidas` : '';
             message.success(`Importadas ${res.created} capa(s)${extra}`);
@@ -57,14 +55,6 @@ const ImportWorkspacePanel = ({ workspaceOptions, tagOptions, capas, onChanged }
                     options={workspaceOptions}
                     value={selectedWs}
                     onChange={setSelectedWs}
-                />
-                <Select
-                    mode="tags"
-                    style={{ minWidth: 260 }}
-                    value={tags}
-                    onChange={setTags}
-                    options={tagOptions.map((t) => ({ value: t, label: t }))}
-                    placeholder="Etiquetas para las capas (opcional)"
                 />
                 <Button
                     type="primary"

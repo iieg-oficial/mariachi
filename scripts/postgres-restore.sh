@@ -1,6 +1,14 @@
 #!/bin/sh
 # Restore manual de Postgres desde un .sql.gz generado por postgres-backup.sh.
 #
+# Que restaura: los 4 schemas de mariachi (public, huachicol, acervo, sieej).
+# El schema 'mapalab' NO viaja en estos dumps (vive en dataengine).
+#
+# Los schemas no-public se dropean con CASCADE antes de aplicar el dump: pg_dump
+# emite "DROP SCHEMA IF EXISTS <x>;" sin CASCADE, y ese DROP falla si el destino
+# tiene objetos que el dump no conoce (tipico al restaurar un dump viejo sobre
+# una base con migraciones mas nuevas), abortando el restore a la mitad.
+#
 # Busqueda del archivo:
 #   1. Ruta literal si existe
 #   2. restore/<archivo>
@@ -89,11 +97,21 @@ echo "[restore] ATENCION: esto SOBRESCRIBE la base de datos actual."
 printf "[restore] Ctrl+C para cancelar, ENTER para continuar... "
 read -r _CONFIRM
 
+DUMP_SCHEMAS=$(gunzip -c "$ABS_FILE" | sed -n 's/^CREATE SCHEMA \([a-z_][a-z0-9_]*\);$/\1/p' | sort -u | tr '\n' ' ')
+
+if [ -n "$DUMP_SCHEMAS" ]; then
+    echo "[restore] limpiando schemas del dump:$(printf ' %s' $DUMP_SCHEMAS)"
+    for schema in $DUMP_SCHEMAS; do
+        $COMPOSE_CMD -f "$COMPOSE_FILE" exec -T postgres sh -c \
+            "PGPASSWORD=\$POSTGRES_PASSWORD psql -v ON_ERROR_STOP=1 --quiet -U \$POSTGRES_USER -d \$POSTGRES_DB -c 'DROP SCHEMA IF EXISTS $schema CASCADE'"
+    done
+fi
+
 echo "[restore] aplicando dump..."
 gunzip -c "$ABS_FILE" | $COMPOSE_CMD -f "$COMPOSE_FILE" exec -T postgres sh -c \
     'PGPASSWORD="$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 --quiet -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
 
 echo "[restore] done"
-echo "[restore] siguiente paso sugerido: $COMPOSE_CMD -f $COMPOSE_FILE exec api alembic -x db=mariachi current"
-echo "[restore] mapalab stats: las vistas materializadas se restauraron con los datos del dump."
-echo "[restore]   si quieres recalcularlas: make refresh-mapalab-stats"
+echo "[restore] siguiente paso sugerido: $COMPOSE_CMD -f $COMPOSE_FILE exec api alembic current"
+echo "[restore] mapalab stats: los rollups son tablas en huachicol y se restauraron con sus datos."
+echo "[restore]   si quieres recalcularlas desde huachicol.events: make refresh-mapalab-stats"

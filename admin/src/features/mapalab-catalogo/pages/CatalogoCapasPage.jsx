@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Button, Popconfirm, Select, Space, Table, Typography, message } from 'antd';
+import { Button, Popconfirm, Space, Table, Typography, message } from 'antd';
 import {
     AppstoreAddOutlined,
     DeleteOutlined,
     ImportOutlined,
     PlusOutlined,
-    TagsOutlined,
 } from '@ant-design/icons';
 import { buildColumns } from '../components/catalogoColumns';
 import CapaFormPanel from '../components/CapaFormPanel';
@@ -32,8 +31,6 @@ const CatalogoCapasPage = () => {
     const [activePanel, setActivePanel] = useState(null);
     const [editing, setEditing] = useState(null);
     const [selectedRowKeys, setSelectedRowKeys] = useState([]);
-    const [bulkTagOpen, setBulkTagOpen] = useState(false);
-    const [bulkTags, setBulkTags] = useState([]);
     const [bulkBusy, setBulkBusy] = useState(false);
 
     const loadCapas = async () => {
@@ -127,30 +124,35 @@ const CatalogoCapasPage = () => {
         }
     };
 
-    const handleBulkTag = async () => {
-        setBulkBusy(true);
+    const handleTagsSave = async (id, searchTags) => {
         try {
-            const byId = new Map(capas.map((c) => [c.id, c]));
-            await Promise.all(selectedRowKeys.map((id) => {
-                const capa = byId.get(id);
-                if (!capa) return null;
-                const merged = Array.from(new Set([...(capa.searchTags || []), ...bulkTags]));
-                return actualizarCapa(id, { searchTags: merged });
-            }));
-            message.success(`Etiquetas agregadas a ${selectedRowKeys.length} capa(s)`);
-            setBulkTags([]);
-            setBulkTagOpen(false);
-            setSelectedRowKeys([]);
-            loadCapas();
+            await actualizarCapa(id, { searchTags });
+            setCapas((prev) => prev.map((c) => (c.id === id ? { ...c, searchTags } : c)));
             reloadTags();
         } catch (err) {
-            message.error(err?.response?.data?.detail || 'No se pudieron etiquetar las capas');
-        } finally {
-            setBulkBusy(false);
+            message.error(err?.response?.data?.detail || 'No se pudieron guardar las etiquetas');
+            throw err;
         }
     };
 
-    const columns = buildColumns({ onDelete: handleDelete, workspaceFilters, tagFilters });
+    const handleEnabledSave = async (id, enabled) => {
+        try {
+            await actualizarCapa(id, { enabled });
+            setCapas((prev) => prev.map((c) => (c.id === id ? { ...c, enabled } : c)));
+        } catch (err) {
+            message.error(err?.response?.data?.detail || 'No se pudo cambiar el estado de la capa');
+            throw err;
+        }
+    };
+
+    const columns = buildColumns({
+        onDelete: handleDelete,
+        workspaceFilters,
+        tagFilters,
+        tagOptions,
+        onTagsSave: handleTagsSave,
+        onEnabledSave: handleEnabledSave,
+    });
 
     const hasSelection = selectedRowKeys.length > 0;
 
@@ -199,7 +201,6 @@ const CatalogoCapasPage = () => {
             {activePanel === 'import' && (
                 <ImportWorkspacePanel
                     workspaceOptions={workspaceOptions}
-                    tagOptions={tagOptions}
                     capas={capas}
                     onChanged={() => { loadCapas(); reloadTags(); }}
                 />
@@ -207,47 +208,46 @@ const CatalogoCapasPage = () => {
             {activePanel === 'bulk' && (
                 <BulkAddPanel
                     workspaceOptions={workspaceOptions}
-                    tagOptions={tagOptions}
                     capas={capas}
                     onChanged={() => { loadCapas(); reloadTags(); }}
                 />
             )}
 
             {hasSelection && (
-                <Space wrap style={{ marginBottom: 12 }}>
-                    <Text strong>{selectedRowKeys.length} seleccionada(s)</Text>
-                    <Popconfirm
-                        title={`¿Eliminar ${selectedRowKeys.length} capa(s) del catálogo?`}
-                        okText="Eliminar"
-                        cancelText="Cancelar"
-                        okButtonProps={{ danger: true }}
-                        onConfirm={handleBulkDelete}
+                <div
+                    style={{
+                        position: 'sticky',
+                        top: 64,
+                        zIndex: 9,
+                        background: '#fff',
+                        paddingTop: 12,
+                        marginBottom: 12,
+                    }}
+                >
+                    <div
+                        style={{
+                            padding: '10px 12px',
+                            background: '#fff',
+                            border: '1px solid #f0f0f0',
+                            borderRadius: 8,
+                            boxShadow: '0 2px 8px rgba(0, 21, 41, 0.08)',
+                        }}
                     >
-                        <Button danger icon={<DeleteOutlined />} loading={bulkBusy}>Eliminar</Button>
-                    </Popconfirm>
-                    <Button icon={<TagsOutlined />} onClick={() => setBulkTagOpen((o) => !o)}>Etiquetar</Button>
-                    <Button type="text" onClick={() => setSelectedRowKeys([])}>Cancelar selección</Button>
-                    {bulkTagOpen && (
-                        <>
-                            <Select
-                                mode="tags"
-                                style={{ minWidth: 240 }}
-                                value={bulkTags}
-                                onChange={setBulkTags}
-                                options={tagOptions.map((t) => ({ value: t, label: t }))}
-                                placeholder="Etiquetas a agregar"
-                            />
-                            <Button
-                                type="primary"
-                                onClick={handleBulkTag}
-                                loading={bulkBusy}
-                                disabled={!bulkTags.length}
+                        <Space wrap>
+                            <Text strong>{selectedRowKeys.length} seleccionada(s)</Text>
+                            <Popconfirm
+                                title={`¿Eliminar ${selectedRowKeys.length} capa(s) del catálogo?`}
+                                okText="Eliminar"
+                                cancelText="Cancelar"
+                                okButtonProps={{ danger: true }}
+                                onConfirm={handleBulkDelete}
                             >
-                                Aplicar
-                            </Button>
-                        </>
-                    )}
-                </Space>
+                                <Button danger icon={<DeleteOutlined />} loading={bulkBusy}>Eliminar</Button>
+                            </Popconfirm>
+                            <Button type="text" onClick={() => setSelectedRowKeys([])}>Cancelar selección</Button>
+                        </Space>
+                    </div>
+                </div>
             )}
 
             <Table

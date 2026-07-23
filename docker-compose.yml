@@ -81,9 +81,9 @@ services:
       REDIS_URL: redis://redis:6379/0
       ACERVO_USE_SSL: ${ACERVO_USE_SSL:?}
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3).read()"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=15).read()"]
       interval: 15s
-      timeout: 5s
+      timeout: 20s
       retries: 5
       start_period: 120s
     networks:

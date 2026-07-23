@@ -9,6 +9,47 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.72.2] - 2026-07-23
+
+### Corregido: los cambios del panel no llegaban al visor por timestamps 6 horas en el futuro
+
+`app/core/time.py:utcnow()` devuelve un datetime **naive** que representa UTC. El engine de DataEngine se conectaba sin fijar timezone contra `dataengine-primary`, que corre en `America/Mexico_City`, así que Postgres interpretaba ese naive como hora local y lo guardaba **6 horas adelantado** en las columnas `timestamptz` de `mapalab.layers`.
+
+Consecuencia: `layer_tree_cache.etag` se calcula como `md5(max(updated_at) | count)`, así que bastaba **una** capa editada desde el panel para congelar el etag hasta que pasara esa hora — el visor seguía recibiendo el árbol viejo. Detectado en `cuerpos_de_agua_50k`, con `updated_at` 5h18m en el futuro tras editarla desde el admin.
+
+- **Fix**: `options: -c timezone=utc` en `connect_args` del engine de DataEngine (`app/core/database.py`). Verificado: el desfase pasa de 6 h a 0.02 s. Se corrigieron los `updated_at` ya adelantados.
+- No es un reloj desincronizado: host y contenedores coinciden al segundo con NTP activo. `mariachi-postgres` corre en `UTC` y `dataengine-primary` en `America/Mexico_City`; solo el segundo engine estaba afectado.
+- Se acotó el arreglo a la conexión en vez de tocar `utcnow()` (151 usos en 52 archivos, 26 modelos con `onupdate=utcnow`) o el timezone del servidor, que también consumen GeoServer y los jobs de dataengine.
+
+## [1.72.1] - 2026-07-23
+
+### Corregido: telemetría del catálogo de MapaLab rechazada con 422
+
+`POST /api/public/mapalab/events/batch` devolvía 422 en cada envío desde `/mapalab/catalogo`. El visor emite 10 eventos `catalogo_*` (`open`, `back`, `search`, `layer_select`, `layer_close`, `feature_click`, `info_open`, `download`, `tools_toggle`, `slug_not_found`) que no estaban en `ALLOWED_EVENT_NAMES`, y el validador de `EventIn` rechaza el batch completo si un solo `event_name` no está en la lista. Drift entre repos: la telemetría del catálogo se agregó en el visor sin registrarla aquí. Allowlist pasa de 46 a 56 nombres; ya no queda ningún evento emitido por el visor sin permitir.
+
+## [1.72.0] - 2026-07-23
+
+### Corregido: respaldos alineados a la organización por schemas
+
+Las reglas de respaldo describían la base cuando todo vivía en `public` con vistas materializadas. Hoy son 4 schemas (`public` 25 tablas, `huachicol` 13, `sieej` 11, `acervo` 3) y **cero matviews**: los rollups de mapalab-stats son tablas reales en `huachicol` (`rollup_*`, `mcp_rollup_*`), viajan en el dump con sus datos y no se recomputan al restaurar.
+
+- **Restore ya no aborta a la mitad**: `pg_dump` emite `DROP SCHEMA IF EXISTS <x>;` **sin** `CASCADE` para los schemas no-`public`. Ese DROP falla si el destino tiene objetos que el dump no conoce (restaurar un dump viejo sobre una base con migraciones más nuevas) y, con `ON_ERROR_STOP=1`, deja la base destruida a medias — reproducido: 1 tabla superviviente de 27. `postgres-restore.sh` ahora dropea con `CASCADE` los schemas declarados en el dump antes de aplicarlo. No ocurría antes porque `pg_dump` nunca dropea `public`.
+- **El backup ya no promueve dumps parciales**: la validación era "el archivo no está vacío", así que un dump que perdiera un schema entero seguía siendo un `.gz` grande y válido y pisaba `weekly`/`monthly`. `postgres-backup.sh` verifica que cada schema de `EXPECTED_SCHEMAS` (default `public huachicol acervo sieej`) aparezca en el dump y aborta sin promover si falta alguno.
+- **Documentación**: cabeceras de ambos scripts, `make help` y `context.md` describen los 4 schemas y aclaran que el schema `mapalab` (capas, símbolos, metadata) **no** viaja en estos dumps — vive en la base de DataEngine y lo cubre el servicio `dataengine-backup` de ese repo (`ecosystem.md` §7.3).
+- El mensaje final del restore sugería `alembic -x db=mariachi current`; `env.py` no lee `-x db` (hay un solo target), ahora es `alembic current`.
+
+## [1.71.0] - 2026-07-23
+
+### Cambiado: etiquetado del Catálogo sin burocracia (admin)
+
+Las etiquetas se editan por capa desde la tabla, en lugar de imponer el mismo set a todas.
+
+- **Etiquetas editables en línea**: la columna "Etiquetas" abre un `Select mode="tags"` al hacer clic y **guarda al salir del campo** (sin botón Aplicar). Actualiza la fila en memoria, así no se pierden filtros ni scroll; revierte y avisa si el API falla.
+- **Estado editable en línea**: la columna "Habilitada" pasa de etiqueta a `Switch` que persiste al instante (`PUT /catalogo/{id}`), sin abrir el panel de edición.
+- **Alta masiva sin etiquetado impuesto**: se quitó el multiselect de etiquetas de "Importar workspace" y "Agregar múltiples capas"; las capas se etiquetan después desde la tabla.
+- **Eliminado** el botón "Etiquetar" de la selección múltiple, reemplazado por la edición en línea.
+- **Barra de selección múltiple en fila propia y sticky** bajo el header (`top: 64`), con fondo propio para que el contenido no se cuele por el espacio al hacer scroll.
+
 ## [1.70.0] - 2026-07-22
 
 ### Rediseño de la subpágina de Catálogo (admin)
