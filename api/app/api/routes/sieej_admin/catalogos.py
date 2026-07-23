@@ -8,6 +8,7 @@ from app.schemas.sieej.catalogos import (
     CatalogoAdminItem,
     CatalogoItemPayload,
     CatalogoPayload,
+    CatalogoReordenarPayload,
     CatalogoResumen,
 )
 from app.services.sieej.catalogos_service import CatalogosService
@@ -69,6 +70,16 @@ async def crear_item(
     _csrf: Usuario = Depends(verify_csrf),
 ):
     return CatalogosService(db).crear(clave, payload.value)
+
+
+@router.put("/catalogos/{clave}/reordenar", response_model=list[CatalogoAdminItem])
+async def reordenar_items(
+    clave: str,
+    payload: CatalogoReordenarPayload,
+    db: Session = Depends(get_db),
+    _csrf: Usuario = Depends(verify_csrf),
+):
+    return CatalogosService(db).reordenar(clave, payload.orden)
 
 
 @router.put("/catalogos/{clave}/{item_id}", response_model=CatalogoAdminItem)

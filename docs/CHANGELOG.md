@@ -9,6 +9,20 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.74.0] - 2026-07-23
+
+### Agregado: reordenamiento drag & drop de capas del catálogo y opciones de catálogos SIEEJ
+
+Dos frentes conectados por un componente genérico compartido.
+
+**Catálogo de capas:** cada capa gana una posición explícita (`orden` en `mapalab.catalogo_capas`) que controla el orden en que se muestran en el admin y en la vista pública `/catalogo`. El admin agrega un botón "Reordenar" que reemplaza la tabla de filtros por una tabla plana con drag & drop (`@dnd-kit`). Las capas nuevas y las de alta masiva reciben `orden = MAX(orden) + 1` (quedan al final). Endpoint `PUT /catalogo/reorder`.
+
+**Catálogos SIEEJ:** las opciones de cada catálogo ahora soportan orden manual con drag & drop. Nueva columna `posicion` en `sieej.catalogo_opcion` (migración `e1a2b3c4d5f6`) + endpoint `PUT /sieej/catalogos/{clave}/reordenar`. Las opciones nuevas quedan al final; el orden se refleja en los selects de los formularios públicos.
+
+**Componente compartido:** `SortableTableRow` y `DragHandleCell` extraídos a `admin/src/shared/components/SortableTableRow.jsx`. El `CapasSortableRow` de eventos ahora es un re-export a este componente genérico, que también consumen el catálogo de capas y los catálogos SIEEJ. Cualquier tabla futura que necesite drag & drop reutiliza este componente.
+
+3 tests nuevos en `test_sieej_catalogos.py` cubriendo creación ordenada, reordenamiento y validación de IDs incompletos.
+
 ## [1.73.0] - 2026-07-23
 
 ### Agregado: sesión con refresh token rotativo (deja de expirar a media chamba)

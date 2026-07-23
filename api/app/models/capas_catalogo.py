@@ -16,6 +16,7 @@ class CapaCatalogo(DataEngineBase):
     geoserver_layer = Column(String(255), nullable=False)
     search_tags = Column(ARRAY(Text), nullable=True)
     enabled = Column(Boolean, server_default=text("TRUE"), nullable=False)
+    orden = Column(Integer, server_default=text("0"), nullable=False)
     deleted_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(
         DateTime(timezone=True), server_default=text("NOW()"), nullable=False

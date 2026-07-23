@@ -55,6 +55,7 @@ class CapaCatalogoUpdate(CamelCaseInput):
 
 class CapaCatalogoResponse(CapaCatalogoBase):
     id: int
+    orden: int = 0
     created_at: datetime = Field(..., serialization_alias="createdAt")
     updated_at: datetime = Field(..., serialization_alias="updatedAt")
     updated_by: str | None = Field(default=None, serialization_alias="updatedBy")
@@ -72,3 +73,7 @@ class CapaCatalogoBulkCreate(CamelCaseInput):
 
 class CapaCatalogoBulkDelete(CamelCaseInput):
     ids: list[int]
+
+
+class CapaCatalogoReorder(CamelCaseInput):
+    ids: list[int] = Field(..., min_length=1)

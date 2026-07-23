@@ -20,3 +20,5 @@ export const listTags = async () => (await api.get('/catalogo/tags')).data;
 export const bulkCreate = async (payload) => (await api.post('/catalogo/bulk', payload)).data;
 
 export const bulkDelete = async (ids) => (await api.post('/catalogo/bulk-delete', { ids })).data;
+
+export const reorderCapas = async (ids) => (await api.put('/catalogo/reorder', { ids })).data;
