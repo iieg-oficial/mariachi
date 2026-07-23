@@ -1,5 +1,7 @@
-import { Button, Input, Popconfirm, Space, Tag } from 'antd';
+import { Button, Input, Popconfirm, Space } from 'antd';
 import { DeleteOutlined, SearchOutlined } from '@ant-design/icons';
+import TagsCell from './TagsCell';
+import EnabledCell from './EnabledCell';
 
 const textSearchProps = (dataIndex, label) => ({
     filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
@@ -29,7 +31,7 @@ const textSearchProps = (dataIndex, label) => ({
         .includes(String(value).toLowerCase()),
 });
 
-export const buildColumns = ({ onDelete, workspaceFilters, tagFilters }) => [
+export const buildColumns = ({ onDelete, workspaceFilters, tagFilters, tagOptions = [], onTagsSave, onEnabledSave }) => [
     {
         title: 'Nombre',
         dataIndex: 'nombre',
@@ -61,17 +63,21 @@ export const buildColumns = ({ onDelete, workspaceFilters, tagFilters }) => [
         title: 'Etiquetas',
         dataIndex: 'searchTags',
         key: 'searchTags',
+        width: 280,
         filters: tagFilters,
         onFilter: (value, record) => (record.searchTags || []).includes(value),
-        render: (tags) => (tags || []).map((t) => <Tag key={t}>{t}</Tag>),
+        render: (_, capa) => (
+            <TagsCell capa={capa} tagOptions={tagOptions} onSave={onTagsSave} />
+        ),
     },
     {
         title: 'Habilitada',
         dataIndex: 'enabled',
         key: 'enabled',
+        width: 120,
         filters: [{ text: 'Sí', value: true }, { text: 'No', value: false }],
         onFilter: (value, record) => record.enabled === value,
-        render: (v) => (v ? <Tag color="green">Sí</Tag> : <Tag>No</Tag>),
+        render: (_, capa) => <EnabledCell capa={capa} onSave={onEnabledSave} />,
     },
     {
         title: 'Acciones',

@@ -5,11 +5,10 @@ import { useGeoserverLayers } from '../hooks/useGeoserverLayers';
 
 const { Text } = Typography;
 
-const BulkAddPanel = ({ workspaceOptions, tagOptions, capas, onChanged }) => {
+const BulkAddPanel = ({ workspaceOptions, capas, onChanged }) => {
     const [selectedWs, setSelectedWs] = useState();
     const [targetKeys, setTargetKeys] = useState([]);
     const [busy, setBusy] = useState(false);
-    const [tags, setTags] = useState([]);
     const { layers: gsLayers, loading: loadingLayers } = useGeoserverLayers(selectedWs);
 
     const nameToId = useMemo(() => {
@@ -40,7 +39,6 @@ const BulkAddPanel = ({ workspaceOptions, tagOptions, capas, onChanged }) => {
                 await bulkCreate({
                     workspaceAlias: selectedWs,
                     geoserverLayers: moveKeys,
-                    searchTags: tags.length ? tags : undefined,
                 });
             } else {
                 const ids = moveKeys.map((n) => nameToId[n]).filter(Boolean);
@@ -66,14 +64,6 @@ const BulkAddPanel = ({ workspaceOptions, tagOptions, capas, onChanged }) => {
                     options={workspaceOptions}
                     value={selectedWs}
                     onChange={setSelectedWs}
-                />
-                <Select
-                    mode="tags"
-                    style={{ minWidth: 260 }}
-                    value={tags}
-                    onChange={setTags}
-                    options={tagOptions.map((t) => ({ value: t, label: t }))}
-                    placeholder="Etiquetas para las capas agregadas (opcional)"
                 />
             </Space>
 

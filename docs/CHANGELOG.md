@@ -9,6 +9,18 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.71.0] - 2026-07-23
+
+### Cambiado: etiquetado del Catálogo sin burocracia (admin)
+
+Las etiquetas se editan por capa desde la tabla, en lugar de imponer el mismo set a todas.
+
+- **Etiquetas editables en línea**: la columna "Etiquetas" abre un `Select mode="tags"` al hacer clic y **guarda al salir del campo** (sin botón Aplicar). Actualiza la fila en memoria, así no se pierden filtros ni scroll; revierte y avisa si el API falla.
+- **Estado editable en línea**: la columna "Habilitada" pasa de etiqueta a `Switch` que persiste al instante (`PUT /catalogo/{id}`), sin abrir el panel de edición.
+- **Alta masiva sin etiquetado impuesto**: se quitó el multiselect de etiquetas de "Importar workspace" y "Agregar múltiples capas"; las capas se etiquetan después desde la tabla.
+- **Eliminado** el botón "Etiquetar" de la selección múltiple, reemplazado por la edición en línea.
+- **Barra de selección múltiple en fila propia y sticky** bajo el header (`top: 64`), con fondo propio para que el contenido no se cuele por el espacio al hacer scroll.
+
 ## [1.70.0] - 2026-07-22
 
 ### Rediseño de la subpágina de Catálogo (admin)
