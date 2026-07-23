@@ -9,9 +9,19 @@
 # Resultado: 3 archivos fijos en backups/ (actual, semana pasada, mes pasado).
 #
 # Que se respalda:
-#   pg_dump sin filtros -> incluye TODAS las tablas y vistas materializadas del schema public.
-#   Esto cubre las tablas grandes de telemetria (mapalab_events, mapalab_sessions)
-#   y las matviews mapalab_stats_* (se repueblan al restaurar via REFRESH implicito).
+#   pg_dump sin filtros -> toda la base de mariachi, es decir los 4 schemas:
+#     public    - plataforma core (usuarios, paginas, menu, eventos, colibri, api keys)
+#     huachicol - telemetria y auditoria (events, sessions, mcp_events, rollup_*, actividad)
+#     acervo    - buckets, files, folders
+#     sieej     - formularios, envios, grupos, catalogos
+#
+#   Los rollups de mapalab-stats son TABLAS reales en huachicol (rollup_* y
+#   mcp_rollup_*), no vistas materializadas: viajan en el dump con sus datos y
+#   no requieren recomputo al restaurar.
+#
+#   NO se respalda aqui el schema 'mapalab' (layers, symbols, layer_metadata,
+#   capas_catalogo): vive en la base de dataengine y lo cubre el servicio
+#   dataengine-backup de ese repo. Ver ecosystem.md §7.3.
 #
 #   Para mantener el dump proporcional, antes de cada backup se purgan eventos
 #   crudos mas viejos que MAPALAB_EVENTS_RETENTION_DAYS (default 90) si la
@@ -23,6 +33,7 @@
 #   COMPOSE_FILE=docker-compose.dev.yml ./scripts/postgres-backup.sh
 #   BACKUP_DIR=/otra/ruta ./scripts/postgres-backup.sh
 #   MAPALAB_PURGE_ON_BACKUP=false ./scripts/postgres-backup.sh   # saltar purga
+#   EXPECTED_SCHEMAS='public huachicol' ./scripts/postgres-backup.sh  # ajustar gate
 
 set -euo pipefail
 
@@ -31,6 +42,7 @@ ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 BACKUP_DIR="${BACKUP_DIR:-$ROOT_DIR/backups}"
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml}"
 COMPOSE_ENV_FILE="${COMPOSE_ENV_FILE:-}"
+EXPECTED_SCHEMAS="${EXPECTED_SCHEMAS:-public huachicol acervo sieej}"
 
 COMPOSE_CMD="docker compose"
 if [ -n "$COMPOSE_ENV_FILE" ]; then
@@ -71,6 +83,25 @@ if [ ! -s "$TMP" ] || [ "$(gzip -dc "$TMP" 2>/dev/null | head -c1 | wc -c)" -eq 
     log "ERROR: el dump quedo vacio (no se promueve para no pisar weekly/monthly)"
     exit 1
 fi
+
+# Un dump que perdio un schema entero sigue siendo un archivo grande y valido:
+# sin este gate se promoveria a weekly/monthly y pisaria el ultimo bueno.
+FOUND=$(gzip -dc "$TMP" | sed -n -E 's/^CREATE (TABLE|SCHEMA) ([a-z_][a-z0-9_]*)[.;].*/\2/p' | sort -u)
+
+MISSING=""
+for schema in $EXPECTED_SCHEMAS; do
+    if ! printf '%s\n' "$FOUND" | grep -qx "$schema"; then
+        MISSING="$MISSING $schema"
+    fi
+done
+
+if [ -n "$MISSING" ]; then
+    log "ERROR: el dump no contiene objetos de:$MISSING"
+    log "ERROR: dump parcial, no se promueve (override: EXPECTED_SCHEMAS='...')"
+    exit 1
+fi
+
+log "schemas verificados: $EXPECTED_SCHEMAS"
 
 mv -f "$TMP" "$DAILY"
 log "daily ok ($(du -h "$DAILY" | cut -f1))"

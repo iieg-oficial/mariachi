@@ -817,8 +817,9 @@ Todos los GET de lectura (excepto `/highlights`) aceptan `date_from`, `date_to` 
 
 - `scripts/refresh_mapalab_stats.py`: recompute de rollups (`rollup_stats`) manual/cron. `make refresh-mapalab-stats`.
 - `scripts/purge_mapalab_events.py`: retención configurable. `make purge-mapalab-events`.
-- `scripts/postgres-backup.sh`: corre purga antes del dump (skipeable con `MAPALAB_PURGE_ON_BACKUP=false`). `pg_dump` sin filtros incluye tablas + matviews automáticamente.
+- `scripts/postgres-backup.sh`: corre purga antes del dump (skipeable con `MAPALAB_PURGE_ON_BACKUP=false`). `pg_dump` sin filtros cubre los 4 schemas de la base (`public`, `huachicol`, `acervo`, `sieej`); los rollups de stats son **tablas** en `huachicol` (`rollup_*`, `mcp_rollup_*`), no matviews, así que viajan con sus datos y no hay que recomputarlos al restaurar. Antes de promover el dump valida que cada schema de `EXPECTED_SCHEMAS` aparezca en él, para no pisar `weekly`/`monthly` con un dump parcial.
 - `make install-backup-cron` instala dos cronjobs: `0 3 * * * postgres-backup.sh` (con purga incluida) y `*/30 * * * * refresh_mapalab_stats.py`.
+- `scripts/postgres-restore.sh`: dropea con `CASCADE` los schemas declarados en el dump antes de aplicarlo (el `DROP SCHEMA` que emite `pg_dump` no lleva `CASCADE` y aborta si el destino tiene objetos que el dump no conoce).
 
 ### Variables de entorno relevantes
 

@@ -9,6 +9,17 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.72.0] - 2026-07-23
+
+### Corregido: respaldos alineados a la organización por schemas
+
+Las reglas de respaldo describían la base cuando todo vivía en `public` con vistas materializadas. Hoy son 4 schemas (`public` 25 tablas, `huachicol` 13, `sieej` 11, `acervo` 3) y **cero matviews**: los rollups de mapalab-stats son tablas reales en `huachicol` (`rollup_*`, `mcp_rollup_*`), viajan en el dump con sus datos y no se recomputan al restaurar.
+
+- **Restore ya no aborta a la mitad**: `pg_dump` emite `DROP SCHEMA IF EXISTS <x>;` **sin** `CASCADE` para los schemas no-`public`. Ese DROP falla si el destino tiene objetos que el dump no conoce (restaurar un dump viejo sobre una base con migraciones más nuevas) y, con `ON_ERROR_STOP=1`, deja la base destruida a medias — reproducido: 1 tabla superviviente de 27. `postgres-restore.sh` ahora dropea con `CASCADE` los schemas declarados en el dump antes de aplicarlo. No ocurría antes porque `pg_dump` nunca dropea `public`.
+- **El backup ya no promueve dumps parciales**: la validación era "el archivo no está vacío", así que un dump que perdiera un schema entero seguía siendo un `.gz` grande y válido y pisaba `weekly`/`monthly`. `postgres-backup.sh` verifica que cada schema de `EXPECTED_SCHEMAS` (default `public huachicol acervo sieej`) aparezca en el dump y aborta sin promover si falta alguno.
+- **Documentación**: cabeceras de ambos scripts, `make help` y `context.md` describen los 4 schemas y aclaran que el schema `mapalab` (capas, símbolos, metadata) **no** viaja en estos dumps — vive en la base de DataEngine y lo cubre el servicio `dataengine-backup` de ese repo (`ecosystem.md` §7.3).
+- El mensaje final del restore sugería `alembic -x db=mariachi current`; `env.py` no lee `-x db` (hay un solo target), ahora es `alembic current`.
+
 ## [1.71.0] - 2026-07-23
 
 ### Cambiado: etiquetado del Catálogo sin burocracia (admin)
