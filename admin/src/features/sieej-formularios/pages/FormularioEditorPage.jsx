@@ -9,10 +9,13 @@ import DefinicionEditor from '../components/DefinicionEditor';
 import ConfiguracionEditor from '../components/ConfiguracionEditor';
 import AsignacionesEditor from '../components/AsignacionesEditor';
 import EnviosTable from '../components/EnviosTable';
+import PeriodosPanel from '../components/PeriodosPanel';
+import PresenciaEditores from '../components/PresenciaEditores';
+import usePresenciaFormulario from '../hooks/usePresenciaFormulario';
 
 const ESTADO_COLOR = { borrador: 'default', activo: 'green', cerrado: 'red' };
 
-const VALID_TABS = new Set(['definicion', 'configuracion', 'asignaciones', 'envios']);
+const VALID_TABS = new Set(['definicion', 'configuracion', 'periodos', 'asignaciones', 'envios']);
 
 export default function FormularioEditorPage() {
     const { slug } = useParams();
@@ -22,6 +25,7 @@ export default function FormularioEditorPage() {
     const [loading, setLoading] = useState(true);
 
     const activeTab = VALID_TABS.has(tabFromUrl) ? tabFromUrl : 'definicion';
+    const editores = usePresenciaFormulario(formulario?.id, activeTab);
 
     const handleTabChange = (key) => {
         setTab(key, { paso: null, subtab: null });
@@ -76,6 +80,13 @@ export default function FormularioEditorPage() {
             label: 'Configuración',
             children: <ConfiguracionEditor formulario={formulario} onSaved={setFormulario} />,
         },
+        ...(formulario.periodicidad
+            ? [{
+                key: 'periodos',
+                label: 'Periodos',
+                children: <PeriodosPanel formulario={formulario} />,
+            }]
+            : []),
         {
             key: 'asignaciones',
             label: 'Asignaciones',
@@ -87,6 +98,8 @@ export default function FormularioEditorPage() {
             children: <EnviosTable formulario={formulario} />,
         },
     ];
+
+    const currentTab = items.some((i) => i.key === activeTab) ? activeTab : 'definicion';
 
     return (
         <div>
@@ -115,6 +128,7 @@ export default function FormularioEditorPage() {
                         · v{formulario.version}
                     </Typography.Text>
                 </div>
+                <PresenciaEditores editores={editores} seccionActual={activeTab} size="default" />
                 {formulario.estado === 'borrador' && (
                     <Button
                         type="primary"
@@ -127,7 +141,7 @@ export default function FormularioEditorPage() {
             </Flex>
             <Tabs
                 items={items}
-                activeKey={activeTab}
+                activeKey={currentTab}
                 onChange={handleTabChange}
                 style={{ marginTop: 16 }}
                 destroyOnHidden

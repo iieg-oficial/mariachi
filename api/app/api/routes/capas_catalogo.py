@@ -13,13 +13,19 @@ from app.models.user import Usuario
 from app.schemas.capas_catalogo import (
     CapaCatalogoBulkCreate,
     CapaCatalogoBulkDelete,
+    CapaCatalogoBulkUpdate,
     CapaCatalogoCreate,
     CapaCatalogoReorder,
     CapaCatalogoResponse,
     CapaCatalogoUpdate,
+    InstitucionCatalogoCreate,
+    InstitucionCatalogoReorder,
+    InstitucionCatalogoResponse,
+    InstitucionCatalogoUpdate,
 )
 from app.services import capas_catalogo_service
 from app.services.geoserver_client import GeoServerClient, GeoServerError
+from app.services.mapalab_notifier import notify_catalogo_changed
 
 router = APIRouter(prefix="/catalogo", tags=["catalogo"])
 
@@ -45,6 +51,97 @@ async def list_tags(
     _editor: Usuario = Depends(require_project_editor),
 ):
     return capas_catalogo_service.get_all_tags(db)
+
+
+@router.get("/instituciones", response_model=list[InstitucionCatalogoResponse])
+async def list_instituciones(
+    db: Session = Depends(get_dataengine_db),
+    _editor: Usuario = Depends(require_project_editor),
+):
+    return capas_catalogo_service.get_instituciones(db)
+
+
+@router.post("/instituciones", response_model=InstitucionCatalogoResponse, status_code=201)
+async def create_institucion(
+    data: InstitucionCatalogoCreate,
+    db: Session = Depends(get_dataengine_db),
+    current_user: Usuario = Depends(verify_csrf),
+    _editor: Usuario = Depends(require_project_editor),
+    _rl: Usuario = Depends(write_rate_limit),
+):
+    try:
+        institucion = capas_catalogo_service.create_institucion(
+            db, data, updated_by=current_user.email
+        )
+        db.commit()
+        notify_catalogo_changed()
+        db.refresh(institucion)
+        return institucion
+    except ValueError as exc:
+        db.rollback()
+        raise map_domain_errors(exc) from exc
+
+
+@router.put("/instituciones/reorder", response_model=list[InstitucionCatalogoResponse])
+async def reorder_instituciones(
+    data: InstitucionCatalogoReorder,
+    db: Session = Depends(get_dataengine_db),
+    _current_user: Usuario = Depends(verify_csrf),
+    _editor: Usuario = Depends(require_project_editor),
+    _rl: Usuario = Depends(write_rate_limit),
+):
+    instituciones = capas_catalogo_service.reorder_instituciones(db, data.ids)
+    db.commit()
+    notify_catalogo_changed()
+    return instituciones
+
+
+@router.put("/instituciones/{institucion_id}", response_model=InstitucionCatalogoResponse)
+async def update_institucion(
+    institucion_id: int,
+    data: InstitucionCatalogoUpdate,
+    db: Session = Depends(get_dataengine_db),
+    current_user: Usuario = Depends(verify_csrf),
+    _editor: Usuario = Depends(require_project_editor),
+    _rl: Usuario = Depends(write_rate_limit),
+):
+    institucion = capas_catalogo_service.get_institucion(db, institucion_id)
+    if not institucion:
+        raise HTTPException(
+            status_code=404, detail=f"Institucion '{institucion_id}' no encontrada"
+        )
+    try:
+        institucion = capas_catalogo_service.update_institucion(
+            db, institucion, data, updated_by=current_user.email
+        )
+        db.commit()
+        notify_catalogo_changed()
+        db.refresh(institucion)
+        return institucion
+    except ValueError as exc:
+        db.rollback()
+        raise map_domain_errors(exc) from exc
+
+
+@router.delete("/instituciones/{institucion_id}", status_code=200)
+async def delete_institucion(
+    institucion_id: int,
+    db: Session = Depends(get_dataengine_db),
+    current_user: Usuario = Depends(verify_csrf),
+    _editor: Usuario = Depends(require_project_editor),
+    _rl: Usuario = Depends(write_rate_limit),
+):
+    institucion = capas_catalogo_service.get_institucion(db, institucion_id)
+    if not institucion:
+        raise HTTPException(
+            status_code=404, detail=f"Institucion '{institucion_id}' no encontrada"
+        )
+    capas_catalogo_service.delete_institucion(
+        db, institucion, deleted_by=current_user.email
+    )
+    db.commit()
+    notify_catalogo_changed()
+    return {"id": institucion_id, "deletedAt": institucion.deleted_at}
 
 
 @router.get("/geoserver/{alias}/layers")
@@ -102,6 +199,7 @@ async def create_capa(
     try:
         capa = capas_catalogo_service.create_capa(db, data, updated_by=current_user.email)
         db.commit()
+        notify_catalogo_changed()
         db.refresh(capa)
         return capa
     except (ValueError, GeoServerError) as exc:
@@ -124,8 +222,10 @@ async def bulk_create(
             data.geoserver_layers,
             data.search_tags,
             updated_by=current_user.email,
+            institucion_id=data.institucion_id,
         )
         db.commit()
+        notify_catalogo_changed()
         return result
     except (ValueError, GeoServerError) as exc:
         db.rollback()
@@ -144,7 +244,28 @@ async def bulk_delete(
         db, data.ids, deleted_by=current_user.email
     )
     db.commit()
+    notify_catalogo_changed()
     return result
+
+
+@router.post("/bulk-update", status_code=200)
+async def bulk_update(
+    data: CapaCatalogoBulkUpdate,
+    db: Session = Depends(get_dataengine_db),
+    current_user: Usuario = Depends(verify_csrf),
+    _editor: Usuario = Depends(require_project_editor),
+    _rl: Usuario = Depends(write_rate_limit),
+):
+    try:
+        result = capas_catalogo_service.bulk_update_capas(
+            db, data, updated_by=current_user.email
+        )
+        db.commit()
+        notify_catalogo_changed()
+        return result
+    except ValueError as exc:
+        db.rollback()
+        raise map_domain_errors(exc) from exc
 
 
 @router.put("/reorder", response_model=list[CapaCatalogoResponse])
@@ -157,6 +278,7 @@ async def reorder_capas(
 ):
     capas = capas_catalogo_service.reorder_capas(db, data.ids)
     db.commit()
+    notify_catalogo_changed()
     return capas
 
 
@@ -177,6 +299,7 @@ async def update_capa(
             db, capa, data, updated_by=current_user.email
         )
         db.commit()
+        notify_catalogo_changed()
         db.refresh(capa)
         return capa
     except (ValueError, GeoServerError) as exc:
@@ -197,4 +320,5 @@ async def delete_capa(
         raise HTTPException(status_code=404, detail=f"Capa '{capa_id}' no encontrada")
     capas_catalogo_service.delete_capa(db, capa, deleted_by=current_user.email)
     db.commit()
+    notify_catalogo_changed()
     return {"id": capa_id, "deletedAt": capa.deleted_at}

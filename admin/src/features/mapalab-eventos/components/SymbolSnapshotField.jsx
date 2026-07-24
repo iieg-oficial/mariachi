@@ -1,6 +1,6 @@
 import { Button, Popover, Space, Tooltip, Typography } from 'antd';
 import { CloseOutlined, SmileOutlined } from '@ant-design/icons';
-import SymbolPicker from '@features/mapalab-layers/components/sldEditor/SymbolPicker';
+import SymbolPicker from '@features/mapalab-symbols/components/SymbolPicker';
 import SymbolPreview from '@features/mapalab-symbols/components/SymbolPreview';
 
 const { Text } = Typography;

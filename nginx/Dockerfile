@@ -33,6 +33,5 @@ COPY ./nginx/nginx.conf /etc/nginx/nginx.conf
 COPY ./nginx/conf.d/mariachi.conf /etc/nginx/conf.d/mariachi.conf
 COPY --from=admin-builder /app/dist /usr/share/nginx/html/mariachi
 COPY --from=widget-builder /widget/dist /usr/share/nginx/html/colibri-widget
-COPY ./nginx/static/colibri-docs /usr/share/nginx/html/colibri-docs
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]

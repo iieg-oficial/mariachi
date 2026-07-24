@@ -2,7 +2,7 @@
 
 > Documento de referencia completo. Leer este archivo proporciona contexto del monorepo sin explorar el codebase.
 
-**Versión:** número único del monorepo (desde `1.61.0` se fusionaron los antiguos `api`/`admin`). Fuente de la verdad: `api/pyproject.toml` (la lee `api/app/core/version.py::get_app_version()`; endpoint en vivo `GET /ontoy`). Bump con `scripts/bump-version.sh <x.y.z>` (sincroniza `pyproject.toml` + `admin/package.json` y abre la entrada del CHANGELOG). · **Última actualización:** 2026-07-21
+**Versión:** número único del monorepo (desde `1.61.0` se fusionaron los antiguos `api`/`admin`). Fuente de la verdad: `api/pyproject.toml` (la lee `api/app/core/version.py::get_app_version()`; endpoint en vivo `GET /ontoy`). Bump con `scripts/bump-version.sh <x.y.z>` (sincroniza `pyproject.toml` + `admin/package.json` y abre la entrada del CHANGELOG). · **Última actualización:** 2026-07-24 (1.85.0)
 
 
 ---
@@ -17,7 +17,6 @@ Este monorepo aloja el panel de administración del ecosistema IIEG y el backend
 | **SIEEJ (frontend)** | Captura de formularios para dependencias de gobierno (otro repo: `iieg-oficial/sieej`) | servido como volumen en `mariachi-nginx` | `/sieej/` | Activo |
 | **Colibri Widget** | Web Components embebibles para reportar desde cualquier sitio (Lit + Vite) | `widget/` | `/colibri/widget/colibri-widget.v1.js` | Activo (v0.47.1) |
 | **Colibri SDK** | Cliente HTTP TypeScript para integraciones server-side y browser custom | `sdk/` | npm `@iieg/colibri-sdk` | Activo (v0.46.0) |
-| **Colibri Docs** | Documentacion publica standalone para integradores externos | `nginx/static/colibri-docs/` | `/colibri/docs/` | Activo (v0.47.4) |
 
 El **Portal público** (sitio web del IIEG) se separó a su propio repo `iieg/portal/` (ver README raíz). Consume `/api/portal/*` de este `api`.
 
@@ -78,7 +77,7 @@ Rutas del backend (prefijos):
 | @dnd-kit core / sortable | 6.3 / 10.0 |
 | Axios | 1.13.3 |
 
-Estructura de features (`admin/src/features/`): `acervo`, `auth`, `colibri`, `inicio`, `mapalab-api-keys`, `mapalab-eventos`, `mapalab-home`, `mapalab-layers`, `mapalab-shares`, `mapalab-symbols`, `perfil`, `portal-menu`, `portal-pages`, `revision`, `sieej-formularios`, `users`. Cada feature agrupa `pages/`, `components/`, `hooks/`, `services/`, `constants/`. La estructura `pages/` legada se eliminó.
+Estructura de features (`admin/src/features/`): `acervo`, `auth`, `colibri`, `inicio`, `mapalab-api-keys`, `mapalab-eventos`, `mapalab-home`, `mapalab-layers`, `mapalab-shares`, `mapalab-symbols`, `perfil`, `portal-menu`, `portal-pages`, `revision`, `sextante`, `sieej-formularios`, `users`. Cada feature agrupa `pages/`, `components/`, `hooks/`, `services/`, `constants/`. La estructura `pages/` legada se eliminó.
 
 ### Portal web publico (`web/`) — congelado
 
@@ -163,8 +162,7 @@ mariachi/
 ├── nginx/                        # Proxy + sirve estáticos
 │   ├── conf.d/mariachi.conf      # Template con envsubst
 │   ├── ssl/
-│   ├── static/                   # robots.txt, sitemap.xml, colibri-docs/
-│   │   └── colibri-docs/         # documentacion publica standalone (HTML estatico)
+│   ├── static/                   # estaticos servidos por nginx
 │   ├── nginx.conf
 │   └── Dockerfile                # multi-stage: widget-builder, admin-builder, nginx
 ├── docs/                         # Este directorio (incluye colibri.md)
@@ -372,6 +370,12 @@ Sin auth. `router = APIRouter(tags=["portal público"])` en `routes/public.py`.
 | GET | `/formularios/mis-envios/{id}` | Detalle con `definicion_snapshot` historica + `datos` + `archivos` + `eventos` |
 | POST | `/formularios/{slug}/envio/actualizar-version` | Actualiza envio `en_proceso` a la definicion vigente conservando `datos` |
 | DELETE | `/formularios/mis-envios/{id}` | Soft-delete del envio para el respondent |
+| PUT | `/formularios/mis-envios/{id}/actualizar-campos` | Correccion post-envio de los campos `editableAfterSubmit`, sin reabrir el envio |
+| GET | `/formularios/mis-envios/{id}/historial` | Historial append-only de valores corregidos (respondent, sin actor) |
+| GET | `/sieej/formularios/{id}/envios/{envio_id}/historial` | Mismo historial con actor (admin) |
+| GET | `/sieej/formularios/{id}/periodos` | Ventanas de captura de un formulario periodico |
+| GET | `/sieej/formularios/{id}/notificaciones[/exportar]` | Bitacora de avisos de apertura/faltantes (`?formato=csv\|xlsx`) |
+| POST | `/sieej/periodos/tick` | Corre el motor de apertura periodica (idempotente) |
 | GET/POST/PATCH/DELETE | `/home/*` | CRUD de secciones del home publico de mapalab |
 | GET/POST/PATCH/DELETE | `/mapalab-shares/*` | Gestion de share links de visor mapalab |
 | GET | `/layer-metadata/bulk/column-presets` | Presets de mapeo Excel→técnico para ingesta masiva |
@@ -441,6 +445,7 @@ Tests en `api/tests/services/test_bulk_ingest_parser.py` (parsing, mapping, buil
 | GET | `/api/administrador/geoserver/*` | Introspeccion GeoServer REST (workspaces, campos, estilos) |
 | GET | `/api/administrador/geoserver/workspaces/pending` | Workspaces presentes en GeoServer pero no registrados en `mapalab.workspaces` (admin-only). Devuelve `[{geoserverWorkspace, layerCount}]` |
 | POST | `/api/administrador/geoserver/workspaces/register` | Registra un workspace nuevo en `mapalab.workspaces` (admin + CSRF). Valida que exista en GeoServer |
+| GET | `/api/administrador/geoserver/workspaces/{alias}/styles` | Estilos publicados en el workspace; con `?include_global=true` suma los del catálogo global (marcados `isGlobal`). Consumido por la página Estilos de Sextante |
 | POST | `/api/administrador/layers/auto-leaf` | Idempotente: devuelve o crea un leaf con `(workspace_alias, geoserver_layer)` bajo el padre `eventos-auto` (tema oculto, on-demand). Usado al asociar una capa "solo GeoServer" a un evento. `label` es **obligatorio** y debe ser distinto al `geoserver_layer` (normalizando case + `_`/`-`/espacios); evita registrar capas con el slug como nombre visible (`api 1.14.5+`) |
 | POST | `/api/administrador/borradores/por-id/{id}/aprobar` | Aprueba borrador; si `resource_type='layer'`, materializa en DataEngine |
 | GET | `/metrics` | Metricas Prometheus (sin auth, usado por huachicol) |
@@ -515,7 +520,9 @@ Para emojis usados en SLDs, el applier `_apply_sld` invoca `symbol_service.ensur
 1. El contenedor `geoserver` debe estar en `iieg-network` para resolver `acervo-minio` cuando renderiza el SLD con `<ExternalGraphic>`. Configurado en `/IIEG/geoserver/docker-compose.yml`.
 2. GeoServer 2.20+ bloquea por defecto cualquier URL externa en SLDs. Crear un `URLCheck` vía REST API: `POST /rest/urlchecks` con regex `^http://acervo-minio:9000/mapalab/.+$`. Detalles en `docs/SLD_EDITOR.md`.
 
-UI: `/mapalab/simbolos` (admin tetlamamakani). Features en `admin/src/features/mapalab-symbols/` y `admin/src/features/mapalab-layers/components/sldEditor/`.
+UI: `/sextante/simbolos` (admin tetlamamakani). Features en `admin/src/features/mapalab-symbols/` y `admin/src/features/mapalab-layers/components/sldEditor/`. El `SymbolPicker` (selector del catálogo, reusado por el editor SLD, los eventos y el ícono de categoría) vive en `mapalab-symbols/components/`.
+
+El **ícono de la categoría** (`symbol_categories.icon`, columna `TEXT`) acepta un emoji o la URL de un símbolo del catálogo (imagen/SVG). Las respuestas de categoría —admin y el catálogo público— exponen `iconUrl` derivado: la URL si el valor apunta a un archivo, `null` si es emoji, para que el visor no infiera por heurística.
 
 ### v0.31.0 Modelo de Propiedades (display-only)
 
@@ -709,13 +716,13 @@ Colibri es el sistema centralizado de reportes embebibles del IIEG. Vive como mo
 
 1. **Backend (`api/app/`)**: 6 modelos nuevos (ReporteTipo, DireccionOrganizacional, SourceApp, ColibriRoute, ReporteGrupo, ReporteActividad) + extension de Reporte con workflow granular. 8 migraciones Alembic con seed/backfill. 5 routers admin (`/colibri/{tipos,direcciones,source-apps,routes,stats}`) + reportes extendido + endpoint publico endurecido. 4 services (`colibri_keys`, `colibri_fingerprint`, `pii_scrubber`, `colibri_router_engine`).
 
-2. **Panel admin (`admin/src/features/colibri/`)**: 7 paginas (Resumen, Reportes con toggle plano/agrupados, Tipos con form builder, Direcciones, SourceApps con rotacion de keys + modal "muestra-una-vez", Routes con fan-out, Integracion con preview en vivo). Sidebar reorganizado: Colibri es proyecto del CMS con `allowedGlobalRoles` para tetlamamakani/editora.
+2. **Panel admin (`admin/src/features/colibri/`)**: 6 paginas (Resumen, Reportes con toggle plano/agrupados, Tipos con form builder, Direcciones, SourceApps con rotacion de keys + modal "muestra-una-vez", Routes con fan-out). La guia de integracion vive en el topic **Colibri** de la pagina de Documentacion del admin (`/mariachi/documentacion?topic=colibri`). Sidebar reorganizado: Colibri es proyecto del CMS con `allowedGlobalRoles` para tetlamamakani/editora.
 
 3. **Widget (`widget/`)**: paquete Lit + Vite con 3 Custom Elements (`<colibri-button>`, `<colibri-trigger>`, `<colibri-form>`). Bundle 49.5 KB / 13.8 KB gzip servido en `/colibri/widget/colibri-widget.v1.js` con CORS abierto. Shadow DOM, form dinamico, screenshot opcional. **API global `window.colibri`**: `identify(user)` para asociar sesion con cada reporte, `setContext(key, value)` y `clearContext()` para enriquecer `source_context.custom` (snapshot de mapa, capas activas, etc.), `openPanel({ sourceApp, apiKey })` para disparar el panel programaticamente desde un boton React/HTML del huesped sin renderizar Custom Elements visibles. CSS vars `--offset-x` y `--offset-y` separadas para alinear el FAB respecto a UI existente.
 
 4. **SDK (`sdk/`)**: paquete TypeScript publicable a npm como `@iieg/colibri-sdk`. Cliente HTTP con tipos + 5 errores tipados (Auth/Validation/RateLimit/Forbidden/Network). 6.9 KB raw / ~2 KB gzip.
 
-5. **Docs publicas (`nginx/static/colibri-docs/`)**: HTML standalone 24.7 KB sin dependencias, servido en `/colibri/docs/` sin auth. Live preview, copy-paste snippets, dark mode automatico.
+5. **Guia de integracion (`admin/src/features/documentacion/topics/ColibriTopic.jsx`)**: topic **Colibri** de la pagina de Documentacion del admin (`/mariachi/documentacion?topic=colibri`), con pestañas Widget / Patron React / SDK / SIEEJ. Reemplaza a la antigua pagina `/colibri/integracion` y a las docs publicas standalone `/colibri/docs/`, ambas removidas.
 
 ### Integracion con multi-tenancy
 
@@ -844,6 +851,45 @@ Este repo se integra con otros servicios internos vecinos (CMS, visor de mapas, 
 ---
 
 ## Cambios recientes
+
+### 2026-07-24 (1.82.0) — Sextante: sección propia para GeoServer + ícono de categoría con imagen/SVG
+
+Lo relacionado con GeoServer estaba repartido dentro de MapaLab o escondido en modales del editor de capas. Ahora es una sección del sider, **Sextante** (feature `admin/src/features/sextante/`), con cinco subpáginas; el sider además sube **Acervo** por encima de Huachicol.
+
+- **Nuevas:** `/sextante/workspaces` (registrados vs pendientes, alta incluida — el flujo salió del Alert de `LayerCreateModal`, que sigue usando el mismo `RegisterWorkspaceModal` ya movido a `sextante`), `/sextante/capas` (introspección workspace → capa → campos con valores de muestra + estilos + layer group) y `/sextante/estilos` (catálogo de SLDs por workspace con tipo detectado, capas que comparten el estilo, leyenda en vivo y XML copiable).
+- **Movidas:** `/sextante/recursos` (antes `/mapalab/recursos-geoserver`) y `/sextante/simbolos` (antes `/mapalab/simbolos`); las rutas viejas redirigen.
+- **Acceso:** el proyecto `sextante` del registry declara `accessSlug: 'mapalab'`, así que lo ve quien ya tenía MapaLab — el router `/geoserver/*` del backend depende de `require_project_access('mapalab')`. Workspaces y Símbolos siguen admin-only.
+- **Backend:** `GeoServerClient.list_workspace_styles()` + `GET /geoserver/workspaces/{alias}/styles`. El resto reusa endpoints existentes.
+- **Ícono de categoría de símbolos:** además de emoji admite cualquier símbolo del catálogo (imagen/SVG, guardado como URL del Acervo). Las respuestas de categoría exponen `iconUrl` derivado; lo consume mapalab 1.88.0. Sin migración (`icon` ya era `TEXT`). `SymbolPicker` se mudó a `mapalab-symbols/components/`.
+
+Detalle en CHANGELOG §[1.82.0].
+
+### 2026-07-24 (1.85.0) — SIEEJ: edición concurrente, copiar/pegar campos y una pestaña por campo
+
+Tres cambios de usabilidad en el constructor visual de formularios.
+
+- **Edición concurrente.** Bloqueo optimista (`actualizado_en_esperado` → 409 con quién y cuándo, en vez de pisar) más presencia en Redis reutilizando `services/presence.py` con scope `sieej_formulario`: avatares de quién está editando, en el header del editor (naranja si está en tu misma pestaña) y en cada tarjeta del listado. `GET /sieej/formularios/presencia` resuelve el listado completo en un solo scan y se declara antes que la ruta con parámetro. Columna `actualizado_por_id` (migración `b7c8d9e0f1a3`). Importa porque pisar una definición vieja puede clasificarse como cambio que rompe y reabrir envíos ya enviados.
+
+- **Copiar / Pegar / Duplicar campo.** Evita recapturar a mano un campo cuya regex, catálogo, opciones o configuración de archivo ya costó afinar. El portapapeles vive en `localStorage` (`mariachi.sieej.fieldClipboard`) para cruzar formularios y pestañas del navegador sin permisos; `fieldClipboard.js::prepareFieldForPaste` normaliza al pegar (nombre duplicado → sufijo, `tab` → pestaña activa, `showWhen` huérfano → se quita, `bucket` sin acceso → `sieej`) y avisa de cada ajuste. Sin backend.
+- **Se elimina «Comunes».** Un campo sin `tab` se renderizaba repetido en todas las pestañas del elemento y ninguna vista del CMS mostraba el orden real que veía quien captura — origen de los reportes de campos duplicados y de orden inestable. Ahora cada campo pertenece a exactamente una pestaña: `definicion_validator` exige `tab`, el editor asigna la primera a los que no la traían, eliminar una pestaña pide a cuál se mueven sus campos, y un repeater sin pestañas ofrece «Dividir en pestañas». Migración `a6b7c8d9e0f1` sobre las tres columnas JSONB; el renderer de SIEEJ >= 1.39.0 hace el mismo fallback para los snapshots históricos (antes un `tab` inexistente ocultaba el campo por completo). `tab` no es campo significativo del clasificador, así que no sube versión ni reabre envíos.
+
+### 2026-07-24 (1.80.0) — Instituciones del catálogo de MapaLab + invalidación de su caché
+
+El catálogo de capas (`mapalab.catalogo_capas`) se agrupa por la dependencia que produce cada capa. La subpágina pasa a pestañas «Capas» / «Instituciones» (estado en `useCatalogoData`, vista de capas en `CapasTab`), la edición se mueve a la fila expandible (`CapaDetalleEditor`), hay buscador general, acciones en lote (`SelectionActionsBar` → `POST /catalogo/bulk-update`) y reorden por drag & drop de instituciones. Slugs con namespace compartido entre capas e instituciones (`/catalogo/<slug>` resuelve ambos). Cada escritura invalida la caché de 5 min del backend público de mapalab (`POST /catalogo/invalidate-cache` con `X-Internal-Token`), y `ALLOWED_EVENT_NAMES` incorpora `catalogo_share` / `catalogo_institucion_select` (un evento no permitido tumbaba el batch completo con 422). Requiere la migración `0028_catalogo_instituciones` de dataengine + mapalab 1.86.0. Detalle en CHANGELOG §[1.80.0].
+
+### 2026-07-24 (1.79.0) — SIEEJ: los tipos `email` y `tel` se absorben en `text` + catálogo de regex
+
+`email` y `tel` eran texto con un patrón fijo, así que desaparecen como tipos de campo. El constructor visual ofrece un `AutoComplete` único donde el admin elige un formato común (correo, teléfono de 10 dígitos, CURP, RFC, código postal, CLABE, URL…) **o** escribe su propio regex, que se guarda en `validation.pattern` / `validation.patternMessage`. La migración `a5b6c7d8e9f1` reescribe los campos existentes en las tres columnas JSONB (`formulario.definicion`, `envio_formulario.definicion_snapshot`, `formulario_version.definicion`); es idempotente y reversible. Requiere el frontend SIEEJ >= 1.34.0. Detalle en CHANGELOG §[1.79.0].
+
+### 2026-07-24 (1.78.0) — SIEEJ: actualización ligera de campos post-envío con historial de auditoría
+
+Un field marcado `editableAfterSubmit` se corrige sobre un envío ya `enviado` **sin reabrirlo** (`PUT /formularios/mis-envios/{id}/actualizar-campos`, merge parcial de `datos`, el estado no cambia). Los paths permitidos se derivan del `definicion_snapshot` del envío, no de la definición vigente. Lo nuevo de fondo es que ahora existe versionado de **valores**, no solo de definiciones: la tabla append-only `sieej.envio_valor_historial` (migración `f2b3c4d5e6a7`) guarda `valor_anterior`/`valor_nuevo` por cambio, se registra un evento `actualizado` y el export de envíos incluye la tabla "Historial de cambios". Aplica solo a campos de pasos `form` (repeaters y `file` fuera). Requiere el frontend SIEEJ >= 1.33.0. Detalle en CHANGELOG §[1.78.0].
+
+### 2026-07-24 — SIEEJ: apertura periódica de formularios (sin bump propio)
+
+Un formulario puede abrir una ventana de captura recurrente (`mensual`/`trimestral`/`semestral`/`anual`) en vez de una vigencia única, y **cada periodo genera un envío nuevo** para que el histórico no se sobreescriba. La configuración vive en `sieej.formulario.periodicidad` (JSONB, `NULL` = comportamiento histórico), cada ventana concreta es una fila de `sieej.formulario_periodo`, y el `UNIQUE (formulario_id, usuario_id)` se parte en dos índices parciales según `periodo_id` (migración `f9a0b1c2d3e4`). Lo que decide si está abierto se **computa de la config**, no del `estado` de la fila, así que el gating es correcto aunque el tick no haya corrido. `PeriodosService.tick()` (idempotente, invocado por el sidecar `cron-sieej` y por `POST /sieej/periodos/tick`) materializa ventanas, abre, cierra y dispara los avisos de apertura (al creador) y de faltantes (al creador y a los administradores) por el webhook de Discord de SIEEJ, con bitácora en `sieej.notificacion` exportable a CSV/XLSX desde la pestaña **Periodos** del CMS. No hay correo: el stack no tiene SMTP.
+
+**Pendiente documental:** los tres commits de esta feature (`e26f562`, `c4b71d3`, `1fd73f8`) no bumpearon versión ni abrieron entrada de CHANGELOG. El contrato completo sí está en `docs/sieej.md` §"Apertura periodica". Lado respondent: sieej 1.35.0.
 
 ### 2026-07-23 (1.74.0) — Reordenamiento drag & drop de capas del catálogo y opciones de catálogos SIEEJ
 

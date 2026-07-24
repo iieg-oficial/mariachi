@@ -6,6 +6,7 @@ version cuando un formulario con envios cambia su definicion.
 from __future__ import annotations
 
 import logging
+from datetime import UTC
 from typing import Any
 
 from fastapi import HTTPException, status
@@ -21,6 +22,7 @@ from app.core.time import utcnow
 from app.models.sieej import (
     EnvioEvento,
     EnvioFormulario,
+    EnvioValorHistorial,
     Formulario,
     FormularioVersion,
     Grupo,
@@ -94,6 +96,50 @@ class FormulariosAdminService:
             return self.get(int(id_or_slug))
         return self.get_by_slug(id_or_slug)
 
+    @staticmethod
+    def _normalizar_periodicidad(valor: Any) -> dict[str, Any] | None:
+        """Valida y normaliza la config de periodicidad; None si no aplica."""
+        if valor is None:
+            return None
+        from app.services.sieej.periodos_service import (
+            PeriodicidadInvalidaError,
+            validar_periodicidad,
+        )
+
+        try:
+            return validar_periodicidad(valor)
+        except PeriodicidadInvalidaError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=str(exc),
+            ) from exc
+
+    @staticmethod
+    def _verificar_conflicto(f: Formulario, esperado: Any) -> None:
+        """Rechaza el guardado si otra persona escribio despues de que el
+        editor cargo el formulario. La tolerancia de un segundo evita falsos
+        positivos por clientes que truncan el ISO a milisegundos; dos personas
+        distintas guardando el mismo formulario dentro del mismo segundo no es
+        un escenario real.
+        """
+        if esperado is None or f.actualizado_en is None:
+            return
+        actual = f.actualizado_en
+        if actual.tzinfo is None:
+            actual = actual.replace(tzinfo=UTC)
+        if esperado.tzinfo is None:
+            esperado = esperado.replace(tzinfo=UTC)
+        if abs((actual - esperado).total_seconds()) <= 1:
+            return
+        autor = getattr(f.actualizado_por, "name", None)
+        detalle = (
+            f"Otra persona guardo cambios en este formulario"
+            f"{f' ({autor})' if autor else ''} el "
+            f"{actual.strftime('%d/%m/%Y a las %H:%M')}. "
+            "Recarga para ver la version vigente antes de guardar la tuya."
+        )
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detalle)
+
     def crear(self, data: dict[str, Any], creador: Usuario) -> Formulario:
         try:
             validar_definicion(data["definicion"])
@@ -122,6 +168,7 @@ class FormulariosAdminService:
             definicion=data["definicion"],
             vigencia_inicio=data.get("vigencia_inicio"),
             vigencia_fin=data.get("vigencia_fin"),
+            periodicidad=self._normalizar_periodicidad(data.get("periodicidad")),
             publico=data.get("publico", False),
             estado="borrador",
             version=1,
@@ -164,6 +211,7 @@ class FormulariosAdminService:
         `{tipo, afectados}` o None si no cambio la definicion.
         """
         f = self.get(formulario_id)
+        self._verificar_conflicto(f, data.pop("actualizado_en_esperado", None))
         version_previa = f.version or 1
 
         nueva_definicion = data.get("definicion")
@@ -205,6 +253,14 @@ class FormulariosAdminService:
         ):
             if campo in data and data[campo] is not None:
                 setattr(f, campo, data[campo])
+
+        # `periodicidad` admite limpiarse (None) para volver el formulario a
+        # ventana unica; por eso se maneja aparte del loop (que ignora None).
+        if "periodicidad" in data:
+            f.periodicidad = self._normalizar_periodicidad(data["periodicidad"])
+
+        if actor is not None:
+            f.actualizado_por_id = actor.id
 
         afectados = 0
         if tipo_cambio == "menor":
@@ -280,6 +336,12 @@ class FormulariosAdminService:
         estado_previo = f.estado
         f.estado = "activo"
         f.actualizado_en = utcnow()
+        if f.periodicidad:
+            # Materializa el periodo vigente y el siguiente para que el
+            # respondent vea de inmediato la ventana abierta o su proxima fecha.
+            from app.services.sieej.periodos_service import PeriodosService
+
+            PeriodosService(self.db).materializar_periodos(f)
         self.db.commit()
         self.db.refresh(f)
         logger.info(
@@ -421,6 +483,36 @@ class FormulariosAdminService:
                 detail="Envio no encontrado",
             )
         return envio
+
+    def listar_historial_envio(
+        self, formulario_id: int, envio_id: int
+    ) -> list[EnvioValorHistorial]:
+        """Historial de cambios de valor de un envio (orden cronologico)."""
+        self.get_envio(formulario_id, envio_id)
+        return (
+            self.db.query(EnvioValorHistorial)
+            .filter(EnvioValorHistorial.envio_id == envio_id)
+            .order_by(EnvioValorHistorial.cambiado_en)
+            .all()
+        )
+
+    def historial_de_formulario(
+        self, formulario_id: int
+    ) -> list[EnvioValorHistorial]:
+        """Historial de cambios de valor de todos los envios del formulario."""
+        return (
+            self.db.query(EnvioValorHistorial)
+            .join(
+                EnvioFormulario,
+                EnvioFormulario.id == EnvioValorHistorial.envio_id,
+            )
+            .filter(EnvioFormulario.formulario_id == formulario_id)
+            .order_by(
+                EnvioValorHistorial.envio_id,
+                EnvioValorHistorial.cambiado_en,
+            )
+            .all()
+        )
 
     def reabrir_envio(
         self,

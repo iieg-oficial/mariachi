@@ -1,7 +1,7 @@
 import { LitElement, html, css } from 'lit';
 import { themeCss } from './theme.js';
 import { ICONS } from './icons.js';
-import { fetchTipos, postReporte, captureAuto } from './api.js';
+import { fetchTipos, postReporte, captureAuto, DEFAULT_ENDPOINT } from './api.js';
 
 
 export class ColibriFormCore extends LitElement {
@@ -165,7 +165,7 @@ export class ColibriFormCore extends LitElement {
     async _loadTipos() {
         this.loading = true;
         try {
-            const url = this.endpointTipos || (this.endpoint || '').replace(/\/?$/, '') || '/api/public/reportes';
+            const url = this.endpointTipos || (this.endpoint || '').replace(/\/?$/, '') || DEFAULT_ENDPOINT;
             const data = await fetchTipos(url);
             const filter = (this.tiposFilter || '').split(',').map((s) => s.trim()).filter(Boolean);
             this.tipos = filter.length > 0
@@ -199,55 +199,63 @@ export class ColibriFormCore extends LitElement {
 
     _renderField(campo) {
         const value = this.values[campo.key] ?? '';
-        const baseAttrs = {
-            id: `f_${campo.key}`,
-            placeholder: campo.placeholder || '',
-            required: campo.required,
-            'aria-required': campo.required,
-        };
+        const fieldId = `f_${campo.key}`;
+        const placeholder = campo.placeholder || '';
+        const helpText = campo.helpText ?? campo.help_text;
+        const maxLength = campo.maxLength ?? campo.max_length ?? '';
+        const options = campo.options || [];
         let input;
         if (campo.type === 'textarea') {
-            input = html`<textarea ...=${baseAttrs} maxlength=${campo.maxLength || ''}
+            input = html`<textarea id=${fieldId} placeholder=${placeholder} ?required=${campo.required}
+                maxlength=${maxLength}
                 .value=${value} @input=${(e) => this._setValue(campo.key, e.target.value)}></textarea>`;
-        } else if (campo.type === 'select') {
-            input = html`<select id=${baseAttrs.id} ?required=${campo.required}
+        } else if (campo.type === 'select' || campo.type === 'direccion') {
+            input = html`<select id=${fieldId} ?required=${campo.required}
                 .value=${value} @change=${(e) => this._setValue(campo.key, e.target.value)}>
-                <option value="">${campo.placeholder || 'Selecciona…'}</option>
-                ${(campo.options || []).map((o) => html`<option value=${o.value} ?selected=${value === o.value}>${o.label}</option>`)}
+                <option value="">${placeholder || 'Selecciona…'}</option>
+                ${options.map((o) => html`<option value=${o.value} ?selected=${value === o.value}>${o.label}</option>`)}
             </select>`;
         } else if (campo.type === 'multiselect') {
             const arr = Array.isArray(value) ? value : [];
-            input = html`<select id=${baseAttrs.id} multiple
+            input = html`<select id=${fieldId} multiple
                 @change=${(e) => this._setValue(campo.key, [...e.target.selectedOptions].map((o) => o.value))}>
-                ${(campo.options || []).map((o) => html`<option value=${o.value} ?selected=${arr.includes(o.value)}>${o.label}</option>`)}
+                ${options.map((o) => html`<option value=${o.value} ?selected=${arr.includes(o.value)}>${o.label}</option>`)}
             </select>`;
+        } else if (campo.type === 'radio') {
+            input = html`<div role="radiogroup" aria-label=${campo.label} style="display:flex; flex-direction:column; gap:4px;">
+                ${options.map((o) => html`<label style="display:flex; align-items:center; gap:6px; font-weight:400;">
+                    <input type="radio" name=${fieldId} value=${o.value} ?checked=${value === o.value}
+                        @change=${() => this._setValue(campo.key, o.value)} />
+                    ${o.label}
+                </label>`)}
+            </div>`;
         } else if (campo.type === 'checkbox') {
             input = html`<label style="display:flex; align-items:center; gap:6px;">
                 <input type="checkbox" ?checked=${Boolean(value)}
                     @change=${(e) => this._setValue(campo.key, e.target.checked)} />
-                ${campo.placeholder || 'Sí'}
+                ${placeholder || 'Sí'}
             </label>`;
         } else if (campo.type === 'number') {
-            input = html`<input type="number" id=${baseAttrs.id} placeholder=${baseAttrs.placeholder} ?required=${campo.required}
+            input = html`<input type="number" id=${fieldId} placeholder=${placeholder} ?required=${campo.required}
                 .value=${value} @input=${(e) => this._setValue(campo.key, e.target.value)} />`;
         } else if (campo.type === 'email') {
-            input = html`<input type="email" id=${baseAttrs.id} placeholder=${baseAttrs.placeholder} ?required=${campo.required}
+            input = html`<input type="email" id=${fieldId} placeholder=${placeholder} ?required=${campo.required}
                 .value=${value} @input=${(e) => this._setValue(campo.key, e.target.value)} />`;
         } else if (campo.type === 'url') {
-            input = html`<input type="url" id=${baseAttrs.id} placeholder=${baseAttrs.placeholder} ?required=${campo.required}
+            input = html`<input type="url" id=${fieldId} placeholder=${placeholder} ?required=${campo.required}
                 .value=${value} @input=${(e) => this._setValue(campo.key, e.target.value)} />`;
         } else {
-            input = html`<input type="text" id=${baseAttrs.id} placeholder=${baseAttrs.placeholder} ?required=${campo.required}
-                maxlength=${campo.maxLength || ''}
+            input = html`<input type="text" id=${fieldId} placeholder=${placeholder} ?required=${campo.required}
+                maxlength=${maxLength}
                 .value=${value} @input=${(e) => this._setValue(campo.key, e.target.value)} />`;
         }
         return html`
             <div class="field">
-                <label class="field-label" for=${baseAttrs.id}>
+                <label class="field-label" for=${fieldId}>
                     ${campo.label}${campo.required ? html`<span class="required-mark">*</span>` : ''}
                 </label>
                 ${input}
-                ${campo.helpText ? html`<span class="field-help">${campo.helpText}</span>` : ''}
+                ${helpText ? html`<span class="field-help">${helpText}</span>` : ''}
             </div>
         `;
     }
@@ -288,7 +296,7 @@ export class ColibriFormCore extends LitElement {
             }
 
             const result = await postReporte({
-                endpoint: this.endpoint || '/api/public/reportes',
+                endpoint: this.endpoint || DEFAULT_ENDPOINT,
                 apiKey: this.apiKey,
                 screenshot: this.screenshot,
                 payload: {

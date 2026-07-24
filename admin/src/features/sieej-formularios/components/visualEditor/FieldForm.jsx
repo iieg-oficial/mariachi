@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-    Button, Col, Form, Input, InputNumber, Row, Segmented, Select, Switch, Space,
+    AutoComplete, Button, Col, Form, Input, InputNumber, Row, Segmented, Select, Switch, Space,
 } from 'antd';
 import OptionsSource from './OptionsSource';
 import OpenRangeConfig from './OpenRangeConfig';
@@ -9,6 +9,7 @@ import useAccessibleBuckets from '@features/acervo/hooks/useAccessibleBuckets';
 import useCatalogos from '../../hooks/useCatalogos';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import { FIELD_TYPES } from '../../constants/definitionTypes';
+import { REGEX_PRESETS } from '../../constants/regexPresets';
 import { describeCondition, fieldFromFormValues, fieldToFormValues } from './fieldUtils';
 import FieldPreview from './FieldPreview';
 
@@ -16,6 +17,17 @@ const EXTENSION_OPTIONS = [
     '.pdf', '.csv', '.xlsx', '.xls', '.doc', '.docx', '.txt',
     '.jpg', '.jpeg', '.png', '.zip', '.json', '.geojson', '.kml', '.shp',
 ].map((ext) => ({ value: ext, label: ext }));
+
+const REGEX_OPTIONS = REGEX_PRESETS.map((preset) => ({
+    value: preset.pattern,
+    text: `${preset.label} ${preset.pattern}`,
+    label: (
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+            <span>{preset.label}</span>
+            <code style={{ color: '#999', fontSize: 12 }}>{preset.pattern}</code>
+        </div>
+    ),
+}));
 
 const COLSPAN_HINT = {
     1: 'Grande · ocupa la fila completa',
@@ -51,6 +63,7 @@ export default function FieldForm({
     const watchType = Form.useWatch('type', form);
     const watchLabel = Form.useWatch('label', form);
     const watchColSpan = Form.useWatch('colSpan', form);
+    const watchPattern = Form.useWatch('pattern', form);
     const previewValues = Form.useWatch((v) => v, form) || {};
 
     useEffect(() => {
@@ -71,6 +84,16 @@ export default function FieldForm({
 
     const handleFinish = (values) => onSave?.(fieldFromFormValues(values));
 
+    const handlePatternSelect = (value) => {
+        const preset = REGEX_PRESETS.find((p) => p.pattern === value);
+        if (!preset) return;
+        const current = form.getFieldValue('patternMessage');
+        const isAutoMessage = !current || REGEX_PRESETS.some((p) => p.message === current);
+        if (isAutoMessage) {
+            form.setFieldsValue({ patternMessage: preset.message });
+        }
+    };
+
     const previewCondition = describeCondition(
         { field: previewValues.showWhen_field, equals: previewValues.showWhen_equals },
         availableShowWhenFields,
@@ -81,7 +104,7 @@ export default function FieldForm({
     const showDateRange = watchType === 'date_range';
     const showFile = watchType === 'file';
     const showNumberValidation = watchType === 'number';
-    const showLengthValidation = ['text', 'textarea', 'email', 'tel'].includes(watchType);
+    const showLengthValidation = ['text', 'textarea'].includes(watchType);
 
     const bucketOptions = buckets.map((b) => ({
         value: b.acervo_bucket,
@@ -112,6 +135,14 @@ export default function FieldForm({
                     <Form.Item label="¿Requerido?" name="required" valuePropName="checked">
                         <Switch />
                     </Form.Item>
+                    <Form.Item
+                        label="¿Editable después de enviar?"
+                        name="editableAfterSubmit"
+                        valuePropName="checked"
+                        extra="Permite corregir este campo sin reabrir el formulario; cada cambio queda en el historial."
+                    >
+                        <Switch />
+                    </Form.Item>
                     <Form.Item label="Placeholder" name="placeholder">
                         <Input />
                     </Form.Item>
@@ -122,8 +153,8 @@ export default function FieldForm({
                         />
                     </Form.Item>
                     {availableTabs.length > 0 && (
-                        <Form.Item label="Tab" name="tab">
-                            <Select allowClear options={availableTabs.map((t) => ({ value: t.id, label: t.title }))} />
+                        <Form.Item label="Pestaña" name="tab" rules={[{ required: true }]}>
+                            <Select options={availableTabs.map((t) => ({ value: t.id, label: t.title || t.id }))} />
                         </Form.Item>
                     )}
                     <Form.Item
@@ -138,6 +169,14 @@ export default function FieldForm({
                                 { value: 3, label: 'Chico' },
                             ]}
                         />
+                    </Form.Item>
+                    <Form.Item
+                        label="¿Empezar en fila nueva?"
+                        name="newRow"
+                        valuePropName="checked"
+                        extra="Fuerza que el campo abra una fila. Úsalo para dejar espacio libre al final de la fila anterior en lugar de agregar campos vacíos."
+                    >
+                        <Switch />
                     </Form.Item>
                     {showOptions && <OptionsSource form={form} />}
                     {showDateRange && <OpenRangeConfig form={form} />}
@@ -196,19 +235,28 @@ export default function FieldForm({
                                 </Form.Item>
                             </Space.Compact>
                             <Form.Item
-                                label="Patrón regex"
+                                label="Patrón de validación"
                                 name="pattern"
-                                extra="Ej: ^\d{10}$ (teléfono 10 dígitos). Vacío usa el default del tipo de campo."
+                                extra="Elige un formato común de la lista o escribe tu propio regex. Vacío no aplica ningún patrón."
                             >
-                                <Input placeholder="^\d{10}$" />
+                                <AutoComplete
+                                    allowClear
+                                    options={REGEX_OPTIONS}
+                                    filterOption={(input, option) => option.text
+                                        .toLowerCase().includes(input.toLowerCase())}
+                                    onSelect={handlePatternSelect}
+                                    placeholder="^\d{10}$ o busca «teléfono», «CURP», «correo»…"
+                                />
                             </Form.Item>
-                            <Form.Item
-                                label="Mensaje de validación"
-                                name="patternMessage"
-                                extra="Se muestra cuando el valor no cumple el patrón. Requiere un patrón definido."
-                            >
-                                <Input placeholder="Ingresa un teléfono válido de 10 dígitos" />
-                            </Form.Item>
+                            {watchPattern && (
+                                <Form.Item
+                                    label="Mensaje de validación"
+                                    name="patternMessage"
+                                    extra="Se muestra cuando el valor no cumple el patrón."
+                                >
+                                    <Input placeholder="Ingresa un teléfono válido de 10 dígitos" />
+                                </Form.Item>
+                            )}
                         </>
                     )}
                     <ShowWhenField form={form} availableFields={availableShowWhenFields} />

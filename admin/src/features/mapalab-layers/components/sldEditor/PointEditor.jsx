@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Card, Form, Input, InputNumber, Slider, Space, Switch, Tabs, Typography } from 'antd';
 import BoundaryLabelTab from './BoundaryLabelTab';
-import SymbolPicker from './SymbolPicker';
+import SymbolPicker from '@features/mapalab-symbols/components/SymbolPicker';
 import SymbolPreview from '@features/mapalab-symbols/components/SymbolPreview';
 import { listSymbols } from '@features/mapalab-symbols/api/symbolsService';
 

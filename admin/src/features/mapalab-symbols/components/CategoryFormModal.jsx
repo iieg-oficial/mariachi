@@ -4,6 +4,7 @@ import {
     createCategory,
     updateCategory,
 } from '@features/mapalab-symbols/api/symbolsService';
+import CategoryIconField from '@features/mapalab-symbols/components/CategoryIconField';
 import { message } from '@shared/services/message';
 
 
@@ -98,8 +99,12 @@ export default function CategoryFormModal({ open, category, onClose, onSaved }) 
                 >
                     <Input placeholder="ej. caras" maxLength={100} />
                 </Form.Item>
-                <Form.Item name="icon" label="Ícono (emoji opcional para tab)">
-                    <Input placeholder="😀" maxLength={8} />
+                <Form.Item
+                    name="icon"
+                    label="Ícono de la pestaña (opcional)"
+                    extra="Un emoji, o cualquier símbolo del catálogo (imagen o SVG)."
+                >
+                    <CategoryIconField />
                 </Form.Item>
                 <Form.Item name="sortOrder" label="Orden">
                     <InputNumber min={0} max={9999} style={{ width: '100%' }} />

@@ -13,6 +13,7 @@ class FormularioBase(BaseModel):
     definicion: dict[str, Any]
     vigencia_inicio: datetime | None = None
     vigencia_fin: datetime | None = None
+    periodicidad: dict[str, Any] | None = None
     publico: bool = False
 
 
@@ -26,7 +27,26 @@ class FormularioUpdate(BaseModel):
     definicion: dict[str, Any] | None = None
     vigencia_inicio: datetime | None = None
     vigencia_fin: datetime | None = None
+    periodicidad: dict[str, Any] | None = None
     publico: bool | None = None
+    actualizado_en_esperado: datetime | None = Field(
+        default=None,
+        description=(
+            "`actualizado_en` que tenia el formulario cuando se abrio el editor. "
+            "Si otra persona guardo despues, el PUT responde 409 en vez de pisar."
+        ),
+    )
+
+
+class PresenciaEditor(BaseModel):
+    username: str
+    name: str
+    avatar_url: str | None = None
+    seccion: str | None = None
+
+
+class PresenciaIn(BaseModel):
+    seccion: str | None = Field(default=None, max_length=64)
 
 
 class GrupoRef(BaseModel):
@@ -51,6 +71,7 @@ class FormularioResponse(FormularioBase):
     creado_por_id: int
     creado_en: datetime
     actualizado_en: datetime
+    actualizado_por: UsuarioRef | None = None
     grupos: list[GrupoRef] = []
     usuarios_asignados: list[UsuarioRef] = []
 
@@ -85,6 +106,14 @@ class FormularioListItem(BaseModel):
     estado_envio: Literal["no_iniciado", "en_proceso", "enviado", "expirado"]
     envio_id: int | None
     actualizacion_disponible: bool = False
+    # Apertura periodica: `periodico` marca el formulario con ventanas
+    # recurrentes; cuando esta cerrado, `abierto=False` y `proxima_apertura`
+    # indica cuando vuelve a abrir. En no periodicos `abierto` es siempre True.
+    periodico: bool = False
+    abierto: bool = True
+    ventana_apertura: datetime | None = None
+    ventana_cierre: datetime | None = None
+    proxima_apertura: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -102,6 +131,11 @@ class FormularioDetalle(BaseModel):
     version: int
     definicion: dict[str, Any]
     envio: "EnvioResponse | None" = None
+    periodico: bool = False
+    abierto: bool = True
+    ventana_apertura: datetime | None = None
+    ventana_cierre: datetime | None = None
+    proxima_apertura: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

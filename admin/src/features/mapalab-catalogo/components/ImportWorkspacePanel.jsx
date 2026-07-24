@@ -6,8 +6,9 @@ import { useGeoserverLayers } from '../hooks/useGeoserverLayers';
 
 const { Text } = Typography;
 
-const ImportWorkspacePanel = ({ workspaceOptions, capas, onChanged }) => {
+const ImportWorkspacePanel = ({ workspaceOptions, capas, instituciones = [], onChanged }) => {
     const [selectedWs, setSelectedWs] = useState();
+    const [institucionId, setInstitucionId] = useState(null);
     const [busy, setBusy] = useState(false);
     const { layers: gsLayers, loading } = useGeoserverLayers(selectedWs);
 
@@ -27,6 +28,7 @@ const ImportWorkspacePanel = ({ workspaceOptions, capas, onChanged }) => {
             const res = await bulkCreate({
                 workspaceAlias: selectedWs,
                 geoserverLayers: nuevas.map((l) => l.name),
+                institucionId,
             });
             const extra = res.skipped ? `, ${res.skipped} omitidas` : '';
             message.success(`Importadas ${res.created} capa(s)${extra}`);
@@ -55,6 +57,16 @@ const ImportWorkspacePanel = ({ workspaceOptions, capas, onChanged }) => {
                     options={workspaceOptions}
                     value={selectedWs}
                     onChange={setSelectedWs}
+                />
+                <Select
+                    allowClear
+                    showSearch
+                    optionFilterProp="label"
+                    style={{ width: 240 }}
+                    placeholder="Institución (opcional)"
+                    options={instituciones.map((i) => ({ value: i.id, label: i.nombre }))}
+                    value={institucionId}
+                    onChange={(v) => setInstitucionId(v ?? null)}
                 />
                 <Button
                     type="primary"

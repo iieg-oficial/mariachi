@@ -15,7 +15,6 @@ from fastapi import (
     UploadFile,
     status,
 )
-from minio.error import S3Error
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
@@ -155,20 +154,13 @@ async def _upload_screenshot(
 
     object_path = _build_object_path(screenshot.content_type)
     client = AcervoClient.for_bucket(bucket)
-    try:
-        client.client.put_object(
-            client.bucket_name,
-            object_path,
-            BytesIO(data),
-            len(data),
-            content_type=screenshot.content_type,
-        )
-    except S3Error:
-        logger.exception("reportes.upload.s3 bucket=%s path=%s", bucket.acervo_bucket, object_path)
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="No se pudo guardar la captura.",
-        )
+    client.client.put_object(
+        client.bucket_name,
+        object_path,
+        BytesIO(data),
+        len(data),
+        content_type=screenshot.content_type,
+    )
     return object_path
 
 
@@ -217,13 +209,19 @@ async def crear_reporte(
             detail=exc.errors(),
         )
 
-    respuestas_validadas: dict | None = None
     tipo_row = (
         db.query(ReporteTipo)
         .filter(ReporteTipo.slug == payload.tipo, ReporteTipo.activo.is_(True))
         .first()
     )
-    if tipo_row and tipo_row.form_schema:
+    if tipo_row is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Tipo de reporte '{payload.tipo}' no válido o inactivo",
+        )
+
+    respuestas_validadas: dict | None = None
+    if tipo_row.form_schema:
         try:
             raw_respuestas = json.loads(respuestas) if respuestas else {}
             if not isinstance(raw_respuestas, dict):
@@ -237,6 +235,11 @@ async def crear_reporte(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=str(exc),
             )
+    elif respuestas:
+        logger.warning(
+            "reportes.respuestas_sin_schema tipo=%s: respuestas descartadas (tipo sin form_schema)",
+            payload.tipo,
+        )
 
     matched_source_app = _resolve_source_app(db, request, payload.source_app)
     if matched_source_app is not None:
@@ -289,6 +292,7 @@ async def crear_reporte(
 
     reporte = Reporte(
         tipo=payload.tipo,
+        tipo_id=tipo_row.id,
         mensaje=scrub_text(payload.mensaje, extra_scrubbers=extra_scrubbers),
         email_contacto=final_email,
         source_app=payload.source_app,

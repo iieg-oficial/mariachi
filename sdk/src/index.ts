@@ -45,6 +45,16 @@ export class Colibri {
         if (!this.fetchImpl) {
             throw new Error("Colibri: fetch global no disponible. Pasa fetchImpl en las opciones (Node < 18).");
         }
+
+        const isAbsolute = /^https?:\/\//i.test(this.baseUrl);
+        const hasBrowserOrigin =
+            typeof location !== "undefined" && typeof location?.origin === "string";
+        if (!isAbsolute && !hasBrowserOrigin) {
+            throw new Error(
+                "Colibri: baseUrl debe ser absoluto (ej. 'https://iieg.jalisco.gob.mx/api/public') " +
+                "en entornos sin navegador (Node, workers). Solo se puede usar una ruta relativa en el browser.",
+            );
+        }
     }
 
     identify(user: IdentifyUser | null): void {

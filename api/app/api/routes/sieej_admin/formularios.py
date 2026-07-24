@@ -8,20 +8,30 @@ from app.api.deps import get_current_user, verify_csrf
 from app.core.database import get_db
 from app.models.sieej.envio import EnvioFormulario
 from app.models.sieej.formulario import FormularioVersion
+from app.models.sieej.periodo import FormularioPeriodo
 from app.models.user import Usuario
-from app.schemas.sieej.envio import EnvioDetalleResponse, EnvioResponse
+from app.schemas.sieej.envio import (
+    EnvioDetalleResponse,
+    EnvioHistorialAdminItem,
+    EnvioResponse,
+)
 from app.schemas.sieej.formulario import (
     FormularioCreate,
     FormularioResponse,
     FormularioUpdate,
     FormularioUpdateResponse,
+    PresenciaEditor,
+    PresenciaIn,
 )
 from app.schemas.sieej.grupo import FormularioAsignacionesUpdate
+from app.services import presence
 from app.services.sieej.formularios_admin_service import FormulariosAdminService
 from app.services.sieej.pdf_service import render_envio_pdf
 from app.services.sieej.xlsx_service import build_envios_csv, build_envios_xlsx
 
 router = APIRouter()
+
+PRESENCE_SCOPE = "sieej_formulario"
 
 
 def _slug_filename(nombre: str) -> str:
@@ -53,6 +63,54 @@ async def crear_formulario(
     current_user: Usuario = Depends(verify_csrf),
 ):
     return FormulariosAdminService(db).crear(data.model_dump(), current_user)
+
+
+@router.get(
+    "/formularios/presencia",
+    response_model=dict[str, list[PresenciaEditor]],
+)
+async def presencia_de_todos_los_formularios(
+    current_user: Usuario = Depends(get_current_user),
+):
+    """Quien esta editando cada formulario, para marcarlo en el listado."""
+    return presence.list_by_resource(PRESENCE_SCOPE, current_user.username)
+
+
+@router.put("/formularios/{formulario_id}/presencia")
+async def registrar_presencia_formulario(
+    formulario_id: int,
+    data: PresenciaIn,
+    current_user: Usuario = Depends(verify_csrf),
+):
+    presence.register(
+        PRESENCE_SCOPE,
+        formulario_id,
+        current_user.username,
+        current_user.name,
+        avatar_url=current_user.avatar_url,
+        seccion=data.seccion,
+    )
+    return {"ok": True}
+
+
+@router.delete("/formularios/{formulario_id}/presencia")
+async def salir_de_formulario(
+    formulario_id: int,
+    current_user: Usuario = Depends(verify_csrf),
+):
+    presence.unregister(PRESENCE_SCOPE, formulario_id, current_user.username)
+    return {"ok": True}
+
+
+@router.get(
+    "/formularios/{formulario_id}/presencia",
+    response_model=list[PresenciaEditor],
+)
+async def obtener_presencia_formulario(
+    formulario_id: int,
+    current_user: Usuario = Depends(get_current_user),
+):
+    return presence.list_others(PRESENCE_SCOPE, formulario_id, current_user.username)
 
 
 @router.get("/formularios/{formulario_id_or_slug}", response_model=FormularioResponse)
@@ -223,6 +281,42 @@ async def descargar_envio_pdf(
     )
 
 
+@router.get(
+    "/formularios/{formulario_id}/envios/{envio_id}/historial",
+    response_model=list[EnvioHistorialAdminItem],
+)
+async def obtener_envio_historial(
+    formulario_id: int,
+    envio_id: int,
+    db: Session = Depends(get_db),
+):
+    service = FormulariosAdminService(db)
+    items = service.listar_historial_envio(formulario_id, envio_id)
+    actor_ids = {h.actor_usuario_id for h in items if h.actor_usuario_id}
+    actores = (
+        {u.id: u for u in db.query(Usuario).filter(Usuario.id.in_(actor_ids)).all()}
+        if actor_ids
+        else {}
+    )
+    return [
+        EnvioHistorialAdminItem.model_validate(h).model_copy(
+            update={
+                "actor_nombre": (
+                    actores[h.actor_usuario_id].name
+                    if h.actor_usuario_id in actores
+                    else None
+                ),
+                "actor_email": (
+                    actores[h.actor_usuario_id].email
+                    if h.actor_usuario_id in actores
+                    else None
+                ),
+            }
+        )
+        for h in items
+    ]
+
+
 @router.get("/formularios/{formulario_id}/exportar-envios")
 async def exportar_envios(
     formulario_id: int,
@@ -268,12 +362,40 @@ async def exportar_envios(
         .order_by(FormularioVersion.version)
         .all()
     ]
+    envio_ids = {e.id for e in envios}
+    hist = FormulariosAdminService(db).historial_de_formulario(formulario_id)
+    hist_actor_ids = {h.actor_usuario_id for h in hist if h.actor_usuario_id}
+    hist_actores = (
+        {u.id: u for u in db.query(Usuario).filter(Usuario.id.in_(hist_actor_ids)).all()}
+        if hist_actor_ids
+        else {}
+    )
+    envio_usuario = {e.id: usuarios.get(e.usuario_id) for e in envios}
+    historial_filas = []
+    for h in hist:
+        if h.envio_id not in envio_ids:
+            continue
+        u_envio = envio_usuario.get(h.envio_id)
+        actor = hist_actores.get(h.actor_usuario_id)
+        historial_filas.append(
+            {
+                "envio_id": h.envio_id,
+                "usuario": u_envio.name if u_envio else "",
+                "version": h.formulario_version,
+                "campo": h.field_label or h.field_path,
+                "valor_anterior": h.valor_anterior,
+                "valor_nuevo": h.valor_nuevo,
+                "actor": actor.name if actor else "",
+                "fecha": h.cambiado_en.strftime("%Y-%m-%d %H:%M") if h.cambiado_en else "",
+            }
+        )
     nombre = _slug_filename(formulario.nombre)
     if formato == "csv":
         contenido, es_zip = build_envios_csv(
             filas,
             definiciones_historicas=historicas,
             definicion_vigente=formulario.definicion,
+            historial=historial_filas,
         )
         filename = f"{nombre}_envios.{'zip' if es_zip else 'csv'}"
         return Response(
@@ -285,6 +407,7 @@ async def exportar_envios(
         filas,
         definiciones_historicas=historicas,
         definicion_vigente=formulario.definicion,
+        historial=historial_filas,
     )
     filename = f"{nombre}_envios.xlsx"
     return Response(
@@ -321,3 +444,92 @@ async def expirar_envios_pendientes(
     from app.services.sieej.envios_service import EnviosService
     afectados = EnviosService(db).expirar_pendientes_bulk()
     return {"expirados": afectados}
+
+
+@router.get("/formularios/{formulario_id}/periodos")
+async def listar_periodos(
+    formulario_id: int,
+    db: Session = Depends(get_db),
+    _user: Usuario = Depends(get_current_user),
+):
+    """Ventanas materializadas de un formulario periodico (recientes primero)."""
+    FormulariosAdminService(db).get(formulario_id)
+    periodos = (
+        db.query(FormularioPeriodo)
+        .filter(FormularioPeriodo.formulario_id == formulario_id)
+        .order_by(FormularioPeriodo.apertura.desc())
+        .all()
+    )
+    return [
+        {
+            "id": p.id,
+            "clave": p.clave,
+            "apertura": p.apertura,
+            "cierre": p.cierre,
+            "estado": p.estado,
+            "notificado_apertura_en": p.notificado_apertura_en,
+            "notificado_faltantes_en": p.notificado_faltantes_en,
+        }
+        for p in periodos
+    ]
+
+
+@router.get("/formularios/{formulario_id}/notificaciones")
+async def listar_notificaciones(
+    formulario_id: int,
+    db: Session = Depends(get_db),
+    _user: Usuario = Depends(get_current_user),
+):
+    """Bitacora de comunicaciones (avisos de apertura y de faltantes)."""
+    from app.services.sieej.notificaciones_service import NotificacionesService
+
+    FormulariosAdminService(db).get(formulario_id)
+    return [
+        {
+            "id": n.id,
+            "tipo": n.tipo,
+            "periodo_clave": (n.payload or {}).get("clave"),
+            "resumen": n.resumen,
+            "payload": n.payload,
+            "destinatarios": n.destinatarios,
+            "enviado_en": n.enviado_en,
+        }
+        for n in NotificacionesService(db).listar(formulario_id)
+    ]
+
+
+@router.get("/formularios/{formulario_id}/notificaciones/exportar")
+async def exportar_notificaciones(
+    formulario_id: int,
+    formato: Literal["xlsx", "csv"] = Query("xlsx"),
+    db: Session = Depends(get_db),
+    _user: Usuario = Depends(get_current_user),
+):
+    """Descarga la bitacora de comunicaciones en CSV o XLSX."""
+    from app.services.sieej.notificaciones_service import NotificacionesService
+
+    formulario = FormulariosAdminService(db).get(formulario_id)
+    contenido, media_type, ext = NotificacionesService(db).exportar(
+        formulario_id, formato
+    )
+    filename = f"{_slug_filename(formulario.nombre)}_comunicaciones.{ext}"
+    return Response(
+        content=contenido,
+        media_type=media_type,
+        headers={"Content-Disposition": _content_disposition(filename)},
+    )
+
+
+@router.post("/sieej/periodos/tick")
+async def periodos_tick(
+    db: Session = Depends(get_db),
+    _csrf: Usuario = Depends(verify_csrf),
+):
+    """Abre/cierra ventanas periodicas, expira envios y dispara avisos.
+
+    Idempotente: lo invoca el cron (`scripts/sieej_periodos_tick.py`) y tambien
+    sirve para dispararlo manualmente desde el admin (util en dev, que no corre
+    el cron)."""
+    from app.services.sieej.periodos_service import PeriodosService
+
+    return PeriodosService(db).tick()

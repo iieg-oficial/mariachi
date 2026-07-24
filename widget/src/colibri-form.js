@@ -1,6 +1,7 @@
 import { LitElement, html, css } from 'lit';
 import { themeCss } from './shared/theme.js';
 import { ColibriFormCore } from './shared/form.js';
+import { DEFAULT_ENDPOINT } from './shared/api.js';
 
 if (!customElements.get('colibri-form-core')) {
     customElements.define('colibri-form-core', ColibriFormCore);
@@ -46,7 +47,7 @@ export class ColibriForm extends LitElement {
         super();
         this.layout = 'card';
         this.width = '100%';
-        this.endpoint = '/api/public/reportes';
+        this.endpoint = DEFAULT_ENDPOINT;
         this.tipoSelector = 'tabs';
     }
 

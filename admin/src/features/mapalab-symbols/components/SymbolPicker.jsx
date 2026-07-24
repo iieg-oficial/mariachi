@@ -4,10 +4,11 @@ import {
     listCategories,
     listSymbols,
 } from '@features/mapalab-symbols/api/symbolsService';
+import CategoryIcon from '@features/mapalab-symbols/components/CategoryIcon';
 import SymbolPreview from '@features/mapalab-symbols/components/SymbolPreview';
 
 
-export default function SymbolPicker({ value, onChange }) {
+export default function SymbolPicker({ value, onChange, hint }) {
     const [categories, setCategories] = useState([]);
     const [loadingCats, setLoadingCats] = useState(true);
     const [activeCategoryId, setActiveCategoryId] = useState(null);
@@ -42,7 +43,15 @@ export default function SymbolPicker({ value, onChange }) {
     }, [activeCategoryId]);
 
     const segmentedOptions = useMemo(
-        () => categories.map((c) => ({ label: `${c.icon || ''} ${c.name}`.trim(), value: c.id })),
+        () => categories.map((c) => ({
+            label: (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    <CategoryIcon icon={c.icon} name={c.name} size={14} fallback="" />
+                    {c.name}
+                </span>
+            ),
+            value: c.id,
+        })),
         [categories],
     );
 
@@ -96,11 +105,17 @@ export default function SymbolPicker({ value, onChange }) {
                     })}
                 </div>
             )}
-            <div style={{ fontSize: 11, color: '#888', marginTop: 4 }}>
-                <Tag color="blue" style={{ fontSize: 10 }}>emoji</Tag>,{' '}
-                <Tag color="green" style={{ fontSize: 10 }}>image</Tag> y{' '}
-                <Tag color="purple" style={{ fontSize: 10 }}>svg</Tag> soportados en SLD.
-            </div>
+            {hint !== null && (
+                <div style={{ fontSize: 11, color: '#888', marginTop: 4 }}>
+                    {hint ?? (
+                        <>
+                            <Tag color="blue" style={{ fontSize: 10 }}>emoji</Tag>,{' '}
+                            <Tag color="green" style={{ fontSize: 10 }}>image</Tag> y{' '}
+                            <Tag color="purple" style={{ fontSize: 10 }}>svg</Tag> soportados en SLD.
+                        </>
+                    )}
+                </div>
+            )}
         </div>
     );
 }

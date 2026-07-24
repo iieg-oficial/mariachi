@@ -173,7 +173,7 @@ def _validar_field_value(
 
     path = f"{parent_path}.{name}"
 
-    if field_type in {"text", "textarea", "email", "tel"}:
+    if field_type in {"text", "textarea"}:
         if not isinstance(value, str):
             errores.append({"path": path, "msg": "debe ser texto"})
             return
@@ -192,12 +192,6 @@ def _validar_field_value(
                     errores.append({"path": path, "msg": "formato invalido"})
             except re.error:
                 errores.append({"path": path, "msg": "patron invalido en definicion"})
-        if field_type == "email" and not re.match(
-            r"^[^@\s]+@[^@\s]+\.[^@\s]+$", value
-        ):
-            errores.append({"path": path, "msg": "email invalido"})
-        if field_type == "tel" and not re.match(r"^[0-9+\-\s()]{7,20}$", value):
-            errores.append({"path": path, "msg": "telefono invalido"})
 
     elif field_type == "number":
         if not isinstance(value, (int, float)):

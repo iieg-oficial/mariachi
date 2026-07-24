@@ -265,6 +265,21 @@ class GeoServerClient:
                     return True
         return False
 
+    def list_workspace_styles(self, workspace: str | None = None) -> list[str]:
+        path = f"workspaces/{workspace}/styles.json" if workspace else "styles.json"
+        url = self._rest_url(path)
+        with self._client() as c:
+            r = c.get(url)
+            if r.status_code == 404:
+                return []
+            r.raise_for_status()
+            data = r.json()
+        node = data.get("styles")
+        if not isinstance(node, dict):
+            return []
+        styles = node.get("style", []) or []
+        return [s["name"] for s in styles if isinstance(s, dict) and s.get("name")]
+
     def list_styles(self, workspace: str, layer: str) -> list[str]:
         url = self._rest_url(f"layers/{workspace}:{layer}/styles.json")
         with self._client() as c:

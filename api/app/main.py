@@ -6,6 +6,7 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from prometheus_fastapi_instrumentator import metrics as fastapi_metrics
 
 from app.api import metrics as metrics_module
+from app.api.colibri_cors import ColibriPublicCORSMiddleware
 from app.api.deps import require_staff
 from app.api.routes import (
     acervo,
@@ -72,6 +73,10 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    # Se agrega despues del CORS global para quedar como middleware mas externo:
+    # intercepta el preflight de los huespedes embebibles (dominios_permitidos)
+    # antes de que el CORS global lo rechace por no estar en la lista fija.
+    app.add_middleware(ColibriPublicCORSMiddleware)
 
     Instrumentator(
         excluded_handlers=["^/metrics$", "^/health$", "^/ontoy$", "^/$"],

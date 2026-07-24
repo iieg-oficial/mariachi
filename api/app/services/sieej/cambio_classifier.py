@@ -26,6 +26,7 @@ _CAMPOS_SIGNIFICATIVOS = (
     "openStart",
     "openEnd",
     "openCatalog",
+    "editableAfterSubmit",
 )
 
 

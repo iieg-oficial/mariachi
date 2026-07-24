@@ -14,6 +14,7 @@ los renderice); sus encabezados llevan el sufijo "(eliminado)".
 from __future__ import annotations
 
 import csv
+import json
 import re
 import zipfile
 from io import BytesIO, StringIO
@@ -33,6 +34,48 @@ ESTADO_LABEL = {
 
 def _cell(field: dict[str, Any], value: Any) -> str:
     return format_value(field, value) or ""
+
+
+def _hist_valor(valor: Any) -> str:
+    """Serializa un valor de historial (JSON arbitrario) para una celda."""
+    if valor is None:
+        return ""
+    if isinstance(valor, (str, int, float, bool)):
+        return str(valor)
+    return json.dumps(valor, ensure_ascii=False)
+
+
+_HISTORIAL_HEADERS = [
+    "Envio ID",
+    "Usuario",
+    "Versión",
+    "Campo",
+    "Valor anterior",
+    "Valor nuevo",
+    "Actor",
+    "Fecha",
+]
+
+
+def _historial_table(historial: list[dict[str, Any]]) -> dict[str, Any]:
+    rows = [
+        [
+            h.get("envio_id"),
+            h.get("usuario") or "",
+            h.get("version") or "",
+            h.get("campo") or "",
+            _hist_valor(h.get("valor_anterior")),
+            _hist_valor(h.get("valor_nuevo")),
+            h.get("actor") or "",
+            h.get("fecha") or "",
+        ]
+        for h in historial
+    ]
+    return {
+        "title": "Historial de cambios",
+        "headers": _HISTORIAL_HEADERS,
+        "rows": rows,
+    }
 
 
 def _form_fields(definiciones: list[dict[str, Any]]) -> list[tuple[dict, dict]]:
@@ -100,6 +143,7 @@ def build_envios_tables(
     *,
     definiciones_historicas: list[dict[str, Any]] | None = None,
     definicion_vigente: dict[str, Any] | None = None,
+    historial: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
     """Construye las tablas del export como `{title, headers, rows}`."""
     definiciones = [e.get("definicion") or {} for e in envios]
@@ -152,6 +196,9 @@ def build_envios_tables(
             {"title": step.get("title") or sid, "headers": rep_headers, "rows": rep_rows}
         )
 
+    if historial:
+        tables.append(_historial_table(historial))
+
     return tables
 
 
@@ -176,11 +223,13 @@ def build_envios_xlsx(
     *,
     definiciones_historicas: list[dict[str, Any]] | None = None,
     definicion_vigente: dict[str, Any] | None = None,
+    historial: list[dict[str, Any]] | None = None,
 ) -> bytes:
     tables = build_envios_tables(
         envios,
         definiciones_historicas=definiciones_historicas,
         definicion_vigente=definicion_vigente,
+        historial=historial,
     )
     wb = Workbook()
     ws = wb.active
@@ -228,13 +277,15 @@ def build_envios_csv(
     *,
     definiciones_historicas: list[dict[str, Any]] | None = None,
     definicion_vigente: dict[str, Any] | None = None,
+    historial: list[dict[str, Any]] | None = None,
 ) -> tuple[bytes, bool]:
     """Devuelve `(contenido, es_zip)`: CSV plano con una sola tabla, ZIP con
-    un CSV por tabla cuando el formulario tiene pasos repeater."""
+    un CSV por tabla cuando el formulario tiene pasos repeater o historial."""
     tables = build_envios_tables(
         envios,
         definiciones_historicas=definiciones_historicas,
         definicion_vigente=definicion_vigente,
+        historial=historial,
     )
     if len(tables) == 1:
         return _csv_bytes(tables[0]["headers"], tables[0]["rows"]), False

@@ -14,27 +14,67 @@ describe('buildSiderItems', () => {
         expect(buildSiderItems({ user: undefined, onNavigate: noop })).toEqual([]);
     });
 
-    it('admin ve Inicio, Usuarios, Huachicol y Acervo como items principales, luego proyectos', () => {
+    it('admin ve Inicio, Usuarios, Acervo y Huachicol como items principales, luego proyectos', () => {
         const items = buildSiderItems({
             user: { role: 'tetlamamakani', projects: [] },
             onNavigate: noop,
         });
         expect(items[0].key).toBe('/inicio');
         expect(items[1].key).toBe('/users');
-        expect(items[2].key).toBe('group-huachicol');
-        expect(items[2].label).toBe('Huachicol');
-        expect(items[2].children.map((c) => c.key)).toEqual(['/huachicol/observabilidad', '/huachicol/telemetria', '/huachicol/actividad']);
-        expect(items[3].key).toBe('group-acervo');
-        expect(items[3].children.map((c) => c.key)).toEqual(['/acervo', '/acervo/buckets']);
+        expect(items[2].key).toBe('group-acervo');
+        expect(items[2].children.map((c) => c.key)).toEqual(['/acervo', '/acervo/buckets']);
+        expect(items[3].key).toBe('group-huachicol');
+        expect(items[3].label).toBe('Huachicol');
+        expect(items[3].children.map((c) => c.key)).toEqual(['/huachicol/observabilidad', '/huachicol/telemetria', '/huachicol/actividad']);
 
         const keys = items.map((i) => i.key);
         expect(keys).not.toContain('platform');
 
         const projectKeys = items.slice(4).map((i) => i.key);
+        expect(projectKeys[0]).toBe('project-sextante');
         expect(projectKeys).toContain('project-mapalab');
         expect(projectKeys).toContain('project-sieej');
         expect(projectKeys).not.toContain('project-portal');
         expect(projectKeys).not.toContain('project-tablerillos');
+    });
+
+    it('Sextante agrupa lo de GeoServer y hereda el acceso del proyecto mapalab', () => {
+        const items = buildSiderItems({
+            user: { role: 'editora', projects: [{ slug: 'mapalab', name: 'MapaLab', project_role: 'editor' }] },
+            onNavigate: noop,
+        });
+        const sextante = items.find((i) => i.key === 'project-sextante');
+        expect(sextante.disabled).toBeFalsy();
+        expect(sextante.children.map((c) => c.key)).toEqual([
+            '/sextante/workspaces',
+            '/sextante/capas',
+            '/sextante/estilos',
+            '/sextante/recursos',
+            '/sextante/simbolos',
+        ]);
+        const byKey = Object.fromEntries(sextante.children.map((c) => [c.key, c]));
+        expect(byKey['/sextante/workspaces'].disabled).toBe(true);
+        expect(byKey['/sextante/simbolos'].disabled).toBe(true);
+        expect(byKey['/sextante/recursos'].disabled).toBeFalsy();
+    });
+
+    it('editora sin membership en mapalab ve Sextante deshabilitado', () => {
+        const items = buildSiderItems({
+            user: { role: 'editora', projects: [] },
+            onNavigate: noop,
+        });
+        expect(items.find((i) => i.key === 'project-sextante').disabled).toBe(true);
+    });
+
+    it('MapaLab ya no lista Símbolos ni Recursos GeoServer', () => {
+        const items = buildSiderItems({
+            user: { role: 'tetlamamakani', projects: [] },
+            onNavigate: noop,
+        });
+        const mapalab = items.find((i) => i.key === 'project-mapalab');
+        const keys = mapalab.children.map((c) => c.key);
+        expect(keys).not.toContain('/mapalab/simbolos');
+        expect(keys).not.toContain('/mapalab/recursos-geoserver');
     });
 
     it('Acervo: admin ve Media y Buckets habilitados', () => {
@@ -184,6 +224,11 @@ describe('defaultOpenKeyForPath', () => {
 
     it('devuelve project-sieej para /sieej/formularios', () => {
         expect(defaultOpenKeyForPath('/sieej/formularios')).toBe('project-sieej');
+    });
+
+    it('devuelve project-sextante para rutas de sextante', () => {
+        expect(defaultOpenKeyForPath('/sextante/estilos')).toBe('project-sextante');
+        expect(defaultOpenKeyForPath('/sextante/simbolos')).toBe('project-sextante');
     });
 
     it('devuelve group-acervo para rutas de acervo', () => {

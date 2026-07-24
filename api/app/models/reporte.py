@@ -9,18 +9,7 @@ class Reporte(Base):
     __tablename__ = "reportes"
 
     id = Column(Integer, primary_key=True, index=True)
-    tipo = Column(
-        Enum(
-            "problema",
-            "solicitud",
-            "sugerencia",
-            "duda",
-            "datos_incorrectos",
-            "bug",
-            name="reporte_tipo",
-        ),
-        nullable=False,
-    )
+    tipo = Column(String(50), nullable=False, index=True)
     tipo_id = Column(
         Integer, ForeignKey("reporte_tipos.id"), nullable=True, index=True
     )

@@ -285,6 +285,116 @@ def test_admin_actualizar_sin_cambiar_definicion_no_bumpea(client, session, admi
     assert r.json()["version"] == 1
 
 
+def test_admin_actualizar_con_timestamp_viejo_da_409(client, session, admin):
+    f = Formulario(
+        slug="conc", nombre="Concurrente", definicion=DEFINICION_OK, estado="activo",
+        version=1, creado_por_id=admin.id,
+    )
+    session.add(f)
+    session.commit()
+    session.refresh(f)
+
+    csrf = login(client, admin.username)
+    r = client.put(
+        f"{ADMIN_PREFIX}/sieej/formularios/{f.id}",
+        headers={"X-CSRF-Token": csrf},
+        json={
+            "nombre": "Pisado",
+            "actualizado_en_esperado": "2020-01-01T00:00:00Z",
+        },
+    )
+    assert r.status_code == 409, r.text
+    assert "Otra persona" in r.json()["detail"]
+    session.refresh(f)
+    assert f.nombre == "Concurrente"
+
+
+def test_admin_actualizar_con_timestamp_vigente_pasa(client, session, admin):
+    f = Formulario(
+        slug="conc-ok", nombre="Vigente", definicion=DEFINICION_OK, estado="activo",
+        version=1, creado_por_id=admin.id,
+    )
+    session.add(f)
+    session.commit()
+    session.refresh(f)
+
+    csrf = login(client, admin.username)
+    actual = client.get(f"{ADMIN_PREFIX}/sieej/formularios/{f.id}").json()
+    r = client.put(
+        f"{ADMIN_PREFIX}/sieej/formularios/{f.id}",
+        headers={"X-CSRF-Token": csrf},
+        json={
+            "nombre": "Vigente 2",
+            "actualizado_en_esperado": actual["actualizado_en"],
+        },
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["nombre"] == "Vigente 2"
+    assert r.json()["actualizado_por"]["id"] == admin.id
+
+
+def test_admin_actualizar_sin_timestamp_no_valida_concurrencia(client, session, admin):
+    f = Formulario(
+        slug="conc-legacy", nombre="Legacy", definicion=DEFINICION_OK, estado="activo",
+        version=1, creado_por_id=admin.id,
+    )
+    session.add(f)
+    session.commit()
+    session.refresh(f)
+
+    csrf = login(client, admin.username)
+    r = client.put(
+        f"{ADMIN_PREFIX}/sieej/formularios/{f.id}",
+        headers={"X-CSRF-Token": csrf},
+        json={"nombre": "Legacy 2"},
+    )
+    assert r.status_code == 200, r.text
+
+
+def _crear_form(session, admin, slug):
+    f = Formulario(
+        slug=slug, nombre=slug, definicion=DEFINICION_OK, estado="activo",
+        version=1, creado_por_id=admin.id,
+    )
+    session.add(f)
+    session.commit()
+    session.refresh(f)
+    return f
+
+
+def test_presencia_put_sin_csrf_da_403(client, session, admin):
+    f = _crear_form(session, admin, "pres-csrf")
+    login(client, admin.username)
+    r = client.put(f"{ADMIN_PREFIX}/sieej/formularios/{f.id}/presencia", json={})
+    assert r.status_code == 403
+
+
+def test_presencia_put_con_csrf_da_200(client, session, admin):
+    f = _crear_form(session, admin, "pres-ok")
+    csrf = login(client, admin.username)
+    r = client.put(
+        f"{ADMIN_PREFIX}/sieej/formularios/{f.id}/presencia",
+        headers={"X-CSRF-Token": csrf},
+        json={"seccion": "definicion"},
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["ok"] is True
+
+
+def test_presencia_degrada_sin_redis(client, session, admin):
+    """Sin Redis (o si se cae), la presencia no debe tumbar el editor con 500;
+    los GET responden vacio. En el runner de tests Redis no esta disponible,
+    asi que este es el camino que se ejercita."""
+    f = _crear_form(session, admin, "pres-degrada")
+    login(client, admin.username)
+    uno = client.get(f"{ADMIN_PREFIX}/sieej/formularios/{f.id}/presencia")
+    assert uno.status_code == 200
+    assert uno.json() == []
+    glob = client.get(f"{ADMIN_PREFIX}/sieej/formularios/presencia")
+    assert glob.status_code == 200
+    assert glob.json() == {}
+
+
 def test_admin_cambio_rompe_archiva_definicion_previa(
     client, session, admin, respondent
 ):

@@ -49,7 +49,12 @@ async def crear_tipo(
             detail=f"Ya existe un tipo con slug '{payload.slug}'",
         )
 
-    tipo = ReporteTipo(**payload.model_dump())
+    data = payload.model_dump()
+    if payload.form_schema is not None:
+        data["form_schema"] = payload.form_schema.model_dump(
+            by_alias=True, exclude_none=True
+        )
+    tipo = ReporteTipo(**data)
     db.add(tipo)
     db.flush()
     registrar_actividad(
@@ -78,6 +83,10 @@ async def actualizar_tipo(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tipo no encontrado")
 
     update_data = payload.model_dump(exclude_unset=True)
+    if "form_schema" in update_data and payload.form_schema is not None:
+        update_data["form_schema"] = payload.form_schema.model_dump(
+            by_alias=True, exclude_none=True
+        )
     for field, value in update_data.items():
         setattr(tipo, field, value)
     tipo.actualizado_en = utcnow()

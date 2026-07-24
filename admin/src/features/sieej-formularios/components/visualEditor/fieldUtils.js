@@ -41,6 +41,7 @@ export const fieldFromFormValues = (values) => {
         label: values.label,
         type: values.type,
         ...(values.required ? { required: true } : {}),
+        ...(values.editableAfterSubmit ? { editableAfterSubmit: true } : {}),
         ...(values.placeholder ? { placeholder: values.placeholder } : {}),
         ...(values.tooltip ? { tooltip: values.tooltip } : {}),
         ...(values.tab ? { tab: values.tab } : {}),
@@ -58,7 +59,7 @@ export const fieldFromFormValues = (values) => {
             && values.openCatalog
             ? { openCatalog: values.openCatalog }
             : {}),
-        layout: { colSpan },
+        layout: { colSpan, ...(values.newRow ? { newRow: true } : {}) },
     };
 };
 
@@ -67,6 +68,7 @@ export const fieldToFormValues = (field) => ({
     label: field?.label ?? '',
     type: field?.type ?? undefined,
     required: !!field?.required,
+    editableAfterSubmit: !!field?.editableAfterSubmit,
     placeholder: field?.placeholder ?? '',
     tooltip: field?.tooltip ?? '',
     tab: field?.tab ?? undefined,
@@ -91,6 +93,7 @@ export const fieldToFormValues = (field) => ({
     openEnd: !!field?.openEnd,
     openCatalog: field?.openCatalog ?? DEFAULT_OPEN_RANGE_CATALOG,
     colSpan: field?.layout?.colSpan ?? 1,
+    newRow: !!field?.layout?.newRow,
 });
 
 export const conditionValueOptions = (source, catalogos = {}) => {
@@ -138,15 +141,21 @@ export const dependentsOf = (fields = [], name) => (
     name ? fields.filter((f) => f.showWhen?.field === name) : []
 );
 
-export const COMMON_TAB = '__common__';
+export const tabOf = (field, tabs = []) => {
+    if (tabs.length === 0) return null;
+    return tabs.some((t) => t.id === field?.tab) ? field.tab : tabs[0].id;
+};
 
-export const tabOf = (field, tabs = []) => (
-    field?.tab && tabs.some((t) => t.id === field.tab) ? field.tab : COMMON_TAB
+export const needsTabNormalization = (fields = [], tabs = []) => (
+    tabs.length > 0 && fields.some((f) => !tabs.some((t) => t.id === f.tab))
 );
 
-export const isOrphanTab = (field, tabs = []) => (
-    !!field?.tab && !tabs.some((t) => t.id === field.tab)
-);
+export const normalizeTabs = (fields = [], tabs = []) => {
+    if (!needsTabNormalization(fields, tabs)) return fields;
+    return fields.map((f) => (
+        tabs.some((t) => t.id === f.tab) ? f : { ...f, tab: tabs[0].id }
+    ));
+};
 
 export const indicesOfTab = (fields = [], tabs = [], tabKey) => fields
     .map((f, i) => (tabOf(f, tabs) === tabKey ? i : -1))
@@ -169,7 +178,7 @@ export const assignColSpan = (fields, index, colSpan) => fields.map((f, i) => (
 export const assignTab = (fields, index, tabId) => fields.map((f, i) => {
     if (i !== index) return f;
     const { tab: _tab, ...rest } = f;
-    return tabId === COMMON_TAB ? rest : { ...rest, tab: tabId };
+    return tabId ? { ...rest, tab: tabId } : rest;
 });
 
 export const renameTabInFields = (fields, oldId, newId) => (
@@ -178,10 +187,10 @@ export const renameTabInFields = (fields, oldId, newId) => (
         : fields.map((f) => (f.tab === oldId ? { ...f, tab: newId } : f))
 );
 
-export const detachFieldsFromTab = (fields, tabId) => fields.map((f) => {
-    if (f.tab !== tabId) return f;
+export const moveFieldsToTab = (fields, fromTabId, toTabId) => fields.map((f) => {
+    if (f.tab !== fromTabId) return f;
     const { tab: _tab, ...rest } = f;
-    return rest;
+    return toTabId ? { ...rest, tab: toTabId } : rest;
 });
 
 export const dropFieldsOfTab = (fields, tabId) => fields.filter((f) => f.tab !== tabId);

@@ -87,7 +87,7 @@ def _bucket_lookup(db: Session, ids: set[int]) -> dict[int, AcervoBucket]:
 async def listar_reportes(
     db: Session = Depends(get_db),
     source_app: str | None = Query(default=None),
-    tipo: Literal["problema", "solicitud", "sugerencia", "duda", "datos_incorrectos", "bug"] | None = Query(default=None),
+    tipo: str | None = Query(default=None, max_length=50),
     estado: Literal["nuevo", "en_revision", "resuelto", "descartado"] | None = Query(default=None),
     q: str | None = Query(default=None, max_length=200),
     page: int = Query(default=1, ge=1),

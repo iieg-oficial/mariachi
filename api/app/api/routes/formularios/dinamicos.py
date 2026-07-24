@@ -16,6 +16,8 @@ from app.core.time import utcnow
 from app.models.user import Usuario
 from app.schemas.sieej.envio import (
     CambioRef,
+    EnvioActualizarCampos,
+    EnvioHistorialItem,
     EnvioResponse,
     EnvioUpdate,
     EnvioUploadResponse,
@@ -143,6 +145,39 @@ async def descargar_mi_envio_pdf(
     )
 
 
+@router.put(
+    "/mis-envios/{envio_id}/actualizar-campos", response_model=EnvioResponse
+)
+async def actualizar_campos_mi_envio(
+    envio_id: int,
+    body: EnvioActualizarCampos,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(verify_csrf),
+):
+    """Actualizacion ligera de un envio ya enviado.
+
+    Edita solo los campos marcados `editableAfterSubmit` en el snapshot del
+    envio, sin reabrirlo (el estado sigue en `enviado`). Cada cambio de valor
+    queda en el historial de auditoria del envio.
+    """
+    service = EnviosService(db)
+    envio = service.actualizar_campos(current_user, envio_id, body.campos)
+    return _envio_response(envio.formulario, envio)
+
+
+@router.get(
+    "/mis-envios/{envio_id}/historial",
+    response_model=list[EnvioHistorialItem],
+)
+async def obtener_mi_envio_historial(
+    envio_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    """Historial de cambios de valor de un envio del usuario autenticado."""
+    return EnviosService(db).listar_historial_mi_envio(current_user, envio_id)
+
+
 @router.get("/{slug}", response_model=FormularioDetalle)
 async def obtener_formulario(
     slug: str,
@@ -156,6 +191,19 @@ async def obtener_formulario(
             detail="Formulario no encontrado o no asignado",
         )
     envio = EnviosService(db).get_o_iniciar(formulario, current_user, crear_si_falta=False)
+    periodico = bool(formulario.periodicidad)
+    abierto = True
+    ventana_apertura = ventana_cierre = proxima_apertura = None
+    if periodico:
+        from app.core.time import utcnow
+        from app.services.sieej.periodos_service import periodo_relevante
+
+        ahora = utcnow()
+        _clave, ventana_apertura, ventana_cierre = periodo_relevante(
+            formulario.periodicidad, ahora
+        )
+        abierto = ventana_apertura <= ahora < ventana_cierre
+        proxima_apertura = None if abierto else ventana_apertura
     return FormularioDetalle(
         id=formulario.id,
         slug=formulario.slug,
@@ -167,6 +215,11 @@ async def obtener_formulario(
         version=formulario.version,
         definicion=envio.definicion_snapshot if envio else formulario.definicion,
         envio=_envio_response(formulario, envio),
+        periodico=periodico,
+        abierto=abierto,
+        ventana_apertura=ventana_apertura,
+        ventana_cierre=ventana_cierre,
+        proxima_apertura=proxima_apertura,
     )
 
 

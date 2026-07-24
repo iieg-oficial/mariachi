@@ -39,7 +39,7 @@ const { Title, Text } = Typography;
 
 export default function ReportesListPage() {
     const { isMobile } = useIsMobile();
-    const [sourceApp, setSourceApp] = useState('mapalab');
+    const [sourceApp, setSourceApp] = useState('');
     const [tipo, setTipo] = useState();
     const [estado, setEstado] = useState();
     const [q, setQ] = useState('');
@@ -51,7 +51,7 @@ export default function ReportesListPage() {
     const [gruposLoading, setGruposLoading] = useState(false);
 
     const { data, loading, error, reload, setParams } = useReportesList({
-        source_app: sourceApp,
+        source_app: sourceApp || undefined,
         page: 1,
         size: 20,
     });
@@ -62,7 +62,7 @@ export default function ReportesListPage() {
         if (view !== 'grouped') return;
         let cancelled = false;
         setGruposLoading(true);
-        listReportesGrupos({ source_app: sourceApp, page: 1, size: 20 })
+        listReportesGrupos({ source_app: sourceApp || undefined, page: 1, size: 20 })
             .then((res) => { if (!cancelled) setGrupos(res); })
             .catch(() => { if (!cancelled) setGrupos({ items: [], total: 0, page: 1, size: 20 }); })
             .finally(() => { if (!cancelled) setGruposLoading(false); });
@@ -79,7 +79,7 @@ export default function ReportesListPage() {
 
     const applyFilters = (next = {}) => {
         const merged = {
-            source_app: sourceApp,
+            source_app: sourceApp || undefined,
             tipo,
             estado,
             q: q || undefined,
@@ -87,6 +87,7 @@ export default function ReportesListPage() {
             size: 20,
             ...next,
         };
+        if (!merged.source_app) merged.source_app = undefined;
         setParams(merged);
         setPage(merged.page);
     };
@@ -114,28 +115,39 @@ export default function ReportesListPage() {
         tipoColors: TIPO_COLORS,
     });
 
-    const tabItems = SOURCE_APPS.map((app) => ({
-        key: app.value,
-        label: (
-            <span>
-                {app.label}
-                {tabBadge[app.value] > 0 && (
-                    <span
-                        style={{
-                            marginLeft: 6,
-                            background: '#ff4d4f',
-                            color: '#fff',
-                            borderRadius: 10,
-                            padding: '0 6px',
-                            fontSize: 11,
-                        }}
-                    >
-                        {tabBadge[app.value]}
-                    </span>
-                )}
-            </span>
-        ),
-    }));
+    const sourceAppLabels = SOURCE_APPS.reduce(
+        (acc, app) => ({ ...acc, [app.value]: app.label }),
+        {},
+    );
+    const sourceAppKeys = useMemo(() => {
+        const keys = new Set(SOURCE_APPS.map((app) => app.value));
+        Object.keys(contadores || {}).forEach((slug) => keys.add(slug));
+        return [...keys];
+    }, [contadores]);
+    const totalNuevos = Object.values(tabBadge).reduce((sum, n) => sum + n, 0);
+
+    const renderBadge = (n) => (n > 0 ? (
+        <span
+            style={{
+                marginLeft: 6,
+                background: '#ff4d4f',
+                color: '#fff',
+                borderRadius: 10,
+                padding: '0 6px',
+                fontSize: 11,
+            }}
+        >
+            {n}
+        </span>
+    ) : null);
+
+    const tabItems = [
+        { key: '', label: <span>Todos{renderBadge(totalNuevos)}</span> },
+        ...sourceAppKeys.map((slug) => ({
+            key: slug,
+            label: <span>{sourceAppLabels[slug] || slug}{renderBadge(tabBadge[slug] || 0)}</span>,
+        })),
+    ];
 
     return (
         <Content style={{ padding: isMobile ? 12 : 24, maxWidth: 1280, margin: '0 auto', width: '100%' }}>

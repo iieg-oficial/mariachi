@@ -104,6 +104,7 @@ Lineas activas por modulo abajo. Roadmap a v1.0 sigue al final.
 - [x] **must_change_password UX v0.48.1**: ya estaba implementado en `/IIEG/sieej/frontend/` (ChangePassword.jsx + ProtectedRoute guard + AuthContext redirect post-login). Investigado durante auditoria
 - [x] **Soft-delete de envios v0.48.1**: `DELETE /formularios/mis-envios/{id}` (respondent), `eliminado_en` poblado, admin sigue viendo el envio
 - [x] **Script CLI de auto-expiracion v0.48.1**: `api/scripts/expire_sieej_envios.py` para cron del host
+- [x] **Absorción de `tel`/`email` en `text` + catálogo de regex v1.79.0**: se eliminaron los tipos de campo `email` y `tel`; el constructor visual ofrece un input único (`AutoComplete`) para elegir un regex común (correo, teléfono, CURP, RFC, código postal, CLABE, etc.) o escribir uno propio, guardado en `validation.pattern`. Migración `a5b6c7d8e9f1` reescribe los `email`/`tel` existentes a `text`+`pattern` en `definicion`, `definicion_snapshot` y `formulario_version`
 
 ---
 

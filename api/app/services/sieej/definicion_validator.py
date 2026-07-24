@@ -23,8 +23,6 @@ FIELD_TYPES = {
     "text",
     "textarea",
     "number",
-    "email",
-    "tel",
     "date",
     "date_range",
     "select",
@@ -204,6 +202,11 @@ def _validate_layout(field: dict[str, Any], step_id: str, name: str) -> None:
         raise DefinicionInvalidaError(
             f"Step `{step_id}` field `{name}`: `layout.colSpan` debe ser 1, 2 o 3."
         )
+    new_row = layout.get("newRow")
+    if new_row is not None and not isinstance(new_row, bool):
+        raise DefinicionInvalidaError(
+            f"Step `{step_id}` field `{name}`: `layout.newRow` debe ser booleano."
+        )
 
 
 def _validar_date_range_config(field: dict[str, Any], step_id: str, name: str) -> None:
@@ -254,15 +257,15 @@ def _validar_field(
             f"Step `{step_id}` field `{name}`: type debe ser uno de {sorted(FIELD_TYPES)}."
         )
 
-    if field_type == "info":
-        _validate_layout(field, step_id, name)
-        return
-
     label = field.get("label")
     if not isinstance(label, str) or not label:
         raise DefinicionInvalidaError(
             f"Step `{step_id}` field `{name}`: `label` requerido."
         )
+
+    if field_type == "info":
+        _validate_layout(field, step_id, name)
+        return
 
     if field_type in {"select", "select_multiple", "radio", "checkbox"}:
         has_options = isinstance(field.get("options"), list) and field["options"]
@@ -329,7 +332,7 @@ def _validar_field(
                     f"Step `{step_id}` field `{name}`: `validation.{key}` debe ser numerico."
                 )
 
-    if field_type in {"text", "textarea", "email", "tel"}:
+    if field_type in {"text", "textarea"}:
         validation = field.get("validation") or {}
         for key in ("minLength", "maxLength"):
             if key in validation and (
@@ -361,7 +364,12 @@ def _validar_field(
     if step_type == "repeater" and isinstance(step_tabs, list) and step_tabs:
         tab_ref = field.get("tab")
         valid_tab_ids = {t.get("id") for t in step_tabs if isinstance(t, dict)}
-        if tab_ref is not None and tab_ref not in valid_tab_ids:
+        if tab_ref is None:
+            raise DefinicionInvalidaError(
+                f"Step `{step_id}` field `{name}`: falta `tab`. En un paso con "
+                "pestanas cada campo pertenece a exactamente una."
+            )
+        if tab_ref not in valid_tab_ids:
             raise DefinicionInvalidaError(
                 f"Step `{step_id}` field `{name}`: `tab` `{tab_ref}` no existe en el step."
             )

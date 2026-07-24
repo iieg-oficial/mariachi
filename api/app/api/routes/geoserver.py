@@ -207,6 +207,33 @@ async def register_workspace(
     return workspace
 
 
+@router.get('/workspaces/{alias}/styles')
+async def list_workspace_styles(
+    alias: str,
+    include_global: bool = Query(default=False),
+    db: Session = Depends(get_dataengine_db),
+    current_user: Usuario = Depends(_require_project_editor),
+    _rl: Usuario = Depends(_read_rate_limit),
+):
+    incr(COUNTER_GEOSERVER_CALLS)
+    ws = _resolve_workspace(db, alias)
+    client = GeoServerClient()
+    try:
+        own = client.list_workspace_styles(ws.geoserver_workspace)
+        globals_ = client.list_workspace_styles(None) if include_global else []
+    except GeoServerError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+
+    own_names = set(own)
+    styles = [{'name': name, 'isGlobal': False} for name in sorted(own)]
+    styles.extend(
+        {'name': name, 'isGlobal': True}
+        for name in sorted(globals_)
+        if name not in own_names
+    )
+    return {'workspace': alias, 'styles': styles}
+
+
 @router.get('/workspaces/{alias}/layers/{layer}/fields')
 async def list_fields(
     alias: str,

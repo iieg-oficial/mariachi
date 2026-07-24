@@ -2,10 +2,12 @@ import {
     ApartmentOutlined,
     AppstoreOutlined,
     AuditOutlined,
+    BgColorsOutlined,
     BookOutlined,
     BranchesOutlined,
     CalendarOutlined,
-    CodeOutlined,
+    CompassOutlined,
+    DeploymentUnitOutlined,
     EnvironmentOutlined,
     FileTextOutlined,
     FormOutlined,
@@ -16,6 +18,7 @@ import {
     PartitionOutlined,
     PieChartOutlined,
     ProjectOutlined,
+    TableOutlined,
     TagsOutlined,
     TeamOutlined,
     UnorderedListOutlined,
@@ -23,6 +26,25 @@ import {
 import ColibriIcon from '@shared/components/ColibriIcon';
 
 export const PROJECT_REGISTRY = {
+    sextante: {
+        label: 'Sextante',
+        icon: <CompassOutlined />,
+        accessSlug: 'mapalab',
+        showBetaBadge: true,
+        items: [
+            {
+                key: '/sextante/workspaces', path: '/sextante/workspaces', label: 'Workspaces',
+                icon: <DeploymentUnitOutlined />, allowedGlobalRoles: ['tetlamamakani'],
+            },
+            { key: '/sextante/capas', path: '/sextante/capas', label: 'Explorador de capas', icon: <TableOutlined /> },
+            { key: '/sextante/estilos', path: '/sextante/estilos', label: 'Estilos', icon: <BgColorsOutlined /> },
+            { key: '/sextante/recursos', path: '/sextante/recursos', label: 'Recursos', icon: <FileTextOutlined /> },
+            {
+                key: '/sextante/simbolos', path: '/sextante/simbolos', label: 'Símbolos',
+                icon: <AppstoreOutlined />, allowedGlobalRoles: ['tetlamamakani'],
+            },
+        ],
+    },
     mapalab: {
         label: 'MapaLab',
         icon: <EnvironmentOutlined />,
@@ -33,20 +55,12 @@ export const PROJECT_REGISTRY = {
                 label: 'Ingesta masiva', icon: <InboxOutlined />, showBetaBadge: true,
             },
             {
-                key: '/mapalab/catalogo', path: '/mapalab/catalogo', label: 'Catálogo',
+                key: '/mapalab/catalogo', path: '/mapalab/catalogo', label: 'Capas catálogo',
                 icon: <UnorderedListOutlined />, showBetaBadge: true,
             },
             { key: '/mapalab/initial-order', path: '/mapalab/initial-order', label: 'Capas iniciales', icon: <OrderedListOutlined /> },
             { key: '/mapalab/eventos', path: '/mapalab/eventos', label: 'Eventos', icon: <CalendarOutlined /> },
             { key: '/mapalab/home', path: '/mapalab/home', label: 'Inicio', icon: <HomeOutlined /> },
-            {
-                key: '/mapalab/simbolos', path: '/mapalab/simbolos', label: 'Símbolos',
-                icon: <AppstoreOutlined />, allowedGlobalRoles: ['tetlamamakani'], showBetaBadge: true,
-            },
-            {
-                key: '/mapalab/recursos-geoserver', path: '/mapalab/recursos-geoserver', label: 'Recursos GeoServer',
-                icon: <FileTextOutlined />, showBetaBadge: true,
-            },
             {
                 key: '/mapalab/api-keys', path: '/mapalab/api-keys', label: 'API Keys',
                 icon: <KeyOutlined />, allowedGlobalRoles: ['tetlamamakani'], showBetaBadge: true,
@@ -89,10 +103,6 @@ export const PROJECT_REGISTRY = {
             {
                 key: '/colibri/routes', path: '/colibri/routes', label: 'Routes',
                 icon: <BranchesOutlined />, allowedGlobalRoles: ['tetlamamakani'],
-            },
-            {
-                key: '/colibri/integracion', path: '/colibri/integracion', label: 'Integración',
-                icon: <CodeOutlined />, allowedGlobalRoles: ['tetlamamakani'],
             },
         ],
     },

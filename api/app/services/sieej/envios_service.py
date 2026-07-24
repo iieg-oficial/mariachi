@@ -7,6 +7,7 @@ Cambios futuros del formulario no afectan envios existentes.
 """
 from __future__ import annotations
 
+import copy
 import json
 import uuid
 from typing import Any
@@ -14,6 +15,7 @@ from typing import Any
 from fastapi import HTTPException, UploadFile, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified
 
 from app.api.metrics import (
     COUNTER_SIEEJ_ENVIO_EXPIRED,
@@ -27,7 +29,9 @@ from app.models.sieej import (
     EnvioArchivo,
     EnvioEvento,
     EnvioFormulario,
+    EnvioValorHistorial,
     Formulario,
+    FormularioPeriodo,
 )
 from app.models.user import Usuario
 from app.services.acervo import AcervoClient
@@ -70,6 +74,13 @@ class EnviosService:
         if formulario.estado != "activo":
             return False
         ahora = utcnow()
+        if formulario.periodicidad:
+            # Formulario periodico: acepta cambios solo dentro de la ventana del
+            # periodo abierto. La ventana se computa de la config (no depende de
+            # que el cron ya haya materializado/abierto la fila del periodo).
+            from app.services.sieej.periodos_service import ventana_abierta
+
+            return ventana_abierta(formulario.periodicidad, ahora) is not None
         vigencia_inicio = to_naive_utc(formulario.vigencia_inicio)
         vigencia_fin = to_naive_utc(formulario.vigencia_fin)
         if vigencia_inicio and vigencia_inicio > ahora:
@@ -93,6 +104,31 @@ class EnviosService:
         """
         if envio.estado != "en_proceso":
             return False
+        limite = self._limite_expiracion(envio, formulario)
+        if limite is None:
+            return False
+        ahora = utcnow()
+        if to_naive_utc(limite) >= ahora:
+            return False
+        _marcar_expirado(envio, self.db, ahora)
+        if commit:
+            self.db.commit()
+            self.db.refresh(envio)
+        return True
+
+    def _limite_expiracion(
+        self, envio: EnvioFormulario, formulario: Formulario | None = None
+    ):
+        """Fecha tras la cual un envio `en_proceso` expira: el `cierre` de su
+        periodo (envios periodicos) o la `vigencia_fin` del formulario (envios
+        no periodicos). None si no hay limite aplicable."""
+        if envio.periodo_id is not None:
+            periodo = (
+                self.db.query(FormularioPeriodo)
+                .filter(FormularioPeriodo.id == envio.periodo_id)
+                .first()
+            )
+            return periodo.cierre if periodo is not None else None
         if formulario is None:
             formulario = (
                 self.db.query(Formulario)
@@ -100,17 +136,8 @@ class EnviosService:
                 .first()
             )
         if formulario is None:
-            return False
-        if formulario.vigencia_fin is None:
-            return False
-        ahora = utcnow()
-        if to_naive_utc(formulario.vigencia_fin) >= ahora:
-            return False
-        _marcar_expirado(envio, self.db, ahora)
-        if commit:
-            self.db.commit()
-            self.db.refresh(envio)
-        return True
+            return None
+        return formulario.vigencia_fin
 
     def expirar_pendientes_bulk(self) -> int:
         """Marca como expirado todo `en_proceso` cuyo formulario paso vigencia.
@@ -119,22 +146,58 @@ class EnviosService:
         numero de envios afectados.
         """
         ahora = utcnow()
-        pendientes = (
+        no_periodicos = (
             self.db.query(EnvioFormulario)
             .join(Formulario, Formulario.id == EnvioFormulario.formulario_id)
             .filter(
                 EnvioFormulario.estado == "en_proceso",
+                EnvioFormulario.periodo_id.is_(None),
                 Formulario.vigencia_fin.isnot(None),
                 Formulario.vigencia_fin < ahora,
             )
             .all()
         )
+        periodicos = (
+            self.db.query(EnvioFormulario)
+            .join(
+                FormularioPeriodo,
+                FormularioPeriodo.id == EnvioFormulario.periodo_id,
+            )
+            .filter(
+                EnvioFormulario.estado == "en_proceso",
+                FormularioPeriodo.cierre < ahora,
+            )
+            .all()
+        )
+        pendientes = no_periodicos + periodicos
         for envio in pendientes:
             _marcar_expirado(envio, self.db, ahora)
         if pendientes:
             self.db.commit()
             incr(COUNTER_SIEEJ_ENVIO_EXPIRED, len(pendientes))
         return len(pendientes)
+
+    def _buscar_envio(
+        self,
+        formulario: Formulario,
+        user: Usuario,
+        periodo: FormularioPeriodo | None,
+    ) -> EnvioFormulario | None:
+        """Busca el envio del usuario para el periodo indicado.
+
+        En formularios periodicos el envio se identifica por
+        `(formulario, usuario, periodo)`; si no hay ventana abierta (`periodo`
+        None) no existe un envio del periodo actual. En no periodicos es el
+        unico envio por `(formulario, usuario)`."""
+        query = self.db.query(EnvioFormulario).filter(
+            EnvioFormulario.formulario_id == formulario.id,
+            EnvioFormulario.usuario_id == user.id,
+        )
+        if formulario.periodicidad:
+            if periodo is None:
+                return None
+            query = query.filter(EnvioFormulario.periodo_id == periodo.id)
+        return query.first()
 
     def get_o_iniciar(
         self,
@@ -143,14 +206,15 @@ class EnviosService:
         *,
         crear_si_falta: bool = True,
     ) -> EnvioFormulario | None:
-        envio = (
-            self.db.query(EnvioFormulario)
-            .filter(
-                EnvioFormulario.formulario_id == formulario.id,
-                EnvioFormulario.usuario_id == user.id,
+        periodo: FormularioPeriodo | None = None
+        if formulario.periodicidad:
+            from app.services.sieej.periodos_service import PeriodosService
+
+            periodo = PeriodosService(self.db).resolver_periodo_abierto(
+                formulario
             )
-            .first()
-        )
+
+        envio = self._buscar_envio(formulario, user, periodo)
         if envio is not None:
             return envio
         if not crear_si_falta:
@@ -167,6 +231,7 @@ class EnviosService:
                 formulario_version=formulario.version,
                 definicion_snapshot=formulario.definicion,
                 usuario_id=user.id,
+                periodo_id=periodo.id if periodo is not None else None,
                 estado="en_proceso",
                 datos={},
                 paso_actual=0,
@@ -179,17 +244,11 @@ class EnviosService:
             return envio
         except IntegrityError:
             # Race: dos requests del mismo usuario llegaron concurrentes y otro
-            # gano la insercion. La constraint UNIQUE
-            # (formulario_id, usuario_id) bloqueo este. Devolvemos el ya creado.
+            # gano la insercion. El indice unico parcial
+            # (formulario, usuario, periodo) bloqueo este. Devolvemos el ya
+            # creado para el mismo periodo.
             self.db.rollback()
-            existing = (
-                self.db.query(EnvioFormulario)
-                .filter(
-                    EnvioFormulario.formulario_id == formulario.id,
-                    EnvioFormulario.usuario_id == user.id,
-                )
-                .first()
-            )
+            existing = self._buscar_envio(formulario, user, periodo)
             if existing is None:
                 raise
             return existing
@@ -250,6 +309,128 @@ class EnviosService:
             self._descartar_cambios_vistos(envio, cambios_vistos)
             self._registrar_evento(envio, "guardado", actor=user)
         envio.actualizado_en = utcnow()
+        self.db.commit()
+        self.db.refresh(envio)
+        incr(COUNTER_SIEEJ_ENVIO_WRITES)
+        return envio
+
+    def actualizar_campos(
+        self,
+        user: Usuario,
+        envio_id: int,
+        campos: dict[str, Any],
+    ) -> EnvioFormulario:
+        """Actualizacion ligera de un envio `enviado`.
+
+        Edita solo los campos marcados `editableAfterSubmit` en el snapshot del
+        envio, sin reabrirlo ni cambiar su estado. Cada campo cuyo valor cambie
+        genera una fila en `EnvioValorHistorial` (append-only) para el reporte
+        de auditoria. El merge sobre `datos` es parcial (no reemplaza el resto).
+
+        Se identifica por `envio_id` (no por formulario+usuario) para no
+        ambiguar en formularios periodicos, donde un usuario tiene un envio por
+        periodo.
+        """
+        envio = (
+            self.db.query(EnvioFormulario)
+            .filter(EnvioFormulario.id == envio_id)
+            .with_for_update()
+            .first()
+        )
+        if envio is None or envio.eliminado_en is not None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Envio no encontrado",
+            )
+        if envio.usuario_id != user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Este envio no te pertenece",
+            )
+        formulario = (
+            self.db.query(Formulario)
+            .filter(Formulario.id == envio.formulario_id)
+            .first()
+        )
+        if formulario is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Formulario no encontrado",
+            )
+        if envio.estado != "enviado":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Solo un envio enviado puede actualizarse por campos",
+            )
+        if not self._formulario_acepta_cambios(formulario):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=_FORMULARIO_NO_ACEPTA_DETAIL,
+            )
+
+        permitidos = self.editable_field_paths(envio.definicion_snapshot or {})
+        errores = [
+            {"field_path": fp, "error": "campo no editable"}
+            for fp in campos
+            if fp not in permitidos
+        ]
+        if errores:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={"errores": errores},
+            )
+
+        nuevos = copy.deepcopy(envio.datos or {})
+        cambios: list[tuple[str, Any, Any]] = []
+        for field_path, valor_nuevo in campos.items():
+            valor_anterior = self._get_valor_en_datos(nuevos, field_path)
+            if valor_anterior == valor_nuevo:
+                continue
+            self._set_valor_en_datos(nuevos, field_path, valor_nuevo)
+            cambios.append((field_path, valor_anterior, valor_nuevo))
+
+        if not cambios:
+            return envio
+
+        payload_bytes = len(json.dumps(nuevos, default=str).encode("utf-8"))
+        if payload_bytes > DATOS_MAX_BYTES:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                detail=(
+                    f"`datos` excede el limite de "
+                    f"{DATOS_MAX_BYTES // (1024 * 1024)} MB"
+                ),
+            )
+        try:
+            validar_datos(envio.definicion_snapshot, nuevos, estricto=False)
+        except DatosInvalidosError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={"errores": exc.errores},
+            ) from exc
+
+        for field_path, valor_anterior, valor_nuevo in cambios:
+            self.db.add(
+                EnvioValorHistorial(
+                    envio_id=envio.id,
+                    field_path=field_path,
+                    field_label=permitidos.get(field_path),
+                    valor_anterior=valor_anterior,
+                    valor_nuevo=valor_nuevo,
+                    formulario_version=envio.formulario_version,
+                    actor_usuario_id=user.id,
+                )
+            )
+
+        envio.datos = nuevos
+        flag_modified(envio, "datos")
+        envio.actualizado_en = utcnow()
+        self._registrar_evento(
+            envio,
+            "actualizado",
+            actor=user,
+            payload={"campos": [c[0] for c in cambios], "n": len(cambios)},
+        )
         self.db.commit()
         self.db.refresh(envio)
         incr(COUNTER_SIEEJ_ENVIO_WRITES)
@@ -407,6 +588,62 @@ class EnviosService:
                 return None
             return step_id, idx, field_name
         return step_part, None, field_name
+
+    @staticmethod
+    def editable_field_paths(definicion: dict[str, Any]) -> dict[str, str]:
+        """Mapa `step_id.field_name` -> label de los campos editables tras enviar.
+
+        Solo campos de pasos tipo `form` marcados `editableAfterSubmit`. Se
+        excluyen repeaters (path por indice) y `file`/`info` (los archivos se
+        editan por el endpoint de upload; `info` no captura valor).
+        """
+        editables: dict[str, str] = {}
+        for step in (definicion or {}).get("steps", []) or []:
+            if step.get("type") in ("summary", "repeater"):
+                continue
+            step_id = step.get("id")
+            for field in step.get("fields", []) or []:
+                if field.get("type") in ("info", "file"):
+                    continue
+                if not field.get("editableAfterSubmit"):
+                    continue
+                name = field.get("name")
+                editables[f"{step_id}.{name}"] = field.get("label") or name
+        return editables
+
+    @staticmethod
+    def _get_valor_en_datos(datos: dict[str, Any], field_path: str) -> Any:
+        """Lee datos[step][field] para un path `step.field` (no repeater)."""
+        parsed = EnviosService._parse_field_path(field_path)
+        if parsed is None:
+            return None
+        step_id, idx, field_name = parsed
+        if idx is not None:
+            return None
+        step_data = datos.get(step_id)
+        if not isinstance(step_data, dict):
+            return None
+        return step_data.get(field_name)
+
+    @staticmethod
+    def _set_valor_en_datos(
+        datos: dict[str, Any], field_path: str, valor: Any
+    ) -> dict[str, Any]:
+        """Escribe datos[step][field] = valor (path `step.field`, no repeater).
+
+        Crea el dict del step si no existe. Devuelve el mismo dict modificado.
+        """
+        parsed = EnviosService._parse_field_path(field_path)
+        if parsed is None:
+            return datos
+        step_id, idx, field_name = parsed
+        if idx is not None:
+            return datos
+        step_data = datos.setdefault(step_id, {})
+        if not isinstance(step_data, dict):
+            return datos
+        step_data[field_name] = valor
+        return datos
 
     @staticmethod
     def _set_archivo_en_datos(
@@ -641,6 +878,21 @@ class EnviosService:
             )
         self._expirar_si_corresponde(envio)
         return envio
+
+    def listar_historial_mi_envio(
+        self, user: Usuario, envio_id: int
+    ) -> list[EnvioValorHistorial]:
+        """Historial de cambios de valor de un envio propio (orden cronologico).
+
+        Reutiliza `obtener_mi_envio_detalle` para checar propiedad/404/403.
+        """
+        self.obtener_mi_envio_detalle(user, envio_id)
+        return (
+            self.db.query(EnvioValorHistorial)
+            .filter(EnvioValorHistorial.envio_id == envio_id)
+            .order_by(EnvioValorHistorial.cambiado_en)
+            .all()
+        )
 
     def eliminar_mi_envio(self, user: Usuario, envio_id: int) -> None:
         """Soft-delete: marca el envio como eliminado para el respondent.

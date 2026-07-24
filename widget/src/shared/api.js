@@ -1,3 +1,21 @@
+function _resolveApiOrigin() {
+    try {
+        if (typeof document === 'undefined') return '';
+        const current = document.currentScript && document.currentScript.src;
+        if (current) return new URL(current).origin;
+        const scripts = document.querySelectorAll('script[src]');
+        for (const s of scripts) {
+            if (s.src && /colibri-widget/.test(s.src)) return new URL(s.src).origin;
+        }
+    } catch {
+        /* ignore */
+    }
+    return '';
+}
+
+export const API_ORIGIN = _resolveApiOrigin();
+export const DEFAULT_ENDPOINT = `${API_ORIGIN}/api/public/reportes`;
+
 const _tiposCache = new Map();
 
 export async function fetchTipos(endpointBase) {

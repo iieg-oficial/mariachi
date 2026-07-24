@@ -19,18 +19,14 @@ _last_call_at = 0.0
 _pending_timer: threading.Timer | None = None
 
 
-def _do_notify() -> None:
-    global _pending_timer, _last_call_at
-    with _lock:
-        _pending_timer = None
-        _last_call_at = time.monotonic()
-
+def _post_con_reintentos(path: str, stale_msg: str, contar: bool = True) -> None:
     settings = get_settings()
     if not settings.mapalab_backend_url:
         return
 
-    incr(COUNTER_TREE_NOTIFY)
-    url = settings.mapalab_backend_url.rstrip('/') + '/layers/refresh-cache'
+    if contar:
+        incr(COUNTER_TREE_NOTIFY)
+    url = settings.mapalab_backend_url.rstrip('/') + path
     headers = {}
     if settings.mapalab_internal_token:
         headers['X-Internal-Token'] = settings.mapalab_internal_token
@@ -45,16 +41,38 @@ def _do_notify() -> None:
             if attempt < _MAX_ATTEMPTS:
                 delay = _BACKOFF_BASE_SECONDS * (2 ** (attempt - 1))
                 logger.warning(
-                    'mapalab refresh-cache intento %d/%d fallo (%s): %s; reintenta en %.1fs',
-                    attempt, _MAX_ATTEMPTS, url, exc, delay,
+                    'mapalab %s intento %d/%d fallo (%s): %s; reintenta en %.1fs',
+                    path, attempt, _MAX_ATTEMPTS, url, exc, delay,
                 )
                 time.sleep(delay)
             else:
-                incr(COUNTER_TREE_NOTIFY_FAILED)
+                if contar:
+                    incr(COUNTER_TREE_NOTIFY_FAILED)
                 logger.error(
-                    'mapalab refresh-cache fallo tras %d intentos (%s): %s - tree queda stale hasta cron 04:00 UTC',
-                    _MAX_ATTEMPTS, url, exc,
+                    'mapalab %s fallo tras %d intentos (%s): %s - %s',
+                    path, _MAX_ATTEMPTS, url, exc, stale_msg,
                 )
+
+
+def _do_notify() -> None:
+    global _pending_timer, _last_call_at
+    with _lock:
+        _pending_timer = None
+        _last_call_at = time.monotonic()
+
+    _post_con_reintentos(
+        '/layers/refresh-cache',
+        'tree queda stale hasta cron 04:00 UTC',
+    )
+
+
+def notify_catalogo_changed() -> None:
+    threading.Thread(
+        target=_post_con_reintentos,
+        args=('/catalogo/invalidate-cache', 'el catalogo queda stale hasta 5 min (TTL)'),
+        kwargs={'contar': False},
+        daemon=True,
+    ).start()
 
 
 def notify_tree_changed() -> None:

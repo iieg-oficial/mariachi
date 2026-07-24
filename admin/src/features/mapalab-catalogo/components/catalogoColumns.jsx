@@ -1,63 +1,45 @@
-import { Button, Input, Popconfirm, Space } from 'antd';
-import { DeleteOutlined, SearchOutlined } from '@ant-design/icons';
+import { Button, Popconfirm, Space, Typography } from 'antd';
+import { DeleteOutlined } from '@ant-design/icons';
 import TagsCell from './TagsCell';
 import EnabledCell from './EnabledCell';
+import InstitucionCell from './InstitucionCell';
 
-const textSearchProps = (dataIndex, label) => ({
-    filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
-        <div style={{ padding: 8 }}>
-            <Input
-                placeholder={`Buscar ${label}`}
-                value={selectedKeys[0]}
-                onChange={(e) => setSelectedKeys(e.target.value ? [e.target.value] : [])}
-                onPressEnter={() => confirm()}
-                onKeyDown={(e) => e.stopPropagation()}
-                style={{ marginBottom: 8, display: 'block', width: 200 }}
-            />
-            <Space>
-                <Button type="primary" size="small" icon={<SearchOutlined />} onClick={() => confirm()}>
-                    Buscar
-                </Button>
-                <Button size="small" onClick={() => { clearFilters?.(); confirm(); }}>
-                    Limpiar
-                </Button>
-            </Space>
-        </div>
-    ),
-    filterIcon: (filtered) => <SearchOutlined style={{ color: filtered ? '#1677ff' : undefined }} />,
-    onFilter: (value, record) => (record[dataIndex] || '')
-        .toString()
-        .toLowerCase()
-        .includes(String(value).toLowerCase()),
-});
+const { Text } = Typography;
 
-export const buildColumns = ({ onDelete, workspaceFilters, tagFilters, tagOptions = [], onTagsSave, onEnabledSave }) => [
+export const buildColumns = ({
+    onDelete,
+    tagOptions = [],
+    tagFilters = [],
+    onTagsSave,
+    onEnabledSave,
+    instituciones = [],
+    onInstitucionSave,
+}) => [
     {
         title: 'Nombre',
         dataIndex: 'nombre',
         key: 'nombre',
         sorter: (a, b) => a.nombre.localeCompare(b.nombre),
-        ...textSearchProps('nombre', 'nombre'),
+        render: (nombre, capa) => (
+            <Space direction="vertical" size={0}>
+                <Text strong>{nombre}</Text>
+                <Text type="secondary" style={{ fontSize: 11 }}>{capa.workspaceAlias}</Text>
+            </Space>
+        ),
     },
     {
-        title: 'Slug',
-        dataIndex: 'slug',
-        key: 'slug',
-        render: (s) => <code>{s}</code>,
-        ...textSearchProps('slug', 'slug'),
-    },
-    {
-        title: 'Workspace',
-        dataIndex: 'workspaceAlias',
-        key: 'workspaceAlias',
-        filters: workspaceFilters,
-        onFilter: (value, record) => record.workspaceAlias === value,
-    },
-    {
-        title: 'Capa GeoServer',
-        dataIndex: 'geoserverLayer',
-        key: 'geoserverLayer',
-        ...textSearchProps('geoserverLayer', 'capa'),
+        title: 'Institución',
+        dataIndex: 'institucionId',
+        key: 'institucionId',
+        width: 200,
+        filters: [
+            ...instituciones.map((i) => ({ text: i.nombre, value: i.id })),
+            { text: 'Sin institución', value: null },
+        ],
+        onFilter: (value, record) => (record.institucionId ?? null) === value,
+        render: (_, capa) => (
+            <InstitucionCell capa={capa} instituciones={instituciones} onSave={onInstitucionSave} />
+        ),
     },
     {
         title: 'Etiquetas',
@@ -65,34 +47,30 @@ export const buildColumns = ({ onDelete, workspaceFilters, tagFilters, tagOption
         key: 'searchTags',
         width: 280,
         filters: tagFilters,
+        filterSearch: true,
         onFilter: (value, record) => (record.searchTags || []).includes(value),
         render: (_, capa) => (
             <TagsCell capa={capa} tagOptions={tagOptions} onSave={onTagsSave} />
         ),
     },
     {
-        title: 'Habilitada',
-        dataIndex: 'enabled',
-        key: 'enabled',
-        width: 120,
-        filters: [{ text: 'Sí', value: true }, { text: 'No', value: false }],
-        onFilter: (value, record) => record.enabled === value,
-        render: (_, capa) => <EnabledCell capa={capa} onSave={onEnabledSave} />,
-    },
-    {
         title: 'Acciones',
         key: 'acciones',
-        width: 90,
+        width: 150,
         render: (_, capa) => (
-            <Popconfirm
-                title="¿Eliminar esta capa del catálogo?"
-                okText="Eliminar"
-                cancelText="Cancelar"
-                okButtonProps={{ danger: true }}
-                onConfirm={() => onDelete(capa)}
-            >
-                <Button size="small" danger icon={<DeleteOutlined />} />
-            </Popconfirm>
+            <Space>
+                <EnabledCell capa={capa} onSave={onEnabledSave} />
+                <Popconfirm
+                    title="¿Eliminar esta capa del catálogo?"
+                    okText="Eliminar"
+                    cancelText="Cancelar"
+                    okButtonProps={{ danger: true }}
+                    onConfirm={() => onDelete(capa)}
+                >
+                    <Button size="small" danger icon={<DeleteOutlined />} />
+                </Popconfirm>
+            </Space>
         ),
     },
 ];
+

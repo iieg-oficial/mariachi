@@ -9,10 +9,10 @@ Este documento describe la estrategia de integracion recomendada (camino A prima
 **Implementado y operativo:**
 
 - Backend completo: 11 migraciones aplicadas, 7 modelos (`Reporte`, `ReporteTipo`, `ReporteGrupo`, `ReporteActividad`, `DireccionOrganizacional`, `SourceApp`, `ColibriRoute`), 7 routers admin (`/colibri/{tipos,direcciones,source-apps,routes,stats}` + `reportes` extendido + grupos + actividad), endpoint publico endurecido con API keys + CORS + rate limit + PII scrubbing + fingerprinting.
-- Panel CMS con 7 paginas en `/colibri/*`: Resumen (stats avanzadas con serie por dia + breakdown), Reportes (lista plana + agrupada con dedupe), Tipos (CRUD + form builder dinamico), Direcciones (CRUD), Source apps (multi-tenancy + rotacion de keys), Routes (fan-out a Discord/Slack/webhooks), Integracion (snippet copy-paste con live preview).
+- Panel CMS con 6 paginas en `/colibri/*`: Resumen (stats avanzadas con serie por dia + breakdown), Reportes (lista plana + agrupada con dedupe), Tipos (CRUD + form builder dinamico), Direcciones (CRUD), Source apps (multi-tenancy + rotacion de keys), Routes (fan-out a Discord/Slack/webhooks).
 - Widget Web Components servido en `/colibri/widget/colibri-widget.v1.js` (48 KB / 13.5 KB gzip): tres Custom Elements (`colibri-button`, `colibri-trigger`, `colibri-form`) con Shadow DOM, form dinamico, identify(), screenshot opcional, eventos DOM.
 - SDK npm `@iieg/colibri-sdk` (6.9 KB raw / ~2 KB gzip) con tipos TS y errores tipados (Auth/Validation/RateLimit/Forbidden/Network).
-- Documentacion publica standalone en `/colibri/docs/` (HTML estatico, dark mode, copy-paste snippets).
+- Guia de integracion en el topic **Colibri** de la pagina de Documentacion del admin (`/mariachi/documentacion?topic=colibri`), con pestañas Widget / Patron React / SDK / SIEEJ. (La antigua pagina `/colibri/integracion` y las docs publicas standalone `/colibri/docs/` fueron removidas y consolidadas aqui.)
 
 **Bloqueado por politicas:** pagina de seguimiento por token (espera definicion de retencion/uso de email — ver seccion al final).
 
@@ -206,7 +206,7 @@ Custom Element que renderiza el formulario directamente en el flujo del document
 | `theme` | enum | `auto` | `light`, `dark`, `auto` (sigue prefer-color-scheme) |
 | `lang` | enum | `es` | `es`, `en` (i18n del UI) |
 | `email-required` | bool | `false` | Forzar email obligatorio aunque la config del tipo lo deje opcional |
-| `endpoint` | url | `/api/portal/reportes` | Override del endpoint (util para staging/dev del huesped) |
+| `endpoint` | url | (origen del script)`/api/public/reportes` | Override del endpoint. Por default el widget lo deriva del origen desde el que se cargo el `<script>` (mismo host que la API); solo se necesita para staging/dev del huesped |
 | `context` | json | `{}` | Contexto adicional inyectado en cada reporte (ej. `{"userId":42,"plan":"pro"}`) |
 
 ### Stack del bundle
@@ -239,7 +239,7 @@ Cuando se quiera publicar v2 con breaking changes, los huespedes en v1 siguen fu
 | `theme` | enum | `auto` | `light`, `dark`, `auto` (sigue prefer-color-scheme) |
 | `lang` | enum | `es` | `es`, `en` (i18n del UI) |
 | `email-required` | bool | `false` | Forzar email obligatorio aunque la config del tipo lo deje opcional |
-| `endpoint` | url | `/api/portal/reportes` | Override del endpoint (util para staging/dev del huesped) |
+| `endpoint` | url | (origen del script)`/api/public/reportes` | Override del endpoint. Por default el widget lo deriva del origen desde el que se cargo el `<script>` (mismo host que la API); solo se necesita para staging/dev del huesped |
 
 ### Eventos DOM
 
@@ -296,7 +296,7 @@ import { Colibri } from '@iieg/colibri-sdk';
 const colibri = new Colibri({
   sourceApp: 'mapalab-cron',
   apiKey: 'ck_priv_b7e2...',
-  baseUrl: 'https://iieg.jalisco.gob.mx/api/portal'
+  baseUrl: 'https://iieg.jalisco.gob.mx/api/public'
 });
 
 await colibri.report({
@@ -312,18 +312,17 @@ await colibri.report({
 - **Solo HTTP + tipos.** Sin UI, sin DOM, sin React. < 5 KB gzip.
 - **Publicado en npm como `@iieg/colibri-sdk`.** Tipos TypeScript incluidos.
 - **Misma autenticacion que el widget:** API key + CORS + rate limit.
-- **Funciona en Node y navegador.** Usa `fetch` global; sin polyfills.
-- **Errores tipados:** `RateLimitError`, `ValidationError`, `AuthError`, `NetworkError`.
+- **Funciona en Node y navegador.** Usa `fetch` global; sin polyfills. En Node/workers `baseUrl` **debe ser absoluto** (ej. `https://iieg.jalisco.gob.mx/api/public`); en el browser puede ser relativo. Si se omite un `baseUrl` absoluto fuera del browser, el constructor lanza un error explicito en vez de fallar en el primer request.
+- **Errores tipados:** `RateLimitError`, `ValidationError`, `AuthError`, `ForbiddenError`, `NetworkError`.
 
 ### Endpoints REST documentados
 
-Todo lo que el SDK hace esta en `POST /api/portal/reportes` y endpoints publicos de read-only para que terceros puedan implementar su propio cliente sin el SDK:
+Todo lo que el SDK hace esta en `POST /api/public/reportes` y un endpoint publico read-only para que terceros puedan implementar su propio cliente sin el SDK:
 
 | Metodo | Ruta | Auth | Descripcion |
 |---|---|---|---|
-| POST | `/api/portal/reportes` | API key + CORS | Crear reporte (multipart si trae screenshot) |
-| GET | `/api/portal/reportes/tipos?source_app=X` | API key | Lista de tipos activos para el huesped, con su `form_schema` |
-| GET | `/api/portal/reportes/config?source_app=X` | API key | Configuracion del widget (tema, textos, tipos permitidos) |
+| POST | `/api/public/reportes` | API key + CORS | Crear reporte (multipart si trae screenshot) |
+| GET | `/api/public/reportes/tipos` | Ninguna | Lista de todos los tipos activos, con su `formSchema`. `Cache-Control: public, max-age=300`. No filtra por `source_app` (el widget aplica el subset `tipos` del lado cliente). |
 
 ## Como se complementan A y D
 
@@ -361,7 +360,7 @@ source_apps
 
 ### Validacion en el endpoint publico
 
-El endpoint `POST /api/portal/reportes` debe:
+El endpoint `POST /api/public/reportes` debe:
 
 1. Leer `X-Colibri-Key` del header (o `api_key` en multipart).
 2. Validar el hash contra `source_apps.api_key_hash`.
@@ -551,7 +550,7 @@ Reactivar cuando legal/compliance del IIEG defina las cuatro politicas anteriore
 | 5.3 | ✅ | H3 — Tabla `colibri_routes` + CRUD + UI `/colibri/routes`. Engine de fan-out best-effort (Discord, Slack, webhook generico, email placeholder). | `b1c2d3e4f5a6` |
 | 6 | ✅ | Widget Web Components servidos en `/colibri/widget/colibri-widget.v1.js` (Lit + Vite, 48KB / 13.5KB gzip). 3 Custom Elements + Shadow DOM. | — |
 | 7 | ✅ | SDK `@iieg/colibri-sdk` (TypeScript puro, 6.9KB raw / ~2KB gzip, dual ESM, errores tipados, identify, setContext). | — |
-| 8 | ✅ | Pagina `/colibri/integracion` (admin) + docs publica standalone en `/colibri/docs/` (HTML + JS plano, dark mode, live preview). | — |
+| 8 | ✅ | Guia de integracion. _(Originalmente pagina `/colibri/integracion` + docs publica `/colibri/docs/`; ambas removidas y consolidadas en el topic **Colibri** de la Documentacion del admin, `/mariachi/documentacion?topic=colibri`.)_ | — |
 | 9 | ✅ | H5 — Dedupe/fingerprinting (`reporte_grupos`) + toggle agrupados en panel. | `c1d2e3f4a5b7` |
 | 10 | ✅ | H6 — Audit log (`reporte_actividad`) + H7 — workflow granular (`severidad`, `prioridad`, `duplicado_de`, `bloqueado_por`, `sla_at`) + timeline en drawer. | `d2e3f4a5b6c8` |
 

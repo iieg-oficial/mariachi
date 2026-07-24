@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Form, Input, Modal, Select, Typography } from 'antd';
 import { message } from '@shared/services/message';
-import api from '@shared/services/api';
+import { registerWorkspace } from '@features/sextante/api/sextanteService';
 
 const { Text } = Typography;
 
@@ -60,9 +60,9 @@ export default function RegisterWorkspaceModal({ open, onClose, onRegistered, pe
                 db_schema: values.db_schema,
                 label: values.label || null,
             };
-            const res = await api.post('/geoserver/workspaces/register', payload);
-            message.success(`Workspace "${res.data.alias}" registrado`);
-            onRegistered?.(res.data);
+            const created = await registerWorkspace(payload);
+            message.success(`Workspace "${created.alias}" registrado`);
+            onRegistered?.(created);
             onClose?.();
         } catch (err) {
             message.error(err?.response?.data?.detail || 'No se pudo registrar el workspace');

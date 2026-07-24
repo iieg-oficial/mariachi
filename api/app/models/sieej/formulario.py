@@ -44,10 +44,14 @@ class Formulario(Base):
     )
     vigencia_inicio = Column(DateTime(timezone=True), nullable=True)
     vigencia_fin = Column(DateTime(timezone=True), nullable=True)
+    periodicidad = Column(JSON, nullable=True)
     publico = Column(Boolean, nullable=False, default=False)
     version = Column(Integer, nullable=False, default=1)
     creado_por_id = Column(
         Integer, ForeignKey("usuarios.id", ondelete="RESTRICT"), nullable=False
+    )
+    actualizado_por_id = Column(
+        Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True
     )
     creado_en = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     actualizado_en = Column(
@@ -55,6 +59,9 @@ class Formulario(Base):
     )
 
     creado_por = relationship("Usuario", foreign_keys=[creado_por_id], lazy="select")
+    actualizado_por = relationship(
+        "Usuario", foreign_keys=[actualizado_por_id], lazy="select"
+    )
     grupos = relationship(
         "Grupo",
         secondary=f"{SCHEMA}.formulario_grupo",
