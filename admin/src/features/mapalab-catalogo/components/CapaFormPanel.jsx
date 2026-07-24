@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Button, Card, Form, Input, Select, Space, Switch, message } from 'antd';
-import { actualizarCapa, crearCapa } from '../api/catalogoService';
+import { crearCapa } from '../api/catalogoService';
 import { useGeoserverLayers } from '../hooks/useGeoserverLayers';
 
 const EMPTY_FORM = {
@@ -9,6 +9,7 @@ const EMPTY_FORM = {
     workspaceAlias: undefined,
     geoserverLayer: undefined,
     searchTags: [],
+    institucionId: null,
     enabled: true,
 };
 
@@ -18,37 +19,19 @@ const slugify = (text) => (text || '')
     .replace(/^-+|-+$/g, '')
     .slice(0, 100);
 
-const CapaFormPanel = ({ workspaceOptions, tagOptions, editing, onCancel, onSaved }) => {
+const CapaFormPanel = ({ workspaceOptions, tagOptions, instituciones = [], onCancel, onSaved }) => {
     const [form] = Form.useForm();
     const [saving, setSaving] = useState(false);
     const watchedWorkspace = Form.useWatch('workspaceAlias', form);
     const { layers: gsLayers, loading: gsLoading } = useGeoserverLayers(watchedWorkspace);
 
-    useEffect(() => {
-        if (editing) {
-            form.setFieldsValue({
-                slug: editing.slug,
-                nombre: editing.nombre,
-                workspaceAlias: editing.workspaceAlias,
-                geoserverLayer: editing.geoserverLayer,
-                searchTags: editing.searchTags || [],
-                enabled: editing.enabled,
-            });
-        } else {
-            form.setFieldsValue(EMPTY_FORM);
-        }
-    }, [editing, form]);
-
-    const layerOptions = useMemo(() => {
-        const opts = gsLayers.map((l) => ({
+    const layerOptions = useMemo(
+        () => gsLayers.map((l) => ({
             value: l.name,
             label: l.title ? `${l.name} — ${l.title}` : l.name,
-        }));
-        if (editing?.geoserverLayer && !gsLayers.some((l) => l.name === editing.geoserverLayer)) {
-            opts.unshift({ value: editing.geoserverLayer, label: editing.geoserverLayer });
-        }
-        return opts;
-    }, [gsLayers, editing]);
+        })),
+        [gsLayers],
+    );
 
     const handleWorkspaceChange = () => form.setFieldValue('geoserverLayer', undefined);
 
@@ -68,13 +51,9 @@ const CapaFormPanel = ({ workspaceOptions, tagOptions, editing, onCancel, onSave
         }
         setSaving(true);
         try {
-            if (editing) {
-                await actualizarCapa(editing.id, values);
-                message.success('Capa actualizada');
-            } else {
-                await crearCapa(values);
-                message.success('Capa creada');
-            }
+            await crearCapa(values);
+            message.success('Capa creada');
+            form.setFieldsValue(EMPTY_FORM);
             onSaved?.();
         } catch (err) {
             message.error(err?.response?.data?.detail || 'Error al guardar la capa');
@@ -84,7 +63,7 @@ const CapaFormPanel = ({ workspaceOptions, tagOptions, editing, onCancel, onSave
     };
 
     return (
-        <Card size="small" title={editing ? 'Editar capa' : 'Agregar capa'} style={{ marginBottom: 16 }}>
+        <Card size="small" title="Agregar capa" style={{ marginBottom: 16 }}>
             <Form form={form} layout="vertical" initialValues={EMPTY_FORM}>
                 <Form.Item name="workspaceAlias" label="Workspace" rules={[{ required: true, message: 'Workspace requerido' }]}>
                     <Select
@@ -124,6 +103,19 @@ const CapaFormPanel = ({ workspaceOptions, tagOptions, editing, onCancel, onSave
                     }]}
                 >
                     <Input placeholder="Se genera de la capa si lo dejas vacío" />
+                </Form.Item>
+                <Form.Item
+                    name="institucionId"
+                    label="Institución"
+                    tooltip="Agrupa la capa en el catálogo público. Se administran en la pestaña «Instituciones»."
+                >
+                    <Select
+                        allowClear
+                        showSearch
+                        optionFilterProp="label"
+                        options={instituciones.map((i) => ({ value: i.id, label: i.nombre }))}
+                        placeholder="Sin institución"
+                    />
                 </Form.Item>
                 <Form.Item name="searchTags" label="Etiquetas de búsqueda">
                     <Select

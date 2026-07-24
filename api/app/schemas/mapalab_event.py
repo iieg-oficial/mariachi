@@ -65,6 +65,8 @@ ALLOWED_EVENT_NAMES = frozenset({
     "catalogo_download",
     "catalogo_tools_toggle",
     "catalogo_slug_not_found",
+    "catalogo_share",
+    "catalogo_institucion_select",
 })
 
 MAX_BATCH_EVENTS = 100

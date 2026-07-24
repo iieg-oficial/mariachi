@@ -63,7 +63,11 @@ const TagsCell = ({ capa, tagOptions = [], onSave }) => {
         >
             {saving && <Spin size="small" style={{ marginRight: 6 }} />}
             {tags.length
-                ? tags.map((t) => <Tag key={t}>{t}</Tag>)
+                ? (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                        {tags.map((t) => <Tag key={t} style={{ marginInlineEnd: 0 }}>{t}</Tag>)}
+                    </div>
+                )
                 : <Text type="secondary">+ etiquetas</Text>}
         </div>
     );
