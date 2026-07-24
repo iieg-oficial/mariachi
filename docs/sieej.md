@@ -73,9 +73,11 @@ Cada `formulario.definicion` es un objeto con esta forma minima:
 Los steps `form` y `repeater` aceptan `incompleteNotice` opcional (`{title?, message}`): si el respondent avanza (o envía) con campos visibles sin llenar en ese step, el frontend muestra un modal de advertencia con ese mensaje **sin bloquear** la navegación ni el envío ("Revisar" / "Continuar de todos modos"). Pensado para steps 100% opcionales tipo checklist. Los campos `info` y los ocultos por `showWhen` no cuentan como incompletos; un `checkbox` sin marcar sí cuenta. Se edita desde el `StepDrawer` del CMS.
 
 ### Tipos de field
-`text`, `textarea`, `number`, `email`, `tel`, `date`, `date_range`, `select`, `select_multiple`, `radio`, `checkbox`, `file`, `info`.
+`text`, `textarea`, `number`, `date`, `date_range`, `select`, `select_multiple`, `radio`, `checkbox`, `file`, `info`.
 
-Atributos comunes: `name` (unico por step), `label`, `required`, `validation` (`minLength`, `maxLength`, `pattern`, `min`, `max`), `showWhen` (`{ field, equals }`; `equals` puede ser un valor o una lista de valores, y la condicion se cumple si el campo disparador coincide con cualquiera).
+Los antiguos tipos `email` y `tel` se absorbieron en `text` + `validation.pattern`: el constructor visual ofrece un catalogo de regex comunes (correo, telefono de 10 digitos, CURP, RFC, codigo postal, CLABE, etc.) o un patron personalizado. La migracion `a5b6c7d8e9f1` reescribe los `email`/`tel` existentes (definicion, `definicion_snapshot` y `formulario_version`) a `text` con su patron.
+
+Atributos comunes: `name` (unico por step), `label`, `required`, `validation` (`minLength`, `maxLength`, `pattern`, `patternMessage`, `min`, `max`), `showWhen` (`{ field, equals }`; `equals` puede ser un valor o una lista de valores, y la condicion se cumple si el campo disparador coincide con cualquiera).
 
 - **`select`/`select_multiple`/`radio`/`checkbox`**: requieren `options` (`[{value, label}]`) o `catalog` (string que identifica un catalogo). No pueden mezclar ambos.
 - **`file`**: requiere `bucket` (Acervo). Acepta `maxSizeMB` (cap absoluto 100 MB) y `accept` (lista de MIME/extensions). Al subir via `POST /formularios/{slug}/envio/upload` el backend persiste **dos** registros sincronizados: una fila en `sieej.envio_archivo` (con `bucket`, `object_key`, `url_publica`, `mime`, `size_bytes`, `field_path`) y una entrada en `envio.datos[step][field] = {url_publica, filename, mime, size_bytes}` que es lo que valida `datos_validator` al cierre del envio. El frontend NO debe sobrescribir manualmente la entrada en `datos` (la fuente de verdad la pone el endpoint de upload).

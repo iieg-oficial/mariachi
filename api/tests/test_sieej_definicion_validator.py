@@ -369,7 +369,7 @@ def test_definicion_completa_wizard_sieej_pasa():
                 "minItems": 1,
                 "fields": [
                     {"name": "nombres", "label": "Nombres", "type": "text", "required": True},
-                    {"name": "email", "label": "Email", "type": "email", "required": True},
+                    {"name": "email", "label": "Email", "type": "text", "required": True},
                 ],
             },
             {

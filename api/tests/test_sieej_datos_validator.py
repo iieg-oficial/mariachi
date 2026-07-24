@@ -22,7 +22,11 @@ def _def_form_simple():
                     {
                         "name": "email",
                         "label": "Email",
-                        "type": "email",
+                        "type": "text",
+                        "validation": {
+                            "pattern": r"^[^@\s]+@[^@\s]+\.[^@\s]+$",
+                            "patternMessage": "correo invalido",
+                        },
                     },
                     {
                         "name": "color",
@@ -61,8 +65,8 @@ def test_email_invalido_falla():
     datos = {"general": {"nombre": "x", "email": "no-es-email"}}
     with pytest.raises(DatosInvalidosError) as exc:
         validar_datos(_def_form_simple(), datos, estricto=True)
-    msgs = " ".join(e["msg"] for e in exc.value.errores)
-    assert "email" in msgs.lower()
+    paths = {e["path"] for e in exc.value.errores}
+    assert "general.email" in paths
 
 
 def test_number_fuera_de_rango_falla():

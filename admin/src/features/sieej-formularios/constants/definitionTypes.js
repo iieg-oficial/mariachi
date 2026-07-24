@@ -8,8 +8,6 @@ export const FIELD_TYPES = [
     { value: 'text', label: 'Texto' },
     { value: 'textarea', label: 'Texto largo' },
     { value: 'number', label: 'Número' },
-    { value: 'email', label: 'Correo electrónico' },
-    { value: 'tel', label: 'Teléfono' },
     { value: 'date', label: 'Fecha' },
     { value: 'date_range', label: 'Rango de fechas' },
     { value: 'select', label: 'Selección' },

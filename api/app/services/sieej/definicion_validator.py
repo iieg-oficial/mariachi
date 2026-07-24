@@ -23,8 +23,6 @@ FIELD_TYPES = {
     "text",
     "textarea",
     "number",
-    "email",
-    "tel",
     "date",
     "date_range",
     "select",
@@ -329,7 +327,7 @@ def _validar_field(
                     f"Step `{step_id}` field `{name}`: `validation.{key}` debe ser numerico."
                 )
 
-    if field_type in {"text", "textarea", "email", "tel"}:
+    if field_type in {"text", "textarea"}:
         validation = field.get("validation") or {}
         for key in ("minLength", "maxLength"):
             if key in validation and (

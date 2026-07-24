@@ -9,6 +9,18 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.79.0] - 2026-07-24
+
+### Cambiado: absorción de los tipos `email` y `tel` en `text` + catálogo de regex
+
+Los tipos de campo `email` y `tel` se eliminaron: eran texto con un patrón fijo. El constructor visual del CMS reemplaza el par «select de preset + input de regex» por un **input único** (`AutoComplete`) donde el admin elige un formato común (correo, teléfono de 10 dígitos, CURP, RFC, código postal, CLABE, solo números, solo letras, URL) **o** escribe su propio regex. El patrón se guarda en `validation.pattern` / `validation.patternMessage`, igual que cualquier campo de texto; el renderer de SIEEJ y la validación backend ya no tienen ramas específicas de email/tel.
+
+Migración `a5b6c7d8e9f1` (rama mariachi): reescribe los campos `email`/`tel` existentes a `type: text` + `validation.pattern` en las tres columnas JSONB (`sieej.formulario.definicion`, `sieej.envio_formulario.definicion_snapshot`, `sieej.formulario_version.definicion`). Preserva patrones custom, es idempotente y reversible (`downgrade`).
+
+Requiere el frontend SIEEJ >= 1.34.0.
+
+---
+
 ## [1.78.0] - 2026-07-24
 
 ### Agregado: actualizacion ligera de campos post-envio con historial de auditoria

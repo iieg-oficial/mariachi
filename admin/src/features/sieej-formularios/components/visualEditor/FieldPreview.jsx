@@ -44,12 +44,6 @@ export default function FieldPreview({ values, condition, tooltipActive = false 
     case 'number':
         control = <InputNumber disabled style={{ width: '100%' }} placeholder={ph} />;
         break;
-    case 'email':
-        control = <Input disabled placeholder={placeholder || 'correo@ejemplo.com'} />;
-        break;
-    case 'tel':
-        control = <Input disabled placeholder={placeholder || '10 dígitos'} />;
-        break;
     case 'date':
         control = <DatePicker disabled style={{ width: '100%' }} />;
         break;
@@ -121,8 +115,6 @@ export default function FieldPreview({ values, condition, tooltipActive = false 
         const extremos = [openStart && 'inicial', openEnd && 'final'].filter(Boolean);
         hints.push(`Fecha ${extremos.join(' y ')}: el calendario incluye las opciones de «${openCatalog || 'estatus_fecha'}»`);
     }
-    if (type === 'tel' && !pattern) hints.push('Formato: 10 dígitos');
-    if (type === 'email' && !pattern) hints.push('Formato de correo válido');
     if (pattern) hints.push(`Patrón: ${pattern}`);
     if (minLength != null) hints.push(`Mín ${minLength} caracteres`);
     if (maxLength != null) hints.push(`Máx ${maxLength} caracteres`);
