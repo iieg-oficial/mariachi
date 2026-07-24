@@ -2,6 +2,7 @@ import { LitElement, html, css } from 'lit';
 import { themeCss } from './shared/theme.js';
 import { ICONS } from './shared/icons.js';
 import { ColibriPanel } from './shared/panel.js';
+import { DEFAULT_ENDPOINT } from './shared/api.js';
 
 if (!customElements.get('colibri-panel')) {
     customElements.define('colibri-panel', ColibriPanel);
@@ -85,7 +86,7 @@ export class ColibriTrigger extends LitElement {
         this.icon = '';
         this.iconPosition = 'left';
         this.underline = 'auto';
-        this.endpoint = '/api/public/reportes';
+        this.endpoint = DEFAULT_ENDPOINT;
         this._open = false;
     }
 

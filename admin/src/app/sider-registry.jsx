@@ -5,7 +5,6 @@ import {
     BookOutlined,
     BranchesOutlined,
     CalendarOutlined,
-    CodeOutlined,
     EnvironmentOutlined,
     FileTextOutlined,
     FormOutlined,
@@ -89,10 +88,6 @@ export const PROJECT_REGISTRY = {
             {
                 key: '/colibri/routes', path: '/colibri/routes', label: 'Routes',
                 icon: <BranchesOutlined />, allowedGlobalRoles: ['tetlamamakani'],
-            },
-            {
-                key: '/colibri/integracion', path: '/colibri/integracion', label: 'Integración',
-                icon: <CodeOutlined />, allowedGlobalRoles: ['tetlamamakani'],
             },
         ],
     },

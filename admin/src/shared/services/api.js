@@ -26,6 +26,20 @@ api.interceptors.request.use(
     }
 );
 
+const humanizeDetail = (detail) => {
+    if (!Array.isArray(detail)) return detail;
+    return detail
+        .map((d) => {
+            if (typeof d === 'string') return d;
+            const loc = Array.isArray(d?.loc)
+                ? d.loc.filter((p) => p !== 'body' && p !== 'query').join('.')
+                : '';
+            const msg = d?.msg || 'Error de validación';
+            return loc ? `${loc}: ${msg}` : msg;
+        })
+        .join('; ');
+};
+
 const isCsrfError = (error) => {
     if (error?.response?.status !== 403) return false;
     const detail = error?.response?.data?.detail;
@@ -97,6 +111,10 @@ api.interceptors.response.use(
     (response) => response,
     async (error) => {
         const original = error.config;
+
+        if (error.response?.data && Array.isArray(error.response.data.detail)) {
+            error.response.data.detail = humanizeDetail(error.response.data.detail);
+        }
 
         if (error.response?.status === 401) {
             if (original && !original.__refreshRetried && !isAuthEndpoint(original.url)) {

@@ -17,7 +17,6 @@ Este monorepo aloja el panel de administración del ecosistema IIEG y el backend
 | **SIEEJ (frontend)** | Captura de formularios para dependencias de gobierno (otro repo: `iieg-oficial/sieej`) | servido como volumen en `mariachi-nginx` | `/sieej/` | Activo |
 | **Colibri Widget** | Web Components embebibles para reportar desde cualquier sitio (Lit + Vite) | `widget/` | `/colibri/widget/colibri-widget.v1.js` | Activo (v0.47.1) |
 | **Colibri SDK** | Cliente HTTP TypeScript para integraciones server-side y browser custom | `sdk/` | npm `@iieg/colibri-sdk` | Activo (v0.46.0) |
-| **Colibri Docs** | Documentacion publica standalone para integradores externos | `nginx/static/colibri-docs/` | `/colibri/docs/` | Activo (v0.47.4) |
 
 El **Portal público** (sitio web del IIEG) se separó a su propio repo `iieg/portal/` (ver README raíz). Consume `/api/portal/*` de este `api`.
 
@@ -163,8 +162,7 @@ mariachi/
 ├── nginx/                        # Proxy + sirve estáticos
 │   ├── conf.d/mariachi.conf      # Template con envsubst
 │   ├── ssl/
-│   ├── static/                   # robots.txt, sitemap.xml, colibri-docs/
-│   │   └── colibri-docs/         # documentacion publica standalone (HTML estatico)
+│   ├── static/                   # estaticos servidos por nginx
 │   ├── nginx.conf
 │   └── Dockerfile                # multi-stage: widget-builder, admin-builder, nginx
 ├── docs/                         # Este directorio (incluye colibri.md)
@@ -709,13 +707,13 @@ Colibri es el sistema centralizado de reportes embebibles del IIEG. Vive como mo
 
 1. **Backend (`api/app/`)**: 6 modelos nuevos (ReporteTipo, DireccionOrganizacional, SourceApp, ColibriRoute, ReporteGrupo, ReporteActividad) + extension de Reporte con workflow granular. 8 migraciones Alembic con seed/backfill. 5 routers admin (`/colibri/{tipos,direcciones,source-apps,routes,stats}`) + reportes extendido + endpoint publico endurecido. 4 services (`colibri_keys`, `colibri_fingerprint`, `pii_scrubber`, `colibri_router_engine`).
 
-2. **Panel admin (`admin/src/features/colibri/`)**: 7 paginas (Resumen, Reportes con toggle plano/agrupados, Tipos con form builder, Direcciones, SourceApps con rotacion de keys + modal "muestra-una-vez", Routes con fan-out, Integracion con preview en vivo). Sidebar reorganizado: Colibri es proyecto del CMS con `allowedGlobalRoles` para tetlamamakani/editora.
+2. **Panel admin (`admin/src/features/colibri/`)**: 6 paginas (Resumen, Reportes con toggle plano/agrupados, Tipos con form builder, Direcciones, SourceApps con rotacion de keys + modal "muestra-una-vez", Routes con fan-out). La guia de integracion vive en el topic **Colibri** de la pagina de Documentacion del admin (`/mariachi/documentacion?topic=colibri`). Sidebar reorganizado: Colibri es proyecto del CMS con `allowedGlobalRoles` para tetlamamakani/editora.
 
 3. **Widget (`widget/`)**: paquete Lit + Vite con 3 Custom Elements (`<colibri-button>`, `<colibri-trigger>`, `<colibri-form>`). Bundle 49.5 KB / 13.8 KB gzip servido en `/colibri/widget/colibri-widget.v1.js` con CORS abierto. Shadow DOM, form dinamico, screenshot opcional. **API global `window.colibri`**: `identify(user)` para asociar sesion con cada reporte, `setContext(key, value)` y `clearContext()` para enriquecer `source_context.custom` (snapshot de mapa, capas activas, etc.), `openPanel({ sourceApp, apiKey })` para disparar el panel programaticamente desde un boton React/HTML del huesped sin renderizar Custom Elements visibles. CSS vars `--offset-x` y `--offset-y` separadas para alinear el FAB respecto a UI existente.
 
 4. **SDK (`sdk/`)**: paquete TypeScript publicable a npm como `@iieg/colibri-sdk`. Cliente HTTP con tipos + 5 errores tipados (Auth/Validation/RateLimit/Forbidden/Network). 6.9 KB raw / ~2 KB gzip.
 
-5. **Docs publicas (`nginx/static/colibri-docs/`)**: HTML standalone 24.7 KB sin dependencias, servido en `/colibri/docs/` sin auth. Live preview, copy-paste snippets, dark mode automatico.
+5. **Guia de integracion (`admin/src/features/documentacion/topics/ColibriTopic.jsx`)**: topic **Colibri** de la pagina de Documentacion del admin (`/mariachi/documentacion?topic=colibri`), con pestañas Widget / Patron React / SDK / SIEEJ. Reemplaza a la antigua pagina `/colibri/integracion` y a las docs publicas standalone `/colibri/docs/`, ambas removidas.
 
 ### Integracion con multi-tenancy
 

@@ -6,12 +6,13 @@ import McpTopic from '@features/documentacion/topics/McpTopic';
 import TelemetryTopic from '@features/documentacion/topics/TelemetryTopic';
 import AcervoTopic from '@features/documentacion/topics/AcervoTopic';
 import OntoyTopic from '@features/documentacion/topics/OntoyTopic';
+import ColibriTopic from '@features/documentacion/topics/ColibriTopic';
 
 const { Content } = Layout;
 const { Title, Text } = Typography;
 
 
-const VALID_KEYS = new Set(['acervo', 'mcp', 'telemetria', 'ontoy']);
+const VALID_KEYS = new Set(['acervo', 'colibri', 'mcp', 'telemetria', 'ontoy']);
 
 
 export default function DocumentacionPage() {
@@ -24,6 +25,7 @@ export default function DocumentacionPage() {
 
     const TOPICS = [
         { key: 'acervo', label: 'Acervo', children: <AcervoTopic defaultActiveTab={sec} /> },
+        { key: 'colibri', label: 'Colibri', children: <ColibriTopic /> },
         { key: 'mcp', label: 'Servidor MCP', children: <McpTopic /> },
         { key: 'telemetria', label: 'Telemetría', children: <TelemetryTopic /> },
         { key: 'ontoy', label: 'Contrato /ontoy', children: <OntoyTopic /> },

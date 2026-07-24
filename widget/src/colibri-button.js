@@ -2,6 +2,7 @@ import { LitElement, html, css } from 'lit';
 import { themeCss } from './shared/theme.js';
 import { ICONS } from './shared/icons.js';
 import { ColibriPanel } from './shared/panel.js';
+import { DEFAULT_ENDPOINT } from './shared/api.js';
 
 if (!customElements.get('colibri-panel')) {
     customElements.define('colibri-panel', ColibriPanel);
@@ -98,7 +99,7 @@ export class ColibriButton extends LitElement {
         this.color = '';
         this.shape = 'circle';
         this.shadow = 'md';
-        this.endpoint = '/api/public/reportes';
+        this.endpoint = DEFAULT_ENDPOINT;
         this._open = false;
     }
 

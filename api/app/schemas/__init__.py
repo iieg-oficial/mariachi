@@ -25,7 +25,6 @@ from app.schemas.reporte import (
     ReporteCreateResponse,
     ReporteEstado,
     ReporteListResponse,
-    ReporteTipo,
     ReporteUpdate,
 )
 from app.schemas.user import (
@@ -64,6 +63,5 @@ __all__ = [
     "ReporteAdminResponse",
     "ReporteListResponse",
     "ReporteCreateResponse",
-    "ReporteTipo",
     "ReporteEstado",
 ]

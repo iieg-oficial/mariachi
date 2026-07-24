@@ -6,19 +6,11 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from app.schemas._camel import CamelCaseInput
 from app.schemas.direccion_organizacional import DireccionOrganizacionalRef
 
-ReporteTipo = Literal[
-    "problema",
-    "solicitud",
-    "sugerencia",
-    "duda",
-    "datos_incorrectos",
-    "bug",
-]
 ReporteEstado = Literal["nuevo", "en_revision", "resuelto", "descartado"]
 
 
 class ReporteCreate(CamelCaseInput):
-    tipo: ReporteTipo
+    tipo: str = Field(..., min_length=1, max_length=50)
     mensaje: str = Field(..., min_length=1, max_length=2000)
     email_contacto: EmailStr | None = None
     source_app: str = Field(..., min_length=1, max_length=50)
@@ -45,7 +37,7 @@ class ReporteUpdate(CamelCaseInput):
 
 class ReporteAdminResponse(BaseModel):
     id: int
-    tipo: ReporteTipo
+    tipo: str
     mensaje: str
     email_contacto: str | None = Field(default=None, serialization_alias="emailContacto")
     source_app: str = Field(..., serialization_alias="sourceApp")

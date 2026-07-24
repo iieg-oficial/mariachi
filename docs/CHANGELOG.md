@@ -9,6 +9,20 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.77.0] - 2026-07-24
+
+### Corregido + Agregado: auditoría de comportamiento de Colibri + reorganización de su documentación
+
+**Tipos de reporte dinámicos, ahora sí end-to-end.** La columna `reportes.tipo` era un `Enum` Postgres fijo de 6 valores y el endpoint público nunca asignaba `tipo_id`: los tipos creados desde el panel daban 422 al enviarse y el fan-out por tipo (Discord/Slack) nunca disparaba. Ahora `tipo` es `varchar`, el tipo se valida contra el catálogo `reporte_tipos` activo y se asigna `tipo_id`. Migración `e2b3c4d5f6a7` (rama mariachi): enum→varchar + drop del tipo `reporte_tipo` + backfill de `tipo_id`. Reversible.
+
+**CORS dinámico para embeds cross-origin.** Nuevo middleware `ColibriPublicCORSMiddleware` que valida el `Origin` contra `source_apps.dominios_permitidos` (con wildcards) y emite los headers CORS —incluido el preflight `OPTIONS`— en `/api/public/reportes`. Antes solo se permitían los orígenes fijos del env, así que un huésped registrado en otro dominio se topaba con el browser bloqueando la respuesta.
+
+**Widget y SDK.** El widget deriva el endpoint del origen desde el que se cargó el `<script>` (antes una ruta relativa rompía el embed cross-origin), implementa el campo `radio` (un `radio` requerido ya no bloquea el envío con 422) y lee el `form_schema` en camelCase o snake_case. El SDK lanza un error claro cuando se usa un `baseUrl` relativo en Node.
+
+**Robustez del endpoint.** Un fallo al guardar el screenshot (S3 caído) ya no aborta todo el reporte; los toasts de error 422 del panel dejan de romperse (el `detail` array de FastAPI se normaliza a texto).
+
+**Documentación consolidada.** Se eliminó la página `/colibri/integracion` (admin) y las docs públicas standalone `/colibri/docs/` (location de nginx + `COPY` del Dockerfile). La guía de integración vive ahora en un topic **Colibri** de la página de Documentación del admin (`/mariachi/documentacion?topic=colibri`), con pestañas Widget / Patrón React / SDK / SIEEJ. Las tabs de source-app en Reportes ahora son dinámicas (salen del catálogo, no de una lista fija).
+
 ## [1.74.0] - 2026-07-23
 
 ### Agregado: reordenamiento drag & drop de capas del catálogo y opciones de catálogos SIEEJ
