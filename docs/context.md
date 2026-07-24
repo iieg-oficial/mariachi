@@ -77,7 +77,7 @@ Rutas del backend (prefijos):
 | @dnd-kit core / sortable | 6.3 / 10.0 |
 | Axios | 1.13.3 |
 
-Estructura de features (`admin/src/features/`): `acervo`, `auth`, `colibri`, `inicio`, `mapalab-api-keys`, `mapalab-eventos`, `mapalab-home`, `mapalab-layers`, `mapalab-shares`, `mapalab-symbols`, `perfil`, `portal-menu`, `portal-pages`, `revision`, `sieej-formularios`, `users`. Cada feature agrupa `pages/`, `components/`, `hooks/`, `services/`, `constants/`. La estructura `pages/` legada se eliminó.
+Estructura de features (`admin/src/features/`): `acervo`, `auth`, `colibri`, `inicio`, `mapalab-api-keys`, `mapalab-eventos`, `mapalab-home`, `mapalab-layers`, `mapalab-shares`, `mapalab-symbols`, `perfil`, `portal-menu`, `portal-pages`, `revision`, `sextante`, `sieej-formularios`, `users`. Cada feature agrupa `pages/`, `components/`, `hooks/`, `services/`, `constants/`. La estructura `pages/` legada se eliminó.
 
 ### Portal web publico (`web/`) — congelado
 
@@ -439,6 +439,7 @@ Tests en `api/tests/services/test_bulk_ingest_parser.py` (parsing, mapping, buil
 | GET | `/api/administrador/geoserver/*` | Introspeccion GeoServer REST (workspaces, campos, estilos) |
 | GET | `/api/administrador/geoserver/workspaces/pending` | Workspaces presentes en GeoServer pero no registrados en `mapalab.workspaces` (admin-only). Devuelve `[{geoserverWorkspace, layerCount}]` |
 | POST | `/api/administrador/geoserver/workspaces/register` | Registra un workspace nuevo en `mapalab.workspaces` (admin + CSRF). Valida que exista en GeoServer |
+| GET | `/api/administrador/geoserver/workspaces/{alias}/styles` | Estilos publicados en el workspace; con `?include_global=true` suma los del catálogo global (marcados `isGlobal`). Consumido por la página Estilos de Sextante |
 | POST | `/api/administrador/layers/auto-leaf` | Idempotente: devuelve o crea un leaf con `(workspace_alias, geoserver_layer)` bajo el padre `eventos-auto` (tema oculto, on-demand). Usado al asociar una capa "solo GeoServer" a un evento. `label` es **obligatorio** y debe ser distinto al `geoserver_layer` (normalizando case + `_`/`-`/espacios); evita registrar capas con el slug como nombre visible (`api 1.14.5+`) |
 | POST | `/api/administrador/borradores/por-id/{id}/aprobar` | Aprueba borrador; si `resource_type='layer'`, materializa en DataEngine |
 | GET | `/metrics` | Metricas Prometheus (sin auth, usado por huachicol) |
@@ -513,7 +514,9 @@ Para emojis usados en SLDs, el applier `_apply_sld` invoca `symbol_service.ensur
 1. El contenedor `geoserver` debe estar en `iieg-network` para resolver `acervo-minio` cuando renderiza el SLD con `<ExternalGraphic>`. Configurado en `/IIEG/geoserver/docker-compose.yml`.
 2. GeoServer 2.20+ bloquea por defecto cualquier URL externa en SLDs. Crear un `URLCheck` vía REST API: `POST /rest/urlchecks` con regex `^http://acervo-minio:9000/mapalab/.+$`. Detalles en `docs/SLD_EDITOR.md`.
 
-UI: `/mapalab/simbolos` (admin tetlamamakani). Features en `admin/src/features/mapalab-symbols/` y `admin/src/features/mapalab-layers/components/sldEditor/`.
+UI: `/sextante/simbolos` (admin tetlamamakani). Features en `admin/src/features/mapalab-symbols/` y `admin/src/features/mapalab-layers/components/sldEditor/`. El `SymbolPicker` (selector del catálogo, reusado por el editor SLD, los eventos y el ícono de categoría) vive en `mapalab-symbols/components/`.
+
+El **ícono de la categoría** (`symbol_categories.icon`, columna `TEXT`) acepta un emoji o la URL de un símbolo del catálogo (imagen/SVG). Las respuestas de categoría —admin y el catálogo público— exponen `iconUrl` derivado: la URL si el valor apunta a un archivo, `null` si es emoji, para que el visor no infiera por heurística.
 
 ### v0.31.0 Modelo de Propiedades (display-only)
 
@@ -842,6 +845,18 @@ Este repo se integra con otros servicios internos vecinos (CMS, visor de mapas, 
 ---
 
 ## Cambios recientes
+
+### 2026-07-24 (1.82.0) — Sextante: sección propia para GeoServer + ícono de categoría con imagen/SVG
+
+Lo relacionado con GeoServer estaba repartido dentro de MapaLab o escondido en modales del editor de capas. Ahora es una sección del sider, **Sextante** (feature `admin/src/features/sextante/`), con cinco subpáginas; el sider además sube **Acervo** por encima de Huachicol.
+
+- **Nuevas:** `/sextante/workspaces` (registrados vs pendientes, alta incluida — el flujo salió del Alert de `LayerCreateModal`, que sigue usando el mismo `RegisterWorkspaceModal` ya movido a `sextante`), `/sextante/capas` (introspección workspace → capa → campos con valores de muestra + estilos + layer group) y `/sextante/estilos` (catálogo de SLDs por workspace con tipo detectado, capas que comparten el estilo, leyenda en vivo y XML copiable).
+- **Movidas:** `/sextante/recursos` (antes `/mapalab/recursos-geoserver`) y `/sextante/simbolos` (antes `/mapalab/simbolos`); las rutas viejas redirigen.
+- **Acceso:** el proyecto `sextante` del registry declara `accessSlug: 'mapalab'`, así que lo ve quien ya tenía MapaLab — el router `/geoserver/*` del backend depende de `require_project_access('mapalab')`. Workspaces y Símbolos siguen admin-only.
+- **Backend:** `GeoServerClient.list_workspace_styles()` + `GET /geoserver/workspaces/{alias}/styles`. El resto reusa endpoints existentes.
+- **Ícono de categoría de símbolos:** además de emoji admite cualquier símbolo del catálogo (imagen/SVG, guardado como URL del Acervo). Las respuestas de categoría exponen `iconUrl` derivado; lo consume mapalab 1.88.0. Sin migración (`icon` ya era `TEXT`). `SymbolPicker` se mudó a `mapalab-symbols/components/`.
+
+Detalle en CHANGELOG §[1.82.0].
 
 ### 2026-07-23 (1.74.0) — Reordenamiento drag & drop de capas del catálogo y opciones de catálogos SIEEJ
 

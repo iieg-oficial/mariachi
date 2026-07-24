@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Button, List, Modal, Progress, Space, Tag, Typography, Upload } from 'antd';
 import { DeleteOutlined, InboxOutlined } from '@ant-design/icons';
-import { uploadGeoserverFileSmart } from '@features/mapalab-geoserver-files/api/geoserverFilesService';
+import { uploadGeoserverFileSmart } from '@features/sextante/api/geoserverFilesService';
 import { message } from '@shared/services/message';
 
 const { Dragger } = Upload;

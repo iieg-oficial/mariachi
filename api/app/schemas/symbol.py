@@ -3,11 +3,29 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, computed_field, model_validator
 
 from app.schemas._camel import CamelCaseInput
 
 SymbolKind = Literal["emoji", "svg", "image"]
+
+
+def _icon_url(icon: str | None) -> str | None:
+    if not icon:
+        return None
+    value = icon.strip()
+    if value.startswith(("http://", "https://", "/")):
+        return value
+    return None
+
+
+class _CategoryIconMixin(BaseModel):
+    icon: str | None = None
+
+    @computed_field(alias="iconUrl", return_type=str | None)
+    @property
+    def icon_url(self) -> str | None:
+        return _icon_url(self.icon)
 
 
 class SymbolCategoryBase(CamelCaseInput):
@@ -28,11 +46,10 @@ class SymbolCategoryUpdate(CamelCaseInput):
     sort_order: int | None = Field(default=None, serialization_alias="sortOrder")
 
 
-class SymbolCategoryResponse(BaseModel):
+class SymbolCategoryResponse(_CategoryIconMixin):
     id: int
     slug: str
     name: str
-    icon: str | None = None
     sort_order: int = Field(..., serialization_alias="sortOrder")
     created_at: datetime = Field(..., serialization_alias="createdAt")
     updated_at: datetime = Field(..., serialization_alias="updatedAt")
@@ -86,11 +103,10 @@ class SymbolResponse(BaseModel):
     model_config = ConfigDict(populate_by_name=True, from_attributes=True)
 
 
-class SymbolCatalogCategory(BaseModel):
+class SymbolCatalogCategory(_CategoryIconMixin):
     id: int
     slug: str
     name: str
-    icon: str | None = None
     symbols: list[SymbolResponse]
 
     model_config = ConfigDict(populate_by_name=True, from_attributes=True)

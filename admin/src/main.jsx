@@ -16,6 +16,7 @@ import ChangePassword from '@features/auth/pages/ChangePasswordPage';
 import { buildMapalabApiKeysRoutes } from '@features/mapalab-api-keys/routes';
 import { buildColibriRoutes } from '@features/colibri/routes';
 import { buildHuachicolRoutes } from '@features/telemetria/routes';
+import { buildSextanteRoutes } from '@features/sextante/routes';
 
 const Users = lazy(() => import('@features/users'));
 const MenuManager = lazy(() => import('@features/portal-menu'));
@@ -30,8 +31,6 @@ const CatalogoCapasPage = lazy(() => import('@features/mapalab-catalogo').then((
 const EventosListPage = lazy(() => import('@features/mapalab-eventos').then((m) => ({ default: m.EventosListPage })));
 const EventoEditPage = lazy(() => import('@features/mapalab-eventos').then((m) => ({ default: m.EventoEditPage })));
 const HomePage = lazy(() => import('@features/mapalab-home').then((m) => ({ default: m.HomePage })));
-const SymbolsPage = lazy(() => import('@features/mapalab-symbols').then((m) => ({ default: m.SymbolsPage })));
-const GeoserverFilesPage = lazy(() => import('@features/mapalab-geoserver-files').then((m) => ({ default: m.GeoserverFilesPage })));
 const DocumentacionPage = lazy(() => import('@features/documentacion').then((m) => ({ default: m.DocumentacionPage })));
 const FormulariosListPage = lazy(() => import('@features/sieej-formularios').then((m) => ({ default: m.FormulariosListPage })));
 const FormularioEditorPage = lazy(() => import('@features/sieej-formularios').then((m) => ({ default: m.FormularioEditorPage })));
@@ -189,22 +188,7 @@ const router = createBrowserRouter([
                             </RoleProtectedRoute>
                         )
                     },
-                    {
-                        path: 'mapalab/simbolos',
-                        element: withSuspense(
-                            <RoleProtectedRoute allowedRoles={['tetlamamakani']}>
-                                <SymbolsPage />
-                            </RoleProtectedRoute>
-                        )
-                    },
-                    {
-                        path: 'mapalab/recursos-geoserver',
-                        element: withSuspense(
-                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
-                                <GeoserverFilesPage />
-                            </RoleProtectedRoute>
-                        )
-                    },
+                    ...buildSextanteRoutes(withSuspense),
                     ...buildHuachicolRoutes(withSuspense),
                     ...buildMapalabApiKeysRoutes(withSuspense),
                     {

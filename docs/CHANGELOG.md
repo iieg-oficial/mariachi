@@ -9,6 +9,27 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.82.0] - 2026-07-24
+
+### Agregado: Sextante, la sección de GeoServer del panel
+
+Todo lo que toca GeoServer vivía repartido dentro de MapaLab (Recursos GeoServer, Símbolos) o escondido en modales del editor de capas (registrar un workspace, ver qué campos expone una capa). Ahora es una sección propia del sider, **Sextante**, con cinco subpáginas. El sider además sube **Acervo** por encima de Huachicol, que es de consulta esporádica.
+
+- **Workspaces** (`/sextante/workspaces`, admin): tabla de los registrados en `mapalab.workspaces` con alias, workspace de GeoServer, schema de DataEngine y número de capas (desplegables por fila), más el alta de los que existen en GeoServer y no están registrados. Ese flujo estaba solo como un Alert dentro de `LayerCreateModal`, que sigue funcionando: `PendingWorkspacesAlert` y `RegisterWorkspaceModal` se movieron a la feature `sextante` y los dos lugares comparten el mismo modal.
+- **Explorador de capas** (`/sextante/capas`): workspace → capa → campos con tipo y valores de muestra, más los estilos asignados y si es un layer group. Sirve para armar filtros CQL, InfoBox y simbología sin adivinar nombres de columnas; antes esa introspección solo se veía dentro de los modales que la consumían.
+- **Estilos** (`/sextante/estilos`): catálogo de SLDs por workspace, opcionalmente con los del catálogo global. El detalle muestra el tipo detectado por el parser (coroplético/límite/punto), si es editable desde Mariachi, **qué capas comparten el estilo**, la leyenda en vivo y el XML copiable. La edición visual sigue en la pestaña Simbología de cada capa, con su flujo de revisión.
+- **Recursos** (`/sextante/recursos`) y **Símbolos** (`/sextante/simbolos`) son las páginas que ya existían, movidas de MapaLab. Las rutas viejas (`/mapalab/recursos-geoserver`, `/mapalab/simbolos`) redirigen.
+- **Acceso**: Sextante se declara con `accessSlug: 'mapalab'`, así que lo ve quien ya tenía acceso a MapaLab — es lo que exige el backend, cuyo router `/geoserver/*` depende de `require_project_access('mapalab')`. Workspaces y Símbolos siguen siendo admin-only.
+- **Backend**: `GeoServerClient.list_workspace_styles(workspace)` y `GET /geoserver/workspaces/{alias}/styles?include_global=` (lectura, rate limit `geoserver_read`). El resto de las páginas se arma con endpoints que ya existían.
+
+### Agregado: el ícono de una categoría de símbolos puede ser una imagen o un SVG
+
+El campo «ícono» de cada categoría era un input de 8 caracteres, o sea únicamente emoji tecleado a mano. Ahora se puede elegir cualquier símbolo del catálogo: si es emoji se guarda el carácter, y si es imagen o SVG se guarda su URL del Acervo. La columna `icon` ya era `TEXT`, así que no hay migración.
+
+- `CategoryIconField` alterna entre «Emoji o texto» y «Del catálogo», con vista previa y botón para quitar. `CategoryIcon` centraliza el render (emoji como texto, URL como `<img>`) y lo usan la lista de categorías, el encabezado del panel y las pestañas del `SymbolPicker`.
+- `SymbolPicker` se movió de `mapalab-layers/components/sldEditor/` a `mapalab-symbols/components/`, que es donde corresponde por dominio, y acepta una prop `hint` para que cada consumidor ponga su propia nota al pie. Sus tres usos (editor SLD de puntos, snapshot de eventos, ícono de categoría) apuntan ya ahí.
+- **Contrato**: las respuestas de categoría (admin y el catálogo público `GET /api/mapalab/symbols/catalog`) ganan `iconUrl`, derivado de `icon` — es la URL si el valor apunta a un archivo, `null` si es emoji. Así el visor no tiene que adivinar. Lo consume mapalab 1.88.0; sin él, una categoría con ícono de imagen mostraría la URL como texto.
+
 ## [1.79.0] - 2026-07-24
 
 ### Cambiado: absorción de los tipos `email` y `tel` en `text` + catálogo de regex

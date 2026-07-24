@@ -6,7 +6,7 @@ import { useAuth } from '@shared/contexts/useAuth';
 import { message } from '@shared/services/message';
 import api from '@shared/services/api';
 import { buildTreeSelectData } from '@features/mapalab-layers/utils/treeSelect';
-import PendingWorkspacesAlert from './PendingWorkspacesAlert';
+import PendingWorkspacesAlert from '@features/sextante/components/PendingWorkspacesAlert';
 
 const { Text } = Typography;
 

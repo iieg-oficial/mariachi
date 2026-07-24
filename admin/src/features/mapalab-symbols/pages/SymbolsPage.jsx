@@ -23,6 +23,7 @@ import {
     useSymbolsByCategory,
 } from '@features/mapalab-symbols/hooks/useSymbolsAdmin';
 import CategoryFormModal from '@features/mapalab-symbols/components/CategoryFormModal';
+import CategoryIcon from '@features/mapalab-symbols/components/CategoryIcon';
 import SymbolFormModal from '@features/mapalab-symbols/components/SymbolFormModal';
 import SymbolGrid from '@features/mapalab-symbols/components/SymbolGrid';
 import useIsMobile from '@shared/hooks/useIsMobile';
@@ -171,7 +172,7 @@ export default function SymbolsPage() {
                                         ]}
                                     >
                                         <Space size={6}>
-                                            <span style={{ fontSize: 18 }}>{cat.icon || '·'}</span>
+                                            <CategoryIcon icon={cat.icon} name={cat.name} size={18} />
                                             <Text strong={cat.id === selectedId}>{cat.name}</Text>
                                         </Space>
                                     </List.Item>
@@ -183,7 +184,17 @@ export default function SymbolsPage() {
                     <Card
                         title={
                             selectedCategory
-                                ? `${selectedCategory.icon || ''} ${selectedCategory.name}`
+                                ? (
+                                    <Space size={6}>
+                                        <CategoryIcon
+                                            icon={selectedCategory.icon}
+                                            name={selectedCategory.name}
+                                            size={18}
+                                            fallback=""
+                                        />
+                                        <span>{selectedCategory.name}</span>
+                                    </Space>
+                                )
                                 : 'Símbolos'
                         }
                         extra={

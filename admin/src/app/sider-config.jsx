@@ -136,6 +136,19 @@ export const MAIN_ITEMS = [
         allowedGlobalRoles: ['tetlamamakani'],
     },
     {
+        key: 'group-acervo',
+        label: 'Acervo',
+        icon: <FileImageOutlined />,
+        allowedGlobalRoles: ['tetlamamakani', 'editora'],
+        children: [
+            { key: '/acervo', path: '/acervo', label: 'Media', icon: <PictureOutlined /> },
+            {
+                key: '/acervo/buckets', path: '/acervo/buckets', label: 'Buckets',
+                icon: <DatabaseOutlined />, allowedGlobalRoles: ['tetlamamakani'],
+            },
+        ],
+    },
+    {
         key: 'group-huachicol',
         label: 'Huachicol',
         icon: <ClusterOutlined />,
@@ -152,19 +165,6 @@ export const MAIN_ITEMS = [
             {
                 key: '/huachicol/actividad', path: '/huachicol/actividad',
                 label: 'Actividad', icon: <HistoryOutlined />,
-            },
-        ],
-    },
-    {
-        key: 'group-acervo',
-        label: 'Acervo',
-        icon: <FileImageOutlined />,
-        allowedGlobalRoles: ['tetlamamakani', 'editora'],
-        children: [
-            { key: '/acervo', path: '/acervo', label: 'Media', icon: <PictureOutlined /> },
-            {
-                key: '/acervo/buckets', path: '/acervo/buckets', label: 'Buckets',
-                icon: <DatabaseOutlined />, allowedGlobalRoles: ['tetlamamakani'],
             },
         ],
     },
@@ -190,7 +190,7 @@ export function buildSiderItems({ user, onNavigate, extras = {} }) {
     for (const [slug, project] of Object.entries(PROJECT_REGISTRY)) {
         if (project.items.length === 0) continue;
         const grantedByRole = project.allowedGlobalRoles?.includes(role);
-        const grantedByMembership = userProjectSlugs.includes(slug);
+        const grantedByMembership = userProjectSlugs.includes(project.accessSlug || slug);
         const projectAccessible = isAdmin || grantedByRole || grantedByMembership;
         const projectDisabled = project.disabled || !projectAccessible;
         const projectLabel = projectAccessible
