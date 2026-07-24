@@ -48,12 +48,19 @@ export default function ConfiguracionEditor({ formulario, onSaved }) {
                     ...(values.ancla ? { ancla: values.ancla.format('YYYY-MM-DD') } : {}),
                 }
                 : null,
+            actualizado_en_esperado: formulario.actualizado_en,
         };
         try {
             const updated = await formulariosApi.update(formulario.id, payload);
             message.success('Configuración guardada');
             onSaved?.(updated);
         } catch (err) {
+            if (err?.response?.status === 409) {
+                const fresco = await formulariosApi.get(formulario.id);
+                onSaved?.(fresco);
+                message.warning(err.response.data.detail);
+                return;
+            }
             message.error(err?.response?.data?.detail || 'Error al guardar');
         }
     };

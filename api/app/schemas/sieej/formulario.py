@@ -29,6 +29,24 @@ class FormularioUpdate(BaseModel):
     vigencia_fin: datetime | None = None
     periodicidad: dict[str, Any] | None = None
     publico: bool | None = None
+    actualizado_en_esperado: datetime | None = Field(
+        default=None,
+        description=(
+            "`actualizado_en` que tenia el formulario cuando se abrio el editor. "
+            "Si otra persona guardo despues, el PUT responde 409 en vez de pisar."
+        ),
+    )
+
+
+class PresenciaEditor(BaseModel):
+    username: str
+    name: str
+    avatar_url: str | None = None
+    seccion: str | None = None
+
+
+class PresenciaIn(BaseModel):
+    seccion: str | None = Field(default=None, max_length=64)
 
 
 class GrupoRef(BaseModel):
@@ -53,6 +71,7 @@ class FormularioResponse(FormularioBase):
     creado_por_id: int
     creado_en: datetime
     actualizado_en: datetime
+    actualizado_por: UsuarioRef | None = None
     grupos: list[GrupoRef] = []
     usuarios_asignados: list[UsuarioRef] = []
 

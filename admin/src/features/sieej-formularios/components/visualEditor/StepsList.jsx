@@ -45,7 +45,7 @@ function DraggableTabNode(props) {
     });
 }
 
-export default function StepsList({ steps, onChange, stepAddTrigger }) {
+export default function StepsList({ steps, formularioSlug, onChange, stepAddTrigger }) {
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [editingIdx, setEditingIdx] = useState(null);
     const [pasoFromUrl, setPaso] = useSearchParamState('paso');
@@ -153,6 +153,7 @@ export default function StepsList({ steps, onChange, stepAddTrigger }) {
                 {s.type !== 'summary' && (
                     <FieldsList
                         step={s}
+                        formularioSlug={formularioSlug}
                         onChange={(updated) => handleStepFieldsChange(idx, updated)}
                         addTrigger={fieldAddTarget?.idx === idx ? fieldAddTarget : null}
                     />

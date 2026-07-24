@@ -18,6 +18,25 @@ export const formulariosApi = {
     notificaciones: (id) => api.get(`/sieej/formularios/${id}/notificaciones`).then((r) => r.data),
     exportarNotificaciones: (id, formato = 'xlsx') => api.get(`/sieej/formularios/${id}/notificaciones/exportar`, { params: { formato }, responseType: 'blob' }),
     tickPeriodos: () => api.post('/sieej/periodos/tick').then((r) => r.data),
+    presencia: (id) => api.get(`/sieej/formularios/${id}/presencia`).then((r) => r.data),
+    presenciaGlobal: () => api.get('/sieej/formularios/presencia').then((r) => r.data),
+    marcarPresencia: (id, seccion) => api.put(`/sieej/formularios/${id}/presencia`, { seccion }).then((r) => r.data),
+    salirPresencia: (id) => api.delete(`/sieej/formularios/${id}/presencia`).then((r) => r.data),
+    // `keepalive` permite que la baja sobreviva al cierre de la pestaña, donde el
+    // cleanup de React ya no corre. `fetch` (a diferencia de sendBeacon) sí manda
+    // el header CSRF que exige el endpoint.
+    salirPresenciaBeacon: (id) => {
+        const base = import.meta.env.VITE_ADMIN_API_URL || '/api/mariachi';
+        const csrf = sessionStorage.getItem('csrf_token');
+        try {
+            fetch(`${base}/sieej/formularios/${id}/presencia`, {
+                method: 'DELETE',
+                credentials: 'include',
+                keepalive: true,
+                headers: csrf ? { 'X-CSRF-Token': csrf } : {},
+            }).catch(() => {});
+        } catch { /* el navegador se está cerrando */ }
+    },
 };
 
 export const catalogosApi = {

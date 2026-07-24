@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Form, Input, Modal, Radio, Tabs, Tooltip } from 'antd';
-import { EditOutlined } from '@ant-design/icons';
+import { Alert, Button, Form, Input, Modal, Radio, Select, Tabs } from 'antd';
+import { EditOutlined, PartitionOutlined } from '@ant-design/icons';
 import {
-    COMMON_TAB,
-    detachFieldsFromTab,
     dropFieldsOfTab,
     indicesOfTab,
+    moveFieldsToTab,
     renameTabInFields,
 } from './fieldUtils';
 
@@ -16,11 +15,12 @@ const slugify = (text) => (text || '')
     .replace(/_+/g, '_').replace(/^_|_$/g, '');
 
 export default function TabsManager({
-    tabs = [], fields = [], activeKey, onActiveChange, onTabsChange, showCommon, children,
+    tabs = [], fields = [], activeKey, onActiveChange, onTabsChange, children,
 }) {
     const [editing, setEditing] = useState(null);
     const [removing, setRemoving] = useState(null);
-    const [removeMode, setRemoveMode] = useState('detach');
+    const [removeMode, setRemoveMode] = useState('move');
+    const [moveTarget, setMoveTarget] = useState(null);
     const [form] = Form.useForm();
 
     useEffect(() => {
@@ -38,21 +38,23 @@ export default function TabsManager({
         const tab = tabs.find((t) => t.id === targetKey);
         if (!tab) return;
         const count = countOf(tab.id);
-        if (count === 0) {
-            applyRemove(tab, 'detach');
+        const survivors = tabs.filter((t) => t.id !== tab.id);
+        if (count === 0 || survivors.length === 0) {
+            applyRemove(tab, 'move', survivors[0]?.id ?? null);
             return;
         }
-        setRemoveMode('detach');
+        setRemoveMode('move');
+        setMoveTarget(survivors[0].id);
         setRemoving({ tab, count });
     };
 
-    const applyRemove = (tab, mode) => {
+    const applyRemove = (tab, mode, targetId) => {
         const nextTabs = tabs.filter((t) => t.id !== tab.id);
         const nextFields = mode === 'drop'
             ? dropFieldsOfTab(fields, tab.id)
-            : detachFieldsFromTab(fields, tab.id);
+            : moveFieldsToTab(fields, tab.id, targetId);
         onTabsChange?.(nextTabs, nextFields);
-        if (activeKey === tab.id) onActiveChange?.(COMMON_TAB);
+        if (activeKey === tab.id) onActiveChange?.(targetId ?? nextTabs[0]?.id ?? null);
         setRemoving(null);
     };
 
@@ -64,7 +66,9 @@ export default function TabsManager({
         const nextTabs = isNew
             ? [...tabs, { id: nextId, title }]
             : tabs.map((t) => (t.id === prevId ? { id: nextId, title } : t));
-        const nextFields = isNew ? fields : renameTabInFields(fields, prevId, nextId);
+        const nextFields = isNew
+            ? (tabs.length === 0 ? fields.map((f) => ({ ...f, tab: nextId })) : fields)
+            : renameTabInFields(fields, prevId, nextId);
 
         onTabsChange?.(nextTabs, nextFields);
         onActiveChange?.(nextId);
@@ -85,44 +89,42 @@ export default function TabsManager({
         </span>
     );
 
-    const commonItem = {
-        key: COMMON_TAB,
-        closable: false,
-        label: (
-            <Tooltip title="Campos sin tab: se muestran en todos los tabs del item.">
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                    Comunes
-                    <span style={{ color: '#999', fontSize: 12 }}>{countOf(COMMON_TAB)}</span>
-                </span>
-            </Tooltip>
-        ),
+    const items = tabs.map((t) => ({
+        key: t.id,
+        closable: true,
+        label: tabLabel(t),
         children,
-    };
-
-    const items = [
-        ...(showCommon ? [commonItem] : []),
-        ...tabs.map((t) => ({
-            key: t.id,
-            closable: true,
-            label: tabLabel(t),
-            children,
-        })),
-    ];
+    }));
 
     return (
         <>
-            <Tabs
-                type="editable-card"
-                activeKey={activeKey}
-                onChange={onActiveChange}
-                onEdit={handleEdit}
-                items={items}
-                addIcon={<span style={{ padding: '0 4px' }}>+ Tab</span>}
-            />
+            {tabs.length === 0 ? (
+                <>
+                    {children}
+                    <Button
+                        type="link"
+                        size="small"
+                        icon={<PartitionOutlined />}
+                        style={{ marginTop: 8, paddingInline: 0 }}
+                        onClick={() => setEditing({ tab: null })}
+                    >
+                        Dividir en pestañas
+                    </Button>
+                </>
+            ) : (
+                <Tabs
+                    type="editable-card"
+                    activeKey={activeKey}
+                    onChange={onActiveChange}
+                    onEdit={handleEdit}
+                    items={items}
+                    addIcon={<span style={{ padding: '0 4px' }}>+ Pestaña</span>}
+                />
+            )}
 
             <Modal
                 open={!!editing}
-                title={editing?.tab ? `Editar tab: ${editing.tab.id}` : 'Nuevo tab'}
+                title={editing?.tab ? `Editar pestaña: ${editing.tab.id}` : 'Nueva pestaña'}
                 okText="Guardar"
                 cancelText="Cancelar"
                 onCancel={() => setEditing(null)}
@@ -130,6 +132,14 @@ export default function TabsManager({
                 destroyOnHidden
             >
                 <Form layout="vertical" form={form} onFinish={handleSaveTab}>
+                    {!editing?.tab && tabs.length === 0 && fields.length > 0 && (
+                        <Alert
+                            type="info"
+                            showIcon
+                            style={{ marginBottom: 16 }}
+                            message={`Los ${fields.length} campos del paso quedarán en esta primera pestaña. Después puedes moverlos.`}
+                        />
+                    )}
                     <Form.Item
                         label="Título"
                         name="title"
@@ -147,7 +157,7 @@ export default function TabsManager({
                         label="Identificador (sin espacios)"
                         name="id"
                         extra={editing?.tab
-                            ? 'Al cambiarlo se reasignan los campos que ya usan este tab.'
+                            ? 'Al cambiarlo se reasignan los campos que ya usan esta pestaña.'
                             : undefined}
                         rules={[
                             { required: true, message: 'El identificador es obligatorio.' },
@@ -155,7 +165,7 @@ export default function TabsManager({
                             {
                                 validator: (_r, value) => (
                                     tabs.some((t) => t.id === value && t.id !== editing?.tab?.id)
-                                        ? Promise.reject(new Error('Ya existe un tab con ese identificador.'))
+                                        ? Promise.reject(new Error('Ya existe una pestaña con ese identificador.'))
                                         : Promise.resolve()
                                 ),
                             },
@@ -168,16 +178,16 @@ export default function TabsManager({
 
             <Modal
                 open={!!removing}
-                title={`Eliminar tab: ${removing?.tab?.title || removing?.tab?.id}`}
+                title={`Eliminar pestaña: ${removing?.tab?.title || removing?.tab?.id}`}
                 okText="Eliminar"
                 okButtonProps={{ danger: true }}
                 cancelText="Cancelar"
                 onCancel={() => setRemoving(null)}
-                onOk={() => applyRemove(removing.tab, removeMode)}
+                onOk={() => applyRemove(removing.tab, removeMode, moveTarget)}
                 destroyOnHidden
             >
                 <p>
-                    Este tab tiene {removing?.count} campo{removing?.count === 1 ? '' : 's'} asignado
+                    Esta pestaña tiene {removing?.count} campo{removing?.count === 1 ? '' : 's'} asignado
                     {removing?.count === 1 ? '' : 's'}. ¿Qué quieres hacer con ellos?
                 </p>
                 <Radio.Group
@@ -185,14 +195,23 @@ export default function TabsManager({
                     onChange={(e) => setRemoveMode(e.target.value)}
                     style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
                 >
-                    <Radio value="detach">
-                        Moverlos a Comunes
-                        <div style={{ color: '#888', fontSize: 12 }}>
-                            Se conservan y pasarán a mostrarse en todos los tabs.
+                    <Radio value="move">
+                        Moverlos a otra pestaña
+                        <div style={{ color: '#888', fontSize: 12, marginBottom: 8 }}>
+                            Se conservan tal cual, solo cambian de pestaña.
                         </div>
+                        <Select
+                            value={moveTarget}
+                            onChange={setMoveTarget}
+                            disabled={removeMode !== 'move'}
+                            style={{ width: '100%' }}
+                            options={tabs
+                                .filter((t) => t.id !== removing?.tab?.id)
+                                .map((t) => ({ value: t.id, label: t.title || t.id }))}
+                        />
                     </Radio>
                     <Radio value="drop">
-                        Eliminarlos junto con el tab
+                        Eliminarlos junto con la pestaña
                         <div style={{ color: '#888', fontSize: 12 }}>
                             Se borran los {removing?.count} campos del formulario.
                         </div>

@@ -77,6 +77,24 @@ export default function FormulariosListPage() {
 
     useEffect(() => { load(); }, [load]);
 
+    const [presencia, setPresencia] = useState({});
+
+    useEffect(() => {
+        let vigente = true;
+        const consultar = async () => {
+            if (document.hidden) return;
+            try {
+                const data = await formulariosApi.presenciaGlobal();
+                if (vigente) setPresencia(data);
+            } catch {
+                if (vigente) setPresencia({});
+            }
+        };
+        consultar();
+        const timer = setInterval(consultar, 20000);
+        return () => { vigente = false; clearInterval(timer); };
+    }, []);
+
     const visibles = useMemo(() => {
         let list = [...formularios];
         if (estadoFiltro) list = list.filter((f) => f.estado === estadoFiltro);
@@ -244,6 +262,7 @@ export default function FormulariosListPage() {
                             <Col key={f.id} xs={24} sm={12} lg={8} xl={6}>
                                 <FormularioCard
                                     formulario={f}
+                                    editores={presencia[String(f.id)] ?? []}
                                     onEditar={() => navigate(`/sieej/formularios/${f.slug}`)}
                                     onEnvios={() => navigate(`/sieej/formularios/${f.slug}?tab=envios`)}
                                     onAsignaciones={() => navigate(`/sieej/formularios/${f.slug}?tab=asignaciones`)}

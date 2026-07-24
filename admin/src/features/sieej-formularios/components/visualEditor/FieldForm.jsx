@@ -153,8 +153,8 @@ export default function FieldForm({
                         />
                     </Form.Item>
                     {availableTabs.length > 0 && (
-                        <Form.Item label="Tab" name="tab">
-                            <Select allowClear options={availableTabs.map((t) => ({ value: t.id, label: t.title }))} />
+                        <Form.Item label="Pestaña" name="tab" rules={[{ required: true }]}>
+                            <Select options={availableTabs.map((t) => ({ value: t.id, label: t.title || t.id }))} />
                         </Form.Item>
                     )}
                     <Form.Item

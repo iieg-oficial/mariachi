@@ -364,7 +364,12 @@ def _validar_field(
     if step_type == "repeater" and isinstance(step_tabs, list) and step_tabs:
         tab_ref = field.get("tab")
         valid_tab_ids = {t.get("id") for t in step_tabs if isinstance(t, dict)}
-        if tab_ref is not None and tab_ref not in valid_tab_ids:
+        if tab_ref is None:
+            raise DefinicionInvalidaError(
+                f"Step `{step_id}` field `{name}`: falta `tab`. En un paso con "
+                "pestanas cada campo pertenece a exactamente una."
+            )
+        if tab_ref not in valid_tab_ids:
             raise DefinicionInvalidaError(
                 f"Step `{step_id}` field `{name}`: `tab` `{tab_ref}` no existe en el step."
             )

@@ -9,6 +9,44 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.85.0] - 2026-07-24
+
+### Agregado: edición concurrente de formularios SIEEJ — 409 al pisar + presencia con avatares
+
+Dos personas editando el mismo formulario podían pisarse en silencio: el último guardado ganaba. Y el costo no era solo perder texto — como el guardado de la definición corre el clasificador de cambios, escribir encima con una definición vieja puede clasificarse como cambio que **rompe**, subir la versión y **reabrir envíos ya enviados** de las dependencias.
+
+- **Bloqueo optimista (la garantía).** `FormularioUpdate` acepta `actualizado_en_esperado`; si otra persona guardó después, el `PUT` responde **409** diciendo quién y cuándo, en vez de sobreescribir. Tolerancia de un segundo para no dar falsos positivos con clientes que truncan el ISO a milisegundos. Sin el campo, el `PUT` se comporta como antes. Nueva columna `sieej.formulario.actualizado_por_id` (migración `b7c8d9e0f1a3`), expuesta como `actualizado_por`.
+- **Presencia (el aviso).** Reutiliza `services/presence.py` (Redis, TTL 30 s) con scope `sieej_formulario`, extendido con `avatar_url` y `seccion`: `PUT|DELETE|GET /sieej/formularios/{id}/presencia` y `GET /sieej/formularios/presencia` (todos los formularios en un solo scan, para el listado).
+- **En el admin**: `usePresenciaFormulario` late cada 20 s y pausa con `document.hidden`; `PresenciaEditores` pinta un `Avatar.Group` con tooltip `nombre · en Sección`. En el editor la etiqueta se pone naranja cuando alguien está en **tu misma** pestaña; en el listado cada tarjeta muestra quién la tiene abierta. En Definición el 409 abre un aviso con botón **Recargar**; en Configuración recarga y avisa. Al cerrar la pestaña la baja se manda en `pagehide` con `fetch keepalive` (sobrevive al cierre y sí manda CSRF, cosa que `sendBeacon` no).
+- **Robustez**: `presence.list_others`/`list_by_resource`/`unregister` degradan a vacío/no-op si Redis no responde (mismo criterio best-effort que `core/cache.py`), para que la caída del cache no tumbe el editor con un 500 por un adorno. El 409 no depende de Redis.
+
+La presencia es un aviso, no un candado: quien garantiza que no se pisen es el 409.
+
+### Agregado: copiar, pegar y duplicar campos en el constructor de formularios SIEEJ
+
+Cada campo del editor visual gana **Copiar** y **Duplicar aquí**, y el pie de la lista un botón **Pegar** que aparece solo cuando hay algo copiado (con un resumen de qué se va a pegar). Sirve para no recapturar a mano un campo cuya expresión regular, catálogo, opciones o configuración de archivo ya costó trabajo afinar, sea en otro paso o en otro formulario.
+
+El portapapeles vive en `localStorage` (`mariachi.sieej.fieldClipboard`), no en el del sistema: así cruza formularios y pestañas del navegador sin pedir permisos ni depender de APIs que Firefox no expone. Se escribe además al portapapeles del sistema como JSON legible, best-effort. Sin backend.
+
+`fieldClipboard.js::prepareFieldForPaste` normaliza al pegar, que es lo que evita dejar la definición inválida: `name` duplicado se sufija (`_2`, `_3`…), el `tab` se fuerza a la pestaña activa, un `showWhen` cuyo campo disparador no viajó se elimina (si no, el campo pegado nunca se mostraría), un `catalog` inexistente se avisa y un `bucket` sin acceso cae a `sieej`. Cada ajuste se reporta al admin con un aviso concreto.
+
+### Cambiado: en un repeater con pestañas, cada campo pertenece a exactamente una
+
+Los campos sin `tab` se renderizaban **repetidos en todas las pestañas** del elemento, mezclados en el mismo grid con los de la pestaña activa. En el CMS aparecían agrupados bajo una pestaña «Comunes» que no existe como tal en el respondent, así que ninguna pantalla del editor mostraba el orden real que se iba a ver al capturar. De ahí venían los reportes de campos duplicados y de orden que "se desordena solo".
+
+- **«Comunes» desaparece.** Todo campo pertenece a una pestaña; el selector de pestaña del campo deja de ofrecer «todas» y el del formulario es obligatorio. Al abrir un paso con campos sin pestaña, el editor los asigna a la primera y lo avisa.
+- **Un repeater sin pestañas** muestra la lista plana con un botón «Dividir en pestañas»; al crear la primera, los campos existentes quedan en ella.
+- **Eliminar una pestaña** ya no propone "moverlos a Comunes" (que los repartía por todas): ahora se elige a qué pestaña van, o se borran con ella.
+- **Backend**: `definicion_validator` exige `tab` en los campos de un repeater con `tabs` y lo dice con un mensaje explícito. Migración `a6b7c8d9e0f1` (rama mariachi): asigna la primera pestaña a los campos que no la traían, en `sieej.formulario.definicion`, `sieej.envio_formulario.definicion_snapshot` y `sieej.formulario_version.definicion`. El downgrade no restituye (no hay forma de saber cuáles estaban sin `tab`) pero no pierde datos.
+- **Compatibilidad**: el renderer de SIEEJ (>= 1.39.0) manda a la primera pestaña cualquier campo sin `tab` válido, así que los snapshots históricos —que no se migran a la fuerza— siguen mostrándose completos. Antes un `tab` inexistente hacía que el campo no apareciera en ninguna pestaña.
+- `tab` no es un campo significativo del clasificador de cambios, así que la normalización no sube versión ni reabre envíos.
+
+### Agregado: apertura periódica de formularios y avisos de apertura/faltantes
+
+Un formulario puede abrir una **ventana de captura recurrente** (`mensual` / `trimestral` / `semestral` / `anual`, con día de apertura y duración en días, más un `ancla` opcional) en lugar de una vigencia única; cada ventana genera un **envío nuevo por usuario**. Migración `f9a0b1c2d3e4`: agrega `sieej.formulario.periodicidad`, las tablas `sieej.formulario_periodo` y `sieej.notificacion`, y `envio_formulario.periodo_id`; reemplaza el `UNIQUE (formulario, usuario)` por dos índices únicos parciales (con y sin periodo), así que los formularios no periódicos conservan su invariante y los envíos existentes no requieren migración de datos.
+
+`PeriodosService.tick()` (idempotente) materializa las ventanas, abre, cierra, expira los envíos en proceso y avisa; corre en el sidecar `cron-sieej` (`scripts/sieej_periodos_tick.py`) o a mano con `POST /sieej/periodos/tick`. El estado «abierto» se computa de la configuración, no de un estado guardado, así que el gating es correcto aunque el cron no haya corrido. Los avisos (apertura al creador; faltantes al creador y administradores) salen best-effort por el webhook de Discord de SIEEJ y quedan en `sieej.notificacion`, con bitácora exportable a CSV/XLSX desde la nueva pestaña «Periodos» del CMS. No se agregó correo: el stack no tiene SMTP. Endpoints nuevos: `GET /sieej/formularios/{id}/periodos`, `/notificaciones[/exportar]` y `POST /sieej/periodos/tick`. Requiere el frontend SIEEJ >= 1.35.0.
+
 ## [1.84.0] - 2026-07-24
 
 ### Cambiado: ordenamiento del grid de formularios (fin de `grid-flow-row-dense` + `layout.newRow`) y cierre del hack de espaciadores
@@ -45,6 +83,37 @@ El campo «ícono» de cada categoría era un input de 8 caracteres, o sea únic
 - `CategoryIconField` alterna entre «Emoji o texto» y «Del catálogo», con vista previa y botón para quitar. `CategoryIcon` centraliza el render (emoji como texto, URL como `<img>`) y lo usan la lista de categorías, el encabezado del panel y las pestañas del `SymbolPicker`.
 - `SymbolPicker` se movió de `mapalab-layers/components/sldEditor/` a `mapalab-symbols/components/`, que es donde corresponde por dominio, y acepta una prop `hint` para que cada consumidor ponga su propia nota al pie. Sus tres usos (editor SLD de puntos, snapshot de eventos, ícono de categoría) apuntan ya ahí.
 - **Contrato**: las respuestas de categoría (admin y el catálogo público `GET /api/mapalab/symbols/catalog`) ganan `iconUrl`, derivado de `icon` — es la URL si el valor apunta a un archivo, `null` si es emoji. Así el visor no tiene que adivinar. Lo consume mapalab 1.88.0; sin él, una categoría con ícono de imagen mostraría la URL como texto.
+
+
+## [1.80.0] - 2026-07-24
+
+### Agregado: instituciones del catálogo de Mapalab
+
+Las capas del catálogo (`mapalab.catalogo_capas`) ahora se agrupan por la dependencia que las produce, para que el visor pueda filtrarlas por institución y darle a cada una una URL propia y compartible.
+
+- **La subpágina Catálogo pasa a pestañas**: «Capas» e «Instituciones», cada una con su conteo, en lugar de acumular todos los paneles en una sola vista. El estado y las llamadas al API viven ahora en `useCatalogoData`, y la vista de capas se extrajo a `CapasTab`.
+- **Pestaña Instituciones**: alta con **slug autocompletado** conforme se escribe el nombre (deja de autocompletarse en cuanto se edita a mano), edición inline de nombre y slug, borrado con confirmación —las capas quedan sin institución, no se borran— y reorden por drag & drop que define el orden de las pills en el visor. Muestra cuántas capas tiene cada una.
+- **Tabla de capas más angosta**: se quedan Nombre (con el workspace debajo, en chico), Institución, Etiquetas —con filtro por lista buscable— y Acciones. Además `scroll={{ x: 'max-content' }}` para que la tabla deje de salirse del viewport.
+- **La edición pasa a la fila expandible** (`CapaDetalleEditor`): al desplegar una capa se edita ahí mismo nombre, slug, workspace, capa de GeoServer, institución, etiquetas y habilitada, con Guardar/Descartar que solo se activan si hay cambios, más los datos de solo lectura (URL pública, última edición, orden). Desaparece el panel de edición por doble clic; `CapaFormPanel` queda dedicado al alta y limpia el formulario al guardar.
+- **Buscador general** sobre la botonera: filtra por nombre, slug, capa de GeoServer, workspace, institución y etiquetas (sin acentos ni mayúsculas), con un `Segmented` de Todas / Habilitadas / Deshabilitadas al lado y el conteo `N de Total`.
+- **Acciones en lote** (`SelectionActionsBar`): asignar institución, habilitar/deshabilitar y **etiquetar** —sumando o reemplazando— además de eliminar. Todas van por un solo endpoint `POST /catalogo/bulk-update` con `exclude_unset`, así que no toca los campos que no se envían.
+- El submenú del sider pasa de «Catálogo» a **«Capas catálogo»**.
+- **Endpoints**: `GET/POST /catalogo/instituciones`, `PUT /catalogo/instituciones/reorder`, `PUT|DELETE /catalogo/instituciones/{id}` y `POST /catalogo/bulk-update`, con las mismas dependencias de RBAC, CSRF y rate limit que el resto del catálogo.
+- **Slugs con namespace compartido**: el visor resuelve `/catalogo/<slug>` contra capas **e** instituciones, así que `_slug_taken` ahora consulta las dos tablas al crear o editar cualquiera de las dos, incluida la generación automática de slugs del alta masiva. Un slug repetido se rechaza con mensaje explícito.
+
+### Corregido: los cambios del catálogo tardaban hasta 5 minutos en verse en el visor
+
+El backend público de mapalab cachea el catálogo 5 minutos en memoria y nadie invalidaba esa cache, así que una capa o institución recién dada de alta no aparecía en `/catalogo` hasta que expiraba el TTL. Cada escritura del catálogo (alta, edición, borrado, reordenamiento, acciones en lote) ahora llama a `POST /catalogo/invalidate-cache` de mapalab con `X-Internal-Token`, en un hilo aparte para no retrasar la respuesta del admin. `mapalab_notifier` se refactorizó para compartir la lógica de reintentos con la notificación del árbol de capas.
+
+### Tests
+
+`tests/test_capas_catalogo_service.py`: 16 casos a nivel de servicio (SQLite en memoria con el schema `mapalab` adjunto, GeoServer monkeypatcheado) que cubren la validación de slug cruzada capa↔institución, reorden, asignación/habilitación/etiquetado en lote (`bulk_update_capas`, modos add/replace), y la desasignación de capas al borrar una institución.
+
+### Corregido: la telemetría del catálogo devolvía 422
+
+`ALLOWED_EVENT_NAMES` no incluía `catalogo_share` ni `catalogo_institucion_select`, y como la validación es por lote, un solo evento no permitido tiraba **todo** el batch con 422. Se agregaron ambos; auditados los 50 eventos que emite el visor contra la lista blanca, no falta ninguno más.
+
+Requiere la migración `0028_catalogo_instituciones` de dataengine y se acompaña de mapalab 1.86.0.
 
 ## [1.79.0] - 2026-07-24
 

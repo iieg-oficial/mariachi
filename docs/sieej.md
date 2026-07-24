@@ -67,7 +67,7 @@ Cada `formulario.definicion` es un objeto con esta forma minima:
 
 ### Tipos de step
 - `form` — un solo objeto en `datos[step.id]`.
-- `repeater` — lista de objetos en `datos[step.id]`. Soporta `minItems`, `maxItems` y `tabs` (agrupa fields en pestañas dentro de cada item).
+- `repeater` — lista de objetos en `datos[step.id]`. Soporta `minItems`, `maxItems` y `tabs` (agrupa fields en pestañas dentro de cada item). Con `tabs`, **cada field pertenece a exactamente una pestaña**: `tab` es obligatorio y `definicion_validator` lo rechaza si falta. Antes un field sin `tab` se renderizaba repetido en todas las pestañas; la migración `a6b7c8d9e0f1` asigna la primera pestaña a los que no lo traían y el renderer hace el mismo fallback para snapshots historicos.
 - `summary` — pantalla final de resumen; no captura datos. Soporta `pdfTemplate` y `exportPdf` (por ejemplo, el step `resumen` del seed `sieej-levantamiento` usa `pdfTemplate: "sieej-levantamiento"`).
 
 Los steps `form` y `repeater` aceptan `incompleteNotice` opcional (`{title?, message}`): si el respondent avanza (o envía) con campos visibles sin llenar en ese step, el frontend muestra un modal de advertencia con ese mensaje **sin bloquear** la navegación ni el envío ("Revisar" / "Continuar de todos modos"). Pensado para steps 100% opcionales tipo checklist. Los campos `info` y los ocultos por `showWhen` no cuentan como incompletos; un `checkbox` sin marcar sí cuenta. Se edita desde el `StepDrawer` del CMS.
@@ -401,6 +401,68 @@ api/
 Los items aparecen en el sider bajo el grupo "SIEEJ" del `PROJECT_REGISTRY` (`admin/src/app/sider-config.jsx`). La gestion de **dependencias** (crear usuarios `role='externo'` con asignacion a `sieej:editor`) vive en `/users` — no es parte del project registry de SIEEJ porque `usuarios` es una entidad global del CMS.
 
 El editor visual de la definicion JSONB esta en `components/visualEditor/` (StepsList + FieldsList + drawers). Los pasos se muestran en **tabs** con drag & drop en las pestañas (dnd-kit), labels en dos lineas con tags mini de tipo y aviso, botones icono en mobile. Los tipos de paso y campo estan en `constants/definitionTypes.js` (compartidos con los drawers, labels en español).
+
+### Edicion concurrente
+
+Dos personas editando el mismo formulario no se pisan, y se ven entre si.
+
+**Bloqueo optimista (la garantia).** `FormularioUpdate` acepta
+`actualizado_en_esperado`: el `actualizado_en` que tenia el formulario cuando se
+abrio el editor. Si otra persona guardo despues, el `PUT` responde **409** con
+quien guardo y cuando, en vez de sobreescribir. Se compara con una tolerancia de
+un segundo para no dar falsos positivos con clientes que truncan el ISO a
+milisegundos. Sin el campo el `PUT` se comporta como antes (compatibilidad).
+
+Esto importa mas de lo que parece: el guardado de la definicion corre el
+clasificador de cambios, asi que pisar una edicion con una definicion vieja no
+solo pierde texto — puede clasificarse como cambio que **rompe**, subir la
+version y **reabrir envios ya enviados** de las dependencias.
+
+`sieej.formulario.actualizado_por_id` (migracion `b7c8d9e0f1a3`) guarda quien
+escribio por ultima vez; `FormularioResponse` lo expone como `actualizado_por`.
+
+**Presencia (el aviso).** Reusa `services/presence.py` (Redis, TTL 30 s) con
+scope `sieej_formulario`, extendido con `avatar_url` y `seccion`:
+
+| Verbo | Path | |
+|---|---|---|
+| PUT | `/sieej/formularios/{id}/presencia` | Heartbeat; body `{seccion}` (la pestaña abierta) |
+| DELETE | `/sieej/formularios/{id}/presencia` | Salir al desmontar el editor |
+| GET | `/sieej/formularios/{id}/presencia` | Quien mas esta en ese formulario |
+| GET | `/sieej/formularios/presencia` | Presencia de **todos** los formularios en un solo scan, para el listado |
+
+`GET /sieej/formularios/presencia` se declara **antes** que
+`/sieej/formularios/{id_or_slug}` en el router: si no, la ruta con parametro se
+come el literal.
+
+En el admin, `usePresenciaFormulario(id, seccion)` late cada 20 s (pausa con
+`document.hidden`) y `PresenciaEditores` pinta un `Avatar.Group` con tooltip
+`nombre · en Seccion`. Al desmontar el editor manda el `DELETE`; al **cerrar la
+pestaña** (donde el cleanup de React ya no corre) lo manda en `pagehide` con
+`fetch(..., {keepalive:true})` — `sendBeacon` no sirve porque el endpoint exige
+el header CSRF. Si aun asi no llega, el TTL de 30 s limpia la presencia. En el editor la etiqueta se pone naranja cuando alguien
+esta en **tu misma** pestaña; en el listado cada tarjeta muestra los avatares de
+quien la tiene abierta. La presencia es un aviso, no un candado: quien garantiza
+es el 409.
+
+`presence.list_others`/`list_by_resource`/`unregister` degradan a vacio/no-op si
+Redis no responde (mismo criterio best-effort que `core/cache.py`), para que la
+caida del cache no tumbe el editor con un 500 por un adorno. Un editor tardio
+sigue protegido por el 409, que no depende de Redis.
+
+### Copiar y pegar campos
+
+Cada campo del editor tiene **Copiar** (para pegarlo en otro paso o en otro formulario) y **Duplicar aqui**, de modo que un campo con regex, catalogo, opciones o configuracion de archivo ya afinada no se vuelva a capturar a mano. El portapapeles vive en `localStorage` (`mariachi.sieej.fieldClipboard`, payload `{kind:'sieej.fields', v:1, fields:[...]}`) para que cruce formularios y pestañas del navegador sin permisos; ademas se escribe best-effort al portapapeles del sistema como JSON legible. No hay backend involucrado.
+
+`fieldClipboard.js` normaliza al pegar (`prepareFieldForPaste`), que es lo que evita dejar la definicion invalida:
+
+| Riesgo | Regla |
+|---|---|
+| `name` ya existe en el paso | sufijo `_2`, `_3`… y aviso con el nombre final (el backend rechaza duplicados) |
+| `tab` de otro paso | se fuerza a la pestaña activa; sin pestañas se elimina |
+| `showWhen` cuyo disparador no viajo | se quita la condicion y se avisa (si no, el campo nunca se mostraria) |
+| `catalog` inexistente | se avisa, sin bloquear (las claves de catalogo son globales) |
+| `bucket` no accesible | cae a `sieej` y se avisa |
 
 La pestaña de Envios del editor permite expandir cada envio para ver sus respuestas organizadas en pestañas (una por step del formulario) sin necesidad de descargar el PDF. El detalle expandido muestra el usuario, las fechas de Iniciado, Enviado y Actualizado como metadatos en una sola fila.
 

@@ -1,51 +1,77 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
     DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors,
 } from '@dnd-kit/core';
 import {
     SortableContext, sortableKeyboardCoordinates, rectSortingStrategy,
 } from '@dnd-kit/sortable';
-import { Button, Card, Empty, Form } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import { Button, Card, Empty, Form, Popconfirm, Space, Tooltip } from 'antd';
+import { PlusOutlined, SnippetsOutlined } from '@ant-design/icons';
 import FieldCard from './FieldCard';
 import FieldForm from './FieldForm';
 import TabsManager from './TabsManager';
 import {
-    COMMON_TAB, assignColSpan, assignTab, dependentsOf, indicesOfTab, placeAfterTrigger,
-    reorderWithinTab, tabOf,
+    assignColSpan, assignTab, dependentsOf, indicesOfTab, needsTabNormalization, normalizeTabs,
+    placeAfterTrigger, reorderWithinTab, tabOf,
 } from './fieldUtils';
+import {
+    clearFieldClipboard, prepareFieldForPaste, readFieldClipboard, writeFieldClipboard,
+} from './fieldClipboard';
 import { message } from '@shared/services/message';
+import useAccessibleBuckets from '@features/acervo/hooks/useAccessibleBuckets';
 import useIsMobile from '@shared/hooks/useIsMobile';
+import useCatalogos from '../../hooks/useCatalogos';
 import useSearchParamState from '../../hooks/useSearchParamState';
+import { fieldTypeLabel } from '../../constants/definitionTypes';
 
 const fieldKey = (field, idx) => `field-${field?.name ?? idx}`;
 
 const labelOf = (field) => field?.label || field?.name;
 
-export default function FieldsList({ step, onChange, addTrigger }) {
+const pasteDescription = (field, clipboard, hasTabs, activeTabTitle) => {
+    const partes = [`Tipo ${fieldTypeLabel(field.type)}`];
+    if (field.validation?.pattern) partes.push('con patrón de validación');
+    if (field.catalog) partes.push(`catálogo «${field.catalog}»`);
+    if (field.options?.length) partes.push(`${field.options.length} opciones`);
+    const origen = clipboard?.from?.step ? ` · copiado de «${clipboard.from.step}»` : '';
+    const destino = hasTabs ? ` Se agregará a «${activeTabTitle}».` : '';
+    return `${partes.join(', ')}${origen}.${destino}`;
+};
+
+export default function FieldsList({ step, formularioSlug, onChange, addTrigger }) {
     const [editingKey, setEditingKey] = useState(null);
-    const [subtabFromUrl, setSubtab] = useSearchParamState('subtab', COMMON_TAB);
+    const [subtabFromUrl, setSubtab] = useSearchParamState('subtab', null);
+    const [clipboard, setClipboard] = useState(() => readFieldClipboard());
     const [fieldForm] = Form.useForm();
     const { isMobile } = useIsMobile();
+    const { catalogos } = useCatalogos();
+    const { buckets } = useAccessibleBuckets();
 
     useEffect(() => {
         if (addTrigger) setEditingKey('new');
     }, [addTrigger]);
 
-    const fields = step.fields ?? [];
-    const tabs = step.tabs ?? [];
-    const showTabs = step.type === 'repeater';
+    const fields = useMemo(() => step.fields ?? [], [step.fields]);
+    const tabs = useMemo(() => step.tabs ?? [], [step.tabs]);
+    const hasTabs = step.type === 'repeater' && tabs.length > 0;
 
-    const showCommon = tabs.length === 0 || indicesOfTab(fields, tabs, COMMON_TAB).length > 0;
-    const knownTab = subtabFromUrl === COMMON_TAB || tabs.some((t) => t.id === subtabFromUrl);
-    const activeTab = knownTab ? subtabFromUrl : COMMON_TAB;
-    const activeKey = !showCommon && activeTab === COMMON_TAB
-        ? tabs[0].id
-        : activeTab;
+    useEffect(() => {
+        if (!needsTabNormalization(fields, tabs)) return;
+        const normalized = normalizeTabs(fields, tabs);
+        const moved = normalized.filter((f, i) => f !== fields[i]).length;
+        onChange?.({ ...step, fields: normalized });
+        message.info(
+            `${moved} campo${moved === 1 ? '' : 's'} sin pestaña se asignó a «${tabs[0].title || tabs[0].id}».`,
+        );
+    }, [fields, tabs, step, onChange]);
 
-    const setActiveTab = (key) => setSubtab(key === COMMON_TAB ? null : key);
+    const activeKey = hasTabs && tabs.some((t) => t.id === subtabFromUrl)
+        ? subtabFromUrl
+        : tabs[0]?.id;
 
-    const visibleIdx = showTabs
+    const setActiveTab = (key) => setSubtab(key);
+
+    const visibleIdx = hasTabs
         ? indicesOfTab(fields, tabs, activeKey)
         : fields.map((_, i) => i);
 
@@ -80,11 +106,7 @@ export default function FieldsList({ step, onChange, addTrigger }) {
     const handleAssignTab = (idx, tabId) => {
         onChange?.({ ...step, fields: assignTab(fields, idx, tabId) });
         const target = tabs.find((t) => t.id === tabId);
-        message.info(
-            tabId === COMMON_TAB
-                ? `«${labelOf(fields[idx])}» ahora se muestra en todos los tabs.`
-                : `«${labelOf(fields[idx])}» se movió al tab «${target?.title || tabId}».`,
-        );
+        message.info(`«${labelOf(fields[idx])}» se movió a «${target?.title || tabId}».`);
     };
 
     const handleAssignColSpan = (idx, colSpan) => {
@@ -124,13 +146,46 @@ export default function FieldsList({ step, onChange, addTrigger }) {
             showWhen: f.showWhen,
         }));
 
-    const tabOptions = [
-        { value: COMMON_TAB, label: 'Comunes (todos los tabs)' },
-        ...tabs.map((t) => ({ value: t.id, label: t.title || t.id })),
-    ];
+    const handleCopy = (idx) => {
+        writeFieldClipboard([fields[idx]], { formulario: formularioSlug, step: step.id });
+        setClipboard(readFieldClipboard());
+        message.success(`«${labelOf(fields[idx])}» copiado. Pégalo en este u otro formulario.`);
+    };
+
+    const insertField = (source) => {
+        const { field, warnings } = prepareFieldForPaste(source, {
+            fields,
+            tabs,
+            targetTab: activeKey,
+            catalogos,
+            buckets,
+        });
+        onChange?.({ ...step, fields: [...fields, field] });
+        message.success(`«${labelOf(field)}» se agregó al final del paso.`);
+        warnings.forEach((w) => message.warning(w));
+    };
+
+    const handleDuplicate = (idx) => insertField(fields[idx]);
+
+    const handlePaste = () => {
+        const payload = readFieldClipboard();
+        if (!payload) {
+            setClipboard(null);
+            message.warning('El portapapeles está vacío.');
+            return;
+        }
+        payload.fields.forEach(insertField);
+    };
+
+    const handleClearClipboard = () => {
+        clearFieldClipboard();
+        setClipboard(null);
+    };
+
+    const tabOptions = tabs.map((t) => ({ value: t.id, label: t.title || t.id }));
 
     const activeTabTitle = tabs.find((t) => t.id === activeKey)?.title || activeKey;
-    const inNamedTab = showTabs && activeKey !== COMMON_TAB;
+    const clipboardField = clipboard?.fields?.[0] ?? null;
 
     const fieldsGrid = (
         <div>
@@ -147,7 +202,7 @@ export default function FieldsList({ step, onChange, addTrigger }) {
                         {visibleIdx.length === 0 && (
                             <div style={{ gridColumn: '1 / -1', padding: 4, boxSizing: 'border-box' }}>
                                 <Empty
-                                    description={inNamedTab ? 'Sin campos en este tab' : 'Sin campos'}
+                                    description={hasTabs ? 'Sin campos en esta pestaña' : 'Sin campos'}
                                     image={Empty.PRESENTED_IMAGE_SIMPLE}
                                 />
                             </div>
@@ -159,7 +214,7 @@ export default function FieldsList({ step, onChange, addTrigger }) {
                                 field={fields[idx]}
                                 isEditing={editingKey === idx}
                                 isMobile={isMobile}
-                                showTabs={showTabs}
+                                showTabs={hasTabs}
                                 tabs={tabs}
                                 tabOptions={tabOptions}
                                 canMoveUp={pos > 0}
@@ -168,6 +223,8 @@ export default function FieldsList({ step, onChange, addTrigger }) {
                                 onMove={(direction) => handleMove(idx, direction)}
                                 onToggleEdit={() => setEditingKey((prev) => (prev === idx ? null : idx))}
                                 onDelete={() => handleDelete(idx)}
+                                onCopy={() => handleCopy(idx)}
+                                onDuplicate={() => handleDuplicate(idx)}
                                 onAssignTab={(tabId) => handleAssignTab(idx, tabId)}
                                 onAssignColSpan={(colSpan) => handleAssignColSpan(idx, colSpan)}
                                 fieldForm={fieldForm}
@@ -184,7 +241,7 @@ export default function FieldsList({ step, onChange, addTrigger }) {
                 <Card size="small" style={{ marginTop: 8 }} styles={{ body: { padding: 8 } }} title="Nuevo campo">
                     <FieldForm
                         form={fieldForm}
-                        field={inNamedTab ? { tab: activeKey } : null}
+                        field={hasTabs ? { tab: activeKey } : null}
                         availableTabs={tabs}
                         availableShowWhenFields={otherFieldNames(null)}
                         onSave={handleSaveField}
@@ -192,20 +249,38 @@ export default function FieldsList({ step, onChange, addTrigger }) {
                     />
                 </Card>
             ) : (
-                <Button
-                    type="dashed"
-                    icon={<PlusOutlined />}
-                    block
-                    style={{ marginTop: 8 }}
-                    onClick={() => setEditingKey('new')}
-                >
-                    {inNamedTab ? `Agregar campo a «${activeTabTitle}»` : 'Agregar campo'}
-                </Button>
+                <Space.Compact block style={{ marginTop: 8 }}>
+                    <Button
+                        type="dashed"
+                        icon={<PlusOutlined />}
+                        style={{ flex: 1 }}
+                        onClick={() => setEditingKey('new')}
+                    >
+                        {hasTabs ? `Agregar campo a «${activeTabTitle}»` : 'Agregar campo'}
+                    </Button>
+                    {clipboardField && (
+                        <Popconfirm
+                            title={`Pegar «${clipboardField.label || clipboardField.name}»`}
+                            description={pasteDescription(clipboardField, clipboard, hasTabs, activeTabTitle)}
+                            okText="Pegar"
+                            cancelText="Vaciar portapapeles"
+                            cancelButtonProps={{ danger: true }}
+                            onConfirm={handlePaste}
+                            onCancel={handleClearClipboard}
+                        >
+                            <Tooltip title="Pegar el campo copiado">
+                                <Button type="dashed" icon={<SnippetsOutlined />}>
+                                    {isMobile ? null : `Pegar «${clipboardField.label || clipboardField.name}»`}
+                                </Button>
+                            </Tooltip>
+                        </Popconfirm>
+                    )}
+                </Space.Compact>
             )}
         </div>
     );
 
-    if (!showTabs) return fieldsGrid;
+    if (step.type !== 'repeater') return fieldsGrid;
 
     return (
         <TabsManager
@@ -213,7 +288,6 @@ export default function FieldsList({ step, onChange, addTrigger }) {
             fields={fields}
             activeKey={activeKey}
             onActiveChange={setActiveTab}
-            showCommon={showCommon}
             onTabsChange={(nextTabs, nextFields) => onChange?.({ ...step, tabs: nextTabs, fields: nextFields })}
         >
             {fieldsGrid}

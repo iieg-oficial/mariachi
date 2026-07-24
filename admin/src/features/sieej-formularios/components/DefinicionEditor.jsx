@@ -16,8 +16,18 @@ export default function DefinicionEditor({ formulario, onSaved }) {
     const [definicion, setDefinicion] = useState(EMPTY_DEFINICION);
     const [jsonText, setJsonText] = useState('');
     const [error, setError] = useState(null);
+    const [conflicto, setConflicto] = useState(null);
     const [saving, setSaving] = useState(false);
     const [stepAddTrigger, setStepAddTrigger] = useState(null);
+
+    const handleRecargar = async () => {
+        const fresco = await formulariosApi.get(formulario.id);
+        setDefinicion(fresco.definicion);
+        setJsonText(JSON.stringify(fresco.definicion, null, 2));
+        setConflicto(null);
+        onSaved?.(fresco);
+        message.info('Se cargó la versión vigente del formulario.');
+    };
 
     useEffect(() => {
         if (formulario?.definicion) {
@@ -63,7 +73,10 @@ export default function DefinicionEditor({ formulario, onSaved }) {
         setError(null);
         setSaving(true);
         try {
-            const updated = await formulariosApi.update(formulario.id, { definicion: payload });
+            const updated = await formulariosApi.update(formulario.id, {
+                definicion: payload,
+                actualizado_en_esperado: formulario.actualizado_en,
+            });
             const cambio = updated?.ultimo_cambio;
             if (!cambio) {
                 message.success('Definición actualizada');
@@ -85,7 +98,11 @@ export default function DefinicionEditor({ formulario, onSaved }) {
             setJsonText(JSON.stringify(updated.definicion, null, 2));
         } catch (err) {
             const detail = err?.response?.data?.detail;
-            setError(typeof detail === 'string' ? detail : 'Error al guardar (validación de definición fallo)');
+            if (err?.response?.status === 409) {
+                setConflicto(typeof detail === 'string' ? detail : 'Otra persona guardó cambios.');
+            } else {
+                setError(typeof detail === 'string' ? detail : 'Error al guardar (validación de definición fallo)');
+            }
         } finally {
             setSaving(false);
         }
@@ -94,6 +111,16 @@ export default function DefinicionEditor({ formulario, onSaved }) {
     return (
         <Space direction="vertical" style={{ width: '100%' }} size="middle">
             {error && <Alert type="error" showIcon message={error} closable onClose={() => setError(null)} />}
+
+            {conflicto && (
+                <Alert
+                    type="warning"
+                    showIcon
+                    message="Este formulario cambió mientras lo editabas"
+                    description={conflicto}
+                    action={<Button size="small" onClick={handleRecargar}>Recargar</Button>}
+                />
+            )}
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                 <Segmented
@@ -128,6 +155,7 @@ export default function DefinicionEditor({ formulario, onSaved }) {
             {view === 'visual' ? (
                 <StepsList
                     steps={definicion.steps ?? []}
+                    formularioSlug={formulario?.slug}
                     onChange={handleStepsChange}
                     stepAddTrigger={stepAddTrigger}
                 />

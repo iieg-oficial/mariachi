@@ -20,13 +20,18 @@ from app.schemas.sieej.formulario import (
     FormularioResponse,
     FormularioUpdate,
     FormularioUpdateResponse,
+    PresenciaEditor,
+    PresenciaIn,
 )
 from app.schemas.sieej.grupo import FormularioAsignacionesUpdate
+from app.services import presence
 from app.services.sieej.formularios_admin_service import FormulariosAdminService
 from app.services.sieej.pdf_service import render_envio_pdf
 from app.services.sieej.xlsx_service import build_envios_csv, build_envios_xlsx
 
 router = APIRouter()
+
+PRESENCE_SCOPE = "sieej_formulario"
 
 
 def _slug_filename(nombre: str) -> str:
@@ -58,6 +63,54 @@ async def crear_formulario(
     current_user: Usuario = Depends(verify_csrf),
 ):
     return FormulariosAdminService(db).crear(data.model_dump(), current_user)
+
+
+@router.get(
+    "/formularios/presencia",
+    response_model=dict[str, list[PresenciaEditor]],
+)
+async def presencia_de_todos_los_formularios(
+    current_user: Usuario = Depends(get_current_user),
+):
+    """Quien esta editando cada formulario, para marcarlo en el listado."""
+    return presence.list_by_resource(PRESENCE_SCOPE, current_user.username)
+
+
+@router.put("/formularios/{formulario_id}/presencia")
+async def registrar_presencia_formulario(
+    formulario_id: int,
+    data: PresenciaIn,
+    current_user: Usuario = Depends(verify_csrf),
+):
+    presence.register(
+        PRESENCE_SCOPE,
+        formulario_id,
+        current_user.username,
+        current_user.name,
+        avatar_url=current_user.avatar_url,
+        seccion=data.seccion,
+    )
+    return {"ok": True}
+
+
+@router.delete("/formularios/{formulario_id}/presencia")
+async def salir_de_formulario(
+    formulario_id: int,
+    current_user: Usuario = Depends(verify_csrf),
+):
+    presence.unregister(PRESENCE_SCOPE, formulario_id, current_user.username)
+    return {"ok": True}
+
+
+@router.get(
+    "/formularios/{formulario_id}/presencia",
+    response_model=list[PresenciaEditor],
+)
+async def obtener_presencia_formulario(
+    formulario_id: int,
+    current_user: Usuario = Depends(get_current_user),
+):
+    return presence.list_others(PRESENCE_SCOPE, formulario_id, current_user.username)
 
 
 @router.get("/formularios/{formulario_id_or_slug}", response_model=FormularioResponse)

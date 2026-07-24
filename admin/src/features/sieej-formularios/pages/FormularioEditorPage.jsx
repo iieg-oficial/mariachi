@@ -10,6 +10,8 @@ import ConfiguracionEditor from '../components/ConfiguracionEditor';
 import AsignacionesEditor from '../components/AsignacionesEditor';
 import EnviosTable from '../components/EnviosTable';
 import PeriodosPanel from '../components/PeriodosPanel';
+import PresenciaEditores from '../components/PresenciaEditores';
+import usePresenciaFormulario from '../hooks/usePresenciaFormulario';
 
 const ESTADO_COLOR = { borrador: 'default', activo: 'green', cerrado: 'red' };
 
@@ -23,6 +25,7 @@ export default function FormularioEditorPage() {
     const [loading, setLoading] = useState(true);
 
     const activeTab = VALID_TABS.has(tabFromUrl) ? tabFromUrl : 'definicion';
+    const editores = usePresenciaFormulario(formulario?.id, activeTab);
 
     const handleTabChange = (key) => {
         setTab(key, { paso: null, subtab: null });
@@ -125,6 +128,7 @@ export default function FormularioEditorPage() {
                         · v{formulario.version}
                     </Typography.Text>
                 </div>
+                <PresenciaEditores editores={editores} seccionActual={activeTab} size="default" />
                 {formulario.estado === 'borrador' && (
                     <Button
                         type="primary"

@@ -141,15 +141,21 @@ export const dependentsOf = (fields = [], name) => (
     name ? fields.filter((f) => f.showWhen?.field === name) : []
 );
 
-export const COMMON_TAB = '__common__';
+export const tabOf = (field, tabs = []) => {
+    if (tabs.length === 0) return null;
+    return tabs.some((t) => t.id === field?.tab) ? field.tab : tabs[0].id;
+};
 
-export const tabOf = (field, tabs = []) => (
-    field?.tab && tabs.some((t) => t.id === field.tab) ? field.tab : COMMON_TAB
+export const needsTabNormalization = (fields = [], tabs = []) => (
+    tabs.length > 0 && fields.some((f) => !tabs.some((t) => t.id === f.tab))
 );
 
-export const isOrphanTab = (field, tabs = []) => (
-    !!field?.tab && !tabs.some((t) => t.id === field.tab)
-);
+export const normalizeTabs = (fields = [], tabs = []) => {
+    if (!needsTabNormalization(fields, tabs)) return fields;
+    return fields.map((f) => (
+        tabs.some((t) => t.id === f.tab) ? f : { ...f, tab: tabs[0].id }
+    ));
+};
 
 export const indicesOfTab = (fields = [], tabs = [], tabKey) => fields
     .map((f, i) => (tabOf(f, tabs) === tabKey ? i : -1))
@@ -172,7 +178,7 @@ export const assignColSpan = (fields, index, colSpan) => fields.map((f, i) => (
 export const assignTab = (fields, index, tabId) => fields.map((f, i) => {
     if (i !== index) return f;
     const { tab: _tab, ...rest } = f;
-    return tabId === COMMON_TAB ? rest : { ...rest, tab: tabId };
+    return tabId ? { ...rest, tab: tabId } : rest;
 });
 
 export const renameTabInFields = (fields, oldId, newId) => (
@@ -181,10 +187,10 @@ export const renameTabInFields = (fields, oldId, newId) => (
         : fields.map((f) => (f.tab === oldId ? { ...f, tab: newId } : f))
 );
 
-export const detachFieldsFromTab = (fields, tabId) => fields.map((f) => {
-    if (f.tab !== tabId) return f;
+export const moveFieldsToTab = (fields, fromTabId, toTabId) => fields.map((f) => {
+    if (f.tab !== fromTabId) return f;
     const { tab: _tab, ...rest } = f;
-    return rest;
+    return toTabId ? { ...rest, tab: toTabId } : rest;
 });
 
 export const dropFieldsOfTab = (fields, tabId) => fields.filter((f) => f.tab !== tabId);

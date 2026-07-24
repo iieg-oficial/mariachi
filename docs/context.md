@@ -2,7 +2,7 @@
 
 > Documento de referencia completo. Leer este archivo proporciona contexto del monorepo sin explorar el codebase.
 
-**Versión:** número único del monorepo (desde `1.61.0` se fusionaron los antiguos `api`/`admin`). Fuente de la verdad: `api/pyproject.toml` (la lee `api/app/core/version.py::get_app_version()`; endpoint en vivo `GET /ontoy`). Bump con `scripts/bump-version.sh <x.y.z>` (sincroniza `pyproject.toml` + `admin/package.json` y abre la entrada del CHANGELOG). · **Última actualización:** 2026-07-21
+**Versión:** número único del monorepo (desde `1.61.0` se fusionaron los antiguos `api`/`admin`). Fuente de la verdad: `api/pyproject.toml` (la lee `api/app/core/version.py::get_app_version()`; endpoint en vivo `GET /ontoy`). Bump con `scripts/bump-version.sh <x.y.z>` (sincroniza `pyproject.toml` + `admin/package.json` y abre la entrada del CHANGELOG). · **Última actualización:** 2026-07-24 (1.85.0)
 
 
 ---
@@ -370,6 +370,12 @@ Sin auth. `router = APIRouter(tags=["portal público"])` en `routes/public.py`.
 | GET | `/formularios/mis-envios/{id}` | Detalle con `definicion_snapshot` historica + `datos` + `archivos` + `eventos` |
 | POST | `/formularios/{slug}/envio/actualizar-version` | Actualiza envio `en_proceso` a la definicion vigente conservando `datos` |
 | DELETE | `/formularios/mis-envios/{id}` | Soft-delete del envio para el respondent |
+| PUT | `/formularios/mis-envios/{id}/actualizar-campos` | Correccion post-envio de los campos `editableAfterSubmit`, sin reabrir el envio |
+| GET | `/formularios/mis-envios/{id}/historial` | Historial append-only de valores corregidos (respondent, sin actor) |
+| GET | `/sieej/formularios/{id}/envios/{envio_id}/historial` | Mismo historial con actor (admin) |
+| GET | `/sieej/formularios/{id}/periodos` | Ventanas de captura de un formulario periodico |
+| GET | `/sieej/formularios/{id}/notificaciones[/exportar]` | Bitacora de avisos de apertura/faltantes (`?formato=csv\|xlsx`) |
+| POST | `/sieej/periodos/tick` | Corre el motor de apertura periodica (idempotente) |
 | GET/POST/PATCH/DELETE | `/home/*` | CRUD de secciones del home publico de mapalab |
 | GET/POST/PATCH/DELETE | `/mapalab-shares/*` | Gestion de share links de visor mapalab |
 | GET | `/layer-metadata/bulk/column-presets` | Presets de mapeo Excel→técnico para ingesta masiva |
@@ -857,6 +863,33 @@ Lo relacionado con GeoServer estaba repartido dentro de MapaLab o escondido en m
 - **Ícono de categoría de símbolos:** además de emoji admite cualquier símbolo del catálogo (imagen/SVG, guardado como URL del Acervo). Las respuestas de categoría exponen `iconUrl` derivado; lo consume mapalab 1.88.0. Sin migración (`icon` ya era `TEXT`). `SymbolPicker` se mudó a `mapalab-symbols/components/`.
 
 Detalle en CHANGELOG §[1.82.0].
+
+### 2026-07-24 (1.85.0) — SIEEJ: edición concurrente, copiar/pegar campos y una pestaña por campo
+
+Tres cambios de usabilidad en el constructor visual de formularios.
+
+- **Edición concurrente.** Bloqueo optimista (`actualizado_en_esperado` → 409 con quién y cuándo, en vez de pisar) más presencia en Redis reutilizando `services/presence.py` con scope `sieej_formulario`: avatares de quién está editando, en el header del editor (naranja si está en tu misma pestaña) y en cada tarjeta del listado. `GET /sieej/formularios/presencia` resuelve el listado completo en un solo scan y se declara antes que la ruta con parámetro. Columna `actualizado_por_id` (migración `b7c8d9e0f1a3`). Importa porque pisar una definición vieja puede clasificarse como cambio que rompe y reabrir envíos ya enviados.
+
+- **Copiar / Pegar / Duplicar campo.** Evita recapturar a mano un campo cuya regex, catálogo, opciones o configuración de archivo ya costó afinar. El portapapeles vive en `localStorage` (`mariachi.sieej.fieldClipboard`) para cruzar formularios y pestañas del navegador sin permisos; `fieldClipboard.js::prepareFieldForPaste` normaliza al pegar (nombre duplicado → sufijo, `tab` → pestaña activa, `showWhen` huérfano → se quita, `bucket` sin acceso → `sieej`) y avisa de cada ajuste. Sin backend.
+- **Se elimina «Comunes».** Un campo sin `tab` se renderizaba repetido en todas las pestañas del elemento y ninguna vista del CMS mostraba el orden real que veía quien captura — origen de los reportes de campos duplicados y de orden inestable. Ahora cada campo pertenece a exactamente una pestaña: `definicion_validator` exige `tab`, el editor asigna la primera a los que no la traían, eliminar una pestaña pide a cuál se mueven sus campos, y un repeater sin pestañas ofrece «Dividir en pestañas». Migración `a6b7c8d9e0f1` sobre las tres columnas JSONB; el renderer de SIEEJ >= 1.39.0 hace el mismo fallback para los snapshots históricos (antes un `tab` inexistente ocultaba el campo por completo). `tab` no es campo significativo del clasificador, así que no sube versión ni reabre envíos.
+
+### 2026-07-24 (1.80.0) — Instituciones del catálogo de MapaLab + invalidación de su caché
+
+El catálogo de capas (`mapalab.catalogo_capas`) se agrupa por la dependencia que produce cada capa. La subpágina pasa a pestañas «Capas» / «Instituciones» (estado en `useCatalogoData`, vista de capas en `CapasTab`), la edición se mueve a la fila expandible (`CapaDetalleEditor`), hay buscador general, acciones en lote (`SelectionActionsBar` → `POST /catalogo/bulk-update`) y reorden por drag & drop de instituciones. Slugs con namespace compartido entre capas e instituciones (`/catalogo/<slug>` resuelve ambos). Cada escritura invalida la caché de 5 min del backend público de mapalab (`POST /catalogo/invalidate-cache` con `X-Internal-Token`), y `ALLOWED_EVENT_NAMES` incorpora `catalogo_share` / `catalogo_institucion_select` (un evento no permitido tumbaba el batch completo con 422). Requiere la migración `0028_catalogo_instituciones` de dataengine + mapalab 1.86.0. Detalle en CHANGELOG §[1.80.0].
+
+### 2026-07-24 (1.79.0) — SIEEJ: los tipos `email` y `tel` se absorben en `text` + catálogo de regex
+
+`email` y `tel` eran texto con un patrón fijo, así que desaparecen como tipos de campo. El constructor visual ofrece un `AutoComplete` único donde el admin elige un formato común (correo, teléfono de 10 dígitos, CURP, RFC, código postal, CLABE, URL…) **o** escribe su propio regex, que se guarda en `validation.pattern` / `validation.patternMessage`. La migración `a5b6c7d8e9f1` reescribe los campos existentes en las tres columnas JSONB (`formulario.definicion`, `envio_formulario.definicion_snapshot`, `formulario_version.definicion`); es idempotente y reversible. Requiere el frontend SIEEJ >= 1.34.0. Detalle en CHANGELOG §[1.79.0].
+
+### 2026-07-24 (1.78.0) — SIEEJ: actualización ligera de campos post-envío con historial de auditoría
+
+Un field marcado `editableAfterSubmit` se corrige sobre un envío ya `enviado` **sin reabrirlo** (`PUT /formularios/mis-envios/{id}/actualizar-campos`, merge parcial de `datos`, el estado no cambia). Los paths permitidos se derivan del `definicion_snapshot` del envío, no de la definición vigente. Lo nuevo de fondo es que ahora existe versionado de **valores**, no solo de definiciones: la tabla append-only `sieej.envio_valor_historial` (migración `f2b3c4d5e6a7`) guarda `valor_anterior`/`valor_nuevo` por cambio, se registra un evento `actualizado` y el export de envíos incluye la tabla "Historial de cambios". Aplica solo a campos de pasos `form` (repeaters y `file` fuera). Requiere el frontend SIEEJ >= 1.33.0. Detalle en CHANGELOG §[1.78.0].
+
+### 2026-07-24 — SIEEJ: apertura periódica de formularios (sin bump propio)
+
+Un formulario puede abrir una ventana de captura recurrente (`mensual`/`trimestral`/`semestral`/`anual`) en vez de una vigencia única, y **cada periodo genera un envío nuevo** para que el histórico no se sobreescriba. La configuración vive en `sieej.formulario.periodicidad` (JSONB, `NULL` = comportamiento histórico), cada ventana concreta es una fila de `sieej.formulario_periodo`, y el `UNIQUE (formulario_id, usuario_id)` se parte en dos índices parciales según `periodo_id` (migración `f9a0b1c2d3e4`). Lo que decide si está abierto se **computa de la config**, no del `estado` de la fila, así que el gating es correcto aunque el tick no haya corrido. `PeriodosService.tick()` (idempotente, invocado por el sidecar `cron-sieej` y por `POST /sieej/periodos/tick`) materializa ventanas, abre, cierra y dispara los avisos de apertura (al creador) y de faltantes (al creador y a los administradores) por el webhook de Discord de SIEEJ, con bitácora en `sieej.notificacion` exportable a CSV/XLSX desde la pestaña **Periodos** del CMS. No hay correo: el stack no tiene SMTP.
+
+**Pendiente documental:** los tres commits de esta feature (`e26f562`, `c4b71d3`, `1fd73f8`) no bumpearon versión ni abrieron entrada de CHANGELOG. El contrato completo sí está en `docs/sieej.md` §"Apertura periodica". Lado respondent: sieej 1.35.0.
 
 ### 2026-07-23 (1.74.0) — Reordenamiento drag & drop de capas del catálogo y opciones de catálogos SIEEJ
 

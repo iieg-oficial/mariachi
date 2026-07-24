@@ -275,6 +275,38 @@ def test_repeater_con_tabs_y_field_tab_invalido_falla():
         validar_definicion(d)
 
 
+def test_repeater_con_tabs_y_field_sin_tab_falla():
+    d = {
+        "version": 1,
+        "steps": [
+            {
+                "id": "x",
+                "type": "repeater",
+                "title": "x",
+                "tabs": [{"id": "a", "title": "A"}],
+                "fields": [{"name": "f", "label": "F", "type": "text"}],
+            }
+        ],
+    }
+    with pytest.raises(DefinicionInvalidaError, match="falta `tab`"):
+        validar_definicion(d)
+
+
+def test_repeater_sin_tabs_no_exige_tab_en_fields():
+    d = {
+        "version": 1,
+        "steps": [
+            {
+                "id": "x",
+                "type": "repeater",
+                "title": "x",
+                "fields": [{"name": "f", "label": "F", "type": "text"}],
+            }
+        ],
+    }
+    validar_definicion(d)
+
+
 def test_show_when_sin_field_falla():
     d = _def_minima()
     d["steps"][0]["fields"].append(

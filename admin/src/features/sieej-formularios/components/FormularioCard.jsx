@@ -4,6 +4,7 @@ import {
     CloseCircleOutlined, InboxOutlined, TeamOutlined, SyncOutlined,
 } from '@ant-design/icons';
 import { frecuenciaLabel } from '../constants/definitionTypes';
+import PresenciaEditores from './PresenciaEditores';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -44,7 +45,7 @@ const Vigencia = ({ inicio, fin, periodicidad }) => {
 };
 
 const FormularioCard = ({
-    formulario, onEditar, onEnvios, onPublicar, onCerrar, onEliminar, onAsignaciones,
+    formulario, editores = [], onEditar, onEnvios, onPublicar, onCerrar, onEliminar, onAsignaciones,
 }) => {
     const stop = (handler) => (e) => {
         e.stopPropagation();
@@ -111,6 +112,11 @@ const FormularioCard = ({
                     fin={formulario.vigencia_fin}
                     periodicidad={formulario.periodicidad}
                 />
+                {editores.length > 0 && (
+                    <div style={{ marginTop: 8 }}>
+                        <PresenciaEditores editores={editores} />
+                    </div>
+                )}
             </div>
         </Card>
     );

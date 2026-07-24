@@ -50,12 +50,18 @@ class Formulario(Base):
     creado_por_id = Column(
         Integer, ForeignKey("usuarios.id", ondelete="RESTRICT"), nullable=False
     )
+    actualizado_por_id = Column(
+        Integer, ForeignKey("usuarios.id", ondelete="SET NULL"), nullable=True
+    )
     creado_en = Column(DateTime(timezone=True), default=utcnow, nullable=False)
     actualizado_en = Column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False
     )
 
     creado_por = relationship("Usuario", foreign_keys=[creado_por_id], lazy="select")
+    actualizado_por = relationship(
+        "Usuario", foreign_keys=[actualizado_por_id], lazy="select"
+    )
     grupos = relationship(
         "Grupo",
         secondary=f"{SCHEMA}.formulario_grupo",

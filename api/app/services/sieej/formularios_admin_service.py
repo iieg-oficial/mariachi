@@ -6,6 +6,7 @@ version cuando un formulario con envios cambia su definicion.
 from __future__ import annotations
 
 import logging
+from datetime import UTC
 from typing import Any
 
 from fastapi import HTTPException, status
@@ -113,6 +114,32 @@ class FormulariosAdminService:
                 detail=str(exc),
             ) from exc
 
+    @staticmethod
+    def _verificar_conflicto(f: Formulario, esperado: Any) -> None:
+        """Rechaza el guardado si otra persona escribio despues de que el
+        editor cargo el formulario. La tolerancia de un segundo evita falsos
+        positivos por clientes que truncan el ISO a milisegundos; dos personas
+        distintas guardando el mismo formulario dentro del mismo segundo no es
+        un escenario real.
+        """
+        if esperado is None or f.actualizado_en is None:
+            return
+        actual = f.actualizado_en
+        if actual.tzinfo is None:
+            actual = actual.replace(tzinfo=UTC)
+        if esperado.tzinfo is None:
+            esperado = esperado.replace(tzinfo=UTC)
+        if abs((actual - esperado).total_seconds()) <= 1:
+            return
+        autor = getattr(f.actualizado_por, "name", None)
+        detalle = (
+            f"Otra persona guardo cambios en este formulario"
+            f"{f' ({autor})' if autor else ''} el "
+            f"{actual.strftime('%d/%m/%Y a las %H:%M')}. "
+            "Recarga para ver la version vigente antes de guardar la tuya."
+        )
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detalle)
+
     def crear(self, data: dict[str, Any], creador: Usuario) -> Formulario:
         try:
             validar_definicion(data["definicion"])
@@ -184,6 +211,7 @@ class FormulariosAdminService:
         `{tipo, afectados}` o None si no cambio la definicion.
         """
         f = self.get(formulario_id)
+        self._verificar_conflicto(f, data.pop("actualizado_en_esperado", None))
         version_previa = f.version or 1
 
         nueva_definicion = data.get("definicion")
@@ -230,6 +258,9 @@ class FormulariosAdminService:
         # ventana unica; por eso se maneja aparte del loop (que ignora None).
         if "periodicidad" in data:
             f.periodicidad = self._normalizar_periodicidad(data["periodicidad"])
+
+        if actor is not None:
+            f.actualizado_por_id = actor.id
 
         afectados = 0
         if tipo_cambio == "menor":
