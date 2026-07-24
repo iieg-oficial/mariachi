@@ -202,6 +202,11 @@ def _validate_layout(field: dict[str, Any], step_id: str, name: str) -> None:
         raise DefinicionInvalidaError(
             f"Step `{step_id}` field `{name}`: `layout.colSpan` debe ser 1, 2 o 3."
         )
+    new_row = layout.get("newRow")
+    if new_row is not None and not isinstance(new_row, bool):
+        raise DefinicionInvalidaError(
+            f"Step `{step_id}` field `{name}`: `layout.newRow` debe ser booleano."
+        )
 
 
 def _validar_date_range_config(field: dict[str, Any], step_id: str, name: str) -> None:
@@ -252,15 +257,15 @@ def _validar_field(
             f"Step `{step_id}` field `{name}`: type debe ser uno de {sorted(FIELD_TYPES)}."
         )
 
-    if field_type == "info":
-        _validate_layout(field, step_id, name)
-        return
-
     label = field.get("label")
     if not isinstance(label, str) or not label:
         raise DefinicionInvalidaError(
             f"Step `{step_id}` field `{name}`: `label` requerido."
         )
+
+    if field_type == "info":
+        _validate_layout(field, step_id, name)
+        return
 
     if field_type in {"select", "select_multiple", "radio", "checkbox"}:
         has_options = isinstance(field.get("options"), list) and field["options"]

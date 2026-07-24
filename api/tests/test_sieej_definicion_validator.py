@@ -121,6 +121,45 @@ def test_date_range_catalogo_sin_extremo_abierto_falla():
         validar_definicion(_def_con_rango(openCatalog="estatus_obra"))
 
 
+def _def_con_layout(layout):
+    d = _def_minima()
+    d["steps"][0]["fields"][0]["layout"] = layout
+    return d
+
+
+def test_layout_new_row_pasa():
+    validar_definicion(_def_con_layout({"colSpan": 2, "newRow": True}))
+
+
+def test_layout_sin_new_row_pasa():
+    validar_definicion(_def_con_layout({"colSpan": 2}))
+
+
+def test_layout_new_row_no_booleano_falla():
+    with pytest.raises(DefinicionInvalidaError, match="newRow"):
+        validar_definicion(_def_con_layout({"newRow": "si"}))
+
+
+def test_layout_colspan_fuera_de_rango_falla():
+    with pytest.raises(DefinicionInvalidaError, match="colSpan"):
+        validar_definicion(_def_con_layout({"colSpan": 7}))
+
+
+def test_info_con_label_pasa():
+    d = _def_minima()
+    d["steps"][0]["fields"].append(
+        {"name": "aviso", "label": "Lee esto con atención", "type": "info"}
+    )
+    validar_definicion(d)
+
+
+def test_info_sin_label_falla():
+    d = _def_minima()
+    d["steps"][0]["fields"].append({"name": "espaciador", "label": "", "type": "info"})
+    with pytest.raises(DefinicionInvalidaError, match="label"):
+        validar_definicion(d)
+
+
 def test_select_sin_options_ni_catalog_falla():
     d = {
         "version": 1,

@@ -170,6 +170,14 @@ export default function FieldForm({
                             ]}
                         />
                     </Form.Item>
+                    <Form.Item
+                        label="¿Empezar en fila nueva?"
+                        name="newRow"
+                        valuePropName="checked"
+                        extra="Fuerza que el campo abra una fila. Úsalo para dejar espacio libre al final de la fila anterior en lugar de agregar campos vacíos."
+                    >
+                        <Switch />
+                    </Form.Item>
                     {showOptions && <OptionsSource form={form} />}
                     {showDateRange && <OpenRangeConfig form={form} />}
                     {showFile && (

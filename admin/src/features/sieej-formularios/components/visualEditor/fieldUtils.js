@@ -59,7 +59,7 @@ export const fieldFromFormValues = (values) => {
             && values.openCatalog
             ? { openCatalog: values.openCatalog }
             : {}),
-        layout: { colSpan },
+        layout: { colSpan, ...(values.newRow ? { newRow: true } : {}) },
     };
 };
 
@@ -93,6 +93,7 @@ export const fieldToFormValues = (field) => ({
     openEnd: !!field?.openEnd,
     openCatalog: field?.openCatalog ?? DEFAULT_OPEN_RANGE_CATALOG,
     colSpan: field?.layout?.colSpan ?? 1,
+    newRow: !!field?.layout?.newRow,
 });
 
 export const conditionValueOptions = (source, catalogos = {}) => {

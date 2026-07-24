@@ -139,9 +139,13 @@ export default function FieldsList({ step, onChange, addTrigger }) {
                     items={visibleIdx.map((i) => fieldKey(fields[i], i))}
                     strategy={rectSortingStrategy}
                 >
-                    <div style={{ display: 'flex', flexWrap: 'wrap', width: '100%' }}>
+                    <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: isMobile ? '1fr' : 'repeat(6, 1fr)',
+                        width: '100%',
+                    }}>
                         {visibleIdx.length === 0 && (
-                            <div style={{ width: '100%', padding: 4, boxSizing: 'border-box' }}>
+                            <div style={{ gridColumn: '1 / -1', padding: 4, boxSizing: 'border-box' }}>
                                 <Empty
                                     description={inNamedTab ? 'Sin campos en este tab' : 'Sin campos'}
                                     image={Empty.PRESENTED_IMAGE_SIMPLE}

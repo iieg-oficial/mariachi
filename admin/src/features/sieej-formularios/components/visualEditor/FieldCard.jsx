@@ -1,10 +1,11 @@
 import { Button, Card, Popconfirm, Select, Space, Tag, Tooltip } from 'antd';
 import {
-    CloseOutlined, ColumnWidthOutlined, DeleteOutlined, DownOutlined, EditOutlined, SaveOutlined, UpOutlined,
+    BlockOutlined, CloseOutlined, ColumnWidthOutlined, CopyOutlined, DeleteOutlined, DownOutlined,
+    EditOutlined, EnterOutlined, SaveOutlined, UpOutlined,
 } from '@ant-design/icons';
 import SortableItem from './SortableItem';
 import FieldForm from './FieldForm';
-import { isOrphanTab, tabOf } from './fieldUtils';
+import { tabOf } from './fieldUtils';
 import { fieldTypeLabel } from '../../constants/definitionTypes';
 
 const COLSPAN_LABEL = { 3: 'Chico', 2: 'Mediano', 1: 'Grande' };
@@ -17,11 +18,16 @@ const COLSPAN_OPTIONS = [
 
 export default function FieldCard({
     id, field, isEditing, isMobile, showTabs, tabs, tabOptions, dependentsCount = 0,
-    canMoveUp, canMoveDown, onMove, onToggleEdit, onDelete, onAssignTab, onAssignColSpan,
+    canMoveUp, canMoveDown, onMove, onToggleEdit, onDelete, onCopy, onDuplicate,
+    onAssignTab, onAssignColSpan,
     fieldForm, availableShowWhenFields, onSaveField, onCancelEdit,
 }) {
     const cs = field.layout?.colSpan ?? 1;
-    const widthPct = isEditing ? 100 : (cs === 2 ? 50 : cs === 3 ? 33.333 : 100);
+    const span = cs === 2 ? 3 : cs === 3 ? 2 : 6;
+    const newRow = !!field.layout?.newRow;
+    const gridColumn = isEditing || isMobile
+        ? '1 / -1'
+        : (newRow ? `1 / span ${span}` : `span ${span}`);
     const isCompact = isMobile || cs >= 2;
 
     const actionButtons = (
@@ -60,6 +66,12 @@ export default function FieldCard({
                     </Button>
                 </Tooltip>
             )}
+            <Tooltip title="Copiar campo (para pegarlo en otro paso o formulario)" placement="left">
+                <Button type="link" size="small" icon={<CopyOutlined />} onClick={onCopy} />
+            </Tooltip>
+            <Tooltip title="Duplicar aquí" placement="left">
+                <Button type="link" size="small" icon={<BlockOutlined />} onClick={onDuplicate} />
+            </Tooltip>
             <Tooltip title={isEditing ? 'Cerrar edición' : 'Editar'} placement="left">
                 <Button
                     type="link"
@@ -115,7 +127,6 @@ export default function FieldCard({
         <>
             <Tag color="blue">{fieldTypeLabel(field.type)}</Tag>
             {field.required && <Tag color="red">Requerido</Tag>}
-            {isOrphanTab(field, tabs) && <Tag color="volcano">Tab «{field.tab}» no existe</Tag>}
             {field.showWhen && (
                 <Tooltip title={`Solo se muestra si «${field.showWhen.field}» = «${field.showWhen.equals}»`}>
                     <Tag color="purple">Condicionado</Tag>
@@ -127,6 +138,11 @@ export default function FieldCard({
                 </Tooltip>
             )}
             {colSpanPicker}
+            {newRow && (
+                <Tooltip title="Este campo abre una fila nueva en el formulario">
+                    <Tag icon={<EnterOutlined />} color="cyan">Fila nueva</Tag>
+                </Tooltip>
+            )}
         </>
     );
 
@@ -135,9 +151,10 @@ export default function FieldCard({
             id={id}
             dragHandle={!isMobile}
             wrapperStyle={{
-                width: isMobile ? '100%' : `${widthPct}%`,
+                gridColumn,
                 padding: 4,
                 boxSizing: 'border-box',
+                minWidth: 0,
             }}
             gripFooter={isCompact && !isMobile ? actionButtons : null}
         >

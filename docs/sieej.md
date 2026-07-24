@@ -79,6 +79,14 @@ Los antiguos tipos `email` y `tel` se absorbieron en `text` + `validation.patter
 
 Atributos comunes: `name` (unico por step), `label`, `required`, `validation` (`minLength`, `maxLength`, `pattern`, `patternMessage`, `min`, `max`), `showWhen` (`{ field, equals }`; `equals` puede ser un valor o una lista de valores, y la condicion se cumple si el campo disparador coincide con cualquiera).
 
+### Layout (`layout`)
+
+El formulario se renderiza en un grid de **6 columnas**. `layout.colSpan` define el ancho: `1` = fila completa (6/6), `2` = mitad (3/6), `3` = un tercio (2/6).
+
+Los campos se colocan **en orden estricto**: si uno no cabe en lo que resta de la fila, baja a la siguiente y deja el hueco. Antes el grid usaba `grid-flow-row-dense`, que rellenaba huecos con campos **definidos despues** — el orden visual dejaba de coincidir con el de la definicion (y con el orden del tab), volviendo el layout impredecible. Se retiro.
+
+`layout.newRow: true` fuerza que el campo abra una fila nueva (se traduce a `col-start-1`; es no-op si el campo ya quedaba al inicio de fila, asi que no altera el espaciado). Sirve para dejar espacio libre al final de la fila anterior **sin** recurrir a campos `info` con label vacio como espaciadores — un workaround que ensuciaba `datos`, el export y el PDF.
+
 - **`select`/`select_multiple`/`radio`/`checkbox`**: requieren `options` (`[{value, label}]`) o `catalog` (string que identifica un catalogo). No pueden mezclar ambos.
 - **`file`**: requiere `bucket` (Acervo). Acepta `maxSizeMB` (cap absoluto 100 MB) y `accept` (lista de MIME/extensions). Al subir via `POST /formularios/{slug}/envio/upload` el backend persiste **dos** registros sincronizados: una fila en `sieej.envio_archivo` (con `bucket`, `object_key`, `url_publica`, `mime`, `size_bytes`, `field_path`) y una entrada en `envio.datos[step][field] = {url_publica, filename, mime, size_bytes}` que es lo que valida `datos_validator` al cierre del envio. El frontend NO debe sobrescribir manualmente la entrada en `datos` (la fuente de verdad la pone el endpoint de upload).
 - **`date_range`**: rango de fechas. El valor en `datos` es `{start, end}` con fechas `YYYY-MM-DD`; `datos_validator` exige ambas fechas si alguna esta presente (incluso en borrador) y rechaza `start > end`. En exports/PDF/resumen se formatea `start – end`.

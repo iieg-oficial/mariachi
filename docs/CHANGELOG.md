@@ -9,6 +9,22 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.84.0] - 2026-07-24
+
+### Cambiado: ordenamiento del grid de formularios (fin de `grid-flow-row-dense` + `layout.newRow`) y cierre del hack de espaciadores
+
+El grid de campos (6 columnas) dejaba de respetar el orden de la definicion: usaba `grid-flow-row-dense`, que reacomodaba campos hacia atras para rellenar huecos, desalineando el orden visual del de captura y del tab. Se retiro; ahora los campos se colocan en orden estricto.
+
+**`layout.newRow`** (booleano, opcional): fuerza que un campo abra una fila nueva. Es la forma soportada de dejar espacio libre al final de una fila, en vez de campos `info` con label vacio como espaciadores. Se configura con el switch "¿Empezar en fila nueva?" del constructor visual.
+
+**Editor WYSIWYG:** la lista de campos del CMS ahora se pinta como el grid real de 6 columnas (antes era una lista vertical con tags de ancho), asi el admin ve lo que vera quien responde.
+
+**Cierre del hack:** `definicion_validator` ahora exige `label` no vacio tambien para los campos `info` (el early-return se lo saltaba), asi que ya no se pueden crear espaciadores vacios ni por el editor JSON crudo. La migracion `b8c9d0e1f2a4` quita los espaciadores existentes (`info` con label vacio) de `definicion`, `definicion_snapshot` y `formulario_version`.
+
+Requiere el frontend SIEEJ >= 1.38.0.
+
+---
+
 ## [1.82.0] - 2026-07-24
 
 ### Agregado: Sextante, la sección de GeoServer del panel
