@@ -5,9 +5,10 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
+    Index,
     Integer,
     String,
-    UniqueConstraint,
+    text,
 )
 from sqlalchemy.orm import relationship
 
@@ -20,7 +21,27 @@ SCHEMA = "sieej"
 class EnvioFormulario(Base):
     __tablename__ = "envio_formulario"
     __table_args__ = (
-        UniqueConstraint("formulario_id", "usuario_id", name="uq_envio_formulario_user"),
+        # Un envio por (formulario, usuario, periodo) en formularios periodicos,
+        # y uno por (formulario, usuario) en los no periodicos. Indices unicos
+        # parciales complementarios: `sqlite_where` para los tests (SQLite) y
+        # `postgresql_where` para produccion.
+        Index(
+            "uq_envio_formulario_periodo",
+            "formulario_id",
+            "usuario_id",
+            "periodo_id",
+            unique=True,
+            postgresql_where=text("periodo_id IS NOT NULL"),
+            sqlite_where=text("periodo_id IS NOT NULL"),
+        ),
+        Index(
+            "uq_envio_formulario_user",
+            "formulario_id",
+            "usuario_id",
+            unique=True,
+            postgresql_where=text("periodo_id IS NULL"),
+            sqlite_where=text("periodo_id IS NULL"),
+        ),
         {"schema": SCHEMA},
     )
 
@@ -35,6 +56,12 @@ class EnvioFormulario(Base):
     usuario_id = Column(
         Integer,
         ForeignKey("usuarios.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    periodo_id = Column(
+        Integer,
+        ForeignKey(f"{SCHEMA}.formulario_periodo.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )
@@ -75,6 +102,13 @@ class EnvioFormulario(Base):
         cascade="all, delete-orphan",
         lazy="select",
         order_by="EnvioEvento.ocurrido_en.desc()",
+    )
+    historial_valores = relationship(
+        "EnvioValorHistorial",
+        back_populates="envio",
+        cascade="all, delete-orphan",
+        lazy="select",
+        order_by="EnvioValorHistorial.cambiado_en",
     )
 
 
@@ -117,6 +151,7 @@ class EnvioEvento(Base):
             "enviado",
             "expirado",
             "reabierto",
+            "actualizado",
             name="sieej_evento_tipo",
             schema=SCHEMA,
         ),
@@ -132,3 +167,44 @@ class EnvioEvento(Base):
 
     envio = relationship("EnvioFormulario", back_populates="eventos", lazy="select")
     actor = relationship("Usuario", lazy="select")
+
+
+class EnvioValorHistorial(Base):
+    """Historial append-only de valores de campos editables tras el envio.
+
+    Cada actualizacion parcial de un envio `enviado` (flujo de actualizacion
+    ligera) inserta una fila por campo cuyo valor cambio, conservando el valor
+    anterior para reportes de auditoria. Nunca se sobreescribe ni borra: es la
+    fuente de verdad del "que cambio, quien y cuando".
+    """
+
+    __tablename__ = "envio_valor_historial"
+    __table_args__ = {"schema": SCHEMA}
+
+    id = Column(Integer, primary_key=True, index=True)
+    envio_id = Column(
+        Integer,
+        ForeignKey(f"{SCHEMA}.envio_formulario.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    field_path = Column(String(512), nullable=False)
+    field_label = Column(String(512), nullable=True)
+    valor_anterior = Column(JSON, nullable=True)
+    valor_nuevo = Column(JSON, nullable=True)
+    formulario_version = Column(Integer, nullable=False)
+    actor_usuario_id = Column(
+        Integer,
+        ForeignKey("usuarios.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    cambiado_en = Column(
+        DateTime(timezone=True), default=utcnow, nullable=False, index=True
+    )
+
+    envio = relationship(
+        "EnvioFormulario", back_populates="historial_valores", lazy="select"
+    )
+    actor = relationship(
+        "Usuario", foreign_keys=[actor_usuario_id], lazy="select"
+    )

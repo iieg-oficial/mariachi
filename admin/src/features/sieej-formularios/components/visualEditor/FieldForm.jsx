@@ -112,6 +112,14 @@ export default function FieldForm({
                     <Form.Item label="¿Requerido?" name="required" valuePropName="checked">
                         <Switch />
                     </Form.Item>
+                    <Form.Item
+                        label="¿Editable después de enviar?"
+                        name="editableAfterSubmit"
+                        valuePropName="checked"
+                        extra="Permite corregir este campo sin reabrir el formulario; cada cambio queda en el historial."
+                    >
+                        <Switch />
+                    </Form.Item>
                     <Form.Item label="Placeholder" name="placeholder">
                         <Input />
                     </Form.Item>

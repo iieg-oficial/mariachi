@@ -4,7 +4,9 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 EnvioEstado = Literal["en_proceso", "enviado", "expirado"]
-EventoTipo = Literal["iniciado", "guardado", "enviado", "expirado", "reabierto"]
+EventoTipo = Literal[
+    "iniciado", "guardado", "enviado", "expirado", "reabierto", "actualizado"
+]
 
 
 class CambioRef(BaseModel):
@@ -70,6 +72,42 @@ class EnvioUpdate(BaseModel):
     paso_actual: int = Field(default=0, ge=0)
     enviar: bool = False
     cambios_vistos: list[str] = Field(default_factory=list)
+
+
+class EnvioActualizarCampos(BaseModel):
+    """Body de PUT /formularios/mis-envios/:id/actualizar-campos.
+
+    `campos` mapea `field_path` (`step_id.field_name`) al valor nuevo. Solo se
+    aceptan campos marcados `editableAfterSubmit` en el snapshot del envio; el
+    backend rechaza (422) cualquier otro path.
+    """
+
+    campos: dict[str, Any] = Field(default_factory=dict)
+
+
+class EnvioHistorialItem(BaseModel):
+    """Una entrada del historial de cambios de valor (vista respondent).
+
+    No expone al actor (consistente con `MisEnviosEventoResponse`).
+    """
+
+    field_path: str
+    field_label: str | None = None
+    valor_anterior: Any = None
+    valor_nuevo: Any = None
+    formulario_version: int
+    cambiado_en: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class EnvioHistorialAdminItem(EnvioHistorialItem):
+    """Entrada del historial para el admin, con identidad del actor."""
+
+    envio_id: int
+    actor_usuario_id: int | None = None
+    actor_nombre: str | None = None
+    actor_email: str | None = None
 
 
 class EnvioUploadResponse(BaseModel):

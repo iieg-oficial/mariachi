@@ -9,6 +9,28 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.78.0] - 2026-07-24
+
+### Agregado: actualizacion ligera de campos post-envio con historial de auditoria
+
+Un field puede marcarse `editableAfterSubmit` en la definicion (toggle "¿Editable despues de enviar?" en el constructor visual del CMS). Los envios ya `enviado` permiten corregir **solo** esos campos sin reabrirse: `PUT /formularios/mis-envios/{envio_id}/actualizar-campos` hace un merge **parcial** de `datos` y el envio **no cambia de estado**. Evita el circuito de reapertura (solicitud del respondent + accion del admin) para correcciones puntuales.
+
+Los paths permitidos se derivan del `definicion_snapshot` del envio, no de la definicion vigente; cualquier campo no marcado se rechaza con 422 (el backend no confia en el frontend). Aplica solo a campos de pasos `form`: repeaters y `file` quedan fuera en esta version.
+
+**Historial de auditoria (lo que antes se perdia).** Hasta ahora el `PUT` del envio reasignaba `datos` completo y el valor anterior se perdia: solo existia versionado de *definiciones*, no de *valores*. Se agrega la tabla append-only `sieej.envio_valor_historial` (migracion `f2b3c4d5e6a7`, rama mariachi) con `field_path`, `field_label`, `valor_anterior`, `valor_nuevo`, `formulario_version`, `actor_usuario_id` y `cambiado_en`. Cada cambio real inserta una fila (los no-op no); ademas se registra un evento nuevo `actualizado` en `sieej.envio_evento` con un resumen en `payload`.
+
+#### Agregado
+
+- `PUT /formularios/mis-envios/{envio_id}/actualizar-campos` (CSRF) y `GET /formularios/mis-envios/{envio_id}/historial` (respondent, sin actor).
+- `GET /sieej/formularios/{id}/envios/{envio_id}/historial` (admin, con actor).
+- El export de envios (`?formato=xlsx|csv`) incluye la tabla **"Historial de cambios"**: hoja propia en Excel, CSV adicional dentro del ZIP.
+- `EnviosService.actualizar_campos` / `editable_field_paths` y `FormulariosAdminService.listar_historial_envio` / `historial_de_formulario`.
+- `editableAfterSubmit` se suma a los campos significativos del clasificador de cambios: togglearlo cuenta como cambio **menor** (no invalida datos ni reabre envios).
+
+Requiere el frontend SIEEJ >= 1.33.0, que expone la pantalla `/mis-envios/:id/actualizar`.
+
+---
+
 ## [1.77.0] - 2026-07-24
 
 ### Corregido + Agregado: auditoría de comportamiento de Colibri + reorganización de su documentación

@@ -201,6 +201,41 @@ La regla central vive en `EnviosService._formulario_acepta_cambios`. Esto evita 
 - Limpia `enviado_en` y `expirado_en`.
 - Registra evento `reabierto` con `actor_usuario_id`. El detalle publico (`/formularios/mis-envios/{id}`) NO expone el actor para no filtrar identidad de admins.
 
+### Actualizacion ligera de campos (post-envio)
+
+Alternativa a la reapertura para correcciones puntuales: un field puede marcarse
+`editableAfterSubmit: true` en la definicion (toggle en el CMS) y entonces el
+respondent lo corrige sobre un envio ya `enviado` **sin reabrirlo**.
+
+`PUT /formularios/mis-envios/{envio_id}/actualizar-campos` con
+`{"campos": {"step_id.field_name": valor, ...}}`:
+
+- El envio **no cambia de estado** (sigue `enviado`); no se toca `enviado_en` ni
+  `cambios_pendientes`.
+- Los paths permitidos se derivan del `definicion_snapshot` del envio (no de la
+  definicion vigente), asi que la editabilidad es la que tenia al enviarse.
+  Cualquier path que no este marcado se rechaza con 422 — el backend no confia
+  en el frontend.
+- Solo campos de pasos `form`. Repeaters (path por indice) y `file` quedan fuera
+  en esta version; los archivos se siguen editando por el endpoint de upload.
+- El merge sobre `datos` es **parcial** (no reemplaza el resto de respuestas), con
+  `flag_modified`. Se identifica el envio por `envio_id` (no por
+  formulario+usuario) para no ambiguar en formularios periodicos.
+- 409 si el envio no esta `enviado` (p. ej. un admin lo reabrio) o si el
+  formulario ya no acepta cambios; 403 si el envio no es del usuario.
+
+Cada campo cuyo valor cambie inserta una fila **append-only** en
+`sieej.envio_valor_historial` (`field_path`, `field_label`, `valor_anterior`,
+`valor_nuevo`, `formulario_version`, `actor_usuario_id`, `cambiado_en`), y se
+registra un evento `actualizado` con un resumen (`{campos, n}`) en el payload.
+Los cambios sin diferencia real (no-op) no generan historial ni evento.
+
+Lectura del historial: `GET /formularios/mis-envios/{envio_id}/historial`
+(respondent, sin actor) y `GET /sieej/formularios/{id}/envios/{envio_id}/historial`
+(admin, con actor). El export de envios (`?formato=xlsx|csv`) incluye una tabla
+**"Historial de cambios"** — hoja propia en Excel, CSV extra dentro del ZIP — que
+es la base del reporte de auditoria.
+
 ### Auto-expiracion (lazy)
 
 `EnviosService._expirar_si_corresponde` corre cada vez que un endpoint toca un envio especifico (detalle de respondent, listado de respondent, etc.) y transiciona `en_proceso` -> `expirado` si `formulario.vigencia_fin < now`. Es idempotente: si ya esta `expirado` no hace nada. Registra evento `expirado` con `actor_usuario_id=NULL` (sistema).
