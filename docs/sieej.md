@@ -276,6 +276,66 @@ cron-sieej:
 
 Default: 3600s (cada hora). Para correr mas seguido en staging, setea `CRON_SIEEJ_EXPIRE_INTERVAL=300` en `.env.staging`. Los logs van a `docker logs mariachi-cron-sieej`. Restart policy `unless-stopped`, no requiere cron del host.
 
+## Apertura periodica
+
+Un formulario puede abrir una **ventana de captura recurrente** en vez de tener una vigencia unica. Se configura en `sieej.formulario.periodicidad` (JSONB; `NULL` = formulario no periodico, comportamiento historico):
+
+```jsonc
+{
+  "frecuencia": "mensual" | "trimestral" | "semestral" | "anual",
+  "dia_inicio": 1,        // dia del primer mes del periodo en que abre (1..28)
+  "duracion_dias": 7,     // largo de la ventana
+  "ancla": "2026-01-01"   // opcional: no se abren ventanas antes de esta fecha
+}
+```
+
+`validar_periodicidad` (`services/sieej/periodos_service.py`) rechaza frecuencias desconocidas, `dia_inicio` fuera de 1..28 (evita el problema de los meses cortos) y ventanas que no caben dentro del periodo.
+
+### Ventanas materializadas y un envio por periodo
+
+Cada ventana concreta es una fila de `sieej.formulario_periodo`: `clave` (`2026-03`, `2026-T2`, `2026-S1`, `2026`), `apertura`, `cierre`, `estado` (`programado|abierto|cerrado`) y los sellos `notificado_apertura_en` / `notificado_faltantes_en`.
+
+`sieej.envio_formulario` gana `periodo_id`, y la constraint `UNIQUE (formulario_id, usuario_id)` se reemplaza por **dos indices unicos parciales** (migracion `f9a0b1c2d3e4`):
+
+- `WHERE periodo_id IS NOT NULL` -> `UNIQUE (formulario_id, usuario_id, periodo_id)`: un envio por usuario **y periodo**.
+- `WHERE periodo_id IS NULL` -> `UNIQUE (formulario_id, usuario_id)`: preserva el invariante de los formularios no periodicos.
+
+Asi conviven los dos modelos sin migrar datos: los envios existentes quedan con `periodo_id = NULL`.
+
+### Que decide si esta abierto
+
+La ventana abierta **se computa de la config** (`ventana_abierta(periodicidad, ahora)`), no del `estado` de la fila: el gating funciona aunque el tick no haya corrido todavia (importante en dev, que no levanta el sidecar). `EnviosService._formulario_acepta_cambios` delega ahi cuando el formulario es periodico, y `get_o_iniciar` resuelve el periodo abierto (creando la fila si falta) para buscar o crear el envio **de ese periodo**. Sin ventana abierta las escrituras responden 409.
+
+La expiracion de un envio periodico se ancla al `cierre` de **su** periodo, no a `formulario.vigencia_fin`.
+
+En el listado del respondent los formularios periodicos siguen visibles con la ventana cerrada (para poder mostrar la proxima apertura); la vigencia solo filtra a los no periodicos.
+
+### Tick
+
+`PeriodosService.tick()` es el motor, y es **idempotente**: materializa el periodo vigente y el siguiente, abre los que entraron en ventana (disparando el aviso de apertura una sola vez) y cierra los vencidos (marca `cerrado`, expira los envios `en_proceso` de ese periodo y dispara el aviso de faltantes una sola vez). Los sellos `notificado_*_en` son la guarda anti-duplicado.
+
+```sh
+docker exec mariachi-api python scripts/sieej_periodos_tick.py
+# {"formularios": 3, "aperturas_notificadas": 1, "cierres_notificados": 0, "envios_expirados": 0}
+```
+
+El sidecar `cron-sieej` lo invoca en cada iteracion del loop (antes del expire), con el mismo `CRON_SIEEJ_EXPIRE_INTERVAL`. `POST /sieej/periodos/tick` (admin, CSRF) lo dispara a mano: es la via de prueba en dev, donde el sidecar no corre.
+
+### Avisos
+
+Al abrir la ventana se avisa al **creador** del formulario; los respondents se enteran in-app (el formulario aparece abierto en su lista, con la fecha de cierre). Al cerrar se avisa de los **faltantes** solo al creador y a los administradores. Faltantes = asignados (por grupo + individuales) menos quienes enviaron en ese periodo; los envios que expiraron cuentan como faltantes.
+
+Cada aviso queda en `sieej.notificacion` (`tipo` `apertura|faltantes`, `resumen`, `payload` con ventana/conteos/lista de faltantes, `destinatarios`) y se publica **best-effort** en el webhook de Discord de SIEEJ (`discord_webhook_sieej`): un fallo de red se loggea y no tumba el tick. No hay correo — el stack no tiene SMTP.
+
+| Verbo | Path | |
+|---|---|---|
+| GET | `/sieej/formularios/{id}/periodos` | Ventanas del formulario |
+| GET | `/sieej/formularios/{id}/notificaciones` | Bitacora de avisos |
+| GET | `/sieej/formularios/{id}/notificaciones/exportar` | Descarga la bitacora (`?formato=csv\|xlsx`) |
+| POST | `/sieej/periodos/tick` | Corre el tick (idempotente) |
+
+En el CMS la periodicidad se configura en la pestaña **Configuracion** del formulario, y la pestaña **Periodos** (solo visible si es periodico) lista las ventanas, la bitacora de avisos y el boton de exportar.
+
 ## Estructura del codigo
 
 ```

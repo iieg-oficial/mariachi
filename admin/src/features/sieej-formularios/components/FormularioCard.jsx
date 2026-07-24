@@ -1,8 +1,9 @@
 import { Button, Card, Tag, Tooltip, Typography } from 'antd';
 import {
     EditOutlined, DeleteOutlined, PlayCircleOutlined,
-    CloseCircleOutlined, InboxOutlined, TeamOutlined,
+    CloseCircleOutlined, InboxOutlined, TeamOutlined, SyncOutlined,
 } from '@ant-design/icons';
+import { frecuenciaLabel } from '../constants/definitionTypes';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -16,7 +17,15 @@ const formatDate = (iso) => {
     });
 };
 
-const Vigencia = ({ inicio, fin }) => {
+const Vigencia = ({ inicio, fin, periodicidad }) => {
+    if (periodicidad) {
+        return (
+            <Text type="secondary" style={{ fontSize: 12 }}>
+                <SyncOutlined style={{ marginInlineEnd: 4 }} />
+                {`Periódico · ${frecuenciaLabel(periodicidad.frecuencia)} · ${periodicidad.duracion_dias} día(s)`}
+            </Text>
+        );
+    }
     if (!inicio && !fin) {
         return <Text type="secondary" style={{ fontSize: 12 }}>Sin vigencia</Text>;
     }
@@ -97,7 +106,11 @@ const FormularioCard = ({
                 </Paragraph>
             )}
             <div style={{ marginTop: 'auto', paddingTop: 8 }}>
-                <Vigencia inicio={formulario.vigencia_inicio} fin={formulario.vigencia_fin} />
+                <Vigencia
+                    inicio={formulario.vigencia_inicio}
+                    fin={formulario.vigencia_fin}
+                    periodicidad={formulario.periodicidad}
+                />
             </div>
         </Card>
     );

@@ -44,6 +44,7 @@ class Formulario(Base):
     )
     vigencia_inicio = Column(DateTime(timezone=True), nullable=True)
     vigencia_fin = Column(DateTime(timezone=True), nullable=True)
+    periodicidad = Column(JSON, nullable=True)
     publico = Column(Boolean, nullable=False, default=False)
     version = Column(Integer, nullable=False, default=1)
     creado_por_id = Column(

@@ -14,6 +14,10 @@ export const formulariosApi = {
     reabrirEnvio: (id, envioId) => api.post(`/sieej/formularios/${id}/envios/${envioId}/reabrir`).then((r) => r.data),
     descargarEnvioPdf: (id, envioId) => api.get(`/sieej/formularios/${id}/envios/${envioId}/pdf`, { responseType: 'blob' }),
     exportarEnvios: (id, formato = 'xlsx') => api.get(`/sieej/formularios/${id}/exportar-envios`, { params: { formato }, responseType: 'blob' }),
+    periodos: (id) => api.get(`/sieej/formularios/${id}/periodos`).then((r) => r.data),
+    notificaciones: (id) => api.get(`/sieej/formularios/${id}/notificaciones`).then((r) => r.data),
+    exportarNotificaciones: (id, formato = 'xlsx') => api.get(`/sieej/formularios/${id}/notificaciones/exportar`, { params: { formato }, responseType: 'blob' }),
+    tickPeriodos: () => api.post('/sieej/periodos/tick').then((r) => r.data),
 };
 
 export const catalogosApi = {

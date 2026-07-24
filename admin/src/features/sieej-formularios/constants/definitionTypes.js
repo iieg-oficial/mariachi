@@ -20,6 +20,16 @@ export const FIELD_TYPES = [
 
 export const DEFAULT_OPEN_RANGE_CATALOG = 'estatus_fecha';
 
+export const FRECUENCIA_OPTIONS = [
+    { value: 'mensual', label: 'Mensual' },
+    { value: 'trimestral', label: 'Trimestral' },
+    { value: 'semestral', label: 'Semestral' },
+    { value: 'anual', label: 'Anual' },
+];
+
 export const stepTypeLabel = (type) => STEP_TYPES.find((t) => t.value === type)?.label ?? type;
 
 export const fieldTypeLabel = (type) => FIELD_TYPES.find((t) => t.value === type)?.label ?? type;
+
+export const frecuenciaLabel = (value) =>
+    FRECUENCIA_OPTIONS.find((f) => f.value === value)?.label ?? value;

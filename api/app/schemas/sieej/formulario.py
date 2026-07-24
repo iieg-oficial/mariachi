@@ -13,6 +13,7 @@ class FormularioBase(BaseModel):
     definicion: dict[str, Any]
     vigencia_inicio: datetime | None = None
     vigencia_fin: datetime | None = None
+    periodicidad: dict[str, Any] | None = None
     publico: bool = False
 
 
@@ -26,6 +27,7 @@ class FormularioUpdate(BaseModel):
     definicion: dict[str, Any] | None = None
     vigencia_inicio: datetime | None = None
     vigencia_fin: datetime | None = None
+    periodicidad: dict[str, Any] | None = None
     publico: bool | None = None
 
 
@@ -85,6 +87,14 @@ class FormularioListItem(BaseModel):
     estado_envio: Literal["no_iniciado", "en_proceso", "enviado", "expirado"]
     envio_id: int | None
     actualizacion_disponible: bool = False
+    # Apertura periodica: `periodico` marca el formulario con ventanas
+    # recurrentes; cuando esta cerrado, `abierto=False` y `proxima_apertura`
+    # indica cuando vuelve a abrir. En no periodicos `abierto` es siempre True.
+    periodico: bool = False
+    abierto: bool = True
+    ventana_apertura: datetime | None = None
+    ventana_cierre: datetime | None = None
+    proxima_apertura: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -102,6 +112,11 @@ class FormularioDetalle(BaseModel):
     version: int
     definicion: dict[str, Any]
     envio: "EnvioResponse | None" = None
+    periodico: bool = False
+    abierto: bool = True
+    ventana_apertura: datetime | None = None
+    ventana_cierre: datetime | None = None
+    proxima_apertura: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

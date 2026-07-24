@@ -9,10 +9,11 @@ import DefinicionEditor from '../components/DefinicionEditor';
 import ConfiguracionEditor from '../components/ConfiguracionEditor';
 import AsignacionesEditor from '../components/AsignacionesEditor';
 import EnviosTable from '../components/EnviosTable';
+import PeriodosPanel from '../components/PeriodosPanel';
 
 const ESTADO_COLOR = { borrador: 'default', activo: 'green', cerrado: 'red' };
 
-const VALID_TABS = new Set(['definicion', 'configuracion', 'asignaciones', 'envios']);
+const VALID_TABS = new Set(['definicion', 'configuracion', 'periodos', 'asignaciones', 'envios']);
 
 export default function FormularioEditorPage() {
     const { slug } = useParams();
@@ -76,6 +77,13 @@ export default function FormularioEditorPage() {
             label: 'Configuración',
             children: <ConfiguracionEditor formulario={formulario} onSaved={setFormulario} />,
         },
+        ...(formulario.periodicidad
+            ? [{
+                key: 'periodos',
+                label: 'Periodos',
+                children: <PeriodosPanel formulario={formulario} />,
+            }]
+            : []),
         {
             key: 'asignaciones',
             label: 'Asignaciones',
@@ -87,6 +95,8 @@ export default function FormularioEditorPage() {
             children: <EnviosTable formulario={formulario} />,
         },
     ];
+
+    const currentTab = items.some((i) => i.key === activeTab) ? activeTab : 'definicion';
 
     return (
         <div>
@@ -127,7 +137,7 @@ export default function FormularioEditorPage() {
             </Flex>
             <Tabs
                 items={items}
-                activeKey={activeTab}
+                activeKey={currentTab}
                 onChange={handleTabChange}
                 style={{ marginTop: 16 }}
                 destroyOnHidden

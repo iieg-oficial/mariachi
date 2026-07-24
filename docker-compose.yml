@@ -98,6 +98,8 @@ services:
       - -c
       - |
         while true; do
+          echo "[cron-sieej] $$(date -u +%Y-%m-%dT%H:%M:%SZ) running sieej_periodos_tick"
+          python scripts/sieej_periodos_tick.py || echo "[cron-sieej] tick periodos fallo, continuando"
           echo "[cron-sieej] $$(date -u +%Y-%m-%dT%H:%M:%SZ) running expire_sieej_envios"
           python scripts/expire_sieej_envios.py || echo "[cron-sieej] script fallo, continuando"
           echo "[cron-sieej] $$(date -u +%Y-%m-%dT%H:%M:%SZ) running purge_mapalab_accesos"
