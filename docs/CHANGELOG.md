@@ -9,6 +9,14 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.89.1] - 2026-07-27
+
+### Corregido: el collector de telemetría rechazaba los lotes con el evento nuevo del catálogo de MapaLab
+
+`ALLOWED_EVENT_NAMES` (`app/schemas/mapalab_event.py`) valida cada `event_name` contra una lista blanca, y `catalogo_infobox_action` —que MapaLab 1.94.0 emite al descargar tarjetas o centrar la selección desde la tarjeta de información— no estaba registrado. Como la validación es de Pydantic sobre la lista completa, **el lote entero se rechazaba con 422**: se perdían también los eventos válidos que viajaban en el mismo batch, no sólo el desconocido.
+
+Al agregar un evento en MapaLab hay que registrarlo aquí en el mismo release, o la telemetría de esa sesión se cae por completo mientras tanto.
+
 ## [1.89.0] - 2026-07-27
 
 ### Corregido: marcar un campo como editable despues del envio ya sirve para los envios existentes
