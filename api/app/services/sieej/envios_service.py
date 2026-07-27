@@ -368,20 +368,38 @@ class EnviosService:
                 status_code=status.HTTP_409_CONFLICT,
                 detail=_FORMULARIO_NO_ACEPTA_DETAIL,
             )
-
-        permitidos = self.editable_field_paths(envio.definicion_snapshot or {})
-        errores = [
-            {"field_path": fp, "error": "campo no editable"}
-            for fp in campos
-            if fp not in permitidos
-        ]
+        defs = self.editable_field_defs(envio.definicion_snapshot or {})
+        errores: list[dict[str, str]] = []
+        metas: dict[str, dict[str, Any]] = {}
+        nuevos = copy.deepcopy(envio.datos or {})
+        for field_path in campos:
+            meta = self.resolver_editable(defs, field_path)
+            if meta is None:
+                errores.append({"field_path": field_path, "error": "campo no editable"})
+                continue
+            if meta["type"] == "file":
+                errores.append(
+                    {
+                        "field_path": field_path,
+                        "error": (
+                            "los archivos se reemplazan con "
+                            "`actualizar-archivo`, no con este endpoint"
+                        ),
+                    }
+                )
+                continue
+            if self._scope_de_path(nuevos, field_path) is None and meta["repeater"]:
+                errores.append(
+                    {"field_path": field_path, "error": "el elemento no existe"}
+                )
+                continue
+            metas[field_path] = meta
         if errores:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail={"errores": errores},
             )
 
-        nuevos = copy.deepcopy(envio.datos or {})
         cambios: list[tuple[str, Any, Any]] = []
         for field_path, valor_nuevo in campos.items():
             valor_anterior = self._get_valor_en_datos(nuevos, field_path)
@@ -415,7 +433,7 @@ class EnviosService:
                 EnvioValorHistorial(
                     envio_id=envio.id,
                     field_path=field_path,
-                    field_label=permitidos.get(field_path),
+                    field_label=metas[field_path]["label"],
                     valor_anterior=valor_anterior,
                     valor_nuevo=valor_nuevo,
                     formulario_version=envio.formulario_version,
@@ -594,59 +612,112 @@ class EnviosService:
         return step_part, None, field_name
 
     @staticmethod
-    def editable_field_paths(definicion: dict[str, Any]) -> dict[str, str]:
-        """Mapa `step_id.field_name` -> label de los campos editables tras enviar.
+    def editable_field_defs(definicion: dict[str, Any]) -> dict[str, dict[str, Any]]:
+        """Mapa `step_id.field_name` -> `{label, type, repeater}` de los campos
+        marcados `editableAfterSubmit`.
 
-        Solo campos de pasos tipo `form` marcados `editableAfterSubmit`. Se
-        excluyen repeaters (path por indice) y `file`/`info` (los archivos se
-        editan por el endpoint de upload; `info` no captura valor).
+        La clave es el path **base** (sin indice). En un repeater el path real
+        lleva el indice del item (`bases_datos[0].diccionario`) y se resuelve
+        con `resolver_editable`. Solo se excluye `info`, que no captura valor.
+
+        Los campos `file` entran aqui (para que el frontend los ofrezca y el
+        listado sepa que el envio tiene algo actualizable) pero no se editan
+        por `actualizar_campos`: su valor lo escribe `actualizar_archivo`.
         """
-        editables: dict[str, str] = {}
+        editables: dict[str, dict[str, Any]] = {}
         for step in (definicion or {}).get("steps", []) or []:
-            if step.get("type") in ("summary", "repeater"):
+            step_type = step.get("type")
+            if step_type == "summary":
                 continue
             step_id = step.get("id")
             for field in step.get("fields", []) or []:
-                if field.get("type") in ("info", "file"):
+                if field.get("type") == "info":
                     continue
                 if not field.get("editableAfterSubmit"):
                     continue
                 name = field.get("name")
-                editables[f"{step_id}.{name}"] = field.get("label") or name
+                editables[f"{step_id}.{name}"] = {
+                    "label": field.get("label") or name,
+                    "type": field.get("type"),
+                    "repeater": step_type == "repeater",
+                    "field": field,
+                }
         return editables
 
     @staticmethod
-    def _get_valor_en_datos(datos: dict[str, Any], field_path: str) -> Any:
-        """Lee datos[step][field] para un path `step.field` (no repeater)."""
+    def editable_field_paths(definicion: dict[str, Any]) -> dict[str, str]:
+        """Mapa `step_id.field_name` -> label de los campos editables tras enviar."""
+        return {
+            path: meta["label"]
+            for path, meta in EnviosService.editable_field_defs(definicion).items()
+        }
+
+    @staticmethod
+    def resolver_editable(
+        defs: dict[str, dict[str, Any]], field_path: str
+    ) -> dict[str, Any] | None:
+        """Resuelve un path concreto contra los paths base editables.
+
+        Devuelve la metadata del campo, o None si el path no es editable o su
+        forma no corresponde (un campo de repeater exige indice; uno de un
+        paso `form` no lo admite).
+        """
         parsed = EnviosService._parse_field_path(field_path)
         if parsed is None:
             return None
         step_id, idx, field_name = parsed
-        if idx is not None:
+        meta = defs.get(f"{step_id}.{field_name}")
+        if meta is None:
             return None
-        step_data = datos.get(step_id)
-        if not isinstance(step_data, dict):
+        if meta["repeater"] != (idx is not None):
             return None
-        return step_data.get(field_name)
+        return meta
+
+    @staticmethod
+    def _scope_de_path(
+        datos: dict[str, Any], field_path: str, *, crear: bool = False
+    ) -> dict[str, Any] | None:
+        """Devuelve el dict que contiene el campo del path, o None.
+
+        En un repeater es el item del indice, que debe existir: la
+        actualizacion ligera corrige respuestas, no da de alta items nuevos.
+        """
+        parsed = EnviosService._parse_field_path(field_path)
+        if parsed is None:
+            return None
+        step_id, idx, _ = parsed
+        if idx is None:
+            step_data = (
+                datos.setdefault(step_id, {}) if crear else datos.get(step_id)
+            )
+            return step_data if isinstance(step_data, dict) else None
+        step_list = datos.get(step_id)
+        if not isinstance(step_list, list) or idx >= len(step_list):
+            return None
+        item = step_list[idx]
+        return item if isinstance(item, dict) else None
+
+    @staticmethod
+    def _get_valor_en_datos(datos: dict[str, Any], field_path: str) -> Any:
+        """Lee el valor de un path `step.field` o `step[idx].field`."""
+        scope = EnviosService._scope_de_path(datos, field_path)
+        if scope is None:
+            return None
+        return scope.get(EnviosService._parse_field_path(field_path)[2])
 
     @staticmethod
     def _set_valor_en_datos(
         datos: dict[str, Any], field_path: str, valor: Any
     ) -> dict[str, Any]:
-        """Escribe datos[step][field] = valor (path `step.field`, no repeater).
+        """Escribe el valor de un path `step.field` o `step[idx].field`.
 
-        Crea el dict del step si no existe. Devuelve el mismo dict modificado.
+        Crea el dict del step si no existe; en repeaters exige que el item ya
+        exista. Devuelve el mismo dict modificado.
         """
-        parsed = EnviosService._parse_field_path(field_path)
-        if parsed is None:
+        scope = EnviosService._scope_de_path(datos, field_path, crear=True)
+        if scope is None:
             return datos
-        step_id, idx, field_name = parsed
-        if idx is not None:
-            return datos
-        step_data = datos.setdefault(step_id, {})
-        if not isinstance(step_data, dict):
-            return datos
-        step_data[field_name] = valor
+        scope[EnviosService._parse_field_path(field_path)[2]] = valor
         return datos
 
     @staticmethod
@@ -707,6 +778,143 @@ class EnviosService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"field_path '{field_path}' no es un campo `file` valido",
             )
+
+        archivo = await self._subir_archivo_a_acervo(
+            formulario, envio, field_def, field_path, file
+        )
+        envio.actualizado_en = utcnow()
+        self.db.commit()
+        self.db.refresh(archivo)
+        return archivo
+
+    async def actualizar_archivo(
+        self,
+        user: Usuario,
+        envio_id: int,
+        field_path: str,
+        file: UploadFile,
+    ) -> EnvioArchivo:
+        """Reemplaza el archivo de un campo `editableAfterSubmit` en un envio
+        ya `enviado`, sin reabrirlo.
+
+        Contraparte de `actualizar_campos` para los campos `file`: el valor de
+        un archivo no lo escribe el cliente sino la subida a Acervo, asi que va
+        por su propio endpoint. Deja la misma huella de auditoria: una fila en
+        `EnvioValorHistorial` con el nombre del archivo anterior y el nuevo, y
+        un evento `actualizado`. El archivo previo no se borra: su fila en
+        `envio_archivo` conserva `object_key` y `url_publica`.
+        """
+        envio = self._envio_editable_de(user, envio_id)
+        formulario = (
+            self.db.query(Formulario)
+            .filter(Formulario.id == envio.formulario_id)
+            .first()
+        )
+        if formulario is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Formulario no encontrado",
+            )
+        if not self._formulario_acepta_cambios(formulario):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=_FORMULARIO_NO_ACEPTA_DETAIL,
+            )
+
+        defs = self.editable_field_defs(envio.definicion_snapshot or {})
+        meta = self.resolver_editable(defs, field_path)
+        if meta is None or meta["type"] != "file":
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "errores": [
+                        {"field_path": field_path, "error": "campo no editable"}
+                    ]
+                },
+            )
+        field_def = meta["field"]
+        if not field_def.get("bucket"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"field_path '{field_path}' no es un campo `file` valido",
+            )
+        if self._scope_de_path(envio.datos or {}, field_path) is None and meta[
+            "repeater"
+        ]:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail={
+                    "errores": [
+                        {"field_path": field_path, "error": "el elemento no existe"}
+                    ]
+                },
+            )
+
+        anterior = self._get_valor_en_datos(envio.datos or {}, field_path)
+        archivo = await self._subir_archivo_a_acervo(
+            formulario, envio, field_def, field_path, file
+        )
+
+        self.db.add(
+            EnvioValorHistorial(
+                envio_id=envio.id,
+                field_path=field_path,
+                field_label=meta["label"],
+                valor_anterior=(
+                    anterior.get("filename") if isinstance(anterior, dict) else anterior
+                ),
+                valor_nuevo=archivo.filename_original,
+                formulario_version=envio.formulario_version,
+                actor_usuario_id=user.id,
+            )
+        )
+        envio.actualizado_en = utcnow()
+        self._registrar_evento(
+            envio,
+            "actualizado",
+            actor=user,
+            payload={"campos": [field_path], "n": 1},
+        )
+        self.db.commit()
+        self.db.refresh(archivo)
+        incr(COUNTER_SIEEJ_ENVIO_WRITES)
+        return archivo
+
+    def _envio_editable_de(self, user: Usuario, envio_id: int) -> EnvioFormulario:
+        """Envio `enviado` del usuario, bloqueado para actualizacion ligera."""
+        envio = (
+            self.db.query(EnvioFormulario)
+            .filter(EnvioFormulario.id == envio_id)
+            .with_for_update()
+            .first()
+        )
+        if envio is None or envio.eliminado_en is not None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Envio no encontrado",
+            )
+        if envio.usuario_id != user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Este envio no te pertenece",
+            )
+        if envio.estado != "enviado":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Solo un envio enviado puede actualizarse por campos",
+            )
+        return envio
+
+    async def _subir_archivo_a_acervo(
+        self,
+        formulario: Formulario,
+        envio: EnvioFormulario,
+        field_def: dict[str, Any],
+        field_path: str,
+        file: UploadFile,
+    ) -> EnvioArchivo:
+        """Sube el archivo, registra `EnvioArchivo` y escribe el valor en
+        `datos`. No hace commit: lo hace el caller."""
         bucket_name = field_def["bucket"]
 
         bucket = (
@@ -776,12 +984,9 @@ class EnviosService:
             "mime": file.content_type or "application/octet-stream",
             "size_bytes": size,
         }
-        datos = dict(envio.datos or {})
+        datos = copy.deepcopy(envio.datos or {})
         envio.datos = self._set_archivo_en_datos(datos, field_path, archivo_value)
-
-        envio.actualizado_en = utcnow()
-        self.db.commit()
-        self.db.refresh(archivo)
+        flag_modified(envio, "datos")
         return archivo
 
     def _field_para_path(

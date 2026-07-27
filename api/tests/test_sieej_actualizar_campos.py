@@ -164,12 +164,58 @@ def crear_envio(session, formulario, user, *, estado="enviado", datos=None):
 # ---------------------------------------------------------------------------
 
 
-def test_editable_field_paths_solo_marcados_de_pasos_form():
+def test_editable_field_paths_solo_marcados():
     paths = EnviosService.editable_field_paths(DEFINICION)
     assert paths == {
         "general.razon_social": "Razon social",
         "general.telefono": "Telefono",
     }
+
+
+def test_editable_field_paths_incluye_archivos_y_repeaters():
+    definicion = {
+        "version": 1,
+        "steps": [
+            {
+                "id": "alta_archivos",
+                "type": "form",
+                "title": "Alta",
+                "fields": [
+                    {
+                        "name": "base_de_datos",
+                        "label": "Base de datos",
+                        "type": "file",
+                        "bucket": "sieej",
+                        "editableAfterSubmit": True,
+                    },
+                    {"name": "nota", "label": "Nota", "type": "text"},
+                ],
+            },
+            {
+                "id": "bases_datos",
+                "type": "repeater",
+                "title": "Bases",
+                "fields": [
+                    {
+                        "name": "diccionario",
+                        "label": "Diccionario",
+                        "type": "text",
+                        "editableAfterSubmit": True,
+                    }
+                ],
+            },
+        ],
+    }
+    assert EnviosService.editable_field_paths(definicion) == {
+        "alta_archivos.base_de_datos": "Base de datos",
+        "bases_datos.diccionario": "Diccionario",
+    }
+
+    defs = EnviosService.editable_field_defs(definicion)
+    assert EnviosService.resolver_editable(defs, "bases_datos[0].diccionario")
+    assert EnviosService.resolver_editable(defs, "bases_datos.diccionario") is None
+    assert EnviosService.resolver_editable(defs, "alta_archivos.base_de_datos")
+    assert EnviosService.resolver_editable(defs, "alta_archivos[0].base_de_datos") is None
 
 
 # ---------------------------------------------------------------------------
@@ -351,3 +397,143 @@ def test_listado_no_marca_editables_si_el_snapshot_no_tiene_campos_marcados(
     session.commit()
     item = _listar_para(session, formulario, user_a)
     assert item["tiene_campos_editables"] is False
+
+
+# ---------------------------------------------------------------------------
+# campos de repeater y de archivo
+# ---------------------------------------------------------------------------
+
+
+DEFINICION_MIXTA = {
+    "version": 1,
+    "steps": [
+        {
+            "id": "alta_archivos",
+            "type": "form",
+            "title": "Alta de archivos",
+            "fields": [
+                {
+                    "name": "base_de_datos",
+                    "label": "Base de datos",
+                    "type": "file",
+                    "bucket": "sieej",
+                    "editableAfterSubmit": True,
+                },
+                {
+                    "name": "nota",
+                    "label": "Nota",
+                    "type": "text",
+                    "editableAfterSubmit": True,
+                },
+            ],
+        },
+        {
+            "id": "bases_datos",
+            "type": "repeater",
+            "title": "Bases de datos",
+            "fields": [
+                {
+                    "name": "diccionario",
+                    "label": "Diccionario",
+                    "type": "text",
+                    "editableAfterSubmit": True,
+                },
+                {"name": "fijo", "label": "Fijo", "type": "text"},
+            ],
+        },
+    ],
+}
+
+
+@pytest.fixture(scope="function")
+def envio_mixto(session, formulario, user_a):
+    envio = crear_envio(
+        session, formulario, user_a,
+        datos={
+            "alta_archivos": {"nota": "vieja"},
+            "bases_datos": [{"diccionario": "d1", "fijo": "f1"}],
+        },
+    )
+    envio.definicion_snapshot = DEFINICION_MIXTA
+    session.commit()
+    session.refresh(envio)
+    return envio
+
+
+def test_actualiza_un_campo_dentro_de_un_repeater(session, envio_mixto, user_a):
+    svc = EnviosService(session)
+    out = svc.actualizar_campos(
+        user_a, envio_mixto.id, {"bases_datos[0].diccionario": "d2"}
+    )
+
+    assert out.datos["bases_datos"][0]["diccionario"] == "d2"
+    assert out.datos["bases_datos"][0]["fijo"] == "f1"
+
+    hist = session.query(EnvioValorHistorial).filter_by(envio_id=envio_mixto.id).all()
+    assert len(hist) == 1
+    assert hist[0].field_path == "bases_datos[0].diccionario"
+    assert hist[0].field_label == "Diccionario"
+    assert hist[0].valor_anterior == "d1"
+    assert hist[0].valor_nuevo == "d2"
+
+
+def test_campo_de_repeater_sin_indice_es_rechazado(session, envio_mixto, user_a):
+    svc = EnviosService(session)
+    with pytest.raises(HTTPException) as exc:
+        svc.actualizar_campos(user_a, envio_mixto.id, {"bases_datos.diccionario": "x"})
+    assert exc.value.status_code == 422
+
+
+def test_indice_inexistente_en_repeater_es_rechazado(session, envio_mixto, user_a):
+    svc = EnviosService(session)
+    with pytest.raises(HTTPException) as exc:
+        svc.actualizar_campos(
+            user_a, envio_mixto.id, {"bases_datos[7].diccionario": "x"}
+        )
+    assert exc.value.status_code == 422
+    assert exc.value.detail["errores"][0]["error"] == "el elemento no existe"
+
+
+def test_campo_no_marcado_del_repeater_es_rechazado(session, envio_mixto, user_a):
+    svc = EnviosService(session)
+    with pytest.raises(HTTPException) as exc:
+        svc.actualizar_campos(user_a, envio_mixto.id, {"bases_datos[0].fijo": "x"})
+    assert exc.value.status_code == 422
+
+
+def test_archivo_no_se_edita_por_actualizar_campos(session, envio_mixto, user_a):
+    svc = EnviosService(session)
+    with pytest.raises(HTTPException) as exc:
+        svc.actualizar_campos(
+            user_a,
+            envio_mixto.id,
+            {"alta_archivos.base_de_datos": {"url_publica": "http://x/y.csv"}},
+        )
+    assert exc.value.status_code == 422
+    assert "actualizar-archivo" in exc.value.detail["errores"][0]["error"]
+
+
+def test_actualizar_archivo_rechaza_campo_no_editable(session, envio_mixto, user_a):
+    import asyncio
+
+    svc = EnviosService(session)
+    with pytest.raises(HTTPException) as exc:
+        asyncio.run(
+            svc.actualizar_archivo(user_a, envio_mixto.id, "alta_archivos.nota", None)
+        )
+    assert exc.value.status_code == 422
+
+
+def test_actualizar_archivo_rechaza_envio_de_otro_usuario(
+    session, envio_mixto, user_b
+):
+    import asyncio
+
+    svc = EnviosService(session)
+    with pytest.raises(HTTPException) as exc:
+        asyncio.run(
+            svc.actualizar_archivo(
+                user_b, envio_mixto.id, "alta_archivos.base_de_datos", None
+            )
+        )
+    assert exc.value.status_code == 403

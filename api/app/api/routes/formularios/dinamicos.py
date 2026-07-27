@@ -166,6 +166,36 @@ async def actualizar_campos_mi_envio(
     return _envio_response(envio.formulario, envio)
 
 
+@router.post(
+    "/mis-envios/{envio_id}/actualizar-archivo",
+    response_model=EnvioUploadResponse,
+)
+async def actualizar_archivo_mi_envio(
+    envio_id: int,
+    field_path: str = Form(...),
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(verify_csrf),
+):
+    """Reemplaza el archivo de un campo `editableAfterSubmit` en un envio ya
+    enviado, sin reabrirlo.
+
+    Contraparte de `actualizar-campos` para los campos `file`: su valor lo
+    escribe la subida a Acervo, no el cliente. Deja la misma huella en el
+    historial (nombre del archivo anterior -> nuevo) y un evento `actualizado`.
+    """
+    archivo = await EnviosService(db).actualizar_archivo(
+        current_user, envio_id, field_path, file
+    )
+    return EnvioUploadResponse(
+        field_path=archivo.field_path,
+        url_publica=archivo.url_publica or "",
+        filename_original=archivo.filename_original,
+        mime=archivo.mime,
+        size_bytes=archivo.size_bytes,
+    )
+
+
 @router.get(
     "/mis-envios/{envio_id}/historial",
     response_model=list[EnvioHistorialItem],

@@ -9,6 +9,19 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.88.0] - 2026-07-27
+
+### Corregido: cualquier campo marcado como editable tras el envio lo es de verdad (archivos y listas repetibles incluidos)
+
+El CMS dejaba marcar «¿Editable después de enviar?» en cualquier campo, pero `editable_field_paths` solo reconocia campos de valor en pasos `form`: los `file` y los de repeaters quedaban fuera en silencio. El caso real que lo destapo: un formulario con tres campos de archivo marcados (`base_de_datos`, `diccionario_de_datos`, `catalogo`) donde nunca aparecia la opcion de actualizar. Peor, para archivos **no habia ninguna via**: el endpoint de upload responde 409 en un envio ya `enviado`, asi que el toggle prometia algo que ningun endpoint cumplia.
+
+- **Repeaters**: `editable_field_defs` guarda el path base y `resolver_editable` valida la forma del path concreto — un campo de repeater exige indice (`bases_datos[0].diccionario`) y uno de un paso `form` no lo admite. El item debe existir: se corrigen respuestas, no se dan de alta items. `_get_valor_en_datos`/`_set_valor_en_datos` ya navegan indices.
+- **Archivos**: nuevo `POST /formularios/mis-envios/{envio_id}/actualizar-archivo` (multipart `field_path` + `file`). Sube a Acervo con las mismas validaciones del alta (`accept`, `maxSizeMB`, bucket), reescribe `datos` y deja **la misma huella de auditoria**: fila en `envio_valor_historial` con el nombre del archivo anterior → el nuevo, y evento `actualizado`. El archivo previo no se borra; su fila en `envio_archivo` conserva `object_key`/`url_publica`.
+- Mandar un campo `file` al PUT de `actualizar-campos` responde 422 indicando el endpoint correcto: el valor de un archivo lo escribe la subida, no el cliente.
+- `tiene_campos_editables` del listado hereda el criterio nuevo, asi que el boton aparece tambien en formularios cuyos unicos campos marcados son archivos o de repeater.
+
+---
+
 ## [1.87.0] - 2026-07-27
 
 ### Agregado: el listado del respondent dice si un envio tiene campos actualizables

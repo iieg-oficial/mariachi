@@ -248,13 +248,31 @@ respondent lo corrige sobre un envio ya `enviado` **sin reabrirlo**.
   definicion vigente), asi que la editabilidad es la que tenia al enviarse.
   Cualquier path que no este marcado se rechaza con 422 — el backend no confia
   en el frontend.
-- Solo campos de pasos `form`. Repeaters (path por indice) y `file` quedan fuera
-  en esta version; los archivos se siguen editando por el endpoint de upload.
+- **Cualquier tipo de campo** puede marcarse (`api 1.88.0+`), incluidos los de
+  pasos `repeater` y los `file`. En un repeater el path lleva el indice del item
+  (`bases_datos[0].diccionario`) y `editable_field_defs` guarda el path **base**;
+  `resolver_editable` exige que la forma coincida: un campo de repeater sin
+  indice se rechaza, y uno de un paso `form` con indice tambien. El item debe
+  existir: la actualizacion ligera corrige respuestas, no da de alta items.
+- Los campos `file` **no** se editan por este endpoint (su valor lo escribe la
+  subida a Acervo, no el cliente): mandarlos aqui responde 422 indicando usar
+  `actualizar-archivo`. Antes quedaban fuera por completo, y el toggle del CMS
+  prometia algo que ningun endpoint cumplia (el de upload responde 409 en un
+  envio ya `enviado`).
 - El merge sobre `datos` es **parcial** (no reemplaza el resto de respuestas), con
   `flag_modified`. Se identifica el envio por `envio_id` (no por
   formulario+usuario) para no ambiguar en formularios periodicos.
 - 409 si el envio no esta `enviado` (p. ej. un admin lo reabrio) o si el
   formulario ya no acepta cambios; 403 si el envio no es del usuario.
+
+`POST /formularios/mis-envios/{envio_id}/actualizar-archivo` (multipart:
+`field_path`, `file`) es la contraparte para los campos `file`: sube el archivo
+nuevo a Acervo, reescribe `datos[step][field]` y deja la **misma huella de
+auditoria** que el PUT (fila en el historial con el nombre del archivo anterior
+y el nuevo, mas un evento `actualizado`). El archivo previo no se borra: su fila
+en `sieej.envio_archivo` conserva `object_key` y `url_publica`, asi que el
+historial de versiones del archivo queda completo. Mismas validaciones del
+campo que en el alta (`accept`, `maxSizeMB`, bucket).
 
 Cada campo cuyo valor cambie inserta una fila **append-only** en
 `sieej.envio_valor_historial` (`field_path`, `field_label`, `valor_anterior`,
