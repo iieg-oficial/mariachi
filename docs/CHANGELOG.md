@@ -9,6 +9,18 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.89.3] - 2026-07-27
+
+### Corregido: dos pestañas del ecosistema podían tumbarse la sesión entre ellas al renovarla
+
+El refresh de `POST /autenticacion/refrescar` es rotativo con detección de reúso: el token viejo queda marcado como usado y, si vuelve a llegar, se revoca **toda la familia**. Mariachi y SIEEJ se sirven desde el mismo origen y comparten la cookie, así que dos pestañas cuyo `access_token` expira a la vez mandan el mismo refresh token: una rota bien y la otra dispara la revocación, dejando a las dos en la pantalla de contraseña.
+
+`runExclusiveRefresh` (`shared/utils/sessionRefresh.js`) serializa la renovación con `navigator.locks` —el lock es por origen, así que alcanza a las pestañas de las dos apps— y deja una marca en `localStorage`: quien entra al lock y ve una renovación de hace menos de 10 s reutiliza la cookie nueva en lugar de rotar otra vez. Sin `navigator.locks` el comportamiento es el de antes.
+
+El backend no cambia: sigue sin ventana de gracia en `rotate()`, la coordinación es del cliente.
+
+---
+
 ## [1.89.2] - 2026-07-27
 
 ### Cambiado: encabezados de página homogéneos y sin padding duplicado en Inicio
