@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Card, Col, Empty, Row, Spin, Statistic } from 'antd';
 import { FormOutlined } from '@ant-design/icons';
+import PageHeading from '@shared/components/PageHeading';
+import useIsMobile from '@shared/hooks/useIsMobile';
 import { getSieejStats } from '@features/telemetria/api/sieejStatsService';
-import SectionHeading from '@features/telemetria/components/SectionHeading';
 
 const CARDS = [
     { key: 'dependencias_total', label: 'Dependencias' },
@@ -16,6 +17,7 @@ const CARDS = [
 ];
 
 export default function SieejStatsSection() {
+    const { isMobile } = useIsMobile();
     const [stats, setStats] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
@@ -30,11 +32,12 @@ export default function SieejStatsSection() {
     }, []);
 
     return (
-        <div style={{ padding: 24, maxWidth: 1200, margin: '0 auto' }}>
-            <SectionHeading
-                icon={<FormOutlined style={{ fontSize: 24, color: '#1677ff' }} />}
+        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+            <PageHeading
+                icon={<FormOutlined />}
                 title="SIEEJ"
                 description="Formularios, envíos y archivos del sistema SIEEJ."
+                level={isMobile ? 4 : 3}
             />
             {loading ? (
                 <div style={{ textAlign: 'center', padding: 48 }}><Spin /></div>

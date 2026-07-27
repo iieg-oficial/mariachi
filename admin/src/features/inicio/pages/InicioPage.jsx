@@ -13,6 +13,7 @@ import {
 } from '@ant-design/icons';
 import { useAuth } from '@shared/contexts/useAuth';
 import SectionHeader from '@shared/components/SectionHeader';
+import PageHeading from '@shared/components/PageHeading';
 import {
     getMisBorradores,
     getBorradoresPendientes,
@@ -24,7 +25,7 @@ const COLIBRI_WIDGET_URL = '/colibri/widget/colibri-widget.v1.js';
 import { MapalabInicioHighlights } from '@features/mapalab-stats';
 
 const { Content } = Layout;
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 const ESTADO_TAG = {
     en_progreso: { color: 'blue', label: 'En progreso' },
@@ -273,15 +274,12 @@ export default function InicioPage() {
     return (
         <Content style={{ maxWidth: 1200, margin: '0 auto', width: '100%' }}>
             <Space orientation="vertical" size="large" style={{ width: '100%' }}>
-                <div>
-                    <Space align="center" size={12} style={{ marginBottom: 4 }}>
-                        <HomeOutlined style={{ fontSize: 24, color: '#5C2472' }} />
-                        <Title level={3} style={{ margin: 0 }}>
-                            Hola, {user?.name || 'editor'}
-                        </Title>
-                    </Space>
-                    <Text type="secondary">Bienvenida a Mariachi · {user?.role}</Text>
-                </div>
+                <PageHeading
+                    icon={<HomeOutlined />}
+                    title={`Hola, ${user?.name || 'editor'}`}
+                    description={`Bienvenida a Mariachi · ${user?.role}`}
+                    marginBottom={0}
+                />
 
                 {rechazados.length > 0 && (
                     <Alert closable

@@ -1,10 +1,11 @@
 import { lazy, Suspense } from 'react';
-import { Spin, Tabs, Typography } from 'antd';
+import { Spin, Tabs } from 'antd';
+import { BarChartOutlined } from '@ant-design/icons';
 import { useSearchParams } from 'react-router';
+import PageHeading from '@shared/components/PageHeading';
+import useIsMobile from '@shared/hooks/useIsMobile';
 import SieejStatsSection from '@features/telemetria/components/SieejStatsSection';
 import UsoSection from '@features/telemetria/components/UsoSection';
-
-const { Title, Text } = Typography;
 
 const ColibriResumenPage = lazy(() => import('@features/colibri/pages/ResumenPage'));
 
@@ -12,6 +13,7 @@ const fallback = <div style={{ textAlign: 'center', padding: 48 }}><Spin /></div
 
 export default function TelemetriaPage() {
     const [searchParams, setSearchParams] = useSearchParams();
+    const { isMobile } = useIsMobile();
     const fuente = searchParams.get('fuente') || 'mapalab';
 
     const handleChange = (key) => {
@@ -29,7 +31,7 @@ export default function TelemetriaPage() {
         },
         {
             key: 'colibri',
-            label: 'Colibri',
+            label: 'Colibrí',
             children: <Suspense fallback={fallback}><ColibriResumenPage /></Suspense>,
         },
         {
@@ -41,18 +43,19 @@ export default function TelemetriaPage() {
 
     return (
         <div>
-            <div style={{ padding: '20px 24px 0' }}>
-                <Title level={2} style={{ margin: 0 }}>Telemetría</Title>
-                <Text type="secondary">
-                    Estadísticas de uso del ecosistema IIEG, agrupadas por plataforma.
-                </Text>
-            </div>
+            <PageHeading
+                icon={<BarChartOutlined />}
+                title="Telemetría"
+                description="Estadísticas de uso del ecosistema IIEG, agrupadas por plataforma."
+                level={isMobile ? 3 : 2}
+                marginBottom={0}
+            />
             <Tabs
                 activeKey={fuente}
                 onChange={handleChange}
                 items={items}
                 destroyInactiveTabPane
-                tabBarStyle={{ paddingInline: 24, marginBottom: 0 }}
+                tabBarStyle={{ marginBottom: 0 }}
             />
         </div>
     );

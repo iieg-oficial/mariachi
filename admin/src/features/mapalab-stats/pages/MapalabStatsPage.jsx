@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
-import { Layout, Space, Tabs, Typography } from 'antd';
+import { Layout, Space, Tabs } from 'antd';
 import { EnvironmentOutlined } from '@ant-design/icons';
 import { useSearchParams } from 'react-router';
 import dayjs from 'dayjs';
+import PageHeading from '@shared/components/PageHeading';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import { useAuth } from '@shared/contexts/useAuth';
 import ResumenSection from '@features/mapalab-stats/components/ResumenSection';
@@ -11,7 +12,6 @@ import McpSection from '@features/mapalab-stats/components/McpSection';
 import PeriodSelector from '@features/mapalab-stats/components/PeriodSelector';
 
 const { Content } = Layout;
-const { Title, Text } = Typography;
 
 const VALID_TABS = new Set(['resumen', 'sesiones', 'mcp']);
 
@@ -70,25 +70,23 @@ export default function MapalabStatsPage({ app = 'mapalab' }) {
     }
 
     return (
-        <Content style={{ padding: isMobile ? 6 : 24, width: '100%' }}>
+        <Content style={{ width: '100%' }}>
             <Space direction="vertical" size="large" style={{ width: '100%' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
-                    <div>
-                        <Space align="center" size={12}>
-                            <EnvironmentOutlined style={{ fontSize: 24, color: '#5C2472' }} />
-                            <Title level={isMobile ? 4 : 3} style={{ margin: 0 }}>MapaLab — Estadísticas de uso</Title>
-                        </Space>
-                        <Text type="secondary">
-                            Telemetría anónima del visor. Datos del {period.dateFrom} al {period.dateTo}.
-                        </Text>
-                    </div>
-                    <PeriodSelector
-                        grain={grain}
-                        range={range}
-                        onChange={handlePeriodChange}
-                        size={isMobile ? 'small' : 'middle'}
-                    />
-                </div>
+                <PageHeading
+                    icon={<EnvironmentOutlined />}
+                    title="MapaLab — Estadísticas de uso"
+                    description={`Telemetría anónima del visor. Datos del ${period.dateFrom} al ${period.dateTo}.`}
+                    level={isMobile ? 4 : 3}
+                    marginBottom={0}
+                    extra={(
+                        <PeriodSelector
+                            grain={grain}
+                            range={range}
+                            onChange={handlePeriodChange}
+                            size={isMobile ? 'small' : 'middle'}
+                        />
+                    )}
+                />
 
                 <Tabs
                     activeKey={activeTab}

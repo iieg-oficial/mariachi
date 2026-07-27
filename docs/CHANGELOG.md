@@ -9,6 +9,21 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.89.4] - 2026-07-27
+
+### Cambiado: un solo encabezado de página para todo el panel, empezando por Telemetría
+
+Telemetría tenía el título sin icono y con `padding: '20px 24px 0'` propio sobre el del layout, y sus tres pestañas presentaban el mismo dato de tres formas distintas: MapaLab con icono morado y título responsive, Colibrí con «Colibri» sin tilde, y SIEEJ con icono **azul de Ant Design** (`#1677ff`), nivel de título fijo y otro `padding: 24` encima. Cada pestaña además fijaba su propio ancho máximo (1280 / 1200 / ninguno).
+
+`PageHeading` (`shared/components/PageHeading.jsx`) concentra el patrón que ya seguían Documentación y Observabilidad: icono a 24 px en `BRAND.purple`, título con `level` a discreción de la página, descripción debajo en su propia fila y un `extra` opcional alineado a la derecha (el selector de periodo de MapaLab, el `Segmented` de Colibrí, el botón de alta en Usuarios).
+
+- **Telemetría** encabeza con `BarChartOutlined` —el icono de su entrada en el menú— en `level` 2, y las tres pestañas quedan en `level` 3 (4 en móvil), subordinadas.
+- Ninguna de las pestañas vuelve a aplicar padding propio: el `Content` del layout ya lo pone y dentro de un `Tabs` se sumaba dos veces.
+- `features/telemetria/components/SectionHeading.jsx` se retira; era la misma idea sin el `extra` y sólo la usaba SIEEJ. No confundir con `shared/components/SectionHeader`, que sigue siendo el encabezado de sección con enlace «Ver detalles» dentro de una tarjeta.
+- Inicio y Usuarios pasan a usar `PageHeading` en lugar del markup suelto de 1.89.2.
+
+---
+
 ## [1.89.3] - 2026-07-27
 
 ### Corregido: dos pestañas del ecosistema podían tumbarse la sesión entre ellas al renovarla
