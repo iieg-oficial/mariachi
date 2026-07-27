@@ -139,6 +139,66 @@ def test_colspan_fuera_de_rango_se_acota():
     validar_definicion(definicion)
 
 
+def test_col_que_desborda_se_acota_al_ancho():
+    definicion = normalizar_definicion(
+        _def_con_field(
+            {
+                "name": "x",
+                "label": "X",
+                "type": "text",
+                "layout": {"colSpan": 2, "col": 6},
+            }
+        )
+    )
+    assert definicion["steps"][0]["fields"][0]["layout"]["col"] == 4
+    validar_definicion(definicion)
+
+
+def test_col_uno_implica_new_row():
+    definicion = normalizar_definicion(
+        _def_con_field(
+            {
+                "name": "x",
+                "label": "X",
+                "type": "text",
+                "layout": {"colSpan": 2, "col": 1},
+            }
+        )
+    )
+    assert definicion["steps"][0]["fields"][0]["layout"]["newRow"] is True
+    validar_definicion(definicion)
+
+
+def test_alone_no_booleano_se_descarta():
+    definicion = normalizar_definicion(
+        _def_con_field(
+            {
+                "name": "x",
+                "label": "X",
+                "type": "text",
+                "layout": {"colSpan": 3, "col": 5, "alone": "si"},
+            }
+        )
+    )
+    assert "alone" not in definicion["steps"][0]["fields"][0]["layout"]
+    validar_definicion(definicion)
+
+
+def test_col_no_entero_se_descarta():
+    definicion = normalizar_definicion(
+        _def_con_field(
+            {
+                "name": "x",
+                "label": "X",
+                "type": "text",
+                "layout": {"colSpan": 2, "col": "4"},
+            }
+        )
+    )
+    assert "col" not in definicion["steps"][0]["fields"][0]["layout"]
+    validar_definicion(definicion)
+
+
 def test_show_when_huerfano_se_elimina():
     definicion = normalizar_definicion(
         _def_con_field(

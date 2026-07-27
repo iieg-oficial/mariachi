@@ -34,6 +34,8 @@ FIELD_TYPES = {
 }
 STEP_TYPES = {"form", "repeater", "summary"}
 FILE_MAX_SIZE_MB_HARD_CAP = 100
+GRID_COLUMNS = 6
+COLSPAN_UNITS = {1: 6, 2: 3, 3: 2}
 
 ValidationRule = dict[str, Any]
 
@@ -207,6 +209,24 @@ def _validate_layout(field: dict[str, Any], step_id: str, name: str) -> None:
         raise DefinicionInvalidaError(
             f"Step `{step_id}` field `{name}`: `layout.newRow` debe ser booleano."
         )
+    alone = layout.get("alone")
+    if alone is not None and not isinstance(alone, bool):
+        raise DefinicionInvalidaError(
+            f"Step `{step_id}` field `{name}`: `layout.alone` debe ser booleano."
+        )
+    col = layout.get("col")
+    if col is not None:
+        if isinstance(col, bool) or not isinstance(col, int) or col < 1 or col > GRID_COLUMNS:
+            raise DefinicionInvalidaError(
+                f"Step `{step_id}` field `{name}`: `layout.col` debe estar entre 1 y "
+                f"{GRID_COLUMNS}."
+            )
+        units = COLSPAN_UNITS.get(col_span or 1, GRID_COLUMNS)
+        if col + units > GRID_COLUMNS + 1:
+            raise DefinicionInvalidaError(
+                f"Step `{step_id}` field `{name}`: `layout.col` {col} no deja espacio para un "
+                f"campo de ancho {col_span or 1}."
+            )
 
 
 def _validar_date_range_config(field: dict[str, Any], step_id: str, name: str) -> None:

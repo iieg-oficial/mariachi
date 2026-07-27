@@ -145,6 +145,38 @@ def test_layout_colspan_fuera_de_rango_falla():
         validar_definicion(_def_con_layout({"colSpan": 7}))
 
 
+def test_layout_col_valida_pasa():
+    validar_definicion(_def_con_layout({"colSpan": 3, "col": 5}))
+    validar_definicion(_def_con_layout({"colSpan": 2, "col": 4}))
+    validar_definicion(_def_con_layout({"colSpan": 1, "col": 1, "newRow": True}))
+
+
+def test_layout_col_fuera_de_rango_falla():
+    with pytest.raises(DefinicionInvalidaError, match="col"):
+        validar_definicion(_def_con_layout({"colSpan": 3, "col": 0}))
+    with pytest.raises(DefinicionInvalidaError, match="col"):
+        validar_definicion(_def_con_layout({"colSpan": 3, "col": 7}))
+
+
+def test_layout_col_sin_espacio_para_el_ancho_falla():
+    with pytest.raises(DefinicionInvalidaError, match="col"):
+        validar_definicion(_def_con_layout({"colSpan": 2, "col": 5}))
+
+
+def test_layout_col_no_entero_falla():
+    with pytest.raises(DefinicionInvalidaError, match="col"):
+        validar_definicion(_def_con_layout({"colSpan": 3, "col": "5"}))
+
+
+def test_layout_alone_pasa():
+    validar_definicion(_def_con_layout({"colSpan": 3, "col": 5, "alone": True}))
+
+
+def test_layout_alone_no_booleano_falla():
+    with pytest.raises(DefinicionInvalidaError, match="alone"):
+        validar_definicion(_def_con_layout({"colSpan": 3, "alone": "si"}))
+
+
 def test_info_con_label_pasa():
     d = _def_minima()
     d["steps"][0]["fields"].append(

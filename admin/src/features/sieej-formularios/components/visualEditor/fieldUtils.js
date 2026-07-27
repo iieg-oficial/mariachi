@@ -1,4 +1,5 @@
 import { DEFAULT_OPEN_RANGE_CATALOG } from '../../constants/definitionTypes';
+import { layoutOf, nearestCol, rowOfField, slotsOfRow } from './fieldLayout';
 
 const equalsToList = (equals) => (Array.isArray(equals) ? equals : [equals])
     .filter((v) => v !== undefined && v !== null && v !== '')
@@ -35,6 +36,8 @@ export const fieldFromFormValues = (values) => {
         : [];
 
     const colSpan = values.colSpan ?? 1;
+    const col = nearestCol(colSpan, values.col ?? 1);
+    const alone = colSpan !== 1 && !!values.alone;
 
     return {
         name: values.name,
@@ -59,11 +62,11 @@ export const fieldFromFormValues = (values) => {
             && values.openCatalog
             ? { openCatalog: values.openCatalog }
             : {}),
-        layout: { colSpan, ...(values.newRow ? { newRow: true } : {}) },
+        layout: layoutOf(colSpan, col, alone),
     };
 };
 
-export const fieldToFormValues = (field) => ({
+export const fieldToFormValues = (field, defaultCol = 1) => ({
     name: field?.name ?? '',
     label: field?.label ?? '',
     type: field?.type ?? undefined,
@@ -93,7 +96,8 @@ export const fieldToFormValues = (field) => ({
     openEnd: !!field?.openEnd,
     openCatalog: field?.openCatalog ?? DEFAULT_OPEN_RANGE_CATALOG,
     colSpan: field?.layout?.colSpan ?? 1,
-    newRow: !!field?.layout?.newRow,
+    col: field?.layout?.col ?? defaultCol,
+    alone: !!field?.layout?.alone,
 });
 
 export const conditionValueOptions = (source, catalogos = {}) => {
@@ -171,9 +175,27 @@ export const reorderWithinTab = (fields, indices, from, to) => {
     return out;
 };
 
-export const assignColSpan = (fields, index, colSpan) => fields.map((f, i) => (
-    i === index ? { ...f, layout: { ...f.layout, colSpan } } : f
-));
+export const labelOfField = (field) => field?.label || field?.name;
+
+export const previousVisibleField = (fields, indices, idx) => {
+    const pos = idx === 'new' ? indices.length : indices.indexOf(idx);
+    if (pos <= 0) return null;
+    return fields[indices[pos - 1]] ?? null;
+};
+
+export const rowSlotsResolver = ({ fields, tabs, hasTabs, activeKey, idx }) => (colSpan, col, alone) => {
+    const isNew = idx === 'new';
+    const base = isNew
+        ? { label: 'Este campo', ...(hasTabs ? { tab: activeKey } : {}) }
+        : fields[idx];
+    const tentative = { ...base, layout: layoutOf(colSpan, col, alone) };
+    const draft = isNew
+        ? [...fields, tentative]
+        : fields.map((f, i) => (i === idx ? tentative : f));
+    const targetIdx = isNew ? draft.length - 1 : idx;
+    const draftIdx = hasTabs ? indicesOfTab(draft, tabs, activeKey) : draft.map((_, i) => i);
+    return slotsOfRow(rowOfField(draft, draftIdx, targetIdx), draft, targetIdx, labelOfField);
+};
 
 export const assignTab = (fields, index, tabId) => fields.map((f, i) => {
     if (i !== index) return f;

@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
-    AutoComplete, Button, Col, Form, Input, InputNumber, Row, Segmented, Select, Switch, Space,
+    AutoComplete, Button, Col, Form, Input, InputNumber, Row, Select, Switch, Space,
 } from 'antd';
 import OptionsSource from './OptionsSource';
 import OpenRangeConfig from './OpenRangeConfig';
@@ -11,6 +11,8 @@ import useIsMobile from '@shared/hooks/useIsMobile';
 import { FIELD_TYPES } from '../../constants/definitionTypes';
 import { REGEX_PRESETS } from '../../constants/regexPresets';
 import { describeCondition, fieldFromFormValues, fieldToFormValues } from './fieldUtils';
+import { nearestCol } from './fieldLayout';
+import { LayoutSection } from './LayoutControls';
 import FieldPreview from './FieldPreview';
 
 const EXTENSION_OPTIONS = [
@@ -29,12 +31,6 @@ const REGEX_OPTIONS = REGEX_PRESETS.map((preset) => ({
     ),
 }));
 
-const COLSPAN_HINT = {
-    1: 'Grande · ocupa la fila completa',
-    2: 'Mediano · ocupa 1/2 de la fila',
-    3: 'Chico · ocupa 1/3 de la fila',
-};
-
 const HEADER_HEIGHT = 64;
 const PREVIEW_STICKY_TOP = HEADER_HEIGHT + 16;
 
@@ -45,24 +41,29 @@ const slugify = (text) => text
     .replace(/_+/g, '_').replace(/^_|_$/g, '');
 
 export default function FieldForm({
-    form: externalForm, field, availableTabs = [], availableShowWhenFields = [], onSave, onCancel,
+    form: externalForm, field, availableTabs = [], availableShowWhenFields = [],
+    resolveSlots, previousField = null, defaultCol = 1, onLayoutDraft, onSave, onCancel,
 }) {
     const [internalForm] = Form.useForm();
     const form = externalForm || internalForm;
     const [nameTouched, setNameTouched] = useState(!!field?.name);
     const [tooltipFocused, setTooltipFocused] = useState(false);
+    const onLayoutDraftRef = useRef(onLayoutDraft);
     const { buckets, loading: bucketsLoading } = useAccessibleBuckets();
     const { catalogos } = useCatalogos();
     const { isMobile } = useIsMobile();
 
     useEffect(() => {
-        form.setFieldsValue(fieldToFormValues(field));
+        form.setFieldsValue(fieldToFormValues(field, defaultCol));
         setNameTouched(!!field?.name);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [field, form]);
 
     const watchType = Form.useWatch('type', form);
     const watchLabel = Form.useWatch('label', form);
     const watchColSpan = Form.useWatch('colSpan', form);
+    const watchCol = Form.useWatch('col', form);
+    const watchAlone = Form.useWatch('alone', form);
     const watchPattern = Form.useWatch('pattern', form);
     const previewValues = Form.useWatch((v) => v, form) || {};
 
@@ -83,6 +84,28 @@ export default function FieldForm({
     }, [watchType, buckets, form]);
 
     const handleFinish = (values) => onSave?.(fieldFromFormValues(values));
+
+    const colSpan = watchColSpan ?? 1;
+    const col = nearestCol(colSpan, watchCol ?? 1);
+    const alone = colSpan !== 1 && !!watchAlone;
+    const slots = resolveSlots?.(colSpan, col, alone) ?? [];
+    const sharesLine = !!previousField
+        && slots.some((s) => s.kind === 'field' && s.name === previousField.name);
+
+    useEffect(() => {
+        onLayoutDraftRef.current = onLayoutDraft;
+    }, [onLayoutDraft]);
+
+    useEffect(() => {
+        onLayoutDraftRef.current?.({ colSpan, col, alone });
+    }, [colSpan, col, alone]);
+
+    useEffect(() => () => onLayoutDraftRef.current?.(null), []);
+
+    const handleColSpanChange = (value) => {
+        const next = nearestCol(value, form.getFieldValue('col') ?? 1);
+        if (next !== form.getFieldValue('col')) form.setFieldsValue({ col: next });
+    };
 
     const handlePatternSelect = (value) => {
         const preset = REGEX_PRESETS.find((p) => p.pattern === value);
@@ -157,27 +180,14 @@ export default function FieldForm({
                             <Select options={availableTabs.map((t) => ({ value: t.id, label: t.title || t.id }))} />
                         </Form.Item>
                     )}
-                    <Form.Item
-                        label="Ancho en columnas"
-                        name="colSpan"
-                        extra={COLSPAN_HINT[watchColSpan] ?? COLSPAN_HINT[1]}
-                    >
-                        <Segmented
-                            options={[
-                                { value: 1, label: 'Grande' },
-                                { value: 2, label: 'Mediano' },
-                                { value: 3, label: 'Chico' },
-                            ]}
-                        />
-                    </Form.Item>
-                    <Form.Item
-                        label="¿Empezar en fila nueva?"
-                        name="newRow"
-                        valuePropName="checked"
-                        extra="Fuerza que el campo abra una fila. Úsalo para dejar espacio libre al final de la fila anterior en lugar de agregar campos vacíos."
-                    >
-                        <Switch />
-                    </Form.Item>
+                    <LayoutSection
+                        colSpan={colSpan}
+                        col={col}
+                        alone={alone}
+                        previousLabel={previousField?.label}
+                        sharesLine={sharesLine}
+                        onPickColSpan={handleColSpanChange}
+                    />
                     {showOptions && <OptionsSource form={form} />}
                     {showDateRange && <OpenRangeConfig form={form} />}
                     {showFile && (
@@ -279,7 +289,12 @@ export default function FieldForm({
                             <div style={{ fontWeight: 500, marginBottom: 8, color: '#191919' }}>
                                 Vista previa
                             </div>
-                            <FieldPreview values={previewValues} condition={previewCondition} tooltipActive={tooltipFocused} />
+                            <FieldPreview
+                                values={previewValues}
+                                condition={previewCondition}
+                                tooltipActive={tooltipFocused}
+                                slots={slots}
+                            />
                         </div>
                     </Col>
                 )}
