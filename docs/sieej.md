@@ -88,7 +88,7 @@ Los campos se colocan **en orden estricto**: si uno no cabe en lo que resta de l
 `layout.newRow: true` fuerza que el campo abra una fila nueva (se traduce a `col-start-1`; es no-op si el campo ya quedaba al inicio de fila, asi que no altera el espaciado). Sirve para dejar espacio libre al final de la fila anterior **sin** recurrir a campos `info` con label vacio como espaciadores — un workaround que ensuciaba `datos`, el export y el PDF.
 
 - **`select`/`select_multiple`/`radio`/`checkbox`**: requieren `options` (`[{value, label}]`) o `catalog` (string que identifica un catalogo). No pueden mezclar ambos.
-- **`file`**: requiere `bucket` (Acervo). Acepta `maxSizeMB` (cap absoluto 100 MB) y `accept` (lista de MIME/extensions). Al subir via `POST /formularios/{slug}/envio/upload` el backend persiste **dos** registros sincronizados: una fila en `sieej.envio_archivo` (con `bucket`, `object_key`, `url_publica`, `mime`, `size_bytes`, `field_path`) y una entrada en `envio.datos[step][field] = {url_publica, filename, mime, size_bytes}` que es lo que valida `datos_validator` al cierre del envio. El frontend NO debe sobrescribir manualmente la entrada en `datos` (la fuente de verdad la pone el endpoint de upload).
+- **`file`**: requiere `bucket` (Acervo). Acepta `maxSizeMB` (cap absoluto 100 MB) y `accept` (lista de MIME/extensions). Al subir via `POST /formularios/{slug}/envio/upload` el backend persiste **dos** registros sincronizados: una fila en `sieej.envio_archivo` (con `bucket`, `object_key`, `url_publica`, `mime`, `size_bytes`, `field_path`) y una entrada en `envio.datos[step][field]` (ver "Archivos en Acervo"). El frontend **no puede** sobrescribir esa entrada: el backend la preserva al guardar (`api 1.90.0+`).
 - **`date_range`**: rango de fechas. El valor en `datos` es `{start, end}` con fechas `YYYY-MM-DD`; `datos_validator` exige ambas fechas si alguna esta presente (incluso en borrador) y rechaza `start > end`. En exports/PDF/resumen se formatea `start – end`.
     - **Fechas abiertas** (`api 1.60.0+`): `openStart` / `openEnd` (bool, opt-in por campo) permiten que ese extremo sea una opcion de catalogo en vez de una fecha, para periodos sin termino conocido (`10/02/1992 – NO DETERMINADO`). `openCatalog` fija de que catalogo salen las opciones; si se omite se usa el del sistema `estatus_fecha`. El valor gana las claves hermanas `startOption` / `endOption`: un extremo lleva **fecha u opcion, nunca ambas**, y el orden `start <= end` solo se compara cuando los dos extremos son fechas. Los envios previos (sin las claves nuevas) siguen validando igual. Las opciones **no** se validan contra el catalogo en el backend, por la misma razon que `select`/`radio` con `catalog` tampoco lo hacen (`datos_validator` es puro y no toca la BD).
 - **`info`**: campo informativo (HTML/markdown), no captura datos.
@@ -556,7 +556,55 @@ El frontend consume `/api/administrador/formularios/*` con `withCredentials: tru
 
 ## Acervo
 
-Los archivos subidos por respondents van al bucket configurado en el field `file` de la definicion (por convencion `sieej-diccionarios`, creado por la migracion). El servicio `envios_service.upload_archivo(...)` usa `AcervoClient.for_bucket(bucket)` (cliente cacheado por bucket) y persiste un `EnvioArchivo` con `url_publica`, `bucket`, `object_key`, `filename_original`, `mime`, `size_bytes`. El nombre del objeto sigue el patron `envio<envio_id>/<uuid>.<ext>`.
+Los archivos subidos por respondents van al bucket configurado en el field `file` de la definicion (por convencion `sieej`). El servicio `envios_service.upload_archivo(...)` usa `AcervoClient.for_bucket(bucket)` (cliente cacheado por bucket) y persiste un `EnvioArchivo` con `url_publica`, `bucket`, `object_key`, `filename_original`, `mime`, `size_bytes`.
+
+### Convencion de claves (`acervo_keys.py`)
+
+```
+{slug}/{usuario}-{envio_id}[/{periodo}]/{step}.{campo}/{ts}-{nombre}-{sufijo}.{ext}
+{slug}/{usuario}-{envio_id}[/{periodo}]/envio.json
+```
+
+```
+mundial/admin-2/alta_archivos.base_de_datos/20260727T171309Z-direccion-de-integracion-0baab7.xlsx
+censo/sedeco-enlace-23/2026-01/general.padron/20260115T090000Z-padron-4c2b1a.csv
+```
+
+La convencion anterior era `{slug}/envio{id}/{uuid}.{ext}`: el bucket quedaba ilegible (que archivo es cada UUID, a que campo pertenece y cual de varias versiones es la vigente solo se sabia cruzando con `envio_archivo`), y con los reemplazos post-envio el problema crecia. Ahora:
+
+- **un directorio por campo**, con las versiones ordenadas cronologicamente dentro;
+- el **nombre original sanitizado** (sin acentos, minusculas, guiones, 60 chars) va en la clave, con un sufijo de 6 hex que evita colisiones si el mismo campo se sube dos veces en el mismo segundo;
+- en repeaters el indice se aplana (`bases_datos[0].diccionario` -> `bases_datos-0.diccionario`) para no meter corchetes en la ruta;
+- el **periodo solo aparece si el formulario es periodico**; en los demas seria un nivel con un unico hijo siempre;
+- el usuario va **antes** del id para que los envios de una misma persona queden contiguos al listar. La ruta registra quien capturo *en ese momento* (un hecho historico, como `filename_original`); el dato vigente esta en `envio.json`.
+
+### Contrato del valor en `datos`
+
+`valor_archivo(...)` es la unica forma valida:
+
+```json
+{"field_path", "url_publica", "object_key", "filename_original", "mime", "size_bytes"}
+```
+
+Antes convivian dos: la del backend (`filename`) y la que el `Dragger` guardaba al pisar el valor con la respuesta del upload (`filename_original` + `field_path`). Los lectores buscaban `filename_original` y caian a la URL cruda, asi que **el export y el PDF mostraban un enlace largo en vez del nombre** cuando el valor venia del backend. La clave canonica es `filename_original` y `nombre_archivo(valor)` lee ambas para los datos ya guardados.
+
+`_preservar_archivos_del_servidor` conserva el valor que puso el upload e **ignora lo que mande el cliente** para campos `file` (un valor vacio si se respeta: asi se quita un archivo). Ademas de cerrar el origen de las dos formas, evita que alguien apunte un campo a una URL arbitraria.
+
+### Respaldo `envio.json`
+
+Junto a los archivos de cada envio se escribe un `envio.json` con `formulario`, `envio`, `usuario`, `datos`, `definicion_snapshot` y el catalogo de `archivos`: suficiente para reconstruir el envio sin la BD. Se actualiza al **enviar**, al **actualizar campos** y al **reemplazar un archivo** (no en cada guardado de borrador, para no escribir en Acervo en cada tecleo).
+
+Es **best-effort de punta a punta**: cualquier fallo (bucket sin configurar, Acervo caido, tabla ausente) se registra y se sigue. Nunca puede tumbar el envio del respondent — la fuente de verdad es la BD. Hay un test que fija esa garantia.
+
+### Proteccion del bucket
+
+El bucket de SIEEJ esta marcado `protegido` en `acervo.buckets` (migracion `c4d5e6f7a8b0`): el explorador del CMS oculta borrar, editar, mover, subir y crear carpeta, y `resolve_bucket_escribible` responde **409 incluso al admin** en los endpoints de escritura de `/acervo`. El contenido lo gestiona el flujo de formularios y sus claves estan referenciadas desde `envio_archivo` y `envio.datos`: un borrado a mano dejaria registros apuntando a objetos inexistentes.
+
+Como segunda capa, el bucket tiene **versionado** con retencion (`scripts/acervo_proteger_bucket.py`): un borrado deja un *delete marker* restaurable y una sobreescritura conserva la version previa. El costo en espacio es marginal porque SIEEJ escribe una clave nueva por subida — las versiones solo aparecen al sobreescribir la misma clave (el `envio.json`, unos KB) o al borrar.
+
+### Migracion de claves
+
+`scripts/sieej_migrar_object_keys.py` lleva los objetos con clave vieja a la convencion vigente: copia, reescribe `object_key`/`url_publica` y la entrada en `envio.datos`, y borra el objeto viejo (`--conservar-origen` para no borrarlo). Al final genera el `envio.json` de los envios existentes. **No es una migracion de alembic a proposito**: habla con Acervo por red y un fallo del bucket durante el bootstrap tumbaria el arranque del api. Es idempotente.
 
 Las credenciales del bucket se resuelven con `ACERVO_<REF>_ACCESS_KEY`/`ACERVO_<REF>_SECRET_KEY` (REF coincide con `acervo_buckets.access_key_ref`). Si faltan, `services/acervo.py::resolve_bucket_credentials` lanza `RuntimeError` explicito (desde 0.30.29 ya no hay fallback a creds root del cluster — principio de menor privilegio). Generar/rotar editando `acervo/config/identities.json` y haciendo `cd ../acervo && docker compose restart acervo-seaweedfs` (desde acervo 1.22.0; antes era `./scripts/init-buckets.sh --rotate sieej-diccionarios`).
 

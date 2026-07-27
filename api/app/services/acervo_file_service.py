@@ -212,6 +212,29 @@ def resolve_bucket_or_403(bucket_id: int, current_user: Usuario, db: Session) ->
     return bucket
 
 
+def resolve_bucket_escribible(
+    bucket_id: int, current_user: Usuario, db: Session
+) -> AcervoBucket:
+    """Como `resolve_bucket_or_403`, pero rechaza los buckets protegidos.
+
+    El contenido de un bucket protegido lo gestiona una aplicacion (SIEEJ
+    escribe ahi las entregas de las dependencias y guarda la clave en
+    `envio_archivo` y en `envio.datos`), asi que borrarlo o renombrarlo desde
+    el explorador deja registros apuntando a objetos inexistentes.
+    """
+    bucket = resolve_bucket_or_403(bucket_id, current_user, db)
+    if bucket.protegido:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"El bucket '{bucket.display_name}' esta protegido: su contenido "
+                "lo gestiona la aplicacion que lo usa y no se edita desde el "
+                "explorador."
+            ),
+        )
+    return bucket
+
+
 def thumbnail_for(
     bucket_name: str | None,
     object_name: str,

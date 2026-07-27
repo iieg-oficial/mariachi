@@ -13,6 +13,7 @@ from typing import Any
 
 from weasyprint import HTML
 
+from app.services.sieej.acervo_keys import nombre_archivo
 from app.services.sieej.export_format import (
     format_value,
     repeater_item_label,
@@ -243,7 +244,7 @@ def _lev_adapt_item(item: Any) -> Any:
         elif isinstance(v, list):
             result[k] = v
         elif isinstance(v, dict) and "url_publica" in v:
-            result[k] = v["url_publica"]
+            result[k] = nombre_archivo(v) or v["url_publica"]
         else:
             result[k] = v
     return result

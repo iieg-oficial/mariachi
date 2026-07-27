@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import copy
 import json
-import uuid
+import logging
 from typing import Any
 
 from fastapi import HTTPException, UploadFile, status
@@ -35,9 +35,16 @@ from app.models.sieej import (
 )
 from app.models.user import Usuario
 from app.services.acervo import AcervoClient
+from app.services.sieej.acervo_keys import (
+    construir_object_key,
+    construir_respaldo_key,
+    valor_archivo,
+)
 from app.services.sieej.cambio_classifier import diff_definiciones
-from app.services.sieej.compat import normalizar_definicion
+from app.services.sieej.compat import BUCKET_POR_DEFECTO, normalizar_definicion
 from app.services.sieej.datos_validator import DatosInvalidosError, validar_datos
+
+logger = logging.getLogger(__name__)
 
 _FORMULARIO_NO_ACEPTA_DETAIL = (
     "El formulario esta cerrado y no acepta cambios"
@@ -281,6 +288,8 @@ class EnviosService:
                 detail="El envio ya fue enviado y no puede modificarse",
             )
 
+        datos = self._preservar_archivos_del_servidor(envio, datos)
+
         payload_bytes = len(json.dumps(datos, default=str).encode("utf-8"))
         if payload_bytes > DATOS_MAX_BYTES:
             raise HTTPException(
@@ -313,6 +322,8 @@ class EnviosService:
         self.db.commit()
         self.db.refresh(envio)
         incr(COUNTER_SIEEJ_ENVIO_WRITES)
+        if enviar:
+            self.respaldar_envio(envio)
         return envio
 
     def actualizar_campos(
@@ -455,6 +466,7 @@ class EnviosService:
         self.db.commit()
         self.db.refresh(envio)
         incr(COUNTER_SIEEJ_ENVIO_WRITES)
+        self.respaldar_envio(envio)
         return envio
 
     def actualizar_version(
@@ -935,7 +947,77 @@ class EnviosService:
         self.db.commit()
         self.db.refresh(archivo)
         incr(COUNTER_SIEEJ_ENVIO_WRITES)
+        self.respaldar_envio(envio)
         return archivo
+
+    def _preservar_archivos_del_servidor(
+        self, envio: EnvioFormulario, datos: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Devuelve `datos` con los campos `file` tal como los dejo el upload.
+
+        El valor de un archivo lo escribe el endpoint de subida (es el unico
+        que conoce el `object_key` y la URL real); lo que mande el cliente para
+        ese campo se ignora. Antes el `Dragger` guardaba la respuesta del
+        upload como valor del campo y la reenviaba al guardar, con una forma
+        distinta a la del backend: de ahi que en `datos` convivieran
+        `filename` y `filename_original`. Ademas, aceptar el valor del cliente
+        permitiria apuntar un campo a cualquier URL.
+
+        Un valor vacio si se respeta: es como el respondent quita un archivo.
+        """
+        definicion = normalizar_definicion(envio.definicion_snapshot or {})
+        rutas = [
+            (step.get("id"), field.get("name"), step.get("type"))
+            for step in definicion.get("steps", []) or []
+            for field in step.get("fields", []) or []
+            if field.get("type") == "file"
+        ]
+        if not rutas:
+            return datos
+
+        salida = copy.deepcopy(datos)
+        previos = envio.datos or {}
+        for step_id, name, step_type in rutas:
+            if step_type == "repeater":
+                items = salida.get(step_id)
+                if not isinstance(items, list):
+                    continue
+                for idx, item in enumerate(items):
+                    if isinstance(item, dict):
+                        self._restaurar_archivo(item, previos, step_id, name, idx)
+            else:
+                scope = salida.get(step_id)
+                if isinstance(scope, dict):
+                    self._restaurar_archivo(scope, previos, step_id, name, None)
+        return salida
+
+    @staticmethod
+    def _restaurar_archivo(
+        scope: dict[str, Any],
+        previos: dict[str, Any],
+        step_id: str,
+        name: str,
+        idx: int | None,
+    ) -> None:
+        if name not in scope or not isinstance(scope.get(name), dict):
+            return
+        path = f"{step_id}.{name}" if idx is None else f"{step_id}[{idx}].{name}"
+        anterior = EnviosService._get_valor_en_datos(previos, path)
+        if isinstance(anterior, dict):
+            scope[name] = anterior
+        else:
+            scope.pop(name, None)
+
+    def _periodo_clave(self, envio: EnvioFormulario) -> str | None:
+        """Clave del periodo del envio (`2026-01`), o None si no es periodico."""
+        if envio.periodo_id is None:
+            return None
+        periodo = (
+            self.db.query(FormularioPeriodo)
+            .filter(FormularioPeriodo.id == envio.periodo_id)
+            .first()
+        )
+        return periodo.clave if periodo is not None else None
 
     def _envio_editable_de(self, user: Usuario, envio_id: int) -> EnvioFormulario:
         """Envio `enviado` del usuario, bloqueado para actualizacion ligera."""
@@ -1011,10 +1093,14 @@ class EnviosService:
                 detail=f"Formato no permitido. Aceptados: {', '.join(accept)}",
             )
 
-        object_key = (
-            f"{formulario.slug}/envio{envio.id}/{uuid.uuid4()}.{ext}"
-            if ext
-            else f"{formulario.slug}/envio{envio.id}/{uuid.uuid4()}"
+        usuario = self.db.query(Usuario).filter(Usuario.id == envio.usuario_id).first()
+        object_key = construir_object_key(
+            slug=formulario.slug,
+            envio_id=envio.id,
+            field_path=field_path,
+            filename=file.filename,
+            usuario=getattr(usuario, "username", None),
+            periodo_clave=self._periodo_clave(envio),
         )
 
         client = AcervoClient.for_bucket(bucket)
@@ -1035,12 +1121,14 @@ class EnviosService:
         )
         self.db.add(archivo)
 
-        archivo_value = {
-            "url_publica": url,
-            "filename": file.filename or "",
-            "mime": file.content_type or "application/octet-stream",
-            "size_bytes": size,
-        }
+        archivo_value = valor_archivo(
+            field_path=field_path,
+            url_publica=url,
+            object_key=object_key,
+            filename=file.filename or "",
+            mime=file.content_type or "application/octet-stream",
+            size_bytes=size,
+        )
         datos = copy.deepcopy(envio.datos or {})
         envio.datos = self._set_archivo_en_datos(datos, field_path, archivo_value)
         flag_modified(envio, "datos")
@@ -1091,6 +1179,118 @@ class EnviosService:
             elif ext and ext.lower() == a:
                 return True
         return False
+
+    def _bucket_de_respaldo(self, definicion: dict[str, Any]) -> AcervoBucket | None:
+        """Bucket donde vive el respaldo: el de los campos `file` del
+        formulario, o el de SIEEJ por defecto si no tiene ninguno."""
+        nombre = BUCKET_POR_DEFECTO
+        for step in (definicion or {}).get("steps", []) or []:
+            for field in step.get("fields", []) or []:
+                if field.get("type") == "file" and field.get("bucket"):
+                    nombre = field["bucket"]
+                    break
+        return (
+            self.db.query(AcervoBucket)
+            .join(Project, Project.id == AcervoBucket.project_id)
+            .filter(
+                AcervoBucket.acervo_bucket == nombre,
+                AcervoBucket.is_active.is_(True),
+            )
+            .first()
+        )
+
+    def respaldar_envio(self, envio: EnvioFormulario) -> str | None:
+        """Escribe `envio.json` junto a los archivos del envio.
+
+        Respaldo best-effort **de punta a punta**: cualquier fallo (bucket sin
+        configurar, Acervo caido, tabla ausente) se registra y se sigue. Se
+        invoca despues del commit y nunca puede tumbar el envio del
+        respondent: la fuente de verdad es la BD, esto solo permite
+        reconstruir el envio (datos, definicion con la que se lleno y
+        archivos) si se pierde.
+        """
+        try:
+            return self._escribir_respaldo(envio)
+        except Exception as exc:
+            logger.warning(
+                "action=sieej.envio.respaldo envio=%s error=%s", envio.id, exc
+            )
+            self.db.rollback()
+            return None
+
+    def _escribir_respaldo(self, envio: EnvioFormulario) -> str | None:
+        formulario = (
+            self.db.query(Formulario)
+            .filter(Formulario.id == envio.formulario_id)
+            .first()
+        )
+        if formulario is None:
+            return None
+        bucket = self._bucket_de_respaldo(envio.definicion_snapshot or {})
+        if bucket is None:
+            logger.warning(
+                "action=sieej.envio.respaldo envio=%s error=bucket_no_configurado",
+                envio.id,
+            )
+            return None
+
+        usuario = self.db.query(Usuario).filter(Usuario.id == envio.usuario_id).first()
+        archivos = (
+            self.db.query(EnvioArchivo)
+            .filter(EnvioArchivo.envio_id == envio.id)
+            .order_by(EnvioArchivo.subido_en)
+            .all()
+        )
+        payload = {
+            "generado_en": utcnow().isoformat(),
+            "formulario": {
+                "id": formulario.id,
+                "slug": formulario.slug,
+                "nombre": formulario.nombre,
+                "version": formulario.version,
+            },
+            "envio": {
+                "id": envio.id,
+                "estado": envio.estado,
+                "formulario_version": envio.formulario_version,
+                "periodo": self._periodo_clave(envio),
+                "iniciado_en": envio.iniciado_en,
+                "enviado_en": envio.enviado_en,
+                "actualizado_en": envio.actualizado_en,
+            },
+            "usuario": {
+                "id": envio.usuario_id,
+                "username": getattr(usuario, "username", None),
+                "name": getattr(usuario, "name", None),
+                "email": getattr(usuario, "email", None),
+            },
+            "datos": envio.datos or {},
+            "definicion_snapshot": envio.definicion_snapshot or {},
+            "archivos": [
+                {
+                    "field_path": a.field_path,
+                    "bucket": a.bucket,
+                    "object_key": a.object_key,
+                    "filename_original": a.filename_original,
+                    "mime": a.mime,
+                    "size_bytes": a.size_bytes,
+                    "subido_en": a.subido_en,
+                }
+                for a in archivos
+            ],
+        }
+        key = construir_respaldo_key(
+            slug=formulario.slug,
+            envio_id=envio.id,
+            usuario=getattr(usuario, "username", None),
+            periodo_clave=self._periodo_clave(envio),
+        )
+        AcervoClient.for_bucket(bucket).put_bytes(
+            key,
+            json.dumps(payload, ensure_ascii=False, default=str).encode("utf-8"),
+            "application/json",
+        )
+        return key
 
     def _registrar_evento(
         self,

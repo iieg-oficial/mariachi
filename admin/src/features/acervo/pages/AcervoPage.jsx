@@ -81,6 +81,9 @@ const Acervo = () => {
 
     const MAX_FILE_SIZE = 500 * 1024 * 1024;
 
+    const currentBucket = buckets.find((b) => b.id === selectedBucketId);
+    const bucketProtegido = !!currentBucket?.protegido;
+
     useEffect(() => {
         const preventDefaults = (e) => { e.preventDefault(); };
         window.addEventListener('dragover', preventDefaults);
@@ -484,6 +487,10 @@ const Acervo = () => {
         e.preventDefault();
         dragCounter.current = 0;
         setDragActive(false);
+        if (bucketProtegido) {
+            message.warning('Este bucket está protegido: su contenido lo gestiona la aplicación que lo usa.');
+            return;
+        }
         const dt = e.dataTransfer;
         let files = [];
         if (dt?.files && dt.files.length > 0) {
@@ -851,29 +858,33 @@ const Acervo = () => {
                                     onClick={() => handleCopyUrl(record.url)}
                                 />
                             </Tooltip>
-                            <Tooltip title="Editar texto alternativo, descripción y carpeta">
-                                <Button
-                                    type="text"
-                                    icon={<EditOutlined />}
-                                    onClick={() => handleEdit(record)}
-                                />
-                            </Tooltip>
+                            {!bucketProtegido && (
+                                <Tooltip title="Editar texto alternativo, descripción y carpeta">
+                                    <Button
+                                        type="text"
+                                        icon={<EditOutlined />}
+                                        onClick={() => handleEdit(record)}
+                                    />
+                                </Tooltip>
+                            )}
                         </>
                     )}
-                    <Popconfirm
-                        title={record.isDir ? '¿Eliminar carpeta y todo su contenido?' : '¿Eliminar este archivo?'}
-                        onConfirm={() => handleDelete(record.id)}
-                        okText="Sí"
-                        cancelText="No"
-                    >
-                        <Tooltip title={record.isDir ? 'Eliminar la carpeta y su contenido' : 'Eliminar el archivo'}>
-                            <Button
-                                type="text"
-                                danger
-                                icon={<DeleteOutlined />}
-                            />
-                        </Tooltip>
-                    </Popconfirm>
+                    {!bucketProtegido && (
+                        <Popconfirm
+                            title={record.isDir ? '¿Eliminar carpeta y todo su contenido?' : '¿Eliminar este archivo?'}
+                            onConfirm={() => handleDelete(record.id)}
+                            okText="Sí"
+                            cancelText="No"
+                        >
+                            <Tooltip title={record.isDir ? 'Eliminar la carpeta y su contenido' : 'Eliminar el archivo'}>
+                                <Button
+                                    type="text"
+                                    danger
+                                    icon={<DeleteOutlined />}
+                                />
+                            </Tooltip>
+                        </Popconfirm>
+                    )}
                 </Space>
             )
         }
@@ -1021,7 +1032,7 @@ const Acervo = () => {
         </Row>
     );
 
-    const crearActions = (
+    const crearActions = bucketProtegido ? null : (
         <Space wrap size={[8, 8]} style={{ width: isMobile ? '100%' : 'auto' }}>
             <Button
                 icon={<FolderAddOutlined />}
@@ -1051,7 +1062,7 @@ const Acervo = () => {
 
     const mediaActions = (
         <Space wrap size={[8, 8]} style={{ width: isMobile ? '100%' : 'auto' }}>
-            {selectedFiles.length > 0 && (
+            {!bucketProtegido && selectedFiles.length > 0 && (
                 <>
                     <Button
                         icon={<DragOutlined />}
@@ -1195,6 +1206,21 @@ const Acervo = () => {
                         {crearActions}
                     </div>
                 </div>
+
+                {bucketProtegido && (
+                    <Alert
+                        type="info"
+                        showIcon
+                        style={{ marginBottom: 12 }}
+                        message="Bucket protegido: solo lectura"
+                        description={
+                            `El contenido de «${currentBucket?.displayName || currentBucket?.acervoBucket}» `
+                            + 'lo gestiona la aplicación que lo usa y sus rutas están referenciadas desde la '
+                            + 'base de datos. Borrar, mover o renombrar aquí dejaría registros apuntando a '
+                            + 'archivos inexistentes, así que esas acciones están deshabilitadas.'
+                        }
+                    />
+                )}
 
                 {uploadProgress && !uploadModalVisible && (
                     <div style={{ marginBottom: 12 }}>

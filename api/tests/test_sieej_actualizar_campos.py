@@ -595,3 +595,115 @@ def test_snapshot_servido_lleva_las_marcas_vigentes(session, formulario, user_a)
     assert envio.definicion_snapshot["steps"][0]["fields"][1].get(
         "editableAfterSubmit"
     ) is None
+
+
+# ---------------------------------------------------------------------------
+# los valores de archivo los escribe el servidor, no el cliente
+# ---------------------------------------------------------------------------
+
+
+DEFINICION_ARCHIVO = {
+    "version": 1,
+    "steps": [
+        {
+            "id": "alta",
+            "type": "form",
+            "title": "Alta",
+            "fields": [
+                {
+                    "name": "base",
+                    "label": "Base",
+                    "type": "file",
+                    "bucket": "sieej",
+                },
+                {"name": "nota", "label": "Nota", "type": "text"},
+            ],
+        }
+    ],
+}
+
+ARCHIVO_SERVIDOR = {
+    "field_path": "alta.base",
+    "url_publica": "/api/mariachi/acervo/proxy/4/mundial/unico/envio-1/alta.base/x.xlsx",
+    "object_key": "mundial/unico/envio-1/alta.base/x.xlsx",
+    "filename_original": "Base.xlsx",
+    "mime": "application/vnd.ms-excel",
+    "size_bytes": 10,
+}
+
+
+@pytest.fixture(scope="function")
+def formulario_archivo(session, admin):
+    f = Formulario(
+        slug="form-archivo",
+        nombre="Form Archivo",
+        definicion=DEFINICION_ARCHIVO,
+        estado="activo",
+        version=1,
+        creado_por_id=admin.id,
+    )
+    session.add(f)
+    session.commit()
+    session.refresh(f)
+    return f
+
+
+def _envio_con_archivo(session, formulario, user):
+    envio = crear_envio(
+        session, formulario, user, estado="en_proceso",
+        datos={"alta": {"base": dict(ARCHIVO_SERVIDOR), "nota": "n1"}},
+    )
+    envio.definicion_snapshot = DEFINICION_ARCHIVO
+    session.commit()
+    return envio
+
+
+def test_el_cliente_no_puede_reescribir_el_valor_de_un_archivo(
+    session, formulario_archivo, user_a
+):
+    _envio_con_archivo(session, formulario_archivo, user_a)
+    svc = EnviosService(session)
+    out = svc.actualizar(
+        formulario_archivo,
+        user_a,
+        {"alta": {"base": {"url_publica": "http://malicioso/x", "filename": "otro"}, "nota": "n2"}},
+        0,
+        enviar=False,
+    )
+    assert out.datos["alta"]["base"] == ARCHIVO_SERVIDOR
+    assert out.datos["alta"]["nota"] == "n2"
+
+
+def test_el_cliente_si_puede_quitar_un_archivo(session, formulario_archivo, user_a):
+    _envio_con_archivo(session, formulario_archivo, user_a)
+    svc = EnviosService(session)
+    out = svc.actualizar(
+        formulario_archivo,
+        user_a,
+        {"alta": {"base": None, "nota": "n1"}},
+        0,
+        enviar=False,
+    )
+    assert out.datos["alta"].get("base") is None
+
+
+def test_el_respaldo_no_puede_tumbar_el_envio(session, formulario, user_a, monkeypatch):
+    """El respaldo en Acervo es best-effort: si falla (bucket sin configurar,
+    Acervo caido) el envio se guarda igual. La fuente de verdad es la BD."""
+    envio = crear_envio(session, formulario, user_a, estado="en_proceso")
+
+    def explota(_envio):
+        raise RuntimeError("acervo caido")
+
+    svc = EnviosService(session)
+    monkeypatch.setattr(svc, "_escribir_respaldo", explota)
+
+    out = svc.actualizar(
+        formulario,
+        user_a,
+        {"general": {"razon_social": "Acme", "telefono": "3312345678"}},
+        0,
+        enviar=True,
+    )
+    assert out.estado == "enviado"
+    assert svc.respaldar_envio(envio) is None

@@ -9,6 +9,26 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.90.0] - 2026-07-27
+
+### Cambiado: los archivos de SIEEJ en Acervo se guardan con una ruta legible, y el bucket deja de ser manipulable a mano
+
+Las claves eran `{slug}/envio{id}/{uuid}.{ext}`: cinco UUIDs en una carpeta donde saber qué archivo es cada uno, a qué campo pertenece y cuál versión es la vigente exigía cruzar con `sieej.envio_archivo`. Si se perdía esa tabla, los objetos eran basura anónima. Y con los reemplazos post-envío el problema crecía.
+
+- **Convención nueva** (`services/sieej/acervo_keys.py`): `{slug}/{usuario}-{envio_id}[/{periodo}]/{step}.{campo}/{ts}-{nombre}-{sufijo}.{ext}`. Un directorio por campo con las versiones ordenadas cronológicamente, nombre original sanitizado en la clave y sufijo de 6 hex contra colisiones. El índice de repeater se aplana (`bases_datos[0].diccionario` → `bases_datos-0.diccionario`) y el periodo solo aparece si el formulario es periódico.
+- **Contrato único del valor en `datos`**: `{field_path, url_publica, object_key, filename_original, mime, size_bytes}`. Antes convivían dos formas —la del backend (`filename`) y la que el `Dragger` guardaba al pisar el valor con la respuesta del upload— y los lectores caían a la URL cruda, así que **el export y el PDF mostraban un enlace largo en vez del nombre del archivo**. `nombre_archivo()` lee ambas para lo ya guardado.
+- **El cliente ya no escribe valores de archivo**: `_preservar_archivos_del_servidor` conserva lo que puso el upload e ignora lo que mande el navegador para campos `file` (un valor vacío sí se respeta: así se quita un archivo). Cierra el origen de las dos formas y evita apuntar un campo a una URL arbitraria.
+- **Respaldo `envio.json`** junto a los archivos de cada envío (datos, definición con la que se llenó y catálogo de archivos), actualizado al enviar, al actualizar campos y al reemplazar un archivo. Es best-effort de punta a punta: un fallo de Acervo se registra y se sigue, nunca tumba el envío del respondent —hay un test que lo fija—.
+- **`scripts/sieej_migrar_object_keys.py`** migra lo existente (copia, reescribe BD y `datos`, borra el objeto viejo) y genera los respaldos. No es migración de alembic a propósito: habla con Acervo por red y un fallo del bucket durante el bootstrap tumbaría el arranque del api.
+
+### Agregado: buckets protegidos en Acervo
+
+`acervo.buckets.protegido` (migración `c4d5e6f7a8b0`, marca `sieej`). El contenido de esos buckets lo gestiona una aplicación y sus claves están referenciadas desde la BD, así que borrarlas o moverlas desde el explorador deja registros apuntando a objetos inexistentes. `resolve_bucket_escribible` responde **409 incluso al admin** en los 11 endpoints de escritura de `/acervo` (subir, chunked, mover, mover-lote, editar, crear/borrar carpeta, borrar archivo), y el explorador oculta esas acciones, rechaza el drag & drop y muestra un aviso de solo lectura.
+
+Como segunda capa, `scripts/acervo_proteger_bucket.py` habilita **versionado** con retención (5 versiones no vigentes, 90 días por defecto): un borrado deja un *delete marker* restaurable y una sobreescritura conserva la versión previa. El costo en espacio es marginal porque SIEEJ escribe una clave nueva por subida; las versiones solo aparecen al sobreescribir la misma clave o al borrar.
+
+---
+
 ## [1.89.5] - 2026-07-27
 
 ### Documentación: renovar la sesión es responsabilidad de cada frontend, y el encabezado de página es uno solo

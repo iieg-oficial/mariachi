@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.services.sieej.acervo_keys import nombre_archivo
+
 
 def resolve_options(field: dict[str, Any]) -> dict[str, str]:
     options = field.get("options")
@@ -44,7 +46,7 @@ def format_value(field: dict[str, Any], value: Any) -> str | None:
         return f"{start} – {end}"
     if field_type == "file":
         if isinstance(value, dict):
-            return value.get("filename_original") or value.get("url_publica")
+            return nombre_archivo(value) or value.get("url_publica")
         return str(value)
     return str(value)
 
