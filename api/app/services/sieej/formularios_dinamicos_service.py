@@ -152,7 +152,8 @@ class FormulariosDinamicosService:
                 and envio is not None
                 and bool(
                     EnviosService.editable_field_paths(
-                        envio.definicion_snapshot or f.definicion or {}
+                        envio.definicion_snapshot or f.definicion or {},
+                        f.definicion,
                     )
                 )
             )

@@ -244,10 +244,20 @@ respondent lo corrige sobre un envio ya `enviado` **sin reabrirlo**.
 
 - El envio **no cambia de estado** (sigue `enviado`); no se toca `enviado_en` ni
   `cambios_pendientes`.
-- Los paths permitidos se derivan del `definicion_snapshot` del envio (no de la
-  definicion vigente), asi que la editabilidad es la que tenia al enviarse.
-  Cualquier path que no este marcado se rechaza con 422 — el backend no confia
-  en el frontend.
+- Los paths permitidos se derivan del `definicion_snapshot` del envio: de ahi
+  salen tipo, opciones y bucket, porque contra el se valida lo que el
+  respondent lleno. Cualquier path que no este permitido se rechaza con 422 —
+  el backend no confia en el frontend.
+- **La marca `editableAfterSubmit` la manda la definicion vigente** (`api
+  1.89.0+`), no el snapshot: es una politica del admin, no contrato de datos.
+  Activarla despues alcanza a los envios ya enviados — que son justo los que se
+  quieren corregir — y retirarla los deja de cubrir de inmediato. Antes, marcar
+  un campo despues del envio no servia de nada: los envios `enviado` no reciben
+  propagacion de cambios menores, asi que su snapshot nunca ganaba la marca. Un
+  campo que no exista en el snapshot no es editable aunque la vigente lo marque.
+  `GET /formularios/mis-envios/{id}` sirve el snapshot con esas marcas ya
+  sincronizadas (`snapshot_con_editables_vigentes`), para que el frontend
+  ofrezca exactamente lo que el backend autoriza.
 - **Cualquier tipo de campo** puede marcarse (`api 1.88.0+`), incluidos los de
   pasos `repeater` y los `file`. En un repeater el path lleva el indice del item
   (`bases_datos[0].diccionario`) y `editable_field_defs` guarda el path **base**;

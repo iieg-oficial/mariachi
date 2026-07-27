@@ -368,7 +368,9 @@ class EnviosService:
                 status_code=status.HTTP_409_CONFLICT,
                 detail=_FORMULARIO_NO_ACEPTA_DETAIL,
             )
-        defs = self.editable_field_defs(envio.definicion_snapshot or {})
+        defs = self.editable_field_defs(
+            envio.definicion_snapshot or {}, formulario.definicion
+        )
         errores: list[dict[str, str]] = []
         metas: dict[str, dict[str, Any]] = {}
         nuevos = copy.deepcopy(envio.datos or {})
@@ -612,9 +614,24 @@ class EnviosService:
         return step_part, None, field_name
 
     @staticmethod
-    def editable_field_defs(definicion: dict[str, Any]) -> dict[str, dict[str, Any]]:
-        """Mapa `step_id.field_name` -> `{label, type, repeater}` de los campos
-        marcados `editableAfterSubmit`.
+    def _marcas_editables(definicion: dict[str, Any] | None) -> dict[str, bool]:
+        """Mapa path base -> `editableAfterSubmit` de una definicion."""
+        marcas: dict[str, bool] = {}
+        for step in (definicion or {}).get("steps", []) or []:
+            step_id = step.get("id")
+            for field in step.get("fields", []) or []:
+                marcas[f"{step_id}.{field.get('name')}"] = bool(
+                    field.get("editableAfterSubmit")
+                )
+        return marcas
+
+    @staticmethod
+    def editable_field_defs(
+        definicion: dict[str, Any],
+        vigente: dict[str, Any] | None = None,
+    ) -> dict[str, dict[str, Any]]:
+        """Mapa `step_id.field_name` -> `{label, type, repeater, field}` de los
+        campos marcados `editableAfterSubmit`.
 
         La clave es el path **base** (sin indice). En un repeater el path real
         lleva el indice del item (`bases_datos[0].diccionario`) y se resuelve
@@ -623,7 +640,16 @@ class EnviosService:
         Los campos `file` entran aqui (para que el frontend los ofrezca y el
         listado sepa que el envio tiene algo actualizable) pero no se editan
         por `actualizar_campos`: su valor lo escribe `actualizar_archivo`.
+
+        `definicion` es el snapshot del envio: de ahi salen tipo, opciones y
+        bucket, porque contra el se valida lo que el respondent lleno. Si se
+        pasa `vigente`, la **marca** de editable la manda esa (la del
+        formulario hoy): `editableAfterSubmit` no es parte del contrato de
+        datos sino una politica del admin, y activarla debe alcanzar a los
+        envios ya enviados — que es justo lo que se quiere corregir. Un campo
+        que no exista en el snapshot no es editable aunque la vigente lo marque.
         """
+        marcas_vigentes = EnviosService._marcas_editables(vigente) if vigente else {}
         editables: dict[str, dict[str, Any]] = {}
         for step in (definicion or {}).get("steps", []) or []:
             step_type = step.get("type")
@@ -633,10 +659,14 @@ class EnviosService:
             for field in step.get("fields", []) or []:
                 if field.get("type") == "info":
                     continue
-                if not field.get("editableAfterSubmit"):
-                    continue
                 name = field.get("name")
-                editables[f"{step_id}.{name}"] = {
+                path = f"{step_id}.{name}"
+                editable = marcas_vigentes.get(
+                    path, bool(field.get("editableAfterSubmit"))
+                )
+                if not editable:
+                    continue
+                editables[path] = {
                     "label": field.get("label") or name,
                     "type": field.get("type"),
                     "repeater": step_type == "repeater",
@@ -645,12 +675,37 @@ class EnviosService:
         return editables
 
     @staticmethod
-    def editable_field_paths(definicion: dict[str, Any]) -> dict[str, str]:
+    def editable_field_paths(
+        definicion: dict[str, Any],
+        vigente: dict[str, Any] | None = None,
+    ) -> dict[str, str]:
         """Mapa `step_id.field_name` -> label de los campos editables tras enviar."""
         return {
             path: meta["label"]
-            for path, meta in EnviosService.editable_field_defs(definicion).items()
+            for path, meta in EnviosService.editable_field_defs(
+                definicion, vigente
+            ).items()
         }
+
+    @staticmethod
+    def snapshot_con_editables_vigentes(
+        snapshot: dict[str, Any],
+        vigente: dict[str, Any] | None,
+    ) -> dict[str, Any]:
+        """Copia del snapshot con `editableAfterSubmit` tomado de la definicion
+        vigente, para que el frontend ofrezca exactamente lo que el backend
+        autoriza."""
+        if not vigente:
+            return snapshot
+        marcas = EnviosService._marcas_editables(vigente)
+        out = copy.deepcopy(snapshot or {})
+        for step in out.get("steps", []) or []:
+            step_id = step.get("id")
+            for field in step.get("fields", []) or []:
+                path = f"{step_id}.{field.get('name')}"
+                if path in marcas:
+                    field["editableAfterSubmit"] = marcas[path]
+        return out
 
     @staticmethod
     def resolver_editable(
@@ -821,7 +876,9 @@ class EnviosService:
                 detail=_FORMULARIO_NO_ACEPTA_DETAIL,
             )
 
-        defs = self.editable_field_defs(envio.definicion_snapshot or {})
+        defs = self.editable_field_defs(
+            envio.definicion_snapshot or {}, formulario.definicion
+        )
         meta = self.resolver_editable(defs, field_path)
         if meta is None or meta["type"] != "file":
             raise HTTPException(

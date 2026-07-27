@@ -4,6 +4,8 @@ Se prueban a nivel de servicio (`EnviosService.actualizar_campos`) para
 verificar la logica de merge parcial, la seguridad de campos permitidos y el
 historial append-only sin depender del flujo HTTP/login.
 """
+import json
+
 import pytest
 from fastapi import HTTPException
 from sqlalchemy import create_engine, text
@@ -537,3 +539,59 @@ def test_actualizar_archivo_rechaza_envio_de_otro_usuario(
             )
         )
     assert exc.value.status_code == 403
+
+
+def test_campo_marcado_editable_despues_del_envio_ya_es_editable(
+    session, formulario, user_a
+):
+    """La marca es politica del admin, no contrato de datos: activarla debe
+    alcanzar a los envios ya enviados, que son los que se quieren corregir."""
+    envio = crear_envio(
+        session, formulario, user_a, datos={"general": {"clave": "K1"}},
+    )
+    assert EnviosService.editable_field_paths(envio.definicion_snapshot) == {
+        "general.razon_social": "Razon social",
+        "general.telefono": "Telefono",
+    }
+
+    vigente = json.loads(json.dumps(DEFINICION))
+    vigente["steps"][0]["fields"][1]["editableAfterSubmit"] = True
+    formulario.definicion = vigente
+    session.commit()
+
+    svc = EnviosService(session)
+    out = svc.actualizar_campos(user_a, envio.id, {"general.clave": "K2"})
+    assert out.datos["general"]["clave"] == "K2"
+
+    hist = session.query(EnvioValorHistorial).filter_by(envio_id=envio.id).all()
+    assert [h.field_path for h in hist] == ["general.clave"]
+
+
+def test_marca_retirada_en_la_vigente_deja_de_ser_editable(
+    session, formulario, user_a
+):
+    envio = crear_envio(session, formulario, user_a)
+    vigente = json.loads(json.dumps(DEFINICION))
+    vigente["steps"][0]["fields"][0]["editableAfterSubmit"] = False
+    formulario.definicion = vigente
+    session.commit()
+
+    svc = EnviosService(session)
+    with pytest.raises(HTTPException) as exc:
+        svc.actualizar_campos(user_a, envio.id, {"general.razon_social": "X"})
+    assert exc.value.status_code == 422
+
+
+def test_snapshot_servido_lleva_las_marcas_vigentes(session, formulario, user_a):
+    envio = crear_envio(session, formulario, user_a)
+    vigente = json.loads(json.dumps(DEFINICION))
+    vigente["steps"][0]["fields"][1]["editableAfterSubmit"] = True
+
+    fusionado = EnviosService.snapshot_con_editables_vigentes(
+        envio.definicion_snapshot, vigente
+    )
+    campos = {f["name"]: f for f in fusionado["steps"][0]["fields"]}
+    assert campos["clave"]["editableAfterSubmit"] is True
+    assert envio.definicion_snapshot["steps"][0]["fields"][1].get(
+        "editableAfterSubmit"
+    ) is None

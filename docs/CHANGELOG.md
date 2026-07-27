@@ -9,6 +9,18 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.89.0] - 2026-07-27
+
+### Corregido: marcar un campo como editable despues del envio ya sirve para los envios existentes
+
+La lista de campos editables salia del `definicion_snapshot` del envio, y un envio ya `enviado` no recibe propagacion de cambios menores: su snapshot nunca ganaba la marca. Resultado practico — marcar «¿Editable después de enviar?» **no tenia efecto sobre ningun envio ya hecho**, que son justo los que se quieren corregir. Habia que reabrir el envio, que es lo que la actualizacion ligera venia a evitar.
+
+`editable_field_defs(snapshot, vigente)` toma del snapshot el tipo, las opciones y el bucket (contra el se valida lo capturado) pero la **marca** de editable la lee de la definicion vigente: es politica del admin, no contrato de datos. Activarla alcanza a los envios existentes y retirarla los deja de cubrir de inmediato. Un campo que no exista en el snapshot no es editable aunque la vigente lo marque.
+
+`GET /formularios/mis-envios/{id}` sirve el snapshot con esas marcas ya sincronizadas (`snapshot_con_editables_vigentes`), asi que el frontend ofrece exactamente lo que el backend autoriza sin duplicar la regla.
+
+---
+
 ## [1.88.0] - 2026-07-27
 
 ### Corregido: cualquier campo marcado como editable tras el envio lo es de verdad (archivos y listas repetibles incluidos)

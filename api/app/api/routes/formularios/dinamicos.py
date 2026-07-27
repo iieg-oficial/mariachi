@@ -73,12 +73,18 @@ async def obtener_mi_envio(
 
     - 404 si no existe; 403 si pertenece a otro usuario.
     - Renderea con `definicion_snapshot` (la del momento del envio,
-      no la actual del formulario) para fidelidad historica.
+      no la actual del formulario) para fidelidad historica. La unica marca
+      que se sincroniza con la definicion vigente es `editableAfterSubmit`,
+      que es politica del admin y no contrato de datos: asi el frontend ofrece
+      exactamente los campos que el backend autoriza a corregir.
     - `archivos` ordenados por subido_en asc; `eventos` por ocurrido_en asc.
     """
     envio = EnviosService(db).obtener_mi_envio_detalle(current_user, envio_id)
     archivos = sorted(envio.archivos, key=lambda a: a.subido_en)
     eventos = sorted(envio.eventos, key=lambda ev: ev.ocurrido_en)
+    snapshot = EnviosService.snapshot_con_editables_vigentes(
+        envio.definicion_snapshot or {}, envio.formulario.definicion
+    )
     return MisEnviosDetalle(
         id=envio.id,
         formulario={
@@ -89,7 +95,7 @@ async def obtener_mi_envio(
         estado=envio.estado,
         paso_actual=envio.paso_actual,
         datos=envio.datos or {},
-        definicion_snapshot=envio.definicion_snapshot or {},
+        definicion_snapshot=snapshot,
         archivos=archivos,
         eventos=eventos,
         iniciado_en=envio.iniciado_en,
