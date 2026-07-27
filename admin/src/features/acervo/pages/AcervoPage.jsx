@@ -3,7 +3,7 @@ import { Alert, Card, Button, Upload, Table, Image, Space, Modal, Form, Input, S
 import {
     InboxOutlined, DeleteOutlined, EditOutlined, FolderOutlined, FolderOpenOutlined, FolderAddOutlined, FileImageOutlined, FilePdfOutlined,
     FileOutlined, AppstoreOutlined, BarsOutlined, DownloadOutlined, CopyOutlined, EyeOutlined, HomeOutlined, DragOutlined,
-    InfoCircleOutlined, CodeOutlined, BookOutlined, PictureOutlined, PieChartOutlined
+    InfoCircleOutlined, CodeOutlined, BookOutlined, PictureOutlined, PieChartOutlined, LockOutlined
 } from '@ant-design/icons';
 import acervoService from '@features/acervo/api/acervoService';
 import AcervoSectionHeader from '@features/acervo/components/AcervoSectionHeader';
@@ -18,6 +18,10 @@ const { Dragger } = Upload;
 const { Search } = Input;
 const { Option } = Select;
 const { Text } = Typography;
+
+const PROTEGIDO_AYUDA = 'Bucket de solo lectura: su contenido lo gestiona la aplicación que lo usa '
+    + 'y las rutas están referenciadas desde la base de datos, así que borrar, mover o renombrar '
+    + 'aquí dejaría registros apuntando a archivos inexistentes.';
 
 const renderTypeTag = (type, isDir) => {
     if (isDir) return <Tag color="orange">CARPETA</Tag>;
@@ -1123,16 +1127,33 @@ const Acervo = () => {
                         tabBarStyle={{ marginBottom: 4 }}
                         items={buckets.map((b) => ({
                             key: String(b.id),
-                            label: b.display_name,
+                            label: b.protegido ? (
+                                <Tooltip title={PROTEGIDO_AYUDA}>
+                                    <span>
+                                        <LockOutlined style={{ marginRight: 4 }} />
+                                        {b.display_name}
+                                    </span>
+                                </Tooltip>
+                            ) : b.display_name,
                         }))}
                     />
                 )}
-                {bucketStats && (
-                    <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 12 }}>
-                        {bucketStats.fileCount} archivos · {bucketStats.imageCount} imágenes
-                        {' '}· {bucketStats.documentCount} documentos · {bucketStats.folderCount} carpetas
-                        {' '}· {acervoService.formatFileSize(bucketStats.totalSize || 0)}
-                    </Text>
+                {(bucketStats || bucketProtegido) && (
+                    <div style={{ marginBottom: 12 }}>
+                        {bucketStats && (
+                            <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>
+                                {bucketStats.fileCount} archivos · {bucketStats.imageCount} imágenes
+                                {' '}· {bucketStats.documentCount} documentos · {bucketStats.folderCount} carpetas
+                                {' '}· {acervoService.formatFileSize(bucketStats.totalSize || 0)}
+                            </Text>
+                        )}
+                        {bucketProtegido && (
+                            <Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: 2 }}>
+                                <LockOutlined style={{ marginRight: 4 }} />
+                                {PROTEGIDO_AYUDA}
+                            </Text>
+                        )}
+                    </div>
                 )}
                 <div style={{
                     display: 'flex',
@@ -1189,20 +1210,6 @@ const Acervo = () => {
                     </div>
                 </div>
 
-                {bucketProtegido && (
-                    <Alert
-                        type="info"
-                        showIcon
-                        style={{ marginBottom: 12 }}
-                        message="Bucket protegido: solo lectura"
-                        description={
-                            `El contenido de «${currentBucket?.displayName || currentBucket?.acervoBucket}» `
-                            + 'lo gestiona la aplicación que lo usa y sus rutas están referenciadas desde la '
-                            + 'base de datos. Borrar, mover o renombrar aquí dejaría registros apuntando a '
-                            + 'archivos inexistentes, así que esas acciones están deshabilitadas.'
-                        }
-                    />
-                )}
 
                 {uploadProgress && !uploadModalVisible && (
                     <div style={{ marginBottom: 12 }}>

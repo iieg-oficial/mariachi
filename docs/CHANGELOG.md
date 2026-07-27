@@ -9,6 +9,18 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.93.0] - 2026-07-27
+
+### Agregado: la protección de un bucket se administra y se reconoce desde el CMS
+
+`acervo.buckets.protegido` llegó en 1.90.0 sin forma de gestionarlo: quedaba fijo desde la migración.
+
+- **`/acervo/buckets`** gana la columna **Protegido** (candado y tooltip en el encabezado) con switch por bucket, y el campo en el alta/edición. Activarla es directo; **desactivarla pide confirmación**, porque vuelve a habilitar borrar, mover, renombrar y subir sobre contenido cuyas rutas están referenciadas desde la base de datos. Solo admin, como el resto de la gestión de buckets.
+- En el **explorador**, el bucket protegido se reconoce por un **candado en su pestaña** —visible también en las pestañas inactivas, para saber cuáles son de solo lectura sin entrar— y por una nota breve bajo las estadísticas. Sustituye al `Alert` que ocupaba media pantalla; el texto es el mismo en el tooltip y en la nota, desde una sola constante.
+- El modal de alta/edición de buckets sale a `components/BucketFormModal.jsx` (la página excedía el límite de 300 líneas del proyecto).
+
+---
+
 ## [1.92.0] - 2026-07-27
 
 > Se salta `1.91.0`: ese número lo tomó el release de propuestas de tarjeta de MapaLab (commit `f950b01`), y el bump a `1.90.0` de la rama de SIEEJ lo pisó al integrarse, dejando `pyproject.toml` en `1.90.0` con un `1.91.0` ya publicado. Este release realinea hacia arriba; la entrada que colisionaba quedó renumerada como `1.91.1`.
@@ -92,7 +104,7 @@ Quien usa el catálogo de MapaLab podrá proponer qué campos aparecen en la tar
 
 El editor ciudadano trabaja con un subconjunto seguro del formato: `headerField`, `list`, `cards`, `text` y `blockOrder`. Quedan fuera `iconText.action` (dispara acciones internas del visor), `headerTransform`, `labelGroups` y `cardsColumns`. El editor de capas del admin conserva el formato completo.
 
-**La tabla** `mapalab_infobox_propuestas` (migración `d4e5f6a7b8ca`): estado `pendiente`/`aprobada`/`rechazada` con constraint, revisor, motivo de rechazo, correo opcional de contacto e `ip_hash` para detectar abuso sin guardar la IP. **No hay notificación automática**: mariachi no tiene envío de correo, así que el dato sirve para que el revisor pueda escribir a mano si necesita aclarar algo.
+**La tabla** `mapalab_infobox_propuestas` (migración `d4e5f6a7b8ca`): estado `pendiente`/`aprobada`/`rechazada` con constraint, revisor, motivo de rechazo, e `ip_hash` para detectar abuso sin guardar la IP. La columna `email` queda reservada y sin uso: el flujo es anónimo y no se le pide correo a quien propone.
 
 ### Agregado: tópico MapaLab en la página de documentación
 

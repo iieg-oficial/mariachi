@@ -600,6 +600,8 @@ Es **best-effort de punta a punta**: cualquier fallo (bucket sin configurar, Ace
 
 El bucket de SIEEJ esta marcado `protegido` en `acervo.buckets` (migracion `c4d5e6f7a8b0`): el explorador del CMS oculta borrar, editar, mover, subir y crear carpeta, y `resolve_bucket_escribible` responde **409 incluso al admin** en los endpoints de escritura de `/acervo`. El contenido lo gestiona el flujo de formularios y sus claves estan referenciadas desde `envio_archivo` y `envio.datos`: un borrado a mano dejaria registros apuntando a objetos inexistentes.
 
+En el explorador, un bucket protegido se reconoce por el **candado en su pestaña** (con tooltip) y por una nota bajo las estadisticas. La bandera se administra desde **`/acervo/buckets`**, que tiene su columna `Protegido` con switch por bucket y el campo en el alta/edicion: activarla es directo, **desactivarla pide confirmacion** porque vuelve a habilitar las operaciones destructivas sobre contenido cuyas rutas viven en la BD. Solo admin (`require_role`), como el resto de la gestion de buckets.
+
 Como segunda capa, el bucket tiene **versionado** con retencion (`scripts/acervo_proteger_bucket.py`): un borrado deja un *delete marker* restaurable y una sobreescritura conserva la version previa. El costo en espacio es marginal porque SIEEJ escribe una clave nueva por subida — las versiones solo aparecen al sobreescribir la misma clave (el `envio.json`, unos KB) o al borrar.
 
 ### Migracion de claves
