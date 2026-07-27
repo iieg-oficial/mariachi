@@ -36,6 +36,7 @@ from app.models.sieej import (
 from app.models.user import Usuario
 from app.services.acervo import AcervoClient
 from app.services.sieej.cambio_classifier import diff_definiciones
+from app.services.sieej.compat import normalizar_definicion
 from app.services.sieej.datos_validator import DatosInvalidosError, validar_datos
 
 _FORMULARIO_NO_ACEPTA_DETAIL = (
@@ -229,7 +230,7 @@ class EnviosService:
             envio = EnvioFormulario(
                 formulario_id=formulario.id,
                 formulario_version=formulario.version,
-                definicion_snapshot=formulario.definicion,
+                definicion_snapshot=normalizar_definicion(formulario.definicion),
                 usuario_id=user.id,
                 periodo_id=periodo.id if periodo is not None else None,
                 estado="en_proceso",
@@ -461,10 +462,11 @@ class EnviosService:
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Solo un envio en proceso puede actualizarse",
             )
+        vigente = normalizar_definicion(formulario.definicion or {})
         cambios = diff_definiciones(
-            envio.definicion_snapshot or {}, formulario.definicion or {}
+            normalizar_definicion(envio.definicion_snapshot or {}), vigente
         )
-        envio.definicion_snapshot = formulario.definicion
+        envio.definicion_snapshot = vigente
         envio.formulario_version = formulario.version
         envio.cambios_pendientes = cambios or None
         envio.actualizado_en = utcnow()
@@ -493,11 +495,12 @@ class EnviosService:
             )
             .all()
         )
+        vigente = normalizar_definicion(formulario.definicion or {})
         for envio in enviados:
             cambios = diff_definiciones(
-                envio.definicion_snapshot or {}, formulario.definicion or {}
+                normalizar_definicion(envio.definicion_snapshot or {}), vigente
             )
-            envio.definicion_snapshot = formulario.definicion
+            envio.definicion_snapshot = vigente
             envio.formulario_version = formulario.version
             envio.cambios_pendientes = cambios or None
             envio.estado = "en_proceso"
@@ -530,7 +533,8 @@ class EnviosService:
         )
         preview = (
             diff_definiciones(
-                envio.definicion_snapshot or {}, formulario.definicion or {}
+                normalizar_definicion(envio.definicion_snapshot or {}),
+                normalizar_definicion(formulario.definicion or {}),
             )
             if disponible
             else []

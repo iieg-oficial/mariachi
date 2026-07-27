@@ -98,6 +98,28 @@ Los campos se colocan **en orden estricto**: si uno no cabe en lo que resta de l
 - `datos_validator.py::validar_datos` se ejecuta al guardar (`enviar=False`) o cerrar (`enviar=True`) un envio. En modo estricto exige campos `required`; en modo borrador solo valida tipos/formatos.
 - `definicion_to_validation_rules` aplana la definicion a reglas planas que el frontend consume via `GET /formularios/:slug/schema` para feedback inline.
 
+### Compatibilidad de definiciones legadas (`compat.py`)
+
+Cada vez que el contrato se endurece, los formularios que ya viven en produccion quedan fuera de el: un `type: "email"`, un campo de repeater sin `tab` o un `info` espaciador bastan para que el formulario deje de validar, de rendererar o de poder guardarse desde el admin. `compat.py::normalizar_definicion` traduce cualquier definicion historica al contrato vigente. Es **idempotente** y **solo relaja** (nunca inventa campos ni endurece reglas).
+
+Reglas actuales: `tel`/`email` → `text` + `validation.pattern` (respeta el patron propio si ya lo traia); tipo desconocido → `text`; `select`/`radio` sin `options` ni `catalog` → `text`; campos de repeater con `tabs` sin `tab` valido → primera pestaña; `info` sin label (espaciadores) → se elimina; `file` sin `bucket` → `sieej`; `maxSizeMB` sobre el cap → 100; `colSpan` fuera de rango → acotado a 1..3; `pattern` que no compila, `showWhen` huerfano o cruzado entre steps → se descartan; campo sin `label` → hereda el `name`.
+
+Se aplica en tres capas, de modo que **un deploy no depende de que la migracion de datos haya corrido**:
+
+1. **Lectura** — `FormularioResponse`, `FormularioDetalle`, `EnvioDetalleResponse`, `MisEnviosDetalle` y `GET /formularios/:slug/schema` normalizan al serializar; el editor visual y el renderer nunca ven un tipo que no conocen.
+2. **Escritura** — `formularios_admin_service.crear/actualizar` normaliza antes de validar (un formulario legado se puede abrir y guardar sin editarlo a mano) y `validar_datos` normaliza el snapshot, para que un envio en curso no muera con `tipo desconocido`. El clasificador de cambios compara **normalizada contra normalizada**: la diferencia por normalizar no cuenta como cambio y no sube version ni congela envios.
+3. **Persistencia** — la migracion `c3d4e5f6a7b9` aplica la normalizacion a `sieej.formulario`, `sieej.envio_formulario.definicion_snapshot` y `sieej.formulario_version`. Sustituye el patron de escribir una migracion de datos por cada endurecimiento (`a5b6c7d8e9f1`, `a6b7c8d9e0f1`, `b8c9d0e1f2a4`): las reglas viven en `compat.py` y la migracion solo las materializa.
+
+**Al endurecer el validador**: agrega la regla equivalente en `compat.py` y una definicion real en `api/tests/fixtures/sieej/legacy/`. `tests/test_sieej_compat.py` valida cada fixture contra el contrato vigente, asi que un endurecimiento que rompa formularios existentes falla en CI y no en produccion.
+
+**Verificacion en el deploy** (`scripts/sieej_check_definiciones.py`, tambien `make sieej-check`): recorre las tres tablas y sale con codigo 1 si alguna definicion no valida. Con `--fix` reescribe las que lo requieran — util para una BD restaurada de un backup viejo, sin volver a correr alembic.
+
+```bash
+docker exec mariachi-api python scripts/sieej_check_definiciones.py
+# {"tabla": "sieej.formulario", "revisadas": 5, "requieren_normalizar": 0, "reparadas": 0, "irrecuperables": []}
+# {"ok": true, "pendientes": 0}
+```
+
 ### Slugs reservados
 `formularios_admin_service.crear()` rechaza con 400 si el slug colisiona con rutas literales del frontend SIEEJ:
 `inicio-sesion`, `exencion`, `cambiar-contrasena`, `error`, `regisño`, `catalogos`, `schema`, `envio`, `mis-envios`.
@@ -452,7 +474,9 @@ sigue protegido por el 409, que no depende de Redis.
 
 ### Copiar y pegar campos
 
-Cada campo del editor tiene **Copiar** (para pegarlo en otro paso o en otro formulario) y **Duplicar aqui**, de modo que un campo con regex, catalogo, opciones o configuracion de archivo ya afinada no se vuelva a capturar a mano. El portapapeles vive en `localStorage` (`mariachi.sieej.fieldClipboard`, payload `{kind:'sieej.fields', v:1, fields:[...]}`) para que cruce formularios y pestañas del navegador sin permisos; ademas se escribe best-effort al portapapeles del sistema como JSON legible. No hay backend involucrado.
+Cada campo del editor tiene **Copiar** (para pegarlo en otro paso o en otro formulario) y **Duplicar aqui**, de modo que un campo con regex, catalogo, opciones o configuracion de archivo ya afinada no se vuelva a capturar a mano.
+
+En los anchos **Chico** y **Mediano** (`colSpan` 3 y 2) la tarjeta no da para cuatro botones en la columna del asa, asi que Copiar, Duplicar y Eliminar se colapsan en un menu **⋯ Mas opciones** y solo queda visible Editar (y Guardar mientras se edita). En ancho **Grande** y en mobile los botones siguen sueltos. Dentro del menu, Eliminar confirma con `Modal.confirm` en vez del `Popconfirm` (un popover anidado en un dropdown se cierra con el menu). El portapapeles vive en `localStorage` (`mariachi.sieej.fieldClipboard`, payload `{kind:'sieej.fields', v:1, fields:[...]}`) para que cruce formularios y pestañas del navegador sin permisos; ademas se escribe best-effort al portapapeles del sistema como JSON legible. No hay backend involucrado.
 
 `fieldClipboard.js` normaliza al pegar (`prepareFieldForPaste`), que es lo que evita dejar la definicion invalida:
 

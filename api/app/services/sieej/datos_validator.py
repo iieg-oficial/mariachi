@@ -11,6 +11,7 @@ import re
 from typing import Any
 
 from app.services.sieej.catalogos_sistema import OPTION_KEYS, permite_extremo_abierto
+from app.services.sieej.compat import normalizar_definicion
 from app.services.sieej.definicion_validator import FIELD_TYPES
 
 
@@ -45,8 +46,12 @@ def validar_datos(
 
     Si `estricto=True`, exige campos required (al enviar).
     Si `estricto=False`, solo valida tipos/formatos (al guardar borrador).
+
+    La definicion se normaliza antes de validar para que un snapshot legado
+    (tipos ya absorbidos, campos sin `tab`, etc.) no invalide un envio.
     """
     errores: list[dict[str, str]] = []
+    definicion = normalizar_definicion(definicion)
 
     for step in definicion.get("steps", []):
         if step.get("type") == "summary":

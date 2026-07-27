@@ -9,6 +9,25 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.86.0] - 2026-07-27
+
+### Cambiado: menu «⋯ Mas opciones» en las tarjetas de campo angostas del editor SIEEJ
+
+En los anchos **Chico** y **Mediano** (`colSpan` 3 y 2) la columna del asa apilaba cuatro botones (copiar, duplicar, editar, eliminar) en una tarjeta que apenas da para el label y los tags. Ahora Copiar, Duplicar y Eliminar se colapsan en un menu `⋯` y solo queda visible Editar (y Guardar mientras se edita). En ancho **Grande** y en mobile no cambia nada. Dentro del menu, Eliminar confirma con `Modal.confirm` en vez del `Popconfirm` — un popover anidado en un dropdown se cierra junto con el menu.
+
+### Agregado: capa de compatibilidad para definiciones SIEEJ legadas — el deploy deja de romper formularios existentes
+
+Cada endurecimiento del contrato de la definicion (absorber `email`/`tel` en `text`, exigir `tab` en repeaters con pestañas, retirar los `info` espaciadores) dejaba fuera de contrato a los formularios que ya estaban en produccion. El sintoma tras un deploy: el formulario no renderea el campo, el envio en curso muere con `tipo desconocido` (422) y el admin no puede ni abrirlo y volverlo a guardar. Cada caso se venia parchando con una migracion de datos hecha a mano.
+
+- **`services/sieej/compat.py::normalizar_definicion`** traduce cualquier definicion historica al contrato vigente. Idempotente y **solo relaja**: `tel`/`email` → `text` + patron (respetando el propio si ya lo traia), tipo desconocido → `text`, `select` sin `options` ni `catalog` → `text`, campo de repeater sin `tab` valido → primera pestaña, `info` sin label → se elimina, `file` sin `bucket` → `sieej`, `maxSizeMB` sobre el cap → 100, `colSpan` fuera de rango → acotado, `pattern` que no compila y `showWhen` huerfano o cruzado entre steps → se descartan.
+- **Se aplica en lectura y en escritura**, no solo en la migracion: los response models (`FormularioResponse`, `FormularioDetalle`, `EnvioDetalleResponse`, `MisEnviosDetalle`) y `GET /formularios/:slug/schema` normalizan al serializar; `crear`/`actualizar` normalizan antes de validar y `validar_datos` normaliza el snapshot del envio. Un deploy ya no depende de que la migracion de datos haya corrido.
+- **Sin bumps espurios de version**: el clasificador de cambios compara la definicion normalizada contra la normalizada, asi que la diferencia por normalizar no cuenta como cambio y no sube `formulario.version` ni reabre envios ya enviados.
+- **Migracion `c3d4e5f6a7b9`** materializa la normalizacion en `sieej.formulario`, `envio_formulario.definicion_snapshot` y `formulario_version`. Sustituye el patron de una migracion de datos por endurecimiento: las reglas viven en `compat.py`.
+- **`scripts/sieej_check_definiciones.py`** (`make sieej-check`, `make sieej-check-fix`) recorre las tres tablas y sale con codigo 1 si alguna definicion no valida; con `--fix` repara — util para una BD restaurada de un backup viejo.
+- **Red en CI**: `tests/fixtures/sieej/legacy/` guarda definiciones reales de produccion y `test_sieej_compat.py` verifica que cada una pasa el contrato vigente ya normalizada. Un endurecimiento futuro que rompa formularios existentes falla en CI, no en produccion.
+
+---
+
 ## [1.85.0] - 2026-07-24
 
 ### Agregado: edición concurrente de formularios SIEEJ — 409 al pisar + presencia con avatares

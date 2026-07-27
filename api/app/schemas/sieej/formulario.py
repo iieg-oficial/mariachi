@@ -1,7 +1,9 @@
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from app.services.sieej.compat import normalizar_definicion
 
 FormularioEstado = Literal["borrador", "activo", "cerrado"]
 
@@ -77,6 +79,11 @@ class FormularioResponse(FormularioBase):
 
     model_config = ConfigDict(from_attributes=True)
 
+    @field_validator("definicion", mode="before")
+    @classmethod
+    def _compat_definicion(cls, value: Any) -> Any:
+        return normalizar_definicion(value) if isinstance(value, dict) else value
+
 
 class UltimoCambioInfo(BaseModel):
     """Resultado de clasificar el ultimo cambio de definicion."""
@@ -138,6 +145,11 @@ class FormularioDetalle(BaseModel):
     proxima_apertura: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("definicion", mode="before")
+    @classmethod
+    def _compat_definicion(cls, value: Any) -> Any:
+        return normalizar_definicion(value) if isinstance(value, dict) else value
 
 
 from app.schemas.sieej.envio import EnvioResponse  # noqa: E402

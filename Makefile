@@ -32,7 +32,7 @@ else
 	MSG_ENV      := Desarrollo
 endif
 
-.PHONY: help up build down logs restart clean shell-api shell-admin setup setup-hooks test-backend ensure-networks deploy backup-db restore-db install-backup-cron uninstall-backup-cron refresh-mapalab-stats purge-mapalab-events backup-tarjetitas restore-tarjetitas
+.PHONY: help up build down logs restart clean shell-api shell-admin setup setup-hooks test-backend ensure-networks deploy backup-db restore-db install-backup-cron uninstall-backup-cron refresh-mapalab-stats purge-mapalab-events backup-tarjetitas restore-tarjetitas sieej-check sieej-check-fix
 
 ## Muestra ayuda de comandos disponibles
 help:
@@ -56,6 +56,8 @@ help:
 	@echo '  ${YELLOW}make setup${RESET}       - Crea archivos .env iniciales si no existen'
 	@echo '  ${YELLOW}make setup-hooks${RESET} - Configura git hooks del proyecto (core.hooksPath)'
 	@echo '  ${YELLOW}make test-backend${RESET} - Corre lint + pytest del backend (mismo entorno que CI)'
+	@echo '  ${YELLOW}make sieej-check${RESET}  - Verifica que las definiciones SIEEJ en BD cumplan el contrato'
+	@echo '  ${YELLOW}make sieej-check-fix${RESET} - Igual, pero repara las definiciones legadas'
 	@echo ''
 	@echo '${GREEN}Respaldos de Postgres:${RESET}'
 	@echo '  Cubre los 4 schemas de mariachi: public, huachicol, acervo, sieej.'
@@ -91,6 +93,17 @@ setup-hooks:
 test-backend:
 	@cd api && ruff check --no-cache app tests
 	@./api/scripts/run-tests.sh
+
+## Verifica que las definiciones de formularios SIEEJ en BD cumplan el contrato vigente.
+## Correr en el deploy despues de migrar; sale con codigo 1 si alguna no valida.
+sieej-check:
+	@docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) exec -T api \
+		python scripts/sieej_check_definiciones.py
+
+## Igual que sieej-check, pero reescribe las definiciones legadas que lo requieran.
+sieej-check-fix:
+	@docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) exec -T api \
+		python scripts/sieej_check_definiciones.py --fix
 
 # =============================================================================
 # COMANDOS PRINCIPALES

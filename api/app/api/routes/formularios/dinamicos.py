@@ -24,6 +24,7 @@ from app.schemas.sieej.envio import (
     MisEnviosDetalle,
 )
 from app.schemas.sieej.formulario import FormularioDetalle, FormularioListItem
+from app.services.sieej.compat import normalizar_definicion
 from app.services.sieej.definicion_validator import definicion_to_validation_rules
 from app.services.sieej.envios_service import EnviosService
 from app.services.sieej.formularios_dinamicos_service import (
@@ -237,7 +238,9 @@ async def obtener_schema(
             detail="Formulario no encontrado o no asignado",
         )
     envio = EnviosService(db).get_o_iniciar(formulario, current_user, crear_si_falta=False)
-    definicion = envio.definicion_snapshot if envio else formulario.definicion
+    definicion = normalizar_definicion(
+        envio.definicion_snapshot if envio else formulario.definicion
+    )
     return {
         "definicion": definicion,
         "validation_rules": definicion_to_validation_rules(definicion),
