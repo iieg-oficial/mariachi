@@ -324,6 +324,17 @@ export const moveMultipleFiles = async (ids, folder) => {
     }
 };
 
+export const getAcervoResumen = async (bucketId = null) => {
+    try {
+        const query = bucketId ? `?bucket_id=${bucketId}` : '';
+        const response = await api.get(`/acervo/resumen${query}`);
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching acervo summary:', error);
+        throw error;
+    }
+};
+
 export const getFolderInfo = async (bucketId, prefix) => {
     try {
         const params = new URLSearchParams({ prefix: prefix || '' });
@@ -504,6 +515,7 @@ export default {
     moveAcervoFile,
     moveMultipleFiles,
     getFolderInfo,
+    getAcervoResumen,
     initChunkedUpload,
     uploadChunk,
     completeChunkedUpload,

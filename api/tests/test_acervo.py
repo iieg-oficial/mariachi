@@ -8,6 +8,7 @@ from minio.error import S3Error
 from app.models.acervo import AcervoFile, AcervoFolder
 from app.models.acervo_bucket import AcervoBucket
 from app.models.project import Project, UserProject
+from app.services import acervo_file_service
 from tests.conftest import ADMIN_PREFIX
 
 
@@ -38,6 +39,7 @@ class FakeAcervoClient:
     def __init__(self, bucket_name: str, *_, **__):
         self.bucket_name = bucket_name
         self.objects: dict[str, dict] = {}
+        self.list_calls = 0
 
     @classmethod
     def reset(cls):
@@ -96,10 +98,12 @@ class FakeAcervoClient:
             "content_type": content_type,
         }
 
-    def list_objects(self, prefix="", recursive=True):
+    def list_objects(self, prefix="", recursive=True, limit=None):
+        self.list_calls += 1
         prefix = prefix or ""
         if recursive:
-            return [v for k, v in self.objects.items() if k.startswith(prefix)]
+            found = [v for k, v in self.objects.items() if k.startswith(prefix)]
+            return found[:limit] if limit is not None else found
         results = []
         seen_dirs = set()
         for k, v in self.objects.items():
@@ -496,6 +500,117 @@ def test_info_carpeta(admin_session, db_session):
     assert body["imageCount"] == 1
     assert body["subfolderCount"] == 1
     assert body["lastModified"] == "2026-06-10T12:00:00"
+
+
+def _fake_object(name, size, last_modified=None):
+    return {
+        "name": name,
+        "size": size,
+        "is_dir": False,
+        "last_modified": last_modified,
+        "etag": "e",
+        "url": f"http://fake/{name}",
+    }
+
+
+def _seed_carpetas_anidadas(db_session):
+    _, bucket = _seed_bucket(db_session, name="agregado")
+    fake = FakeAcervoClient.for_bucket(bucket)
+    fake.objects["envios/.keep"] = _fake_object("envios/.keep", 0)
+    fake.objects["envios/1/acta.pdf"] = _fake_object("envios/1/acta.pdf", 100, "2026-06-10T12:00:00+00:00")
+    fake.objects["envios/2/anexo.pdf"] = _fake_object("envios/2/anexo.pdf", 250, "2026-06-12T12:00:00+00:00")
+    fake.objects["formularios/f1.json"] = _fake_object("formularios/f1.json", 30, "2026-06-05T12:00:00+00:00")
+    fake.objects["raiz.png"] = _fake_object("raiz.png", 7, "2026-06-01T12:00:00+00:00")
+    return bucket, fake
+
+
+def test_listar_media_carpetas_traen_peso_y_fecha(admin_session, db_session):
+    bucket, fake = _seed_carpetas_anidadas(db_session)
+
+    client = admin_session["client"]
+    response = client.get(f"{ADMIN_PREFIX}/acervo?bucket_id={bucket.id}")
+    assert response.status_code == 200, response.text
+    por_nombre = {r["name"]: r for r in response.json()}
+
+    assert por_nombre["envios/"]["size"] == 350
+    assert por_nombre["envios/"]["uploadedAt"] == "2026-06-12T12:00:00+00:00"
+    assert por_nombre["formularios/"]["size"] == 30
+    assert por_nombre["formularios/"]["uploadedAt"] == "2026-06-05T12:00:00+00:00"
+    assert por_nombre["raiz.png"]["size"] == 7
+    assert fake.list_calls == 2
+
+
+def test_listar_media_agrega_por_nivel_al_entrar_a_carpeta(admin_session, db_session):
+    bucket, fake = _seed_carpetas_anidadas(db_session)
+
+    client = admin_session["client"]
+    response = client.get(f"{ADMIN_PREFIX}/acervo?bucket_id={bucket.id}&folder=envios")
+    assert response.status_code == 200, response.text
+    por_nombre = {r["name"]: r for r in response.json()}
+
+    assert por_nombre["envios/1/"]["size"] == 100
+    assert por_nombre["envios/1/"]["uploadedAt"] == "2026-06-10T12:00:00+00:00"
+    assert por_nombre["envios/2/"]["size"] == 250
+    assert fake.list_calls == 2
+
+
+def test_listar_media_sin_agregado_si_supera_el_tope(admin_session, db_session, monkeypatch):
+    monkeypatch.setattr(acervo_file_service, "FOLDER_AGGREGATE_MAX_OBJECTS", 1)
+    bucket, _ = _seed_carpetas_anidadas(db_session)
+
+    client = admin_session["client"]
+    response = client.get(f"{ADMIN_PREFIX}/acervo?bucket_id={bucket.id}")
+    assert response.status_code == 200, response.text
+    por_nombre = {r["name"]: r for r in response.json()}
+
+    assert por_nombre["envios/"]["size"] == 0
+    assert por_nombre["envios/"]["uploadedAt"] is None
+
+
+def test_resumen_acervo_agrega_todos_los_buckets(admin_session, db_session):
+    _, bucket_a = _seed_bucket(db_session, name="res-a")
+    _, bucket_b = _seed_bucket(db_session, name="res-b")
+    fake_a = FakeAcervoClient.for_bucket(bucket_a)
+    fake_a.objects["logo.png"] = _fake_object("logo.png", 10, "2026-06-10T12:00:00")
+    fake_a.objects["docs/informe.pdf"] = _fake_object("docs/informe.pdf", 20, "2026-06-11T12:00:00")
+    fake_a.objects["docs/sub/.keep"] = _fake_object("docs/sub/.keep", 0)
+    fake_a.objects[".thumbs/logo.png"] = _fake_object(".thumbs/logo.png", 99)
+    fake_b = FakeAcervoClient.for_bucket(bucket_b)
+    fake_b.objects["a.svg"] = _fake_object("a.svg", 5, "2026-06-12T12:00:00")
+
+    client = admin_session["client"]
+    response = client.get(f"{ADMIN_PREFIX}/acervo/resumen")
+    assert response.status_code == 200, response.text
+    body = response.json()
+    por_bucket = {b["bucket"]: b for b in body["buckets"]}
+
+    assert por_bucket["res-a"]["fileCount"] == 2
+    assert por_bucket["res-a"]["imageCount"] == 1
+    assert por_bucket["res-a"]["documentCount"] == 1
+    assert por_bucket["res-a"]["otherCount"] == 0
+    assert por_bucket["res-a"]["folderCount"] == 2
+    assert por_bucket["res-a"]["totalSize"] == 30
+    assert por_bucket["res-a"]["lastModified"] == "2026-06-11T12:00:00"
+
+    assert body["totals"]["bucketCount"] == 2
+    assert body["totals"]["fileCount"] == 3
+    assert body["totals"]["totalSize"] == 35
+    assert body["totals"]["lastModified"] == "2026-06-12T12:00:00"
+
+
+def test_resumen_acervo_filtra_por_bucket(admin_session, db_session):
+    _, bucket_a = _seed_bucket(db_session, name="solo-a")
+    _seed_bucket(db_session, name="solo-b")
+    fake_a = FakeAcervoClient.for_bucket(bucket_a)
+    fake_a.objects["a.png"] = _fake_object("a.png", 7)
+
+    client = admin_session["client"]
+    response = client.get(f"{ADMIN_PREFIX}/acervo/resumen?bucket_id={bucket_a.id}")
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert [b["bucket"] for b in body["buckets"]] == ["solo-a"]
+    assert body["totals"]["fileCount"] == 1
+    assert body["totals"]["totalSize"] == 7
 
 
 def test_eliminar_directorio_limpia_acervo_folders(admin_session, db_session):

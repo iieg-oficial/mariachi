@@ -177,7 +177,15 @@ class AcervoClient:
         self.delete_file(prefix)
         return deleted
 
-    def list_objects(self, prefix: str = "", recursive: bool = True) -> list[dict]:
+    def list_objects(
+        self,
+        prefix: str = "",
+        recursive: bool = True,
+        limit: int | None = None,
+    ) -> list[dict]:
+        """Lista objetos del bucket. `limit` corta la iteración al alcanzarlo,
+        para acotar el costo en prefijos con muchísimos objetos.
+        """
         results = []
         for obj in self.client.list_objects(self.bucket_name, prefix=prefix, recursive=recursive):
             name = obj.object_name
@@ -189,6 +197,8 @@ class AcervoClient:
                 "etag": obj.etag,
                 "is_dir": is_dir,
             })
+            if limit is not None and len(results) >= limit:
+                break
         return results
 
     def get_file_url(self, object_name: str) -> str:

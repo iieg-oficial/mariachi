@@ -9,6 +9,38 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.92.0] - 2026-07-27
+
+> Se salta `1.91.0`: ese número lo tomó el release de propuestas de tarjeta de MapaLab (commit `f950b01`), y el bump a `1.90.0` de la rama de SIEEJ lo pisó al integrarse. `pyproject.toml` venía quedado en `1.90.0` pese a existir ya un `1.91.0` publicado; este release lo realinea hacia arriba en vez de renumerar lo ya liberado. Por lo mismo `1.90.0` aparece dos veces abajo — ambas entradas son reales, de ramas distintas.
+
+### Corregido: las cabezas de Alembic quedaron bifurcadas y tumbaron el deploy
+
+`c4d5e6f7a8b0` (bucket protegido) y `d4e5f6a7b8ca` (mapalab infobox propuestas) se escribieron en ramas paralelas, ambas colgando de `c3d4e5f6a7b9`. Al integrarse quedaron dos heads y `scripts/init_db.py` —que hace `alembic upgrade head`, en singular— aborta con *"Multiple head revisions are present"*: `mariachi-api` sale con código 1, arrastra a `mariachi-nginx` por el `depends_on` y el `make deploy` muere en el paso 4 del orden maestro.
+
+- **`e4f5a6b7c8d9`**, merge vacío con `down_revision = ('c4d5e6f7a8b0', 'd4e5f6a7b8ca')`. Se prefirió al atajo de reapuntar el `down_revision` de una sobre la otra: eso solo es seguro si **ningún** entorno tiene una aplicada y la otra no — con producción parada en `d4e5f6a7b8ca`, Alembic daría por aplicada la de bucket protegido y jamás crearía `acervo.buckets.protegido`. El merge converge desde cualquier estado. Mismo patrón que `f9a0b1c2d3e4`, que ya usaba `down_revision` en tupla.
+
+### Agregado: el peso y la fecha de las carpetas en el explorador del Acervo
+
+Una carpeta se listaba con `size: 0` y `uploadedAt: null`, así que la rejilla y la tabla del selector de archivos no podían mostrar más que `—`. No era un olvido de la vista: con `recursive=False` S3 devuelve los directorios como *prefixes*, que no traen `size` ni `last_modified`. El botón de información sí los mostraba porque `GET /acervo/carpetas/{id}/info` lista el prefijo recursivamente y agrega — pero eso es una llamada por carpeta y a demanda.
+
+- **`folder_aggregates()`** resuelve el nivel completo con **un solo listado recursivo del prefijo actual**, agrupando por el primer segmento: suma `size` y se queda con el `last_modified` mayor de cada grupo. Verificado contra el bucket `sieej`: 3 carpetas en la raíz → 2 llamadas a `list_objects` (la del nivel + la del agregado), no 4. Descarta marcadores `.keep` y prefijos ocultos, así que los totales coinciden al byte con los de `/carpetas/{id}/info`.
+- **Tope de `FOLDER_AGGREGATE_MAX_OBJECTS` (10 000)**: `AcervoClient.list_objects()` acepta `limit` y corta la iteración, así que un prefijo enorme no penaliza la navegación — se pide `limit = tope + 1` y si se pasa, las carpetas vuelven a salir sin agregado en vez de colgar el listado.
+- El agregado solo se calcula con `recursive=False` y si el nivel tiene directorios; un listado recursivo (el de búsqueda) no paga la llamada extra.
+- Front: `BucketFileGrid` muestra `peso · fecha` bajo el nombre y `BucketFileList` deja de pintar `—` en la columna Tamaño para carpetas, más una columna Fecha (`responsive: ['md']`). Ambos pasan a usar `formatFileSize` del servicio en lugar del formateador local que solo sabía de KB/MB.
+
+> La vista **Media** (`AcervoPage`) recibe el mismo dato pero sigue pintando `—` y `Carpeta` en sus directorios: el cambio se acotó a los componentes del explorador. Queda como pendiente barato.
+
+### Cambiado: las estadísticas del Acervo dejan de encabezar la pantalla
+
+Cuatro `Statistic` a todo lo ancho abrían la vista de Media —archivos, imágenes, documentos, peso— empujando hacia abajo el explorador, que es a lo que se entra. Y eran del bucket activo, no del Acervo: nunca contestaban "cuánto pesa esto en total".
+
+- Un botón sin etiqueta junto a **Documentación** abre **`AcervoStatsModal`** con el panorama completo: totales de archivos, peso, carpetas y buckets, el desglose imágenes/documentos/otros, la última modificación y una tabla con las cifras de cada bucket.
+- Las cifras del bucket activo bajan a una línea de texto secundario bajo la barra de pestañas (`N archivos · N imágenes · N documentos · N carpetas · peso`), que cambia al cambiar de bucket.
+- **`GET /acervo/resumen`** (`bucket_id` opcional) agrega en el servidor por bucket accesible y devuelve totales. La vista lo usa también para la línea del bucket: antes se traía el listado completo **serializado** con `/acervo?recursive=true` solo para contar.
+- `buckets_accesibles()` sale a `acervo_file_service` y `GET /acervo-buckets` pasa a usarla, para no tener dos copias de la resolución de permisos por proyecto.
+
+---
+
 ## [1.90.0] - 2026-07-27
 
 ### Cambiado: los archivos de SIEEJ en Acervo se guardan con una ruta legible, y el bucket deja de ser manipulable a mano

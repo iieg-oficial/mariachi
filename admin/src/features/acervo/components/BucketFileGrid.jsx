@@ -1,5 +1,6 @@
 import { Empty, Spin, Typography } from 'antd';
 import { FolderOpenOutlined, FolderOutlined } from '@ant-design/icons';
+import { formatFileSize } from '@features/acervo/api/acervoService';
 
 const { Text } = Typography;
 const IMAGE_EXTENSIONS = /\.(jpe?g|png|gif|webp|svg|bmp|avif)$/i;
@@ -33,6 +34,10 @@ export default function BucketFileGrid({ records, loading, onPick, onEnterDir })
                 const isDir = record.isDir;
                 const isImage = !isDir && IMAGE_EXTENSIONS.test(basename);
                 const handleClick = isDir && onEnterDir ? () => onEnterDir(record) : () => onPick(record);
+                const meta = [
+                    record.size ? formatFileSize(record.size) : null,
+                    record.uploadedAt ? new Date(record.uploadedAt).toLocaleDateString('es-MX') : null,
+                ].filter(Boolean).join(' · ');
                 return (
                     <button
                         key={record.name || record.id}
@@ -85,6 +90,11 @@ export default function BucketFileGrid({ records, loading, onPick, onEnterDir })
                         <Text style={{ fontSize: 11, textAlign: 'center', wordBreak: 'break-all', color: isDir ? '#5C2472' : undefined }} ellipsis={{ tooltip: basename }}>
                             {isDir ? `📁 ${basename}` : basename}
                         </Text>
+                        {meta && (
+                            <Text type="secondary" style={{ fontSize: 10, textAlign: 'center' }}>
+                                {meta}
+                            </Text>
+                        )}
                     </button>
                 );
             })}

@@ -1,15 +1,10 @@
 import { Space, Table, Typography } from 'antd';
 import { FolderOpenOutlined, FolderOutlined } from '@ant-design/icons';
+import { formatFileSize } from '@features/acervo/api/acervoService';
 
 const { Text } = Typography;
 
 export default function BucketFileList({ records, loading, onPick, onEnterDir }) {
-    const formatSize = (size) => {
-        if (!size) return '—';
-        const kb = size / 1024;
-        return kb > 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${kb.toFixed(0)} KB`;
-    };
-
     const columns = [
         {
             title: '',
@@ -43,7 +38,18 @@ export default function BucketFileList({ records, loading, onPick, onEnterDir })
             width: 90,
             align: 'right',
             responsive: ['sm'],
-            render: (size, record) => record.isDir ? '—' : formatSize(size),
+            render: (size) => size ? formatFileSize(size) : '—',
+        },
+        {
+            title: 'Fecha',
+            dataIndex: 'uploadedAt',
+            key: 'uploadedAt',
+            width: 110,
+            align: 'right',
+            responsive: ['md'],
+            render: (uploadedAt) => uploadedAt
+                ? new Date(uploadedAt).toLocaleDateString('es-MX')
+                : '—',
         },
     ];
 

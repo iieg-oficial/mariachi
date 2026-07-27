@@ -3,17 +3,18 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import ADMIN_ROLE, get_current_user, require_role, verify_csrf
+from app.api.deps import get_current_user, require_role, verify_csrf
 from app.api.metrics import COUNTER_MEDIA_BUCKET_WRITES, incr
 from app.core.database import get_db
 from app.models.acervo_bucket import AcervoBucket
-from app.models.project import Project, UserProject
+from app.models.project import Project
 from app.models.user import Usuario
 from app.schemas.acervo_bucket import (
     AcervoBucketCreate,
     AcervoBucketResponse,
     AcervoBucketUpdate,
 )
+from app.services import acervo_file_service
 from app.services.actividad_service import registrar_actividad
 
 logger = logging.getLogger(__name__)
@@ -26,19 +27,7 @@ async def list_accessible_buckets(
     current_user: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    is_admin = current_user.role == ADMIN_ROLE
-    show_inactive = include_inactive and is_admin
-
-    query = db.query(AcervoBucket).join(Project, Project.id == AcervoBucket.project_id)
-    if not show_inactive:
-        query = query.filter(AcervoBucket.is_active.is_(True), Project.is_active.is_(True))
-    if not is_admin:
-        query = query.join(
-            UserProject,
-            (UserProject.project_id == Project.id)
-            & (UserProject.user_id == current_user.id),
-        )
-    return query.order_by(AcervoBucket.acervo_bucket).all()
+    return acervo_file_service.buckets_accesibles(db, current_user, include_inactive)
 
 
 @router.post("", response_model=AcervoBucketResponse, status_code=status.HTTP_201_CREATED)

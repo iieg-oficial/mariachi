@@ -349,6 +349,7 @@ Sin auth. `router = APIRouter(tags=["portal público"])` en `routes/public.py`.
 | GET | `/acervo/proxy/{bucket_id}/{object_path}` | Stream autenticado para buckets privados |
 | POST | `/acervo/mover-lote` | Mueve múltiples archivos a una carpeta en una sola llamada |
 | GET/POST/DELETE | `/acervo/carpetas/*` | CRUD de carpetas (scoped a `bucket_id`) |
+| GET | `/acervo/resumen` | Totales del Acervo (archivos, imagenes, documentos, carpetas, peso) por bucket accesible + agregado. `bucket_id` opcional lo limita a uno (`1.92.0+`) |
 | GET/POST/PATCH | `/acervo-buckets/*` | CRUD de buckets registrados (admin solo en writes) |
 | GET/POST/PATCH | `/borradores/*` | Revision queue |
 | GET | `/preview/*` | Preview de paginas sin publicar |
