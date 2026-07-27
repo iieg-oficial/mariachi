@@ -33,6 +33,22 @@ El backend no cambia: sigue sin ventana de gracia en `rotate()`, la coordinació
 
 ---
 
+## [1.90.0] - 2026-07-27
+
+### Agregado: base para las propuestas ciudadanas de tarjeta del catálogo de MapaLab
+
+Quien usa el catálogo de MapaLab podrá proponer qué campos aparecen en la tarjeta de información de una capa y en qué orden. La propuesta no se publica sola: llega a una bandeja de moderación y sólo al aprobarla cambia lo que ve el público. Esta versión trae las dos piezas de fondo.
+
+**El validador** (`app/schemas/mapalab_infobox.py`). El endpoint recibirá JSON de gente anónima, así que la configuración se valida con allowlist estricta y se **reconstruye campo por campo**: nunca se persiste el `dict` que llegó. Cubre esquemas de `href` (sólo `http`, `https`, `mailto`, `tel` y rutas absolutas de una sola barra — se rechazan `javascript:`, `data:` y protocol-relative), topes de tamaño (8 KB por configuración, 12 filas por bloque, 3 bloques de texto, 80 caracteres por etiqueta) y `extra='forbid'` en todos los modelos. `validate_fields_exist` compara cada `field` contra las columnas reales de la capa, lo que además evita aprobar tarjetas que apuntan a campos inexistentes.
+
+El editor ciudadano trabaja con un subconjunto seguro del formato: `headerField`, `list`, `cards`, `text` y `blockOrder`. Quedan fuera `iconText.action` (dispara acciones internas del visor), `headerTransform`, `labelGroups` y `cardsColumns`. El editor de capas del admin conserva el formato completo.
+
+**La tabla** `mapalab_infobox_propuestas` (migración `d4e5f6a7b8ca`): estado `pendiente`/`aprobada`/`rechazada` con constraint, revisor, motivo de rechazo, correo opcional para avisar el resultado e `ip_hash` para detectar abuso sin guardar la IP.
+
+### Agregado: tópico MapaLab en la página de documentación
+
+Nueva pestaña en Documentación con la guía del flujo de propuestas: los seis pasos de punta a punta, qué puede incluir una propuesta y qué no (con el motivo de cada exclusión), las seis capas de protección del JSON y una lista de qué revisar antes de aprobar.
+
 ## [1.89.1] - 2026-07-27
 
 ### Corregido: el collector de telemetría rechazaba los lotes con el evento nuevo del catálogo de MapaLab
