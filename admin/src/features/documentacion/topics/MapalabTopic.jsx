@@ -21,7 +21,7 @@ const FLUJO = [
     {
         paso: '4. Envío',
         donde: 'Catálogo · formulario',
-        que: 'Comentario y correo opcional. POST público con honeypot y rate limit.',
+        que: 'Sólo un comentario opcional: la propuesta es anónima, no se pide correo ni ningún dato personal. POST público con honeypot y rate limit.',
     },
     {
         paso: '5. Moderación',

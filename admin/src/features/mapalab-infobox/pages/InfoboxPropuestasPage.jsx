@@ -161,14 +161,9 @@ export default function InfoboxPropuestasPage() {
                                         </div>
                                     )}
 
-                                    <Space split="·" wrap>
-                                        <Text type="secondary" style={{ fontSize: 12 }}>
-                                            {p.email ? `Contacto: ${p.email}` : 'Sin correo de contacto'}
-                                        </Text>
-                                        {p.revisadoPor && (
-                                            <Text type="secondary" style={{ fontSize: 12 }}>Revisó: {p.revisadoPor}</Text>
-                                        )}
-                                    </Space>
+                                    {p.revisadoPor && (
+                                        <Text type="secondary" style={{ fontSize: 12 }}>Revisó: {p.revisadoPor}</Text>
+                                    )}
 
                                     {p.comentarioRevision && (
                                         <Text type="danger" style={{ fontSize: 12 }}>
@@ -192,7 +187,7 @@ export default function InfoboxPropuestasPage() {
                 cancelText="Cancelar"
             >
                 <Paragraph type="secondary">
-                    El motivo queda guardado con la propuesta. Si dejó correo, sirve para explicarle la decisión.
+                    El motivo queda guardado con la propuesta, como registro de por qué no se aplicó.
                 </Paragraph>
                 <Input.TextArea
                     value={motivo}
