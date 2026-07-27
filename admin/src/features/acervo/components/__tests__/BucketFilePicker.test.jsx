@@ -5,6 +5,7 @@ import BucketFilePicker from '@features/acervo/components/BucketFilePicker';
 vi.mock('@features/acervo/api/acervoService', () => ({
     getAcervoFiles: vi.fn(),
     getBuckets: vi.fn(() => Promise.resolve([])),
+    formatFileSize: (bytes) => `${bytes} B`,
 }));
 
 import { getAcervoFiles } from '@features/acervo/api/acervoService';
@@ -29,6 +30,15 @@ const SAMPLE_FILES = [
         url: 'https://acervo.example.com/portal-bucket/banners/header.webp',
     },
 ];
+
+const FOLDER_RECORD = {
+    name: 'envios/',
+    originalName: 'envios',
+    isDir: true,
+    size: 350,
+    uploadedAt: '2026-06-12T12:00:00+00:00',
+};
+const FOLDER_DATE = new Date(FOLDER_RECORD.uploadedAt).toLocaleDateString('es-MX');
 
 describe('BucketFilePicker', () => {
     beforeEach(() => {
@@ -90,6 +100,35 @@ describe('BucketFilePicker', () => {
             bucketId: 1,
         });
         expect(onClose).toHaveBeenCalled();
+    });
+
+    it('las carpetas muestran peso y fecha agregados en la vista de lista', async () => {
+        getAcervoFiles.mockResolvedValue([FOLDER_RECORD]);
+        render(
+            <BucketFilePicker
+                open
+                mode="list"
+                onClose={vi.fn()}
+                onSelect={vi.fn()}
+                bucketId={1}
+            />,
+        );
+        expect(await screen.findByText('350 B')).toBeInTheDocument();
+        expect(screen.getByText(FOLDER_DATE)).toBeInTheDocument();
+    });
+
+    it('las carpetas muestran peso y fecha agregados en las cards', async () => {
+        getAcervoFiles.mockResolvedValue([FOLDER_RECORD]);
+        render(
+            <BucketFilePicker
+                open
+                mode="grid"
+                onClose={vi.fn()}
+                onSelect={vi.fn()}
+                bucketId={1}
+            />,
+        );
+        expect(await screen.findByText(`350 B · ${FOLDER_DATE}`)).toBeInTheDocument();
     });
 
     it('la búsqueda refetcha con search y recursive=true', async () => {

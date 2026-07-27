@@ -6,12 +6,14 @@ import {
     EditOutlined,
     ClusterOutlined,
     GithubOutlined,
+    HomeOutlined,
     ProjectOutlined,
     LinkOutlined,
     MessageOutlined,
 } from '@ant-design/icons';
 import { useAuth } from '@shared/contexts/useAuth';
 import SectionHeader from '@shared/components/SectionHeader';
+import PageHeading from '@shared/components/PageHeading';
 import {
     getMisBorradores,
     getBorradoresPendientes,
@@ -23,7 +25,7 @@ const COLIBRI_WIDGET_URL = '/colibri/widget/colibri-widget.v1.js';
 import { MapalabInicioHighlights } from '@features/mapalab-stats';
 
 const { Content } = Layout;
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 const ESTADO_TAG = {
     en_progreso: { color: 'blue', label: 'En progreso' },
@@ -150,20 +152,34 @@ const PlataformaCard = ({ plataforma, colibriConfig }) => {
     );
 
     return (
-        <Card size="small" styles={{ body: { padding: 16 } }}>
-            <Space orientation="vertical" size={8} style={{ width: '100%' }}>
-                <Space style={{ justifyContent: 'space-between', width: '100%' }}>
-                    <Text strong style={{ fontSize: 16 }}>{label}</Text>
-                    {versionTag}
-                </Space>
-                {acciones.length > 0 && (
-                    <Space style={{ justifyContent: 'flex-end', width: '100%' }} size={0}>{acciones}</Space>
+        <Card
+            size="small"
+            style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+            styles={{
+                body: {
+                    padding: 16,
+                    flex: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 8,
+                },
+            }}
+        >
+            <Space style={{ justifyContent: 'space-between', width: '100%' }}>
+                <Text strong style={{ fontSize: 16 }}>{label}</Text>
+                {versionTag}
+            </Space>
+            <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {contadorContenedores && (
+                    <Space style={{ justifyContent: 'flex-end', width: '100%' }} size={0}>
+                        {contadorContenedores}
+                    </Space>
                 )}
                 <Space style={{ justifyContent: 'space-between', width: '100%' }}>
                     {statusBadge}
-                    {contadorContenedores}
+                    {acciones.length > 0 && <Space size={0}>{acciones}</Space>}
                 </Space>
-            </Space>
+            </div>
         </Card>
     );
 };
@@ -268,14 +284,14 @@ export default function InicioPage() {
     ];
 
     return (
-        <Content style={{ padding: 24, maxWidth: 1200, margin: '0 auto', width: '100%' }}>
+        <Content style={{ width: '100%' }}>
             <Space orientation="vertical" size="large" style={{ width: '100%' }}>
-                <div>
-                    <Title level={3} style={{ marginBottom: 4 }}>
-                        Hola, {user?.name || 'editor'}
-                    </Title>
-                    <Text type="secondary">Bienvenida a Mariachi · {user?.role}</Text>
-                </div>
+                <PageHeading
+                    icon={<HomeOutlined />}
+                    title={`Hola, ${user?.name || 'editor'}`}
+                    description={`Bienvenida a Mariachi · ${user?.role}`}
+                    marginBottom={0}
+                />
 
                 {rechazados.length > 0 && (
                     <Alert closable

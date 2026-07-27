@@ -9,6 +9,220 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.93.0] - 2026-07-27
+
+### Agregado: la protección de un bucket se administra y se reconoce desde el CMS
+
+`acervo.buckets.protegido` llegó en 1.90.0 sin forma de gestionarlo: quedaba fijo desde la migración.
+
+- **`/acervo/buckets`** gana la columna **Protegido** (candado y tooltip en el encabezado) con switch por bucket, y el campo en el alta/edición. Activarla es directo; **desactivarla pide confirmación**, porque vuelve a habilitar borrar, mover, renombrar y subir sobre contenido cuyas rutas están referenciadas desde la base de datos. Solo admin, como el resto de la gestión de buckets.
+- En el **explorador**, el bucket protegido se reconoce por un **candado en su pestaña** —visible también en las pestañas inactivas, para saber cuáles son de solo lectura sin entrar— y por una nota breve bajo las estadísticas. Sustituye al `Alert` que ocupaba media pantalla; el texto es el mismo en el tooltip y en la nota, desde una sola constante.
+- El modal de alta/edición de buckets sale a `components/BucketFormModal.jsx` (la página excedía el límite de 300 líneas del proyecto).
+
+---
+
+## [1.92.0] - 2026-07-27
+
+> Se salta `1.91.0`: ese número lo tomó el release de propuestas de tarjeta de MapaLab (commit `f950b01`), y el bump a `1.90.0` de la rama de SIEEJ lo pisó al integrarse, dejando `pyproject.toml` en `1.90.0` con un `1.91.0` ya publicado. Este release realinea hacia arriba; la entrada que colisionaba quedó renumerada como `1.91.1`.
+
+### Corregido: las cabezas de Alembic quedaron bifurcadas y tumbaron el deploy
+
+`c4d5e6f7a8b0` (bucket protegido) y `d4e5f6a7b8ca` (mapalab infobox propuestas) se escribieron en ramas paralelas, ambas colgando de `c3d4e5f6a7b9`. Al integrarse quedaron dos heads y `scripts/init_db.py` —que hace `alembic upgrade head`, en singular— aborta con *"Multiple head revisions are present"*: `mariachi-api` sale con código 1, arrastra a `mariachi-nginx` por el `depends_on` y el `make deploy` muere en el paso 4 del orden maestro.
+
+- **`e4f5a6b7c8d9`**, merge vacío con `down_revision = ('c4d5e6f7a8b0', 'd4e5f6a7b8ca')`. Se prefirió al atajo de reapuntar el `down_revision` de una sobre la otra: eso solo es seguro si **ningún** entorno tiene una aplicada y la otra no — con producción parada en `d4e5f6a7b8ca`, Alembic daría por aplicada la de bucket protegido y jamás crearía `acervo.buckets.protegido`. El merge converge desde cualquier estado. Mismo patrón que `f9a0b1c2d3e4`, que ya usaba `down_revision` en tupla.
+
+### Agregado: el peso y la fecha de las carpetas en el explorador del Acervo
+
+Una carpeta se listaba con `size: 0` y `uploadedAt: null`, así que la rejilla y la tabla del selector de archivos no podían mostrar más que `—`. No era un olvido de la vista: con `recursive=False` S3 devuelve los directorios como *prefixes*, que no traen `size` ni `last_modified`. El botón de información sí los mostraba porque `GET /acervo/carpetas/{id}/info` lista el prefijo recursivamente y agrega — pero eso es una llamada por carpeta y a demanda.
+
+- **`folder_aggregates()`** resuelve el nivel completo con **un solo listado recursivo del prefijo actual**, agrupando por el primer segmento: suma `size` y se queda con el `last_modified` mayor de cada grupo. Verificado contra el bucket `sieej`: 3 carpetas en la raíz → 2 llamadas a `list_objects` (la del nivel + la del agregado), no 4. Descarta marcadores `.keep` y prefijos ocultos, así que los totales coinciden al byte con los de `/carpetas/{id}/info`.
+- **Tope de `FOLDER_AGGREGATE_MAX_OBJECTS` (10 000)**: `AcervoClient.list_objects()` acepta `limit` y corta la iteración, así que un prefijo enorme no penaliza la navegación — se pide `limit = tope + 1` y si se pasa, las carpetas vuelven a salir sin agregado en vez de colgar el listado.
+- El agregado solo se calcula con `recursive=False` y si el nivel tiene directorios; un listado recursivo (el de búsqueda) no paga la llamada extra.
+- Front: `BucketFileGrid` muestra `peso · fecha` bajo el nombre y `BucketFileList` deja de pintar `—` en la columna Tamaño para carpetas, más una columna Fecha (`responsive: ['md']`). Ambos pasan a usar `formatFileSize` del servicio en lugar del formateador local que solo sabía de KB/MB.
+
+> La vista **Media** (`AcervoPage`) recibe el mismo dato pero sigue pintando `—` y `Carpeta` en sus directorios: el cambio se acotó a los componentes del explorador. Queda como pendiente barato.
+
+### Cambiado: las estadísticas del Acervo dejan de encabezar la pantalla
+
+Cuatro `Statistic` a todo lo ancho abrían la vista de Media —archivos, imágenes, documentos, peso— empujando hacia abajo el explorador, que es a lo que se entra. Y eran del bucket activo, no del Acervo: nunca contestaban "cuánto pesa esto en total".
+
+- Un botón sin etiqueta junto a **Documentación** abre **`AcervoStatsModal`** con el panorama completo: totales de archivos, peso, carpetas y buckets, el desglose imágenes/documentos/otros, la última modificación y una tabla con las cifras de cada bucket.
+- Las cifras del bucket activo bajan a una línea de texto secundario bajo la barra de pestañas (`N archivos · N imágenes · N documentos · N carpetas · peso`), que cambia al cambiar de bucket.
+- **`GET /acervo/resumen`** (`bucket_id` opcional) agrega en el servidor por bucket accesible y devuelve totales. La vista lo usa también para la línea del bucket: antes se traía el listado completo **serializado** con `/acervo?recursive=true` solo para contar.
+- `buckets_accesibles()` sale a `acervo_file_service` y `GET /acervo-buckets` pasa a usarla, para no tener dos copias de la resolución de permisos por proyecto.
+
+---
+
+## [1.91.1] - 2026-07-27
+
+> **Nota de numeración.** Esta entrada se publicó como `1.90.0`, número que ya ocupaba el release anterior de MapaLab: dos líneas de trabajo bumpearon en paralelo sobre `develop` el mismo día. Se renumera a `1.91.1` por su lugar real en la cronología (después de `1.91.0`, antes de `1.92.0`); el mensaje del commit conserva el número viejo.
+
+
+### Cambiado: los archivos de SIEEJ en Acervo se guardan con una ruta legible, y el bucket deja de ser manipulable a mano
+
+Las claves eran `{slug}/envio{id}/{uuid}.{ext}`: cinco UUIDs en una carpeta donde saber qué archivo es cada uno, a qué campo pertenece y cuál versión es la vigente exigía cruzar con `sieej.envio_archivo`. Si se perdía esa tabla, los objetos eran basura anónima. Y con los reemplazos post-envío el problema crecía.
+
+- **Convención nueva** (`services/sieej/acervo_keys.py`): `{slug}/{usuario}-{envio_id}[/{periodo}]/{step}.{campo}/{ts}-{nombre}-{sufijo}.{ext}`. Un directorio por campo con las versiones ordenadas cronológicamente, nombre original sanitizado en la clave y sufijo de 6 hex contra colisiones. El índice de repeater se aplana (`bases_datos[0].diccionario` → `bases_datos-0.diccionario`) y el periodo solo aparece si el formulario es periódico.
+- **Contrato único del valor en `datos`**: `{field_path, url_publica, object_key, filename_original, mime, size_bytes}`. Antes convivían dos formas —la del backend (`filename`) y la que el `Dragger` guardaba al pisar el valor con la respuesta del upload— y los lectores caían a la URL cruda, así que **el export y el PDF mostraban un enlace largo en vez del nombre del archivo**. `nombre_archivo()` lee ambas para lo ya guardado.
+- **El cliente ya no escribe valores de archivo**: `_preservar_archivos_del_servidor` conserva lo que puso el upload e ignora lo que mande el navegador para campos `file` (un valor vacío sí se respeta: así se quita un archivo). Cierra el origen de las dos formas y evita apuntar un campo a una URL arbitraria.
+- **Respaldo `envio.json`** junto a los archivos de cada envío (datos, definición con la que se llenó y catálogo de archivos), actualizado al enviar, al actualizar campos y al reemplazar un archivo. Es best-effort de punta a punta: un fallo de Acervo se registra y se sigue, nunca tumba el envío del respondent —hay un test que lo fija—.
+- **`scripts/sieej_migrar_object_keys.py`** migra lo existente (copia, reescribe BD y `datos`, borra el objeto viejo) y genera los respaldos. No es migración de alembic a propósito: habla con Acervo por red y un fallo del bucket durante el bootstrap tumbaría el arranque del api.
+
+### Agregado: buckets protegidos en Acervo
+
+`acervo.buckets.protegido` (migración `c4d5e6f7a8b0`, marca `sieej`). El contenido de esos buckets lo gestiona una aplicación y sus claves están referenciadas desde la BD, así que borrarlas o moverlas desde el explorador deja registros apuntando a objetos inexistentes. `resolve_bucket_escribible` responde **409 incluso al admin** en los 11 endpoints de escritura de `/acervo` (subir, chunked, mover, mover-lote, editar, crear/borrar carpeta, borrar archivo), y el explorador oculta esas acciones, rechaza el drag & drop y muestra un aviso de solo lectura.
+
+Como segunda capa, `scripts/acervo_proteger_bucket.py` habilita **versionado** con retención (5 versiones no vigentes, 90 días por defecto): un borrado deja un *delete marker* restaurable y una sobreescritura conserva la versión previa. El costo en espacio es marginal porque SIEEJ escribe una clave nueva por subida; las versiones solo aparecen al sobreescribir la misma clave o al borrar.
+
+---
+
+## [1.91.0] - 2026-07-27
+
+### Agregado: recepción y moderación de las propuestas de tarjeta del catálogo de MapaLab
+
+Cierra el circuito que abrió 1.90.0. La 1.90.0 dejó el validador y la tabla; ésta trae los endpoints y la pantalla.
+
+**Recepción** — `POST /api/public/mapalab/catalogo/infobox-propuestas`. Honeypot `website` (responde 202 como si nada, y registra el intento), `rate_limit_ip` de 3 por hora, tope de 10 propuestas pendientes por capa e `ip_hash` con el mismo salt de la telemetría. Antes de guardar, la capa se verifica contra `mapalab.catalogo_capas` y cada `field` contra las columnas reales resueltas con `DescribeFeatureType`.
+
+**Moderación** — `GET/POST /api/mariachi/mapalab/infobox-propuestas` (rol `tetlamamakani`, con CSRF en las escrituras) y la pantalla «Propuestas de tarjeta» en el grupo MapaLab. Cada propuesta muestra un **diff estructurado** contra la configuración vigente —qué agrega, qué quita y qué renombra— en lugar de un volcado de JSON. Al aprobar se revalida la configuración antes de aplicarla, se escribe en `mapalab.catalogo_capas.infobox_config` y se invalida el cache del catálogo reusando `notify_catalogo_changed`. Al rechazar se exige un motivo, que queda guardado.
+
+La revalidación en la aprobación es deliberada: si el validador se endurece después de que una propuesta entró a la bandeja, no se puede aprobar algo que hoy ya no pasaría.
+
+### Agregado: los eventos del editor de tarjetas en el collector
+
+`catalogo_infobox_editor_open` y `catalogo_infobox_propuesta` entran a `ALLOWED_EVENT_NAMES` junto con la versión de MapaLab que los emite. Un nombre desconocido tumba el lote completo con 422, así que van en el mismo release.
+
+---
+
+## [1.90.0] - 2026-07-27
+
+### Agregado: base para las propuestas ciudadanas de tarjeta del catálogo de MapaLab
+
+Quien usa el catálogo de MapaLab podrá proponer qué campos aparecen en la tarjeta de información de una capa y en qué orden. La propuesta no se publica sola: llega a una bandeja de moderación y sólo al aprobarla cambia lo que ve el público. Esta versión trae las dos piezas de fondo.
+
+**El validador** (`app/schemas/mapalab_infobox.py`). El endpoint recibirá JSON de gente anónima, así que la configuración se valida con allowlist estricta y se **reconstruye campo por campo**: nunca se persiste el `dict` que llegó. Cubre esquemas de `href` (sólo `http`, `https`, `mailto`, `tel` y rutas absolutas de una sola barra — se rechazan `javascript:`, `data:` y protocol-relative), topes de tamaño (8 KB por configuración, 12 filas por bloque, 3 bloques de texto, 80 caracteres por etiqueta) y `extra='forbid'` en todos los modelos. `validate_fields_exist` compara cada `field` contra las columnas reales de la capa, lo que además evita aprobar tarjetas que apuntan a campos inexistentes.
+
+El editor ciudadano trabaja con un subconjunto seguro del formato: `headerField`, `list`, `cards`, `text` y `blockOrder`. Quedan fuera `iconText.action` (dispara acciones internas del visor), `headerTransform`, `labelGroups` y `cardsColumns`. El editor de capas del admin conserva el formato completo.
+
+**La tabla** `mapalab_infobox_propuestas` (migración `d4e5f6a7b8ca`): estado `pendiente`/`aprobada`/`rechazada` con constraint, revisor, motivo de rechazo, e `ip_hash` para detectar abuso sin guardar la IP. La columna `email` queda reservada y sin uso: el flujo es anónimo y no se le pide correo a quien propone.
+
+### Agregado: tópico MapaLab en la página de documentación
+
+Nueva pestaña en Documentación con la guía del flujo de propuestas: los seis pasos de punta a punta, qué puede incluir una propuesta y qué no (con el motivo de cada exclusión), las seis capas de protección del JSON y una lista de qué revisar antes de aprobar.
+
+---
+
+## [1.89.5] - 2026-07-27
+
+### Documentación: renovar la sesión es responsabilidad de cada frontend, y el encabezado de página es uno solo
+
+`COOKIES_CSRF.md` documentaba el refresh como si el panel fuera su único consumidor. SIEEJ usa las mismas cookies contra el mismo backend y no llamaba a `/refrescar`, así que moría a los 30 min con el refresh de 8 h intacto — el documento no daba forma de anticiparlo.
+
+- Nueva sección **«Renovación desde otros frontends del ecosistema»**: qué debe implementar todo consumidor de `/api/mariachi` (reintento único tras `401`, lo mismo en el arranque, y que ninguna petición se salga del cliente con interceptor), más la coordinación entre pestañas con `navigator.locks` y por qué hace falta —la detección de reúso revoca la familia entera— con la ventana de gracia en `rotate()` anotada como la alternativa no aplicada.
+- FAQ: cómo distinguir en el log del gateway si el front renovó o deslogueó (`refrescar 200` vs `iniciar-sesion` tras el `401`), y qué mirar en Redis si el `401` sale del refresh mismo.
+- `CONVENTIONS_CMS.md`: `PageHeading` como encabezado obligatorio de pantalla —icono del menú sin estilos propios, descripción en su fila, `extra` a la derecha, `level` según jerarquía— y la regla de que **el padding de página lo pone el layout**, que es lo que se venía duplicando.
+
+---
+
+## [1.89.4] - 2026-07-27
+
+### Cambiado: un solo encabezado de página para todo el panel, empezando por Telemetría
+
+Telemetría tenía el título sin icono y con `padding: '20px 24px 0'` propio sobre el del layout, y sus tres pestañas presentaban el mismo dato de tres formas distintas: MapaLab con icono morado y título responsive, Colibrí con «Colibri» sin tilde, y SIEEJ con icono **azul de Ant Design** (`#1677ff`), nivel de título fijo y otro `padding: 24` encima. Cada pestaña además fijaba su propio ancho máximo (1280 / 1200 / ninguno).
+
+`PageHeading` (`shared/components/PageHeading.jsx`) concentra el patrón que ya seguían Documentación y Observabilidad: icono a 24 px en `BRAND.purple`, título con `level` a discreción de la página, descripción debajo en su propia fila y un `extra` opcional alineado a la derecha (el selector de periodo de MapaLab, el `Segmented` de Colibrí, el botón de alta en Usuarios).
+
+- **Telemetría** encabeza con `BarChartOutlined` —el icono de su entrada en el menú— en `level` 2, y las tres pestañas quedan en `level` 3 (4 en móvil), subordinadas.
+- Ninguna de las pestañas vuelve a aplicar padding propio: el `Content` del layout ya lo pone y dentro de un `Tabs` se sumaba dos veces.
+- `features/telemetria/components/SectionHeading.jsx` se retira; era la misma idea sin el `extra` y sólo la usaba SIEEJ. No confundir con `shared/components/SectionHeader`, que sigue siendo el encabezado de sección con enlace «Ver detalles» dentro de una tarjeta.
+- Inicio y Usuarios pasan a usar `PageHeading` en lugar del markup suelto de 1.89.2.
+
+---
+
+## [1.89.3] - 2026-07-27
+
+### Corregido: dos pestañas del ecosistema podían tumbarse la sesión entre ellas al renovarla
+
+El refresh de `POST /autenticacion/refrescar` es rotativo con detección de reúso: el token viejo queda marcado como usado y, si vuelve a llegar, se revoca **toda la familia**. Mariachi y SIEEJ se sirven desde el mismo origen y comparten la cookie, así que dos pestañas cuyo `access_token` expira a la vez mandan el mismo refresh token: una rota bien y la otra dispara la revocación, dejando a las dos en la pantalla de contraseña.
+
+`runExclusiveRefresh` (`shared/utils/sessionRefresh.js`) serializa la renovación con `navigator.locks` —el lock es por origen, así que alcanza a las pestañas de las dos apps— y deja una marca en `localStorage`: quien entra al lock y ve una renovación de hace menos de 10 s reutiliza la cookie nueva en lugar de rotar otra vez. Sin `navigator.locks` el comportamiento es el de antes.
+
+El backend no cambia: sigue sin ventana de gracia en `rotate()`, la coordinación es del cliente.
+
+---
+
+## [1.89.2] - 2026-07-27
+
+### Cambiado: encabezados de página homogéneos y sin padding duplicado en Inicio
+
+`InicioPage` montaba su propio `Content` con `padding: 24` sobre el `Content` del layout, que ya aplica otros 24 (6 en móvil): el contenido arrancaba con **48 px** de aire arriba y a los lados. Se retira el padding de la página; el `maxWidth: 1200` centrado se queda.
+
+- **Icono de Inicio**: era `DashboardOutlined`, el mismo de Observabilidad. Pasa a `HomeOutlined` en el menú lateral y acompaña al título de la página, como en Documentación y Observabilidad.
+- **Usuarios**: el encabezado gana el icono `TeamOutlined` junto al título y la descripción que el resto de las pantallas ya tenía. La descripción va en su propia fila a ancho completo, así que el botón «Nuevo Usuario» sigue alineado con el título.
+- **Tarjetas de plataformas** (las que alimenta el monitor Huachicol): el contador `x/y cont.` sube a la fila que ocupaban las acciones y los iconos de acción bajan junto al badge de estado.
+
+---
+
+## [1.89.1] - 2026-07-27
+
+### Corregido: el collector de telemetría rechazaba los lotes con el evento nuevo del catálogo de MapaLab
+
+`ALLOWED_EVENT_NAMES` (`app/schemas/mapalab_event.py`) valida cada `event_name` contra una lista blanca, y `catalogo_infobox_action` —que MapaLab 1.94.0 emite al descargar tarjetas o centrar la selección desde la tarjeta de información— no estaba registrado. Como la validación es de Pydantic sobre la lista completa, **el lote entero se rechazaba con 422**: se perdían también los eventos válidos que viajaban en el mismo batch, no sólo el desconocido.
+
+Al agregar un evento en MapaLab hay que registrarlo aquí en el mismo release, o la telemetría de esa sesión se cae por completo mientras tanto.
+
+## [1.89.0] - 2026-07-27
+
+### Corregido: marcar un campo como editable despues del envio ya sirve para los envios existentes
+
+La lista de campos editables salia del `definicion_snapshot` del envio, y un envio ya `enviado` no recibe propagacion de cambios menores: su snapshot nunca ganaba la marca. Resultado practico — marcar «¿Editable después de enviar?» **no tenia efecto sobre ningun envio ya hecho**, que son justo los que se quieren corregir. Habia que reabrir el envio, que es lo que la actualizacion ligera venia a evitar.
+
+`editable_field_defs(snapshot, vigente)` toma del snapshot el tipo, las opciones y el bucket (contra el se valida lo capturado) pero la **marca** de editable la lee de la definicion vigente: es politica del admin, no contrato de datos. Activarla alcanza a los envios existentes y retirarla los deja de cubrir de inmediato. Un campo que no exista en el snapshot no es editable aunque la vigente lo marque.
+
+`GET /formularios/mis-envios/{id}` sirve el snapshot con esas marcas ya sincronizadas (`snapshot_con_editables_vigentes`), asi que el frontend ofrece exactamente lo que el backend autoriza sin duplicar la regla.
+
+---
+
+## [1.88.0] - 2026-07-27
+
+### Corregido: cualquier campo marcado como editable tras el envio lo es de verdad (archivos y listas repetibles incluidos)
+
+El CMS dejaba marcar «¿Editable después de enviar?» en cualquier campo, pero `editable_field_paths` solo reconocia campos de valor en pasos `form`: los `file` y los de repeaters quedaban fuera en silencio. El caso real que lo destapo: un formulario con tres campos de archivo marcados (`base_de_datos`, `diccionario_de_datos`, `catalogo`) donde nunca aparecia la opcion de actualizar. Peor, para archivos **no habia ninguna via**: el endpoint de upload responde 409 en un envio ya `enviado`, asi que el toggle prometia algo que ningun endpoint cumplia.
+
+- **Repeaters**: `editable_field_defs` guarda el path base y `resolver_editable` valida la forma del path concreto — un campo de repeater exige indice (`bases_datos[0].diccionario`) y uno de un paso `form` no lo admite. El item debe existir: se corrigen respuestas, no se dan de alta items. `_get_valor_en_datos`/`_set_valor_en_datos` ya navegan indices.
+- **Archivos**: nuevo `POST /formularios/mis-envios/{envio_id}/actualizar-archivo` (multipart `field_path` + `file`). Sube a Acervo con las mismas validaciones del alta (`accept`, `maxSizeMB`, bucket), reescribe `datos` y deja **la misma huella de auditoria**: fila en `envio_valor_historial` con el nombre del archivo anterior → el nuevo, y evento `actualizado`. El archivo previo no se borra; su fila en `envio_archivo` conserva `object_key`/`url_publica`.
+- Mandar un campo `file` al PUT de `actualizar-campos` responde 422 indicando el endpoint correcto: el valor de un archivo lo escribe la subida, no el cliente.
+- `tiene_campos_editables` del listado hereda el criterio nuevo, asi que el boton aparece tambien en formularios cuyos unicos campos marcados son archivos o de repeater.
+
+---
+
+## [1.87.0] - 2026-07-27
+
+### Agregado: el listado del respondent dice si un envio tiene campos actualizables
+
+`GET /formularios` gana `tiene_campos_editables` en cada item: es `true` solo cuando el envio ya esta **enviado** y su `definicion_snapshot` tiene campos `editableAfterSubmit` (se calcula con `EnviosService.editable_field_paths`, la misma fuente que autoriza el `PUT .../actualizar-campos`). Sin este flag el frontend no podia saberlo desde la lista: el listado no manda la definicion, asi que el acceso directo a la pantalla de actualizacion solo existia en el detalle del envio.
+
+---
+
+## [1.86.0] - 2026-07-27
+
+### Cambiado: menu «⋯ Mas opciones» en las tarjetas de campo angostas del editor SIEEJ
+
+En los anchos **Chico** y **Mediano** (`colSpan` 3 y 2) la columna del asa apilaba cuatro botones (copiar, duplicar, editar, eliminar) en una tarjeta que apenas da para el label y los tags. Ahora Copiar, Duplicar y Eliminar se colapsan en un menu `⋯` y solo queda visible Editar (y Guardar mientras se edita). En ancho **Grande** y en mobile no cambia nada. Dentro del menu, Eliminar confirma con `Modal.confirm` en vez del `Popconfirm` — un popover anidado en un dropdown se cierra junto con el menu.
+
+### Agregado: capa de compatibilidad para definiciones SIEEJ legadas — el deploy deja de romper formularios existentes
+
+Cada endurecimiento del contrato de la definicion (absorber `email`/`tel` en `text`, exigir `tab` en repeaters con pestañas, retirar los `info` espaciadores) dejaba fuera de contrato a los formularios que ya estaban en produccion. El sintoma tras un deploy: el formulario no renderea el campo, el envio en curso muere con `tipo desconocido` (422) y el admin no puede ni abrirlo y volverlo a guardar. Cada caso se venia parchando con una migracion de datos hecha a mano.
+
+- **`services/sieej/compat.py::normalizar_definicion`** traduce cualquier definicion historica al contrato vigente. Idempotente y **solo relaja**: `tel`/`email` → `text` + patron (respetando el propio si ya lo traia), tipo desconocido → `text`, `select` sin `options` ni `catalog` → `text`, campo de repeater sin `tab` valido → primera pestaña, `info` sin label → se elimina, `file` sin `bucket` → `sieej`, `maxSizeMB` sobre el cap → 100, `colSpan` fuera de rango → acotado, `pattern` que no compila y `showWhen` huerfano o cruzado entre steps → se descartan.
+- **Se aplica en lectura y en escritura**, no solo en la migracion: los response models (`FormularioResponse`, `FormularioDetalle`, `EnvioDetalleResponse`, `MisEnviosDetalle`) y `GET /formularios/:slug/schema` normalizan al serializar; `crear`/`actualizar` normalizan antes de validar y `validar_datos` normaliza el snapshot del envio. Un deploy ya no depende de que la migracion de datos haya corrido.
+- **Sin bumps espurios de version**: el clasificador de cambios compara la definicion normalizada contra la normalizada, asi que la diferencia por normalizar no cuenta como cambio y no sube `formulario.version` ni reabre envios ya enviados.
+- **Migracion `c3d4e5f6a7b9`** materializa la normalizacion en `sieej.formulario`, `envio_formulario.definicion_snapshot` y `formulario_version`. Sustituye el patron de una migracion de datos por endurecimiento: las reglas viven en `compat.py`.
+- **`scripts/sieej_check_definiciones.py`** (`make sieej-check`, `make sieej-check-fix`) recorre las tres tablas y sale con codigo 1 si alguna definicion no valida; con `--fix` repara — util para una BD restaurada de un backup viejo.
+- **Red en CI**: `tests/fixtures/sieej/legacy/` guarda definiciones reales de produccion y `test_sieej_compat.py` verifica que cada una pasa el contrato vigente ya normalizada. Un endurecimiento futuro que rompa formularios existentes falla en CI, no en produccion.
+
+---
+
 ## [1.85.0] - 2026-07-24
 
 ### Agregado: edición concurrente de formularios SIEEJ — 409 al pisar + presencia con avatares

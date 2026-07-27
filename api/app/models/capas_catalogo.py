@@ -8,7 +8,7 @@ from sqlalchemy import (
     Text,
     text,
 )
-from sqlalchemy.dialects.postgresql import ARRAY
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import relationship
 
 from app.core.database import DataEngineBase
@@ -47,6 +47,7 @@ class CapaCatalogo(DataEngineBase):
     workspace_alias = Column(String(100), nullable=False)
     geoserver_layer = Column(String(255), nullable=False)
     search_tags = Column(ARRAY(Text), nullable=True)
+    infobox_config = Column(JSONB, nullable=True)
     enabled = Column(Boolean, server_default=text("TRUE"), nullable=False)
     orden = Column(Integer, server_default=text("0"), nullable=False)
     institucion_id = Column(

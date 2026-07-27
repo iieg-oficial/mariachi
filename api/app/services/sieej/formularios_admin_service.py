@@ -32,6 +32,7 @@ from app.models.sieej import (
 from app.models.user import Usuario
 from app.services.actividad_service import registrar_actividad
 from app.services.sieej.cambio_classifier import clasificar_cambio
+from app.services.sieej.compat import normalizar_definicion
 from app.services.sieej.definicion_validator import (
     DefinicionInvalidaError,
     validar_definicion,
@@ -141,6 +142,7 @@ class FormulariosAdminService:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detalle)
 
     def crear(self, data: dict[str, Any], creador: Usuario) -> Formulario:
+        data["definicion"] = normalizar_definicion(data["definicion"])
         try:
             validar_definicion(data["definicion"])
         except DefinicionInvalidaError as exc:
@@ -215,7 +217,10 @@ class FormulariosAdminService:
         version_previa = f.version or 1
 
         nueva_definicion = data.get("definicion")
+        definicion_previa = f.definicion
         if nueva_definicion is not None:
+            nueva_definicion = normalizar_definicion(nueva_definicion)
+            data["definicion"] = nueva_definicion
             try:
                 validar_definicion(nueva_definicion)
             except DefinicionInvalidaError as exc:
@@ -223,13 +228,13 @@ class FormulariosAdminService:
                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                     detail=str(exc),
                 ) from exc
-            cambia_definicion = nueva_definicion != f.definicion
+            definicion_previa = normalizar_definicion(definicion_previa)
+            cambia_definicion = nueva_definicion != definicion_previa
         else:
             cambia_definicion = False
 
         cambio_info: dict[str, Any] | None = None
         tipo_cambio: str | None = None
-        definicion_previa = f.definicion
         if cambia_definicion and self._tiene_envios(f.id):
             tipo_cambio = clasificar_cambio(definicion_previa, nueva_definicion)
             if tipo_cambio == "rompe":

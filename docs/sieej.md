@@ -88,7 +88,7 @@ Los campos se colocan **en orden estricto**: si uno no cabe en lo que resta de l
 `layout.newRow: true` fuerza que el campo abra una fila nueva (se traduce a `col-start-1`; es no-op si el campo ya quedaba al inicio de fila, asi que no altera el espaciado). Sirve para dejar espacio libre al final de la fila anterior **sin** recurrir a campos `info` con label vacio como espaciadores — un workaround que ensuciaba `datos`, el export y el PDF.
 
 - **`select`/`select_multiple`/`radio`/`checkbox`**: requieren `options` (`[{value, label}]`) o `catalog` (string que identifica un catalogo). No pueden mezclar ambos.
-- **`file`**: requiere `bucket` (Acervo). Acepta `maxSizeMB` (cap absoluto 100 MB) y `accept` (lista de MIME/extensions). Al subir via `POST /formularios/{slug}/envio/upload` el backend persiste **dos** registros sincronizados: una fila en `sieej.envio_archivo` (con `bucket`, `object_key`, `url_publica`, `mime`, `size_bytes`, `field_path`) y una entrada en `envio.datos[step][field] = {url_publica, filename, mime, size_bytes}` que es lo que valida `datos_validator` al cierre del envio. El frontend NO debe sobrescribir manualmente la entrada en `datos` (la fuente de verdad la pone el endpoint de upload).
+- **`file`**: requiere `bucket` (Acervo). Acepta `maxSizeMB` (cap absoluto 100 MB) y `accept` (lista de MIME/extensions). Al subir via `POST /formularios/{slug}/envio/upload` el backend persiste **dos** registros sincronizados: una fila en `sieej.envio_archivo` (con `bucket`, `object_key`, `url_publica`, `mime`, `size_bytes`, `field_path`) y una entrada en `envio.datos[step][field]` (ver "Archivos en Acervo"). El frontend **no puede** sobrescribir esa entrada: el backend la preserva al guardar (`api 1.90.0+`).
 - **`date_range`**: rango de fechas. El valor en `datos` es `{start, end}` con fechas `YYYY-MM-DD`; `datos_validator` exige ambas fechas si alguna esta presente (incluso en borrador) y rechaza `start > end`. En exports/PDF/resumen se formatea `start – end`.
     - **Fechas abiertas** (`api 1.60.0+`): `openStart` / `openEnd` (bool, opt-in por campo) permiten que ese extremo sea una opcion de catalogo en vez de una fecha, para periodos sin termino conocido (`10/02/1992 – NO DETERMINADO`). `openCatalog` fija de que catalogo salen las opciones; si se omite se usa el del sistema `estatus_fecha`. El valor gana las claves hermanas `startOption` / `endOption`: un extremo lleva **fecha u opcion, nunca ambas**, y el orden `start <= end` solo se compara cuando los dos extremos son fechas. Los envios previos (sin las claves nuevas) siguen validando igual. Las opciones **no** se validan contra el catalogo en el backend, por la misma razon que `select`/`radio` con `catalog` tampoco lo hacen (`datos_validator` es puro y no toca la BD).
 - **`info`**: campo informativo (HTML/markdown), no captura datos.
@@ -97,6 +97,28 @@ Los campos se colocan **en orden estricto**: si uno no cabe en lo que resta de l
 - `definicion_validator.py::validar_definicion` se ejecuta al crear/editar el formulario y rechaza con 422 si la estructura es invalida (ids duplicados, opciones malformadas, tipos desconocidos, etc.).
 - `datos_validator.py::validar_datos` se ejecuta al guardar (`enviar=False`) o cerrar (`enviar=True`) un envio. En modo estricto exige campos `required`; en modo borrador solo valida tipos/formatos.
 - `definicion_to_validation_rules` aplana la definicion a reglas planas que el frontend consume via `GET /formularios/:slug/schema` para feedback inline.
+
+### Compatibilidad de definiciones legadas (`compat.py`)
+
+Cada vez que el contrato se endurece, los formularios que ya viven en produccion quedan fuera de el: un `type: "email"`, un campo de repeater sin `tab` o un `info` espaciador bastan para que el formulario deje de validar, de rendererar o de poder guardarse desde el admin. `compat.py::normalizar_definicion` traduce cualquier definicion historica al contrato vigente. Es **idempotente** y **solo relaja** (nunca inventa campos ni endurece reglas).
+
+Reglas actuales: `tel`/`email` → `text` + `validation.pattern` (respeta el patron propio si ya lo traia); tipo desconocido → `text`; `select`/`radio` sin `options` ni `catalog` → `text`; campos de repeater con `tabs` sin `tab` valido → primera pestaña; `info` sin label (espaciadores) → se elimina; `file` sin `bucket` → `sieej`; `maxSizeMB` sobre el cap → 100; `colSpan` fuera de rango → acotado a 1..3; `pattern` que no compila, `showWhen` huerfano o cruzado entre steps → se descartan; campo sin `label` → hereda el `name`.
+
+Se aplica en tres capas, de modo que **un deploy no depende de que la migracion de datos haya corrido**:
+
+1. **Lectura** — `FormularioResponse`, `FormularioDetalle`, `EnvioDetalleResponse`, `MisEnviosDetalle` y `GET /formularios/:slug/schema` normalizan al serializar; el editor visual y el renderer nunca ven un tipo que no conocen.
+2. **Escritura** — `formularios_admin_service.crear/actualizar` normaliza antes de validar (un formulario legado se puede abrir y guardar sin editarlo a mano) y `validar_datos` normaliza el snapshot, para que un envio en curso no muera con `tipo desconocido`. El clasificador de cambios compara **normalizada contra normalizada**: la diferencia por normalizar no cuenta como cambio y no sube version ni congela envios.
+3. **Persistencia** — la migracion `c3d4e5f6a7b9` aplica la normalizacion a `sieej.formulario`, `sieej.envio_formulario.definicion_snapshot` y `sieej.formulario_version`. Sustituye el patron de escribir una migracion de datos por cada endurecimiento (`a5b6c7d8e9f1`, `a6b7c8d9e0f1`, `b8c9d0e1f2a4`): las reglas viven en `compat.py` y la migracion solo las materializa.
+
+**Al endurecer el validador**: agrega la regla equivalente en `compat.py` y una definicion real en `api/tests/fixtures/sieej/legacy/`. `tests/test_sieej_compat.py` valida cada fixture contra el contrato vigente, asi que un endurecimiento que rompa formularios existentes falla en CI y no en produccion.
+
+**Verificacion en el deploy** (`scripts/sieej_check_definiciones.py`, tambien `make sieej-check`): recorre las tres tablas y sale con codigo 1 si alguna definicion no valida. Con `--fix` reescribe las que lo requieran — util para una BD restaurada de un backup viejo, sin volver a correr alembic.
+
+```bash
+docker exec mariachi-api python scripts/sieej_check_definiciones.py
+# {"tabla": "sieej.formulario", "revisadas": 5, "requieren_normalizar": 0, "reparadas": 0, "irrecuperables": []}
+# {"ok": true, "pendientes": 0}
+```
 
 ### Slugs reservados
 `formularios_admin_service.crear()` rechaza con 400 si el slug colisiona con rutas literales del frontend SIEEJ:
@@ -222,17 +244,45 @@ respondent lo corrige sobre un envio ya `enviado` **sin reabrirlo**.
 
 - El envio **no cambia de estado** (sigue `enviado`); no se toca `enviado_en` ni
   `cambios_pendientes`.
-- Los paths permitidos se derivan del `definicion_snapshot` del envio (no de la
-  definicion vigente), asi que la editabilidad es la que tenia al enviarse.
-  Cualquier path que no este marcado se rechaza con 422 — el backend no confia
-  en el frontend.
-- Solo campos de pasos `form`. Repeaters (path por indice) y `file` quedan fuera
-  en esta version; los archivos se siguen editando por el endpoint de upload.
+- Los paths permitidos se derivan del `definicion_snapshot` del envio: de ahi
+  salen tipo, opciones y bucket, porque contra el se valida lo que el
+  respondent lleno. Cualquier path que no este permitido se rechaza con 422 —
+  el backend no confia en el frontend.
+- **La marca `editableAfterSubmit` la manda la definicion vigente** (`api
+  1.89.0+`), no el snapshot: es una politica del admin, no contrato de datos.
+  Activarla despues alcanza a los envios ya enviados — que son justo los que se
+  quieren corregir — y retirarla los deja de cubrir de inmediato. Antes, marcar
+  un campo despues del envio no servia de nada: los envios `enviado` no reciben
+  propagacion de cambios menores, asi que su snapshot nunca ganaba la marca. Un
+  campo que no exista en el snapshot no es editable aunque la vigente lo marque.
+  `GET /formularios/mis-envios/{id}` sirve el snapshot con esas marcas ya
+  sincronizadas (`snapshot_con_editables_vigentes`), para que el frontend
+  ofrezca exactamente lo que el backend autoriza.
+- **Cualquier tipo de campo** puede marcarse (`api 1.88.0+`), incluidos los de
+  pasos `repeater` y los `file`. En un repeater el path lleva el indice del item
+  (`bases_datos[0].diccionario`) y `editable_field_defs` guarda el path **base**;
+  `resolver_editable` exige que la forma coincida: un campo de repeater sin
+  indice se rechaza, y uno de un paso `form` con indice tambien. El item debe
+  existir: la actualizacion ligera corrige respuestas, no da de alta items.
+- Los campos `file` **no** se editan por este endpoint (su valor lo escribe la
+  subida a Acervo, no el cliente): mandarlos aqui responde 422 indicando usar
+  `actualizar-archivo`. Antes quedaban fuera por completo, y el toggle del CMS
+  prometia algo que ningun endpoint cumplia (el de upload responde 409 en un
+  envio ya `enviado`).
 - El merge sobre `datos` es **parcial** (no reemplaza el resto de respuestas), con
   `flag_modified`. Se identifica el envio por `envio_id` (no por
   formulario+usuario) para no ambiguar en formularios periodicos.
 - 409 si el envio no esta `enviado` (p. ej. un admin lo reabrio) o si el
   formulario ya no acepta cambios; 403 si el envio no es del usuario.
+
+`POST /formularios/mis-envios/{envio_id}/actualizar-archivo` (multipart:
+`field_path`, `file`) es la contraparte para los campos `file`: sube el archivo
+nuevo a Acervo, reescribe `datos[step][field]` y deja la **misma huella de
+auditoria** que el PUT (fila en el historial con el nombre del archivo anterior
+y el nuevo, mas un evento `actualizado`). El archivo previo no se borra: su fila
+en `sieej.envio_archivo` conserva `object_key` y `url_publica`, asi que el
+historial de versiones del archivo queda completo. Mismas validaciones del
+campo que en el alta (`accept`, `maxSizeMB`, bucket).
 
 Cada campo cuyo valor cambie inserta una fila **append-only** en
 `sieej.envio_valor_historial` (`field_path`, `field_label`, `valor_anterior`,
@@ -245,6 +295,15 @@ Lectura del historial: `GET /formularios/mis-envios/{envio_id}/historial`
 (admin, con actor). El export de envios (`?formato=xlsx|csv`) incluye una tabla
 **"Historial de cambios"** — hoja propia en Excel, CSV extra dentro del ZIP — que
 es la base del reporte de auditoria.
+
+**Descubrimiento desde el frontend** (`api 1.87.0+`): `GET /formularios` incluye
+`tiene_campos_editables` por item — `true` solo si el envio esta `enviado` y su
+`definicion_snapshot` tiene campos marcados (mismo `editable_field_paths` que
+autoriza el `PUT`). El listado no manda la definicion, asi que sin este flag el
+respondent solo encontraba la pantalla de actualizacion entrando al detalle. Con
+el, SIEEJ pinta el acceso a `/mis-envios/:id/actualizar` en tres lugares: la
+tarjeta de la lista (a la izquierda del icono de PDF), el paso Resumen (a la
+izquierda de "Descargar PDF") y el encabezado del detalle del envio.
 
 ### Auto-expiracion (lazy)
 
@@ -452,7 +511,9 @@ sigue protegido por el 409, que no depende de Redis.
 
 ### Copiar y pegar campos
 
-Cada campo del editor tiene **Copiar** (para pegarlo en otro paso o en otro formulario) y **Duplicar aqui**, de modo que un campo con regex, catalogo, opciones o configuracion de archivo ya afinada no se vuelva a capturar a mano. El portapapeles vive en `localStorage` (`mariachi.sieej.fieldClipboard`, payload `{kind:'sieej.fields', v:1, fields:[...]}`) para que cruce formularios y pestañas del navegador sin permisos; ademas se escribe best-effort al portapapeles del sistema como JSON legible. No hay backend involucrado.
+Cada campo del editor tiene **Copiar** (para pegarlo en otro paso o en otro formulario) y **Duplicar aqui**, de modo que un campo con regex, catalogo, opciones o configuracion de archivo ya afinada no se vuelva a capturar a mano.
+
+En los anchos **Chico** y **Mediano** (`colSpan` 3 y 2) la tarjeta no da para cuatro botones en la columna del asa, asi que Copiar, Duplicar y Eliminar se colapsan en un menu **⋯ Mas opciones** y solo queda visible Editar (y Guardar mientras se edita). En ancho **Grande** y en mobile los botones siguen sueltos. Dentro del menu, Eliminar confirma con `Modal.confirm` en vez del `Popconfirm` (un popover anidado en un dropdown se cierra con el menu). El portapapeles vive en `localStorage` (`mariachi.sieej.fieldClipboard`, payload `{kind:'sieej.fields', v:1, fields:[...]}`) para que cruce formularios y pestañas del navegador sin permisos; ademas se escribe best-effort al portapapeles del sistema como JSON legible. No hay backend involucrado.
 
 `fieldClipboard.js` normaliza al pegar (`prepareFieldForPaste`), que es lo que evita dejar la definicion invalida:
 
@@ -495,7 +556,57 @@ El frontend consume `/api/administrador/formularios/*` con `withCredentials: tru
 
 ## Acervo
 
-Los archivos subidos por respondents van al bucket configurado en el field `file` de la definicion (por convencion `sieej-diccionarios`, creado por la migracion). El servicio `envios_service.upload_archivo(...)` usa `AcervoClient.for_bucket(bucket)` (cliente cacheado por bucket) y persiste un `EnvioArchivo` con `url_publica`, `bucket`, `object_key`, `filename_original`, `mime`, `size_bytes`. El nombre del objeto sigue el patron `envio<envio_id>/<uuid>.<ext>`.
+Los archivos subidos por respondents van al bucket configurado en el field `file` de la definicion (por convencion `sieej`). El servicio `envios_service.upload_archivo(...)` usa `AcervoClient.for_bucket(bucket)` (cliente cacheado por bucket) y persiste un `EnvioArchivo` con `url_publica`, `bucket`, `object_key`, `filename_original`, `mime`, `size_bytes`.
+
+### Convencion de claves (`acervo_keys.py`)
+
+```
+{slug}/{usuario}-{envio_id}[/{periodo}]/{step}.{campo}/{ts}-{nombre}-{sufijo}.{ext}
+{slug}/{usuario}-{envio_id}[/{periodo}]/envio.json
+```
+
+```
+mundial/admin-2/alta_archivos.base_de_datos/20260727T171309Z-direccion-de-integracion-0baab7.xlsx
+censo/sedeco-enlace-23/2026-01/general.padron/20260115T090000Z-padron-4c2b1a.csv
+```
+
+La convencion anterior era `{slug}/envio{id}/{uuid}.{ext}`: el bucket quedaba ilegible (que archivo es cada UUID, a que campo pertenece y cual de varias versiones es la vigente solo se sabia cruzando con `envio_archivo`), y con los reemplazos post-envio el problema crecia. Ahora:
+
+- **un directorio por campo**, con las versiones ordenadas cronologicamente dentro;
+- el **nombre original sanitizado** (sin acentos, minusculas, guiones, 60 chars) va en la clave, con un sufijo de 6 hex que evita colisiones si el mismo campo se sube dos veces en el mismo segundo;
+- en repeaters el indice se aplana (`bases_datos[0].diccionario` -> `bases_datos-0.diccionario`) para no meter corchetes en la ruta;
+- el **periodo solo aparece si el formulario es periodico**; en los demas seria un nivel con un unico hijo siempre;
+- el usuario va **antes** del id para que los envios de una misma persona queden contiguos al listar. La ruta registra quien capturo *en ese momento* (un hecho historico, como `filename_original`); el dato vigente esta en `envio.json`.
+
+### Contrato del valor en `datos`
+
+`valor_archivo(...)` es la unica forma valida:
+
+```json
+{"field_path", "url_publica", "object_key", "filename_original", "mime", "size_bytes"}
+```
+
+Antes convivian dos: la del backend (`filename`) y la que el `Dragger` guardaba al pisar el valor con la respuesta del upload (`filename_original` + `field_path`). Los lectores buscaban `filename_original` y caian a la URL cruda, asi que **el export y el PDF mostraban un enlace largo en vez del nombre** cuando el valor venia del backend. La clave canonica es `filename_original` y `nombre_archivo(valor)` lee ambas para los datos ya guardados.
+
+`_preservar_archivos_del_servidor` conserva el valor que puso el upload e **ignora lo que mande el cliente** para campos `file` (un valor vacio si se respeta: asi se quita un archivo). Ademas de cerrar el origen de las dos formas, evita que alguien apunte un campo a una URL arbitraria.
+
+### Respaldo `envio.json`
+
+Junto a los archivos de cada envio se escribe un `envio.json` con `formulario`, `envio`, `usuario`, `datos`, `definicion_snapshot` y el catalogo de `archivos`: suficiente para reconstruir el envio sin la BD. Se actualiza al **enviar**, al **actualizar campos** y al **reemplazar un archivo** (no en cada guardado de borrador, para no escribir en Acervo en cada tecleo).
+
+Es **best-effort de punta a punta**: cualquier fallo (bucket sin configurar, Acervo caido, tabla ausente) se registra y se sigue. Nunca puede tumbar el envio del respondent — la fuente de verdad es la BD. Hay un test que fija esa garantia.
+
+### Proteccion del bucket
+
+El bucket de SIEEJ esta marcado `protegido` en `acervo.buckets` (migracion `c4d5e6f7a8b0`): el explorador del CMS oculta borrar, editar, mover, subir y crear carpeta, y `resolve_bucket_escribible` responde **409 incluso al admin** en los endpoints de escritura de `/acervo`. El contenido lo gestiona el flujo de formularios y sus claves estan referenciadas desde `envio_archivo` y `envio.datos`: un borrado a mano dejaria registros apuntando a objetos inexistentes.
+
+En el explorador, un bucket protegido se reconoce por el **candado en su pestaña** (con tooltip) y por una nota bajo las estadisticas. La bandera se administra desde **`/acervo/buckets`**, que tiene su columna `Protegido` con switch por bucket y el campo en el alta/edicion: activarla es directo, **desactivarla pide confirmacion** porque vuelve a habilitar las operaciones destructivas sobre contenido cuyas rutas viven en la BD. Solo admin (`require_role`), como el resto de la gestion de buckets.
+
+Como segunda capa, el bucket tiene **versionado** con retencion (`scripts/acervo_proteger_bucket.py`): un borrado deja un *delete marker* restaurable y una sobreescritura conserva la version previa. El costo en espacio es marginal porque SIEEJ escribe una clave nueva por subida — las versiones solo aparecen al sobreescribir la misma clave (el `envio.json`, unos KB) o al borrar.
+
+### Migracion de claves
+
+`scripts/sieej_migrar_object_keys.py` lleva los objetos con clave vieja a la convencion vigente: copia, reescribe `object_key`/`url_publica` y la entrada en `envio.datos`, y borra el objeto viejo (`--conservar-origen` para no borrarlo). Al final genera el `envio.json` de los envios existentes. **No es una migracion de alembic a proposito**: habla con Acervo por red y un fallo del bucket durante el bootstrap tumbaria el arranque del api. Es idempotente.
 
 Las credenciales del bucket se resuelven con `ACERVO_<REF>_ACCESS_KEY`/`ACERVO_<REF>_SECRET_KEY` (REF coincide con `acervo_buckets.access_key_ref`). Si faltan, `services/acervo.py::resolve_bucket_credentials` lanza `RuntimeError` explicito (desde 0.30.29 ya no hay fallback a creds root del cluster — principio de menor privilegio). Generar/rotar editando `acervo/config/identities.json` y haciendo `cd ../acervo && docker compose restart acervo-seaweedfs` (desde acervo 1.22.0; antes era `./scripts/init-buckets.sh --rotate sieej-diccionarios`).
 

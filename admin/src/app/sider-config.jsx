@@ -5,6 +5,7 @@ import {
     DatabaseOutlined,
     FileImageOutlined,
     HistoryOutlined,
+    HomeOutlined,
     LockOutlined,
     PictureOutlined,
     TeamOutlined,
@@ -126,7 +127,7 @@ export const MAIN_ITEMS = [
         key: '/inicio',
         path: '/inicio',
         label: 'Inicio',
-        icon: <DashboardOutlined />,
+        icon: <HomeOutlined />,
     },
     {
         key: '/users',

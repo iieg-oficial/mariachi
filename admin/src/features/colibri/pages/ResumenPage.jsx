@@ -20,6 +20,7 @@ import { ArrowRightOutlined } from '@ant-design/icons';
 import { useColibriStats } from '@features/colibri/hooks/useColibriStats';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import ColibriIcon from '@shared/components/ColibriIcon';
+import PageHeading from '@shared/components/PageHeading';
 import { ESTADO_COLORS, ESTADO_LABELS } from '@features/colibri/constants';
 
 const { Content } = Layout;
@@ -84,25 +85,23 @@ export default function ResumenPage() {
     const maxAppCount = Math.max(...(stats.porApp || []).map((a) => a.count), 1);
 
     return (
-        <Content style={{ padding: isMobile ? 12 : 24, maxWidth: 1280, margin: '0 auto', width: '100%' }}>
+        <Content style={{ width: '100%' }}>
             <Space direction="vertical" size="large" style={{ width: '100%' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
-                    <div>
-                        <Space align="center" size={12}>
-                            <ColibriIcon size={28} />
-                            <Title level={isMobile ? 4 : 3} style={{ margin: 0 }}>Colibri</Title>
-                        </Space>
-                        <Text type="secondary">
-                            Centraliza reportes y sugerencias del ecosistema IIEG.
-                        </Text>
-                    </div>
-                    <Segmented
-                        options={WINDOW_OPTIONS}
-                        value={days}
-                        onChange={setDays}
-                        size={isMobile ? 'small' : 'middle'}
-                    />
-                </div>
+                <PageHeading
+                    icon={<ColibriIcon size={24} />}
+                    title="Colibrí"
+                    description="Centraliza reportes y sugerencias del ecosistema IIEG."
+                    level={isMobile ? 4 : 3}
+                    marginBottom={0}
+                    extra={(
+                        <Segmented
+                            options={WINDOW_OPTIONS}
+                            value={days}
+                            onChange={setDays}
+                            size={isMobile ? 'small' : 'middle'}
+                        />
+                    )}
+                />
 
                 <Row gutter={[16, 16]}>
                     <Col xs={12} md={6}>

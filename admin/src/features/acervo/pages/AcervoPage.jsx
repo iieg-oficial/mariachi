@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Alert, Card, Button, Upload, Table, Image, Space, Modal, Form, Input, Select, Tabs, Tag, Popconfirm, Row, Col, Statistic, Segmented, Empty, Spin, Breadcrumb, Progress, Descriptions, Checkbox, Tooltip, List, Radio } from 'antd';
+import { Alert, Card, Button, Upload, Table, Image, Space, Modal, Form, Input, Select, Tabs, Tag, Popconfirm, Row, Col, Segmented, Empty, Spin, Breadcrumb, Progress, Descriptions, Checkbox, Tooltip, List, Radio, Typography } from 'antd';
 import {
     InboxOutlined, DeleteOutlined, EditOutlined, FolderOutlined, FolderOpenOutlined, FolderAddOutlined, FileImageOutlined, FilePdfOutlined,
     FileOutlined, AppstoreOutlined, BarsOutlined, DownloadOutlined, CopyOutlined, EyeOutlined, HomeOutlined, DragOutlined,
-    InfoCircleOutlined, CodeOutlined, BookOutlined, PictureOutlined
+    InfoCircleOutlined, CodeOutlined, BookOutlined, PictureOutlined, PieChartOutlined, LockOutlined
 } from '@ant-design/icons';
 import acervoService from '@features/acervo/api/acervoService';
 import AcervoSectionHeader from '@features/acervo/components/AcervoSectionHeader';
+import AcervoStatsModal from '@features/acervo/components/AcervoStatsModal';
 import FileSnippetsModal from '@features/acervo/components/FileSnippetsModal';
 import FileSnippets from '@features/acervo/components/FileSnippets';
 import AcervoHelpModal from '@features/documentacion/components/AcervoHelpModal';
@@ -16,16 +17,11 @@ import { message } from '@shared/services/message';
 const { Dragger } = Upload;
 const { Search } = Input;
 const { Option } = Select;
+const { Text } = Typography;
 
-const isDocumentType = (type) => {
-    if (!type) return false;
-    if (type.startsWith('image/')) return false;
-    const docPrefixes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats',
-        'application/vnd.ms-excel', 'application/vnd.ms-powerpoint',
-        'application/json', 'application/xml', 'application/geo+json',
-        'text/'];
-    return docPrefixes.some((p) => type.startsWith(p));
-};
+const PROTEGIDO_AYUDA = 'Bucket de solo lectura: su contenido lo gestiona la aplicación que lo usa '
+    + 'y las rutas están referenciadas desde la base de datos, así que borrar, mover o renombrar '
+    + 'aquí dejaría registros apuntando a archivos inexistentes.';
 
 const renderTypeTag = (type, isDir) => {
     if (isDir) return <Tag color="orange">CARPETA</Tag>;
@@ -44,7 +40,8 @@ const Acervo = () => {
     const [selectedBucketId, setSelectedBucketId] = useState(null);
     const [acervoFiles, setAcervoFiles] = useState([]);
     const [folders, setFolders] = useState([]);
-    const [bucketStats, setBucketStats] = useState({ total: 0, images: 0, documents: 0, totalSize: 0 });
+    const [bucketStats, setBucketStats] = useState(null);
+    const [statsModalOpen, setStatsModalOpen] = useState(false);
     const [currentPath, setCurrentPath] = useState('');
     const [selectedType, setSelectedType] = useState(null);
     const [searchText, setSearchText] = useState('');
@@ -80,6 +77,9 @@ const Acervo = () => {
     const [editForm] = Form.useForm();
 
     const MAX_FILE_SIZE = 500 * 1024 * 1024;
+
+    const currentBucket = buckets.find((b) => b.id === selectedBucketId);
+    const bucketProtegido = !!currentBucket?.protegido;
 
     useEffect(() => {
         const preventDefaults = (e) => { e.preventDefault(); };
@@ -151,19 +151,10 @@ const Acervo = () => {
     const loadBucketStats = useCallback(async () => {
         if (!selectedBucketId) return;
         try {
-            const data = await acervoService.getAcervoFiles({
-                bucketId: selectedBucketId,
-                recursive: true,
-            });
-            const files = (data || []).filter(f => !f.isDir);
-            setBucketStats({
-                total: files.length,
-                images: files.filter(f => f.type?.startsWith('image/')).length,
-                documents: files.filter(f => isDocumentType(f.type)).length,
-                totalSize: files.reduce((sum, f) => sum + (f.size || 0), 0),
-            });
+            const data = await acervoService.getAcervoResumen(selectedBucketId);
+            setBucketStats(data?.buckets?.[0] || null);
         } catch {
-            /* stats no críticas */
+            setBucketStats(null);
         }
     }, [selectedBucketId]);
 
@@ -194,6 +185,7 @@ const Acervo = () => {
         const id = Number(nextId);
         setSelectedBucketId(id);
         setCurrentPath('');
+        setBucketStats(null);
         try { localStorage.setItem('mariachi.acervo.lastBucketId', String(id)); } catch { /* noop */ }
     }, []);
 
@@ -484,6 +476,10 @@ const Acervo = () => {
         e.preventDefault();
         dragCounter.current = 0;
         setDragActive(false);
+        if (bucketProtegido) {
+            message.warning('Este bucket está protegido: su contenido lo gestiona la aplicación que lo usa.');
+            return;
+        }
         const dt = e.dataTransfer;
         let files = [];
         if (dt?.files && dt.files.length > 0) {
@@ -660,7 +656,6 @@ const Acervo = () => {
         }
     };
 
-    const currentBucket = buckets.find((b) => b.id === selectedBucketId);
 
     const breadcrumbItems = (() => {
         const linkStyle = {
@@ -851,29 +846,33 @@ const Acervo = () => {
                                     onClick={() => handleCopyUrl(record.url)}
                                 />
                             </Tooltip>
-                            <Tooltip title="Editar texto alternativo, descripción y carpeta">
-                                <Button
-                                    type="text"
-                                    icon={<EditOutlined />}
-                                    onClick={() => handleEdit(record)}
-                                />
-                            </Tooltip>
+                            {!bucketProtegido && (
+                                <Tooltip title="Editar texto alternativo, descripción y carpeta">
+                                    <Button
+                                        type="text"
+                                        icon={<EditOutlined />}
+                                        onClick={() => handleEdit(record)}
+                                    />
+                                </Tooltip>
+                            )}
                         </>
                     )}
-                    <Popconfirm
-                        title={record.isDir ? '¿Eliminar carpeta y todo su contenido?' : '¿Eliminar este archivo?'}
-                        onConfirm={() => handleDelete(record.id)}
-                        okText="Sí"
-                        cancelText="No"
-                    >
-                        <Tooltip title={record.isDir ? 'Eliminar la carpeta y su contenido' : 'Eliminar el archivo'}>
-                            <Button
-                                type="text"
-                                danger
-                                icon={<DeleteOutlined />}
-                            />
-                        </Tooltip>
-                    </Popconfirm>
+                    {!bucketProtegido && (
+                        <Popconfirm
+                            title={record.isDir ? '¿Eliminar carpeta y todo su contenido?' : '¿Eliminar este archivo?'}
+                            onConfirm={() => handleDelete(record.id)}
+                            okText="Sí"
+                            cancelText="No"
+                        >
+                            <Tooltip title={record.isDir ? 'Eliminar la carpeta y su contenido' : 'Eliminar el archivo'}>
+                                <Button
+                                    type="text"
+                                    danger
+                                    icon={<DeleteOutlined />}
+                                />
+                            </Tooltip>
+                        </Popconfirm>
+                    )}
                 </Space>
             )
         }
@@ -1021,7 +1020,7 @@ const Acervo = () => {
         </Row>
     );
 
-    const crearActions = (
+    const crearActions = bucketProtegido ? null : (
         <Space wrap size={[8, 8]} style={{ width: isMobile ? '100%' : 'auto' }}>
             <Button
                 icon={<FolderAddOutlined />}
@@ -1051,7 +1050,7 @@ const Acervo = () => {
 
     const mediaActions = (
         <Space wrap size={[8, 8]} style={{ width: isMobile ? '100%' : 'auto' }}>
-            {selectedFiles.length > 0 && (
+            {!bucketProtegido && selectedFiles.length > 0 && (
                 <>
                     <Button
                         icon={<DragOutlined />}
@@ -1092,31 +1091,22 @@ const Acervo = () => {
                     title="Media"
                     description="Sube, organiza y consulta los archivos del Acervo por bucket y carpeta."
                 />
-                <Tooltip title="Abrir la guía de uso del Acervo">
-                    <Button icon={<BookOutlined />} onClick={() => openHelp('uso')}>
-                        {isMobile ? '' : 'Documentación'}
-                    </Button>
-                </Tooltip>
+                <Space>
+                    <Tooltip title="Ver información general del Acervo">
+                        <Button
+                            icon={<PieChartOutlined />}
+                            aria-label="Información general del Acervo"
+                            onClick={() => setStatsModalOpen(true)}
+                        />
+                    </Tooltip>
+                    <Tooltip title="Abrir la guía de uso del Acervo">
+                        <Button icon={<BookOutlined />} onClick={() => openHelp('uso')}>
+                            {isMobile ? '' : 'Documentación'}
+                        </Button>
+                    </Tooltip>
+                </Space>
             </div>
             <Card>
-                <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
-                    <Col xs={12} sm={12} md={6}>
-                        <Statistic title="Total de archivos (bucket)" value={bucketStats.total} />
-                    </Col>
-                    <Col xs={12} sm={12} md={6}>
-                        <Statistic title="Imágenes" value={bucketStats.images} prefix={<FileImageOutlined />} />
-                    </Col>
-                    <Col xs={12} sm={12} md={6}>
-                        <Statistic title="Documentos" value={bucketStats.documents} prefix={<FilePdfOutlined />} />
-                    </Col>
-                    <Col xs={12} sm={12} md={6}>
-                        <Statistic
-                            title="Tamaño total"
-                            value={acervoService.formatFileSize(bucketStats.totalSize)}
-                        />
-                    </Col>
-                </Row>
-
                 <div style={{
                     display: 'flex',
                     flexDirection: isMobile ? 'column-reverse' : 'row',
@@ -1134,12 +1124,36 @@ const Acervo = () => {
                         activeKey={selectedBucketId != null ? String(selectedBucketId) : undefined}
                         onChange={handleBucketChange}
                         size="small"
-                        tabBarStyle={{ marginBottom: 12 }}
+                        tabBarStyle={{ marginBottom: 4 }}
                         items={buckets.map((b) => ({
                             key: String(b.id),
-                            label: b.display_name,
+                            label: b.protegido ? (
+                                <Tooltip title={PROTEGIDO_AYUDA}>
+                                    <span>
+                                        <LockOutlined style={{ marginRight: 4 }} />
+                                        {b.display_name}
+                                    </span>
+                                </Tooltip>
+                            ) : b.display_name,
                         }))}
                     />
+                )}
+                {(bucketStats || bucketProtegido) && (
+                    <div style={{ marginBottom: 12 }}>
+                        {bucketStats && (
+                            <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>
+                                {bucketStats.fileCount} archivos · {bucketStats.imageCount} imágenes
+                                {' '}· {bucketStats.documentCount} documentos · {bucketStats.folderCount} carpetas
+                                {' '}· {acervoService.formatFileSize(bucketStats.totalSize || 0)}
+                            </Text>
+                        )}
+                        {bucketProtegido && (
+                            <Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: 2 }}>
+                                <LockOutlined style={{ marginRight: 4 }} />
+                                {PROTEGIDO_AYUDA}
+                            </Text>
+                        )}
+                    </div>
                 )}
                 <div style={{
                     display: 'flex',
@@ -1195,6 +1209,7 @@ const Acervo = () => {
                         {crearActions}
                     </div>
                 </div>
+
 
                 {uploadProgress && !uploadModalVisible && (
                     <div style={{ marginBottom: 12 }}>
@@ -1568,6 +1583,12 @@ const Acervo = () => {
                 open={!!helpTab}
                 tab={helpTab || 'uso'}
                 onClose={() => setHelpTab(null)}
+            />
+
+            <AcervoStatsModal
+                open={statsModalOpen}
+                onClose={() => setStatsModalOpen(false)}
+                isMobile={isMobile}
             />
 
             <Modal

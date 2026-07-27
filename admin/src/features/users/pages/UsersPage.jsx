@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { Card, Col, Empty, Form, Input, Modal, Row, Select, Skeleton, Typography, Button, Pagination } from 'antd';
-import { PlusOutlined, SearchOutlined } from '@ant-design/icons';
+import { PlusOutlined, SearchOutlined, TeamOutlined } from '@ant-design/icons';
 import { useAuth } from '@shared/contexts/useAuth';
+import PageHeading from '@shared/components/PageHeading';
 import api from '@shared/services/api';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import { message } from '@shared/services/message';
@@ -249,19 +250,19 @@ export default function Users() {
 
     return (
         <div>
-            <div style={{
-                display: 'flex',
-                flexDirection: isMobile ? 'column' : 'row',
-                justifyContent: 'space-between',
-                alignItems: isMobile ? 'stretch' : 'center',
-                gap: 12,
-                marginBottom: 16,
-            }}>
-                <Title level={isMobile ? 3 : 2} style={{ margin: 0 }}>Administración de Usuarios</Title>
-                <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate} block={isMobile}>
-                    Nuevo Usuario
-                </Button>
-            </div>
+            <PageHeading
+                icon={<TeamOutlined />}
+                title="Administración de Usuarios"
+                description="Altas, roles y accesos por proyecto de las personas que usan Mariachi."
+                level={isMobile ? 3 : 2}
+                extra={(
+                    <div style={{ width: isMobile ? '100%' : 'auto' }}>
+                        <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate} block={isMobile}>
+                            Nuevo Usuario
+                        </Button>
+                    </div>
+                )}
+            />
 
             <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
                 <Col xs={24} sm={12} md={14}>

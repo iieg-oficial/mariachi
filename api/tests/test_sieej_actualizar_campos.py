@@ -4,6 +4,8 @@ Se prueban a nivel de servicio (`EnviosService.actualizar_campos`) para
 verificar la logica de merge parcial, la seguridad de campos permitidos y el
 historial append-only sin depender del flujo HTTP/login.
 """
+import json
+
 import pytest
 from fastapi import HTTPException
 from sqlalchemy import create_engine, text
@@ -164,12 +166,58 @@ def crear_envio(session, formulario, user, *, estado="enviado", datos=None):
 # ---------------------------------------------------------------------------
 
 
-def test_editable_field_paths_solo_marcados_de_pasos_form():
+def test_editable_field_paths_solo_marcados():
     paths = EnviosService.editable_field_paths(DEFINICION)
     assert paths == {
         "general.razon_social": "Razon social",
         "general.telefono": "Telefono",
     }
+
+
+def test_editable_field_paths_incluye_archivos_y_repeaters():
+    definicion = {
+        "version": 1,
+        "steps": [
+            {
+                "id": "alta_archivos",
+                "type": "form",
+                "title": "Alta",
+                "fields": [
+                    {
+                        "name": "base_de_datos",
+                        "label": "Base de datos",
+                        "type": "file",
+                        "bucket": "sieej",
+                        "editableAfterSubmit": True,
+                    },
+                    {"name": "nota", "label": "Nota", "type": "text"},
+                ],
+            },
+            {
+                "id": "bases_datos",
+                "type": "repeater",
+                "title": "Bases",
+                "fields": [
+                    {
+                        "name": "diccionario",
+                        "label": "Diccionario",
+                        "type": "text",
+                        "editableAfterSubmit": True,
+                    }
+                ],
+            },
+        ],
+    }
+    assert EnviosService.editable_field_paths(definicion) == {
+        "alta_archivos.base_de_datos": "Base de datos",
+        "bases_datos.diccionario": "Diccionario",
+    }
+
+    defs = EnviosService.editable_field_defs(definicion)
+    assert EnviosService.resolver_editable(defs, "bases_datos[0].diccionario")
+    assert EnviosService.resolver_editable(defs, "bases_datos.diccionario") is None
+    assert EnviosService.resolver_editable(defs, "alta_archivos.base_de_datos")
+    assert EnviosService.resolver_editable(defs, "alta_archivos[0].base_de_datos") is None
 
 
 # ---------------------------------------------------------------------------
@@ -292,3 +340,370 @@ def test_listar_historial_mi_envio(session, formulario, user_a):
     assert len(items) == 1
     assert items[0].field_path == "general.razon_social"
     assert items[0].valor_nuevo == "B"
+
+
+# ---------------------------------------------------------------------------
+# tiene_campos_editables (listado del respondent)
+# ---------------------------------------------------------------------------
+
+
+def _listar_para(session, formulario, user):
+    from app.services.sieej.formularios_dinamicos_service import (
+        FormulariosDinamicosService,
+    )
+
+    formulario.usuarios_asignados.append(user)
+    session.commit()
+    items = FormulariosDinamicosService(session).listar_visibles(user)
+    return next(i for i in items if i["id"] == formulario.id)
+
+
+def test_listado_marca_campos_editables_en_envio_enviado(
+    session, formulario, user_a
+):
+    crear_envio(session, formulario, user_a, estado="enviado")
+    item = _listar_para(session, formulario, user_a)
+    assert item["estado_envio"] == "enviado"
+    assert item["tiene_campos_editables"] is True
+
+
+def test_listado_no_marca_editables_si_el_envio_sigue_en_proceso(
+    session, formulario, user_a
+):
+    crear_envio(session, formulario, user_a, estado="en_proceso")
+    item = _listar_para(session, formulario, user_a)
+    assert item["tiene_campos_editables"] is False
+
+
+def test_listado_no_marca_editables_sin_envio(session, formulario, user_a):
+    item = _listar_para(session, formulario, user_a)
+    assert item["estado_envio"] == "no_iniciado"
+    assert item["tiene_campos_editables"] is False
+
+
+def test_listado_no_marca_editables_si_el_snapshot_no_tiene_campos_marcados(
+    session, formulario, user_a
+):
+    envio = crear_envio(session, formulario, user_a, estado="enviado")
+    envio.definicion_snapshot = {
+        "version": 1,
+        "steps": [
+            {
+                "id": "general",
+                "type": "form",
+                "title": "Datos generales",
+                "fields": [{"name": "clave", "label": "Clave", "type": "text"}],
+            }
+        ],
+    }
+    session.commit()
+    item = _listar_para(session, formulario, user_a)
+    assert item["tiene_campos_editables"] is False
+
+
+# ---------------------------------------------------------------------------
+# campos de repeater y de archivo
+# ---------------------------------------------------------------------------
+
+
+DEFINICION_MIXTA = {
+    "version": 1,
+    "steps": [
+        {
+            "id": "alta_archivos",
+            "type": "form",
+            "title": "Alta de archivos",
+            "fields": [
+                {
+                    "name": "base_de_datos",
+                    "label": "Base de datos",
+                    "type": "file",
+                    "bucket": "sieej",
+                    "editableAfterSubmit": True,
+                },
+                {
+                    "name": "nota",
+                    "label": "Nota",
+                    "type": "text",
+                    "editableAfterSubmit": True,
+                },
+            ],
+        },
+        {
+            "id": "bases_datos",
+            "type": "repeater",
+            "title": "Bases de datos",
+            "fields": [
+                {
+                    "name": "diccionario",
+                    "label": "Diccionario",
+                    "type": "text",
+                    "editableAfterSubmit": True,
+                },
+                {"name": "fijo", "label": "Fijo", "type": "text"},
+            ],
+        },
+    ],
+}
+
+
+@pytest.fixture(scope="function")
+def envio_mixto(session, formulario, user_a):
+    envio = crear_envio(
+        session, formulario, user_a,
+        datos={
+            "alta_archivos": {"nota": "vieja"},
+            "bases_datos": [{"diccionario": "d1", "fijo": "f1"}],
+        },
+    )
+    envio.definicion_snapshot = DEFINICION_MIXTA
+    session.commit()
+    session.refresh(envio)
+    return envio
+
+
+def test_actualiza_un_campo_dentro_de_un_repeater(session, envio_mixto, user_a):
+    svc = EnviosService(session)
+    out = svc.actualizar_campos(
+        user_a, envio_mixto.id, {"bases_datos[0].diccionario": "d2"}
+    )
+
+    assert out.datos["bases_datos"][0]["diccionario"] == "d2"
+    assert out.datos["bases_datos"][0]["fijo"] == "f1"
+
+    hist = session.query(EnvioValorHistorial).filter_by(envio_id=envio_mixto.id).all()
+    assert len(hist) == 1
+    assert hist[0].field_path == "bases_datos[0].diccionario"
+    assert hist[0].field_label == "Diccionario"
+    assert hist[0].valor_anterior == "d1"
+    assert hist[0].valor_nuevo == "d2"
+
+
+def test_campo_de_repeater_sin_indice_es_rechazado(session, envio_mixto, user_a):
+    svc = EnviosService(session)
+    with pytest.raises(HTTPException) as exc:
+        svc.actualizar_campos(user_a, envio_mixto.id, {"bases_datos.diccionario": "x"})
+    assert exc.value.status_code == 422
+
+
+def test_indice_inexistente_en_repeater_es_rechazado(session, envio_mixto, user_a):
+    svc = EnviosService(session)
+    with pytest.raises(HTTPException) as exc:
+        svc.actualizar_campos(
+            user_a, envio_mixto.id, {"bases_datos[7].diccionario": "x"}
+        )
+    assert exc.value.status_code == 422
+    assert exc.value.detail["errores"][0]["error"] == "el elemento no existe"
+
+
+def test_campo_no_marcado_del_repeater_es_rechazado(session, envio_mixto, user_a):
+    svc = EnviosService(session)
+    with pytest.raises(HTTPException) as exc:
+        svc.actualizar_campos(user_a, envio_mixto.id, {"bases_datos[0].fijo": "x"})
+    assert exc.value.status_code == 422
+
+
+def test_archivo_no_se_edita_por_actualizar_campos(session, envio_mixto, user_a):
+    svc = EnviosService(session)
+    with pytest.raises(HTTPException) as exc:
+        svc.actualizar_campos(
+            user_a,
+            envio_mixto.id,
+            {"alta_archivos.base_de_datos": {"url_publica": "http://x/y.csv"}},
+        )
+    assert exc.value.status_code == 422
+    assert "actualizar-archivo" in exc.value.detail["errores"][0]["error"]
+
+
+def test_actualizar_archivo_rechaza_campo_no_editable(session, envio_mixto, user_a):
+    import asyncio
+
+    svc = EnviosService(session)
+    with pytest.raises(HTTPException) as exc:
+        asyncio.run(
+            svc.actualizar_archivo(user_a, envio_mixto.id, "alta_archivos.nota", None)
+        )
+    assert exc.value.status_code == 422
+
+
+def test_actualizar_archivo_rechaza_envio_de_otro_usuario(
+    session, envio_mixto, user_b
+):
+    import asyncio
+
+    svc = EnviosService(session)
+    with pytest.raises(HTTPException) as exc:
+        asyncio.run(
+            svc.actualizar_archivo(
+                user_b, envio_mixto.id, "alta_archivos.base_de_datos", None
+            )
+        )
+    assert exc.value.status_code == 403
+
+
+def test_campo_marcado_editable_despues_del_envio_ya_es_editable(
+    session, formulario, user_a
+):
+    """La marca es politica del admin, no contrato de datos: activarla debe
+    alcanzar a los envios ya enviados, que son los que se quieren corregir."""
+    envio = crear_envio(
+        session, formulario, user_a, datos={"general": {"clave": "K1"}},
+    )
+    assert EnviosService.editable_field_paths(envio.definicion_snapshot) == {
+        "general.razon_social": "Razon social",
+        "general.telefono": "Telefono",
+    }
+
+    vigente = json.loads(json.dumps(DEFINICION))
+    vigente["steps"][0]["fields"][1]["editableAfterSubmit"] = True
+    formulario.definicion = vigente
+    session.commit()
+
+    svc = EnviosService(session)
+    out = svc.actualizar_campos(user_a, envio.id, {"general.clave": "K2"})
+    assert out.datos["general"]["clave"] == "K2"
+
+    hist = session.query(EnvioValorHistorial).filter_by(envio_id=envio.id).all()
+    assert [h.field_path for h in hist] == ["general.clave"]
+
+
+def test_marca_retirada_en_la_vigente_deja_de_ser_editable(
+    session, formulario, user_a
+):
+    envio = crear_envio(session, formulario, user_a)
+    vigente = json.loads(json.dumps(DEFINICION))
+    vigente["steps"][0]["fields"][0]["editableAfterSubmit"] = False
+    formulario.definicion = vigente
+    session.commit()
+
+    svc = EnviosService(session)
+    with pytest.raises(HTTPException) as exc:
+        svc.actualizar_campos(user_a, envio.id, {"general.razon_social": "X"})
+    assert exc.value.status_code == 422
+
+
+def test_snapshot_servido_lleva_las_marcas_vigentes(session, formulario, user_a):
+    envio = crear_envio(session, formulario, user_a)
+    vigente = json.loads(json.dumps(DEFINICION))
+    vigente["steps"][0]["fields"][1]["editableAfterSubmit"] = True
+
+    fusionado = EnviosService.snapshot_con_editables_vigentes(
+        envio.definicion_snapshot, vigente
+    )
+    campos = {f["name"]: f for f in fusionado["steps"][0]["fields"]}
+    assert campos["clave"]["editableAfterSubmit"] is True
+    assert envio.definicion_snapshot["steps"][0]["fields"][1].get(
+        "editableAfterSubmit"
+    ) is None
+
+
+# ---------------------------------------------------------------------------
+# los valores de archivo los escribe el servidor, no el cliente
+# ---------------------------------------------------------------------------
+
+
+DEFINICION_ARCHIVO = {
+    "version": 1,
+    "steps": [
+        {
+            "id": "alta",
+            "type": "form",
+            "title": "Alta",
+            "fields": [
+                {
+                    "name": "base",
+                    "label": "Base",
+                    "type": "file",
+                    "bucket": "sieej",
+                },
+                {"name": "nota", "label": "Nota", "type": "text"},
+            ],
+        }
+    ],
+}
+
+ARCHIVO_SERVIDOR = {
+    "field_path": "alta.base",
+    "url_publica": "/api/mariachi/acervo/proxy/4/mundial/unico/envio-1/alta.base/x.xlsx",
+    "object_key": "mundial/unico/envio-1/alta.base/x.xlsx",
+    "filename_original": "Base.xlsx",
+    "mime": "application/vnd.ms-excel",
+    "size_bytes": 10,
+}
+
+
+@pytest.fixture(scope="function")
+def formulario_archivo(session, admin):
+    f = Formulario(
+        slug="form-archivo",
+        nombre="Form Archivo",
+        definicion=DEFINICION_ARCHIVO,
+        estado="activo",
+        version=1,
+        creado_por_id=admin.id,
+    )
+    session.add(f)
+    session.commit()
+    session.refresh(f)
+    return f
+
+
+def _envio_con_archivo(session, formulario, user):
+    envio = crear_envio(
+        session, formulario, user, estado="en_proceso",
+        datos={"alta": {"base": dict(ARCHIVO_SERVIDOR), "nota": "n1"}},
+    )
+    envio.definicion_snapshot = DEFINICION_ARCHIVO
+    session.commit()
+    return envio
+
+
+def test_el_cliente_no_puede_reescribir_el_valor_de_un_archivo(
+    session, formulario_archivo, user_a
+):
+    _envio_con_archivo(session, formulario_archivo, user_a)
+    svc = EnviosService(session)
+    out = svc.actualizar(
+        formulario_archivo,
+        user_a,
+        {"alta": {"base": {"url_publica": "http://malicioso/x", "filename": "otro"}, "nota": "n2"}},
+        0,
+        enviar=False,
+    )
+    assert out.datos["alta"]["base"] == ARCHIVO_SERVIDOR
+    assert out.datos["alta"]["nota"] == "n2"
+
+
+def test_el_cliente_si_puede_quitar_un_archivo(session, formulario_archivo, user_a):
+    _envio_con_archivo(session, formulario_archivo, user_a)
+    svc = EnviosService(session)
+    out = svc.actualizar(
+        formulario_archivo,
+        user_a,
+        {"alta": {"base": None, "nota": "n1"}},
+        0,
+        enviar=False,
+    )
+    assert out.datos["alta"].get("base") is None
+
+
+def test_el_respaldo_no_puede_tumbar_el_envio(session, formulario, user_a, monkeypatch):
+    """El respaldo en Acervo es best-effort: si falla (bucket sin configurar,
+    Acervo caido) el envio se guarda igual. La fuente de verdad es la BD."""
+    envio = crear_envio(session, formulario, user_a, estado="en_proceso")
+
+    def explota(_envio):
+        raise RuntimeError("acervo caido")
+
+    svc = EnviosService(session)
+    monkeypatch.setattr(svc, "_escribir_respaldo", explota)
+
+    out = svc.actualizar(
+        formulario,
+        user_a,
+        {"general": {"razon_social": "Acme", "telefono": "3312345678"}},
+        0,
+        enviar=True,
+    )
+    assert out.estado == "enviado"
+    assert svc.respaldar_envio(envio) is None

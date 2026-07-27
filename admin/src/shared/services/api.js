@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { runExclusiveRefresh } from '@shared/utils/sessionRefresh';
 
 const API_URL = import.meta.env.VITE_ADMIN_API_URL || '/api/mariachi';
 
@@ -73,7 +74,7 @@ export const refreshCsrfToken = async () => {
 
 const refreshSession = async () => {
     if (sessionRefreshPromise) return sessionRefreshPromise;
-    sessionRefreshPromise = (async () => {
+    sessionRefreshPromise = runExclusiveRefresh(async () => {
         try {
             const { data } = await axios.post(`${API_URL}/autenticacion/refrescar`, null, { withCredentials: true });
             const newCsrf = data?.csrf_token;
@@ -81,10 +82,8 @@ const refreshSession = async () => {
             return true;
         } catch {
             return false;
-        } finally {
-            sessionRefreshPromise = null;
         }
-    })();
+    }).finally(() => { sessionRefreshPromise = null; });
     return sessionRefreshPromise;
 };
 

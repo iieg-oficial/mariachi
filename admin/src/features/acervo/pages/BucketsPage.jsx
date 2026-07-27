@@ -2,20 +2,19 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     Button,
     Form,
-    Input,
     Modal,
-    Select,
     Switch,
     Table,
     Tag,
     Tooltip,
     Typography,
 } from 'antd';
-import { DatabaseOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
+import { DatabaseOutlined, EditOutlined, LockOutlined, PlusOutlined } from '@ant-design/icons';
 import api from '@shared/services/api';
 import { message } from '@shared/services/message';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import AcervoSectionHeader from '@features/acervo/components/AcervoSectionHeader';
+import BucketFormModal from '@features/acervo/components/BucketFormModal';
 import {
     createBucket,
     getAllBuckets,
@@ -25,7 +24,9 @@ import { invalidateAccessibleBucketsCache } from '@features/acervo/hooks/useAcce
 
 const { Text } = Typography;
 
-const BUCKET_NAME_PATTERN = /^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/;
+const PROTEGIDO_AYUDA = 'El contenido lo gestiona la aplicación que lo usa y sus rutas están '
+    + 'referenciadas desde la base de datos. Con esto activo, el explorador oculta borrar, mover, '
+    + 'renombrar y subir, y el API los rechaza aunque se llamen directo.';
 
 const backendError = (error, fallback) => {
     const detail = error?.response?.data?.detail;
@@ -70,7 +71,7 @@ export default function BucketsPage() {
     const openCreate = () => {
         setEditing(null);
         form.resetFields();
-        form.setFieldsValue({ is_public: false, is_active: true });
+        form.setFieldsValue({ is_public: false, is_active: true, protegido: false });
         setModalOpen(true);
     };
 
@@ -84,6 +85,7 @@ export default function BucketsPage() {
             display_name: record.display_name,
             is_public: record.is_public,
             is_active: record.is_active,
+            protegido: record.protegido,
         });
         setModalOpen(true);
     };
@@ -97,6 +99,7 @@ export default function BucketsPage() {
                     display_name: values.display_name,
                     is_public: values.is_public,
                     is_active: values.is_active,
+                    protegido: values.protegido,
                 });
                 message.success('Bucket actualizado');
             } else {
@@ -107,6 +110,7 @@ export default function BucketsPage() {
                     display_name: values.display_name,
                     is_public: values.is_public,
                     is_active: values.is_active,
+                    protegido: values.protegido,
                 });
                 message.success('Bucket creado');
             }
@@ -132,6 +136,36 @@ export default function BucketsPage() {
         } finally {
             setTogglingId(null);
         }
+    };
+
+    const aplicarProtegido = async (record, value) => {
+        setTogglingId(record.id);
+        try {
+            await updateBucket(record.id, { protegido: value });
+            invalidateAccessibleBucketsCache();
+            await reload();
+        } catch (err) {
+            message.error(backendError(err, 'Error al actualizar el bucket'));
+        } finally {
+            setTogglingId(null);
+        }
+    };
+
+    const handleToggleProtegido = (record, value) => {
+        if (value) {
+            aplicarProtegido(record, true);
+            return;
+        }
+        Modal.confirm({
+            title: `¿Desproteger «${record.display_name}»?`,
+            content: 'Volverán a habilitarse borrar, mover, renombrar y subir desde el explorador. '
+                + 'Si otra aplicación gestiona este contenido y guarda las rutas en la base de datos, '
+                + 'un cambio a mano dejará registros apuntando a archivos inexistentes.',
+            okText: 'Desproteger',
+            okType: 'danger',
+            cancelText: 'Cancelar',
+            onOk: () => aplicarProtegido(record, false),
+        });
     };
 
     const columns = [
@@ -170,6 +204,22 @@ export default function BucketsPage() {
                     checked={value}
                     loading={togglingId === record.id}
                     onChange={(checked) => handleToggleActive(record, checked)}
+                />
+            ),
+        },
+        {
+            title: (
+                <Tooltip title={PROTEGIDO_AYUDA}>
+                    <span>Protegido <LockOutlined /></span>
+                </Tooltip>
+            ),
+            dataIndex: 'protegido',
+            key: 'protegido',
+            render: (value, record) => (
+                <Switch
+                    checked={value}
+                    loading={togglingId === record.id}
+                    onChange={(checked) => handleToggleProtegido(record, checked)}
                 />
             ),
         },
@@ -218,72 +268,16 @@ export default function BucketsPage() {
                 scroll={{ x: 'max-content' }}
             />
 
-            <Modal
+            <BucketFormModal
                 open={modalOpen}
-                title={editing ? 'Editar bucket' : 'Nuevo bucket'}
-                okText={editing ? 'Guardar' : 'Crear'}
-                cancelText="Cancelar"
-                confirmLoading={saving}
+                editing={editing}
+                projects={projects}
+                form={form}
+                saving={saving}
+                protegidoAyuda={PROTEGIDO_AYUDA}
                 onOk={handleSubmit}
                 onCancel={() => setModalOpen(false)}
-                destroyOnClose
-            >
-                <Form form={form} layout="vertical" style={{ marginTop: 12 }}>
-                    <Form.Item
-                        name="project_id"
-                        label="Proyecto"
-                        rules={[{ required: true, message: 'Selecciona un proyecto' }]}
-                    >
-                        <Select
-                            disabled={!!editing}
-                            placeholder="Proyecto al que pertenece"
-                            options={projects.map((p) => ({ value: p.id, label: p.name }))}
-                        />
-                    </Form.Item>
-
-                    <Form.Item
-                        name="acervo_bucket"
-                        label="Bucket (nombre en el almacenamiento)"
-                        rules={editing ? [] : [
-                            { required: true, message: 'Ingresa el nombre del bucket' },
-                            {
-                                pattern: BUCKET_NAME_PATTERN,
-                                message: 'Solo minúsculas, números, puntos y guiones (3-63)',
-                            },
-                        ]}
-                        extra={editing ? 'El nombre del bucket no puede cambiarse.' : undefined}
-                    >
-                        <Input disabled={!!editing} placeholder="p. ej. mariachi" />
-                    </Form.Item>
-
-                    <Form.Item
-                        name="access_key_ref"
-                        label="Prefijo de credencial"
-                        rules={editing ? [] : [{ required: true, message: 'Ingresa el prefijo de credencial' }]}
-                        extra={editing
-                            ? 'El prefijo de credencial no puede cambiarse.'
-                            : 'Prefijo de la credencial en el .env, p. ej. ACERVO_MARIACHI (se leen ACERVO_MARIACHI_ACCESS_KEY / _SECRET_KEY).'}
-                    >
-                        <Input disabled={!!editing} placeholder="p. ej. ACERVO_MARIACHI" />
-                    </Form.Item>
-
-                    <Form.Item
-                        name="display_name"
-                        label="Nombre visible"
-                        rules={[{ required: true, message: 'Ingresa un nombre visible' }]}
-                    >
-                        <Input placeholder="Nombre mostrado en la UI" />
-                    </Form.Item>
-
-                    <Form.Item name="is_public" label="Público" valuePropName="checked">
-                        <Switch />
-                    </Form.Item>
-
-                    <Form.Item name="is_active" label="Activo" valuePropName="checked">
-                        <Switch />
-                    </Form.Item>
-                </Form>
-            </Modal>
+            />
         </div>
     );
 }

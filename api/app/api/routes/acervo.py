@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import ADMIN_ROLE, get_current_user, get_db, verify_csrf
 from app.api.metrics import COUNTER_MEDIA_DELETES, COUNTER_MEDIA_UPLOADS, incr
 from app.api.rate_limit import rate_limit
+from app.core.bucket_policies import get_hidden_prefixes
 from app.models.acervo import AcervoFile, AcervoFolder
 from app.models.acervo_bucket import AcervoBucket
 from app.models.user import Usuario
@@ -289,7 +290,7 @@ async def subir_archivo(
     current_user: Usuario = Depends(verify_csrf),
     _rl: Usuario = Depends(_upload_rate_limit),
 ):
-    bucket = acervo_file_service.resolve_bucket_or_403(bucket_id, current_user, db)
+    bucket = acervo_file_service.resolve_bucket_escribible(bucket_id, current_user, db)
     client = AcervoClient.for_bucket(bucket)
 
     file_extension = file.filename.split(".")[-1] if "." in file.filename else ""
@@ -375,7 +376,7 @@ async def chunked_upload_init(
 ):
     from app.services.acervo_chunked import CHUNK_SIZE, create_session
 
-    bucket = acervo_file_service.resolve_bucket_or_403(bucket_id, current_user, db)
+    bucket = acervo_file_service.resolve_bucket_escribible(bucket_id, current_user, db)
     client = AcervoClient.for_bucket(bucket)
 
     file_extension = original_name.split(".")[-1] if "." in original_name else ""
@@ -469,7 +470,7 @@ async def chunked_upload_complete(
         raise HTTPException(status_code=404, detail="Sesion de subida no encontrada o expirada")
 
     bucket_id = session['bucket_id']
-    bucket = acervo_file_service.resolve_bucket_or_403(bucket_id, current_user, db)
+    bucket = acervo_file_service.resolve_bucket_escribible(bucket_id, current_user, db)
     client = AcervoClient._cache.get(f"{session['bucket_name']}:{session['access_key_ref']}")
     if not client:
         client = AcervoClient.for_bucket(bucket)
@@ -571,7 +572,7 @@ async def mover_archivo(
         bucket_id = item.bucket_id
         src_name = item.name
 
-    bucket = acervo_file_service.resolve_bucket_or_403(bucket_id, current_user, db)
+    bucket = acervo_file_service.resolve_bucket_escribible(bucket_id, current_user, db)
     client = AcervoClient.for_bucket(bucket)
 
     basename = src_name.rsplit("/", 1)[-1]
@@ -664,7 +665,7 @@ async def mover_archivos_lote(
                 bucket_id = item.bucket_id
                 src_name = item.name
 
-            bucket = acervo_file_service.resolve_bucket_or_403(bucket_id, current_user, db)
+            bucket = acervo_file_service.resolve_bucket_escribible(bucket_id, current_user, db)
             client = AcervoClient.for_bucket(bucket)
 
             basename = src_name.rsplit("/", 1)[-1]
@@ -770,6 +771,110 @@ async def info_carpeta(
     }
 
 
+_DOCUMENT_MIME_PREFIXES = (
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats",
+    "application/vnd.ms-excel",
+    "application/vnd.ms-powerpoint",
+    "application/json",
+    "application/xml",
+    "application/geo+json",
+    "text/",
+)
+
+
+def _resumen_bucket(bucket: AcervoBucket) -> dict:
+    client = AcervoClient.for_bucket(bucket)
+    hidden_prefixes = get_hidden_prefixes(bucket.acervo_bucket)
+    objetos = [
+        o for o in client.list_objects(prefix="", recursive=True)
+        if not any(o["name"].startswith(p) for p in hidden_prefixes)
+    ]
+
+    carpetas: set[str] = set()
+    for obj in objetos:
+        acumulado = ""
+        for parte in obj["name"].split("/")[:-1]:
+            acumulado = f"{acumulado}{parte}/"
+            carpetas.add(acumulado)
+
+    archivos = [
+        o for o in objetos
+        if not o.get("is_dir") and not acervo_file_service.is_folder_marker(o["name"])
+    ]
+
+    imagenes = 0
+    documentos = 0
+    for obj in archivos:
+        mime = acervo_file_service.guess_mime(obj["name"])
+        if mime.startswith("image/"):
+            imagenes += 1
+        elif mime.startswith(_DOCUMENT_MIME_PREFIXES):
+            documentos += 1
+
+    return {
+        "bucketId": bucket.id,
+        "bucket": bucket.acervo_bucket,
+        "displayName": bucket.display_name,
+        "fileCount": len(archivos),
+        "imageCount": imagenes,
+        "documentCount": documentos,
+        "otherCount": len(archivos) - imagenes - documentos,
+        "folderCount": len(carpetas),
+        "totalSize": sum(o["size"] for o in archivos),
+        "lastModified": max((o["last_modified"] for o in archivos if o["last_modified"]), default=None),
+    }
+
+
+@router.get("/resumen", response_model=dict)
+async def resumen_acervo(
+    bucket_id: int | None = Query(None, description="Limita el resumen a un bucket"),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    if bucket_id is not None:
+        buckets = [acervo_file_service.resolve_bucket_or_403(bucket_id, current_user, db)]
+    else:
+        buckets = acervo_file_service.buckets_accesibles(db, current_user)
+
+    resumenes = []
+    for bucket in buckets:
+        try:
+            resumenes.append(_resumen_bucket(bucket))
+        except Exception:
+            logger.exception(
+                "action=acervo.resumen.error user_id=%s bucket=%s",
+                current_user.id, bucket.acervo_bucket,
+            )
+            resumenes.append({
+                "bucketId": bucket.id,
+                "bucket": bucket.acervo_bucket,
+                "displayName": bucket.display_name,
+                "fileCount": 0,
+                "imageCount": 0,
+                "documentCount": 0,
+                "otherCount": 0,
+                "folderCount": 0,
+                "totalSize": 0,
+                "lastModified": None,
+                "error": True,
+            })
+
+    campos = ("fileCount", "imageCount", "documentCount", "otherCount", "folderCount", "totalSize")
+    return {
+        "buckets": resumenes,
+        "totals": {
+            "bucketCount": len(resumenes),
+            **{campo: sum(r[campo] for r in resumenes) for campo in campos},
+            "lastModified": max(
+                (r["lastModified"] for r in resumenes if r["lastModified"]),
+                default=None,
+            ),
+        },
+    }
+
+
 @router.put("/{media_id}", response_model=dict)
 async def actualizar_archivo(
     media_id: int,
@@ -782,7 +887,7 @@ async def actualizar_archivo(
     if not item:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Archivo no encontrado")
     if item.bucket_id:
-        acervo_file_service.resolve_bucket_or_403(item.bucket_id, current_user, db)
+        acervo_file_service.resolve_bucket_escribible(item.bucket_id, current_user, db)
 
     data = payload.model_dump(exclude_unset=True)
     metadata = dict(item.metadata_json or {})
@@ -824,7 +929,7 @@ async def crear_carpeta(
     current_user: Usuario = Depends(verify_csrf),
     _rl: Usuario = Depends(_write_rate_limit),
 ):
-    bucket = acervo_file_service.resolve_bucket_or_403(folder_data.bucket_id, current_user, db)
+    bucket = acervo_file_service.resolve_bucket_escribible(folder_data.bucket_id, current_user, db)
 
     path, name, parent = acervo_file_service.normalize_folder_path(folder_data.parent, folder_data.name)
     if not name:
@@ -880,7 +985,7 @@ async def eliminar_carpeta(
     if not folder:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Carpeta no encontrada")
 
-    bucket = acervo_file_service.resolve_bucket_or_403(folder.bucket_id, current_user, db)
+    bucket = acervo_file_service.resolve_bucket_escribible(folder.bucket_id, current_user, db)
 
     media_count = (
         db.query(AcervoFile)
@@ -930,7 +1035,7 @@ async def eliminar_archivo(
             raise HTTPException(status_code=400, detail="ID de directorio invalido")
         if current_user.role != ADMIN_ROLE:
             raise HTTPException(status_code=403, detail="Solo admin puede borrar directorios")
-        bucket = acervo_file_service.resolve_bucket_or_403(bucket_id, current_user, db)
+        bucket = acervo_file_service.resolve_bucket_escribible(bucket_id, current_user, db)
         client = AcervoClient.for_bucket(bucket)
         prefix = name if name.endswith("/") else f"{name}/"
         deleted = client.delete_prefix(prefix)
@@ -965,7 +1070,7 @@ async def eliminar_archivo(
             bucket_id = int(bucket_id_str)
         except ValueError:
             raise HTTPException(status_code=400, detail="ID sintetico invalido")
-        bucket = acervo_file_service.resolve_bucket_or_403(bucket_id, current_user, db)
+        bucket = acervo_file_service.resolve_bucket_escribible(bucket_id, current_user, db)
         client = AcervoClient.for_bucket(bucket)
         client.delete_file(name)
         acervo_thumbnails.cleanup(client, name)
@@ -993,7 +1098,7 @@ async def eliminar_archivo(
 
     bucket = None
     if item.bucket_id:
-        bucket = acervo_file_service.resolve_bucket_or_403(item.bucket_id, current_user, db)
+        bucket = acervo_file_service.resolve_bucket_escribible(item.bucket_id, current_user, db)
         client = AcervoClient.for_bucket(bucket)
         client.delete_file(item.name)
         acervo_thumbnails.cleanup(client, item.name)

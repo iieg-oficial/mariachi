@@ -12,6 +12,7 @@ class AcervoBucketBase(CamelCaseInput):
     display_name: str = Field(min_length=1, max_length=200)
     is_public: bool = False
     is_active: bool = True
+    protegido: bool = False
 
 
 class AcervoBucketCreate(AcervoBucketBase):
@@ -22,6 +23,7 @@ class AcervoBucketUpdate(CamelCaseInput):
     display_name: str | None = Field(default=None, max_length=200)
     is_public: bool | None = None
     is_active: bool | None = None
+    protegido: bool | None = None
 
 
 class AcervoBucketResponse(AcervoBucketBase):

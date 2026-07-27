@@ -1,7 +1,9 @@
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from app.services.sieej.compat import normalizar_definicion
 
 EnvioEstado = Literal["en_proceso", "enviado", "expirado"]
 EventoTipo = Literal[
@@ -59,6 +61,11 @@ class EnvioDetalleResponse(EnvioResponse):
     """
 
     definicion_snapshot: dict[str, Any]
+
+    @field_validator("definicion_snapshot", mode="before")
+    @classmethod
+    def _compat_snapshot(cls, value: Any) -> Any:
+        return normalizar_definicion(value) if isinstance(value, dict) else value
 
 
 class EnvioUpdate(BaseModel):
@@ -177,3 +184,8 @@ class MisEnviosDetalle(BaseModel):
     actualizado_en: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("definicion_snapshot", mode="before")
+    @classmethod
+    def _compat_snapshot(cls, value: Any) -> Any:
+        return normalizar_definicion(value) if isinstance(value, dict) else value

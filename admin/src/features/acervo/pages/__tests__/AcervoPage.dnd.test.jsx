@@ -22,6 +22,7 @@ vi.mock('@features/acervo/api/acervoService', () => ({
         createFolder: vi.fn(),
         deleteFolder: vi.fn(),
         getFolderInfo: vi.fn(),
+        getAcervoResumen: vi.fn(),
         buildFolderZipUrl: vi.fn(() => '#'),
         formatFileSize: (bytes) => `${bytes} B`,
     },
@@ -40,6 +41,7 @@ describe('AcervoPage drag & drop', () => {
         acervoService.getBuckets.mockResolvedValue([BUCKET]);
         acervoService.getAcervoFiles.mockResolvedValue([]);
         acervoService.getFolders.mockResolvedValue([]);
+        acervoService.getAcervoResumen.mockResolvedValue({ buckets: [], totals: {} });
         acervoService.uploadAcervoFile.mockResolvedValue({ id: 1 });
     });
 

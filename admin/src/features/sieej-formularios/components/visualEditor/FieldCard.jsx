@@ -1,7 +1,7 @@
-import { Button, Card, Popconfirm, Select, Space, Tag, Tooltip } from 'antd';
+import { Button, Card, Dropdown, Modal, Popconfirm, Select, Space, Tag, Tooltip } from 'antd';
 import {
     BlockOutlined, CloseOutlined, ColumnWidthOutlined, CopyOutlined, DeleteOutlined, DownOutlined,
-    EditOutlined, EnterOutlined, SaveOutlined, UpOutlined,
+    EditOutlined, EnterOutlined, MoreOutlined, SaveOutlined, UpOutlined,
 } from '@ant-design/icons';
 import SortableItem from './SortableItem';
 import FieldForm from './FieldForm';
@@ -29,6 +29,33 @@ export default function FieldCard({
         ? '1 / -1'
         : (newRow ? `1 / span ${span}` : `span ${span}`);
     const isCompact = isMobile || cs >= 2;
+    const useMoreMenu = cs >= 2 && !isMobile;
+
+    const confirmDelete = () => {
+        Modal.confirm({
+            title: '¿Eliminar este campo?',
+            content: `Se quitará «${field.label || field.name}» de este paso.`,
+            okText: 'Eliminar',
+            okType: 'danger',
+            cancelText: 'Cancelar',
+            onOk: onDelete,
+        });
+    };
+
+    const moreMenu = {
+        items: [
+            { key: 'copy', icon: <CopyOutlined />, label: 'Copiar campo' },
+            { key: 'duplicate', icon: <BlockOutlined />, label: 'Duplicar aquí' },
+            { type: 'divider' },
+            { key: 'delete', icon: <DeleteOutlined />, label: 'Eliminar', danger: true },
+        ],
+        onClick: ({ key, domEvent }) => {
+            domEvent.stopPropagation();
+            if (key === 'copy') onCopy();
+            else if (key === 'duplicate') onDuplicate();
+            else if (key === 'delete') confirmDelete();
+        },
+    };
 
     const actionButtons = (
         <Space size="small" direction={isCompact && !isMobile ? 'vertical' : 'horizontal'}>
@@ -66,12 +93,16 @@ export default function FieldCard({
                     </Button>
                 </Tooltip>
             )}
-            <Tooltip title="Copiar campo (para pegarlo en otro paso o formulario)" placement="left">
-                <Button type="link" size="small" icon={<CopyOutlined />} onClick={onCopy} />
-            </Tooltip>
-            <Tooltip title="Duplicar aquí" placement="left">
-                <Button type="link" size="small" icon={<BlockOutlined />} onClick={onDuplicate} />
-            </Tooltip>
+            {!useMoreMenu && (
+                <>
+                    <Tooltip title="Copiar campo (para pegarlo en otro paso o formulario)" placement="left">
+                        <Button type="link" size="small" icon={<CopyOutlined />} onClick={onCopy} />
+                    </Tooltip>
+                    <Tooltip title="Duplicar aquí" placement="left">
+                        <Button type="link" size="small" icon={<BlockOutlined />} onClick={onDuplicate} />
+                    </Tooltip>
+                </>
+            )}
             <Tooltip title={isEditing ? 'Cerrar edición' : 'Editar'} placement="left">
                 <Button
                     type="link"
@@ -80,17 +111,25 @@ export default function FieldCard({
                     onClick={onToggleEdit}
                 />
             </Tooltip>
-            <Popconfirm
-                title="¿Eliminar este campo?"
-                okText="Eliminar"
-                okButtonProps={{ danger: true }}
-                cancelText="Cancelar"
-                onConfirm={onDelete}
-            >
-                <Tooltip title="Eliminar" placement="left">
-                    <Button type="link" size="small" danger icon={<DeleteOutlined />} />
+            {useMoreMenu ? (
+                <Tooltip title="Más opciones (copiar, duplicar, eliminar)" placement="left">
+                    <Dropdown menu={moreMenu} placement="bottomRight" trigger={['click']}>
+                        <Button type="link" size="small" icon={<MoreOutlined />} />
+                    </Dropdown>
                 </Tooltip>
-            </Popconfirm>
+            ) : (
+                <Popconfirm
+                    title="¿Eliminar este campo?"
+                    okText="Eliminar"
+                    okButtonProps={{ danger: true }}
+                    cancelText="Cancelar"
+                    onConfirm={onDelete}
+                >
+                    <Tooltip title="Eliminar" placement="left">
+                        <Button type="link" size="small" danger icon={<DeleteOutlined />} />
+                    </Tooltip>
+                </Popconfirm>
+            )}
         </Space>
     );
 

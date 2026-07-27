@@ -31,6 +31,8 @@ from app.api.routes import (
     mapalab_api_keys,
     mapalab_api_keys_internal,
     mapalab_events_public,
+    mapalab_infobox,
+    mapalab_infobox_public,
     mapalab_mcp_internal,
     mapalab_shares,
     mapalab_stats,
@@ -133,6 +135,8 @@ def create_app() -> FastAPI:
     app.include_router(symbols.mapalab_router, prefix=settings.mapalab_public_prefix)
     app.include_router(reportes_public.router, prefix=settings.public_prefix)
     app.include_router(mapalab_events_public.router, prefix=settings.public_prefix)
+    app.include_router(mapalab_infobox_public.router, prefix=settings.public_prefix)
+    app.include_router(mapalab_infobox.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(metrics_module.router)
 
     @app.get("/", tags=["health"])

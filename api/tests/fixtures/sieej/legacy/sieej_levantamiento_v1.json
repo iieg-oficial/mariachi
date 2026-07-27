@@ -1,0 +1,546 @@
+{
+  "version": 1,
+  "steps": [
+    {
+      "id": "general",
+      "type": "form",
+      "title": "Datos generales",
+      "fields": [
+        {
+          "name": "nombre_de_la_dependencia",
+          "label": "Nombre de la dependencia",
+          "type": "select",
+          "required": true,
+          "catalog": "unidades_admin",
+          "layout": {
+            "colSpan": 2
+          }
+        },
+        {
+          "name": "nombre_del_conjunto_de_datos",
+          "label": "Nombre del conjunto de datos",
+          "type": "text",
+          "required": true,
+          "tooltip": "Nombre de la temática de los datos que se quieren integrar al sistema",
+          "layout": {
+            "colSpan": 2
+          }
+        },
+        {
+          "name": "descripcion_del_conjunto_de_datos",
+          "label": "Descripción del conjunto de datos",
+          "type": "textarea",
+          "required": true,
+          "tooltip": "Una descripción breve del conjunto de datos que especifique lo siguiente: la temática, el tipo de información y la cobertura geográfica y temporal. ",
+          "validation": {
+            "minLength": 150,
+            "maxLength": 1000
+          },
+          "layout": {
+            "colSpan": 1
+          }
+        },
+        {
+          "name": "proposito_del_conjunto_de_datos",
+          "label": "Propósito del conjunto de datos",
+          "type": "textarea",
+          "tooltip": "¿Para qué fue creado el conjunto de datos? o ¿Qué necesidad busca atender? ",
+          "validation": {
+            "minLength": 150,
+            "maxLength": 1000
+          },
+          "layout": {
+            "colSpan": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "documentacion_institucional",
+      "type": "form",
+      "title": "Información institucional",
+      "fields": [
+        {
+          "name": "informacion_del_responsable_del_conjunto_de_datos",
+          "label": "Información del responsable del conjunto de datos",
+          "type": "info",
+          "layout": {
+            "colSpan": 1
+          }
+        },
+        {
+          "name": "nombre_del_responsable_del_conjunto_de_datos",
+          "label": "Nombre del responsable del conjunto de datos",
+          "type": "text",
+          "required": true,
+          "layout": {
+            "colSpan": 2
+          }
+        },
+        {
+          "name": "puesto_del_responsable_del_conjunto_de_datos",
+          "label": "Puesto del responsable del conjunto de datos",
+          "type": "text",
+          "required": true,
+          "layout": {
+            "colSpan": 2
+          }
+        },
+        {
+          "name": "correo_electronico_del_responsable_del_conjunto_de_datos",
+          "label": "Correo electrónico del responsable del conjunto de datos",
+          "type": "email",
+          "required": true,
+          "layout": {
+            "colSpan": 3
+          }
+        },
+        {
+          "name": "telefono_del_responsable_del_conjunto_de_datos",
+          "label": "Teléfono  del responsable del conjunto de datos",
+          "type": "tel",
+          "layout": {
+            "colSpan": 3
+          }
+        },
+        {
+          "name": "extension_responsable_conjunto_datos",
+          "label": "Extensión del responsable del conjunto de datos",
+          "type": "text",
+          "validation": {
+            "minLength": 4,
+            "maxLength": 4,
+            "pattern": "^\\d{4}"
+          },
+          "layout": {
+            "colSpan": 3
+          }
+        },
+        {
+          "name": "existe_un_enlace_tecnico",
+          "label": "¿Existe un enlace técnico?",
+          "type": "select",
+          "required": true,
+          "options": [
+            {
+              "value": "true",
+              "label": "Sí"
+            },
+            {
+              "value": "false",
+              "label": "No"
+            }
+          ],
+          "layout": {
+            "colSpan": 2
+          }
+        },
+        {
+          "name": "_",
+          "label": "  ",
+          "type": "info",
+          "layout": {
+            "colSpan": 2
+          }
+        },
+        {
+          "name": "informacion_del_enlace_tecnico",
+          "label": "Información del enlace técnico",
+          "type": "info",
+          "showWhen": {
+            "field": "existe_un_enlace_tecnico",
+            "equals": "true"
+          },
+          "layout": {
+            "colSpan": 1
+          }
+        },
+        {
+          "name": "nombre_del_enlace_tecnico",
+          "label": "Nombre del enlace técnico",
+          "type": "text",
+          "showWhen": {
+            "field": "existe_un_enlace_tecnico",
+            "equals": "true"
+          },
+          "layout": {
+            "colSpan": 2
+          }
+        },
+        {
+          "name": "puesto_del_enlace_tecnico",
+          "label": "Puesto del enlace técnico",
+          "type": "text",
+          "showWhen": {
+            "field": "existe_un_enlace_tecnico",
+            "equals": "true"
+          },
+          "layout": {
+            "colSpan": 2
+          }
+        },
+        {
+          "name": "correo_electronico_del_enlace_tecnico",
+          "label": "Correo electrónico del enlace técnico",
+          "type": "email",
+          "showWhen": {
+            "field": "existe_un_enlace_tecnico",
+            "equals": "true"
+          },
+          "layout": {
+            "colSpan": 3
+          }
+        },
+        {
+          "name": "telefono_del_enlace_tecnico",
+          "label": "Teléfono del enlace técnico",
+          "type": "tel",
+          "showWhen": {
+            "field": "existe_un_enlace_tecnico",
+            "equals": "true"
+          },
+          "layout": {
+            "colSpan": 3
+          }
+        },
+        {
+          "name": "extension_enlace_tecnico",
+          "label": "Extensión del enlace tecnico",
+          "type": "text",
+          "validation": {
+            "minLength": 4,
+            "maxLength": 4,
+            "pattern": "^\\d{4}"
+          },
+          "layout": {
+            "colSpan": 3
+          }
+        }
+      ]
+    },
+    {
+      "id": "dataset_y_edicion_dataset",
+      "type": "repeater",
+      "title": "Características del conjunto de datos",
+      "fields": [
+        {
+          "name": "diccionario_datos",
+          "label": "Diccionario de datos",
+          "type": "info",
+          "layout": {
+            "colSpan": 1
+          }
+        },
+        {
+          "name": "se_cuenta_con_un_diccionario_de_datos",
+          "label": "¿Se cuenta con un diccionario de datos?",
+          "type": "select",
+          "options": [
+            {
+              "value": "true",
+              "label": "Sí"
+            },
+            {
+              "value": "false",
+              "label": "No"
+            }
+          ],
+          "layout": {
+            "colSpan": 1
+          }
+        },
+        {
+          "name": "anada_el_diccionario_de_datos",
+          "label": "Añada el diccionario de datos",
+          "type": "file",
+          "tooltip": "Conjunto de documentos o archivos que contienen la descripción y definición de cada variable que integra el conjunto de datos",
+          "bucket": "sieej",
+          "layout": {
+            "colSpan": 1
+          }
+        },
+        {
+          "name": "metodologia",
+          "label": "Metodología",
+          "type": "textarea",
+          "tooltip": "Descripción breve del cómo se genera el conjunto de datos",
+          "tab": "metodologia",
+          "validation": {
+            "minLength": 250,
+            "maxLength": 1000
+          },
+          "layout": {
+            "colSpan": 1
+          }
+        },
+        {
+          "name": "existe_un_documento_metodologico_asociado_al_conjunto_de_datos",
+          "label": "¿Existe un documento metodológico asociado al conjunto de datos?",
+          "type": "select",
+          "tab": "metodologia",
+          "options": [
+            {
+              "value": "true",
+              "label": "Sí"
+            },
+            {
+              "value": "false",
+              "label": "No"
+            }
+          ],
+          "layout": {
+            "colSpan": 1
+          }
+        },
+        {
+          "name": "adjunte_el_documento_metodologico_asociado_al_conjunto_de_datos",
+          "label": "Adjunte el documento metodológico asociado al conjunto de datos",
+          "type": "file",
+          "tab": "metodologia",
+          "showWhen": {
+            "field": "existe_un_documento_metodologico_asociado_al_conjunto_de_datos",
+            "equals": "true"
+          },
+          "bucket": "sieej",
+          "accept": [
+            ".pdf",
+            ".doc",
+            ".docx",
+            ".txt"
+          ],
+          "layout": {
+            "colSpan": 1
+          }
+        },
+        {
+          "name": "tipo_cobertura_espacial",
+          "label": "Tipo de cobertura espacial",
+          "type": "select",
+          "tab": "metodologia",
+          "options": [
+            {
+              "value": "estatal",
+              "label": "Estatal"
+            },
+            {
+              "value": "regional",
+              "label": "Regional"
+            },
+            {
+              "value": "municipal",
+              "label": "Municipal"
+            },
+            {
+              "value": "area_metropolitana",
+              "label": "Área metropolitana"
+            },
+            {
+              "value": "otro",
+              "label": "Otro"
+            }
+          ],
+          "layout": {
+            "colSpan": 1
+          }
+        }
+      ],
+      "minItems": 1,
+      "itemLabel": "Conjunto de datos {{index}}",
+      "tabs": [
+        {
+          "id": "metodologia",
+          "title": "Metodología"
+        }
+      ]
+    },
+    {
+      "id": "carga_de_archivos",
+      "type": "form",
+      "title": "Carga de archivos",
+      "fields": [
+        {
+          "name": "a_que_tipo_de_temporalidad_hacen_referencia_los_datos",
+          "label": "A que tipo de temporalidad hacen referencia los datos",
+          "type": "select",
+          "options": [
+            {
+              "value": "periodo_referencia",
+              "label": "Periodo de referencia"
+            },
+            {
+              "value": "fecha_corte",
+              "label": "Una fecha de corte"
+            }
+          ],
+          "layout": {
+            "colSpan": 1
+          }
+        },
+        {
+          "name": "periodo_de_referencia_del_conjunto_de_datos",
+          "label": "Periodo de referencia del conjunto de datos",
+          "type": "text",
+          "tooltip": "Menciona el periodo al que hace referencia la información del archivo",
+          "showWhen": {
+            "field": "a_que_tipo_de_temporalidad_hacen_referencia_los_datos",
+            "equals": "periodo_referencia"
+          },
+          "layout": {
+            "colSpan": 1
+          }
+        },
+        {
+          "name": "fecha_de_corte_del_archivo",
+          "label": "Fecha de corte del archivo",
+          "type": "text",
+          "tooltip": "Menciona la fecha de corte de la información",
+          "showWhen": {
+            "field": "a_que_tipo_de_temporalidad_hacen_referencia_los_datos",
+            "equals": "fecha_corte"
+          },
+          "layout": {
+            "colSpan": 1
+          }
+        },
+        {
+          "name": "fecha_de_actualizacion",
+          "label": "Fecha de actualización",
+          "type": "text",
+          "tooltip": "Fecha en la que se elaboró el archivo de información",
+          "layout": {
+            "colSpan": 1
+          }
+        },
+        {
+          "name": "carga_de_datos",
+          "label": "Carga de datos",
+          "type": "file",
+          "tooltip": "Si se requiere cargar mas de un archivo, utilice un formato .zip",
+          "bucket": "sieej",
+          "accept": [
+            ".xlsx",
+            ".csv",
+            ".zip",
+            ".json",
+            ".geojson",
+            ".kml"
+          ],
+          "layout": {
+            "colSpan": 1
+          }
+        }
+      ]
+    },
+    {
+      "id": "checklist_de_carga",
+      "type": "form",
+      "title": "Lista de verificación",
+      "fields": [
+        {
+          "name": "documentacion_institucional",
+          "label": "Documentación Institucional",
+          "type": "info",
+          "layout": {
+            "colSpan": 1
+          }
+        },
+        {
+          "name": "institucion_tema_descripcion_y_proposito_del_dataset_estan_completos",
+          "label": "Institución, tema, descripción y propósito del dataset están completos",
+          "type": "checkbox",
+          "layout": {
+            "colSpan": 1
+          }
+        },
+        {
+          "name": "cobertura_especificada",
+          "label": "Cobertura espacial y/o temporal (histórica + periodo) especificadas",
+          "type": "checkbox",
+          "layout": {
+            "colSpan": 1
+          }
+        },
+        {
+          "name": "una_hoja_de_documentacion_por_cada_conjunto_de_datos_no_mezclados",
+          "label": "Una hoja de documentación por cada conjunto de datos (no mezclados)",
+          "type": "checkbox",
+          "layout": {
+            "colSpan": 1
+          }
+        },
+        {
+          "name": "esquema_de_tablas",
+          "label": "Esquema de tablas",
+          "type": "checkbox",
+          "layout": {
+            "colSpan": 1
+          }
+        },
+        {
+          "name": "nombres_de_columnas_en_minusculas_sin_espacios_ni_caracteres_especiales_guion_bajo_como_separador",
+          "label": "Nombres de columnas en minúsculas, sin espacios ni caracteres especiales (guion bajo como separador)",
+          "type": "checkbox",
+          "layout": {
+            "colSpan": 1
+          }
+        },
+        {
+          "name": "cada_columna_es_una_sola_variable_sin_campos_compuestos",
+          "label": "Cada columna es una sola variable (sin campos compuestos)",
+          "type": "checkbox",
+          "layout": {
+            "colSpan": 1
+          }
+        },
+        {
+          "name": "campos_que_referencian_catalogo_inician_en_cat",
+          "label": "Campos que referencian catálogo inician en cat_",
+          "type": "checkbox",
+          "layout": {
+            "colSpan": 1
+          }
+        },
+        {
+          "name": "tipo_de_dato_definido_por_columna_texto_numero_fecha_booleano_geometria",
+          "label": "Tipo de dato definido por columna (texto, número, fecha, booleano, geometría, ...)",
+          "type": "checkbox",
+          "layout": {
+            "colSpan": 1
+          }
+        },
+        {
+          "name": "entrega_del_conjunto_de_datos",
+          "label": "Entrega del conjunto de datos",
+          "type": "checkbox",
+          "layout": {
+            "colSpan": 1
+          }
+        },
+        {
+          "name": "formato_correcto_gpkg_con_geometria_o_csv_sin_geometria_con_clave_de_relacion_tipo_clave_ct_clues_municipio",
+          "label": "Formato correcto: GPKG (con geometría) o CSV (sin geometría, con clave de relación tipo CLAVE CT/CLUES/Municipio)",
+          "type": "checkbox",
+          "layout": {
+            "colSpan": 1
+          }
+        },
+        {
+          "name": "codificacion_utf_8_o_utf_8_sig_bom_verificada",
+          "label": "Codificación UTF-8 o UTF-8-SIG (BOM) verificada",
+          "type": "checkbox",
+          "layout": {
+            "colSpan": 1
+          }
+        },
+        {
+          "name": "complementarios_si_aplica",
+          "label": "Complementarios (si aplica)",
+          "type": "info",
+          "layout": {
+            "colSpan": 1
+          }
+        }
+      ]
+    }
+  ]
+}

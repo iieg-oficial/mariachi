@@ -23,6 +23,7 @@ class AcervoBucket(Base):
     display_name = Column(String(200), nullable=False)
     is_public = Column(Boolean, default=False, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
+    protegido = Column(Boolean, default=False, nullable=False, server_default="false")
     created_at = Column(DateTime, default=utcnow, nullable=False)
 
     project = relationship("Project", back_populates="buckets")

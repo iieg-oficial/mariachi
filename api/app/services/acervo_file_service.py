@@ -14,7 +14,7 @@ from app.api.deps import ADMIN_ROLE
 from app.core.bucket_policies import get_hidden_prefixes
 from app.models.acervo import AcervoFile, AcervoFolder
 from app.models.acervo_bucket import AcervoBucket
-from app.models.project import UserProject
+from app.models.project import Project, UserProject
 from app.models.user import Usuario
 from app.services import acervo_thumbnails
 from app.services.acervo import AcervoClient
@@ -23,6 +23,8 @@ ZIP_MAX_BYTES = 500 * 1024 * 1024  # 500 MB
 _ZIP_CHUNK = 64 * 1024
 
 FOLDER_PLACEHOLDER = ".keep"
+
+FOLDER_AGGREGATE_MAX_OBJECTS = 10000
 
 _SAFE_NAME_RE = re.compile(r"[^a-zA-Z0-9._-]+")
 
@@ -212,6 +214,47 @@ def resolve_bucket_or_403(bucket_id: int, current_user: Usuario, db: Session) ->
     return bucket
 
 
+def resolve_bucket_escribible(
+    bucket_id: int, current_user: Usuario, db: Session
+) -> AcervoBucket:
+    """Como `resolve_bucket_or_403`, pero rechaza los buckets protegidos.
+
+    El contenido de un bucket protegido lo gestiona una aplicacion (SIEEJ
+    escribe ahi las entregas de las dependencias y guarda la clave en
+    `envio_archivo` y en `envio.datos`), asi que borrarlo o renombrarlo desde
+    el explorador deja registros apuntando a objetos inexistentes.
+    """
+    bucket = resolve_bucket_or_403(bucket_id, current_user, db)
+    if bucket.protegido:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"El bucket '{bucket.display_name}' esta protegido: su contenido "
+                "lo gestiona la aplicacion que lo usa y no se edita desde el "
+                "explorador."
+            ),
+        )
+    return bucket
+
+
+def buckets_accesibles(
+    db: Session,
+    current_user: Usuario,
+    include_inactive: bool = False,
+) -> list[AcervoBucket]:
+    is_admin = current_user.role == ADMIN_ROLE
+    query = db.query(AcervoBucket).join(Project, Project.id == AcervoBucket.project_id)
+    if not (include_inactive and is_admin):
+        query = query.filter(AcervoBucket.is_active.is_(True), Project.is_active.is_(True))
+    if not is_admin:
+        query = query.join(
+            UserProject,
+            (UserProject.project_id == Project.id)
+            & (UserProject.user_id == current_user.id),
+        )
+    return query.order_by(AcervoBucket.acervo_bucket).all()
+
+
 def thumbnail_for(
     bucket_name: str | None,
     object_name: str,
@@ -275,7 +318,7 @@ def serialize_bucket_only(bucket_id: int, bucket_name: str | None, obj: dict, is
             "name": name,
             "originalName": clean.rsplit("/", 1)[-1],
             "type": "directory",
-            "size": 0,
+            "size": obj.get("size", 0),
             "url": None,
             "thumbnail": None,
             "folder": folder_from_path(clean),
@@ -306,6 +349,45 @@ def serialize_bucket_only(bucket_id: int, bucket_name: str | None, obj: dict, is
     }
 
 
+def folder_aggregates(
+    client: AcervoClient,
+    prefix: str,
+    hidden_prefixes: tuple[str, ...] = (),
+    max_objects: int | None = None,
+) -> dict[str, dict]:
+    """Peso y fecha agregados de cada subcarpeta directa de `prefix`.
+
+    Un solo listado recursivo del prefijo, agrupando por el primer segmento: el
+    listado no recursivo devuelve los directorios como prefijos de S3, que no
+    traen `size` ni `last_modified`. Si el prefijo supera `max_objects` se
+    devuelve vacío para no penalizar la navegación.
+    """
+    tope = max_objects or FOLDER_AGGREGATE_MAX_OBJECTS
+    objetos = client.list_objects(prefix=prefix, recursive=True, limit=tope + 1)
+    if len(objetos) > tope:
+        return {}
+
+    agregados: dict[str, dict] = {}
+    for obj in objetos:
+        name = obj["name"]
+        if any(name.startswith(p) for p in hidden_prefixes):
+            continue
+        rest = name[len(prefix):]
+        if "/" not in rest:
+            continue
+        clave = f"{prefix}{rest.split('/', 1)[0]}/"
+        acumulado = agregados.setdefault(clave, {"size": 0, "last_modified": None})
+        if is_folder_marker(name):
+            continue
+        acumulado["size"] += obj.get("size") or 0
+        last_modified = obj.get("last_modified")
+        if last_modified and (
+            acumulado["last_modified"] is None or last_modified > acumulado["last_modified"]
+        ):
+            acumulado["last_modified"] = last_modified
+    return agregados
+
+
 def listar_media(
     db: Session,
     bucket: AcervoBucket,
@@ -328,6 +410,18 @@ def listar_media(
             obj for obj in bucket_objects
             if not any(obj["name"].startswith(p) for p in hidden_prefixes)
         ]
+
+    directorios = [
+        obj for obj in bucket_objects
+        if obj.get("is_dir") or obj["name"].endswith("/")
+    ]
+    if directorios and not recursive:
+        agregados = folder_aggregates(client, prefix, hidden_prefixes)
+        for obj in directorios:
+            agregado = agregados.get(obj["name"])
+            if agregado:
+                obj["size"] = agregado["size"]
+                obj["last_modified"] = agregado["last_modified"]
 
     for obj in bucket_objects:
         if not obj.get("is_dir") and not obj["name"].endswith("/"):

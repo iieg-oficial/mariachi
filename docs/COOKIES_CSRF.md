@@ -2,9 +2,11 @@
 
 > Guía completa del sistema de autenticación con cookies `HttpOnly` + tokens CSRF firmados + refresh token rotativo.
 
-**Versión:** 1.73.0 · **Última actualización:** 2026-07-23
+**Versión:** 1.89.5 · **Última actualización:** 2026-07-27
 
 > **Nota:** desde `1.73.0` la sesión ya no es un tope fijo de 30 min. Ver [Refresh Token (renovación de sesión)](#refresh-token-renovación-de-sesión) más abajo.
+>
+> Renovar la sesión es **responsabilidad de cada frontend** que consuma `/api/mariachi`, no solo del panel: ver [Renovación desde otros frontends del ecosistema](#renovación-desde-otros-frontends-del-ecosistema).
 
 ---
 
@@ -103,6 +105,20 @@ sequenceDiagram
 ```
 
 El interceptor de `admin/src/shared/services/api.js` dedup­lica las renovaciones concurrentes con una promesa única y solo reintenta **una vez**; si el refresh falla, cae al flujo actual de redirección a `/login`.
+
+### Renovación desde otros frontends del ecosistema
+
+`/api/mariachi` no lo consume solo el panel: SIEEJ (y cualquier front que se le sume) usa las mismas cookies contra el mismo backend. **Renovar la sesión es responsabilidad del cliente**, y un front que no llame a `/refrescar` manda al login a los 30 min aunque el refresh siga vigente — que es exactamente lo que le pasó a SIEEJ hasta `sieej 1.47.1`, con el refresh de 8 h funcionando del lado del backend desde 1.73.0.
+
+Lo que tiene que hacer todo consumidor:
+
+1. Ante un `401`, llamar a `POST /autenticacion/refrescar` y **reintentar la petición una vez** antes de limpiar la sesión. Excluir los propios endpoints de auth para no ciclar.
+2. Hacer lo mismo en la comprobación de sesión del arranque, o recargar la pestaña con el access expirado cae al login.
+3. Pasar **todas** las peticiones por ese cliente. Un `fetch` suelto (una descarga de PDF, por ejemplo) se salta el interceptor y falla con la sesión expirada en vez de renovar.
+
+**Coordinación entre pestañas.** Los fronts se sirven desde el mismo origen, así que comparten la cookie: dos pestañas cuyo access expira a la vez presentan el **mismo** refresh token, una rota bien y la otra cae en la detección de reúso, que revoca la familia y saca a las dos. La renovación se serializa con `navigator.locks` —el lock es por origen, así que cruza pestañas y apps— más una marca en `localStorage` (`auth_refreshed_at`): quien entra al lock y ve una renovación de hace menos de 10 s reutiliza la cookie nueva en lugar de rotar otra vez. Vive en `admin/src/shared/utils/sessionRefresh.js` y su gemelo `frontend/src/helpers/sessionRefresh.js` en SIEEJ.
+
+> La alternativa del lado del servidor sería una **ventana de gracia** en `rotate()`: aceptar el token ya usado durante N segundos devolviendo un sucesor en la misma familia, en vez de revocar. No está implementada — implicaría relajar `test_refrescar_rotacion_detecta_reuso` — y la coordinación se resuelve hoy en el cliente.
 
 ### Endpoint
 
@@ -568,11 +584,16 @@ VITE_API_URL=https://api.iieg.gob.mx/api/administrador
 - El `access_token` sigue expirando a los 30 min, pero se renueva de forma transparente contra el `refresh_token`
 - Configurable con `REFRESH_TOKEN_EXPIRE_MINUTES` (default 480)
 
+**Me pide la contraseña a los 30 min, ¿el refresh no sirve?**
+- Casi siempre es el **cliente**, no el backend: el front no está llamando a `/refrescar` ante el `401`. Ver [Renovación desde otros frontends](#renovación-desde-otros-frontends-del-ecosistema)
+- Se distingue en el log del gateway por el `http_referer`: un `401` seguido de `refrescar 200` = renovó; seguido de `iniciar-sesion` = el front deslogueó al usuario
+- Si el `401` viene del refresh mismo, mirar Redis (`rt:tok:*`): sin llaves, el `issue()` del login falló (Redis caído) y nunca hubo cookie de refresh
+
 **¿Puedo usar esto con mobile apps?**
 - No recomendado (cookies son para navegadores)
 - Para mobile: usar JWT en headers (como antes)
 
 ---
 
-**Actualizado:** 2026-07-23
-**Versión:** 1.73.0
+**Actualizado:** 2026-07-27
+**Versión:** 1.89.5

@@ -14,6 +14,7 @@ import {
     HomeOutlined,
     InboxOutlined,
     KeyOutlined,
+    EditOutlined,
     OrderedListOutlined,
     PartitionOutlined,
     PieChartOutlined,
@@ -57,6 +58,10 @@ export const PROJECT_REGISTRY = {
             {
                 key: '/mapalab/catalogo', path: '/mapalab/catalogo', label: 'Capas catálogo',
                 icon: <UnorderedListOutlined />, showBetaBadge: true,
+            },
+            {
+                key: '/mapalab/infobox-propuestas', path: '/mapalab/infobox-propuestas', label: 'Propuestas de tarjeta',
+                icon: <EditOutlined />, allowedGlobalRoles: ['tetlamamakani'], showBetaBadge: true,
             },
             { key: '/mapalab/initial-order', path: '/mapalab/initial-order', label: 'Capas iniciales', icon: <OrderedListOutlined /> },
             { key: '/mapalab/eventos', path: '/mapalab/eventos', label: 'Eventos', icon: <CalendarOutlined /> },

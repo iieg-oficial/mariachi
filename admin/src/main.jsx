@@ -28,6 +28,7 @@ const LayerEditPage = lazy(() => import('@features/mapalab-layers').then((m) => 
 const InitialLayerOrderPage = lazy(() => import('@features/mapalab-layers').then((m) => ({ default: m.InitialLayerOrderPage })));
 const BulkIngestPage = lazy(() => import('@features/mapalab-layers').then((m) => ({ default: m.BulkIngestPage })));
 const CatalogoCapasPage = lazy(() => import('@features/mapalab-catalogo').then((m) => ({ default: m.CatalogoCapasPage })));
+const InfoboxPropuestasPage = lazy(() => import('@features/mapalab-infobox').then((m) => ({ default: m.InfoboxPropuestasPage })));
 const EventosListPage = lazy(() => import('@features/mapalab-eventos').then((m) => ({ default: m.EventosListPage })));
 const EventoEditPage = lazy(() => import('@features/mapalab-eventos').then((m) => ({ default: m.EventoEditPage })));
 const HomePage = lazy(() => import('@features/mapalab-home').then((m) => ({ default: m.HomePage })));
@@ -153,6 +154,14 @@ const router = createBrowserRouter([
                         element: withSuspense(
                             <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
                                 <CatalogoCapasPage />
+                            </RoleProtectedRoute>
+                        )
+                    },
+                    {
+                        path: 'mapalab/infobox-propuestas',
+                        element: withSuspense(
+                            <RoleProtectedRoute allowedRoles={['tetlamamakani']}>
+                                <InfoboxPropuestasPage />
                             </RoleProtectedRoute>
                         )
                     },
