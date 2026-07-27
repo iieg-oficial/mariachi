@@ -96,7 +96,7 @@ export const fieldToFormValues = (field, defaultCol = 1) => ({
     openEnd: !!field?.openEnd,
     openCatalog: field?.openCatalog ?? DEFAULT_OPEN_RANGE_CATALOG,
     colSpan: field?.layout?.colSpan ?? 1,
-    col: field?.layout?.col ?? defaultCol,
+    col: nearestCol(field?.layout?.colSpan ?? 1, field?.layout?.col ?? defaultCol),
     alone: !!field?.layout?.alone,
 });
 
@@ -140,6 +140,17 @@ export const describeCondition = (showWhen, sources = [], catalogos = {}) => {
         isMulti: source?.type === 'select_multiple',
     };
 };
+
+export const otherFieldsFor = (fields, index) => fields
+    .filter((f, i) => i !== index && f.name)
+    .map((f) => ({
+        name: f.name,
+        label: f.label,
+        type: f.type,
+        options: f.options,
+        catalog: f.catalog,
+        showWhen: f.showWhen,
+    }));
 
 export const dependentsOf = (fields = [], name) => (
     name ? fields.filter((f) => f.showWhen?.field === name) : []
