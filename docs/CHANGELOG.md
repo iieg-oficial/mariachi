@@ -9,6 +9,22 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.94.1] - 2026-07-27
+
+### Corregido: la vista previa y el bloque de acomodo parpadeaban al mover un campo de línea
+
+Cambiar el acomodo de un campo con el editor abierto hacía aparecer y desaparecer la vista previa en ciclo, y el cambio se perdía: los controles volvían al valor guardado.
+
+Las tarjetas se agrupaban por línea dentro de un `Fragment` con la fila como `key`. Cuando el acomodo movía el campo a otra línea, su tarjeta cambiaba de `Fragment` padre y React desmontaba el subárbol —la `key` estable de la tarjeta no evita el remonte si cambia de padre—. Al desmontarse, la limpieza de `FieldForm` emitía «sin borrador», el campo volvía a su línea original y se montaba de nuevo reinicializando el formulario con los valores guardados, que emitían el borrador otra vez: de ahí el ciclo.
+
+- Los separadores y las tarjetas son **hermanos directos del grid** (`flatMap` en vez de `Fragment` anidados), así que React las reordena por su `key` en lugar de destruirlas. El mismo remonte tiraba el estado del arrastre de ancho si la tarjeta cambiaba de fila a media operación.
+- El **borrador de acomodo lleva el índice del campo** que lo emitió. No lo llevaba, y se asumía que era el del editor abierto: al saltar del editor de un campo al de otro, el acomodo del primero podía aplicarse un instante al segundo. Ahora también se limpia solo si es suyo.
+- `fieldToFormValues` **normaliza la posición** contra el ancho: un campo guardado con una combinación imposible —columna 5 con ancho de media fila, que existía antes de que el validador lo prohibiera— dejaba el selector de posición sin ninguna opción marcada.
+
+Con pruebas de render sobre `FieldsList`, verificadas contra la versión anterior: el caso de la posición revertida falla sin el arreglo.
+
+---
+
 ## [1.94.0] - 2026-07-27
 
 ### Agregado: el acomodo de los campos del editor de formularios es manual y explícito
