@@ -29,22 +29,30 @@ export default function AcervoStatsModal({ open, onClose, isMobile }) {
             title: 'Bucket',
             dataIndex: 'displayName',
             key: 'displayName',
+            ellipsis: true,
             render: (displayName, record) => (
-                <div>
-                    <div style={{ fontWeight: 500 }}>{displayName}</div>
-                    <Text type="secondary" style={{ fontSize: 11 }}>{record.bucket}</Text>
-                    {record.error && <Tag color="red" style={{ marginInlineStart: 6 }}>sin lectura</Tag>}
+                <div style={{ minWidth: 0 }}>
+                    <Text strong ellipsis={{ tooltip: displayName }} style={{ width: '100%' }}>
+                        {displayName}
+                    </Text>
+                    <div>
+                        <Text type="secondary" style={{ fontSize: 11 }} ellipsis={{ tooltip: record.bucket }}>
+                            {record.bucket}
+                        </Text>
+                    </div>
+                    {record.error && <Tag color="red">sin lectura</Tag>}
                 </div>
             ),
         },
-        { title: 'Archivos', dataIndex: 'fileCount', key: 'fileCount', align: 'right' },
-        { title: 'Imágenes', dataIndex: 'imageCount', key: 'imageCount', align: 'right' },
-        { title: 'Documentos', dataIndex: 'documentCount', key: 'documentCount', align: 'right' },
-        { title: 'Carpetas', dataIndex: 'folderCount', key: 'folderCount', align: 'right' },
+        { title: 'Archivos', dataIndex: 'fileCount', key: 'fileCount', width: 80, align: 'right' },
+        { title: 'Imágenes', dataIndex: 'imageCount', key: 'imageCount', width: 80, align: 'right', responsive: ['sm'] },
+        { title: 'Docs', dataIndex: 'documentCount', key: 'documentCount', width: 70, align: 'right', responsive: ['md'] },
+        { title: 'Carpetas', dataIndex: 'folderCount', key: 'folderCount', width: 80, align: 'right', responsive: ['md'] },
         {
             title: 'Tamaño',
             dataIndex: 'totalSize',
             key: 'totalSize',
+            width: 90,
             align: 'right',
             render: (size) => acervoService.formatFileSize(size || 0),
         },
@@ -58,7 +66,7 @@ export default function AcervoStatsModal({ open, onClose, isMobile }) {
             width={isMobile ? '100%' : 820}
             centered={isMobile}
             title={<><PieChartOutlined /> Información general del Acervo</>}
-            styles={{ body: { maxHeight: '75vh', overflowY: 'auto' } }}
+            styles={{ body: { maxHeight: '75vh', overflowY: 'auto', overflowX: 'hidden' } }}
         >
             <Spin spinning={loading}>
                 {error ? (
@@ -125,7 +133,7 @@ export default function AcervoStatsModal({ open, onClose, isMobile }) {
                             rowKey="bucketId"
                             size="small"
                             pagination={false}
-                            scroll={{ x: 'max-content' }}
+                            tableLayout="fixed"
                         />
                     </>
                 )}

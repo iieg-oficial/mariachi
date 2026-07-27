@@ -11,7 +11,7 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ## [1.92.0] - 2026-07-27
 
-> Se salta `1.91.0`: ese número lo tomó el release de propuestas de tarjeta de MapaLab (commit `f950b01`), y el bump a `1.90.0` de la rama de SIEEJ lo pisó al integrarse. `pyproject.toml` venía quedado en `1.90.0` pese a existir ya un `1.91.0` publicado; este release lo realinea hacia arriba en vez de renumerar lo ya liberado. Por lo mismo `1.90.0` aparece dos veces abajo — ambas entradas son reales, de ramas distintas.
+> Se salta `1.91.0`: ese número lo tomó el release de propuestas de tarjeta de MapaLab (commit `f950b01`), y el bump a `1.90.0` de la rama de SIEEJ lo pisó al integrarse, dejando `pyproject.toml` en `1.90.0` con un `1.91.0` ya publicado. Este release realinea hacia arriba; la entrada que colisionaba quedó renumerada como `1.91.1`.
 
 ### Corregido: las cabezas de Alembic quedaron bifurcadas y tumbaron el deploy
 
@@ -41,7 +41,10 @@ Cuatro `Statistic` a todo lo ancho abrían la vista de Media —archivos, imáge
 
 ---
 
-## [1.90.0] - 2026-07-27
+## [1.91.1] - 2026-07-27
+
+> **Nota de numeración.** Esta entrada se publicó como `1.90.0`, número que ya ocupaba el release anterior de MapaLab: dos líneas de trabajo bumpearon en paralelo sobre `develop` el mismo día. Se renumera a `1.91.1` por su lugar real en la cronología (después de `1.91.0`, antes de `1.92.0`); el mensaje del commit conserva el número viejo.
+
 
 ### Cambiado: los archivos de SIEEJ en Acervo se guardan con una ruta legible, y el bucket deja de ser manipulable a mano
 
@@ -58,6 +61,42 @@ Las claves eran `{slug}/envio{id}/{uuid}.{ext}`: cinco UUIDs en una carpeta dond
 `acervo.buckets.protegido` (migración `c4d5e6f7a8b0`, marca `sieej`). El contenido de esos buckets lo gestiona una aplicación y sus claves están referenciadas desde la BD, así que borrarlas o moverlas desde el explorador deja registros apuntando a objetos inexistentes. `resolve_bucket_escribible` responde **409 incluso al admin** en los 11 endpoints de escritura de `/acervo` (subir, chunked, mover, mover-lote, editar, crear/borrar carpeta, borrar archivo), y el explorador oculta esas acciones, rechaza el drag & drop y muestra un aviso de solo lectura.
 
 Como segunda capa, `scripts/acervo_proteger_bucket.py` habilita **versionado** con retención (5 versiones no vigentes, 90 días por defecto): un borrado deja un *delete marker* restaurable y una sobreescritura conserva la versión previa. El costo en espacio es marginal porque SIEEJ escribe una clave nueva por subida; las versiones solo aparecen al sobreescribir la misma clave o al borrar.
+
+---
+
+## [1.91.0] - 2026-07-27
+
+### Agregado: recepción y moderación de las propuestas de tarjeta del catálogo de MapaLab
+
+Cierra el circuito que abrió 1.90.0. La 1.90.0 dejó el validador y la tabla; ésta trae los endpoints y la pantalla.
+
+**Recepción** — `POST /api/public/mapalab/catalogo/infobox-propuestas`. Honeypot `website` (responde 202 como si nada, y registra el intento), `rate_limit_ip` de 3 por hora, tope de 10 propuestas pendientes por capa e `ip_hash` con el mismo salt de la telemetría. Antes de guardar, la capa se verifica contra `mapalab.catalogo_capas` y cada `field` contra las columnas reales resueltas con `DescribeFeatureType`.
+
+**Moderación** — `GET/POST /api/mariachi/mapalab/infobox-propuestas` (rol `tetlamamakani`, con CSRF en las escrituras) y la pantalla «Propuestas de tarjeta» en el grupo MapaLab. Cada propuesta muestra un **diff estructurado** contra la configuración vigente —qué agrega, qué quita y qué renombra— en lugar de un volcado de JSON. Al aprobar se revalida la configuración antes de aplicarla, se escribe en `mapalab.catalogo_capas.infobox_config` y se invalida el cache del catálogo reusando `notify_catalogo_changed`. Al rechazar se exige un motivo, que queda guardado.
+
+La revalidación en la aprobación es deliberada: si el validador se endurece después de que una propuesta entró a la bandeja, no se puede aprobar algo que hoy ya no pasaría.
+
+### Agregado: los eventos del editor de tarjetas en el collector
+
+`catalogo_infobox_editor_open` y `catalogo_infobox_propuesta` entran a `ALLOWED_EVENT_NAMES` junto con la versión de MapaLab que los emite. Un nombre desconocido tumba el lote completo con 422, así que van en el mismo release.
+
+---
+
+## [1.90.0] - 2026-07-27
+
+### Agregado: base para las propuestas ciudadanas de tarjeta del catálogo de MapaLab
+
+Quien usa el catálogo de MapaLab podrá proponer qué campos aparecen en la tarjeta de información de una capa y en qué orden. La propuesta no se publica sola: llega a una bandeja de moderación y sólo al aprobarla cambia lo que ve el público. Esta versión trae las dos piezas de fondo.
+
+**El validador** (`app/schemas/mapalab_infobox.py`). El endpoint recibirá JSON de gente anónima, así que la configuración se valida con allowlist estricta y se **reconstruye campo por campo**: nunca se persiste el `dict` que llegó. Cubre esquemas de `href` (sólo `http`, `https`, `mailto`, `tel` y rutas absolutas de una sola barra — se rechazan `javascript:`, `data:` y protocol-relative), topes de tamaño (8 KB por configuración, 12 filas por bloque, 3 bloques de texto, 80 caracteres por etiqueta) y `extra='forbid'` en todos los modelos. `validate_fields_exist` compara cada `field` contra las columnas reales de la capa, lo que además evita aprobar tarjetas que apuntan a campos inexistentes.
+
+El editor ciudadano trabaja con un subconjunto seguro del formato: `headerField`, `list`, `cards`, `text` y `blockOrder`. Quedan fuera `iconText.action` (dispara acciones internas del visor), `headerTransform`, `labelGroups` y `cardsColumns`. El editor de capas del admin conserva el formato completo.
+
+**La tabla** `mapalab_infobox_propuestas` (migración `d4e5f6a7b8ca`): estado `pendiente`/`aprobada`/`rechazada` con constraint, revisor, motivo de rechazo, correo opcional de contacto e `ip_hash` para detectar abuso sin guardar la IP. **No hay notificación automática**: mariachi no tiene envío de correo, así que el dato sirve para que el revisor pueda escribir a mano si necesita aclarar algo.
+
+### Agregado: tópico MapaLab en la página de documentación
+
+Nueva pestaña en Documentación con la guía del flujo de propuestas: los seis pasos de punta a punta, qué puede incluir una propuesta y qué no (con el motivo de cada exclusión), las seis capas de protección del JSON y una lista de qué revisar antes de aprobar.
 
 ---
 
@@ -111,38 +150,6 @@ El backend no cambia: sigue sin ventana de gracia en `rotate()`, la coordinació
 - **Tarjetas de plataformas** (las que alimenta el monitor Huachicol): el contador `x/y cont.` sube a la fila que ocupaban las acciones y los iconos de acción bajan junto al badge de estado.
 
 ---
-
-## [1.91.0] - 2026-07-27
-
-### Agregado: recepción y moderación de las propuestas de tarjeta del catálogo de MapaLab
-
-Cierra el circuito que abrió 1.90.0. La 1.90.0 dejó el validador y la tabla; ésta trae los endpoints y la pantalla.
-
-**Recepción** — `POST /api/public/mapalab/catalogo/infobox-propuestas`. Honeypot `website` (responde 202 como si nada, y registra el intento), `rate_limit_ip` de 3 por hora, tope de 10 propuestas pendientes por capa e `ip_hash` con el mismo salt de la telemetría. Antes de guardar, la capa se verifica contra `mapalab.catalogo_capas` y cada `field` contra las columnas reales resueltas con `DescribeFeatureType`.
-
-**Moderación** — `GET/POST /api/mariachi/mapalab/infobox-propuestas` (rol `tetlamamakani`, con CSRF en las escrituras) y la pantalla «Propuestas de tarjeta» en el grupo MapaLab. Cada propuesta muestra un **diff estructurado** contra la configuración vigente —qué agrega, qué quita y qué renombra— en lugar de un volcado de JSON. Al aprobar se revalida la configuración antes de aplicarla, se escribe en `mapalab.catalogo_capas.infobox_config` y se invalida el cache del catálogo reusando `notify_catalogo_changed`. Al rechazar se exige un motivo, que queda guardado.
-
-La revalidación en la aprobación es deliberada: si el validador se endurece después de que una propuesta entró a la bandeja, no se puede aprobar algo que hoy ya no pasaría.
-
-### Agregado: los eventos del editor de tarjetas en el collector
-
-`catalogo_infobox_editor_open` y `catalogo_infobox_propuesta` entran a `ALLOWED_EVENT_NAMES` junto con la versión de MapaLab que los emite. Un nombre desconocido tumba el lote completo con 422, así que van en el mismo release.
-
-## [1.90.0] - 2026-07-27
-
-### Agregado: base para las propuestas ciudadanas de tarjeta del catálogo de MapaLab
-
-Quien usa el catálogo de MapaLab podrá proponer qué campos aparecen en la tarjeta de información de una capa y en qué orden. La propuesta no se publica sola: llega a una bandeja de moderación y sólo al aprobarla cambia lo que ve el público. Esta versión trae las dos piezas de fondo.
-
-**El validador** (`app/schemas/mapalab_infobox.py`). El endpoint recibirá JSON de gente anónima, así que la configuración se valida con allowlist estricta y se **reconstruye campo por campo**: nunca se persiste el `dict` que llegó. Cubre esquemas de `href` (sólo `http`, `https`, `mailto`, `tel` y rutas absolutas de una sola barra — se rechazan `javascript:`, `data:` y protocol-relative), topes de tamaño (8 KB por configuración, 12 filas por bloque, 3 bloques de texto, 80 caracteres por etiqueta) y `extra='forbid'` en todos los modelos. `validate_fields_exist` compara cada `field` contra las columnas reales de la capa, lo que además evita aprobar tarjetas que apuntan a campos inexistentes.
-
-El editor ciudadano trabaja con un subconjunto seguro del formato: `headerField`, `list`, `cards`, `text` y `blockOrder`. Quedan fuera `iconText.action` (dispara acciones internas del visor), `headerTransform`, `labelGroups` y `cardsColumns`. El editor de capas del admin conserva el formato completo.
-
-**La tabla** `mapalab_infobox_propuestas` (migración `d4e5f6a7b8ca`): estado `pendiente`/`aprobada`/`rechazada` con constraint, revisor, motivo de rechazo, correo opcional para avisar el resultado e `ip_hash` para detectar abuso sin guardar la IP.
-
-### Agregado: tópico MapaLab en la página de documentación
-
-Nueva pestaña en Documentación con la guía del flujo de propuestas: los seis pasos de punta a punta, qué puede incluir una propuesta y qué no (con el motivo de cada exclusión), las seis capas de protección del JSON y una lista de qué revisar antes de aprobar.
 
 ## [1.89.1] - 2026-07-27
 
