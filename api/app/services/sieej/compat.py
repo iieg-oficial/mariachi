@@ -21,8 +21,10 @@ from copy import deepcopy
 from typing import Any
 
 from app.services.sieej.definicion_validator import (
+    COLSPAN_UNITS,
     FIELD_TYPES,
     FILE_MAX_SIZE_MB_HARD_CAP,
+    GRID_COLUMNS,
     STEP_TYPES,
 )
 
@@ -282,6 +284,20 @@ def _normalizar_layout(field: dict[str, Any]) -> None:
 
     if "newRow" in layout and not isinstance(layout["newRow"], bool):
         layout.pop("newRow", None)
+
+    if "alone" in layout and not isinstance(layout["alone"], bool):
+        layout.pop("alone", None)
+
+    col = layout.get("col")
+    if col is not None:
+        if isinstance(col, bool) or not isinstance(col, int):
+            layout.pop("col", None)
+        else:
+            units = COLSPAN_UNITS.get(layout.get("colSpan", 1), GRID_COLUMNS)
+            layout["col"] = min(max(col, 1), GRID_COLUMNS + 1 - units)
+
+    if layout.get("col") == 1:
+        layout["newRow"] = True
 
     if not layout:
         field.pop("layout", None)

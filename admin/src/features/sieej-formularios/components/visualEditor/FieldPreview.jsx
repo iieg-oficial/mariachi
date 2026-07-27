@@ -3,10 +3,61 @@ import {
     Checkbox, DatePicker, Input, InputNumber, Radio, Select, Switch, Tooltip,
 } from 'antd';
 import { InboxOutlined, QuestionCircleOutlined } from '@ant-design/icons';
+import { GRID_COLUMNS, unitsOfColSpan } from './fieldLayout';
 
-const COLSPAN_WIDTH = { 1: 100, 2: 50, 3: 33.333 };
+function MateSlot({ mate }) {
+    return (
+        <div style={{
+            flex: `${mate.units} 1 0`,
+            minWidth: 0,
+            minHeight: 56,
+            borderRadius: 8,
+            border: '1px dashed #d9d9d9',
+            background: '#fff',
+            padding: '10px 12px',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
+            gap: 8,
+        }}>
+            <span style={{
+                fontWeight: 600,
+                color: '#bbb',
+                fontSize: 13,
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+            }}>
+                {mate.label}
+            </span>
+            <div style={{ height: 30, borderRadius: 6, background: '#f5f5f5' }} />
+        </div>
+    );
+}
 
-export default function FieldPreview({ values, condition, tooltipActive = false }) {
+function FreeSlot({ units }) {
+    return (
+        <div style={{
+            flex: `${units} 1 0`,
+            minWidth: 0,
+            minHeight: 56,
+            borderRadius: 8,
+            border: '1px dashed #e5e5e5',
+            background: 'repeating-linear-gradient(45deg, #f2f2f2, #f2f2f2 6px, #fafafa 6px, #fafafa 12px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#bbb',
+            fontSize: 12,
+            textAlign: 'center',
+            padding: 4,
+        }}>
+            Espacio libre
+        </div>
+    );
+}
+
+export default function FieldPreview({ values, condition, tooltipActive = false, slots = [] }) {
     const [conditionMet, setConditionMet] = useState(true);
     const hidden = !!condition && !conditionMet;
     const {
@@ -15,7 +66,11 @@ export default function FieldPreview({ values, condition, tooltipActive = false 
         openStart, openEnd, openCatalog,
     } = values || {};
 
-    const widthPct = COLSPAN_WIDTH[colSpan] ?? 100;
+    const selfUnits = unitsOfColSpan(colSpan ?? 1);
+    const selfAt = slots.findIndex((s) => s.kind === 'self');
+    const before = selfAt >= 0 ? slots.slice(0, selfAt) : [];
+    const after = selfAt >= 0 ? slots.slice(selfAt + 1) : [];
+    const mates = slots.filter((s) => s.kind === 'field');
 
     const options = (options_list ?? [])
         .filter((o) => o?.value)
@@ -146,10 +201,15 @@ export default function FieldPreview({ values, condition, tooltipActive = false 
                 </div>
             )}
             <div style={{ display: 'flex', alignItems: 'stretch', gap: 8 }}>
+                {before.map((slot, i) => (
+                    slot.kind === 'gap'
+                        ? <FreeSlot key={`before-gap-${i}`} units={slot.units} />
+                        : <MateSlot key={`before-${slot.name}-${i}`} mate={slot} />
+                ))}
                 <div style={{
-                    width: `${widthPct}%`,
+                    flex: `${selfUnits} 1 0`,
                     minWidth: 0,
-                    transition: 'width 0.2s ease, opacity 0.2s ease',
+                    transition: 'flex-grow 0.2s ease, opacity 0.2s ease',
                     opacity: hidden ? 0.35 : 1,
                 }}>
                     {type !== 'info' && type !== 'checkbox' && (
@@ -165,25 +225,19 @@ export default function FieldPreview({ values, condition, tooltipActive = false 
                         <div style={{ marginTop: 8, fontSize: 12, color: '#888' }}>{hints.join(' · ')}</div>
                     )}
                 </div>
-                {widthPct < 100 && (
-                    <div style={{
-                        flex: 1,
-                        minHeight: 56,
-                        borderRadius: 8,
-                        border: '1px dashed #e5e5e5',
-                        background: 'repeating-linear-gradient(45deg, #f2f2f2, #f2f2f2 6px, #fafafa 6px, #fafafa 12px)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#bbb',
-                        fontSize: 12,
-                        textAlign: 'center',
-                        padding: 4,
-                    }}>
-                        Otros campos
-                    </div>
-                )}
+                {after.map((slot, i) => (
+                    slot.kind === 'gap'
+                        ? <FreeSlot key={`after-gap-${i}`} units={slot.units} />
+                        : <MateSlot key={`after-${slot.name}-${i}`} mate={slot} />
+                ))}
             </div>
+            {selfUnits < GRID_COLUMNS && (
+                <div style={{ marginTop: 12, fontSize: 12, color: '#888' }}>
+                    {mates.length > 0
+                        ? <>Comparte línea con <strong style={{ color: '#191919' }}>{mates.map((m) => m.label).join(', ')}</strong>.</>
+                        : 'Por ahora nada se acomoda a su lado: el espacio libre queda disponible para otro campo.'}
+                </div>
+            )}
         </div>
     );
 }

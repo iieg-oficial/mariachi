@@ -2,7 +2,9 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { HolderOutlined } from '@ant-design/icons';
 
-export default function SortableItem({ id, children, dragHandle = true, wrapperStyle, gripFooter }) {
+export default function SortableItem({
+    id, children, dragHandle = true, wrapperStyle, wrapperProps, gripFooter,
+}) {
     const {
         attributes, listeners, setNodeRef, transform, transition, isDragging,
     } = useSortable({ id });
@@ -15,7 +17,7 @@ export default function SortableItem({ id, children, dragHandle = true, wrapperS
     };
 
     return (
-        <div ref={setNodeRef} style={style} {...attributes}>
+        <div ref={setNodeRef} style={style} {...wrapperProps} {...attributes}>
             {dragHandle ? (
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, paddingTop: 4 }}>

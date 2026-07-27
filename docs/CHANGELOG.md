@@ -9,6 +9,28 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.94.0] - 2026-07-27
+
+### Agregado: el acomodo de los campos del editor de formularios es manual y explícito
+
+Configurar cómo se acomodaban los campos de un formulario SIEEJ no se entendía. La etiqueta decía «Ancho en columnas» pero las opciones eran *Grande / Mediano / Chico* —tamaños, no columnas—, y el dato interno va al revés: `colSpan: 3` es el campo más chico. El ancho y «¿Empezar en fila nueva?» eran dos controles separados que gobernaban lo mismo, la vista previa dibujaba un bloque rayado genérico («Otros campos») en lugar de los vecinos reales, y nada en el listado marcaba dónde terminaba una línea y empezaba la siguiente.
+
+De fondo había un problema mayor: los campos se juntaban solos. El grid acomodaba cualquier par que cupiera en la misma línea, así que agregar o redimensionar un campo recorría a los demás sin que nadie lo hubiera pedido.
+
+- **`layout.col`** guarda la columna donde empieza el campo (1–6) y generaliza a `newRow`, que era su caso particular (`col: 1`). Con posición explícita el acomodo deja de ser automático: un tercio puede vivir a la derecha dejando libre el hueco de la izquierda, y nada lo rellena por su cuenta. `newRow` se sigue escribiendo cuando `col` es 1, así que una definición nueva se renderiza bien en un frontend que todavía no conozca `col`.
+- **`layout.alone`** reserva la línea entera para un campo aunque ocupe un tercio: ni el campo anterior sube a compartirla ni el siguiente se cuela en el hueco. Antes esto solo se conseguía configurando el campo vecino, y bastaba con agregar uno después para romperlo.
+- El editor de campo pasa a **un solo bloque de acomodo**: ancho (*Fila completa / Media fila / Un tercio*), posición (*Izquierda / Centro / Derecha*, con las opciones que caben según el ancho) y el interruptor de línea reservada. Cada opción lleva un glifo que dibuja la línea y el bloque en su lugar real, y la ayuda describe la consecuencia («Caben 2 por línea…»), no la fracción.
+- La **vista previa muestra los vecinos reales** —su nombre y su ancho proporcional— en vez del bloque rayado, con los huecos en su posición. Se recalcula mientras mueves ancho o posición, así que se ve al instante a quién ganas o pierdes como vecino.
+- El listado agrupa las tarjetas bajo separadores **Línea 1 / Línea 2** que marcan el espacio libre de cada renglón, y se muestran también en móvil, que es justo donde el grid de 6 columnas no se ve. El acomodo del campo que estás editando se refleja en vivo en esos separadores, sin esperar a guardar.
+- En escritorio el ancho se cambia **arrastrando el borde derecho de la tarjeta**, con las 6 columnas guía visibles y snap a tercio, mitad o completa; el selector de ancho queda solo en móvil, donde no hay arrastre.
+- **Los formularios existentes no se tocan**: un campo sin `col` sigue fluyendo como siempre y solo se vuelve explícito cuando lo editas, tomando como valor inicial la columna donde ya estaba. Los campos nuevos, pegados y duplicados nacen en la columna 1.
+- `_validate_layout` valida `col` (1–6, y que quepa el ancho declarado) y `alone` como booleano; `_normalizar_layout` acota una `col` que se saldría de la cuadrícula, descarta las no enteras y deriva `newRow` de `col: 1`.
+- La geometría del grid sale a `fieldLayout.js` con pruebas propias, porque replica el auto-placement de CSS grid —incluido que un campo que no cabe salta de línea sin rellenar el hueco anterior—; el arrastre queda en `useColSpanResize.js`.
+
+Requiere el frontend de SIEEJ **1.49.0** o posterior: sin él, un campo colocado a la derecha se renderiza pegado al hueco de la izquierda y la línea reservada se ve a todo lo ancho.
+
+---
+
 ## [1.93.0] - 2026-07-27
 
 ### Agregado: la protección de un bucket se administra y se reconoce desde el CMS

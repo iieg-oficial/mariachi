@@ -1,35 +1,45 @@
 import { Button, Card, Dropdown, Modal, Popconfirm, Select, Space, Tag, Tooltip } from 'antd';
 import {
-    BlockOutlined, CloseOutlined, ColumnWidthOutlined, CopyOutlined, DeleteOutlined, DownOutlined,
-    EditOutlined, EnterOutlined, MoreOutlined, SaveOutlined, UpOutlined,
+    BlockOutlined, CloseOutlined, CopyOutlined, DeleteOutlined, DownOutlined,
+    EditOutlined, MoreOutlined, SaveOutlined, UpOutlined,
 } from '@ant-design/icons';
 import SortableItem from './SortableItem';
 import FieldForm from './FieldForm';
 import { tabOf } from './fieldUtils';
+import {
+    colChoicesFor, isAlone, nearestCol, startColOf, unitsOfColSpan,
+} from './fieldLayout';
+import { ColSelect, ColSpanSelect, ResizeHandle, WidthGlyph } from './LayoutControls';
+import useColSpanResize from './useColSpanResize';
+import { colSpanLabel, positionLabel } from './layoutOptions';
 import { fieldTypeLabel } from '../../constants/definitionTypes';
-
-const COLSPAN_LABEL = { 3: 'Chico', 2: 'Mediano', 1: 'Grande' };
-
-const COLSPAN_OPTIONS = [
-    { value: 1, label: 'Grande' },
-    { value: 2, label: 'Mediano' },
-    { value: 3, label: 'Chico' },
-];
 
 export default function FieldCard({
     id, field, isEditing, isMobile, showTabs, tabs, tabOptions, dependentsCount = 0,
     canMoveUp, canMoveDown, onMove, onToggleEdit, onDelete, onCopy, onDuplicate,
-    onAssignTab, onAssignColSpan,
+    onAssignTab, onAssignColSpan, onAssignCol, onResizeChange, layoutOverride,
+    resolveSlots, previousField, defaultCol, onLayoutDraft,
     fieldForm, availableShowWhenFields, onSaveField, onCancelEdit,
 }) {
-    const cs = field.layout?.colSpan ?? 1;
-    const span = cs === 2 ? 3 : cs === 3 ? 2 : 6;
-    const newRow = !!field.layout?.newRow;
+    const layout = layoutOverride ?? field.layout;
+    const saved = layout?.colSpan ?? 1;
+    const { handleRef, draggedColSpan, startResize } = useColSpanResize({
+        colSpan: saved,
+        onResizeChange,
+        onCommit: onAssignColSpan,
+    });
+
+    const cs = draggedColSpan ?? saved;
+    const span = unitsOfColSpan(cs);
+    const alone = isAlone({ layout });
+    const explicitCol = startColOf({ layout });
+    const col = explicitCol == null ? null : nearestCol(cs, explicitCol);
     const gridColumn = isEditing || isMobile
         ? '1 / -1'
-        : (newRow ? `1 / span ${span}` : `span ${span}`);
+        : (col == null ? `span ${span}` : `${col} / span ${span}`);
     const isCompact = isMobile || cs >= 2;
     const useMoreMenu = cs >= 2 && !isMobile;
+    const canResize = !isMobile && !isEditing;
 
     const confirmDelete = () => {
         Modal.confirm({
@@ -145,21 +155,33 @@ export default function FieldCard({
         />
     );
 
-    const colSpanPicker = isEditing ? (
-        <Tag icon={<ColumnWidthOutlined />} color="geekblue">{COLSPAN_LABEL[cs] ?? 'Grande'}</Tag>
-    ) : (
-        <Tooltip title="Ancho en columnas">
-            <Select
-                size="small"
-                variant="borderless"
-                value={cs}
-                options={COLSPAN_OPTIONS}
-                onChange={onAssignColSpan}
-                onClick={(e) => e.stopPropagation()}
-                prefix={<ColumnWidthOutlined style={{ color: '#999' }} />}
-                style={{ minWidth: 110 }}
-            />
+    const layoutTag = (
+        <Tag color="geekblue">
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <WidthGlyph colSpan={cs} col={col ?? 1} width={22} />
+                {colSpanLabel(cs)}
+                {cs !== 1 && col != null && ` · ${positionLabel(cs, colChoicesFor(cs), col)}`}
+            </span>
+        </Tag>
+    );
+
+    const aloneTag = alone && cs !== 1 && (
+        <Tooltip title="Ningún otro campo se acomoda a su lado, aunque quepa">
+            <Tag color="cyan">Línea reservada</Tag>
         </Tooltip>
+    );
+
+    const layoutPickers = isMobile && !isEditing ? (
+        <>
+            <ColSpanSelect value={cs} onChange={onAssignColSpan} />
+            {cs !== 1 && (
+                <ColSelect value={col ?? 1} colSpan={cs} onChange={onAssignCol} />
+            )}
+        </>
+    ) : layoutTag;
+
+    const resizeHandle = canResize && (
+        <ResizeHandle handleRef={handleRef} active={!!draggedColSpan} onPointerDown={startResize} />
     );
 
     const metaTags = (
@@ -176,12 +198,8 @@ export default function FieldCard({
                     <Tag color="magenta">Activa {dependentsCount}</Tag>
                 </Tooltip>
             )}
-            {colSpanPicker}
-            {newRow && (
-                <Tooltip title="Este campo abre una fila nueva en el formulario">
-                    <Tag icon={<EnterOutlined />} color="cyan">Fila nueva</Tag>
-                </Tooltip>
-            )}
+            {layoutPickers}
+            {aloneTag}
         </>
     );
 
@@ -194,10 +212,16 @@ export default function FieldCard({
                 padding: 4,
                 boxSizing: 'border-box',
                 minWidth: 0,
+                zIndex: draggedColSpan ? 2 : undefined,
             }}
+            wrapperProps={{ 'data-field-wrapper': '' }}
             gripFooter={isCompact && !isMobile ? actionButtons : null}
         >
-            <Card size="small" styles={{ body: { padding: isCompact ? '8px' : '4px 8px' } }}>
+            <Card
+                size="small"
+                style={{ position: 'relative', borderColor: draggedColSpan ? '#5C2472' : undefined }}
+                styles={{ body: { padding: isCompact ? '8px' : '4px 8px' } }}
+            >
                 {isCompact ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                         <div style={{ minWidth: 0 }}>
@@ -231,10 +255,15 @@ export default function FieldCard({
                         field={field}
                         availableTabs={tabs}
                         availableShowWhenFields={availableShowWhenFields}
+                        resolveSlots={resolveSlots}
+                        previousField={previousField}
+                        defaultCol={defaultCol}
+                        onLayoutDraft={onLayoutDraft}
                         onSave={onSaveField}
                         onCancel={onCancelEdit}
                     />
                 )}
+                {resizeHandle}
             </Card>
         </SortableItem>
     );
