@@ -48,6 +48,22 @@ El backend no cambia: sigue sin ventana de gracia en `rotate()`, la coordinació
 
 ---
 
+## [1.91.0] - 2026-07-27
+
+### Agregado: recepción y moderación de las propuestas de tarjeta del catálogo de MapaLab
+
+Cierra el circuito que abrió 1.90.0. La 1.90.0 dejó el validador y la tabla; ésta trae los endpoints y la pantalla.
+
+**Recepción** — `POST /api/public/mapalab/catalogo/infobox-propuestas`. Honeypot `website` (responde 202 como si nada, y registra el intento), `rate_limit_ip` de 3 por hora, tope de 10 propuestas pendientes por capa e `ip_hash` con el mismo salt de la telemetría. Antes de guardar, la capa se verifica contra `mapalab.catalogo_capas` y cada `field` contra las columnas reales resueltas con `DescribeFeatureType`.
+
+**Moderación** — `GET/POST /api/mariachi/mapalab/infobox-propuestas` (rol `tetlamamakani`, con CSRF en las escrituras) y la pantalla «Propuestas de tarjeta» en el grupo MapaLab. Cada propuesta muestra un **diff estructurado** contra la configuración vigente —qué agrega, qué quita y qué renombra— en lugar de un volcado de JSON. Al aprobar se revalida la configuración antes de aplicarla, se escribe en `mapalab.catalogo_capas.infobox_config` y se invalida el cache del catálogo reusando `notify_catalogo_changed`. Al rechazar se exige un motivo, que queda guardado.
+
+La revalidación en la aprobación es deliberada: si el validador se endurece después de que una propuesta entró a la bandeja, no se puede aprobar algo que hoy ya no pasaría.
+
+### Agregado: los eventos del editor de tarjetas en el collector
+
+`catalogo_infobox_editor_open` y `catalogo_infobox_propuesta` entran a `ALLOWED_EVENT_NAMES` junto con la versión de MapaLab que los emite. Un nombre desconocido tumba el lote completo con 422, así que van en el mismo release.
+
 ## [1.90.0] - 2026-07-27
 
 ### Agregado: base para las propuestas ciudadanas de tarjeta del catálogo de MapaLab

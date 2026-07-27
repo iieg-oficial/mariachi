@@ -68,6 +68,8 @@ ALLOWED_EVENT_NAMES = frozenset({
     "catalogo_share",
     "catalogo_institucion_select",
     "catalogo_infobox_action",
+    "catalogo_infobox_editor_open",
+    "catalogo_infobox_propuesta",
 })
 
 MAX_BATCH_EVENTS = 100
