@@ -104,6 +104,8 @@ class FormulariosDinamicosService:
             ):
                 periodo_por_clave[(p.formulario_id, p.clave)] = p
 
+        from app.services.sieej.envios_service import EnviosService
+
         items = []
         for f in formularios:
             item = {
@@ -139,14 +141,21 @@ class FormulariosDinamicosService:
             estado_envio = "no_iniciado" if envio is None else envio.estado
             actualizacion = False
             if envio is not None and envio.estado == "en_proceso":
-                from app.services.sieej.envios_service import EnviosService
-
                 info = EnviosService.info_cambios(f, envio)
                 actualizacion = info["actualizacion_disponible"]
 
             item["estado_envio"] = estado_envio
             item["envio_id"] = envio.id if envio is not None else None
             item["actualizacion_disponible"] = actualizacion
+            item["tiene_campos_editables"] = (
+                estado_envio == "enviado"
+                and envio is not None
+                and bool(
+                    EnviosService.editable_field_paths(
+                        envio.definicion_snapshot or f.definicion or {}
+                    )
+                )
+            )
             items.append(item)
         return items
 

@@ -268,6 +268,15 @@ Lectura del historial: `GET /formularios/mis-envios/{envio_id}/historial`
 **"Historial de cambios"** — hoja propia en Excel, CSV extra dentro del ZIP — que
 es la base del reporte de auditoria.
 
+**Descubrimiento desde el frontend** (`api 1.87.0+`): `GET /formularios` incluye
+`tiene_campos_editables` por item — `true` solo si el envio esta `enviado` y su
+`definicion_snapshot` tiene campos marcados (mismo `editable_field_paths` que
+autoriza el `PUT`). El listado no manda la definicion, asi que sin este flag el
+respondent solo encontraba la pantalla de actualizacion entrando al detalle. Con
+el, SIEEJ pinta el acceso a `/mis-envios/:id/actualizar` en tres lugares: la
+tarjeta de la lista (a la izquierda del icono de PDF), el paso Resumen (a la
+izquierda de "Descargar PDF") y el encabezado del detalle del envio.
+
 ### Auto-expiracion (lazy)
 
 `EnviosService._expirar_si_corresponde` corre cada vez que un endpoint toca un envio especifico (detalle de respondent, listado de respondent, etc.) y transiciona `en_proceso` -> `expirado` si `formulario.vigencia_fin < now`. Es idempotente: si ya esta `expirado` no hace nada. Registra evento `expirado` con `actor_usuario_id=NULL` (sistema).

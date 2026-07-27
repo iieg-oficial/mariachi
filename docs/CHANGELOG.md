@@ -9,6 +9,14 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.87.0] - 2026-07-27
+
+### Agregado: el listado del respondent dice si un envio tiene campos actualizables
+
+`GET /formularios` gana `tiene_campos_editables` en cada item: es `true` solo cuando el envio ya esta **enviado** y su `definicion_snapshot` tiene campos `editableAfterSubmit` (se calcula con `EnviosService.editable_field_paths`, la misma fuente que autoriza el `PUT .../actualizar-campos`). Sin este flag el frontend no podia saberlo desde la lista: el listado no manda la definicion, asi que el acceso directo a la pantalla de actualizacion solo existia en el detalle del envio.
+
+---
+
 ## [1.86.0] - 2026-07-27
 
 ### Cambiado: menu «⋯ Mas opciones» en las tarjetas de campo angostas del editor SIEEJ

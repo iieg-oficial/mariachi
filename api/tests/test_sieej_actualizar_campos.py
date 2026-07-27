@@ -292,3 +292,62 @@ def test_listar_historial_mi_envio(session, formulario, user_a):
     assert len(items) == 1
     assert items[0].field_path == "general.razon_social"
     assert items[0].valor_nuevo == "B"
+
+
+# ---------------------------------------------------------------------------
+# tiene_campos_editables (listado del respondent)
+# ---------------------------------------------------------------------------
+
+
+def _listar_para(session, formulario, user):
+    from app.services.sieej.formularios_dinamicos_service import (
+        FormulariosDinamicosService,
+    )
+
+    formulario.usuarios_asignados.append(user)
+    session.commit()
+    items = FormulariosDinamicosService(session).listar_visibles(user)
+    return next(i for i in items if i["id"] == formulario.id)
+
+
+def test_listado_marca_campos_editables_en_envio_enviado(
+    session, formulario, user_a
+):
+    crear_envio(session, formulario, user_a, estado="enviado")
+    item = _listar_para(session, formulario, user_a)
+    assert item["estado_envio"] == "enviado"
+    assert item["tiene_campos_editables"] is True
+
+
+def test_listado_no_marca_editables_si_el_envio_sigue_en_proceso(
+    session, formulario, user_a
+):
+    crear_envio(session, formulario, user_a, estado="en_proceso")
+    item = _listar_para(session, formulario, user_a)
+    assert item["tiene_campos_editables"] is False
+
+
+def test_listado_no_marca_editables_sin_envio(session, formulario, user_a):
+    item = _listar_para(session, formulario, user_a)
+    assert item["estado_envio"] == "no_iniciado"
+    assert item["tiene_campos_editables"] is False
+
+
+def test_listado_no_marca_editables_si_el_snapshot_no_tiene_campos_marcados(
+    session, formulario, user_a
+):
+    envio = crear_envio(session, formulario, user_a, estado="enviado")
+    envio.definicion_snapshot = {
+        "version": 1,
+        "steps": [
+            {
+                "id": "general",
+                "type": "form",
+                "title": "Datos generales",
+                "fields": [{"name": "clave", "label": "Clave", "type": "text"}],
+            }
+        ],
+    }
+    session.commit()
+    item = _listar_para(session, formulario, user_a)
+    assert item["tiene_campos_editables"] is False

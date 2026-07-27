@@ -113,6 +113,7 @@ class FormularioListItem(BaseModel):
     estado_envio: Literal["no_iniciado", "en_proceso", "enviado", "expirado"]
     envio_id: int | None
     actualizacion_disponible: bool = False
+    tiene_campos_editables: bool = False
     # Apertura periodica: `periodico` marca el formulario con ventanas
     # recurrentes; cuando esta cerrado, `abierto=False` y `proxima_apertura`
     # indica cuando vuelve a abrir. En no periodicos `abierto` es siempre True.
