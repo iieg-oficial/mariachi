@@ -32,7 +32,7 @@ export default function SieejStatsSection() {
     }, []);
 
     return (
-        <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+        <div style={{ width: '100%' }}>
             <PageHeading
                 icon={<FormOutlined />}
                 title="SIEEJ"

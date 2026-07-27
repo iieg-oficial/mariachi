@@ -48,14 +48,12 @@ export default function TelemetriaPage() {
                 title="Telemetría"
                 description="Estadísticas de uso del ecosistema IIEG, agrupadas por plataforma."
                 level={isMobile ? 3 : 2}
-                marginBottom={0}
             />
             <Tabs
                 activeKey={fuente}
                 onChange={handleChange}
                 items={items}
                 destroyInactiveTabPane
-                tabBarStyle={{ marginBottom: 0 }}
             />
         </div>
     );

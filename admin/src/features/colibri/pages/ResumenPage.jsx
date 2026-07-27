@@ -85,7 +85,7 @@ export default function ResumenPage() {
     const maxAppCount = Math.max(...(stats.porApp || []).map((a) => a.count), 1);
 
     return (
-        <Content style={{ maxWidth: 1280, margin: '0 auto', width: '100%' }}>
+        <Content style={{ width: '100%' }}>
             <Space direction="vertical" size="large" style={{ width: '100%' }}>
                 <PageHeading
                     icon={<ColibriIcon size={24} />}

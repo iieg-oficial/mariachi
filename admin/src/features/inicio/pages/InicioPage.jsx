@@ -152,12 +152,24 @@ const PlataformaCard = ({ plataforma, colibriConfig }) => {
     );
 
     return (
-        <Card size="small" styles={{ body: { padding: 16 } }}>
-            <Space orientation="vertical" size={8} style={{ width: '100%' }}>
-                <Space style={{ justifyContent: 'space-between', width: '100%' }}>
-                    <Text strong style={{ fontSize: 16 }}>{label}</Text>
-                    {versionTag}
-                </Space>
+        <Card
+            size="small"
+            style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+            styles={{
+                body: {
+                    padding: 16,
+                    flex: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 8,
+                },
+            }}
+        >
+            <Space style={{ justifyContent: 'space-between', width: '100%' }}>
+                <Text strong style={{ fontSize: 16 }}>{label}</Text>
+                {versionTag}
+            </Space>
+            <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {contadorContenedores && (
                     <Space style={{ justifyContent: 'flex-end', width: '100%' }} size={0}>
                         {contadorContenedores}
@@ -167,7 +179,7 @@ const PlataformaCard = ({ plataforma, colibriConfig }) => {
                     {statusBadge}
                     {acciones.length > 0 && <Space size={0}>{acciones}</Space>}
                 </Space>
-            </Space>
+            </div>
         </Card>
     );
 };
@@ -272,7 +284,7 @@ export default function InicioPage() {
     ];
 
     return (
-        <Content style={{ maxWidth: 1200, margin: '0 auto', width: '100%' }}>
+        <Content style={{ width: '100%' }}>
             <Space orientation="vertical" size="large" style={{ width: '100%' }}>
                 <PageHeading
                     icon={<HomeOutlined />}
