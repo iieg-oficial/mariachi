@@ -6,6 +6,7 @@ import {
     EditOutlined,
     ClusterOutlined,
     GithubOutlined,
+    HomeOutlined,
     ProjectOutlined,
     LinkOutlined,
     MessageOutlined,
@@ -156,12 +157,14 @@ const PlataformaCard = ({ plataforma, colibriConfig }) => {
                     <Text strong style={{ fontSize: 16 }}>{label}</Text>
                     {versionTag}
                 </Space>
-                {acciones.length > 0 && (
-                    <Space style={{ justifyContent: 'flex-end', width: '100%' }} size={0}>{acciones}</Space>
+                {contadorContenedores && (
+                    <Space style={{ justifyContent: 'flex-end', width: '100%' }} size={0}>
+                        {contadorContenedores}
+                    </Space>
                 )}
                 <Space style={{ justifyContent: 'space-between', width: '100%' }}>
                     {statusBadge}
-                    {contadorContenedores}
+                    {acciones.length > 0 && <Space size={0}>{acciones}</Space>}
                 </Space>
             </Space>
         </Card>
@@ -268,12 +271,15 @@ export default function InicioPage() {
     ];
 
     return (
-        <Content style={{ padding: 24, maxWidth: 1200, margin: '0 auto', width: '100%' }}>
+        <Content style={{ maxWidth: 1200, margin: '0 auto', width: '100%' }}>
             <Space orientation="vertical" size="large" style={{ width: '100%' }}>
                 <div>
-                    <Title level={3} style={{ marginBottom: 4 }}>
-                        Hola, {user?.name || 'editor'}
-                    </Title>
+                    <Space align="center" size={12} style={{ marginBottom: 4 }}>
+                        <HomeOutlined style={{ fontSize: 24, color: '#5C2472' }} />
+                        <Title level={3} style={{ margin: 0 }}>
+                            Hola, {user?.name || 'editor'}
+                        </Title>
+                    </Space>
                     <Text type="secondary">Bienvenida a Mariachi · {user?.role}</Text>
                 </div>
 

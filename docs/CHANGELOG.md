@@ -9,6 +9,18 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.89.2] - 2026-07-27
+
+### Cambiado: encabezados de página homogéneos y sin padding duplicado en Inicio
+
+`InicioPage` montaba su propio `Content` con `padding: 24` sobre el `Content` del layout, que ya aplica otros 24 (6 en móvil): el contenido arrancaba con **48 px** de aire arriba y a los lados. Se retira el padding de la página; el `maxWidth: 1200` centrado se queda.
+
+- **Icono de Inicio**: era `DashboardOutlined`, el mismo de Observabilidad. Pasa a `HomeOutlined` en el menú lateral y acompaña al título de la página, como en Documentación y Observabilidad.
+- **Usuarios**: el encabezado gana el icono `TeamOutlined` junto al título y la descripción que el resto de las pantallas ya tenía. La descripción va en su propia fila a ancho completo, así que el botón «Nuevo Usuario» sigue alineado con el título.
+- **Tarjetas de plataformas** (las que alimenta el monitor Huachicol): el contador `x/y cont.` sube a la fila que ocupaban las acciones y los iconos de acción bajan junto al badge de estado.
+
+---
+
 ## [1.89.1] - 2026-07-27
 
 ### Corregido: el collector de telemetría rechazaba los lotes con el evento nuevo del catálogo de MapaLab

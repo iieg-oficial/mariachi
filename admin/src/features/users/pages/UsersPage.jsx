@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { Card, Col, Empty, Form, Input, Modal, Row, Select, Skeleton, Typography, Button, Pagination } from 'antd';
-import { PlusOutlined, SearchOutlined } from '@ant-design/icons';
+import { Card, Col, Empty, Form, Input, Modal, Row, Select, Skeleton, Space, Typography, Button, Pagination } from 'antd';
+import { PlusOutlined, SearchOutlined, TeamOutlined } from '@ant-design/icons';
 import { useAuth } from '@shared/contexts/useAuth';
 import api from '@shared/services/api';
 import useIsMobile from '@shared/hooks/useIsMobile';
@@ -9,7 +9,7 @@ import UserCard from '../components/UserCard';
 import UserFormModal from '../components/UserFormModal';
 import { allowedSlugsForRole } from '../constants/projectAccess';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 const roleLabels = {
     tetlamamakani: 'Administradora',
@@ -249,18 +249,25 @@ export default function Users() {
 
     return (
         <div>
-            <div style={{
-                display: 'flex',
-                flexDirection: isMobile ? 'column' : 'row',
-                justifyContent: 'space-between',
-                alignItems: isMobile ? 'stretch' : 'center',
-                gap: 12,
-                marginBottom: 16,
-            }}>
-                <Title level={isMobile ? 3 : 2} style={{ margin: 0 }}>Administración de Usuarios</Title>
-                <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate} block={isMobile}>
-                    Nuevo Usuario
-                </Button>
+            <div style={{ marginBottom: 16 }}>
+                <div style={{
+                    display: 'flex',
+                    flexDirection: isMobile ? 'column' : 'row',
+                    justifyContent: 'space-between',
+                    alignItems: isMobile ? 'stretch' : 'center',
+                    gap: 12,
+                }}>
+                    <Space align="center" size={12}>
+                        <TeamOutlined style={{ fontSize: 24, color: '#5C2472' }} />
+                        <Title level={isMobile ? 3 : 2} style={{ margin: 0 }}>Administración de Usuarios</Title>
+                    </Space>
+                    <Button type="primary" icon={<PlusOutlined />} onClick={handleCreate} block={isMobile}>
+                        Nuevo Usuario
+                    </Button>
+                </div>
+                <Text type="secondary" style={{ display: 'block', marginTop: 4 }}>
+                    Altas, roles y accesos por proyecto de las personas que usan Mariachi.
+                </Text>
             </div>
 
             <Row gutter={[12, 12]} style={{ marginBottom: 16 }}>
