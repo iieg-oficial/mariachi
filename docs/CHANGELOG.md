@@ -9,6 +9,18 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.89.5] - 2026-07-27
+
+### Documentación: renovar la sesión es responsabilidad de cada frontend, y el encabezado de página es uno solo
+
+`COOKIES_CSRF.md` documentaba el refresh como si el panel fuera su único consumidor. SIEEJ usa las mismas cookies contra el mismo backend y no llamaba a `/refrescar`, así que moría a los 30 min con el refresh de 8 h intacto — el documento no daba forma de anticiparlo.
+
+- Nueva sección **«Renovación desde otros frontends del ecosistema»**: qué debe implementar todo consumidor de `/api/mariachi` (reintento único tras `401`, lo mismo en el arranque, y que ninguna petición se salga del cliente con interceptor), más la coordinación entre pestañas con `navigator.locks` y por qué hace falta —la detección de reúso revoca la familia entera— con la ventana de gracia en `rotate()` anotada como la alternativa no aplicada.
+- FAQ: cómo distinguir en el log del gateway si el front renovó o deslogueó (`refrescar 200` vs `iniciar-sesion` tras el `401`), y qué mirar en Redis si el `401` sale del refresh mismo.
+- `CONVENTIONS_CMS.md`: `PageHeading` como encabezado obligatorio de pantalla —icono del menú sin estilos propios, descripción en su fila, `extra` a la derecha, `level` según jerarquía— y la regla de que **el padding de página lo pone el layout**, que es lo que se venía duplicando.
+
+---
+
 ## [1.89.4] - 2026-07-27
 
 ### Cambiado: un solo encabezado de página para todo el panel, empezando por Telemetría
