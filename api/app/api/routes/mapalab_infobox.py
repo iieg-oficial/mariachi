@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_db, require_role, verify_csrf
+from app.api.deps import get_db, require_role, verify_csrf
 from app.core.database import get_dataengine_db
 from app.core.time import utcnow
 from app.models.mapalab_infobox_propuesta import ESTADOS, MapalabInfoboxPropuesta
