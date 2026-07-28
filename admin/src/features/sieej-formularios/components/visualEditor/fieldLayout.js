@@ -4,6 +4,10 @@ export const COLSPAN_UNITS = { 1: 6, 2: 3, 3: 2 };
 
 export const unitsOfColSpan = (colSpan) => COLSPAN_UNITS[colSpan] ?? GRID_COLUMNS;
 
+export const MIN_FIELD_UNITS = Math.min(...Object.values(COLSPAN_UNITS));
+
+export const cabeUnCampo = (units) => units >= MIN_FIELD_UNITS;
+
 export const unitsOfField = (field) => unitsOfColSpan(field?.layout?.colSpan ?? 1);
 
 export const startColOf = (field) => {

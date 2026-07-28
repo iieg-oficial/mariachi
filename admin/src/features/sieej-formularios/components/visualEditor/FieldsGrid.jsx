@@ -8,7 +8,7 @@ import {
 import { Empty } from 'antd';
 import { ColumnGuides, RowDivider } from './LayoutControls';
 import GapDropZone from './GapDropZone';
-import { GRID_COLUMNS } from './fieldLayout';
+import { GRID_COLUMNS, cabeUnCampo } from './fieldLayout';
 
 const gapId = (slot) => `gap-${slot.row}-${slot.col}`;
 
@@ -23,13 +23,13 @@ export default function FieldsGrid({
     );
 
     const gapPorId = useMemo(() => new Map(
-        slots.filter((s) => s.kind === 'gap').map((s) => [gapId(s), s]),
+        slots.filter((s) => s.kind === 'gap' && cabeUnCampo(s.units)).map((s) => [gapId(s), s]),
     ), [slots]);
 
     const totalLineas = slots.length === 0 ? 0 : slots[slots.length - 1].row + 1;
 
     const libreEnLinea = (row) => slots
-        .filter((s) => s.row === row && s.kind === 'gap')
+        .filter((s) => s.row === row && s.kind === 'gap' && cabeUnCampo(s.units))
         .reduce((acc, s) => acc + s.units, 0);
 
     const handleDragEnd = ({ active, over }) => {
@@ -75,7 +75,7 @@ export default function FieldsGrid({
                                     key={`${gapId(slot)}-${i}`}
                                     id={gapId(slot)}
                                     gap={slot}
-                                    activo={!!dragging && !isMobile}
+                                    activo={!!dragging && !isMobile && cabeUnCampo(slot.units)}
                                 />,
                             ];
                         }

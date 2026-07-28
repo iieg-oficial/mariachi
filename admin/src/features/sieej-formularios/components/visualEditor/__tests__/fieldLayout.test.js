@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
     assignCol, assignColSpan, colChoicesFor, groupIntoRows, layoutOf, nearestCol, placedColOf,
     rowMatesOf, snapColSpan,
-    reflowCol, materializeLayout, layoutSlots, moveToSlot,
+    reflowCol, materializeLayout, layoutSlots, moveToSlot, cabeUnCampo,
 } from '../fieldLayout';
 import { rowSlotsResolver } from '../fieldUtils';
 import { CASOS, aCampo, marca } from '../__fixtures__/layoutContract';
@@ -308,6 +308,14 @@ describe('soltar un campo en un espacio libre', () => {
         expect(groupIntoRows(movido, allIdx(movido))
             .map((r) => r.items.map((it) => `${movido[it.idx].name}@${it.col}`)))
             .toEqual([['titulo@1'], ['otro@3'], ['x@1', 'y@3', 'chico@5']]);
+    });
+
+    it('un hueco donde no cabe ni el campo mas chico no se ofrece', () => {
+        const fields = [field('a', 3), field('b', 2)];
+        const huecos = layoutSlots(fields, allIdx(fields)).filter((s) => s.kind === 'gap');
+
+        expect(huecos.map((s) => s.units)).toEqual([1]);
+        expect(huecos.filter((s) => cabeUnCampo(s.units))).toEqual([]);
     });
 
     it('recorta la columna si el campo no cabe en el hueco', () => {
