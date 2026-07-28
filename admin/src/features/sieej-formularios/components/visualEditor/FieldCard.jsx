@@ -211,6 +211,7 @@ export default function FieldCard({
                 padding: 4,
                 boxSizing: 'border-box',
                 minWidth: 0,
+                minHeight: isEditing || isMobile ? undefined : 76,
                 zIndex: draggedColSpan ? 2 : undefined,
             }}
             wrapperProps={{ 'data-field-wrapper': '' }}

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import {
-    DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors,
+    DndContext, KeyboardSensor, PointerSensor, closestCenter, pointerWithin,
+    useSensor, useSensors,
 } from '@dnd-kit/core';
 import {
     SortableContext, sortableKeyboardCoordinates, rectSwappingStrategy,
@@ -21,9 +22,14 @@ export default function FieldsGrid({
     const admiteElArrastre = (slot) => cabeUnCampo(slot.units) && unitsArrastrado <= slot.units;
 
     const sensors = useSensors(
-        useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+        useSensor(PointerSensor, { activationConstraint: { distance: 10 } }),
         useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
     );
+
+    const detectarDestino = (args) => {
+        const bajoElPuntero = pointerWithin(args);
+        return bajoElPuntero.length > 0 ? bajoElPuntero : closestCenter(args);
+    };
 
     const gapPorId = useMemo(() => new Map(
         slots.filter((s) => s.kind === 'gap').map((s) => [gapId(s), s]),
@@ -44,7 +50,7 @@ export default function FieldsGrid({
     return (
         <DndContext
             sensors={sensors}
-            collisionDetection={closestCenter}
+            collisionDetection={detectarDestino}
             onDragStart={({ active }) => setDragging(active.id)}
             onDragCancel={() => setDragging(null)}
             onDragEnd={handleDragEnd}
