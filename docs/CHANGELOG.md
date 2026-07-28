@@ -9,6 +9,24 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.102.0] - 2026-07-28
+
+### El módulo Identidad ya genera y entrega los artefactos de marca
+
+Sobre el modelo de 1.101.0, ahora mariachi construye los cinco archivos que antes salían del `npm run build` de `guidelines-iieg`, y los entrega por HTTP:
+
+```
+GET /api/mariachi/identidad/marcas              marcas disponibles
+GET /api/mariachi/identidad/{marca}/export      ZIP con todo
+GET /api/mariachi/identidad/{marca}/theme.css   artefacto suelto
+```
+
+Los artefactos son `design.md`, `theme.css` (bloque `@theme` de Tailwind v4), `tokens.css` (las mismas variables en `:root`), `fonts.css` (`@font-face` desde el Acervo) y los `tokens/*.tokens.json` en formato DTCG. El mapeo de nombres respeta los namespaces de Tailwind v4: `color.*` sale como `--color-*`, `font.size.*` como `--text-*`, `space.*` como `--spacing-*`.
+
+El `design.md` generado **solo documenta lo que está definido**. Antes la guía se llenaba de `TODO` porque el archivo listaba todos los campos posibles; ahora una sección sin datos simplemente no aparece, y el documento dice de entrada que lo que falta hay que preguntarlo en vez de inventarlo. Las reglas que no dependen de configuración —accesibilidad AA, prohibiciones del logotipo, no transmitir información solo con color— se incluyen siempre.
+
+Los generadores son funciones puras, así que se prueban sin base de datos: 14 casos cubren el mapeo de variables, el árbol DTCG, los `@font-face` por peso y el armado del markdown.
+
 ## [1.101.0] - 2026-07-28
 
 ### Base del módulo Identidad: las marcas del IIEG se administran desde mariachi
