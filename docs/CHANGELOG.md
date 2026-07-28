@@ -9,6 +9,30 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.100.0] - 2026-07-28
+
+### Agregado: captura masiva de metadatos en una tabla, con historial de quién cambió qué
+
+El área venía de llenar los metadatos de capas en Excel y el editor por capa les resultaba lento: obliga a navegar, cargar y guardar capa por capa, cuando su trabajo es por lote. La vista **Tabla** (`/mapalab/layers/tabla`, conmutador Árbol · Tabla en Capas) es una hoja de cálculo dentro del panel: flechas, Tab, pegado de bloques desde Excel, arrastre para rellenar hacia abajo y Ctrl+Z. Corre a pantalla completa, sin sider, para que la tabla ocupe todo el ancho.
+
+- **Nada se guarda hasta presionar Guardar.** Las celdas editadas se marcan en ámbar y el borrador vive en el navegador: si se cierra la pestaña, al volver se ofrece retomarlo. Se descartó el autosave por celda (ruido de auditoría y rate limit) y la tabla `borradores`, que es la cola de revisión y no debe llenarse de capturas intermedias.
+- **Locking optimista por celda**: cada cambio viaja con su valor anterior. Si alguien más tocó esa celda mientras tanto, se marca en rojo y el resto del lote sí se guarda.
+- **Historial por celda** (`mapalab.grid_cell_history`): quién cambió qué campo, de qué valor a cuál y cuándo. Se registra por campo lógico (`fuentes_corto`, `numeralia_01_valor`) y no por la columna JSONB completa, que sería ilegible. Los tres caminos de escritura alimentan la misma tabla: la vista de captura, la ficha de la capa y la ingesta masiva. Se consulta en un drawer lateral, con alcance por capa o global.
+- **Descarga en Excel y CSV**: el XLSX trae dos hojas, *Metadatos* (estado actual con responsable y fecha) e *Historial*. Era el motivo original del módulo.
+- **`mapalab.layer_stats` gana `updated_by`/`updated_at`**: hasta ahora cambiar una numeralia no dejaba rastro de autor en ninguna parte.
+- La infraestructura es genérica y reusable (`/grid/{resource}/*` + `GridSpec` en el backend, `shared/components/dataGrid/` en el admin): montar un segundo grid es escribir una spec y registrarla, sin migración nueva.
+- Presencia por fila sobre Redis: se ve quién está parado en cada capa mientras se captura.
+
+**Requiere migración de DataEngine (`0030_grid_cell_history`) antes de desplegar mariachi**, y rebuild del admin (dependencia npm nueva `react-datasheet-grid`). Sin la migración, el guardado de la tabla falla; la descarga sigue funcionando sin la hoja de historial. Opcionalmente, `python scripts/backfill_grid_history.py` siembra el estado inicial atribuido al último responsable conocido.
+
+### Corregido
+
+- `useIsMobile` devuelve un objeto, no un booleano. La barra de la vista de pantalla completa lo usaba sin destructurar, así que se quedaba siempre en el diseño de dos filas incluso en escritorio. Ahora una sola fila en desktop y dos en tablet y móvil.
+- Los botones de la barra superior oscura heredaban el color por defecto y quedaban negro sobre negro. Se les dio estilo propio; el botón Guardar deshabilitado además dice «Sin cambios» para que se entienda que está inactivo a propósito.
+- Los tooltips de esa barra se montaban fuera del viewport y provocaban scroll mientras se reacomodaban: se reemplazaron por `title` nativo, que dibuja el navegador sin reflow.
+- El footer del sider apilaba sus botones en fila y no cabían con el sider colapsado; ahora pasan a columna.
+- Una copia anidada de `react-dom` 18 (arrastrada por dependencias del grid que no declaran React 19) convivía con React 19 y rompía el render de **cualquier** página con `ReactCurrentBatchConfig`. Se fija una sola copia con `overrides` en `admin/package.json`.
+
 ## [1.99.0] - 2026-07-28
 
 ### Agregado: un campo condicionado y su disparador se ven como lo que son, una pareja

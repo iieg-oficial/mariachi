@@ -25,6 +25,7 @@ from app.api.routes import (
     eventos,
     formularios,
     geoserver,
+    grid,
     home,
     layer_metadata,
     layers,
@@ -107,6 +108,7 @@ def create_app() -> FastAPI:
     app.include_router(capas_catalogo.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(bulk_ingest.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(layer_metadata.router, prefix=settings.admin_prefix, dependencies=staff_dep)
+    app.include_router(grid.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(symbols.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(geoserver.router, prefix=settings.admin_prefix, dependencies=staff_dep)
     app.include_router(preview.admin_router, prefix=settings.admin_prefix, dependencies=staff_dep)

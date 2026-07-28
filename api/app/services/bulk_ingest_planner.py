@@ -8,6 +8,9 @@ from sqlalchemy import text
 from sqlalchemy.engine import Connection
 
 from app.services.bulk_ingest_parser import parse_date_iso, parse_number_with_symbol
+from app.services.grid_batch import diff_states, record_cell_history
+from app.services.grids.layer_metadata_grid import SPEC as GRID_SPEC
+from app.services.grids.layer_metadata_grid import load_states
 
 METADATA_SCALAR_COLUMNS = (
     'workspace',
@@ -335,6 +338,18 @@ def _apply_stats_upsert(
     return (len(approved), result.rowcount or 0, False)
 
 
+def _load_grid_states(conn: Connection, layer_key: str) -> dict:
+    return load_states(conn, layer_key)
+
+
+def _record_grid_history(
+    conn: Connection, layer_key: str, before_states: dict, updated_by: str
+) -> None:
+    after_states = _load_grid_states(conn, layer_key)
+    entries = diff_states(GRID_SPEC, layer_key, before_states, after_states)
+    record_cell_history(conn, GRID_SPEC, entries, updated_by, source='ingesta')
+
+
 def apply_plan(
     conn: Connection,
     plan: dict,
@@ -357,6 +372,8 @@ def apply_plan(
         if not change.get('apply', True):
             skipped += 1
             continue
+
+        before_states = _load_grid_states(conn, key)
 
         if change['op'] == 'insert':
             status = _apply_metadata_insert(conn, change, dependencia, updated_by)
@@ -409,6 +426,8 @@ def apply_plan(
 
             if not meta_diffs and not stats_diffs:
                 skipped += 1
+
+        _record_grid_history(conn, key, before_states, updated_by)
 
     return {
         'metadata_inserts': metadata_inserts,

@@ -15,6 +15,9 @@ from app.schemas.layer_metadata import (
     LayerStatsResponse,
     LayerStatsUpdate,
 )
+from app.services.grid_batch import diff_states, record_cell_history
+from app.services.grids.layer_metadata_grid import SPEC as METADATA_GRID_SPEC
+from app.services.grids.layer_metadata_grid import load_states
 from app.services.mapalab_notifier import notify_tree_changed
 from app.services.stats_templates import (
     StatsTemplateError,
@@ -133,6 +136,8 @@ async def update_stats(
     if not meta:
         raise HTTPException(status_code=404, detail=f"Metadata '{layer_key}' no encontrada")
 
+    before = load_states(db.connection(), layer_key)
+
     row = db.query(LayerStats).filter(LayerStats.layer_key == layer_key).first()
     if not row:
         row = LayerStats(layer_key=layer_key)
@@ -148,6 +153,17 @@ async def update_stats(
 
     for key, value in payload.items():
         setattr(row, key, value)
+    row.updated_by = current_user.email
+    row.updated_at = datetime.now(timezone.utc)
+
+    db.flush()
+    record_cell_history(
+        db.connection(),
+        METADATA_GRID_SPEC,
+        diff_states(METADATA_GRID_SPEC, layer_key, before, load_states(db.connection(), layer_key)),
+        current_user.email,
+        source='formulario',
+    )
 
     db.commit()
     db.refresh(row)
@@ -180,6 +196,8 @@ async def update_metadata(
     if not row:
         raise HTTPException(status_code=404, detail=f"Metadata '{layer_key}' no encontrada")
 
+    before = load_states(db.connection(), layer_key)
+
     payload = data.model_dump(exclude_unset=True, by_alias=False)
     for key, value in payload.items():
         if key in ('fuentes', 'metodologia') and value is not None:
@@ -191,6 +209,15 @@ async def update_metadata(
         else:
             setattr(row, key, value)
     row.updated_by = current_user.email
+
+    db.flush()
+    record_cell_history(
+        db.connection(),
+        METADATA_GRID_SPEC,
+        diff_states(METADATA_GRID_SPEC, layer_key, before, load_states(db.connection(), layer_key)),
+        current_user.email,
+        source='formulario',
+    )
 
     db.commit()
     db.refresh(row)

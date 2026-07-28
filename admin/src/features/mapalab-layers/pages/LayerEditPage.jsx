@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { Alert, AutoComplete, Breadcrumb, Button, Card, Col, Empty, Form, Input, Result, Row, Select, Space, Spin, Switch, Tabs, Tag, Tooltip, Typography } from 'antd';
-import { DeleteOutlined, PartitionOutlined, ReloadOutlined, SaveOutlined, SettingOutlined } from '@ant-design/icons';
+import { Alert, AutoComplete, Breadcrumb, Button, Card, Col, Empty, Form, Input, Result, Row, Segmented, Select, Space, Spin, Switch, Tabs, Tag, Tooltip, Typography } from 'antd';
+import { DeleteOutlined, PartitionOutlined, ReloadOutlined, SaveOutlined, SettingOutlined, TableOutlined } from '@ant-design/icons';
 import DeleteLayerModal from '@features/mapalab-layers/components/DeleteLayerModal';
 import DeletedLayersList from '@features/mapalab-layers/components/DeletedLayersList';
 import LayersTreeListInline from '@features/mapalab-layers/components/LayersTreeListInline';
@@ -1043,16 +1043,33 @@ export default function LayerEditPage() {
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 112px)' }}>
             <div style={{ padding: isMobile ? '8px 8px 0' : '24px 24px 0', flexShrink: 0 }}>
-                <Space align="center" style={{ width: '100%', justifyContent: 'space-between' }}>
+                <Space
+                    align={isMobile ? 'start' : 'center'}
+                    orientation={isMobile ? 'vertical' : 'horizontal'}
+                    style={{ width: '100%', justifyContent: 'space-between' }}
+                >
                     <Title level={isMobile ? 4 : 3} style={{ margin: 0 }}>Capas MapaLab</Title>
-                    <Tooltip title="Configuración global del resaltado de features">
-                        <Button
-                            icon={<SettingOutlined />}
-                            onClick={() => setHighlightSettingsOpen(true)}
-                            shape="circle"
-                            aria-label="Configuración global del resaltado"
+                    <Space align="center" size={8}>
+                        <Segmented
+                            size={isMobile ? 'small' : 'middle'}
+                            value="arbol"
+                            onChange={(value) => {
+                                if (value === 'tabla') navigate('/mapalab/layers/tabla');
+                            }}
+                            options={[
+                                { label: 'Árbol', value: 'arbol', icon: <PartitionOutlined /> },
+                                { label: 'Tabla', value: 'tabla', icon: <TableOutlined /> },
+                            ]}
                         />
-                    </Tooltip>
+                        <Tooltip title="Configuración global del resaltado de features">
+                            <Button
+                                icon={<SettingOutlined />}
+                                onClick={() => setHighlightSettingsOpen(true)}
+                                shape="circle"
+                                aria-label="Configuración global del resaltado"
+                            />
+                        </Tooltip>
+                    </Space>
                 </Space>
                 <Text type="secondary" style={{ fontSize: 12 }}>
                     Árbol del visor. Click sobre un nodo para abrir el editor inline; click sobre el triángulo para expandir/colapsar la rama.

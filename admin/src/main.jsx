@@ -10,6 +10,7 @@ import ProtectedRoute from '@app/guards/ProtectedRoute';
 import RoleProtectedRoute from '@app/guards/RoleProtectedRoute';
 import ErrorBoundary from '@app/guards/ErrorBoundary';
 import MainLayout from '@app/MainLayout';
+import FullscreenLayout from '@app/FullscreenLayout';
 import { Navigate } from 'react-router';
 import Login from '@features/auth/pages/LoginPage';
 import ChangePassword from '@features/auth/pages/ChangePasswordPage';
@@ -27,6 +28,7 @@ const RevisionQueue = lazy(() => import('@features/revision'));
 const LayerEditPage = lazy(() => import('@features/mapalab-layers').then((m) => ({ default: m.LayerEditPage })));
 const InitialLayerOrderPage = lazy(() => import('@features/mapalab-layers').then((m) => ({ default: m.InitialLayerOrderPage })));
 const BulkIngestPage = lazy(() => import('@features/mapalab-layers').then((m) => ({ default: m.BulkIngestPage })));
+const MetadataGridPage = lazy(() => import('@features/mapalab-layers').then((m) => ({ default: m.MetadataGridPage })));
 const CatalogoCapasPage = lazy(() => import('@features/mapalab-catalogo').then((m) => ({ default: m.CatalogoCapasPage })));
 const InfoboxPropuestasPage = lazy(() => import('@features/mapalab-infobox').then((m) => ({ default: m.InfoboxPropuestasPage })));
 const EventosListPage = lazy(() => import('@features/mapalab-eventos').then((m) => ({ default: m.EventosListPage })));
@@ -253,6 +255,20 @@ const router = createBrowserRouter([
                                     subTitle="Lo sentimos, la página que visitaste no existe."
                                 />
                             </div>
+                        )
+                    },
+                ]
+            },
+            {
+                element: (<ProtectedRoute><FullscreenLayout /></ProtectedRoute>),
+                errorElement: <ErrorBoundary />,
+                children: [
+                    {
+                        path: 'mapalab/layers/tabla',
+                        element: withSuspense(
+                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
+                                <MetadataGridPage />
+                            </RoleProtectedRoute>
                         )
                     },
                 ]
