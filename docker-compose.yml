@@ -69,6 +69,7 @@ services:
     volumes:
       - ./api:/app
       - ./docs/CHANGELOG.md:/app/_docs/CHANGELOG.md:ro
+      - geoserver_uploads:/var/tmp/geoserver-uploads
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
@@ -125,6 +126,7 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  geoserver_uploads:
 
 networks:
   mariachi_network:

@@ -5,6 +5,7 @@ import { Link } from 'react-router';
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
 import { BucketFilePicker, BucketFileUploader, useAccessibleBuckets } from '@features/acervo';
 import LayerStatsSection from '@features/mapalab-layers/components/layersEditor/LayerStatsSection';
+import { FRECUENCIA_OPTIONS, TIPO_MAPA_OPTIONS } from '@features/mapalab-layers/constants/metadataCatalogs';
 import { message } from '@shared/services/message';
 
 const { Text } = Typography;
@@ -12,31 +13,6 @@ const { Text } = Typography;
 const PICKER_BUCKET_SLUGS = ['mapalab', 'iieg'];
 const UPLOAD_BUCKET_SLUGS = ['mapalab'];
 const MAPALAB_PREFIXES = ['metadata/txt/', 'metadata/xlsx/'];
-
-const TIPO_MAPA_OPTIONS = [
-    { value: 'IIEG', label: 'IIEG' },
-    { value: 'INEGI', label: 'INEGI' },
-];
-
-const FRECUENCIA_OPTIONS = [
-    { value: 'Diaria', label: 'Diaria' },
-    { value: 'Semanal', label: 'Semanal' },
-    { value: 'Quincenal', label: 'Quincenal' },
-    { value: 'Mensual', label: 'Mensual' },
-    { value: 'Bimestral', label: 'Bimestral (cada 2 meses)' },
-    { value: 'Trimestral', label: 'Trimestral (cada 3 meses)' },
-    { value: 'Cuatrimestral', label: 'Cuatrimestral (cada 4 meses)' },
-    { value: 'Semestral', label: 'Semestral (cada 6 meses)' },
-    { value: 'Anual', label: 'Anual' },
-    { value: 'Bianual', label: 'Bianual (cada 2 años)' },
-    { value: 'Trienal', label: 'Trienal (cada 3 años)' },
-    { value: 'Quinquenal', label: 'Quinquenal (cada 5 años)' },
-    { value: 'Decenal', label: 'Decenal (cada 10 años)' },
-    { value: 'Continua', label: 'Continua (tiempo real / streaming)' },
-    { value: 'Bajo demanda', label: 'Bajo demanda (a petición)' },
-    { value: 'No programado', label: 'No programado (irregular)' },
-    { value: 'Histórico', label: 'Histórico (sin actualizaciones planeadas)' },
-];
 
 const buildFrecuenciaOptions = (currentValue) => {
     const opts = [...FRECUENCIA_OPTIONS];

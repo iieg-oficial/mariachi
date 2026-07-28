@@ -7,15 +7,19 @@ import SortableItem from './SortableItem';
 import FieldForm from './FieldForm';
 import { tabOf } from './fieldUtils';
 import {
-    colChoicesFor, isAlone, nearestCol, startColOf, unitsOfColSpan,
+    colChoicesFor, isAlone, startColOf, unitsOfColSpan,
 } from './fieldLayout';
 import { ColSelect, ColSpanSelect, ResizeHandle, WidthGlyph } from './LayoutControls';
+import { ConditionTag, DependentsTag } from './ConditionTags';
 import useColSpanResize from './useColSpanResize';
 import { colSpanLabel, positionLabel } from './layoutOptions';
 import { fieldTypeLabel } from '../../constants/definitionTypes';
 
+const COLOR_RELACION = { disparador: '#722ed1', dependiente: '#c41d7f' };
+
 export default function FieldCard({
-    id, field, isEditing, isMobile, showTabs, tabs, tabOptions, dependentsCount = 0,
+    id, field, placement, isEditing, isMobile, showTabs, tabs, tabOptions,
+    condition, relation, resaltado, labelOfName, onIrACampo, onResaltarRelacion,
     canMoveUp, canMoveDown, onMove, onToggleEdit, onDelete, onCopy, onDuplicate,
     onAssignTab, onAssignColSpan, onAssignCol, onResizeChange, layoutOverride,
     resolveSlots, previousField, defaultCol, onLayoutDraft,
@@ -30,13 +34,15 @@ export default function FieldCard({
     });
 
     const cs = draggedColSpan ?? saved;
-    const span = unitsOfColSpan(cs);
+    const span = placement?.units ?? unitsOfColSpan(cs);
     const alone = isAlone({ layout });
-    const explicitCol = startColOf({ layout });
-    const col = explicitCol == null ? null : nearestCol(cs, explicitCol);
+    const col = placement?.col ?? startColOf({ layout });
     const gridColumn = isEditing || isMobile
         ? '1 / -1'
         : (col == null ? `span ${span}` : `${col} / span ${span}`);
+    const bordeRelacion = resaltado && resaltado !== 'ajeno'
+        ? COLOR_RELACION[resaltado]
+        : undefined;
     const isCompact = isMobile || cs >= 2;
     const useMoreMenu = cs >= 2 && !isMobile;
     const canResize = !isMobile && !isEditing;
@@ -188,16 +194,20 @@ export default function FieldCard({
         <>
             <Tag color="blue">{fieldTypeLabel(field.type)}</Tag>
             {field.required && <Tag color="red">Requerido</Tag>}
-            {field.showWhen && (
-                <Tooltip title={`Solo se muestra si «${field.showWhen.field}» = «${field.showWhen.equals}»`}>
-                    <Tag color="purple">Condicionado</Tag>
-                </Tooltip>
-            )}
-            {dependentsCount > 0 && (
-                <Tooltip title={`${dependentsCount} campo${dependentsCount === 1 ? '' : 's'} de este paso aparecen según el valor de este campo.`}>
-                    <Tag color="magenta">Activa {dependentsCount}</Tag>
-                </Tooltip>
-            )}
+            <ConditionTag
+                condition={condition}
+                issue={relation?.issue}
+                triggerName={relation?.triggerName}
+                onIr={() => relation?.triggerName && onIrACampo?.(relation.triggerName)}
+                onHover={onResaltarRelacion}
+            />
+            <DependentsTag
+                name={field.name}
+                dependents={relation?.dependents ?? []}
+                labelOf={labelOfName}
+                onIr={onIrACampo}
+                onHover={onResaltarRelacion}
+            />
             {layoutPickers}
             {aloneTag}
         </>
@@ -212,14 +222,21 @@ export default function FieldCard({
                 padding: 4,
                 boxSizing: 'border-box',
                 minWidth: 0,
+                minHeight: isEditing || isMobile ? undefined : 76,
                 zIndex: draggedColSpan ? 2 : undefined,
             }}
-            wrapperProps={{ 'data-field-wrapper': '' }}
+            wrapperProps={{ 'data-field-wrapper': '', 'data-field-name': field.name }}
             gripFooter={isCompact && !isMobile ? actionButtons : null}
         >
             <Card
                 size="small"
-                style={{ position: 'relative', borderColor: draggedColSpan ? '#5C2472' : undefined }}
+                style={{
+                    position: 'relative',
+                    borderColor: draggedColSpan ? '#5C2472' : bordeRelacion,
+                    borderWidth: resaltado && resaltado !== 'ajeno' ? 2 : undefined,
+                    opacity: resaltado === 'ajeno' ? 0.45 : 1,
+                    transition: 'opacity 120ms ease, border-color 120ms ease',
+                }}
                 styles={{ body: { padding: isCompact ? '8px' : '4px 8px' } }}
             >
                 {isCompact ? (

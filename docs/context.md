@@ -2,7 +2,7 @@
 
 > Documento de referencia completo. Leer este archivo proporciona contexto del monorepo sin explorar el codebase.
 
-**Versión:** número único del monorepo (desde `1.61.0` se fusionaron los antiguos `api`/`admin`). Fuente de la verdad: `api/pyproject.toml` (la lee `api/app/core/version.py::get_app_version()`; endpoint en vivo `GET /ontoy`). Bump con `scripts/bump-version.sh <x.y.z>` (sincroniza `pyproject.toml` + `admin/package.json` y abre la entrada del CHANGELOG). · **Última actualización:** 2026-07-28 (1.94.1)
+**Versión:** número único del monorepo (desde `1.61.0` se fusionaron los antiguos `api`/`admin`). Fuente de la verdad: `api/pyproject.toml` (la lee `api/app/core/version.py::get_app_version()`; endpoint en vivo `GET /ontoy`). Bump con `scripts/bump-version.sh <x.y.z>` (sincroniza `pyproject.toml` + `admin/package.json` y abre la entrada del CHANGELOG). · **Última actualización:** 2026-07-28 (1.97.2)
 
 
 ---
@@ -445,6 +445,61 @@ Características clave:
 
 Tests en `api/tests/services/test_bulk_ingest_parser.py` (parsing, mapping, builders de fuentes/metodología/metadato/numeralia, validación del preset MapaLab).
 
+### Captura masiva tipo hoja de cálculo (`/grid`) — implementado
+
+Vista de celdas/filas/columnas dentro del panel para capturar metadatos de muchas capas sin abrir el formulario capa por capa. Nace de que el personal venía de Excel y el editor por capa les resultaba lento para trabajo en lote. Se llega desde el conmutador **Árbol · Tabla** en la cabecera de Capas (`/mariachi/mapalab/layers/tabla`).
+
+El backend es **genérico y reutilizable**: el router no sabe nada de metadatos de capas, y montar un segundo grid (catálogos SIEEJ, capas catálogo, etc.) es escribir una `GridSpec` y registrarla.
+
+| Pieza | Archivo |
+|---|---|
+| Motor de aplicación de cambios (locking optimista por celda, campos virtuales JSONB) | `api/app/services/grid_batch.py` |
+| Registro de grids | `api/app/services/grids/__init__.py` |
+| Spec de metadatos de capas | `api/app/services/grids/layer_metadata_grid.py` |
+| Router | `api/app/api/routes/grid.py` (`/grid/{resource}/*`) |
+| Schemas | `api/app/schemas/grid.py` |
+| Grid genérico (React) | `admin/src/shared/components/dataGrid/` |
+| Servicio axios | `admin/src/shared/services/gridService.js` |
+| Página | `admin/src/features/mapalab-layers/pages/MetadataGridPage.jsx` |
+| Layout sin sider | `admin/src/app/FullscreenLayout.jsx` + `admin/src/app/fullscreenHeader.js` |
+
+**La tabla corre a pantalla completa**, fuera del `MainLayout`: su ruta cuelga de un `FullscreenLayout` hermano (ambos bajo `MainProvider` + `ProtectedRoute`), no de los children del layout con sider. La barra superior deja solo marca, botón de regreso, título y las acciones que la página declara con `useFullscreenHeader({ title, backTo, extra })` — cualquier página futura que necesite todo el ancho reusa ese layout. El `<Outlet />` va memoizado con `useMemo(..., [])` para que el contador de cambios sin guardar (que se actualiza en cada tecla) re-renderice la barra sin arrastrar la tabla; los cambios de ruta lo atraviesan igual porque viajan por contexto.
+
+No hay conmutador Árbol/Tabla dentro de la vista de tabla: el botón de regreso ya lleva al árbol. El conmutador vive solo en la página del árbol, junto al botón de configuración. Los filtros (workspace, búsqueda) son botones con dropdown en la barra, no una franja de filtros, para que la tabla ocupe todo lo que queda; el conteo de capas vive en la barra de estado inferior. **La barra es oscura (`#001529`), así que los botones necesitan CSS propio** (`.mariachi-topbar .ant-btn.ant-btn-variant-*`): sin él quedan con el color por defecto y se vuelven invisibles sobre el fondo. `FullscreenLayout.test.jsx` ancla que antd siga emitiendo esas clases, porque el día que cambien el síntoma es "no se ven los botones" y no falla nada más.
+
+| Método | Ruta | Función |
+|---|---|---|
+| GET | `/grid/{resource}/rows` | Filas aplanadas + catálogo de columnas (`columns_meta`). Filtros `workspace` y `search` |
+| PATCH | `/grid/{resource}/cells` | Lote de cambios `{rowKey, column, fromValue, toValue}`. Máx 500 por request |
+| GET | `/grid/{resource}/historial` | Historial por celda; filtros `rowKey`, `desde`, `hasta` |
+| GET | `/grid/{resource}/export` | `formato=xlsx\|csv`. XLSX trae hojas **Metadatos** e **Historial**; CSV usa `hoja=metadatos\|historial` |
+| GET/PUT/DELETE | `/grid/{resource}/presencia` | Presencia por fila en Redis (scope por grid, TTL 30 s) |
+
+#### Historial de cambios (`mapalab.grid_cell_history`)
+
+El objetivo del módulo es poder **descargar un Excel de metadatos con historial y responsable**. Antes solo existía `layer_metadata.updated_by` (último autor de la fila, sin decir qué campo ni qué decía antes) y `layer_stats` no tenía ni eso: cambiar una numeralia no dejaba rastro de autor.
+
+Migración `dataengine/jobs/alembic/versions/20260728_0030_grid_cell_history.py`: agrega `updated_by`/`updated_at` a `mapalab.layer_stats` y crea `mapalab.grid_cell_history` con `(resource, row_key, column_key, from_value, to_value, changed_by, changed_at, source)`. Es **genérica** (`resource`): los próximos grids la reusan sin otra migración. Vive en DataEngine y no en la BD de mariachi para que el historial se escriba **en la misma transacción** que el cambio — un historial con huecos ocasionales vale mucho menos que uno garantizado.
+
+- **Se registra por campo lógico, no por columna física.** `column_key` guarda `fuentes_corto` o `numeralia_01_valor`, no `fuentes`/`values`; un historial que dijera "fuentes cambió de {json} a {json}" sería ilegible en el Excel. Esto también descarta implementarlo con un trigger de Postgres: el trigger solo vería el JSONB completo.
+- **Los tres caminos de escritura alimentan la misma tabla**, con `source` distinto: `grid` (celda por celda), `formulario` (`PUT /layer-metadata/*`, vía `diff_states`) e `ingesta` (el applier del plan). Si solo registrara el grid, el historial mentiría por omisión: alguien edita en la ficha de la capa y en el Excel parecería que nadie la tocó.
+- **No hay historial retroactivo.** `scripts/backfill_grid_history.py` siembra una fila por campo con valor, atribuida al `updated_by` vigente y marcada `source='backfill'`, para que la primera exportación no salga vacía y se distinga de un cambio real. Es idempotente.
+- El export usa `openpyxl` (ya era dependencia para *leer* en la ingesta). Los CSV llevan BOM UTF-8 para que Excel no rompa los acentos.
+- El historial también se consulta sin descargar: botón de reloj en la barra → `GridHistoryDrawer` (drawer lateral, no modal, para no perder de vista la tabla) con dos alcances, *Esta capa* y *Todas*. Muestra `antes → ahora`, responsable, fecha y un tag por origen.
+- `fetch_history` comprueba con `to_regclass` que la tabla exista antes de consultarla: si la migración de DataEngine no está aplicada, la descarga sale igual con los datos actuales en vez de responder 500. Exportar el catálogo no debe depender de que exista la auditoría.
+
+Decisiones que conviene no perder:
+
+- **El diff es por celda tocada**, no por columna presente en un archivo. Eso permite que una celda vacía signifique *borrar* sin ambigüedad, y evita que una fuente múltiple se pise al guardar (a diferencia de un round-trip por Excel, donde la columna JSONB viaja completa).
+- **Locking optimista a nivel de campo virtual**: cada cambio manda su `fromValue`; el motor lee la fila con `SELECT ... FOR UPDATE`, compara y si no coincide devuelve `conflict` para esa celda sin tumbar el resto del lote. El front conserva las celdas en conflicto marcadas en rojo.
+- **Campos virtuales**: `fuentes_corto`, `metodologia_texto` y los 24 de numeralia no son columnas de tabla. `json_list_item_field` y `json_slot_field` los leen/escriben dentro del JSONB. El writer normaliza `fuentes`/`metodologia` de objeto suelto (formato legado, 128 de 130 filas) a lista de un elemento; el visor y los schemas aceptan ambas formas.
+- **Numeralia calculada bloqueada**: las capas con `stats_config` dinámico rechazan edición de numeralia desde el grid (guard en la spec, más celdas deshabilitadas en el front), porque el refresh de stats las volvería a pisar.
+- **Permisos**: escribir numeralia desde el grid requiere rol editor del proyecto, no `tetlamamakani`. El `PUT /layer-metadata/{key}/stats` sigue siendo admin-only porque ese endpoint define `stats_config`, que ejecuta SQL; el grid solo toca valores estáticos.
+- **Nomenclatura compartida con la ingesta masiva**: las claves de columna son las mismas del preset `mapalab-excel` (`layer_name_usuario`, `numeralia_01_valor`, …), para que exista una sola nomenclatura en el módulo.
+- **Borrador local, no en BD**: los cambios viven en memoria y `localStorage` (`mariachi.grid.<resource>.draft`) hasta que se presiona Guardar. No se usa la tabla `borradores` — esa es la cola de revisión de `tetlamamakani` y se ensuciaría con capturas intermedias. Autosave por celda se descartó por ruido de auditoría y rate limit.
+- El grid corre sobre `react-datasheet-grid` (MIT, peer React 19). Trae navegación por teclado, selección de rango, pegado multi-celda desde Excel y arrastre de relleno; el **undo (Ctrl+Z) es propio**, sobre el stack de parches del borrador.
+- **No quitar el `overrides` de `react`/`react-dom` en `admin/package.json`.** Dos dependencias transitivas del grid (`@tanstack/react-virtual` y `react-resize-detector@7`) declaran rangos de `react-dom` que excluyen la 19, así que npm instala una copia anidada de react-dom 18 y el bundle termina con dos copias de React. En runtime revienta con `Cannot read properties of undefined (reading 'ReactCurrentBatchConfig')` al montar **cualquier** página, porque react-dom 18 busca internals que React 19 eliminó. El build no lo detecta; el test de montaje en `shared/components/dataGrid/__tests__/DataGrid.test.jsx` sí.
+
 ### v1.4.0 MapaLab (capas) — implementado
 
 | Metodo | Ruta | Funcion |
@@ -458,6 +513,8 @@ Tests en `api/tests/services/test_bulk_ingest_parser.py` (parsing, mapping, buil
 | GET | `/api/administrador/geoserver/workspaces/pending` | Workspaces presentes en GeoServer pero no registrados en `mapalab.workspaces` (admin-only). Devuelve `[{geoserverWorkspace, layerCount}]` |
 | POST | `/api/administrador/geoserver/workspaces/register` | Registra un workspace nuevo en `mapalab.workspaces` (admin + CSRF). Valida que exista en GeoServer |
 | GET | `/api/administrador/geoserver/workspaces/{alias}/styles` | Estilos publicados en el workspace; con `?include_global=true` suma los del catálogo global (marcados `isGlobal`). Consumido por la página Estilos de Sextante |
+| GET | `/api/administrador/geoserver/fonts` | Tipografías: cruza las familias que la JVM tiene cargadas (`/rest/fonts`) con los `.ttf`/`.otf` subidos a `styles/`. Cada familia trae `source`: `propia` (archivo subido por el CMS), `instalada` (declarada en `GEOSERVER_INSTALLED_FONT_FAMILIES`) o `sistema` |
+| POST | `/api/administrador/geoserver/fonts/reload` | `POST /rest/reload` de GeoServer: sin esto una fuente recién subida no queda registrada |
 | POST | `/api/administrador/layers/auto-leaf` | Idempotente: devuelve o crea un leaf con `(workspace_alias, geoserver_layer)` bajo el padre `eventos-auto` (tema oculto, on-demand). Usado al asociar una capa "solo GeoServer" a un evento. `label` es **obligatorio** y debe ser distinto al `geoserver_layer` (normalizando case + `_`/`-`/espacios); evita registrar capas con el slug como nombre visible (`api 1.14.5+`) |
 | POST | `/api/administrador/borradores/por-id/{id}/aprobar` | Aprueba borrador; si `resource_type='layer'`, materializa en DataEngine |
 | GET | `/metrics` | Metricas Prometheus (sin auth, usado por huachicol) |
@@ -529,8 +586,10 @@ Para emojis usados en SLDs, el applier `_apply_sld` invoca `symbol_service.ensur
 
 #### Prerrequisitos de infraestructura
 
-1. El contenedor `geoserver` debe estar en `iieg-network` para resolver `acervo-minio` cuando renderiza el SLD con `<ExternalGraphic>`. Configurado en `/IIEG/geoserver/docker-compose.yml`.
-2. GeoServer 2.20+ bloquea por defecto cualquier URL externa en SLDs. Crear un `URLCheck` vía REST API: `POST /rest/urlchecks` con regex `^http://acervo-minio:9000/mapalab/.+$`. Detalles en `docs/SLD_EDITOR.md`.
+1. El contenedor `geoserver` debe estar en `iieg-network` para resolver el Acervo cuando renderiza el SLD con `<ExternalGraphic>`. Configurado en `/IIEG/geoserver/docker-compose.yml`.
+2. GeoServer 2.20+ bloquea por defecto cualquier URL externa en SLDs. Hace falta un `URLCheck` vía REST API (`POST /rest/urlchecks`) que cubra el host del Acervo. Detalles en `docs/SLD_EDITOR.md`.
+
+> **Pendiente de verificar (2026-07-28):** ambos puntos se escribieron cuando el Acervo era **MinIO** (`acervo-minio:9000`). Tras la migración a **SeaweedFS** (`acervo-seaweedfs:8333`) el `URLCheck` con la regex vieja apuntaría a un host que ya no existe, y el síntoma sería un símbolo que no pinta en el mapa —fácil de confundir con un problema del estilo—. Revisar con `GET /rest/urlchecks` y reescribir la regex si sigue con el host de MinIO.
 
 UI: `/sextante/simbolos` (admin tetlamamakani). Features en `admin/src/features/mapalab-symbols/` y `admin/src/features/mapalab-layers/components/sldEditor/`. El `SymbolPicker` (selector del catálogo, reusado por el editor SLD, los eventos y el ícono de categoría) vive en `mapalab-symbols/components/`.
 
@@ -886,6 +945,17 @@ Lo relacionado con GeoServer estaba repartido dentro de MapaLab o escondido en m
 
 - **Nuevas:** `/sextante/workspaces` (registrados vs pendientes, alta incluida — el flujo salió del Alert de `LayerCreateModal`, que sigue usando el mismo `RegisterWorkspaceModal` ya movido a `sextante`), `/sextante/capas` (introspección workspace → capa → campos con valores de muestra + estilos + layer group) y `/sextante/estilos` (catálogo de SLDs por workspace con tipo detectado, capas que comparten el estilo, leyenda en vivo y XML copiable).
 - **Movidas:** `/sextante/recursos` (antes `/mapalab/recursos-geoserver`) y `/sextante/simbolos` (antes `/mapalab/simbolos`); las rutas viejas redirigen.
+
+### 2026-07-28 (1.96.0 – 1.97.2) — Sextante: recursos sin tope, tipografias y anclaje a la raiz del workspace
+
+Seis subpáginas: se suma **Tipografías** (`/sextante/tipografias`).
+
+- **Subidas sin tope.** Las partes del upload por chunks se acumulan en **disco** (`GEOSERVER_UPLOAD_STAGING_DIR`, volumen propio del contenedor) y no en Redis, donde el tope de 200 MB existía porque eran memoria. `GEOSERVER_UPLOAD_MAX_BYTES=0` (default) = sin límite; el techo es el disco de la VM. El PUT a GeoServer corre en threadpool (si no, gunicorn mata al worker por su `--timeout 300`), usa los bytes realmente acumulados como `Content-Length`, renueva el TTL por chunk y limpia los directorios de subidas abandonadas.
+- **Recursos se ancla a la raíz del workspace** (`resource/workspaces/<ws>`), no a `styles/`, para que el geoanalista elija dónde poner cada archivo. **El ámbito global sigue en `styles/`**: su raíz es el data dir completo (`security/`, `logs/`, `global.xml`). Consecuencia: el `xlink:href` del snippet SLD es relativo a la carpeta del SLD, así que un archivo fuera de `styles/` se referencia con `../` (`_sld_href`).
+- **Tipografías.** Solo `ttf`/`otf` (lo único que lee Java 2D). Las institucionales —las **Garet**— no viven en el data dir: están versionadas en el repo `geoserver` (`fonts/`) y montadas en `/usr/share/fonts/custom`, así que se declaran con `GEOSERVER_INSTALLED_FONT_FAMILIES` para no darlas por ajenas.
+- **Actividad.** Subidas, borrados y reload quedan en `actividad` (`geoserver.file.upload`, `geoserver.file.delete`, `geoserver.fonts.reload`) con actor, IP, workspace, destino, tamaño y modo.
+- **Vista alineada con el Acervo:** `PageHeading` compartido, tarjeta contenedora, breadcrumb con conteo y alternador Grid/Lista (`GeoserverFilesList`, `GeoserverFilesToolbar`, `GeoserverFilesContent`).
+- **429 al navegar carpetas.** El grid pide una miniatura por archivo. Tres piezas lo evitan: la zona `geoserver_files` del gateway, el scope `geoserver_download` del API (3000/min) y el semáforo de 6 miniaturas (`thumbQueue` + `GeoserverThumb`). La descarga responde `private, max-age=60, must-revalidate` + ETag y **304** ante `If-None-Match`: **no** se marca `immutable` porque la URL es el nombre del archivo y Recursos permite sobrescribirlo.
 - **Acceso:** el proyecto `sextante` del registry declara `accessSlug: 'mapalab'`, así que lo ve quien ya tenía MapaLab — el router `/geoserver/*` del backend depende de `require_project_access('mapalab')`. Workspaces y Símbolos siguen admin-only.
 - **Backend:** `GeoServerClient.list_workspace_styles()` + `GET /geoserver/workspaces/{alias}/styles`. El resto reusa endpoints existentes.
 - **Ícono de categoría de símbolos:** además de emoji admite cualquier símbolo del catálogo (imagen/SVG, guardado como URL del Acervo). Las respuestas de categoría exponen `iconUrl` derivado; lo consume mapalab 1.88.0. Sin migración (`icon` ya era `TEXT`). `SymbolPicker` se mudó a `mapalab-symbols/components/`.

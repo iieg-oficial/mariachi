@@ -38,6 +38,7 @@ export const fieldFromFormValues = (values) => {
     const colSpan = values.colSpan ?? 1;
     const col = nearestCol(colSpan, values.col ?? 1);
     const alone = colSpan !== 1 && !!values.alone;
+    const newRow = col === 1 || !!values.newRow;
 
     return {
         name: values.name,
@@ -62,7 +63,7 @@ export const fieldFromFormValues = (values) => {
             && values.openCatalog
             ? { openCatalog: values.openCatalog }
             : {}),
-        layout: layoutOf(colSpan, col, alone),
+        layout: layoutOf(colSpan, col, alone, newRow),
     };
 };
 
@@ -98,6 +99,7 @@ export const fieldToFormValues = (field, defaultCol = 1) => ({
     colSpan: field?.layout?.colSpan ?? 1,
     col: nearestCol(field?.layout?.colSpan ?? 1, field?.layout?.col ?? defaultCol),
     alone: !!field?.layout?.alone,
+    newRow: field?.layout?.newRow === true,
 });
 
 export const conditionValueOptions = (source, catalogos = {}) => {
@@ -175,16 +177,6 @@ export const normalizeTabs = (fields = [], tabs = []) => {
 export const indicesOfTab = (fields = [], tabs = [], tabKey) => fields
     .map((f, i) => (tabOf(f, tabs) === tabKey ? i : -1))
     .filter((i) => i >= 0);
-
-export const reorderWithinTab = (fields, indices, from, to) => {
-    const group = indices.map((i) => fields[i]);
-    const [moved] = group.splice(from, 1);
-    group.splice(to, 0, moved);
-
-    const out = [...fields];
-    indices.forEach((globalIdx, k) => { out[globalIdx] = group[k]; });
-    return out;
-};
 
 export const labelOfField = (field) => field?.label || field?.name;
 

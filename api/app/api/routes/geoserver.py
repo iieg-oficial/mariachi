@@ -1,15 +1,17 @@
 import hashlib
+import logging
 import re
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import Response, StreamingResponse
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 
 from app.api.deps import require_project_access, require_role, verify_csrf
 from app.api.metrics import COUNTER_GEOSERVER_CALLS, incr
-from app.api.rate_limit import rate_limit
-from app.core.database import get_dataengine_db
+from app.api.rate_limit import _client_ip, rate_limit
+from app.core.database import get_dataengine_db, get_db
 from app.core.settings import get_settings
 from app.models.layer import Workspace
 from app.models.user import Usuario
@@ -17,14 +19,19 @@ from app.schemas.geoserver_file import (
     GeoServerBrowseResponse,
     GeoServerFileResponse,
     GeoServerFolderResponse,
+    GeoServerFontFamilyResponse,
+    GeoServerFontFileResponse,
+    GeoServerFontsResponse,
     GeoServerSearchResponse,
 )
 from app.schemas.layer import WorkspaceCreate, WorkspacePending, WorkspaceResponse
 from app.services.acervo_file_service import ZIP_MAX_BYTES, stream_zip
+from app.services.actividad_service import registrar_actividad
 from app.services.geoserver_client import GeoServerClient, GeoServerError
 from app.services.palette_service import load_palettes
 from app.services.sld_parser import parse_sld
 
+logger = logging.getLogger(__name__)
 settings = get_settings()
 
 router = APIRouter(
@@ -37,7 +44,7 @@ _require_project_editor = require_project_access('mapalab', min_role='editor')
 _require_admin = require_role(['tetlamamakani'])
 _read_rate_limit = rate_limit(max_requests=120, window_seconds=60.0, scope='geoserver_read')
 _write_rate_limit = rate_limit(max_requests=60, window_seconds=60.0, scope='geoserver_write')
-_download_rate_limit = rate_limit(max_requests=600, window_seconds=60.0, scope='geoserver_download')
+_download_rate_limit = rate_limit(max_requests=3000, window_seconds=60.0, scope='geoserver_download')
 _chunk_rate_limit = rate_limit(max_requests=600, window_seconds=60.0, scope='geoserver_chunk')
 
 
@@ -405,8 +412,9 @@ def _validate_workspace(workspace: str | None) -> str | None:
             detail="Workspace invalido: solo letras, numeros, guion y guion bajo",
         )
     return workspace
-_GEOSERVER_FILE_ALLOWED_EXT = {'svg', 'png', 'jpg', 'jpeg', 'webp', 'gif', 'tiff', 'tif'}
-_GEOSERVER_FILE_MAX_BYTES = 5 * 1024 * 1024
+_GEOSERVER_IMAGE_EXT = {'svg', 'png', 'jpg', 'jpeg', 'webp', 'gif', 'tiff', 'tif'}
+_GEOSERVER_FONT_EXT = {'ttf', 'otf'}
+_GEOSERVER_FILE_ALLOWED_EXT = _GEOSERVER_IMAGE_EXT | _GEOSERVER_FONT_EXT
 _GEOSERVER_FILE_MIME_BY_EXT = {
     'svg': 'image/svg+xml',
     'png': 'image/png',
@@ -416,6 +424,8 @@ _GEOSERVER_FILE_MIME_BY_EXT = {
     'gif': 'image/gif',
     'tiff': 'image/tiff',
     'tif': 'image/tiff',
+    'ttf': 'font/ttf',
+    'otf': 'font/otf',
 }
 
 
@@ -439,13 +449,22 @@ def _validate_file_name(name: str) -> tuple[str, str]:
     return name, ext
 
 
+def _sld_href(name: str, workspace: str | None) -> str:
+    clean = name.lstrip('/')
+    if not workspace:
+        return clean
+    if clean.startswith('styles/'):
+        return clean[len('styles/'):]
+    return f"../{clean}"
+
+
 def _build_file_response(name: str, content_type: str | None, workspace: str | None = None) -> GeoServerFileResponse:
     ext = Path(name).suffix.lower().lstrip('.')
     fmt = content_type or _GEOSERVER_FILE_MIME_BY_EXT.get(ext, 'application/octet-stream')
     snippet = (
         '<ExternalGraphic xmlns="http://www.opengis.net/sld">'
         f'<OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" '
-        f'xlink:type="simple" xlink:href="{name}"/>'
+        f'xlink:type="simple" xlink:href="{_sld_href(name, workspace)}"/>'
         f'<Format>{fmt}</Format>'
         '</ExternalGraphic>'
     )
@@ -457,6 +476,64 @@ def _build_file_response(name: str, content_type: str | None, workspace: str | N
         sld_snippet=snippet,
         workspace=workspace,
     )
+
+
+_UPLOAD_READ_BLOCK = 8 * 1024 * 1024
+
+
+def _upload_size(file: UploadFile) -> int:
+    handle = file.file
+    handle.seek(0, 2)
+    size = handle.tell()
+    handle.seek(0)
+    return size
+
+
+def _iter_upload(file: UploadFile):
+    handle = file.file
+    handle.seek(0)
+    while True:
+        block = handle.read(_UPLOAD_READ_BLOCK)
+        if not block:
+            break
+        yield block
+
+
+def _enforce_upload_limit(size: int) -> None:
+    from app.services.geoserver_chunked import max_total_bytes
+
+    cap = max_total_bytes()
+    if cap and size > cap:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Archivo excede el limite configurado ({cap // (1024 * 1024)} MB)",
+        )
+
+
+def _registrar_archivo(
+    db: Session,
+    request: Request,
+    actor: Usuario,
+    action: str,
+    name: str,
+    workspace: str | None,
+    **extra,
+) -> None:
+    registrar_actividad(
+        db,
+        actor=actor,
+        action=action,
+        resource_type='geoserver.file',
+        resource_id=f"{workspace or 'global'}:{name}",
+        metadata={
+            'nombre': name,
+            'workspace': workspace,
+            'destino': f"workspaces/{workspace}" if workspace else 'styles',
+            **extra,
+        },
+        ip=_client_ip(request),
+    )
+    db.commit()
 
 
 def _validate_folder_path(path: str) -> str:
@@ -556,9 +633,11 @@ async def search_geoserver_files(
 
 @router.post('/files', response_model=GeoServerFileResponse, status_code=201)
 async def upload_geoserver_file(
+    request: Request,
     file: UploadFile = File(...),
     name: str | None = Form(default=None),
     workspace: str | None = Form(default=None),
+    db: Session = Depends(get_db),
     current_user: Usuario = Depends(_require_project_editor),
     _csrf: Usuario = Depends(verify_csrf),
     _rl: Usuario = Depends(_write_rate_limit),
@@ -569,21 +648,29 @@ async def upload_geoserver_file(
     target_name = target_name.strip()
     target_name, ext = _validate_file_name(target_name)
 
-    content = await file.read()
-    if not content:
+    size = _upload_size(file)
+    if not size:
         raise HTTPException(status_code=400, detail="Archivo vacio")
-    if len(content) > _GEOSERVER_FILE_MAX_BYTES:
-        raise HTTPException(
-            status_code=413,
-            detail=f"Archivo excede el limite ({_GEOSERVER_FILE_MAX_BYTES} bytes)",
-        )
+    _enforce_upload_limit(size)
 
     content_type = _GEOSERVER_FILE_MIME_BY_EXT[ext]
     client = GeoServerClient()
     try:
-        client.put_style_file(target_name, content, content_type, workspace=clean_ws)
+        await run_in_threadpool(
+            client.put_style_file_streaming,
+            target_name,
+            _iter_upload(file),
+            content_type,
+            size,
+            workspace=clean_ws,
+        )
     except GeoServerError as exc:
         raise HTTPException(status_code=502, detail=str(exc))
+
+    _registrar_archivo(
+        db, request, current_user, 'geoserver.file.upload', target_name, clean_ws,
+        tamano_bytes=size, modo='directo', tipo='fuente' if ext in _GEOSERVER_FONT_EXT else 'imagen',
+    )
     return _build_file_response(target_name, content_type, workspace=clean_ws)
 
 
@@ -598,22 +685,14 @@ async def init_chunked_geoserver_upload(
     _csrf: Usuario = Depends(verify_csrf),
     _rl: Usuario = Depends(_write_rate_limit),
 ):
-    from app.services.geoserver_chunked import (
-        CHUNK_SIZE,
-        MAX_TOTAL_BYTES,
-        create_session,
-    )
+    from app.services.geoserver_chunked import CHUNK_SIZE, create_session
 
     incr(COUNTER_GEOSERVER_CALLS)
     clean_ws = _validate_workspace(workspace)
     target_name, ext = _validate_file_name((name or '').strip())
     if total_size <= 0:
         raise HTTPException(status_code=400, detail="Tamano invalido")
-    if total_size > MAX_TOTAL_BYTES:
-        raise HTTPException(
-            status_code=413,
-            detail=f"Archivo excede el limite ({MAX_TOTAL_BYTES // (1024 * 1024)} MB)",
-        )
+    _enforce_upload_limit(total_size)
     if total_chunks < 1:
         raise HTTPException(status_code=400, detail="total_chunks invalido")
 
@@ -637,7 +716,7 @@ async def upload_chunked_geoserver_part(
     _csrf: Usuario = Depends(verify_csrf),
     _rl: Usuario = Depends(_chunk_rate_limit),
 ):
-    from app.services.geoserver_chunked import get_session, store_part
+    from app.services.geoserver_chunked import get_session, store_part, touch_session
 
     incr(COUNTER_GEOSERVER_CALLS)
     session = get_session(session_id)
@@ -649,13 +728,16 @@ async def upload_chunked_geoserver_part(
     data = await chunk.read()
     if not data:
         raise HTTPException(status_code=400, detail="Parte vacia")
-    store_part(session_id, part_number, data)
+    await run_in_threadpool(store_part, session_id, part_number, data)
+    touch_session(session_id)
     return {'part_number': part_number}
 
 
 @router.post('/files/chunked/{session_id}/complete', response_model=GeoServerFileResponse, status_code=201)
 async def complete_chunked_geoserver_upload(
     session_id: str,
+    request: Request,
+    db: Session = Depends(get_db),
     current_user: Usuario = Depends(_require_project_editor),
     _csrf: Usuario = Depends(verify_csrf),
     _rl: Usuario = Depends(_write_rate_limit),
@@ -665,6 +747,7 @@ async def complete_chunked_geoserver_upload(
         get_session,
         iter_parts,
         missing_parts,
+        stored_bytes,
     )
 
     incr(COUNTER_GEOSERVER_CALLS)
@@ -682,19 +765,33 @@ async def complete_chunked_geoserver_upload(
     content_type = session['content_type']
     total_size = session['total_size']
 
+    real_size = stored_bytes(session_id)
+    if real_size != total_size:
+        logger.warning(
+            "action=geoserver.chunked.size_mismatch session=%s declarado=%s real=%s",
+            session_id, total_size, real_size,
+        )
+
     client = GeoServerClient()
     try:
-        client.put_style_file_streaming(
+        await run_in_threadpool(
+            client.put_style_file_streaming,
             name,
             iter_parts(session_id, total_chunks),
             content_type,
-            total_size,
+            real_size,
             workspace=clean_ws,
         )
     except GeoServerError as exc:
         raise HTTPException(status_code=502, detail=str(exc))
 
     delete_session(session_id, total_chunks)
+    ext = Path(name).suffix.lower().lstrip('.')
+    _registrar_archivo(
+        db, request, current_user, 'geoserver.file.upload', name, clean_ws,
+        tamano_bytes=real_size, modo='chunked', partes=total_chunks,
+        tipo='fuente' if ext in _GEOSERVER_FONT_EXT else 'imagen',
+    )
     return _build_file_response(name, content_type, workspace=clean_ws)
 
 
@@ -705,7 +802,6 @@ async def download_geoserver_folder_zip(
     current_user: Usuario = Depends(_require_project_editor),
     _rl: Usuario = Depends(_download_rate_limit),
 ):
-    """Descarga ZIP streaming de una carpeta de `styles/` recursivamente."""
     import io as _io
 
     incr(COUNTER_GEOSERVER_CALLS)
@@ -763,9 +859,113 @@ async def download_geoserver_folder_zip(
     )
 
 
+_FONT_STYLE_SUFFIXES = (
+    'regular', 'italic', 'oblique', 'bold', 'bolditalic', 'semibold', 'demibold',
+    'light', 'extralight', 'ultralight', 'medium', 'black', 'heavy', 'thin',
+    'condensed', 'expanded', 'book', 'roman',
+)
+
+
+def _font_key(value: str) -> str:
+    stem = Path(value).stem
+    parts = re.split(r'[\s_\-]+', stem)
+    kept = [p for p in parts if p and p.lower() not in _FONT_STYLE_SUFFIXES]
+    return ''.join(kept or parts).lower()
+
+
+@router.get('/fonts', response_model=GeoServerFontsResponse)
+async def list_geoserver_fonts(
+    db: Session = Depends(get_dataengine_db),
+    current_user: Usuario = Depends(_require_project_editor),
+    _rl: Usuario = Depends(_read_rate_limit),
+):
+    incr(COUNTER_GEOSERVER_CALLS)
+    client = GeoServerClient()
+    try:
+        families = client.list_fonts()
+    except GeoServerError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+
+    loaded_keys = {_font_key(f) for f in families}
+    workspaces = [None] + [
+        ws.geoserver_workspace for ws in db.query(Workspace).order_by(Workspace.alias).all()
+    ]
+
+    files: list[GeoServerFontFileResponse] = []
+    for ws in workspaces:
+        try:
+            items = client.list_all_style_files(workspace=ws)
+        except GeoServerError:
+            continue
+        for it in items:
+            name = it['name']
+            if Path(name).suffix.lower().lstrip('.') not in _GEOSERVER_FONT_EXT:
+                continue
+            ws_qs = f"?workspace={ws}" if ws else ""
+            files.append(GeoServerFontFileResponse(
+                name=name,
+                workspace=ws,
+                download_url=f"{settings.admin_prefix}/geoserver/files/{name}{ws_qs}",
+                loaded=_font_key(name) in loaded_keys,
+            ))
+
+    files.sort(key=lambda f: ((f.workspace or '').lower(), f.name.lower()))
+
+    own_keys = {_font_key(f.name) for f in files}
+    installed_keys = {
+        _font_key(f) for f in settings.geoserver_installed_font_families.split(',') if f.strip()
+    }
+
+    def _source(name: str) -> str:
+        key = _font_key(name)
+        if key in own_keys:
+            return 'propia'
+        if key in installed_keys:
+            return 'instalada'
+        return 'sistema'
+
+    familias = [GeoServerFontFamilyResponse(name=name, source=_source(name)) for name in families]
+
+    return GeoServerFontsResponse(
+        families=familias,
+        files=files,
+        pending_reload=any(not f.loaded for f in files),
+    )
+
+
+@router.post('/fonts/reload')
+async def reload_geoserver_fonts(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(_require_project_editor),
+    _csrf: Usuario = Depends(verify_csrf),
+    _rl: Usuario = Depends(_write_rate_limit),
+):
+    incr(COUNTER_GEOSERVER_CALLS)
+    client = GeoServerClient()
+    try:
+        await run_in_threadpool(client.reload)
+        families = client.list_fonts()
+    except GeoServerError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+
+    registrar_actividad(
+        db,
+        actor=current_user,
+        action='geoserver.fonts.reload',
+        resource_type='geoserver.fonts',
+        resource_id=None,
+        metadata={'familias': len(families)},
+        ip=_client_ip(request),
+    )
+    db.commit()
+    return {'total': len(families)}
+
+
 @router.get('/files/{name:path}')
 async def download_geoserver_file(
     name: str,
+    request: Request,
     workspace: str | None = Query(default=None),
     current_user: Usuario = Depends(_require_project_editor),
     _rl: Usuario = Depends(_download_rate_limit),
@@ -780,20 +980,25 @@ async def download_geoserver_file(
         if 'no encontrado' in str(exc).lower():
             raise HTTPException(status_code=404, detail=str(exc))
         raise HTTPException(status_code=502, detail=str(exc))
+
+    etag = f'"{hashlib.md5(content).hexdigest()}"'
+    cache_headers = {'Cache-Control': 'private, max-age=60, must-revalidate', 'ETag': etag}
+    if request.headers.get('if-none-match') == etag:
+        return Response(status_code=304, headers=cache_headers)
+
     return Response(
         content=content,
         media_type=content_type or 'application/octet-stream',
-        headers={
-            'Cache-Control': 'public, max-age=86400, immutable',
-            'ETag': f'"{hashlib.md5(content).hexdigest()}"',
-        },
+        headers=cache_headers,
     )
 
 
 @router.delete('/files/{name:path}', status_code=204)
 async def delete_geoserver_file(
     name: str,
+    request: Request,
     workspace: str | None = Query(default=None),
+    db: Session = Depends(get_db),
     current_user: Usuario = Depends(_require_project_editor),
     _csrf: Usuario = Depends(verify_csrf),
     _rl: Usuario = Depends(_write_rate_limit),
@@ -807,5 +1012,6 @@ async def delete_geoserver_file(
     except GeoServerError as exc:
         raise HTTPException(status_code=502, detail=str(exc))
     if not deleted:
-        base = f"workspaces/{clean_ws}/styles" if clean_ws else "styles"
+        base = f"workspaces/{clean_ws}" if clean_ws else "styles"
         raise HTTPException(status_code=404, detail=f"Recurso no existe: {base}/{name}")
+    _registrar_archivo(db, request, current_user, 'geoserver.file.delete', name, clean_ws)

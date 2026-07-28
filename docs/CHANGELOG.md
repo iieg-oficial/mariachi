@@ -9,6 +9,160 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.100.0] - 2026-07-28
+
+### Agregado: captura masiva de metadatos en una tabla, con historial de quién cambió qué
+
+El área venía de llenar los metadatos de capas en Excel y el editor por capa les resultaba lento: obliga a navegar, cargar y guardar capa por capa, cuando su trabajo es por lote. La vista **Tabla** (`/mapalab/layers/tabla`, conmutador Árbol · Tabla en Capas) es una hoja de cálculo dentro del panel: flechas, Tab, pegado de bloques desde Excel, arrastre para rellenar hacia abajo y Ctrl+Z. Corre a pantalla completa, sin sider, para que la tabla ocupe todo el ancho.
+
+- **Nada se guarda hasta presionar Guardar.** Las celdas editadas se marcan en ámbar y el borrador vive en el navegador: si se cierra la pestaña, al volver se ofrece retomarlo. Se descartó el autosave por celda (ruido de auditoría y rate limit) y la tabla `borradores`, que es la cola de revisión y no debe llenarse de capturas intermedias.
+- **Locking optimista por celda**: cada cambio viaja con su valor anterior. Si alguien más tocó esa celda mientras tanto, se marca en rojo y el resto del lote sí se guarda.
+- **Historial por celda** (`mapalab.grid_cell_history`): quién cambió qué campo, de qué valor a cuál y cuándo. Se registra por campo lógico (`fuentes_corto`, `numeralia_01_valor`) y no por la columna JSONB completa, que sería ilegible. Los tres caminos de escritura alimentan la misma tabla: la vista de captura, la ficha de la capa y la ingesta masiva. Se consulta en un drawer lateral, con alcance por capa o global.
+- **Descarga en Excel y CSV**: el XLSX trae dos hojas, *Metadatos* (estado actual con responsable y fecha) e *Historial*. Era el motivo original del módulo.
+- **`mapalab.layer_stats` gana `updated_by`/`updated_at`**: hasta ahora cambiar una numeralia no dejaba rastro de autor en ninguna parte.
+- La infraestructura es genérica y reusable (`/grid/{resource}/*` + `GridSpec` en el backend, `shared/components/dataGrid/` en el admin): montar un segundo grid es escribir una spec y registrarla, sin migración nueva.
+- Presencia por fila sobre Redis: se ve quién está parado en cada capa mientras se captura.
+
+**Requiere migración de DataEngine (`0030_grid_cell_history`) antes de desplegar mariachi**, y rebuild del admin (dependencia npm nueva `react-datasheet-grid`). Sin la migración, el guardado de la tabla falla; la descarga sigue funcionando sin la hoja de historial. Opcionalmente, `python scripts/backfill_grid_history.py` siembra el estado inicial atribuido al último responsable conocido.
+
+### Corregido
+
+- `useIsMobile` devuelve un objeto, no un booleano. La barra de la vista de pantalla completa lo usaba sin destructurar, así que se quedaba siempre en el diseño de dos filas incluso en escritorio. Ahora una sola fila en desktop y dos en tablet y móvil.
+- Los botones de la barra superior oscura heredaban el color por defecto y quedaban negro sobre negro. Se les dio estilo propio; el botón Guardar deshabilitado además dice «Sin cambios» para que se entienda que está inactivo a propósito.
+- Los tooltips de esa barra se montaban fuera del viewport y provocaban scroll mientras se reacomodaban: se reemplazaron por `title` nativo, que dibuja el navegador sin reflow.
+- El footer del sider apilaba sus botones en fila y no cabían con el sider colapsado; ahora pasan a columna.
+- Una copia anidada de `react-dom` 18 (arrastrada por dependencias del grid que no declaran React 19) convivía con React 19 y rompía el render de **cualquier** página con `ReactCurrentBatchConfig`. Se fija una sola copia con `overrides` en `admin/package.json`.
+
+## [1.99.0] - 2026-07-28
+
+### Agregado: un campo condicionado y su disparador se ven como lo que son, una pareja
+
+Un `showWhen` relaciona dos campos que en la cuadrícula pueden quedar lejos, y la única pista era una etiqueta «Condicionado» con el `name` crudo del disparador y el valor sin traducir.
+
+- **La etiqueta dice la condición en palabras** —«Si Responsable = Sí», resuelta contra el catálogo— y **es un enlace**: lleva al disparador, cambiando de pestaña si hace falta y resaltándolo al llegar. Del otro lado, «Activa 3» despliega la lista de los tres campos y navega a cada uno.
+- **Al pasar el cursor por la etiqueta se resalta la relación**: el disparador y sus dependientes se marcan y el resto se atenúa. El color sale del nombre del disparador, así que dos grupos de condiciones en el mismo paso se distinguen de un vistazo. Se prefirió esto a dibujar conectores: en un grid de 6 columnas donde los campos cambian de línea, las líneas serían frágiles y ruidosas.
+- **Se avisa de la condición rota**: disparador que ya no existe, disparador en otra pestaña del repeater —donde se captura por separado, así que la condición no se evalúa como se espera— y cadenas circulares. Esto importa porque `compat.py` **descarta en silencio** los `showWhen` huérfanos al guardar: sin el aviso, la condición desaparecía sin que nadie se enterara.
+
+### Agregado: mover una línea completa, y un botón para vaciar el portapapeles
+
+- El separador de cada línea gana **subir** y **bajar**, que mueven la línea entera con todos sus campos, junto al ya existente **unir con la de arriba**.
+- La barra inferior gana **«En línea nueva»**, que crea el campo ya marcado para abrir línea: agregado con el botón normal, un campo angosto se pega a la línea anterior si cabe.
+- El campo copiado se podía sacar del portapapeles solo desde el «Cancelar» del diálogo de pegar, así que en la práctica se quedaba ahí para siempre. Ahora hay una **✕ junto al botón de pegar**.
+
+## [1.98.0] - 2026-07-28
+
+### Agregado: crear y quitar líneas en el acomodo de un formulario SIEEJ
+
+El editor de campo gana el switch **«Empezar una línea nueva en este campo»**, que escribe `layout.newRow`: se puede partir una línea por donde se quiera, sin depender de que el campo caiga en la columna 1. El separador de cada línea, de la segunda en adelante, trae el botón **subir a la anterior**.
+
+Unir suelta el anclaje de **todos** los campos de la línea, no solo del primero: soltando únicamente a ese, los demás conservaban su columna y se quedaban abajo. Los que no quepan arriba forman línea propia.
+
+### Cambiado: la línea de un campo la declara la definición, ya no se deduce del orden
+
+`layout.newRow` pasa a ser la marca de inicio de línea, válida en cualquier columna. Antes solo se reconocía en la columna 1, así que la línea era **implícita**: se deducía comparando la columna pedida contra la ya ocupada, y era el orden de los campos —no la definición— lo que decidía dónde cortaba cada línea. De ahí que ensanchar o mover un campo re-particionara todo lo que venía después.
+
+`materializeLayout` fija ahora línea y columna de cada campo visible, y ordena el arreglo por posición visual para que el orden deje de pelearse con las columnas. Las definiciones anteriores se ven igual y el contrato del backend no cambia —`newRow` ya era un booleano válido—, así que no hay migración. Requiere SIEEJ >= 1.52.0, que trae el mismo modelo del lado del respondent.
+
+### Corregido: mover un campo dejó de desplazar líneas que nadie tocó
+
+Cuatro defectos que salieron de auditar 250 combinaciones de operación y acomodo:
+
+- **Arrastrar sobre otra tarjeta intercambia las dos ranuras** en vez de reordenar la lista. Reordenar movía el campo dentro del arreglo y, como la línea se deducía del orden, re-particionaba el paso entero.
+- **El arrastre dejó de quedarse pegado al primer campo que tocaba**: con la estrategia de intercambio el campo se dibuja encima del otro, así que `closestCenter` seguía midiendo contra el mismo par de centros. El destino se resuelve ahora por lo que hay bajo el puntero, con `closestCenter` de respaldo para el teclado.
+- **Un hueco solo se ofrece si el campo arrastrado cabe en él**, y nunca si mide menos que el campo más angosto. Antes se ofrecía siempre y al soltar empujaba al vecino a la línea siguiente.
+- Las tarjetas ganan **altura mínima** y el umbral del arrastre sube de 4 a 10 px: una tarjeta de línea completa es muy ancha y de poco alto, y al soltar sobre ella un campo angosto el destino saltaba de línea.
+
+`__tests__/acomodo.invariante.test.js` deja fijada la auditoría: cinco acomodos por cinco operaciones, verificando que las líneas ajenas no cambian y que materializar es estable. De 38 alteraciones quedan 8, todas geométricas — un campo que crece o que se intercambia con otro de distinto ancho no puede dejar a sus vecinos donde estaban.
+
+## [1.97.2] - 2026-07-28
+
+### Los recursos de GeoServer dejan de servirse como inmutables
+
+El endpoint de descarga marcaba los archivos `public, max-age=86400, immutable`. Mientras el gateway forzaba `no-store` eso no se notaba, pero al quitarlo (1.97.1) el header empezó a aplicar de verdad — y `immutable` le dice al navegador que no revalide nunca.
+
+El problema es que estas URLs no llevan hash de contenido: son el nombre del archivo, y Recursos permite subir con el mismo nombre para reemplazarlo, que es justo lo que se hace al corregir un icono. Quien ya lo hubiera visto seguiría con el viejo hasta 24 h. Es distinto de los assets de Vite o de las miniaturas del Acervo, donde la URL cambia con el contenido y ahí `immutable` sí corresponde.
+
+Pasa a `private, max-age=60, must-revalidate`, apoyado en el ETag y el 304 que llegaron en 1.97.1: mientras se navega entre carpetas se sirve de caché, y pasado el minuto se revalida con una respuesta sin cuerpo. Un icono reemplazado se ve en un minuto en vez de en un día, y los bytes se siguen sin retransferir. `private` además evita que un proxy compartido guarde contenido que requiere sesión.
+
+## [1.97.1] - 2026-07-28
+
+### Corregido: navegar una carpeta de Recursos devolvía 429
+
+Una carpeta de simbología tiene cientos de SVGs y el grid pide una miniatura por archivo, así que abrirla disparaba una ráfaga de GETs que chocaba contra dos límites a la vez.
+
+- **Rate limit del API.** El scope `geoserver_download` estaba en 600 req/min por usuario (ventana deslizante): una sola carpeta grande lo consumía y la siguiente ya respondía 429. Sube a 3000/min, que sigue acotando el abuso real —bajarse el data dir entero— sin estorbar a un explorador de archivos.
+- **Caché anulada en el gateway.** Las rutas de `/geoserver/files` forzaban `Cache-Control: no-store`, que pisaba el `public, max-age=86400, immutable` que ya mandaba el API. El navegador no guardaba nada, así que *cada* regreso a la carpeta repetía la ráfaga completa. Se retira el `no-store` —el API decide, como en `/acervo/thumb`— y la petición de descarga responde **304** ante un `If-None-Match` que coincida, en vez de reenviar el archivo.
+- **Ráfaga acotada en origen.** `GeoserverThumb` pide turno a un semáforo de 6 miniaturas concurrentes (`thumbQueue`) antes de asignar el `src`, así que el número de peticiones simultáneas ya no depende de cuántos archivos tenga la carpeta. Mismo patrón que el semáforo de subidas del Acervo.
+
+Requiere gateway-hub >= 1.33.1 para la parte de caché y la zona de rate limit.
+
+## [1.97.0] - 2026-07-28
+
+### Recursos deja de estar anclado a `styles/` dentro de un workspace
+
+El geoanalista tenía que dejarlo todo en `workspaces/<ws>/styles/`. Ahora el ámbito de un workspace se navega desde su **raíz**, así que puede organizar los archivos donde le convenga —incluidas carpetas propias junto a `styles/` y las de los datastores—.
+
+El ámbito **Global se queda en `styles/`** a propósito: su raíz es el data dir completo, con `security/`, `logs/`, `global.xml` y la configuración de todos los workspaces.
+
+Lo que cambia con esto es el `xlink:href` del snippet SLD, porque GeoServer resuelve los href relativos desde donde vive el SLD: un archivo en `styles/iconos/x.svg` sigue siendo `iconos/x.svg`, pero uno fuera de `styles/` ahora sale como `../simbolos/x.svg`. Los `.xml` de configuración no se listan ni se pueden borrar: la lista blanca de extensiones ya los dejaba fuera.
+
+### Tipografías: las institucionales instaladas en el servidor cuentan como nuestras
+
+Las Garet se instalaron a mano en su momento: viven versionadas en el repo `geoserver` (`fonts/`) y se montan read-only en `/usr/share/fonts/custom`, fuera del data dir. El REST de GeoServer las reporta como familias cargadas pero no tiene forma de decir de dónde salieron, así que la página las daba por ajenas.
+
+`GEOSERVER_INSTALLED_FONT_FAMILIES` (default `Garet`) declara esas familias. Ahora hay tres orígenes: `propia` (archivo subido desde el CMS), `instalada` (institucional puesta en el servidor) y `sistema`. Las dos primeras se agrupan bajo «Nuestras tipografías», distinguidas por color y tooltip.
+
+## [1.96.0] - 2026-07-28
+
+### Recursos de Sextante: se va el tope de 200 MB
+
+Los rasters que se quieren publicar pesan varios GB y no entraban. El tope existía por dónde se acumulaban las partes: el upload por chunks es una secuencia de requests independientes que pueden caer en workers distintos de Gunicorn, así que las partes se guardaban en **Redis**, que es memoria — con 7 GB tumbaba a `mariachi-redis`.
+
+Ahora las partes se escriben a disco (`GEOSERVER_UPLOAD_STAGING_DIR`, un volumen propio del contenedor) y solo la metadata de la sesión sigue en Redis, que es lo que da el TTL y lo que comparten los workers. El ensamblado hacia GeoServer se lee por bloques de 8 MB, así que el pico de memoria ya no depende del tamaño del archivo.
+
+- **Sin tope por defecto.** `GEOSERVER_UPLOAD_MAX_BYTES=0` = sin límite; el techo real pasa a ser el disco de la VM. Se puede fijar un tope por entorno sin tocar código.
+- **El PUT a GeoServer sale del event loop** (`run_in_threadpool`). Antes bloqueaba al worker, y con archivos grandes gunicorn lo habría matado por su `--timeout 300`.
+- **Limpieza de temporales.** Un upload interrumpido dejaba sus partes en disco para siempre: el TTL de Redis borraba la metadata pero no los bytes. `cleanup_stale_dirs()` corre al iniciar cada sesión nueva y borra los directorios sin metadata viva.
+- **Content-Length real.** El PUT usa los bytes efectivamente acumulados, no el tamaño declarado por el cliente: si un chunk se reintentaba con otro tamaño, GeoServer recibía el archivo cortado.
+- **Sesiones que se renuevan.** Cada parte recibida refresca el TTL; una subida de varios GB podía pasar de las 2 h originales y expirar a medio camino.
+- **nginx.** `gateway-hub` y `mariachi-nginx` estrenan `location` propio para `/api/*/geoserver/files` con `client_max_body_size 0`, sin request buffering y timeouts de 30 min.
+
+### Recursos de Sextante: quién subió y borró qué
+
+La sección no dejaba rastro. Ahora las subidas (directa y por partes) y los borrados escriben en `actividad` con actor, IP, nombre, workspace, destino, tamaño y modo de subida: `geoserver.file.upload`, `geoserver.file.delete` y `geoserver.fonts.reload`.
+
+### Nueva subpágina: Tipografías (`/sextante/tipografias`)
+
+Las fuentes de las etiquetas de un SLD se subían como un recurso más y no había forma de ver cuáles había ni si GeoServer las reconocía.
+
+- `GET /geoserver/fonts` cruza las familias que la JVM tiene cargadas (`/rest/fonts`) con los archivos `.ttf`/`.otf` subidos a `styles/`, y **distingue las nuestras de las que ya trae GeoServer**: una familia es «propia» si algún archivo subido la respalda.
+- Cada archivo indica si ya está cargado; si alguno no lo está, la página avisa y ofrece `POST /geoserver/fonts/reload`, porque GeoServer solo registra una fuente nueva tras recargar su catálogo.
+- Se aceptan `ttf` y `otf` — los únicos dos formatos que Java 2D lee. WOFF/WOFF2 se dejan fuera a propósito: subirlos daría la falsa impresión de que sirven.
+
+### Recursos de Sextante: la vista se alinea con la del Acervo
+
+Mismo orden y misma sintaxis que la vista del Acervo, que estaba más pulida: `PageHeading` compartido, tarjeta contenedora, breadcrumb con el conteo de carpetas y archivos, y barra única con buscador, alternador **Grid / Lista** (se recuerda en `localStorage`) y acciones. La vista de lista es nueva (`GeoserverFilesList`).
+
+## [1.95.0] - 2026-07-28
+
+### Corregido: la tarjeta del editor se dibuja en la columna que dice el modelo
+
+`FieldsList` decide las líneas con `groupIntoRows` — de ahí salen los separadores «Línea N», los huecos de la vista previa y el texto del selector de posición — pero `FieldCard` calculaba su `gridColumn` por su cuenta con `nearestCol`. Con una `col` guardada que no estuviera alineada al ancho, los dos daban resultados distintos: un tercio en la columna 4 se dibujaba en la 3 mientras el modelo (y el renderer de SIEEJ, que sigue al modelo) lo colocaba en la 4. La tarjeta que se ve al acomodar no era la posición que se guardaba.
+
+Ahora `FieldsList` pasa a cada tarjeta la posición ya resuelta y `FieldCard` no recalcula nada.
+
+### Corregido: mover un campo lo deja donde se soltó
+
+Arrastrar un campo (o moverlo con las flechas) reordenaba el array pero conservaba su `layout.col`, así que el campo volvía a su columna anterior: el arrastre parecía no tener efecto. `reflowCol` recalcula la posición del campo movido a la que le toca en el nuevo orden, conservando su ancho y su línea reservada.
+
+### Contrato de acomodo compartido con el renderer de SIEEJ
+
+El modelo de líneas del editor y el del renderer vivían en repos distintos sin nada que verificara que coincidieran, y divergían: en 6 de 10 acomodos con `alone` que el propio editor genera, el respondent veía el campo compartiendo la línea que el CMS mostraba reservada (detalle en el CHANGELOG de SIEEJ 1.51.0, que trae el arreglo de ese lado).
+
+`__fixtures__/layoutContract.js` fija 15 acomodos con su resultado esperado y lo verifican los dos repos contra su propia implementación; el archivo es un duplicado idéntico de `sieej/frontend/test/fixtures/layoutContract.js`. Al tocar el acomodo en cualquiera de los dos, agrega el caso al fixture y cópialo al otro repo.
+
+Requiere SIEEJ >= 1.51.0 para que lo que se acomoda aquí se vea igual al capturar.
+
 ## [1.94.2] - 2026-07-28
 
 ### Documentación: el contexto de SIEEJ vuelve a describir lo que hace el código

@@ -365,7 +365,7 @@ class GeoServerClient:
 
     def _styles_base(self, workspace: str | None) -> str:
         if workspace:
-            return f"resource/workspaces/{workspace}/styles"
+            return f"resource/workspaces/{workspace}"
         return "resource/styles"
 
     def list_all_style_files(self, workspace: str | None = None) -> list[dict]:
@@ -453,6 +453,27 @@ class GeoServerClient:
                 raise GeoServerError(
                     f"upload fallido {base}/{name} (HTTP {r.status_code}): {r.text[:200]}"
                 )
+
+    def list_fonts(self) -> list[str]:
+        url = self._rest_url("fonts.json")
+        with self._client() as c:
+            r = c.get(url)
+            if r.status_code != 200:
+                raise GeoServerError(f"fonts fallido (HTTP {r.status_code}): {r.text[:200]}")
+            data = r.json()
+        node = data.get("fonts")
+        if isinstance(node, dict):
+            node = node.get("font", [])
+        if not isinstance(node, list):
+            return []
+        return sorted({str(f) for f in node})
+
+    def reload(self) -> None:
+        url = self._rest_url("reload")
+        with httpx.Client(auth=self._auth, timeout=120.0) as c:
+            r = c.post(url)
+            if r.status_code not in (200, 205):
+                raise GeoServerError(f"reload fallido (HTTP {r.status_code}): {r.text[:200]}")
 
     def delete_style_file(self, name: str, workspace: str | None = None) -> bool:
         base = self._styles_base(workspace)

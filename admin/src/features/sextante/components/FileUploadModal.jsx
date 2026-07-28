@@ -2,13 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { Alert, Button, List, Modal, Progress, Space, Tag, Typography, Upload } from 'antd';
 import { DeleteOutlined, InboxOutlined } from '@ant-design/icons';
 import { uploadGeoserverFileSmart } from '@features/sextante/api/geoserverFilesService';
+import { UPLOADABLE_EXT, formatSize } from '@features/sextante/utils/geoserverFiles';
 import { message } from '@shared/services/message';
 
 const { Dragger } = Upload;
 const { Text } = Typography;
-
-const FILE_BASENAME_RE = /^[a-zA-Z0-9._-]+\.(svg|png|jpg|jpeg|webp|gif|tiff|tif)$/i;
-const MAX_BYTES = 200 * 1024 * 1024;
 
 const toSafeName = (raw) =>
     (raw || '')
@@ -17,26 +15,27 @@ const toSafeName = (raw) =>
         .replace(/\s+/g, '-')
         .replace(/[^a-z0-9._-]/g, '');
 
-const formatSize = (bytes) => {
-    if (!bytes) return '0 B';
-    const units = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    return `${Math.round((bytes / 1024 ** i) * 10) / 10} ${units[i]}`;
-};
-
-const describe = (file) => {
+const describe = (file, extensions) => {
     const safe = toSafeName(file.name);
-    if (file.size > MAX_BYTES) {
-        return { safe, valid: false, reason: 'Excede el límite de 200 MB' };
-    }
-    if (!FILE_BASENAME_RE.test(safe)) {
+    const pattern = new RegExp(`^[a-zA-Z0-9._-]+\\.(${extensions.join('|')})$`, 'i');
+    if (!pattern.test(safe)) {
         return { safe, valid: false, reason: 'Nombre o extensión no soportados' };
     }
     return { safe, valid: true, reason: null };
 };
 
 
-export default function FileUploadModal({ open, currentPath, workspace, destinationLabel, onClose, onUploaded }) {
+export default function FileUploadModal({
+    open,
+    currentPath,
+    workspace,
+    destinationLabel,
+    onClose,
+    onUploaded,
+    title = 'Subir archivos a GeoServer',
+    extensions = UPLOADABLE_EXT,
+    hint,
+}) {
     const [entries, setEntries] = useState([]);
     const [submitting, setSubmitting] = useState(false);
 
@@ -49,10 +48,10 @@ export default function FileUploadModal({ open, currentPath, workspace, destinat
 
     const draggerProps = {
         multiple: true,
-        accept: '.svg,.png,.jpg,.jpeg,.webp,.gif,.tiff,.tif',
+        accept: extensions.map((e) => `.${e}`).join(','),
         showUploadList: false,
         beforeUpload: (file) => {
-            const meta = describe(file);
+            const meta = describe(file, extensions);
             setEntries((prev) => {
                 if (prev.some((e) => e.uid === file.uid)) return prev;
                 return [...prev, { uid: file.uid, file, ...meta, status: 'queued', percent: 0 }];
@@ -116,7 +115,7 @@ export default function FileUploadModal({ open, currentPath, workspace, destinat
     return (
         <Modal
             open={open}
-            title="Subir archivos a GeoServer"
+            title={title}
             onCancel={onClose}
             onOk={handleOk}
             okText={pending.length > 1 ? `Subir ${pending.length} archivos` : 'Subir'}
@@ -145,7 +144,7 @@ export default function FileUploadModal({ open, currentPath, workspace, destinat
                     <p style={{ marginBottom: 8 }}><InboxOutlined style={{ fontSize: 28 }} /></p>
                     <p>Click o arrastra uno o varios archivos</p>
                     <p style={{ fontSize: 11, color: '#888' }}>
-                        SVG, PNG, JPG, WebP, GIF, TIFF · máx 200 MB · archivos grandes se suben por partes
+                        {hint || `${extensions.join(', ').toUpperCase()} · sin límite de tamaño · los archivos grandes se suben por partes`}
                     </p>
                 </Dragger>
 

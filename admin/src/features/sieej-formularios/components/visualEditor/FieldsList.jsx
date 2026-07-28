@@ -1,33 +1,29 @@
 import { useEffect, useMemo, useState } from 'react';
-import {
-    DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors,
-} from '@dnd-kit/core';
-import {
-    SortableContext, sortableKeyboardCoordinates, rectSortingStrategy,
-} from '@dnd-kit/sortable';
-import { Card, Empty, Form } from 'antd';
+import { Card, Form } from 'antd';
 import FieldCard from './FieldCard';
 import FieldForm from './FieldForm';
+import FieldsGrid from './FieldsGrid';
 import TabsManager from './TabsManager';
-import { ColumnGuides, RowDivider } from './LayoutControls';
 import AddFieldBar from './AddFieldBar';
 import {
-    assignTab, dependentsOf, indicesOfTab, labelOfField as labelOf, needsTabNormalization,
-    normalizeTabs, otherFieldsFor, placeAfterTrigger, previousVisibleField, reorderWithinTab,
+    assignTab, describeCondition, indicesOfTab, labelOfField as labelOf, needsTabNormalization,
+    normalizeTabs, otherFieldsFor, placeAfterTrigger, previousVisibleField,
     rowSlotsResolver, tabOf,
 } from './fieldUtils';
 import {
-    GRID_COLUMNS, assignCol, assignColSpan, groupIntoRows, isAlone, layoutOf, placedColOf,
-    startColOf,
+    isAlone, layoutOf, layoutSlots, opensRow, placedColOf, startColOf, unitsOfField,
 } from './fieldLayout';
 import {
     clearFieldClipboard, prepareFieldForPaste, readFieldClipboard, writeFieldClipboard,
 } from './fieldClipboard';
+import { highlightRoleOf, relationOf } from './conditionLinks';
 import { message } from '@shared/services/message';
 import useAccessibleBuckets from '@features/acervo/hooks/useAccessibleBuckets';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import useCatalogos from '../../hooks/useCatalogos';
 import useSearchParamState from '../../hooks/useSearchParamState';
+import useFieldRelations from '../../hooks/useFieldRelations';
+import useAcomodoCampos from '../../hooks/useAcomodoCampos';
 
 const fieldKey = (field, idx) => `field-${field?.name ?? idx}`;
 
@@ -37,6 +33,7 @@ export default function FieldsList({ step, formularioSlug, onChange, addTrigger 
     const [clipboard, setClipboard] = useState(() => readFieldClipboard());
     const [resizePreview, setResizePreview] = useState(null);
     const [layoutDraft, setLayoutDraft] = useState(null);
+    const [nuevoEnLinea, setNuevoEnLinea] = useState(false);
     const [fieldForm] = Form.useForm();
     const { isMobile } = useIsMobile();
     const { catalogos } = useCatalogos();
@@ -84,6 +81,7 @@ export default function FieldsList({ step, formularioSlug, onChange, addTrigger 
                             draft.colSpan,
                             draft.col ?? startColOf(f) ?? 1,
                             draft.alone ?? isAlone(f),
+                            draft.newRow ?? opensRow(f),
                         ),
                     }
                     : f
@@ -91,7 +89,10 @@ export default function FieldsList({ step, formularioSlug, onChange, addTrigger 
             : fields
     ), [fields, draft]);
 
-    const rows = groupIntoRows(layoutFields, visibleIdx);
+    const slots = useMemo(
+        () => layoutSlots(layoutFields, visibleIdx),
+        [layoutFields, visibleIdx],
+    );
 
     const resolveSlots = (idx) => rowSlotsResolver({ fields, tabs, hasTabs, activeKey, idx });
 
@@ -101,24 +102,29 @@ export default function FieldsList({ step, formularioSlug, onChange, addTrigger 
         idx === 'new' ? 1 : placedColOf(fields, visibleIdx, idx)
     );
 
-    const sensors = useSensors(
-        useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
-        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
-    );
+    const {
+        acomodoFijo, aplicarMovimiento, soltarEnHueco, asignarAncho, asignarColumna,
+        moverLinea, unirLinea,
+    } = useAcomodoCampos({ step, fields, visibleIdx, onChange });
 
-    const handleDragEnd = ({ active, over }) => {
-        if (!over || active.id === over.id) return;
-        const from = visibleIdx.findIndex((i) => fieldKey(fields[i], i) === active.id);
-        const to = visibleIdx.findIndex((i) => fieldKey(fields[i], i) === over.id);
-        if (from < 0 || to < 0) return;
-        onChange?.({ ...step, fields: reorderWithinTab(fields, visibleIdx, from, to) });
+    const {
+        relacionActiva, setRelacionActiva, labelOfName, irACampo,
+    } = useFieldRelations({ fields, tabs, hasTabs, activeKey, setActiveTab });
+
+    const handleDrop = (activeId, overId, gap) => {
+        const from = visibleIdx.findIndex((i) => fieldKey(fields[i], i) === activeId);
+        if (from < 0) return;
+        if (gap) return soltarEnHueco(from, gap);
+        const to = visibleIdx.findIndex((i) => fieldKey(fields[i], i) === overId);
+        if (to >= 0) aplicarMovimiento(from, to);
+        return undefined;
     };
 
     const handleMove = (idx, direction) => {
         const from = visibleIdx.indexOf(idx);
         const to = from + direction;
         if (from < 0 || to < 0 || to >= visibleIdx.length) return;
-        onChange?.({ ...step, fields: reorderWithinTab(fields, visibleIdx, from, to) });
+        aplicarMovimiento(from, to);
         const swapped = visibleIdx[to];
         if (editingKey === idx) setEditingKey(swapped);
         else if (editingKey === swapped) setEditingKey(idx);
@@ -135,16 +141,8 @@ export default function FieldsList({ step, formularioSlug, onChange, addTrigger 
         message.info(`«${labelOf(fields[idx])}» se movió a «${target?.title || tabId}».`);
     };
 
-    const handleAssignColSpan = (idx, colSpan) => {
-        onChange?.({ ...step, fields: assignColSpan(fields, idx, colSpan) });
-    };
-
-    const handleAssignCol = (idx, col) => {
-        onChange?.({ ...step, fields: assignCol(fields, idx, col) });
-    };
-
     const handleSaveField = (newField) => {
-        const next = [...fields];
+        const next = [...acomodoFijo()];
         let savedIdx;
         if (editingKey === 'new') {
             next.push(newField);
@@ -209,11 +207,12 @@ export default function FieldsList({ step, formularioSlug, onChange, addTrigger 
     const activeTabTitle = tabs.find((t) => t.id === activeKey)?.title || activeKey;
     const clipboardField = clipboard?.fields?.[0] ?? null;
 
-    const renderFieldCard = (idx) => (
+    const renderFieldCard = (idx, placement) => (
         <FieldCard
             key={fieldKey(fields[idx], idx)}
             id={fieldKey(fields[idx], idx)}
             field={fields[idx]}
+            placement={placement}
             isEditing={editingKey === idx}
             isMobile={isMobile}
             showTabs={hasTabs}
@@ -221,15 +220,20 @@ export default function FieldsList({ step, formularioSlug, onChange, addTrigger 
             tabOptions={tabOptions}
             canMoveUp={visibleIdx.indexOf(idx) > 0}
             canMoveDown={visibleIdx.indexOf(idx) < visibleIdx.length - 1}
-            dependentsCount={dependentsOf(fields, fields[idx].name).length}
+            condition={describeCondition(fields[idx].showWhen, otherFieldsFor(fields, idx), catalogos)}
+            relation={relationOf(fields, tabs, idx)}
+            resaltado={highlightRoleOf(fields, relacionActiva, idx)}
+            labelOfName={labelOfName}
+            onIrACampo={irACampo}
+            onResaltarRelacion={setRelacionActiva}
             onMove={(direction) => handleMove(idx, direction)}
             onToggleEdit={() => setEditingKey((prev) => (prev === idx ? null : idx))}
             onDelete={() => handleDelete(idx)}
             onCopy={() => handleCopy(idx)}
             onDuplicate={() => handleDuplicate(idx)}
             onAssignTab={(tabId) => handleAssignTab(idx, tabId)}
-            onAssignColSpan={(colSpan) => handleAssignColSpan(idx, colSpan)}
-            onAssignCol={(col) => handleAssignCol(idx, col)}
+            onAssignColSpan={(colSpan) => asignarAncho(idx, colSpan)}
+            onAssignCol={(col) => asignarColumna(idx, col)}
             onResizeChange={(colSpan) => setResizePreview(
                 colSpan == null ? null : { idx, colSpan },
             )}
@@ -250,46 +254,32 @@ export default function FieldsList({ step, formularioSlug, onChange, addTrigger 
 
     const fieldsGrid = (
         <div>
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                <SortableContext
-                    items={visibleIdx.map((i) => fieldKey(fields[i], i))}
-                    strategy={rectSortingStrategy}
-                >
-                    <div style={{
-                        position: 'relative',
-                        display: 'grid',
-                        gridTemplateColumns: isMobile ? '1fr' : `repeat(${GRID_COLUMNS}, 1fr)`,
-                        width: '100%',
-                    }}>
-                        {visibleIdx.length === 0 && (
-                            <div style={{ gridColumn: '1 / -1', padding: 4, boxSizing: 'border-box' }}>
-                                <Empty
-                                    description={hasTabs ? 'Sin campos en esta pestaña' : 'Sin campos'}
-                                    image={Empty.PRESENTED_IMAGE_SIMPLE}
-                                />
-                            </div>
-                        )}
-                        {rows.flatMap((row, rowIdx) => [
-                            ...(rows.length > 1
-                                ? [<RowDivider
-                                    key={`divider-${rowIdx}`}
-                                    index={rowIdx}
-                                    free={row.free}
-                                    showFree={!isMobile}
-                                />]
-                                : []),
-                            ...row.indices.map((idx) => renderFieldCard(idx)),
-                        ])}
-                        {resizePreview && !isMobile && <ColumnGuides />}
-                    </div>
-                </SortableContext>
-            </DndContext>
+            <FieldsGrid
+                slots={slots}
+                itemIds={visibleIdx.map((i) => fieldKey(fields[i], i))}
+                unitsPorId={new Map(visibleIdx.map(
+                    (i) => [fieldKey(fields[i], i), unitsOfField(layoutFields[i])],
+                ))}
+                isMobile={isMobile}
+                vacio={visibleIdx.length === 0}
+                vacioTexto={hasTabs ? 'Sin campos en esta pestaña' : 'Sin campos'}
+                mostrarGuias={!!resizePreview && !isMobile}
+                onDrop={handleDrop}
+                onUnirLinea={unirLinea}
+                onMoverLinea={moverLinea}
+                renderField={renderFieldCard}
+            />
 
             {editingKey === 'new' ? (
                 <Card size="small" style={{ marginTop: 8 }} styles={{ body: { padding: 8 } }} title="Nuevo campo">
                     <FieldForm
                         form={fieldForm}
-                        field={{ ...(hasTabs ? { tab: activeKey } : {}), layout: layoutOf(1, 1) }}
+                        field={{
+                            ...(hasTabs ? { tab: activeKey } : {}),
+                            layout: nuevoEnLinea
+                                ? layoutOf(1, 1, false, true)
+                                : { colSpan: 1 },
+                        }}
                         availableTabs={tabs}
                         availableShowWhenFields={otherFieldsFor(fields, null)}
                         resolveSlots={resolveSlots('new')}
@@ -305,7 +295,8 @@ export default function FieldsList({ step, formularioSlug, onChange, addTrigger 
                     isMobile={isMobile}
                     clipboard={clipboard}
                     clipboardField={clipboardField}
-                    onAdd={() => setEditingKey('new')}
+                    onAdd={() => { setNuevoEnLinea(false); setEditingKey('new'); }}
+                    onAddEnLinea={() => { setNuevoEnLinea(true); setEditingKey('new'); }}
                     onPaste={handlePaste}
                     onClearClipboard={handleClearClipboard}
                 />

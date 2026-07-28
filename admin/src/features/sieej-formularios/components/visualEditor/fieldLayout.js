@@ -4,6 +4,10 @@ export const COLSPAN_UNITS = { 1: 6, 2: 3, 3: 2 };
 
 export const unitsOfColSpan = (colSpan) => COLSPAN_UNITS[colSpan] ?? GRID_COLUMNS;
 
+export const MIN_FIELD_UNITS = Math.min(...Object.values(COLSPAN_UNITS));
+
+export const cabeUnCampo = (units) => units >= MIN_FIELD_UNITS;
+
 export const unitsOfField = (field) => unitsOfColSpan(field?.layout?.colSpan ?? 1);
 
 export const startColOf = (field) => {
@@ -14,10 +18,17 @@ export const startColOf = (field) => {
 
 export const isAlone = (field) => !!field?.layout?.alone;
 
-export const layoutOf = (colSpan, col, alone = false) => ({
+export const opensRow = (field) => field?.layout?.newRow === true;
+
+export const colOf = (field) => {
+    const col = field?.layout?.col;
+    return Number.isInteger(col) && col >= 1 && col <= GRID_COLUMNS ? col : null;
+};
+
+export const layoutOf = (colSpan, col, alone = false, newRow = col === 1) => ({
     colSpan,
     col,
-    ...(col === 1 ? { newRow: true } : {}),
+    ...(newRow ? { newRow: true } : {}),
     ...(alone ? { alone: true } : {}),
 });
 
@@ -63,17 +74,17 @@ export const groupIntoRows = (fields, indices = []) => {
 
     indices.forEach((idx) => {
         const units = unitsOfField(fields[idx]);
-        const wanted = startColOf(fields[idx]);
+        const wanted = colOf(fields[idx]);
         const alone = isAlone(fields[idx]);
         let col;
-        if (alone) {
+        if (alone || opensRow(fields[idx])) {
             flush();
             col = Math.min(wanted ?? 1, GRID_COLUMNS + 1 - units);
         } else if (wanted == null) {
             if (items.length > 0 && cursor + units > GRID_COLUMNS + 1) flush();
             col = cursor;
         } else {
-            if (items.length > 0 && wanted < cursor) flush();
+            if (items.length > 0 && (wanted < cursor || wanted + units > GRID_COLUMNS + 1)) flush();
             col = Math.min(wanted, GRID_COLUMNS + 1 - units);
         }
         items.push({ idx, col, units, alone });
@@ -119,14 +130,166 @@ export const slotsOfRow = (row, fields, targetIdx, labelOf) => {
 
 export const assignCol = (fields, index, col) => fields.map((f, i) => (
     i === index
-        ? { ...f, layout: layoutOf(f.layout?.colSpan ?? 1, col, isAlone(f)) }
+        ? { ...f, layout: layoutOf(f.layout?.colSpan ?? 1, col, isAlone(f), opensRow(f) || col === 1) }
         : f
 ));
+
+export const materializeLayout = (fields, indices) => {
+    const rows = groupIntoRows(fields, indices);
+    const ordenados = [];
+    const posPorIdx = new Map();
+
+    rows.forEach((row) => {
+        [...row.items].sort((a, b) => a.col - b.col).forEach((it, i) => {
+            posPorIdx.set(it.idx, { col: it.col, abre: i === 0 });
+            ordenados.push(it.idx);
+        });
+    });
+
+    const conPosicion = ordenados.map((idx) => {
+        const f = fields[idx];
+        const { col, abre } = posPorIdx.get(idx);
+        return { ...f, layout: layoutOf(f.layout?.colSpan ?? 1, col, isAlone(f), abre) };
+    });
+
+    const out = [...fields];
+    indices.forEach((globalIdx, k) => { out[globalIdx] = conPosicion[k]; });
+    return out;
+};
+
+const sinAnclaje = (f) => ({
+    ...f,
+    layout: {
+        colSpan: f.layout?.colSpan ?? 1,
+        ...(isAlone(f) ? { alone: true } : {}),
+    },
+});
+
+export const setOpensRow = (fields, indices, index, abre) => {
+    const out = fields.map((f, i) => {
+        if (i !== index) return f;
+        return abre
+            ? { ...f, layout: layoutOf(f.layout?.colSpan ?? 1, colOf(f), isAlone(f), true) }
+            : sinAnclaje(f);
+    });
+    return materializeLayout(out, indices);
+};
+
+export const moveRow = (fields, indices, rowIdx, direction) => {
+    const rows = groupIntoRows(fields, indices);
+    const destino = rowIdx + direction;
+    if (rowIdx < 0 || destino < 0 || destino >= rows.length) return fields;
+
+    const orden = rows.map((r) => r.indices);
+    const [movida] = orden.splice(rowIdx, 1);
+    orden.splice(destino, 0, movida);
+
+    const campos = orden.flat().map((i) => fields[i]);
+    const out = [...fields];
+    indices.forEach((globalIdx, k) => { out[globalIdx] = campos[k]; });
+    return materializeLayout(out, indices);
+};
+
+export const unirLineaAnterior = (fields, indices, firstIdx) => {
+    const row = rowOfField(fields, indices, firstIdx);
+    if (!row) return fields;
+    const enLaLinea = new Set(row.indices);
+    const out = fields.map((f, i) => (enLaLinea.has(i) ? sinAnclaje(f) : f));
+    return materializeLayout(out, indices);
+};
+
+export const swapFields = (fields, indices, from, to) => {
+    const a = indices[from];
+    const b = indices[to];
+    if (a == null || b == null || a === b) return fields;
+
+    const enRanuraDe = (campo, ranura) => ({
+        ...campo,
+        layout: layoutOf(
+            campo.layout?.colSpan ?? 1,
+            ranura?.col,
+            isAlone(campo),
+            ranura?.newRow === true,
+        ),
+    });
+
+    const out = [...fields];
+    out[a] = enRanuraDe(fields[b], fields[a].layout);
+    out[b] = enRanuraDe(fields[a], fields[b].layout);
+    return materializeLayout(out, indices);
+};
 
 export const assignColSpan = (fields, index, colSpan) => fields.map((f, i) => {
     if (i !== index) return f;
     const col = f.layout?.col;
-    return Number.isInteger(col)
-        ? { ...f, layout: layoutOf(colSpan, nearestCol(colSpan, col), isAlone(f)) }
-        : { ...f, layout: { ...f.layout, colSpan } };
+    if (!Number.isInteger(col)) return { ...f, layout: { ...f.layout, colSpan } };
+    const nuevoCol = nearestCol(colSpan, col);
+    return {
+        ...f,
+        layout: layoutOf(colSpan, nuevoCol, isAlone(f), opensRow(f) || nuevoCol === 1),
+    };
 });
+
+export const layoutSlots = (fields, indices) => {
+    const slots = [];
+
+    groupIntoRows(fields, indices).forEach((row, rowIdx) => {
+        let cursor = 1;
+        let previo = null;
+        const firstIdx = row.items[0]?.idx ?? null;
+        row.items.forEach((it) => {
+            if (it.col > cursor) {
+                slots.push({
+                    kind: 'gap',
+                    row: rowIdx,
+                    col: cursor,
+                    units: it.col - cursor,
+                    after: previo,
+                    firstIdx,
+                });
+            }
+            slots.push({ kind: 'field', row: rowIdx, idx: it.idx, col: it.col, units: it.units });
+            cursor = it.col + it.units;
+            previo = it.idx;
+        });
+        if (cursor <= GRID_COLUMNS) {
+            slots.push({
+                kind: 'gap',
+                row: rowIdx,
+                col: cursor,
+                units: GRID_COLUMNS + 1 - cursor,
+                after: previo,
+                firstIdx,
+            });
+        }
+    });
+
+    return slots;
+};
+
+export const moveToSlot = (fields, indices, index, gap) => {
+    const units = unitsOfField(fields[index]);
+    const col = Math.min(gap.col, GRID_COLUMNS + 1 - units);
+    const abreLinea = gap.after == null;
+
+    const orden = indices.filter((i) => i !== index);
+    const anclaje = abreLinea ? orden.indexOf(gap.firstIdx) : orden.indexOf(gap.after) + 1;
+    orden.splice(anclaje < 0 ? orden.length : anclaje, 0, index);
+
+    const reLayout = (f, nuevoCol, abre) => ({
+        ...f,
+        layout: layoutOf(f.layout?.colSpan ?? 1, nuevoCol, isAlone(f), abre),
+    });
+
+    const campos = orden.map((i) => {
+        if (i === index) return reLayout(fields[index], col, abreLinea);
+        if (abreLinea && i === gap.firstIdx) {
+            return reLayout(fields[i], colOf(fields[i]) ?? 1, false);
+        }
+        return fields[i];
+    });
+
+    const out = [...fields];
+    indices.forEach((globalIdx, k) => { out[globalIdx] = campos[k]; });
+    return materializeLayout(out, indices);
+};

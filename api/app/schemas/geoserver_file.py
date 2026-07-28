@@ -33,3 +33,27 @@ class GeoServerSearchResponse(BaseModel):
     query: str
     results: list[GeoServerFileResponse]
     truncated: bool = False
+
+
+class GeoServerFontFileResponse(BaseModel):
+    name: str
+    workspace: str | None = None
+    download_url: str = Field(..., serialization_alias="downloadUrl")
+    loaded: bool = False
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class GeoServerFontFamilyResponse(BaseModel):
+    name: str
+    source: str = "sistema"
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class GeoServerFontsResponse(BaseModel):
+    families: list[GeoServerFontFamilyResponse]
+    files: list[GeoServerFontFileResponse]
+    pending_reload: bool = Field(default=False, serialization_alias="pendingReload")
+
+    model_config = ConfigDict(populate_by_name=True)

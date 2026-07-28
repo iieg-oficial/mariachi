@@ -1,4 +1,7 @@
-import { Form, Segmented, Select, Switch, Tooltip } from 'antd';
+import { Button, Form, Segmented, Select, Switch, Tooltip } from 'antd';
+import {
+    ArrowDownOutlined, ArrowUpOutlined, VerticalAlignTopOutlined,
+} from '@ant-design/icons';
 import { GRID_COLUMNS, colChoicesFor, unitsOfColSpan } from './fieldLayout';
 import { COLSPAN_CHOICES, colSpanHint, positionLabels } from './layoutOptions';
 
@@ -101,13 +104,16 @@ export function ColSelect({ value, colSpan, onChange }) {
     );
 }
 
-export function LayoutSection({ colSpan, col, alone, previousLabel, sharesLine, onPickColSpan }) {
+export function LayoutSection({
+    colSpan, col, alone, newRow, previousLabel, sharesLine, onPickColSpan,
+}) {
     const isFullRow = colSpan === 1;
 
     let placementHint;
     if (isFullRow) placementHint = 'Ocupa la línea completa, así que siempre empieza una línea nueva.';
     else if (alone) placementHint = 'Tiene su línea para él solo: ningún otro campo se acomoda a su lado, aunque quepa.';
     else if (col === 1) placementHint = 'Empieza una línea nueva, pegado a la izquierda.';
+    else if (newRow) placementHint = 'Empieza una línea nueva en la posición elegida.';
     else if (sharesLine) placementHint = `Se coloca en la misma línea que «${previousLabel}».`;
     else placementHint = 'Empieza una línea nueva y deja libre el espacio a su izquierda.';
 
@@ -134,13 +140,23 @@ export function LayoutSection({ colSpan, col, alone, previousLabel, sharesLine, 
                             paddingTop: 12,
                             borderTop: '1px dashed #f0f0f0',
                             display: 'flex',
-                            alignItems: 'center',
-                            gap: 8,
+                            flexDirection: 'column',
+                            gap: 10,
                         }}>
-                            <Form.Item name="alone" valuePropName="checked" noStyle>
-                                <Switch size="small" />
-                            </Form.Item>
-                            <span>Reservar la línea solo para este campo</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <Form.Item name="newRow" valuePropName="checked" noStyle>
+                                    <Switch size="small" disabled={col === 1} />
+                                </Form.Item>
+                                <span style={{ color: col === 1 ? '#bbb' : undefined }}>
+                                    Empezar una línea nueva en este campo
+                                </span>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <Form.Item name="alone" valuePropName="checked" noStyle>
+                                    <Switch size="small" />
+                                </Form.Item>
+                                <span>Reservar la línea solo para este campo</span>
+                            </div>
                         </div>
                     </>
                 )}
@@ -182,16 +198,41 @@ export function ResizeHandle({ handleRef, active, onPointerDown }) {
     );
 }
 
-export function RowDivider({ index, free, showFree = true }) {
+export function RowDivider({
+    index, free, showFree = true, onUnir, onSubir, onBajar,
+}) {
+    const accion = (title, icon, onClick, label) => onClick && (
+        <Tooltip title={title}>
+            <Button
+                type="text"
+                size="small"
+                icon={icon}
+                onClick={onClick}
+                aria-label={label}
+                style={{ color: '#999' }}
+            />
+        </Tooltip>
+    );
+
     return (
         <div style={{
             gridColumn: '1 / -1',
             display: 'flex',
             alignItems: 'center',
-            gap: 8,
+            gap: 4,
             padding: '10px 4px 2px',
         }}>
-            <span style={{ fontSize: 12, color: '#999', whiteSpace: 'nowrap' }}>Línea {index + 1}</span>
+            <span style={{ fontSize: 12, color: '#999', whiteSpace: 'nowrap', marginInlineEnd: 4 }}>
+                Línea {index + 1}
+            </span>
+            {accion('Subir esta línea completa', <ArrowUpOutlined />, onSubir, `Subir la línea ${index + 1}`)}
+            {accion('Bajar esta línea completa', <ArrowDownOutlined />, onBajar, `Bajar la línea ${index + 1}`)}
+            {accion(
+                'Unir con la línea de arriba. Los campos que no quepan se quedan en su propia línea.',
+                <VerticalAlignTopOutlined />,
+                onUnir,
+                `Unir la línea ${index + 1} con la anterior`,
+            )}
             <div style={{ flex: 1, borderTop: '1px dashed #e5e5e5' }} />
             {free > 0 && showFree && (
                 <span style={{ fontSize: 12, color: '#bbb', whiteSpace: 'nowrap' }}>espacio libre</span>

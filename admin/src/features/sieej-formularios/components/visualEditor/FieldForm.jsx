@@ -64,6 +64,7 @@ export default function FieldForm({
     const watchColSpan = Form.useWatch('colSpan', form);
     const watchCol = Form.useWatch('col', form);
     const watchAlone = Form.useWatch('alone', form);
+    const watchNewRow = Form.useWatch('newRow', form);
     const watchPattern = Form.useWatch('pattern', form);
     const previewValues = Form.useWatch((v) => v, form) || {};
 
@@ -88,6 +89,7 @@ export default function FieldForm({
     const colSpan = watchColSpan ?? 1;
     const col = nearestCol(colSpan, watchCol ?? 1);
     const alone = colSpan !== 1 && !!watchAlone;
+    const newRow = col === 1 || !!watchNewRow;
     const slots = resolveSlots?.(colSpan, col, alone) ?? [];
     const sharesLine = !!previousField
         && slots.some((s) => s.kind === 'field' && s.name === previousField.name);
@@ -97,8 +99,8 @@ export default function FieldForm({
     }, [onLayoutDraft]);
 
     useEffect(() => {
-        onLayoutDraftRef.current?.({ colSpan, col, alone });
-    }, [colSpan, col, alone]);
+        onLayoutDraftRef.current?.({ colSpan, col, alone, newRow });
+    }, [colSpan, col, alone, newRow]);
 
     useEffect(() => () => onLayoutDraftRef.current?.(null), []);
 
@@ -184,6 +186,7 @@ export default function FieldForm({
                         colSpan={colSpan}
                         col={col}
                         alone={alone}
+                        newRow={newRow}
                         previousLabel={previousField?.label}
                         sharesLine={sharesLine}
                         onPickColSpan={handleColSpanChange}

@@ -43,3 +43,5 @@ class LayerStats(DataEngineBase):
     pie_numeralia = Column(String(500))
     values_refreshed_at = Column(DateTime(timezone=True))
     ttl_minutes = Column(Integer, nullable=False, server_default='1440')
+    updated_at = Column(DateTime(timezone=True), server_default=text('NOW()'))
+    updated_by = Column(String(150))

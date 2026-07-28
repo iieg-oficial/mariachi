@@ -149,24 +149,27 @@ export default function MainLayout() {
         <div
             style={{
                 display: 'flex',
+                flexDirection: collapsed ? 'column' : 'row',
                 alignItems: 'stretch',
                 borderTop: '1px solid rgba(255, 255, 255, 0.08)',
             }}
         >
             {footerRailItems.map((item, index) => {
                 const active = selectedKey === item.key;
+                const divider = index > 0 ? '1px solid rgba(255, 255, 255, 0.08)' : 'none';
                 return (
-                    <Tooltip key={item.key} title={item.label} placement="top">
+                    <Tooltip key={item.key} title={item.label} placement={collapsed ? 'right' : 'top'}>
                         <Button
                             type="text"
                             onClick={item.onClick}
                             aria-label={item.label}
                             style={{
-                                flex: 1,
+                                flex: collapsed ? 'none' : 1,
                                 minWidth: 0,
                                 height: 44,
                                 borderRadius: 0,
-                                borderInlineStart: index > 0 ? '1px solid rgba(255, 255, 255, 0.08)' : 'none',
+                                borderInlineStart: collapsed ? 'none' : divider,
+                                borderTop: collapsed ? divider : 'none',
                             }}
                         >
                             <Badge count={item.badgeCount} size="small" offset={[6, -2]}>

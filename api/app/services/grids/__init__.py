@@ -1,0 +1,13 @@
+from app.services.grid_batch import GridSpec
+from app.services.grids.layer_metadata_grid import SPEC as LAYER_METADATA_SPEC
+
+SPECS: dict[str, GridSpec] = {
+    LAYER_METADATA_SPEC.key: LAYER_METADATA_SPEC,
+}
+
+
+def get_spec(key: str) -> GridSpec | None:
+    return SPECS.get(key)
+
+
+__all__ = ['SPECS', 'get_spec']
