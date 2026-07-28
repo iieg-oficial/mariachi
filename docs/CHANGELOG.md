@@ -9,6 +9,31 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.98.0] - 2026-07-28
+
+### Agregado: crear y quitar líneas en el acomodo de un formulario SIEEJ
+
+El editor de campo gana el switch **«Empezar una línea nueva en este campo»**, que escribe `layout.newRow`: se puede partir una línea por donde se quiera, sin depender de que el campo caiga en la columna 1. El separador de cada línea, de la segunda en adelante, trae el botón **subir a la anterior**.
+
+Unir suelta el anclaje de **todos** los campos de la línea, no solo del primero: soltando únicamente a ese, los demás conservaban su columna y se quedaban abajo. Los que no quepan arriba forman línea propia.
+
+### Cambiado: la línea de un campo la declara la definición, ya no se deduce del orden
+
+`layout.newRow` pasa a ser la marca de inicio de línea, válida en cualquier columna. Antes solo se reconocía en la columna 1, así que la línea era **implícita**: se deducía comparando la columna pedida contra la ya ocupada, y era el orden de los campos —no la definición— lo que decidía dónde cortaba cada línea. De ahí que ensanchar o mover un campo re-particionara todo lo que venía después.
+
+`materializeLayout` fija ahora línea y columna de cada campo visible, y ordena el arreglo por posición visual para que el orden deje de pelearse con las columnas. Las definiciones anteriores se ven igual y el contrato del backend no cambia —`newRow` ya era un booleano válido—, así que no hay migración. Requiere SIEEJ >= 1.52.0, que trae el mismo modelo del lado del respondent.
+
+### Corregido: mover un campo dejó de desplazar líneas que nadie tocó
+
+Cuatro defectos que salieron de auditar 250 combinaciones de operación y acomodo:
+
+- **Arrastrar sobre otra tarjeta intercambia las dos ranuras** en vez de reordenar la lista. Reordenar movía el campo dentro del arreglo y, como la línea se deducía del orden, re-particionaba el paso entero.
+- **El arrastre dejó de quedarse pegado al primer campo que tocaba**: con la estrategia de intercambio el campo se dibuja encima del otro, así que `closestCenter` seguía midiendo contra el mismo par de centros. El destino se resuelve ahora por lo que hay bajo el puntero, con `closestCenter` de respaldo para el teclado.
+- **Un hueco solo se ofrece si el campo arrastrado cabe en él**, y nunca si mide menos que el campo más angosto. Antes se ofrecía siempre y al soltar empujaba al vecino a la línea siguiente.
+- Las tarjetas ganan **altura mínima** y el umbral del arrastre sube de 4 a 10 px: una tarjeta de línea completa es muy ancha y de poco alto, y al soltar sobre ella un campo angosto el destino saltaba de línea.
+
+`__tests__/acomodo.invariante.test.js` deja fijada la auditoría: cinco acomodos por cinco operaciones, verificando que las líneas ajenas no cambian y que materializar es estable. De 38 alteraciones quedan 8, todas geométricas — un campo que crece o que se intercambia con otro de distinto ancho no puede dejar a sus vecinos donde estaban.
+
 ## [1.97.2] - 2026-07-28
 
 ### Los recursos de GeoServer dejan de servirse como inmutables

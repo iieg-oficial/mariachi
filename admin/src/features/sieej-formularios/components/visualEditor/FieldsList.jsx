@@ -12,7 +12,7 @@ import {
 } from './fieldUtils';
 import {
     assignCol, assignColSpan, isAlone, layoutOf, layoutSlots, materializeLayout,
-    moveToSlot, placedColOf, startColOf, swapFields, unitsOfField,
+    moveToSlot, opensRow, placedColOf, startColOf, swapFields, unirLineaAnterior, unitsOfField,
 } from './fieldLayout';
 import {
     clearFieldClipboard, prepareFieldForPaste, readFieldClipboard, writeFieldClipboard,
@@ -78,6 +78,7 @@ export default function FieldsList({ step, formularioSlug, onChange, addTrigger 
                             draft.colSpan,
                             draft.col ?? startColOf(f) ?? 1,
                             draft.alone ?? isAlone(f),
+                            draft.newRow ?? opensRow(f),
                         ),
                     }
                     : f
@@ -146,6 +147,10 @@ export default function FieldsList({ step, formularioSlug, onChange, addTrigger 
 
     const handleAssignCol = (idx, col) => {
         onChange?.({ ...step, fields: assignCol(acomodoFijo(), idx, col) });
+    };
+
+    const handleUnirLinea = (idx) => {
+        onChange?.({ ...step, fields: unirLineaAnterior(acomodoFijo(), visibleIdx, idx) });
     };
 
     const handleSaveField = (newField) => {
@@ -267,6 +272,7 @@ export default function FieldsList({ step, formularioSlug, onChange, addTrigger 
                 vacioTexto={hasTabs ? 'Sin campos en esta pestaña' : 'Sin campos'}
                 mostrarGuias={!!resizePreview && !isMobile}
                 onDrop={handleDrop}
+                onUnirLinea={handleUnirLinea}
                 renderField={renderFieldCard}
             />
 

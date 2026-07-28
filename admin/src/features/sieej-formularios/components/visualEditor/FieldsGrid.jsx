@@ -14,7 +14,8 @@ import { GRID_COLUMNS, cabeUnCampo } from './fieldLayout';
 const gapId = (slot) => `gap-${slot.row}-${slot.col}`;
 
 export default function FieldsGrid({
-    slots, itemIds, unitsPorId, isMobile, vacio, vacioTexto, mostrarGuias, onDrop, renderField,
+    slots, itemIds, unitsPorId, isMobile, vacio, vacioTexto, mostrarGuias,
+    onDrop, onUnirLinea, renderField,
 }) {
     const [dragging, setDragging] = useState(null);
 
@@ -69,12 +70,18 @@ export default function FieldsGrid({
                     )}
                     {slots.flatMap((slot, i) => {
                         const abreLinea = slots.findIndex((s) => s.row === slot.row) === i;
+                        const primeroDeLinea = slots.find(
+                            (s) => s.row === slot.row && s.kind === 'field',
+                        );
                         const divider = abreLinea && totalLineas > 1
                             ? [<RowDivider
                                 key={`divider-${slot.row}`}
                                 index={slot.row}
                                 free={libreEnLinea(slot.row)}
                                 showFree={!isMobile}
+                                onUnir={slot.row > 0 && primeroDeLinea
+                                    ? () => onUnirLinea?.(primeroDeLinea.idx)
+                                    : undefined}
                             />]
                             : [];
                         if (slot.kind === 'gap') {

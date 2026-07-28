@@ -99,6 +99,8 @@ Dentro del editor, la columna de cada tarjeta la manda `groupIntoRows`, no un ca
 
 **Arrastrar sobre otra tarjeta intercambia las dos ranuras**, no reordena la lista. Cada campo se lleva su ancho y toma la posicion del otro (`swapFields`, con `rectSwappingStrategy`). Reordenar movia el campo dentro del arreglo y, como la linea se deducia del orden, re-particionaba todo el paso: arrastrar un campo desplazaba lineas enteras que no se habian tocado.
 
+**Crear y quitar lineas.** El switch «Empezar una linea nueva en este campo» del editor de campo escribe `layout.newRow`, asi que se puede partir una linea por donde se quiera sin depender de que el campo caiga en la columna 1. El separador de cada linea (de la segunda en adelante) trae el boton **subir a la anterior**, que le quita el anclaje a todos los campos de esa linea para que fluyan tras la de arriba; los que no quepan forman linea propia. Es `unirLineaAnterior` — soltar solo al primero no bastaba, porque los demas conservaban su columna y se quedaban abajo.
+
 **Auditoria de comportamiento.** `__tests__/acomodo.invariante.test.js` recorre cinco acomodos representativos y verifica sobre cada operacion (soltar en hueco, intercambiar, eliminar, cambiar ancho, cambiar posicion) que **las lineas ajenas no cambian** y que materializar es estable. Las unicas alteraciones que quedan son geometricas: un campo que crece o que se intercambia con otro de distinto ancho no puede dejar a sus vecinos donde estaban.
 
 - **`select`/`select_multiple`/`radio`/`checkbox`**: requieren `options` (`[{value, label}]`) o `catalog` (string que identifica un catalogo). No pueden mezclar ambos.

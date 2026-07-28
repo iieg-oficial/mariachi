@@ -157,6 +157,32 @@ export const materializeLayout = (fields, indices) => {
     return out;
 };
 
+const sinAnclaje = (f) => ({
+    ...f,
+    layout: {
+        colSpan: f.layout?.colSpan ?? 1,
+        ...(isAlone(f) ? { alone: true } : {}),
+    },
+});
+
+export const setOpensRow = (fields, indices, index, abre) => {
+    const out = fields.map((f, i) => {
+        if (i !== index) return f;
+        return abre
+            ? { ...f, layout: layoutOf(f.layout?.colSpan ?? 1, colOf(f), isAlone(f), true) }
+            : sinAnclaje(f);
+    });
+    return materializeLayout(out, indices);
+};
+
+export const unirLineaAnterior = (fields, indices, firstIdx) => {
+    const row = rowOfField(fields, indices, firstIdx);
+    if (!row) return fields;
+    const enLaLinea = new Set(row.indices);
+    const out = fields.map((f, i) => (enLaLinea.has(i) ? sinAnclaje(f) : f));
+    return materializeLayout(out, indices);
+};
+
 export const swapFields = (fields, indices, from, to) => {
     const a = indices[from];
     const b = indices[to];

@@ -38,6 +38,7 @@ export const fieldFromFormValues = (values) => {
     const colSpan = values.colSpan ?? 1;
     const col = nearestCol(colSpan, values.col ?? 1);
     const alone = colSpan !== 1 && !!values.alone;
+    const newRow = col === 1 || !!values.newRow;
 
     return {
         name: values.name,
@@ -62,7 +63,7 @@ export const fieldFromFormValues = (values) => {
             && values.openCatalog
             ? { openCatalog: values.openCatalog }
             : {}),
-        layout: layoutOf(colSpan, col, alone),
+        layout: layoutOf(colSpan, col, alone, newRow),
     };
 };
 
@@ -98,6 +99,7 @@ export const fieldToFormValues = (field, defaultCol = 1) => ({
     colSpan: field?.layout?.colSpan ?? 1,
     col: nearestCol(field?.layout?.colSpan ?? 1, field?.layout?.col ?? defaultCol),
     alone: !!field?.layout?.alone,
+    newRow: field?.layout?.newRow === true,
 });
 
 export const conditionValueOptions = (source, catalogos = {}) => {
