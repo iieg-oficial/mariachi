@@ -9,6 +9,26 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.95.0] - 2026-07-28
+
+### Corregido: la tarjeta del editor se dibuja en la columna que dice el modelo
+
+`FieldsList` decide las líneas con `groupIntoRows` — de ahí salen los separadores «Línea N», los huecos de la vista previa y el texto del selector de posición — pero `FieldCard` calculaba su `gridColumn` por su cuenta con `nearestCol`. Con una `col` guardada que no estuviera alineada al ancho, los dos daban resultados distintos: un tercio en la columna 4 se dibujaba en la 3 mientras el modelo (y el renderer de SIEEJ, que sigue al modelo) lo colocaba en la 4. La tarjeta que se ve al acomodar no era la posición que se guardaba.
+
+Ahora `FieldsList` pasa a cada tarjeta la posición ya resuelta y `FieldCard` no recalcula nada.
+
+### Corregido: mover un campo lo deja donde se soltó
+
+Arrastrar un campo (o moverlo con las flechas) reordenaba el array pero conservaba su `layout.col`, así que el campo volvía a su columna anterior: el arrastre parecía no tener efecto. `reflowCol` recalcula la posición del campo movido a la que le toca en el nuevo orden, conservando su ancho y su línea reservada.
+
+### Contrato de acomodo compartido con el renderer de SIEEJ
+
+El modelo de líneas del editor y el del renderer vivían en repos distintos sin nada que verificara que coincidieran, y divergían: en 6 de 10 acomodos con `alone` que el propio editor genera, el respondent veía el campo compartiendo la línea que el CMS mostraba reservada (detalle en el CHANGELOG de SIEEJ 1.51.0, que trae el arreglo de ese lado).
+
+`__fixtures__/layoutContract.js` fija 15 acomodos con su resultado esperado y lo verifican los dos repos contra su propia implementación; el archivo es un duplicado idéntico de `sieej/frontend/test/fixtures/layoutContract.js`. Al tocar el acomodo en cualquiera de los dos, agrega el caso al fixture y cópialo al otro repo.
+
+Requiere SIEEJ >= 1.51.0 para que lo que se acomoda aquí se vea igual al capturar.
+
 ## [1.94.2] - 2026-07-28
 
 ### Documentación: el contexto de SIEEJ vuelve a describir lo que hace el código

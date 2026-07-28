@@ -123,6 +123,14 @@ export const assignCol = (fields, index, col) => fields.map((f, i) => (
         : f
 ));
 
+export const reflowCol = (fields, indices, index) => {
+    if (startColOf(fields[index]) == null) return fields;
+    const sinPosicion = fields.map((f, i) => (
+        i === index ? { ...f, layout: { colSpan: f.layout?.colSpan, alone: f.layout?.alone } } : f
+    ));
+    return assignCol(fields, index, placedColOf(sinPosicion, indices, index));
+};
+
 export const assignColSpan = (fields, index, colSpan) => fields.map((f, i) => {
     if (i !== index) return f;
     const col = f.layout?.col;

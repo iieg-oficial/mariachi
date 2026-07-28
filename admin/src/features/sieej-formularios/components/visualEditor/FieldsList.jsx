@@ -18,7 +18,7 @@ import {
 } from './fieldUtils';
 import {
     GRID_COLUMNS, assignCol, assignColSpan, groupIntoRows, isAlone, layoutOf, placedColOf,
-    startColOf,
+    reflowCol, startColOf,
 } from './fieldLayout';
 import {
     clearFieldClipboard, prepareFieldForPaste, readFieldClipboard, writeFieldClipboard,
@@ -106,19 +106,24 @@ export default function FieldsList({ step, formularioSlug, onChange, addTrigger 
         useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
     );
 
+    const moverCampo = (from, to) => {
+        const reordenado = reorderWithinTab(fields, visibleIdx, from, to);
+        return reflowCol(reordenado, visibleIdx, visibleIdx[to]);
+    };
+
     const handleDragEnd = ({ active, over }) => {
         if (!over || active.id === over.id) return;
         const from = visibleIdx.findIndex((i) => fieldKey(fields[i], i) === active.id);
         const to = visibleIdx.findIndex((i) => fieldKey(fields[i], i) === over.id);
         if (from < 0 || to < 0) return;
-        onChange?.({ ...step, fields: reorderWithinTab(fields, visibleIdx, from, to) });
+        onChange?.({ ...step, fields: moverCampo(from, to) });
     };
 
     const handleMove = (idx, direction) => {
         const from = visibleIdx.indexOf(idx);
         const to = from + direction;
         if (from < 0 || to < 0 || to >= visibleIdx.length) return;
-        onChange?.({ ...step, fields: reorderWithinTab(fields, visibleIdx, from, to) });
+        onChange?.({ ...step, fields: moverCampo(from, to) });
         const swapped = visibleIdx[to];
         if (editingKey === idx) setEditingKey(swapped);
         else if (editingKey === swapped) setEditingKey(idx);
@@ -209,11 +214,12 @@ export default function FieldsList({ step, formularioSlug, onChange, addTrigger 
     const activeTabTitle = tabs.find((t) => t.id === activeKey)?.title || activeKey;
     const clipboardField = clipboard?.fields?.[0] ?? null;
 
-    const renderFieldCard = (idx) => (
+    const renderFieldCard = (idx, placement) => (
         <FieldCard
             key={fieldKey(fields[idx], idx)}
             id={fieldKey(fields[idx], idx)}
             field={fields[idx]}
+            placement={placement}
             isEditing={editingKey === idx}
             isMobile={isMobile}
             showTabs={hasTabs}
@@ -278,7 +284,7 @@ export default function FieldsList({ step, formularioSlug, onChange, addTrigger 
                                     showFree={!isMobile}
                                 />]
                                 : []),
-                            ...row.indices.map((idx) => renderFieldCard(idx)),
+                            ...row.items.map((it) => renderFieldCard(it.idx, it)),
                         ])}
                         {resizePreview && !isMobile && <ColumnGuides />}
                     </div>

@@ -7,7 +7,7 @@ import SortableItem from './SortableItem';
 import FieldForm from './FieldForm';
 import { tabOf } from './fieldUtils';
 import {
-    colChoicesFor, isAlone, nearestCol, startColOf, unitsOfColSpan,
+    colChoicesFor, isAlone, startColOf, unitsOfColSpan,
 } from './fieldLayout';
 import { ColSelect, ColSpanSelect, ResizeHandle, WidthGlyph } from './LayoutControls';
 import useColSpanResize from './useColSpanResize';
@@ -15,7 +15,7 @@ import { colSpanLabel, positionLabel } from './layoutOptions';
 import { fieldTypeLabel } from '../../constants/definitionTypes';
 
 export default function FieldCard({
-    id, field, isEditing, isMobile, showTabs, tabs, tabOptions, dependentsCount = 0,
+    id, field, placement, isEditing, isMobile, showTabs, tabs, tabOptions, dependentsCount = 0,
     canMoveUp, canMoveDown, onMove, onToggleEdit, onDelete, onCopy, onDuplicate,
     onAssignTab, onAssignColSpan, onAssignCol, onResizeChange, layoutOverride,
     resolveSlots, previousField, defaultCol, onLayoutDraft,
@@ -30,10 +30,9 @@ export default function FieldCard({
     });
 
     const cs = draggedColSpan ?? saved;
-    const span = unitsOfColSpan(cs);
+    const span = placement?.units ?? unitsOfColSpan(cs);
     const alone = isAlone({ layout });
-    const explicitCol = startColOf({ layout });
-    const col = explicitCol == null ? null : nearestCol(cs, explicitCol);
+    const col = placement?.col ?? startColOf({ layout });
     const gridColumn = isEditing || isMobile
         ? '1 / -1'
         : (col == null ? `span ${span}` : `${col} / span ${span}`);
