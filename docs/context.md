@@ -2,7 +2,7 @@
 
 > Documento de referencia completo. Leer este archivo proporciona contexto del monorepo sin explorar el codebase.
 
-**Versión:** número único del monorepo (desde `1.61.0` se fusionaron los antiguos `api`/`admin`). Fuente de la verdad: `api/pyproject.toml` (la lee `api/app/core/version.py::get_app_version()`; endpoint en vivo `GET /ontoy`). Bump con `scripts/bump-version.sh <x.y.z>` (sincroniza `pyproject.toml` + `admin/package.json` y abre la entrada del CHANGELOG). · **Última actualización:** 2026-07-24 (1.85.0)
+**Versión:** número único del monorepo (desde `1.61.0` se fusionaron los antiguos `api`/`admin`). Fuente de la verdad: `api/pyproject.toml` (la lee `api/app/core/version.py::get_app_version()`; endpoint en vivo `GET /ontoy`). Bump con `scripts/bump-version.sh <x.y.z>` (sincroniza `pyproject.toml` + `admin/package.json` y abre la entrada del CHANGELOG). · **Última actualización:** 2026-07-28 (1.94.1)
 
 
 ---
@@ -14,13 +14,13 @@ Este monorepo aloja el panel de administración del ecosistema IIEG y el backend
 | Producto | Qué es | Carpeta | Ruta publica | Estado |
 |---|---|---|---|---|
 | **Mariachi** | Panel de administración del ecosistema IIEG (Ant Design) | `admin/` | `/mariachi/` | Activo |
-| **SIEEJ (frontend)** | Captura de formularios para dependencias de gobierno (otro repo: `iieg-oficial/sieej`) | servido como volumen en `mariachi-nginx` | `/sieej/` | Activo |
+| **SIEEJ (frontend)** | Captura de formularios para dependencias de gobierno (otro repo: `iieg-oficial/sieej`) | `dist/` estático montado read-only en `gateway-hub` (`SIEEJ_DIST_PATH`) | `/sieej/` | Activo |
 | **Colibri Widget** | Web Components embebibles para reportar desde cualquier sitio (Lit + Vite) | `widget/` | `/colibri/widget/colibri-widget.v1.js` | Activo (v0.47.1) |
 | **Colibri SDK** | Cliente HTTP TypeScript para integraciones server-side y browser custom | `sdk/` | npm `@iieg/colibri-sdk` | Activo (v0.46.0) |
 
 El **Portal público** (sitio web del IIEG) se separó a su propio repo `iieg/portal/` (ver README raíz). Consume `/api/portal/*` de este `api`.
 
-Mariachi y SIEEJ consumen el mismo backend FastAPI en `api/` con el mismo prefijo `admin_prefix` (`/api/administrador`). Mariachi usa los routers `auth`, `users`, `pages`, `menu`, `media`, `borradores`, `layers`, `colibri/*`, etc. SIEEJ usa exclusivamente `/api/administrador/formularios/*` (ver `docs/sieej.md`). Los huespedes externos a la sesion (widget + SDK + integraciones server-side) consumen `/api/public/reportes` (ver `docs/colibri.md`).
+Mariachi y SIEEJ consumen el mismo backend FastAPI en `api/` con el mismo prefijo `admin_prefix` (`/api/mariachi`; `/api/administrador` sigue montado por compatibilidad durante la transición). Mariachi usa los routers `auth`, `users`, `pages`, `menu`, `media`, `borradores`, `layers`, `colibri/*`, etc. SIEEJ usa `/api/mariachi/formularios/*` para la captura y `/api/mariachi/sieej/*` para la gestión desde el CMS (ver `docs/sieej.md`). Los huespedes externos a la sesion (widget + SDK + integraciones server-side) consumen `/api/public/reportes` (ver `docs/colibri.md`).
 
 **Origen del nombre:** la carpeta del repo se llamaba `portal/` originalmente. En 2026-04-22 se renombro a `mariachi/` para reflejar que el CMS es lo único que se sigue desarrollando. El portal publico sigue alli pero congelado.
 
@@ -37,7 +37,7 @@ El monorepo se renombro de `portal/` a `mariachi/` porque:
 El rename fue **solo de carpeta e identificadores internos de infra** (docker compose, container names, networks). **No se toco**:
 
 - Branding publico "Portal IIEG", "CMS Portal" en UI
-- Rutas URL (`/api/portal`, `/api/administrador`)
+- Rutas URL (`/api/portal`, `/api/administrador` — este último sí se renombró después a `/api/mariachi`, ver "API prefix rename")
 - Nombre de BD `mariachi`
 - Upstream `portal` en el gateway externo (se mantiene por conflicto de nombres con otro upstream ya existente)
 
@@ -64,7 +64,10 @@ El rename fue **solo de carpeta e identificadores internos de infra** (docker co
 Rutas del backend (prefijos):
 
 - `/api/portal/*` (`WEB_PREFIX`) — consume el sitio publico
-- `/api/administrador/*` (`ADMIN_PREFIX`) — consume el CMS
+- `/api/mariachi/*` (`ADMIN_PREFIX`) — consume el CMS y SIEEJ
+- `/api/administrador/*` (`ADMIN_PREFIX_LEGACY`) — mismo router, doble montaje por compatibilidad (ver "API prefix rename")
+
+> **Nota de lectura:** las tablas de endpoints de este documento escritas con `/api/administrador/...` corresponden al mismo router y hoy responden también —y preferentemente— bajo `/api/mariachi/...`.
 
 ### Mariachi CMS (`admin/`)
 
@@ -233,7 +236,8 @@ Redes: `mariachi_network_dev` (propia) + `mapalab-network` (external, para que e
 | `COOKIE_DOMAIN` | `app.tu-dominio.com` (prod) | Permite compartir con mapalab bajo mismo dominio |
 | `COOKIE_SECURE` / `COOKIE_HTTPONLY` / `COOKIE_SAMESITE` | `true` / `true` / `lax` | |
 | `CORS_ORIGINS` | JSON array | |
-| `ADMIN_PREFIX` | `/api/administrador` | Ruta del CMS |
+| `ADMIN_PREFIX` | `/api/mariachi` | Ruta del CMS y de SIEEJ |
+| `ADMIN_PREFIX_LEGACY` | `/api/administrador` | Doble montaje del mismo router por compatibilidad |
 | `WEB_PREFIX` | `/api/portal` | Ruta del sitio publico |
 | `ACERVO_ENDPOINT` / `ACERVO_PUBLIC_ENDPOINT` / `ACERVO_USE_SSL` / `ACERVO_VERIFY_SSL` | — | Endpoint S3 de SeaweedFS (host y publico, sin creds globales) |
 | `ACERVO_<REF>_ACCESS_KEY` / `ACERVO_<REF>_SECRET_KEY` | — | Creds **por bucket** (REF coincide con `acervo_buckets.access_key_ref`). Sin fallback a creds root del cluster: cada bucket activo requiere su par. |
@@ -243,7 +247,7 @@ Redes: `mariachi_network_dev` (propia) + `mapalab-network` (external, para que e
 | Variable | Uso |
 |---|---|
 | `VITE_WEB_API_URL` | Base URL que usa `web/` (portal publico). Ej: `https://tu-dominio.com/api/portal` |
-| `VITE_ADMIN_API_URL` | Base URL que usa `admin/` (CMS). Ej: `https://tu-dominio.com/api/administrador` |
+| `VITE_ADMIN_API_URL` | Base URL que usa `admin/` (CMS). Ej: `https://tu-dominio.com/api/mariachi` |
 | `VITE_APP_NAME` / `VITE_ADMIN_APP_NAME` | Branding |
 | `VITE_GOOGLE_ANALYTICS_ID` | GA4 |
 
@@ -332,7 +336,7 @@ Ver `docs/COOKIES_CSRF.md` para detalles completos.
 
 Sin auth. `router = APIRouter(tags=["portal público"])` en `routes/public.py`.
 
-### CMS (`/api/administrador/*`)
+### CMS (`/api/mariachi/*`, antes `/api/administrador/*`)
 
 | Metodo | Ruta | Funcion |
 |---|---|---|
@@ -371,9 +375,16 @@ Sin auth. `router = APIRouter(tags=["portal público"])` en `routes/public.py`.
 | GET | `/formularios/mis-envios/{id}` | Detalle con `definicion_snapshot` historica + `datos` + `archivos` + `eventos` |
 | POST | `/formularios/{slug}/envio/actualizar-version` | Actualiza envio `en_proceso` a la definicion vigente conservando `datos` |
 | DELETE | `/formularios/mis-envios/{id}` | Soft-delete del envio para el respondent |
+| GET | `/formularios/mis-envios/{id}/pdf` | PDF del envio generado server-side |
 | PUT | `/formularios/mis-envios/{id}/actualizar-campos` | Correccion post-envio de los campos `editableAfterSubmit`, sin reabrir el envio |
+| POST | `/formularios/mis-envios/{id}/actualizar-archivo` | Contraparte multipart para los campos `file` (misma huella de auditoria) |
 | GET | `/formularios/mis-envios/{id}/historial` | Historial append-only de valores corregidos (respondent, sin actor) |
 | GET | `/sieej/formularios/{id}/envios/{envio_id}/historial` | Mismo historial con actor (admin) |
+| POST | `/sieej/formularios/{id}/envios/{envio_id}/reabrir` | Devuelve un envio `enviado`/`expirado` a `en_proceso` conservando su version |
+| GET/PUT/DELETE | `/sieej/formularios/{id}/presencia` | Quien esta editando / heartbeat / salida (Redis, TTL 30 s) |
+| GET | `/sieej/formularios/presencia` | Presencia de todos los formularios en un scan (se declara antes que la ruta con parametro) |
+| GET/POST/PUT/DELETE | `/sieej/catalogos/*` | CRUD de catalogos y opciones (`PUT /{clave}/reordenar` para el orden) |
+| POST | `/sieej/expirar-envios-pendientes` | Bulk-expire de envios cuyos formularios pasaron vigencia |
 | GET | `/sieej/formularios/{id}/periodos` | Ventanas de captura de un formulario periodico |
 | GET | `/sieej/formularios/{id}/notificaciones[/exportar]` | Bitacora de avisos de apertura/faltantes (`?formato=csv\|xlsx`) |
 | POST | `/sieej/periodos/tick` | Corre el motor de apertura periodica (idempotente) |
@@ -853,6 +864,22 @@ Este repo se integra con otros servicios internos vecinos (CMS, visor de mapas, 
 
 ## Cambios recientes
 
+### 2026-07-27 (1.94.0–1.94.1) — SIEEJ: acomodo manual y explícito de los campos del editor
+
+El editor de formularios deja colocar un campo en cualquier parte de su línea y reservarle la línea entera aunque sea angosto: `layout.col` (1..6) lo ancla a una columna — `newRow` pasa a ser su caso particular (`col: 1`) — y `layout.alone` lo extiende hasta el final de la fila limitando su contenido al ancho elegido. `definicion_validator` rechaza una `col` donde el ancho declarado no cabría; el renderer la ignora en vez de crear una columna implícita. Lado respondent: SIEEJ 1.49.0 (`helpers/gridLayout.js`), que conviene desplegar antes o junto con este.
+
+`1.94.1` corrige que la vista previa y el bloque de acomodo parpadearan al mover un campo de línea: las tarjetas se agrupaban en un `Fragment` por fila, así que cambiar de fila las desmontaba (una `key` estable no evita el remonte si cambia de padre) y la limpieza de `FieldForm` revertía el cambio en ciclo. Ahora separadores y tarjetas son hermanos directos del grid (`flatMap`), el borrador de acomodo lleva el índice del campo que lo emitió, y `fieldToFormValues` normaliza posiciones imposibles heredadas de antes del validador.
+
+### 2026-07-27 (1.91.1–1.93.0) — Acervo: claves legibles para SIEEJ y buckets protegidos administrables
+
+- **Claves legibles**: los archivos de SIEEJ pasan de `{slug}/envio{id}/{uuid}.{ext}` a `{slug}/{usuario}-{envio_id}[/{periodo}]/{step}.{campo}/{ts}-{nombre}-{sufijo}.{ext}` (`services/sieej/acervo_keys.py`), con un directorio por campo y sus versiones ordenadas dentro. Junto a ellos se escribe un `envio.json` best-effort con lo necesario para reconstruir el envío sin la BD. La migración de los objetos existentes es un script idempotente (`scripts/sieej_migrar_object_keys.py`), **no** una migración de alembic: habla con Acervo por red y un fallo del bucket tumbaría el arranque del api.
+- **Buckets protegidos**: bandera `protegido` en `acervo.buckets` (migración `c4d5e6f7a8b0`). El explorador oculta borrar/editar/mover/subir/crear carpeta y `resolve_bucket_escribible` responde 409 **incluso al admin**. `sieej` es el primero: sus claves están referenciadas desde `envio_archivo` y `envio.datos`. En `1.93.0` la bandera se administra desde `/acervo/buckets` (switch por bucket, admin-only); activarla es directo, desactivarla pide confirmación.
+
+### 2026-07-27 (1.86.0–1.89.0) — SIEEJ: compatibilidad de definiciones legadas y actualización post-envío que sí alcanza a los envíos
+
+- **`compat.py` (1.86.0)**: `normalizar_definicion` traduce cualquier definición histórica al contrato vigente — idempotente y solo relaja. Se aplica en **lectura**, **escritura** y **persistencia** (migración `c3d4e5f6a7b9`), de modo que un deploy no depende de que la migración de datos haya corrido. Sustituye el patrón de escribir una migración por cada endurecimiento del validador: al endurecer, se agrega la regla en `compat.py` y una definición real en `api/tests/fixtures/sieej/legacy/`, y `test_sieej_compat.py` falla en CI en vez de en producción. Verificación en deploy con `scripts/sieej_check_definiciones.py` (`make sieej-check`, `--fix` para reparar).
+- **`editableAfterSubmit` de verdad (1.87.0–1.89.0)**: cualquier tipo de campo puede marcarse, repeaters y `file` incluidos (los `file` van por `POST .../actualizar-archivo`, que deja la misma huella de auditoría). La marca la manda la **definición vigente**, no el snapshot — es política del admin, no contrato de datos —, así que activarla después del envío alcanza a los envíos ya enviados, que son justo los que se quieren corregir. `GET /formularios/` expone `tiene_campos_editables` por item para que el respondent encuentre la pantalla sin entrar al detalle.
+
 ### 2026-07-24 (1.82.0) — Sextante: sección propia para GeoServer + ícono de categoría con imagen/SVG
 
 Lo relacionado con GeoServer estaba repartido dentro de MapaLab o escondido en modales del editor de capas. Ahora es una sección del sider, **Sextante** (feature `admin/src/features/sextante/`), con cinco subpáginas; el sider además sube **Acervo** por encima de Huachicol.
@@ -884,7 +911,7 @@ El catálogo de capas (`mapalab.catalogo_capas`) se agrupa por la dependencia qu
 
 ### 2026-07-24 (1.78.0) — SIEEJ: actualización ligera de campos post-envío con historial de auditoría
 
-Un field marcado `editableAfterSubmit` se corrige sobre un envío ya `enviado` **sin reabrirlo** (`PUT /formularios/mis-envios/{id}/actualizar-campos`, merge parcial de `datos`, el estado no cambia). Los paths permitidos se derivan del `definicion_snapshot` del envío, no de la definición vigente. Lo nuevo de fondo es que ahora existe versionado de **valores**, no solo de definiciones: la tabla append-only `sieej.envio_valor_historial` (migración `f2b3c4d5e6a7`) guarda `valor_anterior`/`valor_nuevo` por cambio, se registra un evento `actualizado` y el export de envíos incluye la tabla "Historial de cambios". Aplica solo a campos de pasos `form` (repeaters y `file` fuera). Requiere el frontend SIEEJ >= 1.33.0. Detalle en CHANGELOG §[1.78.0].
+Un field marcado `editableAfterSubmit` se corrige sobre un envío ya `enviado` **sin reabrirlo** (`PUT /formularios/mis-envios/{id}/actualizar-campos`, merge parcial de `datos`, el estado no cambia). Los paths permitidos se derivan del `definicion_snapshot` del envío, no de la definición vigente. Lo nuevo de fondo es que ahora existe versionado de **valores**, no solo de definiciones: la tabla append-only `sieej.envio_valor_historial` (migración `f2b3c4d5e6a7`) guarda `valor_anterior`/`valor_nuevo` por cambio, se registra un evento `actualizado` y el export de envíos incluye la tabla "Historial de cambios". Aplica solo a campos de pasos `form` (repeaters y `file` fuera). Requiere el frontend SIEEJ >= 1.33.0. Detalle en CHANGELOG §[1.78.0]. **Superado en 1.87.0–1.89.0**: hoy aplica a cualquier tipo de campo y la marca la manda la definición vigente.
 
 ### 2026-07-24 — SIEEJ: apertura periódica de formularios (sin bump propio)
 

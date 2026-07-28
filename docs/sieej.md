@@ -12,9 +12,9 @@ SIEEJ es la plataforma de captura para que dependencias e instituciones de gobie
 - Asigna formularios a usuarios o a grupos de usuarios (visibilidad).
 - Captura los envios contra un snapshot inmutable de la definicion vigente al iniciar el envio.
 - Audita el ciclo de vida del envio (eventos: iniciado, guardado, enviado, expirado, reabierto).
-- Soporta uploads de archivos a buckets Acervo (MinIO) por field.
+- Soporta uploads de archivos a buckets Acervo (SeaweedFS, S3-compatible) por field.
 
-El backend antes vivia en un repositorio aparte como FastAPI/SQLModel. En 2026-04-24 se absorbio en mariachi para reusar la auth (cookie HttpOnly + CSRF), el cliente Acervo, el RBAC multi-proyecto y el ciclo Alembic. El frontend respondent (React + Vite + Tailwind) sigue en su propio repo y se sirve via `mariachi-nginx` bajo la ruta `/sieej/`.
+El backend antes vivia en un repositorio aparte como FastAPI/SQLModel. En 2026-04-24 se absorbio en mariachi para reusar la auth (cookie HttpOnly + CSRF), el cliente Acervo, el RBAC multi-proyecto y el ciclo Alembic. El frontend respondent (React + Vite + Tailwind) sigue en su propio repo y su `dist/` lo sirve el `gateway-hub` bajo la ruta `/sieej/`.
 
 ## Modelo de datos
 
@@ -419,20 +419,25 @@ api/
     ├── api/routes/
     │   ├── sieej_admin/                             # Gestion (admin)
     │   │   ├── __init__.py
-    │   │   ├── catalogos.py                         # CRUD catalogos + opciones
-    │   │   ├── formularios.py                       # CRUD + publicar/cerrar/asignaciones/envios
+    │   │   ├── catalogos.py                         # CRUD catalogos + opciones + reordenar
+    │   │   ├── formularios.py                       # CRUD + publicar/cerrar/asignaciones/envios/presencia
     │   │   ├── grupos.py                            # CRUD grupos + miembros
+    │   │   ├── periodos.py                          # Ventanas, notificaciones, tick
     │   │   └── stats.py                             # GET /sieej/stats
     │   └── formularios/                             # Captura (respondent)
     │       ├── __init__.py                          # Router con require_project_access('sieej')
     │       ├── catalogos.py                         # GET bundle
-    │       └── dinamicos.py                         # Lista, detalle, schema, envio, upload
+    │       └── dinamicos.py                         # Lista, detalle, schema, envio, upload,
+    │                                                # mis-envios, actualizar-campos/archivo, historial
     ├── models/sieej/
     │   ├── __init__.py
     │   ├── catalogos.py                             # Catalogo + CatalogoOpcion (genericos)
-    │   ├── formulario.py                            # Formulario
+    │   ├── formulario.py                            # Formulario + FormularioVersion
+    │   ├── periodo.py                               # FormularioPeriodo
+    │   ├── notificacion.py                          # Notificacion (bitacora de avisos)
     │   ├── grupo.py                                 # Grupo + tablas N:M
-    │   └── envio.py                                 # EnvioFormulario, EnvioArchivo, EnvioEvento
+    │   └── envio.py                                 # EnvioFormulario, EnvioArchivo, EnvioEvento,
+    │                                                # EnvioValorHistorial
     ├── schemas/sieej/
     │   ├── catalogos.py
     │   ├── formulario.py                            # FormularioCreate/Update/Response/Detalle/ListItem
@@ -443,6 +448,11 @@ api/
         ├── grupos_service.py                        # CRUD grupos + miembros
         ├── formularios_dinamicos_service.py         # Visibilidad respondent
         ├── envios_service.py                        # Get/iniciar envio, actualizar, upload
+        ├── periodos_service.py                      # Ventanas periodicas + tick + avisos
+        ├── cambio_classifier.py                     # Clasifica menor/rompe entre definiciones
+        ├── compat.py                                # Normaliza definiciones legadas (idempotente)
+        ├── acervo_keys.py                           # Convencion de object keys + envio.json
+        ├── catalogos_sistema.py                     # Catalogos que no se pueden eliminar
         ├── definicion_validator.py                  # Estructura JSONB + flatten a rules
         └── datos_validator.py                       # Datos contra snapshot (estricto/borrador)
 ```
@@ -454,8 +464,11 @@ api/
 | Ruta | Componente | Funcion |
 |---|---|---|
 | `/sieej/formularios` | `FormulariosListPage` | Lista + crear formulario + acciones (publicar/cerrar/eliminar). Cada card incluye accesos directos a Editar, Envíos y Asignaciones. |
-| `/sieej/formularios/:id` | `FormularioEditorPage` | Tabs: Definicion, Configuracion, Asignaciones, Envios. |
+| `/sieej/formularios/:slug` | `FormularioEditorPage` | Tabs: Definicion, Configuracion, Periodos (solo si es periodico), Asignaciones, Envios. Bookmarkables con `?tab=`. |
 | `/sieej/grupos` | `GruposPage` | CRUD de grupos + drawer "Miembros". |
+| `/sieej/catalogos` | `CatalogosPage` | CRUD de catalogos y opciones, con reordenamiento por arrastre y tag "Sistema". |
+
+**Crear un formulario** manda solo `slug`, `nombre`, `descripcion` y una definicion semilla de un paso (`DEFAULT_DEFINICION` en `FormulariosListPage`); el backend normaliza, valida, rechaza slugs reservados (400) y colisiones (409), y lo guarda en `borrador` con `version: 1`. El editor se abre enseguida. **Publicar es un paso aparte y explicito**: hasta entonces ningun respondent lo ve, aunque tenga asignaciones.
 
 Los items aparecen en el sider bajo el grupo "SIEEJ" del `PROJECT_REGISTRY` (`admin/src/app/sider-config.jsx`). La gestion de **dependencias** (crear usuarios `role='externo'` con asignacion a `sieej:editor`) vive en `/users` — no es parte del project registry de SIEEJ porque `usuarios` es una entidad global del CMS.
 
@@ -531,28 +544,24 @@ La seleccion de miembros en `GruposPage` y `AsignacionesEditor` usa `MemberPicke
 
 ## Frontend respondent (`iieg-oficial/sieej`)
 
-El frontend SIEEJ vive en `github.com/iieg-oficial/sieej` (privado, branch default `develop`). Se construye con `make build` (Vite) y produce un `dist/` con `VITE_BASE_PATH=/sieej/`. Ese `dist/` se monta read-only en `mariachi-nginx`:
+El frontend SIEEJ vive en `github.com/iieg-oficial/sieej` (privado, branch default `develop`). Se construye con `make build` (Vite) y produce un `dist/` con `VITE_BASE_PATH=/sieej/`. Ese `dist/` lo sirve **el gateway-hub directamente**, montado read-only:
 
 ```yaml
-# mariachi/docker-compose.yml
-nginx:
+# gateway-hub/docker-compose.yml
+gateway:
   volumes:
-    - ${SIEEJ_DIST_PATH:-../SIEEJ/frontend/dist}:/usr/share/nginx/html/sieej:ro
+    - ${SIEEJ_DIST_PATH}:/usr/share/nginx/html/sieej:ro
 ```
-
-Y se sirve con:
 
 ```nginx
-# mariachi/nginx/conf.d/mariachi.conf
-location /sieej {
-    alias /usr/share/nginx/html/sieej;
-    try_files $uri $uri/ /sieej/index.html;
-}
+# gateway-hub/nginx/templates/gateway.conf.template
+location ^~ /sieej/assets/ { alias /usr/share/nginx/html/sieej/assets/; ... }
+location ^~ /sieej/        { alias /usr/share/nginx/html/sieej/; try_files $uri $uri/ /sieej/index.html; }
 ```
 
-El gateway-hub enruta `/sieej/` al upstream `portal` (= `mariachi-nginx:80`). No requiere upstream propio.
+No hay upstream `sieej` ni proxy de por medio: el gateway sirve los archivos. Las llamadas al API siguen yendo al upstream `portal` (= mariachi-api). Antes el `dist/` se montaba en `mariachi-nginx`; ya no.
 
-El frontend consume `/api/administrador/formularios/*` con `withCredentials: true`. Guarda el `csrf_token` (devuelto por `/autenticacion/iniciar-sesion`) en `sessionStorage` y lo inyecta en las cabeceras de las mutaciones. Los identificadores se normalizan a lowercase en el login (ver `0.40.7`).
+El frontend consume `/api/mariachi/formularios/*` (`VITE_BACKEND_API_HOST`; el prefijo viejo `/api/administrador` sigue aceptado) con `withCredentials: true`. Guarda el `csrf_token` (devuelto por `/autenticacion/iniciar-sesion`) en `sessionStorage` y lo inyecta en las cabeceras de las mutaciones. Los identificadores se normalizan a lowercase en el login (ver `0.40.7`). Renovar la sesión es responsabilidad del cliente: ante un 401 llama `POST /autenticacion/refrescar` una vez y reintenta, serializando la renovación entre pestañas (SIEEJ y Mariachi comparten origen y cookie; si ambas rotan el mismo token a la vez, la detección de reúso revoca la familia).
 
 ## Acervo
 

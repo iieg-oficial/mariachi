@@ -9,6 +9,20 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.94.2] - 2026-07-28
+
+### Documentación: el contexto de SIEEJ vuelve a describir lo que hace el código
+
+`docs/context.md` seguía anunciando 1.85.0 y `docs/sieej.md` describía una estructura de módulo anterior a la capa de compatibilidad. Lo corregido:
+
+- **Prefijo del API.** `admin_prefix` es `/api/mariachi` desde 1.65.0 y `/api/administrador` solo sobrevive por el doble montaje, pero el contexto lo presentaba al revés. Se corrigen la tabla de variables, las rutas del backend y la sección del CMS, con una nota de lectura para las tablas que aún citan el prefijo viejo: son el mismo router.
+- **Quién sirve el `dist/` de SIEEJ.** Ambos documentos decían que se monta en `mariachi-nginx` con un `location` de `mariachi.conf`. Lo sirve el **gateway-hub** directamente (`SIEEJ_DIST_PATH` + `location ^~ /sieej/`), sin upstream ni proxy de por medio; el snippet se reemplaza por el real.
+- **Estructura del módulo.** Faltaban `compat.py`, `acervo_keys.py`, `cambio_classifier.py`, `periodos_service.py`, `catalogos_sistema.py`, los modelos `FormularioVersion`/`FormularioPeriodo`/`Notificacion`/`EnvioValorHistorial` y el router de periodos.
+- **Endpoints y editor.** Se agregan `actualizar-archivo`, `pdf`, `reabrir`, presencia, catálogos y `expirar-envios-pendientes` a la tabla del contexto; la ruta `/sieej/catalogos` del CMS; y cómo se crea un formulario (semilla de un paso, `borrador`, publicar como acto aparte).
+- **Cambios recientes.** Tres entradas nuevas — 1.86.0–1.89.0 (compatibilidad de definiciones legadas y `editableAfterSubmit` que sí alcanza a los envíos), 1.91.1–1.93.0 (claves legibles en Acervo y buckets protegidos) y 1.94.0–1.94.1 (acomodo manual de campos) — y una marca de «superado» en la entrada de 1.78.0, que seguía diciendo que la actualización post-envío solo cubría pasos `form`.
+
+Sin cambios de código.
+
 ## [1.94.1] - 2026-07-27
 
 ### Corregido: la vista previa y el bloque de acomodo parpadeaban al mover un campo de línea
