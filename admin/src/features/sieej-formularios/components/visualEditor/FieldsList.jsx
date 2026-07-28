@@ -7,12 +7,12 @@ import TabsManager from './TabsManager';
 import AddFieldBar from './AddFieldBar';
 import {
     assignTab, dependentsOf, indicesOfTab, labelOfField as labelOf, needsTabNormalization,
-    normalizeTabs, otherFieldsFor, placeAfterTrigger, previousVisibleField, reorderWithinTab,
+    normalizeTabs, otherFieldsFor, placeAfterTrigger, previousVisibleField,
     rowSlotsResolver, tabOf,
 } from './fieldUtils';
 import {
     assignCol, assignColSpan, isAlone, layoutOf, layoutSlots, materializeLayout,
-    moveToSlot, placedColOf, reflowCol, startColOf, unitsOfField,
+    moveToSlot, placedColOf, startColOf, swapFields, unitsOfField,
 } from './fieldLayout';
 import {
     clearFieldClipboard, prepareFieldForPaste, readFieldClipboard, writeFieldClipboard,
@@ -100,10 +100,7 @@ export default function FieldsList({ step, formularioSlug, onChange, addTrigger 
 
     const acomodoFijo = () => materializeLayout(fields, visibleIdx);
 
-    const moverCampo = (from, to) => {
-        const reordenado = reorderWithinTab(acomodoFijo(), visibleIdx, from, to);
-        return reflowCol(reordenado, visibleIdx, visibleIdx[to]);
-    };
+    const moverCampo = (from, to) => swapFields(acomodoFijo(), visibleIdx, from, to);
 
     const handleDrop = (activeId, overId, gap) => {
         const from = visibleIdx.findIndex((i) => fieldKey(fields[i], i) === activeId);

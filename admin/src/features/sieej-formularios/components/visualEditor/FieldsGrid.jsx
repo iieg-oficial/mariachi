@@ -3,7 +3,7 @@ import {
     DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors,
 } from '@dnd-kit/core';
 import {
-    SortableContext, sortableKeyboardCoordinates, rectSortingStrategy,
+    SortableContext, sortableKeyboardCoordinates, rectSwappingStrategy,
 } from '@dnd-kit/sortable';
 import { Empty } from 'antd';
 import { ColumnGuides, RowDivider } from './LayoutControls';
@@ -49,7 +49,7 @@ export default function FieldsGrid({
             onDragCancel={() => setDragging(null)}
             onDragEnd={handleDragEnd}
         >
-            <SortableContext items={itemIds} strategy={rectSortingStrategy}>
+            <SortableContext items={itemIds} strategy={rectSwappingStrategy}>
                 <div style={{
                     position: 'relative',
                     display: 'grid',
