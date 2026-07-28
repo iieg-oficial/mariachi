@@ -50,6 +50,7 @@ describe('buildSiderItems', () => {
             '/sextante/capas',
             '/sextante/estilos',
             '/sextante/recursos',
+            '/sextante/tipografias',
             '/sextante/simbolos',
         ]);
         const byKey = Object.fromEntries(sextante.children.map((c) => [c.key, c]));

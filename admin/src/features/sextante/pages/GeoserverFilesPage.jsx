@@ -3,20 +3,15 @@ import {
     Alert,
     Breadcrumb,
     Button,
-    Empty,
-    Input,
+    Card,
     Layout,
-    Space,
-    Spin,
     Tabs,
     Typography,
 } from 'antd';
 import {
-    FolderAddOutlined,
+    FileTextOutlined,
     GlobalOutlined,
-    PlusOutlined,
     ReloadOutlined,
-    SearchOutlined,
 } from '@ant-design/icons';
 import {
     browseGeoserverFiles,
@@ -27,7 +22,8 @@ import {
 } from '@features/sextante/api/geoserverFilesService';
 import FileUploadModal from '@features/sextante/components/FileUploadModal';
 import SldSnippetModal from '@features/sextante/components/SldSnippetModal';
-import GeoserverFilesGrid from '@features/sextante/components/GeoserverFilesGrid';
+import GeoserverFilesContent from '@features/sextante/components/GeoserverFilesContent';
+import GeoserverFilesToolbar from '@features/sextante/components/GeoserverFilesToolbar';
 import { promptNewFolder } from '@features/sextante/components/newFolderPrompt';
 import {
     SEARCH_DEBOUNCE_MS,
@@ -35,11 +31,14 @@ import {
     basename,
     workspaceLabel,
 } from '@features/sextante/utils/geoserverFiles';
+import PageHeading from '@shared/components/PageHeading';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import { message } from '@shared/services/message';
 
 const { Content } = Layout;
-const { Title, Text, Paragraph } = Typography;
+const { Text } = Typography;
+
+const VIEW_STORAGE_KEY = 'mapalab.geoserverFiles.viewMode';
 
 
 export default function GeoserverFilesPage() {
@@ -59,6 +58,10 @@ export default function GeoserverFilesPage() {
     const [uploadOpen, setUploadOpen] = useState(false);
     const [snippetFile, setSnippetFile] = useState(null);
     const [deletingName, setDeletingName] = useState(null);
+    const [viewMode, setViewMode] = useState(() => {
+        try { return localStorage.getItem(VIEW_STORAGE_KEY) || 'grid'; }
+        catch { return 'grid'; }
+    });
     const { isMobile } = useIsMobile();
     const searchTimer = useRef(null);
 
@@ -133,6 +136,11 @@ export default function GeoserverFilesPage() {
         }
     };
 
+    const handleViewModeChange = (next) => {
+        setViewMode(next);
+        try { localStorage.setItem(VIEW_STORAGE_KEY, next); } catch { /* noop */ }
+    };
+
     const handleNewFolder = () => {
         promptNewFolder(currentPath, (fullPath) => {
             setPendingFolders((prev) => [...new Set([...prev, fullPath])]);
@@ -189,114 +197,77 @@ export default function GeoserverFilesPage() {
     const gridMinWidth = isMobile ? 140 : 180;
     const downloadZip = (path) => window.open(buildGeoserverFolderZipUrl(path, workspace), '_blank');
 
-    const renderBrowseGrid = () => {
-        const isEmpty = visibleFolders.length === 0 && data.files.length === 0;
-        if (loading) return <div style={{ textAlign: 'center', padding: 48 }}><Spin /></div>;
-        if (isEmpty) {
-            return (
-                <Empty
-                    description={
-                        currentPath
-                            ? `La carpeta "${currentPath}" está vacía. Sube un archivo o crea una subcarpeta.`
-                            : 'No hay archivos ni carpetas aquí. Empieza con "Subir archivo" o "Nueva carpeta".'
-                    }
-                />
-            );
-        }
-        return (
-            <GeoserverFilesGrid
-                folders={visibleFolders}
-                files={data.files}
-                minWidth={gridMinWidth}
-                deletingName={deletingName}
-                onOpenFolder={setCurrentPath}
-                onDownloadZip={downloadZip}
-                onSnippet={setSnippetFile}
-                onDelete={handleDelete}
-            />
-        );
-    };
-
-    const renderSearchResults = () => {
-        if (searching) return <div style={{ textAlign: 'center', padding: 48 }}><Spin /></div>;
-        if (!searchResults) return null;
-        if (searchResults.results.length === 0) {
-            return <Empty description={`Sin coincidencias para "${searchResults.query}"`} />;
-        }
-        return (
-            <>
-                <Text type="secondary" style={{ fontSize: 12 }}>
-                    {searchResults.results.length} resultado(s){searchResults.truncated && ' (mostrando primeros 500)'} para "{searchResults.query}"
-                </Text>
-                <GeoserverFilesGrid
-                    files={searchResults.results}
-                    minWidth={gridMinWidth}
-                    fromSearch
-                    deletingName={deletingName}
-                    onSnippet={setSnippetFile}
-                    onDelete={handleDelete}
-                />
-            </>
-        );
-    };
 
     return (
         <Content style={{ padding: isMobile ? 6 : 24 }}>
-            <Space direction="vertical" style={{ width: '100%' }} size="middle">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
-                    <div>
-                        <Title level={3} style={{ marginTop: 0, marginBottom: 4 }}>Recursos GeoServer</Title>
-                        <Paragraph type="secondary" style={{ marginBottom: 0, maxWidth: 720 }}>
-                            Archivos (SVG, PNG, JPG, WebP, GIF, TIFF) disponibles en <Text code>{destinationLabel}</Text>.
-                            Los analistas referencian estos archivos desde sus SLDs del mismo ámbito con{' '}
-                            <Text code>xlink:href="ruta/archivo.ext"</Text>.
-                        </Paragraph>
-                    </div>
-                    <Space wrap>
-                        <Button icon={<ReloadOutlined />} onClick={reload} disabled={loading || isSearchMode} />
-                        <Button icon={<FolderAddOutlined />} onClick={handleNewFolder} disabled={isSearchMode}>
-                            Nueva carpeta
-                        </Button>
-                        <Button
-                            type="primary"
-                            icon={<PlusOutlined />}
-                            onClick={() => setUploadOpen(true)}
-                            disabled={isSearchMode}
-                        >
-                            Subir archivos
-                        </Button>
-                    </Space>
+            <PageHeading
+                icon={<FileTextOutlined />}
+                title="Recursos GeoServer"
+                description={
+                    <>
+                        Archivos (SVG, PNG, JPG, WebP, GIF, TIFF, TTF, OTF) disponibles en <Text code>{destinationLabel}</Text>,
+                        sin límite de tamaño. Los analistas los referencian desde sus SLDs del mismo ámbito con{' '}
+                        <Text code>xlink:href="ruta/archivo.ext"</Text>.
+                    </>
+                }
+                extra={
+                    <Button icon={<ReloadOutlined />} onClick={reload} disabled={loading || isSearchMode} />
+                }
+            />
+
+            <Card>
+                <div style={{
+                    display: 'flex',
+                    flexDirection: isMobile ? 'column-reverse' : 'row',
+                    justifyContent: 'space-between',
+                    alignItems: isMobile ? 'stretch' : 'center',
+                    gap: 8,
+                    marginBottom: 12,
+                }}>
+                    {currentPath ? <Breadcrumb items={crumbs} /> : <span />}
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                        {visibleFolders.length} carpeta(s) · {data.files.length} archivo(s)
+                    </Text>
                 </div>
 
-                <Input
-                    allowClear
-                    prefix={<SearchOutlined />}
-                    placeholder="Buscar en todos los recursos GeoServer (global + workspaces)"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    size="large"
+                <Tabs
+                    activeKey={activeTab}
+                    onChange={handleWorkspaceChange}
+                    items={tabItems}
+                    size="small"
+                    tabBarStyle={{ marginBottom: 4 }}
                 />
 
-                {error && <Alert type="error" showIcon closable message={error} />}
+                <GeoserverFilesToolbar
+                    isMobile={isMobile}
+                    search={search}
+                    onSearchChange={setSearch}
+                    viewMode={viewMode}
+                    onViewModeChange={handleViewModeChange}
+                    disabled={isSearchMode}
+                    onNewFolder={handleNewFolder}
+                    onUpload={() => setUploadOpen(true)}
+                />
 
-                {isSearchMode ? (
-                    renderSearchResults()
-                ) : (
-                    <>
-                        <Tabs
-                            activeKey={activeTab}
-                            onChange={handleWorkspaceChange}
-                            items={tabItems}
-                            size="small"
-                            tabBarStyle={{ marginBottom: 0 }}
-                        />
+                {error && <Alert type="error" showIcon closable message={error} style={{ marginBottom: 12 }} />}
 
-                        {currentPath && <Breadcrumb items={crumbs} />}
-
-                        {renderBrowseGrid()}
-                    </>
-                )}
-            </Space>
+                <GeoserverFilesContent
+                    viewMode={viewMode}
+                    gridMinWidth={gridMinWidth}
+                    loading={loading}
+                    searchMode={isSearchMode}
+                    searching={searching}
+                    searchResults={searchResults}
+                    folders={visibleFolders}
+                    files={data.files}
+                    currentPath={currentPath}
+                    deletingName={deletingName}
+                    onOpenFolder={setCurrentPath}
+                    onDownloadZip={downloadZip}
+                    onSnippet={setSnippetFile}
+                    onDelete={handleDelete}
+                />
+            </Card>
 
             <FileUploadModal
                 open={uploadOpen}

@@ -54,6 +54,9 @@ class Settings(BaseSettings):
     geoserver_user: str | None = None
     geoserver_password: str | None = None
     geoserver_timeout: float = 10.0
+    geoserver_upload_staging_dir: str = "/var/tmp/geoserver-uploads"
+    geoserver_upload_max_bytes: int = 0
+    geoserver_installed_font_families: str = "Garet"
 
     mapalab_backend_url: str | None = None
     mapalab_internal_token: str | None = None

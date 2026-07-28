@@ -65,8 +65,9 @@ export const uploadGeoserverChunk = async (sessionId, partNumber, chunkBlob) => 
     return res.data;
 };
 
-export const completeChunkedGeoserverUpload = async (sessionId) => {
-    const res = await api.post(`${BASE}/chunked/${sessionId}/complete`, null, { timeout: 120000 });
+export const completeChunkedGeoserverUpload = async (sessionId, totalSize = 0) => {
+    const timeout = Math.min(3600000, Math.max(600000, Math.ceil(totalSize / (1024 * 1024)) * 1000));
+    const res = await api.post(`${BASE}/chunked/${sessionId}/complete`, null, { timeout });
     return res.data;
 };
 
@@ -102,7 +103,17 @@ export const uploadGeoserverFileSmart = async ({ file, name, workspace, onProgre
         }
         onProgress?.(Math.round(((i + 1) / totalChunks) * 100));
     }
-    return completeChunkedGeoserverUpload(sessionId);
+    return completeChunkedGeoserverUpload(sessionId, file.size);
+};
+
+export const listGeoserverFonts = async () => {
+    const res = await api.get('/geoserver/fonts');
+    return res.data;
+};
+
+export const reloadGeoserverFonts = async () => {
+    const res = await api.post('/geoserver/fonts/reload', null, { timeout: 180000 });
+    return res.data;
 };
 
 export const deleteGeoserverFile = async (name, workspace = '') => {

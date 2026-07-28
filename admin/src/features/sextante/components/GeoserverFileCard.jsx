@@ -1,5 +1,6 @@
 import { Button, Card, Popconfirm, Space, Tag, Tooltip, Typography } from 'antd';
 import { CodeOutlined, DeleteOutlined, FileImageOutlined } from '@ant-design/icons';
+import GeoserverThumb from '@features/sextante/components/GeoserverThumb';
 import { basename, extOf, isPreviewable, workspaceLabel } from '@features/sextante/utils/geoserverFiles';
 
 const { Text } = Typography;
@@ -32,11 +33,9 @@ export default function GeoserverFileCard({
                 }}
             >
                 {isPreviewable(file.name) ? (
-                    <img
+                    <GeoserverThumb
                         src={file.downloadUrl}
                         alt={basename(file.name)}
-                        loading="lazy"
-                        decoding="async"
                         style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
                     />
                 ) : (

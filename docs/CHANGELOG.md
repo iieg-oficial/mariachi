@@ -9,6 +9,75 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.97.2] - 2026-07-28
+
+### Los recursos de GeoServer dejan de servirse como inmutables
+
+El endpoint de descarga marcaba los archivos `public, max-age=86400, immutable`. Mientras el gateway forzaba `no-store` eso no se notaba, pero al quitarlo (1.97.1) el header empezó a aplicar de verdad — y `immutable` le dice al navegador que no revalide nunca.
+
+El problema es que estas URLs no llevan hash de contenido: son el nombre del archivo, y Recursos permite subir con el mismo nombre para reemplazarlo, que es justo lo que se hace al corregir un icono. Quien ya lo hubiera visto seguiría con el viejo hasta 24 h. Es distinto de los assets de Vite o de las miniaturas del Acervo, donde la URL cambia con el contenido y ahí `immutable` sí corresponde.
+
+Pasa a `private, max-age=60, must-revalidate`, apoyado en el ETag y el 304 que llegaron en 1.97.1: mientras se navega entre carpetas se sirve de caché, y pasado el minuto se revalida con una respuesta sin cuerpo. Un icono reemplazado se ve en un minuto en vez de en un día, y los bytes se siguen sin retransferir. `private` además evita que un proxy compartido guarde contenido que requiere sesión.
+
+## [1.97.1] - 2026-07-28
+
+### Corregido: navegar una carpeta de Recursos devolvía 429
+
+Una carpeta de simbología tiene cientos de SVGs y el grid pide una miniatura por archivo, así que abrirla disparaba una ráfaga de GETs que chocaba contra dos límites a la vez.
+
+- **Rate limit del API.** El scope `geoserver_download` estaba en 600 req/min por usuario (ventana deslizante): una sola carpeta grande lo consumía y la siguiente ya respondía 429. Sube a 3000/min, que sigue acotando el abuso real —bajarse el data dir entero— sin estorbar a un explorador de archivos.
+- **Caché anulada en el gateway.** Las rutas de `/geoserver/files` forzaban `Cache-Control: no-store`, que pisaba el `public, max-age=86400, immutable` que ya mandaba el API. El navegador no guardaba nada, así que *cada* regreso a la carpeta repetía la ráfaga completa. Se retira el `no-store` —el API decide, como en `/acervo/thumb`— y la petición de descarga responde **304** ante un `If-None-Match` que coincida, en vez de reenviar el archivo.
+- **Ráfaga acotada en origen.** `GeoserverThumb` pide turno a un semáforo de 6 miniaturas concurrentes (`thumbQueue`) antes de asignar el `src`, así que el número de peticiones simultáneas ya no depende de cuántos archivos tenga la carpeta. Mismo patrón que el semáforo de subidas del Acervo.
+
+Requiere gateway-hub >= 1.33.1 para la parte de caché y la zona de rate limit.
+
+## [1.97.0] - 2026-07-28
+
+### Recursos deja de estar anclado a `styles/` dentro de un workspace
+
+El geoanalista tenía que dejarlo todo en `workspaces/<ws>/styles/`. Ahora el ámbito de un workspace se navega desde su **raíz**, así que puede organizar los archivos donde le convenga —incluidas carpetas propias junto a `styles/` y las de los datastores—.
+
+El ámbito **Global se queda en `styles/`** a propósito: su raíz es el data dir completo, con `security/`, `logs/`, `global.xml` y la configuración de todos los workspaces.
+
+Lo que cambia con esto es el `xlink:href` del snippet SLD, porque GeoServer resuelve los href relativos desde donde vive el SLD: un archivo en `styles/iconos/x.svg` sigue siendo `iconos/x.svg`, pero uno fuera de `styles/` ahora sale como `../simbolos/x.svg`. Los `.xml` de configuración no se listan ni se pueden borrar: la lista blanca de extensiones ya los dejaba fuera.
+
+### Tipografías: las institucionales instaladas en el servidor cuentan como nuestras
+
+Las Garet se instalaron a mano en su momento: viven versionadas en el repo `geoserver` (`fonts/`) y se montan read-only en `/usr/share/fonts/custom`, fuera del data dir. El REST de GeoServer las reporta como familias cargadas pero no tiene forma de decir de dónde salieron, así que la página las daba por ajenas.
+
+`GEOSERVER_INSTALLED_FONT_FAMILIES` (default `Garet`) declara esas familias. Ahora hay tres orígenes: `propia` (archivo subido desde el CMS), `instalada` (institucional puesta en el servidor) y `sistema`. Las dos primeras se agrupan bajo «Nuestras tipografías», distinguidas por color y tooltip.
+
+## [1.96.0] - 2026-07-28
+
+### Recursos de Sextante: se va el tope de 200 MB
+
+Los rasters que se quieren publicar pesan varios GB y no entraban. El tope existía por dónde se acumulaban las partes: el upload por chunks es una secuencia de requests independientes que pueden caer en workers distintos de Gunicorn, así que las partes se guardaban en **Redis**, que es memoria — con 7 GB tumbaba a `mariachi-redis`.
+
+Ahora las partes se escriben a disco (`GEOSERVER_UPLOAD_STAGING_DIR`, un volumen propio del contenedor) y solo la metadata de la sesión sigue en Redis, que es lo que da el TTL y lo que comparten los workers. El ensamblado hacia GeoServer se lee por bloques de 8 MB, así que el pico de memoria ya no depende del tamaño del archivo.
+
+- **Sin tope por defecto.** `GEOSERVER_UPLOAD_MAX_BYTES=0` = sin límite; el techo real pasa a ser el disco de la VM. Se puede fijar un tope por entorno sin tocar código.
+- **El PUT a GeoServer sale del event loop** (`run_in_threadpool`). Antes bloqueaba al worker, y con archivos grandes gunicorn lo habría matado por su `--timeout 300`.
+- **Limpieza de temporales.** Un upload interrumpido dejaba sus partes en disco para siempre: el TTL de Redis borraba la metadata pero no los bytes. `cleanup_stale_dirs()` corre al iniciar cada sesión nueva y borra los directorios sin metadata viva.
+- **Content-Length real.** El PUT usa los bytes efectivamente acumulados, no el tamaño declarado por el cliente: si un chunk se reintentaba con otro tamaño, GeoServer recibía el archivo cortado.
+- **Sesiones que se renuevan.** Cada parte recibida refresca el TTL; una subida de varios GB podía pasar de las 2 h originales y expirar a medio camino.
+- **nginx.** `gateway-hub` y `mariachi-nginx` estrenan `location` propio para `/api/*/geoserver/files` con `client_max_body_size 0`, sin request buffering y timeouts de 30 min.
+
+### Recursos de Sextante: quién subió y borró qué
+
+La sección no dejaba rastro. Ahora las subidas (directa y por partes) y los borrados escriben en `actividad` con actor, IP, nombre, workspace, destino, tamaño y modo de subida: `geoserver.file.upload`, `geoserver.file.delete` y `geoserver.fonts.reload`.
+
+### Nueva subpágina: Tipografías (`/sextante/tipografias`)
+
+Las fuentes de las etiquetas de un SLD se subían como un recurso más y no había forma de ver cuáles había ni si GeoServer las reconocía.
+
+- `GET /geoserver/fonts` cruza las familias que la JVM tiene cargadas (`/rest/fonts`) con los archivos `.ttf`/`.otf` subidos a `styles/`, y **distingue las nuestras de las que ya trae GeoServer**: una familia es «propia» si algún archivo subido la respalda.
+- Cada archivo indica si ya está cargado; si alguno no lo está, la página avisa y ofrece `POST /geoserver/fonts/reload`, porque GeoServer solo registra una fuente nueva tras recargar su catálogo.
+- Se aceptan `ttf` y `otf` — los únicos dos formatos que Java 2D lee. WOFF/WOFF2 se dejan fuera a propósito: subirlos daría la falsa impresión de que sirven.
+
+### Recursos de Sextante: la vista se alinea con la del Acervo
+
+Mismo orden y misma sintaxis que la vista del Acervo, que estaba más pulida: `PageHeading` compartido, tarjeta contenedora, breadcrumb con el conteo de carpetas y archivos, y barra única con buscador, alternador **Grid / Lista** (se recuerda en `localStorage`) y acciones. La vista de lista es nueva (`GeoserverFilesList`).
+
 ## [1.95.0] - 2026-07-28
 
 ### Corregido: la tarjeta del editor se dibuja en la columna que dice el modelo

@@ -10,6 +10,7 @@ import {
     DeploymentUnitOutlined,
     EnvironmentOutlined,
     FileTextOutlined,
+    FontSizeOutlined,
     FormOutlined,
     HomeOutlined,
     InboxOutlined,
@@ -40,6 +41,7 @@ export const PROJECT_REGISTRY = {
             { key: '/sextante/capas', path: '/sextante/capas', label: 'Explorador de capas', icon: <TableOutlined /> },
             { key: '/sextante/estilos', path: '/sextante/estilos', label: 'Estilos', icon: <BgColorsOutlined /> },
             { key: '/sextante/recursos', path: '/sextante/recursos', label: 'Recursos', icon: <FileTextOutlined /> },
+            { key: '/sextante/tipografias', path: '/sextante/tipografias', label: 'Tipografías', icon: <FontSizeOutlined /> },
             {
                 key: '/sextante/simbolos', path: '/sextante/simbolos', label: 'Símbolos',
                 icon: <AppstoreOutlined />, allowedGlobalRoles: ['tetlamamakani'],
