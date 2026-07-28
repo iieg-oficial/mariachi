@@ -113,6 +113,18 @@ export const PROJECT_REGISTRY = {
             },
         ],
     },
+    identidad: {
+        label: 'Identidad',
+        icon: <BgColorsOutlined />,
+        allowedGlobalRoles: ['tetlamamakani'],
+        showBetaBadge: true,
+        items: [
+            {
+                key: '/identidad', path: '/identidad', label: 'Marcas y tokens',
+                icon: <BgColorsOutlined />, allowedGlobalRoles: ['tetlamamakani'],
+            },
+        ],
+    },
 };
 
 export const FOOTER_RAIL_ITEMS = [

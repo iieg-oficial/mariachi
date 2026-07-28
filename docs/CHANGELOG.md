@@ -9,6 +9,77 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.103.1] - 2026-07-28
+
+### La validación de contraste no revisaba los colores de acento
+
+Los pares críticos cubrían texto, primario y estados, pero dejaban fuera `secondary` y `accent`, que son justo los que se usan en botones, enlaces y llamadas a la acción. Se agregaron esos dos y también `warning` e `info`, que faltaban.
+
+El efecto es inmediato en la marca `jalisco`: su naranja institucional `#FF8300` aparece ahora con **2.47:1 sobre blanco — no cumple AA**. Sirve como fondo o como acento gráfico, pero no como color de texto ni de enlace. Antes esta combinación no se evaluaba y el problema pasaba inadvertido.
+
+## [1.103.0] - 2026-07-28
+
+### La identidad visual ya se administra desde el panel
+
+Nueva sección **Identidad** en el sider (solo `tetlamamakani`), con una pestaña por marca. Cierra el ciclo que empezó en 1.101.0: el modelo, los generadores y ahora la pantalla desde donde se configura.
+
+Qué se puede hacer:
+
+- **Editar tokens** por grupo, con selector de color para los que son color y edición directa para el resto. Las familias tipográficas se escriben separadas por coma y se guardan como lista.
+- **Llenar la guía de marca** en sus siete secciones —principios, logotipo, tipografía, rejilla, componentes, iconografía y redacción—. Lo que se deje vacío simplemente no aparece en el `design.md` generado.
+- **Ver los artefactos** antes de bajarlos y **descargar el ZIP** con los cinco archivos.
+
+### El contraste se valida al vuelo
+
+La pantalla evalúa seis combinaciones críticas de color —texto sobre fondo, texto sobre tarjeta, primario sobre fondo y los semánticos— y reporta el ratio con su veredicto WCAG: cumple, solo apto para texto grande, o no cumple.
+
+Esto ya sirvió para detectar algo real en la marca `jalisco`: el naranja institucional `#FF8300` **no alcanza AA como color de texto sobre blanco**. Funciona como acento y como fondo, pero un texto naranja sobre blanco no es legible para todos. El gris `#465055`, en cambio, cumple de sobra.
+
+El cálculo de luminancia y ratio sigue la fórmula de WCAG 2.1 y está cubierto por 10 casos, incluidos los extremos (blanco contra negro da 21:1) y las entradas que no son color.
+
+### Endpoints nuevos
+
+```
+GET /api/mariachi/identidad/{marca}                    detalle con tokens, campos y contraste
+PUT /api/mariachi/identidad/{marca}/tokens/{id}        actualiza un token
+PUT /api/mariachi/identidad/{marca}/campos             actualiza campos en lote
+```
+
+La ruta de artefactos sueltos pasa de `/{marca}/{artefacto}` a `/{marca}/artefactos/{artefacto}`, para que no compita con `/{marca}` ni con `/{marca}/export`.
+
+## [1.102.0] - 2026-07-28
+
+### El módulo Identidad ya genera y entrega los artefactos de marca
+
+Sobre el modelo de 1.101.0, ahora mariachi construye los cinco archivos que antes salían del `npm run build` de `guidelines-iieg`, y los entrega por HTTP:
+
+```
+GET /api/mariachi/identidad/marcas              marcas disponibles
+GET /api/mariachi/identidad/{marca}/export      ZIP con todo
+GET /api/mariachi/identidad/{marca}/theme.css   artefacto suelto
+```
+
+Los artefactos son `design.md`, `theme.css` (bloque `@theme` de Tailwind v4), `tokens.css` (las mismas variables en `:root`), `fonts.css` (`@font-face` desde el Acervo) y los `tokens/*.tokens.json` en formato DTCG. El mapeo de nombres respeta los namespaces de Tailwind v4: `color.*` sale como `--color-*`, `font.size.*` como `--text-*`, `space.*` como `--spacing-*`.
+
+El `design.md` generado **solo documenta lo que está definido**. Antes la guía se llenaba de `TODO` porque el archivo listaba todos los campos posibles; ahora una sección sin datos simplemente no aparece, y el documento dice de entrada que lo que falta hay que preguntarlo en vez de inventarlo. Las reglas que no dependen de configuración —accesibilidad AA, prohibiciones del logotipo, no transmitir información solo con color— se incluyen siempre.
+
+Los generadores son funciones puras, así que se prueban sin base de datos: 14 casos cubren el mapeo de variables, el árbol DTCG, los `@font-face` por peso y el armado del markdown.
+
+## [1.101.0] - 2026-07-28
+
+### Base del módulo Identidad: las marcas del IIEG se administran desde mariachi
+
+Primer paso para que la identidad visual se configure aquí en lugar de editando markdown y JSON a mano en el repo `guidelines-iieg`, que queda en vías de retiro. Esta versión trae solo el modelo de datos y la semilla; la página del admin y la descarga de artefactos vienen después.
+
+Se agrega el schema `identidad` con cuatro tablas: `marcas`, `tokens` (valor en `JSONB`, para que un token acepte texto, número o lista como la familia tipográfica), `campos` (los textos de la guía de marca: personalidad, reglas de logotipo, microcopy) y `fuentes` (familias con sus archivos y pesos).
+
+La semilla trae **únicamente lo que ya estaba configurado** en `guidelines-iieg`; los valores que seguían en `TODO` o marcados como `PLACEHOLDER` no se importaron, para no arrastrar relleno. Quedan cargadas dos marcas:
+
+- **`iieg`** — 30 tokens (espaciado, radios y tipografía), 8 campos y la familia Garet con sus 7 pesos servidos desde el Acervo.
+- **`jalisco`** — 35 tokens, incluidos sus 5 colores institucionales reales (`#465055` Pantone 431 C y `#FF8300` Pantone 151 C), 12 campos y la familia Nexa.
+
+Borrar una marca arrastra en cascada sus tokens, campos y fuentes. Migración `1dent1dad0001`.
+
 ## [1.100.0] - 2026-07-28
 
 ### Agregado: captura masiva de metadatos en una tabla, con historial de quién cambió qué
