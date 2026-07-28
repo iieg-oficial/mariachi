@@ -17,6 +17,7 @@ import ChangePassword from '@features/auth/pages/ChangePasswordPage';
 import { buildMapalabApiKeysRoutes } from '@features/mapalab-api-keys/routes';
 import { buildColibriRoutes } from '@features/colibri/routes';
 import { buildHuachicolRoutes } from '@features/telemetria/routes';
+import { buildIdentidadRoutes } from '@features/identidad/routes';
 import { buildSextanteRoutes } from '@features/sextante/routes';
 
 const Users = lazy(() => import('@features/users'));
@@ -200,6 +201,7 @@ const router = createBrowserRouter([
                         )
                     },
                     ...buildSextanteRoutes(withSuspense),
+                    ...buildIdentidadRoutes(withSuspense),
                     ...buildHuachicolRoutes(withSuspense),
                     ...buildMapalabApiKeysRoutes(withSuspense),
                     {

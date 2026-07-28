@@ -236,6 +236,54 @@ def cargar_marca(db: Session, codigo: str) -> Marca | None:
     return db.query(Marca).filter(Marca.codigo == codigo).first()
 
 
+def tokens_de(db: Session, marca: Marca) -> list[MarcaToken]:
+    return (
+        db.query(MarcaToken)
+        .filter(MarcaToken.marca_id == marca.id)
+        .order_by(MarcaToken.orden, MarcaToken.clave)
+        .all()
+    )
+
+
+def colores_de(tokens: list[MarcaToken]) -> dict[str, str]:
+    return {
+        t.clave: t.valor
+        for t in tokens
+        if t.grupo == "color" and isinstance(t.valor, str)
+    }
+
+
+def actualizar_token(db: Session, marca: Marca, token_id: int, datos: dict) -> MarcaToken:
+    token = (
+        db.query(MarcaToken)
+        .filter(MarcaToken.id == token_id, MarcaToken.marca_id == marca.id)
+        .first()
+    )
+    if token is None:
+        raise LookupError(f"Token {token_id} no encontrado en la marca '{marca.codigo}'")
+    if "valor" in datos:
+        token.valor = datos["valor"]
+    if "descripcion" in datos:
+        token.descripcion = datos["descripcion"]
+    db.commit()
+    db.refresh(token)
+    return token
+
+
+def actualizar_campos(db: Session, marca: Marca, valores: dict[str, str]) -> int:
+    existentes = {
+        campo.clave: campo
+        for campo in db.query(MarcaCampo).filter(MarcaCampo.marca_id == marca.id).all()
+    }
+    for clave, valor in valores.items():
+        if clave in existentes:
+            existentes[clave].valor = valor
+        else:
+            db.add(MarcaCampo(marca_id=marca.id, clave=clave, valor=valor))
+    db.commit()
+    return len(valores)
+
+
 def artefactos(db: Session, marca: Marca) -> dict[str, str]:
     tokens = (
         db.query(MarcaToken)

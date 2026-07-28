@@ -9,6 +9,36 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.103.0] - 2026-07-28
+
+### La identidad visual ya se administra desde el panel
+
+Nueva sección **Identidad** en el sider (solo `tetlamamakani`), con una pestaña por marca. Cierra el ciclo que empezó en 1.101.0: el modelo, los generadores y ahora la pantalla desde donde se configura.
+
+Qué se puede hacer:
+
+- **Editar tokens** por grupo, con selector de color para los que son color y edición directa para el resto. Las familias tipográficas se escriben separadas por coma y se guardan como lista.
+- **Llenar la guía de marca** en sus siete secciones —principios, logotipo, tipografía, rejilla, componentes, iconografía y redacción—. Lo que se deje vacío simplemente no aparece en el `design.md` generado.
+- **Ver los artefactos** antes de bajarlos y **descargar el ZIP** con los cinco archivos.
+
+### El contraste se valida al vuelo
+
+La pantalla evalúa seis combinaciones críticas de color —texto sobre fondo, texto sobre tarjeta, primario sobre fondo y los semánticos— y reporta el ratio con su veredicto WCAG: cumple, solo apto para texto grande, o no cumple.
+
+Esto ya sirvió para detectar algo real en la marca `jalisco`: el naranja institucional `#FF8300` **no alcanza AA como color de texto sobre blanco**. Funciona como acento y como fondo, pero un texto naranja sobre blanco no es legible para todos. El gris `#465055`, en cambio, cumple de sobra.
+
+El cálculo de luminancia y ratio sigue la fórmula de WCAG 2.1 y está cubierto por 10 casos, incluidos los extremos (blanco contra negro da 21:1) y las entradas que no son color.
+
+### Endpoints nuevos
+
+```
+GET /api/mariachi/identidad/{marca}                    detalle con tokens, campos y contraste
+PUT /api/mariachi/identidad/{marca}/tokens/{id}        actualiza un token
+PUT /api/mariachi/identidad/{marca}/campos             actualiza campos en lote
+```
+
+La ruta de artefactos sueltos pasa de `/{marca}/{artefacto}` a `/{marca}/artefactos/{artefacto}`, para que no compita con `/{marca}` ni con `/{marca}/export`.
+
 ## [1.102.0] - 2026-07-28
 
 ### El módulo Identidad ya genera y entrega los artefactos de marca
