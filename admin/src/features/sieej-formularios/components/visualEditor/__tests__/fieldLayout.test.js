@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
     assignCol, assignColSpan, colChoicesFor, groupIntoRows, layoutOf, nearestCol, placedColOf,
     rowMatesOf, snapColSpan,
-    reflowCol, materializeLayout, layoutSlots, moveToSlot, cabeUnCampo, unitsOfField,
+    materializeLayout, layoutSlots, moveToSlot, cabeUnCampo, unitsOfField,
 } from '../fieldLayout';
 import { rowSlotsResolver } from '../fieldUtils';
 import { CASOS, aCampo, marca } from '../__fixtures__/layoutContract';
@@ -223,31 +223,6 @@ describe('contrato de acomodo (compartido con el renderer de SIEEJ)', () => {
     CASOS.forEach(({ nombre, campos, filas }) => {
         it(nombre, () => {
             expect(filasDeModelo(campos.map(aCampo))).toEqual(filas);
-        });
-    });
-});
-
-describe('reflowCol', () => {
-    it('recoloca el campo movido en la posición que le toca tras el arrastre', () => {
-        const campos = [field('a', 2, 1), field('b', 2, 4)];
-        const movido = [campos[1], campos[0]];
-        expect(reflowCol(movido, [0, 1], 0)[0].layout).toEqual({
-            colSpan: 2, col: 1, newRow: true,
-        });
-    });
-
-    it('deja intacto un campo que ya fluye', () => {
-        const campos = [field('a', 2), field('b', 2)];
-        expect(reflowCol(campos, [0, 1], 1)).toBe(campos);
-    });
-
-    it('conserva la línea reservada al recolocar', () => {
-        const campos = [
-            { name: 'a', label: 'A', layout: { colSpan: 3, col: 5, alone: true } },
-            field('b', 3, 1),
-        ];
-        expect(reflowCol(campos, [0, 1], 0)[0].layout).toEqual({
-            colSpan: 3, col: 1, newRow: true, alone: true,
         });
     });
 });

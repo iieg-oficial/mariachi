@@ -95,15 +95,41 @@ export const CASOS = [
         ],
         filas: [['a@1w2', 'b@3w2', 'c@5w2'], ['d@1w2', 'e@3w2']],
     },
+    {
+        nombre: 'la marca de linea abre una linea aunque la columna quepa a la derecha',
+        campos: [
+            { name: 'a', colSpan: 3, col: 1 },
+            { name: 'b', colSpan: 3, col: 3, newRow: true },
+        ],
+        filas: [['a@1w2'], ['b@3w2']],
+    },
+    {
+        nombre: 'sin marca de linea, una columna a la derecha se queda en la misma linea',
+        campos: [
+            { name: 'a', colSpan: 3, col: 1 },
+            { name: 'b', colSpan: 3, col: 3 },
+        ],
+        filas: [['a@1w2', 'b@3w2']],
+    },
+    {
+        nombre: 'una columna donde el campo ya no cabe abre linea en vez de encimarse',
+        campos: [
+            { name: 'a', colSpan: 3, col: 1 },
+            { name: 'b', colSpan: 2, col: 3 },
+            { name: 'c', colSpan: 3, col: 5 },
+        ],
+        filas: [['a@1w2', 'b@3w3'], ['c@5w2']],
+    },
 ];
 
-export const aCampo = ({ name, colSpan = 1, col, alone }) => ({
+export const aCampo = ({ name, colSpan = 1, col, alone, newRow }) => ({
     name,
     label: name.toUpperCase(),
     type: 'text',
     layout: {
         colSpan,
-        ...(col != null ? { col, ...(col === 1 ? { newRow: true } : {}) } : {}),
+        ...(col != null ? { col } : {}),
+        ...(newRow || col === 1 ? { newRow: true } : {}),
         ...(alone ? { alone: true } : {}),
     },
 });
