@@ -9,6 +9,14 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.103.1] - 2026-07-28
+
+### La validación de contraste no revisaba los colores de acento
+
+Los pares críticos cubrían texto, primario y estados, pero dejaban fuera `secondary` y `accent`, que son justo los que se usan en botones, enlaces y llamadas a la acción. Se agregaron esos dos y también `warning` e `info`, que faltaban.
+
+El efecto es inmediato en la marca `jalisco`: su naranja institucional `#FF8300` aparece ahora con **2.47:1 sobre blanco — no cumple AA**. Sirve como fondo o como acento gráfico, pero no como color de texto ni de enlace. Antes esta combinación no se evaluaba y el problema pasaba inadvertido.
+
 ## [1.103.0] - 2026-07-28
 
 ### La identidad visual ya se administra desde el panel

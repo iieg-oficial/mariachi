@@ -60,6 +60,15 @@ def test_el_naranja_institucional_no_cumple_aa_como_texto_sobre_blanco():
     assert fallos[0]["cumple_aa_texto_grande"] is False
 
 
+def test_el_acento_se_evalua_aunque_no_sea_el_color_de_texto():
+    hallazgos = evaluar(
+        {"color.accent": "#FF8300", "color.secondary": "#FF8300", "color.bg": "#FFFFFF"}
+    )
+    claves = {h["frente"] for h in hallazgos}
+    assert claves == {"color.accent", "color.secondary"}
+    assert all(h["cumple_aa"] is False for h in hallazgos)
+
+
 def test_solo_evalua_los_pares_que_estan_definidos():
     assert evaluar({"color.text": "#000000"}) == []
     assert evaluar({}) == []

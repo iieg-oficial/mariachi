@@ -5,8 +5,12 @@ PARES_CRITICOS: tuple[tuple[str, str, str], ...] = (
     ("color.text", "color.surface", "Texto sobre tarjetas"),
     ("color.muted", "color.bg", "Texto secundario sobre el fondo"),
     ("color.primary", "color.bg", "Color principal sobre el fondo"),
+    ("color.secondary", "color.bg", "Color secundario sobre el fondo"),
+    ("color.accent", "color.bg", "Color de acento sobre el fondo"),
     ("color.danger", "color.bg", "Estado de error sobre el fondo"),
     ("color.success", "color.bg", "Estado positivo sobre el fondo"),
+    ("color.warning", "color.bg", "Advertencia sobre el fondo"),
+    ("color.info", "color.bg", "Informativo sobre el fondo"),
 )
 
 MINIMO_AA = 4.5
