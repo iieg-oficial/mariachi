@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
     assignCol, assignColSpan, colChoicesFor, groupIntoRows, layoutOf, nearestCol, placedColOf,
     rowMatesOf, snapColSpan,
-    reflowCol,
+    reflowCol, materializeLayout, layoutSlots, moveToSlot,
 } from '../fieldLayout';
 import { rowSlotsResolver } from '../fieldUtils';
 import { CASOS, aCampo, marca } from '../__fixtures__/layoutContract';
@@ -249,5 +249,71 @@ describe('reflowCol', () => {
         expect(reflowCol(campos, [0, 1], 0)[0].layout).toEqual({
             colSpan: 3, col: 1, newRow: true, alone: true,
         });
+    });
+});
+
+describe('el acomodo no se reorganiza solo', () => {
+    const lineas = (fields) => groupIntoRows(fields, allIdx(fields))
+        .map((r) => r.items.map((it) => `${fields[it.idx].name}@${it.col}`));
+
+    it('cambiar un campo de línea completa a un tercio no mueve a los demás', () => {
+        const fields = [field('titulo'), field('a'), field('b', 2), field('c', 2)];
+        expect(lineas(fields)).toEqual([['titulo@1'], ['a@1'], ['b@1', 'c@4']]);
+
+        const fijo = materializeLayout(fields, allIdx(fields));
+        expect(lineas(assignColSpan(fijo, 1, 3)))
+            .toEqual([['titulo@1'], ['a@1'], ['b@1', 'c@4']]);
+    });
+
+    it('cambiar la posición de un campo no recorre a sus vecinos', () => {
+        const fields = [field('a', 3), field('b', 3), field('c', 3)];
+        expect(lineas(fields)).toEqual([['a@1', 'b@3', 'c@5']]);
+
+        const fijo = materializeLayout(fields, allIdx(fields));
+        expect(lineas(assignCol(fijo, 0, 5)))
+            .toEqual([['a@5'], ['b@3', 'c@5']]);
+    });
+
+    it('materializeLayout deja la posición de cada campo tal como se veía', () => {
+        const fields = [field('a', 2), field('b', 3), field('c', 3)];
+        expect(materializeLayout(fields, allIdx(fields)).map((f) => f.layout)).toEqual([
+            { colSpan: 2, col: 1, newRow: true },
+            { colSpan: 3, col: 4 },
+            { colSpan: 3, col: 1, newRow: true },
+        ]);
+    });
+});
+
+describe('soltar un campo en un espacio libre', () => {
+    const campos = () => [
+        field('titulo'),
+        field('chico', 3, 1), field('otro', 3, 3),
+        field('x', 3, 1), field('y', 3, 3),
+    ];
+
+    it('ofrece un hueco por cada espacio libre de cada línea', () => {
+        const fields = campos();
+        expect(layoutSlots(fields, allIdx(fields))
+            .filter((s) => s.kind === 'gap')
+            .map((s) => [s.row, s.col, s.units]))
+            .toEqual([[1, 5, 2], [2, 5, 2]]);
+    });
+
+    it('el campo aterriza en la columna del hueco y al final de esa línea', () => {
+        const fields = campos();
+        const hueco = layoutSlots(fields, allIdx(fields))
+            .find((s) => s.kind === 'gap' && s.row === 2);
+        const movido = moveToSlot(fields, allIdx(fields), 1, hueco);
+
+        expect(groupIntoRows(movido, allIdx(movido))
+            .map((r) => r.items.map((it) => `${movido[it.idx].name}@${it.col}`)))
+            .toEqual([['titulo@1'], ['otro@3'], ['x@1', 'y@3', 'chico@5']]);
+    });
+
+    it('recorta la columna si el campo no cabe en el hueco', () => {
+        const fields = [field('a', 3, 1), field('grande', 2)];
+        const hueco = { row: 0, col: 5, units: 2, after: 0 };
+        expect(moveToSlot(fields, allIdx(fields), 1, hueco)[1].layout)
+            .toEqual({ colSpan: 2, col: 4 });
     });
 });
