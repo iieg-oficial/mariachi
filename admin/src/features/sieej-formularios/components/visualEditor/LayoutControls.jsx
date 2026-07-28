@@ -1,5 +1,7 @@
 import { Button, Form, Segmented, Select, Switch, Tooltip } from 'antd';
-import { VerticalAlignTopOutlined } from '@ant-design/icons';
+import {
+    ArrowDownOutlined, ArrowUpOutlined, VerticalAlignTopOutlined,
+} from '@ant-design/icons';
 import { GRID_COLUMNS, colChoicesFor, unitsOfColSpan } from './fieldLayout';
 import { COLSPAN_CHOICES, colSpanHint, positionLabels } from './layoutOptions';
 
@@ -196,27 +198,40 @@ export function ResizeHandle({ handleRef, active, onPointerDown }) {
     );
 }
 
-export function RowDivider({ index, free, showFree = true, onUnir }) {
+export function RowDivider({
+    index, free, showFree = true, onUnir, onSubir, onBajar,
+}) {
+    const accion = (title, icon, onClick, label) => onClick && (
+        <Tooltip title={title}>
+            <Button
+                type="text"
+                size="small"
+                icon={icon}
+                onClick={onClick}
+                aria-label={label}
+                style={{ color: '#999' }}
+            />
+        </Tooltip>
+    );
+
     return (
         <div style={{
             gridColumn: '1 / -1',
             display: 'flex',
             alignItems: 'center',
-            gap: 8,
+            gap: 4,
             padding: '10px 4px 2px',
         }}>
-            <span style={{ fontSize: 12, color: '#999', whiteSpace: 'nowrap' }}>Línea {index + 1}</span>
-            {onUnir && (
-                <Tooltip title="Subir esta línea a la anterior. Los campos que no quepan se quedan aquí.">
-                    <Button
-                        type="text"
-                        size="small"
-                        icon={<VerticalAlignTopOutlined />}
-                        onClick={onUnir}
-                        aria-label={`Unir la línea ${index + 1} con la anterior`}
-                        style={{ color: '#999' }}
-                    />
-                </Tooltip>
+            <span style={{ fontSize: 12, color: '#999', whiteSpace: 'nowrap', marginInlineEnd: 4 }}>
+                Línea {index + 1}
+            </span>
+            {accion('Subir esta línea completa', <ArrowUpOutlined />, onSubir, `Subir la línea ${index + 1}`)}
+            {accion('Bajar esta línea completa', <ArrowDownOutlined />, onBajar, `Bajar la línea ${index + 1}`)}
+            {accion(
+                'Unir con la línea de arriba. Los campos que no quepan se quedan en su propia línea.',
+                <VerticalAlignTopOutlined />,
+                onUnir,
+                `Unir la línea ${index + 1} con la anterior`,
             )}
             <div style={{ flex: 1, borderTop: '1px dashed #e5e5e5' }} />
             {free > 0 && showFree && (

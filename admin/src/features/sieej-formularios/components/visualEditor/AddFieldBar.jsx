@@ -1,5 +1,7 @@
 import { Button, Popconfirm, Space, Tooltip } from 'antd';
-import { PlusOutlined, SnippetsOutlined } from '@ant-design/icons';
+import {
+    CloseOutlined, EnterOutlined, PlusOutlined, SnippetsOutlined,
+} from '@ant-design/icons';
 import { fieldTypeLabel } from '../../constants/definitionTypes';
 
 const pasteDescription = (field, clipboard, hasTabs, activeTabTitle) => {
@@ -14,7 +16,7 @@ const pasteDescription = (field, clipboard, hasTabs, activeTabTitle) => {
 
 export default function AddFieldBar({
     hasTabs, activeTabTitle, isMobile, clipboard, clipboardField,
-    onAdd, onPaste, onClearClipboard,
+    onAdd, onAddEnLinea, onPaste, onClearClipboard,
 }) {
     const clipboardLabel = clipboardField?.label || clipboardField?.name;
     return (
@@ -22,22 +24,35 @@ export default function AddFieldBar({
             <Button type="dashed" icon={<PlusOutlined />} style={{ flex: 1 }} onClick={onAdd}>
                 {hasTabs ? `Agregar campo a «${activeTabTitle}»` : 'Agregar campo'}
             </Button>
+            <Tooltip title="Agregar un campo que empiece su propia línea, aunque lo dejes angosto.">
+                <Button type="dashed" icon={<EnterOutlined />} onClick={onAddEnLinea}>
+                    {isMobile ? null : 'En línea nueva'}
+                </Button>
+            </Tooltip>
             {clipboardField && (
-                <Popconfirm
-                    title={`Pegar «${clipboardLabel}»`}
-                    description={pasteDescription(clipboardField, clipboard, hasTabs, activeTabTitle)}
-                    okText="Pegar"
-                    cancelText="Vaciar portapapeles"
-                    cancelButtonProps={{ danger: true }}
-                    onConfirm={onPaste}
-                    onCancel={onClearClipboard}
-                >
-                    <Tooltip title="Pegar el campo copiado">
-                        <Button type="dashed" icon={<SnippetsOutlined />}>
-                            {isMobile ? null : `Pegar «${clipboardLabel}»`}
-                        </Button>
+                <>
+                    <Popconfirm
+                        title={`Pegar «${clipboardLabel}»`}
+                        description={pasteDescription(clipboardField, clipboard, hasTabs, activeTabTitle)}
+                        okText="Pegar"
+                        cancelText="Cancelar"
+                        onConfirm={onPaste}
+                    >
+                        <Tooltip title="Pegar el campo copiado">
+                            <Button type="dashed" icon={<SnippetsOutlined />}>
+                                {isMobile ? null : `Pegar «${clipboardLabel}»`}
+                            </Button>
+                        </Tooltip>
+                    </Popconfirm>
+                    <Tooltip title={`Sacar «${clipboardLabel}» del portapapeles`}>
+                        <Button
+                            type="dashed"
+                            icon={<CloseOutlined />}
+                            onClick={onClearClipboard}
+                            aria-label="Vaciar el portapapeles"
+                        />
                     </Tooltip>
-                </Popconfirm>
+                </>
             )}
         </Space.Compact>
     );

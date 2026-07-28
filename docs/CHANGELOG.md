@@ -9,6 +9,22 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.99.0] - 2026-07-28
+
+### Agregado: un campo condicionado y su disparador se ven como lo que son, una pareja
+
+Un `showWhen` relaciona dos campos que en la cuadrícula pueden quedar lejos, y la única pista era una etiqueta «Condicionado» con el `name` crudo del disparador y el valor sin traducir.
+
+- **La etiqueta dice la condición en palabras** —«Si Responsable = Sí», resuelta contra el catálogo— y **es un enlace**: lleva al disparador, cambiando de pestaña si hace falta y resaltándolo al llegar. Del otro lado, «Activa 3» despliega la lista de los tres campos y navega a cada uno.
+- **Al pasar el cursor por la etiqueta se resalta la relación**: el disparador y sus dependientes se marcan y el resto se atenúa. El color sale del nombre del disparador, así que dos grupos de condiciones en el mismo paso se distinguen de un vistazo. Se prefirió esto a dibujar conectores: en un grid de 6 columnas donde los campos cambian de línea, las líneas serían frágiles y ruidosas.
+- **Se avisa de la condición rota**: disparador que ya no existe, disparador en otra pestaña del repeater —donde se captura por separado, así que la condición no se evalúa como se espera— y cadenas circulares. Esto importa porque `compat.py` **descarta en silencio** los `showWhen` huérfanos al guardar: sin el aviso, la condición desaparecía sin que nadie se enterara.
+
+### Agregado: mover una línea completa, y un botón para vaciar el portapapeles
+
+- El separador de cada línea gana **subir** y **bajar**, que mueven la línea entera con todos sus campos, junto al ya existente **unir con la de arriba**.
+- La barra inferior gana **«En línea nueva»**, que crea el campo ya marcado para abrir línea: agregado con el botón normal, un campo angosto se pega a la línea anterior si cabe.
+- El campo copiado se podía sacar del portapapeles solo desde el «Cancelar» del diálogo de pegar, así que en la práctica se quedaba ahí para siempre. Ahora hay una **✕ junto al botón de pegar**.
+
 ## [1.98.0] - 2026-07-28
 
 ### Agregado: crear y quitar líneas en el acomodo de un formulario SIEEJ

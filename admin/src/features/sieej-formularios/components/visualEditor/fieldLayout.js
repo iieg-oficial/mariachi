@@ -175,6 +175,21 @@ export const setOpensRow = (fields, indices, index, abre) => {
     return materializeLayout(out, indices);
 };
 
+export const moveRow = (fields, indices, rowIdx, direction) => {
+    const rows = groupIntoRows(fields, indices);
+    const destino = rowIdx + direction;
+    if (rowIdx < 0 || destino < 0 || destino >= rows.length) return fields;
+
+    const orden = rows.map((r) => r.indices);
+    const [movida] = orden.splice(rowIdx, 1);
+    orden.splice(destino, 0, movida);
+
+    const campos = orden.flat().map((i) => fields[i]);
+    const out = [...fields];
+    indices.forEach((globalIdx, k) => { out[globalIdx] = campos[k]; });
+    return materializeLayout(out, indices);
+};
+
 export const unirLineaAnterior = (fields, indices, firstIdx) => {
     const row = rowOfField(fields, indices, firstIdx);
     if (!row) return fields;

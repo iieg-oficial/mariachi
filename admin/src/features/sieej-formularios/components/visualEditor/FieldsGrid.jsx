@@ -15,7 +15,7 @@ const gapId = (slot) => `gap-${slot.row}-${slot.col}`;
 
 export default function FieldsGrid({
     slots, itemIds, unitsPorId, isMobile, vacio, vacioTexto, mostrarGuias,
-    onDrop, onUnirLinea, renderField,
+    onDrop, onUnirLinea, onMoverLinea, renderField,
 }) {
     const [dragging, setDragging] = useState(null);
 
@@ -81,6 +81,10 @@ export default function FieldsGrid({
                                 showFree={!isMobile}
                                 onUnir={slot.row > 0 && primeroDeLinea
                                     ? () => onUnirLinea?.(primeroDeLinea.idx)
+                                    : undefined}
+                                onSubir={slot.row > 0 ? () => onMoverLinea?.(slot.row, -1) : undefined}
+                                onBajar={slot.row < totalLineas - 1
+                                    ? () => onMoverLinea?.(slot.row, 1)
                                     : undefined}
                             />]
                             : [];

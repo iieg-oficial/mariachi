@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-    assignColSpan, groupIntoRows, layoutOf, materializeLayout, setOpensRow, unirLineaAnterior,
+    assignColSpan, groupIntoRows, layoutOf, materializeLayout, moveRow, setOpensRow,
+    unirLineaAnterior,
 } from '../fieldLayout';
 
 const field = (name, colSpan = 1, col) => ({
@@ -52,5 +53,32 @@ describe('crear y quitar lineas', () => {
 
         expect(assignColSpan(conLinea, 1, 2)[1].layout)
             .toEqual({ colSpan: 2, col: 4, newRow: true });
+    });
+});
+
+describe('mover una linea completa', () => {
+    const lineasDe = (fields) => groupIntoRows(fields, allIdx(fields))
+        .map((r) => r.items.map((it) => fields[it.idx].name).join(','));
+
+    const base = () => materializeLayout(
+        [field('a', 2), field('b', 2), field('c', 1), field('d', 3), field('e', 3)],
+        [0, 1, 2, 3, 4],
+    );
+
+    it('sube la linea con todos sus campos', () => {
+        const fields = base();
+        expect(lineasDe(fields)).toEqual(['a,b', 'c', 'd,e']);
+        expect(lineasDe(moveRow(fields, allIdx(fields), 2, -1))).toEqual(['a,b', 'd,e', 'c']);
+    });
+
+    it('baja la linea con todos sus campos', () => {
+        const fields = base();
+        expect(lineasDe(moveRow(fields, allIdx(fields), 0, 1))).toEqual(['c', 'a,b', 'd,e']);
+    });
+
+    it('no hace nada en los extremos', () => {
+        const fields = base();
+        expect(moveRow(fields, allIdx(fields), 0, -1)).toBe(fields);
+        expect(moveRow(fields, allIdx(fields), 2, 1)).toBe(fields);
     });
 });
