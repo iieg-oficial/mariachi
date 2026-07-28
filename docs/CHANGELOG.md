@@ -9,6 +9,21 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.101.0] - 2026-07-28
+
+### Base del módulo Identidad: las marcas del IIEG se administran desde mariachi
+
+Primer paso para que la identidad visual se configure aquí en lugar de editando markdown y JSON a mano en el repo `guidelines-iieg`, que queda en vías de retiro. Esta versión trae solo el modelo de datos y la semilla; la página del admin y la descarga de artefactos vienen después.
+
+Se agrega el schema `identidad` con cuatro tablas: `marcas`, `tokens` (valor en `JSONB`, para que un token acepte texto, número o lista como la familia tipográfica), `campos` (los textos de la guía de marca: personalidad, reglas de logotipo, microcopy) y `fuentes` (familias con sus archivos y pesos).
+
+La semilla trae **únicamente lo que ya estaba configurado** en `guidelines-iieg`; los valores que seguían en `TODO` o marcados como `PLACEHOLDER` no se importaron, para no arrastrar relleno. Quedan cargadas dos marcas:
+
+- **`iieg`** — 30 tokens (espaciado, radios y tipografía), 8 campos y la familia Garet con sus 7 pesos servidos desde el Acervo.
+- **`jalisco`** — 35 tokens, incluidos sus 5 colores institucionales reales (`#465055` Pantone 431 C y `#FF8300` Pantone 151 C), 12 campos y la familia Nexa.
+
+Borrar una marca arrastra en cascada sus tokens, campos y fuentes. Migración `1dent1dad0001`.
+
 ## [1.100.0] - 2026-07-28
 
 ### Agregado: captura masiva de metadatos en una tabla, con historial de quién cambió qué
