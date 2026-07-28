@@ -10,4 +10,3 @@ export function useFullscreenHeader({ title, backTo = null, extra = null }) {
     }, [setHeader, title, backTo, extra]);
 }
 
-export default useFullscreenHeader;

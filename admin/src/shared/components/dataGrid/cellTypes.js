@@ -52,4 +52,3 @@ export const buildGridColumns = ({
         },
     }));
 
-export default buildGridColumns;

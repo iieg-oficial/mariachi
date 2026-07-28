@@ -8,7 +8,6 @@ export const SEARCH_DEBOUNCE_MS = 350;
 
 export const extOf = (name) => (name.split('.').pop() || '').toLowerCase();
 export const isPreviewable = (name) => PREVIEWABLE_EXT.includes(extOf(name));
-export const isFont = (name) => FONT_EXT.includes(extOf(name));
 
 export const formatSize = (bytes) => {
     if (!bytes) return '0 B';

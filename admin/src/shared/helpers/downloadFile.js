@@ -17,4 +17,3 @@ export const triggerDownload = (response, fallback) => {
     URL.revokeObjectURL(url);
 };
 
-export default triggerDownload;

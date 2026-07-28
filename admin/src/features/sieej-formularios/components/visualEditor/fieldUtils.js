@@ -178,16 +178,6 @@ export const indicesOfTab = (fields = [], tabs = [], tabKey) => fields
     .map((f, i) => (tabOf(f, tabs) === tabKey ? i : -1))
     .filter((i) => i >= 0);
 
-export const reorderWithinTab = (fields, indices, from, to) => {
-    const group = indices.map((i) => fields[i]);
-    const [moved] = group.splice(from, 1);
-    group.splice(to, 0, moved);
-
-    const out = [...fields];
-    indices.forEach((globalIdx, k) => { out[globalIdx] = group[k]; });
-    return out;
-};
-
 export const labelOfField = (field) => field?.label || field?.name;
 
 export const previousVisibleField = (fields, indices, idx) => {
