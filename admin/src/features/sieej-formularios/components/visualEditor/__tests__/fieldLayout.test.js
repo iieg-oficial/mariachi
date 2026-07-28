@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
     assignCol, assignColSpan, colChoicesFor, groupIntoRows, layoutOf, nearestCol, placedColOf,
     rowMatesOf, snapColSpan,
-    reflowCol, materializeLayout, layoutSlots, moveToSlot, cabeUnCampo,
+    reflowCol, materializeLayout, layoutSlots, moveToSlot, cabeUnCampo, unitsOfField,
 } from '../fieldLayout';
 import { rowSlotsResolver } from '../fieldUtils';
 import { CASOS, aCampo, marca } from '../__fixtures__/layoutContract';
@@ -323,5 +323,32 @@ describe('soltar un campo en un espacio libre', () => {
         const hueco = { row: 0, col: 5, units: 2, after: 0 };
         expect(moveToSlot(fields, allIdx(fields), 1, hueco)[1].layout)
             .toEqual({ colSpan: 2, col: 4 });
+    });
+});
+
+describe('un hueco solo admite lo que le cabe', () => {
+    it('el hueco entre dos campos no admite uno mas ancho que el', () => {
+        const fields = materializeLayout(
+            [field('a', 3, 1), field('b', 3, 5), field('media', 2)],
+            [0, 1, 2],
+        );
+        const hueco = layoutSlots(fields, allIdx(fields))
+            .find((s) => s.kind === 'gap' && s.row === 0);
+
+        expect(hueco.units).toBe(2);
+        expect(unitsOfField(fields[2])).toBe(3);
+        expect(unitsOfField(fields[2]) <= hueco.units).toBe(false);
+    });
+
+    it('soltar ahi un campo que no cabe empujaria al vecino de linea', () => {
+        const fields = materializeLayout(
+            [field('a', 3, 1), field('b', 3, 5), field('media', 2)],
+            [0, 1, 2],
+        );
+        const hueco = layoutSlots(fields, allIdx(fields))
+            .find((s) => s.kind === 'gap' && s.row === 0);
+        const movido = moveToSlot(fields, allIdx(fields), 2, hueco);
+
+        expect(groupIntoRows(movido, allIdx(movido)).length).toBe(2);
     });
 });

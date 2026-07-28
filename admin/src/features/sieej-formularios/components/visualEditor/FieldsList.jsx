@@ -12,7 +12,7 @@ import {
 } from './fieldUtils';
 import {
     assignCol, assignColSpan, isAlone, layoutOf, layoutSlots, materializeLayout,
-    moveToSlot, placedColOf, reflowCol, startColOf,
+    moveToSlot, placedColOf, reflowCol, startColOf, unitsOfField,
 } from './fieldLayout';
 import {
     clearFieldClipboard, prepareFieldForPaste, readFieldClipboard, writeFieldClipboard,
@@ -262,6 +262,9 @@ export default function FieldsList({ step, formularioSlug, onChange, addTrigger 
             <FieldsGrid
                 slots={slots}
                 itemIds={visibleIdx.map((i) => fieldKey(fields[i], i))}
+                unitsPorId={new Map(visibleIdx.map(
+                    (i) => [fieldKey(fields[i], i), unitsOfField(layoutFields[i])],
+                ))}
                 isMobile={isMobile}
                 vacio={visibleIdx.length === 0}
                 vacioTexto={hasTabs ? 'Sin campos en esta pestaña' : 'Sin campos'}

@@ -13,9 +13,12 @@ import { GRID_COLUMNS, cabeUnCampo } from './fieldLayout';
 const gapId = (slot) => `gap-${slot.row}-${slot.col}`;
 
 export default function FieldsGrid({
-    slots, itemIds, isMobile, vacio, vacioTexto, mostrarGuias, onDrop, renderField,
+    slots, itemIds, unitsPorId, isMobile, vacio, vacioTexto, mostrarGuias, onDrop, renderField,
 }) {
     const [dragging, setDragging] = useState(null);
+
+    const unitsArrastrado = dragging ? unitsPorId?.get(dragging) ?? 0 : 0;
+    const admiteElArrastre = (slot) => cabeUnCampo(slot.units) && unitsArrastrado <= slot.units;
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -23,7 +26,7 @@ export default function FieldsGrid({
     );
 
     const gapPorId = useMemo(() => new Map(
-        slots.filter((s) => s.kind === 'gap' && cabeUnCampo(s.units)).map((s) => [gapId(s), s]),
+        slots.filter((s) => s.kind === 'gap').map((s) => [gapId(s), s]),
     ), [slots]);
 
     const totalLineas = slots.length === 0 ? 0 : slots[slots.length - 1].row + 1;
@@ -75,7 +78,7 @@ export default function FieldsGrid({
                                     key={`${gapId(slot)}-${i}`}
                                     id={gapId(slot)}
                                     gap={slot}
-                                    activo={!!dragging && !isMobile && cabeUnCampo(slot.units)}
+                                    activo={!!dragging && !isMobile && admiteElArrastre(slot)}
                                 />,
                             ];
                         }
