@@ -46,7 +46,6 @@ SLUGS_RESERVADOS = {
     "exencion",
     "cambiar-contrasena",
     "error",
-    "regisño",
     "catalogos",
     "schema",
     "envio",

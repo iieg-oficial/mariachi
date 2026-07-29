@@ -1,6 +1,6 @@
 # SLD Editor — referencia por componente
 
-Editor visual de simbología (SLD) en mariachi-admin. Documenta solo lo que cada pieza hace y sus props/estado. Para arquitectura general de capas ver `docs/context.md` §Capas.
+Editor visual de simbología (SLD) en mariachi-admin. Documenta solo lo que cada pieza hace y sus props/estado. Para arquitectura general de capas ver `repos/mariachi/contexto.md` §Capas en el repo de contexto.
 
 Ubicación: `admin/src/features/mapalab-layers/components/sldEditor/` (frontend) y `api/app/services/sld_*.py` (backend).
 

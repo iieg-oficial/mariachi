@@ -9,7 +9,8 @@ para que la página de Multimedia no lo exponga al usuario final.
 Es la fuente que usan los validators de schemas (eventos, home, etc.) para
 aceptar paths relativos del acervo en formato `bucket/object` sin habilitar
 escritura de paths arbitrarios. La lista coincide con la documentada en
-`docs/context.md` §"Bucket compartido `iieg`".
+`repos/mariachi/contexto.md` §"Bucket compartido `iieg`" del repositorio central
+de contexto.
 """
 
 from __future__ import annotations

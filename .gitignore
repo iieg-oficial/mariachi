@@ -123,7 +123,6 @@ dist-ssr/
 .gemini/
 
 .cl*e*
-docs/CONVENTIONS_*.md
 
 # Bind mount artifact (CHANGELOG mount target inside /app)
 api/_docs/

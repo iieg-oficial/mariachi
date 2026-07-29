@@ -9,6 +9,43 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.105.1] - 2026-07-29
+
+### El contexto se movio al repo central y los docs quedaron homologados
+
+Sin cambios de comportamiento salvo la correccion del slug reservado.
+
+#### Corregido
+
+- **`SLUGS_RESERVADOS` incluia `"regisño"`**, presente desde el commit que creo la lista (0.39.4,
+  mayo de 2026) y repetido en su mensaje. No protegia nada: el frontend de SIEEJ nunca tuvo una
+  ruta `registro` ni `regisño` — sus rutas literales son `cambiar-contrasena`, `error`,
+  `exencion`, `inicio-sesion` y `mis-envios`, y el resto cuelga de `:slug`. Se elimino tras
+  verificar las rutas reales y que ningun test la referenciara. La lista restante sigue cubriendo
+  las cinco rutas del frontend mas `catalogos`, que si colisionaria con
+  `GET /formularios/catalogos`.
+
+#### Cambiado
+
+- **Docs renombrados a kebab-case** segun la convencion del ecosistema: `ARCHITECTURE.md` →
+  `arquitectura.md`, `ROUTER.md` → `router.md`, `ROLES.md` → `roles.md`, `COOKIES_CSRF.md` →
+  `cookies-csrf.md`, `DRAFTS.md` → `borradores.md`, `SLD_EDITOR.md` → `editor-sld.md`,
+  `ALEMBIC_MULTI_ENV.md` → `alembic-multi-env.md`. Se actualizaron las referencias en el README,
+  en `arquitectura.md`, en `sdk/README.md` y en el docstring de `core/bucket_policies.py`.
+
+#### Eliminado
+
+- `docs/context.md`, `PENDIENTES.md`, `sieej.md`, `colibri.md`, `acervo-subida-externa.md` y
+  `DATAENGINE_CREDENTIALS.md`. Su contenido vive ahora en el repositorio central de contexto
+  (`iieg-oficial/context-ame-esta`), en `repos/mariachi/`: `contexto.md`, `pendientes.md` (con
+  triage de cada item del roadmap contra este changelog), `modulo-sieej.md`, `modulo-colibri.md`,
+  `acervo-subida-externa.md` y `dataengine-credenciales.md`.
+- Los `docs/CONVENTIONS_*.md` (que estaban en `.gitignore`, sin versionar) y su patron del
+  `.gitignore`. Las convenciones de backend son ahora `ecosistema/convenciones-backend.md` y las
+  del CMS `repos/mariachi/convenciones-cms.md` en el repo central, ambas corregidas: describian
+  Ant Design 5, la estructura `components/pages/contexts`, los alias `@components`/`@pages` y el
+  rol `disenadora`, todo desactualizado desde noviembre de 2025.
+
 ## [1.104.1] - 2026-07-29
 
 ### Corregido: los archivos de GeoServer con nombres legados no se podían descargar ni borrar

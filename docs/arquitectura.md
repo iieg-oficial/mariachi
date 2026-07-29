@@ -160,7 +160,7 @@ mariachi/
 │   │   │   ├── rate_limit.py         # Sliding window en Redis (multi-worker safe)
 │   │   │   └── routes/               # auth, users, pages, menu, media, borradores,
 │   │   │                             # layers, layer_metadata, geoserver, preview, public,
-│   │   │                             # formularios/ (modulo sieej, ver docs/sieej.md)
+│   │   │                             # formularios/ (modulo sieej, ver `repos/mariachi/modulo-sieej.md` en el repo de contexto)
 │   │   ├── core/
 │   │   │   ├── settings.py           # Pydantic settings + bifurcación por ENVIRONMENT
 │   │   │   ├── database.py           # engine principal + get_dataengine_db (lazy)
@@ -242,10 +242,15 @@ En dev (`docker-compose.dev.yml`) no existe `nginx` — los frontends corren dir
 
 ## Documentación relacionada
 
-- [context](./context.md) — referencia completa del monorepo
-- [DATAENGINE_CREDENTIALS](./DATAENGINE_CREDENTIALS.md) — provisioning del rol para DataEngine
-- [ALEMBIC_MULTI_ENV](./ALEMBIC_MULTI_ENV.md) — migraciones multi-BD
-- [COOKIES_CSRF](./COOKIES_CSRF.md) — modelo de seguridad
-- [DRAFTS](./DRAFTS.md) — borradores y revision queue
-- [sieej](./sieej.md) — modulo SIEEJ: schema, endpoints `/formularios/*`, integracion con frontend `iieg-oficial/sieej`
-- [ROLES](./ROLES.md) — matriz de roles globales (tetlamamakani, editora, externo) y autorizacion por proyecto
+En este repo:
+
+- [router](./router.md) — registro y montaje de routers
+- [roles](./roles.md) — matriz de roles globales (tetlamamakani, editora, externo) y autorizacion por proyecto
+- [cookies-csrf](./cookies-csrf.md) — modelo de seguridad
+- [borradores](./borradores.md) — borradores y revision queue
+- [editor-sld](./editor-sld.md) — editor visual de simbologia
+- [alembic-multi-env](./alembic-multi-env.md) — migraciones multi-BD
+
+En el repositorio central de contexto (`repos/mariachi/`): `contexto.md` (referencia del monorepo),
+`modulo-sieej.md`, `modulo-colibri.md`, `modulo-identidad.md`, `acervo-subida-externa.md`,
+`dataengine-credenciales.md` y `pendientes.md`.
