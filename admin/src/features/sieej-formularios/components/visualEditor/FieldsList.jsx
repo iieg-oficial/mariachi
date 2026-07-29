@@ -24,6 +24,7 @@ import useCatalogos from '../../hooks/useCatalogos';
 import useSearchParamState from '../../hooks/useSearchParamState';
 import useFieldRelations from '../../hooks/useFieldRelations';
 import useAcomodoCampos from '../../hooks/useAcomodoCampos';
+import useNuevoCampo from '../../hooks/useNuevoCampo';
 
 const fieldKey = (field, idx) => `field-${field?.name ?? idx}`;
 
@@ -33,7 +34,6 @@ export default function FieldsList({ step, formularioSlug, onChange, addTrigger 
     const [clipboard, setClipboard] = useState(() => readFieldClipboard());
     const [resizePreview, setResizePreview] = useState(null);
     const [layoutDraft, setLayoutDraft] = useState(null);
-    const [nuevoEnLinea, setNuevoEnLinea] = useState(false);
     const [fieldForm] = Form.useForm();
     const { isMobile } = useIsMobile();
     const { catalogos } = useCatalogos();
@@ -107,6 +107,8 @@ export default function FieldsList({ step, formularioSlug, onChange, addTrigger 
         moverLinea, unirLinea,
     } = useAcomodoCampos({ step, fields, visibleIdx, onChange });
 
+    const nuevoCampo = useNuevoCampo({ visibleIdx, hasTabs, activeKey });
+
     const {
         relacionActiva, setRelacionActiva, labelOfName, irACampo,
     } = useFieldRelations({ fields, tabs, hasTabs, activeKey, setActiveTab });
@@ -142,11 +144,13 @@ export default function FieldsList({ step, formularioSlug, onChange, addTrigger 
     };
 
     const handleSaveField = (newField) => {
-        const next = [...acomodoFijo()];
+        let next = [...acomodoFijo()];
         let savedIdx;
         if (editingKey === 'new') {
             next.push(newField);
-            savedIdx = next.length - 1;
+            const colocado = nuevoCampo.colocar(next, next.length - 1, newField.name);
+            next = colocado.fields;
+            savedIdx = colocado.idx;
         } else {
             next[editingKey] = newField;
             savedIdx = editingKey;
@@ -161,6 +165,17 @@ export default function FieldsList({ step, formularioSlug, onChange, addTrigger 
 
         onChange?.({ ...step, fields: placed });
         setEditingKey(null);
+        nuevoCampo.limpiar();
+    };
+
+    const handleAddEnLinea = (hueco) => {
+        nuevoCampo.prepararHueco(hueco);
+        setEditingKey('new');
+    };
+
+    const handleAddNuevaLinea = () => {
+        nuevoCampo.limpiar();
+        setEditingKey('new');
     };
 
     const handleCopy = (idx) => {
@@ -267,6 +282,7 @@ export default function FieldsList({ step, formularioSlug, onChange, addTrigger 
                 onDrop={handleDrop}
                 onUnirLinea={unirLinea}
                 onMoverLinea={moverLinea}
+                onAddFieldEnLinea={handleAddEnLinea}
                 renderField={renderFieldCard}
             />
 
@@ -274,18 +290,13 @@ export default function FieldsList({ step, formularioSlug, onChange, addTrigger 
                 <Card size="small" style={{ marginTop: 8 }} styles={{ body: { padding: 8 } }} title="Nuevo campo">
                     <FieldForm
                         form={fieldForm}
-                        field={{
-                            ...(hasTabs ? { tab: activeKey } : {}),
-                            layout: nuevoEnLinea
-                                ? layoutOf(1, 1, false, true)
-                                : { colSpan: 1 },
-                        }}
+                        field={nuevoCampo.valoresIniciales}
                         availableTabs={tabs}
                         availableShowWhenFields={otherFieldsFor(fields, null)}
                         resolveSlots={resolveSlots('new')}
                         previousField={previousOf('new')}
                         onSave={handleSaveField}
-                        onCancel={() => setEditingKey(null)}
+                        onCancel={() => { setEditingKey(null); nuevoCampo.limpiar(); }}
                     />
                 </Card>
             ) : (
@@ -295,8 +306,7 @@ export default function FieldsList({ step, formularioSlug, onChange, addTrigger 
                     isMobile={isMobile}
                     clipboard={clipboard}
                     clipboardField={clipboardField}
-                    onAdd={() => { setNuevoEnLinea(false); setEditingKey('new'); }}
-                    onAddEnLinea={() => { setNuevoEnLinea(true); setEditingKey('new'); }}
+                    onAdd={handleAddNuevaLinea}
                     onPaste={handlePaste}
                     onClearClipboard={handleClearClipboard}
                 />

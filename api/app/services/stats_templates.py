@@ -243,3 +243,74 @@ def execute_stat(conn: Connection, cfg: dict) -> Any:
     if op == 'formula':
         return _evaluate_expression(conn, cfg['expression'])
     return execute_primitive(conn, cfg)
+
+
+def format_stat_value(value: Any, fmt: str | None) -> str | None:
+    if value is None:
+        return None
+    if not fmt:
+        return str(value)
+    number = _to_number(value)
+    if number is None:
+        return str(value)
+    if fmt == 'integer':
+        return str(int(round(number)))
+    if fmt == 'decimal_2':
+        return f'{number:.2f}'
+    if fmt == 'percentage':
+        return f'{number:.1f}'
+    if fmt == 'currency_mxn':
+        return f'{number:.2f}'
+    if fmt == 'compact':
+        for threshold, suffix in ((1_000_000_000, 'B'), (1_000_000, 'M'), (1_000, 'K')):
+            if abs(number) >= threshold:
+                return f'{number / threshold:.1f}{suffix}'
+        return str(int(number)) if number == int(number) else f'{number:.1f}'
+    return str(value)
+
+
+def execute_stats_batch(conn: Connection, stats_config: list | None) -> tuple[list[dict], list[dict]]:
+    """Ejecuta cada stat aislada en un SAVEPOINT.
+
+    Sin el savepoint, una query fallida aborta la transaccion completa en Postgres y
+    todas las stats siguientes fallan en cascada, incluido el COMMIT.
+    """
+    values: list[dict] = []
+    errors: list[dict] = []
+
+    for raw_cfg in stats_config or []:
+        if not isinstance(raw_cfg, dict):
+            errors.append({'position': None, 'label': None, 'error': 'entrada de configuracion invalida'})
+            continue
+
+        position = raw_cfg.get('position') or raw_cfg.get('posicion')
+        label = raw_cfg.get('label') or raw_cfg.get('nombre')
+
+        try:
+            cfg = validate_stats_config([raw_cfg])[0]
+        except StatsTemplateError as exc:
+            errors.append({'position': position, 'label': label, 'error': str(exc)})
+            continue
+
+        needs_db = cfg.get('operation') != 'static'
+
+        savepoint = conn.begin_nested() if needs_db else None
+        try:
+            raw = execute_stat(conn, cfg)
+            if savepoint is not None:
+                savepoint.commit()
+        except Exception as exc:
+            if savepoint is not None:
+                savepoint.rollback()
+            errors.append({'position': position, 'label': label, 'error': str(exc)})
+            continue
+
+        values.append({
+            'posicion': position,
+            'valor': format_stat_value(raw, cfg.get('format')),
+            'nombre': label,
+            'simbolo': cfg.get('symbol') or cfg.get('simbolo'),
+        })
+
+    values.sort(key=lambda item: item['posicion'] if isinstance(item['posicion'], int) else 99)
+    return values, errors

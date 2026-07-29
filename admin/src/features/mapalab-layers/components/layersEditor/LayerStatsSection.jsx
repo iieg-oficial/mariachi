@@ -8,8 +8,11 @@ import {
     ThunderboltOutlined,
 } from '@ant-design/icons';
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
+import { useAuth } from '@shared/contexts/useAuth';
 import { message } from '@shared/services/message';
 import StatusBadge from '@shared/components/StatusBadge';
+
+const MAX_EXPRESSION_DEPTH = 6;
 
 const labelWithBeta = (text) => (
     <>
@@ -175,6 +178,7 @@ const ExpressionEditor = ({ value, onChange, availableFields, schema, table, dep
     const isCombinator = value && value.op;
 
     const kind = isLiteral ? 'literal' : (isPrimitive ? 'primitive' : (isCombinator ? 'combinator' : 'primitive'));
+    const canNest = depth < MAX_EXPRESSION_DEPTH - 1;
 
     const setKind = (newKind) => {
         if (newKind === 'literal') {
@@ -205,10 +209,15 @@ const ExpressionEditor = ({ value, onChange, availableFields, schema, table, dep
                 style={{ marginBottom: 8 }}
                 options={[
                     { value: 'primitive', label: 'Operación' },
-                    { value: 'combinator', label: 'Combinar' },
+                    { value: 'combinator', label: 'Combinar', disabled: !canNest },
                     { value: 'literal', label: 'Literal' },
                 ]}
             />
+            {!canNest && (
+                <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 8 }}>
+                    Nivel máximo de anidamiento alcanzado ({MAX_EXPRESSION_DEPTH}).
+                </Text>
+            )}
             {kind === 'literal' && (
                 <InputNumber
                     size="small"
@@ -427,6 +436,11 @@ export default function LayerStatsSection({
     const [pieNumeralia, setPieNumeralia] = useState('');
     const [ttlMinutes, setTtlMinutes] = useState(1440);
     const [config, setConfig] = useState([]);
+    const [dirty, setDirty] = useState(false);
+    const [refreshErrors, setRefreshErrors] = useState([]);
+
+    const { user } = useAuth();
+    const isAdmin = user?.role === 'tetlamamakani';
 
     const schema = workspace || '';
     const table = geoserverLayer || '';
@@ -441,6 +455,7 @@ export default function LayerStatsSection({
                 const cfg = Array.isArray(data.statsConfig) ? data.statsConfig : (Array.isArray(data.stats_config) ? data.stats_config : []);
                 const vals = Array.isArray(data.values) ? data.values : [];
                 if (cfg.length === 0 && vals.length > 0) {
+                    const seen = new Set();
                     const autoSlots = vals
                         .map((v) => ({
                             position: Number(v.posicion) || null,
@@ -451,11 +466,17 @@ export default function LayerStatsSection({
                             format: '',
                             _autoFromLegacy: true,
                         }))
-                        .filter((s) => s.position && s.position >= 1 && s.position <= 8);
+                        .filter((s) => {
+                            if (!s.position || s.position < 1 || s.position > 8) return false;
+                            if (seen.has(s.position)) return false;
+                            seen.add(s.position);
+                            return true;
+                        });
                     setConfig(autoSlots);
                 } else {
                     setConfig(cfg);
                 }
+                setDirty(false);
                 setPieNumeralia(data.pieNumeralia ?? data.pie_numeralia ?? '');
                 setTtlMinutes(data.ttlMinutes ?? data.ttl_minutes ?? 1440);
             } else {
@@ -477,6 +498,11 @@ export default function LayerStatsSection({
         return null;
     };
 
+    const applyConfig = (next) => {
+        setConfig(next);
+        setDirty(true);
+    };
+
     const addSlot = (mode) => {
         const pos = nextPosition();
         if (!pos) {
@@ -485,11 +511,11 @@ export default function LayerStatsSection({
         }
         const base = { position: pos, label: '', symbol: '', format: '' };
         if (mode === 'static') {
-            setConfig([...config, { ...base, operation: 'static', value: '' }]);
+            applyConfig([...config, { ...base, operation: 'static', value: '' }]);
         } else if (mode === 'primitive') {
-            setConfig([...config, { ...base, operation: 'count', schema, table }]);
+            applyConfig([...config, { ...base, operation: 'count', schema, table }]);
         } else {
-            setConfig([...config, {
+            applyConfig([...config, {
                 ...base,
                 operation: 'formula',
                 expression: { op: 'percent', left: { operation: 'sum', schema, table, field: '' }, right: { operation: 'sum', schema, table, field: '' } },
@@ -498,11 +524,10 @@ export default function LayerStatsSection({
     };
 
     const updateSlot = (idx, next) => {
-        const out = config.map((c, i) => (i === idx ? next : c));
-        setConfig(out);
+        applyConfig(config.map((c, i) => (i === idx ? next : c)));
     };
 
-    const removeSlot = (idx) => setConfig(config.filter((_, i) => i !== idx));
+    const removeSlot = (idx) => applyConfig(config.filter((_, i) => i !== idx));
 
     const normalizePieNumeralia = (text) => {
         const trimmed = (text || '').trim();
@@ -533,9 +558,16 @@ export default function LayerStatsSection({
 
     const handleRefresh = async () => {
         setRefreshing(true);
+        setRefreshErrors([]);
         try {
-            await refreshLayerStats(layerKey);
-            message.success('Valores recalculados');
+            const res = await refreshLayerStats(layerKey);
+            const failed = Array.isArray(res?.errors) ? res.errors : [];
+            setRefreshErrors(failed);
+            if (failed.length > 0) {
+                message.warning(`Recalculado con ${failed.length} estadística(s) fallida(s)`);
+            } else {
+                message.success('Valores recalculados');
+            }
             reload();
         } catch (err) {
             message.error(err?.response?.data?.detail || 'Error al refrescar');
@@ -547,6 +579,11 @@ export default function LayerStatsSection({
     if (loading) return <Spin style={{ display: 'block', margin: '24px auto' }} />;
 
     const refreshedAt = stats?.valuesRefreshedAt || stats?.values_refreshed_at;
+    const savedConfig = stats?.statsConfig ?? stats?.stats_config ?? [];
+    const savedConfigCount = Array.isArray(savedConfig) ? savedConfig.length : 0;
+    const refreshDisabledReason = savedConfigCount === 0
+        ? 'Guarda primero la configuración: el recálculo usa la configuración guardada en el servidor y borraría los valores actuales.'
+        : (dirty ? 'Tienes cambios sin guardar. Guarda la configuración antes de recalcular.' : null);
 
     return (
         <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
@@ -634,7 +671,7 @@ export default function LayerStatsSection({
                 <Input.TextArea
                     rows={2}
                     value={pieNumeralia}
-                    onChange={(e) => setPieNumeralia(e.target.value)}
+                    onChange={(e) => { setPieNumeralia(e.target.value); setDirty(true); }}
                     placeholder="Texto opcional al pie de las estadísticas (fuente, año, etc.)"
                 />
                 <Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: 4 }}>
@@ -651,7 +688,7 @@ export default function LayerStatsSection({
                         mientras esté vigente, sirve los valores cacheados.
                         Recomendado: 24h para datos que cambian poco; 1h para datos casi en vivo.
                     </Text>
-                    <TtlInput value={ttlMinutes} onChange={setTtlMinutes} />
+                    <TtlInput value={ttlMinutes} onChange={(v) => { setTtlMinutes(v); setDirty(true); }} />
                     {refreshedAt && (
                         <Text type="secondary" style={{ fontSize: 12 }}>
                             Última actualización: {new Date(refreshedAt).toLocaleString()}
@@ -660,21 +697,49 @@ export default function LayerStatsSection({
                 </Space>
             </Card>
 
+            {!isAdmin && (
+                <Alert
+                    type="warning"
+                    showIcon
+                    message="Solo una administradora puede guardar la configuración de estadísticas."
+                    description="Puedes editarla y probarla aquí, pero el guardado está restringido."
+                />
+            )}
+
             <Space style={{ marginTop: 8 }}>
-                <Button type="primary" loading={saving} onClick={handleSave}>
-                    Guardar configuración
-                </Button>
-                <Tooltip title="Ejecuta todas las operaciones contra la BD y persiste los valores">
+                <Tooltip title={isAdmin ? '' : 'Requiere rol de administradora'}>
+                    <Button type="primary" loading={saving} onClick={handleSave} disabled={!isAdmin}>
+                        Guardar configuración
+                    </Button>
+                </Tooltip>
+                <Tooltip title={refreshDisabledReason || 'Ejecuta todas las operaciones contra la BD y persiste los valores'}>
                     <Button
                         icon={<ReloadOutlined />}
                         loading={refreshing}
                         onClick={handleRefresh}
-                        disabled={config.length === 0}
+                        disabled={Boolean(refreshDisabledReason)}
                     >
                         Recalcular valores ahora
                     </Button>
                 </Tooltip>
             </Space>
+
+            {refreshErrors.length > 0 && (
+                <Alert
+                    type="warning"
+                    showIcon
+                    message="Algunas estadísticas no pudieron calcularse"
+                    description={
+                        <Space orientation="vertical" size={2} style={{ width: '100%' }}>
+                            {refreshErrors.map((e, i) => (
+                                <Text key={i} style={{ fontSize: 12 }}>
+                                    <b>#{e.position ?? '—'}</b> {e.label ? `(${e.label})` : ''} — {e.error}
+                                </Text>
+                            ))}
+                        </Space>
+                    }
+                />
+            )}
 
             {stats?.values?.length > 0 && (
                 <Card

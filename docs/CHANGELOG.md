@@ -9,6 +9,125 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.105.1] - 2026-07-29
+
+### El contexto se movio al repo central y los docs quedaron homologados
+
+Sin cambios de comportamiento salvo la correccion del slug reservado.
+
+#### Corregido
+
+- **`SLUGS_RESERVADOS` incluia `"regisño"`**, presente desde el commit que creo la lista (0.39.4,
+  mayo de 2026) y repetido en su mensaje. No protegia nada: el frontend de SIEEJ nunca tuvo una
+  ruta `registro` ni `regisño` — sus rutas literales son `cambiar-contrasena`, `error`,
+  `exencion`, `inicio-sesion` y `mis-envios`, y el resto cuelga de `:slug`. Se elimino tras
+  verificar las rutas reales y que ningun test la referenciara. La lista restante sigue cubriendo
+  las cinco rutas del frontend mas `catalogos`, que si colisionaria con
+  `GET /formularios/catalogos`.
+
+#### Cambiado
+
+- **Docs renombrados a kebab-case** segun la convencion del ecosistema: `ARCHITECTURE.md` →
+  `arquitectura.md`, `ROUTER.md` → `router.md`, `ROLES.md` → `roles.md`, `COOKIES_CSRF.md` →
+  `cookies-csrf.md`, `DRAFTS.md` → `borradores.md`, `SLD_EDITOR.md` → `editor-sld.md`,
+  `ALEMBIC_MULTI_ENV.md` → `alembic-multi-env.md`. Se actualizaron las referencias en el README,
+  en `arquitectura.md`, en `sdk/README.md` y en el docstring de `core/bucket_policies.py`.
+
+#### Eliminado
+
+- `docs/context.md`, `PENDIENTES.md`, `sieej.md`, `colibri.md`, `acervo-subida-externa.md` y
+  `DATAENGINE_CREDENTIALS.md`. Su contenido vive ahora en el repositorio central de contexto
+  (`iieg-oficial/context-ame-esta`), en `repos/mariachi/`: `contexto.md`, `pendientes.md` (con
+  triage de cada item del roadmap contra este changelog), `modulo-sieej.md`, `modulo-colibri.md`,
+  `acervo-subida-externa.md` y `dataengine-credenciales.md`.
+- Los `docs/CONVENTIONS_*.md` (que estaban en `.gitignore`, sin versionar) y su patron del
+  `.gitignore`. Las convenciones de backend son ahora `ecosistema/convenciones-backend.md` y las
+  del CMS `repos/mariachi/convenciones-cms.md` en el repo central, ambas corregidas: describian
+  Ant Design 5, la estructura `components/pages/contexts`, los alias `@components`/`@pages` y el
+  rol `disenadora`, todo desactualizado desde noviembre de 2025.
+
+## [1.104.1] - 2026-07-29
+
+### Corregido: los archivos de GeoServer con nombres legados no se podían descargar ni borrar
+
+Los archivos subidos fuera del panel (o migrados) suelen traer espacios y acentos —
+`Icono Salud.svg`, `estación (norte).svg` — y `_validate_file_name` exige segmentos
+`[a-zA-Z0-9._-]`, así que descargarlos o borrarlos respondía 400: quedaban atrapados en
+GeoServer, visibles pero inmanejables.
+
+Ahora los endpoints de lectura y borrado usan `_validate_file_name_readonly`, que relaja el
+formato de los segmentos pero **mantiene la lista blanca de extensiones**, y los nombres viajan
+URL-encoded hacia el REST de GeoServer (`quote(..., safe='/')`) para que los caracteres especiales
+no rompan la petición. Las subidas siguen exigiendo el formato estricto: la relajación es solo
+para gestionar lo que ya existe.
+
+La lista blanca no se relaja porque la raíz del workspace en el Resource API no contiene solo
+iconos: `_styles_base()` apunta a `resource/workspaces/{ws}`, donde también viven `datastore.xml`
+—con host, base y contraseña del almacén—, `workspace.xml` y los estilos. Sin el filtro de
+extensión, un editor podía descargar las credenciales de la base o borrar la configuración del
+workspace por el endpoint de archivos.
+
+### Corregido: el ZIP de carpetas incluía los archivos de conexión
+
+`GET /geoserver/files/zip` empaqueta el árbol completo del workspace, así que arrastraba los
+`datastore.xml` junto con los iconos y estilos. Se excluyen los archivos de conexión
+(`*store.xml`: `datastore`, `coveragestore`, `wmsstore`, `wmtsstore`); el resto del contenido
+—incluidos los `.sld` y los `.xml` de estilos— sigue viajando en el ZIP.
+
+### Corregido: el snippet SLD y las URLs de descarga no escapaban el nombre
+
+Con nombres que ya admiten más caracteres, un `&` rompía el XML del `<ExternalGraphic>` y un `#`
+truncaba la URL de descarga. El snippet escapa XML (incluidas las comillas del atributo `href`)
+y `download_url` codifica nombre y workspace.
+
+## [1.105.0] - 2026-07-29
+
+### Cambiado: los campos se agregan en línea desde el propio espacio libre
+
+Agregar un campo junto a otro se pedía con un botón «En línea nueva» al fondo del editor, lejos del lugar donde iba a aparecer, y sin decir en qué línea caería: el campo se acomodaba donde cupiera. Ahora el espacio libre de cada línea es el que ofrece la acción.
+
+- El **hueco** de una línea es clickeable y muestra un `+` al pasar el cursor o al enfocarlo con el teclado. El campo nace con el ancho del hueco (`snapColSpan`), ya colocado en esa columna.
+- El **divisor de línea** suma un `+` junto al indicador de «espacio libre», que agrega en el primer hueco de esa línea.
+- La barra inferior queda con un solo botón, **«Agregar campo en nueva línea»**, que es lo que de verdad hace: el campo empieza su propia línea aunque después se angoste.
+
+En móvil la grilla es de una columna, así que los huecos no ofrecen la acción y el botón de la barra sigue siendo el camino.
+
+### Corregido: el campo agregado a la izquierda de otro se iba a su propia línea
+
+Al colocar un campo en un hueco que **abre** la línea (a la izquierda de los que ya estaban), el nuevo se guardaba sin la marca de apertura mientras el que era primero la conservaba, así que terminaban en líneas distintas: pedir un campo junto a «a» producía una línea nueva con el campo y dejaba «a» sola en la suya. La colocación ahora reutiliza `moveToSlot` —la misma operación del arrastrar y soltar—, que traspasa la apertura de línea al campo entrante. Queda cubierto con pruebas.
+
+### Corregido: el formulario del campo se vaciaba al re-renderizar el editor
+
+El efecto que rellena el formulario dependía del objeto `field` completo, y el editor lo construía en línea en cada render: cualquier re-actualización de la lista mientras se llenaba un campo nuevo lo reseteaba a valores vacíos. Ahora depende de una clave derivada del nombre y el acomodo, y los valores iniciales del campo nuevo están memoizados.
+
+## [1.104.0] - 2026-07-29
+
+### Corregido: el recálculo de numeralia fallaba en cascada y podía borrar valores
+
+Auditoría del flujo completo de estadísticas dinámicas de los metadatos de capas.
+
+**Una estadística fallida tumbaba las demás.** `POST /layer-metadata/{key}/stats/refresh` ejecutaba todas las stats sobre la misma transacción; en Postgres un error la aborta por completo, así que la primera query rota hacía fallar todas las siguientes **y el propio `COMMIT`**, devolviendo un 500. El mecanismo de errores parciales que ya existía (`_errors`) era inalcanzable en la práctica, y aunque llegara, el `response_model` lo filtraba antes de salir: **el cliente nunca podía enterarse de qué falló**. Ahora cada stat corre aislada en un `SAVEPOINT` (`execute_stats_batch`) y los fallos viajan en el campo `errors` de la respuesta, que el panel muestra slot por slot.
+
+**El botón "Recalcular valores ahora" borraba la numeralia legacy.** Las capas migradas del Sheet original tienen valores guardados sin configuración; el panel los precargaba como slots estáticos y dejaba el botón habilitado, pero el recálculo usa la configuración **del servidor** — vacía — así que persistía `values=[]` y la numeralia desaparecía del visor sin aviso. Ahora el endpoint responde 400 en vez de vaciar, el botón se deshabilita mientras haya cambios sin guardar o no exista configuración guardada, y el tooltip explica por qué.
+
+**Protección contra borrado**: si ninguna stat pudo calcularse, el endpoint responde 502 con el detalle y conserva los valores anteriores en lugar de dejar la capa sin numeralia.
+
+### Corregido: el guardado se ofrecía a editoras que siempre recibían 403
+
+`PUT /stats` exige rol `tetlamamakani`, pero el panel mostraba "Guardar configuración" a cualquier editora con acceso a la capa: podía configurar, previsualizar y recalcular, y descubría la restricción solo al guardar. Ahora el botón se deshabilita y un aviso explica que el guardado es de administradora; previsualizar y recalcular siguen disponibles.
+
+### Cambiado: el campo `format` por fin se aplica
+
+Se validaba al guardar pero ningún productor lo usaba, así que un promedio llegaba al visor como `340172.1895424836601307`. Ahora `execute_stats_batch` lo aplica al persistir y el preview muestra el valor ya formateado — lo que realmente verá el visor. `integer`, `decimal_2`, `percentage`, `currency_mxn` y `compact` ajustan solo la precisión: el separador de miles lo pone el visor y el símbolo va en su propio campo.
+
+### Corregido: precarga legacy con posiciones duplicadas
+
+Los valores legacy se precargaban sin deduplicar `posicion`, así que un Sheet con posiciones repetidas producía un 400 (`positions duplicadas`) evitable al guardar. El editor de fórmulas tampoco limitaba el anidamiento y dejaba construir expresiones que el backend rechaza pasando de 6 niveles; ahora corta en el mismo límite.
+
+### Nota de despliegue
+
+Requiere la migración `0031_stats_read_grants` de **dataengine 1.28.0**: sin ella, el rol `mariachi_layers` no puede leer los schemas temáticos y toda estadística sobre datos reales responde 502 `permission denied for schema`.
+
 ## [1.103.1] - 2026-07-28
 
 ### La validación de contraste no revisaba los colores de acento

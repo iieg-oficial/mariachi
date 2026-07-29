@@ -113,14 +113,17 @@ En `production`, `cd` ejecuta los tests como gate del deploy: si el CI falla no 
 
 | Documento | Descripción |
 |---|---|
-| [context](./docs/context.md) | Referencia completa del monorepo |
-| [ARCHITECTURE](./docs/ARCHITECTURE.md) | Stack, estructura y diagrama |
-| [DATAENGINE_CREDENTIALS](./docs/DATAENGINE_CREDENTIALS.md) | Provisioning del rol para DataEngine |
-| [ALEMBIC_MULTI_ENV](./docs/ALEMBIC_MULTI_ENV.md) | Migraciones en dos BDs |
-| [COOKIES_CSRF](./docs/COOKIES_CSRF.md) | Modelo de seguridad |
-| [DRAFTS](./docs/DRAFTS.md) | Sistema de borradores y revision queue |
-| [PENDIENTES](./docs/PENDIENTES.md) | Roadmap |
-| [CHANGELOG](./CHANGELOG.md) | Historial de cambios |
+| [arquitectura](./docs/arquitectura.md) | Stack, estructura y diagrama |
+| [router](./docs/router.md) | Registro y montaje de routers del API |
+| [roles](./docs/roles.md) | Matriz de roles globales y autorización por proyecto |
+| [cookies-csrf](./docs/cookies-csrf.md) | Modelo de seguridad de la sesión |
+| [borradores](./docs/borradores.md) | Sistema de borradores y revision queue |
+| [editor-sld](./docs/editor-sld.md) | Editor visual de simbología |
+| [alembic-multi-env](./docs/alembic-multi-env.md) | Migraciones en dos BDs |
+| [CHANGELOG](./docs/CHANGELOG.md) | Historial de cambios |
+
+El contexto del monorepo, el roadmap y los módulos grandes (SIEEJ, Colibrí, Identidad) viven en el
+repositorio central de contexto, en `repos/mariachi/`.
 
 ---
 

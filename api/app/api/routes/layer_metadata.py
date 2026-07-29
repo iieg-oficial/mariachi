@@ -21,7 +21,7 @@ from app.services.grids.layer_metadata_grid import load_states
 from app.services.mapalab_notifier import notify_tree_changed
 from app.services.stats_templates import (
     StatsTemplateError,
-    execute_stat,
+    execute_stats_batch,
     validate_stats_config,
 )
 
@@ -66,11 +66,11 @@ async def preview_stat(
         validated = validate_stats_config([cfg])[0]
     except StatsTemplateError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
-    try:
-        value = execute_stat(db.connection(), validated)
-    except Exception as exc:
-        raise HTTPException(status_code=502, detail=f'Error ejecutando stat: {exc}')
-    return {'value': value, 'config': validated}
+
+    values, errors = execute_stats_batch(db.connection(), [validated])
+    if errors:
+        raise HTTPException(status_code=502, detail=f"Error ejecutando stat: {errors[0]['error']}")
+    return {'value': values[0]['valor'], 'config': validated}
 
 
 @router.post('/{layer_key:path}/stats/refresh', response_model=LayerStatsResponse)
@@ -86,29 +86,30 @@ async def refresh_stats(
         raise HTTPException(status_code=404, detail=f"Stats '{layer_key}' no encontrados")
 
     cfgs = row.stats_config or []
-    values = []
-    errors = []
-    conn = db.connection()
-    for cfg in cfgs:
-        try:
-            value = execute_stat(conn, cfg)
-        except Exception as exc:
-            value = None
-            errors.append({'position': cfg.get('position'), 'error': str(exc)})
-        values.append({
-            'posicion': cfg.get('position'),
-            'valor': None if value is None else str(value),
-            'nombre': cfg.get('label'),
-            'simbolo': cfg.get('symbol'),
-        })
+    if not cfgs:
+        raise HTTPException(
+            status_code=400,
+            detail='Esta capa no tiene configuracion de estadisticas guardada; '
+                   'guarda la configuracion antes de recalcular',
+        )
+
+    values, errors = execute_stats_batch(db.connection(), cfgs)
+
+    if not values:
+        db.rollback()
+        raise HTTPException(
+            status_code=502,
+            detail='Ninguna estadistica pudo calcularse; se conservan los valores anteriores. '
+                   + '; '.join(f"pos {e['position']}: {e['error']}" for e in errors),
+        )
 
     row.values = values
     row.values_refreshed_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(row)
-    if errors:
-        return {**row.__dict__, '_errors': errors}
-    return row
+
+    response = LayerStatsResponse.model_validate(row)
+    return response.model_copy(update={'errors': errors})
 
 
 @router.get('/{layer_key:path}/stats', response_model=LayerStatsResponse)

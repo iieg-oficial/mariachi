@@ -2,6 +2,8 @@ import hashlib
 import logging
 import re
 from pathlib import Path
+from urllib.parse import quote
+from xml.sax.saxutils import escape
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import Response, StreamingResponse
@@ -449,6 +451,27 @@ def _validate_file_name(name: str) -> tuple[str, str]:
     return name, ext
 
 
+def _validate_file_name_readonly(name: str) -> None:
+    """Valida nombres de archivos ya existentes en GeoServer.
+
+    Mas laxa que `_validate_file_name` en el formato de los segmentos, porque hay
+    archivos legados con espacios y acentos que de otro modo no se podrian descargar
+    ni borrar. La lista blanca de extensiones NO se relaja: la raiz del workspace en
+    el Resource API tambien contiene datastore.xml (con credenciales de la BD),
+    workspace.xml y los estilos, que este endpoint no debe tocar.
+    """
+    if not name:
+        raise HTTPException(status_code=400, detail="Nombre vacio")
+    if '..' in name or name.startswith('/') or name.endswith('/'):
+        raise HTTPException(status_code=400, detail="Nombre invalido (path traversal)")
+    ext = Path(name).suffix.lower().lstrip('.')
+    if ext not in _GEOSERVER_FILE_ALLOWED_EXT:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Extension '.{ext}' no permitida. Soportadas: {sorted(_GEOSERVER_FILE_ALLOWED_EXT)}",
+        )
+
+
 def _sld_href(name: str, workspace: str | None) -> str:
     clean = name.lstrip('/')
     if not workspace:
@@ -461,18 +484,19 @@ def _sld_href(name: str, workspace: str | None) -> str:
 def _build_file_response(name: str, content_type: str | None, workspace: str | None = None) -> GeoServerFileResponse:
     ext = Path(name).suffix.lower().lstrip('.')
     fmt = content_type or _GEOSERVER_FILE_MIME_BY_EXT.get(ext, 'application/octet-stream')
+    href = escape(_sld_href(name, workspace), {'"': '&quot;'})
     snippet = (
         '<ExternalGraphic xmlns="http://www.opengis.net/sld">'
         f'<OnlineResource xmlns:xlink="http://www.w3.org/1999/xlink" '
-        f'xlink:type="simple" xlink:href="{_sld_href(name, workspace)}"/>'
-        f'<Format>{fmt}</Format>'
+        f'xlink:type="simple" xlink:href="{href}"/>'
+        f'<Format>{escape(fmt)}</Format>'
         '</ExternalGraphic>'
     )
-    ws_qs = f"?workspace={workspace}" if workspace else ""
+    ws_qs = f"?workspace={quote(workspace, safe='')}" if workspace else ""
     return GeoServerFileResponse(
         name=name,
         content_type=content_type,
-        download_url=f"{settings.admin_prefix}/geoserver/files/{name}{ws_qs}",
+        download_url=f"{settings.admin_prefix}/geoserver/files/{quote(name, safe='/')}{ws_qs}",
         sld_snippet=snippet,
         workspace=workspace,
     )
@@ -534,6 +558,15 @@ def _registrar_archivo(
         ip=_client_ip(request),
     )
     db.commit()
+
+
+def _is_store_config(name: str) -> bool:
+    """Archivos de conexion de GeoServer (datastore.xml, coveragestore.xml, …).
+
+    Llevan host, base y contrasena del almacen. Viven en la raiz del workspace, que
+    es la misma que recorre el ZIP de carpetas, asi que hay que excluirlos a mano.
+    """
+    return Path(name).name.lower().endswith('store.xml')
 
 
 def _validate_folder_path(path: str) -> str:
@@ -761,6 +794,7 @@ async def complete_chunked_geoserver_upload(
         raise HTTPException(status_code=400, detail=f"Faltan partes: {missing}")
 
     name = session['name']
+    _validate_file_name(name)
     clean_ws = session.get('workspace')
     content_type = session['content_type']
     total_size = session['total_size']
@@ -825,6 +859,8 @@ async def download_geoserver_folder_zip(
     fetched: list[tuple[str, bytes]] = []
     for it in items:
         name = it['name']
+        if _is_store_config(name):
+            continue
         try:
             content, _ = client.get_style_file_bytes(name, workspace=clean_ws)
         except GeoServerError:
@@ -901,11 +937,11 @@ async def list_geoserver_fonts(
             name = it['name']
             if Path(name).suffix.lower().lstrip('.') not in _GEOSERVER_FONT_EXT:
                 continue
-            ws_qs = f"?workspace={ws}" if ws else ""
+            ws_qs = f"?workspace={quote(ws, safe='')}" if ws else ""
             files.append(GeoServerFontFileResponse(
                 name=name,
                 workspace=ws,
-                download_url=f"{settings.admin_prefix}/geoserver/files/{name}{ws_qs}",
+                download_url=f"{settings.admin_prefix}/geoserver/files/{quote(name, safe='/')}{ws_qs}",
                 loaded=_font_key(name) in loaded_keys,
             ))
 
@@ -971,7 +1007,7 @@ async def download_geoserver_file(
     _rl: Usuario = Depends(_download_rate_limit),
 ):
     incr(COUNTER_GEOSERVER_CALLS)
-    _validate_file_name(name)
+    _validate_file_name_readonly(name)
     clean_ws = _validate_workspace(workspace)
     client = GeoServerClient()
     try:
@@ -1004,7 +1040,7 @@ async def delete_geoserver_file(
     _rl: Usuario = Depends(_write_rate_limit),
 ):
     incr(COUNTER_GEOSERVER_CALLS)
-    _validate_file_name(name)
+    _validate_file_name_readonly(name)
     clean_ws = _validate_workspace(workspace)
     client = GeoServerClient()
     try:

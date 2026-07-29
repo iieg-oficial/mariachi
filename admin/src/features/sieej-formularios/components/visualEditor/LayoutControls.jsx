@@ -1,6 +1,6 @@
 import { Button, Form, Segmented, Select, Switch, Tooltip } from 'antd';
 import {
-    ArrowDownOutlined, ArrowUpOutlined, VerticalAlignTopOutlined,
+    ArrowDownOutlined, ArrowUpOutlined, PlusOutlined, VerticalAlignTopOutlined,
 } from '@ant-design/icons';
 import { GRID_COLUMNS, colChoicesFor, unitsOfColSpan } from './fieldLayout';
 import { COLSPAN_CHOICES, colSpanHint, positionLabels } from './layoutOptions';
@@ -199,7 +199,7 @@ export function ResizeHandle({ handleRef, active, onPointerDown }) {
 }
 
 export function RowDivider({
-    index, free, showFree = true, onUnir, onSubir, onBajar,
+    index, free, showFree = true, showAddButton = false, onAddEnLinea, onUnir, onSubir, onBajar,
 }) {
     const accion = (title, icon, onClick, label) => onClick && (
         <Tooltip title={title}>
@@ -236,6 +236,12 @@ export function RowDivider({
             <div style={{ flex: 1, borderTop: '1px dashed #e5e5e5' }} />
             {free > 0 && showFree && (
                 <span style={{ fontSize: 12, color: '#bbb', whiteSpace: 'nowrap' }}>espacio libre</span>
+            )}
+            {showAddButton && accion(
+                'Agregar un campo en el espacio libre de esta línea',
+                <PlusOutlined />,
+                onAddEnLinea,
+                `Agregar un campo en la línea ${index + 1}`,
             )}
         </div>
     );

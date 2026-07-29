@@ -1,6 +1,6 @@
 # @iieg/colibri-sdk
 
-Cliente HTTP minimalista para enviar reportes a [Colibri](https://github.com/iieg/mariachi/blob/main/docs/colibri.md), el sistema centralizado de reportes del IIEG.
+Cliente HTTP minimalista para enviar reportes a [Colibri](https://github.com/iieg-oficial/context-ame-esta/blob/main/repos/mariachi/modulo-colibri.md), el sistema centralizado de reportes del IIEG.
 
 Sin UI, sin DOM, sin React. Funciona en Node 18+ y en cualquier navegador moderno. < 5 KB gzip.
 
@@ -197,7 +197,7 @@ export async function handler(event) {
 
 ## Ver también
 
-- [docs/colibri.md](https://github.com/iieg/mariachi/blob/main/docs/colibri.md) — arquitectura completa de Colibri.
+- [modulo-colibri.md](https://github.com/iieg-oficial/context-ame-esta/blob/main/repos/mariachi/modulo-colibri.md) — arquitectura completa de Colibri.
 - [@iieg/colibri-widget](https://github.com/iieg/mariachi/tree/main/widget) — Web Components para integraciones con UI.
 
 ## Licencia

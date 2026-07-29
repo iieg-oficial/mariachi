@@ -133,6 +133,12 @@ class LayerMetadataUpdate(CamelCaseInput):
         return parse_date_iso(v) if v not in (None, '') else v
 
 
+class StatError(BaseModel):
+    position: int | None = None
+    label: str | None = None
+    error: str
+
+
 class LayerStatsResponse(BaseModel):
     layer_key: str = Field(..., serialization_alias='layerKey')
     stats_config: list[StatsConfigItem] = Field(default_factory=list, serialization_alias='statsConfig')
@@ -140,6 +146,7 @@ class LayerStatsResponse(BaseModel):
     pie_numeralia: str | None = Field(default=None, serialization_alias='pieNumeralia')
     values_refreshed_at: datetime | None = Field(default=None, serialization_alias='valuesRefreshedAt')
     ttl_minutes: int = Field(default=1440, serialization_alias='ttlMinutes')
+    errors: list[StatError] = Field(default_factory=list)
 
     model_config = ConfigDict(populate_by_name=True, from_attributes=True)
 

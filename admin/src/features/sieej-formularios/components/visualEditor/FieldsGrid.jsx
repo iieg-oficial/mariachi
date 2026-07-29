@@ -15,7 +15,7 @@ const gapId = (slot) => `gap-${slot.row}-${slot.col}`;
 
 export default function FieldsGrid({
     slots, itemIds, unitsPorId, isMobile, vacio, vacioTexto, mostrarGuias,
-    onDrop, onUnirLinea, onMoverLinea, renderField,
+    onDrop, onUnirLinea, onMoverLinea, onAddFieldEnLinea, renderField,
 }) {
     const [dragging, setDragging] = useState(null);
 
@@ -36,11 +36,21 @@ export default function FieldsGrid({
         slots.filter((s) => s.kind === 'gap').map((s) => [gapId(s), s]),
     ), [slots]);
 
+    const huecoEnLinea = useMemo(() => {
+        const map = new Map();
+        slots.filter((s) => s.kind === 'gap' && cabeUnCampo(s.units)).forEach((s) => {
+            if (!map.has(s.row)) map.set(s.row, s);
+        });
+        return map;
+    }, [slots]);
+
     const totalLineas = slots.length === 0 ? 0 : slots[slots.length - 1].row + 1;
 
     const libreEnLinea = (row) => slots
         .filter((s) => s.row === row && s.kind === 'gap' && cabeUnCampo(s.units))
         .reduce((acc, s) => acc + s.units, 0);
+
+    const gapClickable = (gap) => !isMobile && cabeUnCampo(gap.units);
 
     const handleDragEnd = ({ active, over }) => {
         setDragging(null);
@@ -73,12 +83,15 @@ export default function FieldsGrid({
                         const primeroDeLinea = slots.find(
                             (s) => s.row === slot.row && s.kind === 'field',
                         );
+                        const hueco = huecoEnLinea.get(slot.row);
                         const divider = abreLinea && totalLineas > 1
                             ? [<RowDivider
                                 key={`divider-${slot.row}`}
                                 index={slot.row}
                                 free={libreEnLinea(slot.row)}
                                 showFree={!isMobile}
+                                showAddButton={!isMobile && !!hueco}
+                                onAddEnLinea={hueco ? () => onAddFieldEnLinea?.(hueco) : undefined}
                                 onUnir={slot.row > 0 && primeroDeLinea
                                     ? () => onUnirLinea?.(primeroDeLinea.idx)
                                     : undefined}
@@ -96,6 +109,8 @@ export default function FieldsGrid({
                                     id={gapId(slot)}
                                     gap={slot}
                                     activo={!!dragging && !isMobile && admiteElArrastre(slot)}
+                                    clickable={gapClickable(slot)}
+                                    onAddInGap={gapClickable(slot) ? () => onAddFieldEnLinea?.(slot) : undefined}
                                 />,
                             ];
                         }

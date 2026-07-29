@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import xml.etree.ElementTree as ET
+from urllib.parse import quote
 
 import httpx
 
@@ -417,7 +418,7 @@ class GeoServerClient:
 
     def get_style_file_bytes(self, name: str, workspace: str | None = None) -> tuple[bytes, str]:
         base = self._styles_base(workspace)
-        url = f"{self._base_url}/rest/{base}/{name.lstrip('/')}"
+        url = f"{self._base_url}/rest/{base}/{quote(name.lstrip('/'), safe='/')}"
         with httpx.Client(auth=self._auth, timeout=self._timeout) as c:
             r = c.get(url)
             if r.status_code == 404:
@@ -428,7 +429,7 @@ class GeoServerClient:
 
     def put_style_file(self, name: str, content: bytes, content_type: str, workspace: str | None = None) -> None:
         base = self._styles_base(workspace)
-        url = f"{self._base_url}/rest/{base}/{name.lstrip('/')}"
+        url = f"{self._base_url}/rest/{base}/{quote(name.lstrip('/'), safe='/')}"
         with httpx.Client(auth=self._auth, timeout=self._timeout) as c:
             r = c.put(url, content=content, headers={"Content-Type": content_type})
             if r.status_code not in (200, 201):
@@ -445,7 +446,7 @@ class GeoServerClient:
         workspace: str | None = None,
     ) -> None:
         base = self._styles_base(workspace)
-        url = f"{self._base_url}/rest/{base}/{name.lstrip('/')}"
+        url = f"{self._base_url}/rest/{base}/{quote(name.lstrip('/'), safe='/')}"
         headers = {"Content-Type": content_type, "Content-Length": str(content_length)}
         with httpx.Client(auth=self._auth, timeout=None) as c:
             r = c.put(url, content=content, headers=headers)
@@ -477,7 +478,7 @@ class GeoServerClient:
 
     def delete_style_file(self, name: str, workspace: str | None = None) -> bool:
         base = self._styles_base(workspace)
-        url = f"{self._base_url}/rest/{base}/{name.lstrip('/')}"
+        url = f"{self._base_url}/rest/{base}/{quote(name.lstrip('/'), safe='/')}"
         with httpx.Client(auth=self._auth, timeout=self._timeout) as c:
             r = c.delete(url)
             if r.status_code == 404:

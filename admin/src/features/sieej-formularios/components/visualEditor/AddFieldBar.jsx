@@ -1,6 +1,6 @@
 import { Button, Popconfirm, Space, Tooltip } from 'antd';
 import {
-    CloseOutlined, EnterOutlined, PlusOutlined, SnippetsOutlined,
+    CloseOutlined, PlusOutlined, SnippetsOutlined,
 } from '@ant-design/icons';
 import { fieldTypeLabel } from '../../constants/definitionTypes';
 
@@ -14,19 +14,22 @@ const pasteDescription = (field, clipboard, hasTabs, activeTabTitle) => {
     return `${partes.join(', ')}${origen}.${destino}`;
 };
 
+const addLabel = (hasTabs, activeTabTitle, isMobile) => {
+    if (isMobile) return 'Agregar campo';
+    if (hasTabs) return `Agregar campo en nueva línea a «${activeTabTitle}»`;
+    return 'Agregar campo en nueva línea';
+};
+
 export default function AddFieldBar({
     hasTabs, activeTabTitle, isMobile, clipboard, clipboardField,
-    onAdd, onAddEnLinea, onPaste, onClearClipboard,
+    onAdd, onPaste, onClearClipboard,
 }) {
     const clipboardLabel = clipboardField?.label || clipboardField?.name;
     return (
         <Space.Compact block style={{ marginTop: 8 }}>
-            <Button type="dashed" icon={<PlusOutlined />} style={{ flex: 1 }} onClick={onAdd}>
-                {hasTabs ? `Agregar campo a «${activeTabTitle}»` : 'Agregar campo'}
-            </Button>
-            <Tooltip title="Agregar un campo que empiece su propia línea, aunque lo dejes angosto.">
-                <Button type="dashed" icon={<EnterOutlined />} onClick={onAddEnLinea}>
-                    {isMobile ? null : 'En línea nueva'}
+            <Tooltip title="El campo empieza su propia línea. Para agregarlo junto a otro, usa el botón + del espacio libre de una línea.">
+                <Button type="dashed" icon={<PlusOutlined />} style={{ flex: 1 }} onClick={onAdd}>
+                    {addLabel(hasTabs, activeTabTitle, isMobile)}
                 </Button>
             </Tooltip>
             {clipboardField && (
