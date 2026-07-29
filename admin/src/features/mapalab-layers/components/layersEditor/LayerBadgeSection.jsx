@@ -13,7 +13,7 @@ import dayjs from 'dayjs';
 
 const { Text } = Typography;
 
-export const BADGE_PRESETS = {
+const BADGE_PRESETS = {
     new: { label: 'Nueva', color: '#1F9D55' },
     updated: { label: 'Actualizada', color: '#2563EB' },
     soon: { label: 'Próximamente', color: '#FF8300' },

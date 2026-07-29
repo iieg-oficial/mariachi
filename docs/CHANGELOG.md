@@ -9,6 +9,20 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.105.2] - 2026-07-29
+
+### El lint del admin vuelve a cero problemas
+
+#### Corregido
+
+- **`export` muerto en `LayerBadgeSection.jsx`.** `BADGE_PRESETS` se exportaba sin que nadie lo
+  importara: su unico uso esta en la linea 32 del propio archivo, y su vecino `VARIANT_OPTIONS` ya
+  era local, asi que el `export` era un descuido. Disparaba el warning
+  `react-refresh/only-export-components`, que avisa que el fast refresh de Vite deja de funcionar
+  cuando un archivo exporta algo que no es un componente. Se quita el `export` en lugar de mover la
+  constante a `constants/` —el remedio que sugiere el mensaje del linter— porque nada necesita
+  compartirla. `npm run lint` del admin queda en **cero problemas**.
+
 ## [1.105.1] - 2026-07-29
 
 ### El contexto se movio al repo central y los docs quedaron homologados
