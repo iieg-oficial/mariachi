@@ -43,6 +43,26 @@ Con nombres que ya admiten más caracteres, un `&` rompía el XML del `<External
 truncaba la URL de descarga. El snippet escapa XML (incluidas las comillas del atributo `href`)
 y `download_url` codifica nombre y workspace.
 
+## [1.105.0] - 2026-07-29
+
+### Cambiado: los campos se agregan en línea desde el propio espacio libre
+
+Agregar un campo junto a otro se pedía con un botón «En línea nueva» al fondo del editor, lejos del lugar donde iba a aparecer, y sin decir en qué línea caería: el campo se acomodaba donde cupiera. Ahora el espacio libre de cada línea es el que ofrece la acción.
+
+- El **hueco** de una línea es clickeable y muestra un `+` al pasar el cursor o al enfocarlo con el teclado. El campo nace con el ancho del hueco (`snapColSpan`), ya colocado en esa columna.
+- El **divisor de línea** suma un `+` junto al indicador de «espacio libre», que agrega en el primer hueco de esa línea.
+- La barra inferior queda con un solo botón, **«Agregar campo en nueva línea»**, que es lo que de verdad hace: el campo empieza su propia línea aunque después se angoste.
+
+En móvil la grilla es de una columna, así que los huecos no ofrecen la acción y el botón de la barra sigue siendo el camino.
+
+### Corregido: el campo agregado a la izquierda de otro se iba a su propia línea
+
+Al colocar un campo en un hueco que **abre** la línea (a la izquierda de los que ya estaban), el nuevo se guardaba sin la marca de apertura mientras el que era primero la conservaba, así que terminaban en líneas distintas: pedir un campo junto a «a» producía una línea nueva con el campo y dejaba «a» sola en la suya. La colocación ahora reutiliza `moveToSlot` —la misma operación del arrastrar y soltar—, que traspasa la apertura de línea al campo entrante. Queda cubierto con pruebas.
+
+### Corregido: el formulario del campo se vaciaba al re-renderizar el editor
+
+El efecto que rellena el formulario dependía del objeto `field` completo, y el editor lo construía en línea en cada render: cualquier re-actualización de la lista mientras se llenaba un campo nuevo lo reseteaba a valores vacíos. Ahora depende de una clave derivada del nombre y el acomodo, y los valores iniciales del campo nuevo están memoizados.
+
 ## [1.104.0] - 2026-07-29
 
 ### Corregido: el recálculo de numeralia fallaba en cascada y podía borrar valores

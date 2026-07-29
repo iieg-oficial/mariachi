@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
     AutoComplete, Button, Col, Form, Input, InputNumber, Row, Select, Switch, Space,
 } from 'antd';
@@ -53,11 +53,12 @@ export default function FieldForm({
     const { catalogos } = useCatalogos();
     const { isMobile } = useIsMobile();
 
+    const fieldKey = useMemo(() => `${field?.name ?? ''}:${JSON.stringify(field?.layout ?? {})}`, [field]);
     useEffect(() => {
         form.setFieldsValue(fieldToFormValues(field, defaultCol));
         setNameTouched(!!field?.name);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [field, form]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [fieldKey, form]);
 
     const watchType = Form.useWatch('type', form);
     const watchLabel = Form.useWatch('label', form);
