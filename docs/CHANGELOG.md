@@ -9,6 +9,34 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.104.0] - 2026-07-29
+
+### Corregido: el recálculo de numeralia fallaba en cascada y podía borrar valores
+
+Auditoría del flujo completo de estadísticas dinámicas de los metadatos de capas.
+
+**Una estadística fallida tumbaba las demás.** `POST /layer-metadata/{key}/stats/refresh` ejecutaba todas las stats sobre la misma transacción; en Postgres un error la aborta por completo, así que la primera query rota hacía fallar todas las siguientes **y el propio `COMMIT`**, devolviendo un 500. El mecanismo de errores parciales que ya existía (`_errors`) era inalcanzable en la práctica, y aunque llegara, el `response_model` lo filtraba antes de salir: **el cliente nunca podía enterarse de qué falló**. Ahora cada stat corre aislada en un `SAVEPOINT` (`execute_stats_batch`) y los fallos viajan en el campo `errors` de la respuesta, que el panel muestra slot por slot.
+
+**El botón "Recalcular valores ahora" borraba la numeralia legacy.** Las capas migradas del Sheet original tienen valores guardados sin configuración; el panel los precargaba como slots estáticos y dejaba el botón habilitado, pero el recálculo usa la configuración **del servidor** — vacía — así que persistía `values=[]` y la numeralia desaparecía del visor sin aviso. Ahora el endpoint responde 400 en vez de vaciar, el botón se deshabilita mientras haya cambios sin guardar o no exista configuración guardada, y el tooltip explica por qué.
+
+**Protección contra borrado**: si ninguna stat pudo calcularse, el endpoint responde 502 con el detalle y conserva los valores anteriores en lugar de dejar la capa sin numeralia.
+
+### Corregido: el guardado se ofrecía a editoras que siempre recibían 403
+
+`PUT /stats` exige rol `tetlamamakani`, pero el panel mostraba "Guardar configuración" a cualquier editora con acceso a la capa: podía configurar, previsualizar y recalcular, y descubría la restricción solo al guardar. Ahora el botón se deshabilita y un aviso explica que el guardado es de administradora; previsualizar y recalcular siguen disponibles.
+
+### Cambiado: el campo `format` por fin se aplica
+
+Se validaba al guardar pero ningún productor lo usaba, así que un promedio llegaba al visor como `340172.1895424836601307`. Ahora `execute_stats_batch` lo aplica al persistir y el preview muestra el valor ya formateado — lo que realmente verá el visor. `integer`, `decimal_2`, `percentage`, `currency_mxn` y `compact` ajustan solo la precisión: el separador de miles lo pone el visor y el símbolo va en su propio campo.
+
+### Corregido: precarga legacy con posiciones duplicadas
+
+Los valores legacy se precargaban sin deduplicar `posicion`, así que un Sheet con posiciones repetidas producía un 400 (`positions duplicadas`) evitable al guardar. El editor de fórmulas tampoco limitaba el anidamiento y dejaba construir expresiones que el backend rechaza pasando de 6 niveles; ahora corta en el mismo límite.
+
+### Nota de despliegue
+
+Requiere la migración `0031_stats_read_grants` de **dataengine 1.28.0**: sin ella, el rol `mariachi_layers` no puede leer los schemas temáticos y toda estadística sobre datos reales responde 502 `permission denied for schema`.
+
 ## [1.103.1] - 2026-07-28
 
 ### La validación de contraste no revisaba los colores de acento
