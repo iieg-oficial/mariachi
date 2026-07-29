@@ -9,6 +9,40 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.104.1] - 2026-07-29
+
+### Corregido: los archivos de GeoServer con nombres legados no se podían descargar ni borrar
+
+Los archivos subidos fuera del panel (o migrados) suelen traer espacios y acentos —
+`Icono Salud.svg`, `estación (norte).svg` — y `_validate_file_name` exige segmentos
+`[a-zA-Z0-9._-]`, así que descargarlos o borrarlos respondía 400: quedaban atrapados en
+GeoServer, visibles pero inmanejables.
+
+Ahora los endpoints de lectura y borrado usan `_validate_file_name_readonly`, que relaja el
+formato de los segmentos pero **mantiene la lista blanca de extensiones**, y los nombres viajan
+URL-encoded hacia el REST de GeoServer (`quote(..., safe='/')`) para que los caracteres especiales
+no rompan la petición. Las subidas siguen exigiendo el formato estricto: la relajación es solo
+para gestionar lo que ya existe.
+
+La lista blanca no se relaja porque la raíz del workspace en el Resource API no contiene solo
+iconos: `_styles_base()` apunta a `resource/workspaces/{ws}`, donde también viven `datastore.xml`
+—con host, base y contraseña del almacén—, `workspace.xml` y los estilos. Sin el filtro de
+extensión, un editor podía descargar las credenciales de la base o borrar la configuración del
+workspace por el endpoint de archivos.
+
+### Corregido: el ZIP de carpetas incluía los archivos de conexión
+
+`GET /geoserver/files/zip` empaqueta el árbol completo del workspace, así que arrastraba los
+`datastore.xml` junto con los iconos y estilos. Se excluyen los archivos de conexión
+(`*store.xml`: `datastore`, `coveragestore`, `wmsstore`, `wmtsstore`); el resto del contenido
+—incluidos los `.sld` y los `.xml` de estilos— sigue viajando en el ZIP.
+
+### Corregido: el snippet SLD y las URLs de descarga no escapaban el nombre
+
+Con nombres que ya admiten más caracteres, un `&` rompía el XML del `<ExternalGraphic>` y un `#`
+truncaba la URL de descarga. El snippet escapa XML (incluidas las comillas del atributo `href`)
+y `download_url` codifica nombre y workspace.
+
 ## [1.104.0] - 2026-07-29
 
 ### Corregido: el recálculo de numeralia fallaba en cascada y podía borrar valores
