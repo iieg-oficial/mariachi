@@ -2,8 +2,6 @@ from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from prometheus_fastapi_instrumentator import Instrumentator
-from prometheus_fastapi_instrumentator import metrics as fastapi_metrics
 
 from app.api import metrics as metrics_module
 from app.api.colibri_cors import ColibriPublicCORSMiddleware
@@ -82,16 +80,6 @@ def create_app() -> FastAPI:
     # antes de que el CORS global lo rechace por no estar en la lista fija.
     app.add_middleware(ColibriPublicCORSMiddleware)
 
-    Instrumentator(
-        excluded_handlers=["^/metrics$", "^/health$", "^/ontoy$", "^/$"],
-        should_group_status_codes=True,
-        should_ignore_untemplated=True,
-    ).add(
-        fastapi_metrics.requests()
-    ).add(
-        fastapi_metrics.latency(buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10))
-    ).instrument(app)
-
     app.include_router(auth.router, prefix=settings.admin_prefix)
     app.include_router(formularios.router, prefix=settings.admin_prefix)
 
@@ -141,7 +129,6 @@ def create_app() -> FastAPI:
     app.include_router(mapalab_events_public.router, prefix=settings.public_prefix)
     app.include_router(mapalab_infobox_public.router, prefix=settings.public_prefix)
     app.include_router(mapalab_infobox.router, prefix=settings.admin_prefix, dependencies=staff_dep)
-    app.include_router(metrics_module.router)
 
     @app.get("/", tags=["health"])
     async def healthcheck():
@@ -203,6 +190,7 @@ def create_app() -> FastAPI:
             "deployed_at": deployed_at,
             "status": status,
             "checks": checks,
+            "counters": metrics_module.snapshot(),
         }
         return JSONResponse(payload, status_code=503 if status == "down" else 200)
 

@@ -166,12 +166,20 @@ def test_notifier_debounces_multiple_calls():
         s.mapalab_backend_url = original
 
 
-def test_metrics_endpoint_returns_prometheus_format(client):
-    response = client.get('/metrics')
+def test_ontoy_expone_contadores_seleccionados(client):
+    from app.api import metrics as m
+
+    m.incr(m.COUNTER_LOGIN_FAILED, amount=2)
+
+    response = client.get('/ontoy')
     assert response.status_code == 200
-    assert 'text/plain' in response.headers['content-type']
-    body = response.text
-    assert body.endswith('\n')
+    counters = response.json()['counters']
+    assert set(counters) == set(m.ONTOY_COUNTERS)
+    assert counters[m.COUNTER_LOGIN_FAILED] >= 2
+
+
+def test_metrics_endpoint_ya_no_existe(client):
+    assert client.get('/metrics').status_code == 404
 
 
 def test_metrics_counters_increment_on_rate_limit_hit():

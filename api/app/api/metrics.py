@@ -3,9 +3,6 @@ from __future__ import annotations
 import threading
 from collections import defaultdict
 
-from fastapi import APIRouter, Response
-from prometheus_client import REGISTRY, generate_latest
-
 _counters: dict[str, int] = defaultdict(int)
 _lock = threading.Lock()
 
@@ -43,18 +40,14 @@ def incr(name: str, amount: int = 1) -> None:
         _counters[name] += amount
 
 
-def _render_prometheus() -> str:
-    lines: list[str] = []
-    for name, value in sorted(_counters.items()):
-        lines.append(f'# TYPE {name} counter')
-        lines.append(f'{name} {value}')
-    return '\n'.join(lines) + '\n'
+ONTOY_COUNTERS: tuple[str, ...] = (
+    COUNTER_RATE_LIMIT_HITS,
+    COUNTER_LOGIN_FAILED,
+    COUNTER_LOGIN_LOCKED,
+    COUNTER_TREE_NOTIFY_FAILED,
+)
 
 
-router = APIRouter(tags=['metrics'])
-
-
-@router.get('/metrics', include_in_schema=False)
-async def metrics() -> Response:
-    body = _render_prometheus() + generate_latest(REGISTRY).decode('utf-8')
-    return Response(content=body, media_type='text/plain; version=0.0.4')
+def snapshot() -> dict[str, int]:
+    with _lock:
+        return {name: _counters[name] for name in ONTOY_COUNTERS}
