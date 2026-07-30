@@ -74,11 +74,9 @@ def ingest_batch(
     db: Session,
     payload: EventBatchIn,
     *,
-    ip: str | None,
     user_agent: str | None,
     api_key_id: int | None = None,
 ) -> int:
-    ip_hash_value = hash_ip(ip)
     ua_family_value = parse_ua_family(user_agent)
     referrer = _truncate_str(payload.referrer, 500)
     pathname = _truncate_str(payload.pathname, 200)
@@ -108,7 +106,6 @@ def ingest_batch(
             "api_key_id": api_key_id,
             "layer_id": layer_id,
             "props": scrubbed,
-            "ip_hash": ip_hash_value,
             "ua_family": ua_family_value,
             "referrer": referrer,
             "pathname": pathname,
@@ -164,7 +161,6 @@ def ingest_batch(
         downloaded=downloaded,
         shared=shared,
         reported=reported,
-        ip_hash=ip_hash_value,
         ua_family=ua_family_value,
         referrer=referrer,
         entry_pathname=pathname,

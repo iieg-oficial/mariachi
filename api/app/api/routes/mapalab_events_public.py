@@ -15,16 +15,6 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/mapalab/events", tags=["mapalab telemetry"])
 
 
-def _client_ip(request: Request) -> str | None:
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    real_ip = request.headers.get("x-real-ip")
-    if real_ip:
-        return real_ip.strip()
-    return request.client.host if request.client else None
-
-
 @router.post(
     "/batch",
     response_model=EventBatchResponse,
@@ -55,7 +45,6 @@ async def ingerir_batch(
         inserted = ingest_batch(
             db,
             payload,
-            ip=_client_ip(request),
             user_agent=request.headers.get("user-agent"),
             api_key_id=None,
         )
