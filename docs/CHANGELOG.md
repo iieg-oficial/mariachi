@@ -9,6 +9,33 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.113.0] - 2026-07-30
+
+### Cambiado: Vite 8 con Rolldown, y React 19.2.8
+
+Vite 8 reemplaza esbuild y Rollup por **Rolldown** (bundler en Rust) y **Oxc**. El build del admin
+pasa de **5.71 s a 392 ms** y el dev server arranca en 111 ms. Suben también
+`@vitejs/plugin-react` a 6.0.5, React y React-DOM a 19.2.8 y Vitest a 4.1.10; el widget queda en
+Vite 8 igual que el admin.
+
+La forma de objeto de `manualChunks` —la que usaba el admin— **fue removida en Vite 8**, así que
+el chunking se reescribió con `build.rolldownOptions.output.codeSplitting.groups`: cada grupo
+declara una expresión regular contra el id del módulo y una prioridad. `react-vendor` lleva la
+prioridad más alta para que React no acabe absorbido por `antd`, que es lo que ocurre si los
+grupos se traducen en el orden literal anterior (un grupo arrastra las dependencias de lo que
+captura, cosa que `manualChunks` no hacía).
+
+Los tres chunks se conservan y `antd` adelgaza de 1590 kB a 1390 kB (gzip 485 → 418). Los 181
+tests siguen pasando y `knip` no reporta código muerto nuevo.
+
+En el widget se retiró `minify: 'esbuild'` —deprecado y ahora dependencia externa— y se dejó el
+minificador Oxc por defecto: `colibri-widget.v1.js` pasa de 50.13 kB a 50.47 kB y sigue
+registrando sus cinco custom elements. `inlineDynamicImports` se reemplazó por
+`codeSplitting: false`, su equivalente en Rolldown.
+
+Requiere reconstruir las imágenes de `admin` y `nginx`. El cambio de bundler cambia todos los
+hashes de los assets: conviene desplegar fuera de horario pico.
+
 ## [1.112.0] - 2026-07-30
 
 ### Cambiado: Makefile homologado con el resto del ecosistema

@@ -3,7 +3,7 @@
     "description": "Mariachi — panel de administración del ecosistema IIEG",
     "license": "MIT",
     "author": "Edgar Alejandro Villarreal Padilla <edgar.villarreal@iieg.gob.mx>",
-    "version": "1.111.0",
+    "version": "1.113.0",
     "private": true,
     "type": "module",
     "scripts": {
@@ -31,9 +31,9 @@
         "dayjs": "1.11.20",
         "ol": "^10.9.0",
         "proj4": "2.20.8",
-        "react": "19.2.5",
+        "react": "19.2.8",
         "react-datasheet-grid": "^4.11.6",
-        "react-dom": "19.2.5",
+        "react-dom": "19.2.8",
         "react-router": "7.14.2"
     },
     "devDependencies": {
@@ -41,11 +41,11 @@
         "@testing-library/dom": "10.4.1",
         "@testing-library/jest-dom": "6.9.1",
         "@testing-library/react": "16.3.2",
-        "@types/react": "19.2.14",
+        "@types/react": "19.2.17",
         "@types/react-dom": "19.2.3",
-        "@vitejs/plugin-react": "5.2.0",
-        "@vitest/coverage-v8": "4.1.5",
-        "@vitest/ui": "4.1.5",
+        "@vitejs/plugin-react": "6.0.5",
+        "@vitest/coverage-v8": "4.1.10",
+        "@vitest/ui": "4.1.10",
         "eslint": "10.2.1",
         "eslint-plugin-jsx-a11y": "6.10.2",
         "eslint-plugin-react-hooks": "7.1.1",
@@ -55,8 +55,8 @@
         "knip": "6.6.0",
         "lint-staged": "^16.4.0",
         "msw": "2.12.7",
-        "vite": "7.3.2",
-        "vitest": "4.1.5"
+        "vite": "8.2.0",
+        "vitest": "4.1.10"
     },
     "overrides": {
         "eslint-plugin-react-hooks": {
