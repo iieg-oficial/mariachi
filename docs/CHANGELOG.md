@@ -9,6 +9,28 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.108.1] - 2026-07-30
+
+### Cambiado: la documentación del contrato `/ontoy` recoge lo aprendido
+
+La ficha de Documentación → Contrato `/ontoy` del admin apuntaba a
+`huachicol/docs/ontoy-contrato.md`, que dejó de existir cuando huachicol 2.0 movió sus docs al repo
+central, y daba a casi todo el ecosistema como pendiente de migrar a v2 cuando ya está completo.
+
+Se agregan dos secciones que faltaban:
+
+- **Exposición.** Un `/ontoy` servido desde el backend no necesita ser público: el monitor sondea
+  por `iieg-network`. El riesgo es que un prefijo general del proxy lo publique sin que nadie lo
+  decida, como pasó con `/mapalab/api/ontoy`. Incluye la trampa de verificarlo con `curl`, que recibe
+  `403` de la protección anti-bots y hace parecer cerrado lo que está abierto.
+- **Qué se guarda de la respuesta.** El monitor solo persiste `status`, `checks`, `containers`,
+  `version` y `deployed_at`; el `slug` y el `label` los toma de su `targets.json`. Lo que se quiera
+  vigilar va como un `check` con su propio `status`, porque una llave suelta no se almacena ni
+  alerta.
+
+La tabla de adopción queda al día y con los checks de cada servicio. La especificación completa en
+`context-ame-esta/repos/huachicol/ontoy-contrato.md` recibe las mismas dos secciones.
+
 ## [1.108.0] - 2026-07-30
 
 ### El diff de definiciones ahora dice el nombre del campo

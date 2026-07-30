@@ -40,14 +40,14 @@ const ESTADO_COLUMNS = [
 ];
 
 const ADOPCION = [
-    { servicio: 'huachicol', v2: true, como: 'sidecar version-api' },
-    { servicio: 'geoserver', v2: false, como: 'sidecar version-api' },
-    { servicio: 'acervo', v2: false, como: 'sidecar version-api' },
-    { servicio: 'dataengine', v2: false, como: 'sidecar en jobs/' },
-    { servicio: 'mapalab', v2: false, como: 'backend FastAPI' },
-    { servicio: 'mariachi', v2: false, como: 'backend FastAPI' },
-    { servicio: 'gateway-hub', v2: false, como: 'nginx (estático)' },
-    { servicio: 'sieej', v2: false, como: 'estático vía gateway' },
+    { servicio: 'huachicol', v2: true, como: 'sidecar version-api', checks: 'disk, containers' },
+    { servicio: 'geoserver', v2: true, como: 'sidecar version-api', checks: 'disk, containers' },
+    { servicio: 'acervo', v2: true, como: 'sidecar version-api', checks: 'disk, containers' },
+    { servicio: 'dataengine', v2: true, como: 'sidecar en jobs/', checks: 'disk' },
+    { servicio: 'mapalab', v2: true, como: 'backend FastAPI', checks: 'db, client_errors' },
+    { servicio: 'mariachi', v2: true, como: 'backend FastAPI', checks: 'db, redis' },
+    { servicio: 'gateway-hub', v2: true, como: 'sidecar version-api', checks: 'disk, containers, puertos' },
+    { servicio: 'sieej', v2: true, como: 'estático vía gateway', checks: '—' },
 ];
 
 const ADOPCION_COLUMNS = [
@@ -60,6 +60,7 @@ const ADOPCION_COLUMNS = [
         render: (v) => <Tag color={v ? 'success' : 'default'}>{v ? 'sí' : 'pendiente'}</Tag>,
     },
     { title: 'Cómo lo sirve', dataIndex: 'como', key: 'como' },
+    { title: 'Checks', dataIndex: 'checks', key: 'checks', render: (v) => <Text style={{ fontSize: 12 }}>{v}</Text> },
 ];
 
 const EJEMPLO_RESPUESTA = `{
@@ -153,6 +154,42 @@ export default function OntoyTopic() {
                 </Paragraph>
             </Card>
 
+            <Card title="Exposición" size="small">
+                <Paragraph style={{ marginTop: 0, marginBottom: 8 }}>
+                    El monitor sondea por <Text code>iieg-network</Text>, contenedor a contenedor
+                    (<Text code>http://mariachi-api:8000/ontoy</Text>), así que <strong>un <Text code>/ontoy</Text> servido
+                    desde el backend no necesita ser público</strong>. El gateway publica a propósito el de gateway-hub,
+                    geoserver, acervo, huachicol y sieej, que son sidecars y sólo dicen versión y estado.
+                </Paragraph>
+                <Paragraph style={{ marginTop: 0, marginBottom: 8 }}>
+                    Cuando lo sirve la aplicación el riesgo es otro: si el proxy enruta un prefijo general hacia el
+                    backend, <Text code>/ontoy</Text> sale a internet sin que nadie lo haya decidido. Le pasó a mapalab,
+                    donde <Text code>/mapalab/api/</Text> mandaba todo al backend y <Text code>/mapalab/api/ontoy</Text>
+                    respondía <Text code>200</Text> desde fuera. Se cierra con un <Text code>location</Text> exacto y{' '}
+                    <Text code>deny all</Text> en el nginx del servicio.
+                </Paragraph>
+                <Paragraph type="secondary" style={{ marginTop: 12, marginBottom: 0, fontSize: 12 }}>
+                    Comprobarlo con un <Text code>User-Agent</Text> de navegador: la protección anti-bots del gateway
+                    responde <Text code>403</Text> a <Text code>curl</Text> y hace parecer cerrado lo que está abierto.
+                    En los <Text code>checks</Text> tampoco va el mensaje crudo de la excepción —un
+                    <Text code>OperationalError</Text> de Postgres trae host, usuario y base—, sino un texto propio.
+                </Paragraph>
+            </Card>
+
+            <Card title="Qué se guarda de la respuesta" size="small">
+                <Paragraph style={{ marginTop: 0, marginBottom: 8 }}>
+                    El monitor persiste <Text code>status</Text>, <Text code>checks</Text>, <Text code>containers</Text>,{' '}
+                    <Text code>version</Text> y <Text code>deployed_at</Text>. El resto del payload lo ignora, y el
+                    nombre del servicio lo toma de su propio <Text code>targets.json</Text>, no del cuerpo.
+                </Paragraph>
+                <Paragraph type="secondary" style={{ marginTop: 0, marginBottom: 0, fontSize: 12 }}>
+                    Por eso lo que se quiera vigilar va <strong>como un <Text code>check</Text> con su propio{' '}
+                        <Text code>status</Text></strong>, no como una llave suelta: un contador aparte no se almacena, no
+                    alerta y no aparece en el panel. El patrón está en <Text code>client_errors</Text> de mapalab, que
+                    pasa a <Text code>degraded</Text> cuando los errores de cliente superan el umbral.
+                </Paragraph>
+            </Card>
+
             <Card title="Estado de adopción" size="small">
                 <Table
                     rowKey="servicio"
@@ -162,7 +199,7 @@ export default function OntoyTopic() {
                     columns={ADOPCION_COLUMNS}
                 />
                 <Paragraph type="secondary" style={{ marginTop: 12, marginBottom: 0, fontSize: 12 }}>
-                    Un <Text code>/ontoy</Text> que sólo lee un archivo de versión responde <Text code>200</Text> aunque la base de datos esté caída: eso produce falsos verdes en el panel. Verificar una migración con <Text code>curl -s http://&lt;host&gt;:8088/ontoy | jq</Text>; especificación completa en <Text code>huachicol/docs/ontoy-contrato.md</Text>.
+                    Un <Text code>/ontoy</Text> que sólo lee un archivo de versión responde <Text code>200</Text> aunque la base de datos esté caída: eso produce falsos verdes en el panel. Verificar una migración con <Text code>curl -s http://&lt;host&gt;:8088/ontoy | jq</Text>; especificación completa en <Text code>context-ame-esta/repos/huachicol/ontoy-contrato.md</Text>.
                 </Paragraph>
             </Card>
         </Space>
