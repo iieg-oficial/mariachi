@@ -138,10 +138,8 @@ def test_refrescar_sin_cookie(client, admin_user, fake_refresh_redis):
 
 
 def test_refrescar_cookie_invalida(client, admin_user, fake_refresh_redis):
-    response = client.post(
-        f"{ADMIN_PREFIX}/autenticacion/refrescar",
-        cookies={"refresh_token": "no-existe"},
-    )
+    client.cookies.set("refresh_token", "no-existe")
+    response = client.post(f"{ADMIN_PREFIX}/autenticacion/refrescar")
     assert response.status_code == 401
 
 
@@ -156,17 +154,13 @@ def test_refrescar_rotacion_detecta_reuso(client, admin_user, fake_refresh_redis
     assert new_refresh and new_refresh != old_refresh
 
     client.cookies.clear()
-    reuse = client.post(
-        f"{ADMIN_PREFIX}/autenticacion/refrescar",
-        cookies={"refresh_token": old_refresh},
-    )
+    client.cookies.set("refresh_token", old_refresh)
+    reuse = client.post(f"{ADMIN_PREFIX}/autenticacion/refrescar")
     assert reuse.status_code == 401
 
     client.cookies.clear()
-    revoked = client.post(
-        f"{ADMIN_PREFIX}/autenticacion/refrescar",
-        cookies={"refresh_token": new_refresh},
-    )
+    client.cookies.set("refresh_token", new_refresh)
+    revoked = client.post(f"{ADMIN_PREFIX}/autenticacion/refrescar")
     assert revoked.status_code == 401
 
 
@@ -181,8 +175,6 @@ def test_logout_revoca_refresh(client, admin_user, fake_refresh_redis):
     assert logout.status_code == 200
 
     client.cookies.clear()
-    response = client.post(
-        f"{ADMIN_PREFIX}/autenticacion/refrescar",
-        cookies={"refresh_token": refresh},
-    )
+    client.cookies.set("refresh_token", refresh)
+    response = client.post(f"{ADMIN_PREFIX}/autenticacion/refrescar")
     assert response.status_code == 401

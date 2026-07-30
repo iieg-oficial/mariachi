@@ -61,10 +61,8 @@ def test_get_current_user_no_cookie(client):
 
 
 def test_get_current_user_invalid_cookie(client, admin_user):
-    response = client.get(
-        f"{ADMIN_PREFIX}/autenticacion/perfil",
-        cookies={"access_token": "invalid_token"},
-    )
+    client.cookies.set("access_token", "invalid_token")
+    response = client.get(f"{ADMIN_PREFIX}/autenticacion/perfil")
     assert response.status_code == 401
 
 
@@ -76,10 +74,8 @@ def test_verify_token_valid(admin_session):
 
 
 def test_verify_token_invalid(client, admin_user):
-    response = client.get(
-        f"{ADMIN_PREFIX}/autenticacion/verificar",
-        cookies={"access_token": "invalid_token"},
-    )
+    client.cookies.set("access_token", "invalid_token")
+    response = client.get(f"{ADMIN_PREFIX}/autenticacion/verificar")
     assert response.status_code == 401
 
 

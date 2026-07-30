@@ -85,7 +85,7 @@ async def subir_archivo_interno(
     size = file.size or 0
     if size and size > policy.max_file_bytes:
         raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
             detail=f"El archivo supera el tamano maximo ({policy.max_file_bytes // (1024 * 1024)} MB)",
         )
 

@@ -293,7 +293,7 @@ class EnviosService:
         payload_bytes = len(json.dumps(datos, default=str).encode("utf-8"))
         if payload_bytes > DATOS_MAX_BYTES:
             raise HTTPException(
-                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                status_code=status.HTTP_413_CONTENT_TOO_LARGE,
                 detail=(
                     f"`datos` excede el limite de "
                     f"{DATOS_MAX_BYTES // (1024 * 1024)} MB"
@@ -304,7 +304,7 @@ class EnviosService:
             validar_datos(envio.definicion_snapshot, datos, estricto=enviar)
         except DatosInvalidosError as exc:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail={"errores": exc.errores},
             ) from exc
 
@@ -409,7 +409,7 @@ class EnviosService:
             metas[field_path] = meta
         if errores:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail={"errores": errores},
             )
 
@@ -427,7 +427,7 @@ class EnviosService:
         payload_bytes = len(json.dumps(nuevos, default=str).encode("utf-8"))
         if payload_bytes > DATOS_MAX_BYTES:
             raise HTTPException(
-                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                status_code=status.HTTP_413_CONTENT_TOO_LARGE,
                 detail=(
                     f"`datos` excede el limite de "
                     f"{DATOS_MAX_BYTES // (1024 * 1024)} MB"
@@ -437,7 +437,7 @@ class EnviosService:
             validar_datos(envio.definicion_snapshot, nuevos, estricto=False)
         except DatosInvalidosError as exc:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail={"errores": exc.errores},
             ) from exc
 
@@ -894,7 +894,7 @@ class EnviosService:
         meta = self.resolver_editable(defs, field_path)
         if meta is None or meta["type"] != "file":
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail={
                     "errores": [
                         {"field_path": field_path, "error": "campo no editable"}
@@ -911,7 +911,7 @@ class EnviosService:
             "repeater"
         ]:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail={
                     "errores": [
                         {"field_path": field_path, "error": "el elemento no existe"}
@@ -1082,7 +1082,7 @@ class EnviosService:
         if isinstance(max_mb, (int, float)) and max_mb > 0 and size is not None:
             if size > int(max_mb * 1024 * 1024):
                 raise HTTPException(
-                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                    status_code=status.HTTP_413_CONTENT_TOO_LARGE,
                     detail=f"El archivo excede el limite de {max_mb} MB",
                 )
 

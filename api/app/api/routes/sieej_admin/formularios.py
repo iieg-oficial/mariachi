@@ -22,6 +22,7 @@ from app.schemas.sieej.formulario import (
     FormularioUpdateResponse,
     PresenciaEditor,
     PresenciaIn,
+    UltimoCambioInfo,
 )
 from app.schemas.sieej.grupo import FormularioAsignacionesUpdate
 from app.services import presence
@@ -132,7 +133,11 @@ async def actualizar_formulario(
         formulario_id, data.model_dump(exclude_unset=True), actor=actor
     )
     return FormularioUpdateResponse.model_validate(formulario).model_copy(
-        update={"ultimo_cambio": cambio}
+        update={
+            "ultimo_cambio": (
+                UltimoCambioInfo.model_validate(cambio) if cambio else None
+            )
+        }
     )
 
 

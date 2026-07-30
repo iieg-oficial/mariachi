@@ -143,7 +143,7 @@ async def _upload_screenshot(
     data = await screenshot.read()
     if len(data) > _MAX_SCREENSHOT_BYTES:
         raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
             detail="La captura supera el tamaño máximo permitido (2 MB).",
         )
     if screenshot.content_type not in _ALLOWED_MIME:
@@ -205,7 +205,7 @@ async def crear_reporte(
         )
     except ValidationError as exc:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=exc.errors(),
         )
 
@@ -216,7 +216,7 @@ async def crear_reporte(
     )
     if tipo_row is None:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=f"Tipo de reporte '{payload.tipo}' no válido o inactivo",
         )
 
@@ -232,7 +232,7 @@ async def crear_reporte(
             respuestas_validadas = validate_respuestas(raw_respuestas, tipo_row.form_schema)
         except ValueError as exc:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=str(exc),
             )
     elif respuestas:

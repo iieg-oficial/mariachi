@@ -51,7 +51,7 @@ def _validate_payload(key: str, payload: dict) -> dict:
         validated = schema_cls.model_validate(payload)
     except Exception as exc:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=f"Payload inválido para sección '{key}': {exc}",
         ) from exc
     return validated.model_dump()

@@ -110,7 +110,7 @@ class FormulariosAdminService:
             return validar_periodicidad(valor)
         except PeriodicidadInvalidaError as exc:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=str(exc),
             ) from exc
 
@@ -146,7 +146,7 @@ class FormulariosAdminService:
             validar_definicion(data["definicion"])
         except DefinicionInvalidaError as exc:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=str(exc),
             ) from exc
 
@@ -224,7 +224,7 @@ class FormulariosAdminService:
                 validar_definicion(nueva_definicion)
             except DefinicionInvalidaError as exc:
                 raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                     detail=str(exc),
                 ) from exc
             definicion_previa = normalizar_definicion(definicion_previa)
