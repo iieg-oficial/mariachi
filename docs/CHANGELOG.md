@@ -9,6 +9,43 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.107.0] - 2026-07-30
+
+### Eliminado: la instrumentación que ya no lee nadie
+
+La 1.106.0 dejó los contadores de volumen contándose en memoria sin superficie de lectura. Se
+borran: quedan solo los cuatro que `/ontoy` publica (`rate_limit_hits`, `login_failed`,
+`login_locked`, `tree_notify_failed`). Son 23 constantes y 60 llamadas a `incr()` menos, repartidas
+en 15 archivos.
+
+Con ellas se va el parámetro que ya no distinguía nada: en `mapalab_notifier` el flag `contar`
+gobernaba el contador de notificaciones y el de fallos; el primero desaparece y el flag se queda,
+porque el de fallos sí se expone.
+
+Si más adelante hace falta medir escrituras, conviene hacerlo con etiquetas —por recurso, por
+resultado— y no como un acumulado plano que se reinicia con el contenedor.
+
+### Eliminado: passlib
+
+Era la última fuente de warnings de la suite: importa el módulo `crypt`, que desaparece en Python
+3.13. No tenía arreglo por versión —1.7.4 es la última publicada y sigue igual—, así que
+`app/core/security.py` pasa a usar `bcrypt` directo, que ya era el motor real por debajo, y el pin
+sube de `bcrypt<4.0` a `>=5.0,<6.0`.
+
+**Los hashes existentes siguen siendo válidos**: passlib generaba `$2b$` estándar y `bcrypt.checkpw`
+los verifica sin tocar la base. Hay dos detalles que se replicaron a propósito:
+
+- **Truncado a 72 bytes.** passlib truncaba en silencio; bcrypt 5 lanza `ValueError`. Se trunca
+  explícitamente para que quien tenga una contraseña más larga siga entrando con ella.
+- **Hash ilegible.** `verify_password` devuelve `False` en vez de propagar la excepción, así que un
+  registro con hash corrupto responde 401 y no un 500.
+
+`tests/test_auth.py` fija las tres cosas, con un hash generado por passlib incrustado como fixture
+para que la compatibilidad no se pueda romper sin que la suite avise. `colibri_keys` y
+`mapalab_keys` tenían cada uno su propio `CryptContext` duplicado; ahora reusan esas funciones.
+
+**La suite queda en 889 tests y cero warnings** (venía de 462).
+
 ## [1.106.0] - 2026-07-30
 
 ### Cambiado: FastAPI sube de 0.112 a 0.141 y la suite pasa de 462 warnings a 1
