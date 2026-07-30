@@ -9,6 +9,107 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.106.0] - 2026-07-30
+
+### Cambiado: FastAPI sube de 0.112 a 0.141 y la suite pasa de 462 warnings a 1
+
+El pin `fastapi>=0.111,<0.113` llevaba a starlette 0.38.6, cuyo lector de formularios importa el
+módulo `multipart` en lugar de `python_multipart` y avisa de la deprecación en cada corrida. Lo que
+impedía subir no era FastAPI sino **`prometheus-fastapi-instrumentator`**: la línea 7.x declara
+`starlette<1.0.0`, así que con FastAPI moderno (starlette 1.3.1) la instrumentación explotaba y
+tumbaba 112 tests con 133 errores. La 8.1.0 declara `starlette>=1.0.0` y ambos suben juntos.
+
+`/metrics` se verificó lado a lado en las dos imágenes: expone exactamente las mismas seis familias
+(`http_requests_total`, `http_request_duration_seconds*` y sus `_created`) y las mismas 33 líneas,
+así que los dashboards de huachicol que scrapean `mariachi-api:8000` no cambian.
+
+El contrato de la API se comparó generando el `openapi.json` completo con ambas versiones. Las
+únicas diferencias son `format: binary` → `contentMediaType: application/octet-stream` en los
+uploads (JSON Schema 2020-12, que es lo que OpenAPI 3.1 exige), los campos `ctx` e `input` que
+FastAPI ahora documenta en `ValidationError`, y el `rowKey` de abajo.
+
+### Corregido: la presencia por fila del grid nunca se registraba
+
+`PUT /grid/{resource}/presencia` declara `row_key: str | None = Body(default=None, embed=True,
+alias='rowKey')`. **FastAPI 0.112 ignoraba el `alias` de un `Body` embebido** — el esquema publicaba
+la propiedad como `row_key`—, así que el `{ rowKey }` que envía `gridService.js` llegaba como
+`row_key=None` y el `if row_key:` del handler nunca entraba: la presencia por fila se perdía en
+silencio. En query params el alias sí se aplicaba, por lo que el `DELETE` de la misma pareja
+funcionaba y el fallo pasaba desapercibido. Con 0.141 el alias se respeta y el registro empieza a
+ocurrir; el frontend no necesita cambios porque ya mandaba la clave correcta.
+
+### Corregido: el modelo declaraba dos llaves foráneas que la base nunca tuvo
+
+`ReporteGrupo.primer_reporte_id` y `ultimo_reporte_id` declaraban `ForeignKey("reportes.id")`, pero
+la migración `c1d2e3f4a5b7` que creó la tabla solo crea el constraint de `reportes.grupo_id`. El
+modelo pedía integridad que Postgres no aplica, y un `alembic revision --autogenerate` podía
+proponer crearla en cualquier momento. Se quitan del modelo para que coincida con la base; ningún
+código dependía de ellas (el join de `reportes.py` usa la condición explícita). El ciclo de
+dependencia mutua que declaraban era el origen de ~450 de los 462 warnings: SQLAlchemy no podía
+ordenar las tablas para el `create_all`/`drop_all` de cada fixture.
+
+### Corregido: `ultimo_cambio` se inyectaba sin validar
+
+El `PUT` admin de formularios metía el `dict` del servicio en `FormularioUpdateResponse` vía
+`model_copy(update=...)`, que no valida. Funcionaba por coincidencia de claves: si el servicio
+renombrara una, la respuesta se serializaría mal en silencio. Ahora pasa por
+`UltimoCambioInfo.model_validate`.
+
+### Cambiado: constantes de estado renombradas
+
+Starlette 1.x deprecó `HTTP_422_UNPROCESSABLE_ENTITY` y `HTTP_413_REQUEST_ENTITY_TOO_LARGE` en favor
+de `HTTP_422_UNPROCESSABLE_CONTENT` y `HTTP_413_CONTENT_TOO_LARGE`. Se renombraron los 20 usos en 8
+archivos. Los códigos numéricos siguen siendo 422 y 413: ningún cliente lo nota.
+
+También: `declarative_base` se importa de `sqlalchemy.orm` (la ruta de `sqlalchemy.ext.declarative`
+está deprecada desde 2.0), los tests fijan las cookies en el cliente httpx en vez de por request
+(deprecado en httpx), y `httpx2` entra a los extras `dev` porque es lo que prefiere el `TestClient`
+de starlette 1.x.
+
+El único warning que queda es `passlib` importando el módulo `crypt`, que desaparece en Python 3.13.
+No tiene arreglo por versión —1.7.4 es la última y sigue igual—; cuando se actualice el intérprete
+habrá que sustituir passlib por `bcrypt` directo en `app/core/security.py`.
+
+### Eliminado: prometheus, con los contadores útiles mudados a `/ontoy`
+
+huachicol dejó de ser un stack de observabilidad en su 2.0.0 (2026-07-21): Prometheus, Grafana,
+Loki y Alloy se retiraron y hoy solo sondea el `/ontoy` de cada servicio. El scrape de
+`mariachi-api:8000/metrics` que documentaba su changelog v1 ya no existe, así que el endpoint
+quedaba exponiendo métricas que nadie leía.
+
+Se retiran `prometheus-fastapi-instrumentator`, la dependencia transitiva `prometheus-client`, el
+middleware de instrumentación y el endpoint `GET /metrics`. El sistema de contadores propio
+(`app/api/metrics.py`) **se conserva** —lo alimentan 67 llamadas en 18 archivos— y ahora se publica
+en el payload de `/ontoy`, bajo la llave `counters`, con los cuatro que sirven para detectar
+problemas:
+
+- `mariachi_rate_limit_hits_total`
+- `mariachi_login_failed_total`
+- `mariachi_login_locked_total`
+- `mariachi_tree_notify_failed_total`
+
+Los demás (volúmenes de escritura, lecturas, uploads) se siguen contando en memoria pero no se
+exponen: sin una base de series temporales detrás, un acumulado que se reinicia con el contenedor no
+permite calcular tasas, y engordaría un payload que se sondea cada pocos segundos. Añadir uno es
+agregar su nombre a `ONTOY_COUNTERS`.
+
+### Cambiado: nginx a 1.30.4-alpine
+
+`nginx/Dockerfile` usaba la etiqueta flotante `nginx:alpine`, cacheada en las máquinas del equipo en
+1.29.8. Esa versión es vulnerable a **CVE-2026-42533** (CVSS 9.2, desbordamiento de heap con
+posible ejecución remota de código, parchado el 15 de julio de 2026), **CVE-2026-60005** y
+**CVE-2026-56434**. Se fija la línea estable parchada. La configuración se validó con `nginx -t`
+contra 1.30.4 sin cambios.
+
+### Nota de despliegue
+
+**Hay que reconstruir la imagen de la API.** `HTTP_422_UNPROCESSABLE_CONTENT` no existe en starlette
+0.38, así que el código de esta versión no arranca contra la imagen anterior. Con `make build` o el
+rebuild del deploy queda resuelto; no hay migraciones ni cambios de configuración.
+
+Quien tuviera algo apuntando a `GET /metrics` de mariachi debe mirar `counters` en `/ontoy`: el
+endpoint ahora responde 404.
+
 ## [1.105.2] - 2026-07-29
 
 ### El lint del admin vuelve a cero problemas
