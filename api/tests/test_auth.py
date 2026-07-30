@@ -87,3 +87,29 @@ def test_logout(admin_session):
     )
     assert response.status_code == 200
     assert "exitosamente" in response.json()["message"]
+
+
+HASH_GENERADO_POR_PASSLIB = "$2b$12$QvUQsE2nmgzu1LPzM6wpLeRpWXtKDcXE/jIchrCr28V5brHiRWzK2"
+
+
+def test_verifica_hashes_heredados_de_passlib():
+    from app.core.security import hash_password, verify_password
+
+    assert verify_password("secreta123", HASH_GENERADO_POR_PASSLIB)
+    assert not verify_password("incorrecta", HASH_GENERADO_POR_PASSLIB)
+    assert verify_password("secreta123", hash_password("secreta123"))
+
+
+def test_password_mayor_a_72_bytes_se_trunca_como_passlib():
+    from app.core.security import hash_password, verify_password
+
+    larga = "A" * 100
+    hashed = hash_password(larga)
+    assert verify_password(larga, hashed)
+    assert verify_password("A" * 72, hashed)
+
+
+def test_hash_invalido_no_revienta():
+    from app.core.security import verify_password
+
+    assert not verify_password("x", "no-es-un-hash")
