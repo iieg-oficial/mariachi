@@ -41,6 +41,7 @@ services:
       start_period: 5s
     networks:
       - mariachi_network
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine
@@ -55,6 +56,7 @@ services:
       start_period: 2s
     networks:
       - mariachi_network
+    restart: unless-stopped
 
   api:
     build:
@@ -89,6 +91,7 @@ services:
     networks:
       - mariachi_network
       - iieg-network
+    restart: unless-stopped
 
   cron-sieej:
     image: mariachi-api
