@@ -55,8 +55,15 @@ services:
       api:
         condition: service_started
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:?}:${POSTGRES_PASSWORD:?}@postgres:5432/${POSTGRES_DB:?}
+      POSTGRES_USER: ${POSTGRES_USER:?}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ${POSTGRES_DB:?}
       REDIS_URL: redis://redis:6379/0
+    secrets:
+      - postgres_password
+      - secret_key
+      - csrf_secret_key
     networks:
       - mariachi_network
     restart: unless-stopped

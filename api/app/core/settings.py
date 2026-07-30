@@ -12,7 +12,12 @@ class Settings(BaseSettings):
     environment: Literal["development", "production"] = "development"
     project_name: str = "Mariachi"
     version: str = Field(default_factory=get_app_version)
-    database_url: str
+    database_url: str | None = None
+    postgres_user: str | None = None
+    postgres_password: str | None = None
+    postgres_host: str = "postgres"
+    postgres_port: int = 5432
+    postgres_db: str | None = None
     dataengine_database_url: str | None = None
     dataengine_pool_size: int = 5
     dataengine_max_overflow: int = 5
@@ -78,6 +83,20 @@ class Settings(BaseSettings):
         return v
 
     @model_validator(mode="after")
+    def compose_database_url(self):
+        if self.database_url:
+            return self
+        if not (self.postgres_user and self.postgres_password and self.postgres_db):
+            raise ValueError(
+                "Falta DATABASE_URL, o POSTGRES_USER/POSTGRES_PASSWORD/POSTGRES_DB para componerla"
+            )
+        self.database_url = (
+            f"postgresql://{self.postgres_user}:{self.postgres_password}"
+            f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
+        )
+        return self
+
+    @model_validator(mode="after")
     def enforce_production_defaults(self):
         if self.environment == "production":
             self.docs_url = None
@@ -88,7 +107,7 @@ class Settings(BaseSettings):
                 raise ValueError("CORS_ORIGINS no puede contener '*' en production")
         return self
 
-    model_config = SettingsConfigDict(env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(env_file_encoding="utf-8", secrets_dir="/run/secrets")
 
 
 @lru_cache

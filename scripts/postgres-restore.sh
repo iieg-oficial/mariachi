@@ -104,13 +104,13 @@ if [ -n "$DUMP_SCHEMAS" ]; then
     echo "[restore] limpiando schemas del dump:$(printf ' %s' $DUMP_SCHEMAS)"
     for schema in $DUMP_SCHEMAS; do
         $COMPOSE_CMD exec -T postgres sh -c \
-            "PGPASSWORD=\$POSTGRES_PASSWORD psql -v ON_ERROR_STOP=1 --quiet -U \$POSTGRES_USER -d \$POSTGRES_DB -c 'DROP SCHEMA IF EXISTS $schema CASCADE'"
+            "PGPASSWORD=\$(cat /run/secrets/postgres_password) psql -v ON_ERROR_STOP=1 --quiet -U \$POSTGRES_USER -d \$POSTGRES_DB -c 'DROP SCHEMA IF EXISTS $schema CASCADE'"
     done
 fi
 
 echo "[restore] aplicando dump..."
 gunzip -c "$ABS_FILE" | $COMPOSE_CMD exec -T postgres sh -c \
-    'PGPASSWORD="$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 --quiet -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+    'PGPASSWORD="$(cat /run/secrets/postgres_password)" psql -v ON_ERROR_STOP=1 --quiet -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
 
 echo "[restore] done"
 echo "[restore] siguiente paso sugerido: $COMPOSE_CMD exec api alembic current"

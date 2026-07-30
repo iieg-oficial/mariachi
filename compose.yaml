@@ -21,8 +21,10 @@ services:
               "-c", "effective_cache_size=${POSTGRES_EFFECTIVE_CACHE_SIZE:?}"]
     environment:
       POSTGRES_USER: ${POSTGRES_USER:?}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
       POSTGRES_DB: ${POSTGRES_DB:?}
+    secrets:
+      - postgres_password
     volumes:
       - postgres_data:/var/lib/postgresql
     healthcheck:
@@ -59,8 +61,15 @@ services:
       redis:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER:?}:${POSTGRES_PASSWORD:?}@postgres:5432/${POSTGRES_DB:?}
+      POSTGRES_USER: ${POSTGRES_USER:?}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: ${POSTGRES_DB:?}
       REDIS_URL: redis://redis:6379/0
+    secrets:
+      - postgres_password
+      - secret_key
+      - csrf_secret_key
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=15).read()"]
       interval: 15s
@@ -74,6 +83,14 @@ services:
 volumes:
   postgres_data:
   redis_data:
+
+secrets:
+  postgres_password:
+    file: ./secrets/postgres_password
+  secret_key:
+    file: ./secrets/secret_key
+  csrf_secret_key:
+    file: ./secrets/csrf_secret_key
 
 networks:
   mariachi_network:

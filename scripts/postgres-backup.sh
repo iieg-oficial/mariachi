@@ -77,7 +77,7 @@ if [ "${MAPALAB_PURGE_ON_BACKUP:-true}" != "false" ]; then
 fi
 
 $COMPOSE_CMD exec -T postgres sh -c \
-    'PGPASSWORD="$POSTGRES_PASSWORD" pg_dump --no-owner --no-acl --clean --if-exists -U "$POSTGRES_USER" -d "$POSTGRES_DB"' \
+    'PGPASSWORD="$(cat /run/secrets/postgres_password)" pg_dump --no-owner --no-acl --clean --if-exists -U "$POSTGRES_USER" -d "$POSTGRES_DB"' \
     | gzip -9 > "$TMP"
 
 if [ ! -s "$TMP" ] || [ "$(gzip -dc "$TMP" 2>/dev/null | head -c1 | wc -c)" -eq 0 ]; then
