@@ -9,6 +9,36 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.112.0] - 2026-07-30
+
+### Cambiado: Makefile homologado con el resto del ecosistema
+
+La interfaz de comandos es ahora la misma en los nueve repos: `up` levanta desarrollo sin
+reconstruir y `deploy` hace produccion completa (`git pull` + `down` + `build` + `up`). Se
+retiraron todas las banderas: el entorno se detecta por el nombre de proyecto de Compose y lo que
+antes era un argumento ahora es un selector interactivo. Lo transversal vive en `make/common.mk` y
+`make/lib.sh`, copiados en cada repo. Convencion completa en `ecosistema/makefiles.md` del repo de
+contexto.
+
+Las reglas se partieron en `make/backup.mk`, `make/dev.mk`, `make/sieej.mk` y `make/mapalab.mk`.
+
+### Cambiado: `ENV=dev|prod` desaparece
+
+`up` levanta desarrollo y `deploy` produccion. El resto de targets detecta el entorno activo por el
+nombre de proyecto de Compose, asi que `logs`, `status`, `shell`, `restore-db` y `sieej-check`
+funcionan sin decirles donde. `backup-db` exige que produccion este levantada.
+
+### Cambiado: `shell-api`, `shell-admin` y los `logs-*` se fusionan
+
+Un `shell` y un `logs` con selector poblado desde `docker compose ps --services`, que no se
+desfasa al agregar un servicio. `install-backup-cron` y `uninstall-backup-cron` pasan a `cron`; de
+paso se corrige el nombre, porque instalaba dos crons y no solo el de respaldo.
+`sieej-check-fix` se integra en `sieej-check` como opcion del selector.
+
+### Corregido: `${BLUE}` no estaba definida
+
+El bloque de ayuda usaba una variable de color inexistente, y `WHITE` se definia sin usarse.
+
 ## [1.111.0] - 2026-07-30
 
 ### Eliminado: el entorno staging

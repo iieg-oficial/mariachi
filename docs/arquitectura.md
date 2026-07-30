@@ -64,7 +64,7 @@
 |---|---|
 | Docker + Docker Compose | Orquestación. Dos archivos: `docker-compose.dev.yml` y `docker-compose.yml` (prod) |
 | Nginx Alpine | Servidor de estáticos + proxy a `/api/`. Se levanta en HTTP-only detrás del gateway externo |
-| Make | Automatización (`make up [ENV=dev\|prod]`) |
+| Make | Automatización (`make up`, `make deploy`) |
 
 ---
 

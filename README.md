@@ -49,7 +49,7 @@ Corre detrás de `gateway-hub` en la red Docker externa `iieg-network`.
 # Una vez, si la red no existe:
 docker network create iieg-network
 
-make up ENV=prod          # usa .env.production + docker-compose.yml
+make deploy               # usa .env.production + docker-compose.yml
 ```
 
 En el `.env` de `gateway-hub`: `PORTAL_HOST=mariachi-nginx:80`.
@@ -58,18 +58,17 @@ En el `.env` de `gateway-hub`: `PORTAL_HOST=mariachi-nginx:80`.
 
 ## Comandos (Makefile)
 
-`make <comando> [ENV=dev|prod]` (por defecto `ENV=dev`).
+`make <comando>`. El entorno se detecta solo, ya no hay banderas.
 
 | Comando | Descripción |
 |---|---|
 | `make up` | Levanta el entorno en segundo plano |
-| `make build` | Reconstruye imágenes y levanta |
+| `make deploy` | Actualiza, reconstruye y levanta producción |
 | `make down` | Detiene contenedores |
 | `make logs` | Sigue logs en vivo |
 | `make restart` | Reinicia |
 | `make clean` | Borra contenedores, redes y volúmenes del entorno |
-| `make shell-api` | Shell dentro del contenedor API |
-| `make shell-admin` / `shell-web` | Shell dentro del contenedor admin / web |
+| `make shell` | Shell dentro de un contenedor, con selector de servicio |
 | `make setup` | Crea `.env.development` y `.env.production` desde los `.example` |
 
 ---
@@ -83,7 +82,7 @@ El comportamiento del backend se bifurca por la variable `ENVIRONMENT` (leída e
 | `development` | configurables | configurable | permitido |
 | `production` | forzados a `None` | forzado a `true` | rechazado (error) |
 
-El Makefile elige el `docker-compose.*.yml` y el `.env.*` según `ENV`. El servicio `api` respeta `API_ENV_FILE` para cargar el `.env.*` correcto dentro del contenedor.
+El Makefile elige el `docker-compose.*.yml` y el `.env.*` según el entorno que detecta. El servicio `api` respeta `API_ENV_FILE` para cargar el `.env.*` correcto dentro del contenedor.
 
 ---
 

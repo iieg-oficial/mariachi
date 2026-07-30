@@ -69,7 +69,7 @@ Para aplicar:
 ```bash
 cd dataengine
 make migrate              # aplica pendientes (idempotente)
-make migrate-status       # muestra version actual + history
+make status               # muestra version actual + history
 ```
 
 En producción, `make prod-migration` ya corre `alembic upgrade head` internamente al final del bootstrap. Re-ejecutable cada deploy.
@@ -91,7 +91,7 @@ El guardrail `gateway-hub/scripts/check-model-drift.py` detecta drift entre los 
 cd ../dataengine && make up && make migrate
 
 # 2. Mariachi arriba (aplica sus propias migraciones)
-cd ../mariachi && make dev
+cd ../mariachi && make up
 # o equivalentemente: alembic upgrade head ; uvicorn app.main:app --reload
 ```
 
