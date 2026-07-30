@@ -169,8 +169,8 @@ install-backup-cron:
 	fi
 	@mkdir -p $(PWD)/backups
 	@( crontab -l 2>/dev/null | grep -v 'mariachi-backup' | grep -v 'mariachi-stats' ; \
-	   echo "0 3 * * * cd $(PWD) && API_ENV_FILE=$(ENV_FILE) COMPOSE_FILE=$(COMPOSE_FILE) COMPOSE_ENV_FILE=$(ENV_FILE) ./scripts/postgres-backup.sh >> $(PWD)/backups/backup.log 2>&1 # mariachi-backup" ; \
-	   echo "*/30 * * * * cd $(PWD) && API_ENV_FILE=$(ENV_FILE) docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) exec -T api python scripts/refresh_mapalab_stats.py >> $(PWD)/backups/mapalab-stats.log 2>&1 # mariachi-stats-refresh" \
+	   echo "0 3 * * * cd $(PWD) && make backup-db ENV=prod >> $(PWD)/backups/backup.log 2>&1 # mariachi-backup" ; \
+	   echo "*/30 * * * * cd $(PWD) && make refresh-mapalab-stats ENV=prod >> $(PWD)/backups/mapalab-stats.log 2>&1 # mariachi-stats-refresh" \
 	) | crontab -
 	@echo "${GREEN}Cronjobs instalados:${RESET}"
 	@crontab -l | grep -E 'mariachi-(backup|stats)'
