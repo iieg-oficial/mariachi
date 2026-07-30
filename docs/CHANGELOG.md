@@ -9,6 +9,29 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.114.0] - 2026-07-30
+
+### Cambiado: React Router 8 por el advisory GHSA-qwww-vcr4-c8h2
+
+El advisory de React Router (bypass de CSRF que permite ejecutar acciones antes de un 400) cubre
+`>=7.12.0 <8.3.0`: **no hay corrección dentro de la línea 7**, así que la única salida era el
+major. El admin sube de 7.14.2 a 8.3.0.
+
+El agujero está en el modo RSC —React Server Components con server actions—, que el admin no usa.
+No era explotable aquí, pero mantenerlo dejaba un `high` permanente en `npm audit` sin forma de
+distinguirlo de uno real.
+
+La migración no tocó código: en 8.3.0 todo se sigue exportando desde `react-router`, que es de
+donde ya importaba el admin. Lo que desaparece es el paquete `react-router-dom`, que este repo no
+usa. Los 181 tests pasan sin cambios.
+
+Requiere React >= 19.2.7 (ya en 19.2.8) y Node >= 22.22.
+
+### Corregido: `coverage/` en el `.gitignore`
+
+`npm run test:coverage` en `admin/` deja un reporte HTML de cientos de archivos que aparecía como
+sin trackear. El `.gitignore` sólo cubría los artefactos de coverage de Python.
+
 ## [1.113.0] - 2026-07-30
 
 ### Cambiado: Vite 8 con Rolldown, y React 19.2.8
