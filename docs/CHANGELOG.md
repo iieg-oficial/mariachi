@@ -32,6 +32,29 @@ disco de las subidas por partes a GeoServer.
 
 ---
 
+## [1.110.0] - 2026-07-30
+
+### Agregar un campo se comporta como editarlo
+
+En el editor visual, «Editar» abre el formulario pegado al campo y a todo el ancho de la rejilla
+(`gridColumn: '1 / -1'`), mientras que «Agregar» lo abría en una tarjeta suelta al final de la
+lista, lejos del hueco donde se había pedido. Ahora el alta se renderiza dentro de la rejilla, en
+la línea donde se pidió el hueco y ocupando el ancho completo; solo cae al final cuando el alta se
+pide desde la barra o desde el botón del paso, que es donde corresponde.
+
+#### Cambiado
+
+- `FieldsGrid` acepta `nuevoCampoRow` y `renderNuevoCampo` y coloca el bloque tras el último
+  espacio de esa línea. `useNuevoCampo` expone `filaDestino` y estabiliza `limpiar`, que ademas se
+  invoca al abrir el alta desde el botón del paso para no heredar un hueco anterior.
+- El formulario de alta recibe `defaultCol`, como el de edición.
+- El contenedor abierto se resalta con borde de 2 px en morado institucional, tanto al editar un
+  campo como al agregar uno nuevo, reusando el lenguaje visual del resaltado de condicionados.
+  La tarjeta de alta sale a `NuevoCampoCard` para no cruzar el límite de 300 líneas de
+  `FieldsList`.
+
+---
+
 ## [1.109.0] - 2026-07-30
 
 ### Cambiado: las señales de abuso ahora son checks de `/ontoy`, contadas en Redis
@@ -85,29 +108,6 @@ Se agregan dos secciones que faltaban:
 
 La tabla de adopción queda al día y con los checks de cada servicio. La especificación completa en
 `context-ame-esta/repos/huachicol/ontoy-contrato.md` recibe las mismas dos secciones.
-
-## [1.110.0] - 2026-07-30
-
-### Agregar un campo se comporta como editarlo
-
-En el editor visual, «Editar» abre el formulario pegado al campo y a todo el ancho de la rejilla
-(`gridColumn: '1 / -1'`), mientras que «Agregar» lo abría en una tarjeta suelta al final de la
-lista, lejos del hueco donde se había pedido. Ahora el alta se renderiza dentro de la rejilla, en
-la línea donde se pidió el hueco y ocupando el ancho completo; solo cae al final cuando el alta se
-pide desde la barra o desde el botón del paso, que es donde corresponde.
-
-#### Cambiado
-
-- `FieldsGrid` acepta `nuevoCampoRow` y `renderNuevoCampo` y coloca el bloque tras el último
-  espacio de esa línea. `useNuevoCampo` expone `filaDestino` y estabiliza `limpiar`, que ademas se
-  invoca al abrir el alta desde el botón del paso para no heredar un hueco anterior.
-- El formulario de alta recibe `defaultCol`, como el de edición.
-- El contenedor abierto se resalta con borde de 2 px en morado institucional, tanto al editar un
-  campo como al agregar uno nuevo, reusando el lenguaje visual del resaltado de condicionados.
-  La tarjeta de alta sale a `NuevoCampoCard` para no cruzar el límite de 300 líneas de
-  `FieldsList`.
-
----
 
 ## [1.108.0] - 2026-07-30
 
@@ -318,6 +318,26 @@ Sin cambios de comportamiento salvo la correccion del slug reservado.
   Ant Design 5, la estructura `components/pages/contexts`, los alias `@components`/`@pages` y el
   rol `disenadora`, todo desactualizado desde noviembre de 2025.
 
+## [1.105.0] - 2026-07-29
+
+### Cambiado: los campos se agregan en línea desde el propio espacio libre
+
+Agregar un campo junto a otro se pedía con un botón «En línea nueva» al fondo del editor, lejos del lugar donde iba a aparecer, y sin decir en qué línea caería: el campo se acomodaba donde cupiera. Ahora el espacio libre de cada línea es el que ofrece la acción.
+
+- El **hueco** de una línea es clickeable y muestra un `+` al pasar el cursor o al enfocarlo con el teclado. El campo nace con el ancho del hueco (`snapColSpan`), ya colocado en esa columna.
+- El **divisor de línea** suma un `+` junto al indicador de «espacio libre», que agrega en el primer hueco de esa línea.
+- La barra inferior queda con un solo botón, **«Agregar campo en nueva línea»**, que es lo que de verdad hace: el campo empieza su propia línea aunque después se angoste.
+
+En móvil la grilla es de una columna, así que los huecos no ofrecen la acción y el botón de la barra sigue siendo el camino.
+
+### Corregido: el campo agregado a la izquierda de otro se iba a su propia línea
+
+Al colocar un campo en un hueco que **abre** la línea (a la izquierda de los que ya estaban), el nuevo se guardaba sin la marca de apertura mientras el que era primero la conservaba, así que terminaban en líneas distintas: pedir un campo junto a «a» producía una línea nueva con el campo y dejaba «a» sola en la suya. La colocación ahora reutiliza `moveToSlot` —la misma operación del arrastrar y soltar—, que traspasa la apertura de línea al campo entrante. Queda cubierto con pruebas.
+
+### Corregido: el formulario del campo se vaciaba al re-renderizar el editor
+
+El efecto que rellena el formulario dependía del objeto `field` completo, y el editor lo construía en línea en cada render: cualquier re-actualización de la lista mientras se llenaba un campo nuevo lo reseteaba a valores vacíos. Ahora depende de una clave derivada del nombre y el acomodo, y los valores iniciales del campo nuevo están memoizados.
+
 ## [1.104.1] - 2026-07-29
 
 ### Corregido: los archivos de GeoServer con nombres legados no se podían descargar ni borrar
@@ -351,26 +371,6 @@ workspace por el endpoint de archivos.
 Con nombres que ya admiten más caracteres, un `&` rompía el XML del `<ExternalGraphic>` y un `#`
 truncaba la URL de descarga. El snippet escapa XML (incluidas las comillas del atributo `href`)
 y `download_url` codifica nombre y workspace.
-
-## [1.105.0] - 2026-07-29
-
-### Cambiado: los campos se agregan en línea desde el propio espacio libre
-
-Agregar un campo junto a otro se pedía con un botón «En línea nueva» al fondo del editor, lejos del lugar donde iba a aparecer, y sin decir en qué línea caería: el campo se acomodaba donde cupiera. Ahora el espacio libre de cada línea es el que ofrece la acción.
-
-- El **hueco** de una línea es clickeable y muestra un `+` al pasar el cursor o al enfocarlo con el teclado. El campo nace con el ancho del hueco (`snapColSpan`), ya colocado en esa columna.
-- El **divisor de línea** suma un `+` junto al indicador de «espacio libre», que agrega en el primer hueco de esa línea.
-- La barra inferior queda con un solo botón, **«Agregar campo en nueva línea»**, que es lo que de verdad hace: el campo empieza su propia línea aunque después se angoste.
-
-En móvil la grilla es de una columna, así que los huecos no ofrecen la acción y el botón de la barra sigue siendo el camino.
-
-### Corregido: el campo agregado a la izquierda de otro se iba a su propia línea
-
-Al colocar un campo en un hueco que **abre** la línea (a la izquierda de los que ya estaban), el nuevo se guardaba sin la marca de apertura mientras el que era primero la conservaba, así que terminaban en líneas distintas: pedir un campo junto a «a» producía una línea nueva con el campo y dejaba «a» sola en la suya. La colocación ahora reutiliza `moveToSlot` —la misma operación del arrastrar y soltar—, que traspasa la apertura de línea al campo entrante. Queda cubierto con pruebas.
-
-### Corregido: el formulario del campo se vaciaba al re-renderizar el editor
-
-El efecto que rellena el formulario dependía del objeto `field` completo, y el editor lo construía en línea en cada render: cualquier re-actualización de la lista mientras se llenaba un campo nuevo lo reseteaba a valores vacíos. Ahora depende de una clave derivada del nombre y el acomodo, y los valores iniciales del campo nuevo están memoizados.
 
 ## [1.104.0] - 2026-07-29
 
@@ -5115,25 +5115,6 @@ Build admin OK, migraciones aplican limpiamente sobre BD dev. Smoke tests: API k
 
 ---
 
-## [0.41.0] - 2026-05-07
-
-### Perf: cache server-side de /eventos y /home + indice parcial de eventos publicados
-
-Reduce trabajo de DB en el endpoint publico mas caliente del visor (mapalab pollea cada 30s + abre eventos por usuario). Antes cada hit a `/api/mapalab/eventos` corria la query con filtros temporales y serializaba con Pydantic; ahora se cachea la respuesta JSON en Redis bajo el token de version y el endpoint la sirve directo via `Response(content=cached, media_type='application/json')` (skipea la re-validacion del `response_model`).
-
-#### Backend (api)
-
-- `services/mapalab_public_cache.py`: nuevos `get_cached_eventos()` y `get_cached_home()` (devuelven `(version, payload | None)`) + `store_cached_*(version, payload_json)`. Clave Redis: `mapalab:public_cache:payload:{scope}:{version}` con TTL de 30 dias. Si la version cambia (bump por `notify_*_changed`), las nuevas requests caen en el `else` y rebuilden bajo la nueva clave; la vieja queda inalcanzable y expira sola.
-- **Removido el debounce de 5s en `notify_*_changed`**: cada bump ahora es un `SET` directo (operacion barata en Redis). El debounce ocultaba la ultima edicion de una rafaga en publish/unpublish — sin debounce, todas las invalidaciones se reflejan en el siguiente poll de 30s. Eliminados `_DEBOUNCE_WINDOW_SECONDS`, `_LOCK_PREFIX` y `_dedup_bump`.
-- `api/routes/public.py`: `eventos_visibles` y `home_publicado` consumen el cache; en miss serializan via Pydantic, guardan el JSON, y devuelven el `Response` directo.
-- `alembic/versions/mariachi/f3a4b5c6d7e8_add_eventos_publicados_index.py`: nuevo indice parcial `ix_eventos_publicados_visibles ON eventos (orden ASC, id ASC) WHERE estado='published' AND activo=true`. Acelera el filtro tipico del endpoint publico (`eventos.published_at`, `activo`, ventana fechas) sin penalizar escrituras de drafts.
-
-### Probado
-
-Local: bump de version invalida cache correctamente (verificado con publicar/despublicar evento + curl al endpoint), payload se sirve desde cache en hits subsiguientes hasta el siguiente bump. Migracion aplicada limpiamente sobre la BD de dev.
-
----
-
 ## [0.41.1] - 2026-05-07
 
 ### Audit del modulo Eventos: hardening seguridad/validacion + tests + UX
@@ -5181,6 +5162,25 @@ Auditoria completa de Eventos MapaLab (backend + admin + visor) con 40+ hallazgo
 ### Probado
 
 Local: 41 tests del modulo Eventos pasan en SQLite in-memory. Migraciones JSONB y `timestamp with time zone` aplicadas limpiamente sobre la BD de dev. Lint del admin y del visor sin errores nuevos.
+
+---
+
+## [0.41.0] - 2026-05-07
+
+### Perf: cache server-side de /eventos y /home + indice parcial de eventos publicados
+
+Reduce trabajo de DB en el endpoint publico mas caliente del visor (mapalab pollea cada 30s + abre eventos por usuario). Antes cada hit a `/api/mapalab/eventos` corria la query con filtros temporales y serializaba con Pydantic; ahora se cachea la respuesta JSON en Redis bajo el token de version y el endpoint la sirve directo via `Response(content=cached, media_type='application/json')` (skipea la re-validacion del `response_model`).
+
+#### Backend (api)
+
+- `services/mapalab_public_cache.py`: nuevos `get_cached_eventos()` y `get_cached_home()` (devuelven `(version, payload | None)`) + `store_cached_*(version, payload_json)`. Clave Redis: `mapalab:public_cache:payload:{scope}:{version}` con TTL de 30 dias. Si la version cambia (bump por `notify_*_changed`), las nuevas requests caen en el `else` y rebuilden bajo la nueva clave; la vieja queda inalcanzable y expira sola.
+- **Removido el debounce de 5s en `notify_*_changed`**: cada bump ahora es un `SET` directo (operacion barata en Redis). El debounce ocultaba la ultima edicion de una rafaga en publish/unpublish — sin debounce, todas las invalidaciones se reflejan en el siguiente poll de 30s. Eliminados `_DEBOUNCE_WINDOW_SECONDS`, `_LOCK_PREFIX` y `_dedup_bump`.
+- `api/routes/public.py`: `eventos_visibles` y `home_publicado` consumen el cache; en miss serializan via Pydantic, guardan el JSON, y devuelven el `Response` directo.
+- `alembic/versions/mariachi/f3a4b5c6d7e8_add_eventos_publicados_index.py`: nuevo indice parcial `ix_eventos_publicados_visibles ON eventos (orden ASC, id ASC) WHERE estado='published' AND activo=true`. Acelera el filtro tipico del endpoint publico (`eventos.published_at`, `activo`, ventana fechas) sin penalizar escrituras de drafts.
+
+### Probado
+
+Local: bump de version invalida cache correctamente (verificado con publicar/despublicar evento + curl al endpoint), payload se sirve desde cache en hits subsiguientes hasta el siguiente bump. Migracion aplicada limpiamente sobre la BD de dev.
 
 ---
 
