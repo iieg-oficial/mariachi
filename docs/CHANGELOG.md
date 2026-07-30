@@ -63,6 +63,29 @@ Se agregan dos secciones que faltaban:
 La tabla de adopción queda al día y con los checks de cada servicio. La especificación completa en
 `context-ame-esta/repos/huachicol/ontoy-contrato.md` recibe las mismas dos secciones.
 
+## [1.110.0] - 2026-07-30
+
+### Agregar un campo se comporta como editarlo
+
+En el editor visual, «Editar» abre el formulario pegado al campo y a todo el ancho de la rejilla
+(`gridColumn: '1 / -1'`), mientras que «Agregar» lo abría en una tarjeta suelta al final de la
+lista, lejos del hueco donde se había pedido. Ahora el alta se renderiza dentro de la rejilla, en
+la línea donde se pidió el hueco y ocupando el ancho completo; solo cae al final cuando el alta se
+pide desde la barra o desde el botón del paso, que es donde corresponde.
+
+#### Cambiado
+
+- `FieldsGrid` acepta `nuevoCampoRow` y `renderNuevoCampo` y coloca el bloque tras el último
+  espacio de esa línea. `useNuevoCampo` expone `filaDestino` y estabiliza `limpiar`, que ademas se
+  invoca al abrir el alta desde el botón del paso para no heredar un hueco anterior.
+- El formulario de alta recibe `defaultCol`, como el de edición.
+- El contenedor abierto se resalta con borde de 2 px en morado institucional, tanto al editar un
+  campo como al agregar uno nuevo, reusando el lenguaje visual del resaltado de condicionados.
+  La tarjeta de alta sale a `NuevoCampoCard` para no cruzar el límite de 300 líneas de
+  `FieldsList`.
+
+---
+
 ## [1.108.0] - 2026-07-30
 
 ### El diff de definiciones ahora dice el nombre del campo
