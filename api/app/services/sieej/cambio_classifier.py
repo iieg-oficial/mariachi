@@ -135,6 +135,25 @@ def clasificar_cambio(old: dict[str, Any], new: dict[str, Any]) -> str:
     return "rompe" if es_rompe(old, new) else "menor"
 
 
+def _cambio(
+    steps: dict[str, dict[str, Any]],
+    step_id: str,
+    field: dict[str, Any] | None,
+    tipo: str,
+) -> dict[str, Any]:
+    """Lleva las etiquetas legibles del paso y del campo junto al cambio: una
+    vez aplicada la actualizacion el snapshot del envio ya no conserva la
+    definicion previa, asi que los eliminados solo se pueden nombrar aqui."""
+    campo = field or {}
+    return {
+        "step_id": step_id,
+        "field_name": campo.get("name"),
+        "tipo": tipo,
+        "step_title": (steps.get(step_id) or {}).get("title"),
+        "field_label": campo.get("label"),
+    }
+
+
 def diff_definiciones(old: dict[str, Any], new: dict[str, Any]) -> list[dict[str, Any]]:
     fields_old, fields_new = _index_fields(old), _index_fields(new)
     steps_old, steps_new = _index_steps(old), _index_steps(new)
@@ -142,30 +161,29 @@ def diff_definiciones(old: dict[str, Any], new: dict[str, Any]) -> list[dict[str
 
     for step_id in steps_new:
         if step_id not in steps_old:
-            cambios.append({"step_id": step_id, "field_name": None, "tipo": "nuevo"})
+            cambios.append(_cambio(steps_new, step_id, None, "nuevo"))
     for step_id in steps_old:
         if step_id not in steps_new:
-            cambios.append({"step_id": step_id, "field_name": None, "tipo": "eliminado"})
+            cambios.append(_cambio(steps_old, step_id, None, "eliminado"))
 
     for path, info in fields_new.items():
         if path not in fields_old:
-            cambios.append({
-                "step_id": info["step_id"],
-                "field_name": info["field"].get("name"),
-                "tipo": "nuevo",
-            })
+            cambios.append(
+                _cambio(steps_new, info["step_id"], info["field"], "nuevo")
+            )
     for path, info in fields_old.items():
         if path not in fields_new:
-            cambios.append({
-                "step_id": info["step_id"],
-                "field_name": info["field"].get("name"),
-                "tipo": "eliminado",
-            })
+            cambios.append(
+                _cambio(steps_old, info["step_id"], info["field"], "eliminado")
+            )
         elif _campo_modificado(info["field"], fields_new[path]["field"]):
-            cambios.append({
-                "step_id": info["step_id"],
-                "field_name": info["field"].get("name"),
-                "tipo": "modificado",
-            })
+            cambios.append(
+                _cambio(
+                    steps_new,
+                    info["step_id"],
+                    fields_new[path]["field"],
+                    "modificado",
+                )
+            )
 
     return cambios

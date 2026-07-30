@@ -79,7 +79,39 @@ def test_eliminar_campo_rompe():
     d = _con(lambda x: x["steps"][0]["fields"].pop(0))
     assert clasificar_cambio(_base(), d) == "rompe"
     cambios = diff_definiciones(_base(), d)
-    assert {"step_id": "s1", "field_name": "a", "tipo": "eliminado"} in cambios
+    eliminado = next(c for c in cambios if c["field_name"] == "a")
+    assert eliminado["step_id"] == "s1"
+    assert eliminado["tipo"] == "eliminado"
+    assert eliminado["field_label"] == "A"
+    assert eliminado["step_title"] == "Uno"
+
+
+def test_diff_de_campo_modificado_trae_el_label_nuevo():
+    d = _con(lambda x: x["steps"][0]["fields"][0].update({"label": "A editada"}))
+    cambios = diff_definiciones(_base(), d)
+    modificado = next(c for c in cambios if c["tipo"] == "modificado")
+    assert modificado["field_label"] == "A editada"
+    assert modificado["step_title"] == "Uno"
+
+
+def test_diff_de_step_eliminado_trae_el_titulo_viejo():
+    def _quitar(x):
+        x["steps"] = [
+            {
+                "id": "s2",
+                "type": "form",
+                "title": "Dos",
+                "fields": [{"name": "z", "type": "text", "label": "Z"}],
+            }
+        ]
+
+    cambios = diff_definiciones(_base(), _con(_quitar))
+    step = next(
+        c for c in cambios if c["step_id"] == "s1" and c["field_name"] is None
+    )
+    assert step["tipo"] == "eliminado"
+    assert step["step_title"] == "Uno"
+    assert step["field_label"] is None
 
 
 def test_quitar_opcion_rompe():

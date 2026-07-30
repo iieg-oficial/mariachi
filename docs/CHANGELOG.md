@@ -9,6 +9,26 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.108.0] - 2026-07-30
+
+### El diff de definiciones ahora dice el nombre del campo
+
+`diff_definiciones` emitía solo `step_id` y `field_name`, así que el aviso de "el formulario se
+actualizó" de SIEEJ mostraba identificadores internos. El frontend no puede resolverlos por su
+cuenta: al aplicar una actualización el `definicion_snapshot` del envío se reescribe con la
+definición vigente, de modo que los pasos y campos **eliminados** dejan de existir en la única
+definición que el respondent tiene a mano. El diff es el último punto donde ambas versiones
+conviven en memoria.
+
+#### Agregado
+
+- Cada entrada del diff lleva `step_title` y `field_label`, tomados de la definición vieja cuando
+  el cambio es `eliminado` y de la nueva en los demás casos (para `modificado` gana el label nuevo,
+  que es justo el que pudo haber cambiado). `CambioRef` los expone como opcionales, así que los
+  `cambios_pendientes` ya persistidos siguen validando y el frontend cae a su mapa de etiquetas.
+
+---
+
 ## [1.107.0] - 2026-07-30
 
 ### Eliminado: la instrumentación que ya no lee nadie
