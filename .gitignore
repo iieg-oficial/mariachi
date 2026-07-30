@@ -32,7 +32,6 @@ env/
 # Environment variables
 .env
 .env.development
-.env.staging
 .env.production
 .env.local
 .env.*.local

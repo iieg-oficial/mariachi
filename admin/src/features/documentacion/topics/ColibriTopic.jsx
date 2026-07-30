@@ -17,7 +17,7 @@ const ATRIBUTOS = [
     { campo: 'api-key', desc: 'Requerido. Key pública ck_pub_*.' },
     { campo: 'tipos', desc: 'CSV. Subset de tipos permitidos (default: todos los activos).' },
     { campo: 'theme', desc: 'light · dark · auto (default auto).' },
-    { campo: 'endpoint', desc: 'Se deriva del origen del <script> automáticamente; solo override para dev/staging.' },
+    { campo: 'endpoint', desc: 'Se deriva del origen del <script> automáticamente; solo override para desarrollo.' },
 ];
 
 const JS_API = [

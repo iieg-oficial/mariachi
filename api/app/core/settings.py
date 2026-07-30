@@ -9,7 +9,7 @@ from app.core.version import get_app_version
 
 
 class Settings(BaseSettings):
-    environment: Literal["development", "staging", "production"] = "development"
+    environment: Literal["development", "production"] = "development"
     project_name: str = "Mariachi"
     version: str = Field(default_factory=get_app_version)
     database_url: str

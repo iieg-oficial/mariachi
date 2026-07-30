@@ -1,5 +1,5 @@
 # Makefile de Mariachi (panel IIEG) + Portal (web publico)
-# Gestiona comandos de desarrollo, staging y producción para Docker Compose
+# Gestiona comandos de desarrollo y producción para Docker Compose
 
 # UID/GID del host para que volumenes escritos por contenedores tengan ownership correcto
 export UID := $(shell id -u)
@@ -22,10 +22,6 @@ ifeq ($(ENV),prod)
 	COMPOSE_FILE := docker-compose.yml
 	ENV_FILE     := .env.production
 	MSG_ENV      := Producción
-else ifeq ($(ENV),staging)
-	COMPOSE_FILE := docker-compose.yml
-	ENV_FILE     := .env.staging
-	MSG_ENV      := Staging
 else
 	COMPOSE_FILE := docker-compose.dev.yml
 	ENV_FILE     := .env.development
@@ -39,7 +35,7 @@ help:
 	@echo ''
 	@echo '${YELLOW}Mariachi + Portal IIEG — comandos disponibles${RESET}'
 	@echo ''
-	@echo 'Uso: ${YELLOW}make <comando> [ENV=dev|staging|prod]${RESET}'
+	@echo 'Uso: ${YELLOW}make <comando> [ENV=dev|prod]${RESET}'
 	@echo '     (Por defecto ENV=dev)'
 	@echo ''
 	@echo '${GREEN}Comandos Generales:${RESET}'
@@ -71,7 +67,7 @@ help:
 	@echo '${GREEN}Tarjetitas (infobox_config de capas en DataEngine):${RESET}'
 	@echo '  ${YELLOW}make backup-tarjetitas${RESET}              - Exporta infobox_config de TODAS las capas a backups/tarjetitas/'
 	@echo '  ${YELLOW}make restore-tarjetitas [FILE=...]${RESET} - Aplica un export (busca en restore/ y backups/tarjetitas/; backup previo + confirmacion + apply)'
-	@echo '                                       ${YELLOW}Solo lee DATAENGINE_DATABASE_URL de .env.production${RESET} (no de dev/staging).'
+	@echo '                                       ${YELLOW}Solo lee DATAENGINE_DATABASE_URL de .env.production${RESET} (no de dev).'
 	@echo '                                       Override consciente: DATAENGINE_URL='"'"'postgres://...'"'"' make backup-tarjetitas'
 	@echo '                                       Solo mueve la columna infobox_config: nada del shape de la capa.'
 	@echo '                                       Las capas destino deben existir con el mismo id (PK de mapalab.layers).'
@@ -191,7 +187,7 @@ uninstall-backup-cron:
 TARJETITAS_DIR := backups/tarjetitas
 
 # Lee DATAENGINE_DATABASE_URL EXCLUSIVAMENTE de .env.production.
-# Las tarjetitas siempre se mueven contra prod (fuente de verdad); usar dev/staging
+# Las tarjetitas siempre se mueven contra prod (fuente de verdad); usar dev
 # por accidente puede sobrescribir capas reales. Override consciente:
 # DATAENGINE_URL='postgres://...' make ...
 define resolve_dataengine_url
@@ -255,12 +251,6 @@ setup:
 		echo "${GREEN}Creado .env.development desde ejemplo${RESET}"; \
 	else \
 		echo "${YELLOW}.env.development ya existe${RESET}"; \
-	fi
-	@if [ ! -f .env.staging ]; then \
-		cp .env.staging.example .env.staging; \
-		echo "${GREEN}Creado .env.staging desde ejemplo${RESET}"; \
-	else \
-		echo "${YELLOW}.env.staging ya existe${RESET}"; \
 	fi
 	@if [ ! -f .env.production ]; then \
 		cp .env.production.example .env.production; \

@@ -9,6 +9,29 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.111.0] - 2026-07-30
+
+### Eliminado: el entorno staging
+
+`ENV=staging` nunca se uso. No habia rama, ni pipeline, ni VM propia: solo un `.env.staging`
+apuntando a localhost y una rama del Makefile que elegia ese archivo en vez de
+`.env.production`. Los entornos reales son dos, desarrollo y produccion, y ahora el codigo lo
+dice.
+
+#### Eliminado
+
+- La rama `ENV=staging` del Makefile. `make <comando> [ENV=dev|prod]` es la forma completa.
+- `.env.staging` y `.env.staging.example`, y la linea correspondiente del `.gitignore`.
+  `make setup` ya no intenta crearlos.
+- El valor `staging` del `Literal` de `Settings.environment`: queda
+  `Literal["development", "production"]`. El unico consumidor era el validador que fuerza
+  `docs_url=None` y `cookie_secure=true` en produccion, que no cambia.
+
+`GEOSERVER_UPLOAD_STAGING_DIR` **no tiene nada que ver** con esto y no se toco: es el buffer en
+disco de las subidas por partes a GeoServer.
+
+---
+
 ## [1.109.0] - 2026-07-30
 
 ### Cambiado: las señales de abuso ahora son checks de `/ontoy`, contadas en Redis

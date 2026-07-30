@@ -13,7 +13,7 @@
 #   OUT_DIR          carpeta de salida (default: ./infobox-exports/)
 #
 # Uso:
-#   DATAENGINE_URL='postgres://...staging...' ./scripts/dataengine-export-infobox.sh
+#   DATAENGINE_URL='postgres://...' ./scripts/dataengine-export-infobox.sh
 
 set -eu
 
