@@ -17,7 +17,6 @@ from minio.error import S3Error
 from sqlalchemy.orm import Session
 
 from app.api.deps import ADMIN_ROLE, get_current_user, get_db, verify_csrf
-from app.api.metrics import COUNTER_MEDIA_DELETES, COUNTER_MEDIA_UPLOADS, incr
 from app.api.rate_limit import rate_limit
 from app.core.bucket_policies import get_hidden_prefixes
 from app.models.acervo import AcervoFile, AcervoFolder
@@ -345,7 +344,6 @@ async def subir_archivo(
         )
         db.commit()
         db.refresh(nuevo)
-        incr(COUNTER_MEDIA_UPLOADS)
         logger.info(
             "action=acervo.upload user_id=%s bucket=%s size=%s name=%s",
             current_user.id, bucket.acervo_bucket, nuevo.size, nuevo.original_name,
@@ -534,7 +532,6 @@ async def chunked_upload_complete(
     )
     db.commit()
     db.refresh(nuevo)
-    incr(COUNTER_MEDIA_UPLOADS)
     delete_session(session_id)
 
     logger.info(
@@ -1057,7 +1054,6 @@ async def eliminar_archivo(
             metadata={"bucket": bucket.acervo_bucket, "objetos": deleted},
         )
         db.commit()
-        incr(COUNTER_MEDIA_DELETES)
         logger.info(
             "action=acervo.delete.dir user_id=%s bucket=%s prefix=%s deleted=%s",
             current_user.id, bucket.acervo_bucket, prefix, deleted,
@@ -1083,7 +1079,6 @@ async def eliminar_archivo(
             metadata={"nombre": name.rsplit("/", 1)[-1], "bucket": bucket.acervo_bucket},
         )
         db.commit()
-        incr(COUNTER_MEDIA_DELETES)
         logger.info("action=acervo.delete.bucket_only user_id=%s bucket=%s name=%s", current_user.id, bucket_id, name)
         return {"message": "Archivo eliminado del bucket"}
 
@@ -1117,7 +1112,6 @@ async def eliminar_archivo(
         },
     )
     db.commit()
-    incr(COUNTER_MEDIA_DELETES)
     logger.info("action=acervo.delete user_id=%s media_id=%s name=%s", current_user.id, item.id, item.name)
     return {"message": "Archivo eliminado exitosamente"}
 

@@ -9,11 +9,6 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_project_access, require_role, verify_csrf
-from app.api.metrics import (
-    COUNTER_BULK_INGEST_APPLIES,
-    COUNTER_BULK_INGEST_UPLOADS,
-    incr,
-)
 from app.api.rate_limit import rate_limit
 from app.core.database import get_dataengine_db, get_db
 from app.models.acervo_bucket import AcervoBucket
@@ -197,7 +192,6 @@ async def upload_and_plan(
     de_db.add(plan)
     de_db.commit()
     de_db.refresh(plan)
-    incr(COUNTER_BULK_INGEST_UPLOADS)
 
     unknown_headers = [h for h in headers if h not in mapping or not mapping[h]]
 
@@ -255,7 +249,6 @@ async def apply_plan_endpoint(
     plan.applied_by = current_user.email
     de_db.commit()
     de_db.refresh(plan)
-    incr(COUNTER_BULK_INGEST_APPLIES)
 
     return BulkIngestApplyResult(
         plan_id=plan.id,

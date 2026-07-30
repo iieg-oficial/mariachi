@@ -24,7 +24,6 @@ from app.api.deps import (
 from app.api.metrics import (
     COUNTER_LOGIN_FAILED,
     COUNTER_LOGIN_LOCKED,
-    COUNTER_LOGIN_SUCCESS,
     incr,
 )
 from app.api.rate_limit import _client_ip, rate_limit_ip
@@ -178,7 +177,6 @@ async def login(
         redis_client.delete(lockout_key)
     except Exception:
         pass
-    incr(COUNTER_LOGIN_SUCCESS)
 
     _issue_session_cookies(response, usuario.username)
 

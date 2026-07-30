@@ -17,7 +17,6 @@ from fastapi import (
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
-from app.api.metrics import COUNTER_MEDIA_UPLOADS, incr
 from app.api.rate_limit import _client_ip, rate_limit_ip
 from app.models.acervo_bucket import AcervoBucket
 from app.services import acervo_file_service
@@ -141,7 +140,6 @@ async def subir_archivo_interno(
             ip=ip,
         )
         db.commit()
-        incr(COUNTER_MEDIA_UPLOADS)
         logger.info(
             "action=acervo.upload_internal client=%s bucket=%s size=%s name=%s",
             policy.client, bucket.acervo_bucket, size, final_original,

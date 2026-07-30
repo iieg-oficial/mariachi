@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 
 from app.api.deps import get_current_user, get_db, require_project_access, verify_csrf
-from app.api.metrics import COUNTER_HOME_WRITES, incr
 from app.core.optimistic import check_concurrent_edit
 from app.core.settings import get_settings
 from app.core.time import utcnow
@@ -123,7 +122,6 @@ async def actualizar_borrador(
     )
     db.commit()
     db.refresh(section)
-    incr(COUNTER_HOME_WRITES)
     if get_settings().environment != "production":
         notify_home_changed()
     return section
@@ -150,7 +148,6 @@ async def publicar_seccion(
     )
     db.commit()
     db.refresh(section)
-    incr(COUNTER_HOME_WRITES)
     notify_home_changed()
     return section
 
@@ -175,7 +172,6 @@ async def descartar_borrador(
     )
     db.commit()
     db.refresh(section)
-    incr(COUNTER_HOME_WRITES)
     return section
 
 

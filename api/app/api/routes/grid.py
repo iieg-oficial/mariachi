@@ -8,7 +8,6 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, require_project_access, verify_csrf
-from app.api.metrics import COUNTER_GRID_CELL_WRITES, COUNTER_GRID_EXPORTS, incr
 from app.api.rate_limit import rate_limit
 from app.core.database import get_dataengine_db, get_db
 from app.models.user import Usuario
@@ -115,9 +114,6 @@ async def patch_cells(
             raise
         session.commit()
 
-    if result['applied']:
-        incr(COUNTER_GRID_CELL_WRITES, result['applied'])
-
     return result
 
 
@@ -192,7 +188,6 @@ async def export_grid(
         filename = f'{spec.key}-{stamp}.xlsx'
         media_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
-    incr(COUNTER_GRID_EXPORTS)
     return Response(
         content=content,
         media_type=media_type,

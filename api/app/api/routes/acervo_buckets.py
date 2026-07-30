@@ -4,7 +4,6 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, require_role, verify_csrf
-from app.api.metrics import COUNTER_MEDIA_BUCKET_WRITES, incr
 from app.core.database import get_db
 from app.models.acervo_bucket import AcervoBucket
 from app.models.project import Project
@@ -54,7 +53,6 @@ async def create_bucket(
     )
     db.commit()
     db.refresh(bucket)
-    incr(COUNTER_MEDIA_BUCKET_WRITES)
     logger.info("action=bucket.create user_id=%s acervo_bucket=%s", _.id, bucket.acervo_bucket)
     return bucket
 
@@ -83,6 +81,5 @@ async def update_bucket(
     )
     db.commit()
     db.refresh(bucket)
-    incr(COUNTER_MEDIA_BUCKET_WRITES)
     logger.info("action=bucket.update user_id=%s bucket_id=%s", _.id, bucket.id)
     return bucket

@@ -4,7 +4,6 @@ from fastapi import APIRouter, Body, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_project_access, require_role, verify_csrf
-from app.api.metrics import COUNTER_LAYER_METADATA_WRITES, incr
 from app.api.rate_limit import rate_limit
 from app.core.database import get_dataengine_db
 from app.models.layer_metadata import LayerMetadata, LayerStats
@@ -222,5 +221,4 @@ async def update_metadata(
 
     db.commit()
     db.refresh(row)
-    incr(COUNTER_LAYER_METADATA_WRITES)
     return row

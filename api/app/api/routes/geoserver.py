@@ -11,7 +11,6 @@ from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 
 from app.api.deps import require_project_access, require_role, verify_csrf
-from app.api.metrics import COUNTER_GEOSERVER_CALLS, incr
 from app.api.rate_limit import _client_ip, rate_limit
 from app.core.database import get_dataengine_db, get_db
 from app.core.settings import get_settings
@@ -65,7 +64,6 @@ async def list_workspaces_with_layers(
     current_user: Usuario = Depends(_require_project_editor),
     _rl: Usuario = Depends(_read_rate_limit),
 ):
-    incr(COUNTER_GEOSERVER_CALLS)
     workspaces = db.query(Workspace).order_by(Workspace.alias).all()
     client = GeoServerClient()
 
@@ -132,7 +130,6 @@ async def list_pending_workspaces(
     current_user: Usuario = Depends(_require_admin),
     _rl: Usuario = Depends(_read_rate_limit),
 ):
-    incr(COUNTER_GEOSERVER_CALLS)
     registered_names = {
         ws.geoserver_workspace
         for ws in db.query(Workspace.geoserver_workspace).all()
@@ -170,7 +167,6 @@ async def register_workspace(
     _admin: Usuario = Depends(_require_admin),
     _rl: Usuario = Depends(_write_rate_limit),
 ):
-    incr(COUNTER_GEOSERVER_CALLS)
 
     existing_alias = db.query(Workspace).filter(Workspace.alias == data.alias).first()
     if existing_alias:
@@ -224,7 +220,6 @@ async def list_workspace_styles(
     current_user: Usuario = Depends(_require_project_editor),
     _rl: Usuario = Depends(_read_rate_limit),
 ):
-    incr(COUNTER_GEOSERVER_CALLS)
     ws = _resolve_workspace(db, alias)
     client = GeoServerClient()
     try:
@@ -252,7 +247,6 @@ async def list_fields(
     current_user: Usuario = Depends(_require_project_editor),
     _rl: Usuario = Depends(_read_rate_limit),
 ):
-    incr(COUNTER_GEOSERVER_CALLS)
     ws = _resolve_workspace(db, alias)
     client = GeoServerClient()
     try:
@@ -286,7 +280,6 @@ async def list_styles(
     current_user: Usuario = Depends(_require_project_editor),
     _rl: Usuario = Depends(_read_rate_limit),
 ):
-    incr(COUNTER_GEOSERVER_CALLS)
     ws = _resolve_workspace(db, alias)
     client = GeoServerClient()
     try:
@@ -325,7 +318,6 @@ async def get_style_sld(
     current_user: Usuario = Depends(_require_project_editor),
     _rl: Usuario = Depends(_read_rate_limit),
 ):
-    incr(COUNTER_GEOSERVER_CALLS)
     ws = _resolve_workspace(db, alias)
     bare_style = _strip_workspace_prefix(style_name, ws.geoserver_workspace)
     client = GeoServerClient()
@@ -384,7 +376,6 @@ async def get_legend(
     current_user: Usuario = Depends(_require_project_editor),
     _rl: Usuario = Depends(_read_rate_limit),
 ):
-    incr(COUNTER_GEOSERVER_CALLS)
     ws = _resolve_workspace(db, alias)
     if ':' in style_name:
         prefix, _, bare = style_name.partition(':')
@@ -590,7 +581,6 @@ async def browse_geoserver_files(
     current_user: Usuario = Depends(_require_project_editor),
     _rl: Usuario = Depends(_read_rate_limit),
 ):
-    incr(COUNTER_GEOSERVER_CALLS)
     clean_path = _validate_folder_path(path.strip().strip('/'))
     clean_ws = _validate_workspace(workspace)
     client = GeoServerClient()
@@ -627,7 +617,6 @@ async def search_geoserver_files(
     current_user: Usuario = Depends(_require_project_editor),
     _rl: Usuario = Depends(_read_rate_limit),
 ):
-    incr(COUNTER_GEOSERVER_CALLS)
     needle = q.strip().lower()
     if not needle:
         return GeoServerSearchResponse(query=q, results=[], truncated=False)
@@ -675,7 +664,6 @@ async def upload_geoserver_file(
     _csrf: Usuario = Depends(verify_csrf),
     _rl: Usuario = Depends(_write_rate_limit),
 ):
-    incr(COUNTER_GEOSERVER_CALLS)
     clean_ws = _validate_workspace(workspace)
     target_name = name or file.filename or ''
     target_name = target_name.strip()
@@ -720,7 +708,6 @@ async def init_chunked_geoserver_upload(
 ):
     from app.services.geoserver_chunked import CHUNK_SIZE, create_session
 
-    incr(COUNTER_GEOSERVER_CALLS)
     clean_ws = _validate_workspace(workspace)
     target_name, ext = _validate_file_name((name or '').strip())
     if total_size <= 0:
@@ -751,7 +738,6 @@ async def upload_chunked_geoserver_part(
 ):
     from app.services.geoserver_chunked import get_session, store_part, touch_session
 
-    incr(COUNTER_GEOSERVER_CALLS)
     session = get_session(session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Sesion de subida no encontrada o expirada")
@@ -783,7 +769,6 @@ async def complete_chunked_geoserver_upload(
         stored_bytes,
     )
 
-    incr(COUNTER_GEOSERVER_CALLS)
     session = get_session(session_id)
     if not session:
         raise HTTPException(status_code=404, detail="Sesion de subida no encontrada o expirada")
@@ -838,7 +823,6 @@ async def download_geoserver_folder_zip(
 ):
     import io as _io
 
-    incr(COUNTER_GEOSERVER_CALLS)
     clean_path = _validate_folder_path(path.strip().strip('/'))
     clean_ws = _validate_workspace(workspace)
     client = GeoServerClient()
@@ -915,7 +899,6 @@ async def list_geoserver_fonts(
     current_user: Usuario = Depends(_require_project_editor),
     _rl: Usuario = Depends(_read_rate_limit),
 ):
-    incr(COUNTER_GEOSERVER_CALLS)
     client = GeoServerClient()
     try:
         families = client.list_fonts()
@@ -977,7 +960,6 @@ async def reload_geoserver_fonts(
     _csrf: Usuario = Depends(verify_csrf),
     _rl: Usuario = Depends(_write_rate_limit),
 ):
-    incr(COUNTER_GEOSERVER_CALLS)
     client = GeoServerClient()
     try:
         await run_in_threadpool(client.reload)
@@ -1006,7 +988,6 @@ async def download_geoserver_file(
     current_user: Usuario = Depends(_require_project_editor),
     _rl: Usuario = Depends(_download_rate_limit),
 ):
-    incr(COUNTER_GEOSERVER_CALLS)
     _validate_file_name_readonly(name)
     clean_ws = _validate_workspace(workspace)
     client = GeoServerClient()
@@ -1039,7 +1020,6 @@ async def delete_geoserver_file(
     _csrf: Usuario = Depends(verify_csrf),
     _rl: Usuario = Depends(_write_rate_limit),
 ):
-    incr(COUNTER_GEOSERVER_CALLS)
     _validate_file_name_readonly(name)
     clean_ws = _validate_workspace(workspace)
     client = GeoServerClient()

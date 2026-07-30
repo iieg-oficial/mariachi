@@ -17,11 +17,6 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 
-from app.api.metrics import (
-    COUNTER_SIEEJ_ENVIO_EXPIRED,
-    COUNTER_SIEEJ_ENVIO_WRITES,
-    incr,
-)
 from app.core.time import to_naive_utc, utcnow
 from app.models.acervo_bucket import AcervoBucket
 from app.models.project import Project
@@ -182,7 +177,6 @@ class EnviosService:
             _marcar_expirado(envio, self.db, ahora)
         if pendientes:
             self.db.commit()
-            incr(COUNTER_SIEEJ_ENVIO_EXPIRED, len(pendientes))
         return len(pendientes)
 
     def _buscar_envio(
@@ -321,7 +315,6 @@ class EnviosService:
         envio.actualizado_en = utcnow()
         self.db.commit()
         self.db.refresh(envio)
-        incr(COUNTER_SIEEJ_ENVIO_WRITES)
         if enviar:
             self.respaldar_envio(envio)
         return envio
@@ -465,7 +458,6 @@ class EnviosService:
         )
         self.db.commit()
         self.db.refresh(envio)
-        incr(COUNTER_SIEEJ_ENVIO_WRITES)
         self.respaldar_envio(envio)
         return envio
 
@@ -504,7 +496,6 @@ class EnviosService:
         envio.actualizado_en = utcnow()
         self.db.commit()
         self.db.refresh(envio)
-        incr(COUNTER_SIEEJ_ENVIO_WRITES)
         return envio
 
     def reabrir_enviados_por_cambio(
@@ -946,7 +937,6 @@ class EnviosService:
         )
         self.db.commit()
         self.db.refresh(archivo)
-        incr(COUNTER_SIEEJ_ENVIO_WRITES)
         self.respaldar_envio(envio)
         return archivo
 

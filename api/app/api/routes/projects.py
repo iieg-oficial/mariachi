@@ -4,7 +4,6 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, require_role, verify_csrf
-from app.api.metrics import COUNTER_PROJECT_WRITES, incr
 from app.core.database import get_db
 from app.models.project import Project, UserProject
 from app.models.user import Usuario
@@ -43,7 +42,6 @@ async def create_project(
     db.add(project)
     db.commit()
     db.refresh(project)
-    incr(COUNTER_PROJECT_WRITES)
     logger.info("action=project.create user_id=%s slug=%s", current_user.id, project.slug)
     return project
 
@@ -63,7 +61,6 @@ async def update_project(
         setattr(project, field, value)
     db.commit()
     db.refresh(project)
-    incr(COUNTER_PROJECT_WRITES)
     logger.info("action=project.update user_id=%s slug=%s", current_user.id, project.slug)
     return project
 
@@ -118,7 +115,6 @@ async def set_user_projects(
             )
         )
     db.commit()
-    incr(COUNTER_PROJECT_WRITES)
     logger.info(
         "action=project.set_memberships actor=%s target_user=%s slugs=%s",
         current_user.id, user_id, slugs,
