@@ -16,6 +16,7 @@ import { colSpanLabel, positionLabel } from './layoutOptions';
 import { fieldTypeLabel } from '../../constants/definitionTypes';
 
 const COLOR_RELACION = { disparador: '#722ed1', dependiente: '#c41d7f' };
+export const COLOR_EDICION = '#5C2472';
 
 export default function FieldCard({
     id, field, placement, isEditing, isMobile, showTabs, tabs, tabOptions,
@@ -232,8 +233,10 @@ export default function FieldCard({
                 size="small"
                 style={{
                     position: 'relative',
-                    borderColor: draggedColSpan ? '#5C2472' : bordeRelacion,
-                    borderWidth: resaltado && resaltado !== 'ajeno' ? 2 : undefined,
+                    borderColor: draggedColSpan || isEditing
+                        ? COLOR_EDICION
+                        : bordeRelacion,
+                    borderWidth: isEditing || (resaltado && resaltado !== 'ajeno') ? 2 : undefined,
                     opacity: resaltado === 'ajeno' ? 0.45 : 1,
                     transition: 'opacity 120ms ease, border-color 120ms ease',
                 }}

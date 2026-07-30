@@ -17,6 +17,8 @@ class CambioRef(BaseModel):
     step_id: str
     field_name: str | None = None
     tipo: Literal["nuevo", "eliminado", "modificado"]
+    step_title: str | None = None
+    field_label: str | None = None
 
 
 class EnvioArchivoResponse(BaseModel):

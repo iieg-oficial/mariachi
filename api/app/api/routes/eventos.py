@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, get_db, require_project_access, verify_csrf
-from app.api.metrics import COUNTER_EVENTO_PUBLISH, COUNTER_EVENTO_WRITES, incr
 from app.api.rate_limit import rate_limit
 from app.core.database import get_dataengine_db
 from app.core.eventos import EventoEstado
@@ -139,7 +138,6 @@ async def crear_evento(
     )
     db.commit()
     db.refresh(evento)
-    incr(COUNTER_EVENTO_WRITES)
     if sync_auto_leaf_labels(dataengine_db, evento.capas, _editor.email):
         dataengine_db.commit()
         notify_tree_changed()
@@ -203,7 +201,6 @@ async def actualizar_evento(
     )
     db.commit()
     db.refresh(evento)
-    incr(COUNTER_EVENTO_WRITES)
     if 'capas' in update_data:
         if sync_auto_leaf_labels(dataengine_db, evento.capas, _editor.email):
             dataengine_db.commit()
@@ -233,7 +230,6 @@ async def publicar_evento(
     )
     db.commit()
     db.refresh(evento)
-    incr(COUNTER_EVENTO_PUBLISH)
     notify_eventos_changed()
     return evento
 
@@ -257,7 +253,6 @@ async def despublicar_evento(
     )
     db.commit()
     db.refresh(evento)
-    incr(COUNTER_EVENTO_WRITES)
     notify_eventos_changed()
     return evento
 
@@ -322,7 +317,6 @@ async def eliminar_evento(
         dataengine_db.commit()
         notify_tree_changed()
 
-    incr(COUNTER_EVENTO_WRITES)
     if estaba_publicado:
         notify_eventos_changed()
     return EventoDeleteResponse(

@@ -1,23 +1,30 @@
 import secrets
 from datetime import timedelta
 
+import bcrypt
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 
 from .settings import get_settings
 from .time import utcnow
 
 settings = get_settings()
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+BCRYPT_MAX_BYTES = 72
+
+
+def _a_bytes(password: str) -> bytes:
+    return password.encode("utf-8")[:BCRYPT_MAX_BYTES]
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        return bcrypt.checkpw(_a_bytes(plain_password), hashed_password.encode("utf-8"))
+    except (ValueError, TypeError):
+        return False
 
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(_a_bytes(password), bcrypt.gensalt()).decode("utf-8")
 
 
 def crear_access_token(data: dict, expires_delta: timedelta | None = None) -> str:

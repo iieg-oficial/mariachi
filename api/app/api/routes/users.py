@@ -7,7 +7,6 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.api.deps import ADMIN_ROLE, get_current_user, get_db, require_role, verify_csrf
-from app.api.metrics import COUNTER_USER_WRITES, incr
 from app.core.security import hash_password
 from app.models.project import Project, UserProject
 from app.models.sieej import Grupo, usuario_grupo
@@ -258,7 +257,6 @@ async def crear_usuario(
     )
     db.commit()
     db.refresh(nuevo_usuario)
-    incr(COUNTER_USER_WRITES)
     logger.info("action=user.create actor=%s new_user=%s role=%s", current_user.id, nuevo_usuario.id, nuevo_usuario.role)
     return _serialize_user(db, nuevo_usuario, viewer=current_user)
 
@@ -335,7 +333,6 @@ async def actualizar_usuario(
     )
     db.commit()
     db.refresh(usuario)
-    incr(COUNTER_USER_WRITES)
     logger.info("action=user.update actor=%s target=%s", current_user.id, usuario.id)
     return _serialize_user(db, usuario, viewer=current_user)
 
@@ -367,7 +364,6 @@ async def resetear_password(
         resource_id=usuario.id,
     )
     db.commit()
-    incr(COUNTER_USER_WRITES)
     logger.info(
         "action=user.reset_password actor=%s target=%s",
         current_user.id,
@@ -411,6 +407,5 @@ async def eliminar_usuario(
     )
     db.delete(usuario)
     db.commit()
-    incr(COUNTER_USER_WRITES)
     logger.info("action=user.delete actor=%s target=%s", current_user.id, target_id)
     return {"message": "Usuario eliminado exitosamente"}

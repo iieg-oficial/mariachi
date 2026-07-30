@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
     GRID_COLUMNS, layoutOf, moveToSlot, snapColSpan,
 } from '../components/visualEditor/fieldLayout';
@@ -20,10 +20,13 @@ export default function useNuevoCampo({ visibleIdx, hasTabs, activeKey }) {
         return { fields: next, idx: colocado >= 0 ? colocado : nuevoIdx };
     };
 
+    const limpiar = useCallback(() => setEnHueco(null), []);
+
     return {
         valoresIniciales,
         colocar,
-        limpiar: () => setEnHueco(null),
+        limpiar,
+        filaDestino: enHueco?.gap?.row ?? null,
         prepararHueco: (hueco) => setEnHueco({
             gap: hueco,
             colSpan: snapColSpan(hueco.units / GRID_COLUMNS),

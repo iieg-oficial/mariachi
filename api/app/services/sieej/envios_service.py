@@ -17,11 +17,6 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 
-from app.api.metrics import (
-    COUNTER_SIEEJ_ENVIO_EXPIRED,
-    COUNTER_SIEEJ_ENVIO_WRITES,
-    incr,
-)
 from app.core.time import to_naive_utc, utcnow
 from app.models.acervo_bucket import AcervoBucket
 from app.models.project import Project
@@ -182,7 +177,6 @@ class EnviosService:
             _marcar_expirado(envio, self.db, ahora)
         if pendientes:
             self.db.commit()
-            incr(COUNTER_SIEEJ_ENVIO_EXPIRED, len(pendientes))
         return len(pendientes)
 
     def _buscar_envio(
@@ -293,7 +287,7 @@ class EnviosService:
         payload_bytes = len(json.dumps(datos, default=str).encode("utf-8"))
         if payload_bytes > DATOS_MAX_BYTES:
             raise HTTPException(
-                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                status_code=status.HTTP_413_CONTENT_TOO_LARGE,
                 detail=(
                     f"`datos` excede el limite de "
                     f"{DATOS_MAX_BYTES // (1024 * 1024)} MB"
@@ -304,7 +298,7 @@ class EnviosService:
             validar_datos(envio.definicion_snapshot, datos, estricto=enviar)
         except DatosInvalidosError as exc:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail={"errores": exc.errores},
             ) from exc
 
@@ -321,7 +315,6 @@ class EnviosService:
         envio.actualizado_en = utcnow()
         self.db.commit()
         self.db.refresh(envio)
-        incr(COUNTER_SIEEJ_ENVIO_WRITES)
         if enviar:
             self.respaldar_envio(envio)
         return envio
@@ -409,7 +402,7 @@ class EnviosService:
             metas[field_path] = meta
         if errores:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail={"errores": errores},
             )
 
@@ -427,7 +420,7 @@ class EnviosService:
         payload_bytes = len(json.dumps(nuevos, default=str).encode("utf-8"))
         if payload_bytes > DATOS_MAX_BYTES:
             raise HTTPException(
-                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                status_code=status.HTTP_413_CONTENT_TOO_LARGE,
                 detail=(
                     f"`datos` excede el limite de "
                     f"{DATOS_MAX_BYTES // (1024 * 1024)} MB"
@@ -437,7 +430,7 @@ class EnviosService:
             validar_datos(envio.definicion_snapshot, nuevos, estricto=False)
         except DatosInvalidosError as exc:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail={"errores": exc.errores},
             ) from exc
 
@@ -465,7 +458,6 @@ class EnviosService:
         )
         self.db.commit()
         self.db.refresh(envio)
-        incr(COUNTER_SIEEJ_ENVIO_WRITES)
         self.respaldar_envio(envio)
         return envio
 
@@ -504,7 +496,6 @@ class EnviosService:
         envio.actualizado_en = utcnow()
         self.db.commit()
         self.db.refresh(envio)
-        incr(COUNTER_SIEEJ_ENVIO_WRITES)
         return envio
 
     def reabrir_enviados_por_cambio(
@@ -894,7 +885,7 @@ class EnviosService:
         meta = self.resolver_editable(defs, field_path)
         if meta is None or meta["type"] != "file":
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail={
                     "errores": [
                         {"field_path": field_path, "error": "campo no editable"}
@@ -911,7 +902,7 @@ class EnviosService:
             "repeater"
         ]:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail={
                     "errores": [
                         {"field_path": field_path, "error": "el elemento no existe"}
@@ -946,7 +937,6 @@ class EnviosService:
         )
         self.db.commit()
         self.db.refresh(archivo)
-        incr(COUNTER_SIEEJ_ENVIO_WRITES)
         self.respaldar_envio(envio)
         return archivo
 
@@ -1082,7 +1072,7 @@ class EnviosService:
         if isinstance(max_mb, (int, float)) and max_mb > 0 and size is not None:
             if size > int(max_mb * 1024 * 1024):
                 raise HTTPException(
-                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                    status_code=status.HTTP_413_CONTENT_TOO_LARGE,
                     detail=f"El archivo excede el limite de {max_mb} MB",
                 )
 

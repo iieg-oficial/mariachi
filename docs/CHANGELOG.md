@@ -9,6 +9,255 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.109.0] - 2026-07-30
+
+### Cambiado: las señales de abuso ahora son checks de `/ontoy`, contadas en Redis
+
+Los contadores que la 1.106.0 mudó a `/ontoy` no los leía nadie: el monitor de huachicol solo
+persiste `status`, `checks`, `containers`, `version` y `deployed_at`, y descarta el resto del
+payload. Además tenían dos defectos de fondo:
+
+- **Vivían en memoria del proceso.** La API corre con `--workers 2`, así que cada worker contaba
+  solo su tráfico y `/ontoy` devolvía lo que hubiera visto el worker que atendió el sondeo.
+- **Eran acumulados.** Un total que solo crece cruza cualquier umbral tarde o temprano y dejaría el
+  servicio en `degraded` para siempre.
+
+Ahora se registran en **Redis** con `INCR` y `EXPIRE` sobre una ventana de 15 minutos —el mismo
+mecanismo que ya usa el lockout de login—, y se publican como dos checks con su propio `status`:
+
+- **`abuso`**: `login_failed`, `login_locked` y `rate_limit_hits`. Pasa a `degraded` cuando la suma
+  llega a 30 en la ventana.
+- **`mapalab_notify`**: notificaciones de árbol que agotaron sus reintentos. `degraded` a partir de 3.
+
+Como el `status` global es el peor de los checks, una ráfaga de fuerza bruta pone el servicio en
+`degraded` y huachicol alerta a Discord y Telegram, que era el objetivo de tener estos números.
+Si Redis no responde, `registrar()` no propaga la excepción y los checks devuelven cero: la
+telemetría nunca tumba una petición de login.
+
+Esto **no cambia la auditoría**: `actividad_log` sigue registrando `login.failed`, `login.success` y
+`login.logout` en Postgres con actor, IP y metadata. Los checks sirven para alertar; el log, para
+saber quién hizo qué.
+
+Umbrales y ventana viven en `app/api/metrics.py`. Si se quieren ajustar sin redesplegar código,
+tendrían que pasar a `Settings` y al `.env`.
+
+## [1.108.1] - 2026-07-30
+
+### Cambiado: la documentación del contrato `/ontoy` recoge lo aprendido
+
+La ficha de Documentación → Contrato `/ontoy` del admin apuntaba a
+`huachicol/docs/ontoy-contrato.md`, que dejó de existir cuando huachicol 2.0 movió sus docs al repo
+central, y daba a casi todo el ecosistema como pendiente de migrar a v2 cuando ya está completo.
+
+Se agregan dos secciones que faltaban:
+
+- **Exposición.** Un `/ontoy` servido desde el backend no necesita ser público: el monitor sondea
+  por `iieg-network`. El riesgo es que un prefijo general del proxy lo publique sin que nadie lo
+  decida, como pasó con `/mapalab/api/ontoy`. Incluye la trampa de verificarlo con `curl`, que recibe
+  `403` de la protección anti-bots y hace parecer cerrado lo que está abierto.
+- **Qué se guarda de la respuesta.** El monitor solo persiste `status`, `checks`, `containers`,
+  `version` y `deployed_at`; el `slug` y el `label` los toma de su `targets.json`. Lo que se quiera
+  vigilar va como un `check` con su propio `status`, porque una llave suelta no se almacena ni
+  alerta.
+
+La tabla de adopción queda al día y con los checks de cada servicio. La especificación completa en
+`context-ame-esta/repos/huachicol/ontoy-contrato.md` recibe las mismas dos secciones.
+
+## [1.110.0] - 2026-07-30
+
+### Agregar un campo se comporta como editarlo
+
+En el editor visual, «Editar» abre el formulario pegado al campo y a todo el ancho de la rejilla
+(`gridColumn: '1 / -1'`), mientras que «Agregar» lo abría en una tarjeta suelta al final de la
+lista, lejos del hueco donde se había pedido. Ahora el alta se renderiza dentro de la rejilla, en
+la línea donde se pidió el hueco y ocupando el ancho completo; solo cae al final cuando el alta se
+pide desde la barra o desde el botón del paso, que es donde corresponde.
+
+#### Cambiado
+
+- `FieldsGrid` acepta `nuevoCampoRow` y `renderNuevoCampo` y coloca el bloque tras el último
+  espacio de esa línea. `useNuevoCampo` expone `filaDestino` y estabiliza `limpiar`, que ademas se
+  invoca al abrir el alta desde el botón del paso para no heredar un hueco anterior.
+- El formulario de alta recibe `defaultCol`, como el de edición.
+- El contenedor abierto se resalta con borde de 2 px en morado institucional, tanto al editar un
+  campo como al agregar uno nuevo, reusando el lenguaje visual del resaltado de condicionados.
+  La tarjeta de alta sale a `NuevoCampoCard` para no cruzar el límite de 300 líneas de
+  `FieldsList`.
+
+---
+
+## [1.108.0] - 2026-07-30
+
+### El diff de definiciones ahora dice el nombre del campo
+
+`diff_definiciones` emitía solo `step_id` y `field_name`, así que el aviso de "el formulario se
+actualizó" de SIEEJ mostraba identificadores internos. El frontend no puede resolverlos por su
+cuenta: al aplicar una actualización el `definicion_snapshot` del envío se reescribe con la
+definición vigente, de modo que los pasos y campos **eliminados** dejan de existir en la única
+definición que el respondent tiene a mano. El diff es el último punto donde ambas versiones
+conviven en memoria.
+
+#### Agregado
+
+- Cada entrada del diff lleva `step_title` y `field_label`, tomados de la definición vieja cuando
+  el cambio es `eliminado` y de la nueva en los demás casos (para `modificado` gana el label nuevo,
+  que es justo el que pudo haber cambiado). `CambioRef` los expone como opcionales, así que los
+  `cambios_pendientes` ya persistidos siguen validando y el frontend cae a su mapa de etiquetas.
+
+---
+
+## [1.107.0] - 2026-07-30
+
+### Eliminado: la instrumentación que ya no lee nadie
+
+La 1.106.0 dejó los contadores de volumen contándose en memoria sin superficie de lectura. Se
+borran: quedan solo los cuatro que `/ontoy` publica (`rate_limit_hits`, `login_failed`,
+`login_locked`, `tree_notify_failed`). Son 23 constantes y 60 llamadas a `incr()` menos, repartidas
+en 15 archivos.
+
+Con ellas se va el parámetro que ya no distinguía nada: en `mapalab_notifier` el flag `contar`
+gobernaba el contador de notificaciones y el de fallos; el primero desaparece y el flag se queda,
+porque el de fallos sí se expone.
+
+Si más adelante hace falta medir escrituras, conviene hacerlo con etiquetas —por recurso, por
+resultado— y no como un acumulado plano que se reinicia con el contenedor.
+
+### Eliminado: passlib
+
+Era la última fuente de warnings de la suite: importa el módulo `crypt`, que desaparece en Python
+3.13. No tenía arreglo por versión —1.7.4 es la última publicada y sigue igual—, así que
+`app/core/security.py` pasa a usar `bcrypt` directo, que ya era el motor real por debajo, y el pin
+sube de `bcrypt<4.0` a `>=5.0,<6.0`.
+
+**Los hashes existentes siguen siendo válidos**: passlib generaba `$2b$` estándar y `bcrypt.checkpw`
+los verifica sin tocar la base. Hay dos detalles que se replicaron a propósito:
+
+- **Truncado a 72 bytes.** passlib truncaba en silencio; bcrypt 5 lanza `ValueError`. Se trunca
+  explícitamente para que quien tenga una contraseña más larga siga entrando con ella.
+- **Hash ilegible.** `verify_password` devuelve `False` en vez de propagar la excepción, así que un
+  registro con hash corrupto responde 401 y no un 500.
+
+`tests/test_auth.py` fija las tres cosas, con un hash generado por passlib incrustado como fixture
+para que la compatibilidad no se pueda romper sin que la suite avise. `colibri_keys` y
+`mapalab_keys` tenían cada uno su propio `CryptContext` duplicado; ahora reusan esas funciones.
+
+**La suite queda en 889 tests y cero warnings** (venía de 462).
+
+## [1.106.0] - 2026-07-30
+
+### Cambiado: FastAPI sube de 0.112 a 0.141 y la suite pasa de 462 warnings a 1
+
+El pin `fastapi>=0.111,<0.113` llevaba a starlette 0.38.6, cuyo lector de formularios importa el
+módulo `multipart` en lugar de `python_multipart` y avisa de la deprecación en cada corrida. Lo que
+impedía subir no era FastAPI sino **`prometheus-fastapi-instrumentator`**: la línea 7.x declara
+`starlette<1.0.0`, así que con FastAPI moderno (starlette 1.3.1) la instrumentación explotaba y
+tumbaba 112 tests con 133 errores. La 8.1.0 declara `starlette>=1.0.0` y ambos suben juntos.
+
+`/metrics` se verificó lado a lado en las dos imágenes: expone exactamente las mismas seis familias
+(`http_requests_total`, `http_request_duration_seconds*` y sus `_created`) y las mismas 33 líneas,
+así que los dashboards de huachicol que scrapean `mariachi-api:8000` no cambian.
+
+El contrato de la API se comparó generando el `openapi.json` completo con ambas versiones. Las
+únicas diferencias son `format: binary` → `contentMediaType: application/octet-stream` en los
+uploads (JSON Schema 2020-12, que es lo que OpenAPI 3.1 exige), los campos `ctx` e `input` que
+FastAPI ahora documenta en `ValidationError`, y el `rowKey` de abajo.
+
+### Corregido: la presencia por fila del grid nunca se registraba
+
+`PUT /grid/{resource}/presencia` declara `row_key: str | None = Body(default=None, embed=True,
+alias='rowKey')`. **FastAPI 0.112 ignoraba el `alias` de un `Body` embebido** — el esquema publicaba
+la propiedad como `row_key`—, así que el `{ rowKey }` que envía `gridService.js` llegaba como
+`row_key=None` y el `if row_key:` del handler nunca entraba: la presencia por fila se perdía en
+silencio. En query params el alias sí se aplicaba, por lo que el `DELETE` de la misma pareja
+funcionaba y el fallo pasaba desapercibido. Con 0.141 el alias se respeta y el registro empieza a
+ocurrir; el frontend no necesita cambios porque ya mandaba la clave correcta.
+
+### Corregido: el modelo declaraba dos llaves foráneas que la base nunca tuvo
+
+`ReporteGrupo.primer_reporte_id` y `ultimo_reporte_id` declaraban `ForeignKey("reportes.id")`, pero
+la migración `c1d2e3f4a5b7` que creó la tabla solo crea el constraint de `reportes.grupo_id`. El
+modelo pedía integridad que Postgres no aplica, y un `alembic revision --autogenerate` podía
+proponer crearla en cualquier momento. Se quitan del modelo para que coincida con la base; ningún
+código dependía de ellas (el join de `reportes.py` usa la condición explícita). El ciclo de
+dependencia mutua que declaraban era el origen de ~450 de los 462 warnings: SQLAlchemy no podía
+ordenar las tablas para el `create_all`/`drop_all` de cada fixture.
+
+### Corregido: `ultimo_cambio` se inyectaba sin validar
+
+El `PUT` admin de formularios metía el `dict` del servicio en `FormularioUpdateResponse` vía
+`model_copy(update=...)`, que no valida. Funcionaba por coincidencia de claves: si el servicio
+renombrara una, la respuesta se serializaría mal en silencio. Ahora pasa por
+`UltimoCambioInfo.model_validate`.
+
+### Cambiado: constantes de estado renombradas
+
+Starlette 1.x deprecó `HTTP_422_UNPROCESSABLE_ENTITY` y `HTTP_413_REQUEST_ENTITY_TOO_LARGE` en favor
+de `HTTP_422_UNPROCESSABLE_CONTENT` y `HTTP_413_CONTENT_TOO_LARGE`. Se renombraron los 20 usos en 8
+archivos. Los códigos numéricos siguen siendo 422 y 413: ningún cliente lo nota.
+
+También: `declarative_base` se importa de `sqlalchemy.orm` (la ruta de `sqlalchemy.ext.declarative`
+está deprecada desde 2.0), los tests fijan las cookies en el cliente httpx en vez de por request
+(deprecado en httpx), y `httpx2` entra a los extras `dev` porque es lo que prefiere el `TestClient`
+de starlette 1.x.
+
+El único warning que queda es `passlib` importando el módulo `crypt`, que desaparece en Python 3.13.
+No tiene arreglo por versión —1.7.4 es la última y sigue igual—; cuando se actualice el intérprete
+habrá que sustituir passlib por `bcrypt` directo en `app/core/security.py`.
+
+### Eliminado: prometheus, con los contadores útiles mudados a `/ontoy`
+
+huachicol dejó de ser un stack de observabilidad en su 2.0.0 (2026-07-21): Prometheus, Grafana,
+Loki y Alloy se retiraron y hoy solo sondea el `/ontoy` de cada servicio. El scrape de
+`mariachi-api:8000/metrics` que documentaba su changelog v1 ya no existe, así que el endpoint
+quedaba exponiendo métricas que nadie leía.
+
+Se retiran `prometheus-fastapi-instrumentator`, la dependencia transitiva `prometheus-client`, el
+middleware de instrumentación y el endpoint `GET /metrics`. El sistema de contadores propio
+(`app/api/metrics.py`) **se conserva** —lo alimentan 67 llamadas en 18 archivos— y ahora se publica
+en el payload de `/ontoy`, bajo la llave `counters`, con los cuatro que sirven para detectar
+problemas:
+
+- `mariachi_rate_limit_hits_total`
+- `mariachi_login_failed_total`
+- `mariachi_login_locked_total`
+- `mariachi_tree_notify_failed_total`
+
+Los demás (volúmenes de escritura, lecturas, uploads) se siguen contando en memoria pero no se
+exponen: sin una base de series temporales detrás, un acumulado que se reinicia con el contenedor no
+permite calcular tasas, y engordaría un payload que se sondea cada pocos segundos. Añadir uno es
+agregar su nombre a `ONTOY_COUNTERS`.
+
+### Cambiado: nginx a 1.30.4-alpine
+
+`nginx/Dockerfile` usaba la etiqueta flotante `nginx:alpine`, cacheada en las máquinas del equipo en
+1.29.8. Esa versión es vulnerable a **CVE-2026-42533** (CVSS 9.2, desbordamiento de heap con
+posible ejecución remota de código, parchado el 15 de julio de 2026), **CVE-2026-60005** y
+**CVE-2026-56434**. Se fija la línea estable parchada. La configuración se validó con `nginx -t`
+contra 1.30.4 sin cambios.
+
+### Nota de despliegue
+
+**Hay que reconstruir la imagen de la API.** `HTTP_422_UNPROCESSABLE_CONTENT` no existe en starlette
+0.38, así que el código de esta versión no arranca contra la imagen anterior. Con `make build` o el
+rebuild del deploy queda resuelto; no hay migraciones ni cambios de configuración.
+
+Quien tuviera algo apuntando a `GET /metrics` de mariachi debe mirar `counters` en `/ontoy`: el
+endpoint ahora responde 404.
+
+## [1.105.2] - 2026-07-29
+
+### El lint del admin vuelve a cero problemas
+
+#### Corregido
+
+- **`export` muerto en `LayerBadgeSection.jsx`.** `BADGE_PRESETS` se exportaba sin que nadie lo
+  importara: su unico uso esta en la linea 32 del propio archivo, y su vecino `VARIANT_OPTIONS` ya
+  era local, asi que el `export` era un descuido. Disparaba el warning
+  `react-refresh/only-export-components`, que avisa que el fast refresh de Vite deja de funcionar
+  cuando un archivo exporta algo que no es un componente. Se quita el `export` en lugar de mover la
+  constante a `constants/` —el remedio que sugiere el mensaje del linter— porque nada necesita
+  compartirla. `npm run lint` del admin queda en **cero problemas**.
+
 ## [1.105.1] - 2026-07-29
 
 ### El contexto se movio al repo central y los docs quedaron homologados

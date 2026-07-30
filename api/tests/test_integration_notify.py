@@ -3,7 +3,6 @@
 Valida que el notifier dispara POST al backend de mapalab con el shape correcto
 y respeta el debounce. No requiere mapalab corriendo (usa httpx.MockTransport).
 """
-import threading
 import time
 from unittest.mock import patch
 
@@ -89,13 +88,13 @@ def test_notifier_sends_internal_token_header():
         s.mapalab_internal_token = original_token
 
 
-def test_notifier_retries_on_failure():
-    from app.api.metrics import COUNTER_TREE_NOTIFY_FAILED, _counters
+def test_notifier_retries_on_failure(monkeypatch):
+    from app.api import metrics as m
     from app.services import mapalab_notifier
     s, original = _mock_settings_with_url()
     original_backoff = mapalab_notifier._BACKOFF_BASE_SECONDS
     mapalab_notifier._BACKOFF_BASE_SECONDS = 0.01
-    failed_before = _counters.get(COUNTER_TREE_NOTIFY_FAILED, 0)
+    monkeypatch.setattr(m, 'redis_client', _RedisDeMemoria())
     try:
         attempts = {'n': 0}
 
@@ -109,8 +108,7 @@ def test_notifier_retries_on_failure():
             mapalab_notifier._do_notify()
 
         assert attempts['n'] == mapalab_notifier._MAX_ATTEMPTS
-        failed_after = _counters.get(COUNTER_TREE_NOTIFY_FAILED, 0)
-        assert failed_after - failed_before == 1
+        assert m._leer(m.SENAL_NOTIFY_FALLIDO) == 1
     finally:
         s.mapalab_backend_url = original
         mapalab_notifier._BACKOFF_BASE_SECONDS = original_backoff
@@ -166,36 +164,93 @@ def test_notifier_debounces_multiple_calls():
         s.mapalab_backend_url = original
 
 
-def test_metrics_endpoint_returns_prometheus_format(client):
-    response = client.get('/metrics')
-    assert response.status_code == 200
-    assert 'text/plain' in response.headers['content-type']
-    body = response.text
-    assert body.endswith('\n')
+class _RedisDeMemoria:
+    def __init__(self):
+        self.kv = {}
+        self.ttls = {}
+        self.falla = False
+
+    def pipeline(self):
+        if self.falla:
+            raise RuntimeError('redis caido')
+        return _PipelineDeMemoria(self)
+
+    def get(self, clave):
+        if self.falla:
+            raise RuntimeError('redis caido')
+        return self.kv.get(clave)
 
 
-def test_metrics_counters_increment_on_rate_limit_hit():
+class _PipelineDeMemoria:
+    def __init__(self, store):
+        self.store = store
+        self.ops = []
+
+    def incr(self, clave, cantidad=1):
+        self.ops.append(('incr', clave, cantidad))
+        return self
+
+    def expire(self, clave, ttl, nx=False):
+        self.ops.append(('expire', clave, ttl, nx))
+        return self
+
+    def execute(self):
+        for op in self.ops:
+            if op[0] == 'incr':
+                self.store.kv[op[1]] = int(self.store.kv.get(op[1], 0)) + op[2]
+            elif not (op[3] and op[1] in self.store.ttls):
+                self.store.ttls[op[1]] = op[2]
+        self.ops = []
+        return []
+
+
+def test_metrics_endpoint_ya_no_existe(client):
+    assert client.get('/metrics').status_code == 404
+
+
+def test_ontoy_expone_los_checks_de_senales(client):
+    checks = client.get('/ontoy').json()['checks']
+
+    assert set(checks['abuso']) >= {'status', 'ventana_minutos', 'login_failed'}
+    assert checks['mapalab_notify']['status'] in {'ok', 'degraded'}
+
+
+def test_abuso_pasa_a_degraded_al_cruzar_el_umbral(monkeypatch):
     from app.api import metrics as m
 
-    before = m._counters.get(m.COUNTER_RATE_LIMIT_HITS, 0)
-    m.incr(m.COUNTER_RATE_LIMIT_HITS, amount=3)
-    after = m._counters.get(m.COUNTER_RATE_LIMIT_HITS, 0)
-    assert after - before == 3
+    fake = _RedisDeMemoria()
+    monkeypatch.setattr(m, 'redis_client', fake)
+
+    m.registrar(m.SENAL_LOGIN_FALLIDO, m.UMBRAL_ABUSO - 1)
+    assert m.check_abuso()['status'] == 'ok'
+
+    m.registrar(m.SENAL_RATE_LIMIT)
+    resultado = m.check_abuso()
+    assert resultado['status'] == 'degraded'
+    assert resultado['login_failed'] == m.UMBRAL_ABUSO - 1
+    assert resultado['rate_limit_hits'] == 1
 
 
-def test_metrics_thread_safe():
+def test_la_ventana_solo_se_fija_una_vez(monkeypatch):
     from app.api import metrics as m
-    counter_name = 'test_thread_counter'
-    m._counters[counter_name] = 0
 
-    def worker():
-        for _ in range(1000):
-            m.incr(counter_name)
+    fake = _RedisDeMemoria()
+    monkeypatch.setattr(m, 'redis_client', fake)
 
-    threads = [threading.Thread(target=worker) for _ in range(10)]
-    for t in threads:
-        t.start()
-    for t in threads:
-        t.join()
+    m.registrar(m.SENAL_LOGIN_FALLIDO)
+    fake.ttls[m._clave(m.SENAL_LOGIN_FALLIDO)] = 42
+    m.registrar(m.SENAL_LOGIN_FALLIDO)
 
-    assert m._counters[counter_name] == 10_000
+    assert fake.ttls[m._clave(m.SENAL_LOGIN_FALLIDO)] == 42
+
+
+def test_senales_toleran_redis_caido(monkeypatch):
+    from app.api import metrics as m
+
+    fake = _RedisDeMemoria()
+    fake.falla = True
+    monkeypatch.setattr(m, 'redis_client', fake)
+
+    m.registrar(m.SENAL_LOGIN_FALLIDO)
+    assert m.check_abuso()['status'] == 'ok'
+    assert m.check_mapalab_notify()['fallos'] == 0

@@ -1,60 +1,60 @@
 from __future__ import annotations
 
-import threading
-from collections import defaultdict
+import logging
+from typing import Any
 
-from fastapi import APIRouter, Response
-from prometheus_client import REGISTRY, generate_latest
+from app.core.cache import redis_client
 
-_counters: dict[str, int] = defaultdict(int)
-_lock = threading.Lock()
+logger = logging.getLogger(__name__)
 
-COUNTER_RATE_LIMIT_HITS = 'mariachi_rate_limit_hits_total'
-COUNTER_TREE_NOTIFY = 'mariachi_tree_notify_total'
-COUNTER_TREE_NOTIFY_FAILED = 'mariachi_tree_notify_failed_total'
-COUNTER_GEOSERVER_CALLS = 'mariachi_geoserver_calls_total'
-COUNTER_LAYER_WRITES = 'mariachi_layer_writes_total'
-COUNTER_LAYER_READS = 'mariachi_layer_reads_total'
-COUNTER_PROJECT_WRITES = 'mariachi_project_writes_total'
-COUNTER_USER_WRITES = 'mariachi_user_writes_total'
-COUNTER_MEDIA_BUCKET_WRITES = 'mariachi_media_bucket_writes_total'
-COUNTER_MEDIA_UPLOADS = 'mariachi_media_uploads_total'
-COUNTER_MEDIA_DELETES = 'mariachi_media_deletes_total'
-COUNTER_LAYER_METADATA_WRITES = 'mariachi_layer_metadata_writes_total'
-COUNTER_GRID_CELL_WRITES = 'mariachi_grid_cell_writes_total'
-COUNTER_GRID_EXPORTS = 'mariachi_grid_exports_total'
-COUNTER_BULK_INGEST_UPLOADS = 'mariachi_bulk_ingest_uploads_total'
-COUNTER_BULK_INGEST_APPLIES = 'mariachi_bulk_ingest_applies_total'
-COUNTER_EVENTO_WRITES = 'mariachi_evento_writes_total'
-COUNTER_EVENTO_PUBLISH = 'mariachi_evento_publish_total'
-COUNTER_HOME_WRITES = 'mariachi_home_writes_total'
-COUNTER_MAPALAB_SHARE_WRITES = 'mariachi_mapalab_share_writes_total'
-COUNTER_SIEEJ_FORMULARIO_WRITES = 'mariachi_sieej_formulario_writes_total'
-COUNTER_SIEEJ_ENVIO_WRITES = 'mariachi_sieej_envio_writes_total'
-COUNTER_SIEEJ_ENVIO_EXPIRED = 'mariachi_sieej_envio_expired_total'
-COUNTER_SIEEJ_ENVIO_REABIERTO = 'mariachi_sieej_envio_reabierto_total'
-COUNTER_LOGIN_SUCCESS = 'mariachi_login_success_total'
-COUNTER_LOGIN_FAILED = 'mariachi_login_failed_total'
-COUNTER_LOGIN_LOCKED = 'mariachi_login_locked_total'
+VENTANA_SEGUNDOS = 900
+UMBRAL_ABUSO = 30
+UMBRAL_NOTIFY_FALLIDO = 3
+
+SENAL_LOGIN_FALLIDO = 'login_failed'
+SENAL_LOGIN_BLOQUEADO = 'login_locked'
+SENAL_RATE_LIMIT = 'rate_limit_hits'
+SENAL_NOTIFY_FALLIDO = 'tree_notify_failed'
+
+SENALES_ABUSO = (SENAL_LOGIN_FALLIDO, SENAL_LOGIN_BLOQUEADO, SENAL_RATE_LIMIT)
 
 
-def incr(name: str, amount: int = 1) -> None:
-    with _lock:
-        _counters[name] += amount
+def _clave(senal: str) -> str:
+    return f'mariachi:senal:{senal}'
 
 
-def _render_prometheus() -> str:
-    lines: list[str] = []
-    for name, value in sorted(_counters.items()):
-        lines.append(f'# TYPE {name} counter')
-        lines.append(f'{name} {value}')
-    return '\n'.join(lines) + '\n'
+def registrar(senal: str, cantidad: int = 1) -> None:
+    try:
+        clave = _clave(senal)
+        pipe = redis_client.pipeline()
+        pipe.incr(clave, cantidad)
+        pipe.expire(clave, VENTANA_SEGUNDOS, nx=True)
+        pipe.execute()
+    except Exception as exc:
+        logger.warning('senal %s no registrada: %s', senal, exc)
 
 
-router = APIRouter(tags=['metrics'])
+def _leer(senal: str) -> int:
+    try:
+        return int(redis_client.get(_clave(senal)) or 0)
+    except Exception:
+        return 0
 
 
-@router.get('/metrics', include_in_schema=False)
-async def metrics() -> Response:
-    body = _render_prometheus() + generate_latest(REGISTRY).decode('utf-8')
-    return Response(content=body, media_type='text/plain; version=0.0.4')
+def check_abuso() -> dict[str, Any]:
+    valores = {senal: _leer(senal) for senal in SENALES_ABUSO}
+    total = sum(valores.values())
+    return {
+        'status': 'degraded' if total >= UMBRAL_ABUSO else 'ok',
+        'ventana_minutos': VENTANA_SEGUNDOS // 60,
+        **valores,
+    }
+
+
+def check_mapalab_notify() -> dict[str, Any]:
+    fallos = _leer(SENAL_NOTIFY_FALLIDO)
+    return {
+        'status': 'degraded' if fallos >= UMBRAL_NOTIFY_FALLIDO else 'ok',
+        'ventana_minutos': VENTANA_SEGUNDOS // 60,
+        'fallos': fallos,
+    }

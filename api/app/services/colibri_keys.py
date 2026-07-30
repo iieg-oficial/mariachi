@@ -1,9 +1,7 @@
 import hashlib
 import secrets
 
-from passlib.context import CryptContext
-
-_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+from app.core.security import hash_password, verify_password
 
 PUBLIC_PREFIX = "ck_pub_"
 PRIVATE_PREFIX = "ck_priv_"
@@ -28,17 +26,14 @@ def generate_api_key(visibility: str = "public") -> tuple[str, str, str]:
 
 def _hash_key(plain_key: str) -> str:
     digest = hashlib.sha256(plain_key.encode("utf-8")).hexdigest()
-    return _pwd_context.hash(digest)
+    return hash_password(digest)
 
 
 def verify_api_key(plain_key: str, hashed: str) -> bool:
     if not plain_key or not hashed:
         return False
     digest = hashlib.sha256(plain_key.encode("utf-8")).hexdigest()
-    try:
-        return _pwd_context.verify(digest, hashed)
-    except Exception:
-        return False
+    return verify_password(digest, hashed)
 
 
 def visibility_from_key(plain_key: str) -> str | None:

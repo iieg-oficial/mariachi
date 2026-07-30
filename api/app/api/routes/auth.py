@@ -22,10 +22,9 @@ from app.api.deps import (
     verify_csrf,
 )
 from app.api.metrics import (
-    COUNTER_LOGIN_FAILED,
-    COUNTER_LOGIN_LOCKED,
-    COUNTER_LOGIN_SUCCESS,
-    incr,
+    SENAL_LOGIN_BLOQUEADO,
+    SENAL_LOGIN_FALLIDO,
+    registrar,
 )
 from app.api.rate_limit import _client_ip, rate_limit_ip
 from app.core import refresh_token
@@ -129,7 +128,7 @@ async def login(
             ttl = _LOGIN_USERNAME_WINDOW_SECONDS
         retry = ttl if ttl and ttl > 0 else _LOGIN_USERNAME_WINDOW_SECONDS
         logger.warning('login locked identifier=%s fails=%s', identifier, fail_count)
-        incr(COUNTER_LOGIN_LOCKED)
+        registrar(SENAL_LOGIN_BLOQUEADO)
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=f"Cuenta temporalmente bloqueada por intentos fallidos. Intenta en {retry}s.",
@@ -168,7 +167,7 @@ async def login(
         except Exception as exc:
             db.rollback()
             logger.warning('actividad login.failed fallo identifier=%s: %s', identifier, exc)
-        incr(COUNTER_LOGIN_FAILED)
+        registrar(SENAL_LOGIN_FALLIDO)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Credenciales inválidas",
@@ -178,7 +177,6 @@ async def login(
         redis_client.delete(lockout_key)
     except Exception:
         pass
-    incr(COUNTER_LOGIN_SUCCESS)
 
     _issue_session_cookies(response, usuario.username)
 
@@ -348,7 +346,7 @@ async def subir_avatar(
     file.file.seek(0)
     if size > _AVATAR_MAX_BYTES:
         raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
             detail=f"Avatar excede {_AVATAR_MAX_BYTES // (1024 * 1024)} MB",
         )
 

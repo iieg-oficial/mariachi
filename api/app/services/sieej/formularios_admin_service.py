@@ -13,11 +13,6 @@ from fastapi import HTTPException, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session, selectinload
 
-from app.api.metrics import (
-    COUNTER_SIEEJ_ENVIO_REABIERTO,
-    COUNTER_SIEEJ_FORMULARIO_WRITES,
-    incr,
-)
 from app.core.time import utcnow
 from app.models.sieej import (
     EnvioEvento,
@@ -110,7 +105,7 @@ class FormulariosAdminService:
             return validar_periodicidad(valor)
         except PeriodicidadInvalidaError as exc:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=str(exc),
             ) from exc
 
@@ -146,7 +141,7 @@ class FormulariosAdminService:
             validar_definicion(data["definicion"])
         except DefinicionInvalidaError as exc:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail=str(exc),
             ) from exc
 
@@ -187,7 +182,6 @@ class FormulariosAdminService:
         )
         self.db.commit()
         self.db.refresh(f)
-        incr(COUNTER_SIEEJ_FORMULARIO_WRITES)
         logger.info(
             "action=sieej.formulario.create actor=%s target=%s slug=%s",
             creador.id,
@@ -224,7 +218,7 @@ class FormulariosAdminService:
                 validar_definicion(nueva_definicion)
             except DefinicionInvalidaError as exc:
                 raise HTTPException(
-                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                     detail=str(exc),
                 ) from exc
             definicion_previa = normalizar_definicion(definicion_previa)
@@ -319,7 +313,6 @@ class FormulariosAdminService:
         )
         self.db.commit()
         self.db.refresh(f)
-        incr(COUNTER_SIEEJ_FORMULARIO_WRITES)
         logger.info(
             "action=sieej.formulario.update actor=%s target=%s slug=%s "
             "definicion_changed=%s tipo_cambio=%s version_from=%s version_to=%s",
@@ -580,7 +573,6 @@ class FormulariosAdminService:
         )
         self.db.commit()
         self.db.refresh(envio)
-        incr(COUNTER_SIEEJ_ENVIO_REABIERTO)
         logger.info(
             "action=sieej.envio.reabrir actor=%s target_envio=%s formulario=%s "
             "estado_from=%s estado_to=en_proceso",

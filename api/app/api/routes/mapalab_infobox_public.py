@@ -63,7 +63,7 @@ async def crear_propuesta(
     try:
         payload = PropuestaIn.model_validate(body)
     except ValidationError as exc:
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=exc.errors())
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=exc.errors())
 
     if payload.website:
         logger.info("infobox.propuesta.honeypot ip=%s", _client_ip(request))

@@ -16,6 +16,7 @@ const gapId = (slot) => `gap-${slot.row}-${slot.col}`;
 export default function FieldsGrid({
     slots, itemIds, unitsPorId, isMobile, vacio, vacioTexto, mostrarGuias,
     onDrop, onUnirLinea, onMoverLinea, onAddFieldEnLinea, renderField,
+    nuevoCampoRow, renderNuevoCampo,
 }) {
     const [dragging, setDragging] = useState(null);
 
@@ -45,6 +46,24 @@ export default function FieldsGrid({
     }, [slots]);
 
     const totalLineas = slots.length === 0 ? 0 : slots[slots.length - 1].row + 1;
+
+    const ultimoDeLinea = useMemo(() => {
+        const map = new Map();
+        slots.forEach((s) => map.set(s.row, s));
+        return map;
+    }, [slots]);
+
+    const bloqueNuevo = renderNuevoCampo && (
+        <div
+            key="nuevo-campo"
+            style={{ gridColumn: '1 / -1', padding: 4, boxSizing: 'border-box' }}
+        >
+            {renderNuevoCampo()}
+        </div>
+    );
+
+    const nuevoVaAlFinal = !!bloqueNuevo
+        && (nuevoCampoRow == null || !ultimoDeLinea.has(nuevoCampoRow));
 
     const libreEnLinea = (row) => slots
         .filter((s) => s.row === row && s.kind === 'gap' && cabeUnCampo(s.units))
@@ -101,6 +120,10 @@ export default function FieldsGrid({
                                     : undefined}
                             />]
                             : [];
+                        const nuevo = bloqueNuevo && nuevoCampoRow === slot.row
+                            && ultimoDeLinea.get(slot.row) === slot
+                            ? [bloqueNuevo]
+                            : [];
                         if (slot.kind === 'gap') {
                             return [
                                 ...divider,
@@ -112,10 +135,12 @@ export default function FieldsGrid({
                                     clickable={gapClickable(slot)}
                                     onAddInGap={gapClickable(slot) ? () => onAddFieldEnLinea?.(slot) : undefined}
                                 />,
+                                ...nuevo,
                             ];
                         }
-                        return [...divider, renderField(slot.idx, slot)];
+                        return [...divider, renderField(slot.idx, slot), ...nuevo];
                     })}
+                    {nuevoVaAlFinal && bloqueNuevo}
                     {mostrarGuias && <ColumnGuides />}
                 </div>
             </SortableContext>

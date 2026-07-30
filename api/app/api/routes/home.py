@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 
 from app.api.deps import get_current_user, get_db, require_project_access, verify_csrf
-from app.api.metrics import COUNTER_HOME_WRITES, incr
 from app.core.optimistic import check_concurrent_edit
 from app.core.settings import get_settings
 from app.core.time import utcnow
@@ -51,7 +50,7 @@ def _validate_payload(key: str, payload: dict) -> dict:
         validated = schema_cls.model_validate(payload)
     except Exception as exc:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=f"Payload inválido para sección '{key}': {exc}",
         ) from exc
     return validated.model_dump()
@@ -123,7 +122,6 @@ async def actualizar_borrador(
     )
     db.commit()
     db.refresh(section)
-    incr(COUNTER_HOME_WRITES)
     if get_settings().environment != "production":
         notify_home_changed()
     return section
@@ -150,7 +148,6 @@ async def publicar_seccion(
     )
     db.commit()
     db.refresh(section)
-    incr(COUNTER_HOME_WRITES)
     notify_home_changed()
     return section
 
@@ -175,7 +172,6 @@ async def descartar_borrador(
     )
     db.commit()
     db.refresh(section)
-    incr(COUNTER_HOME_WRITES)
     return section
 
 

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Card, Form } from 'antd';
+import { Form } from 'antd';
 import FieldCard from './FieldCard';
-import FieldForm from './FieldForm';
 import FieldsGrid from './FieldsGrid';
+import NuevoCampoCard from './NuevoCampoCard';
 import TabsManager from './TabsManager';
 import AddFieldBar from './AddFieldBar';
 import {
@@ -38,10 +38,6 @@ export default function FieldsList({ step, formularioSlug, onChange, addTrigger 
     const { isMobile } = useIsMobile();
     const { catalogos } = useCatalogos();
     const { buckets } = useAccessibleBuckets();
-
-    useEffect(() => {
-        if (addTrigger) setEditingKey('new');
-    }, [addTrigger]);
 
     const fields = useMemo(() => step.fields ?? [], [step.fields]);
     const tabs = useMemo(() => step.tabs ?? [], [step.tabs]);
@@ -108,6 +104,13 @@ export default function FieldsList({ step, formularioSlug, onChange, addTrigger 
     } = useAcomodoCampos({ step, fields, visibleIdx, onChange });
 
     const nuevoCampo = useNuevoCampo({ visibleIdx, hasTabs, activeKey });
+    const { limpiar: limpiarNuevoCampo } = nuevoCampo;
+
+    useEffect(() => {
+        if (!addTrigger) return;
+        limpiarNuevoCampo();
+        setEditingKey('new');
+    }, [addTrigger, limpiarNuevoCampo]);
 
     const {
         relacionActiva, setRelacionActiva, labelOfName, irACampo,
@@ -267,6 +270,20 @@ export default function FieldsList({ step, formularioSlug, onChange, addTrigger 
         />
     );
 
+    const renderNuevoCampo = () => (
+        <NuevoCampoCard
+            form={fieldForm}
+            field={nuevoCampo.valoresIniciales}
+            availableTabs={tabs}
+            availableShowWhenFields={otherFieldsFor(fields, null)}
+            resolveSlots={resolveSlots('new')}
+            previousField={previousOf('new')}
+            defaultCol={defaultColOf('new')}
+            onSave={handleSaveField}
+            onCancel={() => { setEditingKey(null); nuevoCampo.limpiar(); }}
+        />
+    );
+
     const fieldsGrid = (
         <div>
             <FieldsGrid
@@ -284,22 +301,11 @@ export default function FieldsList({ step, formularioSlug, onChange, addTrigger 
                 onMoverLinea={moverLinea}
                 onAddFieldEnLinea={handleAddEnLinea}
                 renderField={renderFieldCard}
+                nuevoCampoRow={nuevoCampo.filaDestino}
+                renderNuevoCampo={editingKey === 'new' ? renderNuevoCampo : undefined}
             />
 
-            {editingKey === 'new' ? (
-                <Card size="small" style={{ marginTop: 8 }} styles={{ body: { padding: 8 } }} title="Nuevo campo">
-                    <FieldForm
-                        form={fieldForm}
-                        field={nuevoCampo.valoresIniciales}
-                        availableTabs={tabs}
-                        availableShowWhenFields={otherFieldsFor(fields, null)}
-                        resolveSlots={resolveSlots('new')}
-                        previousField={previousOf('new')}
-                        onSave={handleSaveField}
-                        onCancel={() => { setEditingKey(null); nuevoCampo.limpiar(); }}
-                    />
-                </Card>
-            ) : (
+            {editingKey !== 'new' && (
                 <AddFieldBar
                     hasTabs={hasTabs}
                     activeTabTitle={activeTabTitle}

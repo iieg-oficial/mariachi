@@ -17,7 +17,6 @@ from fastapi import (
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
-from app.api.metrics import COUNTER_MEDIA_UPLOADS, incr
 from app.api.rate_limit import _client_ip, rate_limit_ip
 from app.models.acervo_bucket import AcervoBucket
 from app.services import acervo_file_service
@@ -85,7 +84,7 @@ async def subir_archivo_interno(
     size = file.size or 0
     if size and size > policy.max_file_bytes:
         raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
             detail=f"El archivo supera el tamano maximo ({policy.max_file_bytes // (1024 * 1024)} MB)",
         )
 
@@ -141,7 +140,6 @@ async def subir_archivo_interno(
             ip=ip,
         )
         db.commit()
-        incr(COUNTER_MEDIA_UPLOADS)
         logger.info(
             "action=acervo.upload_internal client=%s bucket=%s size=%s name=%s",
             policy.client, bucket.acervo_bucket, size, final_original,
