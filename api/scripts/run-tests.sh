@@ -4,7 +4,8 @@
 # Estrategia: arranca un contenedor desechable a partir de la imagen
 # `mariachi-api:latest` (build del Dockerfile) con env vars de test
 # (sqlite:///:memory:, secrets dummy, ENV=test). Si pytest no esta instalado
-# en la imagen lo agrega al vuelo. Si la imagen no existe, intenta `pytest`
+# en la imagen lo agrega al vuelo (con httpx2, que usa el TestClient de
+# starlette). Si la imagen no existe, intenta `pytest`
 # del PATH local.
 #
 # Variables opcionales:
@@ -46,7 +47,7 @@ if docker image inspect "$API_IMAGE" >/dev/null 2>&1; then
     # la imagen no lo trae (la imagen `production` del Dockerfile no incluye
     # los `[dev]` extras). Monta el codigo en /app para que recoja los
     # cambios locales sin rebuild.
-    PYTEST_CHECK='python -c "import pytest" 2>/dev/null || pip install -q pytest pytest-asyncio >/dev/null'
+    PYTEST_CHECK='python -c "import pytest" 2>/dev/null || pip install -q pytest pytest-asyncio httpx2 >/dev/null'
     exec docker run --rm \
         "${TEST_ENV[@]}" \
         -v "$API_DIR:/app" \

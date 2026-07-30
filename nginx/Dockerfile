@@ -27,7 +27,7 @@ RUN --mount=type=cache,target=/app/node_modules/.vite \
     --mount=type=cache,target=/root/.npm \
     npm run build
 
-FROM nginx:alpine
+FROM nginx:1.30.4-alpine
 RUN rm -f /etc/nginx/conf.d/default.conf
 COPY ./nginx/nginx.conf /etc/nginx/nginx.conf
 COPY ./nginx/conf.d/mariachi.conf /etc/nginx/conf.d/mariachi.conf
