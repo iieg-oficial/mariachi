@@ -1,0 +1,96 @@
+name: mariachi
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  postgres:
+    container_name: mariachi-postgres
+    restart: unless-stopped
+
+  redis:
+    container_name: mariachi-redis
+    restart: unless-stopped
+
+  api:
+    build:
+      target: production
+    image: mariachi-api
+    container_name: mariachi-api
+    env_file:
+      - .env.production
+    volumes:
+      - geoserver_uploads:/var/tmp/geoserver-uploads
+    environment:
+      ACERVO_USE_SSL: ${ACERVO_USE_SSL:?}
+    networks:
+      - mariachi_network
+      - iieg-network
+    restart: unless-stopped
+
+  cron-sieej:
+    image: mariachi-api
+    container_name: mariachi-cron-sieej
+    command:
+      - sh
+      - -c
+      - |
+        while true; do
+          echo "[cron-sieej] $$(date -u +%Y-%m-%dT%H:%M:%SZ) running sieej_periodos_tick"
+          python scripts/sieej_periodos_tick.py || echo "[cron-sieej] tick periodos fallo, continuando"
+          echo "[cron-sieej] $$(date -u +%Y-%m-%dT%H:%M:%SZ) running expire_sieej_envios"
+          python scripts/expire_sieej_envios.py || echo "[cron-sieej] script fallo, continuando"
+          echo "[cron-sieej] $$(date -u +%Y-%m-%dT%H:%M:%SZ) running purge_mapalab_accesos"
+          python scripts/purge_mapalab_accesos.py || echo "[cron-sieej] purge mapalab fallo, continuando"
+          echo "[cron-sieej] $$(date -u +%Y-%m-%dT%H:%M:%SZ) running refresh_mapalab_stats"
+          python scripts/refresh_mapalab_stats.py || echo "[cron-sieej] refresh stats fallo, continuando"
+          sleep ${CRON_SIEEJ_EXPIRE_INTERVAL:?}
+        done
+    env_file:
+      - .env.production
+    depends_on:
+      api:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:?}:${POSTGRES_PASSWORD:?}@postgres:5432/${POSTGRES_DB:?}
+      REDIS_URL: redis://redis:6379/0
+    networks:
+      - mariachi_network
+    restart: unless-stopped
+    logging: *logging
+
+  nginx:
+    build:
+      context: .
+      dockerfile: ./nginx/Dockerfile
+      args:
+        VITE_NODE_ENV: ${VITE_NODE_ENV:?}
+        VITE_ADMIN_API_URL: ${VITE_ADMIN_API_URL:?}
+        VITE_WEB_URL: ${VITE_WEB_URL?}
+    container_name: mariachi-nginx
+    expose:
+      - "80"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    networks:
+      - mariachi_network
+      - iieg-network
+    restart: unless-stopped
+    logging: *logging
+
+volumes:
+  geoserver_uploads:
+
+networks:
+  iieg-network:
+    external: true

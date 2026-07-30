@@ -19,14 +19,19 @@ ENV ?= dev
 
 # Configuración según entorno
 ifeq ($(ENV),prod)
-	COMPOSE_FILE := docker-compose.yml
-	ENV_FILE     := .env.production
-	MSG_ENV      := Producción
+	COMPOSE_OVERLAY := compose.prod.yaml
+	ENV_FILE        := .env.production
+	MSG_ENV         := Producción
 else
-	COMPOSE_FILE := docker-compose.dev.yml
-	ENV_FILE     := .env.development
-	MSG_ENV      := Desarrollo
+	COMPOSE_OVERLAY := compose.dev.yaml
+	ENV_FILE        := .env.development
+	MSG_ENV         := Desarrollo
 endif
+
+COMPOSE_BASE := compose.yaml
+export COMPOSE_FILE := $(COMPOSE_BASE):$(COMPOSE_OVERLAY)
+COMPOSE_FILES := -f $(COMPOSE_BASE) -f $(COMPOSE_OVERLAY)
+COMPOSE_PROD_FILES := -f $(COMPOSE_BASE) -f compose.prod.yaml
 
 .PHONY: help up build down logs restart clean shell-api shell-admin setup setup-hooks test-backend ensure-networks deploy backup-db restore-db install-backup-cron uninstall-backup-cron refresh-mapalab-stats purge-mapalab-events backup-tarjetitas restore-tarjetitas sieej-check sieej-check-fix
 
@@ -93,12 +98,12 @@ test-backend:
 ## Verifica que las definiciones de formularios SIEEJ en BD cumplan el contrato vigente.
 ## Correr en el deploy despues de migrar; sale con codigo 1 si alguna no valida.
 sieej-check:
-	@docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) exec -T api \
+	@docker compose --env-file $(ENV_FILE) $(COMPOSE_FILES) exec -T api \
 		python scripts/sieej_check_definiciones.py
 
 ## Igual que sieej-check, pero reescribe las definiciones legadas que lo requieran.
 sieej-check-fix:
-	@docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) exec -T api \
+	@docker compose --env-file $(ENV_FILE) $(COMPOSE_FILES) exec -T api \
 		python scripts/sieej_check_definiciones.py --fix
 
 # =============================================================================
@@ -107,18 +112,18 @@ sieej-check-fix:
 
 up:
 	@echo "${GREEN}Iniciando entorno de $(MSG_ENV)...${RESET}"
-	API_ENV_FILE=$(ENV_FILE) docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) up -d
+	API_ENV_FILE=$(ENV_FILE) docker compose --env-file $(ENV_FILE) $(COMPOSE_FILES) up -d
 
 build:
 	@echo "${GREEN}Reconstruyendo entorno de $(MSG_ENV)...${RESET}"
-	API_ENV_FILE=$(ENV_FILE) docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) up -d --build
+	API_ENV_FILE=$(ENV_FILE) docker compose --env-file $(ENV_FILE) $(COMPOSE_FILES) up -d --build
 
 down:
 	@echo "${YELLOW}Deteniendo entorno de $(MSG_ENV)...${RESET}"
-	API_ENV_FILE=$(ENV_FILE) docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) down
+	API_ENV_FILE=$(ENV_FILE) docker compose --env-file $(ENV_FILE) $(COMPOSE_FILES) down
 
 logs:
-	API_ENV_FILE=$(ENV_FILE) docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) logs -f
+	API_ENV_FILE=$(ENV_FILE) docker compose --env-file $(ENV_FILE) $(COMPOSE_FILES) logs -f
 
 restart: down up
 
@@ -129,8 +134,8 @@ restart: down up
 ## Deploy de produccion: build + up con el compose de prod
 deploy: ensure-networks
 	@echo "${GREEN}Deploy de produccion${RESET}"
-	@API_ENV_FILE=.env.production docker compose --env-file .env.production -f docker-compose.yml build
-	@API_ENV_FILE=.env.production docker compose --env-file .env.production -f docker-compose.yml up -d
+	@API_ENV_FILE=.env.production docker compose --env-file .env.production $(COMPOSE_PROD_FILES) build
+	@API_ENV_FILE=.env.production docker compose --env-file .env.production $(COMPOSE_PROD_FILES) up -d
 	@echo "${GREEN}Deploy completado${RESET}"
 
 # =============================================================================
@@ -139,21 +144,21 @@ deploy: ensure-networks
 
 clean:
 	@echo "${YELLOW}Limpiando sistema (contenedores, redes y volúmenes)...${RESET}"
-	docker compose -f docker-compose.dev.yml down -v --remove-orphans || true
-	docker compose -f docker-compose.yml down -v --remove-orphans || true
+	-docker compose --env-file .env.development -f compose.yaml -f compose.dev.yaml down -v --remove-orphans
+	-docker compose --env-file .env.production $(COMPOSE_PROD_FILES) down -v --remove-orphans
 
 shell-api:
-	docker compose -f $(COMPOSE_FILE) exec api /bin/bash
+	docker compose $(COMPOSE_FILES) exec api /bin/bash
 
 shell-admin:
-	docker compose -f $(COMPOSE_FILE) exec admin /bin/sh
+	docker compose $(COMPOSE_FILES) exec admin /bin/sh
 
 # =============================================================================
 # RESPALDOS DE POSTGRES
 # =============================================================================
 
 ## Genera respaldo de Postgres aplicando rotacion GFS (daily/weekly/monthly).
-## Por defecto usa docker-compose.yml; pasa COMPOSE_FILE=... para otro entorno.
+## Por defecto usa el par de produccion; pasa COMPOSE_FILE=... para otro entorno.
 backup-db:
 	@API_ENV_FILE=$(ENV_FILE) COMPOSE_FILE=$(COMPOSE_FILE) COMPOSE_ENV_FILE=$(ENV_FILE) ./scripts/postgres-backup.sh
 
@@ -238,12 +243,12 @@ restore-tarjetitas:
 ## Recomputa los rollups diarios persistentes de mapalab-stats. Se invoca cada
 ## 30 min por cron en prod; este target es para refresh manual.
 refresh-mapalab-stats:
-	@docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) exec -T api python scripts/refresh_mapalab_stats.py
+	@docker compose --env-file $(ENV_FILE) $(COMPOSE_FILES) exec -T api python scripts/refresh_mapalab_stats.py
 
 ## Purga eventos crudos mas viejos que la retencion configurada (default 90 dias).
 ## Usa MAPALAB_EVENTS_RETENTION_DAYS / MAPALAB_SESSIONS_RETENTION_DAYS para ajustar.
 purge-mapalab-events:
-	@docker compose --env-file $(ENV_FILE) -f $(COMPOSE_FILE) exec -T api python scripts/purge_mapalab_events.py
+	@docker compose --env-file $(ENV_FILE) $(COMPOSE_FILES) exec -T api python scripts/purge_mapalab_events.py
 
 setup:
 	@if [ ! -f .env.development ]; then \

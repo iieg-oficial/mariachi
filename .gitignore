@@ -138,3 +138,8 @@ restore/*.json
 backups/tarjetitas/
 # Backups reversos generados por dataengine-apply-infobox.sh (BACKUP_DIR default)
 infobox-backups/
+
+secrets/*
+!secrets/.gitkeep
+!secrets/*.example
+compose.local.yaml
