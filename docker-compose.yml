@@ -67,7 +67,6 @@ services:
     env_file:
       - ${API_ENV_FILE:?}
     volumes:
-      - ./api:/app
       - ./docs/CHANGELOG.md:/app/_docs/CHANGELOG.md:ro
       - geoserver_uploads:/var/tmp/geoserver-uploads
     extra_hosts:
@@ -111,8 +110,6 @@ services:
         done
     env_file:
       - ${API_ENV_FILE:?}
-    volumes:
-      - ./api:/app
     depends_on:
       api:
         condition: service_started
