@@ -7,7 +7,7 @@ import uuid
 from fastapi import Depends, HTTPException, Request, status
 
 from app.api.deps import get_current_user
-from app.api.metrics import COUNTER_RATE_LIMIT_HITS, incr
+from app.api.metrics import SENAL_RATE_LIMIT, registrar
 from app.core.cache import redis_client
 from app.models.user import Usuario
 
@@ -51,7 +51,7 @@ def rate_limit(max_requests: int, window_seconds: float, scope: str | None = Non
                 retry = int(window_seconds - (now - oldest[0][1])) + 1 if oldest else int(window_seconds)
             except Exception:
                 retry = int(window_seconds)
-            incr(COUNTER_RATE_LIMIT_HITS)
+            registrar(SENAL_RATE_LIMIT)
             logger.warning('rate_limit hit: user=%s count=%s', current_user.username, count)
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
@@ -88,7 +88,7 @@ def rate_limit_ip(max_requests: int, window_seconds: float, scope: str = 'public
                 retry = int(window_seconds - (now - oldest[0][1])) + 1 if oldest else int(window_seconds)
             except Exception:
                 retry = int(window_seconds)
-            incr(COUNTER_RATE_LIMIT_HITS)
+            registrar(SENAL_RATE_LIMIT)
             logger.warning('rate_limit_ip hit: ip=%s scope=%s count=%s', ip, scope, count)
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,

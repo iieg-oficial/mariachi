@@ -168,6 +168,9 @@ def create_app() -> FastAPI:
         except Exception as exc:
             checks["redis"] = {"status": "degraded", "detail": str(exc)[:120]}
 
+        checks["abuso"] = metrics_module.check_abuso()
+        checks["mapalab_notify"] = metrics_module.check_mapalab_notify()
+
         severity = {"ok": 0, "degraded": 1, "down": 2}
         status = max(
             (c["status"] for c in checks.values()),
@@ -190,7 +193,6 @@ def create_app() -> FastAPI:
             "deployed_at": deployed_at,
             "status": status,
             "checks": checks,
-            "counters": metrics_module.snapshot(),
         }
         return JSONResponse(payload, status_code=503 if status == "down" else 200)
 

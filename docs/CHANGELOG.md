@@ -9,6 +9,38 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.109.0] - 2026-07-30
+
+### Cambiado: las señales de abuso ahora son checks de `/ontoy`, contadas en Redis
+
+Los contadores que la 1.106.0 mudó a `/ontoy` no los leía nadie: el monitor de huachicol solo
+persiste `status`, `checks`, `containers`, `version` y `deployed_at`, y descarta el resto del
+payload. Además tenían dos defectos de fondo:
+
+- **Vivían en memoria del proceso.** La API corre con `--workers 2`, así que cada worker contaba
+  solo su tráfico y `/ontoy` devolvía lo que hubiera visto el worker que atendió el sondeo.
+- **Eran acumulados.** Un total que solo crece cruza cualquier umbral tarde o temprano y dejaría el
+  servicio en `degraded` para siempre.
+
+Ahora se registran en **Redis** con `INCR` y `EXPIRE` sobre una ventana de 15 minutos —el mismo
+mecanismo que ya usa el lockout de login—, y se publican como dos checks con su propio `status`:
+
+- **`abuso`**: `login_failed`, `login_locked` y `rate_limit_hits`. Pasa a `degraded` cuando la suma
+  llega a 30 en la ventana.
+- **`mapalab_notify`**: notificaciones de árbol que agotaron sus reintentos. `degraded` a partir de 3.
+
+Como el `status` global es el peor de los checks, una ráfaga de fuerza bruta pone el servicio en
+`degraded` y huachicol alerta a Discord y Telegram, que era el objetivo de tener estos números.
+Si Redis no responde, `registrar()` no propaga la excepción y los checks devuelven cero: la
+telemetría nunca tumba una petición de login.
+
+Esto **no cambia la auditoría**: `actividad_log` sigue registrando `login.failed`, `login.success` y
+`login.logout` en Postgres con actor, IP y metadata. Los checks sirven para alertar; el log, para
+saber quién hizo qué.
+
+Umbrales y ventana viven en `app/api/metrics.py`. Si se quieren ajustar sin redesplegar código,
+tendrían que pasar a `Settings` y al `.env`.
+
 ## [1.108.1] - 2026-07-30
 
 ### Cambiado: la documentación del contrato `/ontoy` recoge lo aprendido

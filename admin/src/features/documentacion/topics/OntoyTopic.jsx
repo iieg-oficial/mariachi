@@ -44,8 +44,8 @@ const ADOPCION = [
     { servicio: 'geoserver', v2: true, como: 'sidecar version-api', checks: 'disk, containers' },
     { servicio: 'acervo', v2: true, como: 'sidecar version-api', checks: 'disk, containers' },
     { servicio: 'dataengine', v2: true, como: 'sidecar en jobs/', checks: 'disk' },
-    { servicio: 'mapalab', v2: true, como: 'backend FastAPI', checks: 'db, client_errors' },
-    { servicio: 'mariachi', v2: true, como: 'backend FastAPI', checks: 'db, redis' },
+    { servicio: 'mapalab', v2: true, como: 'backend FastAPI', checks: 'db, client_errors, embeds' },
+    { servicio: 'mariachi', v2: true, como: 'backend FastAPI', checks: 'db, redis, abuso, mapalab_notify' },
     { servicio: 'gateway-hub', v2: true, como: 'sidecar version-api', checks: 'disk, containers, puertos' },
     { servicio: 'sieej', v2: true, como: 'estático vía gateway', checks: '—' },
 ];
@@ -187,6 +187,15 @@ export default function OntoyTopic() {
                         <Text code>status</Text></strong>, no como una llave suelta: un contador aparte no se almacena, no
                     alerta y no aparece en el panel. El patrón está en <Text code>client_errors</Text> de mapalab, que
                     pasa a <Text code>degraded</Text> cuando los errores de cliente superan el umbral.
+                </Paragraph>
+                <Paragraph type="secondary" style={{ marginTop: 12, marginBottom: 0, fontSize: 12 }}>
+                    Dos trampas al construirlo. Un <strong>acumulado no sirve</strong>: crece siempre, así que cualquier
+                    umbral se cruza tarde o temprano y el check se queda en <Text code>degraded</Text> para siempre, de
+                    modo que hay que contar sobre una ventana de minutos. Y un <strong>contador en memoria tampoco</strong>,
+                    porque con varios workers de gunicorn cada proceso ve solo su parte del tráfico y el sondeo lo
+                    atiende uno cualquiera. mariachi lo resuelve con Redis (<Text code>INCR</Text> más{' '}
+                    <Text code>EXPIRE</Text>, igual que el lockout de login) y mapalab con un archivo compartido con{' '}
+                    <Text code>flock</Text>.
                 </Paragraph>
             </Card>
 

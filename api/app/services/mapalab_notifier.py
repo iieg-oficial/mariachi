@@ -6,7 +6,7 @@ import time
 
 import httpx
 
-from app.api.metrics import COUNTER_TREE_NOTIFY_FAILED, incr
+from app.api.metrics import SENAL_NOTIFY_FALLIDO, registrar
 from app.core.settings import get_settings
 
 logger = logging.getLogger(__name__)
@@ -45,7 +45,7 @@ def _post_con_reintentos(path: str, stale_msg: str, contar: bool = True) -> None
                 time.sleep(delay)
             else:
                 if contar:
-                    incr(COUNTER_TREE_NOTIFY_FAILED)
+                    registrar(SENAL_NOTIFY_FALLIDO)
                 logger.error(
                     'mapalab %s fallo tras %d intentos (%s): %s - %s',
                     path, _MAX_ATTEMPTS, url, exc, stale_msg,
