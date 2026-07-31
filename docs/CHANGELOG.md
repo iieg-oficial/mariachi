@@ -9,6 +9,13 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.116.0] - 2026-07-31
+
+### Cambiado: defaults del editor a antialias en texto y tiles activados
+
+Acompana la migracion `0033` de dataengine: los campos de la pestana Servicios abren en
+`antialias='text'` y `tiled=true` para las capas que no lo tengan definido.
+
 ## [1.115.1] - 2026-07-31
 
 ### Agregado: formato de imagen y antialias en la pestana Servicios del editor de capas
