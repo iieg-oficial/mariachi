@@ -9,6 +9,95 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.118.0] - 2026-07-31
+
+### Agregado: eliminar el envio de una dependencia
+
+`DELETE /sieej/formularios/{id}/envios/{envio_id}?confirmacion=<nombre>` borra el envio de una sola
+dependencia: sus respuestas, archivos, eventos e historial (CASCADE del ORM) y los objetos que
+subio al Acervo, bajo `{slug}/{usuario}-{envio_id}[/{periodo}]/`. Es el caso de la captura de prueba
+o equivocada que debe desaparecer; a diferencia de reabrir, **el formulario le queda como no
+iniciado** y la dependencia puede capturar de cero.
+
+Mismas guardas que el borrado de formulario: solo admin global (403 para `editora`) y hay que
+mandar el nombre —o el usuario— exacto de quien envio (400 si no coincide). En la pestana Envios
+aparece como papelera de la fila, visible solo para el admin global, y el modal obliga a descargar
+el **PDF del envio** antes de habilitar el campo de confirmacion. Queda en la actividad como
+`sieej.envio.delete`. El modal recuerda que reabrir es la alternativa cuando solo hay que corregir.
+
+El borrado en Acervo se factorizo en `_borrar_en_acervo(claves, prefijo, definicion)`, que
+comparten el borrado de formulario y el de envio; `EnviosTable` dejo de duplicar `triggerDownload`
+y usa el de `shared/helpers`.
+
+### Agregado: eliminar de verdad un formulario ya contestado
+
+`DELETE /sieej/formularios/{id}` cerraba el formulario en cuanto tenia un envio, para no perder lo
+capturado. Eso deja sin salida los formularios de prueba que alguien contesto, los duplicados y los
+que se armaron mal: quedaban cerrados en la lista para siempre. Ahora el DELETE acepta
+`?confirmacion=<nombre exacto>` y con el borra de verdad — el formulario, sus envios y todo lo que
+cuelga de ellos por CASCADE (respuestas, archivos, eventos, historial de valores, versiones
+archivadas, periodos y asignaciones).
+
+**Tres cierres para que no pase por accidente:** solo el admin global (`tetlamamakani`; una
+`editora` con acceso a SIEEJ recibe 403 y sigue pudiendo cerrar), el nombre escrito debe coincidir
+exacto con el del formulario (400 si no) y sin `confirmacion` el endpoint se comporta como antes.
+La actividad queda como `sieej.formulario.delete_definitivo` con el conteo de envios y de archivos
+borrados.
+
+**Los archivos del Acervo tambien se van.** Se borran por `object_key` registrada y por el prefijo
+`{slug}/`, que arrastra los `envio.json` del respaldo; lo primero alcanza a los objetos subidos
+antes de un cambio de slug, que viven bajo el slug anterior. Es best-effort de punta a punta: un
+bucket caido o sin credenciales se registra y no deja el borrado a medias, porque la fuente de
+verdad es la BD. Como el bucket de SIEEJ tiene versionado con retencion, lo borrado queda como
+version recuperable por infraestructura durante un tiempo — no es un borrado inmediato definitivo.
+
+En el CMS la papelera de la tarjeta abre `EliminarFormularioModal`, que consulta cuantos envios hay
+antes de decidir que pedir: sin envios confirma y ya; con envios obliga a **descargar el Excel de
+respaldo** (hasta entonces el campo de confirmacion esta deshabilitado) y a **teclear el nombre
+exacto**; a quien no es admin global solo le ofrece cerrar el formulario. De paso,
+`EnviosService.bucket_row()` recoge la consulta de bucket que estaba repetida tres veces.
+
+### Agregado: reapertura de formularios cerrados
+
+`POST /sieej/formularios/{id}/reabrir` devuelve un formulario `cerrado` a `activo`. Hasta ahora el
+cierre era terminal desde el CMS: la tarjeta solo ofrecia publicar (borrador) o cerrar (activo), y
+un formulario cerrado por error o por una prorroga acordada con la dependencia obligaba a tocar la
+base de datos.
+
+**Limpia la vigencia que lo dejaria invisible.** Volver a `activo` no basta: `listar_visibles`
+filtra por `vigencia_inicio <= now <= vigencia_fin`, asi que un formulario reabierto con la
+vigencia vencida seguia sin aparecerle a nadie. El endpoint borra `vigencia_fin` si ya paso y
+`vigencia_inicio` si aun no empieza; queda abierto sin fecha de cierre hasta que el admin
+configure una nueva. Responde 409 si el formulario no esta cerrado, y con periodicidad materializa
+las ventanas igual que publicar.
+
+En el CMS aparece como accion de la tarjeta (icono deshacer, donde antes habia un hueco) y como
+boton en el encabezado del editor. Los cuatro handlers del ciclo de vida —publicar, cerrar,
+reabrir, eliminar— se unificaron en `hooks/useFormularioAcciones.js`, que los comparten la lista y
+el editor; el efecto colateral es que publicar desde la tarjeta ahora tambien pide confirmacion,
+como ya hacia desde el editor.
+
+### Agregado: el slug de un formulario se puede cambiar
+
+`PUT /sieej/formularios/{id}` acepta `slug`, con las mismas reglas que la creacion: patron
+`^[a-z0-9][a-z0-9-_]*$`, 400 si esta en `SLUGS_RESERVADOS` y 409 si otro formulario ya lo usa (la
+validacion se extrajo a `_validar_slug_disponible`, compartida con `crear`). El campo estaba
+deshabilitado en la pestana Configuracion y un slug mal escrito al crear solo se corregia
+recreando el formulario.
+
+**El cambio no es inocuo y la UI lo dice antes de guardar:** la URL con la que las dependencias
+entran (`/sieej/{slug}`) deja de funcionar, y los archivos ya subidos conservan la carpeta del slug
+anterior en Acervo porque la convencion de claves empieza por el slug — los nuevos van a la carpeta
+nueva. El modal de confirmacion nombra ambas carpetas y, al guardar, el editor navega a la ruta
+nueva. La actividad registra `slug_previo`.
+
+### Agregado: GeoPackage en las extensiones de los campos de archivo
+
+`.gpkg` se suma al catalogo de «Extensiones aceptadas» del constructor de campos y
+`application/geopackage+sqlite3` al mapa de MIME del Acervo, que hasta ahora lo servia como
+`application/octet-stream`. La validacion del upload ya resolvia por extension, asi que no
+requiere cambios.
+
 ## [1.117.0] - 2026-07-31
 
 ### Corregido: tres accesos concedidos por privilegio insuficiente
