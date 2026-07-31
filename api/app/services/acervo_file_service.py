@@ -189,6 +189,17 @@ def folder_from_path(path: str) -> str:
     return "/" + path.rsplit("/", 1)[0]
 
 
+def _membership(bucket: AcervoBucket, current_user: Usuario, db: Session) -> UserProject | None:
+    return (
+        db.query(UserProject)
+        .filter(
+            UserProject.user_id == current_user.id,
+            UserProject.project_id == bucket.project_id,
+        )
+        .first()
+    )
+
+
 def resolve_bucket_or_403(bucket_id: int, current_user: Usuario, db: Session) -> AcervoBucket:
     bucket = (
         db.query(AcervoBucket)
@@ -201,15 +212,7 @@ def resolve_bucket_or_403(bucket_id: int, current_user: Usuario, db: Session) ->
     if current_user.role == ADMIN_ROLE:
         return bucket
 
-    membership = (
-        db.query(UserProject)
-        .filter(
-            UserProject.user_id == current_user.id,
-            UserProject.project_id == bucket.project_id,
-        )
-        .first()
-    )
-    if membership is None:
+    if _membership(bucket, current_user, db) is None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Sin acceso a este bucket")
     return bucket
 
@@ -217,7 +220,7 @@ def resolve_bucket_or_403(bucket_id: int, current_user: Usuario, db: Session) ->
 def resolve_bucket_escribible(
     bucket_id: int, current_user: Usuario, db: Session
 ) -> AcervoBucket:
-    """Como `resolve_bucket_or_403`, pero rechaza los buckets protegidos.
+    """Como `resolve_bucket_or_403`, pero exige rol editor y rechaza los buckets protegidos.
 
     El contenido de un bucket protegido lo gestiona una aplicacion (SIEEJ
     escribe ahi las entregas de las dependencias y guarda la clave en
@@ -225,6 +228,13 @@ def resolve_bucket_escribible(
     el explorador deja registros apuntando a objetos inexistentes.
     """
     bucket = resolve_bucket_or_403(bucket_id, current_user, db)
+    if current_user.role != ADMIN_ROLE:
+        membership = _membership(bucket, current_user, db)
+        if membership is None or membership.project_role != "editor":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Requiere rol editor en el proyecto de este bucket",
+            )
     if bucket.protegido:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
