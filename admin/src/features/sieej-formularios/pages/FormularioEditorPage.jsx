@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { Breadcrumb, Button, Flex, Modal, Spin, Tabs, Tag, Typography } from 'antd';
-import { PlayCircleOutlined } from '@ant-design/icons';
+import { Breadcrumb, Button, Flex, Spin, Tabs, Tag, Typography } from 'antd';
+import { PlayCircleOutlined, UndoOutlined } from '@ant-design/icons';
 import { message } from '@shared/services/message';
 import useSearchParamState from '../hooks/useSearchParamState';
+import useFormularioAcciones from '../hooks/useFormularioAcciones';
 import { formulariosApi } from '../services/formulariosAdminApi';
 import DefinicionEditor from '../components/DefinicionEditor';
 import ConfiguracionEditor from '../components/ConfiguracionEditor';
@@ -26,6 +27,7 @@ export default function FormularioEditorPage() {
 
     const activeTab = VALID_TABS.has(tabFromUrl) ? tabFromUrl : 'definicion';
     const editores = usePresenciaFormulario(formulario?.id, activeTab);
+    const acciones = useFormularioAcciones(setFormulario);
 
     const handleTabChange = (key) => {
         setTab(key, { paso: null, subtab: null });
@@ -46,25 +48,6 @@ export default function FormularioEditorPage() {
         })();
         return () => { cancel = true; };
     }, [slug, navigate]);
-
-    const handlePublicar = () => {
-        Modal.confirm({
-            title: '¿Publicar formulario?',
-            content: 'Los usuarios asignados podrán verlo y responderlo a partir de este momento. Asegúrate de que la definición y las asignaciones estén listas.',
-            okText: 'Publicar',
-            okType: 'primary',
-            cancelText: 'Cancelar',
-            onOk: async () => {
-                try {
-                    const updated = await formulariosApi.publicar(formulario.id);
-                    setFormulario(updated);
-                    message.success('Formulario publicado');
-                } catch (err) {
-                    message.error(err?.response?.data?.detail || 'Error al publicar');
-                }
-            },
-        });
-    };
 
     if (loading) return <div style={{ textAlign: 'center', padding: 48 }}><Spin size="large" /></div>;
     if (!formulario) return null;
@@ -133,9 +116,18 @@ export default function FormularioEditorPage() {
                     <Button
                         type="primary"
                         icon={<PlayCircleOutlined />}
-                        onClick={handlePublicar}
+                        onClick={() => acciones.publicar(formulario)}
                     >
                         Publicar formulario
+                    </Button>
+                )}
+                {formulario.estado === 'cerrado' && (
+                    <Button
+                        type="primary"
+                        icon={<UndoOutlined />}
+                        onClick={() => acciones.reabrir(formulario)}
+                    >
+                        Reabrir formulario
                     </Button>
                 )}
             </Flex>

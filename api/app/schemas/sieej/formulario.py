@@ -24,6 +24,17 @@ class FormularioCreate(FormularioBase):
 
 
 class FormularioUpdate(BaseModel):
+    slug: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=128,
+        pattern=r"^[a-z0-9][a-z0-9-_]*$",
+        description=(
+            "Cambiarlo invalida la URL con la que las dependencias entran al "
+            "formulario y separa los archivos nuevos de los ya subidos en Acervo, "
+            "que conservan la carpeta del slug anterior."
+        ),
+    )
     nombre: str | None = Field(default=None, min_length=1, max_length=255)
     descripcion: str | None = None
     definicion: dict[str, Any] | None = None

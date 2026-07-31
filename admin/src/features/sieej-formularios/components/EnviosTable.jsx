@@ -1,11 +1,14 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Button, Descriptions, Empty, Modal, Select, Skeleton, Space, Table, Tabs, Tag, Tooltip, Typography } from 'antd';
-import { FileExcelOutlined, FilePdfOutlined, FileTextOutlined, UndoOutlined } from '@ant-design/icons';
+import { DeleteOutlined, FileExcelOutlined, FilePdfOutlined, FileTextOutlined, UndoOutlined } from '@ant-design/icons';
 import { message } from '@shared/services/message';
+import { triggerDownload } from '@shared/helpers/downloadFile';
+import { useAuth } from '@shared/contexts/useAuth';
 import { formulariosApi } from '../services/formulariosAdminApi';
 import { buildRespuestas } from './snapshotUtils';
 import { SeccionContenido } from './RespuestasView';
 import EnvioDetalleDrawer from './EnvioDetalleDrawer';
+import EliminarEnvioModal from './EliminarEnvioModal';
 
 const ESTADO_COLOR = { en_proceso: 'orange', enviado: 'green', expirado: 'red' };
 const ESTADO_LABEL = { en_proceso: 'En proceso', enviado: 'Enviado', expirado: 'Expirado' };
@@ -46,26 +49,8 @@ function EnvioRespuestasExpandida({ estado, record }) {
     );
 }
 
-const filenameFromHeaders = (headers, fallback) => {
-    const cd = headers?.['content-disposition'] || '';
-    const utf8 = /filename\*=UTF-8''([^;]+)/i.exec(cd);
-    if (utf8) return decodeURIComponent(utf8[1]);
-    const plain = /filename="?([^";]+)"?/i.exec(cd);
-    return plain ? plain[1] : fallback;
-};
-
-const triggerDownload = (response, fallback) => {
-    const url = URL.createObjectURL(response.data);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filenameFromHeaders(response.headers, fallback);
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-};
-
 export default function EnviosTable({ formulario }) {
+    const { user } = useAuth();
     const [items, setItems] = useState([]);
     const [total, setTotal] = useState(0);
     const [loading, setLoading] = useState(true);
@@ -76,6 +61,7 @@ export default function EnviosTable({ formulario }) {
     const [exporting, setExporting] = useState(null);
     const [pdfLoadingId, setPdfLoadingId] = useState(null);
     const [detalles, setDetalles] = useState({});
+    const [aEliminar, setAEliminar] = useState(null);
 
     const cargarDetalle = useCallback(async (id) => {
         if (detalles[id]) return;
@@ -221,6 +207,20 @@ export default function EnviosTable({ formulario }) {
                             />
                         </Tooltip>
                     )}
+                    {user?.role === 'tetlamamakani' && (
+                        <Tooltip title="Eliminar el envío">
+                            <Button
+                                type="link"
+                                size="small"
+                                danger
+                                icon={<DeleteOutlined />}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setAEliminar(record);
+                                }}
+                            />
+                        </Tooltip>
+                    )}
                 </Space>
             ),
         },
@@ -287,6 +287,13 @@ export default function EnviosTable({ formulario }) {
                 envio={drawer}
                 open={!!drawer}
                 onClose={() => setDrawer(null)}
+            />
+            <EliminarEnvioModal
+                formulario={formulario}
+                envio={aEliminar}
+                open={!!aEliminar}
+                onClose={() => setAEliminar(null)}
+                onDone={load}
             />
         </>
     );

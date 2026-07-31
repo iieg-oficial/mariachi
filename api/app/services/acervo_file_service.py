@@ -175,6 +175,7 @@ _MIME_BY_EXT = {
     "png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg",
     "gif": "image/gif", "webp": "image/webp", "svg": "image/svg+xml",
     "geojson": "application/geo+json", "shp": "application/octet-stream",
+    "gpkg": "application/geopackage+sqlite3",
 }
 
 

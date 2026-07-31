@@ -1,7 +1,7 @@
 import { Button, Card, Tag, Tooltip, Typography } from 'antd';
 import {
     EditOutlined, DeleteOutlined, PlayCircleOutlined,
-    CloseCircleOutlined, InboxOutlined, TeamOutlined, SyncOutlined,
+    CloseCircleOutlined, InboxOutlined, TeamOutlined, SyncOutlined, UndoOutlined,
 } from '@ant-design/icons';
 import { frecuenciaLabel } from '../constants/definitionTypes';
 import PresenciaEditores from './PresenciaEditores';
@@ -45,7 +45,8 @@ const Vigencia = ({ inicio, fin, periodicidad }) => {
 };
 
 const FormularioCard = ({
-    formulario, editores = [], onEditar, onEnvios, onPublicar, onCerrar, onEliminar, onAsignaciones,
+    formulario, editores = [], onEditar, onEnvios, onPublicar, onCerrar, onReabrir,
+    onEliminar, onAsignaciones,
 }) => {
     const stop = (handler) => (e) => {
         e.stopPropagation();
@@ -71,7 +72,9 @@ const FormularioCard = ({
                 <Button type="text" icon={<CloseCircleOutlined />} onClick={stop(onCerrar)} aria-label="Cerrar" />
             </Tooltip>
         ) : (
-            <span key="placeholder" />
+            <Tooltip key="reabrir" title="Reabrir">
+                <Button type="text" icon={<UndoOutlined />} onClick={stop(onReabrir)} aria-label="Reabrir" />
+            </Tooltip>
         ),
         <Tooltip key="eliminar" title="Eliminar">
             <Button type="text" danger icon={<DeleteOutlined />} onClick={stop(onEliminar)} aria-label="Eliminar" />

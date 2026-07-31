@@ -17,7 +17,7 @@ import FieldPreview from './FieldPreview';
 
 const EXTENSION_OPTIONS = [
     '.pdf', '.csv', '.xlsx', '.xls', '.doc', '.docx', '.txt',
-    '.jpg', '.jpeg', '.png', '.zip', '.json', '.geojson', '.kml', '.shp',
+    '.jpg', '.jpeg', '.png', '.zip', '.json', '.geojson', '.gpkg', '.kml', '.shp',
 ].map((ext) => ({ value: ext, label: ext }));
 
 const REGEX_OPTIONS = REGEX_PRESETS.map((preset) => ({
