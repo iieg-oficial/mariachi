@@ -232,7 +232,7 @@ async def register_presence(
 async def clear_presence(
     resource: str,
     row_key: str | None = Query(default=None, alias='rowKey'),
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(verify_csrf),
     db: Session = Depends(get_db),
 ):
     spec = _resolve_spec(resource)

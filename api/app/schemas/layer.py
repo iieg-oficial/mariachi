@@ -211,7 +211,9 @@ class LayerBase(CamelCaseInput):
     styles: str = ""
     cql_filter: str = Field(default="", serialization_alias="cqlFilter")
     wms_group: str | None = Field(default=None, max_length=100, serialization_alias="wmsGroup")
-    tiled: bool = Field(default=False)
+    tiled: bool = Field(default=True)
+    image_format: str = Field(default="image/png", max_length=32, serialization_alias="imageFormat")
+    antialias: str = Field(default="text", max_length=8)
 
     wfs_available: bool = Field(default=True, serialization_alias="wfsAvailable")
     wfs_layer_name: str | None = Field(default=None, max_length=200, serialization_alias="wfsLayerName")
@@ -307,6 +309,8 @@ class LayerUpdate(CamelCaseInput):
     cql_filter: str | None = Field(default=None, serialization_alias="cqlFilter")
     wms_group: str | None = Field(default=None, serialization_alias="wmsGroup")
     tiled: bool | None = Field(default=None)
+    image_format: str | None = Field(default=None, serialization_alias="imageFormat")
+    antialias: str | None = Field(default=None)
 
     wfs_available: bool | None = Field(default=None, serialization_alias="wfsAvailable")
     wfs_layer_name: str | None = Field(default=None, serialization_alias="wfsLayerName")

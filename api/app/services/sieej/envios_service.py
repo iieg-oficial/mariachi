@@ -1046,15 +1046,7 @@ class EnviosService:
         `datos`. No hace commit: lo hace el caller."""
         bucket_name = field_def["bucket"]
 
-        bucket = (
-            self.db.query(AcervoBucket)
-            .join(Project, Project.id == AcervoBucket.project_id)
-            .filter(
-                AcervoBucket.acervo_bucket == bucket_name,
-                AcervoBucket.is_active.is_(True),
-            )
-            .first()
-        )
+        bucket = self.bucket_row(bucket_name)
         if bucket is None:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -1170,15 +1162,8 @@ class EnviosService:
                 return True
         return False
 
-    def _bucket_de_respaldo(self, definicion: dict[str, Any]) -> AcervoBucket | None:
-        """Bucket donde vive el respaldo: el de los campos `file` del
-        formulario, o el de SIEEJ por defecto si no tiene ninguno."""
-        nombre = BUCKET_POR_DEFECTO
-        for step in (definicion or {}).get("steps", []) or []:
-            for field in step.get("fields", []) or []:
-                if field.get("type") == "file" and field.get("bucket"):
-                    nombre = field["bucket"]
-                    break
+    def bucket_row(self, nombre: str) -> AcervoBucket | None:
+        """Fila de `acervo_buckets` por nombre de bucket, activa."""
         return (
             self.db.query(AcervoBucket)
             .join(Project, Project.id == AcervoBucket.project_id)
@@ -1188,6 +1173,17 @@ class EnviosService:
             )
             .first()
         )
+
+    def _bucket_de_respaldo(self, definicion: dict[str, Any]) -> AcervoBucket | None:
+        """Bucket donde vive el respaldo: el de los campos `file` del
+        formulario, o el de SIEEJ por defecto si no tiene ninguno."""
+        nombre = BUCKET_POR_DEFECTO
+        for step in (definicion or {}).get("steps", []) or []:
+            for field in step.get("fields", []) or []:
+                if field.get("type") == "file" and field.get("bucket"):
+                    nombre = field["bucket"]
+                    break
+        return self.bucket_row(nombre)
 
     def respaldar_envio(self, envio: EnvioFormulario) -> str | None:
         """Escribe `envio.json` junto a los archivos del envio.

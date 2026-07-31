@@ -9,6 +9,181 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.118.0] - 2026-07-31
+
+### Agregado: eliminar el envio de una dependencia
+
+`DELETE /sieej/formularios/{id}/envios/{envio_id}?confirmacion=<nombre>` borra el envio de una sola
+dependencia: sus respuestas, archivos, eventos e historial (CASCADE del ORM) y los objetos que
+subio al Acervo, bajo `{slug}/{usuario}-{envio_id}[/{periodo}]/`. Es el caso de la captura de prueba
+o equivocada que debe desaparecer; a diferencia de reabrir, **el formulario le queda como no
+iniciado** y la dependencia puede capturar de cero.
+
+Mismas guardas que el borrado de formulario: solo admin global (403 para `editora`) y hay que
+mandar el nombre —o el usuario— exacto de quien envio (400 si no coincide). En la pestana Envios
+aparece como papelera de la fila, visible solo para el admin global, y el modal obliga a descargar
+el **PDF del envio** antes de habilitar el campo de confirmacion. Queda en la actividad como
+`sieej.envio.delete`. El modal recuerda que reabrir es la alternativa cuando solo hay que corregir.
+
+El borrado en Acervo se factorizo en `_borrar_en_acervo(claves, prefijo, definicion)`, que
+comparten el borrado de formulario y el de envio; `EnviosTable` dejo de duplicar `triggerDownload`
+y usa el de `shared/helpers`.
+
+### Agregado: eliminar de verdad un formulario ya contestado
+
+`DELETE /sieej/formularios/{id}` cerraba el formulario en cuanto tenia un envio, para no perder lo
+capturado. Eso deja sin salida los formularios de prueba que alguien contesto, los duplicados y los
+que se armaron mal: quedaban cerrados en la lista para siempre. Ahora el DELETE acepta
+`?confirmacion=<nombre exacto>` y con el borra de verdad — el formulario, sus envios y todo lo que
+cuelga de ellos por CASCADE (respuestas, archivos, eventos, historial de valores, versiones
+archivadas, periodos y asignaciones).
+
+**Tres cierres para que no pase por accidente:** solo el admin global (`tetlamamakani`; una
+`editora` con acceso a SIEEJ recibe 403 y sigue pudiendo cerrar), el nombre escrito debe coincidir
+exacto con el del formulario (400 si no) y sin `confirmacion` el endpoint se comporta como antes.
+La actividad queda como `sieej.formulario.delete_definitivo` con el conteo de envios y de archivos
+borrados.
+
+**Los archivos del Acervo tambien se van.** Se borran por `object_key` registrada y por el prefijo
+`{slug}/`, que arrastra los `envio.json` del respaldo; lo primero alcanza a los objetos subidos
+antes de un cambio de slug, que viven bajo el slug anterior. Es best-effort de punta a punta: un
+bucket caido o sin credenciales se registra y no deja el borrado a medias, porque la fuente de
+verdad es la BD. Como el bucket de SIEEJ tiene versionado con retencion, lo borrado queda como
+version recuperable por infraestructura durante un tiempo — no es un borrado inmediato definitivo.
+
+En el CMS la papelera de la tarjeta abre `EliminarFormularioModal`, que consulta cuantos envios hay
+antes de decidir que pedir: sin envios confirma y ya; con envios obliga a **descargar el Excel de
+respaldo** (hasta entonces el campo de confirmacion esta deshabilitado) y a **teclear el nombre
+exacto**; a quien no es admin global solo le ofrece cerrar el formulario. De paso,
+`EnviosService.bucket_row()` recoge la consulta de bucket que estaba repetida tres veces.
+
+### Agregado: reapertura de formularios cerrados
+
+`POST /sieej/formularios/{id}/reabrir` devuelve un formulario `cerrado` a `activo`. Hasta ahora el
+cierre era terminal desde el CMS: la tarjeta solo ofrecia publicar (borrador) o cerrar (activo), y
+un formulario cerrado por error o por una prorroga acordada con la dependencia obligaba a tocar la
+base de datos.
+
+**Limpia la vigencia que lo dejaria invisible.** Volver a `activo` no basta: `listar_visibles`
+filtra por `vigencia_inicio <= now <= vigencia_fin`, asi que un formulario reabierto con la
+vigencia vencida seguia sin aparecerle a nadie. El endpoint borra `vigencia_fin` si ya paso y
+`vigencia_inicio` si aun no empieza; queda abierto sin fecha de cierre hasta que el admin
+configure una nueva. Responde 409 si el formulario no esta cerrado, y con periodicidad materializa
+las ventanas igual que publicar.
+
+En el CMS aparece como accion de la tarjeta (icono deshacer, donde antes habia un hueco) y como
+boton en el encabezado del editor. Los cuatro handlers del ciclo de vida —publicar, cerrar,
+reabrir, eliminar— se unificaron en `hooks/useFormularioAcciones.js`, que los comparten la lista y
+el editor; el efecto colateral es que publicar desde la tarjeta ahora tambien pide confirmacion,
+como ya hacia desde el editor.
+
+### Agregado: el slug de un formulario se puede cambiar
+
+`PUT /sieej/formularios/{id}` acepta `slug`, con las mismas reglas que la creacion: patron
+`^[a-z0-9][a-z0-9-_]*$`, 400 si esta en `SLUGS_RESERVADOS` y 409 si otro formulario ya lo usa (la
+validacion se extrajo a `_validar_slug_disponible`, compartida con `crear`). El campo estaba
+deshabilitado en la pestana Configuracion y un slug mal escrito al crear solo se corregia
+recreando el formulario.
+
+**El cambio no es inocuo y la UI lo dice antes de guardar:** la URL con la que las dependencias
+entran (`/sieej/{slug}`) deja de funcionar, y los archivos ya subidos conservan la carpeta del slug
+anterior en Acervo porque la convencion de claves empieza por el slug — los nuevos van a la carpeta
+nueva. El modal de confirmacion nombra ambas carpetas y, al guardar, el editor navega a la ruta
+nueva. La actividad registra `slug_previo`.
+
+### Agregado: GeoPackage en las extensiones de los campos de archivo
+
+`.gpkg` se suma al catalogo de «Extensiones aceptadas» del constructor de campos y
+`application/geopackage+sqlite3` al mapa de MIME del Acervo, que hasta ahora lo servia como
+`application/octet-stream`. La validacion del upload ya resolvia por extension, asi que no
+requiere cambios.
+
+## [1.117.0] - 2026-07-31
+
+### Corregido: tres accesos concedidos por privilegio insuficiente
+
+**`/sistema/*` era alcanzable por el rol externo.** El router se montaba sin `require_staff`, asi
+que cualquier usuario autenticado —incluidas las dependencias externas que solo entran a SIEEJ—
+podia llamar `GET /sistema/colibri-config` y leer `COLIBRI_API_KEY_MARIACHI` en claro. Los otros
+cuatro endpoints del router estaban igual de abiertos. Ahora exige staff.
+
+**El Acervo no distinguia `editor` de `viewer`.** `resolve_bucket_escribible` solo comprobaba que
+existiera la membresia en el proyecto, no el `project_role`, asi que un `viewer` podia subir,
+mover y borrar archivos en los buckets de su proyecto. Ahora la escritura exige `editor`; la
+lectura sigue bastando con la membresia.
+
+**`sieej_admin` no validaba pertenencia al proyecto.** Sus 40 endpoints solo pedian `require_staff`,
+de modo que cualquier `editora` del instituto administraba formularios, grupos y catalogos y
+reabria envios aunque no tuviera nada que ver con SIEEJ. Ahora el router lleva
+`require_project_access('sieej')`, igual que `formularios`.
+
+**Al desplegar:** estos tres cambios quitan accesos que hoy funcionan por error. Antes de la
+ventana, correr las consultas de pre-vuelo del runbook (`secretos-y-usuarios.md`) para saber a
+quien afecta: una `editora` que administre SIEEJ sin membresia, o un `viewer` que suba archivos,
+dejaran de poder. Los `tetlamamakani` no se ven afectados.
+
+### Corregido: mutaciones sin token CSRF
+
+`PUT /identidad/{codigo}/tokens/{id}` y `PUT /identidad/{codigo}/campos` modificaban la identidad
+visual sin exigir `X-CSRF-Token`. Lo mismo ocurria en tres endpoints de presencia
+(`PUT /paginas/{id}/presencia`, `PUT /home/{key}/presencia` y `DELETE /grid/{resource}/presencia`).
+Los cinco pasan a `verify_csrf`.
+
+### Eliminado: `require_bucket_access`
+
+La dependencia no tenia ningun uso en el repositorio y `docs/roles.md` la documentaba como activa.
+La logica vigente vive en `acervo_file_service`; la documentacion quedo alineada.
+
+## [1.116.0] - 2026-07-31
+
+### Cambiado: defaults del editor a antialias en texto y tiles activados
+
+Acompana la migracion `0033` de dataengine: los campos de la pestana Servicios abren en
+`antialias='text'` y `tiled=true` para las capas que no lo tengan definido.
+
+## [1.115.1] - 2026-07-31
+
+### Agregado: formato de imagen y antialias en la pestana Servicios del editor de capas
+
+Dos `Segmented` nuevos junto a «Servir por tiles»: **Formato de imagen** (PNG / PNG 8 bits /
+JPEG) y **Suavizado de bordes** (Completo / Solo texto / Ninguno). Controlan como mapalab le pide
+cada capa a GeoServer.
+
+La descripcion de cada campo lleva los numeros medidos y los riesgos, porque el ajuste correcto
+depende de la capa: PNG 8 bits baja el tile un 44 % pero puede bandear una rampa continua; quitar
+el antialias lo baja un 59 % mas pero deja las lineas finas dentadas; JPEG no soporta
+transparencia y no sirve en capas superpuestas. Tambien avisa de que cambiar el antialias
+invalida los tiles ya cacheados en GeoWebCache.
+
+Los defaults reproducen el comportamiento anterior. Las columnas las provisiona **dataengine**
+(migracion `0032`), como todo el DDL de `mapalab.*`.
+
+**Aviso destacado en el campo de formato: PNG 8 bits y JPEG salen sin transparencia.** GeoServer
+emite el PNG de 8 bits como paleta indexada **sin chunk `tRNS`**, verificado en los bytes de la
+respuesta, asi que cada tile es un rectangulo opaco que tapa el relieve y las capas de abajo. La
+primera version de este texto solo advertia del bandeo en rampas continuas y presentaba el −44 %
+de peso como una mejora sin contrapartida; buena parte de ese ahorro era, en realidad, tirar el
+canal alfa. El campo ahora lo dice y remite al suavizado de bordes, que da −59 % **conservando**
+la transparencia.
+
+## [1.114.1] - 2026-07-31
+
+### Corregido: el explorador de recursos de GeoServer daba 500 contra GeoServer 3
+
+`GET /geoserver/files` respondia 500 con `JSONDecodeError` desde el salto de geoserver a 3.0.0.
+La REST de Resource cambio dos cosas y ambas rompian a `browse_styles_dir`:
+
+- **`/rest/resource/{path}` ya no negocia contenido por `Accept`**: devuelve HTML aunque se pida
+  `application/json`, y el sufijo `.json` responde 404. Hay que pedir el formato por query string,
+  `?format=json`.
+- **Los directorios ya no se marcan con `type: text/html`** sino con `application/json`; los
+  archivos traen su content-type real (`application/xml`, `text/xml`,
+  `application/octet-stream`). La deteccion de carpeta acepta ahora ambas formas, asi que el
+  cliente sigue sirviendo contra GeoServer 2.
+
+Afectaba al explorador de archivos, a la busqueda de estilos y al listado de fuentes, que comparten
+el mismo recorrido recursivo.
+
 ## [1.114.0] - 2026-07-30
 
 ### Cambiado: React Router 8 por el advisory GHSA-qwww-vcr4-c8h2

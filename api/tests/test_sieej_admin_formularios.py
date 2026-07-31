@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
@@ -218,6 +220,107 @@ def test_admin_publicar_y_cerrar(client, session, admin):
     )
     assert r2.status_code == 200
     assert r2.json()["estado"] == "cerrado"
+
+
+def test_admin_reabrir_limpia_vigencia_vencida(client, session, admin):
+    f = Formulario(
+        slug="reab", nombre="Reab", definicion=DEFINICION_OK, estado="cerrado",
+        version=1, creado_por_id=admin.id,
+        vigencia_inicio=datetime(2026, 1, 1), vigencia_fin=datetime(2026, 2, 1),
+    )
+    session.add(f)
+    session.commit()
+    session.refresh(f)
+
+    csrf = login(client, admin.username)
+    r = client.post(
+        f"{ADMIN_PREFIX}/sieej/formularios/{f.id}/reabrir",
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["estado"] == "activo"
+    assert body["vigencia_fin"] is None
+    assert body["vigencia_inicio"] is not None
+
+
+def test_admin_reabrir_formulario_activo_da_409(client, session, admin):
+    f = Formulario(
+        slug="reab-act", nombre="ReabAct", definicion=DEFINICION_OK, estado="activo",
+        version=1, creado_por_id=admin.id,
+    )
+    session.add(f)
+    session.commit()
+    session.refresh(f)
+
+    csrf = login(client, admin.username)
+    r = client.post(
+        f"{ADMIN_PREFIX}/sieej/formularios/{f.id}/reabrir",
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert r.status_code == 409
+
+
+def test_admin_actualizar_slug(client, session, admin):
+    f = Formulario(
+        slug="viejo", nombre="Viejo", definicion=DEFINICION_OK, estado="activo",
+        version=1, creado_por_id=admin.id,
+    )
+    session.add(f)
+    session.commit()
+    session.refresh(f)
+
+    csrf = login(client, admin.username)
+    r = client.put(
+        f"{ADMIN_PREFIX}/sieej/formularios/{f.id}",
+        json={"slug": "nuevo"},
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert r.status_code == 200
+    assert r.json()["slug"] == "nuevo"
+
+
+def test_admin_actualizar_slug_duplicado_falla_409(client, session, admin):
+    session.add_all(
+        [
+            Formulario(
+                slug="uno", nombre="Uno", definicion=DEFINICION_OK, estado="activo",
+                version=1, creado_por_id=admin.id,
+            ),
+            Formulario(
+                slug="dos", nombre="Dos", definicion=DEFINICION_OK, estado="activo",
+                version=1, creado_por_id=admin.id,
+            ),
+        ]
+    )
+    session.commit()
+    destino = session.query(Formulario).filter(Formulario.slug == "dos").first()
+
+    csrf = login(client, admin.username)
+    r = client.put(
+        f"{ADMIN_PREFIX}/sieej/formularios/{destino.id}",
+        json={"slug": "uno"},
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert r.status_code == 409
+
+
+def test_admin_actualizar_slug_reservado_falla_400(client, session, admin):
+    f = Formulario(
+        slug="libre", nombre="Libre", definicion=DEFINICION_OK, estado="activo",
+        version=1, creado_por_id=admin.id,
+    )
+    session.add(f)
+    session.commit()
+    session.refresh(f)
+
+    csrf = login(client, admin.username)
+    r = client.put(
+        f"{ADMIN_PREFIX}/sieej/formularios/{f.id}",
+        json={"slug": "mis-envios"},
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert r.status_code == 400
 
 
 def test_admin_actualizar_definicion_bumpea_version_si_hay_envios(
@@ -590,6 +693,177 @@ def test_admin_delete_con_envios_lo_cierra(client, session, admin, respondent):
     f_check = session.query(Formulario).filter(Formulario.id == f.id).first()
     assert f_check is not None
     assert f_check.estado == "cerrado"
+
+
+def _form_con_envio(session, admin, respondent, slug, nombre):
+    f = Formulario(
+        slug=slug, nombre=nombre, definicion=DEFINICION_OK, estado="activo",
+        version=1, creado_por_id=admin.id,
+    )
+    session.add(f)
+    session.commit()
+    session.refresh(f)
+    session.add(
+        EnvioFormulario(
+            formulario_id=f.id,
+            formulario_version=1,
+            definicion_snapshot=DEFINICION_OK,
+            usuario_id=respondent.id,
+            estado="enviado",
+            datos={},
+            paso_actual=0,
+        )
+    )
+    session.commit()
+    return f
+
+
+def test_admin_delete_con_envios_y_confirmacion_borra(
+    client, session, admin, respondent
+):
+    f = _form_con_envio(session, admin, respondent, "dd", "Censo Municipal")
+
+    csrf = login(client, admin.username)
+    r = client.delete(
+        f"{ADMIN_PREFIX}/sieej/formularios/{f.id}",
+        params={"confirmacion": "Censo Municipal"},
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert r.status_code == 200
+    assert "eliminado" in r.json()["message"].lower()
+    assert session.query(Formulario).filter(Formulario.id == f.id).first() is None
+
+
+def test_admin_delete_con_confirmacion_incorrecta_da_400(
+    client, session, admin, respondent
+):
+    f = _form_con_envio(session, admin, respondent, "dd2", "Censo Municipal")
+
+    csrf = login(client, admin.username)
+    r = client.delete(
+        f"{ADMIN_PREFIX}/sieej/formularios/{f.id}",
+        params={"confirmacion": "censo municipal"},
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert r.status_code == 400
+    f_check = session.query(Formulario).filter(Formulario.id == f.id).first()
+    assert f_check is not None
+    assert f_check.estado == "activo"
+
+
+def test_admin_delete_definitivo_requiere_admin_global(
+    client, session, admin, respondent, proyecto_sieej
+):
+    f = _form_con_envio(session, admin, respondent, "dd3", "Censo Municipal")
+    editora = Usuario(
+        username="edit_t",
+        email="e@t.com",
+        name="E",
+        hashed_password=hash_password("testpass123"),
+        role="editora",
+    )
+    session.add(editora)
+    session.commit()
+    session.refresh(editora)
+    session.add(
+        UserProject(
+            user_id=editora.id, project_id=proyecto_sieej.id, project_role="editor"
+        )
+    )
+    session.commit()
+
+    csrf = login(client, editora.username)
+    r = client.delete(
+        f"{ADMIN_PREFIX}/sieej/formularios/{f.id}",
+        params={"confirmacion": "Censo Municipal"},
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert r.status_code == 403
+    assert session.query(Formulario).filter(Formulario.id == f.id).first() is not None
+
+
+def test_admin_eliminar_envio_con_confirmacion(client, session, admin, respondent):
+    f = _form_con_envio(session, admin, respondent, "de", "Con Envio")
+    envio = (
+        session.query(EnvioFormulario)
+        .filter(EnvioFormulario.formulario_id == f.id)
+        .first()
+    )
+
+    csrf = login(client, admin.username)
+    r = client.delete(
+        f"{ADMIN_PREFIX}/sieej/formularios/{f.id}/envios/{envio.id}",
+        params={"confirmacion": respondent.name},
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert r.status_code == 200
+    assert (
+        session.query(EnvioFormulario)
+        .filter(EnvioFormulario.id == envio.id)
+        .first()
+        is None
+    )
+    assert session.query(Formulario).filter(Formulario.id == f.id).first() is not None
+
+
+def test_admin_eliminar_envio_nombre_incorrecto_da_400(
+    client, session, admin, respondent
+):
+    f = _form_con_envio(session, admin, respondent, "de2", "Con Envio")
+    envio = (
+        session.query(EnvioFormulario)
+        .filter(EnvioFormulario.formulario_id == f.id)
+        .first()
+    )
+
+    csrf = login(client, admin.username)
+    r = client.delete(
+        f"{ADMIN_PREFIX}/sieej/formularios/{f.id}/envios/{envio.id}",
+        params={"confirmacion": "Otra Dependencia"},
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert r.status_code == 400
+    assert (
+        session.query(EnvioFormulario)
+        .filter(EnvioFormulario.id == envio.id)
+        .first()
+        is not None
+    )
+
+
+def test_admin_eliminar_envio_requiere_admin_global(
+    client, session, admin, respondent, proyecto_sieej
+):
+    f = _form_con_envio(session, admin, respondent, "de3", "Con Envio")
+    envio = (
+        session.query(EnvioFormulario)
+        .filter(EnvioFormulario.formulario_id == f.id)
+        .first()
+    )
+    editora = Usuario(
+        username="edit_e",
+        email="ee@t.com",
+        name="EE",
+        hashed_password=hash_password("testpass123"),
+        role="editora",
+    )
+    session.add(editora)
+    session.commit()
+    session.refresh(editora)
+    session.add(
+        UserProject(
+            user_id=editora.id, project_id=proyecto_sieej.id, project_role="editor"
+        )
+    )
+    session.commit()
+
+    csrf = login(client, editora.username)
+    r = client.delete(
+        f"{ADMIN_PREFIX}/sieej/formularios/{f.id}/envios/{envio.id}",
+        params={"confirmacion": respondent.name},
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert r.status_code == 403
 
 
 def test_admin_actualizar_asignaciones_reemplaza_en_bloque(

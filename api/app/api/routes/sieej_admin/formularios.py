@@ -159,15 +159,35 @@ async def cerrar_formulario(
     return FormulariosAdminService(db).cerrar(formulario_id, actor=actor)
 
 
-@router.delete("/formularios/{formulario_id}")
-async def eliminar_formulario(
+@router.post("/formularios/{formulario_id}/reabrir", response_model=FormularioResponse)
+async def reabrir_formulario(
     formulario_id: int,
     db: Session = Depends(get_db),
     actor: Usuario = Depends(verify_csrf),
 ):
+    """`cerrado` -> `activo`, limpiando la vigencia que lo dejaria invisible."""
+    return FormulariosAdminService(db).reabrir(formulario_id, actor=actor)
+
+
+@router.delete("/formularios/{formulario_id}")
+async def eliminar_formulario(
+    formulario_id: int,
+    confirmacion: str | None = Query(
+        default=None,
+        description=(
+            "Nombre exacto del formulario. Solo el admin global puede mandarlo, "
+            "y hace que un formulario con envios se borre de verdad —con sus "
+            "respuestas y sus archivos del Acervo— en vez de cerrarse."
+        ),
+    ),
+    db: Session = Depends(get_db),
+    actor: Usuario = Depends(verify_csrf),
+):
     """Borra el formulario si no tiene envios; si tiene, lo cierra
-    (preserva datos historicos)."""
-    resultado = FormulariosAdminService(db).eliminar(formulario_id, actor=actor)
+    (preserva datos historicos) salvo que llegue `confirmacion`."""
+    resultado = FormulariosAdminService(db).eliminar(
+        formulario_id, actor=actor, confirmacion=confirmacion
+    )
     if resultado is None:
         return {"message": "Formulario eliminado"}
     return {
@@ -433,6 +453,25 @@ async def reabrir_envio(
     actor: Usuario = Depends(verify_csrf),
 ):
     return FormulariosAdminService(db).reabrir_envio(formulario_id, envio_id, actor)
+
+
+@router.delete("/formularios/{formulario_id}/envios/{envio_id}")
+async def eliminar_envio(
+    formulario_id: int,
+    envio_id: int,
+    confirmacion: str = Query(
+        description=(
+            "Nombre (o usuario) de la dependencia que envio. Solo el admin "
+            "global; borra el envio con sus respuestas, archivos e historial."
+        ),
+    ),
+    db: Session = Depends(get_db),
+    actor: Usuario = Depends(verify_csrf),
+):
+    archivos = FormulariosAdminService(db).eliminar_envio(
+        formulario_id, envio_id, actor=actor, confirmacion=confirmacion
+    )
+    return {"message": "Envio eliminado", "archivos_borrados": archivos}
 
 
 @router.post("/sieej/expirar-envios-pendientes")

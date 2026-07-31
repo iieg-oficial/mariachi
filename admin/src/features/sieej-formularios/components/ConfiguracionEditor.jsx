@@ -1,15 +1,17 @@
 import { useEffect } from 'react';
 import {
-    Alert, Button, DatePicker, Form, Input, InputNumber, Select, Switch, Tag,
+    Alert, Button, DatePicker, Form, Input, InputNumber, Modal, Select, Switch, Tag,
 } from 'antd';
 import { SaveOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import { useNavigate } from 'react-router';
 import { message } from '@shared/services/message';
 import { formulariosApi } from '../services/formulariosAdminApi';
 import { FRECUENCIA_OPTIONS } from '../constants/definitionTypes';
 
 export default function ConfiguracionEditor({ formulario, onSaved }) {
     const [form] = Form.useForm();
+    const navigate = useNavigate();
     const periodico = Form.useWatch('periodico', form);
 
     useEffect(() => {
@@ -32,9 +34,10 @@ export default function ConfiguracionEditor({ formulario, onSaved }) {
         });
     }, [formulario, form]);
 
-    const handleSave = async (values) => {
+    const guardar = async (values) => {
         const esPeriodico = values.periodico;
         const payload = {
+            slug: values.slug,
             nombre: values.nombre,
             descripcion: values.descripcion,
             publico: values.publico,
@@ -54,8 +57,12 @@ export default function ConfiguracionEditor({ formulario, onSaved }) {
             const updated = await formulariosApi.update(formulario.id, payload);
             message.success('Configuración guardada');
             onSaved?.(updated);
+            if (updated.slug !== formulario.slug) {
+                navigate(`/sieej/formularios/${updated.slug}?tab=configuracion`, { replace: true });
+            }
         } catch (err) {
-            if (err?.response?.status === 409) {
+            const detalle = err?.response?.data?.detail;
+            if (err?.response?.status === 409 && typeof detalle === 'string' && detalle.startsWith('Otra persona')) {
                 const fresco = await formulariosApi.get(formulario.id);
                 onSaved?.(fresco);
                 message.warning(err.response.data.detail);
@@ -65,10 +72,33 @@ export default function ConfiguracionEditor({ formulario, onSaved }) {
         }
     };
 
+    const handleSave = async (values) => {
+        if (values.slug === formulario.slug) {
+            await guardar(values);
+            return;
+        }
+        Modal.confirm({
+            title: '¿Cambiar el slug del formulario?',
+            content: `Las dependencias entran por /sieej/${formulario.slug}: ese enlace dejará de funcionar y pasará a ser /sieej/${values.slug}. Los archivos ya subidos se quedan en la carpeta «${formulario.slug}» del Acervo y los nuevos irán a «${values.slug}».`,
+            okText: 'Cambiar slug',
+            okType: 'danger',
+            cancelText: 'Cancelar',
+            onOk: () => guardar(values),
+        });
+    };
+
     return (
         <Form layout="vertical" form={form} onFinish={handleSave} style={{ maxWidth: 720 }}>
-            <Form.Item label="Slug" name="slug">
-                <Input disabled />
+            <Form.Item
+                label="Slug"
+                name="slug"
+                rules={[
+                    { required: true, message: 'Slug requerido' },
+                    { pattern: /^[a-z0-9][a-z0-9-_]*$/, message: 'Solo minúsculas, dígitos, - y _' },
+                ]}
+                extra="Es la ruta con la que las dependencias entran al formulario. Al cambiarlo, el enlace anterior deja de funcionar."
+            >
+                <Input />
             </Form.Item>
             <Form.Item
                 label="Nombre"

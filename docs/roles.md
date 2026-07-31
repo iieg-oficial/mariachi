@@ -43,7 +43,11 @@ En `api/app/api/deps.py`:
 - `require_role(["tetlamamakani"])` — restringe a una lista explicita de roles globales. Devuelve 403 si no coincide.
 - `require_staff` — atajo para `require_role([tetlamamakani, editora])`. Bloquea el rol externo. Se usa a nivel de `include_router` para proteger todos los endpoints del admin CMS.
 - `require_project_access(slug, min_role=None)` — valida que el usuario tenga membership en el proyecto `slug`. Bypass automatico para `tetlamamakani`. Cuando `min_role='editor'` exige `project_role='editor'`.
-- `require_bucket_access` — valida acceso al AcervoBucket asociado a un proyecto.
+
+El acceso a un bucket del Acervo no se resuelve con una dependencia sino en el servicio, porque el bucket se identifica dentro del cuerpo del endpoint. En `app/services/acervo_file_service.py`:
+
+- `resolve_bucket_or_403(bucket_id, user, db)` — lectura: exige membership en el proyecto dueño del bucket.
+- `resolve_bucket_escribible(bucket_id, user, db)` — escritura: exige ademas `project_role='editor'` y rechaza los buckets marcados `protegido`.
 
 ## Aplicacion en routers
 
@@ -66,6 +70,8 @@ app.include_router(preview.public_router, prefix=settings.web_prefix)
 ```
 
 `formularios` no se protege con `require_staff` porque el rol externo es uno de sus consumidores. La gate se aplica dentro del router con `Depends(require_project_access('sieej'))`.
+
+`sieej_admin` si lleva `require_staff` **y ademas** `require_project_access('sieej')` a nivel de router: administrar formularios, grupos y catalogos exige pertenecer al proyecto, no solo ser staff.
 
 ## Frontend admin (`mariachi-admin`)
 
@@ -164,3 +170,6 @@ Comportamiento esperado en dev tras esta implementacion:
 | `externo` autenticado | `GET /administrador/formularios/catalogos` | 200 (con UserProject sieej) |
 | `externo` autenticado | `GET /administrador/autenticacion/perfil` | 200 |
 | `externo` sin UserProject sieej | `GET /administrador/formularios/catalogos` | 403 (require_project_access) |
+| `externo` autenticado | `GET /mariachi/sistema/colibri-config` | **403** (el router exige staff) |
+| `editora` sin UserProject sieej | `GET /mariachi/sieej/grupos` | **403** |
+| `editora` con UserProject sieej `viewer` | escritura en un bucket de su proyecto | **403** (requiere `editor`) |

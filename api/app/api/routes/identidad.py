@@ -2,8 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import PlainTextResponse, Response
 from sqlalchemy.orm import Session
 
+from app.api.deps import verify_csrf
 from app.core.database import get_db
 from app.models.identidad import Marca, MarcaCampo, MarcaFuente
+from app.models.user import Usuario
 from app.schemas.identidad import (
     CamposUpdate,
     MarcaDetalle,
@@ -64,6 +66,7 @@ async def actualizar_token(
     token_id: int,
     payload: TokenUpdate,
     db: Session = Depends(get_db),
+    current_user: Usuario = Depends(verify_csrf),
 ):
     marca = _marca(db, codigo)
     try:
@@ -79,6 +82,7 @@ async def actualizar_campos(
     codigo: str,
     payload: CamposUpdate,
     db: Session = Depends(get_db),
+    current_user: Usuario = Depends(verify_csrf),
 ):
     marca = _marca(db, codigo)
     actualizados = identidad_service.actualizar_campos(db, marca, payload.valores)

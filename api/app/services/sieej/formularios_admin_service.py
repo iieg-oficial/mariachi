@@ -13,8 +13,10 @@ from fastapi import HTTPException, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session, selectinload
 
-from app.core.time import utcnow
+from app.api.deps import ADMIN_ROLE
+from app.core.time import to_naive_utc, utcnow
 from app.models.sieej import (
+    EnvioArchivo,
     EnvioEvento,
     EnvioFormulario,
     EnvioValorHistorial,
@@ -25,7 +27,9 @@ from app.models.sieej import (
     formulario_usuario,
 )
 from app.models.user import Usuario
+from app.services.acervo import AcervoClient
 from app.services.actividad_service import registrar_actividad
+from app.services.sieej.acervo_keys import prefijo_envio
 from app.services.sieej.cambio_classifier import clasificar_cambio
 from app.services.sieej.compat import normalizar_definicion
 from app.services.sieej.definicion_validator import (
@@ -135,6 +139,25 @@ class FormulariosAdminService:
         )
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=detalle)
 
+    def _validar_slug_disponible(
+        self, slug: str, *, excluir_id: int | None = None
+    ) -> None:
+        """Rechaza los slugs reservados por rutas del frontend o sub-paths del
+        API y los que ya usa otro formulario."""
+        if slug in SLUGS_RESERVADOS:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"El slug '{slug}' esta reservado por el sistema",
+            )
+        q = self.db.query(Formulario).filter(Formulario.slug == slug)
+        if excluir_id is not None:
+            q = q.filter(Formulario.id != excluir_id)
+        if q.first():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Ya existe un formulario con slug '{slug}'",
+            )
+
     def crear(self, data: dict[str, Any], creador: Usuario) -> Formulario:
         data["definicion"] = normalizar_definicion(data["definicion"])
         try:
@@ -145,17 +168,7 @@ class FormulariosAdminService:
                 detail=str(exc),
             ) from exc
 
-        if data["slug"] in SLUGS_RESERVADOS:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"El slug '{data['slug']}' esta reservado por el sistema",
-            )
-
-        if self.db.query(Formulario).filter(Formulario.slug == data["slug"]).first():
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=f"Ya existe un formulario con slug '{data['slug']}'",
-            )
+        self._validar_slug_disponible(data["slug"])
 
         f = Formulario(
             slug=data["slug"],
@@ -209,6 +222,12 @@ class FormulariosAdminService:
         self._verificar_conflicto(f, data.pop("actualizado_en_esperado", None))
         version_previa = f.version or 1
 
+        slug_previo = f.slug
+        nuevo_slug = data.get("slug")
+        cambia_slug = bool(nuevo_slug) and nuevo_slug != slug_previo
+        if cambia_slug:
+            self._validar_slug_disponible(nuevo_slug, excluir_id=f.id)
+
         nueva_definicion = data.get("definicion")
         definicion_previa = f.definicion
         if nueva_definicion is not None:
@@ -242,6 +261,7 @@ class FormulariosAdminService:
                 f.version = version_previa + 1
 
         for campo in (
+            "slug",
             "nombre",
             "descripcion",
             "definicion",
@@ -304,6 +324,7 @@ class FormulariosAdminService:
             resource_id=f.id,
             metadata={
                 "slug": f.slug,
+                "slug_previo": slug_previo if cambia_slug else None,
                 "definicion_changed": cambia_definicion,
                 "tipo_cambio": tipo_cambio,
                 "reabiertos": reabiertos,
@@ -315,10 +336,12 @@ class FormulariosAdminService:
         self.db.refresh(f)
         logger.info(
             "action=sieej.formulario.update actor=%s target=%s slug=%s "
-            "definicion_changed=%s tipo_cambio=%s version_from=%s version_to=%s",
+            "slug_from=%s definicion_changed=%s tipo_cambio=%s "
+            "version_from=%s version_to=%s",
             actor.id if actor else None,
             f.id,
             f.slug,
+            slug_previo if cambia_slug else None,
             cambia_definicion,
             tipo_cambio,
             version_previa,
@@ -370,21 +393,166 @@ class FormulariosAdminService:
         )
         return f
 
-    def eliminar(
+    def reabrir(
         self, formulario_id: int, *, actor: Usuario | None = None
-    ) -> Formulario | None:
+    ) -> Formulario:
+        """Devuelve un formulario `cerrado` a `activo`. Limpia la vigencia que
+        impediria verlo (la vencida y la que aun no empieza): sin eso volveria
+        a `activo` pero seguiria invisible para las dependencias.
+        """
         f = self.get(formulario_id)
-        if self._tiene_envios(f.id):
+        if f.estado != "cerrado":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Solo se puede reabrir un formulario cerrado",
+            )
+        ahora = utcnow()
+        fin = to_naive_utc(f.vigencia_fin)
+        if fin is not None and fin <= ahora:
+            f.vigencia_fin = None
+        inicio = to_naive_utc(f.vigencia_inicio)
+        if inicio is not None and inicio > ahora:
+            f.vigencia_inicio = None
+        f = self.publicar(formulario_id, actor=actor)
+        logger.info(
+            "action=sieej.formulario.reabrir actor=%s target=%s slug=%s "
+            "estado_from=cerrado estado_to=activo",
+            actor.id if actor else None,
+            f.id,
+            f.slug,
+        )
+        return f
+
+    def _borrar_en_acervo(
+        self,
+        claves: list[tuple[str, str]],
+        prefijo: str,
+        definicion: dict[str, Any] | None,
+    ) -> int:
+        """Borra del Acervo cada `(bucket, object_key)` y, en los mismos
+        buckets, `prefijo` completo —de ahi salen los `envio.json`, que no
+        estan registrados en `envio_archivo`—.
+
+        Best effort de punta a punta —la fuente de verdad es la BD— para que un
+        bucket caido no deje el borrado a medias. Los objetos subidos antes de
+        un cambio de slug viven bajo el slug anterior: se alcanzan por
+        `object_key`, no por el prefijo.
+        """
+        borrados = 0
+        try:
+            envios = EnviosService(self.db)
+            respaldo = envios._bucket_de_respaldo(definicion)
+            nombres = {b for b, _ in claves if b}
+            if respaldo is not None:
+                nombres.add(respaldo.acervo_bucket)
+
+            for nombre in nombres:
+                row = envios.bucket_row(nombre)
+                if row is None:
+                    logger.warning(
+                        "action=sieej.delete_archivos bucket=%s no_configurado",
+                        nombre,
+                    )
+                    continue
+                client = AcervoClient.for_bucket(row)
+                for bucket_nombre, object_key in claves:
+                    if bucket_nombre == nombre and object_key:
+                        borrados += 1 if client.delete_file(object_key) else 0
+                borrados += client.delete_prefix(prefijo)
+        except Exception:
+            logger.exception("action=sieej.delete_archivos prefijo=%s", prefijo)
+            self.db.rollback()
+        return borrados
+
+    def _borrar_archivos_acervo(self, f: Formulario) -> int:
+        """Objetos de todos los envios del formulario."""
+        claves = (
+            self.db.query(EnvioArchivo.bucket, EnvioArchivo.object_key)
+            .join(EnvioFormulario, EnvioFormulario.id == EnvioArchivo.envio_id)
+            .filter(EnvioFormulario.formulario_id == f.id)
+            .all()
+        )
+        return self._borrar_en_acervo(list(claves), f"{f.slug}/", f.definicion)
+
+    def _borrar_archivos_envio(
+        self, f: Formulario, envio: EnvioFormulario
+    ) -> int:
+        """Objetos de un solo envio: su carpeta
+        `{slug}/{usuario}-{envio_id}[/{periodo}]`."""
+        claves = (
+            self.db.query(EnvioArchivo.bucket, EnvioArchivo.object_key)
+            .filter(EnvioArchivo.envio_id == envio.id)
+            .all()
+        )
+        usuario = (
+            self.db.query(Usuario).filter(Usuario.id == envio.usuario_id).first()
+        )
+        prefijo = prefijo_envio(
+            slug=f.slug,
+            envio_id=envio.id,
+            usuario=getattr(usuario, "username", None),
+            periodo_clave=EnviosService(self.db)._periodo_clave(envio),
+        )
+        return self._borrar_en_acervo(list(claves), f"{prefijo}/", f.definicion)
+
+    def eliminar(
+        self,
+        formulario_id: int,
+        *,
+        actor: Usuario | None = None,
+        confirmacion: str | None = None,
+    ) -> Formulario | None:
+        """Sin envios borra. Con envios cierra, salvo que `confirmacion` traiga
+        el nombre exacto del formulario: entonces lo borra de verdad, con sus
+        envios (CASCADE) y sus archivos del Acervo. Ese camino destructivo lo
+        reserva el admin global.
+        """
+        f = self.get(formulario_id)
+        con_envios = self._tiene_envios(f.id)
+        if con_envios and confirmacion is None:
             return self.cerrar(formulario_id, actor=actor)
+        if con_envios:
+            if actor is None or actor.role != ADMIN_ROLE:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=(
+                        "Solo el administrador global puede eliminar un "
+                        "formulario que ya tiene respuestas"
+                    ),
+                )
+            if confirmacion.strip() != (f.nombre or "").strip():
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="El nombre escrito no coincide con el del formulario",
+                )
+
         f_id = f.id
         f_slug = f.slug
+        archivos = self._borrar_archivos_acervo(f) if con_envios else 0
+        if con_envios:
+            registrar_actividad(
+                self.db,
+                actor=actor,
+                action="sieej.formulario.delete_definitivo",
+                resource_type="sieej.formulario",
+                resource_id=f_id,
+                metadata={
+                    "slug": f_slug,
+                    "nombre": f.nombre,
+                    "envios": self._contar_envios(f_id),
+                    "archivos_borrados": archivos,
+                },
+            )
         self.db.delete(f)
         self.db.commit()
         logger.info(
-            "action=sieej.formulario.delete actor=%s target=%s slug=%s",
+            "action=sieej.formulario.delete actor=%s target=%s slug=%s "
+            "con_envios=%s archivos_borrados=%s",
             actor.id if actor else None,
             f_id,
             f_slug,
+            con_envios,
+            archivos,
         )
         return None
 
@@ -511,6 +679,73 @@ class FormulariosAdminService:
             .all()
         )
 
+    def eliminar_envio(
+        self,
+        formulario_id: int,
+        envio_id: int,
+        *,
+        actor: Usuario,
+        confirmacion: str,
+    ) -> int:
+        """Borra el envio de una dependencia: sus respuestas, archivos, eventos
+        e historial (CASCADE del ORM) y los objetos que subio al Acervo. El
+        formulario le queda como no iniciado, asi que puede capturar de cero
+        —esa es la diferencia con reabrir, que conserva lo escrito—.
+
+        Solo el admin global, y solo si `confirmacion` trae el nombre (o el
+        usuario) de quien envio.
+        """
+        formulario = self.get(formulario_id)
+        envio = self.get_envio(formulario_id, envio_id)
+        if actor.role != ADMIN_ROLE:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=(
+                    "Solo el administrador global puede eliminar el envio de "
+                    "una dependencia"
+                ),
+            )
+
+        usuario = (
+            self.db.query(Usuario).filter(Usuario.id == envio.usuario_id).first()
+        )
+        esperados = {
+            (getattr(usuario, "name", "") or "").strip(),
+            (getattr(usuario, "username", "") or "").strip(),
+        } - {""}
+        if confirmacion.strip() not in esperados:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El nombre escrito no coincide con el de la dependencia",
+            )
+
+        archivos = self._borrar_archivos_envio(formulario, envio)
+        registrar_actividad(
+            self.db,
+            actor=actor,
+            action="sieej.envio.delete",
+            resource_type="sieej.envio",
+            resource_id=envio.id,
+            metadata={
+                "formulario_id": formulario_id,
+                "slug": formulario.slug,
+                "usuario": getattr(usuario, "username", None),
+                "estado": envio.estado,
+                "archivos_borrados": archivos,
+            },
+        )
+        self.db.delete(envio)
+        self.db.commit()
+        logger.info(
+            "action=sieej.envio.delete actor=%s target_envio=%s formulario=%s "
+            "archivos_borrados=%s",
+            actor.id,
+            envio_id,
+            formulario_id,
+            archivos,
+        )
+        return archivos
+
     def reabrir_envio(
         self,
         formulario_id: int,
@@ -596,10 +831,13 @@ class FormulariosAdminService:
         )
         return count or 0
 
-    def _tiene_envios(self, formulario_id: int) -> bool:
+    def _contar_envios(self, formulario_id: int) -> int:
         count = (
             self.db.query(func.count(EnvioFormulario.id))
             .filter(EnvioFormulario.formulario_id == formulario_id)
             .scalar()
         )
-        return (count or 0) > 0
+        return count or 0
+
+    def _tiene_envios(self, formulario_id: int) -> bool:
+        return self._contar_envios(formulario_id) > 0

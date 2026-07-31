@@ -7,11 +7,17 @@ export const formulariosApi = {
     update: (id, data) => api.put(`/sieej/formularios/${id}`, data).then((r) => r.data),
     publicar: (id) => api.post(`/sieej/formularios/${id}/publicar`).then((r) => r.data),
     cerrar: (id) => api.post(`/sieej/formularios/${id}/cerrar`).then((r) => r.data),
-    eliminar: (id) => api.delete(`/sieej/formularios/${id}`).then((r) => r.data),
+    reabrir: (id) => api.post(`/sieej/formularios/${id}/reabrir`).then((r) => r.data),
+    eliminar: (id, confirmacion) => api
+        .delete(`/sieej/formularios/${id}`, { params: confirmacion ? { confirmacion } : {} })
+        .then((r) => r.data),
     asignaciones: (id, payload) => api.put(`/sieej/formularios/${id}/asignaciones`, payload).then((r) => r.data),
     listEnvios: (id, params = {}) => api.get(`/sieej/formularios/${id}/envios`, { params }).then((r) => r.data),
     getEnvio: (id, envioId) => api.get(`/sieej/formularios/${id}/envios/${envioId}`).then((r) => r.data),
     reabrirEnvio: (id, envioId) => api.post(`/sieej/formularios/${id}/envios/${envioId}/reabrir`).then((r) => r.data),
+    eliminarEnvio: (id, envioId, confirmacion) => api
+        .delete(`/sieej/formularios/${id}/envios/${envioId}`, { params: { confirmacion } })
+        .then((r) => r.data),
     descargarEnvioPdf: (id, envioId) => api.get(`/sieej/formularios/${id}/envios/${envioId}/pdf`, { responseType: 'blob' }),
     exportarEnvios: (id, formato = 'xlsx') => api.get(`/sieej/formularios/${id}/exportar-envios`, { params: { formato }, responseType: 'blob' }),
     periodos: (id) => api.get(`/sieej/formularios/${id}/periodos`).then((r) => r.data),

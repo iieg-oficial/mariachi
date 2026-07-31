@@ -10,7 +10,9 @@ import { useNavigate } from 'react-router';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import { message } from '@shared/services/message';
 import { formulariosApi } from '../services/formulariosAdminApi';
+import useFormularioAcciones from '../hooks/useFormularioAcciones';
 import FormularioCard from '../components/FormularioCard';
+import EliminarFormularioModal from '../components/EliminarFormularioModal';
 
 const { Title, Text } = Typography;
 
@@ -125,52 +127,8 @@ export default function FormulariosListPage() {
         }
     };
 
-    const handlePublicar = async (record) => {
-        try {
-            await formulariosApi.publicar(record.id);
-            message.success('Formulario publicado');
-            load();
-        } catch {
-            message.error('Error al publicar');
-        }
-    };
-
-    const handleCerrar = (record) => {
-        Modal.confirm({
-            title: '¿Cerrar formulario?',
-            content: 'Los respondents ya no podrán enviarlo. Los envíos existentes se mantienen.',
-            okText: 'Cerrar',
-            cancelText: 'Cancelar',
-            onOk: async () => {
-                try {
-                    await formulariosApi.cerrar(record.id);
-                    message.success('Formulario cerrado');
-                    load();
-                } catch {
-                    message.error('Error al cerrar');
-                }
-            },
-        });
-    };
-
-    const handleEliminar = (record) => {
-        Modal.confirm({
-            title: '¿Eliminar formulario?',
-            content: 'Si tiene envíos asociados, se cerrará en vez de eliminarse.',
-            okText: 'Eliminar',
-            okType: 'danger',
-            cancelText: 'Cancelar',
-            onOk: async () => {
-                try {
-                    await formulariosApi.eliminar(record.id);
-                    message.success('Operación completada');
-                    load();
-                } catch (err) {
-                    message.error(err?.response?.data?.detail || 'Error al eliminar');
-                }
-            },
-        });
-    };
+    const acciones = useFormularioAcciones(load);
+    const [aEliminar, setAEliminar] = useState(null);
 
     const totalConFiltros = formularios.length > 0;
 
@@ -266,15 +224,23 @@ export default function FormulariosListPage() {
                                     onEditar={() => navigate(`/sieej/formularios/${f.slug}`)}
                                     onEnvios={() => navigate(`/sieej/formularios/${f.slug}?tab=envios`)}
                                     onAsignaciones={() => navigate(`/sieej/formularios/${f.slug}?tab=asignaciones`)}
-                                    onPublicar={() => handlePublicar(f)}
-                                    onCerrar={() => handleCerrar(f)}
-                                    onEliminar={() => handleEliminar(f)}
+                                    onPublicar={() => acciones.publicar(f)}
+                                    onCerrar={() => acciones.cerrar(f)}
+                                    onReabrir={() => acciones.reabrir(f)}
+                                    onEliminar={() => setAEliminar(f)}
                                 />
                             </Col>
                         ))}
                     </Row>
                 </>
             )}
+
+            <EliminarFormularioModal
+                formulario={aEliminar}
+                open={!!aEliminar}
+                onClose={() => setAEliminar(null)}
+                onDone={load}
+            />
 
             <Modal
                 title="Nuevo formulario"

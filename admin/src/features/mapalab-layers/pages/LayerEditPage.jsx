@@ -226,7 +226,9 @@ export default function LayerEditPage() {
             styles: data.styles,
             cqlFilter: data.cqlFilter,
             wmsGroup: data.wmsGroup,
-            tiled: data.tiled ?? false,
+            tiled: data.tiled ?? true,
+            imageFormat: data.imageFormat ?? data.image_format ?? 'image/png',
+            antialias: data.antialias ?? 'text',
             wfsAvailable: data.wfsAvailable,
             downloadable: data.downloadable,
             timeEnabled: data.timeEnabled,
@@ -823,6 +825,32 @@ export default function LayerEditPage() {
                         extra="Sirve la capa como TileWMS cacheable en GeoWebCache en vez de ImageWMS. Recomendado para capas grandes y estáticas: la navegación (pan/zoom) es mucho más fluida. Para capas que cambian seguido, dejar desactivado."
                     >
                         <Switch />
+                    </Form.Item>
+                    <Form.Item
+                        label="Formato de imagen"
+                        name="imageFormat"
+                        extra="Formato que se le pide a GeoServer en cada GetMap. ⚠️ PNG 8 bits y JPEG salen SIN TRANSPARENCIA: cada tile es un rectángulo opaco que tapa el relieve y las capas de abajo. Verificado en los bytes del PNG — el de 8 bits sale como paleta indexada sin canal alfa. Úsalos solo en capas de fondo que ocupen todo el tile (un ráster base), nunca en capas que se superponen. Para el resto, dejar PNG: el ahorro de peso se consigue con el suavizado de bordes, que sí conserva la transparencia."
+                    >
+                        <Segmented
+                            options={[
+                                { label: 'PNG', value: 'image/png' },
+                                { label: 'PNG 8 bits', value: 'image/png8' },
+                                { label: 'JPEG', value: 'image/jpeg' },
+                            ]}
+                        />
+                    </Form.Item>
+                    <Form.Item
+                        label="Suavizado de bordes (antialias)"
+                        name="antialias"
+                        extra="El suavizado crea píxeles intermedios que el PNG comprime mal: quitarlo baja un tile de 256×256 de curvas de nivel de 21.5 KB a 8.7 KB (−59 %) y conserva la transparencia, así que es la forma segura de aligerar una capa. A cambio, las líneas se ven dentadas — se nota en trazos finos como curvas de nivel o cauces. «Solo texto» conserva el suavizado en etiquetas y lo quita en geometrías. Cambiar este ajuste invalida los tiles ya cacheados en GeoWebCache."
+                    >
+                        <Segmented
+                            options={[
+                                { label: 'Completo', value: 'full' },
+                                { label: 'Solo texto', value: 'text' },
+                                { label: 'Ninguno', value: 'none' },
+                            ]}
+                        />
                     </Form.Item>
 
                     <Form.Item

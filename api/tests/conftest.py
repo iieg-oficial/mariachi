@@ -87,7 +87,7 @@ engine = create_engine(
     poolclass=StaticPool,
 )
 
-_TEST_SCHEMAS = (None, "acervo", "huachicol")
+_TEST_SCHEMAS = (None, "acervo", "huachicol", "sieej")
 
 with engine.connect() as _conn:
     for _schema in _TEST_SCHEMAS:
@@ -158,6 +158,21 @@ def editora_user(db_session):
     return user
 
 
+@pytest.fixture(scope="function")
+def externo_user(db_session):
+    user = Usuario(
+        username="externo_test",
+        email="externo@test.com",
+        name="Externo Test",
+        hashed_password=hash_password("testpass123"),
+        role="externo",
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    return user
+
+
 def login_as(client, username, password):
     response = client.post(
         f"{ADMIN_PREFIX}/autenticacion/iniciar-sesion",
@@ -177,3 +192,9 @@ def admin_session(client, admin_user):
 def editora_session(client, editora_user):
     csrf = login_as(client, "editora_test", "testpass123")
     return {"client": client, "csrf": csrf, "user": editora_user}
+
+
+@pytest.fixture(scope="function")
+def externo_session(client, externo_user):
+    csrf = login_as(client, "externo_test", "testpass123")
+    return {"client": client, "csrf": csrf, "user": externo_user}
