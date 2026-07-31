@@ -9,6 +9,42 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.117.0] - 2026-07-31
+
+### Corregido: tres accesos concedidos por privilegio insuficiente
+
+**`/sistema/*` era alcanzable por el rol externo.** El router se montaba sin `require_staff`, asi
+que cualquier usuario autenticado —incluidas las dependencias externas que solo entran a SIEEJ—
+podia llamar `GET /sistema/colibri-config` y leer `COLIBRI_API_KEY_MARIACHI` en claro. Los otros
+cuatro endpoints del router estaban igual de abiertos. Ahora exige staff.
+
+**El Acervo no distinguia `editor` de `viewer`.** `resolve_bucket_escribible` solo comprobaba que
+existiera la membresia en el proyecto, no el `project_role`, asi que un `viewer` podia subir,
+mover y borrar archivos en los buckets de su proyecto. Ahora la escritura exige `editor`; la
+lectura sigue bastando con la membresia.
+
+**`sieej_admin` no validaba pertenencia al proyecto.** Sus 40 endpoints solo pedian `require_staff`,
+de modo que cualquier `editora` del instituto administraba formularios, grupos y catalogos y
+reabria envios aunque no tuviera nada que ver con SIEEJ. Ahora el router lleva
+`require_project_access('sieej')`, igual que `formularios`.
+
+**Al desplegar:** estos tres cambios quitan accesos que hoy funcionan por error. Antes de la
+ventana, correr las consultas de pre-vuelo del runbook (`secretos-y-usuarios.md`) para saber a
+quien afecta: una `editora` que administre SIEEJ sin membresia, o un `viewer` que suba archivos,
+dejaran de poder. Los `tetlamamakani` no se ven afectados.
+
+### Corregido: mutaciones sin token CSRF
+
+`PUT /identidad/{codigo}/tokens/{id}` y `PUT /identidad/{codigo}/campos` modificaban la identidad
+visual sin exigir `X-CSRF-Token`. Lo mismo ocurria en tres endpoints de presencia
+(`PUT /paginas/{id}/presencia`, `PUT /home/{key}/presencia` y `DELETE /grid/{resource}/presencia`).
+Los cinco pasan a `verify_csrf`.
+
+### Eliminado: `require_bucket_access`
+
+La dependencia no tenia ningun uso en el repositorio y `docs/roles.md` la documentaba como activa.
+La logica vigente vive en `acervo_file_service`; la documentacion quedo alineada.
+
 ## [1.116.0] - 2026-07-31
 
 ### Cambiado: defaults del editor a antialias en texto y tiles activados
