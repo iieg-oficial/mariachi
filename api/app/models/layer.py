@@ -67,6 +67,8 @@ class Layer(DataEngineBase):
     cql_filter = Column(Text, server_default="", nullable=False)
     wms_group = Column(String(100), nullable=True)
     tiled = Column(Boolean, server_default=text("FALSE"), nullable=False)
+    image_format = Column(String(32), server_default="image/png", nullable=False)
+    antialias = Column(String(8), server_default="full", nullable=False)
 
     wfs_available = Column(Boolean, server_default=text("TRUE"), nullable=False)
     wfs_layer_name = Column(String(200), nullable=True)

@@ -9,6 +9,49 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.115.1] - 2026-07-31
+
+### Agregado: formato de imagen y antialias en la pestana Servicios del editor de capas
+
+Dos `Segmented` nuevos junto a «Servir por tiles»: **Formato de imagen** (PNG / PNG 8 bits /
+JPEG) y **Suavizado de bordes** (Completo / Solo texto / Ninguno). Controlan como mapalab le pide
+cada capa a GeoServer.
+
+La descripcion de cada campo lleva los numeros medidos y los riesgos, porque el ajuste correcto
+depende de la capa: PNG 8 bits baja el tile un 44 % pero puede bandear una rampa continua; quitar
+el antialias lo baja un 59 % mas pero deja las lineas finas dentadas; JPEG no soporta
+transparencia y no sirve en capas superpuestas. Tambien avisa de que cambiar el antialias
+invalida los tiles ya cacheados en GeoWebCache.
+
+Los defaults reproducen el comportamiento anterior. Las columnas las provisiona **dataengine**
+(migracion `0032`), como todo el DDL de `mapalab.*`.
+
+**Aviso destacado en el campo de formato: PNG 8 bits y JPEG salen sin transparencia.** GeoServer
+emite el PNG de 8 bits como paleta indexada **sin chunk `tRNS`**, verificado en los bytes de la
+respuesta, asi que cada tile es un rectangulo opaco que tapa el relieve y las capas de abajo. La
+primera version de este texto solo advertia del bandeo en rampas continuas y presentaba el −44 %
+de peso como una mejora sin contrapartida; buena parte de ese ahorro era, en realidad, tirar el
+canal alfa. El campo ahora lo dice y remite al suavizado de bordes, que da −59 % **conservando**
+la transparencia.
+
+## [1.114.1] - 2026-07-31
+
+### Corregido: el explorador de recursos de GeoServer daba 500 contra GeoServer 3
+
+`GET /geoserver/files` respondia 500 con `JSONDecodeError` desde el salto de geoserver a 3.0.0.
+La REST de Resource cambio dos cosas y ambas rompian a `browse_styles_dir`:
+
+- **`/rest/resource/{path}` ya no negocia contenido por `Accept`**: devuelve HTML aunque se pida
+  `application/json`, y el sufijo `.json` responde 404. Hay que pedir el formato por query string,
+  `?format=json`.
+- **Los directorios ya no se marcan con `type: text/html`** sino con `application/json`; los
+  archivos traen su content-type real (`application/xml`, `text/xml`,
+  `application/octet-stream`). La deteccion de carpeta acepta ahora ambas formas, asi que el
+  cliente sigue sirviendo contra GeoServer 2.
+
+Afectaba al explorador de archivos, a la busqueda de estilos y al listado de fuentes, que comparten
+el mismo recorrido recursivo.
+
 ## [1.114.0] - 2026-07-30
 
 ### Cambiado: React Router 8 por el advisory GHSA-qwww-vcr4-c8h2

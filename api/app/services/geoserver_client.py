@@ -384,7 +384,7 @@ class GeoServerClient:
     def browse_styles_dir(self, prefix: str = "", workspace: str | None = None) -> dict:
         base = self._styles_base(workspace)
         path = base + (f"/{prefix.strip('/')}" if prefix else "")
-        url = self._rest_url(path)
+        url = f"{self._rest_url(path)}?format=json"
         with self._client() as c:
             r = c.get(url)
             if r.status_code == 404:
@@ -405,7 +405,7 @@ class GeoServerClient:
             link = child.get("link") or {}
             ctype = link.get("type")
             full_name = f"{prefix.strip('/')}/{name}" if prefix else name
-            is_dir = ctype == "text/html" and "." not in name
+            is_dir = ctype == "application/json" or (ctype == "text/html" and "." not in name)
             if is_dir:
                 folders.append(full_name)
             else:
