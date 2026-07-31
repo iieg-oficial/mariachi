@@ -9,6 +9,132 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.114.0] - 2026-07-30
+
+### Cambiado: React Router 8 por el advisory GHSA-qwww-vcr4-c8h2
+
+El advisory de React Router (bypass de CSRF que permite ejecutar acciones antes de un 400) cubre
+`>=7.12.0 <8.3.0`: **no hay corrección dentro de la línea 7**, así que la única salida era el
+major. El admin sube de 7.14.2 a 8.3.0.
+
+El agujero está en el modo RSC —React Server Components con server actions—, que el admin no usa.
+No era explotable aquí, pero mantenerlo dejaba un `high` permanente en `npm audit` sin forma de
+distinguirlo de uno real.
+
+La migración no tocó código: en 8.3.0 todo se sigue exportando desde `react-router`, que es de
+donde ya importaba el admin. Lo que desaparece es el paquete `react-router-dom`, que este repo no
+usa. Los 181 tests pasan sin cambios.
+
+Requiere React >= 19.2.7 (ya en 19.2.8) y Node >= 22.22.
+
+### Corregido: `coverage/` en el `.gitignore`
+
+`npm run test:coverage` en `admin/` deja un reporte HTML de cientos de archivos que aparecía como
+sin trackear. El `.gitignore` sólo cubría los artefactos de coverage de Python.
+
+## [1.113.0] - 2026-07-30
+
+### Cambiado: Vite 8 con Rolldown, y React 19.2.8
+
+Vite 8 reemplaza esbuild y Rollup por **Rolldown** (bundler en Rust) y **Oxc**. El build del admin
+pasa de **5.71 s a 392 ms** y el dev server arranca en 111 ms. Suben también
+`@vitejs/plugin-react` a 6.0.5, React y React-DOM a 19.2.8 y Vitest a 4.1.10; el widget queda en
+Vite 8 igual que el admin.
+
+La forma de objeto de `manualChunks` —la que usaba el admin— **fue removida en Vite 8**, así que
+el chunking se reescribió con `build.rolldownOptions.output.codeSplitting.groups`: cada grupo
+declara una expresión regular contra el id del módulo y una prioridad. `react-vendor` lleva la
+prioridad más alta para que React no acabe absorbido por `antd`, que es lo que ocurre si los
+grupos se traducen en el orden literal anterior (un grupo arrastra las dependencias de lo que
+captura, cosa que `manualChunks` no hacía).
+
+Los tres chunks se conservan y `antd` adelgaza de 1590 kB a 1390 kB (gzip 485 → 418). Los 181
+tests siguen pasando y `knip` no reporta código muerto nuevo.
+
+En el widget se retiró `minify: 'esbuild'` —deprecado y ahora dependencia externa— y se dejó el
+minificador Oxc por defecto: `colibri-widget.v1.js` pasa de 50.13 kB a 50.47 kB y sigue
+registrando sus cinco custom elements. `inlineDynamicImports` se reemplazó por
+`codeSplitting: false`, su equivalente en Rolldown.
+
+Requiere reconstruir las imágenes de `admin` y `nginx`. El cambio de bundler cambia todos los
+hashes de los assets: conviene desplegar fuera de horario pico.
+
+## [1.112.0] - 2026-07-30
+
+### Cambiado: Makefile homologado con el resto del ecosistema
+
+La interfaz de comandos es ahora la misma en los nueve repos: `up` levanta desarrollo sin
+reconstruir y `deploy` hace produccion completa (`git pull` + `down` + `build` + `up`). Se
+retiraron todas las banderas: el entorno se detecta por el nombre de proyecto de Compose y lo que
+antes era un argumento ahora es un selector interactivo. Lo transversal vive en `make/common.mk` y
+`make/lib.sh`, copiados en cada repo. Convencion completa en `ecosistema/makefiles.md` del repo de
+contexto.
+
+Las reglas se partieron en `make/backup.mk`, `make/dev.mk`, `make/sieej.mk` y `make/mapalab.mk`.
+
+### Cambiado: `ENV=dev|prod` desaparece
+
+`up` levanta desarrollo y `deploy` produccion. El resto de targets detecta el entorno activo por el
+nombre de proyecto de Compose, asi que `logs`, `status`, `shell`, `restore-db` y `sieej-check`
+funcionan sin decirles donde. `backup-db` exige que produccion este levantada.
+
+### Cambiado: `shell-api`, `shell-admin` y los `logs-*` se fusionan
+
+Un `shell` y un `logs` con selector poblado desde `docker compose ps --services`, que no se
+desfasa al agregar un servicio. `install-backup-cron` y `uninstall-backup-cron` pasan a `cron`; de
+paso se corrige el nombre, porque instalaba dos crons y no solo el de respaldo.
+`sieej-check-fix` se integra en `sieej-check` como opcion del selector.
+
+### Corregido: `${BLUE}` no estaba definida
+
+El bloque de ayuda usaba una variable de color inexistente, y `WHITE` se definia sin usarse.
+
+## [1.111.0] - 2026-07-30
+
+### Eliminado: el entorno staging
+
+`ENV=staging` nunca se uso. No habia rama, ni pipeline, ni VM propia: solo un `.env.staging`
+apuntando a localhost y una rama del Makefile que elegia ese archivo en vez de
+`.env.production`. Los entornos reales son dos, desarrollo y produccion, y ahora el codigo lo
+dice.
+
+#### Eliminado
+
+- La rama `ENV=staging` del Makefile. `make <comando> [ENV=dev|prod]` es la forma completa.
+- `.env.staging` y `.env.staging.example`, y la linea correspondiente del `.gitignore`.
+  `make setup` ya no intenta crearlos.
+- El valor `staging` del `Literal` de `Settings.environment`: queda
+  `Literal["development", "production"]`. El unico consumidor era el validador que fuerza
+  `docs_url=None` y `cookie_secure=true` en produccion, que no cambia.
+
+`GEOSERVER_UPLOAD_STAGING_DIR` **no tiene nada que ver** con esto y no se toco: es el buffer en
+disco de las subidas por partes a GeoServer.
+
+---
+
+## [1.110.0] - 2026-07-30
+
+### Agregar un campo se comporta como editarlo
+
+En el editor visual, «Editar» abre el formulario pegado al campo y a todo el ancho de la rejilla
+(`gridColumn: '1 / -1'`), mientras que «Agregar» lo abría en una tarjeta suelta al final de la
+lista, lejos del hueco donde se había pedido. Ahora el alta se renderiza dentro de la rejilla, en
+la línea donde se pidió el hueco y ocupando el ancho completo; solo cae al final cuando el alta se
+pide desde la barra o desde el botón del paso, que es donde corresponde.
+
+#### Cambiado
+
+- `FieldsGrid` acepta `nuevoCampoRow` y `renderNuevoCampo` y coloca el bloque tras el último
+  espacio de esa línea. `useNuevoCampo` expone `filaDestino` y estabiliza `limpiar`, que ademas se
+  invoca al abrir el alta desde el botón del paso para no heredar un hueco anterior.
+- El formulario de alta recibe `defaultCol`, como el de edición.
+- El contenedor abierto se resalta con borde de 2 px en morado institucional, tanto al editar un
+  campo como al agregar uno nuevo, reusando el lenguaje visual del resaltado de condicionados.
+  La tarjeta de alta sale a `NuevoCampoCard` para no cruzar el límite de 300 líneas de
+  `FieldsList`.
+
+---
+
 ## [1.109.0] - 2026-07-30
 
 ### Cambiado: las señales de abuso ahora son checks de `/ontoy`, contadas en Redis
@@ -62,29 +188,6 @@ Se agregan dos secciones que faltaban:
 
 La tabla de adopción queda al día y con los checks de cada servicio. La especificación completa en
 `context-ame-esta/repos/huachicol/ontoy-contrato.md` recibe las mismas dos secciones.
-
-## [1.110.0] - 2026-07-30
-
-### Agregar un campo se comporta como editarlo
-
-En el editor visual, «Editar» abre el formulario pegado al campo y a todo el ancho de la rejilla
-(`gridColumn: '1 / -1'`), mientras que «Agregar» lo abría en una tarjeta suelta al final de la
-lista, lejos del hueco donde se había pedido. Ahora el alta se renderiza dentro de la rejilla, en
-la línea donde se pidió el hueco y ocupando el ancho completo; solo cae al final cuando el alta se
-pide desde la barra o desde el botón del paso, que es donde corresponde.
-
-#### Cambiado
-
-- `FieldsGrid` acepta `nuevoCampoRow` y `renderNuevoCampo` y coloca el bloque tras el último
-  espacio de esa línea. `useNuevoCampo` expone `filaDestino` y estabiliza `limpiar`, que ademas se
-  invoca al abrir el alta desde el botón del paso para no heredar un hueco anterior.
-- El formulario de alta recibe `defaultCol`, como el de edición.
-- El contenedor abierto se resalta con borde de 2 px en morado institucional, tanto al editar un
-  campo como al agregar uno nuevo, reusando el lenguaje visual del resaltado de condicionados.
-  La tarjeta de alta sale a `NuevoCampoCard` para no cruzar el límite de 300 líneas de
-  `FieldsList`.
-
----
 
 ## [1.108.0] - 2026-07-30
 
@@ -295,6 +398,26 @@ Sin cambios de comportamiento salvo la correccion del slug reservado.
   Ant Design 5, la estructura `components/pages/contexts`, los alias `@components`/`@pages` y el
   rol `disenadora`, todo desactualizado desde noviembre de 2025.
 
+## [1.105.0] - 2026-07-29
+
+### Cambiado: los campos se agregan en línea desde el propio espacio libre
+
+Agregar un campo junto a otro se pedía con un botón «En línea nueva» al fondo del editor, lejos del lugar donde iba a aparecer, y sin decir en qué línea caería: el campo se acomodaba donde cupiera. Ahora el espacio libre de cada línea es el que ofrece la acción.
+
+- El **hueco** de una línea es clickeable y muestra un `+` al pasar el cursor o al enfocarlo con el teclado. El campo nace con el ancho del hueco (`snapColSpan`), ya colocado en esa columna.
+- El **divisor de línea** suma un `+` junto al indicador de «espacio libre», que agrega en el primer hueco de esa línea.
+- La barra inferior queda con un solo botón, **«Agregar campo en nueva línea»**, que es lo que de verdad hace: el campo empieza su propia línea aunque después se angoste.
+
+En móvil la grilla es de una columna, así que los huecos no ofrecen la acción y el botón de la barra sigue siendo el camino.
+
+### Corregido: el campo agregado a la izquierda de otro se iba a su propia línea
+
+Al colocar un campo en un hueco que **abre** la línea (a la izquierda de los que ya estaban), el nuevo se guardaba sin la marca de apertura mientras el que era primero la conservaba, así que terminaban en líneas distintas: pedir un campo junto a «a» producía una línea nueva con el campo y dejaba «a» sola en la suya. La colocación ahora reutiliza `moveToSlot` —la misma operación del arrastrar y soltar—, que traspasa la apertura de línea al campo entrante. Queda cubierto con pruebas.
+
+### Corregido: el formulario del campo se vaciaba al re-renderizar el editor
+
+El efecto que rellena el formulario dependía del objeto `field` completo, y el editor lo construía en línea en cada render: cualquier re-actualización de la lista mientras se llenaba un campo nuevo lo reseteaba a valores vacíos. Ahora depende de una clave derivada del nombre y el acomodo, y los valores iniciales del campo nuevo están memoizados.
+
 ## [1.104.1] - 2026-07-29
 
 ### Corregido: los archivos de GeoServer con nombres legados no se podían descargar ni borrar
@@ -328,26 +451,6 @@ workspace por el endpoint de archivos.
 Con nombres que ya admiten más caracteres, un `&` rompía el XML del `<ExternalGraphic>` y un `#`
 truncaba la URL de descarga. El snippet escapa XML (incluidas las comillas del atributo `href`)
 y `download_url` codifica nombre y workspace.
-
-## [1.105.0] - 2026-07-29
-
-### Cambiado: los campos se agregan en línea desde el propio espacio libre
-
-Agregar un campo junto a otro se pedía con un botón «En línea nueva» al fondo del editor, lejos del lugar donde iba a aparecer, y sin decir en qué línea caería: el campo se acomodaba donde cupiera. Ahora el espacio libre de cada línea es el que ofrece la acción.
-
-- El **hueco** de una línea es clickeable y muestra un `+` al pasar el cursor o al enfocarlo con el teclado. El campo nace con el ancho del hueco (`snapColSpan`), ya colocado en esa columna.
-- El **divisor de línea** suma un `+` junto al indicador de «espacio libre», que agrega en el primer hueco de esa línea.
-- La barra inferior queda con un solo botón, **«Agregar campo en nueva línea»**, que es lo que de verdad hace: el campo empieza su propia línea aunque después se angoste.
-
-En móvil la grilla es de una columna, así que los huecos no ofrecen la acción y el botón de la barra sigue siendo el camino.
-
-### Corregido: el campo agregado a la izquierda de otro se iba a su propia línea
-
-Al colocar un campo en un hueco que **abre** la línea (a la izquierda de los que ya estaban), el nuevo se guardaba sin la marca de apertura mientras el que era primero la conservaba, así que terminaban en líneas distintas: pedir un campo junto a «a» producía una línea nueva con el campo y dejaba «a» sola en la suya. La colocación ahora reutiliza `moveToSlot` —la misma operación del arrastrar y soltar—, que traspasa la apertura de línea al campo entrante. Queda cubierto con pruebas.
-
-### Corregido: el formulario del campo se vaciaba al re-renderizar el editor
-
-El efecto que rellena el formulario dependía del objeto `field` completo, y el editor lo construía en línea en cada render: cualquier re-actualización de la lista mientras se llenaba un campo nuevo lo reseteaba a valores vacíos. Ahora depende de una clave derivada del nombre y el acomodo, y los valores iniciales del campo nuevo están memoizados.
 
 ## [1.104.0] - 2026-07-29
 
@@ -5092,25 +5195,6 @@ Build admin OK, migraciones aplican limpiamente sobre BD dev. Smoke tests: API k
 
 ---
 
-## [0.41.0] - 2026-05-07
-
-### Perf: cache server-side de /eventos y /home + indice parcial de eventos publicados
-
-Reduce trabajo de DB en el endpoint publico mas caliente del visor (mapalab pollea cada 30s + abre eventos por usuario). Antes cada hit a `/api/mapalab/eventos` corria la query con filtros temporales y serializaba con Pydantic; ahora se cachea la respuesta JSON en Redis bajo el token de version y el endpoint la sirve directo via `Response(content=cached, media_type='application/json')` (skipea la re-validacion del `response_model`).
-
-#### Backend (api)
-
-- `services/mapalab_public_cache.py`: nuevos `get_cached_eventos()` y `get_cached_home()` (devuelven `(version, payload | None)`) + `store_cached_*(version, payload_json)`. Clave Redis: `mapalab:public_cache:payload:{scope}:{version}` con TTL de 30 dias. Si la version cambia (bump por `notify_*_changed`), las nuevas requests caen en el `else` y rebuilden bajo la nueva clave; la vieja queda inalcanzable y expira sola.
-- **Removido el debounce de 5s en `notify_*_changed`**: cada bump ahora es un `SET` directo (operacion barata en Redis). El debounce ocultaba la ultima edicion de una rafaga en publish/unpublish — sin debounce, todas las invalidaciones se reflejan en el siguiente poll de 30s. Eliminados `_DEBOUNCE_WINDOW_SECONDS`, `_LOCK_PREFIX` y `_dedup_bump`.
-- `api/routes/public.py`: `eventos_visibles` y `home_publicado` consumen el cache; en miss serializan via Pydantic, guardan el JSON, y devuelven el `Response` directo.
-- `alembic/versions/mariachi/f3a4b5c6d7e8_add_eventos_publicados_index.py`: nuevo indice parcial `ix_eventos_publicados_visibles ON eventos (orden ASC, id ASC) WHERE estado='published' AND activo=true`. Acelera el filtro tipico del endpoint publico (`eventos.published_at`, `activo`, ventana fechas) sin penalizar escrituras de drafts.
-
-### Probado
-
-Local: bump de version invalida cache correctamente (verificado con publicar/despublicar evento + curl al endpoint), payload se sirve desde cache en hits subsiguientes hasta el siguiente bump. Migracion aplicada limpiamente sobre la BD de dev.
-
----
-
 ## [0.41.1] - 2026-05-07
 
 ### Audit del modulo Eventos: hardening seguridad/validacion + tests + UX
@@ -5158,6 +5242,25 @@ Auditoria completa de Eventos MapaLab (backend + admin + visor) con 40+ hallazgo
 ### Probado
 
 Local: 41 tests del modulo Eventos pasan en SQLite in-memory. Migraciones JSONB y `timestamp with time zone` aplicadas limpiamente sobre la BD de dev. Lint del admin y del visor sin errores nuevos.
+
+---
+
+## [0.41.0] - 2026-05-07
+
+### Perf: cache server-side de /eventos y /home + indice parcial de eventos publicados
+
+Reduce trabajo de DB en el endpoint publico mas caliente del visor (mapalab pollea cada 30s + abre eventos por usuario). Antes cada hit a `/api/mapalab/eventos` corria la query con filtros temporales y serializaba con Pydantic; ahora se cachea la respuesta JSON en Redis bajo el token de version y el endpoint la sirve directo via `Response(content=cached, media_type='application/json')` (skipea la re-validacion del `response_model`).
+
+#### Backend (api)
+
+- `services/mapalab_public_cache.py`: nuevos `get_cached_eventos()` y `get_cached_home()` (devuelven `(version, payload | None)`) + `store_cached_*(version, payload_json)`. Clave Redis: `mapalab:public_cache:payload:{scope}:{version}` con TTL de 30 dias. Si la version cambia (bump por `notify_*_changed`), las nuevas requests caen en el `else` y rebuilden bajo la nueva clave; la vieja queda inalcanzable y expira sola.
+- **Removido el debounce de 5s en `notify_*_changed`**: cada bump ahora es un `SET` directo (operacion barata en Redis). El debounce ocultaba la ultima edicion de una rafaga en publish/unpublish — sin debounce, todas las invalidaciones se reflejan en el siguiente poll de 30s. Eliminados `_DEBOUNCE_WINDOW_SECONDS`, `_LOCK_PREFIX` y `_dedup_bump`.
+- `api/routes/public.py`: `eventos_visibles` y `home_publicado` consumen el cache; en miss serializan via Pydantic, guardan el JSON, y devuelven el `Response` directo.
+- `alembic/versions/mariachi/f3a4b5c6d7e8_add_eventos_publicados_index.py`: nuevo indice parcial `ix_eventos_publicados_visibles ON eventos (orden ASC, id ASC) WHERE estado='published' AND activo=true`. Acelera el filtro tipico del endpoint publico (`eventos.published_at`, `activo`, ventana fechas) sin penalizar escrituras de drafts.
+
+### Probado
+
+Local: bump de version invalida cache correctamente (verificado con publicar/despublicar evento + curl al endpoint), payload se sirve desde cache en hits subsiguientes hasta el siguiente bump. Migracion aplicada limpiamente sobre la BD de dev.
 
 ---
 

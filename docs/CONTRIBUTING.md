@@ -38,7 +38,7 @@ Este proyecto adhiere a un [Código de Conducta](./CODE_OF_CONDUCT.md). Al parti
 ```bash
 git clone https://github.com/IIEG/mariachi.git
 cd mariachi
-make setup            # Crea .env.{development,staging,production}
+make setup            # Crea .env.{development,production}
 make setup-hooks      # Activa el pre-push hook (ruff + pytest del backend)
 make up               # Levanta entorno dev (admin, api, postgres, redis)
 

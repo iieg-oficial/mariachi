@@ -45,12 +45,26 @@ export default defineConfig(({ mode }) => {
         build: {
             outDir: 'dist',
             sourcemap: false,
-            rollupOptions: {
+            rolldownOptions: {
                 output: {
-                    manualChunks: {
-                        'react-vendor': ['react', 'react-dom', 'react-router'],
-                        'antd': ['antd', '@ant-design/icons'],
-                        'dnd-kit': ['@dnd-kit/core', '@dnd-kit/sortable', '@dnd-kit/utilities'],
+                    codeSplitting: {
+                        groups: [
+                            {
+                                name: 'react-vendor',
+                                test: /node_modules[\\/](react|react-dom|react-router|scheduler)[\\/]/,
+                                priority: 30,
+                            },
+                            {
+                                name: 'antd',
+                                test: /node_modules[\\/](antd|@ant-design)[\\/]/,
+                                priority: 20,
+                            },
+                            {
+                                name: 'dnd-kit',
+                                test: /node_modules[\\/]@dnd-kit[\\/]/,
+                                priority: 10,
+                            },
+                        ],
                     },
                 },
             },

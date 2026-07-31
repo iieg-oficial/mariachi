@@ -32,7 +32,6 @@ env/
 # Environment variables
 .env
 .env.development
-.env.staging
 .env.production
 .env.local
 .env.*.local
@@ -49,6 +48,7 @@ env/
 .pytest_cache/
 .coverage
 .coverage.*
+coverage/
 htmlcov/
 .tox/
 .nox/
@@ -139,3 +139,8 @@ restore/*.json
 backups/tarjetitas/
 # Backups reversos generados por dataengine-apply-infobox.sh (BACKUP_DIR default)
 infobox-backups/
+
+secrets/*
+!secrets/.gitkeep
+!secrets/*.example
+compose.local.yaml

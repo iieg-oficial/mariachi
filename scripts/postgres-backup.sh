@@ -29,8 +29,8 @@
 #   mantienen su propia retencion mas larga.
 #
 # Uso:
-#   ./scripts/postgres-backup.sh              # contra docker-compose.yml (default)
-#   COMPOSE_FILE=docker-compose.dev.yml ./scripts/postgres-backup.sh
+#   ./scripts/postgres-backup.sh              # contra compose.yaml + compose.prod.yaml (default)
+#   COMPOSE_FILE=compose.yaml:compose.dev.yaml ./scripts/postgres-backup.sh
 #   BACKUP_DIR=/otra/ruta ./scripts/postgres-backup.sh
 #   MAPALAB_PURGE_ON_BACKUP=false ./scripts/postgres-backup.sh   # saltar purga
 #   EXPECTED_SCHEMAS='public huachicol' ./scripts/postgres-backup.sh  # ajustar gate
@@ -40,10 +40,11 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 BACKUP_DIR="${BACKUP_DIR:-$ROOT_DIR/backups}"
-COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml}"
+COMPOSE_FILE="${COMPOSE_FILE:-compose.yaml:compose.prod.yaml}"
 COMPOSE_ENV_FILE="${COMPOSE_ENV_FILE:-}"
 EXPECTED_SCHEMAS="${EXPECTED_SCHEMAS:-public huachicol acervo sieej}"
 
+export COMPOSE_FILE
 COMPOSE_CMD="docker compose"
 if [ -n "$COMPOSE_ENV_FILE" ]; then
     COMPOSE_CMD="$COMPOSE_CMD --env-file $COMPOSE_ENV_FILE"
@@ -71,12 +72,12 @@ log "compose=$COMPOSE_FILE destino=$DAILY"
 
 if [ "${MAPALAB_PURGE_ON_BACKUP:-true}" != "false" ]; then
     log "purgando eventos viejos de mapalab antes del dump (set MAPALAB_PURGE_ON_BACKUP=false para saltar)"
-    $COMPOSE_CMD -f "$COMPOSE_FILE" exec -T api python scripts/purge_mapalab_events.py 2>&1 \
+    $COMPOSE_CMD exec -T api python scripts/purge_mapalab_events.py 2>&1 \
         | sed 's/^/[backup] /' || log "WARN: purga fallo, sigue con el dump"
 fi
 
-$COMPOSE_CMD -f "$COMPOSE_FILE" exec -T postgres sh -c \
-    'PGPASSWORD="$POSTGRES_PASSWORD" pg_dump --no-owner --no-acl --clean --if-exists -U "$POSTGRES_USER" -d "$POSTGRES_DB"' \
+$COMPOSE_CMD exec -T postgres sh -c \
+    'PGPASSWORD="$(cat /run/secrets/postgres_password)" pg_dump --no-owner --no-acl --clean --if-exists -U "$POSTGRES_USER" -d "$POSTGRES_DB"' \
     | gzip -9 > "$TMP"
 
 if [ ! -s "$TMP" ] || [ "$(gzip -dc "$TMP" 2>/dev/null | head -c1 | wc -c)" -eq 0 ]; then

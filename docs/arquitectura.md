@@ -62,15 +62,15 @@
 
 | Tecnología | Uso |
 |---|---|
-| Docker + Docker Compose | Orquestación. Dos archivos: `docker-compose.dev.yml` y `docker-compose.yml` (staging/prod) |
+| Docker + Docker Compose | Orquestación. Dos archivos: `docker-compose.dev.yml` y `docker-compose.yml` (prod) |
 | Nginx Alpine | Servidor de estáticos + proxy a `/api/`. Se levanta en HTTP-only detrás del gateway externo |
-| Make | Automatización (`make up [ENV=dev\|staging\|prod]`) |
+| Make | Automatización (`make up`, `make deploy`) |
 
 ---
 
 ## Modelo de despliegue
 
-Mariachi no expone puertos al host en staging/prod. Todo el tráfico externo llega al `gateway-hub` (otro repo, Nginx arriba de todos los servicios) y entra a mariachi por la red Docker externa `iieg-network` usando el nombre de servicio `mariachi-nginx:80`.
+Mariachi no expone puertos al host en producción. Todo el tráfico externo llega al `gateway-hub` (otro repo, Nginx arriba de todos los servicios) y entra a mariachi por la red Docker externa `iieg-network` usando el nombre de servicio `mariachi-nginx:80`.
 
 El gateway externo resuelve:
 
@@ -205,11 +205,10 @@ mariachi/
 │
 ├── docs/                             # Esta documentación
 ├── .github/workflows/                # CI/CD (commit-lint, ci, cd, auto-merge, test-backend, test-frontend)
-├── docker-compose.yml                # staging / producción
+├── docker-compose.yml                # producción
 ├── docker-compose.dev.yml            # desarrollo local
 ├── Makefile
 ├── .env.development.example
-├── .env.staging.example
 ├── .env.production.example
 └── CHANGELOG.md
 ```
@@ -229,7 +228,7 @@ En dev (`docker-compose.dev.yml`) no existe `nginx` — los frontends corren dir
 
 ## Puertos
 
-| Servicio | Dev | Staging / Prod |
+| Servicio | Dev | Producción |
 |---|---|---|
 | `web` (Vite) | 3010 | — (servido como estático por nginx) |
 | `admin` (Vite) | 3011 | — (servido como estático por nginx) |

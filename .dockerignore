@@ -27,6 +27,8 @@ backups
 
 Makefile
 docker-compose*.yml
+compose*.yaml
+compose*.yml
 *.md
 !nginx/static/**/*.md
 

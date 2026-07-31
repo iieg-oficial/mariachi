@@ -17,7 +17,7 @@
 # Uso:
 #   ./scripts/postgres-restore.sh mariachi-daily.sql.gz
 #   ./scripts/postgres-restore.sh /ruta/absoluta/al/dump.sql.gz
-#   COMPOSE_FILE=docker-compose.dev.yml ./scripts/postgres-restore.sh mariachi-weekly.sql.gz
+#   COMPOSE_FILE=compose.yaml:compose.dev.yaml ./scripts/postgres-restore.sh mariachi-weekly.sql.gz
 #
 # ATENCION: sobrescribe la base de datos del contenedor postgres del compose activo.
 
@@ -27,9 +27,10 @@ FILE="${1:-}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
-COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.yml}"
+COMPOSE_FILE="${COMPOSE_FILE:-compose.yaml:compose.prod.yaml}"
 COMPOSE_ENV_FILE="${COMPOSE_ENV_FILE:-}"
 
+export COMPOSE_FILE
 COMPOSE_CMD="docker compose"
 if [ -n "$COMPOSE_ENV_FILE" ]; then
     COMPOSE_CMD="$COMPOSE_CMD --env-file $COMPOSE_ENV_FILE"
@@ -102,16 +103,16 @@ DUMP_SCHEMAS=$(gunzip -c "$ABS_FILE" | sed -n 's/^CREATE SCHEMA \([a-z_][a-z0-9_
 if [ -n "$DUMP_SCHEMAS" ]; then
     echo "[restore] limpiando schemas del dump:$(printf ' %s' $DUMP_SCHEMAS)"
     for schema in $DUMP_SCHEMAS; do
-        $COMPOSE_CMD -f "$COMPOSE_FILE" exec -T postgres sh -c \
-            "PGPASSWORD=\$POSTGRES_PASSWORD psql -v ON_ERROR_STOP=1 --quiet -U \$POSTGRES_USER -d \$POSTGRES_DB -c 'DROP SCHEMA IF EXISTS $schema CASCADE'"
+        $COMPOSE_CMD exec -T postgres sh -c \
+            "PGPASSWORD=\$(cat /run/secrets/postgres_password) psql -v ON_ERROR_STOP=1 --quiet -U \$POSTGRES_USER -d \$POSTGRES_DB -c 'DROP SCHEMA IF EXISTS $schema CASCADE'"
     done
 fi
 
 echo "[restore] aplicando dump..."
-gunzip -c "$ABS_FILE" | $COMPOSE_CMD -f "$COMPOSE_FILE" exec -T postgres sh -c \
-    'PGPASSWORD="$POSTGRES_PASSWORD" psql -v ON_ERROR_STOP=1 --quiet -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+gunzip -c "$ABS_FILE" | $COMPOSE_CMD exec -T postgres sh -c \
+    'PGPASSWORD="$(cat /run/secrets/postgres_password)" psql -v ON_ERROR_STOP=1 --quiet -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
 
 echo "[restore] done"
-echo "[restore] siguiente paso sugerido: $COMPOSE_CMD -f $COMPOSE_FILE exec api alembic current"
+echo "[restore] siguiente paso sugerido: $COMPOSE_CMD exec api alembic current"
 echo "[restore] mapalab stats: los rollups son tablas en huachicol y se restauraron con sus datos."
 echo "[restore]   si quieres recalcularlas desde huachicol.events: make refresh-mapalab-stats"

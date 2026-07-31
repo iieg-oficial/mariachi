@@ -24,7 +24,7 @@ jobs:
             git fetch origin production
             git checkout production
             git reset --hard origin/production
-            git clean -fd -e .env.production -e admin/dist -e nginx/static
+            git clean -fd -e .env.production -e secrets -e admin/dist -e nginx/static
             make deploy
             docker image prune -f --filter "until=168h"
 

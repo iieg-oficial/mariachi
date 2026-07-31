@@ -21,7 +21,7 @@ Repo con dos componentes que comparten infraestructura:
 
 Administra contenido de los proyectos del ecosistema IIEG (Portalito, MapaLab, SIEEJ). El **Portal público** vive ahora en su propio repo ([../portal](../portal)) — consume `/api/portal/*` de este `api`.
 
-En producción y staging se levanta detrás del `gateway-hub` externo (termina SSL, sirve robots/sitemap y headers de seguridad). El `nginx/` interno de este repo queda minimal — sirve los estáticos del `admin/` y hace proxy a `/api/`.
+En producción se levanta detrás del `gateway-hub` externo (termina SSL, sirve robots/sitemap y headers de seguridad). El `nginx/` interno de este repo queda minimal — sirve los estáticos del `admin/` y hace proxy a `/api/`.
 
 ---
 
@@ -41,19 +41,15 @@ make up
 
 Accesos locales: web en `http://localhost:3010`, admin en `http://localhost:3011`, api en `http://localhost:8000/api/administrador`.
 
-### Staging y producción
+### Producción
 
-Ambos corren detrás de `gateway-hub` en la red Docker externa `iieg-network`.
+Corre detrás de `gateway-hub` en la red Docker externa `iieg-network`.
 
 ```bash
 # Una vez, si la red no existe:
 docker network create iieg-network
 
-# Staging
-make up ENV=staging       # usa .env.staging + docker-compose.yml
-
-# Producción
-make up ENV=prod          # usa .env.production + docker-compose.yml
+make deploy               # usa .env.production + docker-compose.yml
 ```
 
 En el `.env` de `gateway-hub`: `PORTAL_HOST=mariachi-nginx:80`.
@@ -62,19 +58,18 @@ En el `.env` de `gateway-hub`: `PORTAL_HOST=mariachi-nginx:80`.
 
 ## Comandos (Makefile)
 
-`make <comando> [ENV=dev|staging|prod]` (por defecto `ENV=dev`).
+`make <comando>`. El entorno se detecta solo, ya no hay banderas.
 
 | Comando | Descripción |
 |---|---|
 | `make up` | Levanta el entorno en segundo plano |
-| `make build` | Reconstruye imágenes y levanta |
+| `make deploy` | Actualiza, reconstruye y levanta producción |
 | `make down` | Detiene contenedores |
 | `make logs` | Sigue logs en vivo |
 | `make restart` | Reinicia |
 | `make clean` | Borra contenedores, redes y volúmenes del entorno |
-| `make shell-api` | Shell dentro del contenedor API |
-| `make shell-admin` / `shell-web` | Shell dentro del contenedor admin / web |
-| `make setup` | Crea `.env.development`, `.env.staging` y `.env.production` desde los `.example` |
+| `make shell` | Shell dentro de un contenedor, con selector de servicio |
+| `make setup` | Crea `.env.development` y `.env.production` desde los `.example` |
 
 ---
 
@@ -85,10 +80,9 @@ El comportamiento del backend se bifurca por la variable `ENVIRONMENT` (leída e
 | `ENVIRONMENT` | `docs_url` / `redoc_url` / `openapi_url` | `cookie_secure` | `CORS_ORIGINS` con `*` |
 |---|---|---|---|
 | `development` | configurables | configurable | permitido |
-| `staging` | configurables | configurable | permitido |
 | `production` | forzados a `None` | forzado a `true` | rechazado (error) |
 
-El Makefile elige el `docker-compose.*.yml` y el `.env.*` según `ENV`. El servicio `api` respeta `API_ENV_FILE` para cargar el `.env.*` correcto dentro del contenedor.
+El Makefile elige el `docker-compose.*.yml` y el `.env.*` según el entorno que detecta. El servicio `api` respeta `API_ENV_FILE` para cargar el `.env.*` correcto dentro del contenedor.
 
 ---
 

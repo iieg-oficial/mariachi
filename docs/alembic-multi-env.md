@@ -69,10 +69,10 @@ Para aplicar:
 ```bash
 cd dataengine
 make migrate              # aplica pendientes (idempotente)
-make migrate-status       # muestra version actual + history
+make status               # muestra version actual + history
 ```
 
-En producción, `make prod-migration` ya corre `alembic upgrade head` internamente al final del bootstrap. Re-ejecutable cada deploy.
+En producción, `make bootstrap` de dataengine ya corre `alembic upgrade head` al final. Re-ejecutable cada deploy.
 
 ## Coordinación con mariachi al cambiar el schema
 
@@ -91,8 +91,8 @@ El guardrail `gateway-hub/scripts/check-model-drift.py` detecta drift entre los 
 cd ../dataengine && make up && make migrate
 
 # 2. Mariachi arriba (aplica sus propias migraciones)
-cd ../mariachi && make dev
+cd ../mariachi && make up
 # o equivalentemente: alembic upgrade head ; uvicorn app.main:app --reload
 ```
 
-Si la BD dataengine de dev quedó vacía, antes de `make migrate` corre `make prod-migration PROD_MIGRATION_FLAGS="--skip-etl"` para crear el rol, schema y aplicar el baseline.
+Si la BD dataengine de dev quedó vacía, antes de `make migrate` corre `make bootstrap` para crear el rol, schema y aplicar el baseline.
