@@ -70,7 +70,7 @@ async def preview_home(db: Session = Depends(get_db)):
 @router.put("/{key}/presencia")
 async def registrar_presencia_home(
     key: str,
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(verify_csrf),
 ):
     if key not in SECTION_SCHEMAS:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Sección desconocida: {key}")

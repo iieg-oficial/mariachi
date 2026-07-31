@@ -62,7 +62,7 @@ async def obtener_pagina(page_id: str, db: Session = Depends(get_db)):
 @router.put("/{page_id}/presencia")
 async def registrar_presencia(
     page_id: str,
-    current_user: Usuario = Depends(get_current_user),
+    current_user: Usuario = Depends(verify_csrf),
 ):
     presence.register("pagina", page_id, current_user.username, current_user.name)
     return {"ok": True}
