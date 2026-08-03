@@ -114,6 +114,7 @@ En `production`, `cd` ejecuta los tests como gate del deploy: si el CI falla no 
 | [borradores](./docs/borradores.md) | Sistema de borradores y revision queue |
 | [editor-sld](./docs/editor-sld.md) | Editor visual de simbología |
 | [alembic-multi-env](./docs/alembic-multi-env.md) | Migraciones en dos BDs |
+| [mapalab-api-keys](./docs/mapalab-api-keys.md) | Llaves del embed de mapalab: emisión, validación y auditoría |
 | [CHANGELOG](./docs/CHANGELOG.md) | Historial de cambios |
 
 El contexto del monorepo, el roadmap y los módulos grandes (SIEEJ, Colibrí, Identidad) viven en el
