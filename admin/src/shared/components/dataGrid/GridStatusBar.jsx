@@ -4,27 +4,29 @@ const { Text } = Typography;
 
 const SMALL = { fontSize: 11 };
 
-export default function MetadataGridStatusBar({
+export default function GridStatusBar({
     dirtyCount,
     onDiscard,
     activeRow,
+    activeRowLabel,
     activeColumnTitle,
     othersEditing = [],
-    pendingDescriptions = 0,
     visibleCount,
     totalCount,
+    itemsLabel = 'filas',
+    extra = null,
 }) {
     return (
         <div
             style={{
-                flexShrink: 0,
+                flex: 1,
+                minWidth: 0,
                 height: 26,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 gap: 12,
-                padding: '0 10px',
-                borderTop: '1px solid rgba(5, 5, 5, 0.06)',
+                padding: '0 6px 0 16px',
             }}
         >
             <Space size={10} style={{ minWidth: 0, overflow: 'hidden' }}>
@@ -43,7 +45,7 @@ export default function MetadataGridStatusBar({
                         type="secondary"
                         style={{ ...SMALL, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
                     >
-                        {activeRow.layer_key}
+                        {activeRowLabel}
                         {activeColumnTitle ? ` · ${activeColumnTitle}` : ''}
                         {activeRow.updated_by ? ` · última edición: ${activeRow.updated_by}` : ''}
                     </Text>
@@ -58,15 +60,11 @@ export default function MetadataGridStatusBar({
                         </Text>
                     </Tooltip>
                 )}
-                {pendingDescriptions > 0 && (
-                    <Tooltip title="Capas sin descripción capturada">
-                        <Text type="secondary" style={SMALL}>{pendingDescriptions} sin descripción</Text>
-                    </Tooltip>
-                )}
+                {extra}
                 <Text type="secondary" style={SMALL}>
                     {visibleCount === totalCount
-                        ? `${totalCount} capas`
-                        : `${visibleCount} de ${totalCount} capas`}
+                        ? `${totalCount} ${itemsLabel}`
+                        : `${visibleCount} de ${totalCount} ${itemsLabel}`}
                 </Text>
             </Space>
         </div>

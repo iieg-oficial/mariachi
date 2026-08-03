@@ -114,6 +114,9 @@ async def patch_cells(
             raise
         session.commit()
 
+    if spec.on_commit is not None and result['applied'] > 0:
+        spec.on_commit()
+
     return result
 
 

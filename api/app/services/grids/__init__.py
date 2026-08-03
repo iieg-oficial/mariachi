@@ -1,8 +1,10 @@
 from app.services.grid_batch import GridSpec
+from app.services.grids.layer_config_grid import SPEC as LAYER_CONFIG_SPEC
 from app.services.grids.layer_metadata_grid import SPEC as LAYER_METADATA_SPEC
 
 SPECS: dict[str, GridSpec] = {
     LAYER_METADATA_SPEC.key: LAYER_METADATA_SPEC,
+    LAYER_CONFIG_SPEC.key: LAYER_CONFIG_SPEC,
 }
 
 

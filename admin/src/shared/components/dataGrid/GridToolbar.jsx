@@ -10,17 +10,17 @@ import {
     SaveOutlined,
     UndoOutlined,
 } from '@ant-design/icons';
-import { GridSearchDropdown } from '@shared/components/dataGrid';
+import GridSearchDropdown from '@shared/components/dataGrid/GridSearchDropdown';
 
-export const ALL_WORKSPACES = '__todos__';
+export const ALL_FILTER_VALUES = '__todos__';
 
 const EXPORT_ITEMS = [
     { key: 'xlsx', icon: <FileExcelOutlined />, label: 'Excel (datos + historial)' },
-    { key: 'csv-metadatos', icon: <FileTextOutlined />, label: 'CSV de metadatos' },
+    { key: 'csv-metadatos', icon: <FileTextOutlined />, label: 'CSV de datos' },
     { key: 'csv-historial', icon: <HistoryOutlined />, label: 'CSV de historial' },
 ];
 
-export default function MetadataGridToolbar({
+export default function GridToolbar({
     isDesktop,
     dirtyCount,
     saving,
@@ -29,9 +29,15 @@ export default function MetadataGridToolbar({
     canUndo,
     search,
     onSearchChange,
-    workspace,
-    onWorkspaceChange,
-    workspaceItems,
+    searchPlaceholder,
+    searchOpen,
+    onSearchOpenChange,
+    filterValue,
+    onFilterChange,
+    filterItems,
+    filterLabel,
+    filterOpen,
+    onFilterOpenChange,
     onReload,
     onOpenShortcuts,
     onOpenHistory,
@@ -65,27 +71,34 @@ export default function MetadataGridToolbar({
             <GridSearchDropdown
                 value={search}
                 onChange={onSearchChange}
-                placeholder="Buscar capa, nombre o descripción"
+                placeholder={searchPlaceholder}
+                open={searchOpen}
+                onOpenChange={onSearchOpenChange}
             />
 
             <Dropdown
                 placement="bottomRight"
                 trigger={['click']}
+                open={filterOpen}
+                onOpenChange={onFilterOpenChange}
                 menu={{
-                    items: workspaceItems,
+                    items: filterItems,
                     selectable: true,
-                    selectedKeys: [workspace || ALL_WORKSPACES],
-                    onClick: ({ key }) => onWorkspaceChange(key === ALL_WORKSPACES ? null : key),
+                    selectedKeys: [filterValue || ALL_FILTER_VALUES],
+                    onClick: ({ key }) => {
+                        onFilterChange(key === ALL_FILTER_VALUES ? null : key);
+                        onFilterOpenChange?.(false);
+                    },
                     style: { maxHeight: 320, overflowY: 'auto' },
                 }}
             >
                 <Button
                     size="small"
-                    type={workspace ? 'default' : 'text'}
+                    type={filterValue ? 'default' : 'text'}
                     icon={<FilterOutlined />}
-                    title="Filtrar por workspace"
+                    title={`Filtrar por ${filterLabel.toLowerCase()}`}
                 >
-                    {workspace || 'Workspace'}
+                    {filterValue || filterLabel}
                 </Button>
             </Dropdown>
 
@@ -99,7 +112,7 @@ export default function MetadataGridToolbar({
                     type="text"
                     icon={<DownloadOutlined />}
                     loading={exporting}
-                    title="Descargar metadatos e historial de cambios"
+                    title="Descargar datos e historial de cambios"
                 >
                     Descargar
                 </Button>

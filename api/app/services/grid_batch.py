@@ -21,6 +21,7 @@ class GridTable:
     primary_key: str
     columns: tuple[str, ...]
     jsonb_columns: tuple[str, ...] = ()
+    array_columns: tuple[str, ...] = ()
     audit_user_column: str | None = None
     audit_timestamp_column: str | None = None
     allow_insert: bool = False
@@ -50,8 +51,9 @@ class GridSpec:
     project_slug: str | None = None
     min_role: str | None = None
     columns_meta: list[dict] = field(default_factory=list)
-    guard: Callable[[dict[str, dict], GridField], str | None] | None = None
+    guard: Callable[[Connection, dict[str, dict], GridField, Any], str | None] | None = None
     history_table: str | None = None
+    on_commit: Callable[[], None] | None = None
 
 
 @dataclass(frozen=True)
@@ -223,15 +225,30 @@ def diff_states(
     return entries
 
 
+def array_literal(value: Any) -> str | None:
+    if value is None:
+        return None
+    items = value if isinstance(value, (list, tuple)) else [value]
+    parts = []
+    for item in items:
+        escaped = str(item).replace('\\', '\\\\').replace('"', '\\"')
+        parts.append(f'"{escaped}"')
+    return '{' + ','.join(parts) + '}'
+
+
 def _coerce_for_sql(table: GridTable, column: str, value: Any) -> Any:
     if column in table.jsonb_columns:
         return None if value is None else json.dumps(value, ensure_ascii=False)
+    if column in table.array_columns:
+        return array_literal(value)
     return value
 
 
 def _placeholder(table: GridTable, column: str, name: str) -> str:
     if column in table.jsonb_columns:
         return f'CAST(:{name} AS jsonb)'
+    if column in table.array_columns:
+        return f'CAST(:{name} AS text[])'
     return f':{name}'
 
 
@@ -370,7 +387,7 @@ def apply_cell_changes(
                 continue
 
             if spec.guard is not None:
-                blocked = spec.guard(states, grid_field)
+                blocked = spec.guard(conn, states, grid_field, change.to_value)
                 if blocked:
                     rejected.append({
                         'rowKey': row_key,

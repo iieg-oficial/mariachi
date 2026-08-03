@@ -1,5 +1,6 @@
 import { checkboxColumn, keyColumn, textColumn } from 'react-datasheet-grid';
 import SelectCell from '@shared/components/dataGrid/cells/SelectCell';
+import TextAreaCell from '@shared/components/dataGrid/cells/TextAreaCell';
 
 const selectColumn = (options) => ({
     component: SelectCell,
@@ -16,9 +17,21 @@ const selectColumn = (options) => ({
     },
 });
 
+const textAreaColumn = (meta) => ({
+    component: TextAreaCell,
+    columnData: { overlayWidth: Math.max(meta.width || 0, 460) },
+    disableKeys: true,
+    keepFocus: true,
+    deleteValue: () => null,
+    copyValue: ({ rowData }) => rowData ?? '',
+    pasteValue: ({ value }) => String(value ?? '').trim() || null,
+    isCellEmpty: ({ rowData }) => !rowData,
+});
+
 const baseColumnFor = (meta, catalogs) => {
     if (meta.type === 'bool') return checkboxColumn;
     if (meta.type === 'select') return selectColumn(catalogs?.[meta.optionsKey] || []);
+    if (meta.type === 'textarea') return textAreaColumn(meta);
     return textColumn;
 };
 

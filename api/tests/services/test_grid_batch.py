@@ -209,7 +209,7 @@ class TestApplyCellChanges:
             'stats': {'layer_key': 'ws:capa', 'values': [], 'stats_config': [{'operation': 'count'}]},
         })
 
-        def guard(states, grid_field):
+        def guard(conn_, states, grid_field, value):
             if grid_field.table == 'stats' and (states['stats'].get('stats_config') or []):
                 return 'numeralia calculada'
             return None
