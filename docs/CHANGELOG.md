@@ -9,6 +9,70 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.119.0] - 2026-08-03
+
+### Agregado: pestaña de configuración en la captura masiva
+
+La captura masiva (`/mapalab/layers/tabla`) solo editaba metadatos. Ahora tiene dos pestañas:
+**Metadatos** (lo que ya había) y **Configuración**, que edita en hoja de cálculo los campos de
+`mapalab.layers` que antes solo se tocaban de uno en uno en el editor del árbol: nombre, nombre en
+URL, tipo de nodo, orden, visibilidad, capa de GeoServer, estilo, filtro CQL, grupo WMS, tiles,
+formato de imagen, suavizado, WFS, descargable, temporalidad, etiquetas de búsqueda, filtro por
+municipio, icono y resaltado.
+
+Son dos tablas con granularidad distinta y por eso van separadas: los metadatos viven por *feature
+type* (`workspace:capa`, compartidos entre las capas que lo usan) y la configuración por **nodo del
+árbol**. La pestaña de configuración trae una columna de ubicación en el árbol (`Tema > Categoría`)
+para ubicar cada nodo, y muestra la tarjeta, el aviso y el badge como resumen de solo lectura —
+esos se siguen editando con sus editores dedicados.
+
+El **workspace no se edita desde la tabla**: se cambia en el editor del árbol, que valida contra
+GeoServer. La capa de GeoServer sí es editable y se valida celda por celda contra las capas reales
+del workspace (con caché de 60 s y comprobación de grupos de capas); si GeoServer no responde, la
+celda se acepta en vez de bloquear la captura. Los campos obligatorios rechazan quedar vacíos y los
+de catálogo (tipo de nodo, formato, suavizado) validan contra sus valores permitidos, así que un
+valor mal capturado se reporta como celda rechazada y no como error de base de datos.
+
+Pueden editar los mismos perfiles que ya editaban metadatos en lote (rol `editor` del proyecto
+mapalab). A diferencia del editor del árbol, lo que se guarda desde la tabla **se publica directo**,
+sin pasar por el flujo de borrador y revisión.
+
+Por dentro, todo el andamiaje del grid (barra de herramientas, avisos, barra de estado, borrador
+local, presencia, historial y exportación) se extrajo a un `GridPanel` genérico en
+`shared/components/dataGrid`, y la página quedó como cáscara con pestañas. Cada pestaña conserva su
+borrador por separado y muestra en su etiqueta cuántos cambios tiene pendientes; solo la pestaña
+activa registra presencia.
+
+Las pestañas van **abajo**, con forma de pestaña de hoja de cálculo, y comparten franja con la barra
+de estado (sin guardar, celda activa, quién más está editando, conteo de filas) en vez de gastar dos
+tiras horizontales.
+
+### Agregado: buscar y filtrar con el teclado en la captura masiva
+
+`Ctrl+F` abre el buscador de la tabla con el cursor puesto, y `Ctrl+Shift+F` el filtro por
+workspace. `Esc` o `Enter` cierran el buscador dejando el filtro aplicado, para volver a la tabla
+sin soltar el teclado. Los atajos solo responden en la pestaña que se está viendo y quedan
+documentados en el modal de atajos.
+
+`Ctrl+F` se queda el atajo en lugar del buscador del navegador. Es deliberado: la tabla es
+virtualizada, así que el buscador del navegador solo encontraría las filas que están pintadas en
+ese momento, no las 400 de la tabla.
+
+### Agregado: editar texto largo en la captura masiva
+
+Las celdas de texto largo (descripción, texto de leyenda, filtro CQL, metodología, cita larga de la
+fuente) ya no se capturan en un renglón: al entrar en la celda se abre un cuadro de varias líneas
+sobre ella, que crece con el contenido y se cierra con `Esc` o `Ctrl+Enter`. Copiar, pegar y borrar
+siguen funcionando igual sobre esas celdas.
+
+### Cambiado: la captura masiva ya invalida el caché del árbol del visor
+
+`PATCH /grid/{recurso}/cells` guardaba en base de datos sin avisarle a MapaLab, así que el visor
+seguía sirviendo el árbol viejo hasta que expiraba el caché. `GridSpec` ahora acepta un hook
+`on_commit` que el endpoint dispara tras el commit, y ambos grids lo usan para llamar
+`notify_tree_changed()`. Aplica también a la captura masiva de metadatos, que arrastraba el mismo
+hueco.
+
 ## [1.118.0] - 2026-07-31
 
 ### Agregado: eliminar el envio de una dependencia
