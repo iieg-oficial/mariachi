@@ -20,6 +20,16 @@ export const FIELD_TYPES = [
 
 export const DEFAULT_OPEN_RANGE_CATALOG = 'estatus_fecha';
 
+export const DATE_LIMIT_HOY = 'hoy';
+
+export const DATE_LIMIT_MODES = [
+    { value: 'none', label: 'Sin límite' },
+    { value: 'today', label: 'Fecha de llenado' },
+    { value: 'fixed', label: 'Fecha específica' },
+];
+
+export const DATE_LIMIT_MODES_FIJOS = DATE_LIMIT_MODES.filter((m) => m.value !== 'today');
+
 export const FRECUENCIA_OPTIONS = [
     { value: 'mensual', label: 'Mensual' },
     { value: 'trimestral', label: 'Trimestral' },

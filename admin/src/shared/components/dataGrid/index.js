@@ -1,4 +1,8 @@
 export { default as DataGrid } from '@shared/components/dataGrid/DataGrid';
+export { default as GridPanel } from '@shared/components/dataGrid/GridPanel';
+export { default as GridNotices } from '@shared/components/dataGrid/GridNotices';
+export { default as GridStatusBar } from '@shared/components/dataGrid/GridStatusBar';
+export { default as GridToolbar, ALL_FILTER_VALUES } from '@shared/components/dataGrid/GridToolbar';
 export { default as GridShortcutsModal } from '@shared/components/dataGrid/GridShortcutsModal';
 export { default as GridSearchDropdown } from '@shared/components/dataGrid/GridSearchDropdown';
 export { default as GridHistoryDrawer } from '@shared/components/dataGrid/GridHistoryDrawer';

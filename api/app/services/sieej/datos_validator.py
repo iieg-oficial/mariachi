@@ -8,11 +8,13 @@ el cliente los muestre todos a la vez.
 from __future__ import annotations
 
 import re
+from datetime import date
 from typing import Any
 
+from app.core.time import today_local
 from app.services.sieej.catalogos_sistema import OPTION_KEYS, permite_extremo_abierto
 from app.services.sieej.compat import normalizar_definicion
-from app.services.sieej.definicion_validator import FIELD_TYPES
+from app.services.sieej.definicion_validator import FIELD_TYPES, LIMITE_FECHA_HOY
 
 
 class DatosInvalidosError(ValueError):
@@ -213,6 +215,8 @@ def _validar_field_value(
             r"^\d{4}-\d{2}-\d{2}", value
         ):
             errores.append({"path": path, "msg": "fecha invalida (YYYY-MM-DD)"})
+        else:
+            _validar_limites_fecha(field, value, path, "", errores)
 
     elif field_type == "date_range":
         _validar_date_range(field, value, path, errores)
@@ -244,6 +248,53 @@ def _validar_field_value(
             return
         if not isinstance(value.get("url_publica"), str):
             errores.append({"path": path, "msg": "file sin `url_publica`"})
+
+
+def _resolver_limite(valor: Any) -> date | None:
+    """Traduce el limite de la definicion a fecha. `hoy` se resuelve al
+    momento de validar el envio, en la zona horaria local."""
+    if not isinstance(valor, str) or not valor:
+        return None
+    if valor == LIMITE_FECHA_HOY:
+        return today_local()
+    try:
+        return date.fromisoformat(valor[:10])
+    except ValueError:
+        return None
+
+
+def _texto_limite(crudo: Any, limite: date) -> str:
+    return LIMITE_FECHA_HOY if crudo == LIMITE_FECHA_HOY else limite.isoformat()
+
+
+def _validar_limites_fecha(
+    field: dict[str, Any],
+    valor: str,
+    path: str,
+    etiqueta: str,
+    errores: list[dict[str, str]],
+) -> None:
+    validation = field.get("validation") or {}
+    try:
+        fecha = date.fromisoformat(valor[:10])
+    except ValueError:
+        return
+
+    prefijo = f"la fecha {etiqueta}" if etiqueta else "la fecha"
+    crudo_min = validation.get("minDate")
+    minimo = _resolver_limite(crudo_min)
+    if minimo is not None and fecha < minimo:
+        errores.append({
+            "path": path,
+            "msg": f"{prefijo} no puede ser anterior a {_texto_limite(crudo_min, minimo)}",
+        })
+    crudo_max = validation.get("maxDate")
+    maximo = _resolver_limite(crudo_max)
+    if maximo is not None and fecha > maximo:
+        errores.append({
+            "path": path,
+            "msg": f"{prefijo} no puede ser posterior a {_texto_limite(crudo_max, maximo)}",
+        })
 
 
 _EXTREMO_LABEL = {"start": "inicial", "end": "final"}
@@ -286,6 +337,7 @@ def _validar_extremo(
             {"path": path, "msg": f"fecha {etiqueta} invalida (YYYY-MM-DD)"}
         )
         return False
+    _validar_limites_fecha(field, fecha, path, etiqueta, errores)
     return True
 
 

@@ -989,3 +989,55 @@ def test_admin_get_envio_individual(client, session, admin, respondent):
     r = client.get(f"{ADMIN_PREFIX}/sieej/formularios/{f.id}/envios/{e.id}")
     assert r.status_code == 200
     assert r.json()["datos"]["general"]["razon"] == "Acme"
+
+
+DEFINICION_CON_LIMITE = {
+    "version": 1,
+    "steps": [
+        {
+            "id": "general",
+            "type": "form",
+            "title": "General",
+            "fields": [
+                {
+                    "name": "fecha_captura",
+                    "label": "Fecha de captura",
+                    "type": "date",
+                    "validation": {"maxDate": "hoy"},
+                }
+            ],
+        }
+    ],
+}
+
+
+def test_admin_guarda_limite_de_fecha_y_lo_devuelve(client, session, admin):
+    """El ciclo que hace el CMS: PUT con el limite -> se persiste tal cual
+    (compat no lo descarta) -> el respondent lo recibe en la definicion."""
+    f = Formulario(
+        slug="lim", nombre="Lim", definicion=DEFINICION_OK, estado="activo",
+        version=1, creado_por_id=admin.id,
+    )
+    session.add(f)
+    session.commit()
+    session.refresh(f)
+
+    csrf = login(client, admin.username)
+    r = client.put(
+        f"{ADMIN_PREFIX}/sieej/formularios/{f.id}",
+        headers={"X-CSRF-Token": csrf},
+        json={"definicion": DEFINICION_CON_LIMITE},
+    )
+    assert r.status_code == 200, r.text
+
+    guardado = r.json()["definicion"]["steps"][0]["fields"][0]
+    assert guardado["validation"] == {"maxDate": "hoy"}
+
+    session.refresh(f)
+    en_bd = f.definicion["steps"][0]["fields"][0]
+    assert en_bd["validation"] == {"maxDate": "hoy"}
+
+    detalle = client.get(f"{ADMIN_PREFIX}/sieej/formularios/{f.id}")
+    assert detalle.status_code == 200, detalle.text
+    campo = detalle.json()["definicion"]["steps"][0]["fields"][0]
+    assert campo["validation"] == {"maxDate": "hoy"}

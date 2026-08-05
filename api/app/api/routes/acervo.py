@@ -30,7 +30,7 @@ from app.schemas.acervo import (
     FolderResponse,
 )
 from app.services import acervo_file_service, acervo_thumbnails
-from app.services.acervo import AcervoClient
+from app.services.acervo import AcervoClient, ObjectTooLargeError
 from app.services.actividad_service import registrar_actividad
 
 logger = logging.getLogger(__name__)
@@ -85,6 +85,16 @@ async def proxy_object(
         "Cache-Control": "private, max-age=300",
         "Content-Length": str(stat.size) if stat.size is not None else "",
     }
+    disposition = next(
+        (
+            value
+            for key, value in (stat.metadata or {}).items()
+            if key.lower() == "content-disposition"
+        ),
+        None,
+    )
+    if disposition:
+        headers["Content-Disposition"] = disposition
     return StreamingResponse(
         iterator(),
         media_type=stat.content_type or "application/octet-stream",
@@ -285,6 +295,7 @@ async def subir_archivo(
     bucket_id: int = Form(...),
     use_uuid: bool = Form(False),
     on_conflict: str = Form("reject"),
+    download_name: str = Form(""),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
     _rl: Usuario = Depends(_upload_rate_limit),
@@ -313,8 +324,10 @@ async def subir_archivo(
         on_conflict=on_conflict,
     )
 
+    clean_download_name = (download_name or "").strip()[:200]
+
     try:
-        url = await client.upload_file(file, object_key)
+        url = await client.upload_file(file, object_key, clean_download_name or None)
 
         nuevo = AcervoFile(
             bucket_id=bucket.id,
@@ -326,7 +339,11 @@ async def subir_archivo(
             thumbnail=url if file.content_type and file.content_type.startswith("image/") else None,
             folder=folder_path,
             uploaded_by=current_user.id,
-            metadata_json={"alt": alt} if alt else {},
+            metadata_json={
+                key: value
+                for key, value in (("alt", alt), ("downloadName", clean_download_name))
+                if value
+            },
         )
         db.add(nuevo)
         db.flush()
@@ -883,11 +900,40 @@ async def actualizar_archivo(
     item = db.query(AcervoFile).filter(AcervoFile.id == media_id).first()
     if not item:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Archivo no encontrado")
+    bucket = None
     if item.bucket_id:
-        acervo_file_service.resolve_bucket_escribible(item.bucket_id, current_user, db)
+        bucket = acervo_file_service.resolve_bucket_escribible(item.bucket_id, current_user, db)
 
     data = payload.model_dump(exclude_unset=True)
     metadata = dict(item.metadata_json or {})
+    if "download_name" in data and (data["download_name"] or "").strip() != (
+        metadata.get("downloadName") or ""
+    ):
+        if not bucket:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El archivo no pertenece a un bucket",
+            )
+        download_name = (data["download_name"] or "").strip()
+        try:
+            AcervoClient.for_bucket(bucket).set_download_name(item.name, download_name or None)
+        except ObjectTooLargeError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail=str(exc)
+            )
+        except (S3Error, ValueError):
+            logger.exception(
+                "action=acervo.file.download_name user_id=%s bucket=%s key=%s",
+                current_user.id, bucket.acervo_bucket, item.name,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="No se pudo actualizar el nombre de descarga",
+            )
+        if download_name:
+            metadata["downloadName"] = download_name
+        else:
+            metadata.pop("downloadName", None)
     if "alt" in data:
         if data["alt"]:
             metadata["alt"] = data["alt"]

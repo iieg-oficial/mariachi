@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button, Dropdown, Input } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 
@@ -8,13 +8,17 @@ export default function GridSearchDropdown({
     placeholder = 'Buscar',
     label = 'Buscar',
     width = 280,
+    open,
+    onOpenChange,
 }) {
     const inputRef = useRef(null);
     const [draft, setDraft] = useState(value);
 
-    const handleOpenChange = useCallback((open) => {
-        if (open) setTimeout(() => inputRef.current?.focus(), 0);
-    }, []);
+    useEffect(() => {
+        if (!open) return undefined;
+        const timer = setTimeout(() => inputRef.current?.focus({ cursor: 'all' }), 0);
+        return () => clearTimeout(timer);
+    }, [open]);
 
     const handleChange = useCallback((event) => {
         const next = event.target.value;
@@ -22,12 +26,21 @@ export default function GridSearchDropdown({
         onChange?.(next);
     }, [onChange]);
 
+    const handleKeyDown = useCallback((event) => {
+        if (event.key === 'Escape' || event.key === 'Enter') {
+            event.preventDefault();
+            onOpenChange?.(false);
+        }
+    }, [onOpenChange]);
+
     return (
         <Dropdown
             placement="bottomRight"
             trigger={['click']}
             menu={{ items: [] }}
-            onOpenChange={handleOpenChange}
+            open={open}
+            onOpenChange={onOpenChange}
+            destroyOnHidden
             popupRender={() => (
                 <div
                     style={{
@@ -43,6 +56,7 @@ export default function GridSearchDropdown({
                         placeholder={placeholder}
                         value={draft}
                         onChange={handleChange}
+                        onKeyDown={handleKeyDown}
                         style={{ width }}
                     />
                 </div>

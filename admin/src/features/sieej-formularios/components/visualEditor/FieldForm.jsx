@@ -4,8 +4,9 @@ import {
 } from 'antd';
 import OptionsSource from './OptionsSource';
 import OpenRangeConfig from './OpenRangeConfig';
+import DateLimitsConfig from './DateLimitsConfig';
+import FileConfig from './FileConfig';
 import ShowWhenField from './ShowWhenField';
-import useAccessibleBuckets from '@features/acervo/hooks/useAccessibleBuckets';
 import useCatalogos from '../../hooks/useCatalogos';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import { FIELD_TYPES } from '../../constants/definitionTypes';
@@ -14,11 +15,6 @@ import { describeCondition, fieldFromFormValues, fieldToFormValues } from './fie
 import { nearestCol } from './fieldLayout';
 import { LayoutSection } from './LayoutControls';
 import FieldPreview from './FieldPreview';
-
-const EXTENSION_OPTIONS = [
-    '.pdf', '.csv', '.xlsx', '.xls', '.doc', '.docx', '.txt',
-    '.jpg', '.jpeg', '.png', '.zip', '.json', '.geojson', '.gpkg', '.kml', '.shp',
-].map((ext) => ({ value: ext, label: ext }));
 
 const REGEX_OPTIONS = REGEX_PRESETS.map((preset) => ({
     value: preset.pattern,
@@ -49,7 +45,6 @@ export default function FieldForm({
     const [nameTouched, setNameTouched] = useState(!!field?.name);
     const [tooltipFocused, setTooltipFocused] = useState(false);
     const onLayoutDraftRef = useRef(onLayoutDraft);
-    const { buckets, loading: bucketsLoading } = useAccessibleBuckets();
     const { catalogos } = useCatalogos();
     const { isMobile } = useIsMobile();
 
@@ -74,16 +69,6 @@ export default function FieldForm({
             form.setFieldsValue({ name: slugify(watchLabel) });
         }
     }, [watchLabel, nameTouched, form]);
-
-    useEffect(() => {
-        if (
-            watchType === 'file'
-            && !form.getFieldValue('bucket')
-            && buckets.some((b) => b.acervo_bucket === 'sieej')
-        ) {
-            form.setFieldsValue({ bucket: 'sieej' });
-        }
-    }, [watchType, buckets, form]);
 
     const handleFinish = (values) => onSave?.(fieldFromFormValues(values));
 
@@ -127,15 +112,11 @@ export default function FieldForm({
     );
 
     const showOptions = ['select', 'select_multiple', 'radio', 'checkbox'].includes(watchType);
+    const showDateLimits = ['date', 'date_range'].includes(watchType);
     const showDateRange = watchType === 'date_range';
     const showFile = watchType === 'file';
     const showNumberValidation = watchType === 'number';
     const showLengthValidation = ['text', 'textarea'].includes(watchType);
-
-    const bucketOptions = buckets.map((b) => ({
-        value: b.acervo_bucket,
-        label: b.display_name || b.acervo_bucket,
-    }));
 
     const formFields = (
         <>
@@ -193,41 +174,9 @@ export default function FieldForm({
                         onPickColSpan={handleColSpanChange}
                     />
                     {showOptions && <OptionsSource form={form} />}
+                    {showDateLimits && <DateLimitsConfig form={form} />}
                     {showDateRange && <OpenRangeConfig form={form} />}
-                    {showFile && (
-                        <>
-                            <Form.Item
-                                label="Bucket Acervo"
-                                name="bucket"
-                                rules={[{ required: true }]}
-                                extra="Carpeta del Acervo donde se guardan los archivos que suba quien responde el formulario. Por defecto se usa «sieej»."
-                            >
-                                <Select
-                                    placeholder="Selecciona un bucket"
-                                    loading={bucketsLoading}
-                                    showSearch
-                                    optionFilterProp="label"
-                                    options={bucketOptions}
-                                />
-                            </Form.Item>
-                            <Form.Item
-                                label="Extensiones aceptadas"
-                                name="accept"
-                                extra="Selecciona de la lista o escribe una extensión con punto. Vacío acepta todos los formatos."
-                            >
-                                <Select
-                                    mode="tags"
-                                    allowClear
-                                    tokenSeparators={[',', ' ']}
-                                    options={EXTENSION_OPTIONS}
-                                    placeholder=".pdf, .csv, .xlsx"
-                                />
-                            </Form.Item>
-                            <Form.Item label="Tamaño máximo (MB)" name="maxSizeMB">
-                                <InputNumber min={1} max={100} style={{ width: '100%' }} />
-                            </Form.Item>
-                        </>
-                    )}
+                    {showFile && <FileConfig form={form} />}
                     {showNumberValidation && (
                         <Space.Compact block>
                             <Form.Item label="Min" name="min" style={{ flex: 1 }}>

@@ -170,3 +170,38 @@ def test_agregar_step_nuevo_opcional_es_menor():
 
     d = _con(_add)
     assert clasificar_cambio(_base(), d) == "menor"
+
+
+def _con_fecha(validation=None):
+    d = copy.deepcopy(_base())
+    campo = {"name": "f", "type": "date", "label": "F"}
+    if validation is not None:
+        campo["validation"] = validation
+    d["steps"][0]["fields"].append(campo)
+    return d
+
+
+def test_agregar_limite_de_fecha_rompe():
+    assert clasificar_cambio(_con_fecha(), _con_fecha({"maxDate": "hoy"})) == "rompe"
+
+
+def test_quitar_limite_de_fecha_es_menor():
+    assert clasificar_cambio(_con_fecha({"maxDate": "hoy"}), _con_fecha()) == "menor"
+
+
+def test_relajar_limite_fijo_es_menor():
+    viejo = _con_fecha({"maxDate": "2026-01-01"})
+    nuevo = _con_fecha({"maxDate": "2030-01-01"})
+    assert clasificar_cambio(viejo, nuevo) == "menor"
+
+
+def test_endurecer_limite_fijo_rompe():
+    viejo = _con_fecha({"minDate": "2020-01-01"})
+    nuevo = _con_fecha({"minDate": "2024-01-01"})
+    assert clasificar_cambio(viejo, nuevo) == "rompe"
+
+
+def test_cambiar_limite_fijo_por_hoy_rompe():
+    viejo = _con_fecha({"maxDate": "2030-01-01"})
+    nuevo = _con_fecha({"maxDate": "hoy"})
+    assert clasificar_cambio(viejo, nuevo) == "rompe"

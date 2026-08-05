@@ -1,246 +1,168 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Spin } from 'antd';
-import {
-    DataGrid,
-    GridHistoryDrawer,
-    GridShortcutsModal,
-    useGridEditor,
-    useGridPresence,
-} from '@shared/components/dataGrid';
+import { useCallback, useMemo, useState } from 'react';
+import { Alert, Tabs, Tooltip, Typography } from 'antd';
+import { GridPanel } from '@shared/components/dataGrid';
 import { METADATA_GRID_CATALOGS } from '@features/mapalab-layers/constants/metadataCatalogs';
-import MetadataGridToolbar, { ALL_WORKSPACES } from '@features/mapalab-layers/components/metadataGrid/MetadataGridToolbar';
-import MetadataGridStatusBar from '@features/mapalab-layers/components/metadataGrid/MetadataGridStatusBar';
-import MetadataGridNotices from '@features/mapalab-layers/components/metadataGrid/MetadataGridNotices';
-import useElementHeight from '@shared/hooks/useElementHeight';
+import { LAYER_CONFIG_CATALOGS } from '@features/mapalab-layers/constants/layerConfigCatalogs';
 import useIsMobile from '@shared/hooks/useIsMobile';
-import { exportGrid } from '@shared/services/gridService';
-import { triggerDownload } from '@shared/helpers/downloadFile';
-import { message } from '@shared/services/message';
 import { useFullscreenHeader } from '@app/fullscreenHeader';
 
-const RESOURCE = 'layer-metadata';
-const ROW_KEY = 'layer_key';
-const EMPTY_FILTERS = {};
+const { Text } = Typography;
+
 const TREE_PATH = '/mapalab/layers';
+
+const METADATA_SEARCH_FIELDS = ['layer_key', 'layer_name_usuario', 'descripcion'];
+const CONFIG_SEARCH_FIELDS = ['id', 'label', 'slug', 'geoserver_layer', 'ruta'];
+
+const TABS_STYLES = `
+    .captura-masiva-tabs { height: 100%; display: flex; flex-direction: column; min-height: 0; }
+    .captura-masiva-tabs > .ant-tabs-content-holder { flex: 1; min-height: 0; overflow: hidden; }
+    .captura-masiva-tabs > .ant-tabs-content-holder > .ant-tabs-content { height: 100%; }
+    .captura-masiva-tabs .ant-tabs-tabpane { height: 100%; overflow: hidden; }
+    .captura-masiva-tabs > .ant-tabs-nav {
+        background: #fafafa;
+        border-top: 1px solid rgba(5, 5, 5, 0.06);
+        padding: 0 6px;
+        min-height: 30px;
+    }
+    .captura-masiva-tabs > .ant-tabs-nav::before { display: none; }
+    .captura-masiva-tabs > .ant-tabs-nav .ant-tabs-nav-wrap { flex: 0 0 auto; }
+    .captura-masiva-tabs > .ant-tabs-nav .ant-tabs-extra-content { flex: 1 1 auto; min-width: 0; }
+    .captura-masiva-tabs > .ant-tabs-nav .ant-tabs-tab {
+        background: transparent;
+        border-color: transparent;
+        border-radius: 0 0 8px 8px;
+        margin: 0 3px 0 0;
+        padding: 4px 16px;
+        font-size: 12px;
+    }
+    .captura-masiva-tabs > .ant-tabs-nav .ant-tabs-tab:hover { background: rgba(5, 5, 5, 0.04); }
+    .captura-masiva-tabs > .ant-tabs-nav .ant-tabs-tab-active {
+        background: #fff;
+        border-color: rgba(5, 5, 5, 0.1);
+        border-top-color: transparent;
+        box-shadow: 0 1px 2px rgba(5, 5, 5, 0.06);
+    }
+    .captura-masiva-tabs > .ant-tabs-nav .ant-tabs-tab-active .ant-tabs-tab-btn { font-weight: 600; }
+`;
 
 const isNumeraliaColumn = (key) => key.startsWith('numeralia_');
 
+const tabLabel = (text, dirtyCount) => (dirtyCount ? `${text} · ${dirtyCount}` : text);
+
 export default function MetadataGridPage() {
     const { isDesktop } = useIsMobile();
-    const [workspace, setWorkspace] = useState(null);
-    const [search, setSearch] = useState('');
-    const [activeRowKey, setActiveRowKey] = useState(null);
-    const [activeColumnId, setActiveColumnId] = useState(null);
-    const [shortcutsOpen, setShortcutsOpen] = useState(false);
-    const [historyOpen, setHistoryOpen] = useState(false);
-    const [exporting, setExporting] = useState(false);
-    const gridWrapperRef = useRef(null);
-    const gridHeight = useElementHeight(gridWrapperRef);
-
-    const {
-        data,
-        columnsMeta,
-        loading,
-        saving,
-        draft,
-        dirtyCount,
-        conflicts,
-        canUndo,
-        undo,
-        handleGridChange,
-        save,
-        reload,
-        discardDraft,
-        recoveredDraft,
-        restoreRecoveredDraft,
-        dismissRecoveredDraft,
-    } = useGridEditor({ resource: RESOURCE, rowKeyField: ROW_KEY, filters: EMPTY_FILTERS });
-
-    const { presenceByRow } = useGridPresence({
-        resource: RESOURCE,
-        activeRowKey,
-        enabled: !loading,
-    });
-
-    const workspaceItems = useMemo(() => {
-        const unique = Array.from(new Set(data.map((row) => row.workspace).filter(Boolean))).sort();
-        return [
-            { key: ALL_WORKSPACES, label: 'Todos los workspaces' },
-            { type: 'divider' },
-            ...unique.map((value) => ({ key: value, label: value })),
-        ];
-    }, [data]);
-
-    const handleExport = useCallback(async (option) => {
-        const [formato, hoja] = option === 'xlsx' ? ['xlsx', null] : option.split('-');
-        setExporting(true);
-        try {
-            const response = await exportGrid(RESOURCE, {
-                formato,
-                hoja,
-                workspace,
-                search: search.trim() || undefined,
-            });
-            triggerDownload(response, `metadatos-capas.${formato}`);
-        } catch {
-            message.error('No se pudo generar la descarga');
-        } finally {
-            setExporting(false);
-        }
-    }, [workspace, search]);
-
-    const headerExtra = useMemo(() => (
-        <MetadataGridToolbar
-            isDesktop={isDesktop}
-            dirtyCount={dirtyCount}
-            saving={saving}
-            onSave={save}
-            onUndo={undo}
-            canUndo={canUndo}
-            search={search}
-            onSearchChange={setSearch}
-            workspace={workspace}
-            onWorkspaceChange={setWorkspace}
-            workspaceItems={workspaceItems}
-            onReload={reload}
-            onOpenShortcuts={() => setShortcutsOpen(true)}
-            onOpenHistory={() => setHistoryOpen(true)}
-            onExport={handleExport}
-            exporting={exporting}
-        />
-    ), [
-        isDesktop, dirtyCount, saving, save, undo, canUndo, search, workspace,
-        workspaceItems, reload, handleExport, exporting,
-    ]);
+    const [tab, setTab] = useState('metadatos');
+    const [toolbar, setToolbar] = useState(null);
+    const [status, setStatus] = useState(null);
+    const [dirtyMetadatos, setDirtyMetadatos] = useState(0);
+    const [dirtyConfiguracion, setDirtyConfiguracion] = useState(0);
 
     useFullscreenHeader({
         title: isDesktop ? 'Capas MapaLab · captura masiva' : 'Captura masiva',
         backTo: TREE_PATH,
-        extra: headerExtra,
+        extra: toolbar,
     });
-
-    const visibleData = useMemo(() => {
-        const term = search.trim().toLowerCase();
-        return data.filter((row) => {
-            if (workspace && row.workspace !== workspace) return false;
-            if (!term) return true;
-            return [row.layer_key, row.layer_name_usuario, row.descripcion]
-                .some((value) => String(value || '').toLowerCase().includes(term));
-        });
-    }, [data, workspace, search]);
 
     const isCellDisabled = useCallback((rowData, meta) => {
         if (!rowData) return false;
         return Boolean(rowData.has_dynamic_stats) && isNumeraliaColumn(meta.key);
     }, []);
 
-    const onGridChange = useCallback(
-        (nextRows) => handleGridChange(nextRows, visibleData),
-        [handleGridChange, visibleData],
-    );
+    const renderMetadataNotices = useCallback((data) => {
+        const count = data.filter((row) => row.has_dynamic_stats).length;
+        if (!count) return null;
+        return (
+            <Alert
+                style={{ marginBottom: 8 }}
+                type="info"
+                showIcon
+                closable
+                message={`${count} capa(s) calculan su numeralia desde la base de datos`}
+                description="Sus celdas de numeralia están bloqueadas aquí: se editan en la pestaña Metadatos de la capa."
+            />
+        );
+    }, []);
 
-    const handleActiveCell = useCallback(({ columnId }) => setActiveColumnId(columnId), []);
+    const renderMetadataStatusExtra = useCallback((data) => {
+        const pending = data.filter((row) => !row.descripcion || !String(row.descripcion).trim()).length;
+        if (!pending) return null;
+        return (
+            <Tooltip title="Capas sin descripción capturada">
+                <Text type="secondary" style={{ fontSize: 11 }}>{pending} sin descripción</Text>
+            </Tooltip>
+        );
+    }, []);
 
-    const activeColumnTitle = useMemo(
-        () => (activeColumnId ? columnsMeta.find((meta) => meta.key === activeColumnId)?.title || null : null),
-        [activeColumnId, columnsMeta],
-    );
-
-    const activeRow = useMemo(
-        () => (activeRowKey ? data.find((row) => row[ROW_KEY] === activeRowKey) : null),
-        [activeRowKey, data],
-    );
-
-    const othersEditing = useMemo(() => {
-        const names = new Set();
-        Object.values(presenceByRow || {}).forEach((editors) => {
-            (editors || []).forEach((editor) => names.add(editor.name || editor.username));
-        });
-        return Array.from(names);
-    }, [presenceByRow]);
-
-    const pendingDescriptions = useMemo(
-        () => data.filter((row) => !row.descripcion || !String(row.descripcion).trim()).length,
-        [data],
-    );
-
-    const dynamicStatsCount = useMemo(
-        () => data.filter((row) => row.has_dynamic_stats).length,
-        [data],
-    );
-
-    useEffect(() => {
-        const onKeyDown = (event) => {
-            if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
-                event.preventDefault();
-                undo();
-            }
-        };
-        window.addEventListener('keydown', onKeyDown);
-        return () => window.removeEventListener('keydown', onKeyDown);
-    }, [undo]);
-
-    useEffect(() => {
-        if (!dirtyCount) return undefined;
-        const onBeforeUnload = (event) => {
-            event.preventDefault();
-            event.returnValue = '';
-        };
-        window.addEventListener('beforeunload', onBeforeUnload);
-        return () => window.removeEventListener('beforeunload', onBeforeUnload);
-    }, [dirtyCount]);
+    const items = useMemo(() => [
+        {
+            key: 'metadatos',
+            forceRender: true,
+            label: tabLabel('Metadatos', dirtyMetadatos),
+            children: (
+                <GridPanel
+                    resource="layer-metadata"
+                    rowKeyField="layer_key"
+                    catalogs={METADATA_GRID_CATALOGS}
+                    filterField="workspace"
+                    filterLabel="Workspace"
+                    filterAllLabel="Todos los workspaces"
+                    searchFields={METADATA_SEARCH_FIELDS}
+                    searchPlaceholder="Buscar capa, nombre o descripción"
+                    itemsLabel="capas"
+                    exportFileName="metadatos-capas"
+                    rowLabelField="layer_name_usuario"
+                    isCellDisabled={isCellDisabled}
+                    renderNotices={renderMetadataNotices}
+                    renderStatusExtra={renderMetadataStatusExtra}
+                    active={tab === 'metadatos'}
+                    onToolbarChange={setToolbar}
+                    onStatusChange={setStatus}
+                    onDirtyCountChange={setDirtyMetadatos}
+                />
+            ),
+        },
+        {
+            key: 'configuracion',
+            forceRender: true,
+            label: tabLabel('Configuración', dirtyConfiguracion),
+            children: (
+                <GridPanel
+                    resource="layer-config"
+                    rowKeyField="id"
+                    catalogs={LAYER_CONFIG_CATALOGS}
+                    filterField="workspace_alias"
+                    filterLabel="Workspace"
+                    filterAllLabel="Todos los workspaces"
+                    searchFields={CONFIG_SEARCH_FIELDS}
+                    searchPlaceholder="Buscar por nombre, id, slug o capa de GeoServer"
+                    itemsLabel="nodos"
+                    exportFileName="configuracion-capas"
+                    rowLabelField="label"
+                    active={tab === 'configuracion'}
+                    onToolbarChange={setToolbar}
+                    onStatusChange={setStatus}
+                    onDirtyCountChange={setDirtyConfiguracion}
+                />
+            ),
+        },
+    ], [
+        tab, dirtyMetadatos, dirtyConfiguracion, isCellDisabled,
+        renderMetadataNotices, renderMetadataStatusExtra,
+    ]);
 
     return (
         <div style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-            <MetadataGridNotices
-                recoveredDraft={recoveredDraft}
-                onRestoreDraft={restoreRecoveredDraft}
-                onDismissDraft={dismissRecoveredDraft}
-                conflicts={conflicts}
-                dynamicStatsCount={dynamicStatsCount}
-            />
-
-            <div ref={gridWrapperRef} style={{ flex: 1, minHeight: 0 }}>
-                {loading ? (
-                    <Spin style={{ display: 'block', margin: '48px auto' }} />
-                ) : (
-                    <DataGrid
-                        columnsMeta={columnsMeta}
-                        catalogs={METADATA_GRID_CATALOGS}
-                        data={visibleData}
-                        draft={draft}
-                        rowKeyField={ROW_KEY}
-                        conflicts={conflicts}
-                        onChange={onGridChange}
-                        onActiveRowChange={setActiveRowKey}
-                        onActiveCellChange={handleActiveCell}
-                        presenceByRow={presenceByRow}
-                        isCellDisabled={isCellDisabled}
-                        height={gridHeight}
-                    />
-                )}
-            </div>
-
-            <MetadataGridStatusBar
-                dirtyCount={dirtyCount}
-                onDiscard={discardDraft}
-                activeRow={activeRow}
-                activeColumnTitle={activeColumnTitle}
-                othersEditing={othersEditing}
-                pendingDescriptions={pendingDescriptions}
-                visibleCount={visibleData.length}
-                totalCount={data.length}
-            />
-
-            <GridShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
-
-            <GridHistoryDrawer
-                open={historyOpen}
-                onClose={() => setHistoryOpen(false)}
-                resource={RESOURCE}
-                columnsMeta={columnsMeta}
-                rowKey={activeRowKey}
-                rowLabel={activeRow?.layer_name_usuario || activeRowKey}
+            <style>{TABS_STYLES}</style>
+            <Tabs
+                className="captura-masiva-tabs"
+                activeKey={tab}
+                onChange={setTab}
+                type="card"
+                size="small"
+                tabPosition="bottom"
+                tabBarExtraContent={{ right: status }}
+                tabBarStyle={{ margin: 0, flexShrink: 0 }}
+                items={items}
             />
         </div>
     );

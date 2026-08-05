@@ -2,14 +2,14 @@ import { Alert, Button, Space, Typography } from 'antd';
 
 const { Text } = Typography;
 
-export default function MetadataGridNotices({
+export default function GridNotices({
     recoveredDraft,
     onRestoreDraft,
     onDismissDraft,
     conflicts = [],
-    dynamicStatsCount = 0,
+    extra = null,
 }) {
-    if (!recoveredDraft && conflicts.length === 0 && dynamicStatsCount === 0) return null;
+    if (!recoveredDraft && conflicts.length === 0 && !extra) return null;
 
     return (
         <div style={{ flexShrink: 0, padding: '8px 8px 0' }}>
@@ -57,16 +57,7 @@ export default function MetadataGridNotices({
                 />
             )}
 
-            {dynamicStatsCount > 0 && (
-                <Alert
-                    style={{ marginBottom: 8 }}
-                    type="info"
-                    showIcon
-                    closable
-                    message={`${dynamicStatsCount} capa(s) calculan su numeralia desde la base de datos`}
-                    description="Sus celdas de numeralia están bloqueadas aquí: se editan en la pestaña Metadatos de la capa."
-                />
-            )}
+            {extra}
         </div>
     );
 }

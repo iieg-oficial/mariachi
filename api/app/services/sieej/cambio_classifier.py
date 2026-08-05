@@ -13,6 +13,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.services.sieej.definicion_validator import LIMITE_FECHA_HOY
+
 _CAMPOS_SIGNIFICATIVOS = (
     "label",
     "type",
@@ -71,7 +73,28 @@ def _validacion_mas_estricta(old: dict[str, Any], new: dict[str, Any]) -> bool:
     for key in ("max", "maxLength"):
         if key in nv and (key not in ov or nv[key] < ov[key]):
             return True
+    if _limite_fecha_endurece(ov.get("minDate"), nv.get("minDate"), mayor_endurece=True):
+        return True
+    if _limite_fecha_endurece(ov.get("maxDate"), nv.get("maxDate"), mayor_endurece=False):
+        return True
     return False
+
+
+def _limite_fecha_endurece(
+    viejo: Any, nuevo: Any, *, mayor_endurece: bool
+) -> bool:
+    """Compara limites de `date`/`date_range`. Quitarlos relaja; ponerlos
+    donde no habia endurece. Entre `hoy` y una fecha fija no hay orden
+    estable, asi que cualquier cambio se trata como endurecimiento."""
+    if not nuevo:
+        return False
+    if not viejo:
+        return True
+    if nuevo == viejo:
+        return False
+    if LIMITE_FECHA_HOY in (nuevo, viejo):
+        return True
+    return nuevo > viejo if mayor_endurece else nuevo < viejo
 
 
 def _campo_rompe(old: dict[str, Any], new: dict[str, Any]) -> bool:

@@ -23,6 +23,7 @@ class AcervoFileUpdate(CamelCaseInput):
     alt: str | None = None
     description: str | None = None
     folder: str | None = None
+    download_name: str | None = Field(default=None, max_length=200)
 
 
 class FileMoveRequest(CamelCaseInput):

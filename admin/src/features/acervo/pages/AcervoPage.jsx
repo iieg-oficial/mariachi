@@ -549,6 +549,7 @@ const Acervo = () => {
         editForm.setFieldsValue({
             alt: file.metadata?.alt || '',
             description: file.metadata?.description || '',
+            downloadName: file.metadata?.downloadName || '',
             folder: file.folder
         });
         setEditModalVisible(true);
@@ -1464,6 +1465,15 @@ const Acervo = () => {
                         name="description"
                     >
                         <Input.TextArea rows={3} />
+                    </Form.Item>
+
+                    <Form.Item
+                        label="Nombre de descarga"
+                        name="downloadName"
+                        tooltip="Nombre con el que se guarda el archivo al descargarlo. La URL no cambia."
+                        rules={[{ max: 200, message: 'Máximo 200 caracteres' }]}
+                    >
+                        <Input placeholder={currentFile?.originalName || 'archivo.pdf'} />
                     </Form.Item>
 
                     <Form.Item

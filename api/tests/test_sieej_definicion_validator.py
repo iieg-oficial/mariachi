@@ -571,3 +571,51 @@ def test_validation_rules_file_constraints():
     rule_kinds = {r["rule"] for r in rules}
     assert "maxSizeMB" in rule_kinds
     assert "accept" in rule_kinds
+
+
+def _def_con_fecha(tipo="date", **validation):
+    d = _def_minima()
+    campo = {"name": "fecha_captura", "label": "Fecha", "type": tipo}
+    if validation:
+        campo["validation"] = validation
+    d["steps"][0]["fields"].append(campo)
+    return d
+
+
+def test_limite_fecha_hoy_pasa():
+    validar_definicion(_def_con_fecha(maxDate="hoy"))
+
+
+def test_limite_fecha_fija_pasa():
+    validar_definicion(_def_con_fecha(minDate="2020-01-01", maxDate="hoy"))
+
+
+def test_limite_fecha_en_rango_pasa():
+    validar_definicion(_def_con_fecha(tipo="date_range", maxDate="hoy"))
+
+
+def test_limite_fecha_formato_invalido_falla():
+    with pytest.raises(DefinicionInvalidaError):
+        validar_definicion(_def_con_fecha(maxDate="31/12/2026"))
+
+
+def test_limite_fecha_inexistente_falla():
+    with pytest.raises(DefinicionInvalidaError):
+        validar_definicion(_def_con_fecha(maxDate="2026-02-31"))
+
+
+def test_limite_fecha_no_string_falla():
+    with pytest.raises(DefinicionInvalidaError):
+        validar_definicion(_def_con_fecha(minDate=2026))
+
+
+def test_limites_fecha_invertidos_falla():
+    with pytest.raises(DefinicionInvalidaError):
+        validar_definicion(_def_con_fecha(minDate="2026-12-31", maxDate="2020-01-01"))
+
+
+def test_validation_rules_incluye_limites_de_fecha():
+    rules = definicion_to_validation_rules(_def_con_fecha(maxDate="hoy"))
+    limite = next(r for r in rules if r["rule"] == "maxDate")
+    assert limite["field_path"] == "general.fecha_captura"
+    assert limite["value"] == "hoy"

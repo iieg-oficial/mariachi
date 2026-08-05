@@ -1,6 +1,9 @@
 import io
 import logging
 import os
+import re
+import unicodedata
+from urllib.parse import quote
 
 import urllib3
 from fastapi import UploadFile
@@ -15,6 +18,33 @@ from app.models.acervo_bucket import AcervoBucket
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
+
+
+_UNSAFE_HEADER_CHARS = re.compile(r'[\r\n"\\]')
+MAX_REWRITE_BYTES = 100 * 1024 * 1024
+
+
+class ObjectTooLargeError(Exception):
+    pass
+
+
+def build_content_disposition(download_name: str, disposition: str = "inline") -> str:
+    clean = _UNSAFE_HEADER_CHARS.sub("", download_name).strip()[:200]
+    if not clean:
+        raise ValueError("download_name vacio tras sanear")
+    ascii_name = (
+        unicodedata.normalize("NFKD", clean).encode("ascii", "ignore").decode("ascii").strip()
+    )
+    header = f'{disposition}; filename="{ascii_name or "archivo"}"'
+    if ascii_name != clean:
+        header = f"{header}; filename*=UTF-8''{quote(clean, safe='')}"
+    return header
+
+
+def _download_metadata(download_name: str | None) -> dict[str, str] | None:
+    if not download_name:
+        return None
+    return {"Content-Disposition": build_content_disposition(download_name)}
 
 
 def resolve_bucket_credentials(access_key_ref: str | None) -> tuple[str, str]:
@@ -99,7 +129,9 @@ class AcervoClient:
         for key in [k for k in cls._cache if k.startswith(f"{bucket_name}:")]:
             del cls._cache[key]
 
-    async def upload_file(self, file: UploadFile, object_name: str) -> str:
+    async def upload_file(
+        self, file: UploadFile, object_name: str, download_name: str | None = None
+    ) -> str:
         try:
             stream = file.file
             stream.seek(0, os.SEEK_END)
@@ -111,6 +143,7 @@ class AcervoClient:
                 stream,
                 size,
                 content_type=file.content_type,
+                metadata=_download_metadata(download_name),
             )
             return self.get_file_url(object_name)
         except S3Error as e:
@@ -123,13 +156,49 @@ class AcervoClient:
             CopySource(self.bucket_name, source_name),
         )
 
-    def put_bytes(self, object_name: str, data: bytes, content_type: str) -> None:
+    def set_download_name(self, object_name: str, download_name: str | None) -> None:
+        stat = self.client.stat_object(self.bucket_name, object_name)
+        size = stat.size or 0
+        if size > MAX_REWRITE_BYTES:
+            raise ObjectTooLargeError(
+                f"El archivo pesa {size / 1024 / 1024:.0f} MB y el nombre de descarga solo "
+                f"puede cambiarse en archivos de hasta {MAX_REWRITE_BYTES // 1024 // 1024} MB."
+            )
+        metadata: dict[str, str] = {
+            key: value
+            for key, value in (stat.metadata or {}).items()
+            if key.lower().startswith("x-amz-meta-")
+        }
+        if download_name:
+            metadata["Content-Disposition"] = build_content_disposition(download_name)
+        response = self.client.get_object(self.bucket_name, object_name)
+        try:
+            self.client.put_object(
+                self.bucket_name,
+                object_name,
+                response,
+                size,
+                content_type=stat.content_type or "application/octet-stream",
+                metadata=metadata or None,
+            )
+        finally:
+            response.close()
+            response.release_conn()
+
+    def put_bytes(
+        self,
+        object_name: str,
+        data: bytes,
+        content_type: str,
+        download_name: str | None = None,
+    ) -> None:
         self.client.put_object(
             self.bucket_name,
             object_name,
             io.BytesIO(data),
             len(data),
             content_type=content_type,
+            metadata=_download_metadata(download_name),
         )
 
     def put_empty_object(self, object_name: str) -> None:

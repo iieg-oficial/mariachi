@@ -13,6 +13,7 @@ from app.services.grid_batch import (
     json_list_item_field,
     json_slot_field,
 )
+from app.services.mapalab_notifier import notify_tree_changed
 
 NUMERALIA_SLOTS = 8
 
@@ -242,7 +243,12 @@ def fetch_rows(
     return rows
 
 
-def _guard(states: dict[str, dict], grid_field: GridField) -> str | None:
+def _guard(
+    conn: Connection,
+    states: dict[str, dict],
+    grid_field: GridField,
+    value: Any,
+) -> str | None:
     if grid_field.table != 'stats' or grid_field.columns != ('values',):
         return None
     if _has_dynamic_stats((states.get('stats') or {}).get('stats_config')):
@@ -266,6 +272,7 @@ SPEC = GridSpec(
     columns_meta=COLUMNS_META,
     guard=_guard,
     history_table=HISTORY_TABLE,
+    on_commit=notify_tree_changed,
 )
 
 
