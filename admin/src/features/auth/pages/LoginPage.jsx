@@ -203,7 +203,7 @@ export default function Login() {
                     style={{ height: 52, width: 'auto' }}
                 />
                 <TypoLink
-                    href="https://iieg.gob.mx/ns/wp-content/uploads/2025/06/Aviso_de_Privacidad_Integral_IIEG_06_2025.pdf"
+                    href="https://iieg.jalisco.gob.mx/aviso-de-privacidad"
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{
