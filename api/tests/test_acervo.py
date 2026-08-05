@@ -9,6 +9,11 @@ from app.models.acervo import AcervoFile, AcervoFolder
 from app.models.acervo_bucket import AcervoBucket
 from app.models.project import Project, UserProject
 from app.services import acervo_file_service
+from app.services.acervo import (
+    MAX_REWRITE_BYTES,
+    ObjectTooLargeError,
+    build_content_disposition,
+)
 from tests.conftest import ADMIN_PREFIX
 
 
@@ -31,6 +36,12 @@ class _FakeStream:
 
 def _s3_missing(object_name: str) -> S3Error:
     return S3Error("NoSuchKey", "not found", object_name, "", "", None)
+
+
+def _fake_metadata(download_name: str | None) -> dict[str, str]:
+    if not download_name:
+        return {}
+    return {"Content-Disposition": build_content_disposition(download_name)}
 
 
 class FakeAcervoClient:
@@ -56,7 +67,7 @@ class FakeAcervoClient:
     def invalidate_cache(cls, bucket_name=None):
         return None
 
-    async def upload_file(self, file, object_name):
+    async def upload_file(self, file, object_name, download_name=None):
         data = await file.read()
         self.objects[object_name] = {
             "name": object_name,
@@ -67,6 +78,7 @@ class FakeAcervoClient:
             "url": f"http://fake/{object_name}",
             "data": data,
             "content_type": getattr(file, "content_type", None),
+            "metadata": _fake_metadata(download_name),
         }
         return f"http://fake/{object_name}"
 
@@ -78,7 +90,23 @@ class FakeAcervoClient:
             size=obj.get("size", 0),
             etag=obj.get("etag", "fake"),
             content_type=obj.get("content_type"),
+            metadata=obj.get("metadata", {}),
         )
+
+    def set_download_name(self, object_name, download_name):
+        obj = self.objects.get(object_name)
+        if obj is None:
+            raise _s3_missing(object_name)
+        size = obj.get("size", 0)
+        if size > MAX_REWRITE_BYTES:
+            raise ObjectTooLargeError(f"El archivo pesa {size} bytes")
+        metadata = {
+            key: value
+            for key, value in (obj.get("metadata") or {}).items()
+            if key.lower().startswith("x-amz-meta-")
+        }
+        metadata.update(_fake_metadata(download_name))
+        obj["metadata"] = metadata
 
     def get_object_stream(self, object_name):
         obj = self.objects.get(object_name)
@@ -86,7 +114,7 @@ class FakeAcervoClient:
             raise _s3_missing(object_name)
         return _FakeStream(obj.get("data", b""))
 
-    def put_bytes(self, object_name, data, content_type):
+    def put_bytes(self, object_name, data, content_type, download_name=None):
         self.objects[object_name] = {
             "name": object_name,
             "size": len(data),
@@ -96,6 +124,7 @@ class FakeAcervoClient:
             "url": f"http://fake/{object_name}",
             "data": data,
             "content_type": content_type,
+            "metadata": _fake_metadata(download_name),
         }
 
     def list_objects(self, prefix="", recursive=True, limit=None):
