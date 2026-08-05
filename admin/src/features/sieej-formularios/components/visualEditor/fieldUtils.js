@@ -1,5 +1,20 @@
-import { DEFAULT_OPEN_RANGE_CATALOG } from '../../constants/definitionTypes';
+import dayjs from 'dayjs';
+import { DATE_LIMIT_HOY, DEFAULT_OPEN_RANGE_CATALOG } from '../../constants/definitionTypes';
 import { layoutOf, nearestCol, rowOfField, slotsOfRow } from './fieldLayout';
+
+const TIPOS_FECHA = ['date', 'date_range'];
+
+const dateLimitFromForm = (mode, value) => {
+    if (mode === 'today') return DATE_LIMIT_HOY;
+    if (mode === 'fixed' && value) return dayjs(value).format('YYYY-MM-DD');
+    return undefined;
+};
+
+const dateLimitToForm = (limite) => {
+    if (limite === DATE_LIMIT_HOY) return { mode: 'today', value: null };
+    if (limite) return { mode: 'fixed', value: dayjs(limite) };
+    return { mode: 'none', value: null };
+};
 
 const equalsToList = (equals) => (Array.isArray(equals) ? equals : [equals])
     .filter((v) => v !== undefined && v !== null && v !== '')
@@ -30,6 +45,12 @@ export const fieldFromFormValues = (values) => {
     if (values.pattern && values.patternMessage) validation.patternMessage = values.patternMessage;
     if (values.min != null) validation.min = values.min;
     if (values.max != null) validation.max = values.max;
+    if (TIPOS_FECHA.includes(values.type)) {
+        const minDate = dateLimitFromForm(values.minDateMode, values.minDateValue);
+        const maxDate = dateLimitFromForm(values.maxDateMode, values.maxDateValue);
+        if (minDate) validation.minDate = minDate;
+        if (maxDate) validation.maxDate = maxDate;
+    }
 
     const accept = Array.isArray(values.accept)
         ? values.accept.map((x) => x.trim()).filter(Boolean)
@@ -90,6 +111,10 @@ export const fieldToFormValues = (field, defaultCol = 1) => ({
     patternMessage: field?.validation?.patternMessage ?? '',
     min: field?.validation?.min,
     max: field?.validation?.max,
+    minDateMode: dateLimitToForm(field?.validation?.minDate).mode,
+    minDateValue: dateLimitToForm(field?.validation?.minDate).value,
+    maxDateMode: dateLimitToForm(field?.validation?.maxDate).mode,
+    maxDateValue: dateLimitToForm(field?.validation?.maxDate).value,
     bucket: field?.bucket ?? undefined,
     accept: field?.accept ?? [],
     maxSizeMB: field?.maxSizeMB,

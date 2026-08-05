@@ -290,3 +290,43 @@ def test_validar_datos_sigue_reportando_errores_reales():
     }
     with pytest.raises(DatosInvalidosError):
         validar_datos(snapshot, datos, estricto=False)
+
+
+def _def_fecha(validation):
+    return {
+        "version": 1,
+        "steps": [
+            {
+                "id": "general",
+                "type": "form",
+                "title": "General",
+                "fields": [
+                    {
+                        "name": "fecha",
+                        "label": "Fecha",
+                        "type": "date",
+                        "validation": validation,
+                    }
+                ],
+            }
+        ],
+    }
+
+
+def test_compat_descarta_limite_de_fecha_invalido():
+    out = normalizar_definicion(_def_fecha({"maxDate": "31/12/2026"}))
+    assert "validation" not in _fields(out, "general")["fecha"]
+    validar_definicion(out)
+
+
+def test_compat_conserva_limite_de_fecha_valido():
+    out = normalizar_definicion(_def_fecha({"minDate": "2020-01-01", "maxDate": "hoy"}))
+    validation = _fields(out, "general")["fecha"]["validation"]
+    assert validation == {"minDate": "2020-01-01", "maxDate": "hoy"}
+
+
+def test_compat_relaja_limites_de_fecha_invertidos():
+    out = normalizar_definicion(_def_fecha({"minDate": "2030-01-01", "maxDate": "2020-01-01"}))
+    validation = _fields(out, "general")["fecha"]["validation"]
+    assert validation == {"maxDate": "2020-01-01"}
+    validar_definicion(out)

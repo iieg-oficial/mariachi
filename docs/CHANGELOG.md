@@ -9,6 +9,91 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.121.0] - 2026-08-05
+
+### Agregado: nombre de descarga por archivo en acervo
+
+El explorador de acervo ya permite fijar el nombre con el que un archivo se guarda al descargarlo,
+independiente de su llave en el bucket. Se edita en el modal **Editar Archivo** (campo *Nombre de
+descarga*) y también puede mandarse al subir, en el `downloadName` del `POST /acervo`.
+
+El caso que lo motivó es el aviso de privacidad institucional, que pasa a servirse desde acervo en
+`iieg/avisos-de-privacidad.pdf` y se publica en `/aviso-de-privacidad`. Una llave sin fecha permite
+publicar una versión nueva sin tocar los frontends que la enlazan, pero descargarla dejaba un
+archivo con nombre inservible en la máquina de quien la consulta. Con el nombre de descarga, la URL
+queda estable y el archivo se guarda como `Aviso_de_Privacidad_Integral_IIEG_2025-06.pdf`.
+
+En ese caso concreto el gateway ya fija la cabecera en su `location`, así que el campo no es
+indispensable; sirve para cualquier otro documento de acervo que se enlace directo.
+
+Se emite como `Content-Disposition: inline`, así que los PDF siguen abriéndose en el navegador y el
+nombre solo aplica al guardar. Los nombres con acentos llevan además `filename*=UTF-8''…` (RFC
+5987) con respaldo ASCII, y se saltan comillas y saltos de línea para que un nombre no pueda
+inyectar cabeceras.
+
+**Se reescribe el objeto, no se copia.** SeaweedFS ignora `metadata_directive=REPLACE` en
+`copy_object` —tanto sobre la misma llave como hacia otra— y arrastra siempre la metadata del
+origen, así que la única vía es volver a subir el contenido con la cabecera nueva. Se hace por
+streaming, preservando `Content-Type` y la metadata de usuario, y se rechaza con **413** en
+archivos de más de 100 MB: cambiar una cabecera no justifica reescribir un ráster completo.
+
+### Cambiado: el aviso de privacidad del login se enlaza desde acervo
+
+`LoginPage` pasa a `https://iieg.jalisco.gob.mx/aviso-de-privacidad`. Mismo cambio en
+mapalab, sieej, minerva y sitio2026.
+
+**El dato vivo del footer de la home de mapalab no está en el código.** `home_sections` guarda
+`privacy_policy_href` en `payload_published` y `payload_draft`, y el frontend solo cae a su config
+local si viene vacío, así que en cada entorno hay que actualizarlo desde *Mapalab → Home → Footer →
+URL del aviso de privacidad*. La migración `b8c9d0e1f2a3` que lo sembró **no se editó**: es
+histórica y reescribirla no cambia ningún dato ya insertado.
+
+### Corregido: el proxy de acervo descartaba el `Content-Disposition`
+
+`GET /acervo/proxy/{bucket_id}/{path}` armaba sus cabeceras a mano y solo emitía `Cache-Control` y
+`Content-Length`, de modo que todo archivo de bucket privado servido por ahí perdía su nombre de
+descarga. Ahora se reenvía la cabecera del objeto cuando existe.
+
+## [1.120.0] - 2026-08-05
+
+### Agregado: límites de fecha configurables en los campos `date` y `date_range`
+
+Un campo de fecha del SIEEJ aceptaba cualquier valor con formato `YYYY-MM-DD`: nada impedía capturar
+una fecha futura en un levantamiento que documenta algo ya ocurrido. La definición gana
+`validation.minDate` y `validation.maxDate`, que aceptan una fecha ISO fija o el literal **`hoy`**.
+
+`hoy` es relativo a propósito: se resuelve **cuando se valida el envío**, no cuando se configura el
+formulario, así que un formulario abierto todo el año no necesita mantenimiento. El servidor lo
+resuelve en `America/Mexico_City` (`today_local()` en `app/core/time.py`) y no en UTC, porque entre
+las 18:00 y la medianoche hora local UTC ya avanzó de día y «hoy» habría dejado pasar mañana.
+
+- **Definición** (`definicion_validator`): el límite debe ser `hoy` o una fecha ISO existente —
+  `2026-02-31` se rechaza— y `minDate` no puede ser posterior a `maxDate` cuando ambos son fijos.
+  Los límites viajan además en `GET /formularios/:slug/schema` como reglas `minDate`/`maxDate` con
+  su valor literal, para que el frontend los resuelva del lado del cliente.
+- **Datos** (`datos_validator`): valida el valor contra los límites resueltos, en `date` y en cada
+  extremo de un `date_range` («la fecha final no puede ser posterior a hoy»).
+- **Compatibilidad** (`compat.py`): un límite mal formado se descarta y un par invertido pierde el
+  `minDate`, siguiendo la regla de que la normalización solo relaja.
+- **Clasificador de cambios**: poner un límite donde no había, o endurecer uno existente, **rompe**
+  —los envíos ya capturados pueden quedar fuera del rango—; quitarlo o ampliarlo es menor. Entre
+  `hoy` y una fecha fija no hay orden estable, así que cualquier cambio entre ambos se trata como
+  endurecimiento.
+
+En el editor de campos aparece **Límites de fecha** (`DateLimitsConfig.jsx`) con dos selectores,
+mínimo y máximo. El máximo ofrece «Sin límite», «Fecha de llenado» y «Fecha específica»; «Fecha de
+llenado» es el nombre visible del literal `hoy` y el atajo para «no permitir fechas futuras». El
+**mínimo solo ofrece las dos opciones fijas**: un mínimo relativo invalidaría cada día lo capturado
+el día anterior, y el envío empezaría a fallar al enviarse sin que nadie tocara el formulario. El
+backend sigue aceptando `minDate: "hoy"` para una definición escrita a mano —y el editor la muestra
+bien si ya la trae—, pero no lo propone. De paso, la configuración de los campos `file` (bucket,
+extensiones, tamaño) salió de `FieldForm.jsx` a `FileConfig.jsx`, que quedaba por encima del límite
+de 300 líneas.
+
+El renderer del SIEEJ consume los límites desde 1.58.0: deshabilita los días fuera de rango en el
+calendario. El servidor los vuelve a validar al guardar, así que la restricción no depende del
+cliente.
+
 ## [1.119.0] - 2026-08-03
 
 ### Agregado: pestaña de configuración en la captura masiva

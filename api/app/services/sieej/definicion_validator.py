@@ -17,6 +17,7 @@ Lanza `DefinicionInvalidaError` con mensaje descriptivo en el primer error.
 from __future__ import annotations
 
 import re
+from datetime import date
 from typing import Any
 
 FIELD_TYPES = {
@@ -36,12 +37,44 @@ STEP_TYPES = {"form", "repeater", "summary"}
 FILE_MAX_SIZE_MB_HARD_CAP = 100
 GRID_COLUMNS = 6
 COLSPAN_UNITS = {1: 6, 2: 3, 3: 2}
+TIPOS_FECHA = {"date", "date_range"}
+LIMITE_FECHA_HOY = "hoy"
+DATE_LIMIT_KEYS = ("minDate", "maxDate")
+
+_RE_FECHA_ISO = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 ValidationRule = dict[str, Any]
 
 
 class DefinicionInvalidaError(ValueError):
     """Error semantico en la definicion del formulario."""
+
+
+def es_limite_fecha(valor: Any) -> bool:
+    """Un limite de `date`/`date_range` es el literal `hoy` (relativo, se
+    resuelve al validar el envio) o una fecha ISO fija."""
+    if not isinstance(valor, str):
+        return False
+    if valor == LIMITE_FECHA_HOY:
+        return True
+    if not _RE_FECHA_ISO.match(valor):
+        return False
+    try:
+        date.fromisoformat(valor)
+    except ValueError:
+        return False
+    return True
+
+
+def limites_invertidos(validation: dict[str, Any]) -> bool:
+    minimo = validation.get("minDate")
+    maximo = validation.get("maxDate")
+    return bool(
+        minimo
+        and maximo
+        and LIMITE_FECHA_HOY not in (minimo, maximo)
+        and minimo > maximo
+    )
 
 
 def validar_definicion(definicion: Any) -> None:
@@ -229,6 +262,21 @@ def _validate_layout(field: dict[str, Any], step_id: str, name: str) -> None:
             )
 
 
+def _validar_limites_fecha(field: dict[str, Any], step_id: str, name: str) -> None:
+    validation = field.get("validation") or {}
+    for key in DATE_LIMIT_KEYS:
+        if key in validation and not es_limite_fecha(validation[key]):
+            raise DefinicionInvalidaError(
+                f"Step `{step_id}` field `{name}`: `validation.{key}` debe ser "
+                f"`{LIMITE_FECHA_HOY}` o una fecha `YYYY-MM-DD`."
+            )
+    if limites_invertidos(validation):
+        raise DefinicionInvalidaError(
+            f"Step `{step_id}` field `{name}`: `validation.minDate` no puede ser "
+            "posterior a `validation.maxDate`."
+        )
+
+
 def _validar_date_range_config(field: dict[str, Any], step_id: str, name: str) -> None:
     for key in ("openStart", "openEnd"):
         if key in field and not isinstance(field[key], bool):
@@ -312,6 +360,9 @@ def _validar_field(
                     raise DefinicionInvalidaError(
                         f"Step `{step_id}` field `{name}`: option {opt_idx} sin `label`."
                     )
+
+    if field_type in TIPOS_FECHA:
+        _validar_limites_fecha(field, step_id, name)
 
     if field_type == "date_range":
         _validar_date_range_config(field, step_id, name)
@@ -450,7 +501,7 @@ def definicion_to_validation_rules(
                     rules.append({**base, "rule": "required"})
 
             validation = field.get("validation") or {}
-            for key in ("minLength", "maxLength", "pattern", "min", "max"):
+            for key in ("minLength", "maxLength", "pattern", "min", "max", *DATE_LIMIT_KEYS):
                 if key in validation:
                     rule = {**base, "rule": key, "value": validation[key]}
                     if key == "pattern" and "patternMessage" in validation:

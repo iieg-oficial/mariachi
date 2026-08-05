@@ -1,5 +1,8 @@
+from datetime import timedelta
+
 import pytest
 
+from app.core.time import today_local
 from app.services.sieej.datos_validator import DatosInvalidosError, validar_datos
 
 
@@ -455,3 +458,81 @@ def test_repeater_con_show_when_dentro_del_item():
     paths = {e["path"] for e in exc.value.errores}
     assert "bd[1].url" in paths
     assert "bd[0].url" not in paths
+
+
+def _def_con_limites(tipo="date", **validation):
+    return {
+        "version": 1,
+        "steps": [
+            {
+                "id": "general",
+                "type": "form",
+                "title": "General",
+                "fields": [
+                    {
+                        "name": "fecha_captura",
+                        "label": "Fecha",
+                        "type": tipo,
+                        "validation": validation,
+                    }
+                ],
+            }
+        ],
+    }
+
+
+def _iso(delta_dias: int) -> str:
+    return (today_local() + timedelta(days=delta_dias)).isoformat()
+
+
+def test_fecha_futura_falla_con_max_hoy():
+    with pytest.raises(DatosInvalidosError) as exc:
+        validar_datos(
+            _def_con_limites(maxDate="hoy"),
+            {"general": {"fecha_captura": _iso(1)}},
+            estricto=False,
+        )
+    assert exc.value.errores[0]["path"] == "general.fecha_captura"
+
+
+def test_fecha_de_hoy_pasa_con_max_hoy():
+    validar_datos(
+        _def_con_limites(maxDate="hoy"),
+        {"general": {"fecha_captura": _iso(0)}},
+        estricto=True,
+    )
+
+
+def test_fecha_anterior_al_minimo_fijo_falla():
+    with pytest.raises(DatosInvalidosError):
+        validar_datos(
+            _def_con_limites(minDate="2020-01-01"),
+            {"general": {"fecha_captura": "2019-12-31"}},
+            estricto=False,
+        )
+
+
+def test_fecha_vacia_no_dispara_limite():
+    validar_datos(
+        _def_con_limites(maxDate="hoy"),
+        {"general": {"fecha_captura": ""}},
+        estricto=False,
+    )
+
+
+def test_rango_con_extremo_futuro_falla():
+    with pytest.raises(DatosInvalidosError) as exc:
+        validar_datos(
+            _def_con_limites("date_range", maxDate="hoy"),
+            {"general": {"fecha_captura": {"start": _iso(-10), "end": _iso(5)}}},
+            estricto=False,
+        )
+    assert "final" in exc.value.errores[0]["msg"]
+
+
+def test_rango_dentro_de_limites_pasa():
+    validar_datos(
+        _def_con_limites("date_range", minDate="2020-01-01", maxDate="hoy"),
+        {"general": {"fecha_captura": {"start": "2020-01-02", "end": _iso(0)}}},
+        estricto=True,
+    )

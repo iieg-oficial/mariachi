@@ -22,10 +22,14 @@ from typing import Any
 
 from app.services.sieej.definicion_validator import (
     COLSPAN_UNITS,
+    DATE_LIMIT_KEYS,
     FIELD_TYPES,
     FILE_MAX_SIZE_MB_HARD_CAP,
     GRID_COLUMNS,
     STEP_TYPES,
+    TIPOS_FECHA,
+    es_limite_fecha,
+    limites_invertidos,
 )
 
 BUCKET_POR_DEFECTO = "sieej"
@@ -237,7 +241,10 @@ def _normalizar_field(
         _normalizar_validation_numero(field)
     elif tipo == "file":
         _normalizar_file(field)
-    elif tipo == "date_range":
+
+    if tipo in TIPOS_FECHA:
+        _normalizar_validation_fecha(field)
+    if tipo == "date_range":
         _normalizar_date_range(field)
 
     if primera_tab is not None and field.get("tab") not in tab_ids:
@@ -394,6 +401,22 @@ def _normalizar_validation_numero(field: dict[str, Any]) -> None:
             or not isinstance(validation[key], (int, float))
         ):
             validation.pop(key)
+    if not validation:
+        field.pop("validation", None)
+
+
+def _normalizar_validation_fecha(field: dict[str, Any]) -> None:
+    validation = field.get("validation")
+    if validation is None:
+        return
+    if not isinstance(validation, dict):
+        field.pop("validation", None)
+        return
+    for key in DATE_LIMIT_KEYS:
+        if key in validation and not es_limite_fecha(validation[key]):
+            validation.pop(key)
+    if limites_invertidos(validation):
+        validation.pop("minDate", None)
     if not validation:
         field.pop("validation", None)
 
