@@ -3,6 +3,11 @@ name: Auto PR to Production
 on:
   push:
     branches: [develop]
+    paths-ignore: ['**.md', 'docs/**', '.gitignore', 'LICENSE']
+
+concurrency:
+  group: auto-pr-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: write
