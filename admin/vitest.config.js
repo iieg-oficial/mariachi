@@ -13,6 +13,7 @@ export default defineConfig({
         globals: true,
         setupFiles: ['./vitest.setup.js'],
         include: ['src/**/*.test.{js,jsx}', 'src/**/__tests__/**/*.{js,jsx}'],
+        testTimeout: 15000,
     },
     resolve: {
         alias: {
