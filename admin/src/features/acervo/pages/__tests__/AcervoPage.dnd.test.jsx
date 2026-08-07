@@ -6,10 +6,23 @@ vi.mock('@shared/hooks/useIsMobile', () => ({
     default: () => ({ isMobile: false }),
 }));
 
+const { mockGetAcervoFiles, esPrevisualizableMock } = vi.hoisted(() => ({
+    mockGetAcervoFiles: vi.fn(),
+    esPrevisualizableMock: (file) => Boolean(file?.url)
+        && !file?.isDir
+        && (file?.type || '').startsWith('image/'),
+}));
+
 vi.mock('@features/acervo/api/acervoService', () => ({
+    ACERVO_PAGE_SIZE: 100,
+    getAcervoFiles: mockGetAcervoFiles,
+    esPrevisualizable: esPrevisualizableMock,
+    toPublicUrl: (url) => url,
     default: {
         getBuckets: vi.fn(),
-        getAcervoFiles: vi.fn(),
+        getAcervoFiles: mockGetAcervoFiles,
+        toPublicUrl: (url) => url,
+        esPrevisualizable: esPrevisualizableMock,
         getFolders: vi.fn(),
         uploadAcervoFile: vi.fn(),
         initChunkedUpload: vi.fn(),
@@ -39,7 +52,7 @@ describe('AcervoPage drag & drop', () => {
         vi.clearAllMocks();
         localStorage.clear();
         acervoService.getBuckets.mockResolvedValue([BUCKET]);
-        acervoService.getAcervoFiles.mockResolvedValue([]);
+        acervoService.getAcervoFiles.mockResolvedValue({ items: [], total: 0, limit: 100, offset: 0, hasMore: false });
         acervoService.getFolders.mockResolvedValue([]);
         acervoService.getAcervoResumen.mockResolvedValue({ buckets: [], totals: {} });
         acervoService.uploadAcervoFile.mockResolvedValue({ id: 1 });
