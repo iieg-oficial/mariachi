@@ -10,7 +10,8 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, iieg]
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: ./${{ inputs.app }}
