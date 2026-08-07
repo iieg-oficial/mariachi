@@ -24,7 +24,8 @@ jobs:
 
   create-pr:
     needs: [backend, admin]
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, iieg]
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v6

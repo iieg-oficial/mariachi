@@ -7,7 +7,8 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, iieg]
+    timeout-minutes: 30
     environment: production
     steps:
       - name: Deploy via SSH
@@ -30,7 +31,8 @@ jobs:
 
   health-check:
     needs: deploy
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, iieg]
+    timeout-minutes: 10
     steps:
       - name: Health check
         run: |
@@ -52,7 +54,8 @@ jobs:
   notify:
     needs: [deploy, health-check]
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, iieg]
+    timeout-minutes: 5
     environment: production
     steps:
       - name: Checkout
