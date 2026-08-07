@@ -441,7 +441,7 @@ def test_listar_media_oculta_reportes_en_mariachi(admin_session, db_session, adm
     client = admin_session["client"]
     response = client.get(f"{ADMIN_PREFIX}/acervo?bucket_id={bucket.id}&recursive=true")
     assert response.status_code == 200
-    names = [item["name"] for item in response.json()]
+    names = [item["name"] for item in response.json()["items"]]
     assert "docs/manual.pdf" in names
     assert all(not n.startswith("reportes/") for n in names)
 
@@ -459,7 +459,7 @@ def test_crear_carpeta_vacia_visible_y_oculta_marker(admin_session, db_session):
 
     listado = client.get(f"{ADMIN_PREFIX}/acervo?bucket_id={bucket.id}")
     assert listado.status_code == 200
-    names = [item["name"] for item in listado.json()]
+    names = [item["name"] for item in listado.json()["items"]]
     assert "iconos/" in names
     assert all(not n.endswith("/.keep") for n in names)
 
@@ -559,7 +559,7 @@ def test_listar_media_carpetas_traen_peso_y_fecha(admin_session, db_session):
     client = admin_session["client"]
     response = client.get(f"{ADMIN_PREFIX}/acervo?bucket_id={bucket.id}")
     assert response.status_code == 200, response.text
-    por_nombre = {r["name"]: r for r in response.json()}
+    por_nombre = {r["name"]: r for r in response.json()["items"]}
 
     assert por_nombre["envios/"]["size"] == 350
     assert por_nombre["envios/"]["uploadedAt"] == "2026-06-12T12:00:00+00:00"
@@ -575,7 +575,7 @@ def test_listar_media_agrega_por_nivel_al_entrar_a_carpeta(admin_session, db_ses
     client = admin_session["client"]
     response = client.get(f"{ADMIN_PREFIX}/acervo?bucket_id={bucket.id}&folder=envios")
     assert response.status_code == 200, response.text
-    por_nombre = {r["name"]: r for r in response.json()}
+    por_nombre = {r["name"]: r for r in response.json()["items"]}
 
     assert por_nombre["envios/1/"]["size"] == 100
     assert por_nombre["envios/1/"]["uploadedAt"] == "2026-06-10T12:00:00+00:00"
@@ -590,7 +590,7 @@ def test_listar_media_sin_agregado_si_supera_el_tope(admin_session, db_session, 
     client = admin_session["client"]
     response = client.get(f"{ADMIN_PREFIX}/acervo?bucket_id={bucket.id}")
     assert response.status_code == 200, response.text
-    por_nombre = {r["name"]: r for r in response.json()}
+    por_nombre = {r["name"]: r for r in response.json()["items"]}
 
     assert por_nombre["envios/"]["size"] == 0
     assert por_nombre["envios/"]["uploadedAt"] is None
@@ -865,7 +865,7 @@ def test_serialize_thumbnail_por_tipo(admin_session, db_session):
 
     listado = client.get(f"{ADMIN_PREFIX}/acervo?bucket_id={bucket.id}&folder=mapas&recursive=true")
     assert listado.status_code == 200
-    by_name = {item["originalName"]: item for item in listado.json()}
+    by_name = {item["originalName"]: item for item in listado.json()["items"]}
     assert f"/acervo/thumb/{bucket.acervo_bucket}/" in by_name["mapa.png"]["thumbnail"]
     assert by_name["icono.svg"]["thumbnail"] == by_name["icono.svg"]["url"]
 
@@ -877,7 +877,7 @@ def test_serialize_thumbnail_privado_sin_miniatura(admin_session, db_session):
 
     listado = client.get(f"{ADMIN_PREFIX}/acervo?bucket_id={bucket.id}&folder=mapas&recursive=true")
     assert listado.status_code == 200
-    by_name = {item["originalName"]: item for item in listado.json()}
+    by_name = {item["originalName"]: item for item in listado.json()["items"]}
     assert by_name["mapa.png"]["thumbnail"] is None
 
 

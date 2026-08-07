@@ -5,12 +5,15 @@ import {
     FileOutlined, AppstoreOutlined, BarsOutlined, DownloadOutlined, CopyOutlined, EyeOutlined, HomeOutlined, DragOutlined,
     InfoCircleOutlined, CodeOutlined, BookOutlined, PictureOutlined, PieChartOutlined, LockOutlined
 } from '@ant-design/icons';
-import acervoService from '@features/acervo/api/acervoService';
+import acervoService, { esPrevisualizable } from '@features/acervo/api/acervoService';
 import AcervoSectionHeader from '@features/acervo/components/AcervoSectionHeader';
 import AcervoStatsModal from '@features/acervo/components/AcervoStatsModal';
+import FilePreviewModal from '@features/acervo/components/FilePreviewModal';
 import FileSnippetsModal from '@features/acervo/components/FileSnippetsModal';
 import FileSnippets from '@features/acervo/components/FileSnippets';
+import useAcervoFiles from '@features/acervo/hooks/useAcervoFiles';
 import AcervoHelpModal from '@features/documentacion/components/AcervoHelpModal';
+import InfiniteScrollSentinel from '@shared/components/InfiniteScrollSentinel';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import { message } from '@shared/services/message';
 
@@ -35,10 +38,8 @@ const renderTypeTag = (type, isDir) => {
 
 const Acervo = () => {
     const { isMobile } = useIsMobile();
-    const [loading, setLoading] = useState(true);
     const [buckets, setBuckets] = useState([]);
     const [selectedBucketId, setSelectedBucketId] = useState(null);
-    const [acervoFiles, setAcervoFiles] = useState([]);
     const [folders, setFolders] = useState([]);
     const [bucketStats, setBucketStats] = useState(null);
     const [statsModalOpen, setStatsModalOpen] = useState(false);
@@ -129,24 +130,24 @@ const Acervo = () => {
         }
     }, []);
 
-    const loadAcervoFiles = useCallback(async () => {
-        if (!selectedBucketId) return;
-        setLoading(true);
-        try {
-            const data = await acervoService.getAcervoFiles({
-                bucketId: selectedBucketId,
-                folder: currentPath,
-                type: selectedType,
-                search: searchText,
-                recursive: Boolean(searchText),
-            });
-            setAcervoFiles(data);
-        } catch {
-            message.error('Error al cargar archivos');
-        } finally {
-            setLoading(false);
-        }
-    }, [selectedBucketId, currentPath, selectedType, searchText]);
+    const handleFilesError = useCallback(() => message.error('Error al cargar archivos'), []);
+
+    const {
+        items: acervoFiles,
+        total: totalArchivos,
+        hasMore,
+        loading,
+        loadingMore,
+        loadMore,
+        reload: loadAcervoFiles,
+    } = useAcervoFiles({
+        bucketId: selectedBucketId,
+        folder: currentPath,
+        type: selectedType,
+        search: searchText,
+        recursive: Boolean(searchText),
+        onError: handleFilesError,
+    });
 
     const loadBucketStats = useCallback(async () => {
         if (!selectedBucketId) return;
@@ -194,12 +195,6 @@ const Acervo = () => {
         loadFolders(selectedBucketId);
         loadBucketStats();
     }, [selectedBucketId, loadFolders, loadBucketStats]);
-
-    useEffect(() => {
-        loadAcervoFiles();
-    }, [loadAcervoFiles]);
-
-    const visibleAcervoFiles = selectedBucketId ? acervoFiles : [];
 
     const finalizeBatch = async () => {
         const batch = uploadBatch.current;
@@ -588,9 +583,16 @@ const Acervo = () => {
     };
 
     const handlePreview = (file) => {
+        if (!esPrevisualizable(file)) return;
         setCurrentFile(file);
         setPreviewVisible(true);
     };
+
+    const tooltipCopiar = (file) => (
+        <span style={{ wordBreak: 'break-all' }}>
+            Copiar al portapapeles: {acervoService.toPublicUrl(file.url)}
+        </span>
+    );
 
     const handleOpenMove = (file) => {
         setCurrentFile(file);
@@ -833,18 +835,28 @@ const Acervo = () => {
                     )}
                     {!record.isDir && (
                         <>
-                            <Tooltip title="Previsualizar el archivo">
-                                <Button
-                                    type="text"
-                                    icon={<EyeOutlined />}
-                                    onClick={() => handlePreview(record)}
-                                />
-                            </Tooltip>
-                            <Tooltip title="Copiar la URL pública (con dominio) al portapapeles">
+                            {esPrevisualizable(record) && (
+                                <Tooltip title="Previsualizar el archivo">
+                                    <Button
+                                        type="text"
+                                        icon={<EyeOutlined />}
+                                        onClick={() => handlePreview(record)}
+                                    />
+                                </Tooltip>
+                            )}
+                            <Tooltip title={tooltipCopiar(record)}>
                                 <Button
                                     type="text"
                                     icon={<CopyOutlined />}
                                     onClick={() => handleCopyUrl(record.url)}
+                                />
+                            </Tooltip>
+                            <Tooltip title="Descargar el archivo">
+                                <Button
+                                    type="text"
+                                    icon={<DownloadOutlined />}
+                                    href={record.url}
+                                    download
                                 />
                             </Tooltip>
                             {!bucketProtegido && (
@@ -879,15 +891,9 @@ const Acervo = () => {
         }
     ];
 
-    const sortedFiles = [...visibleAcervoFiles].sort((a, b) => {
-        if (a.isDir && !b.isDir) return -1;
-        if (!a.isDir && b.isDir) return 1;
-        return (a.originalName || '').localeCompare(b.originalName || '');
-    });
-
     const renderGridView = () => (
         <Row gutter={[16, 16]}>
-            {sortedFiles.map(file => {
+            {acervoFiles.map(file => {
                 const isSelected = selectedFiles.includes(file.id);
                 return (
                     <Col key={file.id} xs={24} sm={12} md={8} lg={6} xl={4}>
@@ -979,8 +985,18 @@ const Acervo = () => {
                                 <Tooltip key="move" title="Mover a otra carpeta">
                                     <DragOutlined onClick={(e) => { e.stopPropagation(); handleOpenMove(file); }} />
                                 </Tooltip>,
-                                <Tooltip key="copy" title="Copiar la URL pública (con dominio) al portapapeles">
+                                <Tooltip key="copy" title={tooltipCopiar(file)}>
                                     <CopyOutlined onClick={(e) => { e.stopPropagation(); handleCopyUrl(file.url); }} />
+                                </Tooltip>,
+                                <Tooltip key="download" title="Descargar el archivo">
+                                    <Button
+                                        type="text"
+                                        size="small"
+                                        icon={<DownloadOutlined />}
+                                        href={file.url}
+                                        download
+                                        onClick={(e) => e.stopPropagation()}
+                                    />
                                 </Tooltip>,
                                 <Tooltip key="edit" title="Editar texto alternativo, descripción y carpeta">
                                     <EditOutlined onClick={(e) => { e.stopPropagation(); handleEdit(file); }} />
@@ -1258,15 +1274,15 @@ const Acervo = () => {
                             </span>
                         </div>
                     )}
-                    <Spin spinning={loading}>
-                        {visibleAcervoFiles.length === 0 ? (
+                    <Spin spinning={loading || !selectedBucketId}>
+                        {acervoFiles.length === 0 ? (
                             <Empty description="No hay archivos" />
                         ) : viewMode === 'grid' ? (
                             renderGridView()
                         ) : (
                             <Table
                                 columns={columns}
-                                dataSource={sortedFiles}
+                                dataSource={acervoFiles}
                                 rowKey="id"
                                 size={isMobile ? 'small' : 'middle'}
                                 rowSelection={{
@@ -1291,9 +1307,19 @@ const Acervo = () => {
                                     ),
                                 }}
                                 scroll={{ x: 'max-content' }}
-                                pagination={{ simple: isMobile }}
+                                pagination={false}
                             />
                         )}
+                        <InfiniteScrollSentinel
+                            hasMore={hasMore}
+                            loading={loading}
+                            loadingMore={loadingMore}
+                            onLoadMore={loadMore}
+                            loaded={acervoFiles.length}
+                            total={totalArchivos}
+                            label="archivo"
+                            labelPlural="archivos"
+                        />
                     </Spin>
                 </div>
             </Card>
@@ -1601,52 +1627,12 @@ const Acervo = () => {
                 isMobile={isMobile}
             />
 
-            <Modal
-                title={currentFile?.originalName}
+            <FilePreviewModal
+                file={currentFile}
                 open={previewVisible}
-                onCancel={() => setPreviewVisible(false)}
-                footer={[
-                    currentFile?.type?.startsWith('image/') && !currentFile?.type?.includes('svg') && (
-                        <Button key="original" icon={<EyeOutlined />} href={acervoService.toPublicUrl(currentFile?.url)} target="_blank" rel="noreferrer">
-                            Ver original
-                        </Button>
-                    ),
-                    <Button key="copy" icon={<CopyOutlined />} onClick={() => handleCopyUrl(currentFile?.url)}>
-                        Copiar URL
-                    </Button>,
-                    <Button key="download" icon={<DownloadOutlined />} href={currentFile?.url} download>
-                        Descargar
-                    </Button>
-                ]}
-                width={isMobile ? '100%' : 800}
-                centered={isMobile}
-            >
-                {currentFile && (
-                    <div>
-                        {currentFile.type?.startsWith('image/') ? (
-                            <Image src={acervoService.thumbVariant(currentFile, 1280)} style={{ width: '100%' }} />
-                        ) : (
-                            <div style={{ textAlign: 'center', padding: 40 }}>
-                                {getFileIcon(currentFile.type)}
-                                <div style={{ marginTop: 16 }}>
-                                    <Tag>{currentFile.type}</Tag>
-                                </div>
-                                <div style={{ marginTop: 8 }}>
-                                    {acervoService.formatFileSize(currentFile.size)}
-                                </div>
-                            </div>
-                        )}
-                        <div style={{ marginTop: 16, padding: 16, background: '#f5f5f5', borderRadius: 4 }}>
-                            <div style={{ wordBreak: 'break-all' }}><strong>URL:</strong> {acervoService.toPublicUrl(currentFile.url)}</div>
-                            <div><strong>Subido por:</strong> {currentFile.uploadedByName}</div>
-                            <div><strong>Fecha:</strong> {currentFile.uploadedAt ? new Date(currentFile.uploadedAt).toLocaleString('es-MX') : '—'}</div>
-                            {currentFile.metadata?.alt && (
-                                <div><strong>Alt:</strong> {currentFile.metadata.alt}</div>
-                            )}
-                        </div>
-                    </div>
-                )}
-            </Modal>
+                onClose={() => setPreviewVisible(false)}
+                isMobile={isMobile}
+            />
 
             <Modal
                 title="Conflictos de nombre"

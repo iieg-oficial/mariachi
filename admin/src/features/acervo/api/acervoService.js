@@ -124,10 +124,14 @@ export const listBucketObjects = async (bucketId, prefix = '') => {
     }
 };
 
+export const ACERVO_PAGE_SIZE = 100;
+
+const EMPTY_PAGE = { items: [], total: 0, limit: ACERVO_PAGE_SIZE, offset: 0, hasMore: false };
+
 export const getAcervoFiles = async (filters = {}) => {
     try {
         if (!filters.bucketId) {
-            return [];
+            return EMPTY_PAGE;
         }
         const params = new URLSearchParams({ bucket_id: String(filters.bucketId) });
 
@@ -135,6 +139,8 @@ export const getAcervoFiles = async (filters = {}) => {
         if (filters.type) params.append('type', filters.type);
         if (filters.search) params.append('search', filters.search);
         if (filters.recursive !== undefined) params.append('recursive', String(filters.recursive));
+        params.append('limit', String(filters.limit || ACERVO_PAGE_SIZE));
+        params.append('offset', String(filters.offset || 0));
 
         const response = await api.get(`/acervo?${params.toString()}`);
         return response.data;
@@ -410,6 +416,18 @@ export const thumbVariant = (file, width) => {
     return /[?&]w=\d+/.test(thumb) ? thumb.replace(/([?&]w=)\d+/, `$1${width}`) : thumb;
 };
 
+const TIPOS_EMBEBIBLES = ['application/pdf', 'application/json', 'application/xml'];
+
+export const esPrevisualizable = (file) => {
+    const tipo = file?.isDir ? '' : file?.type || '';
+    if (!tipo || !file?.url) return false;
+    return tipo.startsWith('image/')
+        || tipo.startsWith('video/')
+        || tipo.startsWith('audio/')
+        || tipo.startsWith('text/')
+        || TIPOS_EMBEBIBLES.includes(tipo);
+};
+
 export const formatFileSize = (bytes) => {
     if (bytes === 0) return '0 Bytes';
 
@@ -497,6 +515,7 @@ export const getImageDimensions = (file) => {
 };
 
 export default {
+    ACERVO_PAGE_SIZE,
     getBuckets,
     getAllBuckets,
     createBucket,
@@ -521,6 +540,7 @@ export default {
     completeChunkedUpload,
     toPublicUrl,
     thumbVariant,
+    esPrevisualizable,
 
     formatFileSize,
     getFileIcon,

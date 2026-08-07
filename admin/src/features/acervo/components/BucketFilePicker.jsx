@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Breadcrumb, Button, Input, Modal, Pagination, Segmented, Select, Typography } from 'antd';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Breadcrumb, Button, Input, Modal, Segmented, Select, Typography } from 'antd';
 import { AppstoreOutlined, CloudUploadOutlined, HomeOutlined, UnorderedListOutlined } from '@ant-design/icons';
-import { getAcervoFiles } from '@features/acervo/api/acervoService';
 import useAccessibleBuckets from '@features/acervo/hooks/useAccessibleBuckets';
+import useAcervoFiles from '@features/acervo/hooks/useAcervoFiles';
 import BucketFileUploader from '@features/acervo/components/BucketFileUploader';
 import BucketFileGrid from '@features/acervo/components/BucketFileGrid';
 import BucketFileList from '@features/acervo/components/BucketFileList';
+import InfiniteScrollSentinel from '@shared/components/InfiniteScrollSentinel';
 import { message } from '@shared/services/message';
 
 const { Text } = Typography;
@@ -32,20 +33,14 @@ export default function BucketFilePicker({
     const [activeBucketId, setActiveBucketId] = useState(bucketId ?? null);
     const [viewMode, setViewMode] = useState(() => mode || loadViewMode('grid'));
     const [currentPath, setCurrentPath] = useState('');
-    const [objects, setObjects] = useState([]);
-    const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
-    const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useState(10);
     const [uploaderOpen, setUploaderOpen] = useState(false);
-    const [reloadKey, setReloadKey] = useState(0);
+    const [scrollNode, setScrollNode] = useState(null);
 
     useEffect(() => {
         if (mode) return;
         try { window.localStorage.setItem(VIEW_MODE_KEY, viewMode); } catch { /* ignore */ }
     }, [viewMode, mode]);
-
-    useEffect(() => { setPage(1); }, [search, currentPath, activeBucketId]);
 
     useEffect(() => {
         if (bucketId != null) {
@@ -67,35 +62,33 @@ export default function BucketFilePicker({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeBucketId]);
 
-    useEffect(() => {
-        if (!open || !activeBucketId) return;
-        let cancelled = false;
-        setLoading(true);
-        getAcervoFiles({
-            bucketId: activeBucketId,
-            folder: currentPath || undefined,
-            search: search || undefined,
-            recursive: Boolean(search),
-        })
-            .then((data) => { if (!cancelled) setObjects(data || []); })
-            .catch(() => message.error('No se pudieron listar los archivos del bucket'))
-            .finally(() => { if (!cancelled) setLoading(false); });
-        return () => { cancelled = true; };
-    }, [open, activeBucketId, currentPath, search, reloadKey]);
+    const handleFilesError = useCallback(
+        () => message.error('No se pudieron listar los archivos del bucket'),
+        [],
+    );
+
+    const {
+        items: sortedFiles,
+        total,
+        hasMore,
+        loading,
+        loadingMore,
+        loadMore,
+        reload,
+    } = useAcervoFiles({
+        bucketId: activeBucketId,
+        folder: currentPath || undefined,
+        search: search || undefined,
+        recursive: Boolean(search),
+        enabled: open,
+        onError: handleFilesError,
+    });
 
     const activeBucket = useMemo(
         () => accessibleBuckets.find((b) => b.id === activeBucketId) || null,
         [accessibleBuckets, activeBucketId],
     );
     const showBucketSelector = !bucketId && accessibleBuckets.length > 1;
-
-    const sortedFiles = useMemo(() =>
-        [...objects].sort((a, b) => {
-            if (a.isDir && !b.isDir) return -1;
-            if (!a.isDir && b.isDir) return 1;
-            return (a.originalName || a.name || '').localeCompare(b.originalName || b.name || '');
-        }),
-    [objects]);
 
     const breadcrumbItems = useMemo(() => {
         const linkStyle = { cursor: 'pointer', background: 'none', border: 'none', padding: 0, color: 'inherit', font: 'inherit' };
@@ -122,11 +115,6 @@ export default function BucketFilePicker({
         return items;
     }, [currentPath, activeBucket]);
 
-    const paginated = useMemo(() => {
-        const start = (page - 1) * pageSize;
-        return sortedFiles.slice(start, start + pageSize);
-    }, [sortedFiles, page, pageSize]);
-
     const handlePick = (record) => {
         const basename = record.originalName || record.name.split('/').pop();
         onSelect({
@@ -141,12 +129,11 @@ export default function BucketFilePicker({
     const handleEnterDir = (record) => {
         const cleanName = record.name.endsWith('/') ? record.name : `${record.name}/`;
         setCurrentPath(cleanName);
-        setPage(1);
     };
 
     const handleUploaded = () => {
         setUploaderOpen(false);
-        setReloadKey((k) => k + 1);
+        reload();
     };
 
     const headerStyle = {
@@ -157,20 +144,6 @@ export default function BucketFilePicker({
         padding: '12px 16px',
         borderBottom: '1px solid #f0f0f0',
     };
-    const footerStyle = {
-        position: 'sticky',
-        bottom: 0,
-        zIndex: 11,
-        background: '#fff',
-        padding: '8px 16px',
-        borderTop: '1px solid #f0f0f0',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: 8,
-    };
-
     return (
         <Modal
             title={title}
@@ -238,30 +211,22 @@ export default function BucketFilePicker({
                     )}
                 </div>
 
-                <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '0 16px' }}>
+                <div ref={setScrollNode} style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '0 16px' }}>
                     {viewMode === 'grid' ? (
-                        <BucketFileGrid records={paginated} loading={loading} onPick={handlePick} onEnterDir={handleEnterDir} />
+                        <BucketFileGrid records={sortedFiles} loading={loading} onPick={handlePick} onEnterDir={handleEnterDir} />
                     ) : (
-                        <BucketFileList records={paginated} loading={loading} onPick={handlePick} onEnterDir={handleEnterDir} />
+                        <BucketFileList records={sortedFiles} loading={loading} onPick={handlePick} onEnterDir={handleEnterDir} />
                     )}
+                    <InfiniteScrollSentinel
+                        hasMore={hasMore}
+                        loading={loading}
+                        loadingMore={loadingMore}
+                        onLoadMore={loadMore}
+                        loaded={sortedFiles.length}
+                        total={total}
+                        root={scrollNode}
+                    />
                 </div>
-
-                {sortedFiles.length > 0 && (
-                    <div style={footerStyle}>
-                        <Text type="secondary" style={{ fontSize: 12 }}>
-                            {sortedFiles.length} elemento{sortedFiles.length === 1 ? '' : 's'}
-                        </Text>
-                        <Pagination
-                            current={page}
-                            pageSize={pageSize}
-                            total={sortedFiles.length}
-                            onChange={(p, ps) => { setPage(p); setPageSize(ps); }}
-                            showSizeChanger
-                            pageSizeOptions={[10, 25, 50, 100]}
-                            size="small"
-                        />
-                    </div>
-                )}
             </div>
 
             {allowUpload && (

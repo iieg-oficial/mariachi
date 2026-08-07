@@ -9,6 +9,41 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.122.0] - 2026-08-07
+
+### Cambiado: el listado de acervo se pagina y se recorre con scroll infinito
+
+`GET /acervo` deja de devolver el bucket completo en cada consulta. Ahora acepta `limit` (100 por
+omisión, tope 1000) y `offset`, y responde un sobre `{items, total, limit, offset, hasMore}` en vez
+de una lista. Un bucket con miles de objetos ya no manda todo el catálogo en la primera carga: el
+explorador pide la siguiente página al llegar al final de la lista, con un botón **Cargar más** como
+respaldo cuando el navegador no soporta `IntersectionObserver`.
+
+**El orden pasa al servidor.** Antes cada vista reordenaba en el navegador lo que hubiera recibido
+(carpetas primero, luego por nombre); con páginas eso desordena, así que el criterio se aplica ahora
+en `listar_media`, ignorando acentos y mayúsculas, y el frontend consume el orden tal cual. Los
+`sorter` de columna de la tabla siguen operando sobre lo que ya está cargado.
+
+**El peso agregado de las carpetas solo se calcula en las páginas que traen carpetas.** Cuesta un
+listado recursivo del prefijo y, como las carpetas van primero, las páginas siguientes ya no lo
+pagan. La consulta de archivos registrados también se acota al prefijo que se está listando.
+
+El selector de archivos (`BucketFilePicker`) cambia su paginador por el mismo scroll infinito, y
+`ThumbnailDiagnostics` pide directamente las 16 imágenes que diagnostica en vez de filtrarlas de
+todo el bucket.
+
+### Cambiado: el clic en un archivo abre el archivo, no una ficha de datos
+
+El modal de información —miniatura, URL, quién subió, fecha— desaparece. Todo lo que mostraba ya
+está en la lista, salvo la URL, que pasa al tooltip del botón **Copiar**: se lee completa antes de
+copiarla. En su lugar, el clic abre el contenido: las imágenes en el visor de Ant Design (original,
+con zoom y rotación) y los archivos legibles en el navegador —PDF, texto, JSON, XML, audio y video—
+en un modal embebido. Los formatos que el navegador no puede mostrar (ZIP, respaldos, binarios) ya
+no abren nada.
+
+Como el modal era el único punto de descarga de un archivo suelto, las acciones de la tabla y de las
+tarjetas ganan botón de **Descargar**.
+
 ## [1.121.0] - 2026-08-05
 
 ### Agregado: nombre de descarga por archivo en acervo

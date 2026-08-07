@@ -26,6 +26,9 @@ FOLDER_PLACEHOLDER = ".keep"
 
 FOLDER_AGGREGATE_MAX_OBJECTS = 10000
 
+LISTADO_PAGE_SIZE = 100
+LISTADO_MAX_PAGE_SIZE = 1000
+
 _SAFE_NAME_RE = re.compile(r"[^a-zA-Z0-9._-]+")
 
 
@@ -399,6 +402,13 @@ def folder_aggregates(
     return agregados
 
 
+def orden_listado(entry: dict) -> tuple[int, str]:
+    """Carpetas primero y luego por nombre, ignorando acentos y mayúsculas."""
+    nombre = entry.get("originalName") or entry.get("name") or ""
+    plano = unicodedata.normalize("NFKD", nombre).encode("ascii", "ignore").decode("ascii")
+    return (0 if entry.get("isDir") else 1, (plano or nombre).casefold())
+
+
 def listar_media(
     db: Session,
     bucket: AcervoBucket,
@@ -406,7 +416,9 @@ def listar_media(
     type_filter: str | None,
     search: str | None,
     recursive: bool,
-) -> list[dict]:
+    limit: int = LISTADO_PAGE_SIZE,
+    offset: int = 0,
+) -> dict:
     client = AcervoClient.for_bucket(bucket)
     prefix = ""
     if folder and folder != "/":
@@ -422,28 +434,18 @@ def listar_media(
             if not any(obj["name"].startswith(p) for p in hidden_prefixes)
         ]
 
-    directorios = [
-        obj for obj in bucket_objects
-        if obj.get("is_dir") or obj["name"].endswith("/")
-    ]
-    if directorios and not recursive:
-        agregados = folder_aggregates(client, prefix, hidden_prefixes)
-        for obj in directorios:
-            agregado = agregados.get(obj["name"])
-            if agregado:
-                obj["size"] = agregado["size"]
-                obj["last_modified"] = agregado["last_modified"]
-
     for obj in bucket_objects:
         if not obj.get("is_dir") and not obj["name"].endswith("/"):
             obj["url"] = client.get_file_url(obj["name"])
 
-    local_items = (
+    query_local = (
         db.query(AcervoFile)
         .options(joinedload(AcervoFile.bucket))
         .filter(AcervoFile.bucket_id == bucket.id)
-        .all()
     )
+    if prefix:
+        query_local = query_local.filter(AcervoFile.name.startswith(prefix))
+    local_items = query_local.all()
     local_by_name = {item.name: item for item in local_items}
 
     results: list[dict] = []
@@ -477,7 +479,26 @@ def listar_media(
             or s in (r.get("originalName") or "").lower()
         ]
 
-    return results
+    results.sort(key=orden_listado)
+    total = len(results)
+    pagina = results[offset:offset + limit]
+
+    directorios = [entry for entry in pagina if entry.get("isDir")]
+    if directorios and not recursive:
+        agregados = folder_aggregates(client, prefix, hidden_prefixes)
+        for entry in directorios:
+            agregado = agregados.get(entry["name"])
+            if agregado:
+                entry["size"] = agregado["size"]
+                entry["uploadedAt"] = agregado["last_modified"]
+
+    return {
+        "items": pagina,
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+        "hasMore": offset + len(pagina) < total,
+    }
 
 
 def serialize_folder(folder: AcervoFolder) -> dict:

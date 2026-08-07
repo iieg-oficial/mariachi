@@ -40,7 +40,7 @@ _write_rate_limit = rate_limit(max_requests=60, window_seconds=60.0, scope='acer
 _upload_rate_limit = rate_limit(max_requests=240, window_seconds=60.0, scope='acervo_upload')
 
 
-@router.get("", response_model=list[dict])
+@router.get("", response_model=dict)
 async def listar_media(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
@@ -49,9 +49,18 @@ async def listar_media(
     type: str | None = Query(None),
     search: str | None = Query(None),
     recursive: bool = Query(False, description="Si false, devuelve solo el primer nivel del prefix (incluye carpetas)"),
+    limit: int = Query(
+        acervo_file_service.LISTADO_PAGE_SIZE,
+        ge=1,
+        le=acervo_file_service.LISTADO_MAX_PAGE_SIZE,
+        description="Tamaño de página del listado",
+    ),
+    offset: int = Query(0, ge=0, description="Elementos a saltar antes de la página"),
 ):
     bucket = acervo_file_service.resolve_bucket_or_403(bucket_id, current_user, db)
-    return acervo_file_service.listar_media(db, bucket, folder, type, search, recursive)
+    return acervo_file_service.listar_media(
+        db, bucket, folder, type, search, recursive, limit=limit, offset=offset,
+    )
 
 
 @router.get("/proxy/{bucket_id}/{object_path:path}")

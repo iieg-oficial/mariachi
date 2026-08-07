@@ -3,10 +3,19 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import BucketFilePicker from '@features/acervo/components/BucketFilePicker';
 
 vi.mock('@features/acervo/api/acervoService', () => ({
+    ACERVO_PAGE_SIZE: 100,
     getAcervoFiles: vi.fn(),
     getBuckets: vi.fn(() => Promise.resolve([])),
     formatFileSize: (bytes) => `${bytes} B`,
 }));
+
+const pagina = (items, hasMore = false) => ({
+    items,
+    total: items.length,
+    limit: 100,
+    offset: 0,
+    hasMore,
+});
 
 import { getAcervoFiles } from '@features/acervo/api/acervoService';
 
@@ -43,7 +52,7 @@ const FOLDER_DATE = new Date(FOLDER_RECORD.uploadedAt).toLocaleDateString('es-MX
 describe('BucketFilePicker', () => {
     beforeEach(() => {
         getAcervoFiles.mockReset();
-        getAcervoFiles.mockResolvedValue(SAMPLE_FILES);
+        getAcervoFiles.mockResolvedValue(pagina(SAMPLE_FILES));
     });
 
     it('no llama a getAcervoFiles cuando open=false', () => {
@@ -71,8 +80,11 @@ describe('BucketFilePicker', () => {
             expect(getAcervoFiles).toHaveBeenCalledWith({
                 bucketId: 1,
                 folder: undefined,
+                type: undefined,
                 search: undefined,
                 recursive: false,
+                limit: 100,
+                offset: 0,
             });
         });
         expect(await screen.findByText('perfil.jpg')).toBeInTheDocument();
@@ -103,7 +115,7 @@ describe('BucketFilePicker', () => {
     });
 
     it('las carpetas muestran peso y fecha agregados en la vista de lista', async () => {
-        getAcervoFiles.mockResolvedValue([FOLDER_RECORD]);
+        getAcervoFiles.mockResolvedValue(pagina([FOLDER_RECORD]));
         render(
             <BucketFilePicker
                 open
@@ -118,7 +130,7 @@ describe('BucketFilePicker', () => {
     });
 
     it('las carpetas muestran peso y fecha agregados en las cards', async () => {
-        getAcervoFiles.mockResolvedValue([FOLDER_RECORD]);
+        getAcervoFiles.mockResolvedValue(pagina([FOLDER_RECORD]));
         render(
             <BucketFilePicker
                 open
@@ -149,9 +161,34 @@ describe('BucketFilePicker', () => {
             expect(getAcervoFiles).toHaveBeenCalledWith({
                 bucketId: 1,
                 folder: undefined,
+                type: undefined,
                 search: 'perfil',
                 recursive: true,
+                limit: 100,
+                offset: 0,
             });
+        });
+    });
+
+    it('pide la siguiente pagina con el offset acumulado', async () => {
+        getAcervoFiles.mockResolvedValue({ ...pagina(SAMPLE_FILES, true), total: 6 });
+        render(
+            <BucketFilePicker
+                open
+                onClose={vi.fn()}
+                onSelect={vi.fn()}
+                bucketId={1}
+            />,
+        );
+        await screen.findByText('perfil.jpg');
+        expect(screen.getByText('3 de 6 elementos')).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Cargar más' }));
+
+        await waitFor(() => {
+            expect(getAcervoFiles).toHaveBeenCalledWith(
+                expect.objectContaining({ offset: 3, limit: 100 }),
+            );
         });
     });
 });

@@ -57,8 +57,13 @@ export default function ThumbnailDiagnostics() {
         setLoading(true);
         setProbes({});
         try {
-            const data = await acervoService.getAcervoFiles({ bucketId, recursive: true });
-            const imgs = (data || [])
+            const data = await acervoService.getAcervoFiles({
+                bucketId,
+                recursive: true,
+                type: 'image/',
+                limit: MAX_ITEMS,
+            });
+            const imgs = (data?.items || [])
                 // Solo raster: los SVG pasan tal cual (vectorial), no se comprimen.
                 .filter((f) => !f.isDir && f.type?.startsWith('image/') && !f.type.includes('svg'))
                 .slice(0, MAX_ITEMS);
