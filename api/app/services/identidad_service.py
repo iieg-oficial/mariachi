@@ -8,6 +8,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.models.identidad import Marca, MarcaCampo, MarcaFuente, MarcaToken
+from app.services.identidad_qss import render_tokens_qss
 
 PREFIJOS_CSS: tuple[tuple[str, str], ...] = (
     ("font.family.", "--font-"),
@@ -307,6 +308,7 @@ def artefactos(db: Session, marca: Marca) -> dict[str, str]:
         "theme.css": render_theme_css(tokens),
         "tokens.css": render_tokens_css(tokens),
         "fonts.css": render_fonts_css(fuentes),
+        "tokens.qss": render_tokens_qss(tokens, fuentes),
     }
     for nombre, contenido in render_tokens_json(tokens).items():
         salida[f"tokens/{nombre}"] = contenido

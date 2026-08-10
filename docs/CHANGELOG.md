@@ -9,6 +9,48 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.123.0] - 2026-08-10
+
+### Agregado: colores de la marca `iieg` en el catálogo de identidad
+
+La semilla de identidad cargó espaciados, radios y tipografía de `iieg`, pero **ni un solo color**:
+30 tokens y ninguno del grupo `color`. Mientras tanto, el morado `#5C2472`, el azul `#2e4372` y el
+grafito `#465055` vivían hardcodeados en el CSS de mapalab, que es justo lo que la norma prohíbe
+(«nunca hardcodear; si falta un token se agrega al catálogo y se regenera»). Cualquier consumidor
+nuevo —el plugin de QGIS es el primero— no tenía de dónde tomar la paleta.
+
+La migración `1dent1dad0002` agrega los cinco colores base. Contrastes verificados sobre blanco:
+
+| Token | Valor | Contraste | Uso |
+|---|---|---|---|
+| `color.primary` | `#5C2472` | 10.77:1 | cumple AA; botones y selección |
+| `color.secondary` | `#2e4372` | 9.71:1 | cumple AA; encabezados y datos |
+| `color.accent` | `#FF8300` | **2.47:1** | **no cumple AA como texto**; solo fondo o acento |
+| `color.text` | `#465055` | 8.27:1 | cumple AA; texto principal |
+| `color.bg` | `#FFFFFF` | — | fondo |
+
+El naranja repite el hallazgo que ya estaba documentado para `jalisco`, y por eso su descripción en
+el catálogo lo dice explícitamente: quien lo tome para texto tiene el aviso delante.
+
+### Agregado: `tokens.qss`, sexto artefacto del módulo Identidad
+
+Los cinco artefactos existentes sirven a consumidores web. Un cliente de escritorio Qt —el plugin
+de QGIS— no puede usar ninguno: QSS es un subconjunto de CSS 2.1 **sin variables**, así que ni
+`theme.css` ni `tokens.css` le sirven. `render_tokens_qss` emite reglas ya resueltas desde los
+mismos tokens, y el módulo lo entrega junto a los demás en el ZIP y por `/artefactos/tokens.qss`.
+
+Tres decisiones que lo hacen seguro de aplicar:
+
+- **Convierte `rem` a píxeles.** Qt no entiende `rem`; un `0.25rem` sin traducir se ignora en
+  silencio y el estilo queda a medias.
+- **Solo emite marca.** Fondos, bordes y texto base se dejan en `palette(...)`, del tema del
+  anfitrión. Un plugin que impone su paleta se vuelve ilegible en el tema oscuro de QGIS, y la
+  identidad exige WCAG 2.1 AA.
+- **El acento nunca sale como color de texto**, por sus 2.47:1. Hay un test que lo fija.
+
+Si una marca no tiene tokens de color, el QSS sale sin una sola regla de color en vez de inventar
+valores por defecto.
+
 ## [1.122.0] - 2026-08-07
 
 ### Cambiado: el listado de acervo se pagina y se recorre con scroll infinito

@@ -22,6 +22,7 @@ TIPOS = {
     "theme.css": "text/css; charset=utf-8",
     "tokens.css": "text/css; charset=utf-8",
     "fonts.css": "text/css; charset=utf-8",
+    "tokens.qss": "text/plain; charset=utf-8",
 }
 
 
