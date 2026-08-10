@@ -1,7 +1,5 @@
 """Tests del detalle y soft-delete respondent /formularios/mis-envios/{id}."""
 import pytest
-
-from tests.conftest import PERMISOS_REPORTAR, TODOS_LOS_PERMISOS, login_as
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
@@ -21,6 +19,7 @@ from app.models.sieej import (
     formulario_usuario,
 )
 from app.models.user import Usuario
+from tests.conftest import PERMISOS_REPORTAR, TODOS_LOS_PERMISOS, login_as
 
 
 def _is_pg_only(table) -> bool:

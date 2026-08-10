@@ -1,6 +1,4 @@
 import pytest
-
-from tests.conftest import PERMISOS_REPORTAR, TODOS_LOS_PERMISOS, login_as
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
@@ -19,6 +17,7 @@ from app.models.sieej import (
     usuario_grupo,
 )
 from app.models.user import Usuario
+from tests.conftest import PERMISOS_REPORTAR, TODOS_LOS_PERMISOS, login_as
 
 settings = get_settings()
 ADMIN_PREFIX = settings.admin_prefix
