@@ -14,6 +14,7 @@ HIGHLIGHT_COLOR_PRESETS = {"morado", "naranja", "sombreado"}
 HEX_COLOR_PATTERN = r"^#[0-9A-Fa-f]{6}$"
 HighlightColor = str
 HighlightShape = Literal["area", "linea", "off"]
+GeometryType = Literal["point", "line", "polygon", "raster"]
 
 
 def _validate_highlight_color(value: str | None) -> str | None:
@@ -249,6 +250,7 @@ class LayerBase(CamelCaseInput):
     badge: LayerBadge | None = None
     highlight_color: HighlightColor | None = Field(default=None, serialization_alias="highlightColor")
     highlight_shape: HighlightShape | None = Field(default=None, serialization_alias="highlightShape")
+    geometry_type: GeometryType | None = Field(default=None, serialization_alias="geometryType")
 
     model_config = ConfigDict(populate_by_name=True, from_attributes=True)
 
@@ -346,6 +348,7 @@ class LayerUpdate(CamelCaseInput):
     badge: LayerBadge | None = None
     highlight_color: HighlightColor | None = Field(default=None, serialization_alias="highlightColor")
     highlight_shape: HighlightShape | None = Field(default=None, serialization_alias="highlightShape")
+    geometry_type: GeometryType | None = Field(default=None, serialization_alias="geometryType")
 
     model_config = ConfigDict(populate_by_name=True)
 

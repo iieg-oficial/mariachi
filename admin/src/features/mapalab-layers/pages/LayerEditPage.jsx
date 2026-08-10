@@ -34,6 +34,7 @@ import {
     isTabVisible,
     isPropertyOfGroup,
 } from '@features/mapalab-layers/constants/nodeTypes';
+import { GEOMETRY_TYPE_OPTIONS } from '@features/mapalab-layers/constants/layerConfigCatalogs';
 import MunicipioFieldPicker from '@features/mapalab-layers/components/MunicipioFieldPicker';
 import { findNodeContext } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
 import { message } from '@shared/services/message';
@@ -230,6 +231,7 @@ export default function LayerEditPage() {
             imageFormat: data.imageFormat ?? data.image_format ?? 'image/png',
             antialias: data.antialias ?? 'text',
             wfsAvailable: data.wfsAvailable,
+            geometryType: data.geometryType ?? data.geometry_type ?? null,
             downloadable: data.downloadable,
             timeEnabled: data.timeEnabled,
             defaultDate: data.defaultDate ?? data.default_date ?? null,
@@ -809,6 +811,13 @@ export default function LayerEditPage() {
                         extra="Permite consultar la capa via WFS (Web Feature Service) para obtener features puntuales. Necesario para infobox al hacer click."
                     >
                         <Switch />
+                    </Form.Item>
+                    <Form.Item
+                        label="Tipo de geometría"
+                        name="geometryType"
+                        extra="Se usa para el ícono que identifica la capa en el panel de capas activas del visor y en el árbol del plugin de QGIS. Lo llena solo el job `geometry-type` de dataengine leyendo el DescribeFeatureType de GeoServer; se ajusta a mano cuando la capa no se publica por WFS y no hay de dónde deducirlo."
+                    >
+                        <Select allowClear options={GEOMETRY_TYPE_OPTIONS} placeholder="Sin determinar" />
                     </Form.Item>
                     <Form.Item
                         label="Descargable"

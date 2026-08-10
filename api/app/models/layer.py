@@ -104,6 +104,7 @@ class Layer(DataEngineBase):
     badge = Column(JSONB, nullable=True)
     highlight_color = Column(String(20), nullable=True)
     highlight_shape = Column(String(20), nullable=True)
+    geometry_type = Column(String(20), nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=text("NOW()"), nullable=False)
     updated_at = Column(
