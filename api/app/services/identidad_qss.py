@@ -155,7 +155,7 @@ def render_tokens_qss(tokens: list[MarcaToken], fuentes: list[MarcaFuente]) -> s
 
     if surface_field:
         bloques.append("QTreeView, QTreeWidget {")
-        bloques.append(f"    background-color: {surface_field};")
+        bloques.append(f"    background-color: {bg or '#FFFFFF'};")
         bloques.append(f"    border-radius: {radius_lg}px;")
         bloques.append("}")
         bloques.append("")
@@ -223,7 +223,7 @@ def render_tokens_qss(tokens: list[MarcaToken], fuentes: list[MarcaFuente]) -> s
         bloques.append(f"    border-radius: {radius_sm}px;")
         bloques.append("}")
         bloques.append("")
-        hover = accent_soft or _rgba(accent or primary, 0.18)
+        hover = _rgba(text or primary, 0.08)
         bloques.append("QTreeView::item:hover, QTreeWidget::item:hover {")
         bloques.append(f"    background-color: {hover};")
         bloques.append("    color: palette(text);")
