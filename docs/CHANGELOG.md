@@ -51,6 +51,11 @@ Tres decisiones que lo hacen seguro de aplicar:
 Si una marca no tiene tokens de color, el QSS sale sin una sola regla de color en vez de inventar
 valores por defecto.
 
+Emite seis roles, para que un consumidor exprese jerarquía sin repetir hex: `primary` (acción
+principal), `secondary` (contorno que se rellena al pasar el cursor), `quiet` (acción terciaria, sin
+recuadro), `title`, `heading` y `badge`. Incluye además estilos de árbol (`hover`, radios, sin
+borde), que es la vista donde más se nota que un panel es ajeno a su anfitrión.
+
 ## [1.122.0] - 2026-08-07
 
 ### Cambiado: el listado de acervo se pagina y se recorre con scroll infinito
