@@ -78,6 +78,8 @@ def render_tokens_qss(tokens: list[MarcaToken], fuentes: list[MarcaFuente]) -> s
     accent_deep = indice.get("color.accent-deep")
     accent_soft = indice.get("color.accent-soft")
     secondary = indice.get("color.secondary")
+    primary_deep = indice.get("color.primary-deep")
+    surface_field = indice.get("color.surface-field")
 
     familia = _familia(indice)
     radius_sm = _a_px(indice.get("radius.sm"), 4)
@@ -123,13 +125,16 @@ def render_tokens_qss(tokens: list[MarcaToken], fuentes: list[MarcaFuente]) -> s
         bloques.append("    color: palette(disabled-text);")
         bloques.append("}")
         bloques.append("")
-        seleccion = accent_deep or primary
-        sobre_seleccion = bg or "#FFFFFF"
-        bloques.append("/* Se usa la variante oscura del acento, no el acento base: sobre")
-        bloques.append("   #FF8300 el blanco da 2.47:1 y ningun texto cumple AA salvo negro. */")
+        seleccion = accent_soft or primary
+        sobre_seleccion = accent_deep or (bg or "#FFFFFF")
+        bloques.append("/* Seleccion: superficie clara del acento con el acento oscuro en el")
+        bloques.append("   texto (4.86:1). El acento base da 2.09:1 sobre ese fondo. El lado")
+        bloques.append("   izquierdo va sin radio para que empalme con la rama teñida. */")
         bloques.append("QTreeView::item:selected, QTreeWidget::item:selected {")
         bloques.append(f"    background-color: {seleccion};")
         bloques.append(f"    color: {sobre_seleccion};")
+        bloques.append("    border-top-left-radius: 0px;")
+        bloques.append("    border-bottom-left-radius: 0px;")
         bloques.append("}")
         bloques.append("")
         bloques.append("QLineEdit:focus {")
@@ -143,6 +148,22 @@ def render_tokens_qss(tokens: list[MarcaToken], fuentes: list[MarcaFuente]) -> s
     bloques.append("    border: 1px solid palette(mid);")
     bloques.append("}")
     bloques.append("")
+
+    if surface_field:
+        bloques.append("/* Campo de busqueda: misma superficie, radio y color de texto que")
+        bloques.append("   el buscador del visor, sin borde y con el foco en el primario. */")
+        bloques.append("QLineEdit[brandRole=\"search\"] {")
+        bloques.append(f"    background-color: {surface_field};")
+        bloques.append(f"    color: {primary or text};")
+        bloques.append("    border: none;")
+        bloques.append(f"    border-radius: {radius_md}px;")
+        bloques.append(f"    padding: {space_3}px {space_3}px;")
+        bloques.append("}")
+        bloques.append("")
+        bloques.append("QLineEdit[brandRole=\"search\"]:focus {")
+        bloques.append(f"    border: 1px solid {primary_deep or primary};")
+        bloques.append("}")
+        bloques.append("")
 
     if primary:
         bloques.append("QPushButton[brandRole=\"secondary\"] {")
