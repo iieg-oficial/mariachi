@@ -1,0 +1,234 @@
+application:
+  code: mariachi
+  name: Mariachi
+  description: Panel de administracion y API central del ecosistema IIEG
+  homepage_url: http://localhost:5173
+  redirect_uris:
+    - http://localhost:8000/api/mariachi/autenticacion/callback
+
+permissions:
+  - key: mariachi.mapalab.view
+    name: Ver capas, catalogo y metadatos de MapaLab
+  - key: mariachi.mapalab.update
+    name: Editar capas, catalogo, metadatos y numeralia
+  - key: mariachi.mapalab_llaves.manage
+    name: Administrar las llaves de embebido de MapaLab
+  - key: mariachi.mapalab_propuestas.approve
+    name: Moderar propuestas de tarjeta del catalogo
+
+  - key: mariachi.portal.view
+    name: Ver paginas, menu e inicio del portal
+  - key: mariachi.portal.update
+    name: Editar paginas, menu e inicio del portal
+
+  - key: mariachi.sieej_formularios.view
+    name: Ver formularios de SIEEJ
+  - key: mariachi.sieej_formularios.create
+    name: Crear formularios de SIEEJ
+  - key: mariachi.sieej_formularios.update
+    name: Editar formularios de SIEEJ
+  - key: mariachi.sieej_formularios.delete
+    name: Eliminar formularios de SIEEJ
+  - key: mariachi.sieej_envios.view
+    name: Ver envios de SIEEJ
+  - key: mariachi.sieej_envios.create
+    name: Capturar y enviar un formulario
+  - key: mariachi.sieej_envios.update
+    name: Corregir o reabrir envios
+  - key: mariachi.sieej_envios.delete
+    name: Descartar un envio en borrador
+  - key: mariachi.sieej_envios.export
+    name: Exportar envios
+
+  - key: mariachi.acervo.view
+    name: Ver el Acervo
+  - key: mariachi.acervo.create
+    name: Subir archivos al Acervo
+  - key: mariachi.acervo.update
+    name: Mover o renombrar archivos del Acervo
+  - key: mariachi.acervo.delete
+    name: Borrar archivos del Acervo
+  - key: mariachi.acervo.manage
+    name: Administrar buckets y su proteccion
+
+  - key: mariachi.colibri_reportes.view
+    name: Ver reportes de Colibri
+  - key: mariachi.colibri_reportes.update
+    name: Triagear, asignar y resolver reportes
+  - key: mariachi.colibri_config.manage
+    name: Administrar tipos, direcciones, rutas y source apps
+
+  - key: mariachi.identidad.view
+    name: Ver marcas y tokens de identidad
+  - key: mariachi.identidad.update
+    name: Editar marcas y tokens de identidad
+
+  - key: mariachi.geoserver.view
+    name: Ver recursos y tipografias de GeoServer
+  - key: mariachi.geoserver.manage
+    name: Subir recursos y recargar GeoServer
+
+  - key: mariachi.actividad.view
+    name: Ver la bitacora de actividad
+
+  - key: mariachi.usuarios.view
+    name: Ver usuarios
+  - key: mariachi.usuarios.create
+    name: Crear usuarios
+  - key: mariachi.usuarios.update
+    name: Editar usuarios
+  - key: mariachi.usuarios.delete
+    name: Eliminar usuarios
+  - key: mariachi.usuarios.assign
+    name: Asignar accesos a usuarios
+
+  - key: mariachi.sistema.manage
+    name: Administrar la configuracion del sistema
+
+roles:
+  - name: MapaLab - consulta
+    description: Atomico. Ver capas, catalogo y metadatos
+    permissions:
+      - mariachi.mapalab.view
+  - name: MapaLab - edicion
+    description: Atomico. Editar capas, catalogo, metadatos y moderar propuestas
+    permissions:
+      - mariachi.mapalab.view
+      - mariachi.mapalab.update
+      - mariachi.mapalab_propuestas.approve
+  - name: MapaLab - llaves de embebido
+    description: Atomico. Administrar las llaves con que otros sitios embeben MapaLab
+    permissions:
+      - mariachi.mapalab_llaves.manage
+
+  - name: Portal - consulta
+    description: Atomico. Ver paginas, menu e inicio
+    permissions:
+      - mariachi.portal.view
+  - name: Portal - edicion
+    description: Atomico. Editar paginas, menu e inicio
+    permissions:
+      - mariachi.portal.view
+      - mariachi.portal.update
+
+  - name: SIEEJ - consulta
+    description: Atomico. Ver formularios y envios
+    permissions:
+      - mariachi.sieej_formularios.view
+      - mariachi.sieej_envios.view
+  - name: SIEEJ - administracion
+    description: Atomico. Disenar formularios y gestionar envios
+    permissions:
+      - mariachi.sieej_formularios.view
+      - mariachi.sieej_formularios.create
+      - mariachi.sieej_formularios.update
+      - mariachi.sieej_formularios.delete
+      - mariachi.sieej_envios.view
+      - mariachi.sieej_envios.update
+      - mariachi.sieej_envios.export
+  - name: SIEEJ - reportar
+    description: Atomico. Para dependencias externas. El filtro por dueno lo aplica mariachi
+    permissions:
+      - mariachi.sieej_formularios.view
+      - mariachi.sieej_envios.view
+      - mariachi.sieej_envios.create
+      - mariachi.sieej_envios.update
+      - mariachi.sieej_envios.delete
+
+  - name: Acervo - consulta
+    description: Atomico. Ver archivos y buckets
+    permissions:
+      - mariachi.acervo.view
+  - name: Acervo - carga
+    description: Atomico. Subir, mover y renombrar archivos
+    permissions:
+      - mariachi.acervo.view
+      - mariachi.acervo.create
+      - mariachi.acervo.update
+  - name: Acervo - administracion
+    description: Atomico. Borrar archivos y administrar buckets
+    permissions:
+      - mariachi.acervo.view
+      - mariachi.acervo.create
+      - mariachi.acervo.update
+      - mariachi.acervo.delete
+      - mariachi.acervo.manage
+
+  - name: Colibri - atencion
+    description: Atomico. Ver y triagear reportes
+    permissions:
+      - mariachi.colibri_reportes.view
+      - mariachi.colibri_reportes.update
+  - name: Colibri - configuracion
+    description: Atomico. Tipos, direcciones, rutas y source apps
+    permissions:
+      - mariachi.colibri_config.manage
+
+  - name: Identidad - administracion
+    description: Atomico. Marcas, tokens y artefactos de identidad visual
+    permissions:
+      - mariachi.identidad.view
+      - mariachi.identidad.update
+
+  - name: GeoServer - administracion
+    description: Atomico. Recursos y tipografias de Sextante
+    permissions:
+      - mariachi.geoserver.view
+      - mariachi.geoserver.manage
+
+  - name: Actividad - consulta
+    description: Atomico. Ver la bitacora del ecosistema
+    permissions:
+      - mariachi.actividad.view
+
+  - name: Usuarios - administracion
+    description: Atomico. Alta, baja y asignacion de accesos
+    permissions:
+      - mariachi.usuarios.view
+      - mariachi.usuarios.create
+      - mariachi.usuarios.update
+      - mariachi.usuarios.delete
+      - mariachi.usuarios.assign
+
+  - name: Sistema - administracion
+    description: Atomico. Configuracion del sistema
+    permissions:
+      - mariachi.sistema.manage
+
+  - name: Administrador
+    description: Compuesto. Todo mariachi. NO da acceso a vine ni a wacha, que son aplicaciones aparte
+    permissions:
+      - mariachi.mapalab.view
+      - mariachi.mapalab.update
+      - mariachi.mapalab_llaves.manage
+      - mariachi.mapalab_propuestas.approve
+      - mariachi.portal.view
+      - mariachi.portal.update
+      - mariachi.sieej_formularios.view
+      - mariachi.sieej_formularios.create
+      - mariachi.sieej_formularios.update
+      - mariachi.sieej_formularios.delete
+      - mariachi.sieej_envios.view
+      - mariachi.sieej_envios.create
+      - mariachi.sieej_envios.update
+      - mariachi.sieej_envios.delete
+      - mariachi.sieej_envios.export
+      - mariachi.acervo.view
+      - mariachi.acervo.create
+      - mariachi.acervo.update
+      - mariachi.acervo.delete
+      - mariachi.acervo.manage
+      - mariachi.colibri_reportes.view
+      - mariachi.colibri_reportes.update
+      - mariachi.colibri_config.manage
+      - mariachi.identidad.view
+      - mariachi.identidad.update
+      - mariachi.geoserver.view
+      - mariachi.geoserver.manage
+      - mariachi.actividad.view
+      - mariachi.usuarios.view
+      - mariachi.usuarios.create
+      - mariachi.usuarios.update
+      - mariachi.usuarios.delete
+      - mariachi.usuarios.assign
+      - mariachi.sistema.manage
