@@ -84,11 +84,13 @@ def render_tokens_qss(tokens: list[MarcaToken], fuentes: list[MarcaFuente]) -> s
     familia = _familia(indice)
     radius_sm = _a_px(indice.get("radius.sm"), 4)
     radius_md = _a_px(indice.get("radius.md"), 8)
-    radius_full = _a_px(indice.get("radius.full"), 9999)
     space_2 = _a_px(indice.get("space.2"), 8)
     space_3 = _a_px(indice.get("space.3"), 12)
     size_base = _a_px(indice.get("font.size.base"), 16)
     size_sm = _a_px(indice.get("font.size.sm"), 14)
+
+    altura_boton = size_base + space_2 * 2 + 6
+    radius_full = min(_a_px(indice.get("radius.full"), 9999), altura_boton // 2)
 
     bloques: list[str] = [AVISO_QSS, ""]
 
@@ -111,7 +113,8 @@ def render_tokens_qss(tokens: list[MarcaToken], fuentes: list[MarcaFuente]) -> s
     bloques.append("")
 
     if primary:
-        bloques.append("/* Los botones van en pildora, como los del visor (rounded-full). */")
+        bloques.append("/* Pildora, como los botones del visor. El radio se acota a la mitad")
+        bloques.append("   del alto: Qt no interpreta un 9999px como CSS y deja la esquina recta. */")
         bloques.append("QPushButton[brandRole=\"primary\"] {")
         bloques.append(f"    background-color: {primary};")
         bloques.append(f"    color: {bg or '#FFFFFF'};")
@@ -150,6 +153,15 @@ def render_tokens_qss(tokens: list[MarcaToken], fuentes: list[MarcaFuente]) -> s
     bloques.append("")
 
     if surface_field:
+        bloques.append("QTreeView, QTreeWidget {")
+        bloques.append(f"    background-color: {surface_field};")
+        bloques.append(f"    border-radius: {radius_md}px;")
+        bloques.append("}")
+        bloques.append("")
+        bloques.append("QWidget[brandRole=\"panel\"] {")
+        bloques.append(f"    background-color: {bg or '#FFFFFF'};")
+        bloques.append("}")
+        bloques.append("")
         bloques.append("/* Campo de busqueda: misma superficie, radio y color de texto que")
         bloques.append("   el buscador del visor, sin borde y con el foco en el primario. */")
         bloques.append("QLineEdit[brandRole=\"search\"] {")
