@@ -26,11 +26,6 @@ export const getEstado = async () => {
     return res.data;
 };
 
-export const getPreview = async () => {
-    const res = await api.get(`${BASE}/preview`);
-    return res.data;
-};
-
 export const aplicar = async () => {
     const res = await api.post(`${BASE}/aplicar`);
     return res.data;
