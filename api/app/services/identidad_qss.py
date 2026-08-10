@@ -31,6 +31,19 @@ def _indice(tokens: list[MarcaToken]) -> dict[str, Any]:
     return {token.clave: _valor(token) for token in tokens}
 
 
+def _rgba(hex_color: Any, alpha: float) -> str:
+    texto = str(hex_color or "").strip().lstrip("#")
+    if len(texto) == 3:
+        texto = "".join(caracter * 2 for caracter in texto)
+    if len(texto) != 6:
+        return "palette(alternate-base)"
+    try:
+        rojo, verde, azul = (int(texto[i : i + 2], 16) for i in (0, 2, 4))
+    except ValueError:
+        return "palette(alternate-base)"
+    return f"rgba({rojo}, {verde}, {azul}, {alpha})"
+
+
 def _familia(indice: dict[str, Any]) -> str:
     valor = indice.get("font.family.sans")
     if isinstance(valor, list) and valor:
@@ -137,12 +150,14 @@ def render_tokens_qss(tokens: list[MarcaToken], fuentes: list[MarcaFuente]) -> s
         bloques.append(f"    color: {bg or '#FFFFFF'};")
         bloques.append("}")
         bloques.append("")
+        bloques.append("/* Mismo sangrado horizontal que primary y secondary, para que los")
+        bloques.append("   tres textos arranquen en la misma linea vertical. */")
         bloques.append("QPushButton[brandRole=\"quiet\"] {")
         bloques.append("    background-color: transparent;")
         bloques.append(f"    color: {text or primary};")
         bloques.append("    border: none;")
         bloques.append("    text-align: left;")
-        bloques.append(f"    padding: {space_2}px 0px;")
+        bloques.append(f"    padding: {space_2}px {space_3}px;")
         bloques.append("}")
         bloques.append("")
         bloques.append("QPushButton[brandRole=\"quiet\"]:hover {")
@@ -161,7 +176,18 @@ def render_tokens_qss(tokens: list[MarcaToken], fuentes: list[MarcaFuente]) -> s
         bloques.append("}")
         bloques.append("")
         bloques.append("QTreeView::item:hover, QTreeWidget::item:hover {")
-        bloques.append("    background-color: palette(alternate-base);")
+        bloques.append(f"    background-color: {_rgba(primary, 0.10)};")
+        bloques.append("    color: palette(text);")
+        bloques.append("}")
+        bloques.append("")
+        bloques.append("/* La rama hereda el azul nativo si no se tine: la seleccion se")
+        bloques.append("   veria partida entre la sangria y el texto. */")
+        bloques.append("QTreeView::branch:selected, QTreeWidget::branch:selected {")
+        bloques.append(f"    background-color: {primary};")
+        bloques.append("}")
+        bloques.append("")
+        bloques.append("QTreeView::branch:hover, QTreeWidget::branch:hover {")
+        bloques.append(f"    background-color: {_rgba(primary, 0.10)};")
         bloques.append("}")
         bloques.append("")
         bloques.append("QLabel[brandRole=\"title\"] {")
