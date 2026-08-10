@@ -1,14 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_db, require_project_access, verify_csrf
+from app.api.deps import get_current_user, get_db, has_permission, require_permission, verify_csrf
 from app.api.rate_limit import rate_limit
 from app.core.database import get_dataengine_db
 from app.core.eventos import EventoEstado
 from app.core.optimistic import check_concurrent_edit
 from app.core.time import utcnow
 from app.models.evento import Evento
-from app.models.project import Project, UserProject
 from app.models.user import Usuario
 from app.schemas.evento import (
     EventoCreate,
@@ -32,32 +31,14 @@ from app.services.slug_service import is_valid_slug, slugify
 router = APIRouter(
     prefix="/eventos",
     tags=["eventos mapalab"],
-    dependencies=[Depends(require_project_access("mapalab"))],
 )
 
-_require_editor = require_project_access("mapalab", min_role="editor")
+_require_editor = require_permission("mariachi.mapalab.update")
 _write_rate_limit = rate_limit(max_requests=60, window_seconds=60.0)
 
 
-def _can_edit_mapalab(db: Session, user: Usuario) -> bool:
-    if user.role == 'tetlamamakani':
-        return True
-    project = (
-        db.query(Project)
-        .filter(Project.slug == 'mapalab', Project.is_active.is_(True))
-        .first()
-    )
-    if not project:
-        return False
-    membership = (
-        db.query(UserProject)
-        .filter(
-            UserProject.user_id == user.id,
-            UserProject.project_id == project.id,
-        )
-        .first()
-    )
-    return bool(membership and membership.project_role == 'editor')
+def _can_edit_mapalab(user: Usuario) -> bool:
+    return has_permission(user, 'mariachi.mapalab.update')
 
 
 def get_evento_or_404(evento_id: int, db: Session = Depends(get_db)) -> Evento:
@@ -75,7 +56,7 @@ def get_evento_visible_or_404(
     evento = db.query(Evento).filter(Evento.id == evento_id).first()
     if not evento:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento no encontrado")
-    if evento.estado != EventoEstado.PUBLISHED.value and not _can_edit_mapalab(db, current_user):
+    if evento.estado != EventoEstado.PUBLISHED.value and not _can_edit_mapalab(current_user):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Evento no encontrado")
     return evento
 
@@ -109,7 +90,7 @@ async def listar_eventos(
     current_user: Usuario = Depends(get_current_user),
 ):
     q = db.query(Evento)
-    if not _can_edit_mapalab(db, current_user):
+    if not _can_edit_mapalab(current_user):
         q = q.filter(Evento.estado == EventoEstado.PUBLISHED.value)
     return q.order_by(Evento.orden.asc(), Evento.id.desc()).all()
 

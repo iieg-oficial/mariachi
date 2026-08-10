@@ -11,24 +11,21 @@ const baseUser = {
     projects: [
         { slug: 'sieej', name: 'SIEEJ', project_role: 'editor' },
     ],
-    must_change_password: false,
     avatarUrl: null,
 };
 
 const renderCard = (overrides = {}, handlers = {}) => {
     const onEdit = handlers.onEdit ?? vi.fn();
-    const onResetPassword = handlers.onResetPassword ?? vi.fn();
     const onDelete = handlers.onDelete ?? vi.fn();
     render(
         <UserCard
             user={{ ...baseUser, ...overrides }}
             onEdit={onEdit}
-            onResetPassword={onResetPassword}
             onDelete={onDelete}
             isSelf={handlers.isSelf ?? false}
         />,
     );
-    return { onEdit, onResetPassword, onDelete };
+    return { onEdit, onDelete };
 };
 
 describe('UserCard', () => {
@@ -62,33 +59,15 @@ describe('UserCard', () => {
         expect(screen.getByText('MapaLab: Editor')).toBeInTheDocument();
     });
 
-    it('hint de must_change_password aparece solo cuando aplica', () => {
-        const { unmount } = render(
-            <UserCard
-                user={{ ...baseUser, must_change_password: true }}
-                onEdit={vi.fn()}
-                onResetPassword={vi.fn()}
-                onDelete={vi.fn()}
-            />,
-        );
-        expect(screen.getByText(/Pendiente cambio de contraseña/)).toBeInTheDocument();
-        unmount();
-        renderCard({ must_change_password: false });
-        expect(screen.queryByText(/Pendiente cambio de contraseña/)).not.toBeInTheDocument();
-    });
-
     it('click en la card invoca onEdit', () => {
         const { onEdit } = renderCard();
         fireEvent.click(screen.getByText('Usuario Test'));
         expect(onEdit).toHaveBeenCalled();
     });
 
-    it('isSelf deshabilita acciones de Resetear y Eliminar', () => {
+    it('isSelf deshabilita la accion de Eliminar', () => {
         renderCard({}, { isSelf: true });
-        const resetBtn = screen.getByLabelText('Resetear contraseña');
-        const deleteBtn = screen.getByLabelText('Eliminar');
-        expect(resetBtn).toBeDisabled();
-        expect(deleteBtn).toBeDisabled();
+        expect(screen.getByLabelText('Eliminar')).toBeDisabled();
     });
 
     it('Editar nunca se deshabilita por isSelf', () => {

@@ -35,3 +35,13 @@ export const aplicar = async () => {
     const res = await api.post(`${BASE}/aplicar`);
     return res.data;
 };
+
+export const getEstadoCamaras = async () => {
+    const res = await api.get(`${BASE}/estado-camaras`);
+    return res.data;
+};
+
+export const urlStream = (nombre, { fps = 3, alto = 360 } = {}) => {
+    const base = import.meta.env.VITE_ADMIN_API_URL || '/api/mariachi';
+    return `${base}${BASE}/camaras/${encodeURIComponent(nombre)}/stream?fps=${fps}&alto=${alto}`;
+};

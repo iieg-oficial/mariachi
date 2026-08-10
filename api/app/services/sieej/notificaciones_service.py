@@ -21,7 +21,6 @@ from openpyxl import Workbook
 from openpyxl.styles import Font
 from sqlalchemy.orm import Session
 
-from app.api.deps import STAFF_ROLES
 from app.core.settings import get_settings
 from app.core.time import utcnow
 from app.models.sieej import (
@@ -36,6 +35,8 @@ from app.models.sieej import (
 from app.models.user import Usuario
 
 logger = logging.getLogger(__name__)
+
+_ROLES_DESTINATARIOS = ("tetlamamakani", "editora")
 
 _TIPO_LABEL = {
     "apertura": "Apertura de ventana",
@@ -205,7 +206,7 @@ class NotificacionesService:
     def _staff(self) -> list[Usuario]:
         return (
             self.db.query(Usuario)
-            .filter(Usuario.role.in_(STAFF_ROLES))
+            .filter(Usuario.role.in_(_ROLES_DESTINATARIOS))
             .all()
         )
 

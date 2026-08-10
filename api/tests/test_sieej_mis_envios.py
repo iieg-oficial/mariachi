@@ -1,5 +1,7 @@
 """Tests del detalle y soft-delete respondent /formularios/mis-envios/{id}."""
 import pytest
+
+from tests.conftest import PERMISOS_REPORTAR, TODOS_LOS_PERMISOS, login_as
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
@@ -139,13 +141,10 @@ def respondent_b(session, proyecto_sieej):
     return _crear_externo(session, proyecto_sieej, "b")
 
 
-def login(client, username, password="testpass123"):
-    r = client.post(
-        f"{ADMIN_PREFIX}/autenticacion/iniciar-sesion",
-        json={"username": username, "password": password},
-    )
-    assert r.status_code == 200, r.text
-    return r.json()["csrf_token"]
+def login(client, user, permisos=None):
+    if permisos is None:
+        permisos = PERMISOS_REPORTAR if user.role == "externo" else TODOS_LOS_PERMISOS
+    return login_as(client, user, permisos)
 
 
 def crear_formulario(session, admin, *, slug="form-test", nombre="Form Test"):
@@ -231,7 +230,7 @@ def test_detalle_propio_devuelve_snapshot_datos_archivos_eventos(
     )
     session.commit()
 
-    login(client, respondent_a.username)
+    login(client, respondent_a)
     r = client.get(f"{ADMIN_PREFIX}/formularios/mis-envios/{envio.id}")
     assert r.status_code == 200, r.text
     body = r.json()
@@ -254,7 +253,7 @@ def test_detalle_no_expone_actor_usuario_id(
         EnvioEvento(envio_id=envio.id, tipo="reabierto", actor_usuario_id=admin.id)
     )
     session.commit()
-    login(client, respondent_a.username)
+    login(client, respondent_a)
     r = client.get(f"{ADMIN_PREFIX}/formularios/mis-envios/{envio.id}")
     assert r.status_code == 200
     eventos = r.json()["eventos"]
@@ -265,13 +264,13 @@ def test_detalle_otro_user_403(client, session, admin, respondent_a, respondent_
     f = crear_formulario(session, admin)
     envio_b = crear_envio(session, f, respondent_b)
 
-    login(client, respondent_a.username)
+    login(client, respondent_a)
     r = client.get(f"{ADMIN_PREFIX}/formularios/mis-envios/{envio_b.id}")
     assert r.status_code == 403
 
 
 def test_detalle_inexistente_404(client, session, admin, respondent_a):
-    login(client, respondent_a.username)
+    login(client, respondent_a)
     r = client.get(f"{ADMIN_PREFIX}/formularios/mis-envios/99999")
     assert r.status_code == 404
 
@@ -298,7 +297,7 @@ def test_detalle_usa_definicion_snapshot_no_actual(
     }
     session.commit()
 
-    login(client, respondent_a.username)
+    login(client, respondent_a)
     r = client.get(f"{ADMIN_PREFIX}/formularios/mis-envios/{envio.id}")
     snapshot = r.json()["definicion_snapshot"]
     assert snapshot["version"] == 1
@@ -309,7 +308,7 @@ def test_eliminar_mi_envio_lo_oculta_del_detalle(client, session, admin, respond
     f = crear_formulario(session, admin)
     envio = crear_envio(session, f, respondent_a)
 
-    csrf = login(client, respondent_a.username)
+    csrf = login(client, respondent_a)
     r0 = client.get(f"{ADMIN_PREFIX}/formularios/mis-envios/{envio.id}")
     assert r0.status_code == 200
 
@@ -331,7 +330,7 @@ def test_eliminar_mi_envio_no_elimina_db(client, session, admin, respondent_a):
     envio = crear_envio(session, f, respondent_a)
     envio_id = envio.id
 
-    csrf = login(client, respondent_a.username)
+    csrf = login(client, respondent_a)
     client.delete(
         f"{ADMIN_PREFIX}/formularios/mis-envios/{envio_id}",
         headers={"X-CSRF-Token": csrf},
@@ -350,7 +349,7 @@ def test_eliminar_mi_envio_de_otro_user_403(client, session, admin, respondent_a
     f = crear_formulario(session, admin)
     envio_b = crear_envio(session, f, respondent_b)
 
-    csrf = login(client, respondent_a.username)
+    csrf = login(client, respondent_a)
     r = client.delete(
         f"{ADMIN_PREFIX}/formularios/mis-envios/{envio_b.id}",
         headers={"X-CSRF-Token": csrf},
@@ -363,7 +362,7 @@ def test_eliminar_mi_envio_re_eliminar_404(client, session, admin, respondent_a)
     f = crear_formulario(session, admin)
     envio = crear_envio(session, f, respondent_a)
 
-    csrf = login(client, respondent_a.username)
+    csrf = login(client, respondent_a)
     r1 = client.delete(
         f"{ADMIN_PREFIX}/formularios/mis-envios/{envio.id}",
         headers={"X-CSRF-Token": csrf},
@@ -378,7 +377,7 @@ def test_eliminar_mi_envio_re_eliminar_404(client, session, admin, respondent_a)
 
 def test_slug_mis_envios_reservado(client, session, admin):
     """Admin no puede crear un formulario con slug `mis-envios`."""
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.post(
         f"{ADMIN_PREFIX}/sieej/formularios",
         headers={"X-CSRF-Token": csrf},

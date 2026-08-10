@@ -24,13 +24,14 @@ def _bloque_camara(camara: Camara) -> dict[str, Any]:
     if camara.grabacion_habilitada:
         roles.append("record")
 
+    record: dict[str, Any] = {"enabled": camara.grabacion_habilitada}
+    if camara.grabacion_habilitada:
+        record["continuous"] = {"days": camara.retencion_dias}
+
     return {
         "ffmpeg": {"inputs": [{"path": camara.rtsp_url, "roles": roles}]},
         "detect": {"enabled": camara.deteccion_habilitada},
-        "record": {
-            "enabled": camara.grabacion_habilitada,
-            "retain": {"days": camara.retencion_dias, "mode": "all"},
-        },
+        "record": record,
     }
 
 

@@ -16,6 +16,7 @@ class Usuario(Base):
     role = Column(
         Enum("tetlamamakani", "editora", "externo", name="user_roles"), nullable=False
     )
+    minerva_sub = Column(String(255), unique=True, nullable=True, index=True)
     must_change_password = Column(Boolean, default=True, nullable=False)
     avatar_url = Column(Text, nullable=True)
     created_at = Column(DateTime, default=utcnow, nullable=False)

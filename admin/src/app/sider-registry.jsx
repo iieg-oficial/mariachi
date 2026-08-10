@@ -24,6 +24,7 @@ import {
     TagsOutlined,
     TeamOutlined,
     UnorderedListOutlined,
+    VideoCameraOutlined,
 } from '@ant-design/icons';
 import ColibriIcon from '@shared/components/ColibriIcon';
 
@@ -31,12 +32,12 @@ export const PROJECT_REGISTRY = {
     sextante: {
         label: 'Sextante',
         icon: <CompassOutlined />,
-        accessSlug: 'mapalab',
+        permissions: ['mariachi.geoserver.view'],
         showBetaBadge: true,
         items: [
             {
                 key: '/sextante/workspaces', path: '/sextante/workspaces', label: 'Workspaces',
-                icon: <DeploymentUnitOutlined />, allowedGlobalRoles: ['tetlamamakani'],
+                icon: <DeploymentUnitOutlined />, permissions: ['mariachi.geoserver.manage'],
             },
             { key: '/sextante/capas', path: '/sextante/capas', label: 'Explorador de capas', icon: <TableOutlined /> },
             { key: '/sextante/estilos', path: '/sextante/estilos', label: 'Estilos', icon: <BgColorsOutlined /> },
@@ -44,13 +45,14 @@ export const PROJECT_REGISTRY = {
             { key: '/sextante/tipografias', path: '/sextante/tipografias', label: 'Tipografías', icon: <FontSizeOutlined /> },
             {
                 key: '/sextante/simbolos', path: '/sextante/simbolos', label: 'Símbolos',
-                icon: <AppstoreOutlined />, allowedGlobalRoles: ['tetlamamakani'],
+                icon: <AppstoreOutlined />, permissions: ['mariachi.mapalab.manage'],
             },
         ],
     },
     mapalab: {
         label: 'MapaLab',
         icon: <EnvironmentOutlined />,
+        permissions: ['mariachi.mapalab.view'],
         items: [
             { key: '/mapalab/layers', path: '/mapalab/layers', label: 'Capas', icon: <PartitionOutlined /> },
             {
@@ -63,14 +65,14 @@ export const PROJECT_REGISTRY = {
             },
             {
                 key: '/mapalab/infobox-propuestas', path: '/mapalab/infobox-propuestas', label: 'Propuestas de tarjeta',
-                icon: <EditOutlined />, allowedGlobalRoles: ['tetlamamakani'], showBetaBadge: true,
+                icon: <EditOutlined />, permissions: ['mariachi.mapalab_propuestas.approve'], showBetaBadge: true,
             },
             { key: '/mapalab/initial-order', path: '/mapalab/initial-order', label: 'Capas iniciales', icon: <OrderedListOutlined /> },
             { key: '/mapalab/eventos', path: '/mapalab/eventos', label: 'Eventos', icon: <CalendarOutlined /> },
             { key: '/mapalab/home', path: '/mapalab/home', label: 'Inicio', icon: <HomeOutlined /> },
             {
                 key: '/mapalab/api-keys', path: '/mapalab/api-keys', label: 'API Keys',
-                icon: <KeyOutlined />, allowedGlobalRoles: ['tetlamamakani'], showBetaBadge: true,
+                icon: <KeyOutlined />, permissions: ['mariachi.mapalab_llaves.manage'], showBetaBadge: true,
             },
 
         ],
@@ -78,6 +80,7 @@ export const PROJECT_REGISTRY = {
     sieej: {
         label: 'SIEEJ',
         icon: <ProjectOutlined />,
+        permissions: ['mariachi.sieej_admin.view'],
         items: [
             { key: '/sieej/formularios', path: '/sieej/formularios', label: 'Formularios', icon: <FormOutlined /> },
             { key: '/sieej/grupos', path: '/sieej/grupos', label: 'Grupos', icon: <TeamOutlined /> },
@@ -87,7 +90,7 @@ export const PROJECT_REGISTRY = {
     colibri: {
         label: 'Colibri',
         icon: <ColibriIcon size={14} />,
-        allowedGlobalRoles: ['tetlamamakani', 'editora'],
+        permissions: ['mariachi.colibri_reportes.view', 'mariachi.colibri_config.manage'],
         showBetaBadge: true,
         items: [
             { key: '/colibri', path: '/colibri', label: 'Resumen', icon: <PieChartOutlined /> },
@@ -97,31 +100,47 @@ export const PROJECT_REGISTRY = {
             },
             {
                 key: '/colibri/tipos', path: '/colibri/tipos', label: 'Tipos',
-                icon: <TagsOutlined />, allowedGlobalRoles: ['tetlamamakani'],
+                icon: <TagsOutlined />, permissions: ['mariachi.colibri_config.manage'],
             },
             {
                 key: '/colibri/direcciones', path: '/colibri/direcciones', label: 'Direcciones',
-                icon: <ApartmentOutlined />, allowedGlobalRoles: ['tetlamamakani'],
+                icon: <ApartmentOutlined />, permissions: ['mariachi.colibri_config.manage'],
             },
             {
                 key: '/colibri/source-apps', path: '/colibri/source-apps', label: 'Source apps',
-                icon: <AppstoreOutlined />, allowedGlobalRoles: ['tetlamamakani'],
+                icon: <AppstoreOutlined />, permissions: ['mariachi.colibri_config.manage'],
             },
             {
                 key: '/colibri/routes', path: '/colibri/routes', label: 'Routes',
-                icon: <BranchesOutlined />, allowedGlobalRoles: ['tetlamamakani'],
+                icon: <BranchesOutlined />, permissions: ['mariachi.colibri_config.manage'],
             },
         ],
     },
     identidad: {
         label: 'Identidad',
         icon: <BgColorsOutlined />,
-        allowedGlobalRoles: ['tetlamamakani'],
+        permissions: ['mariachi.identidad.view'],
         showBetaBadge: true,
         items: [
             {
                 key: '/identidad', path: '/identidad', label: 'Marcas y tokens',
-                icon: <BgColorsOutlined />, allowedGlobalRoles: ['tetlamamakani'],
+                icon: <BgColorsOutlined />, permissions: ['mariachi.identidad.update'],
+            },
+        ],
+    },
+    wacha: {
+        label: 'Wacha',
+        icon: <VideoCameraOutlined />,
+        permissions: ['mariachi.sistema.manage'],
+        badgeVariant: 'local',
+        items: [
+            {
+                key: '/wacha/camaras', path: '/wacha/camaras', label: 'Cámaras',
+                icon: <UnorderedListOutlined />,
+            },
+            {
+                key: '/wacha/vivo', path: '/wacha/vivo', label: 'En vivo',
+                icon: <VideoCameraOutlined />,
             },
         ],
     },
@@ -133,14 +152,14 @@ export const FOOTER_RAIL_ITEMS = [
         path: '/documentacion',
         label: 'Documentación',
         icon: <BookOutlined />,
-        allowedGlobalRoles: ['tetlamamakani', 'editora'],
+        permissions: [],
     },
     {
         key: '/revision',
         path: '/revision',
         label: 'Revisiones',
         icon: <AuditOutlined />,
-        allowedGlobalRoles: ['tetlamamakani'],
+        permissions: ['mariachi.mapalab.manage'],
         showBadge: true,
     },
 ];

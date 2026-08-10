@@ -8,7 +8,6 @@ objetos inexistentes.
 import pytest
 from fastapi import HTTPException
 
-from app.api.deps import ADMIN_ROLE
 from app.models.acervo_bucket import AcervoBucket
 from app.models.user import Usuario
 from app.services import acervo_file_service
@@ -49,9 +48,11 @@ def _bucket(protegido: bool) -> AcervoBucket:
 
 
 def _admin() -> Usuario:
-    return Usuario(
-        id=1, username="admin", email="a@b.c", name="Admin", role=ADMIN_ROLE
+    usuario = Usuario(
+        id=1, username="admin", email="a@b.c", name="Admin", role="tetlamamakani"
     )
+    usuario.permissions = {"mariachi.acervo.manage"}
+    return usuario
 
 
 def test_un_bucket_protegido_rechaza_la_escritura_incluso_al_admin():

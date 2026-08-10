@@ -42,7 +42,7 @@ class SieejGrupoRef(BaseModel):
 
 
 class UsuarioCreate(UsuarioBase):
-    password: StrongPassword
+    password: StrongPassword | None = None
     role: Literal["tetlamamakani", "editora", "externo"]
     project_assignments: list["UserProjectAssignment"] | None = None
     sieej_grupo_id: int | None = None
@@ -96,6 +96,7 @@ class PerfilUpdate(CamelCaseInput):
 
 class CurrentUserResponse(UsuarioResponse):
     accessible_buckets: list["BucketSummary"] = []
+    permissions: list[str] = []
 
 
 class PasswordChange(BaseModel):

@@ -1,6 +1,8 @@
 from datetime import datetime
 
 import pytest
+
+from tests.conftest import PERMISOS_REPORTAR, TODOS_LOS_PERMISOS, login_as
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
@@ -118,17 +120,14 @@ def respondent(session, proyecto_sieej):
     return u
 
 
-def login(client, username, password="testpass123"):
-    r = client.post(
-        f"{ADMIN_PREFIX}/autenticacion/iniciar-sesion",
-        json={"username": username, "password": password},
-    )
-    assert r.status_code == 200, r.text
-    return r.json()["csrf_token"]
+def login(client, user, permisos=None):
+    if permisos is None:
+        permisos = PERMISOS_REPORTAR if user.role == "externo" else TODOS_LOS_PERMISOS
+    return login_as(client, user, permisos)
 
 
 def test_admin_crea_formulario_estado_borrador(client, admin):
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.post(
         f"{ADMIN_PREFIX}/sieej/formularios",
         headers={"X-CSRF-Token": csrf},
@@ -147,7 +146,7 @@ def test_admin_crea_formulario_estado_borrador(client, admin):
 
 
 def test_admin_crear_definicion_invalida_falla_422(client, admin):
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.post(
         f"{ADMIN_PREFIX}/sieej/formularios",
         headers={"X-CSRF-Token": csrf},
@@ -173,7 +172,7 @@ def test_admin_crear_slug_duplicado_falla_409(client, session, admin):
     )
     session.commit()
 
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.post(
         f"{ADMIN_PREFIX}/sieej/formularios",
         headers={"X-CSRF-Token": csrf},
@@ -191,7 +190,7 @@ def test_admin_lista_formularios_filtra_por_estado(client, session, admin):
     )
     session.commit()
 
-    login(client, admin.username)
+    login(client, admin)
     r = client.get(f"{ADMIN_PREFIX}/sieej/formularios?estado=activo")
     assert r.status_code == 200
     slugs = [f["slug"] for f in r.json()]
@@ -206,7 +205,7 @@ def test_admin_publicar_y_cerrar(client, session, admin):
     session.commit()
     session.refresh(f)
 
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r1 = client.post(
         f"{ADMIN_PREFIX}/sieej/formularios/{f.id}/publicar",
         headers={"X-CSRF-Token": csrf},
@@ -232,7 +231,7 @@ def test_admin_reabrir_limpia_vigencia_vencida(client, session, admin):
     session.commit()
     session.refresh(f)
 
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.post(
         f"{ADMIN_PREFIX}/sieej/formularios/{f.id}/reabrir",
         headers={"X-CSRF-Token": csrf},
@@ -253,7 +252,7 @@ def test_admin_reabrir_formulario_activo_da_409(client, session, admin):
     session.commit()
     session.refresh(f)
 
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.post(
         f"{ADMIN_PREFIX}/sieej/formularios/{f.id}/reabrir",
         headers={"X-CSRF-Token": csrf},
@@ -270,7 +269,7 @@ def test_admin_actualizar_slug(client, session, admin):
     session.commit()
     session.refresh(f)
 
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.put(
         f"{ADMIN_PREFIX}/sieej/formularios/{f.id}",
         json={"slug": "nuevo"},
@@ -296,7 +295,7 @@ def test_admin_actualizar_slug_duplicado_falla_409(client, session, admin):
     session.commit()
     destino = session.query(Formulario).filter(Formulario.slug == "dos").first()
 
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.put(
         f"{ADMIN_PREFIX}/sieej/formularios/{destino.id}",
         json={"slug": "uno"},
@@ -314,7 +313,7 @@ def test_admin_actualizar_slug_reservado_falla_400(client, session, admin):
     session.commit()
     session.refresh(f)
 
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.put(
         f"{ADMIN_PREFIX}/sieej/formularios/{f.id}",
         json={"slug": "mis-envios"},
@@ -360,7 +359,7 @@ def test_admin_actualizar_definicion_bumpea_version_si_hay_envios(
             }
         ],
     }
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.put(
         f"{ADMIN_PREFIX}/sieej/formularios/{f.id}",
         headers={"X-CSRF-Token": csrf},
@@ -378,7 +377,7 @@ def test_admin_actualizar_sin_cambiar_definicion_no_bumpea(client, session, admi
     session.commit()
     session.refresh(f)
 
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.put(
         f"{ADMIN_PREFIX}/sieej/formularios/{f.id}",
         headers={"X-CSRF-Token": csrf},
@@ -397,7 +396,7 @@ def test_admin_actualizar_con_timestamp_viejo_da_409(client, session, admin):
     session.commit()
     session.refresh(f)
 
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.put(
         f"{ADMIN_PREFIX}/sieej/formularios/{f.id}",
         headers={"X-CSRF-Token": csrf},
@@ -421,7 +420,7 @@ def test_admin_actualizar_con_timestamp_vigente_pasa(client, session, admin):
     session.commit()
     session.refresh(f)
 
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     actual = client.get(f"{ADMIN_PREFIX}/sieej/formularios/{f.id}").json()
     r = client.put(
         f"{ADMIN_PREFIX}/sieej/formularios/{f.id}",
@@ -445,7 +444,7 @@ def test_admin_actualizar_sin_timestamp_no_valida_concurrencia(client, session, 
     session.commit()
     session.refresh(f)
 
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.put(
         f"{ADMIN_PREFIX}/sieej/formularios/{f.id}",
         headers={"X-CSRF-Token": csrf},
@@ -467,14 +466,14 @@ def _crear_form(session, admin, slug):
 
 def test_presencia_put_sin_csrf_da_403(client, session, admin):
     f = _crear_form(session, admin, "pres-csrf")
-    login(client, admin.username)
+    login(client, admin)
     r = client.put(f"{ADMIN_PREFIX}/sieej/formularios/{f.id}/presencia", json={})
     assert r.status_code == 403
 
 
 def test_presencia_put_con_csrf_da_200(client, session, admin):
     f = _crear_form(session, admin, "pres-ok")
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.put(
         f"{ADMIN_PREFIX}/sieej/formularios/{f.id}/presencia",
         headers={"X-CSRF-Token": csrf},
@@ -489,7 +488,7 @@ def test_presencia_degrada_sin_redis(client, session, admin):
     los GET responden vacio. En el runner de tests Redis no esta disponible,
     asi que este es el camino que se ejercita."""
     f = _crear_form(session, admin, "pres-degrada")
-    login(client, admin.username)
+    login(client, admin)
     uno = client.get(f"{ADMIN_PREFIX}/sieej/formularios/{f.id}/presencia")
     assert uno.status_code == 200
     assert uno.json() == []
@@ -535,7 +534,7 @@ def test_admin_cambio_rompe_archiva_definicion_previa(
             }
         ],
     }
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.put(
         f"{ADMIN_PREFIX}/sieej/formularios/{f.id}",
         headers={"X-CSRF-Token": csrf},
@@ -589,7 +588,7 @@ def test_admin_cambio_menor_no_archiva(client, session, admin, respondent):
             }
         ],
     }
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.put(
         f"{ADMIN_PREFIX}/sieej/formularios/{f.id}",
         headers={"X-CSRF-Token": csrf},
@@ -625,7 +624,7 @@ def test_admin_exportar_envios_formatos(client, session, admin, respondent):
     )
     session.commit()
 
-    login(client, admin.username)
+    login(client, admin)
     r = client.get(f"{ADMIN_PREFIX}/sieej/formularios/{f.id}/exportar-envios")
     assert r.status_code == 200
     assert "spreadsheetml" in r.headers["content-type"]
@@ -653,7 +652,7 @@ def test_admin_delete_sin_envios_borra(client, session, admin):
     session.commit()
     session.refresh(f)
 
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.delete(
         f"{ADMIN_PREFIX}/sieej/formularios/{f.id}",
         headers={"X-CSRF-Token": csrf},
@@ -683,7 +682,7 @@ def test_admin_delete_con_envios_lo_cierra(client, session, admin, respondent):
     )
     session.commit()
 
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.delete(
         f"{ADMIN_PREFIX}/sieej/formularios/{f.id}",
         headers={"X-CSRF-Token": csrf},
@@ -723,7 +722,7 @@ def test_admin_delete_con_envios_y_confirmacion_borra(
 ):
     f = _form_con_envio(session, admin, respondent, "dd", "Censo Municipal")
 
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.delete(
         f"{ADMIN_PREFIX}/sieej/formularios/{f.id}",
         params={"confirmacion": "Censo Municipal"},
@@ -739,7 +738,7 @@ def test_admin_delete_con_confirmacion_incorrecta_da_400(
 ):
     f = _form_con_envio(session, admin, respondent, "dd2", "Censo Municipal")
 
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.delete(
         f"{ADMIN_PREFIX}/sieej/formularios/{f.id}",
         params={"confirmacion": "censo municipal"},
@@ -772,7 +771,7 @@ def test_admin_delete_definitivo_requiere_admin_global(
     )
     session.commit()
 
-    csrf = login(client, editora.username)
+    csrf = login(client, editora, TODOS_LOS_PERMISOS - {"mariachi.sieej_formularios.delete"})
     r = client.delete(
         f"{ADMIN_PREFIX}/sieej/formularios/{f.id}",
         params={"confirmacion": "Censo Municipal"},
@@ -790,7 +789,7 @@ def test_admin_eliminar_envio_con_confirmacion(client, session, admin, responden
         .first()
     )
 
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.delete(
         f"{ADMIN_PREFIX}/sieej/formularios/{f.id}/envios/{envio.id}",
         params={"confirmacion": respondent.name},
@@ -816,7 +815,7 @@ def test_admin_eliminar_envio_nombre_incorrecto_da_400(
         .first()
     )
 
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.delete(
         f"{ADMIN_PREFIX}/sieej/formularios/{f.id}/envios/{envio.id}",
         params={"confirmacion": "Otra Dependencia"},
@@ -857,7 +856,7 @@ def test_admin_eliminar_envio_requiere_admin_global(
     )
     session.commit()
 
-    csrf = login(client, editora.username)
+    csrf = login(client, editora, TODOS_LOS_PERMISOS - {"mariachi.sieej_formularios.delete"})
     r = client.delete(
         f"{ADMIN_PREFIX}/sieej/formularios/{f.id}/envios/{envio.id}",
         params={"confirmacion": respondent.name},
@@ -876,7 +875,7 @@ def test_admin_actualizar_asignaciones_reemplaza_en_bloque(
     session.commit()
     session.refresh(f)
 
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.put(
         f"{ADMIN_PREFIX}/sieej/formularios/{f.id}/asignaciones",
         headers={"X-CSRF-Token": csrf},
@@ -912,7 +911,7 @@ def test_admin_asignaciones_usuario_inexistente_falla(client, session, admin):
     session.commit()
     session.refresh(f)
 
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.put(
         f"{ADMIN_PREFIX}/sieej/formularios/{f.id}/asignaciones",
         headers={"X-CSRF-Token": csrf},
@@ -954,7 +953,7 @@ def test_admin_listar_envios_paginado(client, session, admin, respondent, proyec
         )
     session.commit()
 
-    login(client, admin.username)
+    login(client, admin)
     r = client.get(f"{ADMIN_PREFIX}/sieej/formularios/{f.id}/envios?limit=2")
     assert r.status_code == 200
     body = r.json()
@@ -985,7 +984,7 @@ def test_admin_get_envio_individual(client, session, admin, respondent):
     session.commit()
     session.refresh(e)
 
-    login(client, admin.username)
+    login(client, admin)
     r = client.get(f"{ADMIN_PREFIX}/sieej/formularios/{f.id}/envios/{e.id}")
     assert r.status_code == 200
     assert r.json()["datos"]["general"]["razon"] == "Acme"
@@ -1022,7 +1021,7 @@ def test_admin_guarda_limite_de_fecha_y_lo_devuelve(client, session, admin):
     session.commit()
     session.refresh(f)
 
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.put(
         f"{ADMIN_PREFIX}/sieej/formularios/{f.id}",
         headers={"X-CSRF-Token": csrf},

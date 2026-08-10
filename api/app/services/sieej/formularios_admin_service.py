@@ -13,7 +13,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session, selectinload
 
-from app.api.deps import ADMIN_ROLE
+from app.api.deps import has_permission
 from app.core.time import to_naive_utc, utcnow
 from app.models.sieej import (
     EnvioArchivo,
@@ -512,7 +512,7 @@ class FormulariosAdminService:
         if con_envios and confirmacion is None:
             return self.cerrar(formulario_id, actor=actor)
         if con_envios:
-            if actor is None or actor.role != ADMIN_ROLE:
+            if actor is None or not has_permission(actor, "mariachi.sieej_formularios.delete"):
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail=(
@@ -697,7 +697,7 @@ class FormulariosAdminService:
         """
         formulario = self.get(formulario_id)
         envio = self.get_envio(formulario_id, envio_id)
-        if actor.role != ADMIN_ROLE:
+        if not has_permission(actor, "mariachi.sieej_formularios.delete"):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=(

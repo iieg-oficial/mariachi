@@ -1,4 +1,6 @@
 import pytest
+
+from tests.conftest import PERMISOS_REPORTAR, TODOS_LOS_PERMISOS, login_as
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
@@ -87,17 +89,14 @@ def usuarios_externos(session):
     return users
 
 
-def login(client, username, password="testpass123"):
-    r = client.post(
-        f"{ADMIN_PREFIX}/autenticacion/iniciar-sesion",
-        json={"username": username, "password": password},
-    )
-    assert r.status_code == 200
-    return r.json()["csrf_token"]
+def login(client, user, permisos=None):
+    if permisos is None:
+        permisos = PERMISOS_REPORTAR if user.role == "externo" else TODOS_LOS_PERMISOS
+    return login_as(client, user, permisos)
 
 
 def test_admin_crud_basico_grupos(client, admin):
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
 
     r1 = client.post(
         f"{ADMIN_PREFIX}/sieej/grupos",
@@ -127,7 +126,7 @@ def test_admin_crud_basico_grupos(client, admin):
 
 
 def test_admin_crear_grupo_con_miembros(client, admin, usuarios_externos):
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     ids = [u.id for u in usuarios_externos[:2]]
 
     r = client.post(
@@ -144,7 +143,7 @@ def test_admin_crear_grupo_con_miembros(client, admin, usuarios_externos):
 
 
 def test_admin_crear_grupo_con_miembro_inexistente_400(client, admin):
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.post(
         f"{ADMIN_PREFIX}/sieej/grupos",
         headers={"X-CSRF-Token": csrf},
@@ -157,7 +156,7 @@ def test_admin_crear_grupo_duplicado_409(client, admin, session):
     session.add(Grupo(nombre="dup"))
     session.commit()
 
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.post(
         f"{ADMIN_PREFIX}/sieej/grupos",
         headers={"X-CSRF-Token": csrf},
@@ -172,7 +171,7 @@ def test_admin_actualizar_miembros_reemplaza(client, admin, session, usuarios_ex
     session.commit()
     session.refresh(g)
 
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.put(
         f"{ADMIN_PREFIX}/sieej/grupos/{g.id}/usuarios",
         headers={"X-CSRF-Token": csrf},
@@ -208,7 +207,7 @@ def test_admin_listar_miembros(client, admin, session, usuarios_externos):
         )
     session.commit()
 
-    login(client, admin.username)
+    login(client, admin)
     r = client.get(f"{ADMIN_PREFIX}/sieej/grupos/{g.id}/usuarios")
     assert r.status_code == 200
     assert len(r.json()) == 3
@@ -236,7 +235,7 @@ def test_admin_borrar_grupo_con_formularios_falla_400(client, admin, session):
     )
     session.commit()
 
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.delete(
         f"{ADMIN_PREFIX}/sieej/grupos/{g.id}",
         headers={"X-CSRF-Token": csrf},
@@ -250,7 +249,7 @@ def test_admin_asignar_usuarios_inexistentes_falla(client, admin, session):
     session.commit()
     session.refresh(g)
 
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.put(
         f"{ADMIN_PREFIX}/sieej/grupos/{g.id}/usuarios",
         headers={"X-CSRF-Token": csrf},

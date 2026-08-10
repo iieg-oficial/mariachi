@@ -10,7 +10,7 @@ from fastapi.responses import Response, StreamingResponse
 from sqlalchemy.orm import Session
 from starlette.concurrency import run_in_threadpool
 
-from app.api.deps import require_project_access, require_role, verify_csrf
+from app.api.deps import require_permission, verify_csrf
 from app.api.rate_limit import _client_ip, rate_limit
 from app.core.database import get_dataengine_db, get_db
 from app.core.settings import get_settings
@@ -38,11 +38,9 @@ settings = get_settings()
 router = APIRouter(
     prefix='/geoserver',
     tags=['geoserver'],
-    dependencies=[Depends(require_project_access('mapalab'))],
 )
 
-_require_project_editor = require_project_access('mapalab', min_role='editor')
-_require_admin = require_role(['tetlamamakani'])
+_require_geoserver_manage = require_permission("mariachi.geoserver.manage")
 _read_rate_limit = rate_limit(max_requests=120, window_seconds=60.0, scope='geoserver_read')
 _write_rate_limit = rate_limit(max_requests=60, window_seconds=60.0, scope='geoserver_write')
 _download_rate_limit = rate_limit(max_requests=3000, window_seconds=60.0, scope='geoserver_download')
@@ -61,7 +59,7 @@ async def list_workspaces_with_layers(
     available_only: bool = Query(default=False),
     include_unregistered: bool = Query(default=False),
     db: Session = Depends(get_dataengine_db),
-    current_user: Usuario = Depends(_require_project_editor),
+    current_user: Usuario = Depends(_require_geoserver_manage),
     _rl: Usuario = Depends(_read_rate_limit),
 ):
     workspaces = db.query(Workspace).order_by(Workspace.alias).all()
@@ -127,7 +125,7 @@ async def list_workspaces_with_layers(
 @router.get('/workspaces/pending', response_model=list[WorkspacePending])
 async def list_pending_workspaces(
     db: Session = Depends(get_dataengine_db),
-    current_user: Usuario = Depends(_require_admin),
+    current_user: Usuario = Depends(_require_geoserver_manage),
     _rl: Usuario = Depends(_read_rate_limit),
 ):
     registered_names = {
@@ -164,7 +162,7 @@ async def register_workspace(
     data: WorkspaceCreate,
     db: Session = Depends(get_dataengine_db),
     current_user: Usuario = Depends(verify_csrf),
-    _admin: Usuario = Depends(_require_admin),
+    _admin: Usuario = Depends(_require_geoserver_manage),
     _rl: Usuario = Depends(_write_rate_limit),
 ):
 
@@ -217,7 +215,7 @@ async def list_workspace_styles(
     alias: str,
     include_global: bool = Query(default=False),
     db: Session = Depends(get_dataengine_db),
-    current_user: Usuario = Depends(_require_project_editor),
+    current_user: Usuario = Depends(_require_geoserver_manage),
     _rl: Usuario = Depends(_read_rate_limit),
 ):
     ws = _resolve_workspace(db, alias)
@@ -244,7 +242,7 @@ async def list_fields(
     layer: str,
     include_samples: bool = Query(default=False),
     db: Session = Depends(get_dataengine_db),
-    current_user: Usuario = Depends(_require_project_editor),
+    current_user: Usuario = Depends(_require_geoserver_manage),
     _rl: Usuario = Depends(_read_rate_limit),
 ):
     ws = _resolve_workspace(db, alias)
@@ -277,7 +275,7 @@ async def list_styles(
     alias: str,
     layer: str,
     db: Session = Depends(get_dataengine_db),
-    current_user: Usuario = Depends(_require_project_editor),
+    current_user: Usuario = Depends(_require_geoserver_manage),
     _rl: Usuario = Depends(_read_rate_limit),
 ):
     ws = _resolve_workspace(db, alias)
@@ -315,7 +313,7 @@ async def get_style_sld(
     alias: str,
     style_name: str,
     db: Session = Depends(get_dataengine_db),
-    current_user: Usuario = Depends(_require_project_editor),
+    current_user: Usuario = Depends(_require_geoserver_manage),
     _rl: Usuario = Depends(_read_rate_limit),
 ):
     ws = _resolve_workspace(db, alias)
@@ -359,7 +357,7 @@ async def get_style_sld(
 
 @router.get('/palettes')
 async def list_palettes(
-    current_user: Usuario = Depends(_require_project_editor),
+    current_user: Usuario = Depends(_require_geoserver_manage),
     _rl: Usuario = Depends(_read_rate_limit),
 ):
     return {'palettes': load_palettes()}
@@ -373,7 +371,7 @@ async def get_legend(
     width: int = Query(default=20, ge=8, le=64),
     height: int = Query(default=20, ge=8, le=64),
     db: Session = Depends(get_dataengine_db),
-    current_user: Usuario = Depends(_require_project_editor),
+    current_user: Usuario = Depends(_require_geoserver_manage),
     _rl: Usuario = Depends(_read_rate_limit),
 ):
     ws = _resolve_workspace(db, alias)
@@ -578,7 +576,7 @@ def _validate_folder_path(path: str) -> str:
 async def browse_geoserver_files(
     path: str = Query(default=''),
     workspace: str | None = Query(default=None),
-    current_user: Usuario = Depends(_require_project_editor),
+    current_user: Usuario = Depends(_require_geoserver_manage),
     _rl: Usuario = Depends(_read_rate_limit),
 ):
     clean_path = _validate_folder_path(path.strip().strip('/'))
@@ -614,7 +612,7 @@ async def browse_geoserver_files(
 async def search_geoserver_files(
     q: str = Query(..., min_length=1, max_length=200),
     db: Session = Depends(get_dataengine_db),
-    current_user: Usuario = Depends(_require_project_editor),
+    current_user: Usuario = Depends(_require_geoserver_manage),
     _rl: Usuario = Depends(_read_rate_limit),
 ):
     needle = q.strip().lower()
@@ -660,7 +658,7 @@ async def upload_geoserver_file(
     name: str | None = Form(default=None),
     workspace: str | None = Form(default=None),
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(_require_project_editor),
+    current_user: Usuario = Depends(_require_geoserver_manage),
     _csrf: Usuario = Depends(verify_csrf),
     _rl: Usuario = Depends(_write_rate_limit),
 ):
@@ -702,7 +700,7 @@ async def init_chunked_geoserver_upload(
     content_type: str | None = Form(default=None),
     total_size: int = Form(...),
     total_chunks: int = Form(...),
-    current_user: Usuario = Depends(_require_project_editor),
+    current_user: Usuario = Depends(_require_geoserver_manage),
     _csrf: Usuario = Depends(verify_csrf),
     _rl: Usuario = Depends(_write_rate_limit),
 ):
@@ -732,7 +730,7 @@ async def upload_chunked_geoserver_part(
     session_id: str,
     chunk: UploadFile = File(...),
     part_number: int = Form(...),
-    current_user: Usuario = Depends(_require_project_editor),
+    current_user: Usuario = Depends(_require_geoserver_manage),
     _csrf: Usuario = Depends(verify_csrf),
     _rl: Usuario = Depends(_chunk_rate_limit),
 ):
@@ -757,7 +755,7 @@ async def complete_chunked_geoserver_upload(
     session_id: str,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(_require_project_editor),
+    current_user: Usuario = Depends(_require_geoserver_manage),
     _csrf: Usuario = Depends(verify_csrf),
     _rl: Usuario = Depends(_write_rate_limit),
 ):
@@ -818,7 +816,7 @@ async def complete_chunked_geoserver_upload(
 async def download_geoserver_folder_zip(
     path: str = Query(default=''),
     workspace: str | None = Query(default=None),
-    current_user: Usuario = Depends(_require_project_editor),
+    current_user: Usuario = Depends(_require_geoserver_manage),
     _rl: Usuario = Depends(_download_rate_limit),
 ):
     import io as _io
@@ -896,7 +894,7 @@ def _font_key(value: str) -> str:
 @router.get('/fonts', response_model=GeoServerFontsResponse)
 async def list_geoserver_fonts(
     db: Session = Depends(get_dataengine_db),
-    current_user: Usuario = Depends(_require_project_editor),
+    current_user: Usuario = Depends(_require_geoserver_manage),
     _rl: Usuario = Depends(_read_rate_limit),
 ):
     client = GeoServerClient()
@@ -956,7 +954,7 @@ async def list_geoserver_fonts(
 async def reload_geoserver_fonts(
     request: Request,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(_require_project_editor),
+    current_user: Usuario = Depends(_require_geoserver_manage),
     _csrf: Usuario = Depends(verify_csrf),
     _rl: Usuario = Depends(_write_rate_limit),
 ):
@@ -985,7 +983,7 @@ async def download_geoserver_file(
     name: str,
     request: Request,
     workspace: str | None = Query(default=None),
-    current_user: Usuario = Depends(_require_project_editor),
+    current_user: Usuario = Depends(_require_geoserver_manage),
     _rl: Usuario = Depends(_download_rate_limit),
 ):
     _validate_file_name_readonly(name)
@@ -1016,7 +1014,7 @@ async def delete_geoserver_file(
     request: Request,
     workspace: str | None = Query(default=None),
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(_require_project_editor),
+    current_user: Usuario = Depends(_require_geoserver_manage),
     _csrf: Usuario = Depends(verify_csrf),
     _rl: Usuario = Depends(_write_rate_limit),
 ):

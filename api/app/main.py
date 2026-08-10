@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import metrics as metrics_module
 from app.api.colibri_cors import ColibriPublicCORSMiddleware
-from app.api.deps import require_staff
+from app.api.deps import require_any_permission, require_panel_access, require_permission
 from app.api.routes import (
     acervo,
     acervo_buckets,
@@ -47,6 +47,7 @@ from app.api.routes import (
     sistema,
     symbols,
     users,
+    wacha,
 )
 from app.core.settings import get_settings
 
@@ -83,41 +84,85 @@ def create_app() -> FastAPI:
     app.include_router(auth.router, prefix=settings.admin_prefix)
     app.include_router(formularios.router, prefix=settings.admin_prefix)
 
-    staff_dep = [Depends(require_staff)]
-    app.include_router(users.router, prefix=settings.admin_prefix, dependencies=staff_dep)
-    app.include_router(actividad.router, prefix=settings.admin_prefix, dependencies=staff_dep)
-    app.include_router(projects.router, prefix=settings.admin_prefix, dependencies=staff_dep)
-    app.include_router(acervo_buckets.router, prefix=settings.admin_prefix, dependencies=staff_dep)
-    app.include_router(pages.router, prefix=settings.admin_prefix, dependencies=staff_dep)
-    app.include_router(menu.router, prefix=settings.admin_prefix, dependencies=staff_dep)
-    app.include_router(acervo.router, prefix=settings.admin_prefix, dependencies=staff_dep)
-    app.include_router(borradores.router, prefix=settings.admin_prefix, dependencies=staff_dep)
-    app.include_router(sistema.router, prefix=settings.admin_prefix, dependencies=staff_dep)
-    app.include_router(layers.router, prefix=settings.admin_prefix, dependencies=staff_dep)
-    app.include_router(capas_catalogo.router, prefix=settings.admin_prefix, dependencies=staff_dep)
-    app.include_router(bulk_ingest.router, prefix=settings.admin_prefix, dependencies=staff_dep)
-    app.include_router(layer_metadata.router, prefix=settings.admin_prefix, dependencies=staff_dep)
-    app.include_router(grid.router, prefix=settings.admin_prefix, dependencies=staff_dep)
-    app.include_router(identidad.router, prefix=settings.admin_prefix, dependencies=staff_dep)
-    app.include_router(symbols.router, prefix=settings.admin_prefix, dependencies=staff_dep)
-    app.include_router(geoserver.router, prefix=settings.admin_prefix, dependencies=staff_dep)
-    app.include_router(preview.admin_router, prefix=settings.admin_prefix, dependencies=staff_dep)
-    app.include_router(sieej_admin.router, prefix=settings.admin_prefix, dependencies=staff_dep)
-    app.include_router(eventos.router, prefix=settings.admin_prefix, dependencies=staff_dep)
-    app.include_router(home.router, prefix=settings.admin_prefix, dependencies=staff_dep)
-    app.include_router(mapalab_shares.router, prefix=settings.admin_prefix, dependencies=staff_dep)
-    app.include_router(mapalab_api_keys.router, prefix=settings.admin_prefix, dependencies=staff_dep)
+    panel = [Depends(require_panel_access())]
+    mapalab_view = [Depends(require_permission("mariachi.mapalab.view"))]
+    portal_view = [Depends(require_permission("mariachi.portal.view"))]
+    acervo_view = [Depends(require_permission("mariachi.acervo.view"))]
+    sistema_manage = [Depends(require_permission("mariachi.sistema.manage"))]
+    colibri_view = [
+        Depends(
+            require_any_permission(
+                "mariachi.colibri_reportes.view", "mariachi.colibri_config.manage"
+            )
+        )
+    ]
+
+    app.include_router(
+        users.router,
+        prefix=settings.admin_prefix,
+        dependencies=[Depends(require_permission("mariachi.usuarios.view"))],
+    )
+    app.include_router(
+        actividad.router,
+        prefix=settings.admin_prefix,
+        dependencies=[Depends(require_permission("mariachi.actividad.view"))],
+    )
+    app.include_router(projects.router, prefix=settings.admin_prefix, dependencies=sistema_manage)
+    app.include_router(acervo_buckets.router, prefix=settings.admin_prefix, dependencies=acervo_view)
+    app.include_router(pages.router, prefix=settings.admin_prefix, dependencies=portal_view)
+    app.include_router(menu.router, prefix=settings.admin_prefix, dependencies=portal_view)
+    app.include_router(acervo.router, prefix=settings.admin_prefix, dependencies=acervo_view)
+    app.include_router(borradores.router, prefix=settings.admin_prefix, dependencies=mapalab_view)
+    app.include_router(sistema.router, prefix=settings.admin_prefix, dependencies=panel)
+    app.include_router(layers.router, prefix=settings.admin_prefix, dependencies=mapalab_view)
+    app.include_router(capas_catalogo.router, prefix=settings.admin_prefix, dependencies=mapalab_view)
+    app.include_router(bulk_ingest.router, prefix=settings.admin_prefix, dependencies=mapalab_view)
+    app.include_router(layer_metadata.router, prefix=settings.admin_prefix, dependencies=mapalab_view)
+    app.include_router(grid.router, prefix=settings.admin_prefix, dependencies=panel)
+    app.include_router(
+        identidad.router,
+        prefix=settings.admin_prefix,
+        dependencies=[Depends(require_permission("mariachi.identidad.view"))],
+    )
+    app.include_router(symbols.router, prefix=settings.admin_prefix, dependencies=mapalab_view)
+    app.include_router(
+        geoserver.router,
+        prefix=settings.admin_prefix,
+        dependencies=[Depends(require_permission("mariachi.geoserver.view"))],
+    )
+    app.include_router(preview.admin_router, prefix=settings.admin_prefix, dependencies=portal_view)
+    app.include_router(
+        sieej_admin.router,
+        prefix=settings.admin_prefix,
+        dependencies=[Depends(require_permission("mariachi.sieej_admin.view"))],
+    )
+    app.include_router(eventos.router, prefix=settings.admin_prefix, dependencies=mapalab_view)
+    app.include_router(home.router, prefix=settings.admin_prefix, dependencies=mapalab_view)
+    app.include_router(
+        mapalab_shares.router,
+        prefix=settings.admin_prefix,
+        dependencies=[Depends(require_permission("mariachi.mapalab.update"))],
+    )
+    app.include_router(
+        mapalab_api_keys.router,
+        prefix=settings.admin_prefix,
+        dependencies=[Depends(require_permission("mariachi.mapalab_llaves.manage"))],
+    )
     app.include_router(mapalab_api_keys_internal.router, prefix=settings.admin_prefix)
     app.include_router(mapalab_mcp_internal.router, prefix=settings.admin_prefix)
     app.include_router(mapalab_api_keys_internal.router, prefix=settings.admin_prefix_legacy)
     app.include_router(mapalab_mcp_internal.router, prefix=settings.admin_prefix_legacy)
-    app.include_router(mapalab_stats.router, prefix=settings.admin_prefix, dependencies=staff_dep)
-    app.include_router(reportes.router, prefix=settings.admin_prefix, dependencies=staff_dep)
-    app.include_router(colibri_tipos.router, prefix=settings.admin_prefix, dependencies=staff_dep)
-    app.include_router(colibri_direcciones.router, prefix=settings.admin_prefix, dependencies=staff_dep)
-    app.include_router(colibri_source_apps.router, prefix=settings.admin_prefix, dependencies=staff_dep)
-    app.include_router(colibri_stats.router, prefix=settings.admin_prefix, dependencies=staff_dep)
-    app.include_router(colibri_routes.router, prefix=settings.admin_prefix, dependencies=staff_dep)
+    app.include_router(mapalab_stats.router, prefix=settings.admin_prefix, dependencies=mapalab_view)
+    app.include_router(
+        reportes.router,
+        prefix=settings.admin_prefix,
+        dependencies=[Depends(require_permission("mariachi.colibri_reportes.view"))],
+    )
+    app.include_router(colibri_tipos.router, prefix=settings.admin_prefix, dependencies=colibri_view)
+    app.include_router(colibri_direcciones.router, prefix=settings.admin_prefix, dependencies=colibri_view)
+    app.include_router(colibri_source_apps.router, prefix=settings.admin_prefix, dependencies=colibri_view)
+    app.include_router(colibri_stats.router, prefix=settings.admin_prefix, dependencies=colibri_view)
+    app.include_router(colibri_routes.router, prefix=settings.admin_prefix, dependencies=colibri_view)
 
     app.include_router(preview.public_router, prefix=settings.web_prefix)
     app.include_router(public.router, prefix=settings.web_prefix)
@@ -128,7 +173,10 @@ def create_app() -> FastAPI:
     app.include_router(reportes_public.router, prefix=settings.public_prefix)
     app.include_router(mapalab_events_public.router, prefix=settings.public_prefix)
     app.include_router(mapalab_infobox_public.router, prefix=settings.public_prefix)
-    app.include_router(mapalab_infobox.router, prefix=settings.admin_prefix, dependencies=staff_dep)
+    app.include_router(mapalab_infobox.router, prefix=settings.admin_prefix, dependencies=mapalab_view)
+
+    if settings.wacha_enabled:
+        app.include_router(wacha.router, prefix=settings.admin_prefix, dependencies=sistema_manage)
 
     @app.get("/", tags=["health"])
     async def healthcheck():

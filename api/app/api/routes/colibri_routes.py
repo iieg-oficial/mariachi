@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db, require_role, verify_csrf
+from app.api.deps import get_db, require_permission, verify_csrf
 from app.core.time import utcnow
 from app.models.colibri_route import ColibriRoute
 from app.models.user import Usuario
@@ -19,7 +19,7 @@ router = APIRouter(prefix="/colibri/routes", tags=["colibri routes"])
 async def listar_routes(
     db: Session = Depends(get_db),
     activo: bool | None = Query(default=None),
-    _admin: Usuario = Depends(require_role(["tetlamamakani"])),
+    _admin: Usuario = Depends(require_permission("mariachi.colibri_config.manage")),
 ):
     query = db.query(ColibriRoute)
     if activo is not None:
@@ -33,7 +33,7 @@ async def listar_routes(
 async def obtener_route(
     route_id: int,
     db: Session = Depends(get_db),
-    _admin: Usuario = Depends(require_role(["tetlamamakani"])),
+    _admin: Usuario = Depends(require_permission("mariachi.colibri_config.manage")),
 ):
     route = db.query(ColibriRoute).filter(ColibriRoute.id == route_id).first()
     if not route:
@@ -46,7 +46,7 @@ async def crear_route(
     payload: ColibriRouteCreate,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
-    __: Usuario = Depends(require_role(["tetlamamakani"])),
+    __: Usuario = Depends(require_permission("mariachi.colibri_config.manage")),
 ):
     route = ColibriRoute(**payload.model_dump())
     db.add(route)
@@ -70,7 +70,7 @@ async def actualizar_route(
     payload: ColibriRouteUpdate,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
-    __: Usuario = Depends(require_role(["tetlamamakani"])),
+    __: Usuario = Depends(require_permission("mariachi.colibri_config.manage")),
 ):
     route = db.query(ColibriRoute).filter(ColibriRoute.id == route_id).first()
     if not route:
@@ -98,7 +98,7 @@ async def eliminar_route(
     route_id: int,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
-    __: Usuario = Depends(require_role(["tetlamamakani"])),
+    __: Usuario = Depends(require_permission("mariachi.colibri_config.manage")),
 ):
     route = db.query(ColibriRoute).filter(ColibriRoute.id == route_id).first()
     if not route:

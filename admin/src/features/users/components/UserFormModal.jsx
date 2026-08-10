@@ -1,8 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Modal, Form, Input, Divider, Segmented, Switch, Tag, Tooltip, Typography } from 'antd';
 import { LoadingOutlined, CheckCircleFilled, CloseCircleFilled } from '@ant-design/icons';
-import PasswordStrengthIndicator from '@shared/components/PasswordStrengthIndicator';
-import { isStrongEnough } from '@shared/helpers/passwordStrength';
 import api from '@shared/services/api';
 import DependenciaSelect from './DependenciaSelect';
 import { metaFor, EXTERNAL_SUBS } from '../constants/projectAccess';
@@ -31,7 +29,6 @@ const roleDescription = (role) => ROLE_OPTIONS.find((o) => o.value === role)?.de
 
 export default function UserFormModal({ open, editingUser, projects, grupos = [], isMobile, form, onCancel, onSubmit }) {
     const selectedRole = Form.useWatch('role', form);
-    const passwordWatch = Form.useWatch('password', form) || '';
     const projectAssignments = Form.useWatch('project_assignments', form) || {};
     const usernameWatch = Form.useWatch('username', form);
 
@@ -142,26 +139,6 @@ export default function UserFormModal({ open, editingUser, projects, grupos = []
                 <Text type="secondary" style={{ display: 'block', marginTop: -16, marginBottom: 16, fontSize: 12 }}>
                     Dirección de correo electrónico del usuario.
                 </Text>
-
-                {!editingUser && (
-                    <Form.Item
-                        label="Contraseña"
-                        name="password"
-                        rules={[
-                            { required: true, message: 'Por favor ingrese la contraseña' },
-                            {
-                                validator: (_, value) => (
-                                    !value || isStrongEnough(value)
-                                        ? Promise.resolve()
-                                        : Promise.reject(new Error('La contraseña no cumple con los requisitos mínimos.'))
-                                ),
-                            },
-                        ]}
-                    >
-                        <Input.Password placeholder="Crea una contraseña segura" />
-                    </Form.Item>
-                )}
-                {!editingUser && <PasswordStrengthIndicator password={passwordWatch} />}
 
                 <Form.Item label="Rol" name="role" rules={[{ required: true, message: 'Por favor seleccione el rol' }]}>
                     <Segmented

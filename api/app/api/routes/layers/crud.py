@@ -4,8 +4,8 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db, verify_csrf
 from app.api.routes.layers._deps import (
     map_domain_errors,
-    require_admin,
-    require_project_editor,
+    require_mapalab_edit,
+    require_mapalab_manage,
     write_rate_limit,
 )
 from app.core.database import get_dataengine_db
@@ -78,7 +78,7 @@ def _compute_references(
 @router.get('/workspaces', response_model=list[WorkspaceResponse])
 async def list_workspaces(
     db: Session = Depends(get_dataengine_db),
-    _editor: Usuario = Depends(require_project_editor),
+    _editor: Usuario = Depends(require_mapalab_edit),
 ):
     return db.query(Workspace).order_by(Workspace.alias).all()
 
@@ -88,7 +88,7 @@ async def auto_leaf(
     data: AutoLeafRequest,
     db: Session = Depends(get_dataengine_db),
     current_user: Usuario = Depends(verify_csrf),
-    _admin: Usuario = Depends(require_admin),
+    _admin: Usuario = Depends(require_mapalab_manage),
     _rl: Usuario = Depends(write_rate_limit),
 ):
     try:
@@ -112,7 +112,7 @@ async def auto_leaf(
 @router.get('/initial-order', response_model=list[InitialOrderItem])
 async def list_initial_order(
     db: Session = Depends(get_dataengine_db),
-    _admin: Usuario = Depends(require_admin),
+    _admin: Usuario = Depends(require_mapalab_manage),
 ):
     return layer_service.list_initial_order(db)
 
@@ -120,7 +120,7 @@ async def list_initial_order(
 @router.get('/deleted', response_model=list[DeletedLayerSummary])
 async def list_deleted_layers(
     db: Session = Depends(get_dataengine_db),
-    _editor: Usuario = Depends(require_project_editor),
+    _editor: Usuario = Depends(require_mapalab_edit),
 ):
     return layer_service.list_deleted_layers(db)
 
@@ -130,7 +130,7 @@ async def get_layer_references(
     layer_id: str,
     db: Session = Depends(get_dataengine_db),
     mariachi_db: Session = Depends(get_db),
-    _editor: Usuario = Depends(require_project_editor),
+    _editor: Usuario = Depends(require_mapalab_edit),
 ):
     layer = db.query(Layer).filter(Layer.id == layer_id).first()
     if not layer:
@@ -142,7 +142,7 @@ async def get_layer_references(
 async def get_layer(
     layer_id: str,
     db: Session = Depends(get_dataengine_db),
-    _editor: Usuario = Depends(require_project_editor),
+    _editor: Usuario = Depends(require_mapalab_edit),
 ):
     layer = db.query(Layer).filter(Layer.id == layer_id).first()
     if not layer:
@@ -155,7 +155,7 @@ async def create_layer(
     data: LayerCreate,
     db: Session = Depends(get_dataengine_db),
     current_user: Usuario = Depends(verify_csrf),
-    _admin: Usuario = Depends(require_admin),
+    _admin: Usuario = Depends(require_mapalab_manage),
     _rl: Usuario = Depends(write_rate_limit),
 ):
     try:
@@ -183,7 +183,7 @@ async def update_layer(
     data: LayerUpdate,
     db: Session = Depends(get_dataengine_db),
     current_user: Usuario = Depends(verify_csrf),
-    _admin: Usuario = Depends(require_admin),
+    _admin: Usuario = Depends(require_mapalab_manage),
     _rl: Usuario = Depends(write_rate_limit),
 ):
     layer = db.query(Layer).filter(Layer.id == layer_id).first()
@@ -208,7 +208,7 @@ async def delete_layer(
     db: Session = Depends(get_dataengine_db),
     mariachi_db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
-    _admin: Usuario = Depends(require_admin),
+    _admin: Usuario = Depends(require_mapalab_manage),
     _rl: Usuario = Depends(write_rate_limit),
 ):
     """Soft-delete (admin). Marca deleted_at sin borrar la fila. Si tiene hijos
@@ -247,7 +247,7 @@ async def restore_layer(
     layer_id: str,
     db: Session = Depends(get_dataengine_db),
     current_user: Usuario = Depends(verify_csrf),
-    _admin: Usuario = Depends(require_admin),
+    _admin: Usuario = Depends(require_mapalab_manage),
     _rl: Usuario = Depends(write_rate_limit),
 ):
     layer = db.query(Layer).filter(Layer.id == layer_id).first()
@@ -275,7 +275,7 @@ async def purge_layer(
     layer_id: str,
     db: Session = Depends(get_dataengine_db),
     _csrf: Usuario = Depends(verify_csrf),
-    _admin: Usuario = Depends(require_admin),
+    _admin: Usuario = Depends(require_mapalab_manage),
     _rl: Usuario = Depends(write_rate_limit),
 ):
     """Hard delete real. Solo permitido sobre capas ya en papelera."""
@@ -297,7 +297,7 @@ async def reorder_layers(
     body: ReorderBody,
     db: Session = Depends(get_dataengine_db),
     _csrf: Usuario = Depends(verify_csrf),
-    _admin: Usuario = Depends(require_admin),
+    _admin: Usuario = Depends(require_mapalab_manage),
     _rl: Usuario = Depends(write_rate_limit),
 ):
     updated = layer_service.reorder_children(db, body.parent_id, body.order)
@@ -311,7 +311,7 @@ async def bulk_update_tags(
     body: dict,
     db: Session = Depends(get_dataengine_db),
     current_user: Usuario = Depends(verify_csrf),
-    _admin: Usuario = Depends(require_admin),
+    _admin: Usuario = Depends(require_mapalab_manage),
     _rl: Usuario = Depends(write_rate_limit),
 ):
     updates = body.get('updates') or []
@@ -348,7 +348,7 @@ async def update_initial_order(
     body: InitialOrderBody,
     db: Session = Depends(get_dataengine_db),
     _csrf: Usuario = Depends(verify_csrf),
-    _admin: Usuario = Depends(require_admin),
+    _admin: Usuario = Depends(require_mapalab_manage),
     _rl: Usuario = Depends(write_rate_limit),
 ):
     try:
@@ -366,7 +366,7 @@ async def duplicate_layer(
     layer_id: str,
     db: Session = Depends(get_dataengine_db),
     _csrf: Usuario = Depends(verify_csrf),
-    _admin: Usuario = Depends(require_admin),
+    _admin: Usuario = Depends(require_mapalab_manage),
     _rl: Usuario = Depends(write_rate_limit),
 ):
     layer = db.query(Layer).filter(Layer.id == layer_id).first()

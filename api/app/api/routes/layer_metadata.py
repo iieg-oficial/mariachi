@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Body, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.api.deps import require_project_access, require_role, verify_csrf
+from app.api.deps import require_permission, verify_csrf
 from app.api.rate_limit import rate_limit
 from app.core.database import get_dataengine_db
 from app.models.layer_metadata import LayerMetadata, LayerStats
@@ -27,11 +27,10 @@ from app.services.stats_templates import (
 router = APIRouter(
     prefix='/layer-metadata',
     tags=['layer-metadata'],
-    dependencies=[Depends(require_project_access('mapalab'))],
 )
 
-_require_project_editor = require_project_access('mapalab', min_role='editor')
-_require_admin = require_role(['tetlamamakani'])
+_require_project_editor = require_permission("mariachi.mapalab.update")
+_require_manage = require_permission("mariachi.mapalab.manage")
 _write_rate_limit = rate_limit(max_requests=60, window_seconds=60.0)
 
 
@@ -129,7 +128,7 @@ async def update_stats(
     data: LayerStatsUpdate,
     db: Session = Depends(get_dataengine_db),
     current_user: Usuario = Depends(verify_csrf),
-    _admin: Usuario = Depends(_require_admin),
+    _admin: Usuario = Depends(_require_manage),
     _rl: Usuario = Depends(_write_rate_limit),
 ):
     meta = db.query(LayerMetadata).filter(LayerMetadata.layer_key == layer_key).first()

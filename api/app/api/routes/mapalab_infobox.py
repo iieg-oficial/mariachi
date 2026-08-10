@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db, require_role, verify_csrf
+from app.api.deps import get_db, require_permission, verify_csrf
 from app.core.database import get_dataengine_db
 from app.core.time import utcnow
 from app.models.mapalab_infobox_propuesta import ESTADOS, MapalabInfoboxPropuesta
@@ -17,7 +17,7 @@ from app.services import mapalab_infobox_service as service
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/mapalab/infobox-propuestas", tags=["mapalab infobox"])
 
-_require_admin = require_role(["tetlamamakani"])
+_require_admin = require_permission("mariachi.mapalab_propuestas.approve")
 
 
 class PropuestaRow(CamelCaseOutput):

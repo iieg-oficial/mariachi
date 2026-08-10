@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import bindparam, text
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_db, verify_csrf
+from app.api.deps import get_current_user, get_db, has_permission, verify_csrf
 from app.core.settings import get_settings
 from app.models.user import Usuario
 from app.schemas.mapalab_event import (
@@ -726,10 +726,10 @@ async def refresh(
     db: Session = Depends(get_db),
     current: Usuario = Depends(get_current_user),
 ):
-    if current.role != "tetlamamakani":
+    if not has_permission(current, "mariachi.mapalab.manage"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Solo administradoras pueden refrescar las estadísticas",
+            detail="Requiere permiso: mariachi.mapalab.manage",
         )
     refreshed = rollup_stats(db)
     return {"ok": True, "refreshed": refreshed, "ts": datetime.utcnow().isoformat()}

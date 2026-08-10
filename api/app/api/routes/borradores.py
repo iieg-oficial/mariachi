@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session, joinedload
 
-from app.api.deps import get_current_user, get_db, require_role, verify_csrf
+from app.api.deps import get_current_user, get_db, require_permission, verify_csrf
 from app.core.database import get_dataengine_db
 from app.core.time import utcnow
 from app.models.borrador import Borrador
@@ -13,7 +13,7 @@ from app.services.geoserver_client import GeoServerClient, GeoServerError
 
 router = APIRouter(prefix="/borradores", tags=["borradores"])
 
-_require_admin = require_role(['tetlamamakani'])
+_require_admin = require_permission('mariachi.mapalab.manage')
 
 
 def _resolve_sld_layer_id(

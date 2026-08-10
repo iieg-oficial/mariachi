@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import api, { refreshCsrfToken } from '@shared/services/api';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import api, { refreshCsrfToken, buildMinervaLoginUrl } from '@shared/services/api';
 import { AuthContext } from '@shared/contexts/useAuth';
 
 export const AuthProvider = ({ children }) => {
@@ -35,25 +35,17 @@ export const AuthProvider = ({ children }) => {
         return () => { cancelled = true; };
     }, []);
 
-    const loginUser = async (username, password) => {
-        const response = await api.post('/autenticacion/iniciar-sesion', {
-            username,
-            password
-        });
-
-        const { csrf_token } = response.data;
-        sessionStorage.setItem('csrf_token', csrf_token);
-
-        const profile = await api.get('/autenticacion/perfil');
-        setUser(profile.data);
-
-        return { ...response.data, user: profile.data };
+    const login = (next) => {
+        window.location.href = buildMinervaLoginUrl(next);
     };
 
     const logout = async () => {
-        await api.post('/autenticacion/cerrar-sesion').catch(() => null);
+        const { data } = await api.post('/autenticacion/cerrar-sesion').catch(() => ({ data: null }));
         sessionStorage.removeItem('csrf_token');
         setUser(null);
+        if (data?.logout_url) {
+            window.location.href = data.logout_url;
+        }
     };
 
     const isAuthenticated = () => {
@@ -71,10 +63,24 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    const permissions = useMemo(
+        () => new Set(user?.permissions || []),
+        [user]
+    );
+
+    const can = useCallback((permission) => permissions.has(permission), [permissions]);
+    const canAny = useCallback(
+        (list = []) => list.some((permission) => permissions.has(permission)),
+        [permissions]
+    );
+
     const value = {
         user,
         loading,
-        login: loginUser,
+        permissions,
+        can,
+        canAny,
+        login,
         logout,
         isAuthenticated,
         refreshUser,

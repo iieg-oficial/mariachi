@@ -5,7 +5,6 @@ import {
     MenuUnfoldOutlined,
     UserOutlined,
     LogoutOutlined,
-    LockOutlined,
     FileTextOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router';
@@ -32,14 +31,14 @@ export default function MainLayout() {
     const isMobile = !screens.md;
     const navigate = useNavigate();
     const location = useLocation();
-    const { user, logout } = useAuth();
+    const { user, can, logout } = useAuth();
 
     const handleLogout = async () => {
         try {
             await logout();
-            navigate('/login');
         } catch (error) {
             console.error('Error al cerrar sesión:', error);
+            navigate('/login');
         }
     };
 
@@ -47,14 +46,14 @@ export default function MainLayout() {
     const [reportesPendingCount, setReportesPendingCount] = useState(0);
 
     useEffect(() => {
-        if (user?.role !== 'tetlamamakani') return;
+        if (!can('mariachi.mapalab.update')) return;
         api.get('/borradores/pendientes')
             .then(r => setPendingCount(r.data.length))
             .catch(() => {});
-    }, [user]);
+    }, [user, can]);
 
     useEffect(() => {
-        if (!user?.role) return;
+        if (!can('mariachi.colibri_reportes.view')) return;
         api.get('/reportes/stats/contadores')
             .then(r => {
                 const data = r.data || {};
@@ -62,7 +61,7 @@ export default function MainLayout() {
                 setReportesPendingCount(total);
             })
             .catch(() => {});
-    }, [user]);
+    }, [user, can]);
 
     useEffect(() => {
         if (isMobile) setMobileDrawerOpen(false);
@@ -75,11 +74,12 @@ export default function MainLayout() {
 
     const menuItems = buildSiderItems({
         user,
+        can,
         onNavigate: handleNav,
         extras: { pendingCount, reportesPendingCount },
     });
     const footerRailItems = [
-        ...buildSiderFooterRail({ user, onNavigate: handleNav, extras: { pendingCount } }),
+        ...buildSiderFooterRail({ user, can, onNavigate: handleNav, extras: { pendingCount } }),
         {
             key: 'version-notes',
             label: 'Notas de versión',
@@ -99,12 +99,6 @@ export default function MainLayout() {
             icon: <UserOutlined />,
             label: 'Perfil',
             onClick: () => navigate('/perfil'),
-        },
-        {
-            key: 'change-password',
-            icon: <LockOutlined />,
-            label: 'Cambiar Contraseña',
-            onClick: () => navigate('/change-password'),
         },
         { type: 'divider' },
         {

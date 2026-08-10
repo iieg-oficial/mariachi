@@ -10,7 +10,7 @@ from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
-from app.api.deps import ADMIN_ROLE
+from app.api.deps import has_permission
 from app.core.bucket_policies import get_hidden_prefixes
 from app.models.acervo import AcervoFile, AcervoFolder
 from app.models.acervo_bucket import AcervoBucket
@@ -213,7 +213,7 @@ def resolve_bucket_or_403(bucket_id: int, current_user: Usuario, db: Session) ->
     if bucket is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bucket no encontrado")
 
-    if current_user.role == ADMIN_ROLE:
+    if has_permission(current_user, "mariachi.acervo.manage"):
         return bucket
 
     if _membership(bucket, current_user, db) is None:
@@ -232,7 +232,7 @@ def resolve_bucket_escribible(
     el explorador deja registros apuntando a objetos inexistentes.
     """
     bucket = resolve_bucket_or_403(bucket_id, current_user, db)
-    if current_user.role != ADMIN_ROLE:
+    if not has_permission(current_user, "mariachi.acervo.manage"):
         membership = _membership(bucket, current_user, db)
         if membership is None or membership.project_role != "editor":
             raise HTTPException(
@@ -256,7 +256,7 @@ def buckets_accesibles(
     current_user: Usuario,
     include_inactive: bool = False,
 ) -> list[AcervoBucket]:
-    is_admin = current_user.role == ADMIN_ROLE
+    is_admin = has_permission(current_user, "mariachi.acervo.manage")
     query = db.query(AcervoBucket).join(Project, Project.id == AcervoBucket.project_id)
     if not (include_inactive and is_admin):
         query = query.filter(AcervoBucket.is_active.is_(True), Project.is_active.is_(True))

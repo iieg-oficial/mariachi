@@ -1,13 +1,16 @@
 import logging
-import secrets
-import string
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.api.deps import ADMIN_ROLE, get_current_user, get_db, require_role, verify_csrf
-from app.core.security import hash_password
+from app.api.deps import (
+    get_current_user,
+    get_db,
+    has_permission,
+    require_permission,
+    verify_csrf,
+)
 from app.models.project import Project, UserProject
 from app.models.sieej import Grupo, usuario_grupo
 from app.models.user import Usuario
@@ -21,24 +24,12 @@ from app.services.actividad_service import registrar_actividad
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/usuarios", tags=["usuarios"])
 
-_require_admin = require_role([ADMIN_ROLE])
+_require_create = require_permission("mariachi.usuarios.create")
+_require_delete = require_permission("mariachi.usuarios.delete")
+
+_UNUSABLE_PASSWORD = "!minerva"
 
 _SELF_UPDATE_PRIVILEGED_FIELDS = frozenset({"role", "username", "must_change_password"})
-
-
-def generate_temp_password(length=12):
-    specials = "!@#$%^&*-_=+?"
-    guaranteed = [
-        secrets.choice(string.ascii_lowercase),
-        secrets.choice(string.ascii_uppercase),
-        secrets.choice(string.digits),
-        secrets.choice(specials),
-    ]
-    pool = string.ascii_letters + string.digits + specials
-    remaining = [secrets.choice(pool) for _ in range(max(length, len(guaranteed)) - len(guaranteed))]
-    chars = guaranteed + remaining
-    secrets.SystemRandom().shuffle(chars)
-    return ''.join(chars)
 
 
 def _normalize_identifier(value: str | None) -> str | None:
@@ -76,17 +67,9 @@ def _mask_email(email: str | None) -> str | None:
 
 
 def _serialize_user(db: Session, user: Usuario, *, viewer: Usuario | None = None) -> dict:
-    """Serializa el usuario aplicando privacidad por rol del viewer.
-
-    - Admin (`tetlamamakani`): ve todo.
-    - Editora viendo a otro: email enmascarado y proyectos ocultos (estos
-      son detalles operativos que la editora no necesita para su trabajo
-      del dia a dia; el admin sigue gestionando asignaciones).
-    - Editora viendose a si misma: ve todo (su propio perfil).
-    """
-    is_admin = viewer is not None and viewer.role == ADMIN_ROLE
+    manages = viewer is not None and has_permission(viewer, "mariachi.usuarios.update")
     is_self = viewer is not None and viewer.id == user.id
-    show_full = is_admin or is_self
+    show_full = manages or is_self
 
     email = user.email if show_full else _mask_email(user.email)
     projects = _user_memberships(db, user.id) if show_full else []
@@ -215,7 +198,7 @@ async def crear_usuario(
     usuario_in: UsuarioCreate,
     db: Session = Depends(get_db),
     _csrf: Usuario = Depends(verify_csrf),
-    current_user: Usuario = Depends(_require_admin),
+    current_user: Usuario = Depends(_require_create),
 ):
     username = _normalize_identifier(usuario_in.username)
     email = _normalize_identifier(usuario_in.email)
@@ -233,8 +216,8 @@ async def crear_usuario(
     )
     usuario_data["username"] = username
     usuario_data["email"] = email
-    usuario_data["hashed_password"] = hash_password(usuario_in.password)
-    usuario_data["must_change_password"] = True
+    usuario_data["hashed_password"] = _UNUSABLE_PASSWORD
+    usuario_data["must_change_password"] = False
 
     nuevo_usuario = Usuario(**usuario_data)
     db.add(nuevo_usuario)
@@ -274,7 +257,7 @@ async def actualizar_usuario(
             status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado"
         )
 
-    is_admin = current_user.role == ADMIN_ROLE
+    is_admin = has_permission(current_user, "mariachi.usuarios.update")
     is_self = current_user.id == usuario_id
     if not is_admin and not is_self:
         raise HTTPException(
@@ -314,7 +297,12 @@ async def actualizar_usuario(
     for field, value in update_data.items():
         setattr(usuario, field, value)
 
-    if is_admin and usuario_in.project_assignments is not None:
+    if usuario_in.project_assignments is not None:
+        if not has_permission(current_user, "mariachi.usuarios.assign"):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Requiere permiso: mariachi.usuarios.assign",
+            )
         _apply_assignments(db, usuario.id, usuario_in.project_assignments)
 
     grupo_fields = usuario_in.model_fields_set & {"sieej_grupo_id", "sieej_grupo_nombre"}
@@ -337,51 +325,12 @@ async def actualizar_usuario(
     return _serialize_user(db, usuario, viewer=current_user)
 
 
-@router.post("/{usuario_id}/restablecer-contrasena")
-async def resetear_password(
-    usuario_id: int,
-    db: Session = Depends(get_db),
-    _csrf: Usuario = Depends(verify_csrf),
-    current_user: Usuario = Depends(_require_admin),
-):
-    usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
-    if not usuario:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado"
-        )
-
-    from app.core.time import utcnow
-
-    temp_password = generate_temp_password()
-    usuario.hashed_password = hash_password(temp_password)
-    usuario.must_change_password = True
-    usuario.password_changed_at = utcnow()
-    registrar_actividad(
-        db,
-        actor=current_user,
-        action="user.reset_password",
-        resource_type="usuario",
-        resource_id=usuario.id,
-    )
-    db.commit()
-    logger.info(
-        "action=user.reset_password actor=%s target=%s",
-        current_user.id,
-        usuario.id,
-    )
-
-    return {
-        "message": "Contraseña reseteada exitosamente",
-        "temp_password": temp_password
-    }
-
-
 @router.delete("/{usuario_id}")
 async def eliminar_usuario(
     usuario_id: int,
     db: Session = Depends(get_db),
     _csrf: Usuario = Depends(verify_csrf),
-    current_user: Usuario = Depends(_require_admin),
+    current_user: Usuario = Depends(_require_delete),
 ):
     usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
     if not usuario:

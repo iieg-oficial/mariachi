@@ -8,7 +8,7 @@ from __future__ import annotations
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from app.api.deps import ADMIN_ROLE
+from app.api.deps import has_permission
 from app.core.time import utcnow
 from app.models.sieej import (
     EnvioFormulario,
@@ -51,7 +51,7 @@ class FormulariosDinamicosService:
             )
         )
 
-        if user.role != ADMIN_ROLE:
+        if not has_permission(user, "mariachi.sieej_formularios.update"):
             grupos_select = (
                 select(usuario_grupo.c.grupo_id)
                 .where(usuario_grupo.c.usuario_id == user.id)
@@ -168,7 +168,7 @@ class FormulariosDinamicosService:
         )
         if formulario is None:
             return None
-        if user.role == ADMIN_ROLE:
+        if has_permission(user, "mariachi.sieej_formularios.update"):
             return formulario
         if not self._user_puede_ver(formulario, user):
             return None

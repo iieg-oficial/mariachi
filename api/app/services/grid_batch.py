@@ -48,8 +48,7 @@ class GridSpec:
     fields: dict[str, GridField]
     fetch_rows: Callable[..., list[dict]]
     presence_scope: str
-    project_slug: str | None = None
-    min_role: str | None = None
+    permission: str | None = None
     columns_meta: list[dict] = field(default_factory=list)
     guard: Callable[[Connection, dict[str, dict], GridField, Any], str | None] | None = None
     history_table: str | None = None

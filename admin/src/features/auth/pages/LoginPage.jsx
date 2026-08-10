@@ -1,57 +1,39 @@
-import { useState } from 'react';
-import { Form, Input, Button, Typography, Flex, Row, Col, theme } from 'antd';
-import { useNavigate, useSearchParams } from 'react-router';
+import { useEffect, useState } from 'react';
+import { Button, Typography, Flex, Row, Col, theme, Alert } from 'antd';
+import { useSearchParams } from 'react-router';
 import { useAuth } from '@shared/contexts/useAuth';
 import { resolveNextPath } from '@shared/helpers/loginRedirect';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import { BRAND } from '@app/providers/brand';
-import { message } from '@shared/services/message';
 
 const { Title, Text, Link: TypoLink } = Typography;
 const { useToken } = theme;
 
+const AUTH_ERRORS = {
+    access_denied: 'Tu cuenta no tiene acceso a Mariachi. Pide que te asignen un rol de la aplicación.',
+    invalid_request: 'La solicitud de inicio de sesión no fue válida. Intenta de nuevo.',
+    server_error: 'Minerva no pudo completar el inicio de sesión. Intenta más tarde.',
+};
+
 export default function Login() {
     const [loading, setLoading] = useState(false);
-    const [form] = Form.useForm();
-    const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const { login } = useAuth();
     const { token } = useToken();
     const { isMobile } = useIsMobile();
 
-    const onFinish = async (values) => {
+    const authError = searchParams.get('auth_error');
+
+    useEffect(() => {
+        if (!authError) return;
+        const url = new URL(window.location.href);
+        url.searchParams.delete('auth_error');
+        window.history.replaceState({}, '', url);
+    }, [authError]);
+
+    const onLogin = () => {
         setLoading(true);
-        try {
-            const data = await login(values.username, values.password);
-
-            if (data.user.role === 'externo') {
-                message.info('Cuenta externa. Te llevamos a SIEEJ.');
-                window.location.href = '/sieej/inicio-sesion';
-                return;
-            }
-
-            message.success('¡Inicio de sesión exitoso!');
-
-            if (data.user.must_change_password) {
-                navigate('/change-password');
-            } else {
-                navigate(resolveNextPath(searchParams.get('next')));
-            }
-        } catch (error) {
-            console.error(error);
-            const status = error.response?.status;
-            const detail = error.response?.data?.detail;
-
-            if (status === 401) {
-                form.setFields([
-                    { name: 'password', errors: [detail || 'Usuario o contraseña incorrectos'] }
-                ]);
-            } else {
-                message.error(detail || 'Error al iniciar sesión');
-            }
-        } finally {
-            setLoading(false);
-        }
+        login(resolveNextPath(searchParams.get('next')));
     };
 
     return (
@@ -100,73 +82,36 @@ export default function Login() {
                                         Hola
                                     </Title>
                                     <Text style={{ fontSize: 12, color: '#1f2937', fontWeight: 400, fontFamily: '"Garet", sans-serif' }}>
-                                        Ingresa tus datos para iniciar sesión.
+                                        Inicia sesión con tu cuenta institucional.
                                     </Text>
                                 </Flex>
 
-                                <Form
-                                    form={form}
-                                    name="login"
-                                    onFinish={onFinish}
-                                    autoComplete="off"
-                                    layout="vertical"
-                                    initialValues={import.meta.env.DEV ? { username: 'admin' } : {}}
-                                    className="login-form-sieej"
-                                    requiredMark={(label, info) => (
-                                        <>
-                                            {label}
-                                            {info.required && (
-                                                <span style={{ color: BRAND.orange, marginLeft: 4, fontWeight: 700 }}>*</span>
-                                            )}
-                                        </>
-                                    )}
+                                {authError && (
+                                    <Alert
+                                        type="error"
+                                        showIcon
+                                        style={{ marginBottom: token.marginLG }}
+                                        message={AUTH_ERRORS[authError] || 'No se pudo iniciar sesión.'}
+                                    />
+                                )}
+
+                                <Button
+                                    type="primary"
+                                    onClick={onLogin}
+                                    loading={loading}
+                                    block
+                                    style={{
+                                        background: BRAND.purple,
+                                        borderColor: BRAND.purple,
+                                        height: 40,
+                                        borderRadius: 20,
+                                        fontWeight: 700,
+                                        fontSize: 14,
+                                        fontFamily: '"Garet", sans-serif',
+                                    }}
                                 >
-                                    <Form.Item
-                                        label="Usuario o correo electrónico"
-                                        name="username"
-                                        normalize={(value) => (value ? value.replace(/\s/g, '').toLowerCase() : value)}
-                                        rules={[{ required: true, message: 'Ingrese su usuario' }]}
-                                    >
-                                        <Input placeholder="Usuario o correo electrónico" />
-                                    </Form.Item>
-
-                                    <Form.Item
-                                        label="Contraseña"
-                                        name="password"
-                                        rules={[{ required: true, message: 'Ingrese su contraseña' }]}
-                                    >
-                                        <Input.Password
-                                            placeholder="Contraseña"
-                                            iconRender={(visible) => (
-                                                <img
-                                                    src={`${import.meta.env.BASE_URL}${visible ? 'ico-show.svg' : 'ico-hidden.svg'}`}
-                                                    alt={visible ? 'Mostrar' : 'Ocultar'}
-                                                    style={{ width: 22, height: 22 }}
-                                                />
-                                            )}
-                                        />
-                                    </Form.Item>
-
-                                    <Form.Item style={{ marginTop: token.marginXL, marginBottom: 0 }}>
-                                        <Button
-                                            type="primary"
-                                            htmlType="submit"
-                                            loading={loading}
-                                            block
-                                            style={{
-                                                background: BRAND.purple,
-                                                borderColor: BRAND.purple,
-                                                height: 40,
-                                                borderRadius: 20,
-                                                fontWeight: 700,
-                                                fontSize: 14,
-                                                fontFamily: '"Garet", sans-serif',
-                                            }}
-                                        >
-                                            Iniciar sesión
-                                        </Button>
-                                    </Form.Item>
-                                </Form>
+                                    Iniciar sesión
+                                </Button>
                             </div>
                         </Flex>
                     </Col>
@@ -203,7 +148,7 @@ export default function Login() {
                     style={{ height: 52, width: 'auto' }}
                 />
                 <TypoLink
-                    href="https://iieg.jalisco.gob.mx/aviso-de-privacidad"
+                    href="https://iieg.jalisco.gob.mx/acervo/iieg/avisos-de-privacidad.pdf"
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{

@@ -1,6 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Button, Card, Popconfirm, Space, Table, Tag, Typography, message } from 'antd';
-import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
+import { Button, Card, Popconfirm, Segmented, Space, Table, Tag, Typography, message } from 'antd';
+import {
+    AppstoreOutlined,
+    DeleteOutlined,
+    EditOutlined,
+    PlusOutlined,
+    TableOutlined,
+} from '@ant-design/icons';
+import { GridPanel } from '@shared/components/dataGrid';
 
 import CamaraModal from '../components/CamaraModal';
 import EstadoPanel from '../components/EstadoPanel';
@@ -9,11 +16,19 @@ import {
     createCamara,
     deleteCamara,
     getEstado,
+    getEstadoCamaras,
     listCamaras,
     updateCamara,
 } from '../api/wachaService';
 
 const { Title, Paragraph } = Typography;
+
+const VISTAS = [
+    { label: 'Fichas', value: 'fichas', icon: <AppstoreOutlined /> },
+    { label: 'Tabla', value: 'tabla', icon: <TableOutlined /> },
+];
+
+const BUSQUEDA = ['nombre', 'etiqueta', 'ubicacion', 'rtsp_url'];
 
 const WachaPage = () => {
     const [camaras, setCamaras] = useState([]);
@@ -23,6 +38,8 @@ const WachaPage = () => {
     const [guardando, setGuardando] = useState(false);
     const [modalAbierto, setModalAbierto] = useState(false);
     const [enEdicion, setEnEdicion] = useState(null);
+    const [enVivo, setEnVivo] = useState({});
+    const [vista, setVista] = useState('fichas');
 
     const cargar = useCallback(async () => {
         setCargando(true);
@@ -30,6 +47,11 @@ const WachaPage = () => {
             const [lista, situacion] = await Promise.all([listCamaras(), getEstado()]);
             setCamaras(lista);
             setEstado(situacion);
+            try {
+                setEnVivo(await getEstadoCamaras());
+            } catch {
+                setEnVivo({});
+            }
         } catch {
             message.error('No se pudieron cargar las cámaras');
         } finally {
@@ -106,11 +128,22 @@ const WachaPage = () => {
         },
         { title: 'Ubicación', dataIndex: 'ubicacion', responsive: ['md'] },
         {
-            title: 'Estado',
+            title: 'Configurada',
             dataIndex: 'habilitada',
             render: (valor) => (valor
                 ? <Tag color="green">habilitada</Tag>
                 : <Tag>apagada</Tag>),
+        },
+        {
+            title: 'En wacha',
+            key: 'en_vivo',
+            render: (_, fila) => {
+                const vivo = enVivo[fila.nombre];
+                if (!vivo) return <Tag>sin datos</Tag>;
+                return vivo.en_linea
+                    ? <Tag color="green">{vivo.camera_fps} fps</Tag>
+                    : <Tag color="red">sin señal</Tag>;
+            },
         },
         {
             title: 'Grabación',
@@ -168,19 +201,36 @@ const WachaPage = () => {
             <Card
                 title={`${camaras.length} cámara(s)`}
                 extra={
-                    <Button type="primary" icon={<PlusOutlined />} onClick={abrirNueva}>
-                        Nueva cámara
-                    </Button>
+                    <Space>
+                        <Segmented options={VISTAS} value={vista} onChange={setVista} />
+                        <Button type="primary" icon={<PlusOutlined />} onClick={abrirNueva}>
+                            Nueva cámara
+                        </Button>
+                    </Space>
                 }
+                styles={vista === 'tabla' ? { body: { padding: 0, height: '60vh' } } : undefined}
             >
-                <Table
-                    rowKey="id"
-                    columns={columnas}
-                    dataSource={camaras}
-                    loading={cargando}
-                    pagination={false}
-                    size="small"
-                />
+                {vista === 'fichas' ? (
+                    <Table
+                        rowKey="id"
+                        columns={columnas}
+                        dataSource={camaras}
+                        loading={cargando}
+                        pagination={false}
+                        size="small"
+                    />
+                ) : (
+                    <GridPanel
+                        resource="wacha-camaras"
+                        rowKeyField="nombre"
+                        searchFields={BUSQUEDA}
+                        searchPlaceholder="Buscar por nombre, ubicación o URL"
+                        itemsLabel="cámaras"
+                        exportFileName="camaras-wacha"
+                        rowLabelField="etiqueta"
+                        active={vista === 'tabla'}
+                    />
+                )}
             </Card>
 
             <CamaraModal

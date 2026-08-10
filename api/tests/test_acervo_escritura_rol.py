@@ -49,6 +49,15 @@ def test_editor_puede_escribir(db_session, editora_user):
     assert resolve_bucket_escribible(bucket.id, editora_user, db_session).id == bucket.id
 
 
-def test_admin_escribe_sin_membresia(db_session, admin_user):
+def test_acervo_manage_escribe_sin_membresia(db_session, admin_user):
+    admin_user.permissions = {"mariachi.acervo.manage"}
     bucket = _bucket(db_session)
     assert resolve_bucket_escribible(bucket.id, admin_user, db_session).id == bucket.id
+
+
+def test_sin_acervo_manage_ni_membresia_no_se_escribe(db_session, editora_user):
+    editora_user.permissions = {"mariachi.acervo.view"}
+    bucket = _bucket(db_session)
+    with pytest.raises(HTTPException) as exc:
+        resolve_bucket_escribible(bucket.id, editora_user, db_session)
+    assert exc.value.status_code == 403

@@ -2,9 +2,9 @@ application:
   code: mariachi
   name: Mariachi
   description: Panel de administracion y API central del ecosistema IIEG
-  homepage_url: http://localhost:5173
+  homepage_url: http://localhost:3011
   redirect_uris:
-    - http://localhost:8000/api/mariachi/autenticacion/callback
+    - http://localhost:8010/api/mariachi/autenticacion/callback
 
 permissions:
   - key: mariachi.mapalab.view
@@ -15,12 +15,16 @@ permissions:
     name: Administrar las llaves de embebido de MapaLab
   - key: mariachi.mapalab_propuestas.approve
     name: Moderar propuestas de tarjeta del catalogo
+  - key: mariachi.mapalab.manage
+    name: Administrar workspaces, orden inicial y operaciones masivas de MapaLab
 
   - key: mariachi.portal.view
     name: Ver paginas, menu e inicio del portal
   - key: mariachi.portal.update
     name: Editar paginas, menu e inicio del portal
 
+  - key: mariachi.sieej_admin.view
+    name: Entrar al panel de administracion de SIEEJ
   - key: mariachi.sieej_formularios.view
     name: Ver formularios de SIEEJ
   - key: mariachi.sieej_formularios.create
@@ -96,6 +100,12 @@ roles:
       - mariachi.mapalab.view
       - mariachi.mapalab.update
       - mariachi.mapalab_propuestas.approve
+  - name: MapaLab - administracion
+    description: Atomico. Workspaces, orden inicial y operaciones masivas
+    permissions:
+      - mariachi.mapalab.view
+      - mariachi.mapalab.update
+      - mariachi.mapalab.manage
   - name: MapaLab - llaves de embebido
     description: Atomico. Administrar las llaves con que otros sitios embeben MapaLab
     permissions:
@@ -112,13 +122,15 @@ roles:
       - mariachi.portal.update
 
   - name: SIEEJ - consulta
-    description: Atomico. Ver formularios y envios
+    description: Atomico. Ver formularios y envios desde el panel
     permissions:
+      - mariachi.sieej_admin.view
       - mariachi.sieej_formularios.view
       - mariachi.sieej_envios.view
   - name: SIEEJ - administracion
     description: Atomico. Disenar formularios y gestionar envios
     permissions:
+      - mariachi.sieej_admin.view
       - mariachi.sieej_formularios.view
       - mariachi.sieej_formularios.create
       - mariachi.sieej_formularios.update
@@ -200,10 +212,12 @@ roles:
     permissions:
       - mariachi.mapalab.view
       - mariachi.mapalab.update
+      - mariachi.mapalab.manage
       - mariachi.mapalab_llaves.manage
       - mariachi.mapalab_propuestas.approve
       - mariachi.portal.view
       - mariachi.portal.update
+      - mariachi.sieej_admin.view
       - mariachi.sieej_formularios.view
       - mariachi.sieej_formularios.create
       - mariachi.sieej_formularios.update

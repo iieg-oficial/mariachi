@@ -3,7 +3,6 @@ import { Avatar, Button, Card, Space, Tag, Tooltip, Typography } from 'antd';
 import {
     DeleteOutlined,
     EditOutlined,
-    LockOutlined,
     UserOutlined,
 } from '@ant-design/icons';
 
@@ -13,7 +12,7 @@ const ROLE_COLOR = { tetlamamakani: 'red', editora: 'blue', externo: 'green' };
 const ROLE_LABEL = { tetlamamakani: 'Administradora', editora: 'Editora', externo: 'Externo' };
 const PROJECT_ROLE_LABEL = { editor: 'Editor', viewer: 'Viewer' };
 
-const UserCard = ({ user, onEdit, onResetPassword, onDelete, isSelf }) => {
+const UserCard = ({ user, onEdit, onDelete, isSelf }) => {
     const stop = (handler) => (e) => {
         e.stopPropagation();
         handler(user);
@@ -36,15 +35,6 @@ const UserCard = ({ user, onEdit, onResetPassword, onDelete, isSelf }) => {
     const actions = [
         <Tooltip key="editar" title="Editar">
             <Button type="text" icon={<EditOutlined />} onClick={stop(onEdit)} aria-label="Editar" />
-        </Tooltip>,
-        <Tooltip key="reset" title={isSelf ? 'No puedes resetear tu propia contraseña' : 'Resetear contraseña'}>
-            <Button
-                type="text"
-                icon={<LockOutlined />}
-                onClick={stop(onResetPassword)}
-                aria-label="Resetear contraseña"
-                disabled={isSelf}
-            />
         </Tooltip>,
         <Tooltip key="eliminar" title={isSelf ? 'No puedes eliminar tu propio usuario' : 'Eliminar'}>
             <Button
@@ -97,11 +87,6 @@ const UserCard = ({ user, onEdit, onResetPassword, onDelete, isSelf }) => {
             <Space size={4} wrap style={{ marginTop: 12 }}>
                 {projectsTags}
             </Space>
-            {user.must_change_password && (
-                <Text type="warning" style={{ fontSize: 11, marginTop: 8 }}>
-                    Pendiente cambio de contraseña en primer login
-                </Text>
-            )}
         </Card>
     );
 };

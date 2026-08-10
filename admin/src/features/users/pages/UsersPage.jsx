@@ -24,7 +24,6 @@ const FIELD_LABEL = {
     username: 'Usuario',
     name: 'Nombre',
     email: 'Email',
-    password: 'Contraseña',
     role: 'Rol',
     project_assignments: 'Proyectos',
 };
@@ -148,47 +147,6 @@ export default function Users() {
         });
     }, [fetchUsers]);
 
-    const handleResetPassword = useCallback((record) => {
-        const hasPendingReset = record.must_change_password;
-        Modal.confirm({
-            title: '¿Resetear contraseña?',
-            content: (
-                <div>
-                    <p>Se generará una nueva contraseña temporal para <strong>{record.name}</strong>.</p>
-                    <p>El usuario deberá cambiarla en su próximo inicio de sesión.</p>
-                    {hasPendingReset && (
-                        <p style={{ color: '#d4380d', marginTop: 12 }}>
-                            <strong>Atención:</strong> este usuario ya tiene una contraseña temporal pendiente de uso. Si continúas, la anterior dejará de servir y deberás compartir la nueva.
-                        </p>
-                    )}
-                </div>
-            ),
-            okText: 'Resetear',
-            cancelText: 'Cancelar',
-            okButtonProps: { danger: hasPendingReset },
-            onOk: async () => {
-                try {
-                    const response = await api.post(`/usuarios/${record.id}/restablecer-contrasena`);
-                    fetchUsers();
-                    Modal.info({
-                        title: 'Contraseña Reseteada',
-                        content: (
-                            <div>
-                                <p>La nueva contraseña temporal es:</p>
-                                <Title level={4} copyable>{response.data.temp_password}</Title>
-                                <p>Esta contraseña solo se mostrará una vez. Cópiala y compártela con el usuario antes de cerrar.</p>
-                            </div>
-                        ),
-                        width: isMobile ? '100%' : 400,
-                        centered: true,
-                    });
-                } catch {
-                    message.error('Error al resetear contraseña');
-                }
-            },
-        });
-    }, [fetchUsers, isMobile]);
-
     const handleSubmit = useCallback(async (values) => {
         const payload = {
             username: values.username,
@@ -216,7 +174,6 @@ export default function Users() {
                 await api.put(`/usuarios/${editingUser.id}`, payload);
                 message.success('Usuario actualizado exitosamente');
             } else {
-                payload.password = values.password;
                 await api.post('/usuarios', payload);
                 message.success('Usuario creado exitosamente');
             }
@@ -309,7 +266,6 @@ export default function Users() {
                                     user={u}
                                     isSelf={currentUser?.id === u.id}
                                     onEdit={handleEdit}
-                                    onResetPassword={handleResetPassword}
                                     onDelete={handleDelete}
                                 />
                             </Col>

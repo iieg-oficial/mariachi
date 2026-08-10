@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import verify_csrf
@@ -98,12 +99,42 @@ async def estado(db: Session = Depends(get_db)):
     )
 
 
+@router.get("/estado-camaras")
+async def estado_camaras():
+    try:
+        return WachaClient().estado_camaras()
+    except WachaError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+@router.get("/camaras/{nombre}/stream")
+async def stream(nombre: str, fps: int = 3, alto: int = 360, db: Session = Depends(get_db)):
+    camara = db.query(Camara).filter(Camara.nombre == nombre).first()
+    if camara is None:
+        raise HTTPException(status_code=404, detail="Camara no encontrada")
+    if not camara.habilitada:
+        raise HTTPException(status_code=409, detail="La camara esta apagada")
+
+    fps = max(1, min(fps, 10))
+    alto = max(120, min(alto, 1080))
+
+    try:
+        generador = WachaClient().mjpeg(nombre, fps, alto)
+        tipo = next(generador)
+    except WachaError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=str(exc)[:200]) from exc
+
+    return StreamingResponse(generador, media_type=tipo)
+
+
 @router.get("/preview", response_model=PreviewResponse)
 async def preview(db: Session = Depends(get_db)):
     configuracion = wacha_config.construir(db)
     texto = wacha_config.como_yaml(configuracion)
     try:
-        valido, detalle = WachaClient().validar_config(configuracion)
+        valido, detalle = WachaClient().validar_config(texto)
     except WachaError as exc:
         return PreviewResponse(configuracion=texto, valido=False, detalle=str(exc))
     return PreviewResponse(configuracion=texto, valido=valido, detalle=detalle)
@@ -121,12 +152,13 @@ async def aplicar(
             detail="No hay camaras habilitadas: aplicar dejaria a wacha sin grabar",
         )
 
+    texto = wacha_config.como_yaml(configuracion)
     try:
         cliente = WachaClient()
-        valido, detalle = cliente.validar_config(configuracion)
+        valido, detalle = cliente.validar_config(texto)
         if not valido:
             raise HTTPException(status_code=400, detail=detalle or "Configuracion invalida")
-        cliente.guardar_config(configuracion, aplicar=True)
+        cliente.guardar_config(texto, aplicar=True)
     except WachaError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
 

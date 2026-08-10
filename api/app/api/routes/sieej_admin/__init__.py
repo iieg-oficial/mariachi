@@ -1,13 +1,8 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 
-from app.api.deps import require_project_access
 from app.api.routes.sieej_admin import catalogos, formularios, grupos, stats
 
-router = APIRouter(
-    prefix="/sieej",
-    tags=["sieej-admin"],
-    dependencies=[Depends(require_project_access("sieej"))],
-)
+router = APIRouter(prefix="/sieej", tags=["sieej-admin"])
 
 router.include_router(stats.router)
 router.include_router(formularios.router)

@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
-from app.api.deps import require_project_access, require_role, verify_csrf
+from app.api.deps import has_permission, require_permission, verify_csrf
 from app.api.rate_limit import rate_limit
 from app.core.database import get_dataengine_db, get_db
 from app.models.acervo_bucket import AcervoBucket
@@ -37,11 +37,10 @@ logger = logging.getLogger(__name__)
 router = APIRouter(
     prefix='/layer-metadata/bulk',
     tags=['layer-metadata-bulk'],
-    dependencies=[Depends(require_project_access('mapalab'))],
 )
 
-_require_editor = require_project_access('mapalab', min_role='editor')
-_require_admin = require_role(['tetlamamakani'])
+_require_editor = require_permission("mariachi.mapalab.update")
+_require_manage = require_permission("mariachi.mapalab.manage")
 _write_rate_limit = rate_limit(max_requests=20, window_seconds=60.0)
 
 _PLAN_TTL_HOURS = 24
@@ -71,7 +70,7 @@ def _plan_or_404(de_db: Session, plan_id: uuid.UUID, current_user: Usuario) -> B
     plan = de_db.query(BulkIngestPlan).filter(BulkIngestPlan.id == plan_id).first()
     if plan is None:
         raise HTTPException(status_code=404, detail='Plan no encontrado')
-    if plan.created_by != current_user.email and current_user.role != 'tetlamamakani':
+    if plan.created_by != current_user.email and not has_permission(current_user, 'mariachi.mapalab.manage'):
         raise HTTPException(status_code=403, detail='Plan pertenece a otro usuario')
     if plan.expires_at < _now_utc() and plan.status == 'pending':
         plan.status = 'expired'
@@ -221,7 +220,7 @@ async def apply_plan_endpoint(
     selection: BulkIngestApplySelection | None = None,
     de_db: Session = Depends(get_dataengine_db),
     current_user: Usuario = Depends(verify_csrf),
-    _admin: Usuario = Depends(_require_admin),
+    _admin: Usuario = Depends(_require_manage),
     _rl: Usuario = Depends(_write_rate_limit),
 ):
     plan = _plan_or_404(de_db, plan_id, current_user)

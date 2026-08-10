@@ -4,8 +4,8 @@ import { useAuth } from '@shared/contexts/useAuth';
 import { useNavigate } from 'react-router';
 import { buildLoginPath } from '@shared/helpers/loginRedirect';
 
-export default function RoleProtectedRoute({ children, allowedRoles = [] }) {
-    const { user } = useAuth();
+export default function PermissionRoute({ children, anyOf = [] }) {
+    const { user, canAny } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -13,7 +13,7 @@ export default function RoleProtectedRoute({ children, allowedRoles = [] }) {
         return <Navigate to={buildLoginPath(location)} replace />;
     }
 
-    if (!allowedRoles.includes(user.role)) {
+    if (anyOf.length > 0 && !canAny(anyOf)) {
         return (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
                 <Result

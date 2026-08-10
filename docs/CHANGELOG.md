@@ -9,6 +9,113 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.2.0] - 2026-08-10
+
+### Agregado: módulo wacha, videovigilancia administrada desde el CMS
+
+Las cámaras dejan de configurarse editando el `config.yml` de Frigate a mano en la máquina: pasan a
+vivir en Postgres, en un schema propio `wacha`, y mariachi genera y entrega la configuración por la
+API de Frigate. El YAML pasa a ser artefacto generado.
+
+El módulo va **detrás de `WACHA_ENABLED`, que por omisión es `false`**, y solo se enciende en el
+nodo donde vive wacha. No cuelga de `settings.environment` a propósito: el stack local corre con
+`ENVIRONMENT=production`, así que derivarlo de ahí lo ocultaría en local o lo encendería en
+producción. Sin la variable el router ni se registra. La migración sí corre en todos los entornos y
+crea el schema vacío, que es inofensivo; condicionarla haría divergir el historial de alembic.
+
+Tres vistas en el CMS:
+
+- **Cámaras**, con selector de modo: fichas o tabla. El modo tabla **reutiliza el `GridPanel`** de
+  captura masiva declarando un `GridSpec` nuevo (`wacha-camaras`); no hizo falta tocar la
+  maquinaria porque el motor ya soportaba la base de mariachi. Trae búsqueda, exportación,
+  historial y presencia, y valida en el servidor que la URL empiece con `rtsp://` y que la
+  retención vaya de 1 a 365 días.
+- **En vivo**, mosaico con el MJPEG de cada cámara. **mariachi proxea el video**, así que el
+  navegador no necesita alcanzar la red donde vive wacha.
+- Columna **En wacha** con los fps reales que reporta `/api/stats`, separada de la configuración
+  guardada: una cámara puede estar habilitada en el catálogo y caída en la realidad.
+
+Aplicar valida contra Frigate antes de escribir y se niega si no quedaría ninguna cámara
+habilitada. No hay recarga en caliente: aplicar reinicia el NVR.
+
+## [2.1.0] - 2026-08-10
+
+### Agregado: el tipo de geometría en el editor de capas
+
+`mapalab.layers` gana `geometry_type` (dataengine 1.33.0) y el editor lo expone en dos lugares: el
+formulario de la capa, pestaña Servicios, y la rejilla de configuración como columna `select`.
+
+Quien lo llena normalmente es el job `geometry-type` de dataengine, leyendo el
+`DescribeFeatureType` de GeoServer. El campo se edita a mano para el caso que ese job no puede
+resolver: una capa publicada solo por WMS, donde no hay WFS del cual deducir la geometría. Hoy es
+una sola, `curvas_de_nivel`.
+
+Los valores son los del contrato con el visor y el plugin —`point`, `line`, `polygon`, `raster`—,
+así que el catálogo de opciones traduce solo la etiqueta que ve el usuario. El `on_commit` de la
+rejilla sigue siendo `notify_tree_changed`: al guardar se invalida la caché del árbol y el cambio
+llega al visor sin esperar al cron.
+
+## [2.0.0] - 2026-08-10
+
+### Cambiado: la autenticación pasa a minerva (OIDC) y la autorización a permisos
+
+**Incompatible.** Mariachi deja de tener login propio. La identidad la emite minerva por
+Authorization Code + PKCE con cliente confidencial, y la autorización deja de mirar el rol local
+para consultar permisos `mariachi.<recurso>.<accion>` en el IdP. Es el frente 1 del ciclo
+`tamal-rojo`.
+
+**Lo que cambia para quien usa el sistema:** la pantalla de login ya no pide usuario y contraseña,
+redirige a minerva. Quien no tenga un rol de la aplicación en minerva no recibe código de
+autorización y aterriza en `/login?auth_error=access_denied` con el motivo a la vista, en vez de un
+error en blanco.
+
+**El modelo de sesión se conserva.** Minerva es proveedor de identidad, no de sesión: tras el
+callback mariachi sigue emitiendo su cookie `HttpOnly` con CSRF y refresh en Redis, con rotación y
+detección de reuso. Se eligió así porque SIEEJ comparte origen y cookie con mariachi, y retirar el
+refresh propio habría arrastrado a SIEEJ a la misma ventana de cambio. Los tokens de minerva nunca
+llegan al navegador: viven en Redis bajo un `sid` que la cookie referencia.
+
+**El padrón existente se conserva.** `usuarios.id` lo referencian 18 tablas —entre ellas
+`sieej.envio_formulario` con `ON DELETE CASCADE`—, así que la tabla no se recrea: la migración
+`m1nerva0001` le agrega `minerva_sub` (único, nulable, indexado). Al primer login se busca por
+`minerva_sub`, luego por correo comparando con `lower()` en ambos lados —`usuarios.email` es único
+pero sensible a mayúsculas— y solo si no aparece se crea el usuario.
+
+Autorización: los 26 archivos que usaban `require_role` o `require_project_access` pasan a
+`require_permission`. La membresía de proyecto deja de decidir accesos. Las comprobaciones directas
+de rol en rutas y servicios también se sustituyeron; `usuarios.role` sobrevive solo como criterio de
+reparto de los avisos de SIEEJ, porque minerva no expone la consulta inversa de quién tiene un
+permiso.
+
+El manifiesto suma dos permisos a los 34 previos: `mariachi.mapalab.manage`, que conserva el nivel
+que antes era exclusivo de administración en MapaLab (workspaces, orden inicial, operaciones
+masivas), y `mariachi.sieej_admin.view`, que separa el panel de administración de SIEEJ del rol de
+las dependencias que solo capturan. Sin ese segundo permiso, el rol «SIEEJ - reportar» habría
+entrado al panel, porque comparte `sieej_formularios.view` con «SIEEJ - consulta».
+
+La revocación es inmediata: `MINERVA_PERMISSIONS_CACHE_TTL` queda en `0`, así que cada chequeo
+pregunta a minerva y quitar un rol surte efecto en el siguiente request, sin esperar a que expire
+un caché.
+
+### Eliminado
+
+- `POST /autenticacion/iniciar-sesion`, `POST /autenticacion/cambiar-contrasena` y
+  `POST /usuarios/{id}/restablecer-contrasena`. Conservarlos habría dejado una vía de acceso que
+  salta al IdP y que, además, no autoriza nada: los permisos ya solo salen de minerva.
+- La pantalla de cambio de contraseña del admin y el botón de reseteo en la ficha de usuario.
+
+Las columnas `hashed_password`, `must_change_password` y `password_changed_at` **no** se borran:
+son la única vía de vuelta atrás si la reconciliación falla para alguien. Se retiran en una
+migración posterior, una vez confirmado que nadie quedó fuera.
+
+### Agregado
+
+- `minerva_sdk` 0.2.0 vendorizado en `api/minerva_sdk/`, copiado de vine. Valida RS256 contra el
+  JWKS de minerva, refresca el JWKS ante un `kid` desconocido y exige la audiencia.
+- `GET /autenticacion/login` y `GET /autenticacion/callback`.
+- `permissions` en la respuesta de `GET /autenticacion/perfil`, y los helpers `can()` / `canAny()`
+  en el frontend para ocultar menús y proteger rutas por permiso.
+
 ## [1.123.0] - 2026-08-10
 
 ### Agregado: colores de la marca `iieg` en el catálogo de identidad

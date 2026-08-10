@@ -1,7 +1,7 @@
 import { lazy } from 'react';
-import RoleProtectedRoute from '@app/guards/RoleProtectedRoute';
+import PermissionRoute from '@app/guards/PermissionRoute';
 
-const ADMIN_ROLES = ['tetlamamakani'];
+const IDENTIDAD_VIEW = ['mariachi.identidad.view'];
 
 export const buildIdentidadRoutes = (withSuspense) => {
     const IdentidadPage = lazy(() => import('@features/identidad').then((m) => ({ default: m.IdentidadPage })));
@@ -10,7 +10,7 @@ export const buildIdentidadRoutes = (withSuspense) => {
         {
             path: 'identidad',
             element: withSuspense(
-                <RoleProtectedRoute allowedRoles={ADMIN_ROLES}><IdentidadPage /></RoleProtectedRoute>,
+                <PermissionRoute anyOf={IDENTIDAD_VIEW}><IdentidadPage /></PermissionRoute>,
             ),
         },
     ];

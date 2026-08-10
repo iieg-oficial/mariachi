@@ -16,7 +16,7 @@ from fastapi.responses import StreamingResponse
 from minio.error import S3Error
 from sqlalchemy.orm import Session
 
-from app.api.deps import ADMIN_ROLE, get_current_user, get_db, verify_csrf
+from app.api.deps import get_current_user, get_db, has_permission, verify_csrf
 from app.api.rate_limit import rate_limit
 from app.core.bucket_policies import get_hidden_prefixes
 from app.models.acervo import AcervoFile, AcervoFolder
@@ -1085,8 +1085,8 @@ async def eliminar_archivo(
             bucket_id = int(bucket_id_str)
         except ValueError:
             raise HTTPException(status_code=400, detail="ID de directorio invalido")
-        if current_user.role != ADMIN_ROLE:
-            raise HTTPException(status_code=403, detail="Solo admin puede borrar directorios")
+        if not has_permission(current_user, "mariachi.acervo.manage"):
+            raise HTTPException(status_code=403, detail="Requiere permiso: mariachi.acervo.manage")
         bucket = acervo_file_service.resolve_bucket_escribible(bucket_id, current_user, db)
         client = AcervoClient.for_bucket(bucket)
         prefix = name if name.endswith("/") else f"{name}/"

@@ -3,11 +3,26 @@ import { Spin, Result, Button } from 'antd';
 import { useAuth } from '@shared/contexts/useAuth';
 import { buildLoginPath } from '@shared/helpers/loginRedirect';
 
-const STAFF_ROLES = ['tetlamamakani', 'editora'];
 const SIEEJ_LOGIN_PATH = '/sieej/inicio-sesion';
 
+const PANEL_PERMISSIONS = [
+    'mariachi.mapalab.view',
+    'mariachi.portal.view',
+    'mariachi.sieej_admin.view',
+    'mariachi.acervo.view',
+    'mariachi.colibri_reportes.view',
+    'mariachi.colibri_config.manage',
+    'mariachi.identidad.view',
+    'mariachi.geoserver.view',
+    'mariachi.actividad.view',
+    'mariachi.usuarios.view',
+    'mariachi.sistema.manage',
+    'mariachi.mapalab_llaves.manage',
+    'mariachi.mapalab_propuestas.approve',
+];
+
 export default function ProtectedRoute({ children }) {
-    const { isAuthenticated, loading, user, logout } = useAuth();
+    const { isAuthenticated, loading, canAny, can, logout } = useAuth();
     const location = useLocation();
 
     if (loading) {
@@ -29,7 +44,8 @@ export default function ProtectedRoute({ children }) {
         return <Navigate to={buildLoginPath(location)} replace />;
     }
 
-    if (user && !STAFF_ROLES.includes(user.role)) {
+    if (!canAny(PANEL_PERMISSIONS)) {
+        const esRespondent = can('mariachi.sieej_envios.create');
         return (
             <div style={{
                 display: 'flex',
@@ -40,19 +56,23 @@ export default function ProtectedRoute({ children }) {
                 <Result
                     status="403"
                     title="Acceso restringido"
-                    subTitle="El panel administrativo es solo para staff del IIEG. Tu cuenta es de tipo externo y debe usar la plataforma publica de SIEEJ."
+                    subTitle={esRespondent
+                        ? 'Tu cuenta captura formularios de SIEEJ, no administra el panel. Te llevamos a la plataforma de SIEEJ.'
+                        : 'Tu cuenta no tiene permisos en Mariachi. Pide que te asignen un rol de la aplicacion en Minerva.'}
                     extra={[
-                        <Button
-                            key="sieej"
-                            type="primary"
-                            onClick={() => { window.location.href = SIEEJ_LOGIN_PATH; }}
-                        >
-                            Ir a SIEEJ
-                        </Button>,
+                        esRespondent ? (
+                            <Button
+                                key="sieej"
+                                type="primary"
+                                onClick={() => { window.location.href = SIEEJ_LOGIN_PATH; }}
+                            >
+                                Ir a SIEEJ
+                            </Button>
+                        ) : null,
                         <Button key="logout" onClick={async () => { await logout(); }}>
                             Cerrar sesion
                         </Button>,
-                    ]}
+                    ].filter(Boolean)}
                 />
             </div>
         );

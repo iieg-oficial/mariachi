@@ -1,8 +1,8 @@
 import { lazy } from 'react';
 import { Navigate } from 'react-router';
-import RoleProtectedRoute from '@app/guards/RoleProtectedRoute';
+import PermissionRoute from '@app/guards/PermissionRoute';
 
-const ADMIN_ROLES = ['tetlamamakani'];
+const ACTIVIDAD_VIEW = ['mariachi.actividad.view'];
 
 export const buildHuachicolRoutes = (withSuspense) => {
     const Monitoreo = lazy(() => import('@features/monitoreo').then((m) => ({ default: m.MonitoreoPage })));
@@ -12,7 +12,7 @@ export const buildHuachicolRoutes = (withSuspense) => {
     const route = (path, Page) => ({
         path,
         element: withSuspense(
-            <RoleProtectedRoute allowedRoles={ADMIN_ROLES}><Page /></RoleProtectedRoute>,
+            <PermissionRoute anyOf={ACTIVIDAD_VIEW}><Page /></PermissionRoute>,
         ),
     });
 

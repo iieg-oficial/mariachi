@@ -88,8 +88,14 @@ const refreshSession = async () => {
 };
 
 const isAuthEndpoint = (url) =>
-    typeof url === 'string' &&
-    (url.includes('/autenticacion/refrescar') || url.includes('/autenticacion/iniciar-sesion'));
+    typeof url === 'string' && url.includes('/autenticacion/refrescar');
+
+export const buildMinervaLoginUrl = (next) => {
+    const target = typeof next === 'string' && next.startsWith('/') && !next.startsWith('//')
+        ? `?next=${encodeURIComponent(next)}`
+        : '';
+    return `${API_URL}/autenticacion/login${target}`;
+};
 
 const redirectToLogin = () => {
     sessionStorage.removeItem('csrf_token');

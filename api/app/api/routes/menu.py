@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db, require_project_access, verify_csrf
+from app.api.deps import get_db, require_permission, verify_csrf
 from app.models.menu_item import MenuItem
 from app.models.user import Usuario
 from app.schemas.menu_item import MenuItemCreate, MenuItemResponse, MenuItemTree, MenuItemUpdate
@@ -10,10 +10,9 @@ from app.services.menu_tree import build_menu_tree
 router = APIRouter(
     prefix="/elementos-menu",
     tags=["menú"],
-    dependencies=[Depends(require_project_access("portal"))],
 )
 
-_require_editor = require_project_access("portal", min_role="editor")
+_require_editor = require_permission("mariachi.portal.update")
 
 
 @router.get("", response_model=list[MenuItemResponse])
