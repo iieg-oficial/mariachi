@@ -22,3 +22,16 @@ export const buildWachaRoutes = (withSuspense) => {
         },
     ];
 };
+
+export const buildWachaFullscreenRoutes = (withSuspense) => {
+    const VivoPantallaPage = lazy(() => import('@features/wacha').then((m) => ({ default: m.VivoPantallaPage })));
+
+    return [
+        {
+            path: 'wacha/vivo/pantalla',
+            element: withSuspense(
+                <PermissionRoute anyOf={WACHA_MANAGE}><VivoPantallaPage /></PermissionRoute>,
+            ),
+        },
+    ];
+};

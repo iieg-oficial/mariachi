@@ -9,6 +9,19 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.3.0] - 2026-08-10
+
+### Agregado: vista en vivo de las cámaras de wacha
+
+El módulo de wacha ya administraba las cámaras, pero para verlas había que abrir Frigate. Ahora el
+CMS trae el mosaico en vivo (`/wacha/vivo`) y una vista a pantalla completa (`/wacha/vivo/pantalla`),
+pensada para dejarla puesta en un monitor: sin barra lateral ni cabecera, con el mosaico ocupando
+todo el espacio.
+
+El estado de cada cámara y su recarga viven en `useCamarasEnVivo`, así que las dos pantallas comparten
+la misma lógica de carga y reintento. Ambas rutas exigen `mariachi.sistema.manage`, el mismo permiso
+que la administración de cámaras.
+
 ## [2.2.0] - 2026-08-10
 
 ### Agregado: módulo wacha, videovigilancia administrada desde el CMS
