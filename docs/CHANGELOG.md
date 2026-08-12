@@ -9,6 +9,74 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.4.0] - 2026-08-12
+
+### Agregado: estadísticas de asistencia de vine
+
+Sección nueva en el CMS —**Vine → Estadísticas**, con etiqueta `TEST`— construida sobre los
+registros del control de acceso del instituto. Cuatro bloques: panorama (jornada promedio, personas
+del día, día más flojo de la semana, jornada más larga), ritmo (horario de entradas y salidas, día
+de la semana, tendencia mensual y uso de cada acceso), personas (quién acumula más horas, los más
+madrugadores y las rachas más largas) y calidad del registro.
+
+**Los datos no salen del módulo de asistencia del biométrico, porque está vacío.** El BioTime del
+instituto opera **sólo como control de acceso**: `att_transaction` tiene 0 filas —igual que
+`att_timing`, `att_timeslot` y `att_tempsch`—, mientras que `acc_transaction` acumula 288 mil
+eventos desde agosto de 2023. Las jornadas se derivan de ahí: primera entrada y última salida de
+cada persona por día.
+
+**La dirección se deduce del nombre del lector, nunca de `reader_state`.** Los cuatro accesos son
+unidireccionales (`IIEG-2-Entrada`, `IIEG-3-Salida`…) y ese campo es incoherente — hay lectores de
+entrada con `0` y de salida con `0` y con `1` según el registro.
+
+Se sincroniza con `POST /vine/sincronizar`, incremental por el `id` del origen e idempotente
+(`ON CONFLICT DO NOTHING`), más un botón en la propia página.
+
+**Y en automático cada 10 minutos:** `make sync-vine` corre `scripts/sync_vine.py` y `make cron` lo
+instala junto al respaldo y al refresh de stats. Con el módulo apagado el script **sale en 0 sin
+hacer nada**, para que el cron no reporte error en los nodos donde vine no corre.
+
+| Endpoint | Devuelve |
+|---|---|
+| `GET /vine/estadisticas/resumen` | Panorama, calidad y estado de la sincronización |
+| `GET /vine/estadisticas/ritmo` | Horario, día de la semana, tendencia mensual y accesos |
+| `GET /vine/estadisticas/personas` | Rankings por persona — permiso aparte |
+| `POST /vine/sincronizar` | Trae del biométrico lo que falte |
+
+### Cambiado: los módulos locales no se ven por ser administrador
+
+wacha se apoyaba en `mariachi.sistema.manage`, que **está en el rol Administrador**: cualquier
+administrador veía las cámaras sin que nadie se lo hubiera dado. Ahora cada módulo local tiene
+permiso propio —`mariachi.wacha.view` y `mariachi.vine.view`—, **ningún rol compuesto los incluye**
+y el acceso se asigna persona por persona.
+
+Los dos entran además a `PANEL_PERMISSIONS`: sin eso, quien tuviera sólo el rol del módulo quedaba
+con el rol asignado y **fuera del panel**, sin ver nada. Procedimiento completo en
+`runbook/modulos-locales-y-permisos.md` del repo de contexto.
+
+**Los rankings con nombre van tras un permiso propio.** `mariachi.vine.view` da las estadísticas
+agregadas, que no señalan a nadie; `mariachi.vine_personas.view` agrega los rankings individuales,
+que son dato personal laboral. Los dos se declaran en `manifest.minerva.yml` con un rol atómico
+cada uno.
+
+**Nace apagada y falla cerrada**, con el mismo criterio que wacha: sin `VINE_ENABLED` el router ni
+se registra —la ruta responde 404— y sin `VITE_VINE_ENABLED` en el build del admin la sección no
+aparece en el sider ni se registra su ruta.
+
+### Gotchas del biométrico
+
+- **El servidor corre en `Asia/Hong_Kong` (+08) y los eventos se guardan en hora de México.**
+  `now()` y `current_date` del biométrico van **14 horas adelantados**: `WHERE event_time >=
+  current_date` devuelve cero registros aunque el día tenga cientos. Todos los cortes de día se
+  calculan del lado de mariachi.
+- **Es PostgreSQL 9.2.9, 32-bit, sobre Windows** — sin soporte desde 2017. No admite `FILTER` ni
+  funciones XML, así que las consultas contra el origen se escriben sin ellos.
+- **Sus estadísticas mienten.** `pg_stat_user_tables` reportaba 141 filas en `acc_transaction`
+  cuando tenía 288,899: para dimensionar hay que contar, no leer `n_live_tup`.
+- **Una de cada diez jornadas queda incompleta** (97 sin salida y 17 sin entrada de 996 en 30 días).
+  Las incompletas no entran en promedios ni rankings, y la sección lo dice en pantalla: si no se
+  advierte, el ranking premia a quien marca salida con constancia, no a quien más horas hace.
+
 ## [2.3.0] - 2026-08-10
 
 ### Agregado: vista en vivo de las cámaras de wacha

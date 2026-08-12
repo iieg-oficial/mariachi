@@ -2,6 +2,7 @@ import {
     ApartmentOutlined,
     AppstoreOutlined,
     AuditOutlined,
+    BarChartOutlined,
     BgColorsOutlined,
     BookOutlined,
     BranchesOutlined,
@@ -27,6 +28,7 @@ import {
     VideoCameraOutlined,
 } from '@ant-design/icons';
 import ColibriIcon from '@shared/components/ColibriIcon';
+import { VINE_HABILITADO } from '@features/vine/constants/flags';
 
 export const PROJECT_REGISTRY = {
     sextante: {
@@ -128,10 +130,24 @@ export const PROJECT_REGISTRY = {
             },
         ],
     },
+    ...(VINE_HABILITADO ? {
+        vine: {
+            label: 'Vine',
+            icon: <BarChartOutlined />,
+            permissions: ['mariachi.vine.view'],
+            badgeVariant: 'test',
+            items: [
+                {
+                    key: '/vine/estadisticas', path: '/vine/estadisticas', label: 'Estadísticas',
+                    icon: <BarChartOutlined />,
+                },
+            ],
+        },
+    } : {}),
     wacha: {
         label: 'Wacha',
         icon: <VideoCameraOutlined />,
-        permissions: ['mariachi.sistema.manage'],
+        permissions: ['mariachi.wacha.view'],
         badgeVariant: 'local',
         items: [
             {

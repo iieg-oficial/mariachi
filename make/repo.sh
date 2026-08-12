@@ -36,17 +36,18 @@ cron_install() {
     dir=$(pwd)
     mkdir -p "$dir/backups"
     (
-        crontab -l 2>/dev/null | grep -v 'mariachi-backup' | grep -v 'mariachi-stats'
+        crontab -l 2>/dev/null | grep -v 'mariachi-backup' | grep -v 'mariachi-stats' | grep -v 'mariachi-vine'
         echo "0 3 * * * cd $dir && make backup-db >> $dir/backups/backup.log 2>&1 # mariachi-backup"
         echo "*/30 * * * * cd $dir && make refresh-mapalab-stats >> $dir/backups/mapalab-stats.log 2>&1 # mariachi-stats-refresh"
+        echo "*/10 * * * * cd $dir && make sync-vine >> $dir/backups/vine-sync.log 2>&1 # mariachi-vine-sync"
     ) | crontab -
-    row 'Cron' 'instalado' "$C_GREEN" 'respaldo 03:00 y stats cada 30 min'
-    crontab -l | grep -E 'mariachi-(backup|stats)' | while IFS= read -r line; do
+    row 'Cron' 'instalado' "$C_GREEN" 'respaldo 03:00, stats cada 30 min y vine cada 10'
+    crontab -l | grep -E 'mariachi-(backup|stats|vine)' | while IFS= read -r line; do
         printf '         %s\n' "$line"
     done
 }
 
 cron_remove() {
-    (crontab -l 2>/dev/null | grep -v 'mariachi-backup' | grep -v 'mariachi-stats') | crontab -
+    (crontab -l 2>/dev/null | grep -v 'mariachi-backup' | grep -v 'mariachi-stats' | grep -v 'mariachi-vine') | crontab -
     row 'Cron' 'desinstalado' "$C_GREEN"
 }

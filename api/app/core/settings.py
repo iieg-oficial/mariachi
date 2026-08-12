@@ -91,6 +91,10 @@ class Settings(BaseSettings):
     wacha_api_url: str | None = None
     wacha_timeout: float = 10.0
 
+    vine_enabled: bool = False
+    vine_biometrico_url: str | None = None
+    vine_biometrico_timeout: int = 5
+
     colibri_api_key_mariachi: str | None = None
 
     discord_webhook_mapalab: str | None = None

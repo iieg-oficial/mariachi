@@ -146,6 +146,8 @@ PANEL_PERMISSIONS = (
     "mariachi.actividad.view",
     "mariachi.usuarios.view",
     "mariachi.sistema.manage",
+    "mariachi.vine.view",
+    "mariachi.wacha.view",
 )
 
 

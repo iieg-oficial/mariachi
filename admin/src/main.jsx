@@ -19,6 +19,7 @@ import { buildHuachicolRoutes } from '@features/telemetria/routes';
 import { buildIdentidadRoutes } from '@features/identidad/routes';
 import { buildSextanteRoutes } from '@features/sextante/routes';
 import { buildWachaRoutes, buildWachaFullscreenRoutes } from '@features/wacha/routes';
+import { buildVineRoutes } from '@features/vine/routes';
 
 const Users = lazy(() => import('@features/users'));
 const MenuManager = lazy(() => import('@features/portal-menu'));
@@ -203,6 +204,7 @@ const router = createBrowserRouter([
                     ...buildSextanteRoutes(withSuspense),
                     ...buildIdentidadRoutes(withSuspense),
                     ...buildWachaRoutes(withSuspense),
+                    ...buildVineRoutes(withSuspense),
                     ...buildHuachicolRoutes(withSuspense),
                     ...buildMapalabApiKeysRoutes(withSuspense),
                     {

@@ -1,7 +1,7 @@
 import { lazy } from 'react';
 import PermissionRoute from '@app/guards/PermissionRoute';
 
-const WACHA_MANAGE = ['mariachi.sistema.manage'];
+const WACHA_MANAGE = ['mariachi.wacha.view'];
 
 export const buildWachaRoutes = (withSuspense) => {
     const WachaPage = lazy(() => import('@features/wacha').then((m) => ({ default: m.WachaPage })));

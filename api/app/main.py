@@ -47,6 +47,7 @@ from app.api.routes import (
     sistema,
     symbols,
     users,
+    vine,
     wacha,
 )
 from app.core.settings import get_settings
@@ -176,7 +177,18 @@ def create_app() -> FastAPI:
     app.include_router(mapalab_infobox.router, prefix=settings.admin_prefix, dependencies=mapalab_view)
 
     if settings.wacha_enabled:
-        app.include_router(wacha.router, prefix=settings.admin_prefix, dependencies=sistema_manage)
+        app.include_router(
+            wacha.router,
+            prefix=settings.admin_prefix,
+            dependencies=[Depends(require_permission("mariachi.wacha.view"))],
+        )
+
+    if settings.vine_enabled:
+        app.include_router(
+            vine.router,
+            prefix=settings.admin_prefix,
+            dependencies=[Depends(require_permission("mariachi.vine.view"))],
+        )
 
     @app.get("/", tags=["health"])
     async def healthcheck():

@@ -62,6 +62,14 @@ permissions:
   - key: mariachi.colibri_config.manage
     name: Administrar tipos, direcciones, rutas y source apps
 
+  - key: mariachi.wacha.view
+    name: Ver y administrar las camaras de wacha
+
+  - key: mariachi.vine.view
+    name: Ver estadisticas de asistencia de vine
+  - key: mariachi.vine_personas.view
+    name: Ver los rankings de asistencia con nombre de cada persona
+
   - key: mariachi.identidad.view
     name: Ver marcas y tokens de identidad
   - key: mariachi.identidad.update
@@ -175,6 +183,22 @@ roles:
     description: Atomico. Tipos, direcciones, rutas y source apps
     permissions:
       - mariachi.colibri_config.manage
+
+  - name: Wacha - camaras
+    description: Atomico. Catalogo de camaras y vista en vivo. Modulo local
+    permissions:
+      - mariachi.wacha.view
+
+  - name: Vine - estadisticas
+    description: Atomico. Estadisticas agregadas de asistencia, sin datos individuales
+    permissions:
+      - mariachi.vine.view
+
+  - name: Vine - estadisticas con nombres
+    description: Atomico. Suma los rankings por persona (dato personal laboral)
+    permissions:
+      - mariachi.vine.view
+      - mariachi.vine_personas.view
 
   - name: Identidad - administracion
     description: Atomico. Marcas, tokens y artefactos de identidad visual

@@ -16,4 +16,5 @@ include make/common.mk
 include make/backup.mk
 include make/dev.mk
 include make/sieej.mk
+include make/vine.mk
 include make/mapalab.mk
