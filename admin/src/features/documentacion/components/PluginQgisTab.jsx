@@ -1,4 +1,5 @@
-import { Alert, Card, Space, Table, Tag, Typography } from 'antd';
+import { Alert, Card, Space, Table, Tabs, Tag, Typography } from 'antd';
+import PluginQgisInstalacion from '@features/documentacion/components/PluginQgisInstalacion';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -65,45 +66,6 @@ const CAMPO_COLUMNS = [
     { title: 'Qué cambia en el plugin', dataIndex: 'efecto', key: 'efecto' },
 ];
 
-const PERFILES = [
-    { so: 'Linux', ruta: '~/.local/share/QGIS/QGIS3/profiles/default/python/plugins/' },
-    { so: 'Windows', ruta: '%APPDATA%\\QGIS\\QGIS3\\profiles\\default\\python\\plugins\\' },
-    { so: 'macOS', ruta: '~/Library/Application Support/QGIS/QGIS3/profiles/default/python/plugins/' },
-];
-
-const PERFIL_COLUMNS = [
-    { title: 'Sistema', dataIndex: 'so', key: 'so', width: 120, render: (v) => <Text strong>{v}</Text> },
-    { title: 'Carpeta de complementos del perfil', dataIndex: 'ruta', key: 'ruta', render: (v) => <Text code>{v}</Text> },
-];
-
-const PASOS = [
-    {
-        paso: '1. Copiar',
-        que: 'Dejar la carpeta del plugin dentro de la carpeta de complementos del perfil, con el nombre mapalab.',
-    },
-    {
-        paso: '2. Activar',
-        que: 'En QGIS: Complementos → Administrar e instalar complementos → pestaña Instalados → marcar «MapaLab».',
-    },
-    {
-        paso: '3. Abrir',
-        que: 'El ícono de MapaLab aparece en la barra de herramientas y abre el panel a la derecha.',
-    },
-    {
-        paso: '4. Servidor',
-        que: 'La primera vez pide la dirección del servidor. Se escribe una sola vez: queda guardada en el perfil de QGIS.',
-    },
-    {
-        paso: '5. Certificado',
-        que: 'Si el servidor usa certificado propio, QGIS pide aceptar la excepción antes de que cargue el catálogo.',
-    },
-];
-
-const PASO_COLUMNS = [
-    { title: 'Paso', dataIndex: 'paso', key: 'paso', width: 130, render: (v) => <Text strong>{v}</Text> },
-    { title: 'Qué hacer', dataIndex: 'que', key: 'que' },
-];
-
 const ACCIONES = [
     { accion: 'Ver una capa', como: 'Seleccionarla y «Agregar al mapa», o doble clic. Entra como WMS en modo tile.' },
     { accion: 'Ver un grupo entero', como: 'Marcar su casilla. Los nodos de la misma tabla entran como una sola capa con sus filtros combinados.' },
@@ -118,43 +80,9 @@ const ACCION_COLUMNS = [
     { title: 'Cómo', dataIndex: 'como', key: 'como' },
 ];
 
-export default function PluginQgisTab() {
+function UsoTab() {
     return (
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
-            <div>
-                <Title level={4} style={{ marginTop: 0 }}>Plugin de QGIS</Title>
-                <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                    Lleva el catálogo del visor a QGIS: el mismo árbol de temas, el mismo buscador y la misma
-                    identidad, sin teclear una URL de WMS ni saber qué es un workspace. Es de sólo lectura y todo
-                    lo que consume ya es público en el visor, así que no pide credenciales. Pide QGIS 3.40 LTR y
-                    la dirección del servidor la primera vez que se abre.
-                </Paragraph>
-            </div>
-
-            <Card size="small" title="Cómo se instala en un QGIS nuevo">
-                <Table
-                    dataSource={PASOS}
-                    columns={PASO_COLUMNS}
-                    rowKey="paso"
-                    pagination={false}
-                    size="small"
-                    style={{ marginBottom: 16 }}
-                />
-                <Table
-                    dataSource={PERFILES}
-                    columns={PERFIL_COLUMNS}
-                    rowKey="so"
-                    pagination={false}
-                    size="small"
-                />
-            </Card>
-
-            <Alert
-                type="info"
-                showIcon
-                message="Todavía no hay repositorio de complementos"
-                description="La instalación es manual mientras no se publique el repositorio propio en el gateway. Cuando exista, se agregará su dirección en Complementos → Configuración y las actualizaciones llegarán solas. Mientras tanto, para actualizar se reemplaza la carpeta y se recarga el complemento."
-            />
 
             <Card size="small" title="Qué se puede hacer">
                 <Table
@@ -224,6 +152,27 @@ export default function PluginQgisTab() {
                 <Tag color="purple">QGIS 3.40 LTR</Tag>
                 <Tag color="purple">sólo lectura</Tag>
             </Space>
+        </Space>
+    );
+}
+
+export default function PluginQgisTab() {
+    const items = [
+        { key: 'instalacion', label: 'Instalación', children: <PluginQgisInstalacion /> },
+        { key: 'uso', label: 'Uso y administración', children: <UsoTab /> },
+    ];
+
+    return (
+        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+            <div>
+                <Title level={4} style={{ marginTop: 0 }}>Plugin de QGIS</Title>
+                <Paragraph type="secondary" style={{ marginBottom: 0 }}>
+                    Lleva el catálogo del visor a QGIS: el mismo árbol de temas, el mismo buscador y la misma
+                    identidad, sin teclear una URL de WMS ni saber qué es un workspace. Es de sólo lectura y
+                    todo lo que consume ya es público en el visor, así que no pide credenciales.
+                </Paragraph>
+            </div>
+            <Tabs items={items} defaultActiveKey="instalacion" />
         </Space>
     );
 }
