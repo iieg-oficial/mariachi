@@ -1,5 +1,4 @@
 import { Alert, Card, Space, Table, Tabs, Tag, Typography } from 'antd';
-import PluginQgisTab from '@features/documentacion/components/PluginQgisTab';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -193,7 +192,6 @@ function PropuestasInfoboxTab() {
 export default function MapalabTopic() {
     const items = [
         { key: 'propuestas', label: 'Propuestas de tarjeta', children: <PropuestasInfoboxTab /> },
-        { key: 'qgis', label: 'Plugin de QGIS', children: <PluginQgisTab /> },
     ];
 
     return <Tabs items={items} defaultActiveKey="propuestas" />;

@@ -6,6 +6,8 @@ const { Paragraph, Text } = Typography;
 const DESCARGA_URL = import.meta.env.VITE_QGIS_PLUGIN_URL
     || '/acervo/mapalab/plugin/mapalab-qgis.zip';
 
+const DESCARGA_NOMBRE = DESCARGA_URL.split('/').pop();
+
 const PASOS = [
     {
         title: 'Descargar el complemento',
@@ -92,7 +94,7 @@ export default function PluginQgisInstalacion() {
                 }
             >
                 <Paragraph style={{ marginBottom: 0 }}>
-                    Un solo archivo, <Text code>mapalab-qgis.zip</Text>, con todo lo que el complemento
+                    Un solo archivo, <Text code>{DESCARGA_NOMBRE}</Text>, con todo lo que el complemento
                     necesita. Es el mismo paquete para Linux, Windows y macOS, y se instala desde el propio
                     QGIS sin permisos de administrador.
                 </Paragraph>

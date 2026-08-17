@@ -8,12 +8,13 @@ import AcervoTopic from '@features/documentacion/topics/AcervoTopic';
 import OntoyTopic from '@features/documentacion/topics/OntoyTopic';
 import ColibriTopic from '@features/documentacion/topics/ColibriTopic';
 import MapalabTopic from '@features/documentacion/topics/MapalabTopic';
+import QgisTopic from '@features/documentacion/topics/QgisTopic';
 
 const { Content } = Layout;
 const { Title, Text } = Typography;
 
 
-const VALID_KEYS = new Set(['acervo', 'colibri', 'mapalab', 'mcp', 'telemetria', 'ontoy']);
+const VALID_KEYS = new Set(['acervo', 'colibri', 'mapalab', 'qgis', 'mcp', 'telemetria', 'ontoy']);
 
 
 export default function DocumentacionPage() {
@@ -28,6 +29,7 @@ export default function DocumentacionPage() {
         { key: 'acervo', label: 'Acervo', children: <AcervoTopic defaultActiveTab={sec} /> },
         { key: 'colibri', label: 'Colibri', children: <ColibriTopic /> },
         { key: 'mapalab', label: 'MapaLab', children: <MapalabTopic /> },
+        { key: 'qgis', label: 'Plugin QGIS', children: <QgisTopic /> },
         { key: 'mcp', label: 'Servidor MCP', children: <McpTopic /> },
         { key: 'telemetria', label: 'Telemetría', children: <TelemetryTopic /> },
         { key: 'ontoy', label: 'Contrato /ontoy', children: <OntoyTopic /> },

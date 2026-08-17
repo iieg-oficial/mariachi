@@ -156,7 +156,7 @@ function UsoTab() {
     );
 }
 
-export default function PluginQgisTab() {
+export default function QgisTopic() {
     const items = [
         { key: 'instalacion', label: 'Instalación', children: <PluginQgisInstalacion /> },
         { key: 'uso', label: 'Uso y administración', children: <UsoTab /> },
