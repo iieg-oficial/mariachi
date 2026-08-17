@@ -61,7 +61,7 @@ const SITUACIONES = [
     },
     {
         caso: 'El catálogo no carga',
-        que: 'Revisar la dirección del servidor y que el equipo esté en la red del instituto o en la VPN. El detalle del error se lee en Ver → Paneles → Mensajes de registro.',
+        que: 'Revisar que la dirección del servidor esté bien escrita y que se abra en el navegador desde ese mismo equipo. Si es un servidor interno, hace falta estar en la red o en la VPN. El detalle del error se lee en Ver → Paneles → Mensajes de registro.',
     },
     {
         caso: 'Quitar el complemento',
@@ -81,7 +81,7 @@ export default function PluginQgisInstalacion() {
                 type="info"
                 showIcon
                 message="Qué hace falta antes de empezar"
-                description="QGIS 3.40 LTR instalado, y el equipo dentro de la red del instituto o conectado por VPN. No se necesita usuario ni contraseña: el plugin sólo lee lo que ya es público en el visor."
+                description="QGIS 3.40 LTR y poder alcanzar el servidor. Con la dirección pública del IIEG funciona desde cualquier red, igual que abrir el visor en el navegador: no se necesita VPN, ni usuario, ni contraseña, porque todo lo que el plugin consume ya es público. La red del instituto o la VPN sólo hacen falta si se apunta a un servidor interno, como el de pruebas."
             />
 
             <Card
