@@ -9,6 +9,118 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.5.0] - 2026-08-17
+
+### Agregado: la guía del plugin de QGIS en la Documentación del admin
+
+Documentación → MapaLab estrena la pestaña «Plugin de QGIS», al lado de «Propuestas de tarjeta».
+Está escrita para quien administra el catálogo, no para quien programa el plugin: qué se puede
+hacer desde QGIS, cómo se lee cada fila del árbol según su `nodeType`, y sobre todo **qué campo de
+aquí cambia qué allá** —`nodeType` es lo que le pone casilla a un nodo, `cqlFilter` lo que hace que
+traiga lo suyo en vez de la tabla entera, `geometry_type` el glifo, y el módulo Identidad los
+colores y los logos—.
+
+El plugin no tiene catálogo propio: lee el mismo árbol que el visor, así que un cambio en el editor
+de capas se ve en QGIS sin desplegar nada. La pestaña cierra con lo que falta antes de publicarlo
+fuera de la red: la allowlist de User-Agent y la zona de rate limit propias en gateway-hub.
+
+### Cambiado: la ayuda vive en el título, no en avisos
+
+Los `Alert` que explicaban cada bloque se cambiaron por un ícono de información en el título de la
+sección, con el detalle en el tooltip. Los avisos ocupaban una franja permanente para algo que se
+lee una vez; ahora está a un hover y la pantalla respira. Sobrevive un solo `Alert`: el de error de
+carga, que sí exige atención. El componente `TituloConAyuda` quedó en `shared/` para reusarlo.
+
+Cada bloque explica ahora en qué se basa: que el ritmo horario cuenta marcas y no personas, que
+los madrugadores usan la hora mediana y no la más temprana, que las rachas no se cortan en fin de
+semana.
+
+### Agregado: planta de los accesos en vez de barras por lector
+
+«Uso de cada acceso» era un gráfico de barras con un nombre de lector por columna, que obligaba a
+saber de memoria cuál era de entrada y cuál de salida. Ahora es un **diagrama de la fachada en
+planta**: la puerta accesible a la izquierda, las dos automáticas de vidrio, y una flecha por lector
+—entrando hacia adentro, saliendo hacia afuera— con su cifra al pie.
+
+**Las dos puertas automáticas sirven para entrar y para salir; los que son de un solo sentido son
+los lectores.** Cada puerta tiene el de salida en su pilar izquierdo y el de entrada en el derecho,
+y el pilar que las separa lleva uno de cada lado: `IIEG 1`+`IIEG-2` en la principal,
+`IIEG-3`+`IIEG-4` en la secundaria. Los datos son consistentes con eso: `IIEG-2` e `IIEG-4` no
+registran una sola salida en tres años, y `IIEG 1` e `IIEG-3` ninguna entrada.
+
+Los lectores se dibujan **dentro** de su pilar, en la cara que mira a su puerta y a la altura desde
+la que se usan: los de entrada arriba, del lado de afuera; los de salida abajo. Las hojas de vidrio
+van separadas del pilar y unidas por sus bisagras. El cuarto apoyo no es pilar sino un tubo —sólo
+sostiene las bisagras de la puerta accesible— y por eso se dibuja como una sección circular vacía.
+
+Los lectores **aceptan huella o tarjeta**, no sólo huella: 100,322 eventos por huella y 73,953 por
+tarjeta sobre los mismos cuatro dispositivos.
+
+Los demás lectores del histórico (`IIEG-1-Entrada`, `IIEG-2-Salida`, `IIEG-4-Salida`,
+`IIEG-1-SIN USO`) **murieron todos en septiembre de 2023**, cuando el sistema se reconfiguró a un
+sentido por lector; sus 3,200 registros se reportan como nota al pie en vez de ensuciar el diagrama.
+
+**La puerta accesible tiene lector, pero no está conectado.** Es de acercamiento o clave numérica y
+existe físicamente, sólo que en tres años no ha generado un solo evento: la instalación entera
+reporta seis puntos y una controladora, y ninguno le corresponde. Se dibuja de una sola hoja
+abatible hacia afuera, con su arco de barrido y el símbolo de accesibilidad pintado en el piso, todo
+en gris, porque su flujo es el único del edificio que el sistema no puede medir. Conectarlo es la
+forma de recuperarlo.
+
+Está hecho con SVG inline, sin librería de gráficas: es un esquema de tres vanos, no un gráfico
+estadístico, y ni ECharts (~1 MB) ni Three.js aportarían legibilidad a cambio del peso. El
+emparejamiento lector↔puerta vive en `PUERTAS`, en las constantes de la feature.
+
+### Corregido: la huella y la tarjeta no se registran igual, y eso torcía todo
+
+El 10% de los persona-día del último año tiene entrada pero **no tiene salida**. La causa no es la
+persona, es el medio con el que marca:
+
+| Medio de la entrada | Días | Sin salida | Jornada mediana |
+|---|---|---|---|
+| Huella | 3,092 | 10 (**0.3%**) | 8.09 h |
+| Tarjeta | 4,959 | 831 (**16.8%**) | 6.72 h |
+
+Son **dos poblaciones distintas promediadas juntas**: 18 personas marcan con huella y su registro
+cierra prácticamente siempre; 84 marcan con tarjeta y una de cada seis jornadas se queda abierta. La
+jornada de tarjeta sale hora y media más corta **porque le faltan salidas, no porque trabajen
+menos**, y como una jornada sin salida no se puede convertir en horas, el ranking las descartaba en
+silencio: quedaba poblado al 100% por personal de huella, y las personas de tarjeta aparecían con
+totales absurdos —2.4 horas en un mes con 19 días asistidos— o no aparecían.
+
+- **La jornada típica se mide sólo sobre el registro de huella**, que es el único que cierra de
+  forma confiable, y la tarjeta dice sobre cuántas personas está medida.
+- Bloque nuevo **«Huella y tarjeta no se registran igual»**, que muestra las dos poblaciones lado a
+  lado con su cobertura y su jornada. Es el encuadre correcto del dato.
+- El ranking de horas y la lista de jornadas incompletas llevan **una etiqueta con el medio** de
+  cada persona, para que no haya que adivinar por qué alguien está o no está.
+- La tarjeta que antes se llamaba «Quién casi no marca salida» ahora es **«Jornadas que no
+  cierran»**: no señala a la persona, señala el registro.
+
+El ranking excluye además a quien tenga menos del 60% de cobertura en vez de mandarlo al fondo con
+un total falso, y muestra la cobertura de cada quien: «18 de 18» en lugar de sólo «18».
+
+- La tarjeta principal pasa de **jornada promedio a jornada típica (mediana)**: la media venía
+  arrastrada por las jornadas de menos de una hora hacia 6.85 h cuando la mediana real es 8.09 h.
+- «Calidad del registro» dice cuántas personas concentran el faltante.
+- Las jornadas de **más de 16 horas** (25 en el año, la mayor de 19.4 h) ya no entran en promedios
+  ni en sumas; se cuentan aparte como descartadas.
+
+**Tres hipótesis descartadas con los datos** antes de dar con el medio: la salida no está registrada
+bajo otro tipo de evento (0 casos de 829), casi nunca cruza la medianoche (6 de 829), y no es el
+lector —quien entra por `IIEG-4` falla 18.8% contra 4.8% de `IIEG-2`, pero al separar por medio
+ambos grupos fallan igual por las dos puertas—. La correlación con el lector era espuria: quienes
+marcan con tarjeta entran por ahí.
+
+### Corregido: las ventanas de tiempo se calculaban en UTC
+
+`current_date` y `date.today()` se evaluaban con la zona del contenedor —**UTC**— mientras los
+`event_time` del biométrico están en hora local. Entre las 18:00 y la medianoche de México el
+servidor ya estaba en el día siguiente, así que «personas hoy» se iba a cero cada tarde y todas las
+ventanas se corrían un día. Ahora la fecha se calcula en `America/Mexico_City`.
+
+---
+
 ## [2.4.0] - 2026-08-12
 
 ### Agregado: estadísticas de asistencia de vine
