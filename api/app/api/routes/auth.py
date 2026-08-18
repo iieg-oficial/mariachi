@@ -129,7 +129,7 @@ def _safe_next(raw: str | None) -> str:
 
 
 def _salir_url() -> str:
-    """URL del propio mariachi que redirige al logout de minerva.
+    """URL del propio mariachi a la que navega el admin al cerrar sesion.
 
     El navegador tiene que llegar al logout por un 302 del servidor: una
     navegacion iniciada por el documento la reescribe el `upgrade-insecure-requests`
@@ -253,9 +253,16 @@ async def callback(
         return redirect
 
     if not tx or not code or not state or state != tx.get("state"):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Estado OIDC inválido"
+        # La cookie de transaccion vive TX_MAX_AGE (10 min): si el usuario tarda mas en
+        # autenticarse, o el flujo se reinicio en otra pestaña, aqui no hay con que
+        # validar el `state`. Devolver un 400 dejaba al navegador ante un JSON crudo;
+        # se regresa a la pantalla de acceso, que muestra el motivo y permite reintentar.
+        logger.info("action=login.tx_invalido tx=%s code=%s state=%s", bool(tx), bool(code), bool(state))
+        redirect = RedirectResponse(
+            url=_post_login_url(error="invalid_state"), status_code=status.HTTP_302_FOUND
         )
+        redirect.delete_cookie(key=TX_COOKIE_NAME, path=_tx_cookie_path())
+        return redirect
 
     try:
         tokens = await oidc.exchange_code(code, tx["verifier"])
@@ -351,10 +358,15 @@ async def logout(
 
 @router.get("/salir")
 async def salir() -> RedirectResponse:
-    """Redirige al logout de minerva con un 302 del servidor. No revoca nada:
-    la sesion ya la cerro `POST /cerrar-sesion`, asi que un GET aqui no muta estado."""
+    """Cierra el ciclo del logout con un 302 del servidor. No revoca nada: la sesion
+    ya la cerro `POST /cerrar-sesion`, asi que un GET aqui no muta estado.
+
+    NO pasa por el `/logout` del panel de minerva: su `safePath()` descarta cualquier
+    `redirect_uri` de otro origen y deja al usuario varado en su panel, porque no
+    implementa `post_logout_redirect_uris`. La re-autenticacion se consigue igual con
+    `prompt=login`, que es lo que agrega `forzar=1`."""
     return RedirectResponse(
-        url=oidc.logout_url(_login_forzado_url()),
+        url=_login_forzado_url(),
         status_code=status.HTTP_302_FOUND,
     )
 
