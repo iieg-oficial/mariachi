@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import api, { refreshCsrfToken, buildMinervaLoginUrl } from '@shared/services/api';
+import api, { refreshCsrfToken, buildMinervaLoginUrl, SALIENDO_KEY } from '@shared/services/api';
 import { AuthContext } from '@shared/contexts/useAuth';
 
 export const AuthProvider = ({ children }) => {
@@ -40,12 +40,15 @@ export const AuthProvider = ({ children }) => {
     };
 
     const logout = async () => {
+        sessionStorage.setItem(SALIENDO_KEY, '1');
         const { data } = await api.post('/autenticacion/cerrar-sesion').catch(() => ({ data: null }));
         sessionStorage.removeItem('csrf_token');
-        setUser(null);
         if (data?.logout_url) {
             window.location.href = data.logout_url;
+            return;
         }
+        sessionStorage.removeItem(SALIENDO_KEY);
+        setUser(null);
     };
 
     const isAuthenticated = () => {

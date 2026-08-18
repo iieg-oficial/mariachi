@@ -102,8 +102,11 @@ export const buildMinervaLoginUrl = (next, forzar = false) => {
     return `${API_URL}/autenticacion/login${query ? `?${query}` : ''}`;
 };
 
+export const SALIENDO_KEY = 'saliendo';
+
 const redirectToLogin = () => {
     sessionStorage.removeItem('csrf_token');
+    if (sessionStorage.getItem(SALIENDO_KEY) === '1') return;
     if (!redirectingToLogin && !window.location.pathname.endsWith('/login')) {
         redirectingToLogin = true;
         const base = import.meta.env.BASE_URL || '/';
