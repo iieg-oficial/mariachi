@@ -24,6 +24,36 @@ salir hacia minerva, que volvería a denegar, sin fin. Por eso el redirect se sa
 `auth_error`: ahí la pantalla se queda visible con el motivo. Es además donde aterrizan
 `ProtectedRoute` y `PermissionRoute` cuando caduca la sesión, conservando el `next`.
 
+### Agregado: la pantalla de espera muestra la marca y firma como institucional
+
+Al redirigir sola, esa pantalla dura un parpadeo: en vez de un formulario vacío muestra el logotipo
+de Mariachi con un indicador de carga. La vista completa —con el motivo y el botón— se reserva para
+cuando minerva deniega el acceso.
+
+El pie incorpora el **logotipo del IIEG** junto al del Gobierno de Jalisco, obligatorio en cualquier
+desarrollo del instituto y que en esta pantalla no aparecía. Se usa la variante para fondo oscuro,
+porque se pinta sobre el morado institucional; en móvil ambos encogen y se acercan en vez de
+apilarse.
+
+### Corregido: el callback respondía un JSON crudo al expirar la transacción
+
+La cookie de transacción OIDC vive 10 minutos. Si el usuario tardaba más en autenticarse —o el flujo
+se reiniciaba en otra pestaña—, no quedaba con qué validar el `state` y el callback contestaba
+`400 {"detail": "Estado OIDC inválido"}` en pantalla. Ahora regresa a la pantalla de acceso con
+`auth_error=invalid_state`, que explica el motivo y permite reintentar, y de paso limpia la cookie
+muerta.
+
+### Corregido: cerrar sesión disparaba un inicio de sesión en paralelo
+
+`logout()` vaciaba el estado de usuario **antes** de navegar al cierre de sesión. Ese cambio hacía
+que el guard de rutas montara la pantalla de acceso, cuya redirección automática lanzaba un
+`authorize` **sin** `prompt=login` que le ganaba la carrera al del logout: minerva reconocía la
+sesión y devolvía al usuario adentro. En los registros se veían dos `login` seguidos, el segundo sin
+`forzar`.
+
+Ahora la navegación ocurre sin tocar el estado, y una marca de «cierre en curso» impide que el
+interceptor de 401 —que también redirige a la pantalla de acceso— abra ese mismo hueco.
+
 ### Corregido: `forzar=1` moría en el frontend
 
 2.5.0 hizo que minerva devolviera el navegador a `/autenticacion/login?forzar=1` para agregar
@@ -44,12 +74,29 @@ El inicio de sesión no fallaba por lo mismo porque lo redirige el **servidor** 
 no toca los redirects del servidor.
 
 `POST /autenticacion/cerrar-sesion` ya no devuelve la URL de minerva en `logout_url`, sino la de un
-endpoint propio —`GET /autenticacion/salir`— que emite ese `302` hacia el panel. El navegador sólo
-navega a un origen HTTPS propio y el salto al SSO lo da el servidor. El endpoint no revoca nada: la
-sesión ya la cerró el `POST`, así que un `GET` ahí no muta estado.
+endpoint propio —`GET /autenticacion/salir`— que emite ese `302`. El navegador sólo navega a un
+origen HTTPS propio y el salto lo da el servidor. El endpoint no revoca nada: la sesión ya la cerró
+el `POST`, así que un `GET` ahí no muta estado.
 
 **SIEEJ hereda el arreglo sin cambios**: sigue leyendo el mismo `logout_url` que le devuelve
 mariachi. El contrato no cambió, sólo a dónde apunta.
+
+### Cambiado: cerrar sesión ya no pasa por el panel de minerva
+
+2.5.0 mandaba el navegador a `{panel}/logout?redirect_uri=…` para cerrar la cuenta activa del SSO y
+volver. **Esa vuelta nunca ocurre:** el `safePath()` del panel descarta cualquier `redirect_uri` de
+otro origen y aterriza en su propio `/login`; si la cuenta no es administradora de minerva, termina
+en `/no-access`. No es un bug suyo: aceptar destinos externos exige `post_logout_redirect_uris`, que
+minerva todavía no implementa, y su código lo dice explícitamente.
+
+Ahora `GET /autenticacion/salir` redirige directo a `/autenticacion/login?forzar=1`, que agrega
+`prompt=login` al `authorize`. minerva pide credenciales igual y el usuario **no sale de mariachi**
+en ningún momento.
+
+**Lo que cambia de fondo:** cerrar sesión en mariachi cierra la de mariachi, no la del SSO. La cuenta
+activa de minerva sigue viva para las demás aplicaciones —que es lo que 2.5.0 ya prefería frente a un
+`logout-all`— y el reingreso a mariachi vuelve a pedir credenciales por el `prompt`. Un cierre de
+sesión único de verdad requiere que minerva implemente `post_logout_redirect_uris`.
 
 ## [2.5.0] - 2026-08-18
 
