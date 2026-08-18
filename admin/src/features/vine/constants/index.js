@@ -13,8 +13,6 @@ export const EJE_TEXTO = { fontSize: 11, color: 'rgba(0, 0, 0, 0.45)' };
 
 export const COLOR_SIN_LECTOR = '#8C8C8C';
 
-export const MEDIO_HUELLA = 'Solo Huella';
-
 export const COLOR_VINCULO = {
     Plantilla: 'blue',
     'Prácticas profesionales': 'purple',

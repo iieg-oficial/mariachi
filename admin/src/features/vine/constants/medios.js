@@ -1,6 +1,6 @@
-export const MEDIO_HUELLA = 'Solo Huella';
-export const MEDIO_TARJETA = 'Solo Tarjeta';
-export const MEDIO_SUPERUSUARIO = 'Superusuario';
+const MEDIO_HUELLA = 'Solo Huella';
+const MEDIO_TARJETA = 'Solo Tarjeta';
+const MEDIO_SUPERUSUARIO = 'Superusuario';
 
 export const MEDIOS = {
     [MEDIO_HUELLA]: { etiqueta: 'huella', color: 'blue', confiable: true },

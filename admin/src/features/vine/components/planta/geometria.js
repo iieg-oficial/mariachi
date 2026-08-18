@@ -13,7 +13,7 @@ export const PUNTA = 13;
 export const LECTOR_ANCHO = 8;
 export const LECTOR_ALTO = 15;
 export const APERTURA = 40;
-export const MARGEN = 72;
+const MARGEN = 72;
 
 export const Y = {
     nombre: 14,
@@ -28,11 +28,10 @@ const VANOS = [VANO_ACCESIBLE, VANO, VANO];
 
 export const ANCHO_FACHADA = MURO * (VANOS.length + 1) + VANOS.reduce((a, b) => a + b, 0);
 export const ANCHO = ANCHO_FACHADA + MARGEN * 2;
-export const INICIO = MARGEN;
 
 export const anchoVano = (i) => VANOS[i];
 
-export const xMuro = (i) => INICIO + i * MURO + VANOS.slice(0, i).reduce((a, b) => a + b, 0);
+export const xMuro = (i) => MARGEN + i * MURO + VANOS.slice(0, i).reduce((a, b) => a + b, 0);
 
 export const xVano = (i) => xMuro(i) + MURO;
 
