@@ -61,7 +61,9 @@ def generate_pkce() -> tuple[str, str]:
     return verifier, challenge
 
 
-async def build_authorize_url(state: str, code_challenge: str, nonce: str) -> str:
+async def build_authorize_url(
+    state: str, code_challenge: str, nonce: str, prompt: str = ""
+) -> str:
     doc = await _discover()
     endpoint = doc["authorization_endpoint"]
     issuer = settings.minerva_issuer_url.rstrip("/")
@@ -77,6 +79,10 @@ async def build_authorize_url(state: str, code_challenge: str, nonce: str) -> st
             "nonce": nonce,
             "code_challenge": code_challenge,
             "code_challenge_method": "S256",
+            # OIDC Core 3.1.2.1: obliga a minerva a re-autenticar aunque su sesion
+            # siga viva. Sin esto, volver de un logout entra solo con la cuenta
+            # anterior, porque el logout del panel es "suave" a proposito.
+            **({"prompt": prompt} if prompt else {}),
         }
     )
     return f"{endpoint}?{query}"
@@ -135,5 +141,11 @@ def access_expiry(expires_in: int | None) -> float:
 
 
 def logout_url(redirect_uri: str) -> str:
+    """URL del panel de minerva que cierra la cuenta activa.
+
+    El panel hace un `soft_logout`: conserva las cuentas del navegador y no revoca
+    el jti, asi que por si sola NO basta para cambiar de cuenta. Quien vuelva a
+    entrar debe pasar por `/login?forzar=1`, que agrega `prompt=login`.
+    """
     query = httpx.QueryParams({"redirect_uri": redirect_uri})
     return f"{settings.minerva_logout_base}/logout?{query}"

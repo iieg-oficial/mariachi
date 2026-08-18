@@ -128,6 +128,19 @@ def _safe_next(raw: str | None) -> str:
     return raw
 
 
+def _login_forzado_url() -> str:
+    """A donde vuelve el navegador despues del logout del panel: al login de
+    mariachi con `forzar=1`, para que minerva pida credenciales de nuevo en vez
+    de reconocer la sesion que su logout suave dejo viva.
+
+    Se deriva del `redirect_uri` del callback, que ya trae la URL publica de
+    mariachi y es la unica que minerva tiene registrada."""
+    callback = settings.minerva_redirect_uri.rstrip("/")
+    if callback.endswith("/callback"):
+        return f"{callback[: -len('/callback')]}/login?forzar=1"
+    return _post_login_url()
+
+
 def _post_login_url(next_path: str = "", error: str = "") -> str:
     base = settings.minerva_post_login_url.rstrip("/")
     if error:
@@ -190,11 +203,13 @@ def resolve_user(db: Session, claims: dict) -> Usuario:
 
 
 @router.get("/login")
-async def login(request: Request, next: str = "") -> RedirectResponse:
+async def login(request: Request, next: str = "", forzar: int = 0) -> RedirectResponse:
     state = oidc.generate_state()
     nonce = oidc.generate_nonce()
     verifier, challenge = oidc.generate_pkce()
-    authorize_url = await oidc.build_authorize_url(state, challenge, nonce)
+    authorize_url = await oidc.build_authorize_url(
+        state, challenge, nonce, prompt="login" if forzar else ""
+    )
 
     redirect = RedirectResponse(url=authorize_url, status_code=status.HTTP_302_FOUND)
     _set_tx_cookie(
@@ -316,7 +331,7 @@ async def logout(
 
     return {
         "message": "Sesión cerrada exitosamente",
-        "logout_url": oidc.logout_url(_post_login_url()),
+        "logout_url": oidc.logout_url(_login_forzado_url()),
     }
 
 
