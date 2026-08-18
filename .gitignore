@@ -129,6 +129,8 @@ api/_docs/
 
 # Respaldos de Postgres (ver scripts/postgres-backup.sh)
 backups/*.sql.gz
+backups/**/*.sql.gz
+backups/**/*.parcial
 backups/*.sql.gz.tmp
 backups/backup.log
 restore/*.sql.gz

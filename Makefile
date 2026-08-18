@@ -8,6 +8,7 @@ COMPOSE_DEV  := -f compose.yaml -f compose.dev.yaml
 ENV_PROD     := .env.production
 ENV_DEV      := .env.development
 TARJETITAS_DIR := backups/tarjetitas
+VINE_DIR := backups/vine
 
 UP_GUARDS     = ensure_network
 DEPLOY_GUARDS = ensure_network
