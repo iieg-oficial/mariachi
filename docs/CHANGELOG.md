@@ -9,6 +9,48 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.6.0] - 2026-08-18
+
+### Agregado: entrar ya no pide un clic intermedio
+
+La pantalla de inicio de sesión del admin redirige sola a minerva al cargarse. No pedía credenciales
+desde 2.0.0 —sólo tenía un botón—, así que el clic no decidía nada: era un paso de más entre el
+usuario y el SSO.
+
+**La pantalla no se elimina**, y no por adorno: es el punto de parada que evita un bucle infinito
+cuando minerva deniega el acceso. Si un usuario sin rol en la aplicación llega al `authorize`,
+minerva devuelve `?auth_error=access_denied`; con redirección automática incondicional volvería a
+salir hacia minerva, que volvería a denegar, sin fin. Por eso el redirect se salta cuando hay
+`auth_error`: ahí la pantalla se queda visible con el motivo. Es además donde aterrizan
+`ProtectedRoute` y `PermissionRoute` cuando caduca la sesión, conservando el `next`.
+
+### Corregido: `forzar=1` moría en el frontend
+
+2.5.0 hizo que minerva devolviera el navegador a `/autenticacion/login?forzar=1` para agregar
+`prompt=login` al `authorize` y que el SSO volviera a pedir credenciales. Pero `buildMinervaLoginUrl`
+sólo propagaba `next`: **el parámetro se perdía antes de llegar al backend** y el `prompt` nunca se
+enviaba. No había una sola referencia a `forzar` en todo `admin/src`.
+
+El efecto es el que 2.5.0 quería eliminar: cerrabas sesión y al volver a entrar minerva te reconocía
+y te dejaba pasar con la misma cuenta, sin teclear nada. Ahora `forzar` viaja por los tres puntos:
+la lectura del query en la pantalla, `login(next, forzar)` y `buildMinervaLoginUrl(next, forzar)`.
+
+### Corregido: cerrar sesión moría en `ERR_SSL_PROTOCOL_ERROR`
+
+El admin navegaba al logout con `window.location.href = logout_url`, una navegación **iniciada por el
+documento**. La CSP del admin incluye `upgrade-insecure-requests`, así que el navegador reescribía a
+HTTPS la URL del panel de minerva; si ese puerto sirve HTTP plano, el logout moría antes de empezar.
+El inicio de sesión no fallaba por lo mismo porque lo redirige el **servidor** con un `302`, y la CSP
+no toca los redirects del servidor.
+
+`POST /autenticacion/cerrar-sesion` ya no devuelve la URL de minerva en `logout_url`, sino la de un
+endpoint propio —`GET /autenticacion/salir`— que emite ese `302` hacia el panel. El navegador sólo
+navega a un origen HTTPS propio y el salto al SSO lo da el servidor. El endpoint no revoca nada: la
+sesión ya la cerró el `POST`, así que un `GET` ahí no muta estado.
+
+**SIEEJ hereda el arreglo sin cambios**: sigue leyendo el mismo `logout_url` que le devuelve
+mariachi. El contrato no cambió, sólo a dónde apunta.
+
 ## [2.5.0] - 2026-08-18
 
 ### Agregado: la guía del plugin de QGIS en la Documentación del admin
