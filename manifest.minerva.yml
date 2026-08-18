@@ -2,6 +2,9 @@ application:
   code: mariachi
   name: Mariachi
   description: Panel de administracion y API central del ecosistema IIEG
+  # Hosts de desarrollo a proposito: la URL publica real no se versiona.
+  # Al copiar este manifiesto a la instancia de minerva se sustituye el host
+  # por el publico del entorno (ver runbook/minerva-sesiones.md del contexto).
   homepage_url: http://localhost:3011
   redirect_uris:
     - http://localhost:8010/api/mariachi/autenticacion/callback
@@ -69,6 +72,9 @@ permissions:
     name: Ver estadisticas de asistencia de vine
   - key: mariachi.vine_personas.view
     name: Ver los rankings de asistencia con nombre de cada persona
+
+  - key: mariachi.vine_personas.update
+    name: Editar la ficha del personal de vine
 
   - key: mariachi.identidad.view
     name: Ver marcas y tokens de identidad
@@ -199,6 +205,13 @@ roles:
     permissions:
       - mariachi.vine.view
       - mariachi.vine_personas.view
+
+  - name: Vine - editar ficha del personal
+    description: Atomico. Suma la edicion de la ficha. No lo incluye ningun rol compuesto
+    permissions:
+      - mariachi.vine.view
+      - mariachi.vine_personas.view
+      - mariachi.vine_personas.update
 
   - name: Identidad - administracion
     description: Atomico. Marcas, tokens y artefactos de identidad visual

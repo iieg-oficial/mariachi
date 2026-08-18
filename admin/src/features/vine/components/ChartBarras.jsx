@@ -1,6 +1,7 @@
 import { Card, Collapse, Empty, Table, Tooltip, Typography } from 'antd';
 import { useMemo } from 'react';
 
+import TituloConAyuda from '@shared/components/TituloConAyuda';
 import { EJE_TEXTO } from '@features/vine/constants';
 
 const { Text } = Typography;
@@ -43,15 +44,17 @@ const TablaDatos = ({ datos, series }) => {
     );
 };
 
-const ChartBarras = ({ title, extra, datos = [], series = [], loading, sufijo = '', tabla = false }) => {
+const ChartBarras = ({ title, ayuda, extra, datos = [], series = [], loading, sufijo = '', tabla = false }) => {
     const maximo = useMemo(
         () => Math.max(1, ...datos.flatMap((d) => d.valores.map((v) => v ?? 0))),
         [datos],
     );
 
+    const titulo = <TituloConAyuda titulo={title} ayuda={ayuda} />;
+
     if (!loading && datos.length === 0) {
         return (
-            <Card title={title} extra={extra} size="small">
+            <Card title={titulo} extra={extra} size="small">
                 <Empty description="Sin datos en el periodo" />
             </Card>
         );
@@ -61,7 +64,7 @@ const ChartBarras = ({ title, extra, datos = [], series = [], loading, sufijo = 
     const pasoEtiqueta = Math.ceil(datos.length / 12);
 
     return (
-        <Card title={title} extra={extra} size="small" loading={loading}>
+        <Card title={titulo} extra={extra} size="small" loading={loading}>
             {series.length > 1 && <Leyenda series={series} />}
             <div style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: ALTO, overflowX: 'auto' }}>
                 {datos.map((d, indice) => (

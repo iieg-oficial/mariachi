@@ -33,14 +33,18 @@ const renderDisabledLabel = (label, requiredPermissions) => {
     );
 };
 
-const withBetaBadge = (label, variant = 'beta') => (
+const withBetaBadge = (label, variantes = ['beta']) => (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
         <span>{label}</span>
-        <StatusBadge variant={variant} size="sm" />
+        {variantes.map((variante) => <StatusBadge key={variante} variant={variante} size="sm" />)}
     </span>
 );
 
-const variantePara = (origen) => origen.badgeVariant || (origen.showBetaBadge ? 'beta' : null);
+const variantePara = (origen) => {
+    const declaradas = origen.badgeVariant || (origen.showBetaBadge ? 'beta' : null);
+    if (!declaradas) return null;
+    return Array.isArray(declaradas) ? declaradas : [declaradas];
+};
 
 const renderBadgeLabel = (label, count) => (
     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>

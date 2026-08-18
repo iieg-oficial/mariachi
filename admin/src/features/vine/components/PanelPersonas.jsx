@@ -1,5 +1,13 @@
 import { Card, Col, Row, Table, Tag, Typography } from 'antd';
 
+import TituloConAyuda from '@shared/components/TituloConAyuda';
+import { AYUDAS } from '@features/vine/constants/ayudas';
+import { medioInfo } from '@features/vine/constants/medios';
+
+const etiquetaMedio = (medio) => (
+    <Tag color={medioInfo(medio).color}>{medioInfo(medio).etiqueta}</Tag>
+);
+
 const { Text } = Typography;
 
 const nombreODefault = (fila) => fila.nombre?.trim() || `Sin nombre (${fila.pin})`;
@@ -7,7 +15,10 @@ const nombreODefault = (fila) => fila.nombre?.trim() || `Sin nombre (${fila.pin}
 const COLUMNAS_HORAS = [
     { title: '#', key: 'pos', width: 40, render: (_, __, i) => i + 1 },
     { title: 'Persona', key: 'nombre', render: (_, f) => nombreODefault(f) },
-    { title: 'Área', dataIndex: 'departamento', key: 'departamento', responsive: ['lg'] },
+    {
+        title: 'Marca', dataIndex: 'medio', key: 'medio', width: 90,
+        responsive: ['lg'], render: etiquetaMedio,
+    },
     {
         title: 'Horas',
         dataIndex: 'horas_totales',
@@ -20,7 +31,34 @@ const COLUMNAS_HORAS = [
         dataIndex: 'dias',
         key: 'dias',
         align: 'right',
-        render: (v, f) => <Text type="secondary">{`${v} · ${f.horas_promedio} h/día`}</Text>,
+        render: (v, f) => (
+            <Text type="secondary">
+                {`${v} de ${f.dias_asistidos} · ${f.horas_promedio} h/día`}
+            </Text>
+        ),
+    },
+];
+
+const COLUMNAS_INCOMPLETOS = [
+    { title: 'Persona', key: 'nombre', render: (_, f) => nombreODefault(f) },
+    {
+        title: 'Marca', dataIndex: 'medio', key: 'medio', width: 90,
+        responsive: ['lg'], render: etiquetaMedio,
+    },
+    {
+        title: 'Días sin salida',
+        dataIndex: 'sin_salida',
+        key: 'sin_salida',
+        align: 'right',
+        render: (v, f) => `${v} de ${f.dias_asistidos}`,
+    },
+    {
+        title: '',
+        dataIndex: 'porcentaje',
+        key: 'porcentaje',
+        align: 'right',
+        width: 70,
+        render: (v) => <Tag color="orange">{`${v}%`}</Tag>,
     },
 ];
 
@@ -60,32 +98,53 @@ const tabla = (columnas, datos, loading) => (
     />
 );
 
-const PanelPersonas = ({ datos, loading }) => (
-    <Row gutter={[16, 16]}>
-        <Col xs={24} xl={12}>
-            <Card
-                title="Quién acumula más horas"
-                size="small"
-                extra={<Text type="secondary" style={{ fontSize: 12 }}>solo jornadas completas</Text>}
-            >
-                {tabla(COLUMNAS_HORAS, datos?.horas ?? [], loading)}
-            </Card>
-        </Col>
-        <Col xs={24} xl={12}>
-            <Row gutter={[16, 16]}>
+const PanelPersonas = ({ datos, loading }) => {
+    const incompletos = datos?.incompletos ?? [];
+
+    return (
+        <Row gutter={[16, 16]}>
+            <Col xs={24} xl={12}>
+                <Card
+                    title={<TituloConAyuda titulo="Quién acumula más horas" ayuda={AYUDAS.ranking} />}
+                    size="small"
+                    extra={<Text type="secondary" style={{ fontSize: 12 }}>solo jornadas que cierran</Text>}
+                >
+                    {tabla(COLUMNAS_HORAS, datos?.horas ?? [], loading)}
+                </Card>
+            </Col>
+            <Col xs={24} xl={12}>
+                <Row gutter={[16, 16]}>
+                    <Col xs={24}>
+                        <Card
+                            title={<TituloConAyuda titulo="Los más madrugadores" ayuda={AYUDAS.madrugadores} />}
+                            size="small"
+                        >
+                            {tabla(COLUMNAS_MADRUGADORES, datos?.madrugadores ?? [], loading)}
+                        </Card>
+                    </Col>
+                    <Col xs={24}>
+                        <Card
+                            title={<TituloConAyuda titulo="Rachas más largas" ayuda={AYUDAS.rachas} />}
+                            size="small"
+                        >
+                            {tabla(COLUMNAS_RACHAS, datos?.rachas ?? [], loading)}
+                        </Card>
+                    </Col>
+                </Row>
+            </Col>
+            {incompletos.length > 0 && (
                 <Col xs={24}>
-                    <Card title="Los más madrugadores" size="small">
-                        {tabla(COLUMNAS_MADRUGADORES, datos?.madrugadores ?? [], loading)}
+                    <Card
+                        title={<TituloConAyuda titulo="Jornadas que no cierran" ayuda={AYUDAS.incompletos} ancho={440} />}
+                        size="small"
+                        extra={<Text type="secondary" style={{ fontSize: 12 }}>casi siempre por el medio, no por la persona</Text>}
+                    >
+                        {tabla(COLUMNAS_INCOMPLETOS, incompletos, loading)}
                     </Card>
                 </Col>
-                <Col xs={24}>
-                    <Card title="Rachas más largas" size="small">
-                        {tabla(COLUMNAS_RACHAS, datos?.rachas ?? [], loading)}
-                    </Card>
-                </Col>
-            </Row>
-        </Col>
-    </Row>
-);
+            )}
+        </Row>
+    );
+};
 
 export default PanelPersonas;

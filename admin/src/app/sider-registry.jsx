@@ -135,11 +135,23 @@ export const PROJECT_REGISTRY = {
             label: 'Vine',
             icon: <BarChartOutlined />,
             permissions: ['mariachi.vine.view'],
-            badgeVariant: 'test',
+            badgeVariant: ['local', 'test'],
             items: [
                 {
                     key: '/vine/estadisticas', path: '/vine/estadisticas', label: 'Estadísticas',
                     icon: <BarChartOutlined />,
+                },
+                {
+                    key: '/vine/personal', path: '/vine/personal', label: 'Personal',
+                    icon: <TeamOutlined />,
+                },
+                {
+                    key: '/vine/incidencias', path: '/vine/incidencias', label: 'Vacaciones e incidencias',
+                    icon: <CalendarOutlined />, permissions: ['mariachi.vine_personas.view'],
+                },
+                {
+                    key: '/vine/catalogos', path: '/vine/catalogos', label: 'Catálogos',
+                    icon: <AppstoreOutlined />,
                 },
             ],
         },
