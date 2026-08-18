@@ -9,7 +9,7 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
-## [2.5.0] - 2026-08-17
+## [2.5.0] - 2026-08-18
 
 ### Agregado: la guía del plugin de QGIS en la Documentación del admin
 
@@ -23,6 +23,152 @@ colores y los logos—.
 El plugin no tiene catálogo propio: lee el mismo árbol que el visor, así que un cambio en el editor
 de capas se ve en QGIS sin desplegar nada. La pestaña cierra con lo que falta antes de publicarlo
 fuera de la red: la allowlist de User-Agent y la zona de rate limit propias en gateway-hub.
+
+### Corregido: cerrar sesión no cerraba la sesión
+
+El botón limpiaba las cookies de mariachi y revocaba el refresh token, pero después redirigía a
+`{MINERVA_LOGIN_URL}/logout` con esa variable **vacía**, así que caía al backend de minerva —donde
+`/logout` responde **404**, porque la ruta real es `POST /auth/logout`—. Resultado: la sesión del SSO
+quedaba viva y al volver a entrar te reconocía sin pedir nada.
+
+La página que sí cierra vive en el **panel** de minerva, no en su backend. `MINERVA_LOGIN_URL` ahora
+apunta ahí y el `.env.production.example` explica la diferencia, que es la parte fácil de repetir.
+
+**Apuntar bien no bastaba.** El logout del panel es *suave por diseño* —su propio código lo dice:
+«sale de la cuenta activa pero conserva las cuentas del navegador y sus tokens, para volver a entrar
+sin re-teclear; NO revoca el jti»—, y el botón que sí cierra todo sólo se dibuja cuando hay **más de
+una cuenta** en el navegador. Con una sola cuenta no había salida posible.
+
+La solución no es pelearse con eso, es pedirlo explícitamente: al volver del logout, mariachi manda
+al navegador a `/autenticacion/login?forzar=1`, que agrega **`prompt=login`** al `authorize`
+(OIDC Core 3.1.2.1). minerva entonces vuelve a pedir credenciales aunque su cookie siga viva. Se
+prefirió a un `logout-all` porque **no tumba las sesiones de mapalab y sieej** de paso: cerrar
+sesión en mariachi cierra la de mariachi, no la del día.
+
+Importa más de lo que parece: **un permiso nuevo no surte efecto sin volver a entrar**, porque viaja
+en el token. Con el logout roto no había forma de estrenar un permiso recién asignado.
+
+### Agregado: directorio de Personal, y las estadísticas de gente en su propia pestaña
+
+**Vine → Personal**, subpágina nueva: una fila por persona dada de alta en el biométrico, con su
+vínculo, área, medio de marcaje, horario asignado, entrada y salida habituales, días con registro,
+cobertura, horas y último registro. Se filtra por vínculo, área, medio y horario, se busca por
+nombre, PIN, área o correo, y trae un interruptor para incluir bajas.
+
+Estadísticas ganó dos pestañas: **General** —panorama, ritmo, accesos y calidad— y **Por personal**
+—vínculos, horarios, huella contra tarjeta y los rankings—, porque en una sola página ya no cabía.
+
+En el sider vine lleva ahora **`LOCAL` además de `TEST`**: habla con el biométrico de la LAN y no
+sirve fuera del instituto, igual que wacha. `sider-config` acepta desde ahora un arreglo en
+`badgeVariant`, no sólo una cadena.
+
+**El departamento del biométrico resultó ser tres campos en uno**: la adscripción, el tipo de
+vínculo y si la persona sigue activa. Es la única fuente de eso, porque `pers_position` —que sí trae
+las categorías buenas (Becarios, Prestador de Servicio Social, Auditores Externos…)— está asignado
+en **1 de 293 personas**. Del nombre del departamento se derivan ahora el vínculo (Plantilla,
+Prácticas profesionales, Servicio social, Limpieza, Delfín, Asimilados, Empleo temporal) y la baja,
+que va marcada con el sufijo `(Bajas)`.
+
+**179 de 293 personas estaban dadas de baja e infladas en los conteos.** «Personas registradas»
+decía 293 cuando la plantilla viva es 114, y «nunca registran» contaba 88 fantasmas. Ya se excluyen.
+
+**Los dos horarios del instituto —8 a 4 y 9 a 5— quedaron modelados**, y los datos los confirman: la
+hora de salida tiene dos picos limpios en 16:00 y 17:00. A cada persona se le asigna el suyo por su
+hora de entrada mediana; quien cae fuera de las dos ventanas queda como «Otro» en vez de forzarse a
+un horario que no es el suyo.
+
+| Horario | Personas | Entra | Sale | Llega a tiempo |
+|---|---|---|---|---|
+| 8 a 4 | 20 | 07:56 | 16:01 | 85.9% |
+| 9 a 5 | 29 | 09:32 | 16:37 | 35.8% |
+| Otro | 15 | 11:42 | 17:37 | — |
+
+### Agregado: ficha editable del personal, en un esquema aparte del biométrico
+
+El biométrico es la fuente de la asistencia, pero **como directorio es pobre**: no tiene teléfono,
+ni fecha de ingreso, ni cumpleaños, ni foto, y su «departamento» mezcla tres cosas. Lo que falta se
+captura ahora desde el CMS, en `vine.personas_ficha` —tabla propia, migración `v1ne0002`— y **nunca
+sobre las tablas que el sync sobrescribe**: la ficha sobrevive a cada `make sync-vine`.
+
+Cada fila del directorio se despliega en un colapsable con cuatro pestañas: **Ficha** (lo editado,
+por omisión), **Vacaciones y permisos**, **Asistencia** y **ZKTeco** (lo que llegó del biométrico,
+tal cual, para poder comparar). Catorce campos son editables —nombre, apellidos, correo, teléfono,
+departamento, vínculo, puesto, horario, cumpleaños, fecha de ingreso, foto, tarjeta, activo y
+notas—; cada uno se puede limpiar para que vuelva a mandar el valor del biométrico.
+
+La foto es una **URL**, no un archivo subido: el biométrico guarda `photo_path` para 82 de 293
+personas, pero esa ruta apunta a un disco de la máquina de BioTime que no expone servidor HTTP
+—sólo el 5432 y un WebSocket— y las imágenes no están en la base. Sin un origen alcanzable, subirlas
+sería inventar un almacén nuevo para un dato que ya existe en otra parte.
+
+El vínculo se pinta con etiquetas de color y **Baja va en rojo**, que es la que hay que ver de
+lejos. El interruptor «incluir bajas» desapareció: se incluyen siempre y la etiqueta lo dice.
+
+**Editar exige un permiso nuevo, `mariachi.vine_personas.update`**, con su rol atómico
+`Vine - editar ficha del personal`. No lo hereda ningún rol compuesto: ver los rankings y corregir
+el expediente de alguien no son la misma autorización.
+
+En pantallas chicas el colapsable **deja de ser tabla**: se quita el avatar y cada dato pasa a dos
+renglones —etiqueta arriba, valor abajo— en vez de comprimir dos columnas hasta lo ilegible.
+
+La pestaña **Asistencia** trae la estadística individual: horario asignado, promedio de entrada, de
+salida y de jornada —dicho como «promedio» en la tarjeta, que antes se leía como si fuera el dato de
+hoy—, días con registro y a qué días de la semana viene. Lleva **su propio filtro de periodo**,
+porque el de la página es lo único que ese bloque necesitaba y no tenía sentido moverlo desde
+arriba.
+
+La primera versión graficaba «a qué hora entra cada día» en minutos desde medianoche: todas las
+barras salían del mismo alto —569, 571, 570— y no decía nada. Se cambió por el conteo de días de la
+semana, que sí tiene rango que ver.
+
+### Agregado: vacaciones, económicos y permisos — y con eso, días hábiles de verdad
+
+«Días que vino» era un número sin denominador honesto: contaba contra el calendario completo, así
+que quien tomó vacaciones aparecía flojo. Ahora hay `vine.incidencias` (migración `v1ne0003`) y el
+denominador son **días hábiles**: fuera fines de semana, fuera los siete descansos del artículo 74
+de la LFT —con los lunes movibles calculados, no escritos a mano—, fuera el cumpleaños de cada quien
+y fuera sus incidencias.
+
+Cada tipo declara su **efecto**: `descuenta` sale del denominador (vacaciones, económico, permiso,
+incapacidad), `presente` cuenta como día trabajado sin marca (comisión, home office). Es lo que
+distingue «no debía venir» de «vino y no quedó registrado», que se veían igual.
+
+Las fechas se capturan con `RangePicker`, nunca tecleadas: un rango mal escrito es la forma más
+fácil de ensuciar una estadística en silencio.
+
+Se editan desde el colapsable de cada persona y desde **Vine → Incidencias**, subpágina nueva con
+**captura masiva**: el mismo rango a todo un vínculo —toda la plantilla, todo el servicio social— o
+a una selección. Un periodo vacacional institucional es una sola operación, no ciento catorce.
+
+### Agregado: catálogos de horario, vínculo, tarjeta e incidencia
+
+Los horarios estaban escritos en el código y los vínculos se derivaban del nombre del departamento.
+Ambos son cosas que cambian sin avisar a nadie, así que se movieron a `vine.catalogos` (migración
+`v1ne0004`, con la semilla de lo que ya existía) y se administran desde **Vine → Catálogos**, cuatro
+pestañas con su CRUD. El modo edición del personal **elige de catálogo**, no captura texto libre:
+así «Prácticas profesionales» no convive con «practicas profesionales».
+
+El catálogo de horario lleva su hora de entrada y salida, el de vínculo su color, el de incidencia
+su efecto (`v1ne0005`). El de tarjetas queda creado y **vacío a propósito**: no hay fuente de dónde
+sacar la relación tarjeta↔persona, se captura a mano.
+
+### Agregado: edición masiva a pantalla completa
+
+El directorio tiene un botón **Captura masiva** que abre la tabla en el modo pantalla completa que
+ya usaba el editor de capas de MapaLab —mismo `useFullscreenHeader`, no una implementación
+paralela—. Para llenar teléfonos o fechas de ingreso de la plantilla entera, fila por fila en un
+colapsable no es forma.
+
+### Agregado: `make backup-vine` y `make restore-vine`
+
+El respaldo general de la base incluye todo, pero **la ficha y las incidencias son captura manual**:
+son lo único de vine que no se recupera volviendo a sincronizar el biométrico. Tienen ahora su
+respaldo propio, del schema `vine` solo, con selector interactivo para restaurar y rotación de 30
+archivos.
+
+El dump se valida antes de darse por bueno —falla si queda vacío o si trae menos de las cinco tablas
+esperadas— y se escribe a `.parcial` hasta que pasa, para que un respaldo truncado no se quede en el
+directorio pareciendo bueno.
 
 ### Cambiado: la ayuda vive en el título, no en avisos
 
@@ -71,6 +217,26 @@ Está hecho con SVG inline, sin librería de gráficas: es un esquema de tres va
 estadístico, y ni ECharts (~1 MB) ni Three.js aportarían legibilidad a cambio del peso. El
 emparejamiento lector↔puerta vive en `PUERTAS`, en las constantes de la feature.
 
+### Corregido: seis personas no aparecían en ninguna estadística
+
+Las consultas filtraban por `evento = 'Apertura con verificación normal'`, dando por hecho que era
+el único marcaje válido. **No lo es.** Quien tiene perfil de superusuario en el biométrico genera
+`Apertura de puerta de superusuario` y *nunca* el evento normal, así que quedaba fuera de todo: del
+directorio, de los rankings, de los conteos y de la asistencia. Eran **6 personas y 4,915 eventos**
+del último año.
+
+Que es asistencia real no admite duda: **98.6% de esas jornadas cierran** —mejor que la tarjeta— con
+jornada mediana de 7.75 h, entradas y salidas empatadas por persona y los mismos picos horarios que
+el resto de la plantilla.
+
+- `EVENTOS_ASISTENCIA` es ahora una lista y todas las consultas usan `evento = ANY(:eventos)`.
+- **`Superusuario` es un tercer medio de marcaje** junto a huella y tarjeta, y cuenta como registro
+  confiable para medir la jornada típica. Nadie tiene dos: el tipo de evento es una propiedad del
+  perfil de la persona, no del acto.
+
+La señal de que falta un tipo de evento es siempre la misma: alguien que sabe que marca y no
+aparece.
+
 ### Corregido: la huella y la tarjeta no se registran igual, y eso torcía todo
 
 El 10% de los persona-día del último año tiene entrada pero **no tiene salida**. La causa no es la
@@ -79,6 +245,7 @@ persona, es el medio con el que marca:
 | Medio de la entrada | Días | Sin salida | Jornada mediana |
 |---|---|---|---|
 | Huella | 3,092 | 10 (**0.3%**) | 8.09 h |
+| Superusuario | 517 | 13 (**2.5%**) | 7.75 h |
 | Tarjeta | 4,959 | 831 (**16.8%**) | 6.72 h |
 
 Son **dos poblaciones distintas promediadas juntas**: 18 personas marcan con huella y su registro
