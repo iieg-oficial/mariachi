@@ -128,6 +128,20 @@ def _safe_next(raw: str | None) -> str:
     return raw
 
 
+def _salir_url() -> str:
+    """URL del propio mariachi que redirige al logout de minerva.
+
+    El navegador tiene que llegar al logout por un 302 del servidor: una
+    navegacion iniciada por el documento la reescribe el `upgrade-insecure-requests`
+    de la CSP, y si minerva no sirve HTTPS en ese puerto el logout muere en
+    ERR_SSL_PROTOCOL_ERROR. Se deriva del `redirect_uri` del callback, que ya trae
+    la URL publica de mariachi."""
+    callback = settings.minerva_redirect_uri.rstrip("/")
+    if callback.endswith("/callback"):
+        return f"{callback[: -len('/callback')]}/salir"
+    return _post_login_url()
+
+
 def _login_forzado_url() -> str:
     """A donde vuelve el navegador despues del logout del panel: al login de
     mariachi con `forzar=1`, para que minerva pida credenciales de nuevo en vez
@@ -331,8 +345,18 @@ async def logout(
 
     return {
         "message": "Sesión cerrada exitosamente",
-        "logout_url": oidc.logout_url(_login_forzado_url()),
+        "logout_url": _salir_url(),
     }
+
+
+@router.get("/salir")
+async def salir() -> RedirectResponse:
+    """Redirige al logout de minerva con un 302 del servidor. No revoca nada:
+    la sesion ya la cerro `POST /cerrar-sesion`, asi que un GET aqui no muta estado."""
+    return RedirectResponse(
+        url=oidc.logout_url(_login_forzado_url()),
+        status_code=status.HTTP_302_FOUND,
+    )
 
 
 @router.get("/perfil", response_model=CurrentUserResponse)
