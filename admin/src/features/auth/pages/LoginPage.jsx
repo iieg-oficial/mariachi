@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button, Typography, Flex, Row, Col, theme, Alert } from 'antd';
 import { useSearchParams } from 'react-router';
 import { useAuth } from '@shared/contexts/useAuth';
@@ -23,6 +23,8 @@ export default function Login() {
     const { isMobile } = useIsMobile();
 
     const authError = searchParams.get('auth_error');
+    const forzar = searchParams.get('forzar') === '1';
+    const autoRedirigido = useRef(false);
 
     useEffect(() => {
         if (!authError) return;
@@ -33,8 +35,15 @@ export default function Login() {
 
     const onLogin = () => {
         setLoading(true);
-        login(resolveNextPath(searchParams.get('next')));
+        login(resolveNextPath(searchParams.get('next')), forzar);
     };
+
+    useEffect(() => {
+        if (authError || autoRedirigido.current) return;
+        autoRedirigido.current = true;
+        setLoading(true);
+        login(resolveNextPath(searchParams.get('next')), forzar);
+    }, [authError, forzar, login, searchParams]);
 
     return (
         <Flex

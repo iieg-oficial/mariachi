@@ -90,11 +90,16 @@ const refreshSession = async () => {
 const isAuthEndpoint = (url) =>
     typeof url === 'string' && url.includes('/autenticacion/refrescar');
 
-export const buildMinervaLoginUrl = (next) => {
-    const target = typeof next === 'string' && next.startsWith('/') && !next.startsWith('//')
-        ? `?next=${encodeURIComponent(next)}`
-        : '';
-    return `${API_URL}/autenticacion/login${target}`;
+export const buildMinervaLoginUrl = (next, forzar = false) => {
+    const params = new URLSearchParams();
+    if (typeof next === 'string' && next.startsWith('/') && !next.startsWith('//')) {
+        params.set('next', next);
+    }
+    if (forzar) {
+        params.set('forzar', '1');
+    }
+    const query = params.toString();
+    return `${API_URL}/autenticacion/login${query ? `?${query}` : ''}`;
 };
 
 const redirectToLogin = () => {

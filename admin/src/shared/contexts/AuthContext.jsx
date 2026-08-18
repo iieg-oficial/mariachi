@@ -35,8 +35,8 @@ export const AuthProvider = ({ children }) => {
         return () => { cancelled = true; };
     }, []);
 
-    const login = (next) => {
-        window.location.href = buildMinervaLoginUrl(next);
+    const login = (next, forzar = false) => {
+        window.location.href = buildMinervaLoginUrl(next, forzar);
     };
 
     const logout = async () => {
