@@ -48,6 +48,10 @@ sesión en mariachi cierra la de mariachi, no la del día.
 Importa más de lo que parece: **un permiso nuevo no surte efecto sin volver a entrar**, porque viaja
 en el token. Con el logout roto no había forma de estrenar un permiso recién asignado.
 
+De paso, **la pantalla de login del admin dejó de ser un paso**: al llegar a `/login` redirige sola
+al SSO en vez de esperar un clic en un botón que sólo tenía una opción. Se detiene si viene con
+`auth_error`, para no entrar en bucle cuando el que falla es el SSO.
+
 ### Agregado: directorio de Personal, y las estadísticas de gente en su propia pestaña
 
 **Vine → Personal**, subpágina nueva: una fila por persona dada de alta en el biométrico, con su
