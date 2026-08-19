@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
+from typing import Literal
 
 from pydantic import BaseModel
 
@@ -158,12 +159,15 @@ class PersonalRow(BaseModel):
     entrada_habitual: str | None = None
     salida_habitual: str | None = None
     telefono: str | None = None
+    extension: str | None = None
     puesto: str | None = None
     foto_url: str | None = None
     cumpleanos: date | None = None
     fecha_ingreso: date | None = None
+    alta_sistema: date | None = None
     notas: str | None = None
     editada: bool = False
+    baja: bool = False
     dias: int = 0
     medibles: int = 0
     habiles: int = 0
@@ -188,6 +192,7 @@ class FichaIn(BaseModel):
     apellidos: str | None = None
     email: str | None = None
     telefono: str | None = None
+    extension: str | None = None
     departamento: str | None = None
     vinculo: str | None = None
     puesto: str | None = None
@@ -233,6 +238,13 @@ class IncidenciaMasivaIn(BaseModel):
     hasta: date
     tipo: str
     nota: str | None = None
+
+
+class PersonalExportIn(BaseModel):
+    formato: Literal["csv", "xlsx"] = "xlsx"
+    dias: int = 365
+    campos: list[str] | None = None
+    pins: list[str] | None = None
 
 
 class IncidenciaListaRow(IncidenciaRow):

@@ -16,6 +16,10 @@ class Persona(Base):
     email = Column(String(255), nullable=True)
     departamento = Column(String(150), nullable=True)
     puesto = Column(String(150), nullable=True)
+    fecha_ingreso = Column(Date, nullable=True)
+    cumpleanos = Column(Date, nullable=True)
+    telefono = Column(String(50), nullable=True)
+    alta_sistema = Column(Date, nullable=True)
     sincronizado_at = Column(DateTime, default=utcnow, nullable=False)
 
 
@@ -47,6 +51,7 @@ class PersonaFicha(Base):
     apellidos = Column(String(150), nullable=True)
     email = Column(String(255), nullable=True)
     telefono = Column(String(50), nullable=True)
+    extension = Column(String(60), nullable=True)
     departamento = Column(String(150), nullable=True)
     vinculo = Column(String(80), nullable=True)
     puesto = Column(String(150), nullable=True)

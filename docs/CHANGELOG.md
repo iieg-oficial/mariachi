@@ -9,6 +9,59 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.7.0] - 2026-08-19
+
+### Cambiado: el directorio de Personal se filtra y se descarga
+
+La subpágina se reordenó alrededor de lo que se hace en ella: filtrar, abrir a alguien y sacar la
+lista.
+
+**Captura masiva subió al encabezado**, a la derecha del título, en el slot `extra` que
+`PageHeading` ya tenía. Estaba perdido entre los filtros, que es donde menos se parece a lo que es:
+la acción principal de la página.
+
+**Los filtros son cuatro `Select` múltiples** —vínculo, área, marca y horario—, cada opción con
+cuántas personas trae y un «Limpiar» que dice cuántos hay puestos. Se probó primero con un
+`Segmented`, y estuvo mal: en el resto del admin ese control se usa con dos a cuatro opciones —
+Todas / Habilitadas / Deshabilitadas—, y con once vínculos se come el ancho de la pantalla. Es un
+control de *modo*, no de filtro. El `Select` además deja **combinar** —ver Base y Confianza a la
+vez— y recupera los filtros de área, marca y horario que se habían perdido al reducir las columnas.
+
+El orden de los vínculos lo manda el catálogo; lo que aparezca en los datos sin estar en él se
+agrega al final, para que nadie quede sin forma de filtrarse.
+
+**Las columnas bajaron de seis a tres:** persona, vínculo y acciones. Los cuatro botones de acciones
+abren la fila directo en su pestaña —ficha, vacaciones y permisos, asistencia, ZKTeco— en vez de
+obligar a desplegar y luego buscar la pestaña. El último registro se mudó junto al vínculo: es lo
+que distingue a quien no ha marcado nunca de quien no está dado de alta, y perderlo dejaba la nota
+al pie de la tabla sin referente.
+
+### Agregado: descargar el directorio eligiendo los campos
+
+Botón **Descargar** con 23 campos a elegir y salida en **Excel o CSV**. Baja exactamente lo que
+está en pantalla: el frontend manda los PIN visibles, así que el archivo respeta los filtros y la
+búsqueda sin tener que repetirlos del lado del servidor.
+
+Reutiliza `grid_export.to_csv` y `to_xlsx`, que ya existían para el editor de capas de MapaLab, en
+vez de sumar una librería de hojas de cálculo al bundle del admin. El CSV sale con BOM para que
+Excel no rompa los acentos.
+
+`vine_stats._hoy()` pasó a ser pública como `hoy()`: el nombre del archivo lleva la fecha y el
+contenedor corre en UTC, así que sellarlo con `date.today()` lo fecharía un día adelante cada tarde
+— el mismo error que se corrigió en las estadísticas en la `2.5.0`.
+
+### Agregado: Base y Confianza como vínculos propios
+
+**El biométrico no distingue base de confianza:** su departamento manda a toda la nómina a
+«Plantilla». Los dos entran al catálogo de vínculos (`v1ne0006`) y se capturan a mano en la ficha o
+en la captura masiva; hasta que alguien los asigne aparecen en cero, sin romper nada.
+
+La migración reescribe el `orden` de todo el bloque de vínculos, no sólo el de los dos nuevos:
+dejarlos en 1 y 2 los empataba con prácticas y servicio social, y dos claves con el mismo orden
+salen en orden arbitrario — que es justo lo que el `Select` usa para acomodarse.
+
+---
+
 ## [2.6.0] - 2026-08-18
 
 ### Agregado: entrar ya no pide un clic intermedio

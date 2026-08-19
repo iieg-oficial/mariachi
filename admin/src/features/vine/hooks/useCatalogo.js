@@ -20,10 +20,14 @@ const useCatalogo = (tipo, soloActivos = true) => {
     useEffect(() => { cargar(); }, [cargar]);
 
     const opciones = items.map((i) => ({ value: i.clave, label: i.nombre }));
+    // Vinculo y area se guardan por nombre, no por clave: el CASE del backend
+    // deriva nombres —«Plantilla», «Baja»— y los colores y filtros del CMS los
+    // buscan por nombre. Guardar la clave dejaria «plantilla» sin color ni filtro.
+    const opcionesNombre = items.map((i) => ({ value: i.nombre, label: i.nombre }));
     const color = Object.fromEntries(items.map((i) => [i.clave, i.color || 'default']));
     const nombre = Object.fromEntries(items.map((i) => [i.clave, i.nombre]));
 
-    return { items, opciones, color, nombre, cargando, recargar: cargar };
+    return { items, opciones, opcionesNombre, color, nombre, cargando, recargar: cargar };
 };
 
 export default useCatalogo;

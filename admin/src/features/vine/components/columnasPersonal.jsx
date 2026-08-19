@@ -1,7 +1,20 @@
-import { Avatar, Tag, Typography } from 'antd';
+import {
+    CalendarOutlined,
+    ClockCircleOutlined,
+    DatabaseOutlined,
+    IdcardOutlined,
+} from '@ant-design/icons';
+import { Avatar, Button, Space, Tag, Tooltip, Typography } from 'antd';
 
 import { COLOR_VINCULO } from '@features/vine/constants';
+import { etiquetaValor } from '@features/vine/constants/filtros';
 import { medioInfo } from '@features/vine/constants/medios';
+
+const colorDe = (campo, valor) => {
+    if (campo === 'vinculo') return COLOR_VINCULO[valor] ?? 'default';
+    if (campo === 'medio') return medioInfo(valor).color;
+    return 'default';
+};
 
 const { Text } = Typography;
 
@@ -17,18 +30,17 @@ export const colorAvatar = (pin) => COLORES_AVATAR[
     [...String(pin)].reduce((a, c) => a + c.charCodeAt(0), 0) % COLORES_AVATAR.length
 ];
 
-const fecha = (v) => new Date(`${v}T12:00:00`).toLocaleDateString('es-MX', {
-    day: '2-digit', month: 'short', year: '2-digit',
-});
+export const ACCIONES = [
+    { tab: 'ficha', titulo: 'Ficha', icono: <IdcardOutlined /> },
+    { tab: 'incidencias', titulo: 'Vacaciones y permisos', icono: <CalendarOutlined /> },
+    { tab: 'asistencia', titulo: 'Asistencia', icono: <ClockCircleOutlined /> },
+    { tab: 'biometrico', titulo: 'Lo que trae ZKTeco', icono: <DatabaseOutlined /> },
+];
 
-const oVacio = (v) => v || <Text type="secondary">—</Text>;
-
-export const COLUMNAS_PERSONAL = [
+export const columnasPersonal = (onAbrir, dimension) => [
     {
         title: 'Persona',
         key: 'nombre',
-        fixed: 'left',
-        width: 280,
         sorter: (a, b) => (a.nombre ?? '').localeCompare(b.nombre ?? ''),
         render: (_, f) => (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
@@ -39,7 +51,7 @@ export const COLUMNAS_PERSONAL = [
                 >
                     {iniciales(f.nombre, f.pin)}
                 </Avatar>
-                <span>
+                <span style={{ minWidth: 0 }}>
                     <Text>{f.nombre?.trim() || `Sin nombre (${f.pin})`}</Text>
                     <Text type="secondary" style={{ fontSize: 11, display: 'block' }}>
                         {f.departamento || `PIN ${f.pin}`}
@@ -49,46 +61,51 @@ export const COLUMNAS_PERSONAL = [
         ),
     },
     {
-        title: 'Vínculo',
-        dataIndex: 'vinculo',
-        key: 'vinculo',
+        title: dimension.etiqueta,
+        dataIndex: dimension.campo,
+        key: dimension.campo,
         width: 180,
-        filtrable: true,
-        onFilter: (v, f) => f.vinculo === v,
-        render: (v) => (v ? <Tag color={COLOR_VINCULO[v] ?? 'default'}>{v}</Tag> : oVacio(null)),
+        responsive: ['md'],
+        sorter: (a, b) => (a[dimension.campo] ?? '').localeCompare(b[dimension.campo] ?? ''),
+        render: (v, f) => (
+            <Space size={4} wrap>
+                {v
+                    ? <Tag color={colorDe(dimension.campo, v)}>{etiquetaValor(dimension.campo, v)}</Tag>
+                    : <Text type="secondary">—</Text>}
+                {f.baja && v !== 'Baja' && <Tag color="red">baja</Tag>}
+            </Space>
+        ),
     },
     {
-        title: 'Puesto',
-        dataIndex: 'puesto',
-        key: 'puesto',
-        width: 200,
-        responsive: ['lg'],
-        render: oVacio,
-    },
-    {
-        title: 'Teléfono',
-        dataIndex: 'telefono',
-        key: 'telefono',
-        width: 150,
-        responsive: ['xl'],
-        render: oVacio,
-    },
-    {
-        title: 'Marca',
-        dataIndex: 'medio',
-        key: 'medio',
+        title: 'Extensión',
+        dataIndex: 'extension',
+        key: 'extension',
         width: 130,
-        filtrable: true,
-        onFilter: (v, f) => f.medio === v,
-        render: (v) => (v ? <Tag color={medioInfo(v).color}>{medioInfo(v).etiqueta}</Tag> : oVacio(null)),
+        responsive: ['lg'],
+        sorter: (a, b) => (a.extension ?? '').localeCompare(b.extension ?? ''),
+        render: (v) => (v
+            ? <Text>{v}</Text>
+            : <Text type="secondary">—</Text>),
     },
     {
-        title: 'Último registro',
-        dataIndex: 'ultimo_dia',
-        key: 'ultimo_dia',
-        width: 140,
-        sorter: (a, b) => (a.ultimo_dia ?? '').localeCompare(b.ultimo_dia ?? ''),
-        defaultSortOrder: 'descend',
-        render: (v) => (v ? <Text type="secondary">{fecha(v)}</Text> : <Tag>sin registro</Tag>),
+        title: 'Acciones',
+        key: 'acciones',
+        width: 170,
+        align: 'right',
+        render: (_, f) => (
+            <Space size={2}>
+                {ACCIONES.map(({ tab, titulo, icono }) => (
+                    <Tooltip key={tab} title={titulo}>
+                        <Button
+                            type="text"
+                            size="small"
+                            icon={icono}
+                            aria-label={`${titulo} de ${f.nombre?.trim() || f.pin}`}
+                            onClick={(e) => { e.stopPropagation(); onAbrir(f.pin, tab); }}
+                        />
+                    </Tooltip>
+                ))}
+            </Space>
+        ),
     },
 ];

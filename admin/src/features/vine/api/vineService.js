@@ -20,6 +20,16 @@ export const getPersonal = async (dias = 90, incluirBajas = false) => {
     return res.data;
 };
 
+export const getCamposExportables = async () => {
+    const res = await api.get('/vine/personal/campos-exportables');
+    return res.data;
+};
+
+export const exportarPersonal = async (datos) => {
+    const res = await api.post('/vine/personal/exportar', datos, { responseType: 'blob' });
+    return res;
+};
+
 export const getDetallePersona = async (pin) => {
     const res = await api.get(`/vine/personal/${pin}`);
     return res.data;

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, require_permission, verify_csrf
@@ -16,6 +16,7 @@ from app.schemas.vine import (
     IncidenciaListaRow,
     IncidenciaMasivaIn,
     IncidenciaRow,
+    PersonalExportIn,
     PersonalRow,
     PersonasResponse,
     ResumenResponse,
@@ -23,6 +24,7 @@ from app.schemas.vine import (
 )
 from app.services import (
     vine_catalogos,
+    vine_export,
     vine_ficha,
     vine_incidencias,
     vine_perfiles,
@@ -94,6 +96,39 @@ async def personal(
     db: Session = Depends(get_db),
 ):
     return vine_perfiles.personal(db, dias, incluir_bajas)
+
+
+@router.post(
+    "/personal/exportar",
+    dependencies=[Depends(require_permission(PERMISO_PERSONAS))],
+)
+async def exportar_personal(
+    datos: PersonalExportIn,
+    db: Session = Depends(get_db),
+):
+    contenido, nombre, tipo = vine_export.archivo(
+        db,
+        datos.formato,
+        datos.dias,
+        datos.campos,
+        datos.pins,
+        vine_stats.hoy(),
+    )
+    return Response(
+        content=contenido,
+        media_type=tipo,
+        headers={"Content-Disposition": f'attachment; filename="{nombre}"'},
+    )
+
+
+@router.get("/personal/campos-exportables")
+async def campos_exportables(
+    _: None = Depends(require_permission(PERMISO_PERSONAS)),
+):
+    return {
+        "campos": [{"clave": c, "nombre": n} for c, n in vine_export.CAMPOS],
+        "por_omision": list(vine_export.POR_OMISION),
+    }
 
 
 @router.get(

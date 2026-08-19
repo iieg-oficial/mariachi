@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.services.vine_stats import consultar
 
-TIPOS = ("horario", "vinculo", "tarjeta", "incidencia")
+TIPOS = ("horario", "vinculo", "tarjeta", "incidencia", "area")
 
 CAMPOS = ("clave", "nombre", "color", "efecto", "entrada", "salida", "orden", "activo", "notas")
 

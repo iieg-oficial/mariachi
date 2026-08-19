@@ -12,6 +12,7 @@ CAMPOS = (
     "apellidos",
     "email",
     "telefono",
+    "extension",
     "departamento",
     "vinculo",
     "puesto",

@@ -81,7 +81,7 @@ const Biometrico = ({ bio, compacto }) => (
     </Descriptions>
 );
 
-const FichaPersona = ({ fila, onGuardado }) => {
+const FichaPersona = ({ fila, onGuardado, tab, onTab }) => {
     const { can } = useAuth();
     const { isMobile } = useIsMobile();
     const { message } = App.useApp();
@@ -173,7 +173,7 @@ const FichaPersona = ({ fila, onGuardado }) => {
                 </Col>
             )}
             <Col flex="1 1 0" style={{ minWidth: 0, overflow: 'hidden' }}>
-                <Tabs defaultActiveKey="ficha" size="small" items={pestanas} />
+                <Tabs activeKey={tab ?? 'ficha'} onChange={onTab} size="small" items={pestanas} />
             </Col>
         </Row>
     );

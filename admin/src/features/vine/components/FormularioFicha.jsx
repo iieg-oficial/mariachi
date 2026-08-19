@@ -10,12 +10,14 @@ const FormularioFicha = ({ fila, ficha, guardando, onGuardar }) => {
     const horarios = useCatalogo('horario');
     const vinculos = useCatalogo('vinculo');
     const tarjetas = useCatalogo('tarjeta');
+    const areas = useCatalogo('area');
 
     const inicial = {
         nombre: ficha?.nombre ?? '',
         apellidos: ficha?.apellidos ?? '',
         email: ficha?.email ?? fila.email ?? '',
         telefono: ficha?.telefono ?? '',
+        extension: ficha?.extension ?? '',
         puesto: ficha?.puesto ?? '',
         departamento: ficha?.departamento ?? fila.departamento ?? '',
         vinculo: ficha?.vinculo ?? fila.vinculo ?? undefined,
@@ -59,11 +61,21 @@ const FormularioFicha = ({ fila, ficha, guardando, onGuardar }) => {
                     <Form.Item name="telefono" label="Teléfono"><Input /></Form.Item>
                 </Col>
                 <Col xs={24} md={8}>
-                    <Form.Item name="departamento" label="Área"><Input /></Form.Item>
+                    <Form.Item name="extension" label="Extensión"><Input /></Form.Item>
+                </Col>
+                <Col xs={24} md={8}>
+                    <Form.Item name="departamento" label="Área">
+                        <Select
+                            allowClear
+                            showSearch
+                            options={areas.opcionesNombre}
+                            loading={areas.cargando}
+                        />
+                    </Form.Item>
                 </Col>
                 <Col xs={24} md={8}>
                     <Form.Item name="vinculo" label="Vínculo">
-                        <Select allowClear options={vinculos.opciones} loading={vinculos.cargando} />
+                        <Select allowClear options={vinculos.opcionesNombre} loading={vinculos.cargando} />
                     </Form.Item>
                 </Col>
                 <Col xs={24} md={8}>

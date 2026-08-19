@@ -63,19 +63,21 @@ DIAS_SEMANA = {
 }
 
 
-def _hoy() -> date:
+def hoy() -> date:
+    """Publica porque `vine_export` la necesita para sellar el archivo: el
+    contenedor corre en UTC y el sello tiene que ser el dia de Mexico."""
     return datetime.now(ZONA).date()
 
 
 def _desde(dias: int) -> date:
-    return _hoy() - timedelta(days=dias)
+    return hoy() - timedelta(days=dias)
 
 
 def parametros(dias: int, **extra: Any) -> dict[str, Any]:
     return {
         "eventos": EVENTOS_ASISTENCIA,
         "desde": _desde(dias),
-        "hoy": _hoy(),
+        "hoy": hoy(),
         "max_horas": JORNADA_MAX_HORAS,
         "superusuario": EVENTO_SUPERUSUARIO,
         "medio_super": MEDIO_SUPERUSUARIO,

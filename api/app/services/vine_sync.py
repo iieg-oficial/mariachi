@@ -17,7 +17,10 @@ _engine = None
 
 _PERSONAS = """
     SELECT p.pin, coalesce(p.name, '') AS nombre, p.last_name AS apellidos,
-           nullif(p.email, '') AS email, d.name AS departamento, po.name AS puesto
+           nullif(p.email, '') AS email, d.name AS departamento, po.name AS puesto,
+           p.hire_date::date AS fecha_ingreso, p.birthday::date AS cumpleanos,
+           nullif(trim(p.mobile_phone), '') AS telefono,
+           p.create_time::date AS alta_sistema
     FROM pers_person p
     LEFT JOIN pers_department d ON d.id = p.dept_id
     LEFT JOIN pers_position po ON po.id = p.position_id
@@ -61,12 +64,22 @@ def _sincronizar_personas(origen, db: Session) -> int:
     for fila in filas:
         db.execute(
             text("""
-                INSERT INTO vine.personas (pin, nombre, apellidos, email, departamento, puesto, sincronizado_at)
-                VALUES (:pin, :nombre, :apellidos, :email, :departamento, :puesto, now() AT TIME ZONE 'utc')
+                INSERT INTO vine.personas (
+                    pin, nombre, apellidos, email, departamento, puesto,
+                    fecha_ingreso, cumpleanos, telefono, alta_sistema, sincronizado_at
+                )
+                VALUES (
+                    :pin, :nombre, :apellidos, :email, :departamento, :puesto,
+                    :fecha_ingreso, :cumpleanos, :telefono, :alta_sistema,
+                    now() AT TIME ZONE 'utc'
+                )
                 ON CONFLICT (pin) DO UPDATE SET
                     nombre = excluded.nombre, apellidos = excluded.apellidos,
                     email = excluded.email, departamento = excluded.departamento,
-                    puesto = excluded.puesto, sincronizado_at = excluded.sincronizado_at
+                    puesto = excluded.puesto, fecha_ingreso = excluded.fecha_ingreso,
+                    cumpleanos = excluded.cumpleanos, telefono = excluded.telefono,
+                    alta_sistema = excluded.alta_sistema,
+                    sincronizado_at = excluded.sincronizado_at
             """),
             dict(fila),
         )

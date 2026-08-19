@@ -7,6 +7,7 @@ import {
     BookOutlined,
     BranchesOutlined,
     CalendarOutlined,
+    ClockCircleOutlined,
     CompassOutlined,
     DeploymentUnitOutlined,
     EnvironmentOutlined,
@@ -133,7 +134,7 @@ export const PROJECT_REGISTRY = {
     ...(VINE_HABILITADO ? {
         vine: {
             label: 'Vine',
-            icon: <BarChartOutlined />,
+            icon: <ClockCircleOutlined />,
             permissions: ['mariachi.vine.view'],
             badgeVariant: ['local', 'test'],
             items: [
