@@ -712,6 +712,21 @@ Emite seis roles, para que un consumidor exprese jerarquía sin repetir hex: `pr
 principal), `secondary` (contorno que se rellena al pasar el cursor), `quiet` (acción terciaria, sin
 recuadro), `title`, `heading` y `badge`. Incluye además estilos de árbol (`hover`, radios, sin
 borde), que es la vista donde más se nota que un panel es ajeno a su anfitrión.
+## [1.122.1] - 2026-08-07
+
+### Corregido: en un nodo con el crontab vacío no se instalaba el respaldo de la BD
+
+`cron_install` daba por hecho que el crontab tenía al menos una línea. Las recetas corren con
+`-eu -o pipefail`, y ahí `crontab -l | grep -v 'mariachi-backup' | grep -v 'mariachi-stats'`
+devuelve 1 cuando no hay nada que conservar: el subshell muere antes de los dos `echo` y el
+`crontab -` de la derecha recibe la entrada vacía. **Ni el respaldo de las 03:00 ni el refresh de
+stats quedaban programados**, y el `make deploy` terminaba en `Error 1` con todos los pasos en
+verde, sin una línea de error que apuntara al cron.
+
+Pasa igual al desinstalar cuando esas dos son las únicas líneas del crontab. Los filtros se cierran
+con `|| true`. Mismo bug en sextante y acervo, corregido el mismo día.
+
+**En un nodo que ya pasó por esto, `crontab -l` vacío es la señal**; se repara con `make cron`.
 
 ## [1.122.0] - 2026-08-07
 
