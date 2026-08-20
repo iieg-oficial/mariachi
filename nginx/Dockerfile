@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM node:24-alpine AS widget-builder
+FROM node:26-alpine AS widget-builder
 WORKDIR /widget
 COPY ./widget/package*.json ./
 RUN --mount=type=cache,target=/root/.npm \
@@ -9,7 +9,7 @@ RUN --mount=type=cache,target=/widget/node_modules/.vite \
     --mount=type=cache,target=/root/.npm \
     npm run build
 
-FROM node:24-alpine AS admin-builder
+FROM node:26-alpine AS admin-builder
 WORKDIR /app
 
 COPY ./admin/package*.json ./

@@ -2,7 +2,7 @@
 
 Cliente HTTP minimalista para enviar reportes a [Colibri](https://github.com/iieg-oficial/context-ame-esta/blob/main/repos/mariachi/modulo-colibri.md), el sistema centralizado de reportes del IIEG.
 
-Sin UI, sin DOM, sin React. Funciona en Node 18+ y en cualquier navegador moderno. < 5 KB gzip.
+Sin UI, sin DOM, sin React. Funciona en Node 26+ y en cualquier navegador moderno. < 5 KB gzip.
 
 ## Instalación
 
