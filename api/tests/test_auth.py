@@ -40,13 +40,14 @@ def test_callback_sin_rol_en_la_app_lleva_al_login_con_el_error(client):
     assert response.headers["location"].endswith("/login?auth_error=access_denied")
 
 
-def test_callback_con_state_que_no_coincide_falla(client):
+def test_callback_con_state_que_no_coincide_vuelve_al_login(client):
     response = client.get(
         f"{ADMIN_PREFIX}/autenticacion/callback",
         params={"code": "abc", "state": "no-es-el-mio"},
         follow_redirects=False,
     )
-    assert response.status_code == 400
+    assert response.status_code == 302
+    assert response.headers["location"].endswith("/login?auth_error=invalid_state")
 
 
 def test_resolve_user_reconcilia_por_correo_ignorando_mayusculas(db_session):
