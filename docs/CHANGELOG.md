@@ -9,6 +9,50 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.7.1] - 2026-08-20
+
+### Corregido: `secrets/` no existía en un clon nuevo y el primer deploy fallaba
+
+El `.gitignore` tenía la misma carpeta en dos reglas que se contradecían. La línea 92 excluía el
+**directorio**:
+
+```
+# Secrets and credentials
+secrets/
+```
+
+y más abajo estaba el idioma correcto, que excluye el **contenido** y reincluye el andamio:
+
+```
+secrets/*
+!secrets/.gitkeep
+!secrets/*.example
+```
+
+Git **no desciende a un directorio excluido**, así que nunca llegaba a evaluar esas excepciones:
+estaban muertas. `git check-ignore -v secrets/.gitkeep` señalaba la línea 92 para todo, el
+`.gitkeep` nunca estuvo trackeado y por lo tanto `secrets/` **no existía en un clon recién hecho**.
+
+Eso rompía el primer `make deploy` de cualquier host nuevo. `compose.yaml` monta tres secretos
+desde ahí —`postgres_password`, `secret_key` y `csrf_secret_key`—, y si el directorio no está,
+docker compose falla en seco sin que nada en el repo lo advierta.
+
+Se quita el `secrets/` suelto y se trackea `secrets/.gitkeep`. Verificado con `git add -A`, que es
+la única prueba que vale aquí: se stagean `.gitignore` y `.gitkeep`, y tres archivos de secreto de
+prueba quedan fuera. (`git check-ignore -v` no sirve para confirmarlo: sale con código 0 aunque el
+patrón que coincida sea una negación, así que reporta como «ignorado» un archivo que sí entra.)
+
+**Al actualizar un host que venía de antes de la migración a secretos**, hay que crear los tres
+archivos antes del `git pull`, o el deploy se cae a la mitad:
+
+```bash
+mkdir -p secrets && umask 077
+printf '%s' '<valor>' > secrets/postgres_password
+```
+
+`printf '%s'` y no `echo`: el salto de línea que agrega `echo` viaja dentro del secreto y rompe la
+autenticación contra Postgres de una forma difícil de diagnosticar.
+
 ## [2.7.0] - 2026-08-19
 
 ### Cambiado: el directorio de Personal se filtra y se descarga

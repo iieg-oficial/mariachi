@@ -89,7 +89,6 @@ Thumbs.db
 *.backup
 
 # Secrets and credentials
-secrets/
 credentials/
 *.pem
 *.key
