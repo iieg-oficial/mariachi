@@ -14,6 +14,7 @@ from app.core.settings import get_settings
 from app.main import app
 from app.models.project import Project, UserProject
 from app.models.sieej import (
+    EnvioFormulario,
     EnvioValorHistorial,
     Formulario,
     Grupo,
@@ -23,7 +24,9 @@ from app.models.sieej import (
 from app.models.user import Usuario
 from app.services import presence
 from app.services.sieej.campos_service import VENTANA_COALESCING
+from app.services.sieej.formularios_admin_service import FormulariosAdminService
 from app.services.sieej.grupos_service import GruposService
+from app.services.sieej.xlsx_service import build_envios_tables
 from tests.conftest import PERMISOS_REPORTAR, TODOS_LOS_PERMISOS, login_as
 from tests.test_rate_limit_scopes import _FakeRedis as _FakeRedisZset
 from tests.test_sieej_presencia_hash import _FakeRedis as _FakeRedisHash
@@ -918,3 +921,92 @@ def test_el_historial_del_respondent_nombra_al_actor_solo_en_grupo(
     assert historial[0]["actor_nombre"] == "Ana Lopez"
     assert historial[0]["origen"] == "captura"
     assert "actor_email" not in historial[0]
+
+
+def test_el_export_dice_quien_capturo_y_con_que_origen(
+    session, client, admin, ana, beto
+):
+    f, _ = envio_colaborativo(session, admin, ana, beto, "colab-27", "dep-exp-1")
+
+    csrf = login(client, ana)
+    patch_campos(client, csrf, f.slug, {"general.razon_social": "Acme SA"})
+    csrf = login(client, beto)
+    patch_campos(client, csrf, f.slug, {"general.contacto": "Beto"}, desde=1)
+
+    envios = (
+        session.query(EnvioFormulario)
+        .filter(EnvioFormulario.formulario_id == f.id)
+        .all()
+    )
+    usuarios = {ana.id: ana, beto.id: beto}
+    filas, capturistas = FormulariosAdminService(session).historial_export(
+        f.id, envios, usuarios,
+    )
+
+    assert {fila["actor"] for fila in filas} == {"Ana Lopez", "Beto Ruiz"}
+    assert {fila["origen"] for fila in filas} == {"captura"}
+    assert set(capturistas[envios[0].id].split(", ")) == {"Ana Lopez", "Beto Ruiz"}
+
+    tablas = build_envios_tables(
+        [{
+            "id": envios[0].id,
+            "usuario_nombre": "Ana Lopez",
+            "usuario_email": "ana@test.com",
+            "capturado_por": capturistas[envios[0].id],
+            "estado": "en_proceso",
+            "formulario_version": 1,
+            "enviado_en": "",
+            "datos": envios[0].datos,
+            "definicion": envios[0].definicion_snapshot,
+        }],
+        historial=filas,
+    )
+    envios_tabla = tablas[0]
+    assert "Capturado por" in envios_tabla["headers"]
+    columna = envios_tabla["headers"].index("Capturado por")
+    assert "Ana Lopez" in envios_tabla["rows"][0][columna]
+
+    historial_tabla = tablas[-1]
+    assert historial_tabla["title"] == "Historial de cambios"
+    assert "Origen" in historial_tabla["headers"]
+    assert historial_tabla["rows"][0][historial_tabla["headers"].index("Origen")] == "Captura"
+
+
+def test_el_dueno_del_envio_no_es_quien_capturo(session, client, admin, ana, beto):
+    f, _ = envio_colaborativo(session, admin, ana, beto, "colab-28", "dep-exp-2")
+
+    csrf = login(client, ana)
+    client.get(f"{ADMIN_PREFIX}/formularios/{f.slug}/envio")
+    csrf = login(client, beto)
+    patch_campos(client, csrf, f.slug, {"general.razon_social": "Acme SA"})
+
+    envios = (
+        session.query(EnvioFormulario)
+        .filter(EnvioFormulario.formulario_id == f.id)
+        .all()
+    )
+    _filas, capturistas = FormulariosAdminService(session).historial_export(
+        f.id, envios, {ana.id: ana, beto.id: beto},
+    )
+
+    assert envios[0].usuario_id == ana.id
+    assert capturistas[envios[0].id] == "Beto Ruiz"
+
+
+def test_la_linea_de_tiempo_del_envio_nombra_a_cada_actor(
+    session, client, admin, ana, beto
+):
+    f, _ = envio_colaborativo(session, admin, ana, beto, "colab-29", "dep-exp-3")
+
+    csrf = login(client, ana)
+    client.get(f"{ADMIN_PREFIX}/formularios/{f.slug}/envio")
+    csrf = login(client, beto)
+    patch_campos(client, csrf, f.slug, {"general.razon_social": "Acme SA"})
+    envio_id = client.get(f"{ADMIN_PREFIX}/formularios/{f.slug}/envio").json()["id"]
+
+    eventos = FormulariosAdminService(session).listar_eventos_envio(f.id, envio_id)
+    por_tipo = {e["tipo"]: e for e in eventos}
+
+    assert por_tipo["iniciado"]["actor_nombre"] == "Ana Lopez"
+    assert por_tipo["actualizado"]["actor_nombre"] == "Beto Ruiz"
+    assert por_tipo["actualizado"]["payload"]["campos"] == ["general.razon_social"]

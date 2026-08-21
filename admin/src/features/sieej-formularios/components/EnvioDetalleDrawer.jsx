@@ -1,16 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert, Descriptions, Drawer, Empty, List, Segmented, Skeleton, Space, Table, Tag, Typography } from 'antd';
 import { message } from '@shared/services/message';
 import { formulariosApi } from '../services/formulariosAdminApi';
-import { buildRespuestas, diffDefiniciones } from './snapshotUtils';
+import { autoriaDesdeHistorial, buildRespuestas, diffDefiniciones } from './snapshotUtils';
 import { SeccionContenido } from './RespuestasView';
+import EnvioAuditoriaTab from './EnvioAuditoriaTab';
+import EnvioTimeline from './EnvioTimeline';
 
 const ESTADO_COLOR = { en_proceso: 'orange', enviado: 'green', expirado: 'red' };
 const ESTADO_LABEL = { en_proceso: 'En proceso', enviado: 'Enviado', expirado: 'Expirado' };
 const fmt = (v) => (v ? new Date(v).toLocaleString() : '—');
 
-function Respuestas({ definicion, datos }) {
-    const secciones = buildRespuestas(definicion, datos);
+function Respuestas({ definicion, datos, autoria }) {
+    const secciones = buildRespuestas(definicion, datos, autoria);
     if (!secciones.length) return <Empty description="Sin respuestas" />;
     return (
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
@@ -84,24 +86,40 @@ export default function EnvioDetalleDrawer({ formulario, envio, open, onClose })
     const [detalle, setDetalle] = useState(null);
     const [loading, setLoading] = useState(false);
     const [vista, setVista] = useState('respuestas');
+    const [historial, setHistorial] = useState([]);
+    const [eventos, setEventos] = useState([]);
 
     useEffect(() => {
         if (!open || !envio) return undefined;
         let vivo = true;
         setLoading(true);
         setVista('respuestas');
+        setHistorial([]);
+        setEventos([]);
         formulariosApi.getEnvio(formulario.id, envio.id)
             .then((data) => { if (vivo) setDetalle(data); })
             .catch(() => { if (vivo) message.error('Error al cargar el envío'); })
             .finally(() => { if (vivo) setLoading(false); });
+        Promise.all([
+            formulariosApi.historialEnvio(formulario.id, envio.id).catch(() => []),
+            formulariosApi.eventosEnvio(formulario.id, envio.id).catch(() => []),
+        ]).then(([hist, evs]) => {
+            if (!vivo) return;
+            setHistorial(hist);
+            setEventos(evs);
+        });
         return () => { vivo = false; };
     }, [open, envio, formulario.id]);
+
+    const autoria = useMemo(() => autoriaDesdeHistorial(historial), [historial]);
 
     const desactualizado = detalle && detalle.formulario_version < formulario.version;
 
     const opciones = [
         { value: 'respuestas', label: 'Respuestas' },
         ...(desactualizado ? [{ value: 'cambios', label: 'Cambios de versión' }] : []),
+        { value: 'auditoria', label: 'Auditoría' },
+        { value: 'actividad', label: 'Actividad' },
         { value: 'json', label: 'JSON' },
     ];
 
@@ -138,8 +156,14 @@ export default function EnvioDetalleDrawer({ formulario, envio, open, onClose })
                     <Segmented value={vista} onChange={setVista} options={opciones} block />
 
                     {vista === 'respuestas' && (
-                        <Respuestas definicion={detalle.definicion_snapshot} datos={detalle.datos} />
+                        <Respuestas
+                            definicion={detalle.definicion_snapshot}
+                            datos={detalle.datos}
+                            autoria={autoria}
+                        />
                     )}
+                    {vista === 'auditoria' && <EnvioAuditoriaTab historial={historial} />}
+                    {vista === 'actividad' && <EnvioTimeline eventos={eventos} />}
                     {vista === 'cambios' && desactualizado && (
                         <CambiosVersion
                             snapshot={detalle.definicion_snapshot}

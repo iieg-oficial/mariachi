@@ -5,7 +5,7 @@ import { message } from '@shared/services/message';
 import { triggerDownload } from '@shared/helpers/downloadFile';
 import { useAuth } from '@shared/contexts/useAuth';
 import { formulariosApi } from '../services/formulariosAdminApi';
-import { buildRespuestas } from './snapshotUtils';
+import { autoriaDesdeHistorial, buildRespuestas } from './snapshotUtils';
 import { SeccionContenido } from './RespuestasView';
 import EnvioDetalleDrawer from './EnvioDetalleDrawer';
 import EliminarEnvioModal from './EliminarEnvioModal';
@@ -32,7 +32,11 @@ function EnvioRespuestasExpandida({ estado, record }) {
             {(!estado || estado.loading) && <Skeleton active paragraph={{ rows: 4 }} />}
             {estado?.error && <Typography.Text type="danger">Error al cargar el envío</Typography.Text>}
             {estado && !estado.loading && !estado.error && (() => {
-                const secciones = buildRespuestas(estado.data.definicion_snapshot, estado.data.datos);
+                const secciones = buildRespuestas(
+                    estado.data.definicion_snapshot,
+                    estado.data.datos,
+                    autoriaDesdeHistorial(estado.historial),
+                );
                 if (!secciones.length) return <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Sin respuestas" />;
                 return (
                     <Tabs
@@ -67,8 +71,11 @@ export default function EnviosTable({ formulario }) {
         if (detalles[id]) return;
         setDetalles((prev) => ({ ...prev, [id]: { loading: true } }));
         try {
-            const data = await formulariosApi.getEnvio(formulario.id, id);
-            setDetalles((prev) => ({ ...prev, [id]: { loading: false, data } }));
+            const [data, historial] = await Promise.all([
+                formulariosApi.getEnvio(formulario.id, id),
+                formulariosApi.historialEnvio(formulario.id, id).catch(() => []),
+            ]);
+            setDetalles((prev) => ({ ...prev, [id]: { loading: false, data, historial } }));
         } catch {
             setDetalles((prev) => ({ ...prev, [id]: { loading: false, error: true } }));
         }

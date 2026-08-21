@@ -210,6 +210,18 @@ class EnvioHistorialAdminItem(EnvioHistorialItem):
     actor_email: str | None = None
 
 
+class EnvioEventoAdminResponse(BaseModel):
+    """Un evento de la linea de tiempo del envio, con quien lo provoco."""
+
+    id: int
+    envio_id: int
+    tipo: EventoTipo
+    payload: dict[str, Any] | None = None
+    actor_usuario_id: int | None = None
+    actor_nombre: str | None = None
+    ocurrido_en: datetime
+
+
 class EnvioUploadResponse(BaseModel):
     field_path: str
     url_publica: str

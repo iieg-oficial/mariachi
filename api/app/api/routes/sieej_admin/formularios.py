@@ -12,6 +12,7 @@ from app.models.sieej.periodo import FormularioPeriodo
 from app.models.user import Usuario
 from app.schemas.sieej.envio import (
     EnvioDetalleResponse,
+    EnvioEventoAdminResponse,
     EnvioHistorialAdminItem,
     EnvioResponse,
 )
@@ -342,6 +343,19 @@ async def obtener_envio_historial(
     ]
 
 
+@router.get(
+    "/formularios/{formulario_id}/envios/{envio_id}/eventos",
+    response_model=list[EnvioEventoAdminResponse],
+)
+async def obtener_envio_eventos(
+    formulario_id: int,
+    envio_id: int,
+    db: Session = Depends(get_db),
+):
+    """Linea de tiempo del envio con el actor de cada evento resuelto."""
+    return FormulariosAdminService(db).listar_eventos_envio(formulario_id, envio_id)
+
+
 @router.get("/formularios/{formulario_id}/exportar-envios")
 async def exportar_envios(
     formulario_id: int,
@@ -365,6 +379,9 @@ async def exportar_envios(
         if usuario_ids
         else {}
     )
+    historial_filas, capturistas = FormulariosAdminService(db).historial_export(
+        formulario_id, envios, usuarios
+    )
     filas = []
     for e in envios:
         u = usuarios.get(e.usuario_id)
@@ -373,6 +390,7 @@ async def exportar_envios(
                 "id": e.id,
                 "usuario_nombre": u.name if u else None,
                 "usuario_email": u.email if u else None,
+                "capturado_por": capturistas.get(e.id, ""),
                 "estado": e.estado,
                 "formulario_version": e.formulario_version,
                 "enviado_en": e.enviado_en.strftime("%Y-%m-%d %H:%M") if e.enviado_en else "",
@@ -387,33 +405,6 @@ async def exportar_envios(
         .order_by(FormularioVersion.version)
         .all()
     ]
-    envio_ids = {e.id for e in envios}
-    hist = FormulariosAdminService(db).historial_de_formulario(formulario_id)
-    hist_actor_ids = {h.actor_usuario_id for h in hist if h.actor_usuario_id}
-    hist_actores = (
-        {u.id: u for u in db.query(Usuario).filter(Usuario.id.in_(hist_actor_ids)).all()}
-        if hist_actor_ids
-        else {}
-    )
-    envio_usuario = {e.id: usuarios.get(e.usuario_id) for e in envios}
-    historial_filas = []
-    for h in hist:
-        if h.envio_id not in envio_ids:
-            continue
-        u_envio = envio_usuario.get(h.envio_id)
-        actor = hist_actores.get(h.actor_usuario_id)
-        historial_filas.append(
-            {
-                "envio_id": h.envio_id,
-                "usuario": u_envio.name if u_envio else "",
-                "version": h.formulario_version,
-                "campo": h.field_label or h.field_path,
-                "valor_anterior": h.valor_anterior,
-                "valor_nuevo": h.valor_nuevo,
-                "actor": actor.name if actor else "",
-                "fecha": h.cambiado_en.strftime("%Y-%m-%d %H:%M") if h.cambiado_en else "",
-            }
-        )
     nombre = _slug_filename(formulario.nombre)
     if formato == "csv":
         contenido, es_zip = build_envios_csv(

@@ -31,7 +31,17 @@ export const formatFieldValue = (field, value) => {
 
 const visibleFields = (step) => (step.fields || []).filter((f) => f.type !== 'info');
 
-export const buildRespuestas = (definicion, datos) => {
+export const autoriaDesdeHistorial = (historial = []) => {
+    const autoria = {};
+    [...historial]
+        .sort((a, b) => new Date(a.cambiado_en) - new Date(b.cambiado_en))
+        .forEach((h) => {
+            autoria[h.field_path] = { nombre: h.actor_nombre, fecha: h.cambiado_en };
+        });
+    return autoria;
+};
+
+export const buildRespuestas = (definicion, datos, autoria = {}) => {
     const steps = definicion?.steps || [];
     const valores = datos || {};
     return steps
@@ -50,6 +60,7 @@ export const buildRespuestas = (definicion, datos) => {
                             key: f.name,
                             label: f.label || f.name,
                             value: formatFieldValue(f, item?.[f.name]),
+                            autor: autoria[`${step.id}[${idx}].${f.name}`],
                         })),
                     })),
                 };
@@ -63,6 +74,7 @@ export const buildRespuestas = (definicion, datos) => {
                     key: f.name,
                     label: f.label || f.name,
                     value: formatFieldValue(f, scope[f.name]),
+                    autor: autoria[`${step.id}.${f.name}`],
                 })),
             };
         });

@@ -53,8 +53,11 @@ _HISTORIAL_HEADERS = [
     "Valor anterior",
     "Valor nuevo",
     "Actor",
+    "Origen",
     "Fecha",
 ]
+
+_ORIGEN_LABEL = {"captura": "Captura", "correccion": "Corrección"}
 
 
 def _historial_table(historial: list[dict[str, Any]]) -> dict[str, Any]:
@@ -67,6 +70,7 @@ def _historial_table(historial: list[dict[str, Any]]) -> dict[str, Any]:
             _hist_valor(h.get("valor_anterior")),
             _hist_valor(h.get("valor_nuevo")),
             h.get("actor") or "",
+            _ORIGEN_LABEL.get(h.get("origen"), h.get("origen") or ""),
             h.get("fecha") or "",
         ]
         for h in historial
@@ -155,9 +159,15 @@ def build_envios_tables(
     tables: list[dict[str, Any]] = []
 
     form_fields = _form_fields(definiciones)
-    headers = ["ID", "Usuario", "Email", "Estado", "Versión", "Enviado"] + [
-        _header_label(f, s.get("id"), vigentes) for s, f in form_fields
-    ]
+    headers = [
+        "ID",
+        "Usuario",
+        "Email",
+        "Capturado por",
+        "Estado",
+        "Versión",
+        "Enviado",
+    ] + [_header_label(f, s.get("id"), vigentes) for s, f in form_fields]
     rows: list[list[Any]] = []
     for envio in envios:
         datos = envio.get("datos") or {}
@@ -165,6 +175,7 @@ def build_envios_tables(
             envio.get("id"),
             envio.get("usuario_nombre") or "",
             envio.get("usuario_email") or "",
+            envio.get("capturado_por") or "",
             ESTADO_LABEL.get(envio.get("estado"), envio.get("estado") or ""),
             envio.get("formulario_version") or "",
             envio.get("enviado_en") or "",

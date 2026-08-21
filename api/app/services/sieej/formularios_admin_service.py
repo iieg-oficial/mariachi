@@ -679,6 +679,87 @@ class FormulariosAdminService:
             .all()
         )
 
+    def historial_export(
+        self,
+        formulario_id: int,
+        envios: list[EnvioFormulario],
+        usuarios: dict[int, Usuario],
+    ) -> tuple[list[dict[str, Any]], dict[int, str]]:
+        """Filas del historial para el export, y quien capturo cada envio.
+
+        Las dos salen del mismo recorrido: la hoja de historial necesita cada
+        cambio y la de envios necesita el conjunto de quienes capturaron, que
+        no es el dueno del envio cuando el formulario es colaborativo.
+        """
+        historial = self.historial_de_formulario(formulario_id)
+        envio_ids = {e.id for e in envios}
+        actor_ids = {h.actor_usuario_id for h in historial if h.actor_usuario_id}
+        actores = (
+            {
+                u.id: u
+                for u in self.db.query(Usuario).filter(Usuario.id.in_(actor_ids)).all()
+            }
+            if actor_ids
+            else {}
+        )
+        dueno = {e.id: usuarios.get(e.usuario_id) for e in envios}
+        filas: list[dict[str, Any]] = []
+        capturistas: dict[int, list[str]] = {}
+        for h in historial:
+            if h.envio_id not in envio_ids:
+                continue
+            actor = actores.get(h.actor_usuario_id)
+            u_envio = dueno.get(h.envio_id)
+            if actor is not None and h.origen == "captura":
+                nombres = capturistas.setdefault(h.envio_id, [])
+                if actor.name not in nombres:
+                    nombres.append(actor.name)
+            filas.append(
+                {
+                    "envio_id": h.envio_id,
+                    "usuario": u_envio.name if u_envio else "",
+                    "version": h.formulario_version,
+                    "campo": h.field_label or h.field_path,
+                    "valor_anterior": h.valor_anterior,
+                    "valor_nuevo": h.valor_nuevo,
+                    "actor": actor.name if actor else "",
+                    "origen": h.origen,
+                    "fecha": (
+                        h.cambiado_en.strftime("%Y-%m-%d %H:%M") if h.cambiado_en else ""
+                    ),
+                }
+            )
+        return filas, {eid: ", ".join(n) for eid, n in capturistas.items()}
+
+    def listar_eventos_envio(
+        self, formulario_id: int, envio_id: int
+    ) -> list[dict[str, Any]]:
+        """Linea de tiempo de un envio, con el nombre de quien hizo cada cosa."""
+        self.get(formulario_id)
+        filas = (
+            self.db.query(EnvioEvento, Usuario.name)
+            .join(EnvioFormulario, EnvioFormulario.id == EnvioEvento.envio_id)
+            .outerjoin(Usuario, Usuario.id == EnvioEvento.actor_usuario_id)
+            .filter(
+                EnvioEvento.envio_id == envio_id,
+                EnvioFormulario.formulario_id == formulario_id,
+            )
+            .order_by(EnvioEvento.ocurrido_en.desc())
+            .all()
+        )
+        return [
+            {
+                "id": evento.id,
+                "envio_id": evento.envio_id,
+                "tipo": evento.tipo,
+                "payload": evento.payload,
+                "actor_usuario_id": evento.actor_usuario_id,
+                "actor_nombre": actor_nombre,
+                "ocurrido_en": evento.ocurrido_en,
+            }
+            for evento, actor_nombre in filas
+        ]
+
     def eliminar_envio(
         self,
         formulario_id: int,

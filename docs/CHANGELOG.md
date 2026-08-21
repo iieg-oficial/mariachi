@@ -9,6 +9,50 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.13.0] - 2026-08-21
+
+Cierra los envíos colaborativos de SIEEJ: la sexta y última fase, más las dos aportaciones de
+backend que las fases de sieej necesitaban y quedaron sin versionar (2.9.0 a 2.11.0 trajeron el
+esquema, la captura por campo y el sync). Del lado del frontend corresponde a sieej 2.1.0 y 2.2.0.
+
+### Agregado: el CMS dice quién llenó cada campo
+
+**Inline en cada respuesta.** `buildRespuestas` acepta un mapa de autoría y cada entrada sale con su
+autor; `RespuestasView` pinta un avatar compacto junto al valor, con nombre y fecha en el tooltip.
+El drawer de detalle y la fila expandida de la tabla lo heredaron con ese único cambio, que era el
+punto de tener un armado común.
+
+**Pestaña de auditoría.** Tabla de diff con campo, valor anterior → nuevo, quién, cuándo y origen.
+El endpoint `GET /sieej/formularios/{id}/envios/{envio_id}/historial` existía desde la actualización
+ligera post-envío y **nunca tuvo consumidor**: solo faltaba `historialEnvio` en el cliente.
+
+**Pestaña de actividad.** Línea de tiempo del envío sobre un endpoint nuevo,
+`GET /sieej/formularios/{id}/envios/{envio_id}/eventos`, que resuelve el nombre del actor igual que
+el de historial. Los eventos ya se registraban con actor; no había cómo leerlos.
+
+**Excel y CSV.** La hoja «Historial de cambios» gana la columna `Origen`, que separa la captura de
+la corrección formal. La hoja `Envios` gana `Capturado por`: `Usuario` y `Email` son el dueño del
+envío, que en un formulario colaborativo no es necesariamente quien capturó. El armado de esas filas
+se movió de la ruta al service, donde va la lógica por convención, y de paso sale del mismo recorrido
+que ya se hacía sobre el historial.
+
+### Agregado: el envío dice si es de grupo y quién puede cerrarlo
+
+`EnvioResponse` expone `colaborativo`, `grupo_id`, `datos_version` y `puede_enviar`. El último va
+resuelto en el servidor y no como rol, para que el cliente no reimplemente la regla del coordinador
+y para que un capturista vea el botón bloqueado con el motivo en lugar de descubrirlo con un 403.
+
+### Agregado: la autoría por campo viaja con el envío
+
+`EnvioResponse` trae un mapa `autoria` con el último autor y fecha de cada `field_path`, para pintar
+los distintivos sin una llamada extra. El historial del respondent gana `actor_nombre` y `origen`.
+
+**El nombre solo viaja en envíos de grupo.** En uno individual el único actor posible es quien
+pregunta, así que va en `null` y el frontend muestra únicamente la fecha. El correo no viaja nunca:
+el nombre alcanza para la constancia y el correo no es asunto del resto del equipo. El docstring que
+afirmaba que este schema «no expone al actor» quedó corregido, igual que el «append-only» de
+`EnvioValorHistorial`, que dejó de ser cierto para la captura cuando entró el coalescing.
+
 ## [2.12.0] - 2026-08-21
 
 ### Agregado: la sesión se renueva antes de vencer, no después del 401
