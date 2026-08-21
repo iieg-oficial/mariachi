@@ -11,7 +11,9 @@ OPERATIONS_WITHOUT_FIELD = {'count', 'count_where'}
 COMBINATOR_OPS = {'add', 'sub', 'mul', 'div', 'percent', 'percent_change'}
 STATS_OPERATIONS = PRIMITIVE_OPERATIONS | {'formula', 'static'}
 FILTER_OPS = {'eq', 'in', 'gte', 'lte', 'between', 'is_not_null'}
-CONTEXT_KEYS = {'municipio.claves', 'municipio.nombres', 'fecha.inicio', 'fecha.fin'}
+CONTEXT_KEYS = {'municipio', 'municipio.claves', 'municipio.nombres', 'fecha.inicio', 'fecha.fin'}
+MUNICIPIO_FIELD_TOKEN = '@municipio'
+MUNICIPIO_CONTEXT_BY_TYPE = {'clave': '{{municipio.claves}}', 'nombre': '{{municipio.nombres}}'}
 MAX_FILTERS = 6
 SQL_COMPARATORS = {'eq': '=', 'gte': '>=', 'lte': '<='}
 
@@ -65,7 +67,12 @@ def _validate_filter_value(value: Any, label: str) -> Any:
 def _validate_filter(raw: Any, label: str) -> dict:
     if not isinstance(raw, dict):
         raise StatsTemplateError(f'{label} debe ser objeto')
-    field = _validate_identifier(raw.get('field', ''), f'{label}.field')
+    raw_field = raw.get('field', '')
+    field = (
+        MUNICIPIO_FIELD_TOKEN
+        if raw_field == MUNICIPIO_FIELD_TOKEN
+        else _validate_identifier(raw_field, f'{label}.field')
+    )
     op = raw.get('op')
     if op not in FILTER_OPS:
         raise StatsTemplateError(f"{label}.op invalido: '{op}'. Opciones: {sorted(FILTER_OPS)}")
@@ -228,6 +235,72 @@ def validate_stats_config(stats_config: list | None) -> list:
         raise StatsTemplateError('positions duplicadas en stats_config')
 
     return validated
+
+
+def load_layer_binding(conn: Connection, layer_key: str) -> dict | None:
+    sql = """
+        WITH RECURSIVE cadena AS (
+            SELECT id, parent_id, municipio_field, municipio_field_type
+            FROM mapalab.layers
+            WHERE workspace_alias || ':' || geoserver_layer = :layer_key
+              AND deleted_at IS NULL
+            UNION ALL
+            SELECT p.id, p.parent_id, p.municipio_field, p.municipio_field_type
+            FROM mapalab.layers p
+            JOIN cadena c ON c.parent_id = p.id
+            WHERE p.deleted_at IS NULL
+        )
+        SELECT municipio_field, municipio_field_type
+        FROM cadena
+        WHERE municipio_field IS NOT NULL
+        LIMIT 1
+    """
+    row = conn.execute(text(sql), {'layer_key': layer_key}).first()
+    if not row:
+        return None
+    return {'municipio_field': row[0], 'municipio_field_type': row[1]}
+
+
+def _bind_filter(item: dict, binding: dict | None) -> dict | None:
+    bound = dict(item)
+    if bound['field'] == MUNICIPIO_FIELD_TOKEN:
+        field = (binding or {}).get('municipio_field')
+        if not field:
+            return None
+        bound['field'] = field
+    if _placeholder_key(bound.get('value')) == 'municipio':
+        tipo = (binding or {}).get('municipio_field_type')
+        replacement = MUNICIPIO_CONTEXT_BY_TYPE.get(tipo)
+        if not replacement:
+            return None
+        bound['value'] = replacement
+    return bound
+
+
+def bind_layer_fields(stats_config: list | None, binding: dict | None) -> list:
+    bound_config = []
+    for cfg in stats_config or []:
+        item = dict(cfg)
+        if item.get('filters'):
+            item['filters'] = [
+                f for f in (_bind_filter(f, binding) for f in item['filters']) if f is not None
+            ]
+        if item.get('operation') == 'formula' and isinstance(item.get('expression'), dict):
+            item['expression'] = _bind_expression(item['expression'], binding)
+        bound_config.append(item)
+    return bound_config
+
+
+def _bind_expression(expr: dict, binding: dict | None) -> dict:
+    bound = dict(expr)
+    if bound.get('filters'):
+        bound['filters'] = [
+            f for f in (_bind_filter(f, binding) for f in bound['filters']) if f is not None
+        ]
+    for side in ('left', 'right'):
+        if isinstance(bound.get(side), dict):
+            bound[side] = _bind_expression(bound[side], binding)
+    return bound
 
 
 def _resolve_context(value: Any, context: dict | None) -> tuple[Any, bool]:

@@ -20,7 +20,9 @@ from app.services.grids.layer_metadata_grid import load_states
 from app.services.mapalab_notifier import notify_tree_changed
 from app.services.stats_templates import (
     StatsTemplateError,
+    bind_layer_fields,
     execute_stats_batch,
+    load_layer_binding,
     validate_stats_config,
 )
 
@@ -65,7 +67,9 @@ async def preview_stat(
     except StatsTemplateError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
-    values, errors = execute_stats_batch(db.connection(), [validated])
+    binding = load_layer_binding(db.connection(), layer_key)
+    bound = bind_layer_fields([validated], binding)
+    values, errors = execute_stats_batch(db.connection(), bound)
     if errors:
         raise HTTPException(status_code=502, detail=f"Error ejecutando stat: {errors[0]['error']}")
     return {'value': values[0]['valor'], 'config': validated}
@@ -91,7 +95,8 @@ async def refresh_stats(
                    'guarda la configuracion antes de recalcular',
         )
 
-    values, errors = execute_stats_batch(db.connection(), cfgs)
+    binding = load_layer_binding(db.connection(), layer_key)
+    values, errors = execute_stats_batch(db.connection(), bind_layer_fields(cfgs, binding))
 
     if not values:
         db.rollback()

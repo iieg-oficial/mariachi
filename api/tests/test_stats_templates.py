@@ -2,6 +2,7 @@ import pytest
 
 from app.services.stats_templates import (
     StatsTemplateError,
+    bind_layer_fields,
     build_query,
     execute_stats_batch,
     format_stat_value,
@@ -406,3 +407,59 @@ class TestFiltrosYContexto:
             'filters': [{'field': 'nivel', 'op': 'eq', 'value': 'Primaria'}],
         }])
         assert len(result) == 1
+
+
+class TestBindLayerFields:
+    def _cfg(self, **extra):
+        base = {
+            'operation': 'count', 'schema': 'economia', 'table': 'cultivos', 'position': 1,
+            'filters': [{'field': '@municipio', 'op': 'in', 'value': '{{municipio}}'}],
+        }
+        base.update(extra)
+        return validate_stats_config([base])
+
+    def test_token_de_municipio_pasa_la_validacion(self):
+        assert self._cfg()[0]['filters'][0]['field'] == '@municipio'
+
+    def test_binding_por_clave_resuelve_columna_y_contexto(self):
+        bound = bind_layer_fields(
+            self._cfg(), {'municipio_field': 'clave_municipio', 'municipio_field_type': 'clave'}
+        )
+        assert bound[0]['filters'] == [
+            {'field': 'clave_municipio', 'op': 'in', 'value': '{{municipio.claves}}'}
+        ]
+
+    def test_binding_por_nombre_usa_el_otro_contexto(self):
+        bound = bind_layer_fields(
+            self._cfg(), {'municipio_field': 'municipio', 'municipio_field_type': 'nombre'}
+        )
+        assert bound[0]['filters'][0]['value'] == '{{municipio.nombres}}'
+
+    def test_capa_sin_municipio_descarta_el_filtro(self):
+        bound = bind_layer_fields(self._cfg(), None)
+        assert bound[0]['filters'] == []
+        sql, params = build_query(bound[0], {'municipio.claves': ['14039']})
+        assert 'WHERE' not in sql
+        assert params == {}
+
+    def test_no_muta_la_configuracion_original(self):
+        cfg = self._cfg()
+        bind_layer_fields(cfg, {'municipio_field': 'clave_municipio', 'municipio_field_type': 'clave'})
+        assert cfg[0]['filters'][0]['field'] == '@municipio'
+
+    def test_binding_alcanza_las_hojas_de_una_formula(self):
+        cfg = validate_stats_config([{
+            'operation': 'formula', 'position': 1,
+            'expression': {
+                'op': 'percent',
+                'left': {
+                    'operation': 'count', 'schema': 'economia', 'table': 'cultivos',
+                    'filters': [{'field': '@municipio', 'op': 'in', 'value': '{{municipio}}'}],
+                },
+                'right': {'operation': 'count', 'schema': 'economia', 'table': 'cultivos'},
+            },
+        }])
+        bound = bind_layer_fields(
+            cfg, {'municipio_field': 'clave_municipio', 'municipio_field_type': 'clave'}
+        )
+        assert bound[0]['expression']['left']['filters'][0]['field'] == 'clave_municipio'
