@@ -164,7 +164,7 @@ async def actualizar_campos_mi_envio(
     """
     service = EnviosService(db)
     envio = service.actualizar_campos(current_user, envio_id, body.campos)
-    return envio_response(envio.formulario, envio)
+    return envio_response(envio.formulario, envio, db, current_user)
 
 
 @router.post(
@@ -249,7 +249,7 @@ async def obtener_formulario(
         vigencia_fin=formulario.vigencia_fin,
         version=formulario.version,
         definicion=envio.definicion_snapshot if envio else formulario.definicion,
-        envio=envio_response(formulario, envio),
+        envio=envio_response(formulario, envio, db, current_user),
         periodico=periodico,
         abierto=abierto,
         ventana_apertura=ventana_apertura,

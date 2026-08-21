@@ -794,3 +794,53 @@ def test_el_polling_desbocado_de_un_cliente_se_corta(
     r = sync(client, csrf, f.slug, desde=0)
     assert r.status_code == 429
     assert "Retry-After" in r.headers
+
+
+def test_el_envio_dice_si_es_colaborativo_y_quien_puede_enviarlo(
+    session, client, admin, ana, beto
+):
+    f, grupo = envio_colaborativo(session, admin, ana, beto, "colab-22", "dep-rol-1")
+    session.execute(
+        usuario_grupo.update()
+        .where(
+            usuario_grupo.c.grupo_id == grupo.id,
+            usuario_grupo.c.usuario_id == ana.id,
+        )
+        .values(rol="coordinador")
+    )
+    session.commit()
+
+    login(client, ana)
+    envio = client.get(f"{ADMIN_PREFIX}/formularios/{f.slug}/envio").json()
+    assert envio["colaborativo"] is True
+    assert envio["grupo_id"] == grupo.id
+    assert envio["puede_enviar"] is True
+    assert envio["datos_version"] == 0
+
+    login(client, beto)
+    envio = client.get(f"{ADMIN_PREFIX}/formularios/{f.slug}/envio").json()
+    assert envio["puede_enviar"] is False
+
+
+def test_en_un_formulario_individual_el_dueno_siempre_puede_enviar(
+    session, client, admin, ana
+):
+    f = crear_formulario(session, admin, slug="indiv-4", colaborativo=False)
+    asignar_grupo(session, f, crear_grupo(session, "dep-rol-2", [ana]))
+
+    login(client, ana)
+    envio = client.get(f"{ADMIN_PREFIX}/formularios/{f.slug}/envio").json()
+    assert envio["colaborativo"] is False
+    assert envio["grupo_id"] is None
+    assert envio["puede_enviar"] is True
+
+
+def test_la_version_avanza_con_cada_captura(session, client, admin, ana, beto):
+    f, _ = envio_colaborativo(session, admin, ana, beto, "colab-23", "dep-rol-3")
+
+    csrf = login(client, ana)
+    client.get(f"{ADMIN_PREFIX}/formularios/{f.slug}/envio")
+    patch_campos(client, csrf, f.slug, {"general.razon_social": "Acme SA"})
+
+    envio = client.get(f"{ADMIN_PREFIX}/formularios/{f.slug}/envio").json()
+    assert envio["datos_version"] == 1

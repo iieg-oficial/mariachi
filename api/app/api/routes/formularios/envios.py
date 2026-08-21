@@ -35,20 +35,37 @@ from app.services.sieej.envios_service import EnviosService
 from app.services.sieej.formularios_dinamicos_service import (
     FormulariosDinamicosService,
 )
+from app.services.sieej.pertenencia import es_coordinador
 
 router = APIRouter()
 
 
-def envio_response(formulario, envio) -> EnvioResponse | None:
-    """Serializa el envio agregando el estado de cambios de version."""
+def envio_response(
+    formulario,
+    envio,
+    db: Session | None = None,
+    user: Usuario | None = None,
+) -> EnvioResponse | None:
+    """Serializa el envio con el estado de cambios de version y quien puede enviar.
+
+    `db` y `user` solo hacen falta para resolver el coordinador de un envio de
+    grupo; sin ellos `puede_enviar` queda en el default y el cliente descubre la
+    frontera con el 403 del PUT.
+    """
     if envio is None:
         return None
     info = EnviosService.info_cambios(formulario, envio)
+    colaborativo = bool(getattr(formulario, "colaborativo", False))
+    puede_enviar = True
+    if envio.grupo_id is not None and db is not None and user is not None:
+        puede_enviar = es_coordinador(db, user.id, envio.grupo_id)
     return EnvioResponse.model_validate(envio).model_copy(
         update={
             "actualizacion_disponible": info["actualizacion_disponible"],
             "cambios_preview": [CambioRef(**c) for c in info["cambios_preview"]],
             "cambios_aplicados": [CambioRef(**c) for c in info["cambios_aplicados"]],
+            "colaborativo": colaborativo,
+            "puede_enviar": puede_enviar,
         }
     )
 
@@ -67,7 +84,7 @@ async def obtener_envio(
             detail="Formulario no encontrado o no asignado",
         )
     envio = EnviosService(db).get_o_iniciar(formulario, current_user, grupo_id=grupo_id)
-    return envio_response(formulario, envio)
+    return envio_response(formulario, envio, db, current_user)
 
 
 _sync_rate_limit = rate_limit(
@@ -160,7 +177,7 @@ async def actualizar_envio(
         enviar=body.enviar,
         cambios_vistos=body.cambios_vistos,
     )
-    return envio_response(formulario, envio)
+    return envio_response(formulario, envio, db, current_user)
 
 
 @router.post("/{slug}/envio/actualizar-version", response_model=EnvioResponse)
@@ -183,7 +200,7 @@ async def actualizar_version_envio(
             detail="Formulario no encontrado o no asignado",
         )
     envio = EnviosService(db).actualizar_version(formulario, current_user)
-    return envio_response(formulario, envio)
+    return envio_response(formulario, envio, db, current_user)
 
 
 @router.post("/{slug}/envio/upload", response_model=EnvioUploadResponse)

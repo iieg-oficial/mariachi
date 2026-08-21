@@ -42,8 +42,10 @@ class EnvioResponse(BaseModel):
     usuario_id: int | None
     usuario_nombre: str | None = None
     usuario_email: str | None = None
+    grupo_id: int | None = None
     estado: EnvioEstado
     datos: dict[str, Any]
+    datos_version: int = 0
     paso_actual: int
     iniciado_en: datetime
     enviado_en: datetime | None
@@ -53,6 +55,14 @@ class EnvioResponse(BaseModel):
     actualizacion_disponible: bool = False
     cambios_preview: list[CambioRef] = []
     cambios_aplicados: list[CambioRef] = []
+    colaborativo: bool = False
+    puede_enviar: bool = True
+    """Si quien pregunta puede cerrar el envio.
+
+    En un envio de grupo lo hace solo el coordinador; en uno individual, su
+    dueno. Se expone resuelto y no como rol para que el cliente no tenga que
+    reimplementar la regla.
+    """
 
     model_config = ConfigDict(from_attributes=True)
 
