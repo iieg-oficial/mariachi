@@ -119,6 +119,13 @@ def test_refrescar_renueva_cookies(client, admin_user, fake_refresh_redis):
     assert "refresh_token" in names
 
 
+def test_refrescar_informa_la_vigencia_de_la_sesion(client, admin_user, fake_refresh_redis):
+    establecer_cookies_de_sesion(client, admin_user)
+    response = client.post(f"{ADMIN_PREFIX}/autenticacion/refrescar")
+    assert response.status_code == 200
+    assert response.json()["session_expires_in"] > 0
+
+
 def test_refrescar_conserva_el_sid_de_la_sesion(client, admin_user, fake_refresh_redis):
     sid = establecer_cookies_de_sesion(client, admin_user)
     refresh = client.cookies.get("refresh_token")

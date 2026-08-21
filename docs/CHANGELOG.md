@@ -9,6 +9,34 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.12.0] - 2026-08-21
+
+### Agregado: la sesión se renueva antes de vencer, no después del 401
+
+El CMS esperaba a que la cookie de acceso venciera para reaccionar: la primera petición después del
+minuto 30 salía con 401, el interceptor de axios llamaba a `/autenticacion/refrescar` y reintentaba.
+Funcionaba —nadie perdía la pantalla— pero dejaba 401 en la consola y un reintento por cada petición
+que hubiera en vuelo. En una página que dispara varias al montar, como las estadísticas de vine,
+eran dos o tres de golpe.
+
+Ahora el backend informa cuánto le queda a la sesión en `session_expires_in`, que viaja en
+`GET /autenticacion/perfil`, en `GET /autenticacion/csrf` y en la respuesta de
+`POST /autenticacion/refrescar`. El admin programa el refresco dos minutos antes del vencimiento y
+lo reprograma con cada respuesta, así que la cookie se renueva sola mientras la pestaña siga viva.
+
+El valor sale del `exp` del propio token, no de una constante del frontend: cambiar
+`ACCESS_TOKEN_EXPIRE_MINUTES` reajusta el calendario sin tocar el bundle.
+
+**Los temporizadores no sobreviven a una laptop suspendida**, y en pestaña de fondo Chrome los
+retrasa minutos. Por eso el refresco también se revisa en `visibilitychange`: al volver el foco, si
+la hora programada ya pasó, se renueva en el acto. El camino viejo sigue ahí como red: si el
+refresco proactivo falla, el 401 y su reintento se comportan igual que antes.
+
+El refresco sigue pasando por `runExclusiveRefresh` —Web Locks más la marca `auth_refreshed_at`—,
+así que varias pestañas con el mismo calendario despiertan juntas y sólo una toca la red.
+
+---
+
 ## [2.11.0] - 2026-08-21
 
 ### Agregado: un solo endpoint para latido, delta y presencia

@@ -1,5 +1,11 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import api, { refreshCsrfToken, buildMinervaLoginUrl, SALIENDO_KEY } from '@shared/services/api';
+import api, {
+    refreshCsrfToken,
+    buildMinervaLoginUrl,
+    scheduleSessionRefresh,
+    cancelSessionRefresh,
+    SALIENDO_KEY,
+} from '@shared/services/api';
 import { AuthContext } from '@shared/contexts/useAuth';
 
 export const AuthProvider = ({ children }) => {
@@ -10,6 +16,7 @@ export const AuthProvider = ({ children }) => {
         try {
             const response = await api.get('/autenticacion/perfil');
             setUser(response.data);
+            scheduleSessionRefresh(response.data?.session_expires_in);
             if (!sessionStorage.getItem('csrf_token')) {
                 await refreshCsrfToken();
             }
@@ -26,6 +33,7 @@ export const AuthProvider = ({ children }) => {
             .then(async (res) => {
                 if (cancelled) return;
                 setUser(res.data);
+                scheduleSessionRefresh(res.data?.session_expires_in);
                 if (!sessionStorage.getItem('csrf_token')) {
                     await refreshCsrfToken();
                 }
@@ -40,6 +48,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     const logout = async () => {
+        cancelSessionRefresh();
         sessionStorage.setItem(SALIENDO_KEY, '1');
         const { data } = await api.post('/autenticacion/cerrar-sesion').catch(() => ({ data: null }));
         sessionStorage.removeItem('csrf_token');
@@ -59,6 +68,7 @@ export const AuthProvider = ({ children }) => {
         try {
             const response = await api.get('/autenticacion/perfil');
             setUser(response.data);
+            scheduleSessionRefresh(response.data?.session_expires_in);
             return response.data;
         } catch (err) {
             setUser(null);

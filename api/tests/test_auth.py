@@ -131,6 +131,13 @@ def test_get_current_user(admin_session):
     assert "mariachi.usuarios.view" in data["permissions"]
 
 
+def test_perfil_informa_la_vigencia_de_la_sesion(admin_session):
+    client = admin_session["client"]
+    response = client.get(f"{ADMIN_PREFIX}/autenticacion/perfil")
+    assert response.status_code == 200
+    assert response.json()["session_expires_in"] > 0
+
+
 def test_get_current_user_no_cookie(client):
     response = client.get(f"{ADMIN_PREFIX}/autenticacion/perfil")
     assert response.status_code == 401

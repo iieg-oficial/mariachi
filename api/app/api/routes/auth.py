@@ -24,6 +24,7 @@ from app.api.deps import (
     get_current_user,
     get_current_user_context,
     issue_access_token,
+    session_seconds_left,
     verify_csrf,
 )
 from app.api.rate_limit import _client_ip, rate_limit_ip
@@ -412,7 +413,10 @@ async def verify_token(current_user: Usuario = Depends(get_current_user)):
 
 @router.get("/csrf")
 async def refrescar_csrf(current_user: Usuario = Depends(get_current_user)):
-    return {"csrf_token": crear_csrf_token(current_user.username)}
+    return {
+        "csrf_token": crear_csrf_token(current_user.username),
+        "session_expires_in": session_seconds_left(current_user),
+    }
 
 
 @router.post(
@@ -445,7 +449,10 @@ async def refrescar_sesion(
 
     _set_access_cookie(response, username, sid)
     _set_refresh_cookie(response, new_raw)
-    return {"csrf_token": crear_csrf_token(username)}
+    return {
+        "csrf_token": crear_csrf_token(username),
+        "session_expires_in": settings.access_token_expire_minutes * 60,
+    }
 
 
 _AVATAR_ALLOWED_CONTENT_TYPES = {

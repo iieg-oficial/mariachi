@@ -92,6 +92,7 @@ async def get_current_user(
 
     usuario.permissions = permissions
     usuario.minerva_claims = claims
+    usuario.token_exp = payload.get("exp")
     return usuario
 
 
@@ -114,6 +115,13 @@ async def verify_csrf(
             )
 
     return current_user
+
+
+def session_seconds_left(user: Usuario) -> int:
+    exp = getattr(user, "token_exp", None)
+    if not exp:
+        return settings.access_token_expire_minutes * 60
+    return max(0, int(exp - utcnow().timestamp()))
 
 
 def has_permission(user: Usuario, permission: str) -> bool:
@@ -220,5 +228,6 @@ async def get_current_user_context(
         "created_at": current_user.created_at,
         "projects": list_user_memberships(db, current_user),
         "accessible_buckets": list_user_accessible_buckets(db, current_user),
+        "session_expires_in": session_seconds_left(current_user),
     }
     return data

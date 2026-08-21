@@ -106,6 +106,7 @@ class PerfilUpdate(CamelCaseInput):
 class CurrentUserResponse(UsuarioResponse):
     accessible_buckets: list["BucketSummary"] = []
     permissions: list[str] = []
+    session_expires_in: int = 0
 
 
 class PasswordChange(BaseModel):
