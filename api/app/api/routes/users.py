@@ -2,6 +2,7 @@ import logging
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.deps import (
@@ -12,9 +13,10 @@ from app.api.deps import (
     verify_csrf,
 )
 from app.models.project import Project, UserProject
-from app.models.sieej import Grupo, usuario_grupo
+from app.models.sieej import EnvioFormulario, Formulario, Grupo, usuario_grupo
 from app.models.user import Usuario
 from app.schemas.user import (
+    ImpactoEliminacion,
     UsuarioCreate,
     UsuarioResponse,
     UsuarioUpdate,
@@ -47,6 +49,37 @@ def _user_memberships(db: Session, user_id: int) -> list[dict]:
         .all()
     )
     return [{"slug": r.slug, "name": r.name, "project_role": r.project_role} for r in rows]
+
+
+def _impacto_eliminacion(db: Session, user_id: int) -> dict:
+    envios = (
+        db.query(func.count(EnvioFormulario.id))
+        .filter(EnvioFormulario.usuario_id == user_id)
+        .scalar()
+    ) or 0
+    formularios = (
+        db.query(func.count(Formulario.id))
+        .filter(Formulario.creado_por_id == user_id)
+        .scalar()
+    ) or 0
+    grupos = (
+        db.query(func.count())
+        .select_from(usuario_grupo)
+        .filter(usuario_grupo.c.usuario_id == user_id)
+        .scalar()
+    ) or 0
+    proyectos = (
+        db.query(func.count(UserProject.user_id))
+        .filter(UserProject.user_id == user_id)
+        .scalar()
+    ) or 0
+    return {
+        "envios": envios,
+        "formularios_creados": formularios,
+        "grupos": grupos,
+        "proyectos": proyectos,
+        "bloqueado": formularios > 0,
+    }
 
 
 def _mask_email(email: str | None) -> str | None:
@@ -93,9 +126,11 @@ def _serialize_user(db: Session, user: Usuario, *, viewer: Usuario | None = None
         "name": user.name,
         "role": user.role,
         "must_change_password": user.must_change_password,
+        "avatar_url": user.avatar_url,
         "created_at": user.created_at,
         "projects": projects,
         "sieej_grupo": sieej_grupo,
+        "minerva_vinculado": bool(user.minerva_sub),
     }
 
 
@@ -191,6 +226,20 @@ async def obtener_usuario(
             status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado"
         )
     return _serialize_user(db, usuario, viewer=current_user)
+
+
+@router.get("/{usuario_id}/impacto-eliminacion", response_model=ImpactoEliminacion)
+async def impacto_eliminacion(
+    usuario_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(_require_delete),
+):
+    usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
+    if not usuario:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado"
+        )
+    return _impacto_eliminacion(db, usuario.id)
 
 
 @router.post("", response_model=UsuarioResponse, status_code=status.HTTP_201_CREATED)
@@ -344,6 +393,17 @@ async def eliminar_usuario(
             detail="No puedes eliminar tu propio usuario",
         )
 
+    impacto = _impacto_eliminacion(db, usuario.id)
+    if impacto["bloqueado"]:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"{usuario.name} es autor de {impacto['formularios_creados']} "
+                "formulario(s) de SIEEJ y no puede eliminarse. Transfiere la autoría "
+                "o archiva los formularios primero."
+            ),
+        )
+
     target_id = usuario.id
     target_username = usuario.username
     registrar_actividad(
@@ -352,9 +412,24 @@ async def eliminar_usuario(
         action="user.delete",
         resource_type="usuario",
         resource_id=target_id,
-        metadata={"username": target_username},
+        metadata={"username": target_username, "impacto": impacto},
     )
     db.delete(usuario)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        logger.warning(
+            "action=user.delete actor=%s target=%s resultado=fk_bloqueada",
+            current_user.id,
+            target_id,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "El usuario tiene registros asociados que impiden eliminarlo. "
+                "Revisa su actividad antes de intentarlo de nuevo."
+            ),
+        ) from None
     logger.info("action=user.delete actor=%s target=%s", current_user.id, target_id)
     return {"message": "Usuario eliminado exitosamente"}

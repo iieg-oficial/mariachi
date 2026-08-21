@@ -59,6 +59,14 @@ class UsuarioUpdate(CamelCaseInput):
     sieej_grupo_nombre: str | None = Field(None, max_length=128)
 
 
+class ImpactoEliminacion(BaseModel):
+    envios: int
+    formularios_creados: int
+    grupos: int
+    proyectos: int
+    bloqueado: bool
+
+
 class UsuarioResponse(UsuarioBase):
     id: int
     role: Literal["tetlamamakani", "editora", "externo"]
@@ -68,6 +76,7 @@ class UsuarioResponse(UsuarioBase):
     email: LaxEmail
     projects: list["UserProjectMembership"] = []
     sieej_grupo: SieejGrupoRef | None = None
+    minerva_vinculado: bool = False
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
