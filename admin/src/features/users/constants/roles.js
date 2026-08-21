@@ -1,7 +1,7 @@
 export const ROLE_OPTIONS = [
     {
         value: 'tetlamamakani',
-        label: 'Administradora',
+        label: 'Tetlamamakani',
         color: 'red',
         description: 'Acceso total al panel y a todos los proyectos. Gestiona usuarios, revisiones y configuración. No requiere asignar proyectos.',
     },

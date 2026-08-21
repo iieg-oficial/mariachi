@@ -38,26 +38,31 @@ describe('UserCard', () => {
         expect(screen.getByText('Editora')).toBeInTheDocument();
     });
 
-    it('admin global se muestra como "Administradora" + "Todos los proyectos"', () => {
+    it('el rol tetlamamakani se muestra con su nombre', () => {
         renderCard({ role: 'tetlamamakani', projects: [] });
-        expect(screen.getByText('Administradora')).toBeInTheDocument();
+        expect(screen.getByText('Tetlamamakani')).toBeInTheDocument();
         expect(screen.getByText('Todos los proyectos')).toBeInTheDocument();
     });
 
-    it('usuario sin proyectos asignados muestra placeholder', () => {
+    it('usuario sin proyectos lo dice sin listar nada', () => {
         renderCard({ projects: [] });
-        expect(screen.getByText('Sin proyectos asignados')).toBeInTheDocument();
+        expect(screen.getByText('Sin proyectos')).toBeInTheDocument();
     });
 
-    it('proyectos asignados se muestran como tags con rol', () => {
+    it('los proyectos se resumen en un contador, no en una etiqueta por proyecto', () => {
         renderCard({
             projects: [
                 { slug: 'portal', name: 'Portal', project_role: 'viewer' },
                 { slug: 'mapalab', name: 'MapaLab', project_role: 'editor' },
             ],
         });
-        expect(screen.getByText('Portal: Viewer')).toBeInTheDocument();
-        expect(screen.getByText('MapaLab: Editor')).toBeInTheDocument();
+        expect(screen.getByText('2 proyectos')).toBeInTheDocument();
+        expect(screen.queryByText(/Portal/)).not.toBeInTheDocument();
+    });
+
+    it('un solo proyecto se escribe en singular', () => {
+        renderCard();
+        expect(screen.getByText('1 proyecto')).toBeInTheDocument();
     });
 
     it('la card no ofrece acciones directas', () => {
@@ -84,19 +89,20 @@ describe('UserCard', () => {
         expect(onEdit).not.toHaveBeenCalled();
     });
 
-    it('sin detalle visible no promete "Sin proyectos asignados"', () => {
+    it('sin detalle visible no promete "Sin proyectos"', () => {
         renderCard({ projects: [] }, { detalleVisible: false });
-        expect(screen.queryByText('Sin proyectos asignados')).not.toBeInTheDocument();
+        expect(screen.queryByText('Sin proyectos')).not.toBeInTheDocument();
     });
 
-    it('distingue al usuario vinculado con minerva del que no lo esta', () => {
+    it('el estado de minerva es un icono con nombre accesible, sin texto', () => {
         renderCard();
-        expect(screen.getByText('Minerva')).toBeInTheDocument();
+        expect(screen.getByLabelText(/Vinculado a minerva/)).toBeInTheDocument();
+        expect(screen.queryByText('Minerva')).not.toBeInTheDocument();
     });
 
-    it('usuario sin vincular se marca como pendiente', () => {
+    it('usuario sin vincular se distingue por su propio icono', () => {
         renderCard({ minerva_vinculado: false });
-        expect(screen.getByText('Sin vincular')).toBeInTheDocument();
+        expect(screen.getByLabelText(/Sin vincular a minerva/)).toBeInTheDocument();
     });
 
     it('muestra la dependencia de SIEEJ del usuario externo', () => {

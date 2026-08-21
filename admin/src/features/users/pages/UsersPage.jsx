@@ -28,6 +28,8 @@ const GRID_STYLE = {
     gap: 12,
 };
 
+const SKELETON_COUNT = 12;
+
 const SKELETON_STYLE = { width: '100%', maxWidth: CARD_MAX_WIDTH, marginInline: 'auto' };
 
 const formatBackendError = (error, fallback) => {
@@ -199,14 +201,13 @@ export default function Users() {
                 onBusqueda={filtro.setBusqueda}
                 onRol={filtro.setRol}
                 onProyecto={filtro.setProyecto}
-                onOrden={filtro.setOrden}
                 proyectos={proyectos}
                 mostrarProyecto={puedeGestionar}
             />
 
             {cargando ? (
                 <div style={GRID_STYLE}>
-                    {Array.from({ length: PAGE_SIZE }).map((_, i) => (
+                    {Array.from({ length: SKELETON_COUNT }).map((_, i) => (
                         <Card key={i} style={SKELETON_STYLE}><Skeleton avatar paragraph={{ rows: 2 }} active /></Card>
                     ))}
                 </div>

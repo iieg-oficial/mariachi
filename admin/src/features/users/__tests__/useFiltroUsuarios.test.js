@@ -17,21 +17,27 @@ const muchos = (n) => Array.from({ length: n }, (_, i) => usuario(i + 1));
 
 describe('useFiltroUsuarios', () => {
     it('pagina en bloques de PAGE_SIZE', () => {
-        const { result } = renderHook(() => useFiltroUsuarios(muchos(30)));
+        const { result } = renderHook(() => useFiltroUsuarios(muchos(PAGE_SIZE + 5)));
         expect(result.current.visibles).toHaveLength(PAGE_SIZE);
-        expect(result.current.total).toBe(30);
+        expect(result.current.total).toBe(PAGE_SIZE + 5);
     });
 
     it('recorta la pagina cuando la lista encoge', () => {
         const { result, rerender } = renderHook(({ lista }) => useFiltroUsuarios(lista), {
-            initialProps: { lista: muchos(25) },
+            initialProps: { lista: muchos(PAGE_SIZE * 2 + 1) },
         });
         act(() => result.current.setPagina(3));
         expect(result.current.visibles).toHaveLength(1);
 
-        rerender({ lista: muchos(24) });
+        rerender({ lista: muchos(PAGE_SIZE * 2) });
         expect(result.current.pagina).toBe(2);
         expect(result.current.visibles).toHaveLength(PAGE_SIZE);
+    });
+
+    it('ordena por nombre sin que haya que pedirlo', () => {
+        const lista = [usuario(2, { name: 'Zulema Ruiz' }), usuario(1, { name: 'Ana Perez' })];
+        const { result } = renderHook(() => useFiltroUsuarios(lista));
+        expect(result.current.visibles.map((u) => u.name)).toEqual(['Ana Perez', 'Zulema Ruiz']);
     });
 
     it('busca por dependencia de SIEEJ', () => {
@@ -77,20 +83,11 @@ describe('useFiltroUsuarios', () => {
     });
 
     it('cambiar un filtro regresa a la primera pagina', () => {
-        const { result } = renderHook(() => useFiltroUsuarios(muchos(30)));
+        const { result } = renderHook(() => useFiltroUsuarios(muchos(PAGE_SIZE + 5)));
         act(() => result.current.setPagina(2));
         expect(result.current.pagina).toBe(2);
         act(() => result.current.setRol('editora'));
         expect(result.current.pagina).toBe(1);
     });
 
-    it('ordena por alta mas reciente', () => {
-        const lista = [
-            usuario(1, { created_at: '2026-01-05T10:00:00' }),
-            usuario(2, { created_at: '2026-08-20T10:00:00' }),
-        ];
-        const { result } = renderHook(() => useFiltroUsuarios(lista));
-        act(() => result.current.setOrden('recientes'));
-        expect(result.current.visibles.map((u) => u.id)).toEqual([2, 1]);
-    });
 });

@@ -1,14 +1,13 @@
 import { Col, Input, Row, Select } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 import { ROLE_SELECT_OPTIONS } from '../constants/roles';
-import { ORDEN_OPTIONS, SIN_PROYECTOS } from '../hooks/useFiltroUsuarios';
+import { SIN_PROYECTOS } from '../hooks/useFiltroUsuarios';
 
 export default function UsersFilters({
     filtros,
     onBusqueda,
     onRol,
     onProyecto,
-    onOrden,
     proyectos = [],
     mostrarProyecto = true,
 }) {
@@ -19,7 +18,7 @@ export default function UsersFilters({
 
     return (
         <Row gutter={[8, 8]} style={{ marginBottom: 16 }}>
-            <Col xs={24} md={mostrarProyecto ? 9 : 14}>
+            <Col xs={24} md={mostrarProyecto ? 12 : 16}>
                 <Input
                     allowClear
                     placeholder="Buscar por usuario, nombre, email, proyecto o dependencia"
@@ -28,7 +27,7 @@ export default function UsersFilters({
                     onChange={(e) => onBusqueda(e.target.value)}
                 />
             </Col>
-            <Col xs={12} md={5}>
+            <Col xs={12} md={6}>
                 <Select
                     allowClear
                     placeholder="Rol"
@@ -39,7 +38,7 @@ export default function UsersFilters({
                 />
             </Col>
             {mostrarProyecto && (
-                <Col xs={12} md={5}>
+                <Col xs={12} md={6}>
                     <Select
                         allowClear
                         placeholder="Proyecto"
@@ -50,14 +49,6 @@ export default function UsersFilters({
                     />
                 </Col>
             )}
-            <Col xs={24} md={5}>
-                <Select
-                    value={filtros.orden}
-                    onChange={onOrden}
-                    style={{ width: '100%' }}
-                    options={ORDEN_OPTIONS}
-                />
-            </Col>
         </Row>
     );
 }

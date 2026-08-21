@@ -57,6 +57,46 @@ los usaba cambió. La resolución de grupo se movió de `colaboracion_service.py
 para que el módulo de captura quede con una sola responsabilidad. `envios_service.py` bajó de 1373 a
 1298 líneas ganando funciones.
 
+### Cambiado: la card de usuario deja de ser un tablero de permisos
+
+Seis ajustes a la administración de usuarios, todos de la misma idea: que la card diga lo poco que
+se necesita de un vistazo y el detalle viva en la ficha.
+
+- **El rol se llama por su nombre.** `tetlamamakani` se mostraba como «Administradora» en la card,
+  el filtro y el formulario. Ahora dice **Tetlamamakani**, que es como se llama el rol en la base,
+  en los permisos y en la conversación diaria. Traducirlo solo en la pantalla obligaba a mantener
+  dos vocabularios para lo mismo.
+- **Las etiquetas de proyecto se resumen en un contador.** Una editora con acceso a ocho proyectos
+  llenaba la card de tags y empujaba todo lo demás; con más proyectos en el ecosistema eso solo
+  empeora. La card ahora dice «3 proyectos» —o «Todos los proyectos» para tetlamamakani, o «Sin
+  proyectos»— y el reparto por proyecto se ve al abrir la ficha, que es donde se edita.
+- **El tipo de cuenta vive en un solo lugar.** El tag de rol estaba arriba a la derecha, peleando
+  el ancho con el nombre; ahora baja a la fila de etiquetas junto al contador y la dependencia.
+- **El avatar sin foto ya no es un monigote gris.** Se pintan las iniciales —nombre y primer
+  apellido, saltando partículas como «de» o «la»— sobre un color tomado de una paleta de ocho,
+  elegido por hash del username: estable para cada persona y distinto entre vecinos. Los ocho
+  colores pasan 4.5:1 contra el texto blanco.
+- **La fila de alta y estado se ancla al fondo.** Con `margin-top: auto` y una altura mínima de
+  184 px, todas las cards cierran a la misma altura y las secciones de arriba dejan de encogerse
+  según cuánto texto traiga cada usuario.
+- **El estado de minerva pierde el texto.** Era un tag que decía «Minerva» o «Sin vincular»
+  gastando media fila en un dato que dejará de importar cuando todo el padrón esté migrado. Queda
+  el escudo: relleno y verde si ya inició sesión, de contorno y ámbar si no. No es solo color —el
+  icono cambia de forma y lleva `aria-label` además del tooltip—, como exige
+  `ecosistema/identidad-visual.md`.
+
+### Cambiado: 100 usuarios por página y una sola forma de ordenarlos
+
+El grid paginaba de 12 en 12, lo que repartía un padrón de ~80 personas en siete páginas sin
+ninguna razón. Sube a **100 por página**: el padrón real cabe entero en una. El esqueleto de carga
+se queda en 12 cards, que es lo que se alcanza a ver antes de que respondan los datos.
+
+El selector de orden (nombre, alta más reciente, rol) se retira. Sobre una lista que ahora cabe en
+una pantalla, tres criterios de ordenamiento son tres decisiones que nadie quiere tomar: el orden es
+**alfabético por nombre**, siempre. Los filtros de búsqueda, rol y proyecto se quedan, que son los
+que sí recortan la lista.
+
+
 ## [2.9.0] - 2026-08-21
 
 ### Agregado: el envío de SIEEJ puede pertenecer a un grupo
