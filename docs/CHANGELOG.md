@@ -9,6 +9,53 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.8.1] - 2026-08-21
+
+### Corregido: las cards de usuario se estrujaban y escondían el nombre
+
+El grid repartía las columnas por breakpoints (`xs=24 sm=12 lg=8 xl=6`), así que el ancho de la card
+lo decidía la pantalla y no el contenido: entre 576 y 992 px cada card bajaba de ~270 px y el tag de
+rol —que no encoge— se comía el espacio del nombre, que salía cortado a media palabra.
+
+Ahora las columnas las decide el contenido:
+
+```css
+grid-template-columns: repeat(auto-fill, minmax(min(288px, 100%), 1fr));
+```
+
+288 px es el piso: por debajo de eso el grid quita una columna en vez de apretar las que hay. El
+`min(288px, 100%)` es lo que evita el desbordamiento en móvil, donde la pantalla puede ser más
+angosta que el mínimo y la card debe poder encoger a una sola columna.
+
+El piso solo, sin embargo, deja suelto el otro extremo. Con las pistas en `1fr` la card ocupa todo
+lo que sobra, así que en el rango donde cabe una columna pero no dos —el contenedor entre 288 y
+576 px, que es la tableta en vertical con el sider abierto— quedaba **una card sola estirada a lo
+ancho**, con un avatar de 48 px y medio metro de vacío al lado. La card ahora se topa en 420 px y se
+centra en su pista (`maxWidth` + `margin-inline: auto`), y el mismo tope se aplica al skeleton para
+que la carga no salte de tamaño.
+
+El tope va en la card y no en la pista a propósito: si el `minmax()` cerrara en 420 px en vez de
+`1fr`, el grid contaría las columnas contra ese máximo y un contenedor de 640 px —dos columnas
+holgadas de 314— se conformaría con una sola. Con el tope en la card, el número de columnas lo sigue
+decidiendo el mínimo y el ancho de cada una lo decide el máximo:
+
+| Ancho disponible | Columnas | Ancho de card |
+|---|---|---|
+| 308 px (móvil) | 1 | 308 |
+| 500 px | 1 | 420, centrada |
+| 640 px (tableta) | 2 | 314 |
+| 900 px | 3 | 292 |
+| 1352 px | 4 | 329 |
+
+Dentro de la card, tres ajustes para que nada quede oculto en el ancho mínimo: el encabezado
+envuelve, así que el tag de rol cae debajo del nombre cuando ya no cabe al lado; el avatar deja de
+encogerse y el bloque de texto puede hacerlo (`minWidth: 0`, sin lo cual el ellipsis nunca dispara);
+y el `@usuario` se trunca como ya lo hacía el email. El `Space` que envolvía avatar y datos se
+cambió por un flex directo: sus `ant-space-item` no propagaban el `minWidth: 0` y bloqueaban el
+truncado.
+
+---
+
 ## [2.8.0] - 2026-08-21
 
 Revisión completa del grid de usuarios del admin y de su endpoint. Seis defectos, la ausencia de

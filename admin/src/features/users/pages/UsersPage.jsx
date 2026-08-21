@@ -1,12 +1,12 @@
 import { useCallback, useState } from 'react';
-import { Button, Card, Col, Empty, Form, Modal, Pagination, Row, Skeleton } from 'antd';
+import { Button, Card, Empty, Form, Modal, Pagination, Skeleton } from 'antd';
 import { PlusOutlined, TeamOutlined } from '@ant-design/icons';
 import { useAuth } from '@shared/contexts/useAuth';
 import PageHeading from '@shared/components/PageHeading';
 import api from '@shared/services/api';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import { message } from '@shared/services/message';
-import UserCard from '../components/UserCard';
+import UserCard, { CARD_MAX_WIDTH, CARD_MIN_WIDTH } from '../components/UserCard';
 import UserFormModal from '../components/UserFormModal';
 import UsersFilters from '../components/UsersFilters';
 import ImpactoEliminacion from '../components/ImpactoEliminacion';
@@ -21,6 +21,14 @@ const FIELD_LABEL = {
     role: 'Rol',
     project_assignments: 'Proyectos',
 };
+
+const GRID_STYLE = {
+    display: 'grid',
+    gridTemplateColumns: `repeat(auto-fill, minmax(min(${CARD_MIN_WIDTH}px, 100%), 1fr))`,
+    gap: 12,
+};
+
+const SKELETON_STYLE = { width: '100%', maxWidth: CARD_MAX_WIDTH, marginInline: 'auto' };
 
 const formatBackendError = (error, fallback) => {
     const detail = error?.response?.data?.detail;
@@ -196,13 +204,11 @@ export default function Users() {
             />
 
             {cargando ? (
-                <Row gutter={[12, 12]}>
+                <div style={GRID_STYLE}>
                     {Array.from({ length: PAGE_SIZE }).map((_, i) => (
-                        <Col key={i} xs={24} sm={12} lg={8} xl={6}>
-                            <Card><Skeleton avatar paragraph={{ rows: 2 }} active /></Card>
-                        </Col>
+                        <Card key={i} style={SKELETON_STYLE}><Skeleton avatar paragraph={{ rows: 2 }} active /></Card>
                     ))}
-                </Row>
+                </div>
             ) : filtro.total === 0 ? (
                 <Card>
                     <Empty description={sinUsuarios
@@ -211,21 +217,20 @@ export default function Users() {
                 </Card>
             ) : (
                 <>
-                    <Row gutter={[12, 12]}>
+                    <div style={GRID_STYLE}>
                         {filtro.visibles.map((u) => (
-                            <Col key={u.id} xs={24} sm={12} lg={8} xl={6}>
-                                <UserCard
-                                    user={u}
-                                    isSelf={currentUser?.id === u.id}
-                                    onEdit={handleEdit}
-                                    onDelete={handleDelete}
-                                    puedeEditar={puedeGestionar}
-                                    puedeEliminar={puedeEliminar}
-                                    detalleVisible={puedeGestionar || currentUser?.id === u.id}
-                                />
-                            </Col>
+                            <UserCard
+                                key={u.id}
+                                user={u}
+                                isSelf={currentUser?.id === u.id}
+                                onEdit={handleEdit}
+                                onDelete={handleDelete}
+                                puedeEditar={puedeGestionar}
+                                puedeEliminar={puedeEliminar}
+                                detalleVisible={puedeGestionar || currentUser?.id === u.id}
+                            />
                         ))}
-                    </Row>
+                    </div>
                     <div style={{ marginTop: 16, display: 'flex', justifyContent: 'center' }}>
                         <Pagination
                             current={filtro.pagina}
