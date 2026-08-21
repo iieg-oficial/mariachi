@@ -338,8 +338,10 @@ def test_listar_historial_mi_envio(session, formulario, user_a):
     svc.actualizar_campos(user_a, envio.id, {"general.razon_social": "B"})
     items = svc.listar_historial_mi_envio(user_a, envio.id)
     assert len(items) == 1
-    assert items[0].field_path == "general.razon_social"
-    assert items[0].valor_nuevo == "B"
+    assert items[0]["field_path"] == "general.razon_social"
+    assert items[0]["valor_nuevo"] == "B"
+    assert items[0]["origen"] == "correccion"
+    assert items[0]["actor_nombre"] is None
 
 
 # ---------------------------------------------------------------------------

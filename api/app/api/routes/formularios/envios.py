@@ -22,6 +22,7 @@ from app.core.database import get_db
 from app.models.user import Usuario
 from app.schemas.sieej.envio import (
     CambioRef,
+    EnvioAutoria,
     EnvioCapturaCampos,
     EnvioCapturaResponse,
     EnvioResponse,
@@ -57,6 +58,12 @@ def envio_response(
     info = EnviosService.info_cambios(formulario, envio)
     colaborativo = bool(getattr(formulario, "colaborativo", False))
     puede_enviar = True
+    autoria: dict[str, EnvioAutoria] = {}
+    if db is not None:
+        autoria = {
+            path: EnvioAutoria(**datos)
+            for path, datos in ColaboracionService(db).autoria_por_campo(envio).items()
+        }
     if envio.grupo_id is not None and db is not None and user is not None:
         puede_enviar = es_coordinador(db, user.id, envio.grupo_id)
     return EnvioResponse.model_validate(envio).model_copy(
@@ -65,6 +72,7 @@ def envio_response(
             "cambios_preview": [CambioRef(**c) for c in info["cambios_preview"]],
             "cambios_aplicados": [CambioRef(**c) for c in info["cambios_aplicados"]],
             "colaborativo": colaborativo,
+            "autoria": autoria,
             "puede_enviar": puede_enviar,
         }
     )

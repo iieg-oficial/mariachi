@@ -1258,18 +1258,35 @@ class EnviosService:
 
     def listar_historial_mi_envio(
         self, user: Usuario, envio_id: int
-    ) -> list[EnvioValorHistorial]:
+    ) -> list[dict[str, Any]]:
         """Historial de cambios de valor de un envio propio (orden cronologico).
 
-        Reutiliza `obtener_mi_envio_detalle` para checar propiedad/404/403.
+        Reutiliza `obtener_mi_envio_detalle` para checar propiedad/404/403. El
+        nombre del actor solo sale en envios de grupo: en uno individual el
+        unico actor posible es quien pregunta.
         """
-        self.obtener_mi_envio_detalle(user, envio_id)
-        return (
-            self.db.query(EnvioValorHistorial)
+        envio = self.obtener_mi_envio_detalle(user, envio_id)
+        filas = (
+            self.db.query(EnvioValorHistorial, Usuario.name)
+            .outerjoin(Usuario, Usuario.id == EnvioValorHistorial.actor_usuario_id)
             .filter(EnvioValorHistorial.envio_id == envio_id)
             .order_by(EnvioValorHistorial.cambiado_en)
             .all()
         )
+        de_grupo = envio.grupo_id is not None
+        return [
+            {
+                "field_path": fila.field_path,
+                "field_label": fila.field_label,
+                "valor_anterior": fila.valor_anterior,
+                "valor_nuevo": fila.valor_nuevo,
+                "formulario_version": fila.formulario_version,
+                "cambiado_en": fila.cambiado_en,
+                "origen": fila.origen,
+                "actor_nombre": actor_nombre if de_grupo else None,
+            }
+            for fila, actor_nombre in filas
+        ]
 
     def eliminar_mi_envio(self, user: Usuario, envio_id: int) -> None:
         """Soft-delete: marca el envio como eliminado para el respondent.

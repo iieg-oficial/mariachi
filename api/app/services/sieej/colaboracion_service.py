@@ -216,6 +216,29 @@ class ColaboracionService:
             ),
         }
 
+    def autoria_por_campo(self, envio: EnvioFormulario) -> dict[str, dict[str, Any]]:
+        """Ultima autoria de cada campo del envio.
+
+        Se resuelve en Python y no con un `DISTINCT ON`: el historial de un
+        envio es acotado —el coalescing lo mantiene asi— y los tests corren
+        sobre SQLite, que no tiene esa clausula.
+        """
+        filas = (
+            self.db.query(EnvioValorHistorial, Usuario.name)
+            .outerjoin(Usuario, Usuario.id == EnvioValorHistorial.actor_usuario_id)
+            .filter(EnvioValorHistorial.envio_id == envio.id)
+            .order_by(EnvioValorHistorial.cambiado_en.asc())
+            .all()
+        )
+        de_grupo = envio.grupo_id is not None
+        autoria: dict[str, dict[str, Any]] = {}
+        for fila, actor_nombre in filas:
+            autoria[fila.field_path] = {
+                "actor_nombre": actor_nombre if de_grupo else None,
+                "cambiado_en": fila.cambiado_en,
+            }
+        return autoria
+
     def delta(self, envio: EnvioFormulario, desde: int) -> list[dict[str, Any]]:
         """Ultimo valor de cada campo tocado despues de `desde`, con su autor."""
         por_campo: dict[str, dict[str, Any]] = {}

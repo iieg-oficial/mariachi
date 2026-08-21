@@ -844,3 +844,77 @@ def test_la_version_avanza_con_cada_captura(session, client, admin, ana, beto):
 
     envio = client.get(f"{ADMIN_PREFIX}/formularios/{f.slug}/envio").json()
     assert envio["datos_version"] == 1
+
+
+def test_la_autoria_por_campo_viaja_con_el_envio(session, client, admin, ana, beto):
+    f, _ = envio_colaborativo(session, admin, ana, beto, "colab-24", "dep-aut-1")
+
+    csrf = login(client, ana)
+    patch_campos(client, csrf, f.slug, {"general.razon_social": "Acme SA"})
+    csrf = login(client, beto)
+    patch_campos(client, csrf, f.slug, {"general.contacto": "Beto"}, desde=1)
+
+    envio = client.get(f"{ADMIN_PREFIX}/formularios/{f.slug}/envio").json()
+    autoria = envio["autoria"]
+    assert autoria["general.razon_social"]["actor_nombre"] == "Ana Lopez"
+    assert autoria["general.contacto"]["actor_nombre"] == "Beto Ruiz"
+    assert autoria["general.razon_social"]["cambiado_en"]
+
+
+def test_la_autoria_se_queda_con_el_ultimo_que_toco_el_campo(
+    session, client, admin, ana, beto
+):
+    f, _ = envio_colaborativo(session, admin, ana, beto, "colab-25", "dep-aut-2")
+
+    csrf = login(client, ana)
+    r = patch_campos(client, csrf, f.slug, {"general.razon_social": "Acme"})
+    csrf = login(client, beto)
+    patch_campos(
+        client, csrf, f.slug,
+        {"general.razon_social": "Acme SA"},
+        desde=r.json()["datos_version"],
+    )
+
+    envio = client.get(f"{ADMIN_PREFIX}/formularios/{f.slug}/envio").json()
+    assert envio["autoria"]["general.razon_social"]["actor_nombre"] == "Beto Ruiz"
+
+
+def test_en_un_individual_la_autoria_da_fecha_pero_no_nombre(
+    session, client, admin, ana
+):
+    f = crear_formulario(session, admin, slug="indiv-5", colaborativo=False)
+    asignar_grupo(session, f, crear_grupo(session, "dep-aut-3", [ana]))
+
+    csrf = login(client, ana)
+    client.put(
+        f"{ADMIN_PREFIX}/formularios/{f.slug}/envio",
+        headers={"X-CSRF-Token": csrf},
+        json={
+            "datos": {"general": {"razon_social": "Acme SA"}},
+            "paso_actual": 0,
+            "enviar": False,
+        },
+    )
+
+    envio = client.get(f"{ADMIN_PREFIX}/formularios/{f.slug}/envio").json()
+    autoria = envio["autoria"]["general.razon_social"]
+    assert autoria["actor_nombre"] is None
+    assert autoria["cambiado_en"]
+
+
+def test_el_historial_del_respondent_nombra_al_actor_solo_en_grupo(
+    session, client, admin, ana, beto
+):
+    f, _ = envio_colaborativo(session, admin, ana, beto, "colab-26", "dep-aut-4")
+
+    csrf = login(client, ana)
+    patch_campos(client, csrf, f.slug, {"general.razon_social": "Acme SA"})
+    envio_id = client.get(f"{ADMIN_PREFIX}/formularios/{f.slug}/envio").json()["id"]
+
+    csrf = login(client, beto)
+    historial = client.get(
+        f"{ADMIN_PREFIX}/formularios/mis-envios/{envio_id}/historial"
+    ).json()
+    assert historial[0]["actor_nombre"] == "Ana Lopez"
+    assert historial[0]["origen"] == "captura"
+    assert "actor_email" not in historial[0]

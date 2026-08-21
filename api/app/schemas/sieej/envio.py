@@ -35,6 +35,13 @@ class EnvioArchivoResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class EnvioAutoria(BaseModel):
+    """Quien dejo un campo con su valor actual."""
+
+    actor_nombre: str | None = None
+    cambiado_en: datetime
+
+
 class EnvioResponse(BaseModel):
     id: int
     formulario_id: int
@@ -56,6 +63,10 @@ class EnvioResponse(BaseModel):
     cambios_preview: list[CambioRef] = []
     cambios_aplicados: list[CambioRef] = []
     colaborativo: bool = False
+    autoria: dict[str, EnvioAutoria] = Field(default_factory=dict)
+    """Ultima autoria por `field_path`, para pintar los distintivos sin otra
+    llamada. En un envio individual el nombre viene vacio y solo queda la
+    fecha."""
     puede_enviar: bool = True
     """Si quien pregunta puede cerrar el envio.
 
@@ -172,7 +183,10 @@ class EnvioSyncResponse(BaseModel):
 class EnvioHistorialItem(BaseModel):
     """Una entrada del historial de cambios de valor (vista respondent).
 
-    No expone al actor (consistente con `MisEnviosEventoResponse`).
+    `actor_nombre` viaja **solo en envios de grupo**, donde saber quien lleno
+    cada campo es el punto; en uno individual queda en `null` y el frontend
+    muestra unicamente la fecha. Nunca lleva el correo: el nombre alcanza para
+    la constancia y el correo no es asunto del resto del equipo.
     """
 
     field_path: str
@@ -181,6 +195,8 @@ class EnvioHistorialItem(BaseModel):
     valor_nuevo: Any = None
     formulario_version: int
     cambiado_en: datetime
+    origen: Literal["captura", "correccion"] = "correccion"
+    actor_nombre: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
