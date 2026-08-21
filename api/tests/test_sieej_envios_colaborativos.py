@@ -1,4 +1,6 @@
 """Tests de los envios de grupo: identidad del envio, autorizacion y rol."""
+from datetime import timedelta
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
@@ -12,12 +14,14 @@ from app.core.settings import get_settings
 from app.main import app
 from app.models.project import Project, UserProject
 from app.models.sieej import (
+    EnvioValorHistorial,
     Formulario,
     Grupo,
     formulario_grupo,
     usuario_grupo,
 )
 from app.models.user import Usuario
+from app.services.sieej.campos_service import VENTANA_COALESCING
 from app.services.sieej.grupos_service import GruposService
 from tests.conftest import PERMISOS_REPORTAR, TODOS_LOS_PERMISOS, login_as
 
@@ -40,6 +44,17 @@ DEFINICION_DEMO = {
                     "label": "Razon social",
                     "type": "text",
                     "required": True,
+                },
+                {
+                    "name": "contacto",
+                    "label": "Contacto",
+                    "type": "text",
+                },
+                {
+                    "name": "telefono",
+                    "label": "Telefono",
+                    "type": "text",
+                    "editableAfterSubmit": True,
                 },
             ],
         }
@@ -363,3 +378,288 @@ def test_mover_de_grupo_deja_una_sola_membresia(session, ana):
     )
     assert [f.grupo_id for f in filas] == [nuevo.id]
     assert viejo.id not in [f.grupo_id for f in filas]
+
+
+def patch_campos(client, csrf, slug, campos, desde=0):
+    return client.patch(
+        f"{ADMIN_PREFIX}/formularios/{slug}/envio/campos",
+        headers={"X-CSRF-Token": csrf},
+        json={"campos": campos, "desde": desde},
+    )
+
+
+def envio_colaborativo(session, admin, ana, beto, slug, nombre_grupo):
+    f = crear_formulario(session, admin, slug=slug, colaborativo=True)
+    grupo = crear_grupo(session, nombre_grupo, [ana, beto])
+    asignar_grupo(session, f, grupo)
+    return f, grupo
+
+
+def test_dos_capturas_sobre_campos_distintos_no_se_pisan(
+    session, client, admin, ana, beto
+):
+    f, _ = envio_colaborativo(session, admin, ana, beto, "colab-7", "dep-cap-1")
+
+    csrf = login(client, ana)
+    r_ana = patch_campos(
+        client, csrf, f.slug, {"general.razon_social": "Acme SA"}, desde=0
+    )
+    assert r_ana.status_code == 200, r_ana.text
+    version_ana = r_ana.json()["datos_version"]
+
+    csrf = login(client, beto)
+    r_beto = patch_campos(
+        client, csrf, f.slug, {"general.contacto": "Beto"}, desde=0
+    )
+    assert r_beto.status_code == 200, r_beto.text
+
+    assert r_beto.json()["datos_version"] == version_ana + 1
+    delta = {c["field_path"]: c for c in r_beto.json()["cambios"]}
+    assert delta["general.razon_social"]["valor_nuevo"] == "Acme SA"
+    assert delta["general.razon_social"]["actor_nombre"] == "Ana Lopez"
+    assert delta["general.contacto"]["actor_nombre"] == "Beto Ruiz"
+
+    login(client, ana)
+    envio = client.get(f"{ADMIN_PREFIX}/formularios/{f.slug}/envio").json()
+    assert envio["datos"]["general"] == {
+        "razon_social": "Acme SA",
+        "contacto": "Beto",
+    }
+
+
+def test_el_mismo_campo_con_desde_atrasado_es_409_con_los_dos_valores(
+    session, client, admin, ana, beto
+):
+    f, _ = envio_colaborativo(session, admin, ana, beto, "colab-8", "dep-cap-2")
+
+    csrf = login(client, ana)
+    patch_campos(client, csrf, f.slug, {"general.razon_social": "Acme SA"}, desde=0)
+
+    csrf = login(client, beto)
+    r = patch_campos(
+        client, csrf, f.slug, {"general.razon_social": "Otra SA"}, desde=0
+    )
+    assert r.status_code == 409
+    detail = r.json()["detail"]
+    assert detail["codigo"] == "conflicto_por_campo"
+    campo = detail["campos"][0]
+    assert campo["field_path"] == "general.razon_social"
+    assert campo["valor_tuyo"] == "Otra SA"
+    assert campo["valor_actual"] == "Acme SA"
+    assert campo["actor_nombre"] == "Ana Lopez"
+
+    login(client, ana)
+    envio = client.get(f"{ADMIN_PREFIX}/formularios/{f.slug}/envio").json()
+    assert envio["datos"]["general"]["razon_social"] == "Acme SA"
+
+
+def test_el_conflicto_no_escribe_ninguno_de_los_campos_del_lote(
+    session, client, admin, ana, beto
+):
+    f, _ = envio_colaborativo(session, admin, ana, beto, "colab-9", "dep-cap-3")
+
+    csrf = login(client, ana)
+    patch_campos(client, csrf, f.slug, {"general.razon_social": "Acme SA"}, desde=0)
+
+    csrf = login(client, beto)
+    r = patch_campos(
+        client,
+        csrf,
+        f.slug,
+        {"general.razon_social": "Otra SA", "general.contacto": "Beto"},
+        desde=0,
+    )
+    assert r.status_code == 409
+
+    login(client, ana)
+    envio = client.get(f"{ADMIN_PREFIX}/formularios/{f.slug}/envio").json()
+    assert "contacto" not in envio["datos"]["general"]
+
+
+def test_un_desde_atrasado_sin_choque_de_campos_si_se_aplica(
+    session, client, admin, ana, beto
+):
+    f, _ = envio_colaborativo(session, admin, ana, beto, "colab-10", "dep-cap-4")
+
+    csrf = login(client, ana)
+    patch_campos(client, csrf, f.slug, {"general.razon_social": "Acme SA"}, desde=0)
+
+    csrf = login(client, beto)
+    r = patch_campos(client, csrf, f.slug, {"general.contacto": "Beto"}, desde=0)
+    assert r.status_code == 200, r.text
+
+
+def test_el_put_de_captura_esta_cerrado_en_un_envio_de_grupo(
+    session, client, admin, ana, beto
+):
+    f, _ = envio_colaborativo(session, admin, ana, beto, "colab-11", "dep-cap-5")
+
+    csrf = login(client, ana)
+    r = client.put(
+        f"{ADMIN_PREFIX}/formularios/{f.slug}/envio",
+        headers={"X-CSRF-Token": csrf},
+        json={
+            "datos": {"general": {"razon_social": "Acme SA"}},
+            "paso_actual": 0,
+            "enviar": False,
+        },
+    )
+    assert r.status_code == 409
+    assert "PATCH" in r.json()["detail"]
+
+
+def test_solo_el_coordinador_puede_enviar(session, client, admin, ana, beto):
+    f, grupo = envio_colaborativo(session, admin, ana, beto, "colab-12", "dep-cap-6")
+    session.execute(
+        usuario_grupo.update()
+        .where(
+            usuario_grupo.c.grupo_id == grupo.id,
+            usuario_grupo.c.usuario_id == ana.id,
+        )
+        .values(rol="coordinador")
+    )
+    session.commit()
+
+    csrf = login(client, beto)
+    patch_campos(client, csrf, f.slug, {"general.razon_social": "Acme SA"}, desde=0)
+    envio = client.get(f"{ADMIN_PREFIX}/formularios/{f.slug}/envio").json()
+
+    cuerpo = {"datos": envio["datos"], "paso_actual": 0, "enviar": True}
+    r = client.put(
+        f"{ADMIN_PREFIX}/formularios/{f.slug}/envio",
+        headers={"X-CSRF-Token": csrf},
+        json=cuerpo,
+    )
+    assert r.status_code == 403
+
+    csrf = login(client, ana)
+    r = client.put(
+        f"{ADMIN_PREFIX}/formularios/{f.slug}/envio",
+        headers={"X-CSRF-Token": csrf},
+        json=cuerpo,
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["estado"] == "enviado"
+
+
+def test_dos_ediciones_seguidas_del_mismo_actor_dejan_una_sola_fila(
+    session, client, admin, ana, beto
+):
+    f, _ = envio_colaborativo(session, admin, ana, beto, "colab-13", "dep-cap-7")
+
+    csrf = login(client, ana)
+    r1 = patch_campos(client, csrf, f.slug, {"general.contacto": "Ana"}, desde=0)
+    r2 = patch_campos(
+        client,
+        csrf,
+        f.slug,
+        {"general.contacto": "Ana Lopez"},
+        desde=r1.json()["datos_version"],
+    )
+    assert r2.status_code == 200, r2.text
+
+    filas = (
+        session.query(EnvioValorHistorial)
+        .filter(EnvioValorHistorial.field_path == "general.contacto")
+        .all()
+    )
+    assert len(filas) == 1
+    assert filas[0].valor_anterior is None
+    assert filas[0].valor_nuevo == "Ana Lopez"
+    assert filas[0].datos_version == r2.json()["datos_version"]
+
+
+def test_pasada_la_ventana_la_segunda_edicion_deja_su_propia_fila(
+    session, client, admin, ana, beto
+):
+    f, _ = envio_colaborativo(session, admin, ana, beto, "colab-14", "dep-cap-8")
+
+    csrf = login(client, ana)
+    r1 = patch_campos(client, csrf, f.slug, {"general.contacto": "Ana"}, desde=0)
+
+    fila = (
+        session.query(EnvioValorHistorial)
+        .filter(EnvioValorHistorial.field_path == "general.contacto")
+        .one()
+    )
+    fila.cambiado_en = fila.cambiado_en - VENTANA_COALESCING - timedelta(minutes=1)
+    session.commit()
+
+    patch_campos(
+        client,
+        csrf,
+        f.slug,
+        {"general.contacto": "Ana Lopez"},
+        desde=r1.json()["datos_version"],
+    )
+    filas = (
+        session.query(EnvioValorHistorial)
+        .filter(EnvioValorHistorial.field_path == "general.contacto")
+        .all()
+    )
+    assert len(filas) == 2
+
+
+def test_la_correccion_post_envio_nunca_colapsa(session, client, admin, ana):
+    f = crear_formulario(session, admin, slug="indiv-2", colaborativo=False)
+    asignar_grupo(session, f, crear_grupo(session, "dep-cap-9", [ana]))
+
+    csrf = login(client, ana)
+    r = client.put(
+        f"{ADMIN_PREFIX}/formularios/{f.slug}/envio",
+        headers={"X-CSRF-Token": csrf},
+        json={
+            "datos": {"general": {"razon_social": "Acme SA", "telefono": "111"}},
+            "paso_actual": 0,
+            "enviar": True,
+        },
+    )
+    assert r.status_code == 200, r.text
+    envio_id = r.json()["id"]
+
+    for valor in ("222", "333"):
+        rr = client.put(
+            f"{ADMIN_PREFIX}/formularios/mis-envios/{envio_id}/actualizar-campos",
+            headers={"X-CSRF-Token": csrf},
+            json={"campos": {"general.telefono": valor}},
+        )
+        assert rr.status_code == 200, rr.text
+
+    filas = (
+        session.query(EnvioValorHistorial)
+        .filter(
+            EnvioValorHistorial.envio_id == envio_id,
+            EnvioValorHistorial.field_path == "general.telefono",
+            EnvioValorHistorial.origen == "correccion",
+        )
+        .all()
+    )
+    assert len(filas) == 2
+
+
+def test_el_guardado_normal_de_un_formulario_individual_deja_autoria(
+    session, client, admin, ana
+):
+    f = crear_formulario(session, admin, slug="indiv-3", colaborativo=False)
+    asignar_grupo(session, f, crear_grupo(session, "dep-cap-10", [ana]))
+
+    csrf = login(client, ana)
+    r = client.put(
+        f"{ADMIN_PREFIX}/formularios/{f.slug}/envio",
+        headers={"X-CSRF-Token": csrf},
+        json={
+            "datos": {"general": {"razon_social": "Acme SA"}},
+            "paso_actual": 0,
+            "enviar": False,
+        },
+    )
+    assert r.status_code == 200, r.text
+
+    fila = (
+        session.query(EnvioValorHistorial)
+        .filter(EnvioValorHistorial.field_path == "general.razon_social")
+        .one()
+    )
+    assert fila.origen == "captura"
+    assert fila.actor_usuario_id == ana.id
+    assert fila.valor_nuevo == "Acme SA"

@@ -9,6 +9,54 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.10.0] - 2026-08-21
+
+### Agregado: captura simultánea por campo en los envíos de grupo
+
+Fase 2 de seis. La 1 puso la identidad del envío; esta pone la escritura.
+
+`PATCH /formularios/{slug}/envio/campos` hace merge parcial sobre `datos` con la fila del envío
+bloqueada, y responde la `datos_version` nueva más el delta desde la que traía el cliente —cada
+campo con su último valor y quién lo dejó así—. A diferencia de la corrección post-envío acepta
+cualquier campo capturable, no solo lo marcado `editableAfterSubmit`: el envío sigue `en_proceso`.
+
+**El conflicto se resuelve por campo, no por envío.** Un `desde` atrasado no basta para rechazar el
+lote: solo hay 409 cuando otro miembro tocó **alguno de los mismos** `field_path` después de esa
+versión, y entonces la respuesta trae los dos valores y el nombre de quien escribió el otro. Un 409
+por envío completo haría inusable la captura simultánea, que es justo lo que esto habilita. Cuando
+hay conflicto no se escribe nada: el lote se rechaza entero para que el cliente reintente con una
+sola decisión.
+
+**El `PUT /{slug}/envio` queda cerrado en los envíos de grupo.** Manda `datos` completo, así que un
+cliente con la copia vieja borraría de un golpe lo que capturó el resto del equipo. Sobrevive solo
+como el acto de enviar, y ese lo hace el coordinador: un capturista recibe 403.
+
+### Agregado: el historial de valores ahora sabe quién capturó cada campo
+
+`envio_valor_historial` era la fuente de las correcciones post-envío. Ahora también recibe la
+captura, con `origen` separando las dos:
+
+- **`captura`** sale del PATCH y también del guardado normal, que antes escribía `datos` de golpe y
+  sin diff. Un `PUT` de un formulario individual ahora compara contra lo que había y emite una fila
+  por campo cambiado, que es lo que permitirá pintar la fecha de modificación en formularios que no
+  son colaborativos.
+- **`correccion`** es la actualización ligera de un envío `enviado`, sin cambios.
+
+Con autosave por campo cada blur puede generar una fila, así que en `captura` dos ediciones del
+mismo actor sobre el mismo campo dentro de cinco minutos colapsan en una: conserva el
+`valor_anterior` con que abrió la ventana y le mueve valor, fecha y versión. La versión tiene que
+moverse también, o el delta por `datos_version` dejaría de ver el cambio. `correccion` sigue siendo
+append puro, que es la que tiene valor de auditoría formal.
+
+### Cambiado: la mecánica de escritura por campo salió de `envios_service`
+
+Los dos flujos compartían resolución de paths, cálculo de cambios y escritura de historial, pero
+solo uno la tenía. Ahora vive en `services/sieej/campos_service.py` y los paths puros en
+`field_paths.py`; `EnviosService` conserva los mismos nombres como delegados, así que nada de lo que
+los usaba cambió. La resolución de grupo se movió de `colaboracion_service.py` a `pertenencia.py`
+para que el módulo de captura quede con una sola responsabilidad. `envios_service.py` bajó de 1373 a
+1298 líneas ganando funciones.
+
 ## [2.9.0] - 2026-08-21
 
 ### Agregado: el envío de SIEEJ puede pertenecer a un grupo

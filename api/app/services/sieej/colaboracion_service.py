@@ -1,116 +1,211 @@
-"""Resolucion del grupo con el que un usuario entra a un formulario colaborativo.
+"""Captura simultanea por campo sobre un envio de grupo.
 
-En un formulario con `colaborativo` activo el envio pertenece al grupo, no a la
-persona: `envio_formulario.grupo_id` sustituye a `usuario_id` como identidad del
-envio, y `usuario_id` queda como "quien lo inicio".
-
-Un usuario asignado individualmente (`formulario_usuario`) a un formulario
-colaborativo no resuelve grupo y captura solo, con un envio individual. Es
-deliberado: la asignacion directa es individual aunque el formulario admita
-grupos.
+El merge sobre `envio.datos` es parcial y el historial que produce es el que
+alimenta la autoria por campo. La resolucion de a que grupo pertenece cada
+envio vive en `pertenencia.py`.
 """
 from __future__ import annotations
 
+import json
+from typing import Any
+
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified
 
-from app.models.sieej import (
-    Formulario,
-    Grupo,
-    formulario_grupo,
-    usuario_grupo,
-)
+from app.core.time import utcnow
+from app.models.sieej import EnvioFormulario, EnvioValorHistorial, Formulario
 from app.models.user import Usuario
 
 
-def es_miembro(db: Session, usuario_id: int, grupo_id: int) -> bool:
-    fila = (
-        db.query(usuario_grupo)
-        .filter(
-            usuario_grupo.c.usuario_id == usuario_id,
-            usuario_grupo.c.grupo_id == grupo_id,
-        )
-        .first()
-    )
-    return fila is not None
+class ColaboracionService:
+    """Captura simultanea sobre un envio `en_proceso`.
 
+    El merge es por campo y el conflicto tambien: si `desde` viene atrasado el
+    PATCH se aplica igual, y solo hay 409 cuando otro miembro toco **alguno de
+    los mismos** `field_path` despues de `desde`. Un 409 por envio completo
+    haria inusable la captura simultanea, que es justo lo que esto habilita.
 
-def grupos_del_usuario(
-    db: Session, formulario: Formulario, user: Usuario
-) -> list[Grupo]:
-    return (
-        db.query(Grupo)
-        .join(usuario_grupo, usuario_grupo.c.grupo_id == Grupo.id)
-        .join(formulario_grupo, formulario_grupo.c.grupo_id == Grupo.id)
-        .filter(
-            usuario_grupo.c.usuario_id == user.id,
-            formulario_grupo.c.formulario_id == formulario.id,
-        )
-        .order_by(Grupo.nombre.asc())
-        .all()
-    )
-
-
-def resolver_grupo(
-    db: Session,
-    formulario: Formulario,
-    user: Usuario,
-    grupo_id: int | None = None,
-) -> int | None:
-    """Grupo dueno del envio, o None si el envio es individual.
-
-    Con mas de un grupo candidato y sin `grupo_id` explicito no hay forma de
-    adivinar: 409 con la lista para que el cliente elija.
+    Cuando hay conflicto no se escribe nada: el lote entero se rechaza con los
+    dos valores de cada campo en disputa para que el cliente decida y reintente.
     """
-    if not formulario.colaborativo:
-        return None
-    candidatos = grupos_del_usuario(db, formulario, user)
-    if not candidatos:
-        return None
-    if grupo_id is not None:
-        if grupo_id not in {g.id for g in candidatos}:
+
+    def __init__(self, db: Session):
+        self.db = db
+
+    def capturar(
+        self,
+        user: Usuario,
+        envio_id: int,
+        campos: dict[str, Any],
+        desde: int,
+    ) -> dict[str, Any]:
+        from app.services.sieej import campos_service
+        from app.services.sieej.datos_validator import (
+            DatosInvalidosError,
+            validar_datos,
+        )
+        from app.services.sieej.envios_service import DATOS_MAX_BYTES, EnviosService
+
+        envios = EnviosService(self.db)
+        envio = (
+            self.db.query(EnvioFormulario)
+            .filter(EnvioFormulario.id == envio_id)
+            .with_for_update()
+            .first()
+        )
+        if envio is None or envio.eliminado_en is not None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Envio no encontrado"
+            )
+        if not envios.puede_editar_envio(user, envio):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="No perteneces a ese grupo",
+                detail="Este envio no te pertenece",
             )
-        return grupo_id
-    if len(candidatos) == 1:
-        return candidatos[0].id
-    raise HTTPException(
-        status_code=status.HTTP_409_CONFLICT,
-        detail={
-            "codigo": "grupo_ambiguo",
-            "mensaje": "Perteneces a mas de un grupo asignado a este formulario",
-            "grupos": [{"id": g.id, "nombre": g.nombre} for g in candidatos],
-        },
-    )
-
-
-def grupo_por_formulario(
-    db: Session, user: Usuario, formularios: list[Formulario]
-) -> dict[int, int]:
-    """Grupo del usuario en cada formulario colaborativo, para el listado.
-
-    A diferencia de `resolver_grupo` no falla ante la ambiguedad: el listado es
-    de lectura y el 409 pertenece a la entrada al formulario. Con varios grupos
-    toma el primero por nombre, que es el mismo que veria el usuario.
-    """
-    ids = [f.id for f in formularios if f.colaborativo]
-    if not ids:
-        return {}
-    filas = (
-        db.query(formulario_grupo.c.formulario_id, Grupo.id, Grupo.nombre)
-        .select_from(formulario_grupo)
-        .join(Grupo, Grupo.id == formulario_grupo.c.grupo_id)
-        .join(usuario_grupo, usuario_grupo.c.grupo_id == Grupo.id)
-        .filter(
-            formulario_grupo.c.formulario_id.in_(ids),
-            usuario_grupo.c.usuario_id == user.id,
+        formulario = (
+            self.db.query(Formulario)
+            .filter(Formulario.id == envio.formulario_id)
+            .first()
         )
-        .order_by(Grupo.nombre.asc())
-        .all()
-    )
-    resuelto: dict[int, int] = {}
-    for formulario_id, grupo_id, _nombre in filas:
-        resuelto.setdefault(formulario_id, grupo_id)
-    return resuelto
+        if formulario is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Formulario no encontrado",
+            )
+        if envio.estado != "en_proceso":
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Solo un envio en proceso admite captura por campos",
+            )
+        if not EnviosService._formulario_acepta_cambios(formulario):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="El formulario esta cerrado y no acepta cambios",
+            )
+
+        defs = campos_service.field_defs(
+            envio.definicion_snapshot or {}, solo_editables=False
+        )
+        _metas, errores = campos_service.validar_paths(
+            defs,
+            envio.datos or {},
+            campos,
+            detalle_no_permitido="el campo no existe en el formulario",
+        )
+        if errores:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                detail={"errores": errores},
+            )
+
+        conflictos = self._conflictos(envio, campos, desde, user)
+        if conflictos:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail={"codigo": "conflicto_por_campo", "campos": conflictos},
+            )
+
+        nuevos, cambios = campos_service.aplicar_cambios(envio.datos or {}, campos)
+        if cambios:
+            payload_bytes = len(json.dumps(nuevos, default=str).encode("utf-8"))
+            if payload_bytes > DATOS_MAX_BYTES:
+                raise HTTPException(
+                    status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+                    detail=(
+                        f"`datos` excede el limite de "
+                        f"{DATOS_MAX_BYTES // (1024 * 1024)} MB"
+                    ),
+                )
+            try:
+                validar_datos(envio.definicion_snapshot, nuevos, estricto=False)
+            except DatosInvalidosError as exc:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+                    detail={"errores": exc.errores},
+                ) from exc
+
+            envio.datos = nuevos
+            flag_modified(envio, "datos")
+            envio.datos_version += 1
+            campos_service.registrar_historial(
+                self.db, envio, cambios, defs, actor=user, origen="captura"
+            )
+            envio.actualizado_en = utcnow()
+            envios._registrar_evento(
+                envio,
+                "actualizado",
+                actor=user,
+                payload={"campos": [c[0] for c in cambios], "n": len(cambios)},
+            )
+            self.db.commit()
+            self.db.refresh(envio)
+
+        return {
+            "datos_version": envio.datos_version,
+            "estado": envio.estado,
+            "cambios": self.delta(envio, desde),
+        }
+
+    def _historial_desde(
+        self,
+        envio: EnvioFormulario,
+        desde: int,
+        *,
+        paths: list[str] | None = None,
+        excluir_actor: int | None = None,
+    ) -> list[tuple[EnvioValorHistorial, str | None]]:
+        query = (
+            self.db.query(EnvioValorHistorial, Usuario.name)
+            .outerjoin(Usuario, Usuario.id == EnvioValorHistorial.actor_usuario_id)
+            .filter(
+                EnvioValorHistorial.envio_id == envio.id,
+                EnvioValorHistorial.datos_version > desde,
+            )
+        )
+        if paths is not None:
+            query = query.filter(EnvioValorHistorial.field_path.in_(paths))
+        if excluir_actor is not None:
+            query = query.filter(
+                EnvioValorHistorial.actor_usuario_id != excluir_actor
+            )
+        return query.order_by(EnvioValorHistorial.cambiado_en.asc()).all()
+
+    def delta(self, envio: EnvioFormulario, desde: int) -> list[dict[str, Any]]:
+        """Ultimo valor de cada campo tocado despues de `desde`, con su autor."""
+        por_campo: dict[str, dict[str, Any]] = {}
+        for fila, actor_nombre in self._historial_desde(envio, desde):
+            por_campo[fila.field_path] = {
+                "field_path": fila.field_path,
+                "valor_nuevo": fila.valor_nuevo,
+                "actor_nombre": actor_nombre,
+                "cambiado_en": fila.cambiado_en,
+            }
+        return list(por_campo.values())
+
+    def _conflictos(
+        self,
+        envio: EnvioFormulario,
+        campos: dict[str, Any],
+        desde: int,
+        user: Usuario,
+    ) -> list[dict[str, Any]]:
+        if not campos:
+            return []
+        filas = self._historial_desde(
+            envio, desde, paths=list(campos), excluir_actor=user.id
+        )
+        por_campo: dict[str, dict[str, Any]] = {}
+        for fila, actor_nombre in filas:
+            if fila.valor_nuevo == campos[fila.field_path]:
+                continue
+            por_campo[fila.field_path] = {
+                "field_path": fila.field_path,
+                "valor_tuyo": campos[fila.field_path],
+                "valor_actual": fila.valor_nuevo,
+                "actor_nombre": actor_nombre,
+                "cambiado_en": (
+                    fila.cambiado_en.isoformat() if fila.cambiado_en else None
+                ),
+            }
+        return list(por_campo.values())

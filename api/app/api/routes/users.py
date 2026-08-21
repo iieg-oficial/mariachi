@@ -22,7 +22,7 @@ from app.schemas.user import (
     UsuarioUpdate,
 )
 from app.services.actividad_service import registrar_actividad
-from app.services.sieej.colaboracion_service import es_miembro
+from app.services.sieej.pertenencia import es_miembro
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/usuarios", tags=["usuarios"])

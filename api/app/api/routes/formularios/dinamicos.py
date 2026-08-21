@@ -27,6 +27,8 @@ from app.models.user import Usuario
 from app.schemas.sieej.envio import (
     CambioRef,
     EnvioActualizarCampos,
+    EnvioCapturaCampos,
+    EnvioCapturaResponse,
     EnvioHistorialItem,
     EnvioResponse,
     EnvioUpdate,
@@ -34,6 +36,7 @@ from app.schemas.sieej.envio import (
     MisEnviosDetalle,
 )
 from app.schemas.sieej.formulario import FormularioDetalle, FormularioListItem
+from app.services.sieej.colaboracion_service import ColaboracionService
 from app.services.sieej.compat import normalizar_definicion
 from app.services.sieej.definicion_validator import definicion_to_validation_rules
 from app.services.sieej.envios_service import EnviosService
@@ -314,6 +317,31 @@ async def obtener_envio(
         )
     envio = EnviosService(db).get_o_iniciar(formulario, current_user, grupo_id=grupo_id)
     return _envio_response(formulario, envio)
+
+
+@router.patch("/{slug}/envio/campos", response_model=EnvioCapturaResponse)
+async def capturar_campos(
+    slug: str,
+    body: EnvioCapturaCampos,
+    grupo_id: int | None = Query(None),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(verify_csrf),
+):
+    """Merge parcial sobre un envio en proceso, con el delta de vuelta."""
+    formulario = FormulariosDinamicosService(db).get_by_slug_visible(
+        slug, current_user, include_inactive=True
+    )
+    if formulario is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Formulario no encontrado o no asignado",
+        )
+    envio = EnviosService(db).get_o_iniciar(
+        formulario, current_user, grupo_id=grupo_id
+    )
+    return ColaboracionService(db).capturar(
+        current_user, envio.id, body.campos, body.desde
+    )
 
 
 @router.put("/{slug}/envio", response_model=EnvioResponse)

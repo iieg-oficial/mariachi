@@ -197,12 +197,16 @@ class EnvioEvento(Base):
 
 
 class EnvioValorHistorial(Base):
-    """Historial append-only de valores de campos editables tras el envio.
+    """Historial de valores por campo: la fuente unica de "que cambio, quien y
+    cuando".
 
-    Cada actualizacion parcial de un envio `enviado` (flujo de actualizacion
-    ligera) inserta una fila por campo cuyo valor cambio, conservando el valor
-    anterior para reportes de auditoria. Nunca se sobreescribe ni borra: es la
-    fuente de verdad del "que cambio, quien y cuando".
+    `origen` separa dos flujos con reglas distintas. `correccion` es la
+    actualizacion ligera de un envio `enviado`: append puro, nunca se
+    sobreescribe ni se borra, que es lo que le da valor de auditoria formal.
+    `captura` es el llenado en proceso, donde cada blur puede generar una fila;
+    ahi dos ediciones del mismo actor sobre el mismo campo dentro de
+    `campos_service.VENTANA_COALESCING` colapsan en una sola, conservando el
+    `valor_anterior` con que abrio la ventana.
     """
 
     __tablename__ = "envio_valor_historial"

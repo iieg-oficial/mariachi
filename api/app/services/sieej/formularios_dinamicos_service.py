@@ -19,8 +19,8 @@ from app.models.sieej import (
     usuario_grupo,
 )
 from app.models.user import Usuario
-from app.services.sieej.colaboracion_service import grupo_por_formulario
 from app.services.sieej.periodos_service import periodo_relevante
+from app.services.sieej.pertenencia import grupo_por_formulario
 
 
 class FormulariosDinamicosService:

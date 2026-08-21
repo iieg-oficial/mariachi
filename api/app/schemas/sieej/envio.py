@@ -94,6 +94,41 @@ class EnvioActualizarCampos(BaseModel):
     campos: dict[str, Any] = Field(default_factory=dict)
 
 
+class EnvioCapturaCampos(BaseModel):
+    """Body de PATCH /formularios/:slug/envio/campos.
+
+    `campos` mapea `field_path` al valor nuevo; a diferencia de la correccion
+    post-envio acepta cualquier campo capturable, porque el envio sigue
+    `en_proceso`. `desde` es la `datos_version` que el cliente ya tiene: sirve
+    para devolverle solo el delta y para detectar que otro miembro toco alguno
+    de los mismos campos mientras tanto.
+    """
+
+    campos: dict[str, Any] = Field(default_factory=dict)
+    desde: int = 0
+
+
+class EnvioCampoCambio(BaseModel):
+    """Un campo que cambio de valor, con quien lo dejo asi."""
+
+    field_path: str
+    valor_nuevo: Any = None
+    actor_nombre: str | None = None
+    cambiado_en: datetime
+
+
+class EnvioCapturaResponse(BaseModel):
+    """Version nueva del envio mas lo que cambio desde `desde`.
+
+    El delta incluye los campos que escribio quien llama: el cliente ya los
+    tiene, pero traerlos completa la autoria sin una llamada extra.
+    """
+
+    datos_version: int
+    estado: EnvioEstado
+    cambios: list[EnvioCampoCambio] = Field(default_factory=list)
+
+
 class EnvioHistorialItem(BaseModel):
     """Una entrada del historial de cambios de valor (vista respondent).
 
