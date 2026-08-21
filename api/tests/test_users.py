@@ -357,3 +357,51 @@ def test_eliminar_autor_de_formulario_responde_409(admin_session, db_session):
     assert response.status_code == 409
     assert "SIEEJ" in response.json()["detail"]
     assert db_session.query(Usuario).filter(Usuario.id == autor.id).first() is not None
+
+
+def test_listar_usuarios_expone_ultimo_acceso(admin_session, db_session):
+    from app.core.time import utcnow
+
+    entro = Usuario(
+        username="con_acceso",
+        email="con_acceso@test.com",
+        name="Con Acceso",
+        hashed_password=hash_password("test123"),
+        role="editora",
+        ultimo_acceso=utcnow(),
+    )
+    nunca = Usuario(
+        username="sin_acceso",
+        email="sin_acceso@test.com",
+        name="Sin Acceso",
+        hashed_password=hash_password("test123"),
+        role="editora",
+    )
+    db_session.add_all([entro, nunca])
+    db_session.commit()
+
+    client = admin_session["client"]
+    filas = {u["username"]: u for u in client.get(f"{ADMIN_PREFIX}/usuarios").json()}
+    assert filas["con_acceso"]["ultimo_acceso"] is not None
+    assert filas["sin_acceso"]["ultimo_acceso"] is None
+
+
+def test_el_login_sella_el_ultimo_acceso(db_session):
+    from app.api.routes.auth import resolve_user
+
+    usuario = Usuario(
+        username="sellado_test",
+        email="sellado@test.com",
+        name="Sellado Test",
+        hashed_password=hash_password("test123"),
+        role="editora",
+        minerva_sub="sub-sellado",
+    )
+    db_session.add(usuario)
+    db_session.commit()
+    assert usuario.ultimo_acceso is None
+
+    resolve_user(db_session, {"sub": "sub-sellado", "email": "sellado@test.com", "name": "Sellado Test"})
+
+    db_session.refresh(usuario)
+    assert usuario.ultimo_acceso is not None

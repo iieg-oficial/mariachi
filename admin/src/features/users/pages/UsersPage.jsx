@@ -1,8 +1,9 @@
 import { useCallback, useState } from 'react';
-import { Button, Card, Empty, Form, Modal, Pagination, Skeleton } from 'antd';
+import { Button, Card, Empty, Form, Modal, Skeleton } from 'antd';
 import { PlusOutlined, TeamOutlined } from '@ant-design/icons';
 import { useAuth } from '@shared/contexts/useAuth';
 import PageHeading from '@shared/components/PageHeading';
+import InfiniteScrollSentinel from '@shared/components/InfiniteScrollSentinel';
 import api from '@shared/services/api';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import { message } from '@shared/services/message';
@@ -11,7 +12,7 @@ import UserFormModal from '../components/UserFormModal';
 import UsersFilters from '../components/UsersFilters';
 import ImpactoEliminacion from '../components/ImpactoEliminacion';
 import useUsuarios from '../hooks/useUsuarios';
-import useFiltroUsuarios, { PAGE_SIZE } from '../hooks/useFiltroUsuarios';
+import useFiltroUsuarios from '../hooks/useFiltroUsuarios';
 import { allowedSlugsForRole } from '../constants/projectAccess';
 
 const FIELD_LABEL = {
@@ -230,17 +231,16 @@ export default function Users() {
                             />
                         ))}
                     </div>
-                    <div style={{ marginTop: 16, display: 'flex', justifyContent: 'center' }}>
-                        <Pagination
-                            current={filtro.pagina}
-                            pageSize={PAGE_SIZE}
-                            total={filtro.total}
-                            onChange={filtro.setPagina}
-                            showSizeChanger={false}
-                            showTotal={(total) => `Mostrando ${total} de ${usuarios.length} usuarios`}
-                            simple={isMobile}
-                        />
-                    </div>
+                    <InfiniteScrollSentinel
+                        hasMore={filtro.hayMas}
+                        loading={cargando}
+                        loadingMore={false}
+                        onLoadMore={filtro.verMas}
+                        loaded={filtro.visibles.length}
+                        total={filtro.total}
+                        label="usuario"
+                        labelPlural="usuarios"
+                    />
                 </>
             )}
 

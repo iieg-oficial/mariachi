@@ -21,5 +21,6 @@ class Usuario(Base):
     avatar_url = Column(Text, nullable=True)
     created_at = Column(DateTime, default=utcnow, nullable=False)
     password_changed_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    ultimo_acceso = Column(DateTime(timezone=True), nullable=True)
 
     acervo_uploads = relationship("AcervoFile", back_populates="uploaded_by_user")

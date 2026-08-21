@@ -14,6 +14,8 @@ const baseUser = {
     avatarUrl: null,
     created_at: '2026-08-12T10:00:00',
     minerva_vinculado: true,
+    ultimo_acceso: '2026-08-20T09:00:00',
+    must_change_password: false,
 };
 
 const renderCard = (overrides = {}, props = {}) => {
@@ -94,15 +96,27 @@ describe('UserCard', () => {
         expect(screen.queryByText('Sin proyectos')).not.toBeInTheDocument();
     });
 
-    it('el estado de minerva es un icono con nombre accesible, sin texto', () => {
+    it('una cuenta sin pendientes se marca al dia', () => {
         renderCard();
-        expect(screen.getByLabelText(/Vinculado a minerva/)).toBeInTheDocument();
-        expect(screen.queryByText('Minerva')).not.toBeInTheDocument();
+        expect(screen.getByLabelText('Cuenta al día')).toBeInTheDocument();
     });
 
-    it('usuario sin vincular se distingue por su propio icono', () => {
-        renderCard({ minerva_vinculado: false });
-        expect(screen.getByLabelText(/Sin vincular a minerva/)).toBeInTheDocument();
+    it('los pendientes de la cuenta se enumeran en el nombre accesible', () => {
+        renderCard({ minerva_vinculado: false, ultimo_acceso: null, must_change_password: true });
+        const estado = screen.getByLabelText(/pendiente/);
+        expect(estado).toHaveAttribute('aria-label', expect.stringContaining('Sin vincular a minerva'));
+        expect(estado).toHaveAttribute('aria-label', expect.stringContaining('renovar su contraseña'));
+        expect(estado).toHaveAttribute('aria-label', expect.stringContaining('Nunca ha iniciado sesión'));
+    });
+
+    it('muestra la ultima sesion y avisa cuando no hay', () => {
+        renderCard();
+        expect(screen.getByText(/^Última sesión /)).toBeInTheDocument();
+    });
+
+    it('sin ultimo acceso lo dice en vez de inventar una fecha', () => {
+        renderCard({ ultimo_acceso: null });
+        expect(screen.getByText('Sin ingresar')).toBeInTheDocument();
     });
 
     it('muestra la dependencia de SIEEJ del usuario externo', () => {

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import useFiltroUsuarios, { PAGE_SIZE, SIN_PROYECTOS } from '@features/users/hooks/useFiltroUsuarios';
+import useFiltroUsuarios, { BLOQUE, SIN_PROYECTOS } from '@features/users/hooks/useFiltroUsuarios';
 
 const usuario = (id, extra = {}) => ({
     id,
@@ -16,22 +16,30 @@ const usuario = (id, extra = {}) => ({
 const muchos = (n) => Array.from({ length: n }, (_, i) => usuario(i + 1));
 
 describe('useFiltroUsuarios', () => {
-    it('pagina en bloques de PAGE_SIZE', () => {
-        const { result } = renderHook(() => useFiltroUsuarios(muchos(PAGE_SIZE + 5)));
-        expect(result.current.visibles).toHaveLength(PAGE_SIZE);
-        expect(result.current.total).toBe(PAGE_SIZE + 5);
+    it('arranca mostrando un bloque y avisa que hay mas', () => {
+        const { result } = renderHook(() => useFiltroUsuarios(muchos(BLOQUE + 5)));
+        expect(result.current.visibles).toHaveLength(BLOQUE);
+        expect(result.current.total).toBe(BLOQUE + 5);
+        expect(result.current.hayMas).toBe(true);
     });
 
-    it('recorta la pagina cuando la lista encoge', () => {
-        const { result, rerender } = renderHook(({ lista }) => useFiltroUsuarios(lista), {
-            initialProps: { lista: muchos(PAGE_SIZE * 2 + 1) },
-        });
-        act(() => result.current.setPagina(3));
-        expect(result.current.visibles).toHaveLength(1);
+    it('verMas agrega otro bloque hasta agotar la lista', () => {
+        const { result } = renderHook(() => useFiltroUsuarios(muchos(BLOQUE + 5)));
+        act(() => result.current.verMas());
+        expect(result.current.visibles).toHaveLength(BLOQUE + 5);
+        expect(result.current.hayMas).toBe(false);
+    });
 
-        rerender({ lista: muchos(PAGE_SIZE * 2) });
-        expect(result.current.pagina).toBe(2);
-        expect(result.current.visibles).toHaveLength(PAGE_SIZE);
+    it('la ventana se ajusta sola cuando la lista encoge', () => {
+        const { result, rerender } = renderHook(({ lista }) => useFiltroUsuarios(lista), {
+            initialProps: { lista: muchos(BLOQUE * 2) },
+        });
+        act(() => result.current.verMas());
+        expect(result.current.visibles).toHaveLength(BLOQUE * 2);
+
+        rerender({ lista: muchos(3) });
+        expect(result.current.visibles).toHaveLength(3);
+        expect(result.current.hayMas).toBe(false);
     });
 
     it('ordena por nombre sin que haya que pedirlo', () => {
@@ -82,12 +90,12 @@ describe('useFiltroUsuarios', () => {
         expect(result.current.visibles.map((u) => u.id)).toEqual([2]);
     });
 
-    it('cambiar un filtro regresa a la primera pagina', () => {
-        const { result } = renderHook(() => useFiltroUsuarios(muchos(PAGE_SIZE + 5)));
-        act(() => result.current.setPagina(2));
-        expect(result.current.pagina).toBe(2);
+    it('cambiar un filtro vuelve a mostrar solo el primer bloque', () => {
+        const { result } = renderHook(() => useFiltroUsuarios(muchos(BLOQUE * 3)));
+        act(() => result.current.verMas());
+        expect(result.current.visibles).toHaveLength(BLOQUE * 2);
         act(() => result.current.setRol('editora'));
-        expect(result.current.pagina).toBe(1);
+        expect(result.current.visibles).toHaveLength(BLOQUE);
     });
 
 });

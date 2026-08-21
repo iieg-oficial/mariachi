@@ -132,6 +132,7 @@ def _serialize_user(db: Session, user: Usuario, *, viewer: Usuario | None = None
         "projects": projects,
         "sieej_grupo": sieej_grupo,
         "minerva_vinculado": bool(user.minerva_sub),
+        "ultimo_acceso": user.ultimo_acceso,
     }
 
 

@@ -33,6 +33,7 @@ from app.core.acervo_url import to_relative
 from app.core.database import get_db
 from app.core.security import crear_csrf_token, decodificar_token
 from app.core.settings import get_settings
+from app.core.time import utcnow
 from app.models.acervo_bucket import AcervoBucket
 from app.models.user import Usuario
 from app.schemas.user import (
@@ -211,6 +212,8 @@ def resolve_user(db: Session, claims: dict) -> Usuario:
         usuario.email = email
     if name:
         usuario.name = name
+
+    usuario.ultimo_acceso = utcnow()
 
     db.commit()
     db.refresh(usuario)

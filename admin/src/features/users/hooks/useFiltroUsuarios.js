@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { ROLE_LABEL } from '../constants/roles';
 
-export const PAGE_SIZE = 100;
+export const BLOQUE = 30;
 export const SIN_PROYECTOS = '__sin_proyectos__';
 
 const textoBuscable = (usuario) => [
@@ -27,11 +27,11 @@ export default function useFiltroUsuarios(usuarios) {
     const [busqueda, setBusqueda] = useState('');
     const [rol, setRol] = useState('');
     const [proyecto, setProyecto] = useState('');
-    const [pagina, setPagina] = useState(1);
+    const [mostrados, setMostrados] = useState(BLOQUE);
 
     const conReinicio = (setter) => (valor) => {
         setter(valor);
-        setPagina(1);
+        setMostrados(BLOQUE);
     };
 
     const filtrados = useMemo(() => {
@@ -46,22 +46,20 @@ export default function useFiltroUsuarios(usuarios) {
 
     const ordenados = useMemo(() => [...filtrados].sort(porNombre), [filtrados]);
 
-    const totalPaginas = Math.max(1, Math.ceil(ordenados.length / PAGE_SIZE));
-    const paginaActual = Math.min(pagina, totalPaginas);
+    const ventana = Math.min(mostrados, ordenados.length);
 
-    const visibles = useMemo(
-        () => ordenados.slice((paginaActual - 1) * PAGE_SIZE, paginaActual * PAGE_SIZE),
-        [ordenados, paginaActual],
-    );
+    const visibles = useMemo(() => ordenados.slice(0, ventana), [ordenados, ventana]);
+
+    const verMas = useCallback(() => setMostrados((n) => n + BLOQUE), []);
 
     return {
         filtros: { busqueda, rol, proyecto },
         setBusqueda: conReinicio(setBusqueda),
         setRol: conReinicio(setRol),
         setProyecto: conReinicio(setProyecto),
-        pagina: paginaActual,
-        setPagina,
         total: ordenados.length,
         visibles,
+        hayMas: ventana < ordenados.length,
+        verMas,
     };
 }

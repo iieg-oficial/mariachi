@@ -77,6 +77,7 @@ class UsuarioResponse(UsuarioBase):
     projects: list["UserProjectMembership"] = []
     sieej_grupo: SieejGrupoRef | None = None
     minerva_vinculado: bool = False
+    ultimo_acceso: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 

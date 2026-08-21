@@ -1,8 +1,9 @@
 import { memo } from 'react';
 import { Card, Space, Tag, Tooltip, Typography } from 'antd';
-import { SafetyCertificateFilled, SafetyCertificateOutlined } from '@ant-design/icons';
 import UserAvatar from './UserAvatar';
-import { ROLE_COLOR, roleLabel } from '../constants/roles';
+import EstadoCuenta from './EstadoCuenta';
+import { formatoFecha } from '../helpers/estadoCuenta';
+import { PROJECT_ROLE_LABEL, ROLE_COLOR, roleLabel } from '../constants/roles';
 
 const { Title, Text } = Typography;
 
@@ -10,33 +11,32 @@ export const CARD_MIN_WIDTH = 288;
 export const CARD_MAX_WIDTH = 420;
 export const CARD_MIN_HEIGHT = 184;
 
-const formatoAlta = (valor) => {
-    if (!valor) return null;
-    const fecha = new Date(valor);
-    return Number.isNaN(fecha.getTime())
-        ? null
-        : fecha.toLocaleDateString('es-MX', { dateStyle: 'medium' });
-};
-
-const resumenProyectos = (user, detalleVisible) => {
-    if (user.role === 'tetlamamakani') return 'Todos los proyectos';
+const ProyectosTag = ({ user, detalleVisible }) => {
+    if (user.role === 'tetlamamakani') {
+        return <Tag style={{ marginInlineEnd: 0 }}>Todos los proyectos</Tag>;
+    }
     if (!detalleVisible) return null;
-    const total = (user.projects || []).length;
-    if (total === 0) return 'Sin proyectos';
-    return total === 1 ? '1 proyecto' : `${total} proyectos`;
-};
 
-const MinervaEstado = ({ vinculado }) => {
-    const titulo = vinculado
-        ? 'Vinculado a minerva: ya inició sesión'
-        : 'Sin vincular a minerva: todavía no inicia sesión';
-    const Icono = vinculado ? SafetyCertificateFilled : SafetyCertificateOutlined;
+    const proyectos = user.projects || [];
+    if (proyectos.length === 0) {
+        return <Tag style={{ marginInlineEnd: 0 }}>Sin proyectos</Tag>;
+    }
+
+    const detalle = (
+        <ul style={{ margin: 0, paddingLeft: 16 }}>
+            {proyectos.map((p) => (
+                <li key={p.slug}>
+                    {p.name}: {PROJECT_ROLE_LABEL[p.project_role] || p.project_role}
+                </li>
+            ))}
+        </ul>
+    );
 
     return (
-        <Tooltip title={titulo}>
-            <span role="img" aria-label={titulo} style={{ display: 'inline-flex' }}>
-                <Icono style={{ fontSize: 16, color: vinculado ? '#389E0D' : '#D48806' }} />
-            </span>
+        <Tooltip title={detalle}>
+            <Tag style={{ marginInlineEnd: 0, cursor: 'help' }}>
+                {proyectos.length === 1 ? '1 proyecto' : `${proyectos.length} proyectos`}
+            </Tag>
         </Tooltip>
     );
 };
@@ -48,8 +48,8 @@ const UserCard = ({ user, onEdit, puedeEditar = true, detalleVisible = true }) =
         onEdit(user);
     };
 
-    const alta = formatoAlta(user.created_at);
-    const proyectos = resumenProyectos(user, detalleVisible);
+    const alta = formatoFecha(user.created_at);
+    const ultimaSesion = formatoFecha(user.ultimo_acceso);
 
     return (
         <Card
@@ -89,29 +89,39 @@ const UserCard = ({ user, onEdit, puedeEditar = true, detalleVisible = true }) =
                 </div>
             </div>
 
-            <Space size={4} wrap style={{ marginTop: 12 }}>
-                <Tag color={ROLE_COLOR[user.role]} style={{ marginInlineEnd: 0 }}>
-                    {roleLabel(user.role)}
-                </Tag>
-                {proyectos && <Tag style={{ marginInlineEnd: 0 }}>{proyectos}</Tag>}
-                {user.sieej_grupo && (
-                    <Tag color="purple" style={{ marginInlineEnd: 0 }}>{user.sieej_grupo.nombre}</Tag>
-                )}
-            </Space>
-
-            <div style={{
-                marginTop: 'auto',
-                paddingTop: 12,
-                display: 'flex',
-                flexWrap: 'wrap',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                gap: 8,
-            }}>
-                <Text type="secondary" style={{ fontSize: 11 }}>
-                    {alta ? `Alta ${alta}` : ''}
-                </Text>
-                <MinervaEstado vinculado={Boolean(user.minerva_vinculado)} />
+            <div style={{ marginTop: 'auto', paddingTop: 12 }}>
+                <div style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    justifyContent: 'space-between',
+                    gap: 8,
+                    marginBottom: 8,
+                }}>
+                    <Text type="secondary" style={{ fontSize: 11 }}>
+                        {alta ? `Alta ${alta}` : ''}
+                    </Text>
+                    <Text type="secondary" style={{ fontSize: 11 }}>
+                        {ultimaSesion ? `Última sesión ${ultimaSesion}` : 'Sin ingresar'}
+                    </Text>
+                </div>
+                <div style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: 8,
+                }}>
+                    <Space size={4} wrap>
+                        <Tag color={ROLE_COLOR[user.role]} style={{ marginInlineEnd: 0 }}>
+                            {roleLabel(user.role)}
+                        </Tag>
+                        <ProyectosTag user={user} detalleVisible={detalleVisible} />
+                        {user.sieej_grupo && (
+                            <Tag color="purple" style={{ marginInlineEnd: 0 }}>{user.sieej_grupo.nombre}</Tag>
+                        )}
+                    </Space>
+                    <EstadoCuenta user={user} detalleVisible={detalleVisible} />
+                </div>
             </div>
         </Card>
     );
