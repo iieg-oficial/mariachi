@@ -14,6 +14,8 @@ import StatusBadge from '@shared/components/StatusBadge';
 
 const MAX_EXPRESSION_DEPTH = 6;
 
+const OPS_WITHOUT_FIELD = new Set(['count', 'count_where']);
+
 const labelWithBeta = (text) => (
     <>
         {text}
@@ -121,7 +123,7 @@ const PrimitiveEditor = ({ value, onChange, availableFields, schema, table }) =>
                 onChange={(v) => set({ operation: v })}
                 style={{ width: '100%' }}
             />
-            {op !== 'count' && (
+            {!OPS_WITHOUT_FIELD.has(op) && (
                 <Select
                     size="small"
                     value={value.field || undefined}

@@ -6,6 +6,7 @@ from sqlalchemy import text
 from sqlalchemy.engine import Connection
 
 PRIMITIVE_OPERATIONS = {'count', 'count_distinct', 'count_where', 'sum', 'avg', 'min', 'max', 'latest'}
+OPERATIONS_WITHOUT_FIELD = {'count', 'count_where'}
 COMBINATOR_OPS = {'add', 'sub', 'mul', 'div', 'percent', 'percent_change'}
 STATS_OPERATIONS = PRIMITIVE_OPERATIONS | {'formula', 'static'}
 
@@ -43,7 +44,7 @@ def _validate_primitive(cfg: dict, label: str) -> dict:
     schema = _validate_identifier(cfg.get('schema', ''), f'{label}.schema')
     table = _validate_identifier(cfg.get('table', ''), f'{label}.table')
     field = cfg.get('field')
-    if op != 'count' and not field:
+    if op not in OPERATIONS_WITHOUT_FIELD and not field:
         raise StatsTemplateError(f"{label}.field requerido para operation='{op}'")
     if field:
         _validate_identifier(field, f'{label}.field')

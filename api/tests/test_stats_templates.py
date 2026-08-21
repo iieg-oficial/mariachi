@@ -62,6 +62,14 @@ class TestValidateStatsConfig:
         }])
         assert len(result) == 1
 
+    def test_count_where_does_not_require_field(self):
+        result = validate_stats_config([{
+            'operation': 'count_where', 'schema': 'x', 'table': 'y',
+            'where_field': 'nivel', 'where_value': 'Primaria', 'position': 1
+        }])
+        assert len(result) == 1
+        assert result[0]['field'] is None
+
     def test_count_where_requires_where_field_and_value(self):
         with pytest.raises(StatsTemplateError):
             validate_stats_config([{
