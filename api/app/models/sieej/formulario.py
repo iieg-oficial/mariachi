@@ -46,6 +46,7 @@ class Formulario(Base):
     vigencia_fin = Column(DateTime(timezone=True), nullable=True)
     periodicidad = Column(JSON, nullable=True)
     publico = Column(Boolean, nullable=False, default=False)
+    colaborativo = Column(Boolean, nullable=False, default=False)
     version = Column(Integer, nullable=False, default=1)
     creado_por_id = Column(
         Integer, ForeignKey("usuarios.id", ondelete="RESTRICT"), nullable=False

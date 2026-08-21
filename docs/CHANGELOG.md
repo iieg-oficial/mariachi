@@ -9,6 +9,48 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.9.0] - 2026-08-21
+
+### Agregado: el envío de SIEEJ puede pertenecer a un grupo
+
+Primera de las seis fases de los envíos colaborativos (plan completo en el repo de contexto,
+`repos/mariachi/planes/envios-colaborativos-sieej.md`). Esta fase pone el esquema y la
+autorización; el comportamiento visible no cambia hasta la fase 4.
+
+Hasta ahora un envío tenía dueño único: `envio_formulario.usuario_id` más dos índices únicos
+parciales garantizaban *un envío por (formulario, usuario[, periodo])*. Cuando una dependencia
+reportaba, una sola persona capturaba todo o el equipo se repartía el trabajo por fuera y alguien
+transcribía.
+
+La migración `s1eej0001` agrega la otra identidad posible del envío:
+
+- `formulario.colaborativo`, apagado en todos los formularios existentes.
+- `envio_formulario.grupo_id` y `datos_version`.
+- `usuario_grupo.rol` (`coordinador` | `capturista`), con `capturista` por omisión.
+- `envio_valor_historial.datos_version` y `origen` (`captura` | `correccion`); todo lo ya escrito
+  queda como `correccion`, que es el único flujo que existía.
+- El índice `ix_historial_envio_path_fecha`, que sostiene la consulta de última autoría por campo.
+- Los dos índices únicos actuales ganan `AND grupo_id IS NULL` y aparecen `uq_envio_grupo_periodo`
+  y `uq_envio_grupo` con la condición contraria: el dueño es el usuario o el grupo, nunca los dos.
+
+`usuario_id` se conserva como «quién inició el envío».
+
+En el código, `EnviosService.puede_editar_envio` sustituye los cuatro `usuario_id != user.id` que
+estaban repetidos. En un envío de grupo manda la membresía y no la propiedad: quien sale del grupo
+pierde el acceso aunque haya iniciado el envío, y su autoría sigue en el historial.
+
+El módulo nuevo `services/sieej/colaboracion_service.py` resuelve con qué grupo entra cada persona.
+Si pertenece a más de un grupo asignado al mismo formulario no hay forma de adivinar: las rutas de
+envío responden **409** con la lista de grupos y aceptan `?grupo_id=` para elegir. El listado de
+formularios no falla por eso —es de lectura— y toma el primero por nombre.
+
+### Corregido: reasignar un grupo borraba el rol de sus miembros
+
+`GruposService.actualizar_miembros` y el `_set_sieej_grupo` de usuarios sincronizaban la membresía
+borrando `usuario_grupo` completo y reinsertándola. Con el `rol` viviendo en esa misma tabla, cada
+edición de grupo desde el CMS habría degradado a `capturista` a todos sus coordinadores. Las dos
+escrituras pasaron a sincronizar por diferencia: altas, bajas y nada más.
+
 ## [2.8.1] - 2026-08-21
 
 ### Corregido: las cards de usuario se estrujaban y escondían el nombre

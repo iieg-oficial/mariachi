@@ -98,6 +98,12 @@ class GruposService:
         self.db.commit()
 
     def actualizar_miembros(self, grupo_id: int, usuarios_ids: list[int]) -> Grupo:
+        """Sincroniza la membresia por diferencia, no por borrado en bloque.
+
+        `usuario_grupo` guarda tambien el `rol` del miembro: borrar la tabla y
+        reinsertarla degradaria a capturista a todos los coordinadores del grupo
+        en cada edicion.
+        """
         g = self.get(grupo_id)
         if usuarios_ids:
             validos = self.db.query(Usuario.id).filter(Usuario.id.in_(usuarios_ids)).all()
@@ -106,10 +112,21 @@ class GruposService:
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Algun usuario no existe",
                 )
-        self.db.execute(
-            usuario_grupo.delete().where(usuario_grupo.c.grupo_id == g.id)
-        )
-        for uid in set(usuarios_ids):
+        actuales = {
+            fila[0]
+            for fila in self.db.query(usuario_grupo.c.usuario_id)
+            .filter(usuario_grupo.c.grupo_id == g.id)
+            .all()
+        }
+        deseados = set(usuarios_ids)
+        for uid in actuales - deseados:
+            self.db.execute(
+                usuario_grupo.delete().where(
+                    usuario_grupo.c.grupo_id == g.id,
+                    usuario_grupo.c.usuario_id == uid,
+                )
+            )
+        for uid in deseados - actuales:
             self.db.execute(
                 usuario_grupo.insert().values(usuario_id=uid, grupo_id=g.id)
             )

@@ -19,6 +19,7 @@ from app.models.sieej import (
     usuario_grupo,
 )
 from app.models.user import Usuario
+from app.services.sieej.colaboracion_service import grupo_por_formulario
 from app.services.sieej.periodos_service import periodo_relevante
 
 
@@ -76,12 +77,17 @@ class FormulariosDinamicosService:
             return []
 
         ids = [f.id for f in formularios]
+        # En un formulario colaborativo el envio es del grupo: sin esto cada
+        # miembro veria "no iniciado" sobre un envio que su equipo ya empezo.
+        grupo_de = grupo_por_formulario(self.db, user, formularios)
+        dueno = EnvioFormulario.usuario_id == user.id
+        if grupo_de:
+            dueno = or_(
+                dueno, EnvioFormulario.grupo_id.in_(set(grupo_de.values()))
+            )
         envios_rows = (
             self.db.query(EnvioFormulario)
-            .filter(
-                EnvioFormulario.usuario_id == user.id,
-                EnvioFormulario.formulario_id.in_(ids),
-            )
+            .filter(dueno, EnvioFormulario.formulario_id.in_(ids))
             .all()
         )
         # Indexado dual: los no periodicos por formulario; los periodicos por
@@ -89,6 +95,8 @@ class FormulariosDinamicosService:
         envio_no_periodico: dict[int, EnvioFormulario] = {}
         envio_por_periodo: dict[tuple[int, int], EnvioFormulario] = {}
         for e in envios_rows:
+            if e.grupo_id != grupo_de.get(e.formulario_id):
+                continue
             if e.periodo_id is None:
                 envio_no_periodico[e.formulario_id] = e
             else:

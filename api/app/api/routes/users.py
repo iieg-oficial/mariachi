@@ -22,6 +22,7 @@ from app.schemas.user import (
     UsuarioUpdate,
 )
 from app.services.actividad_service import registrar_actividad
+from app.services.sieej.colaboracion_service import es_miembro
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/usuarios", tags=["usuarios"])
@@ -164,6 +165,12 @@ def _apply_assignments(
 def _set_sieej_grupo(
     db: Session, usuario: Usuario, grupo_id: int | None, grupo_nombre: str | None
 ) -> None:
+    """Deja al usuario en un solo grupo de SIEEJ, sin tocar el que ya tenia.
+
+    Reasignar al mismo grupo no debe reescribir la fila: `usuario_grupo` guarda
+    el `rol` del miembro y un borrado con reinsercion lo degradaria a
+    capturista.
+    """
     grupo = None
     if grupo_id is not None:
         grupo = db.query(Grupo).filter(Grupo.id == grupo_id).first()
@@ -179,8 +186,11 @@ def _set_sieej_grupo(
             db.add(grupo)
             db.flush()
 
-    db.execute(usuario_grupo.delete().where(usuario_grupo.c.usuario_id == usuario.id))
+    sobrantes = usuario_grupo.delete().where(usuario_grupo.c.usuario_id == usuario.id)
     if grupo is not None:
+        sobrantes = sobrantes.where(usuario_grupo.c.grupo_id != grupo.id)
+    db.execute(sobrantes)
+    if grupo is not None and not es_miembro(db, usuario.id, grupo.id):
         db.execute(
             usuario_grupo.insert().values(usuario_id=usuario.id, grupo_id=grupo.id)
         )

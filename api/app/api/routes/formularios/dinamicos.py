@@ -7,7 +7,17 @@ precedencia sobre las dinamicas porque se incluyen primero en
 """
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    Response,
+    UploadFile,
+    status,
+)
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user, verify_csrf
@@ -218,6 +228,7 @@ async def obtener_mi_envio_historial(
 @router.get("/{slug}", response_model=FormularioDetalle)
 async def obtener_formulario(
     slug: str,
+    grupo_id: int | None = Query(None),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
@@ -227,7 +238,9 @@ async def obtener_formulario(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Formulario no encontrado o no asignado",
         )
-    envio = EnviosService(db).get_o_iniciar(formulario, current_user, crear_si_falta=False)
+    envio = EnviosService(db).get_o_iniciar(
+        formulario, current_user, crear_si_falta=False, grupo_id=grupo_id
+    )
     periodico = bool(formulario.periodicidad)
     abierto = True
     ventana_apertura = ventana_cierre = proxima_apertura = None
@@ -263,6 +276,7 @@ async def obtener_formulario(
 @router.get("/{slug}/schema")
 async def obtener_schema(
     slug: str,
+    grupo_id: int | None = Query(None),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
@@ -273,7 +287,9 @@ async def obtener_schema(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Formulario no encontrado o no asignado",
         )
-    envio = EnviosService(db).get_o_iniciar(formulario, current_user, crear_si_falta=False)
+    envio = EnviosService(db).get_o_iniciar(
+        formulario, current_user, crear_si_falta=False, grupo_id=grupo_id
+    )
     definicion = normalizar_definicion(
         envio.definicion_snapshot if envio else formulario.definicion
     )
@@ -286,6 +302,7 @@ async def obtener_schema(
 @router.get("/{slug}/envio", response_model=EnvioResponse)
 async def obtener_envio(
     slug: str,
+    grupo_id: int | None = Query(None),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
@@ -295,7 +312,7 @@ async def obtener_envio(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Formulario no encontrado o no asignado",
         )
-    envio = EnviosService(db).get_o_iniciar(formulario, current_user)
+    envio = EnviosService(db).get_o_iniciar(formulario, current_user, grupo_id=grupo_id)
     return _envio_response(formulario, envio)
 
 

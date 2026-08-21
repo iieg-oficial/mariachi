@@ -36,6 +36,7 @@ from app.services.sieej.acervo_keys import (
     valor_archivo,
 )
 from app.services.sieej.cambio_classifier import diff_definiciones
+from app.services.sieej.colaboracion_service import es_miembro, resolver_grupo
 from app.services.sieej.compat import BUCKET_POR_DEFECTO, normalizar_definicion
 from app.services.sieej.datos_validator import DatosInvalidosError, validar_datos
 
@@ -179,22 +180,41 @@ class EnviosService:
             self.db.commit()
         return len(pendientes)
 
+    def puede_editar_envio(self, user: Usuario, envio: EnvioFormulario) -> bool:
+        """Autorizacion de escritura sobre un envio.
+
+        En los colaborativos manda la membresia del grupo, no `usuario_id`:
+        quien sale del grupo pierde el acceso aunque haya iniciado el envio, y
+        su autoria sigue en el historial.
+        """
+        if envio.grupo_id is not None:
+            return es_miembro(self.db, user.id, envio.grupo_id)
+        return envio.usuario_id == user.id
+
     def _buscar_envio(
         self,
         formulario: Formulario,
         user: Usuario,
         periodo: FormularioPeriodo | None,
+        grupo_id: int | None = None,
     ) -> EnvioFormulario | None:
-        """Busca el envio del usuario para el periodo indicado.
+        """Busca el envio del dueno para el periodo indicado.
 
+        El dueno es el grupo cuando `grupo_id` viene, y el usuario cuando no.
         En formularios periodicos el envio se identifica por
-        `(formulario, usuario, periodo)`; si no hay ventana abierta (`periodo`
+        `(formulario, dueno, periodo)`; si no hay ventana abierta (`periodo`
         None) no existe un envio del periodo actual. En no periodicos es el
-        unico envio por `(formulario, usuario)`."""
+        unico envio por `(formulario, dueno)`."""
         query = self.db.query(EnvioFormulario).filter(
             EnvioFormulario.formulario_id == formulario.id,
-            EnvioFormulario.usuario_id == user.id,
         )
+        if grupo_id is not None:
+            query = query.filter(EnvioFormulario.grupo_id == grupo_id)
+        else:
+            query = query.filter(
+                EnvioFormulario.usuario_id == user.id,
+                EnvioFormulario.grupo_id.is_(None),
+            )
         if formulario.periodicidad:
             if periodo is None:
                 return None
@@ -207,7 +227,9 @@ class EnviosService:
         user: Usuario,
         *,
         crear_si_falta: bool = True,
+        grupo_id: int | None = None,
     ) -> EnvioFormulario | None:
+        grupo = resolver_grupo(self.db, formulario, user, grupo_id)
         periodo: FormularioPeriodo | None = None
         if formulario.periodicidad:
             from app.services.sieej.periodos_service import PeriodosService
@@ -216,7 +238,7 @@ class EnviosService:
                 formulario
             )
 
-        envio = self._buscar_envio(formulario, user, periodo)
+        envio = self._buscar_envio(formulario, user, periodo, grupo)
         if envio is not None:
             return envio
         if not crear_si_falta:
@@ -233,6 +255,7 @@ class EnviosService:
                 formulario_version=formulario.version,
                 definicion_snapshot=normalizar_definicion(formulario.definicion),
                 usuario_id=user.id,
+                grupo_id=grupo,
                 periodo_id=periodo.id if periodo is not None else None,
                 estado="en_proceso",
                 datos={},
@@ -245,12 +268,13 @@ class EnviosService:
             self.db.refresh(envio)
             return envio
         except IntegrityError:
-            # Race: dos requests del mismo usuario llegaron concurrentes y otro
+            # Race: dos requests del mismo dueno llegaron concurrentes y otro
             # gano la insercion. El indice unico parcial
-            # (formulario, usuario, periodo) bloqueo este. Devolvemos el ya
-            # creado para el mismo periodo.
+            # (formulario, dueno, periodo) bloqueo este. Devolvemos el ya
+            # creado para el mismo periodo. En un colaborativo el otro request
+            # puede venir de otro miembro del grupo.
             self.db.rollback()
-            existing = self._buscar_envio(formulario, user, periodo)
+            existing = self._buscar_envio(formulario, user, periodo, grupo)
             if existing is None:
                 raise
             return existing
@@ -347,7 +371,7 @@ class EnviosService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Envio no encontrado",
             )
-        if envio.usuario_id != user.id:
+        if not self.puede_editar_envio(user, envio):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Este envio no te pertenece",
@@ -1022,7 +1046,7 @@ class EnviosService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Envio no encontrado",
             )
-        if envio.usuario_id != user.id:
+        if not self.puede_editar_envio(user, envio):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Este envio no te pertenece",
@@ -1318,7 +1342,7 @@ class EnviosService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Envio no encontrado",
             )
-        if envio.usuario_id != user.id:
+        if not self.puede_editar_envio(user, envio):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Este envio no te pertenece",
@@ -1364,7 +1388,7 @@ class EnviosService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Envio no encontrado",
             )
-        if envio.usuario_id != user.id:
+        if not self.puede_editar_envio(user, envio):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Este envio no te pertenece",
