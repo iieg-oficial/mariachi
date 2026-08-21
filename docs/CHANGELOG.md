@@ -51,6 +51,31 @@ borrando `usuario_grupo` completo y reinsertándola. Con el `rol` viviendo en es
 edición de grupo desde el CMS habría degradado a `capturista` a todos sus coordinadores. Las dos
 escrituras pasaron a sincronizar por diferencia: altas, bajas y nada más.
 
+### Cambiado: la card de usuario pierde su footer de acciones
+
+Las dos acciones que colgaban de cada card —el ícono de editar y el de eliminar— desaparecen. Abrir
+un usuario es hacer clic en su card, que es lo que ya hacía el ícono de editar: eran dos caminos al
+mismo modal, y uno de ellos ocupaba una franja fija en las doce cards de la pantalla.
+
+**Eliminar deja de ser un acceso directo.** Ahora vive dentro del modal de edición, como botón
+etiquetado «Eliminar usuario» en el extremo izquierdo del pie, separado de Cancelar y Actualizar.
+Borrar a alguien pasa de ser un clic en un ícono junto al de editar —a un pixel de distancia, sobre
+una acción que arrastra en cascada los envíos de SIEEJ— a exigir abrir la ficha primero. La
+confirmación con el impacto que se agregó en 2.8.0 sigue igual, encima de eso.
+
+El botón se deshabilita con su tooltip cuando la ficha abierta es la propia, y no se dibuja para
+quien no tiene `mariachi.usuarios.delete`.
+
+**Con el footer fuera, el clic sobre la card es el único camino a la edición.** El manejador de
+teclado que la card ya traía —`role="button"`, `tabIndex` y Enter/Espacio sobre el bloque de datos—
+deja de ser una comodidad y pasa a ser el acceso por teclado de la pantalla: si se quita, la
+administración de usuarios se vuelve inoperable sin ratón. Hay un test que lo cubre.
+
+El pie del modal se extrajo a `components/UserFormFooter.jsx` con sus propias pruebas; `UserFormModal`
+se quedaba en 306 líneas y el límite del ecosistema son 300.
+
+---
+
 ## [2.8.1] - 2026-08-21
 
 ### Corregido: las cards de usuario se estrujaban y escondían el nombre

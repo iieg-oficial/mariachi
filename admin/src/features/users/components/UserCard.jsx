@@ -1,11 +1,6 @@
 import { memo } from 'react';
-import { Avatar, Button, Card, Space, Tag, Tooltip, Typography } from 'antd';
-import {
-    DeleteOutlined,
-    EditOutlined,
-    SafetyCertificateOutlined,
-    UserOutlined,
-} from '@ant-design/icons';
+import { Avatar, Card, Space, Tag, Tooltip, Typography } from 'antd';
+import { SafetyCertificateOutlined, UserOutlined } from '@ant-design/icons';
 import { PROJECT_ROLE_LABEL, ROLE_COLOR, roleLabel } from '../constants/roles';
 
 const { Title, Text } = Typography;
@@ -21,20 +16,7 @@ const formatoAlta = (valor) => {
         : fecha.toLocaleDateString('es-MX', { dateStyle: 'medium' });
 };
 
-const UserCard = ({
-    user,
-    onEdit,
-    onDelete,
-    isSelf,
-    puedeEditar = true,
-    puedeEliminar = true,
-    detalleVisible = true,
-}) => {
-    const stop = (handler) => (e) => {
-        e.stopPropagation();
-        handler(user);
-    };
-
+const UserCard = ({ user, onEdit, puedeEditar = true, detalleVisible = true }) => {
     const proyectosTags = (() => {
         if (user.role === 'tetlamamakani') {
             return <Tag color="gold">Todos los proyectos</Tag>;
@@ -50,31 +32,6 @@ const UserCard = ({
         ));
     })();
 
-    const actions = [];
-    if (puedeEditar) {
-        actions.push(
-            <Tooltip key="editar" title="Editar">
-                <Button type="text" icon={<EditOutlined />} onClick={stop(onEdit)} aria-label="Editar" />
-            </Tooltip>,
-        );
-    }
-    if (puedeEliminar) {
-        actions.push(
-            <Tooltip key="eliminar" title={isSelf ? 'No puedes eliminar tu propio usuario' : 'Eliminar'}>
-                <span style={{ display: 'inline-block' }}>
-                    <Button
-                        type="text"
-                        danger
-                        icon={<DeleteOutlined />}
-                        onClick={stop(onDelete)}
-                        aria-label="Eliminar"
-                        disabled={isSelf}
-                    />
-                </span>
-            </Tooltip>,
-        );
-    }
-
     const abrirConTeclado = (e) => {
         if (e.key !== 'Enter' && e.key !== ' ') return;
         e.preventDefault();
@@ -87,7 +44,6 @@ const UserCard = ({
         <Card
             hoverable={puedeEditar}
             onClick={puedeEditar ? () => onEdit(user) : undefined}
-            actions={actions.length > 0 ? actions : undefined}
             styles={{ body: { padding: 16, flex: 1 } }}
             style={{
                 height: '100%',

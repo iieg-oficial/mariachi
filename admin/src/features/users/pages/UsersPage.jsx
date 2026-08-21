@@ -126,6 +126,7 @@ export default function Users() {
                 try {
                     await api.delete(`/usuarios/${record.id}`);
                     message.success('Usuario eliminado exitosamente');
+                    setModalVisible(false);
                     recargar();
                 } catch (error) {
                     message.error(formatBackendError(error, 'Error al eliminar usuario'));
@@ -222,11 +223,8 @@ export default function Users() {
                             <UserCard
                                 key={u.id}
                                 user={u}
-                                isSelf={currentUser?.id === u.id}
                                 onEdit={handleEdit}
-                                onDelete={handleDelete}
                                 puedeEditar={puedeGestionar}
-                                puedeEliminar={puedeEliminar}
                                 detalleVisible={puedeGestionar || currentUser?.id === u.id}
                             />
                         ))}
@@ -253,6 +251,9 @@ export default function Users() {
                 isMobile={isMobile}
                 form={form}
                 puedeAsignar={puedeAsignar}
+                puedeEliminar={puedeEliminar}
+                esPropio={currentUser?.id === editingUser?.id}
+                onDelete={handleDelete}
                 onCancel={() => setModalVisible(false)}
                 onSubmit={handleSubmit}
             />

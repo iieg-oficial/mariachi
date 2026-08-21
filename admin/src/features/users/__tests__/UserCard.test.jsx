@@ -16,21 +16,17 @@ const baseUser = {
     minerva_vinculado: true,
 };
 
-const renderCard = (overrides = {}, handlers = {}) => {
-    const onEdit = handlers.onEdit ?? vi.fn();
-    const onDelete = handlers.onDelete ?? vi.fn();
+const renderCard = (overrides = {}, props = {}) => {
+    const onEdit = props.onEdit ?? vi.fn();
     render(
         <UserCard
             user={{ ...baseUser, ...overrides }}
             onEdit={onEdit}
-            onDelete={onDelete}
-            isSelf={handlers.isSelf ?? false}
-            puedeEditar={handlers.puedeEditar ?? true}
-            puedeEliminar={handlers.puedeEliminar ?? true}
-            detalleVisible={handlers.detalleVisible ?? true}
+            puedeEditar={props.puedeEditar ?? true}
+            detalleVisible={props.detalleVisible ?? true}
         />,
     );
-    return { onEdit, onDelete };
+    return { onEdit };
 };
 
 describe('UserCard', () => {
@@ -64,34 +60,28 @@ describe('UserCard', () => {
         expect(screen.getByText('MapaLab: Editor')).toBeInTheDocument();
     });
 
+    it('la card no ofrece acciones directas', () => {
+        renderCard();
+        expect(screen.queryAllByRole('button', { name: /eliminar|editar$/i })).toHaveLength(0);
+    });
+
     it('click en la card invoca onEdit', () => {
         const { onEdit } = renderCard();
         fireEvent.click(screen.getByText('Usuario Test'));
         expect(onEdit).toHaveBeenCalled();
     });
 
-    it('isSelf deshabilita la accion de Eliminar', () => {
-        renderCard({}, { isSelf: true });
-        expect(screen.getByLabelText('Eliminar')).toBeDisabled();
+    it('la card se abre con Enter desde el teclado', () => {
+        const { onEdit } = renderCard();
+        fireEvent.keyDown(screen.getByLabelText('Editar Usuario Test'), { key: 'Enter' });
+        expect(onEdit).toHaveBeenCalled();
     });
 
-    it('Editar nunca se deshabilita por isSelf', () => {
-        renderCard({}, { isSelf: true });
-        expect(screen.getByLabelText('Editar')).not.toBeDisabled();
-    });
-
-    it('rol externo se muestra como "Externo" con color verde', () => {
-        renderCard({ role: 'externo' });
-        expect(screen.getByText('Externo')).toBeInTheDocument();
-    });
-    it('sin permiso de gestion no se ofrece Editar', () => {
-        renderCard({}, { puedeEditar: false });
-        expect(screen.queryByLabelText('Editar')).not.toBeInTheDocument();
-    });
-
-    it('sin permiso de borrado no se ofrece Eliminar', () => {
-        renderCard({}, { puedeEliminar: false });
-        expect(screen.queryByLabelText('Eliminar')).not.toBeInTheDocument();
+    it('sin permiso de gestion la card deja de ser interactiva', () => {
+        const { onEdit } = renderCard({}, { puedeEditar: false });
+        expect(screen.queryByLabelText('Editar Usuario Test')).not.toBeInTheDocument();
+        fireEvent.click(screen.getByText('Usuario Test'));
+        expect(onEdit).not.toHaveBeenCalled();
     });
 
     it('sin detalle visible no promete "Sin proyectos asignados"', () => {
@@ -112,12 +102,6 @@ describe('UserCard', () => {
     it('muestra la dependencia de SIEEJ del usuario externo', () => {
         renderCard({ role: 'externo', sieej_grupo: { id: 3, nombre: 'IIEG' } });
         expect(screen.getByText('IIEG')).toBeInTheDocument();
-    });
-
-    it('la card se abre con Enter desde el teclado', () => {
-        const { onEdit } = renderCard();
-        fireEvent.keyDown(screen.getByLabelText('Editar Usuario Test'), { key: 'Enter' });
-        expect(onEdit).toHaveBeenCalled();
     });
 
     it('muestra la fecha de alta', () => {

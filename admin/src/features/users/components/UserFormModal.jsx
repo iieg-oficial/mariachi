@@ -3,12 +3,26 @@ import { Modal, Form, Input, Divider, Segmented, Switch, Tag, Tooltip, Typograph
 import { LoadingOutlined, CheckCircleFilled, CloseCircleFilled } from '@ant-design/icons';
 import api from '@shared/services/api';
 import DependenciaSelect from './DependenciaSelect';
+import UserFormFooter from './UserFormFooter';
 import { metaFor, EXTERNAL_SUBS } from '../constants/projectAccess';
 import { ROLE_SELECT_OPTIONS, roleDescription } from '../constants/roles';
 
 const { Text } = Typography;
 
-export default function UserFormModal({ open, editingUser, projects, grupos = [], isMobile, form, puedeAsignar = true, onCancel, onSubmit }) {
+export default function UserFormModal({
+    open,
+    editingUser,
+    projects,
+    grupos = [],
+    isMobile,
+    form,
+    puedeAsignar = true,
+    puedeEliminar = false,
+    esPropio = false,
+    onDelete,
+    onCancel,
+    onSubmit,
+}) {
     const selectedRole = Form.useWatch('role', form);
     const projectAssignments = Form.useWatch('project_assignments', form) || {};
     const usernameWatch = Form.useWatch('username', form);
@@ -57,9 +71,16 @@ export default function UserFormModal({ open, editingUser, projects, grupos = []
             title={editingUser ? 'Editar Usuario' : 'Nuevo Usuario'}
             open={open}
             onCancel={onCancel}
-            onOk={() => form.submit()}
-            okText={editingUser ? 'Actualizar' : 'Crear'}
-            cancelText="Cancelar"
+            footer={(
+                <UserFormFooter
+                    editingUser={editingUser}
+                    puedeEliminar={puedeEliminar}
+                    esPropio={esPropio}
+                    onDelete={onDelete}
+                    onCancel={onCancel}
+                    onSubmit={() => form.submit()}
+                />
+            )}
             width={isMobile ? '100%' : 560}
             centered={isMobile}
             destroyOnHidden
