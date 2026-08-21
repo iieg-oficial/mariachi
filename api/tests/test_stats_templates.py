@@ -305,3 +305,104 @@ class TestExecuteStatsBatch:
         assert values[0]['posicion'] == 3
         assert values[0]['nombre'] == 'Total'
         assert values[0]['simbolo'] == 'ha'
+
+
+class TestFiltrosYContexto:
+    BASE = {'operation': 'count', 'schema': 'educacion', 'table': 'centros', 'position': 1}
+
+    def test_rechaza_op_de_filtro_desconocida(self):
+        with pytest.raises(StatsTemplateError, match='op invalido'):
+            validate_stats_config([{
+                **self.BASE,
+                'filters': [{'field': 'nivel', 'op': 'regex', 'value': 'x'}],
+            }])
+
+    def test_rechaza_placeholder_fuera_de_la_lista_blanca(self):
+        with pytest.raises(StatsTemplateError, match='desconocido'):
+            validate_stats_config([{
+                **self.BASE,
+                'filters': [{'field': 'nivel', 'op': 'eq', 'value': '{{tabla.secreta}}'}],
+            }])
+
+    def test_rechaza_campo_de_filtro_con_inyeccion(self):
+        with pytest.raises(StatsTemplateError, match='field invalido'):
+            validate_stats_config([{
+                **self.BASE,
+                'filters': [{'field': 'nivel"; DROP', 'op': 'eq', 'value': 'x'}],
+            }])
+
+    def test_filtro_literal_se_aplica(self):
+        cfg = validate_stats_config([{
+            **self.BASE,
+            'filters': [{'field': 'nivel', 'op': 'eq', 'value': 'Primaria'}],
+        }])[0]
+        sql, params = build_query(cfg)
+        assert 'WHERE "nivel" = :f0' in sql
+        assert params == {'f0': 'Primaria'}
+
+    def test_placeholder_sin_contexto_omite_el_filtro(self):
+        cfg = validate_stats_config([{
+            **self.BASE,
+            'filters': [{'field': 'municipio', 'op': 'in', 'value': '{{municipio.nombres}}'}],
+        }])[0]
+        sql, params = build_query(cfg)
+        assert 'WHERE' not in sql
+        assert params == {}
+
+    def test_placeholder_con_contexto_expande_el_in(self):
+        cfg = validate_stats_config([{
+            **self.BASE,
+            'filters': [{'field': 'municipio', 'op': 'in', 'value': '{{municipio.nombres}}'}],
+        }])[0]
+        sql, params = build_query(cfg, {'municipio.nombres': ['Zapopan', 'Tala']})
+        assert 'WHERE "municipio" IN (:f0_0, :f0_1)' in sql
+        assert params == {'f0_0': 'Zapopan', 'f0_1': 'Tala'}
+
+    def test_contexto_vacio_se_trata_como_ausente(self):
+        cfg = validate_stats_config([{
+            **self.BASE,
+            'filters': [{'field': 'municipio', 'op': 'in', 'value': '{{municipio.claves}}'}],
+        }])[0]
+        sql, _ = build_query(cfg, {'municipio.claves': []})
+        assert 'WHERE' not in sql
+
+    def test_between_parcial_omite_el_filtro_completo(self):
+        cfg = validate_stats_config([{
+            **self.BASE,
+            'filters': [{
+                'field': 'fecha', 'op': 'between',
+                'value': ['{{fecha.inicio}}', '{{fecha.fin}}'],
+            }],
+        }])[0]
+        sql, params = build_query(cfg, {'fecha.inicio': '2025-01-01'})
+        assert 'WHERE' not in sql
+        assert params == {}
+
+    def test_filtros_se_combinan_con_and(self):
+        cfg = validate_stats_config([{
+            **self.BASE,
+            'filters': [
+                {'field': 'nivel', 'op': 'eq', 'value': 'Primaria'},
+                {'field': 'fecha', 'op': 'gte', 'value': '{{fecha.inicio}}'},
+            ],
+        }])[0]
+        sql, params = build_query(cfg, {'fecha.inicio': '2025-01-01'})
+        assert 'WHERE "nivel" = :f0 AND "fecha" >= :f1' in sql
+        assert params == {'f0': 'Primaria', 'f1': '2025-01-01'}
+
+    def test_where_legacy_convive_con_filters(self):
+        cfg = validate_stats_config([{
+            **self.BASE, 'operation': 'count_where',
+            'where_field': 'nivel', 'where_value': 'Primaria',
+            'filters': [{'field': 'municipio', 'op': 'in', 'value': '{{municipio.nombres}}'}],
+        }])[0]
+        sql, params = build_query(cfg, {'municipio.nombres': ['Tala']})
+        assert 'WHERE "nivel" = :where_value AND "municipio" IN (:f1_0)' in sql
+        assert params == {'where_value': 'Primaria', 'f1_0': 'Tala'}
+
+    def test_count_where_acepta_solo_filters(self):
+        result = validate_stats_config([{
+            **self.BASE, 'operation': 'count_where',
+            'filters': [{'field': 'nivel', 'op': 'eq', 'value': 'Primaria'}],
+        }])
+        assert len(result) == 1
