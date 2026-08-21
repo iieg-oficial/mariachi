@@ -16,6 +16,9 @@ from sqlalchemy.orm.attributes import flag_modified
 from app.core.time import utcnow
 from app.models.sieej import EnvioFormulario, EnvioValorHistorial, Formulario
 from app.models.user import Usuario
+from app.services import presence
+
+PRESENCIA_SCOPE = "sieej_envio"
 
 
 class ColaboracionService:
@@ -170,6 +173,48 @@ class ColaboracionService:
                 EnvioValorHistorial.actor_usuario_id != excluir_actor
             )
         return query.order_by(EnvioValorHistorial.cambiado_en.asc()).all()
+
+    def sync(
+        self,
+        user: Usuario,
+        envio: EnvioFormulario,
+        desde: int,
+        seccion: str | None,
+        *,
+        salir: bool = False,
+    ) -> dict[str, Any]:
+        """Latido, delta y presencia en una sola llamada.
+
+        Van juntos a proposito: el gateway limita por IP y un equipo de una
+        dependencia sale por la misma NAT, asi que tres endpoints de polling
+        gastarian el triple de la cuota que comparten.
+
+        La presencia es un aviso, no un candado: si Redis no responde el sync
+        sigue devolviendo el delta y la captura no se entera.
+        """
+        if salir:
+            presence.salir(PRESENCIA_SCOPE, envio.id, user.username)
+        else:
+            presence.entrar(
+                PRESENCIA_SCOPE,
+                envio.id,
+                user.username,
+                user.name,
+                avatar_url=user.avatar_url,
+                seccion=seccion,
+            )
+        return {
+            "datos_version": envio.datos_version,
+            "estado": envio.estado,
+            "cambios": self.delta(envio, desde),
+            "presentes": (
+                []
+                if salir
+                else presence.presentes(
+                    PRESENCIA_SCOPE, envio.id, excluir=user.username
+                )
+            ),
+        }
 
     def delta(self, envio: EnvioFormulario, desde: int) -> list[dict[str, Any]]:
         """Ultimo valor de cada campo tocado despues de `desde`, con su autor."""

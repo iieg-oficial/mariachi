@@ -9,6 +9,50 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.11.0] - 2026-08-21
+
+### Agregado: un solo endpoint para latido, delta y presencia
+
+Fase 3 de seis. `POST /formularios/{slug}/envio/sync` devuelve la `datos_version` del envío, su
+estado, lo que cambió desde la versión que traía el cliente y quién más lo está viendo, con en qué
+paso anda cada quien.
+
+Los tres van juntos a propósito. El gateway limita por IP con `$binary_remote_addr` y un equipo de
+una dependencia sale por la misma NAT, así que tres endpoints de polling gastarían el triple de una
+cuota que además comparten. Es POST y no GET porque registra presencia —escribe— y así pasa por
+`verify_csrf` como toda mutación. Con `salir: true` se da de baja sin pedir nada, que es lo que
+manda el `pagehide` del navegador; `sendBeacon` no sirve justamente porque el endpoint exige CSRF.
+
+La presencia sigue siendo un aviso y no un candado: si Redis no responde, el sync devuelve el delta
+igual y la captura no se entera.
+
+### Agregado: presencia por HASH para el polling sostenido
+
+`presence.list_others` recorre el keyspace con `scan_iter`, y con redis-py **síncrono** dentro de un
+handler `async def` eso bloquea el event loop del worker. Para el CMS —pocos editores, polling
+esporádico— no importa; para un equipo latiendo cada diez segundos, sí.
+
+Las funciones nuevas (`entrar`, `salir`, `presentes`) guardan un HASH por recurso y lo leen de un
+solo `HGETALL`. Redis no expira campos sueltos de un hash antes de 7.4, así que el TTL vive en la
+clave y las entradas vencidas se descartan al leer, lo que además limpia a quien cerró la pestaña
+sin avisar. Las funciones viejas quedan intactas: el CMS no cambia.
+
+### Agregado: rate limit por usuario en el polling de captura
+
+El router `/formularios/*` no tenía ninguno de aplicación; el único freno era el del gateway, que es
+por IP y castiga a toda la dependencia tras la misma NAT. El sync lleva treinta peticiones por
+minuto y por usuario sobre el limitador de ventana deslizante que ya existía. La cadencia del
+cliente es de 10 s con la pestaña visible y 30 s en solitario —seis por minuto, unas veinte con
+varias pestañas—, así que treinta deja holgura para el jitter y corta un cliente con un bug de
+reintento antes de que se coma la cuota compartida.
+
+### Cambiado: las rutas del envío salieron de `dinamicos.py`
+
+El archivo ya estaba en 374 líneas contra el límite de 300 antes de este ciclo y las tres fases lo
+habían llevado a 464. Las rutas `/{slug}/envio*` se mudaron a `routes/formularios/envios.py`, que se
+incluye antes porque sus paths son más específicos que el `/{slug}` de la ficha. Quedan en 291 y 214
+líneas. No cambia ninguna URL.
+
 ## [2.10.0] - 2026-08-21
 
 ### Agregado: captura simultánea por campo en los envíos de grupo

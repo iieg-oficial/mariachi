@@ -21,9 +21,12 @@ from app.models.sieej import (
     usuario_grupo,
 )
 from app.models.user import Usuario
+from app.services import presence
 from app.services.sieej.campos_service import VENTANA_COALESCING
 from app.services.sieej.grupos_service import GruposService
 from tests.conftest import PERMISOS_REPORTAR, TODOS_LOS_PERMISOS, login_as
+from tests.test_rate_limit_scopes import _FakeRedis as _FakeRedisZset
+from tests.test_sieej_presencia_hash import _FakeRedis as _FakeRedisHash
 
 settings = get_settings()
 ADMIN_PREFIX = settings.admin_prefix
@@ -663,3 +666,131 @@ def test_el_guardado_normal_de_un_formulario_individual_deja_autoria(
     assert fila.origen == "captura"
     assert fila.actor_usuario_id == ana.id
     assert fila.valor_nuevo == "Acme SA"
+
+
+@pytest.fixture
+def presencia_fake(monkeypatch):
+    fake = _FakeRedisHash()
+    monkeypatch.setattr(presence, "redis_client", fake)
+    return fake
+
+
+def sync(client, csrf, slug, **body):
+    return client.post(
+        f"{ADMIN_PREFIX}/formularios/{slug}/envio/sync",
+        headers={"X-CSRF-Token": csrf},
+        json=body,
+    )
+
+
+def test_el_sync_trae_version_estado_y_delta(
+    session, client, admin, ana, beto, presencia_fake
+):
+    f, _ = envio_colaborativo(session, admin, ana, beto, "colab-15", "dep-sync-1")
+
+    csrf = login(client, ana)
+    r = patch_campos(client, csrf, f.slug, {"general.razon_social": "Acme SA"})
+    version = r.json()["datos_version"]
+
+    csrf = login(client, beto)
+    r = sync(client, csrf, f.slug, desde=0, seccion="general")
+    assert r.status_code == 200, r.text
+    cuerpo = r.json()
+    assert cuerpo["datos_version"] == version
+    assert cuerpo["estado"] == "en_proceso"
+    cambio = cuerpo["cambios"][0]
+    assert cambio["field_path"] == "general.razon_social"
+    assert cambio["actor_nombre"] == "Ana Lopez"
+
+
+def test_el_sync_al_dia_no_repite_lo_que_el_cliente_ya_tiene(
+    session, client, admin, ana, beto, presencia_fake
+):
+    f, _ = envio_colaborativo(session, admin, ana, beto, "colab-16", "dep-sync-2")
+
+    csrf = login(client, ana)
+    r = patch_campos(client, csrf, f.slug, {"general.razon_social": "Acme SA"})
+    version = r.json()["datos_version"]
+
+    csrf = login(client, beto)
+    r = sync(client, csrf, f.slug, desde=version, seccion="general")
+    assert r.json()["cambios"] == []
+
+
+def test_el_sync_muestra_en_que_paso_anda_el_companero(
+    session, client, admin, ana, beto, presencia_fake
+):
+    f, _ = envio_colaborativo(session, admin, ana, beto, "colab-17", "dep-sync-3")
+
+    csrf = login(client, ana)
+    client.get(f"{ADMIN_PREFIX}/formularios/{f.slug}/envio")
+    sync(client, csrf, f.slug, desde=0, seccion="general")
+
+    csrf = login(client, beto)
+    presentes = sync(client, csrf, f.slug, desde=0, seccion="anexos").json()[
+        "presentes"
+    ]
+    assert len(presentes) == 1
+    assert presentes[0]["username"] == "ana"
+    assert presentes[0]["name"] == "Ana Lopez"
+    assert presentes[0]["seccion"] == "general"
+
+
+def test_salir_baja_la_presencia_sin_esperar_al_ttl(
+    session, client, admin, ana, beto, presencia_fake
+):
+    f, _ = envio_colaborativo(session, admin, ana, beto, "colab-18", "dep-sync-4")
+
+    csrf = login(client, ana)
+    client.get(f"{ADMIN_PREFIX}/formularios/{f.slug}/envio")
+    sync(client, csrf, f.slug, desde=0, seccion="general")
+    r = sync(client, csrf, f.slug, desde=0, salir=True)
+    assert r.status_code == 200
+    assert r.json()["presentes"] == []
+
+    csrf = login(client, beto)
+    assert sync(client, csrf, f.slug, desde=0).json()["presentes"] == []
+
+
+def test_con_redis_caido_el_sync_sigue_dando_el_delta(
+    session, client, admin, ana, beto, presencia_fake
+):
+    f, _ = envio_colaborativo(session, admin, ana, beto, "colab-19", "dep-sync-5")
+
+    csrf = login(client, ana)
+    patch_campos(client, csrf, f.slug, {"general.razon_social": "Acme SA"})
+
+    presencia_fake.caido = True
+    csrf = login(client, beto)
+    r = sync(client, csrf, f.slug, desde=0, seccion="general")
+    assert r.status_code == 200, r.text
+    assert r.json()["cambios"][0]["field_path"] == "general.razon_social"
+    assert r.json()["presentes"] == []
+
+
+def test_sin_envio_todavia_el_sync_no_lo_crea(
+    session, client, admin, ana, beto, presencia_fake
+):
+    f, _ = envio_colaborativo(session, admin, ana, beto, "colab-20", "dep-sync-6")
+
+    csrf = login(client, ana)
+    r = sync(client, csrf, f.slug, desde=0, seccion="general")
+    assert r.status_code == 404
+
+
+def test_el_polling_desbocado_de_un_cliente_se_corta(
+    session, client, admin, ana, beto, presencia_fake, monkeypatch
+):
+    from app.api import rate_limit as rate_limit_module
+
+    monkeypatch.setattr(rate_limit_module, "redis_client", _FakeRedisZset())
+    f, _ = envio_colaborativo(session, admin, ana, beto, "colab-21", "dep-sync-7")
+
+    csrf = login(client, ana)
+    client.get(f"{ADMIN_PREFIX}/formularios/{f.slug}/envio")
+    for _ in range(30):
+        assert sync(client, csrf, f.slug, desde=0).status_code == 200
+
+    r = sync(client, csrf, f.slug, desde=0)
+    assert r.status_code == 429
+    assert "Retry-After" in r.headers

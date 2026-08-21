@@ -129,6 +129,36 @@ class EnvioCapturaResponse(BaseModel):
     cambios: list[EnvioCampoCambio] = Field(default_factory=list)
 
 
+class EnvioSyncRequest(BaseModel):
+    """Body de POST /formularios/:slug/envio/sync.
+
+    Es POST y no GET porque registra presencia: escribe, y asi pasa por
+    `verify_csrf` como toda mutacion. `seccion` es el paso que la persona tiene
+    abierto, para que el resto vea donde anda. Con `salir` se da de baja sin
+    pedir nada: es lo que manda el `pagehide` del navegador.
+    """
+
+    desde: int = 0
+    seccion: str | None = None
+    salir: bool = False
+
+
+class EnvioPresente(BaseModel):
+    """Alguien mas viendo el mismo envio ahora."""
+
+    username: str
+    name: str | None = None
+    avatar_url: str | None = None
+    seccion: str | None = None
+
+
+class EnvioSyncResponse(BaseModel):
+    datos_version: int
+    estado: EnvioEstado
+    cambios: list[EnvioCampoCambio] = Field(default_factory=list)
+    presentes: list[EnvioPresente] = Field(default_factory=list)
+
+
 class EnvioHistorialItem(BaseModel):
     """Una entrada del historial de cambios de valor (vista respondent).
 
