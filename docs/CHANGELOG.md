@@ -35,6 +35,39 @@ refresco proactivo falla, el 401 y su reintento se comportan igual que antes.
 El refresco sigue pasando por `runExclusiveRefresh` —Web Locks más la marca `auth_refreshed_at`—,
 así que varias pestañas con el mismo calendario despiertan juntas y sólo una toca la red.
 
+### Agregado: filtros compuestos y placeholders de contexto en las estadísticas
+
+Una estadística podía llevar **una** condición, de igualdad exacta, contra un valor fijo. Ahora
+lleva hasta seis, con `eq`, `in`, `gte`, `lte`, `between` e `is_not_null`, y aplican a todas las
+primitivas —también a `sum`, `avg` o `latest`—, no solo a `count_where`:
+
+```json
+"filters": [
+  {"field": "nivel_educativo", "op": "eq",      "value": "Primaria"},
+  {"field": "municipio",       "op": "in",      "value": "{{municipio.nombres}}"},
+  {"field": "fecha",           "op": "between", "value": ["{{fecha.inicio}}", "{{fecha.fin}}"]}
+]
+```
+
+Un valor con forma `{{clave}}` no es literal: se resuelve al ejecutar contra una lista blanca de
+cuatro claves (`municipio.claves`, `municipio.nombres`, `fecha.inicio`, `fecha.fin`) y **siempre por
+bind param**, nunca interpolado en el SQL. La propiedad de siempre se conserva: el SQL lo arma el
+motor y quien configura solo elige de un catálogo.
+
+**La regla que sostiene el diseño:** si un placeholder no trae valor en el contexto, el filtro **se
+omite**. Así una sola configuración sirve para el total estatal que persiste el cron y para el dato
+filtrado que pedirá el visor, sin duplicarla por capa. Es lo que permite que la numeralia de la home
+—donde no hay municipio seleccionado— siga mostrando el total.
+
+`execute_stats_batch`, `execute_stat` y `build_query` aceptan un `context` opcional; sin él se
+comportan exactamente como antes. `where_field`/`where_value` siguen funcionando y se traducen a un
+filtro `eq` que conserva el nombre del bind, así que las configuraciones ya guardadas no cambian de
+SQL.
+
+Esto es la mitad del camino: falta que `@municipio` se resuelva desde la metadata de la capa en vez
+de nombrar la columna a mano, y que el visor pueda pedir el cálculo con contexto. Plan completo en
+`context-ame-esta/ecosistema/planes/numeralia-por-contexto.md`.
+
 ### Corregido: `count_where` pedía una columna que nunca usaba
 
 La validación de estadísticas exigía `field` en toda operación distinta de `count`, pero
