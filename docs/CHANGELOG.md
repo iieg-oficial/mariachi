@@ -9,6 +9,85 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.8.0] - 2026-08-21
+
+Revisión completa del grid de usuarios del admin y de su endpoint. Seis defectos, la ausencia de
+permisos en la UI y todo lo que la pantalla tenía a la mano y no mostraba.
+
+### Agregado: la lista dice quién ya está vinculado a minerva
+
+`GET /usuarios` expone `minerva_vinculado` (derivado de `minerva_sub`) y la card lo pinta como tag.
+Desde `2.0.0` la autenticación es OIDC, pero no había forma de distinguir a quien ya inició sesión
+de una ficha que nadie ha reclamado. Era el pendiente que dejaba abierto
+`planes/migracion-usuarios-minerva.md`: la vía manual de vinculación no se puede operar sin ver
+primero quién falta.
+
+La card también muestra la fecha de alta y la dependencia de SIEEJ del usuario externo, dos campos
+que el endpoint ya mandaba y que solo se veían abriendo el modal.
+
+### Agregado: filtros por proyecto y orden
+
+Al filtro de rol se suman uno por proyecto —con la opción **Sin proyectos asignados**, que es el
+caso que uno busca de verdad— y un selector de orden (nombre, alta más reciente, rol). La búsqueda
+ahora cubre también el nombre del proyecto y la dependencia de SIEEJ, no solo usuario, nombre y
+email.
+
+### Agregado: el borrado dice qué se lleva por delante
+
+`GET /usuarios/{id}/impacto-eliminacion` cuenta envíos de SIEEJ, dependencias, proyectos y
+formularios de los que el usuario es autor. El diálogo de confirmación los enumera antes de borrar.
+`usuarios.id` lo referencian 18 tablas y `sieej.envio_formulario` es `ON DELETE CASCADE`: el
+confirm anterior decía «Se eliminará el usuario: X» y se llevaba en silencio todos sus envíos.
+
+### Corregido: los avatares nunca se pintaban
+
+`_serialize_user()` armaba el dict a mano y omitía `avatar_url`, así que el grid siempre caía al
+ícono genérico aunque el usuario hubiera subido su foto desde el perfil. El campo ya estaba
+declarado en `UsuarioResponse` y `deps.py` sí lo mandaba para el usuario actual: solo faltaba en
+esta ruta.
+
+### Corregido: los usuarios a partir del 101 no existían para el grid
+
+`GET /usuarios` tiene `limit` con default 100 y el admin pedía `/usuarios` sin parámetros, paginando
+en cliente. El grid ahora recorre la lista por páginas hasta agotarla.
+
+### Corregido: borrar al autor de un formulario de SIEEJ devolvía 500
+
+`sieej.formulario.creado_por_id` es `ON DELETE RESTRICT` y `NOT NULL`. El `IntegrityError` salía sin
+atrapar y la UI mostraba «Error al eliminar usuario» sin más. Ahora se verifica antes, responde
+**409** diciendo cuántos formularios bloquean la baja, y cualquier otra FK que falle en el commit
+también sale como 409 en vez de 500.
+
+### Corregido: borrar el último usuario de la última página dejaba el grid en blanco
+
+La página no se recortaba cuando la lista encogía, así que quedaba fuera de rango sin caer al
+`Empty`. La página visible ahora se deriva del total.
+
+### Corregido: el tooltip de «No puedes eliminar tu propio usuario» nunca aparecía
+
+El botón iba `disabled` directo dentro del `Tooltip` y Ant Design no emite eventos de mouse en
+botones deshabilitados. Se envuelve en un `span`.
+
+### Cambiado: la UI respeta los permisos que el backend ya exigía
+
+El router está montado tras `mariachi.usuarios.view`, pero crear, editar, asignar y borrar piden
+`create`, `update`, `assign` y `delete`. Quien solo tenía `view` veía el botón de alta y las dos
+acciones de cada card, y se enteraba con un 403. Ahora se consultan con `can()`. Además el formulario
+deja de mandar `project_assignments` cuando falta `mariachi.usuarios.assign` —los mandaba siempre, y
+eso hacía fallar cualquier edición con 403— y la card ya no promete «Sin proyectos asignados» cuando
+lo que pasa es que el visor no tiene permiso de verlos.
+
+La UI nunca es la autorización: el backend valida igual.
+
+### Cambiado: la feature `users` queda partida
+
+`UsersPage.jsx` estaba en la lista de excepciones de `max-lines` de ESLint. Los datos se van a
+`hooks/useUsuarios.js`, el filtrado y la paginación a `hooks/useFiltroUsuarios.js`, los controles a
+`components/UsersFilters.jsx` y las etiquetas de rol —duplicadas entre la página, la card y el
+modal— a `constants/roles.js`. La página baja a 256 líneas y sale de la lista de excepciones.
+
+---
+
 ## [2.7.1] - 2026-08-20
 
 ### Corregido: `secrets/` no existía en un clon nuevo y el primer deploy fallaba

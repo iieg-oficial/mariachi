@@ -93,7 +93,6 @@ export default [
             'src/features/portal-pages/components/SEOAnalyzer.jsx',
             'src/features/portal-pages/components/SEOEditor.jsx',
             'src/features/portal-pages/constants/pageTemplates.js',
-            'src/features/users/pages/UsersPage.jsx',
         ],
         rules: {
             'max-lines': 'off',
