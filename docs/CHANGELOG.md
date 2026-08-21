@@ -35,6 +35,27 @@ refresco proactivo falla, el 401 y su reintento se comportan igual que antes.
 El refresco sigue pasando por `runExclusiveRefresh` —Web Locks más la marca `auth_refreshed_at`—,
 así que varias pestañas con el mismo calendario despiertan juntas y sólo una toca la red.
 
+### Corregido: `count_where` pedía una columna que nunca usaba
+
+La validación de estadísticas exigía `field` en toda operación distinta de `count`, pero
+`build_query` arma el `count_where` como `SELECT COUNT(*) … WHERE "<where_field>" = :valor` y no
+toca `field` en ningún momento. Configurar un conteo con filtro obligaba a elegir una columna
+cualquiera para que la validación dejara guardar, y el panel mostraba dos selectores de columna
+donde solo uno hacía algo.
+
+Ahora `count` y `count_where` comparten la misma regla —ninguno pide `field`— y el selector sobrante
+desapareció del panel. El cambio va también en `dataengine/jobs/run_refresh_layer_stats.py`, que es
+el mismo motor duplicado para el cron: si solo se corrigiera de este lado, el cron descartaría como
+inválido lo que el CMS guarda. De paso, el job pasó a validar `field` cuando viene presente, que es
+lo que este lado ya hacía.
+
+### Corregido: `make test-backend` no encontraba el script de pruebas
+
+El target hacía `cd api && ruff …` y a continuación `./api/scripts/run-tests.sh`. El `cd` persiste
+dentro de la receta, así que la ruta relativa dejaba de resolver y el target moría con
+`No such file or directory` justo después de que ruff pasara. Los tests seguían corriendo en CI, que
+no usa el Makefile, pero en local no había forma de correrlos con el comando documentado.
+
 ---
 
 ## [2.11.0] - 2026-08-21
