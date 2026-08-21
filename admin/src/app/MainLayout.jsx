@@ -1,17 +1,17 @@
 import { useState, useEffect } from 'react';
-import { Layout, Menu, Button, Avatar, Badge, Dropdown, Tooltip, Typography, Drawer, Grid } from 'antd';
+import { Layout, Menu, Button, Badge, Tooltip, Typography, Drawer, Grid } from 'antd';
 import {
     MenuFoldOutlined,
     MenuUnfoldOutlined,
-    UserOutlined,
-    LogoutOutlined,
     FileTextOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router';
 import { useAuth } from '@shared/contexts/useAuth';
 import api from '@shared/services/api';
 import VersionNotesModal from '@features/inicio/components/VersionNotesModal';
+import MisBorradoresModal from '@features/inicio/components/MisBorradoresModal';
 import { BRAND } from '@app/providers/brand';
+import UserMenu from '@app/UserMenu';
 import {
     buildSiderFooterRail,
     buildSiderItems,
@@ -27,6 +27,7 @@ export default function MainLayout() {
     const [collapsed, setCollapsed] = useState(false);
     const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
     const [versionNotesOpen, setVersionNotesOpen] = useState(false);
+    const [borradoresOpen, setBorradoresOpen] = useState(false);
     const screens = useBreakpoint();
     const isMobile = !screens.md;
     const navigate = useNavigate();
@@ -44,6 +45,14 @@ export default function MainLayout() {
 
     const [pendingCount, setPendingCount] = useState(0);
     const [reportesPendingCount, setReportesPendingCount] = useState(0);
+    const [misBorradores, setMisBorradores] = useState([]);
+
+    useEffect(() => {
+        if (!user) return;
+        api.get('/borradores/mios')
+            .then(r => setMisBorradores(r.data || []))
+            .catch(() => {});
+    }, [user]);
 
     useEffect(() => {
         if (!can('mariachi.mapalab.update')) return;
@@ -92,22 +101,6 @@ export default function MainLayout() {
         },
     ];
     const selectedKey = selectedKeyForPath(location.pathname);
-
-    const userMenuItems = [
-        {
-            key: 'profile',
-            icon: <UserOutlined />,
-            label: 'Perfil',
-            onClick: () => navigate('/perfil'),
-        },
-        { type: 'divider' },
-        {
-            key: 'logout',
-            icon: <LogoutOutlined />,
-            label: 'Cerrar Sesión',
-            onClick: handleLogout,
-        },
-    ];
 
     const brand = (isCollapsedView) => (
         <div style={{
@@ -279,15 +272,14 @@ export default function MainLayout() {
                         style={{ fontSize: 16, width: isMobile ? 48 : 64, height: 64 }}
                         aria-label="Abrir menú"
                     />
-                    <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-                        <div style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-                            {!isMobile && <Text style={{ marginRight: 8 }}>{user?.name}</Text>}
-                            <Avatar
-                                src={user?.avatarUrl || user?.avatar_url || undefined}
-                                icon={!(user?.avatarUrl || user?.avatar_url) && <UserOutlined />}
-                            />
-                        </div>
-                    </Dropdown>
+                    <UserMenu
+                        user={user}
+                        isMobile={isMobile}
+                        borradores={misBorradores}
+                        onAbrirBorradores={() => setBorradoresOpen(true)}
+                        onPerfil={() => navigate('/perfil')}
+                        onLogout={handleLogout}
+                    />
                 </Header>
                 <Content style={{
                     margin: isMobile ? '6px 4px' : '24px 16px',
@@ -302,6 +294,12 @@ export default function MainLayout() {
             <VersionNotesModal
                 open={versionNotesOpen}
                 onClose={() => setVersionNotesOpen(false)}
+            />
+
+            <MisBorradoresModal
+                open={borradoresOpen}
+                onClose={() => setBorradoresOpen(false)}
+                borradores={misBorradores}
             />
         </Layout>
     );

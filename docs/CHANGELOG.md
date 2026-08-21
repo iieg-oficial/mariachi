@@ -9,6 +9,67 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.14.0] - 2026-08-21
+
+El inicio del admin cambia las ocho tarjetas del ecosistema por un tablero con historial de 24 horas,
+y «Mis borradores» se muda al menú del avatar. Del lado de huachicol corresponde a 2.6.0, que es
+quien publica los tramos que el tablero dibuja.
+
+### Agregado: el estatus del ecosistema se lee como tablero, no como tarjetas
+
+Ocho tarjetas iguales con nombre, versión y un punto de color no distinguían un servicio sano de uno
+caído más que por ese punto, y el motivo de la caída vivía en un `Tooltip` que el teclado no alcanza.
+Ahora es una fila por servicio con la barra de las últimas 24 horas, sacada de los tramos que
+`/api/status` estrenó en huachicol 2.6.0.
+
+**La barra distingue por color y por trama**, no solo por color: sólido para operativo, diagonal para
+degradado, diagonal densa para caído y cuadrícula para «sin datos», que antes se confundía con una
+caída. Cada tramo tiene su `Tooltip` con hora de inicio, de fin, duración y el motivo, y responde
+tanto al cursor como al toque.
+
+**Las filas se agrupan por capa** —entrada, datos, aplicaciones, internos— con su propio conteo. Con
+ese orden, tres franjas rojas alineadas se leen como un incidente del ecosistema y una sola como un
+servicio con problema propio. El motivo del fallo se escribe en la fila, sin pedir interacción.
+
+**El contador va en el título** y no en una banda aparte. La versión queda junto al nombre y los
+cuatro enlaces —abrir, repositorio, Taiga, reportar— siguen visibles en una columna de ancho fijo,
+que es el máximo posible. En móvil la fila se parte en dos renglones sin esconder nada.
+
+### Corregido: GeoServer nunca se conectaba con el monitor
+
+El catálogo del admin pedía el slug `geoserver`; el monitor lo publica como `sextante` desde el
+renombre del 31 de julio (huachicol 2.5.0). No empataban, así que esa tarjeta salía «no integrada»
+para siempre aunque el servicio estuviera sano.
+
+De paso deja de existir la causa: **la lista de servicios ahora la manda el monitor** y el catálogo
+del frontend solo aporta enlaces y la capa de cada uno. Vine y Wacha, que se sondeaban cada minuto y
+no aparecían en ningún lado, salen solos; y un servicio nuevo aparece sin tocar el frontend, bajo
+«Sin clasificar» hasta que se le asigne capa.
+
+### Cambiado: «Mis borradores» vive en el menú del avatar
+
+Los borradores son asunto de quien los escribe, no del ecosistema, y ocupaban la mitad del inicio.
+Se van a un modal que se abre desde el avatar, con el mismo patrón que «Notas de versión»: montado en
+`MainLayout` y sin pedir datos hasta abrirse. El avatar lleva un contador rojo cuando hay rechazados.
+
+**Lo que sí pide acción al entrar se queda en el inicio**: la alerta de borradores rechazados y la
+tarjeta de «esperando tu revisión». `InicioPage.jsx` baja de 376 líneas a 135, bajo el límite de 300
+que llevaba tiempo incumpliendo, y el menú de usuario sale de `MainLayout` a `UserMenu`.
+
+### Agregado: los colores semánticos de la marca iieg
+
+El catálogo de identidad tenía nueve colores y ninguno era `success`, `warning`, `danger` o `info`,
+aunque las normas los listan como base. Sin ellos, los colores de estado del tablero habrían quedado
+sueltos en el componente, que es justo lo que la norma prohíbe. Se agregan los cuatro más su
+superficie, todos AA sobre blanco y sobre su propia superficie; `warning` e `info` comparten valor
+con `accent-deep` y `secondary`, que ya existían.
+
+### Corregido: los checks de puerto en Observabilidad salían sin detalle
+
+`describeCheck` armaba el detalle con el porcentaje de disco, los gigas libres, los contenedores y el
+mensaje de error, pero ignoraba `port`, que es lo único que traen los checks de upstream del gateway.
+Ocho de los nueve checks de gateway-hub se veían con la columna vacía.
+
 ## [2.13.0] - 2026-08-21
 
 Cierra los envíos colaborativos de SIEEJ: la sexta y última fase, más las dos aportaciones de
