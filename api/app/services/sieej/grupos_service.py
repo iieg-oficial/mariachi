@@ -97,7 +97,12 @@ class GruposService:
         self.db.delete(g)
         self.db.commit()
 
-    def actualizar_miembros(self, grupo_id: int, usuarios_ids: list[int]) -> Grupo:
+    def actualizar_miembros(
+        self,
+        grupo_id: int,
+        usuarios_ids: list[int],
+        coordinadores_ids: list[int] | None = None,
+    ) -> Grupo:
         """Sincroniza la membresia por diferencia, no por borrado en bloque.
 
         `usuario_grupo` guarda tambien el `rol` del miembro: borrar la tabla y
@@ -130,14 +135,28 @@ class GruposService:
             self.db.execute(
                 usuario_grupo.insert().values(usuario_id=uid, grupo_id=g.id)
             )
+        if coordinadores_ids is not None:
+            coordinadores = deseados & set(coordinadores_ids)
+            for uid in deseados:
+                self.db.execute(
+                    usuario_grupo.update()
+                    .where(
+                        usuario_grupo.c.grupo_id == g.id,
+                        usuario_grupo.c.usuario_id == uid,
+                    )
+                    .values(
+                        rol="coordinador" if uid in coordinadores else "capturista"
+                    )
+                )
         self.db.commit()
         self.db.refresh(g)
         return g
 
-    def listar_miembros(self, grupo_id: int) -> list[Usuario]:
+    def listar_miembros(self, grupo_id: int) -> list[tuple[Usuario, str]]:
+        """Miembros del grupo con su rol, ordenados por username."""
         g = self.get(grupo_id)
         return (
-            self.db.query(Usuario)
+            self.db.query(Usuario, usuario_grupo.c.rol)
             .join(usuario_grupo, usuario_grupo.c.usuario_id == Usuario.id)
             .filter(usuario_grupo.c.grupo_id == g.id)
             .order_by(Usuario.username.asc())

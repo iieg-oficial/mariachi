@@ -68,7 +68,9 @@ async def actualizar_miembros(
     db: Session = Depends(get_db),
     _csrf: Usuario = Depends(verify_csrf),
 ):
-    return GruposService(db).actualizar_miembros(grupo_id, data.usuarios)
+    return GruposService(db).actualizar_miembros(
+        grupo_id, data.usuarios, data.coordinadores
+    )
 
 
 @router.get("/grupos/{grupo_id}/usuarios")
@@ -84,6 +86,7 @@ async def listar_miembros(
             "email": u.email,
             "name": u.name,
             "role": u.role,
+            "rol_grupo": rol,
         }
-        for u in miembros
+        for u, rol in miembros
     ]

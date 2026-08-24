@@ -13,6 +13,7 @@ export default function ConfiguracionEditor({ formulario, onSaved }) {
     const [form] = Form.useForm();
     const navigate = useNavigate();
     const periodico = Form.useWatch('periodico', form);
+    const sinGrupos = !(formulario.grupos?.length > 0);
 
     useEffect(() => {
         if (!formulario) return;
@@ -22,6 +23,7 @@ export default function ConfiguracionEditor({ formulario, onSaved }) {
             nombre: formulario.nombre,
             descripcion: formulario.descripcion ?? '',
             publico: formulario.publico,
+            colaborativo: formulario.colaborativo,
             vigencia: [
                 formulario.vigencia_inicio ? dayjs(formulario.vigencia_inicio) : null,
                 formulario.vigencia_fin ? dayjs(formulario.vigencia_fin) : null,
@@ -41,6 +43,7 @@ export default function ConfiguracionEditor({ formulario, onSaved }) {
             nombre: values.nombre,
             descripcion: values.descripcion,
             publico: values.publico,
+            colaborativo: values.colaborativo,
             vigencia_inicio: esPeriodico ? null : (values.vigencia?.[0]?.toISOString() ?? null),
             vigencia_fin: esPeriodico ? null : (values.vigencia?.[1]?.toISOString() ?? null),
             periodicidad: esPeriodico
@@ -109,6 +112,17 @@ export default function ConfiguracionEditor({ formulario, onSaved }) {
             </Form.Item>
             <Form.Item label="Descripción" name="descripcion">
                 <Input.TextArea rows={3} />
+            </Form.Item>
+
+            <Form.Item
+                label="Captura colaborativa"
+                name="colaborativo"
+                valuePropName="checked"
+                extra={sinGrupos
+                    ? 'Asigna el formulario a un grupo primero: el envío pertenece al grupo, así que sin grupos no hay a quién pertenecer.'
+                    : 'El envío pertenece al grupo, no a la persona. Todos los miembros llenan el mismo y solo el coordinador lo envía. Cada grupo asignado tiene su propio envío.'}
+            >
+                <Switch disabled={sinGrupos} />
             </Form.Item>
 
             <Form.Item

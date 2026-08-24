@@ -4,6 +4,7 @@ import { message } from '@shared/services/message';
 import { formulariosApi } from '../services/formulariosAdminApi';
 import { autoriaDesdeHistorial, buildRespuestas, diffDefiniciones } from './snapshotUtils';
 import { SeccionContenido } from './RespuestasView';
+import CapturaPorPersona from './CapturaPorPersona';
 import EnvioAuditoriaTab from './EnvioAuditoriaTab';
 import EnvioTimeline from './EnvioTimeline';
 
@@ -152,6 +153,8 @@ export default function EnvioDetalleDrawer({ formulario, envio, open, onClose })
                         { key: 'enviado', label: 'Enviado', children: fmt(detalle.enviado_en) },
                         { key: 'actualizado', label: 'Actualizado', children: fmt(detalle.actualizado_en) },
                     ]} />
+
+                    {detalle.grupo_id && <CapturaPorPersona autoria={autoria} />}
 
                     <Segmented value={vista} onChange={setVista} options={opciones} block />
 

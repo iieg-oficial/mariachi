@@ -70,7 +70,9 @@ export const gruposApi = {
     create: (data) => api.post('/sieej/grupos', data).then((r) => r.data),
     update: (id, data) => api.put(`/sieej/grupos/${id}`, data).then((r) => r.data),
     eliminar: (id) => api.delete(`/sieej/grupos/${id}`).then((r) => r.data),
-    actualizarMiembros: (id, usuarios) => api.put(`/sieej/grupos/${id}/usuarios`, { usuarios }).then((r) => r.data),
+    actualizarMiembros: (id, usuarios, coordinadores = []) => api
+        .put(`/sieej/grupos/${id}/usuarios`, { usuarios, coordinadores })
+        .then((r) => r.data),
     listMiembros: (id) => api.get(`/sieej/grupos/${id}/usuarios`).then((r) => r.data),
 };
 

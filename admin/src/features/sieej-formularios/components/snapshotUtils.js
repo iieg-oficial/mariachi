@@ -135,3 +135,25 @@ export const diffDefiniciones = (snapshot, actual) => {
     }
     return { agregados, eliminados, modificados };
 };
+
+
+/** Cuantos campos dejo cada persona con su valor actual, para el resumen del
+ * drawer. Cuenta sobre la autoria y no sobre las filas del historial: un campo
+ * editado tres veces sigue siendo un campo, del ultimo que lo toco. */
+export const resumirCaptura = (autoria = {}) => {
+    const porPersona = new Map();
+    Object.values(autoria).forEach(({ nombre, fecha }) => {
+        const clave = nombre || 'Sin registrar';
+        const previo = porPersona.get(clave) || { nombre: clave, campos: 0, ultimo: null };
+        previo.campos += 1;
+        if (!previo.ultimo || new Date(fecha) > new Date(previo.ultimo)) previo.ultimo = fecha;
+        porPersona.set(clave, previo);
+    });
+    const total = Object.keys(autoria).length;
+    return {
+        total,
+        personas: [...porPersona.values()]
+            .sort((a, b) => b.campos - a.campos)
+            .map((p) => ({ ...p, porcentaje: total ? Math.round((p.campos / total) * 100) : 0 })),
+    };
+};

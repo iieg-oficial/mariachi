@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
     Breadcrumb, Button, Card, Drawer, Empty, Form, Input, Modal,
-    Space, Spin, Table, Typography,
+    Select, Space, Spin, Table, Typography,
 } from 'antd';
 import {
     PlusOutlined, EditOutlined, DeleteOutlined, TeamOutlined, UsergroupAddOutlined,
@@ -25,6 +25,7 @@ export default function GruposPage() {
     const [usuarios, setUsuarios] = useState([]);
     const [miembros, setMiembros] = useState([]);
     const [savingMiembros, setSavingMiembros] = useState(false);
+    const [coordinadores, setCoordinadores] = useState([]);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -59,7 +60,11 @@ export default function GruposPage() {
         (async () => {
             try {
                 const m = await gruposApi.listMiembros(drawerGrupo.id);
-                if (!cancel) setMiembros(m.map((x) => x.id));
+                if (cancel) return;
+                setMiembros(m.map((x) => x.id));
+                setCoordinadores(
+                    m.filter((x) => x.rol_grupo === 'coordinador').map((x) => x.id),
+                );
             } catch {
                 message.error('Error al cargar miembros');
             }
@@ -130,7 +135,7 @@ export default function GruposPage() {
     const handleSaveMiembros = async () => {
         setSavingMiembros(true);
         try {
-            await gruposApi.actualizarMiembros(drawerGrupo.id, miembros);
+            await gruposApi.actualizarMiembros(drawerGrupo.id, miembros, coordinadores);
             message.success('Miembros actualizados');
             setDrawerGrupo(null);
         } catch (err) {
@@ -243,11 +248,38 @@ export default function GruposPage() {
                 }
             >
                 {drawerGrupo ? (
-                    <MemberPicker
-                        usuarios={usuarios}
-                        value={miembros}
-                        onChange={setMiembros}
-                    />
+                    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                        <MemberPicker
+                            usuarios={usuarios}
+                            value={miembros}
+                            onChange={(ids) => {
+                                setMiembros(ids);
+                                setCoordinadores((prev) => prev.filter((id) => ids.includes(id)));
+                            }}
+                        />
+                        <div>
+                            <Typography.Text strong>Coordinadores</Typography.Text>
+                            <Typography.Paragraph type="secondary" style={{ marginBottom: 8 }}>
+                                En los formularios con captura colaborativa, solo ellos pueden
+                                enviar el formulario del grupo. El resto captura y guarda.
+                            </Typography.Paragraph>
+                            <Select
+                                mode="multiple"
+                                allowClear
+                                style={{ width: '100%' }}
+                                placeholder="Nadie: el envío del grupo no se podrá enviar"
+                                value={coordinadores}
+                                onChange={setCoordinadores}
+                                optionFilterProp="label"
+                                options={usuarios
+                                    .filter((u) => miembros.includes(u.id))
+                                    .map((u) => ({
+                                        value: u.id,
+                                        label: `${u.name} (${u.username})`,
+                                    }))}
+                            />
+                        </div>
+                    </Space>
                 ) : <Spin />}
             </Drawer>
         </div>

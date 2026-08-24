@@ -9,6 +9,36 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.15.0] - 2026-08-21
+
+### Agregado: la captura colaborativa se prende desde el CMS
+
+Hasta aquí la función estaba completa pero se activaba por SQL, que es una forma elegante de decir
+que no se podía usar. Las dos piezas que faltaban:
+
+**El switch «Captura colaborativa»**, en la pestaña Configuración del formulario, junto al de
+apertura periódica. Está deshabilitado mientras el formulario no tenga grupos asignados, con el
+motivo a la vista: el envío pertenece al grupo, así que sin grupos la bandera no significa nada y lo
+único que lograría es que la gente crea que la función no sirve.
+
+Apagarlo con envíos de grupo en proceso responde **409**. Apagar la bandera mueve la identidad del
+envío de vuelta a la persona, y los que ya pertenecen a un grupo se quedarían sin ruta de acceso:
+nadie los volvería a encontrar desde el formulario. El mensaje dice cuántos son.
+
+**Los coordinadores**, en el drawer de miembros del grupo. `PUT /sieej/grupos/{id}/usuarios` acepta
+ahora `coordinadores`, un subconjunto de `usuarios`; quien no aparezca queda como capturista. Va como
+lista y no como mapa de roles porque el rol es binario, y así el cliente manda lo que la persona
+marcó en vez de un diccionario que tenga que armar. `GET .../usuarios` devuelve `rol_grupo`.
+
+### Agregado: quién capturó cuánto, en el detalle del envío
+
+Un resumen arriba del drawer, solo en envíos de grupo: cada persona con cuántos campos dejó con su
+valor actual, la barra de su proporción y la fecha de su último cambio en el tooltip.
+
+Cuenta sobre la autoría y no sobre las filas del historial. Un campo editado tres veces sigue siendo
+un campo, y se lo lleva quien lo dejó así, no quien lo empezó — que es la pregunta que uno se hace
+mirando un envío de equipo.
+
 ## [2.14.0] - 2026-08-21
 
 El inicio del admin cambia las ocho tarjetas del ecosistema por un tablero con historial de 24 horas,

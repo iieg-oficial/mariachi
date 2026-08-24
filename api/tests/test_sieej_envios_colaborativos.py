@@ -35,6 +35,7 @@ settings = get_settings()
 ADMIN_PREFIX = settings.admin_prefix
 SIEEJ_TABLES = [t for t in Base.metadata.sorted_tables if t.schema == "sieej"]
 PUBLIC_TABLES = [t for t in Base.metadata.sorted_tables if t.schema is None]
+HUACHICOL_TABLES = [t for t in Base.metadata.sorted_tables if t.schema == "huachicol"]
 
 
 DEFINICION_DEMO = {
@@ -77,10 +78,15 @@ def engine():
     )
     with eng.connect() as conn:
         conn.execute(text("ATTACH DATABASE ':memory:' AS sieej"))
+        conn.execute(text("ATTACH DATABASE ':memory:' AS huachicol"))
         conn.commit()
-    Base.metadata.create_all(bind=eng, tables=PUBLIC_TABLES + SIEEJ_TABLES)
+    Base.metadata.create_all(
+        bind=eng, tables=PUBLIC_TABLES + SIEEJ_TABLES + HUACHICOL_TABLES,
+    )
     yield eng
-    Base.metadata.drop_all(bind=eng, tables=SIEEJ_TABLES + PUBLIC_TABLES)
+    Base.metadata.drop_all(
+        bind=eng, tables=HUACHICOL_TABLES + SIEEJ_TABLES + PUBLIC_TABLES,
+    )
 
 
 @pytest.fixture(scope="function")
@@ -1010,3 +1016,177 @@ def test_la_linea_de_tiempo_del_envio_nombra_a_cada_actor(
     assert por_tipo["iniciado"]["actor_nombre"] == "Ana Lopez"
     assert por_tipo["actualizado"]["actor_nombre"] == "Beto Ruiz"
     assert por_tipo["actualizado"]["payload"]["campos"] == ["general.razon_social"]
+
+
+def test_dos_dependencias_llenan_el_mismo_formulario_por_separado(
+    session, client, admin, ana, beto, carla
+):
+    """El mismo formulario, un envio por grupo: IIEG por su lado, SIAPA por el suyo."""
+    f = crear_formulario(session, admin, slug="politicas", colaborativo=True)
+    iieg = crear_grupo(session, "iieg", [ana, beto])
+    siapa = crear_grupo(session, "siapa", [carla])
+    asignar_grupo(session, f, iieg)
+    asignar_grupo(session, f, siapa)
+
+    csrf = login(client, ana)
+    envio_iieg = client.get(f"{ADMIN_PREFIX}/formularios/{f.slug}/envio").json()
+    patch_campos(client, csrf, f.slug, {"general.razon_social": "IIEG"})
+
+    csrf = login(client, carla)
+    envio_siapa = client.get(f"{ADMIN_PREFIX}/formularios/{f.slug}/envio").json()
+    patch_campos(client, csrf, f.slug, {"general.razon_social": "SIAPA"})
+
+    assert envio_iieg["id"] != envio_siapa["id"]
+    assert envio_iieg["grupo_id"] == iieg.id
+    assert envio_siapa["grupo_id"] == siapa.id
+
+    login(client, beto)
+    visto_por_beto = client.get(f"{ADMIN_PREFIX}/formularios/{f.slug}/envio").json()
+    assert visto_por_beto["id"] == envio_iieg["id"]
+    assert visto_por_beto["datos"]["general"]["razon_social"] == "IIEG"
+
+    login(client, carla)
+    visto_por_carla = client.get(f"{ADMIN_PREFIX}/formularios/{f.slug}/envio").json()
+    assert visto_por_carla["datos"]["general"]["razon_social"] == "SIAPA"
+
+
+def test_cada_grupo_tiene_su_propio_coordinador_en_el_mismo_formulario(
+    session, client, admin, ana, beto, carla
+):
+    f = crear_formulario(session, admin, slug="politicas-2", colaborativo=True)
+    iieg = crear_grupo(session, "iieg-2", [ana, beto])
+    siapa = crear_grupo(session, "siapa-2", [carla])
+    asignar_grupo(session, f, iieg)
+    asignar_grupo(session, f, siapa)
+    for grupo, usuario in ((iieg, ana), (siapa, carla)):
+        session.execute(
+            usuario_grupo.update()
+            .where(
+                usuario_grupo.c.grupo_id == grupo.id,
+                usuario_grupo.c.usuario_id == usuario.id,
+            )
+            .values(rol="coordinador")
+        )
+    session.commit()
+
+    login(client, ana)
+    assert client.get(
+        f"{ADMIN_PREFIX}/formularios/{f.slug}/envio"
+    ).json()["puede_enviar"] is True
+
+    login(client, beto)
+    assert client.get(
+        f"{ADMIN_PREFIX}/formularios/{f.slug}/envio"
+    ).json()["puede_enviar"] is False
+
+    login(client, carla)
+    assert client.get(
+        f"{ADMIN_PREFIX}/formularios/{f.slug}/envio"
+    ).json()["puede_enviar"] is True
+
+
+def test_el_admin_prende_la_bandera_desde_el_cms(session, client, admin, ana, beto):
+    f = crear_formulario(session, admin, slug="cms-1", colaborativo=False)
+    asignar_grupo(session, f, crear_grupo(session, "dep-cms-1", [ana, beto]))
+
+    csrf = login(client, admin)
+    r = client.put(
+        f"{ADMIN_PREFIX}/sieej/formularios/{f.id}",
+        headers={"X-CSRF-Token": csrf},
+        json={"colaborativo": True},
+    )
+    assert r.status_code == 200, r.text
+    assert r.json()["colaborativo"] is True
+
+    login(client, ana)
+    assert client.get(
+        f"{ADMIN_PREFIX}/formularios/{f.slug}/envio"
+    ).json()["colaborativo"] is True
+
+
+def test_apagar_la_bandera_con_envios_de_grupo_vivos_es_409(
+    session, client, admin, ana, beto
+):
+    f, _ = envio_colaborativo(session, admin, ana, beto, "cms-2", "dep-cms-2")
+
+    csrf = login(client, ana)
+    patch_campos(client, csrf, f.slug, {"general.razon_social": "Acme SA"})
+
+    csrf = login(client, admin)
+    r = client.put(
+        f"{ADMIN_PREFIX}/sieej/formularios/{f.id}",
+        headers={"X-CSRF-Token": csrf},
+        json={"colaborativo": False},
+    )
+    assert r.status_code == 409
+    assert "sin acceso" in r.json()["detail"]
+
+    session.expire_all()
+    assert session.query(Formulario).filter(Formulario.id == f.id).one().colaborativo
+
+
+def test_el_admin_nombra_coordinadores_desde_el_cms(session, client, admin, ana, beto):
+    grupo = crear_grupo(session, "dep-cms-3", [ana, beto])
+
+    csrf = login(client, admin)
+    r = client.put(
+        f"{ADMIN_PREFIX}/sieej/grupos/{grupo.id}/usuarios",
+        headers={"X-CSRF-Token": csrf},
+        json={"usuarios": [ana.id, beto.id], "coordinadores": [ana.id]},
+    )
+    assert r.status_code == 200, r.text
+
+    miembros = client.get(
+        f"{ADMIN_PREFIX}/sieej/grupos/{grupo.id}/usuarios"
+    ).json()
+    por_id = {m["id"]: m["rol_grupo"] for m in miembros}
+    assert por_id == {ana.id: "coordinador", beto.id: "capturista"}
+
+
+def test_quitar_el_coordinador_lo_regresa_a_capturista(
+    session, client, admin, ana, beto
+):
+    grupo = crear_grupo(session, "dep-cms-4", [ana, beto])
+    csrf = login(client, admin)
+    client.put(
+        f"{ADMIN_PREFIX}/sieej/grupos/{grupo.id}/usuarios",
+        headers={"X-CSRF-Token": csrf},
+        json={"usuarios": [ana.id, beto.id], "coordinadores": [ana.id]},
+    )
+
+    client.put(
+        f"{ADMIN_PREFIX}/sieej/grupos/{grupo.id}/usuarios",
+        headers={"X-CSRF-Token": csrf},
+        json={"usuarios": [ana.id, beto.id], "coordinadores": [beto.id]},
+    )
+
+    miembros = client.get(
+        f"{ADMIN_PREFIX}/sieej/grupos/{grupo.id}/usuarios"
+    ).json()
+    por_id = {m["id"]: m["rol_grupo"] for m in miembros}
+    assert por_id == {ana.id: "capturista", beto.id: "coordinador"}
+
+
+def test_sacar_del_grupo_a_alguien_no_toca_el_rol_de_los_demas(
+    session, client, admin, ana, beto, carla
+):
+    grupo = crear_grupo(session, "dep-cms-5", [ana, beto, carla])
+    csrf = login(client, admin)
+    client.put(
+        f"{ADMIN_PREFIX}/sieej/grupos/{grupo.id}/usuarios",
+        headers={"X-CSRF-Token": csrf},
+        json={"usuarios": [ana.id, beto.id, carla.id], "coordinadores": [ana.id]},
+    )
+
+    client.put(
+        f"{ADMIN_PREFIX}/sieej/grupos/{grupo.id}/usuarios",
+        headers={"X-CSRF-Token": csrf},
+        json={"usuarios": [ana.id, beto.id], "coordinadores": [ana.id]},
+    )
+
+    miembros = client.get(
+        f"{ADMIN_PREFIX}/sieej/grupos/{grupo.id}/usuarios"
+    ).json()
+    assert {m["id"]: m["rol_grupo"] for m in miembros} == {
+        ana.id: "coordinador", beto.id: "capturista",
+    }

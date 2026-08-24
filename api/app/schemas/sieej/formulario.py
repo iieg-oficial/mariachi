@@ -17,6 +17,10 @@ class FormularioBase(BaseModel):
     vigencia_fin: datetime | None = None
     periodicidad: dict[str, Any] | None = None
     publico: bool = False
+    colaborativo: bool = False
+    """Con esto activo el envio pertenece al grupo, no a la persona: varias
+    llenan el mismo y solo el coordinador lo cierra. Sin grupos asignados no
+    hace nada, porque no hay a quien pertenecer."""
 
 
 class FormularioCreate(FormularioBase):
@@ -42,6 +46,7 @@ class FormularioUpdate(BaseModel):
     vigencia_fin: datetime | None = None
     periodicidad: dict[str, Any] | None = None
     publico: bool | None = None
+    colaborativo: bool | None = None
     actualizado_en_esperado: datetime | None = Field(
         default=None,
         description=(

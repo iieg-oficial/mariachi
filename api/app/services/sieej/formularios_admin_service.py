@@ -220,6 +220,7 @@ class FormulariosAdminService:
         """
         f = self.get(formulario_id)
         self._verificar_conflicto(f, data.pop("actualizado_en_esperado", None))
+        self._verificar_baja_colaborativa(f, data.get("colaborativo"))
         version_previa = f.version or 1
 
         slug_previo = f.slug
@@ -268,6 +269,7 @@ class FormulariosAdminService:
             "vigencia_inicio",
             "vigencia_fin",
             "publico",
+            "colaborativo",
         ):
             if campo in data and data[campo] is not None:
                 setattr(f, campo, data[campo])
@@ -555,6 +557,37 @@ class FormulariosAdminService:
             archivos,
         )
         return None
+
+    def _verificar_baja_colaborativa(
+        self, formulario: Formulario, colaborativo: bool | None
+    ) -> None:
+        """Impide apagar la bandera con envios de grupo vivos.
+
+        Apagarla mueve la identidad del envio de vuelta a la persona, y los
+        envios que ya pertenecen a un grupo se quedarian sin ruta de acceso:
+        nadie los volveria a encontrar desde el formulario.
+        """
+        if colaborativo is not False or not formulario.colaborativo:
+            return
+        vivos = (
+            self.db.query(func.count(EnvioFormulario.id))
+            .filter(
+                EnvioFormulario.formulario_id == formulario.id,
+                EnvioFormulario.grupo_id.isnot(None),
+                EnvioFormulario.estado == "en_proceso",
+                EnvioFormulario.eliminado_en.is_(None),
+            )
+            .scalar()
+        ) or 0
+        if vivos:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    f"No se puede desactivar la captura colaborativa: hay {vivos} "
+                    "envio(s) de grupo en proceso que quedarian sin acceso. "
+                    "Espera a que se envien o eliminalos primero."
+                ),
+            )
 
     def actualizar_asignaciones(
         self,
