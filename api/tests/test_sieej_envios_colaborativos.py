@@ -1,5 +1,5 @@
 """Tests de los envios de grupo: identidad del envio, autorizacion y rol."""
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -1373,5 +1373,35 @@ def test_un_grupo_vacio_no_estorba_para_prender_la_bandera(
         f"{ADMIN_PREFIX}/sieej/formularios/{f.id}",
         headers={"X-CSRF-Token": csrf},
         json={"colaborativo": True},
+    )
+    assert r.status_code == 200, r.text
+
+
+def test_el_coalescing_aguanta_fechas_con_zona_horaria(
+    session, client, admin, ana, beto
+):
+    """Postgres devuelve `cambiado_en` con tzinfo y `utcnow()` es naive.
+
+    En SQLite las dos salen naive, asi que la resta nunca fallaba en pruebas y
+    reventaba con 500 en el unico lugar donde importa.
+    """
+    f, _ = envio_colaborativo(session, admin, ana, beto, "colab-tz", "dep-tz")
+
+    csrf = login(client, ana)
+    r = patch_campos(client, csrf, f.slug, {"general.contacto": "Ana"})
+    assert r.status_code == 200, r.text
+
+    fila = (
+        session.query(EnvioValorHistorial)
+        .filter(EnvioValorHistorial.field_path == "general.contacto")
+        .one()
+    )
+    fila.cambiado_en = datetime.now(UTC)
+    session.flush()
+
+    r = patch_campos(
+        client, csrf, f.slug,
+        {"general.contacto": "Ana Lopez"},
+        desde=r.json()["datos_version"],
     )
     assert r.status_code == 200, r.text

@@ -14,7 +14,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.core.time import utcnow
+from app.core.time import to_naive_utc, utcnow
 from app.models.sieej import EnvioFormulario, EnvioValorHistorial
 from app.models.user import Usuario
 from app.services.sieej.field_paths import (
@@ -263,9 +263,10 @@ def _fila_coalescible(
     )
     if previa is None or previa.origen != "captura":
         return None
-    desde = previa.cambiado_en
+    # Postgres devuelve la columna con tzinfo y `utcnow()` es naive; en SQLite
+    # las dos salen naive. Normalizar las dos puntas es lo unico que hace que
+    # la resta funcione igual en los dos lados.
+    desde = to_naive_utc(previa.cambiado_en)
     if desde is None:
         return None
-    if desde.tzinfo is None:
-        desde = desde.replace(tzinfo=ahora.tzinfo)
-    return previa if ahora - desde < VENTANA_COALESCING else None
+    return previa if to_naive_utc(ahora) - desde < VENTANA_COALESCING else None

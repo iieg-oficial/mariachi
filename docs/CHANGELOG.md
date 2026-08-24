@@ -9,6 +9,20 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.16.1] - 2026-08-24
+
+### Corregido: guardar en un formulario con grupos respondía 500
+
+El coalescing del historial compara la fecha del último cambio contra el reloj para decidir si dos
+ediciones seguidas colapsan en una fila. Postgres devuelve `cambiado_en` **con zona horaria** y
+`utcnow()` es **naive**, así que la resta reventaba con `TypeError` y el `PATCH` de captura
+respondía 500 en cada guardado.
+
+No lo atrapó ninguna prueba porque **la suite corre sobre SQLite**, donde las dos puntas salen naive
+y la resta funciona. La guarda que tenía normalizaba solo el caso contrario —fecha sin zona contra
+reloj con zona—, que es el que nunca ocurre. Ahora se normalizan las dos con `to_naive_utc`, y la
+prueba de regresión fuerza una fecha con zona para que el caso quede cubierto en SQLite también.
+
 ## [2.16.0] - 2026-08-21
 
 ### Cambiado: el coordinador se marca sobre la lista de miembros
