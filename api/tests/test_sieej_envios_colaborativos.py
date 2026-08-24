@@ -1087,7 +1087,17 @@ def test_cada_grupo_tiene_su_propio_coordinador_en_el_mismo_formulario(
 
 def test_el_admin_prende_la_bandera_desde_el_cms(session, client, admin, ana, beto):
     f = crear_formulario(session, admin, slug="cms-1", colaborativo=False)
-    asignar_grupo(session, f, crear_grupo(session, "dep-cms-1", [ana, beto]))
+    grupo = crear_grupo(session, "dep-cms-1", [ana, beto])
+    asignar_grupo(session, f, grupo)
+    session.execute(
+        usuario_grupo.update()
+        .where(
+            usuario_grupo.c.grupo_id == grupo.id,
+            usuario_grupo.c.usuario_id == ana.id,
+        )
+        .values(rol="coordinador")
+    )
+    session.commit()
 
     csrf = login(client, admin)
     r = client.put(
@@ -1235,5 +1245,133 @@ def test_en_un_formulario_normal_los_grupos_se_quitan_sin_estorbo(
         f"{ADMIN_PREFIX}/sieej/formularios/{f.id}/asignaciones",
         headers={"X-CSRF-Token": csrf},
         json={"grupos": [], "usuarios": []},
+    )
+    assert r.status_code == 200, r.text
+
+
+def test_un_grupo_con_formulario_colaborativo_exige_coordinador(
+    session, client, admin, ana, beto
+):
+    f, grupo = envio_colaborativo(session, admin, ana, beto, "cms-9", "dep-cms-9")
+
+    csrf = login(client, admin)
+    r = client.put(
+        f"{ADMIN_PREFIX}/sieej/grupos/{grupo.id}/usuarios",
+        headers={"X-CSRF-Token": csrf},
+        json={"usuarios": [ana.id, beto.id], "coordinadores": []},
+    )
+    assert r.status_code == 409
+    assert f.nombre in r.json()["detail"]
+
+    r = client.put(
+        f"{ADMIN_PREFIX}/sieej/grupos/{grupo.id}/usuarios",
+        headers={"X-CSRF-Token": csrf},
+        json={"usuarios": [ana.id, beto.id], "coordinadores": [ana.id]},
+    )
+    assert r.status_code == 200, r.text
+
+
+def test_un_grupo_sin_formularios_colaborativos_puede_no_tener_coordinador(
+    session, client, admin, ana, beto
+):
+    f = crear_formulario(session, admin, slug="cms-10", colaborativo=False)
+    grupo = crear_grupo(session, "dep-cms-10", [ana, beto])
+    asignar_grupo(session, f, grupo)
+
+    csrf = login(client, admin)
+    r = client.put(
+        f"{ADMIN_PREFIX}/sieej/grupos/{grupo.id}/usuarios",
+        headers={"X-CSRF-Token": csrf},
+        json={"usuarios": [ana.id, beto.id], "coordinadores": []},
+    )
+    assert r.status_code == 200, r.text
+
+
+def test_vaciar_el_grupo_no_exige_coordinador(session, client, admin, ana, beto):
+    _f, grupo = envio_colaborativo(session, admin, ana, beto, "cms-11", "dep-cms-11")
+
+    csrf = login(client, admin)
+    r = client.put(
+        f"{ADMIN_PREFIX}/sieej/grupos/{grupo.id}/usuarios",
+        headers={"X-CSRF-Token": csrf},
+        json={"usuarios": [], "coordinadores": []},
+    )
+    assert r.status_code == 200, r.text
+
+
+def test_relevar_al_coordinador_en_el_mismo_guardado_si_se_puede(
+    session, client, admin, ana, beto
+):
+    _f, grupo = envio_colaborativo(session, admin, ana, beto, "cms-12", "dep-cms-12")
+    csrf = login(client, admin)
+    client.put(
+        f"{ADMIN_PREFIX}/sieej/grupos/{grupo.id}/usuarios",
+        headers={"X-CSRF-Token": csrf},
+        json={"usuarios": [ana.id, beto.id], "coordinadores": [ana.id]},
+    )
+
+    r = client.put(
+        f"{ADMIN_PREFIX}/sieej/grupos/{grupo.id}/usuarios",
+        headers={"X-CSRF-Token": csrf},
+        json={"usuarios": [ana.id, beto.id], "coordinadores": [beto.id]},
+    )
+    assert r.status_code == 200, r.text
+    miembros = client.get(
+        f"{ADMIN_PREFIX}/sieej/grupos/{grupo.id}/usuarios"
+    ).json()
+    assert {m["id"]: m["rol_grupo"] for m in miembros} == {
+        ana.id: "capturista", beto.id: "coordinador",
+    }
+
+
+def test_prender_la_bandera_con_un_grupo_sin_coordinador_es_409(
+    session, client, admin, ana, beto
+):
+    f = crear_formulario(session, admin, slug="cms-13", colaborativo=False)
+    grupo = crear_grupo(session, "dep-cms-13", [ana, beto])
+    asignar_grupo(session, f, grupo)
+
+    csrf = login(client, admin)
+    r = client.put(
+        f"{ADMIN_PREFIX}/sieej/formularios/{f.id}",
+        headers={"X-CSRF-Token": csrf},
+        json={"colaborativo": True},
+    )
+    assert r.status_code == 409
+    assert grupo.nombre in r.json()["detail"]
+
+    client.put(
+        f"{ADMIN_PREFIX}/sieej/grupos/{grupo.id}/usuarios",
+        headers={"X-CSRF-Token": csrf},
+        json={"usuarios": [ana.id, beto.id], "coordinadores": [ana.id]},
+    )
+    r = client.put(
+        f"{ADMIN_PREFIX}/sieej/formularios/{f.id}",
+        headers={"X-CSRF-Token": csrf},
+        json={"colaborativo": True},
+    )
+    assert r.status_code == 200, r.text
+
+
+def test_un_grupo_vacio_no_estorba_para_prender_la_bandera(
+    session, client, admin, ana
+):
+    f = crear_formulario(session, admin, slug="cms-14", colaborativo=False)
+    con_gente = crear_grupo(session, "dep-cms-14a", [ana])
+    vacio = crear_grupo(session, "dep-cms-14b", [])
+    asignar_grupo(session, f, con_gente)
+    asignar_grupo(session, f, vacio)
+    session.execute(
+        usuario_grupo.update()
+        .where(usuario_grupo.c.grupo_id == con_gente.id)
+        .values(rol="coordinador")
+    )
+    session.commit()
+
+    csrf = login(client, admin)
+    r = client.put(
+        f"{ADMIN_PREFIX}/sieej/formularios/{f.id}",
+        headers={"X-CSRF-Token": csrf},
+        json={"colaborativo": True},
     )
     assert r.status_code == 200, r.text

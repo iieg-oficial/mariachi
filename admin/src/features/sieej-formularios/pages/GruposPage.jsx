@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
     Breadcrumb, Button, Card, Drawer, Empty, Form, Input, Modal,
-    Select, Space, Spin, Table, Typography,
+    Space, Spin, Table, Typography,
 } from 'antd';
 import {
     PlusOutlined, EditOutlined, DeleteOutlined, TeamOutlined, UsergroupAddOutlined,
@@ -11,6 +11,7 @@ import useIsMobile from '@shared/hooks/useIsMobile';
 import { message } from '@shared/services/message';
 import { gruposApi, usuariosApi } from '../services/formulariosAdminApi';
 import MemberPicker from '../components/MemberPicker';
+import MiembrosConRol from '../components/MiembrosConRol';
 
 export default function GruposPage() {
     const navigate = useNavigate();
@@ -258,25 +259,17 @@ export default function GruposPage() {
                             }}
                         />
                         <div>
-                            <Typography.Text strong>Coordinadores</Typography.Text>
+                            <Typography.Text strong>Miembros y roles</Typography.Text>
                             <Typography.Paragraph type="secondary" style={{ marginBottom: 8 }}>
-                                En los formularios con captura colaborativa, solo ellos pueden
-                                enviar el formulario del grupo. El resto captura y guarda.
+                                En los formularios con captura colaborativa, el coordinador es
+                                el único que puede enviar el envío del grupo. El resto captura
+                                y guarda.
                             </Typography.Paragraph>
-                            <Select
-                                mode="multiple"
-                                allowClear
-                                style={{ width: '100%' }}
-                                placeholder="Nadie: el envío del grupo no se podrá enviar"
-                                value={coordinadores}
+                            <MiembrosConRol
+                                usuarios={usuarios}
+                                miembros={miembros}
+                                coordinadores={coordinadores}
                                 onChange={setCoordinadores}
-                                optionFilterProp="label"
-                                options={usuarios
-                                    .filter((u) => miembros.includes(u.id))
-                                    .map((u) => ({
-                                        value: u.id,
-                                        label: `${u.name} (${u.username})`,
-                                    }))}
                             />
                         </div>
                     </Space>

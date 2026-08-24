@@ -25,6 +25,7 @@ from app.models.sieej import (
     Grupo,
     formulario_grupo,
     formulario_usuario,
+    usuario_grupo,
 )
 from app.models.user import Usuario
 from app.services.acervo import AcervoClient
@@ -221,6 +222,7 @@ class FormulariosAdminService:
         f = self.get(formulario_id)
         self._verificar_conflicto(f, data.pop("actualizado_en_esperado", None))
         self._verificar_baja_colaborativa(f, data.get("colaborativo"))
+        self._verificar_alta_colaborativa(f, data.get("colaborativo"))
         version_previa = f.version or 1
 
         slug_previo = f.slug
@@ -589,6 +591,44 @@ class FormulariosAdminService:
                 detail=(
                     "No se puede quitar un grupo con envios en proceso: "
                     f"{nombres}. Espera a que se envien o eliminalos primero."
+                ),
+            )
+
+    def _verificar_alta_colaborativa(
+        self, formulario: Formulario, colaborativo: bool | None
+    ) -> None:
+        """Impide prender la bandera con grupos que no tienen coordinador.
+
+        Sin coordinador el grupo captura pero no puede entregar, y se descubre
+        al final. Junto con el bloqueo de quitar al ultimo coordinador, cierra
+        el circulo: no se puede entrar en un estado del que despues no se sale.
+        """
+        if colaborativo is not True or formulario.colaborativo:
+            return
+        sin_coordinador = [
+            nombre
+            for nombre, coordinadores in (
+                self.db.query(
+                    Grupo.nombre,
+                    func.count(usuario_grupo.c.usuario_id).filter(
+                        usuario_grupo.c.rol == "coordinador"
+                    ),
+                )
+                .join(formulario_grupo, formulario_grupo.c.grupo_id == Grupo.id)
+                .join(usuario_grupo, usuario_grupo.c.grupo_id == Grupo.id)
+                .filter(formulario_grupo.c.formulario_id == formulario.id)
+                .group_by(Grupo.nombre)
+                .all()
+            )
+            if not coordinadores
+        ]
+        if sin_coordinador:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "Estos grupos no tienen coordinador y no podrian enviar el "
+                    f"formulario: {', '.join(sin_coordinador)}. Nombra uno en "
+                    "cada grupo antes de activar la captura colaborativa."
                 ),
             )
 

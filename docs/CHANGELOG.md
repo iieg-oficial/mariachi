@@ -9,6 +9,31 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.16.0] - 2026-08-21
+
+### Cambiado: el coordinador se marca sobre la lista de miembros
+
+Era un selector aparte, debajo del de miembros, que obligaba a volver a buscar a la persona que
+acababas de agregar. Ahora los miembros elegidos se listan con su interruptor de **Coordinador** en
+cada renglón: eliges a quién metes y de una vez quién coordina, sobre la misma lista. Mientras no
+haya ningún miembro, la sección lo dice en vez de mostrar un control vacío.
+
+### Agregado: un grupo que llena formularios colaborativos exige coordinador
+
+Sin coordinador el grupo captura pero no puede entregar, y eso se descubre al final, con el trabajo
+hecho. Dos bloqueos que cierran el círculo:
+
+- **Quitar al último coordinador** de un grupo asignado a un formulario colaborativo responde 409,
+  nombrando los formularios que se quedarían sin quien los envíe. Relevar al coordinador en el mismo
+  guardado sí se puede: lo que se rechaza es quedarse sin ninguno.
+- **Prender la bandera** con grupos sin coordinador responde 409 con la lista. No se puede entrar a
+  un estado del que después no se sale.
+
+En un grupo sin formularios colaborativos no se exige nada: puede quedarse sin coordinador sin
+consecuencias. Y un grupo vacío no estorba, porque no hay a quién coordinar.
+
+En el CMS, la lista de miembros avisa en cuanto no hay coordinador, sin esperar al guardado.
+
 ## [2.15.1] - 2026-08-21
 
 ### Cambiado: el switch de captura colaborativa se mudó a Asignaciones

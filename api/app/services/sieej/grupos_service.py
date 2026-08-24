@@ -9,7 +9,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.models.sieej import Grupo, formulario_grupo, usuario_grupo
+from app.models.sieej import Formulario, Grupo, formulario_grupo, usuario_grupo
 from app.models.user import Usuario
 
 
@@ -110,6 +110,7 @@ class GruposService:
         en cada edicion.
         """
         g = self.get(grupo_id)
+        self._verificar_coordinador(g, usuarios_ids, coordinadores_ids)
         if usuarios_ids:
             validos = self.db.query(Usuario.id).filter(Usuario.id.in_(usuarios_ids)).all()
             if len(validos) != len(set(usuarios_ids)):
@@ -151,6 +152,44 @@ class GruposService:
         self.db.commit()
         self.db.refresh(g)
         return g
+
+    def _verificar_coordinador(
+        self,
+        grupo: Grupo,
+        usuarios_ids: list[int],
+        coordinadores_ids: list[int] | None,
+    ) -> None:
+        """Un grupo que llena formularios colaborativos necesita coordinador.
+
+        Sin el, nadie puede cerrar el envio del grupo y el equipo captura sin
+        poder entregar. Solo se exige donde importa: un grupo sin formularios
+        colaborativos puede quedarse sin coordinador sin consecuencias.
+        """
+        if coordinadores_ids is None or not usuarios_ids:
+            return
+        if set(coordinadores_ids) & set(usuarios_ids):
+            return
+        colaborativos = [
+            nombre
+            for (nombre,) in self.db.query(Formulario.nombre)
+            .join(
+                formulario_grupo,
+                formulario_grupo.c.formulario_id == Formulario.id,
+            )
+            .filter(
+                formulario_grupo.c.grupo_id == grupo.id,
+                Formulario.colaborativo.is_(True),
+            )
+            .all()
+        ]
+        if colaborativos:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "El grupo necesita al menos un coordinador: sin el nadie podra "
+                    f"enviar {', '.join(colaborativos)}."
+                ),
+            )
 
     def listar_miembros(self, grupo_id: int) -> list[tuple[Usuario, str]]:
         """Miembros del grupo con su rol, ordenados por username."""
