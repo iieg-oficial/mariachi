@@ -236,6 +236,29 @@ refresco proactivo falla, el 401 y su reintento se comportan igual que antes.
 El refresco sigue pasando por `runExclusiveRefresh` —Web Locks más la marca `auth_refreshed_at`—,
 así que varias pestañas con el mismo calendario despiertan juntas y sólo una toca la red.
 
+### Agregado: el panel de estadísticas edita filtros y prueba con municipio y fechas
+
+Los filtros compuestos existían en el motor desde esta misma versión, pero configurarlos exigía
+escribir el JSON a mano: el panel no los conocía. Ahora cada slot primitivo tiene un editor de
+condiciones —columna, operador y valor— con los seis operadores (`eq`, `in`, `gte`, `lte`,
+`between`, `is_not_null`) y hasta seis por estadística.
+
+Un botón por condición alterna entre **valor fijo** y **valor del visor**. En el segundo caso se
+elige entre municipio seleccionado, fecha inicial o fecha final, y la condición se omite sola cuando
+el visor no manda ese dato — que es lo que permite que la misma configuración sirva para el total
+estatal del cron y para la vista filtrada. La columna puede ser `@municipio`, que se resuelve a la
+que declare la capa en su catálogo en vez de nombrarla a mano.
+
+**Y se puede probar sin salir de la edición.** Una barra de contexto arriba de los slots permite
+elegir municipios y un rango de fechas; la vista previa de cada slot los manda al servidor y devuelve
+el número que vería alguien con esa selección en el visor. Sin contexto, el preview sigue mostrando
+lo que persiste el cron. Antes esto era invisible: una estadística con condiciones de contexto
+mostraba el total y parecía rota.
+
+`POST /layer-metadata/{layer_key}/stats/preview` acepta `municipio` (claves INEGI separadas por
+coma), `fecha_inicio` y `fecha_fin` como parámetros de consulta, y devuelve el contexto que aplicó.
+Se suma `GET /layer-metadata/municipios` para poblar el selector.
+
 ### Agregado: filtros compuestos y placeholders de contexto en las estadísticas
 
 Una estadística podía llevar **una** condición, de igualdad exacta, contra un valor fijo. Ahora
