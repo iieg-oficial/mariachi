@@ -12,11 +12,8 @@ from pydantic import (
 )
 
 from app.core.acervo_url import to_absolute, to_relative
-from app.core.password_policy import validate_password_strength
 from app.schemas._camel import CamelCaseInput
 from app.schemas.project import BucketSummary, UserProjectAssignment, UserProjectMembership
-
-StrongPassword = Annotated[str, AfterValidator(validate_password_strength)]
 
 
 def _ensure_has_at(v: str) -> str:
@@ -107,15 +104,6 @@ class CurrentUserResponse(UsuarioResponse):
     accessible_buckets: list["BucketSummary"] = []
     permissions: list[str] = []
     session_expires_in: int = 0
-
-
-class PasswordChange(BaseModel):
-    current_password: str
-    new_password: StrongPassword
-
-
-class PasswordReset(BaseModel):
-    new_password: str
 
 
 class LoginRequest(BaseModel):

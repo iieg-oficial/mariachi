@@ -85,6 +85,16 @@ Por lo mismo, el estado de la cuenta deja de listar «debe renovar» entre sus p
 en `true` —las dos rutas que crean usuarios la fijan en `false`— y que ninguna pantalla del admin
 sabe atender. Señalaba un trámite que en mariachi ya no existe.
 
+Con el campo fuera, se van también los restos del login local que quedaban colgando: los dos
+esquemas de cambio y reinicio de credencial —sin una sola ruta que los importara desde `2.0.0`— y
+`app/core/password_policy.py` completo, cuyo único consumidor era el campo que acaba de
+desaparecer. `hash_password` y `verify_password` **se quedan**: `colibri_keys` y `mapalab_keys` los
+usan para las llaves de API, que sí son secretos vivos.
+
+Quedan en `schemas/user.py` `LoginRequest`, `LoginResponse` y `TokenPayload`, igual de huérfanos
+—solo reexportados en `schemas/__init__.py`—, pero son de la familia del login, no de la de las
+credenciales, y salen aparte.
+
 ## [2.13.0] - 2026-08-21
 
 Cierra los envíos colaborativos de SIEEJ: la sexta y última fase, más las dos aportaciones de
