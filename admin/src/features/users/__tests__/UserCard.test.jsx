@@ -102,11 +102,11 @@ describe('UserCard', () => {
     });
 
     it('los pendientes de la cuenta se enumeran en el nombre accesible', () => {
-        renderCard({ minerva_vinculado: false, ultimo_acceso: null, must_change_password: true });
+        renderCard({ minerva_vinculado: false, ultimo_acceso: null, projects: [] });
         const estado = screen.getByLabelText(/pendiente/);
         expect(estado).toHaveAttribute('aria-label', expect.stringContaining('Sin vincular a minerva'));
-        expect(estado).toHaveAttribute('aria-label', expect.stringContaining('renovar su contraseña'));
         expect(estado).toHaveAttribute('aria-label', expect.stringContaining('Nunca ha iniciado sesión'));
+        expect(estado).toHaveAttribute('aria-label', expect.stringContaining('Sin proyectos asignados'));
     });
 
     it('muestra la ultima sesion y avisa cuando no hay', () => {

@@ -8,9 +8,6 @@ export const pendientesDe = (user, detalleVisible = true) => {
     if (!user.minerva_vinculado) {
         pendientes.push('Sin vincular a minerva: la cuenta existe pero nadie la ha reclamado');
     }
-    if (user.must_change_password) {
-        pendientes.push('Debe renovar su contraseña en el próximo ingreso');
-    }
     if (!user.ultimo_acceso) {
         pendientes.push('Nunca ha iniciado sesión');
     } else if (dias(user.ultimo_acceso) > DIAS_INACTIVA) {

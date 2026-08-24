@@ -42,7 +42,6 @@ class SieejGrupoRef(BaseModel):
 
 
 class UsuarioCreate(UsuarioBase):
-    password: StrongPassword | None = None
     role: Literal["tetlamamakani", "editora", "externo"]
     project_assignments: list["UserProjectAssignment"] | None = None
     sieej_grupo_id: int | None = None

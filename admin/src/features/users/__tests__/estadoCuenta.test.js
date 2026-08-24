@@ -4,7 +4,6 @@ import { pendientesDe } from '@features/users/helpers/estadoCuenta';
 const alDia = {
     role: 'editora',
     minerva_vinculado: true,
-    must_change_password: false,
     ultimo_acceso: new Date().toISOString(),
     projects: [{ slug: 'sieej', name: 'SIEEJ', project_role: 'editor' }],
 };
@@ -18,8 +17,8 @@ describe('pendientesDe', () => {
         expect(pendientesDe({ ...alDia, minerva_vinculado: false })[0]).toMatch(/Sin vincular a minerva/);
     });
 
-    it('detecta la contrasena por renovar', () => {
-        expect(pendientesDe({ ...alDia, must_change_password: true })[0]).toMatch(/renovar su contraseña/);
+    it('la marca heredada de las cuentas locales ya no genera pendiente', () => {
+        expect(pendientesDe({ ...alDia, must_change_password: true })).toEqual([]);
     });
 
     it('distingue nunca ingreso de inactiva', () => {

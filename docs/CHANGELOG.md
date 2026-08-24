@@ -70,6 +70,21 @@ con `accent-deep` y `secondary`, que ya existían.
 mensaje de error, pero ignoraba `port`, que es lo único que traen los checks de upstream del gateway.
 Ocho de los nueve checks de gateway-hub se veían con la columna vacía.
 
+### Eliminado: la clave que `POST /usuarios` aceptaba y tiraba a la basura
+
+`UsuarioCreate` declaraba un campo de clave con validación de robustez, y `crear_usuario()` lo
+excluía del `model_dump` para escribir `!minerva` en su lugar. Es decir: la API la pedía, la validaba
+y después la ignoraba. Quien la mandara podía creer razonablemente que había quedado guardada.
+
+Desde `2.0.0` mariachi no autentica: el login es OIDC contra minerva y **todas** las filas de
+`usuarios` llevan `!minerva` como hash inutilizable. La credencial vive en minerva y ahí se
+administra. El campo sale del esquema; el endpoint sigue aceptando la misma petición sin él.
+
+Por lo mismo, el estado de la cuenta deja de listar «debe renovar» entre sus pendientes:
+`must_change_password` es una marca heredada de la época del login local que ya nadie vuelve a poner
+en `true` —las dos rutas que crean usuarios la fijan en `false`— y que ninguna pantalla del admin
+sabe atender. Señalaba un trámite que en mariachi ya no existe.
+
 ## [2.13.0] - 2026-08-21
 
 Cierra los envíos colaborativos de SIEEJ: la sexta y última fase, más las dos aportaciones de
