@@ -1190,3 +1190,50 @@ def test_sacar_del_grupo_a_alguien_no_toca_el_rol_de_los_demas(
     assert {m["id"]: m["rol_grupo"] for m in miembros} == {
         ana.id: "coordinador", beto.id: "capturista",
     }
+
+
+def test_quitar_un_grupo_con_envio_vivo_es_409(session, client, admin, ana, beto):
+    f, grupo = envio_colaborativo(session, admin, ana, beto, "cms-6", "dep-cms-6")
+
+    csrf = login(client, ana)
+    patch_campos(client, csrf, f.slug, {"general.razon_social": "Acme SA"})
+
+    csrf = login(client, admin)
+    r = client.put(
+        f"{ADMIN_PREFIX}/sieej/formularios/{f.id}/asignaciones",
+        headers={"X-CSRF-Token": csrf},
+        json={"grupos": [], "usuarios": []},
+    )
+    assert r.status_code == 409
+    assert grupo.nombre in r.json()["detail"]
+
+
+def test_quitar_un_grupo_sin_envios_si_se_puede(session, client, admin, ana, beto):
+    f, grupo = envio_colaborativo(session, admin, ana, beto, "cms-7", "dep-cms-7")
+
+    csrf = login(client, admin)
+    r = client.put(
+        f"{ADMIN_PREFIX}/sieej/formularios/{f.id}/asignaciones",
+        headers={"X-CSRF-Token": csrf},
+        json={"grupos": [], "usuarios": []},
+    )
+    assert r.status_code == 200, r.text
+
+
+def test_en_un_formulario_normal_los_grupos_se_quitan_sin_estorbo(
+    session, client, admin, ana, beto
+):
+    f = crear_formulario(session, admin, slug="cms-8", colaborativo=False)
+    grupo = crear_grupo(session, "dep-cms-8", [ana, beto])
+    asignar_grupo(session, f, grupo)
+
+    login(client, ana)
+    client.get(f"{ADMIN_PREFIX}/formularios/{f.slug}/envio")
+
+    csrf = login(client, admin)
+    r = client.put(
+        f"{ADMIN_PREFIX}/sieej/formularios/{f.id}/asignaciones",
+        headers={"X-CSRF-Token": csrf},
+        json={"grupos": [], "usuarios": []},
+    )
+    assert r.status_code == 200, r.text

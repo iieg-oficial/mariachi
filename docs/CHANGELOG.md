@@ -9,6 +9,22 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.15.1] - 2026-08-21
+
+### Cambiado: el switch de captura colaborativa se mudó a Asignaciones
+
+Estaba en Configuración, junto al de apertura periódica, por parecido de forma. Pero la bandera
+**depende de los grupos**: sin grupos asignados no significa nada, y el switch vivía en una pestaña
+donde no se ve si los hay. Ahora está debajo del selector de grupos, que es donde se toma la decisión
+que le da sentido, y se guarda solo al accionarlo en vez de esperar al botón de la forma.
+
+### Corregido: quitarle el grupo a un formulario colaborativo dejaba su envío sin dueño
+
+El bloqueo de apagar la bandera existía, pero había una segunda puerta al mismo problema: desasignar
+el grupo. El envío seguía apuntando a un grupo que ya no ve el formulario, así que sus miembros
+perdían el acceso a lo que llevaban capturado, sin aviso. Ahora responde **409** nombrando los grupos
+con envíos en proceso y cuántos son. En un formulario normal los grupos se quitan como siempre.
+
 ## [2.15.0] - 2026-08-21
 
 ### Agregado: la captura colaborativa se prende desde el CMS

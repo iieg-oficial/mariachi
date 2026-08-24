@@ -558,6 +558,40 @@ class FormulariosAdminService:
         )
         return None
 
+    def _verificar_grupos_con_envios(
+        self, formulario: Formulario, grupos_ids: list[int]
+    ) -> None:
+        """Impide desasignar un grupo que ya tiene un envio vivo del formulario.
+
+        El envio seguiria apuntando a un grupo que ya no ve el formulario, asi
+        que sus miembros perderian el acceso a lo que llevan capturado. Misma
+        razon que el bloqueo de apagar la bandera.
+        """
+        if not formulario.colaborativo:
+            return
+        quedan = set(grupos_ids)
+        huerfanos = (
+            self.db.query(Grupo.nombre, func.count(EnvioFormulario.id))
+            .join(EnvioFormulario, EnvioFormulario.grupo_id == Grupo.id)
+            .filter(
+                EnvioFormulario.formulario_id == formulario.id,
+                EnvioFormulario.estado == "en_proceso",
+                EnvioFormulario.eliminado_en.is_(None),
+                Grupo.id.notin_(quedan) if quedan else True,
+            )
+            .group_by(Grupo.nombre)
+            .all()
+        )
+        if huerfanos:
+            nombres = ", ".join(f"{nombre} ({n})" for nombre, n in huerfanos)
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "No se puede quitar un grupo con envios en proceso: "
+                    f"{nombres}. Espera a que se envien o eliminalos primero."
+                ),
+            )
+
     def _verificar_baja_colaborativa(
         self, formulario: Formulario, colaborativo: bool | None
     ) -> None:
@@ -596,6 +630,7 @@ class FormulariosAdminService:
         usuarios_ids: list[int],
     ) -> Formulario:
         f = self.get(formulario_id)
+        self._verificar_grupos_con_envios(f, grupos_ids)
 
         # Validar que los grupos y usuarios existan
         if grupos_ids:
