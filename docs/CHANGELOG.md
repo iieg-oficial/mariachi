@@ -9,6 +9,50 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.17.0] - 2026-08-24
+
+### Agregado: la tarjeta se edita como JSON y se copia entre entornos
+
+Pasar una tarjeta de pruebas a producción obligaba a `make backup-tarjetitas` /
+`make restore-tarjetitas`: exportar el `infobox_config` de **todas** las capas a un SQL, elegir el
+archivo y aplicarlo contra la otra base. Para una sola capa era un rodeo largo.
+
+El editor de tarjetas —la pestaña **Tarjeta** del editor de capas y el cajón de contenido— abre
+ahora con un selector **Visual / JSON**. En modo JSON se ve el `infobox_config` tal como se guarda,
+con botones de copiar y formatear: se copia desde la capa en pruebas y se pega en la misma capa de
+producción. Mientras el JSON esté roto no se toca la configuración, así que un pegado a medias no
+borra la tarjeta; vaciar el campo sí la quita y devuelve la capa a lo que herede de su grupo.
+
+Cuando la capa está heredando, el modo JSON lo dice y ofrece partir del JSON del grupo. Y si la
+configuración trae claves de primer nivel que el visor no lee, las guarda pero avisa cuáles son.
+
+### Agregado: herramienta para migrar el padrón a minerva
+
+`scripts/migrar_usuarios_a_minerva.py` da de alta en minerva a la gente que ya existe en mariachi,
+con los roles de la aplicación que le tocan a cada quien. Es el paso que faltaba desde `2.0.0`: la
+columna `minerva_sub` y la reconciliación por correo están construidas desde entonces, pero el
+padrón nunca se dio de alta del otro lado, y **minerva no emite código de autorización a quien no
+tiene rol en la aplicación** —responde `access_denied` y no hay token—. Medido en el stack local:
+20 usuarios en mariachi, 2 vinculados; los otros 18 no entrarían.
+
+El mapeo vive en `app/services/minerva_migracion.py`, es función pura y tiene 13 pruebas:
+`tetlamamakani` va al rol compuesto **Administrador**, y una `editora` recibe un rol atómico por
+cada proyecto asignado según sea editor o viewer —«MapaLab - edicion», «SIEEJ - consulta»…—.
+Un `externo` con SIEEJ recibe «SIEEJ - reportar». Quien no recibiría ningún rol **no se da de alta**:
+el plan lo aparta y lo nombra, porque darlo de alta sin rol es dejarlo con una cuenta que no abre
+nada.
+
+Por omisión **solo planea**: imprime lo que haría y no escribe. Escribe con `--aplicar`, y es
+idempotente, así que se puede correr dos veces o retomar una corrida a medias.
+
+Dos cosas que la herramienta no puede resolver porque son de minerva, verificadas en su v1.0.0: su
+API de administración es unitaria y exige sesión de panel de un administrador global —no hay
+`client_credentials` ni delegación por aplicación—, así que el script inicia sesión como persona y
+pide la credencial al operador sin guardarla; y **el alta exige contraseña**, sin flujo de
+invitación, así que genera una temporal por persona y las deja en un CSV con permisos `600` que hay
+que entregar por canal seguro y borrar. El procedimiento completo, en
+`runbook/migracion-padron-minerva.md` del repo de contexto.
+
 ## [2.16.1] - 2026-08-24
 
 ### Corregido: guardar en un formulario con grupos respondía 500
