@@ -224,8 +224,21 @@ export const useLayerTreeAdmin = () => {
         return res.data;
     }, []);
 
-    const previewLayerStat = useCallback(async (layerKey, cfg) => {
-        const res = await api.post(`/layer-metadata/${encodeURIComponent(layerKey)}/stats/preview`, cfg);
+    const previewLayerStat = useCallback(async (layerKey, cfg, context) => {
+        const params = {};
+        if (context?.municipio?.length) params.municipio = context.municipio.join(',');
+        if (context?.fechaInicio) params.fecha_inicio = context.fechaInicio;
+        if (context?.fechaFin) params.fecha_fin = context.fechaFin;
+        const res = await api.post(
+            `/layer-metadata/${encodeURIComponent(layerKey)}/stats/preview`,
+            cfg,
+            { params },
+        );
+        return res.data;
+    }, []);
+
+    const listMunicipios = useCallback(async () => {
+        const res = await api.get('/layer-metadata/municipios');
         return res.data;
     }, []);
 
@@ -309,6 +322,7 @@ export const useLayerTreeAdmin = () => {
         getLayerStats,
         updateLayerStats,
         previewLayerStat,
+        listMunicipios,
         refreshLayerStats,
         listLayerAliases,
         createLayerAlias,

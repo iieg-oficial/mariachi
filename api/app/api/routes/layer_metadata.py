@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.api.deps import require_permission, verify_csrf
@@ -21,6 +22,7 @@ from app.services.mapalab_notifier import notify_tree_changed
 from app.services.stats_templates import (
     StatsTemplateError,
     bind_layer_fields,
+    build_stats_context,
     execute_stats_batch,
     load_layer_binding,
     validate_stats_config,
@@ -44,6 +46,17 @@ async def list_metadata(
     return db.query(LayerMetadata).order_by(LayerMetadata.layer_key).all()
 
 
+@router.get('/municipios')
+async def list_municipios(
+    db: Session = Depends(get_dataengine_db),
+    current_user: Usuario = Depends(_require_project_editor),
+):
+    rows = db.execute(
+        text('SELECT clave_geo, nombre FROM mapalab.municipios ORDER BY nombre')
+    ).fetchall()
+    return [{'clave': r[0], 'nombre': r[1]} for r in rows]
+
+
 # NOTA: las rutas con sub-paths fijos (/stats, /stats/preview, /stats/refresh) DEBEN
 # declararse ANTES del catch-all `{layer_key:path}` porque el `:path` matchea barras
 # y absorbería rutas como "salud:unidades_salud/stats" como un solo layer_key.
@@ -57,6 +70,9 @@ async def preview_stat_get_unsupported(layer_key: str):
 async def preview_stat(
     layer_key: str,
     cfg: dict = Body(...),
+    municipio: str | None = Query(default=None),
+    fecha_inicio: str | None = Query(default=None),
+    fecha_fin: str | None = Query(default=None),
     db: Session = Depends(get_dataengine_db),
     current_user: Usuario = Depends(verify_csrf),
     _editor: Usuario = Depends(_require_project_editor),
@@ -67,12 +83,17 @@ async def preview_stat(
     except StatsTemplateError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
+    try:
+        context = build_stats_context(db.connection(), municipio, fecha_inicio, fecha_fin)
+    except StatsTemplateError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
     binding = load_layer_binding(db.connection(), layer_key)
     bound = bind_layer_fields([validated], binding)
-    values, errors = execute_stats_batch(db.connection(), bound)
+    values, errors = execute_stats_batch(db.connection(), bound, context)
     if errors:
         raise HTTPException(status_code=502, detail=f"Error ejecutando stat: {errors[0]['error']}")
-    return {'value': values[0]['valor'], 'config': validated}
+    return {'value': values[0]['valor'], 'config': validated, 'context': context}
 
 
 @router.post('/{layer_key:path}/stats/refresh', response_model=LayerStatsResponse)

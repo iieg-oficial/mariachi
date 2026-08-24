@@ -11,6 +11,8 @@ import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAd
 import { useAuth } from '@shared/contexts/useAuth';
 import { message } from '@shared/services/message';
 import StatusBadge from '@shared/components/StatusBadge';
+import StatsFiltersEditor from './StatsFiltersEditor';
+import StatsPreviewContext from './StatsPreviewContext';
 
 const MAX_EXPRESSION_DEPTH = 6;
 
@@ -167,6 +169,11 @@ const PrimitiveEditor = ({ value, onChange, availableFields, schema, table }) =>
                     style={{ width: '100%' }}
                 />
             )}
+            <StatsFiltersEditor
+                value={value.filters}
+                onChange={(filters) => set({ filters })}
+                availableFields={availableFields}
+            />
             <Text type="secondary" style={{ fontSize: 11 }}>
                 Tabla: <code>{schema}.{table}</code>
             </Text>
@@ -270,7 +277,7 @@ const ExpressionEditor = ({ value, onChange, availableFields, schema, table, dep
     );
 };
 
-const StatSlot = ({ slot, onChange, onRemove, availableFields, schema, table, layerKey, previewLayerStat }) => {
+const StatSlot = ({ slot, onChange, onRemove, availableFields, schema, table, layerKey, previewLayerStat, previewContext }) => {
     const [previewValue, setPreviewValue] = useState(null);
     const [previewing, setPreviewing] = useState(false);
     const [previewError, setPreviewError] = useState(null);
@@ -301,7 +308,7 @@ const StatSlot = ({ slot, onChange, onRemove, availableFields, schema, table, la
         setPreviewing(true);
         setPreviewError(null);
         try {
-            const res = await previewLayerStat(layerKey, slot);
+            const res = await previewLayerStat(layerKey, slot, previewContext);
             setPreviewValue(res.value);
         } catch (err) {
             setPreviewError(err?.response?.data?.detail || 'Error');
@@ -428,10 +435,12 @@ export default function LayerStatsSection({
         getLayerStats,
         updateLayerStats,
         previewLayerStat,
+        listMunicipios,
         refreshLayerStats,
     } = useLayerTreeAdmin();
 
     const [loading, setLoading] = useState(true);
+    const [previewContext, setPreviewContext] = useState({ municipio: [], fechaInicio: null, fechaFin: null });
     const [saving, setSaving] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [stats, setStats] = useState(null);
@@ -643,6 +652,16 @@ export default function LayerStatsSection({
                 </Button>
             </Space>
 
+            {config.length > 0 && (
+                <Card size="small" title={labelWithBeta('Probar con contexto')} style={{ position: 'relative' }}>
+                    <StatsPreviewContext
+                        value={previewContext}
+                        onChange={setPreviewContext}
+                        listMunicipios={listMunicipios}
+                    />
+                </Card>
+            )}
+
             {config.length === 0 ? (
                 <Empty description="Sin slots. Agrega uno arriba." />
             ) : (
@@ -663,6 +682,7 @@ export default function LayerStatsSection({
                                     table={table}
                                     layerKey={layerKey}
                                     previewLayerStat={previewLayerStat}
+                                    previewContext={previewContext}
                                 />
                             );
                         })}

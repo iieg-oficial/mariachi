@@ -237,6 +237,50 @@ def validate_stats_config(stats_config: list | None) -> list:
     return validated
 
 
+MAX_MUNICIPIOS = 125
+
+_CLAVE_PATTERN = re.compile(r'^\d{5}$')
+_DATE_PATTERN = re.compile(r'^\d{4}-\d{2}-\d{2}$')
+
+
+def _parse_claves(municipio: str | None) -> list[str]:
+    if not municipio:
+        return []
+    claves = [c.strip() for c in municipio.split(',') if c.strip()]
+    if len(claves) > MAX_MUNICIPIOS:
+        raise StatsTemplateError(f'municipio admite hasta {MAX_MUNICIPIOS} claves')
+    for clave in claves:
+        if not _CLAVE_PATTERN.match(clave):
+            raise StatsTemplateError(f"clave de municipio invalida: '{clave}' (5 digitos)")
+    return sorted(set(claves))
+
+
+def build_stats_context(
+    conn: Connection,
+    municipio: str | None = None,
+    fecha_inicio: str | None = None,
+    fecha_fin: str | None = None,
+) -> dict:
+    for label, value in (('fecha_inicio', fecha_inicio), ('fecha_fin', fecha_fin)):
+        if value and not _DATE_PATTERN.match(value):
+            raise StatsTemplateError(f'{label} debe tener formato YYYY-MM-DD')
+
+    context: dict = {}
+    claves = _parse_claves(municipio)
+    if claves:
+        rows = conn.execute(
+            text('SELECT clave_geo, nombre FROM mapalab.municipios WHERE clave_geo = ANY(:claves)'),
+            {'claves': claves},
+        ).fetchall()
+        context['municipio.claves'] = claves
+        context['municipio.nombres'] = [r[1] for r in rows]
+    if fecha_inicio:
+        context['fecha.inicio'] = fecha_inicio
+    if fecha_fin:
+        context['fecha.fin'] = fecha_fin
+    return context
+
+
 def load_layer_binding(conn: Connection, layer_key: str) -> dict | None:
     sql = """
         WITH RECURSIVE cadena AS (
