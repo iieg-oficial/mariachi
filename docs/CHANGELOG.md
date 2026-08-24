@@ -34,6 +34,13 @@ consecuencias. Y un grupo vacío no estorba, porque no hay a quién coordinar.
 
 En el CMS, la lista de miembros avisa en cuanto no hay coordinador, sin esperar al guardado.
 
+### Cambiado: la card de la tetlamamakani también cuenta proyectos
+
+Decía «Todos los proyectos» mientras el resto del padrón mostraba un número, así que la misma
+columna se leía de dos formas y no se podía comparar de un vistazo. Ahora cuenta los proyectos
+activos del sistema —el mismo catálogo que la pantalla ya tiene cargado— y su tooltip los lista, sin
+papel al lado del nombre, porque en ese rol el acceso no viene de una asignación sino del permiso.
+
 ## [2.15.1] - 2026-08-21
 
 ### Cambiado: el switch de captura colaborativa se mudó a Asignaciones

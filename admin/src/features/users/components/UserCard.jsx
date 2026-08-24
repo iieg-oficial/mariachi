@@ -11,13 +11,14 @@ export const CARD_MIN_WIDTH = 288;
 export const CARD_MAX_WIDTH = 420;
 export const CARD_MIN_HEIGHT = 184;
 
-const ProyectosTag = ({ user, detalleVisible }) => {
-    if (user.role === 'tetlamamakani') {
-        return <Tag style={{ marginInlineEnd: 0 }}>Todos los proyectos</Tag>;
-    }
-    if (!detalleVisible) return null;
+const conteo = (total) => (total === 1 ? '1 proyecto' : `${total} proyectos`);
 
-    const proyectos = user.projects || [];
+const ProyectosTag = ({ user, detalleVisible, proyectosDelSistema = [] }) => {
+    const esGlobal = user.role === 'tetlamamakani';
+
+    if (!esGlobal && !detalleVisible) return null;
+
+    const proyectos = esGlobal ? proyectosDelSistema : (user.projects || []);
     if (proyectos.length === 0) {
         return <Tag style={{ marginInlineEnd: 0 }}>Sin proyectos</Tag>;
     }
@@ -26,7 +27,7 @@ const ProyectosTag = ({ user, detalleVisible }) => {
         <ul style={{ margin: 0, paddingLeft: 16 }}>
             {proyectos.map((p) => (
                 <li key={p.slug}>
-                    {p.name}: {PROJECT_ROLE_LABEL[p.project_role] || p.project_role}
+                    {p.name}{esGlobal ? '' : `: ${PROJECT_ROLE_LABEL[p.project_role] || p.project_role}`}
                 </li>
             ))}
         </ul>
@@ -35,13 +36,19 @@ const ProyectosTag = ({ user, detalleVisible }) => {
     return (
         <Tooltip title={detalle}>
             <Tag style={{ marginInlineEnd: 0, cursor: 'help' }}>
-                {proyectos.length === 1 ? '1 proyecto' : `${proyectos.length} proyectos`}
+                {conteo(proyectos.length)}
             </Tag>
         </Tooltip>
     );
 };
 
-const UserCard = ({ user, onEdit, puedeEditar = true, detalleVisible = true }) => {
+const UserCard = ({
+    user,
+    onEdit,
+    puedeEditar = true,
+    detalleVisible = true,
+    proyectosDelSistema = [],
+}) => {
     const abrirConTeclado = (e) => {
         if (e.key !== 'Enter' && e.key !== ' ') return;
         e.preventDefault();
@@ -115,7 +122,11 @@ const UserCard = ({ user, onEdit, puedeEditar = true, detalleVisible = true }) =
                         <Tag color={ROLE_COLOR[user.role]} style={{ marginInlineEnd: 0 }}>
                             {roleLabel(user.role)}
                         </Tag>
-                        <ProyectosTag user={user} detalleVisible={detalleVisible} />
+                        <ProyectosTag
+                            user={user}
+                            detalleVisible={detalleVisible}
+                            proyectosDelSistema={proyectosDelSistema}
+                        />
                         {user.sieej_grupo && (
                             <Tag color="purple" style={{ marginInlineEnd: 0 }}>{user.sieej_grupo.nombre}</Tag>
                         )}

@@ -26,6 +26,11 @@ const renderCard = (overrides = {}, props = {}) => {
             onEdit={onEdit}
             puedeEditar={props.puedeEditar ?? true}
             detalleVisible={props.detalleVisible ?? true}
+            proyectosDelSistema={props.proyectosDelSistema ?? [
+                { slug: 'sieej', name: 'SIEEJ' },
+                { slug: 'portal', name: 'Portal' },
+                { slug: 'mapalab', name: 'MapaLab' },
+            ]}
         />,
     );
     return { onEdit };
@@ -43,7 +48,12 @@ describe('UserCard', () => {
     it('el rol tetlamamakani se muestra con su nombre', () => {
         renderCard({ role: 'tetlamamakani', projects: [] });
         expect(screen.getByText('Tetlamamakani')).toBeInTheDocument();
-        expect(screen.getByText('Todos los proyectos')).toBeInTheDocument();
+    });
+
+    it('la tetlamamakani cuenta los proyectos del sistema, no una frase', () => {
+        renderCard({ role: 'tetlamamakani', projects: [] });
+        expect(screen.getByText('3 proyectos')).toBeInTheDocument();
+        expect(screen.queryByText('Todos los proyectos')).not.toBeInTheDocument();
     });
 
     it('usuario sin proyectos lo dice sin listar nada', () => {

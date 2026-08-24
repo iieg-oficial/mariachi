@@ -228,6 +228,7 @@ export default function Users() {
                                 onEdit={handleEdit}
                                 puedeEditar={puedeGestionar}
                                 detalleVisible={puedeGestionar || currentUser?.id === u.id}
+                                proyectosDelSistema={proyectos}
                             />
                         ))}
                     </div>
