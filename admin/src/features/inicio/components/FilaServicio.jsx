@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import { Badge, Button, Tooltip, Typography, Grid } from 'antd';
+import { Badge, Button, Tag, Tooltip, Typography, Grid } from 'antd';
 import {
     ExclamationCircleOutlined,
     GithubOutlined,
@@ -80,9 +80,12 @@ export default function FilaServicio({ plataforma, columnas, onReportar }) {
             <Text strong style={{ fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {label}
             </Text>
-            <Text type="secondary" style={{ fontSize: 11, whiteSpace: 'nowrap' }}>
+            <Tag
+                color={version ? 'blue' : 'default'}
+                style={{ marginInlineEnd: 0, fontVariantNumeric: 'tabular-nums' }}
+            >
                 {version ? `v${version}` : 'sin versión'}
-            </Text>
+            </Tag>
         </span>
     );
 
