@@ -45,9 +45,10 @@ export default function EcosistemaTablero({ plataformas, loading, onReportar }) 
     const pantalla = useBreakpoint();
     const compacta = !pantalla.md;
 
-    const { operativas, eje } = useMemo(() => ({
+    const { operativas, eje, primeraCapa } = useMemo(() => ({
         operativas: plataformas.filter((p) => p.status === 'ok').length,
         eje: etiquetasEje(plataformas.find((p) => p.tramos)?.tramos),
+        primeraCapa: CAPAS.find((capa) => plataformas.some((p) => p.capa === capa.key))?.key,
     }), [plataformas]);
 
     const encabezado = (
@@ -84,7 +85,7 @@ export default function EcosistemaTablero({ plataformas, loading, onReportar }) 
     return (
         <Card size="small" title={encabezado} styles={{ body: { padding: '8px 16px 16px' } }}>
             {!compacta && (
-                <div style={{ display: 'grid', gridTemplateColumns: COLUMNAS, gap: 8, paddingBottom: 8 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: COLUMNAS, gap: 8, paddingTop: 12 }}>
                     <span />
                     <span style={{ display: 'flex', justifyContent: 'space-between' }}>
                         {eje.map((etiqueta, indice) => (
@@ -98,9 +99,10 @@ export default function EcosistemaTablero({ plataformas, loading, onReportar }) 
                 const servicios = plataformas.filter((p) => p.capa === capa.key);
                 if (!servicios.length) return null;
                 const arriba = servicios.filter((p) => p.status === 'ok').length;
+                const primera = capa.key === primeraCapa;
                 return (
                     <div key={capa.key}>
-                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, paddingTop: 16 }}>
+                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, paddingTop: primera ? 2 : 14 }}>
                             <Text type="secondary" style={{ fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                                 {capa.nombre}
                             </Text>

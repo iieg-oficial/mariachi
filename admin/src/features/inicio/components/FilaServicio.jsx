@@ -107,7 +107,8 @@ export default function FilaServicio({ plataforma, columnas, onReportar }) {
             color: SEMANTIC.danger,
             background: SEMANTIC.dangerSoft,
             borderRadius: 4,
-            padding: '0 8px',
+            padding: '4px 8px',
+            lineHeight: 1.5,
             alignSelf: 'flex-start',
         }}>
             <ExclamationCircleOutlined style={{ marginRight: 6 }} />{detail}
@@ -116,7 +117,7 @@ export default function FilaServicio({ plataforma, columnas, onReportar }) {
 
     if (compacta) {
         return (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '8px 0', borderTop: '1px solid #f5f5f5' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '6px 0' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ flex: 1, minWidth: 0 }}>{identidad}</span>
                     {disponibilidad}
@@ -129,7 +130,7 @@ export default function FilaServicio({ plataforma, columnas, onReportar }) {
     }
 
     return (
-        <div style={{ borderTop: '1px solid #f5f5f5', padding: '8px 0' }}>
+        <div style={{ padding: '5px 0' }}>
             <div style={{ display: 'grid', gridTemplateColumns: columnas, gap: 8, alignItems: 'center' }}>
                 {identidad}
                 <BarraDisponibilidad tramos={tramos} />

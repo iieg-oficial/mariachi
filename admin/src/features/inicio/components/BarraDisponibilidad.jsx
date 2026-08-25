@@ -1,30 +1,41 @@
 import { Tooltip } from 'antd';
 import { SEMANTIC } from '@app/providers/brand';
 
+const PROPORCION_MARCA = 0.004;
+const ANCHO_MARCA = 4;
+
 const ESTILO_TRAMO = {
-    ok: { fondo: SEMANTIC.successSoft, trama: null, texto: 'operativo' },
+    ok: { fondo: SEMANTIC.successSoft, trama: null, fuerte: SEMANTIC.success, texto: 'operativo' },
     degraded: {
         fondo: SEMANTIC.warningSoft,
         trama: `repeating-linear-gradient(45deg, ${SEMANTIC.warning} 0 2px, transparent 2px 6px)`,
+        fuerte: SEMANTIC.warning,
         texto: 'degradado',
     },
     down: {
         fondo: SEMANTIC.dangerSoft,
         trama: `repeating-linear-gradient(45deg, ${SEMANTIC.danger} 0 2px, transparent 2px 5px)`,
+        fuerte: SEMANTIC.danger,
         texto: 'caído',
     },
     unreachable: {
         fondo: SEMANTIC.dangerSoft,
         trama: `repeating-linear-gradient(45deg, ${SEMANTIC.danger} 0 2px, transparent 2px 5px)`,
+        fuerte: SEMANTIC.danger,
         texto: 'no responde',
     },
     sin_datos: {
         fondo: SEMANTIC.neutralSoft,
         trama: `repeating-linear-gradient(90deg, ${SEMANTIC.neutral} 0 1px, transparent 1px 6px),`
             + ` repeating-linear-gradient(0deg, ${SEMANTIC.neutral} 0 1px, transparent 1px 6px)`,
+        fuerte: SEMANTIC.neutral,
         texto: 'sin datos',
     },
 };
+
+const esMarca = (tramo, celdas) => tramo.estado !== 'ok'
+    && tramo.estado !== 'sin_datos'
+    && tramo.dur / celdas < PROPORCION_MARCA;
 
 const estiloDe = (estado) => ESTILO_TRAMO[estado] || ESTILO_TRAMO.sin_datos;
 
@@ -77,13 +88,16 @@ export default function BarraDisponibilidad({ tramos, alto = 14 }) {
         <div style={contenedor} role="img" aria-label="Disponibilidad de las últimas 24 horas">
             {tramos.tramos.map((tramo) => {
                 const estilo = estiloDe(tramo.estado);
+                const marca = esMarca(tramo, tramos.celdas);
                 return (
                     <Tooltip key={tramo.min} title={tituloTramo(tramo, tramos)} trigger={['hover', 'click']}>
                         <div style={{
                             width: `${tramo.dur / tramos.celdas * 100}%`,
-                            minWidth: 2,
-                            backgroundColor: estilo.fondo,
-                            backgroundImage: estilo.trama || 'none',
+                            minWidth: marca ? ANCHO_MARCA : 2,
+                            backgroundColor: marca ? estilo.fuerte : estilo.fondo,
+                            backgroundImage: marca ? 'none' : (estilo.trama || 'none'),
+                            boxShadow: marca ? `0 0 0 1px ${estilo.fondo}` : 'none',
+                            zIndex: marca ? 1 : 0,
                         }} />
                     </Tooltip>
                 );
