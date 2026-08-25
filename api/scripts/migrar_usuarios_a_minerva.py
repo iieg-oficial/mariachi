@@ -253,6 +253,19 @@ def main() -> int:
         plan["generado_en"] = datetime.now(timezone.utc).isoformat()
         _imprimir_plan(plan)
 
+        necesarios = {n for fila in plan["crear"] + plan["existentes"] for n in fila["roles_minerva"]}
+        ausentes = sorted(necesarios - set(roles_app))
+        if ausentes:
+            print(
+                f"\nATENCION: minerva no declara {len(ausentes)} de los {len(necesarios)} roles "
+                f"que este plan necesita:\n  - " + "\n  - ".join(ausentes)
+            )
+            print(
+                "\nEs el sintoma de un manifiesto desactualizado del lado de minerva. "
+                "Copia manifest.minerva.yml de mariachi a su carpeta manifests/ y reimportalo "
+                "(panel, o `python -m app.cli import-manifests` en su backend)."
+            )
+
         if args.plan_json:
             args.plan_json.write_text(json.dumps(plan, indent=2, ensure_ascii=False), encoding="utf-8")
             print(f"\nplan guardado en {args.plan_json}")
@@ -265,6 +278,13 @@ def main() -> int:
             print(
                 "\nminerva no tiene roles de la aplicacion 'mariachi': importa "
                 "manifest.minerva.yml desde el panel antes de aplicar."
+            )
+            return 1
+
+        if ausentes:
+            print(
+                "\nNo se aplica nada: con roles faltantes la mitad del padron quedaria "
+                "dada de alta y sin acceso. Arregla el manifiesto y vuelve a correrlo."
             )
             return 1
 
