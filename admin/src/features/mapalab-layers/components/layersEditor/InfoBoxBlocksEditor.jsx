@@ -993,21 +993,6 @@ export default function InfoBoxBlocksEditor({ value, onChange, availableFields =
                 </Tag>
             )}
 
-            {nodeType === 'group' && (
-                <div style={{
-                    background: '#F0F7FF',
-                    border: '1px solid #91CAFF',
-                    borderRadius: 6,
-                    padding: '8px 12px',
-                }}>
-                    <Text type="secondary" style={{ fontSize: 12 }}>
-                        El cuadro definido en este <b>grupo</b> se hereda automáticamente a todos sus descendientes
-                        (capas y filtros) que no tengan uno propio. Si una capa hija configura su propio infobox,
-                        sobrescribe lo que herede de aquí.
-                    </Text>
-                </div>
-            )}
-
             {inheriting && (
                 <div style={{
                     background: '#F6FFED',

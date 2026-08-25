@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Alert, Button, Col, Empty, Form, Row, Space, Spin, Typography } from 'antd';
 import { SaveOutlined } from '@ant-design/icons';
-import InfoBoxBlocksEditor from '@features/mapalab-layers/components/layersEditor/InfoBoxBlocksEditor';
+import InfoBoxEditor from '@features/mapalab-layers/components/layersEditor/InfoBoxEditor';
+import InfoBoxModeSwitch from '@features/mapalab-layers/components/layersEditor/InfoBoxModeSwitch';
 import InfoBoxPreview from '@features/mapalab-layers/components/layersEditor/InfoBoxPreview';
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
 import { message } from '@shared/services/message';
@@ -15,6 +16,7 @@ export default function InfoboxStandalone({ layer, inherited = null, onSaved }) 
     const [availableFields, setAvailableFields] = useState([]);
     const [loadingFields, setLoadingFields] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [mode, setMode] = useState('visual');
 
     useEffect(() => {
         form.setFieldsValue({ infoboxConfig: layer?.infoboxConfig || null });
@@ -73,10 +75,16 @@ export default function InfoboxStandalone({ layer, inherited = null, onSaved }) 
                 <Col xs={24} md={14}>
                     <Form.Item
                         name="infoboxConfig"
-                        label="Configuración del cuadro"
-                        extra="Bloques que componen el cuadro que aparece al hacer click sobre una feature en el visor."
+                        label={
+                            <Space size={12}>
+                                Configuración del cuadro
+                                <InfoBoxModeSwitch value={mode} onChange={setMode} />
+                            </Space>
+                        }
+                        extra="Bloques que componen el cuadro que aparece al hacer click sobre una feature en el visor. En modo JSON se copia y pega la tarjeta completa entre entornos."
                     >
-                        <InfoBoxBlocksEditor
+                        <InfoBoxEditor
+                            mode={mode}
                             availableFields={availableFields}
                             inherited={inherited}
                             nodeType={layer.nodeType || 'leaf'}

@@ -10,7 +10,8 @@ import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import { useAuth } from '@shared/contexts/useAuth';
-import InfoBoxBlocksEditor from '@features/mapalab-layers/components/layersEditor/InfoBoxBlocksEditor';
+import InfoBoxEditor from '@features/mapalab-layers/components/layersEditor/InfoBoxEditor';
+import InfoBoxModeSwitch from '@features/mapalab-layers/components/layersEditor/InfoBoxModeSwitch';
 import InfoBoxPreview from '@features/mapalab-layers/components/layersEditor/InfoBoxPreview';
 import LayerMetadataSection from '@features/mapalab-layers/components/layersEditor/LayerMetadataSection';
 import LayerAliasesSection from '@features/mapalab-layers/components/layersEditor/LayerAliasesSection';
@@ -92,6 +93,7 @@ export default function LayerEditPage() {
     const [bulkTagsOpen, setBulkTagsOpen] = useState(false);
     const [highlightSettingsOpen, setHighlightSettingsOpen] = useState(false);
     const [eventoLayerId, setEventoLayerId] = useState(null);
+    const [infoboxMode, setInfoboxMode] = useState('visual');
 
     const [moveOpen, setMoveOpen] = useState(false);
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -916,10 +918,16 @@ export default function LayerEditPage() {
                     <Col xs={24} md={14}>
                         <Form.Item
                             name="infoboxConfig"
-                            label="Configuración del cuadro"
-                            extra="Bloques que componen el cuadro que aparece al hacer click sobre una feature en el visor. Cada bloque (encabezado, etiquetas, cards, lista, íconos, texto) se puede agregar o quitar según necesites."
+                            label={
+                                <Space size={12}>
+                                    Configuración del cuadro
+                                    <InfoBoxModeSwitch value={infoboxMode} onChange={setInfoboxMode} />
+                                </Space>
+                            }
+                            extra="Bloques que componen el cuadro que aparece al hacer click sobre una feature en el visor. Cada bloque (encabezado, etiquetas, cards, lista, íconos, texto) se puede agregar o quitar según necesites. En modo JSON se copia y pega la tarjeta completa entre entornos."
                         >
-                            <InfoBoxBlocksEditor
+                            <InfoBoxEditor
+                                mode={infoboxMode}
                                 availableFields={availableFields}
                                 inherited={inheritedInfobox}
                                 nodeType={watchedNodeType}

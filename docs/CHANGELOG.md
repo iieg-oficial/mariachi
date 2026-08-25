@@ -9,7 +9,7 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
-## [2.17.0] - 2026-08-24
+## [2.18.0] - 2026-08-25
 
 ### Agregado: la tarjeta se edita como JSON y se copia entre entornos
 
@@ -25,6 +25,14 @@ borra la tarjeta; vaciar el campo sí la quita y devuelve la capa a lo que hered
 
 Cuando la capa está heredando, el modo JSON lo dice y ofrece partir del JSON del grupo. Y si la
 configuración trae claves de primer nivel que el visor no lee, las guarda pero avisa cuáles son.
+
+### Eliminado: el aviso de herencia en la tarjeta de un grupo
+
+El recuadro azul que explicaba que el cuadro de un grupo se hereda a sus descendientes ocupaba
+espacio en cada edición para repetir algo que ya se ve del otro lado: la capa que hereda lo dice en
+su propio aviso, con el nombre del grupo del que viene.
+
+## [2.17.0] - 2026-08-24
 
 ### Agregado: herramienta para migrar el padrón a minerva
 
@@ -52,6 +60,14 @@ pide la credencial al operador sin guardarla; y **el alta exige contraseña**, s
 invitación, así que genera una temporal por persona y las deja en un CSV con permisos `600` que hay
 que entregar por canal seguro y borrar. El procedimiento completo, en
 `runbook/migracion-padron-minerva.md` del repo de contexto.
+
+### Corregido: la migración se niega a aplicar si a minerva le faltan roles
+
+El plan se arma con los roles que minerva declara. Si su manifiesto está viejo, los roles que cada
+persona necesita no existen del otro lado y la corrida omitía al padrón entero sin un solo error a
+la vista. Ahora el plan enumera los roles ausentes, nombra el síntoma —un `manifest.minerva.yml`
+desactualizado— y cómo reimportarlo, y `--aplicar` se detiene antes de escribir: dar de alta media
+plantilla sin acceso es peor que no correr nada.
 
 ## [2.16.1] - 2026-08-24
 
