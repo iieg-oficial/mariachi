@@ -89,6 +89,7 @@ async def preview_stat(
     _editor: Usuario = Depends(_require_project_editor),
     _rl: Usuario = Depends(_write_rate_limit),
 ):
+    layer_key = _canonical_layer_key(db, layer_key)
     try:
         validated = validate_stats_config([cfg])[0]
     except StatsTemplateError as exc:

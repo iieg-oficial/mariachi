@@ -9,6 +9,27 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.19.1] - 2026-08-26
+
+### Corregido: el editor de metadatos salía vacío en cuatro temas del visor
+
+Llega de tamal-verde (1.122.4). `mapalab.layer_metadata` está llaveada por `<workspace de
+GeoServer>:<capa>` y el admin armaba la llave con el **alias**, así que en `desarrollo`,
+`gobierno`, `recursos` y `seguridad` —los cuatro donde alias y nombre real no coinciden— el `GET`
+respondía 404 sobre filas que sí existían: 65 de los 119 feature types del árbol. Se traduce el
+alias en la API, no en el admin, para cubrir de una vez los cuatro lugares del front que arman la
+llave por su cuenta.
+
+### Corregido: `load_layer_binding` no encontraba el `municipio_field` de esos mismos workspaces
+
+La consulta localizaba la capa por `workspace_alias || ':' || geoserver_layer`, que ya no es la
+forma de la llave que recibe. Ahora hace `JOIN` contra `mapalab.workspaces`. Es defecto latente
+—ninguna capa afectada tiene hoy `stats_config` y `municipio_field` a la vez—, pero lo estrenó
+esta rama junto con el editor de filtros y la vista previa con contexto, así que se cierra aquí.
+`preview_stat` también traduce el alias, que en tamal-verde no hacía falta porque no había binding.
+
+Mismo cambio en el `stats_engine` de mapalab 1.136.1.
+
 ## [2.19.0] - 2026-08-26
 
 Ajustes de lectura sobre el tablero de estatus que estrenó 2.14.0, con el ecosistema ya corriendo

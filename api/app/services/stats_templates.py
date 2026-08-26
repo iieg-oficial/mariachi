@@ -284,10 +284,11 @@ def build_stats_context(
 def load_layer_binding(conn: Connection, layer_key: str) -> dict | None:
     sql = """
         WITH RECURSIVE cadena AS (
-            SELECT id, parent_id, municipio_field, municipio_field_type
-            FROM mapalab.layers
-            WHERE workspace_alias || ':' || geoserver_layer = :layer_key
-              AND deleted_at IS NULL
+            SELECT l.id, l.parent_id, l.municipio_field, l.municipio_field_type
+            FROM mapalab.layers l
+            JOIN mapalab.workspaces w ON w.alias = l.workspace_alias
+            WHERE w.geoserver_workspace || ':' || l.geoserver_layer = :layer_key
+              AND l.deleted_at IS NULL
             UNION ALL
             SELECT p.id, p.parent_id, p.municipio_field, p.municipio_field_type
             FROM mapalab.layers p
