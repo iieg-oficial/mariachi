@@ -14,6 +14,7 @@ import ImageWMS from 'ol/source/ImageWMS';
 import XYZ from 'ol/source/XYZ';
 import { fromLonLat, toLonLat } from 'ol/proj';
 import { Style, Icon as OlIcon, Circle as CircleStyle, Stroke, Fill } from 'ol/style';
+import { cartoBasemapUrl, CARTO_ATTRIBUTIONS } from '@shared/helpers/cartoBasemap';
 
 const { Text } = Typography;
 
@@ -60,9 +61,9 @@ export default function NoticeAnchorField({
 
         const baseTile = new TileLayer({
             source: new XYZ({
-                url: 'https://{a-c}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+                url: cartoBasemapUrl(),
                 maxZoom: 19,
-                attributions: '© OpenStreetMap, © CARTO',
+                attributions: CARTO_ATTRIBUTIONS,
             }),
         });
 

@@ -77,6 +77,7 @@ services:
         VITE_NODE_ENV: ${VITE_NODE_ENV:?}
         VITE_ADMIN_API_URL: ${VITE_ADMIN_API_URL:?}
         VITE_WEB_URL: ${VITE_WEB_URL?}
+        VITE_CARTO_API_KEY: ${VITE_CARTO_API_KEY?}
     container_name: mariachi-nginx
     expose:
       - "80"

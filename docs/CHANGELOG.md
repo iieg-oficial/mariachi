@@ -9,6 +9,26 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.122.2] - 2026-08-26
+
+### Corregido: los dos mapas del CMS salían con el watermark «API key required» de CARTO
+
+CARTO empezó a exigir API key en sus basemaps raster y a marcar los tiles que se piden sin ella. El
+ancla de avisos del editor de capas (`NoticeAnchorField`) y el selector de bbox del editor de
+eventos (`BBoxField`) pedían `light_all` sin llave, así que el fondo quedaba ilegible aunque el
+campo siguiera funcionando: el ancla y el bbox se podían seguir eligiendo sobre un mapa marcado.
+
+La URL se centraliza en `admin/src/shared/helpers/cartoBasemap.js`, que agrega `?key=` cuando
+`VITE_CARTO_API_KEY` trae valor y la deja intacta cuando está vacía. Antes estaba duplicada en los
+dos componentes junto con su atribución. La variable entra como build arg en `nginx/Dockerfile` y en
+el servicio nginx de `compose.prod.yaml`, con `?` y no `:?` para que un entorno sin llave pueda
+desplegar.
+
+**Es build-time:** cambiar la llave obliga a reconstruir el bundle del admin.
+
+Mismo cambio que mapalab 1.116.4; conviene tomar la decisión de fondo —seguir en raster, migrar a
+los basemaps vectoriales o servir el fondo propio— una sola vez para los tres mapas.
+
 ## [1.122.1] - 2026-08-07
 
 ### Corregido: en un nodo con el crontab vacío no se instalaba el respaldo de la BD
