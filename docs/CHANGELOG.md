@@ -1460,6 +1460,20 @@ Emite seis roles, para que un consumidor exprese jerarquía sin repetir hex: `pr
 principal), `secondary` (contorno que se rellena al pasar el cursor), `quiet` (acción terciaria, sin
 recuadro), `title`, `heading` y `badge`. Incluye además estilos de árbol (`hover`, radios, sin
 borde), que es la vista donde más se nota que un panel es ajeno a su anfitrión.
+## [1.122.3] - 2026-08-26
+
+### Corregido: los assets del admin salian con dos cabeceras `Cache-Control`
+
+`expires 1y` mas `add_header Cache-Control "public, immutable"` en el mismo bloque: la primera
+directiva **ya emite** `Cache-Control: max-age=31536000` y nginx no las fusiona, asi que cada
+archivo se servia con dos cabeceras distintas. Por eso el gateway hacia `proxy_hide_header
+Cache-Control` sobre `/mariachi/assets/` y la rehacia a mano.
+
+Ahora sale una sola cabecera completa, y el gateway podra dejar de sobreescribirla **una vez que
+este cambio este desplegado** — no antes, o el orden de despliegue decidiria que cabecera llega.
+
+Mismo cambio en mapalab 1.116.5 y en sitio2026, que arrastraban el patron identico.
+
 ## [1.122.2] - 2026-08-26
 
 ### Corregido: los dos mapas del CMS salían con el watermark «API key required» de CARTO
