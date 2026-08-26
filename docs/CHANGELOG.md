@@ -9,6 +9,25 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.122.4] - 2026-08-26
+
+### Corregido: el editor de metadatos salía vacío en cuatro temas del visor
+
+`mapalab.layer_metadata` está llaveada por `<workspace de GeoServer>:<capa>`, que es como la
+escriben la ingesta masiva y los dumps, y como la lee el visor —resuelve el alias contra
+`mapalab.workspaces` antes de consultar—. El admin armaba la llave con el **alias** tal cual,
+así que en los cuatro workspaces donde el alias no coincide con el nombre real la fila existía
+y el `GET` respondía 404. El front convierte ese 404 en `null` y pinta el formulario en blanco,
+por eso parecía que los metadatos no estaban.
+
+Afectaba a `desarrollo`, `gobierno`, `recursos` y `seguridad`: 65 de los 119 feature types del
+árbol, con sus 70 filas de metadatos y sus `layer_stats` inalcanzables desde el CMS. En el visor
+siempre se vieron bien.
+
+Se resuelve en la API, no en el admin: `GET`/`PUT` de metadatos y de stats y `refresh` traducen
+el alias antes de consultar, así que cubre también los cuatro lugares del front que arman la
+llave por su cuenta. Ninguna llave guardada cambia.
+
 ## [1.122.3] - 2026-08-26
 
 ### Corregido: los assets del admin salian con dos cabeceras `Cache-Control`
