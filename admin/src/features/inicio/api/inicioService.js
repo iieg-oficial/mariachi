@@ -23,6 +23,12 @@ export const CAPAS = [
 
 const CATALOGO = {
     'gateway-hub': { label: 'Gateway Hub', capa: 'entrada', repo: `${GITHUB_ORG}/gateway-hub` },
+    sitio2026: {
+        label: 'Portalito',
+        capa: 'entrada',
+        url: '/',
+        repo: `${GITHUB_ORG}/sitio2026`,
+    },
     dataengine: { label: 'DataEngine', capa: 'datos', repo: `${GITHUB_ORG}/dataengine` },
     acervo: { label: 'Acervo', capa: 'datos', repo: `${GITHUB_ORG}/acervo` },
     sextante: { label: 'Sextante', capa: 'datos', repo: `${GITHUB_ORG}/sextante` },

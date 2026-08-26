@@ -37,6 +37,13 @@ describe('getPlataformas', () => {
         expect(sextante.repo).toContain('sextante');
     });
 
+    it('el portalito entra en la capa de entrada con su nombre corto', async () => {
+        api.get.mockResolvedValue({ data: { services: [servicio('sitio2026')] } });
+        const [portalito] = await getPlataformas();
+        expect(portalito.label).toBe('Portalito');
+        expect(portalito.capa).toBe('entrada');
+    });
+
     it('un servicio desconocido cae en la capa sin clasificar y conserva su nombre', async () => {
         api.get.mockResolvedValue({ data: { services: [servicio('nuevo-servicio')] } });
         const [nuevo] = await getPlataformas();

@@ -9,6 +9,20 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.20.0] - 2026-08-26
+
+### Agregado: el portalito aparece en el tablero de estatus
+
+Era el único servicio del ecosistema que nadie vigilaba: ocupa `location /` del gateway y no expone
+`/ontoy`. Ahora lo reporta un sidecar desplegado junto a él —huachicol 2.6.0— sin tocar su
+repositorio.
+
+Del lado del admin no hubo que hacer casi nada, porque desde 2.14.0 la lista de servicios la manda el
+monitor: bastó darle su capa —**Entrada**, junto al gateway, que es donde le toca— y sus enlaces. Sin
+esa entrada aparecía igual, pero bajo «Sin clasificar».
+
+Se llama **Portalito** en el tablero y `sitio2026` en el monitor, que es el nombre de su repositorio.
+
 ## [2.19.1] - 2026-08-26
 
 ### Corregido: el editor de metadatos salía vacío en cuatro temas del visor
