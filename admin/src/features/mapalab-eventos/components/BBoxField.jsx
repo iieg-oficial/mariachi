@@ -14,6 +14,7 @@ import { fromLonLat, transformExtent } from 'ol/proj';
 import { register as registerProj4 } from 'ol/proj/proj4';
 import { Style, Stroke, Fill } from 'ol/style';
 import proj4 from 'proj4';
+import { cartoBasemapUrl, CARTO_ATTRIBUTIONS } from '@shared/helpers/cartoBasemap';
 
 const { Text } = Typography;
 
@@ -79,9 +80,9 @@ function MapPicker({ value, onChange, disabled }) {
             layers: [
                 new TileLayer({
                     source: new XYZ({
-                        url: 'https://{a-c}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+                        url: cartoBasemapUrl(),
                         maxZoom: 19,
-                        attributions: '© OpenStreetMap, © CARTO',
+                        attributions: CARTO_ATTRIBUTIONS,
                     }),
                 }),
                 new VectorLayer({
