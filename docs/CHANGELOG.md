@@ -9,6 +9,42 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.19.0] - 2026-08-26
+
+Ajustes de lectura sobre el tablero de estatus que estrenó 2.14.0, con el ecosistema ya corriendo
+delante y las barras llenas de tramos reales.
+
+### Cambiado: el tablero se apoya en el espacio, no en las líneas
+
+Tres divisores competían entre sí: uno entre servicios, uno entre capas y el de la leyenda. Sobran
+los dos primeros —el agrupado por capa ya separa lo que hay que separar— y quedan solo el del
+encabezado, que lo pone el `Card`, y el de la leyenda, que ahora sí cruza la tarjeta de lado a lado
+compensando el relleno del cuerpo. Sin la línea entre filas, el relleno vertical de cada una baja de
+8 a 5 px para que el bloque de una capa se lea junto en vez de flotando.
+
+El eje de horas dejaba 8 px arriba y 8 abajo, y se leía como parte del encabezado. Ahora lleva 12 px
+de aire arriba y la primera capa arranca a 2 px, así que el tiempo queda pegado a las filas que
+rotula.
+
+La versión pasa de texto gris a `Tag`: azul cuando hay versión, gris cuando el servicio no la
+reporta, con cifras tabulares para que queden a plomo entre filas. Es el mismo tratamiento que
+tenían las tarjetas antes del tablero. La columna de identidad crece de 196 a 212 px para darle
+lugar, con lo que a la barra le quedan unos 690 px: un píxel cada dos minutos.
+
+### Corregido: una caída de tres minutos se veía como dos puntitos raros
+
+Un tramo corto mide menos de un píxel sobre una barra de 24 horas, y encima le tocaba la trama
+diagonal de 2 px, que a ese tamaño es ruido y no patrón. Los `timed out` de un solo sondeo —que en
+gateway-hub son varios al día— quedaban ilegibles justo cuando son lo que hay que notar.
+
+Un tramo que dura menos del 0.4 % del día se pinta ahora **sólido en el color fuerte**, con 4 px de
+ancho mínimo y un halo del color suave que lo despega de sus vecinos. Los tramos largos conservan su
+trama. Los huecos de datos cortos **no** se marcan: un sondeo que no se guardó no es un incidente y
+no debe gritar como uno.
+
+Las etiquetas de motivo iban con relleno vertical cero y el texto tocaba el borde de la caja; ahora
+llevan 4 px arriba y abajo.
+
 ## [2.18.0] - 2026-08-25
 
 ### Agregado: la tarjeta se edita como JSON y se copia entre entornos
