@@ -66,6 +66,13 @@ describe('NodoDetalleModal', () => {
         expect(screen.getByText('acervo-init')).toBeInTheDocument();
     });
 
+    it('cada medidor se pinta con el porcentaje que le toca', () => {
+        const { baseElement } = montar();
+        const anchos = Array.from(baseElement.querySelectorAll('.ant-progress-track'))
+            .map((barra) => barra.style.width);
+        expect(anchos).toEqual(['15%', '41.2%', '0%', '40%']);
+    });
+
     it('la carga se reporta también por núcleo', () => {
         montar();
         expect(screen.getByText('1.24 / 0.98 / 0.71')).toBeInTheDocument();
