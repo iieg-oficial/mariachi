@@ -101,3 +101,31 @@ describe('aristas de un nodo real', () => {
         expect(aristas.find((a) => a.a === 'S4').estado).toBe('down');
     });
 });
+
+describe('hostname del nodo', () => {
+    beforeEach(() => api.get.mockReset());
+
+    it('usa el nombre real del servidor en produccion', async () => {
+        api.get.mockResolvedValue({ data: { environment: 'produccion', nodos: [nodo('S1')] } });
+        const { nodos } = await getNodos();
+        expect(nodos[0].hostname).toBe('gateway');
+    });
+
+    it('antepone el prefijo del espejo en proxmox', async () => {
+        api.get.mockResolvedValue({ data: { environment: 'proxmox', nodos: [nodo('S4')] } });
+        const { nodos } = await getNodos();
+        expect(nodos[0].hostname).toBe('pmx-dataengine');
+    });
+
+    it('no duplica el prefijo en un nodo que ya lo trae', async () => {
+        api.get.mockResolvedValue({ data: { environment: 'proxmox', nodos: [nodo('pmx-vine-wacha')] } });
+        const { nodos } = await getNodos();
+        expect(nodos[0].hostname).toBe('pmx-vine-wacha');
+    });
+
+    it('un nodo desconocido se queda sin hostname en vez de inventarlo', async () => {
+        api.get.mockResolvedValue({ data: { environment: 'produccion', nodos: [nodo('S9')] } });
+        const { nodos } = await getNodos();
+        expect(nodos[0].hostname).toBeNull();
+    });
+});

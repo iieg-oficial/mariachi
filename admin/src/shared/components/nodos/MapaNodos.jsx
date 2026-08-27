@@ -15,7 +15,10 @@ const colorDe = (estado) => COLOR_ESTADO[estado] || SEMANTIC.neutral;
 
 const centro = (nodo) => ({ x: nodo.x + nodo.w / 2, y: nodo.y + nodo.h / 2 });
 
-const usaMovimiento = () => !window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+const usaMovimiento = () => {
+    const consulta = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+    return !consulta?.matches;
+};
 
 export default function MapaNodos({ nodos, aristas, onSeleccionar }) {
     const svgRef = useRef(null);

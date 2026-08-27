@@ -9,6 +9,38 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.26.0] - 2026-08-27
+
+### Cambiado: el detalle de un nodo reutiliza la fila del tablero de servicios
+
+Los servicios de un nodo se pintaban con una lista propia —punto, nombre, versión— mientras el
+tablero ya tenía una fila mucho más rica. Ahora el modal usa `FilaServicio`, así que cada servicio
+del nodo trae su barra de 24 horas, su versión como etiqueta, su disponibilidad y sus enlaces, con
+los tramos que huachicol 2.11.0 empezó a mandar.
+
+`FilaServicio` y el catálogo de servicios suben a `shared/`, que es donde deben estar ahora que los
+usan el inicio y la vista de servidores.
+
+### Agregado: disco y contenedores en el detalle del nodo
+
+Faltaba el disco, que es la métrica que el `/ontoy` reporta desde siempre y la única que ya estaba
+medida antes de este trabajo. Va con su medidor —usado sobre total— y con los gigas libres aparte.
+
+Los contenedores dejan de ser un conteo y se listan por nombre, con los que no están corriendo en
+gris.
+
+### Cambiado: el encabezado del modal dice el nombre real del servidor
+
+Junto al identificador del nodo va ahora su hostname —`S1 · gateway`— y el estado se mueve a la
+derecha, junto al botón de cerrar, para que no compita con el nombre. El hostname sale del catálogo,
+no de una medición: es un dato que no cambia y ya estaba documentado en la topología. En el espejo
+lleva el prefijo `pmx-`, que se aplica según el ambiente que reporta el monitor.
+
+### Corregido: el mapa reventaba donde no existe `matchMedia`
+
+`usaMovimiento()` encadenaba `.matches` sobre el resultado de una llamada opcional, así que si el
+navegador no exponía `matchMedia` el componente entero fallaba en vez de animar por omisión.
+
 ## [2.25.1] - 2026-08-27
 
 ### Cambiado: la leyenda ya no lleva línea divisoria

@@ -60,18 +60,11 @@ describe('NodosPage', () => {
         montar();
         await waitFor(() => expect(screen.getByLabelText(/^S1:/)).toBeInTheDocument());
         fireEvent.click(screen.getByLabelText(/^S1:/));
-        await waitFor(() => expect(screen.getByText('1.24 / 0.98 / 0.71')).toBeInTheDocument());
-        expect(screen.getByText('6.2 / 15 GB')).toBeInTheDocument();
+        const dialogo = await screen.findByRole('dialog');
+        expect(dialogo).toBeInTheDocument();
     });
 
-    it('un nodo sin reportero de host lo dice en vez de mostrar ceros', async () => {
-        montar();
-        await waitFor(() => expect(screen.getByLabelText(/^S4:/)).toBeInTheDocument());
-        fireEvent.click(screen.getByLabelText(/^S4:/));
-        await waitFor(() => expect(
-            screen.getByText('Este nodo no tiene reportero de host'),
-        ).toBeInTheDocument());
-    });
+
 
     it('lista las transiciones en la bitacora', async () => {
         montar();

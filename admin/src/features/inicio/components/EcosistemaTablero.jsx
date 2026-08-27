@@ -5,7 +5,7 @@ import { ClusterOutlined } from '@ant-design/icons';
 import { SEMANTIC } from '@app/providers/brand';
 import SectionHeader from '@shared/components/SectionHeader';
 import { CAPAS } from '@features/inicio/api/inicioService';
-import FilaServicio, { ANCHO_ENLACES } from '@features/inicio/components/FilaServicio';
+import FilaServicio, { ANCHO_ENLACES } from '@shared/components/nodos/FilaServicio';
 
 const { Text } = Typography;
 const { useBreakpoint } = Grid;

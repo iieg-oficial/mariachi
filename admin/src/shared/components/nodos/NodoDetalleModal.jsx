@@ -1,5 +1,7 @@
 import { Descriptions, Empty, Modal, Progress, Space, Tag, Typography } from 'antd';
 import { SEMANTIC } from '@app/providers/brand';
+import { aPlataforma } from '@shared/services/catalogoServicios';
+import FilaServicio, { ANCHO_ENLACES } from '@shared/components/nodos/FilaServicio';
 
 const { Text } = Typography;
 
@@ -11,6 +13,8 @@ const ESTADO_TAG = {
     down: { color: 'red', texto: 'caído' },
 };
 
+const COLUMNAS_SERVICIO = `196px 1fr 50px ${ANCHO_ENLACES}px`;
+
 const tono = (llave, valor) => {
     if (valor == null) return SEMANTIC.neutral;
     if (valor >= UMBRAL[llave]) return SEMANTIC.danger;
@@ -19,7 +23,7 @@ const tono = (llave, valor) => {
 };
 
 const Medidor = ({ llave, etiqueta, valor, absoluto }) => (
-    <div style={{ display: 'grid', gridTemplateColumns: '48px 1fr 96px', gap: 8, alignItems: 'center' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '48px 1fr 116px', gap: 8, alignItems: 'center' }}>
         <Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase' }}>{etiqueta}</Text>
         <Progress
             percent={valor ?? 0}
@@ -34,18 +38,25 @@ const Medidor = ({ llave, etiqueta, valor, absoluto }) => (
     </div>
 );
 
-const horas = (segundos) => {
+const desdeHace = (segundos) => {
     if (segundos == null) return '—';
     const dias = Math.floor(segundos / 86400);
-    if (dias >= 1) return `${dias} d`;
-    return `${Math.floor(segundos / 3600)} h`;
+    return dias >= 1 ? `${dias} d` : `${Math.floor(segundos / 3600)} h`;
+};
+
+const discoLibre = (host) => {
+    if (host.disk_free_gb == null) return '—';
+    if (host.disk_used_percent == null) return `${host.disk_free_gb} GB libres`;
+    const total = host.disk_free_gb / (1 - host.disk_used_percent / 100);
+    return `${Math.round(total - host.disk_free_gb)} / ${Math.round(total)} GB`;
 };
 
 export default function NodoDetalleModal({ nodo, aristas, open, onClose }) {
     if (!nodo) return null;
 
     const host = nodo.host || {};
-    const servicios = nodo.servicios || [];
+    const servicios = (nodo.servicios || []).map(aPlataforma);
+    const contenedores = nodo.contenedores || [];
     const tag = ESTADO_TAG[nodo.status] || { color: 'default', texto: nodo.status };
     const cargaPorNucleo = host.load_1m != null && host.cores
         ? Number((host.load_1m / host.cores).toFixed(2))
@@ -57,29 +68,29 @@ export default function NodoDetalleModal({ nodo, aristas, open, onClose }) {
             open={open}
             onCancel={onClose}
             footer={null}
-            width={760}
+            width={860}
             title={(
-                <Space size={10} wrap>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, paddingRight: 34 }}>
                     <Text strong style={{ fontFamily: 'monospace', fontSize: 18 }}>{nodo.node}</Text>
-                    <Tag color={tag.color}>{tag.texto}</Tag>
+                    {nodo.hostname && (
+                        <Text type="secondary" style={{ fontFamily: 'monospace', fontSize: 13 }}>
+                            {nodo.hostname}
+                        </Text>
+                    )}
                     <Text type="secondary" style={{ fontSize: 13 }}>{nodo.rol}</Text>
-                </Space>
+                    <Tag color={tag.color} style={{ marginLeft: 'auto', marginInlineEnd: 0 }}>
+                        {tag.texto}
+                    </Tag>
+                </div>
             )}
         >
-            {Object.keys(host).length === 0 ? (
-                <Empty
-                    image={Empty.PRESENTED_IMAGE_SIMPLE}
-                    description={(
-                        <Space orientation="vertical" size={4}>
-                            <Text>Este nodo no tiene reportero de host</Text>
-                            <Text type="secondary" style={{ fontSize: 12 }}>
-                                Falta <Text code>ONTOY_NODE_REPORTER=true</Text> en uno de sus sidecars.
-                            </Text>
-                        </Space>
-                    )}
-                />
-            ) : (
-                <Space orientation="vertical" size={16} style={{ width: '100%' }}>
+            <Space orientation="vertical" size={20} style={{ width: '100%' }}>
+                {Object.keys(host).length === 0 ? (
+                    <Empty
+                        image={Empty.PRESENTED_IMAGE_SIMPLE}
+                        description="Este nodo no tiene reportero de host"
+                    />
+                ) : (
                     <Space orientation="vertical" size={8} style={{ width: '100%' }}>
                         <Medidor
                             llave="cpu"
@@ -99,51 +110,71 @@ export default function NodoDetalleModal({ nodo, aristas, open, onClose }) {
                             valor={host.swap_used_percent}
                             absoluto={host.swap_used_gb != null ? `${host.swap_used_gb} GB` : '—'}
                         />
+                        <Medidor
+                            llave="disco"
+                            etiqueta="Disco"
+                            valor={host.disk_used_percent}
+                            absoluto={discoLibre(host)}
+                        />
                     </Space>
+                )}
 
-                    <Descriptions size="small" column={{ xs: 1, sm: 2 }} bordered>
-                        <Descriptions.Item label="Carga 1 / 5 / 15">
-                            {host.load_1m != null ? `${host.load_1m} / ${host.load_5m} / ${host.load_15m}` : '—'}
-                        </Descriptions.Item>
-                        <Descriptions.Item label="Por núcleo">{cargaPorNucleo ?? '—'}</Descriptions.Item>
-                        <Descriptions.Item label="Encendido">hace {horas(host.uptime_seconds)}</Descriptions.Item>
-                        <Descriptions.Item label="Contenedores">
-                            {`${nodo.containers?.running ?? 0} / ${nodo.containers?.total ?? 0}`}
-                        </Descriptions.Item>
-                        <Descriptions.Item label="Enlaces" span={2}>
-                            {enlaces.length === 0 ? '—' : enlaces.map((a) => {
-                                const otro = a.de === nodo.node ? a.a : a.de;
-                                return (
-                                    <Tag key={otro} color={a.estado === 'ok' ? 'green' : 'red'}>
-                                        {`${otro} · ${a.estado === 'ok' ? `${a.ms ?? '—'} ms` : 'sin respuesta'}`}
-                                    </Tag>
-                                );
-                            })}
-                        </Descriptions.Item>
-                    </Descriptions>
+                <Descriptions size="small" column={{ xs: 1, sm: 2 }} bordered>
+                    <Descriptions.Item label="Carga 1 / 5 / 15">
+                        {host.load_1m != null ? `${host.load_1m} / ${host.load_5m} / ${host.load_15m}` : '—'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Por núcleo">{cargaPorNucleo ?? '—'}</Descriptions.Item>
+                    <Descriptions.Item label="Encendido">hace {desdeHace(host.uptime_seconds)}</Descriptions.Item>
+                    <Descriptions.Item label="Disco libre">
+                        {host.disk_free_gb != null ? `${host.disk_free_gb} GB` : '—'}
+                    </Descriptions.Item>
+                    <Descriptions.Item label="Enlaces" span={2}>
+                        {enlaces.length === 0 ? '—' : enlaces.map((a) => {
+                            const otro = a.de === nodo.node ? a.a : a.de;
+                            return (
+                                <Tag key={otro} color={a.estado === 'ok' ? 'green' : 'red'}>
+                                    {`${otro} · ${a.estado === 'ok' ? `${a.ms ?? '—'} ms` : 'sin respuesta'}`}
+                                </Tag>
+                            );
+                        })}
+                    </Descriptions.Item>
+                </Descriptions>
 
+                <div>
+                    <Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                        {`Servicios · ${servicios.length}`}
+                    </Text>
+                    <div style={{ marginTop: 4 }}>
+                        {servicios.map((plataforma) => (
+                            <FilaServicio
+                                key={plataforma.slug}
+                                plataforma={plataforma}
+                                columnas={COLUMNAS_SERVICIO}
+                            />
+                        ))}
+                    </div>
+                </div>
+
+                {contenedores.length > 0 && (
                     <div>
                         <Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                            {`Servicios · ${servicios.length}`}
+                            {`Contenedores · ${nodo.containers?.running ?? 0} de ${nodo.containers?.total ?? 0}`}
                         </Text>
-                        <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
-                            {servicios.map((s) => (
-                                <div key={s.slug} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-                                    <span style={{
-                                        width: 6, height: 6, borderRadius: '50%', flex: 'none',
-                                        background: tono('cpu', s.status === 'ok' ? 0 : 100),
-                                    }} />
-                                    <Text>{s.label || s.slug}</Text>
-                                    <Text type="secondary" style={{ marginLeft: 'auto', fontSize: 11, fontFamily: 'monospace' }}>
-                                        {s.version ? `v${s.version}` : 'sin versión'}
-                                        {s.uptime_24h != null ? ` · ${s.uptime_24h}%` : ''}
-                                    </Text>
-                                </div>
+                        <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                            {contenedores.map((c) => (
+                                <Tag
+                                    key={c.name}
+                                    color={c.state === 'running' ? 'green' : 'default'}
+                                    style={{ fontFamily: 'monospace', fontSize: 11 }}
+                                >
+                                    {c.name}
+                                    {c.health === 'unhealthy' ? ' · sin salud' : ''}
+                                </Tag>
                             ))}
                         </div>
                     </div>
-                </Space>
-            )}
+                )}
+            </Space>
         </Modal>
     );
 }
