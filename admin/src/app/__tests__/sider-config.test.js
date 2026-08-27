@@ -48,7 +48,12 @@ describe('buildSiderItems', () => {
         expect(items[2].children.map((c) => c.key)).toEqual(['/acervo', '/acervo/buckets']);
         expect(items[3].key).toBe('group-huachicol');
         expect(items[3].label).toBe('Huachicol');
-        expect(items[3].children.map((c) => c.key)).toEqual(['/huachicol/observabilidad', '/huachicol/telemetria', '/huachicol/actividad']);
+        expect(items[3].children.map((c) => c.key)).toEqual([
+            '/huachicol/observabilidad',
+            '/huachicol/servidores',
+            '/huachicol/telemetria',
+            '/huachicol/actividad',
+        ]);
 
         const keys = items.map((i) => i.key);
         expect(keys).not.toContain('platform');

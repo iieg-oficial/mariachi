@@ -32,6 +32,14 @@ async def monitor_status(_: Usuario = Depends(get_current_user)):
     return await _proxy_monitor("/api/status")
 
 
+@router.get("/monitor/nodos")
+async def monitor_nodos(
+    eventos: int = Query(default=20, ge=1, le=100),
+    _: Usuario = Depends(get_current_user),
+):
+    return await _proxy_monitor(f"/api/nodos?eventos={eventos}")
+
+
 @router.get("/monitor/status/{slug}")
 async def monitor_status_detalle(
     slug: str,

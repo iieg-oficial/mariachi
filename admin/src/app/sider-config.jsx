@@ -1,5 +1,6 @@
 import {
     BarChartOutlined,
+    CloudServerOutlined,
     ClusterOutlined,
     DashboardOutlined,
     DatabaseOutlined,
@@ -157,6 +158,10 @@ export const MAIN_ITEMS = [
             {
                 key: '/huachicol/observabilidad', path: '/huachicol/observabilidad',
                 label: 'Observabilidad', icon: <DashboardOutlined />,
+            },
+            {
+                key: '/huachicol/servidores', path: '/huachicol/servidores',
+                label: 'Servidores', icon: <CloudServerOutlined />,
             },
             {
                 key: '/huachicol/telemetria', path: '/huachicol/telemetria',

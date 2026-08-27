@@ -9,6 +9,29 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.22.0] - 2026-08-27
+
+### Agregado: Huachicol · Servidores, la vista por nodo
+
+El monitor sabía de servicios y nadie sabía de máquinas. La sección nueva —`/huachicol/servidores`,
+sobre `/api/nodos` de huachicol 2.9.0— dibuja un nodo por servidor con lo que corre en él, sus
+contenedores y su RAM.
+
+**El mapa está vivo.** Cada punto que viaja por un enlace es un sondeo, y su velocidad sale de la
+latencia medida: el enlace de 18 ms tarda visiblemente más que el de 4 ms. Los enlaces caídos se
+pintan punteados y sin tráfico. Respeta `prefers-reduced-motion`: con esa preferencia activa el mapa
+se dibuja quieto.
+
+**Click en un nodo** —o Enter, porque son enfocables— abre su detalle: carga por núcleo, RAM, swap,
+uptime, contenedores, enlaces con su latencia y los servicios que hospeda con su versión. Un nodo sin
+reportero de host lo dice en vez de enseñar ceros, que es la diferencia entre «no lo mido» y «está en
+cero».
+
+**La bitácora** lista las caídas y recuperaciones con su transición: de dónde venía y a qué pasó. Sale
+de la tabla `events` que el monitor llenaba desde siempre y que nadie leía.
+
+Observabilidad no se tocó: esto vive en su propia sección.
+
 ## [2.21.0] - 2026-08-27
 
 ### Cambiado: el tablero de estatus usa el encabezado de sección del resto del inicio
