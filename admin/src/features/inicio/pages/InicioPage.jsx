@@ -10,7 +10,7 @@ import {
     getPlataformas,
     getColibriConfig,
 } from '@features/inicio/api/inicioService';
-import EcosistemaTablero from '@features/inicio/components/EcosistemaTablero';
+import EcosistemaPanel from '@features/inicio/components/EcosistemaPanel';
 import { MapalabInicioHighlights } from '@features/mapalab-stats';
 
 const COLIBRI_WIDGET_URL = '/colibri/widget/colibri-widget.v1.js';
@@ -122,7 +122,7 @@ export default function InicioPage() {
                     </Card>
                 )}
 
-                <EcosistemaTablero
+                <EcosistemaPanel
                     plataformas={plataformas}
                     loading={loadingPlataformas}
                     onReportar={colibriConfig?.api_key ? abrirColibri : null}

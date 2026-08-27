@@ -5,7 +5,7 @@ vi.mock('@shared/services/api', () => ({
 }));
 
 import api from '@shared/services/api';
-import { getNodos, aristasDe } from '@features/nodos/api/nodosService';
+import { getNodos, aristasDe } from '@shared/services/nodosService';
 
 const nodo = (node, extra = {}) => ({
     node,

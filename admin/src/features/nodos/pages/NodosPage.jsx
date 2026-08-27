@@ -4,9 +4,9 @@ import { CloudServerOutlined } from '@ant-design/icons';
 import PageHeading from '@shared/components/PageHeading';
 import SectionHeader from '@shared/components/SectionHeader';
 import { SEMANTIC } from '@app/providers/brand';
-import { getNodos } from '@features/nodos/api/nodosService';
-import MapaNodos from '@features/nodos/components/MapaNodos';
-import NodoDetalleModal from '@features/nodos/components/NodoDetalleModal';
+import { getNodos } from '@shared/services/nodosService';
+import MapaNodos from '@shared/components/nodos/MapaNodos';
+import NodoDetalleModal from '@shared/components/nodos/NodoDetalleModal';
 import BitacoraEventos from '@features/nodos/components/BitacoraEventos';
 
 const { Content } = Layout;

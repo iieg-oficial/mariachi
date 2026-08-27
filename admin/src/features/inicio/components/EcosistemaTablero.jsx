@@ -42,7 +42,13 @@ const etiquetasEje = (tramos) => {
         .toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', hour12: false }));
 };
 
-export default function EcosistemaTablero({ plataformas, loading, onReportar }) {
+export default function EcosistemaTablero({
+    plataformas,
+    loading,
+    onReportar,
+    contador,
+    sinEncabezado = false,
+}) {
     const pantalla = useBreakpoint();
     const compacta = !pantalla.md;
 
@@ -54,7 +60,7 @@ export default function EcosistemaTablero({ plataformas, loading, onReportar }) 
 
     const todas = operativas === plataformas.length;
 
-    const contador = plataformas.length > 0 && (
+    const insignia = contador ?? (plataformas.length > 0 && (
         <Text
             style={{
                 fontSize: 13,
@@ -66,14 +72,14 @@ export default function EcosistemaTablero({ plataformas, loading, onReportar }) 
         >
             {`${operativas} / ${plataformas.length}`}
         </Text>
-    );
+    ));
 
-    const encabezado = (
+    const encabezado = sinEncabezado ? null : (
         <SectionHeader
             icon={<ClusterOutlined />}
             title="Huachicol"
             subtitle="Estatus de ecosistema"
-            badge={contador}
+            badge={insignia}
             to="/huachicol/observabilidad"
             actionLabel="Ver observabilidad"
         />
@@ -169,6 +175,9 @@ export default function EcosistemaTablero({ plataformas, loading, onReportar }) 
                             <Text type="secondary" style={{ fontSize: 11 }}>{item.texto}</Text>
                         </Space>
                     ))}
+                    {sinEncabezado && insignia && (
+                        <span style={{ marginLeft: 'auto' }}>{insignia}</span>
+                    )}
                 </Space>
             </Card>
         </div>

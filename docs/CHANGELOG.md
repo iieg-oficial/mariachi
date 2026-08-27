@@ -9,6 +9,20 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.23.0] - 2026-08-27
+
+### Cambiado: el inicio alterna entre servidores y servicios
+
+La sección de Huachicol estrena un `Segmented` en el encabezado: **Servidores** por omisión —el mapa
+de nodos con sus sondeos animados y el detalle al hacer click— y **Servicios** para el tablero de 24
+horas que ya estaba. El contador de operativos baja del título a la esquina derecha de la leyenda,
+donde no compite con el selector, y el enlace de la derecha apunta a la página que corresponda a
+cada vista.
+
+El mapa y el modal suben a `shared/components/nodos/`, y el servicio a `shared/services`, porque
+ahora los usan dos features y la convención pide que lo compartido no se importe de una feature a
+otra.
+
 ## [2.22.0] - 2026-08-27
 
 ### Agregado: Huachicol · Servidores, la vista por nodo
