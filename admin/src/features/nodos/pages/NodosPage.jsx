@@ -3,7 +3,7 @@ import { Alert, Card, Layout, Space, Spin, Tag, Typography } from 'antd';
 import { CloudServerOutlined } from '@ant-design/icons';
 import PageHeading from '@shared/components/PageHeading';
 import SectionHeader from '@shared/components/SectionHeader';
-import { SEMANTIC } from '@app/providers/brand';
+import { ESCALA_LATENCIA } from '@shared/components/nodos/latencia';
 import { getNodos } from '@shared/services/nodosService';
 import MapaNodos from '@shared/components/nodos/MapaNodos';
 import NodoDetalleModal from '@shared/components/nodos/NodoDetalleModal';
@@ -61,17 +61,15 @@ export default function NodosPage() {
                             />
                         )}
                         <Space size={16} wrap style={{ marginTop: 12 }}>
-                            {[
-                                ['Enlace sano', SEMANTIC.success],
-                                ['Sin respuesta', SEMANTIC.danger],
-                            ].map(([texto, color]) => (
-                                <Space key={texto} size={6}>
-                                    <span style={{ width: 18, height: 3, borderRadius: 2, background: color, display: 'block' }} />
-                                    <Text type="secondary" style={{ fontSize: 11 }}>{texto}</Text>
+                            <Text type="secondary" style={{ fontSize: 11 }}>Latencia del enlace:</Text>
+                            {ESCALA_LATENCIA.map((tramo) => (
+                                <Space key={tramo.texto} size={6}>
+                                    <span style={{ width: 18, height: 3, borderRadius: 2, background: tramo.color, display: 'block' }} />
+                                    <Text type="secondary" style={{ fontSize: 11 }}>{tramo.texto}</Text>
                                 </Space>
                             ))}
                             <Text type="secondary" style={{ fontSize: 11 }}>
-                                Click en un nodo para ver su detalle
+                                Punteado sin tráfico: sin respuesta
                             </Text>
                         </Space>
                     </Card>

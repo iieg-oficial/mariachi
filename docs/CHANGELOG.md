@@ -9,6 +9,25 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.24.0] - 2026-08-27
+
+### Cambiado: el enlace del mapa dice su latencia por color y por velocidad
+
+Antes el color del enlace solo distinguía sano de caído y la velocidad del punto mezclaba dos cosas:
+como la duración era fija por arista sin importar su largo, dos enlaces con la misma latencia se
+veían a distinta velocidad según qué tan separados estuvieran los nodos en el dibujo.
+
+Ahora la duración se calcula sobre la distancia del tramo, así que **la velocidad en pantalla sí es
+la latencia**: dos enlaces iguales se ven iguales aunque midan distinto en el mapa. Un piso de 700 ms
+evita que un enlace rápido parpadee.
+
+El color pasa a la latencia en tres tramos —hasta 20 ms, hasta 100 ms, más de 100 ms— y el estado
+manda por encima: un enlace caído se pinta rojo, punteado y sin tráfico, así que no se confunde con
+uno lento. El número de milisegundos sigue escrito junto a la línea, para no depender solo del color.
+
+`latencia.js` concentra umbrales, escala y duración, y de ahí sale también la leyenda de las dos
+vistas.
+
 ## [2.23.1] - 2026-08-27
 
 ### Corregido: el mapa de nodos salía vacío en el inicio

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Empty, Typography } from 'antd';
 import { SEMANTIC } from '@app/providers/brand';
+import { colorArista, duracionTravesia } from '@shared/components/nodos/latencia';
 
 const { Text } = Typography;
 
@@ -28,11 +29,13 @@ export default function MapaNodos({ nodos, aristas, onSeleccionar }) {
             .map((circulo) => {
                 const arista = aristas[Number(circulo.dataset.arista)];
                 if (!arista || !porId[arista.de] || !porId[arista.a]) return null;
+                const origen = centro(porId[arista.de]);
+                const destino = centro(porId[arista.a]);
                 return {
                     circulo,
-                    origen: centro(porId[arista.de]),
-                    destino: centro(porId[arista.a]),
-                    duracion: 900 + (arista.ms ?? 20) * 55,
+                    origen,
+                    destino,
+                    duracion: duracionTravesia(origen, destino, arista.ms),
                     desfase: Number(circulo.dataset.arista) * 320,
                 };
             })
@@ -69,7 +72,7 @@ export default function MapaNodos({ nodos, aristas, onSeleccionar }) {
             {aristas.map((arista, indice) => {
                 const origen = centro(porId[arista.de]);
                 const destino = centro(porId[arista.a]);
-                const color = colorDe(arista.estado);
+                const color = colorArista(arista);
                 return (
                     <g key={`${arista.de}-${arista.a}`}>
                         <line

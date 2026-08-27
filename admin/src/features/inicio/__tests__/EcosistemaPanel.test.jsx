@@ -56,7 +56,8 @@ describe('EcosistemaPanel', () => {
     it('abre en la vista de servidores', async () => {
         montar([plataforma('mariachi', 'ok')]);
         await waitFor(() => expect(screen.getByText('S1')).toBeInTheDocument());
-        expect(screen.getByText('Click en un nodo para su detalle')).toBeInTheDocument();
+        expect(screen.getByText('Latencia:')).toBeInTheDocument();
+        expect(screen.getByText('hasta 20 ms')).toBeInTheDocument();
     });
 
     it('el contador de operativos va junto a la leyenda', async () => {

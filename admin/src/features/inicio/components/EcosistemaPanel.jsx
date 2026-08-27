@@ -6,6 +6,7 @@ import SectionHeader from '@shared/components/SectionHeader';
 import MapaNodos from '@shared/components/nodos/MapaNodos';
 import NodoDetalleModal from '@shared/components/nodos/NodoDetalleModal';
 import { getNodos } from '@shared/services/nodosService';
+import { ESCALA_LATENCIA } from '@shared/components/nodos/latencia';
 import EcosistemaTablero from '@features/inicio/components/EcosistemaTablero';
 
 const { Text } = Typography;
@@ -13,11 +14,6 @@ const { Text } = Typography;
 const VISTAS = [
     { value: 'servidores', label: 'Servidores' },
     { value: 'servicios', label: 'Servicios' },
-];
-
-const LEYENDA_MAPA = [
-    { texto: 'Enlace sano', color: SEMANTIC.success },
-    { texto: 'Sin respuesta', color: SEMANTIC.danger },
 ];
 
 export default function EcosistemaPanel({ plataformas, loading, onReportar }) {
@@ -101,13 +97,13 @@ export default function EcosistemaPanel({ plataformas, loading, onReportar }) {
                     paddingTop: 10,
                     borderTop: '1px solid #f0f0f0',
                 }}>
-                    {LEYENDA_MAPA.map((item) => (
-                        <Space key={item.texto} size={6}>
-                            <span style={{ width: 18, height: 3, borderRadius: 2, background: item.color, display: 'block' }} />
-                            <Text type="secondary" style={{ fontSize: 11 }}>{item.texto}</Text>
+                    <Text type="secondary" style={{ fontSize: 11 }}>Latencia:</Text>
+                    {ESCALA_LATENCIA.map((tramo) => (
+                        <Space key={tramo.texto} size={6}>
+                            <span style={{ width: 18, height: 3, borderRadius: 2, background: tramo.color, display: 'block' }} />
+                            <Text type="secondary" style={{ fontSize: 11 }}>{tramo.texto}</Text>
                         </Space>
                     ))}
-                    <Text type="secondary" style={{ fontSize: 11 }}>Click en un nodo para su detalle</Text>
                     <span style={{ marginLeft: 'auto' }}>{contador}</span>
                 </div>
             </Card>
