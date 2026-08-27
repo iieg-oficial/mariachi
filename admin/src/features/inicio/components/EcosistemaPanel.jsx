@@ -104,7 +104,9 @@ export default function EcosistemaPanel({ plataformas, loading, onReportar }) {
                             <Text type="secondary" style={{ fontSize: 11 }}>{tramo.texto}</Text>
                         </Space>
                     ))}
-                    <span style={{ marginLeft: 'auto' }}>{contador}</span>
+                    <Text type="secondary" style={{ fontSize: 11, marginLeft: 'auto' }}>
+                        Click en un nodo para su detalle
+                    </Text>
                 </div>
             </Card>
 

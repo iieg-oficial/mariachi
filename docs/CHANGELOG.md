@@ -9,6 +9,16 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.24.1] - 2026-08-27
+
+### Corregido: el conteo de servicios aparecía en la vista de servidores
+
+La leyenda del mapa mostraba «8 / 10 operativos», que cuenta servicios, mientras el mapa dibujaba
+seis nodos: dos cifras distintas para dos cosas distintas, juntas y sin distinguirse. Además sobraba,
+porque el estado de cada nodo ya se ve en el color de su borde.
+
+El conteo se queda solo en la vista de servicios, que es de donde sale.
+
 ## [2.24.0] - 2026-08-27
 
 ### Cambiado: el enlace del mapa dice su latencia por color y por velocidad

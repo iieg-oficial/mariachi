@@ -60,8 +60,16 @@ describe('EcosistemaPanel', () => {
         expect(screen.getByText('hasta 20 ms')).toBeInTheDocument();
     });
 
-    it('el contador de operativos va junto a la leyenda', async () => {
+    it('en servidores no aparece el conteo de servicios, que ahi enganaria', async () => {
         montar([plataforma('mariachi', 'ok'), plataforma('acervo', 'down')]);
+        await waitFor(() => expect(screen.getByText('S1')).toBeInTheDocument());
+        expect(screen.queryByText('1 / 2 operativos')).not.toBeInTheDocument();
+    });
+
+    it('el conteo de servicios aparece al cambiar a esa vista', async () => {
+        montar([plataforma('mariachi', 'ok'), plataforma('acervo', 'down')]);
+        await waitFor(() => expect(screen.getByText('S1')).toBeInTheDocument());
+        fireEvent.click(screen.getByText('Servicios'));
         await waitFor(() => expect(screen.getByText('1 / 2 operativos')).toBeInTheDocument());
     });
 
