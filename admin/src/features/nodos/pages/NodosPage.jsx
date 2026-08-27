@@ -31,8 +31,6 @@ export default function NodosPage() {
         return () => clearInterval(intervalo);
     }, [cargar]);
 
-    const sinNodo = datos.nodos.find((n) => n.node === 'sin-nodo');
-
     return (
         <Content style={{ width: '100%' }}>
             <Space orientation="vertical" size="large" style={{ width: '100%' }}>
@@ -44,15 +42,6 @@ export default function NodosPage() {
                 />
 
                 {error && <Alert type="error" showIcon message={error} />}
-
-                {sinNodo && (
-                    <Alert
-                        type="info"
-                        showIcon
-                        message={`${sinNodo.servicios.length} servicios sin nodo declarado`}
-                        description="Les falta ONTOY_NODE en el .env de su sidecar; hasta entonces se agrupan aparte."
-                    />
-                )}
 
                 <div>
                     <SectionHeader

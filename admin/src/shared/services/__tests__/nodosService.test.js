@@ -74,3 +74,30 @@ describe('getNodos', () => {
         expect(datos.eventos).toHaveLength(1);
     });
 });
+
+describe('aristas de un nodo real', () => {
+    beforeEach(() => api.get.mockReset());
+
+    it('deriva una arista por cada peer del reportero', async () => {
+        api.get.mockResolvedValue({
+            data: {
+                nodos: [
+                    {
+                        node: 'S1', status: 'ok', servicios: [], host: {},
+                        containers: { total: 1, running: 1 },
+                        peers: {
+                            S2: { status: 'ok', latency_ms: 18 },
+                            S4: { status: 'down', detail: 'timed out' },
+                        },
+                    },
+                    { node: 'S2', status: 'ok', servicios: [], host: {}, peers: {}, containers: { total: 1, running: 1 } },
+                    { node: 'S4', status: 'ok', servicios: [], host: {}, peers: {}, containers: { total: 1, running: 1 } },
+                ],
+            },
+        });
+        const { aristas } = await getNodos();
+        expect(aristas).toHaveLength(2);
+        expect(aristas.find((a) => a.a === 'S2').ms).toBe(18);
+        expect(aristas.find((a) => a.a === 'S4').estado).toBe('down');
+    });
+});

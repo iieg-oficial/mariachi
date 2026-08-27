@@ -79,23 +79,6 @@ describe('NodosPage', () => {
         expect(screen.getByText('(venía de down)')).toBeInTheDocument();
     });
 
-    it('avisa cuando hay servicios sin nodo declarado', async () => {
-        api.get.mockResolvedValue({
-            data: {
-                ...RESPUESTA,
-                nodos: [...RESPUESTA.nodos, {
-                    node: 'sin-nodo', status: 'ok', host: {}, peers: {},
-                    containers: { total: 1, running: 1 },
-                    servicios: [{ slug: 'sextante', label: 'sextante', status: 'ok', version: '2.8.0', uptime_24h: 100 }],
-                }],
-            },
-        });
-        montar();
-        await waitFor(() => expect(
-            screen.getByText('1 servicios sin nodo declarado'),
-        ).toBeInTheDocument());
-    });
-
     it('avisa si el monitor no responde', async () => {
         api.get.mockRejectedValue(new Error('502'));
         montar();

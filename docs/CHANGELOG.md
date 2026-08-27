@@ -9,6 +9,19 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.23.1] - 2026-08-27
+
+### Corregido: el mapa de nodos salía vacío en el inicio
+
+El panel del inicio no necesita la bitácora, así que pedía `/sistema/monitor/nodos?eventos=0`. El
+proxy validaba `ge=1` y respondía **422**, con lo que la carga entera fallaba: en la subpágina, que
+usa el valor por omisión, el mapa se veía bien. Ahora `0` es válido y significa «sin eventos».
+
+### Eliminado: el aviso de servicios sin nodo
+
+Explicaba una variable de entorno faltante a quien usa el CMS. Los servicios sin `ONTOY_NODE` se
+siguen agrupando aparte, sin cartel.
+
 ## [2.23.0] - 2026-08-27
 
 ### Cambiado: el inicio alterna entre servidores y servicios
