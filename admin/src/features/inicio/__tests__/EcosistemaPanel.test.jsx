@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 
@@ -8,6 +8,7 @@ vi.mock('@shared/services/api', () => ({
 
 import api from '@shared/services/api';
 import EcosistemaPanel from '@features/inicio/components/EcosistemaPanel';
+import { REFRESCO_NODOS_MS } from '@shared/services/nodosService';
 
 const NODOS = {
     environment: 'produccion',
@@ -86,5 +87,30 @@ describe('EcosistemaPanel', () => {
         await waitFor(() => expect(screen.getByText('Ver servidores →')).toBeInTheDocument());
         fireEvent.click(screen.getByText('Servicios'));
         await waitFor(() => expect(screen.getByText('Ver observabilidad →')).toBeInTheDocument());
+    });
+});
+
+describe('refresco del mapa', () => {
+    beforeEach(() => {
+        api.get.mockReset();
+        api.get.mockResolvedValue({ data: NODOS });
+        vi.useFakeTimers({ shouldAdvanceTime: true });
+    });
+
+    afterEach(() => vi.useRealTimers());
+
+    it('vuelve a pedir los nodos sin recargar la pagina', async () => {
+        montar([plataforma('mariachi', 'ok')]);
+        await waitFor(() => expect(api.get).toHaveBeenCalledTimes(1));
+        await vi.advanceTimersByTimeAsync(REFRESCO_NODOS_MS + 100);
+        expect(api.get).toHaveBeenCalledTimes(2);
+    });
+
+    it('deja de pedir al desmontarse', async () => {
+        const { unmount } = montar([plataforma('mariachi', 'ok')]);
+        await waitFor(() => expect(api.get).toHaveBeenCalledTimes(1));
+        unmount();
+        await vi.advanceTimersByTimeAsync(REFRESCO_NODOS_MS * 3);
+        expect(api.get).toHaveBeenCalledTimes(1);
     });
 });

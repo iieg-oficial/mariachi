@@ -5,7 +5,7 @@ import { SEMANTIC } from '@app/providers/brand';
 import SectionHeader from '@shared/components/SectionHeader';
 import MapaNodos from '@shared/components/nodos/MapaNodos';
 import NodoDetalleModal from '@shared/components/nodos/NodoDetalleModal';
-import { getNodos } from '@shared/services/nodosService';
+import { getNodos, REFRESCO_NODOS_MS } from '@shared/services/nodosService';
 import { ESCALA_LATENCIA } from '@shared/components/nodos/latencia';
 import EcosistemaTablero from '@features/inicio/components/EcosistemaTablero';
 
@@ -24,11 +24,14 @@ export default function EcosistemaPanel({ plataformas, loading, onReportar }) {
 
     useEffect(() => {
         let cancelado = false;
-        getNodos(0)
+        const cargar = () => getNodos(0)
             .then((data) => { if (!cancelado) setNodos(data); })
             .catch(() => {})
             .finally(() => { if (!cancelado) setCargandoNodos(false); });
-        return () => { cancelado = true; };
+
+        cargar();
+        const intervalo = setInterval(cargar, REFRESCO_NODOS_MS);
+        return () => { cancelado = true; clearInterval(intervalo); };
     }, []);
 
     const operativas = plataformas.filter((p) => p.status === 'ok').length;

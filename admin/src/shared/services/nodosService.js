@@ -1,5 +1,7 @@
 import api from '@shared/services/api';
 
+export const REFRESCO_NODOS_MS = 20000;
+
 export const POSICIONES = {
     S1: { x: 80, y: 170, w: 132, h: 76 },
     S2: { x: 390, y: 60, w: 132, h: 76 },

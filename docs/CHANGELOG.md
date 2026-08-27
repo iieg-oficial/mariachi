@@ -9,6 +9,22 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.25.0] - 2026-08-27
+
+### Cambiado: el mapa de nodos se refresca cada 20 segundos
+
+Estaba en 60, que sumados a los 60 del sondeo del monitor dejaban hasta dos minutos entre una caída
+y verla en pantalla. A 20 segundos el retraso baja a poco más de un minuto y el costo es medible pero
+menor: cada petición son 3.2 KB y unos 100 ms de CPU del monitor, así que se pasa de 0.17 % a 0.5 %
+de un núcleo por persona mirando.
+
+No se baja más porque el dato de fondo no cambia más seguido: el monitor mide cada 60 segundos, y
+pedir cada 5 daría doce respuestas idénticas por cada medición nueva.
+
+**El mapa del inicio no se refrescaba en absoluto**: cargaba una vez al entrar y se quedaba con esa
+foto mientras la pestaña siguiera abierta. Ahora comparte el mismo intervalo que la página de
+servidores y limpia su temporizador al desmontarse.
+
 ## [2.24.1] - 2026-08-27
 
 ### Corregido: el conteo de servicios aparecía en la vista de servidores

@@ -4,15 +4,13 @@ import { CloudServerOutlined } from '@ant-design/icons';
 import PageHeading from '@shared/components/PageHeading';
 import SectionHeader from '@shared/components/SectionHeader';
 import { ESCALA_LATENCIA } from '@shared/components/nodos/latencia';
-import { getNodos } from '@shared/services/nodosService';
+import { getNodos, REFRESCO_NODOS_MS } from '@shared/services/nodosService';
 import MapaNodos from '@shared/components/nodos/MapaNodos';
 import NodoDetalleModal from '@shared/components/nodos/NodoDetalleModal';
 import BitacoraEventos from '@features/nodos/components/BitacoraEventos';
 
 const { Content } = Layout;
 const { Text } = Typography;
-
-const REFRESCO_MS = 60000;
 
 export default function NodosPage() {
     const [datos, setDatos] = useState({ nodos: [], aristas: [], eventos: [], environment: null });
@@ -27,7 +25,7 @@ export default function NodosPage() {
 
     useEffect(() => {
         cargar();
-        const intervalo = setInterval(cargar, REFRESCO_MS);
+        const intervalo = setInterval(cargar, REFRESCO_NODOS_MS);
         return () => clearInterval(intervalo);
     }, [cargar]);
 
