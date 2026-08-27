@@ -11,7 +11,6 @@ const { Text } = Typography;
 const { useBreakpoint } = Grid;
 
 const COLUMNAS = `212px 1fr 50px ${ANCHO_ENLACES}px`;
-const PADDING_CARD = 16;
 const HORAS_EJE = 4;
 
 const LEYENDA = [
@@ -154,12 +153,6 @@ export default function EcosistemaTablero({
                     style={{
                         display: 'flex',
                         marginTop: 16,
-                        marginInline: -PADDING_CARD,
-                        marginBottom: -PADDING_CARD,
-                        paddingInline: PADDING_CARD,
-                        paddingBlock: 12,
-                        borderTop: '1px solid #f0f0f0',
-                        width: `calc(100% + ${PADDING_CARD * 2}px)`,
                     }}
                 >
                     {LEYENDA.map((item) => (

@@ -9,6 +9,13 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.25.1] - 2026-08-27
+
+### Cambiado: la leyenda ya no lleva línea divisoria
+
+Ni en el mapa ni en el tablero. El espacio basta para separarla del contenido, y con los divisores
+entre filas ya retirados esa línea era la única que quedaba dentro de la tarjeta.
+
 ## [2.25.0] - 2026-08-27
 
 ### Cambiado: el mapa de nodos se refresca cada 20 segundos

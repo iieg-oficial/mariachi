@@ -96,9 +96,7 @@ export default function EcosistemaPanel({ plataformas, loading, onReportar }) {
                     alignItems: 'center',
                     gap: 16,
                     flexWrap: 'wrap',
-                    marginTop: 8,
-                    paddingTop: 10,
-                    borderTop: '1px solid #f0f0f0',
+                    marginTop: 12,
                 }}>
                     <Text type="secondary" style={{ fontSize: 11 }}>Latencia:</Text>
                     {ESCALA_LATENCIA.map((tramo) => (
