@@ -9,6 +9,18 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.21.0] - 2026-08-27
+
+### Cambiado: el tablero de estatus usa el encabezado de sección del resto del inicio
+
+El inicio tenía dos secciones con dos encabezados distintos: MapaLab con `SectionHeader` —icono,
+título, subtítulo y un «Ver detalles →» a la derecha— y el tablero de Huachicol con uno propio,
+metido dentro del `Card`. Ahora los dos usan el mismo componente, así que se alinean el tamaño del
+título, el color del icono y la posición del enlace.
+
+`SectionHeader` gana una prop `badge` opcional, que es lo único que le faltaba para servir en las dos
+secciones: ahí va el contador de servicios operativos, que sigue en rojo cuando no están todos.
+
 ## [2.20.0] - 2026-08-26
 
 ### Agregado: el portalito aparece en el tablero de estatus

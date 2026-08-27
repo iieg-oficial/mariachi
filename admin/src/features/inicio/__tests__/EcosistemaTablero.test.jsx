@@ -48,6 +48,13 @@ describe('EcosistemaTablero', () => {
         expect(screen.getByText('2 / 3')).toBeInTheDocument();
     });
 
+    it('usa el mismo encabezado de seccion que el resto del inicio', () => {
+        montar([plataforma('acervo', 'datos', 'ok')]);
+        expect(screen.getByText('Huachicol')).toBeInTheDocument();
+        expect(screen.getByText('— Estatus de ecosistema')).toBeInTheDocument();
+        expect(screen.getByText('Ver observabilidad →')).toBeInTheDocument();
+    });
+
     it('agrupa por capa y cuenta cada grupo', () => {
         montar([
             plataforma('gateway-hub', 'entrada', 'down'),

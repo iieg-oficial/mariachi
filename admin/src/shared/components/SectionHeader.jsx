@@ -8,6 +8,7 @@ export default function SectionHeader({
     title,
     subtitle,
     to,
+    badge,
     actionLabel = 'Ver detalles',
     color = '#5C2472',
 }) {
@@ -21,6 +22,7 @@ export default function SectionHeader({
                         <Text type="secondary" style={{ fontSize: 18, fontWeight: 400 }}> — {subtitle}</Text>
                     )}
                 </Text>
+                {badge}
             </span>
             {to && (
                 <Link to={to}>
