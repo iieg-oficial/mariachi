@@ -29,7 +29,7 @@ export default function BitacoraEventos({ eventos }) {
 
     const items = eventos.map((evento) => ({
         color: COLOR_EVENTO[evento.to_status] || SEMANTIC.neutral,
-        children: (
+        content: (
             <div>
                 <Text strong style={{ fontFamily: 'monospace' }}>{evento.slug}</Text>
                 {' '}

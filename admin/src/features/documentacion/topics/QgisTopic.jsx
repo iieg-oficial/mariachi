@@ -82,7 +82,7 @@ const ACCION_COLUMNS = [
 
 function UsoTab() {
     return (
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="large" style={{ width: '100%' }}>
 
             <Card size="small" title="Qué se puede hacer">
                 <Table
@@ -107,7 +107,7 @@ function UsoTab() {
             <Alert
                 type="info"
                 showIcon
-                message="Lo que se administra aquí se ve allá"
+                title="Lo que se administra aquí se ve allá"
                 description="El plugin no tiene catálogo propio: lee el mismo árbol que el visor. Un cambio de tipo de nodo, de filtro o de tipo de geometría cambia cómo se ve y qué trae la capa en QGIS, sin desplegar nada."
             />
 
@@ -137,7 +137,7 @@ function UsoTab() {
             <Alert
                 type="warning"
                 showIcon
-                message="Antes de publicarlo fuera de la red"
+                title="Antes de publicarlo fuera de la red"
                 description={
                     <ul style={{ margin: 0, paddingLeft: 18 }}>
                         <li>El tráfico del plugin pasa por el gateway, no por la URL interna de GeoServer: eso es lo que le da cache, rate limit y protección de bots.</li>
@@ -163,7 +163,7 @@ export default function QgisTopic() {
     ];
 
     return (
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
             <div>
                 <Title level={4} style={{ marginTop: 0 }}>Plugin de QGIS</Title>
                 <Paragraph type="secondary" style={{ marginBottom: 0 }}>

@@ -99,7 +99,7 @@ export default function InicioPage() {
                     <Alert closable
                         type="error"
                         showIcon
-                        message={`Tienes ${rechazados.length} borrador${rechazados.length === 1 ? '' : 'es'} rechazado${rechazados.length === 1 ? '' : 's'}`}
+                        title={`Tienes ${rechazados.length} borrador${rechazados.length === 1 ? '' : 'es'} rechazado${rechazados.length === 1 ? '' : 's'}`}
                         description="Revísalos desde el menú de tu avatar y aplícales los cambios solicitados antes de volver a enviar a revisión."
                     />
                 )}

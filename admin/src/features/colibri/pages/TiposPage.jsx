@@ -183,7 +183,7 @@ export default function TiposPage() {
 
     return (
         <Content style={{ padding: isMobile ? 12 : 24, maxWidth: 1280, margin: '0 auto', width: '100%' }}>
-            <Space direction="vertical" size="large" style={{ width: '100%' }}>
+            <Space orientation="vertical" size="large" style={{ width: '100%' }}>
                 <div>
                     <Title level={isMobile ? 4 : 3} style={{ marginBottom: 4 }}>Tipos de reporte</Title>
                     <Text type="secondary">
@@ -191,7 +191,7 @@ export default function TiposPage() {
                     </Text>
                 </div>
 
-                {error && <Alert type="error" message={error} showIcon closable />}
+                {error && <Alert type="error" title={error} showIcon closable />}
 
                 <Card>
                     <Space style={{ marginBottom: 16 }}>

@@ -97,7 +97,7 @@ export default function TokensPanel({ tokens = [], onGuardar, guardando }) {
     ];
 
     return (
-        <Space direction='vertical' size='large' style={{ width: '100%' }}>
+        <Space orientation='vertical' size='large' style={{ width: '100%' }}>
             {grupos.map(([grupo, lista]) => (
                 <div key={grupo}>
                     <Space style={{ marginBottom: 8 }}>

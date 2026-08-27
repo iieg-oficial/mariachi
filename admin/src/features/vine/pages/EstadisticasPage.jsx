@@ -72,7 +72,7 @@ const EstadisticasPage = () => {
                 </Button>
             </Space>
 
-            {error && <Alert type="error" showIcon message={error} style={{ marginBottom: 16 }} />}
+            {error && <Alert type="error" showIcon title={error} style={{ marginBottom: 16 }} />}
 
             <Tabs
                 defaultActiveKey="general"

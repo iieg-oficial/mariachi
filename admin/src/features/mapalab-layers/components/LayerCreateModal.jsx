@@ -174,7 +174,7 @@ export default function LayerCreateModal({ open, onClose, onSubmit, treeData = [
                 {help && !willBeProperty && (
                     <Alert closable
                         type="info"
-                        message={help.title}
+                        title={help.title}
                         description={help.body}
                         showIcon
                         style={{ marginBottom: 16 }}
@@ -185,7 +185,7 @@ export default function LayerCreateModal({ open, onClose, onSubmit, treeData = [
                         type="success"
                         showIcon
                         style={{ marginBottom: 16 }}
-                        message="Se creará como Propiedad del grupo"
+                        title="Se creará como Propiedad del grupo"
                         description="El padre seleccionado es un Grupo, así que este nodo cuenta como Propiedad: comparte feature type con el grupo y se enciende automáticamente cuando se enciende el grupo en el visor. Distínguelo de sus hermanas con un Filtro CQL en la pestaña Servicios después de crearlo."
                     />
                 )}

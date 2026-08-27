@@ -72,7 +72,7 @@ export default function LayerExplorerPage() {
 
     return (
         <Content style={{ padding: isMobile ? 6 : 24 }}>
-            <Space direction="vertical" style={{ width: '100%' }} size="middle">
+            <Space orientation="vertical" style={{ width: '100%' }} size="middle">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
                     <div>
                         <Title level={3} style={{ marginTop: 0, marginBottom: 4 }}>Explorador de capas</Title>
@@ -85,7 +85,7 @@ export default function LayerExplorerPage() {
                     <Button icon={<ReloadOutlined />} onClick={() => setReloadToken((t) => t + 1)} disabled={loading} />
                 </div>
 
-                {error && <Alert type="error" showIcon closable message={error} />}
+                {error && <Alert type="error" showIcon closable title={error} />}
 
                 <Space wrap>
                     <Select

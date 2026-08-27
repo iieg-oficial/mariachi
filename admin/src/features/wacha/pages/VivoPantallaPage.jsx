@@ -49,7 +49,7 @@ const VivoPantallaPage = () => {
     return (
         <div style={{ height: '100%', overflow: 'auto', background: '#000', padding: 12 }}>
             {error ? (
-                <Alert type="warning" showIcon message={error} style={{ marginBottom: 12 }} />
+                <Alert type="warning" showIcon title={error} style={{ marginBottom: 12 }} />
             ) : null}
             <MosaicoCamaras
                 camaras={camaras}

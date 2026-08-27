@@ -166,8 +166,8 @@ export default function AddCapaModal({
 
     return (
         <Modal title="Agregar capa al evento" open={open} onCancel={onClose} footer={null} width={720}>
-            <Space direction="vertical" style={{ width: '100%' }}>
-                {error && <Alert type="error" message={error} showIcon closable />}
+            <Space orientation="vertical" style={{ width: '100%' }}>
+                {error && <Alert type="error" title={error} showIcon closable />}
                 <Input.Search
                     placeholder="Buscar por label, workspace o layer"
                     aria-label="Buscar capa"

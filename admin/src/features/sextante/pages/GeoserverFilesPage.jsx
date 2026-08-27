@@ -249,7 +249,7 @@ export default function GeoserverFilesPage() {
                     onUpload={() => setUploadOpen(true)}
                 />
 
-                {error && <Alert type="error" showIcon closable message={error} style={{ marginBottom: 12 }} />}
+                {error && <Alert type="error" showIcon closable title={error} style={{ marginBottom: 12 }} />}
 
                 <GeoserverFilesContent
                     viewMode={viewMode}

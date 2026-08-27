@@ -97,7 +97,7 @@ export default function DeleteLayerModal({
             <Paragraph>
                 Vas a {isAdmin ? 'archivar' : 'solicitar el archivado de'} la capa:
             </Paragraph>
-            <Space direction="vertical" style={{ width: '100%', marginBottom: 12 }} size={4}>
+            <Space orientation="vertical" style={{ width: '100%', marginBottom: 12 }} size={4}>
                 <Text strong style={{ fontSize: 16 }}>{layer?.label}</Text>
                 <Text type="secondary" style={{ fontSize: 12 }}>id: <code>{layer?.id}</code></Text>
             </Space>
@@ -107,14 +107,14 @@ export default function DeleteLayerModal({
             </Paragraph>
 
             {referencesLoading ? (
-                <Alert type="info" message="Verificando referencias..." showIcon style={{ marginBottom: 12 }} />
+                <Alert type="info" title="Verificando referencias..." showIcon style={{ marginBottom: 12 }} />
             ) : refsBlock(references)}
 
             {blocking && (
                 <Alert
                     type="error"
                     showIcon
-                    message="No se puede archivar"
+                    title="No se puede archivar"
                     description="La capa tiene hijos activos. Elimínalos o muévelos primero."
                     style={{ marginBottom: 12 }}
                 />

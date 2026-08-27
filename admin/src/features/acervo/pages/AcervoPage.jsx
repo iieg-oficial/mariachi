@@ -1410,7 +1410,7 @@ const Acervo = () => {
                                 showIcon
                                 closable
                                 onClose={() => setUploadResult(null)}
-                                message={uploadResult.failed > 0 || uploadResult.conflicts > 0
+                                title={uploadResult.failed > 0 || uploadResult.conflicts > 0
                                     ? `${uploadResult.done} archivo(s) subido(s)`
                                         + `${uploadResult.failed > 0 ? `, ${uploadResult.failed} con error` : ''}`
                                         + `${uploadResult.conflicts > 0 ? `, ${uploadResult.conflicts} en conflicto de nombre` : ''}`
@@ -1527,7 +1527,7 @@ const Acervo = () => {
                 cancelText="Cancelar"
                 destroyOnHidden
             >
-                <Space direction="vertical" style={{ width: '100%' }}>
+                <Space orientation="vertical" style={{ width: '100%' }}>
                     <div style={{ color: '#8c8c8c', fontSize: 12 }}>
                         Archivo: <strong>{currentFile?.originalName}</strong>
                         <br />
@@ -1556,7 +1556,7 @@ const Acervo = () => {
                 cancelText="Cancelar"
                 destroyOnHidden
             >
-                <Space direction="vertical" style={{ width: '100%' }}>
+                <Space orientation="vertical" style={{ width: '100%' }}>
                     <div style={{ color: '#8c8c8c', fontSize: 12, marginBottom: 8 }}>
                         Se moverán {selectedFiles.length} archivo(s) a la carpeta seleccionada.
                     </div>

@@ -21,11 +21,11 @@ export default function ApiKeyRevealModal({ keyData, onClose, onCopy }) {
             maskClosable={false}
         >
             {keyData && (
-                <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
                     <Alert
                         type="warning"
                         showIcon
-                        message="Esta clave NO se mostrará otra vez."
+                        title="Esta clave NO se mostrará otra vez."
                         description="Cópiala ahora y guárdala en un lugar seguro. Si la pierdes, tendrás que rotarla y actualizar todos los huéspedes."
                     />
                     <div>

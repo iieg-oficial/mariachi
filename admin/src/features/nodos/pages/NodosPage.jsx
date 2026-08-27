@@ -39,7 +39,7 @@ export default function NodosPage() {
                     marginBottom={0}
                 />
 
-                {error && <Alert type="error" showIcon message={error} />}
+                {error && <Alert type="error" showIcon title={error} />}
 
                 <div>
                     <SectionHeader

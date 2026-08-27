@@ -118,7 +118,7 @@ export default function ServicioDetalle({ slug }) {
         : [];
 
     return (
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
             <Descriptions size="small" column={{ xs: 1, sm: 2, md: 3 }} bordered>
                 <Descriptions.Item label="Versión">{data.version ? `v${data.version}` : '—'}</Descriptions.Item>
                 <Descriptions.Item label="Desplegado">{data.deployed_at ? new Date(data.deployed_at).toLocaleString() : '—'}</Descriptions.Item>

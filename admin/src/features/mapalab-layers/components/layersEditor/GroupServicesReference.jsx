@@ -116,7 +116,7 @@ export default function GroupServicesReference({ groupId, treeData }) {
             <Alert closable
                 type="info"
                 showIcon
-                message="Este nodo es un grupo (agrupador), no una capa WMS"
+                title="Este nodo es un grupo (agrupador), no una capa WMS"
                 description={
                     <div>
                         <p style={{ marginBottom: 8 }}>

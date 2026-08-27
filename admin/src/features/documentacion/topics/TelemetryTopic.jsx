@@ -56,7 +56,7 @@ const MUNICIPIO_EVENT_COLUMNS = [
 
 export default function TelemetryTopic() {
     return (
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="large" style={{ width: '100%' }}>
             <div>
                 <Title level={3} style={{ marginBottom: 4 }}>Telemetría</Title>
                 <Text type="secondary">

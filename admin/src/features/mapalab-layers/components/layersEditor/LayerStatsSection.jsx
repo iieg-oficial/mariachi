@@ -601,7 +601,7 @@ export default function LayerStatsSection({
             <Alert closable
                 type="info"
                 showIcon
-                message={
+                title={
                     <span>
                         Hasta 8 slots de estadísticas (numeralia). Cada slot puede ser <b>Estático</b> (valor fijo),
                         <b> Operación simple</b> (count, sum, avg…) o <b>Fórmula</b> (combinaciones recursivas:
@@ -614,7 +614,7 @@ export default function LayerStatsSection({
                 <Alert closable
                     type="warning"
                     showIcon
-                    message="Para operaciones dinámicas se necesitan workspace y capa GeoServer definidos en la pestaña Servicios."
+                    title="Para operaciones dinámicas se necesitan workspace y capa GeoServer definidos en la pestaña Servicios."
                 />
             ) : (
                 <Text type="secondary" style={{ fontSize: 12 }}>
@@ -723,7 +723,7 @@ export default function LayerStatsSection({
                 <Alert
                     type="warning"
                     showIcon
-                    message="Solo una administradora puede guardar la configuración de estadísticas."
+                    title="Solo una administradora puede guardar la configuración de estadísticas."
                     description="Puedes editarla y probarla aquí, pero el guardado está restringido."
                 />
             )}
@@ -750,7 +750,7 @@ export default function LayerStatsSection({
                 <Alert
                     type="warning"
                     showIcon
-                    message="Algunas estadísticas no pudieron calcularse"
+                    title="Algunas estadísticas no pudieron calcularse"
                     description={
                         <Space orientation="vertical" size={2} style={{ width: '100%' }}>
                             {refreshErrors.map((e, i) => (
@@ -781,7 +781,7 @@ export default function LayerStatsSection({
                             type="info"
                             showIcon
                             style={{ marginBottom: 8 }}
-                            message="Valores legacy precargados como slots estáticos"
+                            title="Valores legacy precargados como slots estáticos"
                             description="Esta capa tenía valores guardados sin configuración (vienen del Sheet original). Los precarga­mos como slots estáticos editables. Edita los que quieras, convierte alguno a operación dinámica (count/sum/fórmula) si aplica, y guarda la configuración para que mariachi pase a ser la fuente única."
                         />
                     )}

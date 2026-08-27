@@ -26,7 +26,7 @@ export default function MappingModal({ open, onClose, mapping, setMapping }) {
         >
             <Alert
                 type="info"
-                message="Selecciona '— ignorar —' para columnas que no quieras importar. layer_key es obligatorio."
+                title="Selecciona '— ignorar —' para columnas que no quieras importar. layer_key es obligatorio."
                 showIcon
                 style={{ marginBottom: 12 }}
                 closable

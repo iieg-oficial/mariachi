@@ -147,7 +147,7 @@ export default function LayerDetailDrawer({ open, alias, geoserverWorkspace, lay
         <Drawer
             open={open}
             onClose={onClose}
-            width={720}
+            size={720}
             styles={{ wrapper: { maxWidth: '100vw' } }}
             title={
                 <Space>
@@ -158,7 +158,7 @@ export default function LayerDetailDrawer({ open, alias, geoserverWorkspace, lay
             extra={<Button size="small" icon={<CopyOutlined />} onClick={copyName}>Copiar nombre</Button>}
         >
             {loading && <div style={{ textAlign: 'center', padding: 48 }}><Spin /></div>}
-            {error && <Alert type="error" showIcon message={error} />}
+            {error && <Alert type="error" showIcon title={error} />}
             {!loading && !error && <Tabs items={tabItems} />}
         </Drawer>
     );

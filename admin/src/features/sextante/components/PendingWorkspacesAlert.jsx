@@ -21,7 +21,7 @@ export default function PendingWorkspacesAlert({ pending = [], onRegistered }) {
                 type="warning"
                 showIcon
                 style={{ marginBottom: 12 }}
-                message={`${pending.length} workspace${pending.length === 1 ? '' : 's'} sin registrar en GeoServer`}
+                title={`${pending.length} workspace${pending.length === 1 ? '' : 's'} sin registrar en GeoServer`}
                 description={description}
                 action={
                     <Button size="small" type="primary" onClick={() => setOpen(true)}>

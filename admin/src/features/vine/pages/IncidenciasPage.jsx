@@ -160,7 +160,7 @@ const IncidenciasPage = () => {
                     type="info"
                     showIcon
                     style={{ marginBottom: 16 }}
-                    message="Puedes consultar, pero no registrar"
+                    title="Puedes consultar, pero no registrar"
                     description="Registrar incidencias necesita el rol «Vine - editar ficha del personal»."
                 />
             )}

@@ -43,7 +43,7 @@ export default function InfoboxStandalone({ layer, inherited = null, onSaved }) 
             <Alert
                 type="warning"
                 showIcon
-                message="La capa no tiene workspace o feature type definido"
+                title="La capa no tiene workspace o feature type definido"
                 description="No se pueden listar campos disponibles para construir la tarjeta. Asigna workspace y geoserver_layer en el editor de capas."
             />
         );

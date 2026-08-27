@@ -48,7 +48,7 @@ export default function RawXmlFallback({ rawXml, reason, workspace, styleName, l
                 type="info"
                 showIcon
                 closable
-                message={TITLE_FOR_KIND[kind] || 'Este tipo de SLD aún no es editable visualmente'}
+                title={TITLE_FOR_KIND[kind] || 'Este tipo de SLD aún no es editable visualmente'}
                 description={
                     <div>
                         <p style={{ marginBottom: 4 }}>{tip}</p>

@@ -41,7 +41,7 @@ export default function SourceContextView({ context }) {
     }
 
     return (
-        <Space direction="vertical" size={8} style={{ width: '100%' }}>
+        <Space orientation="vertical" size={8} style={{ width: '100%' }}>
             {user && (
                 <div>
                     <Text strong style={{ fontSize: 12 }}>Usuario</Text>
@@ -65,7 +65,7 @@ export default function SourceContextView({ context }) {
                 <div>
                     <Text strong style={{ fontSize: 12 }}>Tecnología</Text>
                     <div style={{ background: '#f5f5f5', padding: 8, borderRadius: 4, marginTop: 4, fontSize: 12 }}>
-                        <Space direction="vertical" size={2} style={{ width: '100%' }}>
+                        <Space orientation="vertical" size={2} style={{ width: '100%' }}>
                             {auto.url && <div><Text type="secondary" style={{ fontSize: 11 }}>URL:</Text> <Text code>{auto.url}</Text></div>}
                             {auto.referrer && <div><Text type="secondary" style={{ fontSize: 11 }}>Referrer:</Text> <Text code style={{ fontSize: 11 }}>{auto.referrer}</Text></div>}
                             {auto.userAgent && (
@@ -104,7 +104,7 @@ export default function SourceContextView({ context }) {
                                     items={breadcrumbs.slice(-50).map((b, idx) => ({
                                         key: idx,
                                         color: LEVEL_COLOR[b.level] || '#999',
-                                        children: (
+                                        content: (
                                             <div style={{ fontSize: 12 }}>
                                                 <Space size={4}>
                                                     {b.category && <Tag style={{ fontSize: 10 }}>{b.category}</Tag>}

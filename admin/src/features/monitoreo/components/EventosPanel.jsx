@@ -87,8 +87,8 @@ export default function EventosPanel({ eventos, isMobile }) {
                             return {
                                 key: `${e.slug}-${e.occurred_at}-${i}`,
                                 color: meta.color,
-                                children: (
-                                    <Space direction="vertical" size={0}>
+                                content: (
+                                    <Space orientation="vertical" size={0}>
                                         <Space size={6}>
                                             <Tag color={meta.color} style={{ marginInlineEnd: 0 }}>{meta.text}</Tag>
                                             <Text strong style={{ fontSize: 13 }}>{e.slug}</Text>

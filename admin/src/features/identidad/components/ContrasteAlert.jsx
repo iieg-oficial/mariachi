@@ -38,7 +38,7 @@ export default function ContrasteAlert({ contraste = [] }) {
                     type='warning'
                     showIcon
                     style={{ marginBottom: 16 }}
-                    message={`${fallos.length} combinación(es) no alcanzan el contraste AA`}
+                    title={`${fallos.length} combinación(es) no alcanzan el contraste AA`}
                     description='Se necesita 4.5:1 para texto normal y 3:1 para texto grande. Un color que no cumple puede usarse como acento o fondo, pero no como color de texto.'
                 />
             )}

@@ -76,7 +76,7 @@ export default function ResumenPage() {
     if (loading || !stats) {
         return (
             <Content style={{ padding: 24, textAlign: 'center' }}>
-                {error ? <Alert type="error" message={error} showIcon /> : <Spin size="large" />}
+                {error ? <Alert type="error" title={error} showIcon /> : <Spin size="large" />}
             </Content>
         );
     }
@@ -86,7 +86,7 @@ export default function ResumenPage() {
 
     return (
         <Content style={{ width: '100%' }}>
-            <Space direction="vertical" size="large" style={{ width: '100%' }}>
+            <Space orientation="vertical" size="large" style={{ width: '100%' }}>
                 <PageHeading
                     icon={<ColibriIcon size={24} />}
                     title="Colibrí"
@@ -151,7 +151,7 @@ export default function ResumenPage() {
                 <Row gutter={[16, 16]}>
                     <Col xs={24} md={12}>
                         <Card title="Por estado" size="small">
-                            <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                            <Space orientation="vertical" size={8} style={{ width: '100%' }}>
                                 {Object.entries(stats.porEstado).map(([estado, count]) => {
                                     const max = Math.max(...Object.values(stats.porEstado), 1);
                                     const pct = stats.total ? (count / stats.total) * 100 : 0;
@@ -179,7 +179,7 @@ export default function ResumenPage() {
                             {(stats.porTipo || []).length === 0 ? (
                                 <Empty description="Sin datos" />
                             ) : (
-                                <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                                <Space orientation="vertical" size={8} style={{ width: '100%' }}>
                                     {stats.porTipo.map((t) => (
                                         <div key={t.slug}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -204,7 +204,7 @@ export default function ResumenPage() {
                             {(stats.porApp || []).length === 0 ? (
                                 <Empty description="Sin datos" />
                             ) : (
-                                <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                                <Space orientation="vertical" size={8} style={{ width: '100%' }}>
                                     {stats.porApp.map((a) => (
                                         <div key={a.sourceApp}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>

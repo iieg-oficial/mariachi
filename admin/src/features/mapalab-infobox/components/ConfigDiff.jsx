@@ -45,7 +45,7 @@ export default function ConfigDiff({ vigente, propuesta }) {
     }
 
     return (
-        <Space direction="vertical" size={12} style={{ width: '100%' }}>
+        <Space orientation="vertical" size={12} style={{ width: '100%' }}>
             {agregados.length > 0 && (
                 <div>
                     <Text strong style={{ color: '#1E7A4C' }}>Agrega</Text>

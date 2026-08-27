@@ -151,7 +151,7 @@ export default function LayerMetadataSection({
             <Alert closable
                 type={derivedFromDescendants ? 'success' : (siblingsSharingCount > 0 ? 'warning' : 'info')}
                 showIcon
-                message={
+                title={
                     derivedFromDescendants ? (
                         <span>
                             Este nodo no tiene feature type propio, pero todos sus descendientes usan el mismo:
@@ -177,7 +177,7 @@ export default function LayerMetadataSection({
                 <Alert closable
                     type="warning"
                     showIcon
-                    message="Este feature type aún no tiene metadatos. Guarda para crearlos."
+                    title="Este feature type aún no tiene metadatos. Guarda para crearlos."
                 />
             )}
 

@@ -16,7 +16,7 @@ const ToolsBar = ({ rows = [], loading }) => {
 
     return (
         <Card title="Herramientas" size="small" loading={loading}>
-            <Space direction="vertical" size={8} style={{ width: '100%' }}>
+            <Space orientation="vertical" size={8} style={{ width: '100%' }}>
                 {rows.map((row) => (
                     <div key={`${row.eventName}-${row.tool}`}>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>

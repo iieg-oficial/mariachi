@@ -98,13 +98,13 @@ export default function LayerHighlightGlobalSettings({ open, onClose, treeData =
             <Modal open={open} onCancel={onClose} title="Configuración global del resaltado" width={760} footer={[<Button key="close" onClick={onClose}>Cerrar</Button>]}>
                 <Alert
                     type="info" showIcon style={{ marginBottom: 16 }}
-                    message="Afecta solo a capas tipo hoja (leaf)"
+                    title="Afecta solo a capas tipo hoja (leaf)"
                     description="Categorías, grupos y temas no se tocan. Las leaves pueden heredar el resaltado de un ancestro; si tienen su propio override, lo conservan salvo que elijas 'sobrescribir todas'."
                 />
 
                 <Card size="small" title="Estado actual" extra={<Button size="small" icon={<ReloadOutlined />} onClick={fetchStats} loading={loading}>Recargar</Button>}>
                     {stats ? (
-                        <Space direction="vertical" size={6} style={{ width: '100%' }}>
+                        <Space orientation="vertical" size={6} style={{ width: '100%' }}>
                             <div><Text strong>{stats.totalLeaves}</Text> <Text type="secondary">hojas en total.</Text></div>
                             <div>
                                 <Tag color="default">{stats.fullyDefault} fully default</Tag>
@@ -122,7 +122,7 @@ export default function LayerHighlightGlobalSettings({ open, onClose, treeData =
                 </Card>
 
                 <Card size="small" title="Aplicar masivo" style={{ marginTop: 12 }}>
-                    <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                    <Space orientation="vertical" size={12} style={{ width: '100%' }}>
                         <div>
                             <Text strong>Color</Text>
                             <Radio.Group
@@ -171,7 +171,7 @@ export default function LayerHighlightGlobalSettings({ open, onClose, treeData =
                         </div>
 
                         {previewCount !== null && (
-                            <Alert type={previewCount > 0 ? 'warning' : 'info'} showIcon message={previewCount > 0 ? `Vas a actualizar ${previewCount} capa${previewCount === 1 ? '' : 's'}.` : 'Ninguna capa coincide con los criterios actuales.'} />
+                            <Alert type={previewCount > 0 ? 'warning' : 'info'} showIcon title={previewCount > 0 ? `Vas a actualizar ${previewCount} capa${previewCount === 1 ? '' : 's'}.` : 'Ninguna capa coincide con los criterios actuales.'} />
                         )}
 
                         <Space>

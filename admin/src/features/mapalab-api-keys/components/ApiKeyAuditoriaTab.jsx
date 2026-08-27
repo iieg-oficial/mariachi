@@ -141,12 +141,12 @@ export default function ApiKeyAuditoriaTab({ apiKey }) {
     };
 
     return (
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
             <Alert
                 type="info"
                 showIcon
                 closable
-                message="Historial de uso de esta llave"
+                title="Historial de uso de esta llave"
                 description="Cada vez que se usa la llave queda un registro aquí: visitantes que cargan el mapa embebido (sitio, capas, resultado) y llamadas de agentes vía MCP (tipo de acción 'Agente / MCP', con la herramienta usada en la columna Motivo). Útil para auditoría y para responder solicitudes del área jurídica. Los registros se conservan 90 días."
             />
 
@@ -238,7 +238,7 @@ export default function ApiKeyAuditoriaTab({ apiKey }) {
                 </Form>
             </Card>
 
-            {error && <Alert type="error" showIcon closable message={error} />}
+            {error && <Alert type="error" showIcon closable title={error} />}
 
             <Card size="small">
                 <Table

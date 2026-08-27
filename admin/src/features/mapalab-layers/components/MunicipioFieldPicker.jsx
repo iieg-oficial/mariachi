@@ -133,7 +133,7 @@ const MunicipioFieldPicker = ({
                     type="info"
                     showIcon
                     style={{ marginBottom: 16 }}
-                    message={`Este nodo no tiene capa propia. La configuración aplicará a ${resolved.descendantCount} capa(s) descendiente(s) que heredan la metadata vía el árbol.`}
+                    title={`Este nodo no tiene capa propia. La configuración aplicará a ${resolved.descendantCount} capa(s) descendiente(s) que heredan la metadata vía el árbol.`}
                     description={`Columnas detectadas leyendo el feature type de '${resolved.workspaceAlias}:${resolved.geoserverLayer}' (primer descendiente con WMS). Asume que todas las propiedades hijas comparten el mismo schema de columnas.`}
                 />
             )}
@@ -142,7 +142,7 @@ const MunicipioFieldPicker = ({
                     type="warning"
                     showIcon
                     style={{ marginBottom: 16 }}
-                    message="No se puede inferir la capa WMS"
+                    title="No se puede inferir la capa WMS"
                     description="Este nodo no tiene workspace/geoserver_layer propio ni descendientes con uno. Asigna primero una capa WMS o configura este filtro en una hoja descendiente."
                 />
             )}
@@ -188,7 +188,7 @@ const MunicipioFieldPicker = ({
                     showIcon
                     closable
                     style={{ marginBottom: 16 }}
-                    message="Esta columna no parece ser de municipio"
+                    title="Esta columna no parece ser de municipio"
                     description={`Los valores leídos (${sampleList.slice(0, 3).map(v => `'${v}'`).join(', ')}…) no coinciden con el patrón de clave INEGI (14NNN) ni con nombres de municipio. Verifica que la columna sea la correcta o ajusta el tipo manualmente.`}
                 />
             )}
@@ -198,7 +198,7 @@ const MunicipioFieldPicker = ({
                     showIcon
                     closable
                     style={{ marginBottom: 16 }}
-                    message={`Tipo detectado: ${detection.type === 'clave' ? 'Clave INEGI' : 'Nombre'}`}
+                    title={`Tipo detectado: ${detection.type === 'clave' ? 'Clave INEGI' : 'Nombre'}`}
                     description={`${Math.round(detection.confidence * 100)}% de las muestras encajan (${detection.reason}). El tipo se preseleccionó; puedes cambiarlo abajo si es necesario.`}
                 />
             )}

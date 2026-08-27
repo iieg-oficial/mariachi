@@ -21,7 +21,7 @@ export const buildColumns = ({
         key: 'nombre',
         sorter: (a, b) => a.nombre.localeCompare(b.nombre),
         render: (nombre, capa) => (
-            <Space direction="vertical" size={0}>
+            <Space orientation="vertical" size={0}>
                 <Text strong>{nombre}</Text>
                 <Text type="secondary" style={{ fontSize: 11 }}>{capa.workspaceAlias}</Text>
             </Space>

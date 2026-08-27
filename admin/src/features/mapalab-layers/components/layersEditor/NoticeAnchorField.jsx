@@ -197,12 +197,12 @@ export default function NoticeAnchorField({
     const clear = () => onChangeRef.current?.(null);
 
     return (
-        <Space direction="vertical" style={{ width: '100%' }} size={6}>
+        <Space orientation="vertical" style={{ width: '100%' }} size={6}>
             {!geoserverLayer && (
                 <Alert
                     type="warning"
                     showIcon
-                    message="Sin capa configurada"
+                    title="Sin capa configurada"
                     description="Configura workspace y capa GeoServer en el tab Servicios para ver la capa como referencia."
                 />
             )}

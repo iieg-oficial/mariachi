@@ -94,7 +94,7 @@ export default function IdentidadPage() {
     if (error && !detalle) {
         return (
             <Content style={{ padding: 24 }}>
-                <Alert type='error' showIcon message={error} />
+                <Alert type='error' showIcon title={error} />
             </Content>
         );
     }
@@ -130,7 +130,7 @@ export default function IdentidadPage() {
 
             <Spin spinning={cargando}>
                 {detalle && (
-                    <Space direction='vertical' size='large' style={{ width: '100%' }}>
+                    <Space orientation='vertical' size='large' style={{ width: '100%' }}>
                         <Card title='Accesibilidad del color'>
                             <ContrasteAlert contraste={detalle.contraste} />
                         </Card>

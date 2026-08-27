@@ -97,7 +97,7 @@ export default function WorkspacesPage() {
 
     return (
         <Content style={{ padding: isMobile ? 6 : 24 }}>
-            <Space direction="vertical" style={{ width: '100%' }} size="middle">
+            <Space orientation="vertical" style={{ width: '100%' }} size="middle">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
                     <div>
                         <Title level={3} style={{ marginTop: 0, marginBottom: 4 }}>Workspaces</Title>
@@ -120,13 +120,13 @@ export default function WorkspacesPage() {
                     </Space>
                 </div>
 
-                {error && <Alert type="error" showIcon closable message={error} />}
+                {error && <Alert type="error" showIcon closable title={error} />}
 
                 {pending.length > 0 ? (
                     <Alert
                         type="warning"
                         showIcon
-                        message={`${pending.length} workspace${pending.length === 1 ? '' : 's'} sin registrar`}
+                        title={`${pending.length} workspace${pending.length === 1 ? '' : 's'} sin registrar`}
                         description={
                             <span>
                                 {pending.map((p) => `${p.geoserverWorkspace} (${p.layerCount})`).join(', ')}
@@ -140,7 +140,7 @@ export default function WorkspacesPage() {
                             type="success"
                             showIcon
                             closable
-                            message="Todos los workspaces de GeoServer están registrados"
+                            title="Todos los workspaces de GeoServer están registrados"
                         />
                     )
                 )}

@@ -42,12 +42,12 @@ export default function DeleteEventoModal({ open, evento, onCancel, onConfirm, l
             {previewLoading ? (
                 <Spin />
             ) : previewError ? (
-                <Alert type="warning" showIcon message={previewError} />
+                <Alert type="warning" showIcon title={previewError} />
             ) : orphans.length === 0 ? (
                 <Alert
                     type="info"
                     showIcon
-                    message="Este evento no tiene capas auto-creadas exclusivas."
+                    title="Este evento no tiene capas auto-creadas exclusivas."
                     description="Cualquier capa que use es del catálogo o también la usan otros eventos."
                 />
             ) : (
@@ -55,7 +55,7 @@ export default function DeleteEventoModal({ open, evento, onCancel, onConfirm, l
                     <Alert
                         type="warning"
                         showIcon
-                        message={`${orphans.length} capa(s) auto-creada(s) solo se usan en este evento.`}
+                        title={`${orphans.length} capa(s) auto-creada(s) solo se usan en este evento.`}
                         description="Si nadie las necesita, puedes archivarlas también para no dejar filas huérfanas en el árbol. Esto no toca GeoServer; las capas siguen disponibles allí."
                         style={{ marginTop: 12 }}
                     />

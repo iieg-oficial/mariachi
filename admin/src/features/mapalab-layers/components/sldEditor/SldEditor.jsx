@@ -68,7 +68,7 @@ export default function SldEditor({ layer, derivedFeatureType }) {
                     type="info"
                     showIcon
                     style={{ marginBottom: 16 }}
-                    message="Feature type heredado de los descendientes"
+                    title="Feature type heredado de los descendientes"
                     description={`Este nodo (Grupo) no tiene workspace/geoserver_layer propios. Se está editando el SLD del feature type ${workspace}:${layerName}, que es el que comparten todas sus capas hijas.`}
                 />
             )}
@@ -194,7 +194,7 @@ function SldEditorBody({ workspace, layerName, styleName, layerId, reviewMode, b
 
     if (loading) return <Spin />;
     if (error) {
-        return <Alert closable type="error" message="Error al cargar el SLD" description={String(error.message || error)} showIcon />;
+        return <Alert closable type="error" title="Error al cargar el SLD" description={String(error.message || error)} showIcon />;
     }
     if (!data) return <Empty description="No se pudo cargar este estilo" />;
 
@@ -251,7 +251,7 @@ function SldEditorBody({ workspace, layerName, styleName, layerId, reviewMode, b
                     type="warning"
                     showIcon
                     icon={<ExclamationCircleOutlined />}
-                    message={`Este estilo lo comparten ${sharedByOthers.length} capa(s) más`}
+                    title={`Este estilo lo comparten ${sharedByOthers.length} capa(s) más`}
                     description={
                         <Text style={{ fontSize: 12 }}>
                             Editarlo afectará a: {sharedByOthers.join(', ')}.

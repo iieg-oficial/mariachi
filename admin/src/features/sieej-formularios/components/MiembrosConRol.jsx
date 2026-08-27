@@ -25,12 +25,12 @@ export default function MiembrosConRol({
     const sinCoordinador = !seleccionados.some((u) => coordinadores.includes(u.id));
 
     return (
-        <Space direction="vertical" size="small" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="small" style={{ width: '100%' }}>
             {sinCoordinador && (
                 <Alert
                     type="warning"
                     showIcon
-                    message="Este grupo no tiene coordinador"
+                    title="Este grupo no tiene coordinador"
                     description={
                         'En los formularios con captura colaborativa nadie podrá enviar el '
                         + 'envío del grupo hasta que nombres a alguien.'

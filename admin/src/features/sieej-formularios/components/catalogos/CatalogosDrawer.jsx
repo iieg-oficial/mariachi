@@ -7,7 +7,7 @@ export default function CatalogosDrawer({ open, onClose, clave }) {
             title="Administrar catálogos"
             open={open}
             onClose={onClose}
-            width={560}
+            size={560}
             destroyOnClose
         >
             <Typography.Paragraph type="secondary" style={{ marginTop: 0 }}>

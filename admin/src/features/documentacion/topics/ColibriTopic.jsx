@@ -148,7 +148,7 @@ function Tabla({ titulo, data, columns = CAMPO_COLUMNS, rowKey = 'campo' }) {
 
 
 const widgetTab = (
-    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+    <Space orientation="vertical" size="large" style={{ width: '100%' }}>
         <Tabla titulo="3 modos de integración" data={MODOS} columns={MODO_COLUMNS} rowKey="que" />
         <Card size="small" title="Snippet mínimo">
             <CodeBlock code={SNIPPET_WIDGET} />
@@ -162,7 +162,7 @@ const widgetTab = (
 );
 
 const reactTab = (
-    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+    <Space orientation="vertical" size="large" style={{ width: '100%' }}>
         <Text type="secondary" style={{ fontSize: 12 }}>
             Para huéspedes React del ecosistema (mapalab, sieej). Un componente que dispara el panel con{' '}
             <Text code>openPanel</Text>, tras identificar al usuario logueado y adjuntar la ruta actual.
@@ -183,7 +183,7 @@ const reactTab = (
 );
 
 const sdkTab = (
-    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+    <Space orientation="vertical" size="large" style={{ width: '100%' }}>
         <Text type="secondary" style={{ fontSize: 12 }}>
             Para reportar sin UI desde un cron, worker o proceso server-side. Paquete npm{' '}
             <Text code>@iieg/colibri-sdk</Text>.
@@ -200,7 +200,7 @@ const sdkTab = (
 );
 
 const sieejTab = (
-    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+    <Space orientation="vertical" size="large" style={{ width: '100%' }}>
         <Text type="secondary" style={{ fontSize: 12 }}>
             Ejemplo real. SIEEJ usa el botón global (ver <Text strong>Patrón React</Text>) y, además, una{' '}
             <strong>solicitud de reapertura</strong> desde cada formulario enviado: abre el panel acotado al tipo{' '}
@@ -216,7 +216,7 @@ const sieejTab = (
 
 export default function ColibriTopic({ showHeader = true }) {
     return (
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="large" style={{ width: '100%' }}>
             {showHeader && (
                 <div>
                     <Title level={3} style={{ marginBottom: 4 }}>

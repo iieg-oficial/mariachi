@@ -23,7 +23,7 @@ export function buildFlatColumns({
             title: 'Mensaje',
             dataIndex: 'mensaje',
             render: (text, record) => (
-                <Space direction="vertical" size={0} style={{ maxWidth: 420 }}>
+                <Space orientation="vertical" size={0} style={{ maxWidth: 420 }}>
                     <Text
                         ellipsis={{ tooltip: text }}
                         style={{ display: 'block', maxWidth: 400 }}
@@ -93,7 +93,7 @@ export function buildGroupedColumns({ onOpen, tipoLabels, tipoColors }) {
             title: 'Mensaje (representante)',
             dataIndex: 'representanteMensaje',
             render: (text, r) => (
-                <Space direction="vertical" size={0}>
+                <Space orientation="vertical" size={0}>
                     <Text ellipsis style={{ maxWidth: 400 }}>{text}</Text>
                     {r.representanteSourceRoute && (
                         <Text type="secondary" style={{ fontSize: 11 }} ellipsis>

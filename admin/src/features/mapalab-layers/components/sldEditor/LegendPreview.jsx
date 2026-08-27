@@ -16,7 +16,7 @@ export default function LegendPreview({ workspace, styleName, layerName }) {
             <Alert closable
                 type="info"
                 showIcon
-                message="Selecciona un estilo y una capa para ver la leyenda."
+                title="Selecciona un estilo y una capa para ver la leyenda."
             />
         );
     }

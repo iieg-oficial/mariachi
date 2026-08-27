@@ -50,7 +50,7 @@ const StatsPreviewContext = ({ value, onChange, listMunicipios }) => {
                     })}
                 />
             </Space.Compact>
-            {error && <Alert type="warning" showIcon message={error} />}
+            {error && <Alert type="warning" showIcon title={error} />}
             {!activo && (
                 <Text type="secondary" style={{ fontSize: 12 }}>
                     Sin contexto: las condiciones que dependen del visor se omiten y el valor sale estatal

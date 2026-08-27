@@ -299,7 +299,7 @@ export default function LayerNoticeSection({
                     closable
                     icon={<WarningOutlined />}
                     style={{ marginBottom: 16 }}
-                    message="Aviso activado sin título"
+                    title="Aviso activado sin título"
                     description="El aviso está habilitado pero el título está vacío. El visor lo ignorará silenciosamente hasta que escribas un título."
                 />
             )}

@@ -86,7 +86,7 @@ export const buildCapasColumns = ({
                 );
             }
             return (
-                <Space direction="vertical" size={0}>
+                <Space orientation="vertical" size={0}>
                     <Space size={6}>
                         <Tag color="blue" style={{ marginRight: 0 }}>{record.workspace}:{record.layer}</Tag>
                         {record.oculto && <Tag color="orange" style={{ marginRight: 0 }}>Oculto</Tag>}

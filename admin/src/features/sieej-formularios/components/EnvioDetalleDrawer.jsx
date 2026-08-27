@@ -16,7 +16,7 @@ function Respuestas({ definicion, datos, autoria }) {
     const secciones = buildRespuestas(definicion, datos, autoria);
     if (!secciones.length) return <Empty description="Sin respuestas" />;
     return (
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="large" style={{ width: '100%' }}>
             {secciones.map((sec) => (
                 <div key={sec.id}>
                     <Typography.Title level={5} style={{ marginBottom: 8 }}>{sec.title}</Typography.Title>
@@ -31,11 +31,11 @@ function CambiosVersion({ snapshot, actual, versionEnvio, versionActual }) {
     const { agregados, eliminados, modificados } = diffDefiniciones(snapshot, actual);
     const total = agregados.length + eliminados.length + modificados.length;
     return (
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
             <Alert
                 type="info"
                 showIcon
-                message={`Este envío se llenó con la v${versionEnvio}. El formulario va en la v${versionActual}.`}
+                title={`Este envío se llenó con la v${versionEnvio}. El formulario va en la v${versionActual}.`}
                 description={total === 0
                     ? 'No hay diferencias de campos entre ambas versiones.'
                     : 'Estos son los cambios de la definición desde que esta persona respondió.'}
@@ -71,7 +71,7 @@ function CambiosVersion({ snapshot, actual, versionEnvio, versionActual }) {
                     dataSource={modificados}
                     renderItem={(f) => (
                         <List.Item>
-                            <Space direction="vertical" size={0}>
+                            <Space orientation="vertical" size={0}>
                                 <Space><Tag color="orange">Modificado</Tag>{f.stepTitle} · {f.label}</Space>
                                 <Typography.Text type="secondary" style={{ fontSize: 12 }}>{f.cambios.join(' · ')}</Typography.Text>
                             </Space>
@@ -131,12 +131,12 @@ export default function EnvioDetalleDrawer({ formulario, envio, open, onClose })
             open={open}
             onClose={onClose}
             title={envio ? `Envío #${envio.id}${envio.usuario_nombre ? ` — ${envio.usuario_nombre}` : ''}` : ''}
-            width={Math.min(760, window.innerWidth)}
+            size={Math.min(760, window.innerWidth)}
         >
             {loading || !detalle ? (
                 <Skeleton active paragraph={{ rows: 8 }} />
             ) : (
-                <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
                     <Descriptions size="small" column={1} bordered items={[
                         { key: 'estado', label: 'Estado', children: <Tag color={ESTADO_COLOR[detalle.estado]}>{ESTADO_LABEL[detalle.estado] || detalle.estado}</Tag> },
                         {

@@ -55,7 +55,7 @@ export default function ResumenSection({ period, canRefresh = false }) {
     if (loadingOverview && !overview) {
         return (
             <div style={{ padding: 24, textAlign: 'center' }}>
-                {errorOverview ? <Alert type="error" message={errorOverview} showIcon /> : <Spin size="large" />}
+                {errorOverview ? <Alert type="error" title={errorOverview} showIcon /> : <Spin size="large" />}
             </div>
         );
     }
@@ -67,7 +67,7 @@ export default function ResumenSection({ period, canRefresh = false }) {
     const sharePercent = pct(overview?.shareSessions ?? 0, sessions);
 
     return (
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="large" style={{ width: '100%' }}>
             {canRefresh && (
                 <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                     <Button icon={<ReloadOutlined />} onClick={handleRefresh} loading={refreshing}>

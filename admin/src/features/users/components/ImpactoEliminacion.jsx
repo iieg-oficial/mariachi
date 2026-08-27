@@ -28,7 +28,7 @@ export default function ImpactoEliminacion({ usuario, impacto }) {
                     type="warning"
                     showIcon
                     style={{ marginTop: 12 }}
-                    message="No se pudo calcular el impacto"
+                    title="No se pudo calcular el impacto"
                     description="Borrar arrastra en cascada sus envíos de SIEEJ y sus asignaciones. Verifica antes de continuar."
                 />
             )}
@@ -37,7 +37,7 @@ export default function ImpactoEliminacion({ usuario, impacto }) {
                     type="warning"
                     showIcon
                     style={{ marginTop: 12 }}
-                    message="Se borrará también, y no se puede deshacer:"
+                    title="Se borrará también, y no se puede deshacer:"
                     description={(
                         <ul style={{ margin: '4px 0 0', paddingLeft: 18 }}>
                             {lineas.map((linea) => <li key={linea}>{linea}</li>)}
@@ -50,7 +50,7 @@ export default function ImpactoEliminacion({ usuario, impacto }) {
                     type="info"
                     showIcon
                     style={{ marginTop: 12 }}
-                    message="No tiene envíos, dependencias ni proyectos asignados."
+                    title="No tiene envíos, dependencias ni proyectos asignados."
                 />
             )}
         </div>

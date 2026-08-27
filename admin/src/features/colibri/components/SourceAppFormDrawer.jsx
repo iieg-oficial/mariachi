@@ -23,7 +23,7 @@ export default function SourceAppFormDrawer({
         <Drawer
             title={editing ? `Editar: ${editing.nombre}` : 'Nuevo source app'}
             open={open}
-            width={isMobile ? '100%' : 520}
+            size={isMobile ? '100%' : 520}
             onClose={onClose}
             destroyOnClose
             extra={
@@ -115,7 +115,7 @@ export default function SourceAppFormDrawer({
                 >
                     <Form.List name="scrubbers">
                         {(fields, { add, remove }) => (
-                            <Space direction="vertical" size={6} style={{ width: '100%' }}>
+                            <Space orientation="vertical" size={6} style={{ width: '100%' }}>
                                 {fields.map((field) => (
                                     <Space.Compact key={field.key} style={{ width: '100%' }}>
                                         <Form.Item name={[field.name, 'pattern']} noStyle>

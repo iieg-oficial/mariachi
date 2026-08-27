@@ -215,7 +215,7 @@ export default function MapalabApiKeysPage() {
 
     return (
         <Content style={{ padding: isMobile ? 6 : 24, width: '100%' }}>
-            <Space direction="vertical" size="large" style={{ width: '100%' }}>
+            <Space orientation="vertical" size="large" style={{ width: '100%' }}>
                 <div>
                     <Title level={isMobile ? 4 : 3} style={{ marginBottom: 4 }}>Llaves para mostrar mapas en otros sitios</Title>
                     <Text type="secondary">
@@ -223,7 +223,7 @@ export default function MapalabApiKeysPage() {
                     </Text>
                 </div>
 
-                {error && <Alert type="error" message={error} showIcon closable />}
+                {error && <Alert type="error" title={error} showIcon closable />}
 
                 <Card>
                     <Space style={{ marginBottom: 16 }} wrap>

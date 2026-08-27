@@ -122,7 +122,7 @@ export default function EventosListPage() {
             dataIndex: 'titulo',
             key: 'titulo',
             render: (titulo, record) => (
-                <Space direction="vertical" size={0}>
+                <Space orientation="vertical" size={0}>
                     <Link to={`/mapalab/eventos/${record.id}/edit`}>
                         <Text strong>{titulo}</Text>
                     </Link>
@@ -136,7 +136,7 @@ export default function EventosListPage() {
             key: 'estado',
             width: 110,
             render: (estado, record) => (
-                <Space direction="vertical" size={2}>
+                <Space orientation="vertical" size={2}>
                     <Tag color={estado === 'published' ? 'green' : 'default'}>
                         {estado === 'published' ? 'Publicado' : 'Borrador'}
                     </Tag>
@@ -149,7 +149,7 @@ export default function EventosListPage() {
             key: 'vigencia',
             responsive: ['md'],
             render: (_, record) => (
-                <Space direction="vertical" size={0}>
+                <Space orientation="vertical" size={0}>
                     <Text style={{ fontSize: 12 }}>Inicio: {formatDate(record.fechaInicio || record.fecha_inicio)}</Text>
                     <Text style={{ fontSize: 12 }}>Fin: {formatDate(record.fechaFin || record.fecha_fin)}</Text>
                 </Space>
@@ -217,7 +217,7 @@ export default function EventosListPage() {
 
     return (
         <Content style={{ padding: isMobile ? 6 : 24, width: '100%' }}>
-            <Space direction="vertical" size="large" style={{ width: '100%' }}>
+            <Space orientation="vertical" size="large" style={{ width: '100%' }}>
                 <div>
                     <Title level={isMobile ? 4 : 3} style={{ marginBottom: 4 }}>Eventos MapaLab</Title>
                     <Text type="secondary">
@@ -226,7 +226,7 @@ export default function EventosListPage() {
                     </Text>
                 </div>
 
-                {error && <Alert type="error" message={error} showIcon closable />}
+                {error && <Alert type="error" title={error} showIcon closable />}
 
                 <Card
                     title={`${filtered.length} de ${items.length} evento${items.length === 1 ? '' : 's'}`}

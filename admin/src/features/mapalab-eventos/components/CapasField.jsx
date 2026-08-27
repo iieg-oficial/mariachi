@@ -232,7 +232,7 @@ export default function CapasField({ value = [], onChange, disabled }) {
     };
 
     return (
-        <Space direction="vertical" style={{ width: '100%' }}>
+        <Space orientation="vertical" style={{ width: '100%' }}>
             <Space style={{ justifyContent: 'space-between', width: '100%' }} wrap>
                 <Text type="secondary" style={{ fontSize: 12 }}>
                     Arrastra el handle (≡) para reordenar el menú lateral del evento (lo que ve el usuario). Las categorías solo viven en la raíz. Para controlar qué capa aparece encima de otra en el mapa, usa la columna <Text strong>Z</Text>.

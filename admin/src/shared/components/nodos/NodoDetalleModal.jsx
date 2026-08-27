@@ -30,7 +30,7 @@ const Medidor = ({ llave, etiqueta, valor, absoluto }) => (
             showInfo={false}
             size="small"
             strokeColor={tono(llave, valor)}
-            trailColor="#f5f5f5"
+            railColor="#f5f5f5"
         />
         <Text type="secondary" style={{ fontSize: 11, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
             {absoluto}

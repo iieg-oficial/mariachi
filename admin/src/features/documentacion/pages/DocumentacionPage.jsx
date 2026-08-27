@@ -41,7 +41,7 @@ export default function DocumentacionPage() {
 
     return (
         <Content style={{ padding: isMobile ? 6 : 24, width: '100%' }}>
-            <Space direction="vertical" size="large" style={{ width: '100%' }}>
+            <Space orientation="vertical" size="large" style={{ width: '100%' }}>
                 <div>
                     <Space align="center" size={12}>
                         <BookOutlined style={{ fontSize: 24, color: '#5C2472' }} />
@@ -53,7 +53,7 @@ export default function DocumentacionPage() {
                 </div>
 
                 <Tabs
-                    tabPosition={isMobile ? 'top' : 'left'}
+                    tabPlacement={isMobile ? 'top' : 'start'}
                     activeKey={activeKey}
                     onChange={handleChange}
                     items={TOPICS}

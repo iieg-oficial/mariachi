@@ -125,11 +125,11 @@ export default function FileUploadModal({
             width={620}
             destroyOnHidden
         >
-            <Space direction="vertical" style={{ width: '100%' }} size="middle">
+            <Space orientation="vertical" style={{ width: '100%' }} size="middle">
                 <Alert
                     type="info"
                     showIcon
-                    message={
+                    title={
                         <span>
                             Destino:{' '}
                             <Tag color="gold" style={{ marginInlineStart: 4 }}>
@@ -167,7 +167,7 @@ export default function FileUploadModal({
                                     />,
                                 ]}
                             >
-                                <Space direction="vertical" size={2} style={{ width: '100%' }}>
+                                <Space orientation="vertical" size={2} style={{ width: '100%' }}>
                                     <Space size={8} style={{ width: '100%', justifyContent: 'space-between' }}>
                                         <Text ellipsis style={{ maxWidth: 360 }}>{entry.safe || entry.file.name}</Text>
                                         <Space size={4}>

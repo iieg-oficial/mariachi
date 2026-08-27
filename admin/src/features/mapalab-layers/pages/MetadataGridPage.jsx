@@ -77,7 +77,7 @@ export default function MetadataGridPage() {
                 type="info"
                 showIcon
                 closable
-                message={`${count} capa(s) calculan su numeralia desde la base de datos`}
+                title={`${count} capa(s) calculan su numeralia desde la base de datos`}
                 description="Sus celdas de numeralia están bloqueadas aquí: se editan en la pestaña Metadatos de la capa."
             />
         );
@@ -159,7 +159,7 @@ export default function MetadataGridPage() {
                 onChange={setTab}
                 type="card"
                 size="small"
-                tabPosition="bottom"
+                tabPlacement="bottom"
                 tabBarExtraContent={{ right: status }}
                 tabBarStyle={{ margin: 0, flexShrink: 0 }}
                 items={items}

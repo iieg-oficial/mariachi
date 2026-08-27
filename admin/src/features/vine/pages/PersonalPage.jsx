@@ -75,7 +75,7 @@ const PersonalPage = () => {
                 <Alert
                     type="info"
                     showIcon
-                    message="Esta sección necesita un permiso aparte"
+                    title="Esta sección necesita un permiso aparte"
                     description="El directorio muestra a cada persona con su nombre y su asistencia, que es dato personal laboral: se pide con «Vine - estadisticas con nombres»."
                 />
             </div>
@@ -120,7 +120,7 @@ const PersonalPage = () => {
                 <FiltrosPersonal filas={filas} valores={filtros} onCambio={setFiltros} />
             )}
 
-            {error && <Alert type="error" showIcon message={error} style={{ marginBottom: 16 }} />}
+            {error && <Alert type="error" showIcon title={error} style={{ marginBottom: 16 }} />}
 
             <Card size="small">
                 <Table

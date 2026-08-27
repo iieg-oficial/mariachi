@@ -241,7 +241,7 @@ export default function GruposPage() {
                 open={!!drawerGrupo}
                 onClose={() => setDrawerGrupo(null)}
                 title={drawerGrupo ? `Miembros: ${drawerGrupo.nombre}` : ''}
-                width={Math.min(700, window.innerWidth)}
+                size={Math.min(700, window.innerWidth)}
                 extra={
                     <Button type="primary" loading={savingMiembros} onClick={handleSaveMiembros}>
                         Guardar
@@ -249,7 +249,7 @@ export default function GruposPage() {
                 }
             >
                 {drawerGrupo ? (
-                    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                    <Space orientation="vertical" size="large" style={{ width: '100%' }}>
                         <MemberPicker
                             usuarios={usuarios}
                             value={miembros}

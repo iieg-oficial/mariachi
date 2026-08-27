@@ -22,7 +22,7 @@ export default function CapturaPorPersona({ autoria }) {
     return (
         <div>
             <Text strong style={{ fontSize: 13 }}>Capturado por</Text>
-            <Space direction="vertical" size={6} style={{ width: '100%', marginTop: 8 }}>
+            <Space orientation="vertical" size={6} style={{ width: '100%', marginTop: 8 }}>
                 {personas.map((persona, i) => (
                     <Space key={persona.nombre} align="center" style={{ width: '100%' }}>
                         <Tooltip title={`Último cambio: ${fmt(persona.ultimo)}`}>

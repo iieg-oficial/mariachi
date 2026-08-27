@@ -97,7 +97,7 @@ const PIEZA_COLUMNS = [
 
 function PropuestasInfoboxTab() {
     return (
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="large" style={{ width: '100%' }}>
             <div>
                 <Title level={4} style={{ marginTop: 0 }}>Propuestas de tarjeta del Catálogo</Title>
                 <Paragraph type="secondary" style={{ marginBottom: 0 }}>
@@ -120,7 +120,7 @@ function PropuestasInfoboxTab() {
             <Alert
                 type="info"
                 showIcon
-                message="La propuesta nunca toca el árbol de capas"
+                title="La propuesta nunca toca el árbol de capas"
                 description={
                     <>
                         Las capas del Catálogo heredan su tarjeta de <Text code>mapalab.layers</Text> cuando no tienen una
@@ -165,7 +165,7 @@ function PropuestasInfoboxTab() {
             <Alert
                 type="warning"
                 showIcon
-                message="Qué revisar antes de aprobar"
+                title="Qué revisar antes de aprobar"
                 description={
                     <ul style={{ margin: 0, paddingLeft: 18 }}>
                         <li>Que las etiquetas describan el dato y no sean texto promocional o con carga.</li>

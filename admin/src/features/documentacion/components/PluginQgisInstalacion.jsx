@@ -76,11 +76,11 @@ const SITUACION_COLUMNS = [
 
 export default function PluginQgisInstalacion() {
     return (
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="large" style={{ width: '100%' }}>
             <Alert
                 type="info"
                 showIcon
-                message="Qué hace falta antes de empezar"
+                title="Qué hace falta antes de empezar"
                 description="QGIS 3.40 LTR y poder alcanzar el servidor. Con la dirección pública del IIEG funciona desde cualquier red, igual que abrir el visor en el navegador: no se necesita VPN, ni usuario, ni contraseña, porque todo lo que el plugin consume ya es público. La red del instituto o la VPN sólo hacen falta si se apunta a un servidor interno, como el de pruebas."
             />
 
@@ -101,7 +101,7 @@ export default function PluginQgisInstalacion() {
             </Card>
 
             <Card size="small" title="2 · Instalarlo en QGIS">
-                <Steps direction="vertical" size="small" current={-1} items={PASOS} />
+                <Steps orientation="vertical" size="small" current={-1} items={PASOS} />
             </Card>
 
             <Card size="small" title="Instalación alternativa: copiar la carpeta">
@@ -133,7 +133,7 @@ export default function PluginQgisInstalacion() {
             <Alert
                 type="warning"
                 showIcon
-                message="Todavía no hay repositorio de complementos"
+                title="Todavía no hay repositorio de complementos"
                 description="Mientras no se publique el repositorio propio en el gateway, cada actualización se instala a mano con el ZIP. Cuando exista, bastará con agregar su dirección una vez en Complementos → Configuración y QGIS avisará solo de las versiones nuevas."
             />
         </Space>

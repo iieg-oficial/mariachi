@@ -33,7 +33,7 @@ export default function EnvioTimeline({ eventos = [] }) {
                 return {
                     key: evento.id,
                     color: meta.color,
-                    children: (
+                    content: (
                         <Space orientation="vertical" size={0}>
                             <Text style={{ fontSize: 13 }}>
                                 <Text strong style={{ fontSize: 13 }}>

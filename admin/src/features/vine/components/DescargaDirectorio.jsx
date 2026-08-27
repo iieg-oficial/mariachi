@@ -57,7 +57,7 @@ const DescargaDirectorio = ({ pins, dias = 365 }) => {
                 onOk={descargar}
                 width={640}
             >
-                <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                <Space orientation="vertical" size={16} style={{ width: '100%' }}>
                     <Text type="secondary">
                         {`Se descargan las ${pins.length} personas que estás viendo, con el filtro y la búsqueda ya aplicados.`}
                     </Text>

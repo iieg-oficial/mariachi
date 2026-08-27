@@ -145,7 +145,7 @@ const ProbeCard = ({ probe }) => {
                 </Form>
             )}
 
-            {error && <Alert type="error" message={error} showIcon style={{ marginTop: 8 }} />}
+            {error && <Alert type="error" title={error} showIcon style={{ marginTop: 8 }} />}
 
             {result && (
                 <div style={{ marginTop: 12 }}>
@@ -256,7 +256,7 @@ const McpRootProbe = ({ apiKey }) => {
                 JSON-RPC <Text code>initialize</Text> contra el endpoint raíz <Text code>{MAPALAB_MCP_URL}</Text> (<strong>sin</strong> slash). Desde mapalab 1.45.0 el MCP vive al nivel de <Text code>/mapalab/</Text>, no debajo de <Text code>/mapalab/api/</Text>. Útil para verificar que el container <Text code>mapalab-mcp</Text> está vivo y responde el handshake MCP.
             </Text>
 
-            {error && <Alert type="error" message={error} showIcon style={{ marginTop: 8 }} />}
+            {error && <Alert type="error" title={error} showIcon style={{ marginTop: 8 }} />}
 
             {result && (
                 <div style={{ marginTop: 12 }}>
@@ -435,7 +435,7 @@ const McpToolProbe = ({ probe, apiKey }) => {
                 style={{ fontFamily: 'monospace', fontSize: 11 }}
                 spellCheck={false}
             />
-            {error && <Alert type="error" message={error} showIcon style={{ marginTop: 8 }} />}
+            {error && <Alert type="error" title={error} showIcon style={{ marginTop: 8 }} />}
             {result && (
                 <div style={{ marginTop: 12 }}>
                     <Space size={8} style={{ marginBottom: 6 }} wrap>
@@ -499,7 +499,7 @@ export default function McpPlayground() {
     };
 
     return (
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
             <Card size="small" title="API key del MCP (requerida para los ejemplos)">
                 <Input.Password
                     placeholder="mk_priv_xxxxx... o mk_pub_xxxxx..."

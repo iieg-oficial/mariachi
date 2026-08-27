@@ -247,7 +247,7 @@ export default function ApiKeyPlaygroundTab({ apiKey, initialPlainKey = '' }) {
     };
 
     return (
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
             <PlaygroundAlerts
                 originAllowed={originAllowed}
                 adminOrigin={adminOrigin}

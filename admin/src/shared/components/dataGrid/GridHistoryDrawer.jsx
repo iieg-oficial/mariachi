@@ -111,7 +111,7 @@ export default function GridHistoryDrawer({
         <Drawer
             open={open}
             onClose={onClose}
-            width={effectiveScope === 'all' ? 900 : 760}
+            size={effectiveScope === 'all' ? 900 : 760}
             title={(
                 <Space orientation="vertical" size={2}>
                     <Text strong>Historial de cambios</Text>

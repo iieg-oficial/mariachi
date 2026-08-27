@@ -9,6 +9,32 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.27.0] - 2026-08-27
+
+### Cambiado: se migran las APIs que Ant Design 6 dejó obsoletas
+
+El admin corre sobre Ant Design 6 desde hace meses, pero seguía llamando a propiedades de la 5 que la
+librería acepta por compatibilidad mientras avisa por consola. Eran tantos avisos que tapaban
+cualquier advertencia real. Migradas contra la documentación de la 6.5:
+
+| Antes | Ahora | Dónde |
+|---|---|---|
+| `Alert message` | `title` | 132 |
+| `Space direction` | `orientation` | 131 |
+| `Drawer width` y `height` | `size` | 14 |
+| `Timeline items.children` | `content` | 6 |
+| `Tabs tabPosition` | `tabPlacement` | 4 |
+| `Progress trailColor` | `railColor` | 1 |
+| `Steps direction` | `orientation` | 1 |
+
+Dos no eran renombres a secas. En `Tabs`, los valores `left` y `right` pasaron a `start` y `end` para
+funcionar en lectura de derecha a izquierda, así que hubo que cambiarlos también dentro de las
+expresiones. En `Drawer`, `size` acepta número además de `default` y `large`, con lo que los anchos en
+píxeles siguen valiendo tal cual.
+
+La consola de los tests queda **sin un solo aviso de deprecación**, que era el punto: el próximo que
+aparezca será de algo que sí importa.
+
 ## [2.26.0] - 2026-08-27
 
 ### Cambiado: el detalle de un nodo reutiliza la fila del tablero de servicios

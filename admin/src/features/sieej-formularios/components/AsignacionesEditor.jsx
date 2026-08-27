@@ -66,12 +66,12 @@ export default function AsignacionesEditor({ formulario, onSaved }) {
     if (loading) return <div style={{ textAlign: 'center', padding: 24 }}><Spin /></div>;
 
     return (
-        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+        <Space orientation="vertical" style={{ width: '100%' }} size="middle">
             {formulario.estado === 'borrador' && (
                 <Alert
                     type="warning"
                     showIcon
-                    message="Este formulario está en borrador"
+                    title="Este formulario está en borrador"
                     description={
                         <Paragraph style={{ margin: 0 }}>
                             Los usuarios y grupos que asignes aquí no verán el formulario en SIEEJ

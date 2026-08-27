@@ -99,7 +99,7 @@ export default function StylesPage() {
 
     return (
         <Content style={{ padding: isMobile ? 6 : 24 }}>
-            <Space direction="vertical" style={{ width: '100%' }} size="middle">
+            <Space orientation="vertical" style={{ width: '100%' }} size="middle">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
                     <div>
                         <Title level={3} style={{ marginTop: 0, marginBottom: 4 }}>Estilos (SLD)</Title>
@@ -112,7 +112,7 @@ export default function StylesPage() {
                     <Button icon={<ReloadOutlined />} onClick={reload} disabled={loading || !alias} />
                 </div>
 
-                {error && <Alert type="error" showIcon closable message={error} />}
+                {error && <Alert type="error" showIcon closable title={error} />}
 
                 <Space wrap>
                     <Select

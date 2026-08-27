@@ -71,7 +71,7 @@ export default function MapalabStatsPage({ app = 'mapalab' }) {
 
     return (
         <Content style={{ width: '100%' }}>
-            <Space direction="vertical" size="large" style={{ width: '100%' }}>
+            <Space orientation="vertical" size="large" style={{ width: '100%' }}>
                 <PageHeading
                     icon={<EnvironmentOutlined />}
                     title="MapaLab — Estadísticas de uso"

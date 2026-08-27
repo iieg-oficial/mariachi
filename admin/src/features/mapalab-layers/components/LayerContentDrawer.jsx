@@ -97,7 +97,7 @@ export default function LayerContentDrawer({ open, layerId, onClose, onSaved }) 
         <Drawer
             open={open}
             onClose={onClose}
-            width={920}
+            size={920}
             title={layer ? (
                 <span>
                     Editar contenido de la capa <Tag color="blue">{layer.workspaceAlias}:{layer.geoserverLayer}</Tag>

@@ -41,7 +41,7 @@ export default function SldSnippetModal({ open, file, onClose }) {
             width={640}
             destroyOnHidden
         >
-            <Space direction="vertical" style={{ width: '100%' }} size="middle">
+            <Space orientation="vertical" style={{ width: '100%' }} size="middle">
                 <Paragraph type="secondary" style={{ marginBottom: 0 }}>
                     Pega esto dentro de un <Text code>{'<Rule>'}</Text> de tu SLD en GeoServer.
                     La referencia es relativa a <Text code>geoserver_data/styles/</Text>.

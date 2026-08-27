@@ -39,7 +39,7 @@ export default function UploadForm({
                 </Form.Item>
 
                 <Form.Item label="Preset de mapeo de columnas">
-                    <Space direction="vertical" style={{ width: '100%' }}>
+                    <Space orientation="vertical" style={{ width: '100%' }}>
                         <Select
                             value={presetSlug}
                             onChange={onPresetChange}

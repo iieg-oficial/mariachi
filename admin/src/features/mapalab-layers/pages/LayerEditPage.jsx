@@ -623,7 +623,7 @@ export default function LayerEditPage() {
                             type="info"
                             showIcon
                             style={{ marginBottom: 16 }}
-                            message="Estás editando una Propiedad"
+                            title="Estás editando una Propiedad"
                             description={`Las propiedades comparten feature type, simbología, metadatos y numeralia con su grupo padre (todo se almacena por feature type, no por propiedad). Solo se distinguen entre hermanas por su CQL filter. Cambia el "Filtro CQL" en la pestaña Servicios para ajustar qué features se incluyen en esta propiedad. La metadata, numeralia y simbología se editan una sola vez en el grupo padre.`}
                         />
                     )}
@@ -1081,7 +1081,7 @@ export default function LayerEditPage() {
                     <Text type="secondary" style={{ fontSize: 12 }}>{nodeHelp.body}</Text>
                 </div>
             )}
-            <Tabs defaultActiveKey={initialTab} items={tabItems} tabPosition="top" style={{ minHeight: 400 }} />
+            <Tabs defaultActiveKey={initialTab} items={tabItems} tabPlacement="top" style={{ minHeight: 400 }} />
         </Form>
     );
 

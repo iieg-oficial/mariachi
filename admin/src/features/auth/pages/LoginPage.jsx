@@ -122,7 +122,7 @@ export default function Login() {
                                             type="error"
                                             showIcon
                                             style={{ marginBottom: token.marginLG }}
-                                            message={AUTH_ERRORS[authError] || 'No se pudo iniciar sesión.'}
+                                            title={AUTH_ERRORS[authError] || 'No se pudo iniciar sesión.'}
                                         />
                                     )}
 

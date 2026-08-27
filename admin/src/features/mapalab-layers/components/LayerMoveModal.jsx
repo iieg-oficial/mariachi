@@ -39,7 +39,7 @@ export default function LayerMoveModal({ open, onClose, onSubmit, treeData = [],
             okButtonProps={{ disabled: sinCambio, loading: saving }}
             destroyOnClose
         >
-            <Space direction="vertical" size={12} style={{ width: '100%' }}>
+            <Space orientation="vertical" size={12} style={{ width: '100%' }}>
                 <Text type="secondary">
                     Selecciona el tema o categoría destino. Déjalo vacío para enviarlo a la raíz del árbol.
                 </Text>
@@ -57,7 +57,7 @@ export default function LayerMoveModal({ open, onClose, onSubmit, treeData = [],
                 <Alert
                     type="info"
                     showIcon
-                    message="La capa se colocará al final de la lista del destino. Después puedes reordenarla entre sus hermanas."
+                    title="La capa se colocará al final de la lista del destino. Después puedes reordenarla entre sus hermanas."
                 />
             </Space>
         </Modal>

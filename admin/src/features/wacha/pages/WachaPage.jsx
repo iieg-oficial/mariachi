@@ -120,7 +120,7 @@ const WachaPage = () => {
             title: 'Nombre',
             dataIndex: 'etiqueta',
             render: (valor, fila) => (
-                <Space direction="vertical" size={0}>
+                <Space orientation="vertical" size={0}>
                     <strong>{valor}</strong>
                     <Typography.Text type="secondary" code>{fila.nombre}</Typography.Text>
                 </Space>
@@ -181,7 +181,7 @@ const WachaPage = () => {
     ];
 
     return (
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="large" style={{ width: '100%' }}>
             <div>
                 <Title level={3} style={{ marginBottom: 4 }}>Cámaras</Title>
                 <Paragraph type="secondary" style={{ marginBottom: 0 }}>

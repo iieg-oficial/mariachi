@@ -9,9 +9,9 @@ const EstadoPanel = ({ estado, cargando, aplicando, onRecargar, onAplicar }) => 
             <Alert
                 type="error"
                 showIcon
-                message="wacha no responde"
+                title="wacha no responde"
                 description={
-                    <Space direction="vertical" size="small">
+                    <Space orientation="vertical" size="small">
                         <span>
                             No se pudo hablar con la API de wacha. Si el módulo está apagado en este
                             entorno es lo esperado; si no, revisa que el servicio esté arriba.
@@ -29,7 +29,7 @@ const EstadoPanel = ({ estado, cargando, aplicando, onRecargar, onAplicar }) => 
     }
 
     return (
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
             <Descriptions bordered size="small" column={{ xs: 1, sm: 2, md: 4 }}>
                 <Descriptions.Item label="Versión de wacha">{estado.version}</Descriptions.Item>
                 <Descriptions.Item label="Cámaras en mariachi">
@@ -49,7 +49,7 @@ const EstadoPanel = ({ estado, cargando, aplicando, onRecargar, onAplicar }) => 
                 <Alert
                     type="warning"
                     showIcon
-                    message="Lo que ves aquí todavía no está en wacha"
+                    title="Lo que ves aquí todavía no está en wacha"
                     description="Aplicar reinicia el servicio para tomar la configuración, así que la grabación se corta unos segundos."
                 />
             ) : null}

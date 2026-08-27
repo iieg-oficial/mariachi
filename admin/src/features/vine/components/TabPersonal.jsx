@@ -77,7 +77,7 @@ const TabPersonal = ({ resumen, personas, loading, verPersonas }) => {
                     <Alert
                         type="info"
                         showIcon
-                        message="Los datos por persona necesitan un permiso aparte"
+                        title="Los datos por persona necesitan un permiso aparte"
                         description="Quién acumula más horas, quién madruga y las rachas son dato personal laboral: se piden con «Vine - estadisticas con nombres»."
                     />
                 )}
