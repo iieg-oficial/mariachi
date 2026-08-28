@@ -1,9 +1,16 @@
-import { useEffect, useRef } from 'react';
-import { Empty, Typography } from 'antd';
+import { useEffect, useRef, useState } from 'react';
+import { Button, Empty, Grid, Space, Typography } from 'antd';
+import { MinusOutlined, PlusOutlined } from '@ant-design/icons';
 import { SEMANTIC } from '@app/providers/brand';
-import { colorArista, duracionTravesia } from '@shared/components/nodos/latencia';
+import { colorArista, curvaDe, duracionTravesia, puntoEnCurva } from '@shared/components/nodos/latencia';
 
 const { Text } = Typography;
+const { useBreakpoint } = Grid;
+
+const ANCHO_BASE = 900;
+const ZOOM_MINIMO = 1;
+const ZOOM_MAXIMO = 3;
+const PASO_ZOOM = 0.5;
 
 const COLOR_ESTADO = {
     ok: SEMANTIC.success,
@@ -23,6 +30,9 @@ const usaMovimiento = () => {
 export default function MapaNodos({ nodos, aristas, onSeleccionar }) {
     const svgRef = useRef(null);
     const cuadroRef = useRef(null);
+    const pantalla = useBreakpoint();
+    const compacto = !pantalla.md;
+    const [zoom, setZoom] = useState(1);
 
     useEffect(() => {
         if (!usaMovimiento() || !aristas.length || !svgRef.current) return undefined;
@@ -47,8 +57,9 @@ export default function MapaNodos({ nodos, aristas, onSeleccionar }) {
         const animar = (tiempo) => {
             paquetes.forEach((p) => {
                 const t = ((tiempo + p.desfase) % p.duracion) / p.duracion;
-                p.circulo.setAttribute('cx', p.origen.x + (p.destino.x - p.origen.x) * t);
-                p.circulo.setAttribute('cy', p.origen.y + (p.destino.y - p.origen.y) * t);
+                const punto = puntoEnCurva(p.origen, p.destino, t);
+                p.circulo.setAttribute('cx', punto.x);
+                p.circulo.setAttribute('cy', punto.y);
                 p.circulo.setAttribute('opacity', t < 0.08 || t > 0.92 ? '0' : '0.95');
             });
             cuadroRef.current = requestAnimationFrame(animar);
@@ -64,13 +75,18 @@ export default function MapaNodos({ nodos, aristas, onSeleccionar }) {
 
     const porId = Object.fromEntries(nodos.map((n) => [n.node, n]));
 
-    return (
+    const lienzo = (
         <svg
             ref={svgRef}
             viewBox="0 0 900 470"
             role="img"
             aria-label="Mapa de los nodos del ecosistema y sus enlaces"
-            style={{ display: 'block', width: '100%', height: 'auto' }}
+            style={{
+                display: 'block',
+                width: compacto ? ANCHO_BASE * zoom : '100%',
+                height: 'auto',
+                minWidth: compacto ? ANCHO_BASE : undefined,
+            }}
         >
             {aristas.map((arista, indice) => {
                 const origen = centro(porId[arista.de]);
@@ -78,13 +94,15 @@ export default function MapaNodos({ nodos, aristas, onSeleccionar }) {
                 const color = colorArista(arista);
                 return (
                     <g key={`${arista.de}-${arista.a}`}>
-                        <line
-                            x1={origen.x} y1={origen.y} x2={destino.x} y2={destino.y}
+                        <path
+                            d={curvaDe(origen, destino)}
+                            fill="none"
                             stroke={color} strokeWidth={2} strokeOpacity={0.35}
                             strokeDasharray={arista.estado === 'ok' ? undefined : '7 5'}
                         />
                         <text
-                            x={(origen.x + destino.x) / 2} y={(origen.y + destino.y) / 2 - 9}
+                            x={puntoEnCurva(origen, destino, 0.5).x}
+                            y={puntoEnCurva(origen, destino, 0.5).y - 8}
                             textAnchor="middle" fill={color}
                             style={{ fontSize: 10, fontFamily: 'monospace' }}
                         >
@@ -143,6 +161,33 @@ export default function MapaNodos({ nodos, aristas, onSeleccionar }) {
                 );
             })}
         </svg>
+    );
+
+    if (!compacto) return lienzo;
+
+    return (
+        <div>
+            <Space size={4} style={{ marginBottom: 8 }}>
+                <Button
+                    size="small"
+                    icon={<MinusOutlined />}
+                    aria-label="Alejar el mapa"
+                    disabled={zoom <= ZOOM_MINIMO}
+                    onClick={() => setZoom((z) => Math.max(ZOOM_MINIMO, z - PASO_ZOOM))}
+                />
+                <Button
+                    size="small"
+                    icon={<PlusOutlined />}
+                    aria-label="Acercar el mapa"
+                    disabled={zoom >= ZOOM_MAXIMO}
+                    onClick={() => setZoom((z) => Math.min(ZOOM_MAXIMO, z + PASO_ZOOM))}
+                />
+                <Text type="secondary" style={{ fontSize: 11 }}>{`${zoom}x`}</Text>
+            </Space>
+            <div style={{ overflow: 'auto', maxHeight: '60dvh', WebkitOverflowScrolling: 'touch' }}>
+                {lienzo}
+            </div>
+        </div>
     );
 }
 

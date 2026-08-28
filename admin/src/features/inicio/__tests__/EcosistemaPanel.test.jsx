@@ -57,8 +57,7 @@ describe('EcosistemaPanel', () => {
     it('abre en la vista de servidores', async () => {
         montar([plataforma('mariachi', 'ok')]);
         await waitFor(() => expect(screen.getByText('S1')).toBeInTheDocument());
-        expect(screen.getByText('Latencia:')).toBeInTheDocument();
-        expect(screen.getByText('hasta 20 ms')).toBeInTheDocument();
+        expect(screen.getByText('— Ecosistema')).toBeInTheDocument();
     });
 
     it('en servidores no aparece el conteo de servicios, que ahi enganaria', async () => {

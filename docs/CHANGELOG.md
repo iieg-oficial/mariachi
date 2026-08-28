@@ -9,6 +9,37 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.28.0] - 2026-08-28
+
+### Cambiado: el detalle del nodo deja la tabla y muestra lo que sí se usa
+
+La tabla del centro repetía lo que los medidores ya decían. En su lugar van **los puertos** que el
+nodo vigila, con cuáles responden, y **los enlaces** con su latencia y su sentido. El sistema del host
+—IP, distribución, kernel y desde cuándo está encendido— se resume en una línea bajo los medidores.
+
+El encabezado cambia de peso: un punto de estado junto al identificador en vez de la etiqueta
+«operativo», y el hostname real del servidor al lado. Ya no repite el rol, que se lee en la lista de
+servicios.
+
+### Cambiado: el mapa dibuja curvas y las aristas son las reales
+
+Las líneas rectas atravesaban las cajas de los nodos que quedaban en medio, y eso hacía leer enlaces
+que no existen: el trazo de S1 a S4 pasaba por encima del portalito y parecía conectarlos, cuando el
+portalito **no toca la base de datos**. Ahora cada enlace es una curva que se aparta de los nodos.
+
+Las aristas que faltaban ya se miden: mapalab y sextante hacia dataengine, que según los contratos
+son quienes leen de esa base.
+
+Fuera la leyenda de latencia y la nota de «click en un nodo»: el color con los milisegundos escritos
+al lado se explica solo.
+
+### Cambiado: el inicio y el móvil
+
+El encabezado de la sección dice **Huachicol — Ecosistema**, como el de MapaLab, con el selector
+enseguida. En pantallas chicas el encabezado apila título, descripción y acciones en filas, el mapa
+gana scroll en ambos ejes con control de zoom hasta 3x, y el detalle del nodo ocupa la pantalla
+completa.
+
 ## [2.27.0] - 2026-08-27
 
 ### Cambiado: se migran las APIs que Ant Design 6 dejó obsoletas

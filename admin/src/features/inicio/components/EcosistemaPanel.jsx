@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Card, Segmented, Space, Spin, Typography } from 'antd';
+import { Card, Segmented, Spin, Typography } from 'antd';
 import { ClusterOutlined } from '@ant-design/icons';
 import { SEMANTIC } from '@app/providers/brand';
 import SectionHeader from '@shared/components/SectionHeader';
 import MapaNodos from '@shared/components/nodos/MapaNodos';
 import NodoDetalleModal from '@shared/components/nodos/NodoDetalleModal';
 import { getNodos, REFRESCO_NODOS_MS } from '@shared/services/nodosService';
-import { ESCALA_LATENCIA } from '@shared/components/nodos/latencia';
 import EcosistemaTablero from '@features/inicio/components/EcosistemaTablero';
 
 const { Text } = Typography;
@@ -57,6 +56,7 @@ export default function EcosistemaPanel({ plataformas, loading, onReportar }) {
                 <SectionHeader
                     icon={<ClusterOutlined />}
                     title="Huachicol"
+                    subtitle="Ecosistema"
                     badge={<Segmented size="small" options={VISTAS} value={vista} onChange={setVista} />}
                     to="/huachicol/observabilidad"
                     actionLabel="Ver observabilidad"
@@ -77,6 +77,7 @@ export default function EcosistemaPanel({ plataformas, loading, onReportar }) {
             <SectionHeader
                 icon={<ClusterOutlined />}
                 title="Huachicol"
+                subtitle="Ecosistema"
                 badge={<Segmented size="small" options={VISTAS} value={vista} onChange={setVista} />}
                 to="/huachicol/servidores"
                 actionLabel="Ver servidores"
@@ -91,24 +92,6 @@ export default function EcosistemaPanel({ plataformas, loading, onReportar }) {
                         onSeleccionar={setSeleccionado}
                     />
                 )}
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 16,
-                    flexWrap: 'wrap',
-                    marginTop: 12,
-                }}>
-                    <Text type="secondary" style={{ fontSize: 11 }}>Latencia:</Text>
-                    {ESCALA_LATENCIA.map((tramo) => (
-                        <Space key={tramo.texto} size={6}>
-                            <span style={{ width: 18, height: 3, borderRadius: 2, background: tramo.color, display: 'block' }} />
-                            <Text type="secondary" style={{ fontSize: 11 }}>{tramo.texto}</Text>
-                        </Space>
-                    ))}
-                    <Text type="secondary" style={{ fontSize: 11, marginLeft: 'auto' }}>
-                        Click en un nodo para su detalle
-                    </Text>
-                </div>
             </Card>
 
             <NodoDetalleModal

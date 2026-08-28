@@ -41,15 +41,33 @@ const montar = (nodo = NODO, aristas = []) => render(
 
 describe('NodoDetalleModal', () => {
     it('encabeza con el identificador y el hostname real del servidor', () => {
-        montar();
+        const { baseElement } = montar();
         expect(screen.getByText('S1')).toBeInTheDocument();
         expect(screen.getByText('gateway')).toBeInTheDocument();
+        expect(baseElement.querySelector('.ant-badge-status-success')).toBeTruthy();
     });
 
     it('muestra el disco, que antes faltaba', () => {
         montar();
         expect(screen.getByText('200 / 500 GB')).toBeInTheDocument();
-        expect(screen.getByText('300 GB')).toBeInTheDocument();
+    });
+
+    it('resume el sistema del host en una linea', () => {
+        montar({ ...NODO, host: { ...NODO.host, ip: '10.0.0.2', os: 'Ubuntu 24.04 LTS', kernel: '6.8.0-51' } });
+        expect(screen.getByText(/10\.0\.0\.2 · Ubuntu 24\.04 LTS · kernel 6\.8\.0-51/)).toBeInTheDocument();
+    });
+
+    it('lista los puertos y cuantos responden', () => {
+        montar({
+            ...NODO,
+            puertos: [
+                { nombre: 'mapalab', puerto: 80, status: 'ok', servicio: 'gateway-hub' },
+                { nombre: 'sextante', puerto: 8080, status: 'down', servicio: 'gateway-hub' },
+            ],
+        });
+        expect(screen.getByText('Puertos · 1 de 2 abiertos')).toBeInTheDocument();
+        expect(screen.getByText('mapalab :80')).toBeInTheDocument();
+        expect(screen.getByText('sextante :8080')).toBeInTheDocument();
     });
 
     it('reutiliza la fila de servicios, con su barra de 24 horas', () => {
@@ -73,10 +91,9 @@ describe('NodoDetalleModal', () => {
         expect(anchos).toEqual(['15%', '41.2%', '0%', '40%']);
     });
 
-    it('la carga se reporta también por núcleo', () => {
+    it('la carga se resume junto a los núcleos', () => {
         montar();
-        expect(screen.getByText('1.24 / 0.98 / 0.71')).toBeInTheDocument();
-        expect(screen.getByText((texto) => texto.trim() === '0.15')).toBeInTheDocument();
+        expect(screen.getByText('1.24 · 8c')).toBeInTheDocument();
     });
 
     it('sin reportero lo dice en vez de enseñar ceros', () => {
@@ -86,6 +103,6 @@ describe('NodoDetalleModal', () => {
 
     it('los enlaces del nodo salen con su latencia', () => {
         montar(NODO, [{ de: 'S1', a: 'S4', ms: 6, estado: 'ok' }]);
-        expect(screen.getByText('S4 · 6 ms')).toBeInTheDocument();
+        expect(screen.getByText('→ S4 · 6 ms')).toBeInTheDocument();
     });
 });
