@@ -1,7 +1,8 @@
 import { Link } from 'react-router';
-import { Typography } from 'antd';
+import { Grid, Typography } from 'antd';
 
 const { Text } = Typography;
+const { useBreakpoint } = Grid;
 
 export default function SectionHeader({
     icon,
@@ -12,6 +13,9 @@ export default function SectionHeader({
     actionLabel = 'Ver detalles',
     color = '#5C2472',
 }) {
+    const pantalla = useBreakpoint();
+    const compacto = !pantalla.md;
+
     return (
         <div style={{ marginBottom: 12 }}>
             <div style={{
@@ -20,7 +24,7 @@ export default function SectionHeader({
                 justifyContent: 'space-between',
                 gap: 12,
             }}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                     {icon && <span style={{ fontSize: 20, color, display: 'inline-flex' }}>{icon}</span>}
                     <Text strong style={{ fontSize: 18 }}>
                         {title}
@@ -28,6 +32,7 @@ export default function SectionHeader({
                             <Text type="secondary" style={{ fontSize: 18, fontWeight: 400 }}> — {subtitle}</Text>
                         )}
                     </Text>
+                    {badge && !compacto && <span>{badge}</span>}
                 </span>
                 {to && (
                     <Link to={to} style={{ flex: 'none' }}>
@@ -35,7 +40,7 @@ export default function SectionHeader({
                     </Link>
                 )}
             </div>
-            {badge && <div style={{ marginTop: 8 }}>{badge}</div>}
+            {badge && compacto && <div style={{ marginTop: 8 }}>{badge}</div>}
         </div>
     );
 }

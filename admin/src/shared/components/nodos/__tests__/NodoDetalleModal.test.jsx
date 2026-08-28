@@ -69,21 +69,23 @@ describe('NodoDetalleModal', () => {
                 { nombre: 'sextante', puerto: 8080, status: 'down', servicio: 'gateway-hub' },
             ],
         });
-        expect(screen.getByText('Puertos · 1 de 2 responden')).toBeInTheDocument();
+        expect(screen.getByText('Puertos')).toBeInTheDocument();
+        expect(screen.getByText('1/2')).toBeInTheDocument();
         expect(screen.getByText(':80')).toBeInTheDocument();
         expect(screen.getByText('sextante')).toBeInTheDocument();
     });
 
     it('reutiliza la fila de servicios, con su barra de 24 horas', () => {
         montar();
-        expect(screen.getByText('Servicios · 2')).toBeInTheDocument();
+        expect(screen.getByText('Servicios')).toBeInTheDocument();
         expect(screen.getAllByLabelText('Disponibilidad de las últimas 24 horas')).toHaveLength(2);
         expect(screen.getByText('v2.25.1')).toBeInTheDocument();
     });
 
     it('lista los contenedores del nodo, no solo el conteo', () => {
         montar();
-        expect(screen.getByText('Contenedores · 11 de 11')).toBeInTheDocument();
+        expect(screen.getByText('Contenedores')).toBeInTheDocument();
+        expect(screen.getByText('11/11')).toBeInTheDocument();
         expect(screen.getByText('mariachi-api')).toBeInTheDocument();
         expect(screen.getByText('acervo-init')).toBeInTheDocument();
     });
@@ -97,7 +99,18 @@ describe('NodoDetalleModal', () => {
 
     it('la carga se resume junto a los núcleos', () => {
         montar();
+        expect(screen.getByText('Recursos')).toBeInTheDocument();
         expect(screen.getByText('1.24 · 8c')).toBeInTheDocument();
+    });
+
+    it('la temperatura va en una etiqueta que cambia con el calor', () => {
+        montar({ ...NODO, host: { ...NODO.host, cpu_celsius: 78 } });
+        expect(screen.getByText('78 °C · caliente')).toBeInTheDocument();
+    });
+
+    it('sin sensores no inventa temperatura', () => {
+        montar();
+        expect(screen.queryByText(/°C/)).not.toBeInTheDocument();
     });
 
     it('sin reportero lo dice en vez de enseñar ceros', () => {

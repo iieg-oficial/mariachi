@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button, Empty, Grid, Space, Typography } from 'antd';
 import { MinusOutlined, PlusOutlined } from '@ant-design/icons';
-import { SEMANTIC } from '@app/providers/brand';
+import { BRAND, SEMANTIC } from '@app/providers/brand';
 import { colorArista, curvaDe, duracionTravesia, puntoEnCurva } from '@shared/components/nodos/latencia';
 import { NODO_INTERNET } from '@shared/services/nodosService';
 
@@ -13,13 +13,12 @@ const ZOOM_MINIMO = 1;
 const ZOOM_MAXIMO = 3;
 const PASO_ZOOM = 0.5;
 
-const COLOR_ESTADO = {
-    ok: SEMANTIC.success,
-    degraded: SEMANTIC.warning,
-    down: SEMANTIC.danger,
+const bordeDeNodo = (nodo, esInternet) => {
+    if (esInternet) return SEMANTIC.neutral;
+    if (nodo.aislado) return BRAND.orange;
+    if (nodo.status === 'ok' || nodo.status === 'degraded') return BRAND.purple;
+    return SEMANTIC.neutral;
 };
-
-const colorDe = (estado) => COLOR_ESTADO[estado] || SEMANTIC.neutral;
 
 const centro = (nodo) => ({ x: nodo.x + nodo.w / 2, y: nodo.y + nodo.h / 2 });
 
@@ -118,7 +117,7 @@ export default function MapaNodos({ nodos, aristas, onSeleccionar }) {
 
             {nodos.map((nodo) => {
                 const esInternet = nodo.node === NODO_INTERNET;
-                const borde = esInternet ? SEMANTIC.neutral : colorDe(nodo.status);
+                const borde = bordeDeNodo(nodo, esInternet);
                 const servicios = nodo.servicios || [];
                 return (
                     <g

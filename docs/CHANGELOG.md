@@ -9,6 +9,31 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.29.0] - 2026-08-28
+
+### Agregado: la temperatura del CPU en el detalle del nodo
+
+Una etiqueta que cambia de color con el calor —azul si está fría, verde templada, naranja caliente y
+roja muy caliente— junto a los grados. Solo aparece si el equipo tiene sensores: las VMs no los
+tienen y ahí no se dibuja nada, en vez de fingir un cero.
+
+### Cambiado: los nodos del mapa usan el color institucional
+
+El morado de la marca para los nodos activos, gris para los que no responden y naranja para los de
+red aislada, que además van punteados. El estado deja de competir con las conexiones, que siguen
+coloreadas por su latencia: el nodo dice qué es, el enlace dice cómo va.
+
+### Cambiado: los títulos del detalle del nodo
+
+Todas las secciones llevan ahora el mismo encabezado, **Recursos** incluida, que era la única sin
+título. El conteo se separa en una etiqueta gris —`7/7`, `11/11`— en vez de ir pegado al texto con un
+punto medio.
+
+### Corregido: el selector volvía a su propia fila en escritorio
+
+Al partir el encabezado en dos filas para móvil, los controles se bajaron también en pantallas
+grandes, donde sobra espacio al lado del título. Ahora solo se apilan cuando hace falta.
+
 ## [2.28.2] - 2026-08-28
 
 ### Corregido: el hostname no se alcanzaba a ver

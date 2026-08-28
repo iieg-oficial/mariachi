@@ -25,6 +25,35 @@ const tono = (llave, valor) => {
     return SEMANTIC.success;
 };
 
+const TituloSeccion = ({ texto, conteo }) => (
+    <Space size={8} align="center" style={{ marginBottom: 8 }}>
+        <Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+            {texto}
+        </Text>
+        {conteo && (
+            <Text style={{
+                fontSize: 11,
+                fontFamily: 'monospace',
+                padding: '0 7px',
+                borderRadius: 9,
+                background: '#f5f5f5',
+                color: 'rgba(0,0,0,0.65)',
+            }}>
+                {conteo}
+            </Text>
+        )}
+    </Space>
+);
+
+const COLOR_TEMPERATURA = [
+    { hasta: 45, color: 'blue', texto: 'fría' },
+    { hasta: 70, color: 'green', texto: 'templada' },
+    { hasta: 85, color: 'orange', texto: 'caliente' },
+];
+
+const tagTemperatura = (grados) => COLOR_TEMPERATURA.find((t) => grados < t.hasta)
+    || { color: 'red', texto: 'muy caliente' };
+
 const Medidor = ({ llave, etiqueta, valor, absoluto }) => (
     <div style={{ display: 'grid', gridTemplateColumns: '48px 1fr 116px', gap: 8, alignItems: 'center' }}>
         <Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase' }}>{etiqueta}</Text>
@@ -123,44 +152,58 @@ export default function NodoDetalleModal({ nodo, open, onClose }) {
                         description="Este nodo no tiene reportero de host"
                     />
                 ) : (
-                    <Space orientation="vertical" size={8} style={{ width: '100%' }}>
-                        <Medidor
-                            llave="cpu"
-                            etiqueta="CPU"
-                            valor={cargaPorNucleo != null ? Math.min(100, Math.round(cargaPorNucleo * 100)) : null}
-                            absoluto={host.load_1m != null ? `${host.load_1m} · ${host.cores}c` : '—'}
-                        />
-                        <Medidor
-                            llave="ram"
-                            etiqueta="RAM"
-                            valor={host.memory_used_percent}
-                            absoluto={host.memory_used_gb != null ? `${host.memory_used_gb} / ${host.memory_total_gb} GB` : '—'}
-                        />
-                        <Medidor
-                            llave="swap"
-                            etiqueta="Swap"
-                            valor={host.swap_used_percent}
-                            absoluto={host.swap_used_gb != null ? `${host.swap_used_gb} GB` : '—'}
-                        />
-                        <Medidor
-                            llave="disco"
-                            etiqueta="Disco"
-                            valor={host.disk_used_percent}
-                            absoluto={discoLibre(host)}
-                        />
-                        {sistema && (
-                            <Text style={{ fontSize: 12, fontFamily: 'monospace', color: 'rgba(0,0,0,0.65)' }}>
-                                {sistema}
-                            </Text>
-                        )}
-                    </Space>
+                    <div>
+                        <TituloSeccion texto="Recursos" />
+                        <Space orientation="vertical" size={8} style={{ width: '100%' }}>
+                            <Medidor
+                                llave="cpu"
+                                etiqueta="CPU"
+                                valor={cargaPorNucleo != null ? Math.min(100, Math.round(cargaPorNucleo * 100)) : null}
+                                absoluto={host.load_1m != null ? `${host.load_1m} · ${host.cores}c` : '—'}
+                            />
+                            {host.cpu_celsius != null && (
+                                <Space size={8}>
+                                    <Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase' }}>
+                                    Temp
+                                    </Text>
+                                    <Tag color={tagTemperatura(host.cpu_celsius).color} style={{ marginInlineEnd: 0 }}>
+                                        {`${host.cpu_celsius} °C · ${tagTemperatura(host.cpu_celsius).texto}`}
+                                    </Tag>
+                                </Space>
+                            )}
+                            <Medidor
+                                llave="ram"
+                                etiqueta="RAM"
+                                valor={host.memory_used_percent}
+                                absoluto={host.memory_used_gb != null ? `${host.memory_used_gb} / ${host.memory_total_gb} GB` : '—'}
+                            />
+                            <Medidor
+                                llave="swap"
+                                etiqueta="Swap"
+                                valor={host.swap_used_percent}
+                                absoluto={host.swap_used_gb != null ? `${host.swap_used_gb} GB` : '—'}
+                            />
+                            <Medidor
+                                llave="disco"
+                                etiqueta="Disco"
+                                valor={host.disk_used_percent}
+                                absoluto={discoLibre(host)}
+                            />
+                            {sistema && (
+                                <Text style={{ fontSize: 12, fontFamily: 'monospace', color: 'rgba(0,0,0,0.65)' }}>
+                                    {sistema}
+                                </Text>
+                            )}
+                        </Space>
+                    </div>
                 )}
 
                 {puertos.length > 0 && (
                     <div>
-                        <Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                            {`Puertos · ${puertos.filter((p) => p.status === 'ok').length} de ${puertos.length} responden`}
-                        </Text>
+                        <TituloSeccion
+                            texto="Puertos"
+                            conteo={`${puertos.filter((p) => p.status === 'ok').length}/${puertos.length}`}
+                        />
                         <div style={{
                             marginTop: 8,
                             display: 'grid',
@@ -201,9 +244,7 @@ export default function NodoDetalleModal({ nodo, open, onClose }) {
 
                 {servicios.length > 0 && (
                     <div>
-                        <Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                            {`Servicios · ${servicios.length}`}
-                        </Text>
+                        <TituloSeccion texto="Servicios" conteo={`${servicios.length}`} />
                         <div style={{ marginTop: 4 }}>
                             {servicios.map((plataforma) => (
                                 <FilaServicio
@@ -218,9 +259,10 @@ export default function NodoDetalleModal({ nodo, open, onClose }) {
 
                 {contenedores.length > 0 && (
                     <div>
-                        <Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                            {`Contenedores · ${nodo.containers?.running ?? 0} de ${nodo.containers?.total ?? 0}`}
-                        </Text>
+                        <TituloSeccion
+                            texto="Contenedores"
+                            conteo={`${nodo.containers?.running ?? 0}/${nodo.containers?.total ?? 0}`}
+                        />
                         <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
                             {contenedores.map((c) => (
                                 <Tag
