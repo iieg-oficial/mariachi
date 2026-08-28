@@ -104,10 +104,33 @@ describe('NodoDetalleModal', () => {
         expect(screen.getByText('carga 1.24 en 8 núcleos')).toBeInTheDocument();
     });
 
-    it('la RAM dice cuánto de lo libre es caché', () => {
+    it('la RAM muestra lo libre sobre el total y el caché como tramo aparte', () => {
         montar({ ...NODO, host: { ...NODO.host, memory_cache_gb: 6.28 } });
+        expect(screen.getByText('2.5 / 15 GB')).toBeInTheDocument();
+        expect(screen.getByText('libres · 6.28 GB en caché')).toBeInTheDocument();
+    });
+
+    it('sin dato de caché conserva el medidor simple', () => {
+        montar();
         expect(screen.getByText('6.2 / 15 GB')).toBeInTheDocument();
-        expect(screen.getByText('+ 6.28 GB en caché')).toBeInTheDocument();
+    });
+
+    it('dibuja una barra por núcleo con su uso', () => {
+        const { baseElement } = montar({
+            ...NODO,
+            host: {
+                ...NODO.host,
+                cpu_used_percent: 16,
+                cores_uso: [
+                    { core: 0, uso: 8 },
+                    { core: 1, uso: 0 },
+                    { core: 2, uso: 100 },
+                ],
+            },
+        });
+        expect(baseElement.querySelector('[title="core 2: 100 %"]')).toBeTruthy();
+        expect(baseElement.querySelectorAll('[title^="core "]')).toHaveLength(3);
+        expect(screen.getByText('16 %')).toBeInTheDocument();
     });
 
     it('las temperaturas van en su propia sección, como cifras', () => {

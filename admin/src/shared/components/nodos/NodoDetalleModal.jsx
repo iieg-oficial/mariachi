@@ -2,7 +2,13 @@ import { useEffect, useState } from 'react';
 import { Badge, Empty, Grid, Modal, Space, Tag, Typography } from 'antd';
 import { SEMANTIC } from '@app/providers/brand';
 import FilaServicio, { ANCHO_ENLACES } from '@shared/components/nodos/FilaServicio';
-import { CifraTemperatura, Medidor, TituloSeccion } from '@shared/components/nodos/piezasNodo';
+import {
+    CifraTemperatura,
+    Medidor,
+    MedidorMemoria,
+    RejillaCores,
+    TituloSeccion,
+} from '@shared/components/nodos/piezasNodo';
 import { ESTADO_BADGE, desdeHace, discoLibre } from '@shared/components/nodos/nodoUtils';
 import { aPlataforma } from '@shared/services/catalogoServicios';
 import { NODO_INTERNET, getHistorialNodo, seriesDeTemperatura } from '@shared/services/nodosService';
@@ -121,21 +127,35 @@ export default function NodoDetalleModal({ nodo, open, onClose }) {
                             <Medidor
                                 llave="cpu"
                                 etiqueta="CPU"
-                                valor={usoCpu}
-                                absoluto={usoCpu != null ? `${usoCpu} %` : '—'}
+                                valor={host.cpu_used_percent ?? usoCpu}
+                                absoluto={(host.cpu_used_percent ?? usoCpu) != null
+                                    ? `${host.cpu_used_percent ?? usoCpu} %`
+                                    : '—'}
                                 nota={host.load_1m != null
                                     ? `carga ${host.load_1m} en ${host.cores} núcleos`
                                     : null}
                             />
-                            <Medidor
-                                llave="ram"
-                                etiqueta="RAM"
-                                valor={host.memory_used_percent}
-                                absoluto={host.memory_used_gb != null
-                                    ? `${host.memory_used_gb} / ${host.memory_total_gb} GB`
-                                    : '—'}
-                                nota={host.memory_cache_gb != null ? `+ ${host.memory_cache_gb} GB en caché` : null}
-                            />
+                            {host.cores_uso?.length > 0 && (
+                                <div style={{ paddingLeft: 56 }}>
+                                    <RejillaCores cores={host.cores_uso} />
+                                </div>
+                            )}
+                            {host.memory_cache_gb != null ? (
+                                <MedidorMemoria
+                                    usado={host.memory_used_gb}
+                                    cache={host.memory_cache_gb}
+                                    total={host.memory_total_gb}
+                                />
+                            ) : (
+                                <Medidor
+                                    llave="ram"
+                                    etiqueta="RAM"
+                                    valor={host.memory_used_percent}
+                                    absoluto={host.memory_used_gb != null
+                                        ? `${host.memory_used_gb} / ${host.memory_total_gb} GB`
+                                        : '—'}
+                                />
+                            )}
                             <Medidor
                                 llave="swap"
                                 etiqueta="Swap"

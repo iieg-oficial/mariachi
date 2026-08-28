@@ -69,3 +69,50 @@ export const Medidor = ({ llave, etiqueta, valor, absoluto, nota }) => (
         </div>
     </div>
 );
+
+export const RejillaCores = ({ cores }) => (
+    <div style={{ display: 'flex', gap: 2, alignItems: 'flex-end', height: 26 }}>
+        {cores.map(({ core, uso }) => (
+            <div
+                key={core}
+                title={`core ${core}: ${uso} %`}
+                style={{
+                    flex: 1,
+                    minWidth: 3,
+                    height: `${Math.max(8, uso)}%`,
+                    borderRadius: '1px 1px 0 0',
+                    background: tono('cpu', uso),
+                    opacity: uso < 5 ? 0.35 : 1,
+                }}
+            />
+        ))}
+    </div>
+);
+
+export const MedidorMemoria = ({ usado, cache, total }) => {
+    const pct = (valor) => (total ? Math.max(0, Math.min(100, (valor / total) * 100)) : 0);
+    const libre = Math.max(0, total - usado - cache);
+    return (
+        <div style={{ display: 'grid', gridTemplateColumns: '48px 1fr 116px', gap: 8, alignItems: 'center' }}>
+            <Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase' }}>RAM</Text>
+            <div style={{
+                display: 'flex',
+                height: 6,
+                borderRadius: 3,
+                overflow: 'hidden',
+                background: '#f5f5f5',
+            }}>
+                <div style={{ width: `${pct(usado)}%`, background: tono('ram', pct(usado)) }} />
+                <div style={{ width: `${pct(cache)}%`, background: tono('ram', pct(usado)), opacity: 0.3 }} />
+            </div>
+            <div style={{ textAlign: 'right' }}>
+                <Text type="secondary" style={{ fontSize: 11, fontVariantNumeric: 'tabular-nums' }}>
+                    {`${libre.toFixed(1)} / ${total} GB`}
+                </Text>
+                <Text type="secondary" style={{ display: 'block', fontSize: 10, opacity: 0.75 }}>
+                    {`libres · ${cache} GB en caché`}
+                </Text>
+            </div>
+        </div>
+    );
+};

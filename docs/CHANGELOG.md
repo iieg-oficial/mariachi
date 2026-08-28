@@ -9,6 +9,30 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.33.0] - 2026-08-28
+
+### Agregado: los núcleos del CPU, uno por uno
+
+Bajo el medidor va una barra por núcleo con su uso real, medido por huachicol 2.16.0 sobre
+`/proc/stat`. En una máquina de veinte se ve de un vistazo lo que un promedio esconde: si el trabajo
+está repartido o si hay un solo core clavado al 100 % mientras el resto duerme —el caso típico de un
+proceso que no paraleliza—. Los que están casi ociosos se dibujan atenuados para que el ojo vaya a
+los que trabajan.
+
+El porcentaje del medidor ahora es **uso real de CPU**, no la carga dividida entre núcleos: mide
+tiempo ocupado, que es lo que la gente espera de un «% de CPU». La carga sigue abajo como nota,
+porque dice algo distinto —cuántos procesos esperan turno— y con eso se distingue un equipo ocupado
+de uno saturado.
+
+### Cambiado: la barra de RAM lleva el caché en el mismo riel
+
+Un tramo con el color a fondo para lo que usan las aplicaciones y otro más tenue, del mismo tono,
+para el caché. La cifra pasa a decir **libres sobre el total**, con el caché desglosado debajo.
+
+Así los cuatro valores están a la vista sin hacer cuentas: lo ocupado y el caché se ven en la barra,
+lo libre se lee en el número, y el total cierra la operación. Es la lectura que `top` obliga a armar
+mentalmente entre tres columnas.
+
 ## [2.32.0] - 2026-08-28
 
 ### Cambiado: el medidor de CPU dice un porcentaje, no una carga suelta
