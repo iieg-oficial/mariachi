@@ -9,6 +9,21 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.34.1] - 2026-08-28
+
+### Cambiado: se recorta lo que el detalle del nodo decía dos veces
+
+Cada núcleo lleva ahora su número y su porcentaje **dentro del cuadro**, en lugar de esconderlos tras
+el cursor: el dato se lee sin apuntar y sin agrandar la rejilla. El texto cambia a blanco en los
+núcleos ocupados, donde el fondo va a fondo.
+
+Fuera tres repeticiones:
+
+- La nota `carga 5.45 en 20 núcleos` del CPU, que ya no aporta junto a la rejilla.
+- El `libres ·` de la RAM, que quedó en `4.35 GB caché` a secas.
+- Los grados en la leyenda de la gráfica, que están enormes justo arriba. La leyenda se queda con el
+  nombre del sensor y su color, repartida a lo ancho de su fila.
+
 ## [2.34.0] - 2026-08-28
 
 ### Cambiado: el CPU se representa con sus núcleos, sin barra de promedio

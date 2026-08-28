@@ -103,22 +103,23 @@ export default function GraficaTemperaturas({ series, cargando }) {
                 </text>
             </svg>
 
-            <Space size={16} wrap style={{ marginTop: 6 }}>
-                {conDatos.map((serie) => {
-                    const ultimo = serie.puntos[serie.puntos.length - 1];
-                    return (
-                        <Space key={serie.nombre} size={6}>
-                            <span style={{
-                                width: 14, height: 3, borderRadius: 2, display: 'block',
-                                background: colorDeSensor(serie.nombre),
-                            }} />
-                            <Text type="secondary" style={{ fontSize: 11 }}>
-                                {`${serie.nombre} ${ultimo.celsius}°`}
-                            </Text>
-                        </Space>
-                    );
-                })}
-            </Space>
+            <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                gap: 12,
+                marginTop: 6,
+                width: '100%',
+            }}>
+                {conDatos.map((serie) => (
+                    <Space key={serie.nombre} size={6}>
+                        <span style={{
+                            width: 14, height: 3, borderRadius: 2, display: 'block',
+                            background: colorDeSensor(serie.nombre),
+                        }} />
+                        <Text type="secondary" style={{ fontSize: 11 }}>{serie.nombre}</Text>
+                    </Space>
+                ))}
+            </div>
         </div>
     );
 }

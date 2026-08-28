@@ -97,17 +97,16 @@ describe('NodoDetalleModal', () => {
         expect(anchos).toEqual(['41.2%', '0%', '40%']);
     });
 
-    it('el CPU se expresa en porcentaje de capacidad, con la carga como nota', () => {
+    it('el CPU se expresa en porcentaje de uso', () => {
         montar();
         expect(screen.getByText('Recursos')).toBeInTheDocument();
         expect(screen.getByText('15 %')).toBeInTheDocument();
-        expect(screen.getByText('carga 1.24 en 8 núcleos')).toBeInTheDocument();
     });
 
     it('la RAM muestra el libre que reporta el kernel, sin sumarle el caché', () => {
         montar({ ...NODO, host: { ...NODO.host, memory_cache_gb: 6.28, memory_free_gb: 1.7 } });
         expect(screen.getByText('1.7 / 15 GB')).toBeInTheDocument();
-        expect(screen.getByText('libres · 6.28 GB en caché')).toBeInTheDocument();
+        expect(screen.getByText('6.28 GB caché')).toBeInTheDocument();
     });
 
     it('sin dato de caché conserva el medidor simple', () => {
@@ -115,8 +114,8 @@ describe('NodoDetalleModal', () => {
         expect(screen.getByText('6.2 / 15 GB')).toBeInTheDocument();
     });
 
-    it('dibuja una barra por núcleo con su uso', () => {
-        const { baseElement } = montar({
+    it('cada núcleo lleva su número y su porcentaje dentro del cuadro', () => {
+        montar({
             ...NODO,
             host: {
                 ...NODO.host,
@@ -128,8 +127,9 @@ describe('NodoDetalleModal', () => {
                 ],
             },
         });
-        expect(baseElement.querySelector('[title="core 2: 100 %"]')).toBeTruthy();
-        expect(baseElement.querySelectorAll('[title^="core "]')).toHaveLength(3);
+        expect(screen.getByText('2·100%')).toBeInTheDocument();
+        expect(screen.getByText('0·8%')).toBeInTheDocument();
+        expect(screen.getByText('1·0%')).toBeInTheDocument();
         expect(screen.getByText('16 %')).toBeInTheDocument();
     });
 

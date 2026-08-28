@@ -147,11 +147,6 @@ export default function NodoDetalleModal({ nodo, open, onClose }) {
                                             ? `${host.cpu_used_percent ?? usoCpu} %`
                                             : '—'}
                                     </Text>
-                                    {host.load_1m != null && (
-                                        <Text type="secondary" style={{ display: 'block', fontSize: 10, opacity: 0.75 }}>
-                                            {`carga ${host.load_1m} en ${host.cores} núcleos`}
-                                        </Text>
-                                    )}
                                 </div>
                             </div>
                             {host.memory_cache_gb != null ? (

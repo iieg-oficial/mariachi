@@ -87,14 +87,27 @@ export const RejillaCores = ({ cores }) => (
         {cores.map(({ core, uso }) => (
             <div
                 key={core}
-                title={`core ${core}: ${uso} %`}
                 style={{
                     height: 14,
                     borderRadius: 3,
                     background: tono('cpu', uso),
                     opacity: intensidadCore(uso),
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    overflow: 'hidden',
                 }}
-            />
+            >
+                <span style={{
+                    fontSize: 8,
+                    lineHeight: 1,
+                    fontFamily: 'monospace',
+                    whiteSpace: 'nowrap',
+                    color: uso >= 50 ? '#fff' : 'rgba(0,0,0,0.75)',
+                }}>
+                    {`${core}·${uso}%`}
+                </span>
+            </div>
         ))}
     </div>
 );
@@ -119,7 +132,7 @@ export const MedidorMemoria = ({ usado, cache, total, libre }) => {
                     {`${libre.toFixed(1)} / ${total} GB`}
                 </Text>
                 <Text type="secondary" style={{ display: 'block', fontSize: 10, opacity: 0.75 }}>
-                    {`libres · ${cache} GB en caché`}
+                    {`${cache} GB caché`}
                 </Text>
             </div>
         </div>

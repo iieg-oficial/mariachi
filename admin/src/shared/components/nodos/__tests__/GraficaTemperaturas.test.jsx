@@ -18,9 +18,10 @@ describe('GraficaTemperaturas', () => {
         expect(container.querySelectorAll('path')).toHaveLength(2);
     });
 
-    it('la leyenda muestra el último valor de cada sensor', () => {
+    it('la leyenda solo nombra el sensor: los grados ya están arriba', () => {
         render(<GraficaTemperaturas series={[serie('CPU', [70, 75, 82])]} />);
-        expect(screen.getByText('CPU 82°')).toBeInTheDocument();
+        expect(screen.getByText('CPU')).toBeInTheDocument();
+        expect(screen.queryByText(/82/)).not.toBeInTheDocument();
     });
 
     it('con un solo punto no dibuja: una línea de un punto no es tendencia', () => {
