@@ -32,10 +32,12 @@ from app.models.sieej import (
     Formulario,
     Grupo,
 )
+from app.models.roadmap import RoadmapHito
 from app.models.source_app import SourceApp
 from app.models.user import Usuario
 
 __all__ = [
+    "RoadmapHito",
     "Base",
     "MapalabInfoboxPropuesta",
     "Usuario",

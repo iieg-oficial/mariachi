@@ -1,20 +1,32 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Card, Space, Typography } from 'antd';
+import { App, Button, Card, Space, Spin, Typography } from 'antd';
 import { SEMANTIC } from '@app/providers/brand';
-import { FlagOutlined } from '@ant-design/icons';
+import { EditOutlined, FlagOutlined } from '@ant-design/icons';
+import { useAuth } from '@shared/contexts/useAuth';
 import SectionHeader from '@shared/components/SectionHeader';
 import { CICLOS, MARCADORES, PROCESOS } from '@features/inicio/constants/roadmapModelo';
-import { HITOS } from '@features/inicio/constants/roadmapHitos';
 import { acomodar, colorDe, esMuerto } from '@features/inicio/helpers/roadmapLayout';
+import {
+    actualizarHito,
+    crearHito,
+    eliminarHito,
+    getHitos,
+} from '@features/inicio/api/roadmapService';
 import RoadmapLienzo from '@features/inicio/components/roadmap/RoadmapLienzo';
+import RoadmapEditor from '@features/inicio/components/roadmap/RoadmapEditor';
 
 const { Text } = Typography;
 
-const CATALOGO = [...HITOS, ...CICLOS, ...PROCESOS];
-
-const buscar = (id) => CATALOGO.find((item) => item.id === id) || null;
+const PERMISO = 'mariachi.roadmap.manage';
 
 export default function RoadmapPanel() {
+    const { user } = useAuth();
+    const { message } = App.useApp();
+    const [datos, setDatos] = useState([]);
+    const [cargando, setCargando] = useState(true);
+    const [editando, setEditando] = useState(false);
+    const [guardando, setGuardando] = useState(false);
+    const [marcador, setMarcador] = useState(MARCADORES[0]);
     const [seleccion, setSeleccion] = useState(null);
     const [fijado, setFijado] = useState(false);
     const [tip, setTip] = useState(null);
@@ -23,7 +35,23 @@ export default function RoadmapPanel() {
     const marcoRef = useRef(null);
     const esperadoRef = useRef(-1);
 
-    const hitos = useMemo(() => acomodar(HITOS), []);
+    const puedeEditar = Boolean(user?.permissions?.includes?.(PERMISO));
+
+    useEffect(() => {
+        let cancelado = false;
+        getHitos()
+            .then((filas) => { if (!cancelado) setDatos(filas); })
+            .catch(() => { if (!cancelado) setDatos([]); })
+            .finally(() => { if (!cancelado) setCargando(false); });
+        return () => { cancelado = true; };
+    }, []);
+
+    const hitos = useMemo(() => acomodar(datos), [datos]);
+
+    const buscar = useCallback(
+        (id) => [...datos, ...CICLOS, ...PROCESOS].find((item) => item.id === id) || null,
+        [datos],
+    );
 
     const activo = seleccion ? buscar(seleccion) : null;
     const esCiclo = Boolean(activo && activo.x0 != null);
@@ -48,13 +76,13 @@ export default function RoadmapPanel() {
     };
 
     const alEntrar = (id, evento) => {
-        if (fijado) return;
+        if (fijado || editando) return;
         setSeleccion(id);
         situarTip(id, evento);
     };
 
     const alSalir = () => {
-        if (fijado) return;
+        if (fijado || editando) return;
         setSeleccion(null);
         setTip(null);
     };
@@ -68,7 +96,58 @@ export default function RoadmapPanel() {
         }
         setFijado(true);
         setSeleccion(id);
-        if (evento) situarTip(id, evento);
+        if (evento && !editando) situarTip(id, evento);
+    };
+
+    const alGuardar = async (valores) => {
+        setGuardando(true);
+        try {
+            const guardado = await actualizarHito({ ...activo, ...valores });
+            setDatos((previos) => previos.map((h) => (h.id === guardado.id ? guardado : h)));
+            message.success('Hito actualizado');
+            setSeleccion(null);
+            setFijado(false);
+        } catch {
+            message.error('No se pudo guardar el hito');
+        } finally {
+            setGuardando(false);
+        }
+    };
+
+    const alAgregar = async () => {
+        setGuardando(true);
+        const clave = `hito-${Date.now()}`;
+        try {
+            const creado = await crearHito({
+                id: clave,
+                txt: 'hito nuevo',
+                proy: 'infra',
+                tipo: 'mayor',
+                f: new Date().toISOString().slice(0, 10),
+                fecha: 'sin fecha',
+                motivo: 'Sin describir todavía.',
+            });
+            setDatos((previos) => [...previos, creado]);
+            setSeleccion(creado.id);
+            setFijado(true);
+            message.success('Hito creado');
+        } catch {
+            message.error('No se pudo crear el hito');
+        } finally {
+            setGuardando(false);
+        }
+    };
+
+    const alEliminar = async (clave) => {
+        try {
+            await eliminarHito(clave);
+            setDatos((previos) => previos.filter((h) => h.id !== clave));
+            message.success('Hito eliminado');
+            setSeleccion(null);
+            setFijado(false);
+        } catch {
+            message.error('No se pudo eliminar el hito');
+        }
     };
 
     const alAvanzar = useCallback((x) => {
@@ -107,17 +186,36 @@ export default function RoadmapPanel() {
                 title="Hoja de ruta"
                 subtitle="El ecosistema de 2024 a 2030"
                 badge={(
-                    <Button
-                        size="small"
-                        type={seguir ? 'primary' : 'default'}
-                        onClick={(e) => { e.stopPropagation(); setSeguir((v) => !v); }}
-                    >
-                        {seguir ? 'Siguiendo' : 'Scroll libre'}
-                    </Button>
+                    <Space size={6}>
+                        <Button
+                            size="small"
+                            type={seguir ? 'primary' : 'default'}
+                            onClick={(e) => { e.stopPropagation(); setSeguir((v) => !v); }}
+                        >
+                            {seguir ? 'Siguiendo' : 'Scroll libre'}
+                        </Button>
+                        {puedeEditar && (
+                            <Button
+                                size="small"
+                                icon={<EditOutlined />}
+                                type={editando ? 'primary' : 'default'}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditando((v) => !v);
+                                    limpiar();
+                                }}
+                            >
+                                {editando ? 'Salir de edición' : 'Editar'}
+                            </Button>
+                        )}
+                    </Space>
                 )}
             />
             <Card size="small" styles={{ body: { padding: '6px 10px' } }}>
-                <div ref={marcoRef} style={{ position: 'relative' }}>
+                {cargando && (
+                    <div style={{ textAlign: 'center', padding: 32 }}><Spin /></div>
+                )}
+                <div ref={marcoRef} style={{ position: 'relative', display: cargando ? 'none' : 'block' }}>
                     <div
                         ref={cajaRef}
                         onScroll={alDesplazar}
@@ -125,7 +223,7 @@ export default function RoadmapPanel() {
                     >
                         <RoadmapLienzo
                             hitos={hitos}
-                            marcador={MARCADORES[0]}
+                            marcador={marcador}
                             seleccion={seleccion}
                             familia={familia}
                             cicloActivo={esCiclo ? seleccion : null}
@@ -138,7 +236,7 @@ export default function RoadmapPanel() {
                         />
                     </div>
 
-                    {tip && (
+                    {tip && !editando && (
                         <div
                             style={{
                                 position: 'absolute',
@@ -172,6 +270,19 @@ export default function RoadmapPanel() {
                     )}
                 </div>
             </Card>
+
+            {editando && (
+                <RoadmapEditor
+                    hito={activo && activo.x0 == null ? activo : null}
+                    marcador={marcador}
+                    guardando={guardando}
+                    onGuardar={alGuardar}
+                    onEliminar={alEliminar}
+                    onCerrar={limpiar}
+                    onMarcador={setMarcador}
+                    onAgregar={alAgregar}
+                />
+            )}
         </div>
     );
 }

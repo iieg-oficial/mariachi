@@ -26,6 +26,7 @@ from app.api.routes import (
     grid,
     home,
     identidad,
+    roadmap,
     layer_metadata,
     layers,
     mapalab_api_keys,
@@ -125,6 +126,7 @@ def create_app() -> FastAPI:
         prefix=settings.admin_prefix,
         dependencies=[Depends(require_permission("mariachi.identidad.view"))],
     )
+    app.include_router(roadmap.router, prefix=settings.admin_prefix, dependencies=panel)
     app.include_router(symbols.router, prefix=settings.admin_prefix, dependencies=mapalab_view)
     app.include_router(
         geoserver.router,

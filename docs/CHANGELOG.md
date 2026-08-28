@@ -9,6 +9,33 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.36.0] - 2026-08-28
+
+### Agregado: la hoja de ruta se edita desde el CMS
+
+Los hitos dejan de ser una constante del admin y pasan a la base. Corregir una fecha ya no pide un
+deploy.
+
+**Migración `r0adm4p0001`**, sobre la cabeza `m3rg30001`. Crea `roadmap_hitos` y la siembra con los
+**52 hitos** que hasta ahora vivían en `constants/roadmapHitos.js`, que se elimina. La tabla lleva
+índice único por `clave` e índice por `proyecto`.
+
+**Cuatro endpoints** bajo `/api/mariachi/roadmap`: `GET /hitos` para cualquiera del panel, y
+`POST`, `PUT` y `DELETE` detrás del permiso nuevo **`mariachi.roadmap.manage`**, ya declarado en
+`manifest.minerva.yml`. Los tres de escritura pasan por `verify_csrf`.
+
+**El modo edición aparece solo con el permiso.** Quien no lo tenga no ve el botón. Dentro se puede
+cambiar etiqueta, fecha del eje, fecha visible, proyecto, tipo, feature de, nombre anterior, la
+bandera de desarrollo y el motivo; agregar un hito; y eliminarlo. Al guardar, el acomodo se
+recalcula solo — que es justo lo que la prueba del acomodo protege.
+
+**El marcador que recorre la línea se elige entre doce**, desde el mismo panel de edición.
+
+`fecha_eje` se valida como `YYYY-MM-DD` y `tipo` contra los ocho conocidos, así que una fecha mal
+escrita no llega a romper el acomodo en el navegador.
+
+---
+
 ## [2.35.0] - 2026-08-28
 
 ### Agregado: la hoja de ruta del ecosistema en el inicio

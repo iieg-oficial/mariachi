@@ -1,0 +1,179 @@
+import { Button, Input, Radio, Select, Space, Tooltip, Typography } from 'antd';
+import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
+import { fieldOptionsFor, isComposed, normalizeComposeParts } from './fieldValueHelpers.jsx';
+
+const { Text } = Typography;
+
+export const FieldSelect = ({ value, onChange, availableFields, placeholder = 'Campo', style }) => (
+    <Select
+        style={style}
+        value={value || undefined}
+        onChange={(v) => onChange(v ?? '')}
+        options={fieldOptionsFor(availableFields, value)}
+        placeholder={placeholder}
+        showSearch
+        allowClear
+        filterOption={(input, option) => String(option.value).toLowerCase().includes(input.toLowerCase())}
+    />
+);
+
+const PartRow = ({ part, isSum, onChange, onRemove, availableFields }) => (
+    <Space.Compact style={{ width: '100%' }}>
+        {!isSum && (
+            <Tooltip title="Texto antes del valor. Desaparece si la columna viene vacía.">
+                <Input
+                    style={{ width: 90 }}
+                    value={part.prefix || ''}
+                    onChange={(e) => onChange({ ...part, prefix: e.target.value || undefined })}
+                    placeholder="antes"
+                />
+            </Tooltip>
+        )}
+        <FieldSelect
+            style={{ flex: 1, minWidth: 0 }}
+            value={part.field}
+            onChange={(v) => onChange({ ...part, field: v })}
+            availableFields={availableFields}
+        />
+        {!isSum && (
+            <Tooltip title="Texto después del valor. Desaparece si la columna viene vacía.">
+                <Input
+                    style={{ width: 90 }}
+                    value={part.suffix || ''}
+                    onChange={(e) => onChange({ ...part, suffix: e.target.value || undefined })}
+                    placeholder="después"
+                />
+            </Tooltip>
+        )}
+        <Button danger icon={<DeleteOutlined />} onClick={onRemove} />
+    </Space.Compact>
+);
+
+const ComposeEditor = ({ value, onChange, availableFields, allowSum }) => {
+    const parts = normalizeComposeParts(value?.compose);
+    const isSum = value?.op === 'sum';
+
+    const emit = (patch) => {
+        const next = { compose: parts, sep: value?.sep, op: isSum ? 'sum' : undefined, ...patch };
+        Object.keys(next).forEach((k) => next[k] === undefined && delete next[k]);
+        onChange(next);
+    };
+
+    return (
+        <Space orientation="vertical" size={4} style={{ width: '100%' }}>
+            {allowSum && (
+                <Radio.Group
+                    size="small"
+                    value={isSum ? 'sum' : 'join'}
+                    onChange={(e) => emit(e.target.value === 'sum'
+                        ? { op: 'sum', sep: undefined }
+                        : { op: undefined })}
+                    optionType="button"
+                    options={[
+                        { label: 'Unir texto', value: 'join' },
+                        { label: 'Sumar', value: 'sum' },
+                    ]}
+                />
+            )}
+            {parts.map((part, idx) => (
+                <PartRow
+                    key={idx}
+                    part={part}
+                    isSum={isSum}
+                    availableFields={availableFields}
+                    onChange={(next) => emit({ compose: parts.map((p, i) => (i === idx ? next : p)) })}
+                    onRemove={() => emit({ compose: parts.filter((_, i) => i !== idx) })}
+                />
+            ))}
+            <Space size={6} style={{ width: '100%' }} wrap>
+                <Button
+                    type="dashed"
+                    size="small"
+                    icon={<PlusOutlined />}
+                    onClick={() => emit({ compose: [...parts, { field: '' }] })}
+                >
+                    Agregar columna
+                </Button>
+                {!isSum && (
+                    <Input
+                        size="small"
+                        style={{ width: 190 }}
+                        value={value?.sep ?? ''}
+                        onChange={(e) => emit({ sep: e.target.value || undefined })}
+                        placeholder=", "
+                        addonBefore={<Text type="secondary" style={{ fontSize: 11 }}>Separador</Text>}
+                    />
+                )}
+            </Space>
+            <Text type="secondary" style={{ fontSize: 11 }}>
+                {isSum
+                    ? 'Suma las columnas numéricas. Las que no lo sean se ignoran.'
+                    : 'Une las columnas en un solo valor. La columna vacía se va con su texto de antes y después.'}
+            </Text>
+        </Space>
+    );
+};
+
+export const FieldValueField = ({
+    value,
+    onChange,
+    availableFields,
+    placeholder = 'Campo',
+    allowSum = false,
+    selectStyle,
+    extraModes = [],
+    mode: forcedMode = null,
+    onModeChange = null,
+}) => {
+    const composed = isComposed(value);
+    const mode = forcedMode ?? (composed ? 'compose' : 'field');
+
+    const setMode = (next) => {
+        if (next === mode) return;
+        if (onModeChange && !['field', 'compose'].includes(next)) {
+            onModeChange(next);
+            return;
+        }
+        if (next === 'compose') {
+            onChange({ compose: [{ field: value?.field || '' }] });
+        } else {
+            onChange({ field: normalizeComposeParts(value?.compose)[0]?.field || '' });
+        }
+        onModeChange?.(next);
+    };
+
+    return (
+        <Space orientation="vertical" size={4} style={{ width: '100%' }}>
+            <Radio.Group
+                size="small"
+                value={mode}
+                onChange={(e) => setMode(e.target.value)}
+                optionType="button"
+                options={[
+                    { label: 'Un campo', value: 'field' },
+                    { label: 'Campos combinados', value: 'compose' },
+                    ...extraModes,
+                ]}
+            />
+            {mode === 'compose' && (
+                <ComposeEditor
+                    value={value}
+                    onChange={onChange}
+                    availableFields={availableFields}
+                    allowSum={allowSum}
+                />
+            )}
+            {mode === 'field' && (
+                <FieldSelect
+                    style={selectStyle || { width: '100%' }}
+                    value={value?.field}
+                    onChange={(v) => onChange({ field: v })}
+                    availableFields={availableFields}
+                    placeholder={placeholder}
+                />
+            )}
+        </Space>
+    );
+};
+
+export default FieldValueField;

@@ -21,6 +21,9 @@ permissions:
   - key: mariachi.mapalab.manage
     name: Administrar workspaces, orden inicial y operaciones masivas de MapaLab
 
+  - key: mariachi.roadmap.manage
+    name: Administrar la hoja de ruta del ecosistema
+
   - key: mariachi.portal.view
     name: Ver paginas, menu e inicio del portal
   - key: mariachi.portal.update

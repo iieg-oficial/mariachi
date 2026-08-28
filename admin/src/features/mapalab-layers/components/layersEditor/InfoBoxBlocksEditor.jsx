@@ -27,6 +27,8 @@ import {
     normalizeInfoboxConfig,
     textIdOf,
 } from './infoBoxTextBlocks';
+import { FieldValueField } from './FieldValueField.jsx';
+import { fieldOptionsFor, isComposed, withValueDef } from './fieldValueHelpers.jsx';
 
 const { Text } = Typography;
 
@@ -48,25 +50,6 @@ const ICON_CATALOG = [
     { value: 'novedades', label: 'Novedades' },
     { value: 'aviso_privacidad', label: 'Aviso de privacidad' },
 ];
-
-const fieldOptionsFor = (availableFields, currentValues = []) => {
-    const opts = (availableFields || []).map((f) => ({
-        value: f.name,
-        label: (
-            <span>
-                <span style={{ fontFamily: 'monospace' }}>{f.name}</span>
-                <Text type="secondary" style={{ fontSize: 11, marginLeft: 6 }}>{f.type}</Text>
-            </span>
-        ),
-    }));
-    const arr = Array.isArray(currentValues) ? currentValues : [currentValues];
-    for (const v of arr) {
-        if (typeof v === 'string' && v && !opts.find((o) => o.value === v)) {
-            opts.unshift({ value: v, label: <span style={{ fontFamily: 'monospace' }}>{v}</span> });
-        }
-    }
-    return opts;
-};
 
 const findStylePreset = (color, bg) =>
     STYLE_PRESETS.find((p) => p.color?.toLowerCase() === (color || '').toLowerCase() && p.bg?.toLowerCase() === (bg || '').toLowerCase());
@@ -195,7 +178,8 @@ const itemIdsFor = (arr) => arr.map((_, idx) => `item-${idx}`);
 const indexFromItemId = (id) => Number(String(id).replace(/^item-/, ''));
 
 const computeHeaderMode = (val, fields) => {
-    if (!val) return 'field';
+    if (isComposed(val)) return 'compose';
+    if (!val || typeof val !== 'string') return 'field';
     if (!fields?.length) return 'field';
     return fields.find((f) => f.name === val) ? 'field' : 'static';
 };
@@ -216,40 +200,27 @@ const HeaderFieldBlock = ({ value, onChange, onRemove, availableFields }) => {
         }
     }, [value, availableFields]);
 
-    const handleToggle = (e) => {
+    const handleModeChange = (next) => {
         userTouchedRef.current = true;
-        setMode(e.target.value);
+        setMode(next);
+        if (next === 'static' && typeof value !== 'string') onChange('');
     };
 
     return (
         <BlockShell title="Encabezado (headerField)" onRemove={onRemove} hint="Título grande del cuadro">
             <Space orientation="vertical" size={6} style={{ width: '100%' }}>
-                <Radio.Group
-                    size="small"
-                    value={mode}
-                    onChange={handleToggle}
-                    optionType="button"
-                    options={[
-                        { label: 'Campo dinámico', value: 'field' },
-                        { label: 'Texto fijo', value: 'static' },
-                    ]}
+                <FieldValueField
+                    value={typeof value === 'string' ? { field: value } : value}
+                    onChange={(next) => onChange(next.field !== undefined ? next.field : next)}
+                    availableFields={availableFields}
+                    placeholder="Selecciona un campo del feature"
+                    mode={mode}
+                    onModeChange={handleModeChange}
+                    extraModes={[{ label: 'Texto fijo', value: 'static' }]}
                 />
-                {mode === 'field' ? (
-                    <Select
-                        value={value || undefined}
-                        onChange={(v) => onChange(v ?? '')}
-                        options={fieldOptionsFor(availableFields, value)}
-                        placeholder="Selecciona un campo del feature"
-                        showSearch
-                        allowClear
-                        style={{ width: '100%' }}
-                        filterOption={(input, option) =>
-                            String(option.value).toLowerCase().includes(input.toLowerCase())
-                        }
-                    />
-                ) : (
+                {mode === 'static' && (
                     <Input
-                        value={value || ''}
+                        value={typeof value === 'string' ? value : ''}
                         onChange={(e) => onChange(e.target.value)}
                         placeholder="Texto literal del encabezado (ej. Límites municipales administrativos IIEG)"
                     />
@@ -261,28 +232,27 @@ const HeaderFieldBlock = ({ value, onChange, onRemove, availableFields }) => {
 
 const NestedFieldEditor = ({ entry, onChange, onRemove, availableFields, parentStyle }) => {
     const isObject = entry && typeof entry === 'object';
-    const fieldName = isObject ? entry.field : entry;
-    const update = (patch) => {
-        const base = isObject ? entry : { field: entry };
-        onChange({ ...base, ...patch });
-    };
+    const base = isObject ? entry : { field: entry };
+    const update = (patch) => onChange({ ...base, ...patch });
     return (
         <Card size="small" type="inner" styles={{ body: { padding: 8 } }}>
             <Space orientation="vertical" size={4} style={{ width: '100%' }}>
-                <Space.Compact style={{ width: '100%' }}>
-                    <Select
-                        style={{ flex: 1 }}
-                        value={fieldName || undefined}
-                        onChange={(v) => update({ field: v })}
-                        options={fieldOptionsFor(availableFields, fieldName)}
-                        showSearch
-                        placeholder="Campo"
-                        filterOption={(input, option) =>
-                            String(option.value).toLowerCase().includes(input.toLowerCase())
-                        }
+                <Space.Compact style={{ width: '100%', alignItems: 'flex-start' }}>
+                    <FieldValueField
+                        value={base}
+                        onChange={(next) => onChange(withValueDef(base, next))}
+                        availableFields={availableFields}
                     />
                     <Button danger icon={<DeleteOutlined />} onClick={onRemove} />
                 </Space.Compact>
+                <Space size={6}>
+                    <Switch
+                        size="small"
+                        checked={isObject ? !!entry.split : false}
+                        onChange={(v) => update({ split: v || undefined })}
+                    />
+                    <Text type="secondary" style={{ fontSize: 11 }}>parte el valor por «; »</Text>
+                </Space>
                 <StylePicker
                     color={isObject ? entry.color : parentStyle?.color}
                     bg={isObject ? entry.bg : parentStyle?.bg}
@@ -461,6 +431,7 @@ const CardsBlock = ({ value = [], columns = 1, onChange, onColumnsChange, onRemo
     };
     const removeItem = (idx) => onChange(value.filter((_, i) => i !== idx));
     const addItem = () => onChange([...value, { field: '', label: '' }]);
+    const setValueDef = (idx, next) => onChange(value.map((it, i) => (i === idx ? withValueDef(it, next) : it)));
     const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
     const itemIds = itemIdsFor(value);
     const handleDragEnd = ({ active, over }) => {
@@ -482,36 +453,34 @@ const CardsBlock = ({ value = [], columns = 1, onChange, onColumnsChange, onRemo
                         <Space orientation="vertical" size="small" style={{ width: '100%' }}>
                             {value.map((it, idx) => (
                                 <SortableItem key={itemIds[idx]} id={itemIds[idx]}>
-                                    <Space.Compact style={{ width: '100%' }}>
-                                        <Select
-                                            style={{ width: 220 }}
-                                            value={it.field || undefined}
-                                            onChange={(v) => updateItem(idx, { field: v ?? '' })}
-                                            options={fieldOptionsFor(availableFields, it.field)}
-                                            placeholder="Campo"
-                                            showSearch
-                                            allowClear
-                                            filterOption={(input, option) =>
-                                                String(option.value).toLowerCase().includes(input.toLowerCase())
-                                            }
-                                        />
-                                        <Input
-                                            value={it.label || ''}
-                                            onChange={(e) => updateItem(idx, { label: e.target.value })}
-                                            placeholder="Label visible (ej. Razón de dependencia)"
-                                        />
-                                        <Tooltip title="Decimales para formatear (vacío = sin formateo)">
-                                            <InputNumber
-                                                style={{ width: 90 }}
-                                                min={0}
-                                                max={6}
-                                                value={it.decimals ?? null}
-                                                placeholder="dec."
-                                                onChange={(v) => updateItem(idx, { decimals: v ?? undefined })}
+                                    <div style={{ border: '1px dashed #f0f0f0', borderRadius: 4, padding: 8 }}>
+                                        <Space orientation="vertical" size={6} style={{ width: '100%' }}>
+                                            <FieldValueField
+                                                value={it}
+                                                onChange={(next) => setValueDef(idx, next)}
+                                                availableFields={availableFields}
+                                                allowSum
                                             />
-                                        </Tooltip>
-                                        <Button danger icon={<DeleteOutlined />} onClick={() => removeItem(idx)} />
-                                    </Space.Compact>
+                                            <Space.Compact style={{ width: '100%' }}>
+                                                <Input
+                                                    value={it.label || ''}
+                                                    onChange={(e) => updateItem(idx, { label: e.target.value })}
+                                                    placeholder="Label visible (ej. Razón de dependencia)"
+                                                />
+                                                <Tooltip title="Decimales para formatear (vacío = sin formateo)">
+                                                    <InputNumber
+                                                        style={{ width: 90 }}
+                                                        min={0}
+                                                        max={6}
+                                                        value={it.decimals ?? null}
+                                                        placeholder="dec."
+                                                        onChange={(v) => updateItem(idx, { decimals: v ?? undefined })}
+                                                    />
+                                                </Tooltip>
+                                                <Button danger icon={<DeleteOutlined />} onClick={() => removeItem(idx)} />
+                                            </Space.Compact>
+                                        </Space>
+                                    </div>
                                 </SortableItem>
                             ))}
                         </Space>
@@ -542,6 +511,7 @@ const ListBlock = ({ value = [], onChange, onRemove, availableFields }) => {
     };
     const removeItem = (idx) => onChange(value.filter((_, i) => i !== idx));
     const addItem = () => onChange([...value, { field: '', label: '' }]);
+    const setValueDef = (idx, next) => onChange(value.map((it, i) => (i === idx ? withValueDef(it, next) : it)));
     const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
     const itemIds = itemIdsFor(value);
     const handleDragEnd = ({ active, over }) => {
@@ -560,19 +530,12 @@ const ListBlock = ({ value = [], onChange, onRemove, availableFields }) => {
                             <SortableItem key={itemIds[idx]} id={itemIds[idx]}>
                                 <div style={{ border: '1px dashed #f0f0f0', borderRadius: 4, padding: 8 }}>
                                     <Space orientation="vertical" size={6} style={{ width: '100%' }}>
+                                        <FieldValueField
+                                            value={it}
+                                            onChange={(next) => setValueDef(idx, next)}
+                                            availableFields={availableFields}
+                                        />
                                         <Space.Compact style={{ width: '100%' }}>
-                                            <Select
-                                                style={{ width: 220 }}
-                                                value={it.field || undefined}
-                                                onChange={(v) => updateItem(idx, { field: v ?? '' })}
-                                                options={fieldOptionsFor(availableFields, it.field)}
-                                                placeholder="Campo"
-                                                showSearch
-                                                allowClear
-                                                filterOption={(input, option) =>
-                                                    String(option.value).toLowerCase().includes(input.toLowerCase())
-                                                }
-                                            />
                                             <Input
                                                 value={it.label || ''}
                                                 onChange={(e) => updateItem(idx, { label: e.target.value })}
@@ -584,6 +547,14 @@ const ListBlock = ({ value = [], onChange, onRemove, availableFields }) => {
                                                     onClick={() => updateItem(idx, { raw: !it.raw })}
                                                 >
                                                     raw
+                                                </Button>
+                                            </Tooltip>
+                                            <Tooltip title="Parte el valor por «; » y lo muestra como varios renglones">
+                                                <Button
+                                                    type={it.split ? 'primary' : 'default'}
+                                                    onClick={() => updateItem(idx, { split: it.split ? undefined : true })}
+                                                >
+                                                    multivalor
                                                 </Button>
                                             </Tooltip>
                                             <Button danger icon={<DeleteOutlined />} onClick={() => removeItem(idx)} />
@@ -626,6 +597,7 @@ const IconTextBlock = ({ value = [], onChange, onRemove, availableFields }) => {
     };
     const removeItem = (idx) => onChange(value.filter((_, i) => i !== idx));
     const addItem = () => onChange([...value, { icon: 'ubicacion', field: '' }]);
+    const setValueDef = (idx, next) => onChange(value.map((it, i) => (i === idx ? withValueDef(it, next) : it)));
     const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
     const itemIds = itemIdsFor(value);
     const handleDragEnd = ({ active, over }) => {
@@ -646,7 +618,7 @@ const IconTextBlock = ({ value = [], onChange, onRemove, availableFields }) => {
                                     <Space orientation="vertical" size={6} style={{ width: '100%' }}>
                                         <Space.Compact style={{ width: '100%' }}>
                                             <Select
-                                                style={{ width: 220 }}
+                                                style={{ flex: 1 }}
                                                 value={it.icon || 'ubicacion'}
                                                 onChange={(v) => updateItem(idx, { icon: v })}
                                                 options={ICON_CATALOG}
@@ -656,20 +628,14 @@ const IconTextBlock = ({ value = [], onChange, onRemove, availableFields }) => {
                                                     String(option.value).toLowerCase().includes(input.toLowerCase())
                                                 }
                                             />
-                                            <Select
-                                                style={{ flex: 1 }}
-                                                value={it.field || undefined}
-                                                onChange={(v) => updateItem(idx, { field: v ?? '' })}
-                                                options={fieldOptionsFor(availableFields, it.field)}
-                                                placeholder={it.icon === 'web' ? 'Campo con la URL' : 'Campo a mostrar'}
-                                                showSearch
-                                                allowClear
-                                                filterOption={(input, option) =>
-                                                    String(option.value).toLowerCase().includes(input.toLowerCase())
-                                                }
-                                            />
                                             <Button danger icon={<DeleteOutlined />} onClick={() => removeItem(idx)} />
                                         </Space.Compact>
+                                        <FieldValueField
+                                            value={it}
+                                            onChange={(next) => setValueDef(idx, next)}
+                                            availableFields={availableFields}
+                                            placeholder={it.icon === 'web' ? 'Campo con la URL' : 'Campo a mostrar'}
+                                        />
                                         <Input
                                             size="small"
                                             value={it.label || ''}
@@ -699,20 +665,18 @@ const IconTextBlock = ({ value = [], onChange, onRemove, availableFields }) => {
 };
 
 const TextItemRow = ({ item, onChange, onRemove, availableFields }) => {
-    const mode = item.field !== undefined ? 'field' : 'static';
+    const mode = isComposed(item) ? 'compose' : (item.field !== undefined ? 'field' : 'static');
 
-    const handleToggle = (e) => {
-        const next = e.target.value;
-        if (next === 'field') {
-            const { label: _l, ...rest } = item;
-            onChange({ ...rest, field: rest.field || '' });
-        } else {
-            const { field: _f, ...rest } = item;
-            onChange({ ...rest, label: rest.label || '' });
-        }
+    const setValueDef = (next) => {
+        const { label: _l, ...rest } = withValueDef(item, {});
+        onChange({ ...rest, ...next });
     };
 
-    const setValue = (v) => onChange({ ...item, [mode === 'field' ? 'field' : 'label']: v ?? '' });
+    const handleModeChange = (next) => {
+        if (next === 'static') onChange({ ...withValueDef(item, {}), label: item.label || '' });
+    };
+
+    const setValue = (v) => onChange({ ...item, label: v ?? '' });
 
     const setHref = (value) => {
         if (value) {
@@ -726,17 +690,18 @@ const TextItemRow = ({ item, onChange, onRemove, availableFields }) => {
     return (
         <div style={{ border: '1px dashed #f0f0f0', borderRadius: 4, padding: 8 }}>
             <Space orientation="vertical" size={6} style={{ width: '100%' }}>
-                <Space size={6} style={{ width: '100%', justifyContent: 'space-between' }}>
-                    <Radio.Group
-                        size="small"
-                        value={mode}
-                        onChange={handleToggle}
-                        optionType="button"
-                        options={[
-                            { label: 'Texto fijo', value: 'static' },
-                            { label: 'Campo dinámico', value: 'field' },
-                        ]}
-                    />
+                <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start', width: '100%' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                        <FieldValueField
+                            value={item}
+                            onChange={setValueDef}
+                            availableFields={availableFields}
+                            placeholder="Selecciona un campo del feature"
+                            mode={mode}
+                            onModeChange={handleModeChange}
+                            extraModes={[{ label: 'Texto fijo', value: 'static' }]}
+                        />
+                    </div>
                     <Button
                         danger
                         size="small"
@@ -745,21 +710,8 @@ const TextItemRow = ({ item, onChange, onRemove, availableFields }) => {
                         onClick={onRemove}
                         aria-label="Quitar párrafo"
                     />
-                </Space>
-                {mode === 'field' ? (
-                    <Select
-                        value={item.field || undefined}
-                        onChange={setValue}
-                        options={fieldOptionsFor(availableFields, item.field)}
-                        placeholder="Selecciona un campo del feature"
-                        showSearch
-                        allowClear
-                        style={{ width: '100%' }}
-                        filterOption={(input, option) =>
-                            String(option.value).toLowerCase().includes(input.toLowerCase())
-                        }
-                    />
-                ) : (
+                </div>
+                {mode === 'static' && (
                     <Input.TextArea
                         value={item.label || ''}
                         onChange={(e) => setValue(e.target.value)}
