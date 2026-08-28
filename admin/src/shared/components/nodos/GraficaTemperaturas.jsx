@@ -1,6 +1,5 @@
 import { Empty, Space, Typography } from 'antd';
-import { SEMANTIC } from '@app/providers/brand';
-import { BRAND } from '@app/providers/brand';
+import { BRAND, SEMANTIC } from '@app/providers/brand';
 
 const { Text } = Typography;
 
@@ -10,9 +9,9 @@ const MARGEN = { arriba: 8, derecha: 8, abajo: 18, izquierda: 30 };
 
 const COLOR_SENSOR = {
     CPU: BRAND.purple,
-    Sistema: SEMANTIC.info,
+    Sistema: BRAND.orange,
     Disco: SEMANTIC.success,
-    Gráficos: BRAND.orange,
+    Gráficos: BRAND.numeralia,
 };
 
 const colorDeSensor = (nombre) => COLOR_SENSOR[nombre] || SEMANTIC.neutral;

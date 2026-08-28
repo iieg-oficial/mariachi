@@ -9,6 +9,13 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.31.1] - 2026-08-28
+
+### Cambiado: las líneas de temperatura usan la paleta institucional
+
+Morado para el CPU, naranja para el sistema y verde para el disco —los tres de la marca `iieg`— en vez
+del azul genérico que traía el sistema. Gráficos, si algún equipo lo expone, va en el azul secundario.
+
 ## [2.31.0] - 2026-08-28
 
 ### Agregado: la tendencia de temperaturas en el detalle del nodo

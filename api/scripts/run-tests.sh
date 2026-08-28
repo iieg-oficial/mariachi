@@ -48,7 +48,15 @@ if docker image inspect "$API_IMAGE" >/dev/null 2>&1; then
     # los `[dev]` extras). Monta el codigo en /app para que recoja los
     # cambios locales sin rebuild.
     PYTEST_CHECK='python -c "import pytest" 2>/dev/null || pip install -q pytest pytest-asyncio httpx2 >/dev/null'
+    DOCKER_NET=()
+    if ! docker run --rm --entrypoint sh "$API_IMAGE" -c 'python -c "import pytest"' >/dev/null 2>&1; then
+        if ! docker run --rm --entrypoint sh "$API_IMAGE" -c 'getent hosts pypi.org' >/dev/null 2>&1; then
+            echo "[run-tests] el contenedor no resuelve DNS; le presto la red del host para instalar pytest" >&2
+            DOCKER_NET=(--network=host)
+        fi
+    fi
     exec docker run --rm \
+        "${DOCKER_NET[@]}" \
         "${TEST_ENV[@]}" \
         -v "$API_DIR:/app" \
         -w /app \
