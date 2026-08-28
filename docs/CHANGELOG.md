@@ -9,6 +9,32 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.31.0] - 2026-08-28
+
+### Agregado: la tendencia de temperaturas en el detalle del nodo
+
+Bajo las cifras va ahora una gráfica con una línea por sensor sobre el mismo eje, con lo que huachicol
+2.15.0 empezó a guardar. Las cifras se quedan: dicen cómo está **ahora**, y la línea dice si eso es
+normal o viene subiendo, que es la pregunta que un número suelto no contesta.
+
+Las tres líneas comparten eje a propósito: si suben todas es la sala, si sube solo el CPU es carga.
+El eje vertical se ajusta al rango real de los datos en vez de fijarse en 0–100, para que una
+variación de cinco grados se vea como tal y no como una raya plana.
+
+Se pide al abrir el modal, no con el resto del tablero, y solo para nodos reales —Internet no tiene
+host que graficar—. Mientras carga lo dice, en vez de afirmar que no hay datos; con un solo punto
+tampoco dibuja, porque una línea de un punto no es una tendencia.
+
+**Va a estar vacía un rato**, y eso es correcto: se muestrea cada cinco minutos y la serie empieza
+desde cero. En las VMs, que no tienen sensores, no habrá nunca datos de temperatura.
+
+### Cambiado: el detalle del nodo se parte en tres archivos
+
+`NodoDetalleModal` pasó de 300 líneas. Los componentes de presentación —título de sección, medidor,
+cifra de temperatura— salen a `piezasNodo`, y los cálculos puros —umbrales, escala de temperatura,
+disco libre— a `nodoUtils`, que además quita los avisos de recarga en caliente por mezclar funciones
+con componentes.
+
 ## [2.30.2] - 2026-08-28
 
 ### Cambiado: el puerto se queda solo en la entrada pública

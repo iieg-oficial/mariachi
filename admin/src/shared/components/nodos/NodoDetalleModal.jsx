@@ -1,117 +1,38 @@
-import { Badge, Empty, Grid, Modal, Progress, Space, Tag, Typography } from 'antd';
+import { useEffect, useState } from 'react';
+import { Badge, Empty, Grid, Modal, Space, Tag, Typography } from 'antd';
 import { SEMANTIC } from '@app/providers/brand';
-import { aPlataforma } from '@shared/services/catalogoServicios';
-import { NODO_INTERNET } from '@shared/services/nodosService';
 import FilaServicio, { ANCHO_ENLACES } from '@shared/components/nodos/FilaServicio';
-
+import { CifraTemperatura, Medidor, TituloSeccion } from '@shared/components/nodos/piezasNodo';
+import { ESTADO_BADGE, desdeHace, discoLibre } from '@shared/components/nodos/nodoUtils';
+import { aPlataforma } from '@shared/services/catalogoServicios';
+import { NODO_INTERNET, getHistorialNodo, seriesDeTemperatura } from '@shared/services/nodosService';
+import GraficaTemperaturas from '@shared/components/nodos/GraficaTemperaturas';
 const { Text } = Typography;
-
-const UMBRAL = { cpu: 90, ram: 80, swap: 10, disco: 85 };
-
-const ESTADO_BADGE = {
-    ok: { status: 'success', texto: 'operativo' },
-    degraded: { status: 'warning', texto: 'degradado' },
-    down: { status: 'error', texto: 'caído' },
-};
-
 const { useBreakpoint } = Grid;
 
 const COLUMNAS_SERVICIO = `196px 1fr 50px ${ANCHO_ENLACES}px`;
 
-const tono = (llave, valor) => {
-    if (valor == null) return SEMANTIC.neutral;
-    if (valor >= UMBRAL[llave]) return SEMANTIC.danger;
-    if (valor >= UMBRAL[llave] * 0.75) return SEMANTIC.warning;
-    return SEMANTIC.success;
-};
-
-const TituloSeccion = ({ texto, conteo }) => (
-    <Space size={8} align="center" style={{ marginBottom: 8 }}>
-        <Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-            {texto}
-        </Text>
-        {conteo && (
-            <Text style={{
-                fontSize: 11,
-                fontFamily: 'monospace',
-                padding: '0 7px',
-                borderRadius: 9,
-                background: '#f5f5f5',
-                color: 'rgba(0,0,0,0.65)',
-            }}>
-                {conteo}
-            </Text>
-        )}
-    </Space>
-);
-
-const ESCALA_TEMPERATURA = [
-    { hasta: 45, color: SEMANTIC.info, texto: 'fría' },
-    { hasta: 70, color: SEMANTIC.success, texto: 'templada' },
-    { hasta: 85, color: SEMANTIC.warning, texto: 'caliente' },
-];
-
-const TEMPERATURA_TOPE = 100;
-
-const gradoDe = (grados) => ESCALA_TEMPERATURA.find((t) => grados < t.hasta)
-    || { color: SEMANTIC.danger, texto: 'muy caliente' };
-
-const CifraTemperatura = ({ nombre, grados }) => {
-    const tramo = gradoDe(grados);
-    return (
-        <div>
-            <Text style={{
-                display: 'block',
-                fontSize: 26,
-                fontWeight: 600,
-                lineHeight: 1.1,
-                color: tramo.color,
-                fontVariantNumeric: 'tabular-nums',
-            }}>
-                {`${grados}°`}
-            </Text>
-            <Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                {nombre}
-            </Text>
-            <Text style={{ display: 'block', fontSize: 10, color: tramo.color }}>
-                {tramo.texto}
-            </Text>
-        </div>
-    );
-};
-
-const Medidor = ({ llave, etiqueta, valor, absoluto }) => (
-    <div style={{ display: 'grid', gridTemplateColumns: '48px 1fr 116px', gap: 8, alignItems: 'center' }}>
-        <Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase' }}>{etiqueta}</Text>
-        <Progress
-            percent={valor ?? 0}
-            showInfo={false}
-            size="small"
-            strokeColor={tono(llave, valor)}
-            railColor="#f5f5f5"
-        />
-        <Text type="secondary" style={{ fontSize: 11, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-            {absoluto}
-        </Text>
-    </div>
-);
-
-const desdeHace = (segundos) => {
-    if (segundos == null) return '—';
-    const dias = Math.floor(segundos / 86400);
-    return dias >= 1 ? `${dias} d` : `${Math.floor(segundos / 3600)} h`;
-};
-
-const discoLibre = (host) => {
-    if (host.disk_free_gb == null) return '—';
-    if (host.disk_used_percent == null) return `${host.disk_free_gb} GB libres`;
-    const total = host.disk_free_gb / (1 - host.disk_used_percent / 100);
-    return `${Math.round(total - host.disk_free_gb)} / ${Math.round(total)} GB`;
-};
-
 export default function NodoDetalleModal({ nodo, open, onClose }) {
     const pantalla = useBreakpoint();
     const compacto = !pantalla.md;
+    const [series, setSeries] = useState([]);
+    const [cargandoSeries, setCargandoSeries] = useState(false);
+
+    const clave = open && nodo?.node !== NODO_INTERNET ? nodo?.node : null;
+
+    useEffect(() => {
+        if (!clave) {
+            setSeries([]);
+            return undefined;
+        }
+        let cancelado = false;
+        setCargandoSeries(true);
+        getHistorialNodo(clave)
+            .then((muestras) => { if (!cancelado) setSeries(seriesDeTemperatura(muestras)); })
+            .catch(() => { if (!cancelado) setSeries([]); })
+            .finally(() => { if (!cancelado) setCargandoSeries(false); });
+        return () => { cancelado = true; };
+    }, [clave]);
 
     if (!nodo) return null;
 
@@ -230,6 +151,9 @@ export default function NodoDetalleModal({ nodo, open, onClose }) {
                                     grados={sensor.celsius}
                                 />
                             ))}
+                        </div>
+                        <div style={{ marginTop: 14 }}>
+                            <GraficaTemperaturas series={series} cargando={cargandoSeries} />
                         </div>
                     </div>
                 )}

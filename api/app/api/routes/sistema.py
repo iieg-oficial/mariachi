@@ -40,6 +40,15 @@ async def monitor_nodos(
     return await _proxy_monitor(f"/api/nodos?eventos={eventos}")
 
 
+@router.get("/monitor/nodos/{nodo}/historial")
+async def monitor_nodo_historial(
+    nodo: str,
+    horas: int = Query(default=24, ge=1, le=168),
+    _: Usuario = Depends(get_current_user),
+):
+    return await _proxy_monitor(f"/api/nodos/{nodo}/historial?horas={horas}")
+
+
 @router.get("/monitor/status/{slug}")
 async def monitor_status_detalle(
     slug: str,

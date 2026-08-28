@@ -111,3 +111,19 @@ export const getNodos = async (eventos = 20) => {
         eventos: res.data?.eventos ?? [],
     };
 };
+
+export const getHistorialNodo = async (nodo, horas = 24) => {
+    const res = await api.get(`/sistema/monitor/nodos/${nodo}/historial?horas=${horas}`);
+    return res.data?.muestras ?? [];
+};
+
+export const seriesDeTemperatura = (muestras) => {
+    const porSensor = new Map();
+    muestras.forEach((muestra) => {
+        (muestra.temperaturas || []).forEach(({ nombre, celsius }) => {
+            if (!porSensor.has(nombre)) porSensor.set(nombre, []);
+            porSensor.get(nombre).push({ momento: muestra.medido_en, celsius });
+        });
+    });
+    return Array.from(porSensor, ([nombre, puntos]) => ({ nombre, puntos }));
+};
