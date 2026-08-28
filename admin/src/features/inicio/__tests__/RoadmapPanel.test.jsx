@@ -1,11 +1,30 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 
 import RoadmapPanel from '@features/inicio/components/RoadmapPanel';
-import { ROADMAP } from '@features/inicio/constants/roadmap';
+import { HITOS } from '@features/inicio/constants/roadmapHitos';
+import { acomodar, anchoDe } from '@features/inicio/helpers/roadmapLayout';
 
 const montar = () => render(<MemoryRouter><RoadmapPanel /></MemoryRouter>);
+
+describe('acomodar', () => {
+    it('nunca encima dos etiquetas del mismo nivel', () => {
+        const porNivel = {};
+        acomodar(HITOS).filter((h) => h.tipo !== 'momento').forEach((h) => {
+            const previo = porNivel[h.ly];
+            if (previo) expect(h.lx - anchoDe(h) / 2).toBeGreaterThan(previo);
+            porNivel[h.ly] = h.lx + anchoDe(h) / 2;
+        });
+    });
+
+    it('ordena los hitos por fecha sobre el eje', () => {
+        const puestos = acomodar(HITOS);
+        puestos.slice(1).forEach((h, i) => {
+            expect(h.px).toBeGreaterThanOrEqual(puestos[i].px);
+        });
+    });
+});
 
 describe('RoadmapPanel', () => {
     it('encabeza la sección con el título en español', () => {
@@ -13,32 +32,35 @@ describe('RoadmapPanel', () => {
         expect(screen.getByText('Hoja de ruta')).toBeInTheDocument();
     });
 
-    it('muestra una ficha por proyecto con el nombre del catálogo', () => {
+    it('dibuja las versiones mayores y no los primeros pasos', () => {
         montar();
-        expect(screen.getByText('Mariachi')).toBeInTheDocument();
-        expect(screen.getByText('MapaLab')).toBeInTheDocument();
-        expect(screen.getByText('Gateway Hub')).toBeInTheDocument();
+        expect(screen.getByText('mariachi 2')).toBeInTheDocument();
+        expect(screen.getByText('geoserver 1')).toBeInTheDocument();
+        expect(screen.queryByText('mariachi 0.1')).not.toBeInTheDocument();
     });
 
-    it('lista cada versión mayor con su fecha de salida', () => {
+    it('conserva el nombre viejo cuando el proyecto se renombró', () => {
         montar();
-        expect(screen.getAllByText('v2.0.0').length).toBe(4);
-        expect(screen.getByText('14 may 2026')).toBeInTheDocument();
-        expect(screen.getAllByText('10 ago 2026').length).toBe(2);
+        expect(screen.getByText('frigate')).toBeInTheDocument();
+        expect(screen.getByText('wacha')).toBeInTheDocument();
     });
 
-    it('marca como pendiente la versión sin fecha', () => {
+    it('marca los ciclos con su ventana', () => {
         montar();
-        expect(screen.getAllByText('Por salir').length).toBe(
-            ROADMAP.flatMap((p) => p.versiones).filter((v) => !v.fecha).length,
-        );
+        expect(screen.getByText('tamal-rojo')).toBeInTheDocument();
+        expect(screen.getByText('tamal-verde')).toBeInTheDocument();
     });
 
-    it('acompaña cada versión con su motivo', () => {
+    it('abre el motivo al pasar por un hito', () => {
         montar();
-        const motivos = ROADMAP.flatMap((p) => p.versiones).map((v) => v.motivo);
-        motivos.forEach((motivo) => {
-            expect(screen.getByText(motivo)).toBeInTheDocument();
-        });
+        fireEvent.mouseEnter(screen.getByText('mariachi 2').closest('g'));
+        expect(screen.getByText(/la identidad se va a minerva/i)).toBeInTheDocument();
+    });
+
+    it('el botón de seguimiento cambia a scroll libre', () => {
+        montar();
+        const boton = screen.getByRole('button', { name: 'Siguiendo' });
+        fireEvent.click(boton);
+        expect(screen.getByRole('button', { name: 'Scroll libre' })).toBeInTheDocument();
     });
 });

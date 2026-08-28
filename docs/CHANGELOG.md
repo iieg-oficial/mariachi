@@ -9,6 +9,48 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.35.0] - 2026-08-28
+
+### Agregado: la hoja de ruta del ecosistema en el inicio
+
+La sección que estrenó la 2.34.0 se rehace entera. Aquella dibujaba fichas por proyecto con
+`v2.0.0` y una lista de ocho repos; esta es una línea de tiempo de **cincuenta y dos hitos, de los
+sexenios anteriores a 2027**, con las mismas piezas del mapa de nodos: `curvaDe`, `puntoEnCurva` y
+un bucle de `requestAnimationFrame`.
+
+**En el eje solo van versiones completas.** `mariachi 2`, no `v2.0.0`. Los `0.x` bajan a feature de
+su proyecto y no se dibujan hasta que se selecciona: son veinte etiquetas que dejan de estorbar.
+
+**El eje no es lineal a propósito.** Siete de los hitos caen en once días de agosto de 2026: a
+escala pareja se apilan en dos milímetros. Cada año ocupa el ancho que le tocó por lo que pasó en
+él y dentro del año los meses sí son proporcionales.
+
+**Seis tipos de hito, y la forma dice cuál es:** versión mayor, lanzamiento oficial, proyecto joven
+sin 1.0, feature fuerte, muerto (rojo, tachado) y legado de sexenios anteriores. Los renombres y
+las sucesiones se dibujan como curva punteada con su leyenda —`se renombra`, `lo hereda`,
+`lo sucede`, `mismo nombre, todo nuevo`—, así que `geoserver 1` conserva el nombre que tenía en
+febrero en vez de fingir que ya era sextante.
+
+**Dos formas viven clavadas en el eje:** rombo para un momento de infraestructura y cuadrado para
+un proceso anual, con las etiquetas de los procesos hacia arriba y las de los momentos hacia abajo.
+
+**El acomodo se calcula solo.** Ordena por fecha y baja de nivel hasta encontrar hueco; sin esto,
+agregar un hito obligaba a recolocar el resto a mano.
+
+Las bandas de ciclo van de fondo y al seleccionarlas se encienden solas **sin apagar los nodos**.
+Al seleccionar un hito se resaltan los de su proyecto, sus features aparecen y el resto baja de
+opacidad. El detalle sale por tooltip —cursor, tap o teclado—, no por ficha fija.
+
+Datos y modelo completos en el repositorio de contexto; aquí viven como constante.
+
+### Eliminado
+
+- `InicioHighlights`, su export en `mapalab-stats` y el cliente `getHighlights()`, retirados del
+  inicio al entrar esta sección. El endpoint `GET /mapalab-stats/highlights` sigue vivo y sin
+  consumidor.
+
+---
+
 ## [2.34.3] - 2026-08-28
 
 ### Corregido: el hueco entre las barras y sus cifras
