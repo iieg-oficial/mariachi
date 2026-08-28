@@ -97,10 +97,17 @@ describe('NodoDetalleModal', () => {
         expect(anchos).toEqual(['15%', '41.2%', '0%', '40%']);
     });
 
-    it('la carga se resume junto a los núcleos', () => {
+    it('el CPU se expresa en porcentaje de capacidad, con la carga como nota', () => {
         montar();
         expect(screen.getByText('Recursos')).toBeInTheDocument();
-        expect(screen.getByText('1.24 · 8c')).toBeInTheDocument();
+        expect(screen.getByText('15 %')).toBeInTheDocument();
+        expect(screen.getByText('carga 1.24 en 8 núcleos')).toBeInTheDocument();
+    });
+
+    it('la RAM dice cuánto de lo libre es caché', () => {
+        montar({ ...NODO, host: { ...NODO.host, memory_cache_gb: 6.28 } });
+        expect(screen.getByText('6.2 / 15 GB')).toBeInTheDocument();
+        expect(screen.getByText('+ 6.28 GB en caché')).toBeInTheDocument();
     });
 
     it('las temperaturas van en su propia sección, como cifras', () => {

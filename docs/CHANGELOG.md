@@ -9,6 +9,30 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.32.0] - 2026-08-28
+
+### Cambiado: el medidor de CPU dice un porcentaje, no una carga suelta
+
+Mostraba `2.17 · 20c` y la barra iba llena a esa proporción, sin decir de qué. Eso solo se entiende
+sabiendo qué es el promedio de carga de Linux, que no es un porcentaje: es cuántos procesos hay en
+cola de ejecución, y por eso puede pasar de 1 por núcleo.
+
+Ahora el medidor dice **`15 %`**, coherente con RAM, swap y disco, y debajo en letra chica la cifra
+de origen: `carga 1.24 en 8 núcleos`. El porcentaje es la carga dividida entre los núcleos, que es lo
+que hace comparable a S4, de cuatro, con S1, de ocho.
+
+### Agregado: la RAM muestra cuánto de lo libre es caché
+
+Bajo la cifra va ahora `+ 6.28 GB en caché`. La barra sigue midiendo lo mismo —`MemTotal` menos
+`MemAvailable`, que es lo correcto— pero sin ver el caché no había forma de cuadrar el número contra
+`top`, donde el mismo equipo se lee «1.9 libre, 11 en buff/cache» y parece contradecir un 63 %.
+
+### Cambiado: la línea del sistema sube al encabezado del modal
+
+`gateway · Ubuntu 26.04 LTS · kernel 7.0.0-30 · encendido hace 4 d` va como segunda fila del título,
+bajo el identificador del nodo, en vez de perdida entre los medidores. El título permite salto de
+línea, así que en móvil se acomoda en su propia fila sin recortarse.
+
 ## [2.31.1] - 2026-08-28
 
 ### Cambiado: las líneas de temperatura usan la paleta institucional

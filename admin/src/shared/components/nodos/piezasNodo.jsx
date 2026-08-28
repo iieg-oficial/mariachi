@@ -47,7 +47,7 @@ export const CifraTemperatura = ({ nombre, grados }) => {
     );
 };
 
-export const Medidor = ({ llave, etiqueta, valor, absoluto }) => (
+export const Medidor = ({ llave, etiqueta, valor, absoluto, nota }) => (
     <div style={{ display: 'grid', gridTemplateColumns: '48px 1fr 116px', gap: 8, alignItems: 'center' }}>
         <Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase' }}>{etiqueta}</Text>
         <Progress
@@ -57,8 +57,15 @@ export const Medidor = ({ llave, etiqueta, valor, absoluto }) => (
             strokeColor={tono(llave, valor)}
             railColor="#f5f5f5"
         />
-        <Text type="secondary" style={{ fontSize: 11, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
-            {absoluto}
-        </Text>
+        <div style={{ textAlign: 'right' }}>
+            <Text type="secondary" style={{ fontSize: 11, fontVariantNumeric: 'tabular-nums' }}>
+                {absoluto}
+            </Text>
+            {nota && (
+                <Text type="secondary" style={{ display: 'block', fontSize: 10, opacity: 0.75 }}>
+                    {nota}
+                </Text>
+            )}
+        </div>
     </div>
 );

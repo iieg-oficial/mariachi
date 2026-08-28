@@ -45,6 +45,7 @@ export default function NodoDetalleModal({ nodo, open, onClose }) {
     const cargaPorNucleo = host.load_1m != null && host.cores
         ? Number((host.load_1m / host.cores).toFixed(2))
         : null;
+    const usoCpu = cargaPorNucleo != null ? Math.min(100, Math.round(cargaPorNucleo * 100)) : null;
 
     const esInternet = nodo.node === NODO_INTERNET;
     const dominio = typeof window !== 'undefined' ? window.location.origin : null;
@@ -66,12 +67,26 @@ export default function NodoDetalleModal({ nodo, open, onClose }) {
             style={compacto ? { top: 0, maxWidth: '100%', margin: 0, paddingBottom: 0 } : undefined}
             styles={compacto ? { body: { maxHeight: 'calc(100dvh - 110px)', overflowY: 'auto' } } : undefined}
             title={(
-                <Space size={10} wrap style={{ paddingRight: 30 }}>
-                    {!esInternet && <Badge status={badge.status} />}
-                    <Text strong style={{ fontFamily: 'monospace', fontSize: 18 }}>
-                        {esInternet ? 'Internet' : nodo.node}
-                    </Text>
-                </Space>
+                <div style={{ paddingRight: 30, whiteSpace: 'normal' }}>
+                    <Space size={10} align="center">
+                        {!esInternet && <Badge status={badge.status} />}
+                        <Text strong style={{ fontFamily: 'monospace', fontSize: 18 }}>
+                            {esInternet ? 'Internet' : nodo.node}
+                        </Text>
+                    </Space>
+                    {sistema && (
+                        <div style={{ marginTop: 2 }}>
+                            <Text style={{
+                                fontSize: 12,
+                                fontWeight: 400,
+                                fontFamily: 'monospace',
+                                color: 'rgba(0,0,0,0.45)',
+                            }}>
+                                {sistema}
+                            </Text>
+                        </div>
+                    )}
+                </div>
             )}
         >
             <Space orientation="vertical" size={20} style={{ width: '100%' }}>
@@ -106,14 +121,20 @@ export default function NodoDetalleModal({ nodo, open, onClose }) {
                             <Medidor
                                 llave="cpu"
                                 etiqueta="CPU"
-                                valor={cargaPorNucleo != null ? Math.min(100, Math.round(cargaPorNucleo * 100)) : null}
-                                absoluto={host.load_1m != null ? `${host.load_1m} · ${host.cores}c` : '—'}
+                                valor={usoCpu}
+                                absoluto={usoCpu != null ? `${usoCpu} %` : '—'}
+                                nota={host.load_1m != null
+                                    ? `carga ${host.load_1m} en ${host.cores} núcleos`
+                                    : null}
                             />
                             <Medidor
                                 llave="ram"
                                 etiqueta="RAM"
                                 valor={host.memory_used_percent}
-                                absoluto={host.memory_used_gb != null ? `${host.memory_used_gb} / ${host.memory_total_gb} GB` : '—'}
+                                absoluto={host.memory_used_gb != null
+                                    ? `${host.memory_used_gb} / ${host.memory_total_gb} GB`
+                                    : '—'}
+                                nota={host.memory_cache_gb != null ? `+ ${host.memory_cache_gb} GB en caché` : null}
                             />
                             <Medidor
                                 llave="swap"
@@ -127,11 +148,6 @@ export default function NodoDetalleModal({ nodo, open, onClose }) {
                                 valor={host.disk_used_percent}
                                 absoluto={discoLibre(host)}
                             />
-                            {sistema && (
-                                <Text style={{ fontSize: 12, fontFamily: 'monospace', color: 'rgba(0,0,0,0.65)' }}>
-                                    {sistema}
-                                </Text>
-                            )}
                         </Space>
                     </div>
                 )}
