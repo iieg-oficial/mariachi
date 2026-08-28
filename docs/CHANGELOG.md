@@ -9,6 +9,21 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.30.0] - 2026-08-28
+
+### Cambiado: las temperaturas tienen su propia sección, con barra por sensor
+
+La etiqueta suelta se queda corta cuando hay más de una lectura. Ahora es una sección como las demás,
+con una barra por sensor —CPU, Sistema, Disco y Gráficos, según lo que el equipo exponga— sobre una
+escala fija de 0 a 100 °C, y el color siguiendo el calor: azul fría, verde templada, naranja caliente,
+roja muy caliente.
+
+Va aparte de **Recursos** a propósito: esos medidores dicen cuánto se usa de lo disponible y la
+temperatura no tiene un «disponible». Mezclarlas hacía leer la barra como si 78 °C fuera «78 % de
+algo».
+
+La sección desaparece entera si el equipo no tiene sensores, que es lo normal en una VM.
+
 ## [2.29.0] - 2026-08-28
 
 ### Agregado: la temperatura del CPU en el detalle del nodo

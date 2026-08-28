@@ -103,13 +103,30 @@ describe('NodoDetalleModal', () => {
         expect(screen.getByText('1.24 · 8c')).toBeInTheDocument();
     });
 
-    it('la temperatura va en una etiqueta que cambia con el calor', () => {
-        montar({ ...NODO, host: { ...NODO.host, cpu_celsius: 78 } });
+    it('las temperaturas van en su propia sección, una barra por sensor', () => {
+        const { baseElement } = montar({
+            ...NODO,
+            host: {
+                ...NODO.host,
+                cpu_celsius: 78,
+                temperaturas: [
+                    { nombre: 'CPU', celsius: 78 },
+                    { nombre: 'Sistema', celsius: 62 },
+                    { nombre: 'Disco', celsius: 39 },
+                ],
+            },
+        });
+        expect(screen.getByText('Temperaturas')).toBeInTheDocument();
+        expect(screen.getByText('3')).toBeInTheDocument();
         expect(screen.getByText('78 °C · caliente')).toBeInTheDocument();
+        expect(screen.getByText('62 °C · templada')).toBeInTheDocument();
+        expect(screen.getByText('39 °C · fría')).toBeInTheDocument();
+        expect(baseElement.querySelectorAll('.ant-progress-track')).toHaveLength(7);
     });
 
-    it('sin sensores no inventa temperatura', () => {
+    it('sin sensores no dibuja la sección de temperaturas', () => {
         montar();
+        expect(screen.queryByText('Temperaturas')).not.toBeInTheDocument();
         expect(screen.queryByText(/°C/)).not.toBeInTheDocument();
     });
 

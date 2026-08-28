@@ -45,14 +45,35 @@ const TituloSeccion = ({ texto, conteo }) => (
     </Space>
 );
 
-const COLOR_TEMPERATURA = [
-    { hasta: 45, color: 'blue', texto: 'fría' },
-    { hasta: 70, color: 'green', texto: 'templada' },
-    { hasta: 85, color: 'orange', texto: 'caliente' },
+const ESCALA_TEMPERATURA = [
+    { hasta: 45, color: SEMANTIC.info, texto: 'fría' },
+    { hasta: 70, color: SEMANTIC.success, texto: 'templada' },
+    { hasta: 85, color: SEMANTIC.warning, texto: 'caliente' },
 ];
 
-const tagTemperatura = (grados) => COLOR_TEMPERATURA.find((t) => grados < t.hasta)
-    || { color: 'red', texto: 'muy caliente' };
+const TEMPERATURA_TOPE = 100;
+
+const gradoDe = (grados) => ESCALA_TEMPERATURA.find((t) => grados < t.hasta)
+    || { color: SEMANTIC.danger, texto: 'muy caliente' };
+
+const MedidorTemperatura = ({ nombre, grados }) => {
+    const tramo = gradoDe(grados);
+    return (
+        <div style={{ display: 'grid', gridTemplateColumns: '76px 1fr 116px', gap: 8, alignItems: 'center' }}>
+            <Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase' }}>{nombre}</Text>
+            <Progress
+                percent={Math.min(100, Math.round((grados / TEMPERATURA_TOPE) * 100))}
+                showInfo={false}
+                size="small"
+                strokeColor={tramo.color}
+                railColor="#f5f5f5"
+            />
+            <Text style={{ fontSize: 11, textAlign: 'right', fontFamily: 'monospace', color: tramo.color }}>
+                {`${grados} °C · ${tramo.texto}`}
+            </Text>
+        </div>
+    );
+};
 
 const Medidor = ({ llave, etiqueta, valor, absoluto }) => (
     <div style={{ display: 'grid', gridTemplateColumns: '48px 1fr 116px', gap: 8, alignItems: 'center' }}>
@@ -93,6 +114,7 @@ export default function NodoDetalleModal({ nodo, open, onClose }) {
     const servicios = (nodo.servicios || []).map(aPlataforma);
     const contenedores = nodo.contenedores || [];
     const puertos = nodo.puertos || [];
+    const temperaturas = host.temperaturas || [];
     const badge = ESTADO_BADGE[nodo.status] || { status: 'default', texto: nodo.status };
     const cargaPorNucleo = host.load_1m != null && host.cores
         ? Number((host.load_1m / host.cores).toFixed(2))
@@ -161,16 +183,6 @@ export default function NodoDetalleModal({ nodo, open, onClose }) {
                                 valor={cargaPorNucleo != null ? Math.min(100, Math.round(cargaPorNucleo * 100)) : null}
                                 absoluto={host.load_1m != null ? `${host.load_1m} · ${host.cores}c` : '—'}
                             />
-                            {host.cpu_celsius != null && (
-                                <Space size={8}>
-                                    <Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase' }}>
-                                    Temp
-                                    </Text>
-                                    <Tag color={tagTemperatura(host.cpu_celsius).color} style={{ marginInlineEnd: 0 }}>
-                                        {`${host.cpu_celsius} °C · ${tagTemperatura(host.cpu_celsius).texto}`}
-                                    </Tag>
-                                </Space>
-                            )}
                             <Medidor
                                 llave="ram"
                                 etiqueta="RAM"
@@ -194,6 +206,21 @@ export default function NodoDetalleModal({ nodo, open, onClose }) {
                                     {sistema}
                                 </Text>
                             )}
+                        </Space>
+                    </div>
+                )}
+
+                {temperaturas.length > 0 && (
+                    <div>
+                        <TituloSeccion texto="Temperaturas" conteo={`${temperaturas.length}`} />
+                        <Space orientation="vertical" size={8} style={{ width: '100%' }}>
+                            {temperaturas.map((sensor) => (
+                                <MedidorTemperatura
+                                    key={sensor.nombre}
+                                    nombre={sensor.nombre}
+                                    grados={sensor.celsius}
+                                />
+                            ))}
                         </Space>
                     </div>
                 )}
