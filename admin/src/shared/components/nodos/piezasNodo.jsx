@@ -26,7 +26,7 @@ export const TituloSeccion = ({ texto, conteo }) => (
 export const CifraTemperatura = ({ nombre, grados }) => {
     const tramo = gradoDe(grados);
     return (
-        <div>
+        <div style={{ textAlign: 'center' }}>
             <Text style={{
                 display: 'block',
                 fontSize: 26,
@@ -103,7 +103,7 @@ export const RejillaCores = ({ cores }) => (
                     lineHeight: 1,
                     fontFamily: 'monospace',
                     whiteSpace: 'nowrap',
-                    color: uso >= 50 ? '#fff' : 'rgba(0,0,0,0.75)',
+                    color: uso >= 50 ? '#fff' : 'rgba(0,0,0,0.88)',
                 }}>
                     {`${core}·${uso}%`}
                 </span>

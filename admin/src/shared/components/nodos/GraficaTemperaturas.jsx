@@ -104,14 +104,14 @@ export default function GraficaTemperaturas({ series, cargando }) {
             </svg>
 
             <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                gap: 12,
+                display: 'grid',
+                gridTemplateColumns: `repeat(${conDatos.length}, 1fr)`,
+                gap: 16,
                 marginTop: 6,
                 width: '100%',
             }}>
                 {conDatos.map((serie) => (
-                    <Space key={serie.nombre} size={6}>
+                    <Space key={serie.nombre} size={6} style={{ justifyContent: 'center' }}>
                         <span style={{
                             width: 14, height: 3, borderRadius: 2, display: 'block',
                             background: colorDeSensor(serie.nombre),

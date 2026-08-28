@@ -9,6 +9,16 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.34.2] - 2026-08-28
+
+### Corregido: las temperaturas no cuadraban con su leyenda
+
+Las cifras iban pegadas a la izquierda de su columna y la leyenda de la gráfica se repartía con otro
+criterio, así que el número de un sensor y su nombre no caían en la misma vertical. Ahora ambas usan
+el mismo reparto en columnas iguales y van centradas, de modo que cada grado queda sobre su etiqueta.
+
+El número dentro de cada núcleo sube de opacidad para que se lea sobre los cuadros más claros.
+
 ## [2.34.1] - 2026-08-28
 
 ### Cambiado: se recorta lo que el detalle del nodo decía dos veces
