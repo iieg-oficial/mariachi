@@ -59,7 +59,7 @@ const gradoDe = (grados) => ESCALA_TEMPERATURA.find((t) => grados < t.hasta)
 const CifraTemperatura = ({ nombre, grados }) => {
     const tramo = gradoDe(grados);
     return (
-        <div style={{ minWidth: 88 }}>
+        <div>
             <Text style={{
                 display: 'block',
                 fontSize: 26,
@@ -218,7 +218,11 @@ export default function NodoDetalleModal({ nodo, open, onClose }) {
                 {temperaturas.length > 0 && (
                     <div>
                         <TituloSeccion texto="Temperaturas" conteo={`${temperaturas.length}`} />
-                        <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap' }}>
+                        <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: `repeat(${Math.min(temperaturas.length, 4)}, 1fr)`,
+                            gap: 16,
+                        }}>
                             {temperaturas.map((sensor) => (
                                 <CifraTemperatura
                                     key={sensor.nombre}

@@ -9,6 +9,18 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.30.2] - 2026-08-28
+
+### Cambiado: el puerto se queda solo en la entrada pública
+
+Puesto en cada conexión cargaba el mapa sin aportar: la latencia y el color ya cuentan cómo va el
+enlace, y el puerto solo importa cuando alguien va a revisar por qué falla, momento en el que está en
+el detalle del nodo. En Internet sí se queda, porque ahí el 80 y el 443 **son** lo que define esa
+entrada.
+
+Las temperaturas se reparten a lo ancho del modal en columnas iguales, en vez de amontonarse a la
+izquierda.
+
 ## [2.30.1] - 2026-08-28
 
 ### Cambiado: las temperaturas se leen como cifras, no como barras

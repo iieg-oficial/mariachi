@@ -11,8 +11,7 @@ const { useBreakpoint } = Grid;
 const etiquetaArista = (arista) => {
     if (arista.publica) return ':80 · :443';
     if (arista.estado !== 'ok') return 'sin respuesta';
-    const latencia = `${arista.ms ?? '—'} ms`;
-    return arista.puerto ? `:${arista.puerto} · ${latencia}` : latencia;
+    return `${arista.ms ?? '—'} ms`;
 };
 
 const ANCHO_BASE = 900;
