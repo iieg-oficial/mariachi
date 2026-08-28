@@ -11,7 +11,7 @@ import {
     getColibriConfig,
 } from '@features/inicio/api/inicioService';
 import EcosistemaPanel from '@features/inicio/components/EcosistemaPanel';
-import { MapalabInicioHighlights } from '@features/mapalab-stats';
+import RoadmapPanel from '@features/inicio/components/RoadmapPanel';
 
 const COLIBRI_WIDGET_URL = '/colibri/widget/colibri-widget.v1.js';
 
@@ -128,7 +128,7 @@ export default function InicioPage() {
                     onReportar={colibriConfig?.api_key ? abrirColibri : null}
                 />
 
-                <MapalabInicioHighlights />
+                <RoadmapPanel />
             </Space>
         </Content>
     );

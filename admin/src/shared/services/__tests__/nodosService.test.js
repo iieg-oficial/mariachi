@@ -47,8 +47,22 @@ describe('getNodos', () => {
     it('coloca cada nodo conocido en su posicion del mapa', async () => {
         api.get.mockResolvedValue({ data: { environment: 'produccion', nodos: [nodo('S1'), nodo('S4')] } });
         const { nodos } = await getNodos();
-        expect(nodos[0].x).toBe(80);
-        expect(nodos[1].aislado).toBe(true);
+        const porId = Object.fromEntries(nodos.map((n) => [n.node, n]));
+        expect(porId.S1.x).toBe(80);
+        expect(porId.S4.aislado).toBe(true);
+    });
+
+    it('agrega el nodo de Internet delante de la entrada publica', async () => {
+        api.get.mockResolvedValue({ data: { environment: 'produccion', nodos: [nodo('S1')] } });
+        const { nodos, aristas } = await getNodos();
+        expect(nodos[0].node).toBe('internet');
+        expect(aristas[0]).toMatchObject({ de: 'internet', a: 'S1', publica: true });
+    });
+
+    it('sin entrada publica no inventa el nodo de Internet', async () => {
+        api.get.mockResolvedValue({ data: { environment: 'proxmox', nodos: [nodo('pmx-vine-wacha')] } });
+        const { nodos } = await getNodos();
+        expect(nodos.some((n) => n.node === 'internet')).toBe(false);
     });
 
     it('un nodo desconocido igual recibe posicion para no romper el mapa', async () => {
@@ -56,6 +70,12 @@ describe('getNodos', () => {
         const { nodos } = await getNodos();
         expect(typeof nodos[0].x).toBe('number');
         expect(typeof nodos[0].y).toBe('number');
+    });
+
+    it('el nodo de Internet lleva sus puertos publicos', async () => {
+        api.get.mockResolvedValue({ data: { nodos: [nodo('S1')] } });
+        const { nodos } = await getNodos();
+        expect(nodos[0].puertos.map((p) => p.puerto)).toEqual([80, 443]);
     });
 
     it('marca la VM de vine y wacha como exclusiva de proxmox', async () => {
@@ -96,7 +116,7 @@ describe('aristas de un nodo real', () => {
             },
         });
         const { aristas } = await getNodos();
-        expect(aristas).toHaveLength(2);
+        expect(aristas.filter((a) => !a.publica)).toHaveLength(2);
         expect(aristas.find((a) => a.a === 'S2').ms).toBe(18);
         expect(aristas.find((a) => a.a === 'S4').estado).toBe('down');
     });
@@ -108,13 +128,13 @@ describe('hostname del nodo', () => {
     it('usa el nombre real del servidor en produccion', async () => {
         api.get.mockResolvedValue({ data: { environment: 'produccion', nodos: [nodo('S1')] } });
         const { nodos } = await getNodos();
-        expect(nodos[0].hostname).toBe('gateway');
+        expect(nodos.find((n) => n.node === 'S1').hostname).toBe('gateway');
     });
 
     it('antepone el prefijo del espejo en proxmox', async () => {
         api.get.mockResolvedValue({ data: { environment: 'proxmox', nodos: [nodo('S4')] } });
         const { nodos } = await getNodos();
-        expect(nodos[0].hostname).toBe('pmx-dataengine');
+        expect(nodos.find((n) => n.node === 'S4').hostname).toBe('pmx-dataengine');
     });
 
     it('no duplica el prefijo en un nodo que ya lo trae', async () => {
@@ -126,6 +146,6 @@ describe('hostname del nodo', () => {
     it('un nodo desconocido se queda sin hostname en vez de inventarlo', async () => {
         api.get.mockResolvedValue({ data: { environment: 'produccion', nodos: [nodo('S9')] } });
         const { nodos } = await getNodos();
-        expect(nodos[0].hostname).toBeNull();
+        expect(nodos.find((n) => n.node === 'S9').hostname).toBeNull();
     });
 });

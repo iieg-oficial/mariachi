@@ -52,7 +52,7 @@ describe('NodosPage', () => {
     it('pinta un nodo por servidor con su conteo de contenedores', async () => {
         montar();
         await waitFor(() => expect(screen.getByText('S1')).toBeInTheDocument());
-        expect(screen.getByText('2 nodos')).toBeInTheDocument();
+        expect(screen.getByText('3 nodos')).toBeInTheDocument();
         expect(screen.getByText(/11\/11/)).toBeInTheDocument();
     });
 

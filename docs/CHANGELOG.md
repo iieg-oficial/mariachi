@@ -9,6 +9,34 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.28.1] - 2026-08-28
+
+### Corregido: los medidores del nodo salían en cero
+
+El catálogo del frontend guardaba el hostname del servidor bajo la clave `host`, la misma que el
+monitor usa para las métricas de la máquina. Al fusionar catálogo y nodo, el nombre **pisaba las
+mediciones**: `host` dejaba de ser un objeto con RAM, CPU y disco para volverse la cadena `gateway`,
+y los cuatro medidores se quedaban en cero.
+
+Ningún test lo cazó porque todos construían el nodo a mano, ya fusionado. Ahora hay uno que monta la
+página con una **respuesta real del monitor** y comprueba que las barras no estén todas en cero: es
+el único que habría fallado.
+
+### Cambiado: Internet aparece como nodo del mapa
+
+Un nodo aparte, en línea punteada, conectado a S1 por los puertos 80 y 443. Al abrirlo explica que
+todo el tráfico público entra por el nginx de gateway-hub y que ningún otro nodo está expuesto,
+además del dominio por el que se está entrando. Solo aparece si el monitor reporta S1.
+
+### Cambiado: el detalle del nodo y el encabezado de sección
+
+Fuera la sección de enlaces del modal, que repetía lo que el mapa ya dibuja. Los puertos dejan de
+verse como los contenedores: van en tarjetas con el número grande y una franja de color según
+respondan.
+
+El encabezado de sección pasa a dos filas: icono, título y acceso directo arriba; los controles
+—como el selector de vista— debajo.
+
 ## [2.28.0] - 2026-08-28
 
 ### Cambiado: el detalle del nodo deja la tabla y muestra lo que sí se usa

@@ -78,7 +78,6 @@ export default function NodosPage() {
 
             <NodoDetalleModal
                 nodo={seleccionado}
-                aristas={datos.aristas}
                 open={Boolean(seleccionado)}
                 onClose={() => setSeleccionado(null)}
             />

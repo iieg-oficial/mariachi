@@ -33,9 +33,9 @@ const NODO = {
     ],
 };
 
-const montar = (nodo = NODO, aristas = []) => render(
+const montar = (nodo = NODO) => render(
     <MemoryRouter>
-        <NodoDetalleModal nodo={nodo} aristas={aristas} open onClose={() => {}} />
+        <NodoDetalleModal nodo={nodo} open onClose={() => {}} />
     </MemoryRouter>,
 );
 
@@ -65,9 +65,9 @@ describe('NodoDetalleModal', () => {
                 { nombre: 'sextante', puerto: 8080, status: 'down', servicio: 'gateway-hub' },
             ],
         });
-        expect(screen.getByText('Puertos · 1 de 2 abiertos')).toBeInTheDocument();
-        expect(screen.getByText('mapalab :80')).toBeInTheDocument();
-        expect(screen.getByText('sextante :8080')).toBeInTheDocument();
+        expect(screen.getByText('Puertos · 1 de 2 responden')).toBeInTheDocument();
+        expect(screen.getByText(':80')).toBeInTheDocument();
+        expect(screen.getByText('sextante')).toBeInTheDocument();
     });
 
     it('reutiliza la fila de servicios, con su barra de 24 horas', () => {
@@ -101,8 +101,9 @@ describe('NodoDetalleModal', () => {
         expect(screen.getByText('Este nodo no tiene reportero de host')).toBeInTheDocument();
     });
 
-    it('los enlaces del nodo salen con su latencia', () => {
-        montar(NODO, [{ de: 'S1', a: 'S4', ms: 6, estado: 'ok' }]);
-        expect(screen.getByText('→ S4 · 6 ms')).toBeInTheDocument();
+    it('el nodo de Internet explica por donde entra el trafico', () => {
+        montar({ node: 'internet', status: 'ok', rol: 'entrada pública', servicios: [], host: {}, containers: {}, contenedores: [], puertos: [{ nombre: 'https', puerto: 443, status: 'ok', servicio: 'internet' }] });
+        expect(screen.getByText(/Todo el tráfico público entra por aquí/)).toBeInTheDocument();
+        expect(screen.getByText(':443')).toBeInTheDocument();
     });
 });

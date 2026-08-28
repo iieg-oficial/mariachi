@@ -48,8 +48,10 @@ const CATALOGO = {
 
 export const ORDEN_CAPA = CAPAS.reduce((acc, capa, indice) => ({ ...acc, [capa.key]: indice }), {});
 
+export const metaServicio = (slug) => CATALOGO[slug] || {};
+
 export const aPlataforma = (servicio) => {
-    const meta = CATALOGO[servicio.slug] || {};
+    const meta = metaServicio(servicio.slug);
     return {
         slug: servicio.slug,
         label: meta.label || servicio.label || servicio.slug,

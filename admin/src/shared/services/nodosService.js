@@ -2,7 +2,10 @@ import api from '@shared/services/api';
 
 export const REFRESCO_NODOS_MS = 20000;
 
+export const NODO_INTERNET = 'internet';
+
 export const POSICIONES = {
+    [NODO_INTERNET]: { x: 30, y: 30, w: 132, h: 66 },
     S1: { x: 80, y: 170, w: 132, h: 76 },
     S2: { x: 390, y: 60, w: 132, h: 76 },
     S5: { x: 390, y: 170, w: 132, h: 76 },
@@ -14,19 +17,34 @@ export const POSICIONES = {
 const POSICION_POR_OMISION = { x: 390, y: 380, w: 132, h: 76 };
 
 export const NODOS_META = {
-    S1: { host: 'gateway', rol: 'gateway · acervo · mariachi · huachicol' },
-    S2: { host: 'mapalab', rol: 'mapalab' },
-    S3: { host: 'sextante', rol: 'sextante' },
-    S4: { host: 'dataengine', rol: 'dataengine', aislado: true },
-    S5: { host: 'portalito', rol: 'portalito' },
-    'pmx-vine-wacha': { host: 'pmx-vine-wacha', rol: 'vine · wacha', soloProxmox: true },
+    S1: { nombreHost: 'gateway', rol: 'gateway · acervo · mariachi · huachicol' },
+    S2: { nombreHost: 'mapalab', rol: 'mapalab' },
+    S3: { nombreHost: 'sextante', rol: 'sextante' },
+    S4: { nombreHost: 'dataengine', rol: 'dataengine', aislado: true },
+    S5: { nombreHost: 'portalito', rol: 'portalito' },
+    'pmx-vine-wacha': { nombreHost: 'pmx-vine-wacha', rol: 'vine · wacha', soloProxmox: true },
     'sin-nodo': { rol: 'sin ONTOY_NODE declarado' },
+    [NODO_INTERNET]: { rol: 'entrada pública', sintetico: true },
+};
+
+const ENTRADA_PUBLICA = {
+    node: NODO_INTERNET,
+    status: 'ok',
+    servicios: [],
+    host: {},
+    peers: {},
+    containers: { total: 0, running: 0 },
+    contenedores: [],
+    puertos: [
+        { nombre: 'http', puerto: 80, status: 'ok', servicio: NODO_INTERNET },
+        { nombre: 'https', puerto: 443, status: 'ok', servicio: NODO_INTERNET },
+    ],
 };
 
 const PREFIJO_ESPEJO = 'pmx-';
 
 export const hostnameDe = (nodo, ambiente) => {
-    const base = NODOS_META[nodo]?.host;
+    const base = NODOS_META[nodo]?.nombreHost;
     if (!base) return null;
     const enEspejo = (ambiente || '').toLowerCase().includes('proxmox');
     return enEspejo && !base.startsWith(PREFIJO_ESPEJO) ? `${PREFIJO_ESPEJO}${base}` : base;
@@ -57,14 +75,33 @@ export const aristasDe = (nodos) => {
     return aristas;
 };
 
+const NODO_ENTRADA = 'S1';
+
 export const getNodos = async (eventos = 20) => {
     const res = await api.get(`/sistema/monitor/nodos?eventos=${eventos}`);
     const ambiente = res.data?.environment ?? null;
-    const nodos = acomodar(res.data?.nodos ?? [], ambiente);
+    const reportados = res.data?.nodos ?? [];
+    const conEntrada = reportados.some((n) => n.node === NODO_ENTRADA)
+        ? [ENTRADA_PUBLICA, ...reportados]
+        : reportados;
+    const nodos = acomodar(conEntrada, ambiente);
+    const aristas = aristasDe(nodos);
+
+    if (nodos.some((n) => n.node === NODO_INTERNET)) {
+        aristas.unshift({
+            de: NODO_INTERNET,
+            a: NODO_ENTRADA,
+            ms: null,
+            estado: 'ok',
+            detalle: null,
+            publica: true,
+        });
+    }
+
     return {
         environment: ambiente,
         nodos,
-        aristas: aristasDe(nodos),
+        aristas,
         eventos: res.data?.eventos ?? [],
     };
 };

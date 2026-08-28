@@ -96,7 +96,6 @@ export default function EcosistemaPanel({ plataformas, loading, onReportar }) {
 
             <NodoDetalleModal
                 nodo={seleccionado}
-                aristas={nodos.aristas}
                 open={Boolean(seleccionado)}
                 onClose={() => setSeleccionado(null)}
             />

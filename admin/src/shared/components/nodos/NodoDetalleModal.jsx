@@ -1,6 +1,7 @@
 import { Badge, Empty, Grid, Modal, Progress, Space, Tag, Typography } from 'antd';
 import { SEMANTIC } from '@app/providers/brand';
 import { aPlataforma } from '@shared/services/catalogoServicios';
+import { NODO_INTERNET } from '@shared/services/nodosService';
 import FilaServicio, { ANCHO_ENLACES } from '@shared/components/nodos/FilaServicio';
 
 const { Text } = Typography;
@@ -53,7 +54,7 @@ const discoLibre = (host) => {
     return `${Math.round(total - host.disk_free_gb)} / ${Math.round(total)} GB`;
 };
 
-export default function NodoDetalleModal({ nodo, aristas, open, onClose }) {
+export default function NodoDetalleModal({ nodo, open, onClose }) {
     const pantalla = useBreakpoint();
     const compacto = !pantalla.md;
 
@@ -67,7 +68,9 @@ export default function NodoDetalleModal({ nodo, aristas, open, onClose }) {
     const cargaPorNucleo = host.load_1m != null && host.cores
         ? Number((host.load_1m / host.cores).toFixed(2))
         : null;
-    const enlaces = aristas.filter((a) => a.de === nodo.node || a.a === nodo.node);
+
+    const esInternet = nodo.node === NODO_INTERNET;
+    const dominio = typeof window !== 'undefined' ? window.location.origin : null;
 
     const sistema = [
         host.ip,
@@ -86,8 +89,10 @@ export default function NodoDetalleModal({ nodo, aristas, open, onClose }) {
             styles={compacto ? { body: { maxHeight: 'calc(100dvh - 110px)', overflowY: 'auto' } } : undefined}
             title={(
                 <Space size={10} wrap style={{ paddingRight: 30 }}>
-                    <Badge status={badge.status} />
-                    <Text strong style={{ fontFamily: 'monospace', fontSize: 18 }}>{nodo.node}</Text>
+                    {!esInternet && <Badge status={badge.status} />}
+                    <Text strong style={{ fontFamily: 'monospace', fontSize: 18 }}>
+                        {esInternet ? 'Internet' : nodo.node}
+                    </Text>
                     {nodo.hostname && (
                         <Text type="secondary" style={{ fontFamily: 'monospace', fontSize: 13 }}>
                             {nodo.hostname}
@@ -97,7 +102,26 @@ export default function NodoDetalleModal({ nodo, aristas, open, onClose }) {
             )}
         >
             <Space orientation="vertical" size={20} style={{ width: '100%' }}>
-                {Object.keys(host).length === 0 ? (
+                {esInternet && (
+                    <Space orientation="vertical" size={10} style={{ width: '100%' }}>
+                        <Text>
+                            Todo el tráfico público entra por aquí y lo recibe el nginx de
+                            {' '}<Text strong>gateway-hub</Text>, en S1, que lo reparte al resto.
+                            Ningún otro nodo está expuesto a Internet.
+                        </Text>
+                        {dominio && (
+                            <Text type="secondary" style={{ fontSize: 12, fontFamily: 'monospace' }}>
+                                {dominio}
+                            </Text>
+                        )}
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                            La administración no entra por aquí: va por SSH a cada nodo, y los que no
+                            son S1 solo se alcanzan desde la red interna.
+                        </Text>
+                    </Space>
+                )}
+
+                {esInternet ? null : Object.keys(host).length === 0 ? (
                     <Empty
                         image={Empty.PRESENTED_IMAGE_SIMPLE}
                         description="Este nodo no tiene reportero de host"
@@ -139,58 +163,63 @@ export default function NodoDetalleModal({ nodo, aristas, open, onClose }) {
                 {puertos.length > 0 && (
                     <div>
                         <Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                            {`Puertos · ${puertos.filter((p) => p.status === 'ok').length} de ${puertos.length} abiertos`}
+                            {`Puertos · ${puertos.filter((p) => p.status === 'ok').length} de ${puertos.length} responden`}
                         </Text>
-                        <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                            {puertos.map((p) => (
-                                <Tag
-                                    key={`${p.servicio}-${p.puerto}`}
-                                    color={p.status === 'ok' ? 'green' : 'red'}
-                                    style={{ fontFamily: 'monospace', fontSize: 11 }}
-                                >
-                                    {`${p.nombre} :${p.puerto}`}
-                                </Tag>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {enlaces.length > 0 && (
-                    <div>
-                        <Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                            {`Enlaces · ${enlaces.length}`}
-                        </Text>
-                        <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                            {enlaces.map((a) => {
-                                const otro = a.de === nodo.node ? a.a : a.de;
+                        <div style={{
+                            marginTop: 8,
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fill, minmax(168px, 1fr))',
+                            gap: 6,
+                        }}>
+                            {puertos.map((p) => {
+                                const abierto = p.status === 'ok';
                                 return (
-                                    <Tag
-                                        key={otro}
-                                        color={a.estado === 'ok' ? 'green' : 'red'}
-                                        style={{ fontFamily: 'monospace', fontSize: 11 }}
+                                    <div
+                                        key={`${p.servicio}-${p.puerto}`}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'baseline',
+                                            gap: 8,
+                                            padding: '5px 10px',
+                                            borderRadius: 6,
+                                            borderLeft: `3px solid ${abierto ? SEMANTIC.success : SEMANTIC.danger}`,
+                                            background: abierto ? SEMANTIC.successSoft : SEMANTIC.dangerSoft,
+                                        }}
                                     >
-                                        {`${a.de === nodo.node ? '→' : '←'} ${otro} · ${a.estado === 'ok' ? `${a.ms ?? '—'} ms` : 'sin respuesta'}`}
-                                    </Tag>
+                                        <Text style={{
+                                            fontFamily: 'monospace',
+                                            fontSize: 13,
+                                            fontWeight: 600,
+                                            color: abierto ? SEMANTIC.success : SEMANTIC.danger,
+                                        }}>
+                                            {`:${p.puerto}`}
+                                        </Text>
+                                        <Text style={{ fontSize: 12, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                            {p.nombre}
+                                        </Text>
+                                    </div>
                                 );
                             })}
                         </div>
                     </div>
                 )}
 
-                <div>
-                    <Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                        {`Servicios · ${servicios.length}`}
-                    </Text>
-                    <div style={{ marginTop: 4 }}>
-                        {servicios.map((plataforma) => (
-                            <FilaServicio
-                                key={plataforma.slug}
-                                plataforma={plataforma}
-                                columnas={COLUMNAS_SERVICIO}
-                            />
-                        ))}
+                {servicios.length > 0 && (
+                    <div>
+                        <Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                            {`Servicios · ${servicios.length}`}
+                        </Text>
+                        <div style={{ marginTop: 4 }}>
+                            {servicios.map((plataforma) => (
+                                <FilaServicio
+                                    key={plataforma.slug}
+                                    plataforma={plataforma}
+                                    columnas={COLUMNAS_SERVICIO}
+                                />
+                            ))}
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {contenedores.length > 0 && (
                     <div>

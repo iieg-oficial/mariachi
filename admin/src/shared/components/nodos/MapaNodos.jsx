@@ -3,6 +3,7 @@ import { Button, Empty, Grid, Space, Typography } from 'antd';
 import { MinusOutlined, PlusOutlined } from '@ant-design/icons';
 import { SEMANTIC } from '@app/providers/brand';
 import { colorArista, curvaDe, duracionTravesia, puntoEnCurva } from '@shared/components/nodos/latencia';
+import { NODO_INTERNET } from '@shared/services/nodosService';
 
 const { Text } = Typography;
 const { useBreakpoint } = Grid;
@@ -106,7 +107,7 @@ export default function MapaNodos({ nodos, aristas, onSeleccionar }) {
                             textAnchor="middle" fill={color}
                             style={{ fontSize: 10, fontFamily: 'monospace' }}
                         >
-                            {arista.estado === 'ok' ? `${arista.ms ?? '—'} ms` : 'sin respuesta'}
+                            {arista.publica ? '80 · 443' : (arista.estado === 'ok' ? `${arista.ms ?? '—'} ms` : 'sin respuesta')}
                         </text>
                         {arista.estado === 'ok' && (
                             <circle r={4.5} fill={color} opacity={0} data-arista={indice} />
@@ -116,7 +117,8 @@ export default function MapaNodos({ nodos, aristas, onSeleccionar }) {
             })}
 
             {nodos.map((nodo) => {
-                const borde = colorDe(nodo.status);
+                const esInternet = nodo.node === NODO_INTERNET;
+                const borde = esInternet ? SEMANTIC.neutral : colorDe(nodo.status);
                 const servicios = nodo.servicios || [];
                 return (
                     <g
@@ -134,23 +136,32 @@ export default function MapaNodos({ nodos, aristas, onSeleccionar }) {
                         }}
                     >
                         <rect
-                            x={nodo.x} y={nodo.y} width={nodo.w} height={nodo.h} rx={10}
-                            fill="#fff" stroke={borde} strokeWidth={2}
-                            strokeDasharray={nodo.aislado ? '6 4' : undefined}
+                            x={nodo.x} y={nodo.y} width={nodo.w} height={nodo.h} rx={esInternet ? 33 : 10}
+                            fill={esInternet ? '#fafafa' : '#fff'} stroke={borde} strokeWidth={2}
+                            strokeDasharray={nodo.aislado || esInternet ? '6 4' : undefined}
                         />
-                        <text x={nodo.x + nodo.w / 2} y={nodo.y + 26} textAnchor="middle"
+                        <text x={nodo.x + nodo.w / 2} y={esInternet ? nodo.y + 29 : nodo.y + 26} textAnchor="middle"
                             style={{ fontSize: 13, fontWeight: 700, fontFamily: 'monospace' }}>
-                            {nodo.node}
+                            {esInternet ? 'Internet' : nodo.node}
                         </text>
-                        <text x={nodo.x + nodo.w / 2} y={nodo.y + 43} textAnchor="middle"
-                            fill="rgba(0,0,0,0.45)" style={{ fontSize: 10 }}>
-                            {servicios.length > 2 ? `${servicios.length} servicios` : servicios.map((s) => s.slug).join(' · ')}
-                        </text>
-                        <text x={nodo.x + nodo.w / 2} y={nodo.y + 61} textAnchor="middle"
-                            fill="rgba(0,0,0,0.45)" style={{ fontSize: 9, fontFamily: 'monospace' }}>
-                            {nodo.host?.memory_used_percent != null ? `RAM ${nodo.host.memory_used_percent}% · ` : ''}
-                            {`${nodo.containers?.running ?? 0}/${nodo.containers?.total ?? 0}`}
-                        </text>
+                        {esInternet ? (
+                            <text x={nodo.x + nodo.w / 2} y={nodo.y + 47} textAnchor="middle"
+                                fill="rgba(0,0,0,0.45)" style={{ fontSize: 10 }}>
+                                entrada pública
+                            </text>
+                        ) : (
+                            <>
+                                <text x={nodo.x + nodo.w / 2} y={nodo.y + 43} textAnchor="middle"
+                                    fill="rgba(0,0,0,0.45)" style={{ fontSize: 10 }}>
+                                    {servicios.length > 2 ? `${servicios.length} servicios` : servicios.map((s) => s.slug).join(' · ')}
+                                </text>
+                                <text x={nodo.x + nodo.w / 2} y={nodo.y + 61} textAnchor="middle"
+                                    fill="rgba(0,0,0,0.45)" style={{ fontSize: 9, fontFamily: 'monospace' }}>
+                                    {nodo.host?.memory_used_percent != null ? `RAM ${nodo.host.memory_used_percent}% · ` : ''}
+                                    {`${nodo.containers?.running ?? 0}/${nodo.containers?.total ?? 0}`}
+                                </text>
+                            </>
+                        )}
                         {(nodo.aislado || nodo.soloProxmox) && (
                             <text x={nodo.x + nodo.w / 2} y={nodo.y + nodo.h + 15} textAnchor="middle"
                                 fill={SEMANTIC.warning} style={{ fontSize: 9, fontFamily: 'monospace' }}>
