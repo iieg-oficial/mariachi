@@ -5,12 +5,6 @@ export const LATENCIA = {
     lenta: 100,
 };
 
-export const ESCALA_LATENCIA = [
-    { texto: `hasta ${LATENCIA.fluida} ms`, color: SEMANTIC.success },
-    { texto: `hasta ${LATENCIA.lenta} ms`, color: SEMANTIC.warning },
-    { texto: `más de ${LATENCIA.lenta} ms`, color: SEMANTIC.danger },
-];
-
 export const colorLatencia = (ms) => {
     if (ms == null) return SEMANTIC.neutral;
     if (ms <= LATENCIA.fluida) return SEMANTIC.success;
