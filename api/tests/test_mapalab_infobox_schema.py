@@ -90,3 +90,78 @@ def test_campos_se_validan_contra_las_columnas_reales():
 def test_sin_columnas_conocidas_no_bloquea():
     cfg = _valida({'headerField': 'nombre'})
     validate_fields_exist(cfg, set())
+
+
+def test_fila_compuesta_sobrevive_la_ida_y_la_vuelta():
+    cfg = _valida({
+        'list': [{
+            'compose': ['calle', {'field': 'numero_ext', 'prefix': '#'}, 'colonia'],
+            'sep': ', ',
+            'label': 'Direccion',
+        }],
+    })
+    assert cfg.to_config()['list'][0] == {
+        'compose': [
+            {'field': 'calle'},
+            {'field': 'numero_ext', 'prefix': '#'},
+            {'field': 'colonia'},
+        ],
+        'sep': ', ',
+        'label': 'Direccion',
+    }
+
+
+def test_una_fila_lleva_campo_o_compose_pero_no_los_dos():
+    with pytest.raises(ValidationError):
+        _valida({'list': [{'field': 'a', 'compose': ['b'], 'label': 'A'}]})
+    with pytest.raises(ValidationError):
+        _valida({'list': [{'label': 'A'}]})
+
+
+def test_sep_sin_compose_se_rechaza():
+    with pytest.raises(ValidationError):
+        _valida({'list': [{'field': 'a', 'sep': ', ', 'label': 'A'}]})
+
+
+def test_compose_vacio_o_desbordado_se_rechaza():
+    with pytest.raises(ValidationError):
+        _valida({'list': [{'compose': [], 'label': 'A'}]})
+    with pytest.raises(ValidationError):
+        _valida({'list': [{'compose': [f'f{i}' for i in range(20)], 'label': 'A'}]})
+
+
+def test_la_suma_solo_va_en_cifras_combinadas():
+    cfg = _valida({'cards': [{'compose': ['hombres', 'mujeres'], 'op': 'sum', 'label': 'Total'}]})
+    assert cfg.to_config()['cards'][0]['op'] == 'sum'
+    with pytest.raises(ValidationError):
+        _valida({'cards': [{'field': 'pob', 'op': 'sum', 'label': 'Total'}]})
+    with pytest.raises(ValidationError):
+        _valida({'cards': [{'compose': ['a', 'b'], 'op': 'sum', 'sep': ' + ', 'label': 'Total'}]})
+
+
+def test_el_titulo_acepta_campos_combinados():
+    cfg = _valida({'headerField': {'compose': ['nombre', 'apellido'], 'sep': ' '}})
+    assert cfg.to_config()['headerField'] == {
+        'compose': [{'field': 'nombre'}, {'field': 'apellido'}],
+        'sep': ' ',
+    }
+
+
+def test_las_partes_de_un_compose_se_validan_contra_las_columnas_reales():
+    cfg = _valida({
+        'headerField': {'compose': ['nombre', 'alias']},
+        'list': [{'compose': ['calle', 'inventado'], 'label': 'Direccion'}],
+        'cards': [{'compose': ['hombres', 'mujeres'], 'op': 'sum', 'label': 'Total'}],
+    })
+    assert cfg.referenced_fields() == {
+        'nombre', 'alias', 'calle', 'inventado', 'hombres', 'mujeres',
+    }
+    with pytest.raises(ValueError, match='inventado'):
+        validate_fields_exist(cfg, {'nombre', 'alias', 'calle', 'hombres', 'mujeres'})
+
+
+def test_afijos_y_separador_tienen_tope():
+    with pytest.raises(ValidationError):
+        _valida({'list': [{'compose': [{'field': 'a', 'prefix': 'x' * 40}], 'label': 'A'}]})
+    with pytest.raises(ValidationError):
+        _valida({'list': [{'compose': ['a'], 'sep': 'x' * 40, 'label': 'A'}]})

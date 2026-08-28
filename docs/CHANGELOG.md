@@ -9,6 +9,61 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.38.0] - 2026-08-28
+
+### Eliminado: `GET /mapalab-stats/highlights`
+
+Se retira el endpoint junto con los esquemas `StatsHighlights`, `HighlightLayer` y `HighlightTool`.
+Su único consumidor era `InicioHighlights`, que salió del inicio en la 2.35.0 al entrar la hoja de
+ruta: llevaba tres versiones sirviendo a nadie y consultando tres tablas de rollup en cada llamada.
+
+Las otras catorce rutas de `mapalab-stats` no se tocan, y el `Highlight*` de `schemas/layer.py` —el
+resaltado de capas del visor— es otra cosa y sigue igual.
+
+### Agregado
+
+- `tests/test_roadmap.py`: ocho pruebas sobre el CRUD de la hoja de ruta. Cubren que una editora
+  lee pero no escribe, que una fecha fuera de `YYYY-MM-DD` y un tipo desconocido se rechazan con
+  422, que una clave repetida da 409 y que un hito inexistente da 404.
+- `mariachi.roadmap.manage` en `TODOS_LOS_PERMISOS` del conftest.
+
+---
+
+## [2.37.0] - 2026-08-28
+
+### Agregado: el editor de tarjeta arma un dato con varias columnas
+
+`compose` sustituye a `field` en el título, la lista, las cifras, los íconos con texto y las
+etiquetas con estilo propio: une varias columnas en un solo valor, con `prefix` y `suffix` por
+parte y `sep` como pegamento. Es lo que hacía falta para la dirección, que llega partida en
+`calle`, `numero`, `colonia` y `cp`. En las cifras, `op: 'sum'` suma las columnas en vez de unirlas.
+
+Los cuatro selectores de campo casi idénticos del editor salieron a **`FieldValueField`**, que
+alterna entre «Un campo» y «Campos combinados» y es el único lugar donde se editan las partes.
+`InfoBoxBlocksEditor` **baja** de 1154 a 1106 líneas en vez de crecer. El preview del editor
+resuelve las combinaciones con los mismos datos de ejemplo, así que sigue mostrando lo que el
+visor va a pintar.
+
+Los renglones de lista ganan el interruptor **multivalor**, que parte el valor por `; ` —el
+separador acordado para las columnas con varios valores— y lo muestra como varios renglones.
+
+### Agregado: las propuestas ciudadanas aceptan campos combinados
+
+`InfoboxPropuestaConfig` deja de exigir `field` y admite `compose`, con exactamente uno de los dos
+por fila. **`referenced_fields()` recorre las partes**, que es lo que ata cada columna a las que
+`DescribeFeatureType` reporta para la capa: sin eso el endpoint público habría aceptado nombres de
+columna arbitrarios. Topes nuevos: 6 partes por combinación, 16 caracteres por `prefix` o `suffix`
+y 8 por separador, todo contra los 8 KB de siempre.
+
+`headerField` acepta la forma combinada además de la cadena. Sin eso, una capa cuyo título ya
+fuera compuesto rechazaba con 422 cualquier propuesta sobre ella.
+
+### Corregido: el separador de una combinación perdía sus espacios
+
+`str_strip_whitespace` del esquema recortaba `sep`, `prefix` y `suffix`, así que un separador
+`", "` se guardaba como `","` y uno de un solo espacio quedaba vacío. En esos tres campos el
+espacio es el dato: ahora se guardan tal cual.
+
 ## [2.36.0] - 2026-08-28
 
 ### Agregado: la hoja de ruta se edita desde el CMS

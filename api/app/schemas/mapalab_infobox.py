@@ -1,10 +1,17 @@
 from __future__ import annotations
 
 import json
-from typing import List
+from typing import Annotated, Any, List, Literal
 from urllib.parse import urlparse
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StringConstraints,
+    field_validator,
+    model_validator,
+)
 
 from app.schemas._camel import CamelCaseInput
 
@@ -15,6 +22,12 @@ MAX_LABEL_LEN = 80
 MAX_FIELD_LEN = 120
 MAX_SUFFIX_LEN = 12
 MAX_HREF_LEN = 500
+MAX_COMPOSE_PARTS = 6
+MAX_AFFIX_LEN = 16
+MAX_SEP_LEN = 8
+
+Afijo = Annotated[str, StringConstraints(strip_whitespace=False, max_length=MAX_AFFIX_LEN)]
+Separador = Annotated[str, StringConstraints(strip_whitespace=False, max_length=MAX_SEP_LEN)]
 
 ALLOWED_HREF_SCHEMES = frozenset({'http', 'https', 'mailto', 'tel'})
 _empty = list
@@ -40,31 +53,126 @@ def _validate_href(value: str | None) -> str | None:
     return trimmed
 
 
+def _coerce_parts(value: Any) -> Any:
+    if isinstance(value, list):
+        return [{'field': part} if isinstance(part, str) else part for part in value]
+    return value
+
+
 class _Strict(BaseModel):
     model_config = ConfigDict(extra='forbid', str_strip_whitespace=True)
 
 
-class InfoboxListRow(_Strict):
+class InfoboxComposePart(_Strict):
     field: str = Field(..., min_length=1, max_length=MAX_FIELD_LEN)
+    prefix: Afijo | None = Field(default=None)
+    suffix: Afijo | None = Field(default=None)
+
+    def to_config(self) -> dict:
+        pairs = (('field', self.field), ('prefix', self.prefix), ('suffix', self.suffix))
+        return {k: v for k, v in pairs if v is not None}
+
+
+class InfoboxComposeValue(_Strict):
+    compose: List[InfoboxComposePart] = Field(..., min_length=1, max_length=MAX_COMPOSE_PARTS)
+    sep: Separador | None = Field(default=None)
+
+    _coerce_compose = field_validator('compose', mode='before')(lambda cls, v: _coerce_parts(v))
+
+    def value_fields(self) -> set[str]:
+        return {part.field for part in self.compose}
+
+    def value_config(self) -> dict:
+        config: dict = {'compose': [part.to_config() for part in self.compose]}
+        if self.sep is not None:
+            config['sep'] = self.sep
+        return config
+
+
+class _ValueDef(_Strict):
+    field: str | None = Field(default=None, min_length=1, max_length=MAX_FIELD_LEN)
+    compose: List[InfoboxComposePart] | None = Field(
+        default=None, min_length=1, max_length=MAX_COMPOSE_PARTS
+    )
+    sep: Separador | None = Field(default=None)
+
+    _coerce_compose = field_validator('compose', mode='before')(lambda cls, v: _coerce_parts(v))
+
+    @model_validator(mode='after')
+    def _validate_value_source(self):
+        if bool(self.field) == bool(self.compose):
+            raise ValueError('cada fila lleva un campo o una combinacion de campos, no ambos')
+        if self.sep is not None and not self.compose:
+            raise ValueError('sep solo aplica a una fila combinada')
+        return self
+
+    def value_fields(self) -> set[str]:
+        if self.field:
+            return {self.field}
+        return {part.field for part in (self.compose or [])}
+
+    def value_config(self) -> dict:
+        if self.field:
+            return {'field': self.field}
+        config: dict = {'compose': [part.to_config() for part in (self.compose or [])]}
+        if self.sep is not None:
+            config['sep'] = self.sep
+        return config
+
+
+class InfoboxListRow(_ValueDef):
     label: str = Field(..., min_length=1, max_length=MAX_LABEL_LEN)
     href: str | None = Field(default=None)
 
     _check_href = field_validator('href')(lambda cls, v: _validate_href(v))
 
+    def to_config(self) -> dict:
+        config = self.value_config()
+        config['label'] = self.label
+        if self.href is not None:
+            config['href'] = self.href
+        return config
 
-class InfoboxCard(_Strict):
-    field: str = Field(..., min_length=1, max_length=MAX_FIELD_LEN)
+
+class InfoboxCard(_ValueDef):
     label: str = Field(..., min_length=1, max_length=MAX_LABEL_LEN)
     suffix: str | None = Field(default=None, max_length=MAX_SUFFIX_LEN)
     decimals: int | None = Field(default=None, ge=0, le=4)
+    op: Literal['join', 'sum'] | None = Field(default=None)
+
+    @model_validator(mode='after')
+    def _validate_op(self):
+        if self.op is not None and not self.compose:
+            raise ValueError('op solo aplica a una cifra combinada')
+        if self.op == 'sum' and self.sep is not None:
+            raise ValueError('una suma no lleva separador')
+        return self
+
+    def to_config(self) -> dict:
+        config = self.value_config()
+        config['label'] = self.label
+        if self.op == 'sum':
+            config['op'] = 'sum'
+        if self.suffix is not None:
+            config['suffix'] = self.suffix
+        if self.decimals is not None:
+            config['decimals'] = self.decimals
+        return config
 
 
-class InfoboxTextItem(_Strict):
-    field: str = Field(..., min_length=1, max_length=MAX_FIELD_LEN)
+class InfoboxTextItem(_ValueDef):
     label: str | None = Field(default=None, max_length=MAX_LABEL_LEN)
     href: str | None = Field(default=None)
 
     _check_href = field_validator('href')(lambda cls, v: _validate_href(v))
+
+    def to_config(self) -> dict:
+        config = self.value_config()
+        if self.label is not None:
+            config['label'] = self.label
+        if self.href is not None:
+            config['href'] = self.href
+        return config
 
 
 class InfoboxTextBlock(_Strict):
@@ -75,11 +183,18 @@ class InfoboxTextBlock(_Strict):
 class InfoboxPropuestaConfig(CamelCaseInput):
     model_config = ConfigDict(extra='forbid', str_strip_whitespace=True)
 
-    header_field: str | None = Field(default=None, max_length=MAX_FIELD_LEN)
+    header_field: str | InfoboxComposeValue | None = Field(default=None)
     list: List[InfoboxListRow] = Field(default_factory=_empty, max_length=MAX_ROWS_PER_BLOCK)
     cards: List[InfoboxCard] = Field(default_factory=_empty, max_length=MAX_ROWS_PER_BLOCK)
     text: List[InfoboxTextBlock] = Field(default_factory=_empty, max_length=MAX_TEXT_BLOCKS)
     block_order: List[str] = Field(default_factory=_empty, max_length=len(BLOCK_KEYS) + MAX_TEXT_BLOCKS)
+
+    @field_validator('header_field')
+    @classmethod
+    def _validate_header_field(cls, v):
+        if isinstance(v, str) and len(v) > MAX_FIELD_LEN:
+            raise ValueError('headerField demasiado largo')
+        return v
 
     @field_validator('block_order')
     @classmethod
@@ -108,44 +223,34 @@ class InfoboxPropuestaConfig(CamelCaseInput):
 
     def referenced_fields(self) -> set[str]:
         fields: set[str] = set()
-        if self.header_field:
+        if isinstance(self.header_field, str):
             fields.add(self.header_field)
-        fields.update(row.field for row in self.list)
-        fields.update(card.field for card in self.cards)
+        elif self.header_field is not None:
+            fields |= self.header_field.value_fields()
+        for row in self.list:
+            fields |= row.value_fields()
+        for card in self.cards:
+            fields |= card.value_fields()
         for block in self.text:
-            fields.update(item.field for item in block.items)
+            for item in block.items:
+                fields |= item.value_fields()
         return fields
 
     def to_config(self) -> dict:
         config: dict = {}
         if self.header_field:
-            config['headerField'] = self.header_field
+            config['headerField'] = (
+                self.header_field
+                if isinstance(self.header_field, str)
+                else self.header_field.value_config()
+            )
         if self.list:
-            config['list'] = [
-                {k: v for k, v in (('field', row.field), ('label', row.label), ('href', row.href)) if v is not None}
-                for row in self.list
-            ]
+            config['list'] = [row.to_config() for row in self.list]
         if self.cards:
-            config['cards'] = [
-                {
-                    k: v for k, v in (
-                        ('field', card.field),
-                        ('label', card.label),
-                        ('suffix', card.suffix),
-                        ('decimals', card.decimals),
-                    ) if v is not None
-                }
-                for card in self.cards
-            ]
+            config['cards'] = [card.to_config() for card in self.cards]
         if self.text:
             config['text'] = [
-                {
-                    'id': block.id,
-                    'items': [
-                        {k: v for k, v in (('field', item.field), ('label', item.label), ('href', item.href)) if v is not None}
-                        for item in block.items
-                    ],
-                }
+                {'id': block.id, 'items': [item.to_config() for item in block.items]}
                 for block in self.text
             ]
         if self.block_order:

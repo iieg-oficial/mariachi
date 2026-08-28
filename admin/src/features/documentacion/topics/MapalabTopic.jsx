@@ -42,10 +42,12 @@ const FLUJO_COLUMNS = [
 ];
 
 const PERMITIDO = [
-    { clave: 'headerField', tipo: 'string', nota: 'Campo que da el título de la tarjeta.' },
-    { clave: 'list', tipo: 'array (máx. 12)', nota: 'Filas etiqueta–valor. Cada una: field, label y href opcional.' },
-    { clave: 'cards', tipo: 'array (máx. 12)', nota: 'Cajas de numeralia. Cada una: field, label, suffix y decimals (0–4).' },
-    { clave: 'text', tipo: 'array (máx. 3)', nota: 'Bloques de texto con id e items (field, label, href).' },
+    { clave: 'headerField', tipo: 'string u objeto', nota: 'Campo que da el título de la tarjeta. También acepta un compose para armarlo de varias columnas.' },
+    { clave: 'list', tipo: 'array (máx. 12)', nota: 'Filas etiqueta–valor. Cada una: field o compose, label y href opcional.' },
+    { clave: 'cards', tipo: 'array (máx. 12)', nota: 'Cajas de numeralia. Cada una: field o compose, label, suffix, decimals (0–4) y op.' },
+    { clave: 'compose', tipo: 'array (máx. 6)', nota: 'Une varias columnas en un valor. Cada parte: field con prefix y suffix opcionales; el pegamento es sep (por defecto «, »). Va en lugar de field, nunca junto a él.' },
+    { clave: 'op', tipo: "'sum'", nota: 'Solo en cards con compose: suma las columnas numéricas en vez de unirlas como texto. Sin op, se une texto.' },
+    { clave: 'text', tipo: 'array (máx. 3)', nota: 'Bloques de texto con id e items (field o compose, label, href).' },
     { clave: 'blockOrder', tipo: 'array', nota: 'Orden de los bloques. Solo list, cards y text:<id>.' },
 ];
 
@@ -71,8 +73,8 @@ const PROHIBIDO_COLUMNS = [
 const DEFENSAS = [
     { capa: 'Allowlist de claves', detalle: 'extra=forbid en todos los modelos y reconstrucción explícita en to_config(): nunca se persiste el dict que llegó, sino uno armado campo por campo.' },
     { capa: 'Esquemas de href', detalle: 'Solo http, https, mailto, tel y rutas absolutas que empiecen con una sola barra. Se rechazan javascript:, data: y protocol-relative (//host).' },
-    { capa: 'Campos reales', detalle: 'Cada field se compara contra las columnas de la capa resueltas con DescribeFeatureType. Evita inyección y también tarjetas que apuntan a campos inexistentes.' },
-    { capa: 'Topes', detalle: '8 KB por configuración, 12 filas por bloque, 3 bloques de texto, 80 caracteres por etiqueta, 500 por href.' },
+    { capa: 'Campos reales', detalle: 'Cada field se compara contra las columnas de la capa resueltas con DescribeFeatureType, y lo mismo cada parte de un compose. Evita inyección y también tarjetas que apuntan a campos inexistentes.' },
+    { capa: 'Topes', detalle: '8 KB por configuración, 12 filas por bloque, 3 bloques de texto, 80 caracteres por etiqueta, 500 por href, 6 partes por compose, 16 por prefix o suffix y 8 por separador.' },
     { capa: 'Anti-abuso', detalle: 'Honeypot, rate limit por IP y tope de propuestas pendientes por capa. Sin captcha: el filtro real es la aprobación humana.' },
     { capa: 'Escapado', detalle: 'El renderer no usa dangerouslySetInnerHTML en ninguna parte, así que React escapa todo valor que se muestre.' },
 ];

@@ -40,6 +40,24 @@ const resolveValue = (field) => {
     return `<${field}>`;
 };
 
+const resolveDef = (def) => {
+    if (typeof def === 'string') return resolveValue(def);
+    if (!def || typeof def !== 'object') return '';
+    if (def.field) return resolveValue(def.field);
+    const parts = (Array.isArray(def.compose) ? def.compose : [])
+        .map((p) => (typeof p === 'string' ? { field: p } : p))
+        .filter((p) => p?.field);
+    if (!parts.length) return '';
+    if (def.op === 'sum') {
+        const nums = parts.map((p) => Number(resolveValue(p.field))).filter((n) => Number.isFinite(n));
+        return nums.length ? String(nums.reduce((a, b) => a + b, 0)) : '';
+    }
+    const sep = typeof def.sep === 'string' ? def.sep : ', ';
+    return parts
+        .map((p) => `${p.prefix || ''}${resolveValue(p.field)}${p.suffix || ''}`)
+        .join(sep);
+};
+
 const FieldBadge = ({ entry, parentStyle }) => {
     if (typeof entry === 'string') {
         return (
@@ -56,7 +74,7 @@ const FieldBadge = ({ entry, parentStyle }) => {
             </Tag>
         );
     }
-    if (entry && typeof entry === 'object' && entry.field) {
+    if (entry && typeof entry === 'object' && (entry.field || entry.compose)) {
         return (
             <Tag
                 style={{
@@ -69,7 +87,7 @@ const FieldBadge = ({ entry, parentStyle }) => {
                     textAlign: entry.fullWidth ? 'center' : undefined,
                 }}
             >
-                {resolveValue(entry.field)}
+                {resolveDef(entry)}
             </Tag>
         );
     }
@@ -132,7 +150,7 @@ const Cards = ({ items, columns = 1 }) => (
                 padding: '6px 8px',
                 textAlign: 'center',
             }}>
-                <div style={{ fontWeight: 600, fontSize: 14 }}>{formatCardValue(resolveValue(it.field), it.decimals)}</div>
+                <div style={{ fontWeight: 600, fontSize: 14 }}>{formatCardValue(resolveDef(it), it.decimals)}</div>
                 <Text type="secondary" style={{ fontSize: 11 }}>{it.label}</Text>
             </div>
         ))}
@@ -142,7 +160,7 @@ const Cards = ({ items, columns = 1 }) => (
 const ListItems = ({ items }) => (
     <div>
         {items.map((it, i) => {
-            const value = resolveValue(it.field);
+            const value = resolveDef(it);
             const valueEl = it.href
                 ? <span style={{ fontSize: 12, color: '#5C2472', textDecoration: 'underline' }}>{value}</span>
                 : <Text style={{ fontSize: 12 }}>{value}</Text>;
@@ -176,7 +194,7 @@ const ICON_GLYPH = {
 const IconTexts = ({ items }) => (
     <Space orientation="vertical" size={4} style={{ width: '100%' }}>
         {items.map((it, i) => {
-            const display = it.label || resolveValue(it.field);
+            const display = it.label || resolveDef(it);
             const isLink = !!it.href || ['ubicacion', 'celular', 'web'].includes(it.icon);
             return (
                 <Space key={i} size={6}>
@@ -217,7 +235,7 @@ const resolveBodyOrder = (cfg) => {
 };
 
 const renderTextItem = (it, idx) => {
-    const value = it.field ? resolveValue(it.field) : null;
+    const value = (it.field || it.compose) ? resolveDef(it) : null;
     const label = it.label || null;
     if (!label && !value) return null;
     const content = label && value ? <><strong>{label}</strong>: {value}</> : (value || label);
@@ -274,9 +292,11 @@ export default function InfoBoxPreview({ params, value }) {
     }
 
     const headerText = cfg.headerField
-        ? (DUMMY[cfg.headerField] !== undefined || /^[a-z_][a-z0-9_]*$/i.test(cfg.headerField)
-            ? resolveValue(cfg.headerField)
-            : cfg.headerField)
+        ? (typeof cfg.headerField !== 'string'
+            ? resolveDef(cfg.headerField)
+            : (DUMMY[cfg.headerField] !== undefined || /^[a-z_][a-z0-9_]*$/i.test(cfg.headerField)
+                ? resolveValue(cfg.headerField)
+                : cfg.headerField))
         : null;
 
     const bodyOrder = resolveBodyOrder(cfg);
