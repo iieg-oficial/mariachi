@@ -9,6 +9,30 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.34.0] - 2026-08-28
+
+### Cambiado: el CPU se representa con sus núcleos, sin barra de promedio
+
+La barra del promedio y la rejilla de núcleos decían lo mismo dos veces, y la primera decía menos.
+Ahora los núcleos ocupan ese lugar y el promedio se queda como cifra a la derecha, con la carga
+debajo.
+
+**Los núcleos pasan de barras a una rejilla de cuadros**, de a diez por fila, con la intensidad del
+color según el uso —los ociosos casi transparentes, los saturados a fondo—. Con veinte núcleos las
+barras de altura variable se leían como un ecualizador y costaba ubicar cuál era cuál; los cuadros
+mantienen su sitio y se comparan de un golpe, que es como lo resuelven `htop` y Proxmox.
+
+### Corregido: el caché ya no cuenta como memoria libre
+
+La cifra de libres se calculaba restando lo usado y el caché al total, y eso regalaba el slab no
+reclamable: daba más memoria libre de la que hay. Ahora se toma `MemFree` tal como lo reporta el
+kernel, que es la misma columna que muestra `top`.
+
+### Cambiado: la línea del sistema se acomoda según la pantalla
+
+En escritorio va a la derecha del identificador del nodo, sobre la misma línea; en móvil baja a su
+propia fila.
+
 ## [2.33.0] - 2026-08-28
 
 ### Agregado: los núcleos del CPU, uno por uno

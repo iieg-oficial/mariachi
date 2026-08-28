@@ -70,28 +70,37 @@ export const Medidor = ({ llave, etiqueta, valor, absoluto, nota }) => (
     </div>
 );
 
+const intensidadCore = (uso) => {
+    if (uso >= 80) return 1;
+    if (uso >= 50) return 0.75;
+    if (uso >= 20) return 0.5;
+    if (uso >= 5) return 0.28;
+    return 0.12;
+};
+
 export const RejillaCores = ({ cores }) => (
-    <div style={{ display: 'flex', gap: 2, alignItems: 'flex-end', height: 26 }}>
+    <div style={{
+        display: 'grid',
+        gridTemplateColumns: `repeat(${Math.min(cores.length, 10)}, 1fr)`,
+        gap: 3,
+    }}>
         {cores.map(({ core, uso }) => (
             <div
                 key={core}
                 title={`core ${core}: ${uso} %`}
                 style={{
-                    flex: 1,
-                    minWidth: 3,
-                    height: `${Math.max(8, uso)}%`,
-                    borderRadius: '1px 1px 0 0',
+                    height: 14,
+                    borderRadius: 3,
                     background: tono('cpu', uso),
-                    opacity: uso < 5 ? 0.35 : 1,
+                    opacity: intensidadCore(uso),
                 }}
             />
         ))}
     </div>
 );
 
-export const MedidorMemoria = ({ usado, cache, total }) => {
+export const MedidorMemoria = ({ usado, cache, total, libre }) => {
     const pct = (valor) => (total ? Math.max(0, Math.min(100, (valor / total) * 100)) : 0);
-    const libre = Math.max(0, total - usado - cache);
     return (
         <div style={{ display: 'grid', gridTemplateColumns: '48px 1fr 116px', gap: 8, alignItems: 'center' }}>
             <Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase' }}>RAM</Text>

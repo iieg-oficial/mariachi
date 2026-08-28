@@ -73,24 +73,29 @@ export default function NodoDetalleModal({ nodo, open, onClose }) {
             style={compacto ? { top: 0, maxWidth: '100%', margin: 0, paddingBottom: 0 } : undefined}
             styles={compacto ? { body: { maxHeight: 'calc(100dvh - 110px)', overflowY: 'auto' } } : undefined}
             title={(
-                <div style={{ paddingRight: 30, whiteSpace: 'normal' }}>
-                    <Space size={10} align="center">
+                <div style={{
+                    display: 'flex',
+                    flexDirection: compacto ? 'column' : 'row',
+                    alignItems: compacto ? 'flex-start' : 'baseline',
+                    gap: compacto ? 2 : 12,
+                    paddingRight: 30,
+                    whiteSpace: 'normal',
+                }}>
+                    <Space size={10} align="center" style={{ flex: 'none' }}>
                         {!esInternet && <Badge status={badge.status} />}
                         <Text strong style={{ fontFamily: 'monospace', fontSize: 18 }}>
                             {esInternet ? 'Internet' : nodo.node}
                         </Text>
                     </Space>
                     {sistema && (
-                        <div style={{ marginTop: 2 }}>
-                            <Text style={{
-                                fontSize: 12,
-                                fontWeight: 400,
-                                fontFamily: 'monospace',
-                                color: 'rgba(0,0,0,0.45)',
-                            }}>
-                                {sistema}
-                            </Text>
-                        </div>
+                        <Text style={{
+                            fontSize: 12,
+                            fontWeight: 400,
+                            fontFamily: 'monospace',
+                            color: 'rgba(0,0,0,0.45)',
+                        }}>
+                            {sistema}
+                        </Text>
                     )}
                 </div>
             )}
@@ -124,27 +129,37 @@ export default function NodoDetalleModal({ nodo, open, onClose }) {
                     <div>
                         <TituloSeccion texto="Recursos" />
                         <Space orientation="vertical" size={8} style={{ width: '100%' }}>
-                            <Medidor
-                                llave="cpu"
-                                etiqueta="CPU"
-                                valor={host.cpu_used_percent ?? usoCpu}
-                                absoluto={(host.cpu_used_percent ?? usoCpu) != null
-                                    ? `${host.cpu_used_percent ?? usoCpu} %`
-                                    : '—'}
-                                nota={host.load_1m != null
-                                    ? `carga ${host.load_1m} en ${host.cores} núcleos`
-                                    : null}
-                            />
-                            {host.cores_uso?.length > 0 && (
-                                <div style={{ paddingLeft: 56 }}>
-                                    <RejillaCores cores={host.cores_uso} />
+                            <div style={{
+                                display: 'grid',
+                                gridTemplateColumns: '48px 1fr 116px',
+                                gap: 8,
+                                alignItems: 'center',
+                            }}>
+                                <Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase' }}>
+                                    CPU
+                                </Text>
+                                {host.cores_uso?.length > 0
+                                    ? <RejillaCores cores={host.cores_uso} />
+                                    : <span />}
+                                <div style={{ textAlign: 'right' }}>
+                                    <Text type="secondary" style={{ fontSize: 11, fontVariantNumeric: 'tabular-nums' }}>
+                                        {(host.cpu_used_percent ?? usoCpu) != null
+                                            ? `${host.cpu_used_percent ?? usoCpu} %`
+                                            : '—'}
+                                    </Text>
+                                    {host.load_1m != null && (
+                                        <Text type="secondary" style={{ display: 'block', fontSize: 10, opacity: 0.75 }}>
+                                            {`carga ${host.load_1m} en ${host.cores} núcleos`}
+                                        </Text>
+                                    )}
                                 </div>
-                            )}
+                            </div>
                             {host.memory_cache_gb != null ? (
                                 <MedidorMemoria
                                     usado={host.memory_used_gb}
                                     cache={host.memory_cache_gb}
                                     total={host.memory_total_gb}
+                                    libre={host.memory_free_gb ?? 0}
                                 />
                             ) : (
                                 <Medidor

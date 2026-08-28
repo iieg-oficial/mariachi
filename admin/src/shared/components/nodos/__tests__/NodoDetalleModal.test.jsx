@@ -90,11 +90,11 @@ describe('NodoDetalleModal', () => {
         expect(screen.getByText('acervo-init')).toBeInTheDocument();
     });
 
-    it('cada medidor se pinta con el porcentaje que le toca', () => {
+    it('cada medidor se pinta con el porcentaje que le toca (el CPU ya no lleva barra)', () => {
         const { baseElement } = montar();
         const anchos = Array.from(baseElement.querySelectorAll('.ant-progress-track'))
             .map((barra) => barra.style.width);
-        expect(anchos).toEqual(['15%', '41.2%', '0%', '40%']);
+        expect(anchos).toEqual(['41.2%', '0%', '40%']);
     });
 
     it('el CPU se expresa en porcentaje de capacidad, con la carga como nota', () => {
@@ -104,9 +104,9 @@ describe('NodoDetalleModal', () => {
         expect(screen.getByText('carga 1.24 en 8 núcleos')).toBeInTheDocument();
     });
 
-    it('la RAM muestra lo libre sobre el total y el caché como tramo aparte', () => {
-        montar({ ...NODO, host: { ...NODO.host, memory_cache_gb: 6.28 } });
-        expect(screen.getByText('2.5 / 15 GB')).toBeInTheDocument();
+    it('la RAM muestra el libre que reporta el kernel, sin sumarle el caché', () => {
+        montar({ ...NODO, host: { ...NODO.host, memory_cache_gb: 6.28, memory_free_gb: 1.7 } });
+        expect(screen.getByText('1.7 / 15 GB')).toBeInTheDocument();
         expect(screen.getByText('libres · 6.28 GB en caché')).toBeInTheDocument();
     });
 
@@ -152,7 +152,7 @@ describe('NodoDetalleModal', () => {
         expect(screen.getByText('caliente')).toBeInTheDocument();
         expect(screen.getByText('39°')).toBeInTheDocument();
         expect(screen.getByText('fría')).toBeInTheDocument();
-        expect(baseElement.querySelectorAll('.ant-progress-track')).toHaveLength(4);
+        expect(baseElement.querySelectorAll('.ant-progress-track')).toHaveLength(3);
     });
 
     it('sin sensores no dibuja la sección de temperaturas', () => {
