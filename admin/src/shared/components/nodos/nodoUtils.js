@@ -14,8 +14,6 @@ export const ESCALA_TEMPERATURA = [
     { hasta: 85, color: SEMANTIC.warning, texto: 'caliente' },
 ];
 
-export const TEMPERATURA_TOPE = 100;
-
 export const tono = (llave, valor) => {
     if (valor == null) return SEMANTIC.neutral;
     if (valor >= UMBRAL[llave]) return SEMANTIC.danger;
