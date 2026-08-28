@@ -9,6 +9,22 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.30.1] - 2026-08-28
+
+### Cambiado: las temperaturas se leen como cifras, no como barras
+
+Una barra promete una escala llena y para la temperatura eso confunde: 78 sobre 100 no significa
+«78 % de calor disponible». Ahora cada sensor es una cifra grande, coloreada según el tramo, con su
+nombre y una palabra debajo —fría, templada, caliente, muy caliente—. El número manda y el color lo
+refuerza.
+
+### Agregado: el dominio en el nodo de Internet y el puerto en cada conexión
+
+El nodo de Internet muestra el dominio por el que se está entrando, en lugar del texto genérico. Y
+las conexiones dicen ahora por qué puerto se midieron —`:6432 · 6 ms`—, igual que la entrada pública
+ya mostraba sus 80 y 443. Con seis enlaces el mapa lo absorbe sin apretarse; si algún día son
+muchos más, el puerto es lo primero que se puede recortar.
+
 ## [2.30.0] - 2026-08-28
 
 ### Cambiado: las temperaturas tienen su propia sección, con barra por sensor

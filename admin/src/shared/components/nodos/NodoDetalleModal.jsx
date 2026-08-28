@@ -56,20 +56,25 @@ const TEMPERATURA_TOPE = 100;
 const gradoDe = (grados) => ESCALA_TEMPERATURA.find((t) => grados < t.hasta)
     || { color: SEMANTIC.danger, texto: 'muy caliente' };
 
-const MedidorTemperatura = ({ nombre, grados }) => {
+const CifraTemperatura = ({ nombre, grados }) => {
     const tramo = gradoDe(grados);
     return (
-        <div style={{ display: 'grid', gridTemplateColumns: '76px 1fr 116px', gap: 8, alignItems: 'center' }}>
-            <Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase' }}>{nombre}</Text>
-            <Progress
-                percent={Math.min(100, Math.round((grados / TEMPERATURA_TOPE) * 100))}
-                showInfo={false}
-                size="small"
-                strokeColor={tramo.color}
-                railColor="#f5f5f5"
-            />
-            <Text style={{ fontSize: 11, textAlign: 'right', fontFamily: 'monospace', color: tramo.color }}>
-                {`${grados} °C · ${tramo.texto}`}
+        <div style={{ minWidth: 88 }}>
+            <Text style={{
+                display: 'block',
+                fontSize: 26,
+                fontWeight: 600,
+                lineHeight: 1.1,
+                color: tramo.color,
+                fontVariantNumeric: 'tabular-nums',
+            }}>
+                {`${grados}°`}
+            </Text>
+            <Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                {nombre}
+            </Text>
+            <Text style={{ display: 'block', fontSize: 10, color: tramo.color }}>
+                {tramo.texto}
             </Text>
         </div>
     );
@@ -213,15 +218,15 @@ export default function NodoDetalleModal({ nodo, open, onClose }) {
                 {temperaturas.length > 0 && (
                     <div>
                         <TituloSeccion texto="Temperaturas" conteo={`${temperaturas.length}`} />
-                        <Space orientation="vertical" size={8} style={{ width: '100%' }}>
+                        <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap' }}>
                             {temperaturas.map((sensor) => (
-                                <MedidorTemperatura
+                                <CifraTemperatura
                                     key={sensor.nombre}
                                     nombre={sensor.nombre}
                                     grados={sensor.celsius}
                                 />
                             ))}
-                        </Space>
+                        </div>
                     </div>
                 )}
 

@@ -23,12 +23,22 @@ describe('aristasDe', () => {
             nodo('S1', { peers: { S4: { status: 'ok', latency_ms: 6 } } }),
             nodo('S4'),
         ]);
-        expect(aristas).toEqual([{ de: 'S1', a: 'S4', ms: 6, estado: 'ok', detalle: null }]);
+        expect(aristas).toEqual([
+            { de: 'S1', a: 'S4', ms: 6, puerto: null, estado: 'ok', detalle: null },
+        ]);
     });
 
     it('ignora un peer que no esta en el mapa para no dibujar al vacio', () => {
         const aristas = aristasDe([nodo('S1', { peers: { S9: { status: 'ok', latency_ms: 4 } } })]);
         expect(aristas).toEqual([]);
+    });
+
+    it('la arista lleva el puerto por el que se midio', () => {
+        const aristas = aristasDe([
+            nodo('S1', { peers: { S4: { status: 'ok', latency_ms: 6, port: 6432 } } }),
+            nodo('S4'),
+        ]);
+        expect(aristas[0].puerto).toBe(6432);
     });
 
     it('un peer que no responde queda como arista caida', () => {

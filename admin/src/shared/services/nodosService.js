@@ -41,6 +41,11 @@ const ENTRADA_PUBLICA = {
     ],
 };
 
+const dominioActual = () => {
+    if (typeof window === 'undefined') return null;
+    return window.location.hostname || null;
+};
+
 const PREFIJO_ESPEJO = 'pmx-';
 
 export const hostnameDe = (nodo, ambiente) => {
@@ -67,6 +72,7 @@ export const aristasDe = (nodos) => {
                 de: nodo.node,
                 a: destino,
                 ms: check.latency_ms ?? null,
+                puerto: check.port ?? null,
                 estado: check.status === 'ok' ? 'ok' : 'down',
                 detalle: check.detail || null,
             });
@@ -82,7 +88,7 @@ export const getNodos = async (eventos = 20) => {
     const ambiente = res.data?.environment ?? null;
     const reportados = res.data?.nodos ?? [];
     const conEntrada = reportados.some((n) => n.node === NODO_ENTRADA)
-        ? [ENTRADA_PUBLICA, ...reportados]
+        ? [{ ...ENTRADA_PUBLICA, dominio: dominioActual() }, ...reportados]
         : reportados;
     const nodos = acomodar(conEntrada, ambiente);
     const aristas = aristasDe(nodos);

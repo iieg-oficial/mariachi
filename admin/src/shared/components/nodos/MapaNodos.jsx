@@ -8,6 +8,13 @@ import { NODO_INTERNET } from '@shared/services/nodosService';
 const { Text } = Typography;
 const { useBreakpoint } = Grid;
 
+const etiquetaArista = (arista) => {
+    if (arista.publica) return ':80 · :443';
+    if (arista.estado !== 'ok') return 'sin respuesta';
+    const latencia = `${arista.ms ?? '—'} ms`;
+    return arista.puerto ? `:${arista.puerto} · ${latencia}` : latencia;
+};
+
 const ANCHO_BASE = 900;
 const ZOOM_MINIMO = 1;
 const ZOOM_MAXIMO = 3;
@@ -106,7 +113,7 @@ export default function MapaNodos({ nodos, aristas, onSeleccionar }) {
                             textAnchor="middle" fill={color}
                             style={{ fontSize: 10, fontFamily: 'monospace' }}
                         >
-                            {arista.publica ? '80 · 443' : (arista.estado === 'ok' ? `${arista.ms ?? '—'} ms` : 'sin respuesta')}
+                            {etiquetaArista(arista)}
                         </text>
                         {arista.estado === 'ok' && (
                             <circle r={4.5} fill={color} opacity={0} data-arista={indice} />
@@ -146,7 +153,7 @@ export default function MapaNodos({ nodos, aristas, onSeleccionar }) {
                         {esInternet ? (
                             <text x={nodo.x + nodo.w / 2} y={nodo.y + 47} textAnchor="middle"
                                 fill="rgba(0,0,0,0.45)" style={{ fontSize: 10 }}>
-                                entrada pública
+                                {nodo.dominio || 'entrada pública'}
                             </text>
                         ) : (
                             <>

@@ -103,7 +103,7 @@ describe('NodoDetalleModal', () => {
         expect(screen.getByText('1.24 · 8c')).toBeInTheDocument();
     });
 
-    it('las temperaturas van en su propia sección, una barra por sensor', () => {
+    it('las temperaturas van en su propia sección, como cifras', () => {
         const { baseElement } = montar({
             ...NODO,
             host: {
@@ -118,16 +118,17 @@ describe('NodoDetalleModal', () => {
         });
         expect(screen.getByText('Temperaturas')).toBeInTheDocument();
         expect(screen.getByText('3')).toBeInTheDocument();
-        expect(screen.getByText('78 °C · caliente')).toBeInTheDocument();
-        expect(screen.getByText('62 °C · templada')).toBeInTheDocument();
-        expect(screen.getByText('39 °C · fría')).toBeInTheDocument();
-        expect(baseElement.querySelectorAll('.ant-progress-track')).toHaveLength(7);
+        expect(screen.getByText('78°')).toBeInTheDocument();
+        expect(screen.getByText('caliente')).toBeInTheDocument();
+        expect(screen.getByText('39°')).toBeInTheDocument();
+        expect(screen.getByText('fría')).toBeInTheDocument();
+        expect(baseElement.querySelectorAll('.ant-progress-track')).toHaveLength(4);
     });
 
     it('sin sensores no dibuja la sección de temperaturas', () => {
         montar();
         expect(screen.queryByText('Temperaturas')).not.toBeInTheDocument();
-        expect(screen.queryByText(/°C/)).not.toBeInTheDocument();
+        expect(screen.queryByText(/°$/)).not.toBeInTheDocument();
     });
 
     it('sin reportero lo dice en vez de enseñar ceros', () => {
