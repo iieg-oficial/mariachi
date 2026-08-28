@@ -1,20 +1,21 @@
 #!/usr/bin/env bash
 # Corre el suite de pytest del backend reproduciendo el entorno de CI.
 #
-# Estrategia: arranca un contenedor desechable a partir de la imagen
-# `mariachi-api:latest` (build del Dockerfile) con env vars de test
-# (sqlite:///:memory:, secrets dummy, ENV=test). Si pytest no esta instalado
-# en la imagen lo agrega al vuelo (con httpx2, que usa el TestClient de
-# starlette). Si la imagen no existe, intenta `pytest`
-# del PATH local.
+# Estrategia: arranca un contenedor desechable con env vars de test
+# (sqlite:///:memory:, secrets dummy, ENV=test). Prefiere una imagen que ya
+# traiga pytest con las versiones que fija el pyproject —el target `test` del
+# Dockerfile, o la de desarrollo— y cae en la de produccion instalandolo al
+# vuelo. Si no hay ninguna imagen, intenta `pytest` del PATH local.
 #
 # Variables opcionales:
 #   PYTEST_ARGS  flags extra para pytest (default: "-q")
-#   API_IMAGE    nombre de la imagen (default: mariachi-api:latest)
+#   API_IMAGE    fuerza una imagen concreta y omite la busqueda
 
 set -e
 
-API_IMAGE="${API_IMAGE:-mariachi-api:latest}"
+API_IMAGE="${API_IMAGE:-}"
+IMAGENES_CON_PYTEST="mariachi-api-test:latest mariachi-api-dev:latest"
+IMAGEN_PROD="mariachi-api:latest"
 PYTEST_ARGS="${PYTEST_ARGS:--q}"
 
 API_DIR="$(cd "$(dirname "$0")/.." && pwd)"
@@ -42,14 +43,27 @@ TEST_ENV=(
     -e ACERVO_IIEG_SECRET_KEY=test-iieg-secret
 )
 
+trae_pytest() {
+    docker image inspect "$1" >/dev/null 2>&1 \
+        && docker run --rm --entrypoint sh "$1" -c 'python -c "import pytest"' >/dev/null 2>&1
+}
+
+if [ -z "$API_IMAGE" ]; then
+    for candidata in $IMAGENES_CON_PYTEST; do
+        if trae_pytest "$candidata"; then
+            API_IMAGE="$candidata"
+            break
+        fi
+    done
+    [ -z "$API_IMAGE" ] && API_IMAGE="$IMAGEN_PROD"
+fi
+
 if docker image inspect "$API_IMAGE" >/dev/null 2>&1; then
-    # Container temporal sobre la imagen prod-ish. Instala pytest al vuelo si
-    # la imagen no lo trae (la imagen `production` del Dockerfile no incluye
-    # los `[dev]` extras). Monta el codigo en /app para que recoja los
-    # cambios locales sin rebuild.
+    # Monta el codigo en /app para que recoja los cambios locales sin rebuild.
     PYTEST_CHECK='python -c "import pytest" 2>/dev/null || pip install -q pytest pytest-asyncio httpx2 >/dev/null'
     DOCKER_NET=()
-    if ! docker run --rm --entrypoint sh "$API_IMAGE" -c 'python -c "import pytest"' >/dev/null 2>&1; then
+    if ! trae_pytest "$API_IMAGE"; then
+        echo "[run-tests] ${API_IMAGE} no trae pytest; se instalara al vuelo (corre 'docker build --target test -t mariachi-api-test:latest api' para evitarlo)" >&2
         if ! docker run --rm --entrypoint sh "$API_IMAGE" -c 'getent hosts pypi.org' >/dev/null 2>&1; then
             echo "[run-tests] el contenedor no resuelve DNS; le presto la red del host para instalar pytest" >&2
             DOCKER_NET=(--network=host)

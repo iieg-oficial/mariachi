@@ -25,6 +25,10 @@ EXPOSE 8000
 ENV ENV=development
 CMD ["./scripts/start_backend.sh"]
 
+FROM development AS test
+ENV ENV=test
+CMD ["pytest", "-q"]
+
 FROM base AS production
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install -e "."
