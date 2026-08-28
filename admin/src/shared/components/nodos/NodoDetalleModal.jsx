@@ -73,6 +73,7 @@ export default function NodoDetalleModal({ nodo, open, onClose }) {
     const dominio = typeof window !== 'undefined' ? window.location.origin : null;
 
     const sistema = [
+        nodo.hostname,
         host.ip,
         host.os,
         host.kernel && `kernel ${host.kernel}`,
@@ -93,11 +94,6 @@ export default function NodoDetalleModal({ nodo, open, onClose }) {
                     <Text strong style={{ fontFamily: 'monospace', fontSize: 18 }}>
                         {esInternet ? 'Internet' : nodo.node}
                     </Text>
-                    {nodo.hostname && (
-                        <Text type="secondary" style={{ fontFamily: 'monospace', fontSize: 13 }}>
-                            {nodo.hostname}
-                        </Text>
-                    )}
                 </Space>
             )}
         >
@@ -153,7 +149,7 @@ export default function NodoDetalleModal({ nodo, open, onClose }) {
                             absoluto={discoLibre(host)}
                         />
                         {sistema && (
-                            <Text type="secondary" style={{ fontSize: 11, fontFamily: 'monospace' }}>
+                            <Text style={{ fontSize: 12, fontFamily: 'monospace', color: 'rgba(0,0,0,0.65)' }}>
                                 {sistema}
                             </Text>
                         )}
@@ -182,7 +178,6 @@ export default function NodoDetalleModal({ nodo, open, onClose }) {
                                             gap: 8,
                                             padding: '5px 10px',
                                             borderRadius: 6,
-                                            borderLeft: `3px solid ${abierto ? SEMANTIC.success : SEMANTIC.danger}`,
                                             background: abierto ? SEMANTIC.successSoft : SEMANTIC.dangerSoft,
                                         }}
                                     >

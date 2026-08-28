@@ -40,11 +40,15 @@ const montar = (nodo = NODO) => render(
 );
 
 describe('NodoDetalleModal', () => {
-    it('encabeza con el identificador y el hostname real del servidor', () => {
+    it('encabeza con el identificador y su punto de estado', () => {
         const { baseElement } = montar();
         expect(screen.getByText('S1')).toBeInTheDocument();
-        expect(screen.getByText('gateway')).toBeInTheDocument();
         expect(baseElement.querySelector('.ant-badge-status-success')).toBeTruthy();
+    });
+
+    it('el hostname va en la linea del sistema, donde no lo recorta el titulo', () => {
+        montar();
+        expect(screen.getByText(/^gateway ·/)).toBeInTheDocument();
     });
 
     it('muestra el disco, que antes faltaba', () => {
@@ -54,7 +58,7 @@ describe('NodoDetalleModal', () => {
 
     it('resume el sistema del host en una linea', () => {
         montar({ ...NODO, host: { ...NODO.host, ip: '10.0.0.2', os: 'Ubuntu 24.04 LTS', kernel: '6.8.0-51' } });
-        expect(screen.getByText(/10\.0\.0\.2 · Ubuntu 24\.04 LTS · kernel 6\.8\.0-51/)).toBeInTheDocument();
+        expect(screen.getByText(/gateway · 10\.0\.0\.2 · Ubuntu 24\.04 LTS · kernel 6\.8\.0-51/)).toBeInTheDocument();
     });
 
     it('lista los puertos y cuantos responden', () => {

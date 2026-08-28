@@ -34,6 +34,6 @@ describe('NodosPage con una respuesta real del monitor', () => {
         await screen.findByRole('dialog');
 
         expect(screen.queryByText('Este nodo no tiene reportero de host')).not.toBeInTheDocument();
-        expect(screen.getByText('gateway')).toBeInTheDocument();
+        expect(screen.getByText(/^gateway ·/)).toBeInTheDocument();
     });
 });

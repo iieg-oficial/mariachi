@@ -9,6 +9,20 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.28.2] - 2026-08-28
+
+### Corregido: el hostname no se alcanzaba a ver
+
+Iba en el título del modal, junto al identificador del nodo, y ahí Ant Design recorta con puntos
+suspensivos: en pantallas normales el nombre del servidor se perdía. Ahora encabeza la línea de
+sistema del cuerpo —`gateway · Ubuntu 26.04 LTS · kernel 7.0.0-30`—, donde hay ancho de sobra y
+además queda junto al resto de la identidad de la máquina.
+
+### Cambiado: los puertos pierden la franja de color
+
+Se quedan con el fondo suave y el número en monoespaciada. La franja lateral repetía lo que el color
+del fondo ya decía.
+
 ## [2.28.1] - 2026-08-28
 
 ### Corregido: los medidores del nodo salían en cero
