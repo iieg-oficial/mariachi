@@ -9,6 +9,15 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.34.3] - 2026-08-28
+
+### Corregido: el hueco entre las barras y sus cifras
+
+La columna de la derecha medía 116 px fijos con el texto pegado a su borde, así que entre el final de
+la barra y el número quedaba un vacío mucho mayor que el que separa la etiqueta de la barra. Baja a
+92 px —lo que ocupa la cifra más larga— y la etiqueta a 44, con lo que los tres bloques quedan a la
+misma distancia. Aplica igual a los medidores y a la rejilla de núcleos.
+
 ## [2.34.2] - 2026-08-28
 
 ### Corregido: las temperaturas no cuadraban con su leyenda

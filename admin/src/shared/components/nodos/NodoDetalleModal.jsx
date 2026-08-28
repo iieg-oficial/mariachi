@@ -131,7 +131,7 @@ export default function NodoDetalleModal({ nodo, open, onClose }) {
                         <Space orientation="vertical" size={8} style={{ width: '100%' }}>
                             <div style={{
                                 display: 'grid',
-                                gridTemplateColumns: '48px 1fr 116px',
+                                gridTemplateColumns: '44px 1fr 92px',
                                 gap: 8,
                                 alignItems: 'center',
                             }}>

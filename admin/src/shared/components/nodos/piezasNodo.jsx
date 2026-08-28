@@ -48,7 +48,7 @@ export const CifraTemperatura = ({ nombre, grados }) => {
 };
 
 export const Medidor = ({ llave, etiqueta, valor, absoluto, nota }) => (
-    <div style={{ display: 'grid', gridTemplateColumns: '48px 1fr 116px', gap: 8, alignItems: 'center' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '44px 1fr 92px', gap: 8, alignItems: 'center' }}>
         <Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase' }}>{etiqueta}</Text>
         <Progress
             percent={valor ?? 0}
@@ -115,7 +115,7 @@ export const RejillaCores = ({ cores }) => (
 export const MedidorMemoria = ({ usado, cache, total, libre }) => {
     const pct = (valor) => (total ? Math.max(0, Math.min(100, (valor / total) * 100)) : 0);
     return (
-        <div style={{ display: 'grid', gridTemplateColumns: '48px 1fr 116px', gap: 8, alignItems: 'center' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '44px 1fr 92px', gap: 8, alignItems: 'center' }}>
             <Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase' }}>RAM</Text>
             <div style={{
                 display: 'flex',
