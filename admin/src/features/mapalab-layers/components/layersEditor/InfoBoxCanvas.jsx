@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Dropdown, Empty, Tooltip, Typography } from 'antd';
+import { Button, Dropdown, Tooltip, Typography } from 'antd';
 import { CopyOutlined, DeleteOutlined, HolderOutlined, LockOutlined, PlusOutlined } from '@ant-design/icons';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from '@dnd-kit/sortable';
@@ -114,6 +114,7 @@ export default function InfoBoxCanvas({
     onDuplicateBlock,
     onRemoveBlock,
     atenuado = false,
+    soloVista = false,
 }) {
     const { features } = useSampleFeatures();
     const rootRef = useRef(null);
@@ -157,24 +158,38 @@ export default function InfoBoxCanvas({
                 {tieneCabecera ? (
                     <div
                         data-block-key="headerField"
-                        onClick={() => onSeleccion('headerField')}
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); onSeleccion('headerField'); } }}
+                        onClick={() => !soloVista && onSeleccion('headerField')}
+                        role={soloVista ? undefined : 'button'}
+                        tabIndex={soloVista ? undefined : 0}
+                        onKeyDown={(e) => { if (!soloVista && e.key === 'Enter') { e.preventDefault(); onSeleccion('headerField'); } }}
                         style={{
                             background: '#EFF3FC', padding: '9px 11px', borderRadius: '8px 8px 0 0',
                             position: 'relative', cursor: 'pointer',
-                            outline: seleccion === 'headerField' ? '1px solid #5C2472' : 'none',
+                            outline: !soloVista && seleccion === 'headerField' ? '1px solid #5C2472' : 'none',
                         }}
                     >
-                        <Tooltip title="El título siempre va arriba y no se mueve ni se duplica" placement="left">
-                            <LockOutlined style={{ position: 'absolute', left: -20, top: 12, fontSize: 10, color: '#bfbfbf' }} />
-                        </Tooltip>
+                        {!soloVista && (
+                            <Tooltip title="El título siempre va arriba y no se mueve ni se duplica" placement="left">
+                                <LockOutlined style={{ position: 'absolute', left: -22, top: 12, fontSize: 10, color: '#bfbfbf' }} />
+                            </Tooltip>
+                        )}
                         <Text strong style={{ fontSize: 13, color: '#2E4372' }}>
                             {plan?.title || <Text type="secondary" style={{ fontSize: 12 }}>Sin título</Text>}
                         </Text>
                     </div>
-                ) : null}
+                ) : (!soloVista && (
+                    <div style={{ padding: '6px 11px', borderBottom: '1px dashed #e8e2ee', borderRadius: '8px 8px 0 0' }}>
+                        <Button
+                            type="text"
+                            size="small"
+                            icon={<PlusOutlined />}
+                            onClick={() => onAddBlock('headerField')}
+                            style={{ fontSize: 11, height: 20, color: '#8c8c8c' }}
+                        >
+                            Agregar título
+                        </Button>
+                    </div>
+                ))}
 
                 <div style={{ padding: '8px 11px 12px', display: 'flex', flexDirection: 'column' }}>
                     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={alSoltar}>
@@ -184,33 +199,37 @@ export default function InfoBoxCanvas({
                                 const def = blockDef(typeOfKey(llave));
                                 return (
                                     <div key={llave}>
-                                        {i > 0 && <Insertador onAdd={insertar(orden[i - 1], true)} duplicable />}
-                                        <Seccion
-                                            id={llave}
-                                            etiqueta={def?.label || llave}
-                                            seleccionada={seleccion === llave}
-                                            onSelect={() => onSeleccion(llave)}
-                                            onDuplicate={() => onDuplicateBlock(llave)}
-                                            onRemove={() => onRemoveBlock(llave)}
-                                        >
-                                            {bloque ? pintarBloque(bloque) : (
-                                                <Text type="secondary" style={{ fontSize: 11, fontStyle: 'italic' }}>
-                                                    {def?.label}: sin datos todavía
-                                                </Text>
-                                            )}
-                                        </Seccion>
+                                        {i > 0 && !soloVista && <Insertador onAdd={insertar(orden[i - 1])} duplicable />}
+                                        {soloVista ? (
+                                            <div>{bloque ? pintarBloque(bloque) : null}</div>
+                                        ) : (
+                                            <Seccion
+                                                id={llave}
+                                                etiqueta={def?.label || llave}
+                                                seleccionada={seleccion === llave}
+                                                onSelect={() => onSeleccion(llave)}
+                                                onDuplicate={() => onDuplicateBlock(llave)}
+                                                onRemove={() => onRemoveBlock(llave)}
+                                            >
+                                                {bloque ? pintarBloque(bloque) : (
+                                                    <Text type="secondary" style={{ fontSize: 11, fontStyle: 'italic' }}>
+                                                        {def?.label}: sin datos todavía
+                                                    </Text>
+                                                )}
+                                            </Seccion>
+                                        )}
                                     </div>
                                 );
                             })}
                         </SortableContext>
                     </DndContext>
-                    <Insertador onAdd={insertar(orden[orden.length - 1], orden.length > 0)} duplicable={orden.length > 0} permanente />
-                    {!tieneCabecera && orden.length === 0 && (
-                        <Empty
-                            image={Empty.PRESENTED_IMAGE_SIMPLE}
-                            description={<Text type="secondary" style={{ fontSize: 12 }}>Agrega una sección para empezar</Text>}
-                            style={{ margin: '4px 0' }}
-                        />
+                    {!soloVista && (
+                        <Insertador onAdd={insertar(orden[orden.length - 1])} duplicable={orden.length > 0} permanente />
+                    )}
+                    {!tieneCabecera && orden.length === 0 && !soloVista && (
+                        <Text type="secondary" style={{ fontSize: 11, textAlign: 'center', padding: '6px 0' }}>
+                            Agrega una sección para empezar
+                        </Text>
                     )}
                 </div>
             </div>

@@ -9,6 +9,41 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.61.0] - 2026-08-31
+
+### Corregido: en el lienzo no había forma de ponerle título a la tarjetita
+
+El menú del **+** excluye el encabezado —no se duplica ni se mueve— y con eso quedó sin puerta:
+una capa sin título no podía ganarlo. Ahora, cuando falta, la tarjeta muestra arriba una franja
+punteada con **«Agregar título»**.
+
+### Cambiado: el lienzo ya no lleva vista previa al lado
+
+Era la misma tarjeta dos veces. En su lugar hay un botón **«Ver cómo queda»** sobre la propia
+tarjeta: apaga las asas, los insertadores y la selección, y la deja como se pinta en el visor.
+**«Volver a editar»** regresa. La columna de vista previa se sigue mostrando en el modo Lista.
+
+Las asas y los botones de duplicar y quitar viven fuera de los 239 px de la tarjeta, así que el
+lienzo reserva 30 px a cada lado en vez de recortarlos contra la canaleta.
+
+### Cambiado: las plantillas se ofrecen al centro cuando no hay nada
+
+Con la tarjetita vacía, el botón chico del encabezado no se ve. Pasa a ser un panel centrado
+—«Esta capa todavía no tiene tarjetita»— con el botón en primario. En cuanto hay una sección, el
+panel desaparece y el botón vuelve a su sitio en el encabezado.
+
+### Eliminado: el modo Texto
+
+Duró una versión. La idea era sustituir al JSON, y al construirlo quedó claro que no lo sustituye:
+hay configuraciones que no puede escribir sin perder algo, así que el JSON tenía que quedarse de
+todos modos. Dos herramientas para expertos que hacen lo mismo es una de más. Se van
+`infoboxTexto.js`, su editor y sus pruebas; el segmento vuelve a **Lienzo · Lista · JSON**.
+
+### Eliminado: el interruptor Escritorio / Móvil de la vista previa
+
+No aportaba: la diferencia real entre las dos variantes es de tamaños de letra, y para eso no hace
+falta un control.
+
 ## [2.60.0] - 2026-08-31
 
 ### Agregado: el texto corto, la tarjetita en líneas legibles

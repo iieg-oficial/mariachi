@@ -1038,11 +1038,10 @@ export default function LayerEditPage() {
                                         availableFields={availableFields}
                                         inherited={inheritedInfobox}
                                         nodeType={watchedNodeType}
-                                        onModeChange={setInfoboxMode}
                                     />
                                 </Form.Item>
                             </div>
-                            {previewInfobox && (
+                            {infoboxMode !== 'lienzo' && previewInfobox && (
                                 <div style={{ flex: '0 1 300px', minWidth: 0 }}>
                                     <div style={{ position: 'sticky', top: 0 }}>
                                         <InfoBoxPreviewPanel

@@ -18,6 +18,7 @@ export default function InfoBoxEditorHeader({
     currentLayerId = null,
 }) {
     const [templatesOpen, setTemplatesOpen] = useState(false);
+    const vacia = !currentConfig || Object.keys(currentConfig).length === 0;
 
     return (
         <>
@@ -35,16 +36,39 @@ export default function InfoBoxEditorHeader({
                     </Tooltip>
                 </Space>
                 <Space size={8}>
-                    <Button
-                        size="small"
-                        icon={<AppstoreAddOutlined />}
-                        onClick={() => setTemplatesOpen(true)}
-                    >
-                        Plantillas
-                    </Button>
+                    {!vacia && (
+                        <Button
+                            size="small"
+                            icon={<AppstoreAddOutlined />}
+                            onClick={() => setTemplatesOpen(true)}
+                        >
+                            Plantillas
+                        </Button>
+                    )}
                     <InfoBoxModeSwitch value={mode} onChange={onModeChange} />
                 </Space>
             </div>
+
+            {vacia && (
+                <div style={{
+                    border: '1px dashed #d9cfe0', borderRadius: 8, padding: '28px 20px',
+                    textAlign: 'center', marginBottom: 16,
+                }}>
+                    <Text strong style={{ display: 'block', marginBottom: 4 }}>
+                        Esta capa todavía no tiene tarjetita
+                    </Text>
+                    <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 14 }}>
+                        Empieza con una forma ya armada o copia la de otra capa. Después la ajustas.
+                    </Text>
+                    <Button
+                        type="primary"
+                        icon={<AppstoreAddOutlined />}
+                        onClick={() => setTemplatesOpen(true)}
+                    >
+                        Elegir una plantilla
+                    </Button>
+                </div>
+            )}
             <InfoBoxTemplatesModal
                 open={templatesOpen}
                 onClose={() => setTemplatesOpen(false)}

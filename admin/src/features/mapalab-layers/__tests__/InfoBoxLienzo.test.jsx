@@ -73,4 +73,27 @@ describe('InfoBoxLienzo', () => {
         montar({});
         expect(screen.getByText('Agrega una sección para empezar')).toBeInTheDocument();
     });
+
+    it('sin título ofrece agregarlo', () => {
+        const onChange = vi.fn();
+        montar({ list: [{ label: 'Turno', field: 'turno' }] }, onChange);
+        fireEvent.click(screen.getByText('Agregar título'));
+        expect(onChange.mock.calls.at(-1)[0].headerField).toBe('');
+    });
+
+    it('con título ya no ofrece agregarlo', () => {
+        montar();
+        expect(screen.queryByText('Agregar título')).not.toBeInTheDocument();
+    });
+
+    it('ver cómo queda apaga las asas y los insertadores', () => {
+        montar();
+        expect(screen.getByLabelText('Mover Etiquetas')).toBeInTheDocument();
+        fireEvent.click(screen.getByText('Ver cómo queda'));
+        expect(screen.queryByLabelText('Mover Etiquetas')).not.toBeInTheDocument();
+        expect(screen.queryAllByLabelText('Agregar sección')).toHaveLength(0);
+        expect(screen.getByText(/Así se pinta en el visor/)).toBeInTheDocument();
+        fireEvent.click(screen.getByText('Volver a editar'));
+        expect(screen.getByLabelText('Mover Etiquetas')).toBeInTheDocument();
+    });
 });

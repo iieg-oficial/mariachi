@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Button, Segmented, Space, Tooltip, Typography } from 'antd';
+import { Button, Space, Tooltip, Typography } from 'antd';
 import { LeftOutlined, RightOutlined } from '@ant-design/icons';
 import InfoBoxPreview from './InfoBoxPreview';
 import { referencedFields } from '@shared/infoboxPlan';
@@ -19,7 +19,6 @@ const camposVacios = (props, cfg) => {
 export default function InfoBoxPreviewPanel({ value, inherited = null, hasFeatureType = true }) {
     const { features } = useSampleFeatures();
     const [idx, setIdx] = useState(0);
-    const [variant, setVariant] = useState('desktop');
 
     useEffect(() => { setIdx(0); }, [features]);
 
@@ -34,15 +33,7 @@ export default function InfoBoxPreviewPanel({ value, inherited = null, hasFeatur
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-                <Text strong>Vista previa</Text>
-                <Segmented
-                    size="small"
-                    value={variant}
-                    onChange={setVariant}
-                    options={[{ value: 'desktop', label: 'Escritorio' }, { value: 'mobile', label: 'Móvil' }]}
-                />
-            </div>
+            <Text strong>Vista previa</Text>
 
             {total > 0 && (
                 <Space size={4} align="center">
@@ -67,7 +58,7 @@ export default function InfoBoxPreviewPanel({ value, inherited = null, hasFeatur
                 </Space>
             )}
 
-            <InfoBoxPreview value={value} properties={actual?.properties || null} variant={variant} />
+            <InfoBoxPreview value={value} properties={actual?.properties || null} />
 
             {faltantes.length > 0 && (
                 <Text type="warning" style={{ fontSize: 11 }}>

@@ -95,11 +95,10 @@ export default function InfoboxStandalone({ layer, inherited = null, onSaved }) 
                                 availableFields={availableFields}
                                 inherited={inherited}
                                 nodeType={layer.nodeType || 'leaf'}
-                                onModeChange={setMode}
                             />
                         </Form.Item>
                     </div>
-                    {previewValue && (
+                    {mode !== 'lienzo' && previewValue && (
                         <div style={{ flex: '0 1 300px', minWidth: 0 }}>
                             <div style={{ position: 'sticky', top: 0 }}>
                                 <InfoBoxPreviewPanel
