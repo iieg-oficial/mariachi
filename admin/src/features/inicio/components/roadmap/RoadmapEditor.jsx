@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Button, Card, Form, Input, Select, Space, Switch, Typography } from 'antd';
+import { Button, Card, Form, Input, InputNumber, Select, Space, Switch, Typography } from 'antd';
 import { COLOR_PROYECTO, MARCADORES } from '@features/inicio/constants/roadmapModelo';
 
 const { Text } = Typography;
@@ -7,7 +7,7 @@ const { TextArea } = Input;
 
 const TIPOS = ['mayor', 'lanzamiento', 'joven', 'feature', 'momento', 'muerto', 'legacy', 'porllegar'];
 
-export default function RoadmapEditor({ hito, marcador, guardando, onGuardar, onEliminar, onCerrar, onMarcador, onAgregar }) {
+export default function RoadmapEditor({ hito, hitos, marcador, guardando, onGuardar, onEliminar, onCerrar, onMarcador, onAgregar }) {
     const [form] = Form.useForm();
 
     useEffect(() => {
@@ -62,6 +62,23 @@ export default function RoadmapEditor({ hito, marcador, guardando, onGuardar, on
                             </Form.Item>
                             <Form.Item name="antes" label="Nombre anterior">
                                 <Input />
+                            </Form.Item>
+                            <Form.Item name="naceDe" label="Viene de">
+                                <Select
+                                    allowClear
+                                    showSearch
+                                    placeholder="ninguno"
+                                    optionFilterProp="label"
+                                    options={(hitos || [])
+                                        .filter((h) => h.id !== hito.id)
+                                        .map((h) => ({ value: h.id, label: h.txt }))}
+                                />
+                            </Form.Item>
+                            <Form.Item name="leyenda" label="Qué dice la conexión">
+                                <Input placeholder="se renombra, lo releva, lo sucede" />
+                            </Form.Item>
+                            <Form.Item name="orden" label="Orden en su día">
+                                <InputNumber min={0} step={10} style={{ width: '100%' }} />
                             </Form.Item>
                             <Form.Item name="beta" label="En desarrollo" valuePropName="checked">
                                 <Switch size="small" />

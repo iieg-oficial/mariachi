@@ -228,7 +228,11 @@ export default function RoadmapPanel() {
                     ref={marcoRef}
                     style={{
                         position: 'relative',
-                        display: cargando ? 'none' : 'block',
+                        display: (() => {
+                            if (cargando) return 'none';
+                            return pantallaCompleta ? 'flex' : 'block';
+                        })(),
+                        flexDirection: 'column',
                         colorScheme: 'light',
                         background: '#fff',
                         padding: pantallaCompleta ? 16 : 0,
@@ -256,7 +260,8 @@ export default function RoadmapPanel() {
                         style={{
                             overflow: 'auto',
                             WebkitOverflowScrolling: 'touch',
-                            height: pantallaCompleta ? 'calc(100% - 44px)' : 'auto',
+                            flex: pantallaCompleta ? '1 1 auto' : 'none',
+                            minHeight: 0,
                             display: pantallaCompleta ? 'flex' : 'block',
                         }}
                     >
@@ -287,16 +292,23 @@ export default function RoadmapPanel() {
                         />
                     )}
                     {editando && (
-                        <RoadmapEditor
-                            hito={activo && activo.x0 == null ? activo : null}
-                            marcador={marcador}
-                            guardando={guardando}
-                            onGuardar={alGuardar}
-                            onEliminar={alEliminar}
-                            onCerrar={limpiar}
-                            onMarcador={setMarcador}
-                            onAgregar={alAgregar}
-                        />
+                        <div style={{
+                            flex: 'none',
+                            maxHeight: pantallaCompleta ? '45%' : 'none',
+                            overflowY: pantallaCompleta ? 'auto' : 'visible',
+                        }}>
+                            <RoadmapEditor
+                                hito={activo && activo.x0 == null ? activo : null}
+                                hitos={datos}
+                                marcador={marcador}
+                                guardando={guardando}
+                                onGuardar={alGuardar}
+                                onEliminar={alEliminar}
+                                onCerrar={limpiar}
+                                onMarcador={setMarcador}
+                                onAgregar={alAgregar}
+                            />
+                        </div>
                     )}
                 </div>
             </Card>

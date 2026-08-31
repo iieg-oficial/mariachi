@@ -14,6 +14,7 @@ export const aHito = (fila) => ({
     leyenda: fila.leyenda || undefined,
     beta: fila.beta,
     muerto: fila.muerto,
+    orden: fila.orden,
 });
 
 const aFila = (hito) => ({

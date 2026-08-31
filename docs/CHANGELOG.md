@@ -9,6 +9,62 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.58.0] - 2026-08-31
+
+### Agregado: el modo edición arma sucesiones y desempata hitos
+
+El formulario solo dejaba tocar la etiqueta, las fechas, el proyecto, el tipo y el motivo, así que
+**las conexiones entre hitos no se podían crear desde la pantalla**: había que escribirlas en la
+base a mano. Ahora hay tres campos más:
+
+- **Viene de**, un selector con los demás hitos, que es lo que dibuja la curva punteada.
+- **Qué dice la conexión**, la leyenda que va encima —`se renombra`, `lo releva`, `lo sucede`—.
+- **Orden en su día**, lo único que desempata dos hitos con la misma fecha.
+
+Los seis linajes que ya existían —geoserver a sextante, IGIBot a agent, el portal de mariachi a
+sitio2026 y los dos legados— quedan editables sin tocar SQL.
+
+### Corregido
+
+- **El editor no se veía en pantalla completa.** El marco recortaba con `overflow: hidden` y el
+  lienzo se llevaba todo el alto, así que al seleccionar un hito el formulario quedaba fuera de
+  cuadro. Ahora el marco reparte el alto: el lienzo toma lo que sobra y el editor se queda con hasta
+  un 45% con scroll propio.
+
+---
+
+## [2.57.0] - 2026-08-31
+
+### Cambiado: el tema «Contrato /ontoy» de Documentacion ahora es «Contratos», con dos pestanas
+
+`/ontoy` no era el unico contrato del ecosistema, solo el unico escrito. La pestana pasa a llamarse
+**Contratos** y se parte en dos: `/ontoy`, el contrato entre servicios, y **Base de datos**, el
+contrato entre datos. El enlace viejo `?topic=ontoy` sigue funcionando y abre la pestana `/ontoy`;
+`?sec=base-de-datos` abre la otra.
+
+### Agregado: la pestana «Base de datos» documenta los contratos que no estaban en ningun lado
+
+Se cumplen por nombre, no los valida nadie y fallan en silencio: una columna mal nombrada no da
+error, da una capa vacia o un selector sin meses. Quedan escritos `fecha`, `clave_municipio` y
+`clave_geo`, `geom` con `geom_iieg`/`geom_inegi`, el `fid` que exige el WFS para paginar y los dos
+dialectos de `layer_key`, mas las consultas que detectan cada incumplimiento.
+
+La pantalla es una ficha de consulta —tablas y frases cortas—; la version larga, con el porque de
+cada regla, vive en `context-ame-esta/ecosistema/contratos-de-datos.md`.
+
+### Cambiado: la pestana `/ontoy` se puso al dia
+
+Llevaba sin revisarse desde el contrato v2 original y le faltaba todo lo de huachicol 2.8.0 a 2.16.0.
+Se agregan los campos `node`, `node_reporter`, `host` y `peers`; los checks `informativo: true`, que
+no entran al estado global; las tres formas de servirlo, incluido el stack aparte de
+`compose.ontoy.yaml` y la fusion por `ONTOY_UPSTREAM_URL`; y que el monitor guarda tambien `node` y
+`host` pero ignora `service`, `released_at` y `peers`.
+
+Se corrige la tabla de adopcion, que decia `geoserver` en vez de `sextante` y daba a mariachi y
+mapalab como backend pelado: los once servicios tienen ya su sidecar y su nodo. Y se corrige la
+leccion de exposicion, que estaba al reves: el `deny` va **en el gateway**, porque el rewrite le
+quita el prefijo a la peticion antes de que el nginx del servicio la vea.
+
 ## [2.56.0] - 2026-08-31
 
 ### Corregido: el autoguardado detectaba cambios donde no los habia

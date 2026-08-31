@@ -94,6 +94,17 @@ describe('RoadmapPanel', () => {
         expect(await screen.findByText('Quién recorre la línea')).toBeInTheDocument();
     });
 
+    it('el editor ofrece armar una sucesión con otro hito', async () => {
+        usuario.permisos = ['mariachi.roadmap.manage'];
+        montar();
+        fireEvent.click(await screen.findByRole('button', { name: /editar/i }));
+        fireEvent.click(screen.getByText('mariachi 2').closest('g'));
+
+        expect(await screen.findByText('Viene de')).toBeInTheDocument();
+        expect(screen.getByText('Qué dice la conexión')).toBeInTheDocument();
+        expect(screen.getByText('Orden en su día')).toBeInTheDocument();
+    });
+
     it('guarda un hito editado contra la API', async () => {
         usuario.permisos = ['mariachi.roadmap.manage'];
         api.put.mockResolvedValue({ data: fila({ clave: 'mariachi-2', etiqueta: 'mariachi 3', fecha_eje: '2026-08-10' }) });
