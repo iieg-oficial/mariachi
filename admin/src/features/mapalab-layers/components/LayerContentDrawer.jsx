@@ -3,6 +3,7 @@ import { Drawer, Empty, Spin, Tabs, Tag, Typography } from 'antd';
 import InfoboxStandalone from '@features/mapalab-layers/components/layersEditor/InfoboxStandalone';
 import NoticeStandalone from '@features/mapalab-layers/components/layersEditor/NoticeStandalone';
 import LayerMetadataSection from '@features/mapalab-layers/components/layersEditor/LayerMetadataSection';
+import ColumnasTablaSection from '@features/mapalab-layers/components/layersEditor/ColumnasTablaSection';
 import SldEditor from '@features/mapalab-layers/components/sldEditor/SldEditor';
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
 
@@ -85,6 +86,11 @@ export default function LayerContentDrawer({ open, layerId, onClose, onSaved }) 
             ) : (
                 <Empty description="La capa no tiene feature type definido" />
             ),
+        },
+        {
+            key: 'columnas',
+            label: 'Columnas',
+            children: <ColumnasTablaSection layerKey={layerKey} availableFields={availableFields} />,
         },
         {
             key: 'simbologia',

@@ -8,8 +8,10 @@ from app.api.deps import require_permission, verify_csrf
 from app.api.rate_limit import rate_limit
 from app.core.database import get_dataengine_db
 from app.models.layer import Workspace
+from app.models.columna_tabla import ColumnaTabla
 from app.models.layer_metadata import LayerMetadata, LayerStats
 from app.models.user import Usuario
+from app.schemas.columna_tabla import ColumnasTablaResponse, ColumnasTablaUpdate
 from app.schemas.layer_metadata import (
     LayerMetadataResponse,
     LayerMetadataUpdate,
@@ -209,6 +211,55 @@ async def update_stats(
     db.refresh(row)
     notify_tree_changed()
     return row
+
+
+@router.get('/{layer_key:path}/columnas', response_model=ColumnasTablaResponse)
+async def get_columnas(
+    layer_key: str,
+    db: Session = Depends(get_dataengine_db),
+    current_user: Usuario = Depends(_require_project_editor),
+):
+    layer_key = _canonical_layer_key(db, layer_key)
+    filas = (
+        db.query(ColumnaTabla)
+        .filter(ColumnaTabla.layer_key == layer_key)
+        .order_by(ColumnaTabla.orden, ColumnaTabla.columna)
+        .all()
+    )
+    return ColumnasTablaResponse(layer_key=layer_key, columnas=filas)
+
+
+@router.put('/{layer_key:path}/columnas', response_model=ColumnasTablaResponse)
+async def update_columnas(
+    layer_key: str,
+    data: ColumnasTablaUpdate,
+    db: Session = Depends(get_dataengine_db),
+    current_user: Usuario = Depends(verify_csrf),
+    _admin: Usuario = Depends(_require_manage),
+    _rl: Usuario = Depends(_write_rate_limit),
+):
+    layer_key = _canonical_layer_key(db, layer_key)
+    meta = db.query(LayerMetadata).filter(LayerMetadata.layer_key == layer_key).first()
+    if not meta:
+        raise HTTPException(status_code=404, detail=f"Metadata '{layer_key}' no encontrada")
+
+    db.query(ColumnaTabla).filter(ColumnaTabla.layer_key == layer_key).delete()
+
+    ahora = datetime.now(timezone.utc)
+    for item in data.columnas:
+        db.add(ColumnaTabla(
+            layer_key=layer_key,
+            columna=item.columna,
+            alias=item.alias,
+            orden=item.orden,
+            visible=item.visible,
+            formato=item.formato,
+            updated_at=ahora,
+            updated_by=current_user.email,
+        ))
+
+    db.commit()
+    return ColumnasTablaResponse(layer_key=layer_key, columnas=data.columnas)
 
 
 @router.get('/{layer_key:path}', response_model=LayerMetadataResponse)

@@ -9,6 +9,20 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.44.0] - 2026-08-28
+
+### Agregado: pestana Columnas en el editor de capas
+
+El WFS entrega los nombres crudos de la base —`cve_mun`, `p_total`, `nom_loc`— y la tabla de datos
+del visor los muestra tal cual mientras nadie los configure. La pestana Columnas del cajon de la
+capa guarda el alias, el orden, la visibilidad y el formato de cada una, sobre la lista de campos
+que ya trae `listGeoserverFields`. La geometria no se lista y las columnas guardadas que la capa ya
+no tiene se marcan para poder quitarlas.
+
+`GET` y `PUT /layer-metadata/{layer_key}/columnas` escriben en el schema `atributos` de dataengine,
+que llega en su migracion 0046. El `PUT` pide `mariachi.mapalab.manage`, como el resto de la
+configuracion de capas.
+
 ## [2.43.0] - 2026-08-31
 
 ### Agregado: plantillas de tarjetita en el editor de capas
