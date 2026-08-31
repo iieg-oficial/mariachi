@@ -121,6 +121,7 @@ export default function LayerEditPage() {
     const autosaveTimer = useRef(null);
     const { drafts, pendingCount, reload: reloadDrafts } = useLayerDrafts();
     const shellRef = useRef(null);
+    const [baseline, setBaseline] = useState(null);
     const [shellHeight, setShellHeight] = useState(null);
     const [eventoLayerId, setEventoLayerId] = useState(null);
     const [infoboxMode, setInfoboxMode] = useState('visual');
@@ -336,7 +337,8 @@ export default function LayerEditPage() {
     useEffect(() => {
         if (loading || !layer) return;
         populate(layer);
-    }, [loading, layer, populate]);
+        setBaseline(form.getFieldsValue());
+    }, [loading, layer, populate, form]);
 
 
 
@@ -347,16 +349,17 @@ export default function LayerEditPage() {
         if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
         autosaveTimer.current = setTimeout(async () => {
             try {
+                if (!baseline) return;
                 const values = form.getFieldsValue();
                 const { infoboxTemplate: _t, infoboxParams: _p, ...rest } = values;
-                const cambios = diffPayload(rest, layer);
+                const cambios = diffPayload(rest, baseline);
                 if (Object.keys(cambios).length === 0) return;
                 await saveLayerDraft(layerId, cambios);
                 setAutosaveAt(new Date());
                 reloadDrafts();
             } catch { /* el borrador se reintenta al siguiente cambio */ }
         }, 1500);
-    }, [layerId, loading, loadError, form, layer, saveLayerDraft, reloadDrafts]);
+    }, [layerId, loading, loadError, form, baseline, saveLayerDraft, reloadDrafts]);
 
     useEffect(() => () => {
         if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
@@ -371,6 +374,21 @@ export default function LayerEditPage() {
         walk(treeData);
         return acc;
     }, [treeData]);
+
+    const handleDiscard = async () => {
+        setPublishing(true);
+        try {
+            await Promise.all(drafts.map((d) => discardDraft(d.id)));
+            message.success('Borradores descartados');
+            setReviewOpen(false);
+            await reloadDrafts();
+            setReloadKey((k) => k + 1);
+        } catch (err) {
+            message.error(err?.response?.data?.detail || 'No se pudieron descartar los borradores');
+        } finally {
+            setPublishing(false);
+        }
+    };
 
     const handlePublish = async (rows) => {
         setPublishing(true);
@@ -1422,9 +1440,10 @@ export default function LayerEditPage() {
                 onClose={() => setReviewOpen(false)}
                 drafts={drafts}
                 layerTitles={layerTitles}
-                publishedValues={layer && layerId ? { [layerId]: layer } : {}}
+                publishedValues={baseline && layerId ? { [layerId]: baseline } : {}}
                 isAdmin={isAdmin}
                 onPublish={handlePublish}
+                onDiscard={handleDiscard}
                 publishing={publishing}
             />
 

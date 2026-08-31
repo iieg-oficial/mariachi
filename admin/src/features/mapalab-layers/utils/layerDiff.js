@@ -59,11 +59,25 @@ export const sectionOf = (field) => FIELD_SECTIONS[field] || 'Servicios';
 
 export const labelOf = (field) => FIELD_LABELS[field] || field;
 
-const norm = (v) => {
-    if (v === undefined || v === '') return null;
-    if (Array.isArray(v)) return JSON.stringify(v);
-    if (v && typeof v === 'object') return JSON.stringify(v);
+const estable = (v) => {
+    if (Array.isArray(v)) return v.map(estable);
+    if (v && typeof v === 'object') {
+        return Object.keys(v).sort().reduce((acc, k) => {
+            if (v[k] !== undefined) acc[k] = estable(v[k]);
+            return acc;
+        }, {});
+    }
     return v;
+};
+
+const vacio = (v) => v === undefined || v === null || v === ''
+    || (Array.isArray(v) && v.length === 0)
+    || (typeof v === 'object' && Object.keys(v).length === 0);
+
+const norm = (v) => {
+    if (vacio(v)) return null;
+    if (typeof v === 'object') return JSON.stringify(estable(v));
+    return String(v);
 };
 
 export const sameValue = (a, b) => norm(a) === norm(b);

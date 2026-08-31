@@ -57,3 +57,34 @@ describe('presentación de los cambios', () => {
         expect(describeValue({ enabled: true })).toBe('configuración');
     });
 });
+
+describe('cambios fantasma', () => {
+    it('un arreglo vacío no es un cambio frente a nulo', () => {
+        expect(diffPayload({ searchTags: [] }, { searchTags: null })).toEqual({});
+        expect(diffPayload({ searchTags: [] }, {})).toEqual({});
+    });
+
+    it('un objeto vacío no es un cambio frente a nulo', () => {
+        expect(diffPayload({ infoboxConfig: {} }, { infoboxConfig: null })).toEqual({});
+    });
+
+    it('el orden de las llaves no inventa un cambio', () => {
+        const antes = { badge: { enabled: true, texto: 'Nuevo' } };
+        const ahora = { badge: { texto: 'Nuevo', enabled: true } };
+
+        expect(diffPayload(ahora, antes)).toEqual({});
+    });
+
+    it('un número y su texto son el mismo valor', () => {
+        expect(diffPayload({ sortOrder: '7' }, { sortOrder: 7 })).toEqual({});
+    });
+
+    it('apagar un interruptor sí es un cambio', () => {
+        expect(diffPayload({ disabled: false }, { disabled: true }))
+            .toEqual({ disabled: false });
+    });
+
+    it('cero no se confunde con vacío', () => {
+        expect(diffPayload({ sortOrder: 0 }, { sortOrder: null })).toEqual({ sortOrder: 0 });
+    });
+});

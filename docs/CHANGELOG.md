@@ -9,6 +9,31 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.56.0] - 2026-08-31
+
+### Corregido: el autoguardado detectaba cambios donde no los habia
+
+Abrir una capa y no tocar nada bastaba para que el contador dijera «2 sin publicar», con renglones
+que se leian «Etiquetas de busqueda — → —»: los dos lados vacios y aun asi contados como cambio.
+
+La causa es que el diff comparaba los valores del formulario contra el objeto crudo de la capa, y
+`populate` no los deja iguales: aplica valores por defecto al poblar —`searchTags` cae en `[]` cuando
+la capa trae `null`, `infoboxConfig` en `null` cuando el editor entrega `{}`, `tiled` en `true`—.
+Toda capa nacia con cambios fantasma.
+
+Ahora la referencia es **una foto del formulario recien poblado**, no la capa cruda, asi que
+cualquier transformacion es simetrica. Ademas la comparacion dejo de ser ingenua: arreglo y objeto
+vacios cuentan como nulo, los objetos se serializan con las llaves ordenadas —un orden distinto
+inventaba cambios— y un numero y su texto son el mismo valor. `0` y `false` siguen siendo valores,
+no vacios.
+
+### Agregado: descartar los borradores desde la hoja de publicacion
+
+El arreglo evita que se creen borradores fantasma nuevos, pero no limpia los que ya se guardaron.
+**Descartar todo** borra los borradores listados y deja las capas como estan publicadas. Descarta
+los de todas las capas de la lista, no solo los vacios: si hay algo real pendiente, conviene
+publicarlo antes.
+
 ## [2.55.0] - 2026-08-31
 
 ### Agregado: los selectores de campo muestran valores reales

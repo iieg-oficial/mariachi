@@ -34,6 +34,7 @@ export default function PublishReviewModal({
     publishedValues = {},
     isAdmin,
     onPublish,
+    onDiscard,
     publishing,
 }) {
     const rows = useMemo(() => buildRows(drafts, publishedValues), [drafts, publishedValues]);
@@ -69,6 +70,11 @@ export default function PublishReviewModal({
             footer={rows.length === 0 ? [
                 <Button key="cerrar" onClick={onClose}>Cerrar</Button>,
             ] : [
+                <Tooltip key="descartar" title="Borra el borrador completo y deja las capas como están publicadas">
+                    <Button danger type="text" disabled={publishing} onClick={onDiscard}>
+                        Descartar todo
+                    </Button>
+                </Tooltip>,
                 <Button key="cancelar" onClick={onClose}>Cancelar</Button>,
                 <Tooltip key="publicar" title={isAdmin ? '' : 'Se enviará a revisión de una administradora'}>
                     <Button
