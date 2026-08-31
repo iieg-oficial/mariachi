@@ -18,60 +18,52 @@ export default function EditorSection({
     const heading = (
         <>
             {collapsible && (
-                <span style={{ color: '#8e97a8', fontSize: 10, marginRight: 7 }}>
+                <span style={{ color: '#7385ab', fontSize: 11, lineHeight: 1, width: 14, flexShrink: 0 }}>
                     {open ? <DownOutlined /> : <RightOutlined />}
                 </span>
             )}
-            <Text
-                strong
-                style={{
-                    fontSize: 11,
-                    letterSpacing: '0.1em',
-                    textTransform: 'uppercase',
-                    color: '#8e97a8',
-                }}
-            >
-                {title}
-            </Text>
+            <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+                <Text strong style={{ fontSize: 14, color: '#1c2230', lineHeight: 1.35 }}>
+                    {title}
+                </Text>
+                {hint && (
+                    <Text type="secondary" style={{ fontSize: 12, lineHeight: 1.45 }}>
+                        {hint}
+                    </Text>
+                )}
+            </span>
         </>
     );
+
+    const headingStyle = {
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 10,
+        width: '100%',
+        textAlign: 'left',
+        border: 0,
+        background: 'transparent',
+        padding: 0,
+        font: 'inherit',
+        cursor: collapsible ? 'pointer' : 'default',
+    };
 
     return (
         <section
             style={{
-                paddingTop: first ? 0 : 22,
-                marginTop: first ? 0 : 22,
-                borderTop: first ? 'none' : '1px solid #f0f0f0',
+                paddingTop: first ? 0 : 28,
+                marginTop: first ? 0 : 28,
+                borderTop: first ? 'none' : '1px solid #e8ecf3',
             }}
         >
             {collapsible ? (
-                <button
-                    type="button"
-                    onClick={() => setOpen((v) => !v)}
-                    aria-expanded={open}
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        width: '100%',
-                        textAlign: 'left',
-                        border: 0,
-                        background: 'transparent',
-                        padding: 0,
-                        cursor: 'pointer',
-                        font: 'inherit',
-                    }}
-                >
+                <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} style={headingStyle}>
                     {heading}
                 </button>
             ) : (
-                <div style={{ display: 'flex', alignItems: 'center' }}>{heading}</div>
+                <div style={headingStyle}>{heading}</div>
             )}
-            {hint && shown && (
-                <Text type="secondary" style={{ display: 'block', fontSize: 12, marginTop: 2 }}>
-                    {hint}
-                </Text>
-            )}
-            <div style={{ marginTop: 14, display: shown ? 'block' : 'none' }}>{children}</div>
+            <div style={{ marginTop: 20, display: shown ? 'block' : 'none' }}>{children}</div>
         </section>
     );
 }

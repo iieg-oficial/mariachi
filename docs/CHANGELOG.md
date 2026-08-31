@@ -9,6 +9,31 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.53.0] - 2026-08-31
+
+### Cambiado: el buscador de capas se despliega al pasar el cursor
+
+Vivia bajo el titulo de la pagina ocupando su propio renglon. Ahora es un boton de lupa junto a
+«Nuevo nodo», en la fila de pestanas, y se abre a 210 px con el cursor encima, al enfocarlo o
+mientras tenga texto. Con eso la descripcion de la subpagina recupera su linea completa.
+
+### Cambiado: Mover pasa al encabezado del cajon Avanzado
+
+Era una seccion mas dentro del cajon. Como boton del encabezado se alcanza sin bajar, y su tooltip
+dice de que cuelga hoy el nodo. Servicios y Simbologia quedan plegadas al abrir.
+
+### Corregido: las secciones del editor se veian apretadas y chiquitas
+
+El titulo era de 11 px en versalitas grises y se leia como una etiqueta perdida, no como el
+encabezado de la seccion. Pasa a 14 px en el color del texto, con la ayuda debajo en 12 px, 28 px de
+separacion entre secciones y 20 px antes del contenido. El cajon de Avanzado abre a 600 px con
+padding propio.
+
+### Corregido: quitar el marco del arbol no habia ahorrado espacio
+
+Se retiro el `Card` que lo envolvia pero quedaron sus 24 px de padding alrededor, asi que el ancho
+recuperado fue ninguno. Bajan a 8 px.
+
 ## [2.52.1] - 2026-08-31
 
 ### Corregido: el zoom del roadmap dejaba el lienzo en blanco
