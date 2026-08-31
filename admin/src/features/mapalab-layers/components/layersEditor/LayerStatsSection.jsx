@@ -598,17 +598,11 @@ export default function LayerStatsSection({
 
     return (
         <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
-            <Alert closable
-                type="info"
-                showIcon
-                title={
-                    <span>
-                        Hasta 8 slots de estadísticas (numeralia). Cada slot puede ser <b>Estático</b> (valor fijo),
-                        <b> Operación simple</b> (count, sum, avg…) o <b>Fórmula</b> (combinaciones recursivas:
-                        suma, resta, multiplicación, división, porcentaje y cambio porcentual).
-                    </span>
-                }
-            />
+            <Tooltip title="Cada slot puede ser Estático (valor fijo), Operación simple (count, sum, avg…) o Fórmula: combinaciones recursivas de suma, resta, multiplicación, división, porcentaje y cambio porcentual.">
+                <Text type="secondary" style={{ fontSize: 12, cursor: 'help' }}>
+                    Hasta 8 slots de numeralia
+                </Text>
+            </Tooltip>
 
             {!schema || !table ? (
                 <Alert closable
@@ -770,21 +764,14 @@ export default function LayerStatsSection({
                         <Space size={6}>
                             <span>Valores actuales en el visor</span>
                             {config.length === 0 && (
-                                <Tag color="orange">Sin config — valores legacy</Tag>
+                                <Tooltip title="Esta capa traía valores guardados sin configuración, del Sheet original. Se precargan como slots estáticos editables: conviértelos a operación dinámica si aplica y guarda para que mariachi sea la fuente única.">
+                                    <Tag color="orange" style={{ cursor: 'help' }}>Sin config — valores legacy</Tag>
+                                </Tooltip>
                             )}
                         </Space>
                     }
                     styles={{ body: { paddingTop: 8 } }}
                 >
-                    {config.some((c) => c._autoFromLegacy) && (
-                        <Alert closable
-                            type="info"
-                            showIcon
-                            style={{ marginBottom: 8 }}
-                            title="Valores legacy precargados como slots estáticos"
-                            description="Esta capa tenía valores guardados sin configuración (vienen del Sheet original). Los precarga­mos como slots estáticos editables. Edita los que quieras, convierte alguno a operación dinámica (count/sum/fórmula) si aplica, y guarda la configuración para que mariachi pase a ser la fuente única."
-                        />
-                    )}
                     <Space orientation="vertical" size={4} style={{ width: '100%' }}>
                         {stats.values.map((v, i) => (
                             <Tag

@@ -383,6 +383,23 @@ def soft_delete_layer(session: Session, layer: Layer, deleted_by: str | None) ->
     session.flush()
 
 
+def soft_delete_subtree(session: Session, layer: Layer, deleted_by: str | None) -> list[str]:
+    """Archiva la capa junto con toda su descendencia viva.
+
+    Devuelve los ids archivados. Restaurar es capa por capa: `restore_layer`
+    exige que el padre no esté en papelera, así que el orden es de arriba abajo.
+    """
+    ids = _collect_descendant_ids(session, layer.id)
+    descendientes = (
+        session.query(Layer)
+        .filter(Layer.id.in_(ids), Layer.deleted_at.is_(None))
+        .all()
+    )
+    for nodo in descendientes:
+        soft_delete_layer(session, nodo, deleted_by)
+    return [nodo.id for nodo in descendientes]
+
+
 def _flatten_evento_capa_refs(capas_json: Any) -> list[tuple[str, str]]:
     out: list[tuple[str, str]] = []
     if not isinstance(capas_json, list):

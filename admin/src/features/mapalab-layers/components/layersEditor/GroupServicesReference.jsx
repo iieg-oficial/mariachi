@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Alert, Button, Space, Table, Tag, Typography } from 'antd';
+import { Alert, Button, Space, Table, Tag, Typography, Tooltip } from 'antd';
 import { EditOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router';
 
@@ -113,34 +113,22 @@ export default function GroupServicesReference({ groupId, treeData }) {
 
     return (
         <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
-            <Alert closable
-                type="info"
-                showIcon
-                title="Este nodo es un grupo (agrupador), no una capa WMS"
-                description={
-                    <div>
-                        <p style={{ marginBottom: 8 }}>
-                            Cuando este grupo se activa en el visor, se activan todas sus capas hijas
-                            (no emite una request WMS propia). La configuración WMS (workspace, capa
-                            GeoServer, filtro CQL, estilo) vive en cada capa hija.
-                        </p>
-                        <Space wrap size={6}>
-                            <Tag color="blue">{leafs.length} capa(s) hija(s)</Tag>
-                            {featureTypes.length === 1 ? (
-                                <Tag color="green">1 feature type compartido: <code>{featureTypes[0]}</code></Tag>
-                            ) : (
-                                <Tag color="orange">{featureTypes.length} feature types distintos</Tag>
-                            )}
-                            {wmsGroups.length === 1 && (
-                                <Tag color="purple">wms_group: <code>{wmsGroups[0]}</code></Tag>
-                            )}
-                            {wmsGroups.length > 1 && (
-                                <Tag color="orange">{wmsGroups.length} wms_groups distintos</Tag>
-                            )}
-                        </Space>
-                    </div>
-                }
-            />
+            <Tooltip title="Un grupo no emite request WMS propia: al activarlo en el visor se activan todas sus capas hijas, y la configuración WMS —workspace, capa de GeoServer, filtro CQL y estilo— vive en cada hija.">
+                <Space wrap size={6} style={{ cursor: 'help' }}>
+                    <Tag color="blue">{leafs.length} capa(s) hija(s)</Tag>
+                    {featureTypes.length === 1 ? (
+                        <Tag color="green">1 feature type compartido: <code>{featureTypes[0]}</code></Tag>
+                    ) : (
+                        <Tag color="orange">{featureTypes.length} feature types distintos</Tag>
+                    )}
+                    {wmsGroups.length === 1 && (
+                        <Tag color="purple">wms_group: <code>{wmsGroups[0]}</code></Tag>
+                    )}
+                    {wmsGroups.length > 1 && (
+                        <Tag color="orange">{wmsGroups.length} wms_groups distintos</Tag>
+                    )}
+                </Space>
+            </Tooltip>
 
             <Table
                 size="small"

@@ -1,4 +1,4 @@
-import { Alert, Card, Input, Space, Typography } from 'antd';
+import { Card, Input, Space, Tooltip, Typography } from 'antd';
 import LegendPreview from './LegendPreview';
 
 const { Text } = Typography;
@@ -44,30 +44,11 @@ export default function RawXmlFallback({ rawXml, reason, workspace, styleName, l
 
     return (
         <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
-            <Alert
-                type="info"
-                showIcon
-                closable
-                title={TITLE_FOR_KIND[kind] || 'Este tipo de SLD aún no es editable visualmente'}
-                description={
-                    <div>
-                        <p style={{ marginBottom: 4 }}>{tip}</p>
-                        <p style={{ marginBottom: 4 }}>
-                            Por ahora puedes:
-                        </p>
-                        <ul style={{ marginTop: 0, marginBottom: 8, paddingLeft: 20 }}>
-                            <li>Ver la leyenda actual abajo (renderizada por GeoServer).</li>
-                            <li>Si necesitas modificarlo, edítalo directamente en GeoServer Web Admin o pide apoyo al equipo de geografía.</li>
-                        </ul>
-                        <details>
-                            <summary style={{ cursor: 'pointer' }}>
-                                <Text type="secondary" style={{ fontSize: 12 }}>Detalle técnico</Text>
-                            </summary>
-                            <Text code style={{ fontSize: 11 }}>{reason || 'shape no reconocido'}</Text>
-                        </details>
-                    </div>
-                }
-            />
+            <Tooltip title={`${tip} Puedes ver la leyenda actual abajo, tal como la renderiza GeoServer; para modificarlo, edítalo en GeoServer Web Admin o pide apoyo al equipo de geografía. Detalle técnico: ${reason || 'shape no reconocido'}`}>
+                <Text type="secondary" style={{ fontSize: 12, cursor: 'help' }}>
+                    {TITLE_FOR_KIND[kind] || 'Este tipo de SLD aún no es editable visualmente'} — no editable desde aquí
+                </Text>
+            </Tooltip>
 
             {workspace && styleName && layerName && (
                 <Card size="small" title="Leyenda actual">

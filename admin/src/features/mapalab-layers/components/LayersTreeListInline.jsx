@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Empty, Grid, Input, Space, Spin } from 'antd';
-import { PlusOutlined, ReloadOutlined, SearchOutlined, TagsOutlined } from '@ant-design/icons';
+import { Alert, Empty, Grid, Spin } from 'antd';
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import LayerCreateModal from '@features/mapalab-layers/components/LayerCreateModal';
@@ -67,14 +66,14 @@ export default function LayersTreeListInline({
     onReload,
     onCreate,
     isAdmin = false,
-    onBulkTagsClick,
     onReorder,
+    q = '',
+    createOpen = false,
+    onCreateClose,
 }) {
     const screens = useBreakpoint();
     const isMobile = !screens.md;
-    const [q, setQ] = useState('');
     const [expanded, setExpanded] = useState(() => loadExpanded());
-    const [createOpen, setCreateOpen] = useState(false);
 
     const visibleTree = useMemo(() => filterTree(treeData, q), [treeData, q]);
 
@@ -151,25 +150,6 @@ export default function LayersTreeListInline({
 
     return (
         <div style={{ padding: isMobile ? 6 : 12, display: 'flex', flexDirection: 'column', gap: isMobile ? 8 : 12, height: '100%', minHeight: 0 }}>
-            <Input
-                placeholder="Buscar por nombre, workspace o capa de GeoServer"
-                prefix={<SearchOutlined />}
-                value={q}
-                onChange={(e) => setQ(e.target.value)}
-                allowClear
-                size="small"
-            />
-            <Space size={6} wrap>
-                {isAdmin && onCreate && (
-                    <Button size="small" type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>Nuevo</Button>
-                )}
-                {isAdmin && onBulkTagsClick && (
-                    <Button size="small" icon={<TagsOutlined />} onClick={onBulkTagsClick}>Etiquetas en lote</Button>
-                )}
-                {onReload && (
-                    <Button size="small" icon={<ReloadOutlined />} onClick={onReload}>Recargar</Button>
-                )}
-            </Space>
             {error && <Alert closable type="error" message={error} />}
             <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', overflowX: 'hidden', border: '1px solid #f0f0f0', borderRadius: 6, background: '#fff' }}>
                 {renderBody()}
@@ -177,7 +157,7 @@ export default function LayersTreeListInline({
             {isAdmin && onCreate && (
                 <LayerCreateModal
                     open={createOpen}
-                    onClose={() => setCreateOpen(false)}
+                    onClose={onCreateClose}
                     onSubmit={async (payload) => { await onCreate(payload); if (onReload) await onReload(); }}
                     treeData={treeData}
                     defaultParentId={selectedKey || null}

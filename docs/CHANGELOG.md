@@ -9,6 +9,87 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.48.0] - 2026-08-31
+
+### Cambiado: la barra de acciones del arbol se vacia
+
+Quedaba una fila de botones sobre el arbol que le robaba alto sin ganar nada. **Recargar** se fue
+—el arbol no lo editan veinte personas a la vez—, **Nuevo** se volvio un boton de icono a la derecha
+de las pestanas Capas/Eventos/Papelera, y **Etiquetas en lote** se mudo al modal de configuracion
+general, que ahora agrupa lo que aplica a varias capas de golpe.
+
+El **historial** paso al encabezado de la pagina, junto al engrane, como boton de icono. El
+buscador se alinea a la derecha, en la misma linea que la descripcion de la subpagina, que vuelve.
+
+Tambien se fue el marco que envolvia el arbol y el editor: robaba ancho sin separar nada que no
+separara ya el propio encabezado.
+
+### Cambiado: Avanzado se abre desde el encabezado del nodo y trae Mover
+
+*Avanzado* dejo de vivir en la barra de pestanas y es el unico boton del encabezado del nodo. Lo
+primero que aparece adentro es **Ubicacion en el arbol**, con la ruta actual y el boton de mover:
+antes habia que abrir un modal aparte. Al fondo sigue Archivar.
+
+El boton de publicar **solo aparece cuando hay algo que publicar**; antes decia «Todo publicado»
+ocupando lugar para no decir nada.
+
+### Cambiado: todas las secciones del editor se colapsan, abierta solo la primera
+
+Identidad, Apariencia, Metadatos y Avanzado usan el mismo comportamiento: la primera seccion abierta
+y el resto plegadas, para llegar de un golpe a la que interesa. Metadatos se partio en cinco
+secciones —Informacion general, Fuentes, Metodologia, Referencias cartograficas y Archivos
+adjuntos— que antes eran tarjetas apiladas sin plegar.
+
+### Cambiado: la hoja de publicacion muestra el valor anterior
+
+Cada cambio se lee como `antes → despues` en vez de solo el valor nuevo. De las capas que no estan
+abiertas no se conoce el valor publicado, y eso se dice con un `?` en vez de inventarlo.
+
+### Agregado: un grupo se puede archivar junto con sus propiedades
+
+`DELETE /layers/{id}` acepta `?cascade=true` y archiva el nodo con toda su descendencia viva. Antes
+el backend bloqueaba en seco —«elimina o mueve los hijos primero»— y `force` no lo saltaba: vaciar a
+mano un grupo de veinte propiedades no era trabajo de nadie. El modal lo pide con una casilla y deja
+claro que **las propiedades se van con el grupo**, porque no son capas aparte sino filtros del mismo
+feature type.
+
+Restaurar sigue siendo capa por capa, de arriba abajo: `restore_layer` exige que el padre no este en
+papelera.
+
+### Eliminado: tres avisos mas, ahora en el tooltip de su seccion
+
+El de grupo agrupador —que se llevo consigo las etiquetas de capas hijas, feature type y wms_group,
+ahora con el detalle en su tooltip—, el del feature type heredado en el editor de SLD, y el de SLD no
+editable visualmente, que ademas ocupaba una lista de vinetas y un `<details>` para decir que hay que
+editarlo en GeoServer.
+
+## [2.47.0] - 2026-08-31
+
+### Agregado: autoguardado con publicacion explicita
+
+El boton «Guardar» desaparecio. Lo que escribes se guarda solo como borrador —debounce de 1.5 s—
+y un boton junto al titulo **Capas MapaLab** dice cuantos cambios llevas sin publicar. Esta ahi
+siempre, tanto en el arbol como editando, asi que nadie se va de la pantalla creyendo que publico.
+
+Al pulsarlo abre la **hoja de revision**: los cambios agrupados por capa y por pestana, con una
+casilla en cada uno para dejar fuera lo que no quieras publicar todavia. Publica solo lo marcado.
+Para quien no es administradora, el mismo boton manda a revision en vez de publicar.
+
+Se apoya en la tabla `borradores` que ya existia: el borrador guarda **solo los campos que
+cambiaron**, que es justo lo que `_apply_layer` necesita para aprobarlo. El administrador gana una
+red que no tenia —hasta ahora un error suyo entraba en vivo al instante—.
+
+### Agregado: historial de cambios de la capa en el editor
+
+El boton *Historial* del encabezado abre el mismo panel que ya usaba el modo tabla, filtrado a la
+capa abierta.
+
+**Para que ese historial sirviera hubo que empezar a escribirlo.** `mapalab.grid_cell_history` ya
+tenia prevista la fuente `formulario` —el drawer incluso la pintaba como «Ficha»— pero nadie la
+escribia: solo la tabla registraba historial, asi que todo lo editado desde el arbol era invisible.
+`PUT /layers/{id}` ahora compara antes y despues y registra cada campo que cambio. Si el registro
+falla, el cambio de la capa se guarda igual: el historial no puede tumbar una edicion.
+
 ## [2.46.0] - 2026-08-31
 
 ### Cambiado: el editor de capas se reagrupa en cinco pestanas y Avanzado vuelve a ser boton

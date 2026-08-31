@@ -106,6 +106,10 @@ export const useLayerTreeAdmin = () => {
         await api.post(`/borradores/layer/${layerId}/solicitar-revision`);
     }, []);
 
+    const discardDraft = useCallback(async (borradorId) => {
+        await api.delete(`/borradores/por-id/${borradorId}`);
+    }, []);
+
     const getLayerDraft = useCallback(async (layerId) => {
         try {
             const res = await api.get(`/borradores/layer/${layerId}`);
@@ -121,8 +125,8 @@ export const useLayerTreeAdmin = () => {
         return res.data;
     }, []);
 
-    const deleteLayer = useCallback(async (layerId, { force = false } = {}) => {
-        const res = await api.delete(`/layers/${layerId}`, { params: { force } });
+    const deleteLayer = useCallback(async (layerId, { force = false, cascade = false } = {}) => {
+        const res = await api.delete(`/layers/${layerId}`, { params: { force, cascade } });
         return res.data;
     }, []);
 
@@ -307,6 +311,7 @@ export const useLayerTreeAdmin = () => {
         updateLayer,
         saveLayerDraft,
         requestReview,
+        discardDraft,
         getLayerDraft,
         deleteLayer,
         restoreLayer,

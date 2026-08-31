@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { Alert, Button, Card, Form, Input, Select, Space, Spin, Typography } from 'antd';
+import { Alert, Button, Card, Form, Input, Select, Space, Spin, Tooltip, Typography } from 'antd';
 import { PlusOutlined, MinusCircleOutlined, FolderOpenOutlined, UploadOutlined } from '@ant-design/icons';
 import { Link } from 'react-router';
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
 import { BucketFilePicker, BucketFileUploader, useAccessibleBuckets } from '@features/acervo';
-import LayerStatsSection from '@features/mapalab-layers/components/layersEditor/LayerStatsSection';
 import { FRECUENCIA_OPTIONS, TIPO_MAPA_OPTIONS } from '@features/mapalab-layers/constants/metadataCatalogs';
+import EditorSection from '@features/mapalab-layers/components/layersEditor/EditorSection';
 import { message } from '@shared/services/message';
 
 const { Text } = Typography;
@@ -33,9 +33,6 @@ const META_DEFAULT = { texto: '', archivo_enlace: '' };
 
 export default function LayerMetadataSection({
     layerKey,
-    workspace,
-    geoserverLayer,
-    availableFields,
     derivedFromDescendants = false,
     siblingsSharingCount = 0,
 }) {
@@ -148,31 +145,28 @@ export default function LayerMetadataSection({
 
     return (
         <Space orientation="vertical" size="large" style={{ width: '100%' }}>
-            <Alert closable
-                type={derivedFromDescendants ? 'success' : (siblingsSharingCount > 0 ? 'warning' : 'info')}
-                showIcon
-                title={
-                    derivedFromDescendants ? (
-                        <span>
-                            Este nodo no tiene feature type propio, pero todos sus descendientes usan el mismo:
-                            <code style={{ marginLeft: 6 }}>{layerKey}</code>. Editas la metadata de ese feature type
-                            (compartida con todas las capas hijas).
-                        </span>
-                    ) : siblingsSharingCount > 0 ? (
+            {siblingsSharingCount > 0 ? (
+                <Alert closable
+                    type="warning"
+                    showIcon
+                    title={
                         <span>
                             Esta capa <b>comparte la metadata</b> con <b>{siblingsSharingCount}</b> capa(s) hermana(s)
-                            que usan el mismo feature type <code>{layerKey}</code>.
-                            Cualquier cambio aquí afecta a todas. La metadata vive a nivel de feature type GeoServer,
-                            no por capa-con-filtro.
+                            que usan el mismo feature type <code>{layerKey}</code>. Cualquier cambio aquí afecta a todas.
                         </span>
-                    ) : (
-                        <span>
-                            Esta sección edita el feature type <code>{layerKey}</code>. Los metadatos se comparten
-                            entre todas las capas que usan el mismo feature type.
-                        </span>
-                    )
-                }
-            />
+                    }
+                />
+            ) : (
+                <Tooltip title={derivedFromDescendants
+                    ? 'Este nodo no tiene feature type propio: lo toma de sus descendientes, que usan todos el mismo. Lo que edites aquí es la metadata de ese feature type, compartida con todas las capas hijas.'
+                    : 'Los metadatos se guardan por feature type de GeoServer, así que se comparten con cualquier capa que use el mismo.'}
+                >
+                    <Text type="secondary" style={{ fontSize: 12, cursor: 'help' }}>
+                        Feature type <code>{layerKey}</code>
+                        {derivedFromDescendants ? ' · heredado de sus capas hijas' : ''}
+                    </Text>
+                </Tooltip>
+            )}
             {notFound && (
                 <Alert closable
                     type="warning"
@@ -182,7 +176,7 @@ export default function LayerMetadataSection({
             )}
 
             <Form form={form} layout="vertical">
-                <Card size="small" title="Información general">
+                <EditorSection title="Información general" first>
                     <Form.Item
                         label="Descripción"
                         name="descripcion"
@@ -212,18 +206,9 @@ export default function LayerMetadataSection({
                     >
                         <Input placeholder="p.ej. 2024 o 2024-Q3" />
                     </Form.Item>
-                </Card>
+                </EditorSection>
 
-                <Card size="small" title="Estadísticas (numeralia)" style={{ marginTop: 12 }}>
-                    <LayerStatsSection
-                        layerKey={layerKey}
-                        workspace={workspace}
-                        geoserverLayer={geoserverLayer}
-                        availableFields={availableFields}
-                    />
-                </Card>
-
-                <Card size="small" title="Fuentes" style={{ marginTop: 12 }}>
+                <EditorSection title="Fuentes">
                     <Form.List name="fuentes">
                         {(fields, { add, remove }) => (
                             <>
@@ -274,9 +259,9 @@ export default function LayerMetadataSection({
                             </>
                         )}
                     </Form.List>
-                </Card>
+                </EditorSection>
 
-                <Card size="small" title="Metodología" style={{ marginTop: 12 }}>
+                <EditorSection title="Metodología">
                     <Form.List name="metodologia">
                         {(fields, { add, remove }) => (
                             <>
@@ -313,9 +298,9 @@ export default function LayerMetadataSection({
                             </>
                         )}
                     </Form.List>
-                </Card>
+                </EditorSection>
 
-                <Card size="small" title="Referencias cartográficas" style={{ marginTop: 12 }}>
+                <EditorSection title="Referencias cartográficas">
                     <Form.Item
                         label="Tipo de mapa base"
                         name="tipo_mapa"
@@ -349,16 +334,12 @@ export default function LayerMetadataSection({
                     >
                         <Input placeholder="https://iieg.jalisco.gob.mx/mapalab/mapa?..." />
                     </Form.Item>
-                </Card>
+                </EditorSection>
 
-                <Card
-                    size="small"
+                <EditorSection
                     title="Archivos adjuntos"
-                    style={{ marginTop: 12 }}
+                    hint="Documentos descargables (TXT/XLSX) asociados a la capa."
                 >
-                    <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 12 }}>
-                        Documentos descargables (TXT/XLSX) asociados a la capa.
-                    </Text>
                     <Form.List name="metadato">
                         {(fields, { add, remove }) => (
                             <>
@@ -409,7 +390,7 @@ export default function LayerMetadataSection({
                             Administrar todos los archivos →
                         </Link>
                     </div>
-                </Card>
+                </EditorSection>
 
                 <div style={{ marginTop: 20, textAlign: 'right' }}>
                     <Button type="primary" loading={saving} onClick={handleSave}>

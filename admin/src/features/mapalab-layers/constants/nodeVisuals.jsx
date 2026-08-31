@@ -1,7 +1,7 @@
 import {
     AppstoreOutlined,
     BlockOutlined,
-    BorderOutlined,
+    GatewayOutlined,
     EnvironmentOutlined,
     EyeInvisibleOutlined,
     FilterOutlined,
@@ -36,13 +36,13 @@ const GEOMETRY_ICON = {
     line: LineOutlined,
     linestring: LineOutlined,
     multilinestring: LineOutlined,
-    polygon: BorderOutlined,
-    multipolygon: BorderOutlined,
+    polygon: GatewayOutlined,
+    multipolygon: GatewayOutlined,
 };
 
 const geometryIconType = (geometryType) => {
     const key = String(geometryType || '').toLowerCase();
-    return GEOMETRY_ICON[key] || BorderOutlined;
+    return GEOMETRY_ICON[key] || GatewayOutlined;
 };
 
 const nodeIconType = (node) => {

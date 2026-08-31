@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Card, Empty, Form, Segmented, Select, Space, Spin, Tag, Typography } from 'antd';
+import { Alert, Card, Empty, Form, Segmented, Select, Space, Spin, Tag, Tooltip, Typography } from 'antd';
 import { ExclamationCircleOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router';
 import api from '@shared/services/api';
@@ -64,13 +64,11 @@ export default function SldEditor({ layer, derivedFeatureType }) {
     return (
         <div>
             {isDerived && (
-                <Alert closable
-                    type="info"
-                    showIcon
-                    style={{ marginBottom: 16 }}
-                    title="Feature type heredado de los descendientes"
-                    description={`Este nodo (Grupo) no tiene workspace/geoserver_layer propios. Se está editando el SLD del feature type ${workspace}:${layerName}, que es el que comparten todas sus capas hijas.`}
-                />
+                <Tooltip title={`Este nodo no tiene workspace ni capa de GeoServer propios: se edita el SLD de ${workspace}:${layerName}, el feature type que comparten todas sus capas hijas.`}>
+                    <Text type="secondary" style={{ fontSize: 12, cursor: 'help', display: 'block', marginBottom: 12 }}>
+                        Feature type heredado de sus capas hijas
+                    </Text>
+                </Tooltip>
             )}
             <Form.Item label="Estilo a editar" style={{ marginBottom: 16 }}>
                 <Select

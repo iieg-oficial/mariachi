@@ -24,7 +24,7 @@ from app.schemas.layer import (
     ReorderBody,
     WorkspaceResponse,
 )
-from app.services import layer_service
+from app.services import layer_history, layer_service
 from app.services.geoserver_client import GeoServerError
 from app.services.mapalab_notifier import notify_tree_changed
 
@@ -191,7 +191,11 @@ async def update_layer(
         raise HTTPException(status_code=404, detail=f"Capa '{layer_id}' no encontrada")
 
     try:
+        before = layer_history.snapshot(layer)
         layer = layer_service.update_layer(db, layer, data, updated_by=current_user.email)
+        layer_history.record_changes(
+            db, layer_id, before, layer_history.snapshot(layer), current_user.email
+        )
         db.commit()
         db.refresh(layer)
         notify_tree_changed()
@@ -205,15 +209,18 @@ async def update_layer(
 async def delete_layer(
     layer_id: str,
     force: bool = False,
+    cascade: bool = False,
     db: Session = Depends(get_dataengine_db),
     mariachi_db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
     _admin: Usuario = Depends(require_mapalab_manage),
     _rl: Usuario = Depends(write_rate_limit),
 ):
-    """Soft-delete (admin). Marca deleted_at sin borrar la fila. Si tiene hijos
-    no eliminados o referencias en eventos publicados, requiere `?force=true`
-    para forzar (excepto hijos: nunca se fuerza, hay que vaciarlos primero).
+    """Soft-delete (admin). Marca deleted_at sin borrar la fila.
+
+    Con hijos vivos exige `?cascade=true`, que los archiva junto con el nodo:
+    un grupo con veinte propiedades no se vacia a mano. Las referencias en
+    eventos publicados o en el orden inicial siguen exigiendo `?force=true`.
     """
     layer = db.query(Layer).filter(Layer.id == layer_id).first()
     if not layer:
@@ -222,10 +229,13 @@ async def delete_layer(
         raise HTTPException(status_code=409, detail='La capa ya está en papelera')
 
     refs = _compute_references(db, mariachi_db, layer)
-    if refs['children_count'] > 0:
+    if refs['children_count'] > 0 and not cascade:
         raise HTTPException(
             status_code=409,
-            detail=f"La capa tiene {refs['children_count']} hijo(s) activo(s). Elimina o mueve los hijos primero.",
+            detail=(
+                f"La capa tiene {refs['children_count']} hijo(s) activo(s). "
+                'Reenvia con ?cascade=true para archivarlos junto con ella, o muevelos antes.'
+            ),
         )
     if not force and (refs['in_initial_order'] or refs['eventos']):
         raise HTTPException(
@@ -236,10 +246,14 @@ async def delete_layer(
             },
         )
 
-    layer_service.soft_delete_layer(db, layer, deleted_by=current_user.email)
+    if cascade:
+        archivadas = layer_service.soft_delete_subtree(db, layer, deleted_by=current_user.email)
+    else:
+        layer_service.soft_delete_layer(db, layer, deleted_by=current_user.email)
+        archivadas = [layer.id]
     db.commit()
     notify_tree_changed()
-    return {'id': layer_id, 'deletedAt': layer.deleted_at, 'references': refs}
+    return {'id': layer_id, 'deletedAt': layer.deleted_at, 'references': refs, 'archived': archivadas}
 
 
 @router.post('/{layer_id}/restore', response_model=LayerResponse)
