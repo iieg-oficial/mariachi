@@ -127,7 +127,7 @@ const PINTORES = {
     cards: Cifras,
 };
 
-export default function InfoBoxPreview({ params, value, properties = null }) {
+export default function InfoBoxPreview({ params, value, properties = null, variant = 'desktop' }) {
     const crudo = value ?? params ?? null;
     const cfg = normalizeConfig(crudo);
 
@@ -135,13 +135,13 @@ export default function InfoBoxPreview({ params, value, properties = null }) {
         return <Empty description="Configura bloques para ver el preview" image={Empty.PRESENTED_IMAGE_SIMPLE} />;
     }
 
-    const plan = buildCardPlan(properties || featureDeEjemplo(cfg), cfg, { variant: 'desktop' });
+    const plan = buildCardPlan(properties || featureDeEjemplo(cfg), cfg, { variant });
     if (!plan || plan.isEmpty) {
         return <Empty description="La tarjetita no muestra ningún dato" image={Empty.PRESENTED_IMAGE_SIMPLE} />;
     }
 
     return (
-        <Card size="small" style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', width: 280 }}>
+        <Card size="small" style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', width: 239 }}>
             {plan.title && (
                 <div style={{ background: '#EFF3FC', margin: '-12px -12px 8px', padding: '10px 12px', borderRadius: '8px 8px 0 0' }}>
                     <Title level={5} style={{ margin: 0, fontSize: 13 }}>{plan.title}</Title>

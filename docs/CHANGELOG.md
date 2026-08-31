@@ -9,6 +9,28 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.54.0] - 2026-08-31
+
+### Agregado: la tarjetita se previsualiza con registros reales de la capa
+
+La vista previa dejaba de mentir a medias: mostraba un «Parque Metropolitano» inventado a mano.
+Ahora trae **diez registros reales** de la capa y se puede recorrerlos con ◀ 1 / 10 ▶.
+
+Eso es lo que importa: la tarjeta se ve bien con el primer registro y se rompe con el séptimo, el
+que no tiene colonia o el del nombre de doscientos caracteres. Cuando el registro que estás viendo
+no trae alguno de los campos que la tarjetita usa, **el panel lo dice por su nombre**.
+
+Se suma un interruptor **Escritorio / Móvil**, porque el visor pinta la tarjeta con otras medidas y
+a dos columnas de cifras en teléfono, y esa versión no la revisaba nadie. Y la vista previa pasa a
+medir **239 px**, el ancho real de la tarjeta en el visor, en vez de 280.
+
+Cuando la capa no tiene registros que ofrecer —un grupo de capas de GeoServer, por ejemplo— se
+sigue pintando con valores de ejemplo y lo dice.
+
+**`GET /geoserver/workspaces/{alias}/layers/{layer}/sample-features`** es el endpoint nuevo:
+devuelve hasta cincuenta features con sus propiedades planas, sin geometría. Un grupo de capas
+devuelve la lista vacía en vez de fallar.
+
 ## [2.53.0] - 2026-08-31
 
 ### Cambiado: el buscador de capas se despliega al pasar el cursor

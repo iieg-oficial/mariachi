@@ -12,7 +12,7 @@ import useIsMobile from '@shared/hooks/useIsMobile';
 import { useAuth } from '@shared/contexts/useAuth';
 import InfoBoxEditor from '@features/mapalab-layers/components/layersEditor/InfoBoxEditor';
 import InfoBoxEditorHeader from '@features/mapalab-layers/components/layersEditor/InfoBoxEditorHeader';
-import InfoBoxPreview from '@features/mapalab-layers/components/layersEditor/InfoBoxPreview';
+import InfoBoxPreviewPanel from '@features/mapalab-layers/components/layersEditor/InfoBoxPreviewPanel';
 import LayerMetadataSection from '@features/mapalab-layers/components/layersEditor/LayerMetadataSection';
 import LayerStatsSection from '@features/mapalab-layers/components/layersEditor/LayerStatsSection';
 import LayerAliasesSection from '@features/mapalab-layers/components/layersEditor/LayerAliasesSection';
@@ -1009,8 +1009,12 @@ export default function LayerEditPage() {
                         {previewInfobox && (
                             <div style={{ flex: '0 1 300px', minWidth: 0 }}>
                                 <div style={{ position: 'sticky', top: 0 }}>
-                                    <Text strong style={{ display: 'block', marginBottom: 8 }}>Vista previa</Text>
-                                    <InfoBoxPreview value={previewInfobox} />
+                                    <InfoBoxPreviewPanel
+                                        value={watchedConfig}
+                                        inherited={inheritedInfobox}
+                                        workspaceAlias={selectedWs}
+                                        geoserverLayer={selectedGsLayer}
+                                    />
                                 </div>
                             </div>
                         )}

@@ -364,6 +364,42 @@ class GeoServerClient:
         return seen
 
 
+    def sample_features(self, workspace: str, layer: str, limit: int = 10) -> list[dict]:
+        """Devuelve features completas para previsualizar una tarjetita con datos reales.
+
+        A diferencia de sample_values, que trae valores sueltos de una columna, aqui
+        interesa el registro entero: la tarjeta se rompe en la fila sin colonia o con
+        el nombre larguisimo, y eso solo se ve con la feature completa.
+        """
+        if self.is_layer_group(workspace, layer):
+            return []
+        url = self._ows_url()
+        params = {
+            "service": "WFS",
+            "version": "2.0.0",
+            "request": "GetFeature",
+            "typeNames": f"{workspace}:{layer}",
+            "count": str(max(1, min(limit, 50))),
+            "outputFormat": "application/json",
+        }
+        with self._client() as c:
+            r = c.get(url, params=params)
+            r.raise_for_status()
+            try:
+                data = r.json()
+            except ValueError as e:
+                raise GeoServerError(
+                    f"Respuesta no-JSON de GetFeature {workspace}:{layer}"
+                ) from e
+        salida = []
+        for f in data.get("features") or []:
+            props = {
+                k: v for k, v in (f.get("properties") or {}).items()
+                if not isinstance(v, (dict, list))
+            }
+            salida.append({"id": f.get("id"), "properties": props})
+        return salida
+
     def _styles_base(self, workspace: str | None) -> str:
         if workspace:
             return f"resource/workspaces/{workspace}"

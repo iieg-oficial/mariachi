@@ -270,6 +270,23 @@ async def list_fields(
         raise HTTPException(status_code=502, detail=str(exc))
 
 
+@router.get('/workspaces/{alias}/layers/{layer}/sample-features')
+async def sample_features(
+    alias: str,
+    layer: str,
+    limit: int = Query(default=10, ge=1, le=50),
+    db: Session = Depends(get_dataengine_db),
+    current_user: Usuario = Depends(_require_geoserver_manage),
+    _rl: Usuario = Depends(_read_rate_limit),
+):
+    ws = _resolve_workspace(db, alias)
+    try:
+        features = GeoServerClient().sample_features(ws.geoserver_workspace, layer, limit)
+    except GeoServerError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+    return {'workspace': alias, 'layer': layer, 'features': features}
+
+
 @router.get('/workspaces/{alias}/layers/{layer}/styles')
 async def list_styles(
     alias: str,

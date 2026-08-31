@@ -3,7 +3,7 @@ import { Alert, Button, Empty, Form, Space, Spin, Typography } from 'antd';
 import { SaveOutlined } from '@ant-design/icons';
 import InfoBoxEditor from '@features/mapalab-layers/components/layersEditor/InfoBoxEditor';
 import InfoBoxEditorHeader from '@features/mapalab-layers/components/layersEditor/InfoBoxEditorHeader';
-import InfoBoxPreview from '@features/mapalab-layers/components/layersEditor/InfoBoxPreview';
+import InfoBoxPreviewPanel from '@features/mapalab-layers/components/layersEditor/InfoBoxPreviewPanel';
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
 import { message } from '@shared/services/message';
 
@@ -99,8 +99,12 @@ export default function InfoboxStandalone({ layer, inherited = null, onSaved }) 
                 {previewValue && (
                     <div style={{ flex: '0 1 300px', minWidth: 0 }}>
                         <div style={{ position: 'sticky', top: 0 }}>
-                            <Text strong style={{ display: 'block', marginBottom: 8 }}>Vista previa</Text>
-                            <InfoBoxPreview value={previewValue} />
+                            <InfoBoxPreviewPanel
+                                value={watchedConfig}
+                                inherited={inherited}
+                                workspaceAlias={layer.workspaceAlias}
+                                geoserverLayer={layer.geoserverLayer}
+                            />
                         </div>
                     </div>
                 )}
