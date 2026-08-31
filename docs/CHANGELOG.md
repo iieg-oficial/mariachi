@@ -9,6 +9,65 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.43.0] - 2026-08-31
+
+### Agregado: plantillas de tarjetita en el editor de capas
+
+Un botón **Plantillas** junto al segmento Visual/JSON abre un modal con dos pestañas:
+
+- **Predefinidas** — cuatro arranques (punto simple, punto con municipio, punto con contacto,
+  polígono con cifras) que se arman **con las columnas reales de la capa**, no con nombres
+  inventados: si la plantilla no encuentra columna de título se ofrece deshabilitada y dice por
+  qué. La de contacto usa el `compose` nuevo para armar la dirección de `calle`, `numero`,
+  `colonia` y `cp` cuando vienen separadas, y cae a una sola columna cuando ya viene completa.
+- **Copiar de otra capa** — busca entre las capas del árbol que ya tienen tarjetita y trae la suya.
+
+Las dos pestañas comparten la vista previa, y aplicar sobre una tarjetita que ya tiene bloques
+**pide confirmación** antes de reemplazarla.
+
+### Cambiado: el botón y el segmento se van a la derecha del título
+
+El segmento Visual/JSON estaba pegado al texto del título. Ahora el título queda a la izquierda y
+los dos controles alineados a la derecha, en un `InfoBoxEditorHeader` compartido: el editor de
+capas y el cajón de contenido tenían el mismo bloque duplicado y ahora es uno solo.
+
+`STYLE_PRESETS` sale de `InfoBoxBlocksEditor` a `constants/infoboxStyles.js`, que es de donde las
+plantillas toman los colores de municipio y característica.
+
+### Cambiado: la pestaña se llama «Tarjetita»
+
+Es como se le dice de hecho. Cambia en el editor de capas y en el cajón de contenido, y con ella
+los mensajes de guardado.
+
+## [2.42.0] - 2026-08-31
+
+### Cambiado: el editor de capas agrupa sus campos y saca Avanzado de las pestanas
+
+*Avanzado* dejo de ser una cuarta pestana y es un boton al extremo derecho de la barra, que abre un
+cajon con Apariencia, Servicios, Simbologia, Aviso y Badge apiladas. Las pestanas quedan como lo
+que son —tres conjuntos del mismo nivel— y lo ocasional deja de competir por ese lugar.
+
+Identidad se partio en tres conjuntos con encabezado propio: **Nombre y acceso**, **Busqueda en el
+visor** y **Estado**. Antes eran nueve campos seguidos sin ninguna division.
+
+### Cambiado: la ayuda de cada tipo de nodo vive en su badge, no en un aviso
+
+El recuadro azul que explicaba el tipo de nodo ocupaba un renglon completo arriba del formulario en
+cada capa que se abriera. Ahora el badge del tipo esta junto al titulo y lleva esa explicacion en su
+tooltip; lo mismo el aviso de Propiedad, que ademas nunca decia donde estaba el filtro CQL que la
+distingue de sus hermanas. Los badges de estado —oculta, fuera de servicio— tambien explican en
+tooltip que significan.
+
+En Metadatos, el aviso permanente se reduce a una linea con el feature type y su tooltip. Los dos
+casos que si informan algo —el nodo que deriva el feature type de sus descendientes y la capa que
+comparte metadata con hermanas— siguen siendo un aviso visible, porque avisan de un efecto lateral.
+
+### Corregido: el scroll estaba en la subpagina completa y no en el contenido
+
+El editor entero se desplazaba, asi que la barra de pestanas se iba hacia arriba al bajar por un
+formulario largo y volver a cambiar de pestana obligaba a subir. Ahora la ruta, el titulo y las
+pestanas quedan fijos y el desplazamiento ocurre dentro del panel de la pestana.
+
 ## [2.41.0] - 2026-08-31
 
 ### Cambiado: el botón del marcador pausa en vez de dejar de seguirlo

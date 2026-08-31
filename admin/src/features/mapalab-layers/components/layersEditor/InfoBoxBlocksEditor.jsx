@@ -29,16 +29,9 @@ import {
 } from './infoBoxTextBlocks';
 import { FieldValueField } from './FieldValueField.jsx';
 import { fieldOptionsFor, isComposed, withValueDef } from './fieldValueHelpers.jsx';
+import { MUNICIPIO_STYLE, STYLE_PRESETS } from '@features/mapalab-layers/constants/infoboxStyles';
 
 const { Text } = Typography;
-
-const STYLE_PRESETS = [
-    { key: 'municipio', label: 'Municipio (naranja)', color: '#FF8300', bg: '#FFF2E5' },
-    { key: 'caracteristica', label: 'Característica (morado)', color: '#7B61FF', bg: '#F3F0FF' },
-    { key: 'institucion', label: 'Institución (azul)', color: '#2E4372', bg: '#F0F0F0' },
-    { key: 'estatus_ok', label: 'Estatus OK (verde)', color: '#0FC136', bg: '#DDFFE4' },
-    { key: 'submorado', label: 'Sub-morado (claro)', color: '#5C2472', bg: '#F0EAF3' },
-];
 
 const ICON_CATALOG = [
     { value: 'ubicacion', label: 'Ubicación (abre Google Maps)' },
@@ -277,7 +270,7 @@ const LabelGroupsBlock = ({ value = [], onChange, onRemove, availableFields }) =
         onChange(next);
     };
     const removeGroup = (idx) => onChange(value.filter((_, i) => i !== idx));
-    const addGroup = () => onChange([...value, { fields: [], color: '#FF8300', bg: '#FFF2E5' }]);
+    const addGroup = () => onChange([...value, { fields: [], ...MUNICIPIO_STYLE }]);
 
     return (
         <BlockShell title="Etiquetas (labelGroups)" onRemove={onRemove} hint="Badges con colores (ej. municipio, característica)">
@@ -773,7 +766,7 @@ const TextBlock = ({ block, onChange, onRemove, availableFields }) => {
 
 const BLOCK_DEFS = [
     { key: 'headerField', label: 'Encabezado', defaultValue: '' },
-    { key: 'labelGroups', label: 'Etiquetas', defaultValue: [{ fields: [], color: '#FF8300', bg: '#FFF2E5' }] },
+    { key: 'labelGroups', label: 'Etiquetas', defaultValue: [{ fields: [], ...MUNICIPIO_STYLE }] },
     { key: 'cards', label: 'Cards (estadísticas)', defaultValue: [{ field: '', label: '' }], extras: { cardsColumns: 1 } },
     { key: 'list', label: 'Lista', defaultValue: [{ field: '', label: '' }] },
     { key: 'iconText', label: 'Íconos con texto', defaultValue: [{ icon: 'ubicacion', field: '' }] },

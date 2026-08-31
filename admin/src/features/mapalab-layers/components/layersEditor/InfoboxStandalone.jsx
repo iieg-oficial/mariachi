@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Alert, Button, Col, Empty, Form, Row, Space, Spin, Typography } from 'antd';
 import { SaveOutlined } from '@ant-design/icons';
 import InfoBoxEditor from '@features/mapalab-layers/components/layersEditor/InfoBoxEditor';
-import InfoBoxModeSwitch from '@features/mapalab-layers/components/layersEditor/InfoBoxModeSwitch';
+import InfoBoxEditorHeader from '@features/mapalab-layers/components/layersEditor/InfoBoxEditorHeader';
 import InfoBoxPreview from '@features/mapalab-layers/components/layersEditor/InfoBoxPreview';
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
 import { message } from '@shared/services/message';
@@ -10,7 +10,7 @@ import { message } from '@shared/services/message';
 const { Text } = Typography;
 
 export default function InfoboxStandalone({ layer, inherited = null, onSaved }) {
-    const { updateLayer, listGeoserverFields } = useLayerTreeAdmin();
+    const { updateLayer, listGeoserverFields, rawTree } = useLayerTreeAdmin();
     const [form] = Form.useForm();
     const watchedConfig = Form.useWatch('infoboxConfig', form);
     const [availableFields, setAvailableFields] = useState([]);
@@ -54,10 +54,10 @@ export default function InfoboxStandalone({ layer, inherited = null, onSaved }) 
         setSaving(true);
         try {
             await updateLayer(layer.id, { infoboxConfig: values.infoboxConfig || null });
-            message.success('Tarjeta actualizada');
+            message.success('Tarjetita actualizada');
             onSaved?.();
         } catch (err) {
-            message.error(err?.response?.data?.detail || 'No se pudo guardar la tarjeta');
+            message.error(err?.response?.data?.detail || 'No se pudo guardar la tarjetita');
         } finally {
             setSaving(false);
         }
@@ -67,21 +67,25 @@ export default function InfoboxStandalone({ layer, inherited = null, onSaved }) 
         <Form form={form} layout="vertical">
             <Space style={{ width: '100%', justifyContent: 'flex-end', marginBottom: 12 }}>
                 <Button type="primary" icon={<SaveOutlined />} onClick={handleSave} loading={saving}>
-                    Guardar tarjeta
+                    Guardar tarjetita
                 </Button>
             </Space>
             {loadingFields && <Spin size="small" style={{ marginBottom: 12 }} />}
             <Row gutter={24}>
                 <Col xs={24} md={14}>
+                    <InfoBoxEditorHeader
+                        mode={mode}
+                        onModeChange={setMode}
+                        onApplyTemplate={(config) => form.setFieldsValue({ infoboxConfig: config })}
+                        availableFields={availableFields}
+                        rawTree={rawTree}
+                        currentConfig={watchedConfig}
+                        currentLayerId={layer.id}
+                    />
                     <Form.Item
                         name="infoboxConfig"
-                        label={
-                            <Space size={12}>
-                                Configuración del cuadro
-                                <InfoBoxModeSwitch value={mode} onChange={setMode} />
-                            </Space>
-                        }
-                        extra="Bloques que componen el cuadro que aparece al hacer click sobre una feature en el visor. En modo JSON se copia y pega la tarjeta completa entre entornos."
+                        label={null}
+                        extra="Bloques que componen el cuadro que aparece al hacer click sobre una feature en el visor. En modo JSON se copia y pega la tarjetita completa entre entornos."
                     >
                         <InfoBoxEditor
                             mode={mode}

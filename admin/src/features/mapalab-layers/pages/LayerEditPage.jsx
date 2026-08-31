@@ -11,7 +11,7 @@ import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAd
 import useIsMobile from '@shared/hooks/useIsMobile';
 import { useAuth } from '@shared/contexts/useAuth';
 import InfoBoxEditor from '@features/mapalab-layers/components/layersEditor/InfoBoxEditor';
-import InfoBoxModeSwitch from '@features/mapalab-layers/components/layersEditor/InfoBoxModeSwitch';
+import InfoBoxEditorHeader from '@features/mapalab-layers/components/layersEditor/InfoBoxEditorHeader';
 import InfoBoxPreview from '@features/mapalab-layers/components/layersEditor/InfoBoxPreview';
 import LayerMetadataSection from '@features/mapalab-layers/components/layersEditor/LayerMetadataSection';
 import LayerAliasesSection from '@features/mapalab-layers/components/layersEditor/LayerAliasesSection';
@@ -920,19 +920,23 @@ export default function LayerEditPage() {
         {
             key: 'infobox',
             forceRender: true,
-            label: 'Tarjeta',
+            label: 'Tarjetita',
             children: (
                 <Row gutter={24}>
                     <Col xs={24} md={14}>
+                        <InfoBoxEditorHeader
+                            mode={infoboxMode}
+                            onModeChange={setInfoboxMode}
+                            onApplyTemplate={(config) => form.setFieldsValue({ infoboxConfig: config })}
+                            availableFields={availableFields}
+                            rawTree={rawTree}
+                            currentConfig={watchedConfig}
+                            currentLayerId={layerId}
+                        />
                         <Form.Item
                             name="infoboxConfig"
-                            label={
-                                <Space size={12}>
-                                    Configuración del cuadro
-                                    <InfoBoxModeSwitch value={infoboxMode} onChange={setInfoboxMode} />
-                                </Space>
-                            }
-                            extra="Bloques que componen el cuadro que aparece al hacer click sobre una feature en el visor. Cada bloque (encabezado, etiquetas, cards, lista, íconos, texto) se puede agregar o quitar según necesites. En modo JSON se copia y pega la tarjeta completa entre entornos."
+                            label={null}
+                            extra="Bloques que componen el cuadro que aparece al hacer click sobre una feature en el visor. Cada bloque (encabezado, etiquetas, cards, lista, íconos, texto) se puede agregar o quitar según necesites. En modo JSON se copia y pega la tarjetita completa entre entornos."
                         >
                             <InfoBoxEditor
                                 mode={infoboxMode}

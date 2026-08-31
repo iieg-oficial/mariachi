@@ -64,7 +64,7 @@ export default function LayerContentDrawer({ open, layerId, onClose, onSaved }) 
     const items = [
         {
             key: 'infobox',
-            label: 'Tarjeta',
+            label: 'Tarjetita',
             children: <InfoboxStandalone layer={layer} onSaved={reload} />,
         },
         {
