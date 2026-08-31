@@ -37,7 +37,7 @@ const Linaje = ({ hito, madre, opacidad }) => {
 };
 
 export default function RoadmapLienzo({
-    hitos, marcador, seleccion, relacionados, cicloActivo, pausado, aAlto,
+    hitos, marcador, seleccion, relacionados, cicloActivo, pausado, aAlto, zoom,
     opacidadDe, onSeleccionar, onCiclo, onEntrar, onSalir, onAvance,
 }) {
     const marcaRef = useRef(null);
@@ -113,8 +113,8 @@ export default function RoadmapLienzo({
             role="img"
             aria-label="Hoja de ruta del ecosistema, de 2024 a 2030"
             style={aAlto
-                ? { display: 'block', height: '100%', width: 'auto', minWidth: 'auto' }
-                : { display: 'block', width: ANCHO, minWidth: ANCHO, height: 'auto' }}
+                ? { display: 'block', height: `${100 * zoom}%`, width: 'auto', minWidth: 'auto' }
+                : { display: 'block', width: ANCHO * zoom, minWidth: ANCHO * zoom, height: 'auto' }}
         >
             <RoadmapEje
                 cicloActivo={cicloActivo}

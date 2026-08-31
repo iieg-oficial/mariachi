@@ -9,6 +9,28 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.51.0] - 2026-08-31
+
+### Agregado: zoom en la hoja de ruta
+
+Botones de acercar y alejar con el porcentaje a la vista, de 60% a 300%. **En pantalla completa la
+rueda del ratón también hace zoom**; fuera de ella se deja en paz, para no secuestrar el scroll de
+la página.
+
+### Corregido
+
+- **Los modales del mapa de servidores no se veían en pantalla completa.** Ant Design los monta en
+  `document.body`, que queda fuera del elemento expandido, así que el detalle de un nodo se abría
+  donde nadie podía verlo. `NodoDetalleModal` acepta ahora un `contenedor` y el panel le pasa el
+  marco cuando está expandido.
+
+### Cambiado
+
+- **El selector de servidores/servicios se mueve a la derecha**, junto a «Pantalla completa» y al
+  enlace de la sección. Estaba pegado al título, lejos de los controles con los que se usa.
+
+---
+
 ## [2.50.0] - 2026-08-31
 
 ### Agregado: pantalla completa también en el mapa de servidores

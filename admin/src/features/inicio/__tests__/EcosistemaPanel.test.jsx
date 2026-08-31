@@ -124,9 +124,11 @@ describe('pantalla completa', () => {
         );
 
         expect(await screen.findByRole('button', { name: /pantalla completa/i })).toBeInTheDocument();
+        expect(screen.getByText('Servidores')).toBeInTheDocument();
 
         fireEvent.click(screen.getByText('Servicios'));
 
         expect(screen.getByRole('button', { name: /pantalla completa/i })).toBeInTheDocument();
+        expect(screen.getByText('Servidores')).toBeInTheDocument();
     });
 });

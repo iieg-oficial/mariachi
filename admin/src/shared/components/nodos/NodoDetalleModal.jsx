@@ -18,7 +18,7 @@ const { useBreakpoint } = Grid;
 
 const COLUMNAS_SERVICIO = `196px 1fr 50px ${ANCHO_ENLACES}px`;
 
-export default function NodoDetalleModal({ nodo, open, onClose }) {
+export default function NodoDetalleModal({ nodo, open, onClose, contenedor }) {
     const pantalla = useBreakpoint();
     const compacto = !pantalla.md;
     const [series, setSeries] = useState([]);
@@ -68,6 +68,7 @@ export default function NodoDetalleModal({ nodo, open, onClose }) {
         <Modal
             open={open}
             onCancel={onClose}
+            getContainer={contenedor || undefined}
             footer={null}
             width={compacto ? '100%' : 860}
             style={compacto ? { top: 0, maxWidth: '100%', margin: 0, paddingBottom: 0 } : undefined}

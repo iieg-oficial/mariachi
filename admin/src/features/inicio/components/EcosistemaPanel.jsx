@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { App, Button, Card, Segmented, Spin, Typography } from 'antd';
+import { App, Button, Card, Segmented, Space, Spin, Typography } from 'antd';
 import { ClusterOutlined, CompressOutlined, ExpandOutlined } from '@ant-design/icons';
 import { SEMANTIC } from '@app/providers/brand';
 import usePantallaCompleta from '@shared/hooks/usePantallaCompleta';
@@ -43,14 +43,17 @@ export default function EcosistemaPanel({ plataformas, loading, onReportar }) {
     const operativas = plataformas.filter((p) => p.status === 'ok').length;
     const todas = operativas === plataformas.length && plataformas.length > 0;
 
-    const botonPantalla = (
-        <Button
-            size="small"
-            icon={pantallaCompleta ? <CompressOutlined /> : <ExpandOutlined />}
-            onClick={alternar}
-        >
-            {pantallaCompleta ? 'Salir' : 'Pantalla completa'}
-        </Button>
+    const acciones = (
+        <Space size={8}>
+            <Segmented size="small" options={VISTAS} value={vista} onChange={setVista} />
+            <Button
+                size="small"
+                icon={pantallaCompleta ? <CompressOutlined /> : <ExpandOutlined />}
+                onClick={alternar}
+            >
+                {pantallaCompleta ? 'Salir' : 'Pantalla completa'}
+            </Button>
+        </Space>
     );
 
     const contador = plataformas.length > 0 && (
@@ -74,10 +77,9 @@ export default function EcosistemaPanel({ plataformas, loading, onReportar }) {
                     icon={<ClusterOutlined />}
                     title="Huachicol"
                     subtitle="Ecosistema"
-                    badge={<Segmented size="small" options={VISTAS} value={vista} onChange={setVista} />}
                     to="/huachicol/observabilidad"
                     actionLabel="Ver observabilidad"
-                    acciones={botonPantalla}
+                    acciones={acciones}
                 />
                 <EcosistemaTablero
                     plataformas={plataformas}
@@ -96,10 +98,9 @@ export default function EcosistemaPanel({ plataformas, loading, onReportar }) {
                 icon={<ClusterOutlined />}
                 title="Huachicol"
                 subtitle="Ecosistema"
-                badge={<Segmented size="small" options={VISTAS} value={vista} onChange={setVista} />}
                 to="/huachicol/servidores"
                 actionLabel="Ver servidores"
-                acciones={botonPantalla}
+                acciones={acciones}
             />
             <Card size="small" styles={{ body: { padding: '8px 16px 12px' } }}>
                 <div
@@ -127,6 +128,7 @@ export default function EcosistemaPanel({ plataformas, loading, onReportar }) {
             </Card>
 
             <NodoDetalleModal
+                contenedor={pantallaCompleta ? () => marcoRef.current : null}
                 nodo={seleccionado}
                 open={Boolean(seleccionado)}
                 onClose={() => setSeleccionado(null)}

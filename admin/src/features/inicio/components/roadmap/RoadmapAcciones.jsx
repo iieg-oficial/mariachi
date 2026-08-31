@@ -1,6 +1,8 @@
-import { Button, Space } from 'antd';
+import { Button, Space, Tooltip, Typography } from 'antd';
 import {
     CompressOutlined,
+    MinusOutlined,
+    PlusOutlined,
     EditOutlined,
     ExpandOutlined,
     EyeInvisibleOutlined,
@@ -8,10 +10,13 @@ import {
     PauseOutlined,
     PlayCircleOutlined,
 } from '@ant-design/icons';
+import { PASO_ZOOM, ZOOM_MAXIMO, ZOOM_MINIMO } from '@features/inicio/constants/roadmapModelo';
+
+const { Text } = Typography;
 
 export default function RoadmapAcciones({
-    verOcultos, pausado, pantallaCompleta, editando, puedeEditar,
-    onVerOcultos, onPausa, onPantalla, onEditar,
+    verOcultos, pausado, pantallaCompleta, editando, puedeEditar, zoom,
+    onVerOcultos, onPausa, onPantalla, onEditar, onZoom,
 }) {
     const pulsar = (accion) => (evento) => {
         evento.stopPropagation();
@@ -20,6 +25,29 @@ export default function RoadmapAcciones({
 
     return (
         <Space size={6} wrap>
+            <Space.Compact>
+                <Tooltip title="Alejar">
+                    <Button
+                        size="small"
+                        icon={<MinusOutlined />}
+                        aria-label="Alejar el mapa"
+                        disabled={zoom <= ZOOM_MINIMO}
+                        onClick={pulsar(() => onZoom(-PASO_ZOOM))}
+                    />
+                </Tooltip>
+                <Tooltip title="Acercar">
+                    <Button
+                        size="small"
+                        icon={<PlusOutlined />}
+                        aria-label="Acercar el mapa"
+                        disabled={zoom >= ZOOM_MAXIMO}
+                        onClick={pulsar(() => onZoom(PASO_ZOOM))}
+                    />
+                </Tooltip>
+            </Space.Compact>
+            <Text type="secondary" style={{ fontSize: 11, fontVariantNumeric: 'tabular-nums' }}>
+                {`${Math.round(zoom * 100)}%`}
+            </Text>
             <Button
                 size="small"
                 icon={verOcultos ? <EyeOutlined /> : <EyeInvisibleOutlined />}

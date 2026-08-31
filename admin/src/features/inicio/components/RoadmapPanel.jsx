@@ -4,7 +4,14 @@ import { FlagOutlined } from '@ant-design/icons';
 import { useAuth } from '@shared/contexts/useAuth';
 import usePantallaCompleta from '@shared/hooks/usePantallaCompleta';
 import SectionHeader from '@shared/components/SectionHeader';
-import { CICLOS, MARCADORES, PROCESOS } from '@features/inicio/constants/roadmapModelo';
+import {
+    CICLOS,
+    MARCADORES,
+    PASO_ZOOM,
+    PROCESOS,
+    ZOOM_MAXIMO,
+    ZOOM_MINIMO,
+} from '@features/inicio/constants/roadmapModelo';
 import { acomodar } from '@features/inicio/helpers/roadmapLayout';
 import useRoadmapHitos from '@features/inicio/hooks/useRoadmapHitos';
 import RoadmapLienzo from '@features/inicio/components/roadmap/RoadmapLienzo';
@@ -34,6 +41,7 @@ export default function RoadmapPanel() {
     const [tip, setTip] = useState(null);
     const [pausado, setPausado] = useState(false);
     const [verOcultos, setVerOcultos] = useState(false);
+    const [zoom, setZoom] = useState(1);
     const cajaRef = useRef(null);
     const tipRef = useRef(null);
     const esperadoRef = useRef(-1);
@@ -150,6 +158,16 @@ export default function RoadmapPanel() {
         seguirRef.current = false;
     };
 
+    const ajustarZoom = useCallback((paso) => {
+        setZoom((z) => Math.min(ZOOM_MAXIMO, Math.max(ZOOM_MINIMO, Number((z + paso).toFixed(2)))));
+    }, []);
+
+    const alRodar = (evento) => {
+        if (!pantallaCompleta) return;
+        evento.preventDefault();
+        ajustarZoom(evento.deltaY > 0 ? -PASO_ZOOM : PASO_ZOOM);
+    };
+
     const alternarPausa = () => {
         seguirRef.current = pausado;
         setPausado((v) => !v);
@@ -181,6 +199,8 @@ export default function RoadmapPanel() {
             pantallaCompleta={pantallaCompleta}
             editando={editando}
             puedeEditar={puedeEditar}
+            zoom={zoom}
+            onZoom={ajustarZoom}
             onVerOcultos={() => setVerOcultos((v) => !v)}
             onPausa={alternarPausa}
             onPantalla={alternarPantalla}
@@ -228,6 +248,7 @@ export default function RoadmapPanel() {
                     <div
                         ref={cajaRef}
                         onScroll={alDesplazar}
+                        onWheel={alRodar}
                         style={{
                             overflowX: 'auto',
                             WebkitOverflowScrolling: 'touch',
@@ -243,6 +264,7 @@ export default function RoadmapPanel() {
                             relacionados={relacionados}
                             pausado={pausado}
                             aAlto={pantallaCompleta}
+                            zoom={zoom}
                             cicloActivo={esCiclo ? seleccion : null}
                             opacidadDe={opacidadDe}
                             onSeleccionar={alSeleccionar}
