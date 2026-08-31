@@ -87,6 +87,9 @@ export default function LayerEditPage() {
         getLayer,
         updateLayer,
         saveLayerDraft,
+        saveStatsDraft,
+        updateLayerStats,
+        refreshLayerStats,
         requestReview,
         discardDraft,
         getLayerDraft,
@@ -124,7 +127,7 @@ export default function LayerEditPage() {
     const [baseline, setBaseline] = useState(null);
     const [shellHeight, setShellHeight] = useState(null);
     const [eventoLayerId, setEventoLayerId] = useState(null);
-    const [infoboxMode, setInfoboxMode] = useState('visual');
+    const [infoboxMode, setInfoboxMode] = useState('lienzo');
 
     const [moveOpen, setMoveOpen] = useState(false);
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -393,19 +396,31 @@ export default function LayerEditPage() {
     const handlePublish = async (rows) => {
         setPublishing(true);
         try {
-            const porCapa = new Map();
+            const porRecurso = new Map();
             rows.forEach((row) => {
-                if (!porCapa.has(row.layerId)) porCapa.set(row.layerId, {});
-                porCapa.get(row.layerId)[row.field] = row.value;
+                const clave = `${row.resourceType}::${row.layerId}`;
+                if (!porRecurso.has(clave)) {
+                    porRecurso.set(clave, { tipo: row.resourceType, id: row.layerId, payload: {} });
+                }
+                porRecurso.get(clave).payload[row.field] = row.value;
             });
-            for (const [id, payload] of porCapa.entries()) {
-                if (isAdmin) {
-                    await updateLayer(id, payload);
+
+            for (const { tipo, id, payload } of porRecurso.values()) {
+                const esNumeralia = tipo === 'layer_stats';
+                if (!isAdmin) {
+                    if (esNumeralia) await saveStatsDraft(id, payload);
+                    else await saveLayerDraft(id, payload);
+                    await requestReview(id, tipo);
+                    continue;
+                }
+                if (esNumeralia) {
+                    await updateLayerStats(id, payload);
+                    if ((payload.stats_config || []).length > 0) await refreshLayerStats(id);
                 } else {
-                    await saveLayerDraft(id, payload);
-                    await requestReview(id);
+                    await updateLayer(id, payload);
                 }
             }
+
             if (isAdmin) {
                 await Promise.all(
                     [...new Set(rows.map((r) => r.draftId))].map((id) => discardDraft(id)),
@@ -1070,6 +1085,7 @@ export default function LayerEditPage() {
                     workspace={featureTypeContext.workspace}
                     geoserverLayer={featureTypeContext.geoserverLayer}
                     availableFields={availableFields}
+                    onDraftSaved={reloadDrafts}
                 />
             ) : (
                 <Empty description="Este nodo no tiene feature type propio ni descendientes con uno común, así que no hay estadísticas que configurar." />

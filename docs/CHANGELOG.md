@@ -9,6 +9,33 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.59.0] - 2026-08-31
+
+### Agregado: el lienzo, la tarjetita se edita sobre sí misma
+
+La tarjetita deja de tener un editor al lado: **la tarjeta es el editor**. Cada sección se dibuja
+como se va a ver, en su sitio y en su orden, con los datos reales de la capa.
+
+- **El + vive entre secciones** y aparece al pasar el cursor, así que el lugar es parte del gesto.
+  El de hasta abajo es permanente, que es el que hace falta para el caso normal. Ese mismo menú
+  ofrece **duplicar la de arriba**: la duplicación deja de ser un botón dentro del bloque y pasa a
+  ser una inserción con lugar.
+- **Tocar una sección abre su editor en la canaleta** de la derecha, a la altura de la sección. La
+  tarjeta no se encoge ni se reacomoda: sigue midiendo sus 239 px, que es lo único que hace
+  confiable lo que ves. En 239 px no cabe un selector; por eso los controles van al lado y no dentro.
+- **Se arrastra por el asa** del borde izquierdo. El **encabezado no**: se dibuja como la barra de
+  título que es, con candado, porque en el visor siempre se pinta arriba.
+- Una sección recién agregada **sigue visible aunque todavía no muestre nada** —dice «sin datos
+  todavía»—, en vez de desaparecer hasta que le pongas un campo.
+- **La herencia se ve en la tarjeta**: si la capa hereda del grupo, el lienzo la pinta atenuada y
+  el botón de personalizar está encima, no en un recuadro aparte.
+
+El segmento pasa a **Lienzo · Lista · JSON**, con el lienzo por defecto. La lista es el editor
+anterior y se queda como respaldo: el lienzo no se ha ejercitado con el ratón contra capas reales.
+
+Los editores de cada bloque se reutilizan tal cual —`BlockShell` gana un modo `bare` para vivir en
+la canaleta sin su marco—, así que lo que cambia es el acomodo, no la edición.
+
 ## [2.58.0] - 2026-08-31
 
 ### Agregado: el modo edición arma sucesiones y desempata hitos

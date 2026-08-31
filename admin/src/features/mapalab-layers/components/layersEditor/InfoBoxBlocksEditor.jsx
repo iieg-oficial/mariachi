@@ -110,7 +110,12 @@ const StylePicker = ({ color, bg, onChange }) => {
     );
 };
 
-const BlockShell = ({ title, onRemove, onDuplicate, children, hint }) => (
+const BlockShell = ({ title, onRemove, onDuplicate, children, hint, bare = false }) => (bare ? (
+    <div>
+        <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 8 }}>{hint}</Text>
+        {children}
+    </div>
+) : (
     <Card
         size="small"
         title={
@@ -145,7 +150,7 @@ const BlockShell = ({ title, onRemove, onDuplicate, children, hint }) => (
     >
         {children}
     </Card>
-);
+));
 
 const DragHandle = ({ attributes, listeners, label = 'Arrastrar para reordenar', style: extraStyle = {} }) => (
     <Button
@@ -205,7 +210,7 @@ const computeHeaderMode = (val, fields) => {
     return fields.find((f) => f.name === val) ? 'field' : 'static';
 };
 
-const HeaderFieldBlock = ({ value, onChange, onRemove, availableFields }) => {
+export const HeaderFieldBlock = ({ bare = false,  value, onChange, onRemove, availableFields }) => {
     const [mode, setMode] = useState(() => computeHeaderMode(value, availableFields));
     const userTouchedRef = useRef(false);
     const lastValueRef = useRef(value);
@@ -228,7 +233,7 @@ const HeaderFieldBlock = ({ value, onChange, onRemove, availableFields }) => {
     };
 
     return (
-        <BlockShell title="Encabezado" onRemove={onRemove} hint={blockDef('headerField').hint}>
+        <BlockShell bare={bare} title="Encabezado" onRemove={onRemove} hint={blockDef('headerField').hint}>
             <Space orientation="vertical" size={6} style={{ width: '100%' }}>
                 <FieldValueField
                     value={typeof value === 'string' ? { field: value } : value}
@@ -292,7 +297,7 @@ const NestedFieldEditor = ({ entry, onChange, onRemove, availableFields, parentS
     );
 };
 
-const LabelGroupsBlock = ({ value = [], onChange, onRemove, onDuplicate, availableFields }) => {
+export const LabelGroupsBlock = ({ bare = false,  value = [], onChange, onRemove, onDuplicate, availableFields }) => {
     const updateGroup = (idx, patch) => {
         const next = value.map((g, i) => (i === idx ? { ...g, ...patch } : g));
         onChange(next);
@@ -301,7 +306,7 @@ const LabelGroupsBlock = ({ value = [], onChange, onRemove, onDuplicate, availab
     const addGroup = () => onChange([...value, { fields: [], ...MUNICIPIO_STYLE }]);
 
     return (
-        <BlockShell title="Etiquetas" onRemove={onRemove} onDuplicate={onDuplicate} hint={blockDef('labelGroups').hint}>
+        <BlockShell bare={bare} title="Etiquetas" onRemove={onRemove} onDuplicate={onDuplicate} hint={blockDef('labelGroups').hint}>
             <Space orientation="vertical" size="small" style={{ width: '100%' }}>
                 {value.map((g, idx) => {
                     const groupKind = g.staticValues !== undefined ? 'static' : 'fields';
@@ -445,7 +450,7 @@ const LabelGroupsBlock = ({ value = [], onChange, onRemove, onDuplicate, availab
     );
 };
 
-const CardsBlock = ({ value = [], columns = 1, onChange, onColumnsChange, onRemove, onDuplicate, availableFields }) => {
+export const CardsBlock = ({ bare = false,  value = [], columns = 1, onChange, onColumnsChange, onRemove, onDuplicate, availableFields }) => {
     const updateItem = (idx, patch) => {
         const next = value.map((it, i) => (i === idx ? { ...it, ...patch } : it));
         onChange(next);
@@ -463,7 +468,7 @@ const CardsBlock = ({ value = [], columns = 1, onChange, onColumnsChange, onRemo
     };
 
     return (
-        <BlockShell title="Cards (estadísticas)" onRemove={onRemove} onDuplicate={onDuplicate} hint={blockDef('cards').hint}>
+        <BlockShell bare={bare} title="Cards (estadísticas)" onRemove={onRemove} onDuplicate={onDuplicate} hint={blockDef('cards').hint}>
             <Space orientation="vertical" size="small" style={{ width: '100%' }}>
                 <Space size={6}>
                     <Text type="secondary" style={{ fontSize: 12 }}>Columnas:</Text>
@@ -515,7 +520,7 @@ const CardsBlock = ({ value = [], columns = 1, onChange, onColumnsChange, onRemo
     );
 };
 
-const ListBlock = ({ value = [], onChange, onRemove, onDuplicate, availableFields }) => {
+export const ListBlock = ({ bare = false,  value = [], onChange, onRemove, onDuplicate, availableFields }) => {
     const updateItem = (idx, patch) => {
         const next = value.map((it, i) => (i === idx ? { ...it, ...patch } : it));
         onChange(next);
@@ -543,7 +548,7 @@ const ListBlock = ({ value = [], onChange, onRemove, onDuplicate, availableField
     };
 
     return (
-        <BlockShell title="Lista" onRemove={onRemove} onDuplicate={onDuplicate} hint={blockDef('list').hint}>
+        <BlockShell bare={bare} title="Lista" onRemove={onRemove} onDuplicate={onDuplicate} hint={blockDef('list').hint}>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
                     <Space orientation="vertical" size="small" style={{ width: '100%' }}>
@@ -601,7 +606,7 @@ const ListBlock = ({ value = [], onChange, onRemove, onDuplicate, availableField
     );
 };
 
-const IconTextBlock = ({ value = [], onChange, onRemove, onDuplicate, availableFields }) => {
+export const IconTextBlock = ({ bare = false,  value = [], onChange, onRemove, onDuplicate, availableFields }) => {
     const updateItem = (idx, patch) => {
         const next = value.map((it, i) => (i === idx ? { ...it, ...patch } : it));
         onChange(next);
@@ -629,7 +634,7 @@ const IconTextBlock = ({ value = [], onChange, onRemove, onDuplicate, availableF
     };
 
     return (
-        <BlockShell title="Íconos con texto" onRemove={onRemove} onDuplicate={onDuplicate} hint={blockDef('iconText').hint}>
+        <BlockShell bare={bare} title="Íconos con texto" onRemove={onRemove} onDuplicate={onDuplicate} hint={blockDef('iconText').hint}>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
                     <Space orientation="vertical" size="small" style={{ width: '100%' }}>
@@ -752,7 +757,7 @@ const TextItemRow = ({ item, onChange, onRemove, availableFields }) => {
     );
 };
 
-const TextBlock = ({ value = [], onChange, onRemove, onDuplicate, availableFields }) => {
+export const TextBlock = ({ bare = false,  value = [], onChange, onRemove, onDuplicate, availableFields }) => {
     const items = value;
     const updateItems = (next) => onChange(next);
     const updateItem = (idx, value) => updateItems(items.map((it, i) => (i === idx ? value : it)));
@@ -768,7 +773,7 @@ const TextBlock = ({ value = [], onChange, onRemove, onDuplicate, availableField
     };
 
     return (
-        <BlockShell title="Texto (párrafos)" onRemove={onRemove} onDuplicate={onDuplicate} hint={blockDef('text').hint}>
+        <BlockShell bare={bare} title="Texto (párrafos)" onRemove={onRemove} onDuplicate={onDuplicate} hint={blockDef('text').hint}>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
                     <Space orientation="vertical" size="small" style={{ width: '100%' }}>

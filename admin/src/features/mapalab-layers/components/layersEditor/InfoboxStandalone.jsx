@@ -17,7 +17,7 @@ export default function InfoboxStandalone({ layer, inherited = null, onSaved }) 
     const [availableFields, setAvailableFields] = useState([]);
     const [loadingFields, setLoadingFields] = useState(false);
     const [saving, setSaving] = useState(false);
-    const [mode, setMode] = useState('visual');
+    const [mode, setMode] = useState('lienzo');
 
     useEffect(() => {
         form.setFieldsValue({ infoboxConfig: layer?.infoboxConfig || null });

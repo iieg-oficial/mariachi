@@ -1,5 +1,5 @@
 import { Segmented } from 'antd';
-import { AppstoreOutlined, CodeOutlined } from '@ant-design/icons';
+import { AppstoreOutlined, CodeOutlined, LayoutOutlined } from '@ant-design/icons';
 
 export default function InfoBoxModeSwitch({ value, onChange }) {
     return (
@@ -8,7 +8,8 @@ export default function InfoBoxModeSwitch({ value, onChange }) {
             value={value}
             onChange={onChange}
             options={[
-                { value: 'visual', label: 'Visual', icon: <AppstoreOutlined /> },
+                { value: 'lienzo', label: 'Lienzo', icon: <LayoutOutlined /> },
+                { value: 'visual', label: 'Lista', icon: <AppstoreOutlined /> },
                 { value: 'json', label: 'JSON', icon: <CodeOutlined /> },
             ]}
         />
