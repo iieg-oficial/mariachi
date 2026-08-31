@@ -3,20 +3,26 @@ import api from '@shared/services/api';
 import { optimisticMoveRawTree, optimisticReorderRawTree } from '@features/mapalab-layers/utils/treeOptimistic';
 
 
-const toAntTreeData = (nodes, parentNodeType = null) =>
-    nodes.map((n) => ({
-        key: n.id,
-        title: n.label,
-        nodeType: n.nodeType,
-        parentNodeType,
-        workspaceAlias: n.workspaceAlias,
-        geoserverLayer: n.geoserverLayer,
-        disabled: n.disabled,
-        hiddenInMenu: n.hiddenInMenu,
-        iconUrl: n.iconUrl,
-        raw: n,
-        children: n.children && n.children.length > 0 ? toAntTreeData(n.children, n.nodeType) : undefined,
-    }));
+export const toAntTreeData = (nodes, parentNodeType = null) =>
+    (nodes || []).map((n) => {
+        const label = String(n.label || '');
+        const legacyDisabled = label.startsWith('*');
+        return {
+            key: n.id,
+            title: legacyDisabled ? label.slice(1) : label,
+            nodeType: n.nodeType,
+            parentNodeType,
+            workspaceAlias: n.workspaceAlias || n.wmsConfig?.workspace || null,
+            geoserverLayer: n.geoserverLayer || n.wmsConfig?.geoserverLayer || null,
+            geometryType: n.geometryType || null,
+            cqlFilter: n.wmsConfig?.cqlFilter || '',
+            disabled: n.disabled === true || legacyDisabled,
+            hiddenInMenu: n.hiddenInMenu === true,
+            iconUrl: n.iconUrl,
+            raw: n,
+            children: n.children && n.children.length > 0 ? toAntTreeData(n.children, n.nodeType) : undefined,
+        };
+    });
 
 export const flattenLeaves = (nodes, acc = []) => {
     for (const n of nodes || []) {

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { Alert, AutoComplete, Breadcrumb, Button, Card, Col, Empty, Form, Input, Result, Row, Segmented, Select, Space, Spin, Switch, Tabs, Tag, Tooltip, Typography } from 'antd';
-import { DeleteOutlined, PartitionOutlined, ReloadOutlined, SaveOutlined, SettingOutlined, TableOutlined } from '@ant-design/icons';
+import { Alert, AutoComplete, Button, Card, Col, Empty, Form, Input, Result, Row, Segmented, Select, Space, Spin, Switch, Tabs, Tag, Tooltip, Typography } from 'antd';
+import { DeleteOutlined, PartitionOutlined, ReloadOutlined, SaveOutlined, SettingOutlined, SlidersOutlined, TableOutlined } from '@ant-design/icons';
 import DeleteLayerModal from '@features/mapalab-layers/components/DeleteLayerModal';
 import DeletedLayersList from '@features/mapalab-layers/components/DeletedLayersList';
 import LayersTreeListInline from '@features/mapalab-layers/components/LayersTreeListInline';
@@ -29,12 +29,18 @@ import LayerHighlightGlobalSettings from '@features/mapalab-layers/components/La
 import { useEventosList } from '@features/mapalab-eventos/hooks/useEventos';
 import { useEventosTreeNode } from '@features/mapalab-eventos/hooks/useEventoTreeNodes';
 import {
+    ADVANCED_TABS,
+    ADVANCED_TAB_TITLES,
     NODE_TYPE_OPTIONS,
     NODE_TYPE_HELP,
+    PRIMARY_TABS,
     isFieldVisible,
     isTabVisible,
     isPropertyOfGroup,
+    labelForNode,
 } from '@features/mapalab-layers/constants/nodeTypes';
+import AdvancedStack from '@features/mapalab-layers/components/layersEditor/AdvancedStack';
+import LayerBreadcrumb from '@features/mapalab-layers/components/LayerBreadcrumb';
 import { GEOMETRY_TYPE_OPTIONS } from '@features/mapalab-layers/constants/layerConfigCatalogs';
 import MunicipioFieldPicker from '@features/mapalab-layers/components/MunicipioFieldPicker';
 import { findNodeContext } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
@@ -46,7 +52,8 @@ export default function LayerEditPage() {
     const { id: layerId } = useParams();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const initialTab = searchParams.get('tab') || 'identidad';
+    const requestedTab = searchParams.get('tab') || 'identidad';
+    const initialTab = ADVANCED_TABS.includes(requestedTab) ? 'avanzado' : requestedTab;
     const { isMobile } = useIsMobile();
     const { user } = useAuth();
     const isAdmin = user?.role === 'tetlamamakani';
@@ -147,6 +154,7 @@ export default function LayerEditPage() {
     };
 
 
+    const watchedLabel = Form.useWatch('label', form);
     const selectedWs = Form.useWatch('workspaceAlias', form);
     const selectedGsLayer = Form.useWatch('geoserverLayer', form);
     const selectedStyles = Form.useWatch('styles', form);
@@ -552,7 +560,7 @@ export default function LayerEditPage() {
         }
     };
 
-    const tabItems = [
+    const allTabs = [
         {
             key: 'identidad',
             forceRender: true,
@@ -1052,6 +1060,21 @@ export default function LayerEditPage() {
         .filter((tab) => tab.key === 'identidad' || isTabVisible(tab.key, watchedNodeType))
         .filter((tab) => !(isProperty && (tab.key === 'simbologia' || tab.key === 'metadatos')));
 
+    const advancedSections = ADVANCED_TABS
+        .map((key) => allTabs.find((tab) => tab.key === key))
+        .filter(Boolean)
+        .map((tab) => ({ key: tab.key, title: ADVANCED_TAB_TITLES[tab.key], children: tab.children }));
+
+    const tabItems = [
+        ...allTabs.filter((tab) => PRIMARY_TABS.includes(tab.key)),
+        ...(advancedSections.length > 0 ? [{
+            key: 'avanzado',
+            forceRender: true,
+            label: <><SlidersOutlined /> Avanzado</>,
+            children: <AdvancedStack sections={advancedSections} />,
+        }] : []),
+    ];
+
     const nodeHelp = NODE_TYPE_HELP[watchedNodeType];
 
     const editorBody = !layerId ? null : loading ? (
@@ -1083,6 +1106,29 @@ export default function LayerEditPage() {
             )}
             <Tabs defaultActiveKey={initialTab} items={tabItems} tabPlacement="top" style={{ minHeight: 400 }} />
         </Form>
+    );
+
+    const showEditor = Boolean(layerId) && !selectedEventoKey;
+    const selectedNode = layerId ? findNodeContext(treeData, layerId)?.node : null;
+    const headerName = watchedLabel || layer?.label || selectedNode?.title || layerId;
+
+    const editorHeader = (
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', padding: isMobile ? '10px 12px' : '14px 18px' }}>
+            <Space orientation="vertical" size={6} style={{ minWidth: 0 }}>
+                <Title level={isMobile ? 5 : 4} style={{ margin: 0 }}>{headerName}</Title>
+                <Space size={6} wrap>
+                    <Tag>{labelForNode(watchedNodeType, parentNodeType)}</Tag>
+                    {layer?.workspaceAlias && layer?.geoserverLayer && (
+                        <Text type="secondary" style={{ fontSize: 11 }}>
+                            {layer.workspaceAlias} : {layer.geoserverLayer}
+                        </Text>
+                    )}
+                    {selectedNode?.hiddenInMenu && <Tag color="orange">oculta</Tag>}
+                    {selectedNode?.disabled && <Tag color="red">fuera de servicio</Tag>}
+                </Space>
+            </Space>
+            {actionButtons}
+        </div>
     );
 
     return (
@@ -1117,10 +1163,12 @@ export default function LayerEditPage() {
                     </Space>
                 </Space>
                 <Text type="secondary" style={{ fontSize: 12 }}>
-                    Árbol del visor. Click sobre un nodo para abrir el editor inline; click sobre el triángulo para expandir/colapsar la rama.
+                    {showEditor
+                        ? 'Usa la ruta para moverte entre niveles, las flechas para pasar a la capa de al lado o el buscador para saltar a otra rama.'
+                        : 'Un tema o una categoría se abre; una capa se edita. Arrastra el asa de una fila para reordenarla entre sus hermanas.'}
                 </Text>
             </div>
-            <div style={{ flex: 1, minHeight: 0, padding: isMobile ? 6 : 24, paddingBottom: layerId ? (isMobile ? 6 : 12) : (isMobile ? 6 : 24), overflow: 'hidden' }}>
+            <div style={{ flex: 1, minHeight: 0, padding: isMobile ? 6 : 24, overflow: 'hidden' }}>
                 <Card style={{ height: '100%', display: 'flex', flexDirection: 'column' }} styles={{ body: { padding: 0, height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' } }}>
                     <style>{`
                         .layers-tree-tabs { height: 100%; display: flex; flex-direction: column; min-height: 0; }
@@ -1128,74 +1176,90 @@ export default function LayerEditPage() {
                         .layers-tree-tabs > .ant-tabs-content-holder > .ant-tabs-content { height: 100%; }
                         .layers-tree-tabs .ant-tabs-tabpane { height: 100%; overflow: hidden; }
                     `}</style>
-                    <Tabs
-                        className="layers-tree-tabs"
-                        activeKey={treeTab}
-                        onChange={onTreeTabChange}
-                        size="small"
-                        tabBarStyle={{ padding: '0 12px', marginBottom: 0, flexShrink: 0 }}
-                        items={[
-                            {
-                                key: 'layers',
-                                label: `Capas (${catalogTreeData?.length || 0})`,
-                                children: (
-                                    <LayersTreeListInline
-                                        treeData={catalogTreeData}
-                                        loading={treeLoading}
-                                        error={treeError}
-                                        selectedKey={selectedEventoKey ? null : (layerId || null)}
-                                        onSelect={handleSelectFromTree}
-                                        onReload={reload}
-                                        onCreate={createLayer}
-                                        isAdmin={isAdmin}
-                                        onBulkTagsClick={() => setBulkTagsOpen(true)}
-                                        onReorder={isAdmin ? handleReorder : null}
-                                        editorContent={layerId && !selectedEventoKey ? editorBody : null}
-                                        actionButtons={layerId && !selectedEventoKey ? actionButtons : null}
-                                    />
-                                ),
-                            },
-                            {
-                                key: 'eventos',
-                                label: `Eventos (${eventos?.length || 0})`,
-                                children: eventosChildren.length === 0 ? (
-                                    <div style={{ padding: 24 }}>
-                                        <Empty
-                                            description="Sin eventos publicados"
-                                            image={Empty.PRESENTED_IMAGE_SIMPLE}
-                                        >
-                                            <Button type="primary" onClick={() => navigate('/mapalab/eventos')}>
-                                                Ir al editor de eventos
-                                            </Button>
-                                        </Empty>
-                                    </div>
-                                ) : (
-                                    <LayersTreeListInline
-                                        treeData={eventosChildren}
-                                        loading={treeLoading}
-                                        error={treeError}
-                                        selectedKey={selectedEventoKey}
-                                        onSelect={handleSelectFromTree}
-                                        isAdmin={false}
-                                        onReorder={null}
-                                    />
-                                ),
-                            },
-                            {
-                                key: 'papelera',
-                                label: 'Papelera',
-                                children: (
-                                    <DeletedLayersList
-                                        isAdmin={isAdmin}
-                                        listDeleted={listDeletedLayers}
-                                        onRestore={restoreLayer}
-                                        onPurge={purgeLayer}
-                                        onAfterAction={reload}
-                                    />
-                                ),
-                            },
-                        ]}
-                    />
+                    {showEditor ? (
+                        <>
+                            <div style={{ borderBottom: '1px solid #f0f0f0', flexShrink: 0 }}>
+                                <LayerBreadcrumb
+                                    treeData={catalogTreeData}
+                                    selectedKey={layerId}
+                                    onSelect={handleSelectFromTree}
+                                    onBackToTree={() => navigate('/mapalab/layers')}
+                                    isMobile={isMobile}
+                                />
+                            </div>
+                            {editorHeader}
+                            <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: isMobile ? '0 12px 16px' : '0 18px 20px' }}>
+                                {editorBody}
+                            </div>
+                        </>
+                    ) : (
+                        <Tabs
+                            className="layers-tree-tabs"
+                            activeKey={treeTab}
+                            onChange={onTreeTabChange}
+                            size="small"
+                            tabBarStyle={{ padding: '0 12px', marginBottom: 0, flexShrink: 0 }}
+                            items={[
+                                {
+                                    key: 'layers',
+                                    label: `Capas (${catalogTreeData?.length || 0})`,
+                                    children: (
+                                        <LayersTreeListInline
+                                            treeData={catalogTreeData}
+                                            loading={treeLoading}
+                                            error={treeError}
+                                            selectedKey={null}
+                                            onSelect={handleSelectFromTree}
+                                            onReload={reload}
+                                            onCreate={createLayer}
+                                            isAdmin={isAdmin}
+                                            onBulkTagsClick={() => setBulkTagsOpen(true)}
+                                            onReorder={isAdmin ? handleReorder : null}
+                                        />
+                                    ),
+                                },
+                                {
+                                    key: 'eventos',
+                                    label: `Eventos (${eventos?.length || 0})`,
+                                    children: eventosChildren.length === 0 ? (
+                                        <div style={{ padding: 24 }}>
+                                            <Empty
+                                                description="Sin eventos publicados"
+                                                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                                            >
+                                                <Button type="primary" onClick={() => navigate('/mapalab/eventos')}>
+                                                    Ir al editor de eventos
+                                                </Button>
+                                            </Empty>
+                                        </div>
+                                    ) : (
+                                        <LayersTreeListInline
+                                            treeData={eventosChildren}
+                                            loading={treeLoading}
+                                            error={treeError}
+                                            selectedKey={selectedEventoKey}
+                                            onSelect={handleSelectFromTree}
+                                            isAdmin={false}
+                                            onReorder={null}
+                                        />
+                                    ),
+                                },
+                                {
+                                    key: 'papelera',
+                                    label: 'Papelera',
+                                    children: (
+                                        <DeletedLayersList
+                                            isAdmin={isAdmin}
+                                            listDeleted={listDeletedLayers}
+                                            onRestore={restoreLayer}
+                                            onPurge={purgeLayer}
+                                            onAfterAction={reload}
+                                        />
+                                    ),
+                                },
+                            ]}
+                        />
+                    )}
                 </Card>
             </div>
 

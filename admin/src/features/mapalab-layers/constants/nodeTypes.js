@@ -42,6 +42,18 @@ export const MUNICIPIO_FIELD_TYPE_OPTIONS = [
     { value: 'nombre', label: 'Nombre (ej. Guadalajara)' },
 ];
 
+export const PRIMARY_TABS = ['identidad', 'infobox', 'metadatos'];
+
+export const ADVANCED_TABS = ['apariencia', 'servicios', 'simbologia', 'aviso', 'badge'];
+
+export const ADVANCED_TAB_TITLES = {
+    apariencia: 'Apariencia',
+    servicios: 'Servicios',
+    simbologia: 'Simbología',
+    aviso: 'Aviso',
+    badge: 'Badge',
+};
+
 export const TAB_VISIBILITY = {
     servicios: ['group', 'leaf'],
     infobox: ['group', 'leaf'],
@@ -80,5 +92,8 @@ export const NODE_TYPE_HELP = {
         title: 'Grupo',
         body: 'Es una capa real cuyos hijos son propiedades (típicamente filtros CQL sobre el mismo feature type). Tiene slug/alias, WMS, infobox y metadatos como una capa.',
     },
-    leaf: null,
+    leaf: {
+        title: 'Capa',
+        body: 'La capa real del visor: se enciende, expone WMS y tiene tarjeta, metadatos y simbología propios. El ícono de la fila indica su geometría (punto, línea o polígono).',
+    },
 };

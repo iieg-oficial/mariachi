@@ -9,6 +9,61 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.39.0] - 2026-08-28
+
+### Cambiado: el arbol de capas se reestructuro para que se entienda de un vistazo
+
+El arbol y el editor dejaron de convivir en la misma lista. Al seleccionar una capa el arbol se
+comprime en una ruta clickeable y el editor ocupa el panel completo. Antes el editor se insertaba
+*entre* la fila y sus hijos: un formulario de ocho pestanas partia la lista en dos y mandaba a los
+hermanos del nodo a pantallas de distancia.
+
+La ruta no es solo decorativa. Cada nombre regresa a su nivel, cada uno abre la lista de sus
+hermanas, un par de flechas pasa a la capa de al lado y un buscador salta a cualquier rama sin
+volver al arbol. Recorrer capa por capa —lo que mas se hace en una jornada de captura— paso de
+tres gestos a uno.
+
+**Las ocho pestanas son cuatro.** Quedan Identidad, Tarjeta y Metadatos; Apariencia, Servicios,
+Simbologia, Aviso y Badge se apilan bajo *Avanzado*. Simbologia se guarda por feature type y no
+por nodo, asi que tocarla afecta a todas las hermanas que comparten el feature type: no puede
+estar al mismo nivel que Identidad.
+
+**Los seis tipos de nodo se distinguen por forma.** Tema es una banda de seccion, Categoria un
+encabezado con carpeta y cuenta, Etiqueta un rotulo sin afordancia de click, Grupo un marco que
+encierra a sus propiedades con el filtro CQL de cada una, y Capa una fila con el glifo de su
+geometria. Antes todo dependia del color de una etiqueta de 10 px y todo parecia una capa.
+
+**Se fue el modo «Reordenar».** El arrastre ya usaba un umbral de 8 px, asi que nunca choco con el
+click: el modo no protegia de nada. El asa aparece al pasar el cursor. En el arbol, un tema o una
+categoria se abre y una capa se edita —una fila, un objetivo—; editar un tema es raro y vive en el
+lapiz del hover.
+
+### Corregido: tres senales de la fila nunca se pintaban
+
+`toAntTreeData` leia `workspaceAlias`, `geoserverLayer` y `disabled` al nivel del nodo, pero el
+arbol del visor anida los dos primeros dentro de `wmsConfig` y codificaba el tercero como un
+asterisco en el nombre. La etiqueta del workspace, el nombre de la capa de GeoServer y la marca de
+deshabilitada estaban escritas en el codigo y no aparecian nunca; buscar por workspace o por capa
+de GeoServer no devolvia nada porque comparaba contra campos vacios.
+
+El mapeo ahora hace el mismo respaldo que ya hacian `flattenLeaves` y `findLeafByWsLayer` treinta
+lineas mas abajo, y acepta tanto `disabled` como el asterisco del arbol viejo, para cubrir la
+ventana entre desplegar mapalab 1.146.0 y esto.
+
+### Corregido: buscar en el arbol lo dejaba desplegado para siempre
+
+El filtro acumulaba las claves encontradas en el estado de expansion y lo guardaba en
+`localStorage`. Al vaciar el campo, el arbol quedaba abierto de par en par —y asi seguia en la
+siguiente sesion—. Ahora la expansion del filtro es temporal: al limpiar la busqueda el arbol
+vuelve exactamente como estaba.
+
+### Corregido: el selector de «Mover» no dejaba ver el tipo del destino
+
+`buildMoveTreeData` solo conservaba `value` y `title`, asi que en la lista de destinos un Tema y
+una Capa se veian identicos. El backend bloquea ciclos y auto-padre pero no valida el tipo del
+padre, de modo que se podia colgar un Tema debajo de una Capa sin que nada avisara. Cada destino
+muestra su tipo y solo Tema, Categoria y Grupo son seleccionables.
+
 ## [2.38.0] - 2026-08-28
 
 ### Eliminado: `GET /mapalab-stats/highlights`
