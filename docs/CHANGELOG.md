@@ -9,6 +9,27 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.52.1] - 2026-08-31
+
+### Corregido: el zoom del roadmap dejaba el lienzo en blanco
+
+El SVG recibía el alto en porcentaje —`height: 120%`— dentro de un contenedor flex centrado. Con
+`width: auto`, el navegador no tenía de dónde calcular el ancho y lo colapsaba: el lienzo
+desaparecía y los botones parecían no hacer nada. Ahora las dos medidas se calculan en píxeles a
+partir del alto de la pantalla y la proporción del `viewBox`, así que crecen juntas.
+
+De paso el contenedor pasa de `overflow-x` a `overflow` completo: con el mapa acercado no había
+manera de llegar a lo que quedaba fuera por arriba o por abajo, y el centrado por flex recortaba
+sin dejar desplazar. Ahora centra con `margin: auto`, que sí convive con el scroll.
+
+### Cambiado
+
+- **Los controles de zoom solo aparecen en pantalla completa.** Fuera de ella el lienzo se dibuja a
+  tamaño fijo con scroll horizontal, así que no había nada que acercar. El zoom vuelve a 100% al
+  salir.
+
+---
+
 ## [2.52.0] - 2026-08-31
 
 ### Cambiado: la vista previa de la tarjetita deja de reimplementar el visor

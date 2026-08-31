@@ -122,25 +122,11 @@ describe('RoadmapPanel', () => {
         expect(logos.length).toBeGreaterThan(0);
     });
 
-    it('los botones de zoom acercan y alejan el lienzo', async () => {
+    it('el zoom no se ofrece fuera de la pantalla completa', async () => {
         montar();
         await screen.findByText('mariachi 2');
-        expect(screen.getByText('100%')).toBeInTheDocument();
-
-        fireEvent.click(screen.getByRole('button', { name: 'Acercar el mapa' }));
-        expect(screen.getByText('120%')).toBeInTheDocument();
-
-        fireEvent.click(screen.getByRole('button', { name: 'Alejar el mapa' }));
-        expect(screen.getByText('100%')).toBeInTheDocument();
-    });
-
-    it('no deja alejar más allá del mínimo', async () => {
-        montar();
-        await screen.findByText('mariachi 2');
-        const alejar = screen.getByRole('button', { name: 'Alejar el mapa' });
-        [1, 2, 3].forEach(() => fireEvent.click(alejar));
-        expect(screen.getByText('60%')).toBeInTheDocument();
-        expect(alejar).toBeDisabled();
+        expect(screen.queryByRole('button', { name: 'Acercar el mapa' })).not.toBeInTheDocument();
+        expect(screen.queryByText('100%')).not.toBeInTheDocument();
     });
 
     it('el botón detiene y reanuda el marcador', async () => {

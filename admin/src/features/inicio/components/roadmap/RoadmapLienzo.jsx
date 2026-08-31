@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { curvaDe, controlDeCurva } from '@shared/components/nodos/latencia';
 import { ALTO, ANCHO, ESPINA_Y, FIN_EJE } from '@features/inicio/constants/roadmapModelo';
+
+const PROPORCION = ANCHO / ALTO;
 import { anchoDe, bordeDelNodo, colorDe } from '@features/inicio/helpers/roadmapLayout';
 import RoadmapEje from '@features/inicio/components/roadmap/RoadmapEje';
 import RoadmapNodo, { Momento } from '@features/inicio/components/roadmap/RoadmapNodo';
@@ -113,8 +115,14 @@ export default function RoadmapLienzo({
             role="img"
             aria-label="Hoja de ruta del ecosistema, de 2024 a 2030"
             style={aAlto
-                ? { display: 'block', height: `${100 * zoom}%`, width: 'auto', minWidth: 'auto' }
-                : { display: 'block', width: ANCHO * zoom, minWidth: ANCHO * zoom, height: 'auto' }}
+                ? {
+                    display: 'block',
+                    margin: 'auto',
+                    height: `calc((100dvh - 92px) * ${zoom})`,
+                    width: `calc((100dvh - 92px) * ${zoom * PROPORCION})`,
+                    flex: 'none',
+                }
+                : { display: 'block', width: ANCHO, minWidth: ANCHO, height: 'auto' }}
         >
             <RoadmapEje
                 cicloActivo={cicloActivo}

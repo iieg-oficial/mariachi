@@ -25,29 +25,33 @@ export default function RoadmapAcciones({
 
     return (
         <Space size={6} wrap>
-            <Space.Compact>
-                <Tooltip title="Alejar">
-                    <Button
-                        size="small"
-                        icon={<MinusOutlined />}
-                        aria-label="Alejar el mapa"
-                        disabled={zoom <= ZOOM_MINIMO}
-                        onClick={pulsar(() => onZoom(-PASO_ZOOM))}
-                    />
-                </Tooltip>
-                <Tooltip title="Acercar">
-                    <Button
-                        size="small"
-                        icon={<PlusOutlined />}
-                        aria-label="Acercar el mapa"
-                        disabled={zoom >= ZOOM_MAXIMO}
-                        onClick={pulsar(() => onZoom(PASO_ZOOM))}
-                    />
-                </Tooltip>
-            </Space.Compact>
-            <Text type="secondary" style={{ fontSize: 11, fontVariantNumeric: 'tabular-nums' }}>
-                {`${Math.round(zoom * 100)}%`}
-            </Text>
+            {pantallaCompleta && (
+                <>
+                    <Space.Compact>
+                        <Tooltip title="Alejar">
+                            <Button
+                                size="small"
+                                icon={<MinusOutlined />}
+                                aria-label="Alejar el mapa"
+                                disabled={zoom <= ZOOM_MINIMO}
+                                onClick={pulsar(() => onZoom(-PASO_ZOOM))}
+                            />
+                        </Tooltip>
+                        <Tooltip title="Acercar">
+                            <Button
+                                size="small"
+                                icon={<PlusOutlined />}
+                                aria-label="Acercar el mapa"
+                                disabled={zoom >= ZOOM_MAXIMO}
+                                onClick={pulsar(() => onZoom(PASO_ZOOM))}
+                            />
+                        </Tooltip>
+                    </Space.Compact>
+                    <Text type="secondary" style={{ fontSize: 11, fontVariantNumeric: 'tabular-nums' }}>
+                        {`${Math.round(zoom * 100)}%`}
+                    </Text>
+                </>
+            )}
             <Button
                 size="small"
                 icon={verOcultos ? <EyeOutlined /> : <EyeInvisibleOutlined />}

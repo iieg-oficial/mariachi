@@ -162,6 +162,10 @@ export default function RoadmapPanel() {
         setZoom((z) => Math.min(ZOOM_MAXIMO, Math.max(ZOOM_MINIMO, Number((z + paso).toFixed(2)))));
     }, []);
 
+    useEffect(() => {
+        if (!pantallaCompleta) setZoom(1);
+    }, [pantallaCompleta]);
+
     const alRodar = (evento) => {
         if (!pantallaCompleta) return;
         evento.preventDefault();
@@ -250,11 +254,10 @@ export default function RoadmapPanel() {
                         onScroll={alDesplazar}
                         onWheel={alRodar}
                         style={{
-                            overflowX: 'auto',
+                            overflow: 'auto',
                             WebkitOverflowScrolling: 'touch',
                             height: pantallaCompleta ? 'calc(100% - 44px)' : 'auto',
                             display: pantallaCompleta ? 'flex' : 'block',
-                            alignItems: 'center',
                         }}
                     >
                         <RoadmapLienzo
