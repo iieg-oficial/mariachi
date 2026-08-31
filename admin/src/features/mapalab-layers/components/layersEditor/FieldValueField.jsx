@@ -175,5 +175,3 @@ export const FieldValueField = ({
         </Space>
     );
 };
-
-export default FieldValueField;

@@ -9,6 +9,16 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.40.1] - 2026-08-31
+
+### Corregido
+
+- `FieldValueField` exportaba el componente dos veces, nombrado y por defecto. El `export default`
+  se retira: su único consumidor, `InfoBoxBlocksEditor`, siempre usó el nombrado. `knip` lo
+  reportaba como export duplicado y dejaba en rojo el `check:dead-code:strict` de CI.
+
+---
+
 ## [2.40.0] - 2026-08-31
 
 ### Agregado: logos de proyecto y un interruptor para ver los features
