@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { Button, Space, Typography } from 'antd';
-import { AppstoreAddOutlined } from '@ant-design/icons';
+import { Button, Space, Tooltip, Typography } from 'antd';
+import { AppstoreAddOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import InfoBoxModeSwitch from './InfoBoxModeSwitch';
 import InfoBoxTemplatesModal from './InfoBoxTemplatesModal';
 
@@ -28,7 +28,12 @@ export default function InfoBoxEditorHeader({
                 gap: 12,
                 marginBottom: 8,
             }}>
-                <Text strong>Configuración del cuadro</Text>
+                <Space size={4}>
+                    <Text strong>Configuración del cuadro</Text>
+                    <Tooltip title="Bloques que componen el cuadro que aparece al hacer click sobre una feature en el visor. Cada bloque —encabezado, etiquetas, cards, lista, íconos, texto— se agrega o se quita según necesites, y se puede duplicar para ponerlo en dos lugares distintos. En modo JSON se copia y pega la tarjetita completa entre entornos.">
+                        <QuestionCircleOutlined style={{ color: '#8c8c8c', cursor: 'help' }} />
+                    </Tooltip>
+                </Space>
                 <Space size={8}>
                     <Button
                         size="small"

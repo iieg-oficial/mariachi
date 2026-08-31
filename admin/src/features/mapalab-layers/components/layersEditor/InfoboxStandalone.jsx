@@ -36,6 +36,9 @@ export default function InfoboxStandalone({ layer, inherited = null, onSaved }) 
         return () => { cancelled = true; };
     }, [layer?.workspaceAlias, layer?.geoserverLayer, listGeoserverFields]);
 
+    const crudo = watchedConfig || inherited?.config || null;
+    const previewValue = crudo && Object.keys(crudo).length > 0 ? crudo : null;
+
     if (!layer) return <Empty description="Sin capa cargada" />;
 
     if (!layer.workspaceAlias || !layer.geoserverLayer) {
@@ -72,7 +75,7 @@ export default function InfoboxStandalone({ layer, inherited = null, onSaved }) 
             </Space>
             {loadingFields && <Spin size="small" style={{ marginBottom: 12 }} />}
             <Row gutter={24}>
-                <Col xs={24} md={14}>
+                <Col xs={24} md={previewValue ? 14 : 24}>
                     <InfoBoxEditorHeader
                         mode={mode}
                         onModeChange={setMode}
@@ -84,11 +87,7 @@ export default function InfoboxStandalone({ layer, inherited = null, onSaved }) 
                         currentConfig={watchedConfig}
                         currentLayerId={layer.id}
                     />
-                    <Form.Item
-                        name="infoboxConfig"
-                        label={null}
-                        extra="Bloques que componen el cuadro que aparece al hacer click sobre una feature en el visor. En modo JSON se copia y pega la tarjetita completa entre entornos."
-                    >
+                    <Form.Item name="infoboxConfig" label={null}>
                         <InfoBoxEditor
                             mode={mode}
                             availableFields={availableFields}
@@ -97,12 +96,14 @@ export default function InfoboxStandalone({ layer, inherited = null, onSaved }) 
                         />
                     </Form.Item>
                 </Col>
-                <Col xs={24} md={10}>
-                    <div style={{ position: 'sticky', top: 0 }}>
-                        <Text strong style={{ display: 'block', marginBottom: 8 }}>Vista previa</Text>
-                        <InfoBoxPreview value={watchedConfig || inherited?.config || null} />
-                    </div>
-                </Col>
+                {previewValue && (
+                    <Col xs={24} md={10}>
+                        <div style={{ position: 'sticky', top: 0 }}>
+                            <Text strong style={{ display: 'block', marginBottom: 8 }}>Vista previa</Text>
+                            <InfoBoxPreview value={previewValue} />
+                        </div>
+                    </Col>
+                )}
             </Row>
         </Form>
     );

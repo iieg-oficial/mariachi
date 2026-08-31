@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
-import { Card, Segmented, Spin, Typography } from 'antd';
-import { ClusterOutlined } from '@ant-design/icons';
+import { useCallback, useEffect, useState } from 'react';
+import { App, Button, Card, Segmented, Spin, Typography } from 'antd';
+import { ClusterOutlined, CompressOutlined, ExpandOutlined } from '@ant-design/icons';
 import { SEMANTIC } from '@app/providers/brand';
+import usePantallaCompleta from '@shared/hooks/usePantallaCompleta';
 import SectionHeader from '@shared/components/SectionHeader';
 import MapaNodos from '@shared/components/nodos/MapaNodos';
 import NodoDetalleModal from '@shared/components/nodos/NodoDetalleModal';
@@ -16,6 +17,12 @@ const VISTAS = [
 ];
 
 export default function EcosistemaPanel({ plataformas, loading, onReportar }) {
+    const { message } = App.useApp();
+    const noSePudo = useCallback(
+        () => message.error('El navegador no permitió la pantalla completa'),
+        [message],
+    );
+    const { marcoRef, activa: pantallaCompleta, alternar } = usePantallaCompleta(noSePudo);
     const [vista, setVista] = useState('servidores');
     const [nodos, setNodos] = useState({ nodos: [], aristas: [] });
     const [cargandoNodos, setCargandoNodos] = useState(true);
@@ -35,6 +42,16 @@ export default function EcosistemaPanel({ plataformas, loading, onReportar }) {
 
     const operativas = plataformas.filter((p) => p.status === 'ok').length;
     const todas = operativas === plataformas.length && plataformas.length > 0;
+
+    const botonPantalla = (
+        <Button
+            size="small"
+            icon={pantallaCompleta ? <CompressOutlined /> : <ExpandOutlined />}
+            onClick={alternar}
+        >
+            {pantallaCompleta ? 'Salir' : 'Pantalla completa'}
+        </Button>
+    );
 
     const contador = plataformas.length > 0 && (
         <Text
@@ -60,6 +77,7 @@ export default function EcosistemaPanel({ plataformas, loading, onReportar }) {
                     badge={<Segmented size="small" options={VISTAS} value={vista} onChange={setVista} />}
                     to="/huachicol/observabilidad"
                     actionLabel="Ver observabilidad"
+                    acciones={botonPantalla}
                 />
                 <EcosistemaTablero
                     plataformas={plataformas}
@@ -81,17 +99,31 @@ export default function EcosistemaPanel({ plataformas, loading, onReportar }) {
                 badge={<Segmented size="small" options={VISTAS} value={vista} onChange={setVista} />}
                 to="/huachicol/servidores"
                 actionLabel="Ver servidores"
+                acciones={botonPantalla}
             />
             <Card size="small" styles={{ body: { padding: '8px 16px 12px' } }}>
-                {cargandoNodos ? (
-                    <div style={{ textAlign: 'center', padding: 32 }}><Spin /></div>
-                ) : (
-                    <MapaNodos
-                        nodos={nodos.nodos}
-                        aristas={nodos.aristas}
-                        onSeleccionar={setSeleccionado}
-                    />
-                )}
+                <div
+                    ref={marcoRef}
+                    style={{
+                        colorScheme: 'light',
+                        background: '#fff',
+                        height: pantallaCompleta ? '100%' : 'auto',
+                        display: pantallaCompleta ? 'flex' : 'block',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: pantallaCompleta ? 24 : 0,
+                    }}
+                >
+                    {cargandoNodos ? (
+                        <div style={{ textAlign: 'center', padding: 32 }}><Spin /></div>
+                    ) : (
+                        <MapaNodos
+                            nodos={nodos.nodos}
+                            aristas={nodos.aristas}
+                            onSeleccionar={setSeleccionado}
+                        />
+                    )}
+                </div>
             </Card>
 
             <NodoDetalleModal

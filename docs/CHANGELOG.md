@@ -9,6 +9,75 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.50.0] - 2026-08-31
+
+### Agregado: pantalla completa también en el mapa de servidores
+
+La sección de Huachicol del inicio estrena el mismo botón que el roadmap, en sus dos vistas. El
+mapa de nodos se centra y aprovecha todo el alto en vez de quedarse del tamaño de la tarjeta, que
+es donde más se agradece: es un diagrama que se lee mal en un recuadro.
+
+Sale de un hook compartido, `shared/hooks/usePantallaCompleta`, con la API del navegador y el aviso
+cuando la niega. Cualquier sección que lo quiera son tres líneas.
+
+### Cambiado
+
+- **El roadmap aprovecha el alto en pantalla completa.** Antes conservaba su tamaño y dejaba el
+  espacio vacío arriba y abajo; ahora el lienzo crece a lo alto de la pantalla y queda centrado,
+  con el scroll horizontal intacto.
+- **Los controles vuelven al encabezado cuando no hay pantalla completa.** La 2.45.0 los había
+  metido al lienzo para que sobrevivieran al expandir, pero ahí estorbaban en la vista normal. Ahora
+  viven en el encabezado, a la derecha, y solo se mudan adentro al expandir, que es cuando el
+  encabezado queda fuera del elemento.
+
+### Interno
+
+- Las llamadas a la API del roadmap salen del panel a `useRoadmapHitos`. El componente pasa de 330
+  líneas a 281 y deja de mezclar el estado de la vista con el de los datos.
+
+---
+
+## [2.49.0] - 2026-08-31
+
+### Agregado: los bloques de la tarjetita se pueden duplicar
+
+Cada bloque del cuerpo trae un botón de copiar en su encabezado, y la copia aparece **justo debajo
+del original**, ya con su contenido. Sirve para lo que antes no se podía: un grupo de etiquetas
+arriba y otro al final, dos listas separadas por las cifras. El **encabezado no se duplica**: se
+pinta siempre arriba y solo puede haber uno.
+
+Los chips de «Agregar bloque» siguen desapareciendo al usarlos —uno por tipo—; a partir del segundo
+se duplica desde el bloque, que es donde se ve qué se está copiando.
+
+Al agregar o duplicar, la vista **se desplaza sola hasta el bloque nuevo**, que hasta ahora aparecía
+fuera de pantalla en tarjetitas largas.
+
+La mecánica de instancias, orden y colapso a la forma simple vive en `constants/infoboxBlocks.js`
+como funciones puras (`planAddBlock`, `planDuplicateBlock`, `planRemoveBlock`, `planSetBlockItems`),
+con 17 pruebas: es la parte que más fácil se rompe y no se puede ver desde la UI.
+
+### Cambiado: menos texto suelto en el editor de tarjetita
+
+- La explicación larga de la sección pasa a un **tooltip** en el signo de interrogación del título.
+- Las descripciones de cada bloque dejan de ir como texto gris al lado del nombre y pasan a
+  **tooltip sobre el nombre**; los mismos textos explican los chips de «Agregar bloque».
+- «Sin bloques. Agrega uno arriba para empezar.» queda en «Agrega un bloque para empezar.», y la
+  leyenda del cuerpo en «Arrastra ⋮⋮ para reordenar.».
+- Los títulos de bloque pierden el nombre técnico entre paréntesis: «Etiquetas» en vez de
+  «Etiquetas (labelGroups)».
+
+### Cambiado: la vista previa se esconde cuando no hay nada que ver
+
+Con la tarjetita vacía la columna de vista previa mostraba un hueco. Ahora se oculta y el editor
+ocupa el ancho completo; reaparece en cuanto hay un bloque o se hereda del grupo.
+
+### Corregido: la barra de scroll horizontal del editor
+
+Los renglones de lista llevaban dos botones de texto —`raw` y `multivalor`— que no cabían en la
+columna. Pasan a íconos con tooltip, los anchos fijos de los afijos y del selector de estilo pasan a
+mínimos flexibles, y los contenedores ganan `minWidth: 0` para poder encogerse. Se ajusta también el
+tirador de arrastre, que quedaba encima del botón nuevo.
+
 ## [2.48.0] - 2026-08-31
 
 ### Cambiado: la barra de acciones del arbol se vacia

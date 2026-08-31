@@ -2,15 +2,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { App, Button, Card, Space, Spin } from 'antd';
 import { FlagOutlined } from '@ant-design/icons';
 import { useAuth } from '@shared/contexts/useAuth';
+import usePantallaCompleta from '@shared/hooks/usePantallaCompleta';
 import SectionHeader from '@shared/components/SectionHeader';
 import { CICLOS, MARCADORES, PROCESOS } from '@features/inicio/constants/roadmapModelo';
 import { acomodar } from '@features/inicio/helpers/roadmapLayout';
-import {
-    actualizarHito,
-    crearHito,
-    eliminarHito,
-    getHitos,
-} from '@features/inicio/api/roadmapService';
+import useRoadmapHitos from '@features/inicio/hooks/useRoadmapHitos';
 import RoadmapLienzo from '@features/inicio/components/roadmap/RoadmapLienzo';
 import RoadmapEditor from '@features/inicio/components/roadmap/RoadmapEditor';
 import RoadmapTip from '@features/inicio/components/roadmap/RoadmapTip';
@@ -21,32 +17,29 @@ const PERMISO = 'mariachi.roadmap.manage';
 export default function RoadmapPanel() {
     const { user } = useAuth();
     const { message } = App.useApp();
-    const [datos, setDatos] = useState([]);
-    const [cargando, setCargando] = useState(true);
+    const noSePudo = useCallback(
+        () => message.error('El navegador no permitió la pantalla completa'),
+        [message],
+    );
+    const {
+        marcoRef,
+        activa: pantallaCompleta,
+        alternar: alternarPantalla,
+    } = usePantallaCompleta(noSePudo);
     const [editando, setEditando] = useState(false);
-    const [guardando, setGuardando] = useState(false);
+    const { datos, cargando, guardando, guardar, agregar, eliminar } = useRoadmapHitos();
     const [marcador, setMarcador] = useState(MARCADORES[0]);
     const [seleccion, setSeleccion] = useState(null);
     const [fijado, setFijado] = useState(false);
     const [tip, setTip] = useState(null);
     const [pausado, setPausado] = useState(false);
-    const [pantallaCompleta, setPantallaCompleta] = useState(false);
     const [verOcultos, setVerOcultos] = useState(false);
     const cajaRef = useRef(null);
-    const marcoRef = useRef(null);
     const tipRef = useRef(null);
     const esperadoRef = useRef(-1);
 
     const puedeEditar = Boolean(user?.permissions?.includes?.(PERMISO));
 
-    useEffect(() => {
-        let cancelado = false;
-        getHitos()
-            .then((filas) => { if (!cancelado) setDatos(filas); })
-            .catch(() => { if (!cancelado) setDatos([]); })
-            .finally(() => { if (!cancelado) setCargando(false); });
-        return () => { cancelado = true; };
-    }, []);
 
     const hitos = useMemo(() => acomodar(datos), [datos]);
 
@@ -126,54 +119,20 @@ export default function RoadmapPanel() {
     };
 
     const alGuardar = async (valores) => {
-        setGuardando(true);
-        try {
-            const guardado = await actualizarHito({ ...activo, ...valores });
-            setDatos((previos) => previos.map((h) => (h.id === guardado.id ? guardado : h)));
-            message.success('Hito actualizado');
-            setSeleccion(null);
-            setFijado(false);
-        } catch {
-            message.error('No se pudo guardar el hito');
-        } finally {
-            setGuardando(false);
-        }
+        await guardar({ ...activo, ...valores });
+        limpiar();
     };
 
     const alAgregar = async () => {
-        setGuardando(true);
-        const clave = `hito-${Date.now()}`;
-        try {
-            const creado = await crearHito({
-                id: clave,
-                txt: 'hito nuevo',
-                proy: 'infra',
-                tipo: 'mayor',
-                f: new Date().toISOString().slice(0, 10),
-                fecha: 'sin fecha',
-                motivo: 'Sin describir todavía.',
-            });
-            setDatos((previos) => [...previos, creado]);
-            setSeleccion(creado.id);
-            setFijado(true);
-            message.success('Hito creado');
-        } catch {
-            message.error('No se pudo crear el hito');
-        } finally {
-            setGuardando(false);
-        }
+        const clave = await agregar();
+        if (!clave) return;
+        setSeleccion(clave);
+        setFijado(true);
     };
 
     const alEliminar = async (clave) => {
-        try {
-            await eliminarHito(clave);
-            setDatos((previos) => previos.filter((h) => h.id !== clave));
-            message.success('Hito eliminado');
-            setSeleccion(null);
-            setFijado(false);
-        } catch {
-            message.error('No se pudo eliminar el hito');
-        }
+        await eliminar(clave);
+        limpiar();
     };
 
     const alAvanzar = useCallback((x, enPausa) => {
@@ -196,22 +155,7 @@ export default function RoadmapPanel() {
         setPausado((v) => !v);
     };
 
-    const alternarPantalla = async () => {
-        const marco = marcoRef.current;
-        if (!marco) return;
-        try {
-            if (document.fullscreenElement) await document.exitFullscreen();
-            else await marco.requestFullscreen();
-        } catch {
-            message.error('El navegador no permitió la pantalla completa');
-        }
-    };
 
-    useEffect(() => {
-        const alCambiar = () => setPantallaCompleta(Boolean(document.fullscreenElement));
-        document.addEventListener('fullscreenchange', alCambiar);
-        return () => document.removeEventListener('fullscreenchange', alCambiar);
-    }, []);
 
     const limpiar = useCallback(() => {
         setFijado(false);
@@ -230,12 +174,27 @@ export default function RoadmapPanel() {
     }, [fijado, limpiar]);
 
 
+    const acciones = (
+        <RoadmapAcciones
+            verOcultos={verOcultos}
+            pausado={pausado}
+            pantallaCompleta={pantallaCompleta}
+            editando={editando}
+            puedeEditar={puedeEditar}
+            onVerOcultos={() => setVerOcultos((v) => !v)}
+            onPausa={alternarPausa}
+            onPantalla={alternarPantalla}
+            onEditar={() => { setEditando((v) => !v); limpiar(); }}
+        />
+    );
+
     return (
         <div>
             <SectionHeader
                 icon={<FlagOutlined />}
                 title="Hoja de ruta"
                 subtitle="El ecosistema de 2024 a 2030"
+                acciones={!pantallaCompleta && acciones}
             />
             <Card size="small" styles={{ body: { padding: '6px 10px' } }}>
                 {cargando && (
@@ -249,34 +208,33 @@ export default function RoadmapPanel() {
                         colorScheme: 'light',
                         background: '#fff',
                         padding: pantallaCompleta ? 16 : 0,
-                        overflowY: pantallaCompleta ? 'auto' : 'visible',
+                        height: pantallaCompleta ? '100%' : 'auto',
+                        overflow: pantallaCompleta ? 'hidden' : 'visible',
                     }}
                 >
-                    <div style={{
-                        position: 'sticky',
-                        top: 0,
-                        zIndex: 6,
-                        display: 'flex',
-                        justifyContent: 'flex-end',
-                        padding: '2px 2px 8px',
-                        background: '#fff',
-                    }}>
-                        <RoadmapAcciones
-                            verOcultos={verOcultos}
-                            pausado={pausado}
-                            pantallaCompleta={pantallaCompleta}
-                            editando={editando}
-                            puedeEditar={puedeEditar}
-                            onVerOcultos={() => setVerOcultos((v) => !v)}
-                            onPausa={alternarPausa}
-                            onPantalla={alternarPantalla}
-                            onEditar={() => { setEditando((v) => !v); limpiar(); }}
-                        />
-                    </div>
+                    {pantallaCompleta && (
+                        <div style={{
+                            position: 'sticky',
+                            top: 0,
+                            zIndex: 6,
+                            display: 'flex',
+                            justifyContent: 'flex-end',
+                            padding: '2px 2px 8px',
+                            background: '#fff',
+                        }}>
+                            {acciones}
+                        </div>
+                    )}
                     <div
                         ref={cajaRef}
                         onScroll={alDesplazar}
-                        style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}
+                        style={{
+                            overflowX: 'auto',
+                            WebkitOverflowScrolling: 'touch',
+                            height: pantallaCompleta ? 'calc(100% - 44px)' : 'auto',
+                            display: pantallaCompleta ? 'flex' : 'block',
+                            alignItems: 'center',
+                        }}
                     >
                         <RoadmapLienzo
                             hitos={hitos}
@@ -284,6 +242,7 @@ export default function RoadmapPanel() {
                             seleccion={seleccion}
                             relacionados={relacionados}
                             pausado={pausado}
+                            aAlto={pantallaCompleta}
                             cicloActivo={esCiclo ? seleccion : null}
                             opacidadDe={opacidadDe}
                             onSeleccionar={alSeleccionar}

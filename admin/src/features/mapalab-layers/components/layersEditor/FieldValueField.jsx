@@ -18,11 +18,11 @@ export const FieldSelect = ({ value, onChange, availableFields, placeholder = 'C
 );
 
 const PartRow = ({ part, isSum, onChange, onRemove, availableFields }) => (
-    <Space.Compact style={{ width: '100%' }}>
+    <Space.Compact style={{ width: '100%', minWidth: 0 }}>
         {!isSum && (
             <Tooltip title="Texto antes del valor. Desaparece si la columna viene vacía.">
                 <Input
-                    style={{ width: 90 }}
+                    style={{ width: 72, minWidth: 56 }}
                     value={part.prefix || ''}
                     onChange={(e) => onChange({ ...part, prefix: e.target.value || undefined })}
                     placeholder="antes"
@@ -38,7 +38,7 @@ const PartRow = ({ part, isSum, onChange, onRemove, availableFields }) => (
         {!isSum && (
             <Tooltip title="Texto después del valor. Desaparece si la columna viene vacía.">
                 <Input
-                    style={{ width: 90 }}
+                    style={{ width: 72, minWidth: 56 }}
                     value={part.suffix || ''}
                     onChange={(e) => onChange({ ...part, suffix: e.target.value || undefined })}
                     placeholder="después"
@@ -97,7 +97,7 @@ const ComposeEditor = ({ value, onChange, availableFields, allowSum }) => {
                 {!isSum && (
                     <Input
                         size="small"
-                        style={{ width: 190 }}
+                        style={{ flex: 1, minWidth: 150, maxWidth: 190 }}
                         value={value?.sep ?? ''}
                         onChange={(e) => emit({ sep: e.target.value || undefined })}
                         placeholder=", "

@@ -113,3 +113,20 @@ describe('refresco del mapa', () => {
         expect(api.get).toHaveBeenCalledTimes(1);
     });
 });
+
+describe('pantalla completa', () => {
+    it('ofrece el botón en las dos vistas del panel', async () => {
+        api.get.mockResolvedValue({ data: NODOS });
+        render(
+            <MemoryRouter>
+                <EcosistemaPanel plataformas={[]} loading={false} onReportar={null} />
+            </MemoryRouter>,
+        );
+
+        expect(await screen.findByRole('button', { name: /pantalla completa/i })).toBeInTheDocument();
+
+        fireEvent.click(screen.getByText('Servicios'));
+
+        expect(screen.getByRole('button', { name: /pantalla completa/i })).toBeInTheDocument();
+    });
+});

@@ -1,6 +1,7 @@
 import { Card, Empty, Space, Tag, Typography } from 'antd';
 
-import { isTextKey, mkTextKey, normalizeInfoboxConfig, textIdOf } from './infoBoxTextBlocks';
+import { normalizeInfoboxConfig } from './infoBoxTextBlocks';
+import { allInstances } from '@features/mapalab-layers/constants/infoboxBlocks';
 
 const { Title, Text } = Typography;
 
@@ -209,29 +210,14 @@ const IconTexts = ({ items }) => (
 );
 
 
-const DEFAULT_BODY_ORDER = ['labelGroups', 'list', 'iconText', 'text', 'cards'];
-
-const expandPresentKeys = (cfg) => {
-    const out = [];
-    for (const k of DEFAULT_BODY_ORDER) {
-        if (k === 'text') {
-            (cfg.text || []).forEach((b) => {
-                if (b?.items?.length) out.push(mkTextKey(b.id));
-            });
-        } else if (cfg[k]?.length) {
-            out.push(k);
-        }
-    }
-    return out;
-};
-
 const resolveBodyOrder = (cfg) => {
-    const present = expandPresentKeys(cfg);
+    const instancias = allInstances(cfg).filter((i) => i.items?.length);
+    const present = instancias.map((i) => i.key);
     const explicit = Array.isArray(cfg.blockOrder)
         ? cfg.blockOrder.filter((k) => present.includes(k))
         : [];
     const remaining = present.filter((k) => !explicit.includes(k));
-    return [...explicit, ...remaining];
+    return { instancias, orden: [...explicit, ...remaining] };
 };
 
 const renderTextItem = (it, idx) => {
@@ -247,32 +233,26 @@ const renderTextItem = (it, idx) => {
     );
 };
 
-const renderTextBlock = (key, cfg) => {
-    const block = (cfg.text || []).find((b) => b.id === textIdOf(key));
-    const rendered = (block?.items || []).map(renderTextItem).filter(Boolean);
-    if (!rendered.length) return null;
-    return <div key={key}>{rendered}</div>;
-};
-
-const renderBodyBlock = (key, cfg) => {
-    if (isTextKey(key)) {
-        return renderTextBlock(key, cfg);
+const renderBodyBlock = ({ key, type, items }, cardsColumns) => {
+    if (type === 'text') {
+        const rendered = items.map(renderTextItem).filter(Boolean);
+        return rendered.length ? <div key={key}>{rendered}</div> : null;
     }
-    if (key === 'labelGroups' && cfg.labelGroups?.length) {
+    if (type === 'labelGroups') {
         return (
-            <Space key="labelGroups" orientation="vertical" size={4} style={{ width: '100%', marginBottom: 8 }}>
-                {cfg.labelGroups.map((g, i) => <LabelGroup key={i} group={g} />)}
+            <Space key={key} orientation="vertical" size={4} style={{ width: '100%', marginBottom: 8 }}>
+                {items.map((g, i) => <LabelGroup key={i} group={g} />)}
             </Space>
         );
     }
-    if (key === 'list' && cfg.list?.length) {
-        return <div key="list" style={{ marginBottom: 8 }}><ListItems items={cfg.list} /></div>;
+    if (type === 'list') {
+        return <div key={key} style={{ marginBottom: 8 }}><ListItems items={items} /></div>;
     }
-    if (key === 'iconText' && cfg.iconText?.length) {
-        return <div key="iconText" style={{ marginBottom: 8 }}><IconTexts items={cfg.iconText} /></div>;
+    if (type === 'iconText') {
+        return <div key={key} style={{ marginBottom: 8 }}><IconTexts items={items} /></div>;
     }
-    if (key === 'cards' && cfg.cards?.length) {
-        return <div key="cards"><Cards items={cfg.cards} columns={cfg.cardsColumns || 1} /></div>;
+    if (type === 'cards') {
+        return <div key={key}><Cards items={items} columns={cardsColumns} /></div>;
     }
     return null;
 };
@@ -299,7 +279,8 @@ export default function InfoBoxPreview({ params, value }) {
                 : cfg.headerField))
         : null;
 
-    const bodyOrder = resolveBodyOrder(cfg);
+    const { instancias, orden } = resolveBodyOrder(cfg);
+    const porLlave = new Map(instancias.map((i) => [i.key, i]));
 
     return (
         <Card
@@ -320,7 +301,7 @@ export default function InfoBoxPreview({ params, value }) {
                     <Title level={5} style={{ margin: 0, fontSize: 13 }}>{headerText}</Title>
                 </div>
             )}
-            {bodyOrder.map((key) => renderBodyBlock(key, cfg))}
+            {orden.map((key) => renderBodyBlock(porLlave.get(key), cfg.cardsColumns || 1))}
         </Card>
     );
 }
