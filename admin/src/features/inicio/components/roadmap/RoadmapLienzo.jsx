@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { curvaDe, controlDeCurva } from '@shared/components/nodos/latencia';
-import { ALTO, ANCHO, ESPINA_Y, FIN_PASADO } from '@features/inicio/constants/roadmapModelo';
+import { ALTO, ANCHO, ESPINA_Y, FIN_EJE } from '@features/inicio/constants/roadmapModelo';
 import { anchoDe, bordeDelNodo, colorDe } from '@features/inicio/helpers/roadmapLayout';
 import RoadmapEje from '@features/inicio/components/roadmap/RoadmapEje';
 import RoadmapNodo, { Momento } from '@features/inicio/components/roadmap/RoadmapNodo';
 
-const DURACION = 13000;
+const DURACION = 26000;
 const SALTO = 700;
 const TIRITEO = 900;
 
@@ -60,7 +60,7 @@ export default function RoadmapLienzo({
 
         const animar = (tiempo) => {
             const avance = (tiempo % DURACION) / DURACION;
-            const x = 60 + (FIN_PASADO - 60) * avance;
+            const x = 60 + (FIN_EJE - 60) * avance;
 
             const cerca = reacciones.find((r) => Math.abs(x - r.x) < 6);
             if (cerca && (!reaccion || reaccion.x !== cerca.x)) {

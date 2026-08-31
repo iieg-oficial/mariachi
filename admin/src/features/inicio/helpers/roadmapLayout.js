@@ -1,3 +1,4 @@
+import { LOGO_PROYECTO } from '@features/inicio/constants/roadmapLogos';
 import {
     ANIOS,
     CARRIL_ABAJO,
@@ -7,6 +8,10 @@ import {
 } from '@features/inicio/constants/roadmapModelo';
 
 export const colorDe = (hito) => COLOR_PROYECTO[hito.proy] || COLOR_PROYECTO.infra;
+
+export const logoDe = (hito) => (
+    hito.tipo === 'feature' || hito.tipo === 'momento' ? null : LOGO_PROYECTO[hito.proy] || null
+);
 
 export const esMuerto = (hito) => hito.tipo === 'muerto' || Boolean(hito.muerto);
 
@@ -31,6 +36,7 @@ export const anchoDe = (hito) => {
 };
 
 export const altoDe = (hito) => {
+    if (logoDe(hito)) return 52;
     if (partes(hito).length > 1) return 42;
     return hito.antes ? 46 : 32;
 };

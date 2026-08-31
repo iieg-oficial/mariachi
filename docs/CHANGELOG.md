@@ -9,6 +9,45 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.40.0] - 2026-08-31
+
+### Agregado: logos de proyecto y un interruptor para ver los features
+
+Los dos repos que tienen isotipo propio —**mapalab** y **vine**— lo muestran en su nodo, con el
+logo arriba y el nombre abajo. Se importan por Vite desde `assets/logos/`, así que el `base` del
+admin los resuelve solo. Los demás proyectos siguen sin logo: usan el escudo institucional, que
+puesto en catorce nodos no distingue nada.
+
+**Botón «Ver todos».** Hasta ahora los features solo aparecían al seleccionar su proyecto; ahora
+pueden mostrarse todos a la vez, atenuados, sin perder de vista el resto del mapa.
+
+### Cambiado
+
+- **Las acciones de la sección pasan a la derecha del encabezado.** `SectionHeader` estrena la prop
+  opcional `acciones`, que las coloca junto al enlace y las baja a su propia fila en móvil, igual
+  que ya hacía con `badge`. Es aditiva: los demás usos del componente no cambian.
+- **El marcador recorre el eje completo**, hasta 2030, en vez de detenerse al final del pasado.
+- **La vuelta del marcador pasa de 13 a 26 segundos.** Con el recorrido más largo, iba demasiado
+  rápido para seguirlo.
+
+### Eliminado: `GET /mapalab-stats/highlights`
+
+Se retira el endpoint junto con los esquemas `StatsHighlights`, `HighlightLayer` y `HighlightTool`.
+Su único consumidor era `InicioHighlights`, que salió del inicio al entrar la hoja de ruta: llevaba
+varias versiones sirviendo a nadie y consultando tres tablas de rollup en cada llamada.
+
+Las otras catorce rutas de `mapalab-stats` no se tocan, y el `Highlight*` de `schemas/layer.py` —el
+resaltado de capas del visor— es otra cosa y sigue igual.
+
+### Agregado: pruebas
+
+- `api/tests/test_roadmap.py`: ocho pruebas del CRUD de la hoja de ruta. Cubren que una editora lee
+  pero no escribe, que una fecha fuera de `YYYY-MM-DD` y un tipo desconocido se rechazan con 422,
+  que una clave repetida da 409 y que un hito inexistente da 404.
+- `mariachi.roadmap.manage` entra a `TODOS_LOS_PERMISOS` del conftest.
+
+---
+
 ## [2.39.0] - 2026-08-28
 
 ### Cambiado: el arbol de capas se reestructuro para que se entienda de un vistazo

@@ -28,6 +28,7 @@ const FILAS = [
     fila({ clave: 'geoserver-1', etiqueta: 'geoserver 1', proyecto: 'sextante', fecha_eje: '2026-02-25' }),
     fila({ clave: 'wacha', etiqueta: 'wacha', proyecto: 'wacha', fecha_eje: '2026-08-10', nombre_anterior: 'frigate' }),
     fila({ clave: 'f-mcp', etiqueta: 'mapalab · MCP', proyecto: 'mapalab', tipo: 'feature', feature_de: 'mapalab', fecha_eje: '2026-07-30' }),
+    fila({ clave: 'mapalab-1', etiqueta: 'mapalab 1', proyecto: 'mapalab', fecha_eje: '2026-03-27' }),
 ];
 
 const montar = () => render(
@@ -99,6 +100,24 @@ describe('RoadmapPanel', () => {
         fireEvent.click(screen.getByText('mariachi 2').closest('g'));
         fireEvent.click(await screen.findByRole('button', { name: 'Guardar' }));
         await waitFor(() => expect(api.put).toHaveBeenCalledWith('/roadmap/hitos/mariachi-2', expect.objectContaining({ etiqueta: 'mariachi 2' })));
+    });
+
+    it('el botón de ver todos revela los features escondidos', async () => {
+        montar();
+        const feature = (await screen.findByText('MCP')).closest('g');
+        expect(feature).toHaveAttribute('opacity', '0');
+
+        fireEvent.click(screen.getByRole('button', { name: /ver todos/i }));
+
+        expect(feature).not.toHaveAttribute('opacity', '0');
+        expect(screen.getByRole('button', { name: /ocultar features/i })).toBeInTheDocument();
+    });
+
+    it('pinta el logo de los proyectos que tienen uno', async () => {
+        const { container } = montar();
+        await screen.findByText('mariachi 2');
+        const logos = container.querySelectorAll('image');
+        expect(logos.length).toBeGreaterThan(0);
     });
 
     it('el botón de seguimiento cambia a scroll libre', async () => {

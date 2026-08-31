@@ -1,6 +1,6 @@
 import { SEMANTIC } from '@app/providers/brand';
 import { ESPINA_Y } from '@features/inicio/constants/roadmapModelo';
-import { altoDe, anchoDe, colorDe, esMuerto, partes, tinte } from '@features/inicio/helpers/roadmapLayout';
+import { altoDe, anchoDe, colorDe, esMuerto, logoDe, partes, tinte } from '@features/inicio/helpers/roadmapLayout';
 
 const GRIS = 'rgba(0,0,0,0.45)';
 
@@ -74,6 +74,8 @@ export default function RoadmapNodo({ hito, opacidad, seleccionado, relacionado,
     const ancho = anchoDe(hito);
     const alto = altoDe(hito);
     const lineas = partes(hito);
+    const logo = logoDe(hito);
+    const bajada = logo ? 12 : 0;
     const colorTexto = textoDe(hito, color);
     const grosor = ['joven', 'feature', 'legacy'].includes(hito.tipo) ? 1.5 : 2;
 
@@ -110,12 +112,22 @@ export default function RoadmapNodo({ hito, opacidad, seleccionado, relacionado,
                 strokeWidth={seleccionado ? 3.5 : grosor}
                 strokeDasharray={trazoDe(hito)}
             />
+            {logo && (
+                <image
+                    href={logo}
+                    x={hito.lx - 10}
+                    y={hito.ly - 22}
+                    width={20}
+                    height={20}
+                    preserveAspectRatio="xMidYMid meet"
+                />
+            )}
             {lineas.length > 1 ? (
                 <>
-                    <text x={hito.lx} y={hito.ly - 5} textAnchor="middle" fill={GRIS} style={{ fontSize: 10, fontFamily: 'monospace' }}>
+                    <text x={hito.lx} y={hito.ly - 5 + bajada} textAnchor="middle" fill={GRIS} style={{ fontSize: 10, fontFamily: 'monospace' }}>
                         {lineas[0]}
                     </text>
-                    <text x={hito.lx} y={hito.ly + 12} textAnchor="middle" fill={colorTexto} style={{ fontSize: 13, fontWeight: 700, fontFamily: 'monospace' }}>
+                    <text x={hito.lx} y={hito.ly + 12 + bajada} textAnchor="middle" fill={colorTexto} style={{ fontSize: 13, fontWeight: 700, fontFamily: 'monospace' }}>
                         {lineas[1]}
                     </text>
                 </>
@@ -123,14 +135,14 @@ export default function RoadmapNodo({ hito, opacidad, seleccionado, relacionado,
                 <>
                     {hito.antes && (
                         <text
-                            x={hito.lx} y={hito.ly - 8} textAnchor="middle" fill={GRIS}
+                            x={hito.lx} y={hito.ly - 8 + bajada} textAnchor="middle" fill={GRIS}
                             style={{ fontSize: 10, fontFamily: 'monospace', textDecoration: 'line-through' }}
                         >
                             {hito.antes}
                         </text>
                     )}
                     <text
-                        x={hito.lx} y={hito.antes ? hito.ly + 12 : hito.ly + 5} textAnchor="middle" fill={colorTexto}
+                        x={hito.lx} y={(hito.antes ? hito.ly + 12 : hito.ly + 5) + bajada} textAnchor="middle" fill={colorTexto}
                         style={{
                             fontSize: 13,
                             fontWeight: 700,

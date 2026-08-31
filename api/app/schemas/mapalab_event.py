@@ -197,24 +197,6 @@ class SessionsPage(CamelCaseOutput):
     page_size: int
 
 
-class HighlightLayer(CamelCaseOutput):
-    layer_id: str
-    label: str | None = None
-    activations: int
-
-
-class HighlightTool(CamelCaseOutput):
-    tool: str
-    uses: int
-
-
-class StatsHighlights(CamelCaseOutput):
-    sessions_30d: int
-    avg_duration_sec: int
-    top_layer: HighlightLayer | None = None
-    top_tool: HighlightTool | None = None
-
-
 class ThemeStatRow(CamelCaseOutput):
     theme_id: str
     label: str | None = None

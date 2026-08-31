@@ -2,6 +2,7 @@ export const ANCHO = 2400;
 export const ALTO = 860;
 export const ESPINA_Y = 400;
 export const FIN_PASADO = 1492;
+export const FIN_EJE = 2340;
 
 export const NIVELES = [500, 300, 560, 244, 620, 188, 680, 132, 740, 76];
 export const CARRIL_ABAJO = [ESPINA_Y + 44, ESPINA_Y + 66, ESPINA_Y + 88];

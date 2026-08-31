@@ -10,6 +10,7 @@ export default function SectionHeader({
     subtitle,
     to,
     badge,
+    acciones,
     actionLabel = 'Ver detalles',
     color = '#5C2472',
 }) {
@@ -34,13 +35,17 @@ export default function SectionHeader({
                     </Text>
                     {badge && !compacto && <span>{badge}</span>}
                 </span>
-                {to && (
-                    <Link to={to} style={{ flex: 'none' }}>
-                        <Text type="secondary" style={{ fontSize: 12 }}>{actionLabel} →</Text>
-                    </Link>
-                )}
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, flex: 'none' }}>
+                    {acciones && !compacto && acciones}
+                    {to && (
+                        <Link to={to} style={{ flex: 'none' }}>
+                            <Text type="secondary" style={{ fontSize: 12 }}>{actionLabel} →</Text>
+                        </Link>
+                    )}
+                </span>
             </div>
             {badge && compacto && <div style={{ marginTop: 8 }}>{badge}</div>}
+            {acciones && compacto && <div style={{ marginTop: 8 }}>{acciones}</div>}
         </div>
     );
 }

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { App, Button, Card, Space, Spin, Typography } from 'antd';
 import { SEMANTIC } from '@app/providers/brand';
-import { EditOutlined, FlagOutlined } from '@ant-design/icons';
+import { EditOutlined, EyeInvisibleOutlined, EyeOutlined, FlagOutlined } from '@ant-design/icons';
 import { useAuth } from '@shared/contexts/useAuth';
 import SectionHeader from '@shared/components/SectionHeader';
 import { CICLOS, MARCADORES, PROCESOS } from '@features/inicio/constants/roadmapModelo';
@@ -31,6 +31,7 @@ export default function RoadmapPanel() {
     const [fijado, setFijado] = useState(false);
     const [tip, setTip] = useState(null);
     const [seguir, setSeguir] = useState(true);
+    const [verOcultos, setVerOcultos] = useState(false);
     const cajaRef = useRef(null);
     const marcoRef = useRef(null);
     const esperadoRef = useRef(-1);
@@ -59,10 +60,10 @@ export default function RoadmapPanel() {
 
     const opacidadDe = useCallback((hito) => {
         const suyo = (hito.de || hito.proy) === familia;
-        if (hito.tipo === 'feature') return suyo ? 1 : 0;
+        if (hito.tipo === 'feature' && !suyo) return verOcultos ? 0.45 : 0;
         if (!familia) return 1;
         return suyo ? 1 : 0.18;
-    }, [familia]);
+    }, [familia, verOcultos]);
 
     const situarTip = (id, evento) => {
         const item = buscar(id);
@@ -185,8 +186,16 @@ export default function RoadmapPanel() {
                 icon={<FlagOutlined />}
                 title="Hoja de ruta"
                 subtitle="El ecosistema de 2024 a 2030"
-                badge={(
-                    <Space size={6}>
+                acciones={(
+                    <Space size={6} wrap>
+                        <Button
+                            size="small"
+                            icon={verOcultos ? <EyeOutlined /> : <EyeInvisibleOutlined />}
+                            type={verOcultos ? 'primary' : 'default'}
+                            onClick={(e) => { e.stopPropagation(); setVerOcultos((v) => !v); }}
+                        >
+                            {verOcultos ? 'Ocultar features' : 'Ver todos'}
+                        </Button>
                         <Button
                             size="small"
                             type={seguir ? 'primary' : 'default'}

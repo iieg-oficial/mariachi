@@ -175,6 +175,7 @@ def externo_user(db_session):
 
 
 TODOS_LOS_PERMISOS = frozenset({
+    "mariachi.roadmap.manage",
     "mariachi.mapalab.view",
     "mariachi.mapalab.update",
     "mariachi.mapalab.manage",

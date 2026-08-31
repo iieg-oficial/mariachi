@@ -16,12 +16,9 @@ from app.schemas.mapalab_event import (
     ButtonStatRow,
     DailyStatRow,
     EventoStatRow,
-    HighlightLayer,
-    HighlightTool,
     LayerStatRow,
     SessionRow,
     SessionsPage,
-    StatsHighlights,
     StatsOverview,
     ThemeStatRow,
     ToolStatRow,
@@ -498,72 +495,6 @@ async def sessions(
         for r in rows
     ]
     return SessionsPage(items=items, total=total, page=page, page_size=page_size)
-
-
-@router.get("/highlights", response_model=StatsHighlights, response_model_by_alias=True)
-async def highlights(
-    app: str = Query(default="mapalab"),
-    db: Session = Depends(get_db),
-    _current: Usuario = Depends(get_current_user),
-):
-    overview_row = db.execute(
-        text(
-            """
-            SELECT COALESCE(SUM(sessions), 0) AS sessions_30d,
-                   CASE WHEN SUM(sessions) > 0
-                        THEN (SUM(dur_sum) / SUM(sessions))::int ELSE 0 END AS avg_duration_sec
-            FROM huachicol.rollup_daily
-            WHERE dia >= CURRENT_DATE - 29 AND app = :app
-            """
-        ),
-        {"app": app},
-    ).mappings().first()
-    top_layer_row = db.execute(
-        text(
-            """
-            SELECT layer_id, SUM(activations) AS activations
-            FROM huachicol.rollup_layers
-            WHERE dia >= CURRENT_DATE - 29 AND app = :app
-            GROUP BY layer_id
-            ORDER BY activations DESC, SUM(unique_sessions) DESC
-            LIMIT 1
-            """
-        ),
-        {"app": app},
-    ).mappings().first()
-    top_tool_row = db.execute(
-        text(
-            """
-            SELECT tool, SUM(uses) AS uses
-            FROM huachicol.rollup_tools
-            WHERE dia >= CURRENT_DATE - 29 AND app = :app
-            GROUP BY tool
-            ORDER BY uses DESC
-            LIMIT 1
-            """
-        ),
-        {"app": app},
-    ).mappings().first()
-
-    top_layer = None
-    if top_layer_row and top_layer_row["layer_id"]:
-        labels = await _fetch_layer_labels([top_layer_row["layer_id"]])
-        top_layer = HighlightLayer(
-            layer_id=top_layer_row["layer_id"],
-            label=(labels.get(top_layer_row["layer_id"]) or {}).get("label"),
-            activations=top_layer_row["activations"] or 0,
-        )
-
-    top_tool = None
-    if top_tool_row and top_tool_row["tool"]:
-        top_tool = HighlightTool(tool=top_tool_row["tool"], uses=top_tool_row["uses"] or 0)
-
-    return StatsHighlights(
-        sessions_30d=(overview_row or {}).get("sessions_30d") or 0,
-        avg_duration_sec=(overview_row or {}).get("avg_duration_sec") or 0,
-        top_layer=top_layer,
-        top_tool=top_tool,
-    )
 
 
 @router.get("/mcp/overview", response_model=McpStatsOverview, response_model_by_alias=True)
