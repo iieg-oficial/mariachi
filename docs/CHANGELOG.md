@@ -9,6 +9,34 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.45.0] - 2026-08-31
+
+### Cambiado: los controles del roadmap viven dentro del lienzo
+
+Estaban en el encabezado de la sección, que **queda fuera del elemento en pantalla completa**: al
+expandir se perdían todos menos la X del detalle. Ahora son una barra pegajosa dentro del propio
+lienzo, así que sirven igual en la página, en pantalla completa y en móvil, sin duplicarlos ni
+depender de hover. El editor se movió por el mismo motivo.
+
+`SectionHeader` vuelve a como estaba: la prop `acciones` que había estrenado la 2.40.0 se retira
+porque ya no la usa nadie.
+
+### Corregido
+
+- **El lienzo se queda en claro siempre.** En pantalla completa el navegador pintaba el fondo según
+  el tema del sistema y en oscuro no se veía nada: el SVG usa negros y grises fijos porque el CMS no
+  tiene modo oscuro. Ahora el marco declara `color-scheme: light` y fondo blanco explícito.
+- **Las conexiones sucesorias quedaban al aire.** Cada curva de linaje seguía la opacidad de su
+  nodo hijo, así que si la madre estaba escondida —un feature sin su proyecto seleccionado— la línea
+  seguía dibujada apuntando a nada. Ahora toma la del más escondido de los dos.
+- **`api/pyproject.toml` se había quedado en 2.43.0** mientras `admin/package.json` y este archivo
+  ya iban en 2.44.0. El desfase entró con el merge de `develop` a `tamal-rojo` (`abe3d49`), que
+  resolvió el conflicto de `pyproject` a favor de la rama vieja. Como es la fuente de la verdad del
+  monorepo —es lo que `get_app_version()` reporta en `GET /ontoy`—, el monitor de huachicol habría
+  visto una versión que no corresponde. Los dos suben juntos a 2.45.0.
+
+---
+
 ## [2.44.0] - 2026-08-28
 
 ### Agregado: pestana Columnas en el editor de capas

@@ -236,25 +236,43 @@ export default function RoadmapPanel() {
                 icon={<FlagOutlined />}
                 title="Hoja de ruta"
                 subtitle="El ecosistema de 2024 a 2030"
-                acciones={(
-                    <RoadmapAcciones
-                        verOcultos={verOcultos}
-                        pausado={pausado}
-                        pantallaCompleta={pantallaCompleta}
-                        editando={editando}
-                        puedeEditar={puedeEditar}
-                        onVerOcultos={() => setVerOcultos((v) => !v)}
-                        onPausa={alternarPausa}
-                        onPantalla={alternarPantalla}
-                        onEditar={() => { setEditando((v) => !v); limpiar(); }}
-                    />
-                )}
             />
             <Card size="small" styles={{ body: { padding: '6px 10px' } }}>
                 {cargando && (
                     <div style={{ textAlign: 'center', padding: 32 }}><Spin /></div>
                 )}
-                <div ref={marcoRef} style={{ position: 'relative', display: cargando ? 'none' : 'block' }}>
+                <div
+                    ref={marcoRef}
+                    style={{
+                        position: 'relative',
+                        display: cargando ? 'none' : 'block',
+                        colorScheme: 'light',
+                        background: '#fff',
+                        padding: pantallaCompleta ? 16 : 0,
+                        overflowY: pantallaCompleta ? 'auto' : 'visible',
+                    }}
+                >
+                    <div style={{
+                        position: 'sticky',
+                        top: 0,
+                        zIndex: 6,
+                        display: 'flex',
+                        justifyContent: 'flex-end',
+                        padding: '2px 2px 8px',
+                        background: '#fff',
+                    }}>
+                        <RoadmapAcciones
+                            verOcultos={verOcultos}
+                            pausado={pausado}
+                            pantallaCompleta={pantallaCompleta}
+                            editando={editando}
+                            puedeEditar={puedeEditar}
+                            onVerOcultos={() => setVerOcultos((v) => !v)}
+                            onPausa={alternarPausa}
+                            onPantalla={alternarPantalla}
+                            onEditar={() => { setEditando((v) => !v); limpiar(); }}
+                        />
+                    </div>
                     <div
                         ref={cajaRef}
                         onScroll={alDesplazar}
@@ -284,21 +302,21 @@ export default function RoadmapPanel() {
                             onCerrar={limpiar}
                         />
                     )}
+                    {editando && (
+                        <RoadmapEditor
+                            hito={activo && activo.x0 == null ? activo : null}
+                            marcador={marcador}
+                            guardando={guardando}
+                            onGuardar={alGuardar}
+                            onEliminar={alEliminar}
+                            onCerrar={limpiar}
+                            onMarcador={setMarcador}
+                            onAgregar={alAgregar}
+                        />
+                    )}
                 </div>
             </Card>
 
-            {editando && (
-                <RoadmapEditor
-                    hito={activo && activo.x0 == null ? activo : null}
-                    marcador={marcador}
-                    guardando={guardando}
-                    onGuardar={alGuardar}
-                    onEliminar={alEliminar}
-                    onCerrar={limpiar}
-                    onMarcador={setMarcador}
-                    onAgregar={alAgregar}
-                />
-            )}
         </div>
     );
 }

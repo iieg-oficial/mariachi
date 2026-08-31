@@ -134,7 +134,12 @@ export default function RoadmapLienzo({
             ))}
 
             {hitos.filter((h) => h.naceDe && porId[h.naceDe]).map((hito) => (
-                <Linaje key={`linaje-${hito.id}`} hito={hito} madre={porId[hito.naceDe]} opacidad={opacidadDe(hito)} />
+                <Linaje
+                    key={`linaje-${hito.id}`}
+                    hito={hito}
+                    madre={porId[hito.naceDe]}
+                    opacidad={Math.min(opacidadDe(hito), opacidadDe(porId[hito.naceDe]))}
+                />
             ))}
 
             {momentos.map((hito) => (

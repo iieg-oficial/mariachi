@@ -30,7 +30,7 @@ const FILAS = [
     fila({ clave: 'f-mcp', etiqueta: 'mapalab · MCP', proyecto: 'mapalab', tipo: 'feature', feature_de: 'mapalab', fecha_eje: '2026-07-30' }),
     fila({ clave: 'mapalab-1', etiqueta: 'mapalab 1', proyecto: 'mapalab', fecha_eje: '2026-03-27' }),
     fila({ clave: 'legado-colibri', etiqueta: 'colibrí legado', proyecto: 'legado', tipo: 'legacy', fecha_eje: '2024-03-15' }),
-    fila({ clave: 'colibri', etiqueta: 'colibrí', proyecto: 'colibri', tipo: 'joven', nace_de: 'legado-colibri', fecha_eje: '2026-05-07' }),
+    fila({ clave: 'colibri', etiqueta: 'colibrí', proyecto: 'colibri', tipo: 'joven', nace_de: 'legado-colibri', leyenda: 'lo releva', fecha_eje: '2026-05-07' }),
 ];
 
 const montar = () => render(
@@ -141,6 +141,18 @@ describe('RoadmapPanel', () => {
 
         fireEvent.click(screen.getByRole('button', { name: 'Cerrar el detalle' }));
         expect(screen.queryByRole('button', { name: 'Cerrar el detalle' })).not.toBeInTheDocument();
+    });
+
+    it('la conexión se apaga con el más escondido de sus dos nodos', async () => {
+        const { container } = montar();
+        await screen.findByText('mariachi 2');
+        const leyendas = [...container.querySelectorAll('text')].filter((t) => t.textContent === 'lo releva');
+        expect(leyendas).toHaveLength(1);
+
+        fireEvent.click(screen.getByText('mariachi 2').closest('g'));
+
+        const grupo = leyendas[0].closest('g');
+        expect(Number(grupo.getAttribute('opacity'))).toBeLessThan(1);
     });
 
     it('resalta al sucesor de un hito que viene de otro', async () => {
