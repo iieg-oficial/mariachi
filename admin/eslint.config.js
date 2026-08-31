@@ -93,6 +93,7 @@ export default [
             'src/features/portal-pages/components/SEOAnalyzer.jsx',
             'src/features/portal-pages/components/SEOEditor.jsx',
             'src/features/portal-pages/constants/pageTemplates.js',
+            'src/shared/infoboxPlan.js',
         ],
         rules: {
             'max-lines': 'off',

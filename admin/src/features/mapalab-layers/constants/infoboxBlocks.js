@@ -1,6 +1,7 @@
 import { MUNICIPIO_STYLE } from './infoboxStyles';
+import { blockInstances, BODY_TYPES } from '@shared/infoboxPlan';
 
-export const BODY_TYPES = ['labelGroups', 'list', 'iconText', 'text', 'cards'];
+export { blockInstances, BODY_TYPES };
 
 export const BLOCK_DEFS = [
     {
@@ -46,22 +47,6 @@ export const blockDef = (type) => BLOCK_DEFS.find((b) => b.key === type);
 
 let idSeq = 0;
 export const genBlockId = () => `b${Date.now().toString(36)}${(idSeq++).toString(36)}`;
-
-const isInstanced = (arr) => !!arr[0]
-    && typeof arr[0] === 'object'
-    && typeof arr[0].id === 'string'
-    && Array.isArray(arr[0].items);
-
-export const blockInstances = (cfg, type) => {
-    const raw = cfg?.[type];
-    if (raw == null) return [];
-    if (!Array.isArray(raw)) return [{ key: type, type, id: null, items: [raw] }];
-    if (raw.length === 0) return [];
-    if (isInstanced(raw)) {
-        return raw.map((b) => ({ key: `${type}:${b.id}`, type, id: b.id, items: b.items || [] }));
-    }
-    return [{ key: type, type, id: null, items: raw }];
-};
 
 export const allInstances = (cfg) => BODY_TYPES.flatMap((type) => blockInstances(cfg, type));
 

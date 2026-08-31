@@ -9,6 +9,29 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.52.0] - 2026-08-31
+
+### Cambiado: la vista previa de la tarjetita deja de reimplementar el visor
+
+`InfoBoxPreview` ya no interpreta la configuración por su cuenta: llama a **`buildCardPlan`**, el
+mismo módulo que usa el visor, y pinta el plan que le devuelve. Todo lo que decidía a mano
+—resolver un campo, unir columnas, partir por «; », formatear números y fechas, armar el link de un
+ícono, ordenar las instancias— se fue al módulo compartido.
+
+Es el patrón que las estadísticas ya usaban desde siempre: una sola implementación, dos
+consumidores. La tarjetita era la excepción, y se notó cuando los campos compuestos funcionaban en
+el visor y el preview los ignoraba.
+
+**`admin/src/shared/infoboxPlan.js` es una copia byte a byte** de la canónica que vive en mapalab.
+`scripts/sync-infobox-plan.sh` la copia y `--check` falla si divergieron — mismo enfoque que el
+`check-model-drift.py` de gateway-hub para los modelos de SQLAlchemy. Editar la copia no sirve de
+nada: se edita en mapalab y se sincroniza.
+
+De paso el preview mejora en dos cosas. Los valores de ejemplo se arman **a partir de los campos
+que la tarjetita realmente usa** (`referencedFields`), así que ya no depende de que el nombre
+coincida con una lista fija. Y acepta `properties`, que es por donde va a entrar el registro real
+de la capa.
+
 ## [2.51.1] - 2026-08-31
 
 ### Corregido: la barra horizontal de la pestaña Tarjetita, ahora sí
