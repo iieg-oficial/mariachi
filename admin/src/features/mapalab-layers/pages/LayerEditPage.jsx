@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from 'react';
-import { Alert, AutoComplete, Button, Card, Col, Drawer, Empty, Form, Input, Result, Row, Segmented, Select, Space, Spin, Switch, Tabs, Tag, Tooltip, Typography } from 'antd';
-import { DeleteOutlined, HistoryOutlined, PartitionOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, SettingOutlined, SlidersOutlined, TableOutlined } from '@ant-design/icons';
+import { Alert, AutoComplete, Button, Card, Drawer, Empty, Form, Input, Result, Segmented, Select, Space, Spin, Switch, Tabs, Tag, Tooltip, Typography } from 'antd';
+import { DeleteOutlined, HistoryOutlined, PartitionOutlined, PlusOutlined, ReloadOutlined, SettingOutlined, SlidersOutlined, TableOutlined } from '@ant-design/icons';
 import DeleteLayerModal from '@features/mapalab-layers/components/DeleteLayerModal';
 import DeletedLayersList from '@features/mapalab-layers/components/DeletedLayersList';
 import LayersTreeListInline from '@features/mapalab-layers/components/LayersTreeListInline';
@@ -43,6 +43,7 @@ import {
 import AdvancedStack from '@features/mapalab-layers/components/layersEditor/AdvancedStack';
 import EditorSection from '@features/mapalab-layers/components/layersEditor/EditorSection';
 import LayerBreadcrumb from '@features/mapalab-layers/components/LayerBreadcrumb';
+import TreeSearchInput from '@features/mapalab-layers/components/TreeSearchInput';
 import PublishReviewModal from '@features/mapalab-layers/components/PublishReviewModal';
 import GridHistoryDrawer from '@shared/components/dataGrid/GridHistoryDrawer';
 import useLayerDrafts from '@features/mapalab-layers/hooks/useLayerDrafts';
@@ -983,8 +984,8 @@ export default function LayerEditPage() {
                 const crudoInfobox = watchedConfig || inheritedInfobox?.config || null;
                 const previewInfobox = crudoInfobox && Object.keys(crudoInfobox).length > 0 ? crudoInfobox : null;
                 return (
-                    <Row gutter={24}>
-                        <Col xs={24} md={previewInfobox ? 14 : 24}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24, minWidth: 0 }}>
+                        <div style={{ flex: '1 1 340px', minWidth: 0 }}>
                             <InfoBoxEditorHeader
                                 mode={infoboxMode}
                                 onModeChange={setInfoboxMode}
@@ -1004,16 +1005,16 @@ export default function LayerEditPage() {
                                     nodeType={watchedNodeType}
                                 />
                             </Form.Item>
-                        </Col>
+                        </div>
                         {previewInfobox && (
-                            <Col xs={24} md={10}>
+                            <div style={{ flex: '0 1 300px', minWidth: 0 }}>
                                 <div style={{ position: 'sticky', top: 0 }}>
                                     <Text strong style={{ display: 'block', marginBottom: 8 }}>Vista previa</Text>
                                     <InfoBoxPreview value={previewInfobox} />
                                 </div>
-                            </Col>
+                            </div>
                         )}
-                    </Row>
+                    </div>
                 );
             })(),
         },
@@ -1138,26 +1139,24 @@ export default function LayerEditPage() {
             <Drawer
                 title="Avanzado"
                 placement="right"
-                width={isMobile ? '92%' : 560}
-                open={advancedOpen}
-                onClose={() => setAdvancedOpen(false)}
-                forceRender
-                styles={{ body: { paddingTop: 12 } }}
-            >
-                <EditorSection title="Ubicación en el árbol" first>
-                    <Space orientation="vertical" size={8} style={{ width: '100%' }}>
-                        <Text type="secondary" style={{ fontSize: 12 }}>
-                            Ahora cuelga de {parentPathLabel}.
-                        </Text>
+                width={isMobile ? '92%' : 600}
+                extra={(
+                    <Tooltip title={`Ahora cuelga de ${parentPathLabel}`}>
                         <Button
+                            size="small"
                             icon={<PartitionOutlined />}
                             disabled={moveDisabled}
                             onClick={() => setMoveOpen(true)}
                         >
-                            Mover a otro padre
+                            Mover
                         </Button>
-                    </Space>
-                </EditorSection>
+                    </Tooltip>
+                )}
+                open={advancedOpen}
+                onClose={() => setAdvancedOpen(false)}
+                forceRender
+                styles={{ body: { padding: '20px 24px 28px' } }}
+            >
                 <AdvancedStack sections={advancedSections} />
                 <div style={{ marginTop: 32, paddingTop: 18, borderTop: '1px solid #f0f0f0' }}>
                     <Button
@@ -1272,27 +1271,13 @@ export default function LayerEditPage() {
                         </Tooltip>
                     </Space>
                 </Space>
-                <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, marginTop: 4 }}>
-                    <Text type="secondary" style={{ fontSize: 12, maxWidth: '60ch' }}>
-                        {showEditor
-                            ? 'Usa la ruta para moverte entre niveles: cada nombre despliega a sus hermanos.'
-                            : 'Un tema o una categoría se abre; una capa se edita. Arrastra el asa de una fila para reordenarla entre sus hermanas.'}
-                    </Text>
-                    <Input
-                        placeholder="Buscar capa"
-                        prefix={<SearchOutlined />}
-                        value={treeQuery}
-                        onChange={(e) => {
-                            setTreeQuery(e.target.value);
-                            if (e.target.value && showEditor) navigate('/mapalab/layers');
-                        }}
-                        allowClear
-                        size="small"
-                        style={{ width: 220, flexShrink: 0 }}
-                    />
-                </div>
+                <Text type="secondary" style={{ fontSize: 12, display: 'block', maxWidth: '70ch' }}>
+                    {showEditor
+                        ? 'Usa la ruta para moverte entre niveles: cada nombre despliega a sus hermanos.'
+                        : 'Un tema o una categoría se abre; una capa se edita. Arrastra el asa de una fila para reordenarla entre sus hermanas.'}
+                </Text>
             </div>
-            <div style={{ flex: 1, minHeight: 0, padding: isMobile ? '6px 8px 8px' : '12px 24px 24px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ flex: 1, minHeight: 0, padding: isMobile ? '6px 4px 4px' : '10px 8px 8px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                 <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
                     <style>{`
                         .layers-tree-tabs { height: 100%; display: flex; flex-direction: column; min-height: 0; }
@@ -1329,19 +1314,30 @@ export default function LayerEditPage() {
                             onChange={onTreeTabChange}
                             size="small"
                             tabBarStyle={{ padding: '0 12px', marginBottom: 0, flexShrink: 0 }}
-                            tabBarExtraContent={isAdmin ? {
+                            tabBarExtraContent={{
                                 right: (
-                                    <Tooltip title="Nuevo nodo">
-                                        <Button
-                                            size="small"
-                                            type="text"
-                                            icon={<PlusOutlined />}
-                                            onClick={() => setCreateOpen(true)}
-                                            aria-label="Nuevo nodo"
+                                    <Space size={4} style={{ paddingInlineEnd: 4 }}>
+                                        {isAdmin && (
+                                            <Tooltip title="Nuevo nodo">
+                                                <Button
+                                                    size="small"
+                                                    type="text"
+                                                    icon={<PlusOutlined />}
+                                                    onClick={() => setCreateOpen(true)}
+                                                    aria-label="Nuevo nodo"
+                                                />
+                                            </Tooltip>
+                                        )}
+                                        <TreeSearchInput
+                                            value={treeQuery}
+                                            onChange={(v) => {
+                                                setTreeQuery(v);
+                                                if (v && showEditor) navigate('/mapalab/layers');
+                                            }}
                                         />
-                                    </Tooltip>
+                                    </Space>
                                 ),
-                            } : undefined}
+                            }}
                             items={[
                                 {
                                     key: 'layers',

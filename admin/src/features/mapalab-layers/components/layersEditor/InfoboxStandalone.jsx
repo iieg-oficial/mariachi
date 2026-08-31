@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, Button, Col, Empty, Form, Row, Space, Spin, Typography } from 'antd';
+import { Alert, Button, Empty, Form, Space, Spin, Typography } from 'antd';
 import { SaveOutlined } from '@ant-design/icons';
 import InfoBoxEditor from '@features/mapalab-layers/components/layersEditor/InfoBoxEditor';
 import InfoBoxEditorHeader from '@features/mapalab-layers/components/layersEditor/InfoBoxEditorHeader';
@@ -74,8 +74,8 @@ export default function InfoboxStandalone({ layer, inherited = null, onSaved }) 
                 </Button>
             </Space>
             {loadingFields && <Spin size="small" style={{ marginBottom: 12 }} />}
-            <Row gutter={24}>
-                <Col xs={24} md={previewValue ? 14 : 24}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24, minWidth: 0 }}>
+                <div style={{ flex: '1 1 340px', minWidth: 0 }}>
                     <InfoBoxEditorHeader
                         mode={mode}
                         onModeChange={setMode}
@@ -95,16 +95,16 @@ export default function InfoboxStandalone({ layer, inherited = null, onSaved }) 
                             nodeType={layer.nodeType || 'leaf'}
                         />
                     </Form.Item>
-                </Col>
+                </div>
                 {previewValue && (
-                    <Col xs={24} md={10}>
+                    <div style={{ flex: '0 1 300px', minWidth: 0 }}>
                         <div style={{ position: 'sticky', top: 0 }}>
                             <Text strong style={{ display: 'block', marginBottom: 8 }}>Vista previa</Text>
                             <InfoBoxPreview value={previewValue} />
                         </div>
-                    </Col>
+                    </div>
                 )}
-            </Row>
+            </div>
         </Form>
     );
 }

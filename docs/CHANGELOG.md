@@ -9,6 +9,26 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.51.1] - 2026-08-31
+
+### Corregido: la barra horizontal de la pestaña Tarjetita, ahora sí
+
+El intento anterior atacó lo que no era: los botones anchos y los anchos fijos de los renglones no
+tenían nada que ver. La causa estaba una capa más arriba y explica por qué el problema salía **solo**
+en esa pestaña — es la única que usaba `Row`.
+
+`<Row gutter={24}>` aplica `marginInline: -12px` (verificado en `antd/lib/grid/row.js`), así que la
+fila mide 24px más que su contenedor. Ese contenedor es el panel de la pestaña, que lleva
+`padding: 16px 0` —cero horizontal— y cuelga de un `content-holder` con `overflow-y: auto`; por
+especificación, `overflow-x: visible` junto a un `overflow-y` que no es visible **computa a `auto`**,
+de modo que esos 24px sobrantes se convierten en barra de scroll. Las demás pestañas usan
+`EditorSection` y por eso nunca la mostraron.
+
+`Row`/`Col` salen del editor de tarjetita y del cajón de contenido y se sustituyen por un flex con
+`gap: 24px`, que no tiene márgenes negativos. De paso el acomodo pasa a depender del ancho real del
+contenedor y no del viewport, que es lo correcto aquí: el editor vive dentro de un panel dividido y
+los breakpoints `md` de antd medían la ventana completa.
+
 ## [2.51.0] - 2026-08-31
 
 ### Agregado: zoom en la hoja de ruta
