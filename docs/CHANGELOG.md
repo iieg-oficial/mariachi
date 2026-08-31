@@ -9,6 +9,36 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.60.0] - 2026-08-31
+
+### Agregado: el texto corto, la tarjetita en líneas legibles
+
+Un modo **Texto** con una línea por sección, para copiar entre entornos y revisar en un diff sin
+contar corchetes:
+
+```
+titulo      nombre
+insignia    municipio naranja
+renglon     Turno: turno
+ubicacion   calle, "#"numero_ext, "Col. "colonia
+cifra       Total: hombres + mujeres
+```
+
+Las líneas seguidas del mismo tipo forman un bloque; las separadas por otra cosa forman bloques
+distintos, así que **el orden del texto es el orden de la tarjeta** y las instancias múltiples
+salen solas. Los errores se reportan con su número de línea y **no se aplica nada** hasta que el
+texto entero se entienda.
+
+**Si una tarjetita no se puede escribir sin perder algo, no se escribe.** El modo lo dice —qué
+clave, qué opción— y manda al JSON. Un texto corto que tira datos en silencio sería peor que las
+llaves; por eso **el modo JSON se queda** en vez de ser reemplazado, que era la idea original.
+
+El color se escribe con una palabra (`naranja`, `morado`, `azul`, `verde`, `vino`) y no con la
+llave interna del preset: además de leerse mejor, desambigua el caso en que la columna se llama
+igual que el color, como `municipio`.
+
+El segmento queda en **Lienzo · Lista · Texto · JSON**.
+
 ## [2.59.0] - 2026-08-31
 
 ### Agregado: el lienzo, la tarjetita se edita sobre sí misma

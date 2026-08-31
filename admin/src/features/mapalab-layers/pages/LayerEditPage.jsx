@@ -1038,6 +1038,7 @@ export default function LayerEditPage() {
                                         availableFields={availableFields}
                                         inherited={inheritedInfobox}
                                         nodeType={watchedNodeType}
+                                        onModeChange={setInfoboxMode}
                                     />
                                 </Form.Item>
                             </div>

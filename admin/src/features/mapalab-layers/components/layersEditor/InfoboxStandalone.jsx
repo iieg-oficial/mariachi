@@ -95,6 +95,7 @@ export default function InfoboxStandalone({ layer, inherited = null, onSaved }) 
                                 availableFields={availableFields}
                                 inherited={inherited}
                                 nodeType={layer.nodeType || 'leaf'}
+                                onModeChange={setMode}
                             />
                         </Form.Item>
                     </div>
