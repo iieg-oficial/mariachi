@@ -13,6 +13,7 @@ import { useAuth } from '@shared/contexts/useAuth';
 import InfoBoxEditor from '@features/mapalab-layers/components/layersEditor/InfoBoxEditor';
 import InfoBoxEditorHeader from '@features/mapalab-layers/components/layersEditor/InfoBoxEditorHeader';
 import InfoBoxPreviewPanel from '@features/mapalab-layers/components/layersEditor/InfoBoxPreviewPanel';
+import { SampleFeaturesProvider } from '@features/mapalab-layers/components/layersEditor/SampleFeaturesContext';
 import LayerMetadataSection from '@features/mapalab-layers/components/layersEditor/LayerMetadataSection';
 import LayerStatsSection from '@features/mapalab-layers/components/layersEditor/LayerStatsSection';
 import LayerAliasesSection from '@features/mapalab-layers/components/layersEditor/LayerAliasesSection';
@@ -984,41 +985,42 @@ export default function LayerEditPage() {
                 const crudoInfobox = watchedConfig || inheritedInfobox?.config || null;
                 const previewInfobox = crudoInfobox && Object.keys(crudoInfobox).length > 0 ? crudoInfobox : null;
                 return (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24, minWidth: 0 }}>
-                        <div style={{ flex: '1 1 340px', minWidth: 0 }}>
-                            <InfoBoxEditorHeader
-                                mode={infoboxMode}
-                                onModeChange={setInfoboxMode}
-                                onApplyTemplate={(config) => form.setFieldsValue({ infoboxConfig: config })}
-                                availableFields={availableFields}
-                                fieldsLoading={fieldsLoading}
-                                hasFeatureType={!!selectedWs && !!selectedGsLayer}
-                                rawTree={rawTree}
-                                currentConfig={watchedConfig}
-                                currentLayerId={layerId}
-                            />
-                            <Form.Item name="infoboxConfig" label={null}>
-                                <InfoBoxEditor
+                    <SampleFeaturesProvider workspaceAlias={selectedWs} geoserverLayer={selectedGsLayer}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24, minWidth: 0 }}>
+                            <div style={{ flex: '1 1 340px', minWidth: 0 }}>
+                                <InfoBoxEditorHeader
                                     mode={infoboxMode}
+                                    onModeChange={setInfoboxMode}
+                                    onApplyTemplate={(config) => form.setFieldsValue({ infoboxConfig: config })}
                                     availableFields={availableFields}
-                                    inherited={inheritedInfobox}
-                                    nodeType={watchedNodeType}
+                                    fieldsLoading={fieldsLoading}
+                                    hasFeatureType={!!selectedWs && !!selectedGsLayer}
+                                    rawTree={rawTree}
+                                    currentConfig={watchedConfig}
+                                    currentLayerId={layerId}
                                 />
-                            </Form.Item>
-                        </div>
-                        {previewInfobox && (
-                            <div style={{ flex: '0 1 300px', minWidth: 0 }}>
-                                <div style={{ position: 'sticky', top: 0 }}>
-                                    <InfoBoxPreviewPanel
-                                        value={watchedConfig}
+                                <Form.Item name="infoboxConfig" label={null}>
+                                    <InfoBoxEditor
+                                        mode={infoboxMode}
+                                        availableFields={availableFields}
                                         inherited={inheritedInfobox}
-                                        workspaceAlias={selectedWs}
-                                        geoserverLayer={selectedGsLayer}
+                                        nodeType={watchedNodeType}
                                     />
-                                </div>
+                                </Form.Item>
                             </div>
-                        )}
-                    </div>
+                            {previewInfobox && (
+                                <div style={{ flex: '0 1 300px', minWidth: 0 }}>
+                                    <div style={{ position: 'sticky', top: 0 }}>
+                                        <InfoBoxPreviewPanel
+                                            value={watchedConfig}
+                                            inherited={inheritedInfobox}
+                                            hasFeatureType={!!selectedWs && !!selectedGsLayer}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </SampleFeaturesProvider>
                 );
             })(),
         },

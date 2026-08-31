@@ -1,21 +1,25 @@
 import { Button, Input, Radio, Select, Space, Tooltip, Typography } from 'antd';
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { fieldOptionsFor, isComposed, normalizeComposeParts } from './fieldValueHelpers.jsx';
+import { useSampleFeatures } from './sampleFeaturesContext';
 
 const { Text } = Typography;
 
-export const FieldSelect = ({ value, onChange, availableFields, placeholder = 'Campo', style }) => (
-    <Select
-        style={style}
-        value={value || undefined}
-        onChange={(v) => onChange(v ?? '')}
-        options={fieldOptionsFor(availableFields, value)}
-        placeholder={placeholder}
-        showSearch
-        allowClear
-        filterOption={(input, option) => String(option.value).toLowerCase().includes(input.toLowerCase())}
-    />
-);
+export const FieldSelect = ({ value, onChange, availableFields, placeholder = 'Campo', style }) => {
+    const { samplesOf } = useSampleFeatures();
+    return (
+        <Select
+            style={style}
+            value={value || undefined}
+            onChange={(v) => onChange(v ?? '')}
+            options={fieldOptionsFor(availableFields, value, samplesOf)}
+            placeholder={placeholder}
+            showSearch
+            allowClear
+            filterOption={(input, option) => String(option.value).toLowerCase().includes(input.toLowerCase())}
+        />
+    );
+};
 
 const PartRow = ({ part, isSum, onChange, onRemove, availableFields }) => (
     <Space.Compact style={{ width: '100%', minWidth: 0 }}>

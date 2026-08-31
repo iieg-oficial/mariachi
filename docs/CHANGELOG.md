@@ -9,6 +9,29 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.55.0] - 2026-08-31
+
+### Agregado: los selectores de campo muestran valores reales
+
+Elegir `cve_est_2` de una lista de nombres era adivinar. Cada columna del selector trae ahora
+**hasta tres valores de ejemplo** debajo del nombre, y salen de los mismos diez registros que
+alimentan la vista previa: cero peticiones extra.
+
+`SampleFeaturesProvider` los trae una vez por capa y los reparte, así que el editor y la vista
+previa miran exactamente los mismos datos.
+
+### Agregado: deshacer y rehacer en la tarjetita
+
+`Ctrl+Z` y `Ctrl+Shift+Z`, con sus dos botones. Arrastraste mal, borraste la sección equivocada o
+aplicaste una plantilla encima de media hora de trabajo: se recupera.
+
+Los cambios seguidos **se agrupan**: escribir una etiqueta manda un cambio por tecla, y sin
+agrupar cada deshacer borraría una letra. Dentro de medio segundo se reemplaza la cima de la pila
+en vez de apilar, así que un deshacer equivale a una edición. Guarda treinta pasos.
+
+El atajo se ignora cuando el cursor está dentro de un campo de texto, donde `Ctrl+Z` tiene que
+seguir deshaciendo lo que escribiste.
+
 ## [2.54.0] - 2026-08-31
 
 ### Agregado: la tarjetita se previsualiza con registros reales de la capa

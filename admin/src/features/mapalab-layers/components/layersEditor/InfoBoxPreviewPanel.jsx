@@ -3,7 +3,7 @@ import { Button, Segmented, Space, Tooltip, Typography } from 'antd';
 import { LeftOutlined, RightOutlined } from '@ant-design/icons';
 import InfoBoxPreview from './InfoBoxPreview';
 import { referencedFields } from '@shared/infoboxPlan';
-import { fetchSampleFeatures } from '@features/mapalab-layers/api/sampleFeaturesService';
+import { useSampleFeatures } from './sampleFeaturesContext';
 
 const { Text } = Typography;
 
@@ -16,19 +16,12 @@ const camposVacios = (props, cfg) => {
     return faltan;
 };
 
-export default function InfoBoxPreviewPanel({ value, inherited = null, workspaceAlias, geoserverLayer }) {
-    const [features, setFeatures] = useState([]);
+export default function InfoBoxPreviewPanel({ value, inherited = null, hasFeatureType = true }) {
+    const { features } = useSampleFeatures();
     const [idx, setIdx] = useState(0);
     const [variant, setVariant] = useState('desktop');
 
-    useEffect(() => {
-        if (!workspaceAlias || !geoserverLayer) { setFeatures([]); return; }
-        let cancelado = false;
-        fetchSampleFeatures(workspaceAlias, geoserverLayer, 10)
-            .then((f) => { if (!cancelado) { setFeatures(f); setIdx(0); } })
-            .catch(() => { if (!cancelado) setFeatures([]); });
-        return () => { cancelado = true; };
-    }, [workspaceAlias, geoserverLayer]);
+    useEffect(() => { setIdx(0); }, [features]);
 
     const cfg = value || inherited?.config || null;
     const actual = features[idx] || null;
@@ -81,7 +74,7 @@ export default function InfoBoxPreviewPanel({ value, inherited = null, workspace
                     Este registro no trae {faltantes.map((c) => <code key={c}>{c}</code>).reduce((a, b) => [a, ', ', b])}.
                 </Text>
             )}
-            {total === 0 && workspaceAlias && geoserverLayer && (
+            {total === 0 && hasFeatureType && (
                 <Text type="secondary" style={{ fontSize: 11 }}>
                     Sin registros de ejemplo: se muestra con valores inventados.
                 </Text>

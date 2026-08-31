@@ -4,6 +4,7 @@ import { SaveOutlined } from '@ant-design/icons';
 import InfoBoxEditor from '@features/mapalab-layers/components/layersEditor/InfoBoxEditor';
 import InfoBoxEditorHeader from '@features/mapalab-layers/components/layersEditor/InfoBoxEditorHeader';
 import InfoBoxPreviewPanel from '@features/mapalab-layers/components/layersEditor/InfoBoxPreviewPanel';
+import { SampleFeaturesProvider } from '@features/mapalab-layers/components/layersEditor/SampleFeaturesContext';
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
 import { message } from '@shared/services/message';
 
@@ -74,41 +75,42 @@ export default function InfoboxStandalone({ layer, inherited = null, onSaved }) 
                 </Button>
             </Space>
             {loadingFields && <Spin size="small" style={{ marginBottom: 12 }} />}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24, minWidth: 0 }}>
-                <div style={{ flex: '1 1 340px', minWidth: 0 }}>
-                    <InfoBoxEditorHeader
-                        mode={mode}
-                        onModeChange={setMode}
-                        onApplyTemplate={(config) => form.setFieldsValue({ infoboxConfig: config })}
-                        availableFields={availableFields}
-                        fieldsLoading={loadingFields}
-                        hasFeatureType={!!layer.workspaceAlias && !!layer.geoserverLayer}
-                        rawTree={rawTree}
-                        currentConfig={watchedConfig}
-                        currentLayerId={layer.id}
-                    />
-                    <Form.Item name="infoboxConfig" label={null}>
-                        <InfoBoxEditor
+            <SampleFeaturesProvider workspaceAlias={layer.workspaceAlias} geoserverLayer={layer.geoserverLayer}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24, minWidth: 0 }}>
+                    <div style={{ flex: '1 1 340px', minWidth: 0 }}>
+                        <InfoBoxEditorHeader
                             mode={mode}
+                            onModeChange={setMode}
+                            onApplyTemplate={(config) => form.setFieldsValue({ infoboxConfig: config })}
                             availableFields={availableFields}
-                            inherited={inherited}
-                            nodeType={layer.nodeType || 'leaf'}
+                            fieldsLoading={loadingFields}
+                            hasFeatureType={!!layer.workspaceAlias && !!layer.geoserverLayer}
+                            rawTree={rawTree}
+                            currentConfig={watchedConfig}
+                            currentLayerId={layer.id}
                         />
-                    </Form.Item>
-                </div>
-                {previewValue && (
-                    <div style={{ flex: '0 1 300px', minWidth: 0 }}>
-                        <div style={{ position: 'sticky', top: 0 }}>
-                            <InfoBoxPreviewPanel
-                                value={watchedConfig}
+                        <Form.Item name="infoboxConfig" label={null}>
+                            <InfoBoxEditor
+                                mode={mode}
+                                availableFields={availableFields}
                                 inherited={inherited}
-                                workspaceAlias={layer.workspaceAlias}
-                                geoserverLayer={layer.geoserverLayer}
+                                nodeType={layer.nodeType || 'leaf'}
                             />
-                        </div>
+                        </Form.Item>
                     </div>
-                )}
-            </div>
+                    {previewValue && (
+                        <div style={{ flex: '0 1 300px', minWidth: 0 }}>
+                            <div style={{ position: 'sticky', top: 0 }}>
+                                <InfoBoxPreviewPanel
+                                    value={watchedConfig}
+                                    inherited={inherited}
+                                    hasFeatureType={!!layer.workspaceAlias && !!layer.geoserverLayer}
+                                />
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </SampleFeaturesProvider>
         </Form>
     );
 }
