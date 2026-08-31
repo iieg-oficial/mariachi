@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { App, Button, Card, Space, Spin, Typography } from 'antd';
-import { SEMANTIC } from '@app/providers/brand';
-import { EditOutlined, EyeInvisibleOutlined, EyeOutlined, FlagOutlined } from '@ant-design/icons';
+import { App, Button, Card, Space, Spin } from 'antd';
+import { FlagOutlined } from '@ant-design/icons';
 import { useAuth } from '@shared/contexts/useAuth';
 import SectionHeader from '@shared/components/SectionHeader';
 import { CICLOS, MARCADORES, PROCESOS } from '@features/inicio/constants/roadmapModelo';
-import { acomodar, colorDe, esMuerto } from '@features/inicio/helpers/roadmapLayout';
+import { acomodar } from '@features/inicio/helpers/roadmapLayout';
 import {
     actualizarHito,
     crearHito,
@@ -14,8 +13,8 @@ import {
 } from '@features/inicio/api/roadmapService';
 import RoadmapLienzo from '@features/inicio/components/roadmap/RoadmapLienzo';
 import RoadmapEditor from '@features/inicio/components/roadmap/RoadmapEditor';
-
-const { Text } = Typography;
+import RoadmapTip from '@features/inicio/components/roadmap/RoadmapTip';
+import RoadmapAcciones from '@features/inicio/components/roadmap/RoadmapAcciones';
 
 const PERMISO = 'mariachi.roadmap.manage';
 
@@ -30,10 +29,12 @@ export default function RoadmapPanel() {
     const [seleccion, setSeleccion] = useState(null);
     const [fijado, setFijado] = useState(false);
     const [tip, setTip] = useState(null);
-    const [seguir, setSeguir] = useState(true);
+    const [pausado, setPausado] = useState(false);
+    const [pantallaCompleta, setPantallaCompleta] = useState(false);
     const [verOcultos, setVerOcultos] = useState(false);
     const cajaRef = useRef(null);
     const marcoRef = useRef(null);
+    const tipRef = useRef(null);
     const esperadoRef = useRef(-1);
 
     const puedeEditar = Boolean(user?.permissions?.includes?.(PERMISO));
@@ -58,12 +59,36 @@ export default function RoadmapPanel() {
     const esCiclo = Boolean(activo && activo.x0 != null);
     const familia = activo && !esCiclo ? (activo.de || activo.proy) : null;
 
+    const relacionados = useMemo(() => {
+        if (!activo || esCiclo) return new Set();
+        const ids = new Set([activo.id]);
+        datos.forEach((h) => {
+            if ((h.de || h.proy) === familia) ids.add(h.id);
+        });
+        const sumarLinaje = (id) => {
+            datos.forEach((h) => {
+                if (h.id === id && h.naceDe && !ids.has(h.naceDe)) {
+                    ids.add(h.naceDe);
+                    sumarLinaje(h.naceDe);
+                }
+                if (h.naceDe === id && !ids.has(h.id)) {
+                    ids.add(h.id);
+                    sumarLinaje(h.id);
+                }
+            });
+        };
+        [...ids].forEach(sumarLinaje);
+        return ids;
+    }, [activo, esCiclo, familia, datos]);
+
+    const seguirRef = useRef(true);
+
     const opacidadDe = useCallback((hito) => {
-        const suyo = (hito.de || hito.proy) === familia;
+        const suyo = relacionados.has(hito.id);
         if (hito.tipo === 'feature' && !suyo) return verOcultos ? 0.45 : 0;
-        if (!familia) return 1;
+        if (!relacionados.size) return 1;
         return suyo ? 1 : 0.18;
-    }, [familia, verOcultos]);
+    }, [relacionados, verOcultos]);
 
     const situarTip = (id, evento) => {
         const item = buscar(id);
@@ -71,7 +96,7 @@ export default function RoadmapPanel() {
         const marco = marcoRef.current.getBoundingClientRect();
         setTip({
             item,
-            x: Math.min(Math.max(evento.clientX - marco.left + 14, 8), marco.width - 340),
+            x: Math.min(Math.max(evento.clientX - marco.left + 14, 8), Math.max(8, marco.width - 336)),
             y: Math.max(8, evento.clientY - marco.top + 16),
         });
     };
@@ -90,14 +115,14 @@ export default function RoadmapPanel() {
 
     const alSeleccionar = (id, evento) => {
         if (fijado && seleccion === id) {
-            setFijado(false);
-            setSeleccion(null);
-            setTip(null);
+            limpiar();
             return;
         }
         setFijado(true);
         setSeleccion(id);
-        if (evento && !editando) situarTip(id, evento);
+        if (editando) return;
+        if (evento) situarTip(id, evento);
+        else setTip(null);
     };
 
     const alGuardar = async (valores) => {
@@ -151,20 +176,42 @@ export default function RoadmapPanel() {
         }
     };
 
-    const alAvanzar = useCallback((x) => {
+    const alAvanzar = useCallback((x, enPausa) => {
         const caja = cajaRef.current;
-        if (!seguir || !caja) return;
+        if (enPausa || !seguirRef.current || !caja) return;
         const destino = Math.max(0, Math.min(x - caja.clientWidth / 2, caja.scrollWidth - caja.clientWidth));
         esperadoRef.current = destino;
         caja.scrollLeft = destino;
-    }, [seguir]);
+    }, []);
 
     const alDesplazar = () => {
         const caja = cajaRef.current;
-        if (!seguir || !caja) return;
+        if (!seguirRef.current || !caja) return;
         if (Math.abs(caja.scrollLeft - esperadoRef.current) < 2) return;
-        setSeguir(false);
+        seguirRef.current = false;
     };
+
+    const alternarPausa = () => {
+        seguirRef.current = pausado;
+        setPausado((v) => !v);
+    };
+
+    const alternarPantalla = async () => {
+        const marco = marcoRef.current;
+        if (!marco) return;
+        try {
+            if (document.fullscreenElement) await document.exitFullscreen();
+            else await marco.requestFullscreen();
+        } catch {
+            message.error('El navegador no permitió la pantalla completa');
+        }
+    };
+
+    useEffect(() => {
+        const alCambiar = () => setPantallaCompleta(Boolean(document.fullscreenElement));
+        document.addEventListener('fullscreenchange', alCambiar);
+        return () => document.removeEventListener('fullscreenchange', alCambiar);
+    }, []);
 
     const limpiar = useCallback(() => {
         setFijado(false);
@@ -174,11 +221,14 @@ export default function RoadmapPanel() {
 
     useEffect(() => {
         if (!fijado) return undefined;
-        document.addEventListener('click', limpiar);
-        return () => document.removeEventListener('click', limpiar);
+        const alClicFuera = (evento) => {
+            if (tipRef.current?.contains(evento.target)) return;
+            limpiar();
+        };
+        document.addEventListener('click', alClicFuera);
+        return () => document.removeEventListener('click', alClicFuera);
     }, [fijado, limpiar]);
 
-    const colorTip = tip && (tip.item.color || (esMuerto(tip.item) ? SEMANTIC.danger : colorDe(tip.item)));
 
     return (
         <div>
@@ -187,37 +237,17 @@ export default function RoadmapPanel() {
                 title="Hoja de ruta"
                 subtitle="El ecosistema de 2024 a 2030"
                 acciones={(
-                    <Space size={6} wrap>
-                        <Button
-                            size="small"
-                            icon={verOcultos ? <EyeOutlined /> : <EyeInvisibleOutlined />}
-                            type={verOcultos ? 'primary' : 'default'}
-                            onClick={(e) => { e.stopPropagation(); setVerOcultos((v) => !v); }}
-                        >
-                            {verOcultos ? 'Ocultar features' : 'Ver todos'}
-                        </Button>
-                        <Button
-                            size="small"
-                            type={seguir ? 'primary' : 'default'}
-                            onClick={(e) => { e.stopPropagation(); setSeguir((v) => !v); }}
-                        >
-                            {seguir ? 'Siguiendo' : 'Scroll libre'}
-                        </Button>
-                        {puedeEditar && (
-                            <Button
-                                size="small"
-                                icon={<EditOutlined />}
-                                type={editando ? 'primary' : 'default'}
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setEditando((v) => !v);
-                                    limpiar();
-                                }}
-                            >
-                                {editando ? 'Salir de edición' : 'Editar'}
-                            </Button>
-                        )}
-                    </Space>
+                    <RoadmapAcciones
+                        verOcultos={verOcultos}
+                        pausado={pausado}
+                        pantallaCompleta={pantallaCompleta}
+                        editando={editando}
+                        puedeEditar={puedeEditar}
+                        onVerOcultos={() => setVerOcultos((v) => !v)}
+                        onPausa={alternarPausa}
+                        onPantalla={alternarPantalla}
+                        onEditar={() => { setEditando((v) => !v); limpiar(); }}
+                    />
                 )}
             />
             <Card size="small" styles={{ body: { padding: '6px 10px' } }}>
@@ -234,7 +264,8 @@ export default function RoadmapPanel() {
                             hitos={hitos}
                             marcador={marcador}
                             seleccion={seleccion}
-                            familia={familia}
+                            relacionados={relacionados}
+                            pausado={pausado}
                             cicloActivo={esCiclo ? seleccion : null}
                             opacidadDe={opacidadDe}
                             onSeleccionar={alSeleccionar}
@@ -246,36 +277,12 @@ export default function RoadmapPanel() {
                     </div>
 
                     {tip && !editando && (
-                        <div
-                            style={{
-                                position: 'absolute',
-                                left: tip.x,
-                                top: tip.y,
-                                zIndex: 5,
-                                maxWidth: 320,
-                                pointerEvents: 'none',
-                                background: '#fff',
-                                border: '1px solid rgba(5,5,5,0.1)',
-                                borderRadius: 8,
-                                boxShadow: '0 6px 20px -6px rgba(25,19,32,0.35)',
-                                padding: '10px 12px',
-                            }}
-                        >
-                            <Space orientation="vertical" size={2}>
-                                {tip.item.antes && (
-                                    <Text type="secondary" style={{ fontSize: 11, textDecoration: 'line-through' }}>
-                                        {tip.item.antes}
-                                    </Text>
-                                )}
-                                <Text strong style={{ fontSize: 15, color: colorTip }}>
-                                    {tip.item.nombre || tip.item.txt}
-                                </Text>
-                                <Text type="secondary" style={{ fontSize: 12 }}>
-                                    {tip.item.fecha || tip.item.nota}
-                                </Text>
-                                <Text style={{ fontSize: 13 }}>{tip.item.motivo}</Text>
-                            </Space>
-                        </div>
+                        <RoadmapTip
+                            tip={tip}
+                            fijado={fijado}
+                            tipRef={tipRef}
+                            onCerrar={limpiar}
+                        />
                     )}
                 </div>
             </Card>

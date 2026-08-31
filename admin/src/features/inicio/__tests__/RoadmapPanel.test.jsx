@@ -29,6 +29,8 @@ const FILAS = [
     fila({ clave: 'wacha', etiqueta: 'wacha', proyecto: 'wacha', fecha_eje: '2026-08-10', nombre_anterior: 'frigate' }),
     fila({ clave: 'f-mcp', etiqueta: 'mapalab · MCP', proyecto: 'mapalab', tipo: 'feature', feature_de: 'mapalab', fecha_eje: '2026-07-30' }),
     fila({ clave: 'mapalab-1', etiqueta: 'mapalab 1', proyecto: 'mapalab', fecha_eje: '2026-03-27' }),
+    fila({ clave: 'legado-colibri', etiqueta: 'colibrí legado', proyecto: 'legado', tipo: 'legacy', fecha_eje: '2024-03-15' }),
+    fila({ clave: 'colibri', etiqueta: 'colibrí', proyecto: 'colibri', tipo: 'joven', nace_de: 'legado-colibri', fecha_eje: '2026-05-07' }),
 ];
 
 const montar = () => render(
@@ -120,9 +122,31 @@ describe('RoadmapPanel', () => {
         expect(logos.length).toBeGreaterThan(0);
     });
 
-    it('el botón de seguimiento cambia a scroll libre', async () => {
+    it('el botón detiene y reanuda el marcador', async () => {
         montar();
-        fireEvent.click(await screen.findByRole('button', { name: 'Siguiendo' }));
-        expect(screen.getByRole('button', { name: 'Scroll libre' })).toBeInTheDocument();
+        fireEvent.click(await screen.findByRole('button', { name: /pausar/i }));
+        const reanudar = screen.getByRole('button', { name: /reanudar/i });
+        expect(reanudar).toBeInTheDocument();
+        fireEvent.click(reanudar);
+        expect(screen.getByRole('button', { name: /pausar/i })).toBeInTheDocument();
+    });
+
+    it('el detalle se mueve al hito que se toca y se cierra con la X', async () => {
+        montar();
+        fireEvent.click((await screen.findByText('mariachi 2')).closest('g'));
+        expect(await screen.findByText(/la identidad se va a minerva/i)).toBeInTheDocument();
+
+        fireEvent.click(screen.getByText('geoserver 1').closest('g'));
+        expect(screen.getByText('geoserver 1', { selector: 'text' })).toBeInTheDocument();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Cerrar el detalle' }));
+        expect(screen.queryByRole('button', { name: 'Cerrar el detalle' })).not.toBeInTheDocument();
+    });
+
+    it('resalta al sucesor de un hito que viene de otro', async () => {
+        montar();
+        const legado = (await screen.findByText('colibrí legado')).closest('g');
+        fireEvent.click(legado);
+        expect(screen.getByText('colibrí').closest('g')).not.toHaveAttribute('opacity', '0.18');
     });
 });

@@ -9,6 +9,33 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.41.0] - 2026-08-31
+
+### Cambiado: el botón del marcador pausa en vez de dejar de seguirlo
+
+Antes alternaba entre seguir el marcador con el scroll y soltarlo. Ahora **detiene el marcador**,
+que es lo que la gente espera de un elemento que se mueve solo. El scroll sigue enganchado mientras
+corre y se suelta en cuanto alguien desplaza a mano, sin pedir permiso ni un botón para ello.
+
+### Agregado
+
+- **Pantalla completa** sobre el lienzo, con la API del navegador. Si el navegador la niega, se
+  avisa en vez de quedarse callado.
+- **Botón de cerrar en el detalle.** Al fijarlo con un clic aparece una X; antes solo se cerraba
+  haciendo clic fuera o en el mismo hito.
+
+### Corregido
+
+- **El detalle no cambiaba al tocar otro hito.** Los nodos, los ciclos y los procesos no pasaban el
+  evento del clic, así que el detalle se quedaba con la posición del primer hover y ya no se movía.
+  Ahora lo pasan los tres, y el teclado calcula la posición desde la caja del elemento.
+- **Las sucesiones no resaltaban a su contraparte.** Seleccionar la intranet o el colibrí heredados
+  no encendía a quien vino a relevarlos, porque el resaltado solo miraba el proyecto. Ahora recorre
+  la cadena de `nace_de` en ambos sentidos, así que geoserver enciende a sextante, IGIBot a agent y
+  el portal de mariachi a sitio2026.
+
+---
+
 ## [2.40.1] - 2026-08-31
 
 ### Corregido

@@ -39,13 +39,14 @@ export const Momento = ({ hito, opacidad, seleccionado, onSeleccionar, onEntrar,
             aria-label={`${hito.txt}, ${hito.fecha}`}
             opacity={opacidad}
             style={{ cursor: 'pointer', transition: 'opacity .2s ease' }}
-            onClick={(e) => { e.stopPropagation(); onSeleccionar(hito.id); }}
+            onClick={(e) => { e.stopPropagation(); onSeleccionar(hito.id, e); }}
             onMouseEnter={(e) => onEntrar(hito.id, e)}
             onMouseLeave={onSalir}
             onKeyDown={(e) => {
                 if (e.key !== 'Enter' && e.key !== ' ') return;
                 e.preventDefault();
-                onSeleccionar(hito.id);
+                const caja = e.currentTarget.getBoundingClientRect();
+                onSeleccionar(hito.id, { clientX: caja.left + caja.width / 2, clientY: caja.bottom });
             }}
         >
             <line x1={hito.px} y1={ESPINA_Y} x2={hito.lx} y2={hito.ly - 10} stroke={color} strokeWidth={1} strokeOpacity={0.4} />
@@ -90,13 +91,14 @@ export default function RoadmapNodo({ hito, opacidad, seleccionado, relacionado,
                 transition: 'opacity .2s ease',
                 pointerEvents: opacidad === 0 ? 'none' : 'auto',
             }}
-            onClick={(e) => { e.stopPropagation(); onSeleccionar(hito.id); }}
+            onClick={(e) => { e.stopPropagation(); onSeleccionar(hito.id, e); }}
             onMouseEnter={(e) => onEntrar(hito.id, e)}
             onMouseLeave={onSalir}
             onKeyDown={(e) => {
                 if (e.key !== 'Enter' && e.key !== ' ') return;
                 e.preventDefault();
-                onSeleccionar(hito.id);
+                const caja = e.currentTarget.getBoundingClientRect();
+                onSeleccionar(hito.id, { clientX: caja.left + caja.width / 2, clientY: caja.bottom });
             }}
         >
             {(seleccionado || relacionado) && (

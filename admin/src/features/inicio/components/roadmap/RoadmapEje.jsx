@@ -33,11 +33,12 @@ const Banda = ({ ciclo, activo, apagado, onSeleccionar }) => {
             tabIndex={0}
             aria-label={`Ciclo ${ciclo.nombre}`}
             style={{ cursor: 'pointer' }}
-            onClick={(e) => { e.stopPropagation(); onSeleccionar(ciclo.id); }}
+            onClick={(e) => { e.stopPropagation(); onSeleccionar(ciclo.id, e); }}
             onKeyDown={(e) => {
                 if (e.key !== 'Enter' && e.key !== ' ') return;
                 e.preventDefault();
-                onSeleccionar(ciclo.id);
+                const caja = e.currentTarget.getBoundingClientRect();
+                onSeleccionar(ciclo.id, { clientX: caja.left + 120, clientY: caja.top + 40 });
             }}
         >
             <rect
@@ -84,13 +85,14 @@ const Proceso = ({ proceso, indice, opacidad, onSeleccionar, onEntrar, onSalir }
             aria-label={`${proceso.txt}, proceso anual`}
             opacity={opacidad}
             style={{ cursor: 'pointer', transition: 'opacity .2s ease' }}
-            onClick={(e) => { e.stopPropagation(); onSeleccionar(proceso.id); }}
+            onClick={(e) => { e.stopPropagation(); onSeleccionar(proceso.id, e); }}
             onMouseEnter={(e) => onEntrar(proceso.id, e)}
             onMouseLeave={onSalir}
             onKeyDown={(e) => {
                 if (e.key !== 'Enter' && e.key !== ' ') return;
                 e.preventDefault();
-                onSeleccionar(proceso.id);
+                const caja = e.currentTarget.getBoundingClientRect();
+                onSeleccionar(proceso.id, { clientX: caja.left + 60, clientY: caja.bottom });
             }}
         >
             <line

@@ -37,11 +37,12 @@ const Linaje = ({ hito, madre, opacidad }) => {
 };
 
 export default function RoadmapLienzo({
-    hitos, marcador, seleccion, familia, cicloActivo,
+    hitos, marcador, seleccion, relacionados, cicloActivo, pausado,
     opacidadDe, onSeleccionar, onCiclo, onEntrar, onSalir, onAvance,
 }) {
     const marcaRef = useRef(null);
     const cuadroRef = useRef(null);
+    const relojRef = useRef({ acumulado: 0, previo: null });
     const porId = useMemo(
         () => Object.fromEntries(hitos.map((h) => [h.id, h])),
         [hitos],
@@ -59,12 +60,17 @@ export default function RoadmapLienzo({
         let reaccion = null;
 
         const animar = (tiempo) => {
-            const avance = (tiempo % DURACION) / DURACION;
+            const reloj = relojRef.current;
+            const delta = reloj.previo === null ? 0 : tiempo - reloj.previo;
+            reloj.previo = tiempo;
+            if (!pausado) reloj.acumulado += delta;
+            const transcurrido = reloj.acumulado;
+            const avance = (transcurrido % DURACION) / DURACION;
             const x = 60 + (FIN_EJE - 60) * avance;
 
-            const cerca = reacciones.find((r) => Math.abs(x - r.x) < 6);
+            const cerca = pausado ? null : reacciones.find((r) => Math.abs(x - r.x) < 6);
             if (cerca && (!reaccion || reaccion.x !== cerca.x)) {
-                reaccion = { ...cerca, desde: tiempo };
+                reaccion = { ...cerca, desde: transcurrido };
             }
 
             let dx = 0;
@@ -72,7 +78,7 @@ export default function RoadmapLienzo({
             let giro = 0;
             if (reaccion) {
                 const duracion = reaccion.clase === 'lanzamiento' ? SALTO : TIRITEO;
-                const u = (tiempo - reaccion.desde) / duracion;
+                const u = (transcurrido - reaccion.desde) / duracion;
                 if (u >= 1) {
                     reaccion = null;
                 } else if (reaccion.clase === 'lanzamiento') {
@@ -90,13 +96,13 @@ export default function RoadmapLienzo({
             marcaRef.current.setAttribute('y', ESPINA_Y + dy);
             marcaRef.current.setAttribute('transform', `rotate(${giro} ${x + dx} ${ESPINA_Y + dy})`);
             marcaRef.current.setAttribute('opacity', avance < 0.02 || avance > 0.98 ? '0' : '0.95');
-            onAvance(x);
+            onAvance(x, pausado);
             cuadroRef.current = requestAnimationFrame(animar);
         };
 
         cuadroRef.current = requestAnimationFrame(animar);
         return () => cancelAnimationFrame(cuadroRef.current);
-    }, [reacciones, onAvance]);
+    }, [reacciones, onAvance, pausado]);
 
     const nodos = hitos.filter((h) => h.tipo !== 'momento');
     const momentos = hitos.filter((h) => h.tipo === 'momento');
@@ -149,7 +155,7 @@ export default function RoadmapLienzo({
                     hito={hito}
                     opacidad={opacidadDe(hito)}
                     seleccionado={seleccion === hito.id}
-                    relacionado={Boolean(familia) && seleccion !== hito.id && (hito.de || hito.proy) === familia}
+                    relacionado={seleccion !== hito.id && relacionados.has(hito.id)}
                     onSeleccionar={onSeleccionar}
                     onEntrar={onEntrar}
                     onSalir={onSalir}
