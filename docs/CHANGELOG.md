@@ -9,6 +9,89 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.46.0] - 2026-08-31
+
+### Cambiado: el editor de capas se reagrupa en cinco pestanas y Avanzado vuelve a ser boton
+
+*Avanzado* dejo de ser pestana y es un boton al extremo derecho de la barra que abre un cajon.
+Adentro quedan Servicios y Simbologia —y, al fondo, **Archivar capa**, que antes vivia en el
+encabezado compitiendo con Guardar—.
+
+Las pestanas quedan en **Identidad, Apariencia, Tarjetita, Metadatos y Estadisticas**:
+
+- **Apariencia** es nueva y junta lo que estaba disperso: *Estatus de capa* (antes «Badge», que no
+  decia nada), *Aviso*, *Resaltado* y *Estado* —oculta y fuera de servicio, que estaban en
+  Identidad—. Aviso y Badge dejan de ser pestanas propias.
+- **Estadisticas** es nueva y saca la numeralia de adentro de Metadatos, donde estaba enterrada al
+  fondo de un formulario largo.
+
+Las secciones de Identidad y Apariencia son **colapsables**, para llegar de un golpe a la que
+interesa. Colapsar oculta con CSS en vez de desmontar, para no perder el registro de los campos.
+
+### Cambiado: la busqueda de capas sube al nivel de la pagina
+
+El buscador estaba dentro del arbol, asi que desaparecia al entrar a editar. Ahora vive bajo el
+selector Arbol/Tabla, visible en los dos modos: escribir en el manda de regreso al arbol filtrado.
+Con eso el breadcrumb se queda solo con la ruta —**se van las flechas de paso entre hermanas**: cada
+nombre de la ruta ya despliega a sus hermanos, que hacia lo mismo con un control menos.
+
+### Cambiado: mover una capa muestra de donde sale y donde queda
+
+El modal decia «selecciona el destino» y nada mas. Ahora muestra la ruta actual, la ruta resultante
+con la capa ya colocada, y solo deja elegir temas, categorias y grupos como padre.
+
+### Cambiado: un tema o una categoria ya no se editan con pestanas
+
+Solo tienen Identidad y Apariencia; una barra de dos pestanas para un nodo que solo organiza era
+ruido. Sus secciones se apilan y el boton de Avanzado queda arriba a la derecha.
+
+### Eliminado: seis avisos permanentes que no informaban nada
+
+La explicacion de cada tipo de nodo, la de Propiedad, la del feature type heredado en Metadatos, la
+de los ocho slots de numeralia, la de valores legacy, la del resaltado global y la del destino al
+mover. Todas eran texto fijo que aparecia siempre y empujaba el formulario hacia abajo; ahora viven
+en el tooltip del elemento que describen.
+
+**Los avisos que si avisan se quedan**: que una capa comparta metadata con sus hermanas advierte de
+un efecto lateral real —editar ahi cambia varias capas—, y esconderlo seria quitar una advertencia,
+no ruido.
+
+### Corregido: la subpagina de capas se desplazaba entera
+
+El contenedor usaba `calc(100vh - 112px)`, un numero que no cubria el margen ni el padding del
+`Content` del layout: sobraban 48 px y el documento entero ganaba scroll. Ahora el alto se mide
+contra la posicion real del contenedor, asi que se ajusta al viewport sin numeros magicos y el
+desplazamiento ocurre dentro del panel de la pestana.
+
+### Corregido: las capas de poligono parecian tener casilla de seleccion
+
+El glifo de geometria de poligono era `BorderOutlined`, un cuadro vacio que se lee como checkbox sin
+marcar e invitaba a creer que se podian seleccionar varias capas.
+
+## [2.45.1] - 2026-08-31
+
+### Corregido: las plantillas de tarjetita regañaban a los grupos
+
+El modal decía «No se pudieron leer las columnas de la capa · revisa que la capa tenga workspace y
+feature type» siempre que no había columnas, y mandaba a arreglar algo que en dos casos no está
+roto: un **nodo de grupo** no apunta a ninguna capa de GeoServer, y una capa que apunta a un
+**grupo de capas de GeoServer** hace que `DescribeFeatureType` devuelva vacío por diseño. En los
+dos casos la pestaña de predefinidas quedaba en un callejón sin salida.
+
+Ahora el modal distingue tres estados: mientras se leen las columnas muestra un spinner en vez del
+aviso; si la capa no tiene feature type lo dice y explica por qué; y si GeoServer no devolvió
+columnas lo dice sin culpar a nadie. En los dos últimos casos ofrece un botón que lleva a **Copiar
+de otra capa**, que es lo que sí funciona ahí, y se deja de listar las cuatro plantillas
+deshabilitadas.
+
+### Corregido: la detección de columnas numéricas
+
+La plantilla de polígono con cifras buscaba tipos por subcadena (`int|long|double|…`), pero el API
+normaliza los tipos a `integer` y `number` antes de entregarlos. Pasa a comparar contra el conjunto
+de tipos normalizados, tolerando el prefijo de espacio de nombres (`xsd:int`). El test cubría los
+tipos crudos y no la forma real que devuelve el endpoint.
+
+
 ## [2.45.0] - 2026-08-31
 
 ### Cambiado: los controles del roadmap viven dentro del lienzo

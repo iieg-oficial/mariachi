@@ -11,7 +11,15 @@ const DIRECCION = ['direccion', 'domicilio', 'ubicacion', 'address'];
 const TELEFONO = ['telefono', 'tel', 'contacto'];
 const WEB = ['sitio_web', 'web', 'url', 'pagina'];
 
-const NUMERICO = /int|long|short|double|float|decimal|number/i;
+const TIPOS_NUMERICOS = new Set([
+    'integer', 'number',
+    'int', 'long', 'short', 'double', 'float', 'decimal',
+]);
+
+const esNumerico = (tipo) => {
+    const limpio = String(tipo || '').toLowerCase().split(':').pop();
+    return TIPOS_NUMERICOS.has(limpio);
+};
 
 const nombresDe = (fields) => (fields || []).map((f) => f?.name).filter(Boolean);
 
@@ -29,7 +37,7 @@ export const pickField = (fields, candidatos) => {
 };
 
 const camposNumericos = (fields, tope) => (fields || [])
-    .filter((f) => f?.name && NUMERICO.test(f.type || ''))
+    .filter((f) => f?.name && esNumerico(f.type))
     .slice(0, tope)
     .map((f) => f.name);
 

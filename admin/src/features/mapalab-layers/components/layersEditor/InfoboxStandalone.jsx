@@ -78,6 +78,8 @@ export default function InfoboxStandalone({ layer, inherited = null, onSaved }) 
                         onModeChange={setMode}
                         onApplyTemplate={(config) => form.setFieldsValue({ infoboxConfig: config })}
                         availableFields={availableFields}
+                        fieldsLoading={loadingFields}
+                        hasFeatureType={!!layer.workspaceAlias && !!layer.geoserverLayer}
                         rawTree={rawTree}
                         currentConfig={watchedConfig}
                         currentLayerId={layer.id}

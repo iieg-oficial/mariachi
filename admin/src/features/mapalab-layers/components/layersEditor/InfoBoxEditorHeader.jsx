@@ -11,6 +11,8 @@ export default function InfoBoxEditorHeader({
     onModeChange,
     onApplyTemplate,
     availableFields = [],
+    fieldsLoading = false,
+    hasFeatureType = true,
     rawTree = [],
     currentConfig = null,
     currentLayerId = null,
@@ -43,6 +45,8 @@ export default function InfoBoxEditorHeader({
                 onClose={() => setTemplatesOpen(false)}
                 onApply={onApplyTemplate}
                 availableFields={availableFields}
+                fieldsLoading={fieldsLoading}
+                hasFeatureType={hasFeatureType}
                 rawTree={rawTree}
                 currentConfig={currentConfig}
                 currentLayerId={currentLayerId}

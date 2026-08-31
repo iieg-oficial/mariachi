@@ -97,6 +97,7 @@ export default function LayerEditPage() {
     const [workspaces, setWorkspaces] = useState([]);
     const [availableStyles, setAvailableStyles] = useState([]);
     const [availableFields, setAvailableFields] = useState([]);
+    const [fieldsLoading, setFieldsLoading] = useState(false);
     const [bulkTagsOpen, setBulkTagsOpen] = useState(false);
     const [highlightSettingsOpen, setHighlightSettingsOpen] = useState(false);
     const [eventoLayerId, setEventoLayerId] = useState(null);
@@ -216,12 +217,15 @@ export default function LayerEditPage() {
     useEffect(() => {
         if (!selectedWs || !selectedGsLayer) {
             setAvailableFields([]);
+            setFieldsLoading(false);
             return;
         }
         let cancelled = false;
+        setFieldsLoading(true);
         listGeoserverFields(selectedWs, selectedGsLayer)
             .then((data) => { if (!cancelled) setAvailableFields(data?.fields || []); })
-            .catch(() => { if (!cancelled) setAvailableFields([]); });
+            .catch(() => { if (!cancelled) setAvailableFields([]); })
+            .finally(() => { if (!cancelled) setFieldsLoading(false); });
         return () => { cancelled = true; };
     }, [selectedWs, selectedGsLayer, listGeoserverFields]);
 
@@ -929,6 +933,8 @@ export default function LayerEditPage() {
                             onModeChange={setInfoboxMode}
                             onApplyTemplate={(config) => form.setFieldsValue({ infoboxConfig: config })}
                             availableFields={availableFields}
+                            fieldsLoading={fieldsLoading}
+                            hasFeatureType={!!selectedWs && !!selectedGsLayer}
                             rawTree={rawTree}
                             currentConfig={watchedConfig}
                             currentLayerId={layerId}

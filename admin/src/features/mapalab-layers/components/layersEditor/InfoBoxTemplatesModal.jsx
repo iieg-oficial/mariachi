@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Alert, Col, Empty, Input, Modal, Row, Tabs, Tag, Typography } from 'antd';
+import { Alert, Button, Col, Empty, Input, Modal, Row, Spin, Tabs, Tag, Typography } from 'antd';
 import InfoBoxPreview from './InfoBoxPreview';
 import { INFOBOX_TEMPLATES } from '@features/mapalab-layers/constants/infoboxTemplates';
 
@@ -56,6 +56,8 @@ export default function InfoBoxTemplatesModal({
     onClose,
     onApply,
     availableFields = [],
+    fieldsLoading = false,
+    hasFeatureType = true,
     rawTree = [],
     currentConfig = null,
     currentLayerId = null,
@@ -101,18 +103,43 @@ export default function InfoBoxTemplatesModal({
         });
     };
 
+    const sinColumnas = !fieldsLoading && !availableFields.length;
+
+    const avisoSinColumnas = (
+        <Alert
+            type="info"
+            showIcon
+            style={{ marginBottom: 8 }}
+            message={hasFeatureType
+                ? 'GeoServer no devolvió columnas para esta capa'
+                : 'Esta capa no tiene feature type propio'}
+            description={
+                <>
+                    <div style={{ marginBottom: 8 }}>
+                        {hasFeatureType
+                            ? 'Puede ser un grupo de capas de GeoServer, que no expone columnas. Las plantillas predefinidas se arman con columnas reales, así que aquí no hay nada que ofrecer.'
+                            : 'Los nodos de grupo no apuntan a una capa de GeoServer, así que no tienen columnas. Las plantillas predefinidas se arman con columnas reales; para un grupo lo que sirve es copiar la tarjetita de una capa que ya la tenga.'}
+                    </div>
+                    <Button size="small" onClick={() => setTab('capa')}>
+                        Copiar de otra capa
+                    </Button>
+                </>
+            }
+        />
+    );
+
     const panelPredefinidas = (
         <div style={LISTA_STYLE}>
-            {!availableFields.length && (
-                <Alert
-                    type="warning"
-                    showIcon
-                    style={{ marginBottom: 8 }}
-                    message="No se pudieron leer las columnas de la capa"
-                    description="Sin columnas no se puede armar una plantilla que apunte a datos reales. Revisa que la capa tenga workspace y feature type."
-                />
+            {fieldsLoading && (
+                <div style={{ padding: '16px 0', textAlign: 'center' }}>
+                    <Spin size="small" />
+                    <Text type="secondary" style={{ fontSize: 12, marginLeft: 8 }}>
+                        Leyendo las columnas de la capa…
+                    </Text>
+                </div>
             )}
-            {presets.map((p) => (
+            {sinColumnas && avisoSinColumnas}
+            {!fieldsLoading && !sinColumnas && presets.map((p) => (
                 <Opcion
                     key={p.key}
                     titulo={p.nombre}

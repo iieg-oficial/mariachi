@@ -88,10 +88,10 @@ describe('plantillas predefinidas', () => {
         const cfg = plantilla('poligono_cifras').build(campos(
             'nombre',
             'municipio',
-            { name: 'pob_total', type: 'xsd:int' },
+            { name: 'pob_total', type: 'integer' },
             { name: 'viviendas', type: 'xsd:long' },
-            { name: 'area_km2', type: 'xsd:double' },
-            { name: 'densidad', type: 'xsd:double' },
+            { name: 'area_km2', type: 'number' },
+            { name: 'densidad', type: 'number' },
         ));
         expect(cfg.cards.map((c) => c.field)).toEqual(['pob_total', 'viviendas', 'area_km2']);
         expect(cfg.cards[0].label).toBe('Pob total');
@@ -99,5 +99,17 @@ describe('plantillas predefinidas', () => {
 
     it('poligono con cifras no se ofrece sin columnas numericas', () => {
         expect(plantilla('poligono_cifras').build(campos('nombre', 'municipio'))).toBeNull();
+    });
+
+    it('poligono con cifras ignora las columnas que no son numeros', () => {
+        const cfg = plantilla('poligono_cifras').build(campos(
+            'nombre',
+            { name: 'fecha', type: 'date' },
+            { name: 'activo', type: 'boolean' },
+            { name: 'geom', type: 'geometry' },
+            { name: 'clave', type: 'string' },
+            { name: 'pob_total', type: 'integer' },
+        ));
+        expect(cfg.cards.map((c) => c.field)).toEqual(['pob_total']);
     });
 });
