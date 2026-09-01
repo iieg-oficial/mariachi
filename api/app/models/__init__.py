@@ -24,6 +24,7 @@ from app.models.reporte_actividad import ReporteActividad
 from app.models.reporte_grupo import ReporteGrupo
 from app.models.reporte_tipo import ReporteTipo
 from app.models.roadmap import RoadmapHito
+from app.models.roadmap_extra import RoadmapCiclo, RoadmapProceso
 from app.models.sieej import (
     Catalogo,
     CatalogoOpcion,
@@ -37,7 +38,9 @@ from app.models.source_app import SourceApp
 from app.models.user import Usuario
 
 __all__ = [
+    "RoadmapCiclo",
     "RoadmapHito",
+    "RoadmapProceso",
     "Base",
     "MapalabInfoboxPropuesta",
     "Usuario",

@@ -39,8 +39,8 @@ const Linaje = ({ hito, madre, opacidad }) => {
 };
 
 export default function RoadmapLienzo({
-    hitos, marcador, seleccion, relacionados, cicloActivo, pausado, aAlto, zoom,
-    opacidadDe, onSeleccionar, onCiclo, onEntrar, onSalir, onAvance,
+    hitos, ciclos, procesos, marcador, seleccion, relacionados, cicloActivo, pausado, aAlto, zoom,
+    editando, opacidadDe, onSeleccionar, onCiclo, onEntrar, onSalir, onAvance, onArrastrar, svgRef,
 }) {
     const marcaRef = useRef(null);
     const cuadroRef = useRef(null);
@@ -111,6 +111,7 @@ export default function RoadmapLienzo({
 
     return (
         <svg
+            ref={svgRef}
             viewBox={`0 0 ${ANCHO} ${ALTO}`}
             role="img"
             aria-label="Hoja de ruta del ecosistema, de 2024 a 2030"
@@ -125,6 +126,8 @@ export default function RoadmapLienzo({
                 : { display: 'block', width: ANCHO, minWidth: ANCHO, height: 'auto' }}
         >
             <RoadmapEje
+                ciclos={ciclos}
+                procesos={procesos}
                 cicloActivo={cicloActivo}
                 opacidadProceso={opacidadDe}
                 onCiclo={onCiclo}
@@ -168,6 +171,8 @@ export default function RoadmapLienzo({
                 <RoadmapNodo
                     key={hito.id}
                     hito={hito}
+                    arrastrable={editando}
+                    onArrastrar={onArrastrar}
                     opacidad={opacidadDe(hito)}
                     seleccionado={seleccion === hito.id}
                     relacionado={seleccion !== hito.id && relacionados.has(hito.id)}

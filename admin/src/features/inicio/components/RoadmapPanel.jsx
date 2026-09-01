@@ -5,18 +5,18 @@ import { useAuth } from '@shared/contexts/useAuth';
 import usePantallaCompleta from '@shared/hooks/usePantallaCompleta';
 import SectionHeader from '@shared/components/SectionHeader';
 import {
-    CICLOS,
     MARCADORES,
     PASO_ZOOM,
-    PROCESOS,
     ZOOM_MAXIMO,
     ZOOM_MINIMO,
 } from '@features/inicio/constants/roadmapModelo';
 import { acomodar } from '@features/inicio/helpers/roadmapLayout';
 import useRoadmapHitos from '@features/inicio/hooks/useRoadmapHitos';
+import useArrastreHito from '@features/inicio/hooks/useArrastreHito';
 import RoadmapLienzo from '@features/inicio/components/roadmap/RoadmapLienzo';
 import RoadmapEditor from '@features/inicio/components/roadmap/RoadmapEditor';
 import RoadmapTip from '@features/inicio/components/roadmap/RoadmapTip';
+import RoadmapMarco from '@features/inicio/components/roadmap/RoadmapMarco';
 import RoadmapAcciones from '@features/inicio/components/roadmap/RoadmapAcciones';
 
 const PERMISO = 'mariachi.roadmap.manage';
@@ -34,7 +34,7 @@ export default function RoadmapPanel() {
         alternar: alternarPantalla,
     } = usePantallaCompleta(noSePudo);
     const [editando, setEditando] = useState(false);
-    const { datos, cargando, guardando, guardar, agregar, eliminar } = useRoadmapHitos();
+    const { datos, ciclos, procesos, cargando, guardando, guardar, agregar, eliminar } = useRoadmapHitos();
     const [marcador, setMarcador] = useState(MARCADORES[0]);
     const [seleccion, setSeleccion] = useState(null);
     const [fijado, setFijado] = useState(false);
@@ -44,16 +44,16 @@ export default function RoadmapPanel() {
     const [zoom, setZoom] = useState(1);
     const cajaRef = useRef(null);
     const tipRef = useRef(null);
+    const svgRef = useRef(null);
     const esperadoRef = useRef(-1);
 
     const puedeEditar = Boolean(user?.permissions?.includes?.(PERMISO));
 
 
-    const hitos = useMemo(() => acomodar(datos), [datos]);
 
     const buscar = useCallback(
-        (id) => [...datos, ...CICLOS, ...PROCESOS].find((item) => item.id === id) || null,
-        [datos],
+        (id) => [...datos, ...ciclos, ...procesos].find((item) => item.id === id) || null,
+        [datos, ciclos, procesos],
     );
 
     const activo = seleccion ? buscar(seleccion) : null;
@@ -126,20 +126,37 @@ export default function RoadmapPanel() {
         else setTip(null);
     };
 
+    const { arrastre, arrastrar } = useArrastreHito(
+        svgRef,
+        useCallback((hito) => guardar('hitos', hito), [guardar]),
+    );
+
+    const hitos = useMemo(() => acomodar(
+        arrastre ? datos.map((h) => (h.id === arrastre.id ? { ...h, f: arrastre.fecha } : h)) : datos,
+    ), [datos, arrastre]);
+
+    const tipoDe = (item) => {
+        if (!item) return 'hitos';
+        if (item.x0 != null) return 'ciclos';
+        if (item.cada != null) return 'procesos';
+        return 'hitos';
+    };
+
     const alGuardar = async (valores) => {
-        await guardar({ ...activo, ...valores });
+        await guardar(tipoDe(activo), { ...activo, ...valores });
         limpiar();
     };
 
-    const alAgregar = async () => {
-        const clave = await agregar();
+
+    const alAgregar = async (tipo) => {
+        const clave = await agregar(tipo);
         if (!clave) return;
         setSeleccion(clave);
         setFijado(true);
     };
 
     const alEliminar = async (clave) => {
-        await eliminar(clave);
+        await eliminar(tipoDe(activo), clave);
         limpiar();
     };
 
@@ -224,22 +241,7 @@ export default function RoadmapPanel() {
                 {cargando && (
                     <div style={{ textAlign: 'center', padding: 32 }}><Spin /></div>
                 )}
-                <div
-                    ref={marcoRef}
-                    style={{
-                        position: 'relative',
-                        display: (() => {
-                            if (cargando) return 'none';
-                            return pantallaCompleta ? 'flex' : 'block';
-                        })(),
-                        flexDirection: 'column',
-                        colorScheme: 'light',
-                        background: '#fff',
-                        padding: pantallaCompleta ? 16 : 0,
-                        height: pantallaCompleta ? '100%' : 'auto',
-                        overflow: pantallaCompleta ? 'hidden' : 'visible',
-                    }}
-                >
+                <RoadmapMarco marcoRef={marcoRef} cargando={cargando} pantallaCompleta={pantallaCompleta}>
                     {pantallaCompleta && (
                         <div style={{
                             position: 'sticky',
@@ -267,6 +269,11 @@ export default function RoadmapPanel() {
                     >
                         <RoadmapLienzo
                             hitos={hitos}
+                            ciclos={ciclos}
+                            procesos={procesos}
+                            editando={editando}
+                            svgRef={svgRef}
+                            onArrastrar={arrastrar}
                             marcador={marcador}
                             seleccion={seleccion}
                             relacionados={relacionados}
@@ -298,7 +305,8 @@ export default function RoadmapPanel() {
                             overflowY: pantallaCompleta ? 'auto' : 'visible',
                         }}>
                             <RoadmapEditor
-                                hito={activo && activo.x0 == null ? activo : null}
+                                item={activo}
+                                tipo={tipoDe(activo)}
                                 hitos={datos}
                                 marcador={marcador}
                                 guardando={guardando}
@@ -310,7 +318,7 @@ export default function RoadmapPanel() {
                             />
                         </div>
                     )}
-                </div>
+                </RoadmapMarco>
             </Card>
 
         </div>

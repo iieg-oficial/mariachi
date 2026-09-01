@@ -37,9 +37,24 @@ const montar = () => render(
     <MemoryRouter><App><RoadmapPanel /></App></MemoryRouter>,
 );
 
+const CICLOS = [{
+    clave: 'c-rojo', nombre: 'tamal-rojo', nota: 'lo nuevo', motivo: 'doce frentes',
+    color: '#B3261E', x0: 1200, x1: 1492, y0: 46, y1: 400, orden: 0,
+}];
+
+const PROCESOS = [{
+    clave: 'cuadernillos', etiqueta: 'cuadernillos', proyecto: 'cuadernillos',
+    desde: '2026-03-23', cada: '03-23', fecha_texto: 'anual', motivo: 'un PDF por municipio',
+    activo: true, orden: 0,
+}];
+
 beforeEach(() => {
     usuario.permisos = [];
-    api.get.mockResolvedValue({ data: FILAS });
+    api.get.mockImplementation((ruta) => {
+        if (ruta.includes('ciclos')) return Promise.resolve({ data: CICLOS });
+        if (ruta.includes('procesos')) return Promise.resolve({ data: PROCESOS });
+        return Promise.resolve({ data: FILAS });
+    });
 });
 
 describe('acomodar', () => {
@@ -103,6 +118,40 @@ describe('RoadmapPanel', () => {
         expect(await screen.findByText('Viene de')).toBeInTheDocument();
         expect(screen.getByText('Qué dice la conexión')).toBeInTheDocument();
         expect(screen.getByText('Orden en su día')).toBeInTheDocument();
+    });
+
+    it('ofrece agregar los tres tipos de elemento', async () => {
+        usuario.permisos = ['mariachi.roadmap.manage'];
+        montar();
+        fireEvent.click(await screen.findByRole('button', { name: /editar/i }));
+
+        expect(screen.getByRole('button', { name: 'Agregar hito' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Agregar ciclo' })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Agregar proceso' })).toBeInTheDocument();
+    });
+
+    it('edita un ciclo con sus propios campos', async () => {
+        usuario.permisos = ['mariachi.roadmap.manage'];
+        montar();
+        fireEvent.click(await screen.findByRole('button', { name: /editar/i }));
+        fireEvent.click(screen.getByText('tamal-rojo').closest('g'));
+
+        expect(await screen.findByText(/Editando ciclo/)).toBeInTheDocument();
+        expect(screen.getByText('Empieza en')).toBeInTheDocument();
+        expect(screen.getByText('Termina en')).toBeInTheDocument();
+    });
+
+    it('crea un ciclo contra su propio endpoint', async () => {
+        usuario.permisos = ['mariachi.roadmap.manage'];
+        api.post.mockResolvedValue({ data: CICLOS[0] });
+        montar();
+        fireEvent.click(await screen.findByRole('button', { name: /editar/i }));
+        fireEvent.click(screen.getByRole('button', { name: 'Agregar ciclo' }));
+
+        await waitFor(() => expect(api.post).toHaveBeenCalledWith(
+            '/roadmap/ciclos',
+            expect.objectContaining({ nombre: 'ciclo nuevo' }),
+        ));
     });
 
     it('guarda un hito editado contra la API', async () => {

@@ -2,11 +2,9 @@ import {
     ANCHO,
     ANIOS,
     CARRIL_ARRIBA,
-    CICLOS,
     COLOR_PROYECTO,
     ESPINA_Y,
     FIN_PASADO,
-    PROCESOS,
     TRIMESTRES,
 } from '@features/inicio/constants/roadmapModelo';
 import { ejeX } from '@features/inicio/helpers/roadmapLayout';
@@ -123,10 +121,10 @@ const Proceso = ({ proceso, indice, opacidad, onSeleccionar, onEntrar, onSalir }
     );
 };
 
-export default function RoadmapEje({ cicloActivo, opacidadProceso, onCiclo, onProceso, onEntrar, onSalir }) {
+export default function RoadmapEje({ ciclos, procesos, cicloActivo, opacidadProceso, onCiclo, onProceso, onEntrar, onSalir }) {
     return (
         <g>
-            {CICLOS.map((ciclo) => (
+            {ciclos.map((ciclo) => (
                 <Banda
                     key={ciclo.id}
                     ciclo={ciclo}
@@ -165,7 +163,7 @@ export default function RoadmapEje({ cicloActivo, opacidadProceso, onCiclo, onPr
             <line x1={60} y1={ESPINA_Y} x2={FIN_PASADO} y2={ESPINA_Y} stroke="#5C2472" strokeWidth={2.5} strokeOpacity={0.4} strokeLinecap="round" />
             <line x1={FIN_PASADO} y1={ESPINA_Y} x2={2340} y2={ESPINA_Y} stroke="#9A9AA2" strokeWidth={2} strokeOpacity={0.8} strokeDasharray="3 6" strokeLinecap="round" />
 
-            {PROCESOS.map((proceso, i) => (
+            {procesos.map((proceso, i) => (
                 <Proceso
                     key={proceso.id}
                     proceso={proceso}

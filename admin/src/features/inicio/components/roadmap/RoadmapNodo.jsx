@@ -69,7 +69,7 @@ export const Momento = ({ hito, opacidad, seleccionado, onSeleccionar, onEntrar,
     );
 };
 
-export default function RoadmapNodo({ hito, opacidad, seleccionado, relacionado, onSeleccionar, onEntrar, onSalir }) {
+export default function RoadmapNodo({ hito, opacidad, seleccionado, relacionado, arrastrable, onSeleccionar, onEntrar, onSalir, onArrastrar }) {
     const color = colorDe(hito);
     const borde = esMuerto(hito) ? SEMANTIC.danger : color;
     const ancho = anchoDe(hito);
@@ -87,10 +87,11 @@ export default function RoadmapNodo({ hito, opacidad, seleccionado, relacionado,
             aria-label={`${hito.txt}, ${hito.fecha}`}
             opacity={opacidad}
             style={{
-                cursor: 'pointer',
+                cursor: arrastrable ? 'ew-resize' : 'pointer',
                 transition: 'opacity .2s ease',
                 pointerEvents: opacidad === 0 ? 'none' : 'auto',
             }}
+            onPointerDown={arrastrable ? (e) => onArrastrar(hito, e) : undefined}
             onClick={(e) => { e.stopPropagation(); onSeleccionar(hito.id, e); }}
             onMouseEnter={(e) => onEntrar(hito.id, e)}
             onMouseLeave={onSalir}

@@ -9,6 +9,33 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.62.0] - 2026-09-01
+
+### Agregado: los ciclos y los procesos también se editan
+
+Hasta ahora solo los hitos vivían en la base; las bandas de ciclo y los carriles de proceso eran
+constantes del admin, así que mover el cierre de `tamal-verde` pedía un deploy. **Migración
+`r0adm4p0002`**: dos tablas nuevas, `roadmap_ciclos` y `roadmap_procesos`, sembradas con los cinco
+ciclos y el proceso que ya existían. Las constantes se eliminan.
+
+Ocho endpoints más bajo `/api/mariachi/roadmap`, con el mismo permiso y el mismo `verify_csrf` que
+los hitos. El editor cambia de campos según lo que se seleccione: un ciclo pide nombre, color y sus
+límites; un proceso pide su primera edición y cada cuándo se repite.
+
+**Agregar deja de ser exclusivo de los hitos**: hay un botón por tipo.
+
+### Agregado: los hitos se arrastran
+
+En modo edición un hito se toma y se mueve de lado; al soltarlo se guarda con la fecha que le
+corresponde a esa posición del eje. Como el eje no es lineal —cada año ocupa el ancho que le tocó—,
+`fechaEnX` busca primero el tramo del año y luego el mes y el día dentro de él, que es la inversa
+exacta de cómo se dibuja.
+
+El acomodo se recalcula en cada movimiento, así que las etiquetas se reacomodan mientras se
+arrastra, no al soltar.
+
+---
+
 ## [2.61.0] - 2026-08-31
 
 ### Corregido: en el lienzo no había forma de ponerle título a la tarjetita

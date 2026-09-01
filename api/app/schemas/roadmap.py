@@ -51,3 +51,66 @@ class RoadmapHitoSalida(RoadmapHitoBase):
 
     id: int
     clave: str
+
+
+class RoadmapCicloBase(BaseModel):
+    nombre: str
+    nota: str = ""
+    motivo: str = ""
+    color: str
+    x0: float
+    x1: float
+    y0: Optional[float] = None
+    y1: Optional[float] = None
+    orden: int = 0
+
+
+class RoadmapCicloCrear(RoadmapCicloBase):
+    clave: str
+
+
+class RoadmapCicloSalida(RoadmapCicloBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    clave: str
+
+
+class RoadmapProcesoBase(BaseModel):
+    etiqueta: str
+    proyecto: str
+    desde: str
+    cada: str
+    fecha_texto: str
+    motivo: str
+    activo: bool = True
+    orden: int = 0
+
+    @field_validator("desde")
+    @classmethod
+    def desde_iso(cls, valor: str) -> str:
+        try:
+            date.fromisoformat(valor)
+        except ValueError as error:
+            raise ValueError("desde debe ser YYYY-MM-DD") from error
+        return valor
+
+    @field_validator("cada")
+    @classmethod
+    def cada_mes_dia(cls, valor: str) -> str:
+        try:
+            date.fromisoformat(f"2000-{valor}")
+        except ValueError as error:
+            raise ValueError("cada debe ser MM-DD") from error
+        return valor
+
+
+class RoadmapProcesoCrear(RoadmapProcesoBase):
+    clave: str
+
+
+class RoadmapProcesoSalida(RoadmapProcesoBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    clave: str
