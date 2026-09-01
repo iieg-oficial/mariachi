@@ -26,6 +26,9 @@ export default function InfoBoxEditor({
         );
     }
 
+    const vacia = !value || Object.keys(value).length === 0;
+    if (vacia && !inherited) return null;
+
     return (
         <InfoBoxLienzo
             value={value}

@@ -9,6 +9,24 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.62.1] - 2026-09-01
+
+### Cambiado: la capa sin tarjetita muestra una sola cosa
+
+Con la tarjetita vacía en modo Lienzo se veían tres cosas compitiendo: el encabezado de la sección,
+el panel de «Esta capa todavía no tiene tarjetita» y debajo un lienzo vacío con su franja de
+título y su **+**. Ninguna de las tres decía qué hacer.
+
+Ahora el panel **ocupa el alto de la pestaña**, centrado, y es lo único: se esconden la leyenda
+«Configuración del cuadro» y el lienzo hasta que haya algo que dibujar. Con una sola sección
+configurada todo vuelve a su sitio.
+
+El **selector de modo se queda visible**, porque es la única puerta al modo JSON y pegar un JSON en
+una capa vacía es justo el camino de copiar una tarjetita entre entornos.
+
+El modo **Lista no cambia**: con la tarjetita vacía sigue ofreciendo sus chips de «Agregar bloque»,
+que ahí sí son la forma de empezar.
+
 ## [2.62.0] - 2026-09-01
 
 ### Agregado: los ciclos y los procesos también se editan
