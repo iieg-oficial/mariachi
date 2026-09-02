@@ -17,6 +17,9 @@ import RoadmapLienzo from '@features/inicio/components/roadmap/RoadmapLienzo';
 import RoadmapEditor from '@features/inicio/components/roadmap/RoadmapEditor';
 import RoadmapTip from '@features/inicio/components/roadmap/RoadmapTip';
 import RoadmapMarco from '@features/inicio/components/roadmap/RoadmapMarco';
+import RoadmapBarrita from '@features/inicio/components/roadmap/RoadmapBarrita';
+import useAltaPorClic from '@features/inicio/hooks/useAltaPorClic';
+import useSeleccionRoadmap, { tipoDe } from '@features/inicio/hooks/useSeleccionRoadmap';
 import RoadmapAcciones from '@features/inicio/components/roadmap/RoadmapAcciones';
 
 const PERMISO = 'mariachi.roadmap.manage';
@@ -36,51 +39,25 @@ export default function RoadmapPanel() {
     const [editando, setEditando] = useState(false);
     const { datos, ciclos, procesos, cargando, guardando, guardar, agregar, eliminar } = useRoadmapHitos();
     const [marcador, setMarcador] = useState(MARCADORES[0]);
-    const [seleccion, setSeleccion] = useState(null);
-    const [fijado, setFijado] = useState(false);
-    const [tip, setTip] = useState(null);
     const [pausado, setPausado] = useState(false);
     const [verOcultos, setVerOcultos] = useState(false);
     const [zoom, setZoom] = useState(1);
     const cajaRef = useRef(null);
-    const tipRef = useRef(null);
     const svgRef = useRef(null);
+
+    const {
+        seleccion, setSeleccion, fijado, setFijado, tip, setTip, tipRef,
+        anclaBarra, verFormulario, setVerFormulario,
+        activo, esCiclo, relacionados, limpiar, situarTip, anclar,
+    } = useSeleccionRoadmap({ datos, ciclos, procesos, marcoRef });
     const esperadoRef = useRef(-1);
 
     const puedeEditar = Boolean(user?.permissions?.includes?.(PERMISO));
 
 
 
-    const buscar = useCallback(
-        (id) => [...datos, ...ciclos, ...procesos].find((item) => item.id === id) || null,
-        [datos, ciclos, procesos],
-    );
 
-    const activo = seleccion ? buscar(seleccion) : null;
-    const esCiclo = Boolean(activo && activo.x0 != null);
-    const familia = activo && !esCiclo ? (activo.de || activo.proy) : null;
 
-    const relacionados = useMemo(() => {
-        if (!activo || esCiclo) return new Set();
-        const ids = new Set([activo.id]);
-        datos.forEach((h) => {
-            if ((h.de || h.proy) === familia) ids.add(h.id);
-        });
-        const sumarLinaje = (id) => {
-            datos.forEach((h) => {
-                if (h.id === id && h.naceDe && !ids.has(h.naceDe)) {
-                    ids.add(h.naceDe);
-                    sumarLinaje(h.naceDe);
-                }
-                if (h.naceDe === id && !ids.has(h.id)) {
-                    ids.add(h.id);
-                    sumarLinaje(h.id);
-                }
-            });
-        };
-        [...ids].forEach(sumarLinaje);
-        return ids;
-    }, [activo, esCiclo, familia, datos]);
 
     const seguirRef = useRef(true);
 
@@ -91,16 +68,6 @@ export default function RoadmapPanel() {
         return suyo ? 1 : 0.18;
     }, [relacionados, verOcultos]);
 
-    const situarTip = (id, evento) => {
-        const item = buscar(id);
-        if (!item || !marcoRef.current) return;
-        const marco = marcoRef.current.getBoundingClientRect();
-        setTip({
-            item,
-            x: Math.min(Math.max(evento.clientX - marco.left + 14, 8), Math.max(8, marco.width - 336)),
-            y: Math.max(8, evento.clientY - marco.top + 16),
-        });
-    };
 
     const alEntrar = (id, evento) => {
         if (fijado || editando) return;
@@ -121,7 +88,11 @@ export default function RoadmapPanel() {
         }
         setFijado(true);
         setSeleccion(id);
-        if (editando) return;
+        if (editando) {
+            setVerFormulario(false);
+            anclar(id, evento);
+            return;
+        }
         if (evento) situarTip(id, evento);
         else setTip(null);
     };
@@ -135,17 +106,24 @@ export default function RoadmapPanel() {
         arrastre ? datos.map((h) => (h.id === arrastre.id ? { ...h, f: arrastre.fecha } : h)) : datos,
     ), [datos, arrastre]);
 
-    const tipoDe = (item) => {
-        if (!item) return 'hitos';
-        if (item.x0 != null) return 'ciclos';
-        if (item.cada != null) return 'procesos';
-        return 'hitos';
-    };
 
     const alGuardar = async (valores) => {
         await guardar(tipoDe(activo), { ...activo, ...valores });
+        setVerFormulario(false);
         limpiar();
     };
+
+    const alCambiarRapido = (parche) => guardar(tipoDe(activo), { ...activo, ...parche });
+
+    const crearEn = useCallback(async (tipo, extra) => {
+        const clave = await agregar(tipo, extra);
+        if (!clave) return;
+        setSeleccion(clave);
+        setFijado(true);
+    }, [agregar, setSeleccion, setFijado]);
+
+    const alDobleClic = useAltaPorClic(svgRef, ciclos, crearEn);
+
 
 
     const alAgregar = async (tipo) => {
@@ -196,21 +174,7 @@ export default function RoadmapPanel() {
 
 
 
-    const limpiar = useCallback(() => {
-        setFijado(false);
-        setSeleccion(null);
-        setTip(null);
-    }, []);
 
-    useEffect(() => {
-        if (!fijado) return undefined;
-        const alClicFuera = (evento) => {
-            if (tipRef.current?.contains(evento.target)) return;
-            limpiar();
-        };
-        document.addEventListener('click', alClicFuera);
-        return () => document.removeEventListener('click', alClicFuera);
-    }, [fijado, limpiar]);
 
 
     const acciones = (
@@ -272,6 +236,8 @@ export default function RoadmapPanel() {
                             ciclos={ciclos}
                             procesos={procesos}
                             editando={editando}
+                            arrastre={arrastre}
+                            onDobleClic={alDobleClic}
                             svgRef={svgRef}
                             onArrastrar={arrastrar}
                             marcador={marcador}
@@ -298,14 +264,25 @@ export default function RoadmapPanel() {
                             onCerrar={limpiar}
                         />
                     )}
-                    {editando && (
+                    {editando && anclaBarra && activo && (
+                        <RoadmapBarrita
+                            item={activo}
+                            tipo={tipoDe(activo)}
+                            posicion={anclaBarra}
+                            onCambiar={alCambiarRapido}
+                            onEliminar={() => alEliminar(activo.id)}
+                            onMas={() => setVerFormulario(true)}
+                        />
+                    )}
+
+                    {editando && (!anclaBarra || verFormulario) && (
                         <div style={{
                             flex: 'none',
                             maxHeight: pantallaCompleta ? '45%' : 'none',
                             overflowY: pantallaCompleta ? 'auto' : 'visible',
                         }}>
                             <RoadmapEditor
-                                item={activo}
+                                item={verFormulario ? activo : null}
                                 tipo={tipoDe(activo)}
                                 hitos={datos}
                                 marcador={marcador}

@@ -3,7 +3,7 @@ import { curvaDe, controlDeCurva } from '@shared/components/nodos/latencia';
 import { ALTO, ANCHO, ESPINA_Y, FIN_EJE } from '@features/inicio/constants/roadmapModelo';
 
 const PROPORCION = ANCHO / ALTO;
-import { anchoDe, bordeDelNodo, colorDe } from '@features/inicio/helpers/roadmapLayout';
+import { anchoDe, bordeDelNodo, colorDe, ejeX } from '@features/inicio/helpers/roadmapLayout';
 import RoadmapEje from '@features/inicio/components/roadmap/RoadmapEje';
 import RoadmapNodo, { Momento } from '@features/inicio/components/roadmap/RoadmapNodo';
 
@@ -40,7 +40,8 @@ const Linaje = ({ hito, madre, opacidad }) => {
 
 export default function RoadmapLienzo({
     hitos, ciclos, procesos, marcador, seleccion, relacionados, cicloActivo, pausado, aAlto, zoom,
-    editando, opacidadDe, onSeleccionar, onCiclo, onEntrar, onSalir, onAvance, onArrastrar, svgRef,
+    editando, arrastre, opacidadDe, onSeleccionar, onCiclo, onEntrar, onSalir, onAvance, onArrastrar,
+    onDobleClic, svgRef,
 }) {
     const marcaRef = useRef(null);
     const cuadroRef = useRef(null);
@@ -112,6 +113,7 @@ export default function RoadmapLienzo({
     return (
         <svg
             ref={svgRef}
+            onDoubleClick={editando ? onDobleClic : undefined}
             viewBox={`0 0 ${ANCHO} ${ALTO}`}
             role="img"
             aria-label="Hoja de ruta del ecosistema, de 2024 a 2030"
@@ -181,6 +183,26 @@ export default function RoadmapLienzo({
                     onSalir={onSalir}
                 />
             ))}
+
+            {arrastre && (
+                <g style={{ pointerEvents: 'none' }}>
+                    <line
+                        x1={ejeX(arrastre.fecha)} y1={40} x2={ejeX(arrastre.fecha)} y2={ALTO - 60}
+                        stroke="#5C2472" strokeWidth={1} strokeDasharray="4 4" strokeOpacity={0.65}
+                    />
+                    <circle cx={ejeX(arrastre.origen)} cy={ESPINA_Y} r={5} fill="#5C2472" fillOpacity={0.25} />
+                    <rect
+                        x={ejeX(arrastre.fecha) - 52} y={44} width={104} height={20} rx={5}
+                        fill="#fff" stroke="#5C2472" strokeWidth={1}
+                    />
+                    <text
+                        x={ejeX(arrastre.fecha)} y={58} textAnchor="middle" fill="#5C2472"
+                        style={{ fontSize: 11, fontFamily: 'monospace', fontWeight: 600 }}
+                    >
+                        {arrastre.fecha}
+                    </text>
+                </g>
+            )}
 
             <text
                 ref={marcaRef} x={60} y={ESPINA_Y} textAnchor="middle" dominantBaseline="central"

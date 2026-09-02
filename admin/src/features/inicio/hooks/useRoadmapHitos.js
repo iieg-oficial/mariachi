@@ -65,10 +65,12 @@ export default function useRoadmapHitos() {
         }
     }, [message, contenedores]);
 
-    const agregar = useCallback(async (tipo) => {
+    const agregar = useCallback(async (tipo, extra) => {
         setGuardando(true);
         try {
-            const creado = await API[tipo].crear({ id: `${tipo}-${Date.now()}`, ...NUEVOS[tipo]() });
+            const creado = await API[tipo].crear({
+                id: `${tipo}-${Date.now()}`, ...NUEVOS[tipo](), ...(extra || {}),
+            });
             contenedores[tipo]((previos) => [...previos, creado]);
             message.success('Elemento creado');
             return creado.id;

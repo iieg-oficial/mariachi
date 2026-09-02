@@ -9,6 +9,34 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.66.0] - 2026-09-02
+
+### Cambiado: editar deja de ser un formulario
+
+Seleccionar un elemento en modo edición ya no abre el formulario largo debajo del mapa. Aparece una
+**barra pegada al elemento** con lo que se toca todo el tiempo —proyecto, tipo, la bandera de
+desarrollo y eliminar; color en el caso de un ciclo—, y el formulario completo queda detrás de un
+botón. La mano deja de viajar entre el mapa y el pie de la sección.
+
+### Agregado: doble clic para crear
+
+Un doble clic sobre el lienzo crea el elemento que corresponde al lugar donde se hizo, ya con su
+fecha puesta: sobre el eje, un **hito**; en el carril de arriba, un **proceso**; dentro de una banda,
+un **ciclo** que hereda su altura. Fuera de esas zonas no pasa nada.
+
+### Agregado: el arrastre deja de ser a ciegas
+
+Al mover un hito aparece una guía vertical con la fecha en la que va a caer, y un punto tenue donde
+estaba. Los días **1 y 15 tienen imán**: si sueltas a menos de tres días, se pega. Antes había que
+soltar para saber dónde había caído.
+
+### Interno
+
+- El estado de selección sale del panel a `useSeleccionRoadmap`, y el alta por posición a
+  `useAltaPorClic`. El componente vuelve a caber en las trescientas líneas.
+
+---
+
 ## [2.65.0] - 2026-09-02
 
 ### Agregado: los metadatos se ven como la ficha del visor y se editan desde ella

@@ -49,6 +49,7 @@ const PROCESOS = [{
 }];
 
 beforeEach(() => {
+    vi.clearAllMocks();
     usuario.permisos = [];
     api.get.mockImplementation((ruta) => {
         if (ruta.includes('ciclos')) return Promise.resolve({ data: CICLOS });
@@ -109,11 +110,22 @@ describe('RoadmapPanel', () => {
         expect(await screen.findByText('Quién recorre la línea')).toBeInTheDocument();
     });
 
+    it('al seleccionar en edición aparece la barrita, no el formulario', async () => {
+        usuario.permisos = ['mariachi.roadmap.manage'];
+        montar();
+        fireEvent.click(await screen.findByRole('button', { name: /editar/i }));
+        fireEvent.click(screen.getByText('mariachi 2').closest('g'));
+
+        expect(await screen.findByRole('button', { name: 'Eliminar' })).toBeInTheDocument();
+        expect(screen.queryByText('Viene de')).not.toBeInTheDocument();
+    });
+
     it('el editor ofrece armar una sucesión con otro hito', async () => {
         usuario.permisos = ['mariachi.roadmap.manage'];
         montar();
         fireEvent.click(await screen.findByRole('button', { name: /editar/i }));
         fireEvent.click(screen.getByText('mariachi 2').closest('g'));
+        fireEvent.click(await screen.findByRole('button', { name: 'Abrir todos los campos' }));
 
         expect(await screen.findByText('Viene de')).toBeInTheDocument();
         expect(screen.getByText('Qué dice la conexión')).toBeInTheDocument();
@@ -135,6 +147,7 @@ describe('RoadmapPanel', () => {
         montar();
         fireEvent.click(await screen.findByRole('button', { name: /editar/i }));
         fireEvent.click(screen.getByText('tamal-rojo').closest('g'));
+        fireEvent.click(await screen.findByRole('button', { name: 'Abrir todos los campos' }));
 
         expect(await screen.findByText(/Editando ciclo/)).toBeInTheDocument();
         expect(screen.getByText('Empieza en')).toBeInTheDocument();
@@ -154,12 +167,41 @@ describe('RoadmapPanel', () => {
         ));
     });
 
+    it('el doble clic sobre el eje crea un hito en esa fecha', async () => {
+        usuario.permisos = ['mariachi.roadmap.manage'];
+        api.post.mockResolvedValue({ data: fila({ clave: 'nuevo', etiqueta: 'hito nuevo' }) });
+        montar();
+        fireEvent.click(await screen.findByRole('button', { name: /editar/i }));
+
+        const svg = document.querySelector('svg[role="img"]');
+        svg.getBoundingClientRect = () => ({ left: 0, top: 0, width: 2400, height: 860 });
+        fireEvent.doubleClick(svg, { clientX: 1000, clientY: 400 });
+
+        await waitFor(() => expect(api.post).toHaveBeenCalledWith(
+            '/roadmap/hitos',
+            expect.objectContaining({ fecha_eje: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) }),
+        ));
+    });
+
+    it('no crea nada con doble clic fuera de las zonas', async () => {
+        usuario.permisos = ['mariachi.roadmap.manage'];
+        montar();
+        fireEvent.click(await screen.findByRole('button', { name: /editar/i }));
+
+        const svg = document.querySelector('svg[role="img"]');
+        svg.getBoundingClientRect = () => ({ left: 0, top: 0, width: 2400, height: 860 });
+        fireEvent.doubleClick(svg, { clientX: 1000, clientY: 780 });
+
+        expect(api.post).not.toHaveBeenCalled();
+    });
+
     it('guarda un hito editado contra la API', async () => {
         usuario.permisos = ['mariachi.roadmap.manage'];
         api.put.mockResolvedValue({ data: fila({ clave: 'mariachi-2', etiqueta: 'mariachi 3', fecha_eje: '2026-08-10' }) });
         montar();
         fireEvent.click(await screen.findByRole('button', { name: /editar/i }));
         fireEvent.click(screen.getByText('mariachi 2').closest('g'));
+        fireEvent.click(await screen.findByRole('button', { name: 'Abrir todos los campos' }));
         fireEvent.click(await screen.findByRole('button', { name: 'Guardar' }));
         await waitFor(() => expect(api.put).toHaveBeenCalledWith('/roadmap/hitos/mariachi-2', expect.objectContaining({ etiqueta: 'mariachi 2' })));
     });

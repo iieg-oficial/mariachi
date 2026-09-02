@@ -16,7 +16,7 @@ export default function useArrastreHito(svgRef, alSoltar) {
 
         const mover = (e) => {
             fechaRef.current = fechaEnX((e.clientX - caja.left) * escala);
-            setArrastre({ id: hito.id, fecha: fechaRef.current });
+            setArrastre({ id: hito.id, fecha: fechaRef.current, origen: hito.f });
         };
         const soltar = () => {
             window.removeEventListener('pointermove', mover);

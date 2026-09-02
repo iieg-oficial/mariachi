@@ -26,13 +26,25 @@ export const ejeX = (fecha) => {
     return tramo.x0 + fraccion * (tramo.x1 - tramo.x0);
 };
 
+export const IMAN_DIAS = [1, 15];
+
 export const fechaEnX = (x) => {
     const tramo = ANIOS.find((a) => x >= a.x0 && x <= a.x1)
         || (x < ANIOS[0].x0 ? ANIOS[0] : ANIOS[ANIOS.length - 1]);
     const fraccion = Math.min(0.999, Math.max(0, (x - tramo.x0) / (tramo.x1 - tramo.x0)));
     const mes = Math.min(11, Math.floor(fraccion * 12));
-    const dia = Math.min(28, Math.max(1, Math.round(((fraccion * 12) - mes) * 30) + 1));
+    const crudo = Math.min(28, Math.max(1, Math.round(((fraccion * 12) - mes) * 30) + 1));
+    const cerca = IMAN_DIAS.find((d) => Math.abs(crudo - d) <= 3);
+    const dia = cerca ?? crudo;
     return `${tramo.anio}-${String(mes + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+};
+
+export const zonaEnY = (y, ciclos) => {
+    if (Math.abs(y - ESPINA_Y) <= 26) return { tipo: 'hitos' };
+    if (y < ESPINA_Y && y >= ESPINA_Y - 70) return { tipo: 'procesos' };
+    const banda = (ciclos || []).find((c) => y >= (c.y0 || 46) && y <= (c.y1 || 806));
+    if (banda) return { tipo: 'ciclos', vecino: banda };
+    return null;
 };
 
 export const anchoDe = (hito) => {
