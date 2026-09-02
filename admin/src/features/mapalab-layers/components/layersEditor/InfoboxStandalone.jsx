@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Alert, Button, Empty, Form, Space, Spin, Typography } from 'antd';
 import { SaveOutlined } from '@ant-design/icons';
-import InfoBoxEditor from '@features/mapalab-layers/components/layersEditor/InfoBoxEditor';
-import InfoBoxEditorHeader from '@features/mapalab-layers/components/layersEditor/InfoBoxEditorHeader';
-import InfoBoxPreviewPanel from '@features/mapalab-layers/components/layersEditor/InfoBoxPreviewPanel';
+import TarjetitaEditor from '@features/mapalab-layers/components/layersEditor/TarjetitaEditor';
 import { SampleFeaturesProvider } from '@features/mapalab-layers/components/layersEditor/SampleFeaturesContext';
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
 import { message } from '@shared/services/message';
@@ -13,11 +11,9 @@ const { Text } = Typography;
 export default function InfoboxStandalone({ layer, inherited = null, onSaved }) {
     const { updateLayer, listGeoserverFields, rawTree } = useLayerTreeAdmin();
     const [form] = Form.useForm();
-    const watchedConfig = Form.useWatch('infoboxConfig', form);
     const [availableFields, setAvailableFields] = useState([]);
     const [loadingFields, setLoadingFields] = useState(false);
     const [saving, setSaving] = useState(false);
-    const [mode, setMode] = useState('lienzo');
 
     useEffect(() => {
         form.setFieldsValue({ infoboxConfig: layer?.infoboxConfig || null });
@@ -36,9 +32,6 @@ export default function InfoboxStandalone({ layer, inherited = null, onSaved }) 
             .finally(() => { if (!cancelled) setLoadingFields(false); });
         return () => { cancelled = true; };
     }, [layer?.workspaceAlias, layer?.geoserverLayer, listGeoserverFields]);
-
-    const crudo = watchedConfig || inherited?.config || null;
-    const previewValue = crudo && Object.keys(crudo).length > 0 ? crudo : null;
 
     if (!layer) return <Empty description="Sin capa cargada" />;
 
@@ -76,40 +69,17 @@ export default function InfoboxStandalone({ layer, inherited = null, onSaved }) 
             </Space>
             {loadingFields && <Spin size="small" style={{ marginBottom: 12 }} />}
             <SampleFeaturesProvider workspaceAlias={layer.workspaceAlias} geoserverLayer={layer.geoserverLayer}>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24, minWidth: 0 }}>
-                    <div style={{ flex: '1 1 340px', minWidth: 0 }}>
-                        <InfoBoxEditorHeader
-                            mode={mode}
-                            onModeChange={setMode}
-                            onApplyTemplate={(config) => form.setFieldsValue({ infoboxConfig: config })}
-                            availableFields={availableFields}
-                            fieldsLoading={loadingFields}
-                            hasFeatureType={!!layer.workspaceAlias && !!layer.geoserverLayer}
-                            rawTree={rawTree}
-                            currentConfig={watchedConfig}
-                            currentLayerId={layer.id}
-                        />
-                        <Form.Item name="infoboxConfig" label={null}>
-                            <InfoBoxEditor
-                                mode={mode}
-                                availableFields={availableFields}
-                                inherited={inherited}
-                                nodeType={layer.nodeType || 'leaf'}
-                            />
-                        </Form.Item>
-                    </div>
-                    {mode !== 'lienzo' && previewValue && (
-                        <div style={{ flex: '0 1 300px', minWidth: 0 }}>
-                            <div style={{ position: 'sticky', top: 0 }}>
-                                <InfoBoxPreviewPanel
-                                    value={watchedConfig}
-                                    inherited={inherited}
-                                    hasFeatureType={!!layer.workspaceAlias && !!layer.geoserverLayer}
-                                />
-                            </div>
-                        </div>
-                    )}
-                </div>
+                <Form.Item name="infoboxConfig" label={null}>
+                    <TarjetitaEditor
+                        availableFields={availableFields}
+                        fieldsLoading={loadingFields}
+                        hasFeatureType={!!layer.workspaceAlias && !!layer.geoserverLayer}
+                        rawTree={rawTree}
+                        currentLayerId={layer.id}
+                        inherited={inherited}
+                        nodeType={layer.nodeType || 'leaf'}
+                    />
+                </Form.Item>
             </SampleFeaturesProvider>
         </Form>
     );

@@ -86,14 +86,10 @@ describe('InfoBoxLienzo', () => {
         expect(screen.queryByText('Agregar título')).not.toBeInTheDocument();
     });
 
-    it('ver cómo queda apaga las asas y los insertadores', () => {
-        montar();
-        expect(screen.getByLabelText('Mover Etiquetas')).toBeInTheDocument();
-        fireEvent.click(screen.getByText('Ver cómo queda'));
+    it('en solo vista apaga las asas, los insertadores y la canaleta', () => {
+        render(<InfoBoxLienzo value={CONFIG} onChange={vi.fn()} availableFields={CAMPOS} soloVista />);
         expect(screen.queryByLabelText('Mover Etiquetas')).not.toBeInTheDocument();
         expect(screen.queryAllByLabelText('Agregar sección')).toHaveLength(0);
-        expect(screen.getByText(/Así se pinta en el visor/)).toBeInTheDocument();
-        fireEvent.click(screen.getByText('Volver a editar'));
-        expect(screen.getByLabelText('Mover Etiquetas')).toBeInTheDocument();
+        expect(screen.queryByText(/Toca una sección/)).not.toBeInTheDocument();
     });
 });

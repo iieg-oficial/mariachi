@@ -9,6 +9,43 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.63.0] - 2026-09-02
+
+### Cambiado: la pestaña de tarjetita es un solo componente
+
+`TarjetitaEditor` reemplaza al encabezado suelto más el editor: el modo, la vista limpia y el modal
+de plantillas dejan de estar repartidos entre hermanos que no se conocían. Los dos llamadores
+—editor de capas y cajón de contenido— pasan de treinta líneas a una. Se va
+`InfoBoxEditorHeader.jsx`.
+
+Eso desbloquea lo demás:
+
+- **«Ver cómo queda» es un ícono**, a la derecha del título, sin texto. Al activarlo **se esconde
+  todo lo demás** —la leyenda, el selector de modo, la canaleta, las asas, los insertadores— y la
+  tarjeta queda centrada en el contenedor. El mismo botón regresa a editar.
+- **El panel vacío se estira a su contenedor** con `flex`, en vez del `calc(100vh - …)` que se
+  pasaba de largo y sacaba barra de scroll. Con poco espacio cae a 220 px y ahí se queda.
+- **El botón Plantillas sale del encabezado.** Con la tarjetita vacía ya está el panel central;
+  con contenido vive ahora en el menú del **+** del lienzo, como «Reemplazar con una plantilla…»,
+  que es donde se traen cosas.
+
+### Cambiado: la tarjeta abarca el ancho de sus asas
+
+Las asas de arrastre y los botones de duplicar y quitar caían fuera del blanco de la tarjeta y
+parecían sueltos. El panel blanco abarca ahora también esa canaleta —239 px de contenido más 28 a
+cada lado— así que los controles quedan dentro. **El contenido sigue midiendo 239 px**, que es lo
+que mide en el visor; lo que crece es la superficie de trabajo, no la tarjeta. En «ver cómo queda»
+el panel se encoge a los 239 exactos.
+
+### Cambiado: un solo control para elegir entre opciones
+
+Los `Radio.Group` con botones se van: «Un campo / Campos combinados / Texto fijo», «Unir texto /
+Sumar» y «Campos del feature / Valores fijos» usan el mismo `Segmented` que Lienzo · Lista · JSON.
+
+### Eliminado: el interruptor Escritorio / Móvil de la vista previa
+
+Ya no estaba haciendo nada.
+
 ## [2.62.1] - 2026-09-01
 
 ### Cambiado: la capa sin tarjetita muestra una sola cosa

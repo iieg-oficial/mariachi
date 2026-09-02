@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button, Modal, Space, Tooltip, Typography } from 'antd';
-import { EditOutlined, EyeOutlined, RedoOutlined, UndoOutlined } from '@ant-design/icons';
+import { RedoOutlined, UndoOutlined } from '@ant-design/icons';
 
 import InfoBoxCanvas from './InfoBoxCanvas.jsx';
 import {
@@ -34,10 +34,9 @@ const EDITORES = {
     cards: CardsBlock,
 };
 
-export default function InfoBoxLienzo({ value, onChange, availableFields = [], inherited = null }) {
+export default function InfoBoxLienzo({ value, onChange, availableFields = [], inherited = null, soloVista = false, onAbrirPlantillas = null }) {
     const config = normalizeInfoboxConfig(value || {});
     const [seleccion, setSeleccion] = useState(null);
-    const [soloVista, setSoloVista] = useState(false);
     const { undo, redo, canUndo, canRedo } = useInfoboxUndo(value, onChange);
 
     const propio = !!value && Object.keys(value).length > 0;
@@ -112,8 +111,8 @@ export default function InfoBoxLienzo({ value, onChange, availableFields = [], i
         : null;
 
     return (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 28, minWidth: 0, alignItems: 'flex-start' }}>
-            <div style={{ flex: '0 0 auto', padding: '0 30px', minWidth: 0 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 28, minWidth: 0, alignItems: 'flex-start', justifyContent: soloVista ? 'center' : undefined }}>
+            <div style={{ flex: '0 0 auto', minWidth: 0 }}>
                 {heredando && (
                     <div style={{ marginBottom: 10, maxWidth: 260 }}>
                         <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>
@@ -124,25 +123,16 @@ export default function InfoBoxLienzo({ value, onChange, availableFields = [], i
                         </Button>
                     </div>
                 )}
-                <Space size={6} style={{ marginBottom: 8 }}>
-                    <Button
-                        size="small"
-                        icon={soloVista ? <EditOutlined /> : <EyeOutlined />}
-                        onClick={() => { setSoloVista((v) => !v); setSeleccion(null); }}
-                    >
-                        {soloVista ? 'Volver a editar' : 'Ver cómo queda'}
-                    </Button>
-                    {(canUndo || canRedo) && !soloVista && (
-                        <>
-                            <Tooltip title="Deshacer (Ctrl+Z)">
-                                <Button size="small" icon={<UndoOutlined />} disabled={!canUndo} onClick={undo} aria-label="Deshacer" />
-                            </Tooltip>
-                            <Tooltip title="Rehacer (Ctrl+Shift+Z)">
-                                <Button size="small" icon={<RedoOutlined />} disabled={!canRedo} onClick={redo} aria-label="Rehacer" />
-                            </Tooltip>
-                        </>
-                    )}
-                </Space>
+                {(canUndo || canRedo) && !soloVista && (
+                    <Space size={6} style={{ marginBottom: 8 }}>
+                        <Tooltip title="Deshacer (Ctrl+Z)">
+                            <Button size="small" icon={<UndoOutlined />} disabled={!canUndo} onClick={undo} aria-label="Deshacer" />
+                        </Tooltip>
+                        <Tooltip title="Rehacer (Ctrl+Shift+Z)">
+                            <Button size="small" icon={<RedoOutlined />} disabled={!canRedo} onClick={redo} aria-label="Rehacer" />
+                        </Tooltip>
+                    </Space>
+                )}
                 <InfoBoxCanvas
                     config={configVista}
                     onChange={onChange}
@@ -160,25 +150,28 @@ export default function InfoBoxLienzo({ value, onChange, availableFields = [], i
                     onRemoveBlock={(llave) => { aplicar(planRemoveBlock(config, orden, llave)); setSeleccion(null); }}
                     atenuado={heredando}
                     soloVista={soloVista}
+                    onAbrirPlantillas={onAbrirPlantillas}
                 />
             </div>
 
-            <div style={{ flex: '1 1 300px', minWidth: 0, borderLeft: '1px dashed #e8e2ee', paddingLeft: 20 }}>
-                {soloVista ? (
-                    <Text type="secondary" style={{ fontSize: 12 }}>
+            {!soloVista && (
+                <div style={{ flex: '1 1 300px', minWidth: 0, borderLeft: '1px dashed #e8e2ee', paddingLeft: 20 }}>
+                    {soloVista ? (
+                        <Text type="secondary" style={{ fontSize: 12 }}>
                         Así se pinta en el visor. Vuelve a editar para tocar las secciones.
-                    </Text>
-                ) : seleccion ? (
-                    <>
-                        <Text strong style={{ display: 'block', marginBottom: 8 }}>{etiquetaSeleccion}</Text>
-                        {editorDeSeleccion()}
-                    </>
-                ) : (
-                    <Text type="secondary" style={{ fontSize: 12 }}>
+                        </Text>
+                    ) : seleccion ? (
+                        <>
+                            <Text strong style={{ display: 'block', marginBottom: 8 }}>{etiquetaSeleccion}</Text>
+                            {editorDeSeleccion()}
+                        </>
+                    ) : (
+                        <Text type="secondary" style={{ fontSize: 12 }}>
                         Toca una sección de la tarjeta para editarla, o usa el <b>+</b> para agregar una.
-                    </Text>
-                )}
-            </div>
+                        </Text>
+                    )}
+                </div>
+            )}
         </div>
     );
 }

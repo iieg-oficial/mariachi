@@ -7,7 +7,7 @@ import {
     Input,
     InputNumber,
     Modal,
-    Radio,
+    Segmented,
     Select,
     Space,
     Switch,
@@ -332,11 +332,10 @@ export const LabelGroupsBlock = ({ bare = false,  value = [], onChange, onRemove
                             }
                         >
                             <Space orientation="vertical" size={6} style={{ width: '100%' }}>
-                                <Radio.Group
+                                <Segmented
                                     size="small"
                                     value={groupKind}
-                                    onChange={(e) => setKind(e.target.value)}
-                                    optionType="button"
+                                    onChange={setKind}
                                     options={[
                                         { label: 'Campos del feature', value: 'fields' },
                                         { label: 'Valores fijos', value: 'static' },

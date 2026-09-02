@@ -19,6 +19,11 @@ import {
 const { Text } = Typography;
 
 const ANCHO_TARJETA = 239;
+// Las asas y los botones de la seccion viven a los lados de la tarjeta. El panel blanco
+// abarca tambien esa canaleta para que no parezcan sueltos afuera; el contenido se queda
+// en 239 px, que es lo que mide de verdad en el visor.
+const CANALETA = 28;
+const ANCHO_PANEL = ANCHO_TARJETA + CANALETA * 2;
 
 const EJEMPLOS = {
     nombre: 'Parque Metropolitano', municipio: 'Guadalajara', tipo: 'Parque urbano',
@@ -40,11 +45,12 @@ const featureDeEjemplo = (cfg) => {
     return props;
 };
 
-const Insertador = ({ onAdd, permanente, duplicable }) => {
+const Insertador = ({ onAdd, permanente, duplicable, conPlantillas }) => {
     const [visible, setVisible] = useState(false);
     const items = [
         ...BLOCK_DEFS.filter((b) => b.key !== 'headerField').map((b) => ({ key: b.key, label: b.label })),
         ...(duplicable ? [{ type: 'divider' }, { key: '__dup', label: 'Duplicar la de arriba' }] : []),
+        ...(conPlantillas ? [{ type: 'divider' }, { key: '__plantillas', label: 'Reemplazar con una plantilla…' }] : []),
     ];
     const mostrar = permanente || visible;
     return (
@@ -113,6 +119,7 @@ export default function InfoBoxCanvas({
     onAddBlock,
     onDuplicateBlock,
     onRemoveBlock,
+    onAbrirPlantillas = null,
     atenuado = false,
     soloVista = false,
 }) {
@@ -143,7 +150,8 @@ export default function InfoBoxCanvas({
     };
 
     const insertar = (llaveDespues) => (que) => {
-        if (que === '__dup' && llaveDespues) onDuplicateBlock(llaveDespues);
+        if (que === '__plantillas') onAbrirPlantillas?.();
+        else if (que === '__dup' && llaveDespues) onDuplicateBlock(llaveDespues);
         else onAddBlock(que);
     };
 
@@ -152,90 +160,99 @@ export default function InfoBoxCanvas({
     return (
         <div ref={rootRef} style={{ opacity: atenuado ? .55 : 1, pointerEvents: atenuado ? 'none' : undefined }}>
             <div style={{
-                width: ANCHO_TARJETA, background: '#fff', borderRadius: 8,
+                width: soloVista ? ANCHO_TARJETA : ANCHO_PANEL,
+                padding: soloVista ? 0 : `0 ${CANALETA}px`,
+                background: '#fff', borderRadius: 8,
                 boxShadow: '0 2px 10px rgba(0,0,0,.1)', overflow: 'visible',
             }}>
-                {tieneCabecera ? (
-                    <div
-                        data-block-key="headerField"
-                        onClick={() => !soloVista && onSeleccion('headerField')}
-                        role={soloVista ? undefined : 'button'}
-                        tabIndex={soloVista ? undefined : 0}
-                        onKeyDown={(e) => { if (!soloVista && e.key === 'Enter') { e.preventDefault(); onSeleccion('headerField'); } }}
-                        style={{
-                            background: '#EFF3FC', padding: '9px 11px', borderRadius: '8px 8px 0 0',
-                            position: 'relative', cursor: 'pointer',
-                            outline: !soloVista && seleccion === 'headerField' ? '1px solid #5C2472' : 'none',
-                        }}
-                    >
-                        {!soloVista && (
-                            <Tooltip title="El título siempre va arriba y no se mueve ni se duplica" placement="left">
-                                <LockOutlined style={{ position: 'absolute', left: -22, top: 12, fontSize: 10, color: '#bfbfbf' }} />
-                            </Tooltip>
-                        )}
-                        <Text strong style={{ fontSize: 13, color: '#2E4372' }}>
-                            {plan?.title || <Text type="secondary" style={{ fontSize: 12 }}>Sin título</Text>}
-                        </Text>
-                    </div>
-                ) : (!soloVista && (
-                    <div style={{ padding: '6px 11px', borderBottom: '1px dashed #e8e2ee', borderRadius: '8px 8px 0 0' }}>
-                        <Button
-                            type="text"
-                            size="small"
-                            icon={<PlusOutlined />}
-                            onClick={() => onAddBlock('headerField')}
-                            style={{ fontSize: 11, height: 20, color: '#8c8c8c' }}
+                <div style={{ width: ANCHO_TARJETA }}>
+                    {tieneCabecera ? (
+                        <div
+                            data-block-key="headerField"
+                            onClick={() => !soloVista && onSeleccion('headerField')}
+                            role={soloVista ? undefined : 'button'}
+                            tabIndex={soloVista ? undefined : 0}
+                            onKeyDown={(e) => { if (!soloVista && e.key === 'Enter') { e.preventDefault(); onSeleccion('headerField'); } }}
+                            style={{
+                                background: '#EFF3FC', padding: '9px 11px', borderRadius: 6, marginTop: soloVista ? 0 : 10,
+                                position: 'relative', cursor: 'pointer',
+                                outline: !soloVista && seleccion === 'headerField' ? '1px solid #5C2472' : 'none',
+                            }}
                         >
+                            {!soloVista && (
+                                <Tooltip title="El título siempre va arriba y no se mueve ni se duplica" placement="left">
+                                    <LockOutlined style={{ position: 'absolute', left: -22, top: 12, fontSize: 10, color: '#bfbfbf' }} />
+                                </Tooltip>
+                            )}
+                            <Text strong style={{ fontSize: 13, color: '#2E4372' }}>
+                                {plan?.title || <Text type="secondary" style={{ fontSize: 12 }}>Sin título</Text>}
+                            </Text>
+                        </div>
+                    ) : (!soloVista && (
+                        <div style={{ padding: '4px 0', marginTop: 8 }}>
+                            <Button
+                                type="text"
+                                size="small"
+                                icon={<PlusOutlined />}
+                                onClick={() => onAddBlock('headerField')}
+                                style={{ fontSize: 11, height: 20, color: '#8c8c8c' }}
+                            >
                             Agregar título
-                        </Button>
-                    </div>
-                ))}
+                            </Button>
+                        </div>
+                    ))}
 
-                <div style={{ padding: '8px 11px 12px', display: 'flex', flexDirection: 'column' }}>
-                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={alSoltar}>
-                        <SortableContext items={orden} strategy={verticalListSortingStrategy}>
-                            {orden.map((llave, i) => {
-                                const bloque = porLlave.get(llave);
-                                const def = blockDef(typeOfKey(llave));
-                                return (
-                                    <div key={llave}>
-                                        {i > 0 && !soloVista && <Insertador onAdd={insertar(orden[i - 1])} duplicable />}
-                                        {soloVista ? (
-                                            <div>{bloque ? pintarBloque(bloque) : null}</div>
-                                        ) : (
-                                            <Seccion
-                                                id={llave}
-                                                etiqueta={def?.label || llave}
-                                                seleccionada={seleccion === llave}
-                                                onSelect={() => onSeleccion(llave)}
-                                                onDuplicate={() => onDuplicateBlock(llave)}
-                                                onRemove={() => onRemoveBlock(llave)}
-                                            >
-                                                {bloque ? pintarBloque(bloque) : (
-                                                    <Text type="secondary" style={{ fontSize: 11, fontStyle: 'italic' }}>
-                                                        {def?.label}: sin datos todavía
-                                                    </Text>
-                                                )}
-                                            </Seccion>
-                                        )}
-                                    </div>
-                                );
-                            })}
-                        </SortableContext>
-                    </DndContext>
-                    {!soloVista && (
-                        <Insertador onAdd={insertar(orden[orden.length - 1])} duplicable={orden.length > 0} permanente />
-                    )}
-                    {!tieneCabecera && orden.length === 0 && !soloVista && (
-                        <Text type="secondary" style={{ fontSize: 11, textAlign: 'center', padding: '6px 0' }}>
+                    <div style={{ padding: '8px 0 12px', display: 'flex', flexDirection: 'column' }}>
+                        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={alSoltar}>
+                            <SortableContext items={orden} strategy={verticalListSortingStrategy}>
+                                {orden.map((llave, i) => {
+                                    const bloque = porLlave.get(llave);
+                                    const def = blockDef(typeOfKey(llave));
+                                    return (
+                                        <div key={llave}>
+                                            {i > 0 && !soloVista && <Insertador onAdd={insertar(orden[i - 1])} duplicable />}
+                                            {soloVista ? (
+                                                <div>{bloque ? pintarBloque(bloque) : null}</div>
+                                            ) : (
+                                                <Seccion
+                                                    id={llave}
+                                                    etiqueta={def?.label || llave}
+                                                    seleccionada={seleccion === llave}
+                                                    onSelect={() => onSeleccion(llave)}
+                                                    onDuplicate={() => onDuplicateBlock(llave)}
+                                                    onRemove={() => onRemoveBlock(llave)}
+                                                >
+                                                    {bloque ? pintarBloque(bloque) : (
+                                                        <Text type="secondary" style={{ fontSize: 11, fontStyle: 'italic' }}>
+                                                            {def?.label}: sin datos todavía
+                                                        </Text>
+                                                    )}
+                                                </Seccion>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </SortableContext>
+                        </DndContext>
+                        {!soloVista && (
+                            <Insertador
+                                onAdd={insertar(orden[orden.length - 1])}
+                                duplicable={orden.length > 0}
+                                conPlantillas={!!onAbrirPlantillas}
+                                permanente
+                            />
+                        )}
+                        {!tieneCabecera && orden.length === 0 && !soloVista && (
+                            <Text type="secondary" style={{ fontSize: 11, textAlign: 'center', padding: '6px 0' }}>
                             Agrega una sección para empezar
-                        </Text>
-                    )}
+                            </Text>
+                        )}
+                    </div>
                 </div>
             </div>
 
-            {features.length > 1 && (
-                <div style={{ width: ANCHO_TARJETA, marginTop: 8, display: 'flex', gap: 6, alignItems: 'center' }}>
+            {features.length > 1 && !soloVista && (
+                <div style={{ width: ANCHO_PANEL, marginTop: 8, paddingLeft: CANALETA, display: 'flex', gap: 6, alignItems: 'center' }}>
                     <Button size="small" type="text" disabled={idxFeature === 0} onClick={() => setIdxFeature((i) => i - 1)} aria-label="Registro anterior">◀</Button>
                     <Text type="secondary" style={{ fontSize: 11, fontVariantNumeric: 'tabular-nums' }}>
                         {idxFeature + 1} / {features.length}

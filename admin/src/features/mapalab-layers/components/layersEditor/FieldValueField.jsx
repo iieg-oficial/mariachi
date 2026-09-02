@@ -1,4 +1,4 @@
-import { Button, Input, Radio, Select, Space, Tooltip, Typography } from 'antd';
+import { Button, Input, Segmented, Select, Space, Tooltip, Typography } from 'antd';
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { fieldOptionsFor, isComposed, normalizeComposeParts } from './fieldValueHelpers.jsx';
 import { useSampleFeatures } from './sampleFeaturesContext';
@@ -66,13 +66,12 @@ const ComposeEditor = ({ value, onChange, availableFields, allowSum }) => {
     return (
         <Space orientation="vertical" size={4} style={{ width: '100%' }}>
             {allowSum && (
-                <Radio.Group
+                <Segmented
                     size="small"
                     value={isSum ? 'sum' : 'join'}
-                    onChange={(e) => emit(e.target.value === 'sum'
+                    onChange={(v) => emit(v === 'sum'
                         ? { op: 'sum', sep: undefined }
                         : { op: undefined })}
-                    optionType="button"
                     options={[
                         { label: 'Unir texto', value: 'join' },
                         { label: 'Sumar', value: 'sum' },
@@ -148,11 +147,10 @@ export const FieldValueField = ({
 
     return (
         <Space orientation="vertical" size={4} style={{ width: '100%' }}>
-            <Radio.Group
+            <Segmented
                 size="small"
                 value={mode}
-                onChange={(e) => setMode(e.target.value)}
-                optionType="button"
+                onChange={setMode}
                 options={[
                     { label: 'Un campo', value: 'field' },
                     { label: 'Campos combinados', value: 'compose' },

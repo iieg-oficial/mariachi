@@ -10,9 +10,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import { useAuth } from '@shared/contexts/useAuth';
-import InfoBoxEditor from '@features/mapalab-layers/components/layersEditor/InfoBoxEditor';
-import InfoBoxEditorHeader from '@features/mapalab-layers/components/layersEditor/InfoBoxEditorHeader';
-import InfoBoxPreviewPanel from '@features/mapalab-layers/components/layersEditor/InfoBoxPreviewPanel';
+import TarjetitaEditor from '@features/mapalab-layers/components/layersEditor/TarjetitaEditor';
 import { SampleFeaturesProvider } from '@features/mapalab-layers/components/layersEditor/SampleFeaturesContext';
 import LayerMetadataSection from '@features/mapalab-layers/components/layersEditor/LayerMetadataSection';
 import LayerStatsSection from '@features/mapalab-layers/components/layersEditor/LayerStatsSection';
@@ -48,7 +46,7 @@ import TreeSearchInput from '@features/mapalab-layers/components/TreeSearchInput
 import PublishReviewModal from '@features/mapalab-layers/components/PublishReviewModal';
 import GridHistoryDrawer from '@shared/components/dataGrid/GridHistoryDrawer';
 import useLayerDrafts from '@features/mapalab-layers/hooks/useLayerDrafts';
-import { HISTORY_COLUMNS, diffPayload } from '@features/mapalab-layers/utils/layerDiff';
+import { HISTORY_COLUMNS, METADATA_HISTORY_COLUMNS, diffPayload } from '@features/mapalab-layers/utils/layerDiff';
 import { findPath } from '@features/mapalab-layers/utils/treeSearch';
 import { isOrganizer } from '@features/mapalab-layers/constants/nodeVisuals';
 import { GEOMETRY_TYPE_OPTIONS } from '@features/mapalab-layers/constants/layerConfigCatalogs';
@@ -127,7 +125,6 @@ export default function LayerEditPage() {
     const [baseline, setBaseline] = useState(null);
     const [shellHeight, setShellHeight] = useState(null);
     const [eventoLayerId, setEventoLayerId] = useState(null);
-    const [infoboxMode, setInfoboxMode] = useState('lienzo');
 
     const [moveOpen, setMoveOpen] = useState(false);
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -201,7 +198,6 @@ export default function LayerEditPage() {
     const selectedWs = Form.useWatch('workspaceAlias', form);
     const selectedGsLayer = Form.useWatch('geoserverLayer', form);
     const selectedStyles = Form.useWatch('styles', form);
-    const watchedConfig = Form.useWatch('infoboxConfig', form);
     const watchedNodeType = Form.useWatch('nodeType', form);
     const parentNodeType = useMemo(() => {
         if (!layerId || !treeData?.length) return null;
@@ -1014,48 +1010,21 @@ export default function LayerEditPage() {
             key: 'infobox',
             forceRender: true,
             label: 'Tarjetita',
-            children: (() => {
-                const crudoInfobox = watchedConfig || inheritedInfobox?.config || null;
-                const previewInfobox = crudoInfobox && Object.keys(crudoInfobox).length > 0 ? crudoInfobox : null;
-                return (
-                    <SampleFeaturesProvider workspaceAlias={selectedWs} geoserverLayer={selectedGsLayer}>
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24, minWidth: 0 }}>
-                            <div style={{ flex: '1 1 340px', minWidth: 0 }}>
-                                <InfoBoxEditorHeader
-                                    mode={infoboxMode}
-                                    onModeChange={setInfoboxMode}
-                                    onApplyTemplate={(config) => form.setFieldsValue({ infoboxConfig: config })}
-                                    availableFields={availableFields}
-                                    fieldsLoading={fieldsLoading}
-                                    hasFeatureType={!!selectedWs && !!selectedGsLayer}
-                                    rawTree={rawTree}
-                                    currentConfig={watchedConfig}
-                                    currentLayerId={layerId}
-                                />
-                                <Form.Item name="infoboxConfig" label={null}>
-                                    <InfoBoxEditor
-                                        mode={infoboxMode}
-                                        availableFields={availableFields}
-                                        inherited={inheritedInfobox}
-                                        nodeType={watchedNodeType}
-                                    />
-                                </Form.Item>
-                            </div>
-                            {infoboxMode !== 'lienzo' && previewInfobox && (
-                                <div style={{ flex: '0 1 300px', minWidth: 0 }}>
-                                    <div style={{ position: 'sticky', top: 0 }}>
-                                        <InfoBoxPreviewPanel
-                                            value={watchedConfig}
-                                            inherited={inheritedInfobox}
-                                            hasFeatureType={!!selectedWs && !!selectedGsLayer}
-                                        />
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </SampleFeaturesProvider>
-                );
-            })(),
+            children: (
+                <SampleFeaturesProvider workspaceAlias={selectedWs} geoserverLayer={selectedGsLayer}>
+                    <Form.Item name="infoboxConfig" label={null}>
+                        <TarjetitaEditor
+                            availableFields={availableFields}
+                            fieldsLoading={fieldsLoading}
+                            hasFeatureType={!!selectedWs && !!selectedGsLayer}
+                            rawTree={rawTree}
+                            currentLayerId={layerId}
+                            inherited={inheritedInfobox}
+                            nodeType={watchedNodeType}
+                        />
+                    </Form.Item>
+                </SampleFeaturesProvider>
+            ),
         },
         {
             key: 'metadatos',
@@ -1466,10 +1435,10 @@ export default function LayerEditPage() {
             <GridHistoryDrawer
                 open={historyOpen}
                 onClose={() => setHistoryOpen(false)}
-                resource="layer-config"
-                columnsMeta={HISTORY_COLUMNS}
-                rowKey={layerId || null}
-                rowLabel={headerName}
+                resources={[
+                    { value: 'layer-config', label: 'Capas', columnsMeta: HISTORY_COLUMNS },
+                    { value: 'layer-metadata', label: 'Metadatos', columnsMeta: METADATA_HISTORY_COLUMNS },
+                ]}
             />
 
             <BulkTagsDrawer
