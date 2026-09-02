@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import api from '@shared/services/api';
 import { optimisticMoveRawTree, optimisticReorderRawTree } from '@features/mapalab-layers/utils/treeOptimistic';
+import { useLayerMetadataApi } from '@features/mapalab-layers/hooks/useLayerMetadataApi';
 
 
 export const toAntTreeData = (nodes, parentNodeType = null) =>
@@ -56,6 +57,7 @@ const fetchLayerTreePublic = async () => {
 
 
 export const useLayerTreeAdmin = () => {
+    const metadataApi = useLayerMetadataApi();
     const [treeData, setTreeData] = useState([]);
     const [rawTree, setRawTree] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -102,8 +104,13 @@ export const useLayerTreeAdmin = () => {
         return res.data;
     }, []);
 
-    const requestReview = useCallback(async (layerId) => {
-        await api.post(`/borradores/layer/${layerId}/solicitar-revision`);
+    const requestReview = useCallback(async (resourceId, resourceType = 'layer') => {
+        await api.post(`/borradores/${resourceType}/${encodeURIComponent(resourceId)}/solicitar-revision`);
+    }, []);
+
+    const saveStatsDraft = useCallback(async (layerKey, data) => {
+        const res = await api.put(`/borradores/layer_stats/${encodeURIComponent(layerKey)}`, { data });
+        return res.data;
     }, []);
 
     const discardDraft = useCallback(async (borradorId) => {
@@ -204,59 +211,6 @@ export const useLayerTreeAdmin = () => {
         return res.data;
     }, []);
 
-    const getLayerMetadata = useCallback(async (layerKey) => {
-        try {
-            const res = await api.get(`/layer-metadata/${encodeURIComponent(layerKey)}`);
-            return res.data;
-        } catch (err) {
-            if (err.response?.status === 404) return null;
-            throw err;
-        }
-    }, []);
-
-    const updateLayerMetadata = useCallback(async (layerKey, payload) => {
-        const res = await api.put(`/layer-metadata/${encodeURIComponent(layerKey)}`, payload);
-        return res.data;
-    }, []);
-
-    const getLayerStats = useCallback(async (layerKey) => {
-        try {
-            const res = await api.get(`/layer-metadata/${encodeURIComponent(layerKey)}/stats`);
-            return res.data;
-        } catch (err) {
-            if (err.response?.status === 404) return null;
-            throw err;
-        }
-    }, []);
-
-    const updateLayerStats = useCallback(async (layerKey, payload) => {
-        const res = await api.put(`/layer-metadata/${encodeURIComponent(layerKey)}/stats`, payload);
-        return res.data;
-    }, []);
-
-    const previewLayerStat = useCallback(async (layerKey, cfg, context) => {
-        const params = {};
-        if (context?.municipio?.length) params.municipio = context.municipio.join(',');
-        if (context?.fechaInicio) params.fecha_inicio = context.fechaInicio;
-        if (context?.fechaFin) params.fecha_fin = context.fechaFin;
-        const res = await api.post(
-            `/layer-metadata/${encodeURIComponent(layerKey)}/stats/preview`,
-            cfg,
-            { params },
-        );
-        return res.data;
-    }, []);
-
-    const listMunicipios = useCallback(async () => {
-        const res = await api.get('/layer-metadata/municipios');
-        return res.data;
-    }, []);
-
-    const refreshLayerStats = useCallback(async (layerKey) => {
-        const res = await api.post(`/layer-metadata/${encodeURIComponent(layerKey)}/stats/refresh`);
-        return res.data;
-    }, []);
-
     const listLayerAliases = useCallback(async (layerId) => {
         const res = await api.get(`/layers/${layerId}/aliases`);
         return res.data;
@@ -311,6 +265,7 @@ export const useLayerTreeAdmin = () => {
         updateLayer,
         saveLayerDraft,
         requestReview,
+        saveStatsDraft,
         discardDraft,
         getLayerDraft,
         deleteLayer,
@@ -328,13 +283,7 @@ export const useLayerTreeAdmin = () => {
         reorderLayers,
         getInitialOrder,
         setInitialOrder,
-        getLayerMetadata,
-        updateLayerMetadata,
-        getLayerStats,
-        updateLayerStats,
-        previewLayerStat,
-        listMunicipios,
-        refreshLayerStats,
+        ...metadataApi,
         listLayerAliases,
         createLayerAlias,
         deleteLayerAlias,

@@ -88,3 +88,21 @@ describe('cambios fantasma', () => {
         expect(diffPayload({ sortOrder: 0 }, { sortOrder: null })).toEqual({ sortOrder: 0 });
     });
 });
+describe('numeralia en la hoja de publicación', () => {
+    it('agrupa los campos de estadísticas en su propia sección', () => {
+        expect(sectionOf('stats_config')).toBe('Estadísticas');
+        expect(sectionOf('pie_numeralia')).toBe('Estadísticas');
+        expect(sectionOf('ttl_minutes')).toBe('Estadísticas');
+    });
+
+    it('los nombra como los ve el usuario', () => {
+        expect(labelOf('stats_config')).toBe('Indicadores');
+        expect(labelOf('pie_numeralia')).toBe('Nota al pie');
+        expect(labelOf('ttl_minutes')).toBe('Vigencia del cálculo');
+    });
+
+    it('no le quita su sección a los campos de la capa', () => {
+        expect(sectionOf('label')).toBe('Identidad');
+        expect(sectionOf('cqlFilter')).toBe('Servicios');
+    });
+});

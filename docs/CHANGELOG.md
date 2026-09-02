@@ -9,6 +9,42 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.64.0] - 2026-09-02
+
+### Cambiado: la pestana Estadisticas se edita sobre la cuadricula del visor
+
+La cuadricula que el visor pinta bajo la capa subio al principio y **es la vista previa**: los mismos
+recuadros, 4x2 con los lugares libres marcados. Se da click en uno y abajo aparece **solo** el editor
+de ese indicador, en vez de una lista de ocho fichas abiertas. Sustituye a la tarjeta «Valores
+actuales en el visor», que mostraba lo mismo como etiquetas azules al final del formulario.
+
+Los valores se calculan **en vivo** contra la base al cambiar la configuracion o el contexto, asi que
+se ve el numero antes de publicar. Antes el unico modo de verlo era guardar y recalcular contra
+produccion.
+
+Se fueron los tres botones de alta —habia que elegir el modo antes de saber que se queria—; ahora se
+agrega uno y el modo se cambia adentro. «Probar con contexto» y «Vigencia» pasaron al encabezado de
+la vista previa, con tooltip, y en movil quedan como iconos. La nota al pie se edita en su lugar, bajo
+los recuadros. En todo lo que ve el usuario «slot» pasa a «indicador».
+
+### Agregado: la numeralia pasa por el flujo de publicacion
+
+Era la excepcion: se guardaba directo a produccion mientras el resto del editor ya tenia borrador y
+publicacion explicita. Ahora se autoguarda como borrador `layer_stats`, entra en el contador de
+«sin publicar» y aparece en la hoja de revision con su propia seccion.
+
+El aplicador **encadena el recalculo**: `PUT /stats` guarda la configuracion pero no recalcula, y sin
+ese paso el visor seguiria mostrando los valores materializados anteriores.
+
+### Corregido: el historial salia vacio
+
+Apuntaba solo a `layer-config`, que no tiene registros: desde el autoguardado `PUT /layers` unicamente
+corre al publicar. Todo lo que hay hoy es de `layer-metadata`, que quedaba fuera de la consulta.
+
+El panel abre ahora **en general**, sin filtrar por capa y con la columna que dice a cual pertenece
+cada cambio, y trae un selector Capas/Metadatos como el modo tabla tiene sus dos pestanas. Las
+columnas de metadatos se nombran como las ve el usuario en vez de como claves de base de datos.
+
 ## [2.63.0] - 2026-09-02
 
 ### Cambiado: la pestaña de tarjetita es un solo componente

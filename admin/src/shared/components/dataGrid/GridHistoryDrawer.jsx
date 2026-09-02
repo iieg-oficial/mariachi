@@ -20,23 +20,33 @@ export default function GridHistoryDrawer({
     columnsMeta = [],
     rowKey = null,
     rowLabel = null,
+    resources = null,
 }) {
     const [scope, setScope] = useState('row');
+    const [recurso, setRecurso] = useState(() => resources?.[0]?.value || resource);
+
+    const recursoActivo = resources ? recurso : resource;
+    const metaActiva = useMemo(
+        () => (resources
+            ? (resources.find((r) => r.value === recursoActivo)?.columnsMeta || [])
+            : columnsMeta),
+        [resources, recursoActivo, columnsMeta],
+    );
     const [entries, setEntries] = useState([]);
     const [loading, setLoading] = useState(false);
 
     const effectiveScope = rowKey ? scope : 'all';
 
     const titles = useMemo(
-        () => Object.fromEntries(columnsMeta.map((meta) => [meta.key, meta.title])),
-        [columnsMeta],
+        () => Object.fromEntries(metaActiva.map((meta) => [meta.key, meta.title])),
+        [metaActiva],
     );
 
     const load = useCallback(async () => {
         if (!open) return;
         setLoading(true);
         try {
-            const data = await fetchGridHistory(resource, {
+            const data = await fetchGridHistory(recursoActivo, {
                 rowKey: effectiveScope === 'row' ? rowKey : undefined,
                 limit: 300,
             });
@@ -46,7 +56,7 @@ export default function GridHistoryDrawer({
         } finally {
             setLoading(false);
         }
-    }, [open, resource, effectiveScope, rowKey]);
+    }, [open, recursoActivo, effectiveScope, rowKey]);
 
     useEffect(() => { load(); }, [load]);
 
@@ -120,17 +130,29 @@ export default function GridHistoryDrawer({
                     )}
                 </Space>
             )}
-            extra={rowKey ? (
-                <Segmented
-                    size="small"
-                    value={scope}
-                    onChange={setScope}
-                    options={[
-                        { label: 'Esta capa', value: 'row' },
-                        { label: 'Todas', value: 'all' },
-                    ]}
-                />
-            ) : null}
+            extra={(
+                <Space size={8}>
+                    {resources && (
+                        <Segmented
+                            size="small"
+                            value={recursoActivo}
+                            onChange={setRecurso}
+                            options={resources.map((r) => ({ label: r.label, value: r.value }))}
+                        />
+                    )}
+                    {rowKey && (
+                        <Segmented
+                            size="small"
+                            value={scope}
+                            onChange={setScope}
+                            options={[
+                                { label: 'Esta capa', value: 'row' },
+                                { label: 'Todas', value: 'all' },
+                            ]}
+                        />
+                    )}
+                </Space>
+            )}
         >
             {loading ? (
                 <Spin style={{ display: 'block', margin: '48px auto' }} />

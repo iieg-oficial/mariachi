@@ -12,8 +12,9 @@ const buildRows = (drafts, published) => {
         for (const field of Object.keys(data)) {
             if (field === 'action') continue;
             rows.push({
-                id: `${draft.resource_id}::${field}`,
+                id: `${draft.resource_type}::${draft.resource_id}::${field}`,
                 layerId: draft.resource_id,
+                resourceType: draft.resource_type,
                 draftId: draft.id,
                 field,
                 section: sectionOf(field),

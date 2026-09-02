@@ -35,6 +35,12 @@ export const FIELD_LABELS = {
     iconOverrides: 'Iconos por estado',
 };
 
+export const STATS_FIELDS = {
+    stats_config: 'Indicadores',
+    pie_numeralia: 'Nota al pie',
+    ttl_minutes: 'Vigencia del cálculo',
+};
+
 export const FIELD_SECTIONS = {
     label: 'Identidad',
     slug: 'Identidad',
@@ -55,9 +61,9 @@ export const FIELD_SECTIONS = {
     infoboxConfig: 'Tarjetita',
 };
 
-export const sectionOf = (field) => FIELD_SECTIONS[field] || 'Servicios';
+export const sectionOf = (field) => (STATS_FIELDS[field] ? 'Estadísticas' : FIELD_SECTIONS[field] || 'Servicios');
 
-export const labelOf = (field) => FIELD_LABELS[field] || field;
+export const labelOf = (field) => STATS_FIELDS[field] || FIELD_LABELS[field] || field;
 
 const estable = (v) => {
     if (Array.isArray(v)) return v.map(estable);
@@ -128,4 +134,26 @@ export const HISTORY_COLUMNS = [
     ['icon_url', 'Ícono'],
     ['highlight_color', 'Color de resaltado'],
     ['highlight_shape', 'Forma de resaltado'],
+].map(([key, title]) => ({ key, title }));
+
+export const METADATA_HISTORY_COLUMNS = [
+    ['layer_key', 'Feature type'],
+    ['workspace', 'Workspace'],
+    ['layer_name_db', 'Nombre en la base'],
+    ['layer_name_usuario', 'Nombre para el usuario'],
+    ['descripcion', 'Descripción'],
+    ['fuentes', 'Fuentes'],
+    ['metodologia', 'Metodología'],
+    ['metadato', 'Metadato'],
+    ['frecuencia', 'Frecuencia'],
+    ['fecha_ultima', 'Última actualización'],
+    ['tipo_mapa', 'Tipo de mapa'],
+    ['tipo_mapa_enlace', 'Enlace del tipo de mapa'],
+    ['texto_leyenda', 'Texto de la leyenda'],
+    ['tarjeta_punto_poligono', 'Tarjeta punto/polígono'],
+    ['link_final_capa', 'Enlace final de la capa'],
+    ['downloadable', 'Descargable'],
+    ['stats_config', 'Indicadores'],
+    ['pie_numeralia', 'Nota al pie'],
+    ['ttl_minutes', 'Vigencia del cálculo'],
 ].map(([key, title]) => ({ key, title }));

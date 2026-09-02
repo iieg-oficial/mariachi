@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import api from '@shared/services/api';
 
-const isLayerDraft = (b) => b?.resource_type === 'layer' || b?.resourceType === 'layer';
+const TIPOS = new Set(['layer', 'layer_stats']);
+
+const isLayerDraft = (b) => TIPOS.has(b?.resource_type || b?.resourceType);
 
 const draftFields = (draft) => {
     const data = draft?.data || {};
