@@ -9,6 +9,28 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.64.2] - 2026-09-02
+
+### Corregido: el contenido de una sección ya no desborda la tarjeta
+
+La tarjeta mide 239 px y los valores vienen de columnas reales: nombres de doscientos caracteres,
+claves sin un solo espacio, URLs largas. Cualquiera de esos empujaba su sección y se salía del
+lienzo.
+
+Todo lo que pinta texto parte palabra cuando hace falta y **todo contenedor flex lleva
+`minWidth: 0`**, que es lo que de verdad faltaba: sin eso un hijo flexible se niega a encogerse por
+debajo de su contenido y arrastra al padre. Los renglones de la lista alinean por línea base, las
+etiquetas se acomodan en varias líneas en vez de estirarse, y la rejilla de cifras usa
+`minmax(0, 1fr)` en vez de `1fr`, que tiene el mismo problema.
+
+Cinco pruebas lo fijan, una por tipo de sección.
+
+### Cambiado: los selectores de la edición son más altos
+
+Los `Segmented` de la canaleta —«Un campo / Campos combinados», «Unir texto / Sumar», «Campos del
+feature / Valores fijos»— pierden el `size="small"` y quedan a la altura normal, que es la que
+tienen los controles con los que conviven.
+
 ## [2.64.1] - 2026-09-02
 
 ### Corregido

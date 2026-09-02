@@ -333,7 +333,6 @@ export const LabelGroupsBlock = ({ bare = false,  value = [], onChange, onRemove
                         >
                             <Space orientation="vertical" size={6} style={{ width: '100%' }}>
                                 <Segmented
-                                    size="small"
                                     value={groupKind}
                                     onChange={setKind}
                                     options={[

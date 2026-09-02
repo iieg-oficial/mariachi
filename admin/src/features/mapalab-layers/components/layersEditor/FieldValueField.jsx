@@ -67,7 +67,6 @@ const ComposeEditor = ({ value, onChange, availableFields, allowSum }) => {
         <Space orientation="vertical" size={4} style={{ width: '100%' }}>
             {allowSum && (
                 <Segmented
-                    size="small"
                     value={isSum ? 'sum' : 'join'}
                     onChange={(v) => emit(v === 'sum'
                         ? { op: 'sum', sep: undefined }
@@ -148,7 +147,6 @@ export const FieldValueField = ({
     return (
         <Space orientation="vertical" size={4} style={{ width: '100%' }}>
             <Segmented
-                size="small"
                 value={mode}
                 onChange={setMode}
                 options={[

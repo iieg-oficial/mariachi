@@ -82,6 +82,7 @@ const Seccion = ({ id, seleccionada, onSelect, onDuplicate, onRemove, etiqueta, 
                 border: `1px solid ${seleccionada ? '#5C2472' : 'transparent'}`,
                 background: seleccionada ? 'rgba(92,36,114,.05)' : 'transparent',
                 borderRadius: 5, padding: '2px 4px', cursor: 'pointer',
+                minWidth: 0, overflowWrap: 'anywhere', wordBreak: 'break-word',
             }}
             onClick={onSelect}
             role="button"
@@ -165,7 +166,7 @@ export default function InfoBoxCanvas({
                 background: '#fff', borderRadius: 8,
                 boxShadow: '0 2px 10px rgba(0,0,0,.1)', overflow: 'visible',
             }}>
-                <div style={{ width: ANCHO_TARJETA }}>
+                <div style={{ width: ANCHO_TARJETA, minWidth: 0 }}>
                     {tieneCabecera ? (
                         <div
                             data-block-key="headerField"
@@ -184,7 +185,7 @@ export default function InfoBoxCanvas({
                                     <LockOutlined style={{ position: 'absolute', left: -22, top: 12, fontSize: 10, color: '#bfbfbf' }} />
                                 </Tooltip>
                             )}
-                            <Text strong style={{ fontSize: 13, color: '#2E4372' }}>
+                            <Text strong style={{ fontSize: 13, color: '#2E4372', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
                                 {plan?.title || <Text type="secondary" style={{ fontSize: 12 }}>Sin título</Text>}
                             </Text>
                         </div>
