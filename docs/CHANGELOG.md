@@ -9,6 +9,16 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.64.1] - 2026-09-02
+
+### Corregido
+
+- `ruff check app tests` vuelve a pasar limpio. Tres archivos tenían el bloque de imports sin
+  ordenar y dejaban en rojo el job de backend: `layer_metadata.py`, `columna_tabla.py` y
+  `borrador_service.py`. Son cambios de formato, sin efecto en el comportamiento.
+
+---
+
 ## [2.64.0] - 2026-09-02
 
 ### Cambiado: la pestana Estadisticas se edita sobre la cuadricula del visor

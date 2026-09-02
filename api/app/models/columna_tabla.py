@@ -2,7 +2,6 @@ from sqlalchemy import Boolean, CheckConstraint, Column, DateTime, SmallInteger,
 
 from app.core.database import DataEngineBase
 
-
 FORMATOS = ('entero', 'decimal', 'fecha', 'moneda', 'texto')
 
 
