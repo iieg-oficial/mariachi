@@ -247,9 +247,15 @@ roles:
     permissions:
       - mariachi.sistema.manage
 
+  - name: Roadmap - administracion
+    description: Atomico. Editar la hoja de ruta del ecosistema en el inicio
+    permissions:
+      - mariachi.roadmap.manage
+
   - name: Administrador
     description: Compuesto. Todo mariachi. NO da acceso a vine ni a wacha, que son aplicaciones aparte
     permissions:
+      - mariachi.roadmap.manage
       - mariachi.mapalab.view
       - mariachi.mapalab.update
       - mariachi.mapalab.manage

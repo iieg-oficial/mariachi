@@ -11,9 +11,19 @@ export default function EditorSection({
     first = false,
     collapsible = true,
     defaultOpen,
+    open: openProp,
+    onOpenChange,
+    id,
 }) {
-    const [open, setOpen] = useState(defaultOpen ?? first);
+    const [openInterno, setOpenInterno] = useState(defaultOpen ?? first);
+    const controlado = openProp !== undefined;
+    const open = controlado ? openProp : openInterno;
     const shown = !collapsible || open;
+
+    const alternar = () => {
+        if (controlado) onOpenChange?.(!open);
+        else setOpenInterno((v) => !v);
+    };
 
     const heading = (
         <>
@@ -50,6 +60,7 @@ export default function EditorSection({
 
     return (
         <section
+            id={id}
             style={{
                 paddingTop: first ? 0 : 28,
                 marginTop: first ? 0 : 28,
@@ -57,7 +68,7 @@ export default function EditorSection({
             }}
         >
             {collapsible ? (
-                <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} style={headingStyle}>
+                <button type="button" onClick={alternar} aria-expanded={open} style={headingStyle}>
                     {heading}
                 </button>
             ) : (

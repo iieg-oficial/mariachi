@@ -86,6 +86,8 @@ export default function LayerEditPage() {
         updateLayer,
         saveLayerDraft,
         saveStatsDraft,
+        saveMetadataDraft,
+        updateLayerMetadata,
         updateLayerStats,
         refreshLayerStats,
         requestReview,
@@ -115,6 +117,8 @@ export default function LayerEditPage() {
     const [advancedOpen, setAdvancedOpen] = useState(requestedAdvanced);
     const [treeQuery, setTreeQuery] = useState('');
     const [createOpen, setCreateOpen] = useState(false);
+    const [editorTab, setEditorTab] = useState(initialTab);
+    const [statsValues, setStatsValues] = useState([]);
     const [reviewOpen, setReviewOpen] = useState(false);
     const [historyOpen, setHistoryOpen] = useState(false);
     const [publishing, setPublishing] = useState(false);
@@ -402,16 +406,18 @@ export default function LayerEditPage() {
             });
 
             for (const { tipo, id, payload } of porRecurso.values()) {
-                const esNumeralia = tipo === 'layer_stats';
                 if (!isAdmin) {
-                    if (esNumeralia) await saveStatsDraft(id, payload);
+                    if (tipo === 'layer_stats') await saveStatsDraft(id, payload);
+                    else if (tipo === 'layer_metadata') await saveMetadataDraft(id, payload);
                     else await saveLayerDraft(id, payload);
                     await requestReview(id, tipo);
                     continue;
                 }
-                if (esNumeralia) {
+                if (tipo === 'layer_stats') {
                     await updateLayerStats(id, payload);
                     if ((payload.stats_config || []).length > 0) await refreshLayerStats(id);
+                } else if (tipo === 'layer_metadata') {
+                    await updateLayerMetadata(id, payload);
                 } else {
                     await updateLayer(id, payload);
                 }
@@ -628,7 +634,7 @@ export default function LayerEditPage() {
                         <Form.Item
                             label="Nombre"
                             name="label"
-                            extra="Nombre que ven los usuarios en la lista de capas y la leyenda del mapa."
+                            tooltip="Nombre que ven los usuarios en la lista de capas y la leyenda del mapa."
                             rules={[{ required: true }]}
                         >
                             <Input />
@@ -637,7 +643,7 @@ export default function LayerEditPage() {
                             <Form.Item
                                 label="Nombre en URL"
                                 name="slug"
-                                extra="Nombre que se utiliza en la URL para acceder a la capa. Solo se permiten minúsculas, números y guiones. Estable, debe cambiar pocas veces. Vacío = no aparece en deeplinks. Ejemplos: establecimientos-salud, indices-desarrollo-urbano."
+                                tooltip="Nombre que se utiliza en la URL para acceder a la capa. Solo se permiten minúsculas, números y guiones. Estable, debe cambiar pocas veces. Vacío = no aparece en deeplinks. Ejemplos: establecimientos-salud, indices-desarrollo-urbano."
                                 rules={[
                                     {
                                         pattern: /^[a-z0-9-]+$/,
@@ -676,10 +682,10 @@ export default function LayerEditPage() {
                         <Form.Item
                             label="Tipo de nodo"
                             name="nodeType"
-                            extra={
+                            tooltip={
                                 isProperty
                                     ? 'Este nodo es una Propiedad: comparte feature type con su grupo padre y se enciende cuando se enciende el grupo. No se puede cambiar de tipo desde aquí.'
-                                    : 'Rol del nodo en la jerarquía: Tema/Categoría/Etiqueta/Grupo organizan; Capa es la capa WMS real.'
+                                    : 'Rol del nodo en la jerarquía: Tema, Categoría y Etiqueta organizan; Grupo y Capa son capas reales.'
                             }
                         >
                             <Select options={NODE_TYPE_OPTIONS} disabled={isProperty} />
@@ -701,7 +707,7 @@ export default function LayerEditPage() {
                                         )
                                         : values
                                 }
-                                extra="Palabras clave adicionales para filtrar la capa en el buscador del visor. Escribe y presiona espacio, coma o Enter para crear cada etiqueta. Se normalizan a minúsculas."
+                                tooltip="Palabras clave adicionales para filtrar la capa en el buscador del visor. Escribe y presiona espacio, coma o Enter para crear cada etiqueta. Se normalizan a minúsculas."
                             >
                                 <Select
                                     mode="tags"
@@ -735,7 +741,7 @@ export default function LayerEditPage() {
                                     label="Filtro por municipio"
                                     name="hasMunicipio"
                                     valuePropName="checked"
-                                    extra="Si está activa, la capa se filtra por municipio en el visor usando el campo declarado abajo. Si no, cae en filtro espacial BBOX (rectángulo)."
+                                    tooltip="Si está activa, la capa se filtra por municipio en el visor usando el campo declarado abajo. Si no, cae en filtro espacial BBOX (rectángulo)."
                                 >
                                     <Switch />
                                 </Form.Item>
@@ -819,7 +825,7 @@ export default function LayerEditPage() {
                             label="Oculta en menú"
                             name="hiddenInMenu"
                             valuePropName="checked"
-                            extra="Si está activa, la capa no aparece en el árbol del visor pero sigue siendo accesible vía URL/slug."
+                            tooltip="Si está activa, la capa no aparece en el árbol del visor pero sigue siendo accesible vía URL/slug."
                         >
                             <Switch />
                         </Form.Item>
@@ -827,7 +833,7 @@ export default function LayerEditPage() {
                             label="Fuera de servicio"
                             name="disabled"
                             valuePropName="checked"
-                            extra="En mantenimiento o sin datos. El visor la muestra atenuada y no deja encenderla."
+                            tooltip="En mantenimiento o sin datos. El visor la muestra atenuada y no deja encenderla."
                         >
                             <Switch />
                         </Form.Item>
@@ -846,7 +852,7 @@ export default function LayerEditPage() {
                     <Form.Item
                         label="Workspace de GeoServer"
                         name="workspaceAlias"
-                        extra="Espacio de trabajo donde reside la capa en GeoServer (alias interno definido en la tabla workspaces)."
+                        tooltip="Espacio de trabajo donde reside la capa en GeoServer (alias interno definido en la tabla workspaces)."
                     >
                         <Select
                             showSearch
@@ -858,7 +864,7 @@ export default function LayerEditPage() {
                     <Form.Item
                         label="Capa de GeoServer"
                         name="geoserverLayer"
-                        extra="Nombre técnico de la capa en GeoServer (sin prefijo de workspace). Debe existir en el workspace seleccionado."
+                        tooltip="Nombre técnico de la capa en GeoServer (sin prefijo de workspace). Debe existir en el workspace seleccionado."
                     >
                         <AutoComplete
                             options={layerOptions}
@@ -872,7 +878,7 @@ export default function LayerEditPage() {
                     <Form.Item
                         label="Estilo SLD"
                         name="styles"
-                        extra="Nombre del estilo SLD a aplicar. Vacío = estilo por defecto del workspace."
+                        tooltip="Nombre del estilo SLD a aplicar. Vacío = estilo por defecto del workspace."
                     >
                         <AutoComplete
                             options={styleOptions}
@@ -882,7 +888,7 @@ export default function LayerEditPage() {
                     <Form.Item
                         label="Filtro CQL"
                         name="cqlFilter"
-                        extra="Filtro de tipo CQL aplicado a la capa al renderizar. El constructor arma condiciones campo/operador/valor con los atributos reales de la capa; usa 'Texto avanzado' para CQL más complejo."
+                        tooltip="Filtro de tipo CQL aplicado a la capa al renderizar. El constructor arma condiciones campo/operador/valor con los atributos reales de la capa; usa 'Texto avanzado' para CQL más complejo."
                     >
                         <CqlFilterBuilder
                             workspaceAlias={selectedWs}
@@ -893,7 +899,7 @@ export default function LayerEditPage() {
                     <Form.Item
                         label="Grupo WMS"
                         name="wmsGroup"
-                        extra="Capas con el mismo grupo se mergean en una sola request WMS al GeoServer (mejora performance cuando varias capas comparten estilo). Lo más seguro es agruparlas con sus hermanas directas en el árbol."
+                        tooltip="Capas con el mismo grupo se mergean en una sola request WMS al GeoServer (mejora performance cuando varias capas comparten estilo). Lo más seguro es agruparlas con sus hermanas directas en el árbol."
                     >
                         <WmsGroupField
                             layerId={layerId}
@@ -907,14 +913,14 @@ export default function LayerEditPage() {
                         label="WFS disponible"
                         name="wfsAvailable"
                         valuePropName="checked"
-                        extra="Permite consultar la capa via WFS (Web Feature Service) para obtener features puntuales. Necesario para infobox al hacer click."
+                        tooltip="Permite consultar la capa via WFS (Web Feature Service) para obtener features puntuales. Necesario para infobox al hacer click."
                     >
                         <Switch />
                     </Form.Item>
                     <Form.Item
                         label="Tipo de geometría"
                         name="geometryType"
-                        extra="Se usa para el ícono que identifica la capa en el panel de capas activas del visor y en el árbol del plugin de QGIS. Lo llena solo el job `geometry-type` de dataengine leyendo el DescribeFeatureType de GeoServer; se ajusta a mano cuando la capa no se publica por WFS y no hay de dónde deducirlo."
+                        tooltip="Se usa para el ícono que identifica la capa en el panel de capas activas del visor y en el árbol del plugin de QGIS. Lo llena solo el job `geometry-type` de dataengine leyendo el DescribeFeatureType de GeoServer; se ajusta a mano cuando la capa no se publica por WFS y no hay de dónde deducirlo."
                     >
                         <Select allowClear options={GEOMETRY_TYPE_OPTIONS} placeholder="Sin determinar" />
                     </Form.Item>
@@ -922,7 +928,7 @@ export default function LayerEditPage() {
                         label="Descargable"
                         name="downloadable"
                         valuePropName="checked"
-                        extra="Habilita el botón de descarga (Shapefile/CSV/GeoJSON) en el visor para esta capa."
+                        tooltip="Habilita el botón de descarga (Shapefile/CSV/GeoJSON) en el visor para esta capa."
                     >
                         <Switch />
                     </Form.Item>
@@ -930,14 +936,14 @@ export default function LayerEditPage() {
                         label="Servir por tiles (caché)"
                         name="tiled"
                         valuePropName="checked"
-                        extra="Sirve la capa como TileWMS cacheable en GeoWebCache en vez de ImageWMS. Recomendado para capas grandes y estáticas: la navegación (pan/zoom) es mucho más fluida. Para capas que cambian seguido, dejar desactivado."
+                        tooltip="Sirve la capa como TileWMS cacheable en GeoWebCache en vez de ImageWMS. Recomendado para capas grandes y estáticas: la navegación (pan/zoom) es mucho más fluida. Para capas que cambian seguido, dejar desactivado."
                     >
                         <Switch />
                     </Form.Item>
                     <Form.Item
                         label="Formato de imagen"
                         name="imageFormat"
-                        extra="Formato que se le pide a GeoServer en cada GetMap. ⚠️ PNG 8 bits y JPEG salen SIN TRANSPARENCIA: cada tile es un rectángulo opaco que tapa el relieve y las capas de abajo. Verificado en los bytes del PNG — el de 8 bits sale como paleta indexada sin canal alfa. Úsalos solo en capas de fondo que ocupen todo el tile (un ráster base), nunca en capas que se superponen. Para el resto, dejar PNG: el ahorro de peso se consigue con el suavizado de bordes, que sí conserva la transparencia."
+                        tooltip="Formato que se le pide a GeoServer en cada GetMap. ⚠️ PNG 8 bits y JPEG salen SIN TRANSPARENCIA: cada tile es un rectángulo opaco que tapa el relieve y las capas de abajo. Verificado en los bytes del PNG — el de 8 bits sale como paleta indexada sin canal alfa. Úsalos solo en capas de fondo que ocupen todo el tile (un ráster base), nunca en capas que se superponen. Para el resto, dejar PNG: el ahorro de peso se consigue con el suavizado de bordes, que sí conserva la transparencia."
                     >
                         <Segmented
                             options={[
@@ -950,7 +956,7 @@ export default function LayerEditPage() {
                     <Form.Item
                         label="Suavizado de bordes (antialias)"
                         name="antialias"
-                        extra="El suavizado crea píxeles intermedios que el PNG comprime mal: quitarlo baja un tile de 256×256 de curvas de nivel de 21.5 KB a 8.7 KB (−59 %) y conserva la transparencia, así que es la forma segura de aligerar una capa. A cambio, las líneas se ven dentadas — se nota en trazos finos como curvas de nivel o cauces. «Solo texto» conserva el suavizado en etiquetas y lo quita en geometrías. Cambiar este ajuste invalida los tiles ya cacheados en GeoWebCache."
+                        tooltip="El suavizado crea píxeles intermedios que el PNG comprime mal: quitarlo baja un tile de 256×256 de curvas de nivel de 21.5 KB a 8.7 KB (−59 %) y conserva la transparencia, así que es la forma segura de aligerar una capa. A cambio, las líneas se ven dentadas — se nota en trazos finos como curvas de nivel o cauces. «Solo texto» conserva el suavizado en etiquetas y lo quita en geometrías. Cambiar este ajuste invalida los tiles ya cacheados en GeoWebCache."
                     >
                         <Segmented
                             options={[
@@ -965,7 +971,7 @@ export default function LayerEditPage() {
                         label="Soporte temporal (timeEnabled)"
                         name="timeEnabled"
                         valuePropName="checked"
-                        extra="Activa filtros temporales en GeoServer (capas con dimensión TIME). Suele usarse en rásters publicados como ImageMosaic donde GeoServer expone la fecha como dimensión nativa (ej. mosaicos mensuales/anuales de temperatura, precipitación, NDVI). En vectoriales también funciona si la capa tiene un campo TIME indexado."
+                        tooltip="Activa filtros temporales en GeoServer (capas con dimensión TIME). Suele usarse en rásters publicados como ImageMosaic donde GeoServer expone la fecha como dimensión nativa (ej. mosaicos mensuales/anuales de temperatura, precipitación, NDVI). En vectoriales también funciona si la capa tiene un campo TIME indexado."
                     >
                         <Switch />
                     </Form.Item>
@@ -984,14 +990,14 @@ export default function LayerEditPage() {
                             if (typeof v === 'object' && v.year) return { value: String(v.year) };
                             return { value: String(v) };
                         }}
-                        extra="Año específico (ej. 2024), o 'latest' para usar la más reciente disponible."
+                        tooltip="Año específico (ej. 2024), o 'latest' para usar la más reciente disponible."
                     >
                         <Input placeholder="2024 o latest" />
                     </Form.Item>
                     <Form.Item
                         label="Patrón de estilo temporal (timeStylePattern)"
                         name="timeStylePattern"
-                        extra="Plantilla de nombre de estilo SLD que cambia según la fecha. Ej: poblacion_{year}."
+                        tooltip="Plantilla de nombre de estilo SLD que cambia según la fecha. Ej: poblacion_{year}."
                     >
                         <Input placeholder="poblacion_{year}" />
                     </Form.Item>
@@ -999,7 +1005,7 @@ export default function LayerEditPage() {
                         label="Ocultar selector de periodicidad"
                         name="hidePeriodicity"
                         valuePropName="checked"
-                        extra="Si está activo, el visor no muestra el control de fechas para esta capa aunque exista soporte temporal."
+                        tooltip="Si está activo, el visor no muestra el control de fechas para esta capa aunque exista soporte temporal."
                     >
                         <Switch />
                     </Form.Item>
@@ -1033,6 +1039,9 @@ export default function LayerEditPage() {
             children: !layer ? null : featureTypeContext ? (
                 <LayerMetadataSection
                     layerKey={featureTypeContext.layerKey}
+                    onDraftSaved={reloadDrafts}
+                    onIrAEstadisticas={() => setEditorTab('estadisticas')}
+                    numeralia={statsValues}
                     derivedFromDescendants={featureTypeContext.derived}
                     siblingsSharingCount={ownFeatureType ? countSiblingsSharingFeatureType(featureTypeContext.layerKey) : 0}
                 />
@@ -1055,6 +1064,7 @@ export default function LayerEditPage() {
                     geoserverLayer={featureTypeContext.geoserverLayer}
                     availableFields={availableFields}
                     onDraftSaved={reloadDrafts}
+                    onValues={setStatsValues}
                 />
             ) : (
                 <Empty description="Este nodo no tiene feature type propio ni descendientes con uno común, así que no hay estadísticas que configurar." />
@@ -1139,7 +1149,8 @@ export default function LayerEditPage() {
             ) : (
                 <Tabs
                     className="layer-editor-tabs"
-                    defaultActiveKey={initialTab}
+                    activeKey={editorTab}
+                    onChange={setEditorTab}
                     items={tabItems}
                     tabPlacement="top"
 

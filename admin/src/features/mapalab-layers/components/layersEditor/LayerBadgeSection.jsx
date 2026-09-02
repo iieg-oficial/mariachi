@@ -9,24 +9,11 @@ import {
     Switch,
     Typography,
 } from 'antd';
+import { BADGE_PRESETS, VARIANT_OPTIONS, softBg } from '@features/mapalab-layers/constants/badgePresets';
 import dayjs from 'dayjs';
 
 const { Text } = Typography;
 
-const BADGE_PRESETS = {
-    new: { label: 'Nueva', color: '#1F9D55' },
-    updated: { label: 'Actualizada', color: '#2563EB' },
-    soon: { label: 'Próximamente', color: '#FF8300' },
-};
-
-const VARIANT_OPTIONS = [
-    { value: 'new', label: 'Nueva' },
-    { value: 'updated', label: 'Actualizada' },
-    { value: 'soon', label: 'Próximamente' },
-    { value: 'custom', label: 'Personalizado' },
-];
-
-const softBg = (hex) => (/^#[0-9a-fA-F]{6}$/.test(hex || '') ? `${hex}1A` : 'transparent');
 
 const resolvePreview = (value) => {
     const preset = BADGE_PRESETS[value?.variant];

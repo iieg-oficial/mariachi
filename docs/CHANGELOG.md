@@ -9,6 +9,41 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.65.0] - 2026-09-02
+
+### Agregado: los metadatos se ven como la ficha del visor y se editan desde ella
+
+La pestana Metadatos muestra a la derecha, en columna pegajosa, **la ficha que abre el visor**: las
+mismas secciones, en el mismo orden —Descripcion, Numeralia, Fuentes, Metodologia, Metadato— y sin
+las que quedan vacias, igual que el visor las omite. Antes eran ocho campos sueltos sin manera de
+saber que armaban una ficha, y por eso salian descripciones de un renglon junto a metodologias de
+tres parrafos.
+
+**Cada seccion de la ficha es clickeable** y abre la del formulario que le corresponde; el titulo
+lleva a Informacion general. La de numeralia salta a la pestana Estadisticas, asi que la barra de
+pestanas del editor paso a ser controlada. Cuando no hay indicadores la seccion se queda visible
+—aunque el visor la omita— porque si no, no habria de donde saltar.
+
+### Agregado: los metadatos pasan por el flujo de publicacion
+
+Se fue el boton «Guardar metadatos»: la ficha se autoguarda como borrador `layer_metadata`, cuenta en
+«sin publicar» y aparece en la hoja de revision con su propia seccion. Con esto son tres los recursos
+que publican igual: capa, metadatos y numeralia.
+
+### Cambiado: el texto de ayuda de 34 campos pasa a tooltip
+
+Cada campo llevaba una o dos lineas grises debajo. Ahora viven en el tooltip del propio campo, que es
+donde ya estaba el resto de la informacion extra del editor. Solo se quedan como `extra` los cuatro
+que no son texto sino botones.
+
+### Cambiado: los presets del distintivo dejan de estar duplicados dentro del admin
+
+`LayerBadgeSection` tenia su propia copia de `BADGE_PRESETS` y `softBg`, espejo de la de mapalab.
+Quedan en `constants/badgePresets.js` con los nombres del visor —`resolveBadge`,
+`isBadgeInValidityWindow`— para que comparar contra mapalab sea mirar un archivo contra otro. Hoy
+coinciden exacto; ocho pruebas cubren presets, modo personalizado y los bordes de la ventana de
+vigencia.
+
 ## [2.64.2] - 2026-09-02
 
 ### Corregido: el contenido de una sección ya no desborda la tarjeta

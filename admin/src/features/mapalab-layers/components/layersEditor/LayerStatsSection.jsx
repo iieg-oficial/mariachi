@@ -403,6 +403,7 @@ export default function LayerStatsSection({
     geoserverLayer,
     availableFields = [],
     onDraftSaved,
+    onValues,
 }) {
     const {
         getLayerStats,
@@ -477,6 +478,8 @@ export default function LayerStatsSection({
     }, [layerKey, getLayerStats]);
 
     useEffect(() => { reload(); }, [reload]);
+
+    useEffect(() => { onValues?.(stats?.values || []); }, [stats, onValues]);
 
     const usedPositions = useMemo(() => new Set(config.map((c) => c.position).filter(Boolean)), [config]);
     const nextPosition = () => {

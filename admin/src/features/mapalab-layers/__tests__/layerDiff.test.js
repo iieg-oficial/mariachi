@@ -106,3 +106,22 @@ describe('numeralia en la hoja de publicación', () => {
         expect(sectionOf('cqlFilter')).toBe('Servicios');
     });
 });
+
+describe('metadatos en la hoja de publicación', () => {
+    it('agrupa los campos de la ficha en su propia sección', () => {
+        expect(sectionOf('descripcion')).toBe('Metadatos');
+        expect(sectionOf('fuentes')).toBe('Metadatos');
+        expect(sectionOf('layer_name_usuario')).toBe('Metadatos');
+    });
+
+    it('los nombra como los ve el usuario', () => {
+        expect(labelOf('layer_name_usuario')).toBe('Nombre para el usuario');
+        expect(labelOf('fecha_ultima')).toBe('Última actualización');
+    });
+
+    it('no le quita su sección ni a la capa ni a la numeralia', () => {
+        expect(sectionOf('label')).toBe('Identidad');
+        expect(sectionOf('stats_config')).toBe('Estadísticas');
+        expect(sectionOf('cqlFilter')).toBe('Servicios');
+    });
+});

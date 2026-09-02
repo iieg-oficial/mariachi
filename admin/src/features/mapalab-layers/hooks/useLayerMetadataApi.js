@@ -54,8 +54,14 @@ export const useLayerMetadataApi = () => {
         const res = await api.post(`/layer-metadata/${encodeURIComponent(layerKey)}/stats/refresh`);
         return res.data;
     }, []);
+    const saveMetadataDraft = useCallback(async (layerKey, data) => {
+        const res = await api.put(`/borradores/layer_metadata/${encodeURIComponent(layerKey)}`, { data });
+        return res.data;
+    }, []);
+
     return {
         getLayerMetadata,
+        saveMetadataDraft,
         updateLayerMetadata,
         getLayerStats,
         updateLayerStats,

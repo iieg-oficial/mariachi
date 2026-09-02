@@ -11,7 +11,7 @@ from app.models.borrador import Borrador
 from app.models.evento import Evento
 from app.models.home_section import HomeSection
 from app.models.layer import Layer, Workspace
-from app.models.layer_metadata import LayerStats
+from app.models.layer_metadata import LayerMetadata, LayerStats
 from app.schemas.evento import EventoUpdate
 from app.schemas.home_section import SECTION_SCHEMAS
 from app.schemas.layer import LayerCreate, LayerUpdate
@@ -19,17 +19,17 @@ from app.services import layer_service, symbol_service
 from app.services.geoserver_client import GeoServerClient, GeoServerError
 from app.services.mapalab_notifier import notify_tree_changed
 from app.services.mapalab_public_cache import notify_eventos_changed, notify_home_changed
+from app.services.sld_generator import (
+    build_boundary_sld_xml,
+    build_point_sld_xml,
+    build_sld_xml,
+)
 from app.services.stats_templates import (
     StatsTemplateError,
     bind_layer_fields,
     execute_stats_batch,
     load_layer_binding,
     validate_stats_config,
-)
-from app.services.sld_generator import (
-    build_boundary_sld_xml,
-    build_point_sld_xml,
-    build_sld_xml,
 )
 
 ApplyFn = Callable[[Session, Session, Borrador, str], dict]
@@ -170,6 +170,36 @@ def _apply_layer(
     except (ValueError, GeoServerError) as exc:
         dataengine_db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+def _apply_layer_metadata(
+    _db: Session, dataengine_db: Session, borrador: Borrador, approver_email: str,
+) -> dict:
+    """Publica la ficha de un feature type. `resource_id` es el layer_key."""
+    data = borrador.data or {}
+    layer_key = borrador.resource_id or ''
+
+    row = (
+        dataengine_db.query(LayerMetadata)
+        .filter(LayerMetadata.layer_key == layer_key)
+        .first()
+    )
+    if not row:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No hay metadatos para '{layer_key}'",
+        )
+
+    editables = {c.name for c in LayerMetadata.__table__.columns} - {
+        'layer_key', 'updated_by', 'updated_at',
+    }
+    for campo, valor in data.items():
+        if campo in editables:
+            setattr(row, campo, valor)
+    row.updated_by = approver_email
+    row.updated_at = utcnow()
+    dataengine_db.commit()
+    return {'action': 'updated', 'layer_key': layer_key}
 
 
 def _apply_layer_stats(
@@ -396,6 +426,7 @@ APPLIERS: dict[str, ApplyFn] = {
     'evento': _apply_evento,
     'home_section': _apply_home_section,
     'layer': _apply_layer,
+    'layer_metadata': _apply_layer_metadata,
     'layer_stats': _apply_layer_stats,
     'sld': _apply_sld,
 }
