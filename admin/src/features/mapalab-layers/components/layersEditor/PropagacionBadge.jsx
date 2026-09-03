@@ -22,6 +22,8 @@ export default function PropagacionBadge({
     onIrACapa = null,
     updateLayer = null,
     reload = null,
+    configDelGrupo = null,
+    puedePublicar = false,
 }) {
     const [aplicando, setAplicando] = useState(false);
     const datos = propagacionDelGrupo(rawTree, groupId);
@@ -31,11 +33,21 @@ export default function PropagacionBadge({
     const propias = datos.propias;
     const propagan = usan > 0;
 
+    const motivoBloqueo = (() => {
+        if (!puedePublicar) return 'Solo quien publica cambios puede propagar la tarjetita a otras capas.';
+        if (!configDelGrupo) return 'El grupo todavía no tiene tarjetita que propagar.';
+        if (propias.length === 0) return 'Todas las propiedades ya usan la del grupo.';
+        return null;
+    })();
+
     const devolverAlGrupo = async (ids) => {
         if (!updateLayer) return;
         setAplicando(true);
         const cerrar = message.loading('Aplicando… el árbol tarda unos segundos en refrescarse', 0);
         try {
+            // Lo que se propaga tiene que ser lo que estas viendo: la tarjetita del grupo puede
+            // tener cambios sin guardar y las propiedades leen la guardada, no la de la pantalla.
+            await updateLayer(groupId, { infoboxConfig: configDelGrupo });
             for (const id of ids) {
                 await updateLayer(id, { infoboxConfig: null });
             }
@@ -57,8 +69,9 @@ export default function PropagacionBadge({
         title: titulo,
         content: (
             <span>
-                Se borra la tarjetita propia de {ids.length === 1 ? 'esa capa' : `esas ${ids.length} capas`} para
-                que muestren la del grupo. <b>Se guarda de inmediato</b> y no se puede deshacer desde aquí.
+                Primero se guarda la tarjetita del grupo tal como la tienes en pantalla, y luego se borra la
+                propia de {ids.length === 1 ? 'esa capa' : `esas ${ids.length} capas`} para que muestren la del
+                grupo. <b>Se guarda de inmediato</b> y no se puede deshacer desde aquí.
             </span>
         ),
         okText: 'Sí, aplicar',
@@ -98,6 +111,7 @@ export default function PropagacionBadge({
                     <Button
                         size="small"
                         type="link"
+                        disabled={!puedePublicar || !configDelGrupo}
                         style={{ fontSize: 12, padding: 0, height: 18 }}
                         onClick={(e) => {
                             e.stopPropagation();
@@ -119,21 +133,30 @@ export default function PropagacionBadge({
                 </div>
             ),
         })),
-        ...(propias.length > 0 ? [
-            { type: 'divider' },
-            {
-                key: 'todas',
-                label: (
-                    <span style={{ fontSize: 12, fontWeight: 600 }}>
-                        Aplicar a las {propias.length} que tienen la suya
-                    </span>
-                ),
-                onClick: () => confirmar(
-                    propias.map((p) => p.id),
-                    `¿${propias.length} propiedades usan la tarjetita del grupo?`,
-                ),
-            },
-        ] : []),
+        { type: 'divider' },
+        {
+            key: 'todas',
+            disabled: !puedePublicar || !configDelGrupo || propias.length === 0,
+            label: (
+                <span style={{ fontSize: 12, fontWeight: 600 }}>
+                    Que todas usen la del grupo
+                    {propias.length > 0 && ` (${propias.length})`}
+                </span>
+            ),
+            onClick: () => confirmar(
+                propias.map((p) => p.id),
+                `¿${propias.length} propiedades usan la tarjetita del grupo?`,
+            ),
+        },
+        ...(motivoBloqueo ? [{
+            key: 'motivo',
+            disabled: true,
+            label: (
+                <Text type="secondary" style={{ fontSize: 11, whiteSpace: 'normal', display: 'block', maxWidth: 260 }}>
+                    {motivoBloqueo}
+                </Text>
+            ),
+        }] : []),
         ...(datos.sinNada.length > 0 ? [
             { type: 'divider' },
             {

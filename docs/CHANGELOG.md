@@ -9,6 +9,31 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.76.0] - 2026-09-03
+
+### Agregado: propagar la tarjetita del grupo a todas sus propiedades
+
+La acción en bloque **siempre está en el menú** —«Que todas usen la del grupo»— y cuando no se
+puede, dice por qué en vez de desaparecer: no tienes permiso de publicar, el grupo todavía no tiene
+tarjetita, o todas las propiedades ya la usan. Antes solo aparecía si alguna propiedad tenía la
+suya, así que en la mayoría de los grupos el menú se veía vacío y parecía que faltaba la opción.
+
+**Propagar guarda primero la tarjetita del grupo tal como está en pantalla.** Las propiedades leen
+la guardada, no la que estás editando, así que sin ese paso se propagaba una versión vieja sin que
+se notara.
+
+Propagar **borra la tarjetita propia** de cada propiedad para que hereden, en vez de copiarles la
+del grupo: una copia deja de seguir al grupo y la propagación se rompe justo al usarla.
+
+### Corregido: propagar se saltaba el flujo de revisión
+
+La acción escribía con `updateLayer` directo sobre otras capas. Con el flujo de borradores y
+publicación que ahora tiene el editor, eso permitía a quien **no** puede publicar tocar varias capas
+de producción de un golpe, saltándose la revisión.
+
+Queda reservada a quien publica. Para el resto el badge sigue siendo informativo —cuántas
+propiedades usan la tarjetita y cuáles— con las acciones deshabilitadas y el motivo a la vista.
+
 ## [2.75.2] - 2026-09-03
 
 ### Cambiado

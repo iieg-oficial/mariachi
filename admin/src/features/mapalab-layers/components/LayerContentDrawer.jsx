@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Drawer, Empty, Spin, Tabs, Tag, Typography } from 'antd';
 import InfoboxStandalone from '@features/mapalab-layers/components/layersEditor/InfoboxStandalone';
+import { useAuth } from '@shared/contexts/useAuth';
 import NoticeStandalone from '@features/mapalab-layers/components/layersEditor/NoticeStandalone';
 import LayerMetadataSection from '@features/mapalab-layers/components/layersEditor/LayerMetadataSection';
 import ColumnasTablaSection from '@features/mapalab-layers/components/layersEditor/ColumnasTablaSection';
@@ -10,6 +11,8 @@ import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAd
 const { Text } = Typography;
 
 export default function LayerContentDrawer({ open, layerId, onClose, onSaved }) {
+    const { user } = useAuth();
+    const puedePublicar = user?.role === 'tetlamamakani';
     const { getLayer, listGeoserverFields } = useLayerTreeAdmin();
     const [layer, setLayer] = useState(null);
     const [availableFields, setAvailableFields] = useState([]);
@@ -66,7 +69,7 @@ export default function LayerContentDrawer({ open, layerId, onClose, onSaved }) 
         {
             key: 'infobox',
             label: 'Tarjetita',
-            children: <InfoboxStandalone layer={layer} onSaved={reload} />,
+            children: <InfoboxStandalone layer={layer} onSaved={reload} puedePublicar={puedePublicar} />,
         },
         {
             key: 'aviso',

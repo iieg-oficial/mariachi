@@ -1036,6 +1036,7 @@ export default function LayerEditPage() {
                             onIrACapa={handleSelectFromTree}
                             updateLayer={updateLayer}
                             reloadTree={reload}
+                            puedePublicar={isAdmin}
                         />
                     </Form.Item>
                 </SampleFeaturesProvider>
@@ -1049,6 +1050,7 @@ export default function LayerEditPage() {
                 <LayerMetadataSection
                     layerKey={featureTypeContext.layerKey}
                     onDraftSaved={reloadDrafts}
+                    layerLabel={headerName}
                     onIrAEstadisticas={() => setEditorTab('estadisticas')}
                     numeralia={statsValues}
                     derivedFromDescendants={featureTypeContext.derived}

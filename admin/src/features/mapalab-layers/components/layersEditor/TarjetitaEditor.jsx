@@ -28,6 +28,7 @@ export default function TarjetitaEditor({
     onIrACapa = null,
     updateLayer = null,
     reloadTree = null,
+    puedePublicar = false,
 }) {
     const [mode, setMode] = useState('lienzo');
     const [soloVista, setSoloVista] = useState(false);
@@ -65,6 +66,8 @@ export default function TarjetitaEditor({
                             onIrACapa={onIrACapa}
                             updateLayer={updateLayer}
                             reload={reloadTree}
+                            configDelGrupo={value}
+                            puedePublicar={puedePublicar}
                         />
                     )}
                     {esLienzo && !soloLlamada && (

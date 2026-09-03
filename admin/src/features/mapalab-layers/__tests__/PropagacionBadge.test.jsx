@@ -5,8 +5,18 @@ import PropagacionBadge from '@features/mapalab-layers/components/layersEditor/P
 const updateLayer = vi.fn(() => Promise.resolve());
 const reload = vi.fn(() => Promise.resolve());
 
+const CONFIG_GRUPO = { headerField: 'nombre' };
+
 const pinta = (props = {}) => render(
-    <PropagacionBadge rawTree={ARBOL} groupId="g" updateLayer={updateLayer} reload={reload} {...props} />,
+    <PropagacionBadge
+        rawTree={ARBOL}
+        groupId="g"
+        updateLayer={updateLayer}
+        reload={reload}
+        configDelGrupo={CONFIG_GRUPO}
+        puedePublicar
+        {...props}
+    />,
 );
 
 const TARJETA = { headerField: 'nombre' };
@@ -40,7 +50,7 @@ describe('PropagacionBadge', () => {
         await waitFor(() => expect(screen.getByText('Hospitales')).toBeInTheDocument());
         expect(screen.getAllByText('usa la del grupo')).toHaveLength(2);
         expect(screen.getByText('tiene la suya')).toBeInTheDocument();
-        expect(screen.getByText('Aplicar a las 1 que tienen la suya')).toBeInTheDocument();
+        expect(screen.getByText(/Que todas usen la del grupo/)).toBeInTheDocument();
     });
 
     it('aplicar borra la tarjetita propia y refresca el árbol', async () => {
@@ -51,6 +61,7 @@ describe('PropagacionBadge', () => {
         fireEvent.click(screen.getByText('usar esta'));
         await waitFor(() => expect(screen.getByText('Sí, aplicar')).toBeInTheDocument());
         fireEvent.click(screen.getByText('Sí, aplicar'));
+        await waitFor(() => expect(updateLayer).toHaveBeenCalledWith('g', { infoboxConfig: CONFIG_GRUPO }));
         await waitFor(() => expect(updateLayer).toHaveBeenCalledWith('g.c', { infoboxConfig: null }));
         await waitFor(() => expect(reload).toHaveBeenCalled());
         await vi.advanceTimersByTimeAsync(6000);
@@ -58,4 +69,29 @@ describe('PropagacionBadge', () => {
         vi.useRealTimers();
     });
 
+});
+
+describe('PropagacionBadge · cuándo no se puede propagar', () => {
+    it('sin permiso de publicar la acción queda deshabilitada y dice por qué', async () => {
+        pinta({ puedePublicar: false });
+        fireEvent.click(screen.getByText('2/3'));
+        await waitFor(() => expect(screen.getByText(/Solo quien publica/)).toBeInTheDocument());
+    });
+
+    it('sin tarjetita en el grupo lo dice', async () => {
+        pinta({ configDelGrupo: null });
+        fireEvent.click(screen.getByText('2/3'));
+        await waitFor(() => expect(screen.getByText(/todavía no tiene tarjetita/)).toBeInTheDocument());
+    });
+
+    it('cuando todas ya la usan, la acción sigue visible pero explicada', async () => {
+        const todasHeredan = [{
+            ...ARBOL[0],
+            children: ARBOL[0].children.filter((c) => c.inheritedFrom),
+        }];
+        pinta({ rawTree: todasHeredan });
+        fireEvent.click(screen.getByText('2/2'));
+        await waitFor(() => expect(screen.getByText(/Que todas usen la del grupo/)).toBeInTheDocument());
+        expect(screen.getByText(/ya usan la del grupo/)).toBeInTheDocument();
+    });
 });
