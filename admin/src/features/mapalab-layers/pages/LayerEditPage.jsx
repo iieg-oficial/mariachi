@@ -129,6 +129,8 @@ export default function LayerEditPage() {
     const { drafts, pendingCount, reload: reloadDrafts } = useLayerDrafts();
     const shellRef = useRef(null);
     const [baseline, setBaseline] = useState(null);
+    const tocadosRef = useRef(new Set());
+    const asentadoRef = useRef(false);
     const [shellHeight, setShellHeight] = useState(null);
     const [eventoLayerId, setEventoLayerId] = useState(null);
 
@@ -343,21 +345,36 @@ export default function LayerEditPage() {
         if (loading || !layer) return;
         populate(layer);
         setBaseline(form.getFieldsValue());
+        tocadosRef.current = new Set();
+        asentadoRef.current = false;
+        const asentar = setTimeout(() => { asentadoRef.current = true; }, 1500);
+        return () => clearTimeout(asentar);
     }, [loading, layer, populate, form]);
 
 
 
 
 
-    const scheduleAutosave = useCallback(() => {
+    const scheduleAutosave = useCallback((changedValues) => {
         if (!layerId || loading || loadError) return;
+
+        if (!asentadoRef.current) {
+            setBaseline(form.getFieldsValue());
+            return;
+        }
+        Object.keys(changedValues || {}).forEach((k) => tocadosRef.current.add(k));
+
         if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
         autosaveTimer.current = setTimeout(async () => {
             try {
                 if (!baseline) return;
                 const values = form.getFieldsValue();
-                const { infoboxTemplate: _t, infoboxParams: _p, ...rest } = values;
-                const cambios = diffPayload(rest, baseline);
+                const soloTocados = Object.fromEntries(
+                    [...tocadosRef.current]
+                        .filter((k) => k !== 'infoboxTemplate' && k !== 'infoboxParams')
+                        .map((k) => [k, values[k]]),
+                );
+                const cambios = diffPayload(soloTocados, baseline);
                 if (Object.keys(cambios).length === 0) return;
                 await saveLayerDraft(layerId, cambios);
                 setAutosaveAt(new Date());
@@ -782,13 +799,10 @@ export default function LayerEditPage() {
                     )}
                     {watchedNodeType !== 'tema' && (
                         <AppearancePanel
-                            form={form}
                             items={[
                                 {
                                     key: 'badge',
-                                    titulo: 'Distintivo',
-                                    ayuda: 'Muestra una inicial de color junto al nombre de la capa en el visor. Solo aparece dentro de su ventana de vigencia.',
-                                    path: ['badge', 'enabled'],
+                                    propio: true,
                                     children: (
                                         <Form.Item name="badge" label={null} valuePropName="value" trigger="onChange" noStyle>
                                             <LayerBadgeSection />
@@ -797,9 +811,7 @@ export default function LayerEditPage() {
                                 },
                                 {
                                     key: 'notice',
-                                    titulo: 'Aviso al encender',
-                                    ayuda: 'Mensaje que el visor muestra al encender la capa. Sirve para advertir de datos preliminares o de un corte pendiente.',
-                                    path: ['notice', 'enabled'],
+                                    propio: true,
                                     children: (
                                         <Form.Item name="notice" label={null} valuePropName="value" trigger="onChange" noStyle>
                                             <LayerNoticeSection
@@ -814,31 +826,20 @@ export default function LayerEditPage() {
                                 },
                                 {
                                     key: 'highlight',
-                                    titulo: 'Resaltado al hacer clic',
-                                    ayuda: watchedNodeType === 'leaf'
-                                        ? 'Cómo se marca una feature al hacer clic sobre ella. Aplica a esta capa.'
-                                        : 'Cómo se marca una feature al hacer clic. Se propaga a las capas hijas que no tengan su propio resaltado.',
-                                    path: 'highlightColor',
-                                    derivado: (v) => Boolean(v),
-                                    onToggle: (siguiente, f) => {
-                                        f.setFieldValue('highlightColor', siguiente ? '#FF8300' : null);
-                                        if (!siguiente) f.setFieldValue('highlightShape', null);
-                                    },
+                                    propio: true,
                                     children: <LayerHighlightField />,
                                 },
                                 {
                                     key: 'hidden',
+                                    name: 'hiddenInMenu',
                                     titulo: 'Oculta en el menú',
                                     ayuda: 'No aparece en el árbol del visor, pero sigue abriéndose por URL o slug.',
-                                    path: 'hiddenInMenu',
-                                    nota: 'solo por URL',
                                 },
                                 {
                                     key: 'disabled',
+                                    name: 'disabled',
                                     titulo: 'Fuera de servicio',
                                     ayuda: 'En mantenimiento o sin datos. El visor la muestra atenuada y no deja encenderla.',
-                                    path: 'disabled',
-                                    nota: 'no se puede encender',
                                 },
                             ]}
                         />
@@ -1033,6 +1034,8 @@ export default function LayerEditPage() {
                             inherited={inheritedInfobox}
                             nodeType={watchedNodeType}
                             onIrACapa={handleSelectFromTree}
+                            updateLayer={updateLayer}
+                            reloadTree={reload}
                         />
                     </Form.Item>
                 </SampleFeaturesProvider>

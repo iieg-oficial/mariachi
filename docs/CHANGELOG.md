@@ -9,6 +9,28 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.75.1] - 2026-09-03
+
+### Corregido: «usar esta» escribía pero no se veía
+
+Dos causas encadenadas, y las dos hacían que pareciera que el botón no hacía nada.
+
+**`useLayerTreeAdmin` no es un contexto.** Cada llamada crea su propio estado, y el badge estaba
+llamándolo por su cuenta: pedía el árbol entero otra vez al montarse y su `reload()` refrescaba
+**su** copia, no la de la página, que es de donde el badge saca los datos que pinta. La escritura
+salía, el conteo no se movía. Ahora recibe `updateLayer` y `reload` de la instancia que sí posee
+ese árbol.
+
+**Y el refresco llegaba antes que la invalidación.** Al guardar, mariachi avisa a mapalab con
+`notify_tree_changed`, que **agrupa los avisos en una ventana de 5 segundos** antes de invalidar el
+caché del árbol. Recargar de inmediato traía el árbol viejo. Ahora recarga dos veces: una al
+instante —por si el caché ya estaba fresco— y otra pasada la ventana, con un aviso de «aplicando…»
+mientras tanto, porque cinco segundos sin explicación se leen como que se colgó.
+
+Lo que las pruebas no vieron: mockeaban el hook, así que probaban el camino del clic y no el
+cableado real. Ahora las funciones entran por props y la prueba avanza el reloj para exigir las
+dos recargas.
+
 ## [2.75.0] - 2026-09-03
 
 ### Cambiado: la vista previa de MEL deja de ser pestañas y pasa a ser una sola página

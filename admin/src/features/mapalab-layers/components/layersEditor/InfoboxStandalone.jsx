@@ -9,7 +9,7 @@ import { message } from '@shared/services/message';
 const { Text } = Typography;
 
 export default function InfoboxStandalone({ layer, inherited = null, onSaved }) {
-    const { updateLayer, listGeoserverFields, rawTree } = useLayerTreeAdmin();
+    const { updateLayer, listGeoserverFields, rawTree, reload } = useLayerTreeAdmin();
     const [form] = Form.useForm();
     const [availableFields, setAvailableFields] = useState([]);
     const [loadingFields, setLoadingFields] = useState(false);
@@ -78,6 +78,8 @@ export default function InfoboxStandalone({ layer, inherited = null, onSaved }) 
                         currentLayerId={layer.id}
                         inherited={inherited}
                         nodeType={layer.nodeType || 'leaf'}
+                        updateLayer={updateLayer}
+                        reloadTree={reload}
                     />
                 </Form.Item>
             </SampleFeaturesProvider>

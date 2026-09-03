@@ -2,16 +2,27 @@ import { useState } from 'react';
 import { Button, Dropdown, Modal, Tag, Tooltip, Typography } from 'antd';
 import { message } from '@shared/services/message';
 import { propagacionDelGrupo } from '@features/mapalab-layers/utils/propagacionTarjetita';
-import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
 
 const { Text } = Typography;
 
 const VERDE = '#389E0D';
 
+// mariachi avisa a mapalab con `notify_tree_changed`, que agrupa los avisos en una ventana de
+// 5 s antes de invalidar el cache del arbol. Recargar de inmediato trae el arbol viejo y parece
+// que no paso nada: se recarga una vez ya, por si el cache estaba fresco, y otra pasada la ventana.
+const VENTANA_DEBOUNCE_MS = 5500;
+
+const esperar = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
+
 const fila = (extra) => ({ display: 'flex', alignItems: 'center', gap: 8, ...extra });
 
-export default function PropagacionBadge({ rawTree, groupId, onIrACapa = null }) {
-    const { updateLayer, reload } = useLayerTreeAdmin();
+export default function PropagacionBadge({
+    rawTree,
+    groupId,
+    onIrACapa = null,
+    updateLayer = null,
+    reload = null,
+}) {
     const [aplicando, setAplicando] = useState(false);
     const datos = propagacionDelGrupo(rawTree, groupId);
     if (!datos || datos.total === 0) return null;
@@ -21,18 +32,23 @@ export default function PropagacionBadge({ rawTree, groupId, onIrACapa = null })
     const propagan = usan > 0;
 
     const devolverAlGrupo = async (ids) => {
+        if (!updateLayer) return;
         setAplicando(true);
+        const cerrar = message.loading('Aplicando… el árbol tarda unos segundos en refrescarse', 0);
         try {
             for (const id of ids) {
                 await updateLayer(id, { infoboxConfig: null });
             }
-            await reload();
+            await reload?.();
+            await esperar(VENTANA_DEBOUNCE_MS);
+            await reload?.();
             message.success(ids.length === 1
                 ? 'Esa propiedad vuelve a usar la tarjetita del grupo'
                 : `${ids.length} propiedades vuelven a usar la tarjetita del grupo`);
         } catch (err) {
             message.error(err?.response?.data?.detail || 'No se pudo aplicar la tarjetita del grupo');
         } finally {
+            cerrar?.();
             setAplicando(false);
         }
     };

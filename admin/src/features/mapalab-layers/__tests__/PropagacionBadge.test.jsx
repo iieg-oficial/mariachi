@@ -5,9 +5,9 @@ import PropagacionBadge from '@features/mapalab-layers/components/layersEditor/P
 const updateLayer = vi.fn(() => Promise.resolve());
 const reload = vi.fn(() => Promise.resolve());
 
-vi.mock('@features/mapalab-layers/hooks/useLayerTreeAdmin', () => ({
-    useLayerTreeAdmin: () => ({ updateLayer, reload }),
-}));
+const pinta = (props = {}) => render(
+    <PropagacionBadge rawTree={ARBOL} groupId="g" updateLayer={updateLayer} reload={reload} {...props} />,
+);
 
 const TARJETA = { headerField: 'nombre' };
 
@@ -24,18 +24,18 @@ beforeEach(() => { updateLayer.mockClear(); reload.mockClear(); });
 
 describe('PropagacionBadge', () => {
     it('muestra cuántas propiedades usan la tarjetita', () => {
-        render(<PropagacionBadge rawTree={ARBOL} groupId="g" />);
+        pinta();
         expect(screen.getByLabelText('Propagación: 2 de 3 propiedades')).toBeInTheDocument();
         expect(screen.getByText('2/3')).toBeInTheDocument();
     });
 
     it('no aparece en un nodo que no es grupo', () => {
-        const { container } = render(<PropagacionBadge rawTree={ARBOL} groupId="g.a" />);
+        const { container } = pinta({ groupId: 'g.a' });
         expect(container).toBeEmptyDOMElement();
     });
 
     it('lista quién la usa y quién tiene la suya', async () => {
-        render(<PropagacionBadge rawTree={ARBOL} groupId="g" />);
+        pinta();
         fireEvent.click(screen.getByText('2/3'));
         await waitFor(() => expect(screen.getByText('Hospitales')).toBeInTheDocument());
         expect(screen.getAllByText('usa la del grupo')).toHaveLength(2);
@@ -44,7 +44,8 @@ describe('PropagacionBadge', () => {
     });
 
     it('aplicar borra la tarjetita propia y refresca el árbol', async () => {
-        render(<PropagacionBadge rawTree={ARBOL} groupId="g" />);
+        vi.useFakeTimers({ shouldAdvanceTime: true });
+        pinta();
         fireEvent.click(screen.getByText('2/3'));
         await waitFor(() => expect(screen.getByText('usar esta')).toBeInTheDocument());
         fireEvent.click(screen.getByText('usar esta'));
@@ -52,5 +53,9 @@ describe('PropagacionBadge', () => {
         fireEvent.click(screen.getByText('Sí, aplicar'));
         await waitFor(() => expect(updateLayer).toHaveBeenCalledWith('g.c', { infoboxConfig: null }));
         await waitFor(() => expect(reload).toHaveBeenCalled());
+        await vi.advanceTimersByTimeAsync(6000);
+        await waitFor(() => expect(reload).toHaveBeenCalledTimes(2));
+        vi.useRealTimers();
     });
+
 });

@@ -26,6 +26,8 @@ export default function TarjetitaEditor({
     inherited = null,
     nodeType = null,
     onIrACapa = null,
+    updateLayer = null,
+    reloadTree = null,
 }) {
     const [mode, setMode] = useState('lienzo');
     const [soloVista, setSoloVista] = useState(false);
@@ -57,7 +59,13 @@ export default function TarjetitaEditor({
                 )}
                 <Space size={8}>
                     {nodeType === 'group' && !soloVista && (
-                        <PropagacionBadge rawTree={rawTree} groupId={currentLayerId} onIrACapa={onIrACapa} />
+                        <PropagacionBadge
+                            rawTree={rawTree}
+                            groupId={currentLayerId}
+                            onIrACapa={onIrACapa}
+                            updateLayer={updateLayer}
+                            reload={reloadTree}
+                        />
                     )}
                     {esLienzo && !soloLlamada && (
                         <Tooltip title={soloVista ? 'Volver a editar' : 'Ver cómo queda'}>
