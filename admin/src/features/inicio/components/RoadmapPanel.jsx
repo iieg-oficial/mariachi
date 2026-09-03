@@ -17,7 +17,6 @@ import RoadmapModales from '@features/inicio/components/roadmap/RoadmapModales';
 import RoadmapAltas from '@features/inicio/components/roadmap/RoadmapAltas';
 import RoadmapTip from '@features/inicio/components/roadmap/RoadmapTip';
 import RoadmapMarco from '@features/inicio/components/roadmap/RoadmapMarco';
-import RoadmapBarrita from '@features/inicio/components/roadmap/RoadmapBarrita';
 import useAltaPorClic from '@features/inicio/hooks/useAltaPorClic';
 import useSeleccionRoadmap, { tipoDe } from '@features/inicio/hooks/useSeleccionRoadmap';
 import RoadmapAcciones from '@features/inicio/components/roadmap/RoadmapAcciones';
@@ -65,8 +64,8 @@ export default function RoadmapPanel() {
 
     const {
         seleccion, setSeleccion, fijado, setFijado, tip, setTip, tipRef,
-        anclaBarra, verFormulario, setVerFormulario,
-        activo, esCiclo, relacionados, limpiar, situarTip, anclar,
+        verFormulario, setVerFormulario,
+        activo, esCiclo, relacionados, limpiar, situarTip,
     } = useSeleccionRoadmap({ datos, ciclos, procesos, marcoRef });
     const esperadoRef = useRef(-1);
 
@@ -107,8 +106,7 @@ export default function RoadmapPanel() {
         setFijado(true);
         setSeleccion(id);
         if (editando) {
-            setVerFormulario(false);
-            anclar(id, evento);
+            setVerFormulario(true);
             return;
         }
         if (evento) situarTip(id, evento);
@@ -131,7 +129,6 @@ export default function RoadmapPanel() {
         limpiar();
     };
 
-    const alCambiarRapido = (parche) => guardar(tipoDe(activo), { ...activo, ...parche });
 
     const crearEn = useCallback(async (tipo, extra) => {
         const clave = await agregar(tipo, extra);
@@ -308,16 +305,6 @@ export default function RoadmapPanel() {
                             />
                         )}
 
-                        {editando && anclaBarra && activo && (
-                            <RoadmapBarrita
-                                item={activo}
-                                tipo={tipoDe(activo)}
-                                posicion={anclaBarra}
-                                onCambiar={alCambiarRapido}
-                                onEliminar={() => alEliminar(activo.id)}
-                                onMas={() => setVerFormulario(true)}
-                            />
-                        )}
 
                     </RoadmapMarco>
                 </Card>

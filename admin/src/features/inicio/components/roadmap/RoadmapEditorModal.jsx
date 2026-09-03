@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { Button, Form, Input, InputNumber, Modal, Select, Switch } from 'antd';
+import RoadmapPrevia from '@features/inicio/components/roadmap/RoadmapPrevia';
 import { COLOR_PROYECTO } from '@features/inicio/constants/roadmapModelo';
 
 const { TextArea } = Input;
@@ -14,6 +15,7 @@ export default function RoadmapEditorModal({
     abierto, item, tipo, hitos, guardando, contenedor, onGuardar, onEliminar, onCerrar,
 }) {
     const [form] = Form.useForm();
+    const vivo = Form.useWatch([], form);
 
     useEffect(() => {
         if (abierto && item) form.setFieldsValue(item);
@@ -28,14 +30,30 @@ export default function RoadmapEditorModal({
             getContainer={contenedor || undefined}
             width={720}
             title={`Editando ${ETIQUETA[tipo]}: ${item.txt || item.nombre}`}
-            footer={[
-                <Button key="borrar" danger onClick={() => onEliminar(item.id)}>Eliminar</Button>,
-                <Button key="cancelar" onClick={onCerrar}>Cancelar</Button>,
-                <Button key="ok" type="primary" loading={guardando} onClick={() => form.submit()}>
-                    Guardar
-                </Button>,
-            ]}
+            footer={(
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                    <Button danger onClick={() => onEliminar(item.id)}>Eliminar</Button>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                        <Button onClick={onCerrar}>Cancelar</Button>
+                        <Button type="primary" loading={guardando} onClick={() => form.submit()}>
+                            Guardar
+                        </Button>
+                    </div>
+                </div>
+            )}
         >
+            <div
+                style={{
+                    background: 'repeating-linear-gradient(90deg, #fafafa 0 39px, #f2f2f2 39px 40px)',
+                    border: '1px solid rgba(5,5,5,0.07)',
+                    borderRadius: 8,
+                    padding: '10px 12px',
+                    marginBottom: 16,
+                }}
+            >
+                <RoadmapPrevia item={{ ...item, ...(vivo || {}) }} tipo={tipo} />
+            </div>
+
             <Form form={form} layout="vertical" size="small" key={item.id} initialValues={item} onFinish={onGuardar}>
                 {tipo === 'hitos' && (
                     <>

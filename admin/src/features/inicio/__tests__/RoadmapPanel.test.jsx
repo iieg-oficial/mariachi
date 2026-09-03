@@ -134,14 +134,30 @@ describe('RoadmapPanel', () => {
         delete Element.prototype.requestFullscreen;
     });
 
-    it('al seleccionar en edición aparece la barrita, no el formulario', async () => {
+    it('un solo clic en edición abre el modal completo', async () => {
         usuario.permisos = ['mariachi.roadmap.manage'];
         montar();
         fireEvent.click(await screen.findByRole('button', { name: /editar/i }));
         fireEvent.click(screen.getByText('mariachi 2').closest('g'));
 
-        expect(await screen.findByRole('button', { name: 'Eliminar' })).toBeInTheDocument();
-        expect(screen.queryByText('Viene de')).not.toBeInTheDocument();
+        expect(await screen.findByRole('dialog')).toBeInTheDocument();
+        expect(screen.getByText('Viene de')).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Eliminar' })).toBeInTheDocument();
+    });
+
+    it('la vista previa del modal reacciona a lo que se escribe', async () => {
+        usuario.permisos = ['mariachi.roadmap.manage'];
+        montar();
+        fireEvent.click(await screen.findByRole('button', { name: /editar/i }));
+        fireEvent.click(screen.getByText('mariachi 2').closest('g'));
+        const dialogo = await screen.findByRole('dialog');
+
+        fireEvent.change(dialogo.querySelector('#txt'), { target: { value: 'mariachi 9' } });
+
+        await waitFor(() => {
+            const previa = dialogo.querySelector('svg[aria-label="Vista previa del hito"]');
+            expect(previa.textContent).toContain('mariachi 9');
+        });
     });
 
     it('cambiar punto abre su propio modal', async () => {
@@ -159,7 +175,6 @@ describe('RoadmapPanel', () => {
         montar();
         fireEvent.click(await screen.findByRole('button', { name: /editar/i }));
         fireEvent.click(screen.getByText('mariachi 2').closest('g'));
-        fireEvent.click(await screen.findByRole('button', { name: 'Abrir todos los campos' }));
 
         expect(await screen.findByRole('dialog')).toBeInTheDocument();
         expect(screen.getByText('Viene de')).toBeInTheDocument();
@@ -183,7 +198,6 @@ describe('RoadmapPanel', () => {
         montar();
         fireEvent.click(await screen.findByRole('button', { name: /editar/i }));
         fireEvent.click(screen.getByText('tamal-rojo').closest('g'));
-        fireEvent.click(await screen.findByRole('button', { name: 'Abrir todos los campos' }));
 
         expect(await screen.findByText(/Editando ciclo/)).toBeInTheDocument();
         expect(screen.getByText('Empieza en')).toBeInTheDocument();
@@ -237,7 +251,6 @@ describe('RoadmapPanel', () => {
         montar();
         fireEvent.click(await screen.findByRole('button', { name: /editar/i }));
         fireEvent.click(screen.getByText('mariachi 2').closest('g'));
-        fireEvent.click(await screen.findByRole('button', { name: 'Abrir todos los campos' }));
         fireEvent.click(await screen.findByRole('button', { name: 'Guardar' }));
         await waitFor(() => expect(api.put).toHaveBeenCalledWith('/roadmap/hitos/mariachi-2', expect.objectContaining({ etiqueta: 'mariachi 2' })));
     });

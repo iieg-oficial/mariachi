@@ -11,7 +11,6 @@ export default function useSeleccionRoadmap({ datos, ciclos, procesos, marcoRef 
     const [seleccion, setSeleccion] = useState(null);
     const [fijado, setFijado] = useState(false);
     const [tip, setTip] = useState(null);
-    const [anclaBarra, setAnclaBarra] = useState(null);
     const [verFormulario, setVerFormulario] = useState(false);
     const tipRef = useRef(null);
 
@@ -50,7 +49,6 @@ export default function useSeleccionRoadmap({ datos, ciclos, procesos, marcoRef 
         setFijado(false);
         setSeleccion(null);
         setTip(null);
-        setAnclaBarra(null);
         setVerFormulario(false);
     }, []);
 
@@ -75,22 +73,10 @@ export default function useSeleccionRoadmap({ datos, ciclos, procesos, marcoRef 
         });
     }, [buscar, marcoRef]);
 
-    const anclar = useCallback((id, evento) => {
-        if (!marcoRef.current) return setAnclaBarra(null);
-        const marco = marcoRef.current.getBoundingClientRect();
-        const caja = evento?.currentTarget?.getBoundingClientRect?.();
-        const cx = evento?.clientX || (caja ? caja.left + caja.width / 2 : marco.left + marco.width / 2);
-        const cy = evento?.clientY || (caja ? caja.top : marco.top + 60);
-        return setAnclaBarra({
-            id,
-            x: Math.min(Math.max(cx - marco.left - 150, 8), Math.max(8, marco.width - 320)),
-            y: Math.max(8, cy - marco.top - 54),
-        });
-    }, [marcoRef]);
 
     return {
         seleccion, setSeleccion, fijado, setFijado, tip, setTip, tipRef,
-        anclaBarra, setAnclaBarra, verFormulario, setVerFormulario,
-        activo, esCiclo, familia, relacionados, buscar, limpiar, situarTip, anclar,
+        verFormulario, setVerFormulario,
+        activo, esCiclo, familia, relacionados, buscar, limpiar, situarTip,
     };
 }

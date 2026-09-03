@@ -9,6 +9,29 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.77.0] - 2026-09-03
+
+### Cambiado: un solo modal, y con vista previa
+
+Seleccionar un elemento en modo edición abre **directamente su formulario**. La barra flotante que
+aparecía primero se retira: eran dos pasos para llegar al mismo sitio, y obligaba a decidir de
+antemano si el cambio era «rápido» o no.
+
+El modal estrena una **vista previa que se redibuja con cada tecla**, sobre la rejilla de meses del
+propio mapa. Marcar «en desarrollo» enciende la bandera BETA ahí mismo; cambiar el tipo cambia el
+borde; cambiar el proyecto cambia el color y trae su logo si lo tiene. Deja de hacer falta guardar
+para saber cómo quedó.
+
+Los ciclos y los procesos tienen su propia previa: una banda con su color y su nota, un carril con
+sus marcas anuales.
+
+### Corregido
+
+- **«Eliminar» se va al extremo izquierdo del pie**, lejos de «Guardar». Estaban pegados y son las
+  dos acciones que peor se confunden: una guarda y la otra borra sin vuelta.
+
+---
+
 ## [2.76.0] - 2026-09-03
 
 ### Agregado: propagar la tarjetita del grupo a todas sus propiedades
