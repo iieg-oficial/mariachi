@@ -6,6 +6,7 @@ import {
     evaluarToken,
     explicaVeredicto,
 } from '@features/mel/helpers/contraste';
+import { tocaElemento } from '@features/mel/helpers/aplicacion';
 
 const { Text } = Typography;
 
@@ -60,6 +61,7 @@ export default function ColoresPanel({
     onSeleccionar,
     valorDeToken,
     onCambiar,
+    elemento,
 }) {
     const fondoReal = esHex(fondo) ? fondo : FONDO_POR_DEFECTO;
     const textoReal = esHex(colorTexto) ? colorTexto : TEXTO_POR_DEFECTO;
@@ -83,6 +85,7 @@ export default function ColoresPanel({
                     const valor = valorDeToken(token);
                     const juicio = evaluarToken(token.clave, valor, fondoReal, textoReal);
                     const activa = token.id === seleccion;
+                    const relacionada = tocaElemento(token.clave, valor, elemento);
                     return (
                         <div
                             key={token.id}
@@ -98,28 +101,37 @@ export default function ColoresPanel({
                                 padding: '0 10px',
                                 borderRadius: 8,
                                 cursor: 'pointer',
-                                background: activa ? '#EAEFFA' : 'transparent',
+                                background: activa ? '#EAEFFA' : (relacionada ? '#F6F8FD' : 'transparent'),
                                 boxShadow: activa ? 'inset 0 0 0 1px #2e4372' : 'none',
                             }}
                         >
                             <Muestra valor={valor} lado={18} />
-                            <span
-                                style={{
-                                    fontFamily: MONO,
-                                    fontSize: 12,
-                                    width: 172,
-                                    flexShrink: 0,
-                                    ...recorte,
-                                }}
-                                title={token.clave}
+                            <Tooltip
+                                title={token.descripcion}
+                                trigger={['hover', 'focus', 'click']}
+                                placement='topLeft'
+                                styles={{ root: { maxWidth: 420 } }}
                             >
-                                {token.clave}
-                            </span>
+                                <span
+                                    style={{
+                                        fontFamily: MONO,
+                                        fontSize: 12.5,
+                                        flexGrow: 1,
+                                        minWidth: 0,
+                                        cursor: token.descripcion ? 'help' : 'pointer',
+                                        fontWeight: relacionada ? 600 : 400,
+                                        color: relacionada ? '#2e4372' : 'inherit',
+                                        ...recorte,
+                                    }}
+                                >
+                                    {token.clave}
+                                </span>
+                            </Tooltip>
                             <span
                                 style={{
                                     fontFamily: MONO,
                                     fontSize: 12,
-                                    width: 72,
+                                    width: 76,
                                     flexShrink: 0,
                                     color: 'rgba(0,0,0,0.45)',
                                     ...recorte,
@@ -129,31 +141,6 @@ export default function ColoresPanel({
                             </span>
                             <Tooltip title={juicio.contra}>
                                 <Veredicto nivel={juicio.nivel} etiqueta={juicio.etiqueta} />
-                            </Tooltip>
-                            <Tooltip
-                                title={token.descripcion}
-                                trigger={['hover', 'focus', 'click']}
-                                placement='topLeft'
-                                styles={{ root: { maxWidth: 420 } }}
-                            >
-                                <button
-                                    type='button'
-                                    style={{
-                                        flexGrow: 1,
-                                        minWidth: 0,
-                                        fontSize: 13,
-                                        color: 'rgba(0,0,0,0.45)',
-                                        cursor: token.descripcion ? 'help' : 'default',
-                                        background: 'none',
-                                        border: 'none',
-                                        padding: 0,
-                                        textAlign: 'left',
-                                        font: 'inherit',
-                                        ...recorte,
-                                    }}
-                                >
-                                    {token.descripcion || '—'}
-                                </button>
                             </Tooltip>
                         </div>
                     );

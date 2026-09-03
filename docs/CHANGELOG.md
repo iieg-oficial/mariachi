@@ -9,6 +9,42 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.79.0] - 2026-09-03
+
+### Agregado: la vista previa señala en los dos sentidos
+
+Antes solo iba de token a pieza. Ahora, al pasar o hacer clic sobre cualquier elemento de la
+composición —el título, un botón, una etiqueta, las barras— **se marcan a la izquierda los tokens que
+lo pintan**, y el clic selecciona el primero y le abre su editor, abriendo de paso el grupo del
+acordeón donde vive. Cada zona es alcanzable con el tabulador.
+
+### Agregado: el logotipo entra a la composición
+
+Se toma de `logo.largo.claro`. Si no está definido, sale un hueco marcado con el nombre del campo, que
+es de los doce que llevan sin llenarse.
+
+### Cambiado: los grupos se separan y las descripciones se van al tooltip
+
+«Espacio y forma» eran dos cosas distintas: ahora son **Espaciado** y **Forma**, y los
+**Breakpoints** salen de ahí a su propio grupo, que antes no se veía por ningún lado.
+
+Las descripciones de color y tipografía dejan su columna y pasan a tooltip sobre el nombre del token,
+que libera ancho para el nombre completo. En espaciado y forma se quitan del todo.
+
+### Agregado: dataviz y breakpoints enseñan un ejemplo cuando no hay nada definido
+
+Ninguno de los dos tiene tokens sembrados, así que el grupo salía vacío sin explicar qué iba ahí.
+Ahora muestra un juego normal —la rampa secuencial, las cuatro categorías, los cuatro anchos— marcado
+como ejemplo.
+
+### Cambiado: la pantalla se llama MEL a secas
+
+El título era «MEL · Manual de Estilo y Lineamientos» con una descripción que repetía lo mismo. Ahora
+el título es **MEL** y la descripción dice qué significa. En el menú, «Marcas y tokens» pasa a
+**Marca**, con icono propio.
+
+---
+
 ## [2.78.1] - 2026-09-03
 
 ### Corregido: el resaltado de la vista previa no resaltaba nada

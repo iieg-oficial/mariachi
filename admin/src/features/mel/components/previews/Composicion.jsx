@@ -27,7 +27,7 @@ const MUNICIPIOS = [
 const ALTURAS = [78, 52, 66, 38, 92, 30];
 const SIGLAS = ['GDL', 'ZAP', 'TLQ', 'TON', 'ZPT', 'TLJ'];
 
-export default function Composicion({ paleta, tipos, aplicacion, activo, demo }) {
+export default function Composicion({ paleta, tipos, campos, aplicacion, activo, demo, onElemento }) {
     const c = (nombre, respaldo) => (esHex(paleta[nombre]) ? paleta[nombre] : respaldo);
     const primary = c('color.primary', RESPALDOS.primary);
     const secondary = c('color.secondary', RESPALDOS.secondary);
@@ -36,8 +36,6 @@ export default function Composicion({ paleta, tipos, aplicacion, activo, demo })
     const fondo = c('color.bg', RESPALDOS.bg);
     const superficie = c('color.surface-field', RESPALDOS.surface);
 
-    const apagar = (elemento) => estiloApagado(elemento, aplicacion, activo);
-
     const radio = demo && demo.tipo === 'radio' ? demo.valor : 8;
     const separacion = demo && demo.tipo === 'espacio' ? demo.valor : 12;
     const sombraDemo = demo && demo.tipo === 'sombra' ? demo.valor : null;
@@ -45,22 +43,31 @@ export default function Composicion({ paleta, tipos, aplicacion, activo, demo })
 
     const familiaTitulo = tipos.display || 'inherit';
     const familiaCuerpo = tipos.sans || 'inherit';
+    const logoUrl = (campos || {})['logo.largo.claro'] || '';
 
-    const tag = (etiqueta, frente, fondoTag, elemento) => (
-        <span
-            style={{
-                fontSize: 12,
-                padding: '2px 9px',
-                borderRadius: Math.min(radio, 12),
-                background: fondoTag,
-                color: frente,
-                whiteSpace: 'nowrap',
-                ...apagar(elemento),
-            }}
-        >
-            {etiqueta}
-        </span>
-    );
+    const zona = (id, estilo) => ({
+        role: 'button',
+        tabIndex: 0,
+        onMouseEnter: () => onElemento(id, false),
+        onMouseLeave: () => onElemento(null, false),
+        onClick: (evento) => { evento.stopPropagation(); onElemento(id, true); },
+        onKeyDown: (evento) => {
+            if (evento.key !== 'Enter' && evento.key !== ' ') return;
+            evento.preventDefault();
+            evento.stopPropagation();
+            onElemento(id, true);
+        },
+        style: { cursor: 'pointer', ...estilo, ...estiloApagado(id, aplicacion, activo) },
+    });
+
+    const estiloTag = (frente, fondoTag) => ({
+        fontSize: 12,
+        padding: '2px 9px',
+        borderRadius: Math.min(radio, 12),
+        background: fondoTag,
+        color: frente,
+        whiteSpace: 'nowrap',
+    });
 
     return (
         <div
@@ -76,118 +83,80 @@ export default function Composicion({ paleta, tipos, aplicacion, activo, demo })
                 fontFamily: familiaCuerpo,
             }}
         >
-            <div
-                style={{
-                    fontFamily: familiaTitulo,
-                    fontSize: tipos['2xl'] || 32,
-                    fontWeight: 600,
-                    lineHeight: 1.2,
-                    color: primary,
-                    ...apagar('titulo'),
-                }}
-            >
+            <div {...zona('logo', { marginBottom: 18, display: 'flex', alignItems: 'center' })}>
+                {logoUrl ? (
+                    <img
+                        src={logoUrl}
+                        alt='Logotipo de la marca'
+                        style={{ height: 40, maxWidth: 260, objectFit: 'contain' }}
+                    />
+                ) : (
+                    <span
+                        style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            height: 40,
+                            padding: '0 16px',
+                            border: '1px dashed #d9d9d9',
+                            borderRadius: 8,
+                            fontSize: 12.5,
+                            color: 'rgba(0,0,0,0.45)',
+                        }}
+                    >
+                        logo.largo.claro sin definir
+                    </span>
+                )}
+            </div>
+
+            <div {...zona('titulo', { fontFamily: familiaTitulo, fontSize: tipos['2xl'] || 32, fontWeight: 600, lineHeight: 1.2, color: primary })}>
                 Jalisco en cifras
             </div>
 
-            <div
-                style={{
-                    height: 3,
-                    width: 72,
-                    background: accent,
-                    borderRadius: 2,
-                    margin: '10px 0 14px 0',
-                    ...apagar('subrayado'),
-                }}
-            />
+            <div {...zona('subrayado', { height: 3, width: 72, background: accent, borderRadius: 2, margin: '10px 0 14px 0' })} />
 
-            <div
-                style={{
-                    fontSize: tipos.base || 16,
-                    color: texto,
-                    maxWidth: 560,
-                    lineHeight: 1.6,
-                    ...apagar('bajada'),
-                }}
-            >
+            <div {...zona('bajada', { fontSize: tipos.base || 16, color: texto, maxWidth: 560, lineHeight: 1.6 })}>
                 Panorama estadístico del estado, actualizado al tercer trimestre. Los datos vienen del
                 registro administrativo y se publican con corte mensual.
             </div>
 
-            <div style={{ display: 'flex', gap: separacion, marginTop: 20, alignItems: 'center', flexWrap: 'wrap', ...apagar('filaBotones') }}>
-                <span
-                    style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        height: 36,
-                        padding: '0 18px',
-                        borderRadius: radio,
-                        background: primary,
-                        color: '#fff',
-                        fontSize: tipos.base || 15,
-                        ...apagar('botonPrimario'),
-                    }}
-                >
+            <div {...zona('filaBotones', { display: 'flex', gap: separacion, marginTop: 20, alignItems: 'center', flexWrap: 'wrap' })}>
+                <div {...zona('botonPrimario', { display: 'inline-flex', alignItems: 'center', height: 36, padding: '0 18px', borderRadius: radio, background: primary, color: '#fff', fontSize: tipos.base || 15 })}>
                     Ver indicadores
-                </span>
-                <span
-                    style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        height: 36,
-                        padding: '0 18px',
-                        borderRadius: radio,
-                        border: `1px solid ${accent}`,
-                        color: accent,
-                        fontSize: tipos.base || 15,
-                        ...apagar('botonAcento'),
-                    }}
-                >
+                </div>
+                <div {...zona('botonAcento', { display: 'inline-flex', alignItems: 'center', height: 36, padding: '0 18px', borderRadius: radio, border: `1px solid ${accent}`, color: accent, fontSize: tipos.base || 15 })}>
                     Descargar datos
-                </span>
-                <span style={{ fontSize: tipos.sm || 14, color: secondary, textDecoration: 'underline', ...apagar('enlace') }}>
+                </div>
+                <div {...zona('enlace', { fontSize: tipos.sm || 14, color: secondary, textDecoration: 'underline' })}>
                     Metodología
-                </span>
+                </div>
             </div>
 
-            <div style={{ display: 'flex', gap: 12, marginTop: 24, flexWrap: 'wrap', ...apagar('tags') }}>
-                {tag('Aprobada', c('color.success', RESPALDOS.success), c('color.success-soft', RESPALDOS.successSoft), 'tagAprobada')}
-                {tag('Pendiente', c('color.warning', RESPALDOS.warning), c('color.warning-soft', RESPALDOS.warningSoft), 'tagPendiente')}
-                {tag('Rechazada', c('color.danger', RESPALDOS.danger), c('color.danger-soft', RESPALDOS.dangerSoft), 'tagRechazada')}
-                {tag('En revisión', c('color.info', RESPALDOS.info), c('color.info-soft', RESPALDOS.infoSoft), 'tagRevision')}
+            <div {...zona('tags', { display: 'flex', gap: 12, marginTop: 24, flexWrap: 'wrap' })}>
+                <div {...zona('tagAprobada', estiloTag(c('color.success', RESPALDOS.success), c('color.success-soft', RESPALDOS.successSoft)))}>
+                    Aprobada
+                </div>
+                <div {...zona('tagPendiente', estiloTag(c('color.warning', RESPALDOS.warning), c('color.warning-soft', RESPALDOS.warningSoft)))}>
+                    Pendiente
+                </div>
+                <div {...zona('tagRechazada', estiloTag(c('color.danger', RESPALDOS.danger), c('color.danger-soft', RESPALDOS.dangerSoft)))}>
+                    Rechazada
+                </div>
+                <div {...zona('tagRevision', estiloTag(c('color.info', RESPALDOS.info), c('color.info-soft', RESPALDOS.infoSoft)))}>
+                    En revisión
+                </div>
             </div>
 
-            <div style={{ display: 'flex', gap: 14, marginTop: 24, flexWrap: 'wrap', ...apagar('tarjetas') }}>
-                <div
-                    style={{
-                        flexGrow: 1,
-                        minWidth: 180,
-                        border: '1px solid #f0f0f0',
-                        borderRadius: radio,
-                        padding: 16,
-                        background: superficie,
-                        ...apagar('campo'),
-                    }}
-                >
-                    <div style={{ fontSize: tipos.lg || 22, fontWeight: 600, color: texto, ...apagar('cifra') }}>
+            <div {...zona('tarjetas', { display: 'flex', gap: 14, marginTop: 24, flexWrap: 'wrap' })}>
+                <div {...zona('campo', { flexGrow: 1, minWidth: 180, border: '1px solid #f0f0f0', borderRadius: radio, padding: 16, background: superficie })}>
+                    <div {...zona('cifra', { fontSize: tipos.lg || 22, fontWeight: 600, color: texto })}>
                         8 348 151
                     </div>
-                    <div style={{ height: 4, width: '62%', background: primary, borderRadius: 2, margin: '8px 0', ...apagar('barraCifra') }} />
-                    <div style={{ fontSize: tipos.xs || 12, color: texto, opacity: 0.7, ...apagar('nota') }}>
+                    <div {...zona('barraCifra', { height: 4, width: '62%', background: primary, borderRadius: 2, margin: '8px 0' })} />
+                    <div {...zona('nota', { fontSize: tipos.xs || 12, color: texto, opacity: 0.7 })}>
                         habitantes · censo 2020
                     </div>
                 </div>
-                <div
-                    style={{
-                        flexGrow: 1,
-                        minWidth: 180,
-                        border: '1px solid #f0f0f0',
-                        borderRadius: radio,
-                        padding: 16,
-                        background: superficie,
-                        boxShadow: sombraDemo || 'none',
-                        ...apagar('tarjetaSombra'),
-                    }}
-                >
+                <div {...zona('tarjetaSombra', { flexGrow: 1, minWidth: 180, border: '1px solid #f0f0f0', borderRadius: radio, padding: 16, background: superficie, boxShadow: sombraDemo || 'none' })}>
                     <div style={{ fontSize: tipos.lg || 22, fontWeight: 600, color: texto }}>125</div>
                     <div style={{ fontSize: tipos.xs || 12, color: texto, opacity: 0.7, marginTop: 8 }}>
                         municipios
@@ -195,11 +164,11 @@ export default function Composicion({ paleta, tipos, aplicacion, activo, demo })
                 </div>
             </div>
 
-            <div style={{ marginTop: 26, ...apagar('grafica') }}>
-                <div style={{ fontSize: tipos.lg || 18, fontWeight: 600, color: secondary, marginBottom: 12, ...apagar('subtitulo') }}>
+            <div {...zona('grafica', { marginTop: 26 })}>
+                <div {...zona('subtitulo', { fontSize: tipos.lg || 18, fontWeight: 600, color: secondary, marginBottom: 12 })}>
                     Delitos por municipio
                 </div>
-                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, height: 110, ...apagar('barras') }}>
+                <div {...zona('barras', { display: 'flex', alignItems: 'flex-end', gap: 10, height: 110 })}>
                     {ALTURAS.map((alto, indice) => (
                         <div key={SIGLAS[indice]} style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
                             <div
@@ -216,13 +185,13 @@ export default function Composicion({ paleta, tipos, aplicacion, activo, demo })
                 </div>
             </div>
 
-            <div style={{ marginTop: 26, ...apagar('tabla') }}>
-                <div style={{ display: 'flex', padding: '8px 0', borderBottom: `2px solid ${secondary}`, fontSize: tipos.sm || 13, fontWeight: 600, color: secondary, ...apagar('encabezadoTabla') }}>
+            <div {...zona('tabla', { marginTop: 26 })}>
+                <div {...zona('encabezadoTabla', { display: 'flex', padding: '8px 0', borderBottom: `2px solid ${secondary}`, fontSize: tipos.sm || 13, fontWeight: 600, color: secondary })}>
                     <span style={{ flexGrow: 1 }}>Municipio</span>
                     <span style={{ width: 120, textAlign: 'right' }}>Población</span>
                     <span style={{ width: 80, textAlign: 'right' }}>Variación</span>
                 </div>
-                <div style={apagar('filasTabla')}>
+                <div {...zona('filasTabla', {})}>
                     {MUNICIPIOS.map((fila) => (
                         <div
                             key={fila.nombre}
@@ -242,17 +211,7 @@ export default function Composicion({ paleta, tipos, aplicacion, activo, demo })
                 </div>
             </div>
 
-            <div
-                style={{
-                    marginTop: 22,
-                    padding: '10px 14px',
-                    borderRadius: radio,
-                    background: c('color.accent-soft', '#FFF7E6'),
-                    fontSize: tipos.sm || 13,
-                    color: texto,
-                    ...apagar('aviso'),
-                }}
-            >
+            <div {...zona('aviso', { marginTop: 22, padding: '10px 14px', borderRadius: radio, background: c('color.accent-soft', '#FFF7E6'), fontSize: tipos.sm || 13, color: texto })}>
                 Las cifras del trimestre en curso son preliminares.
             </div>
         </div>

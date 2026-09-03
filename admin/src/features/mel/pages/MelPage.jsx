@@ -2,14 +2,14 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Input, Layout, Segmented, Spin, Tag, Typography } from 'antd';
 import { BgColorsOutlined, DownloadOutlined, FileTextOutlined, SearchOutlined } from '@ant-design/icons';
 import { downloadExport, getMarca, listMarcas } from '@features/mel/api/melService';
-import ColoresPanel from '@features/mel/components/ColoresPanel';
-import GruposPanel from '@features/mel/components/GruposPanel';
+import PanelControles from '@features/mel/components/PanelControles';
 import VistaPrevia from '@features/mel/components/VistaPrevia';
 import BarraCambios from '@features/mel/components/BarraCambios';
 import DiffDrawer from '@features/mel/components/DiffDrawer';
 import ArtefactosDrawer from '@features/mel/components/ArtefactosDrawer';
 import { SECCIONES } from '@features/mel/constants/campos';
 import { esHex, evaluarToken } from '@features/mel/helpers/contraste';
+import { tocaElemento } from '@features/mel/helpers/aplicacion';
 import useCambiosMel from '@features/mel/hooks/useCambiosMel';
 import PageHeading from '@shared/components/PageHeading';
 import useIsMobile from '@shared/hooks/useIsMobile';
@@ -35,6 +35,7 @@ export default function MelPage() {
     const [diffAbierto, setDiffAbierto] = useState(false);
     const [artefactosAbierto, setArtefactosAbierto] = useState(false);
     const [busqueda, setBusqueda] = useState('');
+    const [elemento, setElemento] = useState(null);
     const { isMobile } = useIsMobile();
 
     const recargar = useCallback(async () => {
@@ -107,6 +108,26 @@ export default function MelPage() {
         }).length
     ), 0);
 
+    const GRUPO_DE = {
+        tipografia: 'tipografia',
+        espaciado: 'espaciado',
+        radio: 'forma',
+        sombra: 'forma',
+        dataviz: 'dataviz',
+        breakpoint: 'breakpoints',
+    };
+
+    const alElemento = (id, fijar) => {
+        setElemento(id);
+        if (!fijar || !id) return;
+        const candidato = todos.find(
+            (token) => tocaElemento(token.clave, cambios.valorDeToken(token), id),
+        );
+        if (!candidato) return;
+        setSeleccion(candidato.id);
+        if (candidato.grupo !== 'color') setGrupoAbierto(GRUPO_DE[candidato.grupo] || null);
+    };
+
     const guardar = async () => {
         try {
             await cambios.guardar();
@@ -129,8 +150,8 @@ export default function MelPage() {
         <Content>
             <PageHeading
                 icon={<BgColorsOutlined />}
-                title='MEL · Manual de Estilo y Lineamientos'
-                description='Los valores de cada marca. La descarga trae la guía, los tokens y los CSS.'
+                title='MEL'
+                description='Manual de Estilo y Lineamientos'
                 extra={(
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                         <Segmented
@@ -167,83 +188,38 @@ export default function MelPage() {
                     }}
                 >
                     <div style={{ display: 'flex', height: ALTO_PANELES, minHeight: 520 }}>
-                        <div
-                            style={{
-                                width: isMobile ? '100%' : 620,
-                                flexShrink: 0,
-                                display: 'flex',
-                                flexDirection: 'column',
-                                background: '#fff',
-                                borderRight: '1px solid rgba(5,5,5,0.06)',
-                                minHeight: 0,
-                            }}
-                        >
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: 8,
-                                    padding: '12px 16px',
-                                    borderBottom: '1px solid rgba(5,5,5,0.06)',
-                                }}
-                            >
-                                <Input
-                                    prefix={<SearchOutlined />}
-                                    placeholder='Buscar token de color…'
-                                    value={busqueda}
-                                    onChange={(evento) => setBusqueda(evento.target.value)}
-                                    allowClear
-                                />
-                                <Text type='secondary' style={{ whiteSpace: 'nowrap' }}>
-                                    {(detalle?.tokens || []).length} tokens · {totalCampos} campos
-                                </Text>
-                            </div>
-
-                            <div style={{ flexGrow: 1, padding: 16, overflow: 'auto', minHeight: 0 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                                    <Text strong>Color</Text>
-                                    <Tag>{colores.length}</Tag>
-                                    <span style={{ flexGrow: 1 }} />
-                                    <Text
-                                        style={{ fontSize: 12, color: noAlcanzan > 0 ? '#d4380d' : '#1F7A4D' }}
-                                    >
-                                        {noAlcanzan > 0 ? `${noAlcanzan} no alcanza AA` : 'todos cumplen AA'}
-                                    </Text>
-                                </div>
-
-                                <ColoresPanel
-                                    tokens={filtrados}
-                                    fondo={fondo}
-                                    colorTexto={colorTexto}
-                                    seleccion={seleccion}
-                                    onSeleccionar={setSeleccion}
-                                    valorDeToken={cambios.valorDeToken}
-                                    onCambiar={cambios.cambiarToken}
-                                />
-
-                                <GruposPanel
-                                    tokens={detalle?.tokens || []}
-                                    campos={detalle?.campos || {}}
-                                    abierto={grupoAbierto}
-                                    onAbrir={setGrupoAbierto}
-                                    valorDeToken={cambios.valorDeToken}
-                                    onCambiarToken={cambios.cambiarToken}
-                                    valorDeCampo={cambios.valorDeCampo}
-                                    onCambiarCampo={cambios.cambiarCampo}
-                                    sinDefinir={sinDefinir}
-                                    seleccion={seleccion}
-                                    onSeleccionar={setSeleccion}
-                                />
-                            </div>
-                        </div>
+                        <PanelControles
+                            ancho={isMobile ? '100%' : 620}
+                            busqueda={busqueda}
+                            onBuscar={setBusqueda}
+                            totalTokens={todos.length}
+                            totalCampos={totalCampos}
+                            colores={colores}
+                            filtrados={filtrados}
+                            noAlcanzan={noAlcanzan}
+                            fondo={fondo}
+                            colorTexto={colorTexto}
+                            seleccion={seleccion}
+                            onSeleccionar={setSeleccion}
+                            elemento={elemento}
+                            tokens={todos}
+                            campos={detalle?.campos || {}}
+                            grupoAbierto={grupoAbierto}
+                            onAbrirGrupo={setGrupoAbierto}
+                            sinDefinir={sinDefinir}
+                            cambios={cambios}
+                        />
 
                         {!isMobile && (
                             <div style={{ flexGrow: 1, minWidth: 0 }}>
                                 <VistaPrevia
                                     tokens={todos}
+                                    campos={detalle?.campos || {}}
                                     seleccion={seleccion}
                                     valorDeToken={cambios.valorDeToken}
                                     onLimpiar={() => setSeleccion(null)}
+                                    elemento={elemento}
+                                    onElemento={alElemento}
                                 />
                             </div>
                         )}

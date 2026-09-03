@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { Button, Tag, Typography } from 'antd';
 import Composicion from '@features/mel/components/previews/Composicion';
-import { aplicacionDe } from '@features/mel/helpers/aplicacion';
+import { ELEMENTOS_CON_NOMBRE, aplicacionDe } from '@features/mel/helpers/aplicacion';
 
 const { Text } = Typography;
 
@@ -14,7 +14,7 @@ const aPx = (valor) => {
     return null;
 };
 
-export default function VistaPrevia({ tokens, seleccion, valorDeToken, onLimpiar }) {
+export default function VistaPrevia({ tokens, campos, seleccion, valorDeToken, onLimpiar, elemento, onElemento }) {
     const activo = tokens.find((token) => token.id === seleccion) || null;
 
     const paleta = useMemo(() => {
@@ -72,7 +72,9 @@ export default function VistaPrevia({ tokens, seleccion, valorDeToken, onLimpiar
                     </>
                 ) : (
                     <Text type='secondary' style={{ fontSize: 13 }}>
-                        Elige un token de la izquierda para ver dónde se aplica.
+                        {elemento
+                            ? `Estás sobre ${ELEMENTOS_CON_NOMBRE[elemento] || elemento}. Sus tokens están marcados a la izquierda.`
+                            : 'Elige un token de la izquierda, o pasa por la pieza para ver qué la compone.'}
                     </Text>
                 )}
             </div>
@@ -80,9 +82,11 @@ export default function VistaPrevia({ tokens, seleccion, valorDeToken, onLimpiar
             <Composicion
                 paleta={paleta}
                 tipos={tipos}
+                campos={campos}
                 aplicacion={aplicacion}
                 activo={apagando}
                 demo={aplicacion ? aplicacion.demo : null}
+                onElemento={onElemento}
             />
         </div>
     );

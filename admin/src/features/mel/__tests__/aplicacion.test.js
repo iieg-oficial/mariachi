@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aplicacionDe, esVivo, estiloApagado } from '@features/mel/helpers/aplicacion';
+import { aplicacionDe, esVivo, estiloApagado, tocaElemento } from '@features/mel/helpers/aplicacion';
 
 const COLORES_SEMBRADOS = [
     'color.primary', 'color.primary-deep', 'color.secondary', 'color.accent',
@@ -96,5 +96,28 @@ describe('esVivo', () => {
     it('un hermano del vivo si se apaga', () => {
         expect(esVivo('tarjetaSombra', ['cifra'])).toBe(false);
         expect(esVivo('encabezadoTabla', ['filasTabla'])).toBe(false);
+    });
+});
+
+describe('tocaElemento', () => {
+    it('reconoce los tokens que pintan el elemento sobre el que se pasa', () => {
+        expect(tocaElemento('color.primary', '#5C2472', 'titulo')).toBe(true);
+        expect(tocaElemento('font.size.2xl', '2rem', 'titulo')).toBe(true);
+        expect(tocaElemento('color.accent', '#FF8300', 'titulo')).toBe(false);
+    });
+
+    it('el boton primario lo tocan su color, su tamano y su radio', () => {
+        expect(tocaElemento('color.primary', '#5C2472', 'botonPrimario')).toBe(true);
+        expect(tocaElemento('font.size.base', '1rem', 'botonPrimario')).toBe(true);
+        expect(tocaElemento('radius.md', '8px', 'botonPrimario')).toBe(true);
+    });
+
+    it('un token que apunta al contenedor tambien toca a sus hijos', () => {
+        expect(tocaElemento('space.4', '1rem', 'botonPrimario')).toBe(true);
+        expect(tocaElemento('color.surface-field', '#FAFAFA', 'cifra')).toBe(true);
+    });
+
+    it('sin elemento no toca nada', () => {
+        expect(tocaElemento('color.primary', '#5C2472', null)).toBe(false);
     });
 });

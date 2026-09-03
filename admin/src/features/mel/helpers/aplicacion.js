@@ -7,6 +7,7 @@ const aPx = (valor) => {
 };
 
 export const PADRE = {
+    logo: 'lienzo',
     titulo: 'lienzo',
     subrayado: 'lienzo',
     bajada: 'lienzo',
@@ -44,7 +45,7 @@ const ancestros = (elemento) => {
     return cadena;
 };
 
-const esAncestro = (posible, elemento) => ancestros(elemento).includes(posible);
+export const esAncestro = (posible, elemento) => ancestros(elemento).includes(posible);
 
 export const esVivo = (elemento, lista) => {
     if (!lista || lista.length === 0) return true;
@@ -161,4 +162,34 @@ export const estiloApagado = (elemento, aplicacion, activo) => {
         opacity: esVivo(elemento, aplicacion.elementos) ? 1 : 0.14,
         transition: 'opacity 0.2s ease',
     };
+};
+
+export const tocaElemento = (clave, valor, elemento) => {
+    if (!elemento) return false;
+    const { elementos } = aplicacionDe(clave, valor);
+    return elementos.some((destino) => destino === elemento || esAncestro(destino, elemento));
+};
+
+export const ELEMENTOS_CON_NOMBRE = {
+    titulo: 'el título',
+    subrayado: 'el subrayado de acento',
+    bajada: 'la bajada',
+    botonPrimario: 'el botón primario',
+    botonAcento: 'el botón de acento',
+    enlace: 'el enlace',
+    tagAprobada: 'la etiqueta Aprobada',
+    tagPendiente: 'la etiqueta Pendiente',
+    tagRechazada: 'la etiqueta Rechazada',
+    tagRevision: 'la etiqueta En revisión',
+    campo: 'la tarjeta de cifra',
+    cifra: 'la cifra',
+    barraCifra: 'la barra de la cifra',
+    nota: 'la nota al pie',
+    tarjetaSombra: 'la tarjeta de municipios',
+    subtitulo: 'el subtítulo',
+    barras: 'las barras',
+    encabezadoTabla: 'el encabezado de la tabla',
+    filasTabla: 'las filas de la tabla',
+    aviso: 'el aviso',
+    logo: 'el logotipo',
 };
