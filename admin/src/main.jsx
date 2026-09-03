@@ -16,9 +16,9 @@ import Login from '@features/auth/pages/LoginPage';
 import { buildMapalabApiKeysRoutes } from '@features/mapalab-api-keys/routes';
 import { buildColibriRoutes } from '@features/colibri/routes';
 import { buildHuachicolRoutes } from '@features/telemetria/routes';
-import { buildIdentidadRoutes } from '@features/identidad/routes';
+import { buildMelRoutes } from '@features/mel/routes';
 import { buildSextanteRoutes } from '@features/sextante/routes';
-import { buildWachaRoutes, buildWachaFullscreenRoutes } from '@features/wacha/routes';
+import { buildFramesRoutes, buildFramesFullscreenRoutes } from '@features/frames/routes';
 import { buildVineFullscreenRoutes, buildVineRoutes } from '@features/vine/routes';
 
 const Users = lazy(() => import('@features/users'));
@@ -202,8 +202,8 @@ const router = createBrowserRouter([
                         )
                     },
                     ...buildSextanteRoutes(withSuspense),
-                    ...buildIdentidadRoutes(withSuspense),
-                    ...buildWachaRoutes(withSuspense),
+                    ...buildMelRoutes(withSuspense),
+                    ...buildFramesRoutes(withSuspense),
                     ...buildVineRoutes(withSuspense),
                     ...buildHuachicolRoutes(withSuspense),
                     ...buildMapalabApiKeysRoutes(withSuspense),
@@ -269,7 +269,7 @@ const router = createBrowserRouter([
                             </PermissionRoute>
                         )
                     },
-                    ...buildWachaFullscreenRoutes(withSuspense),
+                    ...buildFramesFullscreenRoutes(withSuspense),
                     ...buildVineFullscreenRoutes(withSuspense),
                 ]
             }

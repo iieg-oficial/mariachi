@@ -87,9 +87,9 @@ class Settings(BaseSettings):
     sieej_url: str | None = None
     huachicol_monitor_url: str | None = None
 
-    wacha_enabled: bool = False
-    wacha_api_url: str | None = None
-    wacha_timeout: float = 10.0
+    frames_enabled: bool = False
+    frames_api_url: str | None = None
+    frames_timeout: float = 10.0
 
     vine_enabled: bool = False
     vine_biometrico_url: str | None = None

@@ -7,7 +7,6 @@ from app.models.colibri_route import ColibriRoute
 from app.models.direccion_organizacional import DireccionOrganizacional
 from app.models.evento import Evento
 from app.models.home_section import HomeSection
-from app.models.identidad import Marca, MarcaCampo, MarcaFuente, MarcaToken
 from app.models.mapalab_api_key import MapalabApiKey
 from app.models.mapalab_api_key_acceso import MapalabApiKeyAcceso
 from app.models.mapalab_api_key_embed import MapalabApiKeyEmbed
@@ -16,6 +15,7 @@ from app.models.mapalab_api_key_uso import MapalabApiKeyUsoDiario
 from app.models.mapalab_event import MapalabEvent, MapalabSession
 from app.models.mapalab_infobox_propuesta import MapalabInfoboxPropuesta
 from app.models.mapalab_mcp_event import MapalabMcpEvent
+from app.models.mel import Marca, MarcaCampo, MarcaFuente, MarcaToken
 from app.models.menu_item import MenuItem
 from app.models.page import Page
 from app.models.project import Project, UserProject

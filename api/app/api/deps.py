@@ -149,13 +149,14 @@ PANEL_PERMISSIONS = (
     "mariachi.acervo.view",
     "mariachi.colibri_reportes.view",
     "mariachi.colibri_config.manage",
+    "mariachi.mel.view",
     "mariachi.identidad.view",
     "mariachi.geoserver.view",
     "mariachi.actividad.view",
     "mariachi.usuarios.view",
     "mariachi.sistema.manage",
     "mariachi.vine.view",
-    "mariachi.wacha.view",
+    "mariachi.frames.view",
 )
 
 

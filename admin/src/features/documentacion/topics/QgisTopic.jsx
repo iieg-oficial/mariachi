@@ -54,8 +54,8 @@ const CAMPOS = [
         efecto: 'Pinta el glifo de punto, línea, polígono o ráster. Sin él, la fila queda sin glifo.',
     },
     {
-        campo: 'Módulo Identidad',
-        donde: 'Identidad · tokens y logos',
+        campo: 'Módulo MEL',
+        donde: 'MEL · tokens y logos',
         efecto: 'De ahí salen los colores, la tipografía y los logos del panel. El plugin no lleva ninguno propio.',
     },
 ];

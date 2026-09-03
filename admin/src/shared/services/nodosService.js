@@ -11,7 +11,7 @@ export const POSICIONES = {
     S5: { x: 390, y: 170, w: 132, h: 76 },
     S3: { x: 390, y: 280, w: 132, h: 76 },
     S4: { x: 700, y: 170, w: 132, h: 76 },
-    'pmx-vine-wacha': { x: 390, y: 110, w: 168, h: 76 },
+    'pmx-vine-frames': { x: 390, y: 110, w: 168, h: 76 },
 };
 
 const POSICION_POR_OMISION = { x: 390, y: 380, w: 132, h: 76 };
@@ -22,7 +22,7 @@ export const NODOS_META = {
     S3: { nombreHost: 'sextante', rol: 'sextante' },
     S4: { nombreHost: 'dataengine', rol: 'dataengine', aislado: true },
     S5: { nombreHost: 'portalito', rol: 'portalito' },
-    'pmx-vine-wacha': { nombreHost: 'pmx-vine-wacha', rol: 'vine · wacha', soloProxmox: true },
+    'pmx-vine-frames': { nombreHost: 'pmx-vine-frames', rol: 'vine · frames', soloProxmox: true },
     'sin-nodo': { rol: 'sin ONTOY_NODE declarado' },
     [NODO_INTERNET]: { rol: 'entrada pública', sintetico: true },
 };

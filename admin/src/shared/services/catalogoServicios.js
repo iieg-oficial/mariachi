@@ -43,7 +43,7 @@ const CATALOGO = {
     },
     huachicol: { label: 'Huachicol', capa: 'internos', repo: `${GITHUB_ORG}/huachicol` },
     vine: { label: 'Vine', capa: 'internos', repo: `${GITHUB_ORG}/vine` },
-    wacha: { label: 'Wacha', capa: 'internos', repo: `${GITHUB_ORG}/wacha` },
+    frames: { label: 'Frames', capa: 'internos', repo: `${GITHUB_ORG}/frames` },
 };
 
 export const ORDEN_CAPA = CAPAS.reduce((acc, capa, indice) => ({ ...acc, [capa.key]: indice }), {});

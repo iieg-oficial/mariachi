@@ -25,7 +25,7 @@ export const COLOR_PROYECTO = {
     sitio2026: '#B0521F',
     acervo: '#4A4A8A',
     colibri: '#B0356B',
-    identidad: '#7A3FA0',
+    mel: '#7A3FA0',
     minerva: '#8A6A1F',
     igibot: '#7A2E5B',
     mirador: '#4B6A2E',

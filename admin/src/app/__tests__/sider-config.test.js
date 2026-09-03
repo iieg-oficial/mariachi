@@ -21,7 +21,7 @@ const TODOS = [
     'mariachi.geoserver.view',
     'mariachi.geoserver.manage',
     'mariachi.sieej_admin.view',
-    'mariachi.identidad.view',
+    'mariachi.mel.view',
     'mariachi.colibri_reportes.view',
     'mariachi.colibri_config.manage',
 ];

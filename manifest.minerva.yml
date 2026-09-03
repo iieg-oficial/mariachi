@@ -68,8 +68,8 @@ permissions:
   - key: mariachi.colibri_config.manage
     name: Administrar tipos, direcciones, rutas y source apps
 
-  - key: mariachi.wacha.view
-    name: Ver y administrar las camaras de wacha
+  - key: mariachi.frames.view
+    name: Ver y administrar las camaras de frames
 
   - key: mariachi.vine.view
     name: Ver estadisticas de asistencia de vine
@@ -79,10 +79,10 @@ permissions:
   - key: mariachi.vine_personas.update
     name: Editar la ficha del personal de vine
 
-  - key: mariachi.identidad.view
-    name: Ver marcas y tokens de identidad
-  - key: mariachi.identidad.update
-    name: Editar marcas y tokens de identidad
+  - key: mariachi.mel.view
+    name: Ver marcas y tokens de MEL, el manual de estilo y lineamientos
+  - key: mariachi.mel.update
+    name: Editar marcas y tokens de MEL, el manual de estilo y lineamientos
 
   - key: mariachi.geoserver.view
     name: Ver recursos y tipografias de GeoServer
@@ -193,10 +193,10 @@ roles:
     permissions:
       - mariachi.colibri_config.manage
 
-  - name: Wacha - camaras
+  - name: Frames - camaras
     description: Atomico. Catalogo de camaras y vista en vivo. Modulo local
     permissions:
-      - mariachi.wacha.view
+      - mariachi.frames.view
 
   - name: Vine - estadisticas
     description: Atomico. Estadisticas agregadas de asistencia, sin datos individuales
@@ -216,11 +216,11 @@ roles:
       - mariachi.vine_personas.view
       - mariachi.vine_personas.update
 
-  - name: Identidad - administracion
-    description: Atomico. Marcas, tokens y artefactos de identidad visual
+  - name: MEL - administracion
+    description: Atomico. Marcas, tokens y artefactos del manual de estilo y lineamientos
     permissions:
-      - mariachi.identidad.view
-      - mariachi.identidad.update
+      - mariachi.mel.view
+      - mariachi.mel.update
 
   - name: GeoServer - administracion
     description: Atomico. Recursos y tipografias de Sextante
@@ -253,7 +253,7 @@ roles:
       - mariachi.roadmap.manage
 
   - name: Administrador
-    description: Compuesto. Todo mariachi. NO da acceso a vine ni a wacha, que son aplicaciones aparte
+    description: Compuesto. Todo mariachi. NO da acceso a vine ni a frames, que son aplicaciones aparte
     permissions:
       - mariachi.roadmap.manage
       - mariachi.mapalab.view
@@ -281,8 +281,8 @@ roles:
       - mariachi.colibri_reportes.view
       - mariachi.colibri_reportes.update
       - mariachi.colibri_config.manage
-      - mariachi.identidad.view
-      - mariachi.identidad.update
+      - mariachi.mel.view
+      - mariachi.mel.update
       - mariachi.geoserver.view
       - mariachi.geoserver.manage
       - mariachi.actividad.view

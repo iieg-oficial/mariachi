@@ -12,6 +12,7 @@ const PANEL_PERMISSIONS = [
     'mariachi.acervo.view',
     'mariachi.colibri_reportes.view',
     'mariachi.colibri_config.manage',
+    'mariachi.mel.view',
     'mariachi.identidad.view',
     'mariachi.geoserver.view',
     'mariachi.actividad.view',

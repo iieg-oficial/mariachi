@@ -22,10 +22,10 @@ from app.api.routes import (
     colibri_tipos,
     eventos,
     formularios,
+    frames,
     geoserver,
     grid,
     home,
-    identidad,
     layer_metadata,
     layers,
     mapalab_api_keys,
@@ -36,6 +36,7 @@ from app.api.routes import (
     mapalab_mcp_internal,
     mapalab_shares,
     mapalab_stats,
+    mel,
     menu,
     pages,
     preview,
@@ -49,7 +50,6 @@ from app.api.routes import (
     symbols,
     users,
     vine,
-    wacha,
 )
 from app.core.settings import get_settings
 
@@ -91,6 +91,9 @@ def create_app() -> FastAPI:
     portal_view = [Depends(require_permission("mariachi.portal.view"))]
     acervo_view = [Depends(require_permission("mariachi.acervo.view"))]
     sistema_manage = [Depends(require_permission("mariachi.sistema.manage"))]
+    mel_view = [
+        Depends(require_any_permission("mariachi.mel.view", "mariachi.identidad.view"))
+    ]
     colibri_view = [
         Depends(
             require_any_permission(
@@ -121,11 +124,8 @@ def create_app() -> FastAPI:
     app.include_router(bulk_ingest.router, prefix=settings.admin_prefix, dependencies=mapalab_view)
     app.include_router(layer_metadata.router, prefix=settings.admin_prefix, dependencies=mapalab_view)
     app.include_router(grid.router, prefix=settings.admin_prefix, dependencies=panel)
-    app.include_router(
-        identidad.router,
-        prefix=settings.admin_prefix,
-        dependencies=[Depends(require_permission("mariachi.identidad.view"))],
-    )
+    app.include_router(mel.router, prefix=settings.admin_prefix, dependencies=mel_view)
+    app.include_router(mel.router_compat, prefix=settings.admin_prefix, dependencies=mel_view)
     app.include_router(roadmap.router, prefix=settings.admin_prefix, dependencies=panel)
     app.include_router(symbols.router, prefix=settings.admin_prefix, dependencies=mapalab_view)
     app.include_router(
@@ -178,11 +178,11 @@ def create_app() -> FastAPI:
     app.include_router(mapalab_infobox_public.router, prefix=settings.public_prefix)
     app.include_router(mapalab_infobox.router, prefix=settings.admin_prefix, dependencies=mapalab_view)
 
-    if settings.wacha_enabled:
+    if settings.frames_enabled:
         app.include_router(
-            wacha.router,
+            frames.router,
             prefix=settings.admin_prefix,
-            dependencies=[Depends(require_permission("mariachi.wacha.view"))],
+            dependencies=[Depends(require_permission("mariachi.frames.view"))],
         )
 
     if settings.vine_enabled:

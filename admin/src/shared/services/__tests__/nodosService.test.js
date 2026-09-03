@@ -70,7 +70,7 @@ describe('getNodos', () => {
     });
 
     it('sin entrada publica no inventa el nodo de Internet', async () => {
-        api.get.mockResolvedValue({ data: { environment: 'proxmox', nodos: [nodo('pmx-vine-wacha')] } });
+        api.get.mockResolvedValue({ data: { environment: 'proxmox', nodos: [nodo('pmx-vine-frames')] } });
         const { nodos } = await getNodos();
         expect(nodos.some((n) => n.node === 'internet')).toBe(false);
     });
@@ -88,8 +88,8 @@ describe('getNodos', () => {
         expect(nodos[0].puertos.map((p) => p.puerto)).toEqual([80, 443]);
     });
 
-    it('marca la VM de vine y wacha como exclusiva de proxmox', async () => {
-        api.get.mockResolvedValue({ data: { nodos: [nodo('pmx-vine-wacha')] } });
+    it('marca la VM de vine y frames como exclusiva de proxmox', async () => {
+        api.get.mockResolvedValue({ data: { nodos: [nodo('pmx-vine-frames')] } });
         const { nodos } = await getNodos();
         expect(nodos[0].soloProxmox).toBe(true);
         expect(nodos[0].rol).toContain('vine');
@@ -148,9 +148,9 @@ describe('hostname del nodo', () => {
     });
 
     it('no duplica el prefijo en un nodo que ya lo trae', async () => {
-        api.get.mockResolvedValue({ data: { environment: 'proxmox', nodos: [nodo('pmx-vine-wacha')] } });
+        api.get.mockResolvedValue({ data: { environment: 'proxmox', nodos: [nodo('pmx-vine-frames')] } });
         const { nodos } = await getNodos();
-        expect(nodos[0].hostname).toBe('pmx-vine-wacha');
+        expect(nodos[0].hostname).toBe('pmx-vine-frames');
     });
 
     it('un nodo desconocido se queda sin hostname en vez de inventarlo', async () => {

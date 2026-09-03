@@ -49,7 +49,7 @@ def test_los_proyectos_de_acervo_comparten_rol():
 
 
 def test_proyecto_desconocido_no_inventa_rol():
-    usuario = _usuario(projects=[{"slug": "wacha", "project_role": "editor"}])
+    usuario = _usuario(projects=[{"slug": "frames", "project_role": "editor"}])
     assert roles_para(usuario) == []
 
 

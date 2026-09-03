@@ -119,15 +119,15 @@ export const PROJECT_REGISTRY = {
             },
         ],
     },
-    identidad: {
-        label: 'Identidad',
+    mel: {
+        label: 'MEL',
         icon: <BgColorsOutlined />,
-        permissions: ['mariachi.identidad.view'],
+        permissions: ['mariachi.mel.view'],
         showBetaBadge: true,
         items: [
             {
-                key: '/identidad', path: '/identidad', label: 'Marcas y tokens',
-                icon: <BgColorsOutlined />, permissions: ['mariachi.identidad.update'],
+                key: '/mel', path: '/mel', label: 'Marcas y tokens',
+                icon: <BgColorsOutlined />, permissions: ['mariachi.mel.update'],
             },
         ],
     },
@@ -157,18 +157,18 @@ export const PROJECT_REGISTRY = {
             ],
         },
     } : {}),
-    wacha: {
-        label: 'Wacha',
+    frames: {
+        label: 'Frames',
         icon: <VideoCameraOutlined />,
-        permissions: ['mariachi.wacha.view'],
+        permissions: ['mariachi.frames.view'],
         badgeVariant: 'local',
         items: [
             {
-                key: '/wacha/camaras', path: '/wacha/camaras', label: 'Cámaras',
+                key: '/frames/camaras', path: '/frames/camaras', label: 'Cámaras',
                 icon: <UnorderedListOutlined />,
             },
             {
-                key: '/wacha/vivo', path: '/wacha/vivo', label: 'En vivo',
+                key: '/frames/vivo', path: '/frames/vivo', label: 'En vivo',
                 icon: <VideoCameraOutlined />,
             },
         ],
