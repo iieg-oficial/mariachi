@@ -81,10 +81,10 @@ export default function MelPage() {
     const todos = useMemo(() => detalle?.tokens || [], [detalle]);
 
     useEffect(() => {
-        if (todos.length && !todos.some((token) => token.id === seleccion)) {
-            setSeleccion((colores[0] || todos[0]).id);
+        if (seleccion !== null && todos.length && !todos.some((token) => token.id === seleccion)) {
+            setSeleccion(null);
         }
-    }, [todos, colores, seleccion]);
+    }, [todos, seleccion]);
 
     const valorDeClave = useCallback((clave, respaldo) => {
         const token = colores.find((item) => item.clave === clave);
@@ -94,11 +94,6 @@ export default function MelPage() {
 
     const fondo = useMemo(() => valorDeClave('color.bg', FONDO_POR_DEFECTO), [valorDeClave]);
     const colorTexto = useMemo(() => valorDeClave('color.text', TEXTO_POR_DEFECTO), [valorDeClave]);
-
-    const colorSeleccionado = colores.find((token) => token.id === seleccion);
-    const colorActivo = colorSeleccionado
-        ? cambios.valorDeToken(colorSeleccionado)
-        : valorDeClave('color.primary', null);
 
     const noAlcanzan = colores.filter((token) => {
         const juicio = evaluarToken(token.clave, cambios.valorDeToken(token), fondo, colorTexto);
@@ -247,10 +242,8 @@ export default function MelPage() {
                                 <VistaPrevia
                                     tokens={todos}
                                     seleccion={seleccion}
-                                    onSeleccionar={setSeleccion}
-                                    fondo={fondo}
-                                    colorTexto={colorTexto}
-                                    color={colorActivo}
+                                    valorDeToken={cambios.valorDeToken}
+                                    onLimpiar={() => setSeleccion(null)}
                                 />
                             </div>
                         )}

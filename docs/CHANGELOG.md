@@ -9,6 +9,30 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.78.0] - 2026-09-03
+
+### Cambiado: la vista previa de MEL deja de ser un catálogo y pasa a ser una pieza
+
+Enseñaba los tokens en tarjetas, que es lo mismo que ya hace la lista de la izquierda. Ahora es una
+**página de ejemplo con la marca puesta**: título, bajada, botones, etiquetas de estado, tarjetas de
+cifra, una gráfica y una tabla, todo compuesto con los valores de la marca. Se lee como algo real.
+
+**Al elegir un token se apaga lo que no lo usa.** Un mapa en `helpers/aplicacion.js` dice en qué
+elementos cae cada clave —`color.primary` al título, al botón primario y a la barra de la cifra— y el
+resto de la composición baja a `opacity: 0.16`. Arriba se dice cuántos lugares son.
+
+### Agregado: los tokens sin lugar natural ahora se demuestran
+
+En vez de avisar que no aplican: un `breakpoint.*` **encoge la composición** a ese ancho para enseñar
+cómo responde; una `shadow.*` se le aplica a una tarjeta que normalmente no lleva sombra, con una nota
+que lo explica; un `space.*` se vuelve la separación entre los botones; un `radius.*` redondea botones
+y tarjetas; la paleta `dataviz.*` son las barras de la gráfica.
+
+Una prueba fija que **ningún color sembrado quede huérfano**: si se agrega un token de color y nadie
+lo mapea, se pone roja.
+
+---
+
 ## [2.77.0] - 2026-09-03
 
 ### Cambiado: un solo modal, y con vista previa

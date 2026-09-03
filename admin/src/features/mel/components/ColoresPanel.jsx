@@ -82,7 +82,7 @@ export default function ColoresPanel({
                 {tokens.map((token) => {
                     const valor = valorDeToken(token);
                     const juicio = evaluarToken(token.clave, valor, fondoReal, textoReal);
-                    const activa = token.id === activo.id;
+                    const activa = token.id === seleccion;
                     return (
                         <div
                             key={token.id}
