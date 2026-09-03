@@ -6,7 +6,7 @@ import InfoBoxEditor from './InfoBoxEditor';
 import InfoBoxModeSwitch from './InfoBoxModeSwitch';
 import InfoBoxPreviewPanel from './InfoBoxPreviewPanel';
 import InfoBoxTemplatesModal from './InfoBoxTemplatesModal';
-import PropagacionGrupo from './PropagacionGrupo';
+import PropagacionBadge from './PropagacionBadge';
 
 const { Text } = Typography;
 
@@ -56,6 +56,9 @@ export default function TarjetitaEditor({
                     </Space>
                 )}
                 <Space size={8}>
+                    {nodeType === 'group' && !soloVista && (
+                        <PropagacionBadge rawTree={rawTree} groupId={currentLayerId} onIrACapa={onIrACapa} />
+                    )}
                     {esLienzo && !soloLlamada && (
                         <Tooltip title={soloVista ? 'Volver a editar' : 'Ver cómo queda'}>
                             <Button
@@ -69,10 +72,6 @@ export default function TarjetitaEditor({
                     {!soloVista && <InfoBoxModeSwitch value={mode} onChange={setMode} />}
                 </Space>
             </div>
-
-            {nodeType === 'group' && !soloVista && (
-                <PropagacionGrupo rawTree={rawTree} groupId={currentLayerId} onIrACapa={onIrACapa} />
-            )}
 
             {soloLlamada ? (
                 <div style={{

@@ -9,6 +9,28 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.71.1] - 2026-09-03
+
+### Cambiado: la propagación pasa de recuadro verde a badge accionable
+
+El aviso ocupaba una franja verde sobre el editor y desentonaba. Se convierte en un **badge
+`2/3`** junto al botón de ver cómo queda, verde cuando alguien la usa y neutro cuando nadie. Lo que
+decía el recuadro vive ahora en el tooltip.
+
+### Agregado: aplicar la tarjetita del grupo a sus propiedades
+
+El badge abre un menú con las propiedades y su estado —usa la del grupo, tiene la suya, sin
+tarjetita— y desde ahí se puede **hacer que una propiedad use la del grupo**, o **todas las que
+tienen la suya de un golpe**.
+
+Aplicar **borra la tarjetita propia** de esa capa para que vuelva a heredar; no copia nada, porque
+duplicar la configuración rompería la propagación futura. Pide confirmación y avisa de lo que
+importa: **se guarda de inmediato**, sobre otras capas, y no se deshace con el `Ctrl+Z` del editor,
+que solo cubre la tarjetita que estás editando.
+
+Las que dicen «sin tarjetita» quedan sin acción y explican por qué: el grupo no tenía una cuando se
+construyó el árbol, así que hay que guardar y refrescarlo.
+
 ## [2.71.0] - 2026-09-03
 
 ### Corregido: las bandas de ciclo salían negras
