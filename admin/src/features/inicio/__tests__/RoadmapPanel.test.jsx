@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { App } from 'antd';
 
@@ -141,7 +141,7 @@ describe('RoadmapPanel', () => {
         fireEvent.click(screen.getByText('mariachi 2').closest('g'));
 
         expect(await screen.findByRole('dialog')).toBeInTheDocument();
-        expect(screen.getByText('Viene de')).toBeInTheDocument();
+        expect(screen.getByText('Viene de otro hito')).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Eliminar' })).toBeInTheDocument();
     });
 
@@ -176,10 +176,25 @@ describe('RoadmapPanel', () => {
         fireEvent.click(await screen.findByRole('button', { name: /editar/i }));
         fireEvent.click(screen.getByText('mariachi 2').closest('g'));
 
-        expect(await screen.findByRole('dialog')).toBeInTheDocument();
-        expect(screen.getByText('Viene de')).toBeInTheDocument();
-        expect(screen.getByText('Qué dice la conexión')).toBeInTheDocument();
-        expect(screen.getByText('Orden en su día')).toBeInTheDocument();
+        const dialogo = await screen.findByRole('dialog');
+        expect(screen.getByText('Viene de otro hito')).toBeInTheDocument();
+        expect(screen.getByText('Qué dice esa conexión')).toBeInTheDocument();
+        expect(screen.getByText('Orden si comparten día')).toBeInTheDocument();
+
+        expect(dialogo.querySelector('input[placeholder="Buscar entre los demás hitos"]')).toBeInTheDocument();
+        expect(within(dialogo).getByRole('button', { name: /geoserver 1/ })).toBeInTheDocument();
+    });
+
+    it('los tipos se ofrecen en español y dibujados', async () => {
+        usuario.permisos = ['mariachi.roadmap.manage'];
+        montar();
+        fireEvent.click(await screen.findByRole('button', { name: /editar/i }));
+        fireEvent.click(screen.getByText('mariachi 2').closest('g'));
+        await screen.findByRole('dialog');
+
+        expect(screen.getByRole('button', { name: /Versión mayor/ })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Ya no se usa/ })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Por llegar/ })).toBeInTheDocument();
     });
 
     it('ofrece agregar los tres tipos de elemento', async () => {

@@ -2,8 +2,8 @@ import { SEMANTIC } from '@app/providers/brand';
 import { COLOR_PROYECTO } from '@features/inicio/constants/roadmapModelo';
 import { LOGO_PROYECTO } from '@features/inicio/constants/roadmapLogos';
 
-const ANCHO = 320;
-const CENTRO = 40;
+const ANCHO = 340;
+const CENTRO = 44;
 
 const fondoDe = (tipo, color) => {
     if (tipo === 'lanzamiento') return color;
@@ -20,7 +20,7 @@ const trazoDe = (tipo) => {
     return undefined;
 };
 
-export default function RoadmapPrevia({ item, tipo }) {
+export default function RoadmapPrevia({ item, tipo, madre, compacto }) {
     if (!item) return null;
 
     const color = COLOR_PROYECTO[item.proy] || COLOR_PROYECTO.infra;
@@ -58,6 +58,22 @@ export default function RoadmapPrevia({ item, tipo }) {
         );
     }
 
+    if (compacto) {
+        const c = COLOR_PROYECTO[item.proy] || COLOR_PROYECTO.infra;
+        const m = item.tipo === 'muerto';
+        return (
+            <svg width="92" height="26" viewBox="0 0 92 26" aria-hidden="true">
+                <rect
+                    x={8} y={4} width={76} height={18} rx={5}
+                    fill={fondoDe(item.tipo, c)} stroke={m ? SEMANTIC.danger : c}
+                    strokeWidth={['joven', 'feature', 'legacy'].includes(item.tipo) ? 1.2 : 1.8}
+                    strokeDasharray={trazoDe(item.tipo)}
+                />
+                <line x1={46} y1={22} x2={46} y2={25} stroke={c} strokeWidth={1} strokeOpacity={0.4} />
+            </svg>
+        );
+    }
+
     const etiqueta = item.txt || 'hito nuevo';
     const partes = etiqueta.includes(' · ') ? etiqueta.split(' · ') : [etiqueta];
     const logo = LOGO_PROYECTO[item.proy] && item.tipo !== 'feature' ? LOGO_PROYECTO[item.proy] : null;
@@ -70,10 +86,40 @@ export default function RoadmapPrevia({ item, tipo }) {
     const y = CENTRO - alto / 2;
 
     return (
-        <svg width="100%" height="88" viewBox={`0 0 ${ANCHO} 88`} role="img" aria-label="Vista previa del hito">
-            <line x1={20} y1={72} x2={ANCHO - 20} y2={72} stroke="#5C2472" strokeWidth={2} strokeOpacity={0.3} strokeLinecap="round" />
-            <line x1={ANCHO / 2} y1={72} x2={ANCHO / 2} y2={y + alto} stroke={borde} strokeWidth={1.5} strokeOpacity={0.32} />
-            <circle cx={ANCHO / 2} cy={72} r={4.5} fill={borde} />
+        <svg width="100%" height="100" viewBox={`0 0 ${ANCHO} 100`} role="img" aria-label="Vista previa del hito">
+            <line x1={16} y1={80} x2={ANCHO - 16} y2={80} stroke="#5C2472" strokeWidth={2} strokeOpacity={0.3} strokeLinecap="round" />
+
+            {madre && (
+                <g>
+                    <rect
+                        x={16} y={CENTRO - 13} width={Math.min(104, madre.txt.length * 6.6 + 16)} height={26} rx={6}
+                        fill="#fff" stroke={COLOR_PROYECTO[madre.proy] || COLOR_PROYECTO.infra} strokeWidth={1.4} strokeOpacity={0.7}
+                    />
+                    <text
+                        x={16 + Math.min(104, madre.txt.length * 6.6 + 16) / 2} y={CENTRO + 4} textAnchor="middle"
+                        fill="rgba(0,0,0,0.6)" style={{ fontSize: 10, fontFamily: 'monospace' }}
+                    >
+                        {madre.txt}
+                    </text>
+                    <path
+                        d={`M ${16 + Math.min(104, madre.txt.length * 6.6 + 16)} ${CENTRO} Q ${ANCHO / 2 - 70} ${CENTRO - 22} ${ANCHO / 2 - ancho / 2} ${CENTRO}`}
+                        fill="none" stroke={borde} strokeWidth={1.5} strokeOpacity={0.55} strokeDasharray="5 4"
+                    />
+                    <text
+                        x={ANCHO / 2 - 74} y={CENTRO - 18} textAnchor="middle" fill={borde} fillOpacity={0.8}
+                        paintOrder="stroke" stroke="#fff" strokeWidth={3}
+                        style={{ fontSize: 9, fontFamily: 'monospace', letterSpacing: '.05em' }}
+                    >
+                        {item.leyenda || 'lo sucede'}
+                    </text>
+                </g>
+            )}
+
+            <line x1={ANCHO / 2} y1={80} x2={ANCHO / 2} y2={y + alto} stroke={borde} strokeWidth={1.5} strokeOpacity={0.32} />
+            <circle cx={ANCHO / 2} cy={80} r={4.5} fill={borde} />
+            <text x={ANCHO / 2} y={96} textAnchor="middle" fill="rgba(0,0,0,0.4)" style={{ fontSize: 9, fontFamily: 'monospace' }}>
+                {item.fecha || item.f || ''}
+            </text>
 
             <rect
                 x={ANCHO / 2 - ancho / 2} y={y} width={ancho} height={alto} rx={8}

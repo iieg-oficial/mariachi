@@ -9,6 +9,42 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.80.0] - 2026-09-03
+
+### Cambiado: el formulario del hito deja de hablar en interno
+
+Los tres campos que había que traducir mentalmente pasan a elegirse viéndolos:
+
+- **El tipo** era un desplegable con `porllegar`, `legacy` y `joven` — nombres que solo existen en el
+  código. Ahora son ocho miniaturas **dibujadas como se van a ver**, con su nombre en español
+  —«Por llegar», «De antes», «Sin 1.0 todavía»— y una línea que explica cada una.
+- **El proyecto** era una lista de veintiún slugs en gris. Ahora cada uno viene con su color, que es
+  justamente lo que decide en el mapa, y con su logo los dos que lo tienen.
+- **La conexión** era un desplegable de cincuenta y dos etiquetas. Ahora es una lista buscable con
+  el color y la fecha de cada hito, ordenada por fecha.
+
+Las etiquetas también dejan de ser jerga: «Cómo se llama», «Cuándo pasó», «Viene de otro hito»,
+«Por qué importa».
+
+### Cambiado: la fecha se elige en un calendario
+
+Se acabó escribir `YYYY-MM-DD` a mano. El `DatePicker` la toma y **la fecha visible se escribe
+sola** —«31 jul 2026»—, editable después para los casos que no son una fecha: «por salir»,
+«2027 · sin fecha».
+
+### Agregado: la vista previa muestra la conexión y la fecha
+
+Al elegir de qué hito viene, la previa dibuja **al otro hito, la curva punteada y la leyenda**, tal
+como van a salir en el mapa. Debajo del punto aparece la fecha. Ya no hay que guardar para ver si la
+sucesión quedó donde se quería.
+
+### Interno
+
+- Los tres selectores van memoizados. Sin eso, cada tecla en el formulario redibujaba los ocho SVG
+  de tipos y los veintiún proyectos.
+
+---
+
 ## [2.79.0] - 2026-09-03
 
 ### Agregado: la vista previa señala en los dos sentidos
