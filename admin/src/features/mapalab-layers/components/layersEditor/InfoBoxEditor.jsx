@@ -11,6 +11,7 @@ export default function InfoBoxEditor({
     nodeType = null,
     soloVista = false,
     onAbrirPlantillas = null,
+    onIrACapa = null,
 }) {
     if (mode === 'json') {
         return <InfoBoxJsonEditor value={value} onChange={onChange} inherited={inherited} />;
@@ -39,6 +40,7 @@ export default function InfoBoxEditor({
             inherited={inherited}
             soloVista={soloVista}
             onAbrirPlantillas={onAbrirPlantillas}
+            onIrACapa={onIrACapa}
         />
     );
 }

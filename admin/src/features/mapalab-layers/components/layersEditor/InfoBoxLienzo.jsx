@@ -34,7 +34,7 @@ const EDITORES = {
     cards: CardsBlock,
 };
 
-export default function InfoBoxLienzo({ value, onChange, availableFields = [], inherited = null, soloVista = false, onAbrirPlantillas = null }) {
+export default function InfoBoxLienzo({ value, onChange, availableFields = [], inherited = null, soloVista = false, onAbrirPlantillas = null, onIrACapa = null }) {
     const config = normalizeInfoboxConfig(value || {});
     const [seleccion, setSeleccion] = useState(null);
     const { undo, redo, canUndo, canRedo } = useInfoboxUndo(value, onChange);
@@ -116,7 +116,18 @@ export default function InfoBoxLienzo({ value, onChange, availableFields = [], i
                 {heredando && (
                     <div style={{ marginBottom: 10, maxWidth: 260 }}>
                         <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 6 }}>
-                            Heredada del grupo <code>{inherited.label}</code>. Se ve así en el visor.
+                            Esta capa no tiene tarjetita propia: muestra la del grupo{' '}
+                            {onIrACapa ? (
+                                <Button
+                                    type="link"
+                                    size="small"
+                                    onClick={() => onIrACapa(inherited.id)}
+                                    style={{ padding: 0, height: 'auto', fontSize: 12 }}
+                                >
+                                    {inherited.label}
+                                </Button>
+                            ) : <code>{inherited.label}</code>}
+                            . Así se ve en el visor.
                         </Text>
                         <Button size="small" type="primary" onClick={personalizar}>
                             Personalizar para esta capa

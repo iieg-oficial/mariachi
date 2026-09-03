@@ -6,6 +6,7 @@ import InfoBoxEditor from './InfoBoxEditor';
 import InfoBoxModeSwitch from './InfoBoxModeSwitch';
 import InfoBoxPreviewPanel from './InfoBoxPreviewPanel';
 import InfoBoxTemplatesModal from './InfoBoxTemplatesModal';
+import PropagacionGrupo from './PropagacionGrupo';
 
 const { Text } = Typography;
 
@@ -24,6 +25,7 @@ export default function TarjetitaEditor({
     currentLayerId = null,
     inherited = null,
     nodeType = null,
+    onIrACapa = null,
 }) {
     const [mode, setMode] = useState('lienzo');
     const [soloVista, setSoloVista] = useState(false);
@@ -67,6 +69,10 @@ export default function TarjetitaEditor({
                     {!soloVista && <InfoBoxModeSwitch value={mode} onChange={setMode} />}
                 </Space>
             </div>
+
+            {nodeType === 'group' && !soloVista && (
+                <PropagacionGrupo rawTree={rawTree} groupId={currentLayerId} onIrACapa={onIrACapa} />
+            )}
 
             {soloLlamada ? (
                 <div style={{
@@ -112,6 +118,7 @@ export default function TarjetitaEditor({
                             nodeType={nodeType}
                             soloVista={soloVista}
                             onAbrirPlantillas={() => setPlantillasAbiertas(true)}
+                            onIrACapa={onIrACapa}
                         />
                     </div>
                     {previewValue && (

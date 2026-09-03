@@ -11,6 +11,7 @@ import {
     isOrganizer,
     nodeIcon,
     shapeOf,
+    TARJETITA_MARCA,
 } from '@features/mapalab-layers/constants/nodeVisuals';
 import { resolveAcervoUrl } from '@shared/utils/acervoUrl';
 
@@ -25,6 +26,22 @@ function StatePills({ node }) {
             </Tag>
         </Tooltip>
     ));
+}
+
+function TarjetitaDot({ node }) {
+    const marca = TARJETITA_MARCA[node.tarjetita];
+    if (!marca || isOrganizer(node.nodeType)) return null;
+    return (
+        <Tooltip title={marca.titulo}>
+            <span
+                aria-label={marca.titulo}
+                style={{
+                    width: 7, height: 7, borderRadius: '50%', flex: '0 0 auto',
+                    display: 'inline-block', marginLeft: 6, ...marca.estilo,
+                }}
+            />
+        </Tooltip>
+    );
 }
 
 function TitleBlock({ node, isMobile }) {
@@ -58,6 +75,7 @@ function TitleBlock({ node, isMobile }) {
                     grupo · {node.children?.length || 0} {node.children?.length === 1 ? 'variante' : 'variantes'}
                 </Tag>
             )}
+            <TarjetitaDot node={node} />
             <StatePills node={node} />
         </>
     );

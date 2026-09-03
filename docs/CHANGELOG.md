@@ -9,6 +9,84 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.69.0] - 2026-09-03
+
+### Agregado: la propagación de la tarjetita se ve en tres lugares
+
+Un grupo comparte su tarjetita con las propiedades que no tienen una propia. Eso pasaba en
+silencio: editabas la del grupo sin saber a quién le pegaba, y abrías una propiedad sin saber de
+dónde venía lo que estaba viendo.
+
+**En el editor del grupo** —lo que faltaba por completo— un renglón dice «esta tarjetita la usan
+**6 de 8** propiedades», con la lista de cuáles heredan, cuáles tienen la suya y cuáles no tienen
+ninguna. Cada nombre es un enlace que abre esa capa. Se calcula del árbol que ya está cargado, sin
+pedirle nada al backend.
+
+**En el editor de la propiedad** el aviso deja de ser un `<code>` con el nombre del grupo y pasa a
+ser un enlace para ir a él. Y dice lo que realmente pasa: «esta capa no tiene tarjetita propia:
+muestra la del grupo X».
+
+**En el árbol** cada capa lleva un punto: **relleno** si tiene tarjetita propia, **hueco** si la
+hereda de su grupo, y **nada** si no tiene ninguna —esas son las que el visor rellena inventando
+una, y hasta ahora no había forma de verlas sin abrirlas una por una.
+
+La herencia se lee del campo `inheritedFrom` que el árbol ya resuelve (mapalab 1.165.0), con el
+recorrido de ancestros de antes como respaldo para un árbol en caché viejo.
+
+## [2.68.0] - 2026-09-02
+
+### Cambiado: el módulo Wacha ahora se llama Frames
+
+`wacha` nombraba el módulo por lo que hace mirar —«wacha» es «checa esto»—, pero no decía nada de
+lo que guarda ni de para qué existe. El módulo pasa a llamarse **FRAMES**, sigla de *Filmación y
+Resguardo Audiovisual para Monitoreo de Eventos y Seguridad*, que además es el nombre técnico de lo
+que el sistema almacena.
+
+Cambian el schema de la base (`wacha` → `frames`, con su índice), el prefijo de la API
+(`/wacha/*` → `/frames/*`), los permisos (`mariachi.wacha.view` → `mariachi.frames.view`), el rol
+atómico («Wacha - camaras» → «Frames - camaras»), las rutas del admin (`/wacha/camaras` y
+`/wacha/vivo`), la carpeta del admin y la entrada del sider. Las variables de entorno pasan de
+`WACHA_*` a `FRAMES_*`. Los datos no se tocan: la migración `fr4mes0001` es un `ALTER SCHEMA`.
+
+**No lleva capa de compatibilidad**, a diferencia del rename de MEL. El módulo nunca salió de
+`tamal-rojo`: no hay clientes con las rutas viejas ni permisos viejos que revocar en minerva. El
+manifiesto se importa y listo.
+
+No se renombró nada de **Frigate**: la imagen, las variables que consume (`FRIGATE_RTSP_PASSWORD`,
+`FRIGATE_CAMERA_*`) y la ruta `/media/frigate` son del producto upstream y se quedan como están.
+
+---
+
+## [2.67.0] - 2026-09-02
+
+### Cambiado: el módulo Identidad ahora se llama MEL
+
+`Identidad` era un nombre que ya significaba otras tres cosas en el ecosistema: el grupo de columnas
+del editor de capas, la identidad del actor en los envíos de SIEEJ y la identidad OIDC que da minerva.
+Buscar «identidad» devolvía las cuatro mezcladas. El módulo pasa a llamarse **MEL — Manual de Estilo
+y Lineamientos**: los tokens son el estilo, los campos de la guía son los lineamientos.
+
+Cambian el schema de la base (`identidad` → `mel`, con sus índices y constraints), el prefijo de la
+API (`/identidad` → `/mel`), los permisos (`mariachi.identidad.*` → `mariachi.mel.*`), la carpeta del
+admin y la entrada del sider. Los datos no se tocan: la migración `m3l0001` es un `ALTER SCHEMA`.
+
+No se renombraron el tab **Identidad** del editor de capas ni la «identidad del actor» de SIEEJ: son
+otra cosa y se quedan como están. El ZIP descargable sigue llamándose `identidad-<marca>.zip`, que
+es lo que describe su contenido para quien lo recibe.
+
+### Agregado: compatibilidad mientras minerva se pone al día
+
+`/identidad` sigue respondiendo como alias de `/mel`, marcado como deprecado en el OpenAPI, y la ruta
+`/identidad` del admin redirige a `/mel`. Los permisos viejos siguen dando acceso: el gate acepta
+`mariachi.mel.view` **o** `mariachi.identidad.view`, para que el deploy del código no dependa de que
+el manifiesto ya esté importado en minerva.
+
+Ambas compatibilidades se retiran en la fase 3, junto con la revocación explícita de
+`mariachi.identidad.view`, `mariachi.identidad.update` y el rol `Identidad - administracion`, que el
+import de minerva **no borra**.
+
+---
+
 ## [2.66.0] - 2026-09-02
 
 ### Cambiado: editar deja de ser un formulario
@@ -1848,7 +1926,7 @@ renombre del 31 de julio (huachicol 2.5.0). No empataban, así que esa tarjeta s
 para siempre aunque el servicio estuviera sano.
 
 De paso deja de existir la causa: **la lista de servicios ahora la manda el monitor** y el catálogo
-del frontend solo aporta enlaces y la capa de cada uno. Vine y Wacha, que se sondeaban cada minuto y
+del frontend solo aporta enlaces y la capa de cada uno. Vine y Frames, que se sondeaban cada minuto y
 no aparecían en ningún lado, salen solos; y un servicio nuevo aparece sin tocar el frontend, bajo
 «Sin clasificar» hasta que se le asigne capa.
 
@@ -2615,7 +2693,7 @@ Estadísticas ganó dos pestañas: **General** —panorama, ritmo, accesos y cal
 —vínculos, horarios, huella contra tarjeta y los rankings—, porque en una sola página ya no cabía.
 
 En el sider vine lleva ahora **`LOCAL` además de `TEST`**: habla con el biométrico de la LAN y no
-sirve fuera del instituto, igual que wacha. `sider-config` acepta desde ahora un arreglo en
+sirve fuera del instituto, igual que frames. `sider-config` acepta desde ahora un arreglo en
 `badgeVariant`, no sólo una cadena.
 
 **El departamento del biométrico resultó ser tres campos en uno**: la adscripción, el tipo de
@@ -2880,9 +2958,9 @@ hacer nada**, para que el cron no reporte error en los nodos donde vine no corre
 
 ### Cambiado: los módulos locales no se ven por ser administrador
 
-wacha se apoyaba en `mariachi.sistema.manage`, que **está en el rol Administrador**: cualquier
+frames se apoyaba en `mariachi.sistema.manage`, que **está en el rol Administrador**: cualquier
 administrador veía las cámaras sin que nadie se lo hubiera dado. Ahora cada módulo local tiene
-permiso propio —`mariachi.wacha.view` y `mariachi.vine.view`—, **ningún rol compuesto los incluye**
+permiso propio —`mariachi.frames.view` y `mariachi.vine.view`—, **ningún rol compuesto los incluye**
 y el acceso se asigna persona por persona.
 
 Los dos entran además a `PANEL_PERMISSIONS`: sin eso, quien tuviera sólo el rol del módulo quedaba
@@ -2894,7 +2972,7 @@ agregadas, que no señalan a nadie; `mariachi.vine_personas.view` agrega los ran
 que son dato personal laboral. Los dos se declaran en `manifest.minerva.yml` con un rol atómico
 cada uno.
 
-**Nace apagada y falla cerrada**, con el mismo criterio que wacha: sin `VINE_ENABLED` el router ni
+**Nace apagada y falla cerrada**, con el mismo criterio que frames: sin `VINE_ENABLED` el router ni
 se registra —la ruta responde 404— y sin `VITE_VINE_ENABLED` en el build del admin la sección no
 aparece en el sider ni se registra su ruta.
 
@@ -2914,10 +2992,10 @@ aparece en el sider ni se registra su ruta.
 
 ## [2.3.0] - 2026-08-10
 
-### Agregado: vista en vivo de las cámaras de wacha
+### Agregado: vista en vivo de las cámaras de frames
 
-El módulo de wacha ya administraba las cámaras, pero para verlas había que abrir Frigate. Ahora el
-CMS trae el mosaico en vivo (`/wacha/vivo`) y una vista a pantalla completa (`/wacha/vivo/pantalla`),
+El módulo de frames ya administraba las cámaras, pero para verlas había que abrir Frigate. Ahora el
+CMS trae el mosaico en vivo (`/frames/vivo`) y una vista a pantalla completa (`/frames/vivo/pantalla`),
 pensada para dejarla puesta en un monitor: sin barra lateral ni cabecera, con el mosaico ocupando
 todo el espacio.
 
@@ -2927,14 +3005,14 @@ que la administración de cámaras.
 
 ## [2.2.0] - 2026-08-10
 
-### Agregado: módulo wacha, videovigilancia administrada desde el CMS
+### Agregado: módulo frames, videovigilancia administrada desde el CMS
 
 Las cámaras dejan de configurarse editando el `config.yml` de Frigate a mano en la máquina: pasan a
-vivir en Postgres, en un schema propio `wacha`, y mariachi genera y entrega la configuración por la
+vivir en Postgres, en un schema propio `frames`, y mariachi genera y entrega la configuración por la
 API de Frigate. El YAML pasa a ser artefacto generado.
 
-El módulo va **detrás de `WACHA_ENABLED`, que por omisión es `false`**, y solo se enciende en el
-nodo donde vive wacha. No cuelga de `settings.environment` a propósito: el stack local corre con
+El módulo va **detrás de `FRAMES_ENABLED`, que por omisión es `false`**, y solo se enciende en el
+nodo donde vive frames. No cuelga de `settings.environment` a propósito: el stack local corre con
 `ENVIRONMENT=production`, así que derivarlo de ahí lo ocultaría en local o lo encendería en
 producción. Sin la variable el router ni se registra. La migración sí corre en todos los entornos y
 crea el schema vacío, que es inofensivo; condicionarla haría divergir el historial de alembic.
@@ -2942,13 +3020,13 @@ crea el schema vacío, que es inofensivo; condicionarla haría divergir el histo
 Tres vistas en el CMS:
 
 - **Cámaras**, con selector de modo: fichas o tabla. El modo tabla **reutiliza el `GridPanel`** de
-  captura masiva declarando un `GridSpec` nuevo (`wacha-camaras`); no hizo falta tocar la
+  captura masiva declarando un `GridSpec` nuevo (`frames-camaras`); no hizo falta tocar la
   maquinaria porque el motor ya soportaba la base de mariachi. Trae búsqueda, exportación,
   historial y presencia, y valida en el servidor que la URL empiece con `rtsp://` y que la
   retención vaya de 1 a 365 días.
 - **En vivo**, mosaico con el MJPEG de cada cámara. **mariachi proxea el video**, así que el
-  navegador no necesita alcanzar la red donde vive wacha.
-- Columna **En wacha** con los fps reales que reporta `/api/stats`, separada de la configuración
+  navegador no necesita alcanzar la red donde vive frames.
+- Columna **En frames** con los fps reales que reporta `/api/stats`, separada de la configuración
   guardada: una cámara puede estar habilitada en el catálogo y caída en la realidad.
 
 Aplicar valida contra Frigate antes de escribir y se niega si no quedaría ninguna cámara

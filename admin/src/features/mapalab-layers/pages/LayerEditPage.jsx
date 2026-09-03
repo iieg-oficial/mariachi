@@ -40,6 +40,7 @@ import {
     labelForNode,
 } from '@features/mapalab-layers/constants/nodeTypes';
 import AdvancedStack from '@features/mapalab-layers/components/layersEditor/AdvancedStack';
+import AppearancePanel from '@features/mapalab-layers/components/layersEditor/AppearancePanel';
 import EditorSection from '@features/mapalab-layers/components/layersEditor/EditorSection';
 import LayerBreadcrumb from '@features/mapalab-layers/components/LayerBreadcrumb';
 import TreeSearchInput from '@features/mapalab-layers/components/TreeSearchInput';
@@ -50,6 +51,7 @@ import { HISTORY_COLUMNS, METADATA_HISTORY_COLUMNS, diffPayload } from '@feature
 import { findPath } from '@features/mapalab-layers/utils/treeSearch';
 import { isOrganizer } from '@features/mapalab-layers/constants/nodeVisuals';
 import { GEOMETRY_TYPE_OPTIONS } from '@features/mapalab-layers/constants/layerConfigCatalogs';
+import { grupoQueHereda } from '@features/mapalab-layers/utils/propagacionTarjetita';
 import MunicipioFieldPicker from '@features/mapalab-layers/components/MunicipioFieldPicker';
 import { findNodeContext } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
 import { message } from '@shared/services/message';
@@ -521,6 +523,8 @@ export default function LayerEditPage() {
     })();
 
     const inheritedInfobox = (() => {
+        const delArbol = grupoQueHereda(rawTree, layerId);
+        if (delArbol?.config) return delArbol;
         if (!breadcrumbPath.length) return null;
         for (let i = breadcrumbPath.length - 2; i >= 0; i--) {
             const ancestor = breadcrumbPath[i];
@@ -777,67 +781,68 @@ export default function LayerEditPage() {
                         </EditorSection>
                     )}
                     {watchedNodeType !== 'tema' && (
-                        <EditorSection
-                            title="Estatus de capa"
-                            hint="Distintivo que acompaña al nombre de la capa en el visor."
-                            first
-                        >
-                            <Form.Item
-                                name="badge"
-                                label={null}
-                                valuePropName="value"
-                                trigger="onChange"
-                            >
-                                <LayerBadgeSection />
-                            </Form.Item>
-                        </EditorSection>
+                        <AppearancePanel
+                            form={form}
+                            items={[
+                                {
+                                    key: 'badge',
+                                    titulo: 'Distintivo',
+                                    ayuda: 'Muestra una inicial de color junto al nombre de la capa en el visor. Solo aparece dentro de su ventana de vigencia.',
+                                    path: ['badge', 'enabled'],
+                                    children: (
+                                        <Form.Item name="badge" label={null} valuePropName="value" trigger="onChange" noStyle>
+                                            <LayerBadgeSection />
+                                        </Form.Item>
+                                    ),
+                                },
+                                {
+                                    key: 'notice',
+                                    titulo: 'Aviso al encender',
+                                    ayuda: 'Mensaje que el visor muestra al encender la capa. Sirve para advertir de datos preliminares o de un corte pendiente.',
+                                    path: ['notice', 'enabled'],
+                                    children: (
+                                        <Form.Item name="notice" label={null} valuePropName="value" trigger="onChange" noStyle>
+                                            <LayerNoticeSection
+                                                geoserverWorkspace={noticeWorkspace}
+                                                geoserverLayer={selectedGsLayer || null}
+                                                styles={(Array.isArray(selectedStyles) ? selectedStyles.join(',') : selectedStyles) || ''}
+                                                cqlFilter={form.getFieldValue('cqlFilter') || ''}
+                                                defaultZoom={form.getFieldValue('defaultZoom') || null}
+                                            />
+                                        </Form.Item>
+                                    ),
+                                },
+                                {
+                                    key: 'highlight',
+                                    titulo: 'Resaltado al hacer clic',
+                                    ayuda: watchedNodeType === 'leaf'
+                                        ? 'Cómo se marca una feature al hacer clic sobre ella. Aplica a esta capa.'
+                                        : 'Cómo se marca una feature al hacer clic. Se propaga a las capas hijas que no tengan su propio resaltado.',
+                                    path: 'highlightColor',
+                                    derivado: (v) => Boolean(v),
+                                    onToggle: (siguiente, f) => {
+                                        f.setFieldValue('highlightColor', siguiente ? '#FF8300' : null);
+                                        if (!siguiente) f.setFieldValue('highlightShape', null);
+                                    },
+                                    children: <LayerHighlightField />,
+                                },
+                                {
+                                    key: 'hidden',
+                                    titulo: 'Oculta en el menú',
+                                    ayuda: 'No aparece en el árbol del visor, pero sigue abriéndose por URL o slug.',
+                                    path: 'hiddenInMenu',
+                                    nota: 'solo por URL',
+                                },
+                                {
+                                    key: 'disabled',
+                                    titulo: 'Fuera de servicio',
+                                    ayuda: 'En mantenimiento o sin datos. El visor la muestra atenuada y no deja encenderla.',
+                                    path: 'disabled',
+                                    nota: 'no se puede encender',
+                                },
+                            ]}
+                        />
                     )}
-                    {watchedNodeType !== 'tema' && (
-                        <EditorSection title="Aviso" hint="Mensaje que aparece al encender la capa.">
-                            <Form.Item
-                                name="notice"
-                                label={null}
-                                valuePropName="value"
-                                trigger="onChange"
-                            >
-                                <LayerNoticeSection
-                                    geoserverWorkspace={noticeWorkspace}
-                                    geoserverLayer={selectedGsLayer || null}
-                                    styles={(Array.isArray(selectedStyles) ? selectedStyles.join(',') : selectedStyles) || ''}
-                                    cqlFilter={form.getFieldValue('cqlFilter') || ''}
-                                    defaultZoom={form.getFieldValue('defaultZoom') || null}
-                                />
-                            </Form.Item>
-                        </EditorSection>
-                    )}
-                    {watchedNodeType !== 'tema' && (
-                        <EditorSection
-                            title="Resaltado"
-                            hint={watchedNodeType === 'leaf'
-                                ? 'Cómo se marca una feature al hacer clic. Aplica a esta capa.'
-                                : 'Cómo se marca una feature al hacer clic. Se propaga a las capas hijas que no tengan su propio resaltado.'}
-                        >
-                            <LayerHighlightField />
-                        </EditorSection>
-                    )}
-                    <EditorSection title="Estado">
-                        <Form.Item
-                            label="Oculta en menú"
-                            name="hiddenInMenu"
-                            valuePropName="checked"
-                            tooltip="Si está activa, la capa no aparece en el árbol del visor pero sigue siendo accesible vía URL/slug."
-                        >
-                            <Switch />
-                        </Form.Item>
-                        <Form.Item
-                            label="Fuera de servicio"
-                            name="disabled"
-                            valuePropName="checked"
-                            tooltip="En mantenimiento o sin datos. El visor la muestra atenuada y no deja encenderla."
-                        >
-                            <Switch />
-                        </Form.Item>
-                    </EditorSection>
                 </>
             ),
         },
@@ -1027,6 +1032,7 @@ export default function LayerEditPage() {
                             currentLayerId={layerId}
                             inherited={inheritedInfobox}
                             nodeType={watchedNodeType}
+                            onIrACapa={handleSelectFromTree}
                         />
                     </Form.Item>
                 </SampleFeaturesProvider>

@@ -77,3 +77,14 @@ export const STATE_PILLS = [
 
 export const INDENT_STEP = 16;
 export const INDENT_STEP_MOBILE = 12;
+
+export const TARJETITA_MARCA = {
+    propia: {
+        titulo: 'Tarjetita propia',
+        estilo: { background: '#5C2472', border: '1px solid #5C2472' },
+    },
+    heredada: {
+        titulo: 'Hereda la tarjetita de su grupo',
+        estilo: { background: 'transparent', border: '1px solid #5C2472' },
+    },
+};

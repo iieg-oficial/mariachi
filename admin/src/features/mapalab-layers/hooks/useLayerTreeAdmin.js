@@ -20,6 +20,7 @@ export const toAntTreeData = (nodes, parentNodeType = null) =>
             disabled: n.disabled === true || legacyDisabled,
             hiddenInMenu: n.hiddenInMenu === true,
             iconUrl: n.iconUrl,
+            tarjetita: n.littleCard ? (n.inheritedFrom ? 'heredada' : 'propia') : null,
             raw: n,
             children: n.children && n.children.length > 0 ? toAntTreeData(n.children, n.nodeType) : undefined,
         };
