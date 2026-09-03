@@ -249,7 +249,7 @@ export default function RoadmapPanel() {
                                 zIndex: 6,
                                 display: 'flex',
                                 justifyContent: 'flex-end',
-                                padding: '2px 2px 8px',
+                                padding: '6px 4px 12px',
                                 background: '#fff',
                             }}>
                                 {acciones}

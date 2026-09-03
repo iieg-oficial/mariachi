@@ -46,6 +46,13 @@ describe('RoadmapAcciones', () => {
         expect(screen.getByRole('button', { name: 'Alejar el mapa' })).not.toBeDisabled();
     });
 
+    it('cada botón conserva su nombre aunque el rótulo se esconda', () => {
+        montar({ pantallaCompleta: false });
+        ['Pausar', 'Ver todos', 'Pantalla completa'].forEach((nombre) => {
+            expect(screen.getByRole('button', { name: nombre })).toBeInTheDocument();
+        });
+    });
+
     it('esconde el zoom cuando no hay pantalla completa', () => {
         montar({ pantallaCompleta: false });
         expect(screen.queryByRole('button', { name: 'Acercar el mapa' })).not.toBeInTheDocument();

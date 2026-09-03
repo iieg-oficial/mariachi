@@ -1,26 +1,38 @@
-import { Button, Space } from 'antd';
+import { Button, Space, Tooltip } from 'antd';
+import useIsMobile from '@shared/hooks/useIsMobile';
 import { AimOutlined, BlockOutlined, PlusOutlined, RetweetOutlined } from '@ant-design/icons';
 
+const ALTAS = [
+    { clave: 'punto', texto: 'Cambiar punto', icono: <AimOutlined /> },
+    { clave: 'hitos', texto: 'Agregar hito', icono: <PlusOutlined /> },
+    { clave: 'ciclos', texto: 'Agregar ciclo', icono: <BlockOutlined /> },
+    { clave: 'procesos', texto: 'Agregar proceso', icono: <RetweetOutlined /> },
+];
+
 export default function RoadmapAltas({ guardando, onPunto, onAgregar }) {
-    const pulsar = (accion) => (evento) => {
+    const { isMobile } = useIsMobile();
+
+    const pulsar = (clave) => (evento) => {
         evento.stopPropagation();
-        accion();
+        if (clave === 'punto') onPunto();
+        else onAgregar(clave);
     };
 
     return (
-        <Space size={6} wrap style={{ padding: '0 2px 8px' }}>
-            <Button size="small" icon={<AimOutlined />} onClick={pulsar(onPunto)}>
-                Cambiar punto
-            </Button>
-            <Button size="small" icon={<PlusOutlined />} loading={guardando} onClick={pulsar(() => onAgregar('hitos'))}>
-                Agregar hito
-            </Button>
-            <Button size="small" icon={<BlockOutlined />} loading={guardando} onClick={pulsar(() => onAgregar('ciclos'))}>
-                Agregar ciclo
-            </Button>
-            <Button size="small" icon={<RetweetOutlined />} loading={guardando} onClick={pulsar(() => onAgregar('procesos'))}>
-                Agregar proceso
-            </Button>
+        <Space size={8} wrap style={{ padding: '6px 4px 12px' }}>
+            {ALTAS.map((alta) => (
+                <Tooltip key={alta.clave} title={alta.texto}>
+                    <Button
+                        size="small"
+                        icon={alta.icono}
+                        aria-label={alta.texto}
+                        loading={alta.clave !== 'punto' && guardando}
+                        onClick={pulsar(alta.clave)}
+                    >
+                        {isMobile ? null : alta.texto}
+                    </Button>
+                </Tooltip>
+            ))}
         </Space>
     );
 }

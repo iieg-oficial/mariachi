@@ -9,6 +9,20 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.75.2] - 2026-09-03
+
+### Cambiado
+
+- **En móvil los botones del roadmap se quedan en icono.** Ocho botones con texto no caben en un
+  teléfono: se apilaban en tres filas y empujaban el mapa fuera de la pantalla. El rótulo se retira
+  por debajo del punto de quiebre `md` y pasa a `Tooltip`, con `aria-label` en todos para que el
+  nombre accesible no dependa del texto visible — un lector de pantalla y las pruebas siguen
+  encontrándolos igual.
+- **Las filas de acciones dejan de ir pegadas** al encabezado y al lienzo: `6px` arriba y `12px`
+  abajo, y la fila que baja en móvil separa `10px`.
+
+---
+
 ## [2.75.1] - 2026-09-03
 
 ### Corregido: «usar esta» escribía pero no se veía

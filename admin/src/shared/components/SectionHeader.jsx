@@ -45,7 +45,7 @@ export default function SectionHeader({
                 </span>
             </div>
             {badge && compacto && <div style={{ marginTop: 8 }}>{badge}</div>}
-            {acciones && compacto && <div style={{ marginTop: 8 }}>{acciones}</div>}
+            {acciones && compacto && <div style={{ marginTop: 10 }}>{acciones}</div>}
         </div>
     );
 }
