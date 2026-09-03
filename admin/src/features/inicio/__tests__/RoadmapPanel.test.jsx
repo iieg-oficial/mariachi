@@ -107,7 +107,7 @@ describe('RoadmapPanel', () => {
         usuario.permisos = ['mariachi.roadmap.manage'];
         montar();
         fireEvent.click(await screen.findByRole('button', { name: /editar/i }));
-        expect(await screen.findByText('Quién recorre la línea')).toBeInTheDocument();
+        expect(await screen.findByRole('button', { name: /cambiar punto/i })).toBeInTheDocument();
     });
 
     it('las bandas de ciclo se pintan con un tinte de su color, no en negro', async () => {
@@ -144,6 +144,16 @@ describe('RoadmapPanel', () => {
         expect(screen.queryByText('Viene de')).not.toBeInTheDocument();
     });
 
+    it('cambiar punto abre su propio modal', async () => {
+        usuario.permisos = ['mariachi.roadmap.manage'];
+        montar();
+        fireEvent.click(await screen.findByRole('button', { name: /editar/i }));
+        fireEvent.click(await screen.findByRole('button', { name: /cambiar punto/i }));
+
+        expect(await screen.findByText('Quién recorre la línea')).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /administrar símbolos/i })).toBeInTheDocument();
+    });
+
     it('el editor ofrece armar una sucesión con otro hito', async () => {
         usuario.permisos = ['mariachi.roadmap.manage'];
         montar();
@@ -151,7 +161,8 @@ describe('RoadmapPanel', () => {
         fireEvent.click(screen.getByText('mariachi 2').closest('g'));
         fireEvent.click(await screen.findByRole('button', { name: 'Abrir todos los campos' }));
 
-        expect(await screen.findByText('Viene de')).toBeInTheDocument();
+        expect(await screen.findByRole('dialog')).toBeInTheDocument();
+        expect(screen.getByText('Viene de')).toBeInTheDocument();
         expect(screen.getByText('Qué dice la conexión')).toBeInTheDocument();
         expect(screen.getByText('Orden en su día')).toBeInTheDocument();
     });
@@ -161,9 +172,10 @@ describe('RoadmapPanel', () => {
         montar();
         fireEvent.click(await screen.findByRole('button', { name: /editar/i }));
 
-        expect(screen.getByRole('button', { name: 'Agregar hito' })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Agregar ciclo' })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Agregar proceso' })).toBeInTheDocument();
+        expect(await screen.findByRole('button', { name: /agregar hito/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /agregar ciclo/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /agregar proceso/i })).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /cambiar punto/i })).toBeInTheDocument();
     });
 
     it('edita un ciclo con sus propios campos', async () => {
@@ -183,7 +195,7 @@ describe('RoadmapPanel', () => {
         api.post.mockResolvedValue({ data: CICLOS[0] });
         montar();
         fireEvent.click(await screen.findByRole('button', { name: /editar/i }));
-        fireEvent.click(screen.getByRole('button', { name: 'Agregar ciclo' }));
+        fireEvent.click(await screen.findByRole('button', { name: /agregar ciclo/i }));
 
         await waitFor(() => expect(api.post).toHaveBeenCalledWith(
             '/roadmap/ciclos',

@@ -9,6 +9,66 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.74.0] - 2026-09-03
+
+### Cambiado: editar deja de robarle alto al mapa
+
+Los formularios salen de la sección y pasan a **modales**. El de un hito, un ciclo o un proceso se
+abre desde «Abrir todos los campos» de la barra del elemento; el del marcador, desde su propio
+botón. Antes el formulario se montaba bajo el lienzo y se llevaba hasta la mitad del alto en
+pantalla completa, que es justo donde se edita.
+
+Los modales se montan dentro del elemento expandido, no en el `body`, o no se verían al estar en
+pantalla completa.
+
+### Agregado: una fila de altas en el modo edición
+
+Cuatro botones sobre el mapa: **Cambiar punto**, **Agregar hito**, **Agregar ciclo** y **Agregar
+proceso**. Lo que se crea se abre de una vez en su modal, así que el elemento nuevo no se queda
+esperando a que alguien lo encuentre para describirlo.
+
+Agregar por doble clic sigue funcionando y ahora también abre el modal.
+
+---
+
+## [2.73.0] - 2026-09-03
+
+### Cambiado: MEL deja de ser siete tablas y pasa a ser un taller
+
+La pantalla enseñaba la base de datos: los 82 tokens en siete tablas idénticas, el contraste en una
+tarjeta que no se recargaba, la vista previa como bloque de texto plano con el CSS generado, y un
+botón de guardar por fila. Se editaba a ciegas —para saber cómo quedaba la marca había que descargar
+el ZIP y montarlo en algún lado—.
+
+Ahora es un **panel partido**. A la izquierda los controles: los tokens de color con su muestra y
+**el veredicto de contraste en la misma fila**, el seleccionado con `ColorPicker` y la explicación de
+por qué cumple o no, y debajo un acordeón con tipografía, espacio y forma, dataviz y los 40 campos de
+la guía. A la derecha, **la marca aplicada**, con cuatro superficies: los componentes del admin, el
+visor con su mapa y su leyenda, el `theme.qss` que lee el complemento de QGIS y la guía en markdown.
+
+Panel y Visor se dibujan en el cliente y se mueven al escribir, antes de guardar; QGIS y `design.md`
+se piden al backend, así que son los artefactos reales y reflejan lo guardado —la pantalla lo dice
+con una etiqueta cuando hay cambios pendientes—.
+
+### Agregado: los cambios se juntan y se revisan antes de guardar
+
+Editar ya no escribe. Los cambios se acumulan en una barra al pie que dice cuántos hay y cuáles, y
+**Ver diff** abre el antes y el después de cada uno, con el contraste que gana o pierde. De ahí se
+guardan todos o se descartan. El guardado es por lote del lado del cliente: la API sigue recibiendo
+un `PUT` por token.
+
+### Agregado: el contraste se calcula en la pantalla
+
+`helpers/contraste.js` evalúa cada token contra `color.bg` de la marca con la fórmula WCAG 2.1, en
+vez de depender de los diez pares fijos que devuelve el endpoint. El veredicto se mueve mientras se
+escribe. Probado contra los valores sembrados: `#5C2472` da 10.8:1, `#FF8300` da 2.5:1.
+
+### Corregido: una prueba del rename a frames esperaba el orden viejo
+
+`inicioService` ordena alfabéticamente dentro de cada capa, y `frames` no cae donde caía `wacha`.
+
+---
+
 ## [2.72.0] - 2026-09-03
 
 Lo que encontró la auditoría del rename a MEL.

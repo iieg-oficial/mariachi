@@ -13,7 +13,8 @@ import { acomodar } from '@features/inicio/helpers/roadmapLayout';
 import useRoadmapHitos from '@features/inicio/hooks/useRoadmapHitos';
 import useArrastreHito from '@features/inicio/hooks/useArrastreHito';
 import RoadmapLienzo from '@features/inicio/components/roadmap/RoadmapLienzo';
-import RoadmapEditor from '@features/inicio/components/roadmap/RoadmapEditor';
+import RoadmapModales from '@features/inicio/components/roadmap/RoadmapModales';
+import RoadmapAltas from '@features/inicio/components/roadmap/RoadmapAltas';
 import RoadmapTip from '@features/inicio/components/roadmap/RoadmapTip';
 import RoadmapMarco from '@features/inicio/components/roadmap/RoadmapMarco';
 import RoadmapBarrita from '@features/inicio/components/roadmap/RoadmapBarrita';
@@ -58,6 +59,7 @@ export default function RoadmapPanel() {
     const [pausado, setPausado] = useState(false);
     const [verOcultos, setVerOcultos] = useState(false);
     const [zoom, setZoom] = useState(1);
+    const [verMarcador, setVerMarcador] = useState(false);
     const cajaRef = useRef(null);
     const svgRef = useRef(null);
 
@@ -136,18 +138,13 @@ export default function RoadmapPanel() {
         if (!clave) return;
         setSeleccion(clave);
         setFijado(true);
-    }, [agregar, setSeleccion, setFijado]);
+        setVerFormulario(true);
+    }, [agregar, setSeleccion, setFijado, setVerFormulario]);
 
     const alDobleClic = useAltaPorClic(svgRef, ciclos, crearEn);
 
 
 
-    const alAgregar = async (tipo) => {
-        const clave = await agregar(tipo);
-        if (!clave) return;
-        setSeleccion(clave);
-        setFijado(true);
-    };
 
     const alEliminar = async (clave) => {
         await eliminar(tipoDe(activo), clave);
@@ -303,6 +300,14 @@ export default function RoadmapPanel() {
                                 onCerrar={limpiar}
                             />
                         )}
+                        {editando && (
+                            <RoadmapAltas
+                                guardando={guardando}
+                                onPunto={() => setVerMarcador(true)}
+                                onAgregar={(tipo) => crearEn(tipo)}
+                            />
+                        )}
+
                         {editando && anclaBarra && activo && (
                             <RoadmapBarrita
                                 item={activo}
@@ -314,29 +319,24 @@ export default function RoadmapPanel() {
                             />
                         )}
 
-                        {editando && (!anclaBarra || verFormulario) && (
-                            <div style={{
-                                flex: 'none',
-                                maxHeight: pantallaCompleta ? '45%' : 'none',
-                                overflowY: pantallaCompleta ? 'auto' : 'visible',
-                            }}>
-                                <RoadmapEditor
-                                    item={verFormulario ? activo : null}
-                                    tipo={tipoDe(activo)}
-                                    hitos={datos}
-                                    marcador={marcador}
-                                    guardando={guardando}
-                                    onGuardar={alGuardar}
-                                    onEliminar={alEliminar}
-                                    onCerrar={limpiar}
-                                    onMarcador={elegirMarcador}
-                                    onAgregar={alAgregar}
-                                />
-                            </div>
-                        )}
                     </RoadmapMarco>
                 </Card>
 
+                <RoadmapModales
+                    verFormulario={verFormulario}
+                    verMarcador={verMarcador}
+                    activo={activo}
+                    tipo={tipoDe(activo)}
+                    hitos={datos}
+                    marcador={marcador}
+                    guardando={guardando}
+                    contenedor={pantallaCompleta ? () => marcoRef.current : null}
+                    onGuardar={alGuardar}
+                    onEliminar={alEliminar}
+                    onElegirMarcador={elegirMarcador}
+                    onCerrarFormulario={() => setVerFormulario(false)}
+                    onCerrarMarcador={() => setVerMarcador(false)}
+                />
             </div>
         </ConfigProvider>
     );
