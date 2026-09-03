@@ -88,7 +88,7 @@ engine = create_engine(
     poolclass=StaticPool,
 )
 
-_TEST_SCHEMAS = (None, "acervo", "huachicol", "sieej")
+_TEST_SCHEMAS = (None, "acervo", "huachicol", "mel", "sieej")
 
 with engine.connect() as _conn:
     for _schema in _TEST_SCHEMAS:
@@ -201,8 +201,8 @@ TODOS_LOS_PERMISOS = frozenset({
     "mariachi.colibri_reportes.view",
     "mariachi.colibri_reportes.update",
     "mariachi.colibri_config.manage",
-    "mariachi.identidad.view",
-    "mariachi.identidad.update",
+    "mariachi.mel.view",
+    "mariachi.mel.update",
     "mariachi.geoserver.view",
     "mariachi.geoserver.manage",
     "mariachi.actividad.view",

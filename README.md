@@ -117,7 +117,7 @@ En `production`, `cd` ejecuta los tests como gate del deploy: si el CI falla no 
 | [mapalab-api-keys](./docs/mapalab-api-keys.md) | Llaves del embed de mapalab: emisión, validación y auditoría |
 | [CHANGELOG](./docs/CHANGELOG.md) | Historial de cambios |
 
-El contexto del monorepo, el roadmap y los módulos grandes (SIEEJ, Colibrí, Identidad) viven en el
+El contexto del monorepo, el roadmap y los módulos grandes (SIEEJ, Colibrí, MEL) viven en el
 repositorio central de contexto, en `repos/mariachi/`.
 
 ---

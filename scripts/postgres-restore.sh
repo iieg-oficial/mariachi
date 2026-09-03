@@ -1,7 +1,9 @@
 #!/bin/sh
 # Restore manual de Postgres desde un .sql.gz generado por postgres-backup.sh.
 #
-# Que restaura: los 4 schemas de mariachi (public, huachicol, acervo, sieej).
+# Que restaura: los schemas que el dump traiga, que hoy son siete (public,
+# huachicol, acervo, sieej, mel, vine, frames). La lista se deriva del propio
+# dump, no esta escrita aqui.
 # El schema 'mapalab' NO viaja en estos dumps (vive en dataengine).
 #
 # Los schemas no-public se dropean con CASCADE antes de aplicar el dump: pg_dump

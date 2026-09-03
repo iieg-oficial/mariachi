@@ -251,5 +251,5 @@ En este repo:
 - [alembic-multi-env](./alembic-multi-env.md) — migraciones multi-BD
 
 En el repositorio central de contexto (`repos/mariachi/`): `contexto.md` (referencia del monorepo),
-`modulo-sieej.md`, `modulo-colibri.md`, `modulo-identidad.md`, `acervo-subida-externa.md`,
+`modulo-sieej.md`, `modulo-colibri.md`, `modulo-mel.md`, `acervo-subida-externa.md`,
 `dataengine-credenciales.md` y `pendientes.md`.

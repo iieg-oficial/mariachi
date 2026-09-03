@@ -9,6 +9,36 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.72.0] - 2026-09-03
+
+Lo que encontró la auditoría del rename a MEL.
+
+### Corregido: el gate de respaldo cubría cuatro de siete schemas
+
+`postgres-backup.sh` validaba `EXPECTED_SCHEMAS="public huachicol acervo sieej"` mientras el dump ya
+traía siete: le faltaban `mel`, `vine` y `frames`. Ese gate existe para que un dump al que se le cayó
+un schema **no se promueva** a weekly y monthly; con tres schemas fuera de la lista, un dump parcial
+habría pasado la revisión y pisado los respaldos buenos. Ahora valida los siete, comprobado contra un
+dump real de una base migrada.
+
+### Agregado: pruebas del compat
+
+`tests/test_mel_compat.py` cubre las dos rutas y los dos permisos. Es lo que tiene que ponerse rojo
+cuando la fase 3 retire el alias: sin ellas, llevarse algo de más solo se notaba en producción.
+
+### Corregido: los hitos del roadmap seguían diciendo «identidad»
+
+Los dos hitos del módulo pasan a `mel` y `f-mel-tokens`, con `nombre_anterior = 'identidad'` como se
+hizo con frigate. `m3l0001` trae los `UPDATE` para las bases que ya existen: editar el seed de una
+migración ya aplicada no cambia nada en producción.
+
+### Corregido: dos referencias que el rename dejó atrás
+
+`README.md` seguía listando el módulo como «Identidad» y `docs/arquitectura.md` apuntaba a
+`modulo-identidad.md`, que ya no existe.
+
+---
+
 ## [2.71.1] - 2026-09-03
 
 ### Cambiado: la propagación pasa de recuadro verde a badge accionable
