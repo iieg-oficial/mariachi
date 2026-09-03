@@ -9,6 +9,35 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.75.0] - 2026-09-03
+
+### Cambiado: la vista previa de MEL deja de ser pestañas y pasa a ser una sola página
+
+Las cuatro superficies en un `Segmented` obligaban a cambiar de pestaña para ver la marca completa.
+Ahora es **una sola página que se recorre**: arriba el muestrario —cada color en su tarjeta, la
+escala tipográfica compuesta con su texto real, y las barras de espaciado y radio—, y abajo los
+componentes del admin y el visor usando esos valores.
+
+**Seleccionar un token lo resalta en la vista previa** y lo trae a la vista. Funciona en los dos
+sentidos: las tarjetas del muestrario también son botones, y las filas del acordeón de tipografía,
+espacio y dataviz ahora se pueden seleccionar.
+
+**La vista previa no se dibuja en móvil.** Debajo de `md` queda solo la columna de controles a ancho
+completo; el muestrario no cabe y partirlo lo volvía ilegible.
+
+### Cambiado: los artefactos generados se mudan a un cajón
+
+`theme.qss` y `design.md` ya no ocupan dos pestañas. El botón **Ver artefactos** abre un `Drawer` con
+los cinco que emite el backend. Siguen siendo los archivos reales, así que siguen reflejando lo
+guardado y no lo pendiente.
+
+### Corregido: las descripciones de color se leían a medias
+
+Las que no cabían quedaban cortadas sin manera de ver el resto. Ahora abren tooltip con hover, con
+clic y al llegar con el tabulador.
+
+---
+
 ## [2.74.0] - 2026-09-03
 
 ### Cambiado: editar deja de robarle alto al mapa

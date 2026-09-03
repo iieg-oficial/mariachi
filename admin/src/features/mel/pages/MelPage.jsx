@@ -1,16 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Input, Layout, Segmented, Spin, Tag, Typography } from 'antd';
-import { BgColorsOutlined, DownloadOutlined, SearchOutlined } from '@ant-design/icons';
+import { BgColorsOutlined, DownloadOutlined, FileTextOutlined, SearchOutlined } from '@ant-design/icons';
 import { downloadExport, getMarca, listMarcas } from '@features/mel/api/melService';
 import ColoresPanel from '@features/mel/components/ColoresPanel';
 import GruposPanel from '@features/mel/components/GruposPanel';
 import VistaPrevia from '@features/mel/components/VistaPrevia';
 import BarraCambios from '@features/mel/components/BarraCambios';
 import DiffDrawer from '@features/mel/components/DiffDrawer';
+import ArtefactosDrawer from '@features/mel/components/ArtefactosDrawer';
 import { SECCIONES } from '@features/mel/constants/campos';
 import { esHex, evaluarToken } from '@features/mel/helpers/contraste';
 import useCambiosMel from '@features/mel/hooks/useCambiosMel';
 import PageHeading from '@shared/components/PageHeading';
+import useIsMobile from '@shared/hooks/useIsMobile';
 import { message } from '@shared/services/message';
 
 const { Content } = Layout;
@@ -29,10 +31,11 @@ export default function MelPage() {
     const [cargando, setCargando] = useState(true);
     const [error, setError] = useState(null);
     const [seleccion, setSeleccion] = useState(null);
-    const [superficie, setSuperficie] = useState('panel');
     const [grupoAbierto, setGrupoAbierto] = useState(null);
     const [diffAbierto, setDiffAbierto] = useState(false);
+    const [artefactosAbierto, setArtefactosAbierto] = useState(false);
     const [busqueda, setBusqueda] = useState('');
+    const { isMobile } = useIsMobile();
 
     const recargar = useCallback(async () => {
         if (!codigo) return;
@@ -75,11 +78,13 @@ export default function MelPage() {
         return colores.filter((token) => token.clave.toLowerCase().includes(texto));
     }, [colores, busqueda]);
 
+    const todos = useMemo(() => detalle?.tokens || [], [detalle]);
+
     useEffect(() => {
-        if (colores.length && !colores.some((token) => token.id === seleccion)) {
-            setSeleccion(colores[0].id);
+        if (todos.length && !todos.some((token) => token.id === seleccion)) {
+            setSeleccion((colores[0] || todos[0]).id);
         }
-    }, [colores, seleccion]);
+    }, [todos, colores, seleccion]);
 
     const valorDeClave = useCallback((clave, respaldo) => {
         const token = colores.find((item) => item.clave === clave);
@@ -90,8 +95,10 @@ export default function MelPage() {
     const fondo = useMemo(() => valorDeClave('color.bg', FONDO_POR_DEFECTO), [valorDeClave]);
     const colorTexto = useMemo(() => valorDeClave('color.text', TEXTO_POR_DEFECTO), [valorDeClave]);
 
-    const activo = colores.find((token) => token.id === seleccion);
-    const colorActivo = activo ? cambios.valorDeToken(activo) : null;
+    const colorSeleccionado = colores.find((token) => token.id === seleccion);
+    const colorActivo = colorSeleccionado
+        ? cambios.valorDeToken(colorSeleccionado)
+        : valorDeClave('color.primary', null);
 
     const noAlcanzan = colores.filter((token) => {
         const juicio = evaluarToken(token.clave, cambios.valorDeToken(token), fondo, colorTexto);
@@ -137,6 +144,13 @@ export default function MelPage() {
                             onChange={setCodigo}
                         />
                         <Button
+                            icon={<FileTextOutlined />}
+                            disabled={!codigo}
+                            onClick={() => setArtefactosAbierto(true)}
+                        >
+                            Ver artefactos
+                        </Button>
+                        <Button
                             type='primary'
                             icon={<DownloadOutlined />}
                             disabled={!codigo}
@@ -160,7 +174,7 @@ export default function MelPage() {
                     <div style={{ display: 'flex', height: ALTO_PANELES, minHeight: 520 }}>
                         <div
                             style={{
-                                width: 620,
+                                width: isMobile ? '100%' : 620,
                                 flexShrink: 0,
                                 display: 'flex',
                                 flexDirection: 'column',
@@ -222,19 +236,24 @@ export default function MelPage() {
                                     valorDeCampo={cambios.valorDeCampo}
                                     onCambiarCampo={cambios.cambiarCampo}
                                     sinDefinir={sinDefinir}
+                                    seleccion={seleccion}
+                                    onSeleccionar={setSeleccion}
                                 />
                             </div>
                         </div>
 
-                        <div style={{ flexGrow: 1, minWidth: 0 }}>
-                            <VistaPrevia
-                                superficie={superficie}
-                                onSuperficie={setSuperficie}
-                                codigo={codigo}
-                                color={colorActivo}
-                                hayPendientes={cambios.total > 0}
-                            />
-                        </div>
+                        {!isMobile && (
+                            <div style={{ flexGrow: 1, minWidth: 0 }}>
+                                <VistaPrevia
+                                    tokens={todos}
+                                    seleccion={seleccion}
+                                    onSeleccionar={setSeleccion}
+                                    fondo={fondo}
+                                    colorTexto={colorTexto}
+                                    color={colorActivo}
+                                />
+                            </div>
+                        )}
                     </div>
 
                     <BarraCambios
@@ -246,6 +265,13 @@ export default function MelPage() {
                     />
                 </div>
             </Spin>
+
+            <ArtefactosDrawer
+                abierto={artefactosAbierto}
+                onCerrar={() => setArtefactosAbierto(false)}
+                codigo={codigo}
+                hayPendientes={cambios.total > 0}
+            />
 
             <DiffDrawer
                 abierto={diffAbierto}

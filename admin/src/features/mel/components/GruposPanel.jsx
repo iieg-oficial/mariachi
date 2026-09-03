@@ -54,10 +54,11 @@ const Muestra = ({ grupo, valor }) => {
     return <Text type='secondary' style={{ fontSize: 13 }}>{valor}</Text>;
 };
 
-const FilasTokens = ({ tokens, valorDeToken, onCambiar }) => (
+const FilasTokens = ({ tokens, valorDeToken, onCambiar, seleccion, onSeleccionar }) => (
     <div style={{ display: 'flex', flexDirection: 'column' }}>
         {tokens.map((token) => {
             const valor = valorDeToken(token);
+            const activo = token.id === seleccion;
             return (
                 <div
                     key={token.id}
@@ -65,11 +66,35 @@ const FilasTokens = ({ tokens, valorDeToken, onCambiar }) => (
                         display: 'flex',
                         alignItems: 'center',
                         gap: 12,
-                        padding: '6px 0',
+                        padding: '6px 8px',
+                        borderRadius: 8,
                         borderBottom: '1px solid #f5f5f5',
+                        background: activo ? '#EAEFFA' : 'transparent',
+                        boxShadow: activo ? 'inset 0 0 0 1px #2e4372' : 'none',
                     }}
                 >
-                    <Text code style={{ fontSize: 12, width: 152, flexShrink: 0 }}>{token.clave}</Text>
+                    <button
+                        type='button'
+                        onClick={() => onSeleccionar(token.id)}
+                        style={{
+                            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                            fontSize: 12,
+                            width: 152,
+                            flexShrink: 0,
+                            background: 'none',
+                            border: 'none',
+                            padding: 0,
+                            textAlign: 'left',
+                            cursor: 'pointer',
+                            color: 'inherit',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                        }}
+                        title={token.clave}
+                    >
+                        {token.clave}
+                    </button>
                     <Input
                         size='small'
                         value={valor}
@@ -93,6 +118,8 @@ export default function GruposPanel({
     valorDeCampo,
     onCambiarCampo,
     sinDefinir,
+    seleccion,
+    onSeleccionar,
 }) {
     const de = (grupos) => tokens.filter((token) => grupos.includes(token.grupo));
     const tipografia = de(['tipografia']);
@@ -113,21 +140,21 @@ export default function GruposPanel({
             key: 'tipografia',
             label: cabecera('Tipografía', tipografia.length, 'familias, tamaños y pesos'),
             children: (
-                <FilasTokens tokens={tipografia} valorDeToken={valorDeToken} onCambiar={onCambiarToken} />
+                <FilasTokens tokens={tipografia} valorDeToken={valorDeToken} onCambiar={onCambiarToken} seleccion={seleccion} onSeleccionar={onSeleccionar} />
             ),
         },
         {
             key: 'espacio',
             label: cabecera('Espacio y forma', espacio.length, 'espaciado, radios, sombras y breakpoints'),
             children: (
-                <FilasTokens tokens={espacio} valorDeToken={valorDeToken} onCambiar={onCambiarToken} />
+                <FilasTokens tokens={espacio} valorDeToken={valorDeToken} onCambiar={onCambiarToken} seleccion={seleccion} onSeleccionar={onSeleccionar} />
             ),
         },
         {
             key: 'dataviz',
             label: cabecera('Dataviz', dataviz.length, 'paletas de visualización'),
             children: (
-                <FilasTokens tokens={dataviz} valorDeToken={valorDeToken} onCambiar={onCambiarToken} />
+                <FilasTokens tokens={dataviz} valorDeToken={valorDeToken} onCambiar={onCambiarToken} seleccion={seleccion} onSeleccionar={onSeleccionar} />
             ),
         },
         {

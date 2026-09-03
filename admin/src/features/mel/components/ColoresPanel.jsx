@@ -130,18 +130,31 @@ export default function ColoresPanel({
                             <Tooltip title={juicio.contra}>
                                 <Veredicto nivel={juicio.nivel} etiqueta={juicio.etiqueta} />
                             </Tooltip>
-                            <span
-                                style={{
-                                    flexGrow: 1,
-                                    minWidth: 0,
-                                    fontSize: 13,
-                                    color: 'rgba(0,0,0,0.45)',
-                                    ...recorte,
-                                }}
-                                title={token.descripcion || ''}
+                            <Tooltip
+                                title={token.descripcion}
+                                trigger={['hover', 'focus', 'click']}
+                                placement='topLeft'
+                                styles={{ root: { maxWidth: 420 } }}
                             >
-                                {token.descripcion || '—'}
-                            </span>
+                                <button
+                                    type='button'
+                                    style={{
+                                        flexGrow: 1,
+                                        minWidth: 0,
+                                        fontSize: 13,
+                                        color: 'rgba(0,0,0,0.45)',
+                                        cursor: token.descripcion ? 'help' : 'default',
+                                        background: 'none',
+                                        border: 'none',
+                                        padding: 0,
+                                        textAlign: 'left',
+                                        font: 'inherit',
+                                        ...recorte,
+                                    }}
+                                >
+                                    {token.descripcion || '—'}
+                                </button>
+                            </Tooltip>
                         </div>
                     );
                 })}
