@@ -1,56 +1,52 @@
-import { useEffect, useState } from 'react';
-import { Button, Form, Input, Space, Typography } from 'antd';
+import { Input, Typography } from 'antd';
 import { CAMPOS_LARGOS, SECCIONES } from '@features/mel/constants/campos';
 
 const { Text } = Typography;
 const { TextArea } = Input;
 
-export default function CamposPanel({ campos = {}, onGuardar, guardando }) {
-    const [form] = Form.useForm();
-    const [sucio, setSucio] = useState(false);
-
-    useEffect(() => {
-        form.setFieldsValue(campos);
-        setSucio(false);
-    }, [campos, form]);
-
-    const enviar = async (valores) => {
-        const limpios = Object.fromEntries(
-            Object.entries(valores).filter(([, valor]) => valor !== undefined),
-        );
-        await onGuardar(limpios);
-        setSucio(false);
-    };
-
+export default function CamposPanel({ campos = {}, valorDeCampo, onCambiar }) {
     return (
-        <Form
-            form={form}
-            layout='vertical'
-            onFinish={enviar}
-            onValuesChange={() => setSucio(true)}
-        >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
             {SECCIONES.map((seccion) => (
-                <div key={seccion.titulo} style={{ marginBottom: 24 }}>
-                    <Text strong>{seccion.titulo}</Text>
-                    <div style={{ marginTop: 12 }}>
-                        {seccion.campos.map(([clave, etiqueta]) => (
-                            <Form.Item key={clave} name={clave} label={etiqueta} style={{ marginBottom: 12 }}>
-                                {CAMPOS_LARGOS.has(clave)
-                                    ? <TextArea rows={2} placeholder='Sin definir' />
-                                    : <Input placeholder='Sin definir' />}
-                            </Form.Item>
-                        ))}
+                <div key={seccion.titulo}>
+                    <Text strong style={{ fontSize: 13 }}>{seccion.titulo}</Text>
+                    <div style={{ marginTop: 8, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {seccion.campos.map(([clave, etiqueta]) => {
+                            const actual = campos[clave] || '';
+                            const valor = valorDeCampo(clave, actual);
+                            const vacio = valor.trim() === '';
+                            return (
+                                <div key={clave} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                                    <Text
+                                        type={vacio ? 'secondary' : undefined}
+                                        style={{ width: 178, flexShrink: 0, fontSize: 13, paddingTop: 5 }}
+                                    >
+                                        {etiqueta}
+                                    </Text>
+                                    {CAMPOS_LARGOS.has(clave) ? (
+                                        <TextArea
+                                            rows={2}
+                                            value={valor}
+                                            placeholder='Sin definir'
+                                            onChange={(evento) => onCambiar(clave, evento.target.value, actual)}
+                                        />
+                                    ) : (
+                                        <Input
+                                            size='small'
+                                            value={valor}
+                                            placeholder='Sin definir'
+                                            onChange={(evento) => onCambiar(clave, evento.target.value, actual)}
+                                        />
+                                    )}
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
             ))}
-            <Space>
-                <Button type='primary' htmlType='submit' loading={guardando} disabled={!sucio}>
-                    Guardar cambios
-                </Button>
-                <Text type='secondary'>
-                    Lo que se deje vacío no aparece en la guía generada.
-                </Text>
-            </Space>
-        </Form>
+            <Text type='secondary' style={{ fontSize: 13 }}>
+                Lo que se deje vacío no aparece en la guía generada.
+            </Text>
+        </div>
     );
 }
