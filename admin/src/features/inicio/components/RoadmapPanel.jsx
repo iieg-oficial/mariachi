@@ -5,7 +5,6 @@ import { useAuth } from '@shared/contexts/useAuth';
 import usePantallaCompleta from '@shared/hooks/usePantallaCompleta';
 import SectionHeader from '@shared/components/SectionHeader';
 import {
-    MARCADORES,
     PASO_ZOOM,
     ZOOM_MAXIMO,
     ZOOM_MINIMO,
@@ -23,6 +22,7 @@ import useSeleccionRoadmap, { tipoDe } from '@features/inicio/hooks/useSeleccion
 import RoadmapAcciones from '@features/inicio/components/roadmap/RoadmapAcciones';
 
 const PERMISO = 'mariachi.roadmap.manage';
+const LLAVE_MARCADOR = 'roadmap-marcador';
 
 export default function RoadmapPanel() {
     const { user } = useAuth();
@@ -38,7 +38,23 @@ export default function RoadmapPanel() {
     } = usePantallaCompleta(noSePudo);
     const [editando, setEditando] = useState(false);
     const { datos, ciclos, procesos, cargando, guardando, guardar, agregar, eliminar } = useRoadmapHitos();
-    const [marcador, setMarcador] = useState(MARCADORES[0]);
+    const [marcador, setMarcador] = useState(() => {
+        try {
+            const guardado = window.localStorage.getItem(LLAVE_MARCADOR);
+            return guardado ? JSON.parse(guardado) : null;
+        } catch {
+            return null;
+        }
+    });
+
+    const elegirMarcador = useCallback((simbolo) => {
+        setMarcador(simbolo);
+        try {
+            window.localStorage.setItem(LLAVE_MARCADOR, JSON.stringify(simbolo));
+        } catch {
+            /* sin memoria en este navegador */
+        }
+    }, []);
     const [pausado, setPausado] = useState(false);
     const [verOcultos, setVerOcultos] = useState(false);
     const [zoom, setZoom] = useState(1);
@@ -313,7 +329,7 @@ export default function RoadmapPanel() {
                                     onGuardar={alGuardar}
                                     onEliminar={alEliminar}
                                     onCerrar={limpiar}
-                                    onMarcador={setMarcador}
+                                    onMarcador={elegirMarcador}
                                     onAgregar={alAgregar}
                                 />
                             </div>

@@ -95,9 +95,10 @@ export default function RoadmapLienzo({
                 }
             }
 
-            marcaRef.current.setAttribute('x', x + dx);
-            marcaRef.current.setAttribute('y', ESPINA_Y + dy);
-            marcaRef.current.setAttribute('transform', `rotate(${giro} ${x + dx} ${ESPINA_Y + dy})`);
+            marcaRef.current.setAttribute(
+                'transform',
+                `translate(${x + dx} ${ESPINA_Y + dy}) rotate(${giro})`,
+            );
             marcaRef.current.setAttribute('opacity', avance < 0.02 || avance > 0.98 ? '0' : '0.95');
             onAvance(x, pausado);
             cuadroRef.current = requestAnimationFrame(animar);
@@ -204,12 +205,22 @@ export default function RoadmapLienzo({
                 </g>
             )}
 
-            <text
-                ref={marcaRef} x={60} y={ESPINA_Y} textAnchor="middle" dominantBaseline="central"
-                opacity={0} style={{ fontSize: 26 }}
-            >
-                {marcador}
-            </text>
+            <g ref={marcaRef} opacity={0} style={{ pointerEvents: 'none' }}>
+                {marcador && marcador.kind !== 'emoji' ? (
+                    <image
+                        href={marcador.imageUrl || marcador.image_url}
+                        x={-14} y={-14} width={28} height={28}
+                        preserveAspectRatio="xMidYMid meet"
+                    />
+                ) : (
+                    <text
+                        x={0} y={0} textAnchor="middle" dominantBaseline="central"
+                        style={{ fontSize: 26 }}
+                    >
+                        {marcador?.value || '\uD83D\uDC36'}
+                    </text>
+                )}
+            </g>
         </svg>
     );
 }

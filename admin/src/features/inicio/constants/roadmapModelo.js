@@ -54,4 +54,3 @@ export const TRIMESTRES = [
     { texto: 'oct', x: 1440 },
 ];
 
-export const MARCADORES = ['🐶', '🐕', '🎺', '🌮', '🌵', '🚀', '🔥', '⚡', '🧭', '🛻', '📍', '🦴'];

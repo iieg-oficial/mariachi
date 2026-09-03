@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 import { Button, Card, Form, Input, InputNumber, Select, Space, Switch, Typography } from 'antd';
-import { COLOR_PROYECTO, MARCADORES } from '@features/inicio/constants/roadmapModelo';
+import { Link } from 'react-router';
+import { COLOR_PROYECTO } from '@features/inicio/constants/roadmapModelo';
+import SymbolPicker from '@features/mapalab-symbols/components/SymbolPicker';
 
 const { Text } = Typography;
 const { TextArea } = Input;
@@ -19,20 +21,19 @@ export default function RoadmapEditor({ item, tipo, hitos, marcador, guardando, 
     return (
         <Card size="small" style={{ marginTop: 12 }}>
             <Space orientation="vertical" size={12} style={{ width: '100%' }}>
-                <div>
-                    <Text strong style={{ fontSize: 13 }}>Quién recorre la línea</Text>
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
-                        {MARCADORES.map((emoji) => (
-                            <Button
-                                key={emoji}
-                                size="large"
-                                type={emoji === marcador ? 'primary' : 'default'}
-                                aria-label={`Usar ${emoji} como marcador`}
-                                onClick={(e) => { e.stopPropagation(); onMarcador(emoji); }}
-                            >
-                                {emoji}
-                            </Button>
-                        ))}
+                <div onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()} role="presentation">
+                    <Space style={{ width: '100%', justifyContent: 'space-between' }} wrap>
+                        <Text strong style={{ fontSize: 13 }}>Quién recorre la línea</Text>
+                        <Link to="/sextante/simbolos">
+                            <Text type="secondary" style={{ fontSize: 12 }}>Administrar símbolos →</Text>
+                        </Link>
+                    </Space>
+                    <div style={{ marginTop: 8 }}>
+                        <SymbolPicker
+                            value={marcador?.id}
+                            onChange={(id, simbolo) => onMarcador(simbolo)}
+                            hint="El símbolo que recorre la línea del tiempo"
+                        />
                     </div>
                 </div>
 

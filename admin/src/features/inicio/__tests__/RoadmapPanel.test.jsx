@@ -110,6 +110,18 @@ describe('RoadmapPanel', () => {
         expect(await screen.findByText('Quién recorre la línea')).toBeInTheDocument();
     });
 
+    it('las bandas de ciclo se pintan con un tinte de su color, no en negro', async () => {
+        const { container } = montar();
+        await screen.findByText('tamal-rojo');
+
+        const fondo = [...container.querySelectorAll('rect')]
+            .map((r) => r.getAttribute('fill'))
+            .filter((f) => f && f.startsWith('rgba('));
+
+        expect(fondo.length).toBeGreaterThan(0);
+        fondo.forEach((f) => expect(f).not.toBe('rgba(0,0,0,1)'));
+    });
+
     it('editar pide pantalla completa al entrar', async () => {
         usuario.permisos = ['mariachi.roadmap.manage'];
         const pedir = vi.fn(() => Promise.resolve());

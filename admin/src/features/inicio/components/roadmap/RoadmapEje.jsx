@@ -7,7 +7,7 @@ import {
     FIN_PASADO,
     TRIMESTRES,
 } from '@features/inicio/constants/roadmapModelo';
-import { ejeX } from '@features/inicio/helpers/roadmapLayout';
+import { ejeX, tinte } from '@features/inicio/helpers/roadmapLayout';
 
 const EDICIONES = [2026, 2027, 2028, 2029, 2030];
 
@@ -41,7 +41,7 @@ const Banda = ({ ciclo, activo, apagado, onSeleccionar }) => {
         >
             <rect
                 x={ciclo.x0} y={y0} width={ciclo.x1 - ciclo.x0} height={y1 - y0}
-                fill={ciclo.tinte}
+                fill={tinte(ciclo.color, 0.055)}
                 opacity={apagado ? 0.18 : 1}
                 style={{ transition: 'opacity .2s ease' }}
             />

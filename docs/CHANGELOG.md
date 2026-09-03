@@ -9,6 +9,28 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.71.0] - 2026-09-03
+
+### Corregido: las bandas de ciclo salían negras
+
+Al pasar los ciclos a la base se sembró su color pero **no su tinte de fondo**, que era un `rgba`
+aparte y nunca tuvo columna. El componente seguía pidiendo `ciclo.tinte`, recibía vacío, y el SVG
+resuelve un relleno ausente como negro: las cuatro bandas tapaban el mapa. Ahora el tinte se deriva
+del color del propio ciclo, así que cambiar el color desde el editor cambia también el fondo y no
+hay dos valores que puedan contradecirse.
+
+### Cambiado: el marcador sale del catálogo de símbolos
+
+Se retiran los doce emojis inventados. El selector es ahora el `SymbolPicker` de
+`mapalab-symbols` —el mismo de `sextante/símbolos`—, con sus categorías y sus tres tipos: emoji,
+SVG e imagen. Al lado va un enlace directo para darlos de alta.
+
+La elección se guarda en el navegador de cada quien: es una preferencia visual, no un dato del
+roadmap, y no tiene por qué imponerse a los demás. Mientras no se elija ninguno, el marcador es un
+perro.
+
+---
+
 ## [2.70.0] - 2026-09-03
 
 ### Cambiado: editar solo se hace en pantalla completa
