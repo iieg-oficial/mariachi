@@ -8,7 +8,7 @@ import VistaPrevia from '@features/mel/components/VistaPrevia';
 import BarraCambios from '@features/mel/components/BarraCambios';
 import DiffDrawer from '@features/mel/components/DiffDrawer';
 import { SECCIONES } from '@features/mel/constants/campos';
-import { esHex, ratioContraste } from '@features/mel/helpers/contraste';
+import { esHex, evaluarToken } from '@features/mel/helpers/contraste';
 import useCambiosMel from '@features/mel/hooks/useCambiosMel';
 import PageHeading from '@shared/components/PageHeading';
 import { message } from '@shared/services/message';
@@ -17,6 +17,7 @@ const { Content } = Layout;
 const { Text } = Typography;
 
 const FONDO_POR_DEFECTO = '#FFFFFF';
+const TEXTO_POR_DEFECTO = '#000000';
 const ALTO_PANELES = 'calc(100vh - 268px)';
 
 const totalCampos = SECCIONES.reduce((suma, seccion) => suma + seccion.campos.length, 0);
@@ -80,18 +81,21 @@ export default function MelPage() {
         }
     }, [colores, seleccion]);
 
-    const fondo = useMemo(() => {
-        const token = colores.find((item) => item.clave === 'color.bg');
+    const valorDeClave = useCallback((clave, respaldo) => {
+        const token = colores.find((item) => item.clave === clave);
         const valor = token ? cambios.valorDeToken(token) : null;
-        return esHex(valor) ? valor : FONDO_POR_DEFECTO;
+        return esHex(valor) ? valor : respaldo;
     }, [colores, cambios]);
+
+    const fondo = useMemo(() => valorDeClave('color.bg', FONDO_POR_DEFECTO), [valorDeClave]);
+    const colorTexto = useMemo(() => valorDeClave('color.text', TEXTO_POR_DEFECTO), [valorDeClave]);
 
     const activo = colores.find((token) => token.id === seleccion);
     const colorActivo = activo ? cambios.valorDeToken(activo) : null;
 
     const noAlcanzan = colores.filter((token) => {
-        const ratio = ratioContraste(cambios.valorDeToken(token), fondo);
-        return ratio !== null && ratio < 4.5;
+        const juicio = evaluarToken(token.clave, cambios.valorDeToken(token), fondo, colorTexto);
+        return juicio.nivel === 'falla' || juicio.nivel === 'grande';
     }).length;
 
     const sinDefinir = SECCIONES.reduce((suma, seccion) => (
@@ -201,6 +205,7 @@ export default function MelPage() {
                                 <ColoresPanel
                                     tokens={filtrados}
                                     fondo={fondo}
+                                    colorTexto={colorTexto}
                                     seleccion={seleccion}
                                     onSeleccionar={setSeleccion}
                                     valorDeToken={cambios.valorDeToken}

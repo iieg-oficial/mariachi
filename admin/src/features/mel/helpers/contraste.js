@@ -1,12 +1,22 @@
 const AA_NORMAL = 4.5;
 const AA_GRANDE = 3;
 
+const SUFIJOS_SUPERFICIE = ['-soft', '.soft'];
+const CLAVES_SUPERFICIE = ['color.bg', 'color.background'];
+
 const canal = (valor) => {
     const c = valor / 255;
     return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
 };
 
 export const esHex = (valor) => typeof valor === 'string' && /^#[0-9a-f]{6}$/i.test(valor.trim());
+
+export const esSuperficie = (clave) => {
+    const nombre = String(clave || '');
+    if (CLAVES_SUPERFICIE.includes(nombre)) return true;
+    if (nombre.includes('surface')) return true;
+    return SUFIJOS_SUPERFICIE.some((sufijo) => nombre.endsWith(sufijo));
+};
 
 export const luminancia = (hex) => {
     const n = parseInt(hex.trim().slice(1), 16);
@@ -32,6 +42,15 @@ export const veredicto = (ratio) => {
     return { nivel: 'falla', etiqueta: `${ratio}:1` };
 };
 
+export const evaluarToken = (clave, valor, fondo, colorTexto) => {
+    if (!esHex(valor)) return { ...veredicto(null), contra: '' };
+    if (esSuperficie(clave)) {
+        const ratio = ratioContraste(colorTexto, valor);
+        return { ...veredicto(ratio), contra: 'texto encima' };
+    }
+    return { ...veredicto(ratioContraste(valor, fondo)), contra: 'sobre el fondo' };
+};
+
 export const COLORES_VEREDICTO = {
     aa: { fondo: '#E3F1E9', texto: '#1F7A4D' },
     grande: { fondo: '#FFE9CC', texto: '#9E5200' },
@@ -39,16 +58,23 @@ export const COLORES_VEREDICTO = {
     na: { fondo: 'transparent', texto: 'rgba(0,0,0,0.25)' },
 };
 
-export const explicaVeredicto = (nivel) => {
+export const explicaVeredicto = (nivel, contra) => {
+    const encima = contra === 'texto encima';
     switch (nivel) {
     case 'aa':
-        return 'Cumple AA para texto normal sobre este fondo.';
+        return encima
+            ? 'El texto de cuerpo se lee bien encima de esta superficie.'
+            : 'Cumple AA para texto normal sobre el fondo de la marca.';
     case 'grande':
-        return 'Solo alcanza AA para texto grande. No sirve para cuerpo de texto.';
+        return encima
+            ? 'Solo sirve para texto grande encima. El cuerpo no se lee.'
+            : 'Solo alcanza AA para texto grande. No sirve para cuerpo de texto.';
     case 'falla':
-        return 'No alcanza AA. Sirve de fondo o acento, no de color de texto.';
+        return encima
+            ? 'El texto de cuerpo no se lee encima de esta superficie.'
+            : 'No alcanza AA. Sirve de fondo o acento, no de color de texto.';
     default:
-        return '';
+        return 'Sin color con que comparar.';
     }
 };
 

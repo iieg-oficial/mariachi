@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
     aclarar,
     esHex,
+    esSuperficie,
+    evaluarToken,
     ratioContraste,
     veredicto,
 } from '@features/mel/helpers/contraste';
@@ -67,5 +69,49 @@ describe('aclarar', () => {
 
     it('devuelve el valor tal cual si no es un color', () => {
         expect(aclarar('1.25rem', 0.5)).toBe('1.25rem');
+    });
+});
+
+describe('esSuperficie', () => {
+    it('reconoce los fondos y las variantes suaves', () => {
+        expect(esSuperficie('color.bg')).toBe(true);
+        expect(esSuperficie('color.surface-field')).toBe(true);
+        expect(esSuperficie('color.success-soft')).toBe(true);
+        expect(esSuperficie('color.danger-soft')).toBe(true);
+    });
+
+    it('no confunde los colores de marca con superficies', () => {
+        expect(esSuperficie('color.primary')).toBe(false);
+        expect(esSuperficie('color.accent')).toBe(false);
+        expect(esSuperficie('color.text')).toBe(false);
+    });
+});
+
+describe('evaluarToken', () => {
+    const FONDO = '#FFFFFF';
+    const TEXTO = '#465055';
+
+    it('mide un color de marca contra el fondo', () => {
+        const juicio = evaluarToken('color.primary', '#5C2472', FONDO, TEXTO);
+        expect(juicio.etiqueta).toBe('10.8:1');
+        expect(juicio.nivel).toBe('aa');
+        expect(juicio.contra).toBe('sobre el fondo');
+    });
+
+    it('mide una superficie por el texto que va encima, no al reves', () => {
+        const juicio = evaluarToken('color.success-soft', '#E3F1E9', FONDO, TEXTO);
+        expect(juicio.contra).toBe('texto encima');
+        expect(juicio.nivel).toBe('aa');
+    });
+
+    it('la superficie suave dejaria de ser roja con la medicion correcta', () => {
+        const comoFondo = veredicto(ratioContraste('#E3F1E9', FONDO));
+        const comoSuperficie = evaluarToken('color.success-soft', '#E3F1E9', FONDO, TEXTO);
+        expect(comoFondo.nivel).toBe('falla');
+        expect(comoSuperficie.nivel).toBe('aa');
+    });
+
+    it('no inventa veredicto cuando el valor no es color', () => {
+        expect(evaluarToken('font.family.sans', 'Garet', FONDO, TEXTO).nivel).toBe('na');
     });
 });

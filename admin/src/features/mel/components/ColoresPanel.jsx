@@ -1,24 +1,47 @@
-import { ColorPicker, Input, Space, Typography } from 'antd';
+import { ColorPicker, Input, Tooltip, Typography } from 'antd';
 import {
     COLORES_VEREDICTO,
     esHex,
+    esSuperficie,
+    evaluarToken,
     explicaVeredicto,
-    ratioContraste,
-    veredicto,
 } from '@features/mel/helpers/contraste';
 
 const { Text } = Typography;
 
 const FONDO_POR_DEFECTO = '#FFFFFF';
+const TEXTO_POR_DEFECTO = '#000000';
 
-const Veredicto = ({ nivel, etiqueta, ancho }) => (
+const MONO = 'ui-monospace, SFMono-Regular, Menlo, monospace';
+
+const recorte = {
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+};
+
+const Muestra = ({ valor, lado }) => (
+    <span
+        style={{
+            width: lado,
+            height: lado,
+            borderRadius: lado > 20 ? 8 : 4,
+            border: '1px solid rgba(0,0,0,0.15)',
+            flexShrink: 0,
+            display: 'inline-block',
+            background: esHex(valor) ? valor : 'transparent',
+        }}
+    />
+);
+
+const Veredicto = ({ nivel, etiqueta }) => (
     <span
         style={{
             fontSize: 12,
             fontWeight: 600,
             padding: '1px 7px',
             borderRadius: 4,
-            width: ancho,
+            width: 62,
             textAlign: 'center',
             flexShrink: 0,
             background: COLORES_VEREDICTO[nivel].fondo,
@@ -32,12 +55,14 @@ const Veredicto = ({ nivel, etiqueta, ancho }) => (
 export default function ColoresPanel({
     tokens,
     fondo,
+    colorTexto,
     seleccion,
     onSeleccionar,
     valorDeToken,
     onCambiar,
 }) {
     const fondoReal = esHex(fondo) ? fondo : FONDO_POR_DEFECTO;
+    const textoReal = esHex(colorTexto) ? colorTexto : TEXTO_POR_DEFECTO;
     const activo = tokens.find((token) => token.id === seleccion) || tokens[0];
     if (!activo) return null;
 
@@ -49,14 +74,14 @@ export default function ColoresPanel({
     };
 
     const valorActivo = valorDeToken(activo);
-    const veredictoActivo = veredicto(ratioContraste(valorActivo, fondoReal));
+    const juicioActivo = evaluarToken(activo.clave, valorActivo, fondoReal, textoReal);
 
     return (
         <>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 16 }}>
                 {tokens.map((token) => {
                     const valor = valorDeToken(token);
-                    const v = veredicto(ratioContraste(valor, fondoReal));
+                    const juicio = evaluarToken(token.clave, valor, fondoReal, textoReal);
                     const activa = token.id === activo.id;
                     return (
                         <div
@@ -69,7 +94,7 @@ export default function ColoresPanel({
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: 10,
-                                height: 32,
+                                height: 34,
                                 padding: '0 10px',
                                 borderRadius: 8,
                                 cursor: 'pointer',
@@ -77,44 +102,60 @@ export default function ColoresPanel({
                                 boxShadow: activa ? 'inset 0 0 0 1px #2e4372' : 'none',
                             }}
                         >
+                            <Muestra valor={valor} lado={18} />
                             <span
                                 style={{
-                                    width: 18,
-                                    height: 18,
-                                    borderRadius: 4,
-                                    border: '1px solid rgba(0,0,0,0.12)',
+                                    fontFamily: MONO,
+                                    fontSize: 12,
+                                    width: 172,
                                     flexShrink: 0,
-                                    background: esHex(valor) ? valor : 'transparent',
+                                    ...recorte,
                                 }}
-                            />
-                            <Text code style={{ fontSize: 12.5, width: 132 }}>{token.clave}</Text>
-                            <Text type='secondary' style={{ fontSize: 12.5, width: 74 }}>{valor}</Text>
-                            <Veredicto nivel={v.nivel} etiqueta={v.etiqueta} ancho={62} />
-                            <Text
-                                type='secondary'
-                                style={{ flexGrow: 1, fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+                                title={token.clave}
+                            >
+                                {token.clave}
+                            </span>
+                            <span
+                                style={{
+                                    fontFamily: MONO,
+                                    fontSize: 12,
+                                    width: 72,
+                                    flexShrink: 0,
+                                    color: 'rgba(0,0,0,0.45)',
+                                    ...recorte,
+                                }}
+                            >
+                                {valor}
+                            </span>
+                            <Tooltip title={juicio.contra}>
+                                <Veredicto nivel={juicio.nivel} etiqueta={juicio.etiqueta} />
+                            </Tooltip>
+                            <span
+                                style={{
+                                    flexGrow: 1,
+                                    minWidth: 0,
+                                    fontSize: 13,
+                                    color: 'rgba(0,0,0,0.45)',
+                                    ...recorte,
+                                }}
+                                title={token.descripcion || ''}
                             >
                                 {token.descripcion || '—'}
-                            </Text>
+                            </span>
                         </div>
                     );
                 })}
             </div>
 
             <div style={{ border: '1px solid #f0f0f0', borderRadius: 8, padding: 14, marginBottom: 20 }}>
-                <Space align='center' style={{ width: '100%', marginBottom: 12 }}>
-                    <span
-                        style={{
-                            width: 32,
-                            height: 32,
-                            borderRadius: 8,
-                            border: '1px solid rgba(0,0,0,0.12)',
-                            display: 'inline-block',
-                            background: esHex(valorActivo) ? valorActivo : 'transparent',
-                        }}
-                    />
-                    <Text code strong>{activo.clave}</Text>
-                </Space>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                    <Muestra valor={valorActivo} lado={32} />
+                    <span style={{ fontFamily: MONO, fontWeight: 600, ...recorte }}>{activo.clave}</span>
+                    <span style={{ flexGrow: 1 }} />
+                    <Text type='secondary' style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
+                        {esSuperficie(activo.clave) ? 'superficie' : 'color de marca'}
+                    </Text>
+                </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}>
                     <ColorPicker
                         value={valorActivo}
@@ -123,7 +164,7 @@ export default function ColoresPanel({
                     <Input
                         value={valorActivo}
                         onChange={(evento) => onCambiar(activo, evento.target.value)}
-                        style={{ width: 120 }}
+                        style={{ width: 120, fontFamily: MONO }}
                     />
                     <Input value={activo.descripcion || ''} disabled style={{ flexGrow: 1 }} />
                 </div>
@@ -134,12 +175,14 @@ export default function ColoresPanel({
                         gap: 9,
                         padding: '8px 11px',
                         borderRadius: 8,
-                        background: veredictoActivo.nivel === 'aa' ? '#F6FBF8' : '#FFF7E6',
-                        border: `1px solid ${veredictoActivo.nivel === 'aa' ? '#CDE7DA' : '#FFD591'}`,
+                        background: juicioActivo.nivel === 'aa' ? '#F6FBF8' : '#FFF7E6',
+                        border: `1px solid ${juicioActivo.nivel === 'aa' ? '#CDE7DA' : '#FFD591'}`,
                     }}
                 >
-                    <Veredicto nivel={veredictoActivo.nivel} etiqueta={veredictoActivo.etiqueta} />
-                    <Text style={{ fontSize: 13 }}>{explicaVeredicto(veredictoActivo.nivel)}</Text>
+                    <Veredicto nivel={juicioActivo.nivel} etiqueta={juicioActivo.etiqueta} />
+                    <Text style={{ fontSize: 13 }}>
+                        {explicaVeredicto(juicioActivo.nivel, juicioActivo.contra)}
+                    </Text>
                 </div>
             </div>
         </>
