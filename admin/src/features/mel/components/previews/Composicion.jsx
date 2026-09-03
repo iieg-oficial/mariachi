@@ -74,7 +74,6 @@ export default function Composicion({ paleta, tipos, aplicacion, activo, demo })
                 marginRight: anchoDemo ? 'auto' : 0,
                 transition: 'max-width 0.3s ease',
                 fontFamily: familiaCuerpo,
-                ...apagar('lienzo'),
             }}
         >
             <div
@@ -150,7 +149,7 @@ export default function Composicion({ paleta, tipos, aplicacion, activo, demo })
                 </span>
             </div>
 
-            <div style={{ display: 'flex', gap: 12, marginTop: 24, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 12, marginTop: 24, flexWrap: 'wrap', ...apagar('tags') }}>
                 {tag('Aprobada', c('color.success', RESPALDOS.success), c('color.success-soft', RESPALDOS.successSoft), 'tagAprobada')}
                 {tag('Pendiente', c('color.warning', RESPALDOS.warning), c('color.warning-soft', RESPALDOS.warningSoft), 'tagPendiente')}
                 {tag('Rechazada', c('color.danger', RESPALDOS.danger), c('color.danger-soft', RESPALDOS.dangerSoft), 'tagRechazada')}
@@ -200,7 +199,7 @@ export default function Composicion({ paleta, tipos, aplicacion, activo, demo })
                 <div style={{ fontSize: tipos.lg || 18, fontWeight: 600, color: secondary, marginBottom: 12, ...apagar('subtitulo') }}>
                     Delitos por municipio
                 </div>
-                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, height: 110 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, height: 110, ...apagar('barras') }}>
                     {ALTURAS.map((alto, indice) => (
                         <div key={SIGLAS[indice]} style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
                             <div
@@ -223,22 +222,24 @@ export default function Composicion({ paleta, tipos, aplicacion, activo, demo })
                     <span style={{ width: 120, textAlign: 'right' }}>Población</span>
                     <span style={{ width: 80, textAlign: 'right' }}>Variación</span>
                 </div>
-                {MUNICIPIOS.map((fila) => (
-                    <div
-                        key={fila.nombre}
-                        style={{
-                            display: 'flex',
-                            padding: '9px 0',
-                            borderBottom: '1px solid #f0f0f0',
-                            fontSize: tipos.sm || 13,
-                            color: texto,
-                        }}
-                    >
-                        <span style={{ flexGrow: 1 }}>{fila.nombre}</span>
-                        <span style={{ width: 120, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fila.poblacion}</span>
-                        <span style={{ width: 80, textAlign: 'right', color: c('color.success', RESPALDOS.success) }}>{fila.var}</span>
-                    </div>
-                ))}
+                <div style={apagar('filasTabla')}>
+                    {MUNICIPIOS.map((fila) => (
+                        <div
+                            key={fila.nombre}
+                            style={{
+                                display: 'flex',
+                                padding: '9px 0',
+                                borderBottom: '1px solid #f0f0f0',
+                                fontSize: tipos.sm || 13,
+                                color: texto,
+                            }}
+                        >
+                            <span style={{ flexGrow: 1 }}>{fila.nombre}</span>
+                            <span style={{ width: 120, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fila.poblacion}</span>
+                            <span style={{ width: 80, textAlign: 'right', color: c('color.success', RESPALDOS.success) }}>{fila.var}</span>
+                        </div>
+                    ))}
+                </div>
             </div>
 
             <div

@@ -6,6 +6,53 @@ const aPx = (valor) => {
     return Number.isFinite(numero) ? numero : null;
 };
 
+export const PADRE = {
+    titulo: 'lienzo',
+    subrayado: 'lienzo',
+    bajada: 'lienzo',
+    aviso: 'lienzo',
+    filaBotones: 'lienzo',
+    tags: 'lienzo',
+    tarjetas: 'lienzo',
+    grafica: 'lienzo',
+    tabla: 'lienzo',
+    botonPrimario: 'filaBotones',
+    botonAcento: 'filaBotones',
+    enlace: 'filaBotones',
+    tagAprobada: 'tags',
+    tagPendiente: 'tags',
+    tagRechazada: 'tags',
+    tagRevision: 'tags',
+    campo: 'tarjetas',
+    tarjetaSombra: 'tarjetas',
+    cifra: 'campo',
+    barraCifra: 'campo',
+    nota: 'campo',
+    subtitulo: 'grafica',
+    barras: 'grafica',
+    encabezadoTabla: 'tabla',
+    filasTabla: 'tabla',
+};
+
+const ancestros = (elemento) => {
+    const cadena = [];
+    let actual = PADRE[elemento];
+    while (actual) {
+        cadena.push(actual);
+        actual = PADRE[actual];
+    }
+    return cadena;
+};
+
+const esAncestro = (posible, elemento) => ancestros(elemento).includes(posible);
+
+export const esVivo = (elemento, lista) => {
+    if (!lista || lista.length === 0) return true;
+    if (lista.includes(elemento)) return true;
+    if (ancestros(elemento).some((padre) => lista.includes(padre))) return true;
+    return lista.some((vivo) => esAncestro(elemento, vivo));
+};
+
 const POR_COLOR = {
     'color.primary': ['titulo', 'botonPrimario', 'barraCifra'],
     'color.primary-deep': ['botonPrimario', 'barraCifra'],
@@ -13,8 +60,8 @@ const POR_COLOR = {
     'color.accent': ['botonAcento', 'subrayado'],
     'color.accent-deep': ['botonAcento', 'subrayado'],
     'color.accent-soft': ['aviso'],
-    'color.text': ['bajada', 'tabla', 'nota', 'cifra'],
-    'color.bg': ['lienzo'],
+    'color.text': ['bajada', 'filasTabla', 'nota', 'cifra'],
+    'color.bg': ['fondo'],
     'color.surface-field': ['campo'],
     'color.success': ['tagAprobada'],
     'color.success-soft': ['tagAprobada'],
@@ -31,7 +78,7 @@ const POR_TAMANO = {
     xl: ['titulo'],
     lg: ['subtitulo', 'cifra'],
     base: ['bajada', 'botonPrimario', 'botonAcento'],
-    sm: ['tabla', 'encabezadoTabla'],
+    sm: ['filasTabla', 'encabezadoTabla', 'enlace'],
     xs: ['nota'],
 };
 
@@ -45,13 +92,13 @@ export const aplicacionDe = (clave, valor) => {
     }
 
     if (nombre.startsWith('dataviz.') || nombre.includes('viz')) {
-        return { elementos: ['grafica'], demo: null, nota: 'Las barras salen de la paleta de datos.' };
+        return { elementos: ['barras'], demo: null, nota: 'Las barras salen de la paleta de datos.' };
     }
 
     if (nombre.startsWith('font.family.')) {
         const esDisplay = nombre.endsWith('display') || nombre.endsWith('titles');
         return {
-            elementos: esDisplay ? ['titulo', 'subtitulo'] : ['bajada', 'tabla', 'nota'],
+            elementos: esDisplay ? ['titulo', 'subtitulo'] : ['bajada', 'filasTabla', 'nota'],
             demo: null,
             nota: '',
         };
@@ -99,7 +146,7 @@ export const aplicacionDe = (clave, valor) => {
     if (nombre.startsWith('breakpoint.')) {
         const px = aPx(valor);
         return {
-            elementos: ['lienzo'],
+            elementos: [],
             demo: px === null ? null : { tipo: 'ancho', valor: px },
             nota: px === null ? '' : `La pieza se encoge a ${px} px para enseñar cómo responde.`,
         };
@@ -108,15 +155,10 @@ export const aplicacionDe = (clave, valor) => {
     return vacio;
 };
 
-export const estaResaltado = (elemento, aplicacion) => (
-    !aplicacion || aplicacion.elementos.length === 0 || aplicacion.elementos.includes(elemento)
-);
-
 export const estiloApagado = (elemento, aplicacion, activo) => {
     if (!activo || !aplicacion || aplicacion.elementos.length === 0) return {};
-    const vivo = aplicacion.elementos.includes(elemento);
     return {
-        opacity: vivo ? 1 : 0.16,
+        opacity: esVivo(elemento, aplicacion.elementos) ? 1 : 0.14,
         transition: 'opacity 0.2s ease',
     };
 };

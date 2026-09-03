@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aplicacionDe, estiloApagado } from '@features/mel/helpers/aplicacion';
+import { aplicacionDe, esVivo, estiloApagado } from '@features/mel/helpers/aplicacion';
 
 const COLORES_SEMBRADOS = [
     'color.primary', 'color.primary-deep', 'color.secondary', 'color.accent',
@@ -27,10 +27,17 @@ describe('aplicacionDe', () => {
         expect(aplicacionDe('font.size.xs', '0.75rem').elementos).toContain('nota');
     });
 
-    it('un breakpoint encoge la pieza en vez de quedarse sin lugar', () => {
+    it('un breakpoint encoge la pieza en vez de apagar nada', () => {
         const { demo, elementos } = aplicacionDe('breakpoint.md', '768px');
-        expect(elementos).toContain('lienzo');
+        expect(elementos).toEqual([]);
         expect(demo).toEqual({ tipo: 'ancho', valor: 768 });
+    });
+
+    it('el color de fondo apaga el contenido y deja el lienzo', () => {
+        const { elementos } = aplicacionDe('color.bg', '#FFFFFF');
+        expect(elementos).toEqual(['fondo']);
+        expect(esVivo('titulo', elementos)).toBe(false);
+        expect(esVivo('bajada', elementos)).toBe(false);
     });
 
     it('una sombra se aplica a una tarjeta que no la lleva', () => {
@@ -51,7 +58,7 @@ describe('aplicacionDe', () => {
     });
 
     it('la paleta de datos lleva a la grafica', () => {
-        expect(aplicacionDe('dataviz.seq.3', '#B98FC7').elementos).toEqual(['grafica']);
+        expect(aplicacionDe('dataviz.seq.3', '#B98FC7').elementos).toEqual(['barras']);
     });
 });
 
@@ -65,5 +72,29 @@ describe('estiloApagado', () => {
     it('deja vivo lo que usa el token y apaga el resto', () => {
         expect(estiloApagado('titulo', aplicacion, true).opacity).toBe(1);
         expect(estiloApagado('bajada', aplicacion, true).opacity).toBeLessThan(0.2);
+    });
+});
+
+describe('esVivo', () => {
+    it('un elemento que no usa el token se apaga', () => {
+        expect(esVivo('titulo', ['titulo'])).toBe(true);
+        expect(esVivo('bajada', ['titulo'])).toBe(false);
+    });
+
+    it('un contenedor con un hijo vivo no se apaga, o lo arrastraria', () => {
+        expect(esVivo('tarjetas', ['cifra'])).toBe(true);
+        expect(esVivo('campo', ['cifra'])).toBe(true);
+        expect(esVivo('tabla', ['filasTabla'])).toBe(true);
+        expect(esVivo('grafica', ['barras'])).toBe(true);
+    });
+
+    it('si el contenedor es el elegido, sus hijos siguen vivos', () => {
+        expect(esVivo('cifra', ['campo'])).toBe(true);
+        expect(esVivo('nota', ['campo'])).toBe(true);
+    });
+
+    it('un hermano del vivo si se apaga', () => {
+        expect(esVivo('tarjetaSombra', ['cifra'])).toBe(false);
+        expect(esVivo('encabezadoTabla', ['filasTabla'])).toBe(false);
     });
 });

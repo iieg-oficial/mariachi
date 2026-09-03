@@ -39,7 +39,8 @@ export default function VistaPrevia({ tokens, seleccion, valorDeToken, onLimpiar
     }, [tokens, valorDeToken]);
 
     const aplicacion = activo ? aplicacionDe(activo.clave, valorDeToken(activo)) : null;
-    const resaltando = Boolean(activo && aplicacion && aplicacion.elementos.length > 0);
+    const apagando = Boolean(activo && aplicacion && aplicacion.elementos.length > 0);
+    const resaltando = Boolean(activo && aplicacion && (apagando || aplicacion.demo));
 
     return (
         <div style={{ height: '100%', overflow: 'auto', padding: 24, background: '#f5f5f5' }}>
@@ -56,11 +57,13 @@ export default function VistaPrevia({ tokens, seleccion, valorDeToken, onLimpiar
                 {resaltando ? (
                     <>
                         <Text style={{ fontFamily: MONO, fontSize: 13, fontWeight: 600 }}>{activo.clave}</Text>
-                        <Tag color='processing'>
-                            {aplicacion.elementos.length === 1
-                                ? '1 lugar'
-                                : `${aplicacion.elementos.length} lugares`}
-                        </Tag>
+                        {apagando && (
+                            <Tag color='processing'>
+                                {aplicacion.elementos.length === 1
+                                    ? '1 lugar'
+                                    : `${aplicacion.elementos.length} lugares`}
+                            </Tag>
+                        )}
                         {aplicacion.nota && (
                             <Text type='secondary' style={{ fontSize: 13 }}>{aplicacion.nota}</Text>
                         )}
@@ -78,7 +81,7 @@ export default function VistaPrevia({ tokens, seleccion, valorDeToken, onLimpiar
                 paleta={paleta}
                 tipos={tipos}
                 aplicacion={aplicacion}
-                activo={resaltando}
+                activo={apagando}
                 demo={aplicacion ? aplicacion.demo : null}
             />
         </div>

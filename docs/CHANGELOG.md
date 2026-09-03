@@ -9,6 +9,24 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.78.1] - 2026-09-03
+
+### Corregido: el resaltado de la vista previa no resaltaba nada
+
+El contenedor raíz de la composición también bajaba de opacidad, y la opacidad de un padre **se
+multiplica con la de sus hijos**: se apagaba todo por parejo, incluido lo que debía quedar vivo, así
+que el efecto no se veía. Lo mismo pasaba en cada anidamiento —la tarjeta arrastraba a su cifra, la
+tabla a sus filas—.
+
+Ahora el lienzo nunca se apaga y un elemento se considera vivo si es el elegido, si su contenedor lo
+es, o si contiene a alguno que lo sea. Las pruebas fijan los cuatro casos, incluido el que fallaba:
+un contenedor con un hijo vivo no se apaga.
+
+El color de fondo apaga el contenido y deja el lienzo encendido, que es lo que tiene sentido para un
+`color.bg`, y un `breakpoint.*` ya no apaga nada: solo encoge la pieza.
+
+---
+
 ## [2.78.0] - 2026-09-03
 
 ### Cambiado: la vista previa de MEL deja de ser un catálogo y pasa a ser una pieza
