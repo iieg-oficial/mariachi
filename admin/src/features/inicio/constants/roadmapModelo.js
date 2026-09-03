@@ -20,7 +20,7 @@ export const COLOR_PROYECTO = {
     'gateway-hub': '#2E4372',
     huachicol: '#A34400',
     vine: '#6B7A1F',
-    wacha: '#8A2E8A',
+    frames: '#8A2E8A',
     intranet: '#1F6E7A',
     sitio2026: '#B0521F',
     acervo: '#4A4A8A',

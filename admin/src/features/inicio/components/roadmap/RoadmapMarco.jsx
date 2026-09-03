@@ -7,6 +7,7 @@ export default function RoadmapMarco({ marcoRef, cargando, pantallaCompleta, chi
     return (
         <div
             ref={marcoRef}
+            data-marco="roadmap"
             style={{
                 position: 'relative',
                 display: mostrar(),

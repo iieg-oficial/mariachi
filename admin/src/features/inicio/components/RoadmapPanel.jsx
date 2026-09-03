@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { App, Button, Card, Space, Spin } from 'antd';
+import { App, Card, ConfigProvider, Spin, theme } from 'antd';
 import { FlagOutlined } from '@ant-design/icons';
 import { useAuth } from '@shared/contexts/useAuth';
 import usePantallaCompleta from '@shared/hooks/usePantallaCompleta';
@@ -167,6 +167,28 @@ export default function RoadmapPanel() {
         ajustarZoom(evento.deltaY > 0 ? -PASO_ZOOM : PASO_ZOOM);
     };
 
+    const alternarEdicion = async () => {
+        if (editando) {
+            setEditando(false);
+            limpiar();
+            if (document.fullscreenElement) await alternarPantalla();
+            return;
+        }
+        setEditando(true);
+        limpiar();
+        if (!pantallaCompleta) await alternarPantalla();
+    };
+
+    const estabaCompleta = useRef(false);
+
+    useEffect(() => {
+        if (estabaCompleta.current && !pantallaCompleta) {
+            setEditando(false);
+            limpiar();
+        }
+        estabaCompleta.current = pantallaCompleta;
+    }, [pantallaCompleta, limpiar]);
+
     const alternarPausa = () => {
         seguirRef.current = pausado;
         setPausado((v) => !v);
@@ -189,115 +211,117 @@ export default function RoadmapPanel() {
             onVerOcultos={() => setVerOcultos((v) => !v)}
             onPausa={alternarPausa}
             onPantalla={alternarPantalla}
-            onEditar={() => { setEditando((v) => !v); limpiar(); }}
+            onEditar={alternarEdicion}
         />
     );
 
     return (
-        <div>
-            <SectionHeader
-                icon={<FlagOutlined />}
-                title="Hoja de ruta"
-                subtitle="El ecosistema de 2024 a 2030"
-                acciones={!pantallaCompleta && acciones}
-            />
-            <Card size="small" styles={{ body: { padding: '6px 10px' } }}>
-                {cargando && (
-                    <div style={{ textAlign: 'center', padding: 32 }}><Spin /></div>
-                )}
-                <RoadmapMarco marcoRef={marcoRef} cargando={cargando} pantallaCompleta={pantallaCompleta}>
-                    {pantallaCompleta && (
-                        <div style={{
-                            position: 'sticky',
-                            top: 0,
-                            zIndex: 6,
-                            display: 'flex',
-                            justifyContent: 'flex-end',
-                            padding: '2px 2px 8px',
-                            background: '#fff',
-                        }}>
-                            {acciones}
-                        </div>
+        <ConfigProvider theme={{ algorithm: theme.defaultAlgorithm }}>
+            <div style={{ colorScheme: 'light' }}>
+                <SectionHeader
+                    icon={<FlagOutlined />}
+                    title="Hoja de ruta"
+                    subtitle="El ecosistema de 2024 a 2030"
+                    acciones={!pantallaCompleta && acciones}
+                />
+                <Card size="small" styles={{ body: { padding: '6px 10px' } }}>
+                    {cargando && (
+                        <div style={{ textAlign: 'center', padding: 32 }}><Spin /></div>
                     )}
-                    <div
-                        ref={cajaRef}
-                        onScroll={alDesplazar}
-                        onWheel={alRodar}
-                        style={{
-                            overflow: 'auto',
-                            WebkitOverflowScrolling: 'touch',
-                            flex: pantallaCompleta ? '1 1 auto' : 'none',
-                            minHeight: 0,
-                            display: pantallaCompleta ? 'flex' : 'block',
-                        }}
-                    >
-                        <RoadmapLienzo
-                            hitos={hitos}
-                            ciclos={ciclos}
-                            procesos={procesos}
-                            editando={editando}
-                            arrastre={arrastre}
-                            onDobleClic={alDobleClic}
-                            svgRef={svgRef}
-                            onArrastrar={arrastrar}
-                            marcador={marcador}
-                            seleccion={seleccion}
-                            relacionados={relacionados}
-                            pausado={pausado}
-                            aAlto={pantallaCompleta}
-                            zoom={zoom}
-                            cicloActivo={esCiclo ? seleccion : null}
-                            opacidadDe={opacidadDe}
-                            onSeleccionar={alSeleccionar}
-                            onCiclo={alSeleccionar}
-                            onEntrar={alEntrar}
-                            onSalir={alSalir}
-                            onAvance={alAvanzar}
-                        />
-                    </div>
-
-                    {tip && !editando && (
-                        <RoadmapTip
-                            tip={tip}
-                            fijado={fijado}
-                            tipRef={tipRef}
-                            onCerrar={limpiar}
-                        />
-                    )}
-                    {editando && anclaBarra && activo && (
-                        <RoadmapBarrita
-                            item={activo}
-                            tipo={tipoDe(activo)}
-                            posicion={anclaBarra}
-                            onCambiar={alCambiarRapido}
-                            onEliminar={() => alEliminar(activo.id)}
-                            onMas={() => setVerFormulario(true)}
-                        />
-                    )}
-
-                    {editando && (!anclaBarra || verFormulario) && (
-                        <div style={{
-                            flex: 'none',
-                            maxHeight: pantallaCompleta ? '45%' : 'none',
-                            overflowY: pantallaCompleta ? 'auto' : 'visible',
-                        }}>
-                            <RoadmapEditor
-                                item={verFormulario ? activo : null}
-                                tipo={tipoDe(activo)}
-                                hitos={datos}
+                    <RoadmapMarco marcoRef={marcoRef} cargando={cargando} pantallaCompleta={pantallaCompleta}>
+                        {pantallaCompleta && (
+                            <div style={{
+                                position: 'sticky',
+                                top: 0,
+                                zIndex: 6,
+                                display: 'flex',
+                                justifyContent: 'flex-end',
+                                padding: '2px 2px 8px',
+                                background: '#fff',
+                            }}>
+                                {acciones}
+                            </div>
+                        )}
+                        <div
+                            ref={cajaRef}
+                            onScroll={alDesplazar}
+                            onWheel={alRodar}
+                            style={{
+                                overflow: 'auto',
+                                WebkitOverflowScrolling: 'touch',
+                                flex: pantallaCompleta ? '1 1 auto' : 'none',
+                                minHeight: 0,
+                                display: pantallaCompleta ? 'flex' : 'block',
+                            }}
+                        >
+                            <RoadmapLienzo
+                                hitos={hitos}
+                                ciclos={ciclos}
+                                procesos={procesos}
+                                editando={editando}
+                                arrastre={arrastre}
+                                onDobleClic={alDobleClic}
+                                svgRef={svgRef}
+                                onArrastrar={arrastrar}
                                 marcador={marcador}
-                                guardando={guardando}
-                                onGuardar={alGuardar}
-                                onEliminar={alEliminar}
-                                onCerrar={limpiar}
-                                onMarcador={setMarcador}
-                                onAgregar={alAgregar}
+                                seleccion={seleccion}
+                                relacionados={relacionados}
+                                pausado={pausado}
+                                aAlto={pantallaCompleta}
+                                zoom={zoom}
+                                cicloActivo={esCiclo ? seleccion : null}
+                                opacidadDe={opacidadDe}
+                                onSeleccionar={alSeleccionar}
+                                onCiclo={alSeleccionar}
+                                onEntrar={alEntrar}
+                                onSalir={alSalir}
+                                onAvance={alAvanzar}
                             />
                         </div>
-                    )}
-                </RoadmapMarco>
-            </Card>
 
-        </div>
+                        {tip && !editando && (
+                            <RoadmapTip
+                                tip={tip}
+                                fijado={fijado}
+                                tipRef={tipRef}
+                                onCerrar={limpiar}
+                            />
+                        )}
+                        {editando && anclaBarra && activo && (
+                            <RoadmapBarrita
+                                item={activo}
+                                tipo={tipoDe(activo)}
+                                posicion={anclaBarra}
+                                onCambiar={alCambiarRapido}
+                                onEliminar={() => alEliminar(activo.id)}
+                                onMas={() => setVerFormulario(true)}
+                            />
+                        )}
+
+                        {editando && (!anclaBarra || verFormulario) && (
+                            <div style={{
+                                flex: 'none',
+                                maxHeight: pantallaCompleta ? '45%' : 'none',
+                                overflowY: pantallaCompleta ? 'auto' : 'visible',
+                            }}>
+                                <RoadmapEditor
+                                    item={verFormulario ? activo : null}
+                                    tipo={tipoDe(activo)}
+                                    hitos={datos}
+                                    marcador={marcador}
+                                    guardando={guardando}
+                                    onGuardar={alGuardar}
+                                    onEliminar={alEliminar}
+                                    onCerrar={limpiar}
+                                    onMarcador={setMarcador}
+                                    onAgregar={alAgregar}
+                                />
+                            </div>
+                        )}
+                    </RoadmapMarco>
+                </Card>
+
+            </div>
+        </ConfigProvider>
     );
 }

@@ -34,4 +34,31 @@ describe('buildGridColumns', () => {
     it('deja fuera la columna sticky', () => {
         expect(build().map((column) => column.title)).not.toContain('ID');
     });
+
+    it('marca con grid-cell-locked las celdas bloqueadas por la fila', () => {
+        const columns = buildGridColumns({
+            columnsMeta: COLUMNS,
+            catalogs: {},
+            draft: {},
+            rowKeyField: 'id',
+            conflictKeys: new Set(),
+            isCellDisabled: (rowData, meta) => rowData?.bloqueada && meta.key === 'label',
+        });
+        const label = columns.find((column) => column.title === 'Nombre');
+        expect(label.cellClassName({ rowData: { id: 'a', bloqueada: true } })).toBe('grid-cell-locked');
+        expect(label.cellClassName({ rowData: { id: 'b' } })).toBeUndefined();
+    });
+
+    it('lo sin guardar gana sobre el bloqueo', () => {
+        const columns = buildGridColumns({
+            columnsMeta: COLUMNS,
+            catalogs: {},
+            draft: { a: { label: 'x' } },
+            rowKeyField: 'id',
+            conflictKeys: new Set(),
+            isCellDisabled: () => true,
+        });
+        const label = columns.find((column) => column.title === 'Nombre');
+        expect(label.cellClassName({ rowData: { id: 'a' } })).toBe('grid-cell-dirty');
+    });
 });

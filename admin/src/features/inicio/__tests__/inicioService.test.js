@@ -24,9 +24,9 @@ describe('getPlataformas', () => {
     });
 
     it('toma la lista del monitor y no de un catalogo fijo', async () => {
-        api.get.mockResolvedValue({ data: { services: [servicio('vine'), servicio('wacha')] } });
+        api.get.mockResolvedValue({ data: { services: [servicio('vine'), servicio('frames')] } });
         const plataformas = await getPlataformas();
-        expect(plataformas.map((p) => p.slug)).toEqual(['vine', 'wacha']);
+        expect(plataformas.map((p) => p.slug)).toEqual(['vine', 'frames']);
     });
 
     it('reconoce sextante, que antes se pedia como geoserver', async () => {

@@ -26,7 +26,7 @@ const fila = (extra) => ({
 const FILAS = [
     fila({ clave: 'mariachi-2', etiqueta: 'mariachi 2', fecha_eje: '2026-08-10', motivo: 'la identidad se va a minerva' }),
     fila({ clave: 'geoserver-1', etiqueta: 'geoserver 1', proyecto: 'sextante', fecha_eje: '2026-02-25' }),
-    fila({ clave: 'wacha', etiqueta: 'wacha', proyecto: 'wacha', fecha_eje: '2026-08-10', nombre_anterior: 'frigate' }),
+    fila({ clave: 'frames', etiqueta: 'frames', proyecto: 'frames', fecha_eje: '2026-08-10', nombre_anterior: 'frigate' }),
     fila({ clave: 'f-mcp', etiqueta: 'mapalab · MCP', proyecto: 'mapalab', tipo: 'feature', feature_de: 'mapalab', fecha_eje: '2026-07-30' }),
     fila({ clave: 'mapalab-1', etiqueta: 'mapalab 1', proyecto: 'mapalab', fecha_eje: '2026-03-27' }),
     fila({ clave: 'legado-colibri', etiqueta: 'colibrí legado', proyecto: 'legado', tipo: 'legacy', fecha_eje: '2024-03-15' }),
@@ -87,7 +87,7 @@ describe('RoadmapPanel', () => {
     it('conserva el nombre viejo cuando el proyecto se renombró', async () => {
         montar();
         expect(await screen.findByText('frigate')).toBeInTheDocument();
-        expect(screen.getByText('wacha')).toBeInTheDocument();
+        expect(screen.getByText('frames')).toBeInTheDocument();
     });
 
     it('abre el motivo al pasar por un hito', async () => {
@@ -108,6 +108,18 @@ describe('RoadmapPanel', () => {
         montar();
         fireEvent.click(await screen.findByRole('button', { name: /editar/i }));
         expect(await screen.findByText('Quién recorre la línea')).toBeInTheDocument();
+    });
+
+    it('editar pide pantalla completa al entrar', async () => {
+        usuario.permisos = ['mariachi.roadmap.manage'];
+        const pedir = vi.fn(() => Promise.resolve());
+        Element.prototype.requestFullscreen = pedir;
+        montar();
+
+        fireEvent.click(await screen.findByRole('button', { name: /editar/i }));
+
+        await waitFor(() => expect(pedir).toHaveBeenCalled());
+        delete Element.prototype.requestFullscreen;
     });
 
     it('al seleccionar en edición aparece la barrita, no el formulario', async () => {

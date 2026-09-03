@@ -9,6 +9,31 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.70.0] - 2026-09-03
+
+### Cambiado: editar solo se hace en pantalla completa
+
+El botón de edición **lleva a pantalla completa por su cuenta**: no hay que expandir primero. Y al
+salir de pantalla completa, la edición se apaga. Lo que no cambia es el otro sentido — expandir
+sigue siendo solo mirar, no editar.
+
+El motivo es de espacio: la barra del elemento seleccionado y el formulario compiten con el mapa, y
+en la vista normal el mapa mide 190 píxeles de alto útiles.
+
+### Cambiado: la sección se queda en claro, sin depender del tema
+
+La hoja de ruta declara su propio `ConfigProvider` con el algoritmo claro y `color-scheme: light` en
+su raíz, así que ya no hereda nada del tema del sistema ni de un tema dinámico que se agregue más
+adelante. El SVG usa negros y grises fijos y no tiene una paleta oscura que ofrecer; forzarlo es más
+honesto que dejarlo a la suerte de lo que pinte el navegador.
+
+### Agregado
+
+- `usePantallaCompleta` estrena pruebas: que solo se enciende cuando el elemento expandido es el
+  suyo —no cualquiera—, que vuelve a apagarse cuando el navegador sale, y que avisa si lo niega.
+
+---
+
 ## [2.69.0] - 2026-09-03
 
 ### Agregado: la propagación de la tarjetita se ve en tres lugares
