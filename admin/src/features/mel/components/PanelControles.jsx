@@ -27,8 +27,6 @@ export default function PanelControles({
     cambios,
     ancla,
     onCerrarAncla,
-    dispositivo,
-    onDispositivo,
 }) {
     return (
         <div
@@ -103,8 +101,6 @@ export default function PanelControles({
                     onCerrarAncla={onCerrarAncla}
                     fondo={fondo}
                     colorTexto={colorTexto}
-                    dispositivo={dispositivo}
-                    onDispositivo={onDispositivo}
                 />
             </div>
         </div>

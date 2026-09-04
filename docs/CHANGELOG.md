@@ -9,6 +9,27 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.85.0] - 2026-09-04
+
+### Agregado: los breakpoints existen como tokens
+
+Nunca se sembraron: el grupo salía vacío y no había nada que editar. La migración **`m3lbp0001`**
+crea los cuatro —`sm` 640, `md` 768, `lg` 1024, `xl` 1280— para cada marca, con su descripción de qué
+cambia en cada corte. Es `ON CONFLICT DO NOTHING`, así que no pisa nada si ya existieran.
+
+Con eso el grupo vuelve a mostrar sus filas con el valor editable, como el resto.
+
+### Cambiado: el selector de dispositivo pasa a la vista previa
+
+Estaba en la cabecera del grupo de breakpoints, que no es donde se usa. Ahora vive junto a **Ver
+todo**, encima de la pieza, porque es un control de la vista previa.
+
+**Tablet es el ancho por omisión**, que es lo que cabe en la columna. Tablet y Mobile se dibujan ahí
+mismo; **Laptop y Escritorio abren la pieza en un modal**, porque a 1024 y 1280 px ya no entran y
+verlas encogidas no enseñaba nada.
+
+---
+
 ## [2.84.0] - 2026-09-04
 
 ### Agregado: guardar refresca el árbol, sin recargar la página a mano

@@ -1,7 +1,14 @@
 import { useMemo } from 'react';
-import { Button, Typography } from 'antd';
+import { Button, Modal, Segmented, Tooltip, Typography } from 'antd';
 import Composicion from '@features/mel/components/previews/Composicion';
 import { ELEMENTOS_CON_NOMBRE, aplicacionDe } from '@features/mel/helpers/aplicacion';
+import {
+    DISPOSITIVOS,
+    POR_DEFECTO,
+    anchoDe,
+    dispositivoDe,
+    vaEnModal,
+} from '@features/mel/constants/dispositivos';
 
 const { Text } = Typography;
 
@@ -14,7 +21,29 @@ const aPx = (valor) => {
     return null;
 };
 
-export default function VistaPrevia({ tokens, campos, seleccion, valorDeToken, onLimpiar, elemento, onElemento, anclado, editor, onCerrar, ancho }) {
+const OPCIONES = DISPOSITIVOS.map((d) => ({
+    value: d.id,
+    label: (
+        <Tooltip title={`${d.id} · ${d.ancho} px${d.enModal ? ' · se abre aparte' : ''}`}>
+            <span>{d.nombre}</span>
+        </Tooltip>
+    ),
+}));
+
+export default function VistaPrevia({
+    tokens,
+    campos,
+    seleccion,
+    valorDeToken,
+    onLimpiar,
+    elemento,
+    onElemento,
+    anclado,
+    editor,
+    onCerrar,
+    dispositivo,
+    onDispositivo,
+}) {
     const activo = tokens.find((token) => token.id === seleccion) || null;
 
     const paleta = useMemo(() => {
@@ -45,6 +74,26 @@ export default function VistaPrevia({ tokens, campos, seleccion, valorDeToken, o
     const apagando = Boolean(activo && aplicacion && aplicacion.elementos.length > 0);
     const resaltando = Boolean(activo && aplicacion && (apagando || aplicacion.demo));
 
+    const enModal = vaEnModal(dispositivo);
+    const anchoEnLinea = enModal ? anchoDe(POR_DEFECTO) : anchoDe(dispositivo);
+    const elegido = dispositivoDe(dispositivo);
+
+    const pieza = (ancho) => (
+        <Composicion
+            paleta={paleta}
+            tipos={tipos}
+            campos={campos}
+            aplicacion={aplicacion}
+            activo={apagando}
+            demo={aplicacion ? aplicacion.demo : null}
+            onElemento={onElemento}
+            anclado={anclado}
+            editor={editor}
+            onCerrar={onCerrar}
+            ancho={ancho}
+        />
+    );
+
     return (
         <div style={{ height: '100%', overflow: 'auto', padding: 24, background: '#f5f5f5' }}>
             <div
@@ -63,8 +112,6 @@ export default function VistaPrevia({ tokens, campos, seleccion, valorDeToken, o
                         {aplicacion.nota && (
                             <Text type='secondary' style={{ fontSize: 13 }}>{aplicacion.nota}</Text>
                         )}
-                        <span style={{ flexGrow: 1 }} />
-                        <Button size='small' onClick={onLimpiar}>Ver todo</Button>
                     </>
                 ) : (
                     <Text type='secondary' style={{ fontSize: 13 }}>
@@ -73,21 +120,25 @@ export default function VistaPrevia({ tokens, campos, seleccion, valorDeToken, o
                             : 'Elige un token de la izquierda, o pasa por la pieza para ver qué la compone.'}
                     </Text>
                 )}
+                <span style={{ flexGrow: 1 }} />
+                <Segmented size='small' value={dispositivo} onChange={onDispositivo} options={OPCIONES} />
+                <Button size='small' disabled={!resaltando} onClick={onLimpiar}>Ver todo</Button>
             </div>
 
-            <Composicion
-                paleta={paleta}
-                tipos={tipos}
-                campos={campos}
-                aplicacion={aplicacion}
-                activo={apagando}
-                demo={aplicacion ? aplicacion.demo : null}
-                onElemento={onElemento}
-                anclado={anclado}
-                editor={editor}
-                onCerrar={onCerrar}
-                ancho={ancho}
-            />
+            {pieza(anchoEnLinea)}
+
+            <Modal
+                open={enModal}
+                onCancel={() => onDispositivo(POR_DEFECTO)}
+                footer={null}
+                width={elegido ? elegido.ancho + 64 : 1088}
+                style={{ top: 24 }}
+                title={elegido ? `${elegido.nombre} · ${elegido.ancho} px` : ''}
+            >
+                <div style={{ maxHeight: '78vh', overflow: 'auto' }}>
+                    {enModal && pieza(elegido.ancho)}
+                </div>
+            </Modal>
         </div>
     );
 }

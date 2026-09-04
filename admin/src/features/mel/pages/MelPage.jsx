@@ -9,6 +9,7 @@ import BarraCambios from '@features/mel/components/BarraCambios';
 import DiffDrawer from '@features/mel/components/DiffDrawer';
 import ArtefactosDrawer from '@features/mel/components/ArtefactosDrawer';
 import { SECCIONES } from '@features/mel/constants/campos';
+import { POR_DEFECTO } from '@features/mel/constants/dispositivos';
 import { esHex, evaluarToken } from '@features/mel/helpers/contraste';
 import { tocaElemento } from '@features/mel/helpers/aplicacion';
 import useCambiosMel from '@features/mel/hooks/useCambiosMel';
@@ -39,7 +40,7 @@ export default function MelPage() {
     const [elemento, setElemento] = useState(null);
     const [anclado, setAnclado] = useState(null);
     const [anclaLista, setAnclaLista] = useState(null);
-    const [dispositivo, setDispositivo] = useState(null);
+    const [dispositivo, setDispositivo] = useState(POR_DEFECTO);
     const { isMobile } = useIsMobile();
 
     const recargar = useCallback(async () => {
@@ -145,8 +146,6 @@ export default function MelPage() {
         setElemento(null);
     };
 
-    const ANCHOS = { sm: 640, md: 768, lg: 1024, xl: 1280 };
-
     const seleccionarDeLista = (id) => {
         setSeleccion(id);
         setAnclaLista(id);
@@ -231,8 +230,6 @@ export default function MelPage() {
                             elemento={elemento}
                             ancla={anclaLista}
                             onCerrarAncla={() => setAnclaLista(null)}
-                            dispositivo={dispositivo}
-                            onDispositivo={setDispositivo}
                             tokens={todos}
                             campos={detalle?.campos || {}}
                             grupoAbierto={grupoAbierto}
@@ -248,8 +245,9 @@ export default function MelPage() {
                                     campos={detalle?.campos || {}}
                                     seleccion={seleccion}
                                     valorDeToken={cambios.valorDeToken}
-                                    onLimpiar={() => { setSeleccion(null); setDispositivo(null); }}
-                                    ancho={dispositivo ? ANCHOS[dispositivo] : null}
+                                    onLimpiar={() => setSeleccion(null)}
+                                    dispositivo={dispositivo}
+                                    onDispositivo={setDispositivo}
                                     elemento={elemento}
                                     onElemento={alElemento}
                                     anclado={anclado}
