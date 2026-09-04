@@ -184,17 +184,13 @@ export default function LayerMetadataSection({
                         </span>
                     }
                 />
-            ) : (
-                <Tooltip title={derivedFromDescendants
-                    ? 'Este nodo no tiene feature type propio: lo toma de sus descendientes, que usan todos el mismo. Lo que edites aquí es la metadata de ese feature type, compartida con todas las capas hijas.'
-                    : 'Los metadatos se guardan por feature type de GeoServer, así que se comparten con cualquier capa que use el mismo.'}
-                >
+            ) : derivedFromDescendants ? (
+                <Tooltip title="Este nodo no tiene capa propia: toma la metadata de sus descendientes, que usan todos la misma. Lo que edites aquí las afecta a todas.">
                     <Text type="secondary" style={{ fontSize: 12, cursor: 'help' }}>
-                        Feature type <code>{layerKey}</code>
-                        {derivedFromDescendants ? ' · heredado de sus capas hijas' : ''}
+                        Metadata heredada de sus capas hijas
                     </Text>
                 </Tooltip>
-            )}
+            ) : null}
             {notFound && (
                 <Alert closable
                     type="warning"
@@ -470,7 +466,6 @@ export default function LayerMetadataSection({
                     <div style={{ position: 'sticky', top: 0 }}>
                         <MetadataPreview
                             form={form}
-                            layerKey={layerKey}
                             layerLabel={layerLabel}
                             numeralia={numeralia}
                             saving={saving}

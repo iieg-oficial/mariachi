@@ -62,8 +62,7 @@ export default function EditorSection({
         <section
             id={id}
             style={{
-                paddingTop: first ? 0 : 28,
-                marginTop: first ? 0 : 28,
+                paddingTop: first ? 0 : 20,
                 borderTop: first ? 'none' : '1px solid #e8ecf3',
             }}
         >

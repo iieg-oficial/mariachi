@@ -9,6 +9,29 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.87.2] - 2026-09-04
+
+### Corregido: una etiqueta escondia todo lo que colgaba de ella
+
+En el arbol del editor una etiqueta se dibuja como rotulo —sin flecha y sin click—, pero sus hijos
+seguian detras del plegado, asi que nunca se podian abrir. Dejaba **43 nodos inalcanzables**: los 10
+grupos de «Delitos contra el patrimonio» y las 33 capas de «Establecimientos de salud». El visor
+nunca plego las etiquetas; el editor ahora hace lo mismo y las muestra siempre.
+
+### Corregido: «grupo · N variantes» contaba nodos que no son variantes
+
+La pastilla contaba todos los hijos. Ahora cuenta solo las capas, y un grupo que no tiene ninguna
+—porque adentro trae etiquetas o categorias— se marca como **«grupo sin variantes»**, que es
+justo el caso de «Establecimientos de salud».
+
+### Cambiado
+
+- El feature type sale del subtitulo de Metadatos y del pie de la vista previa: ya aparece en la
+  ficha. Cuando el nodo hereda la metadata de sus hijas se dice eso y nada mas.
+- Las secciones colapsables tenian `margin` y `padding` superiores de 28 px cada uno, 56 px de
+  separacion real. Queda solo el padding.
+- `key` sale del spread de props al recursar el arbol; React avisaba en consola.
+
 ## [2.87.1] - 2026-09-04
 
 ### Corregido: la pestana Metadatos reventaba al abrir el cajon de contenido

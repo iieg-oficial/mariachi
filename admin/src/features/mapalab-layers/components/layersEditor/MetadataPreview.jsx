@@ -18,7 +18,7 @@ function Seccion({ titulo, ayuda, onClick, children }) {
     );
 }
 
-export default function MetadataPreview({ form, layerKey, layerLabel, onAbrirSeccion, onIrAEstadisticas, numeralia = [], saving = false }) {
+export default function MetadataPreview({ form, layerLabel, onAbrirSeccion, onIrAEstadisticas, numeralia = [], saving = false }) {
     const descripcion = Form.useWatch('descripcion', form);
     const frecuencia = Form.useWatch('frecuencia', form);
     const fechaUltima = Form.useWatch('fecha_ultima', form);
@@ -133,7 +133,6 @@ export default function MetadataPreview({ form, layerKey, layerLabel, onAbrirSec
 
             <div className="ficha-meta">
                 <span>Descarga: <b>{downloadable === false ? 'bloqueada' : 'disponible'}</b></span>
-                {layerKey && <span>Feature type: <code>{layerKey}</code></span>}
             </div>
         </VisorFrame>
     );

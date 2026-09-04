@@ -44,6 +44,24 @@ function TarjetitaDot({ node }) {
     );
 }
 
+function GroupPill({ node }) {
+    const variantes = (node.children || []).filter((c) => c.nodeType === 'leaf').length;
+
+    if (variantes === 0) {
+        return (
+            <Tooltip title="Este grupo no tiene capas propias: adentro trae etiquetas o categorías. En el visor se comporta como una categoría, no como un grupo de variantes.">
+                <Tag color="warning" className="tree-pill">grupo sin variantes</Tag>
+            </Tooltip>
+        );
+    }
+
+    return (
+        <Tag className="tree-pill tree-pill-count">
+            grupo · {variantes} {variantes === 1 ? 'variante' : 'variantes'}
+        </Tag>
+    );
+}
+
 function TitleBlock({ node, isMobile }) {
     const isProperty = isPropertyOfGroup(node.nodeType, node.parentNodeType);
     const showThemeIcon = (node.nodeType === 'tema' || node.nodeType === 'evento') && node.iconUrl;
@@ -70,11 +88,7 @@ function TitleBlock({ node, isMobile }) {
             {node.nodeType === 'category' && node.children?.length > 0 && (
                 <Tag className="tree-pill tree-pill-count">{node.children.length}</Tag>
             )}
-            {node.nodeType === 'group' && (
-                <Tag className="tree-pill tree-pill-count">
-                    grupo · {node.children?.length || 0} {node.children?.length === 1 ? 'variante' : 'variantes'}
-                </Tag>
-            )}
+            {node.nodeType === 'group' && <GroupPill node={node} />}
             <TarjetitaDot node={node} />
             <StatePills node={node} />
         </>
@@ -149,8 +163,10 @@ function NodeRow({ node, depth, expanded, selected, isMobile, onToggle, onSelect
 
 export default function LayersTreeBranch(props) {
     const { node, depth, expanded, selectedKey, isMobile, toggleExpanded, onSelect, onEdit, onReorder, dragHandle } = props;
-    const isExpanded = expanded.has(node.key);
-    const isGroup = shapeOf(node.nodeType) === 'box';
+    const shape = shapeOf(node.nodeType);
+    const isGroup = shape === 'box';
+    const siempreAbierto = shape === 'rule';
+    const isExpanded = siempreAbierto || expanded.has(node.key);
 
     const sensors = useSensors(
         useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -169,7 +185,6 @@ export default function LayersTreeBranch(props) {
 
     const childProps = (child) => ({
         ...props,
-        key: child.key,
         node: child,
         depth: depth + 1,
         dragHandle: undefined,
@@ -178,12 +193,12 @@ export default function LayersTreeBranch(props) {
     const renderChildren = (children) => {
         if (!children || children.length === 0) return null;
         if (!onReorder) {
-            return children.map((child) => <LayersTreeBranch {...childProps(child)} />);
+            return children.map((child) => <LayersTreeBranch key={child.key} {...childProps(child)} />);
         }
         return (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <SortableContext items={children.map((c) => c.key)} strategy={verticalListSortingStrategy}>
-                    {children.map((child) => <SortableTreeBranch {...childProps(child)} />)}
+                    {children.map((child) => <SortableTreeBranch key={child.key} {...childProps(child)} />)}
                 </SortableContext>
             </DndContext>
         );
