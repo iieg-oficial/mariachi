@@ -23,14 +23,20 @@ export default function GridHistoryDrawer({
     resources = null,
 }) {
     const [scope, setScope] = useState('row');
-    const [recurso, setRecurso] = useState(() => resources?.[0]?.value || resource);
 
-    const recursoActivo = resources ? recurso : resource;
+    const fuentes = useMemo(
+        () => resources || [{ value: resource, label: null, columnsMeta }],
+        [resources, resource, columnsMeta],
+    );
+
     const metaActiva = useMemo(
-        () => (resources
-            ? (resources.find((r) => r.value === recursoActivo)?.columnsMeta || [])
-            : columnsMeta),
-        [resources, recursoActivo, columnsMeta],
+        () => fuentes.flatMap((f) => f.columnsMeta || []),
+        [fuentes],
+    );
+
+    const etiquetaDeFuente = useMemo(
+        () => Object.fromEntries(fuentes.map((f) => [f.value, f.label])),
+        [fuentes],
     );
     const [entries, setEntries] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -46,17 +52,26 @@ export default function GridHistoryDrawer({
         if (!open) return;
         setLoading(true);
         try {
-            const data = await fetchGridHistory(recursoActivo, {
-                rowKey: effectiveScope === 'row' ? rowKey : undefined,
-                limit: 300,
-            });
-            setEntries(data || []);
+            const lotes = await Promise.all(fuentes.map(async (f) => {
+                try {
+                    const data = await fetchGridHistory(f.value, {
+                        rowKey: effectiveScope === 'row' ? rowKey : undefined,
+                        limit: 300,
+                    });
+                    return (data || []).map((fila) => ({ ...fila, _fuente: f.value }));
+                } catch {
+                    return [];
+                }
+            }));
+            setEntries(
+                lotes.flat().sort((a, b) => String(b.changed_at || '').localeCompare(String(a.changed_at || ''))),
+            );
         } catch {
             setEntries([]);
         } finally {
             setLoading(false);
         }
-    }, [open, recursoActivo, effectiveScope, rowKey]);
+    }, [open, fuentes, effectiveScope, rowKey]);
 
     useEffect(() => { load(); }, [load]);
 
@@ -114,8 +129,18 @@ export default function GridHistoryDrawer({
                 render: (value) => <Text style={{ fontSize: 12 }} code>{value}</Text>,
             });
         }
+        if (resources) {
+            base.unshift({
+                title: 'Origen',
+                dataIndex: '_fuente',
+                width: 100,
+                render: (value) => (
+                    <Tag style={{ fontSize: 11 }}>{etiquetaDeFuente[value] || value}</Tag>
+                ),
+            });
+        }
         return base;
-    }, [titles, effectiveScope]);
+    }, [titles, effectiveScope, resources, etiquetaDeFuente]);
 
     return (
         <Drawer
@@ -132,14 +157,6 @@ export default function GridHistoryDrawer({
             )}
             extra={(
                 <Space size={8}>
-                    {resources && (
-                        <Segmented
-                            size="small"
-                            value={recursoActivo}
-                            onChange={setRecurso}
-                            options={resources.map((r) => ({ label: r.label, value: r.value }))}
-                        />
-                    )}
                     {rowKey && (
                         <Segmented
                             size="small"

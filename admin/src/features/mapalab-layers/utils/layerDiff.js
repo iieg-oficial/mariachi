@@ -116,11 +116,35 @@ export const diffPayload = (payload, base) => {
     return out;
 };
 
+const ETIQUETA_DE_ITEM = ['nombre', 'corto', 'largo', 'texto', 'label', 'titulo', 'enlace'];
+
+const describeItem = (item) => {
+    if (item === null || item === undefined) return null;
+    if (typeof item !== 'object') return String(item);
+    for (const campo of ETIQUETA_DE_ITEM) {
+        const v = item[campo];
+        if (typeof v === 'string' && v.trim()) return v.trim();
+    }
+    return null;
+};
+
+const plural = (n, singular, pluralForma) => `${n} ${n === 1 ? singular : pluralForma}`;
+
 export const describeValue = (value) => {
     if (value === null || value === undefined || value === '') return '—';
     if (typeof value === 'boolean') return value ? 'sí' : 'no';
-    if (Array.isArray(value)) return value.length ? value.join(', ') : '—';
-    if (typeof value === 'object') return 'configuración';
+    if (Array.isArray(value)) {
+        if (value.length === 0) return '—';
+        const etiquetas = value.map(describeItem).filter(Boolean);
+        if (etiquetas.length === value.length) return etiquetas.join(' · ');
+        return plural(value.length, 'elemento', 'elementos');
+    }
+    if (typeof value === 'object') {
+        const etiqueta = describeItem(value);
+        if (etiqueta) return etiqueta;
+        const claves = Object.keys(value).length;
+        return claves ? plural(claves, 'ajuste', 'ajustes') : '—';
+    }
     return String(value);
 };
 

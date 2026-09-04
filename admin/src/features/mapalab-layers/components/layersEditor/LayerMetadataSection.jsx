@@ -41,17 +41,17 @@ export default function LayerMetadataSection({
     layerLabel,
     ultimoDatoRegistrado = null,
     onDraftSaved,
+    onBaseline,
     onIrAEstadisticas,
     numeralia = [],
 }) {
     const [seccionAbierta, setSeccionAbierta] = useState('general');
-    const frecuenciaActual = Form.useWatch('frecuencia', form);
-    const fechaActual = Form.useWatch('fecha_ultima', form);
     const autosaveTimer = useRef(null);
     const asentadoRef = useRef(false);
     const { getLayerMetadata, saveMetadataDraft } = useLayerTreeAdmin();
     const [form] = Form.useForm();
     const watchedFrecuencia = Form.useWatch('frecuencia', form);
+    const fechaActual = Form.useWatch('fecha_ultima', form);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [notFound, setNotFound] = useState(false);
@@ -138,9 +138,10 @@ export default function LayerMetadataSection({
     useEffect(() => {
         if (loading) return undefined;
         asentadoRef.current = false;
+        onBaseline?.(layerKey, form.getFieldsValue());
         const asentar = setTimeout(() => { asentadoRef.current = true; }, 1500);
         return () => clearTimeout(asentar);
-    }, [loading, metadata]);
+    }, [loading, metadata, layerKey, form, onBaseline]);
 
     useEffect(() => () => {
         if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
@@ -225,7 +226,7 @@ export default function LayerMetadataSection({
                                         Frecuencia de actualización
                                         <SugerenciaPeriodicidad
                                             campo="la frecuencia"
-                                            valor={frecuenciaActual}
+                                            valor={watchedFrecuencia}
                                             sugerido={metadata?.frecuenciaSugerida ?? metadata?.frecuencia_sugerida}
                                             actualizadaEn={metadata?.sugerenciasActualizadasEn ?? metadata?.sugerencias_actualizadas_en}
                                             onAplicar={(v) => { form.setFieldValue('frecuencia', v); alCambiar(); }}

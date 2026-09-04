@@ -123,6 +123,10 @@ export default function LayerEditPage() {
     const [createOpen, setCreateOpen] = useState(false);
     const [editorTab, setEditorTab] = useState(initialTab);
     const [statsValues, setStatsValues] = useState([]);
+    const [baselinesPorClave, setBaselinesPorClave] = useState({});
+    const registrarBaseline = useCallback((clave, valores) => {
+        setBaselinesPorClave((prev) => ({ ...prev, [clave]: valores }));
+    }, []);
     const [reviewOpen, setReviewOpen] = useState(false);
     const [historyOpen, setHistoryOpen] = useState(false);
     const [publishing, setPublishing] = useState(false);
@@ -1063,6 +1067,7 @@ export default function LayerEditPage() {
                 <LayerMetadataSection
                     layerKey={featureTypeContext.layerKey}
                     onDraftSaved={reloadDrafts}
+                    onBaseline={registrarBaseline}
                     layerLabel={headerName}
                     onIrAEstadisticas={() => setEditorTab('estadisticas')}
                     numeralia={statsValues}
@@ -1314,8 +1319,8 @@ export default function LayerEditPage() {
                 </Space>
                 <Text type="secondary" style={{ fontSize: 12, display: 'block', maxWidth: '70ch' }}>
                     {showEditor
-                        ? 'Usa la ruta para moverte entre niveles: cada nombre despliega a sus hermanos.'
-                        : 'Un tema o una categoría se abre; una capa se edita. Arrastra el asa de una fila para reordenarla entre sus hermanas.'}
+                        ? 'Se guarda solo; publica desde el contador de arriba.'
+                        : 'Catálogo de capas del visor. Da click en una para editarla.'}
                 </Text>
             </div>
             <div style={{ flex: 1, minHeight: 0, padding: isMobile ? '6px 4px 4px' : '10px 8px 8px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
@@ -1457,7 +1462,10 @@ export default function LayerEditPage() {
                 onClose={() => setReviewOpen(false)}
                 drafts={drafts}
                 layerTitles={layerTitles}
-                publishedValues={baseline && layerId ? { [layerId]: baseline } : {}}
+                publishedValues={{
+                    ...baselinesPorClave,
+                    ...(baseline && layerId ? { [layerId]: baseline } : {}),
+                }}
                 isAdmin={isAdmin}
                 onPublish={handlePublish}
                 onDiscard={handleDiscard}

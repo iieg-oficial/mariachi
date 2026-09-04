@@ -9,6 +9,40 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.87.1] - 2026-09-04
+
+### Corregido: la pestana Metadatos reventaba al abrir el cajon de contenido
+
+`ReferenceError: Cannot access 'y' before initialization`. Los dos `Form.useWatch` que alimentan las
+bombillas de sugerencia se leian cuatro lineas antes de que se declarara el formulario. Es el segundo
+fallo identico de la sesion; los dos solo aparecian al abrir la pestana en el navegador. **Vale la
+pena activar `no-use-before-define`**: fue la regla que lo encontro, corrida a mano.
+
+### Corregido: la hoja de publicacion imprimia `[object Object]`
+
+`describeValue` hacia `join(', ')` sobre arreglos de objetos. Ahora busca con que nombrarlos —nombre,
+corto, largo, texto, enlace— y si no encuentra, cuenta: «2 elementos». Fuentes, metodologia y
+metadato se leen como lo que son.
+
+### Corregido: los cambios de metadatos no mostraban su valor anterior
+
+Salian como `?`. La hoja indexa los valores publicados por `resource_id`, y los metadatos usan el
+`layer_key` como identificador, no el id de la capa: nunca encontraban con que comparar.
+
+### Corregido: el historial se veia vacio
+
+Abria en «Capas», que tiene cero registros —ese historial solo se escribe al publicar, y desde el
+cambio a borradores no ha habido publicaciones—, mientras los que si existen son de Metadatos y
+quedaban detras del selector. Ahora **trae los dos recursos y los mezcla** por fecha, con una columna
+`Origen`. Se fue el selector: nada queda escondido detras de un click.
+
+El modo tabla no cambia: sigue abriendo el panel con un solo recurso y su filtro por capa.
+
+### Cambiado: la descripcion de la subpagina dice para que sirve, no como funciona
+
+«Un tema o una categoria se abre; una capa se edita. Arrastra el asa…» describia el mecanismo. Queda
+en «Catalogo de capas del visor. Da click en una para editarla».
+
 ## [2.87.0] - 2026-09-04
 
 ### Agregado: la ficha sugiere fecha y frecuencia desde la periodicidad

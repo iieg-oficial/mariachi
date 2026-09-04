@@ -53,8 +53,20 @@ describe('presentación de los cambios', () => {
     it('describe valores sin volcar JSON crudo', () => {
         expect(describeValue(true)).toBe('sí');
         expect(describeValue(null)).toBe('—');
-        expect(describeValue(['a', 'b'])).toBe('a, b');
-        expect(describeValue({ enabled: true })).toBe('configuración');
+        expect(describeValue(['a', 'b'])).toBe('a · b');
+        expect(describeValue({ enabled: true })).toBe('1 ajuste');
+    });
+
+    it('nombra los elementos de una lista en vez de imprimir [object Object]', () => {
+        expect(describeValue([{ nombre: 'ficha.txt' }, { nombre: 'datos.xlsx' }]))
+            .toBe('ficha.txt · datos.xlsx');
+        expect(describeValue([{ corto: 'INEGI' }, { largo: 'Secretaría de Salud' }]))
+            .toBe('INEGI · Secretaría de Salud');
+    });
+
+    it('cuenta los elementos cuando no encuentra cómo nombrarlos', () => {
+        expect(describeValue([{ a: 1 }, { b: 2 }])).toBe('2 elementos');
+        expect(describeValue([{ a: 1 }])).toBe('1 elemento');
     });
 });
 
