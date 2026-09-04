@@ -1,11 +1,17 @@
 /*
  * Quién usa la tarjetita de un grupo.
  *
- * Una propiedad —hoja hija de un grupo— hereda la tarjetita del grupo salvo que tenga
+ * Una propiedad —hoja que cuelga de un grupo— hereda la tarjetita del grupo salvo que tenga
  * una propia. El árbol ya trae eso resuelto: `littleCard` es la efectiva e `inheritedFrom`
  * dice de qué grupo salió. Con esos dos campos se sabe, sin recalcular la regla, quién
  * hereda y quién sobrescribe.
+ *
+ * La hoja no siempre es hija directa: un grupo puede agrupar sus propiedades bajo etiquetas
+ * —«Establecimientos de salud» separa 33 filtros CQL en cuatro niveles de atención—. El
+ * backend ya recorre todos los ancestros al propagar, así que aquí se hace lo mismo.
  */
+
+import { propiedadesDeGrupo } from '@features/mapalab-layers/constants/nodeTypes';
 
 const buscarNodo = (nodos, id) => {
     for (const nodo of nodos || []) {
@@ -23,7 +29,7 @@ export const propagacionDelGrupo = (rawTree, groupId) => {
     const grupo = buscarNodo(rawTree, groupId);
     if (!grupo || grupo.nodeType !== 'group') return null;
 
-    const propiedades = (grupo.children || []).filter((n) => n.nodeType === 'leaf');
+    const propiedades = propiedadesDeGrupo(grupo);
     const heredan = [];
     const propias = [];
     const sinNada = [];

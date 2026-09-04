@@ -24,7 +24,7 @@ import {
     UndoOutlined,
 } from '@ant-design/icons';
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
-import { labelForNode, isPropertyOfGroup } from '@features/mapalab-layers/constants/nodeTypes';
+import { labelForNode, isPropertyOfGroup, tipoQueGobierna } from '@features/mapalab-layers/constants/nodeTypes';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import { message } from '@shared/services/message';
 
@@ -40,7 +40,7 @@ function flattenTree(nodes, acc = [], parentNodeType = null) {
             parentNodeType,
             parentId: n.raw?.parentId ?? null,
         });
-        if (n.children?.length) flattenTree(n.children, acc, n.nodeType);
+        if (n.children?.length) flattenTree(n.children, acc, tipoQueGobierna(n.nodeType, parentNodeType));
     }
     return acc;
 }

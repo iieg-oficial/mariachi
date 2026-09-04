@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Form, Input, Modal, Select, Space, Switch, TreeSelect, Typography } from 'antd';
-import { NODE_TYPE_HELP, NODE_TYPE_OPTIONS, isFieldVisible, isPropertyOfGroup } from '@features/mapalab-layers/constants/nodeTypes';
+import { NODE_TYPE_HELP, NODE_TYPE_OPTIONS, isFieldVisible, isPropertyOfGroup, tipoQueGobierna } from '@features/mapalab-layers/constants/nodeTypes';
 import { findNodeContext } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
 import { useAuth } from '@shared/contexts/useAuth';
 import { message } from '@shared/services/message';
@@ -40,7 +40,7 @@ export default function LayerCreateModal({ open, onClose, onSubmit, treeData = [
     const watchedGsRef = Form.useWatch('gs_ref', form);
 
     const parentCtx = watchedParentId ? findNodeContext(treeData, watchedParentId) : null;
-    const parentNodeType = parentCtx?.node?.nodeType ?? null;
+    const parentNodeType = tipoQueGobierna(parentCtx?.node?.nodeType, parentCtx?.parentNodeType) ?? null;
     const willBeProperty = isPropertyOfGroup(watchedNodeType, parentNodeType);
 
     const treeSelectData = useMemo(() => buildTreeSelectData(treeData), [treeData]);

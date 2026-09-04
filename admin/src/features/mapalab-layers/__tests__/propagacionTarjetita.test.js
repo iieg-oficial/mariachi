@@ -46,3 +46,31 @@ describe('grupoQueHereda', () => {
         expect(grupoQueHereda(ARBOL, 'salud.unidades.pendiente')).toBeNull();
     });
 });
+
+describe('propagacionDelGrupo con etiquetas intermedias', () => {
+    const CON_ETIQUETAS = [{
+        id: 'salud.unidades', label: 'Establecimientos de salud', nodeType: 'group', littleCard: TARJETA,
+        children: [
+            {
+                id: 'salud.unidades.primer', label: 'Primer nivel', nodeType: 'label',
+                children: [
+                    { id: 'imss', label: 'IMSS', nodeType: 'leaf', littleCard: TARJETA, inheritedFrom: 'salud.unidades' },
+                    { id: 'issste', label: 'ISSSTE', nodeType: 'leaf', littleCard: OTRA },
+                ],
+            },
+            {
+                id: 'salud.unidades.segundo', label: 'Segundo nivel', nodeType: 'label',
+                children: [{ id: 'pemex', label: 'PEMEX', nodeType: 'leaf' }],
+            },
+        ],
+    }];
+
+    it('cuenta las propiedades que cuelgan de una etiqueta', () => {
+        const datos = propagacionDelGrupo(CON_ETIQUETAS, 'salud.unidades');
+
+        expect(datos.total).toBe(3);
+        expect(datos.heredan.map((p) => p.id)).toEqual(['imss']);
+        expect(datos.propias.map((p) => p.id)).toEqual(['issste']);
+        expect(datos.sinNada.map((p) => p.id)).toEqual(['pemex']);
+    });
+});

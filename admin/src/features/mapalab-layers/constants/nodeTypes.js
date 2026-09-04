@@ -16,6 +16,18 @@ export const PROPERTY_LABEL = 'Propiedad';
 export const isPropertyOfGroup = (nodeType, parentNodeType) =>
     nodeType === 'leaf' && parentNodeType === 'group';
 
+export const ETIQUETAS = new Set(['label', 'evento-etiqueta']);
+
+export const tipoQueGobierna = (nodeType, parentNodeType) =>
+    (ETIQUETAS.has(nodeType) ? parentNodeType : nodeType);
+
+export const propiedadesDeGrupo = (nodo) =>
+    (nodo?.children || []).flatMap((hijo) => {
+        if (hijo.nodeType === 'leaf') return [hijo];
+        if (ETIQUETAS.has(hijo.nodeType)) return propiedadesDeGrupo(hijo);
+        return [];
+    });
+
 export const labelForNode = (nodeType, parentNodeType) => {
     if (isPropertyOfGroup(nodeType, parentNodeType)) return PROPERTY_LABEL;
     return NODE_TYPE_LABELS[nodeType] || nodeType;

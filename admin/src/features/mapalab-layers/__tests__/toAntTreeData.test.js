@@ -68,3 +68,40 @@ describe('toAntTreeData', () => {
         expect(grupo.children[0].parentNodeType).toBe('group');
     });
 });
+
+describe('toAntTreeData con etiquetas intermedias', () => {
+    const grupoConEtiqueta = [{
+        id: 'salud.unidades',
+        label: 'Establecimientos de salud',
+        nodeType: 'group',
+        children: [{
+            id: 'salud.unidades.primer',
+            label: 'Primer nivel',
+            nodeType: 'label',
+            children: [
+                { id: 'salud.unidades.primer.imss', label: 'IMSS', nodeType: 'leaf' },
+            ],
+        }],
+    }];
+
+    it('la etiqueta no oculta al grupo: sus hojas siguen siendo propiedades', () => {
+        const [grupo] = toAntTreeData(grupoConEtiqueta);
+        const [etiqueta] = grupo.children;
+        const [hoja] = etiqueta.children;
+
+        expect(etiqueta.parentNodeType).toBe('group');
+        expect(hoja.parentNodeType).toBe('group');
+    });
+
+    it('una etiqueta bajo una categoría no convierte a sus hijos en propiedades', () => {
+        const [categoria] = toAntTreeData([{
+            id: 'delitos', label: 'Delitos', nodeType: 'category',
+            children: [{
+                id: 'delitos.patrimonio', label: 'Contra el patrimonio', nodeType: 'label',
+                children: [{ id: 'delitos.patrimonio.bancos', label: 'Robo a bancos', nodeType: 'group' }],
+            }],
+        }]);
+
+        expect(categoria.children[0].children[0].parentNodeType).toBe('category');
+    });
+});

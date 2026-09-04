@@ -51,15 +51,64 @@ describe('LayersTreeBranch', () => {
         expect(screen.getByText('Casa de salud')).toBeInTheDocument();
     });
 
-    it('marca el grupo que no tiene variantes propias', () => {
+    it('cuenta las variantes que cuelgan de una etiqueta intermedia', () => {
         render(rama({
             key: 'g1',
             title: 'Establecimientos de salud',
             nodeType: 'group',
+            children: [
+                {
+                    key: 'e1',
+                    title: 'Primer nivel',
+                    nodeType: 'label',
+                    parentNodeType: 'group',
+                    children: [
+                        { key: 'c1', title: 'IMSS', nodeType: 'leaf', parentNodeType: 'group' },
+                        { key: 'c2', title: 'ISSSTE', nodeType: 'leaf', parentNodeType: 'group' },
+                    ],
+                },
+            ],
+        }));
+
+        expect(screen.getByText('grupo · 2 variantes')).toBeInTheDocument();
+    });
+
+    it('muestra el filtro de una propiedad que cuelga de una etiqueta', () => {
+        render(rama({
+            key: 'g1',
+            title: 'Establecimientos de salud',
+            nodeType: 'group',
+            children: [
+                {
+                    key: 'e1',
+                    title: 'Primer nivel',
+                    nodeType: 'label',
+                    parentNodeType: 'group',
+                    children: [
+                        {
+                            key: 'c1',
+                            title: 'IMSS',
+                            nodeType: 'leaf',
+                            parentNodeType: 'group',
+                            cqlFilter: "nivel_atencion = 'Primer nivel'",
+                        },
+                    ],
+                },
+            ],
+        }));
+
+        expect(screen.getByText("nivel_atencion = 'Primer nivel'")).toBeInTheDocument();
+    });
+
+    it('marca como vacio el grupo del que no cuelga ninguna capa', () => {
+        render(rama({
+            key: 'g1',
+            title: 'Grupo sin nada',
+            nodeType: 'group',
             children: [{ key: 'e1', title: 'Primer nivel', nodeType: 'label', parentNodeType: 'group', children: [] }],
         }));
 
-        expect(screen.getByText('grupo sin variantes')).toBeInTheDocument();
+        expect(screen.getByText('grupo vacío')).toBeInTheDocument();
     });
 
     it('cuenta como variantes solo las capas hijas del grupo', () => {

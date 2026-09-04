@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import api from '@shared/services/api';
+import { tipoQueGobierna } from '@features/mapalab-layers/constants/nodeTypes';
 import { optimisticMoveRawTree, optimisticReorderRawTree } from '@features/mapalab-layers/utils/treeOptimistic';
 import { useLayerMetadataApi } from '@features/mapalab-layers/hooks/useLayerMetadataApi';
 
@@ -22,7 +23,9 @@ export const toAntTreeData = (nodes, parentNodeType = null) =>
             iconUrl: n.iconUrl,
             tarjetita: n.littleCard ? (n.inheritedFrom ? 'heredada' : 'propia') : null,
             raw: n,
-            children: n.children && n.children.length > 0 ? toAntTreeData(n.children, n.nodeType) : undefined,
+            children: n.children && n.children.length > 0
+                ? toAntTreeData(n.children, tipoQueGobierna(n.nodeType, parentNodeType))
+                : undefined,
         };
     });
 

@@ -9,6 +9,26 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.87.3] - 2026-09-04
+
+### Corregido: una propiedad de grupo no siempre es hija directa del grupo
+
+Un grupo puede repartir sus variantes bajo etiquetas: «Establecimientos de salud» separa 33 filtros
+CQL sobre `unidades_salud` en cuatro niveles de atencion, igual que «Clasificador de cultivos IIEG»
+pero con un nivel en medio. El admin definia propiedad como parentesco directo, asi que a esas 33
+capas les faltaba **el filtro CQL en el arbol**, el tipo decia «Capa» en vez de «Propiedad» y el
+grupo **no ofrecia el boton de propagacion de tarjetita**. El backend de mapalab nunca tuvo el
+problema: `_inherit_little_card` ya recorria todos los ancestros.
+
+`tipoQueGobierna()` deja pasar el tipo del ancestro a traves de las etiquetas y `propiedadesDeGrupo()`
+las recorre al recolectar. Con eso quedan alineados `toAntTreeData`, `propagacionDelGrupo`,
+`LayerCreateModal` y el orden inicial de capas, que tenian la regla escrita cuatro veces.
+
+### Corregido
+
+- La pastilla del grupo contaba solo hijas directas. Ahora cuenta las variantes reales y solo marca
+  **«grupo vacio»** cuando de verdad no cuelga ninguna capa; en 2.87.2 marcaba de mas.
+
 ## [2.87.2] - 2026-09-04
 
 ### Corregido: una etiqueta escondia todo lo que colgaba de ella

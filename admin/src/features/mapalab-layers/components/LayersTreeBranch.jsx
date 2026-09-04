@@ -3,7 +3,7 @@ import { CaretDownOutlined, CaretRightOutlined, EditOutlined, HolderOutlined } f
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { isPropertyOfGroup, labelForNode } from '@features/mapalab-layers/constants/nodeTypes';
+import { isPropertyOfGroup, labelForNode, propiedadesDeGrupo } from '@features/mapalab-layers/constants/nodeTypes';
 import {
     INDENT_STEP,
     INDENT_STEP_MOBILE,
@@ -45,12 +45,12 @@ function TarjetitaDot({ node }) {
 }
 
 function GroupPill({ node }) {
-    const variantes = (node.children || []).filter((c) => c.nodeType === 'leaf').length;
+    const variantes = propiedadesDeGrupo(node).length;
 
     if (variantes === 0) {
         return (
-            <Tooltip title="Este grupo no tiene capas propias: adentro trae etiquetas o categorías. En el visor se comporta como una categoría, no como un grupo de variantes.">
-                <Tag color="warning" className="tree-pill">grupo sin variantes</Tag>
+            <Tooltip title="Este grupo no tiene ninguna capa colgando. En el visor no se puede encender nada desde aquí.">
+                <Tag color="warning" className="tree-pill">grupo vacío</Tag>
             </Tooltip>
         );
     }
