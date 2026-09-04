@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Drawer, Empty, Segmented, Space, Spin, Table, Tag, Tooltip, Typography } from 'antd';
+import { Button, Drawer, Empty, Segmented, Space, Spin, Table, Tag, Tooltip, Typography } from 'antd';
+import { DownloadOutlined } from '@ant-design/icons';
 import { fetchGridHistory } from '@shared/services/gridService';
+import { downloadCsv } from '@shared/helpers/downloadFile';
 
 const { Text } = Typography;
 
@@ -142,6 +144,34 @@ export default function GridHistoryDrawer({
         return base;
     }, [titles, effectiveScope, resources, etiquetaDeFuente]);
 
+    const handleDownload = useCallback(() => {
+        const headers = [];
+        if (resources) headers.push('Rejilla');
+        if (effectiveScope === 'all') headers.push('Capa');
+        headers.push('Campo', 'Valor anterior', 'Valor nuevo', 'Responsable', 'Fecha', 'Origen');
+
+        const body = entries.map((entry) => {
+            const fila = [];
+            if (resources) fila.push(etiquetaDeFuente[entry._fuente] || entry._fuente);
+            if (effectiveScope === 'all') fila.push(entry.row_key);
+            fila.push(
+                titles[entry.column_key] || entry.column_key,
+                entry.from_value ?? '',
+                entry.to_value ?? '',
+                entry.changed_by || 'Sin registrar',
+                formatDate(entry.changed_at),
+                (SOURCE_TAGS[entry.source] || {}).label || entry.source,
+            );
+            return fila;
+        });
+
+        const stamp = new Date().toISOString().slice(0, 10);
+        const alcance = effectiveScope === 'row' && rowKey
+            ? `-${rowKey.replace(/[^a-zA-Z0-9_]+/g, '-')}`
+            : '';
+        downloadCsv(headers, body, `historial${alcance}-${stamp}.csv`);
+    }, [entries, resources, effectiveScope, etiquetaDeFuente, titles, rowKey]);
+
     return (
         <Drawer
             open={open}
@@ -168,6 +198,16 @@ export default function GridHistoryDrawer({
                             ]}
                         />
                     )}
+                    <Tooltip title="Descargar en CSV el historial que se está mostrando">
+                        <Button
+                            size="small"
+                            icon={<DownloadOutlined />}
+                            onClick={handleDownload}
+                            disabled={loading || entries.length === 0}
+                        >
+                            Descargar
+                        </Button>
+                    </Tooltip>
                 </Space>
             )}
         >

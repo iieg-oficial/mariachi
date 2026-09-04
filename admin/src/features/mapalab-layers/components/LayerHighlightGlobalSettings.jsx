@@ -6,8 +6,14 @@ import { HIGHLIGHT_COLORS, HIGHLIGHT_SHAPES, isHexHighlight, resolveColorEntry }
 import { HighlightSwatch } from './layersEditor/highlightShared';
 import { HighlightApplyConfirm, HighlightResetConfirm } from './LayerHighlightConfirmModal';
 import { useHighlightBulk } from '../hooks/useHighlightBulk';
+import GridDownloadsCard from '@shared/components/dataGrid/GridDownloadsCard';
 
 const { Text, Paragraph } = Typography;
+
+const DOWNLOAD_RESOURCES = [
+    { value: 'layer-metadata', label: 'Metadatos', fileName: 'mapalab-metadatos' },
+    { value: 'layer-config', label: 'Capas', fileName: 'mapalab-capas' },
+];
 
 const colorPresetOptions = HIGHLIGHT_COLORS.filter((c) => c.value !== null && c.value !== '__custom__');
 const shapeOptions = HIGHLIGHT_SHAPES.filter((s) => s.value !== null);
@@ -109,6 +115,8 @@ export default function LayerHighlightGlobalSettings({ open, onClose, treeData =
                         </Space>
                     </Card>
                 )}
+
+                <GridDownloadsCard resources={DOWNLOAD_RESOURCES} style={{ marginBottom: 16 }} />
 
                 <Tooltip title="Afecta solo a capas: categorías, grupos y temas no se tocan. Una capa puede heredar el resaltado de un ancestro; si tiene el suyo propio lo conserva, salvo que elijas sobrescribir todas.">
                     <Text strong style={{ display: 'block', marginBottom: 10, cursor: 'help' }}>
