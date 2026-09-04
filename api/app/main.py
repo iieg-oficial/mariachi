@@ -38,6 +38,7 @@ from app.api.routes import (
     mapalab_stats,
     mel,
     menu,
+    mosaics,
     pages,
     preview,
     projects,
@@ -130,6 +131,11 @@ def create_app() -> FastAPI:
     app.include_router(symbols.router, prefix=settings.admin_prefix, dependencies=mapalab_view)
     app.include_router(
         geoserver.router,
+        prefix=settings.admin_prefix,
+        dependencies=[Depends(require_permission("mariachi.geoserver.view"))],
+    )
+    app.include_router(
+        mosaics.router,
         prefix=settings.admin_prefix,
         dependencies=[Depends(require_permission("mariachi.geoserver.view"))],
     )

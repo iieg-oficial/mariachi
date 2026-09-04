@@ -16,6 +16,7 @@ export default function GeoserverFilesToolbar({
     disabled,
     onNewFolder,
     onUpload,
+    extraActions,
 }) {
     return (
         <div style={{
@@ -56,6 +57,7 @@ export default function GeoserverFilesToolbar({
                 </div>
             </div>
             <Space wrap style={{ flex: isMobile ? '1 1 100%' : '0 0 auto' }}>
+                {extraActions}
                 <Button icon={<FolderAddOutlined />} onClick={onNewFolder} disabled={disabled}>
                     Nueva carpeta
                 </Button>

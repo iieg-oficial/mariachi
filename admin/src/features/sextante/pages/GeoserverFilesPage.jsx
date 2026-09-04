@@ -24,6 +24,7 @@ import FileUploadModal from '@features/sextante/components/FileUploadModal';
 import SldSnippetModal from '@features/sextante/components/SldSnippetModal';
 import GeoserverFilesContent from '@features/sextante/components/GeoserverFilesContent';
 import GeoserverFilesToolbar from '@features/sextante/components/GeoserverFilesToolbar';
+import MosaicActions from '@features/sextante/components/MosaicActions';
 import { promptNewFolder } from '@features/sextante/components/newFolderPrompt';
 import {
     SEARCH_DEBOUNCE_MS,
@@ -247,6 +248,13 @@ export default function GeoserverFilesPage() {
                     disabled={isSearchMode}
                     onNewFolder={handleNewFolder}
                     onUpload={() => setUploadOpen(true)}
+                    extraActions={(
+                        <MosaicActions
+                            workspace={workspace}
+                            currentPath={currentPath}
+                            onDone={reload}
+                        />
+                    )}
                 />
 
                 {error && <Alert type="error" showIcon closable title={error} style={{ marginBottom: 12 }} />}
