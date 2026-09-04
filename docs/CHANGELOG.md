@@ -9,6 +9,52 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.88.1] - 2026-09-04
+
+### Corregido: el menú de propiedades del grupo se salía de la pantalla
+
+Un grupo con muchas propiedades estiraba el menú hasta pasarse del alto de la ventana y las últimas
+quedaban fuera de alcance. Ahora tiene tope de `60vh` y scroll propio.
+
+### Cambiado: el ícono de información va a la izquierda del contador
+
+Explica el contador, así que se lee mejor antes que después. Su ventana se ancla también a la
+izquierda para no quedar colgando fuera del panel.
+
+## [2.88.0] - 2026-09-04
+
+### Agregado: seleccion multiple, borrado de carpetas y modo edicion en Recursos GeoServer
+
+El explorador de recursos de sextante solo dejaba borrar archivos de uno en uno y no tenia forma de
+tocar carpetas: vaciar una era entrar y borrar archivo por archivo, y renombrar significaba bajar el
+archivo, volver a subirlo con otro nombre y borrar el original.
+
+**Modo edicion** es un interruptor en la barra. Mientras esta activo aparecen las casillas de
+seleccion —en grid y en lista— y los botones de renombrar; la seleccion mezcla archivos y carpetas, y
+sobre ella actuan **Mover** y **Eliminar** masivos. Apagado, la pantalla queda como estaba.
+
+**El borrado de una carpeta arrastra todo lo que contiene y no hay papelera**, asi que la
+confirmacion dice cuantos archivos y subcarpetas se pierden y pide teclear el nombre de la carpeta.
+Se rechaza la que contenga archivos de configuracion de GeoServer (`datastore.xml` y companiia).
+
+Renombrar y mover van por `PUT /rest/resource/{path}?operation=move` del Resource API, que sirve
+igual para archivos y para directorios. La extension de un archivo no puede cambiar —el
+`content-type` dejaria de corresponder al contenido— y una carpeta no se puede mover dentro de si
+misma.
+
+### Agregado
+
+- `GET /geoserver/files/folder/info` cuenta lo que cuelga de una carpeta antes de borrarla.
+- `DELETE /geoserver/files/folder`, `POST /geoserver/files/move` y `POST /geoserver/files/bulk-delete`,
+  los tres auditados en actividad.
+
+### Nota
+
+Mover o renombrar un archivo rompe los `xlink:href` de los SLD que lo referencian por su ruta
+anterior. La UI lo advierte; no los reescribe.
+
+---
+
 ## [2.87.3] - 2026-09-04
 
 ### Corregido: una propiedad de grupo no siempre es hija directa del grupo

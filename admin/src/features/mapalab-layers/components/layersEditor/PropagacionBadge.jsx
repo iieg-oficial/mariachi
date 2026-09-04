@@ -9,6 +9,9 @@ const { Text } = Typography;
 
 const VERDE = '#389E0D';
 
+// Un grupo puede tener muchas propiedades y el menu crecia hasta salirse de la pantalla.
+const LISTA_DESPLEGABLE = { maxHeight: '60vh', overflowY: 'auto' };
+
 const fila = (extra) => ({ display: 'flex', alignItems: 'center', gap: 8, ...extra });
 
 export default function PropagacionBadge({
@@ -166,7 +169,20 @@ export default function PropagacionBadge({
 
     return (
         <Space size={4}>
-            <Dropdown menu={{ items }} trigger={['click']} placement="bottomRight" disabled={aplicando}>
+            <Popover content={ayuda} title="Tarjetita del grupo" trigger="click" placement="bottomLeft">
+                <Button
+                    size="small"
+                    type="text"
+                    icon={<InfoCircleOutlined />}
+                    aria-label="Cómo funciona la tarjetita del grupo"
+                />
+            </Popover>
+            <Dropdown
+                menu={{ items, style: LISTA_DESPLEGABLE }}
+                trigger={['click']}
+                placement="bottomRight"
+                disabled={aplicando}
+            >
                 <Button
                     size="small"
                     loading={aplicando}
@@ -176,14 +192,6 @@ export default function PropagacionBadge({
                     {usan}/{datos.total}
                 </Button>
             </Dropdown>
-            <Popover content={ayuda} title="Tarjetita del grupo" trigger="click" placement="bottomRight">
-                <Button
-                    size="small"
-                    type="text"
-                    icon={<InfoCircleOutlined />}
-                    aria-label="Cómo funciona la tarjetita del grupo"
-                />
-            </Popover>
         </Space>
     );
 }
