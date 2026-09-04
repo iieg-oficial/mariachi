@@ -22,7 +22,8 @@ describe('aplicacionDe', () => {
     });
 
     it('los tamanos de fuente apuntan a su escalon', () => {
-        expect(aplicacionDe('font.size.2xl', '2rem').elementos).toContain('titulo');
+        expect(aplicacionDe('font.size.3xl', '1.875rem').elementos).toContain('titulo');
+        expect(aplicacionDe('font.size.2xl', '1.5rem').elementos).toContain('cifra');
         expect(aplicacionDe('font.size.base', '1rem').elementos).toContain('bajada');
         expect(aplicacionDe('font.size.xs', '0.75rem').elementos).toContain('nota');
     });
@@ -102,7 +103,7 @@ describe('esVivo', () => {
 describe('tocaElemento', () => {
     it('reconoce los tokens que pintan el elemento sobre el que se pasa', () => {
         expect(tocaElemento('color.primary', '#5C2472', 'titulo')).toBe(true);
-        expect(tocaElemento('font.size.2xl', '2rem', 'titulo')).toBe(true);
+        expect(tocaElemento('font.size.3xl', '1.875rem', 'titulo')).toBe(true);
         expect(tocaElemento('color.accent', '#FF8300', 'titulo')).toBe(false);
     });
 

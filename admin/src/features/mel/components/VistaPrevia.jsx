@@ -14,7 +14,7 @@ const aPx = (valor) => {
     return null;
 };
 
-export default function VistaPrevia({ tokens, campos, seleccion, valorDeToken, onLimpiar, elemento, onElemento }) {
+export default function VistaPrevia({ tokens, campos, seleccion, valorDeToken, onLimpiar, elemento, onElemento, anclado, editor, onCerrar }) {
     const activo = tokens.find((token) => token.id === seleccion) || null;
 
     const paleta = useMemo(() => {
@@ -29,11 +29,14 @@ export default function VistaPrevia({ tokens, campos, seleccion, valorDeToken, o
         const mapa = {};
         tokens.filter((token) => token.grupo === 'tipografia').forEach((token) => {
             const valor = valorDeToken(token);
-            if (token.clave.startsWith('font.size.')) {
-                mapa[token.clave.split('.').pop()] = aPx(valor);
+            const escalon = token.clave.split('.').pop();
+            if (token.clave.startsWith('font.size.')) mapa[escalon] = aPx(valor);
+            if (token.clave.startsWith('font.weight.')) mapa[escalon] = Number(valor) || undefined;
+            if (token.clave.startsWith('leading.')) mapa[escalon] = Number(valor) || undefined;
+            if (token.clave.startsWith('font.family.')) {
+                if (escalon === 'display' || escalon === 'titles') mapa.display = valor;
+                else if (!mapa.sans) mapa.sans = valor;
             }
-            if (token.clave.endsWith('display') || token.clave.endsWith('titles')) mapa.display = valor;
-            if (token.clave.endsWith('sans') || token.clave.endsWith('body')) mapa.sans = valor;
         });
         return mapa;
     }, [tokens, valorDeToken]);
@@ -87,6 +90,9 @@ export default function VistaPrevia({ tokens, campos, seleccion, valorDeToken, o
                 activo={apagando}
                 demo={aplicacion ? aplicacion.demo : null}
                 onElemento={onElemento}
+                anclado={anclado}
+                editor={editor}
+                onCerrar={onCerrar}
             />
         </div>
     );

@@ -2,11 +2,10 @@ import { ColorPicker, Input, Tooltip, Typography } from 'antd';
 import {
     COLORES_VEREDICTO,
     esHex,
-    esSuperficie,
     evaluarToken,
-    explicaVeredicto,
 } from '@features/mel/helpers/contraste';
 import { tocaElemento } from '@features/mel/helpers/aplicacion';
+import EditorToken from '@features/mel/components/EditorToken';
 
 const { Text } = Typography;
 
@@ -76,7 +75,6 @@ export default function ColoresPanel({
     };
 
     const valorActivo = valorDeToken(activo);
-    const juicioActivo = evaluarToken(activo.clave, valorActivo, fondoReal, textoReal);
 
     return (
         <>
@@ -148,42 +146,13 @@ export default function ColoresPanel({
             </div>
 
             <div style={{ border: '1px solid #f0f0f0', borderRadius: 8, padding: 14, marginBottom: 20 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                    <Muestra valor={valorActivo} lado={32} />
-                    <span style={{ fontFamily: MONO, fontWeight: 600, ...recorte }}>{activo.clave}</span>
-                    <span style={{ flexGrow: 1 }} />
-                    <Text type='secondary' style={{ fontSize: 12, whiteSpace: 'nowrap' }}>
-                        {esSuperficie(activo.clave) ? 'superficie' : 'color de marca'}
-                    </Text>
-                </div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}>
-                    <ColorPicker
-                        value={valorActivo}
-                        onChangeComplete={(color) => onCambiar(activo, color.toHexString())}
-                    />
-                    <Input
-                        value={valorActivo}
-                        onChange={(evento) => onCambiar(activo, evento.target.value)}
-                        style={{ width: 120, fontFamily: MONO }}
-                    />
-                    <Input value={activo.descripcion || ''} disabled style={{ flexGrow: 1 }} />
-                </div>
-                <div
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 9,
-                        padding: '8px 11px',
-                        borderRadius: 8,
-                        background: juicioActivo.nivel === 'aa' ? '#F6FBF8' : '#FFF7E6',
-                        border: `1px solid ${juicioActivo.nivel === 'aa' ? '#CDE7DA' : '#FFD591'}`,
-                    }}
-                >
-                    <Veredicto nivel={juicioActivo.nivel} etiqueta={juicioActivo.etiqueta} />
-                    <Text style={{ fontSize: 13 }}>
-                        {explicaVeredicto(juicioActivo.nivel, juicioActivo.contra)}
-                    </Text>
-                </div>
+                <EditorToken
+                    token={activo}
+                    valor={valorActivo}
+                    onCambiar={onCambiar}
+                    fondo={fondoReal}
+                    colorTexto={textoReal}
+                />
             </div>
         </>
     );

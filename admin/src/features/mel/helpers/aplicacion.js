@@ -75,12 +75,14 @@ const POR_COLOR = {
 };
 
 const POR_TAMANO = {
-    '2xl': ['titulo'],
-    xl: ['titulo'],
-    lg: ['subtitulo', 'cifra'],
+    '4xl': ['titulo'],
+    '3xl': ['titulo'],
+    '2xl': ['cifra'],
+    xl: ['subtitulo'],
+    lg: ['subtitulo'],
     base: ['bajada', 'botonPrimario', 'botonAcento'],
     sm: ['filasTabla', 'encabezadoTabla', 'enlace'],
-    xs: ['nota'],
+    xs: ['nota', 'tags'],
 };
 
 const vacio = { elementos: [], demo: null, nota: '' };
@@ -111,11 +113,15 @@ export const aplicacionDe = (clave, valor) => {
     }
 
     if (nombre.startsWith('font.weight.')) {
-        return { elementos: ['titulo', 'cifra'], demo: null, nota: '' };
+        return { elementos: ['titulo', 'cifra', 'subtitulo', 'encabezadoTabla'], demo: null, nota: '' };
     }
 
     if (nombre.startsWith('leading.')) {
-        return { elementos: ['bajada'], demo: null, nota: 'La altura de línea del párrafo.' };
+        return {
+            elementos: ['bajada', 'titulo'],
+            demo: null,
+            nota: 'La altura de línea del párrafo y del título.',
+        };
     }
 
     if (nombre.startsWith('space.')) {

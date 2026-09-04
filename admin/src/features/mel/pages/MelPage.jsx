@@ -3,6 +3,7 @@ import { Alert, Button, Input, Layout, Segmented, Spin, Tag, Typography } from '
 import { BgColorsOutlined, DownloadOutlined, FileTextOutlined, SearchOutlined } from '@ant-design/icons';
 import { downloadExport, getMarca, listMarcas } from '@features/mel/api/melService';
 import PanelControles from '@features/mel/components/PanelControles';
+import EditorToken from '@features/mel/components/EditorToken';
 import VistaPrevia from '@features/mel/components/VistaPrevia';
 import BarraCambios from '@features/mel/components/BarraCambios';
 import DiffDrawer from '@features/mel/components/DiffDrawer';
@@ -36,6 +37,7 @@ export default function MelPage() {
     const [artefactosAbierto, setArtefactosAbierto] = useState(false);
     const [busqueda, setBusqueda] = useState('');
     const [elemento, setElemento] = useState(null);
+    const [anclado, setAnclado] = useState(null);
     const { isMobile } = useIsMobile();
 
     const recargar = useCallback(async () => {
@@ -118,15 +120,29 @@ export default function MelPage() {
     };
 
     const alElemento = (id, fijar) => {
+        if (!fijar) {
+            if (!anclado) setElemento(id);
+            return;
+        }
         setElemento(id);
-        if (!fijar || !id) return;
         const candidato = todos.find(
             (token) => tocaElemento(token.clave, cambios.valorDeToken(token), id),
         );
-        if (!candidato) return;
+        if (!candidato) {
+            setAnclado(null);
+            return;
+        }
         setSeleccion(candidato.id);
+        setAnclado(id);
         if (candidato.grupo !== 'color') setGrupoAbierto(GRUPO_DE[candidato.grupo] || null);
     };
+
+    const cerrarAncla = () => {
+        setAnclado(null);
+        setElemento(null);
+    };
+
+    const tokenSeleccionado = todos.find((token) => token.id === seleccion) || null;
 
     const guardar = async () => {
         try {
@@ -220,6 +236,18 @@ export default function MelPage() {
                                     onLimpiar={() => setSeleccion(null)}
                                     elemento={elemento}
                                     onElemento={alElemento}
+                                    anclado={anclado}
+                                    onCerrar={cerrarAncla}
+                                    editor={(
+                                        <EditorToken
+                                            token={tokenSeleccionado}
+                                            valor={tokenSeleccionado ? cambios.valorDeToken(tokenSeleccionado) : ''}
+                                            onCambiar={cambios.cambiarToken}
+                                            fondo={fondo}
+                                            colorTexto={colorTexto}
+                                            ancho={380}
+                                        />
+                                    )}
                                 />
                             </div>
                         )}

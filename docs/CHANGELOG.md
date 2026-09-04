@@ -9,6 +9,33 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.81.0] - 2026-09-03
+
+### Agregado: el editor del token sale flotando junto al elemento
+
+Hacer clic en cualquier parte de la pieza abre el editor de su token —muestra, hex, descripción y
+veredicto de contraste— anclado ahí mismo, sin que la composición se mueva. Se cierra al hacer clic
+afuera. El editor salió de `ColoresPanel` a su propio componente y ahora también sirve para tokens que
+no son color, donde el veredicto no aplica.
+
+### Corregido: el texto de la pieza no se movía al editar tipografía
+
+El título pedía una familia `font.family.display` que no existe en la semilla —solo hay
+`font.family.sans`—, así que se quedaba en la del navegador. Ahora cae en la familia de cuerpo cuando
+no hay una de titulares, y la pieza usa la escala completa: `3xl` en el título, `xl` en el subtítulo,
+`2xl` en la cifra. Los pesos y los `leading` también se aplican.
+
+### Corregido: los logotipos blancos no se veían
+
+El logo se pintaba sobre el fondo de la pieza. Ahora se enseñan las dos variantes con su fondo: la
+clara sobre blanco y la oscura sobre un marco oscuro, que es donde un logotipo blanco se lee.
+
+### Cambiado: el ZIP se llama mel-<marca>.zip
+
+Se había quedado como `identidad-<marca>.zip` cuando el módulo se renombró.
+
+---
+
 ## [2.80.0] - 2026-09-03
 
 ### Cambiado: el formulario del hito deja de hablar en interno

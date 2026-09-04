@@ -100,7 +100,7 @@ async def exportar(codigo: str, db: Session = Depends(get_db)):
         content=contenido,
         media_type="application/zip",
         headers={
-            "Content-Disposition": f'attachment; filename="identidad-{marca.codigo}.zip"'
+            "Content-Disposition": f'attachment; filename="mel-{marca.codigo}.zip"'
         },
     )
 

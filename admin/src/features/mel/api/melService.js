@@ -40,7 +40,7 @@ export const downloadExport = async (codigo) => {
     const url = URL.createObjectURL(res.data);
     const enlace = document.createElement('a');
     enlace.href = url;
-    enlace.download = `identidad-${codigo}.zip`;
+    enlace.download = `mel-${codigo}.zip`;
     document.body.appendChild(enlace);
     enlace.click();
     enlace.remove();
