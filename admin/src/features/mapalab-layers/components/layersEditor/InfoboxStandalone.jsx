@@ -4,6 +4,7 @@ import { SaveOutlined } from '@ant-design/icons';
 import TarjetitaEditor from '@features/mapalab-layers/components/layersEditor/TarjetitaEditor';
 import { SampleFeaturesProvider } from '@features/mapalab-layers/components/layersEditor/SampleFeaturesContext';
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
+import { refrescarArbol } from '@features/mapalab-layers/utils/refrescoArbol';
 import { message } from '@shared/services/message';
 
 const { Text } = Typography;
@@ -53,6 +54,7 @@ export default function InfoboxStandalone({ layer, inherited = null, onSaved, pu
             await updateLayer(layer.id, { infoboxConfig: values.infoboxConfig || null });
             message.success('Tarjetita actualizada');
             onSaved?.();
+            refrescarArbol(reload);
         } catch (err) {
             message.error(err?.response?.data?.detail || 'No se pudo guardar la tarjetita');
         } finally {

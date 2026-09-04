@@ -52,6 +52,7 @@ import { findPath } from '@features/mapalab-layers/utils/treeSearch';
 import { isOrganizer } from '@features/mapalab-layers/constants/nodeVisuals';
 import { GEOMETRY_TYPE_OPTIONS } from '@features/mapalab-layers/constants/layerConfigCatalogs';
 import { grupoQueHereda } from '@features/mapalab-layers/utils/propagacionTarjetita';
+import { refrescarArbol } from '@features/mapalab-layers/utils/refrescoArbol';
 import MunicipioFieldPicker from '@features/mapalab-layers/components/MunicipioFieldPicker';
 import { findNodeContext } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
 import { message } from '@shared/services/message';
@@ -450,7 +451,7 @@ export default function LayerEditPage() {
             message.success(isAdmin ? 'Cambios publicados' : 'Cambios enviados a revisión');
             setReviewOpen(false);
             await reloadDrafts();
-            await reload();
+            await refrescarArbol(reload);
             setReloadKey((k) => k + 1);
         } catch (err) {
             message.error(err?.response?.data?.detail || 'No se pudieron publicar los cambios');
@@ -633,6 +634,10 @@ export default function LayerEditPage() {
             message.error(err?.response?.data?.detail || 'Error al sugerir slug');
         }
     };
+
+    const showEditor = Boolean(layerId) && !selectedEventoKey;
+    const selectedNode = layerId ? findNodeContext(treeData, layerId)?.node : null;
+    const headerName = watchedLabel || layer?.label || selectedNode?.title || layerId;
 
     const noticeWorkspace = workspaces.find((w) => w.alias === selectedWs)?.geoserverWorkspace || selectedWs || null;
 
@@ -1204,9 +1209,6 @@ export default function LayerEditPage() {
         </Form>
     );
 
-    const showEditor = Boolean(layerId) && !selectedEventoKey;
-    const selectedNode = layerId ? findNodeContext(treeData, layerId)?.node : null;
-    const headerName = watchedLabel || layer?.label || selectedNode?.title || layerId;
 
     const editorHeader = (
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', padding: isMobile ? '10px 12px' : '14px 18px' }}>

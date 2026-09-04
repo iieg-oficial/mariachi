@@ -9,6 +9,26 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.84.0] - 2026-09-04
+
+### Agregado: guardar refresca el árbol, sin recargar la página a mano
+
+El contador de propagación no se movía al guardar y había que recargar el navegador. La causa no
+era el contador: **el árbol se recargaba antes de que se invalidara su caché**.
+
+Al guardar, mariachi avisa a mapalab con `notify_tree_changed`, que agrupa los avisos en una
+**ventana de 5 segundos** antes de invalidar. El `await reload()` que ya había justo después de
+publicar llegaba dentro de esa ventana y traía el árbol viejo, así que todo seguía igual hasta que
+recargabas.
+
+`refrescarArbol` recarga dos veces —al instante por si el caché ya estaba fresco, y otra pasada la
+ventana— y devuelve el control tras la primera, para no dejar el botón de guardar girando cinco
+segundos. La segunda corre sola y actualiza el contador y los puntos del árbol cuando llega.
+
+Se aplica en **publicar** desde el editor de capas y en **guardar la tarjetita** desde el cajón de
+contenido, que antes solo recargaba la capa y no el árbol. El badge de propagación deja de tener su
+propia copia de esta lógica.
+
 ## [2.83.1] - 2026-09-04
 
 ### Cambiado: el badge de propagación se queda con el contador y nada más

@@ -3,17 +3,11 @@ import { Button, Dropdown, Modal, Popover, Space, Tag, Tooltip, Typography } fro
 import { CheckCircleFilled, InfoCircleOutlined } from '@ant-design/icons';
 import { message } from '@shared/services/message';
 import { propagacionDelGrupo } from '@features/mapalab-layers/utils/propagacionTarjetita';
+import { refrescarArbol } from '@features/mapalab-layers/utils/refrescoArbol';
 
 const { Text } = Typography;
 
 const VERDE = '#389E0D';
-
-// mariachi avisa a mapalab con `notify_tree_changed`, que agrupa los avisos en una ventana de
-// 5 s antes de invalidar el cache del arbol. Recargar de inmediato trae el arbol viejo y parece
-// que no paso nada: se recarga una vez ya, por si el cache estaba fresco, y otra pasada la ventana.
-const VENTANA_DEBOUNCE_MS = 5500;
-
-const esperar = (ms) => new Promise((resolve) => { setTimeout(resolve, ms); });
 
 const fila = (extra) => ({ display: 'flex', alignItems: 'center', gap: 8, ...extra });
 
@@ -45,9 +39,7 @@ export default function PropagacionBadge({
             for (const id of ids) {
                 await updateLayer(id, { infoboxConfig: null });
             }
-            await reload?.();
-            await esperar(VENTANA_DEBOUNCE_MS);
-            await reload?.();
+            await refrescarArbol(reload, { alVuelo: false });
             message.success(ids.length === 1
                 ? 'Esa propiedad vuelve a usar la tarjetita del grupo'
                 : `${ids.length} propiedades vuelven a usar la tarjetita del grupo`);
