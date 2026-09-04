@@ -1,4 +1,5 @@
 import { Alert, Card, Space, Table, Tabs, Tag, Typography } from 'antd';
+import RasterTimeTopic from '@features/documentacion/topics/mapalab/RasterTimeTopic';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -194,6 +195,7 @@ function PropuestasInfoboxTab() {
 export default function MapalabTopic() {
     const items = [
         { key: 'propuestas', label: 'Propuestas de tarjeta', children: <PropuestasInfoboxTab /> },
+        { key: 'raster-time', label: 'Rásters con TIME', children: <RasterTimeTopic /> },
     ];
 
     return <Tabs items={items} defaultActiveKey="propuestas" />;
