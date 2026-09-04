@@ -1,11 +1,20 @@
 import { useState } from 'react';
-import { Button, Space, Tooltip, Typography } from 'antd';
-import { AppstoreAddOutlined, EditOutlined, EyeOutlined, QuestionCircleOutlined } from '@ant-design/icons';
+import { Button, Modal, Space, Tooltip, Typography } from 'antd';
+import {
+    AppstoreAddOutlined,
+    ClearOutlined,
+    EditOutlined,
+    EyeOutlined,
+    QuestionCircleOutlined,
+    RedoOutlined,
+    UndoOutlined,
+} from '@ant-design/icons';
 
 import InfoBoxEditor from './InfoBoxEditor';
 import InfoBoxModeSwitch from './InfoBoxModeSwitch';
 import InfoBoxPreviewPanel from './InfoBoxPreviewPanel';
 import InfoBoxTemplatesModal from './InfoBoxTemplatesModal';
+import { useInfoboxUndo } from '@features/mapalab-layers/hooks/useInfoboxUndo';
 import PropagacionBadge from './PropagacionBadge';
 
 const { Text } = Typography;
@@ -33,6 +42,7 @@ export default function TarjetitaEditor({
     const [mode, setMode] = useState('lienzo');
     const [soloVista, setSoloVista] = useState(false);
     const [plantillasAbiertas, setPlantillasAbiertas] = useState(false);
+    const { undo, redo, canUndo, canRedo } = useInfoboxUndo(value, onChange);
 
     const vacia = !value || Object.keys(value).length === 0;
     const soloLlamada = vacia && !inherited && mode === 'lienzo';
@@ -40,6 +50,24 @@ export default function TarjetitaEditor({
     const previewValue = (!esLienzo && (value || inherited?.config)) || null;
 
     const alternarVista = () => { setSoloVista((v) => !v); };
+
+    const limpiar = () => Modal.confirm({
+        title: '¿Vaciar la tarjetita de esta capa?',
+        content: (
+            <span>
+                {inherited
+                    ? <>Esta capa volverá a mostrar la tarjetita del grupo <code>{inherited.label}</code>.</>
+                    : nodeType === 'group'
+                        ? 'Las propiedades que la heredan se quedan sin tarjetita y el visor les inventará una a partir de sus columnas.'
+                        : 'El visor le inventará una a partir de las columnas de la capa.'}
+                {' '}Se puede deshacer con <b>Ctrl+Z</b> mientras no guardes.
+            </span>
+        ),
+        okText: 'Sí, vaciar',
+        okButtonProps: { danger: true },
+        cancelText: 'Cancelar',
+        onOk: () => { onChange?.(null); setSoloVista(false); },
+    });
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', minHeight: 0, flex: 1 }}>
@@ -69,6 +97,19 @@ export default function TarjetitaEditor({
                             configDelGrupo={value}
                             puedePublicar={puedePublicar}
                         />
+                    )}
+                    {!soloLlamada && !soloVista && (
+                        <Space size={2}>
+                            <Tooltip title="Deshacer (Ctrl+Z)">
+                                <Button size="small" type="text" icon={<UndoOutlined />} disabled={!canUndo} onClick={undo} aria-label="Deshacer" />
+                            </Tooltip>
+                            <Tooltip title="Rehacer (Ctrl+Shift+Z)">
+                                <Button size="small" type="text" icon={<RedoOutlined />} disabled={!canRedo} onClick={redo} aria-label="Rehacer" />
+                            </Tooltip>
+                            <Tooltip title="Vaciar la tarjetita">
+                                <Button size="small" type="text" danger icon={<ClearOutlined />} disabled={vacia} onClick={limpiar} aria-label="Vaciar la tarjetita" />
+                            </Tooltip>
+                        </Space>
                     )}
                     {esLienzo && !soloLlamada && (
                         <Tooltip title={soloVista ? 'Volver a editar' : 'Ver cómo queda'}>

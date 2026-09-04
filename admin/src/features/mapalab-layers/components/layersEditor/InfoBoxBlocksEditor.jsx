@@ -18,8 +18,6 @@ import {
 import {
     CopyOutlined,
     DeleteOutlined,
-    RedoOutlined,
-    UndoOutlined,
     FontSizeOutlined,
     HolderOutlined,
     PlusOutlined,
@@ -30,7 +28,6 @@ import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove as
 import { CSS } from '@dnd-kit/utilities';
 
 import { normalizeInfoboxConfig } from './infoBoxTextBlocks';
-import { useInfoboxUndo } from '@features/mapalab-layers/hooks/useInfoboxUndo';
 import {
     BLOCK_DEFS,
     blockDef,
@@ -805,7 +802,6 @@ export default function InfoBoxBlocksEditor({ value, onChange, availableFields =
     const config = useMemo(() => normalizeInfoboxConfig(value || {}), [value]);
     const rootRef = useRef(null);
     const [focusKey, setFocusKey] = useState(null);
-    const { undo, redo, canUndo, canRedo } = useInfoboxUndo(value, onChange);
 
     useEffect(() => {
         if (!focusKey) return;
@@ -1003,17 +999,6 @@ export default function InfoBoxBlocksEditor({ value, onChange, availableFields =
                         generará uno por defecto inferido de las propiedades del feature.
                         </Text>
                     </div>
-                )}
-
-                {(canUndo || canRedo) && (
-                    <Space size={6}>
-                        <Tooltip title="Deshacer (Ctrl+Z)">
-                            <Button size="small" icon={<UndoOutlined />} disabled={!canUndo} onClick={undo} aria-label="Deshacer" />
-                        </Tooltip>
-                        <Tooltip title="Rehacer (Ctrl+Shift+Z)">
-                            <Button size="small" icon={<RedoOutlined />} disabled={!canRedo} onClick={redo} aria-label="Rehacer" />
-                        </Tooltip>
-                    </Space>
                 )}
 
                 {missingBlocks.length > 0 && (

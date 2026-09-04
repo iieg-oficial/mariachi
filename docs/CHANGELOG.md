@@ -9,6 +9,28 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.86.0] - 2026-09-04
+
+### Cambiado: deshacer y rehacer suben al encabezado
+
+Vivían dentro del lienzo, encima de la tarjeta. Pasan al encabezado, junto al contador de
+propagación, como íconos.
+
+Y de paso se arregla algo que no se veía: **había dos pilas de deshacer**, una en el lienzo y otra
+en el modo lista, cada una vigilando la misma configuración. Convivían porque nunca se usan a la
+vez, pero cada cambio se apilaba dos veces y `Ctrl+Z` respondía según qué modo estuviera montado.
+Ahora la pila vive en la pestaña: una sola, compartida por los tres modos.
+
+### Agregado: vaciar la tarjetita
+
+Un botón de escoba en el encabezado la deja en nada, con confirmación que dice qué va a pasar
+después, que no es lo mismo en los tres casos: si la capa hereda, vuelve a mostrar la del grupo; si
+es un grupo, sus propiedades se quedan sin ninguna y el visor les inventará una; y si es una capa
+suelta, el visor le inventará una a partir de sus columnas.
+
+La confirmación recuerda que **se deshace con Ctrl+Z** mientras no guardes, que es lo que quita el
+miedo a usarlo.
+
 ## [2.85.0] - 2026-09-04
 
 ### Agregado: los breakpoints existen como tokens

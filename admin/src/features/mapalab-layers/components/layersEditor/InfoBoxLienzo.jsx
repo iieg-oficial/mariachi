@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { Button, Modal, Space, Tooltip, Typography } from 'antd';
-import { RedoOutlined, UndoOutlined } from '@ant-design/icons';
+import { Button, Modal, Typography } from 'antd';
 
 import InfoBoxCanvas from './InfoBoxCanvas.jsx';
 import {
@@ -12,7 +11,6 @@ import {
     TextBlock,
 } from './InfoBoxBlocksEditor.jsx';
 import { normalizeInfoboxConfig } from './infoBoxTextBlocks';
-import { useInfoboxUndo } from '@features/mapalab-layers/hooks/useInfoboxUndo';
 import {
     blockDef,
     blockInstances,
@@ -37,7 +35,6 @@ const EDITORES = {
 export default function InfoBoxLienzo({ value, onChange, availableFields = [], inherited = null, soloVista = false, onAbrirPlantillas = null, onIrACapa = null }) {
     const config = normalizeInfoboxConfig(value || {});
     const [seleccion, setSeleccion] = useState(null);
-    const { undo, redo, canUndo, canRedo } = useInfoboxUndo(value, onChange);
 
     const propio = !!value && Object.keys(value).length > 0;
     const heredando = !propio && !!inherited;
@@ -133,16 +130,6 @@ export default function InfoBoxLienzo({ value, onChange, availableFields = [], i
                             Personalizar para esta capa
                         </Button>
                     </div>
-                )}
-                {(canUndo || canRedo) && !soloVista && (
-                    <Space size={6} style={{ marginBottom: 8 }}>
-                        <Tooltip title="Deshacer (Ctrl+Z)">
-                            <Button size="small" icon={<UndoOutlined />} disabled={!canUndo} onClick={undo} aria-label="Deshacer" />
-                        </Tooltip>
-                        <Tooltip title="Rehacer (Ctrl+Shift+Z)">
-                            <Button size="small" icon={<RedoOutlined />} disabled={!canRedo} onClick={redo} aria-label="Rehacer" />
-                        </Tooltip>
-                    </Space>
                 )}
                 <InfoBoxCanvas
                     config={configVista}
