@@ -134,18 +134,20 @@ describe('RoadmapPanel', () => {
         delete Element.prototype.requestFullscreen;
     });
 
-    it('un solo clic en edición abre el modal completo', async () => {
+    it('un solo clic en edición abre el modal completo', { timeout: 25000 }, async () => {
         usuario.permisos = ['mariachi.roadmap.manage'];
         montar();
         fireEvent.click(await screen.findByRole('button', { name: /editar/i }));
         fireEvent.click(screen.getByText('mariachi 2').closest('g'));
 
-        expect(await screen.findByRole('dialog')).toBeInTheDocument();
-        expect(screen.getByText('Viene de otro hito')).toBeInTheDocument();
+        const dialogo = await screen.findByRole('dialog');
+        expect(within(dialogo).getByRole('tab', { name: 'Qué es' })).toBeInTheDocument();
+        expect(within(dialogo).getByRole('tab', { name: 'Cuándo' })).toBeInTheDocument();
+        expect(within(dialogo).getByRole('tab', { name: 'Conexiones' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Eliminar' })).toBeInTheDocument();
     });
 
-    it('la vista previa del modal reacciona a lo que se escribe', async () => {
+    it('la vista previa del modal reacciona a lo que se escribe', { timeout: 25000 }, async () => {
         usuario.permisos = ['mariachi.roadmap.manage'];
         montar();
         fireEvent.click(await screen.findByRole('button', { name: /editar/i }));
@@ -153,6 +155,7 @@ describe('RoadmapPanel', () => {
         const dialogo = await screen.findByRole('dialog');
 
         fireEvent.change(dialogo.querySelector('#txt'), { target: { value: 'mariachi 9' } });
+
 
         await waitFor(() => {
             const previa = dialogo.querySelector('svg[aria-label="Vista previa del hito"]');
@@ -170,22 +173,22 @@ describe('RoadmapPanel', () => {
         expect(screen.getByRole('link', { name: /administrar símbolos/i })).toBeInTheDocument();
     });
 
-    it('el editor ofrece armar una sucesión con otro hito', async () => {
+    it('el editor ofrece armar una sucesión con otro hito', { timeout: 25000 }, async () => {
         usuario.permisos = ['mariachi.roadmap.manage'];
         montar();
         fireEvent.click(await screen.findByRole('button', { name: /editar/i }));
         fireEvent.click(screen.getByText('mariachi 2').closest('g'));
 
         const dialogo = await screen.findByRole('dialog');
+        fireEvent.click(within(dialogo).getByRole('tab', { name: 'Conexiones' }));
+
         expect(screen.getByText('Viene de otro hito')).toBeInTheDocument();
         expect(screen.getByText('Qué dice esa conexión')).toBeInTheDocument();
-        expect(screen.getByText('Orden si comparten día')).toBeInTheDocument();
-
         expect(dialogo.querySelector('input[placeholder="Buscar entre los demás hitos"]')).toBeInTheDocument();
         expect(within(dialogo).getByRole('button', { name: /geoserver 1/ })).toBeInTheDocument();
     });
 
-    it('los tipos se ofrecen en español y dibujados', async () => {
+    it('los tipos se ofrecen en español y dibujados', { timeout: 25000 }, async () => {
         usuario.permisos = ['mariachi.roadmap.manage'];
         montar();
         fireEvent.click(await screen.findByRole('button', { name: /editar/i }));
@@ -208,13 +211,17 @@ describe('RoadmapPanel', () => {
         expect(screen.getByRole('button', { name: /cambiar punto/i })).toBeInTheDocument();
     });
 
-    it('edita un ciclo con sus propios campos', async () => {
+    it('edita un ciclo con sus propios campos', { timeout: 25000 }, async () => {
         usuario.permisos = ['mariachi.roadmap.manage'];
         montar();
         fireEvent.click(await screen.findByRole('button', { name: /editar/i }));
         fireEvent.click(screen.getByText('tamal-rojo').closest('g'));
 
-        expect(await screen.findByText(/Editando ciclo/)).toBeInTheDocument();
+        const dialogo = await screen.findByRole('dialog');
+        expect(screen.getByText(/Editando ciclo/)).toBeInTheDocument();
+
+        fireEvent.click(within(dialogo).getByRole('tab', { name: 'Dónde va' }));
+
         expect(screen.getByText('Empieza en')).toBeInTheDocument();
         expect(screen.getByText('Termina en')).toBeInTheDocument();
     });
@@ -260,7 +267,7 @@ describe('RoadmapPanel', () => {
         expect(api.post).not.toHaveBeenCalled();
     });
 
-    it('guarda un hito editado contra la API', async () => {
+    it('guarda un hito editado contra la API', { timeout: 25000 }, async () => {
         usuario.permisos = ['mariachi.roadmap.manage'];
         api.put.mockResolvedValue({ data: fila({ clave: 'mariachi-2', etiqueta: 'mariachi 3', fecha_eje: '2026-08-10' }) });
         montar();

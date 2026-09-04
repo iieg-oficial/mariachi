@@ -9,6 +9,35 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.83.0] - 2026-09-04
+
+### Cambiado: el modal de edición se organiza en pestañas
+
+Quince campos en una sola columna obligaban a recorrer el formulario entero para tocar uno. Ahora
+van agrupados por la pregunta que responden: un hito tiene **Qué es**, **Cuándo** y **Conexiones**;
+un ciclo, **Qué es** y **Dónde va**; un proceso, **Qué es** y **Cada cuándo**.
+
+**La vista previa se queda fija arriba**, fuera de las pestañas: se cambie lo que se cambie, el
+hito sigue a la vista. Cabecera y pie también quedan fijos y solo el contenido de la pestaña
+desplaza, así que «Guardar» y «Eliminar» están siempre donde uno los dejó.
+
+El modal se centra en la pantalla en vez de colgar de un margen superior fijo: cuando crece lo hace
+hacia arriba y hacia abajo por igual, y deja de empujarse contra el borde inferior.
+
+### Agregado
+
+- La primera edición de un proceso también se elige en calendario, y de ahí salen solos el mes y
+  día de repetición y el texto de periodicidad.
+
+### Interno
+
+- Los formularios de ciclo y proceso salen a `RoadmapCamposExtra`. El modal vuelve a caber en las
+  trescientas líneas.
+- Las pruebas que abren el modal declaran un tiempo mayor: montarlo implica ocho miniaturas, los
+  veintiún proyectos y la lista de conexiones, y en jsdom eso no baja de diez segundos.
+
+---
+
 ## [2.82.0] - 2026-09-04
 
 ### Cambiado: el listado también edita en flotante
