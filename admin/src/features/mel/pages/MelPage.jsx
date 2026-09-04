@@ -38,6 +38,8 @@ export default function MelPage() {
     const [busqueda, setBusqueda] = useState('');
     const [elemento, setElemento] = useState(null);
     const [anclado, setAnclado] = useState(null);
+    const [anclaLista, setAnclaLista] = useState(null);
+    const [dispositivo, setDispositivo] = useState(null);
     const { isMobile } = useIsMobile();
 
     const recargar = useCallback(async () => {
@@ -134,12 +136,21 @@ export default function MelPage() {
         }
         setSeleccion(candidato.id);
         setAnclado(id);
+        setAnclaLista(null);
         if (candidato.grupo !== 'color') setGrupoAbierto(GRUPO_DE[candidato.grupo] || null);
     };
 
     const cerrarAncla = () => {
         setAnclado(null);
         setElemento(null);
+    };
+
+    const ANCHOS = { sm: 640, md: 768, lg: 1024, xl: 1280 };
+
+    const seleccionarDeLista = (id) => {
+        setSeleccion(id);
+        setAnclaLista(id);
+        setAnclado(null);
     };
 
     const tokenSeleccionado = todos.find((token) => token.id === seleccion) || null;
@@ -216,8 +227,12 @@ export default function MelPage() {
                             fondo={fondo}
                             colorTexto={colorTexto}
                             seleccion={seleccion}
-                            onSeleccionar={setSeleccion}
+                            onSeleccionar={seleccionarDeLista}
                             elemento={elemento}
+                            ancla={anclaLista}
+                            onCerrarAncla={() => setAnclaLista(null)}
+                            dispositivo={dispositivo}
+                            onDispositivo={setDispositivo}
                             tokens={todos}
                             campos={detalle?.campos || {}}
                             grupoAbierto={grupoAbierto}
@@ -233,7 +248,8 @@ export default function MelPage() {
                                     campos={detalle?.campos || {}}
                                     seleccion={seleccion}
                                     valorDeToken={cambios.valorDeToken}
-                                    onLimpiar={() => setSeleccion(null)}
+                                    onLimpiar={() => { setSeleccion(null); setDispositivo(null); }}
+                                    ancho={dispositivo ? ANCHOS[dispositivo] : null}
                                     elemento={elemento}
                                     onElemento={alElemento}
                                     anclado={anclado}

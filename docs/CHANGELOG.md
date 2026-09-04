@@ -9,6 +9,27 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.82.0] - 2026-09-04
+
+### Cambiado: el listado también edita en flotante
+
+La tarjeta fija debajo de la lista de colores se va. Ahora hacer clic en cualquier fila —de color, de
+tipografía, de espaciado— abre el mismo editor anclado a la fila, igual que en la pieza. La columna
+de controles recupera el alto que ocupaba la tarjeta.
+
+### Cambiado: los breakpoints se prueban por dispositivo
+
+Las barras no decían nada. En su lugar, el grupo lleva en la cabecera un selector
+**Mobile · Tablet · Laptop · Desktop**, cada uno con tooltip del escalón y el ancho que representa
+(`sm · 640 px`). Elegir uno encoge la vista previa a ese ancho. Funciona aunque no haya tokens de
+breakpoint sembrados, que es el caso hoy.
+
+### Eliminado: el contador de lugares de la vista previa
+
+Decía «3 lugares» encima de una pieza donde ya se ven los tres resaltados.
+
+---
+
 ## [2.81.0] - 2026-09-03
 
 ### Agregado: el editor del token sale flotando junto al elemento

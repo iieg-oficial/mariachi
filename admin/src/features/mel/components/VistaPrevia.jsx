@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { Button, Tag, Typography } from 'antd';
+import { Button, Typography } from 'antd';
 import Composicion from '@features/mel/components/previews/Composicion';
 import { ELEMENTOS_CON_NOMBRE, aplicacionDe } from '@features/mel/helpers/aplicacion';
 
@@ -14,7 +14,7 @@ const aPx = (valor) => {
     return null;
 };
 
-export default function VistaPrevia({ tokens, campos, seleccion, valorDeToken, onLimpiar, elemento, onElemento, anclado, editor, onCerrar }) {
+export default function VistaPrevia({ tokens, campos, seleccion, valorDeToken, onLimpiar, elemento, onElemento, anclado, editor, onCerrar, ancho }) {
     const activo = tokens.find((token) => token.id === seleccion) || null;
 
     const paleta = useMemo(() => {
@@ -60,13 +60,6 @@ export default function VistaPrevia({ tokens, campos, seleccion, valorDeToken, o
                 {resaltando ? (
                     <>
                         <Text style={{ fontFamily: MONO, fontSize: 13, fontWeight: 600 }}>{activo.clave}</Text>
-                        {apagando && (
-                            <Tag color='processing'>
-                                {aplicacion.elementos.length === 1
-                                    ? '1 lugar'
-                                    : `${aplicacion.elementos.length} lugares`}
-                            </Tag>
-                        )}
                         {aplicacion.nota && (
                             <Text type='secondary' style={{ fontSize: 13 }}>{aplicacion.nota}</Text>
                         )}
@@ -93,6 +86,7 @@ export default function VistaPrevia({ tokens, campos, seleccion, valorDeToken, o
                 anclado={anclado}
                 editor={editor}
                 onCerrar={onCerrar}
+                ancho={ancho}
             />
         </div>
     );

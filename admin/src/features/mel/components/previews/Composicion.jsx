@@ -60,7 +60,7 @@ export function Zona({ id, estilo, ctx, children }) {
     );
 }
 
-export default function Composicion({ paleta, tipos, campos, aplicacion, activo, demo, onElemento, anclado, editor, onCerrar }) {
+export default function Composicion({ paleta, tipos, campos, aplicacion, activo, demo, onElemento, anclado, editor, onCerrar, ancho }) {
     const c = (nombre, respaldo) => (esHex(paleta[nombre]) ? paleta[nombre] : respaldo);
     const primary = c('color.primary', RESPALDOS.primary);
     const secondary = c('color.secondary', RESPALDOS.secondary);
@@ -72,7 +72,7 @@ export default function Composicion({ paleta, tipos, campos, aplicacion, activo,
     const radio = demo && demo.tipo === 'radio' ? demo.valor : 8;
     const separacion = demo && demo.tipo === 'espacio' ? demo.valor : 12;
     const sombraDemo = demo && demo.tipo === 'sombra' ? demo.valor : null;
-    const anchoDemo = demo && demo.tipo === 'ancho' ? demo.valor : null;
+    const anchoDemo = (demo && demo.tipo === 'ancho' ? demo.valor : null) || ancho || null;
 
     const cuerpo = tipos.sans || 'inherit';
     const titular = tipos.display || cuerpo;

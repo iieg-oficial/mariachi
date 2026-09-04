@@ -1,4 +1,4 @@
-import { ColorPicker, Input, Tooltip, Typography } from 'antd';
+import { Popover, Tooltip } from 'antd';
 import {
     COLORES_VEREDICTO,
     esHex,
@@ -6,8 +6,6 @@ import {
 } from '@features/mel/helpers/contraste';
 import { tocaElemento } from '@features/mel/helpers/aplicacion';
 import EditorToken from '@features/mel/components/EditorToken';
-
-const { Text } = Typography;
 
 const FONDO_POR_DEFECTO = '#FFFFFF';
 const TEXTO_POR_DEFECTO = '#000000';
@@ -19,20 +17,6 @@ const recorte = {
     overflow: 'hidden',
     textOverflow: 'ellipsis',
 };
-
-const Muestra = ({ valor, lado }) => (
-    <span
-        style={{
-            width: lado,
-            height: lado,
-            borderRadius: lado > 20 ? 8 : 4,
-            border: '1px solid rgba(0,0,0,0.15)',
-            flexShrink: 0,
-            display: 'inline-block',
-            background: esHex(valor) ? valor : 'transparent',
-        }}
-    />
-);
 
 const Veredicto = ({ nivel, etiqueta }) => (
     <span
@@ -61,11 +45,11 @@ export default function ColoresPanel({
     valorDeToken,
     onCambiar,
     elemento,
+    ancla,
+    onCerrarAncla,
 }) {
     const fondoReal = esHex(fondo) ? fondo : FONDO_POR_DEFECTO;
     const textoReal = esHex(colorTexto) ? colorTexto : TEXTO_POR_DEFECTO;
-    const activo = tokens.find((token) => token.id === seleccion) || tokens[0];
-    if (!activo) return null;
 
     const alTeclado = (id) => (evento) => {
         if (evento.key === 'Enter' || evento.key === ' ') {
@@ -74,86 +58,103 @@ export default function ColoresPanel({
         }
     };
 
-    const valorActivo = valorDeToken(activo);
-
     return (
-        <>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 16 }}>
-                {tokens.map((token) => {
-                    const valor = valorDeToken(token);
-                    const juicio = evaluarToken(token.clave, valor, fondoReal, textoReal);
-                    const activa = token.id === seleccion;
-                    const relacionada = tocaElemento(token.clave, valor, elemento);
-                    return (
-                        <div
-                            key={token.id}
-                            role='button'
-                            tabIndex={0}
-                            onClick={() => onSeleccionar(token.id)}
-                            onKeyDown={alTeclado(token.id)}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2, marginBottom: 16 }}>
+            {tokens.map((token) => {
+                const valor = valorDeToken(token);
+                const juicio = evaluarToken(token.clave, valor, fondoReal, textoReal);
+                const activa = token.id === seleccion;
+                const relacionada = tocaElemento(token.clave, valor, elemento);
+                const fila = (
+                    <div
+                        role='button'
+                        tabIndex={0}
+                        onClick={() => onSeleccionar(token.id)}
+                        onKeyDown={alTeclado(token.id)}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 10,
+                            height: 34,
+                            padding: '0 10px',
+                            borderRadius: 8,
+                            cursor: 'pointer',
+                            background: activa ? '#EAEFFA' : (relacionada ? '#F6F8FD' : 'transparent'),
+                            boxShadow: activa ? 'inset 0 0 0 1px #2e4372' : 'none',
+                        }}
+                    >
+                        <span
                             style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 10,
-                                height: 34,
-                                padding: '0 10px',
-                                borderRadius: 8,
-                                cursor: 'pointer',
-                                background: activa ? '#EAEFFA' : (relacionada ? '#F6F8FD' : 'transparent'),
-                                boxShadow: activa ? 'inset 0 0 0 1px #2e4372' : 'none',
+                                width: 18,
+                                height: 18,
+                                borderRadius: 4,
+                                border: '1px solid rgba(0,0,0,0.15)',
+                                flexShrink: 0,
+                                display: 'inline-block',
+                                background: esHex(valor) ? valor : 'transparent',
                             }}
+                        />
+                        <Tooltip
+                            title={token.descripcion}
+                            placement='topLeft'
+                            styles={{ root: { maxWidth: 420 } }}
                         >
-                            <Muestra valor={valor} lado={18} />
-                            <Tooltip
-                                title={token.descripcion}
-                                trigger={['hover', 'focus', 'click']}
-                                placement='topLeft'
-                                styles={{ root: { maxWidth: 420 } }}
-                            >
-                                <span
-                                    style={{
-                                        fontFamily: MONO,
-                                        fontSize: 12.5,
-                                        flexGrow: 1,
-                                        minWidth: 0,
-                                        cursor: token.descripcion ? 'help' : 'pointer',
-                                        fontWeight: relacionada ? 600 : 400,
-                                        color: relacionada ? '#2e4372' : 'inherit',
-                                        ...recorte,
-                                    }}
-                                >
-                                    {token.clave}
-                                </span>
-                            </Tooltip>
                             <span
                                 style={{
                                     fontFamily: MONO,
-                                    fontSize: 12,
-                                    width: 76,
-                                    flexShrink: 0,
-                                    color: 'rgba(0,0,0,0.45)',
+                                    fontSize: 12.5,
+                                    flexGrow: 1,
+                                    minWidth: 0,
+                                    fontWeight: relacionada ? 600 : 400,
+                                    color: relacionada ? '#2e4372' : 'inherit',
                                     ...recorte,
                                 }}
                             >
-                                {valor}
+                                {token.clave}
                             </span>
-                            <Tooltip title={juicio.contra}>
-                                <Veredicto nivel={juicio.nivel} etiqueta={juicio.etiqueta} />
-                            </Tooltip>
-                        </div>
-                    );
-                })}
-            </div>
+                        </Tooltip>
+                        <span
+                            style={{
+                                fontFamily: MONO,
+                                fontSize: 12,
+                                width: 76,
+                                flexShrink: 0,
+                                color: 'rgba(0,0,0,0.45)',
+                                ...recorte,
+                            }}
+                        >
+                            {valor}
+                        </span>
+                        <Tooltip title={juicio.contra}>
+                            <Veredicto nivel={juicio.nivel} etiqueta={juicio.etiqueta} />
+                        </Tooltip>
+                    </div>
+                );
 
-            <div style={{ border: '1px solid #f0f0f0', borderRadius: 8, padding: 14, marginBottom: 20 }}>
-                <EditorToken
-                    token={activo}
-                    valor={valorActivo}
-                    onCambiar={onCambiar}
-                    fondo={fondoReal}
-                    colorTexto={textoReal}
-                />
-            </div>
-        </>
+                if (ancla !== token.id) return <div key={token.id}>{fila}</div>;
+
+                return (
+                    <Popover
+                        key={token.id}
+                        open
+                        trigger='click'
+                        placement='rightTop'
+                        onOpenChange={(abierto) => { if (!abierto) onCerrarAncla(); }}
+                        content={(
+                            <EditorToken
+                                token={token}
+                                valor={valor}
+                                onCambiar={onCambiar}
+                                fondo={fondoReal}
+                                colorTexto={textoReal}
+                                ancho={380}
+                            />
+                        )}
+                    >
+                        {fila}
+                    </Popover>
+                );
+            })}
+        </div>
     );
 }

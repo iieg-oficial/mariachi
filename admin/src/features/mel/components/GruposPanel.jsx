@@ -1,7 +1,8 @@
-import { Collapse, Input, Tag, Tooltip, Typography } from 'antd';
+import { Collapse, Input, Popover, Segmented, Tag, Tooltip, Typography } from 'antd';
 import CamposPanel from '@features/mel/components/CamposPanel';
 import { esHex } from '@features/mel/helpers/contraste';
 import { tocaElemento } from '@features/mel/helpers/aplicacion';
+import EditorToken from '@features/mel/components/EditorToken';
 
 const { Text } = Typography;
 
@@ -16,11 +17,11 @@ const DATAVIZ_EJEMPLO = [
     { clave: 'dataviz.cat.3', valor: '#B3261E' },
 ];
 
-const BREAKPOINT_EJEMPLO = [
-    { clave: 'breakpoint.sm', valor: '640px' },
-    { clave: 'breakpoint.md', valor: '768px' },
-    { clave: 'breakpoint.lg', valor: '1024px' },
-    { clave: 'breakpoint.xl', valor: '1280px' },
+const DISPOSITIVOS = [
+    { id: 'sm', nombre: 'Mobile', ancho: 640 },
+    { id: 'md', nombre: 'Tablet', ancho: 768 },
+    { id: 'lg', nombre: 'Laptop', ancho: 1024 },
+    { id: 'xl', nombre: 'Desktop', ancho: 1280 },
 ];
 
 const aPx = (valor) => {
@@ -57,10 +58,10 @@ const Clave = ({ token, activo, relacionado, onSeleccionar }) => (
     </Tooltip>
 );
 
-const Fila = ({ token, valor, onCambiar, seleccion, elemento, onSeleccionar, muestra }) => {
+const Fila = ({ token, valor, onCambiar, seleccion, elemento, onSeleccionar, muestra, ancla, onCerrarAncla, fondo, colorTexto }) => {
     const activo = token.id === seleccion;
     const relacionado = tocaElemento(token.clave, valor, elemento);
-    return (
+    const cuerpo = (
         <div
             style={{
                 display: 'flex',
@@ -82,6 +83,29 @@ const Fila = ({ token, valor, onCambiar, seleccion, elemento, onSeleccionar, mue
             />
             {muestra}
         </div>
+    );
+
+    if (ancla !== token.id) return cuerpo;
+
+    return (
+        <Popover
+            open
+            trigger='click'
+            placement='rightTop'
+            onOpenChange={(abierto) => { if (!abierto) onCerrarAncla(); }}
+            content={(
+                <EditorToken
+                    token={token}
+                    valor={valor}
+                    onCambiar={onCambiar}
+                    fondo={fondo}
+                    colorTexto={colorTexto}
+                    ancho={380}
+                />
+            )}
+        >
+            {cuerpo}
+        </Popover>
     );
 };
 
@@ -117,6 +141,12 @@ export default function GruposPanel({
     seleccion,
     onSeleccionar,
     elemento,
+    ancla,
+    onCerrarAncla,
+    fondo,
+    colorTexto,
+    dispositivo,
+    onDispositivo,
 }) {
     const de = (grupos) => tokens.filter((token) => grupos.includes(token.grupo));
     const tipografia = de(['tipografia']);
@@ -125,7 +155,7 @@ export default function GruposPanel({
     const dataviz = de(['dataviz']);
     const breakpoints = de(['breakpoint']);
 
-    const comunes = { seleccion, elemento, onSeleccionar, onCambiar: onCambiarToken };
+    const comunes = { seleccion, elemento, onSeleccionar, onCambiar: onCambiarToken, ancla, onCerrarAncla, fondo, colorTexto };
 
     const filas = (lista, muestraDe) => (
         <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -201,16 +231,39 @@ export default function GruposPanel({
         },
         {
             key: 'breakpoints',
-            label: cabecera('Breakpoints', breakpoints.length, 'anchos donde cambia el diseño'),
+            label: (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%' }}>
+                    <Text strong>Breakpoints</Text>
+                    <Tag>{breakpoints.length || DISPOSITIVOS.length}</Tag>
+                    <span style={{ flexGrow: 1 }} />
+                    <div
+                        role='presentation'
+                        onClick={(evento) => evento.stopPropagation()}
+                        onKeyDown={(evento) => evento.stopPropagation()}
+                    >
+                        <Segmented
+                            size='small'
+                            value={dispositivo}
+                            onChange={onDispositivo}
+                            options={DISPOSITIVOS.map((d) => ({
+                                value: d.id,
+                                label: (
+                                    <Tooltip title={`${d.id} · ${d.ancho} px`}>
+                                        <span>{d.nombre}</span>
+                                    </Tooltip>
+                                ),
+                            }))}
+                        />
+                    </div>
+                </div>
+            ),
             children: breakpoints.length > 0
                 ? filas(breakpoints)
                 : (
-                    <Ejemplo
-                        filas={BREAKPOINT_EJEMPLO}
-                        pintar={(fila) => (
-                            <span style={{ height: 8, borderRadius: 4, background: '#2e4372', width: Math.round((aPx(fila.valor) || 0) / 8), flexShrink: 0 }} />
-                        )}
-                    />
+                    <Text type='secondary' style={{ fontSize: 12.5 }}>
+                        No hay ninguno definido. El selector de arriba usa los anchos habituales para
+                        encoger la vista previa.
+                    </Text>
                 ),
         },
         {

@@ -25,6 +25,10 @@ export default function PanelControles({
     onAbrirGrupo,
     sinDefinir,
     cambios,
+    ancla,
+    onCerrarAncla,
+    dispositivo,
+    onDispositivo,
 }) {
     return (
         <div
@@ -78,6 +82,8 @@ export default function PanelControles({
                     valorDeToken={cambios.valorDeToken}
                     onCambiar={cambios.cambiarToken}
                     elemento={elemento}
+                    ancla={ancla}
+                    onCerrarAncla={onCerrarAncla}
                 />
 
                 <GruposPanel
@@ -93,6 +99,12 @@ export default function PanelControles({
                     seleccion={seleccion}
                     onSeleccionar={onSeleccionar}
                     elemento={elemento}
+                    ancla={ancla}
+                    onCerrarAncla={onCerrarAncla}
+                    fondo={fondo}
+                    colorTexto={colorTexto}
+                    dispositivo={dispositivo}
+                    onDispositivo={onDispositivo}
                 />
             </div>
         </div>
