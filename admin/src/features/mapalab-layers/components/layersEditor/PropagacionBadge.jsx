@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Button, Dropdown, Modal, Tag, Tooltip, Typography } from 'antd';
+import { Button, Dropdown, Modal, Popover, Space, Tag, Tooltip, Typography } from 'antd';
+import { CheckCircleFilled, InfoCircleOutlined } from '@ant-design/icons';
 import { message } from '@shared/services/message';
 import { propagacionDelGrupo } from '@features/mapalab-layers/utils/propagacionTarjetita';
 
@@ -32,13 +33,6 @@ export default function PropagacionBadge({
     const usan = datos.heredan.length;
     const propias = datos.propias;
     const propagan = usan > 0;
-
-    const motivoBloqueo = (() => {
-        if (!puedePublicar) return 'Solo quien publica cambios puede propagar la tarjetita a otras capas.';
-        if (!configDelGrupo) return 'El grupo todavía no tiene tarjetita que propagar.';
-        if (propias.length === 0) return 'Todas las propiedades ya usan la del grupo.';
-        return null;
-    })();
 
     const devolverAlGrupo = async (ids) => {
         if (!updateLayer) return;
@@ -80,16 +74,6 @@ export default function PropagacionBadge({
     });
 
     const items = [
-        {
-            key: 'titulo',
-            disabled: true,
-            label: (
-                <Text type="secondary" style={{ fontSize: 12 }}>
-                    {usan} de {datos.total} propiedades usan esta tarjetita
-                </Text>
-            ),
-        },
-        { type: 'divider' },
         ...datos.heredan.map((p) => ({
             key: `h-${p.id}`,
             onClick: () => onIrACapa?.(p.id),
@@ -133,51 +117,64 @@ export default function PropagacionBadge({
                 </div>
             ),
         })),
-        { type: 'divider' },
-        {
-            key: 'todas',
-            disabled: !puedePublicar || !configDelGrupo || propias.length === 0,
-            label: (
-                <span style={{ fontSize: 12, fontWeight: 600 }}>
-                    Que todas usen la del grupo
-                    {propias.length > 0 && ` (${propias.length})`}
-                </span>
-            ),
-            onClick: () => confirmar(
-                propias.map((p) => p.id),
-                `¿${propias.length} propiedades usan la tarjetita del grupo?`,
-            ),
-        },
-        ...(motivoBloqueo ? [{
-            key: 'motivo',
-            disabled: true,
-            label: (
-                <Text type="secondary" style={{ fontSize: 11, whiteSpace: 'normal', display: 'block', maxWidth: 260 }}>
-                    {motivoBloqueo}
-                </Text>
-            ),
-        }] : []),
-        ...(datos.sinNada.length > 0 ? [
-            { type: 'divider' },
-            {
-                key: 'refrescar',
+        propias.length === 0
+            ? {
+                key: 'listo',
                 disabled: true,
                 label: (
-                    <Text type="secondary" style={{ fontSize: 11, whiteSpace: 'normal', display: 'block', maxWidth: 260 }}>
-                        Las que dicen «sin tarjetita» no la heredaron porque el grupo no tenía una cuando se
-                        construyó el árbol. Guarda y refresca el árbol de capas.
-                    </Text>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: VERDE }}>
+                        <CheckCircleFilled />
+                        Ya todas usan la del grupo
+                    </span>
+                ),
+            }
+            : {
+                key: 'todas',
+                disabled: !puedePublicar || !configDelGrupo,
+                label: (
+                    <span style={{ fontSize: 12, fontWeight: 600 }}>
+                        Que todas usen la del grupo ({propias.length})
+                    </span>
+                ),
+                onClick: () => confirmar(
+                    propias.map((p) => p.id),
+                    `¿${propias.length} propiedades usan la tarjetita del grupo?`,
                 ),
             },
-        ] : []),
     ];
 
+    const ayuda = (
+        <div style={{ maxWidth: 300, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <Text style={{ fontSize: 12 }}>
+                Las propiedades de un grupo muestran <b>la tarjetita del grupo</b> mientras no tengan una
+                propia. Editas la del grupo y cambian todas.
+            </Text>
+            <Text style={{ fontSize: 12 }}>
+                El contador dice cuántas la están usando. Ábrelo para ver cuáles y, si alguna tiene la suya,
+                hacer que use la del grupo.
+            </Text>
+            {propias.length === 0 && (
+                <Text style={{ fontSize: 12, color: VERDE }}>
+                    Ahora mismo las {datos.total} la usan: no hay nada que propagar.
+                </Text>
+            )}
+            {datos.sinNada.length > 0 && (
+                <Text type="warning" style={{ fontSize: 12 }}>
+                    Las que dicen «sin tarjetita» no la heredaron porque el grupo no tenía una cuando se
+                    construyó el árbol. Guarda y refresca el árbol de capas.
+                </Text>
+            )}
+            {!puedePublicar && (
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                    Solo quien publica cambios puede aplicarla a otras capas.
+                </Text>
+            )}
+        </div>
+    );
+
     return (
-        <Dropdown menu={{ items }} trigger={['click']} placement="bottomRight" disabled={aplicando}>
-            <Tooltip
-                title={`Esta tarjetita la usan ${usan} de ${datos.total} propiedades del grupo. Ábrelo para ver cuáles y aplicarla a las que no.`}
-                color={propagan ? VERDE : undefined}
-            >
+        <Space size={4}>
+            <Dropdown menu={{ items }} trigger={['click']} placement="bottomRight" disabled={aplicando}>
                 <Button
                     size="small"
                     loading={aplicando}
@@ -186,7 +183,15 @@ export default function PropagacionBadge({
                 >
                     {usan}/{datos.total}
                 </Button>
-            </Tooltip>
-        </Dropdown>
+            </Dropdown>
+            <Popover content={ayuda} title="Tarjetita del grupo" trigger="click" placement="bottomRight">
+                <Button
+                    size="small"
+                    type="text"
+                    icon={<InfoCircleOutlined />}
+                    aria-label="Cómo funciona la tarjetita del grupo"
+                />
+            </Popover>
+        </Space>
     );
 }

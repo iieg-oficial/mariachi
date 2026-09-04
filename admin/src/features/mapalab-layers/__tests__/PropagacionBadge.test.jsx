@@ -5,7 +5,19 @@ import PropagacionBadge from '@features/mapalab-layers/components/layersEditor/P
 const updateLayer = vi.fn(() => Promise.resolve());
 const reload = vi.fn(() => Promise.resolve());
 
+const TARJETA = { headerField: 'nombre' };
 const CONFIG_GRUPO = { headerField: 'nombre' };
+
+const ARBOL = [{
+    id: 'g', label: 'Unidades', nodeType: 'group', littleCard: TARJETA,
+    children: [
+        { id: 'g.a', label: 'Primer nivel', nodeType: 'leaf', littleCard: TARJETA, inheritedFrom: 'g' },
+        { id: 'g.b', label: 'Segundo nivel', nodeType: 'leaf', littleCard: TARJETA, inheritedFrom: 'g' },
+        { id: 'g.c', label: 'Hospitales', nodeType: 'leaf', littleCard: { headerField: 'otro' } },
+    ],
+}];
+
+const TODAS_HEREDAN = [{ ...ARBOL[0], children: ARBOL[0].children.filter((c) => c.inheritedFrom) }];
 
 const pinta = (props = {}) => render(
     <PropagacionBadge
@@ -19,24 +31,24 @@ const pinta = (props = {}) => render(
     />,
 );
 
-const TARJETA = { headerField: 'nombre' };
+const abrirMenu = async (contador) => {
+    fireEvent.click(screen.getByText(contador));
+    await waitFor(() => expect(screen.getByText('Primer nivel')).toBeInTheDocument());
+};
 
-const ARBOL = [{
-    id: 'g', label: 'Unidades', nodeType: 'group', littleCard: TARJETA,
-    children: [
-        { id: 'g.a', label: 'Primer nivel', nodeType: 'leaf', littleCard: TARJETA, inheritedFrom: 'g' },
-        { id: 'g.b', label: 'Segundo nivel', nodeType: 'leaf', littleCard: TARJETA, inheritedFrom: 'g' },
-        { id: 'g.c', label: 'Hospitales', nodeType: 'leaf', littleCard: { headerField: 'otro' } },
-    ],
-}];
+const abrirAyuda = async () => {
+    fireEvent.click(screen.getByLabelText('Cómo funciona la tarjetita del grupo'));
+    await waitFor(() => expect(screen.getByText('Tarjetita del grupo')).toBeInTheDocument());
+};
 
 beforeEach(() => { updateLayer.mockClear(); reload.mockClear(); });
 
 describe('PropagacionBadge', () => {
-    it('muestra cuántas propiedades usan la tarjetita', () => {
+    it('el badge es solo el contador', () => {
         pinta();
-        expect(screen.getByLabelText('Propagación: 2 de 3 propiedades')).toBeInTheDocument();
         expect(screen.getByText('2/3')).toBeInTheDocument();
+        expect(screen.getByLabelText('Propagación: 2 de 3 propiedades')).toBeInTheDocument();
+        expect(screen.queryByText(/propiedades usan esta tarjetita/)).not.toBeInTheDocument();
     });
 
     it('no aparece en un nodo que no es grupo', () => {
@@ -46,52 +58,50 @@ describe('PropagacionBadge', () => {
 
     it('lista quién la usa y quién tiene la suya', async () => {
         pinta();
-        fireEvent.click(screen.getByText('2/3'));
-        await waitFor(() => expect(screen.getByText('Hospitales')).toBeInTheDocument());
+        await abrirMenu('2/3');
         expect(screen.getAllByText('usa la del grupo')).toHaveLength(2);
         expect(screen.getByText('tiene la suya')).toBeInTheDocument();
         expect(screen.getByText(/Que todas usen la del grupo/)).toBeInTheDocument();
     });
 
-    it('aplicar borra la tarjetita propia y refresca el árbol', async () => {
+    it('cuando todas ya la usan lo dice como logro, no como bloqueo', async () => {
+        pinta({ rawTree: TODAS_HEREDAN });
+        fireEvent.click(screen.getByText('2/2'));
+        await waitFor(() => expect(screen.getByText('Ya todas usan la del grupo')).toBeInTheDocument());
+        expect(screen.queryByText(/Que todas usen la del grupo/)).not.toBeInTheDocument();
+    });
+
+    it('aplicar guarda el grupo, borra la propia y refresca dos veces', async () => {
         vi.useFakeTimers({ shouldAdvanceTime: true });
         pinta();
-        fireEvent.click(screen.getByText('2/3'));
-        await waitFor(() => expect(screen.getByText('usar esta')).toBeInTheDocument());
+        await abrirMenu('2/3');
         fireEvent.click(screen.getByText('usar esta'));
         await waitFor(() => expect(screen.getByText('Sí, aplicar')).toBeInTheDocument());
         fireEvent.click(screen.getByText('Sí, aplicar'));
         await waitFor(() => expect(updateLayer).toHaveBeenCalledWith('g', { infoboxConfig: CONFIG_GRUPO }));
         await waitFor(() => expect(updateLayer).toHaveBeenCalledWith('g.c', { infoboxConfig: null }));
-        await waitFor(() => expect(reload).toHaveBeenCalled());
         await vi.advanceTimersByTimeAsync(6000);
         await waitFor(() => expect(reload).toHaveBeenCalledTimes(2));
         vi.useRealTimers();
     });
-
 });
 
-describe('PropagacionBadge · cuándo no se puede propagar', () => {
-    it('sin permiso de publicar la acción queda deshabilitada y dice por qué', async () => {
+describe('PropagacionBadge · la explicación vive en el ícono de información', () => {
+    it('explica qué es la propagación', async () => {
+        pinta();
+        await abrirAyuda();
+        expect(screen.getByText(/muestran/)).toBeInTheDocument();
+    });
+
+    it('cuando todas la usan lo dice ahí', async () => {
+        pinta({ rawTree: TODAS_HEREDAN });
+        await abrirAyuda();
+        expect(screen.getByText(/no hay nada que propagar/)).toBeInTheDocument();
+    });
+
+    it('sin permiso de publicar lo dice ahí', async () => {
         pinta({ puedePublicar: false });
-        fireEvent.click(screen.getByText('2/3'));
-        await waitFor(() => expect(screen.getByText(/Solo quien publica/)).toBeInTheDocument());
-    });
-
-    it('sin tarjetita en el grupo lo dice', async () => {
-        pinta({ configDelGrupo: null });
-        fireEvent.click(screen.getByText('2/3'));
-        await waitFor(() => expect(screen.getByText(/todavía no tiene tarjetita/)).toBeInTheDocument());
-    });
-
-    it('cuando todas ya la usan, la acción sigue visible pero explicada', async () => {
-        const todasHeredan = [{
-            ...ARBOL[0],
-            children: ARBOL[0].children.filter((c) => c.inheritedFrom),
-        }];
-        pinta({ rawTree: todasHeredan });
-        fireEvent.click(screen.getByText('2/2'));
-        await waitFor(() => expect(screen.getByText(/Que todas usen la del grupo/)).toBeInTheDocument());
-        expect(screen.getByText(/ya usan la del grupo/)).toBeInTheDocument();
+        await abrirAyuda();
+        expect(screen.getByText(/Solo quien publica/)).toBeInTheDocument();
     });
 });

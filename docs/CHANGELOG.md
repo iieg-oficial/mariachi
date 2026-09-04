@@ -9,6 +9,23 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.83.1] - 2026-09-04
+
+### Cambiado: el badge de propagación se queda con el contador y nada más
+
+Ocupaba demasiado para lo que decía. El badge es ahora solo `8/8`, y toda la explicación —qué es la
+propagación, por qué no hay nada que aplicar, por qué una capa dice «sin tarjetita», por qué las
+acciones están deshabilitadas— se fue a un **ícono de información** al lado. El menú pierde el
+renglón de título y los divisores: queda la lista de propiedades y la acción.
+
+### Corregido: cuando ya estaba propagada parecía que había fallado
+
+Con todas las propiedades heredando, el menú mostraba «Que todas usen la del grupo» deshabilitado y
+un texto gris explicando el bloqueo. Se lee como un error, no como que ya está hecho.
+
+Ahora en ese caso la acción se sustituye por **«Ya todas usan la del grupo»** con una palomita
+verde. Es el mismo estado, dicho como lo que es: el trabajo terminado.
+
 ## [2.83.0] - 2026-09-04
 
 ### Cambiado: el modal de edición se organiza en pestañas
