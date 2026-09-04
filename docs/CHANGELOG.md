@@ -9,6 +9,59 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.87.0] - 2026-09-04
+
+### Agregado: la ficha sugiere fecha y frecuencia desde la periodicidad
+
+Una bombilla junto a **Frecuencia de actualizacion** y **Ultima actualizacion** abre un modal con lo
+que la periodicidad de la capa indica, de donde sale y cuando se calculo. Aparece **solo cuando la
+sugerencia difiere** de lo capturado, y aplicarla es una accion explicita: lo escrito a mano manda.
+
+El dato lo deja listo el cron de dataengine en `fecha_ultima_sugerida` y `frecuencia_sugerida`
+(migracion `0047`); mariachi solo lo lee. **dataengine se despliega antes**: sin esas columnas el api
+responde 500. Procedimiento en `runbook/tamal-rojo.md` del repo de contexto.
+
+### Cambiado: Apariencia es un solo panel de interruptores
+
+Distintivo, Aviso, Resaltado, Oculta y Fuera de servicio viven en un panel sin marcos ni divisores,
+con el switch primero y la etiqueta despues, y el detalle se despliega solo al encenderse. Cada uno
+lleva un icono de informacion que responde a hover, click y foco —para que sirva en tactil— en vez
+de texto colgando al lado.
+
+El tipo de distintivo usa Segmented y su vista previa se fue a la derecha. El aviso ya no advierte
+que le falta titulo: al encender el switch, el cursor salta al campo.
+
+### Cambiado: el tipo de campo de municipio se detecta solo
+
+Se recalcula al cambiar de columna, no solo cuando esta vacio, y desaparece de la vista: con la
+deteccion segura queda una palomita con «Detectado como Clave INEGI» y un enlace para forzarlo.
+
+**No se elimino el campo**, aunque parezca redundante: `nombre` lo usan **96 capas** y `clave` **85**,
+y el backend genera CQL distinto para cada uno. Ademas la deteccion falla en tres casos reales —
+CVEGEO de 10 digitos, claves de otro estado (el patron esta fijado a `14NNN`) y columnas con pocas
+muestras—.
+
+### Cambiado: la ficha de metadatos se lee en el orden del visor
+
+Frecuencia y ultima actualizacion subieron bajo el nombre, como tarjetas, que es donde el visor las
+pinta. Se agrego la seccion **Referencia cartografica del limite municipal**, que faltaba entre
+Metodologia y Metadato. La fecha se elige con calendario en dos precisiones —solo año o fecha
+exacta— en vez de texto libre, para que todas las capas usen la misma sintaxis.
+
+En Identidad el tipo de nodo usa Segmented, los alias se llaman «Alias de enlace» y su lista solo
+aparece cuando existe alguno.
+
+### Corregido: la pestana Metadatos reventaba al abrirse
+
+`ReferenceError: Cannot access 'tr' before initialization`. El nombre de la capa se pasaba a la
+pestana 560 lineas antes de declararse, y un `const` no se puede leer antes de su declaracion. Se
+movio el calculo arriba de la construccion de las pestanas.
+
+### Corregido: la seccion Metadato de la vista previa nunca aparecia
+
+Se filtraba por `texto` y `archivo_enlace`, que son los campos de metodologia; `metadato` usa
+`nombre` y `enlace`.
+
 ## [2.86.0] - 2026-09-04
 
 ### Cambiado: deshacer y rehacer suben al encabezado

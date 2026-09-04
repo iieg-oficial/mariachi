@@ -18,29 +18,44 @@ function Seccion({ titulo, ayuda, onClick, children }) {
     );
 }
 
-export default function MetadataPreview({ form, layerKey, onAbrirSeccion, onIrAEstadisticas, numeralia = [], saving = false }) {
-    const nombre = Form.useWatch('layer_name_usuario', form);
+export default function MetadataPreview({ form, layerKey, layerLabel, onAbrirSeccion, onIrAEstadisticas, numeralia = [], saving = false }) {
     const descripcion = Form.useWatch('descripcion', form);
     const frecuencia = Form.useWatch('frecuencia', form);
     const fechaUltima = Form.useWatch('fecha_ultima', form);
     const downloadable = Form.useWatch('downloadable', form);
     const fuentes = conTexto(Form.useWatch('fuentes', form), ['corto', 'largo', 'enlace']);
     const metodologia = conTexto(Form.useWatch('metodologia', form), ['texto', 'archivo_enlace']);
-    const metadato = conTexto(Form.useWatch('metadato', form), ['texto', 'archivo_enlace']);
+    const metadato = conTexto(Form.useWatch('metadato', form), ['nombre', 'enlace']);
+    const tipoMapa = Form.useWatch('tipo_mapa', form);
+    const textoLeyenda = Form.useWatch('texto_leyenda', form);
 
     const abrir = (id) => () => onAbrirSeccion?.(id);
     const indicadores = (numeralia || []).filter((n) => n?.nombre || n?.valor);
 
     return (
         <VisorFrame
-            caption={saving ? 'Ficha que abre el visor · guardando…' : 'Ficha que abre el visor'}
-            note="En el mismo orden que el visor. Da click en una sección para editarla; las vacías no se muestran."
+            caption={saving
+                ? 'Vista previa de detalles de la capa · guardando…'
+                : 'Vista previa de detalles de la capa'}
         >
-            <Tooltip title="Se toma de «Nombre para el usuario», en Información general">
-                <button type="button" className="ficha-titulo" onClick={abrir('general')}>
-                    {nombre || <Vacio>Sin nombre para el usuario</Vacio>}
-                </button>
+            <Tooltip title="El visor titula la ficha con el alias o el nombre de la capa en el árbol, no con un campo de metadatos. Se cambia en la pestaña Identidad.">
+                <div className="ficha-titulo ficha-titulo-fijo">
+                    {layerLabel || <Vacio>Sin nombre</Vacio>}
+                </div>
             </Tooltip>
+
+            {(frecuencia || fechaUltima) && (
+                <div className="ficha-cards">
+                    <button type="button" className="ficha-card" onClick={abrir('general')}>
+                        <span className="h">Frecuencia de actualización</span>
+                        <span className="v">{frecuencia || '—'}</span>
+                    </button>
+                    <button type="button" className="ficha-card" onClick={abrir('general')}>
+                        <span className="h">Última actualización</span>
+                        <span className="v">{fechaUltima || '—'}</span>
+                    </button>
+                </div>
+            )}
 
             <Seccion titulo="Descripción" ayuda="Editar en Información general" onClick={abrir('general')}>
                 {descripcion || <Vacio>Sin descripción: la ficha abre casi vacía.</Vacio>}
@@ -95,20 +110,28 @@ export default function MetadataPreview({ form, layerKey, onAbrirSeccion, onIrAE
                 </Seccion>
             )}
 
+            {(textoLeyenda || tipoMapa) && (
+                <Seccion
+                    titulo="Referencia cartográfica del límite municipal"
+                    ayuda="Editar en Referencias cartográficas"
+                    onClick={abrir('referencias')}
+                >
+                    {textoLeyenda && <span style={{ display: 'block' }}>{textoLeyenda}</span>}
+                    {tipoMapa && <span style={{ display: 'block' }}><b>Tipo de mapa:</b> {tipoMapa}</span>}
+                </Seccion>
+            )}
+
             {metadato.length > 0 && (
-                <Seccion titulo="Metadato" ayuda="Editar en Referencias cartográficas" onClick={abrir('referencias')}>
+                <Seccion titulo="Metadato" ayuda="Editar en Archivos adjuntos" onClick={abrir('adjuntos')}>
                     {metadato.map((m, i) => (
                         <span key={i} style={{ display: 'block' }}>
-                            {m.texto}
-                            {m.archivo_enlace && <> · <u>Documento</u></>}
+                            <u>{m.nombre || m.enlace}</u>
                         </span>
                     ))}
                 </Seccion>
             )}
 
             <div className="ficha-meta">
-                <span>Frecuencia: <b>{frecuencia || '—'}</b></span>
-                <span>Última actualización: <b>{fechaUltima || '—'}</b></span>
                 <span>Descarga: <b>{downloadable === false ? 'bloqueada' : 'disponible'}</b></span>
                 {layerKey && <span>Feature type: <code>{layerKey}</code></span>}
             </div>

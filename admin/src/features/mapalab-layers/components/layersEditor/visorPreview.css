@@ -312,3 +312,49 @@
     font-size: 10.5px;
     color: #6a7386;
 }
+
+.ficha-titulo-fijo {
+    cursor: help;
+}
+
+.ficha-titulo-fijo:hover {
+    background: transparent;
+}
+
+.ficha-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.ficha-card {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    text-align: left;
+    font: inherit;
+    background: #f4f6fa;
+    border: 1px solid #e2e6ee;
+    border-radius: 6px;
+    padding: 8px 10px;
+    cursor: pointer;
+}
+
+.ficha-card:hover {
+    border-color: #7385ab;
+}
+
+.ficha-card .h {
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #8e97a8;
+    font-weight: 700;
+}
+
+.ficha-card .v {
+    font-size: 13px;
+    font-weight: 600;
+    color: #1c2230;
+}

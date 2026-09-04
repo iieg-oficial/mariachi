@@ -125,3 +125,22 @@ describe('metadatos en la hoja de publicación', () => {
         expect(sectionOf('cqlFilter')).toBe('Servicios');
     });
 });
+
+describe('solo se publica lo que el usuario tocó', () => {
+    const publicada = { label: 'Capa', municipioFieldType: null, badge: null };
+
+    it('un campo que escribió un componente hijo no entra si no se tocó', () => {
+        const tocados = new Set(['label']);
+        const valores = { label: 'Capa nueva', municipioFieldType: 'clave', badge: { enabled: false } };
+        const soloTocados = Object.fromEntries([...tocados].map((k) => [k, valores[k]]));
+
+        expect(diffPayload(soloTocados, publicada)).toEqual({ label: 'Capa nueva' });
+    });
+
+    it('si no se tocó nada, no hay cambios que publicar', () => {
+        const valores = { label: 'Capa', municipioFieldType: 'clave' };
+        const soloTocados = Object.fromEntries([...new Set()].map((k) => [k, valores[k]]));
+
+        expect(diffPayload(soloTocados, publicada)).toEqual({});
+    });
+});

@@ -40,6 +40,7 @@ import {
     labelForNode,
 } from '@features/mapalab-layers/constants/nodeTypes';
 import AdvancedStack from '@features/mapalab-layers/components/layersEditor/AdvancedStack';
+import InfoIcon from '@features/mapalab-layers/components/layersEditor/InfoIcon';
 import AppearancePanel from '@features/mapalab-layers/components/layersEditor/AppearancePanel';
 import EditorSection from '@features/mapalab-layers/components/layersEditor/EditorSection';
 import LayerBreadcrumb from '@features/mapalab-layers/components/LayerBreadcrumb';
@@ -696,7 +697,14 @@ export default function LayerEditPage() {
                             </Form.Item>
                         )}
                         {isFieldVisible('alias', watchedNodeType) && (
-                            <Form.Item label="Alias (atajos opcionales)">
+                            <Form.Item
+                                label={(
+                                    <Space size={6}>
+                                        Alias de enlace
+                                        <InfoIcon title="Atajos cortos que también resuelven a esta capa vía ?layer=<alias>. El nombre en URL canónico siempre funciona; los alias sirven para tener algo memorizable (esalud → establecimientos-salud) o para no romper URLs viejas que cambiaron de nombre." />
+                                    </Space>
+                                )}
+                            >
                                 <LayerAliasesSection
                                     layerId={layerId}
                                     listAliases={listLayerAliases}
@@ -714,7 +722,7 @@ export default function LayerEditPage() {
                                     : 'Rol del nodo en la jerarquía: Tema, Categoría y Etiqueta organizan; Grupo y Capa son capas reales.'
                             }
                         >
-                            <Select options={NODE_TYPE_OPTIONS} disabled={isProperty} />
+                            <Segmented options={NODE_TYPE_OPTIONS} disabled={isProperty} />
                         </Form.Item>
                     </EditorSection>
                     <EditorSection title="Búsqueda en el visor">

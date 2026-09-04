@@ -1,7 +1,9 @@
 import { useRef } from 'react';
-import { ColorPicker, Form, Radio, Switch, Typography } from 'antd';
+import { ColorPicker, Form, Radio, Switch, Tooltip, Typography } from 'antd';
 import { HIGHLIGHT_COLORS, HIGHLIGHT_SHAPES, isHexHighlight, resolveColorEntry } from './highlightConstants';
 import { HighlightSwatch } from './highlightShared';
+import InfoIcon from '@features/mapalab-layers/components/layersEditor/InfoIcon';
+import '@features/mapalab-layers/components/layersEditor/appearancePanel.css';
 
 const { Text } = Typography;
 
@@ -81,15 +83,11 @@ export default function LayerHighlightField({ colorName = 'highlightColor', shap
 
     return (
         <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: enabled ? 16 : 0 }}>
+            <div className="ap-cabeza" style={{ marginBottom: enabled ? 16 : 0 }}>
                 <Switch checked={enabled} onChange={handleToggle} />
-                <Text strong>Activar resaltado</Text>
+                <span className="ap-titulo">Resaltado al hacer clic</span>
+                <InfoIcon title="Cómo se marca una feature al hacer clic sobre ella en el visor. Si el nodo tiene hijas, se propaga a las que no tengan su propio resaltado." />
             </div>
-            {!enabled && (
-                <Text type="secondary" style={{ fontSize: 12 }}>
-                    Esta capa no se resaltará al hacer clic en sus features.
-                </Text>
-            )}
             <div style={{ display: enabled ? 'flex' : 'none', gap: 24, flexWrap: 'wrap' }}>
                 <div style={{ flex: '1 1 220px', minWidth: 220 }}>
                     <Text strong style={{ display: 'block', marginBottom: 8 }}>Color</Text>

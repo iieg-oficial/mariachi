@@ -7,6 +7,8 @@ import { BucketFilePicker, BucketFileUploader, useAccessibleBuckets } from '@fea
 import { FRECUENCIA_OPTIONS, TIPO_MAPA_OPTIONS } from '@features/mapalab-layers/constants/metadataCatalogs';
 import EditorSection from '@features/mapalab-layers/components/layersEditor/EditorSection';
 import MetadataPreview from '@features/mapalab-layers/components/layersEditor/MetadataPreview';
+import FechaUltimaField from '@features/mapalab-layers/components/layersEditor/FechaUltimaField';
+import SugerenciaPeriodicidad from '@features/mapalab-layers/components/layersEditor/SugerenciaPeriodicidad';
 import { message } from '@shared/services/message';
 
 const { Text } = Typography;
@@ -36,12 +38,17 @@ export default function LayerMetadataSection({
     layerKey,
     derivedFromDescendants = false,
     siblingsSharingCount = 0,
+    layerLabel,
+    ultimoDatoRegistrado = null,
     onDraftSaved,
     onIrAEstadisticas,
     numeralia = [],
 }) {
     const [seccionAbierta, setSeccionAbierta] = useState('general');
+    const frecuenciaActual = Form.useWatch('frecuencia', form);
+    const fechaActual = Form.useWatch('fecha_ultima', form);
     const autosaveTimer = useRef(null);
+    const asentadoRef = useRef(false);
     const { getLayerMetadata, saveMetadataDraft } = useLayerTreeAdmin();
     const [form] = Form.useForm();
     const watchedFrecuencia = Form.useWatch('frecuencia', form);
@@ -128,6 +135,13 @@ export default function LayerMetadataSection({
         autosaveTimer.current = setTimeout(() => autoguardar(form.getFieldsValue()), 1500);
     };
 
+    useEffect(() => {
+        if (loading) return undefined;
+        asentadoRef.current = false;
+        const asentar = setTimeout(() => { asentadoRef.current = true; }, 1500);
+        return () => clearTimeout(asentar);
+    }, [loading, metadata]);
+
     useEffect(() => () => {
         if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
     }, []);
@@ -206,6 +220,18 @@ export default function LayerMetadataSection({
                             <Form.Item
                                 label="Frecuencia de actualización"
                                 name="frecuencia"
+                                label={(
+                                    <Space size={4}>
+                                        Frecuencia de actualización
+                                        <SugerenciaPeriodicidad
+                                            campo="la frecuencia"
+                                            valor={frecuenciaActual}
+                                            sugerido={metadata?.frecuenciaSugerida ?? metadata?.frecuencia_sugerida}
+                                            actualizadaEn={metadata?.sugerenciasActualizadasEn ?? metadata?.sugerencias_actualizadas_en}
+                                            onAplicar={(v) => { form.setFieldValue('frecuencia', v); alCambiar(); }}
+                                        />
+                                    </Space>
+                                )}
                                 tooltip="Cada cuánto se publica una nueva versión de esta capa. Selecciona del catálogo para mantener consistencia entre capas."
                             >
                                 <Select
@@ -221,9 +247,21 @@ export default function LayerMetadataSection({
                             <Form.Item
                                 label="Fecha última actualización"
                                 name="fecha_ultima"
-                                tooltip="Fecha de la última versión disponible de esta capa (no la del último cambio del registro). Formato libre: 2024, 2024-Q3, 2024-12, etc."
+                                label={(
+                                    <Space size={4}>
+                                        Última actualización
+                                        <SugerenciaPeriodicidad
+                                            campo="la fecha"
+                                            valor={fechaActual}
+                                            sugerido={metadata?.fechaUltimaSugerida ?? metadata?.fecha_ultima_sugerida}
+                                            actualizadaEn={metadata?.sugerenciasActualizadasEn ?? metadata?.sugerencias_actualizadas_en}
+                                            onAplicar={(v) => { form.setFieldValue('fecha_ultima', v); alCambiar(); }}
+                                        />
+                                    </Space>
+                                )}
+                                tooltip="Fecha de la última versión disponible de esta capa, no la del último cambio del registro. Se elige con calendario para que todas las capas usen la misma sintaxis: año, o año-mes-día."
                             >
-                                <Input placeholder="p.ej. 2024 o 2024-Q3" />
+                                <FechaUltimaField sugerida={ultimoDatoRegistrado} />
                             </Form.Item>
                         </EditorSection>
 
@@ -369,7 +407,9 @@ export default function LayerMetadataSection({
 
                         <EditorSection
                             title="Archivos adjuntos"
-                            hint="Documentos descargables (TXT/XLSX) asociados a la capa."
+                            hint="Documentos descargables (TXT/XLSX) asociados a la capa. El visor los lista como «Metadato»."
+                            open={seccionAbierta === 'adjuntos'}
+                            onOpenChange={(v) => setSeccionAbierta(v ? 'adjuntos' : null)}
                         >
                             <Form.List name="metadato">
                                 {(fields, { add, remove }) => (
@@ -430,6 +470,7 @@ export default function LayerMetadataSection({
                         <MetadataPreview
                             form={form}
                             layerKey={layerKey}
+                            layerLabel={layerLabel}
                             numeralia={numeralia}
                             saving={saving}
                             onAbrirSeccion={setSeccionAbierta}
