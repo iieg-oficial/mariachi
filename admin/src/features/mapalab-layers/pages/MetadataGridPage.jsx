@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { Alert, Tabs, Tooltip, Typography } from 'antd';
+import { Space, Tabs, Tooltip, Typography } from 'antd';
 import { GridPanel } from '@shared/components/dataGrid';
 import { METADATA_GRID_CATALOGS } from '@features/mapalab-layers/constants/metadataCatalogs';
 import { LAYER_CONFIG_CATALOGS } from '@features/mapalab-layers/constants/layerConfigCatalogs';
@@ -47,6 +47,17 @@ const TABS_STYLES = `
 
 const isNumeraliaColumn = (key) => key.startsWith('numeralia_');
 
+const DYNAMIC_STATS_HINT = 'Estas capas calculan su numeralia desde la base de datos: '
+    + 'las celdas rayadas están bloqueadas aquí y se editan en la pestaña Metadatos de la capa.';
+
+const LEGEND_SWATCH = {
+    display: 'inline-block',
+    width: 10,
+    height: 10,
+    borderRadius: 2,
+    border: '1px solid #d9d9d9',
+};
+
 const tabLabel = (text, dirtyCount) => (dirtyCount ? `${text} · ${dirtyCount}` : text);
 
 export default function MetadataGridPage() {
@@ -68,28 +79,28 @@ export default function MetadataGridPage() {
         return Boolean(rowData.has_dynamic_stats) && isNumeraliaColumn(meta.key);
     }, []);
 
-    const renderMetadataNotices = useCallback((data) => {
-        const count = data.filter((row) => row.has_dynamic_stats).length;
-        if (!count) return null;
-        return (
-            <Alert
-                style={{ marginBottom: 8 }}
-                type="info"
-                showIcon
-                closable
-                title={`${count} capa(s) calculan su numeralia desde la base de datos`}
-                description="Sus celdas de numeralia están bloqueadas aquí: se editan en la pestaña Metadatos de la capa."
-            />
-        );
-    }, []);
-
     const renderMetadataStatusExtra = useCallback((data) => {
+        const dynamic = data.filter((row) => row.has_dynamic_stats).length;
         const pending = data.filter((row) => !row.descripcion || !String(row.descripcion).trim()).length;
-        if (!pending) return null;
+        if (!dynamic && !pending) return null;
         return (
-            <Tooltip title="Capas sin descripción capturada">
-                <Text type="secondary" style={{ fontSize: 11 }}>{pending} sin descripción</Text>
-            </Tooltip>
+            <Space size={10}>
+                {dynamic > 0 && (
+                    <Tooltip title={DYNAMIC_STATS_HINT}>
+                        <Space size={4}>
+                            <span className="grid-cell-locked" style={LEGEND_SWATCH} />
+                            <Text type="secondary" style={{ fontSize: 11 }}>
+                                {dynamic} con numeralia dinámica
+                            </Text>
+                        </Space>
+                    </Tooltip>
+                )}
+                {pending > 0 && (
+                    <Tooltip title="Capas sin descripción capturada">
+                        <Text type="secondary" style={{ fontSize: 11 }}>{pending} sin descripción</Text>
+                    </Tooltip>
+                )}
+            </Space>
         );
     }, []);
 
@@ -112,7 +123,6 @@ export default function MetadataGridPage() {
                     exportFileName="metadatos-capas"
                     rowLabelField="layer_name_usuario"
                     isCellDisabled={isCellDisabled}
-                    renderNotices={renderMetadataNotices}
                     renderStatusExtra={renderMetadataStatusExtra}
                     active={tab === 'metadatos'}
                     onToolbarChange={setToolbar}
@@ -146,8 +156,7 @@ export default function MetadataGridPage() {
             ),
         },
     ], [
-        tab, dirtyMetadatos, dirtyConfiguracion, isCellDisabled,
-        renderMetadataNotices, renderMetadataStatusExtra,
+        tab, dirtyMetadatos, dirtyConfiguracion, isCellDisabled, renderMetadataStatusExtra,
     ]);
 
     return (

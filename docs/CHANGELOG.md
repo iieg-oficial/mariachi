@@ -31,6 +31,13 @@ siendo la de antes.
 **Publicar un mosaico nuevo sigue fuera del CMS.** El `PUT .../external.imagemosaic` que crea la
 capa es un paso aparte; el explorador cubre la carpeta y **Reindexar** el mantenimiento.
 
+### Cambiado: la numeralia dinamica se explica con una leyenda, no con un aviso
+
+El grid de metadatos abria con un `Alert` que ocupaba un renglon entero para decir cuantas capas
+calculan su numeralia desde la base de datos. Ahora es un cuadrito del mismo rayado que usan esas
+celdas, en la barra de estado de la pestaña, junto al contador de capas sin descripcion. El detalle
+—que se editan en la pestaña Metadatos de la capa— vive en su tooltip.
+
 ---
 
 ## [2.90.0] - 2026-09-07
