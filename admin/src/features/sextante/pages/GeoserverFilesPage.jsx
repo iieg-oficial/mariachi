@@ -10,6 +10,7 @@ import {
 import {
     FileTextOutlined,
     GlobalOutlined,
+    PictureOutlined,
     ReloadOutlined,
 } from '@ant-design/icons';
 import {
@@ -30,6 +31,8 @@ import useGeoserverFileActions from '@features/sextante/hooks/useGeoserverFileAc
 import useGeoserverSelection from '@features/sextante/hooks/useGeoserverSelection';
 import { promptNewFolder } from '@features/sextante/components/newFolderPrompt';
 import {
+    RASTER_ROOT,
+    RASTER_SCOPE,
     SEARCH_DEBOUNCE_MS,
     WORKSPACE_STORAGE_KEY,
     basename,
@@ -166,6 +169,10 @@ export default function GeoserverFilesPage() {
         {
             key: '__global__',
             label: <span><GlobalOutlined /> Global <span style={{ color: '#999', fontSize: 11 }}>(styles/)</span></span>,
+        },
+        {
+            key: RASTER_SCOPE,
+            label: <span><PictureOutlined /> Rásters <span style={{ color: '#999', fontSize: 11 }}>({RASTER_ROOT}/)</span></span>,
         },
         ...workspaces.map((w) => ({
             key: w.geoserverWorkspace,

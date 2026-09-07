@@ -8,6 +8,9 @@ import httpx
 
 from app.core.settings import get_settings
 
+RASTER_ROOT = "geoserver-raster"
+RASTER_SCOPE = "__rasters__"
+
 
 class GeoServerError(Exception):
     pass
@@ -401,6 +404,8 @@ class GeoServerClient:
         return salida
 
     def _styles_base(self, workspace: str | None) -> str:
+        if workspace == RASTER_SCOPE:
+            return f"resource/{RASTER_ROOT}"
         if workspace:
             return f"resource/workspaces/{workspace}"
         return "resource/styles"

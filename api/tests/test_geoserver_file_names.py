@@ -4,10 +4,13 @@ from fastapi import HTTPException
 from app.api.routes.geoserver import (
     _build_file_response,
     _is_store_config,
+    _scope_label,
     _validate_file_name,
     _validate_file_name_readonly,
     _validate_move_target,
+    _validate_workspace,
 )
+from app.services.geoserver_client import RASTER_ROOT, RASTER_SCOPE, GeoServerClient
 
 
 class TestValidateFileNameReadonly:
@@ -196,3 +199,38 @@ class TestValidateMoveTarget:
     def test_tolera_la_barra_inicial_igual_que_browse_y_zip(self):
         assert _validate_move_target('iconos', '/destino', True) == 'destino'
 
+
+class TestAmbitoDeRasters:
+    """`geoserver-raster/` es el tercer ambito del explorador, junto a `styles/` y
+    los workspaces. Ahi viven las carpetas de los ImageMosaic."""
+
+    def test_el_scope_de_rasters_pasa_la_validacion_de_workspace(self):
+        assert _validate_workspace(RASTER_SCOPE) == RASTER_SCOPE
+
+    def test_un_workspace_con_nombre_invalido_sigue_rechazado(self):
+        with pytest.raises(HTTPException):
+            _validate_workspace('con espacio')
+
+    def test_la_etiqueta_distingue_los_tres_ambitos(self):
+        assert _scope_label(None) == 'styles'
+        assert _scope_label('general') == 'workspaces/general'
+        assert _scope_label(RASTER_SCOPE) == RASTER_ROOT
+
+    def test_la_base_rest_apunta_a_la_carpeta_de_rasters(self):
+        client = GeoServerClient(base_url='http://gs:8080/sextante', user='u', password='p')
+        assert client._styles_base(RASTER_SCOPE) == f'resource/{RASTER_ROOT}'
+        assert client._styles_base(None) == 'resource/styles'
+        assert client._styles_base('general') == 'resource/workspaces/general'
+
+    def test_el_origen_de_un_move_se_resuelve_contra_la_raiz_del_data_dir(self):
+        client = GeoServerClient(base_url='http://gs:8080/sextante', user='u', password='p')
+        assert client._store_path('precipitacion/mosaic_time', RASTER_SCOPE) == (
+            f'{RASTER_ROOT}/precipitacion/mosaic_time'
+        )
+
+    @pytest.mark.parametrize('name', ['mosaic_time.dbf', 'mosaic_time.shp', 'sample_image.dat'])
+    def test_los_archivos_del_indice_se_leen_y_se_borran_pero_no_se_suben(self, name):
+        _validate_file_name_readonly(name)
+        with pytest.raises(HTTPException) as exc:
+            _validate_file_name(name)
+        assert 'no permitida' in exc.value.detail

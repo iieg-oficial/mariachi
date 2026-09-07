@@ -9,6 +9,30 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.91.0] - 2026-09-07
+
+### Agregado: el explorador llega a `geoserver-raster/`
+
+Las carpetas de los ImageMosaic no viven en `styles/` ni bajo un workspace, sino en
+`geoserver-raster/<tema>/<mosaico>/`, la unica rama del data dir que el explorador no sabia abrir.
+Aceptar `.properties` no bastaba: era la llave sin la puerta.
+
+Junto a **Global (styles/)** hay ahora una pestaña **Rasters** que navega esa rama con todo lo que
+tiene el explorador. Con eso, armar y mantener la carpeta de un mosaico —subir los `.tif`, ajustar
+el `indexer.properties`, corregir el `timeregex.properties`— se hace desde el CMS.
+
+El ambito viaja en el mismo parametro `workspace` con el valor reservado `__rasters__`, asi que ni
+los endpoints ni la auditoria cambiaron de forma. La busqueda global tambien lo recorre.
+
+**Los archivos del indice** (`.dbf`, `.shp`, `.shx`, `.prj`, `.qix`, `.fix`, `.dat`) se listan,
+descargan y borran, pero **no se suben**: los genera GeoServer. La lista blanca de subida sigue
+siendo la de antes.
+
+**Publicar un mosaico nuevo sigue fuera del CMS.** El `PUT .../external.imagemosaic` que crea la
+capa es un paso aparte; el explorador cubre la carpeta y **Reindexar** el mantenimiento.
+
+---
+
 ## [2.90.0] - 2026-09-07
 
 ### Agregado: el historial se descarga desde su cajón, y los datos desde Configuración general

@@ -32,7 +32,12 @@ from app.schemas.geoserver_file import (
 from app.schemas.layer import WorkspaceCreate, WorkspacePending, WorkspaceResponse
 from app.services.acervo_file_service import ZIP_MAX_BYTES, stream_zip
 from app.services.actividad_service import registrar_actividad
-from app.services.geoserver_client import GeoServerClient, GeoServerError
+from app.services.geoserver_client import (
+    RASTER_ROOT,
+    RASTER_SCOPE,
+    GeoServerClient,
+    GeoServerError,
+)
 from app.services.palette_service import load_palettes
 from app.services.sld_parser import parse_sld
 
@@ -414,10 +419,21 @@ _GEOSERVER_WORKSPACE_RE = re.compile(r'^[a-zA-Z0-9_-]+$')
 _GEOSERVER_FILE_SEGMENT_RE = re.compile(r'^[a-zA-Z0-9._-]+$')
 
 
+def _scope_label(workspace: str | None) -> str:
+    if workspace == RASTER_SCOPE:
+        return RASTER_ROOT
+    return f"workspaces/{workspace}" if workspace else "styles"
+
+
 def _validate_workspace(workspace: str | None) -> str | None:
+    """El ambito de un recurso: `None` es `styles/`, un nombre es su workspace y
+    `RASTER_SCOPE` es `geoserver-raster/`, donde viven las carpetas de los ImageMosaic.
+    """
     if workspace is None or workspace == '':
         return None
     workspace = workspace.strip()
+    if workspace == RASTER_SCOPE:
+        return workspace
     if not _GEOSERVER_WORKSPACE_RE.match(workspace):
         raise HTTPException(
             status_code=400,
@@ -427,7 +443,9 @@ def _validate_workspace(workspace: str | None) -> str | None:
 _GEOSERVER_IMAGE_EXT = {'svg', 'png', 'jpg', 'jpeg', 'webp', 'gif', 'tiff', 'tif'}
 _GEOSERVER_FONT_EXT = {'ttf', 'otf'}
 _GEOSERVER_CONFIG_EXT = {'properties'}
+_GEOSERVER_INDEX_EXT = {'dbf', 'shp', 'shx', 'prj', 'qix', 'fix', 'dat'}
 _GEOSERVER_FILE_ALLOWED_EXT = _GEOSERVER_IMAGE_EXT | _GEOSERVER_FONT_EXT | _GEOSERVER_CONFIG_EXT
+_GEOSERVER_FILE_READABLE_EXT = _GEOSERVER_FILE_ALLOWED_EXT | _GEOSERVER_INDEX_EXT
 _GEOSERVER_FILE_MIME_BY_EXT = {
     'svg': 'image/svg+xml',
     'png': 'image/png',
@@ -467,21 +485,25 @@ def _validate_file_name(name: str) -> tuple[str, str]:
 def _validate_file_name_readonly(name: str) -> None:
     """Valida nombres de archivos ya existentes en GeoServer.
 
-    Mas laxa que `_validate_file_name` en el formato de los segmentos, porque hay
-    archivos legados con espacios y acentos que de otro modo no se podrian descargar
-    ni borrar. La lista blanca de extensiones NO se relaja: la raiz del workspace en
-    el Resource API tambien contiene datastore.xml (con credenciales de la BD),
-    workspace.xml y los estilos, que este endpoint no debe tocar.
+    Mas laxa que `_validate_file_name` en dos cosas, porque describe lo que ya existe
+    y no lo que se puede crear: el formato de los segmentos —hay archivos legados con
+    espacios y acentos que de otro modo no se podrian descargar ni borrar— y las
+    extensiones, que suman las del indice de un ImageMosaic (`.shp`, `.dbf`, …). Esas
+    ultimas las genera GeoServer, asi que se leen y se borran pero no se suben.
+
+    La whitelist no se abre mas alla: la raiz del workspace en el Resource API tambien
+    contiene datastore.xml (con credenciales de la BD), workspace.xml y los estilos,
+    que este endpoint no debe tocar.
     """
     if not name:
         raise HTTPException(status_code=400, detail="Nombre vacio")
     if '..' in name or name.startswith('/') or name.endswith('/'):
         raise HTTPException(status_code=400, detail="Nombre invalido (path traversal)")
     ext = Path(name).suffix.lower().lstrip('.')
-    if ext not in _GEOSERVER_FILE_ALLOWED_EXT:
+    if ext not in _GEOSERVER_FILE_READABLE_EXT:
         raise HTTPException(
             status_code=400,
-            detail=f"Extension '.{ext}' no permitida. Soportadas: {sorted(_GEOSERVER_FILE_ALLOWED_EXT)}",
+            detail=f"Extension '.{ext}' no permitida. Soportadas: {sorted(_GEOSERVER_FILE_READABLE_EXT)}",
         )
     _reject_store_config(name)
 
@@ -574,7 +596,7 @@ def _registrar_archivo(
         metadata={
             'nombre': name,
             'workspace': workspace,
-            'destino': f"workspaces/{workspace}" if workspace else 'styles',
+            'destino': _scope_label(workspace),
             **extra,
         },
         ip=_client_ip(request),
@@ -639,7 +661,7 @@ async def browse_geoserver_files(
         (
             _build_file_response(it['name'], it.get('content_type'), workspace=clean_ws)
             for it in result['files']
-            if Path(it['name']).suffix.lower().lstrip('.') in _GEOSERVER_FILE_ALLOWED_EXT
+            if Path(it['name']).suffix.lower().lstrip('.') in _GEOSERVER_FILE_READABLE_EXT
             and not _is_store_config(it['name'])
         ),
         key=lambda f: f.name.lower(),
@@ -659,7 +681,7 @@ async def search_geoserver_files(
         return GeoServerSearchResponse(query=q, results=[], truncated=False)
 
     client = GeoServerClient()
-    workspaces = [None] + [
+    workspaces = [None, RASTER_SCOPE] + [
         ws.geoserver_workspace for ws in db.query(Workspace).order_by(Workspace.alias).all()
     ]
 
@@ -677,7 +699,7 @@ async def search_geoserver_files(
         for it in items:
             name = it['name']
             ext = Path(name).suffix.lower().lstrip('.')
-            if ext not in _GEOSERVER_FILE_ALLOWED_EXT:
+            if ext not in _GEOSERVER_FILE_READABLE_EXT:
                 continue
             if _is_store_config(name):
                 continue
@@ -937,7 +959,7 @@ async def geoserver_folder_info(
     visibles = [
         it for it in result['files']
         if not _is_store_config(it['name'])
-        and Path(it['name']).suffix.lower().lstrip('.') in _GEOSERVER_FILE_ALLOWED_EXT
+        and Path(it['name']).suffix.lower().lstrip('.') in _GEOSERVER_FILE_READABLE_EXT
     ]
     return GeoServerFolderInfoResponse(
         path=clean_path,
@@ -973,7 +995,7 @@ async def delete_geoserver_folder(
     except GeoServerError as exc:
         raise HTTPException(status_code=502, detail=str(exc))
     if not deleted:
-        base = f"workspaces/{clean_ws}" if clean_ws else "styles"
+        base = _scope_label(clean_ws)
         raise HTTPException(status_code=404, detail=f"Carpeta no existe: {base}/{clean_path}")
     _registrar_archivo(
         db, request, current_user, 'geoserver.folder.delete', clean_path, clean_ws,
@@ -1227,6 +1249,6 @@ async def delete_geoserver_file(
     except GeoServerError as exc:
         raise HTTPException(status_code=502, detail=str(exc))
     if not deleted:
-        base = f"workspaces/{clean_ws}" if clean_ws else "styles"
+        base = _scope_label(clean_ws)
         raise HTTPException(status_code=404, detail=f"Recurso no existe: {base}/{name}")
     _registrar_archivo(db, request, current_user, 'geoserver.file.delete', name, clean_ws)

@@ -3,6 +3,8 @@ export const IMAGE_EXT = ['svg', 'png', 'jpg', 'jpeg', 'webp', 'gif', 'tiff', 't
 export const FONT_EXT = ['ttf', 'otf'];
 export const CONFIG_EXT = ['properties'];
 export const UPLOADABLE_EXT = [...IMAGE_EXT, ...FONT_EXT, ...CONFIG_EXT];
+export const RASTER_ROOT = 'geoserver-raster';
+export const RASTER_SCOPE = '__rasters__';
 export const FOLDER_NAME_RE = /^[a-zA-Z0-9._-]+$/;
 export const WORKSPACE_STORAGE_KEY = 'mapalab.geoserverFiles.workspace';
 export const SEARCH_DEBOUNCE_MS = 350;
@@ -17,4 +19,7 @@ export const formatSize = (bytes) => {
     return `${Math.round((bytes / 1024 ** i) * 10) / 10} ${units[i]}`;
 };
 export const basename = (path) => path.split('/').filter(Boolean).pop() || '';
-export const workspaceLabel = (ws) => (ws ? `workspaces/${ws}/` : 'styles/');
+export const workspaceLabel = (ws) => {
+    if (ws === RASTER_SCOPE) return `${RASTER_ROOT}/`;
+    return ws ? `workspaces/${ws}/` : 'styles/';
+};
