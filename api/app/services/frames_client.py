@@ -85,6 +85,14 @@ class FramesClient:
             }
         return estados
 
+    def foto(self, camara: str, alto: int) -> tuple[bytes, str]:
+        url = self._url(f"{camara}/latest.jpg")
+        with self._client() as c:
+            respuesta = c.get(url, params={"height": alto}, headers={"Accept": "image/jpeg"})
+            if respuesta.status_code != 200:
+                raise FramesError(self._detalle(respuesta))
+            return respuesta.content, respuesta.headers.get("content-type", "image/jpeg")
+
     def mjpeg(self, camara: str, fps: int, alto: int):
         url = self._url(camara)
         with httpx.stream(

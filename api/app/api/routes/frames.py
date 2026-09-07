@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.api.deps import verify_csrf
@@ -105,6 +105,26 @@ async def estado_camaras():
         return FramesClient().estado_camaras()
     except FramesError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+@router.get("/camaras/{nombre}/foto")
+async def foto(nombre: str, alto: int = 360, db: Session = Depends(get_db)):
+    camara = db.query(Camara).filter(Camara.nombre == nombre).first()
+    if camara is None:
+        raise HTTPException(status_code=404, detail="Camara no encontrada")
+    if not camara.habilitada:
+        raise HTTPException(status_code=409, detail="La camara esta apagada")
+
+    alto = max(120, min(alto, 1080))
+
+    try:
+        contenido, tipo = FramesClient().foto(nombre, alto)
+    except FramesError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=str(exc)[:200]) from exc
+
+    return Response(content=contenido, media_type=tipo, headers={"Cache-Control": "no-store"})
 
 
 @router.get("/camaras/{nombre}/stream")

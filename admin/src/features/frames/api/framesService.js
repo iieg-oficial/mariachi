@@ -36,7 +36,7 @@ export const getEstadoCamaras = async () => {
     return res.data;
 };
 
-export const urlStream = (nombre, { fps = 3, alto = 360 } = {}) => {
+export const urlFoto = (nombre, { alto = 360, t = 0 } = {}) => {
     const base = import.meta.env.VITE_ADMIN_API_URL || '/api/mariachi';
-    return `${base}${BASE}/camaras/${encodeURIComponent(nombre)}/stream?fps=${fps}&alto=${alto}`;
+    return `${base}${BASE}/camaras/${encodeURIComponent(nombre)}/foto?alto=${alto}&t=${t}`;
 };

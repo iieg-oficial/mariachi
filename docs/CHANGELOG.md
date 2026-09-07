@@ -9,6 +9,24 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.89.0] - 2026-09-07
+
+### Cambiado: la vista En vivo de frames deja de transmitir y ahora sondea fotos
+
+El mosaico abría un MJPEG multipart por cámara y el backend lo proxeaba con `timeout=None`: una
+conexión colgada indefinidamente por cada tarjeta. Sobre un enlace que no es la LAN del NVR
+—un túnel, una VPN, una red lenta— esas conexiones se caen y la tarjeta se queda en negro.
+
+Ahora cada tarjeta pide una foto suelta a `GET /frames/camaras/{nombre}/foto`, que trae
+`latest.jpg` de Frigate y cierra. El refresco **se autorregula**: la siguiente foto se programa en
+el `onLoad`/`onError` de la anterior, así que nunca hay más de una petición viva por cámara y si la
+red va lenta el ritmo baja solo en vez de encimar peticiones.
+
+`GET /frames/camaras/{nombre}/stream` y `FramesClient.mjpeg()` **siguen existiendo** para quien
+tenga la API en la misma red y quiera video continuo; lo que cambió es qué usa el admin.
+
+---
+
 ## [2.88.1] - 2026-09-04
 
 ### Corregido: el menú de propiedades del grupo se salía de la pantalla
