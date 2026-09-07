@@ -9,6 +9,44 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.93.0] - 2026-09-07
+
+### Agregado: el roadmap se respalda y se restaura por separado
+
+Las tres tablas del roadmap viven en el schema `public`, asi que el respaldo general
+—`pg_dump` sin filtros— ya se las llevaba. Lo que no habia era manera de bajar *solo* el roadmap,
+ni de devolverlo sin restaurar la base entera: recuperar un hito borrado por accidente costaba
+un `restore-db` que se lleva por delante usuarios, paginas, eventos y todo lo demas.
+
+**`make backup-roadmap`** vuelca `roadmap_hitos`, `roadmap_ciclos` y `roadmap_procesos` a
+`backups/roadmap/roadmap-<sello>.sql.gz`, con las secuencias y los indices, y rota a los 30
+archivos. **`make restore-roadmap`** ofrece los ultimos veinte en un selector y pide escribir
+`roadmap` antes de reemplazarlos; al terminar imprime cuantos hitos, ciclos y procesos quedaron.
+
+Existe aparte del respaldo general por la misma razon que `backup-vine`: **el contenido es captura
+manual.** La migracion siembra el estado inicial del roadmap, no las fechas, los motivos, los
+linajes ni la posicion de las bandas que se editaron despues; volver a correrla no recupera nada.
+
+El dump se valida antes de guardarse. Ademas de exigir las tres tablas, cuenta los hitos y falla
+si vienen menos de `HITOS_MINIMOS` (1 por defecto): un roadmap vaciado por accidente produce un
+archivo del mismo peso que uno bueno, y sin ese gate rotaria a los treinta respaldos hasta borrar
+el ultimo bueno.
+
+### Agregado: `make backups` y `make restores` para no ir de uno en uno
+
+Con el roadmap ya eran cuatro respaldos con nombre propio. **`make backups` corre los cuatro**
+—postgres, vine, roadmap y tarjetitas— con el spinner y el cronometro de siempre, sigue adelante
+cuando uno falla y al final dice cuantos fallaron. El general se omite fuera de produccion, que es
+donde `backup-db` se niega a correr.
+
+**`make restores` no restaura los cuatro:** abre un selector y delega en el target que elijas.
+Restaurar todo en cadena no tiene sentido —`restore-db` ya trae dentro vine y el roadmap— y
+mezclaria estados de sellos distintos.
+
+El selector **exige terminal**. Sin tty `pick` elige sola la primera opcion, asi que un
+`make restores` en un script o un cron restauraria algo sin que nadie lo pidiera; ahora falla y
+nombra los cuatro targets directos. La opcion de la base entera quedo ultima, no primera.
+
 ## [2.92.0] - 2026-09-07
 
 ### Cambiado: la tarjeta manda, el modo edicion sobra

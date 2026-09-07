@@ -9,6 +9,7 @@ ENV_PROD     := .env.production
 ENV_DEV      := .env.development
 TARJETITAS_DIR := backups/tarjetitas
 VINE_DIR := backups/vine
+ROADMAP_DIR := backups/roadmap
 
 UP_GUARDS     = ensure_network
 DEPLOY_GUARDS = ensure_network
