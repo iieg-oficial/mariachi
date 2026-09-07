@@ -9,6 +9,20 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.93.1] - 2026-09-07
+
+### Corregido: cada carpeta ausente dejaba un stacktrace en el log de GeoServer
+
+`browse_styles_dir` trata la carpeta que no existe como lista vacia —es un caso corriente: una
+carpeta pendiente, un ambito recien estrenado—, pero GeoServer 3 registra **cada 404 del Resource
+API como `ERROR` con stacktrace**, dos lineas por peticion. Navegar el explorador llenaba el log de
+`Undefined resource path.` sin que nada estuviera roto.
+
+La consulta manda ahora `quietOnNotFound=true`: mismo 404, cero ruido. Comprobado contra GeoServer
+3.0.0. Como reproducirlo y cuando si conviene investigarlo, en `runbook/sextante.md`.
+
+---
+
 ## [2.93.0] - 2026-09-07
 
 ### Agregado: el roadmap se respalda y se restaura por separado

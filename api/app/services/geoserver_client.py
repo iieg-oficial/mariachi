@@ -423,9 +423,15 @@ class GeoServerClient:
             self._walk_styles_recursive(folder_path, workspace, sink)
 
     def browse_styles_dir(self, prefix: str = "", workspace: str | None = None) -> dict:
+        """Lista una carpeta del Resource API; una que no existe es lista vacia.
+
+        `quietOnNotFound` evita que GeoServer registre cada 404 como un ERROR con
+        stacktrace: aqui la carpeta ausente es un caso corriente —una carpeta pendiente,
+        un ambito recien estrenado— y sin el parametro el log se llena de ruido.
+        """
         base = self._styles_base(workspace)
         path = base + (f"/{prefix.strip('/')}" if prefix else "")
-        url = f"{self._rest_url(path)}?format=json"
+        url = f"{self._rest_url(path)}?format=json&quietOnNotFound=true"
         with self._client() as c:
             r = c.get(url)
             if r.status_code == 404:
