@@ -1,31 +1,55 @@
-import { Button, Input, Popconfirm, Segmented, Space } from 'antd';
+import { useRef, useState } from 'react';
+import { Button, Dropdown, Input, Popconfirm, Space } from 'antd';
 import {
-    AppstoreOutlined,
-    BarsOutlined,
     DeleteOutlined,
     DragOutlined,
-    EditOutlined,
     FolderAddOutlined,
     PlusOutlined,
     SearchOutlined,
+    UploadOutlined,
 } from '@ant-design/icons';
 
 export default function GeoserverFilesToolbar({
     isMobile,
     search,
     onSearchChange,
-    viewMode,
-    onViewModeChange,
     disabled,
     onNewFolder,
     onUpload,
     extraActions,
-    editMode = false,
-    onToggleEditMode,
     selectedCount = 0,
     onBulkMove,
     onBulkDelete,
 }) {
+    const [searchOpen, setSearchOpen] = useState(false);
+    const inputRef = useRef(null);
+
+    const abrirBusqueda = () => {
+        setSearchOpen(true);
+        setTimeout(() => inputRef.current?.focus(), 0);
+    };
+
+    const cerrarSiVacia = () => {
+        if (!search.trim()) setSearchOpen(false);
+    };
+
+    const expandida = searchOpen || Boolean(search.trim());
+
+    const menuItems = [
+        {
+            key: 'folder',
+            icon: <FolderAddOutlined />,
+            label: 'Nueva carpeta',
+            onClick: onNewFolder,
+        },
+        {
+            key: 'upload',
+            icon: <UploadOutlined />,
+            label: 'Subir archivos',
+            onClick: onUpload,
+        },
+    ];
+
     return (
         <div style={{
             display: 'flex',
@@ -35,38 +59,33 @@ export default function GeoserverFilesToolbar({
             alignItems: 'center',
             justifyContent: 'space-between',
         }}>
-            <div style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: 8,
-                alignItems: 'center',
-                flex: '1 1 auto',
-                minWidth: 0,
-            }}>
-                <div style={{ flex: isMobile ? '1 1 100%' : '1 1 320px', minWidth: 0 }}>
+            <div
+                style={{ flex: isMobile ? '1 1 100%' : '1 1 320px', minWidth: 0, maxWidth: 420 }}
+                onMouseEnter={() => setSearchOpen(true)}
+                onMouseLeave={cerrarSiVacia}
+            >
+                {expandida ? (
                     <Input
+                        ref={inputRef}
                         allowClear
                         prefix={<SearchOutlined />}
                         placeholder="Buscar en todos los recursos (global + workspaces)"
                         value={search}
                         onChange={(e) => onSearchChange(e.target.value)}
+                        onBlur={cerrarSiVacia}
                     />
-                </div>
-                <div style={{ flex: isMobile ? '1 1 100%' : '0 0 auto' }}>
-                    <Segmented
-                        block={isMobile}
-                        options={[
-                            { label: 'Grid', value: 'grid', icon: <AppstoreOutlined /> },
-                            { label: 'Lista', value: 'list', icon: <BarsOutlined /> },
-                        ]}
-                        value={viewMode}
-                        onChange={onViewModeChange}
+                ) : (
+                    <Button
+                        icon={<SearchOutlined />}
+                        aria-label="Buscar recursos"
+                        onClick={abrirBusqueda}
+                        onFocus={abrirBusqueda}
                     />
-                </div>
+                )}
             </div>
             <Space wrap style={{ flex: isMobile ? '1 1 100%' : '0 0 auto' }}>
                 {extraActions}
-                {editMode && selectedCount > 0 && (
+                {selectedCount > 0 && (
                     <>
                         <Button icon={<DragOutlined />} onClick={onBulkMove}>
                             Mover ({selectedCount})
@@ -85,21 +104,9 @@ export default function GeoserverFilesToolbar({
                         </Popconfirm>
                     </>
                 )}
-                <Button
-                    icon={<EditOutlined />}
-                    type={editMode ? 'primary' : 'default'}
-                    ghost={editMode}
-                    onClick={onToggleEditMode}
-                    disabled={disabled}
-                >
-                    {editMode ? 'Salir de edición' : 'Modo edición'}
-                </Button>
-                <Button icon={<FolderAddOutlined />} onClick={onNewFolder} disabled={disabled}>
-                    Nueva carpeta
-                </Button>
-                <Button type="primary" icon={<PlusOutlined />} onClick={onUpload} disabled={disabled}>
-                    Subir archivos
-                </Button>
+                <Dropdown menu={{ items: menuItems }} disabled={disabled} trigger={['click']}>
+                    <Button type="primary" icon={<PlusOutlined />} aria-label="Agregar" />
+                </Dropdown>
             </Space>
         </div>
     );

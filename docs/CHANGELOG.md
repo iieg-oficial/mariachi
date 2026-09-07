@@ -9,6 +9,41 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.92.0] - 2026-09-07
+
+### Cambiado: la tarjeta manda, el modo edicion sobra
+
+El modo edicion que introdujo 2.88.0 era un interruptor de mas: obligaba a entrar en un estado antes
+de poder renombrar o borrar, cuando lo natural es que las acciones vivan en la tarjeta. Ahora
+aparecen al pasar por encima, una por esquina del cover:
+
+| Esquina | Accion |
+|---|---|
+| Superior izquierda | casilla de seleccion |
+| Superior derecha | eliminar |
+| Inferior izquierda | renombrar |
+| Inferior derecha | descargar (ZIP en las carpetas) |
+
+En movil salen fijas, porque ahi no hay hover. **Las casillas se contagian**: basta seleccionar una
+para que aparezcan en todas, que es el gesto real de una multiseleccion.
+
+La barra de acciones masivas ya no depende de ningun modo: sale cuando hay algo seleccionado.
+
+### Cambiado
+
+- **Recargar** sale del encabezado: hacia lo mismo que F5 y que volver a entrar a la pantalla. En su
+  lugar queda **Vaciar cachés**, que antes vivia en la barra como «Reset» y en ingles.
+- **Nueva carpeta** y **Subir archivos** se funden en un boton `+` con desplegable.
+- **Buscar** es un icono que se despliega en input al pasar por encima, al hacer clic o al tabular.
+
+### Eliminado
+
+- La vista de lista y su interruptor Grid/Lista: nadie la usaba. Se va `GeoserverFilesList`.
+- El boton de snippet SLD de cada archivo, y con el `SldSnippetModal`. La ruta sigue a la vista en la
+  tarjeta para quien arme el `xlink:href` a mano.
+
+---
+
 ## [2.91.0] - 2026-09-07
 
 ### Agregado: el explorador llega a `geoserver-raster/`

@@ -1,14 +1,13 @@
 import { Empty, Spin, Typography } from 'antd';
 import GeoserverFilesGrid from '@features/sextante/components/GeoserverFilesGrid';
-import GeoserverFilesList from '@features/sextante/components/GeoserverFilesList';
 
 const { Text } = Typography;
 
 const Loader = () => <div style={{ textAlign: 'center', padding: 48 }}><Spin /></div>;
 
 export default function GeoserverFilesContent({
-    viewMode,
     gridMinWidth,
+    isMobile,
     loading,
     searchMode,
     searching,
@@ -17,46 +16,32 @@ export default function GeoserverFilesContent({
     files = [],
     currentPath,
     deletingName,
+    anySelected,
+    isSelected,
     onOpenFolder,
     onDownloadZip,
-    onSnippet,
-    onDelete,
-    editMode = false,
-    isSelected,
+    onDownloadFile,
     onToggleSelect,
-    onReplaceSelection,
     onRename,
+    onDelete,
     onDeleteFolder,
 }) {
-    const seleccion = {
-        editMode,
-        isSelected,
-        onRename,
-        onDeleteFolder,
-    };
-
-    const render = (items, extra = {}) => (viewMode === 'list' ? (
-        <GeoserverFilesList
-            files={items}
-            deletingName={deletingName}
-            onSnippet={onSnippet}
-            onDelete={onDelete}
-            onReplaceSelection={onReplaceSelection}
-            {...seleccion}
-            {...extra}
-        />
-    ) : (
+    const render = (items, extra = {}) => (
         <GeoserverFilesGrid
             files={items}
             minWidth={gridMinWidth}
+            isMobile={isMobile}
             deletingName={deletingName}
-            onSnippet={onSnippet}
-            onDelete={onDelete}
+            anySelected={anySelected}
+            isSelected={isSelected}
+            onDownloadFile={onDownloadFile}
             onToggleSelect={onToggleSelect}
-            {...seleccion}
+            onRename={onRename}
+            onDelete={onDelete}
+            onDeleteFolder={onDeleteFolder}
             {...extra}
         />
-    ));
+    );
 
     if (searchMode) {
         if (searching) return <Loader />;

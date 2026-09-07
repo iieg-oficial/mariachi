@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Modal, Space, Typography } from 'antd';
-import { ReloadOutlined, SyncOutlined } from '@ant-design/icons';
+import { SyncOutlined } from '@ant-design/icons';
 import { message } from '@shared/services/message';
-import { listMosaics, reindexMosaic, resetGeoserver } from '@features/sextante/api/mosaicService';
+import { listMosaics, reindexMosaic } from '@features/sextante/api/mosaicService';
 
 const { Text, Paragraph } = Typography;
 
@@ -92,31 +92,6 @@ export default function MosaicActions({ workspace, currentPath, onDone }) {
         });
     };
 
-    const confirmReset = () => {
-        Modal.confirm({
-            title: 'Reset de GeoServer',
-            content: (
-                <Paragraph style={{ marginBottom: 0 }}>
-                    Vacía las cachés en memoria de GeoServer: readers, estilos y esquemas se releen del
-                    disco. No borra nada, pero las primeras peticiones después van más lentas.
-                </Paragraph>
-            ),
-            okText: 'Ejecutar',
-            cancelText: 'Cancelar',
-            onOk: async () => {
-                setBusy(true);
-                try {
-                    await resetGeoserver();
-                    message.success('Cachés de GeoServer vaciadas');
-                } catch (err) {
-                    message.error(err?.response?.data?.detail || 'No se pudo hacer el reset');
-                } finally {
-                    setBusy(false);
-                }
-            },
-        });
-    };
-
     return (
         <>
             {mosaic?.manageable && (
@@ -124,9 +99,6 @@ export default function MosaicActions({ workspace, currentPath, onDone }) {
                     Reindexar mosaico
                 </Button>
             )}
-            <Button icon={<ReloadOutlined />} disabled={busy} onClick={confirmReset}>
-                Reset
-            </Button>
         </>
     );
 }

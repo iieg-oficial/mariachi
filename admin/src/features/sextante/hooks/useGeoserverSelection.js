@@ -14,7 +14,6 @@ export const toResourceRef = (item) => ({
 });
 
 export default function useGeoserverSelection() {
-    const [editMode, setEditMode] = useState(false);
     const [selected, setSelected] = useState([]);
 
     const keys = useMemo(() => selected.map(resourceKey), [selected]);
@@ -33,24 +32,12 @@ export default function useGeoserverSelection() {
         [keys],
     );
 
-    const replace = useCallback((items) => setSelected(items), []);
-
-    const toggleEditMode = useCallback(() => {
-        setEditMode((prev) => {
-            if (prev) setSelected([]);
-            return !prev;
-        });
-    }, []);
-
     return {
-        editMode,
-        toggleEditMode,
         selected,
         selectedKeys: keys,
         count: selected.length,
         toggle,
         isSelected,
-        replace,
         clear,
     };
 }

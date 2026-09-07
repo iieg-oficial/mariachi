@@ -29,10 +29,10 @@ describe('toResourceRef', () => {
 });
 
 describe('useGeoserverSelection', () => {
-    it('arranca fuera de modo edicion y sin seleccion', () => {
+    it('arranca sin seleccion', () => {
         const { result } = renderHook(() => useGeoserverSelection());
-        expect(result.current.editMode).toBe(false);
         expect(result.current.count).toBe(0);
+        expect(result.current.selected).toEqual([]);
     });
 
     it('toggle agrega y quita el mismo recurso', () => {
@@ -52,22 +52,12 @@ describe('useGeoserverSelection', () => {
         expect(result.current.selected.filter((it) => it.isDir)).toHaveLength(1);
     });
 
-    it('salir de modo edicion limpia la seleccion', () => {
+    it('clear vacia la seleccion, como al cambiar de carpeta', () => {
         const { result } = renderHook(() => useGeoserverSelection());
-        act(() => result.current.toggleEditMode());
         act(() => result.current.toggle(archivo('logo.svg')));
-        expect(result.current.count).toBe(1);
-        act(() => result.current.toggleEditMode());
-        expect(result.current.editMode).toBe(false);
+        act(() => result.current.toggle(carpeta('iconos')));
+        expect(result.current.count).toBe(2);
+        act(() => result.current.clear());
         expect(result.current.count).toBe(0);
-    });
-
-    it('replace sustituye la seleccion completa, como hace la tabla', () => {
-        const { result } = renderHook(() => useGeoserverSelection());
-        act(() => result.current.toggle(archivo('logo.svg')));
-        act(() => result.current.replace([carpeta('iconos')]));
-        expect(result.current.count).toBe(1);
-        expect(result.current.isSelected(archivo('logo.svg'))).toBe(false);
-        expect(result.current.isSelected(carpeta('iconos'))).toBe(true);
     });
 });

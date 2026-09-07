@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     Alert,
-    Button,
     Card,
     Layout,
     Tabs,
@@ -11,7 +10,6 @@ import {
     FileTextOutlined,
     GlobalOutlined,
     PictureOutlined,
-    ReloadOutlined,
 } from '@ant-design/icons';
 import {
     browseGeoserverFiles,
@@ -21,12 +19,12 @@ import {
     searchGeoserverFiles,
 } from '@features/sextante/api/geoserverFilesService';
 import FileUploadModal from '@features/sextante/components/FileUploadModal';
-import SldSnippetModal from '@features/sextante/components/SldSnippetModal';
 import GeoserverFilesContent from '@features/sextante/components/GeoserverFilesContent';
 import GeoserverFilesModals from '@features/sextante/components/GeoserverFilesModals';
 import GeoserverPathBreadcrumb from '@features/sextante/components/GeoserverPathBreadcrumb';
 import GeoserverFilesToolbar from '@features/sextante/components/GeoserverFilesToolbar';
 import MosaicActions from '@features/sextante/components/MosaicActions';
+import ResetCachesButton from '@features/sextante/components/ResetCachesButton';
 import useGeoserverFileActions from '@features/sextante/hooks/useGeoserverFileActions';
 import useGeoserverSelection from '@features/sextante/hooks/useGeoserverSelection';
 import { promptNewFolder } from '@features/sextante/components/newFolderPrompt';
@@ -45,9 +43,6 @@ import { message } from '@shared/services/message';
 const { Content } = Layout;
 const { Text } = Typography;
 
-const VIEW_STORAGE_KEY = 'mapalab.geoserverFiles.viewMode';
-
-
 export default function GeoserverFilesPage() {
     const [workspace, setWorkspace] = useState(() => {
         try { return localStorage.getItem(WORKSPACE_STORAGE_KEY) || ''; }
@@ -63,12 +58,7 @@ export default function GeoserverFilesPage() {
     const [searchResults, setSearchResults] = useState(null);
     const [searching, setSearching] = useState(false);
     const [uploadOpen, setUploadOpen] = useState(false);
-    const [snippetFile, setSnippetFile] = useState(null);
     const [deletingName, setDeletingName] = useState(null);
-    const [viewMode, setViewMode] = useState(() => {
-        try { return localStorage.getItem(VIEW_STORAGE_KEY) || 'grid'; }
-        catch { return 'grid'; }
-    });
     const { isMobile } = useIsMobile();
     const searchTimer = useRef(null);
     const selection = useGeoserverSelection();
@@ -153,11 +143,6 @@ export default function GeoserverFilesPage() {
         }
     };
 
-    const handleViewModeChange = (next) => {
-        setViewMode(next);
-        try { localStorage.setItem(VIEW_STORAGE_KEY, next); } catch { /* noop */ }
-    };
-
     const handleNewFolder = () => {
         promptNewFolder(currentPath, (fullPath) => {
             setPendingFolders((prev) => [...new Set([...prev, fullPath])]);
@@ -203,6 +188,7 @@ export default function GeoserverFilesPage() {
 
     const gridMinWidth = isMobile ? 140 : 180;
     const downloadZip = (path) => window.open(buildGeoserverFolderZipUrl(path, workspace), '_blank');
+    const downloadFile = (file) => window.open(file.downloadUrl, '_blank');
 
 
     return (
@@ -218,9 +204,7 @@ export default function GeoserverFilesPage() {
                         los ImageMosaic.
                     </>
                 }
-                extra={
-                    <Button icon={<ReloadOutlined />} onClick={reload} disabled={loading || isSearchMode} />
-                }
+                extra={<ResetCachesButton />}
             />
 
             <Card>
@@ -252,13 +236,9 @@ export default function GeoserverFilesPage() {
                     isMobile={isMobile}
                     search={search}
                     onSearchChange={setSearch}
-                    viewMode={viewMode}
-                    onViewModeChange={handleViewModeChange}
                     disabled={isSearchMode}
                     onNewFolder={handleNewFolder}
                     onUpload={() => setUploadOpen(true)}
-                    editMode={selection.editMode}
-                    onToggleEditMode={selection.toggleEditMode}
                     selectedCount={selection.count}
                     onBulkMove={actions.startMove}
                     onBulkDelete={actions.bulkDelete}
@@ -274,8 +254,8 @@ export default function GeoserverFilesPage() {
                 {error && <Alert type="error" showIcon closable title={error} style={{ marginBottom: 12 }} />}
 
                 <GeoserverFilesContent
-                    viewMode={viewMode}
                     gridMinWidth={gridMinWidth}
+                    isMobile={isMobile}
                     loading={loading}
                     searchMode={isSearchMode}
                     searching={searching}
@@ -286,12 +266,11 @@ export default function GeoserverFilesPage() {
                     deletingName={deletingName}
                     onOpenFolder={setCurrentPath}
                     onDownloadZip={downloadZip}
-                    onSnippet={setSnippetFile}
                     onDelete={handleDelete}
-                    editMode={selection.editMode && !isSearchMode}
+                    onDownloadFile={downloadFile}
+                    anySelected={selection.count > 0}
                     isSelected={selection.isSelected}
                     onToggleSelect={selection.toggle}
-                    onReplaceSelection={selection.replace}
                     onRename={actions.startRename}
                     onDeleteFolder={actions.startDeleteFolder}
                 />
@@ -314,11 +293,6 @@ export default function GeoserverFilesPage() {
                     setPendingFolders((prev) => prev.filter((p) => !names.some((n) => n.startsWith(`${p}/`))));
                     reload();
                 }}
-            />
-            <SldSnippetModal
-                open={snippetFile != null}
-                file={snippetFile}
-                onClose={() => setSnippetFile(null)}
             />
         </Content>
     );
