@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     Alert,
-    Breadcrumb,
     Button,
     Card,
     Layout,
@@ -23,8 +22,12 @@ import {
 import FileUploadModal from '@features/sextante/components/FileUploadModal';
 import SldSnippetModal from '@features/sextante/components/SldSnippetModal';
 import GeoserverFilesContent from '@features/sextante/components/GeoserverFilesContent';
+import GeoserverFilesModals from '@features/sextante/components/GeoserverFilesModals';
+import GeoserverPathBreadcrumb from '@features/sextante/components/GeoserverPathBreadcrumb';
 import GeoserverFilesToolbar from '@features/sextante/components/GeoserverFilesToolbar';
 import MosaicActions from '@features/sextante/components/MosaicActions';
+import useGeoserverFileActions from '@features/sextante/hooks/useGeoserverFileActions';
+import useGeoserverSelection from '@features/sextante/hooks/useGeoserverSelection';
 import { promptNewFolder } from '@features/sextante/components/newFolderPrompt';
 import {
     SEARCH_DEBOUNCE_MS,
@@ -65,6 +68,7 @@ export default function GeoserverFilesPage() {
     });
     const { isMobile } = useIsMobile();
     const searchTimer = useRef(null);
+    const selection = useGeoserverSelection();
 
     const refreshWorkspaces = useCallback(async () => {
         try {
@@ -87,7 +91,16 @@ export default function GeoserverFilesPage() {
         refreshWorkspaces();
     }, [currentPath, workspace, refreshWorkspaces]);
 
+    const { clear: clearSelection } = selection;
+    const actions = useGeoserverFileActions({
+        selected: selection.selected,
+        onChanged: reload,
+        onClearSelection: clearSelection,
+    });
+
     useEffect(() => { reload(); }, [reload]);
+
+    useEffect(() => { clearSelection(); }, [currentPath, workspace, clearSelection]);
 
     useEffect(() => {
         if (searchTimer.current) clearTimeout(searchTimer.current);
@@ -181,20 +194,6 @@ export default function GeoserverFilesPage() {
         return [...data.folders, ...extras];
     }, [data.folders, pendingFolders, currentPath]);
 
-    const crumbs = useMemo(() => {
-        const raw = [{ title: 'Raíz', path: '' }];
-        let acc = '';
-        for (const seg of currentPath ? currentPath.split('/') : []) {
-            acc = acc ? `${acc}/${seg}` : seg;
-            raw.push({ title: seg, path: acc });
-        }
-        return raw.map((c, idx) => ({
-            title: idx === raw.length - 1
-                ? <Text strong>{c.title}</Text>
-                : <Button type="link" size="small" onClick={() => setCurrentPath(c.path)} style={{ padding: 0, height: 'auto' }}>{c.title}</Button>,
-        }));
-    }, [currentPath]);
-
     const gridMinWidth = isMobile ? 140 : 180;
     const downloadZip = (path) => window.open(buildGeoserverFolderZipUrl(path, workspace), '_blank');
 
@@ -206,9 +205,10 @@ export default function GeoserverFilesPage() {
                 title="Recursos GeoServer"
                 description={
                     <>
-                        Archivos (SVG, PNG, JPG, WebP, GIF, TIFF, TTF, OTF) disponibles en <Text code>{destinationLabel}</Text>,
-                        sin límite de tamaño. Los analistas los referencian desde sus SLDs del mismo ámbito con{' '}
-                        <Text code>xlink:href="ruta/archivo.ext"</Text>.
+                        Imágenes, fuentes y <Text code>.properties</Text> en <Text code>{destinationLabel}</Text>, sin
+                        límite de tamaño. Los SLD del mismo ámbito los referencian con{' '}
+                        <Text code>xlink:href="ruta/archivo.ext"</Text>; los <Text code>.properties</Text> configuran
+                        los ImageMosaic.
                     </>
                 }
                 extra={
@@ -225,7 +225,9 @@ export default function GeoserverFilesPage() {
                     gap: 8,
                     marginBottom: 12,
                 }}>
-                    {currentPath ? <Breadcrumb items={crumbs} /> : <span />}
+                    {currentPath
+                        ? <GeoserverPathBreadcrumb currentPath={currentPath} onNavigate={setCurrentPath} />
+                        : <span />}
                     <Text type="secondary" style={{ fontSize: 12 }}>
                         {visibleFolders.length} carpeta(s) · {data.files.length} archivo(s)
                     </Text>
@@ -248,6 +250,11 @@ export default function GeoserverFilesPage() {
                     disabled={isSearchMode}
                     onNewFolder={handleNewFolder}
                     onUpload={() => setUploadOpen(true)}
+                    editMode={selection.editMode}
+                    onToggleEditMode={selection.toggleEditMode}
+                    selectedCount={selection.count}
+                    onBulkMove={actions.startMove}
+                    onBulkDelete={actions.bulkDelete}
                     extraActions={(
                         <MosaicActions
                             workspace={workspace}
@@ -274,8 +281,20 @@ export default function GeoserverFilesPage() {
                     onDownloadZip={downloadZip}
                     onSnippet={setSnippetFile}
                     onDelete={handleDelete}
+                    editMode={selection.editMode && !isSearchMode}
+                    isSelected={selection.isSelected}
+                    onToggleSelect={selection.toggle}
+                    onReplaceSelection={selection.replace}
+                    onRename={actions.startRename}
+                    onDeleteFolder={actions.startDeleteFolder}
                 />
             </Card>
+
+            <GeoserverFilesModals
+                actions={actions}
+                workspace={workspace}
+                selected={selection.selected}
+            />
 
             <FileUploadModal
                 open={uploadOpen}

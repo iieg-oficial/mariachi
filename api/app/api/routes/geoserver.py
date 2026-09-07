@@ -18,11 +18,15 @@ from app.models.layer import Workspace
 from app.models.user import Usuario
 from app.schemas.geoserver_file import (
     GeoServerBrowseResponse,
+    GeoServerBulkDeleteRequest,
+    GeoServerBulkDeleteResponse,
     GeoServerFileResponse,
+    GeoServerFolderInfoResponse,
     GeoServerFolderResponse,
     GeoServerFontFamilyResponse,
     GeoServerFontFileResponse,
     GeoServerFontsResponse,
+    GeoServerMoveRequest,
     GeoServerSearchResponse,
 )
 from app.schemas.layer import WorkspaceCreate, WorkspacePending, WorkspaceResponse
@@ -422,7 +426,8 @@ def _validate_workspace(workspace: str | None) -> str | None:
     return workspace
 _GEOSERVER_IMAGE_EXT = {'svg', 'png', 'jpg', 'jpeg', 'webp', 'gif', 'tiff', 'tif'}
 _GEOSERVER_FONT_EXT = {'ttf', 'otf'}
-_GEOSERVER_FILE_ALLOWED_EXT = _GEOSERVER_IMAGE_EXT | _GEOSERVER_FONT_EXT
+_GEOSERVER_CONFIG_EXT = {'properties'}
+_GEOSERVER_FILE_ALLOWED_EXT = _GEOSERVER_IMAGE_EXT | _GEOSERVER_FONT_EXT | _GEOSERVER_CONFIG_EXT
 _GEOSERVER_FILE_MIME_BY_EXT = {
     'svg': 'image/svg+xml',
     'png': 'image/png',
@@ -434,6 +439,7 @@ _GEOSERVER_FILE_MIME_BY_EXT = {
     'tif': 'image/tiff',
     'ttf': 'font/ttf',
     'otf': 'font/otf',
+    'properties': 'text/plain',
 }
 
 
@@ -454,6 +460,7 @@ def _validate_file_name(name: str) -> tuple[str, str]:
             status_code=400,
             detail=f"Extension '.{ext}' no permitida. Soportadas: {sorted(_GEOSERVER_FILE_ALLOWED_EXT)}",
         )
+    _reject_store_config(name)
     return name, ext
 
 
@@ -475,6 +482,15 @@ def _validate_file_name_readonly(name: str) -> None:
         raise HTTPException(
             status_code=400,
             detail=f"Extension '.{ext}' no permitida. Soportadas: {sorted(_GEOSERVER_FILE_ALLOWED_EXT)}",
+        )
+    _reject_store_config(name)
+
+
+def _reject_store_config(name: str) -> None:
+    if _is_store_config(name):
+        raise HTTPException(
+            status_code=403,
+            detail="Los archivos de conexion del almacen llevan credenciales y no se exponen aqui",
         )
 
 
@@ -567,12 +583,17 @@ def _registrar_archivo(
 
 
 def _is_store_config(name: str) -> bool:
-    """Archivos de conexion de GeoServer (datastore.xml, coveragestore.xml, …).
+    """Archivos de conexion de GeoServer (datastore.xml, datastore.properties, …).
 
     Llevan host, base y contrasena del almacen. Viven en la raiz del workspace, que
     es la misma que recorre el ZIP de carpetas, asi que hay que excluirlos a mano.
+
+    La variante `.properties` importa desde que el explorador acepta esa extension
+    para los `indexer.properties` de los ImageMosaic: sin este filtro, un mosaico con
+    indice en PostGIS expondria su `datastore.properties`, que trae la contrasena en
+    claro, por el endpoint de descarga.
     """
-    return Path(name).name.lower().endswith('store.xml')
+    return Path(name).name.lower().endswith(('store.xml', 'store.properties'))
 
 
 def _validate_folder_path(path: str) -> str:
@@ -619,6 +640,7 @@ async def browse_geoserver_files(
             _build_file_response(it['name'], it.get('content_type'), workspace=clean_ws)
             for it in result['files']
             if Path(it['name']).suffix.lower().lstrip('.') in _GEOSERVER_FILE_ALLOWED_EXT
+            and not _is_store_config(it['name'])
         ),
         key=lambda f: f.name.lower(),
     )
@@ -656,6 +678,8 @@ async def search_geoserver_files(
             name = it['name']
             ext = Path(name).suffix.lower().lstrip('.')
             if ext not in _GEOSERVER_FILE_ALLOWED_EXT:
+                continue
+            if _is_store_config(name):
                 continue
             if needle not in name.lower():
                 continue
@@ -892,6 +916,166 @@ async def download_geoserver_folder_zip(
             "Cache-Control": "no-store",
         },
     )
+
+
+@router.get('/files/folder/info', response_model=GeoServerFolderInfoResponse)
+async def geoserver_folder_info(
+    path: str = Query(...),
+    workspace: str | None = Query(default=None),
+    current_user: Usuario = Depends(_require_geoserver_manage),
+    _rl: Usuario = Depends(_read_rate_limit),
+):
+    clean_path = _validate_folder_path(path.strip().strip('/'))
+    if not clean_path:
+        raise HTTPException(status_code=400, detail="La raiz no se puede inspeccionar como carpeta")
+    clean_ws = _validate_workspace(workspace)
+    client = GeoServerClient()
+    try:
+        result = client.count_styles_dir(clean_path, workspace=clean_ws)
+    except GeoServerError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+    visibles = [
+        it for it in result['files']
+        if not _is_store_config(it['name'])
+        and Path(it['name']).suffix.lower().lstrip('.') in _GEOSERVER_FILE_ALLOWED_EXT
+    ]
+    return GeoServerFolderInfoResponse(
+        path=clean_path,
+        workspace=clean_ws,
+        file_count=len(visibles),
+        folder_count=len(result['folders']),
+    )
+
+
+@router.delete('/files/folder', status_code=204)
+async def delete_geoserver_folder(
+    request: Request,
+    path: str = Query(...),
+    workspace: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(_require_geoserver_manage),
+    _csrf: Usuario = Depends(verify_csrf),
+    _rl: Usuario = Depends(_write_rate_limit),
+):
+    clean_path = _validate_folder_path(path.strip().strip('/'))
+    if not clean_path:
+        raise HTTPException(status_code=400, detail="No se puede borrar la raiz")
+    clean_ws = _validate_workspace(workspace)
+    client = GeoServerClient()
+    try:
+        contenido = client.count_styles_dir(clean_path, workspace=clean_ws)
+        if any(_is_store_config(it['name']) for it in contenido['files']):
+            raise HTTPException(
+                status_code=409,
+                detail="La carpeta contiene archivos de configuracion de GeoServer; borrala desde el servidor",
+            )
+        deleted = client.delete_style_file(clean_path, workspace=clean_ws)
+    except GeoServerError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+    if not deleted:
+        base = f"workspaces/{clean_ws}" if clean_ws else "styles"
+        raise HTTPException(status_code=404, detail=f"Carpeta no existe: {base}/{clean_path}")
+    _registrar_archivo(
+        db, request, current_user, 'geoserver.folder.delete', clean_path, clean_ws,
+        archivos=len(contenido['files']), subcarpetas=len(contenido['folders']),
+    )
+
+
+def _validate_move_target(source: str, target: str, is_dir: bool) -> str:
+    if is_dir:
+        clean_source = _validate_folder_path(source.strip().strip('/'))
+        clean_target = _validate_folder_path(target.strip().strip('/'))
+        if not clean_source or not clean_target:
+            raise HTTPException(status_code=400, detail="Origen y destino son obligatorios")
+        if clean_target == clean_source or clean_target.startswith(f"{clean_source}/"):
+            raise HTTPException(status_code=400, detail="Una carpeta no se puede mover dentro de si misma")
+        return clean_target
+
+    _validate_file_name_readonly(source)
+    clean_target, _ = _validate_file_name(target.strip().strip('/'))
+    if Path(source).suffix.lower() != Path(clean_target).suffix.lower():
+        raise HTTPException(status_code=400, detail="La extension del archivo no puede cambiar")
+    return clean_target
+
+
+@router.post('/files/move', status_code=204)
+async def move_geoserver_resource(
+    payload: GeoServerMoveRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(_require_geoserver_manage),
+    _csrf: Usuario = Depends(verify_csrf),
+    _rl: Usuario = Depends(_write_rate_limit),
+):
+    clean_ws = _validate_workspace(payload.workspace)
+    clean_source = payload.source.strip().strip('/')
+    clean_target = _validate_move_target(clean_source, payload.target, payload.is_dir)
+    if clean_target == clean_source:
+        raise HTTPException(status_code=400, detail="El destino es igual al origen")
+
+    client = GeoServerClient()
+    try:
+        existente = client.browse_styles_dir(
+            clean_target.rsplit('/', 1)[0] if '/' in clean_target else '',
+            workspace=clean_ws,
+        )
+    except GeoServerError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+    ocupado = (
+        clean_target in existente['folders']
+        or any(it['name'] == clean_target for it in existente['files'])
+    )
+    if ocupado:
+        raise HTTPException(status_code=409, detail=f"Ya existe un recurso en '{clean_target}'")
+
+    try:
+        client.move_style_resource(clean_source, clean_target, workspace=clean_ws)
+    except GeoServerError as exc:
+        if 'no encontrado' in str(exc).lower():
+            raise HTTPException(status_code=404, detail=str(exc))
+        raise HTTPException(status_code=502, detail=str(exc))
+
+    accion = 'geoserver.folder.move' if payload.is_dir else 'geoserver.file.move'
+    _registrar_archivo(db, request, current_user, accion, clean_source, clean_ws, destino=clean_target)
+
+
+@router.post('/files/bulk-delete', response_model=GeoServerBulkDeleteResponse)
+async def bulk_delete_geoserver_files(
+    payload: GeoServerBulkDeleteRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(_require_geoserver_manage),
+    _csrf: Usuario = Depends(verify_csrf),
+    _rl: Usuario = Depends(_write_rate_limit),
+):
+    client = GeoServerClient()
+    deleted = 0
+    errors: list[str] = []
+    for item in payload.items:
+        name = item.name.strip().strip('/')
+        try:
+            clean_ws = _validate_workspace(item.workspace)
+            if item.is_dir:
+                clean_name = _validate_folder_path(name)
+                if not clean_name:
+                    raise HTTPException(status_code=400, detail="No se puede borrar la raiz")
+            else:
+                _validate_file_name_readonly(name)
+                clean_name = name
+            if not client.delete_style_file(clean_name, workspace=clean_ws):
+                errors.append(f"{name}: no existe")
+                continue
+        except HTTPException as exc:
+            errors.append(f"{name}: {exc.detail}")
+            continue
+        except GeoServerError as exc:
+            errors.append(f"{name}: {exc}")
+            continue
+        deleted += 1
+        accion = 'geoserver.folder.delete' if item.is_dir else 'geoserver.file.delete'
+        _registrar_archivo(db, request, current_user, accion, clean_name, clean_ws, modo='masivo')
+
+    return GeoServerBulkDeleteResponse(deleted=deleted, failed=len(errors), errors=errors[:10])
 
 
 _FONT_STYLE_SUFFIXES = (

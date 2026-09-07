@@ -1,5 +1,5 @@
-import { Button, Card, Popconfirm, Space, Tag, Tooltip, Typography } from 'antd';
-import { CodeOutlined, DeleteOutlined, FileImageOutlined } from '@ant-design/icons';
+import { Button, Card, Checkbox, Popconfirm, Space, Tag, Tooltip, Typography } from 'antd';
+import { CodeOutlined, DeleteOutlined, EditOutlined, FileImageOutlined } from '@ant-design/icons';
 import GeoserverThumb from '@features/sextante/components/GeoserverThumb';
 import { basename, extOf, isPreviewable, workspaceLabel } from '@features/sextante/utils/geoserverFiles';
 
@@ -11,14 +11,24 @@ export default function GeoserverFileCard({
     deleting = false,
     onSnippet,
     onDelete,
+    editMode = false,
+    selected = false,
+    onToggleSelect,
+    onRename,
 }) {
     const fileWorkspace = file.workspace || '';
     const displayPath = fromSearch ? `${workspaceLabel(fileWorkspace)}${file.name}` : file.name;
 
     return (
-        <Card size="small" hoverable styles={{ body: { padding: 8 } }}>
+        <Card
+            size="small"
+            hoverable
+            style={selected ? { outline: '2px solid #5C2472', outlineOffset: -2 } : undefined}
+            styles={{ body: { padding: 8 } }}
+        >
             <div
                 style={{
+                    position: 'relative',
                     height: 100,
                     display: 'flex',
                     flexDirection: 'column',
@@ -32,6 +42,13 @@ export default function GeoserverFileCard({
                     gap: 4,
                 }}
             >
+                {editMode && (
+                    <Checkbox
+                        checked={selected}
+                        onChange={() => onToggleSelect?.({ ...file, isDir: false })}
+                        style={{ position: 'absolute', top: 4, left: 4, zIndex: 2 }}
+                    />
+                )}
                 {isPreviewable(file.name) ? (
                     <GeoserverThumb
                         src={file.downloadUrl}
@@ -61,6 +78,15 @@ export default function GeoserverFileCard({
                 <Tooltip title="Ver snippet SLD">
                     <Button size="small" icon={<CodeOutlined />} onClick={() => onSnippet?.(file)} />
                 </Tooltip>
+                {editMode && !fromSearch && (
+                    <Tooltip title="Renombrar archivo">
+                        <Button
+                            size="small"
+                            icon={<EditOutlined />}
+                            onClick={() => onRename?.({ ...file, isDir: false })}
+                        />
+                    </Tooltip>
+                )}
                 <Popconfirm
                     title="¿Eliminar este archivo?"
                     description="Si algún SLD lo está usando, dejará de renderearse."

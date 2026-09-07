@@ -21,13 +21,28 @@ export default function GeoserverFilesContent({
     onDownloadZip,
     onSnippet,
     onDelete,
+    editMode = false,
+    isSelected,
+    onToggleSelect,
+    onReplaceSelection,
+    onRename,
+    onDeleteFolder,
 }) {
+    const seleccion = {
+        editMode,
+        isSelected,
+        onRename,
+        onDeleteFolder,
+    };
+
     const render = (items, extra = {}) => (viewMode === 'list' ? (
         <GeoserverFilesList
             files={items}
             deletingName={deletingName}
             onSnippet={onSnippet}
             onDelete={onDelete}
+            onReplaceSelection={onReplaceSelection}
+            {...seleccion}
             {...extra}
         />
     ) : (
@@ -37,6 +52,8 @@ export default function GeoserverFilesContent({
             deletingName={deletingName}
             onSnippet={onSnippet}
             onDelete={onDelete}
+            onToggleSelect={onToggleSelect}
+            {...seleccion}
             {...extra}
         />
     ));

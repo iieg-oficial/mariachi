@@ -1,13 +1,35 @@
-import { Button, Card, Tooltip, Typography } from 'antd';
-import { DownloadOutlined, FolderOpenOutlined, FolderOutlined } from '@ant-design/icons';
+import { Button, Card, Checkbox, Space, Tooltip, Typography } from 'antd';
+import {
+    DeleteOutlined,
+    DownloadOutlined,
+    EditOutlined,
+    FolderOpenOutlined,
+    FolderOutlined,
+} from '@ant-design/icons';
 
 const { Text } = Typography;
 
-export default function GeoserverFolderCard({ folder, onOpen, onDownloadZip }) {
+export default function GeoserverFolderCard({
+    folder,
+    onOpen,
+    onDownloadZip,
+    editMode = false,
+    selected = false,
+    onToggleSelect,
+    onRename,
+    onDelete,
+}) {
     return (
-        <Card size="small" hoverable onClick={() => onOpen?.(folder.path)} styles={{ body: { padding: 8 } }}>
+        <Card
+            size="small"
+            hoverable
+            onClick={() => onOpen?.(folder.path)}
+            style={selected ? { outline: '2px solid #5C2472', outlineOffset: -2 } : undefined}
+            styles={{ body: { padding: 8 } }}
+        >
             <div
                 style={{
+                    position: 'relative',
                     height: 100,
                     display: 'flex',
                     flexDirection: 'column',
@@ -20,6 +42,14 @@ export default function GeoserverFolderCard({ folder, onOpen, onDownloadZip }) {
                     gap: 4,
                 }}
             >
+                {editMode && !folder.pending && (
+                    <Checkbox
+                        checked={selected}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={() => onToggleSelect?.({ ...folder, isDir: true })}
+                        style={{ position: 'absolute', top: 4, left: 4, zIndex: 2 }}
+                    />
+                )}
                 <FolderOpenOutlined style={{ fontSize: 36, color: '#faad14' }} />
                 {folder.pending && <Text type="warning" style={{ fontSize: 10 }}>(pendiente)</Text>}
             </div>
@@ -31,14 +61,37 @@ export default function GeoserverFolderCard({ folder, onOpen, onDownloadZip }) {
                     </Text>
                 </Tooltip>
                 {!folder.pending && (
-                    <Tooltip title="Descargar carpeta como ZIP">
-                        <Button
-                            size="small"
-                            type="text"
-                            icon={<DownloadOutlined />}
-                            onClick={(e) => { e.stopPropagation(); onDownloadZip?.(folder.path); }}
-                        />
-                    </Tooltip>
+                    <Space size={0} onClick={(e) => e.stopPropagation()}>
+                        {editMode && (
+                            <>
+                                <Tooltip title="Renombrar carpeta">
+                                    <Button
+                                        size="small"
+                                        type="text"
+                                        icon={<EditOutlined />}
+                                        onClick={() => onRename?.({ ...folder, isDir: true })}
+                                    />
+                                </Tooltip>
+                                <Tooltip title="Eliminar carpeta y su contenido">
+                                    <Button
+                                        size="small"
+                                        type="text"
+                                        danger
+                                        icon={<DeleteOutlined />}
+                                        onClick={() => onDelete?.(folder)}
+                                    />
+                                </Tooltip>
+                            </>
+                        )}
+                        <Tooltip title="Descargar carpeta como ZIP">
+                            <Button
+                                size="small"
+                                type="text"
+                                icon={<DownloadOutlined />}
+                                onClick={() => onDownloadZip?.(folder.path)}
+                            />
+                        </Tooltip>
+                    </Space>
                 )}
             </div>
         </Card>

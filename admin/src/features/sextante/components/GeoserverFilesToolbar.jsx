@@ -1,7 +1,10 @@
-import { Button, Input, Segmented, Space } from 'antd';
+import { Button, Input, Popconfirm, Segmented, Space } from 'antd';
 import {
     AppstoreOutlined,
     BarsOutlined,
+    DeleteOutlined,
+    DragOutlined,
+    EditOutlined,
     FolderAddOutlined,
     PlusOutlined,
     SearchOutlined,
@@ -17,6 +20,11 @@ export default function GeoserverFilesToolbar({
     onNewFolder,
     onUpload,
     extraActions,
+    editMode = false,
+    onToggleEditMode,
+    selectedCount = 0,
+    onBulkMove,
+    onBulkDelete,
 }) {
     return (
         <div style={{
@@ -58,6 +66,34 @@ export default function GeoserverFilesToolbar({
             </div>
             <Space wrap style={{ flex: isMobile ? '1 1 100%' : '0 0 auto' }}>
                 {extraActions}
+                {editMode && selectedCount > 0 && (
+                    <>
+                        <Button icon={<DragOutlined />} onClick={onBulkMove}>
+                            Mover ({selectedCount})
+                        </Button>
+                        <Popconfirm
+                            title={`¿Eliminar ${selectedCount} recurso(s)?`}
+                            description="Las carpetas se borran con todo su contenido."
+                            okText="Eliminar"
+                            okButtonProps={{ danger: true }}
+                            cancelText="Cancelar"
+                            onConfirm={onBulkDelete}
+                        >
+                            <Button danger icon={<DeleteOutlined />}>
+                                Eliminar ({selectedCount})
+                            </Button>
+                        </Popconfirm>
+                    </>
+                )}
+                <Button
+                    icon={<EditOutlined />}
+                    type={editMode ? 'primary' : 'default'}
+                    ghost={editMode}
+                    onClick={onToggleEditMode}
+                    disabled={disabled}
+                >
+                    {editMode ? 'Salir de edición' : 'Modo edición'}
+                </Button>
                 <Button icon={<FolderAddOutlined />} onClick={onNewFolder} disabled={disabled}>
                     Nueva carpeta
                 </Button>

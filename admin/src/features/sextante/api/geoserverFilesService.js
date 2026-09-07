@@ -122,6 +122,39 @@ export const deleteGeoserverFile = async (name, workspace = '') => {
     await api.delete(`${BASE}/${parts}`, { params });
 };
 
+export const getGeoserverFolderInfo = async (path, workspace = '') => {
+    const params = { path };
+    if (workspace) params.workspace = workspace;
+    const res = await api.get(`${BASE}/folder/info`, { params });
+    return res.data;
+};
+
+export const deleteGeoserverFolder = async (path, workspace = '') => {
+    const params = { path };
+    if (workspace) params.workspace = workspace;
+    await api.delete(`${BASE}/folder`, { params });
+};
+
+export const moveGeoserverResource = async ({ source, target, workspace = '', isDir = false }) => {
+    await api.post(`${BASE}/move`, {
+        source,
+        target,
+        workspace: workspace || null,
+        isDir,
+    });
+};
+
+export const deleteGeoserverResources = async (items) => {
+    const res = await api.post(`${BASE}/bulk-delete`, {
+        items: items.map(({ name, workspace, isDir }) => ({
+            name,
+            workspace: workspace || null,
+            isDir: Boolean(isDir),
+        })),
+    });
+    return res.data;
+};
+
 export const buildGeoserverFolderZipUrl = (path = '', workspace = '') => {
     const qs = new URLSearchParams();
     if (path) qs.set('path', path);

@@ -525,6 +525,47 @@ class GeoServerClient:
                 )
             return True
 
+    def _store_path(self, name: str, workspace: str | None) -> str:
+        base = self._styles_base(workspace)[len("resource/"):]
+        clean = name.strip("/")
+        return f"{base}/{clean}" if clean else base
+
+    def count_styles_dir(self, prefix: str, workspace: str | None = None) -> dict:
+        """Cuenta recursivamente lo que cuelga de una carpeta del Resource API.
+
+        Alimenta la confirmacion de borrado: el DELETE de un directorio arrastra
+        todo su contenido y no hay papelera de donde recuperarlo.
+        """
+        files: list[dict] = []
+        folders: list[str] = []
+        pending = [prefix.strip("/")]
+        while pending:
+            current = pending.pop()
+            result = self.browse_styles_dir(current, workspace=workspace)
+            files.extend(result["files"])
+            folders.extend(result["folders"])
+            pending.extend(result["folders"])
+        return {"files": files, "folders": folders}
+
+    def move_style_resource(self, source: str, target: str, workspace: str | None = None) -> None:
+        """Renombra o mueve un archivo o carpeta dentro del mismo ambito.
+
+        El Resource API espera la ruta de origen en el cuerpo, relativa a la raiz
+        del data_dir (`styles/...` o `workspaces/<ws>/...`), no al recurso destino.
+        """
+        base = self._styles_base(workspace)
+        url = f"{self._base_url}/rest/{base}/{quote(target.lstrip('/'), safe='/')}?operation=move"
+        body = self._store_path(source, workspace)
+        with httpx.Client(auth=self._auth, timeout=self._timeout) as c:
+            r = c.put(url, content=body.encode("utf-8"), headers={"Content-Type": "text/plain"})
+            if r.status_code == 404:
+                raise GeoServerError(f"recurso no encontrado: {body}")
+            if r.status_code not in (200, 201, 204):
+                raise GeoServerError(
+                    f"move fallido {body} -> {base}/{target} "
+                    f"(HTTP {r.status_code}): {r.text[:200]}"
+                )
+
 
 def _normalize_type(raw: str | None) -> str:
     if not raw:

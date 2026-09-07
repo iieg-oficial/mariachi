@@ -3,17 +3,29 @@ import {
     CloudDownloadOutlined,
     CodeOutlined,
     DeleteOutlined,
+    EditOutlined,
     FolderOutlined,
 } from '@ant-design/icons';
-import { basename, extOf, workspaceLabel } from '@features/sextante/utils/geoserverFiles';
+import {
+    CONFIG_EXT,
+    FONT_EXT,
+    basename,
+    extOf,
+    workspaceLabel,
+} from '@features/sextante/utils/geoserverFiles';
 
 const { Text } = Typography;
+
+const tagColor = (ext) => {
+    if (FONT_EXT.includes(ext)) return 'purple';
+    if (CONFIG_EXT.includes(ext)) return 'gold';
+    return 'blue';
+};
 
 const typeTag = (record) => {
     if (record.isDir) return <Tag color="orange">CARPETA</Tag>;
     const ext = extOf(record.name);
-    const color = ['ttf', 'otf'].includes(ext) ? 'purple' : 'blue';
-    return <Tag color={color}>{ext.toUpperCase()}</Tag>;
+    return <Tag color={tagColor(ext)}>{ext.toUpperCase()}</Tag>;
 };
 
 export default function GeoserverFilesList({
@@ -26,11 +38,22 @@ export default function GeoserverFilesList({
     onDownloadZip,
     onSnippet,
     onDelete,
+    editMode = false,
+    isSelected,
+    onReplaceSelection,
+    onRename,
+    onDeleteFolder,
 }) {
     const records = [
         ...folders.map((f) => ({ ...f, key: `folder-${f.path}`, isDir: true })),
         ...files.map((f) => ({ ...f, key: `file-${f.workspace || ''}-${f.name}`, isDir: false })),
     ];
+
+    const rowSelection = editMode ? {
+        selectedRowKeys: records.filter((r) => isSelected?.(r)).map((r) => r.key),
+        onChange: (_keys, rows) => onReplaceSelection?.(rows),
+        getCheckboxProps: (record) => ({ disabled: Boolean(record.pending) }),
+    } : undefined;
 
     const columns = [
         {
@@ -72,21 +95,43 @@ export default function GeoserverFilesList({
         {
             title: 'Acciones',
             key: 'actions',
-            width: 110,
+            width: editMode ? 170 : 110,
             align: 'right',
             render: (_, record) => (record.isDir ? (
-                <Tooltip title="Descargar carpeta como ZIP">
-                    <Button
-                        size="small"
-                        icon={<CloudDownloadOutlined />}
-                        onClick={(e) => { e.stopPropagation(); onDownloadZip?.(record.path); }}
-                    />
-                </Tooltip>
+                <Space size={4} onClick={(e) => e.stopPropagation()}>
+                    {editMode && !record.pending && (
+                        <>
+                            <Tooltip title="Renombrar carpeta">
+                                <Button size="small" icon={<EditOutlined />} onClick={() => onRename?.(record)} />
+                            </Tooltip>
+                            <Tooltip title="Eliminar carpeta y su contenido">
+                                <Button
+                                    size="small"
+                                    danger
+                                    icon={<DeleteOutlined />}
+                                    onClick={() => onDeleteFolder?.(record)}
+                                />
+                            </Tooltip>
+                        </>
+                    )}
+                    <Tooltip title="Descargar carpeta como ZIP">
+                        <Button
+                            size="small"
+                            icon={<CloudDownloadOutlined />}
+                            onClick={() => onDownloadZip?.(record.path)}
+                        />
+                    </Tooltip>
+                </Space>
             ) : (
                 <Space size={4} onClick={(e) => e.stopPropagation()}>
                     <Tooltip title="Ver snippet SLD">
                         <Button size="small" icon={<CodeOutlined />} onClick={() => onSnippet?.(record)} />
                     </Tooltip>
+                    {editMode && !fromSearch && (
+                        <Tooltip title="Renombrar archivo">
+                            <Button size="small" icon={<EditOutlined />} onClick={() => onRename?.(record)} />
+                        </Tooltip>
+                    )}
                     <Popconfirm
                         title="¿Eliminar este archivo?"
                         description="Si algún SLD lo está usando, dejará de renderearse."
@@ -112,6 +157,7 @@ export default function GeoserverFilesList({
             columns={columns}
             dataSource={records}
             rowKey="key"
+            rowSelection={rowSelection}
             loading={loading}
             size="small"
             sticky={{ offsetHeader: 0 }}

@@ -11,6 +11,11 @@ export default function GeoserverFilesGrid({
     onDownloadZip,
     onSnippet,
     onDelete,
+    editMode = false,
+    isSelected,
+    onToggleSelect,
+    onRename,
+    onDeleteFolder,
 }) {
     return (
         <div
@@ -26,6 +31,11 @@ export default function GeoserverFilesGrid({
                     folder={f}
                     onOpen={onOpenFolder}
                     onDownloadZip={onDownloadZip}
+                    editMode={editMode}
+                    selected={isSelected?.({ ...f, isDir: true })}
+                    onToggleSelect={onToggleSelect}
+                    onRename={onRename}
+                    onDelete={onDeleteFolder}
                 />
             ))}
             {files.map((f) => (
@@ -36,6 +46,10 @@ export default function GeoserverFilesGrid({
                     deleting={deletingName === f.name}
                     onSnippet={onSnippet}
                     onDelete={onDelete}
+                    editMode={editMode}
+                    selected={isSelected?.({ ...f, isDir: false })}
+                    onToggleSelect={onToggleSelect}
+                    onRename={onRename}
                 />
             ))}
         </div>

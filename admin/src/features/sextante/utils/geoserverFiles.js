@@ -1,7 +1,8 @@
 export const PREVIEWABLE_EXT = ['svg', 'png', 'jpg', 'jpeg', 'webp', 'gif'];
 export const IMAGE_EXT = ['svg', 'png', 'jpg', 'jpeg', 'webp', 'gif', 'tiff', 'tif'];
 export const FONT_EXT = ['ttf', 'otf'];
-export const UPLOADABLE_EXT = [...IMAGE_EXT, ...FONT_EXT];
+export const CONFIG_EXT = ['properties'];
+export const UPLOADABLE_EXT = [...IMAGE_EXT, ...FONT_EXT, ...CONFIG_EXT];
 export const FOLDER_NAME_RE = /^[a-zA-Z0-9._-]+$/;
 export const WORKSPACE_STORAGE_KEY = 'mapalab.geoserverFiles.workspace';
 export const SEARCH_DEBOUNCE_MS = 350;
