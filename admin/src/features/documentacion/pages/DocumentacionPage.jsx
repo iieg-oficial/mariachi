@@ -5,7 +5,7 @@ import useIsMobile from '@shared/hooks/useIsMobile';
 import McpTopic from '@features/documentacion/topics/McpTopic';
 import TelemetryTopic from '@features/documentacion/topics/TelemetryTopic';
 import AcervoTopic from '@features/documentacion/topics/AcervoTopic';
-import OntoyTopic from '@features/documentacion/topics/OntoyTopic';
+import ContratosTopic from '@features/documentacion/topics/ContratosTopic';
 import ColibriTopic from '@features/documentacion/topics/ColibriTopic';
 import MapalabTopic from '@features/documentacion/topics/MapalabTopic';
 import QgisTopic from '@features/documentacion/topics/QgisTopic';
@@ -14,7 +14,11 @@ const { Content } = Layout;
 const { Title, Text } = Typography;
 
 
-const VALID_KEYS = new Set(['acervo', 'colibri', 'mapalab', 'qgis', 'mcp', 'telemetria', 'ontoy']);
+const VALID_KEYS = new Set(['acervo', 'colibri', 'mapalab', 'qgis', 'mcp', 'telemetria', 'contratos']);
+
+const LEGACY_KEYS = { ontoy: 'contratos' };
+
+const CONTRATOS_TABS = new Set(['ontoy', 'base-de-datos']);
 
 
 export default function DocumentacionPage() {
@@ -22,8 +26,11 @@ export default function DocumentacionPage() {
     const [searchParams, setSearchParams] = useSearchParams();
 
     const topicFromUrl = searchParams.get('topic');
-    const activeKey = VALID_KEYS.has(topicFromUrl) ? topicFromUrl : 'acervo';
-    const sec = searchParams.get('sec') === 'thumbs' ? 'thumbs' : 'uso';
+    const resolvedTopic = LEGACY_KEYS[topicFromUrl] || topicFromUrl;
+    const activeKey = VALID_KEYS.has(resolvedTopic) ? resolvedTopic : 'acervo';
+    const secParam = searchParams.get('sec');
+    const sec = secParam === 'thumbs' ? 'thumbs' : 'uso';
+    const secContratos = CONTRATOS_TABS.has(secParam) ? secParam : 'ontoy';
 
     const TOPICS = [
         { key: 'acervo', label: 'Acervo', children: <AcervoTopic defaultActiveTab={sec} /> },
@@ -32,7 +39,7 @@ export default function DocumentacionPage() {
         { key: 'qgis', label: 'Plugin QGIS', children: <QgisTopic /> },
         { key: 'mcp', label: 'Servidor MCP', children: <McpTopic /> },
         { key: 'telemetria', label: 'Telemetría', children: <TelemetryTopic /> },
-        { key: 'ontoy', label: 'Contrato /ontoy', children: <OntoyTopic /> },
+        { key: 'contratos', label: 'Contratos', children: <ContratosTopic defaultActiveTab={secContratos} /> },
     ];
 
     const handleChange = (key) => {
