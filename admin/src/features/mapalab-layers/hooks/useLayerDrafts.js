@@ -35,4 +35,3 @@ export const useLayerDrafts = () => {
     return { drafts, pendingCount, loading, reload, draftFields };
 };
 
-export default useLayerDrafts;

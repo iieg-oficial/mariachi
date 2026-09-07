@@ -47,7 +47,7 @@ import LayerBreadcrumb from '@features/mapalab-layers/components/LayerBreadcrumb
 import TreeSearchInput from '@features/mapalab-layers/components/TreeSearchInput';
 import PublishReviewModal from '@features/mapalab-layers/components/PublishReviewModal';
 import GridHistoryDrawer from '@shared/components/dataGrid/GridHistoryDrawer';
-import useLayerDrafts from '@features/mapalab-layers/hooks/useLayerDrafts';
+import { useLayerDrafts } from '@features/mapalab-layers/hooks/useLayerDrafts';
 import { HISTORY_COLUMNS, METADATA_HISTORY_COLUMNS, diffPayload } from '@features/mapalab-layers/utils/layerDiff';
 import { findPath } from '@features/mapalab-layers/utils/treeSearch';
 import { isOrganizer } from '@features/mapalab-layers/constants/nodeVisuals';

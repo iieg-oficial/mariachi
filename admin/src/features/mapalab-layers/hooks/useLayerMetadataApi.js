@@ -71,4 +71,3 @@ export const useLayerMetadataApi = () => {
     };
 };
 
-export default useLayerMetadataApi;

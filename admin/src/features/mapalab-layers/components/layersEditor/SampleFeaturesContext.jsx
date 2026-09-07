@@ -38,4 +38,3 @@ export const SampleFeaturesProvider = ({ workspaceAlias, geoserverLayer, childre
     );
 };
 
-export default SampleFeaturesProvider;
