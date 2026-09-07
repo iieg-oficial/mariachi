@@ -9,6 +9,28 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.90.0] - 2026-09-07
+
+### Agregado: el historial se descarga desde su cajón, y los datos desde Configuración general
+
+`GET /grid/{resource}/export` ya servía las tres formas —Excel con `Metadatos` e `Historial` en dos
+pestañas, o un CSV por hoja—, pero solo las ofrecía el menú de descarga de la barra, que existe
+únicamente en modo tabla. Desde el árbol no había manera de bajar nada.
+
+**El cajón del historial trae botón de descarga** en los dos modos. Baja en CSV *lo que está
+mostrando*: respeta el selector «Esta capa / Todas» y, en modo árbol —donde el cajón mezcla las
+rejillas de Capas y Metadatos—, agrega una columna `Rejilla` para distinguirlas. Se arma en el
+cliente, sin ida al servidor, y queda inhabilitado cuando no hay cambios registrados.
+
+**Configuración general estrena tarjeta «Descargas»** con selector de rejilla y las mismas tres
+opciones de la barra. Un CSV no tiene pestañas, así que la agrupación aplica solo al Excel: las dos
+opciones de CSV bajan datos e historial por separado.
+
+De paso, la lógica de exportación que vivía dentro de `GridPanel` pasó a `useGridExport`, que ahora
+comparten el panel y la tarjeta nueva, y `triggerDownload` y `downloadCsv` comparten un `saveBlob`.
+
+---
+
 ## [2.89.0] - 2026-09-07
 
 ### Cambiado: la vista En vivo de frames deja de transmitir y ahora sondea fotos
@@ -65,6 +87,22 @@ misma.
 - `GET /geoserver/files/folder/info` cuenta lo que cuelga de una carpeta antes de borrarla.
 - `DELETE /geoserver/files/folder`, `POST /geoserver/files/move` y `POST /geoserver/files/bulk-delete`,
   los tres auditados en actividad.
+
+### Agregado: el explorador acepta `.properties`
+
+Los ImageMosaic se configuran con `indexer.properties` y `timeregex.properties` junto a los rasters.
+El explorador solo aceptaba imagenes y fuentes, asi que cada ajuste de un mosaico —un `TimeFormat`
+mal puesto, un `regex` que no ancla al final— exigia acceso al servidor. Ahora se suben, se
+descargan, se renombran y se borran como cualquier otro recurso.
+
+**`datastore.properties` sigue cerrado.** Un mosaico con indice en PostGIS deja ese archivo junto a
+los rasters con la contrasena en claro, y es el mismo riesgo que ya cubria la lista blanca de
+extensiones para `datastore.xml`. `_is_store_config` ahora reconoce las dos formas y el filtro se
+aplica al listar, buscar, descargar, subir, mover y borrar: los `*store.properties` ni siquiera
+aparecen en el explorador, y pedirlos por su nombre responde **403**.
+
+El `<mosaico>.properties` que GeoServer genera como indice si es visible y se puede borrar. Es
+intencional: es lo que **Reindexar** regenera.
 
 ### Nota
 
