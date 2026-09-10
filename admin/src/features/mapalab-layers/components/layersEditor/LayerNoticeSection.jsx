@@ -17,7 +17,7 @@ import {
 import dayjs from 'dayjs';
 import { BellOutlined, ExclamationCircleOutlined, InfoCircleOutlined, WarningOutlined } from '@ant-design/icons';
 import NoticeIconField from './NoticeIconField';
-import NoticeAnchorField from './NoticeAnchorField';
+import NoticeAnchorField from '@shared/components/NoticeAnchorField';
 import ZoomRangeField from '@shared/components/ZoomRangeField';
 import MarkdownTextArea from '@shared/components/MarkdownTextArea';
 import { renderInlineMarkdown } from '@shared/utils/inlineMarkdown';

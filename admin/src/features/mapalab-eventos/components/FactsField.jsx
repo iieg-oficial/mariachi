@@ -1,20 +1,26 @@
-import { Button, Empty, Tooltip, Typography } from 'antd';
+import { Button, Empty, Select, Space, Tooltip, Typography } from 'antd';
 import { ArrowDownOutlined, ArrowUpOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import MarkdownTextArea from '@shared/components/MarkdownTextArea';
 import SymbolSnapshotField from './SymbolSnapshotField';
+import DestinoField from './DestinoField';
+import { ANIMACIONES } from '@features/mapalab-eventos/constants/diversion';
 
 const { Text } = Typography;
 
 const MAX_LENGTH = 500;
-const EMPTY_FACT = { text: '', symbol: null };
+const EMPTY_FACT = { text: '', symbol: null, animacion: null, destino: null };
+const ANIMACION_OPTIONS = [
+    { value: '', label: 'Animación del evento' },
+    ...ANIMACIONES.map(({ value, label }) => ({ value, label })),
+];
 
 const normalizeFact = (f) => {
     if (!f) return { ...EMPTY_FACT };
-    if (typeof f === 'string') return { text: f, symbol: null };
-    return { text: f.text || '', symbol: f.symbol || null };
+    if (typeof f === 'string') return { ...EMPTY_FACT, text: f };
+    return { text: f.text || '', symbol: f.symbol || null, animacion: f.animacion || null, destino: f.destino || null };
 };
 
-const FactsField = ({ value, onChange }) => {
+const FactsField = ({ value, onChange, animacionEvento }) => {
     const facts = Array.isArray(value) ? value.map(normalizeFact) : [];
 
     const update = (next) => onChange?.(next);
@@ -29,6 +35,16 @@ const FactsField = ({ value, onChange }) => {
     const handleChangeSymbol = (idx, symbol) => {
         const next = [...facts];
         next[idx] = { ...next[idx], symbol };
+        update(next);
+    };
+    const handleChangeAnimacion = (idx, animacion) => {
+        const next = [...facts];
+        next[idx] = { ...next[idx], animacion: animacion || null };
+        update(next);
+    };
+    const handleChangeDestino = (idx, destino) => {
+        const next = [...facts];
+        next[idx] = { ...next[idx], destino };
         update(next);
     };
     const handleMove = (idx, delta) => {
@@ -70,12 +86,22 @@ const FactsField = ({ value, onChange }) => {
                         <Text type="secondary" style={{ fontSize: 12 }}>
                             Dato curioso #{idx + 1}
                         </Text>
-                        <SymbolSnapshotField
-                            value={fact.symbol}
-                            onChange={(symbol) => handleChangeSymbol(idx, symbol)}
-                            size={20}
-                            placeholder="Sin símbolo (usa el del evento)"
-                        />
+                        <Space size={8} wrap>
+                            <Select
+                                size="small"
+                                value={fact.animacion ?? ''}
+                                onChange={(v) => handleChangeAnimacion(idx, v)}
+                                options={ANIMACION_OPTIONS}
+                                style={{ width: 170 }}
+                                aria-label={`Animación del dato curioso ${idx + 1}`}
+                            />
+                            <SymbolSnapshotField
+                                value={fact.symbol}
+                                onChange={(symbol) => handleChangeSymbol(idx, symbol)}
+                                size={20}
+                                placeholder="Sin símbolo (usa el del evento)"
+                            />
+                        </Space>
                     </div>
                     <MarkdownTextArea
                         value={fact.text}
@@ -116,6 +142,11 @@ const FactsField = ({ value, onChange }) => {
                             </>
                         }
                     />
+                    {(fact.animacion || animacionEvento) === 'aguilas' && (
+                        <div style={{ marginTop: 10 }}>
+                            <DestinoField value={fact.destino} onChange={(destino) => handleChangeDestino(idx, destino)} />
+                        </div>
+                    )}
                 </div>
             ))}
             <Button type="dashed" onClick={handleAdd} icon={<PlusOutlined />} block>
