@@ -35,6 +35,15 @@ FIELD_TYPES = {
 }
 STEP_TYPES = {"form", "repeater", "summary"}
 FILE_MAX_SIZE_MB_HARD_CAP = 100
+
+PREFIJO_RESERVADO = "__"
+"""Prefijo de las claves que el sistema guarda dentro de un elemento de repeater
+y que no son campos de la definicion. Ningun campo puede empezar asi, o su valor
+chocaria con ellas."""
+CLAVE_ETIQUETA = "__etiqueta"
+"""Nombre que quien llena le pone a la pestaña de un elemento."""
+CLAVE_AGREGADO = "__agregado"
+"""Marca de un elemento dado de alta despues de enviar el formulario."""
 GRID_COLUMNS = 6
 COLSPAN_UNITS = {1: 6, 2: 3, 3: 2}
 TIPOS_FECHA = {"date", "date_range"}
@@ -312,6 +321,11 @@ def _validar_field(
     if not isinstance(name, str) or not name:
         raise DefinicionInvalidaError(
             f"Step `{step_id}`: field {field_idx} sin `name`."
+        )
+    if name.startswith(PREFIJO_RESERVADO):
+        raise DefinicionInvalidaError(
+            f"Step `{step_id}`: field `{name}` usa el prefijo reservado "
+            f"`{PREFIJO_RESERVADO}`."
         )
     if name in field_names:
         raise DefinicionInvalidaError(

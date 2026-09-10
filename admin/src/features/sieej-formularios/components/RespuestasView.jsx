@@ -11,7 +11,7 @@ export function SeccionContenido({ sec }) {
                 size="small"
                 bordered
                 column={1}
-                title={`#${idx + 1}`}
+                title={item.nombre ? `#${idx + 1} · ${item.nombre}` : `#${idx + 1}`}
                 style={{ marginBottom: 12 }}
                 items={item.entries.map((e) => ({ key: e.key, label: e.label, children: e.value }))}
             />

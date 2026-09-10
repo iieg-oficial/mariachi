@@ -707,3 +707,180 @@ def test_el_respaldo_no_puede_tumbar_el_envio(session, formulario, user_a, monke
     )
     assert out.estado == "enviado"
     assert svc.respaldar_envio(envio) is None
+
+
+# ---------------------------------------------------------------------------
+# altas de elementos y nombre de la pestaña
+# ---------------------------------------------------------------------------
+
+
+def _hist(session, envio):
+    return (
+        session.query(EnvioValorHistorial)
+        .filter(EnvioValorHistorial.envio_id == envio.id)
+        .order_by(EnvioValorHistorial.id)
+        .all()
+    )
+
+
+def test_alta_de_un_elemento_al_final(session, envio_mixto, user_a):
+    svc = EnviosService(session)
+    out = svc.actualizar_campos(
+        user_a, envio_mixto.id,
+        {"bases_datos[1].diccionario": "d2", "bases_datos[1].fijo": "f2"},
+    )
+    assert len(out.datos["bases_datos"]) == 2
+    assert out.datos["bases_datos"][1] == {
+        "__agregado": True, "diccionario": "d2", "fijo": "f2",
+    }
+    assert out.datos["bases_datos"][0] == {"diccionario": "d1", "fijo": "f1"}
+    hist = _hist(session, out)
+    assert {h.field_path for h in hist} == {
+        "bases_datos[1].diccionario", "bases_datos[1].fijo",
+    }
+    assert all(h.valor_anterior is None for h in hist)
+
+
+def test_alta_de_dos_elementos_consecutivos(session, envio_mixto, user_a):
+    svc = EnviosService(session)
+    out = svc.actualizar_campos(
+        user_a, envio_mixto.id,
+        {"bases_datos[1].diccionario": "d2", "bases_datos[2].diccionario": "d3"},
+    )
+    assert [i.get("diccionario") for i in out.datos["bases_datos"]] == ["d1", "d2", "d3"]
+
+
+def test_alta_con_hueco_se_rechaza(session, envio_mixto, user_a):
+    svc = EnviosService(session)
+    with pytest.raises(HTTPException) as exc:
+        svc.actualizar_campos(user_a, envio_mixto.id, {"bases_datos[2].diccionario": "x"})
+    assert exc.value.status_code == 422
+    assert exc.value.detail["errores"][0]["error"] == "el elemento no existe"
+    session.refresh(envio_mixto)
+    assert len(envio_mixto.datos["bases_datos"]) == 1
+
+
+def test_alta_respeta_max_items(session, envio_mixto, user_a):
+    definicion = json.loads(json.dumps(DEFINICION_MIXTA))
+    definicion["steps"][1]["maxItems"] = 1
+    envio_mixto.definicion_snapshot = definicion
+    session.commit()
+    svc = EnviosService(session)
+    with pytest.raises(HTTPException) as exc:
+        svc.actualizar_campos(user_a, envio_mixto.id, {"bases_datos[1].diccionario": "x"})
+    assert "maximo de 1" in exc.value.detail["errores"][0]["error"]
+
+
+def test_alta_sin_valores_no_deja_elemento_fantasma(session, envio_mixto, user_a):
+    svc = EnviosService(session)
+    out = svc.actualizar_campos(user_a, envio_mixto.id, {"bases_datos[1].diccionario": None})
+    assert len(out.datos["bases_datos"]) == 1
+
+
+def test_en_un_agregado_se_completa_lo_que_sigue_vacio(session, envio_mixto, user_a):
+    svc = EnviosService(session)
+    svc.actualizar_campos(user_a, envio_mixto.id, {"bases_datos[1].diccionario": "d2"})
+    out = svc.actualizar_campos(user_a, envio_mixto.id, {"bases_datos[1].fijo": "f2"})
+    assert out.datos["bases_datos"][1]["fijo"] == "f2"
+
+
+def test_en_un_agregado_lo_ya_lleno_se_bloquea_como_en_los_demas(
+    session, envio_mixto, user_a
+):
+    svc = EnviosService(session)
+    svc.actualizar_campos(
+        user_a, envio_mixto.id,
+        {"bases_datos[1].diccionario": "d2", "bases_datos[1].fijo": "f2"},
+    )
+    with pytest.raises(HTTPException) as exc:
+        svc.actualizar_campos(user_a, envio_mixto.id, {"bases_datos[1].fijo": "otro"})
+    assert exc.value.detail["errores"][0]["error"] == "campo no editable"
+    out = svc.actualizar_campos(user_a, envio_mixto.id, {"bases_datos[1].diccionario": "d9"})
+    assert out.datos["bases_datos"][1]["diccionario"] == "d9"
+
+
+def test_en_un_elemento_original_lo_vacio_no_se_completa(session, formulario, user_a):
+    envio = crear_envio(
+        session, formulario, user_a, datos={"bases_datos": [{"diccionario": "d1"}]},
+    )
+    envio.definicion_snapshot = DEFINICION_MIXTA
+    session.commit()
+    svc = EnviosService(session)
+    with pytest.raises(HTTPException) as exc:
+        svc.actualizar_campos(user_a, envio.id, {"bases_datos[0].fijo": "f"})
+    assert exc.value.status_code == 422
+
+
+def test_el_nombre_de_la_pestana_se_edita_sin_marca(session, envio_mixto, user_a):
+    svc = EnviosService(session)
+    out = svc.actualizar_campos(
+        user_a, envio_mixto.id, {"bases_datos[0].__etiqueta": "  Planteles  "},
+    )
+    assert out.datos["bases_datos"][0]["__etiqueta"] == "Planteles"
+    hist = _hist(session, out)
+    assert hist[-1].field_label == "Nombre de la pestaña"
+    assert hist[-1].valor_nuevo == "Planteles"
+
+
+def test_el_nombre_vacio_regresa_al_numero(session, envio_mixto, user_a):
+    svc = EnviosService(session)
+    svc.actualizar_campos(user_a, envio_mixto.id, {"bases_datos[0].__etiqueta": "Planteles"})
+    out = svc.actualizar_campos(user_a, envio_mixto.id, {"bases_datos[0].__etiqueta": "   "})
+    assert out.datos["bases_datos"][0]["__etiqueta"] is None
+
+
+def test_el_nombre_se_recorta_a_sesenta(session, envio_mixto, user_a):
+    svc = EnviosService(session)
+    out = svc.actualizar_campos(user_a, envio_mixto.id, {"bases_datos[0].__etiqueta": "x" * 90})
+    assert len(out.datos["bases_datos"][0]["__etiqueta"]) == 60
+
+
+def test_el_nombre_debe_ser_texto(session, envio_mixto, user_a):
+    svc = EnviosService(session)
+    with pytest.raises(HTTPException) as exc:
+        svc.actualizar_campos(user_a, envio_mixto.id, {"bases_datos[0].__etiqueta": 123})
+    assert "texto" in exc.value.detail["errores"][0]["error"]
+
+
+def test_un_paso_que_no_es_repeater_no_tiene_nombre_de_pestana(
+    session, envio_mixto, user_a
+):
+    svc = EnviosService(session)
+    with pytest.raises(HTTPException):
+        svc.actualizar_campos(user_a, envio_mixto.id, {"alta_archivos.__etiqueta": "x"})
+
+
+def test_alta_con_nombre_de_pestana(session, envio_mixto, user_a):
+    svc = EnviosService(session)
+    out = svc.actualizar_campos(
+        user_a, envio_mixto.id,
+        {"bases_datos[1].__etiqueta": "Nuevo", "bases_datos[1].diccionario": "d2"},
+    )
+    assert out.datos["bases_datos"][1]["__etiqueta"] == "Nuevo"
+
+
+def test_un_archivo_vacio_de_un_agregado_se_puede_subir(session):
+    definicion = {
+        "steps": [{
+            "id": "conjuntos",
+            "type": "repeater",
+            "fields": [
+                {"name": "nota", "type": "text", "editableAfterSubmit": True},
+                {"name": "carga", "type": "file", "bucket": "sieej"},
+            ],
+        }],
+    }
+    svc = EnviosService(session)
+    defs = svc.editable_field_defs(definicion)
+    todos = svc.editable_field_defs(definicion, solo_editables=False)
+    agregado = {"conjuntos": [{"nota": "a"}, {"__agregado": True, "nota": "b"}]}
+
+    meta, error = svc._resolver_actualizable(defs, todos, agregado, "conjuntos[1].carga")
+    assert error is None and meta["type"] == "file"
+
+    meta, error = svc._resolver_actualizable(defs, todos, agregado, "conjuntos[0].carga")
+    assert meta is None and error == "campo no editable"
+
+    agregado["conjuntos"][1]["carga"] = {"filename": "x.csv"}
+    meta, error = svc._resolver_actualizable(defs, todos, agregado, "conjuntos[1].carga")
+    assert meta is None
