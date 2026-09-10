@@ -132,6 +132,8 @@ backups/**/*.sql.gz
 backups/**/*.parcial
 backups/*.sql.gz.tmp
 backups/backup.log
+backups/roadmap/
+backups/vine/
 restore/*.sql.gz
 restore/*.sql
 restore/*.json

@@ -56,6 +56,7 @@ export const buildRespuestas = (definicion, datos, autoria = {}) => {
                     repeater: true,
                     items: items.map((item, idx) => ({
                         key: `${step.id}-${idx}`,
+                        nombre: item?.__etiqueta || null,
                         entries: fields.map((f) => ({
                             key: f.name,
                             label: f.label || f.name,

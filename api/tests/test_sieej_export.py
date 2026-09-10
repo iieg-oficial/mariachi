@@ -142,3 +142,35 @@ def test_csv_zip_con_repeater():
         )
         assert filas[0][3] == "Nombre"
         assert [f[3] for f in filas[1:]] == ["BD1", "BD2"]
+
+
+def test_el_nombre_de_la_pestana_va_al_final_sin_mover_los_campos():
+    definicion = {
+        "version": 1,
+        "steps": [{
+            "id": "bases",
+            "type": "repeater",
+            "title": "Bases",
+            "fields": [{"name": "nombre", "label": "Nombre", "type": "text"}],
+        }],
+    }
+    envio = {
+        "id": 7,
+        "usuario_nombre": "Dependencia",
+        "usuario_email": "d@test.com",
+        "estado": "enviado",
+        "formulario_version": 1,
+        "enviado_en": "",
+        "definicion": definicion,
+        "datos": {"bases": [
+            {"nombre": "BD1", "__etiqueta": "Planteles"},
+            {"nombre": "BD2"},
+        ]},
+    }
+    tabla = next(
+        t for t in build_envios_tables([envio], definicion_vigente=definicion)
+        if t["title"] == "Bases"
+    )
+    assert tabla["headers"] == ["Envio ID", "Usuario", "#", "Nombre", "Nombre de la pestaña"]
+    assert [fila[3] for fila in tabla["rows"]] == ["BD1", "BD2"]
+    assert [fila[4] for fila in tabla["rows"]] == ["Planteles", ""]

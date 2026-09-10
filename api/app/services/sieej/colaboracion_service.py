@@ -6,6 +6,7 @@ envio vive en `pertenencia.py`.
 """
 from __future__ import annotations
 
+import copy
 import json
 from typing import Any
 
@@ -87,13 +88,12 @@ class ColaboracionService:
                 detail="El formulario esta cerrado y no acepta cambios",
             )
 
-        defs = campos_service.field_defs(
-            envio.definicion_snapshot or {}, solo_editables=False
-        )
-        _metas, errores = campos_service.validar_paths(
-            defs,
-            envio.datos or {},
-            campos,
+        snapshot = envio.definicion_snapshot or {}
+        defs = campos_service.field_defs(snapshot, solo_editables=False)
+        base = copy.deepcopy(envio.datos or {})
+        errores = envios._preparar_altas(snapshot, base, campos, marcar_agregado=False)
+        envios._validar_actualizables(
+            defs, defs, base, campos, errores,
             detalle_no_permitido="el campo no existe en el formulario",
         )
         if errores:
@@ -109,7 +109,9 @@ class ColaboracionService:
                 detail={"codigo": "conflicto_por_campo", "campos": conflictos},
             )
 
-        nuevos, cambios = campos_service.aplicar_cambios(envio.datos or {}, campos)
+        nuevos, cambios = campos_service.aplicar_cambios(
+            base, envios._normalizar_etiquetas(campos)
+        )
         if cambios:
             payload_bytes = len(json.dumps(nuevos, default=str).encode("utf-8"))
             if payload_bytes > DATOS_MAX_BYTES:

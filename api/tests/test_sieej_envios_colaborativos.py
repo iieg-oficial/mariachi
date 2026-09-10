@@ -1405,3 +1405,77 @@ def test_el_coalescing_aguanta_fechas_con_zona_horaria(
         desde=r.json()["datos_version"],
     )
     assert r.status_code == 200, r.text
+
+
+DEF_CONJUNTOS = {
+    "version": 1,
+    "steps": [{
+        "id": "conjuntos",
+        "type": "repeater",
+        "title": "Conjuntos",
+        "itemLabel": "Conjunto de datos {{index}}",
+        "fields": [{"name": "fuente", "label": "Fuente", "type": "text"}],
+    }],
+}
+
+
+def _formulario_de_conjuntos(session, admin, ana, beto, slug, nombre_grupo):
+    f, _ = envio_colaborativo(session, admin, ana, beto, slug, nombre_grupo)
+    f.definicion = DEF_CONJUNTOS
+    session.commit()
+    return f
+
+
+def test_la_captura_colaborativa_da_de_alta_un_conjunto_sin_marcarlo(
+    session, client, admin, ana, beto
+):
+    f = _formulario_de_conjuntos(session, admin, ana, beto, "conj-1", "dep-conj-1")
+    csrf = login(client, ana)
+    r = patch_campos(client, csrf, f.slug, {"conjuntos[0].fuente": "INEGI"})
+    assert r.status_code == 200, r.text
+    envio = client.get(f"{ADMIN_PREFIX}/formularios/{f.slug}/envio").json()
+    assert envio["datos"]["conjuntos"] == [{"fuente": "INEGI"}]
+
+
+def test_en_la_captura_un_conjunto_con_hueco_se_rechaza(
+    session, client, admin, ana, beto
+):
+    f = _formulario_de_conjuntos(session, admin, ana, beto, "conj-2", "dep-conj-2")
+    csrf = login(client, ana)
+    r = patch_campos(client, csrf, f.slug, {"conjuntos[1].fuente": "x"})
+    assert r.status_code == 422
+    assert r.json()["detail"]["errores"][0]["error"] == "el elemento no existe"
+
+
+def test_la_captura_colaborativa_guarda_el_nombre_de_la_pestana(
+    session, client, admin, ana, beto
+):
+    f = _formulario_de_conjuntos(session, admin, ana, beto, "conj-3", "dep-conj-3")
+    csrf = login(client, ana)
+    r = patch_campos(client, csrf, f.slug, {"conjuntos[0].fuente": "INEGI"})
+    r = patch_campos(
+        client, csrf, f.slug,
+        {"conjuntos[0].__etiqueta": "  Escuelas  "},
+        desde=r.json()["datos_version"],
+    )
+    assert r.status_code == 200, r.text
+    envio = client.get(f"{ADMIN_PREFIX}/formularios/{f.slug}/envio").json()
+    assert envio["datos"]["conjuntos"][0]["__etiqueta"] == "Escuelas"
+    fila = (
+        session.query(EnvioValorHistorial)
+        .filter(EnvioValorHistorial.field_path == "conjuntos[0].__etiqueta")
+        .one()
+    )
+    assert fila.field_label == "Nombre de la pestaña"
+    assert fila.origen == "captura"
+
+
+def test_un_nombre_de_pestana_que_no_es_texto_no_tumba_la_captura(
+    session, client, admin, ana, beto
+):
+    f = _formulario_de_conjuntos(session, admin, ana, beto, "conj-4", "dep-conj-4")
+    csrf = login(client, ana)
+    patch_campos(client, csrf, f.slug, {"conjuntos[0].fuente": "INEGI"})
+    r = patch_campos(client, csrf, f.slug, {"conjuntos[0].__etiqueta": 5}, desde=1)
+    assert r.status_code == 422
+    assert "texto" in r.json()["detail"]["errores"][0]["error"]

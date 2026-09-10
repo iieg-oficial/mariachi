@@ -17,10 +17,10 @@ from sqlalchemy.orm import Session
 from app.core.time import to_naive_utc, utcnow
 from app.models.sieej import EnvioFormulario, EnvioValorHistorial
 from app.models.user import Usuario
+from app.services.sieej.definicion_validator import CLAVE_ETIQUETA
 from app.services.sieej.field_paths import (
     get_valor_en_datos,
     parse_field_path,
-    scope_de_path,
     set_valor_en_datos,
 )
 
@@ -33,6 +33,8 @@ formulario largo se vuelve ilegible. Solo aplica a `origen='captura'`: la
 correccion post-envio es append puro, que es la que tiene valor de auditoria
 formal.
 """
+
+ETIQUETA_LABEL = "Nombre de la pestaña"
 
 
 def marcas_editables(definicion: dict[str, Any] | None) -> dict[str, bool]:
@@ -108,45 +110,6 @@ def resolver(
     if meta["repeater"] != (idx is not None):
         return None
     return meta
-
-
-def validar_paths(
-    defs: dict[str, dict[str, Any]],
-    datos: dict[str, Any],
-    campos: dict[str, Any],
-    *,
-    detalle_no_permitido: str,
-) -> tuple[dict[str, dict[str, Any]], list[dict[str, str]]]:
-    """Resuelve cada path del payload contra la definicion.
-
-    Devuelve `(metas, errores)`. Los `file` nunca pasan: su valor lo escribe la
-    ruta de upload, que ademas mueve el objeto en el Acervo.
-    """
-    metas: dict[str, dict[str, Any]] = {}
-    errores: list[dict[str, str]] = []
-    for field_path in campos:
-        meta = resolver(defs, field_path)
-        if meta is None:
-            errores.append({"field_path": field_path, "error": detalle_no_permitido})
-            continue
-        if meta["type"] == "file":
-            errores.append(
-                {
-                    "field_path": field_path,
-                    "error": (
-                        "los archivos se reemplazan con "
-                        "`actualizar-archivo`, no con este endpoint"
-                    ),
-                }
-            )
-            continue
-        if scope_de_path(datos, field_path) is None and meta["repeater"]:
-            errores.append(
-                {"field_path": field_path, "error": "el elemento no existe"}
-            )
-            continue
-        metas[field_path] = meta
-    return metas, errores
 
 
 def aplicar_cambios(
@@ -231,7 +194,7 @@ def registrar_historial(
             EnvioValorHistorial(
                 envio_id=envio.id,
                 field_path=field_path,
-                field_label=(resolver(defs, field_path) or {}).get("label"),
+                field_label=_etiqueta_de(defs, field_path),
                 valor_anterior=valor_anterior,
                 valor_nuevo=valor_nuevo,
                 formulario_version=envio.formulario_version,
@@ -240,6 +203,14 @@ def registrar_historial(
                 origen=origen,
             )
         )
+
+
+def _etiqueta_de(defs: dict[str, dict[str, Any]], field_path: str) -> str | None:
+    meta = resolver(defs, field_path)
+    if meta is not None:
+        return meta.get("label")
+    parsed = parse_field_path(field_path)
+    return ETIQUETA_LABEL if parsed is not None and parsed[2] == CLAVE_ETIQUETA else None
 
 
 def _fila_coalescible(

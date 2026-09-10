@@ -4003,6 +4003,32 @@ migración posterior, una vez confirmado que nadie quedó fuera.
 - `permissions` en la respuesta de `GET /autenticacion/perfil`, y los helpers `can()` / `canAny()`
   en el frontend para ocultar menús y proteger rutas por permiso.
 
+## [1.124.0] - 2026-09-10
+
+### Agregado: dar de alta conjuntos al actualizar un envío enviado
+
+`actualizar-campos` acepta un elemento nuevo al final de un repeater: un índice igual al largo
+actual —y los consecutivos, si se agregan varios— crea el elemento, respetando `maxItems`. Un
+índice con hueco sigue respondiendo «el elemento no existe». El elemento nace marcado con
+`__agregado`, y un alta sin ningún valor no deja un elemento vacío.
+
+En un elemento agregado se puede **completar cualquier campo que siga vacío**, no solo los
+actualizables, archivos incluidos por `actualizar-archivo`. Lo ya lleno se bloquea igual que en los
+demás elementos. Es lo que permite llenar completo un conjunto nuevo: nace al guardar, y sus
+archivos se suben justo después, casi siempre en campos que no son actualizables.
+
+### Agregado: nombre de la pestaña de cada elemento
+
+Quien llena puede ponerle nombre a la pestaña de un elemento. Se guarda dentro del propio
+elemento, en la clave reservada `__etiqueta`: se edita siempre, sin estar marcada como actualizable,
+se recorta a 60 caracteres, vacía regresa al número y deja historial como «Nombre de la pestaña».
+El validador de datos ya ignoraba las claves que no son campos, así que no hubo que tocarlo.
+
+El validador de definiciones rechaza los campos que empiecen con `__`, para que ninguno choque con
+estas claves. El Excel agrega «Nombre de la pestaña» **al final** de cada hoja de repeater, para no
+mover las columnas de quien ya lo consume, y el detalle del envío en el CMS lo muestra junto al
+número del elemento.
+
 ## [1.123.0] - 2026-08-10
 
 ### Agregado: colores de la marca `iieg` en el catálogo de identidad

@@ -619,3 +619,12 @@ def test_validation_rules_incluye_limites_de_fecha():
     limite = next(r for r in rules if r["rule"] == "maxDate")
     assert limite["field_path"] == "general.fecha_captura"
     assert limite["value"] == "hoy"
+
+
+def test_un_campo_no_puede_usar_el_prefijo_reservado():
+    definicion = _def_minima()
+    definicion["steps"][0]["fields"].append(
+        {"name": "__etiqueta", "label": "Choca", "type": "text"}
+    )
+    with pytest.raises(DefinicionInvalidaError, match="prefijo reservado"):
+        validar_definicion(definicion)
