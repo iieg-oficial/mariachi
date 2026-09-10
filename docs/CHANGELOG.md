@@ -9,7 +9,7 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
-## [1.123.0] - 2026-09-10
+## [1.124.0] - 2026-09-10
 
 ### Agregado: dar de alta conjuntos al actualizar un envío enviado
 
