@@ -4003,6 +4003,41 @@ migración posterior, una vez confirmado que nadie quedó fuera.
 - `permissions` en la respuesta de `GET /autenticacion/perfil`, y los helpers `can()` / `canAny()`
   en el frontend para ocultar menús y proteger rutas por permiso.
 
+## [1.125.0] - 2026-09-10
+
+### Agregado: eventos lite
+
+Un evento con `modo: lite` no lleva capas: solo enciende el botón de dato curioso en el borde del
+sider del visor. El tipo se elige en Información y oculta las pestañas Capas, Apariencia y
+Geografía. `modo` es `completo` por defecto, así que los eventos existentes no cambian.
+
+La migración `3v3ntl1t30001` agrega a `eventos` las columnas `modo`, `animacion`, `boton_estilo` y
+`aviso_inicial`, con sus defaults.
+
+### Agregado: la pestaña Diversión, con vista previa
+
+- Animación por defecto del evento —pelota o águilas— y animación propia por dato curioso.
+- Ícono del botón dinámico (el símbolo del próximo dato) o fijo. Los símbolos salen de emoji, del
+  catálogo de sextante o de imágenes del Acervo (bucket `iieg`).
+- Estilo del botón: fondo de la paleta y borde libre por tramos (sólido, mitades, tercios), con
+  plantillas México, IIEG, Naranja y Morado; con o sin fondo, con o sin borde.
+- Aviso inicial de hasta 80 caracteres, que el visor muestra una vez por visitante.
+- Vista previa sobre un mapa de Jalisco, con el botón a tamaño real, ×2 y ×4, y «Probar», que corre
+  la animación del siguiente dato. El mensaje se quita solo a los 10 s.
+
+### Agregado: las águilas te llevan a un lugar
+
+Un dato curioso con águilas acepta un `destino` (`lon`, `lat` y `zoom` de 5 a 19): el visor viaja al
+punto mientras vuelan y pinea ahí el dato. El lugar se fija con un clic en el mapa, con el mismo
+selector de los avisos de capa, que pasó a `shared/components/NoticeAnchorField.jsx`. El destino vive
+en el JSON de `facts`, sin columna nueva.
+
+### Cambiado: la caché pública de eventos expira sola en el siguiente cambio
+
+Al cachear `GET /api/mapalab/eventos`, la llave de versión expira en el próximo inicio o fin de un
+evento publicado: uno programado aparece o se retira sin tocar la caché. El payload pasa a
+`mapalab:public_cache:payload:v2` para no servir el que se guardó antes de la migración.
+
 ## [1.124.0] - 2026-09-10
 
 ### Agregado: dar de alta conjuntos al actualizar un envío enviado
