@@ -4003,6 +4003,13 @@ migración posterior, una vez confirmado que nadie quedó fuera.
 - `permissions` en la respuesta de `GET /autenticacion/perfil`, y los helpers `can()` / `canAny()`
   en el frontend para ocultar menús y proteger rutas por permiso.
 
+## [1.125.1] - 2026-09-10
+
+### Agregado
+
+- La telemetría de mapalab acepta `evento_fun_volver`: el clic en «Volver» del dato curioso pineado
+  tras el viaje de las águilas. Queda en los eventos crudos; el rollup por evento no cambia.
+
 ## [1.125.0] - 2026-09-10
 
 ### Agregado: eventos lite
