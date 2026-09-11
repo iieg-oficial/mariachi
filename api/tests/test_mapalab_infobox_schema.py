@@ -90,3 +90,19 @@ def test_campos_se_validan_contra_las_columnas_reales():
 def test_sin_columnas_conocidas_no_bloquea():
     cfg = _valida({'headerField': 'nombre'})
     validate_fields_exist(cfg, set())
+
+
+def test_formato_anio_se_conserva_en_lista_y_texto():
+    cfg = _valida({
+        'list': [{'field': 'fecha', 'label': 'Año', 'formato': 'anio'}],
+        'text': [{'id': 't1', 'items': [{'field': 'fecha', 'formato': 'anio'}]}],
+    })
+    config = cfg.to_config()
+    assert config['list'] == [{'field': 'fecha', 'label': 'Año', 'formato': 'anio'}]
+    assert config['text'][0]['items'] == [{'field': 'fecha', 'formato': 'anio'}]
+
+
+@pytest.mark.parametrize('formato', ['mes', 'ANIO', ''])
+def test_formato_desconocido_se_rechaza(formato):
+    with pytest.raises(ValidationError):
+        _valida({'headerField': 'n', 'list': [{'field': 'f', 'label': 'F', 'formato': formato}]})
