@@ -1,5 +1,6 @@
 import { Card, Empty, Space, Tag, Typography } from 'antd';
 
+import { aplicarFormato } from './formatoCampo';
 import { isTextKey, mkTextKey, normalizeInfoboxConfig, textIdOf } from './infoBoxTextBlocks';
 
 const { Title, Text } = Typography;
@@ -69,7 +70,7 @@ const FieldBadge = ({ entry, parentStyle }) => {
                     textAlign: entry.fullWidth ? 'center' : undefined,
                 }}
             >
-                {resolveValue(entry.field)}
+                {aplicarFormato(resolveValue(entry.field), entry.formato)}
             </Tag>
         );
     }
@@ -142,7 +143,7 @@ const Cards = ({ items, columns = 1 }) => (
 const ListItems = ({ items }) => (
     <div>
         {items.map((it, i) => {
-            const value = resolveValue(it.field);
+            const value = aplicarFormato(resolveValue(it.field), it.formato);
             const valueEl = it.href
                 ? <span style={{ fontSize: 12, color: '#5C2472', textDecoration: 'underline' }}>{value}</span>
                 : <Text style={{ fontSize: 12 }}>{value}</Text>;
@@ -176,7 +177,7 @@ const ICON_GLYPH = {
 const IconTexts = ({ items }) => (
     <Space orientation="vertical" size={4} style={{ width: '100%' }}>
         {items.map((it, i) => {
-            const display = it.label || resolveValue(it.field);
+            const display = it.label || aplicarFormato(resolveValue(it.field), it.formato);
             const isLink = !!it.href || ['ubicacion', 'celular', 'web'].includes(it.icon);
             return (
                 <Space key={i} size={6}>
@@ -217,7 +218,7 @@ const resolveBodyOrder = (cfg) => {
 };
 
 const renderTextItem = (it, idx) => {
-    const value = it.field ? resolveValue(it.field) : null;
+    const value = it.field ? aplicarFormato(resolveValue(it.field), it.formato) : null;
     const label = it.label || null;
     if (!label && !value) return null;
     const content = label && value ? <><strong>{label}</strong>: {value}</> : (value || label);

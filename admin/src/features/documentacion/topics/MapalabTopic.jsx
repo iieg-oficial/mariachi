@@ -43,9 +43,9 @@ const FLUJO_COLUMNS = [
 
 const PERMITIDO = [
     { clave: 'headerField', tipo: 'string', nota: 'Campo que da el título de la tarjeta.' },
-    { clave: 'list', tipo: 'array (máx. 12)', nota: 'Filas etiqueta–valor. Cada una: field, label y href opcional.' },
+    { clave: 'list', tipo: 'array (máx. 12)', nota: 'Filas etiqueta–valor. Cada una: field, label, href opcional y formato «anio» opcional.' },
     { clave: 'cards', tipo: 'array (máx. 12)', nota: 'Cajas de numeralia. Cada una: field, label, suffix y decimals (0–4).' },
-    { clave: 'text', tipo: 'array (máx. 3)', nota: 'Bloques de texto con id e items (field, label, href).' },
+    { clave: 'text', tipo: 'array (máx. 3)', nota: 'Bloques de texto con id e items (field, label, href, formato).' },
     { clave: 'blockOrder', tipo: 'array', nota: 'Orden de los bloques. Solo list, cards y text:<id>.' },
 ];
 

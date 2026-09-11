@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from typing import List
+from typing import List, Literal
 from urllib.parse import urlparse
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
@@ -40,6 +40,10 @@ def _validate_href(value: str | None) -> str | None:
     return trimmed
 
 
+def _sin_nulos(**valores: object) -> dict:
+    return {k: v for k, v in valores.items() if v is not None}
+
+
 class _Strict(BaseModel):
     model_config = ConfigDict(extra='forbid', str_strip_whitespace=True)
 
@@ -48,6 +52,7 @@ class InfoboxListRow(_Strict):
     field: str = Field(..., min_length=1, max_length=MAX_FIELD_LEN)
     label: str = Field(..., min_length=1, max_length=MAX_LABEL_LEN)
     href: str | None = Field(default=None)
+    formato: Literal['anio'] | None = Field(default=None)
 
     _check_href = field_validator('href')(lambda cls, v: _validate_href(v))
 
@@ -63,6 +68,7 @@ class InfoboxTextItem(_Strict):
     field: str = Field(..., min_length=1, max_length=MAX_FIELD_LEN)
     label: str | None = Field(default=None, max_length=MAX_LABEL_LEN)
     href: str | None = Field(default=None)
+    formato: Literal['anio'] | None = Field(default=None)
 
     _check_href = field_validator('href')(lambda cls, v: _validate_href(v))
 
@@ -122,7 +128,7 @@ class InfoboxPropuestaConfig(CamelCaseInput):
             config['headerField'] = self.header_field
         if self.list:
             config['list'] = [
-                {k: v for k, v in (('field', row.field), ('label', row.label), ('href', row.href)) if v is not None}
+                _sin_nulos(field=row.field, label=row.label, href=row.href, formato=row.formato)
                 for row in self.list
             ]
         if self.cards:
@@ -142,7 +148,9 @@ class InfoboxPropuestaConfig(CamelCaseInput):
                 {
                     'id': block.id,
                     'items': [
-                        {k: v for k, v in (('field', item.field), ('label', item.label), ('href', item.href)) if v is not None}
+                        _sin_nulos(
+                            field=item.field, label=item.label, href=item.href, formato=item.formato
+                        )
                         for item in block.items
                     ],
                 }

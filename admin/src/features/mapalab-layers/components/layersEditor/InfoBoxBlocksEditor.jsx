@@ -20,6 +20,16 @@ import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from 
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove as dndArrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
+import FormatoAnioToggle from './FormatoAnioToggle';
+import {
+    camposConAnio,
+    conAnio,
+    elegirCamposSimples,
+    esCampoConEstilo,
+    esCampoSimple,
+    marcarAnio,
+    nombreDeCampo,
+} from './formatoCampo';
 import {
     genTextId,
     isTextKey,
@@ -314,17 +324,21 @@ const LabelGroupsBlock = ({ value = [], onChange, onRemove, availableFields }) =
             <Space orientation="vertical" size="small" style={{ width: '100%' }}>
                 {value.map((g, idx) => {
                     const groupKind = g.staticValues !== undefined ? 'static' : 'fields';
+                    const campos = g.fields || [];
+                    const setFields = (fields) => updateGroup(idx, { fields });
+                    const simpleFields = campos.filter(esCampoSimple).map(nombreDeCampo).filter(Boolean);
                     const setKind = (kind) => {
                         if (kind === 'static') {
-                            const fromFields = (g.fields || []).filter((f) => typeof f === 'string');
-                            updateGroup(idx, { fields: undefined, staticValues: fromFields });
+                            updateGroup(idx, { fields: undefined, staticValues: simpleFields });
                         } else {
                             updateGroup(idx, { staticValues: undefined, fields: (g.staticValues || []).map((s) => typeof s === 'string' ? s : '') });
                         }
                     };
-                    const hasNested = (g.fields || []).some((f) => f && typeof f === 'object');
-                    const simpleFields = (g.fields || []).filter((f) => typeof f === 'string');
-                    const nestedFields = (g.fields || []).filter((f) => f && typeof f === 'object');
+                    const nestedFields = campos
+                        .map((entry, pos) => ({ entry, pos }))
+                        .filter(({ entry }) => esCampoConEstilo(entry));
+                    const hasNested = nestedFields.length > 0;
+                    const nombresDelGrupo = [...new Set(campos.map(nombreDeCampo).filter(Boolean))];
                     return (
                         <Card
                             key={idx}
@@ -352,7 +366,7 @@ const LabelGroupsBlock = ({ value = [], onChange, onRemove, availableFields }) =
                                         <Select
                                             mode="multiple"
                                             value={simpleFields}
-                                            onChange={(v) => updateGroup(idx, { fields: [...v, ...nestedFields] })}
+                                            onChange={(v) => setFields(elegirCamposSimples(campos, v))}
                                             options={fieldOptionsFor(availableFields, simpleFields)}
                                             placeholder="Campos a mostrar como etiquetas"
                                             style={{ width: '100%' }}
@@ -368,20 +382,14 @@ const LabelGroupsBlock = ({ value = [], onChange, onRemove, availableFields }) =
                                                     Campos con styling propio:
                                                 </Text>
                                                 <Space orientation="vertical" size={4} style={{ width: '100%' }}>
-                                                    {nestedFields.map((entry, ei) => (
+                                                    {nestedFields.map(({ entry, pos }) => (
                                                         <NestedFieldEditor
-                                                            key={ei}
+                                                            key={pos}
                                                             entry={entry}
                                                             availableFields={availableFields}
                                                             parentStyle={{ color: g.color, bg: g.bg }}
-                                                            onChange={(updated) => {
-                                                                const nextNested = nestedFields.map((e2, i2) => i2 === ei ? updated : e2);
-                                                                updateGroup(idx, { fields: [...simpleFields, ...nextNested] });
-                                                            }}
-                                                            onRemove={() => {
-                                                                const nextNested = nestedFields.filter((_, i2) => i2 !== ei);
-                                                                updateGroup(idx, { fields: [...simpleFields, ...nextNested] });
-                                                            }}
+                                                            onChange={(updated) => setFields(campos.map((e2, i2) => (i2 === pos ? updated : e2)))}
+                                                            onRemove={() => setFields(campos.filter((_, i2) => i2 !== pos))}
                                                         />
                                                     ))}
                                                 </Space>
@@ -397,6 +405,26 @@ const LabelGroupsBlock = ({ value = [], onChange, onRemove, availableFields }) =
                                         >
                                             Agregar campo con styling propio
                                         </Button>
+                                        {nombresDelGrupo.length > 0 && (
+                                            <div>
+                                                <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 4 }}>
+                                                    Solo el año (2026-01-01 → 2026):
+                                                </Text>
+                                                <Select
+                                                    mode="multiple"
+                                                    size="small"
+                                                    value={camposConAnio(campos)}
+                                                    onChange={(v) => setFields(marcarAnio(campos, v))}
+                                                    options={nombresDelGrupo.map((n) => ({
+                                                        value: n,
+                                                        label: <span style={{ fontFamily: 'monospace' }}>{n}</span>,
+                                                    }))}
+                                                    placeholder="Campos que muestran solo el año"
+                                                    style={{ width: '100%' }}
+                                                    allowClear
+                                                />
+                                            </div>
+                                        )}
                                     </>
                                 ) : (
                                     <Space orientation="vertical" size={4} style={{ width: '100%' }}>
@@ -586,6 +614,10 @@ const ListBlock = ({ value = [], onChange, onRemove, availableFields }) => {
                                                     raw
                                                 </Button>
                                             </Tooltip>
+                                            <FormatoAnioToggle
+                                                item={it}
+                                                onChange={(activo) => onChange(value.map((curr, i) => (i === idx ? conAnio(curr, activo) : curr)))}
+                                            />
                                             <Button danger icon={<DeleteOutlined />} onClick={() => removeItem(idx)} />
                                         </Space.Compact>
                                         <Input
@@ -668,6 +700,10 @@ const IconTextBlock = ({ value = [], onChange, onRemove, availableFields }) => {
                                                     String(option.value).toLowerCase().includes(input.toLowerCase())
                                                 }
                                             />
+                                            <FormatoAnioToggle
+                                                item={it}
+                                                onChange={(activo) => onChange(value.map((curr, i) => (i === idx ? conAnio(curr, activo) : curr)))}
+                                            />
                                             <Button danger icon={<DeleteOutlined />} onClick={() => removeItem(idx)} />
                                         </Space.Compact>
                                         <Input
@@ -707,7 +743,7 @@ const TextItemRow = ({ item, onChange, onRemove, availableFields }) => {
             const { label: _l, ...rest } = item;
             onChange({ ...rest, field: rest.field || '' });
         } else {
-            const { field: _f, ...rest } = item;
+            const { field: _f, formato: _fm, ...rest } = item;
             onChange({ ...rest, label: rest.label || '' });
         }
     };
@@ -747,18 +783,21 @@ const TextItemRow = ({ item, onChange, onRemove, availableFields }) => {
                     />
                 </Space>
                 {mode === 'field' ? (
-                    <Select
-                        value={item.field || undefined}
-                        onChange={setValue}
-                        options={fieldOptionsFor(availableFields, item.field)}
-                        placeholder="Selecciona un campo del feature"
-                        showSearch
-                        allowClear
-                        style={{ width: '100%' }}
-                        filterOption={(input, option) =>
-                            String(option.value).toLowerCase().includes(input.toLowerCase())
-                        }
-                    />
+                    <Space.Compact style={{ width: '100%' }}>
+                        <Select
+                            value={item.field || undefined}
+                            onChange={setValue}
+                            options={fieldOptionsFor(availableFields, item.field)}
+                            placeholder="Selecciona un campo del feature"
+                            showSearch
+                            allowClear
+                            style={{ flex: 1 }}
+                            filterOption={(input, option) =>
+                                String(option.value).toLowerCase().includes(input.toLowerCase())
+                            }
+                        />
+                        <FormatoAnioToggle item={item} onChange={(activo) => onChange(conAnio(item, activo))} />
+                    </Space.Compact>
                 ) : (
                     <Input.TextArea
                         value={item.label || ''}
