@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import require_project_access, require_role, verify_csrf
 from app.api.rate_limit import rate_limit
 from app.core.database import get_dataengine_db
+from app.models.layer import Workspace
 from app.models.layer_metadata import LayerMetadata, LayerStats
 from app.models.user import Usuario
 from app.schemas.layer_metadata import (
@@ -33,6 +34,16 @@ router = APIRouter(
 _require_project_editor = require_project_access('mapalab', min_role='editor')
 _require_admin = require_role(['tetlamamakani'])
 _write_rate_limit = rate_limit(max_requests=60, window_seconds=60.0)
+
+
+def _canonical_layer_key(db: Session, layer_key: str) -> str:
+    alias, sep, resto = layer_key.partition(':')
+    if not sep:
+        return layer_key
+    ws = db.query(Workspace).filter(Workspace.alias == alias).first()
+    if ws and ws.geoserver_workspace != alias:
+        return f'{ws.geoserver_workspace}:{resto}'
+    return layer_key
 
 
 @router.get('', response_model=list[LayerMetadataResponse])
@@ -80,6 +91,7 @@ async def refresh_stats(
     _editor: Usuario = Depends(_require_project_editor),
     _rl: Usuario = Depends(_write_rate_limit),
 ):
+    layer_key = _canonical_layer_key(db, layer_key)
     row = db.query(LayerStats).filter(LayerStats.layer_key == layer_key).first()
     if not row:
         raise HTTPException(status_code=404, detail=f"Stats '{layer_key}' no encontrados")
@@ -117,6 +129,7 @@ async def get_stats(
     db: Session = Depends(get_dataengine_db),
     current_user: Usuario = Depends(_require_project_editor),
 ):
+    layer_key = _canonical_layer_key(db, layer_key)
     row = db.query(LayerStats).filter(LayerStats.layer_key == layer_key).first()
     if not row:
         raise HTTPException(status_code=404, detail=f"Stats '{layer_key}' no encontrados")
@@ -132,6 +145,7 @@ async def update_stats(
     _admin: Usuario = Depends(_require_admin),
     _rl: Usuario = Depends(_write_rate_limit),
 ):
+    layer_key = _canonical_layer_key(db, layer_key)
     meta = db.query(LayerMetadata).filter(LayerMetadata.layer_key == layer_key).first()
     if not meta:
         raise HTTPException(status_code=404, detail=f"Metadata '{layer_key}' no encontrada")
@@ -177,6 +191,7 @@ async def get_metadata(
     db: Session = Depends(get_dataengine_db),
     current_user: Usuario = Depends(_require_project_editor),
 ):
+    layer_key = _canonical_layer_key(db, layer_key)
     row = db.query(LayerMetadata).filter(LayerMetadata.layer_key == layer_key).first()
     if not row:
         raise HTTPException(status_code=404, detail=f"Metadata '{layer_key}' no encontrada")
@@ -192,6 +207,7 @@ async def update_metadata(
     _editor: Usuario = Depends(_require_project_editor),
     _rl: Usuario = Depends(_write_rate_limit),
 ):
+    layer_key = _canonical_layer_key(db, layer_key)
     row = db.query(LayerMetadata).filter(LayerMetadata.layer_key == layer_key).first()
     if not row:
         raise HTTPException(status_code=404, detail=f"Metadata '{layer_key}' no encontrada")

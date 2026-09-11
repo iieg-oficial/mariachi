@@ -14,6 +14,14 @@ from app.core.acervo_url import to_absolute, to_relative
 from app.core.bucket_policies import KNOWN_ACERVO_BUCKETS
 from app.core.eventos import EventoEstado
 from app.schemas._camel import CamelCaseInput
+from app.schemas.evento_diversion import (
+    AVISO_MAX_LENGTH,
+    Animacion,
+    BotonEstilo,
+    DestinoDato,
+    DiversionMixin,
+    ModoEvento,
+)
 
 URL_MAX_LENGTH = 2048
 ALIAS_MAX_LENGTH = 200
@@ -81,6 +89,8 @@ class SymbolSnapshot(CamelCaseInput):
 class FactRef(CamelCaseInput):
     text: str = Field(min_length=1, max_length=500)
     symbol: SymbolSnapshot | None = None
+    animacion: Animacion | None = None
+    destino: DestinoDato | None = None
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -152,7 +162,7 @@ class _ImageUrlMixin:
         return to_absolute(v)
 
 
-class _EventoVisibleFields(CamelCaseInput, _ImageUrlMixin):
+class _EventoVisibleFields(CamelCaseInput, _ImageUrlMixin, DiversionMixin):
     """Campos del evento expuestos al visor publico y compartidos por
     EventoBase (admin) y EventoPublicResponse (visor)."""
 
@@ -165,6 +175,10 @@ class _EventoVisibleFields(CamelCaseInput, _ImageUrlMixin):
     facts: list[FactRef] = Field(default_factory=list)
     fun_icon: SymbolSnapshot | None = Field(default=None, serialization_alias='funIcon')
     basemap_id: str | None = Field(default=None, max_length=50, serialization_alias='basemapId')
+    modo: ModoEvento = 'completo'
+    animacion: Animacion = 'pelota'
+    boton_estilo: BotonEstilo | None = Field(default=None, serialization_alias='botonEstilo')
+    aviso_inicial: str | None = Field(default=None, max_length=AVISO_MAX_LENGTH, serialization_alias='avisoInicial')
     fecha_inicio: datetime | None = Field(default=None, serialization_alias='fechaInicio')
     fecha_fin: datetime | None = Field(default=None, serialization_alias='fechaFin')
     orden: int = 0
@@ -182,7 +196,7 @@ class EventoCreate(EventoBase):
     slug: str | None = Field(default=None, min_length=1, max_length=120)
 
 
-class EventoUpdate(CamelCaseInput, _ImageUrlMixin):
+class EventoUpdate(CamelCaseInput, _ImageUrlMixin, DiversionMixin):
     titulo: str | None = Field(default=None, min_length=1, max_length=200)
     descripcion: str | None = Field(default=None, max_length=DESCRIPCION_MAX_LENGTH)
     icono_url: str | None = Field(default=None, max_length=URL_MAX_LENGTH, serialization_alias='iconoUrl')
@@ -192,6 +206,10 @@ class EventoUpdate(CamelCaseInput, _ImageUrlMixin):
     facts: list[FactRef] | None = None
     fun_icon: SymbolSnapshot | None = Field(default=None, serialization_alias='funIcon')
     basemap_id: str | None = Field(default=None, max_length=50, serialization_alias='basemapId')
+    modo: ModoEvento | None = None
+    animacion: Animacion | None = None
+    boton_estilo: BotonEstilo | None = Field(default=None, serialization_alias='botonEstilo')
+    aviso_inicial: str | None = Field(default=None, max_length=AVISO_MAX_LENGTH, serialization_alias='avisoInicial')
     activo: bool | None = None
     fecha_inicio: datetime | None = Field(default=None, serialization_alias='fechaInicio')
     fecha_fin: datetime | None = Field(default=None, serialization_alias='fechaFin')

@@ -131,6 +131,8 @@ api/_docs/
 backups/*.sql.gz
 backups/*.sql.gz.tmp
 backups/backup.log
+backups/roadmap/
+backups/vine/
 restore/*.sql.gz
 restore/*.sql
 restore/*.json

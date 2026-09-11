@@ -23,6 +23,7 @@ from typing import Any
 from openpyxl import Workbook
 from openpyxl.styles import Font
 
+from app.services.sieej.definicion_validator import CLAVE_ETIQUETA
 from app.services.sieej.export_format import format_value
 
 ESTADO_LABEL = {
@@ -180,7 +181,7 @@ def build_envios_tables(
         sid = step.get("id")
         rep_headers = ["Envio ID", "Usuario", "#"] + [
             _header_label(f, sid, vigentes) for f in fields
-        ]
+        ] + ["Nombre de la pestaña"]
         rep_rows: list[list[Any]] = []
         for envio in envios:
             items = (envio.get("datos") or {}).get(sid)
@@ -191,6 +192,7 @@ def build_envios_tables(
                 rep_rows.append(
                     [envio.get("id"), envio.get("usuario_nombre") or "", i + 1]
                     + [_cell(f, item.get(f.get("name"))) for f in fields]
+                    + [item.get(CLAVE_ETIQUETA) or ""]
                 )
         tables.append(
             {"title": step.get("title") or sid, "headers": rep_headers, "rows": rep_rows}

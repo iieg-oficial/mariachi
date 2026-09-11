@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import secrets
 import time
+from datetime import UTC, datetime
 
 from app.core.cache import redis_client, set_cache
 
@@ -12,7 +13,7 @@ _TTL_SECONDS = 60 * 60 * 24 * 30
 
 _KEY_EVENTOS = 'mapalab:public_cache_version:eventos'
 _KEY_HOME = 'mapalab:public_cache_version:home'
-_PAYLOAD_PREFIX = 'mapalab:public_cache:payload'
+_PAYLOAD_PREFIX = 'mapalab:public_cache:payload:v2'
 
 
 def _new_token() -> str:
@@ -76,6 +77,14 @@ def get_cached_eventos() -> tuple[str, str | None]:
 
 def store_cached_eventos(version: str, payload_json: str) -> None:
     _store_payload('eventos', version, payload_json)
+
+
+def schedule_eventos_expiry(when: datetime) -> None:
+    try:
+        instante = when if when.tzinfo else when.replace(tzinfo=UTC)
+        redis_client.expireat(_KEY_EVENTOS, int(instante.timestamp()) + 1)
+    except Exception as exc:
+        logger.warning('No se pudo programar el vencimiento de %s: %s', _KEY_EVENTOS, exc)
 
 
 def get_cached_home() -> tuple[str, str | None]:

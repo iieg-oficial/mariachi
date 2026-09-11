@@ -9,6 +9,107 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.125.1] - 2026-09-10
+
+### Agregado
+
+- La telemetría de mapalab acepta `evento_fun_volver`: el clic en «Volver» del dato curioso pineado
+  tras el viaje de las águilas. Queda en los eventos crudos; el rollup por evento no cambia.
+
+## [1.125.0] - 2026-09-10
+
+### Agregado: eventos lite
+
+Un evento con `modo: lite` no lleva capas: solo enciende el botón de dato curioso en el borde del
+sider del visor. El tipo se elige en Información y oculta las pestañas Capas, Apariencia y
+Geografía. `modo` es `completo` por defecto, así que los eventos existentes no cambian.
+
+La migración `3v3ntl1t30001` agrega a `eventos` las columnas `modo`, `animacion`, `boton_estilo` y
+`aviso_inicial`, con sus defaults.
+
+### Agregado: la pestaña Diversión, con vista previa
+
+- Animación por defecto del evento —pelota o águilas— y animación propia por dato curioso.
+- Ícono del botón dinámico (el símbolo del próximo dato) o fijo. Los símbolos salen de emoji, del
+  catálogo de sextante o de imágenes del Acervo (bucket `iieg`).
+- Estilo del botón: fondo de la paleta y borde libre por tramos (sólido, mitades, tercios), con
+  plantillas México, IIEG, Naranja y Morado; con o sin fondo, con o sin borde.
+- Aviso inicial de hasta 80 caracteres, que el visor muestra una vez por visitante.
+- Vista previa sobre un mapa de Jalisco, con el botón a tamaño real, ×2 y ×4, y «Probar», que corre
+  la animación del siguiente dato. El mensaje se quita solo a los 10 s.
+
+### Agregado: las águilas te llevan a un lugar
+
+Un dato curioso con águilas acepta un `destino` (`lon`, `lat` y `zoom` de 5 a 19): el visor viaja al
+punto mientras vuelan y pinea ahí el dato. El lugar se fija con un clic en el mapa, con el mismo
+selector de los avisos de capa, que pasó a `shared/components/NoticeAnchorField.jsx`. El destino vive
+en el JSON de `facts`, sin columna nueva.
+
+### Cambiado: la caché pública de eventos expira sola en el siguiente cambio
+
+Al cachear `GET /api/mapalab/eventos`, la llave de versión expira en el próximo inicio o fin de un
+evento publicado: uno programado aparece o se retira sin tocar la caché. El payload pasa a
+`mapalab:public_cache:payload:v2` para no servir el que se guardó antes de la migración.
+
+## [1.124.0] - 2026-09-10
+
+### Agregado: dar de alta conjuntos al actualizar un envío enviado
+
+`actualizar-campos` acepta un elemento nuevo al final de un repeater: un índice igual al largo
+actual —y los consecutivos, si se agregan varios— crea el elemento, respetando `maxItems`. Un
+índice con hueco sigue respondiendo «el elemento no existe». El elemento nace marcado con
+`__agregado`, y un alta sin ningún valor no deja un elemento vacío.
+
+En un elemento agregado se puede **completar cualquier campo que siga vacío**, no solo los
+actualizables, archivos incluidos por `actualizar-archivo`. Lo ya lleno se bloquea igual que en los
+demás elementos. Es lo que permite llenar completo un conjunto nuevo: nace al guardar, y sus
+archivos se suben justo después, casi siempre en campos que no son actualizables.
+
+### Agregado: nombre de la pestaña de cada elemento
+
+Quien llena puede ponerle nombre a la pestaña de un elemento. Se guarda dentro del propio
+elemento, en la clave reservada `__etiqueta`: se edita siempre, sin estar marcada como actualizable,
+se recorta a 60 caracteres, vacía regresa al número y deja historial como «Nombre de la pestaña».
+El validador de datos ya ignoraba las claves que no son campos, así que no hubo que tocarlo.
+
+El validador de definiciones rechaza los campos que empiecen con `__`, para que ninguno choque con
+estas claves. El Excel agrega «Nombre de la pestaña» **al final** de cada hoja de repeater, para no
+mover las columnas de quien ya lo consume, y el detalle del envío en el CMS lo muestra junto al
+número del elemento.
+
+## [1.122.4] - 2026-08-26
+
+### Corregido: el editor de metadatos salía vacío en cuatro temas del visor
+
+`mapalab.layer_metadata` está llaveada por `<workspace de GeoServer>:<capa>`, que es como la
+escriben la ingesta masiva y los dumps, y como la lee el visor —resuelve el alias contra
+`mapalab.workspaces` antes de consultar—. El admin armaba la llave con el **alias** tal cual,
+así que en los cuatro workspaces donde el alias no coincide con el nombre real la fila existía
+y el `GET` respondía 404. El front convierte ese 404 en `null` y pinta el formulario en blanco,
+por eso parecía que los metadatos no estaban.
+
+Afectaba a `desarrollo`, `gobierno`, `recursos` y `seguridad`: 65 de los 119 feature types del
+árbol, con sus 70 filas de metadatos y sus `layer_stats` inalcanzables desde el CMS. En el visor
+siempre se vieron bien.
+
+Se resuelve en la API, no en el admin: `GET`/`PUT` de metadatos y de stats y `refresh` traducen
+el alias antes de consultar, así que cubre también los cuatro lugares del front que arman la
+llave por su cuenta. Ninguna llave guardada cambia.
+
+## [1.122.3] - 2026-08-26
+
+### Corregido: los assets del admin salian con dos cabeceras `Cache-Control`
+
+`expires 1y` mas `add_header Cache-Control "public, immutable"` en el mismo bloque: la primera
+directiva **ya emite** `Cache-Control: max-age=31536000` y nginx no las fusiona, asi que cada
+archivo se servia con dos cabeceras distintas. Por eso el gateway hacia `proxy_hide_header
+Cache-Control` sobre `/mariachi/assets/` y la rehacia a mano.
+
+Ahora sale una sola cabecera completa, y el gateway podra dejar de sobreescribirla **una vez que
+este cambio este desplegado** — no antes, o el orden de despliegue decidiria que cabecera llega.
+
+Mismo cambio en mapalab 1.116.5 y en sitio2026, que arrastraban el patron identico.
+
 ## [1.122.2] - 2026-08-26
 
 ### Corregido: los dos mapas del CMS salían con el watermark «API key required» de CARTO

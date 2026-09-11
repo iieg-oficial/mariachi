@@ -55,6 +55,7 @@ ALLOWED_EVENT_NAMES = frozenset({
     "municipio_mode_change",
     "municipio_panel_open",
     "evento_fun_fact",
+    "evento_fun_volver",
     "catalogo_open",
     "catalogo_back",
     "catalogo_search",

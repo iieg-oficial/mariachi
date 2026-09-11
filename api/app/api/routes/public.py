@@ -1,8 +1,9 @@
 import json
 import logging
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Response
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
@@ -20,6 +21,7 @@ from app.services.mapalab_public_cache import (
     get_cached_eventos,
     get_cached_home,
     get_versions,
+    schedule_eventos_expiry,
     store_cached_eventos,
     store_cached_home,
 )
@@ -56,6 +58,14 @@ async def cache_version():
     return get_versions()
 
 
+def proximo_cambio_de_eventos(db: Session, ahora: datetime) -> datetime | None:
+    vigentes = (Evento.estado == 'published', Evento.activo.is_(True))
+    inicio = db.query(func.min(Evento.fecha_inicio)).filter(*vigentes, Evento.fecha_inicio > ahora).scalar()
+    fin = db.query(func.min(Evento.fecha_fin)).filter(*vigentes, Evento.fecha_fin > ahora).scalar()
+    candidatos = [d for d in (inicio, fin) if d is not None]
+    return min(candidatos) if candidatos else None
+
+
 @mapalab_router.get("/eventos", response_model=list[EventoPublicResponse])
 async def eventos_visibles(db: Session = Depends(get_db)):
     version, cached = get_cached_eventos()
@@ -84,6 +94,9 @@ async def eventos_visibles(db: Session = Depends(get_db)):
             logger.warning('Evento %s omitido del listado público: %s', getattr(e, 'id', '?'), exc)
     payload_json = json.dumps(serialized, default=str)
     store_cached_eventos(version, payload_json)
+    proximo = proximo_cambio_de_eventos(db, ahora)
+    if proximo is not None:
+        schedule_eventos_expiry(proximo)
     return _json_response(payload_json)
 
 

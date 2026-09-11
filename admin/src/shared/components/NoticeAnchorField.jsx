@@ -41,6 +41,9 @@ export default function NoticeAnchorField({
     cqlFilter,
     zoomRange,
     defaultZoom,
+    height = 360,
+    layerHint = true,
+    hint = 'Click sobre el mapa para fijar el punto. El rango de zoom se define en el control de abajo.',
 }) {
     const containerRef = useRef(null);
     const mapRef = useRef(null);
@@ -198,7 +201,7 @@ export default function NoticeAnchorField({
 
     return (
         <Space direction="vertical" style={{ width: '100%' }} size={6}>
-            {!geoserverLayer && (
+            {layerHint && !geoserverLayer && (
                 <Alert
                     type="warning"
                     showIcon
@@ -207,7 +210,7 @@ export default function NoticeAnchorField({
                 />
             )}
             <div style={{ position: 'relative' }}>
-                <div ref={containerRef} style={{ width: '100%', height: 360, border: '1px solid #d9d9d9', borderRadius: 6 }} />
+                <div ref={containerRef} style={{ width: '100%', height, border: '1px solid #d9d9d9', borderRadius: 6 }} />
                 {currentZoom != null && (
                     <div style={{
                         position: 'absolute',
@@ -243,7 +246,7 @@ export default function NoticeAnchorField({
                 </Button>
             </Space>
             <Text type="secondary" style={{ fontSize: 11 }}>
-                Click sobre el mapa para fijar el punto. El rango de zoom se define en el control de abajo.
+                {hint}
             </Text>
             {value && (
                 <Text type="secondary" style={{ fontSize: 11 }}>

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router';
 import dayjs from 'dayjs';
-import { Alert, Button, Card, DatePicker, Form, Input, InputNumber, Layout, Modal, Select, Space, Spin, Switch, Tabs, Tag, Typography } from 'antd';
+import { Alert, Button, Card, DatePicker, Form, Input, InputNumber, Layout, Modal, Segmented, Select, Space, Spin, Switch, Tabs, Tag, Typography } from 'antd';
 import {
     ArrowLeftOutlined,
     CheckOutlined,
@@ -29,9 +29,9 @@ import EventoIconPicker from '@features/mapalab-eventos/components/EventoIconPic
 import BBoxField from '@features/mapalab-eventos/components/BBoxField';
 import CapasField from '@features/mapalab-eventos/components/CapasField';
 import DeleteEventoModal from '@features/mapalab-eventos/components/DeleteEventoModal';
-import FactsField from '@features/mapalab-eventos/components/FactsField';
 import MarkdownTextArea from '@shared/components/MarkdownTextArea';
-import SymbolSnapshotField from '@features/mapalab-eventos/components/SymbolSnapshotField';
+import DiversionTab from '@features/mapalab-eventos/components/DiversionTab';
+import { MODOS_EVENTO } from '@features/mapalab-eventos/constants/diversion';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import usePresencia from '@shared/hooks/usePresencia';
 import PresenciaIndicator from '@shared/components/PresenciaIndicator';
@@ -68,8 +68,10 @@ function normalizeCapas(capas) {
     });
 }
 
+const TABS_SOLO_COMPLETO = ['capas', 'apariencia', 'geografia'];
+
 function eventoToForm(e) {
-    if (!e) return { activo: false, capas: [], facts: [], funIcon: null, orden: 0 };
+    if (!e) return { activo: false, capas: [], facts: [], funIcon: null, orden: 0, modo: 'completo', animacion: 'pelota', botonEstilo: null, avisoInicial: null };
     return {
         titulo: e.titulo,
         slug: e.slug,
@@ -79,10 +81,16 @@ function eventoToForm(e) {
         bbox: e.bbox,
         capas: normalizeCapas(e.capas),
         facts: Array.isArray(e.facts)
-            ? e.facts.map((f) => (typeof f === 'string' ? { text: f, symbol: null } : { text: f?.text || '', symbol: f?.symbol || null }))
+            ? e.facts.map((f) => (typeof f === 'string'
+                ? { text: f, symbol: null, animacion: null, destino: null }
+                : { text: f?.text || '', symbol: f?.symbol || null, animacion: f?.animacion || null, destino: f?.destino || null }))
             : [],
         funIcon: e.funIcon || null,
         basemapId: e.basemapId || null,
+        modo: e.modo || 'completo',
+        animacion: e.animacion || 'pelota',
+        botonEstilo: e.botonEstilo || null,
+        avisoInicial: e.avisoInicial || null,
         activo: e.activo,
         fechaInicio: e.fechaInicio ? dayjs(e.fechaInicio) : null,
         fechaFin: e.fechaFin ? dayjs(e.fechaFin) : null,
@@ -106,11 +114,11 @@ function formToPayload(values, { isCreate }) {
                 if (!f) return null;
                 if (typeof f === 'string') {
                     const t = f.trim();
-                    return t ? { text: t, symbol: null } : null;
+                    return t ? { text: t, symbol: null, animacion: null, destino: null } : null;
                 }
                 const text = typeof f.text === 'string' ? f.text.trim() : '';
                 if (!text) return null;
-                return { text, symbol: f.symbol || null };
+                return { text, symbol: f.symbol || null, animacion: f.animacion || null, destino: f.destino || null };
             })
             .filter(Boolean)
         : [];
@@ -125,6 +133,10 @@ function formToPayload(values, { isCreate }) {
         facts: cleanFacts,
         funIcon: values.funIcon || null,
         basemapId: values.basemapId || null,
+        modo: values.modo || 'completo',
+        animacion: values.animacion || 'pelota',
+        botonEstilo: values.botonEstilo || null,
+        avisoInicial: values.avisoInicial?.trim() || null,
         activo: Boolean(values.activo),
         fechaInicio: values.fechaInicio ? values.fechaInicio.toISOString() : null,
         fechaFin: values.fechaFin ? values.fechaFin.toISOString() : null,
@@ -142,6 +154,7 @@ export default function EventoEditPage() {
     const { isMobile } = useIsMobile();
     const { evento, loading, error, reload } = useEvento(isCreate ? null : id);
     const [form] = Form.useForm();
+    const modo = Form.useWatch('modo', form);
     const [saving, setSaving] = useState(false);
     const [acting, setActing] = useState(false);
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -165,7 +178,7 @@ export default function EventoEditPage() {
         if (!isCreate && evento) {
             form.setFieldsValue(eventoToForm(evento));
         } else if (isCreate) {
-            form.setFieldsValue({ activo: false, capas: [], facts: [], funIcon: null, orden: 0 });
+            form.setFieldsValue({ activo: false, capas: [], facts: [], funIcon: null, orden: 0, modo: 'completo', animacion: 'pelota', botonEstilo: null, avisoInicial: null });
         }
     }, [evento, isCreate, form]);
 
@@ -402,6 +415,13 @@ export default function EventoEditPage() {
                                     children: (
                                         <>
                                             <Form.Item
+                                                name="modo"
+                                                label="Tipo de evento"
+                                                extra="Lite: sin capas ni mapa; solo fechas, datos curiosos y el botón del borde."
+                                            >
+                                                <Segmented options={MODOS_EVENTO} />
+                                            </Form.Item>
+                                            <Form.Item
                                                 name="titulo"
                                                 label="Título"
                                                 rules={[{ required: true, message: 'El título es obligatorio' }]}
@@ -497,31 +517,7 @@ export default function EventoEditPage() {
                                     key: 'diversion',
                                     forceRender: true,
                                     label: <span><SmileOutlined /> Diversión</span>,
-                                    children: (
-                                        <>
-                                            <Alert
-                                                type="info"
-                                                showIcon
-                                                style={{ marginBottom: 16 }}
-                                                message="Botón lúdico del evento"
-                                                description="Cuando el evento tiene al menos un dato curioso, el visor muestra un botón pequeño en la barra de acciones. Al presionarlo, sale el ícono rebotando hacia abajo y aparece un mensaje con un dato del pool. Los datos se muestran sin repetir hasta agotar el pool."
-                                            />
-                                            <Form.Item
-                                                name="funIcon"
-                                                label="Ícono del botón lúdico"
-                                                extra="Símbolo del catálogo de MapaLab. Si no eliges nada, el visor usa un balón ⚽ por defecto."
-                                            >
-                                                <SymbolSnapshotField placeholder="⚽ Balón (default)" />
-                                            </Form.Item>
-                                            <Form.Item
-                                                name="facts"
-                                                label="Datos curiosos"
-                                                extra="Si dejas la lista vacía, el botón no aparece en el visor."
-                                            >
-                                                <FactsField />
-                                            </Form.Item>
-                                        </>
-                                    ),
+                                    children: <DiversionTab />,
                                 },
                                 {
                                     key: 'geografia',
@@ -533,7 +529,7 @@ export default function EventoEditPage() {
                                         </Form.Item>
                                     ),
                                 },
-                            ]}
+                            ].filter((item) => modo !== 'lite' || !TABS_SOLO_COMPLETO.includes(item.key))}
                         />
                     </Card>
                 </Form>

@@ -38,12 +38,16 @@ from app.services.sieej.acervo_keys import (
 from app.services.sieej.cambio_classifier import diff_definiciones
 from app.services.sieej.compat import BUCKET_POR_DEFECTO, normalizar_definicion
 from app.services.sieej.datos_validator import DatosInvalidosError, validar_datos
+from app.services.sieej.definicion_validator import CLAVE_AGREGADO, CLAVE_ETIQUETA
 
 logger = logging.getLogger(__name__)
 
 _FORMULARIO_NO_ACEPTA_DETAIL = (
     "El formulario esta cerrado y no acepta cambios"
 )
+
+ETIQUETA_MAX = 60
+_ETIQUETA_LABEL = "Nombre de la pestaña"
 
 DATOS_MAX_BYTES = 5 * 1024 * 1024
 """Cap de tamano del payload `datos` (JSONB) por envio.
@@ -335,6 +339,13 @@ class EnviosService:
         Se identifica por `envio_id` (no por formulario+usuario) para no
         ambiguar en formularios periodicos, donde un usuario tiene un envio por
         periodo.
+
+        En un repeater tambien da de alta elementos: un indice igual al largo
+        actual (y los consecutivos) crea un elemento nuevo al final, respetando
+        `maxItems`. Ese elemento queda marcado con `CLAVE_AGREGADO` y en el se
+        puede completar cualquier campo que siga vacio, no solo los
+        actualizables. El nombre de la pestaña (`CLAVE_ETIQUETA`) se edita
+        siempre, sin marca.
         """
         envio = (
             self.db.query(EnvioFormulario)
@@ -372,32 +383,27 @@ class EnviosService:
                 status_code=status.HTTP_409_CONFLICT,
                 detail=_FORMULARIO_NO_ACEPTA_DETAIL,
             )
-        defs = self.editable_field_defs(
-            envio.definicion_snapshot or {}, formulario.definicion
-        )
-        errores: list[dict[str, str]] = []
-        metas: dict[str, dict[str, Any]] = {}
+        snapshot = envio.definicion_snapshot or {}
+        defs = self.editable_field_defs(snapshot, formulario.definicion)
+        todos = self.editable_field_defs(snapshot, solo_editables=False)
         nuevos = copy.deepcopy(envio.datos or {})
+        errores = self._preparar_altas(snapshot, nuevos, campos)
+        metas: dict[str, dict[str, Any]] = {}
         for field_path in campos:
-            meta = self.resolver_editable(defs, field_path)
-            if meta is None:
-                errores.append({"field_path": field_path, "error": "campo no editable"})
+            if any(e["field_path"] == field_path for e in errores):
                 continue
-            if meta["type"] == "file":
-                errores.append(
-                    {
-                        "field_path": field_path,
-                        "error": (
-                            "los archivos se reemplazan con "
-                            "`actualizar-archivo`, no con este endpoint"
-                        ),
-                    }
+            meta, error = self._resolver_actualizable(defs, todos, nuevos, field_path)
+            if meta is not None and meta["type"] == "file":
+                error = (
+                    "los archivos se reemplazan con "
+                    "`actualizar-archivo`, no con este endpoint"
                 )
-                continue
-            if self._scope_de_path(nuevos, field_path) is None and meta["repeater"]:
-                errores.append(
-                    {"field_path": field_path, "error": "el elemento no existe"}
-                )
+            elif meta is not None and meta["type"] == "etiqueta" and not isinstance(
+                campos[field_path], (str, type(None))
+            ):
+                error = "el nombre de la pestaña debe ser texto"
+            if error:
+                errores.append({"field_path": field_path, "error": error})
                 continue
             metas[field_path] = meta
         if errores:
@@ -408,6 +414,8 @@ class EnviosService:
 
         cambios: list[tuple[str, Any, Any]] = []
         for field_path, valor_nuevo in campos.items():
+            if metas[field_path]["type"] == "etiqueta":
+                valor_nuevo = (valor_nuevo or "").strip()[:ETIQUETA_MAX] or None
             valor_anterior = self._get_valor_en_datos(nuevos, field_path)
             if valor_anterior == valor_nuevo:
                 continue
@@ -632,6 +640,8 @@ class EnviosService:
     def editable_field_defs(
         definicion: dict[str, Any],
         vigente: dict[str, Any] | None = None,
+        *,
+        solo_editables: bool = True,
     ) -> dict[str, dict[str, Any]]:
         """Mapa `step_id.field_name` -> `{label, type, repeater, field}` de los
         campos marcados `editableAfterSubmit`.
@@ -651,6 +661,9 @@ class EnviosService:
         datos sino una politica del admin, y activarla debe alcanzar a los
         envios ya enviados — que es justo lo que se quiere corregir. Un campo
         que no exista en el snapshot no es editable aunque la vigente lo marque.
+
+        Con `solo_editables=False` devuelve todo lo capturable: es contra lo que
+        se resuelve un elemento dado de alta despues de enviar.
         """
         marcas_vigentes = EnviosService._marcas_editables(vigente) if vigente else {}
         editables: dict[str, dict[str, Any]] = {}
@@ -667,7 +680,7 @@ class EnviosService:
                 editable = marcas_vigentes.get(
                     path, bool(field.get("editableAfterSubmit"))
                 )
-                if not editable:
+                if solo_editables and not editable:
                     continue
                 editables[path] = {
                     "label": field.get("label") or name,
@@ -711,6 +724,97 @@ class EnviosService:
         return out
 
     @staticmethod
+    def _es_vacio(valor: Any) -> bool:
+        return valor is None or valor == "" or valor == [] or valor == {}
+
+    def _resolver_actualizable(
+        self,
+        defs: dict[str, dict[str, Any]],
+        todos: dict[str, dict[str, Any]],
+        datos: dict[str, Any],
+        field_path: str,
+    ) -> tuple[dict[str, Any] | None, str | None]:
+        """Metadata del campo que se quiere actualizar, o el motivo del rechazo.
+
+        Tres puertas, en orden: el nombre de la pestaña de un elemento, que se
+        edita siempre; un campo marcado actualizable; y cualquier campo vacio
+        de un elemento dado de alta despues de enviar, que se puede completar.
+        """
+        parsed = self._parse_field_path(field_path)
+        if parsed is None:
+            return None, "campo no editable"
+        step_id, idx, field_name = parsed
+        scope = self._scope_de_path(datos, field_path)
+        if field_name == CLAVE_ETIQUETA:
+            es_repeater = any(
+                meta["repeater"]
+                for path, meta in todos.items()
+                if path.startswith(f"{step_id}.")
+            )
+            if idx is None or not es_repeater:
+                return None, "campo no editable"
+            if scope is None:
+                return None, "el elemento no existe"
+            return {"label": _ETIQUETA_LABEL, "type": "etiqueta", "repeater": True, "field": {}}, None
+        meta = self.resolver_editable(defs, field_path)
+        if meta is None and scope is not None and scope.get(CLAVE_AGREGADO):
+            if self._es_vacio(scope.get(field_name)):
+                meta = self.resolver_editable(todos, field_path)
+        if meta is None:
+            return None, "campo no editable"
+        if meta["repeater"] and scope is None:
+            return None, "el elemento no existe"
+        return meta, None
+
+    def _preparar_altas(
+        self,
+        definicion: dict[str, Any],
+        datos: dict[str, Any],
+        campos: dict[str, Any],
+    ) -> list[dict[str, str]]:
+        """Agrega a `datos` los elementos nuevos que pide el payload.
+
+        Un elemento nuevo es un indice igual o mayor al largo actual del
+        repeater. Los indices nuevos tienen que ser consecutivos desde ese
+        largo —no se pueden dejar huecos— y no pasar de `maxItems`. Cada alta
+        nace marcada con `CLAVE_AGREGADO`. Devuelve los errores por path.
+        """
+        pasos = {
+            step.get("id"): step
+            for step in (definicion or {}).get("steps", []) or []
+            if step.get("type") == "repeater"
+        }
+        pedidos: dict[str, dict[int, list[str]]] = {}
+        for field_path in campos:
+            parsed = self._parse_field_path(field_path)
+            if parsed is None or parsed[1] is None or parsed[0] not in pasos:
+                continue
+            step_id, idx, _ = parsed
+            actuales = datos.get(step_id)
+            largo = len(actuales) if isinstance(actuales, list) else 0
+            if idx >= largo:
+                pedidos.setdefault(step_id, {}).setdefault(idx, []).append(field_path)
+
+        errores: list[dict[str, str]] = []
+        for step_id, por_indice in pedidos.items():
+            actuales = datos.get(step_id)
+            largo = len(actuales) if isinstance(actuales, list) else 0
+            indices = sorted(por_indice)
+            maximo = pasos[step_id].get("maxItems")
+            if indices != list(range(largo, largo + len(indices))):
+                motivo = "el elemento no existe"
+            elif isinstance(maximo, int) and largo + len(indices) > maximo:
+                motivo = f"se alcanzo el maximo de {maximo} elementos"
+            else:
+                if not isinstance(actuales, list):
+                    datos[step_id] = []
+                datos[step_id].extend({CLAVE_AGREGADO: True} for _ in indices)
+                continue
+            for paths in por_indice.values():
+                errores.extend({"field_path": p, "error": motivo} for p in paths)
+        return errores
+
+    @staticmethod
     def resolver_editable(
         defs: dict[str, dict[str, Any]], field_path: str
     ) -> dict[str, Any] | None:
@@ -737,8 +841,8 @@ class EnviosService:
     ) -> dict[str, Any] | None:
         """Devuelve el dict que contiene el campo del path, o None.
 
-        En un repeater es el item del indice, que debe existir: la
-        actualizacion ligera corrige respuestas, no da de alta items nuevos.
+        En un repeater es el item del indice, que debe existir. Las altas de
+        la actualizacion ligera las agrega antes `_preparar_altas`.
         """
         parsed = EnviosService._parse_field_path(field_path)
         if parsed is None:
@@ -879,16 +983,22 @@ class EnviosService:
                 detail=_FORMULARIO_NO_ACEPTA_DETAIL,
             )
 
-        defs = self.editable_field_defs(
-            envio.definicion_snapshot or {}, formulario.definicion
+        snapshot = envio.definicion_snapshot or {}
+        meta, error = self._resolver_actualizable(
+            self.editable_field_defs(snapshot, formulario.definicion),
+            self.editable_field_defs(snapshot, solo_editables=False),
+            envio.datos or {},
+            field_path,
         )
-        meta = self.resolver_editable(defs, field_path)
         if meta is None or meta["type"] != "file":
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail={
                     "errores": [
-                        {"field_path": field_path, "error": "campo no editable"}
+                        {
+                            "field_path": field_path,
+                            "error": error or "campo no editable",
+                        }
                     ]
                 },
             )
