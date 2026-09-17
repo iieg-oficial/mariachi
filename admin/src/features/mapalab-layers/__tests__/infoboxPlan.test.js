@@ -46,7 +46,7 @@ describe('buildCardPlan', () => {
 
     it('la suma sí se formatea', () => {
         const p = plan({ cards: [{ label: 'Total', compose: ['hombres', 'mujeres'], op: 'sum' }] });
-        expect(bloque(p, 'cards').cards[0].value).toBe('12 321');
+        expect(bloque(p, 'cards').cards[0].value).toBe('12,321');
     });
 
     it('parte los multivalor por punto y coma', () => {

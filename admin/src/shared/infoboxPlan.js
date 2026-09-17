@@ -12,7 +12,7 @@ export const MULTIVALOR_SPLIT = /\s*;\s*/;
 
 export const BODY_TYPES = ['labelGroups', 'list', 'iconText', 'text', 'cards'];
 
-const NBSP = ' ';
+const SEPARADOR_MILES = ',';
 
 const MESES = [
     'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -28,6 +28,19 @@ const ESTILO_LABELS_LEGADO = { color: '#7B61FF', bg: '#F3F0FF' };
 const esVacio = (v) => v === null || v === undefined || v === '';
 const esBlanco = (v) => v === null || v === undefined || String(v).trim() === '';
 
+const PREFIJO_ISO = /^(\d{4})-\d{2}-\d{2}/;
+
+const anioDe = (valor) => {
+    const texto = String(valor).trim();
+    if (PREFIJO_ISO.test(texto)) return texto.slice(0, 4);
+    const fecha = new Date(texto);
+    return Number.isNaN(fecha.getTime()) ? null : String(fecha.getUTCFullYear());
+};
+
+export const aplicarFormato = (valor, formato) => (
+    formato !== 'anio' || esVacio(valor) ? valor : anioDe(valor) ?? valor
+);
+
 export const formatNumber = (value) => {
     if (esVacio(value)) return value;
     const str = String(value);
@@ -36,7 +49,7 @@ export const formatNumber = (value) => {
     const negativo = entera.startsWith('-');
     const digitos = negativo ? entera.slice(1) : entera;
     if (digitos.length <= 3 || !/^\d+$/.test(digitos)) return str;
-    const agrupado = digitos.replace(/\B(?=(\d{3})+(?!\d))/g, NBSP);
+    const agrupado = digitos.replace(/\B(?=(\d{3})+(?!\d))/g, SEPARADOR_MILES);
     const conSigno = negativo ? `-${agrupado}` : agrupado;
     return partes.length > 1 ? `${conSigno}.${partes[1]}` : conSigno;
 };
@@ -250,7 +263,7 @@ const planLabelGroups = ({ items, resolve, dateValue }) => {
         });
         (grupo.fields || []).map((f) => (typeof f === 'string' ? { field: f } : f)).forEach((def) => {
             if (!def || (!def.field && !def.compose)) return;
-            const valor = resolve(def);
+            const valor = aplicarFormato(resolve(def), def.formato);
             if (esVacio(valor)) return;
             const comun = {
                 color: def.color || grupo.color,
@@ -273,8 +286,8 @@ const planList = ({ items, resolve, getValue, suffix }) => {
         .filter((row) => incluyeCampo(row.field, suffix))
         .map((row) => {
             const crudo = resolve(row);
-            const sinFormato = row.raw || isJoinedDef(row);
-            const conFecha = formatoPorEtiqueta(row.label, crudo);
+            const sinFormato = row.raw || row.formato || isJoinedDef(row);
+            const conFecha = row.formato ? aplicarFormato(crudo, row.formato) : formatoPorEtiqueta(row.label, crudo);
             return {
                 label: row.label,
                 value: sinFormato ? conFecha : formatNumber(conFecha),
@@ -289,7 +302,7 @@ const planList = ({ items, resolve, getValue, suffix }) => {
 const planIconText = ({ items, resolve, getValue, allowActions }) => {
     const validos = items
         .filter(Boolean)
-        .map((item) => ({ item, fieldValue: resolve(item) }))
+        .map((item) => ({ item, fieldValue: aplicarFormato(resolve(item), item.formato) }))
         .filter(({ item, fieldValue }) => item.label || fieldValue || item.value)
         .filter(({ item }) => allowActions || item.action !== 'report');
     const salida = validos.map(({ item, fieldValue }, idx) => {
@@ -312,7 +325,7 @@ const planText = ({ items, resolve, getValue }) => {
     const salida = items
         .map((it) => ({
             label: it.label || null,
-            value: resolve(it),
+            value: aplicarFormato(resolve(it), it.formato),
             href: resolveHref(it.href, getValue),
         }))
         .filter((it) => it.label || it.value);
@@ -324,8 +337,8 @@ const planCards = ({ items, resolve, suffix, config, variant }) => {
         .filter(Boolean)
         .filter((c) => incluyeCampo(c.field, suffix))
         .map((card) => {
-            const crudo = resolve(card);
-            const sinFormato = card.raw || isJoinedDef(card);
+            const crudo = aplicarFormato(resolve(card), card.formato);
+            const sinFormato = card.raw || card.formato || isJoinedDef(card);
             let valor;
             if (sinFormato) valor = crudo ?? '';
             else if (card.decimals != null && typeof crudo === 'number') valor = formatNumber(crudo.toFixed(card.decimals));
