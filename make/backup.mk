@@ -32,18 +32,21 @@ restores: ## Elegir que restaurar, en vez de recordar el target
 	if [ -z "$$env" ]; then nothing_running 'RESTORES'; exit 0; fi
 	if [ ! -t 0 ]; then
 		fail 'Entrada:el selector necesita una terminal' \
-			'Sin tty, pick elige la primera opcion sola y aqui la primera restaura la base entera. Llama al target directo: restore-db, restore-vine, restore-roadmap o restore-tarjetitas.'
+			'Sin tty, pick elige la primera opcion sola y aqui cualquiera escribe en la base. Llama al target directo: restore-db, restore-vine, restore-roadmap o restore-tarjetitas.'
 	fi
 	row 'Entorno' "$$env"
 	rule
-	elegido=$$(pick 'Que restaurar' 'vine' 'roadmap' 'tarjetitas' 'postgres — la base entera')
+	elegido=$$(pick 'Que restaurar' 'vine' 'roadmap' 'tarjetitas' 'postgres — la base entera' 'todo — postgres + tarjetitas')
 	if [ -z "$$elegido" ]; then exit 1; fi
 	case "$$elegido" in
-		postgres*) objetivo='restore-db' ;;
-		*) objetivo="restore-$$elegido" ;;
+		todo*) objetivos='restore-db restore-tarjetitas' ;;
+		postgres*) objetivos='restore-db' ;;
+		*) objetivos="restore-$$elegido" ;;
 	esac
 	rule
-	$(MAKE) --no-print-directory "$$objetivo"
+	for objetivo in $$objetivos; do
+		$(MAKE) --no-print-directory "$$objetivo"
+	done
 
 backup-db: ## Respaldo de Postgres con rotacion GFS, solo produccion
 	@$(LIB)

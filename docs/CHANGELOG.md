@@ -9,6 +9,18 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.93.3] - 2026-09-17
+
+### Agregado: `make restores` puede dejar mariachi entero como el respaldo
+
+El selector solo dejaba elegir uno de los cuatro, y quien queria volver al estado
+completo tenia que saber que `restore-db` no trae las tarjetitas, porque viven en
+dataengine. La opcion **`todo — postgres + tarjetitas`** corre esos dos en ese orden.
+
+No hay opcion de «los cuatro» a proposito: `vine` es un schema de la misma base y
+`roadmap` unas tablas de la misma base, asi que el dump de postgres ya los contiene.
+Reaplicarlos encima mezclaria snapshots de fechas distintas sin que se note.
+
 ## [2.93.2] - 2026-09-17
 
 ### Corregido: el restore podia vaciar la base con un archivo que no servia
