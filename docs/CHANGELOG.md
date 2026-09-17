@@ -9,6 +9,50 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.93.2] - 2026-09-17
+
+### Corregido: el restore podia vaciar la base con un archivo que no servia
+
+`postgres-restore.sh` dropeaba los schemas del dump antes de comprobar que el
+archivo sirviera. La deteccion de schemas corre detras de una tuberia y el
+script es `sh`, que no tiene `pipefail`: el estado que se evalua es el de `tr`,
+no el de `gunzip`. Con un `.sql.gz` truncado —probado cortando un dump a
+400 KB— `gunzip` imprimia `unexpected end of file`, el script seguia adelante
+con la lista parcial, dropeaba los schemas y recien entonces psql fallaba a la
+mitad. La base quedaba vacia y sin dump aplicado.
+
+Ahora `gunzip -t` corre solo, fuera de cualquier tuberia, y se exige el
+marcador `-- PostgreSQL database dump complete` al final del archivo.
+
+### Corregido: el selector ofrecia dumps de otros proyectos
+
+`restore/` y `backups/` tambien reciben los dumps de vine y roadmap, y el
+selector listaba cualquier `.sql.gz` sin preguntarse de quien era. Aplicar el de
+vine metia un schema `vine` en la base de mariachi; el de roadmap entra directo
+a `public`, donde sus `DROP TABLE IF EXISTS` podrian llevarse tablas nuestras si
+los nombres coincidieran.
+
+El restore gana el mismo gate que ya tenia el backup: si al dump le faltan
+schemas de `EXPECTED_SCHEMAS`, se rechaza antes de tocar nada. El override
+`EXPECTED_SCHEMAS='...'` sigue disponible para restaurar dumps mas viejos que la
+lista actual de siete.
+
+### Corregido: un restore a medias dejaba la base a medias
+
+psql corria sin `--single-transaction`, asi que un error a la mitad dejaba los
+DROP hechos y el dump a medio aplicar. Los DROP ahora viajan en el mismo stream
+que el dump y todo corre en una transaccion: si algo falla, la base queda como
+estaba. Verificado inyectando un error al final del stream contra una base
+desechable, psql salio con codigo 3 y no quedo ninguna tabla.
+
+### Cambiado: `public` se limpia como los demas schemas
+
+Se dropeaban con CASCADE solo los schemas que el dump declara con
+`CREATE SCHEMA`, y `public` no aparece ahi. En `public` sobrevivia entonces lo
+que el dump no conocia, mientras que en los otros seis se borraba todo. Ahora
+`public` se dropea y se recrea igual, de modo que la base queda identica al
+dump. `CLEAN_PUBLIC=false` conserva el comportamiento anterior.
+
 ## [2.93.1] - 2026-09-07
 
 ### Corregido: cada carpeta ausente dejaba un stacktrace en el log de GeoServer
