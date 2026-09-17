@@ -123,6 +123,7 @@ class _ValueDef(_Strict):
 class InfoboxListRow(_ValueDef):
     label: str = Field(..., min_length=1, max_length=MAX_LABEL_LEN)
     href: str | None = Field(default=None)
+    formato: Literal['anio'] | None = Field(default=None)
 
     _check_href = field_validator('href')(lambda cls, v: _validate_href(v))
 
@@ -131,6 +132,8 @@ class InfoboxListRow(_ValueDef):
         config['label'] = self.label
         if self.href is not None:
             config['href'] = self.href
+        if self.formato is not None:
+            config['formato'] = self.formato
         return config
 
 
@@ -163,6 +166,7 @@ class InfoboxCard(_ValueDef):
 class InfoboxTextItem(_ValueDef):
     label: str | None = Field(default=None, max_length=MAX_LABEL_LEN)
     href: str | None = Field(default=None)
+    formato: Literal['anio'] | None = Field(default=None)
 
     _check_href = field_validator('href')(lambda cls, v: _validate_href(v))
 
@@ -172,6 +176,8 @@ class InfoboxTextItem(_ValueDef):
             config['label'] = self.label
         if self.href is not None:
             config['href'] = self.href
+        if self.formato is not None:
+            config['formato'] = self.formato
         return config
 
 

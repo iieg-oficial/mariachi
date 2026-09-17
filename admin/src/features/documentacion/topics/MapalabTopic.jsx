@@ -44,11 +44,11 @@ const FLUJO_COLUMNS = [
 
 const PERMITIDO = [
     { clave: 'headerField', tipo: 'string u objeto', nota: 'Campo que da el título de la tarjeta. También acepta un compose para armarlo de varias columnas.' },
-    { clave: 'list', tipo: 'array (máx. 12)', nota: 'Filas etiqueta–valor. Cada una: field o compose, label y href opcional.' },
+    { clave: 'list', tipo: 'array (máx. 12)', nota: 'Filas etiqueta–valor. Cada una: field o compose, label, href opcional y formato «anio» opcional.' },
     { clave: 'cards', tipo: 'array (máx. 12)', nota: 'Cajas de numeralia. Cada una: field o compose, label, suffix, decimals (0–4) y op.' },
     { clave: 'compose', tipo: 'array (máx. 6)', nota: 'Une varias columnas en un valor. Cada parte: field con prefix y suffix opcionales; el pegamento es sep (por defecto «, »). Va en lugar de field, nunca junto a él.' },
     { clave: 'op', tipo: "'sum'", nota: 'Solo en cards con compose: suma las columnas numéricas en vez de unirlas como texto. Sin op, se une texto.' },
-    { clave: 'text', tipo: 'array (máx. 3)', nota: 'Bloques de texto con id e items (field o compose, label, href).' },
+    { clave: 'text', tipo: 'array (máx. 3)', nota: 'Bloques de texto con id e items (field o compose, label, href, formato).' },
     { clave: 'blockOrder', tipo: 'array', nota: 'Orden de los bloques. Solo list, cards y text:<id>.' },
 ];
 

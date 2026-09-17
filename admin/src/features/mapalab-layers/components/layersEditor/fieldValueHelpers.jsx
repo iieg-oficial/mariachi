@@ -2,7 +2,7 @@ import { Typography } from 'antd';
 
 const { Text } = Typography;
 
-const VALUE_KEYS = ['field', 'compose', 'sep', 'op'];
+const VALUE_KEYS = ['field', 'compose', 'sep', 'op', 'formato'];
 
 export const fieldOptionsFor = (availableFields, currentValues = [], samplesOf = null) => {
     const opts = (availableFields || []).map((f) => {

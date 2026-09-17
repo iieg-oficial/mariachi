@@ -4002,6 +4002,20 @@ migración posterior, una vez confirmado que nadie quedó fuera.
 - `GET /autenticacion/login` y `GET /autenticacion/callback`.
 - `permissions` en la respuesta de `GET /autenticacion/perfil`, y los helpers `can()` / `canAny()`
   en el frontend para ocultar menús y proteger rutas por permiso.
+## [1.126.0] - 2026-09-11
+
+### Agregado
+
+- Formato de año en el editor de tarjetitas: botón «año» en renglones de lista, íconos con texto y
+  párrafos, y selector «Solo el año» en cada grupo de etiquetas. Escribe `formato: 'anio'`, que
+  mapalab ≥ 1.116.17 pinta como `2026` en vez de `2026-01-01`. La vista previa ya lo aplica.
+- Las propuestas ciudadanas aceptan y conservan `formato: 'anio'` en lista y texto; cualquier otro
+  valor se rechaza. Antes, aprobar una propuesta sobre una capa con formato lo perdía.
+
+### Corregido
+
+- El editor de etiquetas ya no reordena el grupo: al tocar el selector de campos, los campos con
+  estilo propio se iban al final.
 
 ## [1.125.1] - 2026-09-10
 

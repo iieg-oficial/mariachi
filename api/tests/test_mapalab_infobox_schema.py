@@ -165,3 +165,18 @@ def test_afijos_y_separador_tienen_tope():
         _valida({'list': [{'compose': [{'field': 'a', 'prefix': 'x' * 40}], 'label': 'A'}]})
     with pytest.raises(ValidationError):
         _valida({'list': [{'compose': ['a'], 'sep': 'x' * 40, 'label': 'A'}]})
+
+def test_formato_anio_se_conserva_en_lista_y_texto():
+    cfg = _valida({
+        'list': [{'field': 'fecha', 'label': 'Año', 'formato': 'anio'}],
+        'text': [{'id': 't1', 'items': [{'field': 'fecha', 'formato': 'anio'}]}],
+    })
+    config = cfg.to_config()
+    assert config['list'] == [{'field': 'fecha', 'label': 'Año', 'formato': 'anio'}]
+    assert config['text'][0]['items'] == [{'field': 'fecha', 'formato': 'anio'}]
+
+
+@pytest.mark.parametrize('formato', ['mes', 'ANIO', ''])
+def test_formato_desconocido_se_rechaza(formato):
+    with pytest.raises(ValidationError):
+        _valida({'headerField': 'n', 'list': [{'field': 'f', 'label': 'F', 'formato': formato}]})

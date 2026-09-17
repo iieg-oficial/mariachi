@@ -1,6 +1,8 @@
 import { Button, Input, Segmented, Select, Space, Tooltip, Typography } from 'antd';
 import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { fieldOptionsFor, isComposed, normalizeComposeParts } from './fieldValueHelpers.jsx';
+import FormatoAnioToggle from './FormatoAnioToggle';
+import { FORMATO_ANIO } from './formatoCampo';
 import { useSampleFeatures } from './sampleFeaturesContext';
 
 const { Text } = Typography;
@@ -164,13 +166,21 @@ export const FieldValueField = ({
                 />
             )}
             {mode === 'field' && (
-                <FieldSelect
-                    style={selectStyle || { width: '100%' }}
-                    value={value?.field}
-                    onChange={(v) => onChange({ field: v })}
-                    availableFields={availableFields}
-                    placeholder={placeholder}
-                />
+                <Space.Compact style={{ width: '100%' }}>
+                    <FieldSelect
+                        style={selectStyle || { flex: 1 }}
+                        value={value?.field}
+                        onChange={(v) => onChange({ field: v })}
+                        availableFields={availableFields}
+                        placeholder={placeholder}
+                    />
+                    <FormatoAnioToggle
+                        item={value}
+                        onChange={(activo) => onChange(
+                            activo ? { field: value?.field, formato: FORMATO_ANIO } : { field: value?.field },
+                        )}
+                    />
+                </Space.Compact>
             )}
         </Space>
     );
