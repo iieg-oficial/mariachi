@@ -86,6 +86,7 @@ logs/
 # OS
 Thumbs.db
 *.bak
+*.bak-*
 *.backup
 
 # Secrets and credentials
