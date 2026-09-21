@@ -219,9 +219,18 @@ export default function GeoserverFilesPage() {
                     {currentPath
                         ? <GeoserverPathBreadcrumb currentPath={currentPath} onNavigate={setCurrentPath} />
                         : <span />}
-                    <Text type="secondary" style={{ fontSize: 12 }}>
-                        {visibleFolders.length} carpeta(s) · {data.files.length} archivo(s)
-                    </Text>
+                    <GeoserverFilesToolbar
+                        isMobile={isMobile}
+                        search={search}
+                        onSearchChange={setSearch}
+                        disabled={isSearchMode}
+                        onNewFolder={handleNewFolder}
+                        onUpload={() => setUploadOpen(true)}
+                        selectedCount={selection.count}
+                        onBulkMove={actions.startMove}
+                        onBulkDelete={actions.bulkDelete}
+                        extraActions={<MosaicActions workspace={workspace} currentPath={currentPath} onDone={reload} />}
+                    />
                 </div>
 
                 <Tabs
@@ -230,25 +239,6 @@ export default function GeoserverFilesPage() {
                     items={tabItems}
                     size="small"
                     tabBarStyle={{ marginBottom: 4 }}
-                />
-
-                <GeoserverFilesToolbar
-                    isMobile={isMobile}
-                    search={search}
-                    onSearchChange={setSearch}
-                    disabled={isSearchMode}
-                    onNewFolder={handleNewFolder}
-                    onUpload={() => setUploadOpen(true)}
-                    selectedCount={selection.count}
-                    onBulkMove={actions.startMove}
-                    onBulkDelete={actions.bulkDelete}
-                    extraActions={(
-                        <MosaicActions
-                            workspace={workspace}
-                            currentPath={currentPath}
-                            onDone={reload}
-                        />
-                    )}
                 />
 
                 {error && <Alert type="error" showIcon closable title={error} style={{ marginBottom: 12 }} />}
@@ -274,6 +264,14 @@ export default function GeoserverFilesPage() {
                     onRename={actions.startRename}
                     onDeleteFolder={actions.startDeleteFolder}
                 />
+
+                {!isSearchMode && !loading && (
+                    <div style={{ borderTop: '1px solid #f0f0f0', marginTop: 16, paddingTop: 8 }}>
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                            {visibleFolders.length} carpeta(s) · {data.files.length} archivo(s)
+                        </Text>
+                    </div>
+                )}
             </Card>
 
             <GeoserverFilesModals

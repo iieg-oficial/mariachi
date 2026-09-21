@@ -9,6 +9,29 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.93.4] - 2026-09-21
+
+### Agregado: el lápiz de Recursos GeoServer edita el contenido de los `.properties`
+
+En un `.properties` el lápiz abre **Editar archivo**: nombre y contenido en la misma ventana, con
+el texto en un área monoespaciada. Guarda el contenido sobre el mismo archivo y, si cambió el
+nombre, lo mueve después. En imágenes y fuentes sigue siendo solo renombrar. La lectura pide
+revalidación: la descarga responde con `max-age=60` y, sin eso, reabrir el editor justo después de
+guardar mostraba el texto viejo desde la caché del navegador.
+
+Es lo que faltaba para ajustar un mosaico sin entrar al servidor. El cambio no surte efecto hasta
+reindexar: GeoServer construye el índice una sola vez.
+
+### Cambiado
+
+- Buscar, **＋**, Reindexar mosaico y las acciones de selección suben a la fila del breadcrumb; la
+  barra que iba bajo las pestañas desaparece.
+- El contador de carpetas y archivos baja al pie de la lista, dentro del borde. El peso no se
+  muestra: GeoServer no lo expone ni en el listado, ni en la metadata, ni en un `HEAD`.
+- **Vaciar cachés** explica en un tooltip qué hace.
+- El tópico de rásters con TIME ya no manda a capturar `rasterPeriodicity`: desde mapalab 1.171.1
+  el visor la toma de GeoServer. Suma los gotchas de `nddi`.
+
 ## [2.93.3] - 2026-09-17
 
 ### Agregado: `make restores` puede dejar mariachi entero como el respaldo

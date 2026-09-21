@@ -122,6 +122,18 @@ export const deleteGeoserverFile = async (name, workspace = '') => {
     await api.delete(`${BASE}/${parts}`, { params });
 };
 
+export const readGeoserverTextFile = async (name, workspace = '') => {
+    const parts = name.split('/').map(encodeURIComponent).join('/');
+    const params = workspace ? { workspace } : {};
+    const res = await api.get(`${BASE}/${parts}`, {
+        params,
+        responseType: 'text',
+        transformResponse: [(data) => data],
+        headers: { 'Cache-Control': 'no-cache' },
+    });
+    return res.data;
+};
+
 export const getGeoserverFolderInfo = async (path, workspace = '') => {
     const params = { path };
     if (workspace) params.workspace = workspace;

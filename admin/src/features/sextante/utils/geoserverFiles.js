@@ -11,6 +11,9 @@ export const SEARCH_DEBOUNCE_MS = 350;
 
 export const extOf = (name) => (name.split('.').pop() || '').toLowerCase();
 export const isPreviewable = (name) => PREVIEWABLE_EXT.includes(extOf(name));
+export const isEditableText = (resource) => Boolean(
+    resource && !resource.isDir && CONFIG_EXT.includes(extOf(resource.name || '')),
+);
 
 export const formatSize = (bytes) => {
     if (!bytes) return '0 B';

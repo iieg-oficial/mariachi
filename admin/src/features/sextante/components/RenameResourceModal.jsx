@@ -1,9 +1,14 @@
 import { useEffect, useState } from 'react';
-import { Input, Modal, Space, Typography } from 'antd';
-import { moveGeoserverResource } from '@features/sextante/api/geoserverFilesService';
+import { Input, Modal, Space, Spin, Typography } from 'antd';
+import {
+    moveGeoserverResource,
+    readGeoserverTextFile,
+    uploadGeoserverFile,
+} from '@features/sextante/api/geoserverFilesService';
 import {
     FOLDER_NAME_RE,
     basename,
+    isEditableText,
     workspaceLabel,
 } from '@features/sextante/utils/geoserverFiles';
 import { message } from '@shared/services/message';
@@ -18,11 +23,20 @@ const splitFileName = (path) => {
     return dot > 0 ? [base.slice(0, dot), base.slice(dot)] : [base, ''];
 };
 
+const tituloDe = (resource, esTexto) => {
+    if (esTexto) return 'Editar archivo';
+    return resource?.isDir ? 'Renombrar carpeta' : 'Renombrar archivo';
+};
+
 export default function RenameResourceModal({ resource, workspace = '', onClose, onRenamed }) {
     const [nombre, setNombre] = useState('');
+    const [contenido, setContenido] = useState('');
+    const [original, setOriginal] = useState(null);
+    const [cargando, setCargando] = useState(false);
     const [saving, setSaving] = useState(false);
 
     const open = Boolean(resource);
+    const esTexto = isEditableText(resource);
     const sourcePath = resource ? (resource.isDir ? resource.path : resource.name) : '';
     const [stem, ext] = resource && !resource.isDir ? splitFileName(sourcePath) : [basename(sourcePath), ''];
 
@@ -30,7 +44,24 @@ export default function RenameResourceModal({ resource, workspace = '', onClose,
         if (open) setNombre(stem);
     }, [open, stem]);
 
-    const handleRename = async () => {
+    useEffect(() => {
+        setContenido('');
+        setOriginal(null);
+        if (!open || !esTexto) return undefined;
+        let active = true;
+        setCargando(true);
+        readGeoserverTextFile(sourcePath, workspace)
+            .then((texto) => {
+                if (!active) return;
+                setContenido(texto);
+                setOriginal(texto);
+            })
+            .catch(() => { if (active) message.error('No se pudo leer el archivo'); })
+            .finally(() => { if (active) setCargando(false); });
+        return () => { active = false; };
+    }, [open, esTexto, sourcePath, workspace]);
+
+    const handleSave = async () => {
         const limpio = nombre.trim();
         if (!limpio || !FOLDER_NAME_RE.test(limpio)) {
             message.error('Nombre inválido: solo letras, números, guion, guion bajo y punto');
@@ -38,23 +69,26 @@ export default function RenameResourceModal({ resource, workspace = '', onClose,
         }
         const parent = parentOf(sourcePath);
         const target = parent ? `${parent}/${limpio}${ext}` : `${limpio}${ext}`;
-        if (target === sourcePath) {
+        const cambiaNombre = target !== sourcePath;
+        const cambiaTexto = esTexto && original !== null && contenido !== original;
+        if (!cambiaNombre && !cambiaTexto) {
             onClose?.();
             return;
         }
         setSaving(true);
         try {
-            await moveGeoserverResource({
-                source: sourcePath,
-                target,
-                workspace,
-                isDir: resource.isDir,
-            });
-            message.success(`Renombrado a ${limpio}${ext}`);
+            if (cambiaTexto) {
+                const file = new File([contenido], basename(sourcePath), { type: 'text/plain' });
+                await uploadGeoserverFile({ file, name: sourcePath, workspace });
+            }
+            if (cambiaNombre) {
+                await moveGeoserverResource({ source: sourcePath, target, workspace, isDir: resource.isDir });
+            }
+            message.success(cambiaNombre ? `Guardado como ${limpio}${ext}` : 'Archivo guardado');
             onRenamed?.(target);
             onClose?.();
         } catch (err) {
-            message.error(err?.response?.data?.detail || 'Error al renombrar');
+            message.error(err?.response?.data?.detail || 'Error al guardar');
         } finally {
             setSaving(false);
         }
@@ -63,11 +97,12 @@ export default function RenameResourceModal({ resource, workspace = '', onClose,
     return (
         <Modal
             open={open}
-            title={resource?.isDir ? 'Renombrar carpeta' : 'Renombrar archivo'}
-            okText="Renombrar"
-            okButtonProps={{ loading: saving }}
+            title={tituloDe(resource, esTexto)}
+            width={esTexto ? 720 : undefined}
+            okText={esTexto ? 'Guardar' : 'Renombrar'}
+            okButtonProps={{ loading: saving, disabled: cargando }}
             cancelText="Cancelar"
-            onOk={handleRename}
+            onOk={handleSave}
             onCancel={onClose}
             destroyOnHidden
         >
@@ -77,15 +112,28 @@ export default function RenameResourceModal({ resource, workspace = '', onClose,
                 </Text>
                 <Input
                     value={nombre}
+                    aria-label="Nombre"
                     onChange={(e) => setNombre(e.target.value)}
-                    onPressEnter={handleRename}
+                    onPressEnter={esTexto ? undefined : handleSave}
                     addonAfter={ext || undefined}
                     maxLength={120}
                 />
+                {esTexto && (cargando ? <Spin /> : (
+                    <Input.TextArea
+                        value={contenido}
+                        aria-label="Contenido"
+                        onChange={(e) => setContenido(e.target.value)}
+                        autoSize={{ minRows: 8, maxRows: 24 }}
+                        spellCheck={false}
+                        disabled={original === null}
+                        style={{ fontFamily: 'monospace', fontSize: 12 }}
+                    />
+                ))}
                 {!resource?.isDir && (
                     <Text type="secondary" style={{ fontSize: 12 }}>
-                        La extensión no se puede cambiar. Si algún SLD apunta a este archivo, actualiza
-                        su <Text code>xlink:href</Text>.
+                        {esTexto
+                            ? 'Los cambios de un mosaico aplican al reindexarlo.'
+                            : 'La extensión no se puede cambiar. Si algún SLD apunta a este archivo, actualiza su xlink:href.'}
                     </Text>
                 )}
             </Space>

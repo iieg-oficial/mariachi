@@ -8,7 +8,13 @@ import {
 } from '@ant-design/icons';
 import CardCornerAction from '@features/sextante/components/CardCornerAction';
 import GeoserverThumb from '@features/sextante/components/GeoserverThumb';
-import { basename, extOf, isPreviewable, workspaceLabel } from '@features/sextante/utils/geoserverFiles';
+import {
+    basename,
+    extOf,
+    isEditableText,
+    isPreviewable,
+    workspaceLabel,
+} from '@features/sextante/utils/geoserverFiles';
 
 const { Text } = Typography;
 
@@ -86,7 +92,7 @@ export default function GeoserverFileCard({
                     <CardCornerAction
                         corner="bottomLeft"
                         visible={showActions}
-                        title="Renombrar archivo"
+                        title={isEditableText(file) ? 'Editar archivo' : 'Renombrar archivo'}
                         icon={<EditOutlined />}
                         onClick={() => onRename?.({ ...file, isDir: false })}
                     />

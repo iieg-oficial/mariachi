@@ -36,43 +36,43 @@ export default function GeoserverFilesToolbar({
     const expandida = searchOpen || Boolean(search.trim());
 
     const menuItems = [
-        {
-            key: 'folder',
-            icon: <FolderAddOutlined />,
-            label: 'Nueva carpeta',
-            onClick: onNewFolder,
-        },
-        {
-            key: 'upload',
-            icon: <UploadOutlined />,
-            label: 'Subir archivos',
-            onClick: onUpload,
-        },
+        { key: 'folder', icon: <FolderAddOutlined />, label: 'Nueva carpeta', onClick: onNewFolder },
+        { key: 'upload', icon: <UploadOutlined />, label: 'Subir archivos', onClick: onUpload },
     ];
 
     return (
-        <div style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: 8,
-            marginBottom: 16,
-            alignItems: 'center',
-            justifyContent: 'space-between',
-        }}>
-            <div
-                style={{ flex: isMobile ? '1 1 100%' : '1 1 320px', minWidth: 0, maxWidth: 420 }}
-                onMouseEnter={() => setSearchOpen(true)}
-                onMouseLeave={cerrarSiVacia}
-            >
+        <Space wrap size={8} style={{ justifyContent: 'flex-end' }}>
+            {extraActions}
+            {selectedCount > 0 && (
+                <>
+                    <Button icon={<DragOutlined />} onClick={onBulkMove}>
+                        Mover ({selectedCount})
+                    </Button>
+                    <Popconfirm
+                        title={`¿Eliminar ${selectedCount} recurso(s)?`}
+                        description="Las carpetas se borran con todo su contenido."
+                        okText="Eliminar"
+                        okButtonProps={{ danger: true }}
+                        cancelText="Cancelar"
+                        onConfirm={onBulkDelete}
+                    >
+                        <Button danger icon={<DeleteOutlined />}>
+                            Eliminar ({selectedCount})
+                        </Button>
+                    </Popconfirm>
+                </>
+            )}
+            <div onMouseEnter={() => setSearchOpen(true)} onMouseLeave={cerrarSiVacia}>
                 {expandida ? (
                     <Input
                         ref={inputRef}
                         allowClear
                         prefix={<SearchOutlined />}
-                        placeholder="Buscar en todos los recursos (global + workspaces)"
+                        placeholder="Buscar en todos los recursos"
                         value={search}
                         onChange={(e) => onSearchChange(e.target.value)}
                         onBlur={cerrarSiVacia}
+                        style={{ width: isMobile ? 200 : 280 }}
                     />
                 ) : (
                     <Button
@@ -83,31 +83,9 @@ export default function GeoserverFilesToolbar({
                     />
                 )}
             </div>
-            <Space wrap style={{ flex: isMobile ? '1 1 100%' : '0 0 auto' }}>
-                {extraActions}
-                {selectedCount > 0 && (
-                    <>
-                        <Button icon={<DragOutlined />} onClick={onBulkMove}>
-                            Mover ({selectedCount})
-                        </Button>
-                        <Popconfirm
-                            title={`¿Eliminar ${selectedCount} recurso(s)?`}
-                            description="Las carpetas se borran con todo su contenido."
-                            okText="Eliminar"
-                            okButtonProps={{ danger: true }}
-                            cancelText="Cancelar"
-                            onConfirm={onBulkDelete}
-                        >
-                            <Button danger icon={<DeleteOutlined />}>
-                                Eliminar ({selectedCount})
-                            </Button>
-                        </Popconfirm>
-                    </>
-                )}
-                <Dropdown menu={{ items: menuItems }} disabled={disabled} trigger={['click']}>
-                    <Button type="primary" icon={<PlusOutlined />} aria-label="Agregar" />
-                </Dropdown>
-            </Space>
-        </div>
+            <Dropdown menu={{ items: menuItems }} disabled={disabled} trigger={['click']}>
+                <Button type="primary" icon={<PlusOutlined />} aria-label="Agregar" />
+            </Dropdown>
+        </Space>
     );
 }

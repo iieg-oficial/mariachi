@@ -1,10 +1,13 @@
 import { useState } from 'react';
-import { Button, Modal, Typography } from 'antd';
+import { Button, Modal, Tooltip, Typography } from 'antd';
 import { ClearOutlined } from '@ant-design/icons';
 import { resetGeoserver } from '@features/sextante/api/mosaicService';
 import { message } from '@shared/services/message';
 
 const { Paragraph } = Typography;
+
+const QUE_HACE = 'Vacía las cachés en memoria de GeoServer: readers, estilos y esquemas se releen del disco. '
+    + 'No borra archivos; las primeras peticiones después van más lentas.';
 
 export default function ResetCachesButton() {
     const [busy, setBusy] = useState(false);
@@ -13,10 +16,7 @@ export default function ResetCachesButton() {
         Modal.confirm({
             title: 'Vaciar cachés de GeoServer',
             content: (
-                <Paragraph style={{ marginBottom: 0 }}>
-                    Vacía las cachés en memoria de GeoServer: readers, estilos y esquemas se releen del
-                    disco. No borra nada, pero las primeras peticiones después van más lentas.
-                </Paragraph>
+                <Paragraph style={{ marginBottom: 0 }}>{QUE_HACE}</Paragraph>
             ),
             okText: 'Vaciar',
             cancelText: 'Cancelar',
@@ -35,8 +35,10 @@ export default function ResetCachesButton() {
     };
 
     return (
-        <Button icon={<ClearOutlined />} loading={busy} onClick={confirmar}>
-            Vaciar cachés
-        </Button>
+        <Tooltip title={QUE_HACE}>
+            <Button icon={<ClearOutlined />} loading={busy} onClick={confirmar}>
+                Vaciar cachés
+            </Button>
+        </Tooltip>
     );
 }
