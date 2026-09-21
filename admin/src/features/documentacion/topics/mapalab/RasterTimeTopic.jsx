@@ -6,12 +6,12 @@ const PASOS = [
     {
         paso: '1. Archivos',
         donde: 'sextante · data dir',
-        que: 'Un directorio por mosaico con los .tif planos y la fecha en el nombre: <capa>_2025-06-01.tif. Va en geoserver_data/geoserver-raster/<tema>/<mosaico>/.',
+        que: 'Un directorio por mosaico con los .tif planos y la fecha en el nombre: <capa>_2025-06-01.tif. Va en geoserver-raster/<tema>/<mosaico>/ o bajo su workspace; se sube desde Recursos GeoServer.',
     },
     {
         paso: '2. Configuración',
         donde: 'sextante · el mismo directorio',
-        que: 'indexer.properties y timeregex.properties junto a los .tif. El regex captura la fecha del nombre y debe corresponder al TimeFormat.',
+        que: 'indexer.properties y timeregex.properties junto a los .tif, antes de publicar. El regex captura la fecha del nombre y debe corresponder al TimeFormat. Se editan con el lápiz de Recursos.',
     },
     {
         paso: '3. Publicación',
@@ -21,12 +21,12 @@ const PASOS = [
     {
         paso: '4. Verificación',
         donde: 'sextante · REST',
-        que: 'El index/granules.json de la capa lista las fechas indexadas. Si salen en null, el regex no casó.',
+        que: 'La GetCapabilities del workspace anuncia <Dimension name="time"> en la capa. Si no, revisar que el índice .dbf tenga la columna ingestion.',
     },
     {
         paso: '5. Catálogo',
         donde: 'Mariachi · Editor de capas',
-        que: 'Activar timeEnabled y capturar rasterPeriodicity con los meses publicados. Sin esto el visor no ofrece el periodo.',
+        que: 'Activar timeEnabled y poner Tipo de geometría en Ráster. Las fechas ya no se capturan: el visor las toma de GeoServer.',
     },
 ];
 
@@ -46,8 +46,20 @@ const GOTCHAS = [
         detalle: 'Si los archivos nuevos conservan los nombres, el índice viejo sigue apuntando a rutas válidas y GeoServer mosaicea contra el ColorModel de sample_image.dat. No hay error en el log y el reset no lo arregla: hay que borrar el índice.',
     },
     {
-        gotcha: 'MapaLab no lee la dimensión TIME',
-        detalle: 'Los meses del selector salen de rasterPeriodicity, capturado a mano aquí. Publicar el mosaico no basta para que el mes aparezca en el visor.',
+        gotcha: 'Properties subidos después de publicar',
+        detalle: 'El índice se arma sin la columna ingestion: la capa pinta pero no anuncia TIME. Se corrige con Reindexar mosaico en Recursos.',
+    },
+    {
+        gotcha: 'Reindexar no activa la dimensión',
+        detalle: 'Son dos pasos. Tras reindexar hay que habilitar TIME en el coverage, con la misma configuración que ndvi.',
+    },
+    {
+        gotcha: 'La periodicidad capturada gana',
+        detalle: 'Si rasterPeriodicity tiene valor, el visor lo usa en vez de GeoServer y no ve los meses nuevos. Dejarlo vacío.',
+    },
+    {
+        gotcha: 'El tipo de geometría no se llena solo',
+        detalle: 'Una capa nueva queda sin ícono de ráster en capas activas hasta capturarlo en el editor.',
     },
     {
         gotcha: 'temperatura/mosaic_time no es plantilla',
@@ -66,8 +78,10 @@ const GOTCHA_COLUMNS = [
 
 const PIEZAS = [
     { pieza: 'geoserver-raster/<tema>/<mosaico>/', repo: 'sextante', nota: 'Los .tif y sus dos properties. El data dir es per-host: no se versiona.' },
-    { pieza: 'mapalab.layers.raster_periodicity', repo: 'dataengine', nota: 'JSONB con {año: {mes: fecha ISO}}. Es lo que dibuja el selector.' },
-    { pieza: 'Editor de capas · Soporte temporal', repo: 'mariachi', nota: 'Switch timeEnabled y captura de la periodicidad raster.' },
+    { pieza: 'mapalab.layers.raster_periodicity', repo: 'dataengine', nota: 'Opcional. Vacío, el visor usa la dimensión TIME de GeoServer.' },
+    { pieza: 'Editor de capas', repo: 'mariachi', nota: 'Switch timeEnabled y tipo de geometría.' },
+    { pieza: 'Recursos GeoServer', repo: 'mariachi', nota: 'Subir los .tif, editar los properties y reindexar el mosaico.' },
+    { pieza: 'rasterPeriodicityFallback', repo: 'mapalab', nota: 'Completa las fechas desde la GetCapabilities al cargar el árbol.' },
     { pieza: 'useWMSFilterUpdater', repo: 'mapalab', nota: 'Manda el valor como TIME= en el GetMap, en vez de CQL_FILTER.' },
 ];
 
