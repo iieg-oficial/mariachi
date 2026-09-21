@@ -9,6 +9,43 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.96.0] - 2026-09-21
+
+### Cambiado: el widget de Colibrí copia los componentes de SIEEJ
+
+El panel, el formulario y los disparadores dejan su tema propio y usan los de SIEEJ: campo gris con
+anillo morado al enfocar, etiqueta con el tooltip de la «?» naranja, chips de tipo, carga de archivo
+punteada y botones en píldora. Los errores salen junto a cada campo; enviado, fallo y límite
+alcanzado siguen el patrón del modal de SIEEJ. En móvil el panel sale como hoja inferior. El foco se
+ve en todos los controles y el panel lo atrapa mientras está abierto. El widget pasa a `1.1.0`.
+
+### Agregado: `privacy-url` en el widget
+
+Si el huésped la pasa (atributo o `openPanel({ privacyUrl })`), el formulario pide aceptar el aviso
+de privacidad antes de enviar.
+
+### Eliminado: el modo oscuro del widget
+
+El atributo `theme` ya no hace nada: el ecosistema no tiene modo oscuro.
+
+### Corregido: el endpoint público de reportes exige llave
+
+`POST /api/public/reportes` sin `X-Colibri-Key` responde 401; antes creaba el reporte con un
+`source_app` libre y sin validar origen. Las llaves `ck_priv_` que llegan desde un navegador
+responden 403, y `/sistema/colibri-config` solo entrega llaves `ck_pub_`.
+
+### Corregido: el límite por IP usa la IP real
+
+Los límites por IP de la API leen `X-Real-IP`, que `mariachi-nginx` ya resuelve con `real_ip`. Antes
+tomaban el primer valor de `X-Forwarded-For`, que manda el propio cliente.
+
+### Corregido: agrupación, fan-out y capturas de Colibrí
+
+La agrupación por fingerprint usa `INSERT ... ON CONFLICT` y ya no pierde reportes en concurrencia.
+Discord, Slack y los webhooks salen en segundo plano, así que el 201 ya no los espera, y dejan de
+recibir el correo del reportante. La captura se lee hasta 2 MB y su tipo se detecta por los bytes.
+Editar y borrar reportes pide `mariachi.colibri_reportes.update`, no solo el permiso de ver.
+
 ## [2.95.0] - 2026-09-21
 
 ### Agregado: el acceso conserva de dónde vino y con qué marca

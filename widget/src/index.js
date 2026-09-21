@@ -51,7 +51,7 @@ if (typeof window !== 'undefined') {
         requestAnimationFrame(() => panel.show?.());
         return panel;
     };
-    window.colibri.version = '1.0.0';
+    window.colibri.version = '1.1.0';
 }
 
 export { ColibriButton, ColibriTrigger, ColibriForm, ColibriPanel, ColibriFormCore };
