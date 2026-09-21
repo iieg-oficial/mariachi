@@ -62,7 +62,7 @@ def generate_pkce() -> tuple[str, str]:
 
 
 async def build_authorize_url(
-    state: str, code_challenge: str, nonce: str, prompt: str = ""
+    state: str, code_challenge: str, nonce: str, prompt: str = "", redirect_uri: str = ""
 ) -> str:
     doc = await _discover()
     endpoint = doc["authorization_endpoint"]
@@ -73,7 +73,7 @@ async def build_authorize_url(
         {
             "response_type": "code",
             "client_id": settings.minerva_client_id,
-            "redirect_uri": settings.minerva_redirect_uri,
+            "redirect_uri": redirect_uri or settings.minerva_redirect_uri,
             "scope": settings.minerva_scopes,
             "state": state,
             "nonce": nonce,
@@ -88,12 +88,12 @@ async def build_authorize_url(
     return f"{endpoint}?{query}"
 
 
-async def exchange_code(code: str, code_verifier: str) -> dict[str, Any]:
+async def exchange_code(code: str, code_verifier: str, redirect_uri: str = "") -> dict[str, Any]:
     doc = await _discover()
     data = {
         "grant_type": "authorization_code",
         "code": code,
-        "redirect_uri": settings.minerva_redirect_uri,
+        "redirect_uri": redirect_uri or settings.minerva_redirect_uri,
         "client_id": settings.minerva_client_id,
         "client_secret": settings.minerva_client_secret,
         "code_verifier": code_verifier,

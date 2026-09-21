@@ -55,6 +55,7 @@ class Settings(BaseSettings):
     minerva_client_secret: str
     minerva_redirect_uri: str
     minerva_login_url: str = ""
+    minerva_sieej_branding_client_id: str = ""
     minerva_scopes: str = "openid profile email"
     minerva_post_login_url: str = "/"
 

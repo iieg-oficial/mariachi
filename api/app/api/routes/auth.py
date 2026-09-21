@@ -2,7 +2,7 @@ import base64
 import json
 import logging
 import uuid
-from urllib.parse import quote
+from urllib.parse import quote, urlsplit
 
 import httpx
 from fastapi import (
@@ -157,13 +157,34 @@ def _login_forzado_url() -> str:
     return _post_login_url()
 
 
-def _post_login_url(next_path: str = "", error: str = "") -> str:
-    base = settings.minerva_post_login_url.rstrip("/")
+def _public_base(request: Request) -> str:
+    """Origen publico por el que entro la persona (Host de la peticion), para conservar tanto
+    la IP como el dominio: entrar por uno mantiene ese mismo en callback y post-login."""
+    host = request.headers.get("host", "")
+    if host:
+        return f"https://{host}"
+    parts = urlsplit(settings.minerva_post_login_url)
+    return f"{parts.scheme}://{parts.netloc}"
+
+
+def _post_login_url(next_path: str = "", error: str = "", base: str = "") -> str:
+    parts = urlsplit(settings.minerva_post_login_url)
+    root = base or f"{parts.scheme}://{parts.netloc}"
+    admin = f"{root}{parts.path.rstrip('/')}"
     if error:
-        return f"{base}/login?auth_error={quote(error)}"
+        return f"{admin}/login?auth_error={quote(error)}"
     if next_path and next_path != "/":
-        return f"{base}{next_path}"
-    return f"{base}/"
+        return f"{admin}{next_path}"
+    return f"{admin}/"
+
+
+def _return_to_url(return_to: str, base: str = "") -> str:
+    """`return_to` es una ruta absoluta del dominio (p. ej. `/sieej/...`); se aplica al ORIGEN
+    por el que entro la persona para conservar IP o dominio."""
+    if base:
+        return f"{base}{return_to}"
+    parts = urlsplit(settings.minerva_post_login_url)
+    return f"{parts.scheme}://{parts.netloc}{return_to}"
 
 
 def _unique_username(db: Session, candidate: str) -> str:
@@ -221,18 +242,26 @@ def resolve_user(db: Session, claims: dict) -> Usuario:
 
 
 @router.get("/login")
-async def login(request: Request, next: str = "", forzar: int = 0) -> RedirectResponse:
+async def login(request: Request, next: str = "", forzar: int = 0, return_to: str = "") -> RedirectResponse:
     state = oidc.generate_state()
     nonce = oidc.generate_nonce()
     verifier, challenge = oidc.generate_pkce()
+    base = _public_base(request)
+    callback_path = urlsplit(settings.minerva_redirect_uri).path
+    redirect_uri = f"{base}{callback_path}"
     authorize_url = await oidc.build_authorize_url(
-        state, challenge, nonce, prompt="login" if forzar else ""
+        state, challenge, nonce, prompt="login" if forzar else "", redirect_uri=redirect_uri
     )
+
+    safe_return = _safe_next(return_to)
+    if safe_return.startswith("/sieej") and settings.minerva_sieej_branding_client_id:
+        sep = "&" if "?" in authorize_url else "?"
+        authorize_url = f"{authorize_url}{sep}app_branding={settings.minerva_sieej_branding_client_id}"
 
     redirect = RedirectResponse(url=authorize_url, status_code=status.HTTP_302_FOUND)
     _set_tx_cookie(
         redirect,
-        {"state": state, "verifier": verifier, "nonce": nonce, "next": _safe_next(next)},
+        {"state": state, "verifier": verifier, "nonce": nonce, "next": _safe_next(next), "return_to": safe_return, "redirect_uri": redirect_uri, "public_base": base},
     )
     return redirect
 
@@ -247,11 +276,14 @@ async def callback(
 ) -> RedirectResponse:
     tx = _read_tx_cookie(request)
     next_path = _safe_next((tx or {}).get("next"))
+    return_to = _safe_next((tx or {}).get("return_to"))
+    base = (tx or {}).get("public_base") or _public_base(request)
+    redirect_uri = (tx or {}).get("redirect_uri") or settings.minerva_redirect_uri
 
     if error:
         logger.info("action=login.denied error=%s", error)
         redirect = RedirectResponse(
-            url=_post_login_url(error=error), status_code=status.HTTP_302_FOUND
+            url=_post_login_url(error=error, base=base), status_code=status.HTTP_302_FOUND
         )
         redirect.delete_cookie(key=TX_COOKIE_NAME, path=_tx_cookie_path())
         return redirect
@@ -263,13 +295,13 @@ async def callback(
         # se regresa a la pantalla de acceso, que muestra el motivo y permite reintentar.
         logger.info("action=login.tx_invalido tx=%s code=%s state=%s", bool(tx), bool(code), bool(state))
         redirect = RedirectResponse(
-            url=_post_login_url(error="invalid_state"), status_code=status.HTTP_302_FOUND
+            url=_post_login_url(error="invalid_state", base=base), status_code=status.HTTP_302_FOUND
         )
         redirect.delete_cookie(key=TX_COOKIE_NAME, path=_tx_cookie_path())
         return redirect
 
     try:
-        tokens = await oidc.exchange_code(code, tx["verifier"])
+        tokens = await oidc.exchange_code(code, tx["verifier"], redirect_uri=redirect_uri)
     except httpx.HTTPError as exc:
         logger.warning("no se pudo canjear el code con minerva: %s", exc)
         raise HTTPException(
@@ -289,7 +321,8 @@ async def callback(
     )
 
     redirect = RedirectResponse(
-        url=_post_login_url(next_path), status_code=status.HTTP_302_FOUND
+        url=_return_to_url(return_to, base) if return_to else _post_login_url(next_path, base=base),
+        status_code=status.HTTP_302_FOUND,
     )
     redirect.delete_cookie(key=TX_COOKIE_NAME, path=_tx_cookie_path())
     _issue_session_cookies(redirect, usuario.username, sid)
