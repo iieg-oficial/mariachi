@@ -5,7 +5,6 @@ const VARIANTS = {
     test: { label: 'TEST', color: BRAND.orange, bg: '#FFF2E5' },
     dev: { label: 'DEV', color: BRAND.purple, bg: '#F4EFF9' },
     info: { label: 'INFO', color: BRAND.numeralia, bg: '#EAF0FA' },
-    local: { label: 'LOCAL', color: '#0F7B6C', bg: '#E6F4F1' },
     new: { label: 'NUEVO', color: '#FF577D', bg: '#FFEBF1' },
 };
 

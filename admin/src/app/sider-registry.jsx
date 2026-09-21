@@ -31,6 +31,7 @@ import {
 } from '@ant-design/icons';
 import ColibriIcon from '@shared/components/ColibriIcon';
 import { VINE_HABILITADO } from '@features/vine/constants/flags';
+import { ALCANCE_LOCAL } from '@app/sider-alcance';
 
 export const PROJECT_REGISTRY = {
     sextante: {
@@ -137,7 +138,8 @@ export const PROJECT_REGISTRY = {
             label: 'Vine',
             icon: <ClockCircleOutlined />,
             permissions: ['mariachi.vine.view'],
-            badgeVariant: ['local', 'test'],
+            badgeVariant: 'test',
+            alcance: ALCANCE_LOCAL,
             items: [
                 {
                     key: '/vine/estadisticas', path: '/vine/estadisticas', label: 'Estadísticas',
@@ -162,7 +164,7 @@ export const PROJECT_REGISTRY = {
         label: 'Frames',
         icon: <VideoCameraOutlined />,
         permissions: ['mariachi.frames.view'],
-        badgeVariant: 'local',
+        alcance: ALCANCE_LOCAL,
         items: [
             {
                 key: '/frames/camaras', path: '/frames/camaras', label: 'Cámaras',

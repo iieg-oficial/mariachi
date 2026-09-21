@@ -78,6 +78,7 @@ services:
         VITE_ADMIN_API_URL: ${VITE_ADMIN_API_URL:?}
         VITE_WEB_URL: ${VITE_WEB_URL?}
         VITE_VINE_ENABLED: ${VITE_VINE_ENABLED:?}
+        VITE_APP_ENV: ${VITE_APP_ENV:?}
         VITE_CARTO_API_KEY: ${VITE_CARTO_API_KEY?}
     container_name: mariachi-nginx
     expose:

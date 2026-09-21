@@ -14,6 +14,7 @@ import {
 import { Tooltip } from 'antd';
 import StatusBadge from '@shared/components/StatusBadge';
 import { FOOTER_RAIL_ITEMS, PROJECT_REGISTRY } from '@app/sider-registry';
+import { ALCANCE_AMBOS, ALCANCE_EN_LINEA, alcanceDe, visibleEn } from '@app/sider-alcance';
 
 export { PROJECT_REGISTRY };
 
@@ -128,6 +129,7 @@ export const MAIN_ITEMS = [
         path: '/inicio',
         label: 'Inicio',
         icon: <HomeOutlined />,
+        alcance: ALCANCE_AMBOS,
     },
     {
         key: '/users',
@@ -175,12 +177,13 @@ export const MAIN_ITEMS = [
     },
 ];
 
-export function buildSiderItems({ user, can, onNavigate, extras = {} }) {
+export function buildSiderItems({ user, can, onNavigate, extras = {}, alcance = ALCANCE_EN_LINEA }) {
     if (!user) return [];
 
     const items = [];
 
     for (const item of MAIN_ITEMS) {
+        if (!visibleEn(item, alcance)) continue;
         if (item.children) {
             items.push(buildParentItem(item, can, onNavigate, extras));
         } else {
@@ -189,7 +192,7 @@ export function buildSiderItems({ user, can, onNavigate, extras = {} }) {
     }
 
     for (const [slug, project] of Object.entries(PROJECT_REGISTRY)) {
-        if (project.items.length === 0) continue;
+        if (project.items.length === 0 || !visibleEn(project, alcance)) continue;
         const projectAccessible = grants(project.permissions, can);
         const projectDisabled = project.disabled || !projectAccessible;
         const projectLabel = projectAccessible
@@ -227,6 +230,21 @@ export function buildSiderFooterRail({ user, can, onNavigate, extras = {} }) {
         });
     }
     return items;
+}
+
+const coincide = (pathname, path) => pathname === path || pathname.startsWith(`${path}/`);
+
+export function alcanceDePath(pathname) {
+    const origen = [
+        ...MAIN_ITEMS.flatMap((item) => (item.children
+            ? item.children.map((child) => ({ ...child, alcance: item.alcance }))
+            : [item])),
+        ...Object.values(PROJECT_REGISTRY).flatMap((project) =>
+            project.items.map((item) => ({ ...item, alcance: project.alcance }))),
+    ].find((item) => item.path && coincide(pathname, item.path));
+    if (!origen) return null;
+    const alcance = alcanceDe(origen);
+    return alcance === ALCANCE_AMBOS ? null : alcance;
 }
 
 export function defaultOpenKeyForPath(pathname) {

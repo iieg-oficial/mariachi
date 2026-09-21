@@ -12,6 +12,8 @@ import VersionNotesModal from '@features/inicio/components/VersionNotesModal';
 import MisBorradoresModal from '@features/inicio/components/MisBorradoresModal';
 import { BRAND } from '@app/providers/brand';
 import UserMenu from '@app/UserMenu';
+import SiderAlcanceSegmented from '@app/SiderAlcanceSegmented';
+import { useAlcanceMenu } from '@app/useAlcanceMenu';
 import {
     buildSiderFooterRail,
     buildSiderItems,
@@ -33,6 +35,7 @@ export default function MainLayout() {
     const navigate = useNavigate();
     const location = useLocation();
     const { user, can, logout } = useAuth();
+    const { disponible, alcance, elegir } = useAlcanceMenu(location.pathname);
 
     const handleLogout = async () => {
         try {
@@ -86,6 +89,7 @@ export default function MainLayout() {
         can,
         onNavigate: handleNav,
         extras: { pendingCount, reportesPendingCount },
+        alcance,
     });
     const footerRailItems = [
         ...buildSiderFooterRail({ user, can, onNavigate: handleNav, extras: { pendingCount } }),
@@ -127,6 +131,10 @@ export default function MainLayout() {
                 </span>
             )}
         </div>
+    );
+
+    const segmento = (isCollapsedView) => disponible && (
+        <SiderAlcanceSegmented value={alcance} onChange={elegir} collapsed={isCollapsedView} />
     );
 
     const openKey = defaultOpenKeyForPath(location.pathname);
@@ -179,6 +187,7 @@ export default function MainLayout() {
     const renderSiderContent = () => (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             {brand(collapsed)}
+            {segmento(collapsed)}
             <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
                 <Menu
                     theme="dark"
@@ -205,6 +214,7 @@ export default function MainLayout() {
     const renderMobileSiderContent = () => (
         <>
             {brand(false)}
+            {segmento(false)}
             <Menu
                 theme="dark"
                 mode="inline"

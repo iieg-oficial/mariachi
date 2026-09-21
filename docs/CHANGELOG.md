@@ -9,6 +9,51 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.95.0] - 2026-09-21
+
+### Agregado: el acceso conserva de dónde vino y con qué marca
+
+El acceso acepta un `return_to` y devuelve al usuario a esa ruta al terminar, en vez de dejarlo
+siempre en el inicio del panel. Es lo que permite que SIEEJ mande a su gente al SSO y los recupere
+en la página donde estaban.
+
+El mismo `return_to` viaja por el ciclo de salida: `POST /cerrar-sesion` lo acepta y lo devuelve
+dentro del `logout_url`, `/salir` lo arrastra al acceso forzado y de ahí al retorno final. Sin eso
+quien cerraba sesión desde otra aplicación terminaba en el panel de mariachi, porque ese tramo se
+derivaba del `redirect_uri` fijo. El flujo del propio panel, que no manda `return_to`, no cambia.
+
+Cuando el `return_to` apunta a SIEEJ, el acceso añade un `app_branding` para que minerva muestre la
+identidad de SIEEJ en lugar de la de mariachi. Es sólo una pista visual: los permisos los sigue
+resolviendo el cliente real. Requiere `MINERVA_SIEEJ_BRANDING_CLIENT_ID`; sin esa variable el acceso
+funciona igual, sólo con la marca de mariachi.
+
+### Cambiado: la URL de retorno se deriva del host de la petición
+
+El `redirect_uri` que se manda a minerva se arma con el `Host` de la petición y no con el valor fijo
+de la configuración. Así el mismo despliegue atiende por IP y por nombre de DNS sin que el usuario
+termine rebotado al otro origen y sin sus cookies, que son host-only.
+
+## [2.94.0] - 2026-09-18
+
+### Agregado: el sider separa el menú en línea del menú local
+
+Debajo del logo hay un segment **En línea / Local**. En línea queda todo lo que también corre en
+producción; Local, sólo Vine y Frames, los módulos que hablan con dispositivos de la LAN. Inicio y el
+rail inferior salen en los dos. Con el sider colapsado el segment se vuelve vertical, con íconos.
+
+La elección se recuerda, y abrir una URL de Vine o Frames cambia el menú a Local sola.
+
+### Cambiado: el segment se enciende con `VITE_APP_ENV`
+
+Sale sólo con `dev` o `beta`; con `prod`, o si falta, se oculta y el menú queda en línea, así que en
+administración Vine y Frames no aparecen. `ENVIRONMENT` no servía: el stack local también corre con
+`production`. Es build arg obligatorio: **agregarla al `.env.production` antes del deploy**, o aborta
+en «Down».
+
+### Eliminado: la badge `LOCAL`
+
+El segment ya dice qué es local. Vine conserva su badge `TEST`.
+
 ## [2.93.4] - 2026-09-21
 
 ### Agregado: el lápiz de Recursos GeoServer edita el contenido de los `.properties`
