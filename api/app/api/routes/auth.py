@@ -130,31 +130,53 @@ def _safe_next(raw: str | None) -> str:
     return raw
 
 
-def _salir_url() -> str:
+def _prefijo_autenticacion(base: str = "") -> str:
+    """Raiz publica de estas rutas, derivada del `redirect_uri` del callback. Con `base`
+    se reescribe el origen para conservar aquel por el que entro la persona."""
+    callback = settings.minerva_redirect_uri.rstrip("/")
+    if not callback.endswith("/callback"):
+        return ""
+    prefijo = callback[: -len("/callback")]
+    if base:
+        return f"{base}{urlsplit(prefijo).path}"
+    return prefijo
+
+
+def _salir_url(return_to: str = "", base: str = "") -> str:
     """URL del propio mariachi a la que navega el admin al cerrar sesion.
 
     El navegador tiene que llegar al logout por un 302 del servidor: una
     navegacion iniciada por el documento la reescribe el `upgrade-insecure-requests`
     de la CSP, y si minerva no sirve HTTPS en ese puerto el logout muere en
     ERR_SSL_PROTOCOL_ERROR. Se deriva del `redirect_uri` del callback, que ya trae
-    la URL publica de mariachi."""
-    callback = settings.minerva_redirect_uri.rstrip("/")
-    if callback.endswith("/callback"):
-        return f"{callback[: -len('/callback')]}/salir"
-    return _post_login_url()
+    la URL publica de mariachi.
+
+    `return_to` viaja hasta el final del ciclo para que quien salio desde otra
+    aplicacion vuelva ahi y no al inicio del panel."""
+    prefijo = _prefijo_autenticacion(base)
+    if not prefijo:
+        return _post_login_url(base=base)
+    url = f"{prefijo}/salir"
+    if return_to:
+        url = f"{url}?return_to={quote(return_to, safe='')}"
+    return url
 
 
-def _login_forzado_url() -> str:
+def _login_forzado_url(return_to: str = "", base: str = "") -> str:
     """A donde vuelve el navegador despues del logout del panel: al login de
     mariachi con `forzar=1`, para que minerva pida credenciales de nuevo en vez
     de reconocer la sesion que su logout suave dejo viva.
 
     Se deriva del `redirect_uri` del callback, que ya trae la URL publica de
-    mariachi y es la unica que minerva tiene registrada."""
-    callback = settings.minerva_redirect_uri.rstrip("/")
-    if callback.endswith("/callback"):
-        return f"{callback[: -len('/callback')]}/login?forzar=1"
-    return _post_login_url()
+    mariachi y es la unica que minerva tiene registrada. `return_to` le dice al
+    login a donde volver, y de paso con que marca pedir las credenciales."""
+    prefijo = _prefijo_autenticacion(base)
+    if not prefijo:
+        return _post_login_url(base=base)
+    url = f"{prefijo}/login?forzar=1"
+    if return_to:
+        url = f"{url}&return_to={quote(return_to, safe='')}"
+    return url
 
 
 def _public_base(request: Request) -> str:
@@ -350,6 +372,7 @@ async def callback(
 async def logout(
     response: Response,
     request: Request,
+    return_to: str = "",
     current_user: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db),
     refresh_cookie: str | None = Cookie(default=None, alias=settings.refresh_cookie_name),
@@ -389,12 +412,12 @@ async def logout(
 
     return {
         "message": "Sesión cerrada exitosamente",
-        "logout_url": _salir_url(),
+        "logout_url": _salir_url(_safe_next(return_to), _public_base(request)),
     }
 
 
 @router.get("/salir")
-async def salir() -> RedirectResponse:
+async def salir(request: Request, return_to: str = "") -> RedirectResponse:
     """Cierra el ciclo del logout con un 302 del servidor. No revoca nada: la sesion
     ya la cerro `POST /cerrar-sesion`, asi que un GET aqui no muta estado.
 
@@ -403,7 +426,7 @@ async def salir() -> RedirectResponse:
     implementa `post_logout_redirect_uris`. La re-autenticacion se consigue igual con
     `prompt=login`, que es lo que agrega `forzar=1`."""
     return RedirectResponse(
-        url=_login_forzado_url(),
+        url=_login_forzado_url(_safe_next(return_to), _public_base(request)),
         status_code=status.HTTP_302_FOUND,
     )
 
