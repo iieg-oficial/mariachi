@@ -24,8 +24,8 @@ export const ESTADO_LABELS = {
 };
 
 export const ESTADO_COLORS = {
-    nuevo: 'red',
-    en_revision: 'blue',
+    nuevo: 'blue',
+    en_revision: 'gold',
     resuelto: 'green',
     descartado: 'default',
 };

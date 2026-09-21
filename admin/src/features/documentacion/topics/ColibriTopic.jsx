@@ -16,7 +16,7 @@ const ATRIBUTOS = [
     { campo: 'source-app', desc: 'Requerido. Slug del huésped registrado en /colibri/source-apps.' },
     { campo: 'api-key', desc: 'Requerido. Key pública ck_pub_*.' },
     { campo: 'tipos', desc: 'CSV. Subset de tipos permitidos (default: todos los activos).' },
-    { campo: 'theme', desc: 'light · dark · auto (default auto).' },
+    { campo: 'privacy-url', desc: 'Aviso de privacidad del huésped. Si viene, el formulario pide aceptarlo antes de enviar.' },
     { campo: 'endpoint', desc: 'Se deriva del origen del <script> automáticamente; solo override para desarrollo.' },
 ];
 
@@ -24,7 +24,7 @@ const JS_API = [
     { campo: 'identify(user)', desc: 'Asocia el usuario logueado ({ id, email, name, role }) a los reportes siguientes.' },
     { campo: 'setContext(k, v)', desc: 'Adjunta datos de negocio a source_context.custom (ej. envioId, sourceRoute).' },
     { campo: 'clearContext()', desc: 'Limpia el contexto acumulado.' },
-    { campo: 'openPanel(opts)', desc: 'Abre el panel desde un botón propio. opts: { sourceApp, apiKey, tipoDefault, tipos }.' },
+    { campo: 'openPanel(opts)', desc: 'Abre el panel desde un botón propio. opts: { sourceApp, apiKey, tipoDefault, tipos, privacyUrl }.' },
 ];
 
 const API_KEY = [

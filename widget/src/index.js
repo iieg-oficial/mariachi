@@ -43,6 +43,7 @@ if (typeof window !== 'undefined') {
         if (opts.tipos) panel.setAttribute('tipos', opts.tipos);
         if (opts.tipoDefault) panel.setAttribute('tipo-default', opts.tipoDefault);
         if (opts.emailRequired) panel.setAttribute('email-required', '');
+        if (opts.privacyUrl) panel.setAttribute('privacy-url', opts.privacyUrl);
         document.body.appendChild(panel);
         panel.addEventListener('colibri:closed', () => {
             setTimeout(() => panel.remove(), 300);

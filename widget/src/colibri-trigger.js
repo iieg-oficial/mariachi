@@ -25,6 +25,7 @@ export class ColibriTrigger extends LitElement {
         tiposFilter: { type: String, attribute: 'tipos' },
         tipoDefault: { type: String, attribute: 'tipo-default' },
         emailRequired: { type: Boolean, attribute: 'email-required' },
+        privacyUrl: { type: String, attribute: 'privacy-url' },
         _open: { type: Boolean, attribute: false },
     };
 
@@ -47,30 +48,38 @@ export class ColibriTrigger extends LitElement {
                 cursor: pointer;
             }
             .trigger svg { width: 1em; height: 1em; vertical-align: -0.125em; }
+            .trigger:focus-visible { outline: 2px solid var(--colibri-primary); outline-offset: 2px; border-radius: 4px; }
 
             :host([as='link']) .trigger { color: var(--colibri-primary); text-decoration: underline; }
             :host([as='text']) .trigger { color: inherit; }
             :host([as='icon']) .trigger {
-                color: var(--colibri-muted);
-                padding: 4px;
-                border-radius: 4px;
+                width: 40px;
+                height: 40px;
+                justify-content: center;
+                color: var(--colibri-primary);
+                border-radius: 9999px;
             }
-            :host([as='icon']) .trigger:hover { color: var(--colibri-primary); background: var(--colibri-border); }
+            :host([as='icon']) .trigger svg { width: 20px; height: 20px; }
+            :host([as='icon']) .trigger:hover { background: var(--colibri-primary-soft); }
             :host([as='chip']) .trigger {
-                border: 1px solid var(--colibri-border);
-                border-radius: 999px;
-                padding: 4px 12px;
-                font-size: 12px;
+                height: 30px;
+                padding: 4px 16px;
+                border-radius: var(--colibri-radius-field);
+                background: var(--colibri-field-bg);
+                color: var(--colibri-text);
+                font-size: 14px;
+                font-weight: 700;
             }
-            :host([as='chip']) .trigger:hover { border-color: var(--colibri-primary); color: var(--colibri-primary); }
+            :host([as='chip']) .trigger:hover { box-shadow: 0 0 0 1px var(--colibri-primary); color: var(--colibri-primary); }
             :host([as='menu-item']) .trigger {
                 width: 100%;
-                padding: 8px 12px;
+                min-height: 40px;
+                padding: 8px 16px;
                 justify-content: flex-start;
-                border-radius: 4px;
+                border-radius: var(--colibri-radius-field);
                 text-align: left;
             }
-            :host([as='menu-item']) .trigger:hover { background: var(--colibri-border); }
+            :host([as='menu-item']) .trigger:hover { background: var(--colibri-field-bg); color: var(--colibri-primary); }
 
             :host([underline='always']) .trigger { text-decoration: underline; }
             :host([underline='never']) .trigger { text-decoration: none !important; }
@@ -134,6 +143,7 @@ export class ColibriTrigger extends LitElement {
                 source-app=${this.sourceApp || ''}
                 tipos=${this.tiposFilter || ''}
                 tipo-default=${this._initialTipo || ''}
+                privacy-url=${this.privacyUrl || ''}
                 ?email-required=${this.emailRequired}
                 @colibri:closed=${() => this._open = false}>
             </colibri-panel>
