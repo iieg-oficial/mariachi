@@ -243,7 +243,8 @@ async def top_eventos(
             FROM huachicol.rollup_eventos
             WHERE dia BETWEEN :df AND :dt AND app = :app
             GROUP BY evento_id
-            ORDER BY opens DESC, unique_sessions DESC
+            ORDER BY SUM(opens) + SUM(fun_facts) + SUM(centers) + SUM(shares) DESC,
+                     SUM(unique_sessions) DESC
             LIMIT :limit
             """
         ),
@@ -258,12 +259,16 @@ async def top_eventos(
             continue
 
     titulos: dict[str, str] = {}
+    modos: dict[str, str] = {}
     if ids:
-        stmt = text("SELECT id, titulo FROM eventos WHERE id IN :ids").bindparams(
+        stmt = text("SELECT id, titulo, modo FROM eventos WHERE id IN :ids").bindparams(
             bindparam("ids", expanding=True)
         )
-        for ev_id, titulo in db.execute(stmt, {"ids": ids}).all():
+        for ev_id, titulo, modo in db.execute(stmt, {"ids": ids}).all():
             titulos[str(ev_id)] = titulo
+            modos[str(ev_id)] = modo
+
+    crudos = _uso_crudo_de_eventos(db, period, [r["evento_id"] for r in rows])
 
     return [
         EventoStatRow(
@@ -274,11 +279,47 @@ async def top_eventos(
             fun_facts=r["fun_facts"] or 0,
             centers=r["centers"] or 0,
             shares=r["shares"] or 0,
-            unique_sessions=r["unique_sessions"] or 0,
+            returns=crudos.get(r["evento_id"], {}).get("returns", 0),
+            unique_sessions=crudos.get(r["evento_id"], {}).get("sesiones") or r["unique_sessions"] or 0,
+            modo=modos.get(r["evento_id"]),
             last_seen=r["last_seen"],
         )
         for r in rows
     ]
+
+
+def _uso_crudo_de_eventos(db: Session, period: Period, evento_ids: list[str]) -> dict[str, dict[str, int]]:
+    if not evento_ids:
+        return {}
+    stmt = text(
+        """
+        SELECT props->>'evento_id' AS evento_id,
+               COUNT(DISTINCT session_id) AS sesiones,
+               COUNT(*) FILTER (WHERE event_name = 'evento_fun_volver') AS returns
+        FROM huachicol.events
+        WHERE event_name IN (
+            'evento_open', 'evento_close', 'evento_fun_fact',
+            'evento_fun_volver', 'evento_center', 'evento_share'
+        )
+          AND app = :app
+          AND ts >= :df AND ts < :dt_siguiente
+          AND props->>'evento_id' IN :ids
+        GROUP BY props->>'evento_id'
+        """
+    ).bindparams(bindparam("ids", expanding=True))
+    filas = db.execute(
+        stmt,
+        {
+            "app": period.app,
+            "df": period.df,
+            "dt_siguiente": period.dt + timedelta(days=1),
+            "ids": evento_ids,
+        },
+    ).mappings().all()
+    return {
+        f["evento_id"]: {"sesiones": f["sesiones"] or 0, "returns": f["returns"] or 0}
+        for f in filas
+    }
 
 
 @router.get("/themes", response_model=list[ThemeStatRow], response_model_by_alias=True)

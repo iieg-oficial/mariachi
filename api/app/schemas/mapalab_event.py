@@ -143,7 +143,9 @@ class EventoStatRow(CamelCaseOutput):
     fun_facts: int
     centers: int
     shares: int
+    returns: int = 0
     unique_sessions: int
+    modo: str | None = None
     last_seen: datetime | None = None
 
 
