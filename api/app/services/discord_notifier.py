@@ -66,7 +66,7 @@ def notify_new_reporte(reporte: Reporte) -> None:
     }
     if reporte.email_contacto:
         embed["fields"].append(
-            {"name": "Contacto", "value": reporte.email_contacto, "inline": True}
+            {"name": "Contacto", "value": "Dejó correo; está en el panel", "inline": True}
         )
 
     try:

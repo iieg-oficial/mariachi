@@ -56,7 +56,7 @@ def _build_payload(reporte: Reporte, tipo: ReporteTipo | None) -> dict:
         "source_route": reporte.source_route,
         "estado": reporte.estado,
         "creado_en": reporte.creado_en.isoformat() if reporte.creado_en else None,
-        "email_contacto": reporte.email_contacto,
+        "tiene_contacto": bool(reporte.email_contacto),
     }
 
 

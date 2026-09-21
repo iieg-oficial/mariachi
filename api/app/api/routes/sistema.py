@@ -5,6 +5,7 @@ from app.api.deps import get_current_user
 from app.core.settings import get_settings
 from app.models.user import Usuario
 from app.services.changelog_parser import parse_changelog
+from app.services.colibri_keys import PUBLIC_PREFIX
 
 router = APIRouter(prefix="/sistema", tags=["sistema"])
 
@@ -68,10 +69,10 @@ async def monitor_events(
 
 @router.get("/colibri-config")
 async def colibri_config(_: Usuario = Depends(get_current_user)):
-    settings = get_settings()
+    api_key = get_settings().colibri_api_key_mariachi or ""
     return {
         "source_app": "mariachi",
-        "api_key": settings.colibri_api_key_mariachi,
+        "api_key": api_key if api_key.startswith(PUBLIC_PREFIX) else "",
     }
 
 
