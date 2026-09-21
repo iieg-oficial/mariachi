@@ -81,7 +81,7 @@ const PIEZAS = [
     { pieza: 'mapalab.layers.raster_periodicity', repo: 'dataengine', nota: 'Opcional. Vacío, el visor usa la dimensión TIME de GeoServer.' },
     { pieza: 'Editor de capas', repo: 'mariachi', nota: 'Switch timeEnabled y tipo de geometría.' },
     { pieza: 'Recursos GeoServer', repo: 'mariachi', nota: 'Subir los .tif, editar los properties y reindexar el mosaico.' },
-    { pieza: 'rasterPeriodicityFallback', repo: 'mapalab', nota: 'Completa las fechas desde la GetCapabilities al cargar el árbol.' },
+    { pieza: 'rasterPeriodicityFallback', repo: 'mapalab', nota: 'Completa las fechas desde la GetCapabilities al cargar el árbol. Requiere mapalab 1.172.1 o posterior.' },
     { pieza: 'useWMSFilterUpdater', repo: 'mapalab', nota: 'Manda el valor como TIME= en el GetMap, en vez de CQL_FILTER.' },
 ];
 

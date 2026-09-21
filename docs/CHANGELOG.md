@@ -29,7 +29,7 @@ reindexar: GeoServer construye el índice una sola vez.
 - El contador de carpetas y archivos baja al pie de la lista, dentro del borde. El peso no se
   muestra: GeoServer no lo expone ni en el listado, ni en la metadata, ni en un `HEAD`.
 - **Vaciar cachés** explica en un tooltip qué hace.
-- El tópico de rásters con TIME ya no manda a capturar `rasterPeriodicity`: desde mapalab 1.171.1
+- El tópico de rásters con TIME ya no manda a capturar `rasterPeriodicity`: desde mapalab 1.172.1
   el visor la toma de GeoServer. Suma los gotchas de `nddi`.
 
 ## [2.93.3] - 2026-09-17
