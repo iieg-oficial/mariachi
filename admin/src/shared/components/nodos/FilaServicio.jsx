@@ -77,7 +77,7 @@ export default function FilaServicio({ plataforma, columnas, onReportar }) {
             <Tooltip title={tip || undefined}>
                 <span><Badge status={badge.status} /></span>
             </Tooltip>
-            <Text strong style={{ fontSize: 13, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            <Text strong style={{ fontSize: 13, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {label}
             </Text>
             <Tag

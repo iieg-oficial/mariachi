@@ -10,7 +10,7 @@ import FilaServicio, { ANCHO_ENLACES } from '@shared/components/nodos/FilaServic
 const { Text } = Typography;
 const { useBreakpoint } = Grid;
 
-const COLUMNAS = `212px 1fr 50px ${ANCHO_ENLACES}px`;
+const COLUMNAS = `212px minmax(0, 1fr) 50px ${ANCHO_ENLACES}px`;
 const HORAS_EJE = 4;
 
 const LEYENDA = [

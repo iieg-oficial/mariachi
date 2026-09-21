@@ -16,7 +16,7 @@ import GraficaTemperaturas from '@shared/components/nodos/GraficaTemperaturas';
 const { Text } = Typography;
 const { useBreakpoint } = Grid;
 
-const COLUMNAS_SERVICIO = `196px 1fr 50px ${ANCHO_ENLACES}px`;
+const COLUMNAS_SERVICIO = `196px minmax(0, 1fr) 50px ${ANCHO_ENLACES}px`;
 
 export default function NodoDetalleModal({ nodo, open, onClose, contenedor }) {
     const pantalla = useBreakpoint();
