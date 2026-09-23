@@ -180,3 +180,73 @@ def test_formato_anio_se_conserva_en_lista_y_texto():
 def test_formato_desconocido_se_rechaza(formato):
     with pytest.raises(ValidationError):
         _valida({'headerField': 'n', 'list': [{'field': 'f', 'label': 'F', 'formato': formato}]})
+
+
+def test_titulo_fijo_no_se_valida_como_campo():
+    cfg = _valida({
+        'headerField': 'Áreas Naturales Protegidas',
+        'list': [{'field': 'nombre', 'label': 'Nombre'}],
+    })
+    validate_fields_exist(cfg, {'nombre', 'tipo'})
+
+
+def test_campo_inexistente_en_filas_sigue_rechazandose_con_titulo_fijo():
+    cfg = _valida({
+        'headerField': 'Titulo fijo',
+        'list': [{'field': 'fantasma', 'label': 'X'}],
+    })
+    with pytest.raises(ValueError, match='fantasma'):
+        validate_fields_exist(cfg, {'nombre'})
+
+
+def test_raw_y_split_se_conservan():
+    cfg = _valida({
+        'list': [{'field': 'clave', 'label': 'Clave', 'raw': True, 'split': True}],
+        'cards': [{'field': 'cve', 'label': 'CVE', 'raw': True}],
+    })
+    assert cfg.to_config() == {
+        'list': [{'field': 'clave', 'label': 'Clave', 'raw': True, 'split': True}],
+        'cards': [{'field': 'cve', 'label': 'CVE', 'raw': True}],
+    }
+
+
+def test_parrafo_de_texto_fijo_y_largo_es_valido():
+    cfg = _valida({'text': [{'id': 't0', 'items': [{'label': 'x' * 160}]}]})
+    assert cfg.to_config()['text'][0]['items'][0] == {'label': 'x' * 160}
+
+
+def test_parrafo_vacio_se_rechaza():
+    with pytest.raises(ValidationError):
+        _valida({'text': [{'id': 't0', 'items': [{}]}]})
+
+
+@pytest.mark.parametrize('texto', [
+    'Visita https://premios.example',
+    'www.ofertas.com',
+    'Escribe a estafa@correo.com',
+    'Llama al 33 1234 5678',
+    'Más info en mipagina.mx',
+])
+def test_texto_libre_no_admite_contacto(texto):
+    with pytest.raises(ValidationError):
+        _valida({'headerField': texto})
+    with pytest.raises(ValidationError):
+        _valida({'list': [{'field': 'a', 'label': texto}]})
+    with pytest.raises(ValidationError):
+        _valida({'text': [{'id': 't0', 'items': [{'label': texto}]}]})
+
+
+@pytest.mark.parametrize('texto', [
+    'Censo 2020-2025',
+    'Área (ha)',
+    'Población total 2020',
+    'Áreas Naturales Protegidas',
+    'Clave INEGI 14039',
+])
+def test_texto_libre_comun_se_acepta(texto):
+    _valida({'headerField': texto, 'list': [{'field': 'a', 'label': texto}]})
+
+
+def test_afijos_de_campos_combinados_tambien_se_revisan():
+    with pytest.raises(ValidationError):
+        _valida({'list': [{'compose': [{'field': 'a', 'prefix': 'www.x.com '}], 'label': 'A'}]})

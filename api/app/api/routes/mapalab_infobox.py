@@ -84,7 +84,7 @@ def listar(
             continue
         try:
             capa = service.get_capa_habilitada(dataengine_db, propuesta.capa_slug)
-            vigentes[propuesta.capa_slug] = capa.infobox_config
+            vigentes[propuesta.capa_slug] = service.config_efectiva(dataengine_db, capa)
         except service.PropuestaError:
             vigentes[propuesta.capa_slug] = None
 

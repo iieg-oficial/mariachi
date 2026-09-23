@@ -9,6 +9,47 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.97.0] - 2026-09-23
+
+Acompaña a mapalab 1.186.0 (editor de tarjetas del catálogo) y se despliega antes que él.
+
+### Cambiado: las propuestas de tarjeta se fusionan sobre la vigente
+
+Al aprobar, la propuesta ciudadana ya no reemplaza la tarjeta completa: toma de ella título, Cifras,
+Detalles y Texto, y conserva todo lo demás de la tarjeta **efectiva** (la propia de la capa o la
+heredada de `mapalab.layers`): etiquetas de color, íconos con texto, columnas de cifras,
+transformación del título. Los bloques que el ciudadano no edita conservan su posición en
+`blockOrder`. La lógica vive en `services/mapalab_infobox_fusion.py`, pura y con tests; mapalab tiene
+el espejo en `helpers/tarjetaFusion.js`. El listado del panel compara contra la tarjeta efectiva.
+
+### Agregado: reglas de seguridad de la propuesta pública
+
+- **Sin links nuevos.** Una propuesta solo puede traer los `href` que la tarjeta ya tenía; se revisa
+  al crearla y otra vez al aprobarla.
+- **Sin datos de contacto en el texto libre.** Título fijo, etiquetas, párrafos, afijos, separadores
+  y unidades rechazan URLs, dominios comunes, correos y números de diez dígitos o más.
+- **Párrafos de texto fijo** en los bloques de Texto, de hasta 300 caracteres. Antes todo párrafo
+  exigía un campo y 80 caracteres, así que las 57 tarjetas que ya los tenían no se podían
+  re-proponer.
+- **Título fijo** (`headerField` que no es columna) ya no se valida como campo: respondía 400 en
+  143 de 208 tarjetas.
+- `raw` y `split` en filas y `raw` en cifras pasan el esquema, para no perder el formato vigente.
+
+### Agregado: aviso a Discord de cada propuesta nueva
+
+Cada propuesta creada se avisa al webhook `DISCORD_WEBHOOK_MAPALAB`, con la capa y el comentario.
+Antes se quedaban en `/mapalab/infobox-propuestas` hasta que alguien entrara a verlas.
+
+### Agregado: «Texto escrito a mano» en la revisión
+
+`ConfigDiff` marca en naranja el texto libre de la propuesta que la tarjeta vigente no tenía, para que
+quien aprueba vea justo lo que el ciudadano escribió.
+
+### Corregido: la revisión truena con un título combinado
+
+`ConfigDiff` pintaba `headerField` directo y un título de campos combinados (objeto) tumbaba la
+página. Ahora muestra los campos de la combinación, igual que en las filas.
+
 ## [2.96.0] - 2026-09-21
 
 ### Cambiado: el widget de Colibrí copia los componentes de SIEEJ

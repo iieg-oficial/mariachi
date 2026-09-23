@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Annotated, Any, List, Literal
 from urllib.parse import urlparse
 
@@ -19,6 +20,7 @@ MAX_CONFIG_BYTES = 8192
 MAX_ROWS_PER_BLOCK = 12
 MAX_TEXT_BLOCKS = 3
 MAX_LABEL_LEN = 80
+MAX_TEXT_LEN = 300
 MAX_FIELD_LEN = 120
 MAX_SUFFIX_LEN = 12
 MAX_HREF_LEN = 500
@@ -33,6 +35,17 @@ ALLOWED_HREF_SCHEMES = frozenset({'http', 'https', 'mailto', 'tel'})
 _empty = list
 
 BLOCK_KEYS = ('list', 'cards', 'text')
+
+_CONTACTO = re.compile(
+    r'(https?://|www\.|\S+@\S+\.\S+'
+    r'|\b[\w-]+\.(?:com|net|org|mx|io|info|xyz|site|online|me|ly|app|link|biz|co)\b'
+    r'|(?:\+?\d[\s().-]*){10,})',
+    re.IGNORECASE,
+)
+
+
+def texto_con_contacto(texto: str | None) -> bool:
+    return bool(texto) and bool(_CONTACTO.search(texto))
 
 
 def _validate_href(value: str | None) -> str | None:
@@ -124,6 +137,8 @@ class InfoboxListRow(_ValueDef):
     label: str = Field(..., min_length=1, max_length=MAX_LABEL_LEN)
     href: str | None = Field(default=None)
     formato: Literal['anio'] | None = Field(default=None)
+    raw: bool | None = Field(default=None)
+    split: bool | None = Field(default=None)
 
     _check_href = field_validator('href')(lambda cls, v: _validate_href(v))
 
@@ -134,6 +149,10 @@ class InfoboxListRow(_ValueDef):
             config['href'] = self.href
         if self.formato is not None:
             config['formato'] = self.formato
+        if self.raw:
+            config['raw'] = True
+        if self.split:
+            config['split'] = True
         return config
 
 
@@ -142,6 +161,7 @@ class InfoboxCard(_ValueDef):
     suffix: str | None = Field(default=None, max_length=MAX_SUFFIX_LEN)
     decimals: int | None = Field(default=None, ge=0, le=4)
     op: Literal['join', 'sum'] | None = Field(default=None)
+    raw: bool | None = Field(default=None)
 
     @model_validator(mode='after')
     def _validate_op(self):
@@ -160,18 +180,30 @@ class InfoboxCard(_ValueDef):
             config['suffix'] = self.suffix
         if self.decimals is not None:
             config['decimals'] = self.decimals
+        if self.raw:
+            config['raw'] = True
         return config
 
 
 class InfoboxTextItem(_ValueDef):
-    label: str | None = Field(default=None, max_length=MAX_LABEL_LEN)
+    label: str | None = Field(default=None, max_length=MAX_TEXT_LEN)
     href: str | None = Field(default=None)
     formato: Literal['anio'] | None = Field(default=None)
 
     _check_href = field_validator('href')(lambda cls, v: _validate_href(v))
 
+    @model_validator(mode='after')
+    def _validate_value_source(self):
+        if self.field and self.compose:
+            raise ValueError('cada parrafo lleva un campo o una combinacion de campos, no ambos')
+        if not self.field and not self.compose and not self.label:
+            raise ValueError('un parrafo sin campo necesita texto')
+        if self.sep is not None and not self.compose:
+            raise ValueError('sep solo aplica a una fila combinada')
+        return self
+
     def to_config(self) -> dict:
-        config = self.value_config()
+        config = self.value_config() if (self.field or self.compose) else {}
         if self.label is not None:
             config['label'] = self.label
         if self.href is not None:
@@ -225,7 +257,28 @@ class InfoboxPropuestaConfig(CamelCaseInput):
                 raise ValueError(f'blockOrder referencia un bloque de texto inexistente: {key}')
         if len(json.dumps(self.to_config()).encode('utf-8')) > MAX_CONFIG_BYTES:
             raise ValueError('la configuracion excede el tamaño maximo')
+        if any(texto_con_contacto(texto) for texto in self.textos_libres()):
+            raise ValueError('el texto no puede llevar links, correos ni telefonos')
         return self
+
+    def textos_libres(self) -> list[str]:
+        textos: list[str] = []
+
+        def del_valor(valor: _ValueDef | InfoboxComposeValue) -> None:
+            textos.extend(t for t in (getattr(valor, 'sep', None),) if t)
+            for parte in valor.compose or []:
+                textos.extend(t for t in (parte.prefix, parte.suffix) if t)
+
+        if isinstance(self.header_field, str):
+            textos.append(self.header_field)
+        elif self.header_field is not None:
+            del_valor(self.header_field)
+        filas: list[_ValueDef] = [*self.list, *self.cards]
+        filas.extend(item for bloque in self.text for item in bloque.items)
+        for fila in filas:
+            del_valor(fila)
+            textos.extend(t for t in (getattr(fila, 'label', None), getattr(fila, 'suffix', None)) if t)
+        return textos
 
     def referenced_fields(self) -> set[str]:
         fields: set[str] = set()
@@ -267,6 +320,9 @@ class InfoboxPropuestaConfig(CamelCaseInput):
 def validate_fields_exist(config: InfoboxPropuestaConfig, available: set[str]) -> None:
     if not available:
         return
-    unknown = sorted(config.referenced_fields() - available)
+    faltantes = config.referenced_fields() - available
+    if isinstance(config.header_field, str):
+        faltantes.discard(config.header_field)
+    unknown = sorted(faltantes)
     if unknown:
         raise ValueError(f'campos que no existen en la capa: {", ".join(unknown)}')
