@@ -148,11 +148,21 @@ export const resolveHref = (plantilla, getValue) => {
     } catch { return null; }
 };
 
-const hrefDeIcono = (icon, value) => {
+const DECIMALES_COORDENADA = 6;
+
+const consultaDeUbicacion = (texto, coords) => {
+    const { lat, lng } = coords || {};
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        return `${lat.toFixed(DECIMALES_COORDENADA)},${lng.toFixed(DECIMALES_COORDENADA)}`;
+    }
+    return texto;
+};
+
+const hrefDeIcono = (icon, value, coords = null) => {
     if (!value) return null;
     const s = String(value);
     if (icon === 'celular') return `tel:${s.replace(/\s+/g, '')}`;
-    if (icon === 'ubicacion') return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(s)}`;
+    if (icon === 'ubicacion') return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(consultaDeUbicacion(s, coords))}`;
     if (icon === 'web') return /^https?:\/\//i.test(s) ? s : `https://${s}`;
     return null;
 };
@@ -299,7 +309,7 @@ const planList = ({ items, resolve, getValue, suffix }) => {
     return rows.length ? { rows } : null;
 };
 
-const planIconText = ({ items, resolve, getValue, allowActions }) => {
+const planIconText = ({ items, resolve, getValue, allowActions, coords }) => {
     const validos = items
         .filter(Boolean)
         .map((item) => ({ item, fieldValue: aplicarFormato(resolve(item), item.formato) }))
@@ -312,7 +322,7 @@ const planIconText = ({ items, resolve, getValue, allowActions }) => {
         return {
             icon: item.icon,
             value: mostrado,
-            href: explicito || hrefDeIcono(item.icon, paraHref),
+            href: explicito || hrefDeIcono(item.icon, paraHref, coords),
             action: item.action && !explicito ? item.action : null,
             showDivider: idx === 0,
             isLast: idx === validos.length - 1,
@@ -427,7 +437,7 @@ export const referencedFields = (config) => {
 
 export const buildCardPlan = (properties, config, opciones = {}) => {
     if (!properties) return null;
-    const { layerId = null, featureId = null, dateValue = null, variant = 'desktop', allowActions = false } = opciones;
+    const { layerId = null, featureId = null, dateValue = null, variant = 'desktop', allowActions = false, coords = null } = opciones;
     const cfg = normalizeConfig(config || generateDefaultConfig(properties));
     if (!cfg) return null;
 
@@ -455,6 +465,7 @@ export const buildCardPlan = (properties, config, opciones = {}) => {
             suffix,
             variant,
             allowActions,
+            coords,
             config: cfg,
         });
         if (armado) blocks.push({ key: inst.key, type: inst.type, ...armado });
