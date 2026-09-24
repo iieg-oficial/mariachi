@@ -9,6 +9,25 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.99.0] - 2026-09-24
+
+### Cambiado: registrar un workspace ya no se hace a ciegas
+
+Los tres campos del modal se explicaban con letra chica debajo de cada uno; ahora la explicación
+vive en el «?» de su etiqueta. **El schema de dataengine dejó de escribirse a mano**: sale de la
+lista real de schemas, y si se teclea uno que no existe la UI lo marca. Era el campo más peligroso
+del formulario, porque de él sale la llave con la que se busca la periodicidad de cada capa: si no
+corresponde, el selector de fechas del visor aparece vacío sin decir por qué.
+
+El **alias se valida contra los ya registrados** mientras se escribe, en vez de esperar al 409 del
+servidor, y el botón se bloquea mientras choque. Al elegir el workspace se ve cuántas capas entran
+al catálogo, y abajo quedan a la vista las dos llaves que se van a usar: `workspace:capa` para
+metadatos y numeralia, `schema:tabla` para la periodicidad.
+
+### Agregado: `GET /geoserver/db-schemas`
+
+Lista los schemas de dataengine, sin los del sistema. Lo consume el selector del modal.
+
 ## [2.98.0] - 2026-09-24
 
 ### Cambiado: el alta de nodo del árbol de capas se rehízo

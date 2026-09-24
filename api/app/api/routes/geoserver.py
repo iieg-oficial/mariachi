@@ -162,6 +162,22 @@ async def list_pending_workspaces(
     return pending
 
 
+@router.get('/db-schemas', response_model=list[str])
+async def list_db_schemas(
+    db: Session = Depends(get_dataengine_db),
+    current_user: Usuario = Depends(_require_geoserver_manage),
+    _rl: Usuario = Depends(_read_rate_limit),
+):
+    from sqlalchemy import text
+
+    sql = text(
+        "SELECT nspname FROM pg_namespace "
+        "WHERE nspname NOT LIKE 'pg\\_%' AND nspname <> 'information_schema' "
+        "ORDER BY nspname"
+    )
+    return [row[0] for row in db.execute(sql).fetchall()]
+
+
 @router.post(
     '/workspaces/register',
     response_model=WorkspaceResponse,
