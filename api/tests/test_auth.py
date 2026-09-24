@@ -1,8 +1,11 @@
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, urlparse, urlsplit
 
 from app.api.routes.auth import TX_COOKIE_NAME, resolve_user
+from app.core.settings import get_settings
 from app.models.user import Usuario
 from tests.conftest import ADMIN_PREFIX
+
+CALLBACK_PATH = urlsplit(get_settings().minerva_redirect_uri).path
 
 
 def test_healthcheck(client):
@@ -22,12 +25,22 @@ def test_login_redirige_a_minerva_con_pkce(client):
     assert query["code_challenge_method"] == ["S256"]
     assert query["code_challenge"]
     assert query["state"]
-    assert query["redirect_uri"] == [
-        "http://mariachi.test/api/mariachi/autenticacion/callback"
-    ]
+    assert query["redirect_uri"] == [f"https://testserver{CALLBACK_PATH}"]
 
     assert TX_COOKIE_NAME in {c.name for c in response.cookies.jar}
     assert "code_verifier" not in query
+
+
+def test_login_conserva_el_host_por_el_que_se_entro(client):
+    response = client.get(
+        f"{ADMIN_PREFIX}/autenticacion/login",
+        headers={"host": "10.0.0.7:8443"},
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+
+    query = parse_qs(urlparse(response.headers["location"]).query)
+    assert query["redirect_uri"] == [f"https://10.0.0.7:8443{CALLBACK_PATH}"]
 
 
 def test_callback_sin_rol_en_la_app_lleva_al_login_con_el_error(client):
