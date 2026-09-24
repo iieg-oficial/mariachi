@@ -14,6 +14,7 @@ import { PlusOutlined, ReloadOutlined, SearchOutlined } from '@ant-design/icons'
 import { listGeoserverWorkspaces } from '@features/sextante/api/geoserverFilesService';
 import { listPendingWorkspaces } from '@features/sextante/api/sextanteService';
 import RegisterWorkspaceModal from '@features/sextante/components/RegisterWorkspaceModal';
+import InfoIcon from '@features/mapalab-layers/components/layersEditor/InfoIcon';
 import useIsMobile from '@shared/hooks/useIsMobile';
 
 const { Content } = Layout;
@@ -102,8 +103,8 @@ export default function WorkspacesPage() {
                     <div>
                         <Title level={3} style={{ marginTop: 0, marginBottom: 4 }}>Workspaces</Title>
                         <Paragraph type="secondary" style={{ marginBottom: 0, maxWidth: 720 }}>
-                            Workspaces de GeoServer registrados en <Text code>mapalab.workspaces</Text>. Solo los
-                            registrados pueden respaldar capas del catálogo: el <Text strong>alias</Text> es la llave
+                            Workspaces de GeoServer conectados al catálogo. Solo los conectados pueden respaldar
+                            capas del árbol: el <Text strong>alias</Text> es la llave
                             que usan las capas y el <Text strong>schema</Text> es la fuente en DataEngine.
                         </Paragraph>
                     </div>
@@ -115,34 +116,22 @@ export default function WorkspacesPage() {
                             onClick={() => setModalOpen(true)}
                             disabled={pending.length === 0}
                         >
-                            Registrar workspace
+                            Conectar workspace
                         </Button>
                     </Space>
                 </div>
 
                 {error && <Alert type="error" showIcon closable title={error} />}
 
-                {pending.length > 0 ? (
-                    <Alert
-                        type="warning"
-                        showIcon
-                        title={`${pending.length} workspace${pending.length === 1 ? '' : 's'} sin registrar`}
-                        description={
-                            <span>
-                                {pending.map((p) => `${p.geoserverWorkspace} (${p.layerCount})`).join(', ')}
-                                . Sus capas no están disponibles para el catálogo hasta que los registres.
-                            </span>
-                        }
-                    />
-                ) : (
-                    !loading && !error && (
-                        <Alert
-                            type="success"
-                            showIcon
-                            closable
-                            title="Todos los workspaces de GeoServer están registrados"
+                {pending.length > 0 && (
+                    <Space size={6} wrap>
+                        <Tag bordered={false} color="orange">
+                            {pending.length} workspace{pending.length === 1 ? '' : 's'} sin conectar
+                        </Tag>
+                        <InfoIcon
+                            title={`${pending.map((p) => `${p.geoserverWorkspace} (${p.layerCount})`).join(', ')}. Existen en GeoServer pero no en el catálogo: sus capas no se pueden usar en el árbol hasta conectarlos.`}
                         />
-                    )
+                    </Space>
                 )}
 
                 <Input
@@ -160,7 +149,7 @@ export default function WorkspacesPage() {
                     dataSource={rows}
                     columns={columns}
                     pagination={false}
-                    locale={{ emptyText: <Empty description="Sin workspaces registrados" /> }}
+                    locale={{ emptyText: <Empty description="Sin workspaces conectados" /> }}
                     expandable={{
                         expandedRowRender: (row) => (
                             row.layers.length === 0

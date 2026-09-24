@@ -121,6 +121,7 @@ export default function LayerEditPage() {
     const [advancedOpen, setAdvancedOpen] = useState(requestedAdvanced);
     const [treeQuery, setTreeQuery] = useState('');
     const [createOpen, setCreateOpen] = useState(false);
+    const [createParentId, setCreateParentId] = useState(null);
     const [editorTab, setEditorTab] = useState(initialTab);
     const [statsValues, setStatsValues] = useState([]);
     const [baselinesPorClave, setBaselinesPorClave] = useState({});
@@ -1364,13 +1365,13 @@ export default function LayerEditPage() {
                                 right: (
                                     <Space size={4} style={{ paddingInlineEnd: 4 }}>
                                         {isAdmin && (
-                                            <Tooltip title="Nuevo nodo">
+                                            <Tooltip title="Nuevo nodo en la raíz">
                                                 <Button
                                                     size="small"
                                                     type="text"
                                                     icon={<PlusOutlined />}
-                                                    onClick={() => setCreateOpen(true)}
-                                                    aria-label="Nuevo nodo"
+                                                    onClick={() => { setCreateParentId(null); setCreateOpen(true); }}
+                                                    aria-label="Nuevo nodo en la raíz"
                                                 />
                                             </Tooltip>
                                         )}
@@ -1402,6 +1403,8 @@ export default function LayerEditPage() {
                                             q={treeQuery}
                                             createOpen={createOpen}
                                             onCreateClose={() => setCreateOpen(false)}
+                                            createParentId={createParentId}
+                                            onCreateAt={(id) => { setCreateParentId(id); setCreateOpen(true); }}
                                         />
                                     ),
                                 },

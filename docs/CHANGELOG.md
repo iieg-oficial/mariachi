@@ -9,6 +9,46 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.101.0] - 2026-09-24
+
+### Cambiado: una propiedad nueva hereda la capa de su grupo y pide su filtro
+
+Las propiedades de un grupo comparten capa de GeoServer: medido en la base, 22 capas las usan 112
+nodos y **en todos los grupos sus propiedades usan exactamente una**. Aun así el modal pedía elegir
+la capa, y con el filtro «Solo no registradas» encendido por defecto **escondía justo esa**, porque
+ya la usaba la primera propiedad. Crear la segunda propiedad de «Cultivos» parecía imposible.
+
+Ahora, cuando el padre es un grupo, la capa se toma del grupo y sólo se pide lo que distingue a la
+propiedad de sus hermanas: **el filtro CQL**, que antes había que ir a poner en Avanzado › Servicios.
+Mientras se escribe se ve cuántos registros pesca, y un filtro que GeoServer no entiende se marca en
+rojo con su mensaje.
+
+### Cambiado: «registrar» nombraba tres cosas distintas
+
+- **Workspaces:** «registrar» pasa a **«conectar al catálogo»**, y su estado a *conectado / sin
+  conectar*. La página de workspaces pierde sus dos cajas de aviso: los pendientes van en un chip
+  con el detalle en tooltip.
+- **Capas de GeoServer:** fuera el switch «Solo no registradas». Se listan todas y la que ya se usa
+  lleva `en el árbol ×N`: informa en vez de esconder.
+
+### Corregido: el filtro de capas contaba las de nodos borrados
+
+`available_only` armaba la lista de capas usadas sin mirar `deleted_at`, así que borrar un nodo
+sacaba a su capa de la lista por defecto. Hoy no afectaba a ninguna, pero bastaba borrar una.
+
+### Agregado: crear un nodo donde va, y en el orden en que va
+
+- **«+» en cada fila** de tema, categoría y grupo: el nodo nace dentro de esa fila. El «+» de arriba
+  del árbol crea en la raíz, y ahora lo dice. Antes el modal abría **siempre** en la raíz, porque la
+  página le pasaba `selectedKey={null}` al árbol.
+- **Posición entre hermanos** en el propio modal —al principio, después de uno, al final—, en vez de
+  caer siempre al final y tener que arrastrarlo. Se aplica con `PATCH /layers/reorder`.
+
+### Agregado: `GET /geoserver/workspaces/{alias}/layers/{capa}/count` y `with_usage`
+
+El conteo admite `cql` y responde 400 con el texto de GeoServer si el filtro no es válido.
+`GET /geoserver/workspaces?with_usage=true` agrega `layerUsage` por workspace.
+
 ## [2.100.0] - 2026-09-24
 
 ### Cambiado: elegir dónde vive un nodo nuevo

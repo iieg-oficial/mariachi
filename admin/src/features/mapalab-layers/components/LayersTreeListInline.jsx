@@ -70,6 +70,8 @@ export default function LayersTreeListInline({
     q = '',
     createOpen = false,
     onCreateClose,
+    onCreateAt,
+    createParentId = null,
 }) {
     const screens = useBreakpoint();
     const isMobile = !screens.md;
@@ -124,6 +126,7 @@ export default function LayersTreeListInline({
         toggleExpanded,
         onSelect,
         onEdit: onSelect,
+        onCreateAt: isAdmin ? onCreateAt : undefined,
         onReorder: q ? null : onReorder,
     };
 
@@ -158,9 +161,13 @@ export default function LayersTreeListInline({
                 <LayerCreateModal
                     open={createOpen}
                     onClose={onCreateClose}
-                    onSubmit={async (payload) => { await onCreate(payload); if (onReload) await onReload(); }}
+                    onSubmit={async (payload, extra) => {
+                        await onCreate(payload);
+                        if (onReload) await onReload();
+                        if (extra?.orden && onReorder) await onReorder(payload.parent_id, extra.orden);
+                    }}
                     treeData={treeData}
-                    defaultParentId={selectedKey || null}
+                    defaultParentId={createParentId}
                 />
             )}
         </div>

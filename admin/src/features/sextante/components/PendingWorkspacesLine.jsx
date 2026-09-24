@@ -17,11 +17,11 @@ export default function PendingWorkspacesLine({ pending = [], onRegistered }) {
         <>
             <Space size={6} wrap>
                 <Tag bordered={false} color="orange">
-                    {pending.length} workspace{plural} sin registrar
+                    {pending.length} workspace{plural} sin conectar
                 </Tag>
-                <InfoIcon title={`${detalle}. Sus capas no aparecen en el buscador hasta que los registres.`} />
+                <InfoIcon title={`${detalle}. Existen en GeoServer pero no en el catálogo: sus capas no aparecen en el buscador hasta que los conectes.`} />
                 <Button type="link" size="small" style={{ padding: 0 }} onClick={() => setOpen(true)}>
-                    Registrar
+                    Conectar
                 </Button>
                 <Text type="secondary" style={{ fontSize: 12 }}>para que sus capas aparezcan abajo</Text>
             </Space>

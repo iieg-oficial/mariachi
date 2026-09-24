@@ -63,10 +63,29 @@ def _resolve_workspace(db: Session, alias: str) -> Workspace:
     return ws
 
 
+def uso_de_capas(db: Session) -> dict[tuple[str, str], int]:
+    from sqlalchemy import func
+
+    from app.models.layer import Layer
+
+    rows = (
+        db.query(Layer.workspace_alias, Layer.geoserver_layer, func.count(Layer.id))
+        .filter(
+            Layer.workspace_alias.isnot(None),
+            Layer.geoserver_layer.isnot(None),
+            Layer.deleted_at.is_(None),
+        )
+        .group_by(Layer.workspace_alias, Layer.geoserver_layer)
+        .all()
+    )
+    return {(alias, name): total for alias, name, total in rows}
+
+
 @router.get('/workspaces')
 async def list_workspaces_with_layers(
     available_only: bool = Query(default=False),
     include_unregistered: bool = Query(default=False),
+    with_usage: bool = Query(default=False),
     db: Session = Depends(get_dataengine_db),
     current_user: Usuario = Depends(_require_geoserver_manage),
     _rl: Usuario = Depends(_read_rate_limit),
@@ -74,14 +93,10 @@ async def list_workspaces_with_layers(
     workspaces = db.query(Workspace).order_by(Workspace.alias).all()
     client = GeoServerClient()
 
-    registered_layers: set[tuple[str, str]] = set()
-    if available_only:
-        from app.models.layer import Layer
-        rows = db.query(Layer.workspace_alias, Layer.geoserver_layer).filter(
-            Layer.workspace_alias.isnot(None),
-            Layer.geoserver_layer.isnot(None),
-        ).all()
-        registered_layers = {(alias, name) for alias, name in rows}
+    uso: dict[tuple[str, str], int] = {}
+    if available_only or with_usage:
+        uso = uso_de_capas(db)
+    registered_layers = set(uso)
 
     result = []
     for ws in workspaces:
@@ -102,6 +117,7 @@ async def list_workspaces_with_layers(
             'label': ws.label,
             'layers': layers,
             'registered': True,
+            **({'layerUsage': {name: uso.get((ws.alias, name), 0) for name in layers}} if with_usage else {}),
         })
 
     if include_unregistered:
@@ -293,6 +309,23 @@ async def list_fields(
         return response
     except GeoServerError as exc:
         raise HTTPException(status_code=502, detail=str(exc))
+
+
+@router.get('/workspaces/{alias}/layers/{layer}/count')
+async def layer_count(
+    alias: str,
+    layer: str,
+    cql: str | None = Query(default=None, max_length=2000),
+    db: Session = Depends(get_dataengine_db),
+    current_user: Usuario = Depends(_require_geoserver_manage),
+    _rl: Usuario = Depends(_read_rate_limit),
+):
+    ws = _resolve_workspace(db, alias)
+    client = GeoServerClient()
+    try:
+        return {'count': client.count_features(ws.geoserver_workspace, layer, cql)}
+    except GeoServerError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 @router.get('/workspaces/{alias}/layers/{layer}/geometry')

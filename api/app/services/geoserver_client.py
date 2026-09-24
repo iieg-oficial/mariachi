@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import html
 import xml.etree.ElementTree as ET
 from urllib.parse import quote
 
@@ -385,6 +386,21 @@ class GeoServerClient:
         return seen
 
 
+    def count_features(self, workspace: str, layer: str, cql: str | None = None) -> int:
+        url = self._ows_url()
+        params = {
+            "service": "WFS",
+            "version": "2.0.0",
+            "request": "GetFeature",
+            "typeNames": f"{workspace}:{layer}",
+            "resultType": "hits",
+        }
+        if cql and cql.strip():
+            params["CQL_FILTER"] = cql.strip()
+        with self._client() as c:
+            r = c.get(url, params=params)
+        return _parse_hits(r.status_code, r.text, f"{workspace}:{layer}")
+
     def sample_features(self, workspace: str, layer: str, limit: int = 10) -> list[dict]:
         """Devuelve features completas para previsualizar una tarjetita con datos reales.
 
@@ -594,6 +610,22 @@ class GeoServerClient:
                     f"move fallido {body} -> {base}/{target} "
                     f"(HTTP {r.status_code}): {r.text[:200]}"
                 )
+
+
+def _parse_hits(status_code: int, body: str, capa: str) -> int:
+    try:
+        root = ET.fromstring(body)
+    except ET.ParseError as e:
+        raise GeoServerError(f"Respuesta ilegible al contar {capa}") from e
+    if root.tag.endswith("ExceptionReport"):
+        texto = html.unescape(" ".join(t.strip() for t in root.itertext() if t.strip()))
+        raise GeoServerError(texto or f"GeoServer rechazo el filtro de {capa}")
+    if status_code >= 400:
+        raise GeoServerError(f"GeoServer respondio {status_code} al contar {capa}")
+    matched = root.attrib.get("numberMatched")
+    if matched is None or not matched.isdigit():
+        raise GeoServerError(f"GeoServer no informo el total de {capa}")
+    return int(matched)
 
 
 OGC_GEOMETRIES = {

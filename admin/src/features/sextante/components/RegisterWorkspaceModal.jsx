@@ -83,11 +83,11 @@ export default function RegisterWorkspaceModal({ open, onClose, onRegistered, pe
                 db_schema: values.db_schema,
                 label: values.label || null,
             });
-            message.success(`Workspace "${created.alias}" registrado`);
+            message.success(`Workspace "${created.alias}" conectado al catálogo`);
             onRegistered?.(created);
             onClose?.();
         } catch (err) {
-            message.error(err?.response?.data?.detail || 'No se pudo registrar el workspace');
+            message.error(err?.response?.data?.detail || 'No se pudo conectar el workspace');
         } finally {
             setSubmitting(false);
         }
@@ -105,12 +105,12 @@ export default function RegisterWorkspaceModal({ open, onClose, onRegistered, pe
             open={open}
             onCancel={onClose}
             onOk={handleOk}
-            okText="Registrar"
+            okText="Conectar"
             cancelText="Cancelar"
             confirmLoading={submitting}
             okButtonProps={{ style: PILDORA, disabled: Boolean(chocado) }}
             cancelButtonProps={{ style: PILDORA }}
-            title="Registrar workspace de GeoServer"
+            title="Conectar workspace al catálogo"
             destroyOnHidden
             width={520}
         >

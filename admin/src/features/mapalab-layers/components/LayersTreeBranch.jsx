@@ -1,5 +1,5 @@
 import { Tag, Tooltip, Typography } from 'antd';
-import { CaretDownOutlined, CaretRightOutlined, EditOutlined, HolderOutlined } from '@ant-design/icons';
+import { CaretDownOutlined, CaretRightOutlined, EditOutlined, HolderOutlined, PlusOutlined } from '@ant-design/icons';
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -95,7 +95,31 @@ function TitleBlock({ node, isMobile }) {
     );
 }
 
-function NodeRow({ node, depth, expanded, selected, isMobile, onToggle, onSelect, onEdit, dragHandle }) {
+const PUEDE_TENER_HIJOS = new Set(['tema', 'category', 'group']);
+
+function RowAction({ titulo, etiqueta, icono, onActivar }) {
+    return (
+        <Tooltip title={titulo}>
+            <span
+                role="button"
+                tabIndex={0}
+                className="tree-edit"
+                aria-label={etiqueta}
+                onClick={(e) => { e.stopPropagation(); onActivar(); }}
+                onKeyDown={(e) => {
+                    if (e.key !== 'Enter' && e.key !== ' ') return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onActivar();
+                }}
+            >
+                {icono}
+            </span>
+        </Tooltip>
+    );
+}
+
+function NodeRow({ node, depth, expanded, selected, isMobile, onToggle, onSelect, onEdit, onCreateAt, dragHandle }) {
     const shape = shapeOf(node.nodeType);
     const organizer = isOrganizer(node.nodeType);
     const step = isMobile ? INDENT_STEP_MOBILE : INDENT_STEP;
@@ -138,31 +162,28 @@ function NodeRow({ node, depth, expanded, selected, isMobile, onToggle, onSelect
                 </span>
             )}
             <TitleBlock node={node} isMobile={isMobile} />
+            {onCreateAt && PUEDE_TENER_HIJOS.has(node.nodeType) && (
+                <RowAction
+                    titulo={`Nuevo nodo dentro de ${node.title}`}
+                    etiqueta={`Nuevo nodo dentro de ${node.title}`}
+                    icono={<PlusOutlined />}
+                    onActivar={() => onCreateAt(node.key)}
+                />
+            )}
             {organizer && onEdit && (
-                <Tooltip title={`Editar ${labelForNode(node.nodeType, node.parentNodeType).toLowerCase()}`}>
-                    <span
-                        role="button"
-                        tabIndex={0}
-                        className="tree-edit"
-                        aria-label={`Editar ${node.title}`}
-                        onClick={(e) => { e.stopPropagation(); onEdit(node.key); }}
-                        onKeyDown={(e) => {
-                            if (e.key !== 'Enter' && e.key !== ' ') return;
-                            e.preventDefault();
-                            e.stopPropagation();
-                            onEdit(node.key);
-                        }}
-                    >
-                        <EditOutlined />
-                    </span>
-                </Tooltip>
+                <RowAction
+                    titulo={`Editar ${labelForNode(node.nodeType, node.parentNodeType).toLowerCase()}`}
+                    etiqueta={`Editar ${node.title}`}
+                    icono={<EditOutlined />}
+                    onActivar={() => onEdit(node.key)}
+                />
             )}
         </div>
     );
 }
 
 export default function LayersTreeBranch(props) {
-    const { node, depth, expanded, selectedKey, isMobile, toggleExpanded, onSelect, onEdit, onReorder, dragHandle } = props;
+    const { node, depth, expanded, selectedKey, isMobile, toggleExpanded, onSelect, onEdit, onCreateAt, onReorder, dragHandle } = props;
     const shape = shapeOf(node.nodeType);
     const isGroup = shape === 'box';
     const siempreAbierto = shape === 'rule';
@@ -214,6 +235,7 @@ export default function LayersTreeBranch(props) {
             onToggle={toggleExpanded}
             onSelect={onSelect}
             onEdit={onEdit}
+            onCreateAt={onCreateAt}
             dragHandle={dragHandle}
         />
     );
