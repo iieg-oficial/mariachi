@@ -309,7 +309,7 @@ class GeoServerClient:
                     names.insert(0, default)
         return names
 
-    def list_fields(self, workspace: str, layer: str) -> list[dict]:
+    def _describe_properties(self, workspace: str, layer: str) -> list[dict]:
         if self.is_layer_group(workspace, layer):
             return []
         url = self._ows_url()
@@ -332,14 +332,32 @@ class GeoServerClient:
         feature_types = data.get("featureTypes") or []
         if not feature_types:
             return []
-        properties = feature_types[0].get("properties") or []
-        result = []
-        for prop in properties:
-            result.append({
+        return feature_types[0].get("properties") or []
+
+    def list_fields(self, workspace: str, layer: str) -> list[dict]:
+        return [
+            {
                 "name": prop.get("name"),
                 "type": _normalize_type(prop.get("localType") or prop.get("type")),
-            })
-        return result
+            }
+            for prop in self._describe_properties(workspace, layer)
+        ]
+
+    def is_coverage(self, workspace: str, layer: str) -> bool:
+        url = self._rest_url(f"workspaces/{workspace}/coverages/{layer}.json")
+        with self._client() as c:
+            r = c.get(url)
+        return r.status_code == 200
+
+    def geometry_type(self, workspace: str, layer: str) -> str | None:
+        if self.is_coverage(workspace, layer):
+            return "raster"
+        for prop in self._describe_properties(workspace, layer):
+            raw = prop.get("localType") or prop.get("type")
+            if _normalize_type(raw) != "geometry":
+                continue
+            return OGC_GEOMETRIES.get(str(raw).lower().replace("gml:", ""))
+        return None
 
     def sample_values(
         self, workspace: str, layer: str, field: str, limit: int = 20
@@ -576,6 +594,20 @@ class GeoServerClient:
                     f"move fallido {body} -> {base}/{target} "
                     f"(HTTP {r.status_code}): {r.text[:200]}"
                 )
+
+
+OGC_GEOMETRIES = {
+    "point": "point",
+    "multipoint": "point",
+    "linestring": "line",
+    "multilinestring": "line",
+    "curve": "line",
+    "multicurve": "line",
+    "polygon": "polygon",
+    "multipolygon": "polygon",
+    "surface": "polygon",
+    "multisurface": "polygon",
+}
 
 
 def _normalize_type(raw: str | None) -> str:

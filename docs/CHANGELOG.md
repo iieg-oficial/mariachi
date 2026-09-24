@@ -9,6 +9,33 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.98.0] - 2026-09-24
+
+### Cambiado: el alta de nodo del árbol de capas se rehízo
+
+El modal preguntaba el tipo de nodo con un `Select` de cinco palabras y explicaba el resto con tres
+cajas de aviso. Ahora el tipo son cinco tarjetas con ícono, y bajo un grupo sólo queda habilitada
+**Capa**, que es lo único que cabe ahí; el tooltip de las demás dice por qué. Los tres `Alert`
+—tipo de nodo, «será Propiedad» y workspaces pendientes— pasaron a íconos de información con
+tooltip y a una línea con chip.
+
+El orden sigue a la decisión: dónde vive el nodo —ya resuelto por el árbol, arriba y editable—,
+qué es, de qué capa de GeoServer sale y, al final, cómo se llama. El nombre se propone desde el
+nombre de la capa. **ID y slug dejan de ser dos campos que estorban**: se muestran calculados en una
+línea, con «Editar» para los casos en que no sirve el automático.
+
+Al elegir la capa aparecen sus chips —workspace, nombre y geometría—, que son la confirmación de
+que es la correcta antes de crearla.
+
+### Agregado: la geometría se resuelve al registrar, no después
+
+`POST /layers` pregunta la geometría a GeoServer y la guarda en `geometry_type` si el alta no la
+trae. Antes quedaba en blanco hasta que corriera `run_backfill_geometry_type.py` de dataengine, y
+`run_refresh_hexbin.py` deja fuera del hexbin a las capas sin clasificar. El cliente de GeoServer
+estrena `geometry_type()`, que distingue punto, línea, polígono y ráster —`list_fields` aplana toda
+geometría a `geometry` y no servía—, y el CMS lo consulta desde
+`GET /geoserver/workspaces/{alias}/layers/{capa}/geometry`.
+
 ## [2.97.0] - 2026-09-23
 
 Acompaña a mapalab 1.186.0 (editor de tarjetas del catálogo) y se despliega antes que él.

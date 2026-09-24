@@ -110,6 +110,26 @@ def validate_layer_against_geoserver(
         )
 
 
+def resolve_geometry_type(
+    session: Session,
+    workspace_alias: str | None,
+    geoserver_layer: str | None,
+    client: GeoServerClient | None = None,
+) -> str | None:
+    if not workspace_alias or not geoserver_layer:
+        return None
+
+    workspace = session.query(Workspace).filter(Workspace.alias == workspace_alias).first()
+    if workspace is None:
+        return None
+
+    client = client or GeoServerClient()
+    try:
+        return client.geometry_type(workspace.geoserver_workspace, geoserver_layer)
+    except Exception:
+        return None
+
+
 def _normalize_notice(value: Any) -> dict[str, Any] | None:
     if value is None:
         return None
@@ -181,6 +201,13 @@ def create_layer(
         )
 
     _validate_slug_unique(session, payload.get('slug'), exclude_layer_id=None)
+
+    if not payload.get('geometry_type'):
+        payload['geometry_type'] = resolve_geometry_type(
+            session,
+            payload.get('workspace_alias'),
+            payload.get('geoserver_layer'),
+        )
 
     row = _payload_to_row(payload, updated_by)
 
