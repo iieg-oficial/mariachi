@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, Form, Input, Modal, Space, Switch, Tag, TreeSelect, Typography } from 'antd';
+import { Button, Form, Input, Modal, Select, Space, Switch, Tag, Typography } from 'antd';
 import { isFieldVisible, isPropertyOfGroup, PROPERTY_HELP, tipoQueGobierna } from '@features/mapalab-layers/constants/nodeTypes';
 import { findNodeContext } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
 import { useAuth } from '@shared/contexts/useAuth';
 import { message } from '@shared/services/message';
 import api from '@shared/services/api';
-import { buildTreeSelectData } from '@features/mapalab-layers/utils/treeSelect';
+import { buildParentOptions, RAIZ, rutaDeNodo } from '@features/mapalab-layers/utils/treeSelect';
 import InfoIcon from '@features/mapalab-layers/components/layersEditor/InfoIcon';
 import NodeTypeCards from '@features/mapalab-layers/components/layerCreate/NodeTypeCards';
 import GeoServerLayerField from '@features/mapalab-layers/components/layerCreate/GeoServerLayerField';
@@ -60,13 +60,16 @@ export default function LayerCreateModal({ open, onClose, onSubmit, treeData = [
     const parentCtx = watchedParentId ? findNodeContext(treeData, watchedParentId) : null;
     const parentNodeType = tipoQueGobierna(parentCtx?.node?.nodeType, parentCtx?.parentNodeType) ?? null;
     const willBeProperty = isPropertyOfGroup(watchedNodeType, parentNodeType);
-    const treeSelectData = useMemo(() => buildTreeSelectData(treeData), [treeData]);
+    const opcionesPadre = useMemo(() => ([
+        { value: RAIZ, label: 'Raíz del árbol', tipo: 'Sin padre' },
+        ...buildParentOptions(treeData),
+    ]), [treeData]);
 
     useEffect(() => {
         if (!open) return;
         form.setFieldsValue({
             node_type: defaultNodeType || 'leaf',
-            parent_id: defaultParentId || null,
+            parent_id: defaultParentId || RAIZ,
             label: '',
             id: '',
             slug: '',
@@ -142,7 +145,7 @@ export default function LayerCreateModal({ open, onClose, onSubmit, treeData = [
             id: values.id,
             label: values.label,
             node_type: values.node_type,
-            parent_id: values.parent_id || null,
+            parent_id: values.parent_id && values.parent_id !== RAIZ ? values.parent_id : null,
             slug: values.slug || null,
             sort_order: 9999,
             hidden_in_menu: Boolean(values.hidden_in_menu),
@@ -169,7 +172,7 @@ export default function LayerCreateModal({ open, onClose, onSubmit, treeData = [
 
     const showSlug = isFieldVisible('slug', watchedNodeType);
     const showWorkspace = ['group', 'leaf'].includes(watchedNodeType);
-    const rutaPadre = parentCtx?.node?.title || 'la raíz del árbol';
+    const rutaPadre = rutaDeNodo(treeData, watchedParentId) || 'la raíz del árbol';
 
     return (
         <Modal
@@ -193,13 +196,18 @@ export default function LayerCreateModal({ open, onClose, onSubmit, treeData = [
                     </Button>
                 </Space>
                 <Form.Item name="parent_id" hidden={!cambiandoPadre} style={{ marginBottom: 16 }}>
-                    <TreeSelect
-                        treeData={treeSelectData}
-                        placeholder="Sin padre (raíz)"
-                        allowClear
+                    <Select
                         showSearch
-                        treeNodeFilterProp="title"
-                        styles={{ popup: { root: { maxHeight: 400, overflow: 'auto' } } }}
+                        placeholder="Escribe parte del nombre o de su ruta"
+                        options={opcionesPadre}
+                        optionFilterProp="label"
+                        styles={{ popup: { root: { maxHeight: 360 } } }}
+                        optionRender={({ data }) => (
+                            <Space size={8} style={{ justifyContent: 'space-between', width: '100%' }}>
+                                <span>{data.label}</span>
+                                <Text type="secondary" style={{ fontSize: 11 }}>{data.tipo}</Text>
+                            </Space>
+                        )}
                     />
                 </Form.Item>
 

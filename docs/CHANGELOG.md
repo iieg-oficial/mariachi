@@ -9,6 +9,21 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.100.0] - 2026-09-24
+
+### Cambiado: elegir dónde vive un nodo nuevo
+
+La línea de arriba del modal ya no dice sólo el nombre del padre: dice **la ruta completa**, y
+cuando no hay nada seleccionado dice «la raíz del árbol» en vez de quedarse callada.
+
+Al tocar «Cambiar» aparece un buscador en lugar del árbol desplegable: se escribe parte del nombre
+y cada resultado se lee con su ruta —«Medio ambiente › Hidrología › Presas»— y su tipo a la derecha.
+Con más de doscientos nodos era fácil elegir el «Presas» equivocado. **La raíz es una opción de la
+lista**, no la ausencia de valor.
+
+Sólo se ofrecen los nodos que de verdad pueden ser padres —tema, categoría y grupo—, así que ya no
+se puede elegir una capa o una etiqueta y toparse con el error después.
+
 ## [2.99.0] - 2026-09-24
 
 ### Cambiado: registrar un workspace ya no se hace a ciegas
