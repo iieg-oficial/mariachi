@@ -11,6 +11,7 @@ PRIMITIVE_OPERATIONS = {'count', 'count_distinct', 'count_where', 'sum', 'avg', 
 OPERATIONS_WITHOUT_FIELD = {'count', 'count_where'}
 COMBINATOR_OPS = {'add', 'sub', 'mul', 'div', 'percent', 'percent_change'}
 STATS_OPERATIONS = PRIMITIVE_OPERATIONS | {'formula', 'static'}
+SCHEMAS_EXCLUIDOS = frozenset({'mapalab'})
 FILTER_OPS = {'eq', 'in', 'gte', 'lte', 'between', 'is_not_null'}
 CONTEXT_KEYS = {'municipio', 'municipio.claves', 'municipio.nombres', 'fecha.inicio', 'fecha.fin'}
 MUNICIPIO_FIELD_TOKEN = '@municipio'
@@ -243,7 +244,7 @@ def validate_stats_config(stats_config: list | None) -> list:
 
 def schemas_permitidos(conn: Connection) -> frozenset[str]:
     filas = conn.execute(text('SELECT DISTINCT db_schema FROM mapalab.workspaces')).scalars()
-    return frozenset(schema for schema in filas if schema)
+    return frozenset(schema for schema in filas if schema and schema not in SCHEMAS_EXCLUIDOS)
 
 
 def _schemas_de(cfg: Any) -> set[str]:
