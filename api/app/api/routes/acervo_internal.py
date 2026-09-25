@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_db
 from app.api.rate_limit import _client_ip, rate_limit_ip
 from app.models.acervo_bucket import AcervoBucket
-from app.services import acervo_file_service
+from app.services import acervo_file_service, tipo_archivo
 from app.services.acervo import AcervoClient
 from app.services.acervo_upload_clients import UploadPolicy, resolve_upload_client
 from app.services.actividad_service import registrar_actividad
@@ -74,7 +74,7 @@ async def subir_archivo_interno(
 
     bucket = _resolve_active_bucket(db, bucket_name)
 
-    content_type = file.content_type or acervo_file_service.guess_mime(file.filename or "")
+    content_type = tipo_archivo.detectar_mime_upload(file)
     if not policy.allows_mime(content_type):
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
@@ -116,7 +116,9 @@ async def subir_archivo_interno(
 
     ip = _client_ip(request)
     try:
-        url = await AcervoClient.for_bucket(bucket).upload_file(file, object_key)
+        url = await AcervoClient.for_bucket(bucket).upload_file(
+            file, object_key, content_type=content_type
+        )
         thumbnail_url = acervo_file_service.thumbnail_for(
             bucket.acervo_bucket,
             object_key,

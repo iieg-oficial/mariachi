@@ -29,8 +29,8 @@ from app.schemas.acervo import (
     FolderCreate,
     FolderResponse,
 )
-from app.services import acervo_file_service, acervo_thumbnails
-from app.services.acervo import AcervoClient, ObjectTooLargeError
+from app.services import acervo_file_service, acervo_thumbnails, tipo_archivo
+from app.services.acervo import AcervoClient, ObjectTooLargeError, build_content_disposition
 from app.services.actividad_service import registrar_actividad
 
 logger = logging.getLogger(__name__)
@@ -90,9 +90,11 @@ async def proxy_object(
             response.close()
             response.release_conn()
 
+    media_type = stat.content_type or "application/octet-stream"
     headers = {
         "Cache-Control": "private, max-age=300",
         "Content-Length": str(stat.size) if stat.size is not None else "",
+        "X-Content-Type-Options": "nosniff",
     }
     disposition = next(
         (
@@ -104,11 +106,12 @@ async def proxy_object(
     )
     if disposition:
         headers["Content-Disposition"] = disposition
-    return StreamingResponse(
-        iterator(),
-        media_type=stat.content_type or "application/octet-stream",
-        headers=headers,
-    )
+    if not tipo_archivo.es_inline_seguro(media_type):
+        headers["Content-Security-Policy"] = "default-src 'none'; sandbox"
+        headers["Content-Disposition"] = build_content_disposition(
+            object_path.rsplit("/", 1)[-1] or "archivo", "attachment"
+        )
+    return StreamingResponse(iterator(), media_type=media_type, headers=headers)
 
 
 def _read_object_bytes(client: AcervoClient, object_name: str) -> bytes:
@@ -334,18 +337,21 @@ async def subir_archivo(
     )
 
     clean_download_name = (download_name or "").strip()[:200]
+    content_type = tipo_archivo.detectar_mime_upload(file)
 
     try:
-        url = await client.upload_file(file, object_key, clean_download_name or None)
+        url = await client.upload_file(
+            file, object_key, clean_download_name or None, content_type=content_type
+        )
 
         nuevo = AcervoFile(
             bucket_id=bucket.id,
             name=object_key,
             original_name=final_original,
-            type=file.content_type or "application/octet-stream",
+            type=content_type,
             size=file.size or 0,
             url=url,
-            thumbnail=url if file.content_type and file.content_type.startswith("image/") else None,
+            thumbnail=url if content_type.startswith("image/") else None,
             folder=folder_path,
             uploaded_by=current_user.id,
             metadata_json={
@@ -424,6 +430,7 @@ async def chunked_upload_init(
         on_conflict=on_conflict,
     )
 
+    content_type = acervo_file_service.guess_mime(final_original)
     upload_id = client.init_multipart_upload(object_key, content_type)
 
     session_id = create_session({
@@ -454,7 +461,7 @@ async def chunked_upload_part(
     current_user: Usuario = Depends(verify_csrf),
     _rl: Usuario = Depends(_upload_rate_limit),
 ):
-    from app.services.acervo_chunked import get_session, update_session
+    from app.services.acervo_chunked import delete_session, get_session, update_session
 
     session = get_session(session_id)
     if not session:
@@ -465,6 +472,16 @@ async def chunked_upload_part(
         raise HTTPException(status_code=500, detail="Cliente acervo no disponible")
 
     data = await chunk.read()
+    if part_number == 1:
+        detectado = tipo_archivo.detectar_mime(data[:tipo_archivo.CABECERA_BYTES], session['original_name'])
+        if tipo_archivo.es_activo(detectado) and not tipo_archivo.es_activo(session['content_type']):
+            client.abort_multipart_upload(session['object_key'], session['upload_id'])
+            delete_session(session_id)
+            raise HTTPException(
+                status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+                detail="El contenido del archivo no corresponde a su extension",
+            )
+        session['content_type'] = detectado
     etag = client.upload_part(session['object_key'], session['upload_id'], part_number, data)
 
     parts = session.get('parts', [])

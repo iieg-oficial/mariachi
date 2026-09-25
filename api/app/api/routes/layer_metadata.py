@@ -22,6 +22,8 @@ from app.services.mapalab_notifier import notify_tree_changed
 from app.services.stats_templates import (
     StatsTemplateError,
     execute_stats_batch,
+    schemas_permitidos,
+    validar_schemas,
     validate_stats_config,
 )
 
@@ -72,14 +74,16 @@ async def preview_stat(
     _editor: Usuario = Depends(_require_project_editor),
     _rl: Usuario = Depends(_write_rate_limit),
 ):
+    schemas = schemas_permitidos(db.connection())
     try:
         validated = validate_stats_config([cfg])[0]
+        validar_schemas([validated], schemas)
     except StatsTemplateError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
-    values, errors = execute_stats_batch(db.connection(), [validated])
+    values, errors = execute_stats_batch(db.connection(), [validated], schemas)
     if errors:
-        raise HTTPException(status_code=502, detail=f"Error ejecutando stat: {errors[0]['error']}")
+        raise HTTPException(status_code=502, detail=errors[0]['error'])
     return {'value': values[0]['valor'], 'config': validated}
 
 
@@ -104,7 +108,9 @@ async def refresh_stats(
                    'guarda la configuracion antes de recalcular',
         )
 
-    values, errors = execute_stats_batch(db.connection(), cfgs)
+    values, errors = execute_stats_batch(
+        db.connection(), cfgs, schemas=schemas_permitidos(db.connection())
+    )
 
     if not values:
         db.rollback()
@@ -162,6 +168,7 @@ async def update_stats(
     if 'stats_config' in payload and payload['stats_config'] is not None:
         try:
             payload['stats_config'] = validate_stats_config(payload['stats_config'])
+            validar_schemas(payload['stats_config'], schemas_permitidos(db.connection()))
         except StatsTemplateError as exc:
             raise HTTPException(status_code=400, detail=str(exc))
 

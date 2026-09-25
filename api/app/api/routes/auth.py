@@ -43,6 +43,7 @@ from app.schemas.user import (
     PerfilUpdate,
     UsuarioResponse,
 )
+from app.services import tipo_archivo
 from app.services.acervo import AcervoClient
 from app.services.actividad_service import registrar_actividad
 
@@ -335,7 +336,8 @@ async def subir_avatar(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
 ):
-    if file.content_type not in _AVATAR_ALLOWED_CONTENT_TYPES:
+    content_type = tipo_archivo.detectar_mime_upload(file)
+    if content_type not in _AVATAR_ALLOWED_CONTENT_TYPES:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Tipo no permitido. Use {', '.join(sorted(_AVATAR_ALLOWED_CONTENT_TYPES))}",
@@ -361,11 +363,11 @@ async def subir_avatar(
             detail="Bucket de assets institucionales no disponible",
         )
 
-    ext = _avatar_extension(file.content_type)
+    ext = _avatar_extension(content_type)
     object_name = f"avatars/u{current_user.id}/{uuid.uuid4().hex}.{ext}"
 
     client = AcervoClient.for_bucket(bucket)
-    public_url = await client.upload_file(file, object_name)
+    public_url = await client.upload_file(file, object_name, content_type=content_type)
 
     if current_user.avatar_url:
         previous_relative = to_relative(current_user.avatar_url)

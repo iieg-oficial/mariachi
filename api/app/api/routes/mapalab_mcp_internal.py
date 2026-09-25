@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hmac
 import logging
 from datetime import date
 
@@ -25,7 +26,7 @@ def _require_internal_token(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="MAPALAB_INTERNAL_TOKEN no configurado en mariachi-api",
         )
-    if not x_internal_token or x_internal_token != expected:
+    if not x_internal_token or not hmac.compare_digest(x_internal_token.encode(), expected.encode()):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token interno inválido",

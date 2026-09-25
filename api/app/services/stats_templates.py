@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from sqlalchemy import text
@@ -8,6 +9,10 @@ from sqlalchemy.engine import Connection
 PRIMITIVE_OPERATIONS = {'count', 'count_distinct', 'count_where', 'sum', 'avg', 'min', 'max', 'latest'}
 COMBINATOR_OPS = {'add', 'sub', 'mul', 'div', 'percent', 'percent_change'}
 STATS_OPERATIONS = PRIMITIVE_OPERATIONS | {'formula', 'static'}
+SCHEMAS_EXCLUIDOS = frozenset({'mapalab'})
+ERROR_DE_CALCULO = 'No se pudo calcular la estadistica; revisa tabla, campos y filtros'
+
+logger = logging.getLogger(__name__)
 
 
 class StatsTemplateError(ValueError):
@@ -158,6 +163,30 @@ def validate_stats_config(stats_config: list | None) -> list:
     return validated
 
 
+def schemas_permitidos(conn: Connection) -> frozenset[str]:
+    filas = conn.execute(text('SELECT DISTINCT db_schema FROM mapalab.workspaces')).scalars()
+    return frozenset(schema for schema in filas if schema and schema not in SCHEMAS_EXCLUIDOS)
+
+
+def _schemas_de(cfg: Any) -> set[str]:
+    if not isinstance(cfg, dict):
+        return set()
+    encontrados = {cfg['schema']} if cfg.get('schema') else set()
+    for clave in ('expression', 'left', 'right'):
+        encontrados |= _schemas_de(cfg.get(clave))
+    return encontrados
+
+
+def validar_schemas(stats_config: list | None, permitidos: frozenset[str]) -> None:
+    for i, cfg in enumerate(stats_config or []):
+        for schema in sorted(_schemas_de(cfg)):
+            if schema not in permitidos:
+                raise StatsTemplateError(
+                    f"stats_config[{i}]: el schema '{schema}' no pertenece a ningun "
+                    'workspace de MapaLab'
+                )
+
+
 def build_query(cfg: dict) -> tuple[str, dict]:
     op = cfg['operation']
     schema = cfg['schema']
@@ -269,7 +298,11 @@ def format_stat_value(value: Any, fmt: str | None) -> str | None:
     return str(value)
 
 
-def execute_stats_batch(conn: Connection, stats_config: list | None) -> tuple[list[dict], list[dict]]:
+def execute_stats_batch(
+    conn: Connection,
+    stats_config: list | None,
+    schemas: frozenset[str] | None = None,
+) -> tuple[list[dict], list[dict]]:
     """Ejecuta cada stat aislada en un SAVEPOINT.
 
     Sin el savepoint, una query fallida aborta la transaccion completa en Postgres y
@@ -288,6 +321,8 @@ def execute_stats_batch(conn: Connection, stats_config: list | None) -> tuple[li
 
         try:
             cfg = validate_stats_config([raw_cfg])[0]
+            if schemas is not None:
+                validar_schemas([cfg], schemas)
         except StatsTemplateError as exc:
             errors.append({'position': position, 'label': label, 'error': str(exc)})
             continue
@@ -299,10 +334,11 @@ def execute_stats_batch(conn: Connection, stats_config: list | None) -> tuple[li
             raw = execute_stat(conn, cfg)
             if savepoint is not None:
                 savepoint.commit()
-        except Exception as exc:
+        except Exception:
             if savepoint is not None:
                 savepoint.rollback()
-            errors.append({'position': position, 'label': label, 'error': str(exc)})
+            logger.warning('stats: fallo la posicion %s', position, exc_info=True)
+            errors.append({'position': position, 'label': label, 'error': ERROR_DE_CALCULO})
             continue
 
         values.append({

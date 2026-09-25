@@ -416,11 +416,13 @@ export const thumbVariant = (file, width) => {
     return /[?&]w=\d+/.test(thumb) ? thumb.replace(/([?&]w=)\d+/, `$1${width}`) : thumb;
 };
 
-const TIPOS_EMBEBIBLES = ['application/pdf', 'application/json', 'application/xml'];
+const TIPOS_EMBEBIBLES = ['application/pdf', 'application/json'];
+
+const esTipoActivo = (tipo) => /html|xml|svg|javascript|ecmascript/.test(tipo);
 
 export const esPrevisualizable = (file) => {
-    const tipo = file?.isDir ? '' : file?.type || '';
-    if (!tipo || !file?.url) return false;
+    const tipo = file?.isDir ? '' : (file?.type || '').toLowerCase().split(';')[0].trim();
+    if (!tipo || !file?.url || esTipoActivo(tipo)) return false;
     return tipo.startsWith('image/')
         || tipo.startsWith('video/')
         || tipo.startsWith('audio/')

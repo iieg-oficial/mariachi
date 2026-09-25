@@ -29,6 +29,7 @@ from app.models.source_app import SourceApp
 from app.schemas.form_schema import validate_respuestas
 from app.schemas.reporte import ReporteCreate, ReporteCreateResponse
 from app.schemas.reporte_tipo import ReporteTipoResponse
+from app.services import tipo_archivo
 from app.services.acervo import AcervoClient
 from app.services.colibri_fingerprint import compute_fingerprint
 from app.services.colibri_keys import (
@@ -146,20 +147,21 @@ async def _upload_screenshot(
             status_code=status.HTTP_413_CONTENT_TOO_LARGE,
             detail="La captura supera el tamaño máximo permitido (2 MB).",
         )
-    if screenshot.content_type not in _ALLOWED_MIME:
+    mime = tipo_archivo.detectar_mime(data[:tipo_archivo.CABECERA_BYTES])
+    if mime not in _ALLOWED_MIME:
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
             detail="Formato de captura no soportado. Solo PNG o JPEG.",
         )
 
-    object_path = _build_object_path(screenshot.content_type)
+    object_path = _build_object_path(mime)
     client = AcervoClient.for_bucket(bucket)
     client.client.put_object(
         client.bucket_name,
         object_path,
         BytesIO(data),
         len(data),
-        content_type=screenshot.content_type,
+        content_type=mime,
     )
     return object_path
 

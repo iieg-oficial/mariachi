@@ -9,6 +9,28 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.126.1] - 2026-09-24
+
+### Corregido
+
+- XSS almacenado vía acervo: el tipo de cada subida sale de sus primeros bytes y no del
+  `Content-Type` del navegador. Acervo guarda ese tipo en SIEEJ, el explorador (también por
+  partes), la subida interna, el avatar, las capturas de colibrí y los símbolos; HTML, SVG, XML y
+  JS se guardan con `Content-Disposition: attachment`.
+- Los campos de archivo de SIEEJ exigen extensión aceptada **y** contenido que le corresponda:
+  un HTML renombrado a `.pdf` se rechaza con 415.
+- El proxy autenticado de acervo responde siempre con `nosniff`; salvo imágenes raster y PDF,
+  añade `Content-Security-Policy: default-src 'none'; sandbox` y fuerza la descarga.
+- El nginx de mariachi repite `nosniff`, `X-Frame-Options` y `Referrer-Policy` en las locations
+  que declaran su propio `add_header`, que antes las anulaban.
+- Admin: la vista previa de acervo corre en un iframe con `sandbox`, ya no previsualiza HTML, SVG
+  ni XML y pinta los PDF desde un blob con tipo forzado. Los adjuntos de un envío SIEEJ se
+  descargan en vez de abrirse en otra pestaña.
+- Estadísticas de capas: la vista previa, el guardado y el recálculo de `stats_config` solo
+  aceptan schemas de `mapalab.workspaces` (sin `mapalab`) y ya no devuelven el error crudo de la
+  base.
+- Los tokens internos de mapalab y acervo se comparan con `hmac.compare_digest`.
+
 ## [1.126.0] - 2026-09-11
 
 ### Agregado
