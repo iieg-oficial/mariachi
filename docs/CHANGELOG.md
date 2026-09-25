@@ -9,6 +9,13 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.102.1] - 2026-09-24
+
+### Eliminado
+
+- `api/scripts/migrate_mapalab_card.py`: migraba la tabla legado `public.mapalab_card`, que
+  dataengine 1.45.0 retira. Su contenido vive en `mapalab.layer_metadata` desde el bootstrap de v14.
+
 ## [2.102.0] - 2026-09-24
 
 Reparación de la auditoría de seguridad del 2026-09-24.
