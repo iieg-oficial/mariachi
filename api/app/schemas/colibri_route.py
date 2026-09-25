@@ -26,6 +26,8 @@ class ColibriRouteCreate(CamelCaseInput):
             url = self.config.get("url")
             if not url or not isinstance(url, str):
                 raise ValueError(f"Destino '{self.destino}' requiere config.url")
+            if not url.lower().startswith("https://"):
+                raise ValueError(f"Destino '{self.destino}' requiere una config.url https")
         if self.destino == "email":
             to = self.config.get("to")
             if not to:

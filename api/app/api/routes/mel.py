@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import PlainTextResponse, Response
 from sqlalchemy.orm import Session
 
-from app.api.deps import verify_csrf
+from app.api.deps import require_permission, verify_csrf
 from app.core.database import get_db
 from app.models.mel import Marca, MarcaCampo, MarcaFuente
 from app.models.user import Usuario
@@ -16,6 +16,7 @@ from app.schemas.mel import (
 from app.services import contraste_service, mel_service
 
 _rutas = APIRouter()
+_editar = [Depends(require_permission("mariachi.mel.update"))]
 
 TIPOS = {
     "design.md": "text/markdown; charset=utf-8",
@@ -61,7 +62,7 @@ async def detalle(codigo: str, db: Session = Depends(get_db)):
     }
 
 
-@_rutas.put("/{codigo}/tokens/{token_id}", response_model=TokenResponse)
+@_rutas.put("/{codigo}/tokens/{token_id}", response_model=TokenResponse, dependencies=_editar)
 async def actualizar_token(
     codigo: str,
     token_id: int,
@@ -78,7 +79,7 @@ async def actualizar_token(
         raise HTTPException(status_code=404, detail=str(error)) from error
 
 
-@_rutas.put("/{codigo}/campos")
+@_rutas.put("/{codigo}/campos", dependencies=_editar)
 async def actualizar_campos(
     codigo: str,
     payload: CamposUpdate,

@@ -58,7 +58,7 @@ def _admin() -> Usuario:
 def test_un_bucket_protegido_rechaza_la_escritura_incluso_al_admin():
     db = _Session(_bucket(protegido=True))
     with pytest.raises(HTTPException) as exc:
-        acervo_file_service.resolve_bucket_escribible(4, _admin(), db)
+        acervo_file_service.resolve_bucket_escribible(4, _admin(), db, "update")
     assert exc.value.status_code == 409
     assert "protegido" in exc.value.detail
 
@@ -70,4 +70,4 @@ def test_un_bucket_protegido_si_se_puede_leer():
 
 def test_un_bucket_normal_sigue_siendo_escribible():
     db = _Session(_bucket(protegido=False))
-    assert acervo_file_service.resolve_bucket_escribible(4, _admin(), db).id == 4
+    assert acervo_file_service.resolve_bucket_escribible(4, _admin(), db, "update").id == 4

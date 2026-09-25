@@ -1,4 +1,6 @@
 import logging
+import re
+from urllib.parse import urlsplit
 
 import httpx
 from sqlalchemy import or_
@@ -11,6 +13,7 @@ from app.models.reporte_tipo import ReporteTipo
 logger = logging.getLogger(__name__)
 
 _HTTP_TIMEOUT = 5.0
+_MENCION_MASIVA = re.compile(r"@(channel|here|everyone)", re.IGNORECASE)
 
 
 def _matches_filtros(reporte: Reporte, filtros: dict | None) -> bool:
@@ -60,19 +63,35 @@ def _build_payload(reporte: Reporte, tipo: ReporteTipo | None) -> dict:
     }
 
 
+def _host(url: str) -> str:
+    try:
+        return urlsplit(url).hostname or "?"
+    except ValueError:
+        return "?"
+
+
 def _dispatch_webhook_generico(url: str, payload: dict, headers: dict | None = None) -> None:
+    if not url.lower().startswith("https://"):
+        logger.warning("colibri.webhook descartado: url sin https host=%s", _host(url))
+        return
     try:
         with httpx.Client(timeout=_HTTP_TIMEOUT) as client:
             client.post(url, json=payload, headers=headers or {})
     except Exception as exc:
-        logger.warning("colibri.webhook fail url=%s error=%s", url, exc)
+        logger.warning("colibri.webhook fail host=%s error=%s", _host(url), type(exc).__name__)
+
+
+def _escapar_slack(valor: object) -> str:
+    texto = str(valor or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    return _MENCION_MASIVA.sub("@\u200b\\1", texto)
 
 
 def _dispatch_slack(url: str, payload: dict) -> None:
     text = (
-        f"*[Colibri] {payload.get('tipo_label')}* en `{payload.get('source_app')}`\n"
-        f"{(payload.get('mensaje') or '')[:500]}\n"
-        f"_id={payload.get('id')} · ruta={payload.get('source_route') or '—'}_"
+        f"*[Colibri] {_escapar_slack(payload.get('tipo_label'))}* en "
+        f"`{_escapar_slack(payload.get('source_app'))}`\n"
+        f"{_escapar_slack((payload.get('mensaje') or '')[:500])}\n"
+        f"_id={payload.get('id')} · ruta={_escapar_slack(payload.get('source_route') or '—')}_"
     )
     _dispatch_webhook_generico(url, {"text": text})
 
@@ -83,7 +102,7 @@ def _dispatch_discord(url: str, payload: dict) -> None:
         f"{(payload.get('mensaje') or '')[:500]}\n"
         f"id={payload.get('id')} · ruta={payload.get('source_route') or '—'}"
     )
-    _dispatch_webhook_generico(url, {"content": content})
+    _dispatch_webhook_generico(url, {"content": content, "allowed_mentions": {"parse": []}})
 
 
 def _dispatch_email(_to: str, _payload: dict) -> None:

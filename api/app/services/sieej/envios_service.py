@@ -17,6 +17,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 
+from app.core.settings import get_settings
 from app.core.time import to_naive_utc, utcnow
 from app.models.acervo_bucket import AcervoBucket
 from app.models.project import Project
@@ -29,6 +30,7 @@ from app.models.sieej import (
     FormularioPeriodo,
 )
 from app.models.user import Usuario
+from app.services import tipo_archivo
 from app.services.acervo import AcervoClient
 from app.services.sieej import campos_service, field_paths
 from app.services.sieej.acervo_keys import (
@@ -83,6 +85,8 @@ class EnviosService:
     @staticmethod
     def _formulario_acepta_cambios(formulario: Formulario) -> bool:
         """True si el formulario admite escritura por el respondent."""
+        if get_settings().sieej_edicion_deshabilitada:
+            return False
         if formulario.estado != "activo":
             return False
         ahora = utcnow()
@@ -1142,11 +1146,6 @@ class EnviosService:
                 detail=f"Bucket Acervo '{bucket_name}' no configurado",
             )
 
-        ext = (
-            file.filename.rsplit(".", 1)[-1]
-            if file.filename and "." in file.filename
-            else ""
-        )
         size = file.size if getattr(file, "size", None) is not None else None
 
         max_mb = field_def.get("maxSizeMB")
@@ -1157,8 +1156,9 @@ class EnviosService:
                     detail=f"El archivo excede el limite de {max_mb} MB",
                 )
 
+        mime = tipo_archivo.detectar_mime_upload(file)
         accept = field_def.get("accept")
-        if accept and not self._formato_permitido(ext, file.content_type, accept):
+        if accept and not tipo_archivo.formato_permitido(file.filename, mime, accept):
             raise HTTPException(
                 status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
                 detail=f"Formato no permitido. Aceptados: {', '.join(accept)}",
@@ -1175,7 +1175,7 @@ class EnviosService:
         )
 
         client = AcervoClient.for_bucket(bucket)
-        url = await client.upload_file(file, object_key)
+        url = await client.upload_file(file, object_key, content_type=mime)
 
         if size is None:
             size = 0
@@ -1187,7 +1187,7 @@ class EnviosService:
             object_key=object_key,
             url_publica=url,
             filename_original=file.filename or "",
-            mime=file.content_type or "application/octet-stream",
+            mime=mime,
             size_bytes=size,
         )
         self.db.add(archivo)
@@ -1197,7 +1197,7 @@ class EnviosService:
             url_publica=url,
             object_key=object_key,
             filename=file.filename or "",
-            mime=file.content_type or "application/octet-stream",
+            mime=mime,
             size_bytes=size,
         )
         datos = copy.deepcopy(envio.datos or {})
@@ -1229,27 +1229,6 @@ class EnviosService:
     ) -> str | None:
         field = self._field_para_path(definicion, field_path)
         return field.get("bucket") if field else None
-
-    @staticmethod
-    def _formato_permitido(ext: str, mime: str | None, accept: list[str]) -> bool:
-        ext_norm = ("." + ext).lower() if ext else ""
-        mime_norm = (mime or "").lower()
-        for raw in accept:
-            a = str(raw).strip().lower()
-            if not a:
-                continue
-            if a.startswith("."):
-                if ext_norm == a:
-                    return True
-            elif a.endswith("/*"):
-                if mime_norm.startswith(a[:-1]):
-                    return True
-            elif "/" in a:
-                if mime_norm == a:
-                    return True
-            elif ext and ext.lower() == a:
-                return True
-        return False
 
     def bucket_row(self, nombre: str) -> AcervoBucket | None:
         """Fila de `acervo_buckets` por nombre de bucket, activa."""
@@ -1474,6 +1453,12 @@ class EnviosService:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Este envio no te pertenece",
+            )
+        formulario = self.db.get(Formulario, envio.formulario_id)
+        if formulario is None or not self._formulario_acepta_cambios(formulario):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=_FORMULARIO_NO_ACEPTA_DETAIL,
             )
         envio.eliminado_en = utcnow()
         self.db.commit()

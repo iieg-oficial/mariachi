@@ -28,6 +28,7 @@ from app.models.source_app import SourceApp
 from app.schemas.form_schema import validate_respuestas
 from app.schemas.reporte import ReporteCreate, ReporteCreateResponse
 from app.schemas.reporte_tipo import ReporteTipoResponse
+from app.services import tipo_archivo
 from app.services.acervo import AcervoClient
 from app.services.colibri_fanout import despachar_reporte
 from app.services.colibri_grupos import asignar_grupo
@@ -50,7 +51,6 @@ _REPORTES_BUCKET = "mariachi"
 _ALLOWED_MIME = {"image/png", "image/jpeg"}
 _MAX_SCREENSHOT_BYTES = 2 * 1024 * 1024
 _EXT_BY_MIME = {"image/png": "png", "image/jpeg": "jpg"}
-_MAGIC_BY_MIME = {"image/png": b"\x89PNG\r\n\x1a\n", "image/jpeg": b"\xff\xd8\xff"}
 
 
 def _resolve_source_app(
@@ -148,8 +148,8 @@ async def _upload_screenshot(
             status_code=status.HTTP_413_CONTENT_TOO_LARGE,
             detail="La captura supera el tamaño máximo permitido (2 MB).",
         )
-    mime = next((m for m, magic in _MAGIC_BY_MIME.items() if data.startswith(magic)), None)
-    if mime is None or mime not in _ALLOWED_MIME:
+    mime = tipo_archivo.detectar_mime(data[:tipo_archivo.CABECERA_BYTES])
+    if mime not in _ALLOWED_MIME:
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
             detail="Formato de captura no soportado. Solo PNG o JPEG.",

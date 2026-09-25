@@ -29,6 +29,8 @@ from app.services.stats_templates import (
     bind_layer_fields,
     execute_stats_batch,
     load_layer_binding,
+    schemas_permitidos,
+    validar_schemas,
     validate_stats_config,
 )
 
@@ -228,6 +230,7 @@ def _apply_layer_stats(
     try:
         if 'stats_config' in data:
             row.stats_config = validate_stats_config(data['stats_config'])
+            validar_schemas(row.stats_config, schemas_permitidos(dataengine_db.connection()))
         if 'pie_numeralia' in data:
             row.pie_numeralia = data['pie_numeralia']
         if 'ttl_minutes' in data:
@@ -240,7 +243,9 @@ def _apply_layer_stats(
         if row.stats_config:
             binding = load_layer_binding(dataengine_db.connection(), layer_key)
             valores, errores = execute_stats_batch(
-                dataengine_db.connection(), bind_layer_fields(row.stats_config, binding),
+                dataengine_db.connection(),
+                bind_layer_fields(row.stats_config, binding),
+                schemas=schemas_permitidos(dataengine_db.connection()),
             )
             if valores:
                 row.values = valores

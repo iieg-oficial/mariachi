@@ -28,6 +28,8 @@ from app.services.stats_templates import (
     build_stats_context,
     execute_stats_batch,
     load_layer_binding,
+    schemas_permitidos,
+    validar_schemas,
     validate_stats_config,
 )
 
@@ -92,8 +94,10 @@ async def preview_stat(
     _rl: Usuario = Depends(_write_rate_limit),
 ):
     layer_key = _canonical_layer_key(db, layer_key)
+    schemas = schemas_permitidos(db.connection())
     try:
         validated = validate_stats_config([cfg])[0]
+        validar_schemas([validated], schemas)
     except StatsTemplateError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
@@ -104,9 +108,9 @@ async def preview_stat(
 
     binding = load_layer_binding(db.connection(), layer_key)
     bound = bind_layer_fields([validated], binding)
-    values, errors = execute_stats_batch(db.connection(), bound, context)
+    values, errors = execute_stats_batch(db.connection(), bound, context, schemas)
     if errors:
-        raise HTTPException(status_code=502, detail=f"Error ejecutando stat: {errors[0]['error']}")
+        raise HTTPException(status_code=502, detail=errors[0]['error'])
     return {'value': values[0]['valor'], 'config': validated, 'context': context}
 
 
@@ -132,7 +136,9 @@ async def refresh_stats(
         )
 
     binding = load_layer_binding(db.connection(), layer_key)
-    values, errors = execute_stats_batch(db.connection(), bind_layer_fields(cfgs, binding))
+    values, errors = execute_stats_batch(
+        db.connection(), bind_layer_fields(cfgs, binding), schemas=schemas_permitidos(db.connection())
+    )
 
     if not values:
         db.rollback()
@@ -190,6 +196,7 @@ async def update_stats(
     if 'stats_config' in payload and payload['stats_config'] is not None:
         try:
             payload['stats_config'] = validate_stats_config(payload['stats_config'])
+            validar_schemas(payload['stats_config'], schemas_permitidos(db.connection()))
         except StatsTemplateError as exc:
             raise HTTPException(status_code=400, detail=str(exc))
 

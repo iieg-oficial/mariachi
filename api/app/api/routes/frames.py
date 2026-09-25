@@ -1,8 +1,10 @@
+import logging
+
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response, StreamingResponse
 from sqlalchemy.orm import Session
 
-from app.api.deps import verify_csrf
+from app.api.deps import require_permission, verify_csrf
 from app.core.database import get_db
 from app.models.frames import Camara
 from app.models.user import Usuario
@@ -17,7 +19,10 @@ from app.schemas.frames import (
 from app.services import frames_config
 from app.services.frames_client import FramesClient, FramesError
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/frames", tags=["frames"])
+
+_gestionar = [Depends(require_permission("mariachi.frames.manage"))]
 
 
 def _camara(db: Session, camara_id: int) -> Camara:
@@ -27,12 +32,19 @@ def _camara(db: Session, camara_id: int) -> Camara:
     return camara
 
 
+def _construir(db: Session) -> dict:
+    try:
+        return frames_config.construir(db)
+    except frames_config.FramesConfigError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
 @router.get("/camaras", response_model=list[CamaraResponse])
 async def listar(db: Session = Depends(get_db)):
     return db.query(Camara).order_by(Camara.orden, Camara.nombre).all()
 
 
-@router.post("/camaras", response_model=CamaraResponse, status_code=201)
+@router.post("/camaras", response_model=CamaraResponse, status_code=201, dependencies=_gestionar)
 async def crear(
     payload: CamaraCreate,
     db: Session = Depends(get_db),
@@ -50,7 +62,7 @@ async def crear(
     return camara
 
 
-@router.put("/camaras/{camara_id}", response_model=CamaraResponse)
+@router.put("/camaras/{camara_id}", response_model=CamaraResponse, dependencies=_gestionar)
 async def actualizar(
     camara_id: int,
     payload: CamaraUpdate,
@@ -58,14 +70,19 @@ async def actualizar(
     current_user: Usuario = Depends(verify_csrf),
 ):
     camara = _camara(db, camara_id)
-    for campo, valor in payload.model_dump(exclude_unset=True).items():
+    cambios = payload.model_dump(exclude_unset=True)
+    if cambios.get("rtsp_url"):
+        cambios["rtsp_url"] = frames_config.conservar_credenciales(
+            cambios["rtsp_url"], camara.rtsp_url
+        )
+    for campo, valor in cambios.items():
         setattr(camara, campo, valor)
     db.commit()
     db.refresh(camara)
     return camara
 
 
-@router.delete("/camaras/{camara_id}", status_code=204)
+@router.delete("/camaras/{camara_id}", status_code=204, dependencies=_gestionar)
 async def eliminar(
     camara_id: int,
     db: Session = Depends(get_db),
@@ -83,10 +100,11 @@ async def estado(db: Session = Depends(get_db)):
         cliente = FramesClient()
         version = cliente.version()
         en_frames = cliente.camaras()
-    except Exception as exc:
+    except Exception:
+        logger.exception("frames.estado no disponible")
         return EstadoResponse(
             disponible=False,
-            detalle=str(exc)[:300],
+            detalle="No se pudo consultar frames",
             camaras_en_mariachi=len(en_mariachi),
         )
 
@@ -122,7 +140,8 @@ async def foto(nombre: str, alto: int = 360, db: Session = Depends(get_db)):
     except FramesError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=str(exc)[:200]) from exc
+        logger.exception("frames: fallo al leer la camara %s", nombre)
+        raise HTTPException(status_code=502, detail="No se pudo leer la camara") from exc
 
     return Response(content=contenido, media_type=tipo, headers={"Cache-Control": "no-store"})
 
@@ -144,28 +163,34 @@ async def stream(nombre: str, fps: int = 3, alto: int = 360, db: Session = Depen
     except FramesError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=str(exc)[:200]) from exc
+        logger.exception("frames: fallo al leer la camara %s", nombre)
+        raise HTTPException(status_code=502, detail="No se pudo leer la camara") from exc
 
     return StreamingResponse(generador, media_type=tipo)
 
 
 @router.get("/preview", response_model=PreviewResponse)
 async def preview(db: Session = Depends(get_db)):
-    configuracion = frames_config.construir(db)
+    configuracion = _construir(db)
     texto = frames_config.como_yaml(configuracion)
+    visible = frames_config.enmascarar_rtsp(texto)
     try:
         valido, detalle = FramesClient().validar_config(texto)
     except FramesError as exc:
-        return PreviewResponse(configuracion=texto, valido=False, detalle=str(exc))
-    return PreviewResponse(configuracion=texto, valido=valido, detalle=detalle)
+        return PreviewResponse(
+            configuracion=visible, valido=False, detalle=frames_config.enmascarar_rtsp(str(exc))
+        )
+    return PreviewResponse(
+        configuracion=visible, valido=valido, detalle=frames_config.enmascarar_rtsp(detalle)
+    )
 
 
-@router.post("/aplicar", response_model=AplicarResponse)
+@router.post("/aplicar", response_model=AplicarResponse, dependencies=_gestionar)
 async def aplicar(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
 ):
-    configuracion = frames_config.construir(db)
+    configuracion = _construir(db)
     if not configuracion["cameras"]:
         raise HTTPException(
             status_code=400,
@@ -177,10 +202,15 @@ async def aplicar(
         cliente = FramesClient()
         valido, detalle = cliente.validar_config(texto)
         if not valido:
-            raise HTTPException(status_code=400, detail=detalle or "Configuracion invalida")
+            raise HTTPException(
+                status_code=400,
+                detail=frames_config.enmascarar_rtsp(detalle) or "Configuracion invalida",
+            )
         cliente.guardar_config(texto, aplicar=True)
     except FramesError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=502, detail=frames_config.enmascarar_rtsp(str(exc))
+        ) from exc
 
     return AplicarResponse(
         aplicado=True,

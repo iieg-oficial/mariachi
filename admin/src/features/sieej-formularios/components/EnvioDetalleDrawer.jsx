@@ -195,7 +195,7 @@ export default function EnvioDetalleDrawer({ formulario, envio, open, onClose })
                                         title: 'Archivo',
                                         key: 'archivo',
                                         render: (_, a) => a.url_publica
-                                            ? <a href={a.url_publica} target="_blank" rel="noreferrer">{a.filename_original}</a>
+                                            ? <a href={a.url_publica} download={a.filename_original || true} rel="noreferrer">{a.filename_original}</a>
                                             : a.filename_original,
                                     },
                                 ]}

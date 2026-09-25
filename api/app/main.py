@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI
@@ -55,6 +56,7 @@ from app.api.routes import (
 from app.core.settings import get_settings
 
 settings = get_settings()
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -227,14 +229,16 @@ def create_app() -> FastAPI:
             finally:
                 db.close()
             checks["db"] = {"status": "ok"}
-        except Exception as exc:
-            checks["db"] = {"status": "down", "detail": str(exc)[:120]}
+        except Exception:
+            logger.exception("ontoy: la base no responde")
+            checks["db"] = {"status": "down", "detail": "la base no responde"}
 
         try:
             redis_client.ping()
             checks["redis"] = {"status": "ok"}
-        except Exception as exc:
-            checks["redis"] = {"status": "degraded", "detail": str(exc)[:120]}
+        except Exception:
+            logger.exception("ontoy: redis no responde")
+            checks["redis"] = {"status": "degraded", "detail": "redis no responde"}
 
         checks["abuso"] = metrics_module.check_abuso()
         checks["mapalab_notify"] = metrics_module.check_mapalab_notify()

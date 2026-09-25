@@ -18,6 +18,7 @@ import ApiKeyInlinePanel from '@features/mapalab-api-keys/components/ApiKeyInlin
 import ApiKeyRevealModal from '@features/mapalab-api-keys/components/ApiKeyRevealModal';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import { message } from '@shared/services/message';
+import { purgeStoredPlainKeys } from '@features/mapalab-api-keys/components/playgroundHelpers';
 
 const { Content } = Layout;
 const { Title, Text } = Typography;
@@ -61,7 +62,7 @@ export default function MapalabApiKeysPage() {
         }
     };
 
-    useEffect(() => { reload(); }, []);
+    useEffect(() => { purgeStoredPlainKeys(); reload(); }, []);
 
     const openCreate = () => {
         createForm.resetFields();
@@ -182,9 +183,6 @@ export default function MapalabApiKeysPage() {
     const handleTryPlayground = (apiKey, plainKey) => {
         setKeyModal(null);
         setPlainKeyByRow((prev) => ({ ...prev, [apiKey.id]: plainKey }));
-        try {
-            sessionStorage.setItem(`mapalab_plain_${apiKey.id}`, plainKey);
-        } catch { /* sessionStorage no disponible */ }
         openRow(apiKey, 'playground');
     };
 
@@ -192,12 +190,7 @@ export default function MapalabApiKeysPage() {
         expandedRowKeys: expanded ? [expanded.id] : [],
         showExpandColumn: false,
         expandedRowRender: (record) => {
-            let storedPlain = plainKeyByRow[record.id] || '';
-            if (!storedPlain) {
-                try {
-                    storedPlain = sessionStorage.getItem(`mapalab_plain_${record.id}`) || '';
-                } catch { /* ignore */ }
-            }
+            const storedPlain = plainKeyByRow[record.id] || '';
             return (
                 <ApiKeyInlinePanel
                     apiKey={record}

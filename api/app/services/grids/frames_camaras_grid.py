@@ -3,6 +3,7 @@ from typing import Any
 from sqlalchemy import text
 from sqlalchemy.engine import Connection
 
+from app.services.frames_config import enmascarar_rtsp
 from app.services.grid_batch import GridField, GridSpec, GridTable
 
 CAMARAS_TABLE = GridTable(
@@ -26,7 +27,8 @@ CAMARAS_TABLE = GridTable(
 
 def _campo(key: str, editable: bool = True, max_length: int | None = None) -> GridField:
     def leer(estado: dict) -> Any:
-        return (estado or {}).get(key)
+        valor = (estado or {}).get(key)
+        return enmascarar_rtsp(valor) if key == 'rtsp_url' else valor
 
     def escribir(estado: dict, valor: Any) -> None:
         estado[key] = valor
@@ -46,7 +48,7 @@ FIELDS: dict[str, GridField] = {
     'nombre': _campo('nombre', editable=False, max_length=20),
     'etiqueta': _campo('etiqueta', max_length=200),
     'ubicacion': _campo('ubicacion'),
-    'rtsp_url': _campo('rtsp_url'),
+    'rtsp_url': _campo('rtsp_url', editable=False),
     'habilitada': _campo('habilitada'),
     'grabacion_habilitada': _campo('grabacion_habilitada'),
     'retencion_dias': _campo('retencion_dias'),
@@ -58,7 +60,7 @@ COLUMNS_META: list[dict] = [
     {'key': 'nombre', 'title': 'Nombre interno', 'type': 'text', 'group': 'Identidad', 'width': 160, 'editable': False, 'sticky': True},
     {'key': 'etiqueta', 'title': 'Nombre visible', 'type': 'text', 'group': 'Identidad', 'width': 220},
     {'key': 'ubicacion', 'title': 'Ubicación', 'type': 'textarea', 'group': 'Identidad', 'width': 280},
-    {'key': 'rtsp_url', 'title': 'URL RTSP', 'type': 'text', 'group': 'Conexión', 'width': 420},
+    {'key': 'rtsp_url', 'title': 'URL RTSP', 'type': 'text', 'group': 'Conexión', 'width': 420, 'editable': False},
     {'key': 'habilitada', 'title': 'Habilitada', 'type': 'bool', 'group': 'Operación', 'width': 110},
     {'key': 'grabacion_habilitada', 'title': 'Grabar', 'type': 'bool', 'group': 'Operación', 'width': 100},
     {'key': 'retencion_dias', 'title': 'Días de retención', 'type': 'number', 'group': 'Operación', 'width': 140},
@@ -76,7 +78,7 @@ _SELECT_SQL = """
 
 def fetch_rows(conn: Connection, **_: Any) -> list[dict]:
     filas = conn.execute(text(_SELECT_SQL)).mappings().all()
-    return [dict(fila) for fila in filas]
+    return [{**fila, 'rtsp_url': enmascarar_rtsp(fila['rtsp_url'])} for fila in filas]
 
 
 def load_states(conn: Connection, nombre: str) -> dict[str, dict]:

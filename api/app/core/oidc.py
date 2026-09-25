@@ -6,9 +6,12 @@ from datetime import timedelta
 from typing import Any
 
 import httpx
+from jose import JWTError, jwt
 
 from app.core.settings import get_settings
 from app.core.time import utcnow
+from minerva_sdk.config import settings as minerva_settings
+from minerva_sdk.fastapi import _get_jwks
 
 settings = get_settings()
 
@@ -133,6 +136,33 @@ async def revoke_refresh_token(refresh_token: str) -> None:
             await client.post(endpoint, data=data)
     except httpx.HTTPError:
         pass
+
+
+class IdTokenInvalidoError(Exception):
+    pass
+
+
+async def validar_id_token(id_token: str | None, nonce: str) -> dict[str, Any]:
+    if not id_token or not nonce:
+        raise IdTokenInvalidoError("sin id_token o sin nonce en la transaccion")
+    try:
+        header = jwt.get_unverified_header(id_token)
+        jwks = await _get_jwks(kid=header.get("kid"))
+        claims = jwt.decode(
+            id_token,
+            jwks,
+            algorithms=["RS256"],
+            audience=settings.minerva_client_id,
+            options={"verify_at_hash": False},
+        )
+    except (JWTError, httpx.HTTPError) as exc:
+        raise IdTokenInvalidoError(str(exc)) from exc
+    esperado = (minerva_settings.expected_issuer or minerva_settings.issuer_url).rstrip("/")
+    if str(claims.get("iss", "")).rstrip("/") != esperado:
+        raise IdTokenInvalidoError("iss inesperado")
+    if not secrets.compare_digest(str(claims.get("nonce", "")), nonce):
+        raise IdTokenInvalidoError("nonce no coincide")
+    return claims
 
 
 def access_expiry(expires_in: int | None) -> float:

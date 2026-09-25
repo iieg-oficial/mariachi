@@ -1,4 +1,6 @@
 import base64
+import hashlib
+import hmac
 import json
 import logging
 import uuid
@@ -41,6 +43,7 @@ from app.schemas.user import (
     PerfilUpdate,
     UsuarioResponse,
 )
+from app.services import tipo_archivo
 from app.services.acervo import AcervoClient
 from app.services.actividad_service import registrar_actividad
 from minerva_sdk.fastapi import _decode
@@ -101,8 +104,16 @@ def _clear_session_cookies(response: Response) -> None:
         )
 
 
+def _firma_tx(payload: str) -> str:
+    digest = hmac.new(
+        settings.secret_key.encode("utf-8"), payload.encode("ascii"), hashlib.sha256
+    ).digest()
+    return base64.urlsafe_b64encode(digest).decode("ascii").rstrip("=")
+
+
 def _set_tx_cookie(response: Response, data: dict) -> None:
-    raw = base64.urlsafe_b64encode(json.dumps(data).encode("utf-8")).decode("ascii")
+    payload = base64.urlsafe_b64encode(json.dumps(data).encode("utf-8")).decode("ascii")
+    raw = f"{payload}.{_firma_tx(payload)}"
     response.set_cookie(
         key=TX_COOKIE_NAME,
         value=raw,
@@ -116,12 +127,16 @@ def _set_tx_cookie(response: Response, data: dict) -> None:
 
 def _read_tx_cookie(request: Request) -> dict | None:
     raw = request.cookies.get(TX_COOKIE_NAME)
-    if not raw:
+    if not raw or "." not in raw:
         return None
+    payload, firma = raw.rsplit(".", 1)
     try:
-        return json.loads(base64.urlsafe_b64decode(raw.encode("ascii")).decode("utf-8"))
+        if not hmac.compare_digest(firma.encode("ascii"), _firma_tx(payload).encode("ascii")):
+            return None
+        data = json.loads(base64.urlsafe_b64decode(payload.encode("ascii")).decode("utf-8"))
     except Exception:
         return None
+    return data if isinstance(data, dict) else None
 
 
 def _safe_next(raw: str | None) -> str:
@@ -183,10 +198,23 @@ def _public_base(request: Request) -> str:
     """Origen publico por el que entro la persona (Host de la peticion), para conservar tanto
     la IP como el dominio: entrar por uno mantiene ese mismo en callback y post-login."""
     host = request.headers.get("host", "")
-    if host:
-        return f"https://{host}"
-    parts = urlsplit(settings.minerva_post_login_url)
+    candidato = f"https://{host}" if host else ""
+    if candidato and candidato in _origenes_permitidos():
+        return candidato
+    return _origen(settings.minerva_post_login_url)
+
+
+def _origen(url: str) -> str:
+    parts = urlsplit(url)
     return f"{parts.scheme}://{parts.netloc}"
+
+
+def _origenes_permitidos() -> set[str]:
+    return {
+        *(origen.rstrip("/") for origen in settings.cors_origins),
+        _origen(settings.minerva_post_login_url),
+        _origen(settings.minerva_redirect_uri),
+    }
 
 
 def _post_login_url(next_path: str = "", error: str = "", base: str = "") -> str:
@@ -228,11 +256,21 @@ def resolve_user(db: Session, claims: dict) -> Usuario:
     usuario = db.query(Usuario).filter(Usuario.minerva_sub == sub).first()
 
     if usuario is None and email:
-        usuario = (
+        por_correo = (
             db.query(Usuario).filter(func.lower(Usuario.email) == email.lower()).first()
         )
-        if usuario is not None:
-            usuario.minerva_sub = sub
+        if por_correo is not None and por_correo.minerva_sub:
+            logger.warning(
+                "action=login.sub_en_conflicto user_id=%s: el correo ya esta enlazado a otro sub",
+                por_correo.id,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="La cuenta con ese correo ya esta enlazada a otra identidad de Minerva",
+            )
+        if por_correo is not None:
+            por_correo.minerva_sub = sub
+            usuario = por_correo
 
     if usuario is None:
         if not email:
@@ -251,7 +289,9 @@ def resolve_user(db: Session, claims: dict) -> Usuario:
         )
         db.add(usuario)
 
-    if email:
+    if email and not db.query(Usuario).filter(
+        func.lower(Usuario.email) == email.lower(), Usuario.id != usuario.id
+    ).first():
         usuario.email = email
     if name:
         usuario.name = name
@@ -299,8 +339,11 @@ async def callback(
     tx = _read_tx_cookie(request)
     next_path = _safe_next((tx or {}).get("next"))
     return_to = _safe_next((tx or {}).get("return_to"))
-    base = (tx or {}).get("public_base") or _public_base(request)
-    redirect_uri = (tx or {}).get("redirect_uri") or settings.minerva_redirect_uri
+    base = (tx or {}).get("public_base") or ""
+    if base not in _origenes_permitidos():
+        base = _public_base(request)
+    callback_path = urlsplit(settings.minerva_redirect_uri).path
+    redirect_uri = f"{base}{callback_path}"
 
     if error:
         logger.info("action=login.denied error=%s", error)
@@ -331,8 +374,28 @@ async def callback(
             detail="No se pudo canjear el código con Minerva",
         ) from exc
 
+    try:
+        await oidc.validar_id_token(tokens.get("id_token"), tx.get("nonce", ""))
+    except oidc.IdTokenInvalidoError as exc:
+        logger.warning("action=login.id_token_invalido motivo=%s", exc)
+        redirect = RedirectResponse(
+            url=_post_login_url(error="invalid_nonce", base=base), status_code=status.HTTP_302_FOUND
+        )
+        redirect.delete_cookie(key=TX_COOKIE_NAME, path=_tx_cookie_path())
+        return redirect
+
     claims = await _decode(tokens["access_token"])
-    usuario = resolve_user(db, claims)
+    try:
+        usuario = resolve_user(db, claims)
+    except HTTPException as exc:
+        if exc.status_code != status.HTTP_409_CONFLICT:
+            raise
+        redirect = RedirectResponse(
+            url=_post_login_url(error="account_conflict", base=base),
+            status_code=status.HTTP_302_FOUND,
+        )
+        redirect.delete_cookie(key=TX_COOKIE_NAME, path=_tx_cookie_path())
+        return redirect
 
     sid = minerva_session.new_sid()
     minerva_session.store(
@@ -538,7 +601,8 @@ async def subir_avatar(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
 ):
-    if file.content_type not in _AVATAR_ALLOWED_CONTENT_TYPES:
+    content_type = tipo_archivo.detectar_mime_upload(file)
+    if content_type not in _AVATAR_ALLOWED_CONTENT_TYPES:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Tipo no permitido. Use {', '.join(sorted(_AVATAR_ALLOWED_CONTENT_TYPES))}",
@@ -564,11 +628,11 @@ async def subir_avatar(
             detail="Bucket de assets institucionales no disponible",
         )
 
-    ext = _avatar_extension(file.content_type)
+    ext = _avatar_extension(content_type)
     object_name = f"avatars/u{current_user.id}/{uuid.uuid4().hex}.{ext}"
 
     client = AcervoClient.for_bucket(bucket)
-    public_url = await client.upload_file(file, object_name)
+    public_url = await client.upload_file(file, object_name, content_type=content_type)
 
     if current_user.avatar_url:
         previous_relative = to_relative(current_user.avatar_url)

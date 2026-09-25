@@ -1,6 +1,8 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
+
+from app.services.frames_config import enmascarar_rtsp
 
 NOMBRE_PATRON = r"^[a-z][a-z0-9_]*$"
 
@@ -52,6 +54,10 @@ class CamaraResponse(CamaraBase):
     id: int
     created_at: datetime
     updated_at: datetime
+
+    @field_serializer("rtsp_url")
+    def ocultar_credenciales(self, valor: str) -> str | None:
+        return enmascarar_rtsp(valor)
 
 
 class EstadoResponse(BaseModel):

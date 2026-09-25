@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hmac
 from dataclasses import dataclass
 
 from fastapi import HTTPException, status
@@ -60,7 +61,7 @@ def resolve_upload_client(token: str | None) -> UploadPolicy:
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="ACERVO_INTERNAL_TOKEN no configurado en mariachi-api",
         )
-    if not token or token != expected:
+    if not token or not hmac.compare_digest(token.encode(), expected.encode()):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token interno invalido",

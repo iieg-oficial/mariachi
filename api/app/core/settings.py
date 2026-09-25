@@ -1,6 +1,7 @@
 import json
 from functools import lru_cache
 from typing import Literal
+from urllib.parse import quote, urlsplit, urlunsplit
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -27,6 +28,7 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     redis_url: str
+    redis_password: str | None = None
     acervo_endpoint: str
     acervo_public_endpoint: str
     acervo_use_ssl: bool = False
@@ -86,11 +88,13 @@ class Settings(BaseSettings):
     mapalab_internal_token: str | None = None
     acervo_internal_token: str | None = None
     sieej_url: str | None = None
+    sieej_edicion_deshabilitada: bool = False
     huachicol_monitor_url: str | None = None
 
     frames_enabled: bool = False
     frames_api_url: str | None = None
     frames_timeout: float = 10.0
+    frames_rtsp_username: str | None = None
 
     vine_enabled: bool = False
     vine_biometrico_url: str | None = None
@@ -121,6 +125,17 @@ class Settings(BaseSettings):
             f"postgresql://{self.postgres_user}:{self.postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
         )
+        return self
+
+    @model_validator(mode="after")
+    def compose_redis_url(self):
+        if not self.redis_password:
+            return self
+        partes = urlsplit(self.redis_url)
+        if "@" in partes.netloc:
+            return self
+        credencial = quote(self.redis_password.strip(), safe="")
+        self.redis_url = urlunsplit(partes._replace(netloc=f":{credencial}@{partes.netloc}"))
         return self
 
     @model_validator(mode="after")

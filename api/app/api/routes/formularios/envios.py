@@ -16,7 +16,7 @@ from fastapi import (
 )
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, verify_csrf
+from app.api.deps import get_current_user, require_permission, verify_csrf
 from app.api.rate_limit import rate_limit
 from app.core.database import get_db
 from app.models.user import Usuario
@@ -39,6 +39,8 @@ from app.services.sieej.formularios_dinamicos_service import (
 from app.services.sieej.pertenencia import es_coordinador
 
 router = APIRouter()
+
+_capturar = [Depends(require_permission("mariachi.sieej_envios.create"))]
 
 
 def envio_response(
@@ -107,7 +109,7 @@ que se coma la cuota de IP que comparte toda la dependencia tras la NAT.
 """
 
 
-@router.post("/{slug}/envio/sync", response_model=EnvioSyncResponse)
+@router.post("/{slug}/envio/sync", response_model=EnvioSyncResponse, dependencies=_capturar)
 async def sincronizar_envio(
     slug: str,
     body: EnvioSyncRequest,
@@ -137,7 +139,7 @@ async def sincronizar_envio(
     )
 
 
-@router.patch("/{slug}/envio/campos", response_model=EnvioCapturaResponse)
+@router.patch("/{slug}/envio/campos", response_model=EnvioCapturaResponse, dependencies=_capturar)
 async def capturar_campos(
     slug: str,
     body: EnvioCapturaCampos,
@@ -162,7 +164,7 @@ async def capturar_campos(
     )
 
 
-@router.put("/{slug}/envio", response_model=EnvioResponse)
+@router.put("/{slug}/envio", response_model=EnvioResponse, dependencies=_capturar)
 async def actualizar_envio(
     slug: str,
     body: EnvioUpdate,
@@ -188,7 +190,7 @@ async def actualizar_envio(
     return envio_response(formulario, envio, db, current_user)
 
 
-@router.post("/{slug}/envio/actualizar-version", response_model=EnvioResponse)
+@router.post("/{slug}/envio/actualizar-version", response_model=EnvioResponse, dependencies=_capturar)
 async def actualizar_version_envio(
     slug: str,
     db: Session = Depends(get_db),
@@ -211,7 +213,7 @@ async def actualizar_version_envio(
     return envio_response(formulario, envio, db, current_user)
 
 
-@router.post("/{slug}/envio/upload", response_model=EnvioUploadResponse)
+@router.post("/{slug}/envio/upload", response_model=EnvioUploadResponse, dependencies=_capturar)
 async def subir_archivo(
     slug: str,
     field_path: str = Form(...),

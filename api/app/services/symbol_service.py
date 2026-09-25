@@ -22,7 +22,8 @@ from app.schemas.symbol import (
     SymbolResponse,
     SymbolUpdate,
 )
-from app.services.acervo import AcervoClient
+from app.services import tipo_archivo
+from app.services.acervo import AcervoClient, download_metadata
 
 logger = logging.getLogger(__name__)
 
@@ -207,6 +208,13 @@ def _upload_file_symbol(
             detail=f"Archivo excede el limite ({MAX_IMAGE_SIZE} bytes)",
         )
 
+    content_type = tipo_archivo.detectar_mime_upload(file)
+    if not tipo_archivo.mime_compatible(tipo_archivo.mime_por_extension(extension), content_type):
+        raise HTTPException(
+            status_code=415,
+            detail=f"El contenido del archivo no corresponde a la extension '{extension}'",
+        )
+
     object_key = f"{prefix}{uuid.uuid4().hex}.{extension}"
     client = _acervo_client(mariachi_db, bucket_slug)
     try:
@@ -215,7 +223,8 @@ def _upload_file_symbol(
             object_key,
             stream,
             size,
-            content_type=file.content_type or "application/octet-stream",
+            content_type=content_type,
+            metadata=download_metadata(None, content_type, object_key),
         )
     except S3Error as exc:
         logger.exception("symbol_service.upload bucket=%s key=%s", client.bucket_name, object_key)

@@ -20,7 +20,7 @@ from fastapi import (
 )
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, verify_csrf
+from app.api.deps import get_current_user, require_permission, verify_csrf
 from app.api.routes.formularios.envios import envio_response
 from app.core.database import get_db
 from app.core.time import utcnow
@@ -42,6 +42,9 @@ from app.services.sieej.formularios_dinamicos_service import (
 from app.services.sieej.pdf_service import render_envio_pdf
 
 router = APIRouter()
+
+_corregir = [Depends(require_permission("mariachi.sieej_envios.update"))]
+_borrar = [Depends(require_permission("mariachi.sieej_envios.delete"))]
 
 
 @router.get("/", response_model=list[FormularioListItem])
@@ -100,7 +103,9 @@ async def obtener_mi_envio(
     )
 
 
-@router.delete("/mis-envios/{envio_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/mis-envios/{envio_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=_borrar
+)
 async def eliminar_mi_envio(
     envio_id: int,
     db: Session = Depends(get_db),
@@ -148,7 +153,7 @@ async def descargar_mi_envio_pdf(
 
 
 @router.put(
-    "/mis-envios/{envio_id}/actualizar-campos", response_model=EnvioResponse
+    "/mis-envios/{envio_id}/actualizar-campos", response_model=EnvioResponse, dependencies=_corregir
 )
 async def actualizar_campos_mi_envio(
     envio_id: int,
@@ -170,6 +175,7 @@ async def actualizar_campos_mi_envio(
 @router.post(
     "/mis-envios/{envio_id}/actualizar-archivo",
     response_model=EnvioUploadResponse,
+    dependencies=_corregir,
 )
 async def actualizar_archivo_mi_envio(
     envio_id: int,

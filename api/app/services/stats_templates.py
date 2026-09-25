@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import re
 from typing import Any
 
@@ -18,6 +19,9 @@ MAX_FILTERS = 6
 SQL_COMPARATORS = {'eq': '=', 'gte': '>=', 'lte': '<='}
 
 _PLACEHOLDER = re.compile(r'^\{\{([a-z_.]+)\}\}$')
+ERROR_DE_CALCULO = 'No se pudo calcular la estadistica; revisa tabla, campos y filtros'
+
+logger = logging.getLogger(__name__)
 
 
 class StatsTemplateError(ValueError):
@@ -235,6 +239,30 @@ def validate_stats_config(stats_config: list | None) -> list:
         raise StatsTemplateError('positions duplicadas en stats_config')
 
     return validated
+
+
+def schemas_permitidos(conn: Connection) -> frozenset[str]:
+    filas = conn.execute(text('SELECT DISTINCT db_schema FROM mapalab.workspaces')).scalars()
+    return frozenset(schema for schema in filas if schema)
+
+
+def _schemas_de(cfg: Any) -> set[str]:
+    if not isinstance(cfg, dict):
+        return set()
+    encontrados = {cfg['schema']} if cfg.get('schema') else set()
+    for clave in ('expression', 'left', 'right'):
+        encontrados |= _schemas_de(cfg.get(clave))
+    return encontrados
+
+
+def validar_schemas(stats_config: list | None, permitidos: frozenset[str]) -> None:
+    for i, cfg in enumerate(stats_config or []):
+        for schema in sorted(_schemas_de(cfg)):
+            if schema not in permitidos:
+                raise StatsTemplateError(
+                    f"stats_config[{i}]: el schema '{schema}' no pertenece a ningun "
+                    'workspace de MapaLab'
+                )
 
 
 MAX_MUNICIPIOS = 125
@@ -526,6 +554,7 @@ def execute_stats_batch(
     conn: Connection,
     stats_config: list | None,
     context: dict | None = None,
+    schemas: frozenset[str] | None = None,
 ) -> tuple[list[dict], list[dict]]:
     """Ejecuta cada stat aislada en un SAVEPOINT.
 
@@ -545,6 +574,8 @@ def execute_stats_batch(
 
         try:
             cfg = validate_stats_config([raw_cfg])[0]
+            if schemas is not None:
+                validar_schemas([cfg], schemas)
         except StatsTemplateError as exc:
             errors.append({'position': position, 'label': label, 'error': str(exc)})
             continue
@@ -556,10 +587,11 @@ def execute_stats_batch(
             raw = execute_stat(conn, cfg, context)
             if savepoint is not None:
                 savepoint.commit()
-        except Exception as exc:
+        except Exception:
             if savepoint is not None:
                 savepoint.rollback()
-            errors.append({'position': position, 'label': label, 'error': str(exc)})
+            logger.warning('stats: fallo la posicion %s', position, exc_info=True)
+            errors.append({'position': position, 'label': label, 'error': ERROR_DE_CALCULO})
             continue
 
         values.append({

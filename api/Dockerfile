@@ -33,6 +33,11 @@ FROM base AS production
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install -e "."
 COPY . .
+RUN groupadd --system --gid 10001 app \
+    && useradd --system --uid 10001 --gid app --home-dir /home/app --create-home app \
+    && mkdir -p /var/tmp/geoserver-uploads \
+    && chown app:app /var/tmp/geoserver-uploads
+USER app
 EXPOSE 8000
 ENV ENV=production
 CMD ["./scripts/start_backend.sh"]

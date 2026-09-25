@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { baseOrigin } from '@features/mapalab-api-keys/components/playgroundHelpers';
 
 export function usePlaygroundMessageBridge({
     baseUrl,
@@ -9,11 +10,9 @@ export function usePlaygroundMessageBridge({
     sendViewToIframe,
 }) {
     useEffect(() => {
-        const expectedOrigin = (() => {
-            try { return new URL(baseUrl, window.location.origin).origin; } catch { return null; }
-        })();
+        const expectedOrigin = baseOrigin(baseUrl);
         const handler = (event) => {
-            if (expectedOrigin && event.origin && event.origin !== expectedOrigin) return;
+            if (!expectedOrigin || event.origin !== expectedOrigin) return;
             const data = event?.data;
             if (!data || typeof data !== 'object') return;
             if (data.type === 'mapalab:viewchange') {

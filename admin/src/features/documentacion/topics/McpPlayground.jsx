@@ -485,18 +485,13 @@ const McpToolProbe = ({ probe, apiKey }) => {
 
 export default function McpPlayground() {
     useMapalabWidgetScript();
-    const [apiKey, setApiKey] = useState(() => {
-        try { return localStorage.getItem(API_KEY_STORAGE_KEY) || ''; } catch { return ''; }
-    });
+    const [apiKey, setApiKey] = useState('');
 
-    const handleApiKeyChange = (value) => {
-        const trimmed = (value || '').trim();
-        setApiKey(trimmed);
-        try {
-            if (trimmed) localStorage.setItem(API_KEY_STORAGE_KEY, trimmed);
-            else localStorage.removeItem(API_KEY_STORAGE_KEY);
-        } catch { /* localStorage no disponible */ }
-    };
+    useEffect(() => {
+        try { localStorage.removeItem(API_KEY_STORAGE_KEY); } catch { return; }
+    }, []);
+
+    const handleApiKeyChange = (value) => setApiKey((value || '').trim());
 
     return (
         <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
@@ -509,7 +504,7 @@ export default function McpPlayground() {
                     allowClear
                 />
                 <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 6 }}>
-                    El MCP exige autenticación: la key se envía como <Text code>Authorization: Bearer</Text> en cada llamada de abajo (sin ella responden 401). Usa una key que el MCP acepte: <Text code>mk_priv_</Text> (recomendada) o <Text code>mk_pub_</Text> con dominios <Text code>["*"]</Text>. Para la previsualización embebida del mapa se necesita una <Text code>mk_pub_</Text>. Genera o rota una en <Link to="/mapalab/api-keys">Llaves del visor MapaLab</Link>. La key se guarda en <Text code>localStorage</Text> de este navegador.
+                    El MCP exige autenticación: la key se envía como <Text code>Authorization: Bearer</Text> en cada llamada de abajo (sin ella responden 401). Usa una key que el MCP acepte: <Text code>mk_priv_</Text> (recomendada) o <Text code>mk_pub_</Text> con dominios <Text code>["*"]</Text>. Para la previsualización embebida del mapa se necesita una <Text code>mk_pub_</Text>. Genera o rota una en <Link to="/mapalab/api-keys">Llaves del visor MapaLab</Link>. La key no se guarda: se descarta al salir de esta página.
                 </Text>
             </Card>
 

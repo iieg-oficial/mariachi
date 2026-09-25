@@ -69,7 +69,9 @@ permissions:
     name: Administrar tipos, direcciones, rutas y source apps
 
   - key: mariachi.frames.view
-    name: Ver y administrar las camaras de frames
+    name: Ver las camaras de frames
+  - key: mariachi.frames.manage
+    name: Dar de alta, editar y borrar camaras de frames y aplicar su configuracion
 
   - key: mariachi.vine.view
     name: Ver estadisticas de asistencia de vine
@@ -197,6 +199,11 @@ roles:
     description: Atomico. Catalogo de camaras y vista en vivo. Modulo local
     permissions:
       - mariachi.frames.view
+  - name: Frames - administracion
+    description: Atomico. Alta, edicion y borrado de camaras y aplicar la configuracion. Modulo local
+    permissions:
+      - mariachi.frames.view
+      - mariachi.frames.manage
 
   - name: Vine - estadisticas
     description: Atomico. Estadisticas agregadas de asistencia, sin datos individuales

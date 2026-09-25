@@ -37,6 +37,8 @@ FROM nginx:1.30.4-alpine
 RUN rm -f /etc/nginx/conf.d/default.conf
 COPY ./nginx/nginx.conf /etc/nginx/nginx.conf
 COPY ./nginx/conf.d/mariachi.conf /etc/nginx/conf.d/mariachi.conf
+COPY ./nginx/includes/ /etc/nginx/includes/
+COPY ./nginx/templates/ /etc/nginx/templates/
 COPY --from=admin-builder /app/dist /usr/share/nginx/html/mariachi
 COPY --from=widget-builder /widget/dist /usr/share/nginx/html/colibri-widget
 EXPOSE 80

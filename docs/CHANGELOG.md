@@ -9,6 +9,72 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.102.0] - 2026-09-24
+
+Reparación de la auditoría de seguridad del 2026-09-24.
+
+### Corregido
+
+- **XSS almacenado vía Acervo.** El tipo de un archivo subido se deriva de sus primeros bytes
+  (`services/tipo_archivo.py`), no del `Content-Type` del navegador. Los campos `file` de SIEEJ
+  exigen extensión permitida **y** contenido que corresponda; el explorador del Acervo, la subida
+  interna, el avatar, los símbolos y la captura de Colibrí guardan el MIME detectado. HTML, SVG, XML
+  y JS se guardan con `Content-Disposition: attachment`. La subida por partes toma el tipo de la
+  extensión y rechaza con 415 un HTML disfrazado; la sesión de subida queda atada a quien la abrió.
+- **El proxy `/acervo/proxy/...`** responde siempre con `nosniff` y, salvo imagen raster o PDF,
+  con `Content-Security-Policy: default-src 'none'; sandbox` y `Content-Disposition: attachment`.
+- **Permisos finos que no se aplicaban.** El admin de SIEEJ pide `sieej_formularios.create/update/
+  delete` y `sieej_envios.update/export` por acción, no solo `sieej_admin.view`; grupos y catálogos
+  piden `sieej_formularios.update` para escribir. La captura del respondente pide
+  `sieej_envios.create`, y corregir o descartar un envío, `sieej_envios.update` y `.delete`. MEL
+  edita con `mel.update`. El Acervo combina la membresía de editor con `acervo.create/update/delete`.
+- **Frames:** crear, editar, borrar cámaras y aplicar la configuración pide el permiso nuevo
+  `mariachi.frames.manage`. Las respuestas, la vista previa y el modo tabla enmascaran usuario y
+  contraseña de la URL RTSP; editar con la URL enmascarada conserva la credencial guardada. En el
+  modo tabla la URL ya no se edita.
+- **Monitor del sistema:** `/sistema/monitor/*` exige `sistema.manage` y valida el nodo y el slug.
+- **Enlace de cuentas con minerva:** por correo solo se enlaza un usuario sin `minerva_sub`; un sub
+  distinto ya no se sobrescribe y el login vuelve con `auth_error=account_conflict`.
+- **Flujo OIDC:** la cookie `mariachi_oidc_tx` va firmada con HMAC, el origen público se valida
+  contra `CORS_ORIGINS` y el de `MINERVA_POST_LOGIN_URL`/`MINERVA_REDIRECT_URI`, y el `nonce` del
+  `id_token` se valida (firma, `aud`, `iss`).
+- **Estadísticas de capas:** vista previa, guardado, recálculo y publicación solo aceptan schemas de
+  `mapalab.workspaces`, y un fallo de la base ya no devuelve su texto crudo.
+- **Colibrí:** Discord sale con `allowed_mentions` vacío, Slack escapa `<!channel>`, `<!here>` y
+  `@everyone`, los webhooks exigen `https` y el log ya no guarda la URL completa.
+- **IP del cliente:** nginx solo confía en `X-Forwarded-For` de la red del gateway
+  (`NGINX_REAL_IP_FROM`, sin recursión) y la propuesta pública de tarjeta usa el mismo helper que el
+  rate limit, no el primer valor de `X-Forwarded-For`.
+- Los tokens internos se comparan con `hmac.compare_digest`.
+- `/ontoy` y el estado de frames ya no devuelven el texto de la excepción.
+- `DELETE /formularios/mis-envios/{id}` respeta la ventana del formulario, como el resto de las
+  escrituras de envíos.
+- Frontend: la previsualización de acervo ya no muestra HTML, SVG ni XML (solo descarga); el resto
+  va en iframe con sandbox y los PDF desde un blob con tipo forzado.
+- Frontend: los adjuntos de envíos SIEEJ en el admin se descargan en vez de abrirse en otra pestaña.
+- Frontend: la llave del playground del MCP ya no se guarda en localStorage y se borra la que hubiera.
+- Frontend: las llaves en claro de MapaLab ya no se guardan en sessionStorage y se borran las
+  existentes.
+- Frontend: el playground de llaves de MapaLab manda y recibe postMessage solo con el origen del
+  visor.
+- Frontend: el widget de Colibrí se publica sin sourcemaps.
+
+### Agregado
+
+- Permiso `mariachi.frames.manage` y rol «Frames - administracion» en el manifiesto de minerva.
+- El config de Frigate generado define `go2rtc.rtsp` con `FRAMES_RTSP_USERNAME` y
+  `{FRIGATE_RTSP_PASSWORD}`: el restream 8554 pide credencial. Sin el usuario no se genera.
+- `SIEEJ_EDICION_DESHABILITADA`: congela en la API toda escritura de envíos, el equivalente del
+  `VITE_DISABLED_EDITION` que solo existía en el cliente.
+- Redis con `requirepass` desde el secreto `secrets/redis_password`; la URL de conexión se arma sola.
+- nginx repite los encabezados de seguridad en cada `location` que declara `add_header`.
+- La tabla de eventos de la telemetría cuenta datos curiosos, regresos y sesiones reales.
+
+### Cambiado
+
+- El api de producción corre como el usuario `app` (uid 10001), no como root.
+- Frontend: axios 1.20.0 y form-data 4.0.6 en el admin (GHSA-gcfj-64vw-6mp9, GHSA-hmw2-7cc7-3qxx).
+
 ## [2.101.0] - 2026-09-24
 
 ### Cambiado: una propiedad nueva hereda la capa de su grupo y pide su filtro

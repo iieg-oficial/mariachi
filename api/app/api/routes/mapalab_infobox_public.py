@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
-from app.api.rate_limit import rate_limit_ip
+from app.api.rate_limit import _client_ip, rate_limit_ip
 from app.core.database import get_dataengine_db
 from app.schemas._camel import CamelCaseInput
 from app.schemas.mapalab_infobox import InfoboxPropuestaConfig
@@ -30,16 +30,6 @@ class PropuestaIn(CamelCaseInput):
 class PropuestaOut(BaseModel):
     ok: bool
     id: int | None = None
-
-
-def _client_ip(request: Request) -> str | None:
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    real_ip = request.headers.get("x-real-ip")
-    if real_ip:
-        return real_ip.strip()
-    return request.client.host if request.client else None
 
 
 @router.post(
