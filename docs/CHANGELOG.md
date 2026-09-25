@@ -9,6 +9,13 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.102.2] - 2026-09-25
+
+### Corregido: la Documentación ya no dice que MapaLab oculta funciones en producción
+
+Los topics de MapaLab y Telemetría decían que el botón de personalizar y la vista por municipio
+solo salían en dev y beta. Desde MapaLab 1.215.0 salen también en producción, con su badge.
+
 ## [2.102.1] - 2026-09-24
 
 ### Corregido

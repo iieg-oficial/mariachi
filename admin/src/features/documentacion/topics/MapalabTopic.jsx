@@ -7,7 +7,7 @@ const FLUJO = [
     {
         paso: '1. Entrada',
         donde: 'Catálogo · lista de capas',
-        que: 'Botón de personalizar en el item, pegado a la orilla derecha, visible en hover o foco. Gateado a VITE_APP_ENV dev/beta.',
+        que: 'Botón de personalizar en el item, pegado a la orilla derecha, visible en hover o foco.',
     },
     {
         paso: '2. Muestra',
