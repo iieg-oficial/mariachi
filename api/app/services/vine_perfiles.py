@@ -32,7 +32,18 @@ def festivos_de_ley(anio: int) -> list[date]:
     ]
 
 
-FESTIVOS_INSTITUTO: list[date] = []
+FESTIVOS_INSTITUTO: list[date] = [
+    date(2026, 1, 2),
+    date(2026, 1, 5),
+    date(2026, 1, 6),
+    date(2026, 4, 2),
+    date(2026, 4, 3),
+    date(2026, 5, 5),
+    date(2026, 6, 11),
+    date(2026, 6, 18),
+    date(2026, 6, 23),
+    date(2026, 6, 26),
+]
 
 
 def festivos(desde: date, hasta: date) -> list[date]:

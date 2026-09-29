@@ -1,4 +1,15 @@
-from sqlalchemy import Boolean, Column, Date, DateTime, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import (
+    Boolean,
+    Column,
+    Date,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    text,
+)
 
 from app.core.database import Base
 from app.core.time import utcnow
@@ -27,6 +38,7 @@ class Evento(Base):
     __tablename__ = "eventos"
     __table_args__ = (
         Index("ix_vine_eventos_pin_time", "pin", "event_time"),
+        Index("ix_vine_eventos_tardio", "tardio", postgresql_where=text("tardio")),
         {"schema": SCHEMA},
     )
 
@@ -39,6 +51,7 @@ class Evento(Base):
     evento = Column(String(120), nullable=True)
     verificacion = Column(String(60), nullable=True)
     dispositivo = Column(String(100), nullable=True)
+    tardio = Column(Boolean, default=False, nullable=False)
     sincronizado_at = Column(DateTime, default=utcnow, nullable=False)
 
 

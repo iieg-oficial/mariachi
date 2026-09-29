@@ -40,8 +40,9 @@ cron_install() {
         echo "0 3 * * * cd $dir && make backup-db >> $dir/backups/backup.log 2>&1 # mariachi-backup"
         echo "*/30 * * * * cd $dir && make refresh-mapalab-stats >> $dir/backups/mapalab-stats.log 2>&1 # mariachi-stats-refresh"
         echo "*/10 * * * * cd $dir && make sync-vine >> $dir/backups/vine-sync.log 2>&1 # mariachi-vine-sync"
+        echo "30 3 * * * cd $dir && make conciliar-vine >> $dir/backups/vine-conciliar.log 2>&1 # mariachi-vine-conciliar"
     } | crontab -
-    row 'Cron' 'instalado' "$C_GREEN" 'respaldo 03:00, stats cada 30 min y vine cada 10'
+    row 'Cron' 'instalado' "$C_GREEN" 'respaldo 03:00, stats cada 30 min, vine cada 10 y conciliación 03:30'
     crontab -l | grep -E 'mariachi-(backup|stats|vine)' | while IFS= read -r line; do
         printf '         %s\n' "$line"
     done || true

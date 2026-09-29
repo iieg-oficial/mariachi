@@ -27,15 +27,29 @@ _PERSONAS = """
     WHERE p.pin IS NOT NULL AND p.pin <> ''
 """
 
-_EVENTOS = """
+_COLUMNAS_EVENTO = """
     SELECT id, pin, event_time,
            CASE WHEN reader_name ILIKE '%%entrada%%' THEN 'entrada'
                 WHEN reader_name ILIKE '%%salida%%' THEN 'salida' END AS direccion,
            event_point_name AS punto, reader_name AS lector, event_name AS evento,
            verify_mode_name AS verificacion, dev_alias AS dispositivo
     FROM acc_transaction
-    WHERE pin IS NOT NULL AND pin <> '' AND id > :desde_id
-    ORDER BY id LIMIT :lote
+    WHERE pin IS NOT NULL AND pin <> ''
+"""
+
+_EVENTOS = _COLUMNAS_EVENTO + " AND id > :desde_id ORDER BY id LIMIT :lote"
+
+_EVENTOS_POR_ID = _COLUMNAS_EVENTO + " AND id = ANY(:ids)"
+
+_IDS_ORIGEN = "SELECT id FROM acc_transaction WHERE pin IS NOT NULL AND pin <> '' AND id <= :hasta"
+
+_INSERTAR_EVENTO = """
+    INSERT INTO vine.eventos
+        (id, pin, event_time, direccion, punto, lector, evento, verificacion,
+         dispositivo, tardio, sincronizado_at)
+    VALUES (:id, :pin, :event_time, :direccion, :punto, :lector, :evento,
+            :verificacion, :dispositivo, :tardio, now() AT TIME ZONE 'utc')
+    ON CONFLICT (id) DO NOTHING
 """
 
 
@@ -97,17 +111,7 @@ def _sincronizar_eventos(origen, db: Session, desde_id: int) -> tuple[int, int]:
         if not filas:
             break
         for fila in filas:
-            db.execute(
-                text("""
-                    INSERT INTO vine.eventos
-                        (id, pin, event_time, direccion, punto, lector, evento, verificacion,
-                         dispositivo, sincronizado_at)
-                    VALUES (:id, :pin, :event_time, :direccion, :punto, :lector, :evento,
-                            :verificacion, :dispositivo, now() AT TIME ZONE 'utc')
-                    ON CONFLICT (id) DO NOTHING
-                """),
-                dict(fila),
-            )
+            db.execute(text(_INSERTAR_EVENTO), {**fila, "tardio": False})
         db.commit()
         copiados += len(filas)
         ultimo = filas[-1]["id"]
@@ -134,4 +138,35 @@ def sincronizar(db: Session) -> dict[str, Any]:
         "eventos_nuevos": eventos,
         "desde_id": desde_id,
         "ultimo_id": ultimo_id,
+    }
+
+
+def conciliar(db: Session) -> dict[str, Any]:
+    engine = _biometrico()
+    hasta = db.execute(text("SELECT coalesce(max(id), 0) FROM vine.eventos")).scalar() or 0
+    locales = set(db.execute(text("SELECT id FROM vine.eventos")).scalars())
+    try:
+        with engine.connect() as origen:
+            en_origen = origen.execute(text(_IDS_ORIGEN), {"hasta": hasta}).scalars().all()
+            faltantes = sorted(set(en_origen) - locales)
+            for inicio in range(0, len(faltantes), LOTE):
+                filas = origen.execute(
+                    text(_EVENTOS_POR_ID), {"ids": faltantes[inicio:inicio + LOTE]}
+                ).mappings().all()
+                for fila in filas:
+                    db.execute(text(_INSERTAR_EVENTO), {**fila, "tardio": True})
+                db.commit()
+    except VineSyncError:
+        raise
+    except Exception as exc:
+        logger.error("vine: fallo la conciliacion con el biometrico: %s", exc)
+        raise VineSyncError("no se pudo conciliar con el biometrico") from exc
+
+    if faltantes:
+        logger.warning("vine: %s eventos tardios, ids %s", len(faltantes), faltantes[:50])
+    return {
+        "revisados": len(en_origen),
+        "hasta_id": hasta,
+        "tardios": len(faltantes),
+        "ids": faltantes[:50],
     }

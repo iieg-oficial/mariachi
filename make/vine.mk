@@ -1,4 +1,4 @@
-.PHONY: sync-vine backup-vine restore-vine
+.PHONY: sync-vine conciliar-vine backup-vine restore-vine
 
 ##@ Vine
 
@@ -7,6 +7,12 @@ sync-vine: ## Traer del biometrico los accesos que falten en el schema vine
 	env=$$(resolve_env)
 	if [ -z "$$env" ]; then nothing_running 'SYNC-VINE'; exit 0; fi
 	dc "$$env" exec -T api python scripts/sync_vine.py
+
+conciliar-vine: ## Copiar del biometrico los accesos con id viejo que el sync no ve
+	@$(LIB)
+	env=$$(resolve_env)
+	if [ -z "$$env" ]; then nothing_running 'CONCILIAR-VINE'; exit 0; fi
+	dc "$$env" exec -T api python scripts/conciliar_vine.py
 
 backup-vine: ## Respaldar solo el schema vine (personal, eventos, fichas e incidencias)
 	@$(LIB)

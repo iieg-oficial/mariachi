@@ -9,6 +9,23 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.103.0] - 2026-09-29
+
+### Agregado
+
+- `make conciliar-vine` y `api/scripts/conciliar_vine.py`: comparan todos los ids del biométrico
+  por debajo del último sincronizado contra `vine.eventos` y copian los que falten. El sync
+  incremental (`id > último`) nunca vuelve a leer ese rango, así que una fila insertada con un id
+  viejo quedaba invisible para siempre. Lo que llega por aquí queda marcado en la columna nueva
+  `vine.eventos.tardio` (migración `v1ne0009`), que es la señal que busca una auditoría. `make cron`
+  la instala a las 03:30.
+
+### Cambiado
+
+- `FESTIVOS_INSTITUTO` deja de estar vacía: diez inhábiles de 2026 derivados del biométrico
+  (2, 5 y 6 de enero; 2 y 3 de abril; 5 de mayo; 11, 18, 23 y 26 de junio por el mundial). Salen
+  del denominador de días hábiles.
+
 ## [2.102.3] - 2026-09-29
 
 ### Agregado
