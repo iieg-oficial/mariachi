@@ -20,3 +20,4 @@ include make/dev.mk
 include make/sieej.mk
 include make/vine.mk
 include make/mapalab.mk
+include make/acervo.mk

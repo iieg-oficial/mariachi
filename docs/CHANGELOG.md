@@ -9,6 +9,16 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.102.3] - 2026-09-29
+
+### Agregado
+
+- `make acervo-barrido` y `api/scripts/acervo_barrido.py`: recorren los buckets de acervo (menos
+  `portal`), leen la cabecera de cada objeto por rango y reportan en CSV los que tienen un
+  `Content-Type` activo guardado o un tipo real distinto del guardado o de su extensión. En modo
+  corregir reescriben tipo real y `Content-Disposition: attachment` sin tocar el contenido; cierra
+  lo que la subida anterior a la auditoría dejó guardado (C1).
+
 ## [2.102.2] - 2026-09-25
 
 ### Corregido: la Documentación ya no dice que MapaLab oculta funciones en producción

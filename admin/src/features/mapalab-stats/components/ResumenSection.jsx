@@ -104,7 +104,7 @@ export default function ResumenSection({ period, canRefresh = false }) {
                     <StatCard title="Compartieron" value={sharePercent} format="percent" hint={`${overview?.shareSessions ?? 0} sesiones`} />
                 </Col>
                 <Col xs={12} md={6}>
-                    <StatCard title="Reportaron" value={overview?.reportedSessions ?? 0} hint="Sesiones con reporte" />
+                    <StatCard title="Reportaron" value={overview?.reportedSessions ?? 0} hint="Sesiones que abrieron Colibrí" />
                 </Col>
             </Row>
 

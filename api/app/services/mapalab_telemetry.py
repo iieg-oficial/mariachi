@@ -31,7 +31,7 @@ _EVENTS_USED_DRAWING = {"drawing_tool_use"}
 _EVENTS_USED_MEASUREMENT = {"measurement_tool_use"}
 _EVENTS_DOWNLOADED = {"layer_download", "map_export"}
 _EVENTS_SHARED = {"share_map"}
-_EVENTS_REPORTED = {"report_submitted"}
+_EVENTS_REPORTED = {"report_submitted", "colibri_open"}
 _EVENTS_LAYER_ACTIVATED = {"layer_toggle"}
 
 
@@ -192,7 +192,10 @@ _VISOR_BUTTON_NAMES = (
     "'report_submitted','layer_download','opacity_change','legends_toggle',"
     "'infobox_action','home_action','layer_reorder','basemap_change',"
     "'geolocate','map_export','periodicity_advanced',"
-    "'evento_fun_fact','evento_center','evento_share'"
+    "'evento_fun_fact','evento_center','evento_share',"
+    "'north_reset','colibri_open','tabla_open','tabla_filter','tabla_download',"
+    "'stats_open','stats_custom_create','stats_detach',"
+    "'municipio_mode_enter','municipio_panel_open'"
 )
 
 # (nombre, tabla rollup, columna fecha del crudo, INSERT ... SELECT sin WHERE de fecha)
@@ -258,12 +261,14 @@ _ROLLUP_STEPS: tuple[tuple[str, str, str], ...] = (
         "huachicol.rollup_tools",
         """
         INSERT INTO huachicol.rollup_tools (dia, app, event_name, tool, uses, unique_sessions)
-        SELECT DATE(ts), app, event_name, COALESCE(props->>'tool', 'unknown'),
+        SELECT DATE(ts), app, event_name,
+               COALESCE(props->>'tool', props->>'action', 'unknown'),
                COUNT(*), COUNT(DISTINCT session_id)
         FROM huachicol.events
-        WHERE event_name IN ('drawing_tool_use', 'measurement_tool_use')
+        WHERE event_name IN ('drawing_tool_use', 'measurement_tool_use', 'view3d')
           AND ts >= CURRENT_DATE - :days
-        GROUP BY DATE(ts), app, event_name, COALESCE(props->>'tool', 'unknown')
+        GROUP BY DATE(ts), app, event_name,
+                 COALESCE(props->>'tool', props->>'action', 'unknown')
         """,
         "ts",
     ),
