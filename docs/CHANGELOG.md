@@ -9,6 +9,14 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.113.1] - 2026-09-29
+
+### Agregado
+
+- **vine, directorio:** el engrane recupera los filtros por marca (huella, tarjeta,
+  superusuario) y por horario, con el conteo de cada opción, junto a «Mostrar bajas». Un punto en el
+  engrane avisa que hay algo activo y «Quitar todo» lo limpia (`ConfiguracionPersonal.jsx`).
+
 ## [2.113.0] - 2026-09-29
 
 ### Agregado

@@ -1,6 +1,6 @@
-import { SettingOutlined, TableOutlined, TeamOutlined } from '@ant-design/icons';
+import { TableOutlined, TeamOutlined } from '@ant-design/icons';
 import {
-    Alert, Button, Card, Input, Popover, Space, Switch, Table, Tooltip, Typography,
+    Alert, Button, Card, Input, Space, Table, Typography,
 } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -12,7 +12,8 @@ import { getPersonal } from '@features/vine/api/vineService';
 import { columnasPersonal } from '@features/vine/components/columnasPersonal';
 import DescargaDirectorio from '@features/vine/components/DescargaDirectorio';
 import FichaPersona from '@features/vine/components/FichaPersona';
-import { DIMENSIONES } from '@features/vine/constants/filtros';
+import ConfiguracionPersonal from '@features/vine/components/ConfiguracionPersonal';
+import { DIMENSIONES, SIN_CONFIGURACION, aplicarConfiguracion } from '@features/vine/constants/filtros';
 
 const { Text } = Typography;
 
@@ -27,7 +28,7 @@ const PersonalPage = () => {
     const puedeEditar = can(PERMISO_EDITAR);
 
     const [busqueda, setBusqueda] = useState('');
-    const [conBajas, setConBajas] = useState(false);
+    const [configuracion, setConfiguracion] = useState(SIN_CONFIGURACION);
     const [paginacion, setPaginacion] = useState({ current: 1, pageSize: 25 });
     const [expandidas, setExpandidas] = useState([]);
     const [tabs, setTabs] = useState({});
@@ -64,11 +65,11 @@ const PersonalPage = () => {
 
     const visibles = useMemo(() => {
         const q = busqueda.trim().toLowerCase();
-        const filtradas = conBajas ? filas : filas.filter((f) => !f.baja);
+        const filtradas = aplicarConfiguracion(filas, configuracion);
         if (!q) return filtradas;
         return filtradas.filter((f) => `${f.nombre ?? ''} ${f.pin} ${f.departamento ?? ''} ${f.email ?? ''}`
             .toLowerCase().includes(q));
-    }, [filas, busqueda, conBajas]);
+    }, [filas, busqueda, configuracion]);
 
     if (!puedeVer) {
         return (
@@ -99,20 +100,7 @@ const PersonalPage = () => {
                             value={busqueda}
                             onChange={(e) => setBusqueda(e.target.value)}
                         />
-                        <Popover
-                            trigger="click"
-                            placement="bottomRight"
-                            content={(
-                                <Space>
-                                    <Switch size="small" checked={conBajas} onChange={setConBajas} />
-                                    <Text>Mostrar bajas</Text>
-                                </Space>
-                            )}
-                        >
-                            <Tooltip title="Configuración">
-                                <Button shape="circle" icon={<SettingOutlined />} aria-label="Configuración" />
-                            </Tooltip>
-                        </Popover>
+                        <ConfiguracionPersonal filas={filas} valores={configuracion} onCambio={setConfiguracion} />
                         <DescargaDirectorio pins={visibles.map((f) => f.pin)} dias={DIAS} />
                         {puedeEditar && (
                             <Link to="/vine/personal/tabla">
