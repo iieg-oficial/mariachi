@@ -31,6 +31,7 @@ const PersonalPage = () => {
     const [paginacion, setPaginacion] = useState({ current: 1, pageSize: 25 });
     const [expandidas, setExpandidas] = useState([]);
     const [tabs, setTabs] = useState({});
+    const [dias, setDias] = useState({});
     const [filas, setFilas] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
@@ -50,8 +51,9 @@ const PersonalPage = () => {
 
     useEffect(() => { cargar(); }, [cargar]);
 
-    const abrir = useCallback((pin, tab) => {
+    const abrir = useCallback((pin, tab, dia) => {
         setTabs((t) => ({ ...t, [pin]: tab }));
+        if (dia) setDias((d) => ({ ...d, [pin]: dia }));
         setExpandidas((e) => (e.includes(pin) ? e : [...e, pin]));
     }, []);
 
@@ -139,6 +141,7 @@ const PersonalPage = () => {
                                 onGuardado={cargar}
                                 tab={tabs[fila.pin] ?? 'ficha'}
                                 onTab={(k) => setTabs((t) => ({ ...t, [fila.pin]: k }))}
+                                dia={dias[fila.pin]}
                             />
                         ),
                         rowExpandable: () => true,

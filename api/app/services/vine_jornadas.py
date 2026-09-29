@@ -6,9 +6,15 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.services.vine_asistencia import DIAS_DETALLE, catalogo_horarios, desglose, elegir_horario
+from app.services.vine_asistencia import (
+    DIAS_DETALLE,
+    catalogo_horarios,
+    desglose,
+    elegir_horario,
+    horario_de,
+)
 from app.services.vine_perfiles import festivos
-from app.services.vine_stats import consultar, parametros
+from app.services.vine_stats import EVENTOS_ASISTENCIA, consultar, parametros
 
 SEGMENTOS = ("antes", "dentro", "despues", "afuera", "sin_marca")
 HABILES_RECIENTES = 10
@@ -146,3 +152,45 @@ def reparto(db: Session, dias: int = 30) -> dict[str, Any]:
         for clave, filas in por_horario.items()
     }
     return {"personas": por_pin, "horarios": horarios}
+
+
+_PRIMERAS_ENTRADAS = """
+    SELECT min(event_time) AS primera FROM vine.eventos
+    WHERE pin = :pin AND direccion = 'entrada' AND evento = ANY(:eventos) AND event_time >= :desde
+    GROUP BY event_time::date
+"""
+
+_MARCAS_DIA = """
+    SELECT event_time, direccion, lector, punto, verificacion, evento
+    FROM vine.eventos
+    WHERE pin = :pin AND event_time >= :dia AND event_time < :siguiente
+    ORDER BY event_time
+"""
+
+
+def _hhmm(hora: Any) -> str | None:
+    return hora.strftime("%H:%M") if hora else None
+
+
+def dia_persona(db: Session, pin: str, dia: date) -> dict[str, Any]:
+    params = {"pin": pin, "dia": dia, "siguiente": dia + timedelta(days=1)}
+    marcas = consultar(db, _MARCAS_DIA, params)
+    validas = [(m["event_time"], m["direccion"]) for m in marcas if m["direccion"] and m["evento"] in EVENTOS_ASISTENCIA]
+    entradas = consultar(db, _PRIMERAS_ENTRADAS, {"pin": pin, "desde": dia - timedelta(days=90), "eventos": EVENTOS_ASISTENCIA})
+    horario = horario_de(db, pin, [e["primera"] for e in entradas])
+    fila = desglose(dia, validas, horario) if validas else None
+    return {
+        "dia": dia.isoformat(),
+        "marcas": [
+            {
+                "hora": m["event_time"].strftime("%H:%M:%S"),
+                "direccion": m["direccion"],
+                "lector": m["lector"],
+                "medio": m["verificacion"],
+                "cuenta": m["evento"] in EVENTOS_ASISTENCIA,
+            }
+            for m in marcas
+        ],
+        "jornada": fila,
+        "horario": {"entrada": _hhmm(horario.get("entrada")), "salida": _hhmm(horario.get("salida"))},
+    }

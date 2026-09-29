@@ -1,4 +1,5 @@
 import { Card, Empty, Tooltip, Typography } from 'antd';
+import { useEffect, useState } from 'react';
 
 import TituloConAyuda from '@shared/components/TituloConAyuda';
 import { EJE_TEXTO } from '@features/vine/constants';
@@ -6,6 +7,7 @@ import { COLOR_TINTA, aMinutos } from '@features/vine/constants/jornada';
 import { glifoDe } from '@features/vine/components/jornada/piezas';
 import ColumnaReloj from '@features/vine/components/jornada/ColumnaReloj';
 import Leyenda from '@features/vine/components/jornada/Leyenda';
+import DetalleDia from '@features/vine/components/jornada/DetalleDia';
 
 const { Text } = Typography;
 
@@ -40,7 +42,12 @@ const SinHorario = () => (
     </Tooltip>
 );
 
-const ChartReloj = ({ dias = [], horario, loading }) => {
+const ChartReloj = ({
+    dias = [], horario, loading, pin, diaInicial,
+}) => {
+    const [elegido, setElegido] = useState(diaInicial ?? null);
+    useEffect(() => { if (diaInicial) setElegido(diaInicial); }, [diaInicial]);
+
     const ayuda = horario?.entrada
         ? `Cada columna es un día en el reloj, de arriba hacia abajo. Las líneas punteadas son su horario de ${horario.entrada} a ${horario.salida}: el rojo va de su hora de entrada a su llegada; el rayado azul es lo que se sabe de una jornada que no cerró. Retardo (●): más de ${horario.tolerancia} min.`
         : 'Cada columna es un día en el reloj, de arriba hacia abajo. Sin horario fijo no hay hora contra la cual medir llegada ni tiempo extra.';
@@ -57,6 +64,7 @@ const ChartReloj = ({ dias = [], horario, loading }) => {
     const horas = [];
     for (let m = rango[0]; m <= rango[1]; m += cada) horas.push(m);
     const paso = Math.ceil(dias.length / 12);
+    const indice = dias.findIndex((d) => d.dia === elegido);
 
     return (
         <Card title={titulo} size="small" loading={loading} extra={oficiales.length ? null : <SinHorario />}>
@@ -82,7 +90,15 @@ const ChartReloj = ({ dias = [], horario, loading }) => {
                 }}
                 >
                     {dias.map((d) => (
-                        <ColumnaReloj key={d.dia} d={d} rango={rango} alto={ALTO} horaEntrada={horario?.entrada} />
+                        <ColumnaReloj
+                            key={d.dia}
+                            d={d}
+                            rango={rango}
+                            alto={ALTO}
+                            horaEntrada={horario?.entrada}
+                            elegido={d.dia === elegido}
+                            onElegir={pin ? (dia) => setElegido((actual) => (actual === dia ? null : dia)) : undefined}
+                        />
                     ))}
                 </div>
                 {oficiales.map((m, i) => (
@@ -104,6 +120,16 @@ const ChartReloj = ({ dias = [], horario, loading }) => {
                     </div>
                 ))}
             </div>
+            {pin && indice >= 0 && (
+                <DetalleDia
+                    pin={pin}
+                    d={dias[indice]}
+                    horario={horario}
+                    onAnterior={indice > 0 ? () => setElegido(dias[indice - 1].dia) : null}
+                    onSiguiente={indice < dias.length - 1 ? () => setElegido(dias[indice + 1].dia) : null}
+                    onCerrar={() => setElegido(null)}
+                />
+            )}
         </Card>
     );
 };

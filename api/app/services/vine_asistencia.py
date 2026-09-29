@@ -126,7 +126,7 @@ def catalogo_horarios(db: Session) -> dict[str, dict[str, Any]]:
     return {h["clave"]: h for h in consultar(db, _HORARIOS, {})}
 
 
-def _horario(db: Session, pin: str, entradas: list[datetime]) -> dict[str, Any]:
+def horario_de(db: Session, pin: str, entradas: list[datetime]) -> dict[str, Any]:
     ficha = consultar(db, _HORARIO_FICHA, {"pin": pin})
     return elegir_horario(ficha[0] if ficha else None, catalogo_horarios(db), entradas)
 
@@ -268,7 +268,7 @@ def asistencia_persona(db: Session, pin: str, dias: int = 90) -> dict[str, Any]:
         marcas[fila["event_time"].date()].append((fila["event_time"], fila["direccion"]))
 
     primeras = [next((t for t, d in m if d == "entrada"), None) for m in marcas.values()]
-    horario = _horario(db, pin, [t for t in primeras if t])
+    horario = horario_de(db, pin, [t for t in primeras if t])
     inhabiles = set(params["festivos"])
     incidencias = _incidencias_por_dia(db, params)
 

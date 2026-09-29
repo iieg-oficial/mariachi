@@ -7,6 +7,10 @@ la fecha de nacimiento para el cumpleaños. Sin --aplicar no escribe nada.
 
     python scripts/importar_plantilla_vine.py /tmp/plantilla.xlsx
     python scripts/importar_plantilla_vine.py /tmp/plantilla.xlsx --aplicar
+    python scripts/importar_plantilla_vine.py /tmp/plantilla.xlsx --remuneraciones /tmp/remu.xlsx
+
+Con --remuneraciones cruza puesto y direccion contra la plantilla de remuneraciones
+para saber si la plaza es de base o de confianza, y asigna vinculo y horario.
 """
 import argparse
 import re
@@ -27,10 +31,13 @@ from app.services import vine_ficha
 
 AUTOR = "importacion plantilla RH"
 
+POR_CATEGORIA = {"BASE": ("Base", "8-16"), "CONF": ("Confianza", "9-17")}
+
 _PERSONAS = """
     SELECT p.pin, p.nombre, p.apellidos, p.departamento, p.puesto, p.fecha_ingreso, p.cumpleanos,
            f.nombre AS f_nombre, f.apellidos AS f_apellidos, f.extension, f.puesto AS f_puesto,
            f.fecha_ingreso AS f_fecha_ingreso, f.cumpleanos AS f_cumpleanos,
+           f.vinculo AS f_vinculo, f.horario AS f_horario,
            (p.departamento ILIKE '%%(Bajas)%%' OR p.departamento = 'Bajas') AS baja
     FROM vine.personas p LEFT JOIN vine.personas_ficha f USING (pin)
 """
@@ -96,8 +103,27 @@ def filas(hoja: Any) -> list[tuple]:
     return [r for r in hoja.iter_rows(values_only=True) if any(c is not None for c in r)][1:]
 
 
-def cambios_de(p: dict[str, Any], fila_plantilla: tuple | None, fila_directorio: tuple | None) -> dict[str, Any]:
+def categorias(archivo: str | None) -> dict[tuple[str, str], str]:
+    if not archivo:
+        return {}
+    hoja = openpyxl.load_workbook(archivo, read_only=True, data_only=True).worksheets[0]
+    vistas: dict[tuple[str, str], set[str]] = {}
+    for fila in hoja.iter_rows(values_only=True):
+        if len(fila) > 8 and isinstance(fila[1], (int, float)) and fila[5] in POR_CATEGORIA:
+            vistas.setdefault((normalizar(fila[6]), normalizar(fila[8])), set()).add(fila[5])
+    return {clave: next(iter(cats)) for clave, cats in vistas.items() if len(cats) == 1}
+
+
+def cambios_de(
+    p: dict[str, Any], fila_plantilla: tuple | None, fila_directorio: tuple | None, categoria: str | None = None
+) -> dict[str, Any]:
     cambios: dict[str, Any] = {}
+    if categoria:
+        vinculo, horario = POR_CATEGORIA[categoria]
+        if not p["f_vinculo"]:
+            cambios["vinculo"] = vinculo
+        if not p["f_horario"]:
+            cambios["horario"] = horario
     fuente = fila_plantilla or fila_directorio
     if fila_plantilla:
         _, nombres, ap1, ap2, _, curp, _, _, ingreso, puesto, *_ = fila_plantilla
@@ -128,9 +154,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("archivo")
     parser.add_argument("--aplicar", action="store_true")
+    parser.add_argument("--remuneraciones")
     args = parser.parse_args()
 
     libro = openpyxl.load_workbook(args.archivo, read_only=True, data_only=True)
+    por_plaza = categorias(args.remuneraciones)
     db = SessionLocal()
     try:
         personas = [dict(r) for r in db.execute(text(_PERSONAS)).mappings().all()]
@@ -152,7 +180,11 @@ def main() -> None:
 
         total = 0
         for pin, datos in sorted(por_pin.items()):
-            cambios = cambios_de(datos["persona"], datos.get("plantilla"), datos.get("directorio"))
+            plaza = datos.get("plantilla")
+            categoria = por_plaza.get((normalizar(plaza[9]), normalizar(plaza[10]))) if plaza else None
+            if plaza and args.remuneraciones and not categoria:
+                sin_cruce.append(f"sin categoria: {normalizar(plaza[1])} {normalizar(plaza[2])} ({normalizar(plaza[9])})")
+            cambios = cambios_de(datos["persona"], plaza, datos.get("directorio"), categoria)
             if not cambios:
                 continue
             total += 1

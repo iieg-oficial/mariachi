@@ -8,7 +8,7 @@ const ANCHO = 7;
 const hhmm = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 
 const MiniReloj = ({
-    dias = [], oficial = [], alto = ALTO, ancho = ANCHO, gap = 2,
+    dias = [], oficial = [], alto = ALTO, ancho = ANCHO, gap = 2, onElegir,
 }) => {
     if (!dias.length) return null;
     const escala = alto / (RANGO[1] - RANGO[0]);
@@ -31,6 +31,7 @@ const MiniReloj = ({
                     ancho={ancho}
                     radio={1}
                     horaEntrada={oficial[0] != null ? hhmm(oficial[0]) : null}
+                    onElegir={onElegir}
                 />
             ))}
         </div>

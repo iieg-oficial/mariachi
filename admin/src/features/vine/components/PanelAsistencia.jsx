@@ -14,7 +14,7 @@ const HORARIOS = { '8-16': '8 a 4', '9-17': '9 a 5', otro: 'Sin horario fijo' };
 const AYUDA_MEDIANA = 'Es la mediana, no el promedio: el valor de en medio de todos sus días. '
     + 'Se usa porque un día que llegó a las 3 de la tarde movería el promedio y la mediana no.';
 
-const PanelAsistencia = ({ fila }) => {
+const PanelAsistencia = ({ fila, diaInicial }) => {
     const [dias, setDias] = useState(90);
     const [datos, setDatos] = useState(null);
     const [cargando, setCargando] = useState(true);
@@ -105,7 +105,13 @@ const PanelAsistencia = ({ fila }) => {
 
             <Row gutter={[12, 12]}>
                 <Col xs={24} xl={15}>
-                    <ChartReloj dias={datos?.dias_detalle ?? []} horario={datos?.horario} loading={cargando} />
+                    <ChartReloj
+                        dias={datos?.dias_detalle ?? []}
+                        horario={datos?.horario}
+                        loading={cargando}
+                        pin={fila.pin}
+                        diaInicial={diaInicial}
+                    />
                 </Col>
                 <Col xs={24} xl={9}>
                     <ChartSemana semana={datos?.por_dia_semana ?? []} horario={datos?.horario} loading={cargando} />

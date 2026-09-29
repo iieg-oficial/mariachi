@@ -85,6 +85,11 @@ export const borrarCatalogo = async (id) => {
     return res.data;
 };
 
+export const getDiaPersona = async (pin, dia) => {
+    const res = await api.get(`/vine/personal/${pin}/dia/${dia}`);
+    return res.data;
+};
+
 export const getAsistenciaPersona = async (pin, dias = 90) => {
     const res = await api.get(`/vine/personal/${pin}/asistencia`, { params: { dias } });
     return res.data;

@@ -9,6 +9,19 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.111.0] - 2026-09-29
+
+### Agregado
+
+- **vine, detalle de un día:** al hacer clic en una columna del reloj, la jornada se despliega
+  acostada dentro de la misma tarjeta, con cada sección rotulada (hora de inicio y fin, duración),
+  las líneas del horario y las marcas reales del biométrico con su hora y su lector. Con ◀ ▶ se
+  recorren los días. En el directorio, el clic en una mini barra abre la ficha en ese día.
+  Endpoint `GET /vine/personal/{pin}/dia/{dia}`, que calcula solo esa persona y ese día.
+- `importar_plantilla_vine.py --remuneraciones`: cruza puesto y dirección contra la plantilla de
+  remuneraciones para saber si la plaza es de base o de confianza, y asigna vínculo y horario
+  (base 8 a 4, confianza 9 a 5) donde estén vacíos.
+
 ## [2.110.1] - 2026-09-29
 
 ### Corregido

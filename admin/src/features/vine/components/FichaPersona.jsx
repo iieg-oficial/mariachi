@@ -81,7 +81,9 @@ const Biometrico = ({ bio, compacto }) => (
     </Descriptions>
 );
 
-const FichaPersona = ({ fila, onGuardado, tab, onTab }) => {
+const FichaPersona = ({
+    fila, onGuardado, tab, onTab, dia,
+}) => {
     const { can } = useAuth();
     const { isMobile } = useIsMobile();
     const { message } = App.useApp();
@@ -145,7 +147,7 @@ const FichaPersona = ({ fila, onGuardado, tab, onTab }) => {
         {
             key: 'asistencia',
             label: 'Asistencia',
-            children: <PanelAsistencia fila={fila} />,
+            children: <PanelAsistencia fila={fila} diaInicial={dia} />,
         },
         {
             key: 'biometrico',

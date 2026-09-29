@@ -158,6 +158,14 @@ async def detalle_persona(pin: str, db: Session = Depends(get_db)):
     return {"pin": pin, "biometrico": bio, "ficha": vine_ficha.ficha(db, pin)}
 
 
+@router.get(
+    "/personal/{pin}/dia/{dia}",
+    dependencies=[Depends(require_permission(PERMISO_PERSONAS))],
+)
+async def dia_persona(pin: str, dia: date, db: Session = Depends(get_db)):
+    return vine_jornadas.dia_persona(db, pin, dia)
+
+
 @router.patch(
     "/personal/{pin}",
     dependencies=[Depends(require_permission(PERMISO_EDITAR))],

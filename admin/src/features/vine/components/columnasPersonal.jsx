@@ -71,7 +71,16 @@ export const columnasPersonal = (onAbrir, dimension) => [
         width: 250,
         responsive: ['md'],
         render: (_, f) => (f.recientes?.length
-            ? <MiniReloj dias={f.recientes} oficial={f.oficial} alto={44} ancho={16} gap={4} />
+            ? (
+                <MiniReloj
+                    dias={f.recientes}
+                    oficial={f.oficial}
+                    alto={44}
+                    ancho={16}
+                    gap={4}
+                    onElegir={(dia) => onAbrir(f.pin, 'asistencia', dia)}
+                />
+            )
             : <Text type="secondary">sin registro</Text>),
     },
     {
