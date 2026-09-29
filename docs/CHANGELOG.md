@@ -9,6 +9,22 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.112.1] - 2026-09-29
+
+### Corregido: editar una cámara de Frames se quedó sin las comodidades del alta
+
+El refactor de 2.112.0 rehizo el alta pero dejó la edición con el campo crudo de la URL, que además
+llega enmascarada desde la API. Ahora la edición muestra la conexión actual enmascarada con un
+botón **Cambiar**, que abre el mismo flujo del alta —IP propia o por el NVR, con «Personalizar»
+para el caso raro—, y **Conservar la conexión actual** para deshacer.
+
+Si se edita sin tocar la conexión, `rtsp_url` ya no se manda. El backend igual se protegía con
+`conservar_credenciales()`, pero es más limpio no enviar un valor enmascarado que confiar en que lo
+detecten del otro lado. El bloque de conexión salió a `ConexionCamara.jsx`: el modal había llegado
+a 299 líneas, a una del límite.
+
+---
+
 ## [2.112.0] - 2026-09-29
 
 ### Cambiado: Frames se rehízo con la identidad visual

@@ -1,30 +1,22 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-    Button, Form, Input, InputNumber, Modal, Segmented, Space, Switch, Typography,
+    Button, Form, Input, InputNumber, Modal, Space, Switch, Typography,
 } from 'antd';
 import { EditOutlined } from '@ant-design/icons';
 import TituloConAyuda from '@shared/components/TituloConAyuda';
+
+import ConexionCamara from './ConexionCamara';
 
 import {
     CONEXION_DIRECTA,
     CONEXION_NVR,
     aNombreInterno,
-    RUTA_DIRECTA,
     componerRtsp,
     conexionRecordada,
-    enmascarar,
     recordarConexion,
 } from '../utils/camara';
 
 const { Text } = Typography;
-
-const MODOS = [
-    { label: 'IP propia', value: CONEXION_DIRECTA },
-    { label: 'Por el NVR', value: CONEXION_NVR },
-];
-
-const AYUDA_MODO = 'Por el grabador basta una credencial para todas las cámaras y el canal arma '
-    + 'la ruta solo. Directo a la IP, cada cámara tiene su propia contraseña.';
 
 const AYUDA_INTERNO = 'Es la llave dentro de la configuración de frames. Se deriva del nombre '
     + 'visible; solo se captura si necesitas otro.';
@@ -36,6 +28,7 @@ const CamaraModal = ({ abierto, camara, onCancelar, onGuardar, guardando }) => {
     const [form] = Form.useForm();
     const [modo, setModo] = useState(CONEXION_DIRECTA);
     const [manual, setManual] = useState(false);
+    const [cambiandoConexion, setCambiandoConexion] = useState(false);
     const edicion = Boolean(camara);
 
     const etiqueta = Form.useWatch('etiqueta', form);
@@ -52,12 +45,14 @@ const CamaraModal = ({ abierto, camara, onCancelar, onGuardar, guardando }) => {
         canal: modo === CONEXION_NVR ? conexion?.canal : undefined,
     }), [conexion, modo]);
 
-    const compuesta = !edicion && !manual;
+    const editaConexion = !edicion || cambiandoConexion;
+    const compuesta = editaConexion && !manual;
     const porNvr = compuesta && modo === CONEXION_NVR;
 
     useEffect(() => {
         if (!abierto) return;
         setManual(false);
+        setCambiandoConexion(false);
         if (camara) {
             setModo(CONEXION_DIRECTA);
             form.setFieldsValue(camara);
@@ -75,11 +70,13 @@ const CamaraModal = ({ abierto, camara, onCancelar, onGuardar, guardando }) => {
         if (compuesta) {
             recordarConexion({ usuario: partes?.usuario, host: partes?.host });
         }
-        onGuardar({
+        const payload = {
             ...resto,
             nombre: resto.nombre || derivado,
             rtsp_url: compuesta ? urlCompuesta : resto.rtsp_url,
-        });
+        };
+        if (edicion && !cambiandoConexion) delete payload.rtsp_url;
+        onGuardar(payload);
     };
 
     return (
@@ -131,85 +128,42 @@ const CamaraModal = ({ abierto, camara, onCancelar, onGuardar, guardando }) => {
                     <Input disabled={edicion} placeholder={derivado || 'recepcion'} maxLength={20} />
                 </Form.Item>
 
-                {!edicion && (
-                    <Form.Item label={<TituloConAyuda titulo="Cómo se conecta" ayuda={AYUDA_MODO} />}>
-                        <Segmented options={MODOS} value={modo} onChange={setModo} block />
-                    </Form.Item>
-                )}
+                <ConexionCamara
+                    modo={modo}
+                    onModo={setModo}
+                    compuesta={compuesta}
+                    porNvr={porNvr}
+                    editaConexion={editaConexion}
+                    manual={manual}
+                    onManual={(v) => {
+                        if (v) form.setFieldValue('rtsp_url', urlCompuesta);
+                        setManual(v);
+                    }}
+                    urlCompuesta={urlCompuesta}
+                    urlActual={camara?.rtsp_url}
+                    onCambiar={() => {
+                        setModo(CONEXION_DIRECTA);
+                        setManual(false);
+                        setCambiandoConexion(true);
+                    }}
+                />
 
-                {compuesta ? (
-                    <>
-                        <Form.Item
-                            name={['conexion', 'host']}
-                            label={porNvr ? 'IP del grabador' : 'IP de la cámara'}
-                            rules={[{ required: true, message: 'Requerido' }]}
-                        >
-                            <Input placeholder="10.0.0.10" />
-                        </Form.Item>
-
-                        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                            {porNvr && (
-                                <Form.Item
-                                    name={['conexion', 'canal']}
-                                    label="Canal"
-                                    style={{ flex: '0 0 96px' }}
-                                    rules={[{ required: true, message: 'Requerido' }]}
-                                >
-                                    <InputNumber min={1} max={32} style={{ width: '100%' }} />
-                                </Form.Item>
-                            )}
-                            <Form.Item
-                                name={['conexion', 'usuario']}
-                                label="Usuario"
-                                style={{ flex: 1, minWidth: 140 }}
-                                rules={[{ required: true, message: 'Requerido' }]}
-                            >
-                                <Input autoComplete="off" />
-                            </Form.Item>
-                            <Form.Item
-                                name={['conexion', 'contrasena']}
-                                label="Contraseña"
-                                style={{ flex: 1, minWidth: 140 }}
-                                rules={[{ required: true, message: 'Requerido' }]}
-                            >
-                                <Input.Password autoComplete="new-password" />
-                            </Form.Item>
-                        </div>
-
-                        <Space size={8} style={{ marginBottom: 16 }} wrap>
-                            <Text type="secondary" style={{ fontSize: 12 }}>
-                                {urlCompuesta
-                                    ? enmascarar(urlCompuesta)
-                                    : `La URL se arma sola · termina en ${RUTA_DIRECTA}`}
-                            </Text>
-                            <Button
-                                type="link"
-                                size="small"
-                                icon={<EditOutlined />}
-                                style={{ padding: 0, height: 'auto' }}
-                                onClick={() => {
-                                    form.setFieldValue('rtsp_url', urlCompuesta);
-                                    setManual(true);
-                                }}
-                            >
-                                Personalizar
-                            </Button>
-                        </Space>
-                    </>
-                ) : (
-                    <Form.Item
-                        name="rtsp_url"
-                        label="URL RTSP"
-                        rules={[
-                            { required: true, message: 'Requerido' },
-                            { pattern: /^rtsp:\/\//, message: 'Debe empezar con rtsp://' },
-                        ]}
+                {edicion && cambiandoConexion && (
+                    <Button
+                        type="link"
+                        size="small"
+                        style={{ padding: 0, height: 'auto', marginBottom: 16 }}
+                        onClick={() => {
+                            setCambiandoConexion(false);
+                            setManual(false);
+                            form.setFieldValue('rtsp_url', camara?.rtsp_url);
+                        }}
                     >
-                        <Input placeholder="rtsp://usuario:contrasena@host:554/ruta" />
-                    </Form.Item>
+                        Conservar la conexión actual
+                    </Button>
                 )}
 
-                {manual && !edicion && (
+                {manual && (
                     <Button
                         type="link"
                         size="small"
