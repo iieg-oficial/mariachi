@@ -9,6 +9,14 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.115.1] - 2026-09-29
+
+### Agregado
+
+- **vine, leyendas de la jornada:** cada elemento lleva un tooltip con lo que significa y sus causas
+  comunes. Por ejemplo, «Sin marca» y «Al menos» suelen ser que alguien le abrió, pasó detrás de
+  otra persona, usó la puerta accesible —sin lector conectado— o la tarjeta no leyó.
+
 ## [2.115.0] - 2026-09-29
 
 ### Cambiado
