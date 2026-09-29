@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
-import { Alert, Button, Segmented, Space } from 'antd';
-import { ReloadOutlined } from '@ant-design/icons';
+import { Button, Segmented, Space, Tooltip } from 'antd';
+import { ExclamationCircleOutlined, ReloadOutlined } from '@ant-design/icons';
+import { SEMANTIC } from '@app/providers/brand';
 
 import { useFullscreenHeader } from '@app/fullscreenHeader';
 import useIsMobile from '@shared/hooks/useIsMobile';
@@ -20,7 +21,7 @@ const VivoPantallaPage = () => {
     const isMobile = useIsMobile();
     const [alto, setAlto] = useState(360);
     const [porFila, setPorFila] = useState(3);
-    const { camaras, estados, cargando, error, version, cargar, recargarVideo } = useCamarasEnVivo();
+    const { camaras, estados, cargando, error, version, cargar } = useCamarasEnVivo();
 
     const extra = useMemo(() => (
         <Space wrap>
@@ -29,9 +30,17 @@ const VivoPantallaPage = () => {
             <Button size="small" icon={<ReloadOutlined />} onClick={cargar} loading={cargando}>
                 Actualizar
             </Button>
-            <Button size="small" onClick={recargarVideo}>Reiniciar video</Button>
+            {error ? (
+                <Tooltip title={error} trigger={['hover', 'focus']}>
+                    <ExclamationCircleOutlined
+                        tabIndex={0}
+                        aria-label={error}
+                        style={{ color: SEMANTIC.warning, cursor: 'help' }}
+                    />
+                </Tooltip>
+            ) : null}
         </Space>
-    ), [porFila, alto, cargar, cargando, recargarVideo]);
+    ), [porFila, alto, cargar, cargando, error]);
 
     useFullscreenHeader({
         title: isMobile ? 'En vivo' : `Frames · en vivo (${camaras.length})`,
@@ -48,9 +57,6 @@ const VivoPantallaPage = () => {
 
     return (
         <div style={{ height: '100%', overflow: 'auto', background: '#000', padding: 12 }}>
-            {error ? (
-                <Alert type="warning" showIcon title={error} style={{ marginBottom: 12 }} />
-            ) : null}
             <MosaicoCamaras
                 camaras={camaras}
                 estados={estados}

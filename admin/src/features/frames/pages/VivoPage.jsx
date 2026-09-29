@@ -1,41 +1,62 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Alert, Button, Segmented, Space, Typography } from 'antd';
-import { ExpandOutlined, ReloadOutlined } from '@ant-design/icons';
+import { Button, ConfigProvider, Segmented, Space } from 'antd';
+import {
+    ExclamationCircleOutlined,
+    ExpandOutlined,
+    ReloadOutlined,
+    VideoCameraOutlined,
+} from '@ant-design/icons';
+import PageHeading from '@shared/components/PageHeading';
+import { SEMANTIC } from '@app/providers/brand';
 
 import { CALIDADES } from '../constants/calidades';
+import { TEMA_FRAMES } from '../constants/tema';
 import MosaicoCamaras from '../components/MosaicoCamaras';
+import Senal from '../components/Senal';
 import useCamarasEnVivo from '../hooks/useCamarasEnVivo';
 
-const { Title, Paragraph } = Typography;
+const DESCRIPCION = 'Lo que están viendo las cámaras habilitadas. La imagen pasa por mariachi, '
+    + 'así que no hace falta alcanzar a frames desde el navegador.';
 
 const VivoPage = () => {
     const navigate = useNavigate();
     const [alto, setAlto] = useState(360);
-    const { camaras, estados, cargando, error, version, cargar, recargarVideo } = useCamarasEnVivo();
+    const { camaras, estados, cargando, error, version, cargar } = useCamarasEnVivo();
 
     return (
-        <Space orientation="vertical" size="large" style={{ width: '100%' }}>
-            <div>
-                <Title level={3} style={{ marginBottom: 4 }}>En vivo</Title>
-                <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                    Lo que están transmitiendo las cámaras habilitadas. El video pasa por mariachi,
-                    así que no hace falta alcanzar a frames desde el navegador.
-                </Paragraph>
-            </div>
+        <ConfigProvider theme={TEMA_FRAMES}>
+            <PageHeading
+                icon={<VideoCameraOutlined />}
+                title="En vivo"
+                description={DESCRIPCION}
+                extra={
+                    <Space size={12} wrap>
+                        <Button
+                            type="primary"
+                            icon={<ExpandOutlined />}
+                            onClick={() => navigate('/frames/vivo/pantalla')}
+                        >
+                            Pantalla completa
+                        </Button>
+                        <Button icon={<ReloadOutlined />} onClick={cargar} loading={cargando}>
+                            Actualizar
+                        </Button>
+                        <Segmented options={CALIDADES} value={alto} onChange={setAlto} />
+                    </Space>
+                }
+            />
 
-            {error ? <Alert type="warning" showIcon title={error} /> : null}
-
-            <Space wrap>
-                <Button type="primary" icon={<ExpandOutlined />} onClick={() => navigate('/frames/vivo/pantalla')}>
-                    Pantalla completa
-                </Button>
-                <Button icon={<ReloadOutlined />} onClick={cargar} loading={cargando}>
-                    Actualizar lista
-                </Button>
-                <Button onClick={recargarVideo}>Reiniciar video</Button>
-                <Segmented options={CALIDADES} value={alto} onChange={setAlto} />
-            </Space>
+            {error ? (
+                <div style={{ marginBottom: 16 }}>
+                    <Senal
+                        icono={<ExclamationCircleOutlined />}
+                        texto="Sin estado de frames"
+                        color={SEMANTIC.warning}
+                        ayuda={error}
+                    />
+                </div>
+            ) : null}
 
             <MosaicoCamaras
                 camaras={camaras}
@@ -43,7 +64,7 @@ const VivoPage = () => {
                 alto={alto}
                 version={version}
             />
-        </Space>
+        </ConfigProvider>
     );
 };
 

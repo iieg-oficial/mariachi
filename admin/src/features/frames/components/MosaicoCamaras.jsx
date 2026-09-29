@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Card, Col, Empty, Row, Tag, Typography } from 'antd';
+import { ExclamationCircleOutlined } from '@ant-design/icons';
+import { SEMANTIC } from '@app/providers/brand';
 
 import { urlFoto } from '../api/framesService';
+import Senal from './Senal';
 
 const { Text } = Typography;
 
@@ -9,15 +12,18 @@ const INTERVALO_MS = 2000;
 
 const FotoCamara = ({ nombre, etiqueta, alto, version }) => {
     const [src, setSrc] = useState('');
+    const [falla, setFalla] = useState(false);
     const temporizador = useRef(null);
 
     useEffect(() => {
         const actual = temporizador;
+        setFalla(false);
         setSrc(urlFoto(nombre, { alto, t: Date.now() }));
         return () => clearTimeout(actual.current);
     }, [nombre, alto, version]);
 
-    const programar = () => {
+    const programar = (hubaFalla) => {
+        setFalla(hubaFalla);
         clearTimeout(temporizador.current);
         temporizador.current = setTimeout(() => {
             setSrc(urlFoto(nombre, { alto, t: Date.now() }));
@@ -25,19 +31,37 @@ const FotoCamara = ({ nombre, etiqueta, alto, version }) => {
     };
 
     return (
-        <img
-            src={src}
-            onLoad={programar}
-            onError={programar}
-            alt={`Vista de ${etiqueta}`}
-            style={{
-                width: '100%',
-                display: 'block',
-                background: '#000',
-                aspectRatio: '16 / 9',
-                objectFit: 'contain',
-            }}
-        />
+        <div style={{ position: 'relative' }}>
+            <img
+                src={src}
+                onLoad={() => programar(false)}
+                onError={() => programar(true)}
+                alt={`Vista de ${etiqueta}`}
+                style={{
+                    width: '100%',
+                    display: 'block',
+                    background: '#000',
+                    aspectRatio: '16 / 9',
+                    objectFit: 'contain',
+                }}
+            />
+            {falla ? (
+                <div style={{
+                    position: 'absolute',
+                    inset: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                }}>
+                    <Senal
+                        icono={<ExclamationCircleOutlined />}
+                        texto="sin imagen"
+                        color={SEMANTIC.warningSoft}
+                        ayuda="No llegó la imagen. Se reintenta solo cada pocos segundos."
+                    />
+                </div>
+            ) : null}
+        </div>
     );
 };
 

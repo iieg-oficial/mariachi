@@ -1,16 +1,19 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Button, Card, Popconfirm, Segmented, Space, Table, Tag, Typography, message } from 'antd';
+import { Button, Col, ConfigProvider, Empty, Row, Segmented, Space, Spin, message } from 'antd';
 import {
     AppstoreOutlined,
-    DeleteOutlined,
-    EditOutlined,
     PlusOutlined,
     TableOutlined,
+    VideoCameraOutlined,
 } from '@ant-design/icons';
 import { GridPanel } from '@shared/components/dataGrid';
+import PageHeading from '@shared/components/PageHeading';
+import { useAuth } from '@shared/contexts/useAuth';
 
+import CamaraCard from '../components/CamaraCard';
 import CamaraModal from '../components/CamaraModal';
-import EstadoPanel from '../components/EstadoPanel';
+import EstadoFrames from '../components/EstadoFrames';
+import { TEMA_FRAMES } from '../constants/tema';
 import {
     aplicar,
     createCamara,
@@ -21,8 +24,6 @@ import {
     updateCamara,
 } from '../api/framesService';
 
-const { Title, Paragraph } = Typography;
-
 const VISTAS = [
     { label: 'Fichas', value: 'fichas', icon: <AppstoreOutlined /> },
     { label: 'Tabla', value: 'tabla', icon: <TableOutlined /> },
@@ -30,7 +31,12 @@ const VISTAS = [
 
 const BUSQUEDA = ['nombre', 'etiqueta', 'ubicacion', 'rtsp_url'];
 
+const DESCRIPCION = 'Catálogo de cámaras de videovigilancia. Lo que se guarda aquí es la fuente '
+    + 'de verdad; frames lo toma al aplicar.';
+
 const FramesPage = () => {
+    const { can } = useAuth();
+    const puedeGestionar = can('mariachi.frames.manage');
     const [camaras, setCamaras] = useState([]);
     const [estado, setEstado] = useState(null);
     const [cargando, setCargando] = useState(false);
@@ -115,111 +121,55 @@ const FramesPage = () => {
         }
     };
 
-    const columnas = [
-        {
-            title: 'Nombre',
-            dataIndex: 'etiqueta',
-            render: (valor, fila) => (
-                <Space orientation="vertical" size={0}>
-                    <strong>{valor}</strong>
-                    <Typography.Text type="secondary" code>{fila.nombre}</Typography.Text>
-                </Space>
-            ),
-        },
-        { title: 'Ubicación', dataIndex: 'ubicacion', responsive: ['md'] },
-        {
-            title: 'Configurada',
-            dataIndex: 'habilitada',
-            render: (valor) => (valor
-                ? <Tag color="green">habilitada</Tag>
-                : <Tag>apagada</Tag>),
-        },
-        {
-            title: 'En frames',
-            key: 'en_vivo',
-            render: (_, fila) => {
-                const vivo = enVivo[fila.nombre];
-                if (!vivo) return <Tag>sin datos</Tag>;
-                return vivo.en_linea
-                    ? <Tag color="green">{vivo.camera_fps} fps</Tag>
-                    : <Tag color="red">sin señal</Tag>;
-            },
-        },
-        {
-            title: 'Grabación',
-            dataIndex: 'grabacion_habilitada',
-            render: (valor, fila) => (valor
-                ? <Tag color="blue">{fila.retencion_dias} días</Tag>
-                : <Tag>sin grabar</Tag>),
-        },
-        {
-            title: 'Detección',
-            dataIndex: 'deteccion_habilitada',
-            responsive: ['lg'],
-            render: (valor) => (valor ? <Tag color="purple">activa</Tag> : <Tag>apagada</Tag>),
-        },
-        {
-            title: 'Acciones',
-            key: 'acciones',
-            render: (_, fila) => (
-                <Space>
-                    <Button size="small" icon={<EditOutlined />} onClick={() => abrirEdicion(fila)}>
-                        Editar
-                    </Button>
-                    <Popconfirm
-                        title="Eliminar cámara"
-                        description="Deja de administrarse desde mariachi. ¿Continuar?"
-                        okText="Eliminar"
-                        cancelText="Cancelar"
-                        onConfirm={() => eliminar(fila)}
-                    >
-                        <Button size="small" danger icon={<DeleteOutlined />}>Eliminar</Button>
-                    </Popconfirm>
-                </Space>
-            ),
-        },
-    ];
-
     return (
-        <Space orientation="vertical" size="large" style={{ width: '100%' }}>
-            <div>
-                <Title level={3} style={{ marginBottom: 4 }}>Cámaras</Title>
-                <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                    Catálogo de cámaras de videovigilancia. Lo que se guarda aquí es la fuente de
-                    verdad; frames lo toma al aplicar.
-                </Paragraph>
-            </div>
+        <ConfigProvider theme={TEMA_FRAMES}>
+            <PageHeading
+                icon={<VideoCameraOutlined />}
+                title="Cámaras"
+                description={DESCRIPCION}
+                extra={
+                    <Space size={12}>
+                        <Segmented options={VISTAS} value={vista} onChange={setVista} />
+                        {puedeGestionar && (
+                            <Button type="primary" icon={<PlusOutlined />} onClick={abrirNueva}>
+                                Nueva cámara
+                            </Button>
+                        )}
+                    </Space>
+                }
+            />
 
-            <EstadoPanel
+            <EstadoFrames
                 estado={estado}
                 cargando={cargando}
                 aplicando={aplicando}
                 onRecargar={cargar}
                 onAplicar={aplicarEnFrames}
+                puedeGestionar={puedeGestionar}
             />
 
-            <Card
-                title={`${camaras.length} cámara(s)`}
-                extra={
-                    <Space>
-                        <Segmented options={VISTAS} value={vista} onChange={setVista} />
-                        <Button type="primary" icon={<PlusOutlined />} onClick={abrirNueva}>
-                            Nueva cámara
-                        </Button>
-                    </Space>
-                }
-                styles={vista === 'tabla' ? { body: { padding: 0, height: '60vh' } } : undefined}
-            >
-                {vista === 'fichas' ? (
-                    <Table
-                        rowKey="id"
-                        columns={columnas}
-                        dataSource={camaras}
-                        loading={cargando}
-                        pagination={false}
-                        size="small"
-                    />
-                ) : (
+            {vista === 'fichas' ? (
+                <Spin spinning={cargando}>
+                    {camaras.length === 0 ? (
+                        <Empty description="Todavía no hay cámaras en el catálogo" />
+                    ) : (
+                        <Row gutter={[16, 16]}>
+                            {camaras.map((camara) => (
+                                <Col key={camara.id} xs={24} sm={12} xl={8}>
+                                    <CamaraCard
+                                        camara={camara}
+                                        vivo={enVivo[camara.nombre]}
+                                        onEditar={abrirEdicion}
+                                        onEliminar={eliminar}
+                                        puedeGestionar={puedeGestionar}
+                                    />
+                                </Col>
+                            ))}
+                        </Row>
+                    )}
+                </Spin>
+            ) : (
+                <div style={{ height: '60vh' }}>
                     <GridPanel
                         resource="frames-camaras"
                         rowKeyField="nombre"
@@ -230,8 +180,8 @@ const FramesPage = () => {
                         rowLabelField="etiqueta"
                         active={vista === 'tabla'}
                     />
-                )}
-            </Card>
+                </div>
+            )}
 
             <CamaraModal
                 abierto={modalAbierto}
@@ -240,7 +190,7 @@ const FramesPage = () => {
                 onCancelar={() => setModalAbierto(false)}
                 onGuardar={guardar}
             />
-        </Space>
+        </ConfigProvider>
     );
 };
 

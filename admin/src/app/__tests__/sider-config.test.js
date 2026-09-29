@@ -288,3 +288,38 @@ describe('selectedKeyForPath', () => {
         expect(selectedKeyForPath('/ruta-inexistente')).toBe('/ruta-inexistente');
     });
 });
+
+describe('Frames y los permisos', () => {
+    const local = { alcance: 'local' };
+
+    it('sin mariachi.frames.view el proyecto queda deshabilitado y sin onClick', () => {
+        const { user, can } = conPermisos([]);
+        const items = buildSiderItems({ user, can, onNavigate: noop, ...local });
+        const frames = items.find((i) => i.key === 'project-frames');
+        expect(frames).toBeDefined();
+        expect(frames.disabled).toBe(true);
+        frames.children.forEach((hijo) => {
+            expect(hijo.disabled).toBe(true);
+            expect(hijo.onClick).toBeUndefined();
+        });
+    });
+
+    it('con mariachi.frames.view se puede entrar', () => {
+        const { user, can } = conPermisos(['mariachi.frames.view']);
+        const items = buildSiderItems({ user, can, onNavigate: noop, ...local });
+        const frames = items.find((i) => i.key === 'project-frames');
+        expect(frames.disabled).toBeFalsy();
+        expect(frames.children.every((h) => typeof h.onClick === 'function')).toBe(true);
+    });
+});
+
+describe('Frames: ver no es administrar', () => {
+    const local = { alcance: 'local' };
+
+    it('mariachi.frames.view abre la seccion pero no concede manage', () => {
+        const { user, can } = conPermisos(['mariachi.frames.view']);
+        const items = buildSiderItems({ user, can, onNavigate: noop, ...local });
+        expect(items.find((i) => i.key === 'project-frames').disabled).toBeFalsy();
+        expect(can('mariachi.frames.manage')).toBe(false);
+    });
+});

@@ -9,6 +9,34 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.112.0] - 2026-09-29
+
+### Cambiado: Frames se rehízo con la identidad visual
+
+Sin una sola caja de aviso, sin divisores y sin marcos. Los tres `Alert` que había —frames caído,
+cambios sin aplicar y el error de En vivo— son ahora señales con icono y tooltip, alcanzables con
+teclado; el `Descriptions bordered` del estado pasó a tres cifras separadas por espacio, y la tabla
+de fichas a tarjetas con sombra suave. Botones en píldora de 40 px y campos con radio de 8, puestos
+con un `ConfigProvider` por página en vez de estilar botón por botón. Los colores salen de `BRAND`
+y `SEMANTIC`; Garet ya era la fuente global.
+
+### Agregado: el alta de cámaras deja de pedir lo que se puede deducir
+
+El nombre interno se deriva del visible mientras escribes. La URL RTSP se arma sola: eliges **IP
+propia** —el modo por omisión— o **por el NVR**, y con la IP basta; por el NVR el canal compone su
+`/Streaming/Channels/<canal>01`. Usuario y host se recuerdan del alta anterior, que por el grabador
+es una credencial para todas; la contraseña no se guarda. Para los casos raros, **Personalizar**
+abre el campo crudo ya precargado, y se puede volver al modo automático. La retención solo aparece
+si activas grabar, y grabar ahora arranca apagado.
+
+### Corregido: ver una cámara no era poder administrarla
+
+«Nueva cámara», «Editar», «Eliminar» y «Aplicar» se le mostraban a cualquiera con
+`mariachi.frames.view`, que al usarlas se topaba con el 403 del backend —esas cuatro rutas exigen
+`mariachi.frames.manage`—. Ahora la UI pide el mismo permiso que el servidor.
+
+---
+
 ## [2.111.3] - 2026-09-29
 
 ### Corregido
