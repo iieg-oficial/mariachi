@@ -9,6 +9,17 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.115.0] - 2026-09-29
+
+### Cambiado
+
+- **vine, pestaña Asistencia:** el resumen pasa a «Su día típico»: una regla de hora con las líneas
+  de su horario y la barra de su día mediano —rayado rojo lo que no cumple, naranja si llega antes,
+  violeta si se queda después—, un bigote sobre cada hora que abarca la mitad de sus días y una
+  frase con esos rangos, que dicen qué tan constante es. Debajo, asistencia con su barra, jornada,
+  retardos, tiempo afuera y jornadas sin cerrar. El resumen de asistencia devuelve los cuartiles
+  de entrada y salida (`entrada_p25`, `entrada_p75`, `salida_p25`, `salida_p75`).
+
 ## [2.114.1] - 2026-09-29
 
 ### Corregido: el campo de IP de Frames sugería una dirección de la red interna

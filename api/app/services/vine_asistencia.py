@@ -52,6 +52,12 @@ _RESUMEN = f"""
            to_char(percentile_cont(0.5) WITHIN GROUP (ORDER BY entrada::time), 'HH24:MI') AS entrada_mediana,
            to_char(percentile_cont(0.5) WITHIN GROUP (ORDER BY salida::time)
                    FILTER (WHERE salida IS NOT NULL), 'HH24:MI') AS salida_mediana,
+           to_char(percentile_cont(0.25) WITHIN GROUP (ORDER BY entrada::time), 'HH24:MI') AS entrada_p25,
+           to_char(percentile_cont(0.75) WITHIN GROUP (ORDER BY entrada::time), 'HH24:MI') AS entrada_p75,
+           to_char(percentile_cont(0.25) WITHIN GROUP (ORDER BY salida::time)
+                   FILTER (WHERE salida IS NOT NULL), 'HH24:MI') AS salida_p25,
+           to_char(percentile_cont(0.75) WITHIN GROUP (ORDER BY salida::time)
+                   FILTER (WHERE salida IS NOT NULL), 'HH24:MI') AS salida_p75,
            round(percentile_cont(0.5) WITHIN GROUP (ORDER BY horas)
                  FILTER (WHERE salida IS NOT NULL)::numeric, 2) AS jornada_mediana,
            round(sum(horas) FILTER (WHERE salida IS NOT NULL)::numeric, 1) AS horas
