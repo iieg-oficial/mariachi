@@ -36,16 +36,22 @@ const PanelAsistencia = ({ fila, diaInicial }) => {
         return <Empty description="Sin registros en el periodo" />;
     }
 
+    const vinoHabiles = datos?.dias_habiles ?? datos?.dias ?? 0;
+    const extra = (datos?.dias ?? 0) - vinoHabiles;
     const asistencia = datos?.habiles
-        ? Math.min(100, Math.round((datos.dias * 100) / datos.habiles))
+        ? Math.min(100, Math.round((vinoHabiles * 100) / datos.habiles))
         : 0;
     const medibles = datos?.medibles ?? 0;
 
     const tarjetas = [
         {
             clave: 'dias',
-            estadistica: { title: 'Días que vino', value: datos?.dias ?? 0, suffix: `/ ${datos?.habiles ?? 0}` },
-            nota: `${asistencia}% de los hábiles${datos?.justificados > 0 ? ` · ${datos.justificados} justificados` : ''}`,
+            estadistica: { title: 'Días que vino', value: vinoHabiles, suffix: `/ ${datos?.habiles ?? 0}` },
+            nota: [
+                `${asistencia}% de los hábiles`,
+                datos?.justificados > 0 && `${datos.justificados} justificados`,
+                extra > 0 && `+${extra} sin obligación`,
+            ].filter(Boolean).join(' · '),
         },
         {
             clave: 'entrada',

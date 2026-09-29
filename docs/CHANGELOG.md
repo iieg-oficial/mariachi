@@ -9,6 +9,14 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.111.3] - 2026-09-29
+
+### Corregido
+
+- **vine:** «Días que vino» y el porcentaje de asistencia del directorio solo cuentan los días
+  hábiles en que vino; los que vino sin obligación —inhábiles, fines de semana, vacaciones— van
+  aparte como «+N sin obligación». Antes una persona podía aparecer con 64 de 63 hábiles.
+
 ## [2.111.2] - 2026-09-29
 
 ### Cambiado

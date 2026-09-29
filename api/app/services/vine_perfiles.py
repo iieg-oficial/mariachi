@@ -164,6 +164,10 @@ def personal(db: Session, dias: int = 90, incluir_bajas: bool = False) -> list[d
         agg AS (
             SELECT c.pin,
                    count(*) AS dias,
+                   count(*) FILTER (WHERE extract(isodow FROM c.dia) < 6 AND c.dia <> ALL(:festivos)
+                     AND NOT EXISTS (SELECT 1 FROM vine.incidencias i
+                                     WHERE i.pin = c.pin AND i.tipo = ANY(:descuentan)
+                                       AND c.dia BETWEEN i.desde AND i.hasta)) AS dias_habiles,
                    count(*) FILTER (WHERE c.salida IS NOT NULL) AS medibles,
                    min(c.dia) AS primer_dia,
                    max(c.dia) AS ultimo_dia,
@@ -202,8 +206,8 @@ def personal(db: Session, dias: int = 90, incluir_bajas: bool = False) -> list[d
                coalesce(a.medibles, 0) AS medibles,
                greatest(0, (SELECT total FROM habiles) - coalesce(x.descontados, 0)) AS habiles,
                coalesce(x.descontados, 0) AS dias_justificados,
-               coalesce(a.dias, 0) + coalesce(x.presentes, 0) AS asistidos,
-               least(100, round(100.0 * (coalesce(a.dias, 0) + coalesce(x.presentes, 0))
+               coalesce(a.dias_habiles, 0) + coalesce(x.presentes, 0) AS asistidos,
+               least(100, round(100.0 * (coalesce(a.dias_habiles, 0) + coalesce(x.presentes, 0))
                      / nullif(greatest(0, (SELECT total FROM habiles)
                                           - coalesce(x.descontados, 0)), 0))::int) AS asistencia,
                CASE WHEN coalesce(a.dias, 0) = 0 THEN NULL

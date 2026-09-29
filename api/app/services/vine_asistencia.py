@@ -42,6 +42,10 @@ _RESUMEN = f"""
           AND extract(isodow FROM d) < 6 AND d::date <> ALL(:festivos)
     )
     SELECT count(*) AS dias,
+           count(*) FILTER (WHERE extract(isodow FROM dia) < 6 AND dia <> ALL(:festivos)
+                            AND NOT EXISTS (SELECT 1 FROM vine.incidencias i
+                                            WHERE i.pin = :pin AND i.tipo = ANY(:descuentan)
+                                              AND dia BETWEEN i.desde AND i.hasta)) AS dias_habiles,
            count(*) FILTER (WHERE salida IS NOT NULL) AS medibles,
            (SELECT total FROM habiles) - (SELECT dias FROM justificados) AS habiles,
            (SELECT dias FROM justificados) AS justificados,
