@@ -9,6 +9,15 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.108.0] - 2026-09-29
+
+### Agregado
+
+- **vine, Estadísticas → Por personal:** «Quién acumula más horas» y «Los dos horarios» llevan una
+  barra partida en dentro, antes, después, afuera y sin marca, con el tiempo que no llegó a su hora
+  rayado en rojo al inicio. En el ranking es el total del periodo; en los horarios, una jornada
+  promedio. Sale de `vine_jornadas.reparto`, calculado en lote.
+
 ## [2.107.1] - 2026-09-29
 
 ### Cambiado

@@ -3,6 +3,9 @@ import { Card, Col, Row, Table, Tag, Typography } from 'antd';
 import TituloConAyuda from '@shared/components/TituloConAyuda';
 import { AYUDAS } from '@features/vine/constants/ayudas';
 import { medioInfo } from '@features/vine/constants/medios';
+import BarraReparto from '@features/vine/components/jornada/BarraReparto';
+import { totalReparto } from '@features/vine/components/jornada/piezas';
+import Leyenda from '@features/vine/components/jornada/Leyenda';
 
 const etiquetaMedio = (medio) => (
     <Tag color={medioInfo(medio).color}>{medioInfo(medio).etiqueta}</Tag>
@@ -12,7 +15,7 @@ const { Text } = Typography;
 
 const nombreODefault = (fila) => fila.nombre?.trim() || `Sin nombre (${fila.pin})`;
 
-const COLUMNAS_HORAS = [
+const columnasHoras = (escala) => [
     { title: '#', key: 'pos', width: 40, render: (_, __, i) => i + 1 },
     { title: 'Persona', key: 'nombre', render: (_, f) => nombreODefault(f) },
     {
@@ -20,11 +23,18 @@ const COLUMNAS_HORAS = [
         responsive: ['lg'], render: etiquetaMedio,
     },
     {
+        title: 'Cómo se repartieron',
+        key: 'reparto',
+        width: '32%',
+        responsive: ['md'],
+        render: (_, f) => <BarraReparto reparto={f.reparto} escala={escala} />,
+    },
+    {
         title: 'Horas',
         dataIndex: 'horas_totales',
         key: 'horas',
         align: 'right',
-        render: (v) => `${v.toLocaleString('es-MX')} h`,
+        render: (v) => <span style={{ whiteSpace: 'nowrap' }}>{`${v.toLocaleString('es-MX')} h`}</span>,
     },
     {
         title: 'Días',
@@ -100,6 +110,7 @@ const tabla = (columnas, datos, loading) => (
 
 const PanelPersonas = ({ datos, loading }) => {
     const incompletos = datos?.incompletos ?? [];
+    const escalaHoras = Math.max(1, ...(datos?.horas ?? []).map((f) => totalReparto(f.reparto)));
 
     return (
         <Row gutter={[16, 16]}>
@@ -109,7 +120,8 @@ const PanelPersonas = ({ datos, loading }) => {
                     size="small"
                     extra={<Text type="secondary" style={{ fontSize: 12 }}>solo jornadas que cierran</Text>}
                 >
-                    {tabla(COLUMNAS_HORAS, datos?.horas ?? [], loading)}
+                    <Leyenda compacta />
+                    {tabla(columnasHoras(escalaHoras), datos?.horas ?? [], loading)}
                 </Card>
             </Col>
             <Col xs={24} xl={12}>

@@ -61,3 +61,7 @@ const detalleInstituto = (d) => [
     d.retardos > 0 && `${d.retardos} retardos`,
     d.en_curso && 'Día en curso: puede cambiar',
 ].filter(Boolean).map((l) => <div key={l}>{l}</div>);
+
+export const ORDEN_REPARTO = ['antes', 'dentro', 'despues', 'afuera', 'sin_marca'];
+
+export const totalReparto = (r) => (r ? ORDEN_REPARTO.reduce((t, k) => t + (r[k] ?? 0), 0) + (r.tarde ?? 0) : 0);

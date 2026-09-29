@@ -2,6 +2,9 @@ import { Card, Col, Progress, Row, Table, Tag, Typography } from 'antd';
 
 import TituloConAyuda from '@shared/components/TituloConAyuda';
 import { AYUDAS } from '@features/vine/constants/ayudas';
+import BarraReparto from '@features/vine/components/jornada/BarraReparto';
+import { totalReparto } from '@features/vine/components/jornada/piezas';
+import Leyenda from '@features/vine/components/jornada/Leyenda';
 
 const { Text } = Typography;
 
@@ -34,7 +37,7 @@ const COLUMNAS_VINCULO = [
     },
 ];
 
-const COLUMNAS_HORARIO = [
+const columnasHorario = (escala) => [
     {
         title: 'Horario', dataIndex: 'nombre', key: 'nombre',
         render: (v, f) => (
@@ -49,6 +52,13 @@ const COLUMNAS_HORARIO = [
         ),
     },
     { title: 'Personas', dataIndex: 'personas', key: 'personas', align: 'right' },
+    {
+        title: 'Una jornada típica',
+        key: 'reparto',
+        width: '34%',
+        responsive: ['md'],
+        render: (_, f) => <BarraReparto reparto={f.reparto} escala={escala} sufijo=" por jornada" />,
+    },
     {
         title: 'En la práctica', key: 'real', align: 'right', responsive: ['md'],
         render: (_, f) => (
@@ -89,7 +99,8 @@ const PanelPerfiles = ({ vinculos = [], horarios = [], loading }) => (
                 size="small"
                 title={<TituloConAyuda titulo="Los dos horarios" ayuda={AYUDAS.horarios} ancho={440} />}
             >
-                {tabla(COLUMNAS_HORARIO, horarios, loading)}
+                <Leyenda compacta />
+                {tabla(columnasHorario(Math.max(1, ...horarios.map((f) => totalReparto(f.reparto)))), horarios, loading)}
             </Card>
         </Col>
     </Row>

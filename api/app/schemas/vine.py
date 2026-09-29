@@ -69,6 +69,7 @@ class HorarioRow(BaseModel):
     salida_mediana: str | None = None
     entrada_oficial: str | None = None
     salida_oficial: str | None = None
+    reparto: dict[str, int] | None = None
 
 
 class ResumenResponse(BaseModel):
@@ -128,6 +129,7 @@ class HorasRow(BaseModel):
     dias_asistidos: int = 0
     medio: str | None = None
     cobertura: int = 100
+    reparto: dict[str, int] | None = None
 
 
 class IncompletoRow(BaseModel):

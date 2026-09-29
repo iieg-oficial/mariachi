@@ -45,12 +45,16 @@ async def resumen(
     dias: int = Query(30, ge=1, le=1095),
     db: Session = Depends(get_db),
 ):
+    horarios = vine_perfiles.apego_horario(db, max(dias, 90))
+    reparto = vine_jornadas.reparto(db, max(dias, 90))["horarios"]
+    for fila in horarios:
+        fila["reparto"] = reparto.get(fila["horario"])
     return {
         "panorama": vine_stats.panorama(db, dias),
         "calidad": vine_stats.calidad(db, dias),
         "medios": vine_stats.comparativa_medios(db, dias),
         "vinculos": vine_perfiles.por_vinculo(db, dias),
-        "horarios": vine_perfiles.apego_horario(db, max(dias, 90)),
+        "horarios": horarios,
         "sincronizacion": vine_stats.sincronizacion(db),
     }
 
@@ -80,8 +84,12 @@ async def personas(
     limite: int = Query(10, ge=1, le=50),
     db: Session = Depends(get_db),
 ):
+    horas = vine_stats.ranking_horas(db, dias, limite)
+    reparto = vine_jornadas.reparto(db, dias)["personas"]
+    for fila in horas:
+        fila["reparto"] = reparto.get(fila["pin"])
     return {
-        "horas": vine_stats.ranking_horas(db, dias, limite),
+        "horas": horas,
         "madrugadores": vine_stats.madrugadores(db, dias, limite),
         "rachas": vine_stats.rachas(db, max(dias, 90), limite),
         "incompletos": vine_stats.registro_incompleto(db, dias, limite),

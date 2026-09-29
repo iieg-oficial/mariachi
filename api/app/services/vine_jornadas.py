@@ -126,3 +126,23 @@ def recientes(db: Session, dias: int = 90, habiles: int = HABILES_RECIENTES) -> 
             ],
         }
     return salida
+
+
+def _sumar(filas: list[dict[str, Any]]) -> dict[str, int]:
+    return {clave: sum(f[clave] for f in filas) for clave in (*SEGMENTOS, "tarde")}
+
+
+def reparto(db: Session, dias: int = 30) -> dict[str, Any]:
+    por_pin: dict[str, dict[str, Any]] = {}
+    por_horario: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for pin, (horario, dias_pin) in _desgloses(db, parametros(dias)).items():
+        jornadas = [f for f in dias_pin.values() if f["cerro"] and not f["visita"]]
+        if not jornadas:
+            continue
+        por_pin[pin] = {**_sumar(jornadas), "jornadas": len(jornadas)}
+        por_horario[horario.get("clave", "otro")].extend(jornadas)
+    horarios = {
+        clave: {k: round(v / len(filas)) for k, v in _sumar(filas).items()} | {"jornadas": len(filas)}
+        for clave, filas in por_horario.items()
+    }
+    return {"personas": por_pin, "horarios": horarios}
