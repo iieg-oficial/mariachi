@@ -9,6 +9,27 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.105.0] - 2026-09-29
+
+### Agregado
+
+- **vine, pestaña Asistencia:** la jornada de cada día se parte contra el horario de la persona en
+  dentro del horario, llegó antes, se quedó después, afuera (de una salida a su regreso) y sin
+  marca (dos entradas o dos salidas seguidas, que no se pueden atribuir). Marca retardos, jornadas
+  que no cerraron, incidencias e inhábiles, y no imputa la salida faltante. Con horario «Otro»
+  sólo separa dentro, afuera y sin marca.
+
+### Cambiado
+
+- **vine, «A qué días viene»** pasa de barras a líneas: entrada y salida mediana por día de la
+  semana con la jornada típica como franja, el horario oficial de referencia y el porcentaje de
+  asistencia sobre los días hábiles de ese día. El tooltip suma tiempo afuera, retardos y
+  jornadas sin cerrar.
+- La asistencia por persona sale de `vine_perfiles.py` a `vine_asistencia.py`. El horario se toma
+  de la ficha y, si no hay, de la entrada mediana, con las horas del catálogo.
+- En el colapsable del directorio el avatar sólo acompaña a la pestaña Ficha; las demás usan todo
+  el ancho.
+
 ## [2.104.0] - 2026-09-29
 
 ### Agregado

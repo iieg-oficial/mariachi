@@ -23,6 +23,7 @@ from app.schemas.vine import (
     RitmoResponse,
 )
 from app.services import (
+    vine_asistencia,
     vine_catalogos,
     vine_export,
     vine_ficha,
@@ -168,7 +169,7 @@ async def asistencia_persona(
     dias: int = Query(90, ge=7, le=1095),
     db: Session = Depends(get_db),
 ):
-    return vine_perfiles.asistencia_persona(db, pin, dias)
+    return vine_asistencia.asistencia_persona(db, pin, dias)
 
 
 @router.get(

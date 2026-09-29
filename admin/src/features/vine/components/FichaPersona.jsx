@@ -154,9 +154,11 @@ const FichaPersona = ({ fila, onGuardado, tab, onTab }) => {
         },
     ];
 
+    const activa = tab ?? 'ficha';
+
     return (
         <Row gutter={[24, 16]} wrap={false} style={{ padding: isMobile ? '4px 0' : '4px 8px' }}>
-            {!isMobile && (
+            {!isMobile && activa === 'ficha' && (
                 <Col flex="none">
                     <Avatar
                         size={72}
@@ -173,7 +175,7 @@ const FichaPersona = ({ fila, onGuardado, tab, onTab }) => {
                 </Col>
             )}
             <Col flex="1 1 0" style={{ minWidth: 0, overflow: 'hidden' }}>
-                <Tabs activeKey={tab ?? 'ficha'} onChange={onTab} size="small" items={pestanas} />
+                <Tabs activeKey={activa} onChange={onTab} size="small" items={pestanas} />
             </Col>
         </Row>
     );

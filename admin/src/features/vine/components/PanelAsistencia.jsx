@@ -3,8 +3,9 @@ import { useCallback, useEffect, useState } from 'react';
 
 import TituloConAyuda from '@shared/components/TituloConAyuda';
 import { getAsistenciaPersona } from '@features/vine/api/vineService';
-import ChartBarras from '@features/vine/components/ChartBarras';
-import { COLOR_ENTRADA, COLOR_NEUTRO, RANGOS } from '@features/vine/constants';
+import ChartJornadas from '@features/vine/components/ChartJornadas';
+import ChartSemana from '@features/vine/components/ChartSemana';
+import { RANGOS } from '@features/vine/constants';
 
 const { Text } = Typography;
 
@@ -70,7 +71,7 @@ const PanelAsistencia = ({ fila }) => {
                             valueStyle={{ fontSize: 20 }}
                         />
                         <Text type="secondary" style={{ fontSize: 11 }}>
-                            {`mediana de ${datos?.dias ?? 0} días · horario ${HORARIOS[fila.horario] ?? 'sin asignar'}`}
+                            {`mediana de ${datos?.dias ?? 0} días · horario ${datos?.horario?.nombre ?? HORARIOS[fila.horario] ?? 'sin asignar'}`}
                         </Text>
                     </Card>
                 </Col>
@@ -104,30 +105,10 @@ const PanelAsistencia = ({ fila }) => {
 
             <Row gutter={[12, 12]}>
                 <Col xs={24} xl={15}>
-                    <ChartBarras
-                        title="Cuántas horas duró cada jornada"
-                        ayuda="Una barra por día con entrada y salida. Los huecos son días que no vino o que no marcó salida."
-                        loading={cargando}
-                        sufijo=" h"
-                        series={[{ nombre: 'Horas', color: COLOR_NEUTRO }]}
-                        datos={(datos?.dias_detalle ?? []).map((d) => ({
-                            etiqueta: d.dia.slice(5),
-                            valores: [d.horas ?? 0],
-                        }))}
-                    />
+                    <ChartJornadas dias={datos?.dias_detalle ?? []} horario={datos?.horario} loading={cargando} />
                 </Col>
                 <Col xs={24} xl={9}>
-                    <ChartBarras
-                        title="A qué días viene"
-                        ayuda="Cuántas veces asistió en cada día de la semana dentro del periodo. Al pasar el cursor se ve la hora a la que suele entrar ese día."
-                        loading={cargando}
-                        sufijo=" días"
-                        series={[{ nombre: 'Días que asistió', color: COLOR_ENTRADA }]}
-                        datos={(datos?.por_dia_semana ?? []).map((d) => ({
-                            etiqueta: `${d.nombre.slice(0, 3)} ${d.entrada_mediana ?? ''}`.trim(),
-                            valores: [d.dias],
-                        }))}
-                    />
+                    <ChartSemana semana={datos?.por_dia_semana ?? []} horario={datos?.horario} loading={cargando} />
                 </Col>
             </Row>
         </>

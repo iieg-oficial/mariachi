@@ -6,7 +6,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from app.services.vine_incidencias import claves_por_efecto
-from app.services.vine_stats import DIAS_SEMANA, JORNADAS, consultar, parametros
+from app.services.vine_stats import JORNADAS, consultar, parametros
 
 
 def _lunes_numero(anio: int, mes: int, cual: int) -> date:
@@ -251,69 +251,3 @@ def apego_horario(db: Session, dias: int = 90) -> list[dict[str, Any]]:
         fila["entrada_oficial"] = f"{entrada:02d}:00" if entrada else None
         fila["salida_oficial"] = f"{salida:02d}:00" if salida else None
     return filas
-
-
-def asistencia_persona(db: Session, pin: str, dias: int = 90) -> dict[str, Any]:
-    sql = f"""
-        WITH jornadas AS ({JORNADAS}),
-        mias AS (
-            SELECT dia, entrada, salida, medio,
-                   extract(epoch FROM salida - entrada) / 3600 AS horas
-            FROM jornadas WHERE pin = :pin AND entrada IS NOT NULL
-        ),
-        habiles AS (
-            SELECT count(*) AS total FROM generate_series(
-                CAST(:desde AS date), CAST(:hoy AS date), interval '1 day') d
-            WHERE extract(isodow FROM d) < 6 AND d::date <> ALL(:festivos)
-        ),
-        justificados AS (
-            SELECT count(DISTINCT d::date) AS dias
-            FROM vine.incidencias i,
-                 generate_series(greatest(i.desde, CAST(:desde AS date)),
-                                 least(i.hasta, CAST(:hoy AS date)),
-                                 interval '1 day') d
-            WHERE i.pin = :pin AND i.tipo = ANY(:descuentan)
-              AND extract(isodow FROM d) < 6 AND d::date <> ALL(:festivos)
-        )
-        SELECT count(*) AS dias,
-               count(*) FILTER (WHERE salida IS NOT NULL) AS medibles,
-               (SELECT total FROM habiles) - (SELECT dias FROM justificados) AS habiles,
-               (SELECT dias FROM justificados) AS justificados,
-               to_char(percentile_cont(0.5) WITHIN GROUP (ORDER BY entrada::time), 'HH24:MI') AS entrada_mediana,
-               to_char(percentile_cont(0.5) WITHIN GROUP (ORDER BY salida::time)
-                       FILTER (WHERE salida IS NOT NULL), 'HH24:MI') AS salida_mediana,
-               round(percentile_cont(0.5) WITHIN GROUP (ORDER BY horas)
-                     FILTER (WHERE salida IS NOT NULL)::numeric, 2) AS jornada_mediana,
-               round(sum(horas) FILTER (WHERE salida IS NOT NULL)::numeric, 1) AS horas
-        FROM mias
-    """
-    params = parametros(dias, pin=pin)
-    params["festivos"] = festivos(params["desde"], params["hoy"])
-    params["descuentan"] = claves_por_efecto(db, "descuenta")
-    filas = consultar(db, sql, params)
-    resumen = filas[0] if filas else {}
-
-    sql_dias = f"""
-        WITH jornadas AS ({JORNADAS})
-        SELECT dia,
-               to_char(entrada, 'HH24:MI') AS entrada,
-               to_char(salida, 'HH24:MI') AS salida,
-               round((extract(epoch FROM salida - entrada) / 3600)::numeric, 2) AS horas
-        FROM jornadas WHERE pin = :pin AND entrada IS NOT NULL
-        ORDER BY dia DESC LIMIT 60
-    """
-    resumen["dias_detalle"] = list(reversed(consultar(db, sql_dias, params)))
-
-    sql_semana = f"""
-        WITH jornadas AS ({JORNADAS})
-        SELECT extract(isodow FROM dia)::int AS dia_semana,
-               count(*) AS dias,
-               to_char(percentile_cont(0.5) WITHIN GROUP (ORDER BY entrada::time), 'HH24:MI') AS entrada_mediana
-        FROM jornadas WHERE pin = :pin AND entrada IS NOT NULL
-        GROUP BY 1 ORDER BY 1
-    """
-    semana = consultar(db, sql_semana, params)
-    for fila in semana:
-        fila["nombre"] = DIAS_SEMANA.get(fila["dia_semana"], "")
-    resumen["por_dia_semana"] = semana
-    return resumen
