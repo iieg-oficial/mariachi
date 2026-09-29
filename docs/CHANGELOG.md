@@ -9,6 +9,16 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.110.0] - 2026-09-29
+
+### Agregado
+
+- `api/scripts/importar_plantilla_vine.py`: rellena la ficha de vine con el xlsx de plantilla y
+  directorio telefónico de RH. Cruza por nombre tolerando errores de dedo y nombres incompletos
+  del biométrico, prefiere a quien no está de baja y solo llena campos vacíos: extensión, puesto,
+  fecha de ingreso, cumpleaños (del CURP) y nombre o apellidos completos. RFC, CURP, edad y sexo
+  no se guardan. Sin `--aplicar` solo reporta; es idempotente.
+
 ## [2.109.0] - 2026-09-29
 
 ### Agregado
