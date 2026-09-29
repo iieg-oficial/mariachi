@@ -7,7 +7,7 @@ import Senal from './Senal';
 
 const INTERVALO_MS = 2000;
 
-const FotoCamara = ({ nombre, etiqueta, alto, version, llenar = false }) => {
+const FotoCamara = ({ nombre, etiqueta, alto, version, llenar = false, intervalo = INTERVALO_MS }) => {
     const [src, setSrc] = useState('');
     const [falla, setFalla] = useState(false);
     const temporizador = useRef(null);
@@ -24,7 +24,7 @@ const FotoCamara = ({ nombre, etiqueta, alto, version, llenar = false }) => {
         clearTimeout(temporizador.current);
         temporizador.current = setTimeout(() => {
             setSrc(urlFoto(nombre, { alto, t: Date.now() }));
-        }, INTERVALO_MS);
+        }, intervalo);
     };
 
     return (

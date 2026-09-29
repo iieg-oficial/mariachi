@@ -88,7 +88,10 @@ def construir(db: Session) -> dict[str, Any]:
         "version": VERSION_CONFIG,
         "mqtt": {"enabled": False},
         "go2rtc": _go2rtc(),
-        "detect": {"enabled": any(c.deteccion_habilitada for c in camaras)},
+        "detect": {
+            "enabled": any(c.deteccion_habilitada for c in camaras),
+            "fps": get_settings().frames_detect_fps,
+        },
         "cameras": {c.nombre: _bloque_camara(c) for c in camaras},
     }
 

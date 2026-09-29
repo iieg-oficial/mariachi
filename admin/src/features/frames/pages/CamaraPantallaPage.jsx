@@ -11,6 +11,7 @@ import { CALIDADES } from '../constants/calidades';
 
 const VIVO_PATH = '/frames/vivo';
 const ALTA = CALIDADES[CALIDADES.length - 1].value;
+const INTERVALO_INDIVIDUAL_MS = Math.round(1000 / 15);
 
 const rutaDe = (nombre) => `/frames/vivo/pantalla/${encodeURIComponent(nombre)}`;
 
@@ -81,7 +82,13 @@ const CamaraPantallaPage = () => {
     return (
         <div style={{ height: '100%', background: '#000', padding: 12 }}>
             {camara ? (
-                <FotoCamara nombre={camara.nombre} etiqueta={camara.etiqueta} alto={alto} llenar />
+                <FotoCamara
+                    nombre={camara.nombre}
+                    etiqueta={camara.etiqueta}
+                    alto={alto}
+                    intervalo={INTERVALO_INDIVIDUAL_MS}
+                    llenar
+                />
             ) : (
                 !cargando && (
                     <Empty

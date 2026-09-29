@@ -69,7 +69,7 @@ def test_el_grid_de_camaras_no_expone_ni_edita_la_url():
 def test_la_config_pide_credencial_al_restream(monkeypatch):
     monkeypatch.setattr(frames_config, "camaras_activas", lambda db: [])
     monkeypatch.setattr(
-        frames_config, "get_settings", lambda: SimpleNamespace(frames_rtsp_username="visor")
+        frames_config, "get_settings", lambda: SimpleNamespace(frames_rtsp_username="visor", frames_detect_fps=15)
     )
     configuracion = frames_config.construir(None)
     assert configuracion["go2rtc"] == {
@@ -80,7 +80,7 @@ def test_la_config_pide_credencial_al_restream(monkeypatch):
 def test_sin_usuario_de_restream_no_se_genera_config(monkeypatch):
     monkeypatch.setattr(frames_config, "camaras_activas", lambda db: [])
     monkeypatch.setattr(
-        frames_config, "get_settings", lambda: SimpleNamespace(frames_rtsp_username=None)
+        frames_config, "get_settings", lambda: SimpleNamespace(frames_rtsp_username=None, frames_detect_fps=15)
     )
     with pytest.raises(frames_config.FramesConfigError):
         frames_config.construir(None)
@@ -120,3 +120,13 @@ def test_frames_view_no_administra_camaras(cliente_frames, metodo, ruta):
     respuesta = cliente.request(metodo.upper(), ruta, json={}, headers={"X-CSRF-Token": csrf})
     assert respuesta.status_code == 403
     assert "mariachi.frames.manage" in respuesta.json()["detail"]
+
+
+def test_la_config_fija_los_fps_de_frigate(monkeypatch):
+    monkeypatch.setattr(frames_config, "camaras_activas", lambda db: [])
+    monkeypatch.setattr(
+        frames_config,
+        "get_settings",
+        lambda: SimpleNamespace(frames_rtsp_username="visor", frames_detect_fps=15),
+    )
+    assert frames_config.construir(None)["detect"]["fps"] == 15

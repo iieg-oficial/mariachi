@@ -9,6 +9,24 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.118.0] - 2026-09-29
+
+### Cambiado: Frigate procesa 15 fps por cámara y la vista individual los muestra
+
+El generador no fijaba `detect.fps`, así que Frigate usaba su valor por omisión de 5: es lo que
+reportaba la etiqueta de cada cámara. Ahora lo fija el ajuste `FRAMES_DETECT_FPS`, 15 por omisión, y
+toma efecto al aplicar la configuración. La vista de una sola cámara pide una foto cada 66 ms en vez
+de cada 2 s; sigue sin transmitir, y si la red no da, el ritmo baja solo. El mosaico se queda en una
+foto cada 2 s: a 15 por segundo, con muchas cámaras serían cientos de peticiones por segundo.
+
+### Corregido: el botón Aplicar desaparecía cuando sí había algo que aplicar
+
+«Sincronizado» solo compara los nombres de las cámaras, y el botón se escondía mientras coincidieran.
+Un cambio de fps, de URL o de detección no lo mostraba. Ahora aparece siempre para quien administra,
+resaltado cuando los nombres difieren, y el tooltip de «al día» aclara qué se compara.
+
+---
+
 ## [2.117.0] - 2026-09-29
 
 ### Cambiado

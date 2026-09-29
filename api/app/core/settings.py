@@ -95,6 +95,7 @@ class Settings(BaseSettings):
     frames_api_url: str | None = None
     frames_timeout: float = 10.0
     frames_rtsp_username: str | None = None
+    frames_detect_fps: int = 15
 
     vine_enabled: bool = False
     vine_biometrico_url: str | None = None

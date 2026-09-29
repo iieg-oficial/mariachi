@@ -13,6 +13,9 @@ const { Text } = Typography;
 const AYUDA_SIN_APLICAR = 'Lo que ves aquí todavía no está en frames. Aplicar reinicia el '
     + 'servicio para que tome la configuración, así que la transmisión se corta unos segundos.';
 
+const AYUDA_AL_DIA = 'Frames tiene las mismas cámaras que el catálogo. Solo se comparan los nombres: '
+    + 'si cambiaste una URL, los fps o la detección, aplica igual.';
+
 const AYUDA_CAIDA = 'No se pudo hablar con la API de frames. Si el módulo está apagado en este '
     + 'entorno es lo esperado; si no, revisa que el servicio esté arriba.';
 
@@ -55,7 +58,7 @@ const EstadoFrames = ({ estado, cargando, aplicando, onRecargar, onAplicar, pued
                         color={SEMANTIC.success}
                         icono={<CloudUploadOutlined />}
                         texto="al día"
-                        ayuda="El catálogo y frames dicen lo mismo."
+                        ayuda={AYUDA_AL_DIA}
                     />
                 ) : (
                     <Senal
@@ -71,7 +74,7 @@ const EstadoFrames = ({ estado, cargando, aplicando, onRecargar, onAplicar, pued
                 <Button icon={<ReloadOutlined />} onClick={onRecargar} loading={cargando}>
                     Actualizar
                 </Button>
-                {!estado.sincronizado && puedeGestionar && (
+                {puedeGestionar && (
                     <Popconfirm
                         title="Aplicar en frames"
                         description="frames se reinicia y la transmisión se corta unos segundos."
@@ -79,7 +82,11 @@ const EstadoFrames = ({ estado, cargando, aplicando, onRecargar, onAplicar, pued
                         cancelText="Cancelar"
                         onConfirm={onAplicar}
                     >
-                        <Button type="primary" icon={<CloudUploadOutlined />} loading={aplicando}>
+                        <Button
+                            type={estado.sincronizado ? 'default' : 'primary'}
+                            icon={<CloudUploadOutlined />}
+                            loading={aplicando}
+                        >
                             {pendientes > 0
                                 ? `Aplicar en frames · ${pendientes} sin aplicar`
                                 : 'Aplicar en frames'}
