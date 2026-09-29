@@ -41,7 +41,10 @@ const detalle = (d) => {
         return `${d.dia} · ${motivo}`;
     }
     const lineas = [`${d.dia} · ${d.entrada ?? '—'} a ${d.salida ?? 'sin salida'}`];
-    if (!d.cerro) lineas.push('La jornada no cerró: no hay salida que medir');
+    if (d.en_curso) lineas.push('Día en curso: puede cambiar con las siguientes marcas');
+    if (d.reentrada) lineas.push(`Volvió a entrar a las ${d.reentrada} y no marcó salida: la jornada no cerró`);
+    else if (!d.cerro) lineas.push('La jornada no cerró: no hay salida que medir');
+    if (d.visita) lineas.push('Visita corta: menos de una hora, no es una jornada');
     SEGMENTOS_JORNADA.forEach((s) => {
         if (d[s.clave]) lineas.push(`${s.nombre}: ${formatoMinutos(d[s.clave])}`);
     });
@@ -57,7 +60,13 @@ const Columna = ({ d, maximo, etiqueta }) => {
     return (
         <Tooltip title={detalle(d)}>
             <div style={{ flex: '1 1 0', minWidth: 8, display: 'flex', flexDirection: 'column', height: '100%', cursor: 'default' }}>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column-reverse', gap: 2 }}>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column-reverse', gap: 2, position: 'relative' }}>
+                    {d.estado === 'inhabil' && (
+                        <div style={{
+                            position: 'absolute', top: 0, bottom: 0, left: '50%', borderLeft: `1px dashed ${COLOR_REFERENCIA}`,
+                        }}
+                        />
+                    )}
                     {d.cerro && SEGMENTOS_JORNADA.filter((s) => d[s.clave] > 0).map((s, i, visibles) => (
                         <div
                             key={s.clave}

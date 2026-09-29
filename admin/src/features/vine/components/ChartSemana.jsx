@@ -3,7 +3,7 @@ import { Card, Empty, Tooltip, Typography } from 'antd';
 import TituloConAyuda from '@shared/components/TituloConAyuda';
 import { COLOR_ENTRADA, COLOR_SALIDA } from '@features/vine/constants';
 import {
-    COLOR_REFERENCIA, COLOR_TINTA, aMinutos, formatoMinutos,
+    COLOR_TINTA, aMinutos, formatoMinutos,
 } from '@features/vine/constants/jornada';
 
 const { Text } = Typography;
@@ -30,6 +30,7 @@ const detalle = (d) => {
         d.afuera_promedio != null && `Afuera en promedio ${formatoMinutos(d.afuera_promedio)}`,
         d.dias > 0 && `Retardos ${Math.round((d.retardos * 100) / d.dias)}%`,
         d.dias > 0 && `Jornadas sin cerrar ${Math.round((d.sin_cerrar * 100) / d.dias)}%`,
+        d.visitas > 0 && `${d.visitas} visitas cortas, fuera de las medianas`,
     ].filter(Boolean).map((l) => <div key={l}>{l}</div>);
 };
 
@@ -42,7 +43,7 @@ const Leyenda = () => (
             </span>
         ))}
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ width: 14, borderTop: `1px dashed ${COLOR_REFERENCIA}`, display: 'inline-block' }} />
+            <span style={{ width: 14, borderTop: `2px dashed ${COLOR_TINTA}`, display: 'inline-block' }} />
             <Text style={{ fontSize: 12 }}>Horario oficial</Text>
         </span>
     </div>
@@ -86,12 +87,26 @@ const ChartSemana = ({ semana = [], horario, loading }) => {
             <svg viewBox={`0 0 ${ANCHO} ${ALTO}`} width="100%" role="img" aria-label="Entrada y salida mediana por día de la semana">
                 {marcas.map((m) => (
                     <g key={m}>
-                        <line x1={M.izq} x2={ANCHO - M.der} y1={y(m)} y2={y(m)} stroke="rgba(0,0,0,0.06)" />
+                        <line x1={M.izq} x2={ANCHO - M.der} y1={y(m)} y2={y(m)} stroke="rgba(0,0,0,0.06)" vectorEffect="non-scaling-stroke" />
                         <text x={M.izq - 6} y={y(m) + 4} textAnchor="end" style={TEXTO}>{hora(m)}</text>
                     </g>
                 ))}
                 {oficiales.map((m) => (
-                    <line key={`o${m}`} x1={M.izq} x2={ANCHO - M.der} y1={y(m)} y2={y(m)} stroke={COLOR_REFERENCIA} strokeDasharray="4 4" />
+                    <g key={`o${m}`}>
+                        <line
+                            x1={M.izq}
+                            x2={ANCHO - M.der}
+                            y1={y(m)}
+                            y2={y(m)}
+                            stroke={COLOR_TINTA}
+                            strokeWidth={1.5}
+                            strokeDasharray="6 4"
+                            vectorEffect="non-scaling-stroke"
+                        />
+                        <text x={ANCHO - M.der} y={y(m) - 5} textAnchor="end" style={{ ...TEXTO, fontWeight: 600 }}>
+                            {`oficial ${hora(m)}`}
+                        </text>
+                    </g>
                 ))}
                 {entradas.length > 1 && salidas.length === entradas.length && (
                     <polygon points={franja} fill={COLOR_ENTRADA} fillOpacity={0.1} />
@@ -100,7 +115,7 @@ const ChartSemana = ({ semana = [], horario, loading }) => {
                     const p = puntos(s.clave);
                     return (
                         <g key={s.clave}>
-                            <polyline points={p.map((q) => q.join(',')).join(' ')} fill="none" stroke={s.color} strokeWidth={2} />
+                            <polyline points={p.map((q) => q.join(',')).join(' ')} fill="none" stroke={s.color} strokeWidth={2} vectorEffect="non-scaling-stroke" />
                             {p.map(([cx, cy]) => (
                                 <circle key={`${cx}`} cx={cx} cy={cy} r={4} fill={s.color} stroke="#fff" strokeWidth={2} />
                             ))}

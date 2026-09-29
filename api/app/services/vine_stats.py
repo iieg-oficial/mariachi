@@ -33,7 +33,9 @@ JORNADAS = """
     SELECT pin,
            event_time::date AS dia,
            min(event_time) FILTER (WHERE direccion = 'entrada') AS entrada,
-           max(event_time) FILTER (WHERE direccion = 'salida') AS salida,
+           CASE WHEN max(event_time) FILTER (WHERE direccion = 'entrada')
+                     > max(event_time) FILTER (WHERE direccion = 'salida') THEN NULL
+                ELSE max(event_time) FILTER (WHERE direccion = 'salida') END AS salida,
            (array_agg(
                 CASE WHEN evento = :superusuario THEN :medio_super ELSE verificacion END
                 ORDER BY event_time

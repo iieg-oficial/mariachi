@@ -9,6 +9,19 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.105.1] - 2026-09-29
+
+### Corregido
+
+- **vine:** una jornada en la que la persona volvió a entrar después de su última salida marcada
+  ya no se cierra en esa salida. Contaba un día completo como minutos; ahora queda como jornada
+  que no cerró, en la pestaña y en todas las estadísticas (`JORNADAS`). Eran 77 días de 2,937 en
+  90 días.
+- Las visitas de menos de una hora se marcan como visita: no llevan retardo y salen de las
+  medianas por día de la semana. El día en curso ya no se toma por visita.
+- La línea del horario oficial en «A qué días viene» se perdía al escalar el SVG; ahora tiene grosor
+  fijo y etiqueta. Los días inhábiles llevan una línea vertical desde su ✕.
+
 ## [2.105.0] - 2026-09-29
 
 ### Agregado

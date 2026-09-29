@@ -18,6 +18,7 @@ from app.services.vine_stats import (
 )
 
 DIAS_DETALLE = 60
+VISITA_MAX_MINUTOS = 60
 
 _RESUMEN = f"""
     WITH jornadas AS ({JORNADAS}),
@@ -107,7 +108,7 @@ def _desglose(dia: date, marcas: list[tuple[datetime, str]], horario: dict[str, 
     fila: dict[str, Any] = {
         "dia": dia.isoformat(), "estado": "asistio", "entrada": None, "salida": None,
         "horas": None, "antes": 0, "dentro": 0, "despues": 0, "afuera": 0, "sin_marca": 0,
-        "retardo": False, "cerro": False,
+        "retardo": False, "cerro": False, "visita": False, "reentrada": None,
     }
     if not entradas:
         fila["estado"] = "sin_entrada"
@@ -119,6 +120,9 @@ def _desglose(dia: date, marcas: list[tuple[datetime, str]], horario: dict[str, 
         oficial = (datetime.combine(dia, horario["entrada"]), datetime.combine(dia, horario["salida"]))
         fila["retardo"] = inicio > oficial[0] + timedelta(minutes=TOLERANCIA_MINUTOS)
     fin = max((t for t, d in marcas if d == "salida" and t > inicio), default=None)
+    if fin is not None and entradas[-1] > fin:
+        fila["reentrada"] = _hhmm(entradas[-1])
+        return fila
     if fin is None or _minutos(inicio, fin) > JORNADA_MAX_HORAS * 60:
         return fila
 
@@ -138,6 +142,9 @@ def _desglose(dia: date, marcas: list[tuple[datetime, str]], horario: dict[str, 
         else:
             minutos["sin_marca"] += _minutos(t0, t1)
     fila.update({k: round(v) for k, v in minutos.items()})
+    fila["visita"] = _minutos(inicio, fin) < VISITA_MAX_MINUTOS
+    if fila["visita"]:
+        fila["retardo"] = False
     return fila
 
 
@@ -186,8 +193,9 @@ def _por_dia_semana(
     salida = []
     for numero in sorted(set(habiles) | set(grupos)):
         filas = grupos.get(numero, [])
-        cerradas = [f for f in filas if f["cerro"]]
-        entradas = [int(f["entrada"][:2]) * 60 + int(f["entrada"][3:]) for f in filas]
+        jornadas = [f for f in filas if not f["visita"]]
+        cerradas = [f for f in jornadas if f["cerro"]]
+        entradas = [int(f["entrada"][:2]) * 60 + int(f["entrada"][3:]) for f in jornadas]
         salidas = [int(f["salida"][:2]) * 60 + int(f["salida"][3:]) for f in cerradas]
         salida.append({
             "dia_semana": numero,
@@ -198,7 +206,8 @@ def _por_dia_semana(
             "salida_mediana": _desde_minutos(median(salidas)) if salidas else None,
             "afuera_promedio": round(sum(f["afuera"] for f in cerradas) / len(cerradas)) if cerradas else None,
             "retardos": sum(1 for f in filas if f["retardo"]),
-            "sin_cerrar": len(filas) - len(cerradas),
+            "sin_cerrar": len(jornadas) - len(cerradas),
+            "visitas": len(filas) - len(jornadas),
         })
     return salida
 
@@ -229,6 +238,8 @@ def asistencia_persona(db: Session, pin: str, dias: int = 90) -> dict[str, Any]:
     while dia <= params["hoy"]:
         if dia in marcas:
             fila = _desglose(dia, marcas[dia], horario)
+            if dia == params["hoy"]:
+                fila.update(en_curso=True, visita=False)
         else:
             estado = _estado_sin_marcas(dia, inhabiles, incidencias.get(dia))
             fila = {"dia": dia.isoformat(), "estado": estado} if estado else None
