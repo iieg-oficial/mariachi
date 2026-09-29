@@ -41,6 +41,40 @@ const PanelAsistencia = ({ fila, diaInicial }) => {
         : 0;
     const medibles = datos?.medibles ?? 0;
 
+    const tarjetas = [
+        {
+            clave: 'dias',
+            estadistica: { title: 'Días que vino', value: datos?.dias ?? 0, suffix: `/ ${datos?.habiles ?? 0}` },
+            nota: `${asistencia}% de los hábiles${datos?.justificados > 0 ? ` · ${datos.justificados} justificados` : ''}`,
+        },
+        {
+            clave: 'entrada',
+            estadistica: {
+                title: <TituloConAyuda titulo="Entrada habitual" ayuda={AYUDA_MEDIANA} />,
+                value: datos?.entrada_mediana ?? '—',
+            },
+            nota: `mediana de ${datos?.dias ?? 0} días · horario ${datos?.horario?.nombre ?? HORARIOS[fila.horario] ?? 'sin asignar'}`,
+        },
+        {
+            clave: 'salida',
+            estadistica: {
+                title: <TituloConAyuda titulo="Salida habitual" ayuda={AYUDA_MEDIANA} />,
+                value: datos?.salida_mediana ?? '—',
+            },
+            nota: `mediana de ${medibles} días con salida`,
+        },
+        {
+            clave: 'jornada',
+            estadistica: {
+                title: <TituloConAyuda titulo="Jornada típica" ayuda={AYUDA_MEDIANA} />,
+                value: datos?.jornada_mediana ?? 0,
+                suffix: 'h',
+                precision: 2,
+            },
+            nota: `${(datos?.horas ?? 0).toLocaleString('es-MX')} h acumuladas`,
+        },
+    ];
+
     return (
         <>
             <Space style={{ marginBottom: 12 }}>
@@ -49,74 +83,35 @@ const PanelAsistencia = ({ fila, diaInicial }) => {
             </Space>
 
             <Row gutter={[12, 12]} style={{ marginBottom: 12 }}>
-                <Col xs={12} md={6}>
-                    <Card size="small" loading={cargando}>
-                        <Statistic
-                            title="Días que vino"
-                            value={datos?.dias ?? 0}
-                            suffix={`/ ${datos?.habiles ?? 0}`}
-                            valueStyle={{ fontSize: 20 }}
-                        />
-                        <Text type="secondary" style={{ fontSize: 11 }}>
-                            {`${asistencia}% de los hábiles`}
-                            {datos?.justificados > 0 && ` · ${datos.justificados} justificados`}
-                        </Text>
-                    </Card>
+                <Col xs={24} lg={12}>
+                    <Row gutter={[8, 8]} style={{ height: '100%' }}>
+                        {tarjetas.map(({ clave, ...tarjeta }) => (
+                            <Col key={clave} xs={24} sm={12}>
+                                <Card
+                                    size="small"
+                                    loading={cargando}
+                                    style={{ height: '100%' }}
+                                    styles={{ body: { height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' } }}
+                                >
+                                    <Statistic {...tarjeta.estadistica} valueStyle={{ fontSize: 18 }} />
+                                    <Text type="secondary" style={{ fontSize: 11 }}>{tarjeta.nota}</Text>
+                                </Card>
+                            </Col>
+                        ))}
+                    </Row>
                 </Col>
-                <Col xs={12} md={6}>
-                    <Card size="small" loading={cargando}>
-                        <Statistic
-                            title={<TituloConAyuda titulo="Entrada habitual" ayuda={AYUDA_MEDIANA} />}
-                            value={datos?.entrada_mediana ?? '—'}
-                            valueStyle={{ fontSize: 20 }}
-                        />
-                        <Text type="secondary" style={{ fontSize: 11 }}>
-                            {`mediana de ${datos?.dias ?? 0} días · horario ${datos?.horario?.nombre ?? HORARIOS[fila.horario] ?? 'sin asignar'}`}
-                        </Text>
-                    </Card>
-                </Col>
-                <Col xs={12} md={6}>
-                    <Card size="small" loading={cargando}>
-                        <Statistic
-                            title={<TituloConAyuda titulo="Salida habitual" ayuda={AYUDA_MEDIANA} />}
-                            value={datos?.salida_mediana ?? '—'}
-                            valueStyle={{ fontSize: 20 }}
-                        />
-                        <Text type="secondary" style={{ fontSize: 11 }}>
-                            {`mediana de ${medibles} días con salida`}
-                        </Text>
-                    </Card>
-                </Col>
-                <Col xs={12} md={6}>
-                    <Card size="small" loading={cargando}>
-                        <Statistic
-                            title={<TituloConAyuda titulo="Jornada típica" ayuda={AYUDA_MEDIANA} />}
-                            value={datos?.jornada_mediana ?? 0}
-                            suffix="h"
-                            precision={2}
-                            valueStyle={{ fontSize: 20 }}
-                        />
-                        <Text type="secondary" style={{ fontSize: 11 }}>
-                            {`${(datos?.horas ?? 0).toLocaleString('es-MX')} h acumuladas`}
-                        </Text>
-                    </Card>
-                </Col>
-            </Row>
-
-            <Row gutter={[12, 12]}>
-                <Col xs={24} xl={15}>
-                    <ChartReloj
-                        dias={datos?.dias_detalle ?? []}
-                        horario={datos?.horario}
-                        loading={cargando}
-                        pin={fila.pin}
-                        diaInicial={diaInicial}
-                    />
-                </Col>
-                <Col xs={24} xl={9}>
+                <Col xs={24} lg={12}>
                     <ChartSemana semana={datos?.por_dia_semana ?? []} horario={datos?.horario} loading={cargando} />
                 </Col>
             </Row>
+
+            <ChartReloj
+                dias={datos?.dias_detalle ?? []}
+                horario={datos?.horario}
+                loading={cargando}
+                pin={fila.pin}
+                diaInicial={diaInicial}
+            />
         </>
     );
 };

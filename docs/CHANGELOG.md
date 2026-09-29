@@ -9,6 +9,15 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.111.2] - 2026-09-29
+
+### Cambiado
+
+- **vine, pestaña Asistencia:** las cuatro estadísticas quedan en 2×2 en la mitad del contenedor y
+  «A qué días viene» en la otra, en un solo renglón en escritorio; «Cómo se repartió cada jornada»
+  toma todo el ancho. En celular va una tarjeta por renglón y el reloj se desplaza de lado dentro de
+  su tarjeta en vez de desbordar la página.
+
 ## [2.111.1] - 2026-09-29
 
 ### Corregido
