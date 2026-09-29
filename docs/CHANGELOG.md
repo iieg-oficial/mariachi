@@ -9,6 +9,24 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.111.1] - 2026-09-29
+
+### Corregido
+
+- **vine:** un día sin obligación de venir —fin de semana, inhábil o vacaciones— ya no cuenta
+  llegada tarde ni retardo. Quien vino el Día del Servidor Público aparecía con horas en rojo.
+- **Día del Servidor Público** (`FESTIVOS_ANUALES`): el 28 de septiembre de cada año, recorrido al
+  viernes si cae en sábado y al lunes si cae en domingo, como se descansó en 2024 y 2025.
+
+### Cambiado
+
+- El tiempo que no llegó a su hora pierde intensidad; «Se quedó después» pasa de óxido a violeta,
+  que no se lee como falta.
+- Las secciones de una barra se unen rectas: solo se redondean los extremos que no tocan otra.
+- Las visitas cortas vuelven a dibujarse, con su propio estilo delineado y en la leyenda.
+- Los tooltips de las barras llevan fecha, entrada y salida, un renglón por sección con su color y
+  las notas aparte.
+
 ## [2.111.0] - 2026-09-29
 
 ### Agregado

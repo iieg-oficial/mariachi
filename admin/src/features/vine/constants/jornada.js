@@ -1,7 +1,7 @@
 export const SEGMENTOS_JORNADA = [
     { clave: 'dentro', nombre: 'Dentro del horario', color: '#3B5BA9' },
     { clave: 'antes', nombre: 'Llegó antes', color: '#D98A1E' },
-    { clave: 'despues', nombre: 'Se quedó después', color: '#B4441A' },
+    { clave: 'despues', nombre: 'Se quedó después', color: '#8E7CC3' },
     { clave: 'afuera', nombre: 'Afuera', color: '#2E9C8A' },
     { clave: 'sin_marca', nombre: 'Sin marca', color: '#8C8C8C', textura: true },
 ];
@@ -10,9 +10,11 @@ export const TEXTURA_SIN_MARCA = 'repeating-linear-gradient(45deg, #8C8C8C 0 2px
 
 export const TEXTURA_MINIMO = 'repeating-linear-gradient(135deg, rgba(59, 91, 169, 0.35) 0 2px, transparent 2px 6px)';
 
-export const COLOR_TARDE = '#D7263D';
+export const COLOR_TARDE = 'rgba(215, 38, 61, 0.55)';
 
-export const TEXTURA_TARDE = 'repeating-linear-gradient(45deg, rgba(215, 38, 61, 0.55) 0 2px, rgba(215, 38, 61, 0.08) 2px 6px)';
+export const TEXTURA_TARDE = 'repeating-linear-gradient(45deg, rgba(215, 38, 61, 0.3) 0 1.5px, rgba(215, 38, 61, 0.04) 1.5px 6px)';
+
+export const FONDO_VISITA = 'rgba(59, 91, 169, 0.18)';
 
 export const JORNADA_ESPERADA_MIN = 480;
 

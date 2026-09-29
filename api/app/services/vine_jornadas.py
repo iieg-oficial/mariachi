@@ -46,11 +46,15 @@ def _desgloses(db: Session, params: dict[str, Any]) -> dict[str, tuple[dict[str,
 
     fichas = {f["pin"]: f for f in consultar(db, _FICHAS, {})}
     catalogo = catalogo_horarios(db)
+    inhabiles = set(festivos(params["desde"], params["hoy"]))
     resultado = {}
     for pin, dias_pin in marcas.items():
         primeras = [next((t for t, d in m if d == "entrada"), None) for m in dias_pin.values()]
         horario = elegir_horario(fichas.get(pin), catalogo, [t for t in primeras if t])
-        resultado[pin] = (horario, {dia: desglose(dia, lista, horario) for dia, lista in dias_pin.items()})
+        resultado[pin] = (horario, {
+            dia: desglose(dia, lista, horario, dia.isoweekday() < 6 and dia not in inhabiles)
+            for dia, lista in dias_pin.items()
+        })
     return resultado
 
 
@@ -178,7 +182,8 @@ def dia_persona(db: Session, pin: str, dia: date) -> dict[str, Any]:
     validas = [(m["event_time"], m["direccion"]) for m in marcas if m["direccion"] and m["evento"] in EVENTOS_ASISTENCIA]
     entradas = consultar(db, _PRIMERAS_ENTRADAS, {"pin": pin, "desde": dia - timedelta(days=90), "eventos": EVENTOS_ASISTENCIA})
     horario = horario_de(db, pin, [e["primera"] for e in entradas])
-    fila = desglose(dia, validas, horario) if validas else None
+    obligado = dia.isoweekday() < 6 and dia not in festivos(dia, dia)
+    fila = desglose(dia, validas, horario, obligado) if validas else None
     return {
         "dia": dia.isoformat(),
         "marcas": [

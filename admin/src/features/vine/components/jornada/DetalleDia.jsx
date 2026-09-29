@@ -7,28 +7,21 @@ import { useEffect, useState } from 'react';
 import { getDiaPersona } from '@features/vine/api/vineService';
 import { EJE_TEXTO } from '@features/vine/constants';
 import { COLOR_TINTA, SEGMENTOS_JORNADA, aMinutos, formatoMinutos } from '@features/vine/constants/jornada';
-import { estiloTramo } from '@features/vine/components/jornada/piezas';
+import { estiloTramo, fechaLarga, radiosDe } from '@features/vine/components/jornada/piezas';
 
 const { Text } = Typography;
-
-const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
 
 const NOMBRES = {
     ...Object.fromEntries(SEGMENTOS_JORNADA.map((s) => [s.clave, s.nombre.toLowerCase()])),
     tarde: 'no llegó a su hora',
     minimo: 'al menos',
+    visita: 'visita corta',
 };
 
 const ALTO_BARRA = 30;
 const ETIQUETA_MINIMA = 5.5;
 
 const hhmm = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
-
-const fechaLarga = (iso) => {
-    const [a, m, d] = iso.split('-').map(Number);
-    const fecha = new Date(a, m - 1, d);
-    return `${DIAS[fecha.getDay()]} ${d}/${String(m).padStart(2, '0')}/${a}`;
-};
 
 const rangoDe = (tramos, oficiales, marcas) => {
     const puntos = [...tramos.flatMap(([, a, b]) => [a, b]), ...oficiales, ...marcas];
@@ -73,7 +66,7 @@ const DetalleDia = ({
         <div style={{ borderTop: '1px solid rgba(0, 0, 0, 0.06)', marginTop: 12, paddingTop: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 8 }}>
                 <span>
-                    <Text strong style={{ textTransform: 'capitalize' }}>{fechaLarga(d.dia)}</Text>
+                    <Text strong>{fechaLarga(d.dia)}</Text>
                     <Text type="secondary" style={{ fontSize: 12 }}>{` · ${resumen}`}</Text>
                 </span>
                 <Space size={0}>
@@ -110,14 +103,24 @@ const DetalleDia = ({
                                 </span>
                             </Tooltip>
                         ))}
-                        {tramos.map(([tipo, a, b]) => (
-                            <Tooltip key={`${tipo}${a}`} title={`${NOMBRES[tipo] ?? tipo}: ${hhmm(a)} a ${hhmm(b)} · ${formatoMinutos(b - a)}`}>
-                                <div style={{
-                                    position: 'absolute', top: 10, height: ALTO_BARRA, left: pct(a), width: `${Math.max(0.3, ancho(a, b))}%`, borderRadius: 3, cursor: 'default', ...estiloTramo(tipo),
-                                }}
-                                />
-                            </Tooltip>
-                        ))}
+                        {tramos.map(([tipo, a, b], i) => {
+                            const { inicio, fin } = radiosDe(tramos, i, 3);
+                            return (
+                                <Tooltip key={`${tipo}${a}`} title={`${NOMBRES[tipo] ?? tipo}: ${hhmm(a)} a ${hhmm(b)} · ${formatoMinutos(b - a)}`}>
+                                    <div style={{
+                                        position: 'absolute',
+                                        top: 10,
+                                        height: ALTO_BARRA,
+                                        left: pct(a),
+                                        width: `${Math.max(0.3, ancho(a, b))}%`,
+                                        borderRadius: `${inicio}px ${fin}px ${fin}px ${inicio}px`,
+                                        cursor: 'default',
+                                        ...estiloTramo(tipo),
+                                    }}
+                                    />
+                                </Tooltip>
+                            );
+                        })}
                         {oficiales.map((m) => (
                             <div key={m} style={{ position: 'absolute', left: pct(m), top: 4, bottom: -4, borderLeft: `1.5px dashed ${COLOR_TINTA}`, pointerEvents: 'none' }} />
                         ))}

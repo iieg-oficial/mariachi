@@ -46,10 +46,22 @@ FESTIVOS_INSTITUTO: list[date] = [
 ]
 
 
+FESTIVOS_ANUALES: tuple[tuple[int, int], ...] = ((9, 28),)
+
+
+def _al_habil(dia: date) -> date:
+    if dia.isoweekday() == 6:
+        return dia - timedelta(days=1)
+    if dia.isoweekday() == 7:
+        return dia + timedelta(days=1)
+    return dia
+
+
 def festivos(desde: date, hasta: date) -> list[date]:
     dias: list[date] = []
     for anio in range(desde.year, hasta.year + 1):
         dias.extend(festivos_de_ley(anio))
+        dias.extend(_al_habil(date(anio, mes, dia)) for mes, dia in FESTIVOS_ANUALES)
     dias.extend(FESTIVOS_INSTITUTO)
     return sorted({d for d in dias if desde <= d <= hasta})
 

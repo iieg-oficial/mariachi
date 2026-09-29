@@ -131,7 +131,9 @@ def horario_de(db: Session, pin: str, entradas: list[datetime]) -> dict[str, Any
     return elegir_horario(ficha[0] if ficha else None, catalogo_horarios(db), entradas)
 
 
-def desglose(dia: date, marcas: list[tuple[datetime, str]], horario: dict[str, Any]) -> dict[str, Any]:
+def desglose(
+    dia: date, marcas: list[tuple[datetime, str]], horario: dict[str, Any], obligado: bool = True
+) -> dict[str, Any]:
     entradas = [t for t, d in marcas if d == "entrada"]
     fila: dict[str, Any] = {
         "dia": dia.isoformat(), "estado": "asistio", "entrada": None, "salida": None,
@@ -147,6 +149,7 @@ def desglose(dia: date, marcas: list[tuple[datetime, str]], horario: dict[str, A
     oficial = None
     if horario.get("entrada") and horario.get("salida"):
         oficial = (datetime.combine(dia, horario["entrada"]), datetime.combine(dia, horario["salida"]))
+    if oficial and obligado:
         fila["retardo"] = inicio > oficial[0] + timedelta(minutes=TOLERANCIA_MINUTOS)
         fila["tarde"] = round(_minutos(oficial[0], inicio))
         if inicio > oficial[0]:
@@ -276,7 +279,12 @@ def asistencia_persona(db: Session, pin: str, dias: int = 90) -> dict[str, Any]:
     dia = params["desde"]
     while dia <= params["hoy"]:
         if dia in marcas:
-            fila = desglose(dia, marcas[dia], horario)
+            obligado = (
+                dia.isoweekday() < 6 and dia not in inhabiles
+                and incidencias.get(dia, {}).get("efecto") != "descuenta"
+            )
+            fila = desglose(dia, marcas[dia], horario, obligado)
+            fila.update(sin_obligacion=not obligado, inhabil=dia in inhabiles)
             if dia == params["hoy"]:
                 fila.update(en_curso=True, visita=False)
         else:

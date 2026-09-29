@@ -1,7 +1,7 @@
 import { Tooltip } from 'antd';
 
 import { COLOR_REFERENCIA, COLOR_TINTA } from '@features/vine/constants/jornada';
-import { detalle, estiloTramo } from '@features/vine/components/jornada/piezas';
+import { detalle, estiloTramo, radiosDe } from '@features/vine/components/jornada/piezas';
 
 const MINIMO_VISIBLE = 30;
 
@@ -10,8 +10,11 @@ const ColumnaReloj = ({
 }) => {
     const [ini, fin] = rango;
     const escala = alto / Math.max(1, fin - ini);
-    const tramos = d.visita ? [] : (d.tramos ?? [])
-        .filter(([tipo, desde, hasta]) => hasta > ini && desde < fin && !(tipo === 'minimo' && hasta - desde < MINIMO_VISIBLE));
+    const propios = (d.tramos ?? []).filter(([tipo]) => tipo !== 'tarde');
+    const tramos = d.visita && propios.length
+        ? [['visita', propios[0][1], propios[propios.length - 1][2]]]
+        : (d.tramos ?? []).filter(([tipo, desde, hasta]) => hasta > ini && desde < fin
+            && !(tipo === 'minimo' && hasta - desde < MINIMO_VISIBLE));
     return (
         <Tooltip title={detalle(d, horaEntrada)}>
             <div
@@ -31,26 +34,29 @@ const ColumnaReloj = ({
                     background: elegido ? 'rgba(0, 0, 0, 0.03)' : 'transparent',
                 }}
             >
-                {d.estado === 'inhabil' && (
+                {(d.estado === 'inhabil' || d.inhabil) && (
                     <div style={{
                         position: 'absolute', top: 0, bottom: 0, left: '50%', borderLeft: `1px dashed ${COLOR_REFERENCIA}`,
                     }}
                     />
                 )}
-                {tramos.map(([tipo, desde, hasta]) => (
-                    <div
-                        key={`${tipo}${desde}`}
-                        style={{
-                            position: 'absolute',
-                            left: 0,
-                            right: 0,
-                            top: (Math.max(desde, ini) - ini) * escala,
-                            height: Math.max(1, (Math.min(hasta, fin) - Math.max(desde, ini)) * escala),
-                            borderRadius: radio,
-                            ...estiloTramo(tipo),
-                        }}
-                    />
-                ))}
+                {tramos.map(([tipo, desde, hasta], i) => {
+                    const { inicio, fin: final } = radiosDe(tramos, i, radio);
+                    return (
+                        <div
+                            key={`${tipo}${desde}`}
+                            style={{
+                                position: 'absolute',
+                                left: 0,
+                                right: 0,
+                                top: (Math.max(desde, ini) - ini) * escala,
+                                height: Math.max(tipo === 'visita' ? 3 : 1, (Math.min(hasta, fin) - Math.max(desde, ini)) * escala),
+                                borderRadius: `${inicio}px ${inicio}px ${final}px ${final}px`,
+                                ...estiloTramo(tipo),
+                            }}
+                        />
+                    );
+                })}
             </div>
         </Tooltip>
     );
