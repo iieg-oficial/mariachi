@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { getAsistenciaPersona } from '@features/vine/api/vineService';
 import ChartReloj from '@features/vine/components/ChartReloj';
 import ChartSemana from '@features/vine/components/ChartSemana';
-import ResumenAsistencia from '@features/vine/components/ResumenAsistencia';
+import CalendarioPuntualidad from '@features/vine/components/CalendarioPuntualidad';
 
 const PanelAsistencia = ({ fila, diaInicial, dias = 90 }) => {
     const [datos, setDatos] = useState(null);
@@ -40,7 +40,7 @@ const PanelAsistencia = ({ fila, diaInicial, dias = 90 }) => {
             </div>
             <Row gutter={[12, 12]}>
                 <Col xs={24} lg={12}>
-                    <ResumenAsistencia datos={datos} loading={cargando} />
+                    <CalendarioPuntualidad datos={datos} loading={cargando} />
                 </Col>
                 <Col xs={24} lg={12}>
                     <ChartSemana semana={datos?.por_dia_semana ?? []} horario={datos?.horario} loading={cargando} />

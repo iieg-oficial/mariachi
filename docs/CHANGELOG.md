@@ -9,6 +9,20 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.117.0] - 2026-09-29
+
+### Cambiado
+
+- **vine, pestaña Asistencia:** «Su día típico» se reemplaza por un **calendario de puntualidad**:
+  un cuadro por día hábil en columnas por semana, coloreado según cómo llegó —a tiempo, hasta 15
+  min, retardo, más de una hora— y marcado si no vino, fue inhábil, tuvo incidencia o solo pasó de
+  visita. Debajo, los días que vino, los retardos y el día de la semana con más retardos. La
+  asistencia devuelve `calendario`, un registro ligero por día hábil de todo el periodo.
+
+### Eliminado
+
+- `ResumenAsistencia.jsx`.
+
 ## [2.116.0] - 2026-09-29
 
 ### Agregado: cada cámara de Frames se abre en grande

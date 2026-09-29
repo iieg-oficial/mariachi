@@ -307,6 +307,19 @@ def asistencia_persona(db: Session, pin: str, dias: int = 90) -> dict[str, Any]:
 
     inicio_detalle = (params["hoy"] - timedelta(days=DIAS_DETALLE - 1)).isoformat()
     resumen["dias_detalle"] = [f for f in todos if f["dia"] >= inicio_detalle]
+    resumen["calendario"] = [
+        {
+            "dia": f["dia"],
+            "estado": f["estado"],
+            "entrada": f.get("entrada"),
+            "tarde": f.get("tarde", 0),
+            "retardo": f.get("retardo", False),
+            "visita": f.get("visita", False),
+            "incidencia": (f.get("incidencia") or {}).get("nombre"),
+        }
+        for f in todos
+        if date.fromisoformat(f["dia"]).isoweekday() < 6
+    ]
     resumen["por_dia_semana"] = _por_dia_semana(todos, params, inhabiles, incidencias)
     resumen["horario"] = {
         "clave": horario["clave"],
