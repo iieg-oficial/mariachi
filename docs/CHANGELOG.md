@@ -9,6 +9,23 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.107.0] - 2026-09-29
+
+### Agregado
+
+- **vine, directorio:** columna «Últimos 10 hábiles» con un mini reloj por persona y columna
+  «Tarde prom.» ordenable, calculadas en lote (`vine_jornadas.recientes`).
+
+### Cambiado
+
+- **vine, pestaña Asistencia:** la jornada se dibuja en el reloj (`ChartReloj`) y no como duraciones
+  apiladas: cada tramo ocupa su hora real, las líneas punteadas son el horario de la persona y el
+  rojo va siempre de su hora de entrada a su llegada. El backend devuelve los tramos con su hora
+  (`tramos`), juntando los contiguos del mismo tipo.
+- «A qué días viene» pone lo temprano arriba, como el reloj, marca el eje cada dos horas y deja las
+  horas oficiales en el margen.
+- Las piezas de la jornada (colores, tooltip, glifos, leyenda) pasan a `components/jornada/`.
+
 ## [2.106.0] - 2026-09-29
 
 ### Agregado

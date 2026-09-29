@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import TituloConAyuda from '@shared/components/TituloConAyuda';
 import { getAsistenciaPersona } from '@features/vine/api/vineService';
-import ChartJornadas from '@features/vine/components/ChartJornadas';
+import ChartReloj from '@features/vine/components/ChartReloj';
 import ChartSemana from '@features/vine/components/ChartSemana';
 import { RANGOS } from '@features/vine/constants';
 
@@ -105,7 +105,7 @@ const PanelAsistencia = ({ fila }) => {
 
             <Row gutter={[12, 12]}>
                 <Col xs={24} xl={15}>
-                    <ChartJornadas dias={datos?.dias_detalle ?? []} horario={datos?.horario} loading={cargando} />
+                    <ChartReloj dias={datos?.dias_detalle ?? []} horario={datos?.horario} loading={cargando} />
                 </Col>
                 <Col xs={24} xl={9}>
                     <ChartSemana semana={datos?.por_dia_semana ?? []} horario={datos?.horario} loading={cargando} />

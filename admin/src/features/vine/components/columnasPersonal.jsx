@@ -9,6 +9,8 @@ import { Avatar, Button, Space, Tag, Tooltip, Typography } from 'antd';
 import { COLOR_VINCULO } from '@features/vine/constants';
 import { etiquetaValor } from '@features/vine/constants/filtros';
 import { medioInfo } from '@features/vine/constants/medios';
+import { formatoMinutos } from '@features/vine/constants/jornada';
+import MiniReloj from '@features/vine/components/jornada/MiniReloj';
 
 const colorDe = (campo, valor) => {
     if (campo === 'vinculo') return COLOR_VINCULO[valor] ?? 'default';
@@ -75,6 +77,23 @@ export const columnasPersonal = (onAbrir, dimension) => [
                 {f.baja && v !== 'Baja' && <Tag color="red">baja</Tag>}
             </Space>
         ),
+    },
+    {
+        title: 'Últimos 10 hábiles',
+        key: 'recientes',
+        width: 120,
+        responsive: ['lg'],
+        render: (_, f) => <MiniReloj dias={f.recientes} oficial={f.oficial} />,
+    },
+    {
+        title: 'Tarde prom.',
+        dataIndex: 'tarde_promedio',
+        key: 'tarde_promedio',
+        width: 110,
+        align: 'right',
+        responsive: ['md'],
+        sorter: (a, b) => (a.tarde_promedio ?? -1) - (b.tarde_promedio ?? -1),
+        render: (v) => (v != null ? <Text>{formatoMinutos(v)}</Text> : <Text type="secondary">—</Text>),
     },
     {
         title: 'Extensión',

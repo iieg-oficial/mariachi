@@ -80,8 +80,27 @@ def _minutos(inicio: datetime, fin: datetime) -> float:
     return max(0.0, (fin - inicio).total_seconds() / 60)
 
 
-def _traslape(inicio: datetime, fin: datetime, desde: datetime, hasta: datetime) -> float:
-    return _minutos(max(inicio, desde), min(fin, hasta))
+def _del_dia(momento: datetime) -> int:
+    return round(momento.hour * 60 + momento.minute + momento.second / 60)
+
+
+def _partir(t0: datetime, t1: datetime, oficial: tuple[datetime, datetime] | None) -> list[tuple[str, datetime, datetime]]:
+    if not oficial:
+        return [("dentro", t0, t1)]
+    cortes = (("antes", datetime.min, oficial[0]), ("dentro", oficial[0], oficial[1]), ("despues", oficial[1], datetime.max))
+    return [(tipo, max(t0, a), min(t1, b)) for tipo, a, b in cortes if max(t0, a) < min(t1, b)]
+
+
+def _compactar(tramos: list[tuple[str, int, int]]) -> list[tuple[str, int, int]]:
+    juntos: list[tuple[str, int, int]] = []
+    for tipo, desde, hasta in tramos:
+        if hasta <= desde:
+            continue
+        if juntos and juntos[-1][0] == tipo and juntos[-1][2] >= desde:
+            juntos[-1] = (tipo, juntos[-1][1], hasta)
+        else:
+            juntos.append((tipo, desde, hasta))
+    return juntos
 
 
 def _hhmm(momento: datetime | time | None) -> str | None:
@@ -118,7 +137,7 @@ def desglose(dia: date, marcas: list[tuple[datetime, str]], horario: dict[str, A
         "dia": dia.isoformat(), "estado": "asistio", "entrada": None, "salida": None,
         "horas": None, "antes": 0, "dentro": 0, "despues": 0, "afuera": 0, "sin_marca": 0,
         "retardo": False, "cerro": False, "visita": False, "reentrada": None,
-        "hasta_al_menos": None, "minimo": 0, "tarde": 0,
+        "hasta_al_menos": None, "minimo": 0, "tarde": 0, "tramos": [],
     }
     if not entradas:
         fila["estado"] = "sin_entrada"
@@ -130,11 +149,14 @@ def desglose(dia: date, marcas: list[tuple[datetime, str]], horario: dict[str, A
         oficial = (datetime.combine(dia, horario["entrada"]), datetime.combine(dia, horario["salida"]))
         fila["retardo"] = inicio > oficial[0] + timedelta(minutes=TOLERANCIA_MINUTOS)
         fila["tarde"] = round(_minutos(oficial[0], inicio))
+        if inicio > oficial[0]:
+            fila["tramos"].append(("tarde", _del_dia(oficial[0]), _del_dia(inicio)))
     fin = max((t for t, d in marcas if d == "salida" and t > inicio), default=None)
     ultima = marcas[-1][0]
     abierta = fin is None or entradas[-1] > fin
     if abierta and ultima > inicio and _minutos(inicio, ultima) <= JORNADA_MAX_HORAS * 60:
         fila.update(hasta_al_menos=_hhmm(ultima), minimo=round(_minutos(inicio, ultima)))
+        fila["tramos"].append(("minimo", _del_dia(inicio), _del_dia(ultima)))
     if fin is not None and entradas[-1] > fin:
         fila["reentrada"] = _hhmm(entradas[-1])
         return fila
@@ -146,20 +168,21 @@ def desglose(dia: date, marcas: list[tuple[datetime, str]], horario: dict[str, A
     minutos: dict[str, float] = defaultdict(float)
     for (t0, d0), (t1, d1) in zip(tramo, tramo[1:]):
         if d0 == "entrada" and d1 == "salida":
-            if oficial:
-                minutos["antes"] += _traslape(t0, t1, datetime.min, oficial[0])
-                minutos["dentro"] += _traslape(t0, t1, oficial[0], oficial[1])
-                minutos["despues"] += _traslape(t0, t1, oficial[1], datetime.max)
-            else:
-                minutos["dentro"] += _minutos(t0, t1)
+            partes = _partir(t0, t1, oficial)
         elif d0 == "salida" and d1 == "entrada":
-            minutos["afuera"] += _minutos(t0, t1)
+            partes = [("afuera", t0, t1)]
         else:
-            minutos["sin_marca"] += _minutos(t0, t1)
+            partes = [("sin_marca", t0, t1)]
+        for tipo, a, b in partes:
+            minutos[tipo] += _minutos(a, b)
+            if b > a:
+                fila["tramos"].append((tipo, _del_dia(a), _del_dia(b)))
     fila.update({k: round(v) for k, v in minutos.items()})
     fila["visita"] = _minutos(inicio, fin) < VISITA_MAX_MINUTOS
     if fila["visita"]:
         fila.update(retardo=False, tarde=0)
+        fila["tramos"] = [t for t in fila["tramos"] if t[0] != "tarde"]
+    fila["tramos"] = _compactar(fila["tramos"])
     return fila
 
 

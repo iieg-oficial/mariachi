@@ -183,6 +183,9 @@ class PersonalRow(BaseModel):
     horas: float | None = None
     primer_dia: date | None = None
     ultimo_dia: date | None = None
+    oficial: list[int | None] = []
+    tarde_promedio: int | None = None
+    recientes: list[dict[str, Any]] = []
 
 
 class PersonasResponse(BaseModel):

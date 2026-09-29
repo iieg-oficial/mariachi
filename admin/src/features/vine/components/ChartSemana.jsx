@@ -77,7 +77,7 @@ const ChartSemana = ({
     const maximo = Math.ceil((Math.max(...valores, ...oficiales) + 30) / 60) * 60;
     const alto = ALTO - M.arriba - M.abajo;
     const ancho = ANCHO - M.izq - M.der;
-    const y = (m) => M.arriba + alto - (((m - minimo) / Math.max(1, maximo - minimo)) * alto);
+    const y = (m) => M.arriba + (((m - minimo) / Math.max(1, maximo - minimo)) * alto);
     const columna = ancho / Math.max(1, semana.length);
     const x = (i) => M.izq + (columna * (i + 0.5));
 
@@ -88,13 +88,14 @@ const ChartSemana = ({
     const salidas = puntos('salida_mediana');
     const franja = [...entradas, ...[...salidas].reverse()].map((p) => p.join(',')).join(' ');
     const marcas = [];
-    for (let m = minimo; m <= maximo; m += 60) marcas.push(m);
+    const cada = maximo - minimo > 480 ? 120 : 60;
+    for (let m = minimo; m <= maximo; m += cada) marcas.push(m);
 
     return (
         <Card title={titulo} size="small" loading={loading}>
             <Leyenda />
             <svg viewBox={`0 0 ${ANCHO} ${ALTO}`} width="100%" role="img" aria-label="Entrada y salida mediana por día de la semana">
-                {marcas.map((m) => (
+                {marcas.filter((m) => !oficiales.some((o) => Math.abs(y(o) - y(m)) < 14)).map((m) => (
                     <g key={m}>
                         <line x1={M.izq} x2={ANCHO - M.der} y1={y(m)} y2={y(m)} stroke="rgba(0,0,0,0.06)" vectorEffect="non-scaling-stroke" />
                         <text x={M.izq - 6} y={y(m) + 4} textAnchor="end" style={TEXTO}>{hora(m)}</text>
@@ -112,8 +113,8 @@ const ChartSemana = ({
                             strokeDasharray="6 4"
                             vectorEffect="non-scaling-stroke"
                         />
-                        <text x={ANCHO - M.der} y={y(m) - 5} textAnchor="end" style={{ ...TEXTO, fontWeight: 600 }}>
-                            {`oficial ${hora(m)}`}
+                        <text x={M.izq - 6} y={y(m) + 4} textAnchor="end" style={{ ...TEXTO, fontWeight: 700 }}>
+                            {hora(m)}
                         </text>
                     </g>
                 ))}

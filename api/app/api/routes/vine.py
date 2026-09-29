@@ -98,7 +98,11 @@ async def personal(
     incluir_bajas: bool = Query(False),
     db: Session = Depends(get_db),
 ):
-    return vine_perfiles.personal(db, dias, incluir_bajas)
+    filas = vine_perfiles.personal(db, dias, incluir_bajas)
+    recientes = vine_jornadas.recientes(db, dias)
+    for fila in filas:
+        fila.update(recientes.get(fila["pin"], {}))
+    return filas
 
 
 @router.post(
