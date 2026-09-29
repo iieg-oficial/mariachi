@@ -9,6 +9,23 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.116.0] - 2026-09-29
+
+### Agregado: cada cámara de Frames se abre en grande
+
+Las tarjetas del mosaico llevan un botón para ver esa cámara en pantalla completa, en
+`/frames/vivo/pantalla/<nombre>`, en calidad alta y con sus fps en la cabecera. Desde ahí se pasa a
+la anterior o la siguiente con las flechas del teclado o con los botones, dando la vuelta al llegar
+al final; atrás regresa al mosaico. La foto salió a `FotoCamara.jsx` para servir a las dos vistas.
+
+### Corregido: cada tarjeta pedía la página completa al montarse
+
+La foto arrancaba con `src=""`, y el navegador interpreta una cadena vacía como la URL de la página
+actual: una petición de más por tarjeta, cada vez que se abría el mosaico. Ahora no se pinta `src`
+hasta tener la URL de la foto.
+
+---
+
 ## [2.115.1] - 2026-09-29
 
 ### Agregado

@@ -1,71 +1,23 @@
-import { useEffect, useRef, useState } from 'react';
-import { Card, Col, Empty, Row, Tag, Typography } from 'antd';
-import { ExclamationCircleOutlined } from '@ant-design/icons';
-import { SEMANTIC } from '@app/providers/brand';
+import { useNavigate } from 'react-router';
+import { Button, Card, Col, Empty, Row, Space, Tag, Tooltip, Typography } from 'antd';
+import { ExpandOutlined } from '@ant-design/icons';
 
-import { urlFoto } from '../api/framesService';
-import Senal from './Senal';
+import FotoCamara from './FotoCamara';
 
 const { Text } = Typography;
 
-const INTERVALO_MS = 2000;
+const rutaDe = (nombre) => `/frames/vivo/pantalla/${encodeURIComponent(nombre)}`;
 
-const FotoCamara = ({ nombre, etiqueta, alto, version }) => {
-    const [src, setSrc] = useState('');
-    const [falla, setFalla] = useState(false);
-    const temporizador = useRef(null);
-
-    useEffect(() => {
-        const actual = temporizador;
-        setFalla(false);
-        setSrc(urlFoto(nombre, { alto, t: Date.now() }));
-        return () => clearTimeout(actual.current);
-    }, [nombre, alto, version]);
-
-    const programar = (hubaFalla) => {
-        setFalla(hubaFalla);
-        clearTimeout(temporizador.current);
-        temporizador.current = setTimeout(() => {
-            setSrc(urlFoto(nombre, { alto, t: Date.now() }));
-        }, INTERVALO_MS);
-    };
-
-    return (
-        <div style={{ position: 'relative' }}>
-            <img
-                src={src}
-                onLoad={() => programar(false)}
-                onError={() => programar(true)}
-                alt={`Vista de ${etiqueta}`}
-                style={{
-                    width: '100%',
-                    display: 'block',
-                    background: '#000',
-                    aspectRatio: '16 / 9',
-                    objectFit: 'contain',
-                }}
-            />
-            {falla ? (
-                <div style={{
-                    position: 'absolute',
-                    inset: 0,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                }}>
-                    <Senal
-                        icono={<ExclamationCircleOutlined />}
-                        texto="sin imagen"
-                        color={SEMANTIC.warningSoft}
-                        ayuda="No llegó la imagen. Se reintenta solo cada pocos segundos."
-                    />
-                </div>
-            ) : null}
-        </div>
-    );
+const estadoDe = (estado) => {
+    if (!estado) return <Tag>sin datos</Tag>;
+    return estado.en_linea
+        ? <Tag color="green">{estado.camera_fps} fps</Tag>
+        : <Tag color="red">sin señal</Tag>;
 };
 
 const MosaicoCamaras = ({ camaras, estados, alto, version, columnas, oscuro }) => {
+    const navigate = useNavigate();
+
     if (camaras.length === 0) {
         return <Empty description="No hay cámaras habilitadas" />;
     }
@@ -74,37 +26,44 @@ const MosaicoCamaras = ({ camaras, estados, alto, version, columnas, oscuro }) =
 
     return (
         <Row gutter={[12, 12]}>
-            {camaras.map((camara) => {
-                const estado = estados[camara.nombre];
-                return (
-                    <Col key={camara.id} {...span}>
-                        <Card
-                            size="small"
-                            title={camara.etiqueta}
-                            variant={oscuro ? 'borderless' : 'outlined'}
-                            styles={oscuro
-                                ? { header: { color: '#fff' }, body: { padding: 0 } }
-                                : { body: { padding: 8 } }}
-                            style={oscuro ? { background: '#141414' } : undefined}
-                            extra={estado
-                                ? (estado.en_linea
-                                    ? <Tag color="green">{estado.camera_fps} fps</Tag>
-                                    : <Tag color="red">sin señal</Tag>)
-                                : <Tag>sin datos</Tag>}
-                        >
-                            <FotoCamara
-                                nombre={camara.nombre}
-                                etiqueta={camara.etiqueta}
-                                alto={alto}
-                                version={version}
-                            />
-                            {camara.ubicacion && !oscuro
-                                ? <Text type="secondary">{camara.ubicacion}</Text>
-                                : null}
-                        </Card>
-                    </Col>
-                );
-            })}
+            {camaras.map((camara) => (
+                <Col key={camara.id} {...span}>
+                    <Card
+                        size="small"
+                        title={camara.etiqueta}
+                        variant={oscuro ? 'borderless' : 'outlined'}
+                        styles={oscuro
+                            ? { header: { color: '#fff' }, body: { padding: 0 } }
+                            : { body: { padding: 8 } }}
+                        style={oscuro ? { background: '#141414' } : undefined}
+                        extra={
+                            <Space size={4}>
+                                {estadoDe(estados[camara.nombre])}
+                                <Tooltip title="Ver en grande">
+                                    <Button
+                                        type="text"
+                                        size="small"
+                                        icon={<ExpandOutlined />}
+                                        aria-label={`Ver ${camara.etiqueta} en grande`}
+                                        style={oscuro ? { color: '#fff' } : undefined}
+                                        onClick={() => navigate(rutaDe(camara.nombre))}
+                                    />
+                                </Tooltip>
+                            </Space>
+                        }
+                    >
+                        <FotoCamara
+                            nombre={camara.nombre}
+                            etiqueta={camara.etiqueta}
+                            alto={alto}
+                            version={version}
+                        />
+                        {camara.ubicacion && !oscuro
+                            ? <Text type="secondary">{camara.ubicacion}</Text>
+                            : null}
+                    </Card>
+                </Col>
+            ))}
         </Row>
     );
 };
