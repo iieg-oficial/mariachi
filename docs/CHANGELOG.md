@@ -9,6 +9,14 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.109.0] - 2026-09-29
+
+### Agregado
+
+- **Frames:** el módulo aparece en el sider marcado como **beta**, con el mismo distintivo que ya
+  usan mapalab y colibrí. El catálogo de cámaras se captura a mano y todavía no cubre los 23
+  canales del NVR, así que conviene que quien entre sepa en qué estado está.
+
 ## [2.108.0] - 2026-09-29
 
 ### Agregado

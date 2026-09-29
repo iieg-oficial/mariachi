@@ -165,6 +165,7 @@ export const PROJECT_REGISTRY = {
         icon: <VideoCameraOutlined />,
         permissions: ['mariachi.frames.view'],
         alcance: ALCANCE_LOCAL,
+        showBetaBadge: true,
         items: [
             {
                 key: '/frames/camaras', path: '/frames/camaras', label: 'Cámaras',
