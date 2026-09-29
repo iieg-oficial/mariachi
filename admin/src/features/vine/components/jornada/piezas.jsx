@@ -6,9 +6,12 @@ const minutosDe = (d, clave) => d[clave] ?? (d.tramos ?? [])
     .filter(([tipo]) => tipo === clave)
     .reduce((t, [, desde, hasta]) => t + (hasta - desde), 0);
 
-export const glifoDe = (d) => (d.estado === 'asistio'
-    ? (d.cerro ? (d.retardo ? '●' : '') : '○')
-    : ESTADOS[d.estado]?.glifo ?? '');
+export const glifoDe = (d) => {
+    if (d.estado !== 'asistio') return ESTADOS[d.estado]?.glifo ?? '';
+    if (d.visita) return '▫';
+    if (!d.cerro) return '○';
+    return d.retardo ? '●' : '';
+};
 
 export const estiloTramo = (tipo) => {
     if (tipo === 'tarde') return TARDE;

@@ -35,7 +35,13 @@ const detallePersona = (d) => {
     ].filter(Boolean).map((l) => <div key={l}>{l}</div>);
 };
 
-const Leyenda = () => (
+const SinHorario = () => (
+    <Tooltip title="Su entrada habitual no cae en 8 a 4 ni en 9 a 5, así que no hay hora contra la cual medir la llegada. Asígnale su horario en la pestaña Ficha; si no existe, dalo de alta en Catálogos.">
+        <Text type="secondary" style={{ fontSize: 12 }}>sin horario asignado</Text>
+    </Tooltip>
+);
+
+const Leyenda = ({ conOficial }) => (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px', marginBottom: 8 }}>
         {SERIES.map((s) => (
             <span key={s.clave} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
@@ -43,10 +49,12 @@ const Leyenda = () => (
                 <Text style={{ fontSize: 12 }}>{s.nombre}</Text>
             </span>
         ))}
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ width: 14, borderTop: `2px dashed ${COLOR_TINTA}`, display: 'inline-block' }} />
-            <Text style={{ fontSize: 12 }}>Horario oficial</Text>
-        </span>
+        {conOficial && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ width: 14, borderTop: `2px dashed ${COLOR_TINTA}`, display: 'inline-block' }} />
+                <Text style={{ fontSize: 12 }}>Horario oficial</Text>
+            </span>
+        )}
     </div>
 );
 
@@ -92,8 +100,8 @@ const ChartSemana = ({
     for (let m = minimo; m <= maximo; m += cada) marcas.push(m);
 
     return (
-        <Card title={titulo} size="small" loading={loading}>
-            <Leyenda />
+        <Card title={titulo} size="small" loading={loading} extra={oficiales.length ? null : <SinHorario />}>
+            <Leyenda conOficial={oficiales.length > 0} />
             <svg viewBox={`0 0 ${ANCHO} ${ALTO}`} width="100%" role="img" aria-label="Entrada y salida mediana por día de la semana">
                 {marcas.filter((m) => !oficiales.some((o) => Math.abs(y(o) - y(m)) < 14)).map((m) => (
                     <g key={m}>

@@ -3,10 +3,13 @@ import { Tooltip } from 'antd';
 import { COLOR_REFERENCIA } from '@features/vine/constants/jornada';
 import { detalle, estiloTramo } from '@features/vine/components/jornada/piezas';
 
+const MINIMO_VISIBLE = 30;
+
 const ColumnaReloj = ({ d, rango, alto, horaEntrada, ancho, radio = 2 }) => {
     const [ini, fin] = rango;
     const escala = alto / Math.max(1, fin - ini);
-    const tramos = (d.tramos ?? []).filter(([, desde, hasta]) => hasta > ini && desde < fin);
+    const tramos = d.visita ? [] : (d.tramos ?? [])
+        .filter(([tipo, desde, hasta]) => hasta > ini && desde < fin && !(tipo === 'minimo' && hasta - desde < MINIMO_VISIBLE));
     return (
         <Tooltip title={detalle(d, horaEntrada)}>
             <div style={{

@@ -1,4 +1,4 @@
-import { Card, Empty } from 'antd';
+import { Card, Empty, Tooltip, Typography } from 'antd';
 
 import TituloConAyuda from '@shared/components/TituloConAyuda';
 import { EJE_TEXTO } from '@features/vine/constants';
@@ -6,6 +6,8 @@ import { COLOR_TINTA, aMinutos } from '@features/vine/constants/jornada';
 import { glifoDe } from '@features/vine/components/jornada/piezas';
 import ColumnaReloj from '@features/vine/components/jornada/ColumnaReloj';
 import Leyenda from '@features/vine/components/jornada/Leyenda';
+
+const { Text } = Typography;
 
 const ALTO = 240;
 const EJE = 40;
@@ -32,6 +34,12 @@ const Linea = ({ y, texto, estilo }) => (
     </div>
 );
 
+const SinHorario = () => (
+    <Tooltip title="Su entrada habitual no cae en 8 a 4 ni en 9 a 5, así que no hay hora contra la cual medir la llegada. Asígnale su horario en la pestaña Ficha; si no existe, dalo de alta en Catálogos.">
+        <Text type="secondary" style={{ fontSize: 12 }}>sin horario asignado</Text>
+    </Tooltip>
+);
+
 const ChartReloj = ({ dias = [], horario, loading }) => {
     const ayuda = horario?.entrada
         ? `Cada columna es un día en el reloj, de arriba hacia abajo. Las líneas punteadas son su horario de ${horario.entrada} a ${horario.salida}: el rojo va de su hora de entrada a su llegada; el rayado azul es lo que se sabe de una jornada que no cerró. Retardo (●): más de ${horario.tolerancia} min.`
@@ -51,7 +59,7 @@ const ChartReloj = ({ dias = [], horario, loading }) => {
     const paso = Math.ceil(dias.length / 12);
 
     return (
-        <Card title={titulo} size="small" loading={loading}>
+        <Card title={titulo} size="small" loading={loading} extra={oficiales.length ? null : <SinHorario />}>
             <Leyenda />
             <div style={{ position: 'relative', height: ALTO, marginBottom: 4 }}>
                 {horas.map((m) => (

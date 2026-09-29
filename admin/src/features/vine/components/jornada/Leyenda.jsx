@@ -27,6 +27,7 @@ const Leyenda = ({ compacta = false }) => (
             <>
                 <Text style={{ fontSize: 12 }}>● retardo</Text>
                 <Text style={{ fontSize: 12 }}>○ no cerró</Text>
+                <Text style={{ fontSize: 12 }}>▫ visita corta</Text>
                 <Text style={{ fontSize: 12 }}>◆ incidencia</Text>
                 <Text style={{ fontSize: 12 }}>✕ inhábil</Text>
             </>

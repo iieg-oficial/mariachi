@@ -9,6 +9,17 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.110.1] - 2026-09-29
+
+### Corregido
+
+- **vine, pestaña Asistencia:** las visitas cortas ya no se dibujan como una rayita que parece
+  asistencia: salen como ▫ en la fila de símbolos, con su detalle en el tooltip. Tampoco se dibuja
+  el «al menos» de menos de 30 minutos.
+- Quien no tiene horario —su entrada habitual no cae en 8 a 4 ni en 9 a 5— lo dice junto al título
+  de las dos gráficas, con un tooltip que manda a asignarlo en la Ficha. Antes simplemente no
+  aparecían el rojo ni las líneas del horario, sin explicación.
+
 ## [2.110.0] - 2026-09-29
 
 ### Agregado
