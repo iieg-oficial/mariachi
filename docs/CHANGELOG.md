@@ -9,6 +9,26 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.104.0] - 2026-09-29
+
+### Agregado
+
+- `ALLOWED_EVENT_NAMES` acepta los eventos de las herramientas nuevas del visor: `view3d`, `north_reset`,
+  `tabla_open`, `tabla_filter`, `tabla_download`, `stats_open`, `stats_custom_create`, `stats_detach` y
+  `colibri_open`. `view3d` lo emite mapalab desde 1.173.0 y el collector lo rechazaba con 422, llevándose
+  el lote entero.
+- Estadísticas de MapaLab: «Herramientas» suma la vista 3D por `action` (incluidas las del dron) y
+  «Botones» suma norte, tabla de datos, estadísticas, Colibrí y la vista por municipio.
+- Documentación → Telemetría: tarjeta con los eventos de las herramientas del visor.
+- `tests/test_mapalab_events_allowlist.py`: los eventos nuevos se aceptan y un rechazo trae el índice del
+  evento en `loc`, que es lo que el visor usa para reenviar el resto del lote.
+
+### Cambiado
+
+- «Reportaron» cuenta las sesiones que abrieron Colibrí (`colibri_open`); `report_submitted` ya no se emite.
+- El código de la allowlist, los rollups y el tablero entró por error en `1f76911` (barrido de acervo);
+  esta versión lo documenta.
+
 ## [2.103.0] - 2026-09-29
 
 ### Agregado

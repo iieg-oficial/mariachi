@@ -47,6 +47,18 @@ const MUNICIPIO_EVENTS = [
     },
 ];
 
+const HERRAMIENTAS_EVENTS = [
+    { evento: 'view3d', cuando: 'Vista 3D: entrar, salir, levantar o aplanar una capa', params: 'action, duration_sec, layer_id' },
+    { evento: 'north_reset', cuando: 'Botón del norte', params: 'modo (2d | 3d)' },
+    { evento: 'tabla_open', cuando: 'Abrir la tabla de datos', params: 'layer_id' },
+    { evento: 'tabla_filter', cuando: 'Poner, quitar o limpiar un filtro de la tabla', params: 'layer_id, action, columna' },
+    { evento: 'tabla_download', cuando: 'Descargar lo que muestra la tabla', params: 'layer_id, format' },
+    { evento: 'stats_open', cuando: 'Abrir un modo del panel de estadísticas', params: 'modo (comparar | ranking | crear)' },
+    { evento: 'stats_custom_create', cuando: 'Guardar una estadística propia', params: 'layer_id, operation, filtros' },
+    { evento: 'stats_detach', cuando: 'Convertir las estadísticas en panel', params: 'layer_id' },
+    { evento: 'colibri_open', cuando: 'Abrir el widget de Colibrí; cuenta como sesión que reportó', params: 'motivo, tipo' },
+];
+
 const MUNICIPIO_EVENT_COLUMNS = [
     { title: 'Evento', dataIndex: 'evento', key: 'evento', render: (v) => <Text code>{v}</Text> },
     { title: 'Cuándo se dispara', dataIndex: 'cuando', key: 'cuando' },
@@ -87,6 +99,19 @@ export default function TelemetryTopic() {
                 <Paragraph type="secondary" style={{ marginTop: 0, marginBottom: 0, fontSize: 12 }}>
                     Además de la telemetría anónima de arriba, cada <Text code>tools/call</Text> se registra <strong>atribuido a la API key</strong> en la misma tabla que usa el widget embebido (<Text code>mapalab_api_keys_accesos</Text>), con <Text code>endpoint = mcp</Text>, <Text code>resultado</Text> (allowed | denied | quota_exceeded), la herramienta en <Text code>motivo</Text> e <Text code>ip_hash</Text>; <Text code>origin</Text> va nulo (el MCP no tiene dominio). Se reúsa <Text code>access_logger</Text> (flush a <Text code>POST /api/administrador/internal/mapalab/keys/accesos</Text>). Se ve por llave en la pestaña <Text code>Auditoría</Text> de <Text code>/mapalab/api-keys</Text>, junto con los accesos del embed (distinguidos por la columna Acción). Solo se registran los <Text code>tools/call</Text>; no se guardan los argumentos.
                 </Paragraph>
+            </Card>
+
+            <Card title="Visor MapaLab — Herramientas" size="small">
+                <Paragraph type="secondary" style={{ marginTop: 0, marginBottom: 12, fontSize: 12 }}>
+                    Un nombre fuera de <Text code>ALLOWED_EVENT_NAMES</Text> recibe 422; el visor descarta ese evento y reenvía el resto del lote.
+                </Paragraph>
+                <Table
+                    rowKey="evento"
+                    size="small"
+                    pagination={false}
+                    dataSource={HERRAMIENTAS_EVENTS}
+                    columns={MUNICIPIO_EVENT_COLUMNS}
+                />
             </Card>
 
             <Card
