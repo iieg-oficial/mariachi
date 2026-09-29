@@ -12,7 +12,7 @@ export const TEXTURA_MINIMO = 'repeating-linear-gradient(135deg, rgba(59, 91, 16
 
 export const COLOR_TARDE = '#D7263D';
 
-export const FONDO_TARDE = 'rgba(215, 38, 61, 0.22)';
+export const TEXTURA_TARDE = 'repeating-linear-gradient(45deg, rgba(215, 38, 61, 0.55) 0 2px, rgba(215, 38, 61, 0.08) 2px 6px)';
 
 export const JORNADA_ESPERADA_MIN = 480;
 

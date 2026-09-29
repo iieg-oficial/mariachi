@@ -184,7 +184,6 @@ class PersonalRow(BaseModel):
     primer_dia: date | None = None
     ultimo_dia: date | None = None
     oficial: list[int | None] = []
-    tarde_promedio: int | None = None
     recientes: list[dict[str, Any]] = []
 
 

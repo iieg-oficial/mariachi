@@ -9,6 +9,19 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.107.1] - 2026-09-29
+
+### Cambiado
+
+- **vine, directorio:** «Últimos 10 días hábiles» pasa a ser la segunda columna, más ancha y con
+  barras más grandes; su encabezado explica cómo leerla.
+- El tiempo que no llegó a su hora se dibuja rayado en rojo con borde, en la ficha y en el
+  directorio, en vez de un relleno liso.
+
+### Eliminado
+
+- La columna «Tarde prom.» del directorio y su cálculo en el backend.
+
 ## [2.107.0] - 2026-09-29
 
 ### Agregado

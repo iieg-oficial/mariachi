@@ -1,5 +1,5 @@
 import {
-    COLOR_TARDE, FONDO_TARDE, SEGMENTOS_JORNADA, TEXTURA_MINIMO, TEXTURA_SIN_MARCA, formatoMinutos,
+    COLOR_TARDE, TEXTURA_TARDE, SEGMENTOS_JORNADA, TEXTURA_MINIMO, TEXTURA_SIN_MARCA, formatoMinutos,
 } from '@features/vine/constants/jornada';
 
 const minutosDe = (d, clave) => d[clave] ?? (d.tramos ?? [])
@@ -26,7 +26,7 @@ export const fondo = (s) => (s.textura
     ? { backgroundImage: TEXTURA_SIN_MARCA, boxShadow: `inset 0 0 0 1px ${s.color}` }
     : { background: s.color });
 
-export const TARDE = { background: FONDO_TARDE, boxShadow: `inset 0 0 0 1px ${COLOR_TARDE}` };
+export const TARDE = { backgroundImage: TEXTURA_TARDE, boxShadow: `inset 0 0 0 1px ${COLOR_TARDE}` };
 
 export const MINIMO = { backgroundImage: TEXTURA_MINIMO, boxShadow: `inset 0 0 0 1px ${SEGMENTOS_JORNADA[0].color}` };
 

@@ -117,11 +117,8 @@ def recientes(db: Session, dias: int = 90, habiles: int = HABILES_RECIENTES) -> 
 
     salida: dict[str, dict[str, Any]] = {}
     for pin, (horario, dias_pin) in _desgloses(db, params).items():
-        jornadas = [f for f in dias_pin.values() if f["estado"] == "asistio" and not f["visita"]]
-        con_tarde = horario.get("entrada") is not None and jornadas
         salida[pin] = {
             "oficial": [_minutos_del_dia(horario.get("entrada")), _minutos_del_dia(horario.get("salida"))],
-            "tarde_promedio": _promedio(jornadas, "tarde") if con_tarde else None,
             "recientes": [
                 {k: v for k, v in dias_pin[d].items() if k in _CAMPOS_RECIENTES}
                 if d in dias_pin else {"dia": d.isoformat(), "estado": "inhabil" if d in inhabiles else "sin_registro"}
