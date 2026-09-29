@@ -42,7 +42,7 @@ const ConexionCamara = ({
                     label={porNvr ? 'IP del grabador' : 'IP de la cámara'}
                     rules={[{ required: true, message: 'Requerido' }]}
                 >
-                    <Input placeholder="10.0.0.10" />
+                    <Input placeholder="192.0.2.10" />
                 </Form.Item>
 
                 <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>

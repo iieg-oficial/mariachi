@@ -9,6 +9,15 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.114.1] - 2026-09-29
+
+### Corregido: el campo de IP de Frames sugería una dirección de la red interna
+
+El placeholder era `10.0.0.10`, del rango real del bridge interno del espejo. Pasa a `192.0.2.10`,
+del rango reservado para documentación (RFC 5737), que nunca corresponde a un equipo real.
+
+---
+
 ## [2.114.0] - 2026-09-29
 
 ### Agregado
