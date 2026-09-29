@@ -1,5 +1,7 @@
-import { TableOutlined, TeamOutlined } from '@ant-design/icons';
-import { Alert, Button, Card, Input, Space, Table, Typography } from 'antd';
+import { SettingOutlined, TableOutlined, TeamOutlined } from '@ant-design/icons';
+import {
+    Alert, Button, Card, Input, Popover, Space, Switch, Table, Tooltip, Typography,
+} from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { Link } from 'react-router';
@@ -10,8 +12,7 @@ import { getPersonal } from '@features/vine/api/vineService';
 import { columnasPersonal } from '@features/vine/components/columnasPersonal';
 import DescargaDirectorio from '@features/vine/components/DescargaDirectorio';
 import FichaPersona from '@features/vine/components/FichaPersona';
-import FiltrosPersonal, { BotonFiltros } from '@features/vine/components/FiltrosPersonal';
-import { aplicarFiltros, columnaSegunFiltro, SIN_FILTROS } from '@features/vine/constants/filtros';
+import { DIMENSIONES } from '@features/vine/constants/filtros';
 
 const { Text } = Typography;
 
@@ -26,8 +27,7 @@ const PersonalPage = () => {
     const puedeEditar = can(PERMISO_EDITAR);
 
     const [busqueda, setBusqueda] = useState('');
-    const [filtros, setFiltros] = useState(SIN_FILTROS);
-    const [panelFiltros, setPanelFiltros] = useState(false);
+    const [conBajas, setConBajas] = useState(false);
     const [paginacion, setPaginacion] = useState({ current: 1, pageSize: 25 });
     const [expandidas, setExpandidas] = useState([]);
     const [tabs, setTabs] = useState({});
@@ -58,17 +58,17 @@ const PersonalPage = () => {
     }, []);
 
     const columnas = useMemo(
-        () => columnasPersonal(abrir, columnaSegunFiltro(filtros)),
-        [abrir, filtros],
+        () => columnasPersonal(abrir, DIMENSIONES[0]),
+        [abrir],
     );
 
     const visibles = useMemo(() => {
         const q = busqueda.trim().toLowerCase();
-        const filtradas = aplicarFiltros(filas, filtros);
+        const filtradas = conBajas ? filas : filas.filter((f) => !f.baja);
         if (!q) return filtradas;
         return filtradas.filter((f) => `${f.nombre ?? ''} ${f.pin} ${f.departamento ?? ''} ${f.email ?? ''}`
             .toLowerCase().includes(q));
-    }, [filas, busqueda, filtros]);
+    }, [filas, busqueda, conBajas]);
 
     if (!puedeVer) {
         return (
@@ -90,37 +90,38 @@ const PersonalPage = () => {
                 icon={<TeamOutlined />}
                 title="Personal"
                 description="Cada persona dada de alta en el biométrico y tarjetas."
-                extra={puedeEditar && (
-                    <Link to="/vine/personal/tabla">
-                        <Button type="primary" icon={<TableOutlined />}>Captura masiva</Button>
-                    </Link>
+                extra={(
+                    <Space size={8} wrap>
+                        <Input.Search
+                            allowClear
+                            placeholder="Buscar por nombre, PIN, área o correo"
+                            style={{ width: 'min(300px, 100%)' }}
+                            value={busqueda}
+                            onChange={(e) => setBusqueda(e.target.value)}
+                        />
+                        <Popover
+                            trigger="click"
+                            placement="bottomRight"
+                            content={(
+                                <Space>
+                                    <Switch size="small" checked={conBajas} onChange={setConBajas} />
+                                    <Text>Mostrar bajas</Text>
+                                </Space>
+                            )}
+                        >
+                            <Tooltip title="Configuración">
+                                <Button shape="circle" icon={<SettingOutlined />} aria-label="Configuración" />
+                            </Tooltip>
+                        </Popover>
+                        <DescargaDirectorio pins={visibles.map((f) => f.pin)} dias={DIAS} />
+                        {puedeEditar && (
+                            <Link to="/vine/personal/tabla">
+                                <Button type="primary" icon={<TableOutlined />}>Captura masiva</Button>
+                            </Link>
+                        )}
+                    </Space>
                 )}
             />
-
-            <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: 12,
-                marginBottom: 16,
-            }}>
-                <Input.Search
-                    allowClear
-                    placeholder="Buscar por nombre, PIN, área o correo"
-                    style={{ width: 'min(360px, 100%)' }}
-                    value={busqueda}
-                    onChange={(e) => setBusqueda(e.target.value)}
-                />
-                <Space size={8}>
-                    <BotonFiltros abierto={panelFiltros} onAbrir={setPanelFiltros} valores={filtros} />
-                    <DescargaDirectorio pins={visibles.map((f) => f.pin)} dias={DIAS} />
-                </Space>
-            </div>
-
-            {panelFiltros && (
-                <FiltrosPersonal filas={filas} valores={filtros} onCambio={setFiltros} />
-            )}
 
             {error && <Alert type="error" showIcon title={error} style={{ marginBottom: 16 }} />}
 
@@ -157,7 +158,7 @@ const PersonalPage = () => {
                 <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 12 }}>
                     La fecha de alta viene del biométrico, donde está capturada en 3 de 293
                     personas; el resto muestra con ~ su alta en el control de acceso, que no es lo
-                    mismo. Se corrige en la ficha. Las bajas están ocultas salvo que se pidan.
+                    mismo. Se corrige en la ficha. Las bajas se muestran desde el engrane.
                 </Text>
             </Card>
         </div>

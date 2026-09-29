@@ -26,7 +26,7 @@ const ColumnaReloj = ({
                     position: 'relative',
                     height: alto,
                     flex: ancho ? `0 0 ${ancho}px` : '1 1 0',
-                    minWidth: ancho ?? 8,
+                    minWidth: ancho ?? 0,
                     cursor: onElegir ? 'pointer' : 'default',
                     borderRadius: radio + 1,
                     outline: elegido ? `2px solid ${COLOR_TINTA}` : 'none',

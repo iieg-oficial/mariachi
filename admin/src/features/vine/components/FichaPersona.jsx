@@ -1,4 +1,6 @@
-import { App, Avatar, Col, Descriptions, Row, Spin, Tabs, Tag, Typography } from 'antd';
+import {
+    App, Avatar, Col, Descriptions, Row, Segmented, Spin, Tabs, Tag, Tooltip, Typography,
+} from 'antd';
 import { useCallback, useEffect, useState } from 'react';
 
 import useIsMobile from '@shared/hooks/useIsMobile';
@@ -8,7 +10,7 @@ import { colorAvatar, iniciales } from '@features/vine/components/columnasPerson
 import FormularioFicha from '@features/vine/components/FormularioFicha';
 import PanelAsistencia from '@features/vine/components/PanelAsistencia';
 import PanelIncidencias from '@features/vine/components/PanelIncidencias';
-import { COLOR_VINCULO } from '@features/vine/constants';
+import { COLOR_VINCULO, RANGOS } from '@features/vine/constants';
 import { medioInfo } from '@features/vine/constants/medios';
 
 const { Text } = Typography;
@@ -92,6 +94,7 @@ const FichaPersona = ({
     const [detalle, setDetalle] = useState(null);
     const [cargando, setCargando] = useState(true);
     const [guardando, setGuardando] = useState(false);
+    const [periodo, setPeriodo] = useState(90);
 
     const cargar = useCallback(async () => {
         setCargando(true);
@@ -147,7 +150,14 @@ const FichaPersona = ({
         {
             key: 'asistencia',
             label: 'Asistencia',
-            children: <PanelAsistencia fila={fila} diaInicial={dia} />,
+            children: (
+                <>
+                    {isMobile && (
+                        <Segmented block size="small" options={RANGOS} value={periodo} onChange={setPeriodo} style={{ marginBottom: 12 }} />
+                    )}
+                    <PanelAsistencia fila={fila} diaInicial={dia} dias={periodo} />
+                </>
+            ),
         },
         {
             key: 'biometrico',
@@ -177,7 +187,17 @@ const FichaPersona = ({
                 </Col>
             )}
             <Col flex="1 1 0" style={{ minWidth: 0, overflow: 'hidden' }}>
-                <Tabs activeKey={activa} onChange={onTab} size="small" items={pestanas} />
+                <Tabs
+                    activeKey={activa}
+                    onChange={onTab}
+                    size="small"
+                    items={pestanas}
+                    tabBarExtraContent={activa === 'asistencia' && !isMobile && (
+                        <Tooltip title="Periodo">
+                            <Segmented size="small" options={RANGOS} value={periodo} onChange={setPeriodo} />
+                        </Tooltip>
+                    )}
+                />
             </Col>
         </Row>
     );

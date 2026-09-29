@@ -2,6 +2,7 @@ import { Card, Empty, Tooltip, Typography } from 'antd';
 import { useEffect, useState } from 'react';
 
 import TituloConAyuda from '@shared/components/TituloConAyuda';
+import useIsMobile from '@shared/hooks/useIsMobile';
 import { EJE_TEXTO } from '@features/vine/constants';
 import { COLOR_TINTA, aMinutos } from '@features/vine/constants/jornada';
 import { glifoDe } from '@features/vine/components/jornada/piezas';
@@ -46,6 +47,7 @@ const ChartReloj = ({
     dias = [], horario, loading, pin, diaInicial,
 }) => {
     const [elegido, setElegido] = useState(diaInicial ?? null);
+    const { isMobile } = useIsMobile();
     useEffect(() => { if (diaInicial) setElegido(diaInicial); }, [diaInicial]);
 
     const ayuda = horario?.entrada
@@ -63,14 +65,15 @@ const ChartReloj = ({
     const cada = rango[1] - rango[0] > 720 ? 120 : 60;
     const horas = [];
     for (let m = rango[0]; m <= rango[1]; m += cada) horas.push(m);
-    const paso = Math.ceil(dias.length / 12);
+    const paso = Math.ceil(dias.length / (isMobile ? 5 : 12));
+    const separacion = dias.length > 40 || isMobile ? 1 : 3;
     const indice = dias.findIndex((d) => d.dia === elegido);
 
     return (
         <Card title={titulo} size="small" loading={loading} extra={oficiales.length ? null : <SinHorario />}>
             <Leyenda />
-            <div style={{ overflowX: 'auto', overflowY: 'hidden' }}>
-                <div style={{ minWidth: EJE + (dias.length * 11) }}>
+            <div>
+                <div>
                     <div style={{ position: 'relative', height: ALTO, marginBottom: 4 }}>
                         {horas.map((m) => (
                             <div key={m}>
@@ -88,7 +91,7 @@ const ChartReloj = ({
                             </div>
                         ))}
                         <div style={{
-                            position: 'absolute', left: EJE, right: 0, top: 0, bottom: 0, display: 'flex', gap: 3,
+                            position: 'absolute', left: EJE, right: 0, top: 0, bottom: 0, display: 'flex', gap: separacion,
                         }}
                         >
                             {dias.map((d) => (
@@ -112,9 +115,9 @@ const ChartReloj = ({
                             />
                         ))}
                     </div>
-                    <div style={{ display: 'flex', gap: 3, marginLeft: EJE }}>
+                    <div style={{ display: 'flex', gap: separacion, marginLeft: EJE }}>
                         {dias.map((d, i) => (
-                            <div key={d.dia} style={{ flex: '1 1 0', minWidth: 8, textAlign: 'center' }}>
+                            <div key={d.dia} style={{ flex: '1 1 0', minWidth: 0, textAlign: 'center' }}>
                                 <div style={{ ...EJE_TEXTO, color: COLOR_TINTA, height: 14, lineHeight: '14px' }}>{glifoDe(d)}</div>
                                 <div style={{ ...EJE_TEXTO, whiteSpace: 'nowrap', height: 16 }}>
                                     {i % paso === 0 ? d.dia.slice(5) : ' '}

@@ -9,6 +9,27 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.113.0] - 2026-09-29
+
+### Agregado
+
+- **vine, Resumen del periodo:** las cuatro tarjetas de la pestaña Asistencia se vuelven una sola
+  con seis datos comparados contra el horario: asistencia con su barra, a qué hora llega y sale
+  respecto a su hora, jornada típica, retardos y tiempo afuera por día con las jornadas sin cerrar.
+- **vine, directorio:** botón de engrane para las configuraciones extra; por ahora, mostrar bajas.
+
+### Cambiado
+
+- **vine, pestaña Asistencia:** «Cómo se repartió cada jornada» va primero y se ajusta al ancho sin
+  desplazamiento lateral. El periodo pasa a la barra de pestañas, solo en Asistencia y con tooltip
+  en vez de etiqueta; en celular va en su propio renglón.
+- **vine, directorio:** la búsqueda, el engrane, Descargar y Captura masiva comparten el renglón del
+  título.
+
+### Eliminado
+
+- El panel de Filtros del directorio (`FiltrosPersonal.jsx`) y sus helpers.
+
 ## [2.112.1] - 2026-09-29
 
 ### Corregido: editar una cámara de Frames se quedó sin las comodidades del alta
