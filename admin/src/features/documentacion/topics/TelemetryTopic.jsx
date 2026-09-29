@@ -49,6 +49,7 @@ const MUNICIPIO_EVENTS = [
 
 const HERRAMIENTAS_EVENTS = [
     { evento: 'view3d', cuando: 'Vista 3D: entrar, salir, levantar o aplanar una capa', params: 'action, duration_sec, layer_id' },
+    { evento: 'minimapa', cuando: 'Minimapa: encender, apagar, abrir en celular o ir a un punto', params: 'action (encender | apagar | abrir | ir)' },
     { evento: 'north_reset', cuando: 'Botón del norte', params: 'modo (2d | 3d)' },
     { evento: 'tabla_open', cuando: 'Abrir la tabla de datos', params: 'layer_id' },
     { evento: 'tabla_filter', cuando: 'Poner, quitar o limpiar un filtro de la tabla', params: 'layer_id, action, columna' },

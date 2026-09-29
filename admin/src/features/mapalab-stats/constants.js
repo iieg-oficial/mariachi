@@ -36,11 +36,13 @@ export const TOOL_LABELS = {
     drawing_tool_use: 'Dibujo',
     measurement_tool_use: 'Medición',
     view3d: 'Vista 3D',
+    minimapa: 'Minimapa',
 };
 
 export const TOOL_COLORS = {
     measurement_tool_use: 'blue',
     view3d: 'green',
+    minimapa: 'orange',
 };
 
 export const SOURCE_LABELS = {

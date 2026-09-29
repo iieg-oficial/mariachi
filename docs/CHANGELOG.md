@@ -9,6 +9,12 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.114.0] - 2026-09-29
+
+### Agregado
+
+- `ALLOWED_EVENT_NAMES` acepta `minimapa` y las Estadísticas de MapaLab lo suman a «Herramientas» por `action` (encender, apagar, abrir, ir), con su fila en Documentación → Telemetría. mapalab 2.2.0 lo emite; antes llegaba solo como `map_interaction` y no se veía.
+
 ## [2.113.1] - 2026-09-29
 
 ### Agregado

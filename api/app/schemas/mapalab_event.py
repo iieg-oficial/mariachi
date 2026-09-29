@@ -55,6 +55,7 @@ ALLOWED_EVENT_NAMES = frozenset({
     "municipio_mode_change",
     "municipio_panel_open",
     "view3d",
+    "minimapa",
     "north_reset",
     "tabla_open",
     "tabla_filter",

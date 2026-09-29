@@ -5,6 +5,7 @@ from app.schemas.mapalab_event import EventBatchIn, EventIn
 
 HERRAMIENTAS_NUEVAS = [
     "view3d",
+    "minimapa",
     "north_reset",
     "tabla_open",
     "tabla_filter",

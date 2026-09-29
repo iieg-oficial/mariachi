@@ -265,7 +265,7 @@ _ROLLUP_STEPS: tuple[tuple[str, str, str], ...] = (
                COALESCE(props->>'tool', props->>'action', 'unknown'),
                COUNT(*), COUNT(DISTINCT session_id)
         FROM huachicol.events
-        WHERE event_name IN ('drawing_tool_use', 'measurement_tool_use', 'view3d')
+        WHERE event_name IN ('drawing_tool_use', 'measurement_tool_use', 'view3d', 'minimapa')
           AND ts >= CURRENT_DATE - :days
         GROUP BY DATE(ts), app, event_name,
                  COALESCE(props->>'tool', props->>'action', 'unknown')
