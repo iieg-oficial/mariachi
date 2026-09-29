@@ -175,3 +175,44 @@ def test_cliente_real_lee_por_rango_y_reemplaza_metadatos():
     assert args[2].bucket_name == "sieej" and args[2].object_name == "a.pdf"
     assert kwargs["metadata_directive"] == REPLACE
     assert kwargs["metadata"] == {"Content-Type": "text/html"}
+
+
+def _stat(content_type: str, metadata: dict | None = None) -> SimpleNamespace:
+    return SimpleNamespace(content_type=content_type, metadata=metadata or {})
+
+
+def test_csv_gzip_servido_con_content_encoding_no_se_marca() -> None:
+    texto = b"clave_municipio,valor\n14001,10\n"
+    stat = _stat("text/csv", {"Content-Encoding": "gzip"})
+    hallazgo = acervo_barrido.evaluar(
+        "mapalab", "downloads/demografia/poblacion.csv.gz", len(texto), stat, texto
+    )
+    assert hallazgo is None
+
+
+def test_svg_sin_codigo_no_se_marca() -> None:
+    svg = (
+        b'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><path d="M0 0h10v10z"/></svg>'
+    )
+    hallazgo = acervo_barrido.evaluar(
+        "iieg", "iconos/flecha.svg", len(svg), _stat("image/svg+xml"), svg
+    )
+    assert hallazgo is None
+
+
+def test_svg_con_script_se_marca() -> None:
+    svg = b'<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>'
+    hallazgo = acervo_barrido.evaluar(
+        "iieg", "iconos/malo.svg", len(svg), _stat("image/svg+xml"), svg
+    )
+    assert hallazgo is not None
+    assert "guardado_activo" in hallazgo.motivos
+
+
+def test_svg_mayor_que_la_cabecera_se_marca() -> None:
+    svg = b'<svg xmlns="http://www.w3.org/2000/svg">' + b" " * 5000 + b"</svg>"
+    cabecera = svg[:4096]
+    hallazgo = acervo_barrido.evaluar(
+        "iieg", "iconos/grande.svg", len(svg), _stat("image/svg+xml"), cabecera
+    )
+    assert hallazgo is not None

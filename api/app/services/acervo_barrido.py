@@ -108,16 +108,30 @@ def _es_adjunto(disposicion: str) -> bool:
     return disposicion.strip().lower().startswith("attachment")
 
 
+_SVG_ACTIVO = re.compile(
+    rb"<script|\bon[a-z]+\s*=|javascript:|<foreignobject|<iframe|<embed", re.IGNORECASE
+)
+
+
+def _svg_inerte(tipo: str, cabecera: bytes, tamano: int) -> bool:
+    if tipo != "image/svg+xml" or tamano > len(cabecera):
+        return False
+    return _SVG_ACTIVO.search(cabecera) is None
+
+
 def evaluar(bucket: str, objeto: str, tamano: int, stat: Any, cabecera: bytes) -> Hallazgo | None:
     guardado = _normalizar(getattr(stat, "content_type", None))
-    disposicion = _metadatos(stat).get("content-disposition", "")
+    metadatos = _metadatos(stat)
+    disposicion = metadatos.get("content-disposition", "")
+    comprimido = "gzip" in metadatos.get("content-encoding", "").lower()
     real = tipo_archivo.detectar_mime(cabecera, objeto)
     ext = tipo_archivo.extension(objeto)
     por_extension = tipo_archivo.mime_por_extension(ext) if ext else tipo_archivo.OCTET_STREAM
-    conocido = real != tipo_archivo.OCTET_STREAM
+    conocido = real != tipo_archivo.OCTET_STREAM and not comprimido
+    inerte = _svg_inerte(real, cabecera, tamano) and _svg_inerte(guardado, cabecera, tamano)
 
     motivos: list[str] = []
-    if tipo_archivo.es_activo(guardado):
+    if tipo_archivo.es_activo(guardado) and not inerte:
         motivos.append("guardado_activo")
     if conocido and not tipo_archivo.mime_compatible(guardado or tipo_archivo.OCTET_STREAM, real):
         motivos.append("real_distinto")
@@ -127,7 +141,7 @@ def evaluar(bucket: str, objeto: str, tamano: int, stat: Any, cabecera: bytes) -
         and not tipo_archivo.mime_compatible(por_extension, real)
     ):
         motivos.append("extension_distinta")
-    if tipo_archivo.es_activo(real) and not _es_adjunto(disposicion):
+    if tipo_archivo.es_activo(real) and not inerte and not _es_adjunto(disposicion):
         motivos.append("real_activo_inline")
     if not motivos:
         return None
