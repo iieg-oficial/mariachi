@@ -2,8 +2,11 @@ import { Card, Col, Row, Statistic, Typography } from 'antd';
 
 import TituloConAyuda from '@shared/components/TituloConAyuda';
 import ChartBarras from '@features/vine/components/ChartBarras';
+import ChartJornadas from '@features/vine/components/ChartJornadas';
+import ChartLinea from '@features/vine/components/ChartLinea';
+import ChartSemana from '@features/vine/components/ChartSemana';
 import PlantaAccesos from '@features/vine/components/PlantaAccesos';
-import { COLOR_ENTRADA, COLOR_NEUTRO, COLOR_SALIDA } from '@features/vine/constants';
+import { COLOR_ENTRADA, COLOR_SALIDA } from '@features/vine/constants';
 import { AYUDAS } from '@features/vine/constants/ayudas';
 
 const { Text } = Typography;
@@ -13,7 +16,18 @@ const SERIES_DIRECCION = [
     { nombre: 'Salidas', color: COLOR_SALIDA },
 ];
 
-const SERIE_UNICA = (nombre) => [{ nombre, color: COLOR_NEUTRO }];
+const HORAS_OFICIALES = ['08:00', '09:00', '16:00', '17:00'];
+
+const detalleSemana = (d) => [
+    `${d.nombre}: ${d.personas_promedio ?? 0} personas en promedio`,
+    `Entrada mediana ${d.entrada_mediana ?? '—'} · salida ${d.salida_mediana ?? '—'}`,
+].map((l) => <div key={l}>{l}</div>);
+
+const detalleMes = (m) => [
+    `${m.mes}: ${m.asistencias.toLocaleString('es-MX')} asistencias, ${m.personas} personas`,
+    m.habiles > 0 && `${Math.round(m.asistencias / m.habiles)} por día hábil (${m.habiles} hábiles)`,
+    m.inhabiles > 0 && `${m.inhabiles} inhábiles del instituto o de ley`,
+].filter(Boolean).map((l) => <div key={l}>{l}</div>);
 
 const TabGeneral = ({ resumen, ritmo, loading }) => {
     const panorama = resumen?.panorama;
@@ -84,6 +98,7 @@ const TabGeneral = ({ resumen, ritmo, loading }) => {
                         ayuda={AYUDAS.ritmoHorario}
                         loading={loading}
                         tabla
+                        marcas={['08', '09', '16', '17']}
                         series={SERIES_DIRECCION}
                         datos={(ritmo?.horario ?? []).map((h) => ({
                             etiqueta: `${String(h.hora).padStart(2, '0')}`,
@@ -92,32 +107,35 @@ const TabGeneral = ({ resumen, ritmo, loading }) => {
                     />
                 </Col>
                 <Col xs={24} xl={10}>
-                    <ChartBarras
-                        title="Personas por día de la semana"
+                    <ChartSemana
+                        titulo="Personas por día de la semana"
                         ayuda={AYUDAS.ritmoSemanal}
                         loading={loading}
-                        sufijo=" personas"
-                        series={SERIE_UNICA('Personas en promedio')}
-                        datos={(ritmo?.semanal ?? []).map((d) => ({
-                            etiqueta: d.nombre.slice(0, 3),
-                            valores: [d.personas_promedio],
-                        }))}
+                        semana={(ritmo?.semanal ?? []).filter((d) => d.dia_semana < 6)}
+                        oficiales={HORAS_OFICIALES}
+                        pie={(d) => `${d.personas_promedio ?? 0}`}
+                        detalle={detalleSemana}
                     />
                 </Col>
             </Row>
 
             <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
                 <Col xs={24}>
-                    <ChartBarras
+                    <ChartLinea
                         title="Asistencias por mes"
                         ayuda={AYUDAS.tendencia}
                         loading={loading}
-                        tabla
-                        series={SERIE_UNICA('Asistencias')}
-                        datos={(ritmo?.tendencia ?? []).map((m) => ({
-                            etiqueta: m.mes.slice(2),
-                            valores: [m.asistencias],
-                        }))}
+                        datos={(ritmo?.tendencia ?? []).map((m) => ({ ...m, etiqueta: m.mes.slice(2), valor: m.asistencias }))}
+                        detalle={detalleMes}
+                        marca={(m) => (m.inhabiles > 0 ? '✕' : '')}
+                    />
+                </Col>
+                <Col xs={24}>
+                    <ChartJornadas
+                        titulo="Cómo se reparten las jornadas del instituto"
+                        ayuda={AYUDAS.jornadasInstituto}
+                        dias={ritmo?.jornadas ?? []}
+                        loading={loading}
                     />
                 </Col>
                 <Col xs={24}>

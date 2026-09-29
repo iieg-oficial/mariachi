@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel
 
@@ -91,12 +91,16 @@ class DiaSemanaRow(BaseModel):
     nombre: str
     asistencias: int
     personas_promedio: float | None = None
+    entrada_mediana: str | None = None
+    salida_mediana: str | None = None
 
 
 class MesRow(BaseModel):
     mes: str
     asistencias: int
     personas: int
+    habiles: int = 0
+    inhabiles: int = 0
 
 
 class PuntoRow(BaseModel):
@@ -111,6 +115,7 @@ class RitmoResponse(BaseModel):
     semanal: list[DiaSemanaRow]
     tendencia: list[MesRow]
     puntos: list[PuntoRow]
+    jornadas: list[dict[str, Any]] = []
 
 
 class HorasRow(BaseModel):

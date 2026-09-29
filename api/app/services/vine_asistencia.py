@@ -88,11 +88,11 @@ def _hhmm(momento: datetime | time | None) -> str | None:
     return momento.strftime("%H:%M") if momento else None
 
 
-def _horario(db: Session, pin: str, entradas: list[datetime]) -> dict[str, Any]:
-    ficha = consultar(db, _HORARIO_FICHA, {"pin": pin})
+def elegir_horario(
+    ficha: dict[str, Any] | None, catalogo: dict[str, dict[str, Any]], entradas: list[datetime]
+) -> dict[str, Any]:
     if ficha:
-        return ficha[0]
-    catalogo = {h["clave"]: h for h in consultar(db, _HORARIOS, {})}
+        return ficha
     clave = "otro"
     if entradas:
         mediana = median(e.hour * 60 + e.minute for e in entradas)
@@ -103,12 +103,22 @@ def _horario(db: Session, pin: str, entradas: list[datetime]) -> dict[str, Any]:
     return catalogo.get(clave, {"clave": clave, "nombre": clave, "entrada": None, "salida": None})
 
 
-def _desglose(dia: date, marcas: list[tuple[datetime, str]], horario: dict[str, Any]) -> dict[str, Any]:
+def catalogo_horarios(db: Session) -> dict[str, dict[str, Any]]:
+    return {h["clave"]: h for h in consultar(db, _HORARIOS, {})}
+
+
+def _horario(db: Session, pin: str, entradas: list[datetime]) -> dict[str, Any]:
+    ficha = consultar(db, _HORARIO_FICHA, {"pin": pin})
+    return elegir_horario(ficha[0] if ficha else None, catalogo_horarios(db), entradas)
+
+
+def desglose(dia: date, marcas: list[tuple[datetime, str]], horario: dict[str, Any]) -> dict[str, Any]:
     entradas = [t for t, d in marcas if d == "entrada"]
     fila: dict[str, Any] = {
         "dia": dia.isoformat(), "estado": "asistio", "entrada": None, "salida": None,
         "horas": None, "antes": 0, "dentro": 0, "despues": 0, "afuera": 0, "sin_marca": 0,
         "retardo": False, "cerro": False, "visita": False, "reentrada": None,
+        "hasta_al_menos": None, "minimo": 0, "tarde": 0,
     }
     if not entradas:
         fila["estado"] = "sin_entrada"
@@ -119,7 +129,12 @@ def _desglose(dia: date, marcas: list[tuple[datetime, str]], horario: dict[str, 
     if horario.get("entrada") and horario.get("salida"):
         oficial = (datetime.combine(dia, horario["entrada"]), datetime.combine(dia, horario["salida"]))
         fila["retardo"] = inicio > oficial[0] + timedelta(minutes=TOLERANCIA_MINUTOS)
+        fila["tarde"] = round(_minutos(oficial[0], inicio))
     fin = max((t for t, d in marcas if d == "salida" and t > inicio), default=None)
+    ultima = marcas[-1][0]
+    abierta = fin is None or entradas[-1] > fin
+    if abierta and ultima > inicio and _minutos(inicio, ultima) <= JORNADA_MAX_HORAS * 60:
+        fila.update(hasta_al_menos=_hhmm(ultima), minimo=round(_minutos(inicio, ultima)))
     if fin is not None and entradas[-1] > fin:
         fila["reentrada"] = _hhmm(entradas[-1])
         return fila
@@ -144,7 +159,7 @@ def _desglose(dia: date, marcas: list[tuple[datetime, str]], horario: dict[str, 
     fila.update({k: round(v) for k, v in minutos.items()})
     fila["visita"] = _minutos(inicio, fin) < VISITA_MAX_MINUTOS
     if fila["visita"]:
-        fila["retardo"] = False
+        fila.update(retardo=False, tarde=0)
     return fila
 
 
@@ -206,6 +221,7 @@ def _por_dia_semana(
             "salida_mediana": _desde_minutos(median(salidas)) if salidas else None,
             "afuera_promedio": round(sum(f["afuera"] for f in cerradas) / len(cerradas)) if cerradas else None,
             "retardos": sum(1 for f in filas if f["retardo"]),
+            "tarde_promedio": round(sum(f["tarde"] for f in jornadas) / len(jornadas)) if jornadas else None,
             "sin_cerrar": len(jornadas) - len(cerradas),
             "visitas": len(filas) - len(jornadas),
         })
@@ -237,7 +253,7 @@ def asistencia_persona(db: Session, pin: str, dias: int = 90) -> dict[str, Any]:
     dia = params["desde"]
     while dia <= params["hoy"]:
         if dia in marcas:
-            fila = _desglose(dia, marcas[dia], horario)
+            fila = desglose(dia, marcas[dia], horario)
             if dia == params["hoy"]:
                 fila.update(en_curso=True, visita=False)
         else:

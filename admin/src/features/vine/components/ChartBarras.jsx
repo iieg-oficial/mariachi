@@ -44,7 +44,9 @@ const TablaDatos = ({ datos, series }) => {
     );
 };
 
-const ChartBarras = ({ title, ayuda, extra, datos = [], series = [], loading, sufijo = '', tabla = false }) => {
+const ChartBarras = ({
+    title, ayuda, extra, datos = [], series = [], loading, sufijo = '', tabla = false, marcas = [],
+}) => {
     const maximo = useMemo(
         () => Math.max(1, ...datos.flatMap((d) => d.valores.map((v) => v ?? 0))),
         [datos],
@@ -70,8 +72,16 @@ const ChartBarras = ({ title, ayuda, extra, datos = [], series = [], loading, su
                 {datos.map((d, indice) => (
                     <div
                         key={d.etiqueta}
-                        style={{ flex: '1 1 0', minWidth: 18, display: 'flex', flexDirection: 'column', height: '100%' }}
+                        style={{
+                            flex: '1 1 0', minWidth: 18, display: 'flex', flexDirection: 'column', height: '100%', position: 'relative',
+                        }}
                     >
+                        {marcas.includes(d.etiqueta) && (
+                            <div style={{
+                                position: 'absolute', top: 0, bottom: 22, left: -4, borderLeft: `1.5px dashed ${EJE_TEXTO.color}`,
+                            }}
+                            />
+                        )}
                         <div style={{ flex: 1, display: 'flex', alignItems: 'flex-end', gap: 2 }}>
                             {d.valores.map((valor, i) => (
                                 <Tooltip

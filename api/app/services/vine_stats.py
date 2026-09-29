@@ -153,16 +153,28 @@ def ritmo_horario(db: Session, dias: int = 30) -> list[dict[str, Any]]:
 
 
 def ritmo_semanal(db: Session, dias: int = 365) -> list[dict[str, Any]]:
-    sql = """
-        SELECT extract(isodow FROM dia)::int AS dia_semana,
-               count(*) AS asistencias,
-               round(avg(personas)::numeric, 1) AS personas_promedio
+    sql = f"""
+        WITH jornadas AS ({JORNADAS}),
+        completas AS ({_COMPLETAS}),
+        horas AS (
+            SELECT extract(isodow FROM dia)::int AS dia_semana,
+                   to_char(percentile_cont(0.5) WITHIN GROUP (ORDER BY entrada::time), 'HH24:MI') AS entrada_mediana,
+                   to_char(percentile_cont(0.5) WITHIN GROUP (ORDER BY salida::time), 'HH24:MI') AS salida_mediana
+            FROM completas WHERE horas >= 1
+            GROUP BY 1
+        )
+        SELECT t.dia_semana, count(*) AS asistencias,
+               round(avg(t.personas)::numeric, 1) AS personas_promedio,
+               min(h.entrada_mediana) AS entrada_mediana,
+               min(h.salida_mediana) AS salida_mediana
         FROM (
-            SELECT event_time::date AS dia, count(DISTINCT pin) AS personas
+            SELECT extract(isodow FROM event_time::date)::int AS dia_semana,
+                   event_time::date AS dia, count(DISTINCT pin) AS personas
             FROM vine.eventos
             WHERE evento = ANY(:eventos) AND event_time >= :desde
-            GROUP BY 1
-        ) t GROUP BY 1 ORDER BY 1
+            GROUP BY 1, 2
+        ) t LEFT JOIN horas h USING (dia_semana)
+        GROUP BY 1 ORDER BY 1
     """
     filas = consultar(db, sql, parametros(dias))
     for fila in filas:

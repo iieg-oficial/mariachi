@@ -22,12 +22,13 @@ const hora = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m %
 
 const porcentaje = (d) => (d.habiles ? Math.min(100, Math.round((d.dias * 100) / d.habiles)) : null);
 
-const detalle = (d) => {
+const detallePersona = (d) => {
     const pct = porcentaje(d);
     return [
         `${d.nombre}: vino ${d.dias}${d.habiles ? ` de ${d.habiles} hábiles (${pct}%)` : ''}`,
         `Entra ${d.entrada_mediana ?? '—'} · sale ${d.salida_mediana ?? '—'}`,
         d.afuera_promedio != null && `Afuera en promedio ${formatoMinutos(d.afuera_promedio)}`,
+        d.tarde_promedio > 0 && `Llega ${formatoMinutos(d.tarde_promedio)} tarde en promedio`,
         d.dias > 0 && `Retardos ${Math.round((d.retardos * 100) / d.dias)}%`,
         d.dias > 0 && `Jornadas sin cerrar ${Math.round((d.sin_cerrar * 100) / d.dias)}%`,
         d.visitas > 0 && `${d.visitas} visitas cortas, fuera de las medianas`,
@@ -49,15 +50,23 @@ const Leyenda = () => (
     </div>
 );
 
-const ChartSemana = ({ semana = [], horario, loading }) => {
-    const titulo = (
-        <TituloConAyuda
-            titulo="A qué días viene"
-            ayuda="Por día de la semana: a qué hora suele entrar y salir, y qué porcentaje de esos días hábiles vino. La franja es su jornada típica. Pasa el cursor para ver tiempo afuera, retardos y jornadas sin cerrar."
-        />
-    );
+const piePersona = (d) => (porcentaje(d) != null ? `${porcentaje(d)}%` : `${d.dias} d`);
 
-    const oficiales = [horario?.entrada, horario?.salida].map(aMinutos).filter((v) => v != null);
+const AYUDA_PERSONA = 'Por día de la semana: a qué hora suele entrar y salir, y qué porcentaje de esos días hábiles vino. La franja es su jornada típica. Pasa el cursor para ver tiempo afuera, retardos y jornadas sin cerrar.';
+
+const ChartSemana = ({
+    semana = [],
+    horario,
+    loading,
+    titulo: textoTitulo = 'A qué días viene',
+    ayuda = AYUDA_PERSONA,
+    oficiales: horasOficiales,
+    pie = piePersona,
+    detalle = detallePersona,
+}) => {
+    const titulo = <TituloConAyuda titulo={textoTitulo} ayuda={ayuda} />;
+
+    const oficiales = (horasOficiales ?? [horario?.entrada, horario?.salida]).map(aMinutos).filter((v) => v != null);
     const valores = semana.flatMap((d) => SERIES.map((s) => aMinutos(d[s.clave]))).filter((v) => v != null);
 
     if (!loading && valores.length === 0) {
@@ -126,7 +135,7 @@ const ChartSemana = ({ semana = [], horario, loading }) => {
                     <g key={d.dia_semana}>
                         <text x={x(i)} y={ALTO - M.abajo + 18} textAnchor="middle" style={TEXTO}>{d.nombre.slice(0, 3)}</text>
                         <text x={x(i)} y={ALTO - M.abajo + 34} textAnchor="middle" style={{ ...TEXTO, fontWeight: 600 }}>
-                            {porcentaje(d) != null ? `${porcentaje(d)}%` : `${d.dias} d`}
+                            {pie(d)}
                         </text>
                         <Tooltip title={detalle(d)}>
                             <rect x={x(i) - (columna / 2)} y={0} width={columna} height={ALTO} fill="transparent" />

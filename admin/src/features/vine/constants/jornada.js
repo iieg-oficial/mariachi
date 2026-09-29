@@ -8,6 +8,12 @@ export const SEGMENTOS_JORNADA = [
 
 export const TEXTURA_SIN_MARCA = 'repeating-linear-gradient(45deg, #8C8C8C 0 2px, transparent 2px 5px)';
 
+export const TEXTURA_MINIMO = 'repeating-linear-gradient(135deg, rgba(59, 91, 169, 0.35) 0 2px, transparent 2px 6px)';
+
+export const COLOR_TARDE = '#D7263D';
+
+export const FONDO_TARDE = 'rgba(215, 38, 61, 0.22)';
+
 export const JORNADA_ESPERADA_MIN = 480;
 
 export const COLOR_TINTA = 'rgba(0, 0, 0, 0.65)';

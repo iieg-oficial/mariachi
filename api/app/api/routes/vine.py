@@ -28,6 +28,7 @@ from app.services import (
     vine_export,
     vine_ficha,
     vine_incidencias,
+    vine_jornadas,
     vine_perfiles,
     vine_stats,
 )
@@ -63,8 +64,9 @@ async def ritmo(
     return {
         "horario": vine_stats.ritmo_horario(db, dias),
         "semanal": vine_stats.ritmo_semanal(db, min(dias * 12, 1095)),
-        "tendencia": vine_stats.tendencia_mensual(db, meses),
+        "tendencia": vine_jornadas.con_inhabiles(vine_stats.tendencia_mensual(db, meses)),
         "puntos": vine_stats.uso_por_punto(db, dias),
+        "jornadas": vine_jornadas.jornadas_instituto(db),
     }
 
 

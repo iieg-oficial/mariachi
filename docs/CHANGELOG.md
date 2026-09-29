@@ -9,6 +9,26 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.106.0] - 2026-09-29
+
+### Agregado
+
+- **vine, tiempo que no llegó:** cada día marca en rojo discreto, debajo de la línea base, los
+  minutos entre la hora oficial de entrada y la llegada real, aunque no pasen la tolerancia. El
+  retardo (●) sigue siendo pasar de 15 minutos. La línea semanal suma el promedio de minutos tarde.
+- **vine, «al menos»:** una jornada que no cerró muestra una barra rayada desde la entrada hasta la
+  última marca conocida, sin inventar la salida.
+- **vine, pestaña General:** «Cómo se reparten las jornadas del instituto», la misma barra partida
+  de la ficha con el promedio por persona de cada día hábil de los últimos 60 días
+  (`vine_jornadas.py`, calculado en lote).
+
+### Cambiado
+
+- **vine, pestaña General:** «Personas por día de la semana» pasa a líneas con entrada y salida
+  mediana, la franja de jornada y los dos horarios oficiales; «Asistencias por mes» pasa a línea
+  con ✕ en los meses con inhábiles y asistencias por día hábil en el tooltip; «A qué hora entra y
+  sale la gente» marca las 8, 9, 16 y 17.
+
 ## [2.105.1] - 2026-09-29
 
 ### Corregido
