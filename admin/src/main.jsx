@@ -19,6 +19,7 @@ import { buildHuachicolRoutes } from '@features/telemetria/routes';
 import { buildMelRoutes } from '@features/mel/routes';
 import { buildSextanteRoutes } from '@features/sextante/routes';
 import { buildFramesRoutes, buildFramesFullscreenRoutes } from '@features/frames/routes';
+import { buildIntranetRoutes } from '@features/intranet/routes';
 import { buildVineFullscreenRoutes, buildVineRoutes } from '@features/vine/routes';
 
 const Users = lazy(() => import('@features/users'));
@@ -204,6 +205,7 @@ const router = createBrowserRouter([
                     ...buildSextanteRoutes(withSuspense),
                     ...buildMelRoutes(withSuspense),
                     ...buildFramesRoutes(withSuspense),
+                    ...buildIntranetRoutes(withSuspense),
                     ...buildVineRoutes(withSuspense),
                     ...buildHuachicolRoutes(withSuspense),
                     ...buildMapalabApiKeysRoutes(withSuspense),

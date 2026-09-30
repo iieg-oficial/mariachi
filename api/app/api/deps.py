@@ -157,6 +157,7 @@ PANEL_PERMISSIONS = (
     "mariachi.sistema.manage",
     "mariachi.vine.view",
     "mariachi.frames.view",
+    "mariachi.intranet.view",
 )
 
 

@@ -9,6 +9,22 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.120.0] - 2026-09-30
+
+Módulo **Intranet** en el menú Local: el contenido de la intranet se administra desde el CMS.
+
+### Agregado
+
+- **Proyecto Intranet en el menú Local**, con cinco pantallas: Carrusel (con la cola de propuestas de los empleados, que se publican o se rechazan), Galería, Documentos, Pie de página y Sitios monitoreados con sus categorías. Misma tabla y mismo formulario en las cinco (`features/intranet/components/PaginaRecurso`); cada una solo declara columnas y campos
+- `api/routes/intranet.py`: mariachi no guarda nada, reenvía a la API de intranet con `X-API-Key` (la clave de servicio, `INTRANET_API_KEY`) y `X-Actor-Sub` (el `sub` de minerva de quien edita, para su auditoría). El cuerpo y el tipo de contenido viajan intactos, así que las subidas de archivo las sigue validando intranet
+- `GET /intranet/archivos/{carpeta}/{nombre}` sirve las imágenes al panel; solo acepta los nombres que genera intranet
+- Permisos `mariachi.intranet.view` y `mariachi.intranet.manage`, y roles atómicos `Intranet - consulta` e `Intranet - administracion`
+- `INTRANET_ENABLED`, `INTRANET_API_URL`, `INTRANET_API_KEY` e `INTRANET_TIMEOUT`. Apagado, el router no se registra y las pantallas responden 404
+
+### Cambiado
+
+- Un 401 o 403 de intranet llega al panel como 502: es la clave de servicio la que falló, no la sesión de quien edita, y un 401 habría mandado al usuario al login
+
 ## [2.119.0] - 2026-09-29
 
 Trae la migración `pubc0001`: fusiona borradores y crea `publicaciones_capas`.

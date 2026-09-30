@@ -19,6 +19,7 @@ describe('buildSiderItems por alcance', () => {
         const keys = llaves(ALCANCE_LOCAL);
         expect(keys[0]).toBe('/inicio');
         expect(keys).toContain('project-frames');
+        expect(keys).toContain('project-intranet');
         expect(keys).not.toContain('/users');
         expect(keys).not.toContain('group-acervo');
         expect(keys).not.toContain('project-mapalab');
@@ -33,6 +34,7 @@ describe('buildSiderItems por alcance', () => {
 describe('alcanceDePath', () => {
     it('reconoce las rutas locales', () => {
         expect(alcanceDePath('/frames/camaras')).toBe(ALCANCE_LOCAL);
+        expect(alcanceDePath('/intranet/carrusel')).toBe(ALCANCE_LOCAL);
         expect(alcanceDePath('/frames/vivo/3')).toBe(ALCANCE_LOCAL);
     });
 

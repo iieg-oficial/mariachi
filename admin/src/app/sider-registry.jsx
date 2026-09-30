@@ -8,6 +8,7 @@ import {
     BranchesOutlined,
     CalendarOutlined,
     ClockCircleOutlined,
+    CloudServerOutlined,
     CompassOutlined,
     DeploymentUnitOutlined,
     EditOutlined,
@@ -18,8 +19,11 @@ import {
     HomeOutlined,
     InboxOutlined,
     KeyOutlined,
+    LinkOutlined,
+    NotificationOutlined,
     OrderedListOutlined,
     PartitionOutlined,
+    PictureOutlined,
     PieChartOutlined,
     ProjectOutlined,
     SlidersOutlined,
@@ -174,6 +178,35 @@ export const PROJECT_REGISTRY = {
             {
                 key: '/frames/vivo', path: '/frames/vivo', label: 'En vivo',
                 icon: <VideoCameraOutlined />,
+            },
+        ],
+    },
+    intranet: {
+        label: 'Intranet',
+        icon: <HomeOutlined />,
+        permissions: ['mariachi.intranet.view'],
+        alcance: ALCANCE_LOCAL,
+        showBetaBadge: true,
+        items: [
+            {
+                key: '/intranet/carrusel', path: '/intranet/carrusel', label: 'Carrusel',
+                icon: <NotificationOutlined />,
+            },
+            {
+                key: '/intranet/galeria', path: '/intranet/galeria', label: 'Galería',
+                icon: <PictureOutlined />,
+            },
+            {
+                key: '/intranet/documentos', path: '/intranet/documentos', label: 'Documentos',
+                icon: <FileTextOutlined />,
+            },
+            {
+                key: '/intranet/pie-de-pagina', path: '/intranet/pie-de-pagina', label: 'Pie de página',
+                icon: <LinkOutlined />,
+            },
+            {
+                key: '/intranet/sitios', path: '/intranet/sitios', label: 'Sitios monitoreados',
+                icon: <CloudServerOutlined />,
             },
         ],
     },

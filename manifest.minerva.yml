@@ -73,6 +73,11 @@ permissions:
   - key: mariachi.frames.manage
     name: Dar de alta, editar y borrar camaras de frames y aplicar su configuracion
 
+  - key: mariachi.intranet.view
+    name: Ver el contenido de la intranet
+  - key: mariachi.intranet.manage
+    name: Administrar el carrusel, la galeria, los documentos, el pie de pagina y los sitios de la intranet
+
   - key: mariachi.vine.view
     name: Ver estadisticas de asistencia de vine
   - key: mariachi.vine_personas.view
@@ -204,6 +209,16 @@ roles:
     permissions:
       - mariachi.frames.view
       - mariachi.frames.manage
+
+  - name: Intranet - consulta
+    description: Atomico. Ver el contenido publicado y las propuestas pendientes. Modulo local
+    permissions:
+      - mariachi.intranet.view
+  - name: Intranet - administracion
+    description: Atomico. Carrusel, galeria, documentos, pie de pagina y sitios de la intranet. Modulo local
+    permissions:
+      - mariachi.intranet.view
+      - mariachi.intranet.manage
 
   - name: Vine - estadisticas
     description: Atomico. Estadisticas agregadas de asistencia, sin datos individuales

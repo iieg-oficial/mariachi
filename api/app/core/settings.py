@@ -97,6 +97,11 @@ class Settings(BaseSettings):
     frames_rtsp_username: str | None = None
     frames_detect_fps: int = 15
 
+    intranet_enabled: bool = False
+    intranet_api_url: str | None = None
+    intranet_api_key: str | None = None
+    intranet_timeout: float = 20.0
+
     vine_enabled: bool = False
     vine_biometrico_url: str | None = None
     vine_biometrico_timeout: int = 5

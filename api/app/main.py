@@ -27,6 +27,7 @@ from app.api.routes import (
     geoserver,
     grid,
     home,
+    intranet,
     layer_metadata,
     layers,
     mapalab_api_keys,
@@ -193,6 +194,13 @@ def create_app() -> FastAPI:
             frames.router,
             prefix=settings.admin_prefix,
             dependencies=[Depends(require_permission("mariachi.frames.view"))],
+        )
+
+    if settings.intranet_enabled:
+        app.include_router(
+            intranet.router,
+            prefix=settings.admin_prefix,
+            dependencies=[Depends(require_permission("mariachi.intranet.view"))],
         )
 
     if settings.vine_enabled:
