@@ -27,6 +27,10 @@ INTRANET_EVENT_NAMES = frozenset(
         "aviso_propuesto",
         "ayuda_abrir",
         "sesion_entrar",
+        "buscar",
+        "favorito",
+        "acceso_abrir",
+        "mapa_capa",
     }
 )
 

@@ -9,6 +9,12 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.128.0] - 2026-09-30
+
+### Agregado
+
+- Eventos de telemetría de la intranet `buscar`, `favorito`, `acceso_abrir` y `mapa_capa` (buscador global, extensiones favoritas, accesos rápidos y capas del mapa). **Se despliega antes que la intranet**: un evento desconocido hace que mariachi rechace el lote entero con 422
+
 ## [2.127.1] - 2026-09-30
 
 ### Corregido
