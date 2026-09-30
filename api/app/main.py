@@ -30,6 +30,7 @@ from app.api.routes import (
     intranet,
     intranet_estado_lectura,
     intranet_events_public,
+    intranet_inhabiles_lectura,
     layer_metadata,
     layers,
     mapalab_api_keys,
@@ -191,6 +192,7 @@ def create_app() -> FastAPI:
     app.include_router(roadmap_lectura.router, prefix=settings.public_prefix)
     app.include_router(intranet_events_public.router, prefix=settings.public_prefix)
     app.include_router(intranet_estado_lectura.router, prefix=settings.public_prefix)
+    app.include_router(intranet_inhabiles_lectura.router, prefix=settings.public_prefix)
     app.include_router(mapalab_events_public.router, prefix=settings.public_prefix)
     app.include_router(mapalab_infobox_public.router, prefix=settings.public_prefix)
     app.include_router(mapalab_infobox.router, prefix=settings.admin_prefix, dependencies=mapalab_view)

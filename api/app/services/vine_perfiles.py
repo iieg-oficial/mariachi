@@ -21,32 +21,36 @@ def festivos_de_ley(anio: int) -> list[date]:
     No incluye los que cada institucion agrega por su cuenta (Semana Santa,
     12 de diciembre, periodo vacacional): esos van en `FESTIVOS_INSTITUTO`.
     """
-    return [
-        date(anio, 1, 1),
-        _lunes_numero(anio, 2, 1),
-        _lunes_numero(anio, 3, 3),
-        date(anio, 5, 1),
-        date(anio, 9, 16),
-        _lunes_numero(anio, 11, 3),
-        date(anio, 12, 25),
-    ]
+    return list(festivos_de_ley_con_motivo(anio))
 
 
-FESTIVOS_INSTITUTO: list[date] = [
-    date(2026, 1, 2),
-    date(2026, 1, 5),
-    date(2026, 1, 6),
-    date(2026, 4, 2),
-    date(2026, 4, 3),
-    date(2026, 5, 5),
-    date(2026, 6, 11),
-    date(2026, 6, 18),
-    date(2026, 6, 23),
-    date(2026, 6, 26),
-]
+def festivos_de_ley_con_motivo(anio: int) -> dict[date, str]:
+    return {
+        date(anio, 1, 1): "Año Nuevo",
+        _lunes_numero(anio, 2, 1): "Día de la Constitución",
+        _lunes_numero(anio, 3, 3): "Natalicio de Benito Juárez",
+        date(anio, 5, 1): "Día del Trabajo",
+        date(anio, 9, 16): "Día de la Independencia",
+        _lunes_numero(anio, 11, 3): "Día de la Revolución",
+        date(anio, 12, 25): "Navidad",
+    }
 
 
-FESTIVOS_ANUALES: tuple[tuple[int, int], ...] = ((9, 28),)
+FESTIVOS_INSTITUTO: dict[date, str] = {
+    date(2026, 1, 2): "Periodo vacacional de fin de año",
+    date(2026, 1, 5): "Periodo vacacional de fin de año",
+    date(2026, 1, 6): "Día de Reyes",
+    date(2026, 4, 2): "Jueves Santo",
+    date(2026, 4, 3): "Viernes Santo",
+    date(2026, 5, 5): "Batalla de Puebla",
+    date(2026, 6, 11): "Mundial en Guadalajara",
+    date(2026, 6, 18): "Mundial en Guadalajara",
+    date(2026, 6, 23): "Mundial en Guadalajara",
+    date(2026, 6, 26): "Mundial en Guadalajara",
+}
+
+
+FESTIVOS_ANUALES: tuple[tuple[int, int, str], ...] = ((9, 28, "Día del Servidor Público"),)
 
 
 def _al_habil(dia: date) -> date:
@@ -57,13 +61,19 @@ def _al_habil(dia: date) -> date:
     return dia
 
 
-def festivos(desde: date, hasta: date) -> list[date]:
-    dias: list[date] = []
+def festivos_con_motivo(desde: date, hasta: date) -> list[tuple[date, str]]:
+    dias: dict[date, str] = {}
     for anio in range(desde.year, hasta.year + 1):
-        dias.extend(festivos_de_ley(anio))
-        dias.extend(_al_habil(date(anio, mes, dia)) for mes, dia in FESTIVOS_ANUALES)
-    dias.extend(FESTIVOS_INSTITUTO)
-    return sorted({d for d in dias if desde <= d <= hasta})
+        dias.update(festivos_de_ley_con_motivo(anio))
+        dias.update(
+            {_al_habil(date(anio, mes, dia)): motivo for mes, dia, motivo in FESTIVOS_ANUALES}
+        )
+    dias.update(FESTIVOS_INSTITUTO)
+    return sorted((dia, motivo) for dia, motivo in dias.items() if desde <= dia <= hasta)
+
+
+def festivos(desde: date, hasta: date) -> list[date]:
+    return [dia for dia, _ in festivos_con_motivo(desde, hasta)]
 
 
 HORARIOS = (

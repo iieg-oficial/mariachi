@@ -9,6 +9,17 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.127.0] - 2026-09-30
+
+### Agregado
+
+- **Días inhábiles para la intranet** (`GET /api/public/intranet/inhabiles?anio=`): con la clave de intranet, la lista del año con su motivo. Sale de la misma fuente que usan las asistencias de vine, así que no hay dos calendarios
+- `festivos_con_motivo(desde, hasta)` en `services/vine_perfiles.py`; `festivos()` sigue devolviendo solo fechas
+
+### Cambiado
+
+- `FESTIVOS_INSTITUTO` pasa a diccionario fecha → motivo y `FESTIVOS_ANUALES` lleva el motivo como tercer elemento
+
 ## [2.126.1] - 2026-09-30
 
 ### Corregido
