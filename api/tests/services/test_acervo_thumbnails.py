@@ -57,7 +57,9 @@ def test_png_bajo_la_guarda_sigue_funcionando(monkeypatch):
     assert (ancho, alto) == (100, 50)
 
 
-def test_las_cartas_municipales_se_pueden_abrir():
-    ancho, alto = 11_811, 12_992
-
+@pytest.mark.parametrize(
+    "ancho,alto",
+    [(11_811, 12_992), (14_091, 15_699), (21_600, 28_073)],
+)
+def test_los_mapas_del_catalogo_se_pueden_abrir(ancho, alto):
     assert ancho * alto <= 2 * Image.MAX_IMAGE_PIXELS

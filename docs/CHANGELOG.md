@@ -9,6 +9,12 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.127.1] - 2026-09-30
+
+### Corregido
+
+- **Las miniaturas de los mapas de más de 200 MP ya se generan.** Cuatro mapas del catálogo del portal, de 221 a 606 MP, seguían dando 502. El límite de apertura sube a 1 000 MP: los JPEG se decodifican con `draft()` a 1/8 de escala —el de 606 MP tarda 1.3 s y usa 91 MB— y los demás formatos conservan su tope de 128 MP antes de decodificar.
+
 ## [2.127.0] - 2026-09-30
 
 ### Agregado
