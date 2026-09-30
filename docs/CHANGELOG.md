@@ -9,6 +9,12 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.122.0] - 2026-09-30
+
+### Agregado
+
+- **Pantalla Herramientas en el proyecto Intranet** (menú Local): catálogo de los servicios de código abierto autoalojados que la intranet muestra como tarjetas. Nombre, descripción, URL, icono, orden y si es visible
+
 ## [2.121.0] - 2026-09-30
 
 Trae la migración `m3lnt0001`: cuatro tokens de color para la marca `iieg`.

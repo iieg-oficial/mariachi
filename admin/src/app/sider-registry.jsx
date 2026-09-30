@@ -208,6 +208,10 @@ export const PROJECT_REGISTRY = {
                 key: '/intranet/sitios', path: '/intranet/sitios', label: 'Sitios monitoreados',
                 icon: <CloudServerOutlined />,
             },
+            {
+                key: '/intranet/herramientas', path: '/intranet/herramientas', label: 'Herramientas',
+                icon: <AppstoreOutlined />,
+            },
         ],
     },
 };

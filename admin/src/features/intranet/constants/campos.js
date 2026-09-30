@@ -5,6 +5,10 @@ export const ICONOS_ENLACE = [
     'link', 'globe', 'shield', 'document', 'server', 'book', 'monitor', 'phone', 'mail', 'location',
 ].map((valor) => ({ value: valor, label: valor }));
 
+export const ICONOS_HERRAMIENTA = [
+    'herramienta', 'pdf', 'convertir', 'audio', 'diagrama', 'traducir', 'compartir', 'utilidades',
+].map((valor) => ({ value: valor, label: valor }));
+
 export const ESTADOS_CARRUSEL = {
     pendiente: { color: 'warning', texto: 'Pendiente' },
     aprobado: { color: 'success', texto: 'Publicado' },

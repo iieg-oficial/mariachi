@@ -35,6 +35,9 @@ RECURSOS = {
     "enlaces": Recurso("/api/footer/", "/api/footer/", "/api/footer/{id}"),
     "categorias": Recurso("/api/categorias/all", "/api/categorias/create", "/api/categorias/{id}"),
     "sitios": Recurso("/api/status/sites", "/api/status/sites", "/api/status/sites/{id}"),
+    "herramientas": Recurso(
+        "/api/herramientas/todas", "/api/herramientas/", "/api/herramientas/{id}"
+    ),
 }
 
 
