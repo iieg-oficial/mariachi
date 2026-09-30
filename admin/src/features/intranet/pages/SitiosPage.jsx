@@ -10,6 +10,10 @@ const VISTAS = [
     { label: 'Categorías', value: 'categorias' },
 ];
 
+const AYUDA_PROYECTO = 'Una línea para la página de Proyectos de la intranet: qué es y para quién.';
+
+const AYUDA_LOGO = 'URL del logo en el Acervo (SVG de preferencia). Vacía muestra las iniciales.';
+
 const AYUDA_SLUG = 'Nombre del servicio en huachicol. De ahí sale el estado que muestra la intranet.';
 
 const limpiar = (valores) => Object.fromEntries(
@@ -37,7 +41,7 @@ const definicionDeSitios = (categorias) => {
         recurso: 'sitios',
         singular: 'Sitio',
         titulo: 'Sitios monitoreados',
-        descripcion: 'Tarjetas de estado de la intranet, con sus enlaces a Taiga, GitLab y GitHub.',
+        descripcion: 'Los proyectos del IIEG que muestra la intranet, con su estado y sus enlaces a Taiga, GitLab y GitHub.',
         alta: 'Nuevo sitio',
         vacio: 'Todavía no hay sitios',
         icono: <CloudServerOutlined />,
@@ -50,7 +54,9 @@ const definicionDeSitios = (categorias) => {
         ],
         campos: [
             { nombre: 'name', etiqueta: 'Nombre', requerido: true, maximo: 200 },
+            { nombre: 'descripcion', etiqueta: 'Descripción', tipo: 'texto-largo', maximo: 300, ayuda: AYUDA_PROYECTO },
             { nombre: 'url', etiqueta: 'URL', requerido: true, maximo: 500 },
+            { nombre: 'logo_url', etiqueta: 'Logo', maximo: 500, ayuda: AYUDA_LOGO },
             {
                 nombre: 'category_id', etiqueta: 'Categoría', tipo: 'opciones', requerido: true,
                 opciones: categorias.map((c) => ({ value: c.id, label: c.nombre })),

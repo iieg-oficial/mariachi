@@ -97,6 +97,8 @@ class Settings(BaseSettings):
     frames_rtsp_username: str | None = None
     frames_detect_fps: int = 15
 
+    roadmap_api_key_sha256: str | None = None
+
     intranet_enabled: bool = False
     intranet_api_url: str | None = None
     intranet_api_key: str | None = None

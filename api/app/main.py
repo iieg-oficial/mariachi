@@ -49,6 +49,7 @@ from app.api.routes import (
     reportes,
     reportes_public,
     roadmap,
+    roadmap_lectura,
     sieej_admin,
     sistema,
     symbols,
@@ -185,6 +186,7 @@ def create_app() -> FastAPI:
     app.include_router(acervo_internal.router)
     app.include_router(symbols.mapalab_router, prefix=settings.mapalab_public_prefix)
     app.include_router(reportes_public.router, prefix=settings.public_prefix)
+    app.include_router(roadmap_lectura.router, prefix=settings.public_prefix)
     app.include_router(mapalab_events_public.router, prefix=settings.public_prefix)
     app.include_router(mapalab_infobox_public.router, prefix=settings.public_prefix)
     app.include_router(mapalab_infobox.router, prefix=settings.admin_prefix, dependencies=mapalab_view)

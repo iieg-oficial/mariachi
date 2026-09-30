@@ -9,6 +9,13 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.123.0] - 2026-09-30
+
+### Agregado
+
+- **`GET /api/public/roadmap`, solo lectura**: hitos, ciclos y procesos del roadmap para la intranet. Exige `X-API-Key`, que se compara contra la huella `ROADMAP_API_KEY_SHA256`; vacía, responde 401 a todo. No existe escritura por esta vía
+- Pantalla Sitios monitoreados del proyecto Intranet: descripción y logo de cada sitio, que la intranet usa como su página de Proyectos
+
 ## [2.122.0] - 2026-09-30
 
 ### Agregado
