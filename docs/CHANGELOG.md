@@ -9,6 +9,14 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.121.0] - 2026-09-30
+
+Trae la migración `m3lnt0001`: cuatro tokens de color para la marca `iieg`.
+
+### Agregado
+
+- **MEL, marca `iieg`: `color.muted` (`#6E7477`), `color.surface` (`#F9FBFF`), `color.border` (`#EAEFFA`) y `color.border-strong` (`#8894AE`).** La norma los pedía como colores base y no existían; se tomaron de lo que mapalab ya usa escrito a mano. `muted` da 4.74:1 sobre blanco; `border` es decorativo y `border-strong` cumple el 3:1 de los controles. La marca `jalisco` sigue sin ellos
+
 ## [2.120.0] - 2026-09-30
 
 Módulo **Intranet** en el menú Local: el contenido de la intranet se administra desde el CMS.
