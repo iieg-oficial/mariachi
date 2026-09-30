@@ -135,6 +135,8 @@ backups/*.sql.gz.tmp
 backups/backup.log
 backups/roadmap/
 backups/vine/
+backups/llaves/
+backups/telemetria-intranet/
 restore/*.sql.gz
 restore/*.sql
 restore/*.json

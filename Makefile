@@ -10,6 +10,8 @@ ENV_DEV      := .env.development
 TARJETITAS_DIR := backups/tarjetitas
 VINE_DIR := backups/vine
 ROADMAP_DIR := backups/roadmap
+LLAVES_DIR := backups/llaves
+TELEMETRIA_INTRANET_DIR := backups/telemetria-intranet
 
 UP_GUARDS     = ensure_network
 DEPLOY_GUARDS = ensure_network

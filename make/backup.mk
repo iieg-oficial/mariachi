@@ -1,10 +1,10 @@
-.PHONY: backups restores backup-db restore-db backup-tarjetitas restore-tarjetitas backup-roadmap restore-roadmap cron
+.PHONY: backups restores backup-db restore-db backup-tarjetitas restore-tarjetitas backup-roadmap restore-roadmap backup-llaves restore-llaves backup-telemetria-intranet restore-telemetria-intranet cron
 
 ##@ Respaldos
 
-backups: ## Correr los cuatro respaldos de un tiron
+backups: ## Correr los seis respaldos de un tiron
 	@$(LIB)
-	banner 'BACKUPS' 'postgres, vine, roadmap y tarjetitas'
+	banner 'BACKUPS' 'postgres, vine, roadmap, tarjetitas, llaves y telemetria de intranet'
 	env=$$(resolve_env)
 	if [ -z "$$env" ]; then nothing_running 'BACKUPS'; exit 0; fi
 	row 'Entorno' "$$env"
@@ -15,12 +15,12 @@ backups: ## Correr los cuatro respaldos de un tiron
 	else
 		row 'postgres' 'omitido' "$$C_DIM" 'el general solo corre contra produccion'
 	fi
-	for objetivo in vine roadmap tarjetitas; do
+	for objetivo in vine roadmap tarjetitas llaves telemetria-intranet; do
 		run_step "$$objetivo" $(MAKE) --no-print-directory "backup-$$objetivo" || fallos=$$((fallos + 1))
 	done
 	rule
 	if [ "$$fallos" -gt 0 ]; then
-		printf '  %s%d de 4 fallaron%s. VERBOSE=1 muestra la salida completa.\n\n' "$$C_RED" "$$fallos" "$$C_RESET"
+		printf '  %s%d de 6 fallaron%s. VERBOSE=1 muestra la salida completa.\n\n' "$$C_RED" "$$fallos" "$$C_RESET"
 		exit 1
 	fi
 	printf '  %sTodo respaldado.%s\n\n' "$$C_GREEN" "$$C_RESET"
@@ -32,11 +32,11 @@ restores: ## Elegir que restaurar, en vez de recordar el target
 	if [ -z "$$env" ]; then nothing_running 'RESTORES'; exit 0; fi
 	if [ ! -t 0 ]; then
 		fail 'Entrada:el selector necesita una terminal' \
-			'Sin tty, pick elige la primera opcion sola y aqui cualquiera escribe en la base. Llama al target directo: restore-db, restore-vine, restore-roadmap o restore-tarjetitas.'
+			'Sin tty, pick elige la primera opcion sola y aqui cualquiera escribe en la base. Llama al target directo: restore-db, restore-vine, restore-roadmap, restore-tarjetitas, restore-llaves o restore-telemetria-intranet.'
 	fi
 	row 'Entorno' "$$env"
 	rule
-	elegido=$$(pick 'Que restaurar' 'vine' 'roadmap' 'tarjetitas' 'postgres — la base entera' 'todo — postgres + tarjetitas')
+	elegido=$$(pick 'Que restaurar' 'vine' 'roadmap' 'tarjetitas' 'llaves' 'telemetria-intranet' 'postgres — la base entera' 'todo — postgres + tarjetitas')
 	if [ -z "$$elegido" ]; then exit 1; fi
 	case "$$elegido" in
 		todo*) objetivos='restore-db restore-tarjetitas' ;;
@@ -113,6 +113,44 @@ restore-roadmap: ## Restaurar el roadmap desde un respaldo, con selector
 	fi
 	rule
 	./scripts/roadmap-restore.sh "$$archivo"
+
+backup-llaves: ## Respaldar las llaves de MapaLab, sus embebidos y las apps de Colibri
+	@$(LIB)
+	banner 'BACKUP' 'llaves'
+	env=$$(resolve_env)
+	if [ -z "$$env" ]; then nothing_running 'BACKUP-LLAVES'; exit 0; fi
+	script_env "$$env"
+	rule
+	OUT_DIR=$(LLAVES_DIR) ./scripts/llaves-backup.sh
+
+restore-llaves: ## Fusionar un respaldo de llaves con las de la base, con selector
+	@$(LIB)
+	banner 'RESTORE' 'llaves'
+	env=$$(resolve_env)
+	if [ -z "$$env" ]; then nothing_running 'RESTORE-LLAVES'; exit 0; fi
+	script_env "$$env"
+	archivo=$$(pick_respaldo $(LLAVES_DIR) llaves) || exit 1
+	rule
+	./scripts/llaves-restore.sh "$$archivo"
+
+backup-telemetria-intranet: ## Respaldar la telemetria de intranet, que solo vive en el espejo
+	@$(LIB)
+	banner 'BACKUP' 'telemetria de intranet'
+	env=$$(resolve_env)
+	if [ -z "$$env" ]; then nothing_running 'BACKUP-TELEMETRIA'; exit 0; fi
+	script_env "$$env"
+	rule
+	OUT_DIR=$(TELEMETRIA_INTRANET_DIR) ./scripts/telemetria-intranet-backup.sh
+
+restore-telemetria-intranet: ## Agregar la telemetria de intranet de un respaldo, con selector
+	@$(LIB)
+	banner 'RESTORE' 'telemetria de intranet'
+	env=$$(resolve_env)
+	if [ -z "$$env" ]; then nothing_running 'RESTORE-TELEMETRIA'; exit 0; fi
+	script_env "$$env"
+	archivo=$$(pick_respaldo $(TELEMETRIA_INTRANET_DIR) telemetria-intranet) || exit 1
+	rule
+	./scripts/telemetria-intranet-restore.sh "$$archivo"
 
 cron: ## Instalar o desinstalar los cron de respaldo y stats
 	@$(LIB)

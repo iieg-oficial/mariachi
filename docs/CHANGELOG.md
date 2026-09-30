@@ -9,6 +9,14 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.125.0] - 2026-09-30
+
+### Agregado
+
+- **Respaldo de llaves** (`make backup-llaves` / `make restore-llaves`): guarda en `backups/llaves/` las llaves de MapaLab, sus embebidos y las apps de Colibrí (`mapalab_api_keys`, `mapalab_api_keys_embeds`, `source_apps`). El restore **fusiona**: agrega las que falten y actualiza las que coincidan por `key_prefix`, `slug` y `(llave, share_id)`, sin tocar las demás. Así las llaves que solo existen en el espejo —la del portal, las de la intranet— sobreviven a cada restore de producción sin volver a pedirlas. Los ids se reasignan y los usuarios creadores que ya no existan quedan en nulo. Archivos con permisos `600`: llevan hashes y webhooks
+- **Respaldo de la telemetría de intranet** (`make backup-telemetria-intranet` / `make restore-telemetria-intranet`): las filas `app = 'intranet'` de todas las tablas de `huachicol` que tienen `app`, eventos y rollups incluidos. El restore solo agrega lo que falte; correrlo dos veces no duplica. Sin filas no se guarda, para no rotar respaldos buenos
+- Los dos entran a `make backups`, al selector de `make restores` y al cron (03:10 y 03:20)
+
 ## [2.124.0] - 2026-09-30
 
 ### Agregado
