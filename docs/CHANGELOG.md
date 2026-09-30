@@ -9,6 +9,16 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.126.0] - 2026-09-30
+
+### Agregado
+
+- **Estado de servicios para la intranet** (`GET /api/public/intranet/estado`): con la clave de intranet (`INTRANET_CLIENTE_SHA256`), devuelve el estado del monitor de huachicol reducido a `slug`, `status`, `latency_ms` y `last_checked`, sin URLs ni detalles internos. El monitor dejó de publicar el 8090 en huachicol 2.x y su único consumidor sigue siendo mariachi: la intranet ya no lo consulta directo
+
+### Cambiado
+
+- El proxy al monitor sale de `routes/sistema.py` a `services/huachicol_monitor.py`, compartido por el panel de sistema y la lectura de la intranet
+
 ## [2.125.0] - 2026-09-30
 
 ### Agregado
