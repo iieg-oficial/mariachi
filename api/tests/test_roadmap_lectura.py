@@ -5,6 +5,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from app.api import intranet_cliente
 from app.api.deps import get_db
 from app.api.routes import roadmap_lectura
 
@@ -53,7 +54,7 @@ class _Sesion:
 def cliente(monkeypatch):
     huella = hashlib.sha256(CLAVE.encode()).hexdigest()
     monkeypatch.setattr(
-        roadmap_lectura, "get_settings", lambda: SimpleNamespace(roadmap_api_key_sha256=huella)
+        intranet_cliente, "get_settings", lambda: SimpleNamespace(intranet_cliente_sha256=huella)
     )
     app = FastAPI()
     app.include_router(roadmap_lectura.router)
@@ -76,7 +77,7 @@ def test_sin_la_clave_es_401(cliente, cabeceras):
 
 def test_sin_huella_configurada_esta_apagado(monkeypatch):
     monkeypatch.setattr(
-        roadmap_lectura, "get_settings", lambda: SimpleNamespace(roadmap_api_key_sha256=None)
+        intranet_cliente, "get_settings", lambda: SimpleNamespace(intranet_cliente_sha256=None)
     )
     app = FastAPI()
     app.include_router(roadmap_lectura.router)

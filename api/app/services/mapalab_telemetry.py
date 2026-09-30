@@ -76,6 +76,7 @@ def ingest_batch(
     *,
     user_agent: str | None,
     api_key_id: int | None = None,
+    app: str = "mapalab",
 ) -> int:
     ua_family_value = parse_ua_family(user_agent)
     referrer = _truncate_str(payload.referrer, 500)
@@ -98,18 +99,21 @@ def ingest_batch(
         if ts_value.tzinfo is None:
             ts_value = ts_value.replace(tzinfo=timezone.utc)
 
-        rows.append({
-            "ts": ts_value,
-            "event_name": name[:50],
-            "session_id": payload.session_id,
-            "source": payload.source,
-            "api_key_id": api_key_id,
-            "layer_id": layer_id,
-            "props": scrubbed,
-            "ua_family": ua_family_value,
-            "referrer": referrer,
-            "pathname": pathname,
-        })
+        rows.append(
+            {
+                "ts": ts_value,
+                "event_name": name[:50],
+                "session_id": payload.session_id,
+                "app": app,
+                "source": payload.source,
+                "api_key_id": api_key_id,
+                "layer_id": layer_id,
+                "props": scrubbed,
+                "ua_family": ua_family_value,
+                "referrer": referrer,
+                "pathname": pathname,
+            }
+        )
 
         if name in _EVENTS_USED_SWIPE:
             used_swipe = True
@@ -150,6 +154,7 @@ def ingest_batch(
         session_id=payload.session_id,
         started_at=rows[0]["ts"],
         last_seen_at=last_ts,
+        app=app,
         source=payload.source,
         api_key_id=api_key_id,
         events_count=len(rows),

@@ -1,13 +1,11 @@
-import hashlib
-import hmac
 from typing import List
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
-from app.core.settings import get_settings
+from app.api.intranet_cliente import verificar_clave_intranet
 from app.models.roadmap import RoadmapHito
 from app.models.roadmap_extra import RoadmapCiclo, RoadmapProceso
 from app.schemas.roadmap import RoadmapCicloSalida, RoadmapHitoSalida, RoadmapProcesoSalida
@@ -21,14 +19,7 @@ class RoadmapLectura(BaseModel):
     procesos: List[RoadmapProcesoSalida]
 
 
-def verificar_clave(x_api_key: str = Header(default="")) -> None:
-    esperado = (get_settings().roadmap_api_key_sha256 or "").strip().lower()
-    recibido = hashlib.sha256(x_api_key.encode()).hexdigest()
-    if not esperado or not x_api_key or not hmac.compare_digest(recibido, esperado):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="API key inválida")
-
-
-@router.get("", response_model=RoadmapLectura, dependencies=[Depends(verificar_clave)])
+@router.get("", response_model=RoadmapLectura, dependencies=[Depends(verificar_clave_intranet)])
 def leer(db: Session = Depends(get_db)) -> RoadmapLectura:
     return RoadmapLectura(
         hitos=db.query(RoadmapHito).order_by(RoadmapHito.fecha_eje, RoadmapHito.orden).all(),

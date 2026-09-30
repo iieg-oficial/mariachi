@@ -72,6 +72,7 @@ class Settings(BaseSettings):
     @property
     def minerva_logout_base(self) -> str:
         return (self.minerva_login_url or self.minerva_public_base).rstrip("/")
+
     docs_url: str | None = None
     redoc_url: str | None = None
     openapi_url: str | None = None
@@ -97,7 +98,7 @@ class Settings(BaseSettings):
     frames_rtsp_username: str | None = None
     frames_detect_fps: int = 15
 
-    roadmap_api_key_sha256: str | None = None
+    intranet_cliente_sha256: str | None = None
 
     intranet_enabled: bool = False
     intranet_api_url: str | None = None
@@ -163,4 +164,3 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
-

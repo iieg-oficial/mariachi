@@ -9,6 +9,17 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.124.0] - 2026-09-30
+
+### Agregado
+
+- **Telemetría de la intranet en huachicol**: `POST /api/public/intranet/events/batch` guarda los eventos con `app = 'intranet'` y `source = 'pagina'` en las mismas tablas y rollups que mapalab (`huachicol.events`, `huachicol.sessions`), sin tablas nuevas. Su lista de eventos es propia (`INTRANET_EVENT_NAMES`): un evento de mapalab por esta vía responde 422. Exige la clave de intranet
+- `ingest_batch` recibe `app`; mapalab sigue con `mapalab` por omisión
+
+### Cambiado
+
+- `ROADMAP_API_KEY_SHA256` pasa a **`INTRANET_CLIENTE_SHA256`**: la misma clave de intranet autoriza leer el roadmap y mandar telemetría (`app/api/intranet_cliente.py`)
+
 ## [2.123.0] - 2026-09-30
 
 ### Agregado
