@@ -98,7 +98,9 @@ def create_app() -> FastAPI:
     portal_view = [Depends(require_permission("mariachi.portal.view"))]
     acervo_view = [Depends(require_permission("mariachi.acervo.view"))]
     sistema_manage = [Depends(require_permission("mariachi.sistema.manage"))]
-    mel_view = [Depends(require_any_permission("mariachi.mel.view", "mariachi.identidad.view"))]
+    mel_view = [
+        Depends(require_any_permission("mariachi.mel.view", "mariachi.identidad.view"))
+    ]
     colibri_view = [
         Depends(
             require_any_permission(
@@ -118,25 +120,17 @@ def create_app() -> FastAPI:
         dependencies=[Depends(require_permission("mariachi.actividad.view"))],
     )
     app.include_router(projects.router, prefix=settings.admin_prefix, dependencies=sistema_manage)
-    app.include_router(
-        acervo_buckets.router, prefix=settings.admin_prefix, dependencies=acervo_view
-    )
+    app.include_router(acervo_buckets.router, prefix=settings.admin_prefix, dependencies=acervo_view)
     app.include_router(pages.router, prefix=settings.admin_prefix, dependencies=portal_view)
     app.include_router(menu.router, prefix=settings.admin_prefix, dependencies=portal_view)
     app.include_router(acervo.router, prefix=settings.admin_prefix, dependencies=acervo_view)
     app.include_router(borradores.router, prefix=settings.admin_prefix, dependencies=mapalab_view)
-    app.include_router(
-        publicaciones_capas.router, prefix=settings.admin_prefix, dependencies=mapalab_view
-    )
+    app.include_router(publicaciones_capas.router, prefix=settings.admin_prefix, dependencies=mapalab_view)
     app.include_router(sistema.router, prefix=settings.admin_prefix, dependencies=panel)
     app.include_router(layers.router, prefix=settings.admin_prefix, dependencies=mapalab_view)
-    app.include_router(
-        capas_catalogo.router, prefix=settings.admin_prefix, dependencies=mapalab_view
-    )
+    app.include_router(capas_catalogo.router, prefix=settings.admin_prefix, dependencies=mapalab_view)
     app.include_router(bulk_ingest.router, prefix=settings.admin_prefix, dependencies=mapalab_view)
-    app.include_router(
-        layer_metadata.router, prefix=settings.admin_prefix, dependencies=mapalab_view
-    )
+    app.include_router(layer_metadata.router, prefix=settings.admin_prefix, dependencies=mapalab_view)
     app.include_router(grid.router, prefix=settings.admin_prefix, dependencies=panel)
     app.include_router(mel.router, prefix=settings.admin_prefix, dependencies=mel_view)
     app.include_router(mel.router_compat, prefix=settings.admin_prefix, dependencies=mel_view)
@@ -174,29 +168,17 @@ def create_app() -> FastAPI:
     app.include_router(mapalab_mcp_internal.router, prefix=settings.admin_prefix)
     app.include_router(mapalab_api_keys_internal.router, prefix=settings.admin_prefix_legacy)
     app.include_router(mapalab_mcp_internal.router, prefix=settings.admin_prefix_legacy)
-    app.include_router(
-        mapalab_stats.router, prefix=settings.admin_prefix, dependencies=mapalab_view
-    )
+    app.include_router(mapalab_stats.router, prefix=settings.admin_prefix, dependencies=mapalab_view)
     app.include_router(
         reportes.router,
         prefix=settings.admin_prefix,
         dependencies=[Depends(require_permission("mariachi.colibri_reportes.view"))],
     )
-    app.include_router(
-        colibri_tipos.router, prefix=settings.admin_prefix, dependencies=colibri_view
-    )
-    app.include_router(
-        colibri_direcciones.router, prefix=settings.admin_prefix, dependencies=colibri_view
-    )
-    app.include_router(
-        colibri_source_apps.router, prefix=settings.admin_prefix, dependencies=colibri_view
-    )
-    app.include_router(
-        colibri_stats.router, prefix=settings.admin_prefix, dependencies=colibri_view
-    )
-    app.include_router(
-        colibri_routes.router, prefix=settings.admin_prefix, dependencies=colibri_view
-    )
+    app.include_router(colibri_tipos.router, prefix=settings.admin_prefix, dependencies=colibri_view)
+    app.include_router(colibri_direcciones.router, prefix=settings.admin_prefix, dependencies=colibri_view)
+    app.include_router(colibri_source_apps.router, prefix=settings.admin_prefix, dependencies=colibri_view)
+    app.include_router(colibri_stats.router, prefix=settings.admin_prefix, dependencies=colibri_view)
+    app.include_router(colibri_routes.router, prefix=settings.admin_prefix, dependencies=colibri_view)
 
     app.include_router(preview.public_router, prefix=settings.web_prefix)
     app.include_router(public.router, prefix=settings.web_prefix)
@@ -209,9 +191,7 @@ def create_app() -> FastAPI:
     app.include_router(intranet_events_public.router, prefix=settings.public_prefix)
     app.include_router(mapalab_events_public.router, prefix=settings.public_prefix)
     app.include_router(mapalab_infobox_public.router, prefix=settings.public_prefix)
-    app.include_router(
-        mapalab_infobox.router, prefix=settings.admin_prefix, dependencies=mapalab_view
-    )
+    app.include_router(mapalab_infobox.router, prefix=settings.admin_prefix, dependencies=mapalab_view)
 
     if settings.frames_enabled:
         app.include_router(
@@ -287,11 +267,8 @@ def create_app() -> FastAPI:
         try:
             pyproject = Path(__file__).resolve().parent.parent / "pyproject.toml"
             mtime = os.path.getmtime(pyproject)
-            deployed_at = (
-                datetime.fromtimestamp(mtime, tz=timezone.utc)
-                .isoformat(timespec="seconds")
-                .replace("+00:00", "Z")
-            )
+            deployed_at = datetime.fromtimestamp(mtime, tz=timezone.utc) \
+                .isoformat(timespec="seconds").replace("+00:00", "Z")
         except OSError:
             deployed_at = None
 
