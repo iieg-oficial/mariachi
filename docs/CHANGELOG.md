@@ -9,6 +9,13 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [1.126.2] - 2026-09-30
+
+### Corregido
+
+- **Las miniaturas de imágenes grandes ya se generan.** Pillow abortaba con `DecompressionBombError` por encima de 128 MP y `/acervo/thumb/...` respondía 502: las 125 cartas municipales de 2021 (153 MP) y otros cuatro mapas de hasta 606 MP nunca tenían miniatura, y el portal caía en el original de 8-50 MB. Los JPEG se decodifican ahora con `draft()` a la escala del ancho pedido, con límite de apertura de 1 000 MP; los demás formatos conservan el tope de 128 MP antes de decodificar.
+- La generación de miniaturas de JPEG grandes consume una fracción de la memoria: una imagen de 82 MP pasa de 659 MB a 53 MB por petición.
+
 ## [1.126.1] - 2026-09-24
 
 ### Corregido
