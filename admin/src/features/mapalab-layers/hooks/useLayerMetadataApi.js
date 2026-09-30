@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 import api from '@shared/services/api';
+import { guardarBorradorCompartido } from '@features/mapalab-layers/utils/borradorCompartido';
 
 export const useLayerMetadataApi = () => {
     const getLayerMetadata = useCallback(async (layerKey) => {
@@ -54,10 +55,10 @@ export const useLayerMetadataApi = () => {
         const res = await api.post(`/layer-metadata/${encodeURIComponent(layerKey)}/stats/refresh`);
         return res.data;
     }, []);
-    const saveMetadataDraft = useCallback(async (layerKey, data) => {
-        const res = await api.put(`/borradores/layer_metadata/${encodeURIComponent(layerKey)}`, { data });
-        return res.data;
-    }, []);
+    const saveMetadataDraft = useCallback(
+        (layerKey, data) => guardarBorradorCompartido('layer_metadata', layerKey, data),
+        [],
+    );
 
     return {
         getLayerMetadata,

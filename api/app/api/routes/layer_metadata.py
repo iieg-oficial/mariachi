@@ -4,11 +4,10 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.api.deps import require_permission, verify_csrf
+from app.api.deps import get_db, require_permission, verify_csrf
 from app.api.rate_limit import rate_limit
 from app.core.database import get_dataengine_db
 from app.models.columna_tabla import ColumnaTabla
-from app.models.layer import Workspace
 from app.models.layer_metadata import LayerMetadata, LayerStats
 from app.models.user import Usuario
 from app.schemas.columna_tabla import ColumnasTablaResponse, ColumnasTablaUpdate
@@ -18,9 +17,11 @@ from app.schemas.layer_metadata import (
     LayerStatsResponse,
     LayerStatsUpdate,
 )
+from app.services import publicaciones_capas as publicaciones
 from app.services.grid_batch import diff_states, record_cell_history
 from app.services.grids.layer_metadata_grid import SPEC as METADATA_GRID_SPEC
 from app.services.grids.layer_metadata_grid import load_states
+from app.services.layer_keys import canonical_layer_key as _canonical_layer_key
 from app.services.mapalab_notifier import notify_tree_changed
 from app.services.stats_templates import (
     StatsTemplateError,
@@ -41,16 +42,6 @@ router = APIRouter(
 _require_project_editor = require_permission("mariachi.mapalab.update")
 _require_manage = require_permission("mariachi.mapalab.manage")
 _write_rate_limit = rate_limit(max_requests=60, window_seconds=60.0)
-
-
-def _canonical_layer_key(db: Session, layer_key: str) -> str:
-    alias, sep, resto = layer_key.partition(':')
-    if not sep:
-        return layer_key
-    ws = db.query(Workspace).filter(Workspace.alias == alias).first()
-    if ws and ws.geoserver_workspace != alias:
-        return f'{ws.geoserver_workspace}:{resto}'
-    return layer_key
 
 
 @router.get('', response_model=list[LayerMetadataResponse])
@@ -175,6 +166,7 @@ async def update_stats(
     layer_key: str,
     data: LayerStatsUpdate,
     db: Session = Depends(get_dataengine_db),
+    mariachi_db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
     _admin: Usuario = Depends(_require_manage),
     _rl: Usuario = Depends(_write_rate_limit),
@@ -192,6 +184,8 @@ async def update_stats(
         db.add(row)
 
     payload = data.model_dump(exclude_unset=True, by_alias=False)
+    campos = publicaciones.campos_de('layer_stats', payload)
+    antes = publicaciones.foto(row, campos)
 
     if 'stats_config' in payload and payload['stats_config'] is not None:
         try:
@@ -217,6 +211,10 @@ async def update_stats(
     db.commit()
     db.refresh(row)
     notify_tree_changed()
+    publicaciones.registrar_sin_romper(
+        mariachi_db, 'layer_stats', layer_key, antes, publicaciones.foto(row, campos),
+        publicaciones.quien(current_user),
+    )
     return row
 
 
@@ -287,6 +285,7 @@ async def update_metadata(
     layer_key: str,
     data: LayerMetadataUpdate,
     db: Session = Depends(get_dataengine_db),
+    mariachi_db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
     _editor: Usuario = Depends(_require_project_editor),
     _rl: Usuario = Depends(_write_rate_limit),
@@ -299,6 +298,8 @@ async def update_metadata(
     before = load_states(db.connection(), layer_key)
 
     payload = data.model_dump(exclude_unset=True, by_alias=False)
+    campos = publicaciones.campos_de('layer_metadata', payload)
+    antes = publicaciones.foto(row, campos)
     for key, value in payload.items():
         if key in ('fuentes', 'metodologia') and value is not None:
             normalized = value if isinstance(value, list) else [value]
@@ -321,4 +322,8 @@ async def update_metadata(
 
     db.commit()
     db.refresh(row)
+    publicaciones.registrar_sin_romper(
+        mariachi_db, 'layer_metadata', layer_key, antes, publicaciones.foto(row, campos),
+        publicaciones.quien(current_user),
+    )
     return row

@@ -3,6 +3,7 @@ import api from '@shared/services/api';
 import { tipoQueGobierna } from '@features/mapalab-layers/constants/nodeTypes';
 import { optimisticMoveRawTree, optimisticReorderRawTree } from '@features/mapalab-layers/utils/treeOptimistic';
 import { useLayerMetadataApi } from '@features/mapalab-layers/hooks/useLayerMetadataApi';
+import { guardarBorradorCompartido, quitarCamposDeBorrador } from '@features/mapalab-layers/utils/borradorCompartido';
 
 
 export const toAntTreeData = (nodes, parentNodeType = null) =>
@@ -103,23 +104,25 @@ export const useLayerTreeAdmin = () => {
         return res.data;
     }, []);
 
-    const saveLayerDraft = useCallback(async (layerId, data) => {
-        const res = await api.put(`/borradores/layer/${layerId}`, { data });
-        return res.data;
-    }, []);
+    const saveLayerDraft = useCallback(
+        (layerId, data, opciones) => guardarBorradorCompartido('layer', layerId, data, opciones),
+        [],
+    );
 
     const requestReview = useCallback(async (resourceId, resourceType = 'layer') => {
         await api.post(`/borradores/${resourceType}/${encodeURIComponent(resourceId)}/solicitar-revision`);
     }, []);
 
-    const saveStatsDraft = useCallback(async (layerKey, data) => {
-        const res = await api.put(`/borradores/layer_stats/${encodeURIComponent(layerKey)}`, { data });
-        return res.data;
-    }, []);
+    const saveStatsDraft = useCallback(
+        (layerKey, data) => guardarBorradorCompartido('layer_stats', layerKey, data),
+        [],
+    );
 
     const discardDraft = useCallback(async (borradorId) => {
         await api.delete(`/borradores/por-id/${borradorId}`);
     }, []);
+
+    const quitarCampos = useCallback((borradorId, campos) => quitarCamposDeBorrador(borradorId, campos), []);
 
     const getLayerDraft = useCallback(async (layerId) => {
         try {
@@ -268,6 +271,7 @@ export const useLayerTreeAdmin = () => {
         createLayer,
         updateLayer,
         saveLayerDraft,
+        quitarCampos,
         requestReview,
         saveStatsDraft,
         discardDraft,

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Button, Checkbox, Empty, Modal, Space, Tag, Tooltip, Typography } from 'antd';
 import { describeValue, labelOf, sectionOf } from '@features/mapalab-layers/utils/layerDiff';
+import { autorDeCampo } from '@features/mapalab-layers/utils/borradorCompartido';
 
 const { Text } = Typography;
 
@@ -21,6 +22,7 @@ const buildRows = (drafts, published) => {
                 value: data[field],
                 previous: antes ? antes[field] : undefined,
                 hasPrevious: Boolean(antes),
+                autor: autorDeCampo(draft, field),
             });
         }
     }
@@ -122,7 +124,10 @@ export default function PublishReviewModal({
                                                 checked={selected.includes(row.id)}
                                                 onChange={() => toggle(row.id)}
                                             />
-                                            <Text style={{ flex: 1, fontSize: 13 }}>{labelOf(row.field)}</Text>
+                                            <Text style={{ flex: 1, fontSize: 13 }}>
+                                                {labelOf(row.field)}
+                                                {row.autor && <Text type="secondary" style={{ fontSize: 11 }}> · {row.autor}</Text>}
+                                            </Text>
                                             <Space size={6} style={{ maxWidth: 320, justifyContent: 'flex-end' }}>
                                                 {row.hasPrevious ? (
                                                     <Text delete type="secondary" style={{ fontSize: 11 }}>

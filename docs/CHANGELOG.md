@@ -9,6 +9,46 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.119.0] - 2026-09-29
+
+Trae la migración `pubc0001`: fusiona borradores y crea `publicaciones_capas`.
+
+### Agregado: deshacer la última publicación de una capa
+
+Tarjetita, metadatos y estadísticas se editaban en el espejo y se copiaban a producción como JSON,
+porque publicar era irreversible. Ahora cada publicación guarda **cómo estaba antes** cada campo que
+cambió, y en el encabezado del editor aparece la última —qué cambió, quién y cuándo— con un botón
+**Deshacer** que muestra lo que va a volver antes de aplicarlo. En estadísticas, deshacer también
+recalcula los valores.
+
+Se registra en los tres caminos de publicación: `PUT /layers/{id}`, `PUT /layer-metadata/{clave}` y
+`PUT /layer-metadata/{clave}/stats` —por donde publica administración— y al aprobar un borrador en
+revisión. Hasta ahora el historial de capas no guardaba la tarjetita ni el de estadísticas existía.
+
+Sólo se deshace **la última** publicación de cada recurso, y sólo si sus campos no cambiaron por otra
+vía —el modo tabla, por ejemplo—: deshacer una anterior pisaría en silencio lo que vino después.
+
+### Cambiado: los borradores de capa son uno por recurso y se editan en conjunto
+
+Cada persona tenía su propio borrador de la misma capa, invisible para las demás, y al aprobarse
+ganaba el último. Para `layer`, `layer_metadata` y `layer_stats` el borrador ahora es **uno por
+recurso**: quien abre la capa ve lo que llevan los demás y lo continúa.
+
+- **Se combina campo por campo** en vez de reemplazar el borrador entero. Cada campo recuerda quién
+  lo cambió, y la hoja de revisión lo muestra.
+- **Choques:** si dos personas guardan el mismo campo, la segunda recibe «Ana cambió label hace un
+  momento» en vez de pisarla.
+- **Presencia:** el encabezado avisa quién más está en la capa.
+- Los borradores del inicio, eventos, páginas y simbología siguen siendo por persona.
+
+La migración fusiona los borradores activos que ya estuvieran duplicados: gana el valor más reciente
+de cada campo y se conservan los campos de todas las personas.
+
+### Corregido: publicar algunos cambios ya no tira los demás
+
+Al publicar una selección, el editor descartaba el borrador **entero**, así que los cambios no
+seleccionados se perdían. Ahora sólo salen del borrador los campos que se publicaron.
+
 ## [2.118.0] - 2026-09-29
 
 ### Cambiado: Frigate procesa 15 fps por cámara y la vista individual los muestra

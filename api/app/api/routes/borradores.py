@@ -4,11 +4,18 @@ from sqlalchemy.orm import Session, joinedload
 from app.api.deps import get_current_user, get_db, require_permission, verify_csrf
 from app.core.database import get_dataengine_db
 from app.core.time import utcnow
-from app.models.borrador import Borrador
+from app.models.borrador import TIPOS_COMPARTIDOS, Borrador
 from app.models.layer import Layer, Workspace
 from app.models.user import Usuario
-from app.schemas.borrador import BorradorResponse, BorradorUpsert, RechazarIn
-from app.services import borrador_service
+from app.schemas.borrador import BorradorResponse, BorradorUpsert, QuitarCamposIn, RechazarIn
+from app.services import borrador_service, presence
+from app.services import publicaciones_capas as publicaciones
+from app.services.borradores_compartidos import (
+    combinar,
+    describir_conflicto,
+    es_compartido,
+    quitar_campos,
+)
 from app.services.geoserver_client import GeoServerClient, GeoServerError
 
 router = APIRouter(prefix="/borradores", tags=["borradores"])
@@ -104,6 +111,61 @@ async def obtener_mis_borradores(
     )
 
 
+@router.get("/capas", response_model=list[BorradorResponse])
+async def obtener_borradores_de_capas(
+    db: Session = Depends(get_db),
+    _user: Usuario = Depends(get_current_user),
+):
+    return (
+        db.query(Borrador)
+        .options(joinedload(Borrador.usuario))
+        .filter(Borrador.resource_type.in_(TIPOS_COMPARTIDOS), _ACTIVO_FILTER)
+        .order_by(Borrador.actualizado_en.desc())
+        .all()
+    )
+
+
+@router.post("/por-id/{borrador_id}/quitar-campos", response_model=BorradorResponse | None)
+async def quitar_campos_de_borrador(
+    borrador_id: int,
+    body: QuitarCamposIn,
+    db: Session = Depends(get_db),
+    _csrf: Usuario = Depends(verify_csrf),
+):
+    borrador = db.query(Borrador).filter(Borrador.id == borrador_id).first()
+    if not borrador:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Borrador no encontrado")
+    data, autores = quitar_campos(borrador.data, borrador.autores, body.campos)
+    if not data:
+        db.delete(borrador)
+        db.commit()
+        return None
+    borrador.data = data
+    borrador.autores = autores
+    borrador.version = (borrador.version or 1) + 1
+    borrador.actualizado_en = utcnow()
+    db.commit()
+    db.refresh(borrador)
+    return borrador
+
+
+@router.put("/layer/{layer_id}/presencia")
+async def registrar_presencia_capa(
+    layer_id: str,
+    current_user: Usuario = Depends(verify_csrf),
+):
+    presence.register("capa", layer_id, current_user.username, current_user.name)
+    return {"ok": True}
+
+
+@router.get("/layer/{layer_id}/presencia")
+async def obtener_presencia_capa(
+    layer_id: str,
+    current_user: Usuario = Depends(get_current_user),
+):
+    return presence.list_others("capa", layer_id, current_user.username)
+
+
 @router.get("/por-id/{borrador_id}", response_model=BorradorResponse)
 async def obtener_borrador_por_id(
     borrador_id: int,
@@ -138,7 +200,24 @@ async def aprobar_borrador(
             detail=f"Solo se aprueban borradores en estado 'pendiente_revision' (actual: {borrador.estado})",
         )
 
+    campos: list[str] = []
+    antes: dict = {}
+    if es_compartido(borrador.resource_type):
+        campos = publicaciones.campos_de(borrador.resource_type, borrador.data or {})
+        antes = publicaciones.foto(
+            publicaciones.fila(dataengine_db, borrador.resource_type, borrador.resource_id), campos,
+        )
+
     result = borrador_service.apply_borrador(db, dataengine_db, borrador, current_user.email)
+
+    if campos:
+        despues = publicaciones.foto(
+            publicaciones.fila(dataengine_db, borrador.resource_type, borrador.resource_id), campos,
+        )
+        publicaciones.registrar_sin_romper(
+            db, borrador.resource_type, borrador.resource_id, antes, despues,
+            publicaciones.quien(current_user), origen='revision',
+        )
 
     borrador.estado = 'aprobado'
     borrador.actualizado_en = utcnow()
@@ -185,6 +264,17 @@ async def eliminar_borrador_por_id(
 _ACTIVO_FILTER = Borrador.estado.in_(('en_progreso', 'pendiente_revision', 'rechazado'))
 
 
+def _del_recurso(resource_type: str, resource_id: str, current_user: Usuario) -> list:
+    filtros = [
+        Borrador.resource_type == resource_type,
+        Borrador.resource_id == resource_id,
+        _ACTIVO_FILTER,
+    ]
+    if not es_compartido(resource_type):
+        filtros.append(Borrador.usuario_id == current_user.id)
+    return filtros
+
+
 @router.get("/{resource_type}/{resource_id}", response_model=BorradorResponse | None)
 async def obtener_borrador(
     resource_type: str,
@@ -195,17 +285,12 @@ async def obtener_borrador(
     return (
         db.query(Borrador)
         .options(joinedload(Borrador.usuario))
-        .filter(
-            Borrador.resource_type == resource_type,
-            Borrador.resource_id == resource_id,
-            Borrador.usuario_id == current_user.id,
-            _ACTIVO_FILTER,
-        )
+        .filter(*_del_recurso(resource_type, resource_id, current_user))
         .first()
     )
 
 
-@router.put("/{resource_type}/{resource_id}", response_model=BorradorResponse)
+@router.put("/{resource_type}/{resource_id}", response_model=BorradorResponse | None)
 async def guardar_borrador(
     resource_type: str,
     resource_id: str,
@@ -216,14 +301,12 @@ async def guardar_borrador(
     borrador = (
         db.query(Borrador)
         .options(joinedload(Borrador.usuario))
-        .filter(
-            Borrador.resource_type == resource_type,
-            Borrador.resource_id == resource_id,
-            Borrador.usuario_id == current_user.id,
-            _ACTIVO_FILTER,
-        )
+        .filter(*_del_recurso(resource_type, resource_id, current_user))
         .first()
     )
+
+    if es_compartido(resource_type):
+        return _guardar_compartido(db, borrador, resource_type, resource_id, borrador_in, current_user)
 
     if borrador:
         borrador.data = borrador_in.data
@@ -245,6 +328,52 @@ async def guardar_borrador(
     return borrador
 
 
+def _guardar_compartido(
+    db: Session,
+    borrador: Borrador | None,
+    resource_type: str,
+    resource_id: str,
+    borrador_in: BorradorUpsert,
+    current_user: Usuario,
+) -> Borrador | None:
+    resultado = combinar(
+        borrador.data if borrador else None,
+        borrador.autores if borrador else None,
+        (borrador.version or 1) if borrador else 0,
+        borrador_in.data,
+        borrador_in.quitar,
+        current_user.username,
+        current_user.name,
+        borrador_in.base_version if borrador else None,
+    )
+    if resultado.conflictos:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=describir_conflicto(resultado.conflictos),
+        )
+    if not resultado.data:
+        if borrador:
+            db.delete(borrador)
+            db.commit()
+        return None
+    if borrador is None:
+        borrador = Borrador(
+            resource_type=resource_type,
+            resource_id=resource_id,
+            usuario_id=current_user.id,
+        )
+        db.add(borrador)
+    borrador.data = resultado.data
+    borrador.autores = resultado.autores
+    borrador.version = resultado.version
+    borrador.estado = 'en_progreso'
+    borrador.comentario_rechazo = None
+    borrador.actualizado_en = utcnow()
+    db.commit()
+    db.refresh(borrador)
+    return borrador
+
+
 @router.post("/layer/{layer_id}/solicitar-eliminacion")
 async def solicitar_eliminacion_capa(
     layer_id: str,
@@ -261,14 +390,15 @@ async def solicitar_eliminacion_capa(
 
     borrador = (
         db.query(Borrador)
-        .filter(
-            Borrador.resource_type == 'layer',
-            Borrador.resource_id == layer_id,
-            Borrador.usuario_id == current_user.id,
-            _ACTIVO_FILTER,
-        )
+        .filter(*_del_recurso('layer', layer_id, current_user))
         .first()
     )
+    pendientes = [c for c in (borrador.data or {}) if c != 'action'] if borrador else []
+    if pendientes:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Esta capa tiene cambios sin publicar; publícalos o descártalos antes de pedir su archivado",
+        )
     payload = {'action': 'delete'}
     if borrador:
         borrador.data = payload
@@ -296,12 +426,7 @@ async def solicitar_revision(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
 ):
-    borrador = db.query(Borrador).filter(
-        Borrador.resource_type == resource_type,
-        Borrador.resource_id == resource_id,
-        Borrador.usuario_id == current_user.id,
-        _ACTIVO_FILTER,
-    ).first()
+    borrador = db.query(Borrador).filter(*_del_recurso(resource_type, resource_id, current_user)).first()
 
     if not borrador:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Guarda un borrador primero")
@@ -320,12 +445,7 @@ async def eliminar_borrador(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
 ):
-    borrador = db.query(Borrador).filter(
-        Borrador.resource_type == resource_type,
-        Borrador.resource_id == resource_id,
-        Borrador.usuario_id == current_user.id,
-        _ACTIVO_FILTER,
-    ).first()
+    borrador = db.query(Borrador).filter(*_del_recurso(resource_type, resource_id, current_user)).first()
 
     if not borrador:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Borrador no encontrado")

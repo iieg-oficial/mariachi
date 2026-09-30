@@ -25,6 +25,7 @@ from app.schemas.layer import (
     WorkspaceResponse,
 )
 from app.services import layer_history, layer_service
+from app.services import publicaciones_capas as publicaciones
 from app.services.geoserver_client import GeoServerError
 from app.services.mapalab_notifier import notify_tree_changed
 
@@ -182,6 +183,7 @@ async def update_layer(
     layer_id: str,
     data: LayerUpdate,
     db: Session = Depends(get_dataengine_db),
+    mariachi_db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
     _admin: Usuario = Depends(require_mapalab_manage),
     _rl: Usuario = Depends(write_rate_limit),
@@ -190,6 +192,8 @@ async def update_layer(
     if not layer:
         raise HTTPException(status_code=404, detail=f"Capa '{layer_id}' no encontrada")
 
+    campos = publicaciones.campos_de('layer', data.model_dump(exclude_unset=True, by_alias=False))
+    antes = publicaciones.foto(layer, campos)
     try:
         before = layer_history.snapshot(layer)
         layer = layer_service.update_layer(db, layer, data, updated_by=current_user.email)
@@ -199,10 +203,14 @@ async def update_layer(
         db.commit()
         db.refresh(layer)
         notify_tree_changed()
-        return layer
     except (ValueError, GeoServerError) as exc:
         db.rollback()
         raise map_domain_errors(exc) from exc
+    publicaciones.registrar_sin_romper(
+        mariachi_db, 'layer', layer_id, antes, publicaciones.foto(layer, campos),
+        publicaciones.quien(current_user),
+    )
+    return layer
 
 
 @router.delete('/{layer_id}', status_code=200)

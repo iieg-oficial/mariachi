@@ -46,6 +46,8 @@ import EditorSection from '@features/mapalab-layers/components/layersEditor/Edit
 import LayerBreadcrumb from '@features/mapalab-layers/components/LayerBreadcrumb';
 import TreeSearchInput from '@features/mapalab-layers/components/TreeSearchInput';
 import PublishReviewModal from '@features/mapalab-layers/components/PublishReviewModal';
+import EditandoAhora from '@features/mapalab-layers/components/layersEditor/EditandoAhora';
+import UltimaPublicacion from '@features/mapalab-layers/components/layersEditor/UltimaPublicacion';
 import GridHistoryDrawer from '@shared/components/dataGrid/GridHistoryDrawer';
 import { useLayerDrafts } from '@features/mapalab-layers/hooks/useLayerDrafts';
 import { HISTORY_COLUMNS, METADATA_HISTORY_COLUMNS, diffPayload } from '@features/mapalab-layers/utils/layerDiff';
@@ -96,6 +98,7 @@ export default function LayerEditPage() {
         refreshLayerStats,
         requestReview,
         discardDraft,
+        quitarCampos,
         getLayerDraft,
         listGeoserverWorkspaces,
         listGeoserverStyles,
@@ -382,8 +385,9 @@ export default function LayerEditPage() {
                         .map((k) => [k, values[k]]),
                 );
                 const cambios = diffPayload(soloTocados, baseline);
-                if (Object.keys(cambios).length === 0) return;
-                await saveLayerDraft(layerId, cambios);
+                const quitar = Object.keys(soloTocados).filter((k) => !(k in cambios));
+                if (Object.keys(cambios).length === 0 && quitar.length === 0) return;
+                await saveLayerDraft(layerId, cambios, { quitar });
                 setAutosaveAt(new Date());
                 reloadDrafts();
             } catch { /* el borrador se reintenta al siguiente cambio */ }
@@ -450,8 +454,13 @@ export default function LayerEditPage() {
             }
 
             if (isAdmin) {
+                const publicadosPorBorrador = new Map();
+                rows.forEach((r) => {
+                    if (!publicadosPorBorrador.has(r.draftId)) publicadosPorBorrador.set(r.draftId, []);
+                    publicadosPorBorrador.get(r.draftId).push(r.field);
+                });
                 await Promise.all(
-                    [...new Set(rows.map((r) => r.draftId))].map((id) => discardDraft(id)),
+                    [...publicadosPorBorrador].map(([id, campos]) => quitarCampos(id, campos)),
                 );
             }
             message.success(isAdmin ? 'Cambios publicados' : 'Cambios enviados a revisión');
@@ -1283,6 +1292,18 @@ export default function LayerEditPage() {
                             <Text type="secondary" style={{ fontSize: 11 }}>
                                 guardado {autosaveAt.toLocaleTimeString()}
                             </Text>
+                        )}
+                        <EditandoAhora layerId={layerId} />
+                        {isAdmin && (
+                            <UltimaPublicacion
+                                layerId={layerId}
+                                layerKey={featureTypeContext?.layerKey}
+                                recarga={reloadKey}
+                                onDeshecha={async () => {
+                                    await refrescarArbol(reload);
+                                    setReloadKey((k) => k + 1);
+                                }}
+                            />
                         )}
                     </Space>
                     <Space align="center" size={8}>

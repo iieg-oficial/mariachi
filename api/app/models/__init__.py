@@ -19,6 +19,7 @@ from app.models.mel import Marca, MarcaCampo, MarcaFuente, MarcaToken
 from app.models.menu_item import MenuItem
 from app.models.page import Page
 from app.models.project import Project, UserProject
+from app.models.publicacion_capa import PublicacionCapa
 from app.models.reporte import Reporte
 from app.models.reporte_actividad import ReporteActividad
 from app.models.reporte_grupo import ReporteGrupo
@@ -45,6 +46,7 @@ __all__ = [
     "MapalabInfoboxPropuesta",
     "Usuario",
     "Page",
+    "PublicacionCapa",
     "MenuItem",
     "AcervoFile",
     "AcervoFolder",

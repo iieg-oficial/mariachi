@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import api from '@shared/services/api';
+import { recordarVersiones } from '@features/mapalab-layers/utils/borradorCompartido';
 
 const TIPOS = new Set(['layer', 'layer_metadata', 'layer_stats']);
 
@@ -16,8 +17,10 @@ export const useLayerDrafts = () => {
 
     const reload = useCallback(async () => {
         try {
-            const res = await api.get('/borradores/mios');
-            setDrafts((res.data || []).filter(isLayerDraft));
+            const res = await api.get('/borradores/capas');
+            const deCapas = (res.data || []).filter(isLayerDraft);
+            recordarVersiones(deCapas);
+            setDrafts(deCapas);
         } catch {
             setDrafts([]);
         } finally {
