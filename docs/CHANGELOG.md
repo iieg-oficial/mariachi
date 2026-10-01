@@ -9,6 +9,16 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.129.0] - 2026-09-30
+
+### Agregado
+
+- **Enlace y texto del botón en los avisos del carrusel de la intranet** (Intranet → Carrusel), para el carrusel con la composición de los banners del portal. Dejar el enlace vacío al editar lo borra (`sin_enlace`). Requiere intranet con la migración `a9c4e2f7b1d8`
+
+### Cambiado
+
+- En el formulario del carrusel, «Imagen» pasa a «Foto de quien publica», «Imagen de fondo» a «Imagen del aviso» (va a la derecha del texto) y «Color de fondo» a «Color de la franja»
+
 ## [2.128.0] - 2026-09-30
 
 ### Agregado

@@ -3,27 +3,27 @@ import { CheckOutlined, CloseOutlined, NotificationOutlined } from '@ant-design/
 
 import Miniatura from '../components/Miniatura';
 import PaginaRecurso from '../components/PaginaRecurso';
-import { aFormData, revisar } from '../api/intranetService';
+import { revisar } from '../api/intranetService';
+import { aPayload } from '../helpers/carrusel';
 import { AYUDA_PUBLICO, ESTADOS_CARRUSEL, IMAGENES } from '../constants/campos';
 
-const AYUDA_FONDO = 'Un color (#1A2B3C) o un degradado (linear-gradient(...)). Si además eliges una '
-    + 'imagen de fondo, gana la imagen.';
+const AYUDA_FONDO = 'El color de la franja del aviso: un color (#1A2B3C) o un degradado (linear-gradient(...)). '
+    + 'Vacío, va en el morado institucional.';
+const AYUDA_ENLACE = 'https://… o una página de la intranet, como /calendario. Vacío, el aviso no lleva botón.';
+const AYUDA_BOTON = 'Vacío, el botón dice «Leer más».';
 
 const CAMPOS = [
     { nombre: 'name', etiqueta: 'Nombre', requerido: true, maximo: 100 },
     { nombre: 'title', etiqueta: 'Título', requerido: true, maximo: 150 },
     { nombre: 'description', etiqueta: 'Descripción', tipo: 'texto-largo', maximo: 2000 },
-    { nombre: 'avatar_file', etiqueta: 'Imagen', tipo: 'archivo', acepta: IMAGENES, ayuda: AYUDA_PUBLICO },
-    { nombre: 'background_file', etiqueta: 'Imagen de fondo', tipo: 'archivo', acepta: IMAGENES },
-    { nombre: 'background_url', etiqueta: 'Color de fondo', maximo: 500, ayuda: AYUDA_FONDO },
+    { nombre: 'avatar_file', etiqueta: 'Foto de quien publica', tipo: 'archivo', acepta: IMAGENES, ayuda: AYUDA_PUBLICO },
+    { nombre: 'background_file', etiqueta: 'Imagen del aviso', tipo: 'archivo', acepta: IMAGENES },
+    { nombre: 'background_url', etiqueta: 'Color de la franja', maximo: 500, ayuda: AYUDA_FONDO },
+    { nombre: 'enlace', etiqueta: 'Enlace del botón', maximo: 500, ayuda: AYUDA_ENLACE },
+    { nombre: 'boton', etiqueta: 'Texto del botón', maximo: 40, ayuda: AYUDA_BOTON },
     { nombre: 'order', etiqueta: 'Orden', tipo: 'numero' },
     { nombre: 'active', etiqueta: 'Visible', tipo: 'interruptor' },
 ];
-
-const aPayload = ({ background_url: fondo, ...resto }) => aFormData({
-    ...resto,
-    background_url: fondo?.startsWith('/static/') ? undefined : fondo,
-});
 
 const COLUMNAS = [
     {
