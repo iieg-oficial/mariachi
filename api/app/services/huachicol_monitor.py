@@ -12,13 +12,11 @@ async def consultar(path: str) -> dict | list:
     if not base:
         raise HTTPException(status_code=503, detail="monitor no configurado")
     try:
-        async with httpx.AsyncClient(timeout=_TIMEOUT_SECONDS) as client:
+        async with httpx.AsyncClient(timeout=_TIMEOUT_SECONDS, follow_redirects=False) as client:
             response = await client.get(f"{base}{path}")
             response.raise_for_status()
             return response.json()
     except httpx.HTTPStatusError as exc:
-        raise HTTPException(
-            status_code=exc.response.status_code, detail="monitor respondió con error"
-        )
-    except Exception:
-        raise HTTPException(status_code=502, detail="monitor no alcanzable")
+        raise HTTPException(status_code=502, detail="monitor respondió con error") from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail="monitor no alcanzable") from exc

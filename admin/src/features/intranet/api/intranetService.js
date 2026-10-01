@@ -41,3 +41,8 @@ export const aFormData = (valores) => {
     });
     return datos;
 };
+
+export const cambiarPresencia = async (id, oculto) => {
+    const res = await api.put(`${BASE}/personas/${id}/presencia`, { oculto });
+    return res.data;
+};

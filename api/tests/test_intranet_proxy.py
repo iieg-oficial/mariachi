@@ -71,6 +71,7 @@ def test_listar_reenvia_con_la_clave_y_el_sub_del_usuario(monkeypatch):
         ("PUT", "/intranet/enlaces/1"),
         ("DELETE", "/intranet/enlaces/1"),
         ("PUT", "/intranet/carrusel/1/revisar"),
+        ("PUT", "/intranet/personas/1/presencia"),
     ],
 )
 def test_solo_vista_no_administra(monkeypatch, metodo, ruta):
@@ -144,6 +145,11 @@ def test_recurso_desconocido_y_edicion_no_soportada(monkeypatch):
         "/intranet/archivos/otra/" + "a" * 32 + ".png",
         "/intranet/archivos/gallery/..%2F..%2Fetc%2Fpasswd",
         "/intranet/archivos/gallery/no-es-un-nombre-generado.png",
+        "/intranet/archivos/gallery/" + "a" * 32,
+        "/intranet/archivos/gallery/" + "a" * 32 + ".html",
+        "/intranet/archivos/gallery/" + "a" * 32 + ".svg",
+        "/intranet/archivos/gallery/" + "a" * 32 + ".PNG",
+        "/intranet/archivos/documents/" + "a" * 32 + ".js",
     ],
 )
 def test_archivos_solo_sirve_nombres_generados_por_intranet(monkeypatch, ruta):
@@ -162,3 +168,75 @@ def test_archivo_valido_se_sirve_con_su_tipo(monkeypatch):
     respuesta = cliente.get(f"/intranet/archivos/gallery/{nombre}")
     assert respuesta.headers["content-type"] == "image/png"
     assert str(peticiones[0].url) == f"http://intranet.prueba/static/uploads/gallery/{nombre}"
+
+
+@pytest.mark.parametrize(
+    "extension",
+    [
+        "jpg",
+        "jpeg",
+        "png",
+        "gif",
+        "webp",
+        "pdf",
+        "doc",
+        "docx",
+        "xls",
+        "xlsx",
+        "ppt",
+        "pptx",
+        "txt",
+        "csv",
+    ],
+)
+def test_archivos_acepta_las_extensiones_de_intranet(monkeypatch, extension):
+    cliente, _, peticiones = _cliente(monkeypatch, VISTA, _ok)
+    assert cliente.get(f"/intranet/archivos/documents/{'b' * 32}.{extension}").status_code == 200
+    assert len(peticiones) == 1
+
+
+def test_personas_lista_los_usuarios_de_intranet(monkeypatch):
+    persona = {
+        "id": 3,
+        "nombre_completo": "Ana Pérez",
+        "email": "ana@iieg.gob.mx",
+        "oculto_en_presencia": False,
+        "created_at": "2026-09-01T10:00:00",
+    }
+    cliente, _, peticiones = _cliente(
+        monkeypatch, VISTA, lambda r: httpx.Response(200, json=[persona])
+    )
+    respuesta = cliente.get("/intranet/personas")
+    assert respuesta.json() == [persona]
+    assert str(peticiones[0].url) == "http://intranet.prueba/api/usuarios/"
+    assert peticiones[0].headers["x-api-key"] == "clave-de-servicio"
+
+
+def test_presencia_reenvia_el_cambio(monkeypatch):
+    cliente, csrf, peticiones = _cliente(
+        monkeypatch,
+        GESTION,
+        lambda r: httpx.Response(200, json={"id": 3, "oculto_en_presencia": True}),
+    )
+    respuesta = cliente.put("/intranet/personas/3/presencia", headers=csrf, json={"oculto": True})
+    assert respuesta.status_code == 200
+    enviada = peticiones[0]
+    assert enviada.method == "PUT"
+    assert str(enviada.url) == "http://intranet.prueba/api/usuarios/3/presencia"
+    assert enviada.content == b'{"oculto":true}'
+
+
+@pytest.mark.parametrize(
+    ("metodo", "ruta"),
+    [
+        ("POST", "/intranet/personas"),
+        ("PUT", "/intranet/personas/3"),
+        ("DELETE", "/intranet/personas/3"),
+        ("PUT", "/intranet/personas/abc/presencia"),
+    ],
+)
+def test_personas_solo_expone_lista_y_presencia(monkeypatch, metodo, ruta):
+    cliente, csrf, peticiones = _cliente(monkeypatch, GESTION, _ok)
+    respuesta = cliente.request(metodo, ruta, headers=csrf, json={})
+    assert respuesta.status_code in (404, 405, 422)
+    assert peticiones == []

@@ -14,7 +14,9 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/intranet", tags=["intranet"])
 
 _gestionar = [Depends(require_permission("mariachi.intranet.manage"))]
-_ARCHIVO = re.compile(r"^[0-9a-f]{32}(\.[a-z0-9]{1,5})?$")
+_ARCHIVO = re.compile(
+    r"^[0-9a-f]{32}\.(jpg|jpeg|png|gif|webp|pdf|doc|docx|xls|xlsx|ppt|pptx|txt|csv)$"
+)
 _CARPETAS = frozenset({"carousel", "gallery", "documents"})
 
 
@@ -84,6 +86,25 @@ def archivo(carpeta: str, nombre: str, usuario: Usuario = Depends(get_current_us
     if carpeta not in _CARPETAS or not _ARCHIVO.match(nombre):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Archivo no encontrado")
     return _reenviar("GET", f"/static/uploads/{carpeta}/{nombre}", usuario)
+
+
+@router.get("/personas")
+def listar_personas(usuario: Usuario = Depends(get_current_user)) -> Response:
+    return _reenviar("GET", "/api/usuarios/", usuario)
+
+
+@router.put("/personas/{item_id}/presencia", dependencies=_gestionar)
+async def cambiar_presencia(
+    item_id: int, request: Request, usuario: Usuario = Depends(verify_csrf)
+) -> Response:
+    return await run_in_threadpool(
+        _reenviar,
+        "PUT",
+        f"/api/usuarios/{item_id}/presencia",
+        usuario,
+        await request.body(),
+        request.headers.get("content-type"),
+    )
 
 
 @router.get("/{nombre}")

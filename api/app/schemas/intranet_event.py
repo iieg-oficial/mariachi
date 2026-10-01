@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import Field, field_validator
 
+from app.core.time import utcnow
 from app.schemas._camel import CamelCaseInput
 from app.schemas.mapalab_event import MAX_BATCH_EVENTS
 
@@ -34,6 +35,8 @@ INTRANET_EVENT_NAMES = frozenset(
     }
 )
 
+MARGEN_TS = timedelta(days=1)
+
 
 class IntranetEventIn(CamelCaseInput):
     event_name: str = Field(..., max_length=50)
@@ -46,6 +49,17 @@ class IntranetEventIn(CamelCaseInput):
     def _validate_name(cls, v: str) -> str:
         if v not in INTRANET_EVENT_NAMES:
             raise ValueError(f"event_name no permitido: {v}")
+        return v
+
+    @field_validator("ts")
+    @classmethod
+    def _acotar_ts(cls, v: datetime | None) -> datetime | None:
+        if v is None:
+            return None
+        ahora = utcnow().replace(tzinfo=UTC)
+        comparable = v if v.tzinfo else v.replace(tzinfo=UTC)
+        if abs(comparable - ahora) > MARGEN_TS:
+            return ahora
         return v
 
 

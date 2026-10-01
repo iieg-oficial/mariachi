@@ -9,6 +9,27 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.130.0] - 2026-10-01
+
+### Agregado
+
+- **Intranet → Personas**: quienes ya entraron a la intranet con minerva, con el interruptor «Mostrar su cursor a los demás» para ocultar los cursores en vivo de alguien que lo pida. Ver con `mariachi.intranet.view`, cambiar con `.manage` y CSRF. Proxy `GET /intranet/personas` y `PUT /intranet/personas/{id}/presencia`, fuera del dict genérico de recursos. Requiere intranet con la migración `b3d7f1a9c2e5`
+
+### Cambiado
+
+- **`make restore-llaves` ya solo agrega las llaves que falten** (`ON CONFLICT DO NOTHING`); nunca sobrescribe. La versión de 2.125.0 actualizaba las que coincidían y podía revivir una llave revocada o deshacer una rotación
+- Carrusel de la intranet: al editar, los campos que se dejan vacíos (descripción, color de la franja, enlace y texto del botón) se mandan en `vaciar` y se borran; sustituye a `sin_enlace`
+- Los respaldos de llaves y de telemetría se vuelcan directo a archivo (`.parcial`, validado con `gzip -t`) en lugar de pasar por una variable de bash
+
+### Corregido
+
+- Errores HTTP del monitor de huachicol (3xx, 401, 403…) salen como 502 y ya no se confunden con un 401 de la sesión o de la clave de la intranet
+- La ingesta de telemetría de la intranet responde 500 con registro en el log si falla la base, como la de mapalab
+- El upsert de sesiones de telemetría ya no mezcla contadores entre apps con el mismo `session_id`
+- Un `ts` de evento a más de un día de la hora del servidor se recorta a la hora actual
+- El proxy de archivos de la intranet solo acepta extensiones de imagen y de documento
+- El downgrade de `m3lnt0001` solo borra los tokens neutros que sigan con el valor sembrado
+
 ## [2.129.0] - 2026-09-30
 
 ### Agregado

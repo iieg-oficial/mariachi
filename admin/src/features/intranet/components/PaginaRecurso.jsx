@@ -25,7 +25,7 @@ const PaginaRecurso = ({ definicion, acciones, extra, level }) => {
     };
 
     const alGuardar = async (valores) => {
-        const payload = definicion.aPayload ? definicion.aPayload(valores) : valores;
+        const payload = definicion.aPayload ? definicion.aPayload(valores, { edicion: Boolean(enEdicion) }) : valores;
         if (await guardar(payload, enEdicion?.id)) setAbierto(false);
     };
 

@@ -16,22 +16,26 @@ contar_filas() {
     python3 -c 'import json, sys; print(sum(len(v) for v in json.load(sys.stdin).values()))'
 }
 
-guardar_respaldo() {
-    local nombre=$1 datos=$2 dir=$3 retener=$4 sello destino sobrantes
+SQL_DIR="$(dirname "${BASH_SOURCE[0]}")/sql"
+
+volcar_respaldo() {
+    local sql=$1 parcial=$2
     umask 077
-    mkdir -p "$dir"
-    sello=$(date +%Y%m%d-%H%M%S)
-    destino="$dir/$nombre-$sello.json.gz"
-    printf '%s\n' "$datos" | gzip -9 > "$destino.parcial"
-    mv "$destino.parcial" "$destino"
+    mkdir -p "$(dirname "$parcial")"
+    psql_base < "$SQL_DIR/$sql" | gzip -9 > "$parcial"
+    gzip -t "$parcial"
+}
+
+publicar_respaldo() {
+    local nombre=$1 parcial=$2 dir=$3 retener=$4 destino sobrantes
+    destino="${parcial%.parcial}"
+    mv "$parcial" "$destino"
     printf '[%s-backup] archivo %s (%s)\n' "$nombre" "$destino" "$(du -h "$destino" | cut -f1)"
     sobrantes=$(ls -1t "$dir/$nombre"-*.json.gz 2>/dev/null | tail -n "+$((retener + 1))" || true)
     if [ -n "$sobrantes" ]; then
         echo "$sobrantes" | xargs rm -f
     fi
 }
-
-SQL_DIR="$(dirname "${BASH_SOURCE[0]}")/sql"
 
 sql_con_datos() {
     local archivo=$1 sql=$2 etiqueta

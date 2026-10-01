@@ -184,6 +184,7 @@ def ingest_batch(
     stmt = stmt.on_conflict_do_update(
         index_elements=["session_id"],
         set_=update_dict,
+        where=MapalabSession.app == stmt.excluded.app,
     )
     db.execute(stmt)
     db.commit()

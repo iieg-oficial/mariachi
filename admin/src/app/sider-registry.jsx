@@ -212,6 +212,10 @@ export const PROJECT_REGISTRY = {
                 key: '/intranet/herramientas', path: '/intranet/herramientas', label: 'Herramientas',
                 icon: <AppstoreOutlined />,
             },
+            {
+                key: '/intranet/personas', path: '/intranet/personas', label: 'Personas',
+                icon: <TeamOutlined />,
+            },
         ],
     },
 };

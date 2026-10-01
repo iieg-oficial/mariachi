@@ -32,7 +32,14 @@ async def ingerir_batch(request: Request, db: Session = Depends(get_db)) -> Even
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Body JSON inválido"
         ) from exc
-    inserted = ingest_batch(
-        db, payload, user_agent=request.headers.get("user-agent"), app="intranet"
-    )
+    try:
+        inserted = ingest_batch(
+            db, payload, user_agent=request.headers.get("user-agent"), app="intranet"
+        )
+    except Exception as exc:
+        logger.exception("intranet_events.ingest_failed session=%s", payload.session_id)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="No se pudo persistir el lote",
+        ) from exc
     return EventBatchResponse(ok=True, inserted=inserted)

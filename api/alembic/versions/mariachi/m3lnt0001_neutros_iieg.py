@@ -72,11 +72,13 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.get_bind().execute(
-        sa.text(
-            f"DELETE FROM {SCHEMA}.tokens t USING {SCHEMA}.marcas m "
-            "WHERE t.marca_id = m.id AND m.codigo = :codigo AND t.grupo = 'color' "
-            "AND t.clave = ANY(:claves)"
-        ),
-        {"codigo": MARCA, "claves": [clave for clave, _, _ in NEUTROS]},
-    )
+    conn = op.get_bind()
+    for clave, valor, _ in NEUTROS:
+        conn.execute(
+            sa.text(
+                f"DELETE FROM {SCHEMA}.tokens t USING {SCHEMA}.marcas m "
+                "WHERE t.marca_id = m.id AND m.codigo = :codigo AND t.grupo = 'color' "
+                "AND t.clave = :clave AND t.valor = CAST(:valor AS jsonb)"
+            ),
+            {"codigo": MARCA, "clave": clave, "valor": json.dumps(valor)},
+        )
