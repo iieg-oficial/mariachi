@@ -15,7 +15,8 @@ router = APIRouter(prefix="/intranet", tags=["intranet"])
 
 _gestionar = [Depends(require_permission("mariachi.intranet.manage"))]
 _ARCHIVO = re.compile(
-    r"^[0-9a-f]{32}\.(jpg|jpeg|png|gif|webp|pdf|doc|docx|xls|xlsx|ppt|pptx|txt|csv)$"
+    r"^([0-9a-f]{16}/)?[0-9a-f]{32}"
+    r"\.(jpg|jpeg|png|gif|webp|pdf|doc|docx|xls|xlsx|ppt|pptx|txt|csv)$"
 )
 _CARPETAS = frozenset({"carousel", "gallery", "documents"})
 
@@ -54,6 +55,13 @@ def _actor(usuario: Usuario) -> str:
     return usuario.minerva_sub or f"mariachi:{usuario.id}"
 
 
+def _perfil(usuario: Usuario) -> dict[str, str]:
+    return {
+        "nombre": getattr(usuario, "name", None) or "",
+        "avatar": getattr(usuario, "avatar_url", None) or "",
+    }
+
+
 def _reenviar(
     metodo: str,
     ruta: str,
@@ -62,7 +70,9 @@ def _reenviar(
     tipo_contenido: str | None = None,
 ) -> Response:
     try:
-        respuesta = IntranetClient().pedir(metodo, ruta, _actor(usuario), contenido, tipo_contenido)
+        respuesta = IntranetClient().pedir(
+            metodo, ruta, _actor(usuario), contenido, tipo_contenido, _perfil(usuario)
+        )
     except IntranetError as exc:
         logger.warning("intranet: %s", exc)
         raise HTTPException(
@@ -81,7 +91,7 @@ def _reenviar(
     )
 
 
-@router.get("/archivos/{carpeta}/{nombre}")
+@router.get("/archivos/{carpeta}/{nombre:path}")
 def archivo(carpeta: str, nombre: str, usuario: Usuario = Depends(get_current_user)) -> Response:
     if carpeta not in _CARPETAS or not _ARCHIVO.match(nombre):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Archivo no encontrado")

@@ -240,3 +240,33 @@ def test_personas_solo_expone_lista_y_presencia(monkeypatch, metodo, ruta):
     respuesta = cliente.request(metodo, ruta, headers=csrf, json={})
     assert respuesta.status_code in (404, 405, 422)
     assert peticiones == []
+
+
+def test_reenvia_el_nombre_y_el_avatar_de_quien_sube(monkeypatch):
+    cliente, csrf, peticiones = _cliente(monkeypatch, GESTION, _ok)
+    cliente.app.dependency_overrides[get_current_user] = lambda: SimpleNamespace(
+        id=7,
+        username="editora",
+        minerva_sub="sub-7",
+        name="Ana López",
+        avatar_url="https://acervo.test/ana.jpg",
+        permissions=GESTION,
+    )
+    cliente.post(
+        "/intranet/galeria",
+        headers=csrf,
+        files={"file": ("a.png", b"x", "image/png")},
+        data={"title": "t"},
+    )
+    assert peticiones[-1].headers["X-Actor-Nombre"] == "Ana%20L%C3%B3pez"
+    assert peticiones[-1].headers["X-Actor-Avatar"] == "https://acervo.test/ana.jpg"
+
+
+def test_las_imagenes_de_la_galeria_viven_en_la_carpeta_de_su_autor(monkeypatch):
+    cliente, _, peticiones = _cliente(
+        monkeypatch, VISTA, lambda request: httpx.Response(200, content=b"png")
+    )
+    ruta = f"gallery/{'c' * 16}/{'a' * 32}.png"
+    assert cliente.get(f"/intranet/archivos/{ruta}").status_code == 200
+    assert peticiones[-1].url.path == f"/static/uploads/{ruta}"
+    assert cliente.get(f"/intranet/archivos/gallery/{'c' * 15}/{'a' * 32}.png").status_code == 404

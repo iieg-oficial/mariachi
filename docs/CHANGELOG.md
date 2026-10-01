@@ -9,6 +9,18 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.131.0] - 2026-10-01
+
+### Agregado
+
+- **Directorio de la intranet desde vine** (`GET /api/public/intranet/directorio`, con la clave de la intranet): las personas activas de `vine.personas` con su ficha (`personas_ficha` manda sobre el biométrico), sin las bajas (`ES_BAJA`), con nombre, puesto, área, correo, extensión y foto (la de la ficha o el avatar de mariachi con el mismo correo). Los nombres en mayúsculas salen en tipo título
+- **Descripción en la galería de la intranet** y columna «Subió» con el nombre de quien publicó cada imagen. Requiere intranet con la migración `c5e9a3f7b2d4`
+
+### Cambiado
+
+- El proxy de la intranet manda `X-Actor-Nombre` y `X-Actor-Avatar` (codificados) junto a `X-Actor-Sub`, para que la intranet registre quién sube cada imagen
+- `/intranet/archivos/{carpeta}/{ruta}` acepta la subcarpeta de 16 hexadecimales con la que la intranet separa las imágenes de cada autor
+
 ## [2.130.0] - 2026-10-01
 
 ### Agregado

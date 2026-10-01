@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from urllib.parse import quote
+
 import httpx
 
 from app.core.settings import get_settings
@@ -30,8 +32,12 @@ class IntranetClient:
         actor: str,
         contenido: bytes | None = None,
         tipo_contenido: str | None = None,
+        perfil: dict[str, str] | None = None,
     ) -> httpx.Response:
         cabeceras = {CABECERA_API_KEY: self._api_key, CABECERA_ACTOR: actor}
+        for clave, valor in (perfil or {}).items():
+            if valor:
+                cabeceras[f"X-Actor-{clave.capitalize()}"] = quote(valor[:500], safe=":/@")
         if tipo_contenido:
             cabeceras["Content-Type"] = tipo_contenido
         try:

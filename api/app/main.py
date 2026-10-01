@@ -28,6 +28,7 @@ from app.api.routes import (
     grid,
     home,
     intranet,
+    intranet_directorio_lectura,
     intranet_estado_lectura,
     intranet_events_public,
     intranet_inhabiles_lectura,
@@ -192,6 +193,7 @@ def create_app() -> FastAPI:
     app.include_router(roadmap_lectura.router, prefix=settings.public_prefix)
     app.include_router(intranet_events_public.router, prefix=settings.public_prefix)
     app.include_router(intranet_estado_lectura.router, prefix=settings.public_prefix)
+    app.include_router(intranet_directorio_lectura.router, prefix=settings.public_prefix)
     app.include_router(intranet_inhabiles_lectura.router, prefix=settings.public_prefix)
     app.include_router(mapalab_events_public.router, prefix=settings.public_prefix)
     app.include_router(mapalab_infobox_public.router, prefix=settings.public_prefix)

@@ -21,10 +21,12 @@ const DEFINICION = {
             render: (ruta, fila) => <Miniatura ruta={ruta} alt={fila.title} />,
         },
         { title: 'Título', dataIndex: 'title' },
+        { title: 'Subió', dataIndex: 'autor_nombre', width: 180 },
         { title: 'Orden', dataIndex: 'order', width: 80 },
     ],
     campos: [
         { nombre: 'title', etiqueta: 'Título', requerido: true, maximo: 150 },
+        { nombre: 'descripcion', etiqueta: 'Descripción', tipo: 'texto-largo', maximo: 1000 },
         {
             nombre: 'file', etiqueta: 'Imagen', tipo: 'archivo', requerido: true,
             acepta: IMAGENES, ayuda: AYUDA_PUBLICO,
