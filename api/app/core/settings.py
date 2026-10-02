@@ -99,6 +99,7 @@ class Settings(BaseSettings):
     frames_detect_fps: int = 15
 
     intranet_cliente_sha256: str | None = None
+    sieej_documentacion_sync_sha256: str | None = None
 
     intranet_enabled: bool = False
     intranet_api_url: str | None = None

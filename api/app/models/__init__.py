@@ -35,10 +35,20 @@ from app.models.sieej import (
     Formulario,
     Grupo,
 )
+from app.models.sieej_documentacion import (
+    MedicionDoc,
+    PipelineDoc,
+    ReadmeDoc,
+    SincronizacionDoc,
+)
 from app.models.source_app import SourceApp
 from app.models.user import Usuario
 
 __all__ = [
+    "MedicionDoc",
+    "PipelineDoc",
+    "ReadmeDoc",
+    "SincronizacionDoc",
     "RoadmapCiclo",
     "RoadmapHito",
     "RoadmapProceso",

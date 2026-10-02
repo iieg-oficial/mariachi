@@ -17,6 +17,7 @@ import { buildMapalabApiKeysRoutes } from '@features/mapalab-api-keys/routes';
 import { buildColibriRoutes } from '@features/colibri/routes';
 import { buildHuachicolRoutes } from '@features/telemetria/routes';
 import { buildMelRoutes } from '@features/mel/routes';
+import { buildSieejDocumentacionRoutes } from '@features/sieej-documentacion/routes';
 import { buildSextanteRoutes } from '@features/sextante/routes';
 import { buildFramesRoutes, buildFramesFullscreenRoutes } from '@features/frames/routes';
 import { buildIntranetRoutes } from '@features/intranet/routes';
@@ -209,6 +210,7 @@ const router = createBrowserRouter([
                     ...buildVineRoutes(withSuspense),
                     ...buildHuachicolRoutes(withSuspense),
                     ...buildMapalabApiKeysRoutes(withSuspense),
+                    ...buildSieejDocumentacionRoutes(withSuspense),
                     {
                         path: 'sieej/formularios',
                         element: withSuspense(

@@ -55,6 +55,8 @@ from app.api.routes import (
     roadmap,
     roadmap_lectura,
     sieej_admin,
+    sieej_documentacion,
+    sieej_documentacion_publico,
     sistema,
     symbols,
     users,
@@ -155,6 +157,11 @@ def create_app() -> FastAPI:
         prefix=settings.admin_prefix,
         dependencies=[Depends(require_permission("mariachi.sieej_admin.view"))],
     )
+    app.include_router(
+        sieej_documentacion.router,
+        prefix=settings.admin_prefix,
+        dependencies=[Depends(require_permission("mariachi.sieej_documentacion.view"))],
+    )
     app.include_router(eventos.router, prefix=settings.admin_prefix, dependencies=mapalab_view)
     app.include_router(home.router, prefix=settings.admin_prefix, dependencies=mapalab_view)
     app.include_router(
@@ -197,6 +204,7 @@ def create_app() -> FastAPI:
     app.include_router(intranet_inhabiles_lectura.router, prefix=settings.public_prefix)
     app.include_router(mapalab_events_public.router, prefix=settings.public_prefix)
     app.include_router(mapalab_infobox_public.router, prefix=settings.public_prefix)
+    app.include_router(sieej_documentacion_publico.router, prefix=settings.public_prefix)
     app.include_router(mapalab_infobox.router, prefix=settings.admin_prefix, dependencies=mapalab_view)
 
     if settings.frames_enabled:

@@ -45,7 +45,7 @@ ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 BACKUP_DIR="${BACKUP_DIR:-$ROOT_DIR/backups}"
 COMPOSE_FILE="${COMPOSE_FILE:-compose.yaml:compose.prod.yaml}"
 COMPOSE_ENV_FILE="${COMPOSE_ENV_FILE:-}"
-EXPECTED_SCHEMAS="${EXPECTED_SCHEMAS:-public huachicol acervo sieej mel vine frames}"
+EXPECTED_SCHEMAS="${EXPECTED_SCHEMAS:-public huachicol acervo sieej mel vine frames sieej_documentacion}"
 
 export COMPOSE_FILE
 COMPOSE_CMD="docker compose"

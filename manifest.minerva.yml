@@ -49,6 +49,12 @@ permissions:
     name: Descartar un envio en borrador
   - key: mariachi.sieej_envios.export
     name: Exportar envios
+  - key: mariachi.sieej_documentacion.view
+    name: Ver la documentacion de pipelines del SIEEJ
+  - key: mariachi.sieej_documentacion.update
+    name: Editar secciones de la documentacion de pipelines
+  - key: mariachi.sieej_documentacion.publish
+    name: Publicar, ocultar u ordenar la documentacion de pipelines
 
   - key: mariachi.acervo.view
     name: Ver el Acervo
@@ -170,6 +176,17 @@ roles:
       - mariachi.sieej_envios.create
       - mariachi.sieej_envios.update
       - mariachi.sieej_envios.delete
+  - name: SIEEJ documentacion - edicion
+    description: Atomico. Editar secciones de la documentacion de pipelines sin publicarlas
+    permissions:
+      - mariachi.sieej_documentacion.view
+      - mariachi.sieej_documentacion.update
+  - name: SIEEJ documentacion - publicacion
+    description: Atomico. Editar, publicar, ocultar y ordenar la documentacion de pipelines
+    permissions:
+      - mariachi.sieej_documentacion.view
+      - mariachi.sieej_documentacion.update
+      - mariachi.sieej_documentacion.publish
 
   - name: Acervo - consulta
     description: Atomico. Ver archivos y buckets

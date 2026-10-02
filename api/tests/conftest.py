@@ -88,7 +88,7 @@ engine = create_engine(
     poolclass=StaticPool,
 )
 
-_TEST_SCHEMAS = (None, "acervo", "huachicol", "mel", "sieej")
+_TEST_SCHEMAS = (None, "acervo", "huachicol", "mel", "sieej", "sieej_documentacion")
 
 with engine.connect() as _conn:
     for _schema in _TEST_SCHEMAS:
@@ -175,6 +175,9 @@ def externo_user(db_session):
 
 
 TODOS_LOS_PERMISOS = frozenset({
+    "mariachi.sieej_documentacion.view",
+    "mariachi.sieej_documentacion.update",
+    "mariachi.sieej_documentacion.publish",
     "mariachi.roadmap.manage",
     "mariachi.mapalab.view",
     "mariachi.mapalab.update",

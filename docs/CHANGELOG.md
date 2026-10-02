@@ -9,6 +9,19 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.132.0] - 2026-10-02
+
+### Agregado
+
+- **Documentación de pipelines del SIEEJ** (frente 18). Schema nuevo `sieej_documentacion` (migración `sdoc0001`) con pipelines, mediciones, README y sincronizaciones. El contenido de cada página es un borrador y un publicado con secciones que se crean, ordenan, ocultan y quitan. Las secciones del README se marcan editadas cuando difieren del README vigente y la sincronización ya no las toca
+- Admin en **SIEEJ → Documentación de pipelines**: lista con estado, borrador pendiente, README cambiado y visitas de 30 días; editor por página con arrastre, editor por tipo de sección, publicar, descartar, restablecer desde el README y presencia. Historial de sincronizaciones
+- Permisos atómicos `mariachi.sieej_documentacion.view`, `.update` y `.publish`, y roles «SIEEJ documentacion - edicion» y «- publicacion». Un usuario solo con documentación ve el grupo SIEEJ sin formularios, grupos ni catálogos
+- API pública `/api/public/sieej-documentacion`: `version`, `pipelines`, `pipelines/{clave}` (Redis por token), `salud`; y con la clave del sincronizador (`SIEEJ_DOCUMENTACION_SYNC_SHA256`), `PUT /sync` y `POST /eventos/lote` para su telemetría
+
+### Cambiado
+
+- Respaldo y restore exigen también el schema `sieej_documentacion`
+
 ## [2.131.0] - 2026-10-01
 
 ### Agregado

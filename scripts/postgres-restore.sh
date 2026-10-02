@@ -2,7 +2,7 @@
 # Restore manual de Postgres desde un .sql.gz generado por postgres-backup.sh.
 #
 # Que restaura: los schemas que el dump traiga, que hoy son siete (public,
-# huachicol, acervo, sieej, mel, vine, frames). La lista de lo que se dropea se
+# huachicol, acervo, sieej, mel, vine, frames, sieej_documentacion). La lista de lo que se dropea se
 # deriva del propio dump; EXPECTED_SCHEMAS solo dice cual es el minimo que un
 # dump de mariachi debe traer para aceptarlo.
 # El schema 'mapalab' NO viaja en estos dumps (vive en dataengine).
@@ -49,7 +49,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 COMPOSE_FILE="${COMPOSE_FILE:-compose.yaml:compose.prod.yaml}"
 COMPOSE_ENV_FILE="${COMPOSE_ENV_FILE:-}"
-EXPECTED_SCHEMAS="${EXPECTED_SCHEMAS:-public huachicol acervo sieej mel vine frames}"
+EXPECTED_SCHEMAS="${EXPECTED_SCHEMAS:-public huachicol acervo sieej mel vine frames sieej_documentacion}"
 CLEAN_PUBLIC="${CLEAN_PUBLIC:-true}"
 
 export COMPOSE_FILE

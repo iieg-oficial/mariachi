@@ -89,11 +89,24 @@ export const PROJECT_REGISTRY = {
     sieej: {
         label: 'SIEEJ',
         icon: <ProjectOutlined />,
-        permissions: ['mariachi.sieej_admin.view'],
+        permissions: ['mariachi.sieej_admin.view', 'mariachi.sieej_documentacion.view'],
         items: [
-            { key: '/sieej/formularios', path: '/sieej/formularios', label: 'Formularios', icon: <FormOutlined /> },
-            { key: '/sieej/grupos', path: '/sieej/grupos', label: 'Grupos', icon: <TeamOutlined /> },
-            { key: '/sieej/catalogos', path: '/sieej/catalogos', label: 'Catálogos', icon: <UnorderedListOutlined /> },
+            {
+                key: '/sieej/formularios', path: '/sieej/formularios', label: 'Formularios',
+                icon: <FormOutlined />, permissions: ['mariachi.sieej_admin.view'],
+            },
+            {
+                key: '/sieej/grupos', path: '/sieej/grupos', label: 'Grupos',
+                icon: <TeamOutlined />, permissions: ['mariachi.sieej_admin.view'],
+            },
+            {
+                key: '/sieej/catalogos', path: '/sieej/catalogos', label: 'Catálogos',
+                icon: <UnorderedListOutlined />, permissions: ['mariachi.sieej_admin.view'],
+            },
+            {
+                key: '/sieej/documentacion', path: '/sieej/documentacion', label: 'Documentación de pipelines',
+                icon: <BookOutlined />, permissions: ['mariachi.sieej_documentacion.view'],
+            },
         ],
     },
     colibri: {
