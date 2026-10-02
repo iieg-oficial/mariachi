@@ -270,3 +270,13 @@ def test_las_imagenes_de_la_galeria_viven_en_la_carpeta_de_su_autor(monkeypatch)
     assert cliente.get(f"/intranet/archivos/{ruta}").status_code == 200
     assert peticiones[-1].url.path == f"/static/uploads/{ruta}"
     assert cliente.get(f"/intranet/archivos/gallery/{'c' * 15}/{'a' * 32}.png").status_code == 404
+
+
+def test_carpetas_y_edicion_de_documentos_pasan_a_la_intranet(monkeypatch):
+    cliente, csrf, peticiones = _cliente(monkeypatch, GESTION, _ok)
+    assert cliente.get("/intranet/carpetas").status_code == 200
+    assert str(peticiones[-1].url) == "http://intranet.prueba/api/carpetas/"
+    editado = cliente.put("/intranet/documentos/3", headers=csrf, data={"title": "t"})
+    assert editado.status_code == 200
+    assert peticiones[-1].method == "PUT"
+    assert str(peticiones[-1].url) == "http://intranet.prueba/api/documentos/3"

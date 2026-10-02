@@ -32,9 +32,8 @@ class Recurso:
 RECURSOS = {
     "carrusel": Recurso("/api/carousel/todos", "/api/carousel/", "/api/carousel/{id}"),
     "galeria": Recurso("/api/galeria/", "/api/galeria/", "/api/galeria/{id}", edita=False),
-    "documentos": Recurso(
-        "/api/documentos/", "/api/documentos/", "/api/documentos/{id}", edita=False
-    ),
+    "documentos": Recurso("/api/documentos/", "/api/documentos/", "/api/documentos/{id}"),
+    "carpetas": Recurso("/api/carpetas/", "/api/carpetas/", "/api/carpetas/{id}"),
     "enlaces": Recurso("/api/footer/", "/api/footer/", "/api/footer/{id}"),
     "categorias": Recurso("/api/categorias/all", "/api/categorias/create", "/api/categorias/{id}"),
     "sitios": Recurso("/api/status/sites", "/api/status/sites", "/api/status/sites/{id}"),

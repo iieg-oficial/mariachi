@@ -17,7 +17,13 @@ const VALID_TABS = new Set(['resumen', 'sesiones', 'mcp']);
 
 const unitOf = (grain) => (grain === 'day' ? 'day' : grain);
 
+const TITULOS = {
+    mapalab: { titulo: 'MapaLab — Estadísticas de uso', descripcion: 'Telemetría anónima del visor.' },
+    intranet: { titulo: 'Intranet — Estadísticas de uso', descripcion: 'Telemetría anónima de la intranet.' },
+};
+
 export default function MapalabStatsPage({ app = 'mapalab' }) {
+    const textos = TITULOS[app] ?? TITULOS.mapalab;
     const { isMobile } = useIsMobile();
     const { user } = useAuth();
     const [searchParams, setSearchParams] = useSearchParams();
@@ -43,7 +49,8 @@ export default function MapalabStatsPage({ app = 'mapalab' }) {
 
     const tabFromUrl = searchParams.get('tab');
     const requestedTab = VALID_TABS.has(tabFromUrl) ? tabFromUrl : 'resumen';
-    const activeTab = requestedTab === 'sesiones' && !isAdmin ? 'resumen' : requestedTab;
+    const oculta = (requestedTab === 'sesiones' && !isAdmin) || (requestedTab === 'mcp' && app !== 'mapalab');
+    const activeTab = oculta ? 'resumen' : requestedTab;
 
     const handleTabChange = (key) => {
         setSearchParams({ tab: key }, { replace: true });
@@ -55,12 +62,14 @@ export default function MapalabStatsPage({ app = 'mapalab' }) {
             label: 'Resumen',
             children: <ResumenSection period={period} canRefresh={isAdmin} />,
         },
-        {
+    ];
+    if (app === 'mapalab') {
+        items.push({
             key: 'mcp',
             label: 'MCP',
             children: <McpSection period={period} />,
-        },
-    ];
+        });
+    }
     if (isAdmin) {
         items.push({
             key: 'sesiones',
@@ -74,8 +83,8 @@ export default function MapalabStatsPage({ app = 'mapalab' }) {
             <Space orientation="vertical" size="large" style={{ width: '100%' }}>
                 <PageHeading
                     icon={<EnvironmentOutlined />}
-                    title="MapaLab — Estadísticas de uso"
-                    description={`Telemetría anónima del visor. Datos del ${period.dateFrom} al ${period.dateTo}.`}
+                    title={textos.titulo}
+                    description={`${textos.descripcion} Datos del ${period.dateFrom} al ${period.dateTo}.`}
                     level={isMobile ? 4 : 3}
                     marginBottom={0}
                     extra={(

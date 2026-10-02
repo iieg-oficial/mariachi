@@ -126,3 +126,25 @@ def test_el_upsert_de_sesion_no_mezcla_apps():
     sql = str(sentencias[0].compile(dialect=postgresql.dialect()))
     assert "ON CONFLICT (session_id) DO UPDATE" in sql
     assert "WHERE huachicol.sessions.app = excluded.app" in sql
+
+
+@pytest.mark.parametrize(
+    "nombre",
+    [
+        "galeria_orden",
+        "galeria_reaccion",
+        "galeria_comentario",
+        "galeria_subir",
+        "galeria_editar",
+        "galeria_borrar",
+        "proyecto_detalle",
+        "proyectos_plegar",
+        "roadmap_pantalla",
+        "seccion_ir",
+        "carpeta_abrir",
+        "album_abrir",
+        "album_crear",
+    ],
+)
+def test_acepta_los_eventos_nuevos_de_la_portada(nombre):
+    assert IntranetEventIn(event_name=nombre).event_name == nombre

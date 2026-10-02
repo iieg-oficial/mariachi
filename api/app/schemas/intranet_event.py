@@ -32,6 +32,19 @@ INTRANET_EVENT_NAMES = frozenset(
         "favorito",
         "acceso_abrir",
         "mapa_capa",
+        "galeria_orden",
+        "galeria_reaccion",
+        "galeria_comentario",
+        "galeria_subir",
+        "galeria_editar",
+        "galeria_borrar",
+        "proyecto_detalle",
+        "proyectos_plegar",
+        "roadmap_pantalla",
+        "seccion_ir",
+        "carpeta_abrir",
+        "album_abrir",
+        "album_crear",
     }
 )
 

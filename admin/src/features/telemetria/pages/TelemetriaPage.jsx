@@ -30,6 +30,11 @@ export default function TelemetriaPage() {
             children: <UsoSection />,
         },
         {
+            key: 'intranet',
+            label: 'Intranet',
+            children: <UsoSection app="intranet" />,
+        },
+        {
             key: 'colibri',
             label: 'Colibrí',
             children: <Suspense fallback={fallback}><ColibriResumenPage /></Suspense>,

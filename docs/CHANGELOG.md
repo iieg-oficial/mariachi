@@ -9,6 +9,17 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.133.0] - 2026-10-02
+
+### Agregado
+
+- **Telemetría de la intranet en el admin**: pestaña «Intranet» en Telemetría, con la misma vista de estadísticas que MapaLab filtrada por `app='intranet'` (los eventos ya se guardaban desde 2.130.0 en `huachicol.events`, pero no había dónde verlos). La pestaña MCP solo sale en MapaLab
+- **Carpetas de documentos de la intranet** (Intranet → Documentos → Carpetas): las crea administración y cada documento se asigna a una al subirlo o al editarlo. Los documentos ya se pueden editar (título, carpeta, orden); el archivo no se cambia. Proxy `carpetas` y edición de `documentos`. Requiere intranet con la migración `e3f9b6a2c8d1`
+
+### Corregido
+
+- La telemetría de la intranet acepta los eventos de la galería social, las fichas de proyecto, la hoja de ruta a pantalla completa y la navegación rápida (`galeria_orden`, `galeria_reaccion`, `galeria_comentario`, `galeria_subir`, `galeria_editar`, `galeria_borrar`, `proyecto_detalle`, `proyectos_plegar`, `roadmap_pantalla`, `seccion_ir`, `carpeta_abrir`, `album_abrir`, `album_crear`). Un nombre desconocido rechazaba el lote completo, así que esos lotes se perdían
+
 ## [2.132.0] - 2026-10-02
 
 ### Agregado
