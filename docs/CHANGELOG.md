@@ -9,6 +9,12 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.134.1] - 2026-10-02
+
+### Corregido
+
+- La telemetría de la intranet acepta `seccion_buscar` (la lupa de Documentos y Directorio en la portada); sin él se perdía el lote completo
+
 ## [2.134.0] - 2026-10-02
 
 ### Agregado

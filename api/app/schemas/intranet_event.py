@@ -42,6 +42,7 @@ INTRANET_EVENT_NAMES = frozenset(
         "proyectos_plegar",
         "roadmap_pantalla",
         "seccion_ir",
+        "seccion_buscar",
         "carpeta_abrir",
         "album_abrir",
         "album_crear",
