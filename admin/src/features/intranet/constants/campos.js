@@ -6,7 +6,7 @@ export const ICONOS_ENLACE = [
 ].map((valor) => ({ value: valor, label: valor }));
 
 export const ICONOS_HERRAMIENTA = [
-    'herramienta', 'pdf', 'convertir', 'audio', 'diagrama', 'traducir', 'compartir', 'utilidades',
+    'herramienta', 'pdf', 'convertir', 'audio', 'diagrama', 'traducir', 'compartir', 'utilidades', 'latex',
 ].map((valor) => ({ value: valor, label: valor }));
 
 export const ESTADOS_CARRUSEL = {

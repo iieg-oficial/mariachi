@@ -9,6 +9,13 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.134.0] - 2026-10-02
+
+### Agregado
+
+- **Orden de los proyectos de la intranet** (Intranet → Sitios monitoreados): campo y columna «Orden»; la intranet los muestra de menor a mayor. Requiere intranet con la migración `a4e2c8f6d1b3`, que arranca cada sitio con su `id` como orden para no mover nada
+- Ícono `latex` para las herramientas de la intranet (Overleaf)
+
 ## [2.133.0] - 2026-10-02
 
 ### Agregado

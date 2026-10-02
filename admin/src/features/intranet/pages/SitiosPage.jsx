@@ -51,6 +51,7 @@ const definicionDeSitios = (categorias) => {
             { title: 'URL', dataIndex: 'url' },
             { title: 'Categoría', dataIndex: 'category_id', render: (id) => nombres[id] },
             { title: 'Huachicol', dataIndex: 'huachicol_slug', width: 140 },
+            { title: 'Orden', dataIndex: 'orden', width: 80 },
         ],
         campos: [
             { nombre: 'name', etiqueta: 'Nombre', requerido: true, maximo: 200 },
@@ -65,6 +66,7 @@ const definicionDeSitios = (categorias) => {
             { nombre: 'taiga_url', etiqueta: 'Taiga', maximo: 500 },
             { nombre: 'gitlab_url', etiqueta: 'GitLab', maximo: 500 },
             { nombre: 'github_url', etiqueta: 'GitHub', maximo: 500 },
+            { nombre: 'orden', etiqueta: 'Orden', tipo: 'numero', ayuda: 'Posición en la intranet, de menor a mayor.' },
         ],
     };
 };
