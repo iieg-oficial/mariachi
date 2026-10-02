@@ -17,10 +17,6 @@ export const publicarPipeline = async (clave) => (await api.post(`${BASE}/pipeli
 
 export const descartarBorrador = async (clave) => (await api.post(`${BASE}/pipelines/${clave}/descartar`)).data;
 
-export const restablecerSeccion = async (clave, seccionId) => (
-    await api.post(`${BASE}/pipelines/${clave}/secciones/${seccionId}/restablecer`)
-).data;
-
 export const ajustarPipeline = async (clave, ajustes) => (await api.patch(`${BASE}/pipelines/${clave}`, ajustes)).data;
 
 export const rutaPresencia = (clave) => `${BASE}/pipelines/${clave}`;
