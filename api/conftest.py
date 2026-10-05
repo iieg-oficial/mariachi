@@ -8,3 +8,14 @@ os.environ.setdefault(
     "MINERVA_REDIRECT_URI", "http://mariachi.test/api/mariachi/autenticacion/callback"
 )
 os.environ.setdefault("MINERVA_POST_LOGIN_URL", "http://mariachi.test")
+
+
+def _hashear_una_sola_vez() -> None:
+    from functools import lru_cache
+
+    import app.core.security as seguridad
+
+    seguridad.hash_password = lru_cache(maxsize=None)(seguridad.hash_password)
+
+
+_hashear_una_sola_vez()

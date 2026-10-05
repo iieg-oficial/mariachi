@@ -96,19 +96,41 @@ with engine.connect() as _conn:
             _conn.execute(text(f"ATTACH DATABASE ':memory:' AS {_schema}"))
     _conn.commit()
 
+_ESQUEMA = {"listo": False}
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
 @pytest.fixture(scope="function")
 def db_session():
     tables = [t for t in Base.metadata.sorted_tables if t.schema in _TEST_SCHEMAS]
-    Base.metadata.create_all(bind=engine, tables=tables)
+    if not _ESQUEMA["listo"]:
+        Base.metadata.create_all(bind=engine, tables=tables)
+        _ESQUEMA["listo"] = True
     session = TestingSessionLocal()
     try:
         yield session
     finally:
+        session.rollback()
         session.close()
-        Base.metadata.drop_all(bind=engine, tables=tables)
+        with engine.begin() as conn:
+            for table in reversed(tables):
+                conn.execute(table.delete())
+
+
+@pytest.fixture(autouse=True)
+def _descubrimiento_oidc_sin_red():
+    from app.core import oidc
+
+    target = oidc.settings.minerva_issuer_url.rstrip("/")
+    anterior = dict(oidc._discovery_cache)
+    oidc._discovery_cache["doc"] = {
+        "authorization_endpoint": f"{target}/auth/authorize",
+        "token_endpoint": f"{target}/auth/token",
+        "revocation_endpoint": f"{target}/auth/revoke",
+    }
+    oidc._discovery_cache["exp"] = float("inf")
+    yield
+    oidc._discovery_cache.update(anterior)
 
 
 @pytest.fixture(scope="function")

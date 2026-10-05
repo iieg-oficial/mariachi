@@ -37,6 +37,37 @@ const montar = () => render(
     <MemoryRouter><App><RoadmapPanel /></App></MemoryRouter>,
 );
 
+const esperarDialogo = async () => {
+    let dialogo;
+    await waitFor(() => {
+        dialogo = document.querySelector('[role="dialog"]');
+        expect(dialogo).not.toBeNull();
+    });
+    return dialogo;
+};
+
+const botonCon = (contenedor, texto) => within(contenedor)
+    .getAllByText(texto)
+    .map((nodo) => nodo.closest('button'))
+    .find(Boolean);
+
+const pulsarEditar = async () => {
+    let boton;
+    await waitFor(() => {
+        boton = botonCon(document.body, /^editar$/i);
+        expect(boton).toBeTruthy();
+    });
+    fireEvent.click(boton);
+};
+
+const abrirEditor = async (nombre) => {
+    usuario.permisos = ['mariachi.roadmap.manage'];
+    montar();
+    await pulsarEditar();
+    fireEvent.click(screen.getByText(nombre).closest('g'));
+    return esperarDialogo();
+};
+
 const CICLOS = [{
     clave: 'c-rojo', nombre: 'tamal-rojo', nota: 'lo nuevo', motivo: 'doce frentes',
     color: '#B3261E', x0: 1200, x1: 1492, y0: 46, y1: 400, orden: 0,
@@ -106,7 +137,7 @@ describe('RoadmapPanel', () => {
     it('muestra el editor a quien tiene el permiso', async () => {
         usuario.permisos = ['mariachi.roadmap.manage'];
         montar();
-        fireEvent.click(await screen.findByRole('button', { name: /editar/i }));
+        await pulsarEditar();
         expect(await screen.findByRole('button', { name: /cambiar punto/i })).toBeInTheDocument();
     });
 
@@ -128,31 +159,22 @@ describe('RoadmapPanel', () => {
         Element.prototype.requestFullscreen = pedir;
         montar();
 
-        fireEvent.click(await screen.findByRole('button', { name: /editar/i }));
+        await pulsarEditar();
 
         await waitFor(() => expect(pedir).toHaveBeenCalled());
         delete Element.prototype.requestFullscreen;
     });
 
-    it('un solo clic en edición abre el modal completo', { timeout: 25000 }, async () => {
-        usuario.permisos = ['mariachi.roadmap.manage'];
-        montar();
-        fireEvent.click(await screen.findByRole('button', { name: /editar/i }));
-        fireEvent.click(screen.getByText('mariachi 2').closest('g'));
-
-        const dialogo = await screen.findByRole('dialog');
+    it('un solo clic en edición abre el modal completo', async () => {
+        const dialogo = await abrirEditor('mariachi 2');
         expect(within(dialogo).getByRole('tab', { name: 'Qué es' })).toBeInTheDocument();
         expect(within(dialogo).getByRole('tab', { name: 'Cuándo' })).toBeInTheDocument();
         expect(within(dialogo).getByRole('tab', { name: 'Conexiones' })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Eliminar' })).toBeInTheDocument();
+        expect(within(document.body).getByText('Eliminar').closest('button')).toBeInTheDocument();
     });
 
-    it('la vista previa del modal reacciona a lo que se escribe', { timeout: 25000 }, async () => {
-        usuario.permisos = ['mariachi.roadmap.manage'];
-        montar();
-        fireEvent.click(await screen.findByRole('button', { name: /editar/i }));
-        fireEvent.click(screen.getByText('mariachi 2').closest('g'));
-        const dialogo = await screen.findByRole('dialog');
+    it('la vista previa del modal reacciona a lo que se escribe', async () => {
+        const dialogo = await abrirEditor('mariachi 2');
 
         fireEvent.change(dialogo.querySelector('#txt'), { target: { value: 'mariachi 9' } });
 
@@ -166,44 +188,35 @@ describe('RoadmapPanel', () => {
     it('cambiar punto abre su propio modal', async () => {
         usuario.permisos = ['mariachi.roadmap.manage'];
         montar();
-        fireEvent.click(await screen.findByRole('button', { name: /editar/i }));
+        await pulsarEditar();
         fireEvent.click(await screen.findByRole('button', { name: /cambiar punto/i }));
 
         expect(await screen.findByText('Quién recorre la línea')).toBeInTheDocument();
         expect(screen.getByRole('link', { name: /administrar símbolos/i })).toBeInTheDocument();
     });
 
-    it('el editor ofrece armar una sucesión con otro hito', { timeout: 25000 }, async () => {
-        usuario.permisos = ['mariachi.roadmap.manage'];
-        montar();
-        fireEvent.click(await screen.findByRole('button', { name: /editar/i }));
-        fireEvent.click(screen.getByText('mariachi 2').closest('g'));
-
-        const dialogo = await screen.findByRole('dialog');
+    it('el editor ofrece armar una sucesión con otro hito', async () => {
+        const dialogo = await abrirEditor('mariachi 2');
         fireEvent.click(within(dialogo).getByRole('tab', { name: 'Conexiones' }));
 
-        expect(screen.getByText('Viene de otro hito')).toBeInTheDocument();
-        expect(screen.getByText('Qué dice esa conexión')).toBeInTheDocument();
+        expect(within(dialogo).getByText('Viene de otro hito')).toBeInTheDocument();
+        expect(within(dialogo).getByText('Qué dice esa conexión')).toBeInTheDocument();
         expect(dialogo.querySelector('input[placeholder="Buscar entre los demás hitos"]')).toBeInTheDocument();
-        expect(within(dialogo).getByRole('button', { name: /geoserver 1/ })).toBeInTheDocument();
+        expect(botonCon(dialogo, /geoserver 1/)).toBeInTheDocument();
     });
 
-    it('los tipos se ofrecen en español y dibujados', { timeout: 25000 }, async () => {
-        usuario.permisos = ['mariachi.roadmap.manage'];
-        montar();
-        fireEvent.click(await screen.findByRole('button', { name: /editar/i }));
-        fireEvent.click(screen.getByText('mariachi 2').closest('g'));
-        await screen.findByRole('dialog');
+    it('los tipos se ofrecen en español y dibujados', async () => {
+        const dialogo = await abrirEditor('mariachi 2');
 
-        expect(screen.getByRole('button', { name: /Versión mayor/ })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: /Ya no se usa/ })).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: /Por llegar/ })).toBeInTheDocument();
+        expect(botonCon(dialogo, /Versión mayor/)).toBeInTheDocument();
+        expect(botonCon(dialogo, /Ya no se usa/)).toBeInTheDocument();
+        expect(botonCon(dialogo, /Por llegar/)).toBeInTheDocument();
     });
 
     it('ofrece agregar los tres tipos de elemento', async () => {
         usuario.permisos = ['mariachi.roadmap.manage'];
         montar();
-        fireEvent.click(await screen.findByRole('button', { name: /editar/i }));
+        await pulsarEditar();
 
         expect(await screen.findByRole('button', { name: /agregar hito/i })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: /agregar ciclo/i })).toBeInTheDocument();
@@ -211,26 +224,21 @@ describe('RoadmapPanel', () => {
         expect(screen.getByRole('button', { name: /cambiar punto/i })).toBeInTheDocument();
     });
 
-    it('edita un ciclo con sus propios campos', { timeout: 25000 }, async () => {
-        usuario.permisos = ['mariachi.roadmap.manage'];
-        montar();
-        fireEvent.click(await screen.findByRole('button', { name: /editar/i }));
-        fireEvent.click(screen.getByText('tamal-rojo').closest('g'));
-
-        const dialogo = await screen.findByRole('dialog');
-        expect(screen.getByText(/Editando ciclo/)).toBeInTheDocument();
+    it('edita un ciclo con sus propios campos', async () => {
+        const dialogo = await abrirEditor('tamal-rojo');
+        expect(within(document.body).getByText(/Editando ciclo/)).toBeInTheDocument();
 
         fireEvent.click(within(dialogo).getByRole('tab', { name: 'Dónde va' }));
 
-        expect(screen.getByText('Empieza en')).toBeInTheDocument();
-        expect(screen.getByText('Termina en')).toBeInTheDocument();
+        expect(within(dialogo).getByText('Empieza en')).toBeInTheDocument();
+        expect(within(dialogo).getByText('Termina en')).toBeInTheDocument();
     });
 
     it('crea un ciclo contra su propio endpoint', async () => {
         usuario.permisos = ['mariachi.roadmap.manage'];
         api.post.mockResolvedValue({ data: CICLOS[0] });
         montar();
-        fireEvent.click(await screen.findByRole('button', { name: /editar/i }));
+        await pulsarEditar();
         fireEvent.click(await screen.findByRole('button', { name: /agregar ciclo/i }));
 
         await waitFor(() => expect(api.post).toHaveBeenCalledWith(
@@ -243,7 +251,7 @@ describe('RoadmapPanel', () => {
         usuario.permisos = ['mariachi.roadmap.manage'];
         api.post.mockResolvedValue({ data: fila({ clave: 'nuevo', etiqueta: 'hito nuevo' }) });
         montar();
-        fireEvent.click(await screen.findByRole('button', { name: /editar/i }));
+        await pulsarEditar();
 
         const svg = document.querySelector('svg[role="img"]');
         svg.getBoundingClientRect = () => ({ left: 0, top: 0, width: 2400, height: 860 });
@@ -258,7 +266,7 @@ describe('RoadmapPanel', () => {
     it('no crea nada con doble clic fuera de las zonas', async () => {
         usuario.permisos = ['mariachi.roadmap.manage'];
         montar();
-        fireEvent.click(await screen.findByRole('button', { name: /editar/i }));
+        await pulsarEditar();
 
         const svg = document.querySelector('svg[role="img"]');
         svg.getBoundingClientRect = () => ({ left: 0, top: 0, width: 2400, height: 860 });
@@ -267,13 +275,15 @@ describe('RoadmapPanel', () => {
         expect(api.post).not.toHaveBeenCalled();
     });
 
-    it('guarda un hito editado contra la API', { timeout: 25000 }, async () => {
-        usuario.permisos = ['mariachi.roadmap.manage'];
+    it('guarda un hito editado contra la API', async () => {
         api.put.mockResolvedValue({ data: fila({ clave: 'mariachi-2', etiqueta: 'mariachi 3', fecha_eje: '2026-08-10' }) });
-        montar();
-        fireEvent.click(await screen.findByRole('button', { name: /editar/i }));
-        fireEvent.click(screen.getByText('mariachi 2').closest('g'));
-        fireEvent.click(await screen.findByRole('button', { name: 'Guardar' }));
+        await abrirEditor('mariachi 2');
+        let guardar;
+        await waitFor(() => {
+            guardar = within(document.body).getByText('Guardar').closest('button');
+            expect(guardar).not.toBeNull();
+        });
+        fireEvent.click(guardar);
         await waitFor(() => expect(api.put).toHaveBeenCalledWith('/roadmap/hitos/mariachi-2', expect.objectContaining({ etiqueta: 'mariachi 2' })));
     });
 

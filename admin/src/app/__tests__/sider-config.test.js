@@ -21,6 +21,7 @@ const TODOS = [
     'mariachi.geoserver.view',
     'mariachi.geoserver.manage',
     'mariachi.sieej_admin.view',
+    'mariachi.sieej_documentacion.view',
     'mariachi.mel.view',
     'mariachi.colibri_reportes.view',
     'mariachi.colibri_config.manage',
@@ -162,7 +163,7 @@ describe('buildSiderItems', () => {
         expect(sieej.disabled).toBe(true);
     });
 
-    it('items de SIEEJ son Formularios, Grupos y Catálogos (sin item disabled)', () => {
+    it('items de SIEEJ son Formularios, Grupos, Catálogos y Documentación (sin item disabled)', () => {
         const items = buildSiderItems({
             ...conPermisos(TODOS),
             onNavigate: vi.fn(),
@@ -173,6 +174,7 @@ describe('buildSiderItems', () => {
             '/sieej/formularios',
             '/sieej/grupos',
             '/sieej/catalogos',
+            '/sieej/documentacion',
         ]);
         sieej.children.forEach((c) => {
             expect(c.disabled).toBeFalsy();
