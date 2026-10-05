@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import Draw from 'ol/interaction/Draw';
+import Modify from 'ol/interaction/Modify';
 import { toLonLat } from 'ol/proj';
 
 const redondear = (n) => Number(n.toFixed(6));
@@ -30,4 +31,28 @@ export const useTrazoOl = (mapRef, { activo, maximo = 12, alTrazar }) => {
             map.removeInteraction(dibujo);
         };
     }, [mapRef, activo, maximo, alTrazar]);
+};
+
+export const useEditarTrazoOl = (mapRef, { activo, sourceRef, maximo = 12, alEditar }) => {
+    useEffect(() => {
+        const map = mapRef.current;
+        const source = sourceRef?.current;
+        if (!map || !activo || !source) return undefined;
+        const edicion = new Modify({ source });
+        const terminar = () => {
+            const linea = source.getFeatures().find((f) => f.getGeometry()?.getType() === 'LineString');
+            if (!linea) return;
+            const puntos = linea.getGeometry().getCoordinates().map((c) => {
+                const [lon, lat] = toLonLat(c);
+                return { lon: redondear(lon), lat: redondear(lat) };
+            });
+            alEditar?.(diezmar(puntos, maximo));
+        };
+        edicion.on('modifyend', terminar);
+        map.addInteraction(edicion);
+        return () => {
+            edicion.un('modifyend', terminar);
+            map.removeInteraction(edicion);
+        };
+    }, [mapRef, sourceRef, activo, maximo, alEditar]);
 };

@@ -27,6 +27,7 @@ from app.api.routes import (
     geoserver,
     grid,
     home,
+    instituto_espacios,
     intranet,
     intranet_directorio_lectura,
     intranet_estado_lectura,
@@ -202,6 +203,7 @@ def create_app() -> FastAPI:
     app.include_router(intranet_estado_lectura.router, prefix=settings.public_prefix)
     app.include_router(intranet_directorio_lectura.router, prefix=settings.public_prefix)
     app.include_router(intranet_inhabiles_lectura.router, prefix=settings.public_prefix)
+    app.include_router(instituto_espacios.lectura_router, prefix=settings.public_prefix)
     app.include_router(mapalab_events_public.router, prefix=settings.public_prefix)
     app.include_router(mapalab_infobox_public.router, prefix=settings.public_prefix)
     app.include_router(sieej_documentacion_publico.router, prefix=settings.public_prefix)
@@ -215,6 +217,11 @@ def create_app() -> FastAPI:
         )
 
     if settings.intranet_enabled:
+        app.include_router(
+            instituto_espacios.router,
+            prefix=settings.admin_prefix,
+            dependencies=[Depends(require_permission("mariachi.intranet.view"))],
+        )
         app.include_router(
             intranet.router,
             prefix=settings.admin_prefix,

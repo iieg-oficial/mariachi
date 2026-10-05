@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { Button, InputNumber, Segmented, Space, Switch, Typography } from 'antd';
-import { ClearOutlined, EditOutlined } from '@ant-design/icons';
+import { ClearOutlined, DragOutlined, EditOutlined } from '@ant-design/icons';
 import NoticeAnchorField from '@shared/components/NoticeAnchorField';
 import { DESTINO_RUTA_MAX, DESTINO_ZOOM } from '@features/mapalab-eventos/constants/diversion';
 
@@ -10,6 +10,7 @@ export default function DestinoField({ value, onChange }) {
     const [pidio, setPidio] = useState(false);
     const [modo, setModo] = useState('punto');
     const [trazando, setTrazando] = useState(false);
+    const [editando, setEditando] = useState(false);
     const activo = Boolean(value) || pidio;
     const ruta = Array.isArray(value?.ruta) ? value.ruta : [];
 
@@ -24,8 +25,7 @@ export default function DestinoField({ value, onChange }) {
         onChange?.(coord ? { ...value, ...coord, zoom: value?.zoom ?? DESTINO_ZOOM.porDefecto } : null);
     };
 
-    const recibirTrazo = useCallback((puntos) => {
-        setTrazando(false);
+    const guardarPuntos = useCallback((puntos) => {
         if (!puntos || puntos.length === 0) return;
         const final = puntos[puntos.length - 1];
         onChange?.({
@@ -36,21 +36,34 @@ export default function DestinoField({ value, onChange }) {
         });
     }, [onChange, value]);
 
-    const borrarTrazo = () => onChange?.({ ...value, ruta: null });
+    const recibirTrazo = useCallback((puntos) => {
+        setTrazando(false);
+        guardarPuntos(puntos);
+    }, [guardarPuntos]);
+
+    const borrarTrazo = () => {
+        setEditando(false);
+        onChange?.({ ...value, ruta: null });
+    };
 
     const fijarZoom = (zoom) => {
         if (value) onChange?.({ ...value, zoom: zoom ?? DESTINO_ZOOM.porDefecto });
     };
 
-    const pista = modo === 'trazo'
-        ? (trazando
-            ? `Haz clic en cada punto del avance y doble clic para terminar; con Shift arrastras a mano alzada. Se guardan hasta ${DESTINO_RUTA_MAX + 1} puntos y el último es donde termina el vuelo.`
-            : ruta.length > 0
-                ? `El trazo tiene ${ruta.length + 1} puntos. Vuelve a dibujar para reemplazarlo.`
-                : 'Dibuja el avance sobre el mapa: el visor encuadra el recorrido completo.')
-        : value
-            ? 'Haz clic en el mapa para mover el lugar donde termina el vuelo.'
-            : 'Haz clic en el mapa para fijar el lugar donde termina el vuelo.';
+    const pista = (() => {
+        if (modo !== 'trazo') {
+            return value
+                ? 'Haz clic en el mapa para mover el lugar donde termina el vuelo.'
+                : 'Haz clic en el mapa para fijar el lugar donde termina el vuelo.';
+        }
+        if (editando) return 'Arrastra los puntos del trazo para moverlos; también puedes jalar la línea para agregar uno.';
+        if (trazando) {
+            return 'Haz clic en cada punto del avance y doble clic para terminar; con Shift arrastras a mano alzada. '
+                + `Se guardan hasta ${DESTINO_RUTA_MAX + 1} puntos y el último es donde termina el vuelo.`;
+        }
+        if (ruta.length > 0) return `El trazo tiene ${ruta.length + 1} puntos. Vuelve a dibujar para reemplazarlo.`;
+        return 'Dibuja el avance sobre el mapa: el visor encuadra el recorrido completo.';
+    })();
 
     return (
         <Space orientation="vertical" size={6} style={{ width: '100%' }}>
@@ -91,9 +104,18 @@ export default function DestinoField({ value, onChange }) {
                                     size="small"
                                     type={trazando ? 'primary' : 'default'}
                                     icon={<EditOutlined />}
-                                    onClick={() => setTrazando((t) => !t)}
+                                    onClick={() => { setEditando(false); setTrazando((t) => !t); }}
                                 >
                                     {trazando ? 'Cancelar el dibujo' : 'Dibujar el trazo'}
+                                </Button>
+                                <Button
+                                    size="small"
+                                    type={editando ? 'primary' : 'default'}
+                                    icon={<DragOutlined />}
+                                    onClick={() => { setTrazando(false); setEditando((e) => !e); }}
+                                    disabled={ruta.length === 0}
+                                >
+                                    {editando ? 'Terminar de mover' : 'Mover los puntos'}
                                 </Button>
                                 <Button size="small" icon={<ClearOutlined />} onClick={borrarTrazo} disabled={ruta.length === 0}>
                                     Borrar el trazo
@@ -106,8 +128,10 @@ export default function DestinoField({ value, onChange }) {
                         onChange={fijarPunto}
                         ruta={ruta}
                         trazando={trazando}
+                        editandoTrazo={editando}
                         maxTrazo={DESTINO_RUTA_MAX + 1}
                         alTrazar={recibirTrazo}
+                        alEditarTrazo={guardarPuntos}
                         height={260}
                         layerHint={false}
                         hint={pista}

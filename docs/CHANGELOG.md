@@ -9,6 +9,18 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.139.0] - 2026-10-05
+
+### Agregado: mover los puntos del trazo y telemetría del recorrido
+
+El segmento Trazo tiene **Mover los puntos**: arrastra cualquier vértice para corregirlo, o jala la
+línea para agregar uno; al soltar se vuelve a guardar el recorrido, con el último punto como lugar
+donde termina el vuelo. Mientras se mueven, los vértices decorativos se ocultan para no estorbar a
+los tiradores de la edición.
+
+La telemetría acepta `evento_fun_recorrido`, que el visor manda cuando alguien pide ver el recorrido
+en 3D de un dato curioso. Queda en los eventos crudos; el rollup por evento no cambia.
+
 ## [2.138.0] - 2026-10-05
 
 ### Agregado: el trazo del avance se dibuja sobre el mapa

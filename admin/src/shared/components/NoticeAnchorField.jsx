@@ -14,7 +14,7 @@ import XYZ from 'ol/source/XYZ';
 import { fromLonLat, toLonLat } from 'ol/proj';
 import { Style, Icon as OlIcon, Circle as CircleStyle, Stroke, Fill } from 'ol/style';
 import { cartoBasemapUrl, CARTO_ATTRIBUTIONS } from '@shared/helpers/cartoBasemap';
-import { useTrazoOl } from '@shared/hooks/useTrazoOl';
+import { useEditarTrazoOl, useTrazoOl } from '@shared/hooks/useTrazoOl';
 import { useWmsReferencia } from '@shared/hooks/useWmsReferencia';
 
 const { Text } = Typography;
@@ -59,8 +59,10 @@ export default function NoticeAnchorField({
     layerHint = true,
     ruta = null,
     trazando = false,
+    editandoTrazo = false,
     maxTrazo = 12,
     alTrazar,
+    alEditarTrazo,
     hint = 'Click sobre el mapa para fijar el punto. El rango de zoom se define en el control de abajo.',
 }) {
     const containerRef = useRef(null);
@@ -125,6 +127,12 @@ export default function NoticeAnchorField({
 
     useWmsReferencia(mapRef, { geoserverUrl, geoserverWorkspace, geoserverLayer, styles, cqlFilter });
     useTrazoOl(mapRef, { activo: trazando && !disabled, maximo: maxTrazo, alTrazar });
+    useEditarTrazoOl(mapRef, {
+        activo: editandoTrazo && !disabled && !trazando,
+        sourceRef: rutaSourceRef,
+        maximo: maxTrazo,
+        alEditar: alEditarTrazo,
+    });
 
     useEffect(() => {
         const source = markerSourceRef.current;
@@ -149,12 +157,13 @@ export default function NoticeAnchorField({
             linea.setStyle(rutaStyle);
             source.addFeature(linea);
         }
+        if (editandoTrazo) return;
         puntos.forEach((p) => {
             const f = new Feature({ geometry: new Point(fromLonLat([p.lon, p.lat])) });
             f.setStyle(verticeStyle);
             source.addFeature(f);
         });
-    }, [ruta, value]);
+    }, [ruta, value, editandoTrazo]);
 
     useEffect(() => {
         const map = mapRef.current;
