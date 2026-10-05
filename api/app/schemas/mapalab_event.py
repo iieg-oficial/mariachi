@@ -66,7 +66,6 @@ ALLOWED_EVENT_NAMES = frozenset({
     "colibri_open",
     "evento_fun_fact",
     "evento_fun_volver",
-    "evento_fun_recorrido",
     "catalogo_open",
     "catalogo_back",
     "catalogo_search",

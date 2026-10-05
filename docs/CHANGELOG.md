@@ -9,6 +9,14 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.149.1] - 2026-10-05
+
+### Eliminado
+
+- `evento_fun_recorrido` sale de la telemetría permitida: el recorrido en 3D del dato curioso se
+  descartó el mismo día en que entró, así que el nombre quedaba sin quien lo emitiera. Los trazos de
+  los datos curiosos se quedan.
+
 ## [2.149.0] - 2026-10-05
 
 ### Agregado
