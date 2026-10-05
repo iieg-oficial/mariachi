@@ -5,7 +5,16 @@ from fastapi import HTTPException, status
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-TIPOS = ("oficina", "trabajo", "sala", "recepcion", "comedor", "circulacion", "exterior", "servicio")
+TIPOS = (
+    "oficina",
+    "trabajo",
+    "sala",
+    "recepcion",
+    "comedor",
+    "circulacion",
+    "exterior",
+    "servicio",
+)
 EDITABLES = ("nombre", "tipo", "piso_id", "incluir", "orden")
 TOLERANCIA_PLANO = 0.12
 
@@ -104,7 +113,8 @@ def editar(db: Session, fid: int, cambios: dict[str, Any], actor: str) -> dict[s
     asignaciones = ", ".join(f"{campo} = :{campo}" for campo in campos)
     _firmar(db, actor)
     resultado = db.execute(
-        text(f"UPDATE instituto.espacios SET {asignaciones} WHERE fid = :fid"), {**campos, "fid": fid}
+        text(f"UPDATE instituto.espacios SET {asignaciones} WHERE fid = :fid"),
+        {**campos, "fid": fid},
     )
     if resultado.rowcount == 0:
         db.rollback()

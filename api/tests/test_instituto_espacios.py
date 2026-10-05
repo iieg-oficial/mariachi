@@ -13,7 +13,9 @@ from app.core.database import get_dataengine_db
 from app.services import instituto_espacios as servicio
 
 CLAVE = "clave-de-intranet"
-PLANO = {"pisos": [{"id": 1, "nombre": "Planta baja", "ancho": 130.7, "alto": 39.9, "espacios": []}]}
+PLANO = {
+    "pisos": [{"id": 1, "nombre": "Planta baja", "ancho": 130.7, "alto": 39.9, "espacios": []}]
+}
 USUARIO = SimpleNamespace(name="Ana López", username="ana")
 
 

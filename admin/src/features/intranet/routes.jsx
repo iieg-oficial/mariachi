@@ -11,6 +11,7 @@ const PAGINAS = [
     ['intranet/sitios', 'SitiosPage'],
     ['intranet/herramientas', 'HerramientasPage'],
     ['intranet/personas', 'PersonasPage'],
+    ['intranet/espacios', 'EspaciosPage'],
 ];
 
 export const buildIntranetRoutes = (withSuspense) => PAGINAS.map(([path, nombre]) => {

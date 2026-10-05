@@ -229,6 +229,10 @@ export const PROJECT_REGISTRY = {
                 key: '/intranet/personas', path: '/intranet/personas', label: 'Personas',
                 icon: <TeamOutlined />,
             },
+            {
+                key: '/intranet/espacios', path: '/intranet/espacios', label: 'Espacios del instituto',
+                icon: <EnvironmentOutlined />,
+            },
         ],
     },
 };

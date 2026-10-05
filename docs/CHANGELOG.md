@@ -9,6 +9,12 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.140.0] - 2026-10-05
+
+### Agregado
+
+- **Espacios del instituto** (Local › Intranet › Espacios del instituto): la tabla de los espacios del edificio con tipo, piso, área, trazo y si se pueden elegir; editar nombre, tipo, piso e inclusión, y el historial de cada uno (qué cambió, quién y desde dónde: mariachi, QGIS o la carga inicial) con «Volver a esta versión». Lee y escribe `instituto.*` de dataengine 1.46.0 con `mariachi_layers`; cada cambio se firma con `instituto.actor` e `instituto.origen` y el historial lo escribe el trigger de la base. La API (`/intranet/espacios`, y `/intranet/espacios` público con la clave de la intranet, que entrega el plano listo para dibujar en SVG) entró en el commit de 2.139.0
+
 ## [2.139.0] - 2026-10-05
 
 ### Agregado: mover los puntos del trazo y telemetría del recorrido
