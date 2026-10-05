@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Button, InputNumber, Segmented, Space, Switch, Typography } from 'antd';
-import { DeleteOutlined } from '@ant-design/icons';
+import { ClearOutlined, EditOutlined } from '@ant-design/icons';
 import NoticeAnchorField from '@shared/components/NoticeAnchorField';
 import { DESTINO_RUTA_MAX, DESTINO_ZOOM } from '@features/mapalab-eventos/constants/diversion';
 
@@ -9,13 +9,13 @@ const { Text } = Typography;
 export default function DestinoField({ value, onChange }) {
     const [pidio, setPidio] = useState(false);
     const [modo, setModo] = useState('punto');
+    const [trazando, setTrazando] = useState(false);
     const activo = Boolean(value) || pidio;
     const ruta = Array.isArray(value?.ruta) ? value.ruta : [];
-    const lleno = ruta.length >= DESTINO_RUTA_MAX;
-    const enRuta = modo === 'ruta' && Boolean(value) && !lleno;
 
     const alternar = (encendido) => {
         setPidio(encendido);
+        setTrazando(false);
         if (!encendido) onChange?.(null);
     };
 
@@ -24,21 +24,33 @@ export default function DestinoField({ value, onChange }) {
         onChange?.(coord ? { ...value, ...coord, zoom: value?.zoom ?? DESTINO_ZOOM.porDefecto } : null);
     };
 
-    const fijarRuta = (puntos) => onChange?.({ ...value, ruta: puntos.slice(0, DESTINO_RUTA_MAX) });
+    const recibirTrazo = useCallback((puntos) => {
+        setTrazando(false);
+        if (!puntos || puntos.length === 0) return;
+        const final = puntos[puntos.length - 1];
+        onChange?.({
+            ...value,
+            ...final,
+            zoom: value?.zoom ?? DESTINO_ZOOM.porDefecto,
+            ruta: puntos.slice(0, -1),
+        });
+    }, [onChange, value]);
 
-    const quitarUltimo = () => onChange?.({ ...value, ruta: ruta.slice(0, -1) });
+    const borrarTrazo = () => onChange?.({ ...value, ruta: null });
 
     const fijarZoom = (zoom) => {
         if (value) onChange?.({ ...value, zoom: zoom ?? DESTINO_ZOOM.porDefecto });
     };
 
-    const pista = !value
-        ? 'Haz clic en el mapa para fijar el lugar donde termina el vuelo.'
-        : enRuta
-            ? `Haz clic para agregar un punto de avance. Van ${ruta.length} de ${DESTINO_RUTA_MAX}.`
-            : lleno && modo === 'ruta'
-                ? `Ya tiene los ${DESTINO_RUTA_MAX} puntos de avance. Quita uno para agregar otro.`
-                : 'Haz clic en el mapa para mover el lugar donde termina el vuelo.';
+    const pista = modo === 'trazo'
+        ? (trazando
+            ? `Haz clic en cada punto del avance y doble clic para terminar; con Shift arrastras a mano alzada. Se guardan hasta ${DESTINO_RUTA_MAX + 1} puntos y el último es donde termina el vuelo.`
+            : ruta.length > 0
+                ? `El trazo tiene ${ruta.length + 1} puntos. Vuelve a dibujar para reemplazarlo.`
+                : 'Dibuja el avance sobre el mapa: el visor encuadra el recorrido completo.')
+        : value
+            ? 'Haz clic en el mapa para mover el lugar donde termina el vuelo.'
+            : 'Haz clic en el mapa para fijar el lugar donde termina el vuelo.';
 
     return (
         <Space orientation="vertical" size={6} style={{ width: '100%' }}>
@@ -67,25 +79,35 @@ export default function DestinoField({ value, onChange }) {
                         <Segmented
                             size="small"
                             value={modo}
-                            onChange={setModo}
-                            disabled={!value}
+                            onChange={(v) => { setModo(v); setTrazando(false); }}
                             options={[
                                 { value: 'punto', label: 'Lugar' },
-                                { value: 'ruta', label: `Ruta (${ruta.length})` },
+                                { value: 'trazo', label: ruta.length ? `Trazo (${ruta.length + 1})` : 'Trazo' },
                             ]}
                         />
-                        {modo === 'ruta' && (
-                            <Button size="small" icon={<DeleteOutlined />} onClick={quitarUltimo} disabled={ruta.length === 0}>
-                                Quitar el último
-                            </Button>
+                        {modo === 'trazo' && (
+                            <>
+                                <Button
+                                    size="small"
+                                    type={trazando ? 'primary' : 'default'}
+                                    icon={<EditOutlined />}
+                                    onClick={() => setTrazando((t) => !t)}
+                                >
+                                    {trazando ? 'Cancelar el dibujo' : 'Dibujar el trazo'}
+                                </Button>
+                                <Button size="small" icon={<ClearOutlined />} onClick={borrarTrazo} disabled={ruta.length === 0}>
+                                    Borrar el trazo
+                                </Button>
+                            </>
                         )}
                     </Space>
                     <NoticeAnchorField
                         value={value}
                         onChange={fijarPunto}
                         ruta={ruta}
-                        onRutaChange={fijarRuta}
-                        enRuta={enRuta}
+                        trazando={trazando}
+                        maxTrazo={DESTINO_RUTA_MAX + 1}
+                        alTrazar={recibirTrazo}
                         height={260}
                         layerHint={false}
                         hint={pista}

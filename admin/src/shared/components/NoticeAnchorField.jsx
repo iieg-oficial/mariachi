@@ -10,12 +10,12 @@ import Point from 'ol/geom/Point';
 import TileLayer from 'ol/layer/Tile';
 import VectorLayer from 'ol/layer/Vector';
 import VectorSource from 'ol/source/Vector';
-import ImageLayer from 'ol/layer/Image';
-import ImageWMS from 'ol/source/ImageWMS';
 import XYZ from 'ol/source/XYZ';
 import { fromLonLat, toLonLat } from 'ol/proj';
 import { Style, Icon as OlIcon, Circle as CircleStyle, Stroke, Fill } from 'ol/style';
 import { cartoBasemapUrl, CARTO_ATTRIBUTIONS } from '@shared/helpers/cartoBasemap';
+import { useTrazoOl } from '@shared/hooks/useTrazoOl';
+import { useWmsReferencia } from '@shared/hooks/useWmsReferencia';
 
 const { Text } = Typography;
 
@@ -58,15 +58,15 @@ export default function NoticeAnchorField({
     height = 360,
     layerHint = true,
     ruta = null,
-    onRutaChange,
-    enRuta = false,
+    trazando = false,
+    maxTrazo = 12,
+    alTrazar,
     hint = 'Click sobre el mapa para fijar el punto. El rango de zoom se define en el control de abajo.',
 }) {
     const containerRef = useRef(null);
     const mapRef = useRef(null);
     const markerSourceRef = useRef(null);
     const rutaSourceRef = useRef(null);
-    const wmsLayerRef = useRef(null);
     const onChangeRef = useRef(onChange);
     const defaultZoomRef = useRef(defaultZoom);
     const [currentZoom, setCurrentZoom] = useState(null);
@@ -119,55 +119,12 @@ export default function NoticeAnchorField({
             map.setTarget(null);
             mapRef.current = null;
             markerSourceRef.current = null;
-            wmsLayerRef.current = null;
+            rutaSourceRef.current = null;
         };
     }, []);
 
-    useEffect(() => {
-        const map = mapRef.current;
-        if (!map) return undefined;
-        if (wmsLayerRef.current) {
-            map.removeLayer(wmsLayerRef.current);
-            wmsLayerRef.current = null;
-        }
-        if (!geoserverUrl || !geoserverWorkspace || !geoserverLayer) return undefined;
-        const wmsLayer = new ImageLayer({
-            source: new ImageWMS({
-                url: `${geoserverUrl.replace(/\/$/, '')}/${geoserverWorkspace}/wms`,
-                params: {
-                    LAYERS: `${geoserverWorkspace}:${geoserverLayer}`,
-                    STYLES: '',
-                    FORMAT: 'image/png',
-                    TRANSPARENT: true,
-                    VERSION: '1.1.0',
-                },
-                ratio: 1,
-                serverType: 'geoserver',
-            }),
-            opacity: 0.7,
-            zIndex: 10,
-        });
-        map.addLayer(wmsLayer);
-        wmsLayerRef.current = wmsLayer;
-        return () => {
-            map.removeLayer(wmsLayer);
-            wmsLayerRef.current = null;
-        };
-    }, [geoserverUrl, geoserverWorkspace, geoserverLayer]);
-
-    useEffect(() => {
-        const wmsLayer = wmsLayerRef.current;
-        if (!wmsLayer) return undefined;
-        const handle = setTimeout(() => {
-            const source = wmsLayer.getSource();
-            if (!source) return;
-            const params = { STYLES: styles || '' };
-            if (cqlFilter) params.CQL_FILTER = cqlFilter;
-            else params.CQL_FILTER = undefined;
-            source.updateParams(params);
-        }, 250);
-        return () => clearTimeout(handle);
-    }, [styles, cqlFilter]);
+    useWmsReferencia(mapRef, { geoserverUrl, geoserverWorkspace, geoserverLayer, styles, cqlFilter });
+    useTrazoOl(mapRef, { activo: trazando && !disabled, maximo: maxTrazo, alTrazar });
 
     useEffect(() => {
         const source = markerSourceRef.current;
@@ -203,18 +160,13 @@ export default function NoticeAnchorField({
         const map = mapRef.current;
         if (!map) return undefined;
         const handler = (evt) => {
-            if (disabled) return;
+            if (disabled || trazando) return;
             const [lon, lat] = toLonLat(evt.coordinate);
-            const punto = { lon: round(lon), lat: round(lat) };
-            if (enRuta && onRutaChange) {
-                onRutaChange([...(Array.isArray(ruta) ? ruta : []), punto]);
-                return;
-            }
-            onChangeRef.current?.(punto);
+            onChangeRef.current?.({ lon: round(lon), lat: round(lat) });
         };
         map.on('click', handler);
         return () => map.un('click', handler);
-    }, [disabled, enRuta, onRutaChange, ruta]);
+    }, [disabled, trazando]);
 
     useEffect(() => {
         const map = mapRef.current;

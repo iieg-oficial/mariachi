@@ -43,4 +43,4 @@ export const tramosDeForma = (forma) => FORMAS_TRAMOS.find((f) => f.value === fo
 
 export const DESTINO_ZOOM = { min: 5, max: 19, porDefecto: 15 };
 
-export const DESTINO_RUTA_MAX = 4;
+export const DESTINO_RUTA_MAX = 12;

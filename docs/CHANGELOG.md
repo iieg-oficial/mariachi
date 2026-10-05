@@ -9,6 +9,19 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.138.0] - 2026-10-05
+
+### Agregado: el trazo del avance se dibuja sobre el mapa
+
+En el segmento Trazo del lugar de un dato curioso, **Dibujar el trazo** activa el dibujo de
+OpenLayers: un clic por punto y doble clic para terminar, o arrastrar con Shift para trazarlo a mano
+alzada. Se guardan hasta trece puntos —el último es donde termina el vuelo y el resto es el
+recorrido— y un trazo con más vértices se diezma a esos trece. El tope de la ruta pasó de cuatro a
+doce puntos. Sustituye la captura punto por punto, que quedaba corta para un recorrido.
+
+La capa WMS de referencia y el dibujo salieron de `NoticeAnchorField` a los hooks
+`useWmsReferencia` y `useTrazoOl`, que lo dejaron en 259 líneas.
+
 ## [2.137.0] - 2026-10-05
 
 ### Agregado: ruta de avance en los datos curiosos

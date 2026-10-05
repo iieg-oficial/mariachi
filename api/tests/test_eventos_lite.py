@@ -77,7 +77,7 @@ def test_por_defecto_es_completo_con_pelota(admin_session, db_session):
     {"facts": [{"text": "Dato", "destino": {"lon": -200, "lat": 20}}]},
     {"facts": [{"text": "Dato", "destino": {"lon": -103, "lat": 20, "zoom": 22}}]},
     {"facts": [{"text": "Dato", "destino": {"lat": 20}}]},
-    {"facts": [{"text": "Dato", "destino": {"lon": -103, "lat": 20, "ruta": [{"lon": -103, "lat": 20}] * 5}}]},
+    {"facts": [{"text": "Dato", "destino": {"lon": -103, "lat": 20, "ruta": [{"lon": -103, "lat": 20}] * 13}}]},
     {"facts": [{"text": "Dato", "destino": {"lon": -103, "lat": 20, "ruta": [{"lon": -200, "lat": 20}]}}]},
     {"facts": [{"text": "Dato", "destino": {"lon": -103, "lat": 20, "ruta": [{"lon": -103}]}}]},
     {"botonEstilo": {"fondo": {"forma": "solido", "colores": ["#FF8300"]}}},
