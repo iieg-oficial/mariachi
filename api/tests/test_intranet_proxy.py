@@ -280,3 +280,9 @@ def test_carpetas_y_edicion_de_documentos_pasan_a_la_intranet(monkeypatch):
     assert editado.status_code == 200
     assert peticiones[-1].method == "PUT"
     assert str(peticiones[-1].url) == "http://intranet.prueba/api/documentos/3"
+
+
+def test_las_solicitudes_de_cuenta_se_leen_de_la_intranet(monkeypatch):
+    cliente, _, peticiones = _cliente(monkeypatch, VISTA, _ok)
+    assert cliente.get("/intranet/solicitudes").status_code == 200
+    assert str(peticiones[0].url) == "http://intranet.prueba/api/solicitudes-cuenta/"

@@ -6,3 +6,4 @@ export { default as SitiosPage } from './pages/SitiosPage';
 export { default as HerramientasPage } from './pages/HerramientasPage';
 export { default as PersonasPage } from './pages/PersonasPage';
 export { default as EspaciosPage } from './pages/EspaciosPage';
+export { default as SolicitudesPage } from './pages/SolicitudesPage';

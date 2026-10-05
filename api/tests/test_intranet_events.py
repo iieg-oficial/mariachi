@@ -142,6 +142,7 @@ def test_el_upsert_de_sesion_no_mezcla_apps():
         "roadmap_pantalla",
         "seccion_ir",
         "seccion_buscar",
+        "cuenta_solicitar",
         "carpeta_abrir",
         "album_abrir",
         "album_crear",

@@ -88,7 +88,7 @@ const PaginaRecurso = ({ definicion, acciones, extra, level }) => {
                 extra={
                     <Space size={12}>
                         {extra}
-                        {puedeGestionar && (
+                        {puedeGestionar && definicion.alta && (
                             <Button type="primary" icon={<PlusOutlined />} onClick={() => abrir()}>
                                 {definicion.alta}
                             </Button>

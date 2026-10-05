@@ -31,6 +31,7 @@ import {
     TagsOutlined,
     TeamOutlined,
     UnorderedListOutlined,
+    UserAddOutlined,
     VideoCameraOutlined,
 } from '@ant-design/icons';
 import ColibriIcon from '@shared/components/ColibriIcon';
@@ -232,6 +233,10 @@ export const PROJECT_REGISTRY = {
             {
                 key: '/intranet/espacios', path: '/intranet/espacios', label: 'Espacios del instituto',
                 icon: <EnvironmentOutlined />,
+            },
+            {
+                key: '/intranet/solicitudes', path: '/intranet/solicitudes', label: 'Solicitudes de cuenta',
+                icon: <UserAddOutlined />,
             },
         ],
     },

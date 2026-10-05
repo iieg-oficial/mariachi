@@ -9,6 +9,12 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.142.0] - 2026-10-05
+
+### Agregado
+
+- **Solicitudes de cuenta de la intranet** (Local › Intranet › Solicitudes de cuenta): quién pidió entrar, con correo, dirección y para qué; Aprobar o Rechazar las pendientes y quién las atendió. La cuenta se crea con una invitación en el panel de minerva. Proxy `solicitudes` hacia `/api/solicitudes-cuenta/` de la intranet; la telemetría acepta `cuenta_solicitar`. `PaginaRecurso` oculta el botón de alta cuando la definición no trae `alta`
+
 ## [2.141.0] - 2026-10-05
 
 ### Agregado
