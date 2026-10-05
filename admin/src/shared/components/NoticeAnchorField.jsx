@@ -5,6 +5,7 @@ import 'ol/ol.css';
 import Map from 'ol/Map';
 import View from 'ol/View';
 import Feature from 'ol/Feature';
+import LineString from 'ol/geom/LineString';
 import Point from 'ol/geom/Point';
 import TileLayer from 'ol/layer/Tile';
 import VectorLayer from 'ol/layer/Vector';
@@ -21,6 +22,19 @@ const { Text } = Typography;
 const JALISCO_CENTER_4326 = [-103.35, 20.66];
 
 const round = (n, dec = 6) => (Number.isFinite(n) ? Number(n.toFixed(dec)) : null);
+
+const rutaStyle = [
+    new Style({ stroke: new Stroke({ color: '#FFFFFF', width: 5 }) }),
+    new Style({ stroke: new Stroke({ color: '#FF8300', width: 2, lineDash: [8, 6] }) }),
+];
+
+const verticeStyle = new Style({
+    image: new CircleStyle({
+        radius: 5,
+        fill: new Fill({ color: '#FF8300' }),
+        stroke: new Stroke({ color: '#FFFFFF', width: 2 }),
+    }),
+});
 
 const markerStyle = new Style({
     image: new CircleStyle({
@@ -43,11 +57,15 @@ export default function NoticeAnchorField({
     defaultZoom,
     height = 360,
     layerHint = true,
+    ruta = null,
+    onRutaChange,
+    enRuta = false,
     hint = 'Click sobre el mapa para fijar el punto. El rango de zoom se define en el control de abajo.',
 }) {
     const containerRef = useRef(null);
     const mapRef = useRef(null);
     const markerSourceRef = useRef(null);
+    const rutaSourceRef = useRef(null);
     const wmsLayerRef = useRef(null);
     const onChangeRef = useRef(onChange);
     const defaultZoomRef = useRef(defaultZoom);
@@ -61,6 +79,9 @@ export default function NoticeAnchorField({
 
         const markerSource = new VectorSource();
         markerSourceRef.current = markerSource;
+
+        const rutaSource = new VectorSource();
+        rutaSourceRef.current = rutaSource;
 
         const baseTile = new TileLayer({
             source: new XYZ({
@@ -76,6 +97,8 @@ export default function NoticeAnchorField({
             zIndex: 100,
         });
 
+        const rutaLayer = new VectorLayer({ source: rutaSource, zIndex: 90 });
+
         const dz = defaultZoomRef.current;
         const initialCenter = (dz && Number.isFinite(dz.lon) && Number.isFinite(dz.lat))
             ? [dz.lon, dz.lat]
@@ -83,7 +106,7 @@ export default function NoticeAnchorField({
         const initialZoom = (dz && Number.isFinite(dz.zoom)) ? dz.zoom : 7;
         const map = new Map({
             target: containerRef.current,
-            layers: [baseTile, markerLayer],
+            layers: [baseTile, rutaLayer, markerLayer],
             view: new View({
                 center: fromLonLat(initialCenter),
                 zoom: initialZoom,
@@ -157,16 +180,41 @@ export default function NoticeAnchorField({
     }, [value]);
 
     useEffect(() => {
+        const source = rutaSourceRef.current;
+        if (!source) return;
+        source.clear();
+        const puntos = (Array.isArray(ruta) ? ruta : []).filter((p) => Number.isFinite(p?.lon) && Number.isFinite(p?.lat));
+        if (puntos.length === 0) return;
+        const conFinal = value && Number.isFinite(value.lon) ? [...puntos, value] : puntos;
+        const coords = conFinal.map((p) => fromLonLat([p.lon, p.lat]));
+        if (coords.length > 1) {
+            const linea = new Feature({ geometry: new LineString(coords) });
+            linea.setStyle(rutaStyle);
+            source.addFeature(linea);
+        }
+        puntos.forEach((p) => {
+            const f = new Feature({ geometry: new Point(fromLonLat([p.lon, p.lat])) });
+            f.setStyle(verticeStyle);
+            source.addFeature(f);
+        });
+    }, [ruta, value]);
+
+    useEffect(() => {
         const map = mapRef.current;
         if (!map) return undefined;
         const handler = (evt) => {
             if (disabled) return;
             const [lon, lat] = toLonLat(evt.coordinate);
-            onChangeRef.current?.({ lon: round(lon), lat: round(lat) });
+            const punto = { lon: round(lon), lat: round(lat) };
+            if (enRuta && onRutaChange) {
+                onRutaChange([...(Array.isArray(ruta) ? ruta : []), punto]);
+                return;
+            }
+            onChangeRef.current?.(punto);
         };
         map.on('click', handler);
         return () => map.un('click', handler);
-    }, [disabled]);
+    }, [disabled, enRuta, onRutaChange, ruta]);
 
     useEffect(() => {
         const map = mapRef.current;

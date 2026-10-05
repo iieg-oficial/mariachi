@@ -9,6 +9,15 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.137.0] - 2026-10-05
+
+### Agregado: ruta de avance en los datos curiosos
+
+El destino de un dato curioso acepta hasta cuatro **puntos de avance** antes del lugar donde termina
+el vuelo. En el CMS se capturan con clic en el mapa, desde el segmento Ruta del campo del lugar, con
+contador y botón para quitar el último; la vista previa encuadra el recorrido y lo dibuja. Un destino
+sin ruta se comporta igual que antes.
+
 ## [2.136.0] - 2026-10-05
 
 ### Agregado

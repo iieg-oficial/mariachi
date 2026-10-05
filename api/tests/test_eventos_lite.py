@@ -36,6 +36,16 @@ def test_evento_lite_con_estilo_se_crea(admin_session, db_session):
             {"text": "Dato", "animacion": "pelota"},
             {"text": "Otro"},
             {"text": "Mezcala", "animacion": "aguilas", "destino": {"lon": -103.0105, "lat": 20.328}},
+            {
+                "text": "Cuesta de Sayula",
+                "animacion": "aguilas",
+                "destino": {
+                    "lon": -103.6089,
+                    "lat": 19.8572,
+                    "zoom": 13,
+                    "ruta": [{"lon": -103.5931, "lat": 20.2441}, {"lon": -103.5665, "lat": 19.9661}],
+                },
+            },
         ],
     )
     assert response.status_code == 201
@@ -47,7 +57,10 @@ def test_evento_lite_con_estilo_se_crea(admin_session, db_session):
     assert body["facts"][0]["animacion"] == "pelota"
     assert body["facts"][1]["animacion"] is None
     assert body["facts"][1]["destino"] is None
-    assert body["facts"][2]["destino"] == {"lon": -103.0105, "lat": 20.328, "zoom": 15}
+    assert body["facts"][2]["destino"] == {"lon": -103.0105, "lat": 20.328, "zoom": 15, "ruta": None}
+    ruta = body["facts"][3]["destino"]["ruta"]
+    assert [p["lat"] for p in ruta] == [20.2441, 19.9661]
+    assert body["facts"][3]["destino"]["zoom"] == 13
 
 
 def test_por_defecto_es_completo_con_pelota(admin_session, db_session):
@@ -64,6 +77,9 @@ def test_por_defecto_es_completo_con_pelota(admin_session, db_session):
     {"facts": [{"text": "Dato", "destino": {"lon": -200, "lat": 20}}]},
     {"facts": [{"text": "Dato", "destino": {"lon": -103, "lat": 20, "zoom": 22}}]},
     {"facts": [{"text": "Dato", "destino": {"lat": 20}}]},
+    {"facts": [{"text": "Dato", "destino": {"lon": -103, "lat": 20, "ruta": [{"lon": -103, "lat": 20}] * 5}}]},
+    {"facts": [{"text": "Dato", "destino": {"lon": -103, "lat": 20, "ruta": [{"lon": -200, "lat": 20}]}}]},
+    {"facts": [{"text": "Dato", "destino": {"lon": -103, "lat": 20, "ruta": [{"lon": -103}]}}]},
     {"botonEstilo": {"fondo": {"forma": "solido", "colores": ["#FF8300"]}}},
     {"botonEstilo": {"fondo": {"forma": "mitades", "colores": ["morado"]}}},
     {"botonEstilo": {"borde": {"forma": "solido", "colores": ["naranja"]}}},

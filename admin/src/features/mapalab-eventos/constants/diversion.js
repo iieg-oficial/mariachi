@@ -42,3 +42,5 @@ export const BORDE_PRESETS = [
 export const tramosDeForma = (forma) => FORMAS_TRAMOS.find((f) => f.value === forma)?.tramos ?? 0;
 
 export const DESTINO_ZOOM = { min: 5, max: 19, porDefecto: 15 };
+
+export const DESTINO_RUTA_MAX = 4;

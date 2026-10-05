@@ -15,6 +15,7 @@ AVISO_MAX_LENGTH = 80
 DESTINO_ZOOM_MIN = 5
 DESTINO_ZOOM_MAX = 19
 DESTINO_ZOOM_DEFAULT = 15
+DESTINO_RUTA_MAX = 4
 
 _HEX_RE = re.compile(r'^#[0-9A-Fa-f]{6}$')
 
@@ -72,7 +73,20 @@ class DiversionMixin:
         return valor
 
 
+class PuntoRuta(CamelCaseInput):
+    lon: float = Field(ge=-180, le=180)
+    lat: float = Field(ge=-90, le=90)
+
+
 class DestinoDato(CamelCaseInput):
     lon: float = Field(ge=-180, le=180)
     lat: float = Field(ge=-90, le=90)
     zoom: int = Field(default=DESTINO_ZOOM_DEFAULT, ge=DESTINO_ZOOM_MIN, le=DESTINO_ZOOM_MAX)
+    ruta: list[PuntoRuta] | None = Field(default=None, max_length=DESTINO_RUTA_MAX)
+
+    @field_validator('ruta', mode='before')
+    @classmethod
+    def _sin_ruta_vacia(cls, valor: object) -> object:
+        if isinstance(valor, list) and not valor:
+            return None
+        return valor
