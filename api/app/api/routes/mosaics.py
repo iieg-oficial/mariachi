@@ -6,10 +6,12 @@ from starlette.concurrency import run_in_threadpool
 
 from app.api.deps import require_permission, verify_csrf
 from app.api.rate_limit import _client_ip, rate_limit
-from app.core.database import get_db
+from app.core.database import get_dataengine_db, get_db
+from app.models.layer import Workspace
 from app.models.user import Usuario
 from app.services.actividad_service import registrar_actividad
 from app.services.geoserver_client import GeoServerError
+from app.services.mapalab_notifier import notify_tree_changed
 from app.services.mosaic_client import MosaicClient
 from app.services.mosaic_service import MosaicError, list_mosaics, reindex_mosaic
 
@@ -71,10 +73,20 @@ async def reindexar_mosaico(
     return resultado
 
 
+def _subir_version_de_leyendas(dataengine: Session) -> int:
+    dataengine.query(Workspace).update(
+        {Workspace.legend_version: Workspace.legend_version + 1},
+        synchronize_session=False,
+    )
+    dataengine.commit()
+    return dataengine.query(Workspace).count()
+
+
 @router.post('/reset')
 async def reset_geoserver(
     request: Request,
     db: Session = Depends(get_db),
+    dataengine: Session = Depends(get_dataengine_db),
     current_user: Usuario = Depends(_require_manage),
     _csrf: Usuario = Depends(verify_csrf),
     _rl: Usuario = Depends(_write_rate_limit),
@@ -85,14 +97,17 @@ async def reset_geoserver(
     except GeoServerError as exc:
         raise HTTPException(status_code=502, detail=str(exc))
 
+    workspaces = _subir_version_de_leyendas(dataengine)
+    notify_tree_changed()
+
     registrar_actividad(
         db,
         actor=current_user,
         action='geoserver.reset',
         resource_type='geoserver',
         resource_id=None,
-        metadata={},
+        metadata={'leyendas_workspaces': workspaces},
         ip=_client_ip(request),
     )
     db.commit()
-    return {'ok': True}
+    return {'ok': True, 'leyendas_workspaces': workspaces}

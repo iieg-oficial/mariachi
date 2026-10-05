@@ -9,6 +9,19 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.145.0] - 2026-10-05
+
+### Corregido: «Vaciar cachés» ahora también renueva las leyendas del visor
+
+El botón solo vaciaba la memoria de GeoServer. Una leyenda nueva seguía sin aparecer porque el
+gateway guarda cada `GetLegendGraphic` seis horas e ignora el `Cache-Control` de GeoServer; ni el
+reset ni Ctrl+Shift+R la alcanzaban.
+
+Ahora el botón, además, sube `legend_version` en todos los workspaces (dataengine 1.48.0) y avisa al
+visor con `notify_tree_changed()`. El visor agrega ese número a la URL de la leyenda: al cambiar la
+URL el gateway no encuentra nada guardado y la pide de nuevo. **No se toca el gateway**: su sidecar
+es de solo lectura a propósito. Lo viejo caduca solo en sus seis horas. El tooltip lo dice.
+
 ## [2.144.0] - 2026-10-05
 
 ### Agregado

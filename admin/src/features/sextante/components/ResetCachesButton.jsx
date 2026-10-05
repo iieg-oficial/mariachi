@@ -6,8 +6,8 @@ import { message } from '@shared/services/message';
 
 const { Paragraph } = Typography;
 
-const QUE_HACE = 'Vacía las cachés en memoria de GeoServer: readers, estilos y esquemas se releen del disco. '
-    + 'No borra archivos; las primeras peticiones después van más lentas.';
+const QUE_HACE = 'Vacía las cachés en memoria de GeoServer y renueva las leyendas del visor, '
+    + 'que el gateway guarda seis horas. No borra archivos; las primeras peticiones después van más lentas.';
 
 export default function ResetCachesButton() {
     const [busy, setBusy] = useState(false);

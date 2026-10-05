@@ -26,6 +26,7 @@ class Workspace(DataEngineBase):
     geoserver_workspace = Column(String(200), nullable=False)
     db_schema = Column(String(200), nullable=False)
     label = Column(String(200))
+    legend_version = Column(Integer, nullable=False, server_default=text("1"))
     created_at = Column(DateTime(timezone=True), server_default=text("NOW()"), nullable=False)
 
 
