@@ -9,6 +9,17 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.141.0] - 2026-10-05
+
+### Agregado
+
+- **Documentación de pipelines**: «Nuevo pipeline» da de alta uno a mano (título, producto y clave), que nace como borrador y el sincronizador no retira; cada fila tiene «Mandar a borrador», que lo saca del sitio sin perder el contenido, y «Eliminar», solo para los que el sincronizador no detecta. Migración `sdoc0002` con la columna `manual`
+- La sincronización pasa a un modal junto a «Recargar»: barras de los últimos 30 ciclos por duración y estado, detalle del ciclo elegido, filtro de los que tuvieron error y acceso directo al editor de los pipelines nuevos
+
+### Corregido
+
+- «Descartar» ya no vacía el borrador de un pipeline que nunca se publicó
+
 ## [2.140.0] - 2026-10-05
 
 ### Agregado

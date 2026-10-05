@@ -20,3 +20,9 @@ export const descartarBorrador = async (clave) => (await api.post(`${BASE}/pipel
 export const ajustarPipeline = async (clave, ajustes) => (await api.patch(`${BASE}/pipelines/${clave}`, ajustes)).data;
 
 export const rutaPresencia = (clave) => `${BASE}/pipelines/${clave}`;
+
+export const crearPipeline = async (datos) => (await api.post(`${BASE}/pipelines`, datos)).data;
+
+export const despublicarPipeline = async (clave) => (await api.post(`${BASE}/pipelines/${clave}/despublicar`)).data;
+
+export const eliminarPipeline = async (clave) => api.delete(`${BASE}/pipelines/${clave}`);

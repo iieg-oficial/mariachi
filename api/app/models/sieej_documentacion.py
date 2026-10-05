@@ -26,6 +26,7 @@ class PipelineDoc(Base):
     fuentes_detectadas = Column(JSON, nullable=False, default=list)
     orden = Column(Integer, nullable=False, default=0)
     visible = Column(Boolean, nullable=False, default=True)
+    manual = Column(Boolean, nullable=False, default=False)
     contenido_borrador = Column(JSON, nullable=False, default=dict)
     contenido_publicado = Column(JSON, nullable=True)
     detectado_en = Column(DateTime, nullable=False, default=utcnow)

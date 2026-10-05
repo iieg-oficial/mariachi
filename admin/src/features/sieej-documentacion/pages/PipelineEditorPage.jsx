@@ -115,9 +115,9 @@ export default function PipelineEditorPage() {
                     <Space wrap>
                         <PresenciaIndicator editores={editores} />
                         <Button shape="round" icon={<ArrowLeftOutlined />} onClick={() => navigate('/sieej/documentacion')}>Volver</Button>
-                        <Button shape="round" icon={<ExportOutlined />} href={`${SITIO}/${clave}/`} target="_blank">Ver publicada</Button>
-                        <Popconfirm title="¿Descartar el borrador y volver a lo publicado?" onConfirm={descartar} disabled={!puedeEditar}>
-                            <Button shape="round" icon={<UndoOutlined />} disabled={!puedeEditar || ocupado}>Descartar</Button>
+                        <Button shape="round" icon={<ExportOutlined />} href={`${SITIO}/${clave}/`} target="_blank" disabled={!detalle.publicado}>Ver publicada</Button>
+                        <Popconfirm title="¿Descartar el borrador y volver a lo publicado?" onConfirm={descartar} disabled={!puedeEditar || !detalle.publicado}>
+                            <Button shape="round" icon={<UndoOutlined />} disabled={!puedeEditar || ocupado || !detalle.publicado}>Descartar</Button>
                         </Popconfirm>
                         <Button shape="round" icon={<SaveOutlined />} onClick={guardar} disabled={!puedeEditar || !sucio} loading={ocupado}>Guardar</Button>
                         <Button shape="round" type="primary" icon={<SendOutlined />} onClick={publicar} disabled={!puedePublicar} loading={ocupado}>Publicar</Button>

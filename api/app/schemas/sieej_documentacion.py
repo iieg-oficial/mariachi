@@ -106,6 +106,12 @@ class ContenidoPagina(BaseModel):
         return self
 
 
+class PipelineNuevo(BaseModel):
+    clave: str = Field(min_length=2, max_length=80, pattern=r"^[a-z0-9_]+$")
+    titulo: str = Field(min_length=1, max_length=200)
+    producto: str = Field(default="", max_length=300)
+
+
 class AjustesPipeline(BaseModel):
     visible: bool | None = None
     orden: int | None = None
@@ -119,6 +125,7 @@ class PipelineResumen(BaseModel):
     producto: str
     estado: str
     visible: bool
+    manual: bool = False
     orden: int
     fuentes_detectadas: list[str]
     clasificacion: str | None

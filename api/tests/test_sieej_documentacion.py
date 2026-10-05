@@ -173,3 +173,53 @@ def test_salud_reporta_la_ultima_sincronizacion(client):
     salud = client.get(f"{PUBLICO}/sieej-documentacion/salud").json()
     assert salud["estado"] == "ok"
     assert salud["estado_ultima"] == "ok"
+
+
+def test_un_pipeline_manual_nace_sin_publicar_y_el_sync_no_lo_retira(admin_session):
+    client, csrf = admin_session["client"], admin_session["csrf"]
+    creado = client.post(
+        f"{DOC}/pipelines",
+        json={"clave": "censo_agro", "titulo": "Censo Agropecuario"},
+        headers={"X-CSRF-Token": csrf},
+    )
+    assert creado.status_code == 201
+    assert creado.json()["manual"] is True
+    assert creado.json()["publicado"] is None
+    repetido = client.post(
+        f"{DOC}/pipelines", json={"clave": "censo_agro", "titulo": "Otro"}, headers={"X-CSRF-Token": csrf}
+    )
+    assert repetido.status_code == 409
+
+    _sync(client, [_pipeline()])
+    assert client.get(f"{DOC}/pipelines/censo_agro").json()["estado"] == "nuevo"
+    assert "censo_agro" not in [p["clave"] for p in client.get(f"{PUBLICO}/sieej-documentacion/pipelines").json()]
+
+    client.post(f"{DOC}/pipelines/censo_agro/publicar", headers={"X-CSRF-Token": csrf})
+    assert "censo_agro" in [p["clave"] for p in client.get(f"{PUBLICO}/sieej-documentacion/pipelines").json()]
+
+
+def test_mandar_a_borrador_lo_saca_del_sitio_y_el_sync_no_lo_republica(admin_session):
+    client, csrf = admin_session["client"], admin_session["csrf"]
+    _sync(client, [_pipeline()])
+    respuesta = client.post(f"{DOC}/pipelines/emec/despublicar", headers={"X-CSRF-Token": csrf})
+    assert respuesta.json()["publicado"] is None
+    assert respuesta.json()["borrador_pendiente"] is True
+    _sync(client, [_pipeline(commit="def5678")])
+    assert client.get(f"{PUBLICO}/sieej-documentacion/pipelines/emec").status_code == 404
+
+
+def test_solo_se_eliminan_los_que_el_sincronizador_no_detecta(admin_session, db_session):
+    client, csrf = admin_session["client"], admin_session["csrf"]
+    _sync(client, [_pipeline()])
+    client.post(f"{DOC}/pipelines", json={"clave": "prueba", "titulo": "Prueba"}, headers={"X-CSRF-Token": csrf})
+    assert client.delete(f"{DOC}/pipelines/emec", headers={"X-CSRF-Token": csrf}).status_code == 409
+    assert client.delete(f"{DOC}/pipelines/prueba", headers={"X-CSRF-Token": csrf}).status_code == 204
+    assert db_session.query(PipelineDoc).filter(PipelineDoc.clave == "prueba").count() == 0
+
+
+def test_sin_version_publicada_no_se_descarta_el_borrador(admin_session):
+    client, csrf = admin_session["client"], admin_session["csrf"]
+    client.post(f"{DOC}/pipelines", json={"clave": "nuevo", "titulo": "Nuevo"}, headers={"X-CSRF-Token": csrf})
+    respuesta = client.post(f"{DOC}/pipelines/nuevo/descartar", headers={"X-CSRF-Token": csrf})
+    assert respuesta.status_code == 409
+    assert client.get(f"{DOC}/pipelines/nuevo").json()["borrador"]["titulo"] == "Nuevo"

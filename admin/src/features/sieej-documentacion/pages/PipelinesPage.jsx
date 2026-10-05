@@ -1,20 +1,24 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Button, Input, Segmented, Space, Switch, Table, Tag, Tooltip, Typography } from 'antd';
-import { BookOutlined, EditOutlined, ReloadOutlined } from '@ant-design/icons';
+import { Button, Dropdown, Input, Modal, Segmented, Space, Switch, Table, Tag, Tooltip, Typography } from 'antd';
+import { BookOutlined, DeleteOutlined, EditOutlined, MoreOutlined, PlusOutlined, ReloadOutlined, RollbackOutlined } from '@ant-design/icons';
 import PageHeading from '@shared/components/PageHeading';
 import TituloConAyuda from '@shared/components/TituloConAyuda';
 import { useAuth } from '@shared/contexts/useAuth';
 import { message } from '@shared/services/message';
+import NuevoPipelineModal from '../components/NuevoPipelineModal';
 import SincronizacionesPanel from '../components/SincronizacionesPanel';
-import { ajustarPipeline, listarPipelines, listarSincronizaciones } from '../services/documentacionApi';
-import { ESTADOS, PERMISO_PUBLICAR, errorDetalle } from '../constants/secciones';
+import {
+    ajustarPipeline, despublicarPipeline, eliminarPipeline, listarPipelines, listarSincronizaciones,
+} from '../services/documentacionApi';
+import { ESTADOS, PERMISO_EDITAR, PERMISO_PUBLICAR, errorDetalle } from '../constants/secciones';
 
 const { Text } = Typography;
 
 const FILTROS = [
     { label: 'Todos', value: 'todos' },
     { label: 'Nuevos', value: 'nuevo' },
+    { label: 'Sin publicar', value: 'sin_publicar' },
     { label: 'Con borrador', value: 'borrador' },
     { label: 'README cambió', value: 'readme' },
     { label: 'Retirados', value: 'retirado' },
@@ -24,6 +28,7 @@ const fecha = (iso) => (iso ? new Date(`${iso}Z`).toLocaleDateString('es-MX') : 
 
 const coincide = (p, filtro) => {
     if (filtro === 'nuevo' || filtro === 'retirado') return p.estado === filtro;
+    if (filtro === 'sin_publicar') return !p.publicado_en;
     if (filtro === 'borrador') return p.borrador_pendiente;
     if (filtro === 'readme') return p.secciones_con_readme_nuevo > 0;
     return true;
@@ -33,11 +38,13 @@ export default function PipelinesPage() {
     const navigate = useNavigate();
     const { user } = useAuth();
     const puedePublicar = Boolean(user?.permissions?.includes?.(PERMISO_PUBLICAR));
+    const puedeEditar = Boolean(user?.permissions?.includes?.(PERMISO_EDITAR));
     const [pipelines, setPipelines] = useState([]);
     const [sincronizaciones, setSincronizaciones] = useState([]);
     const [loading, setLoading] = useState(false);
     const [busqueda, setBusqueda] = useState('');
     const [filtro, setFiltro] = useState('todos');
+    const [nuevoAbierto, setNuevoAbierto] = useState(false);
 
     const cargar = useCallback(async () => {
         setLoading(true);
@@ -63,6 +70,50 @@ export default function PipelinesPage() {
         }
     };
 
+    const mandarABorrador = (p) => Modal.confirm({
+        title: `¿Mandar ${p.titulo} a borrador?`,
+        content: 'Sale del sitio público hasta que se vuelva a publicar. El contenido se conserva.',
+        okText: 'Mandar a borrador',
+        cancelText: 'Cancelar',
+        okButtonProps: { shape: 'round' },
+        cancelButtonProps: { shape: 'round' },
+        onOk: async () => {
+            try {
+                await despublicarPipeline(p.clave);
+                message.success('Enviado a borrador');
+                cargar();
+            } catch (err) {
+                message.error(errorDetalle(err, 'No se pudo mandar a borrador'));
+            }
+        },
+    });
+
+    const eliminar = (p) => Modal.confirm({
+        title: `¿Eliminar ${p.titulo}?`,
+        content: 'Se borra el pipeline y todo su contenido. No se puede deshacer.',
+        okText: 'Eliminar',
+        okType: 'danger',
+        cancelText: 'Cancelar',
+        okButtonProps: { shape: 'round' },
+        cancelButtonProps: { shape: 'round' },
+        onOk: async () => {
+            try {
+                await eliminarPipeline(p.clave);
+                message.success('Pipeline eliminado');
+                cargar();
+            } catch (err) {
+                message.error(errorDetalle(err, 'No se pudo eliminar'));
+            }
+        },
+    });
+
+    const acciones = (p) => [
+        { key: 'borrador', icon: <RollbackOutlined />, label: 'Mandar a borrador', disabled: !p.publicado_en, onClick: () => mandarABorrador(p) },
+        ...(p.fuentes_detectadas.length ? [] : [
+            { key: 'eliminar', icon: <DeleteOutlined />, label: 'Eliminar', danger: true, onClick: () => eliminar(p) },
+        ]),
+    ];
+
     const filtrados = useMemo(() => {
         const texto = busqueda.trim().toLowerCase();
         return pipelines.filter((p) => coincide(p, filtro)
@@ -85,7 +136,10 @@ export default function PipelinesPage() {
             dataIndex: 'estado',
             render: (estado, p) => (
                 <Space size={4} wrap>
-                    <Tag color={ESTADOS[estado]?.color}>{ESTADOS[estado]?.etiqueta ?? estado}</Tag>
+                    {p.publicado_en
+                        ? <Tag color={ESTADOS[estado]?.color}>{ESTADOS[estado]?.etiqueta ?? estado}</Tag>
+                        : <Tag>Sin publicar</Tag>}
+                    {p.manual && <Tag>Manual</Tag>}
                     {p.borrador_pendiente && <Tag>Borrador</Tag>}
                     {p.secciones_con_readme_nuevo > 0 && (
                         <Tooltip title="El README cambió en secciones que alguien editó a mano">
@@ -118,13 +172,20 @@ export default function PipelinesPage() {
             title: '',
             key: 'acciones',
             render: (_, p) => (
-                <Button
-                    shape="round"
-                    icon={<EditOutlined />}
-                    onClick={() => navigate(`/sieej/documentacion/${p.clave}`)}
-                >
-                    Editar
-                </Button>
+                <Space size={4}>
+                    <Button
+                        shape="round"
+                        icon={<EditOutlined />}
+                        onClick={() => navigate(`/sieej/documentacion/${p.clave}`)}
+                    >
+                        Editar
+                    </Button>
+                    {puedePublicar && (
+                        <Dropdown menu={{ items: acciones(p) }} trigger={['click']}>
+                            <Button shape="circle" icon={<MoreOutlined />} aria-label={`Más acciones de ${p.titulo}`} />
+                        </Dropdown>
+                    )}
+                </Space>
             ),
         },
     ];
@@ -135,9 +196,18 @@ export default function PipelinesPage() {
                 icon={<BookOutlined />}
                 title="Documentación de pipelines"
                 description="Lo que se publica en documentacion.sieej.iieg: secciones editables por pipeline, sobre datos que el sincronizador mantiene al día."
-                extra={<Button shape="round" icon={<ReloadOutlined />} onClick={cargar} loading={loading}>Recargar</Button>}
+                extra={(
+                    <Space>
+                        {puedeEditar && (
+                            <Button type="primary" shape="round" icon={<PlusOutlined />} onClick={() => setNuevoAbierto(true)}>
+                                Nuevo pipeline
+                            </Button>
+                        )}
+                        <SincronizacionesPanel sincronizaciones={sincronizaciones} loading={loading} />
+                        <Button shape="round" icon={<ReloadOutlined />} onClick={cargar} loading={loading}>Recargar</Button>
+                    </Space>
+                )}
             />
-            <SincronizacionesPanel sincronizaciones={sincronizaciones} loading={loading} />
             <Space wrap style={{ marginBottom: 12 }}>
                 <Input.Search allowClear placeholder="Buscar pipeline" onChange={(e) => setBusqueda(e.target.value)} style={{ width: 260 }} />
                 <Segmented options={FILTROS} value={filtro} onChange={setFiltro} />
@@ -150,6 +220,14 @@ export default function PipelinesPage() {
                 dataSource={filtrados}
                 pagination={{ pageSize: 50, hideOnSinglePage: true }}
                 scroll={{ x: 900 }}
+            />
+            <NuevoPipelineModal
+                open={nuevoAbierto}
+                onClose={() => setNuevoAbierto(false)}
+                onCreado={(p) => {
+                    setNuevoAbierto(false);
+                    navigate(`/sieej/documentacion/${p.clave}`);
+                }}
             />
         </>
     );

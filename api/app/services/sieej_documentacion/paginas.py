@@ -60,6 +60,7 @@ def resumen(
         producto=borrador.get("producto") or "",
         estado=pipeline.estado,
         visible=pipeline.visible,
+        manual=pipeline.manual,
         orden=pipeline.orden,
         fuentes_detectadas=pipeline.fuentes_detectadas or [],
         clasificacion=medicion.clasificacion if medicion else None,

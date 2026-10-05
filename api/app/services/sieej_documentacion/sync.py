@@ -93,7 +93,7 @@ def aplicar_sync(db: Session, payload: SyncIn) -> SyncResultado:
     retirados: list[str] = []
     if payload.pipelines and all(_fuente_ok(payload, f) for f in FUENTES_PARA_RETIRAR):
         for clave, pipeline in existentes.items():
-            if clave not in vistos and pipeline.estado != "retirado":
+            if clave not in vistos and not pipeline.manual and pipeline.estado != "retirado":
                 pipeline.estado = "retirado"
                 retirados.append(clave)
 
