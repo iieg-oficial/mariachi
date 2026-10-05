@@ -9,6 +9,13 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.147.0] - 2026-10-05
+
+### Agregado
+
+- **Eventos de la intranet** (Local › Intranet › Eventos): fecha, título y descripción; la intranet los pinta en naranja en su calendario. Proxy `eventos` hacia `/api/eventos/`. El formulario de `PaginaRecurso` gana el tipo `fecha` (selector nativo, `AAAA-MM-DD`)
+- **Ligas de pruebas en Sitios monitoreados**: una por línea, «Etiqueta | URL»; la intranet las muestra en la ficha de cada proyecto. `PaginaRecurso` acepta `aFormulario` para convertir la fila al editarla
+
 ## [2.146.0] - 2026-10-05
 
 ### Agregado

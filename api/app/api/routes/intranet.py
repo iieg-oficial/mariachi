@@ -40,6 +40,7 @@ RECURSOS = {
     "herramientas": Recurso(
         "/api/herramientas/todas", "/api/herramientas/", "/api/herramientas/{id}"
     ),
+    "eventos": Recurso("/api/eventos/", "/api/eventos/", "/api/eventos/{id}"),
     "solicitudes": Recurso(
         "/api/solicitudes-cuenta/", "/api/solicitudes-cuenta/", "/api/solicitudes-cuenta/{id}"
     ),

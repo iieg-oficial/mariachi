@@ -240,6 +240,10 @@ export const PROJECT_REGISTRY = {
                 icon: <EnvironmentOutlined />,
             },
             {
+                key: '/intranet/eventos', path: '/intranet/eventos', label: 'Eventos',
+                icon: <CalendarOutlined />,
+            },
+            {
                 key: '/intranet/solicitudes', path: '/intranet/solicitudes', label: 'Solicitudes de cuenta',
                 icon: <UserAddOutlined />,
             },

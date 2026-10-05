@@ -119,7 +119,7 @@ const PaginaRecurso = ({ definicion, acciones, extra, level }) => {
                 abierto={abierto}
                 titulo={enEdicion ? `Editar ${definicion.singular.toLowerCase()}` : definicion.alta}
                 campos={campos}
-                inicial={enEdicion}
+                inicial={enEdicion && definicion.aFormulario ? definicion.aFormulario(enEdicion) : enEdicion}
                 guardando={guardando}
                 onCancelar={() => setAbierto(false)}
                 onGuardar={alGuardar}

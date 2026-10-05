@@ -15,6 +15,8 @@ const Control = ({ campo }) => {
         return <Select options={campo.opciones} allowClear={!campo.requerido} />;
     case 'interruptor':
         return <Switch />;
+    case 'fecha':
+        return <Input type="date" />;
     default:
         return <Input maxLength={campo.maximo} />;
     }

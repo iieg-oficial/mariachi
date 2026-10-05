@@ -4,6 +4,7 @@ import { CloudServerOutlined } from '@ant-design/icons';
 
 import PaginaRecurso from '../components/PaginaRecurso';
 import { listar } from '../api/intranetService';
+import { aPruebas, deLasPruebas } from '../helpers/pruebas';
 
 const VISTAS = [
     { label: 'Sitios', value: 'sitios' },
@@ -13,6 +14,8 @@ const VISTAS = [
 const AYUDA_PROYECTO = 'Una línea para la página de Proyectos de la intranet: qué es y para quién.';
 
 const AYUDA_LOGO = 'URL del logo en el Acervo (SVG de preferencia). Vacía muestra las iniciales.';
+
+const AYUDA_PRUEBAS = 'Una por línea, «Etiqueta | URL». Por ejemplo: Espejo | https://portalito.iieg/mapalab/mapa';
 
 const AYUDA_SLUG = 'Nombre del servicio en huachicol. De ahí sale el estado que muestra la intranet.';
 
@@ -46,7 +49,8 @@ const definicionDeSitios = (categorias) => {
         alta: 'Nuevo sitio',
         vacio: 'Todavía no hay sitios',
         icono: <CloudServerOutlined />,
-        aPayload: limpiar,
+        aPayload: (valores) => ({ ...limpiar(valores), pruebas: aPruebas(valores.pruebas) }),
+        aFormulario: (fila) => ({ ...fila, pruebas: deLasPruebas(fila.pruebas) }),
         columnas: [
             { title: 'Nombre', dataIndex: 'name' },
             { title: 'URL', dataIndex: 'url' },
@@ -67,6 +71,7 @@ const definicionDeSitios = (categorias) => {
             { nombre: 'gitlab_url', etiqueta: 'GitLab', maximo: 500 },
             { nombre: 'github_url', etiqueta: 'GitHub', maximo: 500 },
             { nombre: 'orden', etiqueta: 'Orden', tipo: 'numero', ayuda: 'Posición en la intranet, de menor a mayor.' },
+            { nombre: 'pruebas', etiqueta: 'Ligas de pruebas', tipo: 'texto-largo', maximo: 1200, ayuda: AYUDA_PRUEBAS },
         ],
     };
 };

@@ -286,3 +286,9 @@ def test_las_solicitudes_de_cuenta_se_leen_de_la_intranet(monkeypatch):
     cliente, _, peticiones = _cliente(monkeypatch, VISTA, _ok)
     assert cliente.get("/intranet/solicitudes").status_code == 200
     assert str(peticiones[0].url) == "http://intranet.prueba/api/solicitudes-cuenta/"
+
+
+def test_los_eventos_se_leen_de_la_intranet(monkeypatch):
+    cliente, _, peticiones = _cliente(monkeypatch, VISTA, _ok)
+    assert cliente.get("/intranet/eventos").status_code == 200
+    assert str(peticiones[0].url) == "http://intranet.prueba/api/eventos/"
