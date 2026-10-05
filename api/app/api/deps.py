@@ -146,6 +146,7 @@ PANEL_PERMISSIONS = (
     "mariachi.mapalab_propuestas.approve",
     "mariachi.portal.view",
     "mariachi.sieej_admin.view",
+    "mariachi.sieej_documentacion.view",
     "mariachi.acervo.view",
     "mariachi.colibri_reportes.view",
     "mariachi.colibri_config.manage",

@@ -104,7 +104,7 @@ export const PROJECT_REGISTRY = {
                 icon: <UnorderedListOutlined />, permissions: ['mariachi.sieej_admin.view'],
             },
             {
-                key: '/sieej/documentacion', path: '/sieej/documentacion', label: 'Documentación de pipelines',
+                key: '/sieej/documentacion', path: '/sieej/documentacion', label: 'Documentación',
                 icon: <BookOutlined />, permissions: ['mariachi.sieej_documentacion.view'],
             },
         ],
