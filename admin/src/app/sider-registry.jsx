@@ -28,6 +28,7 @@ import {
     PieChartOutlined,
     ProjectOutlined,
     SlidersOutlined,
+    SmileOutlined,
     TableOutlined,
     TagsOutlined,
     TeamOutlined,
@@ -242,6 +243,10 @@ export const PROJECT_REGISTRY = {
             {
                 key: '/intranet/eventos', path: '/intranet/eventos', label: 'Eventos',
                 icon: <CalendarOutlined />,
+            },
+            {
+                key: '/intranet/festejos', path: '/intranet/festejos', label: 'Festejos',
+                icon: <SmileOutlined />,
             },
             {
                 key: '/intranet/solicitudes', path: '/intranet/solicitudes', label: 'Solicitudes de cuenta',

@@ -1,9 +1,11 @@
 import { CalendarOutlined } from '@ant-design/icons';
+import { useMemo } from 'react';
 import dayjs from 'dayjs';
 
 import PaginaRecurso from '../components/PaginaRecurso';
+import { useFestejos } from '../hooks/useFestejos';
 
-const DEFINICION = {
+const definicionCon = (festejos) => ({
     recurso: 'eventos',
     singular: 'Evento',
     titulo: 'Eventos',
@@ -22,10 +24,19 @@ const DEFINICION = {
         { nombre: 'titulo', etiqueta: 'Título', requerido: true, maximo: 120 },
         { nombre: 'emoji', etiqueta: 'Emoji', maximo: 16, ayuda: 'Opcional. Se ve en la esquina del día en el calendario, por ejemplo 🎃 o 🌼.' },
         { nombre: 'descripcion', etiqueta: 'Descripción', tipo: 'texto-largo', maximo: 300 },
+        {
+            nombre: 'festejo_id', etiqueta: 'Festejo al tocar el día', tipo: 'opciones',
+            opciones: festejos.map((f) => ({ value: f.id, label: `${f.emojis} ${f.nombre}` })),
+            ayuda: 'Vacío, explota el emoji del evento.',
+        },
     ],
-    aPayload: (valores) => ({ ...valores, descripcion: valores.descripcion || null, emoji: valores.emoji || null }),
-};
+    aPayload: (valores) => ({ ...valores, descripcion: valores.descripcion || null, emoji: valores.emoji || null, festejo_id: valores.festejo_id ?? null }),
+});
 
-const EventosPage = () => <PaginaRecurso definicion={DEFINICION} />;
+const EventosPage = () => {
+    const festejos = useFestejos();
+    const definicion = useMemo(() => definicionCon(festejos), [festejos]);
+    return <PaginaRecurso definicion={definicion} />;
+};
 
 export default EventosPage;

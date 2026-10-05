@@ -8,3 +8,4 @@ export { default as PersonasPage } from './pages/PersonasPage';
 export { default as EspaciosPage } from './pages/EspaciosPage';
 export { default as SolicitudesPage } from './pages/SolicitudesPage';
 export { default as EventosPage } from './pages/EventosPage';
+export { default as FestejosPage } from './pages/FestejosPage';

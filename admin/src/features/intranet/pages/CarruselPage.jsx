@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { Button, Tag, Tooltip, message } from 'antd';
 import { CheckOutlined, CloseOutlined, NotificationOutlined } from '@ant-design/icons';
 
@@ -5,14 +6,17 @@ import Miniatura from '../components/Miniatura';
 import PaginaRecurso from '../components/PaginaRecurso';
 import { aFormData, revisar } from '../api/intranetService';
 import { aPayload } from '../helpers/carrusel';
+import { aEnlaceConFestejo, deEnlaceConFestejo } from '../helpers/festejo';
+import { useFestejos } from '../hooks/useFestejos';
 import { AYUDA_PUBLICO, ESTADOS_CARRUSEL, IMAGENES } from '../constants/campos';
 
 const AYUDA_FONDO = 'El color de la franja del aviso: un color (#1A2B3C) o un degradado (linear-gradient(...)). '
     + 'Vacío, va en el morado institucional.';
-const AYUDA_ENLACE = 'https://… o una página de la intranet, como /calendario. @festejo (o @festejo:🎃🌼) hace explotar emojis en lugar de navegar. Vacío, el aviso no lleva botón.';
+const AYUDA_ENLACE = 'https://… o una página de la intranet, como /calendario. Vacío, el aviso no lleva botón.';
+const AYUDA_FESTEJO = 'En lugar de abrir el enlace, el botón lanza esta animación. Los festejos se administran en Festejos.';
 const AYUDA_BOTON = 'Vacío, el botón dice «Leer más».';
 
-const CAMPOS = [
+const camposCon = (festejos) => [
     { nombre: 'name', etiqueta: 'Nombre', requerido: true, maximo: 100 },
     { nombre: 'title', etiqueta: 'Título', requerido: true, maximo: 150 },
     { nombre: 'description', etiqueta: 'Descripción', tipo: 'texto-largo', maximo: 2000 },
@@ -20,6 +24,10 @@ const CAMPOS = [
     { nombre: 'background_file', etiqueta: 'Imagen del aviso', tipo: 'archivo', acepta: IMAGENES },
     { nombre: 'background_url', etiqueta: 'Color de la franja', maximo: 500, ayuda: AYUDA_FONDO },
     { nombre: 'enlace', etiqueta: 'Enlace del botón', maximo: 500, ayuda: AYUDA_ENLACE },
+    {
+        nombre: 'festejo_id', etiqueta: 'Festejo del botón', tipo: 'opciones', ayuda: AYUDA_FESTEJO,
+        opciones: festejos.map((f) => ({ value: f.id, label: `${f.emojis} ${f.nombre}` })),
+    },
     { nombre: 'boton', etiqueta: 'Texto del botón', maximo: 40, ayuda: AYUDA_BOTON },
     { nombre: 'order', etiqueta: 'Orden', tipo: 'numero' },
     { nombre: 'active', etiqueta: 'Visible', tipo: 'interruptor' },
@@ -41,7 +49,7 @@ const COLUMNAS = [
     { title: 'Visible', dataIndex: 'active', width: 90, render: (activo) => (activo ? 'Sí' : 'No') },
 ];
 
-const DEFINICION = {
+const definicionCon = (festejos) => ({
     recurso: 'carrusel',
     ordenable: { campo: 'order', aPayload: (_, valor) => aFormData({ order: valor }) },
     singular: 'Elemento',
@@ -51,9 +59,10 @@ const DEFINICION = {
     vacio: 'Todavía no hay elementos en el carrusel',
     icono: <NotificationOutlined />,
     columnas: COLUMNAS,
-    campos: CAMPOS,
-    aPayload,
-};
+    campos: camposCon(festejos),
+    aPayload: (valores, opciones) => aPayload(aEnlaceConFestejo(valores), opciones),
+    aFormulario: deEnlaceConFestejo,
+});
 
 const resolver = async (fila, estado, recargar) => {
     try {
@@ -89,6 +98,10 @@ const accionesDeRevision = (fila, recargar) => {
     );
 };
 
-const CarruselPage = () => <PaginaRecurso definicion={DEFINICION} acciones={accionesDeRevision} />;
+const CarruselPage = () => {
+    const festejos = useFestejos();
+    const definicion = useMemo(() => definicionCon(festejos), [festejos]);
+    return <PaginaRecurso definicion={definicion} acciones={accionesDeRevision} />;
+};
 
 export default CarruselPage;

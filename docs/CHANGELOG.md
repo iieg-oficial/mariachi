@@ -9,6 +9,12 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.149.0] - 2026-10-05
+
+### Agregado
+
+- **Festejos de la intranet** (Local › Intranet › Festejos): animaciones de emojis guardadas con nombre, emojis y animación (por ahora «Explosión»), ordenables y con «▶ Probar», que la lanza ahí mismo con la Web Animations API. El carrusel elige uno en «Festejo del botón» (viaja como `@festejo:<id>`) y cada evento en «Festejo al tocar el día»; cambiar los emojis de un festejo los cambia en todos lados. Proxy `festejos`; requiere intranet con la migración `e7c2a4f9b1d6`
+
 ## [2.148.1] - 2026-10-05
 
 ### Agregado
