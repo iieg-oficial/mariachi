@@ -9,6 +9,12 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.146.0] - 2026-10-05
+
+### Agregado
+
+- **Reglas de GeoServer para las capas privadas de MapaLab** (`services/mapalab_geoserver_acl.py`): cada capa de GeoServer que solo usan nodos privados lleva `workspace.capa.r = MAPALAB_PRIVADA`, así que el anónimo deja de poder pedirla directo y el proxy de mapalab, que entra como admin, la sigue leyendo. Se sincroniza al guardar el acceso de una capa y con `POST /mapalab/acceso/geoserver/sincronizar` (botón **Sincronizar con GeoServer** en la pestaña Capas). Solo toca reglas con ese rol: una regla manual sobre la misma capa se reporta como conflicto y no se pisa. Si GeoServer no responde al guardar, el acceso se guarda igual y el admin avisa que hay que sincronizar
+
 ## [2.145.0] - 2026-10-05
 
 ### Corregido: «Vaciar cachés» ahora también renueva las leyendas del visor

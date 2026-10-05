@@ -1,6 +1,6 @@
 from typing import Any
 
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db, verify_csrf
@@ -11,13 +11,14 @@ from app.schemas.mapalab_acceso import (
     MapalabAccesoGuardar,
     MapalabAccesoResponse,
     MapalabCapaPrivadaResponse,
+    MapalabGeoserverSincronizacion,
     MapalabGrupoGuardar,
     MapalabGrupoResponse,
     MapalabUsuarioActualizar,
     MapalabUsuarioCrear,
     MapalabUsuarioResponse,
 )
-from app.services import mapalab_acceso
+from app.services import mapalab_acceso, mapalab_geoserver_acl
 from app.services.actividad_service import registrar_actividad
 from app.services.mapalab_notifier import notify_tree_changed
 
@@ -148,4 +149,20 @@ def guardar_acceso(
     acceso = mapalab_acceso.guardar_acceso(de, layer_id, datos.model_dump(), nombre)
     _registrar(db, request, actor, "capa.guardar", "layer", layer_id, datos.model_dump())
     notify_tree_changed()
+    acceso["geoserver_sincronizado"] = mapalab_geoserver_acl.sincronizar_sin_fallar(de) is not None
     return acceso
+
+
+@router.post("/geoserver/sincronizar", response_model=MapalabGeoserverSincronizacion)
+def sincronizar_geoserver(
+    request: Request,
+    de: Session = Depends(get_dataengine_db),
+    db: Session = Depends(get_db),
+    actor: Usuario = Depends(verify_csrf),
+) -> dict[str, list[str]]:
+    try:
+        resultado = mapalab_geoserver_acl.sincronizar(de)
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="GeoServer no respondió; intenta de nuevo") from exc
+    _registrar(db, request, actor, "geoserver.sincronizar", "geoserver_acl", None, resultado)
+    return resultado

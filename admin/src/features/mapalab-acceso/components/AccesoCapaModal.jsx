@@ -46,12 +46,15 @@ export default function AccesoCapaModal({ open, layerId, arbol, usuarios, grupos
         const valores = await form.validateFields();
         setGuardando(true);
         try {
-            await guardarAccesoDeCapa(capa, {
+            const guardado = await guardarAccesoDeCapa(capa, {
                 privada: valores.privada,
                 usuarios: valores.usuarios || [],
                 grupos: valores.grupos || [],
             });
             message.success(valores.privada ? 'Acceso guardado' : 'La capa volvió a ser pública');
+            if (!guardado.geoserverSincronizado) {
+                message.warning('GeoServer no respondió: la capa todavía se puede pedir directo. Usa «Sincronizar con GeoServer».');
+            }
             onGuardado();
         } catch (err) {
             message.error(errorDe(err, 'No se pudo guardar el acceso'));

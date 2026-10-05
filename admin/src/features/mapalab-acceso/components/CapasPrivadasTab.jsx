@@ -1,12 +1,12 @@
 import { Button, Space, Table, Tag, Tooltip, Typography } from 'antd';
-import { EditOutlined, LockOutlined } from '@ant-design/icons';
+import { EditOutlined, LockOutlined, SyncOutlined } from '@ant-design/icons';
 import { textoDeConteo } from '@features/mapalab-acceso/utils/arbolOpciones';
 
 const { Text } = Typography;
 
 const TIPOS = { tema: 'Tema', category: 'Carpeta', label: 'Sección', group: 'Grupo', leaf: 'Capa' };
 
-export default function CapasPrivadasTab({ capas, cargando, onEditar, onMarcar }) {
+export default function CapasPrivadasTab({ capas, cargando, sincronizando, onEditar, onMarcar, onSincronizar }) {
     const columnas = [
         {
             title: 'Capa',
@@ -41,7 +41,12 @@ export default function CapasPrivadasTab({ capas, cargando, onEditar, onMarcar }
 
     return (
         <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
-            <Button type="primary" shape="round" icon={<LockOutlined />} onClick={onMarcar}>Marcar capa privada</Button>
+            <Space wrap>
+                <Button type="primary" shape="round" icon={<LockOutlined />} onClick={onMarcar}>Marcar capa privada</Button>
+                <Tooltip title="Bloquea en GeoServer la lectura anónima de las capas privadas y libera las que dejaron de serlo. Se hace sola al guardar">
+                    <Button shape="round" icon={<SyncOutlined spin={sincronizando} />} onClick={onSincronizar} disabled={sincronizando}>Sincronizar con GeoServer</Button>
+                </Tooltip>
+            </Space>
             <Table
                 rowKey="id"
                 columns={columnas}

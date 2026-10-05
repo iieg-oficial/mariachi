@@ -18,4 +18,6 @@ export const guardarAccesoDeCapa = async (layerId, payload) => (
     await api.put(`${BASE}/capas/${encodeURIComponent(layerId)}`, payload)
 ).data;
 
+export const sincronizarGeoserver = async () => (await api.post(`${BASE}/geoserver/sincronizar`)).data;
+
 export const leerArbol = async () => (await api.get('/layers/arbol')).data;

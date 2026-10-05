@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Card, Layout, Space, Tabs, Typography } from 'antd';
 import useIsMobile from '@shared/hooks/useIsMobile';
+import { message } from '@shared/services/message';
 import {
     actualizarUsuario,
     crearGrupo,
@@ -8,6 +9,7 @@ import {
     editarGrupo,
     eliminarGrupo,
     eliminarUsuario,
+    sincronizarGeoserver,
 } from '@features/mapalab-acceso/api/mapalabAccesoService';
 import { useMapalabAcceso } from '@features/mapalab-acceso/hooks/useMapalabAcceso';
 import AccesoCapaModal from '@features/mapalab-acceso/components/AccesoCapaModal';
@@ -24,6 +26,18 @@ export default function MapalabAccesoPage() {
     const { usuarios, grupos, capas, arbol, cargando, recargar, recargarArbol, ejecutar } = useMapalabAcceso();
     const [capaAbierta, setCapaAbierta] = useState(undefined);
     const [grupoAbierto, setGrupoAbierto] = useState(undefined);
+    const [sincronizando, setSincronizando] = useState(false);
+
+    const sincronizar = async () => {
+        setSincronizando(true);
+        const r = await ejecutar(sincronizarGeoserver, null, 'No se pudo sincronizar con GeoServer');
+        setSincronizando(false);
+        if (!r) return;
+        if (r.conflictos.length) message.warning(`Reglas manuales en GeoServer que no se tocaron: ${r.conflictos.join(', ')}`);
+        message.success(r.agregadas.length || r.quitadas.length
+            ? `GeoServer al día: ${r.agregadas.length} bloqueadas, ${r.quitadas.length} liberadas`
+            : 'GeoServer ya estaba al día');
+    };
 
     const guardarGrupo = async (valores) => {
         const grupo = grupoAbierto;
@@ -41,6 +55,8 @@ export default function MapalabAccesoPage() {
                     cargando={cargando}
                     onEditar={(id) => setCapaAbierta(id)}
                     onMarcar={() => setCapaAbierta(null)}
+                    sincronizando={sincronizando}
+                    onSincronizar={sincronizar}
                 />
             ),
         },

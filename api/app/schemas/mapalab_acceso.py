@@ -54,8 +54,15 @@ class MapalabAccesoResponse(BaseModel):
     heredada_de: list[str] = Field(default_factory=list, serialization_alias="heredadaDe")
     usuarios: list[int] = Field(default_factory=list)
     grupos: list[int] = Field(default_factory=list)
+    geoserver_sincronizado: bool = Field(default=True, serialization_alias="geoserverSincronizado")
 
     model_config = ConfigDict(populate_by_name=True)
+
+
+class MapalabGeoserverSincronizacion(BaseModel):
+    agregadas: list[str] = Field(default_factory=list)
+    quitadas: list[str] = Field(default_factory=list)
+    conflictos: list[str] = Field(default_factory=list)
 
 
 class MapalabCapaPrivadaResponse(BaseModel):
