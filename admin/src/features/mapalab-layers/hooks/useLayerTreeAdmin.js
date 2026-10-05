@@ -21,6 +21,7 @@ export const toAntTreeData = (nodes, parentNodeType = null) =>
             cqlFilter: n.wmsConfig?.cqlFilter || '',
             disabled: n.disabled === true || legacyDisabled,
             hiddenInMenu: n.hiddenInMenu === true,
+            privada: n.privada === true,
             iconUrl: n.iconUrl,
             tarjetita: n.littleCard ? (n.inheritedFrom ? 'heredada' : 'propia') : null,
             raw: n,
@@ -54,10 +55,9 @@ export const findNodeContext = (treeData, layerId) => {
 };
 
 
-const fetchLayerTreePublic = async () => {
-    const res = await fetch('/mapalab/api/layers/tree', { credentials: 'include' });
-    if (!res.ok) throw new Error(`GET /mapalab/api/layers/tree fallo: ${res.status}`);
-    return res.json();
+const fetchArbolCompleto = async () => {
+    const res = await api.get('/layers/arbol');
+    return res.data;
 };
 
 
@@ -71,7 +71,7 @@ export const useLayerTreeAdmin = () => {
     const reload = useCallback(async () => {
         setError(null);
         try {
-            const tree = await fetchLayerTreePublic();
+            const tree = await fetchArbolCompleto();
             setRawTree(tree);
             setTreeData(toAntTreeData(tree));
         } catch (err) {
@@ -83,7 +83,7 @@ export const useLayerTreeAdmin = () => {
 
     useEffect(() => {
         let cancelled = false;
-        fetchLayerTreePublic()
+        fetchArbolCompleto()
             .then((tree) => {
                 if (cancelled) return;
                 setRawTree(tree);

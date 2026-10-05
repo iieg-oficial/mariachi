@@ -20,6 +20,7 @@ const PANEL_PERMISSIONS = [
     'mariachi.usuarios.view',
     'mariachi.sistema.manage',
     'mariachi.mapalab_llaves.manage',
+    'mariachi.mapalab_acceso.manage',
     'mariachi.mapalab_propuestas.approve',
 ];
 

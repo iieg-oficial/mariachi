@@ -1,12 +1,13 @@
 import {
     AppstoreOutlined,
     BlockOutlined,
-    GatewayOutlined,
     EnvironmentOutlined,
     EyeInvisibleOutlined,
     FilterOutlined,
     FolderOutlined,
+    GatewayOutlined,
     LineOutlined,
+    LockOutlined,
     WarningOutlined,
 } from '@ant-design/icons';
 
@@ -72,6 +73,13 @@ export const STATE_PILLS = [
         color: 'red',
         Icon: WarningOutlined,
         title: 'En mantenimiento o sin datos. El visor la muestra atenuada y no deja encenderla',
+    },
+    {
+        key: 'privada',
+        label: 'privada',
+        color: 'purple',
+        Icon: LockOutlined,
+        title: 'Solo la ven en el visor las personas y grupos con permiso. Se administra en Capas privadas',
     },
 ];
 

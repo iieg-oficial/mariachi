@@ -20,6 +20,7 @@ import {
     InboxOutlined,
     KeyOutlined,
     LinkOutlined,
+    LockOutlined,
     NotificationOutlined,
     OrderedListOutlined,
     PartitionOutlined,
@@ -83,6 +84,10 @@ export const PROJECT_REGISTRY = {
             {
                 key: '/mapalab/api-keys', path: '/mapalab/api-keys', label: 'API Keys',
                 icon: <KeyOutlined />, permissions: ['mariachi.mapalab_llaves.manage'], showBetaBadge: true,
+            },
+            {
+                key: '/mapalab/acceso', path: '/mapalab/acceso', label: 'Capas privadas',
+                icon: <LockOutlined />, permissions: ['mariachi.mapalab_acceso.manage'], showBetaBadge: true,
             },
 
         ],

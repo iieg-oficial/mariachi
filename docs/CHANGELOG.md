@@ -9,6 +9,17 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.144.0] - 2026-10-05
+
+### Agregado
+
+- **MapaLab › Capas privadas** (permiso `mariachi.mapalab_acceso.manage`): pestañas Capas (quién ve cada capa privada, «Nadie» en rojo si está sin acceso, marcar una capa y editar su acceso con personas y grupos; avisa si está dentro de una carpeta también privada), Personas (alta por correo, «Sin entrar aún» o último acceso, grupos, suspender y quitar) y Grupos (crear, editar miembros y borrar).
+- `GET /layers/arbol`: el árbol completo con las privadas marcadas, pedido a mapalab con el token interno. El árbol del editor muestra la pastilla «privada»
+
+### Corregido
+
+- El editor de capas leía el árbol público de mapalab, que ya no trae las capas privadas: una capa al volverse privada desaparecía del editor. Ahora lee `/layers/arbol`
+
 ## [2.143.0] - 2026-10-05
 
 ### Agregado

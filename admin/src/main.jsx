@@ -14,6 +14,7 @@ import FullscreenLayout from '@app/FullscreenLayout';
 import { Navigate } from 'react-router';
 import Login from '@features/auth/pages/LoginPage';
 import { buildMapalabApiKeysRoutes } from '@features/mapalab-api-keys/routes';
+import { buildMapalabAccesoRoutes } from '@features/mapalab-acceso/routes';
 import { buildColibriRoutes } from '@features/colibri/routes';
 import { buildHuachicolRoutes } from '@features/telemetria/routes';
 import { buildMelRoutes } from '@features/mel/routes';
@@ -210,6 +211,7 @@ const router = createBrowserRouter([
                     ...buildVineRoutes(withSuspense),
                     ...buildHuachicolRoutes(withSuspense),
                     ...buildMapalabApiKeysRoutes(withSuspense),
+                    ...buildMapalabAccesoRoutes(withSuspense),
                     ...buildSieejDocumentacionRoutes(withSuspense),
                     {
                         path: 'sieej/formularios',

@@ -130,3 +130,44 @@ def test_rutas_piden_permiso(client):
     from app.core.settings import get_settings
     resp = client.get(f"{get_settings().admin_prefix}/mapalab/acceso/usuarios")
     assert resp.status_code in (401, 403)
+
+
+class _Resp:
+    def __init__(self, datos):
+        self._datos = datos
+
+    def raise_for_status(self):
+        return None
+
+    def json(self):
+        return self._datos
+
+
+def test_arbol_completo_viene_de_mapalab_con_token(admin_session, monkeypatch):
+    from app.api.routes.layers import arbol
+    from app.core.settings import get_settings
+
+    settings = get_settings()
+    monkeypatch.setattr(settings, "mapalab_backend_url", "http://mapalab")
+    monkeypatch.setattr(settings, "mapalab_internal_token", "tok")
+    llamadas = []
+
+    class _Cliente:
+        def __init__(self, *a, **k):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def get(self, url, headers=None):
+            llamadas.append((url, headers))
+            return _Resp([{"id": "t", "privada": True, "children": []}])
+
+    monkeypatch.setattr(arbol.httpx, "Client", _Cliente)
+    resp = admin_session["client"].get(f"{settings.admin_prefix}/layers/arbol")
+    assert resp.status_code == 200
+    assert resp.json()[0]["privada"] is True
+    assert llamadas == [("http://mapalab/layers/tree/completo", {"X-Internal-Token": "tok"})]
