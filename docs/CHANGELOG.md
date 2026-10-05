@@ -9,6 +9,29 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.136.0] - 2026-10-05
+
+### Agregado
+
+- **Telemetría del mapa incrustado de mapalab**: dos tablas diarias por llave y sitio que incrusta.
+  `mapalab_api_keys_rendimiento_diario` guarda los Web Vitals (LCP, INP, CLS, FCP, TTFB), el tiempo
+  hasta que el mapa queda listo y la latencia del servidor y del proxy WMS, en cubetas buena, regular y
+  mala. `mapalab_api_keys_sitios_diario` guarda cargas, listos, errores JS, timeouts y denegados.
+  mapalab las manda cada 60 s a `/internal/mapalab/keys/rendimiento` y `/sitios`, que suman con upsert.
+  Migración `mktl0001`.
+- **Pestaña Uso en el panel de cada llave**: cifras del periodo (7, 30 o 90 días), tabla por sitio con
+  % que llegó a listo y barras de calidad de LCP e INP, y gráfica de cargas y errores por día, con
+  `GET /mapalab/api-keys/{id}/rendimiento` y `/{id}/sitios`.
+
+### Cambiado
+
+- `mapalab_api_keys_accesos` guarda también las denegaciones de llaves inexistentes: `api_key_id` es
+  nullable y `key_prefix` lleva el prefijo visible. La Auditoría de una llave incluye las filas sin
+  llave con su prefijo y traduce los motivos («Sitio no autorizado», «Llave inexistente»…); la
+  explicación pasó a tooltip.
+- La purga diaria borra además `uso_diario` y las dos tablas nuevas pasado
+  `MAPALAB_DIARIO_RETENTION_DAYS` (365 días por defecto).
+
 ## [2.135.0] - 2026-10-05
 
 ### Agregado

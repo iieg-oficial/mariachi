@@ -11,6 +11,10 @@ from app.models.mapalab_api_key import MapalabApiKey
 from app.models.mapalab_api_key_acceso import MapalabApiKeyAcceso
 from app.models.mapalab_api_key_embed import MapalabApiKeyEmbed
 from app.models.mapalab_api_key_evento import MapalabApiKeyEvento
+from app.models.mapalab_api_key_rendimiento import (
+    MapalabApiKeyRendimientoDiario,
+    MapalabApiKeySitioDiario,
+)
 from app.models.mapalab_api_key_uso import MapalabApiKeyUsoDiario
 from app.models.mapalab_event import MapalabEvent, MapalabSession
 from app.models.mapalab_infobox_propuesta import MapalabInfoboxPropuesta
@@ -78,6 +82,8 @@ __all__ = [
     "MapalabApiKeyEmbed",
     "MapalabApiKeyEvento",
     "MapalabApiKeyUsoDiario",
+    "MapalabApiKeyRendimientoDiario",
+    "MapalabApiKeySitioDiario",
     "MapalabEvent",
     "MapalabMcpEvent",
     "MapalabSession",

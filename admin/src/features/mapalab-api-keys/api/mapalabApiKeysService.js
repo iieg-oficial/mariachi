@@ -64,3 +64,18 @@ export const listAccesos = async (id, params = {}) => {
     const res = await api.get(`/mapalab/api-keys/${id}/accesos`, { params });
     return res.data;
 };
+
+export const listUso = async (id, dias) => {
+    const res = await api.get(`/mapalab/api-keys/${id}/usage`, { params: { dias } });
+    return res.data;
+};
+
+export const listRendimiento = async (id, params = {}) => {
+    const res = await api.get(`/mapalab/api-keys/${id}/rendimiento`, { params });
+    return res.data;
+};
+
+export const listSitios = async (id, params = {}) => {
+    const res = await api.get(`/mapalab/api-keys/${id}/sitios`, { params });
+    return res.data;
+};

@@ -20,6 +20,10 @@ from app.schemas.mapalab_api_key import (
     MapalabApiKeyValidateRequest,
     MapalabApiKeyValidateResponse,
 )
+from app.schemas.mapalab_api_key_telemetria import (
+    MapalabApiKeyRendimientoBatch,
+    MapalabApiKeySitioBatch,
+)
 from app.services.mapalab_keys import (
     PRIVATE_PREFIX,
     PUBLIC_PREFIX,
@@ -30,6 +34,7 @@ from app.services.mapalab_keys import (
     visibility_from_key,
     visible_prefix_from_key,
 )
+from app.services.mapalab_keys_telemetria import registrar_rendimiento, registrar_sitios
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/internal/mapalab/keys", tags=["mapalab internal"])
@@ -144,7 +149,7 @@ async def registrar_accesos_batch(
     inserts = 0
     valid_key_ids: set[int] = set()
     for item in payload.items:
-        if item.api_key_id not in valid_key_ids:
+        if item.api_key_id is not None and item.api_key_id not in valid_key_ids:
             exists = db.query(MapalabApiKey.id).filter(MapalabApiKey.id == item.api_key_id).first()
             if not exists:
                 continue
@@ -153,6 +158,7 @@ async def registrar_accesos_batch(
         dia = ts.date() if hasattr(ts, "date") else date.today()
         db.add(MapalabApiKeyAcceso(
             api_key_id=item.api_key_id,
+            key_prefix=(item.key_prefix or None) and item.key_prefix[:20],
             timestamp=ts,
             dia=dia,
             endpoint=item.endpoint[:20],
@@ -204,3 +210,25 @@ async def registrar_uso_batch(
         upserts += 1
     db.commit()
     return {"ok": True, "upserts": upserts}
+
+
+@router.post("/rendimiento")
+async def registrar_rendimiento_batch(
+    payload: MapalabApiKeyRendimientoBatch,
+    db: Session = Depends(get_db),
+    _: None = Depends(_require_internal_token),
+) -> dict[str, bool | int]:
+    if not payload.items:
+        return {"ok": True, "upserts": 0}
+    return {"ok": True, "upserts": registrar_rendimiento(db, payload.items)}
+
+
+@router.post("/sitios")
+async def registrar_sitios_batch(
+    payload: MapalabApiKeySitioBatch,
+    db: Session = Depends(get_db),
+    _: None = Depends(_require_internal_token),
+) -> dict[str, bool | int]:
+    if not payload.items:
+        return {"ok": True, "upserts": 0}
+    return {"ok": True, "upserts": registrar_sitios(db, payload.items)}
