@@ -143,6 +143,7 @@ def test_el_upsert_de_sesion_no_mezcla_apps():
         "seccion_ir",
         "seccion_buscar",
         "cuenta_solicitar",
+        "carrusel_festejo",
         "carpeta_abrir",
         "album_abrir",
         "album_crear",

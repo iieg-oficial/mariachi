@@ -9,6 +9,13 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.148.1] - 2026-10-05
+
+### Agregado
+
+- Campo «Emoji» en los eventos de la intranet: se ve en la esquina del día de su calendario
+- El enlace del carrusel acepta `@festejo` (y sus emojis) para que el botón haga explotar emojis en la intranet; la telemetría acepta `carrusel_festejo`
+
 ## [2.148.0] - 2026-10-05
 
 ### Cambiado

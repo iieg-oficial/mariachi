@@ -9,7 +9,7 @@ import { AYUDA_PUBLICO, ESTADOS_CARRUSEL, IMAGENES } from '../constants/campos';
 
 const AYUDA_FONDO = 'El color de la franja del aviso: un color (#1A2B3C) o un degradado (linear-gradient(...)). '
     + 'Vacío, va en el morado institucional.';
-const AYUDA_ENLACE = 'https://… o una página de la intranet, como /calendario. Vacío, el aviso no lleva botón.';
+const AYUDA_ENLACE = 'https://… o una página de la intranet, como /calendario. @festejo (o @festejo:🎃🌼) hace explotar emojis en lugar de navegar. Vacío, el aviso no lleva botón.';
 const AYUDA_BOTON = 'Vacío, el botón dice «Leer más».';
 
 const CAMPOS = [

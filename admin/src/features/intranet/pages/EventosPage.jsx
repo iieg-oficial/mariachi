@@ -13,15 +13,17 @@ const DEFINICION = {
     icono: <CalendarOutlined />,
     columnas: [
         { title: 'Fecha', dataIndex: 'fecha', width: 140, render: (fecha) => dayjs(fecha).format('DD/MM/YYYY') },
+        { title: '', dataIndex: 'emoji', width: 56, render: (emoji) => emoji || '' },
         { title: 'Título', dataIndex: 'titulo' },
         { title: 'Descripción', dataIndex: 'descripcion', render: (texto) => texto || '—' },
     ],
     campos: [
         { nombre: 'fecha', etiqueta: 'Fecha', tipo: 'fecha', requerido: true },
         { nombre: 'titulo', etiqueta: 'Título', requerido: true, maximo: 120 },
+        { nombre: 'emoji', etiqueta: 'Emoji', maximo: 16, ayuda: 'Opcional. Se ve en la esquina del día en el calendario, por ejemplo 🎃 o 🌼.' },
         { nombre: 'descripcion', etiqueta: 'Descripción', tipo: 'texto-largo', maximo: 300 },
     ],
-    aPayload: (valores) => ({ ...valores, descripcion: valores.descripcion || null }),
+    aPayload: (valores) => ({ ...valores, descripcion: valores.descripcion || null, emoji: valores.emoji || null }),
 };
 
 const EventosPage = () => <PaginaRecurso definicion={DEFINICION} />;
