@@ -3,7 +3,7 @@ import { CheckOutlined, CloseOutlined, NotificationOutlined } from '@ant-design/
 
 import Miniatura from '../components/Miniatura';
 import PaginaRecurso from '../components/PaginaRecurso';
-import { revisar } from '../api/intranetService';
+import { aFormData, revisar } from '../api/intranetService';
 import { aPayload } from '../helpers/carrusel';
 import { AYUDA_PUBLICO, ESTADOS_CARRUSEL, IMAGENES } from '../constants/campos';
 
@@ -39,11 +39,11 @@ const COLUMNAS = [
         ),
     },
     { title: 'Visible', dataIndex: 'active', width: 90, render: (activo) => (activo ? 'Sí' : 'No') },
-    { title: 'Orden', dataIndex: 'order', width: 80 },
 ];
 
 const DEFINICION = {
     recurso: 'carrusel',
+    ordenable: { campo: 'order', aPayload: (_, valor) => aFormData({ order: valor }) },
     singular: 'Elemento',
     titulo: 'Carrusel',
     descripcion: 'Avisos de la portada de la intranet. Lo que proponen los empleados llega como pendiente.',

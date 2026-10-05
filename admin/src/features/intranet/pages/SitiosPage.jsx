@@ -39,6 +39,7 @@ const definicionDeSitios = (categorias) => {
     const nombres = Object.fromEntries(categorias.map((c) => [c.id, c.nombre]));
     return {
         recurso: 'sitios',
+        ordenable: { campo: 'orden' },
         singular: 'Sitio',
         titulo: 'Sitios monitoreados',
         descripcion: 'Los proyectos del IIEG que muestra la intranet, con su estado y sus enlaces a Taiga, GitLab y GitHub.',
@@ -51,7 +52,6 @@ const definicionDeSitios = (categorias) => {
             { title: 'URL', dataIndex: 'url' },
             { title: 'Categoría', dataIndex: 'category_id', render: (id) => nombres[id] },
             { title: 'Huachicol', dataIndex: 'huachicol_slug', width: 140 },
-            { title: 'Orden', dataIndex: 'orden', width: 80 },
         ],
         campos: [
             { nombre: 'name', etiqueta: 'Nombre', requerido: true, maximo: 200 },

@@ -7,6 +7,7 @@ const AYUDA_URL = 'Dirección completa de la herramienta dentro de la red del in
 
 const DEFINICION = {
     recurso: 'herramientas',
+    ordenable: { campo: 'orden' },
     singular: 'Herramienta',
     titulo: 'Herramientas',
     descripcion: 'Servicios de código abierto que corren en el instituto. La intranet muestra una tarjeta por cada uno.',
@@ -18,7 +19,6 @@ const DEFINICION = {
         { title: 'Descripción', dataIndex: 'descripcion' },
         { title: 'URL', dataIndex: 'url' },
         { title: 'Visible', dataIndex: 'activa', width: 90, render: (activa) => (activa ? 'Sí' : 'No') },
-        { title: 'Orden', dataIndex: 'orden', width: 80 },
     ],
     campos: [
         { nombre: 'nombre', etiqueta: 'Nombre', requerido: true, maximo: 100 },

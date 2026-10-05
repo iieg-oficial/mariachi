@@ -15,6 +15,10 @@ const enMegas = (bytes) => `${(bytes / (1024 * 1024)).toLocaleString('es-MX', { 
 
 const CARPETAS = {
     recurso: 'carpetas',
+    ordenable: {
+        campo: 'orden',
+        aPayload: (carpeta, valor) => ({ nombre: carpeta.nombre, descripcion: carpeta.descripcion ?? null, orden: valor }),
+    },
     singular: 'Carpeta',
     titulo: 'Documentos',
     descripcion: 'Carpetas en las que la intranet agrupa los documentos. Borrar una deja sus documentos sueltos.',
@@ -24,7 +28,6 @@ const CARPETAS = {
     columnas: [
         { title: 'Nombre', dataIndex: 'nombre' },
         { title: 'Documentos', dataIndex: 'documentos', width: 120 },
-        { title: 'Orden', dataIndex: 'orden', width: 80 },
     ],
     campos: [
         { nombre: 'nombre', etiqueta: 'Nombre', requerido: true, maximo: 100 },

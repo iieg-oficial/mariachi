@@ -7,6 +7,7 @@ const AYUDA_URL = 'Empieza con https://, http://, mailto:, tel: o /. Vacía deja
 
 const DEFINICION = {
     recurso: 'enlaces',
+    ordenable: { campo: 'orden', grupo: 'seccion' },
     singular: 'Enlace',
     titulo: 'Pie de página',
     descripcion: 'Enlaces y datos de contacto del pie de la intranet, agrupados por sección.',
@@ -18,7 +19,6 @@ const DEFINICION = {
         { title: 'Etiqueta', dataIndex: 'etiqueta' },
         { title: 'URL', dataIndex: 'url' },
         { title: 'Icono', dataIndex: 'icono', width: 110 },
-        { title: 'Orden', dataIndex: 'orden', width: 80 },
     ],
     campos: [
         { nombre: 'seccion', etiqueta: 'Sección', requerido: true, maximo: 100 },

@@ -9,6 +9,16 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.135.0] - 2026-10-05
+
+### Agregado
+
+- **Ordenar arrastrando en el admin de la intranet**: Sitios monitoreados, Herramientas, Carrusel, Carpetas de documentos y Enlaces llevan siempre la manija de seis puntos; al soltar se guarda, numerando desde 1 y enviando solo las filas que cambiaron. Los Enlaces se ordenan dentro de su sección. Lo hace `PaginaRecurso` con `definicion.ordenable` (`campo`, `grupo` y un `aPayload` propio para Carrusel, que va como formulario, y Carpetas, que pide el cuerpo completo); usa `SortableTableRow` de `@shared`. En esas tablas no hay paginación
+
+### Cambiado
+
+- Las tablas ordenables ya no muestran la columna «Orden»; el campo sigue en el formulario
+
 ## [2.134.1] - 2026-10-02
 
 ### Corregido
