@@ -9,6 +9,12 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.143.0] - 2026-10-05
+
+### Agregado
+
+- **Acceso a las capas privadas de MapaLab** (`/mapalab/acceso`, permiso `mariachi.mapalab_acceso.manage`, rol atómico «MapaLab - capas privadas», incluido en Administrador): usuarios del visor (alta por correo antes del primer login, activar o suspender, borrar), grupos con sus miembros, y por capa la marca de privada con las personas y grupos que la ven. Una carpeta privada arrastra a sus descendientes y la respuesta dice de qué ancestro hereda. Volver pública una capa borra su lista. Cada cambio queda en la bitácora de actividad y avisa a mapalab para refrescar el árbol. Las tablas viven en `mapalab.*` de dataengine (1.47.0); `LayerResponse` y el árbol del admin traen `privada`
+
 ## [2.142.0] - 2026-10-05
 
 ### Agregado

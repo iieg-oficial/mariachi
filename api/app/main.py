@@ -35,6 +35,7 @@ from app.api.routes import (
     intranet_inhabiles_lectura,
     layer_metadata,
     layers,
+    mapalab_acceso,
     mapalab_api_keys,
     mapalab_api_keys_internal,
     mapalab_events_public,
@@ -174,6 +175,11 @@ def create_app() -> FastAPI:
         mapalab_api_keys.router,
         prefix=settings.admin_prefix,
         dependencies=[Depends(require_permission("mariachi.mapalab_llaves.manage"))],
+    )
+    app.include_router(
+        mapalab_acceso.router,
+        prefix=settings.admin_prefix,
+        dependencies=[Depends(require_permission("mariachi.mapalab_acceso.manage"))],
     )
     app.include_router(mapalab_api_keys_internal.router, prefix=settings.admin_prefix)
     app.include_router(mapalab_mcp_internal.router, prefix=settings.admin_prefix)

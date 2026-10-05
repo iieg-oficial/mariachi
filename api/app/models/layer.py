@@ -56,6 +56,7 @@ class Layer(DataEngineBase):
 
     hidden_in_menu = Column(Boolean, server_default=text("FALSE"), nullable=False)
     disabled = Column(Boolean, server_default=text("FALSE"), nullable=False)
+    privada = Column(Boolean, server_default=text("FALSE"), nullable=False)
 
     workspace_alias = Column(
         String(50),

@@ -16,6 +16,8 @@ permissions:
     name: Editar capas, catalogo, metadatos y numeralia
   - key: mariachi.mapalab_llaves.manage
     name: Administrar las llaves de embebido de MapaLab
+  - key: mariachi.mapalab_acceso.manage
+    name: Marcar capas privadas de MapaLab y decidir que personas y grupos las ven
   - key: mariachi.mapalab_propuestas.approve
     name: Moderar propuestas de tarjeta del catalogo
   - key: mariachi.mapalab.manage
@@ -140,6 +142,11 @@ roles:
     description: Atomico. Administrar las llaves con que otros sitios embeben MapaLab
     permissions:
       - mariachi.mapalab_llaves.manage
+  - name: MapaLab - capas privadas
+    description: Atomico. Marcar capas privadas y administrar usuarios y grupos del visor
+    permissions:
+      - mariachi.mapalab.view
+      - mariachi.mapalab_acceso.manage
 
   - name: Portal - consulta
     description: Atomico. Ver paginas, menu e inicio
@@ -299,6 +306,7 @@ roles:
       - mariachi.mapalab.update
       - mariachi.mapalab.manage
       - mariachi.mapalab_llaves.manage
+      - mariachi.mapalab_acceso.manage
       - mariachi.mapalab_propuestas.approve
       - mariachi.portal.view
       - mariachi.portal.update

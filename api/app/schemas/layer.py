@@ -378,6 +378,7 @@ class LayerUpdate(CamelCaseInput):
 
 
 class LayerResponse(LayerBase):
+    privada: bool = False
     created_at: datetime = Field(..., serialization_alias="createdAt")
     updated_at: datetime = Field(..., serialization_alias="updatedAt")
     updated_by: str | None = Field(default=None, serialization_alias="updatedBy")
@@ -405,6 +406,7 @@ class LayerReferencesResponse(BaseModel):
 
 
 class LayerTreeNode(LayerBase):
+    privada: bool = False
     children: list["LayerTreeNode"] = Field(default_factory=list)
 
 
