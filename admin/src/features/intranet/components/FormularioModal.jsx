@@ -1,24 +1,23 @@
-import { useEffect } from 'react';
 import { Button, Form, Input, InputNumber, Modal, Select, Switch, Upload } from 'antd';
 import { UploadOutlined } from '@ant-design/icons';
 import TituloConAyuda from '@shared/components/TituloConAyuda';
 
 const archivoDe = (evento) => evento?.fileList?.slice(-1) ?? [];
 
-const Control = ({ campo }) => {
+const Control = ({ campo, ...props }) => {
     switch (campo.tipo) {
     case 'numero':
-        return <InputNumber min={0} style={{ width: '100%' }} />;
+        return <InputNumber min={0} style={{ width: '100%' }} {...props} />;
     case 'texto-largo':
-        return <Input.TextArea rows={3} maxLength={campo.maximo} showCount />;
+        return <Input.TextArea rows={3} maxLength={campo.maximo} showCount {...props} />;
     case 'opciones':
-        return <Select options={campo.opciones} allowClear={!campo.requerido} />;
+        return <Select options={campo.opciones} allowClear={!campo.requerido} {...props} />;
     case 'interruptor':
-        return <Switch />;
+        return <Switch {...props} />;
     case 'fecha':
-        return <Input type="date" />;
+        return <Input type="date" {...props} />;
     default:
-        return <Input maxLength={campo.maximo} />;
+        return <Input maxLength={campo.maximo} {...props} />;
     }
 };
 
@@ -57,12 +56,6 @@ const Campo = ({ campo }) => {
 const FormularioModal = ({ abierto, titulo, campos, inicial, guardando, onCancelar, onGuardar }) => {
     const [form] = Form.useForm();
 
-    useEffect(() => {
-        if (!abierto) return;
-        form.resetFields();
-        if (inicial) form.setFieldsValue(inicial);
-    }, [abierto, inicial, form]);
-
     const aceptar = async () => {
         const valores = await form.validateFields();
         const planos = Object.fromEntries(
@@ -85,9 +78,11 @@ const FormularioModal = ({ abierto, titulo, campos, inicial, guardando, onCancel
             confirmLoading={guardando}
             destroyOnHidden
         >
-            <Form form={form} layout="vertical" requiredMark="optional">
-                {campos.map((campo) => <Campo key={campo.nombre} campo={campo} />)}
-            </Form>
+            {abierto && (
+                <Form form={form} layout="vertical" requiredMark="optional" initialValues={inicial ?? undefined}>
+                    {campos.map((campo) => <Campo key={campo.nombre} campo={campo} />)}
+                </Form>
+            )}
         </Modal>
     );
 };

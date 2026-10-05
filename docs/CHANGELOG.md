@@ -9,6 +9,16 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.148.0] - 2026-10-05
+
+### Cambiado
+
+- **Documentos de la intranet en una sola vista**: las carpetas a la izquierda y los archivos de la elegida (o «Sin carpeta») a la derecha, sin el selector Documentos/Carpetas. «Agregar» ofrece archivo o carpeta; el archivo nuevo entra en la carpeta abierta. Carpetas y archivos se ordenan arrastrando por los seis puntos (se quita el campo «Orden»). La tabla arrastrable sale de `PaginaRecurso` a `TablaOrdenable` para reutilizarse
+
+### Corregido
+
+- Los formularios de la intranet en el admin no estaban conectados a sus campos desde 2.120.0: `Control` no pasaba `value` ni `onChange` al campo, así que al editar no se precargaban los datos y al guardar marcaba «Falta» aunque el campo estuviera lleno. El formulario además se monta de nuevo en cada apertura con sus valores iniciales
+
 ## [2.147.0] - 2026-10-05
 
 ### Agregado
