@@ -9,6 +9,12 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.150.0] - 2026-10-06
+
+### Agregado
+
+- **«Va dentro de» en Sitios monitoreados**: un proyecto dentro de otro pierde su tarjeta en la intranet y sale como «Abrir …» en la ficha del principal (Portal anterior en Portal, Documentación SIEEJ en SIEEJ). Columna con el principal y lista solo con proyectos principales. Requiere intranet con la migración `a6d4e8b2c9f3`
+
 ## [2.149.1] - 2026-10-05
 
 ### Eliminado

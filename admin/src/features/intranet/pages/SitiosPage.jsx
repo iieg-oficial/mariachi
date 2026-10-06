@@ -17,6 +17,8 @@ const AYUDA_LOGO = 'URL del logo en el Acervo (SVG de preferencia). Vacía muest
 
 const AYUDA_PRUEBAS = 'Una por línea, «Etiqueta | URL». Por ejemplo: Espejo | https://portalito.iieg/mapalab/mapa';
 
+const AYUDA_DENTRO = 'Sin tarjeta propia en la intranet: sale como «Abrir …» en la ficha del proyecto elegido. Vacío, tiene su tarjeta.';
+
 const AYUDA_SLUG = 'Nombre del servicio en huachicol. De ahí sale el estado que muestra la intranet.';
 
 const limpiar = (valores) => Object.fromEntries(
@@ -38,7 +40,9 @@ const CATEGORIAS = {
     }],
 };
 
-const definicionDeSitios = (categorias) => {
+const definicionDeSitios = (categorias, todos) => {
+    const principales = todos.filter((sitio) => !sitio.dentro_de);
+    const nombresSitios = Object.fromEntries(todos.map((sitio) => [sitio.id, sitio.name]));
     const nombres = Object.fromEntries(categorias.map((c) => [c.id, c.nombre]));
     return {
         recurso: 'sitios',
@@ -56,6 +60,7 @@ const definicionDeSitios = (categorias) => {
             { title: 'URL', dataIndex: 'url' },
             { title: 'Categoría', dataIndex: 'category_id', render: (id) => nombres[id] },
             { title: 'Huachicol', dataIndex: 'huachicol_slug', width: 140 },
+            { title: 'Va dentro de', dataIndex: 'dentro_de', width: 160, render: (id) => nombresSitios[id] ?? '—' },
         ],
         campos: [
             { nombre: 'name', etiqueta: 'Nombre', requerido: true, maximo: 200 },
@@ -72,6 +77,10 @@ const definicionDeSitios = (categorias) => {
             { nombre: 'github_url', etiqueta: 'GitHub', maximo: 500 },
             { nombre: 'orden', etiqueta: 'Orden', tipo: 'numero', ayuda: 'Posición en la intranet, de menor a mayor.' },
             { nombre: 'pruebas', etiqueta: 'Ligas de pruebas', tipo: 'texto-largo', maximo: 1200, ayuda: AYUDA_PRUEBAS },
+            {
+                nombre: 'dentro_de', etiqueta: 'Va dentro de', tipo: 'opciones', ayuda: AYUDA_DENTRO,
+                opciones: principales.map((sitio) => ({ value: sitio.id, label: sitio.name })),
+            },
         ],
     };
 };
@@ -79,16 +88,20 @@ const definicionDeSitios = (categorias) => {
 const SitiosPage = () => {
     const [vista, setVista] = useState('sitios');
     const [categorias, setCategorias] = useState([]);
+    const [todos, setTodos] = useState([]);
 
     useEffect(() => {
         let vigente = true;
         listar('categorias')
             .then((lista) => { if (vigente) setCategorias(lista); })
             .catch(() => { if (vigente) setCategorias([]); });
+        listar('sitios')
+            .then((lista) => { if (vigente) setTodos(lista); })
+            .catch(() => { if (vigente) setTodos([]); });
         return () => { vigente = false; };
     }, [vista]);
 
-    const sitios = useMemo(() => definicionDeSitios(categorias), [categorias]);
+    const sitios = useMemo(() => definicionDeSitios(categorias, todos), [categorias, todos]);
     const selector = <Segmented options={VISTAS} value={vista} onChange={setVista} />;
 
     return (
