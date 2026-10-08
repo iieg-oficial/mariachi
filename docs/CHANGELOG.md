@@ -9,6 +9,12 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.150.1] - 2026-10-08
+
+### Cambiado
+
+- **Capas privadas solo en `dev` y `beta`.** El elemento del menú de MapaLab y su ruta `/mapalab/acceso` no existen con `VITE_APP_ENV` de producción, igual que el inicio de sesión del visor, que también se oculta ahí. La API y los permisos no cambian. La condición es `ENTORNO_NO_PROD` en `sider-alcance.js`, que reemplaza a `MENU_LOCAL_DISPONIBLE` y también decide el menú «Local».
+
 ## [2.150.0] - 2026-10-06
 
 ### Agregado

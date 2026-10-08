@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ALCANCE_EN_LINEA, ALCANCE_LOCAL, MENU_LOCAL_DISPONIBLE } from '@app/sider-alcance';
+import { ALCANCE_EN_LINEA, ALCANCE_LOCAL, ENTORNO_NO_PROD } from '@app/sider-alcance';
 import { alcanceDePath } from '@app/sider-config';
 
 const STORAGE_KEY = 'mariachi.sider.alcance';
@@ -39,8 +39,8 @@ export function useAlcanceMenu(pathname) {
     };
 
     return {
-        disponible: MENU_LOCAL_DISPONIBLE,
-        alcance: MENU_LOCAL_DISPONIBLE ? elegido : ALCANCE_EN_LINEA,
+        disponible: ENTORNO_NO_PROD,
+        alcance: ENTORNO_NO_PROD ? elegido : ALCANCE_EN_LINEA,
         elegir,
     };
 }
