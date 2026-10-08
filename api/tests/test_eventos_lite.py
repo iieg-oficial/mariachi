@@ -69,6 +69,7 @@ def test_por_defecto_es_completo_con_pelota(admin_session, db_session):
     assert body["modo"] == "completo"
     assert body["animacion"] == "pelota"
     assert body["botonEstilo"] is None
+    assert body["decoracion"] == "ninguna"
 
 
 @pytest.mark.parametrize("campos", [
@@ -85,6 +86,7 @@ def test_por_defecto_es_completo_con_pelota(admin_session, db_session):
     {"botonEstilo": {"borde": {"forma": "solido", "colores": ["naranja"]}}},
     {"facts": [{"text": "Dato", "animacion": "cohete"}]},
     {"avisoInicial": "x" * 81},
+    {"decoracion": "navidad"},
 ])
 def test_rechaza_valores_invalidos(admin_session, db_session, campos):
     _seed_mapalab(db_session)
@@ -94,7 +96,7 @@ def test_rechaza_valores_invalidos(admin_session, db_session, campos):
 def test_patch_no_deja_modo_ni_animacion_nulos(admin_session, db_session):
     _seed_mapalab(db_session)
     evento = _crear(admin_session).json()
-    for campo in ("modo", "animacion"):
+    for campo in ("modo", "animacion", "decoracion"):
         response = admin_session["client"].patch(
             f"{ADMIN_PREFIX}/eventos/{evento['id']}",
             json={campo: None},
@@ -111,6 +113,7 @@ def test_respuesta_publica_expone_la_diversion(db_session):
         animacion="aguilas",
         boton_estilo=ESTILO_MEXICO,
         aviso_inicial="Hola",
+        decoracion="dia-de-muertos",
         estado="published",
         activo=True,
     )
@@ -120,4 +123,14 @@ def test_respuesta_publica_expone_la_diversion(db_session):
     assert data["modo"] == "lite"
     assert data["animacion"] == "aguilas"
     assert data["avisoInicial"] == "Hola"
+    assert data["decoracion"] == "dia-de-muertos"
     assert data["botonEstilo"]["fondo"]["colores"] == ["morado", "naranja"]
+
+
+def test_evento_lite_solo_con_decoracion(admin_session, db_session):
+    _seed_mapalab(db_session)
+    response = _crear(admin_session, modo="lite", decoracion="dia-de-muertos")
+    assert response.status_code == 201
+    body = response.json()
+    assert body["decoracion"] == "dia-de-muertos"
+    assert body["facts"] == []

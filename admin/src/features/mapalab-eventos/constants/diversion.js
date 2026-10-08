@@ -5,6 +5,11 @@ export const ANIMACIONES = [
     { value: 'aguilas', label: 'Águilas', descripcion: 'Una parvada cruza el mapa y suelta el dato.' },
 ];
 
+export const DECORACIONES = [
+    { value: 'ninguna', label: 'Ninguna' },
+    { value: 'dia-de-muertos', label: 'Día de Muertos' },
+];
+
 export const MODOS_EVENTO = [
     { value: 'completo', label: 'Completo' },
     { value: 'lite', label: 'Lite' },

@@ -13,7 +13,7 @@ _TTL_SECONDS = 60 * 60 * 24 * 30
 
 _KEY_EVENTOS = 'mapalab:public_cache_version:eventos'
 _KEY_HOME = 'mapalab:public_cache_version:home'
-_PAYLOAD_PREFIX = 'mapalab:public_cache:payload:v2'
+_PAYLOAD_PREFIX = 'mapalab:public_cache:payload:v3'
 
 
 def _new_token() -> str:

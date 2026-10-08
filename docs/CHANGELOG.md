@@ -9,6 +9,16 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.151.0] - 2026-10-08
+
+### Agregado
+
+- **Decoración temática de los eventos del visor.** `eventos.decoracion` (`ninguna` | `dia-de-muertos`,
+  migración `mu3rt0s0001`) se elige en la pestaña Diversión y viaja en `GET /api/mapalab/eventos`. Como
+  `modo` y `animacion`, el valor es llave del visor: uno nuevo sin su registro en mapalab no pinta nada.
+  El payload público sube a `mapalab:public_cache:payload:v3` para no servir el guardado antes de la
+  migración. **mariachi va antes que mapalab.**
+
 ## [2.150.1] - 2026-10-08
 
 ### Cambiado
