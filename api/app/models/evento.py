@@ -36,6 +36,7 @@ class Evento(Base):
     basemap_id = Column(String(50), nullable=True)
     modo = Column(String(20), nullable=False, default="completo", server_default="completo")
     animacion = Column(String(30), nullable=False, default="pelota", server_default="pelota")
+    decoracion = Column(String(30), nullable=False, default="ninguna", server_default="ninguna")
     boton_estilo = Column(JSON, nullable=True)
     aviso_inicial = Column(String(80), nullable=True)
     activo = Column(Boolean, nullable=False, default=False)

@@ -71,7 +71,7 @@ function normalizeCapas(capas) {
 const TABS_SOLO_COMPLETO = ['capas', 'apariencia', 'geografia'];
 
 function eventoToForm(e) {
-    if (!e) return { activo: false, capas: [], facts: [], funIcon: null, orden: 0, modo: 'completo', animacion: 'pelota', botonEstilo: null, avisoInicial: null };
+    if (!e) return { activo: false, capas: [], facts: [], funIcon: null, orden: 0, modo: 'completo', animacion: 'pelota', decoracion: 'ninguna', botonEstilo: null, avisoInicial: null };
     return {
         titulo: e.titulo,
         slug: e.slug,
@@ -89,6 +89,7 @@ function eventoToForm(e) {
         basemapId: e.basemapId || null,
         modo: e.modo || 'completo',
         animacion: e.animacion || 'pelota',
+        decoracion: e.decoracion || 'ninguna',
         botonEstilo: e.botonEstilo || null,
         avisoInicial: e.avisoInicial || null,
         activo: e.activo,
@@ -135,6 +136,7 @@ function formToPayload(values, { isCreate }) {
         basemapId: values.basemapId || null,
         modo: values.modo || 'completo',
         animacion: values.animacion || 'pelota',
+        decoracion: values.decoracion || 'ninguna',
         botonEstilo: values.botonEstilo || null,
         avisoInicial: values.avisoInicial?.trim() || null,
         activo: Boolean(values.activo),
@@ -178,7 +180,7 @@ export default function EventoEditPage() {
         if (!isCreate && evento) {
             form.setFieldsValue(eventoToForm(evento));
         } else if (isCreate) {
-            form.setFieldsValue({ activo: false, capas: [], facts: [], funIcon: null, orden: 0, modo: 'completo', animacion: 'pelota', botonEstilo: null, avisoInicial: null });
+            form.setFieldsValue({ activo: false, capas: [], facts: [], funIcon: null, orden: 0, modo: 'completo', animacion: 'pelota', decoracion: 'ninguna', botonEstilo: null, avisoInicial: null });
         }
     }, [evento, isCreate, form]);
 

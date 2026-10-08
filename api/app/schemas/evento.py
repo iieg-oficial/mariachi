@@ -18,6 +18,7 @@ from app.schemas.evento_diversion import (
     AVISO_MAX_LENGTH,
     Animacion,
     BotonEstilo,
+    Decoracion,
     DestinoDato,
     DiversionMixin,
     ModoEvento,
@@ -177,6 +178,7 @@ class _EventoVisibleFields(CamelCaseInput, _ImageUrlMixin, DiversionMixin):
     basemap_id: str | None = Field(default=None, max_length=50, serialization_alias='basemapId')
     modo: ModoEvento = 'completo'
     animacion: Animacion = 'pelota'
+    decoracion: Decoracion = 'ninguna'
     boton_estilo: BotonEstilo | None = Field(default=None, serialization_alias='botonEstilo')
     aviso_inicial: str | None = Field(default=None, max_length=AVISO_MAX_LENGTH, serialization_alias='avisoInicial')
     fecha_inicio: datetime | None = Field(default=None, serialization_alias='fechaInicio')
@@ -208,6 +210,7 @@ class EventoUpdate(CamelCaseInput, _ImageUrlMixin, DiversionMixin):
     basemap_id: str | None = Field(default=None, max_length=50, serialization_alias='basemapId')
     modo: ModoEvento | None = None
     animacion: Animacion | None = None
+    decoracion: Decoracion | None = None
     boton_estilo: BotonEstilo | None = Field(default=None, serialization_alias='botonEstilo')
     aviso_inicial: str | None = Field(default=None, max_length=AVISO_MAX_LENGTH, serialization_alias='avisoInicial')
     activo: bool | None = None

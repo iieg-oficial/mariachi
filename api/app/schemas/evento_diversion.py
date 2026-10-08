@@ -7,6 +7,7 @@ from app.schemas._camel import CamelCaseInput
 
 Animacion = Literal['pelota', 'aguilas']
 ModoEvento = Literal['completo', 'lite']
+Decoracion = Literal['ninguna', 'dia-de-muertos']
 FormaTramos = Literal['ninguno', 'solido', 'mitades', 'tercios']
 
 FONDOS_PALETA = ('blanco', 'morado-suave', 'morado', 'naranja', 'grafito')
@@ -58,7 +59,7 @@ class BotonEstilo(CamelCaseInput):
 
 
 class DiversionMixin:
-    @field_validator('modo', 'animacion', mode='before', check_fields=False)
+    @field_validator('modo', 'animacion', 'decoracion', mode='before', check_fields=False)
     @classmethod
     def _rechazar_nulo(cls, valor: object) -> object:
         if valor is None:
