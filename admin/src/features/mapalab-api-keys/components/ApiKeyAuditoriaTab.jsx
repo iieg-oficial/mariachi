@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-    Alert,
     Button,
     Card,
     Col,
@@ -19,6 +18,8 @@ import {
 import { ReloadOutlined } from '@ant-design/icons';
 import { listAccesos } from '@features/mapalab-api-keys/api/mapalabApiKeysService';
 import { useLayerTree } from '@features/mapalab-api-keys/hooks/useLayerTree';
+import { etiquetaMotivo } from '@features/mapalab-api-keys/components/motivosAcceso';
+import TituloConAyuda from '@shared/components/TituloConAyuda';
 
 const { Text } = Typography;
 const { RangePicker } = DatePicker;
@@ -125,9 +126,17 @@ export default function ApiKeyAuditoriaTab({ apiKey }) {
         {
             title: 'Motivo',
             dataIndex: 'motivo',
-            width: 160,
+            width: 200,
             ellipsis: true,
-            render: (m) => m ? <Text style={{ fontSize: 11 }}>{m}</Text> : <Text type="secondary">—</Text>,
+            render: (m, row) => {
+                if (!m) return <Text type="secondary">—</Text>;
+                const sinLlave = row.apiKeyId === null || row.apiKeyId === undefined;
+                return (
+                    <Tooltip title={sinLlave ? `${m} · llave no reconocida con prefijo ${row.keyPrefix || '—'}` : m}>
+                        <Text style={{ fontSize: 11 }}>{etiquetaMotivo(m)}</Text>
+                    </Tooltip>
+                );
+            },
         },
     ], [labelByRef]);
 
@@ -141,16 +150,17 @@ export default function ApiKeyAuditoriaTab({ apiKey }) {
     };
 
     return (
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-            <Alert
-                type="info"
-                showIcon
-                closable
-                message="Historial de uso de esta llave"
-                description="Cada vez que se usa la llave queda un registro aquí: visitantes que cargan el mapa embebido (sitio, capas, resultado) y llamadas de agentes vía MCP (tipo de acción 'Agente / MCP', con la herramienta usada en la columna Motivo). Útil para auditoría y para responder solicitudes del área jurídica. Los registros se conservan 90 días."
-            />
+        <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
 
-            <Card size="small" title="Filtros">
+            <Card
+                size="small"
+                title={(
+                    <TituloConAyuda
+                        titulo="Filtros"
+                        ayuda="Cada uso de la llave deja un registro: cargas del mapa incrustado, llamadas de agentes (MCP) y peticiones bloqueadas con su motivo, incluso con llaves que no existen pero comparten el prefijo. Se conservan 90 días."
+                    />
+                )}
+            >
                 <Form layout="vertical" size="small">
                     <Row gutter={[12, 8]}>
                         <Col xs={24} md={12}>
@@ -238,7 +248,7 @@ export default function ApiKeyAuditoriaTab({ apiKey }) {
                 </Form>
             </Card>
 
-            {error && <Alert type="error" showIcon closable message={error} />}
+            {error && <Text type="danger">{error}</Text>}
 
             <Card size="small">
                 <Table

@@ -9,13 +9,5151 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
-## [1.126.2] - 2026-09-30
+## [2.150.1] - 2026-10-08
+
+### Cambiado
+
+- **Capas privadas solo en `dev` y `beta`.** El elemento del menú de MapaLab y su ruta `/mapalab/acceso` no existen con `VITE_APP_ENV` de producción, igual que el inicio de sesión del visor, que también se oculta ahí. La API y los permisos no cambian. La condición es `ENTORNO_NO_PROD` en `sider-alcance.js`, que reemplaza a `MENU_LOCAL_DISPONIBLE` y también decide el menú «Local».
+
+## [2.150.0] - 2026-10-06
+
+### Agregado
+
+- **«Va dentro de» en Sitios monitoreados**: un proyecto dentro de otro pierde su tarjeta en la intranet y sale como «Abrir …» en la ficha del principal (Portal anterior en Portal, Documentación SIEEJ en SIEEJ). Columna con el principal y lista solo con proyectos principales. Requiere intranet con la migración `a6d4e8b2c9f3`
+
+## [2.149.1] - 2026-10-05
+
+### Eliminado
+
+- `evento_fun_recorrido` sale de la telemetría permitida: el recorrido en 3D del dato curioso se
+  descartó el mismo día en que entró, así que el nombre quedaba sin quien lo emitiera. Los trazos de
+  los datos curiosos se quedan.
+
+## [2.149.0] - 2026-10-05
+
+### Agregado
+
+- **Festejos de la intranet** (Local › Intranet › Festejos): animaciones de emojis guardadas con nombre, emojis y animación (por ahora «Explosión»), ordenables y con «▶ Probar», que la lanza ahí mismo con la Web Animations API. El carrusel elige uno en «Festejo del botón» (viaja como `@festejo:<id>`) y cada evento en «Festejo al tocar el día»; cambiar los emojis de un festejo los cambia en todos lados. Proxy `festejos`; requiere intranet con la migración `e7c2a4f9b1d6`
+
+## [2.148.1] - 2026-10-05
+
+### Agregado
+
+- Campo «Emoji» en los eventos de la intranet: se ve en la esquina del día de su calendario
+- El enlace del carrusel acepta `@festejo` (y sus emojis) para que el botón haga explotar emojis en la intranet; la telemetría acepta `carrusel_festejo`
+
+## [2.148.0] - 2026-10-05
+
+### Cambiado
+
+- **Documentos de la intranet en una sola vista**: las carpetas a la izquierda y los archivos de la elegida (o «Sin carpeta») a la derecha, sin el selector Documentos/Carpetas. «Agregar» ofrece archivo o carpeta; el archivo nuevo entra en la carpeta abierta. Carpetas y archivos se ordenan arrastrando por los seis puntos (se quita el campo «Orden»). La tabla arrastrable sale de `PaginaRecurso` a `TablaOrdenable` para reutilizarse
 
 ### Corregido
 
-- **Las miniaturas de imágenes grandes ya se generan.** Pillow abortaba con `DecompressionBombError` por encima de 128 MP y `/acervo/thumb/...` respondía 502: las 125 cartas municipales de 2021 (153 MP) y otros cuatro mapas de hasta 606 MP nunca tenían miniatura, y el portal caía en el original de 8-50 MB. Los JPEG se decodifican ahora con `draft()` a la escala del ancho pedido, con límite de apertura de 1 000 MP; los demás formatos conservan el tope de 128 MP antes de decodificar.
+- Los formularios de la intranet en el admin no estaban conectados a sus campos desde 2.120.0: `Control` no pasaba `value` ni `onChange` al campo, así que al editar no se precargaban los datos y al guardar marcaba «Falta» aunque el campo estuviera lleno. El formulario además se monta de nuevo en cada apertura con sus valores iniciales
+
+## [2.147.0] - 2026-10-05
+
+### Agregado
+
+- **Eventos de la intranet** (Local › Intranet › Eventos): fecha, título y descripción; la intranet los pinta en naranja en su calendario. Proxy `eventos` hacia `/api/eventos/`. El formulario de `PaginaRecurso` gana el tipo `fecha` (selector nativo, `AAAA-MM-DD`)
+- **Ligas de pruebas en Sitios monitoreados**: una por línea, «Etiqueta | URL»; la intranet las muestra en la ficha de cada proyecto. `PaginaRecurso` acepta `aFormulario` para convertir la fila al editarla
+
+## [2.146.0] - 2026-10-05
+
+### Agregado
+
+- **Reglas de GeoServer para las capas privadas de MapaLab** (`services/mapalab_geoserver_acl.py`): cada capa de GeoServer que solo usan nodos privados lleva `workspace.capa.r = MAPALAB_PRIVADA`, así que el anónimo deja de poder pedirla directo y el proxy de mapalab, que entra como admin, la sigue leyendo. Se sincroniza al guardar el acceso de una capa y con `POST /mapalab/acceso/geoserver/sincronizar` (botón **Sincronizar con GeoServer** en la pestaña Capas). Solo toca reglas con ese rol: una regla manual sobre la misma capa se reporta como conflicto y no se pisa. Si GeoServer no responde al guardar, el acceso se guarda igual y el admin avisa que hay que sincronizar
+
+## [2.145.0] - 2026-10-05
+
+### Corregido: «Vaciar cachés» ahora también renueva las leyendas del visor
+
+El botón solo vaciaba la memoria de GeoServer. Una leyenda nueva seguía sin aparecer porque el
+gateway guarda cada `GetLegendGraphic` seis horas e ignora el `Cache-Control` de GeoServer; ni el
+reset ni Ctrl+Shift+R la alcanzaban.
+
+Ahora el botón, además, sube `legend_version` en todos los workspaces (dataengine 1.48.0) y avisa al
+visor con `notify_tree_changed()`. El visor agrega ese número a la URL de la leyenda: al cambiar la
+URL el gateway no encuentra nada guardado y la pide de nuevo. **No se toca el gateway**: su sidecar
+es de solo lectura a propósito. Lo viejo caduca solo en sus seis horas. El tooltip lo dice.
+
+## [2.144.0] - 2026-10-05
+
+### Agregado
+
+- **MapaLab › Capas privadas** (permiso `mariachi.mapalab_acceso.manage`): pestañas Capas (quién ve cada capa privada, «Nadie» en rojo si está sin acceso, marcar una capa y editar su acceso con personas y grupos; avisa si está dentro de una carpeta también privada), Personas (alta por correo, «Sin entrar aún» o último acceso, grupos, suspender y quitar) y Grupos (crear, editar miembros y borrar).
+- `GET /layers/arbol`: el árbol completo con las privadas marcadas, pedido a mapalab con el token interno. El árbol del editor muestra la pastilla «privada»
+
+### Corregido
+
+- El editor de capas leía el árbol público de mapalab, que ya no trae las capas privadas: una capa al volverse privada desaparecía del editor. Ahora lee `/layers/arbol`
+
+## [2.143.0] - 2026-10-05
+
+### Agregado
+
+- **Acceso a las capas privadas de MapaLab** (`/mapalab/acceso`, permiso `mariachi.mapalab_acceso.manage`, rol atómico «MapaLab - capas privadas», incluido en Administrador): usuarios del visor (alta por correo antes del primer login, activar o suspender, borrar), grupos con sus miembros, y por capa la marca de privada con las personas y grupos que la ven. Una carpeta privada arrastra a sus descendientes y la respuesta dice de qué ancestro hereda. Volver pública una capa borra su lista. Cada cambio queda en la bitácora de actividad y avisa a mapalab para refrescar el árbol. Las tablas viven en `mapalab.*` de dataengine (1.47.0); `LayerResponse` y el árbol del admin traen `privada`
+
+## [2.142.0] - 2026-10-05
+
+### Agregado
+
+- **Solicitudes de cuenta de la intranet** (Local › Intranet › Solicitudes de cuenta): quién pidió entrar, con correo, dirección y para qué; Aprobar o Rechazar las pendientes y quién las atendió. La cuenta se crea con una invitación en el panel de minerva. Proxy `solicitudes` hacia `/api/solicitudes-cuenta/` de la intranet; la telemetría acepta `cuenta_solicitar`. `PaginaRecurso` oculta el botón de alta cuando la definición no trae `alta`
+
+## [2.141.0] - 2026-10-05
+
+### Agregado
+
+- **Documentación de pipelines**: «Nuevo pipeline» da de alta uno a mano (título, producto y clave), que nace como borrador y el sincronizador no retira; cada fila tiene «Mandar a borrador», que lo saca del sitio sin perder el contenido, y «Eliminar», solo para los que el sincronizador no detecta. Migración `sdoc0002` con la columna `manual`
+- La sincronización pasa a un modal junto a «Recargar»: barras de los últimos 30 ciclos por duración y estado, detalle del ciclo elegido, filtro de los que tuvieron error y acceso directo al editor de los pipelines nuevos
+
+### Corregido
+
+- «Descartar» ya no vacía el borrador de un pipeline que nunca se publicó
+
+## [2.140.0] - 2026-10-05
+
+### Agregado
+
+- **Espacios del instituto** (Local › Intranet › Espacios del instituto): la tabla de los espacios del edificio con tipo, piso, área, trazo y si se pueden elegir; editar nombre, tipo, piso e inclusión, y el historial de cada uno (qué cambió, quién y desde dónde: mariachi, QGIS o la carga inicial) con «Volver a esta versión». Lee y escribe `instituto.*` de dataengine 1.46.0 con `mariachi_layers`; cada cambio se firma con `instituto.actor` e `instituto.origen` y el historial lo escribe el trigger de la base. La API (`/intranet/espacios`, y `/intranet/espacios` público con la clave de la intranet, que entrega el plano listo para dibujar en SVG) entró en el commit de 2.139.0
+
+## [2.139.0] - 2026-10-05
+
+### Agregado: mover los puntos del trazo y telemetría del recorrido
+
+El segmento Trazo tiene **Mover los puntos**: arrastra cualquier vértice para corregirlo, o jala la
+línea para agregar uno; al soltar se vuelve a guardar el recorrido, con el último punto como lugar
+donde termina el vuelo. Mientras se mueven, los vértices decorativos se ocultan para no estorbar a
+los tiradores de la edición.
+
+La telemetría acepta `evento_fun_recorrido`, que el visor manda cuando alguien pide ver el recorrido
+en 3D de un dato curioso. Queda en los eventos crudos; el rollup por evento no cambia.
+
+## [2.138.0] - 2026-10-05
+
+### Agregado: el trazo del avance se dibuja sobre el mapa
+
+En el segmento Trazo del lugar de un dato curioso, **Dibujar el trazo** activa el dibujo de
+OpenLayers: un clic por punto y doble clic para terminar, o arrastrar con Shift para trazarlo a mano
+alzada. Se guardan hasta trece puntos —el último es donde termina el vuelo y el resto es el
+recorrido— y un trazo con más vértices se diezma a esos trece. El tope de la ruta pasó de cuatro a
+doce puntos. Sustituye la captura punto por punto, que quedaba corta para un recorrido.
+
+La capa WMS de referencia y el dibujo salieron de `NoticeAnchorField` a los hooks
+`useWmsReferencia` y `useTrazoOl`, que lo dejaron en 259 líneas.
+
+## [2.137.0] - 2026-10-05
+
+### Agregado: ruta de avance en los datos curiosos
+
+El destino de un dato curioso acepta hasta cuatro **puntos de avance** antes del lugar donde termina
+el vuelo. En el CMS se capturan con clic en el mapa, desde el segmento Ruta del campo del lugar, con
+contador y botón para quitar el último; la vista previa encuadra el recorrido y lo dibuja. Un destino
+sin ruta se comporta igual que antes.
+
+## [2.136.0] - 2026-10-05
+
+### Agregado
+
+- **Telemetría del mapa incrustado de mapalab**: dos tablas diarias por llave y sitio que incrusta.
+  `mapalab_api_keys_rendimiento_diario` guarda los Web Vitals (LCP, INP, CLS, FCP, TTFB), el tiempo
+  hasta que el mapa queda listo y la latencia del servidor y del proxy WMS, en cubetas buena, regular y
+  mala. `mapalab_api_keys_sitios_diario` guarda cargas, listos, errores JS, timeouts y denegados.
+  mapalab las manda cada 60 s a `/internal/mapalab/keys/rendimiento` y `/sitios`, que suman con upsert.
+  Migración `mktl0001`.
+- **Pestaña Uso en el panel de cada llave**: cifras del periodo (7, 30 o 90 días), tabla por sitio con
+  % que llegó a listo y barras de calidad de LCP e INP, y gráfica de cargas y errores por día, con
+  `GET /mapalab/api-keys/{id}/rendimiento` y `/{id}/sitios`.
+
+### Cambiado
+
+- `mapalab_api_keys_accesos` guarda también las denegaciones de llaves inexistentes: `api_key_id` es
+  nullable y `key_prefix` lleva el prefijo visible. La Auditoría de una llave incluye las filas sin
+  llave con su prefijo y traduce los motivos («Sitio no autorizado», «Llave inexistente»…); la
+  explicación pasó a tooltip.
+- La purga diaria borra además `uso_diario` y las dos tablas nuevas pasado
+  `MAPALAB_DIARIO_RETENTION_DAYS` (365 días por defecto).
+
+## [2.135.0] - 2026-10-05
+
+### Agregado
+
+- **Ordenar arrastrando en el admin de la intranet**: Sitios monitoreados, Herramientas, Carrusel, Carpetas de documentos y Enlaces llevan siempre la manija de seis puntos; al soltar se guarda, numerando desde 1 y enviando solo las filas que cambiaron. Los Enlaces se ordenan dentro de su sección. Lo hace `PaginaRecurso` con `definicion.ordenable` (`campo`, `grupo` y un `aPayload` propio para Carrusel, que va como formulario, y Carpetas, que pide el cuerpo completo); usa `SortableTableRow` de `@shared`. En esas tablas no hay paginación
+
+### Cambiado
+
+- Las tablas ordenables ya no muestran la columna «Orden»; el campo sigue en el formulario
+
+## [2.134.1] - 2026-10-02
+
+### Corregido
+
+- La telemetría de la intranet acepta `seccion_buscar` (la lupa de Documentos y Directorio en la portada); sin él se perdía el lote completo
+
+## [2.134.0] - 2026-10-02
+
+### Agregado
+
+- **Orden de los proyectos de la intranet** (Intranet → Sitios monitoreados): campo y columna «Orden»; la intranet los muestra de menor a mayor. Requiere intranet con la migración `a4e2c8f6d1b3`, que arranca cada sitio con su `id` como orden para no mover nada
+- Ícono `latex` para las herramientas de la intranet (Overleaf)
+
+## [2.133.0] - 2026-10-02
+
+### Agregado
+
+- **Telemetría de la intranet en el admin**: pestaña «Intranet» en Telemetría, con la misma vista de estadísticas que MapaLab filtrada por `app='intranet'` (los eventos ya se guardaban desde 2.130.0 en `huachicol.events`, pero no había dónde verlos). La pestaña MCP solo sale en MapaLab
+- **Carpetas de documentos de la intranet** (Intranet → Documentos → Carpetas): las crea administración y cada documento se asigna a una al subirlo o al editarlo. Los documentos ya se pueden editar (título, carpeta, orden); el archivo no se cambia. Proxy `carpetas` y edición de `documentos`. Requiere intranet con la migración `e3f9b6a2c8d1`
+
+### Corregido
+
+- La telemetría de la intranet acepta los eventos de la galería social, las fichas de proyecto, la hoja de ruta a pantalla completa y la navegación rápida (`galeria_orden`, `galeria_reaccion`, `galeria_comentario`, `galeria_subir`, `galeria_editar`, `galeria_borrar`, `proyecto_detalle`, `proyectos_plegar`, `roadmap_pantalla`, `seccion_ir`, `carpeta_abrir`, `album_abrir`, `album_crear`). Un nombre desconocido rechazaba el lote completo, así que esos lotes se perdían
+
+## [2.132.0] - 2026-10-02
+
+### Agregado
+
+- **Documentación de pipelines del SIEEJ** (frente 18). Schema nuevo `sieej_documentacion` (migración `sdoc0001`) con pipelines, mediciones, README y sincronizaciones. El contenido de cada página es un borrador y un publicado con secciones que se crean, ordenan, ocultan y quitan. Las secciones del README se marcan editadas cuando difieren del README vigente y la sincronización ya no las toca
+- Admin en **SIEEJ → Documentación de pipelines**: lista con estado, borrador pendiente, README cambiado y visitas de 30 días; editor por página con arrastre, editor por tipo de sección, publicar, descartar, restablecer desde el README y presencia. Historial de sincronizaciones
+- Permisos atómicos `mariachi.sieej_documentacion.view`, `.update` y `.publish`, y roles «SIEEJ documentacion - edicion» y «- publicacion». Un usuario solo con documentación ve el grupo SIEEJ sin formularios, grupos ni catálogos
+- API pública `/api/public/sieej-documentacion`: `version`, `pipelines`, `pipelines/{clave}` (Redis por token), `salud`; y con la clave del sincronizador (`SIEEJ_DOCUMENTACION_SYNC_SHA256`), `PUT /sync` y `POST /eventos/lote` para su telemetría
+
+### Cambiado
+
+- Respaldo y restore exigen también el schema `sieej_documentacion`
+
+## [2.131.0] - 2026-10-01
+
+### Agregado
+
+- **Directorio de la intranet desde vine** (`GET /api/public/intranet/directorio`, con la clave de la intranet): las personas activas de `vine.personas` con su ficha (`personas_ficha` manda sobre el biométrico), sin las bajas (`ES_BAJA`), con nombre, puesto, área, correo, extensión y foto (la de la ficha o el avatar de mariachi con el mismo correo). Los nombres en mayúsculas salen en tipo título
+- **Descripción en la galería de la intranet** y columna «Subió» con el nombre de quien publicó cada imagen. Requiere intranet con la migración `c5e9a3f7b2d4`
+
+### Cambiado
+
+- El proxy de la intranet manda `X-Actor-Nombre` y `X-Actor-Avatar` (codificados) junto a `X-Actor-Sub`, para que la intranet registre quién sube cada imagen
+- `/intranet/archivos/{carpeta}/{ruta}` acepta la subcarpeta de 16 hexadecimales con la que la intranet separa las imágenes de cada autor
+
+## [2.130.0] - 2026-10-01
+
+### Agregado
+
+- **Intranet → Personas**: quienes ya entraron a la intranet con minerva, con el interruptor «Mostrar su cursor a los demás» para ocultar los cursores en vivo de alguien que lo pida. Ver con `mariachi.intranet.view`, cambiar con `.manage` y CSRF. Proxy `GET /intranet/personas` y `PUT /intranet/personas/{id}/presencia`, fuera del dict genérico de recursos. Requiere intranet con la migración `b3d7f1a9c2e5`
+
+### Cambiado
+
+- **`make restore-llaves` ya solo agrega las llaves que falten** (`ON CONFLICT DO NOTHING`); nunca sobrescribe. La versión de 2.125.0 actualizaba las que coincidían y podía revivir una llave revocada o deshacer una rotación
+- Carrusel de la intranet: al editar, los campos que se dejan vacíos (descripción, color de la franja, enlace y texto del botón) se mandan en `vaciar` y se borran; sustituye a `sin_enlace`
+- Los respaldos de llaves y de telemetría se vuelcan directo a archivo (`.parcial`, validado con `gzip -t`) en lugar de pasar por una variable de bash
+
+### Corregido
+
+- Errores HTTP del monitor de huachicol (3xx, 401, 403…) salen como 502 y ya no se confunden con un 401 de la sesión o de la clave de la intranet
+- La ingesta de telemetría de la intranet responde 500 con registro en el log si falla la base, como la de mapalab
+- El upsert de sesiones de telemetría ya no mezcla contadores entre apps con el mismo `session_id`
+- Un `ts` de evento a más de un día de la hora del servidor se recorta a la hora actual
+- El proxy de archivos de la intranet solo acepta extensiones de imagen y de documento
+- El downgrade de `m3lnt0001` solo borra los tokens neutros que sigan con el valor sembrado
+
+## [2.129.0] - 2026-09-30
+
+### Agregado
+
+- **Enlace y texto del botón en los avisos del carrusel de la intranet** (Intranet → Carrusel), para el carrusel con la composición de los banners del portal. Dejar el enlace vacío al editar lo borra (`sin_enlace`). Requiere intranet con la migración `a9c4e2f7b1d8`
+
+### Cambiado
+
+- En el formulario del carrusel, «Imagen» pasa a «Foto de quien publica», «Imagen de fondo» a «Imagen del aviso» (va a la derecha del texto) y «Color de fondo» a «Color de la franja»
+
+## [2.128.0] - 2026-09-30
+
+### Agregado
+
+- Eventos de telemetría de la intranet `buscar`, `favorito`, `acceso_abrir` y `mapa_capa` (buscador global, extensiones favoritas, accesos rápidos y capas del mapa). **Se despliega antes que la intranet**: un evento desconocido hace que mariachi rechace el lote entero con 422
+
+## [2.127.1] - 2026-09-30
+
+### Corregido
+
+- **Las miniaturas de los mapas de más de 200 MP ya se generan.** Cuatro mapas del catálogo del portal, de 221 a 606 MP, seguían dando 502. El límite de apertura sube a 1 000 MP: los JPEG se decodifican con `draft()` a 1/8 de escala —el de 606 MP tarda 1.3 s y usa 91 MB— y los demás formatos conservan su tope de 128 MP antes de decodificar.
+
+## [2.127.0] - 2026-09-30
+
+### Agregado
+
+- **Días inhábiles para la intranet** (`GET /api/public/intranet/inhabiles?anio=`): con la clave de intranet, la lista del año con su motivo. Sale de la misma fuente que usan las asistencias de vine, así que no hay dos calendarios
+- `festivos_con_motivo(desde, hasta)` en `services/vine_perfiles.py`; `festivos()` sigue devolviendo solo fechas
+
+### Cambiado
+
+- `FESTIVOS_INSTITUTO` pasa a diccionario fecha → motivo y `FESTIVOS_ANUALES` lleva el motivo como tercer elemento
+
+## [2.126.1] - 2026-09-30
+
+### Corregido
+
+- **Las miniaturas de imágenes de más de 128 MP ya se generan.** Pillow abortaba con `DecompressionBombError` y el endpoint `/acervo/thumb/...` respondía 502; las 125 cartas municipales de 2021 (153 MP) nunca tenían miniatura y el portal caía en el original de 8-15 MB. Los JPEG se decodifican ahora con `draft()` a la escala del ancho pedido, y el límite de apertura sube a 200 MP; los demás formatos conservan el tope de 128 MP.
 - La generación de miniaturas de JPEG grandes consume una fracción de la memoria: una imagen de 82 MP pasa de 659 MB a 53 MB por petición.
 
+## [2.126.0] - 2026-09-30
+
+### Agregado
+
+- **Estado de servicios para la intranet** (`GET /api/public/intranet/estado`): con la clave de intranet (`INTRANET_CLIENTE_SHA256`), devuelve el estado del monitor de huachicol reducido a `slug`, `status`, `latency_ms` y `last_checked`, sin URLs ni detalles internos. El monitor dejó de publicar el 8090 en huachicol 2.x y su único consumidor sigue siendo mariachi: la intranet ya no lo consulta directo
+
+### Cambiado
+
+- El proxy al monitor sale de `routes/sistema.py` a `services/huachicol_monitor.py`, compartido por el panel de sistema y la lectura de la intranet
+
+## [2.125.0] - 2026-09-30
+
+### Agregado
+
+- **Respaldo de llaves** (`make backup-llaves` / `make restore-llaves`): guarda en `backups/llaves/` las llaves de MapaLab, sus embebidos y las apps de Colibrí (`mapalab_api_keys`, `mapalab_api_keys_embeds`, `source_apps`). El restore **fusiona**: agrega las que falten y actualiza las que coincidan por `key_prefix`, `slug` y `(llave, share_id)`, sin tocar las demás. Así las llaves que solo existen en el espejo —la del portal, las de la intranet— sobreviven a cada restore de producción sin volver a pedirlas. Los ids se reasignan y los usuarios creadores que ya no existan quedan en nulo. Archivos con permisos `600`: llevan hashes y webhooks
+- **Respaldo de la telemetría de intranet** (`make backup-telemetria-intranet` / `make restore-telemetria-intranet`): las filas `app = 'intranet'` de todas las tablas de `huachicol` que tienen `app`, eventos y rollups incluidos. El restore solo agrega lo que falte; correrlo dos veces no duplica. Sin filas no se guarda, para no rotar respaldos buenos
+- Los dos entran a `make backups`, al selector de `make restores` y al cron (03:10 y 03:20)
+
+## [2.124.0] - 2026-09-30
+
+### Agregado
+
+- **Telemetría de la intranet en huachicol**: `POST /api/public/intranet/events/batch` guarda los eventos con `app = 'intranet'` y `source = 'pagina'` en las mismas tablas y rollups que mapalab (`huachicol.events`, `huachicol.sessions`), sin tablas nuevas. Su lista de eventos es propia (`INTRANET_EVENT_NAMES`): un evento de mapalab por esta vía responde 422. Exige la clave de intranet
+- `ingest_batch` recibe `app`; mapalab sigue con `mapalab` por omisión
+
+### Cambiado
+
+- `ROADMAP_API_KEY_SHA256` pasa a **`INTRANET_CLIENTE_SHA256`**: la misma clave de intranet autoriza leer el roadmap y mandar telemetría (`app/api/intranet_cliente.py`)
+
+## [2.123.0] - 2026-09-30
+
+### Agregado
+
+- **`GET /api/public/roadmap`, solo lectura**: hitos, ciclos y procesos del roadmap para la intranet. Exige `X-API-Key`, que se compara contra la huella `ROADMAP_API_KEY_SHA256`; vacía, responde 401 a todo. No existe escritura por esta vía
+- Pantalla Sitios monitoreados del proyecto Intranet: descripción y logo de cada sitio, que la intranet usa como su página de Proyectos
+
+## [2.122.0] - 2026-09-30
+
+### Agregado
+
+- **Pantalla Herramientas en el proyecto Intranet** (menú Local): catálogo de los servicios de código abierto autoalojados que la intranet muestra como tarjetas. Nombre, descripción, URL, icono, orden y si es visible
+
+## [2.121.0] - 2026-09-30
+
+Trae la migración `m3lnt0001`: cuatro tokens de color para la marca `iieg`.
+
+### Agregado
+
+- **MEL, marca `iieg`: `color.muted` (`#6E7477`), `color.surface` (`#F9FBFF`), `color.border` (`#EAEFFA`) y `color.border-strong` (`#8894AE`).** La norma los pedía como colores base y no existían; se tomaron de lo que mapalab ya usa escrito a mano. `muted` da 4.74:1 sobre blanco; `border` es decorativo y `border-strong` cumple el 3:1 de los controles. La marca `jalisco` sigue sin ellos
+
+## [2.120.0] - 2026-09-30
+
+Módulo **Intranet** en el menú Local: el contenido de la intranet se administra desde el CMS.
+
+### Agregado
+
+- **Proyecto Intranet en el menú Local**, con cinco pantallas: Carrusel (con la cola de propuestas de los empleados, que se publican o se rechazan), Galería, Documentos, Pie de página y Sitios monitoreados con sus categorías. Misma tabla y mismo formulario en las cinco (`features/intranet/components/PaginaRecurso`); cada una solo declara columnas y campos
+- `api/routes/intranet.py`: mariachi no guarda nada, reenvía a la API de intranet con `X-API-Key` (la clave de servicio, `INTRANET_API_KEY`) y `X-Actor-Sub` (el `sub` de minerva de quien edita, para su auditoría). El cuerpo y el tipo de contenido viajan intactos, así que las subidas de archivo las sigue validando intranet
+- `GET /intranet/archivos/{carpeta}/{nombre}` sirve las imágenes al panel; solo acepta los nombres que genera intranet
+- Permisos `mariachi.intranet.view` y `mariachi.intranet.manage`, y roles atómicos `Intranet - consulta` e `Intranet - administracion`
+- `INTRANET_ENABLED`, `INTRANET_API_URL`, `INTRANET_API_KEY` e `INTRANET_TIMEOUT`. Apagado, el router no se registra y las pantallas responden 404
+
+### Cambiado
+
+- Un 401 o 403 de intranet llega al panel como 502: es la clave de servicio la que falló, no la sesión de quien edita, y un 401 habría mandado al usuario al login
+
+## [2.119.0] - 2026-09-29
+
+Trae la migración `pubc0001`: fusiona borradores y crea `publicaciones_capas`.
+
+### Agregado: deshacer la última publicación de una capa
+
+Tarjetita, metadatos y estadísticas se editaban en el espejo y se copiaban a producción como JSON,
+porque publicar era irreversible. Ahora cada publicación guarda **cómo estaba antes** cada campo que
+cambió, y en el encabezado del editor aparece la última —qué cambió, quién y cuándo— con un botón
+**Deshacer** que muestra lo que va a volver antes de aplicarlo. En estadísticas, deshacer también
+recalcula los valores.
+
+Se registra en los tres caminos de publicación: `PUT /layers/{id}`, `PUT /layer-metadata/{clave}` y
+`PUT /layer-metadata/{clave}/stats` —por donde publica administración— y al aprobar un borrador en
+revisión. Hasta ahora el historial de capas no guardaba la tarjetita ni el de estadísticas existía.
+
+Sólo se deshace **la última** publicación de cada recurso, y sólo si sus campos no cambiaron por otra
+vía —el modo tabla, por ejemplo—: deshacer una anterior pisaría en silencio lo que vino después.
+
+### Cambiado: los borradores de capa son uno por recurso y se editan en conjunto
+
+Cada persona tenía su propio borrador de la misma capa, invisible para las demás, y al aprobarse
+ganaba el último. Para `layer`, `layer_metadata` y `layer_stats` el borrador ahora es **uno por
+recurso**: quien abre la capa ve lo que llevan los demás y lo continúa.
+
+- **Se combina campo por campo** en vez de reemplazar el borrador entero. Cada campo recuerda quién
+  lo cambió, y la hoja de revisión lo muestra.
+- **Choques:** si dos personas guardan el mismo campo, la segunda recibe «Ana cambió label hace un
+  momento» en vez de pisarla.
+- **Presencia:** el encabezado avisa quién más está en la capa.
+- Los borradores del inicio, eventos, páginas y simbología siguen siendo por persona.
+
+La migración fusiona los borradores activos que ya estuvieran duplicados: gana el valor más reciente
+de cada campo y se conservan los campos de todas las personas.
+
+### Corregido: publicar algunos cambios ya no tira los demás
+
+Al publicar una selección, el editor descartaba el borrador **entero**, así que los cambios no
+seleccionados se perdían. Ahora sólo salen del borrador los campos que se publicaron.
+
+## [2.118.0] - 2026-09-29
+
+### Cambiado: Frigate procesa 15 fps por cámara y la vista individual los muestra
+
+El generador no fijaba `detect.fps`, así que Frigate usaba su valor por omisión de 5: es lo que
+reportaba la etiqueta de cada cámara. Ahora lo fija el ajuste `FRAMES_DETECT_FPS`, 15 por omisión, y
+toma efecto al aplicar la configuración. La vista de una sola cámara pide una foto cada 66 ms en vez
+de cada 2 s; sigue sin transmitir, y si la red no da, el ritmo baja solo. El mosaico se queda en una
+foto cada 2 s: a 15 por segundo, con muchas cámaras serían cientos de peticiones por segundo.
+
+### Corregido: el botón Aplicar desaparecía cuando sí había algo que aplicar
+
+«Sincronizado» solo compara los nombres de las cámaras, y el botón se escondía mientras coincidieran.
+Un cambio de fps, de URL o de detección no lo mostraba. Ahora aparece siempre para quien administra,
+resaltado cuando los nombres difieren, y el tooltip de «al día» aclara qué se compara.
+
+---
+
+## [2.117.0] - 2026-09-29
+
+### Cambiado
+
+- **vine, pestaña Asistencia:** «Su día típico» se reemplaza por un **calendario de puntualidad**:
+  un cuadro por día hábil en columnas por semana, coloreado según cómo llegó —a tiempo, hasta 15
+  min, retardo, más de una hora— y marcado si no vino, fue inhábil, tuvo incidencia o solo pasó de
+  visita. Debajo, los días que vino, los retardos y el día de la semana con más retardos. La
+  asistencia devuelve `calendario`, un registro ligero por día hábil de todo el periodo.
+
+### Eliminado
+
+- `ResumenAsistencia.jsx`.
+
+## [2.116.0] - 2026-09-29
+
+### Agregado: cada cámara de Frames se abre en grande
+
+Las tarjetas del mosaico llevan un botón para ver esa cámara en pantalla completa, en
+`/frames/vivo/pantalla/<nombre>`, en calidad alta y con sus fps en la cabecera. Desde ahí se pasa a
+la anterior o la siguiente con las flechas del teclado o con los botones, dando la vuelta al llegar
+al final; atrás regresa al mosaico. La foto salió a `FotoCamara.jsx` para servir a las dos vistas.
+
+### Corregido: cada tarjeta pedía la página completa al montarse
+
+La foto arrancaba con `src=""`, y el navegador interpreta una cadena vacía como la URL de la página
+actual: una petición de más por tarjeta, cada vez que se abría el mosaico. Ahora no se pinta `src`
+hasta tener la URL de la foto.
+
+---
+
+## [2.115.1] - 2026-09-29
+
+### Agregado
+
+- **vine, leyendas de la jornada:** cada elemento lleva un tooltip con lo que significa y sus causas
+  comunes. Por ejemplo, «Sin marca» y «Al menos» suelen ser que alguien le abrió, pasó detrás de
+  otra persona, usó la puerta accesible —sin lector conectado— o la tarjeta no leyó.
+
+## [2.115.0] - 2026-09-29
+
+### Cambiado
+
+- **vine, pestaña Asistencia:** el resumen pasa a «Su día típico»: una regla de hora con las líneas
+  de su horario y la barra de su día mediano —rayado rojo lo que no cumple, naranja si llega antes,
+  violeta si se queda después—, un bigote sobre cada hora que abarca la mitad de sus días y una
+  frase con esos rangos, que dicen qué tan constante es. Debajo, asistencia con su barra, jornada,
+  retardos, tiempo afuera y jornadas sin cerrar. El resumen de asistencia devuelve los cuartiles
+  de entrada y salida (`entrada_p25`, `entrada_p75`, `salida_p25`, `salida_p75`).
+
+## [2.114.1] - 2026-09-29
+
+### Corregido: el campo de IP de Frames sugería una dirección de la red interna
+
+El placeholder era `10.0.0.10`, del rango real del bridge interno del espejo. Pasa a `192.0.2.10`,
+del rango reservado para documentación (RFC 5737), que nunca corresponde a un equipo real.
+
+---
+
+## [2.114.0] - 2026-09-29
+
+### Agregado
+
+- `ALLOWED_EVENT_NAMES` acepta `minimapa` y las Estadísticas de MapaLab lo suman a «Herramientas» por `action` (encender, apagar, abrir, ir), con su fila en Documentación → Telemetría. mapalab 2.2.0 lo emite; antes llegaba solo como `map_interaction` y no se veía.
+
+## [2.113.1] - 2026-09-29
+
+### Agregado
+
+- **vine, directorio:** el engrane recupera los filtros por marca (huella, tarjeta,
+  superusuario) y por horario, con el conteo de cada opción, junto a «Mostrar bajas». Un punto en el
+  engrane avisa que hay algo activo y «Quitar todo» lo limpia (`ConfiguracionPersonal.jsx`).
+
+## [2.113.0] - 2026-09-29
+
+### Agregado
+
+- **vine, Resumen del periodo:** las cuatro tarjetas de la pestaña Asistencia se vuelven una sola
+  con seis datos comparados contra el horario: asistencia con su barra, a qué hora llega y sale
+  respecto a su hora, jornada típica, retardos y tiempo afuera por día con las jornadas sin cerrar.
+- **vine, directorio:** botón de engrane para las configuraciones extra; por ahora, mostrar bajas.
+
+### Cambiado
+
+- **vine, pestaña Asistencia:** «Cómo se repartió cada jornada» va primero y se ajusta al ancho sin
+  desplazamiento lateral. El periodo pasa a la barra de pestañas, solo en Asistencia y con tooltip
+  en vez de etiqueta; en celular va en su propio renglón.
+- **vine, directorio:** la búsqueda, el engrane, Descargar y Captura masiva comparten el renglón del
+  título.
+
+### Eliminado
+
+- El panel de Filtros del directorio (`FiltrosPersonal.jsx`) y sus helpers.
+
+## [2.112.1] - 2026-09-29
+
+### Corregido: editar una cámara de Frames se quedó sin las comodidades del alta
+
+El refactor de 2.112.0 rehizo el alta pero dejó la edición con el campo crudo de la URL, que además
+llega enmascarada desde la API. Ahora la edición muestra la conexión actual enmascarada con un
+botón **Cambiar**, que abre el mismo flujo del alta —IP propia o por el NVR, con «Personalizar»
+para el caso raro—, y **Conservar la conexión actual** para deshacer.
+
+Si se edita sin tocar la conexión, `rtsp_url` ya no se manda. El backend igual se protegía con
+`conservar_credenciales()`, pero es más limpio no enviar un valor enmascarado que confiar en que lo
+detecten del otro lado. El bloque de conexión salió a `ConexionCamara.jsx`: el modal había llegado
+a 299 líneas, a una del límite.
+
+---
+
+## [2.112.0] - 2026-09-29
+
+### Cambiado: Frames se rehízo con la identidad visual
+
+Sin una sola caja de aviso, sin divisores y sin marcos. Los tres `Alert` que había —frames caído,
+cambios sin aplicar y el error de En vivo— son ahora señales con icono y tooltip, alcanzables con
+teclado; el `Descriptions bordered` del estado pasó a tres cifras separadas por espacio, y la tabla
+de fichas a tarjetas con sombra suave. Botones en píldora de 40 px y campos con radio de 8, puestos
+con un `ConfigProvider` por página en vez de estilar botón por botón. Los colores salen de `BRAND`
+y `SEMANTIC`; Garet ya era la fuente global.
+
+### Agregado: el alta de cámaras deja de pedir lo que se puede deducir
+
+El nombre interno se deriva del visible mientras escribes. La URL RTSP se arma sola: eliges **IP
+propia** —el modo por omisión— o **por el NVR**, y con la IP basta; por el NVR el canal compone su
+`/Streaming/Channels/<canal>01`. Usuario y host se recuerdan del alta anterior, que por el grabador
+es una credencial para todas; la contraseña no se guarda. Para los casos raros, **Personalizar**
+abre el campo crudo ya precargado, y se puede volver al modo automático. La retención solo aparece
+si activas grabar, y grabar ahora arranca apagado.
+
+### Corregido: ver una cámara no era poder administrarla
+
+«Nueva cámara», «Editar», «Eliminar» y «Aplicar» se le mostraban a cualquiera con
+`mariachi.frames.view`, que al usarlas se topaba con el 403 del backend —esas cuatro rutas exigen
+`mariachi.frames.manage`—. Ahora la UI pide el mismo permiso que el servidor.
+
+---
+
+## [2.111.3] - 2026-09-29
+
+### Corregido
+
+- **vine:** «Días que vino» y el porcentaje de asistencia del directorio solo cuentan los días
+  hábiles en que vino; los que vino sin obligación —inhábiles, fines de semana, vacaciones— van
+  aparte como «+N sin obligación». Antes una persona podía aparecer con 64 de 63 hábiles.
+
+## [2.111.2] - 2026-09-29
+
+### Cambiado
+
+- **vine, pestaña Asistencia:** las cuatro estadísticas quedan en 2×2 en la mitad del contenedor y
+  «A qué días viene» en la otra, en un solo renglón en escritorio; «Cómo se repartió cada jornada»
+  toma todo el ancho. En celular va una tarjeta por renglón y el reloj se desplaza de lado dentro de
+  su tarjeta en vez de desbordar la página.
+
+## [2.111.1] - 2026-09-29
+
+### Corregido
+
+- **vine:** un día sin obligación de venir —fin de semana, inhábil o vacaciones— ya no cuenta
+  llegada tarde ni retardo. Quien vino el Día del Servidor Público aparecía con horas en rojo.
+- **Día del Servidor Público** (`FESTIVOS_ANUALES`): el 28 de septiembre de cada año, recorrido al
+  viernes si cae en sábado y al lunes si cae en domingo, como se descansó en 2024 y 2025.
+
+### Cambiado
+
+- El tiempo que no llegó a su hora pierde intensidad; «Se quedó después» pasa de óxido a violeta,
+  que no se lee como falta.
+- Las secciones de una barra se unen rectas: solo se redondean los extremos que no tocan otra.
+- Las visitas cortas vuelven a dibujarse, con su propio estilo delineado y en la leyenda.
+- Los tooltips de las barras llevan fecha, entrada y salida, un renglón por sección con su color y
+  las notas aparte.
+
+## [2.111.0] - 2026-09-29
+
+### Agregado
+
+- **vine, detalle de un día:** al hacer clic en una columna del reloj, la jornada se despliega
+  acostada dentro de la misma tarjeta, con cada sección rotulada (hora de inicio y fin, duración),
+  las líneas del horario y las marcas reales del biométrico con su hora y su lector. Con ◀ ▶ se
+  recorren los días. En el directorio, el clic en una mini barra abre la ficha en ese día.
+  Endpoint `GET /vine/personal/{pin}/dia/{dia}`, que calcula solo esa persona y ese día.
+- `importar_plantilla_vine.py --remuneraciones`: cruza puesto y dirección contra la plantilla de
+  remuneraciones para saber si la plaza es de base o de confianza, y asigna vínculo y horario
+  (base 8 a 4, confianza 9 a 5) donde estén vacíos.
+
+## [2.110.1] - 2026-09-29
+
+### Corregido
+
+- **vine, pestaña Asistencia:** las visitas cortas ya no se dibujan como una rayita que parece
+  asistencia: salen como ▫ en la fila de símbolos, con su detalle en el tooltip. Tampoco se dibuja
+  el «al menos» de menos de 30 minutos.
+- Quien no tiene horario —su entrada habitual no cae en 8 a 4 ni en 9 a 5— lo dice junto al título
+  de las dos gráficas, con un tooltip que manda a asignarlo en la Ficha. Antes simplemente no
+  aparecían el rojo ni las líneas del horario, sin explicación.
+
+## [2.110.0] - 2026-09-29
+
+### Agregado
+
+- `api/scripts/importar_plantilla_vine.py`: rellena la ficha de vine con el xlsx de plantilla y
+  directorio telefónico de RH. Cruza por nombre tolerando errores de dedo y nombres incompletos
+  del biométrico, prefiere a quien no está de baja y solo llena campos vacíos: extensión, puesto,
+  fecha de ingreso, cumpleaños (del CURP) y nombre o apellidos completos. RFC, CURP, edad y sexo
+  no se guardan. Sin `--aplicar` solo reporta; es idempotente.
+
+## [2.109.0] - 2026-09-29
+
+### Agregado
+
+- **Frames:** el módulo aparece en el sider marcado como **beta**, con el mismo distintivo que ya
+  usan mapalab y colibrí. El catálogo de cámaras se captura a mano y todavía no cubre los 23
+  canales del NVR, así que conviene que quien entre sepa en qué estado está.
+
+## [2.108.0] - 2026-09-29
+
+### Agregado
+
+- **vine, Estadísticas → Por personal:** «Quién acumula más horas» y «Los dos horarios» llevan una
+  barra partida en dentro, antes, después, afuera y sin marca, con el tiempo que no llegó a su hora
+  rayado en rojo al inicio. En el ranking es el total del periodo; en los horarios, una jornada
+  promedio. Sale de `vine_jornadas.reparto`, calculado en lote.
+
+## [2.107.1] - 2026-09-29
+
+### Cambiado
+
+- **vine, directorio:** «Últimos 10 días hábiles» pasa a ser la segunda columna, más ancha y con
+  barras más grandes; su encabezado explica cómo leerla.
+- El tiempo que no llegó a su hora se dibuja rayado en rojo con borde, en la ficha y en el
+  directorio, en vez de un relleno liso.
+
+### Eliminado
+
+- La columna «Tarde prom.» del directorio y su cálculo en el backend.
+
+## [2.107.0] - 2026-09-29
+
+### Agregado
+
+- **vine, directorio:** columna «Últimos 10 hábiles» con un mini reloj por persona y columna
+  «Tarde prom.» ordenable, calculadas en lote (`vine_jornadas.recientes`).
+
+### Cambiado
+
+- **vine, pestaña Asistencia:** la jornada se dibuja en el reloj (`ChartReloj`) y no como duraciones
+  apiladas: cada tramo ocupa su hora real, las líneas punteadas son el horario de la persona y el
+  rojo va siempre de su hora de entrada a su llegada. El backend devuelve los tramos con su hora
+  (`tramos`), juntando los contiguos del mismo tipo.
+- «A qué días viene» pone lo temprano arriba, como el reloj, marca el eje cada dos horas y deja las
+  horas oficiales en el margen.
+- Las piezas de la jornada (colores, tooltip, glifos, leyenda) pasan a `components/jornada/`.
+
+## [2.106.0] - 2026-09-29
+
+### Agregado
+
+- **vine, tiempo que no llegó:** cada día marca en rojo discreto, debajo de la línea base, los
+  minutos entre la hora oficial de entrada y la llegada real, aunque no pasen la tolerancia. El
+  retardo (●) sigue siendo pasar de 15 minutos. La línea semanal suma el promedio de minutos tarde.
+- **vine, «al menos»:** una jornada que no cerró muestra una barra rayada desde la entrada hasta la
+  última marca conocida, sin inventar la salida.
+- **vine, pestaña General:** «Cómo se reparten las jornadas del instituto», la misma barra partida
+  de la ficha con el promedio por persona de cada día hábil de los últimos 60 días
+  (`vine_jornadas.py`, calculado en lote).
+
+### Cambiado
+
+- **vine, pestaña General:** «Personas por día de la semana» pasa a líneas con entrada y salida
+  mediana, la franja de jornada y los dos horarios oficiales; «Asistencias por mes» pasa a línea
+  con ✕ en los meses con inhábiles y asistencias por día hábil en el tooltip; «A qué hora entra y
+  sale la gente» marca las 8, 9, 16 y 17.
+
+## [2.105.1] - 2026-09-29
+
+### Corregido
+
+- **vine:** una jornada en la que la persona volvió a entrar después de su última salida marcada
+  ya no se cierra en esa salida. Contaba un día completo como minutos; ahora queda como jornada
+  que no cerró, en la pestaña y en todas las estadísticas (`JORNADAS`). Eran 77 días de 2,937 en
+  90 días.
+- Las visitas de menos de una hora se marcan como visita: no llevan retardo y salen de las
+  medianas por día de la semana. El día en curso ya no se toma por visita.
+- La línea del horario oficial en «A qué días viene» se perdía al escalar el SVG; ahora tiene grosor
+  fijo y etiqueta. Los días inhábiles llevan una línea vertical desde su ✕.
+
+## [2.105.0] - 2026-09-29
+
+### Agregado
+
+- **vine, pestaña Asistencia:** la jornada de cada día se parte contra el horario de la persona en
+  dentro del horario, llegó antes, se quedó después, afuera (de una salida a su regreso) y sin
+  marca (dos entradas o dos salidas seguidas, que no se pueden atribuir). Marca retardos, jornadas
+  que no cerraron, incidencias e inhábiles, y no imputa la salida faltante. Con horario «Otro»
+  sólo separa dentro, afuera y sin marca.
+
+### Cambiado
+
+- **vine, «A qué días viene»** pasa de barras a líneas: entrada y salida mediana por día de la
+  semana con la jornada típica como franja, el horario oficial de referencia y el porcentaje de
+  asistencia sobre los días hábiles de ese día. El tooltip suma tiempo afuera, retardos y
+  jornadas sin cerrar.
+- La asistencia por persona sale de `vine_perfiles.py` a `vine_asistencia.py`. El horario se toma
+  de la ficha y, si no hay, de la entrada mediana, con las horas del catálogo.
+- En el colapsable del directorio el avatar sólo acompaña a la pestaña Ficha; las demás usan todo
+  el ancho.
+
+## [2.104.0] - 2026-09-29
+
+### Agregado
+
+- `ALLOWED_EVENT_NAMES` acepta los eventos de las herramientas nuevas del visor: `view3d`, `north_reset`,
+  `tabla_open`, `tabla_filter`, `tabla_download`, `stats_open`, `stats_custom_create`, `stats_detach` y
+  `colibri_open`. `view3d` lo emite mapalab desde 1.173.0 y el collector lo rechazaba con 422, llevándose
+  el lote entero.
+- Estadísticas de MapaLab: «Herramientas» suma la vista 3D por `action` (incluidas las del dron) y
+  «Botones» suma norte, tabla de datos, estadísticas, Colibrí y la vista por municipio.
+- Documentación → Telemetría: tarjeta con los eventos de las herramientas del visor.
+- `tests/test_mapalab_events_allowlist.py`: los eventos nuevos se aceptan y un rechazo trae el índice del
+  evento en `loc`, que es lo que el visor usa para reenviar el resto del lote.
+
+### Cambiado
+
+- «Reportaron» cuenta las sesiones que abrieron Colibrí (`colibri_open`); `report_submitted` ya no se emite.
+- El código de la allowlist, los rollups y el tablero entró por error en `1f76911` (barrido de acervo);
+  esta versión lo documenta.
+
+## [2.103.0] - 2026-09-29
+
+### Agregado
+
+- `make conciliar-vine` y `api/scripts/conciliar_vine.py`: comparan todos los ids del biométrico
+  por debajo del último sincronizado contra `vine.eventos` y copian los que falten. El sync
+  incremental (`id > último`) nunca vuelve a leer ese rango, así que una fila insertada con un id
+  viejo quedaba invisible para siempre. Lo que llega por aquí queda marcado en la columna nueva
+  `vine.eventos.tardio` (migración `v1ne0009`), que es la señal que busca una auditoría. `make cron`
+  la instala a las 03:30.
+
+### Cambiado
+
+- `FESTIVOS_INSTITUTO` deja de estar vacía: diez inhábiles de 2026 derivados del biométrico
+  (2, 5 y 6 de enero; 2 y 3 de abril; 5 de mayo; 11, 18, 23 y 26 de junio por el mundial). Salen
+  del denominador de días hábiles.
+
+## [2.102.3] - 2026-09-29
+
+### Agregado
+
+- `make acervo-barrido` y `api/scripts/acervo_barrido.py`: recorren los buckets de acervo (menos
+  `portal`), leen la cabecera de cada objeto por rango y reportan en CSV los que tienen un
+  `Content-Type` activo guardado o un tipo real distinto del guardado o de su extensión. En modo
+  corregir reescriben tipo real y `Content-Disposition: attachment` sin tocar el contenido; cierra
+  lo que la subida anterior a la auditoría dejó guardado (C1).
+
+## [2.102.2] - 2026-09-25
+
+### Corregido: la Documentación ya no dice que MapaLab oculta funciones en producción
+
+Los topics de MapaLab y Telemetría decían que el botón de personalizar y la vista por municipio
+solo salían en dev y beta. Desde MapaLab 1.215.0 salen también en producción, con su badge.
+
+## [2.102.1] - 2026-09-24
+
+### Corregido
+
+- Los stats excluyen el schema `mapalab` aunque un workspace lo declare, como el hotfix 1.126.1 de production.
+
+### Eliminado
+
+- `api/scripts/migrate_mapalab_card.py`: migraba la tabla legado `public.mapalab_card`, que
+  dataengine 1.45.0 retira. Su contenido vive en `mapalab.layer_metadata` desde el bootstrap de v14.
+
+## [2.102.0] - 2026-09-24
+
+Reparación de la auditoría de seguridad del 2026-09-24.
+
+### Corregido
+
+- **XSS almacenado vía Acervo.** El tipo de un archivo subido se deriva de sus primeros bytes
+  (`services/tipo_archivo.py`), no del `Content-Type` del navegador. Los campos `file` de SIEEJ
+  exigen extensión permitida **y** contenido que corresponda; el explorador del Acervo, la subida
+  interna, el avatar, los símbolos y la captura de Colibrí guardan el MIME detectado. HTML, SVG, XML
+  y JS se guardan con `Content-Disposition: attachment`. La subida por partes toma el tipo de la
+  extensión y rechaza con 415 un HTML disfrazado; la sesión de subida queda atada a quien la abrió.
+- **El proxy `/acervo/proxy/...`** responde siempre con `nosniff` y, salvo imagen raster o PDF,
+  con `Content-Security-Policy: default-src 'none'; sandbox` y `Content-Disposition: attachment`.
+- **Permisos finos que no se aplicaban.** El admin de SIEEJ pide `sieej_formularios.create/update/
+  delete` y `sieej_envios.update/export` por acción, no solo `sieej_admin.view`; grupos y catálogos
+  piden `sieej_formularios.update` para escribir. La captura del respondente pide
+  `sieej_envios.create`, y corregir o descartar un envío, `sieej_envios.update` y `.delete`. MEL
+  edita con `mel.update`. El Acervo combina la membresía de editor con `acervo.create/update/delete`.
+- **Frames:** crear, editar, borrar cámaras y aplicar la configuración pide el permiso nuevo
+  `mariachi.frames.manage`. Las respuestas, la vista previa y el modo tabla enmascaran usuario y
+  contraseña de la URL RTSP; editar con la URL enmascarada conserva la credencial guardada. En el
+  modo tabla la URL ya no se edita.
+- **Monitor del sistema:** `/sistema/monitor/*` exige `sistema.manage` y valida el nodo y el slug.
+- **Enlace de cuentas con minerva:** por correo solo se enlaza un usuario sin `minerva_sub`; un sub
+  distinto ya no se sobrescribe y el login vuelve con `auth_error=account_conflict`.
+- **Flujo OIDC:** la cookie `mariachi_oidc_tx` va firmada con HMAC, el origen público se valida
+  contra `CORS_ORIGINS` y el de `MINERVA_POST_LOGIN_URL`/`MINERVA_REDIRECT_URI`, y el `nonce` del
+  `id_token` se valida (firma, `aud`, `iss`).
+- **Estadísticas de capas:** vista previa, guardado, recálculo y publicación solo aceptan schemas de
+  `mapalab.workspaces`, y un fallo de la base ya no devuelve su texto crudo.
+- **Colibrí:** Discord sale con `allowed_mentions` vacío, Slack escapa `<!channel>`, `<!here>` y
+  `@everyone`, los webhooks exigen `https` y el log ya no guarda la URL completa.
+- **IP del cliente:** nginx solo confía en `X-Forwarded-For` de la red del gateway
+  (`NGINX_REAL_IP_FROM`, sin recursión) y la propuesta pública de tarjeta usa el mismo helper que el
+  rate limit, no el primer valor de `X-Forwarded-For`.
+- Los tokens internos se comparan con `hmac.compare_digest`.
+- `/ontoy` y el estado de frames ya no devuelven el texto de la excepción.
+- `DELETE /formularios/mis-envios/{id}` respeta la ventana del formulario, como el resto de las
+  escrituras de envíos.
+- Frontend: la previsualización de acervo ya no muestra HTML, SVG ni XML (solo descarga); el resto
+  va en iframe con sandbox y los PDF desde un blob con tipo forzado.
+- Frontend: los adjuntos de envíos SIEEJ en el admin se descargan en vez de abrirse en otra pestaña.
+- Frontend: la llave del playground del MCP ya no se guarda en localStorage y se borra la que hubiera.
+- Frontend: las llaves en claro de MapaLab ya no se guardan en sessionStorage y se borran las
+  existentes.
+- Frontend: el playground de llaves de MapaLab manda y recibe postMessage solo con el origen del
+  visor.
+- Frontend: el widget de Colibrí se publica sin sourcemaps.
+
+### Agregado
+
+- Permiso `mariachi.frames.manage` y rol «Frames - administracion» en el manifiesto de minerva.
+- El config de Frigate generado define `go2rtc.rtsp` con `FRAMES_RTSP_USERNAME` y
+  `{FRIGATE_RTSP_PASSWORD}`: el restream 8554 pide credencial. Sin el usuario no se genera.
+- `SIEEJ_EDICION_DESHABILITADA`: congela en la API toda escritura de envíos, el equivalente del
+  `VITE_DISABLED_EDITION` que solo existía en el cliente.
+- Redis con `requirepass` desde el secreto `secrets/redis_password`; la URL de conexión se arma sola.
+- nginx repite los encabezados de seguridad en cada `location` que declara `add_header`.
+- La tabla de eventos de la telemetría cuenta datos curiosos, regresos y sesiones reales.
+
+### Cambiado
+
+- El api de producción corre como el usuario `app` (uid 10001), no como root.
+- Frontend: axios 1.20.0 y form-data 4.0.6 en el admin (GHSA-gcfj-64vw-6mp9, GHSA-hmw2-7cc7-3qxx).
+
+## [2.101.0] - 2026-09-24
+
+### Cambiado: una propiedad nueva hereda la capa de su grupo y pide su filtro
+
+Las propiedades de un grupo comparten capa de GeoServer: medido en la base, 22 capas las usan 112
+nodos y **en todos los grupos sus propiedades usan exactamente una**. Aun así el modal pedía elegir
+la capa, y con el filtro «Solo no registradas» encendido por defecto **escondía justo esa**, porque
+ya la usaba la primera propiedad. Crear la segunda propiedad de «Cultivos» parecía imposible.
+
+Ahora, cuando el padre es un grupo, la capa se toma del grupo y sólo se pide lo que distingue a la
+propiedad de sus hermanas: **el filtro CQL**, que antes había que ir a poner en Avanzado › Servicios.
+Mientras se escribe se ve cuántos registros pesca, y un filtro que GeoServer no entiende se marca en
+rojo con su mensaje.
+
+### Cambiado: «registrar» nombraba tres cosas distintas
+
+- **Workspaces:** «registrar» pasa a **«conectar al catálogo»**, y su estado a *conectado / sin
+  conectar*. La página de workspaces pierde sus dos cajas de aviso: los pendientes van en un chip
+  con el detalle en tooltip.
+- **Capas de GeoServer:** fuera el switch «Solo no registradas». Se listan todas y la que ya se usa
+  lleva `en el árbol ×N`: informa en vez de esconder.
+
+### Corregido: el filtro de capas contaba las de nodos borrados
+
+`available_only` armaba la lista de capas usadas sin mirar `deleted_at`, así que borrar un nodo
+sacaba a su capa de la lista por defecto. Hoy no afectaba a ninguna, pero bastaba borrar una.
+
+### Agregado: crear un nodo donde va, y en el orden en que va
+
+- **«+» en cada fila** de tema, categoría y grupo: el nodo nace dentro de esa fila. El «+» de arriba
+  del árbol crea en la raíz, y ahora lo dice. Antes el modal abría **siempre** en la raíz, porque la
+  página le pasaba `selectedKey={null}` al árbol.
+- **Posición entre hermanos** en el propio modal —al principio, después de uno, al final—, en vez de
+  caer siempre al final y tener que arrastrarlo. Se aplica con `PATCH /layers/reorder`.
+
+### Agregado: `GET /geoserver/workspaces/{alias}/layers/{capa}/count` y `with_usage`
+
+El conteo admite `cql` y responde 400 con el texto de GeoServer si el filtro no es válido.
+`GET /geoserver/workspaces?with_usage=true` agrega `layerUsage` por workspace.
+
+## [2.100.0] - 2026-09-24
+
+### Cambiado: elegir dónde vive un nodo nuevo
+
+La línea de arriba del modal ya no dice sólo el nombre del padre: dice **la ruta completa**, y
+cuando no hay nada seleccionado dice «la raíz del árbol» en vez de quedarse callada.
+
+Al tocar «Cambiar» aparece un buscador en lugar del árbol desplegable: se escribe parte del nombre
+y cada resultado se lee con su ruta —«Medio ambiente › Hidrología › Presas»— y su tipo a la derecha.
+Con más de doscientos nodos era fácil elegir el «Presas» equivocado. **La raíz es una opción de la
+lista**, no la ausencia de valor.
+
+Sólo se ofrecen los nodos que de verdad pueden ser padres —tema, categoría y grupo—, así que ya no
+se puede elegir una capa o una etiqueta y toparse con el error después.
+
+## [2.99.0] - 2026-09-24
+
+### Cambiado: registrar un workspace ya no se hace a ciegas
+
+Los tres campos del modal se explicaban con letra chica debajo de cada uno; ahora la explicación
+vive en el «?» de su etiqueta. **El schema de dataengine dejó de escribirse a mano**: sale de la
+lista real de schemas, y si se teclea uno que no existe la UI lo marca. Era el campo más peligroso
+del formulario, porque de él sale la llave con la que se busca la periodicidad de cada capa: si no
+corresponde, el selector de fechas del visor aparece vacío sin decir por qué.
+
+El **alias se valida contra los ya registrados** mientras se escribe, en vez de esperar al 409 del
+servidor, y el botón se bloquea mientras choque. Al elegir el workspace se ve cuántas capas entran
+al catálogo, y abajo quedan a la vista las dos llaves que se van a usar: `workspace:capa` para
+metadatos y numeralia, `schema:tabla` para la periodicidad.
+
+### Agregado: `GET /geoserver/db-schemas`
+
+Lista los schemas de dataengine, sin los del sistema. Lo consume el selector del modal.
+
+## [2.98.0] - 2026-09-24
+
+### Cambiado: el alta de nodo del árbol de capas se rehízo
+
+El modal preguntaba el tipo de nodo con un `Select` de cinco palabras y explicaba el resto con tres
+cajas de aviso. Ahora el tipo son cinco tarjetas con ícono, y bajo un grupo sólo queda habilitada
+**Capa**, que es lo único que cabe ahí; el tooltip de las demás dice por qué. Los tres `Alert`
+—tipo de nodo, «será Propiedad» y workspaces pendientes— pasaron a íconos de información con
+tooltip y a una línea con chip.
+
+El orden sigue a la decisión: dónde vive el nodo —ya resuelto por el árbol, arriba y editable—,
+qué es, de qué capa de GeoServer sale y, al final, cómo se llama. El nombre se propone desde el
+nombre de la capa. **ID y slug dejan de ser dos campos que estorban**: se muestran calculados en una
+línea, con «Editar» para los casos en que no sirve el automático.
+
+Al elegir la capa aparecen sus chips —workspace, nombre y geometría—, que son la confirmación de
+que es la correcta antes de crearla.
+
+### Agregado: la geometría se resuelve al registrar, no después
+
+`POST /layers` pregunta la geometría a GeoServer y la guarda en `geometry_type` si el alta no la
+trae. Antes quedaba en blanco hasta que corriera `run_backfill_geometry_type.py` de dataengine, y
+`run_refresh_hexbin.py` deja fuera del hexbin a las capas sin clasificar. El cliente de GeoServer
+estrena `geometry_type()`, que distingue punto, línea, polígono y ráster —`list_fields` aplana toda
+geometría a `geometry` y no servía—, y el CMS lo consulta desde
+`GET /geoserver/workspaces/{alias}/layers/{capa}/geometry`.
+
+## [2.97.0] - 2026-09-23
+
+Acompaña a mapalab 1.186.0 (editor de tarjetas del catálogo) y se despliega antes que él.
+
+### Cambiado: las propuestas de tarjeta se fusionan sobre la vigente
+
+Al aprobar, la propuesta ciudadana ya no reemplaza la tarjeta completa: toma de ella título, Cifras,
+Detalles y Texto, y conserva todo lo demás de la tarjeta **efectiva** (la propia de la capa o la
+heredada de `mapalab.layers`): etiquetas de color, íconos con texto, columnas de cifras,
+transformación del título. Los bloques que el ciudadano no edita conservan su posición en
+`blockOrder`. La lógica vive en `services/mapalab_infobox_fusion.py`, pura y con tests; mapalab tiene
+el espejo en `helpers/tarjetaFusion.js`. El listado del panel compara contra la tarjeta efectiva.
+
+### Agregado: reglas de seguridad de la propuesta pública
+
+- **Sin links nuevos.** Una propuesta solo puede traer los `href` que la tarjeta ya tenía; se revisa
+  al crearla y otra vez al aprobarla.
+- **Sin datos de contacto en el texto libre.** Título fijo, etiquetas, párrafos, afijos, separadores
+  y unidades rechazan URLs, dominios comunes, correos y números de diez dígitos o más.
+- **Párrafos de texto fijo** en los bloques de Texto, de hasta 300 caracteres. Antes todo párrafo
+  exigía un campo y 80 caracteres, así que las 57 tarjetas que ya los tenían no se podían
+  re-proponer.
+- **Título fijo** (`headerField` que no es columna) ya no se valida como campo: respondía 400 en
+  143 de 208 tarjetas.
+- `raw` y `split` en filas y `raw` en cifras pasan el esquema, para no perder el formato vigente.
+
+### Agregado: aviso a Discord de cada propuesta nueva
+
+Cada propuesta creada se avisa al webhook `DISCORD_WEBHOOK_MAPALAB`, con la capa y el comentario.
+Antes se quedaban en `/mapalab/infobox-propuestas` hasta que alguien entrara a verlas.
+
+### Agregado: «Texto escrito a mano» en la revisión
+
+`ConfigDiff` marca en naranja el texto libre de la propuesta que la tarjeta vigente no tenía, para que
+quien aprueba vea justo lo que el ciudadano escribió.
+
+### Corregido: la revisión truena con un título combinado
+
+`ConfigDiff` pintaba `headerField` directo y un título de campos combinados (objeto) tumbaba la
+página. Ahora muestra los campos de la combinación, igual que en las filas.
+
+## [2.96.0] - 2026-09-21
+
+### Cambiado: el widget de Colibrí copia los componentes de SIEEJ
+
+El panel, el formulario y los disparadores dejan su tema propio y usan los de SIEEJ: campo gris con
+anillo morado al enfocar, etiqueta con el tooltip de la «?» naranja, chips de tipo, carga de archivo
+punteada y botones en píldora. Los errores salen junto a cada campo; enviado, fallo y límite
+alcanzado siguen el patrón del modal de SIEEJ. En móvil el panel sale como hoja inferior. El foco se
+ve en todos los controles y el panel lo atrapa mientras está abierto. El widget pasa a `1.1.0`.
+
+### Agregado: `privacy-url` en el widget
+
+Si el huésped la pasa (atributo o `openPanel({ privacyUrl })`), el formulario pide aceptar el aviso
+de privacidad antes de enviar.
+
+### Eliminado: el modo oscuro del widget
+
+El atributo `theme` ya no hace nada: el ecosistema no tiene modo oscuro.
+
+### Corregido: el endpoint público de reportes exige llave
+
+`POST /api/public/reportes` sin `X-Colibri-Key` responde 401; antes creaba el reporte con un
+`source_app` libre y sin validar origen. Las llaves `ck_priv_` que llegan desde un navegador
+responden 403, y `/sistema/colibri-config` solo entrega llaves `ck_pub_`.
+
+### Corregido: el límite por IP usa la IP real
+
+Los límites por IP de la API leen `X-Real-IP`, que `mariachi-nginx` ya resuelve con `real_ip`. Antes
+tomaban el primer valor de `X-Forwarded-For`, que manda el propio cliente.
+
+### Corregido: agrupación, fan-out y capturas de Colibrí
+
+La agrupación por fingerprint usa `INSERT ... ON CONFLICT` y ya no pierde reportes en concurrencia.
+Discord, Slack y los webhooks salen en segundo plano, así que el 201 ya no los espera, y dejan de
+recibir el correo del reportante. La captura se lee hasta 2 MB y su tipo se detecta por los bytes.
+Editar y borrar reportes pide `mariachi.colibri_reportes.update`, no solo el permiso de ver.
+
+## [2.95.0] - 2026-09-21
+
+### Agregado: el acceso conserva de dónde vino y con qué marca
+
+El acceso acepta un `return_to` y devuelve al usuario a esa ruta al terminar, en vez de dejarlo
+siempre en el inicio del panel. Es lo que permite que SIEEJ mande a su gente al SSO y los recupere
+en la página donde estaban.
+
+El mismo `return_to` viaja por el ciclo de salida: `POST /cerrar-sesion` lo acepta y lo devuelve
+dentro del `logout_url`, `/salir` lo arrastra al acceso forzado y de ahí al retorno final. Sin eso
+quien cerraba sesión desde otra aplicación terminaba en el panel de mariachi, porque ese tramo se
+derivaba del `redirect_uri` fijo. El flujo del propio panel, que no manda `return_to`, no cambia.
+
+Cuando el `return_to` apunta a SIEEJ, el acceso añade un `app_branding` para que minerva muestre la
+identidad de SIEEJ en lugar de la de mariachi. Es sólo una pista visual: los permisos los sigue
+resolviendo el cliente real. Requiere `MINERVA_SIEEJ_BRANDING_CLIENT_ID`; sin esa variable el acceso
+funciona igual, sólo con la marca de mariachi.
+
+### Cambiado: la URL de retorno se deriva del host de la petición
+
+El `redirect_uri` que se manda a minerva se arma con el `Host` de la petición y no con el valor fijo
+de la configuración. Así el mismo despliegue atiende por IP y por nombre de DNS sin que el usuario
+termine rebotado al otro origen y sin sus cookies, que son host-only.
+
+## [2.94.0] - 2026-09-18
+
+### Agregado: el sider separa el menú en línea del menú local
+
+Debajo del logo hay un segment **En línea / Local**. En línea queda todo lo que también corre en
+producción; Local, sólo Vine y Frames, los módulos que hablan con dispositivos de la LAN. Inicio y el
+rail inferior salen en los dos. Con el sider colapsado el segment se vuelve vertical, con íconos.
+
+La elección se recuerda, y abrir una URL de Vine o Frames cambia el menú a Local sola.
+
+### Cambiado: el segment se enciende con `VITE_APP_ENV`
+
+Sale sólo con `dev` o `beta`; con `prod`, o si falta, se oculta y el menú queda en línea, así que en
+administración Vine y Frames no aparecen. `ENVIRONMENT` no servía: el stack local también corre con
+`production`. Es build arg obligatorio: **agregarla al `.env.production` antes del deploy**, o aborta
+en «Down».
+
+### Eliminado: la badge `LOCAL`
+
+El segment ya dice qué es local. Vine conserva su badge `TEST`.
+
+## [2.93.4] - 2026-09-21
+
+### Agregado: el lápiz de Recursos GeoServer edita el contenido de los `.properties`
+
+En un `.properties` el lápiz abre **Editar archivo**: nombre y contenido en la misma ventana, con
+el texto en un área monoespaciada. Guarda el contenido sobre el mismo archivo y, si cambió el
+nombre, lo mueve después. En imágenes y fuentes sigue siendo solo renombrar. La lectura pide
+revalidación: la descarga responde con `max-age=60` y, sin eso, reabrir el editor justo después de
+guardar mostraba el texto viejo desde la caché del navegador.
+
+Es lo que faltaba para ajustar un mosaico sin entrar al servidor. El cambio no surte efecto hasta
+reindexar: GeoServer construye el índice una sola vez.
+
+### Cambiado
+
+- Buscar, **＋**, Reindexar mosaico y las acciones de selección suben a la fila del breadcrumb; la
+  barra que iba bajo las pestañas desaparece.
+- El contador de carpetas y archivos baja al pie de la lista, dentro del borde. El peso no se
+  muestra: GeoServer no lo expone ni en el listado, ni en la metadata, ni en un `HEAD`.
+- **Vaciar cachés** explica en un tooltip qué hace.
+- El tópico de rásters con TIME ya no manda a capturar `rasterPeriodicity`: desde mapalab 1.172.1
+  el visor la toma de GeoServer. Suma los gotchas de `nddi`.
+
+## [2.93.3] - 2026-09-17
+
+### Agregado: `make restores` puede dejar mariachi entero como el respaldo
+
+El selector solo dejaba elegir uno de los cuatro, y quien queria volver al estado
+completo tenia que saber que `restore-db` no trae las tarjetitas, porque viven en
+dataengine. La opcion **`todo — postgres + tarjetitas`** corre esos dos en ese orden.
+
+No hay opcion de «los cuatro» a proposito: `vine` es un schema de la misma base y
+`roadmap` unas tablas de la misma base, asi que el dump de postgres ya los contiene.
+Reaplicarlos encima mezclaria snapshots de fechas distintas sin que se note.
+
+## [2.93.2] - 2026-09-17
+
+### Corregido: el restore podia vaciar la base con un archivo que no servia
+
+`postgres-restore.sh` dropeaba los schemas del dump antes de comprobar que el
+archivo sirviera. La deteccion de schemas corre detras de una tuberia y el
+script es `sh`, que no tiene `pipefail`: el estado que se evalua es el de `tr`,
+no el de `gunzip`. Con un `.sql.gz` truncado —probado cortando un dump a
+400 KB— `gunzip` imprimia `unexpected end of file`, el script seguia adelante
+con la lista parcial, dropeaba los schemas y recien entonces psql fallaba a la
+mitad. La base quedaba vacia y sin dump aplicado.
+
+Ahora `gunzip -t` corre solo, fuera de cualquier tuberia, y se exige el
+marcador `-- PostgreSQL database dump complete` al final del archivo.
+
+### Corregido: el selector ofrecia dumps de otros proyectos
+
+`restore/` y `backups/` tambien reciben los dumps de vine y roadmap, y el
+selector listaba cualquier `.sql.gz` sin preguntarse de quien era. Aplicar el de
+vine metia un schema `vine` en la base de mariachi; el de roadmap entra directo
+a `public`, donde sus `DROP TABLE IF EXISTS` podrian llevarse tablas nuestras si
+los nombres coincidieran.
+
+El restore gana el mismo gate que ya tenia el backup: si al dump le faltan
+schemas de `EXPECTED_SCHEMAS`, se rechaza antes de tocar nada. El override
+`EXPECTED_SCHEMAS='...'` sigue disponible para restaurar dumps mas viejos que la
+lista actual de siete.
+
+### Corregido: un restore a medias dejaba la base a medias
+
+psql corria sin `--single-transaction`, asi que un error a la mitad dejaba los
+DROP hechos y el dump a medio aplicar. Los DROP ahora viajan en el mismo stream
+que el dump y todo corre en una transaccion: si algo falla, la base queda como
+estaba. Verificado inyectando un error al final del stream contra una base
+desechable, psql salio con codigo 3 y no quedo ninguna tabla.
+
+### Cambiado: `public` se limpia como los demas schemas
+
+Se dropeaban con CASCADE solo los schemas que el dump declara con
+`CREATE SCHEMA`, y `public` no aparece ahi. En `public` sobrevivia entonces lo
+que el dump no conocia, mientras que en los otros seis se borraba todo. Ahora
+`public` se dropea y se recrea igual, de modo que la base queda identica al
+dump. `CLEAN_PUBLIC=false` conserva el comportamiento anterior.
+
+## [2.93.1] - 2026-09-07
+
+### Corregido: cada carpeta ausente dejaba un stacktrace en el log de GeoServer
+
+`browse_styles_dir` trata la carpeta que no existe como lista vacia —es un caso corriente: una
+carpeta pendiente, un ambito recien estrenado—, pero GeoServer 3 registra **cada 404 del Resource
+API como `ERROR` con stacktrace**, dos lineas por peticion. Navegar el explorador llenaba el log de
+`Undefined resource path.` sin que nada estuviera roto.
+
+La consulta manda ahora `quietOnNotFound=true`: mismo 404, cero ruido. Comprobado contra GeoServer
+3.0.0. Como reproducirlo y cuando si conviene investigarlo, en `runbook/sextante.md`.
+
+---
+
+## [2.93.0] - 2026-09-07
+
+### Agregado: el roadmap se respalda y se restaura por separado
+
+Las tres tablas del roadmap viven en el schema `public`, asi que el respaldo general
+—`pg_dump` sin filtros— ya se las llevaba. Lo que no habia era manera de bajar *solo* el roadmap,
+ni de devolverlo sin restaurar la base entera: recuperar un hito borrado por accidente costaba
+un `restore-db` que se lleva por delante usuarios, paginas, eventos y todo lo demas.
+
+**`make backup-roadmap`** vuelca `roadmap_hitos`, `roadmap_ciclos` y `roadmap_procesos` a
+`backups/roadmap/roadmap-<sello>.sql.gz`, con las secuencias y los indices, y rota a los 30
+archivos. **`make restore-roadmap`** ofrece los ultimos veinte en un selector y pide escribir
+`roadmap` antes de reemplazarlos; al terminar imprime cuantos hitos, ciclos y procesos quedaron.
+
+Existe aparte del respaldo general por la misma razon que `backup-vine`: **el contenido es captura
+manual.** La migracion siembra el estado inicial del roadmap, no las fechas, los motivos, los
+linajes ni la posicion de las bandas que se editaron despues; volver a correrla no recupera nada.
+
+El dump se valida antes de guardarse. Ademas de exigir las tres tablas, cuenta los hitos y falla
+si vienen menos de `HITOS_MINIMOS` (1 por defecto): un roadmap vaciado por accidente produce un
+archivo del mismo peso que uno bueno, y sin ese gate rotaria a los treinta respaldos hasta borrar
+el ultimo bueno.
+
+### Agregado: `make backups` y `make restores` para no ir de uno en uno
+
+Con el roadmap ya eran cuatro respaldos con nombre propio. **`make backups` corre los cuatro**
+—postgres, vine, roadmap y tarjetitas— con el spinner y el cronometro de siempre, sigue adelante
+cuando uno falla y al final dice cuantos fallaron. El general se omite fuera de produccion, que es
+donde `backup-db` se niega a correr.
+
+**`make restores` no restaura los cuatro:** abre un selector y delega en el target que elijas.
+Restaurar todo en cadena no tiene sentido —`restore-db` ya trae dentro vine y el roadmap— y
+mezclaria estados de sellos distintos.
+
+El selector **exige terminal**. Sin tty `pick` elige sola la primera opcion, asi que un
+`make restores` en un script o un cron restauraria algo sin que nadie lo pidiera; ahora falla y
+nombra los cuatro targets directos. La opcion de la base entera quedo ultima, no primera.
+
+## [2.92.0] - 2026-09-07
+
+### Cambiado: la tarjeta manda, el modo edicion sobra
+
+El modo edicion que introdujo 2.88.0 era un interruptor de mas: obligaba a entrar en un estado antes
+de poder renombrar o borrar, cuando lo natural es que las acciones vivan en la tarjeta. Ahora
+aparecen al pasar por encima, una por esquina del cover:
+
+| Esquina | Accion |
+|---|---|
+| Superior izquierda | casilla de seleccion |
+| Superior derecha | eliminar |
+| Inferior izquierda | renombrar |
+| Inferior derecha | descargar (ZIP en las carpetas) |
+
+En movil salen fijas, porque ahi no hay hover. **Las casillas se contagian**: basta seleccionar una
+para que aparezcan en todas, que es el gesto real de una multiseleccion.
+
+La barra de acciones masivas ya no depende de ningun modo: sale cuando hay algo seleccionado.
+
+### Cambiado
+
+- **Recargar** sale del encabezado: hacia lo mismo que F5 y que volver a entrar a la pantalla. En su
+  lugar queda **Vaciar cachés**, que antes vivia en la barra como «Reset» y en ingles.
+- **Nueva carpeta** y **Subir archivos** se funden en un boton `+` con desplegable.
+- **Buscar** es un icono que se despliega en input al pasar por encima, al hacer clic o al tabular.
+
+### Eliminado
+
+- La vista de lista y su interruptor Grid/Lista: nadie la usaba. Se va `GeoserverFilesList`.
+- El boton de snippet SLD de cada archivo, y con el `SldSnippetModal`. La ruta sigue a la vista en la
+  tarjeta para quien arme el `xlink:href` a mano.
+
+---
+
+## [2.91.0] - 2026-09-07
+
+### Agregado: el explorador llega a `geoserver-raster/`
+
+Las carpetas de los ImageMosaic no viven en `styles/` ni bajo un workspace, sino en
+`geoserver-raster/<tema>/<mosaico>/`, la unica rama del data dir que el explorador no sabia abrir.
+Aceptar `.properties` no bastaba: era la llave sin la puerta.
+
+Junto a **Global (styles/)** hay ahora una pestaña **Rasters** que navega esa rama con todo lo que
+tiene el explorador. Con eso, armar y mantener la carpeta de un mosaico —subir los `.tif`, ajustar
+el `indexer.properties`, corregir el `timeregex.properties`— se hace desde el CMS.
+
+El ambito viaja en el mismo parametro `workspace` con el valor reservado `__rasters__`, asi que ni
+los endpoints ni la auditoria cambiaron de forma. La busqueda global tambien lo recorre.
+
+**Los archivos del indice** (`.dbf`, `.shp`, `.shx`, `.prj`, `.qix`, `.fix`, `.dat`) se listan,
+descargan y borran, pero **no se suben**: los genera GeoServer. La lista blanca de subida sigue
+siendo la de antes.
+
+**Publicar un mosaico nuevo sigue fuera del CMS.** El `PUT .../external.imagemosaic` que crea la
+capa es un paso aparte; el explorador cubre la carpeta y **Reindexar** el mantenimiento.
+
+### Cambiado: la numeralia dinamica se explica con una leyenda, no con un aviso
+
+El grid de metadatos abria con un `Alert` que ocupaba un renglon entero para decir cuantas capas
+calculan su numeralia desde la base de datos. Ahora es un cuadrito del mismo rayado que usan esas
+celdas, en la barra de estado de la pestaña, junto al contador de capas sin descripcion. El detalle
+—que se editan en la pestaña Metadatos de la capa— vive en su tooltip.
+
+---
+
+## [2.90.0] - 2026-09-07
+
+### Agregado: el historial se descarga desde su cajón, y los datos desde Configuración general
+
+`GET /grid/{resource}/export` ya servía las tres formas —Excel con `Metadatos` e `Historial` en dos
+pestañas, o un CSV por hoja—, pero solo las ofrecía el menú de descarga de la barra, que existe
+únicamente en modo tabla. Desde el árbol no había manera de bajar nada.
+
+**El cajón del historial trae botón de descarga** en los dos modos. Baja en CSV *lo que está
+mostrando*: respeta el selector «Esta capa / Todas» y, en modo árbol —donde el cajón mezcla las
+rejillas de Capas y Metadatos—, agrega una columna `Rejilla` para distinguirlas. Se arma en el
+cliente, sin ida al servidor, y queda inhabilitado cuando no hay cambios registrados.
+
+**Configuración general estrena tarjeta «Descargas»** con selector de rejilla y las mismas tres
+opciones de la barra. Un CSV no tiene pestañas, así que la agrupación aplica solo al Excel: las dos
+opciones de CSV bajan datos e historial por separado.
+
+De paso, la lógica de exportación que vivía dentro de `GridPanel` pasó a `useGridExport`, que ahora
+comparten el panel y la tarjeta nueva, y `triggerDownload` y `downloadCsv` comparten un `saveBlob`.
+
+---
+
+## [2.89.0] - 2026-09-07
+
+### Cambiado: la vista En vivo de frames deja de transmitir y ahora sondea fotos
+
+El mosaico abría un MJPEG multipart por cámara y el backend lo proxeaba con `timeout=None`: una
+conexión colgada indefinidamente por cada tarjeta. Sobre un enlace que no es la LAN del NVR
+—un túnel, una VPN, una red lenta— esas conexiones se caen y la tarjeta se queda en negro.
+
+Ahora cada tarjeta pide una foto suelta a `GET /frames/camaras/{nombre}/foto`, que trae
+`latest.jpg` de Frigate y cierra. El refresco **se autorregula**: la siguiente foto se programa en
+el `onLoad`/`onError` de la anterior, así que nunca hay más de una petición viva por cámara y si la
+red va lenta el ritmo baja solo en vez de encimar peticiones.
+
+`GET /frames/camaras/{nombre}/stream` y `FramesClient.mjpeg()` **siguen existiendo** para quien
+tenga la API en la misma red y quiera video continuo; lo que cambió es qué usa el admin.
+
+---
+
+## [2.88.1] - 2026-09-04
+
+### Corregido: el menú de propiedades del grupo se salía de la pantalla
+
+Un grupo con muchas propiedades estiraba el menú hasta pasarse del alto de la ventana y las últimas
+quedaban fuera de alcance. Ahora tiene tope de `60vh` y scroll propio.
+
+### Cambiado: el ícono de información va a la izquierda del contador
+
+Explica el contador, así que se lee mejor antes que después. Su ventana se ancla también a la
+izquierda para no quedar colgando fuera del panel.
+
+## [2.88.0] - 2026-09-04
+
+### Agregado: seleccion multiple, borrado de carpetas y modo edicion en Recursos GeoServer
+
+El explorador de recursos de sextante solo dejaba borrar archivos de uno en uno y no tenia forma de
+tocar carpetas: vaciar una era entrar y borrar archivo por archivo, y renombrar significaba bajar el
+archivo, volver a subirlo con otro nombre y borrar el original.
+
+**Modo edicion** es un interruptor en la barra. Mientras esta activo aparecen las casillas de
+seleccion —en grid y en lista— y los botones de renombrar; la seleccion mezcla archivos y carpetas, y
+sobre ella actuan **Mover** y **Eliminar** masivos. Apagado, la pantalla queda como estaba.
+
+**El borrado de una carpeta arrastra todo lo que contiene y no hay papelera**, asi que la
+confirmacion dice cuantos archivos y subcarpetas se pierden y pide teclear el nombre de la carpeta.
+Se rechaza la que contenga archivos de configuracion de GeoServer (`datastore.xml` y companiia).
+
+Renombrar y mover van por `PUT /rest/resource/{path}?operation=move` del Resource API, que sirve
+igual para archivos y para directorios. La extension de un archivo no puede cambiar —el
+`content-type` dejaria de corresponder al contenido— y una carpeta no se puede mover dentro de si
+misma.
+
+### Agregado
+
+- `GET /geoserver/files/folder/info` cuenta lo que cuelga de una carpeta antes de borrarla.
+- `DELETE /geoserver/files/folder`, `POST /geoserver/files/move` y `POST /geoserver/files/bulk-delete`,
+  los tres auditados en actividad.
+
+### Agregado: el explorador acepta `.properties`
+
+Los ImageMosaic se configuran con `indexer.properties` y `timeregex.properties` junto a los rasters.
+El explorador solo aceptaba imagenes y fuentes, asi que cada ajuste de un mosaico —un `TimeFormat`
+mal puesto, un `regex` que no ancla al final— exigia acceso al servidor. Ahora se suben, se
+descargan, se renombran y se borran como cualquier otro recurso.
+
+**`datastore.properties` sigue cerrado.** Un mosaico con indice en PostGIS deja ese archivo junto a
+los rasters con la contrasena en claro, y es el mismo riesgo que ya cubria la lista blanca de
+extensiones para `datastore.xml`. `_is_store_config` ahora reconoce las dos formas y el filtro se
+aplica al listar, buscar, descargar, subir, mover y borrar: los `*store.properties` ni siquiera
+aparecen en el explorador, y pedirlos por su nombre responde **403**.
+
+El `<mosaico>.properties` que GeoServer genera como indice si es visible y se puede borrar. Es
+intencional: es lo que **Reindexar** regenera.
+
+### Nota
+
+Mover o renombrar un archivo rompe los `xlink:href` de los SLD que lo referencian por su ruta
+anterior. La UI lo advierte; no los reescribe.
+
+---
+
+## [2.87.3] - 2026-09-04
+
+### Corregido: una propiedad de grupo no siempre es hija directa del grupo
+
+Un grupo puede repartir sus variantes bajo etiquetas: «Establecimientos de salud» separa 33 filtros
+CQL sobre `unidades_salud` en cuatro niveles de atencion, igual que «Clasificador de cultivos IIEG»
+pero con un nivel en medio. El admin definia propiedad como parentesco directo, asi que a esas 33
+capas les faltaba **el filtro CQL en el arbol**, el tipo decia «Capa» en vez de «Propiedad» y el
+grupo **no ofrecia el boton de propagacion de tarjetita**. El backend de mapalab nunca tuvo el
+problema: `_inherit_little_card` ya recorria todos los ancestros.
+
+`tipoQueGobierna()` deja pasar el tipo del ancestro a traves de las etiquetas y `propiedadesDeGrupo()`
+las recorre al recolectar. Con eso quedan alineados `toAntTreeData`, `propagacionDelGrupo`,
+`LayerCreateModal` y el orden inicial de capas, que tenian la regla escrita cuatro veces.
+
+### Corregido
+
+- La pastilla del grupo contaba solo hijas directas. Ahora cuenta las variantes reales y solo marca
+  **«grupo vacio»** cuando de verdad no cuelga ninguna capa; en 2.87.2 marcaba de mas.
+
+## [2.87.2] - 2026-09-04
+
+### Corregido: una etiqueta escondia todo lo que colgaba de ella
+
+En el arbol del editor una etiqueta se dibuja como rotulo —sin flecha y sin click—, pero sus hijos
+seguian detras del plegado, asi que nunca se podian abrir. Dejaba **43 nodos inalcanzables**: los 10
+grupos de «Delitos contra el patrimonio» y las 33 capas de «Establecimientos de salud». El visor
+nunca plego las etiquetas; el editor ahora hace lo mismo y las muestra siempre.
+
+### Corregido: «grupo · N variantes» contaba nodos que no son variantes
+
+La pastilla contaba todos los hijos. Ahora cuenta solo las capas, y un grupo que no tiene ninguna
+—porque adentro trae etiquetas o categorias— se marca como **«grupo sin variantes»**, que es
+justo el caso de «Establecimientos de salud».
+
+### Cambiado
+
+- El feature type sale del subtitulo de Metadatos y del pie de la vista previa: ya aparece en la
+  ficha. Cuando el nodo hereda la metadata de sus hijas se dice eso y nada mas.
+- Las secciones colapsables tenian `margin` y `padding` superiores de 28 px cada uno, 56 px de
+  separacion real. Queda solo el padding.
+- `key` sale del spread de props al recursar el arbol; React avisaba en consola.
+
+## [2.87.1] - 2026-09-04
+
+### Corregido: la pestana Metadatos reventaba al abrir el cajon de contenido
+
+`ReferenceError: Cannot access 'y' before initialization`. Los dos `Form.useWatch` que alimentan las
+bombillas de sugerencia se leian cuatro lineas antes de que se declarara el formulario. Es el segundo
+fallo identico de la sesion; los dos solo aparecian al abrir la pestana en el navegador. **Vale la
+pena activar `no-use-before-define`**: fue la regla que lo encontro, corrida a mano.
+
+### Corregido: la hoja de publicacion imprimia `[object Object]`
+
+`describeValue` hacia `join(', ')` sobre arreglos de objetos. Ahora busca con que nombrarlos —nombre,
+corto, largo, texto, enlace— y si no encuentra, cuenta: «2 elementos». Fuentes, metodologia y
+metadato se leen como lo que son.
+
+### Corregido: los cambios de metadatos no mostraban su valor anterior
+
+Salian como `?`. La hoja indexa los valores publicados por `resource_id`, y los metadatos usan el
+`layer_key` como identificador, no el id de la capa: nunca encontraban con que comparar.
+
+### Corregido: el historial se veia vacio
+
+Abria en «Capas», que tiene cero registros —ese historial solo se escribe al publicar, y desde el
+cambio a borradores no ha habido publicaciones—, mientras los que si existen son de Metadatos y
+quedaban detras del selector. Ahora **trae los dos recursos y los mezcla** por fecha, con una columna
+`Origen`. Se fue el selector: nada queda escondido detras de un click.
+
+El modo tabla no cambia: sigue abriendo el panel con un solo recurso y su filtro por capa.
+
+### Cambiado: la descripcion de la subpagina dice para que sirve, no como funciona
+
+«Un tema o una categoria se abre; una capa se edita. Arrastra el asa…» describia el mecanismo. Queda
+en «Catalogo de capas del visor. Da click en una para editarla».
+
+## [2.87.0] - 2026-09-04
+
+### Agregado: la ficha sugiere fecha y frecuencia desde la periodicidad
+
+Una bombilla junto a **Frecuencia de actualizacion** y **Ultima actualizacion** abre un modal con lo
+que la periodicidad de la capa indica, de donde sale y cuando se calculo. Aparece **solo cuando la
+sugerencia difiere** de lo capturado, y aplicarla es una accion explicita: lo escrito a mano manda.
+
+El dato lo deja listo el cron de dataengine en `fecha_ultima_sugerida` y `frecuencia_sugerida`
+(migracion `0047`); mariachi solo lo lee. **dataengine se despliega antes**: sin esas columnas el api
+responde 500. Procedimiento en `runbook/tamal-rojo.md` del repo de contexto.
+
+### Cambiado: Apariencia es un solo panel de interruptores
+
+Distintivo, Aviso, Resaltado, Oculta y Fuera de servicio viven en un panel sin marcos ni divisores,
+con el switch primero y la etiqueta despues, y el detalle se despliega solo al encenderse. Cada uno
+lleva un icono de informacion que responde a hover, click y foco —para que sirva en tactil— en vez
+de texto colgando al lado.
+
+El tipo de distintivo usa Segmented y su vista previa se fue a la derecha. El aviso ya no advierte
+que le falta titulo: al encender el switch, el cursor salta al campo.
+
+### Cambiado: el tipo de campo de municipio se detecta solo
+
+Se recalcula al cambiar de columna, no solo cuando esta vacio, y desaparece de la vista: con la
+deteccion segura queda una palomita con «Detectado como Clave INEGI» y un enlace para forzarlo.
+
+**No se elimino el campo**, aunque parezca redundante: `nombre` lo usan **96 capas** y `clave` **85**,
+y el backend genera CQL distinto para cada uno. Ademas la deteccion falla en tres casos reales —
+CVEGEO de 10 digitos, claves de otro estado (el patron esta fijado a `14NNN`) y columnas con pocas
+muestras—.
+
+### Cambiado: la ficha de metadatos se lee en el orden del visor
+
+Frecuencia y ultima actualizacion subieron bajo el nombre, como tarjetas, que es donde el visor las
+pinta. Se agrego la seccion **Referencia cartografica del limite municipal**, que faltaba entre
+Metodologia y Metadato. La fecha se elige con calendario en dos precisiones —solo año o fecha
+exacta— en vez de texto libre, para que todas las capas usen la misma sintaxis.
+
+En Identidad el tipo de nodo usa Segmented, los alias se llaman «Alias de enlace» y su lista solo
+aparece cuando existe alguno.
+
+### Corregido: la pestana Metadatos reventaba al abrirse
+
+`ReferenceError: Cannot access 'tr' before initialization`. El nombre de la capa se pasaba a la
+pestana 560 lineas antes de declararse, y un `const` no se puede leer antes de su declaracion. Se
+movio el calculo arriba de la construccion de las pestanas.
+
+### Corregido: la seccion Metadato de la vista previa nunca aparecia
+
+Se filtraba por `texto` y `archivo_enlace`, que son los campos de metodologia; `metadato` usa
+`nombre` y `enlace`.
+
+## [2.86.0] - 2026-09-04
+
+### Cambiado: deshacer y rehacer suben al encabezado
+
+Vivían dentro del lienzo, encima de la tarjeta. Pasan al encabezado, junto al contador de
+propagación, como íconos.
+
+Y de paso se arregla algo que no se veía: **había dos pilas de deshacer**, una en el lienzo y otra
+en el modo lista, cada una vigilando la misma configuración. Convivían porque nunca se usan a la
+vez, pero cada cambio se apilaba dos veces y `Ctrl+Z` respondía según qué modo estuviera montado.
+Ahora la pila vive en la pestaña: una sola, compartida por los tres modos.
+
+### Agregado: vaciar la tarjetita
+
+Un botón de escoba en el encabezado la deja en nada, con confirmación que dice qué va a pasar
+después, que no es lo mismo en los tres casos: si la capa hereda, vuelve a mostrar la del grupo; si
+es un grupo, sus propiedades se quedan sin ninguna y el visor les inventará una; y si es una capa
+suelta, el visor le inventará una a partir de sus columnas.
+
+La confirmación recuerda que **se deshace con Ctrl+Z** mientras no guardes, que es lo que quita el
+miedo a usarlo.
+
+## [2.85.0] - 2026-09-04
+
+### Agregado: los breakpoints existen como tokens
+
+Nunca se sembraron: el grupo salía vacío y no había nada que editar. La migración **`m3lbp0001`**
+crea los cuatro —`sm` 640, `md` 768, `lg` 1024, `xl` 1280— para cada marca, con su descripción de qué
+cambia en cada corte. Es `ON CONFLICT DO NOTHING`, así que no pisa nada si ya existieran.
+
+Con eso el grupo vuelve a mostrar sus filas con el valor editable, como el resto.
+
+### Cambiado: el selector de dispositivo pasa a la vista previa
+
+Estaba en la cabecera del grupo de breakpoints, que no es donde se usa. Ahora vive junto a **Ver
+todo**, encima de la pieza, porque es un control de la vista previa.
+
+**Tablet es el ancho por omisión**, que es lo que cabe en la columna. Tablet y Mobile se dibujan ahí
+mismo; **Laptop y Escritorio abren la pieza en un modal**, porque a 1024 y 1280 px ya no entran y
+verlas encogidas no enseñaba nada.
+
+---
+
+## [2.84.0] - 2026-09-04
+
+### Agregado: guardar refresca el árbol, sin recargar la página a mano
+
+El contador de propagación no se movía al guardar y había que recargar el navegador. La causa no
+era el contador: **el árbol se recargaba antes de que se invalidara su caché**.
+
+Al guardar, mariachi avisa a mapalab con `notify_tree_changed`, que agrupa los avisos en una
+**ventana de 5 segundos** antes de invalidar. El `await reload()` que ya había justo después de
+publicar llegaba dentro de esa ventana y traía el árbol viejo, así que todo seguía igual hasta que
+recargabas.
+
+`refrescarArbol` recarga dos veces —al instante por si el caché ya estaba fresco, y otra pasada la
+ventana— y devuelve el control tras la primera, para no dejar el botón de guardar girando cinco
+segundos. La segunda corre sola y actualiza el contador y los puntos del árbol cuando llega.
+
+Se aplica en **publicar** desde el editor de capas y en **guardar la tarjetita** desde el cajón de
+contenido, que antes solo recargaba la capa y no el árbol. El badge de propagación deja de tener su
+propia copia de esta lógica.
+
+## [2.83.1] - 2026-09-04
+
+### Cambiado: el badge de propagación se queda con el contador y nada más
+
+Ocupaba demasiado para lo que decía. El badge es ahora solo `8/8`, y toda la explicación —qué es la
+propagación, por qué no hay nada que aplicar, por qué una capa dice «sin tarjetita», por qué las
+acciones están deshabilitadas— se fue a un **ícono de información** al lado. El menú pierde el
+renglón de título y los divisores: queda la lista de propiedades y la acción.
+
+### Corregido: cuando ya estaba propagada parecía que había fallado
+
+Con todas las propiedades heredando, el menú mostraba «Que todas usen la del grupo» deshabilitado y
+un texto gris explicando el bloqueo. Se lee como un error, no como que ya está hecho.
+
+Ahora en ese caso la acción se sustituye por **«Ya todas usan la del grupo»** con una palomita
+verde. Es el mismo estado, dicho como lo que es: el trabajo terminado.
+
+## [2.83.0] - 2026-09-04
+
+### Cambiado: el modal de edición se organiza en pestañas
+
+Quince campos en una sola columna obligaban a recorrer el formulario entero para tocar uno. Ahora
+van agrupados por la pregunta que responden: un hito tiene **Qué es**, **Cuándo** y **Conexiones**;
+un ciclo, **Qué es** y **Dónde va**; un proceso, **Qué es** y **Cada cuándo**.
+
+**La vista previa se queda fija arriba**, fuera de las pestañas: se cambie lo que se cambie, el
+hito sigue a la vista. Cabecera y pie también quedan fijos y solo el contenido de la pestaña
+desplaza, así que «Guardar» y «Eliminar» están siempre donde uno los dejó.
+
+El modal se centra en la pantalla en vez de colgar de un margen superior fijo: cuando crece lo hace
+hacia arriba y hacia abajo por igual, y deja de empujarse contra el borde inferior.
+
+### Agregado
+
+- La primera edición de un proceso también se elige en calendario, y de ahí salen solos el mes y
+  día de repetición y el texto de periodicidad.
+
+### Interno
+
+- Los formularios de ciclo y proceso salen a `RoadmapCamposExtra`. El modal vuelve a caber en las
+  trescientas líneas.
+- Las pruebas que abren el modal declaran un tiempo mayor: montarlo implica ocho miniaturas, los
+  veintiún proyectos y la lista de conexiones, y en jsdom eso no baja de diez segundos.
+
+---
+
+## [2.82.0] - 2026-09-04
+
+### Cambiado: el listado también edita en flotante
+
+La tarjeta fija debajo de la lista de colores se va. Ahora hacer clic en cualquier fila —de color, de
+tipografía, de espaciado— abre el mismo editor anclado a la fila, igual que en la pieza. La columna
+de controles recupera el alto que ocupaba la tarjeta.
+
+### Cambiado: los breakpoints se prueban por dispositivo
+
+Las barras no decían nada. En su lugar, el grupo lleva en la cabecera un selector
+**Mobile · Tablet · Laptop · Desktop**, cada uno con tooltip del escalón y el ancho que representa
+(`sm · 640 px`). Elegir uno encoge la vista previa a ese ancho. Funciona aunque no haya tokens de
+breakpoint sembrados, que es el caso hoy.
+
+### Eliminado: el contador de lugares de la vista previa
+
+Decía «3 lugares» encima de una pieza donde ya se ven los tres resaltados.
+
+---
+
+## [2.81.0] - 2026-09-03
+
+### Agregado: el editor del token sale flotando junto al elemento
+
+Hacer clic en cualquier parte de la pieza abre el editor de su token —muestra, hex, descripción y
+veredicto de contraste— anclado ahí mismo, sin que la composición se mueva. Se cierra al hacer clic
+afuera. El editor salió de `ColoresPanel` a su propio componente y ahora también sirve para tokens que
+no son color, donde el veredicto no aplica.
+
+### Corregido: el texto de la pieza no se movía al editar tipografía
+
+El título pedía una familia `font.family.display` que no existe en la semilla —solo hay
+`font.family.sans`—, así que se quedaba en la del navegador. Ahora cae en la familia de cuerpo cuando
+no hay una de titulares, y la pieza usa la escala completa: `3xl` en el título, `xl` en el subtítulo,
+`2xl` en la cifra. Los pesos y los `leading` también se aplican.
+
+### Corregido: los logotipos blancos no se veían
+
+El logo se pintaba sobre el fondo de la pieza. Ahora se enseñan las dos variantes con su fondo: la
+clara sobre blanco y la oscura sobre un marco oscuro, que es donde un logotipo blanco se lee.
+
+### Cambiado: el ZIP se llama mel-<marca>.zip
+
+Se había quedado como `identidad-<marca>.zip` cuando el módulo se renombró.
+
+---
+
+## [2.80.0] - 2026-09-03
+
+### Cambiado: el formulario del hito deja de hablar en interno
+
+Los tres campos que había que traducir mentalmente pasan a elegirse viéndolos:
+
+- **El tipo** era un desplegable con `porllegar`, `legacy` y `joven` — nombres que solo existen en el
+  código. Ahora son ocho miniaturas **dibujadas como se van a ver**, con su nombre en español
+  —«Por llegar», «De antes», «Sin 1.0 todavía»— y una línea que explica cada una.
+- **El proyecto** era una lista de veintiún slugs en gris. Ahora cada uno viene con su color, que es
+  justamente lo que decide en el mapa, y con su logo los dos que lo tienen.
+- **La conexión** era un desplegable de cincuenta y dos etiquetas. Ahora es una lista buscable con
+  el color y la fecha de cada hito, ordenada por fecha.
+
+Las etiquetas también dejan de ser jerga: «Cómo se llama», «Cuándo pasó», «Viene de otro hito»,
+«Por qué importa».
+
+### Cambiado: la fecha se elige en un calendario
+
+Se acabó escribir `YYYY-MM-DD` a mano. El `DatePicker` la toma y **la fecha visible se escribe
+sola** —«31 jul 2026»—, editable después para los casos que no son una fecha: «por salir»,
+«2027 · sin fecha».
+
+### Agregado: la vista previa muestra la conexión y la fecha
+
+Al elegir de qué hito viene, la previa dibuja **al otro hito, la curva punteada y la leyenda**, tal
+como van a salir en el mapa. Debajo del punto aparece la fecha. Ya no hay que guardar para ver si la
+sucesión quedó donde se quería.
+
+### Interno
+
+- Los tres selectores van memoizados. Sin eso, cada tecla en el formulario redibujaba los ocho SVG
+  de tipos y los veintiún proyectos.
+
+---
+
+## [2.79.0] - 2026-09-03
+
+### Agregado: la vista previa señala en los dos sentidos
+
+Antes solo iba de token a pieza. Ahora, al pasar o hacer clic sobre cualquier elemento de la
+composición —el título, un botón, una etiqueta, las barras— **se marcan a la izquierda los tokens que
+lo pintan**, y el clic selecciona el primero y le abre su editor, abriendo de paso el grupo del
+acordeón donde vive. Cada zona es alcanzable con el tabulador.
+
+### Agregado: el logotipo entra a la composición
+
+Se toma de `logo.largo.claro`. Si no está definido, sale un hueco marcado con el nombre del campo, que
+es de los doce que llevan sin llenarse.
+
+### Cambiado: los grupos se separan y las descripciones se van al tooltip
+
+«Espacio y forma» eran dos cosas distintas: ahora son **Espaciado** y **Forma**, y los
+**Breakpoints** salen de ahí a su propio grupo, que antes no se veía por ningún lado.
+
+Las descripciones de color y tipografía dejan su columna y pasan a tooltip sobre el nombre del token,
+que libera ancho para el nombre completo. En espaciado y forma se quitan del todo.
+
+### Agregado: dataviz y breakpoints enseñan un ejemplo cuando no hay nada definido
+
+Ninguno de los dos tiene tokens sembrados, así que el grupo salía vacío sin explicar qué iba ahí.
+Ahora muestra un juego normal —la rampa secuencial, las cuatro categorías, los cuatro anchos— marcado
+como ejemplo.
+
+### Cambiado: la pantalla se llama MEL a secas
+
+El título era «MEL · Manual de Estilo y Lineamientos» con una descripción que repetía lo mismo. Ahora
+el título es **MEL** y la descripción dice qué significa. En el menú, «Marcas y tokens» pasa a
+**Marca**, con icono propio.
+
+---
+
+## [2.78.1] - 2026-09-03
+
+### Corregido: el resaltado de la vista previa no resaltaba nada
+
+El contenedor raíz de la composición también bajaba de opacidad, y la opacidad de un padre **se
+multiplica con la de sus hijos**: se apagaba todo por parejo, incluido lo que debía quedar vivo, así
+que el efecto no se veía. Lo mismo pasaba en cada anidamiento —la tarjeta arrastraba a su cifra, la
+tabla a sus filas—.
+
+Ahora el lienzo nunca se apaga y un elemento se considera vivo si es el elegido, si su contenedor lo
+es, o si contiene a alguno que lo sea. Las pruebas fijan los cuatro casos, incluido el que fallaba:
+un contenedor con un hijo vivo no se apaga.
+
+El color de fondo apaga el contenido y deja el lienzo encendido, que es lo que tiene sentido para un
+`color.bg`, y un `breakpoint.*` ya no apaga nada: solo encoge la pieza.
+
+---
+
+## [2.78.0] - 2026-09-03
+
+### Cambiado: la vista previa de MEL deja de ser un catálogo y pasa a ser una pieza
+
+Enseñaba los tokens en tarjetas, que es lo mismo que ya hace la lista de la izquierda. Ahora es una
+**página de ejemplo con la marca puesta**: título, bajada, botones, etiquetas de estado, tarjetas de
+cifra, una gráfica y una tabla, todo compuesto con los valores de la marca. Se lee como algo real.
+
+**Al elegir un token se apaga lo que no lo usa.** Un mapa en `helpers/aplicacion.js` dice en qué
+elementos cae cada clave —`color.primary` al título, al botón primario y a la barra de la cifra— y el
+resto de la composición baja a `opacity: 0.16`. Arriba se dice cuántos lugares son.
+
+### Agregado: los tokens sin lugar natural ahora se demuestran
+
+En vez de avisar que no aplican: un `breakpoint.*` **encoge la composición** a ese ancho para enseñar
+cómo responde; una `shadow.*` se le aplica a una tarjeta que normalmente no lleva sombra, con una nota
+que lo explica; un `space.*` se vuelve la separación entre los botones; un `radius.*` redondea botones
+y tarjetas; la paleta `dataviz.*` son las barras de la gráfica.
+
+Una prueba fija que **ningún color sembrado quede huérfano**: si se agrega un token de color y nadie
+lo mapea, se pone roja.
+
+---
+
+## [2.77.0] - 2026-09-03
+
+### Cambiado: un solo modal, y con vista previa
+
+Seleccionar un elemento en modo edición abre **directamente su formulario**. La barra flotante que
+aparecía primero se retira: eran dos pasos para llegar al mismo sitio, y obligaba a decidir de
+antemano si el cambio era «rápido» o no.
+
+El modal estrena una **vista previa que se redibuja con cada tecla**, sobre la rejilla de meses del
+propio mapa. Marcar «en desarrollo» enciende la bandera BETA ahí mismo; cambiar el tipo cambia el
+borde; cambiar el proyecto cambia el color y trae su logo si lo tiene. Deja de hacer falta guardar
+para saber cómo quedó.
+
+Los ciclos y los procesos tienen su propia previa: una banda con su color y su nota, un carril con
+sus marcas anuales.
+
+### Corregido
+
+- **«Eliminar» se va al extremo izquierdo del pie**, lejos de «Guardar». Estaban pegados y son las
+  dos acciones que peor se confunden: una guarda y la otra borra sin vuelta.
+
+---
+
+## [2.76.0] - 2026-09-03
+
+### Agregado: propagar la tarjetita del grupo a todas sus propiedades
+
+La acción en bloque **siempre está en el menú** —«Que todas usen la del grupo»— y cuando no se
+puede, dice por qué en vez de desaparecer: no tienes permiso de publicar, el grupo todavía no tiene
+tarjetita, o todas las propiedades ya la usan. Antes solo aparecía si alguna propiedad tenía la
+suya, así que en la mayoría de los grupos el menú se veía vacío y parecía que faltaba la opción.
+
+**Propagar guarda primero la tarjetita del grupo tal como está en pantalla.** Las propiedades leen
+la guardada, no la que estás editando, así que sin ese paso se propagaba una versión vieja sin que
+se notara.
+
+Propagar **borra la tarjetita propia** de cada propiedad para que hereden, en vez de copiarles la
+del grupo: una copia deja de seguir al grupo y la propagación se rompe justo al usarla.
+
+### Corregido: propagar se saltaba el flujo de revisión
+
+La acción escribía con `updateLayer` directo sobre otras capas. Con el flujo de borradores y
+publicación que ahora tiene el editor, eso permitía a quien **no** puede publicar tocar varias capas
+de producción de un golpe, saltándose la revisión.
+
+Queda reservada a quien publica. Para el resto el badge sigue siendo informativo —cuántas
+propiedades usan la tarjetita y cuáles— con las acciones deshabilitadas y el motivo a la vista.
+
+## [2.75.2] - 2026-09-03
+
+### Cambiado
+
+- **En móvil los botones del roadmap se quedan en icono.** Ocho botones con texto no caben en un
+  teléfono: se apilaban en tres filas y empujaban el mapa fuera de la pantalla. El rótulo se retira
+  por debajo del punto de quiebre `md` y pasa a `Tooltip`, con `aria-label` en todos para que el
+  nombre accesible no dependa del texto visible — un lector de pantalla y las pruebas siguen
+  encontrándolos igual.
+- **Las filas de acciones dejan de ir pegadas** al encabezado y al lienzo: `6px` arriba y `12px`
+  abajo, y la fila que baja en móvil separa `10px`.
+
+---
+
+## [2.75.1] - 2026-09-03
+
+### Corregido: «usar esta» escribía pero no se veía
+
+Dos causas encadenadas, y las dos hacían que pareciera que el botón no hacía nada.
+
+**`useLayerTreeAdmin` no es un contexto.** Cada llamada crea su propio estado, y el badge estaba
+llamándolo por su cuenta: pedía el árbol entero otra vez al montarse y su `reload()` refrescaba
+**su** copia, no la de la página, que es de donde el badge saca los datos que pinta. La escritura
+salía, el conteo no se movía. Ahora recibe `updateLayer` y `reload` de la instancia que sí posee
+ese árbol.
+
+**Y el refresco llegaba antes que la invalidación.** Al guardar, mariachi avisa a mapalab con
+`notify_tree_changed`, que **agrupa los avisos en una ventana de 5 segundos** antes de invalidar el
+caché del árbol. Recargar de inmediato traía el árbol viejo. Ahora recarga dos veces: una al
+instante —por si el caché ya estaba fresco— y otra pasada la ventana, con un aviso de «aplicando…»
+mientras tanto, porque cinco segundos sin explicación se leen como que se colgó.
+
+Lo que las pruebas no vieron: mockeaban el hook, así que probaban el camino del clic y no el
+cableado real. Ahora las funciones entran por props y la prueba avanza el reloj para exigir las
+dos recargas.
+
+## [2.75.0] - 2026-09-03
+
+### Cambiado: la vista previa de MEL deja de ser pestañas y pasa a ser una sola página
+
+Las cuatro superficies en un `Segmented` obligaban a cambiar de pestaña para ver la marca completa.
+Ahora es **una sola página que se recorre**: arriba el muestrario —cada color en su tarjeta, la
+escala tipográfica compuesta con su texto real, y las barras de espaciado y radio—, y abajo los
+componentes del admin y el visor usando esos valores.
+
+**Seleccionar un token lo resalta en la vista previa** y lo trae a la vista. Funciona en los dos
+sentidos: las tarjetas del muestrario también son botones, y las filas del acordeón de tipografía,
+espacio y dataviz ahora se pueden seleccionar.
+
+**La vista previa no se dibuja en móvil.** Debajo de `md` queda solo la columna de controles a ancho
+completo; el muestrario no cabe y partirlo lo volvía ilegible.
+
+### Cambiado: los artefactos generados se mudan a un cajón
+
+`theme.qss` y `design.md` ya no ocupan dos pestañas. El botón **Ver artefactos** abre un `Drawer` con
+los cinco que emite el backend. Siguen siendo los archivos reales, así que siguen reflejando lo
+guardado y no lo pendiente.
+
+### Corregido: las descripciones de color se leían a medias
+
+Las que no cabían quedaban cortadas sin manera de ver el resto. Ahora abren tooltip con hover, con
+clic y al llegar con el tabulador.
+
+---
+
+## [2.74.0] - 2026-09-03
+
+### Cambiado: editar deja de robarle alto al mapa
+
+Los formularios salen de la sección y pasan a **modales**. El de un hito, un ciclo o un proceso se
+abre desde «Abrir todos los campos» de la barra del elemento; el del marcador, desde su propio
+botón. Antes el formulario se montaba bajo el lienzo y se llevaba hasta la mitad del alto en
+pantalla completa, que es justo donde se edita.
+
+Los modales se montan dentro del elemento expandido, no en el `body`, o no se verían al estar en
+pantalla completa.
+
+### Agregado: una fila de altas en el modo edición
+
+Cuatro botones sobre el mapa: **Cambiar punto**, **Agregar hito**, **Agregar ciclo** y **Agregar
+proceso**. Lo que se crea se abre de una vez en su modal, así que el elemento nuevo no se queda
+esperando a que alguien lo encuentre para describirlo.
+
+Agregar por doble clic sigue funcionando y ahora también abre el modal.
+
+---
+
+## [2.73.0] - 2026-09-03
+
+### Cambiado: MEL deja de ser siete tablas y pasa a ser un taller
+
+La pantalla enseñaba la base de datos: los 82 tokens en siete tablas idénticas, el contraste en una
+tarjeta que no se recargaba, la vista previa como bloque de texto plano con el CSS generado, y un
+botón de guardar por fila. Se editaba a ciegas —para saber cómo quedaba la marca había que descargar
+el ZIP y montarlo en algún lado—.
+
+Ahora es un **panel partido**. A la izquierda los controles: los tokens de color con su muestra y
+**el veredicto de contraste en la misma fila**, el seleccionado con `ColorPicker` y la explicación de
+por qué cumple o no, y debajo un acordeón con tipografía, espacio y forma, dataviz y los 40 campos de
+la guía. A la derecha, **la marca aplicada**, con cuatro superficies: los componentes del admin, el
+visor con su mapa y su leyenda, el `theme.qss` que lee el complemento de QGIS y la guía en markdown.
+
+Panel y Visor se dibujan en el cliente y se mueven al escribir, antes de guardar; QGIS y `design.md`
+se piden al backend, así que son los artefactos reales y reflejan lo guardado —la pantalla lo dice
+con una etiqueta cuando hay cambios pendientes—.
+
+### Agregado: los cambios se juntan y se revisan antes de guardar
+
+Editar ya no escribe. Los cambios se acumulan en una barra al pie que dice cuántos hay y cuáles, y
+**Ver diff** abre el antes y el después de cada uno, con el contraste que gana o pierde. De ahí se
+guardan todos o se descartan. El guardado es por lote del lado del cliente: la API sigue recibiendo
+un `PUT` por token.
+
+### Agregado: el contraste se calcula en la pantalla
+
+`helpers/contraste.js` evalúa cada token contra `color.bg` de la marca con la fórmula WCAG 2.1, en
+vez de depender de los diez pares fijos que devuelve el endpoint. El veredicto se mueve mientras se
+escribe. Probado contra los valores sembrados: `#5C2472` da 10.8:1, `#FF8300` da 2.5:1.
+
+### Corregido: una prueba del rename a frames esperaba el orden viejo
+
+`inicioService` ordena alfabéticamente dentro de cada capa, y `frames` no cae donde caía `wacha`.
+
+---
+
+## [2.72.0] - 2026-09-03
+
+Lo que encontró la auditoría del rename a MEL.
+
+### Corregido: el gate de respaldo cubría cuatro de siete schemas
+
+`postgres-backup.sh` validaba `EXPECTED_SCHEMAS="public huachicol acervo sieej"` mientras el dump ya
+traía siete: le faltaban `mel`, `vine` y `frames`. Ese gate existe para que un dump al que se le cayó
+un schema **no se promueva** a weekly y monthly; con tres schemas fuera de la lista, un dump parcial
+habría pasado la revisión y pisado los respaldos buenos. Ahora valida los siete, comprobado contra un
+dump real de una base migrada.
+
+### Agregado: pruebas del compat
+
+`tests/test_mel_compat.py` cubre las dos rutas y los dos permisos. Es lo que tiene que ponerse rojo
+cuando la fase 3 retire el alias: sin ellas, llevarse algo de más solo se notaba en producción.
+
+### Corregido: los hitos del roadmap seguían diciendo «identidad»
+
+Los dos hitos del módulo pasan a `mel` y `f-mel-tokens`, con `nombre_anterior = 'identidad'` como se
+hizo con frigate. `m3l0001` trae los `UPDATE` para las bases que ya existen: editar el seed de una
+migración ya aplicada no cambia nada en producción.
+
+### Corregido: dos referencias que el rename dejó atrás
+
+`README.md` seguía listando el módulo como «Identidad» y `docs/arquitectura.md` apuntaba a
+`modulo-identidad.md`, que ya no existe.
+
+---
+
+## [2.71.1] - 2026-09-03
+
+### Cambiado: la propagación pasa de recuadro verde a badge accionable
+
+El aviso ocupaba una franja verde sobre el editor y desentonaba. Se convierte en un **badge
+`2/3`** junto al botón de ver cómo queda, verde cuando alguien la usa y neutro cuando nadie. Lo que
+decía el recuadro vive ahora en el tooltip.
+
+### Agregado: aplicar la tarjetita del grupo a sus propiedades
+
+El badge abre un menú con las propiedades y su estado —usa la del grupo, tiene la suya, sin
+tarjetita— y desde ahí se puede **hacer que una propiedad use la del grupo**, o **todas las que
+tienen la suya de un golpe**.
+
+Aplicar **borra la tarjetita propia** de esa capa para que vuelva a heredar; no copia nada, porque
+duplicar la configuración rompería la propagación futura. Pide confirmación y avisa de lo que
+importa: **se guarda de inmediato**, sobre otras capas, y no se deshace con el `Ctrl+Z` del editor,
+que solo cubre la tarjetita que estás editando.
+
+Las que dicen «sin tarjetita» quedan sin acción y explican por qué: el grupo no tenía una cuando se
+construyó el árbol, así que hay que guardar y refrescarlo.
+
+## [2.71.0] - 2026-09-03
+
+### Corregido: las bandas de ciclo salían negras
+
+Al pasar los ciclos a la base se sembró su color pero **no su tinte de fondo**, que era un `rgba`
+aparte y nunca tuvo columna. El componente seguía pidiendo `ciclo.tinte`, recibía vacío, y el SVG
+resuelve un relleno ausente como negro: las cuatro bandas tapaban el mapa. Ahora el tinte se deriva
+del color del propio ciclo, así que cambiar el color desde el editor cambia también el fondo y no
+hay dos valores que puedan contradecirse.
+
+### Cambiado: el marcador sale del catálogo de símbolos
+
+Se retiran los doce emojis inventados. El selector es ahora el `SymbolPicker` de
+`mapalab-symbols` —el mismo de `sextante/símbolos`—, con sus categorías y sus tres tipos: emoji,
+SVG e imagen. Al lado va un enlace directo para darlos de alta.
+
+La elección se guarda en el navegador de cada quien: es una preferencia visual, no un dato del
+roadmap, y no tiene por qué imponerse a los demás. Mientras no se elija ninguno, el marcador es un
+perro.
+
+---
+
+## [2.70.0] - 2026-09-03
+
+### Cambiado: editar solo se hace en pantalla completa
+
+El botón de edición **lleva a pantalla completa por su cuenta**: no hay que expandir primero. Y al
+salir de pantalla completa, la edición se apaga. Lo que no cambia es el otro sentido — expandir
+sigue siendo solo mirar, no editar.
+
+El motivo es de espacio: la barra del elemento seleccionado y el formulario compiten con el mapa, y
+en la vista normal el mapa mide 190 píxeles de alto útiles.
+
+### Cambiado: la sección se queda en claro, sin depender del tema
+
+La hoja de ruta declara su propio `ConfigProvider` con el algoritmo claro y `color-scheme: light` en
+su raíz, así que ya no hereda nada del tema del sistema ni de un tema dinámico que se agregue más
+adelante. El SVG usa negros y grises fijos y no tiene una paleta oscura que ofrecer; forzarlo es más
+honesto que dejarlo a la suerte de lo que pinte el navegador.
+
+### Agregado
+
+- `usePantallaCompleta` estrena pruebas: que solo se enciende cuando el elemento expandido es el
+  suyo —no cualquiera—, que vuelve a apagarse cuando el navegador sale, y que avisa si lo niega.
+
+---
+
+## [2.69.0] - 2026-09-03
+
+### Agregado: la propagación de la tarjetita se ve en tres lugares
+
+Un grupo comparte su tarjetita con las propiedades que no tienen una propia. Eso pasaba en
+silencio: editabas la del grupo sin saber a quién le pegaba, y abrías una propiedad sin saber de
+dónde venía lo que estaba viendo.
+
+**En el editor del grupo** —lo que faltaba por completo— un renglón dice «esta tarjetita la usan
+**6 de 8** propiedades», con la lista de cuáles heredan, cuáles tienen la suya y cuáles no tienen
+ninguna. Cada nombre es un enlace que abre esa capa. Se calcula del árbol que ya está cargado, sin
+pedirle nada al backend.
+
+**En el editor de la propiedad** el aviso deja de ser un `<code>` con el nombre del grupo y pasa a
+ser un enlace para ir a él. Y dice lo que realmente pasa: «esta capa no tiene tarjetita propia:
+muestra la del grupo X».
+
+**En el árbol** cada capa lleva un punto: **relleno** si tiene tarjetita propia, **hueco** si la
+hereda de su grupo, y **nada** si no tiene ninguna —esas son las que el visor rellena inventando
+una, y hasta ahora no había forma de verlas sin abrirlas una por una.
+
+La herencia se lee del campo `inheritedFrom` que el árbol ya resuelve (mapalab 1.165.0), con el
+recorrido de ancestros de antes como respaldo para un árbol en caché viejo.
+
+## [2.68.0] - 2026-09-02
+
+### Cambiado: el módulo Wacha ahora se llama Frames
+
+`wacha` nombraba el módulo por lo que hace mirar —«wacha» es «checa esto»—, pero no decía nada de
+lo que guarda ni de para qué existe. El módulo pasa a llamarse **FRAMES**, sigla de *Filmación y
+Resguardo Audiovisual para Monitoreo de Eventos y Seguridad*, que además es el nombre técnico de lo
+que el sistema almacena.
+
+Cambian el schema de la base (`wacha` → `frames`, con su índice), el prefijo de la API
+(`/wacha/*` → `/frames/*`), los permisos (`mariachi.wacha.view` → `mariachi.frames.view`), el rol
+atómico («Wacha - camaras» → «Frames - camaras»), las rutas del admin (`/wacha/camaras` y
+`/wacha/vivo`), la carpeta del admin y la entrada del sider. Las variables de entorno pasan de
+`WACHA_*` a `FRAMES_*`. Los datos no se tocan: la migración `fr4mes0001` es un `ALTER SCHEMA`.
+
+**No lleva capa de compatibilidad**, a diferencia del rename de MEL. El módulo nunca salió de
+`tamal-rojo`: no hay clientes con las rutas viejas ni permisos viejos que revocar en minerva. El
+manifiesto se importa y listo.
+
+No se renombró nada de **Frigate**: la imagen, las variables que consume (`FRIGATE_RTSP_PASSWORD`,
+`FRIGATE_CAMERA_*`) y la ruta `/media/frigate` son del producto upstream y se quedan como están.
+
+---
+
+## [2.67.0] - 2026-09-02
+
+### Cambiado: el módulo Identidad ahora se llama MEL
+
+`Identidad` era un nombre que ya significaba otras tres cosas en el ecosistema: el grupo de columnas
+del editor de capas, la identidad del actor en los envíos de SIEEJ y la identidad OIDC que da minerva.
+Buscar «identidad» devolvía las cuatro mezcladas. El módulo pasa a llamarse **MEL — Manual de Estilo
+y Lineamientos**: los tokens son el estilo, los campos de la guía son los lineamientos.
+
+Cambian el schema de la base (`identidad` → `mel`, con sus índices y constraints), el prefijo de la
+API (`/identidad` → `/mel`), los permisos (`mariachi.identidad.*` → `mariachi.mel.*`), la carpeta del
+admin y la entrada del sider. Los datos no se tocan: la migración `m3l0001` es un `ALTER SCHEMA`.
+
+No se renombraron el tab **Identidad** del editor de capas ni la «identidad del actor» de SIEEJ: son
+otra cosa y se quedan como están. El ZIP descargable sigue llamándose `identidad-<marca>.zip`, que
+es lo que describe su contenido para quien lo recibe.
+
+### Agregado: compatibilidad mientras minerva se pone al día
+
+`/identidad` sigue respondiendo como alias de `/mel`, marcado como deprecado en el OpenAPI, y la ruta
+`/identidad` del admin redirige a `/mel`. Los permisos viejos siguen dando acceso: el gate acepta
+`mariachi.mel.view` **o** `mariachi.identidad.view`, para que el deploy del código no dependa de que
+el manifiesto ya esté importado en minerva.
+
+Ambas compatibilidades se retiran en la fase 3, junto con la revocación explícita de
+`mariachi.identidad.view`, `mariachi.identidad.update` y el rol `Identidad - administracion`, que el
+import de minerva **no borra**.
+
+---
+
+## [2.66.0] - 2026-09-02
+
+### Cambiado: editar deja de ser un formulario
+
+Seleccionar un elemento en modo edición ya no abre el formulario largo debajo del mapa. Aparece una
+**barra pegada al elemento** con lo que se toca todo el tiempo —proyecto, tipo, la bandera de
+desarrollo y eliminar; color en el caso de un ciclo—, y el formulario completo queda detrás de un
+botón. La mano deja de viajar entre el mapa y el pie de la sección.
+
+### Agregado: doble clic para crear
+
+Un doble clic sobre el lienzo crea el elemento que corresponde al lugar donde se hizo, ya con su
+fecha puesta: sobre el eje, un **hito**; en el carril de arriba, un **proceso**; dentro de una banda,
+un **ciclo** que hereda su altura. Fuera de esas zonas no pasa nada.
+
+### Agregado: el arrastre deja de ser a ciegas
+
+Al mover un hito aparece una guía vertical con la fecha en la que va a caer, y un punto tenue donde
+estaba. Los días **1 y 15 tienen imán**: si sueltas a menos de tres días, se pega. Antes había que
+soltar para saber dónde había caído.
+
+### Interno
+
+- El estado de selección sale del panel a `useSeleccionRoadmap`, y el alta por posición a
+  `useAltaPorClic`. El componente vuelve a caber en las trescientas líneas.
+
+---
+
+## [2.65.0] - 2026-09-02
+
+### Agregado: los metadatos se ven como la ficha del visor y se editan desde ella
+
+La pestana Metadatos muestra a la derecha, en columna pegajosa, **la ficha que abre el visor**: las
+mismas secciones, en el mismo orden —Descripcion, Numeralia, Fuentes, Metodologia, Metadato— y sin
+las que quedan vacias, igual que el visor las omite. Antes eran ocho campos sueltos sin manera de
+saber que armaban una ficha, y por eso salian descripciones de un renglon junto a metodologias de
+tres parrafos.
+
+**Cada seccion de la ficha es clickeable** y abre la del formulario que le corresponde; el titulo
+lleva a Informacion general. La de numeralia salta a la pestana Estadisticas, asi que la barra de
+pestanas del editor paso a ser controlada. Cuando no hay indicadores la seccion se queda visible
+—aunque el visor la omita— porque si no, no habria de donde saltar.
+
+### Agregado: los metadatos pasan por el flujo de publicacion
+
+Se fue el boton «Guardar metadatos»: la ficha se autoguarda como borrador `layer_metadata`, cuenta en
+«sin publicar» y aparece en la hoja de revision con su propia seccion. Con esto son tres los recursos
+que publican igual: capa, metadatos y numeralia.
+
+### Cambiado: el texto de ayuda de 34 campos pasa a tooltip
+
+Cada campo llevaba una o dos lineas grises debajo. Ahora viven en el tooltip del propio campo, que es
+donde ya estaba el resto de la informacion extra del editor. Solo se quedan como `extra` los cuatro
+que no son texto sino botones.
+
+### Cambiado: los presets del distintivo dejan de estar duplicados dentro del admin
+
+`LayerBadgeSection` tenia su propia copia de `BADGE_PRESETS` y `softBg`, espejo de la de mapalab.
+Quedan en `constants/badgePresets.js` con los nombres del visor —`resolveBadge`,
+`isBadgeInValidityWindow`— para que comparar contra mapalab sea mirar un archivo contra otro. Hoy
+coinciden exacto; ocho pruebas cubren presets, modo personalizado y los bordes de la ventana de
+vigencia.
+
+## [2.64.2] - 2026-09-02
+
+### Corregido: el contenido de una sección ya no desborda la tarjeta
+
+La tarjeta mide 239 px y los valores vienen de columnas reales: nombres de doscientos caracteres,
+claves sin un solo espacio, URLs largas. Cualquiera de esos empujaba su sección y se salía del
+lienzo.
+
+Todo lo que pinta texto parte palabra cuando hace falta y **todo contenedor flex lleva
+`minWidth: 0`**, que es lo que de verdad faltaba: sin eso un hijo flexible se niega a encogerse por
+debajo de su contenido y arrastra al padre. Los renglones de la lista alinean por línea base, las
+etiquetas se acomodan en varias líneas en vez de estirarse, y la rejilla de cifras usa
+`minmax(0, 1fr)` en vez de `1fr`, que tiene el mismo problema.
+
+Cinco pruebas lo fijan, una por tipo de sección.
+
+### Cambiado: los selectores de la edición son más altos
+
+Los `Segmented` de la canaleta —«Un campo / Campos combinados», «Unir texto / Sumar», «Campos del
+feature / Valores fijos»— pierden el `size="small"` y quedan a la altura normal, que es la que
+tienen los controles con los que conviven.
+
+## [2.64.1] - 2026-09-02
+
+### Corregido
+
+- `ruff check app tests` vuelve a pasar limpio. Tres archivos tenían el bloque de imports sin
+  ordenar y dejaban en rojo el job de backend: `layer_metadata.py`, `columna_tabla.py` y
+  `borrador_service.py`. Son cambios de formato, sin efecto en el comportamiento.
+
+---
+
+## [2.64.0] - 2026-09-02
+
+### Cambiado: la pestana Estadisticas se edita sobre la cuadricula del visor
+
+La cuadricula que el visor pinta bajo la capa subio al principio y **es la vista previa**: los mismos
+recuadros, 4x2 con los lugares libres marcados. Se da click en uno y abajo aparece **solo** el editor
+de ese indicador, en vez de una lista de ocho fichas abiertas. Sustituye a la tarjeta «Valores
+actuales en el visor», que mostraba lo mismo como etiquetas azules al final del formulario.
+
+Los valores se calculan **en vivo** contra la base al cambiar la configuracion o el contexto, asi que
+se ve el numero antes de publicar. Antes el unico modo de verlo era guardar y recalcular contra
+produccion.
+
+Se fueron los tres botones de alta —habia que elegir el modo antes de saber que se queria—; ahora se
+agrega uno y el modo se cambia adentro. «Probar con contexto» y «Vigencia» pasaron al encabezado de
+la vista previa, con tooltip, y en movil quedan como iconos. La nota al pie se edita en su lugar, bajo
+los recuadros. En todo lo que ve el usuario «slot» pasa a «indicador».
+
+### Agregado: la numeralia pasa por el flujo de publicacion
+
+Era la excepcion: se guardaba directo a produccion mientras el resto del editor ya tenia borrador y
+publicacion explicita. Ahora se autoguarda como borrador `layer_stats`, entra en el contador de
+«sin publicar» y aparece en la hoja de revision con su propia seccion.
+
+El aplicador **encadena el recalculo**: `PUT /stats` guarda la configuracion pero no recalcula, y sin
+ese paso el visor seguiria mostrando los valores materializados anteriores.
+
+### Corregido: el historial salia vacio
+
+Apuntaba solo a `layer-config`, que no tiene registros: desde el autoguardado `PUT /layers` unicamente
+corre al publicar. Todo lo que hay hoy es de `layer-metadata`, que quedaba fuera de la consulta.
+
+El panel abre ahora **en general**, sin filtrar por capa y con la columna que dice a cual pertenece
+cada cambio, y trae un selector Capas/Metadatos como el modo tabla tiene sus dos pestanas. Las
+columnas de metadatos se nombran como las ve el usuario en vez de como claves de base de datos.
+
+## [2.63.0] - 2026-09-02
+
+### Cambiado: la pestaña de tarjetita es un solo componente
+
+`TarjetitaEditor` reemplaza al encabezado suelto más el editor: el modo, la vista limpia y el modal
+de plantillas dejan de estar repartidos entre hermanos que no se conocían. Los dos llamadores
+—editor de capas y cajón de contenido— pasan de treinta líneas a una. Se va
+`InfoBoxEditorHeader.jsx`.
+
+Eso desbloquea lo demás:
+
+- **«Ver cómo queda» es un ícono**, a la derecha del título, sin texto. Al activarlo **se esconde
+  todo lo demás** —la leyenda, el selector de modo, la canaleta, las asas, los insertadores— y la
+  tarjeta queda centrada en el contenedor. El mismo botón regresa a editar.
+- **El panel vacío se estira a su contenedor** con `flex`, en vez del `calc(100vh - …)` que se
+  pasaba de largo y sacaba barra de scroll. Con poco espacio cae a 220 px y ahí se queda.
+- **El botón Plantillas sale del encabezado.** Con la tarjetita vacía ya está el panel central;
+  con contenido vive ahora en el menú del **+** del lienzo, como «Reemplazar con una plantilla…»,
+  que es donde se traen cosas.
+
+### Cambiado: la tarjeta abarca el ancho de sus asas
+
+Las asas de arrastre y los botones de duplicar y quitar caían fuera del blanco de la tarjeta y
+parecían sueltos. El panel blanco abarca ahora también esa canaleta —239 px de contenido más 28 a
+cada lado— así que los controles quedan dentro. **El contenido sigue midiendo 239 px**, que es lo
+que mide en el visor; lo que crece es la superficie de trabajo, no la tarjeta. En «ver cómo queda»
+el panel se encoge a los 239 exactos.
+
+### Cambiado: un solo control para elegir entre opciones
+
+Los `Radio.Group` con botones se van: «Un campo / Campos combinados / Texto fijo», «Unir texto /
+Sumar» y «Campos del feature / Valores fijos» usan el mismo `Segmented` que Lienzo · Lista · JSON.
+
+### Eliminado: el interruptor Escritorio / Móvil de la vista previa
+
+Ya no estaba haciendo nada.
+
+## [2.62.1] - 2026-09-01
+
+### Cambiado: la capa sin tarjetita muestra una sola cosa
+
+Con la tarjetita vacía en modo Lienzo se veían tres cosas compitiendo: el encabezado de la sección,
+el panel de «Esta capa todavía no tiene tarjetita» y debajo un lienzo vacío con su franja de
+título y su **+**. Ninguna de las tres decía qué hacer.
+
+Ahora el panel **ocupa el alto de la pestaña**, centrado, y es lo único: se esconden la leyenda
+«Configuración del cuadro» y el lienzo hasta que haya algo que dibujar. Con una sola sección
+configurada todo vuelve a su sitio.
+
+El **selector de modo se queda visible**, porque es la única puerta al modo JSON y pegar un JSON en
+una capa vacía es justo el camino de copiar una tarjetita entre entornos.
+
+El modo **Lista no cambia**: con la tarjetita vacía sigue ofreciendo sus chips de «Agregar bloque»,
+que ahí sí son la forma de empezar.
+
+## [2.62.0] - 2026-09-01
+
+### Agregado: los ciclos y los procesos también se editan
+
+Hasta ahora solo los hitos vivían en la base; las bandas de ciclo y los carriles de proceso eran
+constantes del admin, así que mover el cierre de `tamal-verde` pedía un deploy. **Migración
+`r0adm4p0002`**: dos tablas nuevas, `roadmap_ciclos` y `roadmap_procesos`, sembradas con los cinco
+ciclos y el proceso que ya existían. Las constantes se eliminan.
+
+Ocho endpoints más bajo `/api/mariachi/roadmap`, con el mismo permiso y el mismo `verify_csrf` que
+los hitos. El editor cambia de campos según lo que se seleccione: un ciclo pide nombre, color y sus
+límites; un proceso pide su primera edición y cada cuándo se repite.
+
+**Agregar deja de ser exclusivo de los hitos**: hay un botón por tipo.
+
+### Agregado: los hitos se arrastran
+
+En modo edición un hito se toma y se mueve de lado; al soltarlo se guarda con la fecha que le
+corresponde a esa posición del eje. Como el eje no es lineal —cada año ocupa el ancho que le tocó—,
+`fechaEnX` busca primero el tramo del año y luego el mes y el día dentro de él, que es la inversa
+exacta de cómo se dibuja.
+
+El acomodo se recalcula en cada movimiento, así que las etiquetas se reacomodan mientras se
+arrastra, no al soltar.
+
+---
+
+## [2.61.0] - 2026-08-31
+
+### Corregido: en el lienzo no había forma de ponerle título a la tarjetita
+
+El menú del **+** excluye el encabezado —no se duplica ni se mueve— y con eso quedó sin puerta:
+una capa sin título no podía ganarlo. Ahora, cuando falta, la tarjeta muestra arriba una franja
+punteada con **«Agregar título»**.
+
+### Cambiado: el lienzo ya no lleva vista previa al lado
+
+Era la misma tarjeta dos veces. En su lugar hay un botón **«Ver cómo queda»** sobre la propia
+tarjeta: apaga las asas, los insertadores y la selección, y la deja como se pinta en el visor.
+**«Volver a editar»** regresa. La columna de vista previa se sigue mostrando en el modo Lista.
+
+Las asas y los botones de duplicar y quitar viven fuera de los 239 px de la tarjeta, así que el
+lienzo reserva 30 px a cada lado en vez de recortarlos contra la canaleta.
+
+### Cambiado: las plantillas se ofrecen al centro cuando no hay nada
+
+Con la tarjetita vacía, el botón chico del encabezado no se ve. Pasa a ser un panel centrado
+—«Esta capa todavía no tiene tarjetita»— con el botón en primario. En cuanto hay una sección, el
+panel desaparece y el botón vuelve a su sitio en el encabezado.
+
+### Eliminado: el modo Texto
+
+Duró una versión. La idea era sustituir al JSON, y al construirlo quedó claro que no lo sustituye:
+hay configuraciones que no puede escribir sin perder algo, así que el JSON tenía que quedarse de
+todos modos. Dos herramientas para expertos que hacen lo mismo es una de más. Se van
+`infoboxTexto.js`, su editor y sus pruebas; el segmento vuelve a **Lienzo · Lista · JSON**.
+
+### Eliminado: el interruptor Escritorio / Móvil de la vista previa
+
+No aportaba: la diferencia real entre las dos variantes es de tamaños de letra, y para eso no hace
+falta un control.
+
+## [2.60.0] - 2026-08-31
+
+### Agregado: el texto corto, la tarjetita en líneas legibles
+
+Un modo **Texto** con una línea por sección, para copiar entre entornos y revisar en un diff sin
+contar corchetes:
+
+```
+titulo      nombre
+insignia    municipio naranja
+renglon     Turno: turno
+ubicacion   calle, "#"numero_ext, "Col. "colonia
+cifra       Total: hombres + mujeres
+```
+
+Las líneas seguidas del mismo tipo forman un bloque; las separadas por otra cosa forman bloques
+distintos, así que **el orden del texto es el orden de la tarjeta** y las instancias múltiples
+salen solas. Los errores se reportan con su número de línea y **no se aplica nada** hasta que el
+texto entero se entienda.
+
+**Si una tarjetita no se puede escribir sin perder algo, no se escribe.** El modo lo dice —qué
+clave, qué opción— y manda al JSON. Un texto corto que tira datos en silencio sería peor que las
+llaves; por eso **el modo JSON se queda** en vez de ser reemplazado, que era la idea original.
+
+El color se escribe con una palabra (`naranja`, `morado`, `azul`, `verde`, `vino`) y no con la
+llave interna del preset: además de leerse mejor, desambigua el caso en que la columna se llama
+igual que el color, como `municipio`.
+
+El segmento queda en **Lienzo · Lista · Texto · JSON**.
+
+## [2.59.0] - 2026-08-31
+
+### Agregado: el lienzo, la tarjetita se edita sobre sí misma
+
+La tarjetita deja de tener un editor al lado: **la tarjeta es el editor**. Cada sección se dibuja
+como se va a ver, en su sitio y en su orden, con los datos reales de la capa.
+
+- **El + vive entre secciones** y aparece al pasar el cursor, así que el lugar es parte del gesto.
+  El de hasta abajo es permanente, que es el que hace falta para el caso normal. Ese mismo menú
+  ofrece **duplicar la de arriba**: la duplicación deja de ser un botón dentro del bloque y pasa a
+  ser una inserción con lugar.
+- **Tocar una sección abre su editor en la canaleta** de la derecha, a la altura de la sección. La
+  tarjeta no se encoge ni se reacomoda: sigue midiendo sus 239 px, que es lo único que hace
+  confiable lo que ves. En 239 px no cabe un selector; por eso los controles van al lado y no dentro.
+- **Se arrastra por el asa** del borde izquierdo. El **encabezado no**: se dibuja como la barra de
+  título que es, con candado, porque en el visor siempre se pinta arriba.
+- Una sección recién agregada **sigue visible aunque todavía no muestre nada** —dice «sin datos
+  todavía»—, en vez de desaparecer hasta que le pongas un campo.
+- **La herencia se ve en la tarjeta**: si la capa hereda del grupo, el lienzo la pinta atenuada y
+  el botón de personalizar está encima, no en un recuadro aparte.
+
+El segmento pasa a **Lienzo · Lista · JSON**, con el lienzo por defecto. La lista es el editor
+anterior y se queda como respaldo: el lienzo no se ha ejercitado con el ratón contra capas reales.
+
+Los editores de cada bloque se reutilizan tal cual —`BlockShell` gana un modo `bare` para vivir en
+la canaleta sin su marco—, así que lo que cambia es el acomodo, no la edición.
+
+## [2.58.0] - 2026-08-31
+
+### Agregado: el modo edición arma sucesiones y desempata hitos
+
+El formulario solo dejaba tocar la etiqueta, las fechas, el proyecto, el tipo y el motivo, así que
+**las conexiones entre hitos no se podían crear desde la pantalla**: había que escribirlas en la
+base a mano. Ahora hay tres campos más:
+
+- **Viene de**, un selector con los demás hitos, que es lo que dibuja la curva punteada.
+- **Qué dice la conexión**, la leyenda que va encima —`se renombra`, `lo releva`, `lo sucede`—.
+- **Orden en su día**, lo único que desempata dos hitos con la misma fecha.
+
+Los seis linajes que ya existían —geoserver a sextante, IGIBot a agent, el portal de mariachi a
+sitio2026 y los dos legados— quedan editables sin tocar SQL.
+
+### Corregido
+
+- **El editor no se veía en pantalla completa.** El marco recortaba con `overflow: hidden` y el
+  lienzo se llevaba todo el alto, así que al seleccionar un hito el formulario quedaba fuera de
+  cuadro. Ahora el marco reparte el alto: el lienzo toma lo que sobra y el editor se queda con hasta
+  un 45% con scroll propio.
+
+---
+
+## [2.57.0] - 2026-08-31
+
+### Cambiado: el tema «Contrato /ontoy» de Documentacion ahora es «Contratos», con dos pestanas
+
+`/ontoy` no era el unico contrato del ecosistema, solo el unico escrito. La pestana pasa a llamarse
+**Contratos** y se parte en dos: `/ontoy`, el contrato entre servicios, y **Base de datos**, el
+contrato entre datos. El enlace viejo `?topic=ontoy` sigue funcionando y abre la pestana `/ontoy`;
+`?sec=base-de-datos` abre la otra.
+
+### Agregado: la pestana «Base de datos» documenta los contratos que no estaban en ningun lado
+
+Se cumplen por nombre, no los valida nadie y fallan en silencio: una columna mal nombrada no da
+error, da una capa vacia o un selector sin meses. Quedan escritos `fecha`, `clave_municipio` y
+`clave_geo`, `geom` con `geom_iieg`/`geom_inegi`, el `fid` que exige el WFS para paginar y los dos
+dialectos de `layer_key`, mas las consultas que detectan cada incumplimiento.
+
+La pantalla es una ficha de consulta —tablas y frases cortas—; la version larga, con el porque de
+cada regla, vive en `context-ame-esta/ecosistema/contratos-de-datos.md`.
+
+### Cambiado: la pestana `/ontoy` se puso al dia
+
+Llevaba sin revisarse desde el contrato v2 original y le faltaba todo lo de huachicol 2.8.0 a 2.16.0.
+Se agregan los campos `node`, `node_reporter`, `host` y `peers`; los checks `informativo: true`, que
+no entran al estado global; las tres formas de servirlo, incluido el stack aparte de
+`compose.ontoy.yaml` y la fusion por `ONTOY_UPSTREAM_URL`; y que el monitor guarda tambien `node` y
+`host` pero ignora `service`, `released_at` y `peers`.
+
+Se corrige la tabla de adopcion, que decia `geoserver` en vez de `sextante` y daba a mariachi y
+mapalab como backend pelado: los once servicios tienen ya su sidecar y su nodo. Y se corrige la
+leccion de exposicion, que estaba al reves: el `deny` va **en el gateway**, porque el rewrite le
+quita el prefijo a la peticion antes de que el nginx del servicio la vea.
+
+## [2.56.0] - 2026-08-31
+
+### Corregido: el autoguardado detectaba cambios donde no los habia
+
+Abrir una capa y no tocar nada bastaba para que el contador dijera «2 sin publicar», con renglones
+que se leian «Etiquetas de busqueda — → —»: los dos lados vacios y aun asi contados como cambio.
+
+La causa es que el diff comparaba los valores del formulario contra el objeto crudo de la capa, y
+`populate` no los deja iguales: aplica valores por defecto al poblar —`searchTags` cae en `[]` cuando
+la capa trae `null`, `infoboxConfig` en `null` cuando el editor entrega `{}`, `tiled` en `true`—.
+Toda capa nacia con cambios fantasma.
+
+Ahora la referencia es **una foto del formulario recien poblado**, no la capa cruda, asi que
+cualquier transformacion es simetrica. Ademas la comparacion dejo de ser ingenua: arreglo y objeto
+vacios cuentan como nulo, los objetos se serializan con las llaves ordenadas —un orden distinto
+inventaba cambios— y un numero y su texto son el mismo valor. `0` y `false` siguen siendo valores,
+no vacios.
+
+### Agregado: descartar los borradores desde la hoja de publicacion
+
+El arreglo evita que se creen borradores fantasma nuevos, pero no limpia los que ya se guardaron.
+**Descartar todo** borra los borradores listados y deja las capas como estan publicadas. Descarta
+los de todas las capas de la lista, no solo los vacios: si hay algo real pendiente, conviene
+publicarlo antes.
+
+## [2.55.0] - 2026-08-31
+
+### Agregado: los selectores de campo muestran valores reales
+
+Elegir `cve_est_2` de una lista de nombres era adivinar. Cada columna del selector trae ahora
+**hasta tres valores de ejemplo** debajo del nombre, y salen de los mismos diez registros que
+alimentan la vista previa: cero peticiones extra.
+
+`SampleFeaturesProvider` los trae una vez por capa y los reparte, así que el editor y la vista
+previa miran exactamente los mismos datos.
+
+### Agregado: deshacer y rehacer en la tarjetita
+
+`Ctrl+Z` y `Ctrl+Shift+Z`, con sus dos botones. Arrastraste mal, borraste la sección equivocada o
+aplicaste una plantilla encima de media hora de trabajo: se recupera.
+
+Los cambios seguidos **se agrupan**: escribir una etiqueta manda un cambio por tecla, y sin
+agrupar cada deshacer borraría una letra. Dentro de medio segundo se reemplaza la cima de la pila
+en vez de apilar, así que un deshacer equivale a una edición. Guarda treinta pasos.
+
+El atajo se ignora cuando el cursor está dentro de un campo de texto, donde `Ctrl+Z` tiene que
+seguir deshaciendo lo que escribiste.
+
+## [2.54.0] - 2026-08-31
+
+### Agregado: la tarjetita se previsualiza con registros reales de la capa
+
+La vista previa dejaba de mentir a medias: mostraba un «Parque Metropolitano» inventado a mano.
+Ahora trae **diez registros reales** de la capa y se puede recorrerlos con ◀ 1 / 10 ▶.
+
+Eso es lo que importa: la tarjeta se ve bien con el primer registro y se rompe con el séptimo, el
+que no tiene colonia o el del nombre de doscientos caracteres. Cuando el registro que estás viendo
+no trae alguno de los campos que la tarjetita usa, **el panel lo dice por su nombre**.
+
+Se suma un interruptor **Escritorio / Móvil**, porque el visor pinta la tarjeta con otras medidas y
+a dos columnas de cifras en teléfono, y esa versión no la revisaba nadie. Y la vista previa pasa a
+medir **239 px**, el ancho real de la tarjeta en el visor, en vez de 280.
+
+Cuando la capa no tiene registros que ofrecer —un grupo de capas de GeoServer, por ejemplo— se
+sigue pintando con valores de ejemplo y lo dice.
+
+**`GET /geoserver/workspaces/{alias}/layers/{layer}/sample-features`** es el endpoint nuevo:
+devuelve hasta cincuenta features con sus propiedades planas, sin geometría. Un grupo de capas
+devuelve la lista vacía en vez de fallar.
+
+## [2.53.0] - 2026-08-31
+
+### Cambiado: el buscador de capas se despliega al pasar el cursor
+
+Vivia bajo el titulo de la pagina ocupando su propio renglon. Ahora es un boton de lupa junto a
+«Nuevo nodo», en la fila de pestanas, y se abre a 210 px con el cursor encima, al enfocarlo o
+mientras tenga texto. Con eso la descripcion de la subpagina recupera su linea completa.
+
+### Cambiado: Mover pasa al encabezado del cajon Avanzado
+
+Era una seccion mas dentro del cajon. Como boton del encabezado se alcanza sin bajar, y su tooltip
+dice de que cuelga hoy el nodo. Servicios y Simbologia quedan plegadas al abrir.
+
+### Corregido: las secciones del editor se veian apretadas y chiquitas
+
+El titulo era de 11 px en versalitas grises y se leia como una etiqueta perdida, no como el
+encabezado de la seccion. Pasa a 14 px en el color del texto, con la ayuda debajo en 12 px, 28 px de
+separacion entre secciones y 20 px antes del contenido. El cajon de Avanzado abre a 600 px con
+padding propio.
+
+### Corregido: quitar el marco del arbol no habia ahorrado espacio
+
+Se retiro el `Card` que lo envolvia pero quedaron sus 24 px de padding alrededor, asi que el ancho
+recuperado fue ninguno. Bajan a 8 px.
+
+## [2.52.1] - 2026-08-31
+
+### Corregido: el zoom del roadmap dejaba el lienzo en blanco
+
+El SVG recibía el alto en porcentaje —`height: 120%`— dentro de un contenedor flex centrado. Con
+`width: auto`, el navegador no tenía de dónde calcular el ancho y lo colapsaba: el lienzo
+desaparecía y los botones parecían no hacer nada. Ahora las dos medidas se calculan en píxeles a
+partir del alto de la pantalla y la proporción del `viewBox`, así que crecen juntas.
+
+De paso el contenedor pasa de `overflow-x` a `overflow` completo: con el mapa acercado no había
+manera de llegar a lo que quedaba fuera por arriba o por abajo, y el centrado por flex recortaba
+sin dejar desplazar. Ahora centra con `margin: auto`, que sí convive con el scroll.
+
+### Cambiado
+
+- **Los controles de zoom solo aparecen en pantalla completa.** Fuera de ella el lienzo se dibuja a
+  tamaño fijo con scroll horizontal, así que no había nada que acercar. El zoom vuelve a 100% al
+  salir.
+
+---
+
+## [2.52.0] - 2026-08-31
+
+### Cambiado: la vista previa de la tarjetita deja de reimplementar el visor
+
+`InfoBoxPreview` ya no interpreta la configuración por su cuenta: llama a **`buildCardPlan`**, el
+mismo módulo que usa el visor, y pinta el plan que le devuelve. Todo lo que decidía a mano
+—resolver un campo, unir columnas, partir por «; », formatear números y fechas, armar el link de un
+ícono, ordenar las instancias— se fue al módulo compartido.
+
+Es el patrón que las estadísticas ya usaban desde siempre: una sola implementación, dos
+consumidores. La tarjetita era la excepción, y se notó cuando los campos compuestos funcionaban en
+el visor y el preview los ignoraba.
+
+**`admin/src/shared/infoboxPlan.js` es una copia byte a byte** de la canónica que vive en mapalab.
+`scripts/sync-infobox-plan.sh` la copia y `--check` falla si divergieron — mismo enfoque que el
+`check-model-drift.py` de gateway-hub para los modelos de SQLAlchemy. Editar la copia no sirve de
+nada: se edita en mapalab y se sincroniza.
+
+De paso el preview mejora en dos cosas. Los valores de ejemplo se arman **a partir de los campos
+que la tarjetita realmente usa** (`referencedFields`), así que ya no depende de que el nombre
+coincida con una lista fija. Y acepta `properties`, que es por donde va a entrar el registro real
+de la capa.
+
+## [2.51.1] - 2026-08-31
+
+### Corregido: la barra horizontal de la pestaña Tarjetita, ahora sí
+
+El intento anterior atacó lo que no era: los botones anchos y los anchos fijos de los renglones no
+tenían nada que ver. La causa estaba una capa más arriba y explica por qué el problema salía **solo**
+en esa pestaña — es la única que usaba `Row`.
+
+`<Row gutter={24}>` aplica `marginInline: -12px` (verificado en `antd/lib/grid/row.js`), así que la
+fila mide 24px más que su contenedor. Ese contenedor es el panel de la pestaña, que lleva
+`padding: 16px 0` —cero horizontal— y cuelga de un `content-holder` con `overflow-y: auto`; por
+especificación, `overflow-x: visible` junto a un `overflow-y` que no es visible **computa a `auto`**,
+de modo que esos 24px sobrantes se convierten en barra de scroll. Las demás pestañas usan
+`EditorSection` y por eso nunca la mostraron.
+
+`Row`/`Col` salen del editor de tarjetita y del cajón de contenido y se sustituyen por un flex con
+`gap: 24px`, que no tiene márgenes negativos. De paso el acomodo pasa a depender del ancho real del
+contenedor y no del viewport, que es lo correcto aquí: el editor vive dentro de un panel dividido y
+los breakpoints `md` de antd medían la ventana completa.
+
+## [2.51.0] - 2026-08-31
+
+### Agregado: zoom en la hoja de ruta
+
+Botones de acercar y alejar con el porcentaje a la vista, de 60% a 300%. **En pantalla completa la
+rueda del ratón también hace zoom**; fuera de ella se deja en paz, para no secuestrar el scroll de
+la página.
+
+### Corregido
+
+- **Los modales del mapa de servidores no se veían en pantalla completa.** Ant Design los monta en
+  `document.body`, que queda fuera del elemento expandido, así que el detalle de un nodo se abría
+  donde nadie podía verlo. `NodoDetalleModal` acepta ahora un `contenedor` y el panel le pasa el
+  marco cuando está expandido.
+
+### Cambiado
+
+- **El selector de servidores/servicios se mueve a la derecha**, junto a «Pantalla completa» y al
+  enlace de la sección. Estaba pegado al título, lejos de los controles con los que se usa.
+
+---
+
+## [2.50.0] - 2026-08-31
+
+### Agregado: pantalla completa también en el mapa de servidores
+
+La sección de Huachicol del inicio estrena el mismo botón que el roadmap, en sus dos vistas. El
+mapa de nodos se centra y aprovecha todo el alto en vez de quedarse del tamaño de la tarjeta, que
+es donde más se agradece: es un diagrama que se lee mal en un recuadro.
+
+Sale de un hook compartido, `shared/hooks/usePantallaCompleta`, con la API del navegador y el aviso
+cuando la niega. Cualquier sección que lo quiera son tres líneas.
+
+### Cambiado
+
+- **El roadmap aprovecha el alto en pantalla completa.** Antes conservaba su tamaño y dejaba el
+  espacio vacío arriba y abajo; ahora el lienzo crece a lo alto de la pantalla y queda centrado,
+  con el scroll horizontal intacto.
+- **Los controles vuelven al encabezado cuando no hay pantalla completa.** La 2.45.0 los había
+  metido al lienzo para que sobrevivieran al expandir, pero ahí estorbaban en la vista normal. Ahora
+  viven en el encabezado, a la derecha, y solo se mudan adentro al expandir, que es cuando el
+  encabezado queda fuera del elemento.
+
+### Interno
+
+- Las llamadas a la API del roadmap salen del panel a `useRoadmapHitos`. El componente pasa de 330
+  líneas a 281 y deja de mezclar el estado de la vista con el de los datos.
+
+---
+
+## [2.49.0] - 2026-08-31
+
+### Agregado: los bloques de la tarjetita se pueden duplicar
+
+Cada bloque del cuerpo trae un botón de copiar en su encabezado, y la copia aparece **justo debajo
+del original**, ya con su contenido. Sirve para lo que antes no se podía: un grupo de etiquetas
+arriba y otro al final, dos listas separadas por las cifras. El **encabezado no se duplica**: se
+pinta siempre arriba y solo puede haber uno.
+
+Los chips de «Agregar bloque» siguen desapareciendo al usarlos —uno por tipo—; a partir del segundo
+se duplica desde el bloque, que es donde se ve qué se está copiando.
+
+Al agregar o duplicar, la vista **se desplaza sola hasta el bloque nuevo**, que hasta ahora aparecía
+fuera de pantalla en tarjetitas largas.
+
+La mecánica de instancias, orden y colapso a la forma simple vive en `constants/infoboxBlocks.js`
+como funciones puras (`planAddBlock`, `planDuplicateBlock`, `planRemoveBlock`, `planSetBlockItems`),
+con 17 pruebas: es la parte que más fácil se rompe y no se puede ver desde la UI.
+
+### Cambiado: menos texto suelto en el editor de tarjetita
+
+- La explicación larga de la sección pasa a un **tooltip** en el signo de interrogación del título.
+- Las descripciones de cada bloque dejan de ir como texto gris al lado del nombre y pasan a
+  **tooltip sobre el nombre**; los mismos textos explican los chips de «Agregar bloque».
+- «Sin bloques. Agrega uno arriba para empezar.» queda en «Agrega un bloque para empezar.», y la
+  leyenda del cuerpo en «Arrastra ⋮⋮ para reordenar.».
+- Los títulos de bloque pierden el nombre técnico entre paréntesis: «Etiquetas» en vez de
+  «Etiquetas (labelGroups)».
+
+### Cambiado: la vista previa se esconde cuando no hay nada que ver
+
+Con la tarjetita vacía la columna de vista previa mostraba un hueco. Ahora se oculta y el editor
+ocupa el ancho completo; reaparece en cuanto hay un bloque o se hereda del grupo.
+
+### Corregido: la barra de scroll horizontal del editor
+
+Los renglones de lista llevaban dos botones de texto —`raw` y `multivalor`— que no cabían en la
+columna. Pasan a íconos con tooltip, los anchos fijos de los afijos y del selector de estilo pasan a
+mínimos flexibles, y los contenedores ganan `minWidth: 0` para poder encogerse. Se ajusta también el
+tirador de arrastre, que quedaba encima del botón nuevo.
+
+## [2.48.0] - 2026-08-31
+
+### Cambiado: la barra de acciones del arbol se vacia
+
+Quedaba una fila de botones sobre el arbol que le robaba alto sin ganar nada. **Recargar** se fue
+—el arbol no lo editan veinte personas a la vez—, **Nuevo** se volvio un boton de icono a la derecha
+de las pestanas Capas/Eventos/Papelera, y **Etiquetas en lote** se mudo al modal de configuracion
+general, que ahora agrupa lo que aplica a varias capas de golpe.
+
+El **historial** paso al encabezado de la pagina, junto al engrane, como boton de icono. El
+buscador se alinea a la derecha, en la misma linea que la descripcion de la subpagina, que vuelve.
+
+Tambien se fue el marco que envolvia el arbol y el editor: robaba ancho sin separar nada que no
+separara ya el propio encabezado.
+
+### Cambiado: Avanzado se abre desde el encabezado del nodo y trae Mover
+
+*Avanzado* dejo de vivir en la barra de pestanas y es el unico boton del encabezado del nodo. Lo
+primero que aparece adentro es **Ubicacion en el arbol**, con la ruta actual y el boton de mover:
+antes habia que abrir un modal aparte. Al fondo sigue Archivar.
+
+El boton de publicar **solo aparece cuando hay algo que publicar**; antes decia «Todo publicado»
+ocupando lugar para no decir nada.
+
+### Cambiado: todas las secciones del editor se colapsan, abierta solo la primera
+
+Identidad, Apariencia, Metadatos y Avanzado usan el mismo comportamiento: la primera seccion abierta
+y el resto plegadas, para llegar de un golpe a la que interesa. Metadatos se partio en cinco
+secciones —Informacion general, Fuentes, Metodologia, Referencias cartograficas y Archivos
+adjuntos— que antes eran tarjetas apiladas sin plegar.
+
+### Cambiado: la hoja de publicacion muestra el valor anterior
+
+Cada cambio se lee como `antes → despues` en vez de solo el valor nuevo. De las capas que no estan
+abiertas no se conoce el valor publicado, y eso se dice con un `?` en vez de inventarlo.
+
+### Agregado: un grupo se puede archivar junto con sus propiedades
+
+`DELETE /layers/{id}` acepta `?cascade=true` y archiva el nodo con toda su descendencia viva. Antes
+el backend bloqueaba en seco —«elimina o mueve los hijos primero»— y `force` no lo saltaba: vaciar a
+mano un grupo de veinte propiedades no era trabajo de nadie. El modal lo pide con una casilla y deja
+claro que **las propiedades se van con el grupo**, porque no son capas aparte sino filtros del mismo
+feature type.
+
+Restaurar sigue siendo capa por capa, de arriba abajo: `restore_layer` exige que el padre no este en
+papelera.
+
+### Eliminado: tres avisos mas, ahora en el tooltip de su seccion
+
+El de grupo agrupador —que se llevo consigo las etiquetas de capas hijas, feature type y wms_group,
+ahora con el detalle en su tooltip—, el del feature type heredado en el editor de SLD, y el de SLD no
+editable visualmente, que ademas ocupaba una lista de vinetas y un `<details>` para decir que hay que
+editarlo en GeoServer.
+
+## [2.47.0] - 2026-08-31
+
+### Agregado: autoguardado con publicacion explicita
+
+El boton «Guardar» desaparecio. Lo que escribes se guarda solo como borrador —debounce de 1.5 s—
+y un boton junto al titulo **Capas MapaLab** dice cuantos cambios llevas sin publicar. Esta ahi
+siempre, tanto en el arbol como editando, asi que nadie se va de la pantalla creyendo que publico.
+
+Al pulsarlo abre la **hoja de revision**: los cambios agrupados por capa y por pestana, con una
+casilla en cada uno para dejar fuera lo que no quieras publicar todavia. Publica solo lo marcado.
+Para quien no es administradora, el mismo boton manda a revision en vez de publicar.
+
+Se apoya en la tabla `borradores` que ya existia: el borrador guarda **solo los campos que
+cambiaron**, que es justo lo que `_apply_layer` necesita para aprobarlo. El administrador gana una
+red que no tenia —hasta ahora un error suyo entraba en vivo al instante—.
+
+### Agregado: historial de cambios de la capa en el editor
+
+El boton *Historial* del encabezado abre el mismo panel que ya usaba el modo tabla, filtrado a la
+capa abierta.
+
+**Para que ese historial sirviera hubo que empezar a escribirlo.** `mapalab.grid_cell_history` ya
+tenia prevista la fuente `formulario` —el drawer incluso la pintaba como «Ficha»— pero nadie la
+escribia: solo la tabla registraba historial, asi que todo lo editado desde el arbol era invisible.
+`PUT /layers/{id}` ahora compara antes y despues y registra cada campo que cambio. Si el registro
+falla, el cambio de la capa se guarda igual: el historial no puede tumbar una edicion.
+
+## [2.46.0] - 2026-08-31
+
+### Cambiado: el editor de capas se reagrupa en cinco pestanas y Avanzado vuelve a ser boton
+
+*Avanzado* dejo de ser pestana y es un boton al extremo derecho de la barra que abre un cajon.
+Adentro quedan Servicios y Simbologia —y, al fondo, **Archivar capa**, que antes vivia en el
+encabezado compitiendo con Guardar—.
+
+Las pestanas quedan en **Identidad, Apariencia, Tarjetita, Metadatos y Estadisticas**:
+
+- **Apariencia** es nueva y junta lo que estaba disperso: *Estatus de capa* (antes «Badge», que no
+  decia nada), *Aviso*, *Resaltado* y *Estado* —oculta y fuera de servicio, que estaban en
+  Identidad—. Aviso y Badge dejan de ser pestanas propias.
+- **Estadisticas** es nueva y saca la numeralia de adentro de Metadatos, donde estaba enterrada al
+  fondo de un formulario largo.
+
+Las secciones de Identidad y Apariencia son **colapsables**, para llegar de un golpe a la que
+interesa. Colapsar oculta con CSS en vez de desmontar, para no perder el registro de los campos.
+
+### Cambiado: la busqueda de capas sube al nivel de la pagina
+
+El buscador estaba dentro del arbol, asi que desaparecia al entrar a editar. Ahora vive bajo el
+selector Arbol/Tabla, visible en los dos modos: escribir en el manda de regreso al arbol filtrado.
+Con eso el breadcrumb se queda solo con la ruta —**se van las flechas de paso entre hermanas**: cada
+nombre de la ruta ya despliega a sus hermanos, que hacia lo mismo con un control menos.
+
+### Cambiado: mover una capa muestra de donde sale y donde queda
+
+El modal decia «selecciona el destino» y nada mas. Ahora muestra la ruta actual, la ruta resultante
+con la capa ya colocada, y solo deja elegir temas, categorias y grupos como padre.
+
+### Cambiado: un tema o una categoria ya no se editan con pestanas
+
+Solo tienen Identidad y Apariencia; una barra de dos pestanas para un nodo que solo organiza era
+ruido. Sus secciones se apilan y el boton de Avanzado queda arriba a la derecha.
+
+### Eliminado: seis avisos permanentes que no informaban nada
+
+La explicacion de cada tipo de nodo, la de Propiedad, la del feature type heredado en Metadatos, la
+de los ocho slots de numeralia, la de valores legacy, la del resaltado global y la del destino al
+mover. Todas eran texto fijo que aparecia siempre y empujaba el formulario hacia abajo; ahora viven
+en el tooltip del elemento que describen.
+
+**Los avisos que si avisan se quedan**: que una capa comparta metadata con sus hermanas advierte de
+un efecto lateral real —editar ahi cambia varias capas—, y esconderlo seria quitar una advertencia,
+no ruido.
+
+### Corregido: la subpagina de capas se desplazaba entera
+
+El contenedor usaba `calc(100vh - 112px)`, un numero que no cubria el margen ni el padding del
+`Content` del layout: sobraban 48 px y el documento entero ganaba scroll. Ahora el alto se mide
+contra la posicion real del contenedor, asi que se ajusta al viewport sin numeros magicos y el
+desplazamiento ocurre dentro del panel de la pestana.
+
+### Corregido: las capas de poligono parecian tener casilla de seleccion
+
+El glifo de geometria de poligono era `BorderOutlined`, un cuadro vacio que se lee como checkbox sin
+marcar e invitaba a creer que se podian seleccionar varias capas.
+
+## [2.45.1] - 2026-08-31
+
+### Corregido: las plantillas de tarjetita regañaban a los grupos
+
+El modal decía «No se pudieron leer las columnas de la capa · revisa que la capa tenga workspace y
+feature type» siempre que no había columnas, y mandaba a arreglar algo que en dos casos no está
+roto: un **nodo de grupo** no apunta a ninguna capa de GeoServer, y una capa que apunta a un
+**grupo de capas de GeoServer** hace que `DescribeFeatureType` devuelva vacío por diseño. En los
+dos casos la pestaña de predefinidas quedaba en un callejón sin salida.
+
+Ahora el modal distingue tres estados: mientras se leen las columnas muestra un spinner en vez del
+aviso; si la capa no tiene feature type lo dice y explica por qué; y si GeoServer no devolvió
+columnas lo dice sin culpar a nadie. En los dos últimos casos ofrece un botón que lleva a **Copiar
+de otra capa**, que es lo que sí funciona ahí, y se deja de listar las cuatro plantillas
+deshabilitadas.
+
+### Corregido: la detección de columnas numéricas
+
+La plantilla de polígono con cifras buscaba tipos por subcadena (`int|long|double|…`), pero el API
+normaliza los tipos a `integer` y `number` antes de entregarlos. Pasa a comparar contra el conjunto
+de tipos normalizados, tolerando el prefijo de espacio de nombres (`xsd:int`). El test cubría los
+tipos crudos y no la forma real que devuelve el endpoint.
+
+
+## [2.45.0] - 2026-08-31
+
+### Cambiado: los controles del roadmap viven dentro del lienzo
+
+Estaban en el encabezado de la sección, que **queda fuera del elemento en pantalla completa**: al
+expandir se perdían todos menos la X del detalle. Ahora son una barra pegajosa dentro del propio
+lienzo, así que sirven igual en la página, en pantalla completa y en móvil, sin duplicarlos ni
+depender de hover. El editor se movió por el mismo motivo.
+
+`SectionHeader` vuelve a como estaba: la prop `acciones` que había estrenado la 2.40.0 se retira
+porque ya no la usa nadie.
+
+### Corregido
+
+- **El lienzo se queda en claro siempre.** En pantalla completa el navegador pintaba el fondo según
+  el tema del sistema y en oscuro no se veía nada: el SVG usa negros y grises fijos porque el CMS no
+  tiene modo oscuro. Ahora el marco declara `color-scheme: light` y fondo blanco explícito.
+- **Las conexiones sucesorias quedaban al aire.** Cada curva de linaje seguía la opacidad de su
+  nodo hijo, así que si la madre estaba escondida —un feature sin su proyecto seleccionado— la línea
+  seguía dibujada apuntando a nada. Ahora toma la del más escondido de los dos.
+- **`api/pyproject.toml` se había quedado en 2.43.0** mientras `admin/package.json` y este archivo
+  ya iban en 2.44.0. El desfase entró con el merge de `develop` a `tamal-rojo` (`abe3d49`), que
+  resolvió el conflicto de `pyproject` a favor de la rama vieja. Como es la fuente de la verdad del
+  monorepo —es lo que `get_app_version()` reporta en `GET /ontoy`—, el monitor de huachicol habría
+  visto una versión que no corresponde. Los dos suben juntos a 2.45.0.
+
+---
+
+## [2.44.0] - 2026-08-28
+
+### Agregado: pestana Columnas en el editor de capas
+
+El WFS entrega los nombres crudos de la base —`cve_mun`, `p_total`, `nom_loc`— y la tabla de datos
+del visor los muestra tal cual mientras nadie los configure. La pestana Columnas del cajon de la
+capa guarda el alias, el orden, la visibilidad y el formato de cada una, sobre la lista de campos
+que ya trae `listGeoserverFields`. La geometria no se lista y las columnas guardadas que la capa ya
+no tiene se marcan para poder quitarlas.
+
+`GET` y `PUT /layer-metadata/{layer_key}/columnas` escriben en el schema `atributos` de dataengine,
+que llega en su migracion 0046. El `PUT` pide `mariachi.mapalab.manage`, como el resto de la
+configuracion de capas.
+
+## [2.43.0] - 2026-08-31
+
+### Agregado: plantillas de tarjetita en el editor de capas
+
+Un botón **Plantillas** junto al segmento Visual/JSON abre un modal con dos pestañas:
+
+- **Predefinidas** — cuatro arranques (punto simple, punto con municipio, punto con contacto,
+  polígono con cifras) que se arman **con las columnas reales de la capa**, no con nombres
+  inventados: si la plantilla no encuentra columna de título se ofrece deshabilitada y dice por
+  qué. La de contacto usa el `compose` nuevo para armar la dirección de `calle`, `numero`,
+  `colonia` y `cp` cuando vienen separadas, y cae a una sola columna cuando ya viene completa.
+- **Copiar de otra capa** — busca entre las capas del árbol que ya tienen tarjetita y trae la suya.
+
+Las dos pestañas comparten la vista previa, y aplicar sobre una tarjetita que ya tiene bloques
+**pide confirmación** antes de reemplazarla.
+
+### Cambiado: el botón y el segmento se van a la derecha del título
+
+El segmento Visual/JSON estaba pegado al texto del título. Ahora el título queda a la izquierda y
+los dos controles alineados a la derecha, en un `InfoBoxEditorHeader` compartido: el editor de
+capas y el cajón de contenido tenían el mismo bloque duplicado y ahora es uno solo.
+
+`STYLE_PRESETS` sale de `InfoBoxBlocksEditor` a `constants/infoboxStyles.js`, que es de donde las
+plantillas toman los colores de municipio y característica.
+
+### Cambiado: la pestaña se llama «Tarjetita»
+
+Es como se le dice de hecho. Cambia en el editor de capas y en el cajón de contenido, y con ella
+los mensajes de guardado.
+
+## [2.42.0] - 2026-08-31
+
+### Cambiado: el editor de capas agrupa sus campos y saca Avanzado de las pestanas
+
+*Avanzado* dejo de ser una cuarta pestana y es un boton al extremo derecho de la barra, que abre un
+cajon con Apariencia, Servicios, Simbologia, Aviso y Badge apiladas. Las pestanas quedan como lo
+que son —tres conjuntos del mismo nivel— y lo ocasional deja de competir por ese lugar.
+
+Identidad se partio en tres conjuntos con encabezado propio: **Nombre y acceso**, **Busqueda en el
+visor** y **Estado**. Antes eran nueve campos seguidos sin ninguna division.
+
+### Cambiado: la ayuda de cada tipo de nodo vive en su badge, no en un aviso
+
+El recuadro azul que explicaba el tipo de nodo ocupaba un renglon completo arriba del formulario en
+cada capa que se abriera. Ahora el badge del tipo esta junto al titulo y lleva esa explicacion en su
+tooltip; lo mismo el aviso de Propiedad, que ademas nunca decia donde estaba el filtro CQL que la
+distingue de sus hermanas. Los badges de estado —oculta, fuera de servicio— tambien explican en
+tooltip que significan.
+
+En Metadatos, el aviso permanente se reduce a una linea con el feature type y su tooltip. Los dos
+casos que si informan algo —el nodo que deriva el feature type de sus descendientes y la capa que
+comparte metadata con hermanas— siguen siendo un aviso visible, porque avisan de un efecto lateral.
+
+### Corregido: el scroll estaba en la subpagina completa y no en el contenido
+
+El editor entero se desplazaba, asi que la barra de pestanas se iba hacia arriba al bajar por un
+formulario largo y volver a cambiar de pestana obligaba a subir. Ahora la ruta, el titulo y las
+pestanas quedan fijos y el desplazamiento ocurre dentro del panel de la pestana.
+
+## [2.41.0] - 2026-08-31
+
+### Cambiado: el botón del marcador pausa en vez de dejar de seguirlo
+
+Antes alternaba entre seguir el marcador con el scroll y soltarlo. Ahora **detiene el marcador**,
+que es lo que la gente espera de un elemento que se mueve solo. El scroll sigue enganchado mientras
+corre y se suelta en cuanto alguien desplaza a mano, sin pedir permiso ni un botón para ello.
+
+### Agregado
+
+- **Pantalla completa** sobre el lienzo, con la API del navegador. Si el navegador la niega, se
+  avisa en vez de quedarse callado.
+- **Botón de cerrar en el detalle.** Al fijarlo con un clic aparece una X; antes solo se cerraba
+  haciendo clic fuera o en el mismo hito.
+
+### Corregido
+
+- **El detalle no cambiaba al tocar otro hito.** Los nodos, los ciclos y los procesos no pasaban el
+  evento del clic, así que el detalle se quedaba con la posición del primer hover y ya no se movía.
+  Ahora lo pasan los tres, y el teclado calcula la posición desde la caja del elemento.
+- **Las sucesiones no resaltaban a su contraparte.** Seleccionar la intranet o el colibrí heredados
+  no encendía a quien vino a relevarlos, porque el resaltado solo miraba el proyecto. Ahora recorre
+  la cadena de `nace_de` en ambos sentidos, así que geoserver enciende a sextante, IGIBot a agent y
+  el portal de mariachi a sitio2026.
+
+---
+
+## [2.40.1] - 2026-08-31
+
+### Corregido
+
+- `FieldValueField` exportaba el componente dos veces, nombrado y por defecto. El `export default`
+  se retira: su único consumidor, `InfoBoxBlocksEditor`, siempre usó el nombrado. `knip` lo
+  reportaba como export duplicado y dejaba en rojo el `check:dead-code:strict` de CI.
+
+---
+
+## [2.40.0] - 2026-08-31
+
+### Agregado: logos de proyecto y un interruptor para ver los features
+
+Los dos repos que tienen isotipo propio —**mapalab** y **vine**— lo muestran en su nodo, con el
+logo arriba y el nombre abajo. Se importan por Vite desde `assets/logos/`, así que el `base` del
+admin los resuelve solo. Los demás proyectos siguen sin logo: usan el escudo institucional, que
+puesto en catorce nodos no distingue nada.
+
+**Botón «Ver todos».** Hasta ahora los features solo aparecían al seleccionar su proyecto; ahora
+pueden mostrarse todos a la vez, atenuados, sin perder de vista el resto del mapa.
+
+### Cambiado
+
+- **Las acciones de la sección pasan a la derecha del encabezado.** `SectionHeader` estrena la prop
+  opcional `acciones`, que las coloca junto al enlace y las baja a su propia fila en móvil, igual
+  que ya hacía con `badge`. Es aditiva: los demás usos del componente no cambian.
+- **El marcador recorre el eje completo**, hasta 2030, en vez de detenerse al final del pasado.
+- **La vuelta del marcador pasa de 13 a 26 segundos.** Con el recorrido más largo, iba demasiado
+  rápido para seguirlo.
+
+### Eliminado: `GET /mapalab-stats/highlights`
+
+Se retira el endpoint junto con los esquemas `StatsHighlights`, `HighlightLayer` y `HighlightTool`.
+Su único consumidor era `InicioHighlights`, que salió del inicio al entrar la hoja de ruta: llevaba
+varias versiones sirviendo a nadie y consultando tres tablas de rollup en cada llamada.
+
+Las otras catorce rutas de `mapalab-stats` no se tocan, y el `Highlight*` de `schemas/layer.py` —el
+resaltado de capas del visor— es otra cosa y sigue igual.
+
+### Agregado: pruebas
+
+- `api/tests/test_roadmap.py`: ocho pruebas del CRUD de la hoja de ruta. Cubren que una editora lee
+  pero no escribe, que una fecha fuera de `YYYY-MM-DD` y un tipo desconocido se rechazan con 422,
+  que una clave repetida da 409 y que un hito inexistente da 404.
+- `mariachi.roadmap.manage` entra a `TODOS_LOS_PERMISOS` del conftest.
+
+---
+
+## [2.39.0] - 2026-08-28
+
+### Cambiado: el arbol de capas se reestructuro para que se entienda de un vistazo
+
+El arbol y el editor dejaron de convivir en la misma lista. Al seleccionar una capa el arbol se
+comprime en una ruta clickeable y el editor ocupa el panel completo. Antes el editor se insertaba
+*entre* la fila y sus hijos: un formulario de ocho pestanas partia la lista en dos y mandaba a los
+hermanos del nodo a pantallas de distancia.
+
+La ruta no es solo decorativa. Cada nombre regresa a su nivel, cada uno abre la lista de sus
+hermanas, un par de flechas pasa a la capa de al lado y un buscador salta a cualquier rama sin
+volver al arbol. Recorrer capa por capa —lo que mas se hace en una jornada de captura— paso de
+tres gestos a uno.
+
+**Las ocho pestanas son cuatro.** Quedan Identidad, Tarjeta y Metadatos; Apariencia, Servicios,
+Simbologia, Aviso y Badge se apilan bajo *Avanzado*. Simbologia se guarda por feature type y no
+por nodo, asi que tocarla afecta a todas las hermanas que comparten el feature type: no puede
+estar al mismo nivel que Identidad.
+
+**Los seis tipos de nodo se distinguen por forma.** Tema es una banda de seccion, Categoria un
+encabezado con carpeta y cuenta, Etiqueta un rotulo sin afordancia de click, Grupo un marco que
+encierra a sus propiedades con el filtro CQL de cada una, y Capa una fila con el glifo de su
+geometria. Antes todo dependia del color de una etiqueta de 10 px y todo parecia una capa.
+
+**Se fue el modo «Reordenar».** El arrastre ya usaba un umbral de 8 px, asi que nunca choco con el
+click: el modo no protegia de nada. El asa aparece al pasar el cursor. En el arbol, un tema o una
+categoria se abre y una capa se edita —una fila, un objetivo—; editar un tema es raro y vive en el
+lapiz del hover.
+
+### Corregido: tres senales de la fila nunca se pintaban
+
+`toAntTreeData` leia `workspaceAlias`, `geoserverLayer` y `disabled` al nivel del nodo, pero el
+arbol del visor anida los dos primeros dentro de `wmsConfig` y codificaba el tercero como un
+asterisco en el nombre. La etiqueta del workspace, el nombre de la capa de GeoServer y la marca de
+deshabilitada estaban escritas en el codigo y no aparecian nunca; buscar por workspace o por capa
+de GeoServer no devolvia nada porque comparaba contra campos vacios.
+
+El mapeo ahora hace el mismo respaldo que ya hacian `flattenLeaves` y `findLeafByWsLayer` treinta
+lineas mas abajo, y acepta tanto `disabled` como el asterisco del arbol viejo, para cubrir la
+ventana entre desplegar mapalab 1.146.0 y esto.
+
+### Corregido: buscar en el arbol lo dejaba desplegado para siempre
+
+El filtro acumulaba las claves encontradas en el estado de expansion y lo guardaba en
+`localStorage`. Al vaciar el campo, el arbol quedaba abierto de par en par —y asi seguia en la
+siguiente sesion—. Ahora la expansion del filtro es temporal: al limpiar la busqueda el arbol
+vuelve exactamente como estaba.
+
+### Corregido: el selector de «Mover» no dejaba ver el tipo del destino
+
+`buildMoveTreeData` solo conservaba `value` y `title`, asi que en la lista de destinos un Tema y
+una Capa se veian identicos. El backend bloquea ciclos y auto-padre pero no valida el tipo del
+padre, de modo que se podia colgar un Tema debajo de una Capa sin que nada avisara. Cada destino
+muestra su tipo y solo Tema, Categoria y Grupo son seleccionables.
+
+## [2.38.0] - 2026-08-28
+
+### Eliminado: `GET /mapalab-stats/highlights`
+
+Se retira el endpoint junto con los esquemas `StatsHighlights`, `HighlightLayer` y `HighlightTool`.
+Su único consumidor era `InicioHighlights`, que salió del inicio en la 2.35.0 al entrar la hoja de
+ruta: llevaba tres versiones sirviendo a nadie y consultando tres tablas de rollup en cada llamada.
+
+Las otras catorce rutas de `mapalab-stats` no se tocan, y el `Highlight*` de `schemas/layer.py` —el
+resaltado de capas del visor— es otra cosa y sigue igual.
+
+### Agregado
+
+- `tests/test_roadmap.py`: ocho pruebas sobre el CRUD de la hoja de ruta. Cubren que una editora
+  lee pero no escribe, que una fecha fuera de `YYYY-MM-DD` y un tipo desconocido se rechazan con
+  422, que una clave repetida da 409 y que un hito inexistente da 404.
+- `mariachi.roadmap.manage` en `TODOS_LOS_PERMISOS` del conftest.
+
+---
+
+## [2.37.0] - 2026-08-28
+
+### Agregado: el editor de tarjeta arma un dato con varias columnas
+
+`compose` sustituye a `field` en el título, la lista, las cifras, los íconos con texto y las
+etiquetas con estilo propio: une varias columnas en un solo valor, con `prefix` y `suffix` por
+parte y `sep` como pegamento. Es lo que hacía falta para la dirección, que llega partida en
+`calle`, `numero`, `colonia` y `cp`. En las cifras, `op: 'sum'` suma las columnas en vez de unirlas.
+
+Los cuatro selectores de campo casi idénticos del editor salieron a **`FieldValueField`**, que
+alterna entre «Un campo» y «Campos combinados» y es el único lugar donde se editan las partes.
+`InfoBoxBlocksEditor` **baja** de 1154 a 1106 líneas en vez de crecer. El preview del editor
+resuelve las combinaciones con los mismos datos de ejemplo, así que sigue mostrando lo que el
+visor va a pintar.
+
+Los renglones de lista ganan el interruptor **multivalor**, que parte el valor por `; ` —el
+separador acordado para las columnas con varios valores— y lo muestra como varios renglones.
+
+### Agregado: las propuestas ciudadanas aceptan campos combinados
+
+`InfoboxPropuestaConfig` deja de exigir `field` y admite `compose`, con exactamente uno de los dos
+por fila. **`referenced_fields()` recorre las partes**, que es lo que ata cada columna a las que
+`DescribeFeatureType` reporta para la capa: sin eso el endpoint público habría aceptado nombres de
+columna arbitrarios. Topes nuevos: 6 partes por combinación, 16 caracteres por `prefix` o `suffix`
+y 8 por separador, todo contra los 8 KB de siempre.
+
+`headerField` acepta la forma combinada además de la cadena. Sin eso, una capa cuyo título ya
+fuera compuesto rechazaba con 422 cualquier propuesta sobre ella.
+
+### Corregido: el separador de una combinación perdía sus espacios
+
+`str_strip_whitespace` del esquema recortaba `sep`, `prefix` y `suffix`, así que un separador
+`", "` se guardaba como `","` y uno de un solo espacio quedaba vacío. En esos tres campos el
+espacio es el dato: ahora se guardan tal cual.
+
+## [2.36.0] - 2026-08-28
+
+### Agregado: la hoja de ruta se edita desde el CMS
+
+Los hitos dejan de ser una constante del admin y pasan a la base. Corregir una fecha ya no pide un
+deploy.
+
+**Migración `r0adm4p0001`**, sobre la cabeza `m3rg30001`. Crea `roadmap_hitos` y la siembra con los
+**52 hitos** que hasta ahora vivían en `constants/roadmapHitos.js`, que se elimina. La tabla lleva
+índice único por `clave` e índice por `proyecto`.
+
+**Cuatro endpoints** bajo `/api/mariachi/roadmap`: `GET /hitos` para cualquiera del panel, y
+`POST`, `PUT` y `DELETE` detrás del permiso nuevo **`mariachi.roadmap.manage`**, ya declarado en
+`manifest.minerva.yml`. Los tres de escritura pasan por `verify_csrf`.
+
+**El modo edición aparece solo con el permiso.** Quien no lo tenga no ve el botón. Dentro se puede
+cambiar etiqueta, fecha del eje, fecha visible, proyecto, tipo, feature de, nombre anterior, la
+bandera de desarrollo y el motivo; agregar un hito; y eliminarlo. Al guardar, el acomodo se
+recalcula solo — que es justo lo que la prueba del acomodo protege.
+
+**El marcador que recorre la línea se elige entre doce**, desde el mismo panel de edición.
+
+`fecha_eje` se valida como `YYYY-MM-DD` y `tipo` contra los ocho conocidos, así que una fecha mal
+escrita no llega a romper el acomodo en el navegador.
+
+---
+
+## [2.35.0] - 2026-08-28
+
+### Agregado: la hoja de ruta del ecosistema en el inicio
+
+La sección que estrenó la 2.34.0 se rehace entera. Aquella dibujaba fichas por proyecto con
+`v2.0.0` y una lista de ocho repos; esta es una línea de tiempo de **cincuenta y dos hitos, de los
+sexenios anteriores a 2027**, con las mismas piezas del mapa de nodos: `curvaDe`, `puntoEnCurva` y
+un bucle de `requestAnimationFrame`.
+
+**En el eje solo van versiones completas.** `mariachi 2`, no `v2.0.0`. Los `0.x` bajan a feature de
+su proyecto y no se dibujan hasta que se selecciona: son veinte etiquetas que dejan de estorbar.
+
+**El eje no es lineal a propósito.** Siete de los hitos caen en once días de agosto de 2026: a
+escala pareja se apilan en dos milímetros. Cada año ocupa el ancho que le tocó por lo que pasó en
+él y dentro del año los meses sí son proporcionales.
+
+**Seis tipos de hito, y la forma dice cuál es:** versión mayor, lanzamiento oficial, proyecto joven
+sin 1.0, feature fuerte, muerto (rojo, tachado) y legado de sexenios anteriores. Los renombres y
+las sucesiones se dibujan como curva punteada con su leyenda —`se renombra`, `lo hereda`,
+`lo sucede`, `mismo nombre, todo nuevo`—, así que `geoserver 1` conserva el nombre que tenía en
+febrero en vez de fingir que ya era sextante.
+
+**Dos formas viven clavadas en el eje:** rombo para un momento de infraestructura y cuadrado para
+un proceso anual, con las etiquetas de los procesos hacia arriba y las de los momentos hacia abajo.
+
+**El acomodo se calcula solo.** Ordena por fecha y baja de nivel hasta encontrar hueco; sin esto,
+agregar un hito obligaba a recolocar el resto a mano.
+
+Las bandas de ciclo van de fondo y al seleccionarlas se encienden solas **sin apagar los nodos**.
+Al seleccionar un hito se resaltan los de su proyecto, sus features aparecen y el resto baja de
+opacidad. El detalle sale por tooltip —cursor, tap o teclado—, no por ficha fija.
+
+Datos y modelo completos en el repositorio de contexto; aquí viven como constante.
+
+### Eliminado
+
+- `InicioHighlights`, su export en `mapalab-stats` y el cliente `getHighlights()`, retirados del
+  inicio al entrar esta sección. El endpoint `GET /mapalab-stats/highlights` sigue vivo y sin
+  consumidor.
+
+---
+
+## [2.34.3] - 2026-08-28
+
+### Corregido: el hueco entre las barras y sus cifras
+
+La columna de la derecha medía 116 px fijos con el texto pegado a su borde, así que entre el final de
+la barra y el número quedaba un vacío mucho mayor que el que separa la etiqueta de la barra. Baja a
+92 px —lo que ocupa la cifra más larga— y la etiqueta a 44, con lo que los tres bloques quedan a la
+misma distancia. Aplica igual a los medidores y a la rejilla de núcleos.
+
+## [2.34.2] - 2026-08-28
+
+### Corregido: las temperaturas no cuadraban con su leyenda
+
+Las cifras iban pegadas a la izquierda de su columna y la leyenda de la gráfica se repartía con otro
+criterio, así que el número de un sensor y su nombre no caían en la misma vertical. Ahora ambas usan
+el mismo reparto en columnas iguales y van centradas, de modo que cada grado queda sobre su etiqueta.
+
+El número dentro de cada núcleo sube de opacidad para que se lea sobre los cuadros más claros.
+
+## [2.34.1] - 2026-08-28
+
+### Cambiado: se recorta lo que el detalle del nodo decía dos veces
+
+Cada núcleo lleva ahora su número y su porcentaje **dentro del cuadro**, en lugar de esconderlos tras
+el cursor: el dato se lee sin apuntar y sin agrandar la rejilla. El texto cambia a blanco en los
+núcleos ocupados, donde el fondo va a fondo.
+
+Fuera tres repeticiones:
+
+- La nota `carga 5.45 en 20 núcleos` del CPU, que ya no aporta junto a la rejilla.
+- El `libres ·` de la RAM, que quedó en `4.35 GB caché` a secas.
+- Los grados en la leyenda de la gráfica, que están enormes justo arriba. La leyenda se queda con el
+  nombre del sensor y su color, repartida a lo ancho de su fila.
+
+## [2.34.0] - 2026-08-28
+
+### Cambiado: el CPU se representa con sus núcleos, sin barra de promedio
+
+La barra del promedio y la rejilla de núcleos decían lo mismo dos veces, y la primera decía menos.
+Ahora los núcleos ocupan ese lugar y el promedio se queda como cifra a la derecha, con la carga
+debajo.
+
+**Los núcleos pasan de barras a una rejilla de cuadros**, de a diez por fila, con la intensidad del
+color según el uso —los ociosos casi transparentes, los saturados a fondo—. Con veinte núcleos las
+barras de altura variable se leían como un ecualizador y costaba ubicar cuál era cuál; los cuadros
+mantienen su sitio y se comparan de un golpe, que es como lo resuelven `htop` y Proxmox.
+
+### Corregido: el caché ya no cuenta como memoria libre
+
+La cifra de libres se calculaba restando lo usado y el caché al total, y eso regalaba el slab no
+reclamable: daba más memoria libre de la que hay. Ahora se toma `MemFree` tal como lo reporta el
+kernel, que es la misma columna que muestra `top`.
+
+### Cambiado: la línea del sistema se acomoda según la pantalla
+
+En escritorio va a la derecha del identificador del nodo, sobre la misma línea; en móvil baja a su
+propia fila.
+
+## [2.33.0] - 2026-08-28
+
+### Agregado: los núcleos del CPU, uno por uno
+
+Bajo el medidor va una barra por núcleo con su uso real, medido por huachicol 2.16.0 sobre
+`/proc/stat`. En una máquina de veinte se ve de un vistazo lo que un promedio esconde: si el trabajo
+está repartido o si hay un solo core clavado al 100 % mientras el resto duerme —el caso típico de un
+proceso que no paraleliza—. Los que están casi ociosos se dibujan atenuados para que el ojo vaya a
+los que trabajan.
+
+El porcentaje del medidor ahora es **uso real de CPU**, no la carga dividida entre núcleos: mide
+tiempo ocupado, que es lo que la gente espera de un «% de CPU». La carga sigue abajo como nota,
+porque dice algo distinto —cuántos procesos esperan turno— y con eso se distingue un equipo ocupado
+de uno saturado.
+
+### Cambiado: la barra de RAM lleva el caché en el mismo riel
+
+Un tramo con el color a fondo para lo que usan las aplicaciones y otro más tenue, del mismo tono,
+para el caché. La cifra pasa a decir **libres sobre el total**, con el caché desglosado debajo.
+
+Así los cuatro valores están a la vista sin hacer cuentas: lo ocupado y el caché se ven en la barra,
+lo libre se lee en el número, y el total cierra la operación. Es la lectura que `top` obliga a armar
+mentalmente entre tres columnas.
+
+## [2.32.0] - 2026-08-28
+
+### Cambiado: el medidor de CPU dice un porcentaje, no una carga suelta
+
+Mostraba `2.17 · 20c` y la barra iba llena a esa proporción, sin decir de qué. Eso solo se entiende
+sabiendo qué es el promedio de carga de Linux, que no es un porcentaje: es cuántos procesos hay en
+cola de ejecución, y por eso puede pasar de 1 por núcleo.
+
+Ahora el medidor dice **`15 %`**, coherente con RAM, swap y disco, y debajo en letra chica la cifra
+de origen: `carga 1.24 en 8 núcleos`. El porcentaje es la carga dividida entre los núcleos, que es lo
+que hace comparable a S4, de cuatro, con S1, de ocho.
+
+### Agregado: la RAM muestra cuánto de lo libre es caché
+
+Bajo la cifra va ahora `+ 6.28 GB en caché`. La barra sigue midiendo lo mismo —`MemTotal` menos
+`MemAvailable`, que es lo correcto— pero sin ver el caché no había forma de cuadrar el número contra
+`top`, donde el mismo equipo se lee «1.9 libre, 11 en buff/cache» y parece contradecir un 63 %.
+
+### Cambiado: la línea del sistema sube al encabezado del modal
+
+`gateway · Ubuntu 26.04 LTS · kernel 7.0.0-30 · encendido hace 4 d` va como segunda fila del título,
+bajo el identificador del nodo, en vez de perdida entre los medidores. El título permite salto de
+línea, así que en móvil se acomoda en su propia fila sin recortarse.
+
+## [2.31.1] - 2026-08-28
+
+### Cambiado: las líneas de temperatura usan la paleta institucional
+
+Morado para el CPU, naranja para el sistema y verde para el disco —los tres de la marca `iieg`— en vez
+del azul genérico que traía el sistema. Gráficos, si algún equipo lo expone, va en el azul secundario.
+
+## [2.31.0] - 2026-08-28
+
+### Agregado: la tendencia de temperaturas en el detalle del nodo
+
+Bajo las cifras va ahora una gráfica con una línea por sensor sobre el mismo eje, con lo que huachicol
+2.15.0 empezó a guardar. Las cifras se quedan: dicen cómo está **ahora**, y la línea dice si eso es
+normal o viene subiendo, que es la pregunta que un número suelto no contesta.
+
+Las tres líneas comparten eje a propósito: si suben todas es la sala, si sube solo el CPU es carga.
+El eje vertical se ajusta al rango real de los datos en vez de fijarse en 0–100, para que una
+variación de cinco grados se vea como tal y no como una raya plana.
+
+Se pide al abrir el modal, no con el resto del tablero, y solo para nodos reales —Internet no tiene
+host que graficar—. Mientras carga lo dice, en vez de afirmar que no hay datos; con un solo punto
+tampoco dibuja, porque una línea de un punto no es una tendencia.
+
+**Va a estar vacía un rato**, y eso es correcto: se muestrea cada cinco minutos y la serie empieza
+desde cero. En las VMs, que no tienen sensores, no habrá nunca datos de temperatura.
+
+### Cambiado: el detalle del nodo se parte en tres archivos
+
+`NodoDetalleModal` pasó de 300 líneas. Los componentes de presentación —título de sección, medidor,
+cifra de temperatura— salen a `piezasNodo`, y los cálculos puros —umbrales, escala de temperatura,
+disco libre— a `nodoUtils`, que además quita los avisos de recarga en caliente por mezclar funciones
+con componentes.
+
+## [2.30.2] - 2026-08-28
+
+### Cambiado: el puerto se queda solo en la entrada pública
+
+Puesto en cada conexión cargaba el mapa sin aportar: la latencia y el color ya cuentan cómo va el
+enlace, y el puerto solo importa cuando alguien va a revisar por qué falla, momento en el que está en
+el detalle del nodo. En Internet sí se queda, porque ahí el 80 y el 443 **son** lo que define esa
+entrada.
+
+Las temperaturas se reparten a lo ancho del modal en columnas iguales, en vez de amontonarse a la
+izquierda.
+
+## [2.30.1] - 2026-08-28
+
+### Cambiado: las temperaturas se leen como cifras, no como barras
+
+Una barra promete una escala llena y para la temperatura eso confunde: 78 sobre 100 no significa
+«78 % de calor disponible». Ahora cada sensor es una cifra grande, coloreada según el tramo, con su
+nombre y una palabra debajo —fría, templada, caliente, muy caliente—. El número manda y el color lo
+refuerza.
+
+### Agregado: el dominio en el nodo de Internet y el puerto en cada conexión
+
+El nodo de Internet muestra el dominio por el que se está entrando, en lugar del texto genérico. Y
+las conexiones dicen ahora por qué puerto se midieron —`:6432 · 6 ms`—, igual que la entrada pública
+ya mostraba sus 80 y 443. Con seis enlaces el mapa lo absorbe sin apretarse; si algún día son
+muchos más, el puerto es lo primero que se puede recortar.
+
+## [2.30.0] - 2026-08-28
+
+### Cambiado: las temperaturas tienen su propia sección, con barra por sensor
+
+La etiqueta suelta se queda corta cuando hay más de una lectura. Ahora es una sección como las demás,
+con una barra por sensor —CPU, Sistema, Disco y Gráficos, según lo que el equipo exponga— sobre una
+escala fija de 0 a 100 °C, y el color siguiendo el calor: azul fría, verde templada, naranja caliente,
+roja muy caliente.
+
+Va aparte de **Recursos** a propósito: esos medidores dicen cuánto se usa de lo disponible y la
+temperatura no tiene un «disponible». Mezclarlas hacía leer la barra como si 78 °C fuera «78 % de
+algo».
+
+La sección desaparece entera si el equipo no tiene sensores, que es lo normal en una VM.
+
+## [2.29.0] - 2026-08-28
+
+### Agregado: la temperatura del CPU en el detalle del nodo
+
+Una etiqueta que cambia de color con el calor —azul si está fría, verde templada, naranja caliente y
+roja muy caliente— junto a los grados. Solo aparece si el equipo tiene sensores: las VMs no los
+tienen y ahí no se dibuja nada, en vez de fingir un cero.
+
+### Cambiado: los nodos del mapa usan el color institucional
+
+El morado de la marca para los nodos activos, gris para los que no responden y naranja para los de
+red aislada, que además van punteados. El estado deja de competir con las conexiones, que siguen
+coloreadas por su latencia: el nodo dice qué es, el enlace dice cómo va.
+
+### Cambiado: los títulos del detalle del nodo
+
+Todas las secciones llevan ahora el mismo encabezado, **Recursos** incluida, que era la única sin
+título. El conteo se separa en una etiqueta gris —`7/7`, `11/11`— en vez de ir pegado al texto con un
+punto medio.
+
+### Corregido: el selector volvía a su propia fila en escritorio
+
+Al partir el encabezado en dos filas para móvil, los controles se bajaron también en pantallas
+grandes, donde sobra espacio al lado del título. Ahora solo se apilan cuando hace falta.
+
+## [2.28.2] - 2026-08-28
+
+### Corregido: el hostname no se alcanzaba a ver
+
+Iba en el título del modal, junto al identificador del nodo, y ahí Ant Design recorta con puntos
+suspensivos: en pantallas normales el nombre del servidor se perdía. Ahora encabeza la línea de
+sistema del cuerpo —`gateway · Ubuntu 26.04 LTS · kernel 7.0.0-30`—, donde hay ancho de sobra y
+además queda junto al resto de la identidad de la máquina.
+
+### Cambiado: los puertos pierden la franja de color
+
+Se quedan con el fondo suave y el número en monoespaciada. La franja lateral repetía lo que el color
+del fondo ya decía.
+
+## [2.28.1] - 2026-08-28
+
+### Corregido: los medidores del nodo salían en cero
+
+El catálogo del frontend guardaba el hostname del servidor bajo la clave `host`, la misma que el
+monitor usa para las métricas de la máquina. Al fusionar catálogo y nodo, el nombre **pisaba las
+mediciones**: `host` dejaba de ser un objeto con RAM, CPU y disco para volverse la cadena `gateway`,
+y los cuatro medidores se quedaban en cero.
+
+Ningún test lo cazó porque todos construían el nodo a mano, ya fusionado. Ahora hay uno que monta la
+página con una **respuesta real del monitor** y comprueba que las barras no estén todas en cero: es
+el único que habría fallado.
+
+### Cambiado: Internet aparece como nodo del mapa
+
+Un nodo aparte, en línea punteada, conectado a S1 por los puertos 80 y 443. Al abrirlo explica que
+todo el tráfico público entra por el nginx de gateway-hub y que ningún otro nodo está expuesto,
+además del dominio por el que se está entrando. Solo aparece si el monitor reporta S1.
+
+### Cambiado: el detalle del nodo y el encabezado de sección
+
+Fuera la sección de enlaces del modal, que repetía lo que el mapa ya dibuja. Los puertos dejan de
+verse como los contenedores: van en tarjetas con el número grande y una franja de color según
+respondan.
+
+El encabezado de sección pasa a dos filas: icono, título y acceso directo arriba; los controles
+—como el selector de vista— debajo.
+
+## [2.28.0] - 2026-08-28
+
+### Cambiado: el detalle del nodo deja la tabla y muestra lo que sí se usa
+
+La tabla del centro repetía lo que los medidores ya decían. En su lugar van **los puertos** que el
+nodo vigila, con cuáles responden, y **los enlaces** con su latencia y su sentido. El sistema del host
+—IP, distribución, kernel y desde cuándo está encendido— se resume en una línea bajo los medidores.
+
+El encabezado cambia de peso: un punto de estado junto al identificador en vez de la etiqueta
+«operativo», y el hostname real del servidor al lado. Ya no repite el rol, que se lee en la lista de
+servicios.
+
+### Cambiado: el mapa dibuja curvas y las aristas son las reales
+
+Las líneas rectas atravesaban las cajas de los nodos que quedaban en medio, y eso hacía leer enlaces
+que no existen: el trazo de S1 a S4 pasaba por encima del portalito y parecía conectarlos, cuando el
+portalito **no toca la base de datos**. Ahora cada enlace es una curva que se aparta de los nodos.
+
+Las aristas que faltaban ya se miden: mapalab y sextante hacia dataengine, que según los contratos
+son quienes leen de esa base.
+
+Fuera la leyenda de latencia y la nota de «click en un nodo»: el color con los milisegundos escritos
+al lado se explica solo.
+
+### Cambiado: el inicio y el móvil
+
+El encabezado de la sección dice **Huachicol — Ecosistema**, como el de MapaLab, con el selector
+enseguida. En pantallas chicas el encabezado apila título, descripción y acciones en filas, el mapa
+gana scroll en ambos ejes con control de zoom hasta 3x, y el detalle del nodo ocupa la pantalla
+completa.
+
+## [2.27.0] - 2026-08-27
+
+### Cambiado: se migran las APIs que Ant Design 6 dejó obsoletas
+
+El admin corre sobre Ant Design 6 desde hace meses, pero seguía llamando a propiedades de la 5 que la
+librería acepta por compatibilidad mientras avisa por consola. Eran tantos avisos que tapaban
+cualquier advertencia real. Migradas contra la documentación de la 6.5:
+
+| Antes | Ahora | Dónde |
+|---|---|---|
+| `Alert message` | `title` | 132 |
+| `Space direction` | `orientation` | 131 |
+| `Drawer width` y `height` | `size` | 14 |
+| `Timeline items.children` | `content` | 6 |
+| `Tabs tabPosition` | `tabPlacement` | 4 |
+| `Progress trailColor` | `railColor` | 1 |
+| `Steps direction` | `orientation` | 1 |
+
+Dos no eran renombres a secas. En `Tabs`, los valores `left` y `right` pasaron a `start` y `end` para
+funcionar en lectura de derecha a izquierda, así que hubo que cambiarlos también dentro de las
+expresiones. En `Drawer`, `size` acepta número además de `default` y `large`, con lo que los anchos en
+píxeles siguen valiendo tal cual.
+
+La consola de los tests queda **sin un solo aviso de deprecación**, que era el punto: el próximo que
+aparezca será de algo que sí importa.
+
+## [2.26.0] - 2026-08-27
+
+### Cambiado: el detalle de un nodo reutiliza la fila del tablero de servicios
+
+Los servicios de un nodo se pintaban con una lista propia —punto, nombre, versión— mientras el
+tablero ya tenía una fila mucho más rica. Ahora el modal usa `FilaServicio`, así que cada servicio
+del nodo trae su barra de 24 horas, su versión como etiqueta, su disponibilidad y sus enlaces, con
+los tramos que huachicol 2.11.0 empezó a mandar.
+
+`FilaServicio` y el catálogo de servicios suben a `shared/`, que es donde deben estar ahora que los
+usan el inicio y la vista de servidores.
+
+### Agregado: disco y contenedores en el detalle del nodo
+
+Faltaba el disco, que es la métrica que el `/ontoy` reporta desde siempre y la única que ya estaba
+medida antes de este trabajo. Va con su medidor —usado sobre total— y con los gigas libres aparte.
+
+Los contenedores dejan de ser un conteo y se listan por nombre, con los que no están corriendo en
+gris.
+
+### Cambiado: el encabezado del modal dice el nombre real del servidor
+
+Junto al identificador del nodo va ahora su hostname —`S1 · gateway`— y el estado se mueve a la
+derecha, junto al botón de cerrar, para que no compita con el nombre. El hostname sale del catálogo,
+no de una medición: es un dato que no cambia y ya estaba documentado en la topología. En el espejo
+lleva el prefijo `pmx-`, que se aplica según el ambiente que reporta el monitor.
+
+### Corregido: el mapa reventaba donde no existe `matchMedia`
+
+`usaMovimiento()` encadenaba `.matches` sobre el resultado de una llamada opcional, así que si el
+navegador no exponía `matchMedia` el componente entero fallaba en vez de animar por omisión.
+
+## [2.25.1] - 2026-08-27
+
+### Cambiado: la leyenda ya no lleva línea divisoria
+
+Ni en el mapa ni en el tablero. El espacio basta para separarla del contenido, y con los divisores
+entre filas ya retirados esa línea era la única que quedaba dentro de la tarjeta.
+
+## [2.25.0] - 2026-08-27
+
+### Cambiado: el mapa de nodos se refresca cada 20 segundos
+
+Estaba en 60, que sumados a los 60 del sondeo del monitor dejaban hasta dos minutos entre una caída
+y verla en pantalla. A 20 segundos el retraso baja a poco más de un minuto y el costo es medible pero
+menor: cada petición son 3.2 KB y unos 100 ms de CPU del monitor, así que se pasa de 0.17 % a 0.5 %
+de un núcleo por persona mirando.
+
+No se baja más porque el dato de fondo no cambia más seguido: el monitor mide cada 60 segundos, y
+pedir cada 5 daría doce respuestas idénticas por cada medición nueva.
+
+**El mapa del inicio no se refrescaba en absoluto**: cargaba una vez al entrar y se quedaba con esa
+foto mientras la pestaña siguiera abierta. Ahora comparte el mismo intervalo que la página de
+servidores y limpia su temporizador al desmontarse.
+
+## [2.24.1] - 2026-08-27
+
+### Corregido: el conteo de servicios aparecía en la vista de servidores
+
+La leyenda del mapa mostraba «8 / 10 operativos», que cuenta servicios, mientras el mapa dibujaba
+seis nodos: dos cifras distintas para dos cosas distintas, juntas y sin distinguirse. Además sobraba,
+porque el estado de cada nodo ya se ve en el color de su borde.
+
+El conteo se queda solo en la vista de servicios, que es de donde sale.
+
+## [2.24.0] - 2026-08-27
+
+### Cambiado: el enlace del mapa dice su latencia por color y por velocidad
+
+Antes el color del enlace solo distinguía sano de caído y la velocidad del punto mezclaba dos cosas:
+como la duración era fija por arista sin importar su largo, dos enlaces con la misma latencia se
+veían a distinta velocidad según qué tan separados estuvieran los nodos en el dibujo.
+
+Ahora la duración se calcula sobre la distancia del tramo, así que **la velocidad en pantalla sí es
+la latencia**: dos enlaces iguales se ven iguales aunque midan distinto en el mapa. Un piso de 700 ms
+evita que un enlace rápido parpadee.
+
+El color pasa a la latencia en tres tramos —hasta 20 ms, hasta 100 ms, más de 100 ms— y el estado
+manda por encima: un enlace caído se pinta rojo, punteado y sin tráfico, así que no se confunde con
+uno lento. El número de milisegundos sigue escrito junto a la línea, para no depender solo del color.
+
+`latencia.js` concentra umbrales, escala y duración, y de ahí sale también la leyenda de las dos
+vistas.
+
+## [2.23.1] - 2026-08-27
+
+### Corregido: el mapa de nodos salía vacío en el inicio
+
+El panel del inicio no necesita la bitácora, así que pedía `/sistema/monitor/nodos?eventos=0`. El
+proxy validaba `ge=1` y respondía **422**, con lo que la carga entera fallaba: en la subpágina, que
+usa el valor por omisión, el mapa se veía bien. Ahora `0` es válido y significa «sin eventos».
+
+### Eliminado: el aviso de servicios sin nodo
+
+Explicaba una variable de entorno faltante a quien usa el CMS. Los servicios sin `ONTOY_NODE` se
+siguen agrupando aparte, sin cartel.
+
+## [2.23.0] - 2026-08-27
+
+### Cambiado: el inicio alterna entre servidores y servicios
+
+La sección de Huachicol estrena un `Segmented` en el encabezado: **Servidores** por omisión —el mapa
+de nodos con sus sondeos animados y el detalle al hacer click— y **Servicios** para el tablero de 24
+horas que ya estaba. El contador de operativos baja del título a la esquina derecha de la leyenda,
+donde no compite con el selector, y el enlace de la derecha apunta a la página que corresponda a
+cada vista.
+
+El mapa y el modal suben a `shared/components/nodos/`, y el servicio a `shared/services`, porque
+ahora los usan dos features y la convención pide que lo compartido no se importe de una feature a
+otra.
+
+## [2.22.0] - 2026-08-27
+
+### Agregado: Huachicol · Servidores, la vista por nodo
+
+El monitor sabía de servicios y nadie sabía de máquinas. La sección nueva —`/huachicol/servidores`,
+sobre `/api/nodos` de huachicol 2.9.0— dibuja un nodo por servidor con lo que corre en él, sus
+contenedores y su RAM.
+
+**El mapa está vivo.** Cada punto que viaja por un enlace es un sondeo, y su velocidad sale de la
+latencia medida: el enlace de 18 ms tarda visiblemente más que el de 4 ms. Los enlaces caídos se
+pintan punteados y sin tráfico. Respeta `prefers-reduced-motion`: con esa preferencia activa el mapa
+se dibuja quieto.
+
+**Click en un nodo** —o Enter, porque son enfocables— abre su detalle: carga por núcleo, RAM, swap,
+uptime, contenedores, enlaces con su latencia y los servicios que hospeda con su versión. Un nodo sin
+reportero de host lo dice en vez de enseñar ceros, que es la diferencia entre «no lo mido» y «está en
+cero».
+
+**La bitácora** lista las caídas y recuperaciones con su transición: de dónde venía y a qué pasó. Sale
+de la tabla `events` que el monitor llenaba desde siempre y que nadie leía.
+
+Observabilidad no se tocó: esto vive en su propia sección.
+
+## [2.21.0] - 2026-08-27
+
+### Cambiado: el tablero de estatus usa el encabezado de sección del resto del inicio
+
+El inicio tenía dos secciones con dos encabezados distintos: MapaLab con `SectionHeader` —icono,
+título, subtítulo y un «Ver detalles →» a la derecha— y el tablero de Huachicol con uno propio,
+metido dentro del `Card`. Ahora los dos usan el mismo componente, así que se alinean el tamaño del
+título, el color del icono y la posición del enlace.
+
+`SectionHeader` gana una prop `badge` opcional, que es lo único que le faltaba para servir en las dos
+secciones: ahí va el contador de servicios operativos, que sigue en rojo cuando no están todos.
+
+## [2.20.0] - 2026-08-26
+
+### Agregado: el portalito aparece en el tablero de estatus
+
+Era el único servicio del ecosistema que nadie vigilaba: ocupa `location /` del gateway y no expone
+`/ontoy`. Ahora lo reporta un sidecar desplegado junto a él —huachicol 2.6.0— sin tocar su
+repositorio.
+
+Del lado del admin no hubo que hacer casi nada, porque desde 2.14.0 la lista de servicios la manda el
+monitor: bastó darle su capa —**Entrada**, junto al gateway, que es donde le toca— y sus enlaces. Sin
+esa entrada aparecía igual, pero bajo «Sin clasificar».
+
+Se llama **Portalito** en el tablero y `sitio2026` en el monitor, que es el nombre de su repositorio.
+
+## [2.19.1] - 2026-08-26
+
+### Corregido: el editor de metadatos salía vacío en cuatro temas del visor
+
+Llega de tamal-verde (1.122.4). `mapalab.layer_metadata` está llaveada por `<workspace de
+GeoServer>:<capa>` y el admin armaba la llave con el **alias**, así que en `desarrollo`,
+`gobierno`, `recursos` y `seguridad` —los cuatro donde alias y nombre real no coinciden— el `GET`
+respondía 404 sobre filas que sí existían: 65 de los 119 feature types del árbol. Se traduce el
+alias en la API, no en el admin, para cubrir de una vez los cuatro lugares del front que arman la
+llave por su cuenta.
+
+### Corregido: `load_layer_binding` no encontraba el `municipio_field` de esos mismos workspaces
+
+La consulta localizaba la capa por `workspace_alias || ':' || geoserver_layer`, que ya no es la
+forma de la llave que recibe. Ahora hace `JOIN` contra `mapalab.workspaces`. Es defecto latente
+—ninguna capa afectada tiene hoy `stats_config` y `municipio_field` a la vez—, pero lo estrenó
+esta rama junto con el editor de filtros y la vista previa con contexto, así que se cierra aquí.
+`preview_stat` también traduce el alias, que en tamal-verde no hacía falta porque no había binding.
+
+Mismo cambio en el `stats_engine` de mapalab 1.136.1.
+
+## [2.19.0] - 2026-08-26
+
+Ajustes de lectura sobre el tablero de estatus que estrenó 2.14.0, con el ecosistema ya corriendo
+delante y las barras llenas de tramos reales.
+
+### Cambiado: el tablero se apoya en el espacio, no en las líneas
+
+Tres divisores competían entre sí: uno entre servicios, uno entre capas y el de la leyenda. Sobran
+los dos primeros —el agrupado por capa ya separa lo que hay que separar— y quedan solo el del
+encabezado, que lo pone el `Card`, y el de la leyenda, que ahora sí cruza la tarjeta de lado a lado
+compensando el relleno del cuerpo. Sin la línea entre filas, el relleno vertical de cada una baja de
+8 a 5 px para que el bloque de una capa se lea junto en vez de flotando.
+
+El eje de horas dejaba 8 px arriba y 8 abajo, y se leía como parte del encabezado. Ahora lleva 12 px
+de aire arriba y la primera capa arranca a 2 px, así que el tiempo queda pegado a las filas que
+rotula.
+
+La versión pasa de texto gris a `Tag`: azul cuando hay versión, gris cuando el servicio no la
+reporta, con cifras tabulares para que queden a plomo entre filas. Es el mismo tratamiento que
+tenían las tarjetas antes del tablero. La columna de identidad crece de 196 a 212 px para darle
+lugar, con lo que a la barra le quedan unos 690 px: un píxel cada dos minutos.
+
+### Corregido: una caída de tres minutos se veía como dos puntitos raros
+
+Un tramo corto mide menos de un píxel sobre una barra de 24 horas, y encima le tocaba la trama
+diagonal de 2 px, que a ese tamaño es ruido y no patrón. Los `timed out` de un solo sondeo —que en
+gateway-hub son varios al día— quedaban ilegibles justo cuando son lo que hay que notar.
+
+Un tramo que dura menos del 0.4 % del día se pinta ahora **sólido en el color fuerte**, con 4 px de
+ancho mínimo y un halo del color suave que lo despega de sus vecinos. Los tramos largos conservan su
+trama. Los huecos de datos cortos **no** se marcan: un sondeo que no se guardó no es un incidente y
+no debe gritar como uno.
+
+Las etiquetas de motivo iban con relleno vertical cero y el texto tocaba el borde de la caja; ahora
+llevan 4 px arriba y abajo.
+
+## [2.18.0] - 2026-08-25
+
+### Agregado: la tarjeta se edita como JSON y se copia entre entornos
+
+Pasar una tarjeta de pruebas a producción obligaba a `make backup-tarjetitas` /
+`make restore-tarjetitas`: exportar el `infobox_config` de **todas** las capas a un SQL, elegir el
+archivo y aplicarlo contra la otra base. Para una sola capa era un rodeo largo.
+
+El editor de tarjetas —la pestaña **Tarjeta** del editor de capas y el cajón de contenido— abre
+ahora con un selector **Visual / JSON**. En modo JSON se ve el `infobox_config` tal como se guarda,
+con botones de copiar y formatear: se copia desde la capa en pruebas y se pega en la misma capa de
+producción. Mientras el JSON esté roto no se toca la configuración, así que un pegado a medias no
+borra la tarjeta; vaciar el campo sí la quita y devuelve la capa a lo que herede de su grupo.
+
+Cuando la capa está heredando, el modo JSON lo dice y ofrece partir del JSON del grupo. Y si la
+configuración trae claves de primer nivel que el visor no lee, las guarda pero avisa cuáles son.
+
+### Eliminado: el aviso de herencia en la tarjeta de un grupo
+
+El recuadro azul que explicaba que el cuadro de un grupo se hereda a sus descendientes ocupaba
+espacio en cada edición para repetir algo que ya se ve del otro lado: la capa que hereda lo dice en
+su propio aviso, con el nombre del grupo del que viene.
+
+## [2.17.0] - 2026-08-24
+
+### Agregado: herramienta para migrar el padrón a minerva
+
+`scripts/migrar_usuarios_a_minerva.py` da de alta en minerva a la gente que ya existe en mariachi,
+con los roles de la aplicación que le tocan a cada quien. Es el paso que faltaba desde `2.0.0`: la
+columna `minerva_sub` y la reconciliación por correo están construidas desde entonces, pero el
+padrón nunca se dio de alta del otro lado, y **minerva no emite código de autorización a quien no
+tiene rol en la aplicación** —responde `access_denied` y no hay token—. Medido en el stack local:
+20 usuarios en mariachi, 2 vinculados; los otros 18 no entrarían.
+
+El mapeo vive en `app/services/minerva_migracion.py`, es función pura y tiene 13 pruebas:
+`tetlamamakani` va al rol compuesto **Administrador**, y una `editora` recibe un rol atómico por
+cada proyecto asignado según sea editor o viewer —«MapaLab - edicion», «SIEEJ - consulta»…—.
+Un `externo` con SIEEJ recibe «SIEEJ - reportar». Quien no recibiría ningún rol **no se da de alta**:
+el plan lo aparta y lo nombra, porque darlo de alta sin rol es dejarlo con una cuenta que no abre
+nada.
+
+Por omisión **solo planea**: imprime lo que haría y no escribe. Escribe con `--aplicar`, y es
+idempotente, así que se puede correr dos veces o retomar una corrida a medias.
+
+Dos cosas que la herramienta no puede resolver porque son de minerva, verificadas en su v1.0.0: su
+API de administración es unitaria y exige sesión de panel de un administrador global —no hay
+`client_credentials` ni delegación por aplicación—, así que el script inicia sesión como persona y
+pide la credencial al operador sin guardarla; y **el alta exige contraseña**, sin flujo de
+invitación, así que genera una temporal por persona y las deja en un CSV con permisos `600` que hay
+que entregar por canal seguro y borrar. El procedimiento completo, en
+`runbook/migracion-padron-minerva.md` del repo de contexto.
+
+### Corregido: la migración se niega a aplicar si a minerva le faltan roles
+
+El plan se arma con los roles que minerva declara. Si su manifiesto está viejo, los roles que cada
+persona necesita no existen del otro lado y la corrida omitía al padrón entero sin un solo error a
+la vista. Ahora el plan enumera los roles ausentes, nombra el síntoma —un `manifest.minerva.yml`
+desactualizado— y cómo reimportarlo, y `--aplicar` se detiene antes de escribir: dar de alta media
+plantilla sin acceso es peor que no correr nada.
+
+## [2.16.1] - 2026-08-24
+
+### Corregido: guardar en un formulario con grupos respondía 500
+
+El coalescing del historial compara la fecha del último cambio contra el reloj para decidir si dos
+ediciones seguidas colapsan en una fila. Postgres devuelve `cambiado_en` **con zona horaria** y
+`utcnow()` es **naive**, así que la resta reventaba con `TypeError` y el `PATCH` de captura
+respondía 500 en cada guardado.
+
+No lo atrapó ninguna prueba porque **la suite corre sobre SQLite**, donde las dos puntas salen naive
+y la resta funciona. La guarda que tenía normalizaba solo el caso contrario —fecha sin zona contra
+reloj con zona—, que es el que nunca ocurre. Ahora se normalizan las dos con `to_naive_utc`, y la
+prueba de regresión fuerza una fecha con zona para que el caso quede cubierto en SQLite también.
+
+## [2.16.0] - 2026-08-21
+
+### Cambiado: el coordinador se marca sobre la lista de miembros
+
+Era un selector aparte, debajo del de miembros, que obligaba a volver a buscar a la persona que
+acababas de agregar. Ahora los miembros elegidos se listan con su interruptor de **Coordinador** en
+cada renglón: eliges a quién metes y de una vez quién coordina, sobre la misma lista. Mientras no
+haya ningún miembro, la sección lo dice en vez de mostrar un control vacío.
+
+### Agregado: un grupo que llena formularios colaborativos exige coordinador
+
+Sin coordinador el grupo captura pero no puede entregar, y eso se descubre al final, con el trabajo
+hecho. Dos bloqueos que cierran el círculo:
+
+- **Quitar al último coordinador** de un grupo asignado a un formulario colaborativo responde 409,
+  nombrando los formularios que se quedarían sin quien los envíe. Relevar al coordinador en el mismo
+  guardado sí se puede: lo que se rechaza es quedarse sin ninguno.
+- **Prender la bandera** con grupos sin coordinador responde 409 con la lista. No se puede entrar a
+  un estado del que después no se sale.
+
+En un grupo sin formularios colaborativos no se exige nada: puede quedarse sin coordinador sin
+consecuencias. Y un grupo vacío no estorba, porque no hay a quién coordinar.
+
+En el CMS, la lista de miembros avisa en cuanto no hay coordinador, sin esperar al guardado.
+
+### Cambiado: la card de la tetlamamakani también cuenta proyectos
+
+Decía «Todos los proyectos» mientras el resto del padrón mostraba un número, así que la misma
+columna se leía de dos formas y no se podía comparar de un vistazo. Ahora cuenta los proyectos
+activos del sistema —el mismo catálogo que la pantalla ya tiene cargado— y su tooltip los lista, sin
+papel al lado del nombre, porque en ese rol el acceso no viene de una asignación sino del permiso.
+
+## [2.15.1] - 2026-08-21
+
+### Cambiado: el switch de captura colaborativa se mudó a Asignaciones
+
+Estaba en Configuración, junto al de apertura periódica, por parecido de forma. Pero la bandera
+**depende de los grupos**: sin grupos asignados no significa nada, y el switch vivía en una pestaña
+donde no se ve si los hay. Ahora está debajo del selector de grupos, que es donde se toma la decisión
+que le da sentido, y se guarda solo al accionarlo en vez de esperar al botón de la forma.
+
+### Corregido: quitarle el grupo a un formulario colaborativo dejaba su envío sin dueño
+
+El bloqueo de apagar la bandera existía, pero había una segunda puerta al mismo problema: desasignar
+el grupo. El envío seguía apuntando a un grupo que ya no ve el formulario, así que sus miembros
+perdían el acceso a lo que llevaban capturado, sin aviso. Ahora responde **409** nombrando los grupos
+con envíos en proceso y cuántos son. En un formulario normal los grupos se quitan como siempre.
+
+## [2.15.0] - 2026-08-21
+
+### Agregado: la captura colaborativa se prende desde el CMS
+
+Hasta aquí la función estaba completa pero se activaba por SQL, que es una forma elegante de decir
+que no se podía usar. Las dos piezas que faltaban:
+
+**El switch «Captura colaborativa»**, en la pestaña Configuración del formulario, junto al de
+apertura periódica. Está deshabilitado mientras el formulario no tenga grupos asignados, con el
+motivo a la vista: el envío pertenece al grupo, así que sin grupos la bandera no significa nada y lo
+único que lograría es que la gente crea que la función no sirve.
+
+Apagarlo con envíos de grupo en proceso responde **409**. Apagar la bandera mueve la identidad del
+envío de vuelta a la persona, y los que ya pertenecen a un grupo se quedarían sin ruta de acceso:
+nadie los volvería a encontrar desde el formulario. El mensaje dice cuántos son.
+
+**Los coordinadores**, en el drawer de miembros del grupo. `PUT /sieej/grupos/{id}/usuarios` acepta
+ahora `coordinadores`, un subconjunto de `usuarios`; quien no aparezca queda como capturista. Va como
+lista y no como mapa de roles porque el rol es binario, y así el cliente manda lo que la persona
+marcó en vez de un diccionario que tenga que armar. `GET .../usuarios` devuelve `rol_grupo`.
+
+### Agregado: quién capturó cuánto, en el detalle del envío
+
+Un resumen arriba del drawer, solo en envíos de grupo: cada persona con cuántos campos dejó con su
+valor actual, la barra de su proporción y la fecha de su último cambio en el tooltip.
+
+Cuenta sobre la autoría y no sobre las filas del historial. Un campo editado tres veces sigue siendo
+un campo, y se lo lleva quien lo dejó así, no quien lo empezó — que es la pregunta que uno se hace
+mirando un envío de equipo.
+
+## [2.14.0] - 2026-08-21
+
+El inicio del admin cambia las ocho tarjetas del ecosistema por un tablero con historial de 24 horas,
+y «Mis borradores» se muda al menú del avatar. Del lado de huachicol corresponde a 2.6.0, que es
+quien publica los tramos que el tablero dibuja.
+
+### Agregado: el estatus del ecosistema se lee como tablero, no como tarjetas
+
+Ocho tarjetas iguales con nombre, versión y un punto de color no distinguían un servicio sano de uno
+caído más que por ese punto, y el motivo de la caída vivía en un `Tooltip` que el teclado no alcanza.
+Ahora es una fila por servicio con la barra de las últimas 24 horas, sacada de los tramos que
+`/api/status` estrenó en huachicol 2.6.0.
+
+**La barra distingue por color y por trama**, no solo por color: sólido para operativo, diagonal para
+degradado, diagonal densa para caído y cuadrícula para «sin datos», que antes se confundía con una
+caída. Cada tramo tiene su `Tooltip` con hora de inicio, de fin, duración y el motivo, y responde
+tanto al cursor como al toque.
+
+**Las filas se agrupan por capa** —entrada, datos, aplicaciones, internos— con su propio conteo. Con
+ese orden, tres franjas rojas alineadas se leen como un incidente del ecosistema y una sola como un
+servicio con problema propio. El motivo del fallo se escribe en la fila, sin pedir interacción.
+
+**El contador va en el título** y no en una banda aparte. La versión queda junto al nombre y los
+cuatro enlaces —abrir, repositorio, Taiga, reportar— siguen visibles en una columna de ancho fijo,
+que es el máximo posible. En móvil la fila se parte en dos renglones sin esconder nada.
+
+### Corregido: GeoServer nunca se conectaba con el monitor
+
+El catálogo del admin pedía el slug `geoserver`; el monitor lo publica como `sextante` desde el
+renombre del 31 de julio (huachicol 2.5.0). No empataban, así que esa tarjeta salía «no integrada»
+para siempre aunque el servicio estuviera sano.
+
+De paso deja de existir la causa: **la lista de servicios ahora la manda el monitor** y el catálogo
+del frontend solo aporta enlaces y la capa de cada uno. Vine y Frames, que se sondeaban cada minuto y
+no aparecían en ningún lado, salen solos; y un servicio nuevo aparece sin tocar el frontend, bajo
+«Sin clasificar» hasta que se le asigne capa.
+
+### Cambiado: «Mis borradores» vive en el menú del avatar
+
+Los borradores son asunto de quien los escribe, no del ecosistema, y ocupaban la mitad del inicio.
+Se van a un modal que se abre desde el avatar, con el mismo patrón que «Notas de versión»: montado en
+`MainLayout` y sin pedir datos hasta abrirse. El avatar lleva un contador rojo cuando hay rechazados.
+
+**Lo que sí pide acción al entrar se queda en el inicio**: la alerta de borradores rechazados y la
+tarjeta de «esperando tu revisión». `InicioPage.jsx` baja de 376 líneas a 135, bajo el límite de 300
+que llevaba tiempo incumpliendo, y el menú de usuario sale de `MainLayout` a `UserMenu`.
+
+### Agregado: los colores semánticos de la marca iieg
+
+El catálogo de identidad tenía nueve colores y ninguno era `success`, `warning`, `danger` o `info`,
+aunque las normas los listan como base. Sin ellos, los colores de estado del tablero habrían quedado
+sueltos en el componente, que es justo lo que la norma prohíbe. Se agregan los cuatro más su
+superficie, todos AA sobre blanco y sobre su propia superficie; `warning` e `info` comparten valor
+con `accent-deep` y `secondary`, que ya existían.
+
+### Corregido: los checks de puerto en Observabilidad salían sin detalle
+
+`describeCheck` armaba el detalle con el porcentaje de disco, los gigas libres, los contenedores y el
+mensaje de error, pero ignoraba `port`, que es lo único que traen los checks de upstream del gateway.
+Ocho de los nueve checks de gateway-hub se veían con la columna vacía.
+
+### Eliminado: la clave que `POST /usuarios` aceptaba y tiraba a la basura
+
+`UsuarioCreate` declaraba un campo de clave con validación de robustez, y `crear_usuario()` lo
+excluía del `model_dump` para escribir `!minerva` en su lugar. Es decir: la API la pedía, la validaba
+y después la ignoraba. Quien la mandara podía creer razonablemente que había quedado guardada.
+
+Desde `2.0.0` mariachi no autentica: el login es OIDC contra minerva y **todas** las filas de
+`usuarios` llevan `!minerva` como hash inutilizable. La credencial vive en minerva y ahí se
+administra. El campo sale del esquema; el endpoint sigue aceptando la misma petición sin él.
+
+Por lo mismo, el estado de la cuenta deja de listar «debe renovar» entre sus pendientes:
+`must_change_password` es una marca heredada de la época del login local que ya nadie vuelve a poner
+en `true` —las dos rutas que crean usuarios la fijan en `false`— y que ninguna pantalla del admin
+sabe atender. Señalaba un trámite que en mariachi ya no existe.
+
+Con el campo fuera, se van también los restos del login local que quedaban colgando: los dos
+esquemas de cambio y reinicio de credencial —sin una sola ruta que los importara desde `2.0.0`— y
+`app/core/password_policy.py` completo, cuyo único consumidor era el campo que acaba de
+desaparecer. `hash_password` y `verify_password` **se quedan**: `colibri_keys` y `mapalab_keys` los
+usan para las llaves de API, que sí son secretos vivos.
+
+Quedan en `schemas/user.py` `LoginRequest`, `LoginResponse` y `TokenPayload`, igual de huérfanos
+—solo reexportados en `schemas/__init__.py`—, pero son de la familia del login, no de la de las
+credenciales, y salen aparte.
+
+## [2.13.0] - 2026-08-21
+
+Cierra los envíos colaborativos de SIEEJ: la sexta y última fase, más las dos aportaciones de
+backend que las fases de sieej necesitaban y quedaron sin versionar (2.9.0 a 2.11.0 trajeron el
+esquema, la captura por campo y el sync). Del lado del frontend corresponde a sieej 2.1.0 y 2.2.0.
+
+### Agregado: el CMS dice quién llenó cada campo
+
+**Inline en cada respuesta.** `buildRespuestas` acepta un mapa de autoría y cada entrada sale con su
+autor; `RespuestasView` pinta un avatar compacto junto al valor, con nombre y fecha en el tooltip.
+El drawer de detalle y la fila expandida de la tabla lo heredaron con ese único cambio, que era el
+punto de tener un armado común.
+
+**Pestaña de auditoría.** Tabla de diff con campo, valor anterior → nuevo, quién, cuándo y origen.
+El endpoint `GET /sieej/formularios/{id}/envios/{envio_id}/historial` existía desde la actualización
+ligera post-envío y **nunca tuvo consumidor**: solo faltaba `historialEnvio` en el cliente.
+
+**Pestaña de actividad.** Línea de tiempo del envío sobre un endpoint nuevo,
+`GET /sieej/formularios/{id}/envios/{envio_id}/eventos`, que resuelve el nombre del actor igual que
+el de historial. Los eventos ya se registraban con actor; no había cómo leerlos.
+
+**Excel y CSV.** La hoja «Historial de cambios» gana la columna `Origen`, que separa la captura de
+la corrección formal. La hoja `Envios` gana `Capturado por`: `Usuario` y `Email` son el dueño del
+envío, que en un formulario colaborativo no es necesariamente quien capturó. El armado de esas filas
+se movió de la ruta al service, donde va la lógica por convención, y de paso sale del mismo recorrido
+que ya se hacía sobre el historial.
+
+### Agregado: el envío dice si es de grupo y quién puede cerrarlo
+
+`EnvioResponse` expone `colaborativo`, `grupo_id`, `datos_version` y `puede_enviar`. El último va
+resuelto en el servidor y no como rol, para que el cliente no reimplemente la regla del coordinador
+y para que un capturista vea el botón bloqueado con el motivo en lugar de descubrirlo con un 403.
+
+### Agregado: la autoría por campo viaja con el envío
+
+`EnvioResponse` trae un mapa `autoria` con el último autor y fecha de cada `field_path`, para pintar
+los distintivos sin una llamada extra. El historial del respondent gana `actor_nombre` y `origen`.
+
+**El nombre solo viaja en envíos de grupo.** En uno individual el único actor posible es quien
+pregunta, así que va en `null` y el frontend muestra únicamente la fecha. El correo no viaja nunca:
+el nombre alcanza para la constancia y el correo no es asunto del resto del equipo. El docstring que
+afirmaba que este schema «no expone al actor» quedó corregido, igual que el «append-only» de
+`EnvioValorHistorial`, que dejó de ser cierto para la captura cuando entró el coalescing.
+
+## [2.12.0] - 2026-08-21
+
+### Agregado: la sesión se renueva antes de vencer, no después del 401
+
+El CMS esperaba a que la cookie de acceso venciera para reaccionar: la primera petición después del
+minuto 30 salía con 401, el interceptor de axios llamaba a `/autenticacion/refrescar` y reintentaba.
+Funcionaba —nadie perdía la pantalla— pero dejaba 401 en la consola y un reintento por cada petición
+que hubiera en vuelo. En una página que dispara varias al montar, como las estadísticas de vine,
+eran dos o tres de golpe.
+
+Ahora el backend informa cuánto le queda a la sesión en `session_expires_in`, que viaja en
+`GET /autenticacion/perfil`, en `GET /autenticacion/csrf` y en la respuesta de
+`POST /autenticacion/refrescar`. El admin programa el refresco dos minutos antes del vencimiento y
+lo reprograma con cada respuesta, así que la cookie se renueva sola mientras la pestaña siga viva.
+
+El valor sale del `exp` del propio token, no de una constante del frontend: cambiar
+`ACCESS_TOKEN_EXPIRE_MINUTES` reajusta el calendario sin tocar el bundle.
+
+**Los temporizadores no sobreviven a una laptop suspendida**, y en pestaña de fondo Chrome los
+retrasa minutos. Por eso el refresco también se revisa en `visibilitychange`: al volver el foco, si
+la hora programada ya pasó, se renueva en el acto. El camino viejo sigue ahí como red: si el
+refresco proactivo falla, el 401 y su reintento se comportan igual que antes.
+
+El refresco sigue pasando por `runExclusiveRefresh` —Web Locks más la marca `auth_refreshed_at`—,
+así que varias pestañas con el mismo calendario despiertan juntas y sólo una toca la red.
+
+### Agregado: el panel de estadísticas edita filtros y prueba con municipio y fechas
+
+Los filtros compuestos existían en el motor desde esta misma versión, pero configurarlos exigía
+escribir el JSON a mano: el panel no los conocía. Ahora cada slot primitivo tiene un editor de
+condiciones —columna, operador y valor— con los seis operadores (`eq`, `in`, `gte`, `lte`,
+`between`, `is_not_null`) y hasta seis por estadística.
+
+Un botón por condición alterna entre **valor fijo** y **valor del visor**. En el segundo caso se
+elige entre municipio seleccionado, fecha inicial o fecha final, y la condición se omite sola cuando
+el visor no manda ese dato — que es lo que permite que la misma configuración sirva para el total
+estatal del cron y para la vista filtrada. La columna puede ser `@municipio`, que se resuelve a la
+que declare la capa en su catálogo en vez de nombrarla a mano.
+
+**Y se puede probar sin salir de la edición.** Una barra de contexto arriba de los slots permite
+elegir municipios y un rango de fechas; la vista previa de cada slot los manda al servidor y devuelve
+el número que vería alguien con esa selección en el visor. Sin contexto, el preview sigue mostrando
+lo que persiste el cron. Antes esto era invisible: una estadística con condiciones de contexto
+mostraba el total y parecía rota.
+
+`POST /layer-metadata/{layer_key}/stats/preview` acepta `municipio` (claves INEGI separadas por
+coma), `fecha_inicio` y `fecha_fin` como parámetros de consulta, y devuelve el contexto que aplicó.
+Se suma `GET /layer-metadata/municipios` para poblar el selector.
+
+### Agregado: filtros compuestos y placeholders de contexto en las estadísticas
+
+Una estadística podía llevar **una** condición, de igualdad exacta, contra un valor fijo. Ahora
+lleva hasta seis, con `eq`, `in`, `gte`, `lte`, `between` e `is_not_null`, y aplican a todas las
+primitivas —también a `sum`, `avg` o `latest`—, no solo a `count_where`:
+
+```json
+"filters": [
+  {"field": "nivel_educativo", "op": "eq",      "value": "Primaria"},
+  {"field": "municipio",       "op": "in",      "value": "{{municipio.nombres}}"},
+  {"field": "fecha",           "op": "between", "value": ["{{fecha.inicio}}", "{{fecha.fin}}"]}
+]
+```
+
+Un valor con forma `{{clave}}` no es literal: se resuelve al ejecutar contra una lista blanca de
+cuatro claves (`municipio.claves`, `municipio.nombres`, `fecha.inicio`, `fecha.fin`) y **siempre por
+bind param**, nunca interpolado en el SQL. La propiedad de siempre se conserva: el SQL lo arma el
+motor y quien configura solo elige de un catálogo.
+
+**La regla que sostiene el diseño:** si un placeholder no trae valor en el contexto, el filtro **se
+omite**. Así una sola configuración sirve para el total estatal que persiste el cron y para el dato
+filtrado que pedirá el visor, sin duplicarla por capa. Es lo que permite que la numeralia de la home
+—donde no hay municipio seleccionado— siga mostrando el total.
+
+`execute_stats_batch`, `execute_stat` y `build_query` aceptan un `context` opcional; sin él se
+comportan exactamente como antes. `where_field`/`where_value` siguen funcionando y se traducen a un
+filtro `eq` que conserva el nombre del bind, así que las configuraciones ya guardadas no cambian de
+SQL.
+
+Esto es la mitad del camino: falta que `@municipio` se resuelva desde la metadata de la capa en vez
+de nombrar la columna a mano, y que el visor pueda pedir el cálculo con contexto. Plan completo en
+`context-ame-esta/ecosistema/planes/numeralia-por-contexto.md`.
+
+### Corregido: `count_where` pedía una columna que nunca usaba
+
+La validación de estadísticas exigía `field` en toda operación distinta de `count`, pero
+`build_query` arma el `count_where` como `SELECT COUNT(*) … WHERE "<where_field>" = :valor` y no
+toca `field` en ningún momento. Configurar un conteo con filtro obligaba a elegir una columna
+cualquiera para que la validación dejara guardar, y el panel mostraba dos selectores de columna
+donde solo uno hacía algo.
+
+Ahora `count` y `count_where` comparten la misma regla —ninguno pide `field`— y el selector sobrante
+desapareció del panel. El cambio va también en `dataengine/jobs/run_refresh_layer_stats.py`, que es
+el mismo motor duplicado para el cron: si solo se corrigiera de este lado, el cron descartaría como
+inválido lo que el CMS guarda. De paso, el job pasó a validar `field` cuando viene presente, que es
+lo que este lado ya hacía.
+
+### Corregido: `make test-backend` no encontraba el script de pruebas
+
+El target hacía `cd api && ruff …` y a continuación `./api/scripts/run-tests.sh`. El `cd` persiste
+dentro de la receta, así que la ruta relativa dejaba de resolver y el target moría con
+`No such file or directory` justo después de que ruff pasara. Los tests seguían corriendo en CI, que
+no usa el Makefile, pero en local no había forma de correrlos con el comando documentado.
+
+---
+
+## [2.11.0] - 2026-08-21
+
+### Agregado: un solo endpoint para latido, delta y presencia
+
+Fase 3 de seis. `POST /formularios/{slug}/envio/sync` devuelve la `datos_version` del envío, su
+estado, lo que cambió desde la versión que traía el cliente y quién más lo está viendo, con en qué
+paso anda cada quien.
+
+Los tres van juntos a propósito. El gateway limita por IP con `$binary_remote_addr` y un equipo de
+una dependencia sale por la misma NAT, así que tres endpoints de polling gastarían el triple de una
+cuota que además comparten. Es POST y no GET porque registra presencia —escribe— y así pasa por
+`verify_csrf` como toda mutación. Con `salir: true` se da de baja sin pedir nada, que es lo que
+manda el `pagehide` del navegador; `sendBeacon` no sirve justamente porque el endpoint exige CSRF.
+
+La presencia sigue siendo un aviso y no un candado: si Redis no responde, el sync devuelve el delta
+igual y la captura no se entera.
+
+### Agregado: presencia por HASH para el polling sostenido
+
+`presence.list_others` recorre el keyspace con `scan_iter`, y con redis-py **síncrono** dentro de un
+handler `async def` eso bloquea el event loop del worker. Para el CMS —pocos editores, polling
+esporádico— no importa; para un equipo latiendo cada diez segundos, sí.
+
+Las funciones nuevas (`entrar`, `salir`, `presentes`) guardan un HASH por recurso y lo leen de un
+solo `HGETALL`. Redis no expira campos sueltos de un hash antes de 7.4, así que el TTL vive en la
+clave y las entradas vencidas se descartan al leer, lo que además limpia a quien cerró la pestaña
+sin avisar. Las funciones viejas quedan intactas: el CMS no cambia.
+
+### Agregado: rate limit por usuario en el polling de captura
+
+El router `/formularios/*` no tenía ninguno de aplicación; el único freno era el del gateway, que es
+por IP y castiga a toda la dependencia tras la misma NAT. El sync lleva treinta peticiones por
+minuto y por usuario sobre el limitador de ventana deslizante que ya existía. La cadencia del
+cliente es de 10 s con la pestaña visible y 30 s en solitario —seis por minuto, unas veinte con
+varias pestañas—, así que treinta deja holgura para el jitter y corta un cliente con un bug de
+reintento antes de que se coma la cuota compartida.
+
+### Cambiado: las rutas del envío salieron de `dinamicos.py`
+
+El archivo ya estaba en 374 líneas contra el límite de 300 antes de este ciclo y las tres fases lo
+habían llevado a 464. Las rutas `/{slug}/envio*` se mudaron a `routes/formularios/envios.py`, que se
+incluye antes porque sus paths son más específicos que el `/{slug}` de la ficha. Quedan en 291 y 214
+líneas. No cambia ninguna URL.
+
+## [2.10.0] - 2026-08-21
+
+### Agregado: captura simultánea por campo en los envíos de grupo
+
+Fase 2 de seis. La 1 puso la identidad del envío; esta pone la escritura.
+
+`PATCH /formularios/{slug}/envio/campos` hace merge parcial sobre `datos` con la fila del envío
+bloqueada, y responde la `datos_version` nueva más el delta desde la que traía el cliente —cada
+campo con su último valor y quién lo dejó así—. A diferencia de la corrección post-envío acepta
+cualquier campo capturable, no solo lo marcado `editableAfterSubmit`: el envío sigue `en_proceso`.
+
+**El conflicto se resuelve por campo, no por envío.** Un `desde` atrasado no basta para rechazar el
+lote: solo hay 409 cuando otro miembro tocó **alguno de los mismos** `field_path` después de esa
+versión, y entonces la respuesta trae los dos valores y el nombre de quien escribió el otro. Un 409
+por envío completo haría inusable la captura simultánea, que es justo lo que esto habilita. Cuando
+hay conflicto no se escribe nada: el lote se rechaza entero para que el cliente reintente con una
+sola decisión.
+
+**El `PUT /{slug}/envio` queda cerrado en los envíos de grupo.** Manda `datos` completo, así que un
+cliente con la copia vieja borraría de un golpe lo que capturó el resto del equipo. Sobrevive solo
+como el acto de enviar, y ese lo hace el coordinador: un capturista recibe 403.
+
+### Agregado: el historial de valores ahora sabe quién capturó cada campo
+
+`envio_valor_historial` era la fuente de las correcciones post-envío. Ahora también recibe la
+captura, con `origen` separando las dos:
+
+- **`captura`** sale del PATCH y también del guardado normal, que antes escribía `datos` de golpe y
+  sin diff. Un `PUT` de un formulario individual ahora compara contra lo que había y emite una fila
+  por campo cambiado, que es lo que permitirá pintar la fecha de modificación en formularios que no
+  son colaborativos.
+- **`correccion`** es la actualización ligera de un envío `enviado`, sin cambios.
+
+Con autosave por campo cada blur puede generar una fila, así que en `captura` dos ediciones del
+mismo actor sobre el mismo campo dentro de cinco minutos colapsan en una: conserva el
+`valor_anterior` con que abrió la ventana y le mueve valor, fecha y versión. La versión tiene que
+moverse también, o el delta por `datos_version` dejaría de ver el cambio. `correccion` sigue siendo
+append puro, que es la que tiene valor de auditoría formal.
+
+### Cambiado: la mecánica de escritura por campo salió de `envios_service`
+
+Los dos flujos compartían resolución de paths, cálculo de cambios y escritura de historial, pero
+solo uno la tenía. Ahora vive en `services/sieej/campos_service.py` y los paths puros en
+`field_paths.py`; `EnviosService` conserva los mismos nombres como delegados, así que nada de lo que
+los usaba cambió. La resolución de grupo se movió de `colaboracion_service.py` a `pertenencia.py`
+para que el módulo de captura quede con una sola responsabilidad. `envios_service.py` bajó de 1373 a
+1298 líneas ganando funciones.
+
+### Cambiado: la card de usuario deja de ser un tablero de permisos
+
+Seis ajustes a la administración de usuarios, todos de la misma idea: que la card diga lo poco que
+se necesita de un vistazo y el detalle viva en la ficha.
+
+- **El rol se llama por su nombre.** `tetlamamakani` se mostraba como «Administradora» en la card,
+  el filtro y el formulario. Ahora dice **Tetlamamakani**, que es como se llama el rol en la base,
+  en los permisos y en la conversación diaria. Traducirlo solo en la pantalla obligaba a mantener
+  dos vocabularios para lo mismo.
+- **Las etiquetas de proyecto se resumen en un contador.** Una editora con acceso a ocho proyectos
+  llenaba la card de tags y empujaba todo lo demás; con más proyectos en el ecosistema eso solo
+  empeora. La card ahora dice «3 proyectos» —o «Todos los proyectos» para tetlamamakani, o «Sin
+  proyectos»— y el reparto por proyecto se ve al abrir la ficha, que es donde se edita.
+- **El tipo de cuenta vive en un solo lugar.** El tag de rol estaba arriba a la derecha, peleando
+  el ancho con el nombre; ahora baja a la fila de etiquetas junto al contador y la dependencia.
+- **El avatar sin foto ya no es un monigote gris.** Se pintan las iniciales —nombre y primer
+  apellido, saltando partículas como «de» o «la»— sobre un color tomado de una paleta de ocho,
+  elegido por hash del username: estable para cada persona y distinto entre vecinos. Los ocho
+  colores pasan 4.5:1 contra el texto blanco.
+- **La fila de alta y estado se ancla al fondo.** Con `margin-top: auto` y una altura mínima de
+  184 px, todas las cards cierran a la misma altura y las secciones de arriba dejan de encogerse
+  según cuánto texto traiga cada usuario.
+- **El estado de minerva pierde el texto.** Era un tag que decía «Minerva» o «Sin vincular»
+  gastando media fila en un dato que dejará de importar cuando todo el padrón esté migrado. Queda
+  el escudo: relleno y verde si ya inició sesión, de contorno y ámbar si no. No es solo color —el
+  icono cambia de forma y lleva `aria-label` además del tooltip—, como exige
+  `ecosistema/identidad-visual.md`.
+
+### Cambiado: 100 usuarios por página y una sola forma de ordenarlos
+
+El grid paginaba de 12 en 12, lo que repartía un padrón de ~80 personas en siete páginas sin
+ninguna razón. Sube a **100 por página**: el padrón real cabe entero en una. El esqueleto de carga
+se queda en 12 cards, que es lo que se alcanza a ver antes de que respondan los datos.
+
+El selector de orden (nombre, alta más reciente, rol) se retira. Sobre una lista que ahora cabe en
+una pantalla, tres criterios de ordenamiento son tres decisiones que nadie quiere tomar: el orden es
+**alfabético por nombre**, siempre. Los filtros de búsqueda, rol y proyecto se quedan, que son los
+que sí recortan la lista.
+
+
+## [2.9.0] - 2026-08-21
+
+### Agregado: el envío de SIEEJ puede pertenecer a un grupo
+
+Primera de las seis fases de los envíos colaborativos (plan completo en el repo de contexto,
+`repos/mariachi/planes/envios-colaborativos-sieej.md`). Esta fase pone el esquema y la
+autorización; el comportamiento visible no cambia hasta la fase 4.
+
+Hasta ahora un envío tenía dueño único: `envio_formulario.usuario_id` más dos índices únicos
+parciales garantizaban *un envío por (formulario, usuario[, periodo])*. Cuando una dependencia
+reportaba, una sola persona capturaba todo o el equipo se repartía el trabajo por fuera y alguien
+transcribía.
+
+La migración `s1eej0001` agrega la otra identidad posible del envío:
+
+- `formulario.colaborativo`, apagado en todos los formularios existentes.
+- `envio_formulario.grupo_id` y `datos_version`.
+- `usuario_grupo.rol` (`coordinador` | `capturista`), con `capturista` por omisión.
+- `envio_valor_historial.datos_version` y `origen` (`captura` | `correccion`); todo lo ya escrito
+  queda como `correccion`, que es el único flujo que existía.
+- El índice `ix_historial_envio_path_fecha`, que sostiene la consulta de última autoría por campo.
+- Los dos índices únicos actuales ganan `AND grupo_id IS NULL` y aparecen `uq_envio_grupo_periodo`
+  y `uq_envio_grupo` con la condición contraria: el dueño es el usuario o el grupo, nunca los dos.
+
+`usuario_id` se conserva como «quién inició el envío».
+
+En el código, `EnviosService.puede_editar_envio` sustituye los cuatro `usuario_id != user.id` que
+estaban repetidos. En un envío de grupo manda la membresía y no la propiedad: quien sale del grupo
+pierde el acceso aunque haya iniciado el envío, y su autoría sigue en el historial.
+
+El módulo nuevo `services/sieej/colaboracion_service.py` resuelve con qué grupo entra cada persona.
+Si pertenece a más de un grupo asignado al mismo formulario no hay forma de adivinar: las rutas de
+envío responden **409** con la lista de grupos y aceptan `?grupo_id=` para elegir. El listado de
+formularios no falla por eso —es de lectura— y toma el primero por nombre.
+
+### Corregido: reasignar un grupo borraba el rol de sus miembros
+
+`GruposService.actualizar_miembros` y el `_set_sieej_grupo` de usuarios sincronizaban la membresía
+borrando `usuario_grupo` completo y reinsertándola. Con el `rol` viviendo en esa misma tabla, cada
+edición de grupo desde el CMS habría degradado a `capturista` a todos sus coordinadores. Las dos
+escrituras pasaron a sincronizar por diferencia: altas, bajas y nada más.
+
+### Cambiado: la card de usuario pierde su footer de acciones
+
+Las dos acciones que colgaban de cada card —el ícono de editar y el de eliminar— desaparecen. Abrir
+un usuario es hacer clic en su card, que es lo que ya hacía el ícono de editar: eran dos caminos al
+mismo modal, y uno de ellos ocupaba una franja fija en las doce cards de la pantalla.
+
+**Eliminar deja de ser un acceso directo.** Ahora vive dentro del modal de edición, como botón
+etiquetado «Eliminar usuario» en el extremo izquierdo del pie, separado de Cancelar y Actualizar.
+Borrar a alguien pasa de ser un clic en un ícono junto al de editar —a un pixel de distancia, sobre
+una acción que arrastra en cascada los envíos de SIEEJ— a exigir abrir la ficha primero. La
+confirmación con el impacto que se agregó en 2.8.0 sigue igual, encima de eso.
+
+El botón se deshabilita con su tooltip cuando la ficha abierta es la propia, y no se dibuja para
+quien no tiene `mariachi.usuarios.delete`.
+
+**Con el footer fuera, el clic sobre la card es el único camino a la edición.** El manejador de
+teclado que la card ya traía —`role="button"`, `tabIndex` y Enter/Espacio sobre el bloque de datos—
+deja de ser una comodidad y pasa a ser el acceso por teclado de la pantalla: si se quita, la
+administración de usuarios se vuelve inoperable sin ratón. Hay un test que lo cubre.
+
+El pie del modal se extrajo a `components/UserFormFooter.jsx` con sus propias pruebas; `UserFormModal`
+se quedaba en 306 líneas y el límite del ecosistema son 300.
+
+---
+
+## [2.8.1] - 2026-08-21
+
+### Corregido: las cards de usuario se estrujaban y escondían el nombre
+
+El grid repartía las columnas por breakpoints (`xs=24 sm=12 lg=8 xl=6`), así que el ancho de la card
+lo decidía la pantalla y no el contenido: entre 576 y 992 px cada card bajaba de ~270 px y el tag de
+rol —que no encoge— se comía el espacio del nombre, que salía cortado a media palabra.
+
+Ahora las columnas las decide el contenido:
+
+```css
+grid-template-columns: repeat(auto-fill, minmax(min(288px, 100%), 1fr));
+```
+
+288 px es el piso: por debajo de eso el grid quita una columna en vez de apretar las que hay. El
+`min(288px, 100%)` es lo que evita el desbordamiento en móvil, donde la pantalla puede ser más
+angosta que el mínimo y la card debe poder encoger a una sola columna.
+
+El piso solo, sin embargo, deja suelto el otro extremo. Con las pistas en `1fr` la card ocupa todo
+lo que sobra, así que en el rango donde cabe una columna pero no dos —el contenedor entre 288 y
+576 px, que es la tableta en vertical con el sider abierto— quedaba **una card sola estirada a lo
+ancho**, con un avatar de 48 px y medio metro de vacío al lado. La card ahora se topa en 420 px y se
+centra en su pista (`maxWidth` + `margin-inline: auto`), y el mismo tope se aplica al skeleton para
+que la carga no salte de tamaño.
+
+El tope va en la card y no en la pista a propósito: si el `minmax()` cerrara en 420 px en vez de
+`1fr`, el grid contaría las columnas contra ese máximo y un contenedor de 640 px —dos columnas
+holgadas de 314— se conformaría con una sola. Con el tope en la card, el número de columnas lo sigue
+decidiendo el mínimo y el ancho de cada una lo decide el máximo:
+
+| Ancho disponible | Columnas | Ancho de card |
+|---|---|---|
+| 308 px (móvil) | 1 | 308 |
+| 500 px | 1 | 420, centrada |
+| 640 px (tableta) | 2 | 314 |
+| 900 px | 3 | 292 |
+| 1352 px | 4 | 329 |
+
+Dentro de la card, tres ajustes para que nada quede oculto en el ancho mínimo: el encabezado
+envuelve, así que el tag de rol cae debajo del nombre cuando ya no cabe al lado; el avatar deja de
+encogerse y el bloque de texto puede hacerlo (`minWidth: 0`, sin lo cual el ellipsis nunca dispara);
+y el `@usuario` se trunca como ya lo hacía el email. El `Space` que envolvía avatar y datos se
+cambió por un flex directo: sus `ant-space-item` no propagaban el `minWidth: 0` y bloqueaban el
+truncado.
+
+---
+
+## [2.8.0] - 2026-08-21
+
+Revisión completa del grid de usuarios del admin y de su endpoint. Seis defectos, la ausencia de
+permisos en la UI y todo lo que la pantalla tenía a la mano y no mostraba.
+
+### Agregado: la lista dice quién ya está vinculado a minerva
+
+`GET /usuarios` expone `minerva_vinculado` (derivado de `minerva_sub`) y la card lo pinta como tag.
+Desde `2.0.0` la autenticación es OIDC, pero no había forma de distinguir a quien ya inició sesión
+de una ficha que nadie ha reclamado. Era el pendiente que dejaba abierto
+`planes/migracion-usuarios-minerva.md`: la vía manual de vinculación no se puede operar sin ver
+primero quién falta.
+
+La card también muestra la fecha de alta y la dependencia de SIEEJ del usuario externo, dos campos
+que el endpoint ya mandaba y que solo se veían abriendo el modal.
+
+### Agregado: filtros por proyecto y orden
+
+Al filtro de rol se suman uno por proyecto —con la opción **Sin proyectos asignados**, que es el
+caso que uno busca de verdad— y un selector de orden (nombre, alta más reciente, rol). La búsqueda
+ahora cubre también el nombre del proyecto y la dependencia de SIEEJ, no solo usuario, nombre y
+email.
+
+### Agregado: el borrado dice qué se lleva por delante
+
+`GET /usuarios/{id}/impacto-eliminacion` cuenta envíos de SIEEJ, dependencias, proyectos y
+formularios de los que el usuario es autor. El diálogo de confirmación los enumera antes de borrar.
+`usuarios.id` lo referencian 18 tablas y `sieej.envio_formulario` es `ON DELETE CASCADE`: el
+confirm anterior decía «Se eliminará el usuario: X» y se llevaba en silencio todos sus envíos.
+
+### Corregido: los avatares nunca se pintaban
+
+`_serialize_user()` armaba el dict a mano y omitía `avatar_url`, así que el grid siempre caía al
+ícono genérico aunque el usuario hubiera subido su foto desde el perfil. El campo ya estaba
+declarado en `UsuarioResponse` y `deps.py` sí lo mandaba para el usuario actual: solo faltaba en
+esta ruta.
+
+### Corregido: los usuarios a partir del 101 no existían para el grid
+
+`GET /usuarios` tiene `limit` con default 100 y el admin pedía `/usuarios` sin parámetros, paginando
+en cliente. El grid ahora recorre la lista por páginas hasta agotarla.
+
+### Corregido: borrar al autor de un formulario de SIEEJ devolvía 500
+
+`sieej.formulario.creado_por_id` es `ON DELETE RESTRICT` y `NOT NULL`. El `IntegrityError` salía sin
+atrapar y la UI mostraba «Error al eliminar usuario» sin más. Ahora se verifica antes, responde
+**409** diciendo cuántos formularios bloquean la baja, y cualquier otra FK que falle en el commit
+también sale como 409 en vez de 500.
+
+### Corregido: borrar el último usuario de la última página dejaba el grid en blanco
+
+La página no se recortaba cuando la lista encogía, así que quedaba fuera de rango sin caer al
+`Empty`. La página visible ahora se deriva del total.
+
+### Corregido: el tooltip de «No puedes eliminar tu propio usuario» nunca aparecía
+
+El botón iba `disabled` directo dentro del `Tooltip` y Ant Design no emite eventos de mouse en
+botones deshabilitados. Se envuelve en un `span`.
+
+### Cambiado: la UI respeta los permisos que el backend ya exigía
+
+El router está montado tras `mariachi.usuarios.view`, pero crear, editar, asignar y borrar piden
+`create`, `update`, `assign` y `delete`. Quien solo tenía `view` veía el botón de alta y las dos
+acciones de cada card, y se enteraba con un 403. Ahora se consultan con `can()`. Además el formulario
+deja de mandar `project_assignments` cuando falta `mariachi.usuarios.assign` —los mandaba siempre, y
+eso hacía fallar cualquier edición con 403— y la card ya no promete «Sin proyectos asignados» cuando
+lo que pasa es que el visor no tiene permiso de verlos.
+
+La UI nunca es la autorización: el backend valida igual.
+
+### Cambiado: la feature `users` queda partida
+
+`UsersPage.jsx` estaba en la lista de excepciones de `max-lines` de ESLint. Los datos se van a
+`hooks/useUsuarios.js`, el filtrado y la paginación a `hooks/useFiltroUsuarios.js`, los controles a
+`components/UsersFilters.jsx` y las etiquetas de rol —duplicadas entre la página, la card y el
+modal— a `constants/roles.js`. La página baja a 256 líneas y sale de la lista de excepciones.
+
+---
+
+## [2.7.1] - 2026-08-20
+
+### Corregido: `secrets/` no existía en un clon nuevo y el primer deploy fallaba
+
+El `.gitignore` tenía la misma carpeta en dos reglas que se contradecían. La línea 92 excluía el
+**directorio**:
+
+```
+# Secrets and credentials
+secrets/
+```
+
+y más abajo estaba el idioma correcto, que excluye el **contenido** y reincluye el andamio:
+
+```
+secrets/*
+!secrets/.gitkeep
+!secrets/*.example
+```
+
+Git **no desciende a un directorio excluido**, así que nunca llegaba a evaluar esas excepciones:
+estaban muertas. `git check-ignore -v secrets/.gitkeep` señalaba la línea 92 para todo, el
+`.gitkeep` nunca estuvo trackeado y por lo tanto `secrets/` **no existía en un clon recién hecho**.
+
+Eso rompía el primer `make deploy` de cualquier host nuevo. `compose.yaml` monta tres secretos
+desde ahí —`postgres_password`, `secret_key` y `csrf_secret_key`—, y si el directorio no está,
+docker compose falla en seco sin que nada en el repo lo advierta.
+
+Se quita el `secrets/` suelto y se trackea `secrets/.gitkeep`. Verificado con `git add -A`, que es
+la única prueba que vale aquí: se stagean `.gitignore` y `.gitkeep`, y tres archivos de secreto de
+prueba quedan fuera. (`git check-ignore -v` no sirve para confirmarlo: sale con código 0 aunque el
+patrón que coincida sea una negación, así que reporta como «ignorado» un archivo que sí entra.)
+
+**Al actualizar un host que venía de antes de la migración a secretos**, hay que crear los tres
+archivos antes del `git pull`, o el deploy se cae a la mitad:
+
+```bash
+mkdir -p secrets && umask 077
+printf '%s' '<valor>' > secrets/postgres_password
+```
+
+`printf '%s'` y no `echo`: el salto de línea que agrega `echo` viaja dentro del secreto y rompe la
+autenticación contra Postgres de una forma difícil de diagnosticar.
+
+## [2.7.0] - 2026-08-19
+
+### Cambiado: el directorio de Personal se filtra y se descarga
+
+La subpágina se reordenó alrededor de lo que se hace en ella: filtrar, abrir a alguien y sacar la
+lista.
+
+**Captura masiva subió al encabezado**, a la derecha del título, en el slot `extra` que
+`PageHeading` ya tenía. Estaba perdido entre los filtros, que es donde menos se parece a lo que es:
+la acción principal de la página.
+
+**Los filtros son cuatro `Select` múltiples** —vínculo, área, marca y horario—, cada opción con
+cuántas personas trae y un «Limpiar» que dice cuántos hay puestos. Se probó primero con un
+`Segmented`, y estuvo mal: en el resto del admin ese control se usa con dos a cuatro opciones —
+Todas / Habilitadas / Deshabilitadas—, y con once vínculos se come el ancho de la pantalla. Es un
+control de *modo*, no de filtro. El `Select` además deja **combinar** —ver Base y Confianza a la
+vez— y recupera los filtros de área, marca y horario que se habían perdido al reducir las columnas.
+
+El orden de los vínculos lo manda el catálogo; lo que aparezca en los datos sin estar en él se
+agrega al final, para que nadie quede sin forma de filtrarse.
+
+**Las columnas bajaron de seis a tres:** persona, vínculo y acciones. Los cuatro botones de acciones
+abren la fila directo en su pestaña —ficha, vacaciones y permisos, asistencia, ZKTeco— en vez de
+obligar a desplegar y luego buscar la pestaña. El último registro se mudó junto al vínculo: es lo
+que distingue a quien no ha marcado nunca de quien no está dado de alta, y perderlo dejaba la nota
+al pie de la tabla sin referente.
+
+### Agregado: descargar el directorio eligiendo los campos
+
+Botón **Descargar** con 23 campos a elegir y salida en **Excel o CSV**. Baja exactamente lo que
+está en pantalla: el frontend manda los PIN visibles, así que el archivo respeta los filtros y la
+búsqueda sin tener que repetirlos del lado del servidor.
+
+Reutiliza `grid_export.to_csv` y `to_xlsx`, que ya existían para el editor de capas de MapaLab, en
+vez de sumar una librería de hojas de cálculo al bundle del admin. El CSV sale con BOM para que
+Excel no rompa los acentos.
+
+`vine_stats._hoy()` pasó a ser pública como `hoy()`: el nombre del archivo lleva la fecha y el
+contenedor corre en UTC, así que sellarlo con `date.today()` lo fecharía un día adelante cada tarde
+— el mismo error que se corrigió en las estadísticas en la `2.5.0`.
+
+### Agregado: Base y Confianza como vínculos propios
+
+**El biométrico no distingue base de confianza:** su departamento manda a toda la nómina a
+«Plantilla». Los dos entran al catálogo de vínculos (`v1ne0006`) y se capturan a mano en la ficha o
+en la captura masiva; hasta que alguien los asigne aparecen en cero, sin romper nada.
+
+La migración reescribe el `orden` de todo el bloque de vínculos, no sólo el de los dos nuevos:
+dejarlos en 1 y 2 los empataba con prácticas y servicio social, y dos claves con el mismo orden
+salen en orden arbitrario — que es justo lo que el `Select` usa para acomodarse.
+
+---
+
+## [2.6.0] - 2026-08-18
+
+### Agregado: entrar ya no pide un clic intermedio
+
+La pantalla de inicio de sesión del admin redirige sola a minerva al cargarse. No pedía credenciales
+desde 2.0.0 —sólo tenía un botón—, así que el clic no decidía nada: era un paso de más entre el
+usuario y el SSO.
+
+**La pantalla no se elimina**, y no por adorno: es el punto de parada que evita un bucle infinito
+cuando minerva deniega el acceso. Si un usuario sin rol en la aplicación llega al `authorize`,
+minerva devuelve `?auth_error=access_denied`; con redirección automática incondicional volvería a
+salir hacia minerva, que volvería a denegar, sin fin. Por eso el redirect se salta cuando hay
+`auth_error`: ahí la pantalla se queda visible con el motivo. Es además donde aterrizan
+`ProtectedRoute` y `PermissionRoute` cuando caduca la sesión, conservando el `next`.
+
+### Agregado: la pantalla de espera muestra la marca y firma como institucional
+
+Al redirigir sola, esa pantalla dura un parpadeo: en vez de un formulario vacío muestra el logotipo
+de Mariachi con un indicador de carga. La vista completa —con el motivo y el botón— se reserva para
+cuando minerva deniega el acceso.
+
+El pie incorpora el **logotipo del IIEG** junto al del Gobierno de Jalisco, obligatorio en cualquier
+desarrollo del instituto y que en esta pantalla no aparecía. Se usa la variante para fondo oscuro,
+porque se pinta sobre el morado institucional; en móvil ambos encogen y se acercan en vez de
+apilarse.
+
+### Corregido: el callback respondía un JSON crudo al expirar la transacción
+
+La cookie de transacción OIDC vive 10 minutos. Si el usuario tardaba más en autenticarse —o el flujo
+se reiniciaba en otra pestaña—, no quedaba con qué validar el `state` y el callback contestaba
+`400 {"detail": "Estado OIDC inválido"}` en pantalla. Ahora regresa a la pantalla de acceso con
+`auth_error=invalid_state`, que explica el motivo y permite reintentar, y de paso limpia la cookie
+muerta.
+
+### Corregido: cerrar sesión disparaba un inicio de sesión en paralelo
+
+`logout()` vaciaba el estado de usuario **antes** de navegar al cierre de sesión. Ese cambio hacía
+que el guard de rutas montara la pantalla de acceso, cuya redirección automática lanzaba un
+`authorize` **sin** `prompt=login` que le ganaba la carrera al del logout: minerva reconocía la
+sesión y devolvía al usuario adentro. En los registros se veían dos `login` seguidos, el segundo sin
+`forzar`.
+
+Ahora la navegación ocurre sin tocar el estado, y una marca de «cierre en curso» impide que el
+interceptor de 401 —que también redirige a la pantalla de acceso— abra ese mismo hueco.
+
+### Corregido: `forzar=1` moría en el frontend
+
+2.5.0 hizo que minerva devolviera el navegador a `/autenticacion/login?forzar=1` para agregar
+`prompt=login` al `authorize` y que el SSO volviera a pedir credenciales. Pero `buildMinervaLoginUrl`
+sólo propagaba `next`: **el parámetro se perdía antes de llegar al backend** y el `prompt` nunca se
+enviaba. No había una sola referencia a `forzar` en todo `admin/src`.
+
+El efecto es el que 2.5.0 quería eliminar: cerrabas sesión y al volver a entrar minerva te reconocía
+y te dejaba pasar con la misma cuenta, sin teclear nada. Ahora `forzar` viaja por los tres puntos:
+la lectura del query en la pantalla, `login(next, forzar)` y `buildMinervaLoginUrl(next, forzar)`.
+
+### Corregido: cerrar sesión moría en `ERR_SSL_PROTOCOL_ERROR`
+
+El admin navegaba al logout con `window.location.href = logout_url`, una navegación **iniciada por el
+documento**. La CSP del admin incluye `upgrade-insecure-requests`, así que el navegador reescribía a
+HTTPS la URL del panel de minerva; si ese puerto sirve HTTP plano, el logout moría antes de empezar.
+El inicio de sesión no fallaba por lo mismo porque lo redirige el **servidor** con un `302`, y la CSP
+no toca los redirects del servidor.
+
+`POST /autenticacion/cerrar-sesion` ya no devuelve la URL de minerva en `logout_url`, sino la de un
+endpoint propio —`GET /autenticacion/salir`— que emite ese `302`. El navegador sólo navega a un
+origen HTTPS propio y el salto lo da el servidor. El endpoint no revoca nada: la sesión ya la cerró
+el `POST`, así que un `GET` ahí no muta estado.
+
+**SIEEJ hereda el arreglo sin cambios**: sigue leyendo el mismo `logout_url` que le devuelve
+mariachi. El contrato no cambió, sólo a dónde apunta.
+
+### Cambiado: cerrar sesión ya no pasa por el panel de minerva
+
+2.5.0 mandaba el navegador a `{panel}/logout?redirect_uri=…` para cerrar la cuenta activa del SSO y
+volver. **Esa vuelta nunca ocurre:** el `safePath()` del panel descarta cualquier `redirect_uri` de
+otro origen y aterriza en su propio `/login`; si la cuenta no es administradora de minerva, termina
+en `/no-access`. No es un bug suyo: aceptar destinos externos exige `post_logout_redirect_uris`, que
+minerva todavía no implementa, y su código lo dice explícitamente.
+
+Ahora `GET /autenticacion/salir` redirige directo a `/autenticacion/login?forzar=1`, que agrega
+`prompt=login` al `authorize`. minerva pide credenciales igual y el usuario **no sale de mariachi**
+en ningún momento.
+
+**Lo que cambia de fondo:** cerrar sesión en mariachi cierra la de mariachi, no la del SSO. La cuenta
+activa de minerva sigue viva para las demás aplicaciones —que es lo que 2.5.0 ya prefería frente a un
+`logout-all`— y el reingreso a mariachi vuelve a pedir credenciales por el `prompt`. Un cierre de
+sesión único de verdad requiere que minerva implemente `post_logout_redirect_uris`.
+
+## [2.5.0] - 2026-08-18
+
+### Agregado: la guía del plugin de QGIS en la Documentación del admin
+
+Documentación → MapaLab estrena la pestaña «Plugin de QGIS», al lado de «Propuestas de tarjeta».
+Está escrita para quien administra el catálogo, no para quien programa el plugin: qué se puede
+hacer desde QGIS, cómo se lee cada fila del árbol según su `nodeType`, y sobre todo **qué campo de
+aquí cambia qué allá** —`nodeType` es lo que le pone casilla a un nodo, `cqlFilter` lo que hace que
+traiga lo suyo en vez de la tabla entera, `geometry_type` el glifo, y el módulo Identidad los
+colores y los logos—.
+
+El plugin no tiene catálogo propio: lee el mismo árbol que el visor, así que un cambio en el editor
+de capas se ve en QGIS sin desplegar nada. La pestaña cierra con lo que falta antes de publicarlo
+fuera de la red: la allowlist de User-Agent y la zona de rate limit propias en gateway-hub.
+
+### Corregido: cerrar sesión no cerraba la sesión
+
+El botón limpiaba las cookies de mariachi y revocaba el refresh token, pero después redirigía a
+`{MINERVA_LOGIN_URL}/logout` con esa variable **vacía**, así que caía al backend de minerva —donde
+`/logout` responde **404**, porque la ruta real es `POST /auth/logout`—. Resultado: la sesión del SSO
+quedaba viva y al volver a entrar te reconocía sin pedir nada.
+
+La página que sí cierra vive en el **panel** de minerva, no en su backend. `MINERVA_LOGIN_URL` ahora
+apunta ahí y el `.env.production.example` explica la diferencia, que es la parte fácil de repetir.
+
+**Apuntar bien no bastaba.** El logout del panel es *suave por diseño* —su propio código lo dice:
+«sale de la cuenta activa pero conserva las cuentas del navegador y sus tokens, para volver a entrar
+sin re-teclear; NO revoca el jti»—, y el botón que sí cierra todo sólo se dibuja cuando hay **más de
+una cuenta** en el navegador. Con una sola cuenta no había salida posible.
+
+La solución no es pelearse con eso, es pedirlo explícitamente: al volver del logout, mariachi manda
+al navegador a `/autenticacion/login?forzar=1`, que agrega **`prompt=login`** al `authorize`
+(OIDC Core 3.1.2.1). minerva entonces vuelve a pedir credenciales aunque su cookie siga viva. Se
+prefirió a un `logout-all` porque **no tumba las sesiones de mapalab y sieej** de paso: cerrar
+sesión en mariachi cierra la de mariachi, no la del día.
+
+Importa más de lo que parece: **un permiso nuevo no surte efecto sin volver a entrar**, porque viaja
+en el token. Con el logout roto no había forma de estrenar un permiso recién asignado.
+
+De paso, **la pantalla de login del admin dejó de ser un paso**: al llegar a `/login` redirige sola
+al SSO en vez de esperar un clic en un botón que sólo tenía una opción. Se detiene si viene con
+`auth_error`, para no entrar en bucle cuando el que falla es el SSO.
+
+### Agregado: directorio de Personal, y las estadísticas de gente en su propia pestaña
+
+**Vine → Personal**, subpágina nueva: una fila por persona dada de alta en el biométrico, con su
+vínculo, área, medio de marcaje, horario asignado, entrada y salida habituales, días con registro,
+cobertura, horas y último registro. Se filtra por vínculo, área, medio y horario, se busca por
+nombre, PIN, área o correo, y trae un interruptor para incluir bajas.
+
+Estadísticas ganó dos pestañas: **General** —panorama, ritmo, accesos y calidad— y **Por personal**
+—vínculos, horarios, huella contra tarjeta y los rankings—, porque en una sola página ya no cabía.
+
+En el sider vine lleva ahora **`LOCAL` además de `TEST`**: habla con el biométrico de la LAN y no
+sirve fuera del instituto, igual que frames. `sider-config` acepta desde ahora un arreglo en
+`badgeVariant`, no sólo una cadena.
+
+**El departamento del biométrico resultó ser tres campos en uno**: la adscripción, el tipo de
+vínculo y si la persona sigue activa. Es la única fuente de eso, porque `pers_position` —que sí trae
+las categorías buenas (Becarios, Prestador de Servicio Social, Auditores Externos…)— está asignado
+en **1 de 293 personas**. Del nombre del departamento se derivan ahora el vínculo (Plantilla,
+Prácticas profesionales, Servicio social, Limpieza, Delfín, Asimilados, Empleo temporal) y la baja,
+que va marcada con el sufijo `(Bajas)`.
+
+**179 de 293 personas estaban dadas de baja e infladas en los conteos.** «Personas registradas»
+decía 293 cuando la plantilla viva es 114, y «nunca registran» contaba 88 fantasmas. Ya se excluyen.
+
+**Los dos horarios del instituto —8 a 4 y 9 a 5— quedaron modelados**, y los datos los confirman: la
+hora de salida tiene dos picos limpios en 16:00 y 17:00. A cada persona se le asigna el suyo por su
+hora de entrada mediana; quien cae fuera de las dos ventanas queda como «Otro» en vez de forzarse a
+un horario que no es el suyo.
+
+| Horario | Personas | Entra | Sale | Llega a tiempo |
+|---|---|---|---|---|
+| 8 a 4 | 20 | 07:56 | 16:01 | 85.9% |
+| 9 a 5 | 29 | 09:32 | 16:37 | 35.8% |
+| Otro | 15 | 11:42 | 17:37 | — |
+
+### Agregado: ficha editable del personal, en un esquema aparte del biométrico
+
+El biométrico es la fuente de la asistencia, pero **como directorio es pobre**: no tiene teléfono,
+ni fecha de ingreso, ni cumpleaños, ni foto, y su «departamento» mezcla tres cosas. Lo que falta se
+captura ahora desde el CMS, en `vine.personas_ficha` —tabla propia, migración `v1ne0002`— y **nunca
+sobre las tablas que el sync sobrescribe**: la ficha sobrevive a cada `make sync-vine`.
+
+Cada fila del directorio se despliega en un colapsable con cuatro pestañas: **Ficha** (lo editado,
+por omisión), **Vacaciones y permisos**, **Asistencia** y **ZKTeco** (lo que llegó del biométrico,
+tal cual, para poder comparar). Catorce campos son editables —nombre, apellidos, correo, teléfono,
+departamento, vínculo, puesto, horario, cumpleaños, fecha de ingreso, foto, tarjeta, activo y
+notas—; cada uno se puede limpiar para que vuelva a mandar el valor del biométrico.
+
+La foto es una **URL**, no un archivo subido: el biométrico guarda `photo_path` para 82 de 293
+personas, pero esa ruta apunta a un disco de la máquina de BioTime que no expone servidor HTTP
+—sólo el 5432 y un WebSocket— y las imágenes no están en la base. Sin un origen alcanzable, subirlas
+sería inventar un almacén nuevo para un dato que ya existe en otra parte.
+
+El vínculo se pinta con etiquetas de color y **Baja va en rojo**, que es la que hay que ver de
+lejos. El interruptor «incluir bajas» desapareció: se incluyen siempre y la etiqueta lo dice.
+
+**Editar exige un permiso nuevo, `mariachi.vine_personas.update`**, con su rol atómico
+`Vine - editar ficha del personal`. No lo hereda ningún rol compuesto: ver los rankings y corregir
+el expediente de alguien no son la misma autorización.
+
+En pantallas chicas el colapsable **deja de ser tabla**: se quita el avatar y cada dato pasa a dos
+renglones —etiqueta arriba, valor abajo— en vez de comprimir dos columnas hasta lo ilegible.
+
+La pestaña **Asistencia** trae la estadística individual: horario asignado, promedio de entrada, de
+salida y de jornada —dicho como «promedio» en la tarjeta, que antes se leía como si fuera el dato de
+hoy—, días con registro y a qué días de la semana viene. Lleva **su propio filtro de periodo**,
+porque el de la página es lo único que ese bloque necesitaba y no tenía sentido moverlo desde
+arriba.
+
+La primera versión graficaba «a qué hora entra cada día» en minutos desde medianoche: todas las
+barras salían del mismo alto —569, 571, 570— y no decía nada. Se cambió por el conteo de días de la
+semana, que sí tiene rango que ver.
+
+### Agregado: vacaciones, económicos y permisos — y con eso, días hábiles de verdad
+
+«Días que vino» era un número sin denominador honesto: contaba contra el calendario completo, así
+que quien tomó vacaciones aparecía flojo. Ahora hay `vine.incidencias` (migración `v1ne0003`) y el
+denominador son **días hábiles**: fuera fines de semana, fuera los siete descansos del artículo 74
+de la LFT —con los lunes movibles calculados, no escritos a mano—, fuera el cumpleaños de cada quien
+y fuera sus incidencias.
+
+Cada tipo declara su **efecto**: `descuenta` sale del denominador (vacaciones, económico, permiso,
+incapacidad), `presente` cuenta como día trabajado sin marca (comisión, home office). Es lo que
+distingue «no debía venir» de «vino y no quedó registrado», que se veían igual.
+
+Las fechas se capturan con `RangePicker`, nunca tecleadas: un rango mal escrito es la forma más
+fácil de ensuciar una estadística en silencio.
+
+Se editan desde el colapsable de cada persona y desde **Vine → Incidencias**, subpágina nueva con
+**captura masiva**: el mismo rango a todo un vínculo —toda la plantilla, todo el servicio social— o
+a una selección. Un periodo vacacional institucional es una sola operación, no ciento catorce.
+
+### Agregado: catálogos de horario, vínculo, tarjeta e incidencia
+
+Los horarios estaban escritos en el código y los vínculos se derivaban del nombre del departamento.
+Ambos son cosas que cambian sin avisar a nadie, así que se movieron a `vine.catalogos` (migración
+`v1ne0004`, con la semilla de lo que ya existía) y se administran desde **Vine → Catálogos**, cuatro
+pestañas con su CRUD. El modo edición del personal **elige de catálogo**, no captura texto libre:
+así «Prácticas profesionales» no convive con «practicas profesionales».
+
+El catálogo de horario lleva su hora de entrada y salida, el de vínculo su color, el de incidencia
+su efecto (`v1ne0005`). El de tarjetas queda creado y **vacío a propósito**: no hay fuente de dónde
+sacar la relación tarjeta↔persona, se captura a mano.
+
+### Agregado: edición masiva a pantalla completa
+
+El directorio tiene un botón **Captura masiva** que abre la tabla en el modo pantalla completa que
+ya usaba el editor de capas de MapaLab —mismo `useFullscreenHeader`, no una implementación
+paralela—. Para llenar teléfonos o fechas de ingreso de la plantilla entera, fila por fila en un
+colapsable no es forma.
+
+### Agregado: `make backup-vine` y `make restore-vine`
+
+El respaldo general de la base incluye todo, pero **la ficha y las incidencias son captura manual**:
+son lo único de vine que no se recupera volviendo a sincronizar el biométrico. Tienen ahora su
+respaldo propio, del schema `vine` solo, con selector interactivo para restaurar y rotación de 30
+archivos.
+
+El dump se valida antes de darse por bueno —falla si queda vacío o si trae menos de las cinco tablas
+esperadas— y se escribe a `.parcial` hasta que pasa, para que un respaldo truncado no se quede en el
+directorio pareciendo bueno.
+
+### Cambiado: la ayuda vive en el título, no en avisos
+
+Los `Alert` que explicaban cada bloque se cambiaron por un ícono de información en el título de la
+sección, con el detalle en el tooltip. Los avisos ocupaban una franja permanente para algo que se
+lee una vez; ahora está a un hover y la pantalla respira. Sobrevive un solo `Alert`: el de error de
+carga, que sí exige atención. El componente `TituloConAyuda` quedó en `shared/` para reusarlo.
+
+Cada bloque explica ahora en qué se basa: que el ritmo horario cuenta marcas y no personas, que
+los madrugadores usan la hora mediana y no la más temprana, que las rachas no se cortan en fin de
+semana.
+
+### Agregado: planta de los accesos en vez de barras por lector
+
+«Uso de cada acceso» era un gráfico de barras con un nombre de lector por columna, que obligaba a
+saber de memoria cuál era de entrada y cuál de salida. Ahora es un **diagrama de la fachada en
+planta**: la puerta accesible a la izquierda, las dos automáticas de vidrio, y una flecha por lector
+—entrando hacia adentro, saliendo hacia afuera— con su cifra al pie.
+
+**Las dos puertas automáticas sirven para entrar y para salir; los que son de un solo sentido son
+los lectores.** Cada puerta tiene el de salida en su pilar izquierdo y el de entrada en el derecho,
+y el pilar que las separa lleva uno de cada lado: `IIEG 1`+`IIEG-2` en la principal,
+`IIEG-3`+`IIEG-4` en la secundaria. Los datos son consistentes con eso: `IIEG-2` e `IIEG-4` no
+registran una sola salida en tres años, y `IIEG 1` e `IIEG-3` ninguna entrada.
+
+Los lectores se dibujan **dentro** de su pilar, en la cara que mira a su puerta y a la altura desde
+la que se usan: los de entrada arriba, del lado de afuera; los de salida abajo. Las hojas de vidrio
+van separadas del pilar y unidas por sus bisagras. El cuarto apoyo no es pilar sino un tubo —sólo
+sostiene las bisagras de la puerta accesible— y por eso se dibuja como una sección circular vacía.
+
+Los lectores **aceptan huella o tarjeta**, no sólo huella: 100,322 eventos por huella y 73,953 por
+tarjeta sobre los mismos cuatro dispositivos.
+
+Los demás lectores del histórico (`IIEG-1-Entrada`, `IIEG-2-Salida`, `IIEG-4-Salida`,
+`IIEG-1-SIN USO`) **murieron todos en septiembre de 2023**, cuando el sistema se reconfiguró a un
+sentido por lector; sus 3,200 registros se reportan como nota al pie en vez de ensuciar el diagrama.
+
+**La puerta accesible tiene lector, pero no está conectado.** Es de acercamiento o clave numérica y
+existe físicamente, sólo que en tres años no ha generado un solo evento: la instalación entera
+reporta seis puntos y una controladora, y ninguno le corresponde. Se dibuja de una sola hoja
+abatible hacia afuera, con su arco de barrido y el símbolo de accesibilidad pintado en el piso, todo
+en gris, porque su flujo es el único del edificio que el sistema no puede medir. Conectarlo es la
+forma de recuperarlo.
+
+Está hecho con SVG inline, sin librería de gráficas: es un esquema de tres vanos, no un gráfico
+estadístico, y ni ECharts (~1 MB) ni Three.js aportarían legibilidad a cambio del peso. El
+emparejamiento lector↔puerta vive en `PUERTAS`, en las constantes de la feature.
+
+### Corregido: seis personas no aparecían en ninguna estadística
+
+Las consultas filtraban por `evento = 'Apertura con verificación normal'`, dando por hecho que era
+el único marcaje válido. **No lo es.** Quien tiene perfil de superusuario en el biométrico genera
+`Apertura de puerta de superusuario` y *nunca* el evento normal, así que quedaba fuera de todo: del
+directorio, de los rankings, de los conteos y de la asistencia. Eran **6 personas y 4,915 eventos**
+del último año.
+
+Que es asistencia real no admite duda: **98.6% de esas jornadas cierran** —mejor que la tarjeta— con
+jornada mediana de 7.75 h, entradas y salidas empatadas por persona y los mismos picos horarios que
+el resto de la plantilla.
+
+- `EVENTOS_ASISTENCIA` es ahora una lista y todas las consultas usan `evento = ANY(:eventos)`.
+- **`Superusuario` es un tercer medio de marcaje** junto a huella y tarjeta, y cuenta como registro
+  confiable para medir la jornada típica. Nadie tiene dos: el tipo de evento es una propiedad del
+  perfil de la persona, no del acto.
+
+La señal de que falta un tipo de evento es siempre la misma: alguien que sabe que marca y no
+aparece.
+
+### Corregido: la huella y la tarjeta no se registran igual, y eso torcía todo
+
+El 10% de los persona-día del último año tiene entrada pero **no tiene salida**. La causa no es la
+persona, es el medio con el que marca:
+
+| Medio de la entrada | Días | Sin salida | Jornada mediana |
+|---|---|---|---|
+| Huella | 3,092 | 10 (**0.3%**) | 8.09 h |
+| Superusuario | 517 | 13 (**2.5%**) | 7.75 h |
+| Tarjeta | 4,959 | 831 (**16.8%**) | 6.72 h |
+
+Son **dos poblaciones distintas promediadas juntas**: 18 personas marcan con huella y su registro
+cierra prácticamente siempre; 84 marcan con tarjeta y una de cada seis jornadas se queda abierta. La
+jornada de tarjeta sale hora y media más corta **porque le faltan salidas, no porque trabajen
+menos**, y como una jornada sin salida no se puede convertir en horas, el ranking las descartaba en
+silencio: quedaba poblado al 100% por personal de huella, y las personas de tarjeta aparecían con
+totales absurdos —2.4 horas en un mes con 19 días asistidos— o no aparecían.
+
+- **La jornada típica se mide sólo sobre el registro de huella**, que es el único que cierra de
+  forma confiable, y la tarjeta dice sobre cuántas personas está medida.
+- Bloque nuevo **«Huella y tarjeta no se registran igual»**, que muestra las dos poblaciones lado a
+  lado con su cobertura y su jornada. Es el encuadre correcto del dato.
+- El ranking de horas y la lista de jornadas incompletas llevan **una etiqueta con el medio** de
+  cada persona, para que no haya que adivinar por qué alguien está o no está.
+- La tarjeta que antes se llamaba «Quién casi no marca salida» ahora es **«Jornadas que no
+  cierran»**: no señala a la persona, señala el registro.
+
+El ranking excluye además a quien tenga menos del 60% de cobertura en vez de mandarlo al fondo con
+un total falso, y muestra la cobertura de cada quien: «18 de 18» en lugar de sólo «18».
+
+- La tarjeta principal pasa de **jornada promedio a jornada típica (mediana)**: la media venía
+  arrastrada por las jornadas de menos de una hora hacia 6.85 h cuando la mediana real es 8.09 h.
+- «Calidad del registro» dice cuántas personas concentran el faltante.
+- Las jornadas de **más de 16 horas** (25 en el año, la mayor de 19.4 h) ya no entran en promedios
+  ni en sumas; se cuentan aparte como descartadas.
+
+**Tres hipótesis descartadas con los datos** antes de dar con el medio: la salida no está registrada
+bajo otro tipo de evento (0 casos de 829), casi nunca cruza la medianoche (6 de 829), y no es el
+lector —quien entra por `IIEG-4` falla 18.8% contra 4.8% de `IIEG-2`, pero al separar por medio
+ambos grupos fallan igual por las dos puertas—. La correlación con el lector era espuria: quienes
+marcan con tarjeta entran por ahí.
+
+### Corregido: las ventanas de tiempo se calculaban en UTC
+
+`current_date` y `date.today()` se evaluaban con la zona del contenedor —**UTC**— mientras los
+`event_time` del biométrico están en hora local. Entre las 18:00 y la medianoche de México el
+servidor ya estaba en el día siguiente, así que «personas hoy» se iba a cero cada tarde y todas las
+ventanas se corrían un día. Ahora la fecha se calcula en `America/Mexico_City`.
+
+---
+
+## [2.4.0] - 2026-08-12
+
+### Agregado: estadísticas de asistencia de vine
+
+Sección nueva en el CMS —**Vine → Estadísticas**, con etiqueta `TEST`— construida sobre los
+registros del control de acceso del instituto. Cuatro bloques: panorama (jornada promedio, personas
+del día, día más flojo de la semana, jornada más larga), ritmo (horario de entradas y salidas, día
+de la semana, tendencia mensual y uso de cada acceso), personas (quién acumula más horas, los más
+madrugadores y las rachas más largas) y calidad del registro.
+
+**Los datos no salen del módulo de asistencia del biométrico, porque está vacío.** El BioTime del
+instituto opera **sólo como control de acceso**: `att_transaction` tiene 0 filas —igual que
+`att_timing`, `att_timeslot` y `att_tempsch`—, mientras que `acc_transaction` acumula 288 mil
+eventos desde agosto de 2023. Las jornadas se derivan de ahí: primera entrada y última salida de
+cada persona por día.
+
+**La dirección se deduce del nombre del lector, nunca de `reader_state`.** Los cuatro accesos son
+unidireccionales (`IIEG-2-Entrada`, `IIEG-3-Salida`…) y ese campo es incoherente — hay lectores de
+entrada con `0` y de salida con `0` y con `1` según el registro.
+
+Se sincroniza con `POST /vine/sincronizar`, incremental por el `id` del origen e idempotente
+(`ON CONFLICT DO NOTHING`), más un botón en la propia página.
+
+**Y en automático cada 10 minutos:** `make sync-vine` corre `scripts/sync_vine.py` y `make cron` lo
+instala junto al respaldo y al refresh de stats. Con el módulo apagado el script **sale en 0 sin
+hacer nada**, para que el cron no reporte error en los nodos donde vine no corre.
+
+| Endpoint | Devuelve |
+|---|---|
+| `GET /vine/estadisticas/resumen` | Panorama, calidad y estado de la sincronización |
+| `GET /vine/estadisticas/ritmo` | Horario, día de la semana, tendencia mensual y accesos |
+| `GET /vine/estadisticas/personas` | Rankings por persona — permiso aparte |
+| `POST /vine/sincronizar` | Trae del biométrico lo que falte |
+
+### Cambiado: los módulos locales no se ven por ser administrador
+
+frames se apoyaba en `mariachi.sistema.manage`, que **está en el rol Administrador**: cualquier
+administrador veía las cámaras sin que nadie se lo hubiera dado. Ahora cada módulo local tiene
+permiso propio —`mariachi.frames.view` y `mariachi.vine.view`—, **ningún rol compuesto los incluye**
+y el acceso se asigna persona por persona.
+
+Los dos entran además a `PANEL_PERMISSIONS`: sin eso, quien tuviera sólo el rol del módulo quedaba
+con el rol asignado y **fuera del panel**, sin ver nada. Procedimiento completo en
+`runbook/modulos-locales-y-permisos.md` del repo de contexto.
+
+**Los rankings con nombre van tras un permiso propio.** `mariachi.vine.view` da las estadísticas
+agregadas, que no señalan a nadie; `mariachi.vine_personas.view` agrega los rankings individuales,
+que son dato personal laboral. Los dos se declaran en `manifest.minerva.yml` con un rol atómico
+cada uno.
+
+**Nace apagada y falla cerrada**, con el mismo criterio que frames: sin `VINE_ENABLED` el router ni
+se registra —la ruta responde 404— y sin `VITE_VINE_ENABLED` en el build del admin la sección no
+aparece en el sider ni se registra su ruta.
+
+### Gotchas del biométrico
+
+- **El servidor corre en `Asia/Hong_Kong` (+08) y los eventos se guardan en hora de México.**
+  `now()` y `current_date` del biométrico van **14 horas adelantados**: `WHERE event_time >=
+  current_date` devuelve cero registros aunque el día tenga cientos. Todos los cortes de día se
+  calculan del lado de mariachi.
+- **Es PostgreSQL 9.2.9, 32-bit, sobre Windows** — sin soporte desde 2017. No admite `FILTER` ni
+  funciones XML, así que las consultas contra el origen se escriben sin ellos.
+- **Sus estadísticas mienten.** `pg_stat_user_tables` reportaba 141 filas en `acc_transaction`
+  cuando tenía 288,899: para dimensionar hay que contar, no leer `n_live_tup`.
+- **Una de cada diez jornadas queda incompleta** (97 sin salida y 17 sin entrada de 996 en 30 días).
+  Las incompletas no entran en promedios ni rankings, y la sección lo dice en pantalla: si no se
+  advierte, el ranking premia a quien marca salida con constancia, no a quien más horas hace.
+
+## [2.3.0] - 2026-08-10
+
+### Agregado: vista en vivo de las cámaras de frames
+
+El módulo de frames ya administraba las cámaras, pero para verlas había que abrir Frigate. Ahora el
+CMS trae el mosaico en vivo (`/frames/vivo`) y una vista a pantalla completa (`/frames/vivo/pantalla`),
+pensada para dejarla puesta en un monitor: sin barra lateral ni cabecera, con el mosaico ocupando
+todo el espacio.
+
+El estado de cada cámara y su recarga viven en `useCamarasEnVivo`, así que las dos pantallas comparten
+la misma lógica de carga y reintento. Ambas rutas exigen `mariachi.sistema.manage`, el mismo permiso
+que la administración de cámaras.
+
+## [2.2.0] - 2026-08-10
+
+### Agregado: módulo frames, videovigilancia administrada desde el CMS
+
+Las cámaras dejan de configurarse editando el `config.yml` de Frigate a mano en la máquina: pasan a
+vivir en Postgres, en un schema propio `frames`, y mariachi genera y entrega la configuración por la
+API de Frigate. El YAML pasa a ser artefacto generado.
+
+El módulo va **detrás de `FRAMES_ENABLED`, que por omisión es `false`**, y solo se enciende en el
+nodo donde vive frames. No cuelga de `settings.environment` a propósito: el stack local corre con
+`ENVIRONMENT=production`, así que derivarlo de ahí lo ocultaría en local o lo encendería en
+producción. Sin la variable el router ni se registra. La migración sí corre en todos los entornos y
+crea el schema vacío, que es inofensivo; condicionarla haría divergir el historial de alembic.
+
+Tres vistas en el CMS:
+
+- **Cámaras**, con selector de modo: fichas o tabla. El modo tabla **reutiliza el `GridPanel`** de
+  captura masiva declarando un `GridSpec` nuevo (`frames-camaras`); no hizo falta tocar la
+  maquinaria porque el motor ya soportaba la base de mariachi. Trae búsqueda, exportación,
+  historial y presencia, y valida en el servidor que la URL empiece con `rtsp://` y que la
+  retención vaya de 1 a 365 días.
+- **En vivo**, mosaico con el MJPEG de cada cámara. **mariachi proxea el video**, así que el
+  navegador no necesita alcanzar la red donde vive frames.
+- Columna **En frames** con los fps reales que reporta `/api/stats`, separada de la configuración
+  guardada: una cámara puede estar habilitada en el catálogo y caída en la realidad.
+
+Aplicar valida contra Frigate antes de escribir y se niega si no quedaría ninguna cámara
+habilitada. No hay recarga en caliente: aplicar reinicia el NVR.
+
+## [2.1.0] - 2026-08-10
+
+### Agregado: el tipo de geometría en el editor de capas
+
+`mapalab.layers` gana `geometry_type` (dataengine 1.33.0) y el editor lo expone en dos lugares: el
+formulario de la capa, pestaña Servicios, y la rejilla de configuración como columna `select`.
+
+Quien lo llena normalmente es el job `geometry-type` de dataengine, leyendo el
+`DescribeFeatureType` de GeoServer. El campo se edita a mano para el caso que ese job no puede
+resolver: una capa publicada solo por WMS, donde no hay WFS del cual deducir la geometría. Hoy es
+una sola, `curvas_de_nivel`.
+
+Los valores son los del contrato con el visor y el plugin —`point`, `line`, `polygon`, `raster`—,
+así que el catálogo de opciones traduce solo la etiqueta que ve el usuario. El `on_commit` de la
+rejilla sigue siendo `notify_tree_changed`: al guardar se invalida la caché del árbol y el cambio
+llega al visor sin esperar al cron.
+
+## [2.0.0] - 2026-08-10
+
+### Cambiado: la autenticación pasa a minerva (OIDC) y la autorización a permisos
+
+**Incompatible.** Mariachi deja de tener login propio. La identidad la emite minerva por
+Authorization Code + PKCE con cliente confidencial, y la autorización deja de mirar el rol local
+para consultar permisos `mariachi.<recurso>.<accion>` en el IdP. Es el frente 1 del ciclo
+`tamal-rojo`.
+
+**Lo que cambia para quien usa el sistema:** la pantalla de login ya no pide usuario y contraseña,
+redirige a minerva. Quien no tenga un rol de la aplicación en minerva no recibe código de
+autorización y aterriza en `/login?auth_error=access_denied` con el motivo a la vista, en vez de un
+error en blanco.
+
+**El modelo de sesión se conserva.** Minerva es proveedor de identidad, no de sesión: tras el
+callback mariachi sigue emitiendo su cookie `HttpOnly` con CSRF y refresh en Redis, con rotación y
+detección de reuso. Se eligió así porque SIEEJ comparte origen y cookie con mariachi, y retirar el
+refresh propio habría arrastrado a SIEEJ a la misma ventana de cambio. Los tokens de minerva nunca
+llegan al navegador: viven en Redis bajo un `sid` que la cookie referencia.
+
+**El padrón existente se conserva.** `usuarios.id` lo referencian 18 tablas —entre ellas
+`sieej.envio_formulario` con `ON DELETE CASCADE`—, así que la tabla no se recrea: la migración
+`m1nerva0001` le agrega `minerva_sub` (único, nulable, indexado). Al primer login se busca por
+`minerva_sub`, luego por correo comparando con `lower()` en ambos lados —`usuarios.email` es único
+pero sensible a mayúsculas— y solo si no aparece se crea el usuario.
+
+Autorización: los 26 archivos que usaban `require_role` o `require_project_access` pasan a
+`require_permission`. La membresía de proyecto deja de decidir accesos. Las comprobaciones directas
+de rol en rutas y servicios también se sustituyeron; `usuarios.role` sobrevive solo como criterio de
+reparto de los avisos de SIEEJ, porque minerva no expone la consulta inversa de quién tiene un
+permiso.
+
+El manifiesto suma dos permisos a los 34 previos: `mariachi.mapalab.manage`, que conserva el nivel
+que antes era exclusivo de administración en MapaLab (workspaces, orden inicial, operaciones
+masivas), y `mariachi.sieej_admin.view`, que separa el panel de administración de SIEEJ del rol de
+las dependencias que solo capturan. Sin ese segundo permiso, el rol «SIEEJ - reportar» habría
+entrado al panel, porque comparte `sieej_formularios.view` con «SIEEJ - consulta».
+
+La revocación es inmediata: `MINERVA_PERMISSIONS_CACHE_TTL` queda en `0`, así que cada chequeo
+pregunta a minerva y quitar un rol surte efecto en el siguiente request, sin esperar a que expire
+un caché.
+
+### Eliminado
+
+- `POST /autenticacion/iniciar-sesion`, `POST /autenticacion/cambiar-contrasena` y
+  `POST /usuarios/{id}/restablecer-contrasena`. Conservarlos habría dejado una vía de acceso que
+  salta al IdP y que, además, no autoriza nada: los permisos ya solo salen de minerva.
+- La pantalla de cambio de contraseña del admin y el botón de reseteo en la ficha de usuario.
+
+Las columnas `hashed_password`, `must_change_password` y `password_changed_at` **no** se borran:
+son la única vía de vuelta atrás si la reconciliación falla para alguien. Se retiran en una
+migración posterior, una vez confirmado que nadie quedó fuera.
+
+### Agregado
+
+- `minerva_sdk` 0.2.0 vendorizado en `api/minerva_sdk/`, copiado de vine. Valida RS256 contra el
+  JWKS de minerva, refresca el JWKS ante un `kid` desconocido y exige la audiencia.
+- `GET /autenticacion/login` y `GET /autenticacion/callback`.
+- `permissions` en la respuesta de `GET /autenticacion/perfil`, y los helpers `can()` / `canAny()`
+  en el frontend para ocultar menús y proteger rutas por permiso.
 ## [1.126.1] - 2026-09-24
 
 ### Corregido
@@ -120,6 +5258,53 @@ El validador de definiciones rechaza los campos que empiecen con `__`, para que 
 estas claves. El Excel agrega «Nombre de la pestaña» **al final** de cada hoja de repeater, para no
 mover las columnas de quien ya lo consume, y el detalle del envío en el CMS lo muestra junto al
 número del elemento.
+
+## [1.123.0] - 2026-08-10
+
+### Agregado: colores de la marca `iieg` en el catálogo de identidad
+
+La semilla de identidad cargó espaciados, radios y tipografía de `iieg`, pero **ni un solo color**:
+30 tokens y ninguno del grupo `color`. Mientras tanto, el morado `#5C2472`, el azul `#2e4372` y el
+grafito `#465055` vivían hardcodeados en el CSS de mapalab, que es justo lo que la norma prohíbe
+(«nunca hardcodear; si falta un token se agrega al catálogo y se regenera»). Cualquier consumidor
+nuevo —el plugin de QGIS es el primero— no tenía de dónde tomar la paleta.
+
+La migración `1dent1dad0002` agrega los cinco colores base. Contrastes verificados sobre blanco:
+
+| Token | Valor | Contraste | Uso |
+|---|---|---|---|
+| `color.primary` | `#5C2472` | 10.77:1 | cumple AA; botones y selección |
+| `color.secondary` | `#2e4372` | 9.71:1 | cumple AA; encabezados y datos |
+| `color.accent` | `#FF8300` | **2.47:1** | **no cumple AA como texto**; solo fondo o acento |
+| `color.text` | `#465055` | 8.27:1 | cumple AA; texto principal |
+| `color.bg` | `#FFFFFF` | — | fondo |
+
+El naranja repite el hallazgo que ya estaba documentado para `jalisco`, y por eso su descripción en
+el catálogo lo dice explícitamente: quien lo tome para texto tiene el aviso delante.
+
+### Agregado: `tokens.qss`, sexto artefacto del módulo Identidad
+
+Los cinco artefactos existentes sirven a consumidores web. Un cliente de escritorio Qt —el plugin
+de QGIS— no puede usar ninguno: QSS es un subconjunto de CSS 2.1 **sin variables**, así que ni
+`theme.css` ni `tokens.css` le sirven. `render_tokens_qss` emite reglas ya resueltas desde los
+mismos tokens, y el módulo lo entrega junto a los demás en el ZIP y por `/artefactos/tokens.qss`.
+
+Tres decisiones que lo hacen seguro de aplicar:
+
+- **Convierte `rem` a píxeles.** Qt no entiende `rem`; un `0.25rem` sin traducir se ignora en
+  silencio y el estilo queda a medias.
+- **Solo emite marca.** Fondos, bordes y texto base se dejan en `palette(...)`, del tema del
+  anfitrión. Un plugin que impone su paleta se vuelve ilegible en el tema oscuro de QGIS, y la
+  identidad exige WCAG 2.1 AA.
+- **El acento nunca sale como color de texto**, por sus 2.47:1. Hay un test que lo fija.
+
+Si una marca no tiene tokens de color, el QSS sale sin una sola regla de color en vez de inventar
+valores por defecto.
+
+Emite seis roles, para que un consumidor exprese jerarquía sin repetir hex: `primary` (acción
+principal), `secondary` (contorno que se rellena al pasar el cursor), `quiet` (acción terciaria, sin
+recuadro), `title`, `heading` y `badge`. Incluye además estilos de árbol (`hover`, radios, sin
+borde), que es la vista donde más se nota que un panel es ajeno a su anfitrión.
 
 ## [1.122.4] - 2026-08-26
 

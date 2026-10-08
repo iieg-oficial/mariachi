@@ -135,7 +135,7 @@ export default function FileSnippets({ file, onHelp }) {
     const { snippets, isSvg, hasThumb } = buildFileSnippets(file);
 
     return (
-        <Space direction="vertical" size="small" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="small" style={{ width: '100%' }}>
             {onHelp && (
                 <Button
                     type="link"

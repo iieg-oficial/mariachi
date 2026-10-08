@@ -6,6 +6,7 @@ from io import BytesIO
 
 from fastapi import (
     APIRouter,
+    BackgroundTasks,
     Depends,
     File,
     Form,
@@ -20,10 +21,8 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
 from app.api.rate_limit import rate_limit_ip
-from app.core.time import utcnow
 from app.models.acervo_bucket import AcervoBucket
 from app.models.reporte import Reporte
-from app.models.reporte_grupo import ReporteGrupo
 from app.models.reporte_tipo import ReporteTipo
 from app.models.source_app import SourceApp
 from app.schemas.form_schema import validate_respuestas
@@ -31,7 +30,8 @@ from app.schemas.reporte import ReporteCreate, ReporteCreateResponse
 from app.schemas.reporte_tipo import ReporteTipoResponse
 from app.services import tipo_archivo
 from app.services.acervo import AcervoClient
-from app.services.colibri_fingerprint import compute_fingerprint
+from app.services.colibri_fanout import despachar_reporte
+from app.services.colibri_grupos import asignar_grupo
 from app.services.colibri_keys import (
     PRIVATE_PREFIX,
     PUBLIC_PREFIX,
@@ -55,16 +55,13 @@ _EXT_BY_MIME = {"image/png": "png", "image/jpeg": "jpg"}
 
 def _resolve_source_app(
     db: Session, request: Request, source_app_slug: str
-) -> SourceApp | None:
-    """Valida X-Colibri-Key y CORS. Devuelve el SourceApp si todo cuadra.
-
-    Si el header no llega, devuelve None (compat con flujo legacy).
-    Si el header llega pero algo falla (key inválida, CORS bloqueado, app
-    desactivada), levanta 401/403.
-    """
-    plain_key = request.headers.get("X-Colibri-Key") or request.headers.get("x-colibri-key")
+) -> SourceApp:
+    plain_key = request.headers.get("X-Colibri-Key")
     if not plain_key:
-        return None
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Falta la API key",
+        )
 
     if not (plain_key.startswith(PUBLIC_PREFIX) or plain_key.startswith(PRIVATE_PREFIX)):
         raise HTTPException(
@@ -102,9 +99,13 @@ def _resolve_source_app(
             detail=f"La API key no corresponde al source_app '{source_app_slug}'",
         )
 
-    is_public_key = plain_key.startswith(PUBLIC_PREFIX)
-    if is_public_key:
-        origin = request.headers.get("origin")
+    origin = request.headers.get("origin")
+    if plain_key.startswith(PRIVATE_PREFIX) and origin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Las llaves privadas no se aceptan desde el navegador",
+        )
+    if plain_key.startswith(PUBLIC_PREFIX):
         patterns = matched.dominios_permitidos or []
         if not match_origin(origin, patterns):
             logger.warning(
@@ -141,7 +142,7 @@ def _build_object_path(mime: str) -> str:
 async def _upload_screenshot(
     bucket: AcervoBucket, screenshot: UploadFile
 ) -> str:
-    data = await screenshot.read()
+    data = await screenshot.read(_MAX_SCREENSHOT_BYTES + 1)
     if len(data) > _MAX_SCREENSHOT_BYTES:
         raise HTTPException(
             status_code=status.HTTP_413_CONTENT_TOO_LARGE,
@@ -174,6 +175,7 @@ async def _upload_screenshot(
 )
 async def crear_reporte(
     request: Request,
+    background_tasks: BackgroundTasks,
     tipo: str = Form(...),
     mensaje: str = Form(...),
     source_app: str = Form(...),
@@ -244,19 +246,18 @@ async def crear_reporte(
         )
 
     matched_source_app = _resolve_source_app(db, request, payload.source_app)
-    if matched_source_app is not None:
-        tipos_permitidos = matched_source_app.tipos_permitidos
-        if tipos_permitidos and payload.tipo not in tipos_permitidos:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"El tipo '{payload.tipo}' no está permitido para este source app",
-            )
-        per_app_limiter = rate_limit_ip(
-            max_requests=matched_source_app.rate_limit_per_hour,
-            window_seconds=3600,
-            scope=f'reportes:{matched_source_app.slug}',
+    tipos_permitidos = matched_source_app.tipos_permitidos
+    if tipos_permitidos and payload.tipo not in tipos_permitidos:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"El tipo '{payload.tipo}' no está permitido para este source app",
         )
-        await per_app_limiter(request)
+    per_app_limiter = rate_limit_ip(
+        max_requests=matched_source_app.rate_limit_per_hour,
+        window_seconds=3600,
+        scope=f'reportes:{matched_source_app.slug}',
+    )
+    await per_app_limiter(request)
 
     screenshot_bucket_id: int | None = None
     screenshot_object_path: str | None = None
@@ -278,8 +279,8 @@ async def crear_reporte(
                 screenshot_object_path = None
                 screenshot_bucket_id = None
 
-    disable_pii = bool(matched_source_app and matched_source_app.disable_pii)
-    extra_scrubbers = (matched_source_app.scrubbers if matched_source_app else None) or None
+    disable_pii = bool(matched_source_app.disable_pii)
+    extra_scrubbers = matched_source_app.scrubbers or None
 
     scrubbed_context = scrub_source_context(
         payload.source_context,
@@ -298,7 +299,7 @@ async def crear_reporte(
         mensaje=scrub_text(payload.mensaje, extra_scrubbers=extra_scrubbers),
         email_contacto=final_email,
         source_app=payload.source_app,
-        source_app_id=matched_source_app.id if matched_source_app else None,
+        source_app_id=matched_source_app.id,
         source_route=scrubbed_route,
         source_context=scrubbed_context,
         respuestas=scrubbed_respuestas,
@@ -309,50 +310,8 @@ async def crear_reporte(
     db.commit()
     db.refresh(reporte)
 
-    try:
-        fp = compute_fingerprint(
-            tipo=reporte.tipo,
-            source_app=reporte.source_app or "",
-            source_route=reporte.source_route,
-            mensaje=reporte.mensaje or "",
-        )
-        grupo = (
-            db.query(ReporteGrupo)
-            .filter(ReporteGrupo.fingerprint == fp)
-            .with_for_update(skip_locked=True)
-            .first()
-        )
-        if grupo is None:
-            grupo = ReporteGrupo(
-                fingerprint=fp,
-                primer_reporte_id=reporte.id,
-                ultimo_reporte_id=reporte.id,
-                count=1,
-            )
-            db.add(grupo)
-            db.flush()
-        else:
-            grupo.count = (grupo.count or 0) + 1
-            grupo.ultimo_reporte_id = reporte.id
-            grupo.ultimo_visto = utcnow()
-        reporte.grupo_id = grupo.id
-        db.commit()
-        db.refresh(reporte)
-    except Exception:
-        logger.exception("reportes.fingerprint reporte_id=%s", reporte.id)
-        db.rollback()
-
-    try:
-        from app.services.colibri_router_engine import dispatch_reporte
-        dispatch_reporte(reporte, db)
-    except Exception:
-        logger.exception("reportes.dispatch_routes reporte_id=%s", reporte.id)
-
-    try:
-        from app.services.discord_notifier import notify_new_reporte
-        notify_new_reporte(reporte)
-    except Exception:
-        logger.exception("reportes.discord_notify reporte_id=%s", reporte.id)
+    asignar_grupo(db, reporte)
+    background_tasks.add_task(despachar_reporte, reporte.id)
 
     return ReporteCreateResponse(id=reporte.id)
 

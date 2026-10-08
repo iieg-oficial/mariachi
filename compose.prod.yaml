@@ -64,6 +64,7 @@ services:
       - postgres_password
       - secret_key
       - csrf_secret_key
+      - redis_password
     networks:
       - mariachi_network
     restart: unless-stopped
@@ -77,8 +78,12 @@ services:
         VITE_NODE_ENV: ${VITE_NODE_ENV:?}
         VITE_ADMIN_API_URL: ${VITE_ADMIN_API_URL:?}
         VITE_WEB_URL: ${VITE_WEB_URL?}
+        VITE_VINE_ENABLED: ${VITE_VINE_ENABLED:?}
+        VITE_APP_ENV: ${VITE_APP_ENV:?}
         VITE_CARTO_API_KEY: ${VITE_CARTO_API_KEY?}
     container_name: mariachi-nginx
+    environment:
+      NGINX_REAL_IP_FROM: ${NGINX_REAL_IP_FROM:?}
     expose:
       - "80"
     depends_on:

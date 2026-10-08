@@ -13,6 +13,12 @@ class UsuarioBorradorInfo(BaseModel):
 
 class BorradorUpsert(BaseModel):
     data: dict
+    quitar: list[str] = []
+    base_version: int | None = None
+
+
+class QuitarCamposIn(BaseModel):
+    campos: list[str]
 
 
 class RechazarIn(BaseModel):
@@ -28,5 +34,7 @@ class BorradorResponse(BaseModel):
     comentario_rechazo: str | None
     actualizado_en: datetime
     usuario: UsuarioBorradorInfo | None = None
+    version: int = 1
+    autores: dict | None = None
 
     model_config = ConfigDict(from_attributes=True)

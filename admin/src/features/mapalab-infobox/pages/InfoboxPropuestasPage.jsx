@@ -89,7 +89,7 @@ export default function InfoboxPropuestasPage() {
 
     return (
         <Content style={{ padding: isMobile ? 8 : 24, width: '100%' }}>
-            <Space direction="vertical" size="large" style={{ width: '100%' }}>
+            <Space orientation="vertical" size="large" style={{ width: '100%' }}>
                 <div>
                     <Space align="center" size={12}>
                         <EditOutlined style={{ fontSize: 24, color: '#5C2472' }} />
@@ -117,7 +117,7 @@ export default function InfoboxPropuestasPage() {
                 ) : propuestas.length === 0 ? (
                     <Empty description="No hay propuestas en este estado" />
                 ) : (
-                    <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                    <Space orientation="vertical" size={16} style={{ width: '100%' }}>
                         {propuestas.map((p) => (
                             <Card
                                 key={p.id}
@@ -151,7 +151,7 @@ export default function InfoboxPropuestasPage() {
                                     </Space>
                                 )}
                             >
-                                <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                                <Space orientation="vertical" size={12} style={{ width: '100%' }}>
                                     <ConfigDiff vigente={p.configVigente} propuesta={p.config} />
 
                                     {p.comentario && (

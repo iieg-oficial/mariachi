@@ -14,6 +14,12 @@ export const formulariosApi = {
     asignaciones: (id, payload) => api.put(`/sieej/formularios/${id}/asignaciones`, payload).then((r) => r.data),
     listEnvios: (id, params = {}) => api.get(`/sieej/formularios/${id}/envios`, { params }).then((r) => r.data),
     getEnvio: (id, envioId) => api.get(`/sieej/formularios/${id}/envios/${envioId}`).then((r) => r.data),
+    historialEnvio: (id, envioId) => api
+        .get(`/sieej/formularios/${id}/envios/${envioId}/historial`)
+        .then((r) => r.data),
+    eventosEnvio: (id, envioId) => api
+        .get(`/sieej/formularios/${id}/envios/${envioId}/eventos`)
+        .then((r) => r.data),
     reabrirEnvio: (id, envioId) => api.post(`/sieej/formularios/${id}/envios/${envioId}/reabrir`).then((r) => r.data),
     eliminarEnvio: (id, envioId, confirmacion) => api
         .delete(`/sieej/formularios/${id}/envios/${envioId}`, { params: { confirmacion } })
@@ -64,7 +70,9 @@ export const gruposApi = {
     create: (data) => api.post('/sieej/grupos', data).then((r) => r.data),
     update: (id, data) => api.put(`/sieej/grupos/${id}`, data).then((r) => r.data),
     eliminar: (id) => api.delete(`/sieej/grupos/${id}`).then((r) => r.data),
-    actualizarMiembros: (id, usuarios) => api.put(`/sieej/grupos/${id}/usuarios`, { usuarios }).then((r) => r.data),
+    actualizarMiembros: (id, usuarios, coordinadores = []) => api
+        .put(`/sieej/grupos/${id}/usuarios`, { usuarios, coordinadores })
+        .then((r) => r.data),
     listMiembros: (id) => api.get(`/sieej/grupos/${id}/usuarios`).then((r) => r.data),
 };
 

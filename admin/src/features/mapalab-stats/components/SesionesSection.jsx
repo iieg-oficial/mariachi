@@ -57,7 +57,7 @@ export default function SesionesSection({ period, isMobile = false }) {
     ];
 
     return (
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
                 <Text type="secondary">
                     Cada sesión es una visita anónima al visor. Se identifica por UUID en sessionStorage del navegador hasta cerrar la pestaña o pasar 4 horas.

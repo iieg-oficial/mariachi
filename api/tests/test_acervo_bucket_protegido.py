@@ -8,7 +8,6 @@ objetos inexistentes.
 import pytest
 from fastapi import HTTPException
 
-from app.api.deps import ADMIN_ROLE
 from app.models.acervo_bucket import AcervoBucket
 from app.models.user import Usuario
 from app.services import acervo_file_service
@@ -49,15 +48,17 @@ def _bucket(protegido: bool) -> AcervoBucket:
 
 
 def _admin() -> Usuario:
-    return Usuario(
-        id=1, username="admin", email="a@b.c", name="Admin", role=ADMIN_ROLE
+    usuario = Usuario(
+        id=1, username="admin", email="a@b.c", name="Admin", role="tetlamamakani"
     )
+    usuario.permissions = {"mariachi.acervo.manage"}
+    return usuario
 
 
 def test_un_bucket_protegido_rechaza_la_escritura_incluso_al_admin():
     db = _Session(_bucket(protegido=True))
     with pytest.raises(HTTPException) as exc:
-        acervo_file_service.resolve_bucket_escribible(4, _admin(), db)
+        acervo_file_service.resolve_bucket_escribible(4, _admin(), db, "update")
     assert exc.value.status_code == 409
     assert "protegido" in exc.value.detail
 
@@ -69,4 +70,4 @@ def test_un_bucket_protegido_si_se_puede_leer():
 
 def test_un_bucket_normal_sigue_siendo_escribible():
     db = _Session(_bucket(protegido=False))
-    assert acervo_file_service.resolve_bucket_escribible(4, _admin(), db).id == 4
+    assert acervo_file_service.resolve_bucket_escribible(4, _admin(), db, "update").id == 4

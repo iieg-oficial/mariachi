@@ -6,11 +6,17 @@ export default function GeoserverFilesGrid({
     files = [],
     minWidth = 180,
     fromSearch = false,
+    isMobile = false,
     deletingName,
+    anySelected = false,
+    isSelected,
     onOpenFolder,
     onDownloadZip,
-    onSnippet,
+    onDownloadFile,
+    onToggleSelect,
+    onRename,
     onDelete,
+    onDeleteFolder,
 }) {
     return (
         <div
@@ -24,8 +30,14 @@ export default function GeoserverFilesGrid({
                 <GeoserverFolderCard
                     key={`folder-${f.path}`}
                     folder={f}
+                    isMobile={isMobile}
+                    selected={isSelected?.({ ...f, isDir: true })}
+                    anySelected={anySelected}
                     onOpen={onOpenFolder}
                     onDownloadZip={onDownloadZip}
+                    onToggleSelect={onToggleSelect}
+                    onRename={onRename}
+                    onDelete={onDeleteFolder}
                 />
             ))}
             {files.map((f) => (
@@ -33,9 +45,14 @@ export default function GeoserverFilesGrid({
                     key={`file-${f.workspace || ''}-${f.name}`}
                     file={f}
                     fromSearch={fromSearch}
+                    isMobile={isMobile}
                     deleting={deletingName === f.name}
-                    onSnippet={onSnippet}
+                    selected={isSelected?.({ ...f, isDir: false })}
+                    anySelected={anySelected}
+                    onToggleSelect={onToggleSelect}
+                    onRename={onRename}
                     onDelete={onDelete}
+                    onDownload={onDownloadFile}
                 />
             ))}
         </div>

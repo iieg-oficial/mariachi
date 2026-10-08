@@ -11,24 +11,29 @@ const baseUser = {
     projects: [
         { slug: 'sieej', name: 'SIEEJ', project_role: 'editor' },
     ],
-    must_change_password: false,
     avatarUrl: null,
+    created_at: '2026-08-12T10:00:00',
+    minerva_vinculado: true,
+    ultimo_acceso: '2026-08-20T09:00:00',
+    must_change_password: false,
 };
 
-const renderCard = (overrides = {}, handlers = {}) => {
-    const onEdit = handlers.onEdit ?? vi.fn();
-    const onResetPassword = handlers.onResetPassword ?? vi.fn();
-    const onDelete = handlers.onDelete ?? vi.fn();
+const renderCard = (overrides = {}, props = {}) => {
+    const onEdit = props.onEdit ?? vi.fn();
     render(
         <UserCard
             user={{ ...baseUser, ...overrides }}
             onEdit={onEdit}
-            onResetPassword={onResetPassword}
-            onDelete={onDelete}
-            isSelf={handlers.isSelf ?? false}
+            puedeEditar={props.puedeEditar ?? true}
+            detalleVisible={props.detalleVisible ?? true}
+            proyectosDelSistema={props.proyectosDelSistema ?? [
+                { slug: 'sieej', name: 'SIEEJ' },
+                { slug: 'portal', name: 'Portal' },
+                { slug: 'mapalab', name: 'MapaLab' },
+            ]}
         />,
     );
-    return { onEdit, onResetPassword, onDelete };
+    return { onEdit };
 };
 
 describe('UserCard', () => {
@@ -40,41 +45,41 @@ describe('UserCard', () => {
         expect(screen.getByText('Editora')).toBeInTheDocument();
     });
 
-    it('admin global se muestra como "Administradora" + "Todos los proyectos"', () => {
+    it('el rol tetlamamakani se muestra con su nombre', () => {
         renderCard({ role: 'tetlamamakani', projects: [] });
-        expect(screen.getByText('Administradora')).toBeInTheDocument();
-        expect(screen.getByText('Todos los proyectos')).toBeInTheDocument();
+        expect(screen.getByText('Tetlamamakani')).toBeInTheDocument();
     });
 
-    it('usuario sin proyectos asignados muestra placeholder', () => {
+    it('la tetlamamakani cuenta los proyectos del sistema, no una frase', () => {
+        renderCard({ role: 'tetlamamakani', projects: [] });
+        expect(screen.getByText('3 proyectos')).toBeInTheDocument();
+        expect(screen.queryByText('Todos los proyectos')).not.toBeInTheDocument();
+    });
+
+    it('usuario sin proyectos lo dice sin listar nada', () => {
         renderCard({ projects: [] });
-        expect(screen.getByText('Sin proyectos asignados')).toBeInTheDocument();
+        expect(screen.getByText('Sin proyectos')).toBeInTheDocument();
     });
 
-    it('proyectos asignados se muestran como tags con rol', () => {
+    it('los proyectos se resumen en un contador, no en una etiqueta por proyecto', () => {
         renderCard({
             projects: [
                 { slug: 'portal', name: 'Portal', project_role: 'viewer' },
                 { slug: 'mapalab', name: 'MapaLab', project_role: 'editor' },
             ],
         });
-        expect(screen.getByText('Portal: Viewer')).toBeInTheDocument();
-        expect(screen.getByText('MapaLab: Editor')).toBeInTheDocument();
+        expect(screen.getByText('2 proyectos')).toBeInTheDocument();
+        expect(screen.queryByText(/Portal/)).not.toBeInTheDocument();
     });
 
-    it('hint de must_change_password aparece solo cuando aplica', () => {
-        const { unmount } = render(
-            <UserCard
-                user={{ ...baseUser, must_change_password: true }}
-                onEdit={vi.fn()}
-                onResetPassword={vi.fn()}
-                onDelete={vi.fn()}
-            />,
-        );
-        expect(screen.getByText(/Pendiente cambio de contraseña/)).toBeInTheDocument();
-        unmount();
-        renderCard({ must_change_password: false });
-        expect(screen.queryByText(/Pendiente cambio de contraseña/)).not.toBeInTheDocument();
+    it('un solo proyecto se escribe en singular', () => {
+        renderCard();
+        expect(screen.getByText('1 proyecto')).toBeInTheDocument();
+    });
+
+    it('la card no ofrece acciones directas', () => {
+        renderCard();
+        expect(screen.queryAllByRole('button', { name: /eliminar|editar$/i })).toHaveLength(0);
     });
 
     it('click en la card invoca onEdit', () => {
@@ -83,21 +88,54 @@ describe('UserCard', () => {
         expect(onEdit).toHaveBeenCalled();
     });
 
-    it('isSelf deshabilita acciones de Resetear y Eliminar', () => {
-        renderCard({}, { isSelf: true });
-        const resetBtn = screen.getByLabelText('Resetear contraseña');
-        const deleteBtn = screen.getByLabelText('Eliminar');
-        expect(resetBtn).toBeDisabled();
-        expect(deleteBtn).toBeDisabled();
+    it('la card se abre con Enter desde el teclado', () => {
+        const { onEdit } = renderCard();
+        fireEvent.keyDown(screen.getByLabelText('Editar Usuario Test'), { key: 'Enter' });
+        expect(onEdit).toHaveBeenCalled();
     });
 
-    it('Editar nunca se deshabilita por isSelf', () => {
-        renderCard({}, { isSelf: true });
-        expect(screen.getByLabelText('Editar')).not.toBeDisabled();
+    it('sin permiso de gestion la card deja de ser interactiva', () => {
+        const { onEdit } = renderCard({}, { puedeEditar: false });
+        expect(screen.queryByLabelText('Editar Usuario Test')).not.toBeInTheDocument();
+        fireEvent.click(screen.getByText('Usuario Test'));
+        expect(onEdit).not.toHaveBeenCalled();
     });
 
-    it('rol externo se muestra como "Externo" con color verde', () => {
-        renderCard({ role: 'externo' });
-        expect(screen.getByText('Externo')).toBeInTheDocument();
+    it('sin detalle visible no promete "Sin proyectos"', () => {
+        renderCard({ projects: [] }, { detalleVisible: false });
+        expect(screen.queryByText('Sin proyectos')).not.toBeInTheDocument();
+    });
+
+    it('una cuenta sin pendientes se marca al dia', () => {
+        renderCard();
+        expect(screen.getByLabelText('Cuenta al día')).toBeInTheDocument();
+    });
+
+    it('los pendientes de la cuenta se enumeran en el nombre accesible', () => {
+        renderCard({ minerva_vinculado: false, ultimo_acceso: null, projects: [] });
+        const estado = screen.getByLabelText(/pendiente/);
+        expect(estado).toHaveAttribute('aria-label', expect.stringContaining('Sin vincular a minerva'));
+        expect(estado).toHaveAttribute('aria-label', expect.stringContaining('Nunca ha iniciado sesión'));
+        expect(estado).toHaveAttribute('aria-label', expect.stringContaining('Sin proyectos asignados'));
+    });
+
+    it('muestra la ultima sesion y avisa cuando no hay', () => {
+        renderCard();
+        expect(screen.getByText(/^Última sesión /)).toBeInTheDocument();
+    });
+
+    it('sin ultimo acceso lo dice en vez de inventar una fecha', () => {
+        renderCard({ ultimo_acceso: null });
+        expect(screen.getByText('Sin ingresar')).toBeInTheDocument();
+    });
+
+    it('muestra la dependencia de SIEEJ del usuario externo', () => {
+        renderCard({ role: 'externo', sieej_grupo: { id: 3, nombre: 'IIEG' } });
+        expect(screen.getByText('IIEG')).toBeInTheDocument();
+    });
+
+    it('muestra la fecha de alta', () => {
+        renderCard();
+        expect(screen.getByText(/^Alta /)).toBeInTheDocument();
     });
 });

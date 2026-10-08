@@ -1,8 +1,14 @@
-import { LitElement, html, css } from 'lit';
+import { LitElement, html } from 'lit';
 import { themeCss } from './theme.js';
+import { formCss } from './form-styles.js';
 import { ICONS } from './icons.js';
+import { renderField, renderError } from './fields.js';
+import { spinner, renderMensaje, renderEmail, renderCaptura, renderAcciones, MAX_CAPTURA_MB } from './form-sections.js';
 import { fetchTipos, postReporte, captureAuto, DEFAULT_ENDPOINT } from './api.js';
 
+const ESPERA_LIMITE_MS = 10 * 60 * 1000;
+const OBLIGATORIO = 'Este campo es obligatorio';
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export class ColibriFormCore extends LitElement {
     static properties = {
@@ -15,131 +21,22 @@ export class ColibriFormCore extends LitElement {
         tiposFilter: { type: String, attribute: 'tipos' },
         tipoSelector: { type: String, attribute: 'tipo-selector' },
         emailRequired: { type: Boolean, attribute: 'email-required' },
+        privacyUrl: { type: String, attribute: 'privacy-url' },
+        cancelable: { type: Boolean },
         loading: { type: Boolean, attribute: false },
+        loadFailed: { type: Boolean, attribute: false },
         submitting: { type: Boolean, attribute: false },
         success: { type: Boolean, attribute: false },
         error: { type: String, attribute: false },
+        rateLimited: { type: Boolean, attribute: false },
+        fieldErrors: { type: Object, attribute: false },
+        tipOpen: { type: Boolean, attribute: false },
         values: { type: Object, attribute: false },
         screenshot: { type: Object, attribute: false },
         successId: { type: Number, attribute: false },
     };
 
-    static styles = [
-        themeCss,
-        css`
-            :host { display: block; }
-
-            .field { margin-bottom: 12px; }
-            .field-label {
-                display: block;
-                font-size: 13px;
-                font-weight: 500;
-                margin-bottom: 4px;
-            }
-            .field-help {
-                display: block;
-                font-size: 11px;
-                color: var(--colibri-muted);
-                margin-top: 2px;
-            }
-            .required-mark { color: var(--colibri-danger); margin-left: 2px; }
-
-            input[type='text'], input[type='email'], input[type='url'],
-            input[type='number'], textarea, select {
-                width: 100%;
-                padding: 8px 10px;
-                border: 1px solid var(--colibri-border);
-                border-radius: var(--colibri-radius);
-                background: var(--colibri-bg);
-                color: var(--colibri-fg);
-                font-size: 14px;
-                font-family: inherit;
-                outline: none;
-                transition: border-color 0.15s;
-            }
-            input:focus, textarea:focus, select:focus { border-color: var(--colibri-primary); }
-            textarea { min-height: 80px; resize: vertical; }
-
-            .tipo-selector {
-                display: flex;
-                gap: 6px;
-                flex-wrap: wrap;
-                margin-bottom: 16px;
-            }
-            .tipo-chip {
-                padding: 6px 12px;
-                border: 1px solid var(--colibri-border);
-                border-radius: 20px;
-                font-size: 12px;
-                background: transparent;
-                color: var(--colibri-fg);
-                transition: all 0.15s;
-            }
-            .tipo-chip[aria-pressed='true'] {
-                background: var(--colibri-primary);
-                color: var(--colibri-primary-fg);
-                border-color: var(--colibri-primary);
-            }
-
-            .actions { display: flex; gap: 8px; margin-top: 16px; align-items: center; }
-            .submit {
-                background: var(--colibri-primary);
-                color: var(--colibri-primary-fg);
-                border: none;
-                border-radius: var(--colibri-radius);
-                padding: 10px 16px;
-                font-size: 14px;
-                font-weight: 500;
-                display: inline-flex;
-                align-items: center;
-                gap: 6px;
-            }
-            .submit:disabled { opacity: 0.6; cursor: not-allowed; }
-            .submit svg { width: 14px; height: 14px; }
-
-            .screenshot-btn {
-                background: transparent;
-                border: 1px dashed var(--colibri-border);
-                border-radius: var(--colibri-radius);
-                padding: 8px 12px;
-                color: var(--colibri-muted);
-                font-size: 12px;
-                display: inline-flex;
-                align-items: center;
-                gap: 6px;
-            }
-            .screenshot-btn svg { width: 14px; height: 14px; }
-            .screenshot-attached { color: var(--colibri-primary); }
-
-            .success {
-                text-align: center;
-                padding: 24px 12px;
-            }
-            .success-icon {
-                width: 48px;
-                height: 48px;
-                margin: 0 auto 12px;
-                color: var(--colibri-primary);
-            }
-            .success-title { font-size: 16px; font-weight: 600; margin: 0 0 4px; }
-            .success-msg { color: var(--colibri-muted); font-size: 13px; margin: 0; }
-
-            .error-banner {
-                background: #fee;
-                color: var(--colibri-danger);
-                padding: 8px 10px;
-                border-radius: var(--colibri-radius);
-                font-size: 12px;
-                margin-bottom: 12px;
-            }
-
-            .loading { text-align: center; padding: 24px; color: var(--colibri-muted); font-size: 13px; }
-
-            input[type='file'] { display: none; }
-
-            .powered { font-size: 10px; color: var(--colibri-muted); text-align: right; margin-top: 8px; }
-        `,
-    ];
+    static styles = [themeCss, formCss];
 
     constructor() {
         super();
@@ -148,10 +45,15 @@ export class ColibriFormCore extends LitElement {
         this.tiposFilter = '';
         this.tipoSelector = 'tabs';
         this.emailRequired = false;
+        this.cancelable = false;
         this.loading = true;
+        this.loadFailed = false;
         this.submitting = false;
         this.success = false;
         this.error = null;
+        this.rateLimited = false;
+        this.fieldErrors = {};
+        this.tipOpen = false;
         this.values = {};
         this.screenshot = null;
         this.successId = null;
@@ -162,24 +64,30 @@ export class ColibriFormCore extends LitElement {
         this._loadTipos();
     }
 
+    disconnectedCallback() {
+        clearTimeout(this._limitTimer);
+        super.disconnectedCallback();
+    }
+
     async _loadTipos() {
         this.loading = true;
+        this.loadFailed = false;
         try {
             const url = this.endpointTipos || (this.endpoint || '').replace(/\/?$/, '') || DEFAULT_ENDPOINT;
             const data = await fetchTipos(url);
             const filter = (this.tiposFilter || '').split(',').map((s) => s.trim()).filter(Boolean);
-            this.tipos = filter.length > 0
-                ? data.filter((t) => filter.includes(t.slug))
-                : data;
-            if (!this.tipoSlug && this.tipos.length > 0) {
-                this.tipoSlug = this.tipos[0].slug;
-            }
+            this.tipos = filter.length > 0 ? data.filter((t) => filter.includes(t.slug)) : data;
+            if (!this.tipoSlug && this.tipos.length > 0) this.tipoSlug = this.tipos[0].slug;
             this.dispatchEvent(new CustomEvent('colibri:ready', { bubbles: true, composed: true }));
-        } catch (err) {
-            this.error = err?.message || 'No se pudieron cargar los tipos';
+        } catch {
+            this.loadFailed = true;
         } finally {
             this.loading = false;
         }
+    }
+
+    _emit(name, detail) {
+        this.dispatchEvent(new CustomEvent(name, { detail, bubbles: true, composed: true }));
     }
 
     _currentTipo() {
@@ -189,120 +97,60 @@ export class ColibriFormCore extends LitElement {
     _setTipo(slug) {
         if (this.tipoSlug === slug) return;
         this.tipoSlug = slug;
-        this.values = {};
-        this.dispatchEvent(new CustomEvent('colibri:tipo-changed', { detail: { tipo: slug }, bubbles: true, composed: true }));
+        this.values = { __mensaje: this.values.__mensaje, __email: this.values.__email };
+        this.fieldErrors = {};
+        this._emit('colibri:tipo-changed', { tipo: slug });
     }
 
     _setValue(key, value) {
         this.values = { ...this.values, [key]: value };
+        if (this.fieldErrors[key]) this.fieldErrors = { ...this.fieldErrors, [key]: null };
     }
 
-    _renderField(campo) {
-        const value = this.values[campo.key] ?? '';
-        const fieldId = `f_${campo.key}`;
-        const placeholder = campo.placeholder || '';
-        const helpText = campo.helpText ?? campo.help_text;
-        const maxLength = campo.maxLength ?? campo.max_length ?? '';
-        const options = campo.options || [];
-        let input;
-        if (campo.type === 'textarea') {
-            input = html`<textarea id=${fieldId} placeholder=${placeholder} ?required=${campo.required}
-                maxlength=${maxLength}
-                .value=${value} @input=${(e) => this._setValue(campo.key, e.target.value)}></textarea>`;
-        } else if (campo.type === 'select' || campo.type === 'direccion') {
-            input = html`<select id=${fieldId} ?required=${campo.required}
-                .value=${value} @change=${(e) => this._setValue(campo.key, e.target.value)}>
-                <option value="">${placeholder || 'Selecciona…'}</option>
-                ${options.map((o) => html`<option value=${o.value} ?selected=${value === o.value}>${o.label}</option>`)}
-            </select>`;
-        } else if (campo.type === 'multiselect') {
-            const arr = Array.isArray(value) ? value : [];
-            input = html`<select id=${fieldId} multiple
-                @change=${(e) => this._setValue(campo.key, [...e.target.selectedOptions].map((o) => o.value))}>
-                ${options.map((o) => html`<option value=${o.value} ?selected=${arr.includes(o.value)}>${o.label}</option>`)}
-            </select>`;
-        } else if (campo.type === 'radio') {
-            input = html`<div role="radiogroup" aria-label=${campo.label} style="display:flex; flex-direction:column; gap:4px;">
-                ${options.map((o) => html`<label style="display:flex; align-items:center; gap:6px; font-weight:400;">
-                    <input type="radio" name=${fieldId} value=${o.value} ?checked=${value === o.value}
-                        @change=${() => this._setValue(campo.key, o.value)} />
-                    ${o.label}
-                </label>`)}
-            </div>`;
-        } else if (campo.type === 'checkbox') {
-            input = html`<label style="display:flex; align-items:center; gap:6px;">
-                <input type="checkbox" ?checked=${Boolean(value)}
-                    @change=${(e) => this._setValue(campo.key, e.target.checked)} />
-                ${placeholder || 'Sí'}
-            </label>`;
-        } else if (campo.type === 'number') {
-            input = html`<input type="number" id=${fieldId} placeholder=${placeholder} ?required=${campo.required}
-                .value=${value} @input=${(e) => this._setValue(campo.key, e.target.value)} />`;
-        } else if (campo.type === 'email') {
-            input = html`<input type="email" id=${fieldId} placeholder=${placeholder} ?required=${campo.required}
-                .value=${value} @input=${(e) => this._setValue(campo.key, e.target.value)} />`;
-        } else if (campo.type === 'url') {
-            input = html`<input type="url" id=${fieldId} placeholder=${placeholder} ?required=${campo.required}
-                .value=${value} @input=${(e) => this._setValue(campo.key, e.target.value)} />`;
-        } else {
-            input = html`<input type="text" id=${fieldId} placeholder=${placeholder} ?required=${campo.required}
-                maxlength=${maxLength}
-                .value=${value} @input=${(e) => this._setValue(campo.key, e.target.value)} />`;
+    _validate(tipo) {
+        const errores = {};
+        if (!(this.values.__mensaje || '').trim()) errores.__mensaje = OBLIGATORIO;
+        const email = (this.values.__email || '').trim();
+        if (this.emailRequired && !email) errores.__email = OBLIGATORIO;
+        else if (email && !EMAIL_RE.test(email)) errores.__email = 'Correo no válido';
+        for (const campo of (tipo?.formSchema?.campos || [])) {
+            const v = this.values[campo.key];
+            if (campo.required && (v === undefined || v === '' || (Array.isArray(v) && !v.length))) {
+                errores[campo.key] = OBLIGATORIO;
+            }
         }
-        return html`
-            <div class="field">
-                <label class="field-label" for=${fieldId}>
-                    ${campo.label}${campo.required ? html`<span class="required-mark">*</span>` : ''}
-                </label>
-                ${input}
-                ${helpText ? html`<span class="field-help">${helpText}</span>` : ''}
-            </div>
-        `;
+        if (this.privacyUrl && !this.values.__consent) errores.__consent = OBLIGATORIO;
+        this.fieldErrors = errores;
+        return Object.keys(errores).length === 0;
     }
 
     async _handleSubmit(e) {
         e?.preventDefault?.();
-        if (this.submitting) return;
+        if (this.submitting || this.rateLimited) return;
         const tipo = this._currentTipo();
-        if (!tipo) { this.error = 'Selecciona un tipo de reporte'; return; }
-
-        const mensaje = this.values.__mensaje || '';
-        if (!mensaje.trim()) { this.error = 'El mensaje es requerido'; return; }
-
-        const email = this.values.__email || '';
-        if (this.emailRequired && !email) { this.error = 'Email es requerido'; return; }
+        if (!tipo || !this._validate(tipo)) return;
 
         const respuestas = {};
         for (const campo of (tipo.formSchema?.campos || [])) {
-            if (campo.required && (this.values[campo.key] === undefined || this.values[campo.key] === '')) {
-                this.error = `Campo requerido: ${campo.label}`;
-                return;
-            }
-            if (this.values[campo.key] !== undefined) {
-                respuestas[campo.key] = this.values[campo.key];
-            }
+            if (this.values[campo.key] !== undefined) respuestas[campo.key] = this.values[campo.key];
         }
+        const sourceContext = { auto: captureAuto() };
+        const userIdentify = window?.colibri?.__userIdentify;
+        if (userIdentify) sourceContext.user = userIdentify;
+        const customCtx = window?.colibri?.__customContext;
+        if (customCtx && Object.keys(customCtx).length > 0) sourceContext.custom = { ...customCtx };
 
         this.submitting = true;
         this.error = null;
         try {
-            const auto = captureAuto();
-            const sourceContext = { auto };
-            const userIdentify = window?.colibri?.__userIdentify;
-            if (userIdentify) sourceContext.user = userIdentify;
-            const customCtx = window?.colibri?.__customContext;
-            if (customCtx && Object.keys(customCtx).length > 0) {
-                sourceContext.custom = { ...customCtx };
-            }
-
             const result = await postReporte({
                 endpoint: this.endpoint || DEFAULT_ENDPOINT,
                 apiKey: this.apiKey,
                 screenshot: this.screenshot,
                 payload: {
                     tipo: tipo.slug,
-                    mensaje,
-                    email_contacto: email || null,
+                    mensaje: this.values.__mensaje.trim(),
+                    email_contacto: (this.values.__email || '').trim() || null,
                     source_app: this.sourceApp,
                     source_route: location.pathname + location.search,
                     source_context: sourceContext,
@@ -313,18 +161,15 @@ export class ColibriFormCore extends LitElement {
             this.successId = result.id;
             this.values = {};
             this.screenshot = null;
-            this.dispatchEvent(new CustomEvent('colibri:submitted', {
-                detail: { id: result.id, tipo: tipo.slug },
-                bubbles: true,
-                composed: true,
-            }));
+            this._emit('colibri:submitted', { id: result.id, tipo: tipo.slug });
         } catch (err) {
-            this.error = err?.message || 'Error al enviar el reporte';
-            this.dispatchEvent(new CustomEvent('colibri:error', {
-                detail: { message: this.error, status: err?.status },
-                bubbles: true,
-                composed: true,
-            }));
+            if (err?.status === 429) {
+                this.rateLimited = true;
+                this._limitTimer = setTimeout(() => { this.rateLimited = false; }, ESPERA_LIMITE_MS);
+            } else {
+                this.error = err?.message || 'Error al enviar el reporte';
+            }
+            this._emit('colibri:error', { message: err?.message, status: err?.status });
         } finally {
             this.submitting = false;
         }
@@ -332,85 +177,82 @@ export class ColibriFormCore extends LitElement {
 
     _handleScreenshot(e) {
         const file = e.target.files?.[0];
-        if (file && file.size > 2 * 1024 * 1024) {
-            this.error = 'La captura supera 2 MB';
+        if (file && file.size > MAX_CAPTURA_MB * 1024 * 1024) {
+            this.fieldErrors = { ...this.fieldErrors, __captura: `El archivo supera ${MAX_CAPTURA_MB} MB` };
             e.target.value = '';
             return;
         }
+        this.fieldErrors = { ...this.fieldErrors, __captura: null };
         this.screenshot = file || null;
     }
 
-    _renderTipoSelector() {
-        if (this.tiposFilter && this.tipos.length === 1) return null;
-        if (this.tipoSelector === 'hidden') return null;
+    _cancel() {
+        this._emit('colibri:cancel');
+    }
+
+    _renderState(icon, title, msg, actions) {
         return html`
-            <div class="tipo-selector" role="tablist">
-                ${this.tipos.map((t) => html`
-                    <button type="button" class="tipo-chip"
-                        aria-pressed=${this.tipoSlug === t.slug}
-                        @click=${() => this._setTipo(t.slug)}>
-                        ${t.label}
-                    </button>
-                `)}
+            <div class="state" role=${icon === ICONS.sectionError ? 'alert' : 'status'}>
+                ${icon === ICONS.success ? html`<div class="state-badge">${icon}</div>` : icon}
+                <h2 class="state-title">${title}</h2>
+                <p class="state-msg">${msg}</p>
+                <div class="actions" style="margin-top: 0;">${actions}</div>
+            </div>
+        `;
+    }
+
+    _renderTipoSelector(tipo) {
+        const oculto = (this.tiposFilter && this.tipos.length === 1) || this.tipoSelector === 'hidden';
+        if (oculto) return tipo?.descripcion ? html`<span class="description">${tipo.descripcion}</span>` : null;
+        return html`
+            <div class="field" role="group" aria-labelledby="tipo_label">
+                <span class="field-label" id="tipo_label">¿Qué quieres reportar?</span>
+                <div class="tipo-selector">
+                    ${this.tipos.map((t) => html`
+                        <button type="button" class="tipo-chip"
+                            aria-pressed=${this.tipoSlug === t.slug ? 'true' : 'false'}
+                            @click=${() => this._setTipo(t.slug)}>${t.label}</button>
+                    `)}
+                </div>
+                ${tipo?.descripcion ? html`<span class="description">${tipo.descripcion}</span>` : ''}
             </div>
         `;
     }
 
     render() {
-        if (this.loading) return html`<div class="loading">Cargando…</div>`;
+        if (this.loading) return html`<div class="loading" role="status">${spinner}Cargando formulario…</div>`;
+        const cerrar = this.cancelable
+            ? html`<button type="button" class="btn btn-secondary" @click=${this._cancel}>Cerrar</button>` : '';
+        if (this.loadFailed) {
+            return this._renderState(ICONS.sectionError, 'No se pudo cargar el formulario',
+                'Por favor intenta nuevamente.',
+                html`${cerrar}<button type="button" class="btn btn-primary" @click=${this._loadTipos}>Reintentar</button>`);
+        }
         if (this.success) {
-            return html`
-                <div class="success">
-                    <div class="success-icon">${ICONS.check}</div>
-                    <p class="success-title">¡Gracias por tu reporte!</p>
-                    <p class="success-msg">Recibimos tu mensaje. ID #${this.successId}</p>
-                </div>
-            `;
+            return this._renderState(ICONS.success, 'Recibimos tu reporte',
+                `${this.successId ? `Folio #${this.successId}. ` : ''}Si dejaste correo, te escribiremos ahí.`,
+                html`<button type="button" class="btn btn-secondary" @click=${() => { this.success = false; }}>Enviar otro</button>
+                    ${this.cancelable ? html`<button type="button" class="btn btn-primary" @click=${this._cancel}>Cerrar</button>` : ''}`);
+        }
+        if (this.error) {
+            return this._renderState(ICONS.sectionError, 'No se pudo enviar tu reporte',
+                'Por favor intenta nuevamente. Lo que escribiste se conserva.',
+                html`${cerrar}<button type="button" class="btn btn-primary" @click=${this._handleSubmit}>Reintentar</button>`);
         }
         const tipo = this._currentTipo();
-        const campos = tipo?.formSchema?.campos || [];
         return html`
-            <form @submit=${this._handleSubmit}>
-                ${this.error ? html`<div class="error-banner">${this.error}</div>` : ''}
-                ${this._renderTipoSelector()}
-                ${tipo?.descripcion ? html`<p class="field-help" style="margin: 0 0 10px;">${tipo.descripcion}</p>` : ''}
-
-                <div class="field">
-                    <label class="field-label" for="f_mensaje">
-                        Mensaje<span class="required-mark">*</span>
-                    </label>
-                    <textarea id="f_mensaje" required maxlength="2000"
-                        placeholder="Cuéntanos qué pasó…"
-                        .value=${this.values.__mensaje || ''}
-                        @input=${(e) => this._setValue('__mensaje', e.target.value)}></textarea>
-                </div>
-
-                <div class="field">
-                    <label class="field-label" for="f_email">
-                        Email${this.emailRequired ? html`<span class="required-mark">*</span>` : ''}
-                    </label>
-                    <input type="email" id="f_email" ?required=${this.emailRequired}
-                        placeholder="opcional, para responderte"
-                        .value=${this.values.__email || ''}
-                        @input=${(e) => this._setValue('__email', e.target.value)} />
-                </div>
-
-                ${campos.map((c) => this._renderField(c))}
-
-                <div class="actions">
-                    <label class="screenshot-btn ${this.screenshot ? 'screenshot-attached' : ''}">
-                        ${ICONS.camera}
-                        ${this.screenshot ? this.screenshot.name : 'Adjuntar captura'}
-                        <input type="file" accept="image/png,image/jpeg" @change=${this._handleScreenshot} />
-                    </label>
-                    <div style="flex: 1"></div>
-                    <button type="submit" class="submit" ?disabled=${this.submitting}>
-                        ${ICONS.send}
-                        ${this.submitting ? 'Enviando…' : 'Enviar reporte'}
-                    </button>
-                </div>
-
-                <div class="powered">Impulsado por Colibri</div>
+            <form novalidate @submit=${this._handleSubmit}>
+                ${this._renderTipoSelector(tipo)}
+                ${renderMensaje(this)}
+                ${renderEmail(this)}
+                ${(tipo?.formSchema?.campos || []).map((c) => renderField(c, this.values[c.key], this.fieldErrors[c.key], (v) => this._setValue(c.key, v)))}
+                ${renderCaptura(this)}
+                ${this.privacyUrl ? html`<div class="consent">
+                    <input type="checkbox" id="f_consent" aria-invalid=${this.fieldErrors.__consent ? 'true' : 'false'}
+                        .checked=${Boolean(this.values.__consent)} @change=${(e) => this._setValue('__consent', e.target.checked)} />
+                    <label for="f_consent">Acepto el <a href=${this.privacyUrl} target="_blank" rel="noopener noreferrer">aviso de privacidad</a> y que me escriban para dar seguimiento</label>
+                </div>${renderError('f_consent', this.fieldErrors.__consent)}` : ''}
+                ${renderAcciones(this)}
             </form>
         `;
     }

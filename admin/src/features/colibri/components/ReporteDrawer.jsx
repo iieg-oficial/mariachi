@@ -86,7 +86,7 @@ export default function ReporteDrawer({ id, onClose, onChanged }) {
         <Drawer
             open={Boolean(id)}
             title={reporte ? `Reporte #${reporte.id}` : 'Reporte'}
-            width={isMobile ? '100%' : 560}
+            size={isMobile ? '100%' : 560}
             onClose={onClose}
             destroyOnClose
             extra={
@@ -98,7 +98,7 @@ export default function ReporteDrawer({ id, onClose, onChanged }) {
             {loading || !reporte ? (
                 <div style={{ textAlign: 'center', padding: 40 }}><Spin /></div>
             ) : (
-                <Space direction="vertical" size="large" style={{ width: '100%' }}>
+                <Space orientation="vertical" size="large" style={{ width: '100%' }}>
                     <Space size={6} wrap>
                         <Tag color={TIPO_COLORS[reporte.tipo] || 'default'}>{TIPO_LABELS[reporte.tipo] || reporte.tipo}</Tag>
                         <Tag color={ESTADO_COLORS[reporte.estado]}>{ESTADO_LABELS[reporte.estado]}</Tag>

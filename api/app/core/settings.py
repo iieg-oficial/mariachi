@@ -1,6 +1,7 @@
 import json
 from functools import lru_cache
 from typing import Literal
+from urllib.parse import quote, urlsplit, urlunsplit
 
 from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -27,6 +28,7 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     redis_url: str
+    redis_password: str | None = None
     acervo_endpoint: str
     acervo_public_endpoint: str
     acervo_use_ssl: bool = False
@@ -48,9 +50,29 @@ class Settings(BaseSettings):
     csrf_secret_key: str
     csrf_token_expire_minutes: int = 60
 
+    minerva_issuer_url: str
+    minerva_public_url: str = ""
+    minerva_application_code: str = "mariachi"
+    minerva_client_id: str
+    minerva_client_secret: str
+    minerva_redirect_uri: str
+    minerva_login_url: str = ""
+    minerva_sieej_branding_client_id: str = ""
+    minerva_scopes: str = "openid profile email"
+    minerva_post_login_url: str = "/"
+
     @property
     def refresh_cookie_max_age(self) -> int:
         return self.refresh_token_expire_minutes * 60
+
+    @property
+    def minerva_public_base(self) -> str:
+        return (self.minerva_public_url or self.minerva_issuer_url).rstrip("/")
+
+    @property
+    def minerva_logout_base(self) -> str:
+        return (self.minerva_login_url or self.minerva_public_base).rstrip("/")
+
     docs_url: str | None = None
     redoc_url: str | None = None
     openapi_url: str | None = None
@@ -67,7 +89,26 @@ class Settings(BaseSettings):
     mapalab_internal_token: str | None = None
     acervo_internal_token: str | None = None
     sieej_url: str | None = None
+    sieej_edicion_deshabilitada: bool = False
     huachicol_monitor_url: str | None = None
+
+    frames_enabled: bool = False
+    frames_api_url: str | None = None
+    frames_timeout: float = 10.0
+    frames_rtsp_username: str | None = None
+    frames_detect_fps: int = 15
+
+    intranet_cliente_sha256: str | None = None
+    sieej_documentacion_sync_sha256: str | None = None
+
+    intranet_enabled: bool = False
+    intranet_api_url: str | None = None
+    intranet_api_key: str | None = None
+    intranet_timeout: float = 20.0
+
+    vine_enabled: bool = False
+    vine_biometrico_url: str | None = None
+    vine_biometrico_timeout: int = 5
 
     colibri_api_key_mariachi: str | None = None
 
@@ -97,6 +138,17 @@ class Settings(BaseSettings):
         return self
 
     @model_validator(mode="after")
+    def compose_redis_url(self):
+        if not self.redis_password:
+            return self
+        partes = urlsplit(self.redis_url)
+        if "@" in partes.netloc:
+            return self
+        credencial = quote(self.redis_password.strip(), safe="")
+        self.redis_url = urlunsplit(partes._replace(netloc=f":{credencial}@{partes.netloc}"))
+        return self
+
+    @model_validator(mode="after")
     def enforce_production_defaults(self):
         if self.environment == "production":
             self.docs_url = None
@@ -113,4 +165,3 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
-

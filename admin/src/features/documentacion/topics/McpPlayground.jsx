@@ -145,7 +145,7 @@ const ProbeCard = ({ probe }) => {
                 </Form>
             )}
 
-            {error && <Alert type="error" message={error} showIcon style={{ marginTop: 8 }} />}
+            {error && <Alert type="error" title={error} showIcon style={{ marginTop: 8 }} />}
 
             {result && (
                 <div style={{ marginTop: 12 }}>
@@ -256,7 +256,7 @@ const McpRootProbe = ({ apiKey }) => {
                 JSON-RPC <Text code>initialize</Text> contra el endpoint raíz <Text code>{MAPALAB_MCP_URL}</Text> (<strong>sin</strong> slash). Desde mapalab 1.45.0 el MCP vive al nivel de <Text code>/mapalab/</Text>, no debajo de <Text code>/mapalab/api/</Text>. Útil para verificar que el container <Text code>mapalab-mcp</Text> está vivo y responde el handshake MCP.
             </Text>
 
-            {error && <Alert type="error" message={error} showIcon style={{ marginTop: 8 }} />}
+            {error && <Alert type="error" title={error} showIcon style={{ marginTop: 8 }} />}
 
             {result && (
                 <div style={{ marginTop: 12 }}>
@@ -435,7 +435,7 @@ const McpToolProbe = ({ probe, apiKey }) => {
                 style={{ fontFamily: 'monospace', fontSize: 11 }}
                 spellCheck={false}
             />
-            {error && <Alert type="error" message={error} showIcon style={{ marginTop: 8 }} />}
+            {error && <Alert type="error" title={error} showIcon style={{ marginTop: 8 }} />}
             {result && (
                 <div style={{ marginTop: 12 }}>
                     <Space size={8} style={{ marginBottom: 6 }} wrap>
@@ -485,21 +485,16 @@ const McpToolProbe = ({ probe, apiKey }) => {
 
 export default function McpPlayground() {
     useMapalabWidgetScript();
-    const [apiKey, setApiKey] = useState(() => {
-        try { return localStorage.getItem(API_KEY_STORAGE_KEY) || ''; } catch { return ''; }
-    });
+    const [apiKey, setApiKey] = useState('');
 
-    const handleApiKeyChange = (value) => {
-        const trimmed = (value || '').trim();
-        setApiKey(trimmed);
-        try {
-            if (trimmed) localStorage.setItem(API_KEY_STORAGE_KEY, trimmed);
-            else localStorage.removeItem(API_KEY_STORAGE_KEY);
-        } catch { /* localStorage no disponible */ }
-    };
+    useEffect(() => {
+        try { localStorage.removeItem(API_KEY_STORAGE_KEY); } catch { return; }
+    }, []);
+
+    const handleApiKeyChange = (value) => setApiKey((value || '').trim());
 
     return (
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
             <Card size="small" title="API key del MCP (requerida para los ejemplos)">
                 <Input.Password
                     placeholder="mk_priv_xxxxx... o mk_pub_xxxxx..."
@@ -509,7 +504,7 @@ export default function McpPlayground() {
                     allowClear
                 />
                 <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 6 }}>
-                    El MCP exige autenticación: la key se envía como <Text code>Authorization: Bearer</Text> en cada llamada de abajo (sin ella responden 401). Usa una key que el MCP acepte: <Text code>mk_priv_</Text> (recomendada) o <Text code>mk_pub_</Text> con dominios <Text code>["*"]</Text>. Para la previsualización embebida del mapa se necesita una <Text code>mk_pub_</Text>. Genera o rota una en <Link to="/mapalab/api-keys">Llaves del visor MapaLab</Link>. La key se guarda en <Text code>localStorage</Text> de este navegador.
+                    El MCP exige autenticación: la key se envía como <Text code>Authorization: Bearer</Text> en cada llamada de abajo (sin ella responden 401). Usa una key que el MCP acepte: <Text code>mk_priv_</Text> (recomendada) o <Text code>mk_pub_</Text> con dominios <Text code>["*"]</Text>. Para la previsualización embebida del mapa se necesita una <Text code>mk_pub_</Text>. Genera o rota una en <Link to="/mapalab/api-keys">Llaves del visor MapaLab</Link>. La key no se guarda: se descarta al salir de esta página.
                 </Text>
             </Card>
 

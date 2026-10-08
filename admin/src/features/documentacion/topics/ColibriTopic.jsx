@@ -16,7 +16,7 @@ const ATRIBUTOS = [
     { campo: 'source-app', desc: 'Requerido. Slug del huésped registrado en /colibri/source-apps.' },
     { campo: 'api-key', desc: 'Requerido. Key pública ck_pub_*.' },
     { campo: 'tipos', desc: 'CSV. Subset de tipos permitidos (default: todos los activos).' },
-    { campo: 'theme', desc: 'light · dark · auto (default auto).' },
+    { campo: 'privacy-url', desc: 'Aviso de privacidad del huésped. Si viene, el formulario pide aceptarlo antes de enviar.' },
     { campo: 'endpoint', desc: 'Se deriva del origen del <script> automáticamente; solo override para desarrollo.' },
 ];
 
@@ -24,7 +24,7 @@ const JS_API = [
     { campo: 'identify(user)', desc: 'Asocia el usuario logueado ({ id, email, name, role }) a los reportes siguientes.' },
     { campo: 'setContext(k, v)', desc: 'Adjunta datos de negocio a source_context.custom (ej. envioId, sourceRoute).' },
     { campo: 'clearContext()', desc: 'Limpia el contexto acumulado.' },
-    { campo: 'openPanel(opts)', desc: 'Abre el panel desde un botón propio. opts: { sourceApp, apiKey, tipoDefault, tipos }.' },
+    { campo: 'openPanel(opts)', desc: 'Abre el panel desde un botón propio. opts: { sourceApp, apiKey, tipoDefault, tipos, privacyUrl }.' },
 ];
 
 const API_KEY = [
@@ -148,7 +148,7 @@ function Tabla({ titulo, data, columns = CAMPO_COLUMNS, rowKey = 'campo' }) {
 
 
 const widgetTab = (
-    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+    <Space orientation="vertical" size="large" style={{ width: '100%' }}>
         <Tabla titulo="3 modos de integración" data={MODOS} columns={MODO_COLUMNS} rowKey="que" />
         <Card size="small" title="Snippet mínimo">
             <CodeBlock code={SNIPPET_WIDGET} />
@@ -162,7 +162,7 @@ const widgetTab = (
 );
 
 const reactTab = (
-    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+    <Space orientation="vertical" size="large" style={{ width: '100%' }}>
         <Text type="secondary" style={{ fontSize: 12 }}>
             Para huéspedes React del ecosistema (mapalab, sieej). Un componente que dispara el panel con{' '}
             <Text code>openPanel</Text>, tras identificar al usuario logueado y adjuntar la ruta actual.
@@ -183,7 +183,7 @@ const reactTab = (
 );
 
 const sdkTab = (
-    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+    <Space orientation="vertical" size="large" style={{ width: '100%' }}>
         <Text type="secondary" style={{ fontSize: 12 }}>
             Para reportar sin UI desde un cron, worker o proceso server-side. Paquete npm{' '}
             <Text code>@iieg/colibri-sdk</Text>.
@@ -200,7 +200,7 @@ const sdkTab = (
 );
 
 const sieejTab = (
-    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+    <Space orientation="vertical" size="large" style={{ width: '100%' }}>
         <Text type="secondary" style={{ fontSize: 12 }}>
             Ejemplo real. SIEEJ usa el botón global (ver <Text strong>Patrón React</Text>) y, además, una{' '}
             <strong>solicitud de reapertura</strong> desde cada formulario enviado: abre el panel acotado al tipo{' '}
@@ -216,7 +216,7 @@ const sieejTab = (
 
 export default function ColibriTopic({ showHeader = true }) {
     return (
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="large" style={{ width: '100%' }}>
             {showHeader && (
                 <div>
                     <Title level={3} style={{ marginBottom: 4 }}>

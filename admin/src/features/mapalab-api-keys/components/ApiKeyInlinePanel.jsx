@@ -2,6 +2,7 @@ import { Tabs } from 'antd';
 import ApiKeyAuditoriaTab from '@features/mapalab-api-keys/components/ApiKeyAuditoriaTab';
 import ApiKeyEditorForm from '@features/mapalab-api-keys/components/ApiKeyEditorForm';
 import ApiKeyPlaygroundTab from '@features/mapalab-api-keys/components/ApiKeyPlaygroundTab';
+import ApiKeyUsoTab from '@features/mapalab-api-keys/components/ApiKeyUsoTab';
 
 
 export default function ApiKeyInlinePanel({
@@ -39,6 +40,11 @@ export default function ApiKeyInlinePanel({
                         key: 'playground',
                         label: 'Armar y previsualizar mapas',
                         children: <ApiKeyPlaygroundTab apiKey={apiKey} initialPlainKey={initialPlainKey} />,
+                    },
+                    {
+                        key: 'uso',
+                        label: 'Uso',
+                        children: <ApiKeyUsoTab apiKey={apiKey} />,
                     },
                     {
                         key: 'auditoria',

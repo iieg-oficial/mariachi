@@ -1,6 +1,6 @@
 [project]
 name = "mariachi-api"
-version = "1.126.2"
+version = "2.150.1"
 description = "Mariachi — backend API del ecosistema IIEG (admin, MapaLab, SIEEJ)."
 authors = [{name = "Edgar Alejandro Villarreal Padilla", email = "edgar.villarreal@iieg.gob.mx"}]
 requires-python = ">=3.12"
@@ -43,7 +43,7 @@ requires = ["setuptools>=65"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-include = ["app*"]
+include = ["app*", "minerva_sdk*"]
 exclude = ["alembic*", "scripts*", "tests*"]
 
 [tool.pytest.ini_options]

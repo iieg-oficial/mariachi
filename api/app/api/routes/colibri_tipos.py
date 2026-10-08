@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db, require_role, verify_csrf
+from app.api.deps import get_db, require_permission, verify_csrf
 from app.core.time import utcnow
 from app.models.reporte import Reporte
 from app.models.reporte_tipo import ReporteTipo
@@ -41,7 +41,7 @@ async def crear_tipo(
     payload: ReporteTipoCreate,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
-    __: Usuario = Depends(require_role(["tetlamamakani"])),
+    __: Usuario = Depends(require_permission("mariachi.colibri_config.manage")),
 ):
     if db.query(ReporteTipo).filter(ReporteTipo.slug == payload.slug).first():
         raise HTTPException(
@@ -76,7 +76,7 @@ async def actualizar_tipo(
     payload: ReporteTipoUpdate,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
-    __: Usuario = Depends(require_role(["tetlamamakani"])),
+    __: Usuario = Depends(require_permission("mariachi.colibri_config.manage")),
 ):
     tipo = db.query(ReporteTipo).filter(ReporteTipo.id == tipo_id).first()
     if not tipo:
@@ -108,7 +108,7 @@ async def eliminar_tipo(
     tipo_id: int,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
-    __: Usuario = Depends(require_role(["tetlamamakani"])),
+    __: Usuario = Depends(require_permission("mariachi.colibri_config.manage")),
 ):
     tipo = db.query(ReporteTipo).filter(ReporteTipo.id == tipo_id).first()
     if not tipo:
@@ -141,7 +141,7 @@ async def reordenar_tipos(
     payload: ReporteTipoReorderRequest,
     db: Session = Depends(get_db),
     _: Usuario = Depends(verify_csrf),
-    __: Usuario = Depends(require_role(["tetlamamakani"])),
+    __: Usuario = Depends(require_permission("mariachi.colibri_config.manage")),
 ):
     ids = [item.id for item in payload.items]
     rows = db.query(ReporteTipo).filter(ReporteTipo.id.in_(ids)).all()

@@ -26,6 +26,7 @@ class Workspace(DataEngineBase):
     geoserver_workspace = Column(String(200), nullable=False)
     db_schema = Column(String(200), nullable=False)
     label = Column(String(200))
+    legend_version = Column(Integer, nullable=False, server_default=text("1"))
     created_at = Column(DateTime(timezone=True), server_default=text("NOW()"), nullable=False)
 
 
@@ -56,6 +57,7 @@ class Layer(DataEngineBase):
 
     hidden_in_menu = Column(Boolean, server_default=text("FALSE"), nullable=False)
     disabled = Column(Boolean, server_default=text("FALSE"), nullable=False)
+    privada = Column(Boolean, server_default=text("FALSE"), nullable=False)
 
     workspace_alias = Column(
         String(50),
@@ -104,6 +106,7 @@ class Layer(DataEngineBase):
     badge = Column(JSONB, nullable=True)
     highlight_color = Column(String(20), nullable=True)
     highlight_shape = Column(String(20), nullable=True)
+    geometry_type = Column(String(20), nullable=True)
 
     created_at = Column(DateTime(timezone=True), server_default=text("NOW()"), nullable=False)
     updated_at = Column(

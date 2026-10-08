@@ -7,19 +7,28 @@ precedencia sobre las dinamicas porque se incluyen primero en
 """
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Query,
+    Response,
+    UploadFile,
+    status,
+)
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, verify_csrf
+from app.api.deps import get_current_user, require_permission, verify_csrf
+from app.api.routes.formularios.envios import envio_response
 from app.core.database import get_db
 from app.core.time import utcnow
 from app.models.user import Usuario
 from app.schemas.sieej.envio import (
-    CambioRef,
     EnvioActualizarCampos,
     EnvioHistorialItem,
     EnvioResponse,
-    EnvioUpdate,
     EnvioUploadResponse,
     MisEnviosDetalle,
 )
@@ -34,19 +43,8 @@ from app.services.sieej.pdf_service import render_envio_pdf
 
 router = APIRouter()
 
-
-def _envio_response(formulario, envio) -> EnvioResponse | None:
-    """Serializa el envio agregando el estado de cambios de version."""
-    if envio is None:
-        return None
-    info = EnviosService.info_cambios(formulario, envio)
-    return EnvioResponse.model_validate(envio).model_copy(
-        update={
-            "actualizacion_disponible": info["actualizacion_disponible"],
-            "cambios_preview": [CambioRef(**c) for c in info["cambios_preview"]],
-            "cambios_aplicados": [CambioRef(**c) for c in info["cambios_aplicados"]],
-        }
-    )
+_corregir = [Depends(require_permission("mariachi.sieej_envios.update"))]
+_borrar = [Depends(require_permission("mariachi.sieej_envios.delete"))]
 
 
 @router.get("/", response_model=list[FormularioListItem])
@@ -105,7 +103,9 @@ async def obtener_mi_envio(
     )
 
 
-@router.delete("/mis-envios/{envio_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/mis-envios/{envio_id}", status_code=status.HTTP_204_NO_CONTENT, dependencies=_borrar
+)
 async def eliminar_mi_envio(
     envio_id: int,
     db: Session = Depends(get_db),
@@ -153,7 +153,7 @@ async def descargar_mi_envio_pdf(
 
 
 @router.put(
-    "/mis-envios/{envio_id}/actualizar-campos", response_model=EnvioResponse
+    "/mis-envios/{envio_id}/actualizar-campos", response_model=EnvioResponse, dependencies=_corregir
 )
 async def actualizar_campos_mi_envio(
     envio_id: int,
@@ -169,12 +169,13 @@ async def actualizar_campos_mi_envio(
     """
     service = EnviosService(db)
     envio = service.actualizar_campos(current_user, envio_id, body.campos)
-    return _envio_response(envio.formulario, envio)
+    return envio_response(envio.formulario, envio, db, current_user)
 
 
 @router.post(
     "/mis-envios/{envio_id}/actualizar-archivo",
     response_model=EnvioUploadResponse,
+    dependencies=_corregir,
 )
 async def actualizar_archivo_mi_envio(
     envio_id: int,
@@ -218,6 +219,7 @@ async def obtener_mi_envio_historial(
 @router.get("/{slug}", response_model=FormularioDetalle)
 async def obtener_formulario(
     slug: str,
+    grupo_id: int | None = Query(None),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
@@ -227,7 +229,9 @@ async def obtener_formulario(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Formulario no encontrado o no asignado",
         )
-    envio = EnviosService(db).get_o_iniciar(formulario, current_user, crear_si_falta=False)
+    envio = EnviosService(db).get_o_iniciar(
+        formulario, current_user, crear_si_falta=False, grupo_id=grupo_id
+    )
     periodico = bool(formulario.periodicidad)
     abierto = True
     ventana_apertura = ventana_cierre = proxima_apertura = None
@@ -251,7 +255,7 @@ async def obtener_formulario(
         vigencia_fin=formulario.vigencia_fin,
         version=formulario.version,
         definicion=envio.definicion_snapshot if envio else formulario.definicion,
-        envio=_envio_response(formulario, envio),
+        envio=envio_response(formulario, envio, db, current_user),
         periodico=periodico,
         abierto=abierto,
         ventana_apertura=ventana_apertura,
@@ -263,6 +267,7 @@ async def obtener_formulario(
 @router.get("/{slug}/schema")
 async def obtener_schema(
     slug: str,
+    grupo_id: int | None = Query(None),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
@@ -273,7 +278,9 @@ async def obtener_schema(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Formulario no encontrado o no asignado",
         )
-    envio = EnviosService(db).get_o_iniciar(formulario, current_user, crear_si_falta=False)
+    envio = EnviosService(db).get_o_iniciar(
+        formulario, current_user, crear_si_falta=False, grupo_id=grupo_id
+    )
     definicion = normalizar_definicion(
         envio.definicion_snapshot if envio else formulario.definicion
     )
@@ -281,94 +288,3 @@ async def obtener_schema(
         "definicion": definicion,
         "validation_rules": definicion_to_validation_rules(definicion),
     }
-
-
-@router.get("/{slug}/envio", response_model=EnvioResponse)
-async def obtener_envio(
-    slug: str,
-    db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user),
-):
-    formulario = FormulariosDinamicosService(db).get_by_slug_visible(slug, current_user)
-    if formulario is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Formulario no encontrado o no asignado",
-        )
-    envio = EnviosService(db).get_o_iniciar(formulario, current_user)
-    return _envio_response(formulario, envio)
-
-
-@router.put("/{slug}/envio", response_model=EnvioResponse)
-async def actualizar_envio(
-    slug: str,
-    body: EnvioUpdate,
-    db: Session = Depends(get_db),
-    current_user: Usuario = Depends(verify_csrf),
-):
-    formulario = FormulariosDinamicosService(db).get_by_slug_visible(
-        slug, current_user, include_inactive=True
-    )
-    if formulario is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Formulario no encontrado o no asignado",
-        )
-    envio = EnviosService(db).actualizar(
-        formulario,
-        current_user,
-        datos=body.datos,
-        paso_actual=body.paso_actual,
-        enviar=body.enviar,
-        cambios_vistos=body.cambios_vistos,
-    )
-    return _envio_response(formulario, envio)
-
-
-@router.post("/{slug}/envio/actualizar-version", response_model=EnvioResponse)
-async def actualizar_version_envio(
-    slug: str,
-    db: Session = Depends(get_db),
-    current_user: Usuario = Depends(verify_csrf),
-):
-    """Aplica la definicion vigente al envio en proceso del respondent.
-
-    Conserva las respuestas capturadas y persiste el diff en
-    `cambios_pendientes` para marcar en el sider/paso/campo que cambio.
-    """
-    formulario = FormulariosDinamicosService(db).get_by_slug_visible(
-        slug, current_user, include_inactive=True
-    )
-    if formulario is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Formulario no encontrado o no asignado",
-        )
-    envio = EnviosService(db).actualizar_version(formulario, current_user)
-    return _envio_response(formulario, envio)
-
-
-@router.post("/{slug}/envio/upload", response_model=EnvioUploadResponse)
-async def subir_archivo(
-    slug: str,
-    field_path: str = Form(...),
-    file: UploadFile = File(...),
-    db: Session = Depends(get_db),
-    current_user: Usuario = Depends(verify_csrf),
-):
-    formulario = FormulariosDinamicosService(db).get_by_slug_visible(slug, current_user)
-    if formulario is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Formulario no encontrado o no asignado",
-        )
-    archivo = await EnviosService(db).upload_archivo(
-        formulario, current_user, field_path, file
-    )
-    return EnvioUploadResponse(
-        field_path=archivo.field_path,
-        url_publica=archivo.url_publica or "",
-        filename_original=archivo.filename_original,
-        mime=archivo.mime,
-        size_bytes=archivo.size_bytes,
-    )

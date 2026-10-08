@@ -3,6 +3,7 @@ import logging
 import httpx
 
 from app.core.settings import get_settings
+from app.models.mapalab_infobox_propuesta import MapalabInfoboxPropuesta
 from app.models.reporte import Reporte
 
 logger = logging.getLogger(__name__)
@@ -66,7 +67,7 @@ def notify_new_reporte(reporte: Reporte) -> None:
     }
     if reporte.email_contacto:
         embed["fields"].append(
-            {"name": "Contacto", "value": reporte.email_contacto, "inline": True}
+            {"name": "Contacto", "value": "Dejó correo; está en el panel", "inline": True}
         )
 
     try:
@@ -74,3 +75,33 @@ def notify_new_reporte(reporte: Reporte) -> None:
             client.post(webhook, json={"embeds": [embed]})
     except httpx.HTTPError:
         logger.exception("discord_notifier.failed reporte_id=%s", reporte.id)
+
+
+def notify_infobox_propuesta(propuesta: MapalabInfoboxPropuesta) -> None:
+    webhook = _resolve_webhook("mapalab")
+    if not webhook:
+        logger.warning(
+            "discord_notifier.no_webhook propuesta_id=%s (define DISCORD_WEBHOOK_MAPALAB)",
+            propuesta.id,
+        )
+        return
+
+    embed = {
+        "title": "Nueva propuesta de tarjeta",
+        "color": 0xFF8300,
+        "fields": [
+            {"name": "Capa", "value": propuesta.capa_slug, "inline": True},
+            {"name": "Comentario", "value": _truncate(propuesta.comentario, 500), "inline": False},
+        ],
+        "footer": {"text": f"Propuesta #{propuesta.id} · se revisa en /mapalab/infobox-propuestas"},
+    }
+    if propuesta.email:
+        embed["fields"].append(
+            {"name": "Contacto", "value": "Dejó correo; está en el panel", "inline": True}
+        )
+
+    try:
+        with httpx.Client(timeout=5.0) as client:
+            client.post(webhook, json={"embeds": [embed]})
+    except httpx.HTTPError:
+        logger.exception("discord_notifier.failed propuesta_id=%s", propuesta.id)

@@ -7,7 +7,7 @@ from urllib.parse import quote, unquote
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, require_project_access, verify_csrf
+from app.api.deps import get_current_user, has_permission, verify_csrf
 from app.api.rate_limit import rate_limit
 from app.core.database import get_dataengine_db, get_db
 from app.models.user import Usuario
@@ -38,10 +38,12 @@ def _resolve_spec(resource: str) -> GridSpec:
 
 
 async def _authorize(spec: GridSpec, current_user: Usuario, db: Session) -> None:
-    if not spec.project_slug:
+    if not spec.permission:
         return
-    checker = require_project_access(spec.project_slug, min_role=spec.min_role)
-    await checker(current_user=current_user, db=db)
+    if not has_permission(current_user, spec.permission):
+        raise HTTPException(
+            status_code=403, detail=f"Requiere permiso: {spec.permission}"
+        )
 
 
 def _session(spec: GridSpec):

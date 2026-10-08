@@ -1,19 +1,22 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Alert, Descriptions, Drawer, Empty, List, Segmented, Skeleton, Space, Table, Tag, Typography } from 'antd';
 import { message } from '@shared/services/message';
 import { formulariosApi } from '../services/formulariosAdminApi';
-import { buildRespuestas, diffDefiniciones } from './snapshotUtils';
+import { autoriaDesdeHistorial, buildRespuestas, diffDefiniciones } from './snapshotUtils';
 import { SeccionContenido } from './RespuestasView';
+import CapturaPorPersona from './CapturaPorPersona';
+import EnvioAuditoriaTab from './EnvioAuditoriaTab';
+import EnvioTimeline from './EnvioTimeline';
 
 const ESTADO_COLOR = { en_proceso: 'orange', enviado: 'green', expirado: 'red' };
 const ESTADO_LABEL = { en_proceso: 'En proceso', enviado: 'Enviado', expirado: 'Expirado' };
 const fmt = (v) => (v ? new Date(v).toLocaleString() : '—');
 
-function Respuestas({ definicion, datos }) {
-    const secciones = buildRespuestas(definicion, datos);
+function Respuestas({ definicion, datos, autoria }) {
+    const secciones = buildRespuestas(definicion, datos, autoria);
     if (!secciones.length) return <Empty description="Sin respuestas" />;
     return (
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="large" style={{ width: '100%' }}>
             {secciones.map((sec) => (
                 <div key={sec.id}>
                     <Typography.Title level={5} style={{ marginBottom: 8 }}>{sec.title}</Typography.Title>
@@ -28,11 +31,11 @@ function CambiosVersion({ snapshot, actual, versionEnvio, versionActual }) {
     const { agregados, eliminados, modificados } = diffDefiniciones(snapshot, actual);
     const total = agregados.length + eliminados.length + modificados.length;
     return (
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
             <Alert
                 type="info"
                 showIcon
-                message={`Este envío se llenó con la v${versionEnvio}. El formulario va en la v${versionActual}.`}
+                title={`Este envío se llenó con la v${versionEnvio}. El formulario va en la v${versionActual}.`}
                 description={total === 0
                     ? 'No hay diferencias de campos entre ambas versiones.'
                     : 'Estos son los cambios de la definición desde que esta persona respondió.'}
@@ -68,7 +71,7 @@ function CambiosVersion({ snapshot, actual, versionEnvio, versionActual }) {
                     dataSource={modificados}
                     renderItem={(f) => (
                         <List.Item>
-                            <Space direction="vertical" size={0}>
+                            <Space orientation="vertical" size={0}>
                                 <Space><Tag color="orange">Modificado</Tag>{f.stepTitle} · {f.label}</Space>
                                 <Typography.Text type="secondary" style={{ fontSize: 12 }}>{f.cambios.join(' · ')}</Typography.Text>
                             </Space>
@@ -84,24 +87,40 @@ export default function EnvioDetalleDrawer({ formulario, envio, open, onClose })
     const [detalle, setDetalle] = useState(null);
     const [loading, setLoading] = useState(false);
     const [vista, setVista] = useState('respuestas');
+    const [historial, setHistorial] = useState([]);
+    const [eventos, setEventos] = useState([]);
 
     useEffect(() => {
         if (!open || !envio) return undefined;
         let vivo = true;
         setLoading(true);
         setVista('respuestas');
+        setHistorial([]);
+        setEventos([]);
         formulariosApi.getEnvio(formulario.id, envio.id)
             .then((data) => { if (vivo) setDetalle(data); })
             .catch(() => { if (vivo) message.error('Error al cargar el envío'); })
             .finally(() => { if (vivo) setLoading(false); });
+        Promise.all([
+            formulariosApi.historialEnvio(formulario.id, envio.id).catch(() => []),
+            formulariosApi.eventosEnvio(formulario.id, envio.id).catch(() => []),
+        ]).then(([hist, evs]) => {
+            if (!vivo) return;
+            setHistorial(hist);
+            setEventos(evs);
+        });
         return () => { vivo = false; };
     }, [open, envio, formulario.id]);
+
+    const autoria = useMemo(() => autoriaDesdeHistorial(historial), [historial]);
 
     const desactualizado = detalle && detalle.formulario_version < formulario.version;
 
     const opciones = [
         { value: 'respuestas', label: 'Respuestas' },
         ...(desactualizado ? [{ value: 'cambios', label: 'Cambios de versión' }] : []),
+        { value: 'auditoria', label: 'Auditoría' },
+        { value: 'actividad', label: 'Actividad' },
         { value: 'json', label: 'JSON' },
     ];
 
@@ -112,12 +131,12 @@ export default function EnvioDetalleDrawer({ formulario, envio, open, onClose })
             open={open}
             onClose={onClose}
             title={envio ? `Envío #${envio.id}${envio.usuario_nombre ? ` — ${envio.usuario_nombre}` : ''}` : ''}
-            width={Math.min(760, window.innerWidth)}
+            size={Math.min(760, window.innerWidth)}
         >
             {loading || !detalle ? (
                 <Skeleton active paragraph={{ rows: 8 }} />
             ) : (
-                <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
                     <Descriptions size="small" column={1} bordered items={[
                         { key: 'estado', label: 'Estado', children: <Tag color={ESTADO_COLOR[detalle.estado]}>{ESTADO_LABEL[detalle.estado] || detalle.estado}</Tag> },
                         {
@@ -135,11 +154,19 @@ export default function EnvioDetalleDrawer({ formulario, envio, open, onClose })
                         { key: 'actualizado', label: 'Actualizado', children: fmt(detalle.actualizado_en) },
                     ]} />
 
+                    {detalle.grupo_id && <CapturaPorPersona autoria={autoria} />}
+
                     <Segmented value={vista} onChange={setVista} options={opciones} block />
 
                     {vista === 'respuestas' && (
-                        <Respuestas definicion={detalle.definicion_snapshot} datos={detalle.datos} />
+                        <Respuestas
+                            definicion={detalle.definicion_snapshot}
+                            datos={detalle.datos}
+                            autoria={autoria}
+                        />
                     )}
+                    {vista === 'auditoria' && <EnvioAuditoriaTab historial={historial} />}
+                    {vista === 'actividad' && <EnvioTimeline eventos={eventos} />}
                     {vista === 'cambios' && desactualizado && (
                         <CambiosVersion
                             snapshot={detalle.definicion_snapshot}

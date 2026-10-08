@@ -31,22 +31,41 @@ dataengine_url() {
     printf '%s' "$url"
 }
 
+pick_respaldo() {
+    local dir=$1 nombre=$2 archivos elegido
+    mapfile -t archivos < <(ls -1t "$dir/$nombre"-*.json.gz 2>/dev/null | head -20)
+    if [ ${#archivos[@]} -eq 0 ]; then
+        printf '  %sNo hay respaldos en %s%s\n\n' "$C_YELLOW" "$dir" "$C_RESET" >&2
+        return 1
+    fi
+    elegido=$(pick 'Respaldo a restaurar' "${archivos[@]}")
+    if [ -z "$elegido" ]; then
+        printf '  %sNo se selecciono ningun archivo.%s\n\n' "$C_YELLOW" "$C_RESET" >&2
+        return 1
+    fi
+    printf '%s\n' "$elegido"
+}
+
 cron_install() {
     local dir
     dir=$(pwd)
     mkdir -p "$dir/backups"
     {
-        crontab -l 2>/dev/null | grep -v 'mariachi-backup' | grep -v 'mariachi-stats' || true
+        crontab -l 2>/dev/null | grep -v 'mariachi-backup' | grep -v 'mariachi-stats' | grep -v 'mariachi-vine' || true
         echo "0 3 * * * cd $dir && make backup-db >> $dir/backups/backup.log 2>&1 # mariachi-backup"
+        echo "10 3 * * * cd $dir && make backup-llaves >> $dir/backups/backup.log 2>&1 # mariachi-backup-llaves"
+        echo "20 3 * * * cd $dir && make backup-telemetria-intranet >> $dir/backups/backup.log 2>&1 # mariachi-backup-telemetria"
         echo "*/30 * * * * cd $dir && make refresh-mapalab-stats >> $dir/backups/mapalab-stats.log 2>&1 # mariachi-stats-refresh"
+        echo "*/10 * * * * cd $dir && make sync-vine >> $dir/backups/vine-sync.log 2>&1 # mariachi-vine-sync"
+        echo "30 3 * * * cd $dir && make conciliar-vine >> $dir/backups/vine-conciliar.log 2>&1 # mariachi-vine-conciliar"
     } | crontab -
-    row 'Cron' 'instalado' "$C_GREEN" 'respaldo 03:00 y stats cada 30 min'
-    crontab -l | grep -E 'mariachi-(backup|stats)' | while IFS= read -r line; do
+    row 'Cron' 'instalado' "$C_GREEN" 'respaldos 03:00 a 03:20, stats cada 30 min, vine cada 10 y conciliación 03:30'
+    crontab -l | grep -E 'mariachi-(backup|stats|vine)' | while IFS= read -r line; do
         printf '         %s\n' "$line"
     done || true
 }
 
 cron_remove() {
-    { crontab -l 2>/dev/null | grep -v 'mariachi-backup' | grep -v 'mariachi-stats' || true; } | crontab -
+    { crontab -l 2>/dev/null | grep -v 'mariachi-backup' | grep -v 'mariachi-stats' | grep -v 'mariachi-vine' || true; } | crontab -
     row 'Cron' 'desinstalado' "$C_GREEN"
 }

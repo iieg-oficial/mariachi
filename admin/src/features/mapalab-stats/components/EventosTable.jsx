@@ -1,12 +1,25 @@
-import { Card, Empty, Table, Typography } from 'antd';
+import { Card, Empty, Table, Tag, Tooltip, Typography } from 'antd';
 
 const { Text } = Typography;
+
+const NO_APLICA = '—';
+
+const soloCompleto = (valor, row) => (row.modo === 'lite' ? <Text type="secondary">{NO_APLICA}</Text> : valor);
+
+const numerica = (title, key, render) => ({
+    title,
+    dataIndex: key,
+    key,
+    align: 'right',
+    sorter: (a, b) => (a[key] ?? 0) - (b[key] ?? 0),
+    ...(render ? { render } : {}),
+});
 
 const EventosTable = ({ rows = [], loading }) => {
     if (!loading && rows.length === 0) {
         return (
-            <Card title="Eventos más abiertos" size="small">
-                <Empty description="Sin datos aún. Abrir un evento en el visor cuenta como una apertura." />
+            <Card title="Eventos" size="small">
+                <Empty description="Sin datos aún. Abrir un evento o un dato curioso en el visor cuenta como uso." />
             </Card>
         );
     }
@@ -24,15 +37,22 @@ const EventosTable = ({ rows = [], loading }) => {
                 </div>
             ),
         },
-        { title: 'Aperturas', dataIndex: 'opens', key: 'opens', width: 110, align: 'right',
-            sorter: (a, b) => a.opens - b.opens, defaultSortOrder: 'descend' },
-        { title: 'Cierres', dataIndex: 'closes', key: 'closes', width: 90, align: 'right' },
-        { title: 'Sesiones únicas', dataIndex: 'uniqueSessions', key: 'uniqueSessions', width: 130, align: 'right',
-            sorter: (a, b) => a.uniqueSessions - b.uniqueSessions },
+        {
+            title: 'Modo',
+            dataIndex: 'modo',
+            key: 'modo',
+            render: (modo) => (modo ? <Tag>{modo === 'lite' ? 'Lite' : 'Completo'}</Tag> : null),
+        },
+        numerica('Aperturas', 'opens', soloCompleto),
+        numerica('Datos curiosos', 'funFacts'),
+        numerica(<Tooltip title="Clics a «Volver» después de que el águila llevó a un dato curioso">Regresos</Tooltip>, 'returns'),
+        numerica('Centrar', 'centers', soloCompleto),
+        numerica('Compartir', 'shares', soloCompleto),
+        numerica(<Tooltip title="Visitas distintas al visor en el periodo. Se cuentan sobre los eventos de los últimos 90 días; más atrás se suman por día.">Sesiones</Tooltip>, 'uniqueSessions'),
     ];
 
     return (
-        <Card title="Eventos más abiertos" size="small">
+        <Card title="Eventos" size="small">
             <Table
                 rowKey="eventoId"
                 size="small"

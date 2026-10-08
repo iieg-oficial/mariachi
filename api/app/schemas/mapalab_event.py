@@ -54,6 +54,16 @@ ALLOWED_EVENT_NAMES = frozenset({
     "municipio_mode_exit",
     "municipio_mode_change",
     "municipio_panel_open",
+    "view3d",
+    "minimapa",
+    "north_reset",
+    "tabla_open",
+    "tabla_filter",
+    "tabla_download",
+    "stats_open",
+    "stats_custom_create",
+    "stats_detach",
+    "colibri_open",
     "evento_fun_fact",
     "evento_fun_volver",
     "catalogo_open",
@@ -143,7 +153,9 @@ class EventoStatRow(CamelCaseOutput):
     fun_facts: int
     centers: int
     shares: int
+    returns: int = 0
     unique_sessions: int
+    modo: str | None = None
     last_seen: datetime | None = None
 
 
@@ -196,24 +208,6 @@ class SessionsPage(CamelCaseOutput):
     total: int
     page: int
     page_size: int
-
-
-class HighlightLayer(CamelCaseOutput):
-    layer_id: str
-    label: str | None = None
-    activations: int
-
-
-class HighlightTool(CamelCaseOutput):
-    tool: str
-    uses: int
-
-
-class StatsHighlights(CamelCaseOutput):
-    sessions_30d: int
-    avg_duration_sec: int
-    top_layer: HighlightLayer | None = None
-    top_tool: HighlightTool | None = None
 
 
 class ThemeStatRow(CamelCaseOutput):

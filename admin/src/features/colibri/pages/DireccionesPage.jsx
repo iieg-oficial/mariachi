@@ -114,7 +114,7 @@ export default function DireccionesPage() {
             dataIndex: 'emailContacto',
             responsive: ['lg'],
             render: (email, record) => (
-                <Space direction="vertical" size={0}>
+                <Space orientation="vertical" size={0}>
                     {record.responsableNombre && <Text>{record.responsableNombre}</Text>}
                     {email ? <Text copyable type="secondary" style={{ fontSize: 12 }}>{email}</Text> : <Text type="secondary">—</Text>}
                 </Space>
@@ -156,7 +156,7 @@ export default function DireccionesPage() {
 
     return (
         <Content style={{ padding: isMobile ? 12 : 24, maxWidth: 1280, margin: '0 auto', width: '100%' }}>
-            <Space direction="vertical" size="large" style={{ width: '100%' }}>
+            <Space orientation="vertical" size="large" style={{ width: '100%' }}>
                 <div>
                     <Title level={isMobile ? 4 : 3} style={{ marginBottom: 4 }}>Direcciones organizacionales</Title>
                     <Text type="secondary">
@@ -164,7 +164,7 @@ export default function DireccionesPage() {
                     </Text>
                 </div>
 
-                {error && <Alert type="error" message={error} showIcon closable />}
+                {error && <Alert type="error" title={error} showIcon closable />}
 
                 <Card>
                     <Space style={{ marginBottom: 16 }}>
@@ -193,7 +193,7 @@ export default function DireccionesPage() {
             <Drawer
                 title={editing ? `Editar: ${editing.nombre}` : 'Nueva dirección'}
                 open={drawerOpen}
-                width={isMobile ? '100%' : 480}
+                size={isMobile ? '100%' : 480}
                 onClose={() => setDrawerOpen(false)}
                 destroyOnClose
                 extra={

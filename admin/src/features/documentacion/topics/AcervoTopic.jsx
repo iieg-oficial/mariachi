@@ -151,7 +151,7 @@ const data = await res.json();`;
 }`;
 
     const usoTab = (
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="large" style={{ width: '100%' }}>
             <TablaSeccion titulo="Navegación y búsqueda" data={NAV} />
             <TablaSeccion titulo="Subir archivos" data={UPLOAD} />
             <TablaSeccion titulo="Acciones sobre un archivo" data={ACTIONS} />
@@ -160,7 +160,7 @@ const data = await res.json();`;
     );
 
     const miniaturasTab = (
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="large" style={{ width: '100%' }}>
             <div>
                 <Paragraph type="secondary" style={{ marginTop: 0, marginBottom: 8, fontSize: 12 }}>
                     Las miniaturas (PNG/JPG/WebP/GIF) se generan al vuelo en formato WebP y se cachean; el SVG se muestra tal cual. La galería ya no descarga el archivo completo para mostrar la tarjeta.
@@ -197,7 +197,7 @@ const data = await res.json();`;
     );
 
     const subidaExternaTab = (
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="large" style={{ width: '100%' }}>
             <Paragraph type="secondary" style={{ margin: 0, fontSize: 12 }}>
                 Endpoint interno <Text code>POST {UPLOAD_PATH}</Text> para que una plataforma externa (el <strong>Portal</strong>) suba archivos al bucket <Text code>portal</Text> sin sesión de Mariachi. <strong>Solo sube</strong>: el borrado, la edición y la vista se hacen desde el Acervo de Mariachi. Se autentica con el header <Text code>X-Internal-Token</Text> (valor de <Text code>ACERVO_INTERNAL_TOKEN</Text> en mariachi-api); no usa lista de IPs.
             </Paragraph>
@@ -230,7 +230,7 @@ const data = await res.json();`;
     );
 
     return (
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="large" style={{ width: '100%' }}>
             {showHeader && (
                 <div>
                     <Title level={3} style={{ marginBottom: 4 }}>Acervo</Title>

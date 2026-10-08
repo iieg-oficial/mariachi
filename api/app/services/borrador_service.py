@@ -11,6 +11,7 @@ from app.models.borrador import Borrador
 from app.models.evento import Evento
 from app.models.home_section import HomeSection
 from app.models.layer import Layer, Workspace
+from app.models.layer_metadata import LayerMetadata, LayerStats
 from app.schemas.evento import EventoUpdate
 from app.schemas.home_section import SECTION_SCHEMAS
 from app.schemas.layer import LayerCreate, LayerUpdate
@@ -22,6 +23,15 @@ from app.services.sld_generator import (
     build_boundary_sld_xml,
     build_point_sld_xml,
     build_sld_xml,
+)
+from app.services.stats_templates import (
+    StatsTemplateError,
+    bind_layer_fields,
+    execute_stats_batch,
+    load_layer_binding,
+    schemas_permitidos,
+    validar_schemas,
+    validate_stats_config,
 )
 
 ApplyFn = Callable[[Session, Session, Borrador, str], dict]
@@ -160,6 +170,90 @@ def _apply_layer(
         notify_tree_changed()
         return {'action': action, 'layer_id': layer_id}
     except (ValueError, GeoServerError) as exc:
+        dataengine_db.rollback()
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+def _apply_layer_metadata(
+    _db: Session, dataengine_db: Session, borrador: Borrador, approver_email: str,
+) -> dict:
+    """Publica la ficha de un feature type. `resource_id` es el layer_key."""
+    data = borrador.data or {}
+    layer_key = borrador.resource_id or ''
+
+    row = (
+        dataengine_db.query(LayerMetadata)
+        .filter(LayerMetadata.layer_key == layer_key)
+        .first()
+    )
+    if not row:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No hay metadatos para '{layer_key}'",
+        )
+
+    editables = {c.name for c in LayerMetadata.__table__.columns} - {
+        'layer_key', 'updated_by', 'updated_at',
+    }
+    for campo, valor in data.items():
+        if campo in editables:
+            setattr(row, campo, valor)
+    row.updated_by = approver_email
+    row.updated_at = utcnow()
+    dataengine_db.commit()
+    return {'action': 'updated', 'layer_key': layer_key}
+
+
+def _apply_layer_stats(
+    _db: Session, dataengine_db: Session, borrador: Borrador, approver_email: str,
+) -> dict:
+    """Publica la numeralia de un feature type y recalcula sus valores.
+
+    `resource_id` es el layer_key (`workspace:capa`). Guardar la configuracion no
+    recalcula por si sola: sin el refresh el visor seguiria mostrando los valores
+    materializados anteriores.
+    """
+    data = borrador.data or {}
+    layer_key = borrador.resource_id or ''
+
+    row = (
+        dataengine_db.query(LayerStats)
+        .filter(LayerStats.layer_key == layer_key)
+        .first()
+    )
+    if not row:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No hay metadatos para '{layer_key}'; crealos antes de publicar la numeralia",
+        )
+
+    try:
+        if 'stats_config' in data:
+            row.stats_config = validate_stats_config(data['stats_config'])
+            validar_schemas(row.stats_config, schemas_permitidos(dataengine_db.connection()))
+        if 'pie_numeralia' in data:
+            row.pie_numeralia = data['pie_numeralia']
+        if 'ttl_minutes' in data:
+            row.ttl_minutes = data['ttl_minutes']
+        row.updated_by = approver_email
+        row.updated_at = utcnow()
+        dataengine_db.flush()
+
+        errores: list[dict] = []
+        if row.stats_config:
+            binding = load_layer_binding(dataengine_db.connection(), layer_key)
+            valores, errores = execute_stats_batch(
+                dataengine_db.connection(),
+                bind_layer_fields(row.stats_config, binding),
+                schemas=schemas_permitidos(dataengine_db.connection()),
+            )
+            if valores:
+                row.values = valores
+                row.values_refreshed_at = utcnow()
+
+        dataengine_db.commit()
+        return {'action': 'updated', 'layer_key': layer_key, 'errors': errores}
+    except StatsTemplateError as exc:
         dataengine_db.rollback()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
@@ -337,6 +431,8 @@ APPLIERS: dict[str, ApplyFn] = {
     'evento': _apply_evento,
     'home_section': _apply_home_section,
     'layer': _apply_layer,
+    'layer_metadata': _apply_layer_metadata,
+    'layer_stats': _apply_layer_stats,
     'sld': _apply_sld,
 }
 

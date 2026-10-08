@@ -66,7 +66,7 @@ const SymbolSnapshotField = ({ value, onChange, size = 28, placeholder = 'Sin s√
             )}
             {origen === 'catalogo' && <SymbolPicker value={value?.symbolId} onChange={handleSelect} />}
             {origen === 'acervo' && (
-                <Space direction="vertical" style={{ width: '100%' }}>
+                <Space orientation="vertical" style={{ width: '100%' }}>
                     <Button icon={<FileImageOutlined />} onClick={() => setPickerOpen(true)} block>
                         Elegir imagen del Acervo
                     </Button>

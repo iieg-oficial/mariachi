@@ -1,14 +1,21 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Form, Input, Modal, Select, Space, Switch, TreeSelect, Typography } from 'antd';
-import { NODE_TYPE_HELP, NODE_TYPE_OPTIONS, isFieldVisible, isPropertyOfGroup } from '@features/mapalab-layers/constants/nodeTypes';
+import { useEffect, useMemo, useState } from 'react';
+import { Button, Form, Input, Modal, Select, Space, Switch, Tag, Typography } from 'antd';
+import { isFieldVisible, isPropertyOfGroup, PROPERTY_HELP, tipoQueGobierna } from '@features/mapalab-layers/constants/nodeTypes';
 import { findNodeContext } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
+import { useCapasGeoServer } from '@features/mapalab-layers/hooks/useCapasGeoServer';
 import { useAuth } from '@shared/contexts/useAuth';
 import { message } from '@shared/services/message';
-import api from '@shared/services/api';
-import { buildTreeSelectData } from '@features/mapalab-layers/utils/treeSelect';
-import PendingWorkspacesAlert from '@features/sextante/components/PendingWorkspacesAlert';
+import { buildParentOptions, RAIZ, rutaDeNodo } from '@features/mapalab-layers/utils/treeSelect';
+import { capaDelGrupo, hermanosDe, nodoPorId, ordenConNuevo, POSICION_FINAL } from '@features/mapalab-layers/utils/nodoNuevo';
+import InfoIcon from '@features/mapalab-layers/components/layersEditor/InfoIcon';
+import NodeTypeCards from '@features/mapalab-layers/components/layerCreate/NodeTypeCards';
+import GeoServerLayerField from '@features/mapalab-layers/components/layerCreate/GeoServerLayerField';
+import PropertySourceField from '@features/mapalab-layers/components/layerCreate/PropertySourceField';
+import PositionField from '@features/mapalab-layers/components/layerCreate/PositionField';
+import PendingWorkspacesLine from '@features/sextante/components/PendingWorkspacesLine';
 
 const { Text } = Typography;
+const PILDORA = { borderRadius: 20, paddingInline: 24 };
 
 function slugify(text) {
     if (!text) return '';
@@ -21,96 +28,83 @@ function slugify(text) {
         .slice(0, 60);
 }
 
+function nombreDesdeCapa(nombre) {
+    const limpio = (nombre || '').replace(/[_-]+/g, ' ').trim();
+    return limpio ? limpio.charAt(0).toUpperCase() + limpio.slice(1) : '';
+}
+
+const Etiqueta = ({ texto, ayuda }) => (
+    <Space size={6}>
+        <Text style={{ fontSize: 13, fontWeight: 600 }}>{texto}</Text>
+        {ayuda && <InfoIcon title={ayuda} />}
+    </Space>
+);
+
 export default function LayerCreateModal({ open, onClose, onSubmit, treeData = [], defaultParentId = null, defaultNodeType = 'leaf' }) {
     const [form] = Form.useForm();
     const [submitting, setSubmitting] = useState(false);
     const [labelTouched, setLabelTouched] = useState(false);
-    const [idTouched, setIdTouched] = useState(false);
-    const [slugTouched, setSlugTouched] = useState(false);
-    const [availableOnly, setAvailableOnly] = useState(true);
-    const [workspacesData, setWorkspacesData] = useState([]);
-    const [loadingWs, setLoadingWs] = useState(false);
-    const [pendingWorkspaces, setPendingWorkspaces] = useState([]);
-    const [wsReloadKey, setWsReloadKey] = useState(0);
+    const [editandoIds, setEditandoIds] = useState(false);
+    const [cambiandoPadre, setCambiandoPadre] = useState(false);
+    const [geometria, setGeometria] = useState(null);
+    const [filtro, setFiltro] = useState('');
+    const [posicion, setPosicion] = useState(POSICION_FINAL);
     const { user } = useAuth();
     const isAdmin = user?.role === 'tetlamamakani';
     const watchedNodeType = Form.useWatch('node_type', form);
     const watchedLabel = Form.useWatch('label', form);
     const watchedParentId = Form.useWatch('parent_id', form);
-    const watchedGsRef = Form.useWatch('gs_ref', form);
+    const watchedId = Form.useWatch('id', form);
+    const watchedSlug = Form.useWatch('slug', form);
 
-    const parentCtx = watchedParentId ? findNodeContext(treeData, watchedParentId) : null;
-    const parentNodeType = parentCtx?.node?.nodeType ?? null;
+    const padreId = watchedParentId && watchedParentId !== RAIZ ? watchedParentId : null;
+    const parentCtx = padreId ? findNodeContext(treeData, padreId) : null;
+    const parentNodeType = tipoQueGobierna(parentCtx?.node?.nodeType, parentCtx?.parentNodeType) ?? null;
     const willBeProperty = isPropertyOfGroup(watchedNodeType, parentNodeType);
-
-    const treeSelectData = useMemo(() => buildTreeSelectData(treeData), [treeData]);
-
-    useEffect(() => {
-        if (open) {
-            form.setFieldsValue({
-                node_type: defaultNodeType || 'leaf',
-                parent_id: defaultParentId || null,
-                label: '',
-                id: '',
-                slug: '',
-                gs_ref: undefined,
-                hidden_in_menu: false,
-                disabled: false,
-            });
-            setLabelTouched(false);
-            setIdTouched(false);
-            setSlugTouched(false);
-            setAvailableOnly(true);
-        }
-    }, [open, defaultNodeType, defaultParentId, form]);
+    const capaHeredada = willBeProperty ? capaDelGrupo(nodoPorId(treeData, padreId)) : null;
+    const showWorkspace = ['group', 'leaf'].includes(watchedNodeType);
+    const hermanos = useMemo(() => hermanosDe(treeData, padreId), [treeData, padreId]);
+    const opcionesPadre = useMemo(() => ([
+        { value: RAIZ, label: 'Raíz del árbol', tipo: 'Sin padre' },
+        ...buildParentOptions(treeData),
+    ]), [treeData]);
+    const { opciones, pendientes, cargando, recargar } = useCapasGeoServer({ activo: open && showWorkspace && !capaHeredada, isAdmin });
 
     useEffect(() => {
         if (!open) return;
-        if (!['group', 'leaf'].includes(watchedNodeType)) return;
-        let cancelled = false;
-        setLoadingWs(true);
-        api.get('/geoserver/workspaces', { params: availableOnly ? { available_only: true } : {} })
-            .then((res) => { if (!cancelled) setWorkspacesData(res.data || []); })
-            .catch(() => { if (!cancelled) setWorkspacesData([]); })
-            .finally(() => { if (!cancelled) setLoadingWs(false); });
-        return () => { cancelled = true; };
-    }, [open, watchedNodeType, availableOnly, wsReloadKey]);
+        form.setFieldsValue({
+            node_type: defaultNodeType || 'leaf',
+            parent_id: defaultParentId || RAIZ,
+            label: '', id: '', slug: '', gs_ref: undefined,
+            hidden_in_menu: false, disabled: false,
+        });
+        setLabelTouched(false);
+        setEditandoIds(false);
+        setCambiandoPadre(false);
+        setGeometria(null);
+        setFiltro('');
+        setPosicion(POSICION_FINAL);
+    }, [open, defaultNodeType, defaultParentId, form]);
 
     useEffect(() => {
-        if (!open || !isAdmin) return;
-        if (!['group', 'leaf'].includes(watchedNodeType)) return;
-        let cancelled = false;
-        api.get('/geoserver/workspaces/pending')
-            .then((res) => { if (!cancelled) setPendingWorkspaces(res.data || []); })
-            .catch(() => { if (!cancelled) setPendingWorkspaces([]); });
-        return () => { cancelled = true; };
-    }, [open, watchedNodeType, isAdmin, wsReloadKey]);
-
-    const handleWorkspaceRegistered = useCallback(() => {
-        setWsReloadKey((k) => k + 1);
-    }, []);
-
-    const gsOptions = useMemo(() => (
-        (workspacesData || [])
-            .filter((ws) => (ws.layers || []).length > 0)
-            .map((ws) => ({
-                label: ws.label ? `${ws.alias} — ${ws.label}` : ws.alias,
-                title: ws.alias,
-                options: (ws.layers || []).map((name) => ({
-                    value: `${ws.alias}::${name}`,
-                    label: name,
-                })),
-            }))
-    ), [workspacesData]);
+        setPosicion(POSICION_FINAL);
+    }, [padreId]);
 
     useEffect(() => {
-        if (!open || !labelTouched) return;
+        if (!open || editandoIds) return;
         const auto = slugify(watchedLabel);
-        const updates = {};
-        if (!idTouched && auto) updates.id = auto;
-        if (!slugTouched && auto && isFieldVisible('slug', watchedNodeType)) updates.slug = auto;
-        if (Object.keys(updates).length) form.setFieldsValue(updates);
-    }, [watchedLabel, labelTouched, idTouched, slugTouched, watchedNodeType, open, form]);
+        if (!auto) return;
+        const updates = { id: auto };
+        if (isFieldVisible('slug', watchedNodeType)) updates.slug = auto;
+        form.setFieldsValue(updates);
+    }, [watchedLabel, watchedNodeType, editandoIds, open, form]);
+
+    const handleGsChange = (valor) => {
+        form.setFieldsValue({ gs_ref: valor });
+        if (!valor || labelTouched) return;
+        const propuesto = nombreDesdeCapa(valor.split('::')[1]);
+        if (propuesto) form.setFieldsValue({ label: propuesto });
+    };
 
     const handleOk = async () => {
         let values;
@@ -123,21 +117,29 @@ export default function LayerCreateModal({ open, onClose, onSubmit, treeData = [
             id: values.id,
             label: values.label,
             node_type: values.node_type,
-            parent_id: values.parent_id || null,
+            parent_id: padreId,
             slug: values.slug || null,
             sort_order: 9999,
             hidden_in_menu: Boolean(values.hidden_in_menu),
             disabled: Boolean(values.disabled),
         };
-        if (values.gs_ref) {
+        if (capaHeredada) {
+            payload.workspace_alias = capaHeredada.workspaceAlias;
+            payload.geoserver_layer = capaHeredada.geoserverLayer;
+            if (filtro.trim()) payload.cql_filter = filtro.trim();
+        } else if (values.gs_ref) {
             const [alias, layerName] = values.gs_ref.split('::');
             if (alias) payload.workspace_alias = alias;
             if (layerName) payload.geoserver_layer = layerName;
+            if (geometria) payload.geometry_type = geometria;
         }
+        const orden = posicion === POSICION_FINAL
+            ? null
+            : ordenConNuevo(hermanos.map((h) => h.key), values.id, posicion);
 
         setSubmitting(true);
         try {
-            await onSubmit(payload);
+            await onSubmit(payload, { orden });
             message.success(`Nodo "${values.label}" creado`);
             onClose?.();
         } catch (err) {
@@ -147,9 +149,8 @@ export default function LayerCreateModal({ open, onClose, onSubmit, treeData = [
         }
     };
 
-    const help = NODE_TYPE_HELP[watchedNodeType];
     const showSlug = isFieldVisible('slug', watchedNodeType);
-    const showWorkspace = ['group', 'leaf'].includes(watchedNodeType);
+    const rutaPadre = rutaDeNodo(treeData, padreId) || 'la raíz del árbol';
 
     return (
         <Modal
@@ -159,142 +160,122 @@ export default function LayerCreateModal({ open, onClose, onSubmit, treeData = [
             okText="Crear"
             cancelText="Cancelar"
             confirmLoading={submitting}
-            title="Crear nuevo nodo"
+            okButtonProps={{ style: PILDORA }}
+            cancelButtonProps={{ style: PILDORA }}
+            title="Nuevo nodo"
             destroyOnHidden
-            width={520}
+            width={560}
         >
-            <Form form={form} layout="vertical" preserve={false}>
-                <Form.Item
-                    name="node_type"
-                    label="Tipo de nodo"
-                    rules={[{ required: true }]}
-                >
-                    <Select options={NODE_TYPE_OPTIONS} />
-                </Form.Item>
-                {help && !willBeProperty && (
-                    <Alert closable
-                        type="info"
-                        message={help.title}
-                        description={help.body}
-                        showIcon
-                        style={{ marginBottom: 16 }}
-                    />
-                )}
-                {willBeProperty && (
-                    <Alert closable
-                        type="success"
-                        showIcon
-                        style={{ marginBottom: 16 }}
-                        message="Se creará como Propiedad del grupo"
-                        description="El padre seleccionado es un Grupo, así que este nodo cuenta como Propiedad: comparte feature type con el grupo y se enciende automáticamente cuando se enciende el grupo en el visor. Distínguelo de sus hermanas con un Filtro CQL en la pestaña Servicios después de crearlo."
-                    />
-                )}
-                <Form.Item
-                    name="parent_id"
-                    label="Padre (opcional)"
-                    extra="Si lo dejas vacío, queda en la raíz del árbol."
-                >
-                    <TreeSelect
-                        treeData={treeSelectData}
-                        placeholder="Sin padre (raíz)"
-                        allowClear
+            <Form form={form} layout="vertical" preserve={false} style={{ marginTop: 8 }}>
+                <Space size={6} style={{ marginBottom: 16 }} wrap>
+                    <Text type="secondary" style={{ fontSize: 12.5 }}>Dentro de <strong>{rutaPadre}</strong></Text>
+                    <Button type="link" size="small" style={{ padding: 0 }} onClick={() => setCambiandoPadre((v) => !v)}>
+                        {cambiandoPadre ? 'Listo' : 'Cambiar'}
+                    </Button>
+                </Space>
+                <Form.Item name="parent_id" hidden={!cambiandoPadre} style={{ marginBottom: 16 }}>
+                    <Select
                         showSearch
-                        treeNodeFilterProp="title"
-                        styles={{ popup: { root: { maxHeight: 400, overflow: 'auto' } } }}
+                        placeholder="Escribe parte del nombre o de su ruta"
+                        options={opcionesPadre}
+                        optionFilterProp="label"
+                        styles={{ popup: { root: { maxHeight: 360 } } }}
+                        optionRender={({ data }) => (
+                            <Space size={8} style={{ justifyContent: 'space-between', width: '100%' }}>
+                                <span>{data.label}</span>
+                                <Text type="secondary" style={{ fontSize: 11 }}>{data.tipo}</Text>
+                            </Space>
+                        )}
                     />
                 </Form.Item>
+
+                <Etiqueta texto="Qué vas a crear" />
+                <Form.Item name="node_type" rules={[{ required: true }]} style={{ marginTop: 6, marginBottom: willBeProperty ? 6 : 16 }}>
+                    <NodeTypeCards parentNodeType={parentNodeType} />
+                </Form.Item>
+                {willBeProperty && (
+                    <Space size={6} style={{ marginBottom: 16 }} wrap>
+                        <Tag bordered={false} color="green">{PROPERTY_HELP.title}</Tag>
+                        <Text type="secondary" style={{ fontSize: 12 }}>de {parentCtx?.node?.title}</Text>
+                        <InfoIcon title={PROPERTY_HELP.body} />
+                    </Space>
+                )}
+
+                {showWorkspace && capaHeredada && (
+                    <div style={{ marginBottom: 16 }}>
+                        <PropertySourceField
+                            capa={capaHeredada}
+                            nombreGrupo={parentCtx?.node?.title}
+                            filtro={filtro}
+                            onFiltro={setFiltro}
+                        />
+                    </div>
+                )}
+                {showWorkspace && !capaHeredada && isAdmin && (
+                    <div style={{ marginBottom: 16 }}>
+                        <PendingWorkspacesLine pending={pendientes} onRegistered={recargar} />
+                    </div>
+                )}
+                {showWorkspace && !capaHeredada && (
+                    <div style={{ marginBottom: 16 }}>
+                        <Form.Item name="gs_ref" noStyle>
+                            <GeoServerLayerField opciones={opciones} cargando={cargando} onChange={handleGsChange} onGeometry={setGeometria} />
+                        </Form.Item>
+                    </div>
+                )}
+
                 <Form.Item
                     name="label"
-                    label="Nombre"
+                    label={<Etiqueta texto="Nombre" ayuda="Es lo que se lee en el árbol del visor. Se propone desde el nombre de la capa de GeoServer; cámbialo si el público la conoce de otra forma." />}
                     rules={[{ required: true, message: 'Requerido' }, { max: 255 }]}
                 >
-                    <Input
-                        placeholder="Ej: Cuerpos de agua"
-                        onChange={() => setLabelTouched(true)}
-                    />
+                    <Input placeholder="Ej: Cuerpos de agua" onChange={() => setLabelTouched(true)} />
                 </Form.Item>
+
+                <div style={{ marginBottom: 16 }}>
+                    <PositionField hermanos={hermanos} value={posicion} onChange={setPosicion} />
+                </div>
+
+                <Space size={10} wrap style={{ marginBottom: editandoIds ? 12 : 16 }}>
+                    <Text type="secondary" style={{ fontSize: 12.5 }}>ID <Text code>{watchedId || '—'}</Text></Text>
+                    {showSlug && <Text type="secondary" style={{ fontSize: 12.5 }}>URL <Text code>/{watchedSlug || '—'}</Text></Text>}
+                    <Button type="link" size="small" style={{ padding: 0 }} onClick={() => setEditandoIds((v) => !v)}>
+                        {editandoIds ? 'Listo' : 'Editar'}
+                    </Button>
+                </Space>
                 <Form.Item
                     name="id"
-                    label="ID"
-                    extra="Identificador único en el árbol. Solo letras minúsculas, números y guiones."
+                    hidden={!editandoIds}
+                    label={<Etiqueta texto="ID" ayuda="Identificador único en el árbol. Solo letras minúsculas, números y guiones." />}
                     rules={[
                         { required: true, message: 'Requerido' },
                         { pattern: /^[a-z0-9-]+$/, message: 'Solo minúsculas, números y guiones' },
                         { max: 100 },
                     ]}
                 >
-                    <Input
-                        placeholder="cuerpos-de-agua"
-                        onChange={() => setIdTouched(true)}
-                    />
+                    <Input placeholder="cuerpos-de-agua" />
                 </Form.Item>
                 {showSlug && (
                     <Form.Item
                         name="slug"
-                        label="Slug (URL del visor)"
-                        extra="Si lo dejas vacío, se usa el ID. Solo aplica a grupos y capas."
+                        hidden={!editandoIds}
+                        label={<Etiqueta texto="Slug" ayuda="La URL del visor. Si lo dejas vacío se usa el ID." />}
                         rules={[{ pattern: /^[a-z0-9-]*$/, message: 'Solo minúsculas, números y guiones' }, { max: 60 }]}
                     >
-                        <Input
-                            placeholder="cuerpos-de-agua"
-                            onChange={() => setSlugTouched(true)}
-                        />
+                        <Input placeholder="cuerpos-de-agua" />
                     </Form.Item>
                 )}
-                {showWorkspace && isAdmin && (
-                    <PendingWorkspacesAlert
-                        pending={pendingWorkspaces}
-                        onRegistered={handleWorkspaceRegistered}
-                    />
-                )}
-                {showWorkspace && (
-                    <>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-                            <Text style={{ fontSize: 13 }}>Capa de GeoServer (opcional)</Text>
-                            <Space size={6}>
-                                <Text type="secondary" style={{ fontSize: 11 }}>Solo no registradas</Text>
-                                <Switch
-                                    size="small"
-                                    checked={availableOnly}
-                                    onChange={setAvailableOnly}
-                                />
-                            </Space>
-                        </div>
-                        <Form.Item name="gs_ref" style={{ marginBottom: 16 }}>
-                            <Select
-                                showSearch
-                                allowClear
-                                loading={loadingWs}
-                                placeholder={availableOnly ? 'Buscar capa no registrada...' : 'Buscar entre todas las capas...'}
-                                options={gsOptions}
-                                optionFilterProp="label"
-                                filterOption={(input, option) => {
-                                    if (!option?.value) return false;
-                                    const q = input.toLowerCase();
-                                    return option.label?.toLowerCase().includes(q) || option.value.toLowerCase().includes(q);
-                                }}
-                                notFoundContent={loadingWs ? 'Cargando...' : 'Sin capas disponibles'}
-                                styles={{ popup: { root: { maxHeight: 320 } } }}
-                            />
-                        </Form.Item>
-                        {watchedGsRef && (
-                            <Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: -10, marginBottom: 16 }}>
-                                Workspace: <strong>{watchedGsRef.split('::')[0]}</strong> · Layer: <strong>{watchedGsRef.split('::')[1]}</strong>
-                            </Text>
-                        )}
-                    </>
-                )}
-                <Space size="large">
-                    <Form.Item name="hidden_in_menu" label="Oculto del menú" valuePropName="checked">
-                        <Switch />
+
+                <Space size="large" wrap>
+                    <Form.Item name="hidden_in_menu" valuePropName="checked" style={{ marginBottom: 0 }}>
+                        <Switch size="small" />
                     </Form.Item>
-                    <Form.Item name="disabled" label="Deshabilitado" valuePropName="checked">
-                        <Switch />
+                    <Etiqueta texto="Oculto del menú" ayuda="Existe y se abre por URL, pero no aparece en el árbol del visor." />
+                    <Form.Item name="disabled" valuePropName="checked" style={{ marginBottom: 0 }}>
+                        <Switch size="small" />
                     </Form.Item>
+                    <Etiqueta texto="Deshabilitado" ayuda="Se ve en gris y no se puede encender. Para capas en preparación." />
                 </Space>
-                <Text type="secondary" style={{ fontSize: 11 }}>
-                    Después de crear puedes editar el resto de campos (estilos, infobox, metadatos, etc.) abriendo el nodo.
-                </Text>
             </Form>
         </Modal>
     );

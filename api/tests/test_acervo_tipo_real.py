@@ -57,7 +57,7 @@ def test_el_proxy_sirve_inline_las_imagenes_raster(admin_session, db_session):
     assert "content-disposition" not in resp.headers
 
 
-def _sesion_chunked(monkeypatch, bucket, content_type: str) -> SimpleNamespace:
+def _sesion_chunked(monkeypatch, bucket, user_id: int, content_type: str) -> SimpleNamespace:
     abortos: list[str] = []
     cliente = SimpleNamespace(
         abort_multipart_upload=lambda key, upload_id: abortos.append(key),
@@ -77,6 +77,7 @@ def _sesion_chunked(monkeypatch, bucket, content_type: str) -> SimpleNamespace:
         "access_key_ref": bucket.access_key_ref,
         "original_name": "grande.csv",
         "content_type": content_type,
+        "user_id": user_id,
         "parts": [],
     }
     borradas: list[str] = []
@@ -95,9 +96,18 @@ def _parte(client, csrf, data: bytes):
     )
 
 
+def test_una_sesion_chunked_ajena_no_se_puede_usar(admin_session, db_session, monkeypatch):
+    _, bucket = _seed_bucket(db_session, name="x")
+    _sesion_chunked(monkeypatch, bucket, user_id=admin_session["user"].id + 1, content_type="text/csv")
+    resp = _parte(admin_session["client"], admin_session["csrf"], b"a,b\n1,2\n")
+    assert resp.status_code == 404
+
+
 def test_chunked_rechaza_html_con_extension_inocente(admin_session, db_session, monkeypatch):
     _, bucket = _seed_bucket(db_session, name="x")
-    registro = _sesion_chunked(monkeypatch, bucket, content_type="text/csv")
+    registro = _sesion_chunked(
+        monkeypatch, bucket, user_id=admin_session["user"].id, content_type="text/csv"
+    )
     resp = _parte(admin_session["client"], admin_session["csrf"], HTML)
     assert resp.status_code == 415
     assert registro.abortos == ["grande.csv"]

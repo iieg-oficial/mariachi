@@ -1,0 +1,174 @@
+import { describe, it, expect } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router';
+import NodoDetalleModal from '@shared/components/nodos/NodoDetalleModal';
+
+const tramos = {
+    desde: '2026-08-26T22:00:00Z',
+    hasta: '2026-08-27T22:00:00Z',
+    resolucion_seg: 60,
+    celdas: 1440,
+    tramos: [{ min: 0, dur: 1440, estado: 'ok', detalle: null }],
+};
+
+const NODO = {
+    node: 'S1',
+    status: 'ok',
+    rol: 'gateway · acervo · mariachi · huachicol',
+    hostname: 'gateway',
+    servicios: [
+        { slug: 'mariachi', label: 'mariachi', status: 'ok', version: '2.25.1', uptime_24h: 100, uptime_tramos: tramos },
+        { slug: 'acervo', label: 'acervo', status: 'ok', version: '2.2.0', uptime_24h: 99.1, uptime_tramos: tramos },
+    ],
+    host: {
+        cores: 8, load_1m: 1.24, load_5m: 0.98, load_15m: 0.71,
+        memory_used_percent: 41.2, memory_used_gb: 6.2, memory_total_gb: 15,
+        swap_used_percent: 0, swap_used_gb: 0, uptime_seconds: 1900800,
+        disk_used_percent: 40, disk_free_gb: 300,
+    },
+    containers: { total: 11, running: 11 },
+    contenedores: [
+        { name: 'mariachi-api', state: 'running', health: 'healthy' },
+        { name: 'acervo-init', state: 'exited', health: null },
+    ],
+};
+
+const montar = (nodo = NODO) => render(
+    <MemoryRouter>
+        <NodoDetalleModal nodo={nodo} open onClose={() => {}} />
+    </MemoryRouter>,
+);
+
+describe('NodoDetalleModal', () => {
+    it('encabeza con el identificador y su punto de estado', () => {
+        const { baseElement } = montar();
+        expect(screen.getByText('S1')).toBeInTheDocument();
+        expect(baseElement.querySelector('.ant-badge-status-success')).toBeTruthy();
+    });
+
+    it('el hostname va en la linea del sistema, donde no lo recorta el titulo', () => {
+        montar();
+        expect(screen.getByText(/^gateway ·/)).toBeInTheDocument();
+    });
+
+    it('muestra el disco, que antes faltaba', () => {
+        montar();
+        expect(screen.getByText('200 / 500 GB')).toBeInTheDocument();
+    });
+
+    it('resume el sistema del host en una linea', () => {
+        montar({ ...NODO, host: { ...NODO.host, ip: '10.0.0.2', os: 'Ubuntu 24.04 LTS', kernel: '6.8.0-51' } });
+        expect(screen.getByText(/gateway · 10\.0\.0\.2 · Ubuntu 24\.04 LTS · kernel 6\.8\.0-51/)).toBeInTheDocument();
+    });
+
+    it('lista los puertos y cuantos responden', () => {
+        montar({
+            ...NODO,
+            puertos: [
+                { nombre: 'mapalab', puerto: 80, status: 'ok', servicio: 'gateway-hub' },
+                { nombre: 'sextante', puerto: 8080, status: 'down', servicio: 'gateway-hub' },
+            ],
+        });
+        expect(screen.getByText('Puertos')).toBeInTheDocument();
+        expect(screen.getByText('1/2')).toBeInTheDocument();
+        expect(screen.getByText(':80')).toBeInTheDocument();
+        expect(screen.getByText('sextante')).toBeInTheDocument();
+    });
+
+    it('reutiliza la fila de servicios, con su barra de 24 horas', () => {
+        montar();
+        expect(screen.getByText('Servicios')).toBeInTheDocument();
+        expect(screen.getAllByLabelText('Disponibilidad de las últimas 24 horas')).toHaveLength(2);
+        expect(screen.getByText('v2.25.1')).toBeInTheDocument();
+    });
+
+    it('lista los contenedores del nodo, no solo el conteo', () => {
+        montar();
+        expect(screen.getByText('Contenedores')).toBeInTheDocument();
+        expect(screen.getByText('11/11')).toBeInTheDocument();
+        expect(screen.getByText('mariachi-api')).toBeInTheDocument();
+        expect(screen.getByText('acervo-init')).toBeInTheDocument();
+    });
+
+    it('cada medidor se pinta con el porcentaje que le toca (el CPU ya no lleva barra)', () => {
+        const { baseElement } = montar();
+        const anchos = Array.from(baseElement.querySelectorAll('.ant-progress-track'))
+            .map((barra) => barra.style.width);
+        expect(anchos).toEqual(['41.2%', '0%', '40%']);
+    });
+
+    it('el CPU se expresa en porcentaje de uso', () => {
+        montar();
+        expect(screen.getByText('Recursos')).toBeInTheDocument();
+        expect(screen.getByText('15 %')).toBeInTheDocument();
+    });
+
+    it('la RAM muestra el libre que reporta el kernel, sin sumarle el caché', () => {
+        montar({ ...NODO, host: { ...NODO.host, memory_cache_gb: 6.28, memory_free_gb: 1.7 } });
+        expect(screen.getByText('1.7 / 15 GB')).toBeInTheDocument();
+        expect(screen.getByText('6.28 GB caché')).toBeInTheDocument();
+    });
+
+    it('sin dato de caché conserva el medidor simple', () => {
+        montar();
+        expect(screen.getByText('6.2 / 15 GB')).toBeInTheDocument();
+    });
+
+    it('cada núcleo lleva su número y su porcentaje dentro del cuadro', () => {
+        montar({
+            ...NODO,
+            host: {
+                ...NODO.host,
+                cpu_used_percent: 16,
+                cores_uso: [
+                    { core: 0, uso: 8 },
+                    { core: 1, uso: 0 },
+                    { core: 2, uso: 100 },
+                ],
+            },
+        });
+        expect(screen.getByText('2·100%')).toBeInTheDocument();
+        expect(screen.getByText('0·8%')).toBeInTheDocument();
+        expect(screen.getByText('1·0%')).toBeInTheDocument();
+        expect(screen.getByText('16 %')).toBeInTheDocument();
+    });
+
+    it('las temperaturas van en su propia sección, como cifras', () => {
+        const { baseElement } = montar({
+            ...NODO,
+            host: {
+                ...NODO.host,
+                cpu_celsius: 78,
+                temperaturas: [
+                    { nombre: 'CPU', celsius: 78 },
+                    { nombre: 'Sistema', celsius: 62 },
+                    { nombre: 'Disco', celsius: 39 },
+                ],
+            },
+        });
+        expect(screen.getByText('Temperaturas')).toBeInTheDocument();
+        expect(screen.getByText('3')).toBeInTheDocument();
+        expect(screen.getByText('78°')).toBeInTheDocument();
+        expect(screen.getByText('caliente')).toBeInTheDocument();
+        expect(screen.getByText('39°')).toBeInTheDocument();
+        expect(screen.getByText('fría')).toBeInTheDocument();
+        expect(baseElement.querySelectorAll('.ant-progress-track')).toHaveLength(3);
+    });
+
+    it('sin sensores no dibuja la sección de temperaturas', () => {
+        montar();
+        expect(screen.queryByText('Temperaturas')).not.toBeInTheDocument();
+        expect(screen.queryByText(/°$/)).not.toBeInTheDocument();
+    });
+
+    it('sin reportero lo dice en vez de enseñar ceros', () => {
+        montar({ ...NODO, host: {} });
+        expect(screen.getByText('Este nodo no tiene reportero de host')).toBeInTheDocument();
+    });
+
+    it('el nodo de Internet explica por donde entra el trafico', () => {
+        montar({ node: 'internet', status: 'ok', rol: 'entrada pública', servicios: [], host: {}, containers: {}, contenedores: [], puertos: [{ nombre: 'https', puerto: 443, status: 'ok', servicio: 'internet' }] });
+        expect(screen.getByText(/Todo el tráfico público entra por aquí/)).toBeInTheDocument();
+        expect(screen.getByText(':443')).toBeInTheDocument();
+    });
+});

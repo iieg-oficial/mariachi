@@ -8,15 +8,39 @@ import {
 
 const noop = () => {};
 
+const TODOS = [
+    'mariachi.usuarios.view',
+    'mariachi.acervo.view',
+    'mariachi.acervo.manage',
+    'mariachi.actividad.view',
+    'mariachi.mapalab.view',
+    'mariachi.mapalab.update',
+    'mariachi.mapalab.manage',
+    'mariachi.mapalab_llaves.manage',
+    'mariachi.mapalab_propuestas.approve',
+    'mariachi.geoserver.view',
+    'mariachi.geoserver.manage',
+    'mariachi.sieej_admin.view',
+    'mariachi.sieej_documentacion.view',
+    'mariachi.mel.view',
+    'mariachi.colibri_reportes.view',
+    'mariachi.colibri_config.manage',
+];
+
+const conPermisos = (permisos) => {
+    const set = new Set(permisos);
+    return { user: { permissions: permisos }, can: (p) => set.has(p) };
+};
+
 describe('buildSiderItems', () => {
     it('devuelve [] cuando no hay user', () => {
-        expect(buildSiderItems({ user: null, onNavigate: noop })).toEqual([]);
-        expect(buildSiderItems({ user: undefined, onNavigate: noop })).toEqual([]);
+        expect(buildSiderItems({ user: null, can: () => true, onNavigate: noop })).toEqual([]);
+        expect(buildSiderItems({ user: undefined, can: () => true, onNavigate: noop })).toEqual([]);
     });
 
-    it('admin ve Inicio, Usuarios, Acervo y Huachicol como items principales, luego proyectos', () => {
+    it('con todos los permisos ve Inicio, Usuarios, Acervo y Huachicol, luego proyectos', () => {
         const items = buildSiderItems({
-            user: { role: 'tetlamamakani', projects: [] },
+            ...conPermisos(TODOS),
             onNavigate: noop,
         });
         expect(items[0].key).toBe('/inicio');
@@ -25,7 +49,12 @@ describe('buildSiderItems', () => {
         expect(items[2].children.map((c) => c.key)).toEqual(['/acervo', '/acervo/buckets']);
         expect(items[3].key).toBe('group-huachicol');
         expect(items[3].label).toBe('Huachicol');
-        expect(items[3].children.map((c) => c.key)).toEqual(['/huachicol/observabilidad', '/huachicol/telemetria', '/huachicol/actividad']);
+        expect(items[3].children.map((c) => c.key)).toEqual([
+            '/huachicol/observabilidad',
+            '/huachicol/servidores',
+            '/huachicol/telemetria',
+            '/huachicol/actividad',
+        ]);
 
         const keys = items.map((i) => i.key);
         expect(keys).not.toContain('platform');
@@ -38,9 +67,9 @@ describe('buildSiderItems', () => {
         expect(projectKeys).not.toContain('project-tablerillos');
     });
 
-    it('Sextante agrupa lo de GeoServer y hereda el acceso del proyecto mapalab', () => {
+    it('Sextante agrupa lo de GeoServer; workspaces y simbolos piden su propio permiso', () => {
         const items = buildSiderItems({
-            user: { role: 'editora', projects: [{ slug: 'mapalab', name: 'MapaLab', project_role: 'editor' }] },
+            ...conPermisos(['mariachi.geoserver.view']),
             onNavigate: noop,
         });
         const sextante = items.find((i) => i.key === 'project-sextante');
@@ -59,9 +88,9 @@ describe('buildSiderItems', () => {
         expect(byKey['/sextante/recursos'].disabled).toBeFalsy();
     });
 
-    it('editora sin membership en mapalab ve Sextante deshabilitado', () => {
+    it('sin permiso de geoserver, Sextante queda deshabilitado', () => {
         const items = buildSiderItems({
-            user: { role: 'editora', projects: [] },
+            ...conPermisos([]),
             onNavigate: noop,
         });
         expect(items.find((i) => i.key === 'project-sextante').disabled).toBe(true);
@@ -69,7 +98,7 @@ describe('buildSiderItems', () => {
 
     it('MapaLab ya no lista Símbolos ni Recursos GeoServer', () => {
         const items = buildSiderItems({
-            user: { role: 'tetlamamakani', projects: [] },
+            ...conPermisos(TODOS),
             onNavigate: noop,
         });
         const mapalab = items.find((i) => i.key === 'project-mapalab');
@@ -78,9 +107,9 @@ describe('buildSiderItems', () => {
         expect(keys).not.toContain('/mapalab/recursos-geoserver');
     });
 
-    it('Acervo: admin ve Media y Buckets habilitados', () => {
+    it('Acervo: con acervo.manage se ven Media y Buckets habilitados', () => {
         const items = buildSiderItems({
-            user: { role: 'tetlamamakani', projects: [] },
+            ...conPermisos(TODOS),
             onNavigate: noop,
         });
         const acervo = items.find((i) => i.key === 'group-acervo');
@@ -90,9 +119,9 @@ describe('buildSiderItems', () => {
         });
     });
 
-    it('Usuarios y Huachicol son admin-only: editora los ve deshabilitados; Acervo no', () => {
+    it('Usuarios y Huachicol piden su permiso; con solo acervo.view, Acervo no', () => {
         const items = buildSiderItems({
-            user: { role: 'editora', projects: [] },
+            ...conPermisos(['mariachi.acervo.view']),
             onNavigate: noop,
         });
         const byKey = Object.fromEntries(items.map((i) => [i.key, i]));
@@ -101,9 +130,9 @@ describe('buildSiderItems', () => {
         expect(byKey['group-acervo'].disabled).toBeFalsy();
     });
 
-    it('Acervo: editora ve Media pero Buckets deshabilitado (admin-only)', () => {
+    it('Acervo: con acervo.view se ve Media pero Buckets deshabilitado', () => {
         const items = buildSiderItems({
-            user: { role: 'editora', projects: [] },
+            ...conPermisos(['mariachi.acervo.view']),
             onNavigate: noop,
         });
         const acervo = items.find((i) => i.key === 'group-acervo');
@@ -112,15 +141,9 @@ describe('buildSiderItems', () => {
         expect(byKey['/acervo/buckets'].disabled).toBe(true);
     });
 
-    it('editora con membership en mapalab y sieej accede a ambos sin candado', () => {
+    it('con los permisos de mapalab y sieej se accede a ambos sin candado', () => {
         const items = buildSiderItems({
-            user: {
-                role: 'editora',
-                projects: [
-                    { slug: 'mapalab', name: 'MapaLab', project_role: 'viewer' },
-                    { slug: 'sieej', name: 'SIEEJ', project_role: 'editor' },
-                ],
-            },
+            ...conPermisos(['mariachi.mapalab.view', 'mariachi.sieej_admin.view']),
             onNavigate: noop,
         });
         const mapalab = items.find((i) => i.key === 'project-mapalab');
@@ -129,9 +152,9 @@ describe('buildSiderItems', () => {
         expect(sieej.disabled).toBeFalsy();
     });
 
-    it('editora sin membership ve mapalab/sieej deshabilitados con candado', () => {
+    it('sin esos permisos, mapalab y sieej quedan deshabilitados con candado', () => {
         const items = buildSiderItems({
-            user: { role: 'editora', projects: [] },
+            ...conPermisos([]),
             onNavigate: noop,
         });
         const mapalab = items.find((i) => i.key === 'project-mapalab');
@@ -140,9 +163,9 @@ describe('buildSiderItems', () => {
         expect(sieej.disabled).toBe(true);
     });
 
-    it('items de SIEEJ son Formularios, Grupos y Catálogos (sin item disabled)', () => {
+    it('items de SIEEJ son Formularios, Grupos, Catálogos y Documentación (sin item disabled)', () => {
         const items = buildSiderItems({
-            user: { role: 'tetlamamakani', projects: [] },
+            ...conPermisos(TODOS),
             onNavigate: vi.fn(),
         });
         const sieej = items.find((i) => i.key === 'project-sieej');
@@ -151,6 +174,7 @@ describe('buildSiderItems', () => {
             '/sieej/formularios',
             '/sieej/grupos',
             '/sieej/catalogos',
+            '/sieej/documentacion',
         ]);
         sieej.children.forEach((c) => {
             expect(c.disabled).toBeFalsy();
@@ -161,7 +185,7 @@ describe('buildSiderItems', () => {
     it('items principales disparan onNavigate al click', () => {
         const onNavigate = vi.fn();
         const items = buildSiderItems({
-            user: { role: 'tetlamamakani', projects: [] },
+            ...conPermisos(TODOS),
             onNavigate,
         });
         items.find((i) => i.key === '/inicio').onClick();
@@ -177,17 +201,17 @@ describe('buildSiderItems', () => {
 });
 
 describe('buildSiderFooterRail', () => {
-    it('admin ve Documentación y Revisiones en la fila', () => {
+    it('con mapalab.manage ve Documentación y Revisiones en la fila', () => {
         const rail = buildSiderFooterRail({
-            user: { role: 'tetlamamakani', projects: [] },
+            ...conPermisos(TODOS),
             onNavigate: noop,
         });
         expect(rail.map((i) => i.key)).toEqual(['/documentacion', '/revision']);
     });
 
-    it('editora solo ve Documentación (Actividad y Revisiones admin-only)', () => {
+    it('sin ese permiso solo ve Documentación, que no pide ninguno', () => {
         const rail = buildSiderFooterRail({
-            user: { role: 'editora', projects: [] },
+            ...conPermisos([]),
             onNavigate: noop,
         });
         expect(rail.map((i) => i.key)).toEqual(['/documentacion']);
@@ -195,7 +219,7 @@ describe('buildSiderFooterRail', () => {
 
     it('el badge de revisiones refleja pendingCount', () => {
         const rail = buildSiderFooterRail({
-            user: { role: 'tetlamamakani', projects: [] },
+            ...conPermisos(TODOS),
             onNavigate: noop,
             extras: { pendingCount: 5 },
         });
@@ -206,7 +230,7 @@ describe('buildSiderFooterRail', () => {
     it('onClick invoca onNavigate con el path', () => {
         const onNavigate = vi.fn();
         const rail = buildSiderFooterRail({
-            user: { role: 'tetlamamakani', projects: [] },
+            ...conPermisos(TODOS),
             onNavigate,
         });
         rail.find((i) => i.key === '/revision').onClick();
@@ -214,7 +238,7 @@ describe('buildSiderFooterRail', () => {
     });
 
     it('devuelve [] cuando no hay user', () => {
-        expect(buildSiderFooterRail({ user: null, onNavigate: noop })).toEqual([]);
+        expect(buildSiderFooterRail({ user: null, can: () => true, onNavigate: noop })).toEqual([]);
     });
 });
 
@@ -264,5 +288,40 @@ describe('selectedKeyForPath', () => {
     it('devuelve el pathname cuando no hay item que coincida', () => {
         expect(selectedKeyForPath('/perfil')).toBe('/perfil');
         expect(selectedKeyForPath('/ruta-inexistente')).toBe('/ruta-inexistente');
+    });
+});
+
+describe('Frames y los permisos', () => {
+    const local = { alcance: 'local' };
+
+    it('sin mariachi.frames.view el proyecto queda deshabilitado y sin onClick', () => {
+        const { user, can } = conPermisos([]);
+        const items = buildSiderItems({ user, can, onNavigate: noop, ...local });
+        const frames = items.find((i) => i.key === 'project-frames');
+        expect(frames).toBeDefined();
+        expect(frames.disabled).toBe(true);
+        frames.children.forEach((hijo) => {
+            expect(hijo.disabled).toBe(true);
+            expect(hijo.onClick).toBeUndefined();
+        });
+    });
+
+    it('con mariachi.frames.view se puede entrar', () => {
+        const { user, can } = conPermisos(['mariachi.frames.view']);
+        const items = buildSiderItems({ user, can, onNavigate: noop, ...local });
+        const frames = items.find((i) => i.key === 'project-frames');
+        expect(frames.disabled).toBeFalsy();
+        expect(frames.children.every((h) => typeof h.onClick === 'function')).toBe(true);
+    });
+});
+
+describe('Frames: ver no es administrar', () => {
+    const local = { alcance: 'local' };
+
+    it('mariachi.frames.view abre la seccion pero no concede manage', () => {
+        const { user, can } = conPermisos(['mariachi.frames.view']);
+        const items = buildSiderItems({ user, can, onNavigate: noop, ...local });
+        expect(items.find((i) => i.key === 'project-frames').disabled).toBeFalsy();
+        expect(can('mariachi.frames.manage')).toBe(false);
     });
 });

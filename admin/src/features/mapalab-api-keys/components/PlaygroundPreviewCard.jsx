@@ -40,7 +40,7 @@ const PlaygroundPreviewCard = forwardRef(function PlaygroundPreviewCard({
                 ) : (
                     <div style={{ padding: 40, textAlign: 'center', color: '#999' }}>
                         {!manualKey ? (
-                            <Space direction="vertical" size="middle" align="center">
+                            <Space orientation="vertical" size="middle" align="center">
                                 <Text type="secondary">No tenemos guardada la contraseña completa de esta llave (por seguridad solo guardamos un resumen).</Text>
                                 <Button
                                     type="primary"

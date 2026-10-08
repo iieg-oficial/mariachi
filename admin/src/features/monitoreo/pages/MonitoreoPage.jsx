@@ -21,7 +21,7 @@ const COLUMNS = [
         dataIndex: 'label',
         key: 'label',
         render: (label, row) => (
-            <Space direction="vertical" size={0}>
+            <Space orientation="vertical" size={0}>
                 <Text strong>{label}</Text>
                 <Text type="secondary" style={{ fontSize: 11 }}>{row.slug}</Text>
             </Space>
@@ -111,7 +111,7 @@ export default function MonitoreoPage() {
 
     return (
         <Content style={{ padding: isMobile ? 6 : 24, width: '100%' }}>
-            <Space direction="vertical" size="large" style={{ width: '100%' }}>
+            <Space orientation="vertical" size="large" style={{ width: '100%' }}>
                 <div style={{ width: '100%' }}>
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                         <Space align="center" size={12}>
@@ -138,7 +138,7 @@ export default function MonitoreoPage() {
                     <Alert
                         type="error"
                         showIcon
-                        message="No se pudo contactar al monitor"
+                        title="No se pudo contactar al monitor"
                         description="El servicio huachicol-monitor no respondió. Verifica que esté corriendo y que HUACHICOL_MONITOR_URL esté configurada."
                     />
                 )}

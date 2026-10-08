@@ -1,14 +1,18 @@
 import { useEffect, useState } from 'react';
 import { Drawer, Empty, Spin, Tabs, Tag, Typography } from 'antd';
 import InfoboxStandalone from '@features/mapalab-layers/components/layersEditor/InfoboxStandalone';
+import { useAuth } from '@shared/contexts/useAuth';
 import NoticeStandalone from '@features/mapalab-layers/components/layersEditor/NoticeStandalone';
 import LayerMetadataSection from '@features/mapalab-layers/components/layersEditor/LayerMetadataSection';
+import ColumnasTablaSection from '@features/mapalab-layers/components/layersEditor/ColumnasTablaSection';
 import SldEditor from '@features/mapalab-layers/components/sldEditor/SldEditor';
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
 
 const { Text } = Typography;
 
 export default function LayerContentDrawer({ open, layerId, onClose, onSaved }) {
+    const { user } = useAuth();
+    const puedePublicar = user?.role === 'tetlamamakani';
     const { getLayer, listGeoserverFields } = useLayerTreeAdmin();
     const [layer, setLayer] = useState(null);
     const [availableFields, setAvailableFields] = useState([]);
@@ -64,8 +68,8 @@ export default function LayerContentDrawer({ open, layerId, onClose, onSaved }) 
     const items = [
         {
             key: 'infobox',
-            label: 'Tarjeta',
-            children: <InfoboxStandalone layer={layer} onSaved={reload} />,
+            label: 'Tarjetita',
+            children: <InfoboxStandalone layer={layer} onSaved={reload} puedePublicar={puedePublicar} />,
         },
         {
             key: 'aviso',
@@ -87,6 +91,11 @@ export default function LayerContentDrawer({ open, layerId, onClose, onSaved }) 
             ),
         },
         {
+            key: 'columnas',
+            label: 'Columnas',
+            children: <ColumnasTablaSection layerKey={layerKey} availableFields={availableFields} />,
+        },
+        {
             key: 'simbologia',
             label: 'Simbología',
             children: layer ? <SldEditor layer={layer} /> : null,
@@ -97,7 +106,7 @@ export default function LayerContentDrawer({ open, layerId, onClose, onSaved }) 
         <Drawer
             open={open}
             onClose={onClose}
-            width={920}
+            size={920}
             title={layer ? (
                 <span>
                     Editar contenido de la capa <Tag color="blue">{layer.workspaceAlias}:{layer.geoserverLayer}</Tag>

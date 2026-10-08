@@ -1,12 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, ColorPicker, Divider, Modal, Radio, Select, Space, Tag, Typography, notification } from 'antd';
+import { Alert, Button, Card, ColorPicker, Divider, Modal, Radio, Select, Space, Tag, Tooltip, Typography, notification } from 'antd';
+import { TagsOutlined } from '@ant-design/icons';
 import { ReloadOutlined, UndoOutlined } from '@ant-design/icons';
 import { HIGHLIGHT_COLORS, HIGHLIGHT_SHAPES, isHexHighlight, resolveColorEntry } from './layersEditor/highlightConstants';
 import { HighlightSwatch } from './layersEditor/highlightShared';
 import { HighlightApplyConfirm, HighlightResetConfirm } from './LayerHighlightConfirmModal';
 import { useHighlightBulk } from '../hooks/useHighlightBulk';
+import GridDownloadsCard from '@shared/components/dataGrid/GridDownloadsCard';
 
 const { Text, Paragraph } = Typography;
+
+const DOWNLOAD_RESOURCES = [
+    { value: 'layer-metadata', label: 'Metadatos', fileName: 'mapalab-metadatos' },
+    { value: 'layer-config', label: 'Capas', fileName: 'mapalab-capas' },
+];
 
 const colorPresetOptions = HIGHLIGHT_COLORS.filter((c) => c.value !== null && c.value !== '__custom__');
 const shapeOptions = HIGHLIGHT_SHAPES.filter((s) => s.value !== null);
@@ -16,7 +23,7 @@ const formatColorLabel = (value) => {
     return value;
 };
 
-export default function LayerHighlightGlobalSettings({ open, onClose, treeData = [] }) {
+export default function LayerHighlightGlobalSettings({ open, onClose, treeData = [], onBulkTagsClick }) {
     const { stats, fetchStats, dryRun, apply, reset, undo, loading } = useHighlightBulk();
     const [color, setColor] = useState(null);
     const [shape, setShape] = useState(null);
@@ -95,16 +102,31 @@ export default function LayerHighlightGlobalSettings({ open, onClose, treeData =
 
     return (
         <>
-            <Modal open={open} onCancel={onClose} title="Configuración global del resaltado" width={760} footer={[<Button key="close" onClick={onClose}>Cerrar</Button>]}>
-                <Alert
-                    type="info" showIcon style={{ marginBottom: 16 }}
-                    message="Afecta solo a capas tipo hoja (leaf)"
-                    description="Categorías, grupos y temas no se tocan. Las leaves pueden heredar el resaltado de un ancestro; si tienen su propio override, lo conservan salvo que elijas 'sobrescribir todas'."
-                />
+            <Modal open={open} onCancel={onClose} title="Configuración general" width={760} footer={[<Button key="close" onClick={onClose}>Cerrar</Button>]}>
+                {onBulkTagsClick && (
+                    <Card size="small" title="Etiquetas de búsqueda" style={{ marginBottom: 16 }}>
+                        <Space orientation="vertical" size={8} style={{ width: '100%' }}>
+                            <Text type="secondary" style={{ fontSize: 12 }}>
+                                Agrega o quita etiquetas de búsqueda a varias capas de una sola pasada.
+                            </Text>
+                            <Button icon={<TagsOutlined />} onClick={onBulkTagsClick}>
+                                Etiquetas en lote
+                            </Button>
+                        </Space>
+                    </Card>
+                )}
+
+                <GridDownloadsCard resources={DOWNLOAD_RESOURCES} style={{ marginBottom: 16 }} />
+
+                <Tooltip title="Afecta solo a capas: categorías, grupos y temas no se tocan. Una capa puede heredar el resaltado de un ancestro; si tiene el suyo propio lo conserva, salvo que elijas sobrescribir todas.">
+                    <Text strong style={{ display: 'block', marginBottom: 10, cursor: 'help' }}>
+                        Resaltado de features
+                    </Text>
+                </Tooltip>
 
                 <Card size="small" title="Estado actual" extra={<Button size="small" icon={<ReloadOutlined />} onClick={fetchStats} loading={loading}>Recargar</Button>}>
                     {stats ? (
-                        <Space direction="vertical" size={6} style={{ width: '100%' }}>
+                        <Space orientation="vertical" size={6} style={{ width: '100%' }}>
                             <div><Text strong>{stats.totalLeaves}</Text> <Text type="secondary">hojas en total.</Text></div>
                             <div>
                                 <Tag color="default">{stats.fullyDefault} fully default</Tag>
@@ -122,7 +144,7 @@ export default function LayerHighlightGlobalSettings({ open, onClose, treeData =
                 </Card>
 
                 <Card size="small" title="Aplicar masivo" style={{ marginTop: 12 }}>
-                    <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                    <Space orientation="vertical" size={12} style={{ width: '100%' }}>
                         <div>
                             <Text strong>Color</Text>
                             <Radio.Group
@@ -171,7 +193,7 @@ export default function LayerHighlightGlobalSettings({ open, onClose, treeData =
                         </div>
 
                         {previewCount !== null && (
-                            <Alert type={previewCount > 0 ? 'warning' : 'info'} showIcon message={previewCount > 0 ? `Vas a actualizar ${previewCount} capa${previewCount === 1 ? '' : 's'}.` : 'Ninguna capa coincide con los criterios actuales.'} />
+                            <Alert type={previewCount > 0 ? 'warning' : 'info'} showIcon title={previewCount > 0 ? `Vas a actualizar ${previewCount} capa${previewCount === 1 ? '' : 's'}.` : 'Ninguna capa coincide con los criterios actuales.'} />
                         )}
 
                         <Space>

@@ -31,7 +31,17 @@ export const formatFieldValue = (field, value) => {
 
 const visibleFields = (step) => (step.fields || []).filter((f) => f.type !== 'info');
 
-export const buildRespuestas = (definicion, datos) => {
+export const autoriaDesdeHistorial = (historial = []) => {
+    const autoria = {};
+    [...historial]
+        .sort((a, b) => new Date(a.cambiado_en) - new Date(b.cambiado_en))
+        .forEach((h) => {
+            autoria[h.field_path] = { nombre: h.actor_nombre, fecha: h.cambiado_en };
+        });
+    return autoria;
+};
+
+export const buildRespuestas = (definicion, datos, autoria = {}) => {
     const steps = definicion?.steps || [];
     const valores = datos || {};
     return steps
@@ -51,6 +61,7 @@ export const buildRespuestas = (definicion, datos) => {
                             key: f.name,
                             label: f.label || f.name,
                             value: formatFieldValue(f, item?.[f.name]),
+                            autor: autoria[`${step.id}[${idx}].${f.name}`],
                         })),
                     })),
                 };
@@ -64,6 +75,7 @@ export const buildRespuestas = (definicion, datos) => {
                     key: f.name,
                     label: f.label || f.name,
                     value: formatFieldValue(f, scope[f.name]),
+                    autor: autoria[`${step.id}.${f.name}`],
                 })),
             };
         });
@@ -123,4 +135,26 @@ export const diffDefiniciones = (snapshot, actual) => {
         }
     }
     return { agregados, eliminados, modificados };
+};
+
+
+/** Cuantos campos dejo cada persona con su valor actual, para el resumen del
+ * drawer. Cuenta sobre la autoria y no sobre las filas del historial: un campo
+ * editado tres veces sigue siendo un campo, del ultimo que lo toco. */
+export const resumirCaptura = (autoria = {}) => {
+    const porPersona = new Map();
+    Object.values(autoria).forEach(({ nombre, fecha }) => {
+        const clave = nombre || 'Sin registrar';
+        const previo = porPersona.get(clave) || { nombre: clave, campos: 0, ultimo: null };
+        previo.campos += 1;
+        if (!previo.ultimo || new Date(fecha) > new Date(previo.ultimo)) previo.ultimo = fecha;
+        porPersona.set(clave, previo);
+    });
+    const total = Object.keys(autoria).length;
+    return {
+        total,
+        personas: [...porPersona.values()]
+            .sort((a, b) => b.campos - a.campos)
+            .map((p) => ({ ...p, porcentaje: total ? Math.round((p.campos / total) * 100) : 0 })),
+    };
 };

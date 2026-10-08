@@ -1,0 +1,201 @@
+from __future__ import annotations
+
+from collections import defaultdict
+from datetime import date, datetime, timedelta
+from typing import Any
+
+from sqlalchemy.orm import Session
+
+from app.services.vine_asistencia import (
+    DIAS_DETALLE,
+    catalogo_horarios,
+    desglose,
+    elegir_horario,
+    horario_de,
+)
+from app.services.vine_perfiles import festivos
+from app.services.vine_stats import EVENTOS_ASISTENCIA, consultar, parametros
+
+SEGMENTOS = ("antes", "dentro", "despues", "afuera", "sin_marca")
+HABILES_RECIENTES = 10
+_CAMPOS_RECIENTES = {
+    "dia", "estado", "entrada", "salida", "tramos", "retardo", "cerro", "visita", "tarde", "hasta_al_menos",
+}
+
+_MARCAS = """
+    SELECT pin, event_time, direccion FROM vine.eventos
+    WHERE evento = ANY(:eventos) AND event_time >= :desde AND direccion IS NOT NULL
+    ORDER BY pin, event_time
+"""
+
+_FICHAS = """
+    SELECT f.pin, c.clave, c.nombre, c.entrada, c.salida
+    FROM vine.personas_ficha f
+    JOIN vine.catalogos c ON c.tipo = 'horario' AND c.clave = f.horario
+"""
+
+
+def _promedio(filas: list[dict[str, Any]], clave: str) -> int:
+    return round(sum(f[clave] for f in filas) / len(filas)) if filas else 0
+
+
+def _desgloses(db: Session, params: dict[str, Any]) -> dict[str, tuple[dict[str, Any], dict[date, dict[str, Any]]]]:
+    marcas: dict[str, dict[date, list[tuple[datetime, str]]]] = defaultdict(lambda: defaultdict(list))
+    for fila in consultar(db, _MARCAS, params):
+        marcas[fila["pin"]][fila["event_time"].date()].append((fila["event_time"], fila["direccion"]))
+
+    fichas = {f["pin"]: f for f in consultar(db, _FICHAS, {})}
+    catalogo = catalogo_horarios(db)
+    inhabiles = set(festivos(params["desde"], params["hoy"]))
+    resultado = {}
+    for pin, dias_pin in marcas.items():
+        primeras = [next((t for t, d in m if d == "entrada"), None) for m in dias_pin.values()]
+        horario = elegir_horario(fichas.get(pin), catalogo, [t for t in primeras if t])
+        resultado[pin] = (horario, {
+            dia: desglose(dia, lista, horario, dia.isoweekday() < 6 and dia not in inhabiles)
+            for dia, lista in dias_pin.items()
+        })
+    return resultado
+
+
+def jornadas_instituto(db: Session, dias: int = DIAS_DETALLE) -> list[dict[str, Any]]:
+    params = parametros(dias - 1)
+    por_dia: dict[date, list[dict[str, Any]]] = defaultdict(list)
+    for horario, dias_pin in _desgloses(db, params).values():
+        for dia, fila in dias_pin.items():
+            if fila["cerro"] and not fila["visita"]:
+                fila["con_horario"] = horario.get("entrada") is not None
+                por_dia[dia].append(fila)
+
+    inhabiles = set(festivos(params["desde"], params["hoy"]))
+    salida: list[dict[str, Any]] = []
+    dia = params["desde"]
+    while dia <= params["hoy"]:
+        filas = por_dia.get(dia, [])
+        if dia.isoweekday() >= 6:
+            dia += timedelta(days=1)
+            continue
+        if filas:
+            con_horario = [f for f in filas if f["con_horario"]]
+            fila = {s: _promedio(filas, s) for s in SEGMENTOS}
+            fila.update(
+                dia=dia.isoformat(), estado="asistio", cerro=True, personas=len(filas),
+                tarde=_promedio(con_horario, "tarde"),
+                retardos=sum(1 for f in con_horario if f["retardo"]),
+                en_curso=dia == params["hoy"],
+            )
+            salida.append(fila)
+        elif dia in inhabiles:
+            salida.append({"dia": dia.isoformat(), "estado": "inhabil"})
+        else:
+            salida.append({"dia": dia.isoformat(), "estado": "sin_registro"})
+        dia += timedelta(days=1)
+    return salida
+
+
+def con_inhabiles(meses: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    if not meses:
+        return meses
+    hoy = parametros(0)["hoy"]
+    inicio = date.fromisoformat(f"{meses[0]['mes']}-01")
+    inhabiles = set(festivos(inicio, hoy))
+    conteo: dict[str, dict[str, int]] = defaultdict(lambda: {"habiles": 0, "inhabiles": 0})
+    dia = inicio
+    while dia <= hoy:
+        if dia.isoweekday() < 6:
+            clave = "inhabiles" if dia in inhabiles else "habiles"
+            conteo[dia.strftime("%Y-%m")][clave] += 1
+        dia += timedelta(days=1)
+    for fila in meses:
+        fila.update(conteo[fila["mes"]])
+    return meses
+
+
+def _minutos_del_dia(hora: Any) -> int | None:
+    return hora.hour * 60 + hora.minute if hora else None
+
+
+def recientes(db: Session, dias: int = 90, habiles: int = HABILES_RECIENTES) -> dict[str, dict[str, Any]]:
+    params = parametros(dias)
+    inhabiles = set(festivos(params["desde"], params["hoy"]))
+    ventana: list[date] = []
+    dia = params["hoy"]
+    while len(ventana) < habiles and dia >= params["desde"]:
+        if dia.isoweekday() < 6:
+            ventana.insert(0, dia)
+        dia -= timedelta(days=1)
+
+    salida: dict[str, dict[str, Any]] = {}
+    for pin, (horario, dias_pin) in _desgloses(db, params).items():
+        salida[pin] = {
+            "oficial": [_minutos_del_dia(horario.get("entrada")), _minutos_del_dia(horario.get("salida"))],
+            "recientes": [
+                {k: v for k, v in dias_pin[d].items() if k in _CAMPOS_RECIENTES}
+                if d in dias_pin else {"dia": d.isoformat(), "estado": "inhabil" if d in inhabiles else "sin_registro"}
+                for d in ventana
+            ],
+        }
+    return salida
+
+
+def _sumar(filas: list[dict[str, Any]]) -> dict[str, int]:
+    return {clave: sum(f[clave] for f in filas) for clave in (*SEGMENTOS, "tarde")}
+
+
+def reparto(db: Session, dias: int = 30) -> dict[str, Any]:
+    por_pin: dict[str, dict[str, Any]] = {}
+    por_horario: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for pin, (horario, dias_pin) in _desgloses(db, parametros(dias)).items():
+        jornadas = [f for f in dias_pin.values() if f["cerro"] and not f["visita"]]
+        if not jornadas:
+            continue
+        por_pin[pin] = {**_sumar(jornadas), "jornadas": len(jornadas)}
+        por_horario[horario.get("clave", "otro")].extend(jornadas)
+    horarios = {
+        clave: {k: round(v / len(filas)) for k, v in _sumar(filas).items()} | {"jornadas": len(filas)}
+        for clave, filas in por_horario.items()
+    }
+    return {"personas": por_pin, "horarios": horarios}
+
+
+_PRIMERAS_ENTRADAS = """
+    SELECT min(event_time) AS primera FROM vine.eventos
+    WHERE pin = :pin AND direccion = 'entrada' AND evento = ANY(:eventos) AND event_time >= :desde
+    GROUP BY event_time::date
+"""
+
+_MARCAS_DIA = """
+    SELECT event_time, direccion, lector, punto, verificacion, evento
+    FROM vine.eventos
+    WHERE pin = :pin AND event_time >= :dia AND event_time < :siguiente
+    ORDER BY event_time
+"""
+
+
+def _hhmm(hora: Any) -> str | None:
+    return hora.strftime("%H:%M") if hora else None
+
+
+def dia_persona(db: Session, pin: str, dia: date) -> dict[str, Any]:
+    params = {"pin": pin, "dia": dia, "siguiente": dia + timedelta(days=1)}
+    marcas = consultar(db, _MARCAS_DIA, params)
+    validas = [(m["event_time"], m["direccion"]) for m in marcas if m["direccion"] and m["evento"] in EVENTOS_ASISTENCIA]
+    entradas = consultar(db, _PRIMERAS_ENTRADAS, {"pin": pin, "desde": dia - timedelta(days=90), "eventos": EVENTOS_ASISTENCIA})
+    horario = horario_de(db, pin, [e["primera"] for e in entradas])
+    obligado = dia.isoweekday() < 6 and dia not in festivos(dia, dia)
+    fila = desglose(dia, validas, horario, obligado) if validas else None
+    return {
+        "dia": dia.isoformat(),
+        "marcas": [
+            {
+                "hora": m["event_time"].strftime("%H:%M:%S"),
+                "direccion": m["direccion"],
+                "lector": m["lector"],
+                "medio": m["verificacion"],
+                "cuenta": m["evento"] in EVENTOS_ASISTENCIA,
+            }
+            for m in marcas
+        ],
+        "jornada": fila,
+        "horario": {"entrada": _hhmm(horario.get("entrada")), "salida": _hhmm(horario.get("salida"))},
+    }

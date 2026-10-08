@@ -8,7 +8,7 @@ from urllib.parse import quote
 import urllib3
 from fastapi import UploadFile
 from minio import Minio
-from minio.commonconfig import CopySource
+from minio.commonconfig import REPLACE, CopySource
 from minio.datatypes import Part
 from minio.error import S3Error
 
@@ -298,6 +298,23 @@ class AcervoClient:
 
     def stat_object(self, object_name: str):
         return self.client.stat_object(self.bucket_name, object_name)
+
+    def leer_cabecera(self, object_name: str, length: int = tipo_archivo.CABECERA_BYTES) -> bytes:
+        response = self.client.get_object(self.bucket_name, object_name, offset=0, length=length)
+        try:
+            return response.read(length)
+        finally:
+            response.close()
+            response.release_conn()
+
+    def reescribir_metadatos(self, object_name: str, metadata: dict[str, str]) -> None:
+        self.client.copy_object(
+            self.bucket_name,
+            object_name,
+            CopySource(self.bucket_name, object_name),
+            metadata=metadata,
+            metadata_directive=REPLACE,
+        )
 
     def init_multipart_upload(self, object_name: str, content_type: str | None = None) -> str:
         headers = dict(download_metadata(None, content_type, object_name) or {})

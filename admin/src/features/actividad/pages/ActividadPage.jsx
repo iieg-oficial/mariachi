@@ -83,7 +83,7 @@ export default function ActividadPage() {
                 return (
                     <Space size={8}>
                         <Avatar size="small" src={row.actor_avatar_url} icon={<UserOutlined />} />
-                        <Space direction="vertical" size={0}>
+                        <Space orientation="vertical" size={0}>
                             <Space size={6}>
                                 <Text strong style={{ fontSize: 13 }}>{displayName}</Text>
                                 {role && <Tag color={role.color} style={{ marginInlineEnd: 0 }}>{role.label}</Tag>}
@@ -137,7 +137,7 @@ export default function ActividadPage() {
                 const entries = m ? Object.entries(m) : [];
                 if (entries.length === 0 && !row.ip) return <Text type="secondary">—</Text>;
                 return (
-                    <Space direction="vertical" size={2}>
+                    <Space orientation="vertical" size={2}>
                         {entries.map(([k, v]) => (
                             <Text key={k} style={{ fontSize: 12 }}>
                                 <Text type="secondary">{META_KEY_LABELS[k] || k}:</Text>{' '}

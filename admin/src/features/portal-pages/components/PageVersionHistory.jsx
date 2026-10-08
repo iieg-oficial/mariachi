@@ -103,8 +103,8 @@ const PageVersionHistory = ({ versions = [], currentVersion, onRestore, onPrevie
 
                         return {
                             color: isCurrent ? 'green' : 'blue',
-                            dot: isCurrent ? <SaveOutlined /> : <ClockCircleOutlined />,
-                            children: (
+                            icon: isCurrent ? <SaveOutlined /> : <ClockCircleOutlined />,
+                            content: (
                                 <div key={version.id}>
                                     <Space orientation="vertical" style={{ width: '100%' }} size="small">
                                         <Space wrap>

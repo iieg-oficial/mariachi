@@ -59,13 +59,13 @@ export default function StyleDetailDrawer({ open, alias, styleName, onClose }) {
             open={open}
             onClose={onClose}
             title={styleName}
-            width={640}
+            size={640}
             styles={{ wrapper: { maxWidth: '100vw' } }}
         >
             {loading && <div style={{ textAlign: 'center', padding: 48 }}><Spin /></div>}
-            {error && <Alert type="error" showIcon message={error} />}
+            {error && <Alert type="error" showIcon title={error} />}
             {detail && (
-                <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                <Space orientation="vertical" style={{ width: '100%' }} size="middle">
                     <Descriptions column={1} size="small" bordered>
                         <Descriptions.Item label="Workspace">
                             <Text code>{detail.workspace}</Text>
@@ -97,7 +97,7 @@ export default function StyleDetailDrawer({ open, alias, styleName, onClose }) {
                     </Descriptions>
 
                     {!detail.editable && detail.reason && (
-                        <Alert type="info" showIcon closable message={detail.reason} />
+                        <Alert type="info" showIcon closable title={detail.reason} />
                     )}
 
                     {detail.sharedBy?.length > 1 && (
@@ -105,7 +105,7 @@ export default function StyleDetailDrawer({ open, alias, styleName, onClose }) {
                             type="warning"
                             showIcon
                             closable
-                            message={`Este estilo lo comparten ${detail.sharedBy.length} capas: editarlo las afecta a todas.`}
+                            title={`Este estilo lo comparten ${detail.sharedBy.length} capas: editarlo las afecta a todas.`}
                         />
                     )}
 

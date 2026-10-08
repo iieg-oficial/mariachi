@@ -1,5 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
-import api, { refreshCsrfToken } from '@shared/services/api';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import api, {
+    refreshCsrfToken,
+    buildMinervaLoginUrl,
+    scheduleSessionRefresh,
+    cancelSessionRefresh,
+    SALIENDO_KEY,
+} from '@shared/services/api';
 import { AuthContext } from '@shared/contexts/useAuth';
 
 export const AuthProvider = ({ children }) => {
@@ -10,6 +16,7 @@ export const AuthProvider = ({ children }) => {
         try {
             const response = await api.get('/autenticacion/perfil');
             setUser(response.data);
+            scheduleSessionRefresh(response.data?.session_expires_in);
             if (!sessionStorage.getItem('csrf_token')) {
                 await refreshCsrfToken();
             }
@@ -26,6 +33,7 @@ export const AuthProvider = ({ children }) => {
             .then(async (res) => {
                 if (cancelled) return;
                 setUser(res.data);
+                scheduleSessionRefresh(res.data?.session_expires_in);
                 if (!sessionStorage.getItem('csrf_token')) {
                     await refreshCsrfToken();
                 }
@@ -35,24 +43,20 @@ export const AuthProvider = ({ children }) => {
         return () => { cancelled = true; };
     }, []);
 
-    const loginUser = async (username, password) => {
-        const response = await api.post('/autenticacion/iniciar-sesion', {
-            username,
-            password
-        });
-
-        const { csrf_token } = response.data;
-        sessionStorage.setItem('csrf_token', csrf_token);
-
-        const profile = await api.get('/autenticacion/perfil');
-        setUser(profile.data);
-
-        return { ...response.data, user: profile.data };
+    const login = (next, forzar = false) => {
+        window.location.href = buildMinervaLoginUrl(next, forzar);
     };
 
     const logout = async () => {
-        await api.post('/autenticacion/cerrar-sesion').catch(() => null);
+        cancelSessionRefresh();
+        sessionStorage.setItem(SALIENDO_KEY, '1');
+        const { data } = await api.post('/autenticacion/cerrar-sesion').catch(() => ({ data: null }));
         sessionStorage.removeItem('csrf_token');
+        if (data?.logout_url) {
+            window.location.href = data.logout_url;
+            return;
+        }
+        sessionStorage.removeItem(SALIENDO_KEY);
         setUser(null);
     };
 
@@ -64,6 +68,7 @@ export const AuthProvider = ({ children }) => {
         try {
             const response = await api.get('/autenticacion/perfil');
             setUser(response.data);
+            scheduleSessionRefresh(response.data?.session_expires_in);
             return response.data;
         } catch (err) {
             setUser(null);
@@ -71,10 +76,24 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
+    const permissions = useMemo(
+        () => new Set(user?.permissions || []),
+        [user]
+    );
+
+    const can = useCallback((permission) => permissions.has(permission), [permissions]);
+    const canAny = useCallback(
+        (list = []) => list.some((permission) => permissions.has(permission)),
+        [permissions]
+    );
+
     const value = {
         user,
         loading,
-        login: loginUser,
+        permissions,
+        can,
+        canAny,
+        login,
         logout,
         isAuthenticated,
         refreshUser,

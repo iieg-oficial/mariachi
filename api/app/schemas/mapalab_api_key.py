@@ -129,7 +129,8 @@ class MapalabApiKeyValidateResponse(BaseModel):
 
 
 class MapalabApiKeyAccesoItem(CamelCaseInput):
-    api_key_id: int
+    api_key_id: int | None = None
+    key_prefix: str | None = Field(default=None, max_length=20)
     timestamp: datetime
     endpoint: str = Field(..., max_length=20)
     resultado: str = Field(..., max_length=20)
@@ -146,7 +147,8 @@ class MapalabApiKeyAccesoBatch(CamelCaseInput):
 
 class MapalabApiKeyAccesoResponse(BaseModel):
     id: int
-    api_key_id: int = Field(..., serialization_alias="apiKeyId")
+    api_key_id: int | None = Field(default=None, serialization_alias="apiKeyId")
+    key_prefix: str | None = Field(default=None, serialization_alias="keyPrefix")
     timestamp: datetime
     endpoint: str
     resultado: str

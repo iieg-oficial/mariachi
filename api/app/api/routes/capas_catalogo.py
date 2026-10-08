@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.api.deps import verify_csrf
 from app.api.routes.layers._deps import (
     map_domain_errors,
-    require_project_editor,
+    require_mapalab_edit,
     write_rate_limit,
 )
 from app.core.database import get_dataengine_db
@@ -40,7 +40,7 @@ def _resolve_workspace(db: Session, alias: str) -> Workspace:
 @router.get("", response_model=list[CapaCatalogoResponse])
 async def list_capas(
     db: Session = Depends(get_dataengine_db),
-    _editor: Usuario = Depends(require_project_editor),
+    _editor: Usuario = Depends(require_mapalab_edit),
 ):
     return capas_catalogo_service.get_capas(db)
 
@@ -48,7 +48,7 @@ async def list_capas(
 @router.get("/tags")
 async def list_tags(
     db: Session = Depends(get_dataengine_db),
-    _editor: Usuario = Depends(require_project_editor),
+    _editor: Usuario = Depends(require_mapalab_edit),
 ):
     return capas_catalogo_service.get_all_tags(db)
 
@@ -56,7 +56,7 @@ async def list_tags(
 @router.get("/instituciones", response_model=list[InstitucionCatalogoResponse])
 async def list_instituciones(
     db: Session = Depends(get_dataengine_db),
-    _editor: Usuario = Depends(require_project_editor),
+    _editor: Usuario = Depends(require_mapalab_edit),
 ):
     return capas_catalogo_service.get_instituciones(db)
 
@@ -66,7 +66,7 @@ async def create_institucion(
     data: InstitucionCatalogoCreate,
     db: Session = Depends(get_dataengine_db),
     current_user: Usuario = Depends(verify_csrf),
-    _editor: Usuario = Depends(require_project_editor),
+    _editor: Usuario = Depends(require_mapalab_edit),
     _rl: Usuario = Depends(write_rate_limit),
 ):
     try:
@@ -87,7 +87,7 @@ async def reorder_instituciones(
     data: InstitucionCatalogoReorder,
     db: Session = Depends(get_dataengine_db),
     _current_user: Usuario = Depends(verify_csrf),
-    _editor: Usuario = Depends(require_project_editor),
+    _editor: Usuario = Depends(require_mapalab_edit),
     _rl: Usuario = Depends(write_rate_limit),
 ):
     instituciones = capas_catalogo_service.reorder_instituciones(db, data.ids)
@@ -102,7 +102,7 @@ async def update_institucion(
     data: InstitucionCatalogoUpdate,
     db: Session = Depends(get_dataengine_db),
     current_user: Usuario = Depends(verify_csrf),
-    _editor: Usuario = Depends(require_project_editor),
+    _editor: Usuario = Depends(require_mapalab_edit),
     _rl: Usuario = Depends(write_rate_limit),
 ):
     institucion = capas_catalogo_service.get_institucion(db, institucion_id)
@@ -128,7 +128,7 @@ async def delete_institucion(
     institucion_id: int,
     db: Session = Depends(get_dataengine_db),
     current_user: Usuario = Depends(verify_csrf),
-    _editor: Usuario = Depends(require_project_editor),
+    _editor: Usuario = Depends(require_mapalab_edit),
     _rl: Usuario = Depends(write_rate_limit),
 ):
     institucion = capas_catalogo_service.get_institucion(db, institucion_id)
@@ -148,7 +148,7 @@ async def delete_institucion(
 async def list_geoserver_layers(
     alias: str,
     db: Session = Depends(get_dataengine_db),
-    _editor: Usuario = Depends(require_project_editor),
+    _editor: Usuario = Depends(require_mapalab_edit),
 ):
     workspace = _resolve_workspace(db, alias)
     try:
@@ -163,7 +163,7 @@ async def get_geoserver_layer_meta(
     alias: str,
     layer: str,
     db: Session = Depends(get_dataengine_db),
-    _editor: Usuario = Depends(require_project_editor),
+    _editor: Usuario = Depends(require_mapalab_edit),
 ):
     workspace = _resolve_workspace(db, alias)
     client = GeoServerClient()
@@ -180,7 +180,7 @@ async def get_geoserver_layer_meta(
 async def get_capa(
     capa_id: int,
     db: Session = Depends(get_dataengine_db),
-    _editor: Usuario = Depends(require_project_editor),
+    _editor: Usuario = Depends(require_mapalab_edit),
 ):
     capa = capas_catalogo_service.get_capa(db, capa_id)
     if not capa:
@@ -193,7 +193,7 @@ async def create_capa(
     data: CapaCatalogoCreate,
     db: Session = Depends(get_dataengine_db),
     current_user: Usuario = Depends(verify_csrf),
-    _editor: Usuario = Depends(require_project_editor),
+    _editor: Usuario = Depends(require_mapalab_edit),
     _rl: Usuario = Depends(write_rate_limit),
 ):
     try:
@@ -212,7 +212,7 @@ async def bulk_create(
     data: CapaCatalogoBulkCreate,
     db: Session = Depends(get_dataengine_db),
     current_user: Usuario = Depends(verify_csrf),
-    _editor: Usuario = Depends(require_project_editor),
+    _editor: Usuario = Depends(require_mapalab_edit),
     _rl: Usuario = Depends(write_rate_limit),
 ):
     try:
@@ -237,7 +237,7 @@ async def bulk_delete(
     data: CapaCatalogoBulkDelete,
     db: Session = Depends(get_dataengine_db),
     current_user: Usuario = Depends(verify_csrf),
-    _editor: Usuario = Depends(require_project_editor),
+    _editor: Usuario = Depends(require_mapalab_edit),
     _rl: Usuario = Depends(write_rate_limit),
 ):
     result = capas_catalogo_service.bulk_delete_capas(
@@ -253,7 +253,7 @@ async def bulk_update(
     data: CapaCatalogoBulkUpdate,
     db: Session = Depends(get_dataengine_db),
     current_user: Usuario = Depends(verify_csrf),
-    _editor: Usuario = Depends(require_project_editor),
+    _editor: Usuario = Depends(require_mapalab_edit),
     _rl: Usuario = Depends(write_rate_limit),
 ):
     try:
@@ -273,7 +273,7 @@ async def reorder_capas(
     data: CapaCatalogoReorder,
     db: Session = Depends(get_dataengine_db),
     _current_user: Usuario = Depends(verify_csrf),
-    _editor: Usuario = Depends(require_project_editor),
+    _editor: Usuario = Depends(require_mapalab_edit),
     _rl: Usuario = Depends(write_rate_limit),
 ):
     capas = capas_catalogo_service.reorder_capas(db, data.ids)
@@ -288,7 +288,7 @@ async def update_capa(
     data: CapaCatalogoUpdate,
     db: Session = Depends(get_dataengine_db),
     current_user: Usuario = Depends(verify_csrf),
-    _editor: Usuario = Depends(require_project_editor),
+    _editor: Usuario = Depends(require_mapalab_edit),
     _rl: Usuario = Depends(write_rate_limit),
 ):
     capa = capas_catalogo_service.get_capa(db, capa_id)
@@ -312,7 +312,7 @@ async def delete_capa(
     capa_id: int,
     db: Session = Depends(get_dataengine_db),
     current_user: Usuario = Depends(verify_csrf),
-    _editor: Usuario = Depends(require_project_editor),
+    _editor: Usuario = Depends(require_mapalab_edit),
     _rl: Usuario = Depends(write_rate_limit),
 ):
     capa = capas_catalogo_service.get_capa(db, capa_id)

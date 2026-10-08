@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Input, List, Modal, Space, Tag, Typography } from 'antd';
+import { Alert, Button, Input, List, Modal, Space, Tag, Typography, Checkbox } from 'antd';
 import { ExclamationCircleOutlined } from '@ant-design/icons';
 
 const { Text, Paragraph } = Typography;
@@ -54,12 +54,14 @@ export default function DeleteLayerModal({
     submitting,
 }) {
     const [typed, setTyped] = useState('');
+    const [cascade, setCascade] = useState(false);
 
-    useEffect(() => { if (!open) setTyped(''); }, [open]);
+    useEffect(() => { if (!open) { setTyped(''); setCascade(false); } }, [open]);
 
     const expectedName = layer?.label || layer?.id || '';
     const matches = typed.trim() === expectedName.trim();
-    const blocking = (references?.childrenCount || 0) > 0;
+    const childrenCount = references?.childrenCount || 0;
+    const blocking = childrenCount > 0 && !cascade;
     const hasWarnings = !blocking && (
         references?.inInitialOrder
         || (references?.eventos && references.eventos.length > 0)
@@ -70,7 +72,7 @@ export default function DeleteLayerModal({
         : 'Solicitar archivado a un admin';
 
     const onConfirm = () => {
-        if (isAdmin) onConfirmAdmin({ force: hasWarnings });
+        if (isAdmin) onConfirmAdmin({ force: hasWarnings, cascade: childrenCount > 0 && cascade });
         else onConfirmEditor();
     };
 
@@ -97,7 +99,7 @@ export default function DeleteLayerModal({
             <Paragraph>
                 Vas a {isAdmin ? 'archivar' : 'solicitar el archivado de'} la capa:
             </Paragraph>
-            <Space direction="vertical" style={{ width: '100%', marginBottom: 12 }} size={4}>
+            <Space orientation="vertical" style={{ width: '100%', marginBottom: 12 }} size={4}>
                 <Text strong style={{ fontSize: 16 }}>{layer?.label}</Text>
                 <Text type="secondary" style={{ fontSize: 12 }}>id: <code>{layer?.id}</code></Text>
             </Space>
@@ -107,15 +109,38 @@ export default function DeleteLayerModal({
             </Paragraph>
 
             {referencesLoading ? (
-                <Alert type="info" message="Verificando referencias..." showIcon style={{ marginBottom: 12 }} />
+                <Alert type="info" title="Verificando referencias..." showIcon style={{ marginBottom: 12 }} />
             ) : refsBlock(references)}
 
-            {blocking && (
+            {childrenCount > 0 && isAdmin && (
+                <Alert
+                    type="warning"
+                    showIcon
+                    title={`Este nodo tiene ${childrenCount} hijo(s) activo(s)`}
+                    description={
+                        <Space orientation="vertical" size={8} style={{ width: '100%' }}>
+                            <Text style={{ fontSize: 13 }}>
+                                Si es un grupo, sus propiedades <b>se archivan con él</b>: no son capas
+                                aparte, son filtros del mismo feature type y no tienen sentido sueltas.
+                            </Text>
+                            <Checkbox checked={cascade} onChange={(e) => setCascade(e.target.checked)}>
+                                Archivar también sus {childrenCount} hijo(s)
+                            </Checkbox>
+                            <Text type="secondary" style={{ fontSize: 12 }}>
+                                Se puede deshacer desde la papelera, restaurando primero el padre y
+                                después cada hijo.
+                            </Text>
+                        </Space>
+                    }
+                    style={{ marginBottom: 12 }}
+                />
+            )}
+            {childrenCount > 0 && !isAdmin && (
                 <Alert
                     type="error"
                     showIcon
-                    message="No se puede archivar"
-                    description="La capa tiene hijos activos. Elimínalos o muévelos primero."
+                    title="No se puede solicitar el archivado"
+                    description="El nodo tiene hijos activos. Pide a una administradora que lo archive en cascada."
                     style={{ marginBottom: 12 }}
                 />
             )}

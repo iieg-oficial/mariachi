@@ -148,7 +148,7 @@ export default function PeriodosPanel({ formulario }) {
     ];
 
     return (
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="large" style={{ width: '100%' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                 <Typography.Title level={5} style={{ margin: 0 }}>Ventanas del formulario</Typography.Title>
                 <Space>

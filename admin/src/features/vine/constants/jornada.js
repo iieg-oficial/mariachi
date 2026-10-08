@@ -1,0 +1,36 @@
+export const SEGMENTOS_JORNADA = [
+    { clave: 'dentro', nombre: 'Dentro del horario', color: '#3B5BA9' },
+    { clave: 'antes', nombre: 'Llegó antes', color: '#D98A1E' },
+    { clave: 'despues', nombre: 'Se quedó después', color: '#8E7CC3' },
+    { clave: 'afuera', nombre: 'Afuera', color: '#2E9C8A' },
+    { clave: 'sin_marca', nombre: 'Sin marca', color: '#8C8C8C', textura: true },
+];
+
+export const TEXTURA_SIN_MARCA = 'repeating-linear-gradient(45deg, #8C8C8C 0 2px, transparent 2px 5px)';
+
+export const TEXTURA_MINIMO = 'repeating-linear-gradient(135deg, rgba(59, 91, 169, 0.35) 0 2px, transparent 2px 6px)';
+
+export const COLOR_TARDE = 'rgba(215, 38, 61, 0.55)';
+
+export const TEXTURA_TARDE = 'repeating-linear-gradient(45deg, rgba(215, 38, 61, 0.3) 0 1.5px, rgba(215, 38, 61, 0.04) 1.5px 6px)';
+
+export const FONDO_VISITA = 'rgba(59, 91, 169, 0.18)';
+
+export const JORNADA_ESPERADA_MIN = 480;
+
+export const COLOR_TINTA = 'rgba(0, 0, 0, 0.65)';
+
+export const COLOR_REFERENCIA = 'rgba(0, 0, 0, 0.35)';
+
+export const formatoMinutos = (minutos) => {
+    const m = Math.round(minutos ?? 0);
+    if (m < 60) return `${m} min`;
+    const resto = m % 60;
+    return resto ? `${Math.floor(m / 60)} h ${resto} min` : `${m / 60} h`;
+};
+
+export const aMinutos = (hhmm) => {
+    if (!hhmm) return null;
+    const [h, m] = hhmm.split(':').map(Number);
+    return (h * 60) + m;
+};

@@ -6,7 +6,7 @@ export default function LayerGroupWarning({ workspace, layerName }) {
             type="info"
             showIcon
             closable
-            message="Esta capa es un Layer Group de GeoServer"
+            title="Esta capa es un Layer Group de GeoServer"
             description={
                 <div>
                     <p style={{ marginBottom: 8 }}>

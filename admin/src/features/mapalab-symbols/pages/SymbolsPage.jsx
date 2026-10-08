@@ -92,7 +92,7 @@ export default function SymbolsPage() {
 
     return (
         <Content style={{ padding: isMobile ? 6 : 24, width: '100%' }}>
-            <Space direction="vertical" size="large" style={{ width: '100%' }}>
+            <Space orientation="vertical" size="large" style={{ width: '100%' }}>
                 <div>
                     <Title level={isMobile ? 4 : 3} style={{ marginBottom: 4 }}>
                         Catálogo de símbolos
@@ -103,7 +103,7 @@ export default function SymbolsPage() {
                     </Text>
                 </div>
 
-                {catError && <Alert type="error" message={catError} showIcon closable />}
+                {catError && <Alert type="error" title={catError} showIcon closable />}
 
                 <div
                     style={{

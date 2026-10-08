@@ -15,7 +15,7 @@ export function buildSourceAppsColumns({
             title: 'App',
             dataIndex: 'nombre',
             render: (nombre, record) => (
-                <Space direction="vertical" size={0}>
+                <Space orientation="vertical" size={0}>
                     <Text strong>{nombre}</Text>
                     <Text code style={{ fontSize: 11 }}>{record.slug}</Text>
                 </Space>
@@ -27,7 +27,7 @@ export function buildSourceAppsColumns({
             width: 200,
             render: (prefix, record) => (
                 record.hasApiKey ? (
-                    <Space direction="vertical" size={0}>
+                    <Space orientation="vertical" size={0}>
                         <Text code>{prefix}…</Text>
                         <Button
                             size="small"

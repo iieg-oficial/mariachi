@@ -35,6 +35,42 @@ class GeoServerSearchResponse(BaseModel):
     truncated: bool = False
 
 
+class GeoServerFolderInfoResponse(BaseModel):
+    path: str
+    workspace: str | None = None
+    file_count: int = Field(..., serialization_alias="fileCount")
+    folder_count: int = Field(..., serialization_alias="folderCount")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class GeoServerResourceRef(BaseModel):
+    name: str
+    workspace: str | None = None
+    is_dir: bool = Field(default=False, validation_alias="isDir")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class GeoServerMoveRequest(BaseModel):
+    source: str
+    target: str
+    workspace: str | None = None
+    is_dir: bool = Field(default=False, validation_alias="isDir")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class GeoServerBulkDeleteRequest(BaseModel):
+    items: list[GeoServerResourceRef] = Field(..., min_length=1, max_length=200)
+
+
+class GeoServerBulkDeleteResponse(BaseModel):
+    deleted: int
+    failed: int
+    errors: list[str] = Field(default_factory=list)
+
+
 class GeoServerFontFileResponse(BaseModel):
     name: str
     workspace: str | None = None

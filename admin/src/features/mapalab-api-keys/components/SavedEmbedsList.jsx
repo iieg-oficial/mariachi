@@ -95,7 +95,7 @@ export default function SavedEmbedsList({
                                     </Space>
                                 }
                                 description={
-                                    <Space direction="vertical" size={2} style={{ width: '100%' }}>
+                                    <Space orientation="vertical" size={2} style={{ width: '100%' }}>
                                         {layerLabels.length > 0 && (
                                             <Space size={4} wrap>
                                                 {layerLabels.slice(0, 5).map((l, i) => (

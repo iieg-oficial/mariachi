@@ -1,107 +1,139 @@
 import { memo } from 'react';
-import { Avatar, Button, Card, Space, Tag, Tooltip, Typography } from 'antd';
-import {
-    DeleteOutlined,
-    EditOutlined,
-    LockOutlined,
-    UserOutlined,
-} from '@ant-design/icons';
+import { Card, Space, Tag, Tooltip, Typography } from 'antd';
+import UserAvatar from './UserAvatar';
+import EstadoCuenta from './EstadoCuenta';
+import { formatoFecha } from '../helpers/estadoCuenta';
+import { PROJECT_ROLE_LABEL, ROLE_COLOR, roleLabel } from '../constants/roles';
 
 const { Title, Text } = Typography;
 
-const ROLE_COLOR = { tetlamamakani: 'red', editora: 'blue', externo: 'green' };
-const ROLE_LABEL = { tetlamamakani: 'Administradora', editora: 'Editora', externo: 'Externo' };
-const PROJECT_ROLE_LABEL = { editor: 'Editor', viewer: 'Viewer' };
+export const CARD_MIN_WIDTH = 288;
+export const CARD_MAX_WIDTH = 420;
+export const CARD_MIN_HEIGHT = 184;
 
-const UserCard = ({ user, onEdit, onResetPassword, onDelete, isSelf }) => {
-    const stop = (handler) => (e) => {
-        e.stopPropagation();
-        handler(user);
+const conteo = (total) => (total === 1 ? '1 proyecto' : `${total} proyectos`);
+
+const ProyectosTag = ({ user, detalleVisible, proyectosDelSistema = [] }) => {
+    const esGlobal = user.role === 'tetlamamakani';
+
+    if (!esGlobal && !detalleVisible) return null;
+
+    const proyectos = esGlobal ? proyectosDelSistema : (user.projects || []);
+    if (proyectos.length === 0) {
+        return <Tag style={{ marginInlineEnd: 0 }}>Sin proyectos</Tag>;
+    }
+
+    const detalle = (
+        <ul style={{ margin: 0, paddingLeft: 16 }}>
+            {proyectos.map((p) => (
+                <li key={p.slug}>
+                    {p.name}{esGlobal ? '' : `: ${PROJECT_ROLE_LABEL[p.project_role] || p.project_role}`}
+                </li>
+            ))}
+        </ul>
+    );
+
+    return (
+        <Tooltip title={detalle}>
+            <Tag style={{ marginInlineEnd: 0, cursor: 'help' }}>
+                {conteo(proyectos.length)}
+            </Tag>
+        </Tooltip>
+    );
+};
+
+const UserCard = ({
+    user,
+    onEdit,
+    puedeEditar = true,
+    detalleVisible = true,
+    proyectosDelSistema = [],
+}) => {
+    const abrirConTeclado = (e) => {
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        e.preventDefault();
+        onEdit(user);
     };
 
-    const projectsTags = (() => {
-        if (user.role === 'tetlamamakani') {
-            return <Tag color="gold">Todos los proyectos</Tag>;
-        }
-        if (!user.projects || user.projects.length === 0) {
-            return <Tag>Sin proyectos asignados</Tag>;
-        }
-        return user.projects.map((p) => (
-            <Tag key={p.slug} color={p.project_role === 'editor' ? 'geekblue' : 'default'}>
-                {p.name}: {PROJECT_ROLE_LABEL[p.project_role] || p.project_role}
-            </Tag>
-        ));
-    })();
-
-    const actions = [
-        <Tooltip key="editar" title="Editar">
-            <Button type="text" icon={<EditOutlined />} onClick={stop(onEdit)} aria-label="Editar" />
-        </Tooltip>,
-        <Tooltip key="reset" title={isSelf ? 'No puedes resetear tu propia contraseña' : 'Resetear contraseña'}>
-            <Button
-                type="text"
-                icon={<LockOutlined />}
-                onClick={stop(onResetPassword)}
-                aria-label="Resetear contraseña"
-                disabled={isSelf}
-            />
-        </Tooltip>,
-        <Tooltip key="eliminar" title={isSelf ? 'No puedes eliminar tu propio usuario' : 'Eliminar'}>
-            <Button
-                type="text"
-                danger
-                icon={<DeleteOutlined />}
-                onClick={stop(onDelete)}
-                aria-label="Eliminar"
-                disabled={isSelf}
-            />
-        </Tooltip>,
-    ];
+    const alta = formatoFecha(user.created_at);
+    const ultimaSesion = formatoFecha(user.ultimo_acceso);
 
     return (
         <Card
-            hoverable
-            onClick={() => onEdit(user)}
-            actions={actions}
-            styles={{ body: { padding: 16, flex: 1 } }}
-            style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+            hoverable={puedeEditar}
+            onClick={puedeEditar ? () => onEdit(user) : undefined}
+            styles={{ body: { padding: 16, flex: 1, display: 'flex', flexDirection: 'column' } }}
+            style={{
+                height: '100%',
+                width: '100%',
+                minHeight: CARD_MIN_HEIGHT,
+                maxWidth: CARD_MAX_WIDTH,
+                marginInline: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+            }}
         >
-            <Space align="start" size={12} style={{ width: '100%' }}>
-                <Avatar
-                    size={48}
-                    src={user.avatarUrl || user.avatar_url || undefined}
-                    icon={!user.avatarUrl && !user.avatar_url && <UserOutlined />}
-                />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'flex-start',
-                        gap: 8,
-                    }}>
+            <div
+                role={puedeEditar ? 'button' : undefined}
+                tabIndex={puedeEditar ? 0 : undefined}
+                onKeyDown={puedeEditar ? abrirConTeclado : undefined}
+                aria-label={puedeEditar ? `Editar ${user.name}` : undefined}
+                style={{ outlineOffset: 4 }}
+            >
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                    <UserAvatar user={user} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
                         <Title level={5} style={{ margin: 0, lineHeight: 1.3 }} ellipsis={{ rows: 2 }}>
                             {user.name}
                         </Title>
-                        <Tag color={ROLE_COLOR[user.role]} style={{ flexShrink: 0, marginInlineEnd: 0 }}>
-                            {ROLE_LABEL[user.role] || user.role}
-                        </Tag>
+                        <Text type="secondary" style={{ fontSize: 11, fontFamily: 'monospace', display: 'block' }} ellipsis>
+                            @{user.username}
+                        </Text>
+                        <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 2 }} ellipsis>
+                            {user.email}
+                        </Text>
                     </div>
-                    <Text type="secondary" style={{ fontSize: 11, fontFamily: 'monospace', display: 'block' }}>
-                        @{user.username}
+                </div>
+            </div>
+
+            <div style={{ marginTop: 'auto', paddingTop: 12 }}>
+                <div style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    justifyContent: 'space-between',
+                    gap: 8,
+                    marginBottom: 8,
+                }}>
+                    <Text type="secondary" style={{ fontSize: 11 }}>
+                        {alta ? `Alta ${alta}` : ''}
                     </Text>
-                    <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 2 }} ellipsis>
-                        {user.email}
+                    <Text type="secondary" style={{ fontSize: 11 }}>
+                        {ultimaSesion ? `Última sesión ${ultimaSesion}` : 'Sin ingresar'}
                     </Text>
                 </div>
-            </Space>
-            <Space size={4} wrap style={{ marginTop: 12 }}>
-                {projectsTags}
-            </Space>
-            {user.must_change_password && (
-                <Text type="warning" style={{ fontSize: 11, marginTop: 8 }}>
-                    Pendiente cambio de contraseña en primer login
-                </Text>
-            )}
+                <div style={{
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: 8,
+                }}>
+                    <Space size={4} wrap>
+                        <Tag color={ROLE_COLOR[user.role]} style={{ marginInlineEnd: 0 }}>
+                            {roleLabel(user.role)}
+                        </Tag>
+                        <ProyectosTag
+                            user={user}
+                            detalleVisible={detalleVisible}
+                            proyectosDelSistema={proyectosDelSistema}
+                        />
+                        {user.sieej_grupo && (
+                            <Tag color="purple" style={{ marginInlineEnd: 0 }}>{user.sieej_grupo.nombre}</Tag>
+                        )}
+                    </Space>
+                    <EstadoCuenta user={user} detalleVisible={detalleVisible} />
+                </div>
+            </div>
         </Card>
     );
 };

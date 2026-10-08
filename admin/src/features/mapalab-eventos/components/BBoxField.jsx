@@ -150,7 +150,7 @@ function MapPicker({ value, onChange, disabled }) {
     const clear = () => onChangeRef.current?.(null);
 
     return (
-        <Space direction="vertical" style={{ width: '100%' }} size={6}>
+        <Space orientation="vertical" style={{ width: '100%' }} size={6}>
             <Space size={6} wrap>
                 <Text type="secondary" style={{ fontSize: 12 }}>Captura:</Text>
                 <Radio.Group value={captureMode} onChange={(e) => setCaptureMode(e.target.value)} disabled={disabled} size="small">
@@ -211,7 +211,7 @@ function ManualInputs({ value, onChange, disabled }) {
     const ranges = crs === 'EPSG:4326' ? RANGES_4326 : null;
 
     return (
-        <Space direction="vertical" style={{ width: '100%' }} size={6}>
+        <Space orientation="vertical" style={{ width: '100%' }} size={6}>
             <Space size={6}>
                 <Text type="secondary" style={{ fontSize: 12 }}>Sistema de coordenadas:</Text>
                 <Radio.Group value={crs} onChange={(e) => setCrs(e.target.value)} disabled={disabled} size="small">
@@ -223,7 +223,7 @@ function ManualInputs({ value, onChange, disabled }) {
                 {(['minx', 'miny', 'maxx', 'maxy']).map((key) => {
                     const range = ranges?.[key];
                     return (
-                        <Space key={key} direction="vertical" size={0}>
+                        <Space key={key} orientation="vertical" size={0}>
                             <Text style={{ fontSize: 11 }}>{labels[key]}</Text>
                             <InputNumber
                                 value={displayed[key]}
@@ -255,7 +255,7 @@ export default function BBoxField({ value, onChange, disabled }) {
     };
 
     return (
-        <Space direction="vertical" style={{ width: '100%' }} size={10}>
+        <Space orientation="vertical" style={{ width: '100%' }} size={10}>
             <Radio.Group value={mode} onChange={handleModeChange} disabled={disabled} optionType="button" buttonStyle="solid" size="small">
                 <Radio.Button value="none">Sin zoom</Radio.Button>
                 <Radio.Button value="view">Vista del mapa</Radio.Button>
@@ -263,13 +263,13 @@ export default function BBoxField({ value, onChange, disabled }) {
 
             {mode === 'none' && (
                 <Alert closable={false} type="info" showIcon
-                    message="Sin zoom"
+                    title="Sin zoom"
                     description="El visor abrirá el evento sin hacer zoom a un área específica."
                 />
             )}
 
             {mode === 'view' && (
-                <Space direction="vertical" style={{ width: '100%' }} size={10}>
+                <Space orientation="vertical" style={{ width: '100%' }} size={10}>
                     <MapPicker value={value} onChange={onChange} disabled={disabled} />
                     <Collapse ghost size="small" items={[{
                         key: 'manual',

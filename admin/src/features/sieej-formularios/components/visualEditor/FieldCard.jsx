@@ -75,7 +75,7 @@ export default function FieldCard({
     };
 
     const actionButtons = (
-        <Space size="small" direction={isCompact && !isMobile ? 'vertical' : 'horizontal'}>
+        <Space size="small" orientation={isCompact && !isMobile ? 'vertical' : 'horizontal'}>
             {isMobile && (
                 <>
                     <Tooltip title="Subir">

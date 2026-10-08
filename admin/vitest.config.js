@@ -12,8 +12,9 @@ export default defineConfig({
         environment: 'happy-dom',
         globals: true,
         setupFiles: ['./vitest.setup.js'],
+        execArgv: ['--no-experimental-webstorage'],
         include: ['src/**/*.test.{js,jsx}', 'src/**/__tests__/**/*.{js,jsx}'],
-        testTimeout: 15000,
+        testTimeout: 30000,
     },
     resolve: {
         alias: {

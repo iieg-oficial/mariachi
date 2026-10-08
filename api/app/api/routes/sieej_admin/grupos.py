@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import verify_csrf
+from app.api.deps import require_permission, verify_csrf
 from app.core.database import get_db
 from app.models.user import Usuario
 from app.schemas.sieej.grupo import (
@@ -14,8 +14,11 @@ from app.services.sieej.grupos_service import GruposService
 
 router = APIRouter()
 
+_ver_formularios = [Depends(require_permission("mariachi.sieej_formularios.view"))]
+_editar_formularios = [Depends(require_permission("mariachi.sieej_formularios.update"))]
 
-@router.get("/grupos", response_model=list[GrupoResponse])
+
+@router.get("/grupos", response_model=list[GrupoResponse], dependencies=_ver_formularios)
 async def listar_grupos(db: Session = Depends(get_db)):
     return GruposService(db).listar()
 
@@ -24,6 +27,7 @@ async def listar_grupos(db: Session = Depends(get_db)):
     "/grupos",
     response_model=GrupoResponse,
     status_code=status.HTTP_201_CREATED,
+    dependencies=_editar_formularios,
 )
 async def crear_grupo(
     data: GrupoCreate,
@@ -33,7 +37,7 @@ async def crear_grupo(
     return GruposService(db).crear(data.nombre, data.descripcion, data.usuarios)
 
 
-@router.get("/grupos/{grupo_id}", response_model=GrupoResponse)
+@router.get("/grupos/{grupo_id}", response_model=GrupoResponse, dependencies=_ver_formularios)
 async def obtener_grupo(
     grupo_id: int,
     db: Session = Depends(get_db),
@@ -41,7 +45,7 @@ async def obtener_grupo(
     return GruposService(db).get(grupo_id)
 
 
-@router.put("/grupos/{grupo_id}", response_model=GrupoResponse)
+@router.put("/grupos/{grupo_id}", response_model=GrupoResponse, dependencies=_editar_formularios)
 async def actualizar_grupo(
     grupo_id: int,
     data: GrupoUpdate,
@@ -51,7 +55,7 @@ async def actualizar_grupo(
     return GruposService(db).actualizar(grupo_id, data.nombre, data.descripcion)
 
 
-@router.delete("/grupos/{grupo_id}")
+@router.delete("/grupos/{grupo_id}", dependencies=_editar_formularios)
 async def eliminar_grupo(
     grupo_id: int,
     db: Session = Depends(get_db),
@@ -61,17 +65,19 @@ async def eliminar_grupo(
     return {"message": "Grupo eliminado"}
 
 
-@router.put("/grupos/{grupo_id}/usuarios", response_model=GrupoResponse)
+@router.put("/grupos/{grupo_id}/usuarios", response_model=GrupoResponse, dependencies=_editar_formularios)
 async def actualizar_miembros(
     grupo_id: int,
     data: GrupoUsuariosUpdate,
     db: Session = Depends(get_db),
     _csrf: Usuario = Depends(verify_csrf),
 ):
-    return GruposService(db).actualizar_miembros(grupo_id, data.usuarios)
+    return GruposService(db).actualizar_miembros(
+        grupo_id, data.usuarios, data.coordinadores
+    )
 
 
-@router.get("/grupos/{grupo_id}/usuarios")
+@router.get("/grupos/{grupo_id}/usuarios", dependencies=_ver_formularios)
 async def listar_miembros(
     grupo_id: int,
     db: Session = Depends(get_db),
@@ -84,6 +90,7 @@ async def listar_miembros(
             "email": u.email,
             "name": u.name,
             "role": u.role,
+            "rol_grupo": rol,
         }
-        for u in miembros
+        for u, rol in miembros
     ]

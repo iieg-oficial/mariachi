@@ -100,7 +100,7 @@ const ShowWhenField = ({ form, availableFields = [] }) => {
                 <Alert
                     type="info"
                     showIcon
-                    message={`Este campo solo se mostrará cuando «${condition.triggerLabel}» `
+                    title={`Este campo solo se mostrará cuando «${condition.triggerLabel}» `
                         + `${condition.isMulti ? 'incluya' : 'sea'} ${condition.valueText}.`}
                 />
             )}
@@ -109,7 +109,7 @@ const ShowWhenField = ({ form, availableFields = [] }) => {
                     type="warning"
                     showIcon
                     style={{ marginTop: condition ? 8 : 0 }}
-                    message={`Otros ${dependents.length} campo${dependents.length === 1 ? '' : 's'} dependen de este`}
+                    title={`Otros ${dependents.length} campo${dependents.length === 1 ? '' : 's'} dependen de este`}
                     description={(
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                             <span style={{ fontSize: 12, color: '#888' }}>

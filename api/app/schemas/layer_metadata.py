@@ -103,6 +103,8 @@ class LayerMetadataBase(CamelCaseInput):
 
 
 class LayerMetadataResponse(LayerMetadataBase):
+    frecuencia_sugerida: str | None = Field(default=None, serialization_alias='frecuenciaSugerida')
+    fecha_ultima_sugerida: str | None = Field(default=None, serialization_alias='fechaUltimaSugerida')
     created_at: datetime = Field(..., serialization_alias='createdAt')
     updated_at: datetime = Field(..., serialization_alias='updatedAt')
     updated_by: str | None = Field(default=None, serialization_alias='updatedBy')

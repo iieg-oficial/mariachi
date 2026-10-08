@@ -3,8 +3,8 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import verify_csrf
 from app.api.routes.layers._deps import (
-    require_admin,
-    require_project_editor,
+    require_mapalab_edit,
+    require_mapalab_manage,
     write_rate_limit,
 )
 from app.core.database import get_dataengine_db
@@ -26,7 +26,7 @@ router = APIRouter(prefix='/layers/slugs')
 async def suggest_slug(
     body: SlugSuggestRequest,
     db: Session = Depends(get_dataengine_db),
-    _editor: Usuario = Depends(require_project_editor),
+    _editor: Usuario = Depends(require_mapalab_edit),
 ):
     base = slug_service.slugify(body.label) or "capa"
     if not slug_service.is_valid_slug(base):
@@ -40,7 +40,7 @@ async def bulk_generate_slugs(
     body: dict,
     db: Session = Depends(get_dataengine_db),
     _csrf: Usuario = Depends(verify_csrf),
-    _admin: Usuario = Depends(require_admin),
+    _admin: Usuario = Depends(require_mapalab_manage),
     _rl: Usuario = Depends(write_rate_limit),
 ):
     overwrite = bool(body.get("overwrite", False))

@@ -122,7 +122,7 @@ export default function MarkdownTextArea({
     };
 
     return (
-        <Space direction="vertical" size={4} style={{ width: '100%' }}>
+        <Space orientation="vertical" size={4} style={{ width: '100%' }}>
             <Space size={4} wrap>
                 {features.filter((f) => WRAPPERS[f]).map((f) => {
                     const w = WRAPPERS[f];

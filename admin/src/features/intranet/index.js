@@ -1,0 +1,11 @@
+export { default as CarruselPage } from './pages/CarruselPage';
+export { default as GaleriaPage } from './pages/GaleriaPage';
+export { default as DocumentosPage } from './pages/DocumentosPage';
+export { default as EnlacesPage } from './pages/EnlacesPage';
+export { default as SitiosPage } from './pages/SitiosPage';
+export { default as HerramientasPage } from './pages/HerramientasPage';
+export { default as PersonasPage } from './pages/PersonasPage';
+export { default as EspaciosPage } from './pages/EspaciosPage';
+export { default as SolicitudesPage } from './pages/SolicitudesPage';
+export { default as EventosPage } from './pages/EventosPage';
+export { default as FestejosPage } from './pages/FestejosPage';

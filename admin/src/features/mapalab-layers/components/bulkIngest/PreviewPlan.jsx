@@ -23,7 +23,7 @@ export default function PreviewPlan({ plan, onApply, onCancel, applying }) {
 
     return (
         <Spin spinning={applying} tip="Aplicando…">
-            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+            <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
                 <Card>
                     <Descriptions column={2} size="small">
                         <Descriptions.Item label="Archivo">{plan.plan.sourceFilename}</Descriptions.Item>
@@ -34,7 +34,7 @@ export default function PreviewPlan({ plan, onApply, onCancel, applying }) {
                     {unknownHeaders.length > 0 && (
                         <Alert
                             type="warning"
-                            message="Columnas del archivo sin mapear (se ignoraron)"
+                            title="Columnas del archivo sin mapear (se ignoraron)"
                             description={unknownHeaders.join(', ')}
                             showIcon
                             closable

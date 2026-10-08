@@ -1,19 +1,60 @@
-from datetime import timezone
+import logging
 
+import httpx
 from fastapi import Cookie, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
+from app.core import minerva_session, oidc
 from app.core.database import get_db
-from app.core.security import decodificar_token, verificar_csrf_token
+from app.core.security import crear_access_token, decodificar_token, verificar_csrf_token
 from app.core.settings import get_settings
+from app.core.time import utcnow
 from app.models.acervo_bucket import AcervoBucket
 from app.models.project import Project, UserProject
 from app.models.user import Usuario
+from minerva_sdk.config import settings as minerva_settings
+from minerva_sdk.fastapi import _decode, _fetch_permissions
 
+logger = logging.getLogger(__name__)
 settings = get_settings()
 
-ADMIN_ROLE = "tetlamamakani"
-STAFF_ROLES = {"tetlamamakani", "editora"}
+
+def _credentials_exception() -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="No se pudo validar las credenciales",
+    )
+
+
+async def _minerva_access_token(sid: str) -> str:
+    try:
+        record = minerva_session.load(sid)
+    except minerva_session.MinervaSessionError as exc:
+        raise _credentials_exception() from exc
+
+    if record.get("expires_at", 0) > utcnow().timestamp():
+        return record["access_token"]
+
+    refresh = record.get("refresh_token")
+    if not refresh:
+        minerva_session.drop(sid)
+        raise _credentials_exception()
+
+    try:
+        tokens = await oidc.refresh_access_token(refresh)
+    except httpx.HTTPError as exc:
+        logger.info("minerva refresh fallido sid=%s: %s", sid, exc)
+        minerva_session.drop(sid)
+        raise _credentials_exception() from exc
+
+    access_token = tokens["access_token"]
+    minerva_session.store(
+        sid,
+        access_token,
+        tokens.get("refresh_token", refresh),
+        oidc.access_expiry(tokens.get("expires_in")),
+    )
+    return access_token
 
 
 async def get_current_user(
@@ -21,38 +62,37 @@ async def get_current_user(
     access_token: str | None = Cookie(default=None, alias=settings.cookie_name),
     db: Session = Depends(get_db),
 ) -> Usuario:
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="No se pudo validar las credenciales",
-    )
-
     if access_token is None:
-        raise credentials_exception
+        raise _credentials_exception()
 
     payload = decodificar_token(access_token)
     if payload is None:
-        raise credentials_exception
+        raise _credentials_exception()
 
     username: str | None = payload.get("sub")
-    if username is None:
-        raise credentials_exception
+    sid: str | None = payload.get("sid")
+    if username is None or sid is None:
+        raise _credentials_exception()
+
+    minerva_token = await _minerva_access_token(sid)
+    try:
+        claims = await _decode(minerva_token)
+        permissions = await _fetch_permissions(
+            minerva_token, claims, minerva_settings.application_code
+        )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.warning("minerva validacion fallida sid=%s: %s", sid, exc)
+        raise _credentials_exception() from exc
 
     usuario = db.query(Usuario).filter(Usuario.username == username).first()
     if usuario is None:
-        raise credentials_exception
+        raise _credentials_exception()
 
-    iat = payload.get("iat")
-    if iat is not None and usuario.password_changed_at is not None:
-        pwd_changed = usuario.password_changed_at
-        if pwd_changed.tzinfo is None:
-            pwd_changed = pwd_changed.replace(tzinfo=timezone.utc)
-        # JWT `iat` se serializa en segundos enteros (sin microsegundos), por
-        # lo que comparamos truncando ambos lados al segundo. Sin esto, un
-        # usuario recien creado falla la validacion porque iat parece "antes"
-        # de password_changed_at por unos microsegundos.
-        if iat < int(pwd_changed.timestamp()):
-            raise credentials_exception
-
+    usuario.permissions = permissions
+    usuario.minerva_claims = claims
+    usuario.token_exp = payload.get("exp")
     return usuario
 
 
@@ -77,27 +117,69 @@ async def verify_csrf(
     return current_user
 
 
-def require_role(allowed_roles: list[str]):
-    async def role_checker(current_user: Usuario = Depends(get_current_user)) -> Usuario:
-        if current_user.role not in allowed_roles:
+def session_seconds_left(user: Usuario) -> int:
+    exp = getattr(user, "token_exp", None)
+    if not exp:
+        return settings.access_token_expire_minutes * 60
+    return max(0, int(exp - utcnow().timestamp()))
+
+
+def has_permission(user: Usuario, permission: str) -> bool:
+    return permission in getattr(user, "permissions", set())
+
+
+def require_permission(permission: str):
+    async def checker(current_user: Usuario = Depends(get_current_user)) -> Usuario:
+        if not has_permission(current_user, permission):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Permisos insuficientes para esta operación",
+                detail=f"Requiere permiso: {permission}",
             )
         return current_user
 
-    return role_checker
+    return checker
 
 
-async def require_staff(
-    current_user: Usuario = Depends(get_current_user),
-) -> Usuario:
-    if current_user.role not in STAFF_ROLES:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Acceso restringido al staff del IIEG",
-        )
-    return current_user
+PANEL_PERMISSIONS = (
+    "mariachi.mapalab.view",
+    "mariachi.mapalab_llaves.manage",
+    "mariachi.mapalab_propuestas.approve",
+    "mariachi.portal.view",
+    "mariachi.sieej_admin.view",
+    "mariachi.sieej_documentacion.view",
+    "mariachi.acervo.view",
+    "mariachi.colibri_reportes.view",
+    "mariachi.colibri_config.manage",
+    "mariachi.mel.view",
+    "mariachi.identidad.view",
+    "mariachi.geoserver.view",
+    "mariachi.actividad.view",
+    "mariachi.usuarios.view",
+    "mariachi.sistema.manage",
+    "mariachi.vine.view",
+    "mariachi.frames.view",
+    "mariachi.intranet.view",
+)
+
+
+def require_any_permission(*permissions: str):
+    async def checker(current_user: Usuario = Depends(get_current_user)) -> Usuario:
+        if not any(has_permission(current_user, perm) for perm in permissions):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Requiere alguno de: {', '.join(permissions)}",
+            )
+        return current_user
+
+    return checker
+
+
+def require_panel_access():
+    return require_any_permission(*PANEL_PERMISSIONS)
+
+
+def issue_access_token(username: str, sid: str) -> str:
+    return crear_access_token(data={"sub": username, "sid": sid})
 
 
 def list_user_memberships(db: Session, user: Usuario) -> list[dict]:
@@ -116,7 +198,7 @@ def list_user_accessible_buckets(db: Session, user: Usuario) -> list[dict]:
         .join(Project, Project.id == AcervoBucket.project_id)
         .filter(AcervoBucket.is_active.is_(True), Project.is_active.is_(True))
     )
-    if user.role != ADMIN_ROLE:
+    if not has_permission(user, "mariachi.acervo.manage"):
         query = query.join(
             UserProject,
             (UserProject.project_id == Project.id) & (UserProject.user_id == user.id),
@@ -143,56 +225,12 @@ async def get_current_user_context(
         "email": current_user.email,
         "name": current_user.name,
         "role": current_user.role,
+        "permissions": sorted(getattr(current_user, "permissions", set())),
         "must_change_password": current_user.must_change_password,
         "avatar_url": current_user.avatar_url,
         "created_at": current_user.created_at,
         "projects": list_user_memberships(db, current_user),
         "accessible_buckets": list_user_accessible_buckets(db, current_user),
+        "session_expires_in": session_seconds_left(current_user),
     }
     return data
-
-
-def require_project_access(project_slug: str, min_role: str | None = None):
-    async def checker(
-        current_user: Usuario = Depends(get_current_user),
-        db: Session = Depends(get_db),
-    ) -> Usuario:
-        if current_user.role == ADMIN_ROLE:
-            return current_user
-
-        project = (
-            db.query(Project)
-            .filter(Project.slug == project_slug, Project.is_active.is_(True))
-            .first()
-        )
-        if project is None:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Proyecto '{project_slug}' no encontrado",
-            )
-
-        membership = (
-            db.query(UserProject)
-            .filter(
-                UserProject.user_id == current_user.id,
-                UserProject.project_id == project.id,
-            )
-            .first()
-        )
-        if membership is None:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Sin acceso al proyecto '{project_slug}'",
-            )
-
-        if min_role == "editor" and membership.project_role != "editor":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Requiere rol editor en '{project_slug}'",
-            )
-
-        return current_user
-
-    return checker
-
-

@@ -142,7 +142,7 @@ export default function SymbolFormModal({ open, categoryId, symbol, onClose, onS
             width={560}
             destroyOnHidden
         >
-            <Space direction="vertical" style={{ width: '100%' }} size="middle">
+            <Space orientation="vertical" style={{ width: '100%' }} size="middle">
                 {!isEdit && (
                     <Segmented
                         block
@@ -155,7 +155,7 @@ export default function SymbolFormModal({ open, categoryId, symbol, onClose, onS
                     <Alert
                         type="info"
                         showIcon
-                        message={`Tipo: ${kind}`}
+                        title={`Tipo: ${kind}`}
                         description={
                             isUploadKind
                                 ? 'Para reemplazar el archivo, borra este símbolo y crea uno nuevo.'

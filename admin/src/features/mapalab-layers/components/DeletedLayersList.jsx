@@ -84,7 +84,7 @@ export default function DeletedLayersList({
             title: 'Capa',
             key: 'label',
             render: (_, r) => (
-                <Space direction="vertical" size={0}>
+                <Space orientation="vertical" size={0}>
                     <Text strong>{r.label}</Text>
                     <Text type="secondary" style={{ fontSize: 11 }}>id: <code>{r.id}</code></Text>
                 </Space>
@@ -102,7 +102,7 @@ export default function DeletedLayersList({
             key: 'deleted',
             width: 220,
             render: (_, r) => (
-                <Space direction="vertical" size={0}>
+                <Space orientation="vertical" size={0}>
                     <Text style={{ fontSize: 12 }}>{formatDate(r.deletedAt)}</Text>
                     {r.deletedBy && <Text type="secondary" style={{ fontSize: 11 }}>por {r.deletedBy}</Text>}
                 </Space>

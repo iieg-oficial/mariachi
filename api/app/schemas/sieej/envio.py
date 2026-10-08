@@ -35,6 +35,13 @@ class EnvioArchivoResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class EnvioAutoria(BaseModel):
+    """Quien dejo un campo con su valor actual."""
+
+    actor_nombre: str | None = None
+    cambiado_en: datetime
+
+
 class EnvioResponse(BaseModel):
     id: int
     formulario_id: int
@@ -42,8 +49,10 @@ class EnvioResponse(BaseModel):
     usuario_id: int | None
     usuario_nombre: str | None = None
     usuario_email: str | None = None
+    grupo_id: int | None = None
     estado: EnvioEstado
     datos: dict[str, Any]
+    datos_version: int = 0
     paso_actual: int
     iniciado_en: datetime
     enviado_en: datetime | None
@@ -53,6 +62,18 @@ class EnvioResponse(BaseModel):
     actualizacion_disponible: bool = False
     cambios_preview: list[CambioRef] = []
     cambios_aplicados: list[CambioRef] = []
+    colaborativo: bool = False
+    autoria: dict[str, EnvioAutoria] = Field(default_factory=dict)
+    """Ultima autoria por `field_path`, para pintar los distintivos sin otra
+    llamada. En un envio individual el nombre viene vacio y solo queda la
+    fecha."""
+    puede_enviar: bool = True
+    """Si quien pregunta puede cerrar el envio.
+
+    En un envio de grupo lo hace solo el coordinador; en uno individual, su
+    dueno. Se expone resuelto y no como rol para que el cliente no tenga que
+    reimplementar la regla.
+    """
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -94,10 +115,78 @@ class EnvioActualizarCampos(BaseModel):
     campos: dict[str, Any] = Field(default_factory=dict)
 
 
+class EnvioCapturaCampos(BaseModel):
+    """Body de PATCH /formularios/:slug/envio/campos.
+
+    `campos` mapea `field_path` al valor nuevo; a diferencia de la correccion
+    post-envio acepta cualquier campo capturable, porque el envio sigue
+    `en_proceso`. `desde` es la `datos_version` que el cliente ya tiene: sirve
+    para devolverle solo el delta y para detectar que otro miembro toco alguno
+    de los mismos campos mientras tanto.
+    """
+
+    campos: dict[str, Any] = Field(default_factory=dict)
+    desde: int = 0
+
+
+class EnvioCampoCambio(BaseModel):
+    """Un campo que cambio de valor, con quien lo dejo asi."""
+
+    field_path: str
+    valor_nuevo: Any = None
+    actor_nombre: str | None = None
+    cambiado_en: datetime
+
+
+class EnvioCapturaResponse(BaseModel):
+    """Version nueva del envio mas lo que cambio desde `desde`.
+
+    El delta incluye los campos que escribio quien llama: el cliente ya los
+    tiene, pero traerlos completa la autoria sin una llamada extra.
+    """
+
+    datos_version: int
+    estado: EnvioEstado
+    cambios: list[EnvioCampoCambio] = Field(default_factory=list)
+
+
+class EnvioSyncRequest(BaseModel):
+    """Body de POST /formularios/:slug/envio/sync.
+
+    Es POST y no GET porque registra presencia: escribe, y asi pasa por
+    `verify_csrf` como toda mutacion. `seccion` es el paso que la persona tiene
+    abierto, para que el resto vea donde anda. Con `salir` se da de baja sin
+    pedir nada: es lo que manda el `pagehide` del navegador.
+    """
+
+    desde: int = 0
+    seccion: str | None = None
+    salir: bool = False
+
+
+class EnvioPresente(BaseModel):
+    """Alguien mas viendo el mismo envio ahora."""
+
+    username: str
+    name: str | None = None
+    avatar_url: str | None = None
+    seccion: str | None = None
+
+
+class EnvioSyncResponse(BaseModel):
+    datos_version: int
+    estado: EnvioEstado
+    cambios: list[EnvioCampoCambio] = Field(default_factory=list)
+    presentes: list[EnvioPresente] = Field(default_factory=list)
+
+
 class EnvioHistorialItem(BaseModel):
     """Una entrada del historial de cambios de valor (vista respondent).
 
-    No expone al actor (consistente con `MisEnviosEventoResponse`).
+    `actor_nombre` viaja **solo en envios de grupo**, donde saber quien lleno
+    cada campo es el punto; en uno individual queda en `null` y el frontend
+    muestra unicamente la fecha. Nunca lleva el correo: el nombre alcanza para
+    la constancia y el correo no es asunto del resto del equipo.
     """
 
     field_path: str
@@ -106,6 +195,8 @@ class EnvioHistorialItem(BaseModel):
     valor_nuevo: Any = None
     formulario_version: int
     cambiado_en: datetime
+    origen: Literal["captura", "correccion"] = "correccion"
+    actor_nombre: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -117,6 +208,18 @@ class EnvioHistorialAdminItem(EnvioHistorialItem):
     actor_usuario_id: int | None = None
     actor_nombre: str | None = None
     actor_email: str | None = None
+
+
+class EnvioEventoAdminResponse(BaseModel):
+    """Un evento de la linea de tiempo del envio, con quien lo provoco."""
+
+    id: int
+    envio_id: int
+    tipo: EventoTipo
+    payload: dict[str, Any] | None = None
+    actor_usuario_id: int | None = None
+    actor_nombre: str | None = None
+    ocurrido_en: datetime
 
 
 class EnvioUploadResponse(BaseModel):

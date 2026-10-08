@@ -7,8 +7,9 @@ from sqlalchemy.dialects.sqlite.base import SQLiteTypeCompiler
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from app.api.deps import get_current_user
 from app.core.database import Base, get_dataengine_db, get_db
-from app.core.security import hash_password
+from app.core.security import crear_csrf_token, hash_password
 from app.core.settings import get_settings
 from app.main import app
 from app.models.user import Usuario
@@ -87,7 +88,7 @@ engine = create_engine(
     poolclass=StaticPool,
 )
 
-_TEST_SCHEMAS = (None, "acervo", "huachicol", "sieej")
+_TEST_SCHEMAS = (None, "acervo", "huachicol", "mel", "sieej", "sieej_documentacion")
 
 with engine.connect() as _conn:
     for _schema in _TEST_SCHEMAS:
@@ -95,19 +96,41 @@ with engine.connect() as _conn:
             _conn.execute(text(f"ATTACH DATABASE ':memory:' AS {_schema}"))
     _conn.commit()
 
+_ESQUEMA = {"listo": False}
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
 @pytest.fixture(scope="function")
 def db_session():
     tables = [t for t in Base.metadata.sorted_tables if t.schema in _TEST_SCHEMAS]
-    Base.metadata.create_all(bind=engine, tables=tables)
+    if not _ESQUEMA["listo"]:
+        Base.metadata.create_all(bind=engine, tables=tables)
+        _ESQUEMA["listo"] = True
     session = TestingSessionLocal()
     try:
         yield session
     finally:
+        session.rollback()
         session.close()
-        Base.metadata.drop_all(bind=engine, tables=tables)
+        with engine.begin() as conn:
+            for table in reversed(tables):
+                conn.execute(table.delete())
+
+
+@pytest.fixture(autouse=True)
+def _descubrimiento_oidc_sin_red():
+    from app.core import oidc
+
+    target = oidc.settings.minerva_issuer_url.rstrip("/")
+    anterior = dict(oidc._discovery_cache)
+    oidc._discovery_cache["doc"] = {
+        "authorization_endpoint": f"{target}/auth/authorize",
+        "token_endpoint": f"{target}/auth/token",
+        "revocation_endpoint": f"{target}/auth/revoke",
+    }
+    oidc._discovery_cache["exp"] = float("inf")
+    yield
+    oidc._discovery_cache.update(anterior)
 
 
 @pytest.fixture(scope="function")
@@ -173,28 +196,112 @@ def externo_user(db_session):
     return user
 
 
-def login_as(client, username, password):
-    response = client.post(
-        f"{ADMIN_PREFIX}/autenticacion/iniciar-sesion",
-        json={"username": username, "password": password},
-    )
-    assert response.status_code == 200, response.text
-    return response.json()["csrf_token"]
+TODOS_LOS_PERMISOS = frozenset({
+    "mariachi.sieej_documentacion.view",
+    "mariachi.sieej_documentacion.update",
+    "mariachi.sieej_documentacion.publish",
+    "mariachi.roadmap.manage",
+    "mariachi.mapalab.view",
+    "mariachi.mapalab.update",
+    "mariachi.mapalab.manage",
+    "mariachi.mapalab_llaves.manage",
+    "mariachi.mapalab_acceso.manage",
+    "mariachi.mapalab_propuestas.approve",
+    "mariachi.portal.view",
+    "mariachi.portal.update",
+    "mariachi.sieej_admin.view",
+    "mariachi.sieej_formularios.view",
+    "mariachi.sieej_formularios.create",
+    "mariachi.sieej_formularios.update",
+    "mariachi.sieej_formularios.delete",
+    "mariachi.sieej_envios.view",
+    "mariachi.sieej_envios.create",
+    "mariachi.sieej_envios.update",
+    "mariachi.sieej_envios.delete",
+    "mariachi.sieej_envios.export",
+    "mariachi.acervo.view",
+    "mariachi.acervo.create",
+    "mariachi.acervo.update",
+    "mariachi.acervo.delete",
+    "mariachi.acervo.manage",
+    "mariachi.colibri_reportes.view",
+    "mariachi.colibri_reportes.update",
+    "mariachi.colibri_config.manage",
+    "mariachi.mel.view",
+    "mariachi.mel.update",
+    "mariachi.geoserver.view",
+    "mariachi.geoserver.manage",
+    "mariachi.actividad.view",
+    "mariachi.usuarios.view",
+    "mariachi.usuarios.create",
+    "mariachi.usuarios.update",
+    "mariachi.usuarios.delete",
+    "mariachi.usuarios.assign",
+    "mariachi.sistema.manage",
+})
+
+PERMISOS_REPORTAR = frozenset({
+    "mariachi.sieej_formularios.view",
+    "mariachi.sieej_envios.view",
+    "mariachi.sieej_envios.create",
+    "mariachi.sieej_envios.update",
+    "mariachi.sieej_envios.delete",
+})
+
+PERMISOS_EDITORA = frozenset({
+    "mariachi.mapalab.view",
+    "mariachi.mapalab.update",
+    "mariachi.mapalab.manage",
+    "mariachi.sieej_admin.view",
+    "mariachi.portal.view",
+    "mariachi.portal.update",
+    "mariachi.sieej_formularios.view",
+    "mariachi.sieej_envios.view",
+    "mariachi.acervo.view",
+    "mariachi.acervo.create",
+    "mariachi.acervo.update",
+    "mariachi.colibri_reportes.view",
+    "mariachi.geoserver.view",
+    "mariachi.usuarios.view",
+})
+
+
+def establecer_cookies_de_sesion(client, user):
+    from app.api.deps import issue_access_token
+    from app.core import minerva_session, refresh_token
+
+    client.cookies.clear()
+    sid = minerva_session.new_sid()
+    client.cookies.set(settings.cookie_name, issue_access_token(user.username, sid))
+    raw = refresh_token.issue(user.username, sid)
+    if raw:
+        client.cookies.set(settings.refresh_cookie_name, raw)
+    return sid
+
+
+def login_as(client, user, permissions):
+    user.permissions = set(permissions)
+
+    async def override_get_current_user():
+        return user
+
+    app.dependency_overrides[get_current_user] = override_get_current_user
+    return crear_csrf_token(user.username)
 
 
 @pytest.fixture(scope="function")
 def admin_session(client, admin_user):
-    csrf = login_as(client, "admin_test", "testpass123")
+    csrf = login_as(client, admin_user, TODOS_LOS_PERMISOS)
     return {"client": client, "csrf": csrf, "user": admin_user}
 
 
 @pytest.fixture(scope="function")
 def editora_session(client, editora_user):
-    csrf = login_as(client, "editora_test", "testpass123")
+    csrf = login_as(client, editora_user, PERMISOS_EDITORA)
     return {"client": client, "csrf": csrf, "user": editora_user}
 
 
 @pytest.fixture(scope="function")
 def externo_session(client, externo_user):
-    csrf = login_as(client, "externo_test", "testpass123")
+    csrf = login_as(client, externo_user, PERMISOS_REPORTAR)
     return {"client": client, "csrf": csrf, "user": externo_user}

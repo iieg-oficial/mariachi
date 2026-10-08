@@ -3,8 +3,8 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import verify_csrf
 from app.api.routes.layers._deps import (
-    require_admin,
-    require_project_editor,
+    require_mapalab_edit,
+    require_mapalab_manage,
     write_rate_limit,
 )
 from app.core.database import get_dataengine_db
@@ -21,7 +21,7 @@ router = APIRouter(prefix='/layers')
 async def list_layer_aliases(
     layer_id: str,
     db: Session = Depends(get_dataengine_db),
-    _editor: Usuario = Depends(require_project_editor),
+    _editor: Usuario = Depends(require_mapalab_edit),
 ):
     layer = db.query(Layer).filter(Layer.id == layer_id).first()
     if not layer:
@@ -44,7 +44,7 @@ async def create_layer_alias(
     body: LayerAliasCreate,
     db: Session = Depends(get_dataengine_db),
     current_user: Usuario = Depends(verify_csrf),
-    _admin: Usuario = Depends(require_admin),
+    _admin: Usuario = Depends(require_mapalab_manage),
     _rl: Usuario = Depends(write_rate_limit),
 ):
     layer = db.query(Layer).filter(Layer.id == layer_id).first()
@@ -75,7 +75,7 @@ async def delete_layer_alias(
     alias: str,
     db: Session = Depends(get_dataengine_db),
     _csrf: Usuario = Depends(verify_csrf),
-    _admin: Usuario = Depends(require_admin),
+    _admin: Usuario = Depends(require_mapalab_manage),
     _rl: Usuario = Depends(write_rate_limit),
 ):
     row = (

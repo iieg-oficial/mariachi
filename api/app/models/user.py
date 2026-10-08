@@ -16,9 +16,11 @@ class Usuario(Base):
     role = Column(
         Enum("tetlamamakani", "editora", "externo", name="user_roles"), nullable=False
     )
+    minerva_sub = Column(String(255), unique=True, nullable=True, index=True)
     must_change_password = Column(Boolean, default=True, nullable=False)
     avatar_url = Column(Text, nullable=True)
     created_at = Column(DateTime, default=utcnow, nullable=False)
     password_changed_at = Column(DateTime(timezone=True), default=utcnow, nullable=False)
+    ultimo_acceso = Column(DateTime(timezone=True), nullable=True)
 
     acervo_uploads = relationship("AcervoFile", back_populates="uploaded_by_user")

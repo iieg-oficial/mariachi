@@ -34,6 +34,7 @@ export class ColibriButton extends LitElement {
         shadow: { type: String, reflect: true },
         tiposFilter: { type: String, attribute: 'tipos' },
         emailRequired: { type: Boolean, attribute: 'email-required' },
+        privacyUrl: { type: String, attribute: 'privacy-url' },
         zIndex: { type: Number, attribute: 'z-index' },
         _open: { type: Boolean, attribute: false },
     };
@@ -56,7 +57,7 @@ export class ColibriButton extends LitElement {
                 height: var(--size);
                 border-radius: 50%;
                 background: var(--color);
-                color: #fff;
+                color: var(--colibri-on-primary);
                 border: none;
                 display: inline-flex;
                 align-items: center;
@@ -66,7 +67,7 @@ export class ColibriButton extends LitElement {
                 box-shadow: var(--colibri-shadow);
                 transition: transform 0.15s, box-shadow 0.15s;
                 font-size: 14px;
-                font-weight: 500;
+                font-weight: 700;
                 font-family: inherit;
             }
             :host([shape='pill']) .fab {
@@ -76,10 +77,10 @@ export class ColibriButton extends LitElement {
                 padding: 0 18px;
             }
             :host([shape='square']) .fab {
-                border-radius: 8px;
+                border-radius: var(--colibri-radius-field);
             }
-            .fab:hover { transform: scale(1.05); }
-            .fab:active { transform: scale(0.95); }
+            .fab:hover { box-shadow: var(--colibri-primary-shadow); }
+            .fab:focus-visible { outline: 2px solid var(--colibri-primary); outline-offset: 3px; }
             .fab svg { width: 50%; height: 50%; }
             :host([shape='pill']) .fab svg { width: 18px; height: 18px; }
 
@@ -165,6 +166,7 @@ export class ColibriButton extends LitElement {
                 source-app=${this.sourceApp || ''}
                 tipos=${this.tiposFilter || ''}
                 tipo-default=${this._initialTipo || ''}
+                privacy-url=${this.privacyUrl || ''}
                 ?email-required=${this.emailRequired}
                 @colibri:closed=${() => this._open = false}>
             </colibri-panel>

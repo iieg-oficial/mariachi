@@ -154,7 +154,7 @@ export default function McpSection({ period }) {
     if (loadingOverview && !overview) {
         return (
             <div style={{ padding: 24, textAlign: 'center' }}>
-                {errorOverview ? <Alert type="error" message={errorOverview} showIcon /> : <Spin size="large" />}
+                {errorOverview ? <Alert type="error" title={errorOverview} showIcon /> : <Spin size="large" />}
             </div>
         );
     }
@@ -164,11 +164,11 @@ export default function McpSection({ period }) {
         : 0;
 
     return (
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="large" style={{ width: '100%' }}>
             <Alert
                 type="info"
                 showIcon
-                message="Telemetría del servidor MCP de MapaLab"
+                title="Telemetría del servidor MCP de MapaLab"
                 description="Cada llamada al endpoint /mcp/ se registra en mariachi con method, tool, status, latencia y bytes de salida. Sin identidad: session_id e IP se guardan hasheadas. Las estadísticas se actualizan con el botón 'Refrescar estadísticas' del tab Resumen."
             />
 

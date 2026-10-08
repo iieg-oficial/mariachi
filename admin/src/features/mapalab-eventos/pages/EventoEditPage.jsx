@@ -322,7 +322,7 @@ export default function EventoEditPage() {
 
     return (
         <Content style={{ padding: isMobile ? 6 : 24, width: '100%' }}>
-            <Space direction="vertical" size="large" style={{ width: '100%' }}>
+            <Space orientation="vertical" size="large" style={{ width: '100%' }}>
                 <Space style={{ justifyContent: 'space-between', width: '100%' }} wrap>
                     <Space>
                         <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(reviewMode ? '/revision' : '/mapalab/eventos')}>
@@ -388,13 +388,13 @@ export default function EventoEditPage() {
                     </Space>
                 </Space>
 
-                {error && <Alert type="error" message={error} showIcon closable />}
+                {error && <Alert type="error" title={error} showIcon closable />}
                 <PresenciaIndicator editores={editores} />
                 {!reviewMode && draft.borradorEstado === 'rechazado' && draft.comentarioRechazo && (
                     <Alert closable
                         type="warning"
                         showIcon
-                        message="Tu borrador fue rechazado"
+                        title="Tu borrador fue rechazado"
                         description={draft.comentarioRechazo}
                     />
                 )}
@@ -404,7 +404,7 @@ export default function EventoEditPage() {
                     <Card styles={{ body: { padding: isMobile ? 6 : 16 } }}>
                         <Tabs
                             defaultActiveKey="info"
-                            tabPosition={isMobile ? 'top' : 'left'}
+                            tabPlacement={isMobile ? 'top' : 'start'}
                             destroyOnHidden={false}
                             style={{ minHeight: 400 }}
                             items={[

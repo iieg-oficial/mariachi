@@ -18,6 +18,6 @@ export default defineConfig({
                 codeSplitting: false,
             },
         },
-        sourcemap: true,
+        sourcemap: false,
     },
 });

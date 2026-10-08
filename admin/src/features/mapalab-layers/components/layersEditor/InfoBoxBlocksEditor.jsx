@@ -7,7 +7,7 @@ import {
     Input,
     InputNumber,
     Modal,
-    Radio,
+    Segmented,
     Select,
     Space,
     Switch,
@@ -15,11 +15,19 @@ import {
     Tooltip,
     Typography,
 } from 'antd';
-import { DeleteOutlined, HolderOutlined, PlusOutlined } from '@ant-design/icons';
+import {
+    CopyOutlined,
+    DeleteOutlined,
+    FontSizeOutlined,
+    HolderOutlined,
+    PlusOutlined,
+    SplitCellsOutlined,
+} from '@ant-design/icons';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove as dndArrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
+import { normalizeInfoboxConfig } from './infoBoxTextBlocks';
 import FormatoAnioToggle from './FormatoAnioToggle';
 import {
     camposConAnio,
@@ -31,22 +39,22 @@ import {
     nombreDeCampo,
 } from './formatoCampo';
 import {
-    genTextId,
-    isTextKey,
-    mkTextKey,
-    normalizeInfoboxConfig,
-    textIdOf,
-} from './infoBoxTextBlocks';
+    BLOCK_DEFS,
+    blockDef,
+    blockInstances,
+    naturalOrder,
+    planAddBlock,
+    planDuplicateBlock,
+    planRemoveBlock,
+    planSetBlockItems,
+    resolveBodyOrder,
+    typeOfKey,
+} from '@features/mapalab-layers/constants/infoboxBlocks';
+import { FieldValueField } from './FieldValueField.jsx';
+import { fieldOptionsFor, isComposed, withValueDef } from './fieldValueHelpers.jsx';
+import { MUNICIPIO_STYLE, STYLE_PRESETS } from '@features/mapalab-layers/constants/infoboxStyles';
 
 const { Text } = Typography;
-
-const STYLE_PRESETS = [
-    { key: 'municipio', label: 'Municipio (naranja)', color: '#FF8300', bg: '#FFF2E5' },
-    { key: 'caracteristica', label: 'Característica (morado)', color: '#7B61FF', bg: '#F3F0FF' },
-    { key: 'institucion', label: 'Institución (azul)', color: '#2E4372', bg: '#F0F0F0' },
-    { key: 'estatus_ok', label: 'Estatus OK (verde)', color: '#0FC136', bg: '#DDFFE4' },
-    { key: 'submorado', label: 'Sub-morado (claro)', color: '#5C2472', bg: '#F0EAF3' },
-];
 
 const ICON_CATALOG = [
     { value: 'ubicacion', label: 'Ubicación (abre Google Maps)' },
@@ -59,25 +67,6 @@ const ICON_CATALOG = [
     { value: 'aviso_privacidad', label: 'Aviso de privacidad' },
 ];
 
-const fieldOptionsFor = (availableFields, currentValues = []) => {
-    const opts = (availableFields || []).map((f) => ({
-        value: f.name,
-        label: (
-            <span>
-                <span style={{ fontFamily: 'monospace' }}>{f.name}</span>
-                <Text type="secondary" style={{ fontSize: 11, marginLeft: 6 }}>{f.type}</Text>
-            </span>
-        ),
-    }));
-    const arr = Array.isArray(currentValues) ? currentValues : [currentValues];
-    for (const v of arr) {
-        if (typeof v === 'string' && v && !opts.find((o) => o.value === v)) {
-            opts.unshift({ value: v, label: <span style={{ fontFamily: 'monospace' }}>{v}</span> });
-        }
-    }
-    return opts;
-};
-
 const findStylePreset = (color, bg) =>
     STYLE_PRESETS.find((p) => p.color?.toLowerCase() === (color || '').toLowerCase() && p.bg?.toLowerCase() === (bg || '').toLowerCase());
 
@@ -87,7 +76,7 @@ const StylePicker = ({ color, bg, onChange }) => {
         <Space size={6} wrap>
             <Select
                 size="small"
-                style={{ width: 200 }}
+                style={{ flex: 1, minWidth: 140, maxWidth: 200 }}
                 value={matched?.key || 'custom'}
                 onChange={(k) => {
                     if (k === 'custom') return;
@@ -128,30 +117,47 @@ const StylePicker = ({ color, bg, onChange }) => {
     );
 };
 
-const BlockShell = ({ title, onRemove, children, hint }) => (
+const BlockShell = ({ title, onRemove, onDuplicate, children, hint, bare = false }) => (bare ? (
+    <div>
+        <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 8 }}>{hint}</Text>
+        {children}
+    </div>
+) : (
     <Card
         size="small"
         title={
-            <Space size={6}>
-                <Text strong>{title}</Text>
-                {hint && <Text type="secondary" style={{ fontSize: 11, fontWeight: 'normal' }}>{hint}</Text>}
-            </Space>
+            <Tooltip title={hint}>
+                <Text strong style={{ cursor: hint ? 'help' : undefined }}>{title}</Text>
+            </Tooltip>
         }
         extra={
-            <Button
-                size="small"
-                type="text"
-                danger
-                icon={<DeleteOutlined />}
-                onClick={onRemove}
-                aria-label="Quitar bloque"
-            />
+            <Space size={0}>
+                {onDuplicate && (
+                    <Tooltip title="Duplicar este bloque">
+                        <Button
+                            size="small"
+                            type="text"
+                            icon={<CopyOutlined />}
+                            onClick={onDuplicate}
+                            aria-label="Duplicar bloque"
+                        />
+                    </Tooltip>
+                )}
+                <Button
+                    size="small"
+                    type="text"
+                    danger
+                    icon={<DeleteOutlined />}
+                    onClick={onRemove}
+                    aria-label="Quitar bloque"
+                />
+            </Space>
         }
         styles={{ body: { paddingTop: 8, paddingBottom: 8 } }}
     >
         {children}
     </Card>
-);
+));
 
 const DragHandle = ({ attributes, listeners, label = 'Arrastrar para reordenar', style: extraStyle = {} }) => (
     <Button
@@ -174,8 +180,8 @@ const SortableBlock = ({ id, children }) => {
         position: 'relative',
     };
     return (
-        <div ref={setNodeRef} style={style}>
-            <div style={{ position: 'absolute', top: 4, right: 36, zIndex: 1 }}>
+        <div ref={setNodeRef} style={style} data-block-key={id}>
+            <div style={{ position: 'absolute', top: 4, right: 62, zIndex: 1 }}>
                 <DragHandle attributes={attributes} listeners={listeners} label="Arrastrar bloque" />
             </div>
             {children}
@@ -205,12 +211,13 @@ const itemIdsFor = (arr) => arr.map((_, idx) => `item-${idx}`);
 const indexFromItemId = (id) => Number(String(id).replace(/^item-/, ''));
 
 const computeHeaderMode = (val, fields) => {
-    if (!val) return 'field';
+    if (isComposed(val)) return 'compose';
+    if (!val || typeof val !== 'string') return 'field';
     if (!fields?.length) return 'field';
     return fields.find((f) => f.name === val) ? 'field' : 'static';
 };
 
-const HeaderFieldBlock = ({ value, onChange, onRemove, availableFields }) => {
+export const HeaderFieldBlock = ({ bare = false,  value, onChange, onRemove, availableFields }) => {
     const [mode, setMode] = useState(() => computeHeaderMode(value, availableFields));
     const userTouchedRef = useRef(false);
     const lastValueRef = useRef(value);
@@ -226,40 +233,27 @@ const HeaderFieldBlock = ({ value, onChange, onRemove, availableFields }) => {
         }
     }, [value, availableFields]);
 
-    const handleToggle = (e) => {
+    const handleModeChange = (next) => {
         userTouchedRef.current = true;
-        setMode(e.target.value);
+        setMode(next);
+        if (next === 'static' && typeof value !== 'string') onChange('');
     };
 
     return (
-        <BlockShell title="Encabezado (headerField)" onRemove={onRemove} hint="Título grande del cuadro">
+        <BlockShell bare={bare} title="Encabezado" onRemove={onRemove} hint={blockDef('headerField').hint}>
             <Space orientation="vertical" size={6} style={{ width: '100%' }}>
-                <Radio.Group
-                    size="small"
-                    value={mode}
-                    onChange={handleToggle}
-                    optionType="button"
-                    options={[
-                        { label: 'Campo dinámico', value: 'field' },
-                        { label: 'Texto fijo', value: 'static' },
-                    ]}
+                <FieldValueField
+                    value={typeof value === 'string' ? { field: value } : value}
+                    onChange={(next) => onChange(next.field !== undefined ? next.field : next)}
+                    availableFields={availableFields}
+                    placeholder="Selecciona un campo del feature"
+                    mode={mode}
+                    onModeChange={handleModeChange}
+                    extraModes={[{ label: 'Texto fijo', value: 'static' }]}
                 />
-                {mode === 'field' ? (
-                    <Select
-                        value={value || undefined}
-                        onChange={(v) => onChange(v ?? '')}
-                        options={fieldOptionsFor(availableFields, value)}
-                        placeholder="Selecciona un campo del feature"
-                        showSearch
-                        allowClear
-                        style={{ width: '100%' }}
-                        filterOption={(input, option) =>
-                            String(option.value).toLowerCase().includes(input.toLowerCase())
-                        }
-                    />
-                ) : (
+                {mode === 'static' && (
                     <Input
-                        value={value || ''}
+                        value={typeof value === 'string' ? value : ''}
                         onChange={(e) => onChange(e.target.value)}
                         placeholder="Texto literal del encabezado (ej. Límites municipales administrativos IIEG)"
                     />
@@ -271,28 +265,27 @@ const HeaderFieldBlock = ({ value, onChange, onRemove, availableFields }) => {
 
 const NestedFieldEditor = ({ entry, onChange, onRemove, availableFields, parentStyle }) => {
     const isObject = entry && typeof entry === 'object';
-    const fieldName = isObject ? entry.field : entry;
-    const update = (patch) => {
-        const base = isObject ? entry : { field: entry };
-        onChange({ ...base, ...patch });
-    };
+    const base = isObject ? entry : { field: entry };
+    const update = (patch) => onChange({ ...base, ...patch });
     return (
         <Card size="small" type="inner" styles={{ body: { padding: 8 } }}>
             <Space orientation="vertical" size={4} style={{ width: '100%' }}>
-                <Space.Compact style={{ width: '100%' }}>
-                    <Select
-                        style={{ flex: 1 }}
-                        value={fieldName || undefined}
-                        onChange={(v) => update({ field: v })}
-                        options={fieldOptionsFor(availableFields, fieldName)}
-                        showSearch
-                        placeholder="Campo"
-                        filterOption={(input, option) =>
-                            String(option.value).toLowerCase().includes(input.toLowerCase())
-                        }
+                <Space.Compact style={{ width: '100%', minWidth: 0, alignItems: 'flex-start' }}>
+                    <FieldValueField
+                        value={base}
+                        onChange={(next) => onChange(withValueDef(base, next))}
+                        availableFields={availableFields}
                     />
                     <Button danger icon={<DeleteOutlined />} onClick={onRemove} />
                 </Space.Compact>
+                <Space size={6}>
+                    <Switch
+                        size="small"
+                        checked={isObject ? !!entry.split : false}
+                        onChange={(v) => update({ split: v || undefined })}
+                    />
+                    <Text type="secondary" style={{ fontSize: 11 }}>parte el valor por «; »</Text>
+                </Space>
                 <StylePicker
                     color={isObject ? entry.color : parentStyle?.color}
                     bg={isObject ? entry.bg : parentStyle?.bg}
@@ -311,16 +304,16 @@ const NestedFieldEditor = ({ entry, onChange, onRemove, availableFields, parentS
     );
 };
 
-const LabelGroupsBlock = ({ value = [], onChange, onRemove, availableFields }) => {
+export const LabelGroupsBlock = ({ bare = false,  value = [], onChange, onRemove, onDuplicate, availableFields }) => {
     const updateGroup = (idx, patch) => {
         const next = value.map((g, i) => (i === idx ? { ...g, ...patch } : g));
         onChange(next);
     };
     const removeGroup = (idx) => onChange(value.filter((_, i) => i !== idx));
-    const addGroup = () => onChange([...value, { fields: [], color: '#FF8300', bg: '#FFF2E5' }]);
+    const addGroup = () => onChange([...value, { fields: [], ...MUNICIPIO_STYLE }]);
 
     return (
-        <BlockShell title="Etiquetas (labelGroups)" onRemove={onRemove} hint="Badges con colores (ej. municipio, característica)">
+        <BlockShell bare={bare} title="Etiquetas" onRemove={onRemove} onDuplicate={onDuplicate} hint={blockDef('labelGroups').hint}>
             <Space orientation="vertical" size="small" style={{ width: '100%' }}>
                 {value.map((g, idx) => {
                     const groupKind = g.staticValues !== undefined ? 'static' : 'fields';
@@ -350,11 +343,9 @@ const LabelGroupsBlock = ({ value = [], onChange, onRemove, availableFields }) =
                             }
                         >
                             <Space orientation="vertical" size={6} style={{ width: '100%' }}>
-                                <Radio.Group
-                                    size="small"
+                                <Segmented
                                     value={groupKind}
-                                    onChange={(e) => setKind(e.target.value)}
-                                    optionType="button"
+                                    onChange={setKind}
                                     options={[
                                         { label: 'Campos del feature', value: 'fields' },
                                         { label: 'Valores fijos', value: 'static' },
@@ -482,13 +473,14 @@ const LabelGroupsBlock = ({ value = [], onChange, onRemove, availableFields }) =
     );
 };
 
-const CardsBlock = ({ value = [], columns = 1, onChange, onColumnsChange, onRemove, availableFields }) => {
+export const CardsBlock = ({ bare = false,  value = [], columns = 1, onChange, onColumnsChange, onRemove, onDuplicate, availableFields }) => {
     const updateItem = (idx, patch) => {
         const next = value.map((it, i) => (i === idx ? { ...it, ...patch } : it));
         onChange(next);
     };
     const removeItem = (idx) => onChange(value.filter((_, i) => i !== idx));
     const addItem = () => onChange([...value, { field: '', label: '' }]);
+    const setValueDef = (idx, next) => onChange(value.map((it, i) => (i === idx ? withValueDef(it, next) : it)));
     const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
     const itemIds = itemIdsFor(value);
     const handleDragEnd = ({ active, over }) => {
@@ -499,7 +491,7 @@ const CardsBlock = ({ value = [], columns = 1, onChange, onColumnsChange, onRemo
     };
 
     return (
-        <BlockShell title="Cards (estadísticas)" onRemove={onRemove} hint="Grid de valores numéricos con label. Arrastra el ícono ⋮⋮ para reordenar.">
+        <BlockShell bare={bare} title="Cards (estadísticas)" onRemove={onRemove} onDuplicate={onDuplicate} hint={blockDef('cards').hint}>
             <Space orientation="vertical" size="small" style={{ width: '100%' }}>
                 <Space size={6}>
                     <Text type="secondary" style={{ fontSize: 12 }}>Columnas:</Text>
@@ -510,36 +502,34 @@ const CardsBlock = ({ value = [], columns = 1, onChange, onColumnsChange, onRemo
                         <Space orientation="vertical" size="small" style={{ width: '100%' }}>
                             {value.map((it, idx) => (
                                 <SortableItem key={itemIds[idx]} id={itemIds[idx]}>
-                                    <Space.Compact style={{ width: '100%' }}>
-                                        <Select
-                                            style={{ width: 220 }}
-                                            value={it.field || undefined}
-                                            onChange={(v) => updateItem(idx, { field: v ?? '' })}
-                                            options={fieldOptionsFor(availableFields, it.field)}
-                                            placeholder="Campo"
-                                            showSearch
-                                            allowClear
-                                            filterOption={(input, option) =>
-                                                String(option.value).toLowerCase().includes(input.toLowerCase())
-                                            }
-                                        />
-                                        <Input
-                                            value={it.label || ''}
-                                            onChange={(e) => updateItem(idx, { label: e.target.value })}
-                                            placeholder="Label visible (ej. Razón de dependencia)"
-                                        />
-                                        <Tooltip title="Decimales para formatear (vacío = sin formateo)">
-                                            <InputNumber
-                                                style={{ width: 90 }}
-                                                min={0}
-                                                max={6}
-                                                value={it.decimals ?? null}
-                                                placeholder="dec."
-                                                onChange={(v) => updateItem(idx, { decimals: v ?? undefined })}
+                                    <div style={{ border: '1px dashed #f0f0f0', borderRadius: 4, padding: 8 }}>
+                                        <Space orientation="vertical" size={6} style={{ width: '100%' }}>
+                                            <FieldValueField
+                                                value={it}
+                                                onChange={(next) => setValueDef(idx, next)}
+                                                availableFields={availableFields}
+                                                allowSum
                                             />
-                                        </Tooltip>
-                                        <Button danger icon={<DeleteOutlined />} onClick={() => removeItem(idx)} />
-                                    </Space.Compact>
+                                            <Space.Compact style={{ width: '100%', minWidth: 0 }}>
+                                                <Input
+                                                    value={it.label || ''}
+                                                    onChange={(e) => updateItem(idx, { label: e.target.value })}
+                                                    placeholder="Label visible (ej. Razón de dependencia)"
+                                                />
+                                                <Tooltip title="Decimales para formatear (vacío = sin formateo)">
+                                                    <InputNumber
+                                                        style={{ width: 90 }}
+                                                        min={0}
+                                                        max={6}
+                                                        value={it.decimals ?? null}
+                                                        placeholder="dec."
+                                                        onChange={(v) => updateItem(idx, { decimals: v ?? undefined })}
+                                                    />
+                                                </Tooltip>
+                                                <Button danger icon={<DeleteOutlined />} onClick={() => removeItem(idx)} />
+                                            </Space.Compact>
+                                        </Space>
+                                    </div>
                                 </SortableItem>
                             ))}
                         </Space>
@@ -553,7 +543,7 @@ const CardsBlock = ({ value = [], columns = 1, onChange, onColumnsChange, onRemo
     );
 };
 
-const ListBlock = ({ value = [], onChange, onRemove, availableFields }) => {
+export const ListBlock = ({ bare = false,  value = [], onChange, onRemove, onDuplicate, availableFields }) => {
     const updateItem = (idx, patch) => {
         const next = value.map((it, i) => (i === idx ? { ...it, ...patch } : it));
         onChange(next);
@@ -570,6 +560,7 @@ const ListBlock = ({ value = [], onChange, onRemove, availableFields }) => {
     };
     const removeItem = (idx) => onChange(value.filter((_, i) => i !== idx));
     const addItem = () => onChange([...value, { field: '', label: '' }]);
+    const setValueDef = (idx, next) => onChange(value.map((it, i) => (i === idx ? withValueDef(it, next) : it)));
     const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
     const itemIds = itemIdsFor(value);
     const handleDragEnd = ({ active, over }) => {
@@ -580,7 +571,7 @@ const ListBlock = ({ value = [], onChange, onRemove, availableFields }) => {
     };
 
     return (
-        <BlockShell title="Lista (list)" onRemove={onRemove} hint="Pares label/valor (formatea fechas y números, link opcional). Arrastra el ícono ⋮⋮ para reordenar.">
+        <BlockShell bare={bare} title="Lista" onRemove={onRemove} onDuplicate={onDuplicate} hint={blockDef('list').hint}>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
                     <Space orientation="vertical" size="small" style={{ width: '100%' }}>
@@ -588,31 +579,32 @@ const ListBlock = ({ value = [], onChange, onRemove, availableFields }) => {
                             <SortableItem key={itemIds[idx]} id={itemIds[idx]}>
                                 <div style={{ border: '1px dashed #f0f0f0', borderRadius: 4, padding: 8 }}>
                                     <Space orientation="vertical" size={6} style={{ width: '100%' }}>
-                                        <Space.Compact style={{ width: '100%' }}>
-                                            <Select
-                                                style={{ width: 220 }}
-                                                value={it.field || undefined}
-                                                onChange={(v) => updateItem(idx, { field: v ?? '' })}
-                                                options={fieldOptionsFor(availableFields, it.field)}
-                                                placeholder="Campo"
-                                                showSearch
-                                                allowClear
-                                                filterOption={(input, option) =>
-                                                    String(option.value).toLowerCase().includes(input.toLowerCase())
-                                                }
-                                            />
+                                        <FieldValueField
+                                            value={it}
+                                            onChange={(next) => setValueDef(idx, next)}
+                                            availableFields={availableFields}
+                                        />
+                                        <Space.Compact style={{ width: '100%', minWidth: 0 }}>
                                             <Input
                                                 value={it.label || ''}
                                                 onChange={(e) => updateItem(idx, { label: e.target.value })}
                                                 placeholder="Label visible"
                                             />
-                                            <Tooltip title="raw=true: no formatea (muestra tal cual)">
+                                            <Tooltip title="Sin formato: muestra el valor tal cual, sin tocar fechas ni números">
                                                 <Button
                                                     type={it.raw ? 'primary' : 'default'}
+                                                    icon={<FontSizeOutlined />}
                                                     onClick={() => updateItem(idx, { raw: !it.raw })}
-                                                >
-                                                    raw
-                                                </Button>
+                                                    aria-label="Sin formato"
+                                                />
+                                            </Tooltip>
+                                            <Tooltip title="Multivalor: parte el valor por «; » y lo muestra como varios renglones">
+                                                <Button
+                                                    type={it.split ? 'primary' : 'default'}
+                                                    icon={<SplitCellsOutlined />}
+                                                    onClick={() => updateItem(idx, { split: it.split ? undefined : true })}
+                                                    aria-label="Multivalor"
+                                                />
                                             </Tooltip>
                                             <FormatoAnioToggle
                                                 item={it}
@@ -641,7 +633,7 @@ const ListBlock = ({ value = [], onChange, onRemove, availableFields }) => {
     );
 };
 
-const IconTextBlock = ({ value = [], onChange, onRemove, availableFields }) => {
+export const IconTextBlock = ({ bare = false,  value = [], onChange, onRemove, onDuplicate, availableFields }) => {
     const updateItem = (idx, patch) => {
         const next = value.map((it, i) => (i === idx ? { ...it, ...patch } : it));
         onChange(next);
@@ -658,6 +650,7 @@ const IconTextBlock = ({ value = [], onChange, onRemove, availableFields }) => {
     };
     const removeItem = (idx) => onChange(value.filter((_, i) => i !== idx));
     const addItem = () => onChange([...value, { icon: 'ubicacion', field: '' }]);
+    const setValueDef = (idx, next) => onChange(value.map((it, i) => (i === idx ? withValueDef(it, next) : it)));
     const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
     const itemIds = itemIdsFor(value);
     const handleDragEnd = ({ active, over }) => {
@@ -668,7 +661,7 @@ const IconTextBlock = ({ value = [], onChange, onRemove, availableFields }) => {
     };
 
     return (
-        <BlockShell title="Íconos con texto (iconText)" onRemove={onRemove} hint="Ícono + valor del campo (web/ubicación/celular abren link automático). Arrastra el ícono ⋮⋮ para reordenar.">
+        <BlockShell bare={bare} title="Íconos con texto" onRemove={onRemove} onDuplicate={onDuplicate} hint={blockDef('iconText').hint}>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
                     <Space orientation="vertical" size="small" style={{ width: '100%' }}>
@@ -676,9 +669,9 @@ const IconTextBlock = ({ value = [], onChange, onRemove, availableFields }) => {
                             <SortableItem key={itemIds[idx]} id={itemIds[idx]}>
                                 <div style={{ border: '1px dashed #f0f0f0', borderRadius: 4, padding: 8 }}>
                                     <Space orientation="vertical" size={6} style={{ width: '100%' }}>
-                                        <Space.Compact style={{ width: '100%' }}>
+                                        <Space.Compact style={{ width: '100%', minWidth: 0 }}>
                                             <Select
-                                                style={{ width: 220 }}
+                                                style={{ flex: 1 }}
                                                 value={it.icon || 'ubicacion'}
                                                 onChange={(v) => updateItem(idx, { icon: v })}
                                                 options={ICON_CATALOG}
@@ -688,24 +681,14 @@ const IconTextBlock = ({ value = [], onChange, onRemove, availableFields }) => {
                                                     String(option.value).toLowerCase().includes(input.toLowerCase())
                                                 }
                                             />
-                                            <Select
-                                                style={{ flex: 1 }}
-                                                value={it.field || undefined}
-                                                onChange={(v) => updateItem(idx, { field: v ?? '' })}
-                                                options={fieldOptionsFor(availableFields, it.field)}
-                                                placeholder={it.icon === 'web' ? 'Campo con la URL' : 'Campo a mostrar'}
-                                                showSearch
-                                                allowClear
-                                                filterOption={(input, option) =>
-                                                    String(option.value).toLowerCase().includes(input.toLowerCase())
-                                                }
-                                            />
-                                            <FormatoAnioToggle
-                                                item={it}
-                                                onChange={(activo) => onChange(value.map((curr, i) => (i === idx ? conAnio(curr, activo) : curr)))}
-                                            />
                                             <Button danger icon={<DeleteOutlined />} onClick={() => removeItem(idx)} />
                                         </Space.Compact>
+                                        <FieldValueField
+                                            value={it}
+                                            onChange={(next) => setValueDef(idx, next)}
+                                            availableFields={availableFields}
+                                            placeholder={it.icon === 'web' ? 'Campo con la URL' : 'Campo a mostrar'}
+                                        />
                                         <Input
                                             size="small"
                                             value={it.label || ''}
@@ -735,20 +718,18 @@ const IconTextBlock = ({ value = [], onChange, onRemove, availableFields }) => {
 };
 
 const TextItemRow = ({ item, onChange, onRemove, availableFields }) => {
-    const mode = item.field !== undefined ? 'field' : 'static';
+    const mode = isComposed(item) ? 'compose' : (item.field !== undefined ? 'field' : 'static');
 
-    const handleToggle = (e) => {
-        const next = e.target.value;
-        if (next === 'field') {
-            const { label: _l, ...rest } = item;
-            onChange({ ...rest, field: rest.field || '' });
-        } else {
-            const { field: _f, formato: _fm, ...rest } = item;
-            onChange({ ...rest, label: rest.label || '' });
-        }
+    const setValueDef = (next) => {
+        const { label: _l, ...rest } = withValueDef(item, {});
+        onChange({ ...rest, ...next });
     };
 
-    const setValue = (v) => onChange({ ...item, [mode === 'field' ? 'field' : 'label']: v ?? '' });
+    const handleModeChange = (next) => {
+        if (next === 'static') onChange({ ...withValueDef(item, {}), label: item.label || '' });
+    };
+
+    const setValue = (v) => onChange({ ...item, label: v ?? '' });
 
     const setHref = (value) => {
         if (value) {
@@ -762,17 +743,18 @@ const TextItemRow = ({ item, onChange, onRemove, availableFields }) => {
     return (
         <div style={{ border: '1px dashed #f0f0f0', borderRadius: 4, padding: 8 }}>
             <Space orientation="vertical" size={6} style={{ width: '100%' }}>
-                <Space size={6} style={{ width: '100%', justifyContent: 'space-between' }}>
-                    <Radio.Group
-                        size="small"
-                        value={mode}
-                        onChange={handleToggle}
-                        optionType="button"
-                        options={[
-                            { label: 'Texto fijo', value: 'static' },
-                            { label: 'Campo dinámico', value: 'field' },
-                        ]}
-                    />
+                <div style={{ display: 'flex', gap: 6, alignItems: 'flex-start', width: '100%' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                        <FieldValueField
+                            value={item}
+                            onChange={setValueDef}
+                            availableFields={availableFields}
+                            placeholder="Selecciona un campo del feature"
+                            mode={mode}
+                            onModeChange={handleModeChange}
+                            extraModes={[{ label: 'Texto fijo', value: 'static' }]}
+                        />
+                    </div>
                     <Button
                         danger
                         size="small"
@@ -781,24 +763,8 @@ const TextItemRow = ({ item, onChange, onRemove, availableFields }) => {
                         onClick={onRemove}
                         aria-label="Quitar párrafo"
                     />
-                </Space>
-                {mode === 'field' ? (
-                    <Space.Compact style={{ width: '100%' }}>
-                        <Select
-                            value={item.field || undefined}
-                            onChange={setValue}
-                            options={fieldOptionsFor(availableFields, item.field)}
-                            placeholder="Selecciona un campo del feature"
-                            showSearch
-                            allowClear
-                            style={{ flex: 1 }}
-                            filterOption={(input, option) =>
-                                String(option.value).toLowerCase().includes(input.toLowerCase())
-                            }
-                        />
-                        <FormatoAnioToggle item={item} onChange={(activo) => onChange(conAnio(item, activo))} />
-                    </Space.Compact>
-                ) : (
+                </div>
+                {mode === 'static' && (
                     <Input.TextArea
                         value={item.label || ''}
                         onChange={(e) => setValue(e.target.value)}
@@ -818,9 +784,9 @@ const TextItemRow = ({ item, onChange, onRemove, availableFields }) => {
     );
 };
 
-const TextBlock = ({ block, onChange, onRemove, availableFields }) => {
-    const items = block?.items || [];
-    const updateItems = (next) => onChange({ ...block, items: next });
+export const TextBlock = ({ bare = false,  value = [], onChange, onRemove, onDuplicate, availableFields }) => {
+    const items = value;
+    const updateItems = (next) => onChange(next);
     const updateItem = (idx, value) => updateItems(items.map((it, i) => (i === idx ? value : it)));
     const removeItem = (idx) => updateItems(items.filter((_, i) => i !== idx));
     const addItem = () => updateItems([...items, { label: '' }]);
@@ -834,7 +800,7 @@ const TextBlock = ({ block, onChange, onRemove, availableFields }) => {
     };
 
     return (
-        <BlockShell title="Texto (párrafos)" onRemove={onRemove} hint="Cada párrafo: texto fijo o valor de un campo. Arrastra el ícono ⋮⋮ para reordenar.">
+        <BlockShell bare={bare} title="Texto (párrafos)" onRemove={onRemove} onDuplicate={onDuplicate} hint={blockDef('text').hint}>
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
                     <Space orientation="vertical" size="small" style={{ width: '100%' }}>
@@ -858,38 +824,6 @@ const TextBlock = ({ block, onChange, onRemove, availableFields }) => {
     );
 };
 
-const BLOCK_DEFS = [
-    { key: 'headerField', label: 'Encabezado', defaultValue: '' },
-    { key: 'labelGroups', label: 'Etiquetas', defaultValue: [{ fields: [], color: '#FF8300', bg: '#FFF2E5' }] },
-    { key: 'cards', label: 'Cards (estadísticas)', defaultValue: [{ field: '', label: '' }], extras: { cardsColumns: 1 } },
-    { key: 'list', label: 'Lista', defaultValue: [{ field: '', label: '' }] },
-    { key: 'iconText', label: 'Íconos con texto', defaultValue: [{ icon: 'ubicacion', field: '' }] },
-    { key: 'text', label: 'Texto (párrafos)', defaultValue: [{ label: '' }] },
-];
-
-const SORTABLE_KEYS = ['labelGroups', 'list', 'iconText', 'text', 'cards'];
-
-const expandSortableKeys = (config) => {
-    const out = [];
-    for (const k of SORTABLE_KEYS) {
-        if (k === 'text') {
-            (config.text || []).forEach((b) => out.push(mkTextKey(b.id)));
-        } else if (config[k] !== undefined) {
-            out.push(k);
-        }
-    }
-    return out;
-};
-
-const resolveBodyOrder = (config) => {
-    const present = expandSortableKeys(config);
-    const explicit = Array.isArray(config.blockOrder)
-        ? config.blockOrder.filter((k) => present.includes(k))
-        : [];
-    const remaining = present.filter((k) => !explicit.includes(k));
-    return [...explicit, ...remaining];
-};
-
 const arraysEqual = (a, b) => {
     if (a.length !== b.length) return false;
     for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
@@ -898,6 +832,18 @@ const arraysEqual = (a, b) => {
 
 export default function InfoBoxBlocksEditor({ value, onChange, availableFields = [], inherited = null, nodeType = null }) {
     const config = useMemo(() => normalizeInfoboxConfig(value || {}), [value]);
+    const rootRef = useRef(null);
+    const [focusKey, setFocusKey] = useState(null);
+
+    useEffect(() => {
+        if (!focusKey) return;
+        const id = requestAnimationFrame(() => {
+            const el = rootRef.current?.querySelector(`[data-block-key="${focusKey}"]`);
+            el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            setFocusKey(null);
+        });
+        return () => cancelAnimationFrame(id);
+    }, [focusKey]);
 
     const update = useCallback((patch) => {
         const next = { ...config, ...patch };
@@ -909,43 +855,37 @@ export default function InfoBoxBlocksEditor({ value, onChange, availableFields =
 
     const bodyOrder = resolveBodyOrder(config);
     const headerPresent = config.headerField !== undefined;
-    const missingBlocks = BLOCK_DEFS.filter((b) => b.key === 'text' || config[b.key] === undefined);
+    const missingBlocks = BLOCK_DEFS.filter((b) => (b.key === 'headerField'
+        ? !headerPresent
+        : blockInstances(config, b.key).length === 0));
     const hasAnyBlock = headerPresent || bodyOrder.length > 0;
 
-    const removeBlock = (key) => {
-        if (isTextKey(key)) {
-            const id = textIdOf(key);
-            const nextText = (config.text || []).filter((b) => b.id !== id);
-            const patch = { text: nextText.length ? nextText : undefined };
-            if (Array.isArray(config.blockOrder) && config.blockOrder.includes(key)) {
-                const nextOrder = config.blockOrder.filter((k) => k !== key);
-                patch.blockOrder = nextOrder.length ? nextOrder : undefined;
-            }
-            update(patch);
-            return;
-        }
-        const patch = { [key]: undefined };
-        if (key === 'cards') patch.cardsColumns = undefined;
-        if (Array.isArray(config.blockOrder) && config.blockOrder.includes(key)) {
-            const nextOrder = config.blockOrder.filter((k) => k !== key);
-            patch.blockOrder = nextOrder.length ? nextOrder : undefined;
-        }
-        update(patch);
+    const aplicar = (plan) => {
+        if (!plan) return;
+        update(plan.patch);
+        if (plan.focusKey) setFocusKey(plan.focusKey);
     };
 
-    const addBlock = (key) => {
-        if (key === 'text') {
-            const newBlock = { id: genTextId(), items: [{ label: '' }] };
-            const nextText = Array.isArray(config.text) ? [...config.text, newBlock] : [newBlock];
-            update({ text: nextText });
+    const removeBlock = (key) => {
+        if (key === 'headerField') {
+            update({ headerField: undefined });
             return;
         }
-        const def = BLOCK_DEFS.find((b) => b.key === key);
-        if (!def) return;
-        const patch = { [key]: def.defaultValue };
-        if (def.extras) Object.assign(patch, def.extras);
-        update(patch);
+        aplicar(planRemoveBlock(config, bodyOrder, key));
     };
+
+    const setBlockItems = (key, items) => aplicar(planSetBlockItems(config, bodyOrder, key, items));
+
+    const addBlock = (type) => {
+        if (type === 'headerField') {
+            update({ headerField: '' });
+            setFocusKey('headerField');
+            return;
+        }
+        aplicar(planAddBlock(config, bodyOrder, type));
+    };
+
+    const duplicateBlock = (key) => aplicar(planDuplicateBlock(config, bodyOrder, key));
 
     const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
 
@@ -955,66 +895,30 @@ export default function InfoBoxBlocksEditor({ value, onChange, availableFields =
         const newIdx = bodyOrder.indexOf(over.id);
         if (oldIdx === -1 || newIdx === -1) return;
         const nextOrder = dndArrayMove(bodyOrder, oldIdx, newIdx);
-        const defaultOrder = expandSortableKeys(config);
-        update({ blockOrder: arraysEqual(nextOrder, defaultOrder) ? undefined : nextOrder });
+        update({ blockOrder: arraysEqual(nextOrder, naturalOrder(config)) ? undefined : nextOrder });
     };
 
     const renderBodyBlock = (key) => {
-        if (key === 'labelGroups') {
-            return (
-                <LabelGroupsBlock
-                    value={config.labelGroups}
-                    onChange={(v) => update({ labelGroups: v.length ? v : undefined })}
-                    onRemove={() => removeBlock('labelGroups')}
-                    availableFields={availableFields}
-                />
-            );
-        }
-        if (key === 'cards') {
+        const type = typeOfKey(key);
+        const instancia = blockInstances(config, type).find((i) => i.key === key);
+        if (!instancia) return null;
+        const comunes = {
+            value: instancia.items,
+            onChange: (items) => setBlockItems(key, items),
+            onRemove: () => removeBlock(key),
+            onDuplicate: () => duplicateBlock(key),
+            availableFields,
+        };
+        if (type === 'labelGroups') return <LabelGroupsBlock {...comunes} />;
+        if (type === 'list') return <ListBlock {...comunes} />;
+        if (type === 'iconText') return <IconTextBlock {...comunes} />;
+        if (type === 'text') return <TextBlock {...comunes} />;
+        if (type === 'cards') {
             return (
                 <CardsBlock
-                    value={config.cards}
+                    {...comunes}
                     columns={config.cardsColumns ?? 1}
-                    onChange={(v) => update({ cards: v.length ? v : undefined })}
                     onColumnsChange={(v) => update({ cardsColumns: v })}
-                    onRemove={() => removeBlock('cards')}
-                    availableFields={availableFields}
-                />
-            );
-        }
-        if (key === 'list') {
-            return (
-                <ListBlock
-                    value={config.list}
-                    onChange={(v) => update({ list: v.length ? v : undefined })}
-                    onRemove={() => removeBlock('list')}
-                    availableFields={availableFields}
-                />
-            );
-        }
-        if (key === 'iconText') {
-            return (
-                <IconTextBlock
-                    value={config.iconText}
-                    onChange={(v) => update({ iconText: v.length ? v : undefined })}
-                    onRemove={() => removeBlock('iconText')}
-                    availableFields={availableFields}
-                />
-            );
-        }
-        if (isTextKey(key)) {
-            const id = textIdOf(key);
-            const block = (config.text || []).find((b) => b.id === id);
-            if (!block) return null;
-            return (
-                <TextBlock
-                    block={block}
-                    onChange={(nextBlock) => {
-                        const nextText = (config.text || []).map((b) => (b.id === id ? nextBlock : b));
-                        update({ text: nextText });
-                    }}
-                    onRemove={() => removeBlock(key)}
-                    availableFields={availableFields}
                 />
             );
         }
@@ -1025,184 +929,169 @@ export default function InfoBoxBlocksEditor({ value, onChange, availableFields =
     const inheriting = !hasOwnConfig && !!inherited;
 
     return (
-        <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
-            {config.headerTransform && (
-                <Tag color="orange" style={{ whiteSpace: 'normal', height: 'auto', padding: '4px 8px' }}>
+        <div ref={rootRef} style={{ width: '100%', minWidth: 0 }}>
+            <Space orientation="vertical" size="middle" style={{ width: '100%', minWidth: 0 }}>
+                {config.headerTransform && (
+                    <Tag color="orange" style={{ whiteSpace: 'normal', height: 'auto', padding: '4px 8px' }}>
                     Esta capa usa <code>headerTransform</code> avanzado (mapeo o sufijos por feature). Se preserva al guardar pero no se edita aquí.
-                </Tag>
-            )}
+                    </Tag>
+                )}
 
-            {nodeType === 'group' && (
-                <div style={{
-                    background: '#F0F7FF',
-                    border: '1px solid #91CAFF',
-                    borderRadius: 6,
-                    padding: '8px 12px',
-                }}>
-                    <Text type="secondary" style={{ fontSize: 12 }}>
-                        El cuadro definido en este <b>grupo</b> se hereda automáticamente a todos sus descendientes
-                        (capas y filtros) que no tengan uno propio. Si una capa hija configura su propio infobox,
-                        sobrescribe lo que herede de aquí.
-                    </Text>
-                </div>
-            )}
-
-            {inheriting && (
-                <div style={{
-                    background: '#F6FFED',
-                    border: '1px solid #B7EB8F',
-                    borderRadius: 6,
-                    padding: '10px 12px',
-                }}>
-                    <Space orientation="vertical" size={6} style={{ width: '100%' }}>
-                        <Text strong>
+                {inheriting && (
+                    <div style={{
+                        background: '#F6FFED',
+                        border: '1px solid #B7EB8F',
+                        borderRadius: 6,
+                        padding: '10px 12px',
+                    }}>
+                        <Space orientation="vertical" size={6} style={{ width: '100%' }}>
+                            <Text strong>
                             Heredando del grupo: <code>{inherited.label}</code>
-                        </Text>
-                        <Text type="secondary" style={{ fontSize: 12 }}>
+                            </Text>
+                            <Text type="secondary" style={{ fontSize: 12 }}>
                             Esta capa no tiene un cuadro propio. Está mostrando el cuadro definido en el grupo padre.
                             Si necesitas un cuadro distinto solo para esta capa, créalo personalizado.
-                        </Text>
-                        <Space size={6}>
+                            </Text>
+                            <Space size={6}>
+                                <Button
+                                    type="primary"
+                                    size="small"
+                                    onClick={() => {
+                                        Modal.confirm({
+                                            title: '¿Crear cuadro personalizado para esta capa?',
+                                            content: (
+                                                <span>
+                                                Vas a crear una copia editable del cuadro del grupo
+                                                    {' '}<code>{inherited.label}</code>{' '}
+                                                solo para esta capa. A partir de ahora, los cambios al cuadro del grupo
+                                                    <b> ya no se propagarán</b> a esta capa hasta que vuelvas a heredar.
+                                                </span>
+                                            ),
+                                            okText: 'Sí, personalizar',
+                                            cancelText: 'Cancelar',
+                                            onOk: () => onChange(JSON.parse(JSON.stringify(inherited.config))),
+                                        });
+                                    }}
+                                >
+                                Personalizar para esta capa
+                                </Button>
+                            </Space>
+                        </Space>
+                    </div>
+                )}
+
+                {hasOwnConfig && inherited && nodeType !== 'group' && (
+                    <div style={{
+                        background: '#FFF7E6',
+                        border: '1px solid #FFD591',
+                        borderRadius: 6,
+                        padding: '8px 12px',
+                    }}>
+                        <Space orientation="vertical" size={4} style={{ width: '100%' }}>
+                            <Text type="secondary" style={{ fontSize: 12 }}>
+                            Esta capa tiene <b>cuadro personalizado</b> que sobrescribe al del grupo
+                                {' '}<code>{inherited.label}</code>.
+                            </Text>
                             <Button
-                                type="primary"
                                 size="small"
+                                danger
                                 onClick={() => {
                                     Modal.confirm({
-                                        title: '¿Crear cuadro personalizado para esta capa?',
+                                        title: '¿Eliminar cuadro personalizado y volver a heredar?',
                                         content: (
                                             <span>
-                                                Vas a crear una copia editable del cuadro del grupo
-                                                {' '}<code>{inherited.label}</code>{' '}
-                                                solo para esta capa. A partir de ahora, los cambios al cuadro del grupo
-                                                <b> ya no se propagarán</b> a esta capa hasta que vuelvas a heredar.
+                                            Vas a borrar el cuadro propio de esta capa y volver a usar el del grupo
+                                                {' '}<code>{inherited.label}</code>.
+                                            Los cambios futuros al cuadro del grupo se propagarán automáticamente.
+                                                <b> Esta acción no se puede deshacer.</b>
                                             </span>
                                         ),
-                                        okText: 'Sí, personalizar',
+                                        okText: 'Sí, volver a heredar',
+                                        okButtonProps: { danger: true },
                                         cancelText: 'Cancelar',
-                                        onOk: () => onChange(JSON.parse(JSON.stringify(inherited.config))),
+                                        onOk: () => onChange(null),
                                     });
                                 }}
                             >
-                                Personalizar para esta capa
+                            Quitar personalización y volver a heredar
                             </Button>
                         </Space>
-                    </Space>
-                </div>
-            )}
+                    </div>
+                )}
 
-            {hasOwnConfig && inherited && nodeType !== 'group' && (
-                <div style={{
-                    background: '#FFF7E6',
-                    border: '1px solid #FFD591',
-                    borderRadius: 6,
-                    padding: '8px 12px',
-                }}>
-                    <Space orientation="vertical" size={4} style={{ width: '100%' }}>
+                {!hasOwnConfig && !inherited && nodeType === 'leaf' && (
+                    <div style={{
+                        background: '#FAFAFA',
+                        border: '1px dashed #D9D9D9',
+                        borderRadius: 6,
+                        padding: '8px 12px',
+                    }}>
                         <Text type="secondary" style={{ fontSize: 12 }}>
-                            Esta capa tiene <b>cuadro personalizado</b> que sobrescribe al del grupo
-                            {' '}<code>{inherited.label}</code>.
-                        </Text>
-                        <Button
-                            size="small"
-                            danger
-                            onClick={() => {
-                                Modal.confirm({
-                                    title: '¿Eliminar cuadro personalizado y volver a heredar?',
-                                    content: (
-                                        <span>
-                                            Vas a borrar el cuadro propio de esta capa y volver a usar el del grupo
-                                            {' '}<code>{inherited.label}</code>.
-                                            Los cambios futuros al cuadro del grupo se propagarán automáticamente.
-                                            <b> Esta acción no se puede deshacer.</b>
-                                        </span>
-                                    ),
-                                    okText: 'Sí, volver a heredar',
-                                    okButtonProps: { danger: true },
-                                    cancelText: 'Cancelar',
-                                    onOk: () => onChange(null),
-                                });
-                            }}
-                        >
-                            Quitar personalización y volver a heredar
-                        </Button>
-                    </Space>
-                </div>
-            )}
-
-            {!hasOwnConfig && !inherited && nodeType === 'leaf' && (
-                <div style={{
-                    background: '#FAFAFA',
-                    border: '1px dashed #D9D9D9',
-                    borderRadius: 6,
-                    padding: '8px 12px',
-                }}>
-                    <Text type="secondary" style={{ fontSize: 12 }}>
                         Esta capa no tiene cuadro propio y ningún grupo ancestro tiene uno definido. El visor
                         generará uno por defecto inferido de las propiedades del feature.
-                    </Text>
-                </div>
-            )}
+                        </Text>
+                    </div>
+                )}
 
-            {missingBlocks.length > 0 && (
-                <div>
-                    <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
+                {missingBlocks.length > 0 && (
+                    <div>
+                        <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
                         Agregar bloque:
-                    </Text>
-                    <Space wrap size={6}>
-                        {missingBlocks.map((b) => (
-                            <Button
-                                key={b.key}
-                                size="small"
-                                icon={<PlusOutlined />}
-                                onClick={() => addBlock(b.key)}
-                            >
-                                {b.label}
-                            </Button>
-                        ))}
-                    </Space>
-                </div>
-            )}
+                        </Text>
+                        <Space wrap size={6}>
+                            {missingBlocks.map((b) => (
+                                <Tooltip key={b.key} title={b.hint}>
+                                    <Button
+                                        size="small"
+                                        icon={<PlusOutlined />}
+                                        onClick={() => addBlock(b.key)}
+                                    >
+                                        {b.label}
+                                    </Button>
+                                </Tooltip>
+                            ))}
+                        </Space>
+                    </div>
+                )}
 
-            {!hasAnyBlock && (
-                <Empty description="Sin bloques. Agrega uno arriba para empezar." />
-            )}
+                {!hasAnyBlock && (
+                    <Empty description="Agrega un bloque para empezar." />
+                )}
 
-            {headerPresent && (
-                <div>
-                    <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 4 }}>
-                        Encabezado (siempre se renderiza arriba como título):
-                    </Text>
-                    <HeaderFieldBlock
-                        value={config.headerField ?? ''}
-                        onChange={(v) => update({ headerField: v ?? '' })}
-                        onRemove={() => removeBlock('headerField')}
-                        availableFields={availableFields}
-                    />
-                </div>
-            )}
+                {headerPresent && (
+                    <div data-block-key="headerField">
+                        <HeaderFieldBlock
+                            value={config.headerField ?? ''}
+                            onChange={(v) => update({ headerField: v ?? '' })}
+                            onRemove={() => removeBlock('headerField')}
+                            availableFields={availableFields}
+                        />
+                    </div>
+                )}
 
-            {bodyOrder.length > 0 && (
-                <div>
-                    <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 4 }}>
-                        Bloques del cuerpo (arrastra el ícono ⋮⋮ para reordenar):
-                    </Text>
-                    <DndContext
-                        sensors={sensors}
-                        collisionDetection={closestCenter}
-                        onDragEnd={handleBlocksDragEnd}
-                    >
-                        <SortableContext items={bodyOrder} strategy={verticalListSortingStrategy}>
-                            <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
-                                {bodyOrder.map((key) => (
-                                    <SortableBlock key={key} id={key}>
-                                        {renderBodyBlock(key)}
-                                    </SortableBlock>
-                                ))}
-                            </Space>
-                        </SortableContext>
-                    </DndContext>
-                </div>
-            )}
-        </Space>
+                {bodyOrder.length > 0 && (
+                    <div>
+                        <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 4 }}>
+                        Arrastra ⋮⋮ para reordenar.
+                        </Text>
+                        <DndContext
+                            sensors={sensors}
+                            collisionDetection={closestCenter}
+                            onDragEnd={handleBlocksDragEnd}
+                        >
+                            <SortableContext items={bodyOrder} strategy={verticalListSortingStrategy}>
+                                <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
+                                    {bodyOrder.map((key) => (
+                                        <SortableBlock key={key} id={key}>
+                                            {renderBodyBlock(key)}
+                                        </SortableBlock>
+                                    ))}
+                                </Space>
+                            </SortableContext>
+                        </DndContext>
+                    </div>
+                )}
+            </Space>
+        </div>
     );
 }

@@ -56,11 +56,11 @@ export default function ApiKeyRevealModal({ keyModal, onClose, onTryPlayground }
             width={620}
             maskClosable={false}
         >
-            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+            <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
                 <Alert
                     type="warning"
                     showIcon
-                    message="Esta contraseña solo aparece una vez"
+                    title="Esta contraseña solo aparece una vez"
                     description="Cópiala ahora y guárdala en un lugar seguro o entrégala a la institución por un canal confiable. Si se pierde tendrás que generar una nueva. (Este aviso no se puede cerrar para evitar que se pierda la contraseña.)"
                 />
                 <div>

@@ -137,7 +137,7 @@ export default function ThumbnailDiagnostics() {
     };
 
     return (
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
             <Space wrap>
                 <Select
                     style={{ minWidth: 220 }}
@@ -160,7 +160,7 @@ export default function ThumbnailDiagnostics() {
                 <Alert
                     type="warning"
                     showIcon
-                    message="Hay variantes con error"
+                    title="Hay variantes con error"
                     description="Si el backend no tiene Pillow o no se reconstruyó la imagen mariachi-api, el endpoint responde 502. Reconstruye la imagen del API y reintenta."
                 />
             )}

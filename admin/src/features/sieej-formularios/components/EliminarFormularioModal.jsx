@@ -112,15 +112,15 @@ export default function EliminarFormularioModal({ formulario, open, onClose, onD
                 <Alert
                     type="warning"
                     showIcon
-                    message="Solo el administrador global puede eliminar un formulario con respuestas"
+                    title="Solo el administrador global puede eliminar un formulario con respuestas"
                     description={`Este formulario ya tiene ${total} envío(s) de las dependencias. Puedes cerrarlo: deja de aceptar respuestas y conserva todo lo capturado.`}
                 />
             ) : (
-                <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
                     <Alert
                         type="error"
                         showIcon
-                        message={`Se destruirán ${total} envío(s) y todo lo capturado en ellos`}
+                        title={`Se destruirán ${total} envío(s) y todo lo capturado en ellos`}
                         description={(
                             <ul style={{ margin: '8px 0 0', paddingInlineStart: 18 }}>
                                 <li>Las respuestas de cada dependencia, su historial de cambios y su bitácora de eventos.</li>
@@ -133,9 +133,9 @@ export default function EliminarFormularioModal({ formulario, open, onClose, onD
                     <Alert
                         type="info"
                         showIcon
-                        message="Descarga el respaldo antes de continuar"
+                        title="Descarga el respaldo antes de continuar"
                         description={(
-                            <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                            <Space orientation="vertical" size="small" style={{ width: '100%' }}>
                                 <Text>
                                     El Excel incluye las respuestas de todos los envíos y el historial
                                     de cambios. Es lo único que quedará de esta captura.

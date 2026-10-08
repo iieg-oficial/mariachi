@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db, require_role, verify_csrf
+from app.api.deps import get_db, require_permission, verify_csrf
 from app.api.rate_limit import rate_limit
 from app.core.database import get_dataengine_db
 from app.models.user import Usuario
@@ -27,7 +27,7 @@ router = APIRouter(
 
 mapalab_router = APIRouter(tags=["mapalab-symbols público"])
 
-_require_admin = require_role(["tetlamamakani"])
+_require_admin = require_permission("mariachi.mapalab.manage")
 _write_rate_limit = rate_limit(max_requests=120, window_seconds=60.0)
 
 

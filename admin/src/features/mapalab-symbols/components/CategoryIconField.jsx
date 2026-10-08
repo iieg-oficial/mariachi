@@ -26,7 +26,7 @@ export default function CategoryIconField({ value, onChange }) {
     };
 
     return (
-        <Space direction="vertical" style={{ width: '100%' }} size={8}>
+        <Space orientation="vertical" style={{ width: '100%' }} size={8}>
             <Space align="center" wrap>
                 <Segmented options={MODES} value={mode} onChange={setMode} size="small" />
                 <span
