@@ -3,14 +3,14 @@ import re
 import unicodedata
 import zipfile
 from collections.abc import Iterator
-from typing import Callable
+from typing import Callable, Literal
 
 from fastapi import HTTPException, status
 from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
-from app.api.deps import ADMIN_ROLE
+from app.api.deps import has_permission
 from app.core.bucket_policies import get_hidden_prefixes
 from app.models.acervo import AcervoFile, AcervoFolder
 from app.models.acervo_bucket import AcervoBucket
@@ -28,6 +28,8 @@ FOLDER_AGGREGATE_MAX_OBJECTS = 10000
 
 LISTADO_PAGE_SIZE = 100
 LISTADO_MAX_PAGE_SIZE = 1000
+
+AccionAcervo = Literal["create", "update", "delete"]
 
 _SAFE_NAME_RE = re.compile(r"[^a-zA-Z0-9._-]+")
 
@@ -213,7 +215,7 @@ def resolve_bucket_or_403(bucket_id: int, current_user: Usuario, db: Session) ->
     if bucket is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Bucket no encontrado")
 
-    if current_user.role == ADMIN_ROLE:
+    if has_permission(current_user, "mariachi.acervo.manage"):
         return bucket
 
     if _membership(bucket, current_user, db) is None:
@@ -222,17 +224,24 @@ def resolve_bucket_or_403(bucket_id: int, current_user: Usuario, db: Session) ->
 
 
 def resolve_bucket_escribible(
-    bucket_id: int, current_user: Usuario, db: Session
+    bucket_id: int, current_user: Usuario, db: Session, accion: AccionAcervo
 ) -> AcervoBucket:
-    """Como `resolve_bucket_or_403`, pero exige rol editor y rechaza los buckets protegidos.
+    """Como `resolve_bucket_or_403`, pero exige el permiso de la accion, rol editor
+    y rechaza los buckets protegidos.
 
     El contenido de un bucket protegido lo gestiona una aplicacion (SIEEJ
     escribe ahi las entregas de las dependencias y guarda la clave en
     `envio_archivo` y en `envio.datos`), asi que borrarlo o renombrarlo desde
     el explorador deja registros apuntando a objetos inexistentes.
     """
+    permiso = f"mariachi.acervo.{accion}"
+    es_admin = has_permission(current_user, "mariachi.acervo.manage")
+    if not es_admin and not has_permission(current_user, permiso):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail=f"Requiere permiso: {permiso}"
+        )
     bucket = resolve_bucket_or_403(bucket_id, current_user, db)
-    if current_user.role != ADMIN_ROLE:
+    if not es_admin:
         membership = _membership(bucket, current_user, db)
         if membership is None or membership.project_role != "editor":
             raise HTTPException(
@@ -256,7 +265,7 @@ def buckets_accesibles(
     current_user: Usuario,
     include_inactive: bool = False,
 ) -> list[AcervoBucket]:
-    is_admin = current_user.role == ADMIN_ROLE
+    is_admin = has_permission(current_user, "mariachi.acervo.manage")
     query = db.query(AcervoBucket).join(Project, Project.id == AcervoBucket.project_id)
     if not (include_inactive and is_admin):
         query = query.filter(AcervoBucket.is_active.is_(True), Project.is_active.is_(True))

@@ -5,7 +5,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 
-from app.api.deps import get_current_user, get_db, require_project_access, verify_csrf
+from app.api.deps import get_current_user, get_db, require_permission, verify_csrf
 from app.core.optimistic import check_concurrent_edit
 from app.core.settings import get_settings
 from app.core.time import utcnow
@@ -23,10 +23,9 @@ from app.services.mapalab_public_cache import notify_home_changed
 router = APIRouter(
     prefix="/home",
     tags=["home mapalab"],
-    dependencies=[Depends(require_project_access("mapalab"))],
 )
 
-_require_editor = require_project_access("mapalab", min_role="editor")
+_require_editor = require_permission("mariachi.mapalab.update")
 
 
 def _get_section_or_404(db: Session, key: str) -> HomeSection:

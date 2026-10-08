@@ -55,6 +55,7 @@ const describeCheck = (check) => {
     if (check.used_percent != null) parts.push(`${check.used_percent}% usado`);
     if (check.free_gb != null) parts.push(`${check.free_gb} GB libres`);
     if (check.total != null) parts.push(`${check.running ?? '?'}/${check.total} corriendo`);
+    if (check.port != null) parts.push(`:${check.port}`);
     if (check.detail) parts.push(check.detail);
     return parts.join(' · ');
 };
@@ -117,7 +118,7 @@ export default function ServicioDetalle({ slug }) {
         : [];
 
     return (
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
             <Descriptions size="small" column={{ xs: 1, sm: 2, md: 3 }} bordered>
                 <Descriptions.Item label="Versión">{data.version ? `v${data.version}` : '—'}</Descriptions.Item>
                 <Descriptions.Item label="Desplegado">{data.deployed_at ? new Date(data.deployed_at).toLocaleString() : '—'}</Descriptions.Item>

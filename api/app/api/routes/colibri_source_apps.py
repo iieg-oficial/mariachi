@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db, require_role, verify_csrf
+from app.api.deps import get_db, require_permission, verify_csrf
 from app.core.time import utcnow
 from app.models.reporte import Reporte
 from app.models.source_app import SourceApp
@@ -48,7 +48,7 @@ def _to_response(source_app: SourceApp) -> SourceAppResponse:
 async def listar_source_apps(
     db: Session = Depends(get_db),
     activo: bool | None = Query(default=None),
-    _admin: Usuario = Depends(require_role(["tetlamamakani"])),
+    _admin: Usuario = Depends(require_permission("mariachi.colibri_config.manage")),
 ):
     query = db.query(SourceApp)
     if activo is not None:
@@ -60,7 +60,7 @@ async def listar_source_apps(
 async def obtener_source_app(
     source_app_id: int,
     db: Session = Depends(get_db),
-    _admin: Usuario = Depends(require_role(["tetlamamakani"])),
+    _admin: Usuario = Depends(require_permission("mariachi.colibri_config.manage")),
 ):
     source_app = db.query(SourceApp).filter(SourceApp.id == source_app_id).first()
     if not source_app:
@@ -73,7 +73,7 @@ async def crear_source_app(
     payload: SourceAppCreate,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
-    __: Usuario = Depends(require_role(["tetlamamakani"])),
+    __: Usuario = Depends(require_permission("mariachi.colibri_config.manage")),
 ):
     if db.query(SourceApp).filter(SourceApp.slug == payload.slug).first():
         raise HTTPException(
@@ -103,7 +103,7 @@ async def actualizar_source_app(
     payload: SourceAppUpdate,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
-    __: Usuario = Depends(require_role(["tetlamamakani"])),
+    __: Usuario = Depends(require_permission("mariachi.colibri_config.manage")),
 ):
     source_app = db.query(SourceApp).filter(SourceApp.id == source_app_id).first()
     if not source_app:
@@ -137,7 +137,7 @@ async def eliminar_source_app(
     source_app_id: int,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
-    __: Usuario = Depends(require_role(["tetlamamakani"])),
+    __: Usuario = Depends(require_permission("mariachi.colibri_config.manage")),
 ):
     source_app = db.query(SourceApp).filter(SourceApp.id == source_app_id).first()
     if not source_app:
@@ -171,7 +171,7 @@ async def rotar_api_key(
     payload: SourceAppKeyRotateRequest,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
-    __: Usuario = Depends(require_role(["tetlamamakani"])),
+    __: Usuario = Depends(require_permission("mariachi.colibri_config.manage")),
 ):
     source_app = db.query(SourceApp).filter(SourceApp.id == source_app_id).first()
     if not source_app:

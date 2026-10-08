@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import hashlib
+import html
 import xml.etree.ElementTree as ET
 from urllib.parse import quote
 
 import httpx
 
 from app.core.settings import get_settings
+
+RASTER_ROOT = "geoserver-raster"
+RASTER_SCOPE = "__rasters__"
 
 
 class GeoServerError(Exception):
@@ -306,7 +310,7 @@ class GeoServerClient:
                     names.insert(0, default)
         return names
 
-    def list_fields(self, workspace: str, layer: str) -> list[dict]:
+    def _describe_properties(self, workspace: str, layer: str) -> list[dict]:
         if self.is_layer_group(workspace, layer):
             return []
         url = self._ows_url()
@@ -329,14 +333,32 @@ class GeoServerClient:
         feature_types = data.get("featureTypes") or []
         if not feature_types:
             return []
-        properties = feature_types[0].get("properties") or []
-        result = []
-        for prop in properties:
-            result.append({
+        return feature_types[0].get("properties") or []
+
+    def list_fields(self, workspace: str, layer: str) -> list[dict]:
+        return [
+            {
                 "name": prop.get("name"),
                 "type": _normalize_type(prop.get("localType") or prop.get("type")),
-            })
-        return result
+            }
+            for prop in self._describe_properties(workspace, layer)
+        ]
+
+    def is_coverage(self, workspace: str, layer: str) -> bool:
+        url = self._rest_url(f"workspaces/{workspace}/coverages/{layer}.json")
+        with self._client() as c:
+            r = c.get(url)
+        return r.status_code == 200
+
+    def geometry_type(self, workspace: str, layer: str) -> str | None:
+        if self.is_coverage(workspace, layer):
+            return "raster"
+        for prop in self._describe_properties(workspace, layer):
+            raw = prop.get("localType") or prop.get("type")
+            if _normalize_type(raw) != "geometry":
+                continue
+            return OGC_GEOMETRIES.get(str(raw).lower().replace("gml:", ""))
+        return None
 
     def sample_values(
         self, workspace: str, layer: str, field: str, limit: int = 20
@@ -364,7 +386,60 @@ class GeoServerClient:
         return seen
 
 
+    def count_features(self, workspace: str, layer: str, cql: str | None = None) -> int:
+        url = self._ows_url()
+        params = {
+            "service": "WFS",
+            "version": "2.0.0",
+            "request": "GetFeature",
+            "typeNames": f"{workspace}:{layer}",
+            "resultType": "hits",
+        }
+        if cql and cql.strip():
+            params["CQL_FILTER"] = cql.strip()
+        with self._client() as c:
+            r = c.get(url, params=params)
+        return _parse_hits(r.status_code, r.text, f"{workspace}:{layer}")
+
+    def sample_features(self, workspace: str, layer: str, limit: int = 10) -> list[dict]:
+        """Devuelve features completas para previsualizar una tarjetita con datos reales.
+
+        A diferencia de sample_values, que trae valores sueltos de una columna, aqui
+        interesa el registro entero: la tarjeta se rompe en la fila sin colonia o con
+        el nombre larguisimo, y eso solo se ve con la feature completa.
+        """
+        if self.is_layer_group(workspace, layer):
+            return []
+        url = self._ows_url()
+        params = {
+            "service": "WFS",
+            "version": "2.0.0",
+            "request": "GetFeature",
+            "typeNames": f"{workspace}:{layer}",
+            "count": str(max(1, min(limit, 50))),
+            "outputFormat": "application/json",
+        }
+        with self._client() as c:
+            r = c.get(url, params=params)
+            r.raise_for_status()
+            try:
+                data = r.json()
+            except ValueError as e:
+                raise GeoServerError(
+                    f"Respuesta no-JSON de GetFeature {workspace}:{layer}"
+                ) from e
+        salida = []
+        for f in data.get("features") or []:
+            props = {
+                k: v for k, v in (f.get("properties") or {}).items()
+                if not isinstance(v, (dict, list))
+            }
+            salida.append({"id": f.get("id"), "properties": props})
+        return salida
+
     def _styles_base(self, workspace: str | None) -> str:
+        if workspace == RASTER_SCOPE:
+            return f"resource/{RASTER_ROOT}"
         if workspace:
             return f"resource/workspaces/{workspace}"
         return "resource/styles"
@@ -382,9 +457,15 @@ class GeoServerClient:
             self._walk_styles_recursive(folder_path, workspace, sink)
 
     def browse_styles_dir(self, prefix: str = "", workspace: str | None = None) -> dict:
+        """Lista una carpeta del Resource API; una que no existe es lista vacia.
+
+        `quietOnNotFound` evita que GeoServer registre cada 404 como un ERROR con
+        stacktrace: aqui la carpeta ausente es un caso corriente —una carpeta pendiente,
+        un ambito recien estrenado— y sin el parametro el log se llena de ruido.
+        """
         base = self._styles_base(workspace)
         path = base + (f"/{prefix.strip('/')}" if prefix else "")
-        url = f"{self._rest_url(path)}?format=json"
+        url = f"{self._rest_url(path)}?format=json&quietOnNotFound=true"
         with self._client() as c:
             r = c.get(url)
             if r.status_code == 404:
@@ -488,6 +569,77 @@ class GeoServerClient:
                     f"delete fallido {base}/{name} (HTTP {r.status_code}): {r.text[:200]}"
                 )
             return True
+
+    def _store_path(self, name: str, workspace: str | None) -> str:
+        base = self._styles_base(workspace)[len("resource/"):]
+        clean = name.strip("/")
+        return f"{base}/{clean}" if clean else base
+
+    def count_styles_dir(self, prefix: str, workspace: str | None = None) -> dict:
+        """Cuenta recursivamente lo que cuelga de una carpeta del Resource API.
+
+        Alimenta la confirmacion de borrado: el DELETE de un directorio arrastra
+        todo su contenido y no hay papelera de donde recuperarlo.
+        """
+        files: list[dict] = []
+        folders: list[str] = []
+        pending = [prefix.strip("/")]
+        while pending:
+            current = pending.pop()
+            result = self.browse_styles_dir(current, workspace=workspace)
+            files.extend(result["files"])
+            folders.extend(result["folders"])
+            pending.extend(result["folders"])
+        return {"files": files, "folders": folders}
+
+    def move_style_resource(self, source: str, target: str, workspace: str | None = None) -> None:
+        """Renombra o mueve un archivo o carpeta dentro del mismo ambito.
+
+        El Resource API espera la ruta de origen en el cuerpo, relativa a la raiz
+        del data_dir (`styles/...` o `workspaces/<ws>/...`), no al recurso destino.
+        """
+        base = self._styles_base(workspace)
+        url = f"{self._base_url}/rest/{base}/{quote(target.lstrip('/'), safe='/')}?operation=move"
+        body = self._store_path(source, workspace)
+        with httpx.Client(auth=self._auth, timeout=self._timeout) as c:
+            r = c.put(url, content=body.encode("utf-8"), headers={"Content-Type": "text/plain"})
+            if r.status_code == 404:
+                raise GeoServerError(f"recurso no encontrado: {body}")
+            if r.status_code not in (200, 201, 204):
+                raise GeoServerError(
+                    f"move fallido {body} -> {base}/{target} "
+                    f"(HTTP {r.status_code}): {r.text[:200]}"
+                )
+
+
+def _parse_hits(status_code: int, body: str, capa: str) -> int:
+    try:
+        root = ET.fromstring(body)
+    except ET.ParseError as e:
+        raise GeoServerError(f"Respuesta ilegible al contar {capa}") from e
+    if root.tag.endswith("ExceptionReport"):
+        texto = html.unescape(" ".join(t.strip() for t in root.itertext() if t.strip()))
+        raise GeoServerError(texto or f"GeoServer rechazo el filtro de {capa}")
+    if status_code >= 400:
+        raise GeoServerError(f"GeoServer respondio {status_code} al contar {capa}")
+    matched = root.attrib.get("numberMatched")
+    if matched is None or not matched.isdigit():
+        raise GeoServerError(f"GeoServer no informo el total de {capa}")
+    return int(matched)
+
+
+OGC_GEOMETRIES = {
+    "point": "point",
+    "multipoint": "point",
+    "linestring": "line",
+    "multilinestring": "line",
+    "curve": "line",
+    "multicurve": "line",
+    "polygon": "polygon",
+    "multipolygon": "polygon",
+    "surface": "polygon",
+    "multisurface": "polygon",
+}
 
 
 def _normalize_type(raw: str | None) -> str:

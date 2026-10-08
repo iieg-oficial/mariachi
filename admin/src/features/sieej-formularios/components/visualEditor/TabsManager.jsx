@@ -137,7 +137,7 @@ export default function TabsManager({
                             type="info"
                             showIcon
                             style={{ marginBottom: 16 }}
-                            message={`Los ${fields.length} campos del paso quedarán en esta primera pestaña. Después puedes moverlos.`}
+                            title={`Los ${fields.length} campos del paso quedarán en esta primera pestaña. Después puedes moverlos.`}
                         />
                     )}
                     <Form.Item

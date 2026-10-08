@@ -25,5 +25,5 @@ test-backend: ## Correr ruff y pytest del backend, como en CI
 	@$(LIB)
 	banner 'TEST' 'backend'
 	rule
-	cd api && ruff check --no-cache app tests
+	(cd api && ruff check --no-cache app tests)
 	./api/scripts/run-tests.sh

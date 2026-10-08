@@ -1,17 +1,17 @@
 import { useEffect, useState } from 'react';
-import { Alert, Button, Col, Empty, Form, Row, Space, Spin, Typography } from 'antd';
+import { Alert, Button, Empty, Form, Space, Spin, Typography } from 'antd';
 import { SaveOutlined } from '@ant-design/icons';
-import InfoBoxBlocksEditor from '@features/mapalab-layers/components/layersEditor/InfoBoxBlocksEditor';
-import InfoBoxPreview from '@features/mapalab-layers/components/layersEditor/InfoBoxPreview';
+import TarjetitaEditor from '@features/mapalab-layers/components/layersEditor/TarjetitaEditor';
+import { SampleFeaturesProvider } from '@features/mapalab-layers/components/layersEditor/SampleFeaturesContext';
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
+import { refrescarArbol } from '@features/mapalab-layers/utils/refrescoArbol';
 import { message } from '@shared/services/message';
 
 const { Text } = Typography;
 
-export default function InfoboxStandalone({ layer, inherited = null, onSaved }) {
-    const { updateLayer, listGeoserverFields } = useLayerTreeAdmin();
+export default function InfoboxStandalone({ layer, inherited = null, onSaved, puedePublicar = false }) {
+    const { updateLayer, listGeoserverFields, rawTree, reload } = useLayerTreeAdmin();
     const [form] = Form.useForm();
-    const watchedConfig = Form.useWatch('infoboxConfig', form);
     const [availableFields, setAvailableFields] = useState([]);
     const [loadingFields, setLoadingFields] = useState(false);
     const [saving, setSaving] = useState(false);
@@ -41,7 +41,7 @@ export default function InfoboxStandalone({ layer, inherited = null, onSaved }) 
             <Alert
                 type="warning"
                 showIcon
-                message="La capa no tiene workspace o feature type definido"
+                title="La capa no tiene workspace o feature type definido"
                 description="No se pueden listar campos disponibles para construir la tarjeta. Asigna workspace y geoserver_layer en el editor de capas."
             />
         );
@@ -52,10 +52,11 @@ export default function InfoboxStandalone({ layer, inherited = null, onSaved }) 
         setSaving(true);
         try {
             await updateLayer(layer.id, { infoboxConfig: values.infoboxConfig || null });
-            message.success('Tarjeta actualizada');
+            message.success('Tarjetita actualizada');
             onSaved?.();
+            refrescarArbol(reload);
         } catch (err) {
-            message.error(err?.response?.data?.detail || 'No se pudo guardar la tarjeta');
+            message.error(err?.response?.data?.detail || 'No se pudo guardar la tarjetita');
         } finally {
             setSaving(false);
         }
@@ -65,31 +66,26 @@ export default function InfoboxStandalone({ layer, inherited = null, onSaved }) 
         <Form form={form} layout="vertical">
             <Space style={{ width: '100%', justifyContent: 'flex-end', marginBottom: 12 }}>
                 <Button type="primary" icon={<SaveOutlined />} onClick={handleSave} loading={saving}>
-                    Guardar tarjeta
+                    Guardar tarjetita
                 </Button>
             </Space>
             {loadingFields && <Spin size="small" style={{ marginBottom: 12 }} />}
-            <Row gutter={24}>
-                <Col xs={24} md={14}>
-                    <Form.Item
-                        name="infoboxConfig"
-                        label="Configuración del cuadro"
-                        extra="Bloques que componen el cuadro que aparece al hacer click sobre una feature en el visor."
-                    >
-                        <InfoBoxBlocksEditor
-                            availableFields={availableFields}
-                            inherited={inherited}
-                            nodeType={layer.nodeType || 'leaf'}
-                        />
-                    </Form.Item>
-                </Col>
-                <Col xs={24} md={10}>
-                    <div style={{ position: 'sticky', top: 0 }}>
-                        <Text strong style={{ display: 'block', marginBottom: 8 }}>Vista previa</Text>
-                        <InfoBoxPreview value={watchedConfig || inherited?.config || null} />
-                    </div>
-                </Col>
-            </Row>
+            <SampleFeaturesProvider workspaceAlias={layer.workspaceAlias} geoserverLayer={layer.geoserverLayer}>
+                <Form.Item name="infoboxConfig" label={null}>
+                    <TarjetitaEditor
+                        availableFields={availableFields}
+                        fieldsLoading={loadingFields}
+                        hasFeatureType={!!layer.workspaceAlias && !!layer.geoserverLayer}
+                        rawTree={rawTree}
+                        currentLayerId={layer.id}
+                        inherited={inherited}
+                        nodeType={layer.nodeType || 'leaf'}
+                        updateLayer={updateLayer}
+                        reloadTree={reload}
+                        puedePublicar={puedePublicar}
+                    />
+                </Form.Item>
+            </SampleFeaturesProvider>
         </Form>
     );
 }

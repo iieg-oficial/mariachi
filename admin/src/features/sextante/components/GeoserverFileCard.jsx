@@ -1,24 +1,53 @@
-import { Button, Card, Popconfirm, Space, Tag, Tooltip, Typography } from 'antd';
-import { CodeOutlined, DeleteOutlined, FileImageOutlined } from '@ant-design/icons';
+import { useState } from 'react';
+import { Card, Checkbox, Tag, Tooltip, Typography } from 'antd';
+import {
+    DeleteOutlined,
+    DownloadOutlined,
+    EditOutlined,
+    FileImageOutlined,
+} from '@ant-design/icons';
+import CardCornerAction from '@features/sextante/components/CardCornerAction';
 import GeoserverThumb from '@features/sextante/components/GeoserverThumb';
-import { basename, extOf, isPreviewable, workspaceLabel } from '@features/sextante/utils/geoserverFiles';
+import {
+    basename,
+    extOf,
+    isEditableText,
+    isPreviewable,
+    workspaceLabel,
+} from '@features/sextante/utils/geoserverFiles';
 
 const { Text } = Typography;
 
 export default function GeoserverFileCard({
     file,
     fromSearch = false,
+    isMobile = false,
     deleting = false,
-    onSnippet,
+    selected = false,
+    anySelected = false,
+    onToggleSelect,
+    onRename,
     onDelete,
+    onDownload,
 }) {
+    const [hover, setHover] = useState(false);
     const fileWorkspace = file.workspace || '';
     const displayPath = fromSearch ? `${workspaceLabel(fileWorkspace)}${file.name}` : file.name;
+    const showActions = hover || isMobile;
+    const showCheckbox = showActions || selected || anySelected;
 
     return (
-        <Card size="small" hoverable styles={{ body: { padding: 8 } }}>
+        <Card
+            size="small"
+            hoverable
+            onMouseEnter={() => setHover(true)}
+            onMouseLeave={() => setHover(false)}
+            style={selected ? { outline: '2px solid #5C2472', outlineOffset: -2 } : undefined}
+            styles={{ body: { padding: 8 } }}
+        >
             <div
                 style={{
+                    position: 'relative',
                     height: 100,
                     display: 'flex',
                     flexDirection: 'column',
@@ -32,6 +61,49 @@ export default function GeoserverFileCard({
                     gap: 4,
                 }}
             >
+                <Checkbox
+                    checked={selected}
+                    aria-label={`Seleccionar ${basename(file.name)}`}
+                    onChange={() => onToggleSelect?.({ ...file, isDir: false })}
+                    style={{
+                        position: 'absolute',
+                        top: 4,
+                        left: 4,
+                        zIndex: 2,
+                        opacity: showCheckbox ? 1 : 0,
+                        pointerEvents: showCheckbox ? 'auto' : 'none',
+                        transition: 'opacity 0.15s',
+                    }}
+                />
+                <CardCornerAction
+                    corner="topRight"
+                    visible={showActions}
+                    title="Eliminar archivo"
+                    icon={<DeleteOutlined />}
+                    danger
+                    loading={deleting}
+                    confirm={{
+                        title: '¿Eliminar este archivo?',
+                        description: 'Si algún SLD lo está usando, dejará de renderearse.',
+                    }}
+                    onClick={() => onDelete?.(file.name, fileWorkspace)}
+                />
+                {!fromSearch && (
+                    <CardCornerAction
+                        corner="bottomLeft"
+                        visible={showActions}
+                        title={isEditableText(file) ? 'Editar archivo' : 'Renombrar archivo'}
+                        icon={<EditOutlined />}
+                        onClick={() => onRename?.({ ...file, isDir: false })}
+                    />
+                )}
+                <CardCornerAction
+                    corner="bottomRight"
+                    visible={showActions}
+                    title="Descargar archivo"
+                    icon={<DownloadOutlined />}
+                    onClick={() => onDownload?.(file)}
+                />
                 {isPreviewable(file.name) ? (
                     <GeoserverThumb
                         src={file.downloadUrl}
@@ -53,25 +125,10 @@ export default function GeoserverFileCard({
                 </Tag>
             )}
             <Tooltip title={displayPath}>
-                <Text ellipsis style={{ display: 'block', fontSize: 12, marginBottom: 6 }}>
+                <Text ellipsis style={{ display: 'block', fontSize: 12 }}>
                     {basename(file.name)}
                 </Text>
             </Tooltip>
-            <Space size={4} style={{ width: '100%', justifyContent: 'space-between' }}>
-                <Tooltip title="Ver snippet SLD">
-                    <Button size="small" icon={<CodeOutlined />} onClick={() => onSnippet?.(file)} />
-                </Tooltip>
-                <Popconfirm
-                    title="¿Eliminar este archivo?"
-                    description="Si algún SLD lo está usando, dejará de renderearse."
-                    okText="Eliminar"
-                    okButtonProps={{ danger: true }}
-                    cancelText="Cancelar"
-                    onConfirm={() => onDelete?.(file.name, fileWorkspace)}
-                >
-                    <Button size="small" danger icon={<DeleteOutlined />} loading={deleting} />
-                </Popconfirm>
-            </Space>
         </Card>
     );
 }

@@ -1,32 +1,22 @@
 import {
+    Col,
     ColorPicker,
     DatePicker,
-    Divider,
     Form,
     Input,
-    Radio,
+    Row,
+    Segmented,
     Space,
     Switch,
     Typography,
 } from 'antd';
+import { BADGE_PRESETS, VARIANT_OPTIONS, softBg } from '@features/mapalab-layers/constants/badgePresets';
+import InfoIcon from '@features/mapalab-layers/components/layersEditor/InfoIcon';
 import dayjs from 'dayjs';
+import '@features/mapalab-layers/components/layersEditor/appearancePanel.css';
 
 const { Text } = Typography;
 
-const BADGE_PRESETS = {
-    new: { label: 'Nueva', color: '#1F9D55' },
-    updated: { label: 'Actualizada', color: '#2563EB' },
-    soon: { label: 'Próximamente', color: '#FF8300' },
-};
-
-const VARIANT_OPTIONS = [
-    { value: 'new', label: 'Nueva' },
-    { value: 'updated', label: 'Actualizada' },
-    { value: 'soon', label: 'Próximamente' },
-    { value: 'custom', label: 'Personalizado' },
-];
-
-const softBg = (hex) => (/^#[0-9a-fA-F]{6}$/.test(hex || '') ? `${hex}1A` : 'transparent');
 
 const resolvePreview = (value) => {
     const preset = BADGE_PRESETS[value?.variant];
@@ -53,82 +43,77 @@ export default function LayerBadgeSection({ value, onChange }) {
 
     return (
         <div>
-            <Form.Item label={<Text strong>Habilitar badge</Text>} style={{ marginBottom: 16 }}>
+            <div className="ap-cabeza" style={{ marginBottom: enabled ? 16 : 0 }}>
                 <Switch
                     checked={enabled}
                     onChange={(checked) => setField({ enabled: checked, variant: safeValue?.variant || 'new' })}
                 />
-                <Text type="secondary" style={{ marginLeft: 12 }}>
-                    {enabled
-                        ? 'La capa mostrará una etiqueta en el menú, búsqueda y capas activas.'
-                        : 'Apagado (no se muestra al usuario).'}
-                </Text>
-            </Form.Item>
+                <span className="ap-titulo">Distintivo</span>
+                <InfoIcon title="Muestra una etiqueta junto al nombre de la capa en el menú, la búsqueda y las capas activas del visor. Solo aparece dentro de su ventana de vigencia." />
+            </div>
 
             {enabled && (
-                <>
-                    <Form.Item label={<Text strong>Tipo</Text>} style={{ marginBottom: 16 }}>
-                        <Radio.Group
-                            value={variant}
-                            onChange={(e) => setField({ variant: e.target.value })}
-                            optionType="button"
-                            buttonStyle="solid"
-                        >
-                            {VARIANT_OPTIONS.map((opt) => (
-                                <Radio.Button key={opt.value} value={opt.value}>
-                                    {opt.label}
-                                </Radio.Button>
-                            ))}
-                        </Radio.Group>
-                    </Form.Item>
+                <Row gutter={24}>
+                    <Col xs={24} md={15} style={{ minWidth: 0 }}>
+                        <Form.Item label="Tipo" style={{ marginBottom: 16 }}>
+                            <Segmented
+                                value={variant}
+                                onChange={(v) => setField({ variant: v })}
+                                options={VARIANT_OPTIONS}
+                            />
+                        </Form.Item>
 
-                    {isCustom && (
-                        <Space size="large" align="start" style={{ marginBottom: 16 }}>
-                            <Form.Item label={<Text strong>Texto</Text>} style={{ marginBottom: 0 }}>
-                                <Input
-                                    value={safeValue?.label || ''}
-                                    onChange={(e) => setField({ label: e.target.value })}
-                                    placeholder="Ej. Beta"
-                                    maxLength={40}
-                                    style={{ width: 200 }}
+                        {isCustom && (
+                            <Space size="large" align="start" style={{ marginBottom: 16 }}>
+                                <Form.Item label="Texto" style={{ marginBottom: 0 }}>
+                                    <Input
+                                        value={safeValue?.label || ''}
+                                        onChange={(e) => setField({ label: e.target.value })}
+                                        placeholder="Ej. Beta"
+                                        maxLength={40}
+                                        style={{ width: 200 }}
+                                    />
+                                </Form.Item>
+                                <Form.Item label="Color" style={{ marginBottom: 0 }}>
+                                    <ColorPicker
+                                        value={safeValue?.color || '#5C2472'}
+                                        onChange={(c) => setField({ color: c.toHexString().toUpperCase() })}
+                                    />
+                                </Form.Item>
+                            </Space>
+                        )}
+
+                        <Space size="large" align="start">
+                            <Form.Item
+                                label={(
+                                    <Space size={6}>
+                                        Vigente desde
+                                        <InfoIcon title="Sin fechas el distintivo es permanente. El puntito del tema se apaga cuando el usuario activa la capa; la píldora sigue mientras esté vigente." />
+                                    </Space>
+                                )}
+                                style={{ marginBottom: 0 }}
+                            >
+                                <DatePicker
+                                    value={validFromValue}
+                                    onChange={(d) => setField({ validFrom: d ? d.format('YYYY-MM-DD') : null })}
                                 />
                             </Form.Item>
-                            <Form.Item label={<Text strong>Color</Text>} style={{ marginBottom: 0 }}>
-                                <ColorPicker
-                                    value={safeValue?.color || '#5C2472'}
-                                    onChange={(c) => setField({ color: c.toHexString().toUpperCase() })}
+                            <Form.Item label="Vigente hasta" style={{ marginBottom: 0 }}>
+                                <DatePicker
+                                    value={validUntilValue}
+                                    onChange={(d) => setField({ validUntil: d ? d.format('YYYY-MM-DD') : null })}
                                 />
                             </Form.Item>
                         </Space>
-                    )}
+                    </Col>
 
-                    <Space size="large" align="start" style={{ marginBottom: 16 }}>
-                        <Form.Item label={<Text strong>Vigente desde</Text>} style={{ marginBottom: 0 }}>
-                            <DatePicker
-                                value={validFromValue}
-                                onChange={(d) => setField({ validFrom: d ? d.format('YYYY-MM-DD') : null })}
-                            />
-                        </Form.Item>
-                        <Form.Item label={<Text strong>Vigente hasta</Text>} style={{ marginBottom: 0 }}>
-                            <DatePicker
-                                value={validUntilValue}
-                                onChange={(d) => setField({ validUntil: d ? d.format('YYYY-MM-DD') : null })}
-                            />
-                        </Form.Item>
-                    </Space>
-
-                    <Text type="secondary" style={{ display: 'block' }}>
-                        Sin fechas, el badge es permanente. El puntito del tema se apaga cuando el usuario
-                        activa la capa; la pildora sigue mientras esté vigente.
-                    </Text>
-
-                    {preview && (
-                        <>
-                            <Divider />
-                            <Space align="center">
-                                <Text strong>Vista previa:</Text>
+                    <Col xs={24} md={9} style={{ minWidth: 0 }}>
+                        <div style={{ position: 'sticky', top: 0 }}>
+                            <Text strong style={{ display: 'block', marginBottom: 8 }}>Vista previa</Text>
+                            {preview ? (
                                 <span
                                     style={{
+                                        display: 'inline-block',
                                         color: preview.color,
                                         backgroundColor: preview.bg,
                                         padding: '2px 8px',
@@ -141,10 +126,14 @@ export default function LayerBadgeSection({ value, onChange }) {
                                 >
                                     {preview.label}
                                 </span>
-                            </Space>
-                        </>
-                    )}
-                </>
+                            ) : (
+                                <Text type="secondary" style={{ fontSize: 12 }}>
+                                    Elige un tipo, o escribe texto y color si es personalizado.
+                                </Text>
+                            )}
+                        </div>
+                    </Col>
+                </Row>
             )}
         </div>
     );

@@ -17,6 +17,7 @@ from app.models.sieej import (
     usuario_grupo,
 )
 from app.models.user import Usuario
+from tests.conftest import PERMISOS_REPORTAR, TODOS_LOS_PERMISOS, login_as
 
 settings = get_settings()
 ADMIN_PREFIX = settings.admin_prefix
@@ -134,13 +135,10 @@ def respondent_b(session, proyecto_sieej):
     return u
 
 
-def login(client, username, password="testpass123"):
-    r = client.post(
-        f"{ADMIN_PREFIX}/autenticacion/iniciar-sesion",
-        json={"username": username, "password": password},
-    )
-    assert r.status_code == 200, r.text
-    return r.json()["csrf_token"]
+def login(client, user, permisos=None):
+    if permisos is None:
+        permisos = PERMISOS_REPORTAR if user.role == "externo" else TODOS_LOS_PERMISOS
+    return login_as(client, user, permisos)
 
 
 def crear_formulario(session, admin, *, slug="form-test", nombre="Form Test", estado="activo"):
@@ -184,7 +182,7 @@ def asignar_a_grupo(session, formulario, user, *, nombre_grupo="grupo-x"):
 
 def test_lista_vacia_si_no_hay_asignaciones(client, session, admin, respondent_a):
     crear_formulario(session, admin)
-    login(client, respondent_a.username)
+    login(client, respondent_a)
     r = client.get(f"{ADMIN_PREFIX}/formularios")
     assert r.status_code == 200
     assert r.json() == []
@@ -196,7 +194,7 @@ def test_lista_incluye_formularios_asignados_individualmente(
     f = crear_formulario(session, admin)
     asignar_a_usuario(session, f, respondent_a)
 
-    login(client, respondent_a.username)
+    login(client, respondent_a)
     r = client.get(f"{ADMIN_PREFIX}/formularios")
     assert r.status_code == 200
     items = r.json()
@@ -210,7 +208,7 @@ def test_list_exposes_envio_id_when_envio_exists(client, session, admin, respond
     f = crear_formulario(session, admin)
     asignar_a_usuario(session, f, respondent_a)
 
-    login(client, respondent_a.username)
+    login(client, respondent_a)
     r = client.get(f"{ADMIN_PREFIX}/formularios/{f.slug}/envio")
     envio_id = r.json()["id"]
 
@@ -225,7 +223,7 @@ def test_lista_incluye_formularios_via_grupo(client, session, admin, respondent_
     f = crear_formulario(session, admin)
     asignar_a_grupo(session, f, respondent_a)
 
-    login(client, respondent_a.username)
+    login(client, respondent_a)
     r = client.get(f"{ADMIN_PREFIX}/formularios")
     items = r.json()
     assert len(items) == 1
@@ -236,7 +234,7 @@ def test_lista_excluye_formularios_borrador(client, session, admin, respondent_a
     f = crear_formulario(session, admin, estado="borrador")
     asignar_a_usuario(session, f, respondent_a)
 
-    login(client, respondent_a.username)
+    login(client, respondent_a)
     r = client.get(f"{ADMIN_PREFIX}/formularios")
     assert r.json() == []
 
@@ -244,7 +242,7 @@ def test_lista_excluye_formularios_borrador(client, session, admin, respondent_a
 def test_admin_global_ve_todos(client, session, admin):
     crear_formulario(session, admin, slug="f1")
     crear_formulario(session, admin, slug="f2")
-    login(client, admin.username)
+    login(client, admin)
     r = client.get(f"{ADMIN_PREFIX}/formularios")
     assert r.status_code == 200
     slugs = {item["slug"] for item in r.json()}
@@ -255,7 +253,7 @@ def test_get_formulario_por_slug_devuelve_definicion(client, session, admin, res
     f = crear_formulario(session, admin)
     asignar_a_usuario(session, f, respondent_a)
 
-    login(client, respondent_a.username)
+    login(client, respondent_a)
     r = client.get(f"{ADMIN_PREFIX}/formularios/{f.slug}")
     assert r.status_code == 200
     body = r.json()
@@ -266,7 +264,7 @@ def test_get_formulario_por_slug_devuelve_definicion(client, session, admin, res
 
 def test_get_formulario_no_asignado_404(client, session, admin, respondent_a):
     f = crear_formulario(session, admin)
-    login(client, respondent_a.username)
+    login(client, respondent_a)
     r = client.get(f"{ADMIN_PREFIX}/formularios/{f.slug}")
     assert r.status_code == 404
 
@@ -275,7 +273,7 @@ def test_get_envio_inicia_implicitamente(client, session, admin, respondent_a):
     f = crear_formulario(session, admin)
     asignar_a_usuario(session, f, respondent_a)
 
-    login(client, respondent_a.username)
+    login(client, respondent_a)
     r = client.get(f"{ADMIN_PREFIX}/formularios/{f.slug}/envio")
     assert r.status_code == 200
     body = r.json()
@@ -288,7 +286,7 @@ def test_put_envio_guarda_borrador(client, session, admin, respondent_a):
     f = crear_formulario(session, admin)
     asignar_a_usuario(session, f, respondent_a)
 
-    csrf = login(client, respondent_a.username)
+    csrf = login(client, respondent_a)
     r = client.put(
         f"{ADMIN_PREFIX}/formularios/{f.slug}/envio",
         headers={"X-CSRF-Token": csrf},
@@ -304,7 +302,7 @@ def test_put_envio_borrador_no_exige_required(client, session, admin, respondent
     """Borrador parcial debe pasar aunque falten required."""
     f = crear_formulario(session, admin)
     asignar_a_usuario(session, f, respondent_a)
-    csrf = login(client, respondent_a.username)
+    csrf = login(client, respondent_a)
     r = client.put(
         f"{ADMIN_PREFIX}/formularios/{f.slug}/envio",
         headers={"X-CSRF-Token": csrf},
@@ -316,7 +314,7 @@ def test_put_envio_borrador_no_exige_required(client, session, admin, respondent
 def test_put_envio_enviado_falla_si_falta_required(client, session, admin, respondent_a):
     f = crear_formulario(session, admin)
     asignar_a_usuario(session, f, respondent_a)
-    csrf = login(client, respondent_a.username)
+    csrf = login(client, respondent_a)
     r = client.put(
         f"{ADMIN_PREFIX}/formularios/{f.slug}/envio",
         headers={"X-CSRF-Token": csrf},
@@ -328,7 +326,7 @@ def test_put_envio_enviado_falla_si_falta_required(client, session, admin, respo
 def test_put_envio_enviado_marca_estado(client, session, admin, respondent_a):
     f = crear_formulario(session, admin)
     asignar_a_usuario(session, f, respondent_a)
-    csrf = login(client, respondent_a.username)
+    csrf = login(client, respondent_a)
     r = client.put(
         f"{ADMIN_PREFIX}/formularios/{f.slug}/envio",
         headers={"X-CSRF-Token": csrf},
@@ -347,7 +345,7 @@ def test_put_envio_falla_si_formulario_cerrado(client, session, admin, responden
     a estado 'cerrado' (la spec habla de cerrado pero el codigo no validaba)."""
     f = crear_formulario(session, admin)
     asignar_a_usuario(session, f, respondent_a)
-    csrf = login(client, respondent_a.username)
+    csrf = login(client, respondent_a)
 
     # Crear envio mientras esta activo
     r0 = client.put(
@@ -374,7 +372,7 @@ def test_put_envio_payload_excede_limite_falla_413(client, session, admin, respo
     """Regresion: payload de `datos` >5 MB se rechaza con 413."""
     f = crear_formulario(session, admin)
     asignar_a_usuario(session, f, respondent_a)
-    csrf = login(client, respondent_a.username)
+    csrf = login(client, respondent_a)
 
     blob = "x" * (6 * 1024 * 1024)
     r = client.put(
@@ -393,7 +391,7 @@ def test_put_envio_falla_si_vigencia_fin_pasada(client, session, admin, responde
 
     f = crear_formulario(session, admin)
     asignar_a_usuario(session, f, respondent_a)
-    csrf = login(client, respondent_a.username)
+    csrf = login(client, respondent_a)
 
     r0 = client.put(
         f"{ADMIN_PREFIX}/formularios/{f.slug}/envio",
@@ -416,7 +414,7 @@ def test_put_envio_falla_si_vigencia_fin_pasada(client, session, admin, responde
 def test_put_envio_despues_de_enviar_falla_409(client, session, admin, respondent_a):
     f = crear_formulario(session, admin)
     asignar_a_usuario(session, f, respondent_a)
-    csrf = login(client, respondent_a.username)
+    csrf = login(client, respondent_a)
 
     client.put(
         f"{ADMIN_PREFIX}/formularios/{f.slug}/envio",
@@ -445,7 +443,7 @@ def test_envio_de_un_user_no_visible_para_otro(client, session, admin, responden
     asignar_a_usuario(session, f, respondent_a)
     asignar_a_usuario(session, f, respondent_b)
 
-    csrf_a = login(client, respondent_a.username)
+    csrf_a = login(client, respondent_a)
     client.put(
         f"{ADMIN_PREFIX}/formularios/{f.slug}/envio",
         headers={"X-CSRF-Token": csrf_a},
@@ -457,7 +455,7 @@ def test_envio_de_un_user_no_visible_para_otro(client, session, admin, responden
     )
 
     # Logout via re-login con b
-    login(client, respondent_b.username)
+    login(client, respondent_b)
     r = client.get(f"{ADMIN_PREFIX}/formularios/{f.slug}/envio")
     assert r.status_code == 200
     assert r.json()["datos"] == {}  # b inicia su propio envio vacio
@@ -467,7 +465,7 @@ def test_get_schema_devuelve_validation_rules(client, session, admin, respondent
     f = crear_formulario(session, admin)
     asignar_a_usuario(session, f, respondent_a)
 
-    login(client, respondent_a.username)
+    login(client, respondent_a)
     r = client.get(f"{ADMIN_PREFIX}/formularios/{f.slug}/schema")
     assert r.status_code == 200
     body = r.json()
@@ -482,7 +480,7 @@ def test_paths_del_wizard_no_chocan_con_dinamicos(client, session, admin, respon
     aunque `general` se vea como un slug. Nota: el formulario con slug
     `general` no se puede crear por el regex del schema (slug-pattern)
     pero la prueba garantiza que el orden de routers es correcto."""
-    login(client, respondent_a.username)
+    login(client, respondent_a)
     r = client.get(f"{ADMIN_PREFIX}/formularios/general")
     # endpoint del wizard responde 404 (no existe Generalrow para el user) en lugar
     # de chequear contra Formulario por slug

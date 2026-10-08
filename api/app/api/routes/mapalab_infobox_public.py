@@ -2,16 +2,17 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db
-from app.api.rate_limit import rate_limit_ip
+from app.api.rate_limit import _client_ip, rate_limit_ip
 from app.core.database import get_dataengine_db
 from app.schemas._camel import CamelCaseInput
 from app.schemas.mapalab_infobox import InfoboxPropuestaConfig
 from app.services import mapalab_infobox_service as service
+from app.services.discord_notifier import notify_infobox_propuesta
 from app.services.mapalab_telemetry import hash_ip
 
 logger = logging.getLogger(__name__)
@@ -31,16 +32,6 @@ class PropuestaOut(BaseModel):
     id: int | None = None
 
 
-def _client_ip(request: Request) -> str | None:
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    real_ip = request.headers.get("x-real-ip")
-    if real_ip:
-        return real_ip.strip()
-    return request.client.host if request.client else None
-
-
 @router.post(
     "/infobox-propuestas",
     response_model=PropuestaOut,
@@ -52,6 +43,7 @@ def _client_ip(request: Request) -> str | None:
 )
 async def crear_propuesta(
     request: Request,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     dataengine_db: Session = Depends(get_dataengine_db),
 ):
@@ -85,4 +77,5 @@ async def crear_propuesta(
     logger.info(
         "infobox.propuesta.creada id=%s capa=%s", propuesta.id, propuesta.capa_slug
     )
+    background_tasks.add_task(notify_infobox_propuesta, propuesta)
     return PropuestaOut(ok=True, id=propuesta.id)

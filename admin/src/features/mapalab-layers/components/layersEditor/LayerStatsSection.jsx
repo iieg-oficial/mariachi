@@ -1,18 +1,21 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Button, Card, Empty, Input, InputNumber, Radio, Select, Space, Spin, Tag, Tooltip, Typography } from 'antd';
+import { Alert, Button, Input, InputNumber, Modal, Radio, Select, Space, Spin, Tag, Tooltip, Typography } from 'antd';
 import {
-    CalculatorOutlined,
+    ClockCircleOutlined,
     DeleteOutlined,
-    PlusOutlined,
-    ReloadOutlined,
     ThunderboltOutlined,
 } from '@ant-design/icons';
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
 import { useAuth } from '@shared/contexts/useAuth';
 import { message } from '@shared/services/message';
 import StatusBadge from '@shared/components/StatusBadge';
+import StatsFiltersEditor from './StatsFiltersEditor';
+import StatsPreviewContext from './StatsPreviewContext';
+import StatsPreviewGrid from './StatsPreviewGrid';
 
 const MAX_EXPRESSION_DEPTH = 6;
+
+const OPS_WITHOUT_FIELD = new Set(['count', 'count_where']);
 
 const labelWithBeta = (text) => (
     <>
@@ -121,7 +124,7 @@ const PrimitiveEditor = ({ value, onChange, availableFields, schema, table }) =>
                 onChange={(v) => set({ operation: v })}
                 style={{ width: '100%' }}
             />
-            {op !== 'count' && (
+            {!OPS_WITHOUT_FIELD.has(op) && (
                 <Select
                     size="small"
                     value={value.field || undefined}
@@ -165,6 +168,11 @@ const PrimitiveEditor = ({ value, onChange, availableFields, schema, table }) =>
                     style={{ width: '100%' }}
                 />
             )}
+            <StatsFiltersEditor
+                value={value.filters}
+                onChange={(filters) => set({ filters })}
+                availableFields={availableFields}
+            />
             <Text type="secondary" style={{ fontSize: 11 }}>
                 Tabla: <code>{schema}.{table}</code>
             </Text>
@@ -268,10 +276,17 @@ const ExpressionEditor = ({ value, onChange, availableFields, schema, table, dep
     );
 };
 
-const StatSlot = ({ slot, onChange, onRemove, availableFields, schema, table, layerKey, previewLayerStat }) => {
-    const [previewValue, setPreviewValue] = useState(null);
-    const [previewing, setPreviewing] = useState(false);
-    const [previewError, setPreviewError] = useState(null);
+const resumenDe = (slot) => {
+    if (slot.operation === 'static') return 'valor fijo';
+    if (slot.operation === 'formula') {
+        const op = slot.expression?.op;
+        return `fórmula · ${(COMBINATOR_OPS.find((o) => o.value === op)?.label || op || '—')}`;
+    }
+    const campo = slot.field ? `(${slot.field})` : '';
+    return `${slot.operation}${campo}`;
+};
+
+const StatSlot = ({ slot, onChange, onRemove, availableFields, schema, table }) => {
 
     const set = (patch) => onChange({ ...slot, ...patch });
 
@@ -291,22 +306,8 @@ const StatSlot = ({ slot, onChange, onRemove, availableFields, schema, table, la
                 format: slot.format || '',
             });
         }
-        setPreviewValue(null);
-        setPreviewError(null);
     };
 
-    const runPreview = async () => {
-        setPreviewing(true);
-        setPreviewError(null);
-        try {
-            const res = await previewLayerStat(layerKey, slot);
-            setPreviewValue(res.value);
-        } catch (err) {
-            setPreviewError(err?.response?.data?.detail || 'Error');
-        } finally {
-            setPreviewing(false);
-        }
-    };
 
     const baseInputs = (
         <Space orientation="vertical" size={6} style={{ width: '100%' }}>
@@ -339,20 +340,17 @@ const StatSlot = ({ slot, onChange, onRemove, availableFields, schema, table, la
     );
 
     return (
-        <Card
-            size="small"
-            title={
-                <Space size={6}>
-                    <Tag color="purple">#{slot.position}</Tag>
-                    <Text strong>Slot {slot.position}</Text>
-                </Space>
-            }
-            extra={
-                <Button size="small" type="text" danger icon={<DeleteOutlined />} onClick={onRemove} />
-            }
-            styles={{ body: { paddingTop: 8 } }}
-        >
-            <Space orientation="vertical" size="small" style={{ width: '100%' }}>
+        <div className="stats-editor">
+            <div className="stats-editor-head">
+                <span className="stats-editor-title">
+                    {slot.label || `Indicador ${slot.position}`}
+                    <span className="stats-editor-tec">{resumenDe(slot)}</span>
+                </span>
+                <Tooltip title="Quitar indicador">
+                    <Button size="small" type="text" danger icon={<DeleteOutlined />} onClick={onRemove} />
+                </Tooltip>
+            </div>
+            <Space orientation="vertical" size="middle" className="stats-editor-body" style={{ width: '100%' }}>
                 <Radio.Group
                     size="small"
                     value={mode}
@@ -360,7 +358,7 @@ const StatSlot = ({ slot, onChange, onRemove, availableFields, schema, table, la
                     optionType="button"
                     options={[
                         { value: 'static', label: 'Estático' },
-                        { value: 'primitive', label: labelWithBeta('Operación simple') },
+                        { value: 'primitive', label: labelWithBeta('Operación') },
                         { value: 'formula', label: labelWithBeta('Fórmula') },
                     ]}
                 />
@@ -394,25 +392,8 @@ const StatSlot = ({ slot, onChange, onRemove, availableFields, schema, table, la
                     />
                 )}
 
-                <Space size={6} style={{ marginTop: 4 }}>
-                    <Button
-                        size="small"
-                        icon={<ThunderboltOutlined />}
-                        onClick={runPreview}
-                        loading={previewing}
-                        disabled={mode === 'primitive' && !schema}
-                    >
-                        Probar
-                    </Button>
-                    {previewValue !== null && previewValue !== undefined && (
-                        <Tag color="green">
-                            = {String(previewValue)}{slot.symbol ? ` ${slot.symbol}` : ''}
-                        </Tag>
-                    )}
-                    {previewError && <Tag color="red">{previewError}</Tag>}
-                </Space>
             </Space>
-        </Card>
+        </div>
     );
 };
 
@@ -421,23 +402,29 @@ export default function LayerStatsSection({
     workspace,
     geoserverLayer,
     availableFields = [],
+    onDraftSaved,
+    onValues,
 }) {
     const {
         getLayerStats,
-        updateLayerStats,
+        saveStatsDraft,
         previewLayerStat,
-        refreshLayerStats,
+        listMunicipios,
     } = useLayerTreeAdmin();
 
     const [loading, setLoading] = useState(true);
+    const [previewContext, setPreviewContext] = useState({ municipio: [], fechaInicio: null, fechaFin: null });
+    const [slotAbierto, setSlotAbierto] = useState(null);
     const [saving, setSaving] = useState(false);
-    const [refreshing, setRefreshing] = useState(false);
     const [stats, setStats] = useState(null);
     const [pieNumeralia, setPieNumeralia] = useState('');
     const [ttlMinutes, setTtlMinutes] = useState(1440);
     const [config, setConfig] = useState([]);
     const [dirty, setDirty] = useState(false);
-    const [refreshErrors, setRefreshErrors] = useState([]);
+    const [liveValues, setLiveValues] = useState({});
+    const [contextoAbierto, setContextoAbierto] = useState(false);
+    const [ttlAbierto, setTtlAbierto] = useState(false);
+    const [editandoPie, setEditandoPie] = useState(false);
 
     const { user } = useAuth();
     const isAdmin = user?.role === 'tetlamamakani';
@@ -492,6 +479,8 @@ export default function LayerStatsSection({
 
     useEffect(() => { reload(); }, [reload]);
 
+    useEffect(() => { onValues?.(stats?.values || []); }, [stats, onValues]);
+
     const usedPositions = useMemo(() => new Set(config.map((c) => c.position).filter(Boolean)), [config]);
     const nextPosition = () => {
         for (let i = 1; i <= 8; i++) if (!usedPositions.has(i)) return i;
@@ -535,204 +524,104 @@ export default function LayerStatsSection({
         return trimmed.startsWith('*') ? trimmed : `* ${trimmed}`;
     };
 
-    const handleSave = async () => {
+    const autoguardar = useCallback(async (siguiente, pie, ttl) => {
         setSaving(true);
         try {
-            const pieNormalized = normalizePieNumeralia(pieNumeralia);
-            await updateLayerStats(layerKey, {
-                stats_config: config,
-                pie_numeralia: pieNormalized,
-                ttl_minutes: ttlMinutes,
+            await saveStatsDraft(layerKey, {
+                stats_config: siguiente,
+                pie_numeralia: normalizePieNumeralia(pie),
+                ttl_minutes: ttl,
             });
-            if (pieNormalized && pieNormalized !== pieNumeralia) {
-                setPieNumeralia(pieNormalized);
-            }
-            message.success('Configuración de estadísticas guardada');
-            reload();
+            setDirty(false);
+            onDraftSaved?.();
         } catch (err) {
-            message.error(err?.response?.data?.detail || 'Error al guardar');
+            message.error(err?.response?.data?.detail || 'No se pudo guardar el borrador de la numeralia');
         } finally {
             setSaving(false);
         }
-    };
+    }, [layerKey, saveStatsDraft, onDraftSaved]);
 
-    const handleRefresh = async () => {
-        setRefreshing(true);
-        setRefreshErrors([]);
-        try {
-            const res = await refreshLayerStats(layerKey);
-            const failed = Array.isArray(res?.errors) ? res.errors : [];
-            setRefreshErrors(failed);
-            if (failed.length > 0) {
-                message.warning(`Recalculado con ${failed.length} estadística(s) fallida(s)`);
-            } else {
-                message.success('Valores recalculados');
-            }
-            reload();
-        } catch (err) {
-            message.error(err?.response?.data?.detail || 'Error al refrescar');
-        } finally {
-            setRefreshing(false);
-        }
-    };
+    useEffect(() => {
+        if (!dirty) return undefined;
+        const t = setTimeout(() => autoguardar(config, pieNumeralia, ttlMinutes), 1500);
+        return () => clearTimeout(t);
+    }, [dirty, config, pieNumeralia, ttlMinutes, isAdmin, autoguardar]);
+
+    useEffect(() => {
+        if (config.length === 0) { setLiveValues({}); return undefined; }
+        let cancelado = false;
+        const t = setTimeout(async () => {
+            const entradas = await Promise.all(config.map(async (slot) => {
+                if (slot.operation === 'static') return [slot.position, slot.value ?? null];
+                try {
+                    const res = await previewLayerStat(layerKey, slot, previewContext);
+                    return [slot.position, res?.value ?? null];
+                } catch {
+                    return [slot.position, undefined];
+                }
+            }));
+            if (!cancelado) setLiveValues(Object.fromEntries(entradas));
+        }, 800);
+        return () => { cancelado = true; clearTimeout(t); };
+    }, [config, previewContext, layerKey, previewLayerStat]);
 
     if (loading) return <Spin style={{ display: 'block', margin: '24px auto' }} />;
 
+    const seleccionado = slotAbierto !== null ? config[slotAbierto] : null;
     const refreshedAt = stats?.valuesRefreshedAt || stats?.values_refreshed_at;
-    const savedConfig = stats?.statsConfig ?? stats?.stats_config ?? [];
-    const savedConfigCount = Array.isArray(savedConfig) ? savedConfig.length : 0;
-    const refreshDisabledReason = savedConfigCount === 0
-        ? 'Guarda primero la configuración: el recálculo usa la configuración guardada en el servidor y borraría los valores actuales.'
-        : (dirty ? 'Tienes cambios sin guardar. Guarda la configuración antes de recalcular.' : null);
+    const refreshErrors = Array.isArray(stats?.errors) ? stats.errors : [];
 
     return (
         <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
-            <Alert closable
-                type="info"
-                showIcon
-                message={
-                    <span>
-                        Hasta 8 slots de estadísticas (numeralia). Cada slot puede ser <b>Estático</b> (valor fijo),
-                        <b> Operación simple</b> (count, sum, avg…) o <b>Fórmula</b> (combinaciones recursivas:
-                        suma, resta, multiplicación, división, porcentaje y cambio porcentual).
-                    </span>
-                }
+            <StatsPreviewGrid
+                config={config}
+                values={stats?.values}
+                liveValues={liveValues}
+                selectedIndex={slotAbierto}
+                onSelect={(i2) => setSlotAbierto((prev) => (prev === i2 ? null : i2))}
+                onAdd={() => { addSlot('static'); setSlotAbierto(config.length); }}
+                canAdd={config.length < 8 && isAdmin}
+                pie={pieNumeralia}
+                editandoPie={editandoPie}
+                onPieClick={() => isAdmin && setEditandoPie(true)}
+                onPieChange={(v) => { setPieNumeralia(v); setDirty(true); }}
+                onPieBlur={() => setEditandoPie(false)}
+                saving={saving}
+                actions={(
+                    <>
+                        <Tooltip title="Simula el municipio y el rango de fechas que manda el visor, para ver cómo cambian los valores">
+                            <Button
+                                size="small"
+                                className="stats-preview-action"
+                                icon={<ThunderboltOutlined />}
+                                onClick={() => setContextoAbierto(true)}
+                            >
+                                <span className="stats-preview-action-label">Probar con contexto</span>
+                            </Button>
+                        </Tooltip>
+                        <Tooltip title="Cuánto tiempo se dan por buenos los valores antes de volver a calcularlos">
+                            <Button
+                                size="small"
+                                className="stats-preview-action"
+                                icon={<ClockCircleOutlined />}
+                                onClick={() => setTtlAbierto(true)}
+                            >
+                                <span className="stats-preview-action-label">Vigencia</span>
+                            </Button>
+                        </Tooltip>
+                    </>
+                )}
             />
-
-            {!schema || !table ? (
-                <Alert closable
-                    type="warning"
-                    showIcon
-                    message="Para operaciones dinámicas se necesitan workspace y capa GeoServer definidos en la pestaña Servicios."
-                />
-            ) : (
-                <Text type="secondary" style={{ fontSize: 12 }}>
-                    Tabla origen: <code>{schema}.{table}</code>
-                </Text>
-            )}
-
-            <Space wrap size={6}>
-                <Button size="small" icon={<PlusOutlined />} onClick={() => addSlot('static')}>
-                    Slot estático
-                </Button>
-                <Button size="small" icon={<PlusOutlined />} onClick={() => addSlot('primitive')}>
-                    Slot operación
-                    <StatusBadge
-                        variant="beta"
-                        size="sm"
-                        style={{
-                            position: 'absolute',
-                            top: -10,
-                            right: 0,
-                        }}
-                    />
-                </Button>
-                <Button size="small" icon={<CalculatorOutlined />} onClick={() => addSlot('formula')}>
-                    Slot fórmula
-                    <StatusBadge
-                        variant="beta"
-                        size="sm"
-                        style={{
-                            position: 'absolute',
-                            top: -10,
-                            right: 0,
-                        }}
-                    />
-                </Button>
-            </Space>
-
-            {config.length === 0 ? (
-                <Empty description="Sin slots. Agrega uno arriba." />
-            ) : (
-                <Space orientation="vertical" size="small" style={{ width: '100%' }}>
-                    {config
-                        .slice()
-                        .sort((a, b) => (a.position || 0) - (b.position || 0))
-                        .map((slot, idx) => {
-                            const realIdx = config.indexOf(slot);
-                            return (
-                                <StatSlot
-                                    key={`${slot.position}-${idx}`}
-                                    slot={slot}
-                                    onChange={(next) => updateSlot(realIdx, next)}
-                                    onRemove={() => removeSlot(realIdx)}
-                                    availableFields={availableFields}
-                                    schema={schema}
-                                    table={table}
-                                    layerKey={layerKey}
-                                    previewLayerStat={previewLayerStat}
-                                />
-                            );
-                        })}
-                </Space>
-            )}
-
-            <Card size="small" title="Pie de numeralia" styles={{ body: { paddingTop: 8 } }}>
-                <Input.TextArea
-                    rows={2}
-                    value={pieNumeralia}
-                    onChange={(e) => { setPieNumeralia(e.target.value); setDirty(true); }}
-                    placeholder="Texto opcional al pie de las estadísticas (fuente, año, etc.)"
-                />
-                <Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: 4 }}>
-                    Convención: el pie siempre empieza con asterisco (<code>*</code>). Si lo olvidas, mariachi lo prefija automáticamente al guardar.
-                </Text>
-            </Card>
-
-            <Card size="small" title="Cache TTL (tiempo de vida del valor calculado)" styles={{ body: { paddingTop: 8 } }}>
-                <Space orientation="vertical" size={6} style={{ width: '100%' }}>
-                    <Text type="secondary" style={{ fontSize: 12 }}>
-                        Tiempo que los valores calculados se consideran vigentes antes de recalcularse desde la BD.
-                        Los valores estáticos no se ven afectados (no se recalculan). Para operaciones dinámicas:
-                        si el TTL ya venció cuando el visor pide los stats, se vuelven a ejecutar las queries;
-                        mientras esté vigente, sirve los valores cacheados.
-                        Recomendado: 24h para datos que cambian poco; 1h para datos casi en vivo.
-                    </Text>
-                    <TtlInput value={ttlMinutes} onChange={(v) => { setTtlMinutes(v); setDirty(true); }} />
-                    {refreshedAt && (
-                        <Text type="secondary" style={{ fontSize: 12 }}>
-                            Última actualización: {new Date(refreshedAt).toLocaleString()}
-                        </Text>
-                    )}
-                </Space>
-            </Card>
-
-            {!isAdmin && (
-                <Alert
-                    type="warning"
-                    showIcon
-                    message="Solo una administradora puede guardar la configuración de estadísticas."
-                    description="Puedes editarla y probarla aquí, pero el guardado está restringido."
-                />
-            )}
-
-            <Space style={{ marginTop: 8 }}>
-                <Tooltip title={isAdmin ? '' : 'Requiere rol de administradora'}>
-                    <Button type="primary" loading={saving} onClick={handleSave} disabled={!isAdmin}>
-                        Guardar configuración
-                    </Button>
-                </Tooltip>
-                <Tooltip title={refreshDisabledReason || 'Ejecuta todas las operaciones contra la BD y persiste los valores'}>
-                    <Button
-                        icon={<ReloadOutlined />}
-                        loading={refreshing}
-                        onClick={handleRefresh}
-                        disabled={Boolean(refreshDisabledReason)}
-                    >
-                        Recalcular valores ahora
-                    </Button>
-                </Tooltip>
-            </Space>
 
             {refreshErrors.length > 0 && (
                 <Alert
                     type="warning"
                     showIcon
-                    message="Algunas estadísticas no pudieron calcularse"
+                    title="Algunos indicadores no pudieron calcularse"
                     description={
                         <Space orientation="vertical" size={2} style={{ width: '100%' }}>
-                            {refreshErrors.map((e, i) => (
-                                <Text key={i} style={{ fontSize: 12 }}>
+                            {refreshErrors.map((e, k) => (
+                                <Text key={k} style={{ fontSize: 12 }}>
                                     <b>#{e.position ?? '—'}</b> {e.label ? `(${e.label})` : ''} — {e.error}
                                 </Text>
                             ))}
@@ -741,48 +630,64 @@ export default function LayerStatsSection({
                 />
             )}
 
-            {stats?.values?.length > 0 && (
-                <Card
-                    size="small"
-                    title={
-                        <Space size={6}>
-                            <span>Valores actuales en el visor</span>
-                            {config.length === 0 && (
-                                <Tag color="orange">Sin config — valores legacy</Tag>
-                            )}
-                        </Space>
-                    }
-                    styles={{ body: { paddingTop: 8 } }}
-                >
-                    {config.some((c) => c._autoFromLegacy) && (
-                        <Alert closable
-                            type="info"
-                            showIcon
-                            style={{ marginBottom: 8 }}
-                            message="Valores legacy precargados como slots estáticos"
-                            description="Esta capa tenía valores guardados sin configuración (vienen del Sheet original). Los precarga­mos como slots estáticos editables. Edita los que quieras, convierte alguno a operación dinámica (count/sum/fórmula) si aplica, y guarda la configuración para que mariachi pase a ser la fuente única."
-                        />
-                    )}
-                    <Space orientation="vertical" size={4} style={{ width: '100%' }}>
-                        {stats.values.map((v, i) => (
-                            <Tag
-                                key={i}
-                                color="blue"
-                                style={{
-                                    whiteSpace: 'normal',
-                                    height: 'auto',
-                                    padding: '4px 8px',
-                                    margin: 0,
-                                    width: '100%',
-                                }}
-                            >
-                                <Text strong>#{v.posicion}:</Text> {v.valor ?? '—'}{v.simbolo ? ` ${v.simbolo}` : ''}
-                                {v.nombre && <Text type="secondary" style={{ display: 'block', fontSize: 11, marginTop: 2 }}>{v.nombre}</Text>}
-                            </Tag>
-                        ))}
-                    </Space>
-                </Card>
+            {config.length === 0 && stats?.values?.length > 0 && (
+                <Tooltip title="Esta capa traía valores guardados sin configuración, del Sheet original. Se precargan como indicadores estáticos editables: conviértelos a operación dinámica si aplica.">
+                    <Tag color="orange" style={{ cursor: 'help', alignSelf: 'flex-start' }}>Sin config — valores legacy</Tag>
+                </Tooltip>
             )}
+
+            {seleccionado ? (
+                <StatSlot
+                    slot={seleccionado}
+                    onChange={(next) => updateSlot(slotAbierto, next)}
+                    onRemove={() => { removeSlot(slotAbierto); setSlotAbierto(null); }}
+                    availableFields={availableFields}
+                    schema={schema}
+                    table={table}
+                />
+            ) : (
+                <Text type="secondary" style={{ fontSize: 12 }}>
+                    Da click en un recuadro para editarlo.
+                </Text>
+            )}
+
+            {refreshedAt && (
+                <Text type="secondary" style={{ fontSize: 11 }}>
+                    Última actualización: {new Date(refreshedAt).toLocaleString()}
+                </Text>
+            )}
+
+            <Modal
+                open={contextoAbierto}
+                onCancel={() => setContextoAbierto(false)}
+                title="Probar con contexto"
+                footer={[<Button key="c" onClick={() => setContextoAbierto(false)}>Cerrar</Button>]}
+            >
+                <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 12 }}>
+                    Simula el municipio y el rango de fechas que el visor manda. La vista previa se
+                    recalcula al cambiarlos.
+                </Text>
+                <StatsPreviewContext
+                    value={previewContext}
+                    onChange={setPreviewContext}
+                    listMunicipios={listMunicipios}
+                />
+            </Modal>
+
+            <Modal
+                open={ttlAbierto}
+                onCancel={() => setTtlAbierto(false)}
+                title="Vigencia del cálculo"
+                footer={[<Button key="c" onClick={() => setTtlAbierto(false)}>Cerrar</Button>]}
+            >
+                <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 12 }}>
+                    Cuánto tiempo se dan por buenos los valores antes de volver a calcularlos.
+                </Text>
+                <TtlInput
+                    value={ttlMinutes}
+                    onChange={(v) => { setTtlMinutes(v); setDirty(true); }}
+                />
+            </Modal>
         </Space>
     );
 }

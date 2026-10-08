@@ -21,8 +21,10 @@ SCHEMA = "sieej"
 class EnvioFormulario(Base):
     __tablename__ = "envio_formulario"
     __table_args__ = (
-        # Un envio por (formulario, usuario, periodo) en formularios periodicos,
-        # y uno por (formulario, usuario) en los no periodicos. Indices unicos
+        # Un envio por (formulario, dueno, periodo) en formularios periodicos,
+        # y uno por (formulario, dueno) en los no periodicos. El dueno es el
+        # usuario en los individuales y el grupo en los colaborativos, y por eso
+        # cada par de indices excluye al otro por `grupo_id`. Indices unicos
         # parciales complementarios: `sqlite_where` para los tests (SQLite) y
         # `postgresql_where` para produccion.
         Index(
@@ -31,16 +33,33 @@ class EnvioFormulario(Base):
             "usuario_id",
             "periodo_id",
             unique=True,
-            postgresql_where=text("periodo_id IS NOT NULL"),
-            sqlite_where=text("periodo_id IS NOT NULL"),
+            postgresql_where=text("periodo_id IS NOT NULL AND grupo_id IS NULL"),
+            sqlite_where=text("periodo_id IS NOT NULL AND grupo_id IS NULL"),
         ),
         Index(
             "uq_envio_formulario_user",
             "formulario_id",
             "usuario_id",
             unique=True,
-            postgresql_where=text("periodo_id IS NULL"),
-            sqlite_where=text("periodo_id IS NULL"),
+            postgresql_where=text("periodo_id IS NULL AND grupo_id IS NULL"),
+            sqlite_where=text("periodo_id IS NULL AND grupo_id IS NULL"),
+        ),
+        Index(
+            "uq_envio_grupo_periodo",
+            "formulario_id",
+            "grupo_id",
+            "periodo_id",
+            unique=True,
+            postgresql_where=text("grupo_id IS NOT NULL AND periodo_id IS NOT NULL"),
+            sqlite_where=text("grupo_id IS NOT NULL AND periodo_id IS NOT NULL"),
+        ),
+        Index(
+            "uq_envio_grupo",
+            "formulario_id",
+            "grupo_id",
+            unique=True,
+            postgresql_where=text("grupo_id IS NOT NULL AND periodo_id IS NULL"),
+            sqlite_where=text("grupo_id IS NOT NULL AND periodo_id IS NULL"),
         ),
         {"schema": SCHEMA},
     )
@@ -56,6 +75,12 @@ class EnvioFormulario(Base):
     usuario_id = Column(
         Integer,
         ForeignKey("usuarios.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    grupo_id = Column(
+        Integer,
+        ForeignKey(f"{SCHEMA}.grupo.id", ondelete="SET NULL"),
         nullable=True,
         index=True,
     )
@@ -78,6 +103,7 @@ class EnvioFormulario(Base):
         index=True,
     )
     datos = Column(JSON, nullable=False, default=dict)
+    datos_version = Column(Integer, nullable=False, default=0)
     cambios_pendientes = Column(JSON, nullable=True)
     paso_actual = Column(Integer, nullable=False, default=0)
     iniciado_en = Column(DateTime(timezone=True), default=utcnow, nullable=False)
@@ -90,6 +116,7 @@ class EnvioFormulario(Base):
 
     formulario = relationship("Formulario", lazy="select")
     usuario = relationship("Usuario", lazy="select")
+    grupo = relationship("Grupo", lazy="select")
     archivos = relationship(
         "EnvioArchivo",
         back_populates="envio",
@@ -170,16 +197,28 @@ class EnvioEvento(Base):
 
 
 class EnvioValorHistorial(Base):
-    """Historial append-only de valores de campos editables tras el envio.
+    """Historial de valores por campo: la fuente unica de "que cambio, quien y
+    cuando".
 
-    Cada actualizacion parcial de un envio `enviado` (flujo de actualizacion
-    ligera) inserta una fila por campo cuyo valor cambio, conservando el valor
-    anterior para reportes de auditoria. Nunca se sobreescribe ni borra: es la
-    fuente de verdad del "que cambio, quien y cuando".
+    `origen` separa dos flujos con reglas distintas. `correccion` es la
+    actualizacion ligera de un envio `enviado`: append puro, nunca se
+    sobreescribe ni se borra, que es lo que le da valor de auditoria formal.
+    `captura` es el llenado en proceso, donde cada blur puede generar una fila;
+    ahi dos ediciones del mismo actor sobre el mismo campo dentro de
+    `campos_service.VENTANA_COALESCING` colapsan en una sola, conservando el
+    `valor_anterior` con que abrio la ventana.
     """
 
     __tablename__ = "envio_valor_historial"
-    __table_args__ = {"schema": SCHEMA}
+    __table_args__ = (
+        Index(
+            "ix_historial_envio_path_fecha",
+            "envio_id",
+            "field_path",
+            text("cambiado_en DESC"),
+        ),
+        {"schema": SCHEMA},
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     envio_id = Column(
@@ -193,6 +232,17 @@ class EnvioValorHistorial(Base):
     valor_anterior = Column(JSON, nullable=True)
     valor_nuevo = Column(JSON, nullable=True)
     formulario_version = Column(Integer, nullable=False)
+    datos_version = Column(Integer, nullable=False, default=0)
+    origen = Column(
+        Enum(
+            "captura",
+            "correccion",
+            name="sieej_historial_origen",
+            schema=SCHEMA,
+        ),
+        nullable=False,
+        default="correccion",
+    )
     actor_usuario_id = Column(
         Integer,
         ForeignKey("usuarios.id", ondelete="SET NULL"),

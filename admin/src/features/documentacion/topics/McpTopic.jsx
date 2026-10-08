@@ -56,7 +56,7 @@ const TOOL_COLUMNS = [
 
 export default function McpTopic() {
     return (
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="large" style={{ width: '100%' }}>
             <div>
                 <Title level={3} style={{ marginBottom: 4 }}>Servidor MCP</Title>
                 <Text type="secondary">

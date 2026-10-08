@@ -17,6 +17,7 @@ import PlaygroundPreviewCard from './PlaygroundPreviewCard';
 import SavedEmbedsList from './SavedEmbedsList';
 import PlaygroundAlerts from './PlaygroundAlerts';
 import {
+    baseOrigin,
     buildEmbedUrl,
     buildSnippet,
     defaultBaseUrl,
@@ -49,11 +50,12 @@ export default function ApiKeyPlaygroundTab({ apiKey, initialPlainKey = '' }) {
     const sendViewToIframe = useCallback((view) => {
         if (!view) return;
         const win = iframeRef.current?.contentWindow;
-        if (!win) return;
+        const targetOrigin = baseOrigin(baseUrl);
+        if (!win || !targetOrigin) return;
         try {
-            win.postMessage({ type: 'mapalab:setview', payload: view }, '*');
-        } catch { /* ignore */ }
-    }, []);
+            win.postMessage({ type: 'mapalab:setview', payload: view }, targetOrigin);
+        } catch { return; }
+    }, [baseUrl]);
 
     const fetchEmbeds = useCallback(async () => {
         if (!apiKeyId) return;
@@ -94,7 +96,6 @@ export default function ApiKeyPlaygroundTab({ apiKey, initialPlainKey = '' }) {
         try {
             const result = await rotarApiKey(apiKeyId);
             setManualKey(result.plainKey);
-            try { sessionStorage.setItem(`mapalab_plain_${apiKeyId}`, result.plainKey); } catch { /* ignore */ }
             message.success('Contraseña nueva lista para previsualizar');
         } catch (err) {
             message.error(err?.response?.data?.detail || 'No se pudo generar la contraseña nueva');
@@ -247,7 +248,7 @@ export default function ApiKeyPlaygroundTab({ apiKey, initialPlainKey = '' }) {
     };
 
     return (
-        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
             <PlaygroundAlerts
                 originAllowed={originAllowed}
                 adminOrigin={adminOrigin}

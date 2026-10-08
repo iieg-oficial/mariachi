@@ -7,12 +7,10 @@ import GridShortcutsModal from '@shared/components/dataGrid/GridShortcutsModal';
 import GridStatusBar from '@shared/components/dataGrid/GridStatusBar';
 import GridToolbar, { ALL_FILTER_VALUES } from '@shared/components/dataGrid/GridToolbar';
 import useGridEditor from '@shared/components/dataGrid/useGridEditor';
+import useGridExport from '@shared/components/dataGrid/useGridExport';
 import useGridPresence from '@shared/components/dataGrid/useGridPresence';
 import useElementHeight from '@shared/hooks/useElementHeight';
 import useIsMobile from '@shared/hooks/useIsMobile';
-import { exportGrid } from '@shared/services/gridService';
-import { triggerDownload } from '@shared/helpers/downloadFile';
-import { message } from '@shared/services/message';
 
 const EMPTY_FILTERS = {};
 
@@ -45,7 +43,7 @@ export default function GridPanel({
     const [filterOpen, setFilterOpen] = useState(false);
     const [shortcutsOpen, setShortcutsOpen] = useState(false);
     const [historyOpen, setHistoryOpen] = useState(false);
-    const [exporting, setExporting] = useState(false);
+    const { exporting, runExport } = useGridExport();
     const gridWrapperRef = useRef(null);
     const gridHeight = useElementHeight(gridWrapperRef);
 
@@ -84,23 +82,11 @@ export default function GridPanel({
         ];
     }, [data, filterField, filterAllLabel]);
 
-    const handleExport = useCallback(async (option) => {
-        const [formato, hoja] = option === 'xlsx' ? ['xlsx', null] : option.split('-');
-        setExporting(true);
-        try {
-            const response = await exportGrid(resource, {
-                formato,
-                hoja,
-                workspace: filterValue,
-                search: search.trim() || undefined,
-            });
-            triggerDownload(response, `${exportFileName}.${formato}`);
-        } catch {
-            message.error('No se pudo generar la descarga');
-        } finally {
-            setExporting(false);
-        }
-    }, [resource, filterValue, search, exportFileName]);
+    const handleExport = useCallback((option) => runExport(resource, option, {
+        workspace: filterValue,
+        search: search.trim() || undefined,
+        fileName: exportFileName,
+    }), [runExport, resource, filterValue, search, exportFileName]);
 
     useEffect(() => {
         if (!active || !onToolbarChange) return;
@@ -127,7 +113,7 @@ export default function GridPanel({
                 onOpenShortcuts={() => setShortcutsOpen(true)}
                 onOpenHistory={() => setHistoryOpen(true)}
                 onExport={handleExport}
-                exporting={exporting}
+                exporting={exporting !== null}
             />,
         );
     }, [

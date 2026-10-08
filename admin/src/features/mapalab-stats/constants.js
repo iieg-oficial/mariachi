@@ -20,11 +20,29 @@ export const BUTTON_LABELS = {
     evento_fun_fact: 'Datos curiosos del evento',
     evento_center: 'Centrar evento',
     evento_share: 'Compartir evento',
+    north_reset: 'Orientar al norte',
+    colibri_open: 'Abrir Colibrí',
+    tabla_open: 'Abrir tabla de datos',
+    tabla_filter: 'Filtrar tabla',
+    tabla_download: 'Descargar tabla',
+    stats_open: 'Abrir estadísticas',
+    stats_custom_create: 'Crear estadística',
+    stats_detach: 'Desacoplar estadísticas',
+    municipio_mode_enter: 'Entrar a vista por municipio',
+    municipio_panel_open: 'Abrir selector de municipio',
 };
 
 export const TOOL_LABELS = {
     drawing_tool_use: 'Dibujo',
     measurement_tool_use: 'Medición',
+    view3d: 'Vista 3D',
+    minimapa: 'Minimapa',
+};
+
+export const TOOL_COLORS = {
+    measurement_tool_use: 'blue',
+    view3d: 'green',
+    minimapa: 'orange',
 };
 
 export const SOURCE_LABELS = {

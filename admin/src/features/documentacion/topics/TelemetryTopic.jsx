@@ -47,6 +47,19 @@ const MUNICIPIO_EVENTS = [
     },
 ];
 
+const HERRAMIENTAS_EVENTS = [
+    { evento: 'view3d', cuando: 'Vista 3D: entrar, salir, levantar o aplanar una capa', params: 'action, duration_sec, layer_id' },
+    { evento: 'minimapa', cuando: 'Minimapa: encender, apagar, abrir en celular o ir a un punto', params: 'action (encender | apagar | abrir | ir)' },
+    { evento: 'north_reset', cuando: 'Botón del norte', params: 'modo (2d | 3d)' },
+    { evento: 'tabla_open', cuando: 'Abrir la tabla de datos', params: 'layer_id' },
+    { evento: 'tabla_filter', cuando: 'Poner, quitar o limpiar un filtro de la tabla', params: 'layer_id, action, columna' },
+    { evento: 'tabla_download', cuando: 'Descargar lo que muestra la tabla', params: 'layer_id, format' },
+    { evento: 'stats_open', cuando: 'Abrir un modo del panel de estadísticas', params: 'modo (comparar | ranking | crear)' },
+    { evento: 'stats_custom_create', cuando: 'Guardar una estadística propia', params: 'layer_id, operation, filtros' },
+    { evento: 'stats_detach', cuando: 'Convertir las estadísticas en panel', params: 'layer_id' },
+    { evento: 'colibri_open', cuando: 'Abrir el widget de Colibrí; cuenta como sesión que reportó', params: 'motivo, tipo' },
+];
+
 const MUNICIPIO_EVENT_COLUMNS = [
     { title: 'Evento', dataIndex: 'evento', key: 'evento', render: (v) => <Text code>{v}</Text> },
     { title: 'Cuándo se dispara', dataIndex: 'cuando', key: 'cuando' },
@@ -56,7 +69,7 @@ const MUNICIPIO_EVENT_COLUMNS = [
 
 export default function TelemetryTopic() {
     return (
-        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        <Space orientation="vertical" size="large" style={{ width: '100%' }}>
             <div>
                 <Title level={3} style={{ marginBottom: 4 }}>Telemetría</Title>
                 <Text type="secondary">
@@ -89,12 +102,25 @@ export default function TelemetryTopic() {
                 </Paragraph>
             </Card>
 
+            <Card title="Visor MapaLab — Herramientas" size="small">
+                <Paragraph type="secondary" style={{ marginTop: 0, marginBottom: 12, fontSize: 12 }}>
+                    Un nombre fuera de <Text code>ALLOWED_EVENT_NAMES</Text> recibe 422; el visor descarta ese evento y reenvía el resto del lote.
+                </Paragraph>
+                <Table
+                    rowKey="evento"
+                    size="small"
+                    pagination={false}
+                    dataSource={HERRAMIENTAS_EVENTS}
+                    columns={MUNICIPIO_EVENT_COLUMNS}
+                />
+            </Card>
+
             <Card
                 title={<>Visor MapaLab — Modo Vista por municipio (beta)</>}
                 size="small"
             >
                 <Paragraph type="secondary" style={{ marginTop: 0, marginBottom: 12, fontSize: 12 }}>
-                    Eventos emitidos por el visor cuando el usuario activa el modo Vista por municipio (gated por <Text code>VITE_APP_ENV in [dev, beta]</Text>). Se envían vía <Text code>analyticsService.trackEvent</Text> al collector propio (Mariachi) y a GA4. La fuente <Text code>source</Text> indica si los polígonos se piden de <Text code>general:limite_municipal</Text> (iieg) o <Text code>general:limite_municipal_inegi</Text> (inegi), derivado del switch IIEG/INEGI del panel de capas activas.
+                    Eventos emitidos por el visor cuando el usuario activa el modo Vista por municipio. Se envían vía <Text code>analyticsService.trackEvent</Text> al collector propio (Mariachi) y a GA4. La fuente <Text code>source</Text> indica si los polígonos se piden de <Text code>general:limite_municipal</Text> (iieg) o <Text code>general:limite_municipal_inegi</Text> (inegi), derivado del switch IIEG/INEGI del panel de capas activas.
                 </Paragraph>
                 <Table
                     rowKey="evento"

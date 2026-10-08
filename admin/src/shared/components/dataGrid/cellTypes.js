@@ -61,6 +61,7 @@ export const buildGridColumns = ({
             if (draft?.[rowKey] && Object.prototype.hasOwnProperty.call(draft[rowKey], meta.key)) {
                 return 'grid-cell-dirty';
             }
+            if (isCellDisabled && isCellDisabled(rowData, meta)) return 'grid-cell-locked';
             return undefined;
         },
     }));

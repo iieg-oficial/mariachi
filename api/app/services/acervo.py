@@ -8,13 +8,14 @@ from urllib.parse import quote
 import urllib3
 from fastapi import UploadFile
 from minio import Minio
-from minio.commonconfig import CopySource
+from minio.commonconfig import REPLACE, CopySource
 from minio.datatypes import Part
 from minio.error import S3Error
 
 from app.core.acervo_url import to_absolute
 from app.core.settings import get_settings
 from app.models.acervo_bucket import AcervoBucket
+from app.services import tipo_archivo
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -41,7 +42,14 @@ def build_content_disposition(download_name: str, disposition: str = "inline") -
     return header
 
 
-def _download_metadata(download_name: str | None) -> dict[str, str] | None:
+def download_metadata(
+    download_name: str | None,
+    content_type: str | None = None,
+    object_name: str = "archivo",
+) -> dict[str, str] | None:
+    if tipo_archivo.es_activo(content_type):
+        nombre = download_name or object_name.rsplit("/", 1)[-1] or "archivo"
+        return {"Content-Disposition": build_content_disposition(nombre, "attachment")}
     if not download_name:
         return None
     return {"Content-Disposition": build_content_disposition(download_name)}
@@ -130,8 +138,13 @@ class AcervoClient:
             del cls._cache[key]
 
     async def upload_file(
-        self, file: UploadFile, object_name: str, download_name: str | None = None
+        self,
+        file: UploadFile,
+        object_name: str,
+        download_name: str | None = None,
+        content_type: str | None = None,
     ) -> str:
+        content_type = content_type or tipo_archivo.detectar_mime_upload(file)
         try:
             stream = file.file
             stream.seek(0, os.SEEK_END)
@@ -142,8 +155,8 @@ class AcervoClient:
                 object_name,
                 stream,
                 size,
-                content_type=file.content_type,
-                metadata=_download_metadata(download_name),
+                content_type=content_type,
+                metadata=download_metadata(download_name, content_type, object_name),
             )
             return self.get_file_url(object_name)
         except S3Error as e:
@@ -169,8 +182,9 @@ class AcervoClient:
             for key, value in (stat.metadata or {}).items()
             if key.lower().startswith("x-amz-meta-")
         }
-        if download_name:
-            metadata["Content-Disposition"] = build_content_disposition(download_name)
+        disposicion = download_metadata(download_name, stat.content_type, object_name)
+        if disposicion:
+            metadata.update(disposicion)
         response = self.client.get_object(self.bucket_name, object_name)
         try:
             self.client.put_object(
@@ -198,7 +212,7 @@ class AcervoClient:
             io.BytesIO(data),
             len(data),
             content_type=content_type,
-            metadata=_download_metadata(download_name),
+            metadata=download_metadata(download_name, content_type, object_name),
         )
 
     def put_empty_object(self, object_name: str) -> None:
@@ -285,8 +299,25 @@ class AcervoClient:
     def stat_object(self, object_name: str):
         return self.client.stat_object(self.bucket_name, object_name)
 
+    def leer_cabecera(self, object_name: str, length: int = tipo_archivo.CABECERA_BYTES) -> bytes:
+        response = self.client.get_object(self.bucket_name, object_name, offset=0, length=length)
+        try:
+            return response.read(length)
+        finally:
+            response.close()
+            response.release_conn()
+
+    def reescribir_metadatos(self, object_name: str, metadata: dict[str, str]) -> None:
+        self.client.copy_object(
+            self.bucket_name,
+            object_name,
+            CopySource(self.bucket_name, object_name),
+            metadata=metadata,
+            metadata_directive=REPLACE,
+        )
+
     def init_multipart_upload(self, object_name: str, content_type: str | None = None) -> str:
-        headers = {}
+        headers = dict(download_metadata(None, content_type, object_name) or {})
         if content_type:
             headers['Content-Type'] = content_type
         return self.client._create_multipart_upload(

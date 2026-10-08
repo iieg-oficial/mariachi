@@ -177,15 +177,6 @@ def test_editora_puede_actualizar_su_nombre_y_email(editora_session, db_session)
     assert refreshed.email == "nuevo@test.com"
 
 
-def test_editora_no_puede_resetear_password_de_otro(editora_session, admin_user):
-    client = editora_session["client"]
-    response = client.post(
-        f"{ADMIN_PREFIX}/usuarios/{admin_user.id}/restablecer-contrasena",
-        headers={"X-CSRF-Token": editora_session["csrf"]},
-    )
-    assert response.status_code == 403
-
-
 def test_editora_no_puede_eliminar_otro_usuario(editora_session, admin_user):
     client = editora_session["client"]
     response = client.delete(
@@ -193,34 +184,6 @@ def test_editora_no_puede_eliminar_otro_usuario(editora_session, admin_user):
         headers={"X-CSRF-Token": editora_session["csrf"]},
     )
     assert response.status_code == 403
-
-
-def test_admin_resetear_password_genera_temp(admin_session, db_session):
-    """Reset por admin: temp_password retornada y must_change_password queda True."""
-    target = Usuario(
-        username="reset_target",
-        email="reset@test.com",
-        name="Target Reset",
-        hashed_password=hash_password("oldpass123"),
-        role="editora",
-        must_change_password=False,
-    )
-    db_session.add(target)
-    db_session.commit()
-    db_session.refresh(target)
-
-    response = admin_session["client"].post(
-        f"{ADMIN_PREFIX}/usuarios/{target.id}/restablecer-contrasena",
-        headers={"X-CSRF-Token": admin_session["csrf"]},
-    )
-    assert response.status_code == 200
-    body = response.json()
-    assert "temp_password" in body
-    assert len(body["temp_password"]) == 12
-
-    db_session.expire_all()
-    refreshed = db_session.query(Usuario).filter(Usuario.id == target.id).first()
-    assert refreshed.must_change_password is True
 
 
 def test_editora_ve_emails_enmascarados_de_otros(editora_session, admin_user):
@@ -282,3 +245,163 @@ def test_crear_usuario_con_proyecto_inexistente_falla(admin_session):
         },
     )
     assert response.status_code == 400
+
+
+def test_listar_usuarios_expone_avatar_y_vinculo_minerva(admin_session, db_session):
+    usuario = Usuario(
+        username="vinculado_test",
+        email="vinculado@test.com",
+        name="Usuario Vinculado",
+        hashed_password=hash_password("test123"),
+        role="editora",
+        minerva_sub="sub-123",
+        avatar_url="/acervo/avatars/vinculado.webp",
+    )
+    db_session.add(usuario)
+    db_session.commit()
+
+    client = admin_session["client"]
+    response = client.get(f"{ADMIN_PREFIX}/usuarios")
+    assert response.status_code == 200
+    fila = next(u for u in response.json() if u["username"] == "vinculado_test")
+    assert fila["minerva_vinculado"] is True
+    assert fila["avatarUrl"] is not None
+
+    propia = next(u for u in response.json() if u["username"] == "admin_test")
+    assert propia["minerva_vinculado"] is False
+
+
+def test_impacto_eliminacion_cuenta_envios_y_formularios(admin_session, db_session):
+    from app.models.sieej import EnvioFormulario, Formulario
+
+    autor = Usuario(
+        username="autor_test",
+        email="autor@test.com",
+        name="Autor Test",
+        hashed_password=hash_password("test123"),
+        role="editora",
+    )
+    db_session.add(autor)
+    db_session.commit()
+    db_session.refresh(autor)
+
+    formulario = Formulario(
+        slug="form-impacto",
+        nombre="Form Impacto",
+        descripcion="desc",
+        definicion={"secciones": []},
+        estado="activo",
+        publico=False,
+        version=1,
+        creado_por_id=autor.id,
+    )
+    db_session.add(formulario)
+    db_session.commit()
+    db_session.refresh(formulario)
+
+    db_session.add(
+        EnvioFormulario(
+            formulario_id=formulario.id,
+            formulario_version=formulario.version,
+            definicion_snapshot=formulario.definicion,
+            usuario_id=autor.id,
+            estado="en_proceso",
+            datos={},
+            paso_actual=0,
+        )
+    )
+    db_session.commit()
+
+    client = admin_session["client"]
+    response = client.get(f"{ADMIN_PREFIX}/usuarios/{autor.id}/impacto-eliminacion")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["envios"] == 1
+    assert data["formularios_creados"] == 1
+    assert data["bloqueado"] is True
+
+
+def test_eliminar_autor_de_formulario_responde_409(admin_session, db_session):
+    from app.models.sieej import Formulario
+
+    autor = Usuario(
+        username="autor_bloqueado",
+        email="autor_bloqueado@test.com",
+        name="Autor Bloqueado",
+        hashed_password=hash_password("test123"),
+        role="editora",
+    )
+    db_session.add(autor)
+    db_session.commit()
+    db_session.refresh(autor)
+
+    db_session.add(
+        Formulario(
+            slug="form-bloqueo",
+            nombre="Form Bloqueo",
+            descripcion="desc",
+            definicion={"secciones": []},
+            estado="activo",
+            publico=False,
+            version=1,
+            creado_por_id=autor.id,
+        )
+    )
+    db_session.commit()
+
+    client = admin_session["client"]
+    response = client.delete(
+        f"{ADMIN_PREFIX}/usuarios/{autor.id}",
+        headers={"X-CSRF-Token": admin_session["csrf"]},
+    )
+    assert response.status_code == 409
+    assert "SIEEJ" in response.json()["detail"]
+    assert db_session.query(Usuario).filter(Usuario.id == autor.id).first() is not None
+
+
+def test_listar_usuarios_expone_ultimo_acceso(admin_session, db_session):
+    from app.core.time import utcnow
+
+    entro = Usuario(
+        username="con_acceso",
+        email="con_acceso@test.com",
+        name="Con Acceso",
+        hashed_password=hash_password("test123"),
+        role="editora",
+        ultimo_acceso=utcnow(),
+    )
+    nunca = Usuario(
+        username="sin_acceso",
+        email="sin_acceso@test.com",
+        name="Sin Acceso",
+        hashed_password=hash_password("test123"),
+        role="editora",
+    )
+    db_session.add_all([entro, nunca])
+    db_session.commit()
+
+    client = admin_session["client"]
+    filas = {u["username"]: u for u in client.get(f"{ADMIN_PREFIX}/usuarios").json()}
+    assert filas["con_acceso"]["ultimo_acceso"] is not None
+    assert filas["sin_acceso"]["ultimo_acceso"] is None
+
+
+def test_el_login_sella_el_ultimo_acceso(db_session):
+    from app.api.routes.auth import resolve_user
+
+    usuario = Usuario(
+        username="sellado_test",
+        email="sellado@test.com",
+        name="Sellado Test",
+        hashed_password=hash_password("test123"),
+        role="editora",
+        minerva_sub="sub-sellado",
+    )
+    db_session.add(usuario)
+    db_session.commit()
+    assert usuario.ultimo_acceso is None
+
+    resolve_user(db_session, {"sub": "sub-sellado", "email": "sellado@test.com", "name": "Sellado Test"})
+
+    db_session.refresh(usuario)
+    assert usuario.ultimo_acceso is not None

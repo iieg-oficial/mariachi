@@ -70,7 +70,7 @@ export default function AcervoStatsModal({ open, onClose, isMobile }) {
         >
             <Spin spinning={loading}>
                 {error ? (
-                    <Alert type="error" showIcon message="No se pudo obtener el resumen del Acervo" />
+                    <Alert type="error" showIcon title="No se pudo obtener el resumen del Acervo" />
                 ) : (
                     <>
                         <Row gutter={[12, 12]}>

@@ -199,13 +199,13 @@ function SectionTab({ seccion, onUpdated, active, reviewMode = false, borradorId
                 </div>
             )}
             {!reviewMode && draft.borradorEstado === 'pendiente_revision' && (
-                <Alert closable type="warning" showIcon message="Tu borrador está pendiente de revisión." style={{ marginBottom: 12 }} />
+                <Alert closable type="warning" showIcon title="Tu borrador está pendiente de revisión." style={{ marginBottom: 12 }} />
             )}
             {!reviewMode && draft.borradorEstado === 'rechazado' && draft.comentarioRechazo && (
-                <Alert closable type="warning" showIcon message="Tu borrador fue rechazado" description={draft.comentarioRechazo} style={{ marginBottom: 12 }} />
+                <Alert closable type="warning" showIcon title="Tu borrador fue rechazado" description={draft.comentarioRechazo} style={{ marginBottom: 12 }} />
             )}
             {reviewMode && draft.reviewAuthor && (
-                <Alert closable type="info" showIcon message={`Borrador enviado por ${draft.reviewAuthor.name}`} style={{ marginBottom: 12 }} />
+                <Alert closable type="info" showIcon title={`Borrador enviado por ${draft.reviewAuthor.name}`} style={{ marginBottom: 12 }} />
             )}
             <Card title={reg.label} extra={extraButtons}>
                 <Editor />
@@ -367,7 +367,7 @@ export default function HomePage() {
                     </Space>
                 </Space>
 
-                {error && <Alert type="error" message={error} showIcon closable />}
+                {error && <Alert type="error" title={error} showIcon closable />}
 
                 {loading ? (
                     <div style={{ textAlign: 'center', padding: 40 }}><Spin /></div>
@@ -377,7 +377,7 @@ export default function HomePage() {
                         onChange={setActiveKey}
                         destroyOnHidden={false}
                         items={tabs}
-                        tabPlacement={isMobile ? 'top' : 'left'}
+                        tabPlacement={isMobile ? 'top' : 'start'}
                         style={{ minHeight: 400 }}
                     />
                 )}

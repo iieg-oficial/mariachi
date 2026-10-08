@@ -9,11 +9,14 @@
 # Resultado: 3 archivos fijos en backups/ (actual, semana pasada, mes pasado).
 #
 # Que se respalda:
-#   pg_dump sin filtros -> toda la base de mariachi, es decir los 4 schemas:
+#   pg_dump sin filtros -> toda la base de mariachi, es decir los 7 schemas:
 #     public    - plataforma core (usuarios, paginas, menu, eventos, colibri, api keys)
 #     huachicol - telemetria y auditoria (events, sessions, mcp_events, rollup_*, actividad)
 #     acervo    - buckets, files, folders
 #     sieej     - formularios, envios, grupos, catalogos
+#     mel       - marcas, tokens, campos y fuentes (se llamo 'identidad' hasta 2026-09-02)
+#     vine      - personal, incidencias y catalogos de asistencia
+#     frames    - camaras y configuracion de Frigate (se llamo 'wacha' hasta 2026-09-02)
 #
 #   Los rollups de mapalab-stats son TABLAS reales en huachicol (rollup_* y
 #   mcp_rollup_*), no vistas materializadas: viajan en el dump con sus datos y
@@ -42,7 +45,7 @@ ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 BACKUP_DIR="${BACKUP_DIR:-$ROOT_DIR/backups}"
 COMPOSE_FILE="${COMPOSE_FILE:-compose.yaml:compose.prod.yaml}"
 COMPOSE_ENV_FILE="${COMPOSE_ENV_FILE:-}"
-EXPECTED_SCHEMAS="${EXPECTED_SCHEMAS:-public huachicol acervo sieej}"
+EXPECTED_SCHEMAS="${EXPECTED_SCHEMAS:-public huachicol acervo sieej mel vine frames sieej_documentacion}"
 
 export COMPOSE_FILE
 COMPOSE_CMD="docker compose"

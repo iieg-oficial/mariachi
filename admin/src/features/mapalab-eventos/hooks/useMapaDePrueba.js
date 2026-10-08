@@ -2,18 +2,25 @@ import { useCallback, useEffect, useRef } from 'react';
 import OlMap from 'ol/Map';
 import View from 'ol/View';
 import Feature from 'ol/Feature';
+import LineString from 'ol/geom/LineString';
 import Point from 'ol/geom/Point';
 import TileLayer from 'ol/layer/Tile';
 import VectorLayer from 'ol/layer/Vector';
 import VectorSource from 'ol/source/Vector';
 import XYZ from 'ol/source/XYZ';
 import { fromLonLat } from 'ol/proj';
+import { boundingExtent } from 'ol/extent';
 import { Circle as CircleStyle, Fill, Stroke, Style } from 'ol/style';
 import { BRAND } from '@app/providers/brand';
 import { cartoBasemapUrl, CARTO_ATTRIBUTIONS } from '@shared/helpers/cartoBasemap';
 
 const INICIO = { center: fromLonLat([-103.6, 20.7]), zoom: 5.6 };
 const REGRESO_MS = 1200;
+
+const estiloRuta = [
+    new Style({ stroke: new Stroke({ color: '#FFFFFF', width: 5 }) }),
+    new Style({ stroke: new Stroke({ color: BRAND.orange, width: 2, lineDash: [8, 6] }) }),
+];
 
 const estiloMarca = new Style({
     image: new CircleStyle({
@@ -65,11 +72,29 @@ export function useMapaDePrueba(targetRef) {
     const viajar = useCallback((destino, duracion, alLlegar) => {
         const view = mapRef.current?.getView();
         if (!view) return;
+        const ruta = (Array.isArray(destino.ruta) ? destino.ruta : [])
+            .filter((p) => Number.isFinite(p?.lon) && Number.isFinite(p?.lat))
+            .map((p) => fromLonLat([p.lon, p.lat]));
         const centro = fromLonLat([destino.lon, destino.lat]);
         const llegar = () => {
             marcaRef.current?.addFeature(new Feature(new Point(centro)));
+            if (ruta.length > 0) {
+                const linea = new Feature(new LineString([...ruta, centro]));
+                linea.setStyle(estiloRuta);
+                marcaRef.current?.addFeature(linea);
+            }
             alLlegar?.();
         };
+        if (ruta.length > 0) {
+            view.cancelAnimations();
+            view.fit(boundingExtent([...ruta, centro]), {
+                padding: [28, 28, 28, 28],
+                maxZoom: destino.zoom,
+                duration: Math.max(0, duracion),
+                callback: llegar,
+            });
+            return;
+        }
         if (duracion <= 0) {
             view.setCenter(centro);
             view.setZoom(destino.zoom);

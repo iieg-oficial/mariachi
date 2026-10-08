@@ -3,14 +3,19 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db, require_role, verify_csrf
+from app.api.deps import get_db, require_permission, verify_csrf
 from app.core.time import utcnow
 from app.models.mapalab_api_key import MapalabApiKey
 from app.models.mapalab_api_key_acceso import MapalabApiKeyAcceso
 from app.models.mapalab_api_key_embed import MapalabApiKeyEmbed
 from app.models.mapalab_api_key_evento import MapalabApiKeyEvento
+from app.models.mapalab_api_key_rendimiento import (
+    MapalabApiKeyRendimientoDiario,
+    MapalabApiKeySitioDiario,
+)
 from app.models.mapalab_api_key_uso import MapalabApiKeyUsoDiario
 from app.models.user import Usuario
 from app.schemas.mapalab_api_key import (
@@ -27,6 +32,10 @@ from app.schemas.mapalab_api_key import (
     MapalabApiKeyRotateRequest,
     MapalabApiKeyUpdate,
     MapalabApiKeyUsoDiarioResponse,
+)
+from app.schemas.mapalab_api_key_telemetria import (
+    MapalabApiKeyRendimientoResponse,
+    MapalabApiKeySitioResponse,
 )
 from app.services.mapalab_embed_webhook import (
     create_share,
@@ -104,7 +113,7 @@ async def crear_api_key(
     payload: MapalabApiKeyCreate,
     db: Session = Depends(get_db),
     user: Usuario = Depends(verify_csrf),
-    _: Usuario = Depends(require_role(["tetlamamakani"])),
+    _: Usuario = Depends(require_permission("mariachi.mapalab_llaves.manage")),
 ):
     _validate_public_referers(payload.visibility, payload.dominios_permitidos)
 
@@ -148,7 +157,7 @@ async def actualizar_api_key(
     payload: MapalabApiKeyUpdate,
     db: Session = Depends(get_db),
     user: Usuario = Depends(verify_csrf),
-    _: Usuario = Depends(require_role(["tetlamamakani"])),
+    _: Usuario = Depends(require_permission("mariachi.mapalab_llaves.manage")),
 ):
     api_key = db.query(MapalabApiKey).filter(MapalabApiKey.id == api_key_id).first()
     if not api_key:
@@ -175,7 +184,7 @@ async def rotar_api_key(
     payload: MapalabApiKeyRotateRequest,
     db: Session = Depends(get_db),
     user: Usuario = Depends(verify_csrf),
-    _: Usuario = Depends(require_role(["tetlamamakani"])),
+    _: Usuario = Depends(require_permission("mariachi.mapalab_llaves.manage")),
 ):
     api_key = db.query(MapalabApiKey).filter(MapalabApiKey.id == api_key_id).first()
     if not api_key:
@@ -224,7 +233,7 @@ async def revocar_api_key(
     api_key_id: int,
     db: Session = Depends(get_db),
     user: Usuario = Depends(verify_csrf),
-    _: Usuario = Depends(require_role(["tetlamamakani"])),
+    _: Usuario = Depends(require_permission("mariachi.mapalab_llaves.manage")),
 ):
     return _change_estado(db, api_key_id, "revoked", "revoked", user)
 
@@ -234,7 +243,7 @@ async def suspender_api_key(
     api_key_id: int,
     db: Session = Depends(get_db),
     user: Usuario = Depends(verify_csrf),
-    _: Usuario = Depends(require_role(["tetlamamakani"])),
+    _: Usuario = Depends(require_permission("mariachi.mapalab_llaves.manage")),
 ):
     return _change_estado(db, api_key_id, "suspended", "suspended", user)
 
@@ -244,7 +253,7 @@ async def reactivar_api_key(
     api_key_id: int,
     db: Session = Depends(get_db),
     user: Usuario = Depends(verify_csrf),
-    _: Usuario = Depends(require_role(["tetlamamakani"])),
+    _: Usuario = Depends(require_permission("mariachi.mapalab_llaves.manage")),
 ):
     api_key = db.query(MapalabApiKey).filter(MapalabApiKey.id == api_key_id).first()
     if not api_key:
@@ -298,6 +307,72 @@ async def listar_uso(
     return [MapalabApiKeyUsoDiarioResponse.model_validate(r) for r in rows]
 
 
+def _rango_dias(desde: date | None, hasta: date | None) -> tuple[date, date]:
+    fin = hasta or date.today()
+    inicio = desde or (fin - timedelta(days=29))
+    if inicio > fin:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="La fecha inicial no puede ser posterior a la final",
+        )
+    return inicio, fin
+
+
+def _llave_o_404(db: Session, api_key_id: int) -> MapalabApiKey:
+    api_key = db.query(MapalabApiKey).filter(MapalabApiKey.id == api_key_id).first()
+    if not api_key:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="La llave no existe (o ya fue eliminada)")
+    return api_key
+
+
+@router.get("/{api_key_id}/rendimiento", response_model=list[MapalabApiKeyRendimientoResponse])
+async def listar_rendimiento(
+    api_key_id: int,
+    db: Session = Depends(get_db),
+    desde: date | None = Query(default=None),
+    hasta: date | None = Query(default=None),
+) -> list[MapalabApiKeyRendimientoResponse]:
+    _llave_o_404(db, api_key_id)
+    inicio, fin = _rango_dias(desde, hasta)
+    rows = (
+        db.query(MapalabApiKeyRendimientoDiario)
+        .filter(
+            MapalabApiKeyRendimientoDiario.api_key_id == api_key_id,
+            MapalabApiKeyRendimientoDiario.dia >= inicio,
+            MapalabApiKeyRendimientoDiario.dia <= fin,
+        )
+        .order_by(
+            MapalabApiKeyRendimientoDiario.dia.asc(),
+            MapalabApiKeyRendimientoDiario.origen.asc(),
+            MapalabApiKeyRendimientoDiario.metrica.asc(),
+        )
+        .all()
+    )
+    return [MapalabApiKeyRendimientoResponse.model_validate(r) for r in rows]
+
+
+@router.get("/{api_key_id}/sitios", response_model=list[MapalabApiKeySitioResponse])
+async def listar_sitios(
+    api_key_id: int,
+    db: Session = Depends(get_db),
+    desde: date | None = Query(default=None),
+    hasta: date | None = Query(default=None),
+) -> list[MapalabApiKeySitioResponse]:
+    _llave_o_404(db, api_key_id)
+    inicio, fin = _rango_dias(desde, hasta)
+    rows = (
+        db.query(MapalabApiKeySitioDiario)
+        .filter(
+            MapalabApiKeySitioDiario.api_key_id == api_key_id,
+            MapalabApiKeySitioDiario.dia >= inicio,
+            MapalabApiKeySitioDiario.dia <= fin,
+        )
+        .order_by(MapalabApiKeySitioDiario.dia.asc(), MapalabApiKeySitioDiario.origen.asc())
+        .all()
+    )
+    return [MapalabApiKeySitioResponse.model_validate(r) for r in rows]
+
+
 @router.get("/{api_key_id}/accesos", response_model=MapalabApiKeyAccesoPage)
 async def listar_accesos(
     api_key_id: int,
@@ -314,7 +389,15 @@ async def listar_accesos(
     api_key = db.query(MapalabApiKey).filter(MapalabApiKey.id == api_key_id).first()
     if not api_key:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="La llave no existe (o ya fue eliminada)")
-    query = db.query(MapalabApiKeyAcceso).filter(MapalabApiKeyAcceso.api_key_id == api_key_id)
+    query = db.query(MapalabApiKeyAcceso).filter(
+        or_(
+            MapalabApiKeyAcceso.api_key_id == api_key_id,
+            and_(
+                MapalabApiKeyAcceso.api_key_id.is_(None),
+                MapalabApiKeyAcceso.key_prefix == api_key.key_prefix,
+            ),
+        )
+    )
     if desde is not None:
         query = query.filter(MapalabApiKeyAcceso.timestamp >= desde)
     if hasta is not None:
@@ -347,7 +430,7 @@ async def eliminar_api_key(
     api_key_id: int,
     db: Session = Depends(get_db),
     user: Usuario = Depends(verify_csrf),
-    _: Usuario = Depends(require_role(["tetlamamakani"])),
+    _: Usuario = Depends(require_permission("mariachi.mapalab_llaves.manage")),
 ):
     api_key = db.query(MapalabApiKey).filter(MapalabApiKey.id == api_key_id).first()
     if not api_key:
@@ -437,7 +520,7 @@ async def crear_embed(
     payload: MapalabApiKeyEmbedCreate,
     db: Session = Depends(get_db),
     user: Usuario = Depends(verify_csrf),
-    _: Usuario = Depends(require_role(["tetlamamakani"])),
+    _: Usuario = Depends(require_permission("mariachi.mapalab_llaves.manage")),
 ):
     api_key = db.query(MapalabApiKey).filter(MapalabApiKey.id == api_key_id).first()
     if not api_key:
@@ -491,7 +574,7 @@ async def crear_embed_from_layers(
     payload: MapalabApiKeyEmbedFromLayers,
     db: Session = Depends(get_db),
     user: Usuario = Depends(verify_csrf),
-    _: Usuario = Depends(require_role(["tetlamamakani"])),
+    _: Usuario = Depends(require_permission("mariachi.mapalab_llaves.manage")),
 ):
     api_key = db.query(MapalabApiKey).filter(MapalabApiKey.id == api_key_id).first()
     if not api_key:
@@ -563,7 +646,7 @@ async def eliminar_embed(
     share_id: str,
     db: Session = Depends(get_db),
     user: Usuario = Depends(verify_csrf),
-    _: Usuario = Depends(require_role(["tetlamamakani"])),
+    _: Usuario = Depends(require_permission("mariachi.mapalab_llaves.manage")),
 ):
     api_key = db.query(MapalabApiKey).filter(MapalabApiKey.id == api_key_id).first()
     if not api_key:

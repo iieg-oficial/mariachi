@@ -12,11 +12,8 @@ from pydantic import (
 )
 
 from app.core.acervo_url import to_absolute, to_relative
-from app.core.password_policy import validate_password_strength
 from app.schemas._camel import CamelCaseInput
 from app.schemas.project import BucketSummary, UserProjectAssignment, UserProjectMembership
-
-StrongPassword = Annotated[str, AfterValidator(validate_password_strength)]
 
 
 def _ensure_has_at(v: str) -> str:
@@ -42,7 +39,6 @@ class SieejGrupoRef(BaseModel):
 
 
 class UsuarioCreate(UsuarioBase):
-    password: StrongPassword
     role: Literal["tetlamamakani", "editora", "externo"]
     project_assignments: list["UserProjectAssignment"] | None = None
     sieej_grupo_id: int | None = None
@@ -59,6 +55,14 @@ class UsuarioUpdate(CamelCaseInput):
     sieej_grupo_nombre: str | None = Field(None, max_length=128)
 
 
+class ImpactoEliminacion(BaseModel):
+    envios: int
+    formularios_creados: int
+    grupos: int
+    proyectos: int
+    bloqueado: bool
+
+
 class UsuarioResponse(UsuarioBase):
     id: int
     role: Literal["tetlamamakani", "editora", "externo"]
@@ -68,6 +72,8 @@ class UsuarioResponse(UsuarioBase):
     email: LaxEmail
     projects: list["UserProjectMembership"] = []
     sieej_grupo: SieejGrupoRef | None = None
+    minerva_vinculado: bool = False
+    ultimo_acceso: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
@@ -96,15 +102,8 @@ class PerfilUpdate(CamelCaseInput):
 
 class CurrentUserResponse(UsuarioResponse):
     accessible_buckets: list["BucketSummary"] = []
-
-
-class PasswordChange(BaseModel):
-    current_password: str
-    new_password: StrongPassword
-
-
-class PasswordReset(BaseModel):
-    new_password: str
+    permissions: list[str] = []
+    session_expires_in: int = 0
 
 
 class LoginRequest(BaseModel):

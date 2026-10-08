@@ -1,18 +1,19 @@
 import { useState, useEffect } from 'react';
-import { Layout, Menu, Button, Avatar, Badge, Dropdown, Tooltip, Typography, Drawer, Grid } from 'antd';
+import { Layout, Menu, Button, Badge, Tooltip, Typography, Drawer, Grid } from 'antd';
 import {
     MenuFoldOutlined,
     MenuUnfoldOutlined,
-    UserOutlined,
-    LogoutOutlined,
-    LockOutlined,
     FileTextOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation } from 'react-router';
 import { useAuth } from '@shared/contexts/useAuth';
 import api from '@shared/services/api';
 import VersionNotesModal from '@features/inicio/components/VersionNotesModal';
+import MisBorradoresModal from '@features/inicio/components/MisBorradoresModal';
 import { BRAND } from '@app/providers/brand';
+import UserMenu from '@app/UserMenu';
+import SiderAlcanceSegmented from '@app/SiderAlcanceSegmented';
+import { useAlcanceMenu } from '@app/useAlcanceMenu';
 import {
     buildSiderFooterRail,
     buildSiderItems,
@@ -28,33 +29,43 @@ export default function MainLayout() {
     const [collapsed, setCollapsed] = useState(false);
     const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
     const [versionNotesOpen, setVersionNotesOpen] = useState(false);
+    const [borradoresOpen, setBorradoresOpen] = useState(false);
     const screens = useBreakpoint();
     const isMobile = !screens.md;
     const navigate = useNavigate();
     const location = useLocation();
-    const { user, logout } = useAuth();
+    const { user, can, logout } = useAuth();
+    const { disponible, alcance, elegir } = useAlcanceMenu(location.pathname);
 
     const handleLogout = async () => {
         try {
             await logout();
-            navigate('/login');
         } catch (error) {
             console.error('Error al cerrar sesión:', error);
+            navigate('/login');
         }
     };
 
     const [pendingCount, setPendingCount] = useState(0);
     const [reportesPendingCount, setReportesPendingCount] = useState(0);
+    const [misBorradores, setMisBorradores] = useState([]);
 
     useEffect(() => {
-        if (user?.role !== 'tetlamamakani') return;
-        api.get('/borradores/pendientes')
-            .then(r => setPendingCount(r.data.length))
+        if (!user) return;
+        api.get('/borradores/mios')
+            .then(r => setMisBorradores(r.data || []))
             .catch(() => {});
     }, [user]);
 
     useEffect(() => {
-        if (!user?.role) return;
+        if (!can('mariachi.mapalab.update')) return;
+        api.get('/borradores/pendientes')
+            .then(r => setPendingCount(r.data.length))
+            .catch(() => {});
+    }, [user, can]);
+
+    useEffect(() => {
+        if (!can('mariachi.colibri_reportes.view')) return;
         api.get('/reportes/stats/contadores')
             .then(r => {
                 const data = r.data || {};
@@ -62,7 +73,7 @@ export default function MainLayout() {
                 setReportesPendingCount(total);
             })
             .catch(() => {});
-    }, [user]);
+    }, [user, can]);
 
     useEffect(() => {
         if (isMobile) setMobileDrawerOpen(false);
@@ -75,11 +86,13 @@ export default function MainLayout() {
 
     const menuItems = buildSiderItems({
         user,
+        can,
         onNavigate: handleNav,
         extras: { pendingCount, reportesPendingCount },
+        alcance,
     });
     const footerRailItems = [
-        ...buildSiderFooterRail({ user, onNavigate: handleNav, extras: { pendingCount } }),
+        ...buildSiderFooterRail({ user, can, onNavigate: handleNav, extras: { pendingCount } }),
         {
             key: 'version-notes',
             label: 'Notas de versión',
@@ -92,28 +105,6 @@ export default function MainLayout() {
         },
     ];
     const selectedKey = selectedKeyForPath(location.pathname);
-
-    const userMenuItems = [
-        {
-            key: 'profile',
-            icon: <UserOutlined />,
-            label: 'Perfil',
-            onClick: () => navigate('/perfil'),
-        },
-        {
-            key: 'change-password',
-            icon: <LockOutlined />,
-            label: 'Cambiar Contraseña',
-            onClick: () => navigate('/change-password'),
-        },
-        { type: 'divider' },
-        {
-            key: 'logout',
-            icon: <LogoutOutlined />,
-            label: 'Cerrar Sesión',
-            onClick: handleLogout,
-        },
-    ];
 
     const brand = (isCollapsedView) => (
         <div style={{
@@ -140,6 +131,10 @@ export default function MainLayout() {
                 </span>
             )}
         </div>
+    );
+
+    const segmento = (isCollapsedView) => disponible && (
+        <SiderAlcanceSegmented value={alcance} onChange={elegir} collapsed={isCollapsedView} />
     );
 
     const openKey = defaultOpenKeyForPath(location.pathname);
@@ -192,6 +187,7 @@ export default function MainLayout() {
     const renderSiderContent = () => (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
             {brand(collapsed)}
+            {segmento(collapsed)}
             <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
                 <Menu
                     theme="dark"
@@ -218,6 +214,7 @@ export default function MainLayout() {
     const renderMobileSiderContent = () => (
         <>
             {brand(false)}
+            {segmento(false)}
             <Menu
                 theme="dark"
                 mode="inline"
@@ -285,15 +282,14 @@ export default function MainLayout() {
                         style={{ fontSize: 16, width: isMobile ? 48 : 64, height: 64 }}
                         aria-label="Abrir menú"
                     />
-                    <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-                        <div style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
-                            {!isMobile && <Text style={{ marginRight: 8 }}>{user?.name}</Text>}
-                            <Avatar
-                                src={user?.avatarUrl || user?.avatar_url || undefined}
-                                icon={!(user?.avatarUrl || user?.avatar_url) && <UserOutlined />}
-                            />
-                        </div>
-                    </Dropdown>
+                    <UserMenu
+                        user={user}
+                        isMobile={isMobile}
+                        borradores={misBorradores}
+                        onAbrirBorradores={() => setBorradoresOpen(true)}
+                        onPerfil={() => navigate('/perfil')}
+                        onLogout={handleLogout}
+                    />
                 </Header>
                 <Content style={{
                     margin: isMobile ? '6px 4px' : '24px 16px',
@@ -308,6 +304,12 @@ export default function MainLayout() {
             <VersionNotesModal
                 open={versionNotesOpen}
                 onClose={() => setVersionNotesOpen(false)}
+            />
+
+            <MisBorradoresModal
+                open={borradoresOpen}
+                onClose={() => setBorradoresOpen(false)}
+                borradores={misBorradores}
             />
         </Layout>
     );

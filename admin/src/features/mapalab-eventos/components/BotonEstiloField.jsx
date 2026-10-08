@@ -62,7 +62,7 @@ export default function BotonEstiloField({ value, onChange }) {
     const setColorBorde = (i, hex) => setBorde({ ...estilo.borde, colores: estilo.borde.colores.map((c, j) => (j === i ? hex : c)) });
 
     return (
-        <Space direction="vertical" size={18} style={{ width: '100%' }}>
+        <Space orientation="vertical" size={18} style={{ width: '100%' }}>
             <div>
                 <Text strong>Fondo</Text>
                 <Plantillas presets={FONDO_PRESETS} tramo={estilo.fondo} colorDe={colorDeFondo} onPick={setFondo} />

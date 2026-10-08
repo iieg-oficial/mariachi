@@ -18,7 +18,7 @@ export default function GridNotices({
                     style={{ marginBottom: 8 }}
                     type="info"
                     showIcon
-                    message="Tienes cambios sin guardar de una sesión anterior"
+                    title="Tienes cambios sin guardar de una sesión anterior"
                     description={`Guardados el ${new Date(recoveredDraft.savedAt).toLocaleString()}.`}
                     action={(
                         <Space>
@@ -39,7 +39,7 @@ export default function GridNotices({
                     type="warning"
                     showIcon
                     closable
-                    message={`${conflicts.length} celda(s) cambiaron mientras las editabas`}
+                    title={`${conflicts.length} celda(s) cambiaron mientras las editabas`}
                     description={(
                         <div>
                             <div style={{ marginBottom: 6 }}>

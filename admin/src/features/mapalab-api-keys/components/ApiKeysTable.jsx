@@ -49,7 +49,7 @@ export default function ApiKeysTable({
             dataIndex: 'institucionNombre',
             ellipsis: true,
             render: (nombre, record) => (
-                <Space direction="vertical" size={0} style={{ minWidth: 0 }}>
+                <Space orientation="vertical" size={0} style={{ minWidth: 0 }}>
                     <Text strong ellipsis>{nombre}</Text>
                     {record.institucionEmailContacto && (
                         <Text type="secondary" style={{ fontSize: 11 }} ellipsis>{record.institucionEmailContacto}</Text>

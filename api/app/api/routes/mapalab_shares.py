@@ -1,14 +1,10 @@
 from fastapi import APIRouter, Body, Depends
 
-from app.api.deps import require_project_access, verify_csrf
+from app.api.deps import verify_csrf
 from app.models.user import Usuario
 from app.services import mapalab_shares as service
 
-router = APIRouter(
-    prefix="/mapalab-shares",
-    tags=["mapalab shares"],
-    dependencies=[Depends(require_project_access("mapalab", min_role="editor"))],
-)
+router = APIRouter(prefix="/mapalab-shares", tags=["mapalab shares"])
 
 
 @router.post("")

@@ -11,6 +11,7 @@ import useIsMobile from '@shared/hooks/useIsMobile';
 import { message } from '@shared/services/message';
 import { gruposApi, usuariosApi } from '../services/formulariosAdminApi';
 import MemberPicker from '../components/MemberPicker';
+import MiembrosConRol from '../components/MiembrosConRol';
 
 export default function GruposPage() {
     const navigate = useNavigate();
@@ -25,6 +26,7 @@ export default function GruposPage() {
     const [usuarios, setUsuarios] = useState([]);
     const [miembros, setMiembros] = useState([]);
     const [savingMiembros, setSavingMiembros] = useState(false);
+    const [coordinadores, setCoordinadores] = useState([]);
 
     const load = useCallback(async () => {
         setLoading(true);
@@ -59,7 +61,11 @@ export default function GruposPage() {
         (async () => {
             try {
                 const m = await gruposApi.listMiembros(drawerGrupo.id);
-                if (!cancel) setMiembros(m.map((x) => x.id));
+                if (cancel) return;
+                setMiembros(m.map((x) => x.id));
+                setCoordinadores(
+                    m.filter((x) => x.rol_grupo === 'coordinador').map((x) => x.id),
+                );
             } catch {
                 message.error('Error al cargar miembros');
             }
@@ -130,7 +136,7 @@ export default function GruposPage() {
     const handleSaveMiembros = async () => {
         setSavingMiembros(true);
         try {
-            await gruposApi.actualizarMiembros(drawerGrupo.id, miembros);
+            await gruposApi.actualizarMiembros(drawerGrupo.id, miembros, coordinadores);
             message.success('Miembros actualizados');
             setDrawerGrupo(null);
         } catch (err) {
@@ -235,7 +241,7 @@ export default function GruposPage() {
                 open={!!drawerGrupo}
                 onClose={() => setDrawerGrupo(null)}
                 title={drawerGrupo ? `Miembros: ${drawerGrupo.nombre}` : ''}
-                width={Math.min(700, window.innerWidth)}
+                size={Math.min(700, window.innerWidth)}
                 extra={
                     <Button type="primary" loading={savingMiembros} onClick={handleSaveMiembros}>
                         Guardar
@@ -243,11 +249,30 @@ export default function GruposPage() {
                 }
             >
                 {drawerGrupo ? (
-                    <MemberPicker
-                        usuarios={usuarios}
-                        value={miembros}
-                        onChange={setMiembros}
-                    />
+                    <Space orientation="vertical" size="large" style={{ width: '100%' }}>
+                        <MemberPicker
+                            usuarios={usuarios}
+                            value={miembros}
+                            onChange={(ids) => {
+                                setMiembros(ids);
+                                setCoordinadores((prev) => prev.filter((id) => ids.includes(id)));
+                            }}
+                        />
+                        <div>
+                            <Typography.Text strong>Miembros y roles</Typography.Text>
+                            <Typography.Paragraph type="secondary" style={{ marginBottom: 8 }}>
+                                En los formularios con captura colaborativa, el coordinador es
+                                el único que puede enviar el envío del grupo. El resto captura
+                                y guarda.
+                            </Typography.Paragraph>
+                            <MiembrosConRol
+                                usuarios={usuarios}
+                                miembros={miembros}
+                                coordinadores={coordinadores}
+                                onChange={setCoordinadores}
+                            />
+                        </div>
+                    </Space>
                 ) : <Spin />}
             </Drawer>
         </div>

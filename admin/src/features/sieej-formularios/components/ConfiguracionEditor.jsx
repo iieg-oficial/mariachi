@@ -163,7 +163,7 @@ export default function ConfiguracionEditor({ formulario, onSaved }) {
                     type="info"
                     showIcon
                     style={{ marginBottom: 16 }}
-                    message="Al publicar un formulario periódico se generan sus primeras ventanas. Revisa la pestaña «Periodos» para ver aperturas, cierres y la bitácora de avisos."
+                    title="Al publicar un formulario periódico se generan sus primeras ventanas. Revisa la pestaña «Periodos» para ver aperturas, cierres y la bitácora de avisos."
                 />
             )}
 

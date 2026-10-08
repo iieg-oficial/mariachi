@@ -1,0 +1,116 @@
+import { useEffect, useMemo, useState } from 'react';
+import { Segmented } from 'antd';
+import { CloudServerOutlined } from '@ant-design/icons';
+
+import PaginaRecurso from '../components/PaginaRecurso';
+import { listar } from '../api/intranetService';
+import { aPruebas, deLasPruebas } from '../helpers/pruebas';
+
+const VISTAS = [
+    { label: 'Sitios', value: 'sitios' },
+    { label: 'Categorías', value: 'categorias' },
+];
+
+const AYUDA_PROYECTO = 'Una línea para la página de Proyectos de la intranet: qué es y para quién.';
+
+const AYUDA_LOGO = 'URL del logo en el Acervo (SVG de preferencia). Vacía muestra las iniciales.';
+
+const AYUDA_PRUEBAS = 'Una por línea, «Etiqueta | URL». Por ejemplo: Espejo | https://portalito.iieg/mapalab/mapa';
+
+const AYUDA_DENTRO = 'Sin tarjeta propia en la intranet: sale como «Abrir …» en la ficha del proyecto elegido. Vacío, tiene su tarjeta.';
+
+const AYUDA_SLUG = 'Nombre del servicio en huachicol. De ahí sale el estado que muestra la intranet.';
+
+const limpiar = (valores) => Object.fromEntries(
+    Object.entries(valores).map(([clave, valor]) => [clave, valor === '' ? null : valor]),
+);
+
+const CATEGORIAS = {
+    recurso: 'categorias',
+    singular: 'Categoría',
+    titulo: 'Sitios monitoreados',
+    descripcion: 'Grupos en los que se ordenan las tarjetas de estado de la intranet.',
+    alta: 'Nueva categoría',
+    vacio: 'Todavía no hay categorías',
+    icono: <CloudServerOutlined />,
+    columnas: [{ title: 'Nombre', dataIndex: 'nombre' }],
+    campos: [{
+        nombre: 'nombre', etiqueta: 'Nombre', requerido: true, maximo: 100,
+        ayuda: 'Entre 8 y 100 caracteres.',
+    }],
+};
+
+const definicionDeSitios = (categorias, todos) => {
+    const principales = todos.filter((sitio) => !sitio.dentro_de);
+    const nombresSitios = Object.fromEntries(todos.map((sitio) => [sitio.id, sitio.name]));
+    const nombres = Object.fromEntries(categorias.map((c) => [c.id, c.nombre]));
+    return {
+        recurso: 'sitios',
+        ordenable: { campo: 'orden' },
+        singular: 'Sitio',
+        titulo: 'Sitios monitoreados',
+        descripcion: 'Los proyectos del IIEG que muestra la intranet, con su estado y sus enlaces a Taiga, GitLab y GitHub.',
+        alta: 'Nuevo sitio',
+        vacio: 'Todavía no hay sitios',
+        icono: <CloudServerOutlined />,
+        aPayload: (valores) => ({ ...limpiar(valores), pruebas: aPruebas(valores.pruebas) }),
+        aFormulario: (fila) => ({ ...fila, pruebas: deLasPruebas(fila.pruebas) }),
+        columnas: [
+            { title: 'Nombre', dataIndex: 'name' },
+            { title: 'URL', dataIndex: 'url' },
+            { title: 'Categoría', dataIndex: 'category_id', render: (id) => nombres[id] },
+            { title: 'Huachicol', dataIndex: 'huachicol_slug', width: 140 },
+            { title: 'Va dentro de', dataIndex: 'dentro_de', width: 160, render: (id) => nombresSitios[id] ?? '—' },
+        ],
+        campos: [
+            { nombre: 'name', etiqueta: 'Nombre', requerido: true, maximo: 200 },
+            { nombre: 'descripcion', etiqueta: 'Descripción', tipo: 'texto-largo', maximo: 300, ayuda: AYUDA_PROYECTO },
+            { nombre: 'url', etiqueta: 'URL', requerido: true, maximo: 500 },
+            { nombre: 'logo_url', etiqueta: 'Logo', maximo: 500, ayuda: AYUDA_LOGO },
+            {
+                nombre: 'category_id', etiqueta: 'Categoría', tipo: 'opciones', requerido: true,
+                opciones: categorias.map((c) => ({ value: c.id, label: c.nombre })),
+            },
+            { nombre: 'huachicol_slug', etiqueta: 'Servicio en huachicol', maximo: 100, ayuda: AYUDA_SLUG },
+            { nombre: 'taiga_url', etiqueta: 'Taiga', maximo: 500 },
+            { nombre: 'gitlab_url', etiqueta: 'GitLab', maximo: 500 },
+            { nombre: 'github_url', etiqueta: 'GitHub', maximo: 500 },
+            { nombre: 'orden', etiqueta: 'Orden', tipo: 'numero', ayuda: 'Posición en la intranet, de menor a mayor.' },
+            { nombre: 'pruebas', etiqueta: 'Ligas de pruebas', tipo: 'texto-largo', maximo: 1200, ayuda: AYUDA_PRUEBAS },
+            {
+                nombre: 'dentro_de', etiqueta: 'Va dentro de', tipo: 'opciones', ayuda: AYUDA_DENTRO,
+                opciones: principales.map((sitio) => ({ value: sitio.id, label: sitio.name })),
+            },
+        ],
+    };
+};
+
+const SitiosPage = () => {
+    const [vista, setVista] = useState('sitios');
+    const [categorias, setCategorias] = useState([]);
+    const [todos, setTodos] = useState([]);
+
+    useEffect(() => {
+        let vigente = true;
+        listar('categorias')
+            .then((lista) => { if (vigente) setCategorias(lista); })
+            .catch(() => { if (vigente) setCategorias([]); });
+        listar('sitios')
+            .then((lista) => { if (vigente) setTodos(lista); })
+            .catch(() => { if (vigente) setTodos([]); });
+        return () => { vigente = false; };
+    }, [vista]);
+
+    const sitios = useMemo(() => definicionDeSitios(categorias, todos), [categorias, todos]);
+    const selector = <Segmented options={VISTAS} value={vista} onChange={setVista} />;
+
+    return (
+        <PaginaRecurso
+            key={vista}
+            definicion={vista === 'sitios' ? sitios : CATEGORIAS}
+            extra={selector}
+        />
+    );
+};
+
+export default SitiosPage;

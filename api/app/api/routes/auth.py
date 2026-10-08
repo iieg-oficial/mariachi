@@ -1,6 +1,12 @@
+import base64
+import hashlib
+import hmac
+import json
 import logging
 import uuid
+from urllib.parse import quote, urlsplit
 
+import httpx
 from fastapi import (
     APIRouter,
     Cookie,
@@ -12,57 +18,54 @@ from fastapi import (
     UploadFile,
     status,
 )
+from fastapi.responses import RedirectResponse
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.api.deps import (
     get_current_user,
     get_current_user_context,
-    list_user_memberships,
+    issue_access_token,
+    session_seconds_left,
     verify_csrf,
 )
-from app.api.metrics import (
-    SENAL_LOGIN_BLOQUEADO,
-    SENAL_LOGIN_FALLIDO,
-    registrar,
-)
 from app.api.rate_limit import _client_ip, rate_limit_ip
-from app.core import refresh_token
+from app.core import minerva_session, oidc, refresh_token
 from app.core.acervo_url import to_relative
-from app.core.cache import redis_client
 from app.core.database import get_db
-from app.core.security import crear_access_token, crear_csrf_token, hash_password, verify_password
+from app.core.security import crear_csrf_token, decodificar_token
 from app.core.settings import get_settings
+from app.core.time import utcnow
 from app.models.acervo_bucket import AcervoBucket
 from app.models.user import Usuario
 from app.schemas.user import (
     CurrentUserResponse,
-    LoginRequest,
-    LoginResponse,
-    PasswordChange,
     PerfilUpdate,
     UsuarioResponse,
 )
+from app.services import tipo_archivo
 from app.services.acervo import AcervoClient
 from app.services.actividad_service import registrar_actividad
+from minerva_sdk.fastapi import _decode
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/autenticacion", tags=["autenticación"])
 settings = get_settings()
 
-_LOGIN_USERNAME_LOCKOUT_KEY = 'rate_limit:login:username:{}'
-_LOGIN_USERNAME_MAX_FAILS = 5
-_LOGIN_USERNAME_WINDOW_SECONDS = 300
+TX_COOKIE_NAME = "mariachi_oidc_tx"
+TX_MAX_AGE = 600
+
+_UNUSABLE_PASSWORD = "!minerva"
 
 
-def _username_lockout_key(identifier: str) -> str:
-    return _LOGIN_USERNAME_LOCKOUT_KEY.format(identifier)
+def _tx_cookie_path() -> str:
+    return f"{settings.admin_prefix}/autenticacion"
 
 
-def _set_access_cookie(response: Response, username: str) -> None:
+def _set_access_cookie(response: Response, username: str, sid: str) -> None:
     response.set_cookie(
         key=settings.cookie_name,
-        value=crear_access_token(data={"sub": username}),
+        value=issue_access_token(username, sid),
         max_age=settings.cookie_max_age,
         httponly=settings.cookie_httponly,
         secure=settings.cookie_secure,
@@ -83,9 +86,9 @@ def _set_refresh_cookie(response: Response, raw: str) -> None:
     )
 
 
-def _issue_session_cookies(response: Response, username: str) -> None:
-    _set_access_cookie(response, username)
-    raw = refresh_token.issue(username)
+def _issue_session_cookies(response: Response, username: str, sid: str) -> None:
+    _set_access_cookie(response, username, sid)
+    raw = refresh_token.issue(username, sid)
     if raw:
         _set_refresh_cookie(response, raw)
 
@@ -101,91 +104,315 @@ def _clear_session_cookies(response: Response) -> None:
         )
 
 
-@router.post(
-    "/iniciar-sesion",
-    response_model=LoginResponse,
-    dependencies=[Depends(rate_limit_ip(max_requests=10, window_seconds=60, scope='login'))],
-)
-async def login(
-    credentials: LoginRequest,
-    response: Response,
-    request: Request,
-    db: Session = Depends(get_db),
-):
-    identifier = (credentials.username or "").strip().lower()
+def _firma_tx(payload: str) -> str:
+    digest = hmac.new(
+        settings.secret_key.encode("utf-8"), payload.encode("ascii"), hashlib.sha256
+    ).digest()
+    return base64.urlsafe_b64encode(digest).decode("ascii").rstrip("=")
 
-    lockout_key = _username_lockout_key(identifier)
-    try:
-        fail_count = int(redis_client.get(lockout_key) or 0)
-    except Exception as exc:
-        logger.warning('login lockout redis error identifier=%s: %s', identifier, exc)
-        fail_count = 0
 
-    if fail_count >= _LOGIN_USERNAME_MAX_FAILS:
-        try:
-            ttl = redis_client.ttl(lockout_key)
-        except Exception:
-            ttl = _LOGIN_USERNAME_WINDOW_SECONDS
-        retry = ttl if ttl and ttl > 0 else _LOGIN_USERNAME_WINDOW_SECONDS
-        logger.warning('login locked identifier=%s fails=%s', identifier, fail_count)
-        registrar(SENAL_LOGIN_BLOQUEADO)
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=f"Cuenta temporalmente bloqueada por intentos fallidos. Intenta en {retry}s.",
-            headers={"Retry-After": str(retry)},
-        )
-
-    usuario = (
-        db.query(Usuario)
-        .filter(
-            (func.lower(Usuario.username) == identifier)
-            | (func.lower(Usuario.email) == identifier)
-        )
-        .first()
+def _set_tx_cookie(response: Response, data: dict) -> None:
+    payload = base64.urlsafe_b64encode(json.dumps(data).encode("utf-8")).decode("ascii")
+    raw = f"{payload}.{_firma_tx(payload)}"
+    response.set_cookie(
+        key=TX_COOKIE_NAME,
+        value=raw,
+        max_age=TX_MAX_AGE,
+        httponly=True,
+        secure=settings.cookie_secure,
+        samesite="lax",
+        path=_tx_cookie_path(),
     )
 
-    if not usuario or not verify_password(credentials.password, usuario.hashed_password):
-        try:
-            pipe = redis_client.pipeline()
-            pipe.incr(lockout_key)
-            pipe.expire(lockout_key, _LOGIN_USERNAME_WINDOW_SECONDS)
-            pipe.execute()
-        except Exception as exc:
-            logger.warning('login lockout incr error identifier=%s: %s', identifier, exc)
-        logger.info('action=login.failed identifier=%s', identifier)
-        try:
-            registrar_actividad(
-                db,
-                actor=usuario,
-                action="login.failed",
-                resource_type="usuario",
-                resource_id=usuario.id if usuario else None,
-                metadata={"identifier": identifier},
-                ip=_client_ip(request),
-            )
-            db.commit()
-        except Exception as exc:
-            db.rollback()
-            logger.warning('actividad login.failed fallo identifier=%s: %s', identifier, exc)
-        registrar(SENAL_LOGIN_FALLIDO)
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Credenciales inválidas",
+
+def _read_tx_cookie(request: Request) -> dict | None:
+    raw = request.cookies.get(TX_COOKIE_NAME)
+    if not raw or "." not in raw:
+        return None
+    payload, firma = raw.rsplit(".", 1)
+    try:
+        if not hmac.compare_digest(firma.encode("ascii"), _firma_tx(payload).encode("ascii")):
+            return None
+        data = json.loads(base64.urlsafe_b64decode(payload.encode("ascii")).decode("utf-8"))
+    except Exception:
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def _safe_next(raw: str | None) -> str:
+    if not raw or not raw.startswith("/") or raw.startswith("//"):
+        return ""
+    return raw
+
+
+def _prefijo_autenticacion(base: str = "") -> str:
+    """Raiz publica de estas rutas, derivada del `redirect_uri` del callback. Con `base`
+    se reescribe el origen para conservar aquel por el que entro la persona."""
+    callback = settings.minerva_redirect_uri.rstrip("/")
+    if not callback.endswith("/callback"):
+        return ""
+    prefijo = callback[: -len("/callback")]
+    if base:
+        return f"{base}{urlsplit(prefijo).path}"
+    return prefijo
+
+
+def _salir_url(return_to: str = "", base: str = "") -> str:
+    """URL del propio mariachi a la que navega el admin al cerrar sesion.
+
+    El navegador tiene que llegar al logout por un 302 del servidor: una
+    navegacion iniciada por el documento la reescribe el `upgrade-insecure-requests`
+    de la CSP, y si minerva no sirve HTTPS en ese puerto el logout muere en
+    ERR_SSL_PROTOCOL_ERROR. Se deriva del `redirect_uri` del callback, que ya trae
+    la URL publica de mariachi.
+
+    `return_to` viaja hasta el final del ciclo para que quien salio desde otra
+    aplicacion vuelva ahi y no al inicio del panel."""
+    prefijo = _prefijo_autenticacion(base)
+    if not prefijo:
+        return _post_login_url(base=base)
+    url = f"{prefijo}/salir"
+    if return_to:
+        url = f"{url}?return_to={quote(return_to, safe='')}"
+    return url
+
+
+def _login_forzado_url(return_to: str = "", base: str = "") -> str:
+    """A donde vuelve el navegador despues del logout del panel: al login de
+    mariachi con `forzar=1`, para que minerva pida credenciales de nuevo en vez
+    de reconocer la sesion que su logout suave dejo viva.
+
+    Se deriva del `redirect_uri` del callback, que ya trae la URL publica de
+    mariachi y es la unica que minerva tiene registrada. `return_to` le dice al
+    login a donde volver, y de paso con que marca pedir las credenciales."""
+    prefijo = _prefijo_autenticacion(base)
+    if not prefijo:
+        return _post_login_url(base=base)
+    url = f"{prefijo}/login?forzar=1"
+    if return_to:
+        url = f"{url}&return_to={quote(return_to, safe='')}"
+    return url
+
+
+def _public_base(request: Request) -> str:
+    """Origen publico por el que entro la persona (Host de la peticion), para conservar tanto
+    la IP como el dominio: entrar por uno mantiene ese mismo en callback y post-login."""
+    host = request.headers.get("host", "")
+    candidato = f"https://{host}" if host else ""
+    if candidato and candidato in _origenes_permitidos():
+        return candidato
+    return _origen(settings.minerva_post_login_url)
+
+
+def _origen(url: str) -> str:
+    parts = urlsplit(url)
+    return f"{parts.scheme}://{parts.netloc}"
+
+
+def _origenes_permitidos() -> set[str]:
+    return {
+        *(origen.rstrip("/") for origen in settings.cors_origins),
+        _origen(settings.minerva_post_login_url),
+        _origen(settings.minerva_redirect_uri),
+    }
+
+
+def _post_login_url(next_path: str = "", error: str = "", base: str = "") -> str:
+    parts = urlsplit(settings.minerva_post_login_url)
+    root = base or f"{parts.scheme}://{parts.netloc}"
+    admin = f"{root}{parts.path.rstrip('/')}"
+    if error:
+        return f"{admin}/login?auth_error={quote(error)}"
+    if next_path and next_path != "/":
+        return f"{admin}{next_path}"
+    return f"{admin}/"
+
+
+def _return_to_url(return_to: str, base: str = "") -> str:
+    """`return_to` es una ruta absoluta del dominio (p. ej. `/sieej/...`); se aplica al ORIGEN
+    por el que entro la persona para conservar IP o dominio."""
+    if base:
+        return f"{base}{return_to}"
+    parts = urlsplit(settings.minerva_post_login_url)
+    return f"{parts.scheme}://{parts.netloc}{return_to}"
+
+
+def _unique_username(db: Session, candidate: str) -> str:
+    base = (candidate or "usuario").strip().lower()[:50] or "usuario"
+    username = base
+    suffix = 1
+    while db.query(Usuario).filter(func.lower(Usuario.username) == username).first():
+        suffix += 1
+        sufijo = str(suffix)
+        username = f"{base[: 50 - len(sufijo)]}{sufijo}"
+    return username
+
+
+def resolve_user(db: Session, claims: dict) -> Usuario:
+    sub = claims.get("sub")
+    email = (claims.get("email") or "").strip()
+    name = claims.get("name") or claims.get("preferred_username") or email
+
+    usuario = db.query(Usuario).filter(Usuario.minerva_sub == sub).first()
+
+    if usuario is None and email:
+        por_correo = (
+            db.query(Usuario).filter(func.lower(Usuario.email) == email.lower()).first()
         )
+        if por_correo is not None and por_correo.minerva_sub:
+            logger.warning(
+                "action=login.sub_en_conflicto user_id=%s: el correo ya esta enlazado a otro sub",
+                por_correo.id,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="La cuenta con ese correo ya esta enlazada a otra identidad de Minerva",
+            )
+        if por_correo is not None:
+            por_correo.minerva_sub = sub
+            usuario = por_correo
+
+    if usuario is None:
+        if not email:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Minerva no entregó un correo con el que crear el usuario",
+            )
+        usuario = Usuario(
+            minerva_sub=sub,
+            username=_unique_username(db, email.split("@", 1)[0]),
+            email=email,
+            name=name or email,
+            hashed_password=_UNUSABLE_PASSWORD,
+            role="externo",
+            must_change_password=False,
+        )
+        db.add(usuario)
+
+    if email and not db.query(Usuario).filter(
+        func.lower(Usuario.email) == email.lower(), Usuario.id != usuario.id
+    ).first():
+        usuario.email = email
+    if name:
+        usuario.name = name
+
+    usuario.ultimo_acceso = utcnow()
+
+    db.commit()
+    db.refresh(usuario)
+    return usuario
+
+
+@router.get("/login")
+async def login(request: Request, next: str = "", forzar: int = 0, return_to: str = "") -> RedirectResponse:
+    state = oidc.generate_state()
+    nonce = oidc.generate_nonce()
+    verifier, challenge = oidc.generate_pkce()
+    base = _public_base(request)
+    callback_path = urlsplit(settings.minerva_redirect_uri).path
+    redirect_uri = f"{base}{callback_path}"
+    authorize_url = await oidc.build_authorize_url(
+        state, challenge, nonce, prompt="login" if forzar else "", redirect_uri=redirect_uri
+    )
+
+    safe_return = _safe_next(return_to)
+    if safe_return.startswith("/sieej") and settings.minerva_sieej_branding_client_id:
+        sep = "&" if "?" in authorize_url else "?"
+        authorize_url = f"{authorize_url}{sep}app_branding={settings.minerva_sieej_branding_client_id}"
+
+    redirect = RedirectResponse(url=authorize_url, status_code=status.HTTP_302_FOUND)
+    _set_tx_cookie(
+        redirect,
+        {"state": state, "verifier": verifier, "nonce": nonce, "next": _safe_next(next), "return_to": safe_return, "redirect_uri": redirect_uri, "public_base": base},
+    )
+    return redirect
+
+
+@router.get("/callback")
+async def callback(
+    request: Request,
+    code: str = "",
+    state: str = "",
+    error: str = "",
+    db: Session = Depends(get_db),
+) -> RedirectResponse:
+    tx = _read_tx_cookie(request)
+    next_path = _safe_next((tx or {}).get("next"))
+    return_to = _safe_next((tx or {}).get("return_to"))
+    base = (tx or {}).get("public_base") or ""
+    if base not in _origenes_permitidos():
+        base = _public_base(request)
+    callback_path = urlsplit(settings.minerva_redirect_uri).path
+    redirect_uri = f"{base}{callback_path}"
+
+    if error:
+        logger.info("action=login.denied error=%s", error)
+        redirect = RedirectResponse(
+            url=_post_login_url(error=error, base=base), status_code=status.HTTP_302_FOUND
+        )
+        redirect.delete_cookie(key=TX_COOKIE_NAME, path=_tx_cookie_path())
+        return redirect
+
+    if not tx or not code or not state or state != tx.get("state"):
+        # La cookie de transaccion vive TX_MAX_AGE (10 min): si el usuario tarda mas en
+        # autenticarse, o el flujo se reinicio en otra pestaña, aqui no hay con que
+        # validar el `state`. Devolver un 400 dejaba al navegador ante un JSON crudo;
+        # se regresa a la pantalla de acceso, que muestra el motivo y permite reintentar.
+        logger.info("action=login.tx_invalido tx=%s code=%s state=%s", bool(tx), bool(code), bool(state))
+        redirect = RedirectResponse(
+            url=_post_login_url(error="invalid_state", base=base), status_code=status.HTTP_302_FOUND
+        )
+        redirect.delete_cookie(key=TX_COOKIE_NAME, path=_tx_cookie_path())
+        return redirect
 
     try:
-        redis_client.delete(lockout_key)
-    except Exception:
-        pass
+        tokens = await oidc.exchange_code(code, tx["verifier"], redirect_uri=redirect_uri)
+    except httpx.HTTPError as exc:
+        logger.warning("no se pudo canjear el code con minerva: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="No se pudo canjear el código con Minerva",
+        ) from exc
 
-    _issue_session_cookies(response, usuario.username)
+    try:
+        await oidc.validar_id_token(tokens.get("id_token"), tx.get("nonce", ""))
+    except oidc.IdTokenInvalidoError as exc:
+        logger.warning("action=login.id_token_invalido motivo=%s", exc)
+        redirect = RedirectResponse(
+            url=_post_login_url(error="invalid_nonce", base=base), status_code=status.HTTP_302_FOUND
+        )
+        redirect.delete_cookie(key=TX_COOKIE_NAME, path=_tx_cookie_path())
+        return redirect
 
-    csrf_token = crear_csrf_token(usuario.username)
+    claims = await _decode(tokens["access_token"])
+    try:
+        usuario = resolve_user(db, claims)
+    except HTTPException as exc:
+        if exc.status_code != status.HTTP_409_CONFLICT:
+            raise
+        redirect = RedirectResponse(
+            url=_post_login_url(error="account_conflict", base=base),
+            status_code=status.HTTP_302_FOUND,
+        )
+        redirect.delete_cookie(key=TX_COOKIE_NAME, path=_tx_cookie_path())
+        return redirect
 
-    user_payload = UsuarioResponse.model_validate(usuario).model_dump()
-    user_payload["projects"] = list_user_memberships(db, usuario)
+    sid = minerva_session.new_sid()
+    minerva_session.store(
+        sid,
+        tokens["access_token"],
+        tokens.get("refresh_token"),
+        oidc.access_expiry(tokens.get("expires_in")),
+    )
 
-    logger.info('action=login.success user_id=%s role=%s', usuario.id, usuario.role)
+    redirect = RedirectResponse(
+        url=_return_to_url(return_to, base) if return_to else _post_login_url(next_path, base=base),
+        status_code=status.HTTP_302_FOUND,
+    )
+    redirect.delete_cookie(key=TX_COOKIE_NAME, path=_tx_cookie_path())
+    _issue_session_cookies(redirect, usuario.username, sid)
+
+    logger.info("action=login.success user_id=%s", usuario.id)
     try:
         registrar_actividad(
             db,
@@ -193,31 +420,45 @@ async def login(
             action="login.success",
             resource_type="usuario",
             resource_id=usuario.id,
-            metadata={"role": usuario.role},
+            metadata={"idp": "minerva"},
             ip=_client_ip(request),
         )
         db.commit()
     except Exception as exc:
         db.rollback()
-        logger.warning('actividad login.success fallo user_id=%s: %s', usuario.id, exc)
+        logger.warning("actividad login.success fallo user_id=%s: %s", usuario.id, exc)
 
-    return LoginResponse(
-        csrf_token=csrf_token,
-        user=UsuarioResponse.model_validate(user_payload),
-    )
+    return redirect
 
 
 @router.post("/cerrar-sesion")
 async def logout(
     response: Response,
     request: Request,
+    return_to: str = "",
     current_user: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db),
     refresh_cookie: str | None = Cookie(default=None, alias=settings.refresh_cookie_name),
 ):
+    access_cookie = request.cookies.get(settings.cookie_name)
+    sid = None
+    if access_cookie:
+        payload = decodificar_token(access_cookie)
+        sid = (payload or {}).get("sid")
+
+    if sid:
+        try:
+            record = minerva_session.load(sid)
+        except minerva_session.MinervaSessionError:
+            record = {}
+        if record.get("refresh_token"):
+            await oidc.revoke_refresh_token(record["refresh_token"])
+        minerva_session.drop(sid)
+
     if refresh_cookie:
         refresh_token.revoke(refresh_cookie)
     _clear_session_cookies(response)
+
     try:
         registrar_actividad(
             db,
@@ -230,8 +471,27 @@ async def logout(
         db.commit()
     except Exception as exc:
         db.rollback()
-        logger.warning('actividad login.logout fallo user_id=%s: %s', current_user.id, exc)
-    return {"message": "Sesión cerrada exitosamente"}
+        logger.warning("actividad login.logout fallo user_id=%s: %s", current_user.id, exc)
+
+    return {
+        "message": "Sesión cerrada exitosamente",
+        "logout_url": _salir_url(_safe_next(return_to), _public_base(request)),
+    }
+
+
+@router.get("/salir")
+async def salir(request: Request, return_to: str = "") -> RedirectResponse:
+    """Cierra el ciclo del logout con un 302 del servidor. No revoca nada: la sesion
+    ya la cerro `POST /cerrar-sesion`, asi que un GET aqui no muta estado.
+
+    NO pasa por el `/logout` del panel de minerva: su `safePath()` descarta cualquier
+    `redirect_uri` de otro origen y deja al usuario varado en su panel, porque no
+    implementa `post_logout_redirect_uris`. La re-autenticacion se consigue igual con
+    `prompt=login`, que es lo que agrega `forzar=1`."""
+    return RedirectResponse(
+        url=_login_forzado_url(_safe_next(return_to), _public_base(request)),
+        status_code=status.HTTP_302_FOUND,
+    )
 
 
 @router.get("/perfil", response_model=CurrentUserResponse)
@@ -275,7 +535,10 @@ async def verify_token(current_user: Usuario = Depends(get_current_user)):
 
 @router.get("/csrf")
 async def refrescar_csrf(current_user: Usuario = Depends(get_current_user)):
-    return {"csrf_token": crear_csrf_token(current_user.username)}
+    return {
+        "csrf_token": crear_csrf_token(current_user.username),
+        "session_expires_in": session_seconds_left(current_user),
+    }
 
 
 @router.post(
@@ -292,7 +555,7 @@ async def refrescar_sesion(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Sesión expirada")
 
     try:
-        new_raw, username = refresh_token.rotate(refresh_cookie)
+        new_raw, username, sid = refresh_token.rotate(refresh_cookie)
     except refresh_token.RefreshError as exc:
         _clear_session_cookies(response)
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=str(exc)) from exc
@@ -306,9 +569,12 @@ async def refrescar_sesion(
             detail="No se pudo validar las credenciales",
         )
 
-    _set_access_cookie(response, username)
+    _set_access_cookie(response, username, sid)
     _set_refresh_cookie(response, new_raw)
-    return {"csrf_token": crear_csrf_token(username)}
+    return {
+        "csrf_token": crear_csrf_token(username),
+        "session_expires_in": settings.access_token_expire_minutes * 60,
+    }
 
 
 _AVATAR_ALLOWED_CONTENT_TYPES = {
@@ -335,7 +601,8 @@ async def subir_avatar(
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
 ):
-    if file.content_type not in _AVATAR_ALLOWED_CONTENT_TYPES:
+    content_type = tipo_archivo.detectar_mime_upload(file)
+    if content_type not in _AVATAR_ALLOWED_CONTENT_TYPES:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Tipo no permitido. Use {', '.join(sorted(_AVATAR_ALLOWED_CONTENT_TYPES))}",
@@ -361,11 +628,11 @@ async def subir_avatar(
             detail="Bucket de assets institucionales no disponible",
         )
 
-    ext = _avatar_extension(file.content_type)
+    ext = _avatar_extension(content_type)
     object_name = f"avatars/u{current_user.id}/{uuid.uuid4().hex}.{ext}"
 
     client = AcervoClient.for_bucket(bucket)
-    public_url = await client.upload_file(file, object_name)
+    public_url = await client.upload_file(file, object_name, content_type=content_type)
 
     if current_user.avatar_url:
         previous_relative = to_relative(current_user.avatar_url)
@@ -378,34 +645,3 @@ async def subir_avatar(
     db.refresh(current_user)
     logger.info('action=user.avatar_upload user_id=%s object=%s', current_user.id, object_name)
     return UsuarioResponse.model_validate(current_user)
-
-
-@router.post("/cambiar-contrasena")
-async def cambiar_contrasena(
-    password_data: PasswordChange,
-    response: Response,
-    db: Session = Depends(get_db),
-    current_user: Usuario = Depends(verify_csrf),
-):
-    if not verify_password(password_data.current_password, current_user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Contraseña actual incorrecta",
-        )
-
-    from app.core.time import utcnow
-
-    current_user.hashed_password = hash_password(password_data.new_password)
-    current_user.must_change_password = False
-    current_user.password_changed_at = utcnow()
-    db.commit()
-    logger.info('action=user.change_password user_id=%s', current_user.id)
-
-    refresh_token.revoke_user(current_user.username)
-    _issue_session_cookies(response, current_user.username)
-    csrf_token = crear_csrf_token(current_user.username)
-
-    return {
-        "message": "Contraseña actualizada exitosamente",
-        "csrf_token": csrf_token,
-    }

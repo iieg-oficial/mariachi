@@ -32,7 +32,7 @@ export default function RouteFormDrawer({
         <Drawer
             title={editing ? `Editar route: ${editing.nombre}` : 'Nueva route'}
             open={open}
-            width={isMobile ? '100%' : 520}
+            size={isMobile ? '100%' : 520}
             onClose={onClose}
             destroyOnClose
             extra={

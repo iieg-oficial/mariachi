@@ -1,13 +1,14 @@
 from fastapi import APIRouter, Depends
 
-from app.api.deps import require_project_access
-from app.api.routes.formularios import catalogos, dinamicos
+from app.api.deps import require_permission
+from app.api.routes.formularios import catalogos, dinamicos, envios
 
 router = APIRouter(
     prefix="/formularios",
     tags=["sieej-formularios"],
-    dependencies=[Depends(require_project_access("sieej"))],
+    dependencies=[Depends(require_permission("mariachi.sieej_formularios.view"))],
 )
 
 router.include_router(catalogos.router)
+router.include_router(envios.router)
 router.include_router(dinamicos.router)

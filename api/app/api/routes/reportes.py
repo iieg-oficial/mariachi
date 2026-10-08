@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, get_db, verify_csrf
+from app.api.deps import get_current_user, get_db, require_permission, verify_csrf
 from app.core.time import utcnow
 from app.models.acervo_bucket import AcervoBucket
 from app.models.direccion_organizacional import DireccionOrganizacional
@@ -146,7 +146,10 @@ _FIELD_TO_ACTION = {
 }
 
 
-@router.patch("/{reporte_id}", response_model=ReporteAdminResponse)
+_PUEDE_ACTUALIZAR = [Depends(require_permission("mariachi.colibri_reportes.update"))]
+
+
+@router.patch("/{reporte_id}", response_model=ReporteAdminResponse, dependencies=_PUEDE_ACTUALIZAR)
 async def actualizar_reporte(
     reporte_id: int,
     payload: ReporteUpdate,
@@ -214,7 +217,7 @@ async def actualizar_reporte(
     return _serialize(reporte, lookup)
 
 
-@router.delete("/{reporte_id}")
+@router.delete("/{reporte_id}", dependencies=_PUEDE_ACTUALIZAR)
 async def eliminar_reporte(
     reporte_id: int,
     db: Session = Depends(get_db),

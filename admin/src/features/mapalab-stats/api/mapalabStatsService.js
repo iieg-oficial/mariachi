@@ -54,11 +54,6 @@ export const refreshStats = async () => {
     return res.data;
 };
 
-export const getHighlights = async () => {
-    const res = await api.get('/mapalab-stats/highlights');
-    return res.data;
-};
-
 export const getMcpOverview = async (period) => {
     const res = await api.get('/mapalab-stats/mcp/overview', { params: periodParams(period) });
     return res.data;

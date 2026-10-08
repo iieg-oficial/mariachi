@@ -48,15 +48,22 @@ const isCsrfError = (error) => {
     return detail.toLowerCase().includes('csrf');
 };
 
+const REFRESH_MARGIN_MS = 120000;
+const REFRESH_MIN_DELAY_MS = 15000;
+
 let csrfRefreshPromise = null;
 let sessionRefreshPromise = null;
 let redirectingToLogin = false;
+let sessionTimer = null;
+let sessionRefreshAt = 0;
+let sessionLifetime = 0;
 
 export const refreshCsrfToken = async () => {
     if (csrfRefreshPromise) return csrfRefreshPromise;
     csrfRefreshPromise = (async () => {
         try {
             const { data } = await axios.get(`${API_URL}/autenticacion/csrf`, { withCredentials: true });
+            scheduleSessionRefresh(data?.session_expires_in);
             const newToken = data?.csrf_token;
             if (newToken) {
                 sessionStorage.setItem('csrf_token', newToken);
@@ -79,6 +86,7 @@ const refreshSession = async () => {
             const { data } = await axios.post(`${API_URL}/autenticacion/refrescar`, null, { withCredentials: true });
             const newCsrf = data?.csrf_token;
             if (newCsrf) sessionStorage.setItem('csrf_token', newCsrf);
+            scheduleSessionRefresh(data?.session_expires_in);
             return true;
         } catch {
             return false;
@@ -87,12 +95,55 @@ const refreshSession = async () => {
     return sessionRefreshPromise;
 };
 
+export const cancelSessionRefresh = () => {
+    if (sessionTimer) clearTimeout(sessionTimer);
+    sessionTimer = null;
+    sessionRefreshAt = 0;
+};
+
+const runScheduledRefresh = async () => {
+    cancelSessionRefresh();
+    const ok = await refreshSession();
+    if (ok && !sessionTimer) scheduleSessionRefresh(sessionLifetime);
+};
+
+export function scheduleSessionRefresh(expiresIn) {
+    const seconds = Number(expiresIn);
+    if (!Number.isFinite(seconds) || seconds <= 0) return;
+    if (seconds > sessionLifetime) sessionLifetime = seconds;
+    cancelSessionRefresh();
+    const delay = Math.max(seconds * 1000 - REFRESH_MARGIN_MS, REFRESH_MIN_DELAY_MS);
+    sessionRefreshAt = Date.now() + delay;
+    sessionTimer = setTimeout(runScheduledRefresh, delay);
+}
+
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    if (!sessionRefreshAt || Date.now() < sessionRefreshAt) return;
+    runScheduledRefresh();
+});
+
 const isAuthEndpoint = (url) =>
-    typeof url === 'string' &&
-    (url.includes('/autenticacion/refrescar') || url.includes('/autenticacion/iniciar-sesion'));
+    typeof url === 'string' && url.includes('/autenticacion/refrescar');
+
+export const buildMinervaLoginUrl = (next, forzar = false) => {
+    const params = new URLSearchParams();
+    if (typeof next === 'string' && next.startsWith('/') && !next.startsWith('//')) {
+        params.set('next', next);
+    }
+    if (forzar) {
+        params.set('forzar', '1');
+    }
+    const query = params.toString();
+    return `${API_URL}/autenticacion/login${query ? `?${query}` : ''}`;
+};
+
+export const SALIENDO_KEY = 'saliendo';
 
 const redirectToLogin = () => {
+    cancelSessionRefresh();
     sessionStorage.removeItem('csrf_token');
+    if (sessionStorage.getItem(SALIENDO_KEY) === '1') return;
     if (!redirectingToLogin && !window.location.pathname.endsWith('/login')) {
         redirectingToLogin = true;
         const base = import.meta.env.BASE_URL || '/';

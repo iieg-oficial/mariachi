@@ -5,22 +5,36 @@ import 'ol/ol.css';
 import Map from 'ol/Map';
 import View from 'ol/View';
 import Feature from 'ol/Feature';
+import LineString from 'ol/geom/LineString';
 import Point from 'ol/geom/Point';
 import TileLayer from 'ol/layer/Tile';
 import VectorLayer from 'ol/layer/Vector';
 import VectorSource from 'ol/source/Vector';
-import ImageLayer from 'ol/layer/Image';
-import ImageWMS from 'ol/source/ImageWMS';
 import XYZ from 'ol/source/XYZ';
 import { fromLonLat, toLonLat } from 'ol/proj';
 import { Style, Icon as OlIcon, Circle as CircleStyle, Stroke, Fill } from 'ol/style';
 import { cartoBasemapUrl, CARTO_ATTRIBUTIONS } from '@shared/helpers/cartoBasemap';
+import { useEditarTrazoOl, useTrazoOl } from '@shared/hooks/useTrazoOl';
+import { useWmsReferencia } from '@shared/hooks/useWmsReferencia';
 
 const { Text } = Typography;
 
 const JALISCO_CENTER_4326 = [-103.35, 20.66];
 
 const round = (n, dec = 6) => (Number.isFinite(n) ? Number(n.toFixed(dec)) : null);
+
+const rutaStyle = [
+    new Style({ stroke: new Stroke({ color: '#FFFFFF', width: 5 }) }),
+    new Style({ stroke: new Stroke({ color: '#FF8300', width: 2, lineDash: [8, 6] }) }),
+];
+
+const verticeStyle = new Style({
+    image: new CircleStyle({
+        radius: 5,
+        fill: new Fill({ color: '#FF8300' }),
+        stroke: new Stroke({ color: '#FFFFFF', width: 2 }),
+    }),
+});
 
 const markerStyle = new Style({
     image: new CircleStyle({
@@ -43,12 +57,18 @@ export default function NoticeAnchorField({
     defaultZoom,
     height = 360,
     layerHint = true,
+    ruta = null,
+    trazando = false,
+    editandoTrazo = false,
+    maxTrazo = 12,
+    alTrazar,
+    alEditarTrazo,
     hint = 'Click sobre el mapa para fijar el punto. El rango de zoom se define en el control de abajo.',
 }) {
     const containerRef = useRef(null);
     const mapRef = useRef(null);
     const markerSourceRef = useRef(null);
-    const wmsLayerRef = useRef(null);
+    const rutaSourceRef = useRef(null);
     const onChangeRef = useRef(onChange);
     const defaultZoomRef = useRef(defaultZoom);
     const [currentZoom, setCurrentZoom] = useState(null);
@@ -61,6 +81,9 @@ export default function NoticeAnchorField({
 
         const markerSource = new VectorSource();
         markerSourceRef.current = markerSource;
+
+        const rutaSource = new VectorSource();
+        rutaSourceRef.current = rutaSource;
 
         const baseTile = new TileLayer({
             source: new XYZ({
@@ -76,6 +99,8 @@ export default function NoticeAnchorField({
             zIndex: 100,
         });
 
+        const rutaLayer = new VectorLayer({ source: rutaSource, zIndex: 90 });
+
         const dz = defaultZoomRef.current;
         const initialCenter = (dz && Number.isFinite(dz.lon) && Number.isFinite(dz.lat))
             ? [dz.lon, dz.lat]
@@ -83,7 +108,7 @@ export default function NoticeAnchorField({
         const initialZoom = (dz && Number.isFinite(dz.zoom)) ? dz.zoom : 7;
         const map = new Map({
             target: containerRef.current,
-            layers: [baseTile, markerLayer],
+            layers: [baseTile, rutaLayer, markerLayer],
             view: new View({
                 center: fromLonLat(initialCenter),
                 zoom: initialZoom,
@@ -96,55 +121,18 @@ export default function NoticeAnchorField({
             map.setTarget(null);
             mapRef.current = null;
             markerSourceRef.current = null;
-            wmsLayerRef.current = null;
+            rutaSourceRef.current = null;
         };
     }, []);
 
-    useEffect(() => {
-        const map = mapRef.current;
-        if (!map) return undefined;
-        if (wmsLayerRef.current) {
-            map.removeLayer(wmsLayerRef.current);
-            wmsLayerRef.current = null;
-        }
-        if (!geoserverUrl || !geoserverWorkspace || !geoserverLayer) return undefined;
-        const wmsLayer = new ImageLayer({
-            source: new ImageWMS({
-                url: `${geoserverUrl.replace(/\/$/, '')}/${geoserverWorkspace}/wms`,
-                params: {
-                    LAYERS: `${geoserverWorkspace}:${geoserverLayer}`,
-                    STYLES: '',
-                    FORMAT: 'image/png',
-                    TRANSPARENT: true,
-                    VERSION: '1.1.0',
-                },
-                ratio: 1,
-                serverType: 'geoserver',
-            }),
-            opacity: 0.7,
-            zIndex: 10,
-        });
-        map.addLayer(wmsLayer);
-        wmsLayerRef.current = wmsLayer;
-        return () => {
-            map.removeLayer(wmsLayer);
-            wmsLayerRef.current = null;
-        };
-    }, [geoserverUrl, geoserverWorkspace, geoserverLayer]);
-
-    useEffect(() => {
-        const wmsLayer = wmsLayerRef.current;
-        if (!wmsLayer) return undefined;
-        const handle = setTimeout(() => {
-            const source = wmsLayer.getSource();
-            if (!source) return;
-            const params = { STYLES: styles || '' };
-            if (cqlFilter) params.CQL_FILTER = cqlFilter;
-            else params.CQL_FILTER = undefined;
-            source.updateParams(params);
-        }, 250);
-        return () => clearTimeout(handle);
-    }, [styles, cqlFilter]);
+    useWmsReferencia(mapRef, { geoserverUrl, geoserverWorkspace, geoserverLayer, styles, cqlFilter });
+    useTrazoOl(mapRef, { activo: trazando && !disabled, maximo: maxTrazo, alTrazar });
+    useEditarTrazoOl(mapRef, {
+        activo: editandoTrazo && !disabled && !trazando,
+        sourceRef: rutaSourceRef,
+        maximo: maxTrazo,
+        alEditar: alEditarTrazo,
+    });
 
     useEffect(() => {
         const source = markerSourceRef.current;
@@ -157,16 +145,37 @@ export default function NoticeAnchorField({
     }, [value]);
 
     useEffect(() => {
+        const source = rutaSourceRef.current;
+        if (!source) return;
+        source.clear();
+        const puntos = (Array.isArray(ruta) ? ruta : []).filter((p) => Number.isFinite(p?.lon) && Number.isFinite(p?.lat));
+        if (puntos.length === 0) return;
+        const conFinal = value && Number.isFinite(value.lon) ? [...puntos, value] : puntos;
+        const coords = conFinal.map((p) => fromLonLat([p.lon, p.lat]));
+        if (coords.length > 1) {
+            const linea = new Feature({ geometry: new LineString(coords) });
+            linea.setStyle(rutaStyle);
+            source.addFeature(linea);
+        }
+        if (editandoTrazo) return;
+        puntos.forEach((p) => {
+            const f = new Feature({ geometry: new Point(fromLonLat([p.lon, p.lat])) });
+            f.setStyle(verticeStyle);
+            source.addFeature(f);
+        });
+    }, [ruta, value, editandoTrazo]);
+
+    useEffect(() => {
         const map = mapRef.current;
         if (!map) return undefined;
         const handler = (evt) => {
-            if (disabled) return;
+            if (disabled || trazando) return;
             const [lon, lat] = toLonLat(evt.coordinate);
             onChangeRef.current?.({ lon: round(lon), lat: round(lat) });
         };
         map.on('click', handler);
         return () => map.un('click', handler);
-    }, [disabled]);
+    }, [disabled, trazando]);
 
     useEffect(() => {
         const map = mapRef.current;
@@ -200,12 +209,12 @@ export default function NoticeAnchorField({
     const clear = () => onChangeRef.current?.(null);
 
     return (
-        <Space direction="vertical" style={{ width: '100%' }} size={6}>
+        <Space orientation="vertical" style={{ width: '100%' }} size={6}>
             {layerHint && !geoserverLayer && (
                 <Alert
                     type="warning"
                     showIcon
-                    message="Sin capa configurada"
+                    title="Sin capa configurada"
                     description="Configura workspace y capa GeoServer en el tab Servicios para ver la capa como referencia."
                 />
             )}

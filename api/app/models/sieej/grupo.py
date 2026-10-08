@@ -1,6 +1,7 @@
 from sqlalchemy import (
     Column,
     DateTime,
+    Enum,
     ForeignKey,
     Integer,
     String,
@@ -30,6 +31,17 @@ usuario_grupo = Table(
         Integer,
         ForeignKey(f"{SCHEMA}.grupo.id", ondelete="CASCADE"),
         primary_key=True,
+    ),
+    Column(
+        "rol",
+        Enum(
+            "coordinador",
+            "capturista",
+            name="sieej_grupo_rol",
+            schema=SCHEMA,
+        ),
+        nullable=False,
+        server_default="capturista",
     ),
     schema=SCHEMA,
 )

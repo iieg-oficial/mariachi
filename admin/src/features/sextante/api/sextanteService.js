@@ -7,6 +7,16 @@ export const listPendingWorkspaces = async () => {
     return res.data;
 };
 
+export const listDbSchemas = async () => {
+    const res = await api.get(`${BASE}/db-schemas`);
+    return res.data;
+};
+
+export const listRegisteredWorkspaces = async () => {
+    const res = await api.get(`${BASE}/workspaces`);
+    return res.data;
+};
+
 export const registerWorkspace = async (payload) => {
     const res = await api.post(`${BASE}/workspaces/register`, payload);
     return res.data;

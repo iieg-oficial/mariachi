@@ -4,7 +4,7 @@ from urllib.parse import quote
 from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, verify_csrf
+from app.api.deps import get_current_user, require_permission, verify_csrf
 from app.core.database import get_db
 from app.models.sieej.envio import EnvioFormulario
 from app.models.sieej.formulario import FormularioVersion
@@ -12,6 +12,7 @@ from app.models.sieej.periodo import FormularioPeriodo
 from app.models.user import Usuario
 from app.schemas.sieej.envio import (
     EnvioDetalleResponse,
+    EnvioEventoAdminResponse,
     EnvioHistorialAdminItem,
     EnvioResponse,
 )
@@ -32,6 +33,14 @@ from app.services.sieej.xlsx_service import build_envios_csv, build_envios_xlsx
 
 router = APIRouter()
 
+_ver_formularios = [Depends(require_permission("mariachi.sieej_formularios.view"))]
+_crear_formularios = [Depends(require_permission("mariachi.sieej_formularios.create"))]
+_editar_formularios = [Depends(require_permission("mariachi.sieej_formularios.update"))]
+_borrar_formularios = [Depends(require_permission("mariachi.sieej_formularios.delete"))]
+_ver_envios = [Depends(require_permission("mariachi.sieej_envios.view"))]
+_editar_envios = [Depends(require_permission("mariachi.sieej_envios.update"))]
+_exportar_envios = [Depends(require_permission("mariachi.sieej_envios.export"))]
+
 PRESENCE_SCOPE = "sieej_formulario"
 
 
@@ -44,7 +53,7 @@ def _content_disposition(filename: str) -> str:
     return f"attachment; filename=\"{filename}\"; filename*=UTF-8''{quote(filename)}"
 
 
-@router.get("/formularios", response_model=list[FormularioResponse])
+@router.get("/formularios", response_model=list[FormularioResponse], dependencies=_ver_formularios)
 async def listar_formularios(
     estado: str | None = Query(default=None, pattern=r"^(borrador|activo|cerrado)$"),
     slug: str | None = None,
@@ -57,6 +66,7 @@ async def listar_formularios(
     "/formularios",
     response_model=FormularioResponse,
     status_code=status.HTTP_201_CREATED,
+    dependencies=_crear_formularios,
 )
 async def crear_formulario(
     data: FormularioCreate,
@@ -69,6 +79,7 @@ async def crear_formulario(
 @router.get(
     "/formularios/presencia",
     response_model=dict[str, list[PresenciaEditor]],
+    dependencies=_ver_formularios,
 )
 async def presencia_de_todos_los_formularios(
     current_user: Usuario = Depends(get_current_user),
@@ -77,7 +88,7 @@ async def presencia_de_todos_los_formularios(
     return presence.list_by_resource(PRESENCE_SCOPE, current_user.username)
 
 
-@router.put("/formularios/{formulario_id}/presencia")
+@router.put("/formularios/{formulario_id}/presencia", dependencies=_ver_formularios)
 async def registrar_presencia_formulario(
     formulario_id: int,
     data: PresenciaIn,
@@ -94,7 +105,7 @@ async def registrar_presencia_formulario(
     return {"ok": True}
 
 
-@router.delete("/formularios/{formulario_id}/presencia")
+@router.delete("/formularios/{formulario_id}/presencia", dependencies=_ver_formularios)
 async def salir_de_formulario(
     formulario_id: int,
     current_user: Usuario = Depends(verify_csrf),
@@ -106,6 +117,7 @@ async def salir_de_formulario(
 @router.get(
     "/formularios/{formulario_id}/presencia",
     response_model=list[PresenciaEditor],
+    dependencies=_ver_formularios,
 )
 async def obtener_presencia_formulario(
     formulario_id: int,
@@ -114,7 +126,7 @@ async def obtener_presencia_formulario(
     return presence.list_others(PRESENCE_SCOPE, formulario_id, current_user.username)
 
 
-@router.get("/formularios/{formulario_id_or_slug}", response_model=FormularioResponse)
+@router.get("/formularios/{formulario_id_or_slug}", response_model=FormularioResponse, dependencies=_ver_formularios)
 async def obtener_formulario(
     formulario_id_or_slug: str,
     db: Session = Depends(get_db),
@@ -122,7 +134,7 @@ async def obtener_formulario(
     return FormulariosAdminService(db).get_by_id_or_slug(formulario_id_or_slug)
 
 
-@router.put("/formularios/{formulario_id}", response_model=FormularioUpdateResponse)
+@router.put("/formularios/{formulario_id}", response_model=FormularioUpdateResponse, dependencies=_editar_formularios)
 async def actualizar_formulario(
     formulario_id: int,
     data: FormularioUpdate,
@@ -141,7 +153,7 @@ async def actualizar_formulario(
     )
 
 
-@router.post("/formularios/{formulario_id}/publicar", response_model=FormularioResponse)
+@router.post("/formularios/{formulario_id}/publicar", response_model=FormularioResponse, dependencies=_editar_formularios)
 async def publicar_formulario(
     formulario_id: int,
     db: Session = Depends(get_db),
@@ -150,7 +162,7 @@ async def publicar_formulario(
     return FormulariosAdminService(db).publicar(formulario_id, actor=actor)
 
 
-@router.post("/formularios/{formulario_id}/cerrar", response_model=FormularioResponse)
+@router.post("/formularios/{formulario_id}/cerrar", response_model=FormularioResponse, dependencies=_editar_formularios)
 async def cerrar_formulario(
     formulario_id: int,
     db: Session = Depends(get_db),
@@ -159,7 +171,7 @@ async def cerrar_formulario(
     return FormulariosAdminService(db).cerrar(formulario_id, actor=actor)
 
 
-@router.post("/formularios/{formulario_id}/reabrir", response_model=FormularioResponse)
+@router.post("/formularios/{formulario_id}/reabrir", response_model=FormularioResponse, dependencies=_editar_formularios)
 async def reabrir_formulario(
     formulario_id: int,
     db: Session = Depends(get_db),
@@ -169,7 +181,7 @@ async def reabrir_formulario(
     return FormulariosAdminService(db).reabrir(formulario_id, actor=actor)
 
 
-@router.delete("/formularios/{formulario_id}")
+@router.delete("/formularios/{formulario_id}", dependencies=_borrar_formularios)
 async def eliminar_formulario(
     formulario_id: int,
     confirmacion: str | None = Query(
@@ -199,6 +211,7 @@ async def eliminar_formulario(
 @router.put(
     "/formularios/{formulario_id}/asignaciones",
     response_model=FormularioResponse,
+    dependencies=_editar_formularios,
 )
 async def actualizar_asignaciones(
     formulario_id: int,
@@ -211,7 +224,7 @@ async def actualizar_asignaciones(
     )
 
 
-@router.get("/formularios/{formulario_id}/envios")
+@router.get("/formularios/{formulario_id}/envios", dependencies=_ver_envios)
 async def listar_envios(
     formulario_id: int,
     estado: str | None = Query(default=None, pattern=r"^(en_proceso|enviado|expirado)$"),
@@ -257,6 +270,7 @@ async def listar_envios(
 @router.get(
     "/formularios/{formulario_id}/envios/{envio_id}",
     response_model=EnvioDetalleResponse,
+    dependencies=_ver_envios,
 )
 async def obtener_envio(
     formulario_id: int,
@@ -277,7 +291,7 @@ async def obtener_envio(
     )
 
 
-@router.get("/formularios/{formulario_id}/envios/{envio_id}/pdf")
+@router.get("/formularios/{formulario_id}/envios/{envio_id}/pdf", dependencies=_ver_envios)
 async def descargar_envio_pdf(
     formulario_id: int,
     envio_id: int,
@@ -309,6 +323,7 @@ async def descargar_envio_pdf(
 @router.get(
     "/formularios/{formulario_id}/envios/{envio_id}/historial",
     response_model=list[EnvioHistorialAdminItem],
+    dependencies=_ver_envios,
 )
 async def obtener_envio_historial(
     formulario_id: int,
@@ -342,7 +357,21 @@ async def obtener_envio_historial(
     ]
 
 
-@router.get("/formularios/{formulario_id}/exportar-envios")
+@router.get(
+    "/formularios/{formulario_id}/envios/{envio_id}/eventos",
+    response_model=list[EnvioEventoAdminResponse],
+    dependencies=_ver_envios,
+)
+async def obtener_envio_eventos(
+    formulario_id: int,
+    envio_id: int,
+    db: Session = Depends(get_db),
+):
+    """Linea de tiempo del envio con el actor de cada evento resuelto."""
+    return FormulariosAdminService(db).listar_eventos_envio(formulario_id, envio_id)
+
+
+@router.get("/formularios/{formulario_id}/exportar-envios", dependencies=_exportar_envios)
 async def exportar_envios(
     formulario_id: int,
     formato: Literal["xlsx", "csv"] = Query("xlsx"),
@@ -365,6 +394,9 @@ async def exportar_envios(
         if usuario_ids
         else {}
     )
+    historial_filas, capturistas = FormulariosAdminService(db).historial_export(
+        formulario_id, envios, usuarios
+    )
     filas = []
     for e in envios:
         u = usuarios.get(e.usuario_id)
@@ -373,6 +405,7 @@ async def exportar_envios(
                 "id": e.id,
                 "usuario_nombre": u.name if u else None,
                 "usuario_email": u.email if u else None,
+                "capturado_por": capturistas.get(e.id, ""),
                 "estado": e.estado,
                 "formulario_version": e.formulario_version,
                 "enviado_en": e.enviado_en.strftime("%Y-%m-%d %H:%M") if e.enviado_en else "",
@@ -387,33 +420,6 @@ async def exportar_envios(
         .order_by(FormularioVersion.version)
         .all()
     ]
-    envio_ids = {e.id for e in envios}
-    hist = FormulariosAdminService(db).historial_de_formulario(formulario_id)
-    hist_actor_ids = {h.actor_usuario_id for h in hist if h.actor_usuario_id}
-    hist_actores = (
-        {u.id: u for u in db.query(Usuario).filter(Usuario.id.in_(hist_actor_ids)).all()}
-        if hist_actor_ids
-        else {}
-    )
-    envio_usuario = {e.id: usuarios.get(e.usuario_id) for e in envios}
-    historial_filas = []
-    for h in hist:
-        if h.envio_id not in envio_ids:
-            continue
-        u_envio = envio_usuario.get(h.envio_id)
-        actor = hist_actores.get(h.actor_usuario_id)
-        historial_filas.append(
-            {
-                "envio_id": h.envio_id,
-                "usuario": u_envio.name if u_envio else "",
-                "version": h.formulario_version,
-                "campo": h.field_label or h.field_path,
-                "valor_anterior": h.valor_anterior,
-                "valor_nuevo": h.valor_nuevo,
-                "actor": actor.name if actor else "",
-                "fecha": h.cambiado_en.strftime("%Y-%m-%d %H:%M") if h.cambiado_en else "",
-            }
-        )
     nombre = _slug_filename(formulario.nombre)
     if formato == "csv":
         contenido, es_zip = build_envios_csv(
@@ -445,6 +451,7 @@ async def exportar_envios(
 @router.post(
     "/formularios/{formulario_id}/envios/{envio_id}/reabrir",
     response_model=EnvioResponse,
+    dependencies=_editar_envios,
 )
 async def reabrir_envio(
     formulario_id: int,
@@ -455,7 +462,7 @@ async def reabrir_envio(
     return FormulariosAdminService(db).reabrir_envio(formulario_id, envio_id, actor)
 
 
-@router.delete("/formularios/{formulario_id}/envios/{envio_id}")
+@router.delete("/formularios/{formulario_id}/envios/{envio_id}", dependencies=_borrar_formularios)
 async def eliminar_envio(
     formulario_id: int,
     envio_id: int,
@@ -474,7 +481,7 @@ async def eliminar_envio(
     return {"message": "Envio eliminado", "archivos_borrados": archivos}
 
 
-@router.post("/sieej/expirar-envios-pendientes")
+@router.post("/sieej/expirar-envios-pendientes", dependencies=_editar_envios)
 async def expirar_envios_pendientes(
     db: Session = Depends(get_db),
     _csrf: Usuario = Depends(verify_csrf),
@@ -490,7 +497,7 @@ async def expirar_envios_pendientes(
     return {"expirados": afectados}
 
 
-@router.get("/formularios/{formulario_id}/periodos")
+@router.get("/formularios/{formulario_id}/periodos", dependencies=_ver_formularios)
 async def listar_periodos(
     formulario_id: int,
     db: Session = Depends(get_db),
@@ -518,7 +525,7 @@ async def listar_periodos(
     ]
 
 
-@router.get("/formularios/{formulario_id}/notificaciones")
+@router.get("/formularios/{formulario_id}/notificaciones", dependencies=_ver_envios)
 async def listar_notificaciones(
     formulario_id: int,
     db: Session = Depends(get_db),
@@ -542,7 +549,7 @@ async def listar_notificaciones(
     ]
 
 
-@router.get("/formularios/{formulario_id}/notificaciones/exportar")
+@router.get("/formularios/{formulario_id}/notificaciones/exportar", dependencies=_exportar_envios)
 async def exportar_notificaciones(
     formulario_id: int,
     formato: Literal["xlsx", "csv"] = Query("xlsx"),
@@ -564,7 +571,7 @@ async def exportar_notificaciones(
     )
 
 
-@router.post("/sieej/periodos/tick")
+@router.post("/sieej/periodos/tick", dependencies=_editar_formularios)
 async def periodos_tick(
     db: Session = Depends(get_db),
     _csrf: Usuario = Depends(verify_csrf),

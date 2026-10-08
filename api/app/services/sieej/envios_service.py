@@ -17,6 +17,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 
+from app.core.settings import get_settings
 from app.core.time import to_naive_utc, utcnow
 from app.models.acervo_bucket import AcervoBucket
 from app.models.project import Project
@@ -29,7 +30,9 @@ from app.models.sieej import (
     FormularioPeriodo,
 )
 from app.models.user import Usuario
+from app.services import tipo_archivo
 from app.services.acervo import AcervoClient
+from app.services.sieej import campos_service, field_paths
 from app.services.sieej.acervo_keys import (
     construir_object_key,
     construir_respaldo_key,
@@ -39,6 +42,11 @@ from app.services.sieej.cambio_classifier import diff_definiciones
 from app.services.sieej.compat import BUCKET_POR_DEFECTO, normalizar_definicion
 from app.services.sieej.datos_validator import DatosInvalidosError, validar_datos
 from app.services.sieej.definicion_validator import CLAVE_AGREGADO, CLAVE_ETIQUETA
+from app.services.sieej.pertenencia import (
+    es_coordinador,
+    es_miembro,
+    resolver_grupo,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +55,6 @@ _FORMULARIO_NO_ACEPTA_DETAIL = (
 )
 
 ETIQUETA_MAX = 60
-_ETIQUETA_LABEL = "Nombre de la pestaña"
 
 DATOS_MAX_BYTES = 5 * 1024 * 1024
 """Cap de tamano del payload `datos` (JSONB) por envio.
@@ -78,6 +85,8 @@ class EnviosService:
     @staticmethod
     def _formulario_acepta_cambios(formulario: Formulario) -> bool:
         """True si el formulario admite escritura por el respondent."""
+        if get_settings().sieej_edicion_deshabilitada:
+            return False
         if formulario.estado != "activo":
             return False
         ahora = utcnow()
@@ -183,22 +192,41 @@ class EnviosService:
             self.db.commit()
         return len(pendientes)
 
+    def puede_editar_envio(self, user: Usuario, envio: EnvioFormulario) -> bool:
+        """Autorizacion de escritura sobre un envio.
+
+        En los colaborativos manda la membresia del grupo, no `usuario_id`:
+        quien sale del grupo pierde el acceso aunque haya iniciado el envio, y
+        su autoria sigue en el historial.
+        """
+        if envio.grupo_id is not None:
+            return es_miembro(self.db, user.id, envio.grupo_id)
+        return envio.usuario_id == user.id
+
     def _buscar_envio(
         self,
         formulario: Formulario,
         user: Usuario,
         periodo: FormularioPeriodo | None,
+        grupo_id: int | None = None,
     ) -> EnvioFormulario | None:
-        """Busca el envio del usuario para el periodo indicado.
+        """Busca el envio del dueno para el periodo indicado.
 
+        El dueno es el grupo cuando `grupo_id` viene, y el usuario cuando no.
         En formularios periodicos el envio se identifica por
-        `(formulario, usuario, periodo)`; si no hay ventana abierta (`periodo`
+        `(formulario, dueno, periodo)`; si no hay ventana abierta (`periodo`
         None) no existe un envio del periodo actual. En no periodicos es el
-        unico envio por `(formulario, usuario)`."""
+        unico envio por `(formulario, dueno)`."""
         query = self.db.query(EnvioFormulario).filter(
             EnvioFormulario.formulario_id == formulario.id,
-            EnvioFormulario.usuario_id == user.id,
         )
+        if grupo_id is not None:
+            query = query.filter(EnvioFormulario.grupo_id == grupo_id)
+        else:
+            query = query.filter(
+                EnvioFormulario.usuario_id == user.id,
+                EnvioFormulario.grupo_id.is_(None),
+            )
         if formulario.periodicidad:
             if periodo is None:
                 return None
@@ -211,7 +239,9 @@ class EnviosService:
         user: Usuario,
         *,
         crear_si_falta: bool = True,
+        grupo_id: int | None = None,
     ) -> EnvioFormulario | None:
+        grupo = resolver_grupo(self.db, formulario, user, grupo_id)
         periodo: FormularioPeriodo | None = None
         if formulario.periodicidad:
             from app.services.sieej.periodos_service import PeriodosService
@@ -220,7 +250,7 @@ class EnviosService:
                 formulario
             )
 
-        envio = self._buscar_envio(formulario, user, periodo)
+        envio = self._buscar_envio(formulario, user, periodo, grupo)
         if envio is not None:
             return envio
         if not crear_si_falta:
@@ -237,6 +267,7 @@ class EnviosService:
                 formulario_version=formulario.version,
                 definicion_snapshot=normalizar_definicion(formulario.definicion),
                 usuario_id=user.id,
+                grupo_id=grupo,
                 periodo_id=periodo.id if periodo is not None else None,
                 estado="en_proceso",
                 datos={},
@@ -249,12 +280,13 @@ class EnviosService:
             self.db.refresh(envio)
             return envio
         except IntegrityError:
-            # Race: dos requests del mismo usuario llegaron concurrentes y otro
+            # Race: dos requests del mismo dueno llegaron concurrentes y otro
             # gano la insercion. El indice unico parcial
-            # (formulario, usuario, periodo) bloqueo este. Devolvemos el ya
-            # creado para el mismo periodo.
+            # (formulario, dueno, periodo) bloqueo este. Devolvemos el ya
+            # creado para el mismo periodo. En un colaborativo el otro request
+            # puede venir de otro miembro del grupo.
             self.db.rollback()
-            existing = self._buscar_envio(formulario, user, periodo)
+            existing = self._buscar_envio(formulario, user, periodo, grupo)
             if existing is None:
                 raise
             return existing
@@ -275,6 +307,7 @@ class EnviosService:
                 detail=_FORMULARIO_NO_ACEPTA_DETAIL,
             )
         envio = self.get_o_iniciar(formulario, user)
+        self._verificar_escritura_completa(user, envio, enviar=enviar)
         if envio.estado == "expirado":
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -306,8 +339,17 @@ class EnviosService:
                 detail={"errores": exc.errores},
             ) from exc
 
+        defs = campos_service.field_defs(
+            envio.definicion_snapshot or {}, solo_editables=False
+        )
+        cambios = campos_service.diff_datos(defs, envio.datos or {}, datos)
         envio.datos = datos
         envio.paso_actual = paso_actual
+        if cambios:
+            envio.datos_version += 1
+            campos_service.registrar_historial(
+                self.db, envio, cambios, defs, actor=user, origen="captura"
+            )
         if enviar:
             envio.estado = "enviado"
             envio.enviado_en = utcnow()
@@ -322,6 +364,32 @@ class EnviosService:
         if enviar:
             self.respaldar_envio(envio)
         return envio
+
+    def _verificar_escritura_completa(
+        self, user: Usuario, envio: EnvioFormulario, *, enviar: bool
+    ) -> None:
+        """Cierra el reemplazo total de `datos` en un envio de grupo.
+
+        El PUT manda `datos` completo, asi que un cliente con la copia vieja
+        borraria de un golpe lo que el resto del equipo capturo. La captura va
+        por el PATCH de campos; el PUT sobrevive solo como el acto de enviar, y
+        ese lo hace el coordinador.
+        """
+        if envio.grupo_id is None:
+            return
+        if not enviar:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "En un formulario colaborativo la captura va por "
+                    "`PATCH /envio/campos`, no por este endpoint"
+                ),
+            )
+        if not es_coordinador(self.db, user.id, envio.grupo_id):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Solo el coordinador del grupo puede enviar",
+            )
 
     def actualizar_campos(
         self,
@@ -358,7 +426,7 @@ class EnviosService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Envio no encontrado",
             )
-        if envio.usuario_id != user.id:
+        if not self.puede_editar_envio(user, envio):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Este envio no te pertenece",
@@ -386,42 +454,18 @@ class EnviosService:
         snapshot = envio.definicion_snapshot or {}
         defs = self.editable_field_defs(snapshot, formulario.definicion)
         todos = self.editable_field_defs(snapshot, solo_editables=False)
-        nuevos = copy.deepcopy(envio.datos or {})
-        errores = self._preparar_altas(snapshot, nuevos, campos)
-        metas: dict[str, dict[str, Any]] = {}
-        for field_path in campos:
-            if any(e["field_path"] == field_path for e in errores):
-                continue
-            meta, error = self._resolver_actualizable(defs, todos, nuevos, field_path)
-            if meta is not None and meta["type"] == "file":
-                error = (
-                    "los archivos se reemplazan con "
-                    "`actualizar-archivo`, no con este endpoint"
-                )
-            elif meta is not None and meta["type"] == "etiqueta" and not isinstance(
-                campos[field_path], (str, type(None))
-            ):
-                error = "el nombre de la pestaña debe ser texto"
-            if error:
-                errores.append({"field_path": field_path, "error": error})
-                continue
-            metas[field_path] = meta
+        base = copy.deepcopy(envio.datos or {})
+        errores = self._preparar_altas(snapshot, base, campos)
+        self._validar_actualizables(defs, todos, base, campos, errores)
         if errores:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail={"errores": errores},
             )
 
-        cambios: list[tuple[str, Any, Any]] = []
-        for field_path, valor_nuevo in campos.items():
-            if metas[field_path]["type"] == "etiqueta":
-                valor_nuevo = (valor_nuevo or "").strip()[:ETIQUETA_MAX] or None
-            valor_anterior = self._get_valor_en_datos(nuevos, field_path)
-            if valor_anterior == valor_nuevo:
-                continue
-            self._set_valor_en_datos(nuevos, field_path, valor_nuevo)
-            cambios.append((field_path, valor_anterior, valor_nuevo))
-
+        nuevos, cambios = campos_service.aplicar_cambios(
+            base, self._normalizar_etiquetas(campos)
+        )
         if not cambios:
             return envio
 
@@ -442,21 +486,12 @@ class EnviosService:
                 detail={"errores": exc.errores},
             ) from exc
 
-        for field_path, valor_anterior, valor_nuevo in cambios:
-            self.db.add(
-                EnvioValorHistorial(
-                    envio_id=envio.id,
-                    field_path=field_path,
-                    field_label=metas[field_path]["label"],
-                    valor_anterior=valor_anterior,
-                    valor_nuevo=valor_nuevo,
-                    formulario_version=envio.formulario_version,
-                    actor_usuario_id=user.id,
-                )
-            )
-
         envio.datos = nuevos
         flag_modified(envio, "datos")
+        envio.datos_version += 1
+        campos_service.registrar_historial(
+            self.db, envio, cambios, todos, actor=user, origen="correccion"
+        )
         envio.actualizado_en = utcnow()
         self._registrar_evento(
             envio,
@@ -605,36 +640,11 @@ class EnviosService:
 
     @staticmethod
     def _parse_field_path(field_path: str) -> tuple[str, int | None, str] | None:
-        """Devuelve (step_id, idx_o_None, field_name) o None si invalido.
-
-        - `general.razon_social` -> ('general', None, 'razon_social')
-        - `bases_datos[0].diccionario` -> ('bases_datos', 0, 'diccionario')
-        """
-        partes = field_path.split(".")
-        if len(partes) != 2:
-            return None
-        step_part, field_name = partes
-        if "[" in step_part:
-            try:
-                step_id, rest = step_part.split("[", 1)
-                idx_str = rest.rstrip("]")
-                idx = int(idx_str)
-            except ValueError:
-                return None
-            return step_id, idx, field_name
-        return step_part, None, field_name
+        return field_paths.parse_field_path(field_path)
 
     @staticmethod
     def _marcas_editables(definicion: dict[str, Any] | None) -> dict[str, bool]:
-        """Mapa path base -> `editableAfterSubmit` de una definicion."""
-        marcas: dict[str, bool] = {}
-        for step in (definicion or {}).get("steps", []) or []:
-            step_id = step.get("id")
-            for field in step.get("fields", []) or []:
-                marcas[f"{step_id}.{field.get('name')}"] = bool(
-                    field.get("editableAfterSubmit")
-                )
-        return marcas
+        return campos_service.marcas_editables(definicion)
 
     @staticmethod
     def editable_field_defs(
@@ -643,52 +653,20 @@ class EnviosService:
         *,
         solo_editables: bool = True,
     ) -> dict[str, dict[str, Any]]:
-        """Mapa `step_id.field_name` -> `{label, type, repeater, field}` de los
-        campos marcados `editableAfterSubmit`.
+        """Campos marcados `editableAfterSubmit` del snapshot del envio.
 
-        La clave es el path **base** (sin indice). En un repeater el path real
-        lleva el indice del item (`bases_datos[0].diccionario`) y se resuelve
-        con `resolver_editable`. Solo se excluye `info`, que no captura valor.
-
-        Los campos `file` entran aqui (para que el frontend los ofrezca y el
-        listado sepa que el envio tiene algo actualizable) pero no se editan
-        por `actualizar_campos`: su valor lo escribe `actualizar_archivo`.
-
-        `definicion` es el snapshot del envio: de ahi salen tipo, opciones y
-        bucket, porque contra el se valida lo que el respondent lleno. Si se
-        pasa `vigente`, la **marca** de editable la manda esa (la del
-        formulario hoy): `editableAfterSubmit` no es parte del contrato de
-        datos sino una politica del admin, y activarla debe alcanzar a los
-        envios ya enviados — que es justo lo que se quiere corregir. Un campo
-        que no exista en el snapshot no es editable aunque la vigente lo marque.
+        `vigente` manda la marca: `editableAfterSubmit` es politica del admin,
+        no contrato de datos, y activarla debe alcanzar a los envios ya
+        enviados. Un campo que no exista en el snapshot no es editable aunque
+        la vigente lo marque. Los `file` entran para que el frontend los ofrezca
+        pero no se editan aqui: su valor lo escribe `actualizar_archivo`.
 
         Con `solo_editables=False` devuelve todo lo capturable: es contra lo que
         se resuelve un elemento dado de alta despues de enviar.
         """
-        marcas_vigentes = EnviosService._marcas_editables(vigente) if vigente else {}
-        editables: dict[str, dict[str, Any]] = {}
-        for step in (definicion or {}).get("steps", []) or []:
-            step_type = step.get("type")
-            if step_type == "summary":
-                continue
-            step_id = step.get("id")
-            for field in step.get("fields", []) or []:
-                if field.get("type") == "info":
-                    continue
-                name = field.get("name")
-                path = f"{step_id}.{name}"
-                editable = marcas_vigentes.get(
-                    path, bool(field.get("editableAfterSubmit"))
-                )
-                if solo_editables and not editable:
-                    continue
-                editables[path] = {
-                    "label": field.get("label") or name,
-                    "type": field.get("type"),
-                    "repeater": step_type == "repeater",
-                    "field": field,
-                }
-        return editables
+        return campos_service.field_defs(
+            definicion, vigente, solo_editables=solo_editables
+        )
 
     @staticmethod
     def editable_field_paths(
@@ -713,7 +691,7 @@ class EnviosService:
         autoriza."""
         if not vigente:
             return snapshot
-        marcas = EnviosService._marcas_editables(vigente)
+        marcas = campos_service.marcas_editables(vigente)
         out = copy.deepcopy(snapshot or {})
         for step in out.get("steps", []) or []:
             step_id = step.get("id")
@@ -755,7 +733,7 @@ class EnviosService:
                 return None, "campo no editable"
             if scope is None:
                 return None, "el elemento no existe"
-            return {"label": _ETIQUETA_LABEL, "type": "etiqueta", "repeater": True, "field": {}}, None
+            return {"label": campos_service.ETIQUETA_LABEL, "type": "etiqueta", "repeater": True, "field": {}}, None
         meta = self.resolver_editable(defs, field_path)
         if meta is None and scope is not None and scope.get(CLAVE_AGREGADO):
             if self._es_vacio(scope.get(field_name)):
@@ -771,13 +749,17 @@ class EnviosService:
         definicion: dict[str, Any],
         datos: dict[str, Any],
         campos: dict[str, Any],
+        *,
+        marcar_agregado: bool = True,
     ) -> list[dict[str, str]]:
         """Agrega a `datos` los elementos nuevos que pide el payload.
 
         Un elemento nuevo es un indice igual o mayor al largo actual del
         repeater. Los indices nuevos tienen que ser consecutivos desde ese
-        largo —no se pueden dejar huecos— y no pasar de `maxItems`. Cada alta
-        nace marcada con `CLAVE_AGREGADO`. Devuelve los errores por path.
+        largo —no se pueden dejar huecos— y no pasar de `maxItems`. Con
+        `marcar_agregado` cada alta nace con `CLAVE_AGREGADO`, que es lo que
+        distingue lo agregado despues de enviar; la captura en proceso no marca.
+        Devuelve los errores por path.
         """
         pasos = {
             step.get("id"): step
@@ -808,79 +790,80 @@ class EnviosService:
             else:
                 if not isinstance(actuales, list):
                     datos[step_id] = []
-                datos[step_id].extend({CLAVE_AGREGADO: True} for _ in indices)
+                datos[step_id].extend(
+                    ({CLAVE_AGREGADO: True} if marcar_agregado else {}) for _ in indices
+                )
                 continue
             for paths in por_indice.values():
                 errores.extend({"field_path": p, "error": motivo} for p in paths)
         return errores
 
+    def _validar_actualizables(
+        self,
+        defs: dict[str, dict[str, Any]],
+        todos: dict[str, dict[str, Any]],
+        datos: dict[str, Any],
+        campos: dict[str, Any],
+        errores: list[dict[str, str]],
+        *,
+        detalle_no_permitido: str = "campo no editable",
+    ) -> None:
+        """Agrega a `errores` el motivo de cada path que no se puede escribir.
+
+        Los `file` nunca pasan por aqui: su valor lo escribe la subida. El
+        nombre de la pestaña tiene que ser texto.
+        """
+        con_error = {e["field_path"] for e in errores}
+        for field_path in campos:
+            if field_path in con_error:
+                continue
+            meta, error = self._resolver_actualizable(defs, todos, datos, field_path)
+            if meta is not None and meta["type"] == "file":
+                error = (
+                    "los archivos se reemplazan con "
+                    "`actualizar-archivo`, no con este endpoint"
+                )
+            elif meta is not None and meta["type"] == "etiqueta" and not isinstance(
+                campos[field_path], (str, type(None))
+            ):
+                error = "el nombre de la pestaña debe ser texto"
+            if error == "campo no editable":
+                error = detalle_no_permitido
+            if error:
+                errores.append({"field_path": field_path, "error": error})
+
+    def _normalizar_etiquetas(self, campos: dict[str, Any]) -> dict[str, Any]:
+        """Recorta el nombre de la pestaña; vacio regresa al numero."""
+        normalizados = dict(campos)
+        for field_path, valor in campos.items():
+            parsed = self._parse_field_path(field_path)
+            if parsed is None or parsed[2] != CLAVE_ETIQUETA:
+                continue
+            if isinstance(valor, (str, type(None))):
+                normalizados[field_path] = (valor or "").strip()[:ETIQUETA_MAX] or None
+        return normalizados
+
     @staticmethod
     def resolver_editable(
         defs: dict[str, dict[str, Any]], field_path: str
     ) -> dict[str, Any] | None:
-        """Resuelve un path concreto contra los paths base editables.
-
-        Devuelve la metadata del campo, o None si el path no es editable o su
-        forma no corresponde (un campo de repeater exige indice; uno de un
-        paso `form` no lo admite).
-        """
-        parsed = EnviosService._parse_field_path(field_path)
-        if parsed is None:
-            return None
-        step_id, idx, field_name = parsed
-        meta = defs.get(f"{step_id}.{field_name}")
-        if meta is None:
-            return None
-        if meta["repeater"] != (idx is not None):
-            return None
-        return meta
+        return campos_service.resolver(defs, field_path)
 
     @staticmethod
     def _scope_de_path(
         datos: dict[str, Any], field_path: str, *, crear: bool = False
     ) -> dict[str, Any] | None:
-        """Devuelve el dict que contiene el campo del path, o None.
-
-        En un repeater es el item del indice, que debe existir. Las altas de
-        la actualizacion ligera las agrega antes `_preparar_altas`.
-        """
-        parsed = EnviosService._parse_field_path(field_path)
-        if parsed is None:
-            return None
-        step_id, idx, _ = parsed
-        if idx is None:
-            step_data = (
-                datos.setdefault(step_id, {}) if crear else datos.get(step_id)
-            )
-            return step_data if isinstance(step_data, dict) else None
-        step_list = datos.get(step_id)
-        if not isinstance(step_list, list) or idx >= len(step_list):
-            return None
-        item = step_list[idx]
-        return item if isinstance(item, dict) else None
+        return field_paths.scope_de_path(datos, field_path, crear=crear)
 
     @staticmethod
     def _get_valor_en_datos(datos: dict[str, Any], field_path: str) -> Any:
-        """Lee el valor de un path `step.field` o `step[idx].field`."""
-        scope = EnviosService._scope_de_path(datos, field_path)
-        if scope is None:
-            return None
-        return scope.get(EnviosService._parse_field_path(field_path)[2])
+        return field_paths.get_valor_en_datos(datos, field_path)
 
     @staticmethod
     def _set_valor_en_datos(
         datos: dict[str, Any], field_path: str, valor: Any
     ) -> dict[str, Any]:
-        """Escribe el valor de un path `step.field` o `step[idx].field`.
-
-        Crea el dict del step si no existe; en repeaters exige que el item ya
-        exista. Devuelve el mismo dict modificado.
-        """
-        scope = EnviosService._scope_de_path(datos, field_path, crear=True)
-        if scope is None:
-            return datos
-        scope[EnviosService._parse_field_path(field_path)[2]] = valor
-        return datos
+        return field_paths.set_valor_en_datos(datos, field_path, valor)
 
     @staticmethod
     def _set_archivo_en_datos(
@@ -1132,7 +1115,7 @@ class EnviosService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Envio no encontrado",
             )
-        if envio.usuario_id != user.id:
+        if not self.puede_editar_envio(user, envio):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Este envio no te pertenece",
@@ -1163,11 +1146,6 @@ class EnviosService:
                 detail=f"Bucket Acervo '{bucket_name}' no configurado",
             )
 
-        ext = (
-            file.filename.rsplit(".", 1)[-1]
-            if file.filename and "." in file.filename
-            else ""
-        )
         size = file.size if getattr(file, "size", None) is not None else None
 
         max_mb = field_def.get("maxSizeMB")
@@ -1178,8 +1156,9 @@ class EnviosService:
                     detail=f"El archivo excede el limite de {max_mb} MB",
                 )
 
+        mime = tipo_archivo.detectar_mime_upload(file)
         accept = field_def.get("accept")
-        if accept and not self._formato_permitido(ext, file.content_type, accept):
+        if accept and not tipo_archivo.formato_permitido(file.filename, mime, accept):
             raise HTTPException(
                 status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
                 detail=f"Formato no permitido. Aceptados: {', '.join(accept)}",
@@ -1196,7 +1175,7 @@ class EnviosService:
         )
 
         client = AcervoClient.for_bucket(bucket)
-        url = await client.upload_file(file, object_key)
+        url = await client.upload_file(file, object_key, content_type=mime)
 
         if size is None:
             size = 0
@@ -1208,7 +1187,7 @@ class EnviosService:
             object_key=object_key,
             url_publica=url,
             filename_original=file.filename or "",
-            mime=file.content_type or "application/octet-stream",
+            mime=mime,
             size_bytes=size,
         )
         self.db.add(archivo)
@@ -1218,7 +1197,7 @@ class EnviosService:
             url_publica=url,
             object_key=object_key,
             filename=file.filename or "",
-            mime=file.content_type or "application/octet-stream",
+            mime=mime,
             size_bytes=size,
         )
         datos = copy.deepcopy(envio.datos or {})
@@ -1250,27 +1229,6 @@ class EnviosService:
     ) -> str | None:
         field = self._field_para_path(definicion, field_path)
         return field.get("bucket") if field else None
-
-    @staticmethod
-    def _formato_permitido(ext: str, mime: str | None, accept: list[str]) -> bool:
-        ext_norm = ("." + ext).lower() if ext else ""
-        mime_norm = (mime or "").lower()
-        for raw in accept:
-            a = str(raw).strip().lower()
-            if not a:
-                continue
-            if a.startswith("."):
-                if ext_norm == a:
-                    return True
-            elif a.endswith("/*"):
-                if mime_norm.startswith(a[:-1]):
-                    return True
-            elif "/" in a:
-                if mime_norm == a:
-                    return True
-            elif ext and ext.lower() == a:
-                return True
-        return False
 
     def bucket_row(self, nombre: str) -> AcervoBucket | None:
         """Fila de `acervo_buckets` por nombre de bucket, activa."""
@@ -1428,7 +1386,7 @@ class EnviosService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Envio no encontrado",
             )
-        if envio.usuario_id != user.id:
+        if not self.puede_editar_envio(user, envio):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Este envio no te pertenece",
@@ -1443,18 +1401,35 @@ class EnviosService:
 
     def listar_historial_mi_envio(
         self, user: Usuario, envio_id: int
-    ) -> list[EnvioValorHistorial]:
+    ) -> list[dict[str, Any]]:
         """Historial de cambios de valor de un envio propio (orden cronologico).
 
-        Reutiliza `obtener_mi_envio_detalle` para checar propiedad/404/403.
+        Reutiliza `obtener_mi_envio_detalle` para checar propiedad/404/403. El
+        nombre del actor solo sale en envios de grupo: en uno individual el
+        unico actor posible es quien pregunta.
         """
-        self.obtener_mi_envio_detalle(user, envio_id)
-        return (
-            self.db.query(EnvioValorHistorial)
+        envio = self.obtener_mi_envio_detalle(user, envio_id)
+        filas = (
+            self.db.query(EnvioValorHistorial, Usuario.name)
+            .outerjoin(Usuario, Usuario.id == EnvioValorHistorial.actor_usuario_id)
             .filter(EnvioValorHistorial.envio_id == envio_id)
             .order_by(EnvioValorHistorial.cambiado_en)
             .all()
         )
+        de_grupo = envio.grupo_id is not None
+        return [
+            {
+                "field_path": fila.field_path,
+                "field_label": fila.field_label,
+                "valor_anterior": fila.valor_anterior,
+                "valor_nuevo": fila.valor_nuevo,
+                "formulario_version": fila.formulario_version,
+                "cambiado_en": fila.cambiado_en,
+                "origen": fila.origen,
+                "actor_nombre": actor_nombre if de_grupo else None,
+            }
+            for fila, actor_nombre in filas
+        ]
 
     def eliminar_mi_envio(self, user: Usuario, envio_id: int) -> None:
         """Soft-delete: marca el envio como eliminado para el respondent.
@@ -1474,10 +1449,16 @@ class EnviosService:
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Envio no encontrado",
             )
-        if envio.usuario_id != user.id:
+        if not self.puede_editar_envio(user, envio):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Este envio no te pertenece",
+            )
+        formulario = self.db.get(Formulario, envio.formulario_id)
+        if formulario is None or not self._formulario_acepta_cambios(formulario):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=_FORMULARIO_NO_ACEPTA_DETAIL,
             )
         envio.eliminado_en = utcnow()
         self.db.commit()

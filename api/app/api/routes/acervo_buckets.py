@@ -3,7 +3,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, require_role, verify_csrf
+from app.api.deps import get_current_user, require_permission, verify_csrf
 from app.core.database import get_db
 from app.models.acervo_bucket import AcervoBucket
 from app.models.project import Project
@@ -32,7 +32,7 @@ async def list_accessible_buckets(
 @router.post("", response_model=AcervoBucketResponse, status_code=status.HTTP_201_CREATED)
 async def create_bucket(
     payload: AcervoBucketCreate,
-    _: Usuario = Depends(require_role(["tetlamamakani"])),
+    _: Usuario = Depends(require_permission("mariachi.acervo.manage")),
     __: Usuario = Depends(verify_csrf),
     db: Session = Depends(get_db),
 ):
@@ -61,7 +61,7 @@ async def create_bucket(
 async def update_bucket(
     bucket_id: int,
     payload: AcervoBucketUpdate,
-    _: Usuario = Depends(require_role(["tetlamamakani"])),
+    _: Usuario = Depends(require_permission("mariachi.acervo.manage")),
     __: Usuario = Depends(verify_csrf),
     db: Session = Depends(get_db),
 ):

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.api.deps import verify_csrf
-from app.api.routes.layers._deps import require_admin, write_rate_limit
+from app.api.routes.layers._deps import require_mapalab_manage, write_rate_limit
 from app.core.database import get_dataengine_db
 from app.models.user import Usuario
 from app.schemas.layer import (
@@ -21,7 +21,7 @@ router = APIRouter(prefix='/layers/highlight')
 @router.get('/stats', response_model=HighlightStats)
 async def get_stats(
     db: Session = Depends(get_dataengine_db),
-    _admin: Usuario = Depends(require_admin),
+    _admin: Usuario = Depends(require_mapalab_manage),
 ):
     return layer_service.get_highlight_stats(db)
 
@@ -31,7 +31,7 @@ async def bulk_apply(
     data: HighlightBulkApplyBody,
     db: Session = Depends(get_dataengine_db),
     current_user: Usuario = Depends(verify_csrf),
-    _admin: Usuario = Depends(require_admin),
+    _admin: Usuario = Depends(require_mapalab_manage),
     _rl: Usuario = Depends(write_rate_limit),
 ):
     if not data.dry_run and data.color is None and data.shape is None and data.apply_to == 'defaults':
@@ -63,7 +63,7 @@ async def restore_snapshot(
     data: HighlightBulkRestoreBody,
     db: Session = Depends(get_dataengine_db),
     current_user: Usuario = Depends(verify_csrf),
-    _admin: Usuario = Depends(require_admin),
+    _admin: Usuario = Depends(require_mapalab_manage),
     _rl: Usuario = Depends(write_rate_limit),
 ):
     snapshot_dicts = [s.model_dump() for s in data.snapshot]
@@ -81,7 +81,7 @@ async def reset_all(
     data: HighlightResetBody,
     db: Session = Depends(get_dataengine_db),
     current_user: Usuario = Depends(verify_csrf),
-    _admin: Usuario = Depends(require_admin),
+    _admin: Usuario = Depends(require_mapalab_manage),
     _rl: Usuario = Depends(write_rate_limit),
 ):
     result = layer_service.reset_highlight(

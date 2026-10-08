@@ -12,14 +12,16 @@ class MapalabApiKeyAcceso(Base):
         Index("ix_mapalab_api_keys_accesos_key_ts", "api_key_id", "timestamp"),
         Index("ix_mapalab_api_keys_accesos_dia", "dia"),
         Index("ix_mapalab_api_keys_accesos_origin", "origin"),
+        Index("ix_mapalab_api_keys_accesos_key_prefix", "key_prefix"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
     api_key_id = Column(
         Integer,
         ForeignKey("mapalab_api_keys.id", ondelete="CASCADE"),
-        nullable=False,
+        nullable=True,
     )
+    key_prefix = Column(String(20), nullable=True)
     timestamp = Column(DateTime, nullable=False, default=utcnow, index=True)
     dia = Column(Date, nullable=False)
     endpoint = Column(String(20), nullable=False)

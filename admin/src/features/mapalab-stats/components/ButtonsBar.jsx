@@ -16,7 +16,7 @@ const ButtonsBar = ({ rows = [], loading }) => {
 
     return (
         <Card title="Uso de botones" size="small" loading={loading}>
-            <Space direction="vertical" size={8} style={{ width: '100%' }}>
+            <Space orientation="vertical" size={8} style={{ width: '100%' }}>
                 {rows.map((row) => {
                     const label = BUTTON_LABELS[row.eventName] || row.eventName;
                     return (

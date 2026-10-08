@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Drawer, Empty, Segmented, Space, Spin, Table, Tag, Tooltip, Typography } from 'antd';
+import { Button, Drawer, Empty, Segmented, Space, Spin, Table, Tag, Tooltip, Typography } from 'antd';
+import { DownloadOutlined } from '@ant-design/icons';
 import { fetchGridHistory } from '@shared/services/gridService';
+import { downloadCsv } from '@shared/helpers/downloadFile';
 
 const { Text } = Typography;
 
@@ -20,33 +22,58 @@ export default function GridHistoryDrawer({
     columnsMeta = [],
     rowKey = null,
     rowLabel = null,
+    resources = null,
 }) {
     const [scope, setScope] = useState('row');
+
+    const fuentes = useMemo(
+        () => resources || [{ value: resource, label: null, columnsMeta }],
+        [resources, resource, columnsMeta],
+    );
+
+    const metaActiva = useMemo(
+        () => fuentes.flatMap((f) => f.columnsMeta || []),
+        [fuentes],
+    );
+
+    const etiquetaDeFuente = useMemo(
+        () => Object.fromEntries(fuentes.map((f) => [f.value, f.label])),
+        [fuentes],
+    );
     const [entries, setEntries] = useState([]);
     const [loading, setLoading] = useState(false);
 
     const effectiveScope = rowKey ? scope : 'all';
 
     const titles = useMemo(
-        () => Object.fromEntries(columnsMeta.map((meta) => [meta.key, meta.title])),
-        [columnsMeta],
+        () => Object.fromEntries(metaActiva.map((meta) => [meta.key, meta.title])),
+        [metaActiva],
     );
 
     const load = useCallback(async () => {
         if (!open) return;
         setLoading(true);
         try {
-            const data = await fetchGridHistory(resource, {
-                rowKey: effectiveScope === 'row' ? rowKey : undefined,
-                limit: 300,
-            });
-            setEntries(data || []);
+            const lotes = await Promise.all(fuentes.map(async (f) => {
+                try {
+                    const data = await fetchGridHistory(f.value, {
+                        rowKey: effectiveScope === 'row' ? rowKey : undefined,
+                        limit: 300,
+                    });
+                    return (data || []).map((fila) => ({ ...fila, _fuente: f.value }));
+                } catch {
+                    return [];
+                }
+            }));
+            setEntries(
+                lotes.flat().sort((a, b) => String(b.changed_at || '').localeCompare(String(a.changed_at || ''))),
+            );
         } catch {
             setEntries([]);
         } finally {
             setLoading(false);
         }
-    }, [open, resource, effectiveScope, rowKey]);
+    }, [open, fuentes, effectiveScope, rowKey]);
 
     useEffect(() => { load(); }, [load]);
 
@@ -104,14 +131,52 @@ export default function GridHistoryDrawer({
                 render: (value) => <Text style={{ fontSize: 12 }} code>{value}</Text>,
             });
         }
+        if (resources) {
+            base.unshift({
+                title: 'Origen',
+                dataIndex: '_fuente',
+                width: 100,
+                render: (value) => (
+                    <Tag style={{ fontSize: 11 }}>{etiquetaDeFuente[value] || value}</Tag>
+                ),
+            });
+        }
         return base;
-    }, [titles, effectiveScope]);
+    }, [titles, effectiveScope, resources, etiquetaDeFuente]);
+
+    const handleDownload = useCallback(() => {
+        const headers = [];
+        if (resources) headers.push('Rejilla');
+        if (effectiveScope === 'all') headers.push('Capa');
+        headers.push('Campo', 'Valor anterior', 'Valor nuevo', 'Responsable', 'Fecha', 'Origen');
+
+        const body = entries.map((entry) => {
+            const fila = [];
+            if (resources) fila.push(etiquetaDeFuente[entry._fuente] || entry._fuente);
+            if (effectiveScope === 'all') fila.push(entry.row_key);
+            fila.push(
+                titles[entry.column_key] || entry.column_key,
+                entry.from_value ?? '',
+                entry.to_value ?? '',
+                entry.changed_by || 'Sin registrar',
+                formatDate(entry.changed_at),
+                (SOURCE_TAGS[entry.source] || {}).label || entry.source,
+            );
+            return fila;
+        });
+
+        const stamp = new Date().toISOString().slice(0, 10);
+        const alcance = effectiveScope === 'row' && rowKey
+            ? `-${rowKey.replace(/[^a-zA-Z0-9_]+/g, '-')}`
+            : '';
+        downloadCsv(headers, body, `historial${alcance}-${stamp}.csv`);
+    }, [entries, resources, effectiveScope, etiquetaDeFuente, titles, rowKey]);
 
     return (
         <Drawer
             open={open}
             onClose={onClose}
-            width={effectiveScope === 'all' ? 900 : 760}
+            size={effectiveScope === 'all' ? 900 : 760}
             title={(
                 <Space orientation="vertical" size={2}>
                     <Text strong>Historial de cambios</Text>
@@ -120,17 +185,31 @@ export default function GridHistoryDrawer({
                     )}
                 </Space>
             )}
-            extra={rowKey ? (
-                <Segmented
-                    size="small"
-                    value={scope}
-                    onChange={setScope}
-                    options={[
-                        { label: 'Esta capa', value: 'row' },
-                        { label: 'Todas', value: 'all' },
-                    ]}
-                />
-            ) : null}
+            extra={(
+                <Space size={8}>
+                    {rowKey && (
+                        <Segmented
+                            size="small"
+                            value={scope}
+                            onChange={setScope}
+                            options={[
+                                { label: 'Esta capa', value: 'row' },
+                                { label: 'Todas', value: 'all' },
+                            ]}
+                        />
+                    )}
+                    <Tooltip title="Descargar en CSV el historial que se está mostrando">
+                        <Button
+                            size="small"
+                            icon={<DownloadOutlined />}
+                            onClick={handleDownload}
+                            disabled={loading || entries.length === 0}
+                        >
+                            Descargar
+                        </Button>
+                    </Tooltip>
+                </Space>
+            )}
         >
             {loading ? (
                 <Spin style={{ display: 'block', margin: '48px auto' }} />

@@ -86,10 +86,10 @@ logs/
 # OS
 Thumbs.db
 *.bak
+*.bak-*
 *.backup
 
 # Secrets and credentials
-secrets/
 credentials/
 *.pem
 *.key
@@ -129,10 +129,14 @@ api/_docs/
 
 # Respaldos de Postgres (ver scripts/postgres-backup.sh)
 backups/*.sql.gz
+backups/**/*.sql.gz
+backups/**/*.parcial
 backups/*.sql.gz.tmp
 backups/backup.log
 backups/roadmap/
 backups/vine/
+backups/llaves/
+backups/telemetria-intranet/
 restore/*.sql.gz
 restore/*.sql
 restore/*.json
@@ -146,3 +150,5 @@ secrets/*
 !secrets/.gitkeep
 !secrets/*.example
 compose.local.yaml
+
+*.bak.*

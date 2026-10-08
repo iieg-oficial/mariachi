@@ -1,9 +1,10 @@
 import { lazy } from 'react';
 import { Navigate } from 'react-router';
-import RoleProtectedRoute from '@app/guards/RoleProtectedRoute';
+import PermissionRoute from '@app/guards/PermissionRoute';
 
-const STAFF_ROLES = ['tetlamamakani', 'editora'];
-const ADMIN_ROLES = ['tetlamamakani'];
+const GEOSERVER_VIEW = ['mariachi.geoserver.view'];
+const GEOSERVER_MANAGE = ['mariachi.geoserver.manage'];
+const MAPALAB_MANAGE = ['mariachi.mapalab.manage'];
 
 export const buildSextanteRoutes = (withSuspense) => {
     const GeoserverFilesPage = lazy(() => import('@features/sextante').then((m) => ({ default: m.GeoserverFilesPage })));
@@ -13,20 +14,20 @@ export const buildSextanteRoutes = (withSuspense) => {
     const FontsPage = lazy(() => import('@features/sextante').then((m) => ({ default: m.FontsPage })));
     const SymbolsPage = lazy(() => import('@features/mapalab-symbols').then((m) => ({ default: m.SymbolsPage })));
 
-    const route = (path, Page, roles = STAFF_ROLES) => ({
+    const route = (path, Page, anyOf = GEOSERVER_VIEW) => ({
         path,
         element: withSuspense(
-            <RoleProtectedRoute allowedRoles={roles}><Page /></RoleProtectedRoute>,
+            <PermissionRoute anyOf={anyOf}><Page /></PermissionRoute>,
         ),
     });
 
     return [
-        route('sextante/workspaces', WorkspacesPage, ADMIN_ROLES),
+        route('sextante/workspaces', WorkspacesPage, GEOSERVER_MANAGE),
         route('sextante/capas', LayerExplorerPage),
         route('sextante/estilos', StylesPage),
         route('sextante/recursos', GeoserverFilesPage),
         route('sextante/tipografias', FontsPage),
-        route('sextante/simbolos', SymbolsPage, ADMIN_ROLES),
+        route('sextante/simbolos', SymbolsPage, MAPALAB_MANAGE),
         { path: 'mapalab/recursos-geoserver', element: <Navigate to="/sextante/recursos" replace /> },
         { path: 'mapalab/simbolos', element: <Navigate to="/sextante/simbolos" replace /> },
     ];

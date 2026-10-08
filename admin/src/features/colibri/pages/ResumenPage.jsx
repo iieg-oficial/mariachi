@@ -22,6 +22,7 @@ import useIsMobile from '@shared/hooks/useIsMobile';
 import ColibriIcon from '@shared/components/ColibriIcon';
 import PageHeading from '@shared/components/PageHeading';
 import { ESTADO_COLORS, ESTADO_LABELS } from '@features/colibri/constants';
+import { BRAND, SEMANTIC } from '@app/providers/brand';
 
 const { Content } = Layout;
 const { Title, Text } = Typography;
@@ -52,7 +53,7 @@ function DailyBars({ data }) {
                         <div
                             style={{
                                 width: '100%',
-                                background: '#1677ff',
+                                background: BRAND.numeralia,
                                 borderRadius: 2,
                                 height: `${heightPct}%`,
                                 minHeight: d.count > 0 ? 2 : 0,
@@ -76,7 +77,7 @@ export default function ResumenPage() {
     if (loading || !stats) {
         return (
             <Content style={{ padding: 24, textAlign: 'center' }}>
-                {error ? <Alert type="error" message={error} showIcon /> : <Spin size="large" />}
+                {error ? <Alert type="error" title={error} showIcon /> : <Spin size="large" />}
             </Content>
         );
     }
@@ -86,7 +87,7 @@ export default function ResumenPage() {
 
     return (
         <Content style={{ width: '100%' }}>
-            <Space direction="vertical" size="large" style={{ width: '100%' }}>
+            <Space orientation="vertical" size="large" style={{ width: '100%' }}>
                 <PageHeading
                     icon={<ColibriIcon size={24} />}
                     title="Colibrí"
@@ -110,7 +111,7 @@ export default function ResumenPage() {
                                 title="Pendientes"
                                 value={stats.pendientes}
                                 suffix={<Text type="secondary" style={{ fontSize: 12 }}>nuevo + en revisión</Text>}
-                                valueStyle={{ color: '#cf1322' }}
+                                valueStyle={{ color: SEMANTIC.danger }}
                             />
                         </Card>
                     </Col>
@@ -128,7 +129,7 @@ export default function ResumenPage() {
                                 title="% Resueltos"
                                 value={stats.porcentajeResueltos}
                                 suffix="%"
-                                valueStyle={{ color: '#3f8600' }}
+                                valueStyle={{ color: SEMANTIC.success }}
                             />
                         </Card>
                     </Col>
@@ -151,7 +152,7 @@ export default function ResumenPage() {
                 <Row gutter={[16, 16]}>
                     <Col xs={24} md={12}>
                         <Card title="Por estado" size="small">
-                            <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                            <Space orientation="vertical" size={8} style={{ width: '100%' }}>
                                 {Object.entries(stats.porEstado).map(([estado, count]) => {
                                     const max = Math.max(...Object.values(stats.porEstado), 1);
                                     const pct = stats.total ? (count / stats.total) * 100 : 0;
@@ -164,7 +165,7 @@ export default function ResumenPage() {
                                             <Progress
                                                 percent={(count / max) * 100}
                                                 showInfo={false}
-                                                strokeColor="#1677ff"
+                                                strokeColor={BRAND.numeralia}
                                                 size="small"
                                             />
                                         </div>
@@ -179,7 +180,7 @@ export default function ResumenPage() {
                             {(stats.porTipo || []).length === 0 ? (
                                 <Empty description="Sin datos" />
                             ) : (
-                                <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                                <Space orientation="vertical" size={8} style={{ width: '100%' }}>
                                     {stats.porTipo.map((t) => (
                                         <div key={t.slug}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
@@ -189,7 +190,7 @@ export default function ResumenPage() {
                                             <Progress
                                                 percent={(t.count / maxTipoCount) * 100}
                                                 showInfo={false}
-                                                strokeColor={t.color === 'default' ? '#999' : undefined}
+                                                strokeColor={t.color === 'default' ? SEMANTIC.neutral : undefined}
                                                 size="small"
                                             />
                                         </div>
@@ -204,7 +205,7 @@ export default function ResumenPage() {
                             {(stats.porApp || []).length === 0 ? (
                                 <Empty description="Sin datos" />
                             ) : (
-                                <Space direction="vertical" size={8} style={{ width: '100%' }}>
+                                <Space orientation="vertical" size={8} style={{ width: '100%' }}>
                                     {stats.porApp.map((a) => (
                                         <div key={a.sourceApp}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between' }}>

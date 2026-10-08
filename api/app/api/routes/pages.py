@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy.orm.attributes import flag_modified
 
-from app.api.deps import get_current_user, get_db, require_project_access, verify_csrf
+from app.api.deps import get_current_user, get_db, require_permission, verify_csrf
 from app.core.optimistic import check_concurrent_edit
 from app.core.time import utcnow
 from app.models.menu_item import MenuItem
@@ -14,10 +14,9 @@ from app.services import presence
 router = APIRouter(
     prefix="/paginas",
     tags=["páginas"],
-    dependencies=[Depends(require_project_access("portal"))],
 )
 
-_require_editor = require_project_access("portal", min_role="editor")
+_require_editor = require_permission("mariachi.portal.update")
 
 
 def _slug_from_menu_item(page_id: str, db: Session) -> tuple[str, str]:

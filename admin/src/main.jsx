@@ -7,18 +7,22 @@ import './index.css'
 import { AuthProvider } from '@shared/contexts/AuthContext';
 import MainProvider from '@app/providers/MainProvider';
 import ProtectedRoute from '@app/guards/ProtectedRoute';
-import RoleProtectedRoute from '@app/guards/RoleProtectedRoute';
+import PermissionRoute from '@app/guards/PermissionRoute';
 import ErrorBoundary from '@app/guards/ErrorBoundary';
 import MainLayout from '@app/MainLayout';
 import FullscreenLayout from '@app/FullscreenLayout';
 import { Navigate } from 'react-router';
 import Login from '@features/auth/pages/LoginPage';
-import ChangePassword from '@features/auth/pages/ChangePasswordPage';
 import { buildMapalabApiKeysRoutes } from '@features/mapalab-api-keys/routes';
+import { buildMapalabAccesoRoutes } from '@features/mapalab-acceso/routes';
 import { buildColibriRoutes } from '@features/colibri/routes';
 import { buildHuachicolRoutes } from '@features/telemetria/routes';
-import { buildIdentidadRoutes } from '@features/identidad/routes';
+import { buildMelRoutes } from '@features/mel/routes';
+import { buildSieejDocumentacionRoutes } from '@features/sieej-documentacion/routes';
 import { buildSextanteRoutes } from '@features/sextante/routes';
+import { buildFramesRoutes, buildFramesFullscreenRoutes } from '@features/frames/routes';
+import { buildIntranetRoutes } from '@features/intranet/routes';
+import { buildVineFullscreenRoutes, buildVineRoutes } from '@features/vine/routes';
 
 const Users = lazy(() => import('@features/users'));
 const MenuManager = lazy(() => import('@features/portal-menu'));
@@ -73,167 +77,172 @@ const router = createBrowserRouter([
                     {
                         path: 'users',
                         element: withSuspense(
-                            <RoleProtectedRoute allowedRoles={['tetlamamakani']}>
+                            <PermissionRoute anyOf={['mariachi.usuarios.view']}>
                                 <Users />
-                            </RoleProtectedRoute>
+                            </PermissionRoute>
                         )
                     },
                     {
                         path: 'revision',
                         element: withSuspense(
-                            <RoleProtectedRoute allowedRoles={['tetlamamakani']}>
+                            <PermissionRoute anyOf={['mariachi.mapalab.manage']}>
                                 <RevisionQueue />
-                            </RoleProtectedRoute>
+                            </PermissionRoute>
                         )
                     },
                     ...buildColibriRoutes(withSuspense),
                     {
                         path: 'menu',
                         element: withSuspense(
-                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
+                            <PermissionRoute anyOf={['mariachi.portal.update']}>
                                 <MenuManager />
-                            </RoleProtectedRoute>
+                            </PermissionRoute>
                         )
                     },
 
                     {
                         path: 'pages/edit/:id',
                         element: withSuspense(
-                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
+                            <PermissionRoute anyOf={['mariachi.portal.update']}>
                                 <PageEditor />
-                            </RoleProtectedRoute>
+                            </PermissionRoute>
                         )
                     },
                     {
                         path: 'acervo',
                         element: withSuspense(
-                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
+                            <PermissionRoute anyOf={['mariachi.acervo.view']}>
                                 <Acervo />
-                            </RoleProtectedRoute>
+                            </PermissionRoute>
                         )
                     },
                     {
                         path: 'acervo/buckets',
                         element: withSuspense(
-                            <RoleProtectedRoute allowedRoles={['tetlamamakani']}>
+                            <PermissionRoute anyOf={['mariachi.acervo.manage']}>
                                 <AcervoBuckets />
-                            </RoleProtectedRoute>
+                            </PermissionRoute>
                         )
                     },
                     {
                         path: 'mapalab/layers',
                         element: withSuspense(
-                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
+                            <PermissionRoute anyOf={['mariachi.mapalab.view']}>
                                 <LayerEditPage />
-                            </RoleProtectedRoute>
+                            </PermissionRoute>
                         )
                     },
                     {
                         path: 'mapalab/layers/:id/edit',
                         element: withSuspense(
-                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
+                            <PermissionRoute anyOf={['mariachi.mapalab.view']}>
                                 <LayerEditPage />
-                            </RoleProtectedRoute>
+                            </PermissionRoute>
                         )
                     },
                     {
                         path: 'mapalab/initial-order',
                         element: withSuspense(
-                            <RoleProtectedRoute allowedRoles={['tetlamamakani']}>
+                            <PermissionRoute anyOf={['mariachi.mapalab.manage']}>
                                 <InitialLayerOrderPage />
-                            </RoleProtectedRoute>
+                            </PermissionRoute>
                         )
                     },
                     {
                         path: 'mapalab/layers/ingesta-masiva',
                         element: withSuspense(
-                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
+                            <PermissionRoute anyOf={['mariachi.mapalab.manage']}>
                                 <BulkIngestPage />
-                            </RoleProtectedRoute>
+                            </PermissionRoute>
                         )
                     },
                     {
                         path: 'mapalab/catalogo',
                         element: withSuspense(
-                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
+                            <PermissionRoute anyOf={['mariachi.mapalab.view']}>
                                 <CatalogoCapasPage />
-                            </RoleProtectedRoute>
+                            </PermissionRoute>
                         )
                     },
                     {
                         path: 'mapalab/infobox-propuestas',
                         element: withSuspense(
-                            <RoleProtectedRoute allowedRoles={['tetlamamakani']}>
+                            <PermissionRoute anyOf={['mariachi.mapalab_propuestas.approve']}>
                                 <InfoboxPropuestasPage />
-                            </RoleProtectedRoute>
+                            </PermissionRoute>
                         )
                     },
                     {
                         path: 'mapalab/eventos',
                         element: withSuspense(
-                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
+                            <PermissionRoute anyOf={['mariachi.mapalab.view']}>
                                 <EventosListPage />
-                            </RoleProtectedRoute>
+                            </PermissionRoute>
                         )
                     },
                     {
                         path: 'mapalab/eventos/nuevo',
                         element: withSuspense(
-                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
+                            <PermissionRoute anyOf={['mariachi.mapalab.update']}>
                                 <EventoEditPage />
-                            </RoleProtectedRoute>
+                            </PermissionRoute>
                         )
                     },
                     {
                         path: 'mapalab/eventos/:id/edit',
                         element: withSuspense(
-                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
+                            <PermissionRoute anyOf={['mariachi.mapalab.update']}>
                                 <EventoEditPage />
-                            </RoleProtectedRoute>
+                            </PermissionRoute>
                         )
                     },
                     {
                         path: 'mapalab/home',
                         element: withSuspense(
-                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
+                            <PermissionRoute anyOf={['mariachi.mapalab.view']}>
                                 <HomePage />
-                            </RoleProtectedRoute>
+                            </PermissionRoute>
                         )
                     },
                     ...buildSextanteRoutes(withSuspense),
-                    ...buildIdentidadRoutes(withSuspense),
+                    ...buildMelRoutes(withSuspense),
+                    ...buildFramesRoutes(withSuspense),
+                    ...buildIntranetRoutes(withSuspense),
+                    ...buildVineRoutes(withSuspense),
                     ...buildHuachicolRoutes(withSuspense),
                     ...buildMapalabApiKeysRoutes(withSuspense),
+                    ...buildMapalabAccesoRoutes(withSuspense),
+                    ...buildSieejDocumentacionRoutes(withSuspense),
                     {
                         path: 'sieej/formularios',
                         element: withSuspense(
-                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
+                            <PermissionRoute anyOf={['mariachi.sieej_admin.view']}>
                                 <FormulariosListPage />
-                            </RoleProtectedRoute>
+                            </PermissionRoute>
                         )
                     },
                     {
                         path: 'sieej/formularios/:slug',
                         element: withSuspense(
-                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
+                            <PermissionRoute anyOf={['mariachi.sieej_formularios.update']}>
                                 <FormularioEditorPage />
-                            </RoleProtectedRoute>
+                            </PermissionRoute>
                         )
                     },
                     {
                         path: 'sieej/grupos',
                         element: withSuspense(
-                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
+                            <PermissionRoute anyOf={['mariachi.sieej_formularios.update']}>
                                 <GruposPage />
-                            </RoleProtectedRoute>
+                            </PermissionRoute>
                         )
                     },
                     {
                         path: 'sieej/catalogos',
                         element: withSuspense(
-                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
+                            <PermissionRoute anyOf={['mariachi.sieej_formularios.update']}>
                                 <CatalogosPage />
-                            </RoleProtectedRoute>
+                            </PermissionRoute>
                         )
                     },
                     {
@@ -241,13 +250,6 @@ const router = createBrowserRouter([
                         element: withSuspense(<DocumentacionPage />)
                     },
                     {
-                        path: 'change-password',
-                        element: (
-                            <ProtectedRoute>
-                                <ChangePassword />
-                            </ProtectedRoute>
-                        )
-                    }, {
                         path: '*',
                         element: (
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
@@ -268,11 +270,13 @@ const router = createBrowserRouter([
                     {
                         path: 'mapalab/layers/tabla',
                         element: withSuspense(
-                            <RoleProtectedRoute allowedRoles={['tetlamamakani', 'editora']}>
+                            <PermissionRoute anyOf={['mariachi.mapalab.update']}>
                                 <MetadataGridPage />
-                            </RoleProtectedRoute>
+                            </PermissionRoute>
                         )
                     },
+                    ...buildFramesFullscreenRoutes(withSuspense),
+                    ...buildVineFullscreenRoutes(withSuspense),
                 ]
             }
         ],

@@ -1,44 +1,38 @@
 import logging
-import secrets
-import string
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.api.deps import ADMIN_ROLE, get_current_user, get_db, require_role, verify_csrf
-from app.core.security import hash_password
+from app.api.deps import (
+    get_current_user,
+    get_db,
+    has_permission,
+    require_permission,
+    verify_csrf,
+)
 from app.models.project import Project, UserProject
-from app.models.sieej import Grupo, usuario_grupo
+from app.models.sieej import EnvioFormulario, Formulario, Grupo, usuario_grupo
 from app.models.user import Usuario
 from app.schemas.user import (
+    ImpactoEliminacion,
     UsuarioCreate,
     UsuarioResponse,
     UsuarioUpdate,
 )
 from app.services.actividad_service import registrar_actividad
+from app.services.sieej.pertenencia import es_miembro
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/usuarios", tags=["usuarios"])
 
-_require_admin = require_role([ADMIN_ROLE])
+_require_create = require_permission("mariachi.usuarios.create")
+_require_delete = require_permission("mariachi.usuarios.delete")
+
+_UNUSABLE_PASSWORD = "!minerva"
 
 _SELF_UPDATE_PRIVILEGED_FIELDS = frozenset({"role", "username", "must_change_password"})
-
-
-def generate_temp_password(length=12):
-    specials = "!@#$%^&*-_=+?"
-    guaranteed = [
-        secrets.choice(string.ascii_lowercase),
-        secrets.choice(string.ascii_uppercase),
-        secrets.choice(string.digits),
-        secrets.choice(specials),
-    ]
-    pool = string.ascii_letters + string.digits + specials
-    remaining = [secrets.choice(pool) for _ in range(max(length, len(guaranteed)) - len(guaranteed))]
-    chars = guaranteed + remaining
-    secrets.SystemRandom().shuffle(chars)
-    return ''.join(chars)
 
 
 def _normalize_identifier(value: str | None) -> str | None:
@@ -56,6 +50,37 @@ def _user_memberships(db: Session, user_id: int) -> list[dict]:
         .all()
     )
     return [{"slug": r.slug, "name": r.name, "project_role": r.project_role} for r in rows]
+
+
+def _impacto_eliminacion(db: Session, user_id: int) -> dict:
+    envios = (
+        db.query(func.count(EnvioFormulario.id))
+        .filter(EnvioFormulario.usuario_id == user_id)
+        .scalar()
+    ) or 0
+    formularios = (
+        db.query(func.count(Formulario.id))
+        .filter(Formulario.creado_por_id == user_id)
+        .scalar()
+    ) or 0
+    grupos = (
+        db.query(func.count())
+        .select_from(usuario_grupo)
+        .filter(usuario_grupo.c.usuario_id == user_id)
+        .scalar()
+    ) or 0
+    proyectos = (
+        db.query(func.count(UserProject.user_id))
+        .filter(UserProject.user_id == user_id)
+        .scalar()
+    ) or 0
+    return {
+        "envios": envios,
+        "formularios_creados": formularios,
+        "grupos": grupos,
+        "proyectos": proyectos,
+        "bloqueado": formularios > 0,
+    }
 
 
 def _mask_email(email: str | None) -> str | None:
@@ -76,17 +101,9 @@ def _mask_email(email: str | None) -> str | None:
 
 
 def _serialize_user(db: Session, user: Usuario, *, viewer: Usuario | None = None) -> dict:
-    """Serializa el usuario aplicando privacidad por rol del viewer.
-
-    - Admin (`tetlamamakani`): ve todo.
-    - Editora viendo a otro: email enmascarado y proyectos ocultos (estos
-      son detalles operativos que la editora no necesita para su trabajo
-      del dia a dia; el admin sigue gestionando asignaciones).
-    - Editora viendose a si misma: ve todo (su propio perfil).
-    """
-    is_admin = viewer is not None and viewer.role == ADMIN_ROLE
+    manages = viewer is not None and has_permission(viewer, "mariachi.usuarios.update")
     is_self = viewer is not None and viewer.id == user.id
-    show_full = is_admin or is_self
+    show_full = manages or is_self
 
     email = user.email if show_full else _mask_email(user.email)
     projects = _user_memberships(db, user.id) if show_full else []
@@ -110,9 +127,12 @@ def _serialize_user(db: Session, user: Usuario, *, viewer: Usuario | None = None
         "name": user.name,
         "role": user.role,
         "must_change_password": user.must_change_password,
+        "avatar_url": user.avatar_url,
         "created_at": user.created_at,
         "projects": projects,
         "sieej_grupo": sieej_grupo,
+        "minerva_vinculado": bool(user.minerva_sub),
+        "ultimo_acceso": user.ultimo_acceso,
     }
 
 
@@ -146,6 +166,12 @@ def _apply_assignments(
 def _set_sieej_grupo(
     db: Session, usuario: Usuario, grupo_id: int | None, grupo_nombre: str | None
 ) -> None:
+    """Deja al usuario en un solo grupo de SIEEJ, sin tocar el que ya tenia.
+
+    Reasignar al mismo grupo no debe reescribir la fila: `usuario_grupo` guarda
+    el `rol` del miembro y un borrado con reinsercion lo degradaria a
+    capturista.
+    """
     grupo = None
     if grupo_id is not None:
         grupo = db.query(Grupo).filter(Grupo.id == grupo_id).first()
@@ -161,8 +187,11 @@ def _set_sieej_grupo(
             db.add(grupo)
             db.flush()
 
-    db.execute(usuario_grupo.delete().where(usuario_grupo.c.usuario_id == usuario.id))
+    sobrantes = usuario_grupo.delete().where(usuario_grupo.c.usuario_id == usuario.id)
     if grupo is not None:
+        sobrantes = sobrantes.where(usuario_grupo.c.grupo_id != grupo.id)
+    db.execute(sobrantes)
+    if grupo is not None and not es_miembro(db, usuario.id, grupo.id):
         db.execute(
             usuario_grupo.insert().values(usuario_id=usuario.id, grupo_id=grupo.id)
         )
@@ -210,12 +239,26 @@ async def obtener_usuario(
     return _serialize_user(db, usuario, viewer=current_user)
 
 
+@router.get("/{usuario_id}/impacto-eliminacion", response_model=ImpactoEliminacion)
+async def impacto_eliminacion(
+    usuario_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(_require_delete),
+):
+    usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
+    if not usuario:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado"
+        )
+    return _impacto_eliminacion(db, usuario.id)
+
+
 @router.post("", response_model=UsuarioResponse, status_code=status.HTTP_201_CREATED)
 async def crear_usuario(
     usuario_in: UsuarioCreate,
     db: Session = Depends(get_db),
     _csrf: Usuario = Depends(verify_csrf),
-    current_user: Usuario = Depends(_require_admin),
+    current_user: Usuario = Depends(_require_create),
 ):
     username = _normalize_identifier(usuario_in.username)
     email = _normalize_identifier(usuario_in.email)
@@ -233,8 +276,8 @@ async def crear_usuario(
     )
     usuario_data["username"] = username
     usuario_data["email"] = email
-    usuario_data["hashed_password"] = hash_password(usuario_in.password)
-    usuario_data["must_change_password"] = True
+    usuario_data["hashed_password"] = _UNUSABLE_PASSWORD
+    usuario_data["must_change_password"] = False
 
     nuevo_usuario = Usuario(**usuario_data)
     db.add(nuevo_usuario)
@@ -274,7 +317,7 @@ async def actualizar_usuario(
             status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado"
         )
 
-    is_admin = current_user.role == ADMIN_ROLE
+    is_admin = has_permission(current_user, "mariachi.usuarios.update")
     is_self = current_user.id == usuario_id
     if not is_admin and not is_self:
         raise HTTPException(
@@ -314,7 +357,12 @@ async def actualizar_usuario(
     for field, value in update_data.items():
         setattr(usuario, field, value)
 
-    if is_admin and usuario_in.project_assignments is not None:
+    if usuario_in.project_assignments is not None:
+        if not has_permission(current_user, "mariachi.usuarios.assign"):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Requiere permiso: mariachi.usuarios.assign",
+            )
         _apply_assignments(db, usuario.id, usuario_in.project_assignments)
 
     grupo_fields = usuario_in.model_fields_set & {"sieej_grupo_id", "sieej_grupo_nombre"}
@@ -337,51 +385,12 @@ async def actualizar_usuario(
     return _serialize_user(db, usuario, viewer=current_user)
 
 
-@router.post("/{usuario_id}/restablecer-contrasena")
-async def resetear_password(
-    usuario_id: int,
-    db: Session = Depends(get_db),
-    _csrf: Usuario = Depends(verify_csrf),
-    current_user: Usuario = Depends(_require_admin),
-):
-    usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
-    if not usuario:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado"
-        )
-
-    from app.core.time import utcnow
-
-    temp_password = generate_temp_password()
-    usuario.hashed_password = hash_password(temp_password)
-    usuario.must_change_password = True
-    usuario.password_changed_at = utcnow()
-    registrar_actividad(
-        db,
-        actor=current_user,
-        action="user.reset_password",
-        resource_type="usuario",
-        resource_id=usuario.id,
-    )
-    db.commit()
-    logger.info(
-        "action=user.reset_password actor=%s target=%s",
-        current_user.id,
-        usuario.id,
-    )
-
-    return {
-        "message": "Contraseña reseteada exitosamente",
-        "temp_password": temp_password
-    }
-
-
 @router.delete("/{usuario_id}")
 async def eliminar_usuario(
     usuario_id: int,
     db: Session = Depends(get_db),
     _csrf: Usuario = Depends(verify_csrf),
-    current_user: Usuario = Depends(_require_admin),
+    current_user: Usuario = Depends(_require_delete),
 ):
     usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
     if not usuario:
@@ -395,6 +404,17 @@ async def eliminar_usuario(
             detail="No puedes eliminar tu propio usuario",
         )
 
+    impacto = _impacto_eliminacion(db, usuario.id)
+    if impacto["bloqueado"]:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"{usuario.name} es autor de {impacto['formularios_creados']} "
+                "formulario(s) de SIEEJ y no puede eliminarse. Transfiere la autoría "
+                "o archiva los formularios primero."
+            ),
+        )
+
     target_id = usuario.id
     target_username = usuario.username
     registrar_actividad(
@@ -403,9 +423,24 @@ async def eliminar_usuario(
         action="user.delete",
         resource_type="usuario",
         resource_id=target_id,
-        metadata={"username": target_username},
+        metadata={"username": target_username, "impacto": impacto},
     )
     db.delete(usuario)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        logger.warning(
+            "action=user.delete actor=%s target=%s resultado=fk_bloqueada",
+            current_user.id,
+            target_id,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "El usuario tiene registros asociados que impiden eliminarlo. "
+                "Revisa su actividad antes de intentarlo de nuevo."
+            ),
+        ) from None
     logger.info("action=user.delete actor=%s target=%s", current_user.id, target_id)
     return {"message": "Usuario eliminado exitosamente"}

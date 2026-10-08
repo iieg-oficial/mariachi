@@ -16,6 +16,7 @@ from app.models.sieej import (
     Formulario,
 )
 from app.models.user import Usuario
+from tests.conftest import PERMISOS_REPORTAR, TODOS_LOS_PERMISOS, login_as
 
 settings = get_settings()
 ADMIN_PREFIX = settings.admin_prefix
@@ -129,13 +130,10 @@ def respondent(session):
     return u
 
 
-def login(client, username, password="testpass123"):
-    r = client.post(
-        f"{ADMIN_PREFIX}/autenticacion/iniciar-sesion",
-        json={"username": username, "password": password},
-    )
-    assert r.status_code == 200, r.text
-    return r.json()["csrf_token"]
+def login(client, user, permisos=None):
+    if permisos is None:
+        permisos = PERMISOS_REPORTAR if user.role == "externo" else TODOS_LOS_PERMISOS
+    return login_as(client, user, permisos)
 
 
 def _seed_catalog(session, clave: str, label: str | None = None) -> Catalogo:
@@ -189,7 +187,7 @@ def test_listar_catalogos_devuelve_los_sembrados_recientes_primero(
 ):
     _seed_catalog(session, "ejes_estrategicos", "Ejes estratégicos")
     _seed_catalog(session, "periodicidad", "Periodicidad")
-    login(client, admin.username)
+    login(client, admin)
     r = client.get(f"{ADMIN_PREFIX}/sieej/catalogos")
     assert r.status_code == 200, r.text
     claves = [c["clave"] for c in r.json()]
@@ -202,7 +200,7 @@ def test_listar_catalogos_incluye_campos_enlazados(
     _seed_catalog(session, "ejes_estrategicos", "Ejes estratégicos")
     _seed_catalog(session, "periodicidad", "Periodicidad")
     _seed_envio(session, admin, respondent, {})
-    login(client, admin.username)
+    login(client, admin)
     r = client.get(f"{ADMIN_PREFIX}/sieej/catalogos")
     assert r.status_code == 200, r.text
 
@@ -215,14 +213,14 @@ def test_listar_catalogos_incluye_campos_enlazados(
 
 
 def test_catalogo_desconocido_da_404(client, admin):
-    login(client, admin.username)
+    login(client, admin)
     r = client.get(f"{ADMIN_PREFIX}/sieej/catalogos/no_existe")
     assert r.status_code == 404
 
 
 def test_crear_opcion(client, admin, session):
     _seed_catalog(session, "ejes_estrategicos", "Ejes estratégicos")
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.post(
         f"{ADMIN_PREFIX}/sieej/catalogos/ejes_estrategicos",
         headers={"X-CSRF-Token": csrf},
@@ -235,7 +233,7 @@ def test_crear_opcion(client, admin, session):
 
 def test_crear_opcion_duplicada_da_409(client, admin, session):
     _seed_eje(session, "Salud")
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.post(
         f"{ADMIN_PREFIX}/sieej/catalogos/ejes_estrategicos",
         headers={"X-CSRF-Token": csrf},
@@ -247,7 +245,7 @@ def test_crear_opcion_duplicada_da_409(client, admin, session):
 def test_crear_opcion_queda_al_final(client, admin, session):
     _seed_eje(session, "A")
     _seed_eje(session, "B")
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.post(
         f"{ADMIN_PREFIX}/sieej/catalogos/ejes_estrategicos",
         headers={"X-CSRF-Token": csrf},
@@ -262,7 +260,7 @@ def test_reordenar_opciones_persiste_el_nuevo_orden(client, admin, session):
     a = _seed_eje(session, "A")
     b = _seed_eje(session, "B")
     c = _seed_eje(session, "C")
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.put(
         f"{ADMIN_PREFIX}/sieej/catalogos/ejes_estrategicos/reordenar",
         headers={"X-CSRF-Token": csrf},
@@ -278,7 +276,7 @@ def test_reordenar_opciones_persiste_el_nuevo_orden(client, admin, session):
 def test_reordenar_con_ids_incompletos_da_400(client, admin, session):
     a = _seed_eje(session, "A")
     _seed_eje(session, "B")
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.put(
         f"{ADMIN_PREFIX}/sieej/catalogos/ejes_estrategicos/reordenar",
         headers={"X-CSRF-Token": csrf},
@@ -301,7 +299,7 @@ def test_en_uso_cuenta_envios_en_form_y_repeater(
             "bases": [{"eje_base": "Seguridad"}],
         },
     )
-    login(client, admin.username)
+    login(client, admin)
     r = client.get(f"{ADMIN_PREFIX}/sieej/catalogos/ejes_estrategicos")
     assert r.status_code == 200, r.text
     por_valor = {i["value"]: i["en_uso"] for i in r.json()}
@@ -312,7 +310,7 @@ def test_en_uso_cuenta_envios_en_form_y_repeater(
 def test_borrar_opcion_en_uso_da_409(client, admin, respondent, session):
     item = _seed_eje(session, "Salud")
     _seed_envio(session, admin, respondent, {"general": {"ejes": ["Salud"]}})
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.delete(
         f"{ADMIN_PREFIX}/sieej/catalogos/ejes_estrategicos/{item.id}",
         headers={"X-CSRF-Token": csrf},
@@ -323,7 +321,7 @@ def test_borrar_opcion_en_uso_da_409(client, admin, respondent, session):
 
 def test_borrar_opcion_sin_uso_funciona(client, admin, session):
     item = _seed_eje(session, "Sin uso")
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.delete(
         f"{ADMIN_PREFIX}/sieej/catalogos/ejes_estrategicos/{item.id}",
         headers={"X-CSRF-Token": csrf},
@@ -343,7 +341,7 @@ def test_renombrar_propaga_a_envios(client, admin, respondent, session):
             "bases": [{"eje_base": "Salud"}],
         },
     )
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.put(
         f"{ADMIN_PREFIX}/sieej/catalogos/ejes_estrategicos/{item.id}",
         headers={"X-CSRF-Token": csrf},
@@ -361,7 +359,7 @@ def test_renombrar_propaga_a_envios(client, admin, respondent, session):
 def test_renombrar_a_valor_existente_da_409(client, admin, session):
     item = _seed_eje(session, "Salud")
     _seed_eje(session, "Seguridad")
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.put(
         f"{ADMIN_PREFIX}/sieej/catalogos/ejes_estrategicos/{item.id}",
         headers={"X-CSRF-Token": csrf},
@@ -371,7 +369,7 @@ def test_renombrar_a_valor_existente_da_409(client, admin, session):
 
 
 def test_create_catalog_derives_clave_from_label(client, admin):
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.post(
         f"{ADMIN_PREFIX}/sieej/catalogos",
         headers={"X-CSRF-Token": csrf},
@@ -386,7 +384,7 @@ def test_create_catalog_derives_clave_from_label(client, admin):
 
 
 def test_create_catalog_with_explicit_clave(client, admin):
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.post(
         f"{ADMIN_PREFIX}/sieej/catalogos",
         headers={"X-CSRF-Token": csrf},
@@ -398,7 +396,7 @@ def test_create_catalog_with_explicit_clave(client, admin):
 
 def test_create_catalog_duplicate_clave_conflicts(client, admin, session):
     _seed_catalog(session, "periodicidad", "Periodicidad")
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.post(
         f"{ADMIN_PREFIX}/sieej/catalogos",
         headers={"X-CSRF-Token": csrf},
@@ -408,7 +406,7 @@ def test_create_catalog_duplicate_clave_conflicts(client, admin, session):
 
 
 def test_create_catalog_invalid_clave_rejected(client, admin):
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.post(
         f"{ADMIN_PREFIX}/sieej/catalogos",
         headers={"X-CSRF-Token": csrf},
@@ -419,7 +417,7 @@ def test_create_catalog_invalid_clave_rejected(client, admin):
 
 def test_update_catalog_changes_label_keeps_clave(client, admin, session):
     _seed_catalog(session, "periodicidad", "Periodicidad")
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.put(
         f"{ADMIN_PREFIX}/sieej/catalogos/periodicidad",
         headers={"X-CSRF-Token": csrf},
@@ -434,7 +432,7 @@ def test_delete_catalog_without_usage(client, admin, session):
     catalogo = _seed_catalog(session, "temporal", "Temporal")
     session.add(CatalogoOpcion(catalogo_id=catalogo.id, value="A"))
     session.commit()
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.delete(
         f"{ADMIN_PREFIX}/sieej/catalogos/temporal",
         headers={"X-CSRF-Token": csrf},
@@ -449,7 +447,7 @@ def test_delete_catalog_linked_to_fields_conflicts(
 ):
     _seed_catalog(session, "ejes_estrategicos", "Ejes estratégicos")
     _seed_envio(session, admin, respondent, {})
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.delete(
         f"{ADMIN_PREFIX}/sieej/catalogos/ejes_estrategicos",
         headers={"X-CSRF-Token": csrf},
@@ -484,7 +482,7 @@ def test_delete_catalog_used_by_envios_conflicts(
     session.add(envio)
     session.commit()
 
-    csrf = login(client, admin.username)
+    csrf = login(client, admin)
     r = client.delete(
         f"{ADMIN_PREFIX}/sieej/catalogos/ejes_estrategicos",
         headers={"X-CSRF-Token": csrf},
@@ -496,7 +494,7 @@ def test_delete_catalog_used_by_envios_conflicts(
 def test_bundle_returns_dynamic_catalogs(client, respondent, session):
     _seed_eje(session, "Salud")
     _seed_catalog(session, "periodicidad", "Periodicidad")
-    login(client, respondent.username)
+    login(client, respondent)
     r = client.get(f"{ADMIN_PREFIX}/formularios/catalogos")
     assert r.status_code == 200, r.text
     body = r.json()

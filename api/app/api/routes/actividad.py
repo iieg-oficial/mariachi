@@ -10,14 +10,14 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
-from app.api.deps import ADMIN_ROLE, require_role
+from app.api.deps import require_permission
 from app.core.database import get_db
 from app.models.actividad_log import ActividadLog
 from app.models.user import Usuario
 
 router = APIRouter(prefix="/actividad", tags=["actividad"])
 
-_require_admin = require_role([ADMIN_ROLE])
+_require_admin = require_permission("mariachi.actividad.view")
 
 
 @router.get("")

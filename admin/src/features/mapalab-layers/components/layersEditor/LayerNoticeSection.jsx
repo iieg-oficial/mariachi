@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import {
     Alert,
     Card,
@@ -12,8 +13,7 @@ import {
     Space,
     Switch,
     Tag,
-    Typography,
-} from 'antd';
+    Typography, Tooltip } from 'antd';
 import dayjs from 'dayjs';
 import { BellOutlined, ExclamationCircleOutlined, InfoCircleOutlined, WarningOutlined } from '@ant-design/icons';
 import NoticeIconField from './NoticeIconField';
@@ -21,6 +21,8 @@ import NoticeAnchorField from '@shared/components/NoticeAnchorField';
 import ZoomRangeField from '@shared/components/ZoomRangeField';
 import MarkdownTextArea from '@shared/components/MarkdownTextArea';
 import { renderInlineMarkdown } from '@shared/utils/inlineMarkdown';
+import InfoIcon from '@features/mapalab-layers/components/layersEditor/InfoIcon';
+import '@features/mapalab-layers/components/layersEditor/appearancePanel.css';
 
 const GEOSERVER_BASE = '/geoserver';
 
@@ -254,6 +256,7 @@ export default function LayerNoticeSection({
     previewStickyTop = 0,
 }) {
     const safeValue = value || null;
+    const tituloRef = useRef(null);
     const enabled = Boolean(safeValue?.enabled);
     const anchorMode = safeValue?.anchorMode || 'viewport';
 
@@ -282,27 +285,17 @@ export default function LayerNoticeSection({
 
     return (
         <div>
-            <Form.Item label={<Text strong>Habilitar aviso</Text>} style={{ marginBottom: 16 }}>
+            <div className="ap-cabeza" style={{ marginBottom: enabled ? 16 : 0 }}>
                 <Switch
                     checked={enabled}
-                    onChange={(checked) => setField({ enabled: checked, title: safeValue?.title || '' })}
+                    onChange={(checked) => {
+                        setField({ enabled: checked, title: safeValue?.title || '' });
+                        if (checked) setTimeout(() => tituloRef.current?.focus(), 0);
+                    }}
                 />
-                <Text type="secondary" style={{ marginLeft: 12 }}>
-                    {enabled ? 'El aviso se mostrará en el visor.' : 'Apagado (no se muestra al usuario).'}
-                </Text>
-            </Form.Item>
-
-            {enabled && !safeValue?.title?.trim() && (
-                <Alert
-                    type="warning"
-                    showIcon
-                    closable
-                    icon={<WarningOutlined />}
-                    style={{ marginBottom: 16 }}
-                    message="Aviso activado sin título"
-                    description="El aviso está habilitado pero el título está vacío. El visor lo ignorará silenciosamente hasta que escribas un título."
-                />
-            )}
+                <span className="ap-titulo">Aviso al encender</span>
+                <InfoIcon title="Mensaje que el visor muestra al encender la capa. Sirve para advertir de datos preliminares o de un corte pendiente. Sin título, el visor lo ignora." />
+            </div>
 
             {enabled ? (
                 <Row gutter={24}>
@@ -331,6 +324,7 @@ export default function LayerNoticeSection({
                                         help="Texto principal (máx 120 caracteres). Soporta **negritas**, *cursivas* y ~~tachado~~."
                                     >
                                         <Input
+                                            ref={tituloRef}
                                             maxLength={120}
                                             showCount
                                             value={safeValue?.title || ''}

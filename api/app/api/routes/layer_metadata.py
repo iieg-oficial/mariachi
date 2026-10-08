@@ -1,49 +1,47 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException, Query
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.api.deps import require_project_access, require_role, verify_csrf
+from app.api.deps import get_db, require_permission, verify_csrf
 from app.api.rate_limit import rate_limit
 from app.core.database import get_dataengine_db
-from app.models.layer import Workspace
+from app.models.columna_tabla import ColumnaTabla
 from app.models.layer_metadata import LayerMetadata, LayerStats
 from app.models.user import Usuario
+from app.schemas.columna_tabla import ColumnasTablaResponse, ColumnasTablaUpdate
 from app.schemas.layer_metadata import (
     LayerMetadataResponse,
     LayerMetadataUpdate,
     LayerStatsResponse,
     LayerStatsUpdate,
 )
+from app.services import publicaciones_capas as publicaciones
 from app.services.grid_batch import diff_states, record_cell_history
 from app.services.grids.layer_metadata_grid import SPEC as METADATA_GRID_SPEC
 from app.services.grids.layer_metadata_grid import load_states
+from app.services.layer_keys import canonical_layer_key as _canonical_layer_key
 from app.services.mapalab_notifier import notify_tree_changed
 from app.services.stats_templates import (
     StatsTemplateError,
+    bind_layer_fields,
+    build_stats_context,
     execute_stats_batch,
+    load_layer_binding,
+    schemas_permitidos,
+    validar_schemas,
     validate_stats_config,
 )
 
 router = APIRouter(
     prefix='/layer-metadata',
     tags=['layer-metadata'],
-    dependencies=[Depends(require_project_access('mapalab'))],
 )
 
-_require_project_editor = require_project_access('mapalab', min_role='editor')
-_require_admin = require_role(['tetlamamakani'])
+_require_project_editor = require_permission("mariachi.mapalab.update")
+_require_manage = require_permission("mariachi.mapalab.manage")
 _write_rate_limit = rate_limit(max_requests=60, window_seconds=60.0)
-
-
-def _canonical_layer_key(db: Session, layer_key: str) -> str:
-    alias, sep, resto = layer_key.partition(':')
-    if not sep:
-        return layer_key
-    ws = db.query(Workspace).filter(Workspace.alias == alias).first()
-    if ws and ws.geoserver_workspace != alias:
-        return f'{ws.geoserver_workspace}:{resto}'
-    return layer_key
 
 
 @router.get('', response_model=list[LayerMetadataResponse])
@@ -52,6 +50,17 @@ async def list_metadata(
     current_user: Usuario = Depends(_require_project_editor),
 ):
     return db.query(LayerMetadata).order_by(LayerMetadata.layer_key).all()
+
+
+@router.get('/municipios')
+async def list_municipios(
+    db: Session = Depends(get_dataengine_db),
+    current_user: Usuario = Depends(_require_project_editor),
+):
+    rows = db.execute(
+        text('SELECT clave_geo, nombre FROM mapalab.municipios ORDER BY nombre')
+    ).fetchall()
+    return [{'clave': r[0], 'nombre': r[1]} for r in rows]
 
 
 # NOTA: las rutas con sub-paths fijos (/stats, /stats/preview, /stats/refresh) DEBEN
@@ -67,20 +76,33 @@ async def preview_stat_get_unsupported(layer_key: str):
 async def preview_stat(
     layer_key: str,
     cfg: dict = Body(...),
+    municipio: str | None = Query(default=None),
+    fecha_inicio: str | None = Query(default=None),
+    fecha_fin: str | None = Query(default=None),
     db: Session = Depends(get_dataengine_db),
     current_user: Usuario = Depends(verify_csrf),
     _editor: Usuario = Depends(_require_project_editor),
     _rl: Usuario = Depends(_write_rate_limit),
 ):
+    layer_key = _canonical_layer_key(db, layer_key)
+    schemas = schemas_permitidos(db.connection())
     try:
         validated = validate_stats_config([cfg])[0]
+        validar_schemas([validated], schemas)
     except StatsTemplateError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
-    values, errors = execute_stats_batch(db.connection(), [validated])
+    try:
+        context = build_stats_context(db.connection(), municipio, fecha_inicio, fecha_fin)
+    except StatsTemplateError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+
+    binding = load_layer_binding(db.connection(), layer_key)
+    bound = bind_layer_fields([validated], binding)
+    values, errors = execute_stats_batch(db.connection(), bound, context, schemas)
     if errors:
-        raise HTTPException(status_code=502, detail=f"Error ejecutando stat: {errors[0]['error']}")
-    return {'value': values[0]['valor'], 'config': validated}
+        raise HTTPException(status_code=502, detail=errors[0]['error'])
+    return {'value': values[0]['valor'], 'config': validated, 'context': context}
 
 
 @router.post('/{layer_key:path}/stats/refresh', response_model=LayerStatsResponse)
@@ -104,7 +126,10 @@ async def refresh_stats(
                    'guarda la configuracion antes de recalcular',
         )
 
-    values, errors = execute_stats_batch(db.connection(), cfgs)
+    binding = load_layer_binding(db.connection(), layer_key)
+    values, errors = execute_stats_batch(
+        db.connection(), bind_layer_fields(cfgs, binding), schemas=schemas_permitidos(db.connection())
+    )
 
     if not values:
         db.rollback()
@@ -141,8 +166,9 @@ async def update_stats(
     layer_key: str,
     data: LayerStatsUpdate,
     db: Session = Depends(get_dataengine_db),
+    mariachi_db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
-    _admin: Usuario = Depends(_require_admin),
+    _admin: Usuario = Depends(_require_manage),
     _rl: Usuario = Depends(_write_rate_limit),
 ):
     layer_key = _canonical_layer_key(db, layer_key)
@@ -158,10 +184,13 @@ async def update_stats(
         db.add(row)
 
     payload = data.model_dump(exclude_unset=True, by_alias=False)
+    campos = publicaciones.campos_de('layer_stats', payload)
+    antes = publicaciones.foto(row, campos)
 
     if 'stats_config' in payload and payload['stats_config'] is not None:
         try:
             payload['stats_config'] = validate_stats_config(payload['stats_config'])
+            validar_schemas(payload['stats_config'], schemas_permitidos(db.connection()))
         except StatsTemplateError as exc:
             raise HTTPException(status_code=400, detail=str(exc))
 
@@ -182,7 +211,60 @@ async def update_stats(
     db.commit()
     db.refresh(row)
     notify_tree_changed()
+    publicaciones.registrar_sin_romper(
+        mariachi_db, 'layer_stats', layer_key, antes, publicaciones.foto(row, campos),
+        publicaciones.quien(current_user),
+    )
     return row
+
+
+@router.get('/{layer_key:path}/columnas', response_model=ColumnasTablaResponse)
+async def get_columnas(
+    layer_key: str,
+    db: Session = Depends(get_dataengine_db),
+    current_user: Usuario = Depends(_require_project_editor),
+):
+    layer_key = _canonical_layer_key(db, layer_key)
+    filas = (
+        db.query(ColumnaTabla)
+        .filter(ColumnaTabla.layer_key == layer_key)
+        .order_by(ColumnaTabla.orden, ColumnaTabla.columna)
+        .all()
+    )
+    return ColumnasTablaResponse(layer_key=layer_key, columnas=filas)
+
+
+@router.put('/{layer_key:path}/columnas', response_model=ColumnasTablaResponse)
+async def update_columnas(
+    layer_key: str,
+    data: ColumnasTablaUpdate,
+    db: Session = Depends(get_dataengine_db),
+    current_user: Usuario = Depends(verify_csrf),
+    _admin: Usuario = Depends(_require_manage),
+    _rl: Usuario = Depends(_write_rate_limit),
+):
+    layer_key = _canonical_layer_key(db, layer_key)
+    meta = db.query(LayerMetadata).filter(LayerMetadata.layer_key == layer_key).first()
+    if not meta:
+        raise HTTPException(status_code=404, detail=f"Metadata '{layer_key}' no encontrada")
+
+    db.query(ColumnaTabla).filter(ColumnaTabla.layer_key == layer_key).delete()
+
+    ahora = datetime.now(timezone.utc)
+    for item in data.columnas:
+        db.add(ColumnaTabla(
+            layer_key=layer_key,
+            columna=item.columna,
+            alias=item.alias,
+            orden=item.orden,
+            visible=item.visible,
+            formato=item.formato,
+            updated_at=ahora,
+            updated_by=current_user.email,
+        ))
+
+    db.commit()
+    return ColumnasTablaResponse(layer_key=layer_key, columnas=data.columnas)
 
 
 @router.get('/{layer_key:path}', response_model=LayerMetadataResponse)
@@ -203,6 +285,7 @@ async def update_metadata(
     layer_key: str,
     data: LayerMetadataUpdate,
     db: Session = Depends(get_dataengine_db),
+    mariachi_db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
     _editor: Usuario = Depends(_require_project_editor),
     _rl: Usuario = Depends(_write_rate_limit),
@@ -215,6 +298,8 @@ async def update_metadata(
     before = load_states(db.connection(), layer_key)
 
     payload = data.model_dump(exclude_unset=True, by_alias=False)
+    campos = publicaciones.campos_de('layer_metadata', payload)
+    antes = publicaciones.foto(row, campos)
     for key, value in payload.items():
         if key in ('fuentes', 'metodologia') and value is not None:
             normalized = value if isinstance(value, list) else [value]
@@ -237,4 +322,8 @@ async def update_metadata(
 
     db.commit()
     db.refresh(row)
+    publicaciones.registrar_sin_romper(
+        mariachi_db, 'layer_metadata', layer_key, antes, publicaciones.foto(row, campos),
+        publicaciones.quien(current_user),
+    )
     return row

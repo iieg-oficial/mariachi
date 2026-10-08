@@ -68,6 +68,7 @@ export default function DiversionPreview({ animacion, funIcon, botonEstilo, fact
     const dato = datos.length ? datos[siguiente % datos.length] : null;
     const tipo = dato?.animacion || animacion || 'pelota';
     const conDestino = tipo === 'aguilas' && Boolean(dato?.destino);
+    const conRuta = conDestino && Array.isArray(dato.destino.ruta) && dato.destino.ruta.length > 0;
     const simboloBoton = funIcon || dato?.symbol || null;
     const etiqueta = ANIMACIONES.find((a) => a.value === tipo)?.label || tipo;
 
@@ -119,7 +120,7 @@ export default function DiversionPreview({ animacion, funIcon, botonEstilo, fact
         <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, gap: 8 }}>
                 <Text type="secondary" style={{ fontSize: 12 }}>
-                    {dato ? `Siguiente: ${etiqueta}${conDestino ? ' → lugar' : ''}` : 'Agrega al menos un dato curioso para probar'}
+                    {dato ? `Siguiente: ${etiqueta}${conDestino ? (conRuta ? ' → ruta' : ' → lugar') : ''}` : 'Agrega al menos un dato curioso para probar'}
                 </Text>
                 <Button size="small" icon={<PlayCircleOutlined />} onClick={probar} disabled={!dato}>
                     Probar

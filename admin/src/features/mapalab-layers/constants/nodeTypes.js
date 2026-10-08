@@ -16,6 +16,18 @@ export const PROPERTY_LABEL = 'Propiedad';
 export const isPropertyOfGroup = (nodeType, parentNodeType) =>
     nodeType === 'leaf' && parentNodeType === 'group';
 
+export const ETIQUETAS = new Set(['label', 'evento-etiqueta']);
+
+export const tipoQueGobierna = (nodeType, parentNodeType) =>
+    (ETIQUETAS.has(nodeType) ? parentNodeType : nodeType);
+
+export const propiedadesDeGrupo = (nodo) =>
+    (nodo?.children || []).flatMap((hijo) => {
+        if (hijo.nodeType === 'leaf') return [hijo];
+        if (ETIQUETAS.has(hijo.nodeType)) return propiedadesDeGrupo(hijo);
+        return [];
+    });
+
 export const labelForNode = (nodeType, parentNodeType) => {
     if (isPropertyOfGroup(nodeType, parentNodeType)) return PROPERTY_LABEL;
     return NODE_TYPE_LABELS[nodeType] || nodeType;
@@ -42,12 +54,21 @@ export const MUNICIPIO_FIELD_TYPE_OPTIONS = [
     { value: 'nombre', label: 'Nombre (ej. Guadalajara)' },
 ];
 
+export const PRIMARY_TABS = ['identidad', 'apariencia', 'infobox', 'metadatos', 'estadisticas'];
+
+export const ADVANCED_TABS = ['servicios', 'simbologia'];
+
+export const ADVANCED_TAB_TITLES = {
+    servicios: 'Servicios',
+    simbologia: 'Simbología',
+};
+
 export const TAB_VISIBILITY = {
     servicios: ['group', 'leaf'],
     infobox: ['group', 'leaf'],
     metadatos: ['group', 'leaf'],
+    estadisticas: ['group', 'leaf'],
     simbologia: ['group', 'leaf'],
-    aviso: ['group', 'leaf'],
     apariencia: ['tema', 'category', 'label', 'group', 'leaf'],
 };
 
@@ -80,5 +101,18 @@ export const NODE_TYPE_HELP = {
         title: 'Grupo',
         body: 'Es una capa real cuyos hijos son propiedades (típicamente filtros CQL sobre el mismo feature type). Tiene slug/alias, WMS, infobox y metadatos como una capa.',
     },
-    leaf: null,
+    leaf: {
+        title: 'Capa',
+        body: 'La capa real del visor: se enciende, expone WMS y tiene tarjeta, metadatos y simbología propios. El ícono de la fila indica su geometría (punto, línea o polígono).',
+    },
+};
+
+export const PROPERTY_HELP = {
+    title: PROPERTY_LABEL,
+    body: 'Comparte feature type, simbología, metadatos y numeralia con su grupo padre: todo eso se almacena por feature type, no por propiedad, y se edita una sola vez en el grupo. De sus hermanas solo la distingue el filtro CQL, en Avanzado › Servicios.',
+};
+
+export const helpForNode = (nodeType, parentNodeType) => {
+    if (isPropertyOfGroup(nodeType, parentNodeType)) return PROPERTY_HELP;
+    return NODE_TYPE_HELP[nodeType] || null;
 };

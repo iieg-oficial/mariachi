@@ -108,7 +108,7 @@ export default function FontsPage() {
 
     return (
         <Content style={{ padding: isMobile ? 6 : 24 }}>
-            <Space direction="vertical" style={{ width: '100%' }} size="middle">
+            <Space orientation="vertical" style={{ width: '100%' }} size="middle">
                 <PageHeading
                     icon={<FontSizeOutlined />}
                     title="Tipografías"
@@ -140,13 +140,13 @@ export default function FontsPage() {
                     }
                 />
 
-                {error && <Alert type="error" showIcon closable message={error} />}
+                {error && <Alert type="error" showIcon closable title={error} />}
 
                 {data.pendingReload && (
                     <Alert
                         type="warning"
                         showIcon
-                        message="Hay tipografías subidas que GeoServer todavía no reconoce"
+                        title="Hay tipografías subidas que GeoServer todavía no reconoce"
                         description="Usa «Recargar en GeoServer» para que queden disponibles en los SLDs. La recarga vuelve a leer todo el catálogo, así que conviene hacerla al terminar de subir."
                     />
                 )}

@@ -109,14 +109,14 @@ export default function DefinicionEditor({ formulario, onSaved }) {
     };
 
     return (
-        <Space direction="vertical" style={{ width: '100%' }} size="middle">
-            {error && <Alert type="error" showIcon message={error} closable onClose={() => setError(null)} />}
+        <Space orientation="vertical" style={{ width: '100%' }} size="middle">
+            {error && <Alert type="error" showIcon title={error} closable onClose={() => setError(null)} />}
 
             {conflicto && (
                 <Alert
                     type="warning"
                     showIcon
-                    message="Este formulario cambió mientras lo editabas"
+                    title="Este formulario cambió mientras lo editabas"
                     description={conflicto}
                     action={<Button size="small" onClick={handleRecargar}>Recargar</Button>}
                 />

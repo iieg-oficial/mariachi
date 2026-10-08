@@ -142,14 +142,14 @@ export default function FormSchemaEditor({ value, onChange }) {
                 showIcon
                 closable
                 style={{ marginBottom: 12 }}
-                message="Estos campos se mostrarán en el formulario público cuando el usuario seleccione este tipo de reporte."
+                title="Estos campos se mostrarán en el formulario público cuando el usuario seleccione este tipo de reporte."
                 description="Los campos `mensaje` y `email_contacto` ya están en el formulario base, no necesitas declararlos aquí."
             />
 
             {campos.length === 0 ? (
                 <Empty description="Sin campos personalizados (solo se pedirá mensaje + email)" />
             ) : (
-                <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
                     {campos.map((campo, idx) => (
                         <Card key={idx} size="small">
                             <Space style={{ width: '100%', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -167,7 +167,7 @@ export default function FormSchemaEditor({ value, onChange }) {
                                 </Space>
                             </Space>
 
-                            <Space direction="vertical" size={6} style={{ width: '100%' }}>
+                            <Space orientation="vertical" size={6} style={{ width: '100%' }}>
                                 <Input
                                     placeholder="Etiqueta visible"
                                     value={campo.label}
@@ -208,7 +208,7 @@ export default function FormSchemaEditor({ value, onChange }) {
                                 {TYPES_WITH_OPTIONS.has(campo.type) && (
                                     <div style={{ background: '#fafafa', padding: 8, borderRadius: 4 }}>
                                         <Text strong style={{ fontSize: 12 }}>Opciones</Text>
-                                        <Space direction="vertical" size={4} style={{ width: '100%', marginTop: 6 }}>
+                                        <Space orientation="vertical" size={4} style={{ width: '100%', marginTop: 6 }}>
                                             {(campo.options || []).map((opt, optIdx) => (
                                                 <Space.Compact key={optIdx} style={{ width: '100%' }}>
                                                     <Input

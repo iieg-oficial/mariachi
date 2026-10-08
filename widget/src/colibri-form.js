@@ -21,6 +21,7 @@ export class ColibriForm extends LitElement {
         tipoSelector: { type: String, attribute: 'tipo-selector' },
         submitLabel: { type: String, attribute: 'submit-label' },
         emailRequired: { type: Boolean, attribute: 'email-required' },
+        privacyUrl: { type: String, attribute: 'privacy-url' },
     };
 
     static styles = [
@@ -32,13 +33,11 @@ export class ColibriForm extends LitElement {
                 color: var(--colibri-fg);
             }
             :host([layout='card']) .container {
-                border: 1px solid var(--colibri-border);
-                border-radius: var(--colibri-radius);
-                padding: 20px;
-                box-shadow: var(--colibri-shadow);
+                border-radius: var(--colibri-radius-card);
+                padding: 32px 40px;
             }
             :host([layout='compact']) .container {
-                padding: 12px;
+                padding: 16px;
             }
         `,
     ];
@@ -81,6 +80,7 @@ export class ColibriForm extends LitElement {
                     tipos=${this.tiposFilter || ''}
                     tipo-default=${this.tipoDefault || ''}
                     tipo-selector=${this.tipoSelector}
+                    privacy-url=${this.privacyUrl || ''}
                     ?email-required=${this.emailRequired}>
                 </colibri-form-core>
             </div>

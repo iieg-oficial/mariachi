@@ -2,6 +2,7 @@ import pytest
 
 from app.services.stats_templates import (
     StatsTemplateError,
+    bind_layer_fields,
     build_query,
     execute_stats_batch,
     format_stat_value,
@@ -61,6 +62,14 @@ class TestValidateStatsConfig:
             'operation': 'count', 'schema': 'x', 'table': 'y', 'position': 1
         }])
         assert len(result) == 1
+
+    def test_count_where_does_not_require_field(self):
+        result = validate_stats_config([{
+            'operation': 'count_where', 'schema': 'x', 'table': 'y',
+            'where_field': 'nivel', 'where_value': 'Primaria', 'position': 1
+        }])
+        assert len(result) == 1
+        assert result[0]['field'] is None
 
     def test_count_where_requires_where_field_and_value(self):
         with pytest.raises(StatsTemplateError):
@@ -297,3 +306,160 @@ class TestExecuteStatsBatch:
         assert values[0]['posicion'] == 3
         assert values[0]['nombre'] == 'Total'
         assert values[0]['simbolo'] == 'ha'
+
+
+class TestFiltrosYContexto:
+    BASE = {'operation': 'count', 'schema': 'educacion', 'table': 'centros', 'position': 1}
+
+    def test_rechaza_op_de_filtro_desconocida(self):
+        with pytest.raises(StatsTemplateError, match='op invalido'):
+            validate_stats_config([{
+                **self.BASE,
+                'filters': [{'field': 'nivel', 'op': 'regex', 'value': 'x'}],
+            }])
+
+    def test_rechaza_placeholder_fuera_de_la_lista_blanca(self):
+        with pytest.raises(StatsTemplateError, match='desconocido'):
+            validate_stats_config([{
+                **self.BASE,
+                'filters': [{'field': 'nivel', 'op': 'eq', 'value': '{{tabla.secreta}}'}],
+            }])
+
+    def test_rechaza_campo_de_filtro_con_inyeccion(self):
+        with pytest.raises(StatsTemplateError, match='field invalido'):
+            validate_stats_config([{
+                **self.BASE,
+                'filters': [{'field': 'nivel"; DROP', 'op': 'eq', 'value': 'x'}],
+            }])
+
+    def test_filtro_literal_se_aplica(self):
+        cfg = validate_stats_config([{
+            **self.BASE,
+            'filters': [{'field': 'nivel', 'op': 'eq', 'value': 'Primaria'}],
+        }])[0]
+        sql, params = build_query(cfg)
+        assert 'WHERE "nivel" = :f0' in sql
+        assert params == {'f0': 'Primaria'}
+
+    def test_placeholder_sin_contexto_omite_el_filtro(self):
+        cfg = validate_stats_config([{
+            **self.BASE,
+            'filters': [{'field': 'municipio', 'op': 'in', 'value': '{{municipio.nombres}}'}],
+        }])[0]
+        sql, params = build_query(cfg)
+        assert 'WHERE' not in sql
+        assert params == {}
+
+    def test_placeholder_con_contexto_expande_el_in(self):
+        cfg = validate_stats_config([{
+            **self.BASE,
+            'filters': [{'field': 'municipio', 'op': 'in', 'value': '{{municipio.nombres}}'}],
+        }])[0]
+        sql, params = build_query(cfg, {'municipio.nombres': ['Zapopan', 'Tala']})
+        assert 'WHERE "municipio" IN (:f0_0, :f0_1)' in sql
+        assert params == {'f0_0': 'Zapopan', 'f0_1': 'Tala'}
+
+    def test_contexto_vacio_se_trata_como_ausente(self):
+        cfg = validate_stats_config([{
+            **self.BASE,
+            'filters': [{'field': 'municipio', 'op': 'in', 'value': '{{municipio.claves}}'}],
+        }])[0]
+        sql, _ = build_query(cfg, {'municipio.claves': []})
+        assert 'WHERE' not in sql
+
+    def test_between_parcial_omite_el_filtro_completo(self):
+        cfg = validate_stats_config([{
+            **self.BASE,
+            'filters': [{
+                'field': 'fecha', 'op': 'between',
+                'value': ['{{fecha.inicio}}', '{{fecha.fin}}'],
+            }],
+        }])[0]
+        sql, params = build_query(cfg, {'fecha.inicio': '2025-01-01'})
+        assert 'WHERE' not in sql
+        assert params == {}
+
+    def test_filtros_se_combinan_con_and(self):
+        cfg = validate_stats_config([{
+            **self.BASE,
+            'filters': [
+                {'field': 'nivel', 'op': 'eq', 'value': 'Primaria'},
+                {'field': 'fecha', 'op': 'gte', 'value': '{{fecha.inicio}}'},
+            ],
+        }])[0]
+        sql, params = build_query(cfg, {'fecha.inicio': '2025-01-01'})
+        assert 'WHERE "nivel" = :f0 AND "fecha" >= :f1' in sql
+        assert params == {'f0': 'Primaria', 'f1': '2025-01-01'}
+
+    def test_where_legacy_convive_con_filters(self):
+        cfg = validate_stats_config([{
+            **self.BASE, 'operation': 'count_where',
+            'where_field': 'nivel', 'where_value': 'Primaria',
+            'filters': [{'field': 'municipio', 'op': 'in', 'value': '{{municipio.nombres}}'}],
+        }])[0]
+        sql, params = build_query(cfg, {'municipio.nombres': ['Tala']})
+        assert 'WHERE "nivel" = :where_value AND "municipio" IN (:f1_0)' in sql
+        assert params == {'where_value': 'Primaria', 'f1_0': 'Tala'}
+
+    def test_count_where_acepta_solo_filters(self):
+        result = validate_stats_config([{
+            **self.BASE, 'operation': 'count_where',
+            'filters': [{'field': 'nivel', 'op': 'eq', 'value': 'Primaria'}],
+        }])
+        assert len(result) == 1
+
+
+class TestBindLayerFields:
+    def _cfg(self, **extra):
+        base = {
+            'operation': 'count', 'schema': 'economia', 'table': 'cultivos', 'position': 1,
+            'filters': [{'field': '@municipio', 'op': 'in', 'value': '{{municipio}}'}],
+        }
+        base.update(extra)
+        return validate_stats_config([base])
+
+    def test_token_de_municipio_pasa_la_validacion(self):
+        assert self._cfg()[0]['filters'][0]['field'] == '@municipio'
+
+    def test_binding_por_clave_resuelve_columna_y_contexto(self):
+        bound = bind_layer_fields(
+            self._cfg(), {'municipio_field': 'clave_municipio', 'municipio_field_type': 'clave'}
+        )
+        assert bound[0]['filters'] == [
+            {'field': 'clave_municipio', 'op': 'in', 'value': '{{municipio.claves}}'}
+        ]
+
+    def test_binding_por_nombre_usa_el_otro_contexto(self):
+        bound = bind_layer_fields(
+            self._cfg(), {'municipio_field': 'municipio', 'municipio_field_type': 'nombre'}
+        )
+        assert bound[0]['filters'][0]['value'] == '{{municipio.nombres}}'
+
+    def test_capa_sin_municipio_descarta_el_filtro(self):
+        bound = bind_layer_fields(self._cfg(), None)
+        assert bound[0]['filters'] == []
+        sql, params = build_query(bound[0], {'municipio.claves': ['14039']})
+        assert 'WHERE' not in sql
+        assert params == {}
+
+    def test_no_muta_la_configuracion_original(self):
+        cfg = self._cfg()
+        bind_layer_fields(cfg, {'municipio_field': 'clave_municipio', 'municipio_field_type': 'clave'})
+        assert cfg[0]['filters'][0]['field'] == '@municipio'
+
+    def test_binding_alcanza_las_hojas_de_una_formula(self):
+        cfg = validate_stats_config([{
+            'operation': 'formula', 'position': 1,
+            'expression': {
+                'op': 'percent',
+                'left': {
+                    'operation': 'count', 'schema': 'economia', 'table': 'cultivos',
+                    'filters': [{'field': '@municipio', 'op': 'in', 'value': '{{municipio}}'}],
+                },
+                'right': {'operation': 'count', 'schema': 'economia', 'table': 'cultivos'},
+            },
+        }])
+        bound = bind_layer_fields(
+            cfg, {'municipio_field': 'clave_municipio', 'municipio_field_type': 'clave'}
+        )
+        assert bound[0]['expression']['left']['filters'][0]['field'] == 'clave_municipio'

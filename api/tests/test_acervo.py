@@ -8,11 +8,12 @@ from minio.error import S3Error
 from app.models.acervo import AcervoFile, AcervoFolder
 from app.models.acervo_bucket import AcervoBucket
 from app.models.project import Project, UserProject
-from app.services import acervo_file_service
+from app.services import acervo_file_service, tipo_archivo
 from app.services.acervo import (
     MAX_REWRITE_BYTES,
     ObjectTooLargeError,
     build_content_disposition,
+    download_metadata,
 )
 from tests.conftest import ADMIN_PREFIX
 
@@ -67,7 +68,8 @@ class FakeAcervoClient:
     def invalidate_cache(cls, bucket_name=None):
         return None
 
-    async def upload_file(self, file, object_name, download_name=None):
+    async def upload_file(self, file, object_name, download_name=None, content_type=None):
+        content_type = content_type or tipo_archivo.detectar_mime_upload(file)
         data = await file.read()
         self.objects[object_name] = {
             "name": object_name,
@@ -77,8 +79,8 @@ class FakeAcervoClient:
             "is_dir": False,
             "url": f"http://fake/{object_name}",
             "data": data,
-            "content_type": getattr(file, "content_type", None),
-            "metadata": _fake_metadata(download_name),
+            "content_type": content_type,
+            "metadata": download_metadata(download_name, content_type, object_name) or {},
         }
         return f"http://fake/{object_name}"
 

@@ -66,7 +66,7 @@ export default function StepDrawer({ open, step, onSave, onClose }) {
             open={open}
             onClose={onClose}
             title={step?.id ? `Editar paso: ${step.id}` : 'Nuevo paso'}
-            width={Math.min(560, window.innerWidth)}
+            size={Math.min(560, window.innerWidth)}
             extra={
                 <Space>
                     <Button onClick={onClose}>Cancelar</Button>
@@ -134,7 +134,7 @@ export default function StepDrawer({ open, step, onSave, onClose }) {
                             type="info"
                             showIcon
                             style={{ marginBottom: 16 }}
-                            message="Los tabs internos se administran junto a los campos del paso, en la pestaña que agrupa cada uno."
+                            title="Los tabs internos se administran junto a los campos del paso, en la pestaña que agrupa cada uno."
                         />
                     </>
                 )}

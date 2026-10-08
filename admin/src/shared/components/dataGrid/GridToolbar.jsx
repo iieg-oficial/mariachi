@@ -1,8 +1,6 @@
 import { Button, Dropdown, Space } from 'antd';
 import {
     DownloadOutlined,
-    FileExcelOutlined,
-    FileTextOutlined,
     FilterOutlined,
     HistoryOutlined,
     QuestionCircleOutlined,
@@ -11,14 +9,9 @@ import {
     UndoOutlined,
 } from '@ant-design/icons';
 import GridSearchDropdown from '@shared/components/dataGrid/GridSearchDropdown';
+import { EXPORT_ITEMS } from '@shared/components/dataGrid/exportItems';
 
 export const ALL_FILTER_VALUES = '__todos__';
-
-const EXPORT_ITEMS = [
-    { key: 'xlsx', icon: <FileExcelOutlined />, label: 'Excel (datos + historial)' },
-    { key: 'csv-metadatos', icon: <FileTextOutlined />, label: 'CSV de datos' },
-    { key: 'csv-historial', icon: <HistoryOutlined />, label: 'CSV de historial' },
-];
 
 export default function GridToolbar({
     isDesktop,

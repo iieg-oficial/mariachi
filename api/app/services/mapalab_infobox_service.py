@@ -7,10 +7,11 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.models.capas_catalogo import CapaCatalogo
-from app.models.layer import Workspace
+from app.models.layer import Layer, Workspace
 from app.models.mapalab_infobox_propuesta import MapalabInfoboxPropuesta
 from app.schemas.mapalab_infobox import InfoboxPropuestaConfig, validate_fields_exist
 from app.services.geoserver_client import GeoServerClient, GeoServerError
+from app.services.mapalab_infobox_fusion import fusionar_config, hrefs_nuevos
 from app.services.mapalab_notifier import notify_catalogo_changed
 
 logger = logging.getLogger(__name__)
@@ -78,6 +79,7 @@ def crear_propuesta(
     ip_hash: str | None,
 ) -> MapalabInfoboxPropuesta:
     capa = get_capa_habilitada(dataengine_db, capa_slug)
+    validar_links(config_efectiva(dataengine_db, capa), config)
 
     available = resolve_available_fields(dataengine_db, capa)
     try:
@@ -103,13 +105,38 @@ def crear_propuesta(
     return propuesta
 
 
+def config_efectiva(dataengine_db: Session, capa: CapaCatalogo) -> dict | None:
+    if capa.infobox_config:
+        return capa.infobox_config
+    heredada = (
+        dataengine_db.query(Layer.infobox_config)
+        .filter(
+            Layer.workspace_alias == capa.workspace_alias,
+            Layer.geoserver_layer == capa.geoserver_layer,
+            Layer.infobox_config.isnot(None),
+            Layer.deleted_at.is_(None),
+        )
+        .first()
+    )
+    return heredada[0] if heredada else None
+
+
+def validar_links(base: dict | None, config: InfoboxPropuestaConfig) -> None:
+    if hrefs_nuevos(base, config.to_config()):
+        raise PropuestaError(
+            "La propuesta no puede agregar links: solo se conservan los que la tarjeta ya tenía."
+        )
+
+
 def aplicar_propuesta(
     dataengine_db: Session, propuesta: MapalabInfoboxPropuesta
 ) -> None:
     capa = get_capa_habilitada(dataengine_db, propuesta.capa_slug)
     revalidada = InfoboxPropuestaConfig.model_validate(propuesta.config)
+    base = config_efectiva(dataengine_db, capa)
+    validar_links(base, revalidada)
     validate_fields_exist(revalidada, resolve_available_fields(dataengine_db, capa))
-    capa.infobox_config = revalidada.to_config()
+    capa.infobox_config = fusionar_config(base, revalidada.to_config())
     dataengine_db.commit()
 
 

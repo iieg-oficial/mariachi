@@ -9,7 +9,7 @@ export function promptNewFolder(currentPath, onCreated) {
     Modal.confirm({
         title: 'Nueva carpeta',
         content: (
-            <Space direction="vertical" style={{ width: '100%' }} size="small">
+            <Space orientation="vertical" style={{ width: '100%' }} size="small">
                 <Text type="secondary" style={{ fontSize: 12 }}>
                     La carpeta se crea cuando subas el primer archivo dentro.
                 </Text>

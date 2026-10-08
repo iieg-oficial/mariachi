@@ -43,7 +43,7 @@ export default function ReporteHistorialPanel({ actividad, loading }) {
                         items={actividad.map((a) => ({
                             key: a.id,
                             color: ACCION_COLOR[a.accion] || 'gray',
-                            children: (
+                            content: (
                                 <div style={{ fontSize: 12 }}>
                                     <Space size={6} align="center">
                                         <Avatar size={20} src={a.actorAvatarUrl} icon={<UserOutlined />} />

@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     Alert,
-    Breadcrumb,
-    Button,
     Card,
     Layout,
     Tabs,
@@ -11,7 +9,7 @@ import {
 import {
     FileTextOutlined,
     GlobalOutlined,
-    ReloadOutlined,
+    PictureOutlined,
 } from '@ant-design/icons';
 import {
     browseGeoserverFiles,
@@ -21,11 +19,18 @@ import {
     searchGeoserverFiles,
 } from '@features/sextante/api/geoserverFilesService';
 import FileUploadModal from '@features/sextante/components/FileUploadModal';
-import SldSnippetModal from '@features/sextante/components/SldSnippetModal';
 import GeoserverFilesContent from '@features/sextante/components/GeoserverFilesContent';
+import GeoserverFilesModals from '@features/sextante/components/GeoserverFilesModals';
+import GeoserverPathBreadcrumb from '@features/sextante/components/GeoserverPathBreadcrumb';
 import GeoserverFilesToolbar from '@features/sextante/components/GeoserverFilesToolbar';
+import MosaicActions from '@features/sextante/components/MosaicActions';
+import ResetCachesButton from '@features/sextante/components/ResetCachesButton';
+import useGeoserverFileActions from '@features/sextante/hooks/useGeoserverFileActions';
+import useGeoserverSelection from '@features/sextante/hooks/useGeoserverSelection';
 import { promptNewFolder } from '@features/sextante/components/newFolderPrompt';
 import {
+    RASTER_ROOT,
+    RASTER_SCOPE,
     SEARCH_DEBOUNCE_MS,
     WORKSPACE_STORAGE_KEY,
     basename,
@@ -37,9 +42,6 @@ import { message } from '@shared/services/message';
 
 const { Content } = Layout;
 const { Text } = Typography;
-
-const VIEW_STORAGE_KEY = 'mapalab.geoserverFiles.viewMode';
-
 
 export default function GeoserverFilesPage() {
     const [workspace, setWorkspace] = useState(() => {
@@ -56,14 +58,10 @@ export default function GeoserverFilesPage() {
     const [searchResults, setSearchResults] = useState(null);
     const [searching, setSearching] = useState(false);
     const [uploadOpen, setUploadOpen] = useState(false);
-    const [snippetFile, setSnippetFile] = useState(null);
     const [deletingName, setDeletingName] = useState(null);
-    const [viewMode, setViewMode] = useState(() => {
-        try { return localStorage.getItem(VIEW_STORAGE_KEY) || 'grid'; }
-        catch { return 'grid'; }
-    });
     const { isMobile } = useIsMobile();
     const searchTimer = useRef(null);
+    const selection = useGeoserverSelection();
 
     const refreshWorkspaces = useCallback(async () => {
         try {
@@ -86,7 +84,16 @@ export default function GeoserverFilesPage() {
         refreshWorkspaces();
     }, [currentPath, workspace, refreshWorkspaces]);
 
+    const { clear: clearSelection } = selection;
+    const actions = useGeoserverFileActions({
+        selected: selection.selected,
+        onChanged: reload,
+        onClearSelection: clearSelection,
+    });
+
     useEffect(() => { reload(); }, [reload]);
+
+    useEffect(() => { clearSelection(); }, [currentPath, workspace, clearSelection]);
 
     useEffect(() => {
         if (searchTimer.current) clearTimeout(searchTimer.current);
@@ -136,11 +143,6 @@ export default function GeoserverFilesPage() {
         }
     };
 
-    const handleViewModeChange = (next) => {
-        setViewMode(next);
-        try { localStorage.setItem(VIEW_STORAGE_KEY, next); } catch { /* noop */ }
-    };
-
     const handleNewFolder = () => {
         promptNewFolder(currentPath, (fullPath) => {
             setPendingFolders((prev) => [...new Set([...prev, fullPath])]);
@@ -152,6 +154,10 @@ export default function GeoserverFilesPage() {
         {
             key: '__global__',
             label: <span><GlobalOutlined /> Global <span style={{ color: '#999', fontSize: 11 }}>(styles/)</span></span>,
+        },
+        {
+            key: RASTER_SCOPE,
+            label: <span><PictureOutlined /> Rásters <span style={{ color: '#999', fontSize: 11 }}>({RASTER_ROOT}/)</span></span>,
         },
         ...workspaces.map((w) => ({
             key: w.geoserverWorkspace,
@@ -180,22 +186,9 @@ export default function GeoserverFilesPage() {
         return [...data.folders, ...extras];
     }, [data.folders, pendingFolders, currentPath]);
 
-    const crumbs = useMemo(() => {
-        const raw = [{ title: 'Raíz', path: '' }];
-        let acc = '';
-        for (const seg of currentPath ? currentPath.split('/') : []) {
-            acc = acc ? `${acc}/${seg}` : seg;
-            raw.push({ title: seg, path: acc });
-        }
-        return raw.map((c, idx) => ({
-            title: idx === raw.length - 1
-                ? <Text strong>{c.title}</Text>
-                : <Button type="link" size="small" onClick={() => setCurrentPath(c.path)} style={{ padding: 0, height: 'auto' }}>{c.title}</Button>,
-        }));
-    }, [currentPath]);
-
     const gridMinWidth = isMobile ? 140 : 180;
     const downloadZip = (path) => window.open(buildGeoserverFolderZipUrl(path, workspace), '_blank');
+    const downloadFile = (file) => window.open(file.downloadUrl, '_blank');
 
 
     return (
@@ -205,14 +198,13 @@ export default function GeoserverFilesPage() {
                 title="Recursos GeoServer"
                 description={
                     <>
-                        Archivos (SVG, PNG, JPG, WebP, GIF, TIFF, TTF, OTF) disponibles en <Text code>{destinationLabel}</Text>,
-                        sin límite de tamaño. Los analistas los referencian desde sus SLDs del mismo ámbito con{' '}
-                        <Text code>xlink:href="ruta/archivo.ext"</Text>.
+                        Imágenes, fuentes y <Text code>.properties</Text> en <Text code>{destinationLabel}</Text>, sin
+                        límite de tamaño. Los SLD del mismo ámbito los referencian con{' '}
+                        <Text code>xlink:href="ruta/archivo.ext"</Text>; los <Text code>.properties</Text> configuran
+                        los ImageMosaic.
                     </>
                 }
-                extra={
-                    <Button icon={<ReloadOutlined />} onClick={reload} disabled={loading || isSearchMode} />
-                }
+                extra={<ResetCachesButton />}
             />
 
             <Card>
@@ -224,10 +216,21 @@ export default function GeoserverFilesPage() {
                     gap: 8,
                     marginBottom: 12,
                 }}>
-                    {currentPath ? <Breadcrumb items={crumbs} /> : <span />}
-                    <Text type="secondary" style={{ fontSize: 12 }}>
-                        {visibleFolders.length} carpeta(s) · {data.files.length} archivo(s)
-                    </Text>
+                    {currentPath
+                        ? <GeoserverPathBreadcrumb currentPath={currentPath} onNavigate={setCurrentPath} />
+                        : <span />}
+                    <GeoserverFilesToolbar
+                        isMobile={isMobile}
+                        search={search}
+                        onSearchChange={setSearch}
+                        disabled={isSearchMode}
+                        onNewFolder={handleNewFolder}
+                        onUpload={() => setUploadOpen(true)}
+                        selectedCount={selection.count}
+                        onBulkMove={actions.startMove}
+                        onBulkDelete={actions.bulkDelete}
+                        extraActions={<MosaicActions workspace={workspace} currentPath={currentPath} onDone={reload} />}
+                    />
                 </div>
 
                 <Tabs
@@ -238,22 +241,11 @@ export default function GeoserverFilesPage() {
                     tabBarStyle={{ marginBottom: 4 }}
                 />
 
-                <GeoserverFilesToolbar
-                    isMobile={isMobile}
-                    search={search}
-                    onSearchChange={setSearch}
-                    viewMode={viewMode}
-                    onViewModeChange={handleViewModeChange}
-                    disabled={isSearchMode}
-                    onNewFolder={handleNewFolder}
-                    onUpload={() => setUploadOpen(true)}
-                />
-
-                {error && <Alert type="error" showIcon closable message={error} style={{ marginBottom: 12 }} />}
+                {error && <Alert type="error" showIcon closable title={error} style={{ marginBottom: 12 }} />}
 
                 <GeoserverFilesContent
-                    viewMode={viewMode}
                     gridMinWidth={gridMinWidth}
+                    isMobile={isMobile}
                     loading={loading}
                     searchMode={isSearchMode}
                     searching={searching}
@@ -264,10 +256,29 @@ export default function GeoserverFilesPage() {
                     deletingName={deletingName}
                     onOpenFolder={setCurrentPath}
                     onDownloadZip={downloadZip}
-                    onSnippet={setSnippetFile}
                     onDelete={handleDelete}
+                    onDownloadFile={downloadFile}
+                    anySelected={selection.count > 0}
+                    isSelected={selection.isSelected}
+                    onToggleSelect={selection.toggle}
+                    onRename={actions.startRename}
+                    onDeleteFolder={actions.startDeleteFolder}
                 />
+
+                {!isSearchMode && !loading && (
+                    <div style={{ borderTop: '1px solid #f0f0f0', marginTop: 16, paddingTop: 8 }}>
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                            {visibleFolders.length} carpeta(s) · {data.files.length} archivo(s)
+                        </Text>
+                    </div>
+                )}
             </Card>
+
+            <GeoserverFilesModals
+                actions={actions}
+                workspace={workspace}
+                selected={selection.selected}
+            />
 
             <FileUploadModal
                 open={uploadOpen}
@@ -280,11 +291,6 @@ export default function GeoserverFilesPage() {
                     setPendingFolders((prev) => prev.filter((p) => !names.some((n) => n.startsWith(`${p}/`))));
                     reload();
                 }}
-            />
-            <SldSnippetModal
-                open={snippetFile != null}
-                file={snippetFile}
-                onClose={() => setSnippetFile(null)}
             />
         </Content>
     );

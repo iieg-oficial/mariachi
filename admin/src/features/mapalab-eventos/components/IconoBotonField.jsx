@@ -17,7 +17,7 @@ export default function IconoBotonField({ value, onChange }) {
     };
 
     return (
-        <Space direction="vertical" size={8}>
+        <Space orientation="vertical" size={8}>
             <Segmented options={OPCIONES} value={fijo ? 'fijo' : 'dinamico'} onChange={cambiarModo} />
             {fijo && <SymbolSnapshotField value={value} onChange={onChange} placeholder="Elige el ícono fijo" />}
         </Space>

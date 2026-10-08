@@ -1,22 +1,35 @@
 import { useCallback, useEffect, useState } from 'react';
 import api from '@shared/services/api';
+import { tipoQueGobierna } from '@features/mapalab-layers/constants/nodeTypes';
 import { optimisticMoveRawTree, optimisticReorderRawTree } from '@features/mapalab-layers/utils/treeOptimistic';
+import { useLayerMetadataApi } from '@features/mapalab-layers/hooks/useLayerMetadataApi';
+import { guardarBorradorCompartido, quitarCamposDeBorrador } from '@features/mapalab-layers/utils/borradorCompartido';
 
 
-const toAntTreeData = (nodes, parentNodeType = null) =>
-    nodes.map((n) => ({
-        key: n.id,
-        title: n.label,
-        nodeType: n.nodeType,
-        parentNodeType,
-        workspaceAlias: n.workspaceAlias,
-        geoserverLayer: n.geoserverLayer,
-        disabled: n.disabled,
-        hiddenInMenu: n.hiddenInMenu,
-        iconUrl: n.iconUrl,
-        raw: n,
-        children: n.children && n.children.length > 0 ? toAntTreeData(n.children, n.nodeType) : undefined,
-    }));
+export const toAntTreeData = (nodes, parentNodeType = null) =>
+    (nodes || []).map((n) => {
+        const label = String(n.label || '');
+        const legacyDisabled = label.startsWith('*');
+        return {
+            key: n.id,
+            title: legacyDisabled ? label.slice(1) : label,
+            nodeType: n.nodeType,
+            parentNodeType,
+            workspaceAlias: n.workspaceAlias || n.wmsConfig?.workspace || null,
+            geoserverLayer: n.geoserverLayer || n.wmsConfig?.geoserverLayer || null,
+            geometryType: n.geometryType || null,
+            cqlFilter: n.wmsConfig?.cqlFilter || '',
+            disabled: n.disabled === true || legacyDisabled,
+            hiddenInMenu: n.hiddenInMenu === true,
+            privada: n.privada === true,
+            iconUrl: n.iconUrl,
+            tarjetita: n.littleCard ? (n.inheritedFrom ? 'heredada' : 'propia') : null,
+            raw: n,
+            children: n.children && n.children.length > 0
+                ? toAntTreeData(n.children, tipoQueGobierna(n.nodeType, parentNodeType))
+                : undefined,
+        };
+    });
 
 export const flattenLeaves = (nodes, acc = []) => {
     for (const n of nodes || []) {
@@ -42,14 +55,14 @@ export const findNodeContext = (treeData, layerId) => {
 };
 
 
-const fetchLayerTreePublic = async () => {
-    const res = await fetch('/mapalab/api/layers/tree', { credentials: 'include' });
-    if (!res.ok) throw new Error(`GET /mapalab/api/layers/tree fallo: ${res.status}`);
-    return res.json();
+const fetchArbolCompleto = async () => {
+    const res = await api.get('/layers/arbol');
+    return res.data;
 };
 
 
 export const useLayerTreeAdmin = () => {
+    const metadataApi = useLayerMetadataApi();
     const [treeData, setTreeData] = useState([]);
     const [rawTree, setRawTree] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -58,7 +71,7 @@ export const useLayerTreeAdmin = () => {
     const reload = useCallback(async () => {
         setError(null);
         try {
-            const tree = await fetchLayerTreePublic();
+            const tree = await fetchArbolCompleto();
             setRawTree(tree);
             setTreeData(toAntTreeData(tree));
         } catch (err) {
@@ -70,7 +83,7 @@ export const useLayerTreeAdmin = () => {
 
     useEffect(() => {
         let cancelled = false;
-        fetchLayerTreePublic()
+        fetchArbolCompleto()
             .then((tree) => {
                 if (cancelled) return;
                 setRawTree(tree);
@@ -91,14 +104,25 @@ export const useLayerTreeAdmin = () => {
         return res.data;
     }, []);
 
-    const saveLayerDraft = useCallback(async (layerId, data) => {
-        const res = await api.put(`/borradores/layer/${layerId}`, { data });
-        return res.data;
+    const saveLayerDraft = useCallback(
+        (layerId, data, opciones) => guardarBorradorCompartido('layer', layerId, data, opciones),
+        [],
+    );
+
+    const requestReview = useCallback(async (resourceId, resourceType = 'layer') => {
+        await api.post(`/borradores/${resourceType}/${encodeURIComponent(resourceId)}/solicitar-revision`);
     }, []);
 
-    const requestReview = useCallback(async (layerId) => {
-        await api.post(`/borradores/layer/${layerId}/solicitar-revision`);
+    const saveStatsDraft = useCallback(
+        (layerKey, data) => guardarBorradorCompartido('layer_stats', layerKey, data),
+        [],
+    );
+
+    const discardDraft = useCallback(async (borradorId) => {
+        await api.delete(`/borradores/por-id/${borradorId}`);
     }, []);
+
+    const quitarCampos = useCallback((borradorId, campos) => quitarCamposDeBorrador(borradorId, campos), []);
 
     const getLayerDraft = useCallback(async (layerId) => {
         try {
@@ -115,8 +139,8 @@ export const useLayerTreeAdmin = () => {
         return res.data;
     }, []);
 
-    const deleteLayer = useCallback(async (layerId, { force = false } = {}) => {
-        const res = await api.delete(`/layers/${layerId}`, { params: { force } });
+    const deleteLayer = useCallback(async (layerId, { force = false, cascade = false } = {}) => {
+        const res = await api.delete(`/layers/${layerId}`, { params: { force, cascade } });
         return res.data;
     }, []);
 
@@ -194,46 +218,6 @@ export const useLayerTreeAdmin = () => {
         return res.data;
     }, []);
 
-    const getLayerMetadata = useCallback(async (layerKey) => {
-        try {
-            const res = await api.get(`/layer-metadata/${encodeURIComponent(layerKey)}`);
-            return res.data;
-        } catch (err) {
-            if (err.response?.status === 404) return null;
-            throw err;
-        }
-    }, []);
-
-    const updateLayerMetadata = useCallback(async (layerKey, payload) => {
-        const res = await api.put(`/layer-metadata/${encodeURIComponent(layerKey)}`, payload);
-        return res.data;
-    }, []);
-
-    const getLayerStats = useCallback(async (layerKey) => {
-        try {
-            const res = await api.get(`/layer-metadata/${encodeURIComponent(layerKey)}/stats`);
-            return res.data;
-        } catch (err) {
-            if (err.response?.status === 404) return null;
-            throw err;
-        }
-    }, []);
-
-    const updateLayerStats = useCallback(async (layerKey, payload) => {
-        const res = await api.put(`/layer-metadata/${encodeURIComponent(layerKey)}/stats`, payload);
-        return res.data;
-    }, []);
-
-    const previewLayerStat = useCallback(async (layerKey, cfg) => {
-        const res = await api.post(`/layer-metadata/${encodeURIComponent(layerKey)}/stats/preview`, cfg);
-        return res.data;
-    }, []);
-
-    const refreshLayerStats = useCallback(async (layerKey) => {
-        const res = await api.post(`/layer-metadata/${encodeURIComponent(layerKey)}/stats/refresh`);
-        return res.data;
-    }, []);
-
     const listLayerAliases = useCallback(async (layerId) => {
         const res = await api.get(`/layers/${layerId}/aliases`);
         return res.data;
@@ -287,7 +271,10 @@ export const useLayerTreeAdmin = () => {
         createLayer,
         updateLayer,
         saveLayerDraft,
+        quitarCampos,
         requestReview,
+        saveStatsDraft,
+        discardDraft,
         getLayerDraft,
         deleteLayer,
         restoreLayer,
@@ -304,12 +291,7 @@ export const useLayerTreeAdmin = () => {
         reorderLayers,
         getInitialOrder,
         setInitialOrder,
-        getLayerMetadata,
-        updateLayerMetadata,
-        getLayerStats,
-        updateLayerStats,
-        previewLayerStat,
-        refreshLayerStats,
+        ...metadataApi,
         listLayerAliases,
         createLayerAlias,
         deleteLayerAlias,

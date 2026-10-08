@@ -1,37 +1,29 @@
 import { useState, useEffect, useRef } from 'react';
 import { Modal, Form, Input, Divider, Segmented, Switch, Tag, Tooltip, Typography } from 'antd';
 import { LoadingOutlined, CheckCircleFilled, CloseCircleFilled } from '@ant-design/icons';
-import PasswordStrengthIndicator from '@shared/components/PasswordStrengthIndicator';
-import { isStrongEnough } from '@shared/helpers/passwordStrength';
 import api from '@shared/services/api';
 import DependenciaSelect from './DependenciaSelect';
+import UserFormFooter from './UserFormFooter';
 import { metaFor, EXTERNAL_SUBS } from '../constants/projectAccess';
+import { ROLE_SELECT_OPTIONS, roleDescription } from '../constants/roles';
 
 const { Text } = Typography;
 
-const ROLE_OPTIONS = [
-    {
-        value: 'tetlamamakani',
-        label: 'Administradora',
-        description: 'Acceso total al panel y a todos los proyectos. Gestiona usuarios, revisiones y configuración. No requiere asignar proyectos.',
-    },
-    {
-        value: 'editora',
-        label: 'Editora',
-        description: 'Staff del IIEG. Entra al panel y trabaja solo en los proyectos que le asignes abajo, como editor o solo lectura.',
-    },
-    {
-        value: 'externo',
-        label: 'Externo',
-        description: 'No accede al panel administrativo. Usa las plataformas públicas (por ejemplo SIEEJ) según los proyectos que le asignes abajo.',
-    },
-];
-
-const roleDescription = (role) => ROLE_OPTIONS.find((o) => o.value === role)?.description;
-
-export default function UserFormModal({ open, editingUser, projects, grupos = [], isMobile, form, onCancel, onSubmit }) {
+export default function UserFormModal({
+    open,
+    editingUser,
+    projects,
+    grupos = [],
+    isMobile,
+    form,
+    puedeAsignar = true,
+    puedeEliminar = false,
+    esPropio = false,
+    onDelete,
+    onCancel,
+    onSubmit,
+}) {
     const selectedRole = Form.useWatch('role', form);
-    const passwordWatch = Form.useWatch('password', form) || '';
     const projectAssignments = Form.useWatch('project_assignments', form) || {};
     const usernameWatch = Form.useWatch('username', form);
 
@@ -62,8 +54,8 @@ export default function UserFormModal({ open, editingUser, projects, grupos = []
         return () => clearTimeout(tid);
     }, [usernameWatch, editingUser]);
 
-    const isEditora = selectedRole === 'editora';
-    const isExterno = selectedRole === 'externo';
+    const isEditora = puedeAsignar && selectedRole === 'editora';
+    const isExterno = puedeAsignar && selectedRole === 'externo';
     const platformProjects = projects.filter((p) => metaFor(p.slug).kind === 'platform');
     const acervoProjects = projects.filter((p) => metaFor(p.slug).kind === 'acervo');
     const externalProjects = projects.filter((p) => metaFor(p.slug).external);
@@ -79,9 +71,16 @@ export default function UserFormModal({ open, editingUser, projects, grupos = []
             title={editingUser ? 'Editar Usuario' : 'Nuevo Usuario'}
             open={open}
             onCancel={onCancel}
-            onOk={() => form.submit()}
-            okText={editingUser ? 'Actualizar' : 'Crear'}
-            cancelText="Cancelar"
+            footer={(
+                <UserFormFooter
+                    editingUser={editingUser}
+                    puedeEliminar={puedeEliminar}
+                    esPropio={esPropio}
+                    onDelete={onDelete}
+                    onCancel={onCancel}
+                    onSubmit={() => form.submit()}
+                />
+            )}
             width={isMobile ? '100%' : 560}
             centered={isMobile}
             destroyOnHidden
@@ -143,30 +142,10 @@ export default function UserFormModal({ open, editingUser, projects, grupos = []
                     Dirección de correo electrónico del usuario.
                 </Text>
 
-                {!editingUser && (
-                    <Form.Item
-                        label="Contraseña"
-                        name="password"
-                        rules={[
-                            { required: true, message: 'Por favor ingrese la contraseña' },
-                            {
-                                validator: (_, value) => (
-                                    !value || isStrongEnough(value)
-                                        ? Promise.resolve()
-                                        : Promise.reject(new Error('La contraseña no cumple con los requisitos mínimos.'))
-                                ),
-                            },
-                        ]}
-                    >
-                        <Input.Password placeholder="Crea una contraseña segura" />
-                    </Form.Item>
-                )}
-                {!editingUser && <PasswordStrengthIndicator password={passwordWatch} />}
-
                 <Form.Item label="Rol" name="role" rules={[{ required: true, message: 'Por favor seleccione el rol' }]}>
                     <Segmented
                         block
-                        options={ROLE_OPTIONS.map((o) => ({ label: o.label, value: o.value }))}
+                        options={ROLE_SELECT_OPTIONS}
                     />
                 </Form.Item>
                 {selectedRole && (

@@ -10,7 +10,7 @@ export default function PresenciaIndicator({ editores }) {
             type="warning"
             showIcon
             icon={<TeamOutlined />}
-            message={`${nombres} ${verbo} esto`}
+            title={`${nombres} ${verbo} esto`}
         />
     );
 }

@@ -73,11 +73,11 @@ export default function EliminarEnvioModal({ formulario, envio, open, onClose, o
                 </Button>,
             ]}
         >
-            <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+            <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
                 <Alert
                     type="error"
                     showIcon
-                    message="Se destruye lo que capturó esta dependencia"
+                    title="Se destruye lo que capturó esta dependencia"
                     description={(
                         <ul style={{ margin: '8px 0 0', paddingInlineStart: 18 }}>
                             <li>Sus respuestas, el historial de correcciones y la bitácora de eventos del envío.</li>
@@ -90,15 +90,15 @@ export default function EliminarEnvioModal({ formulario, envio, open, onClose, o
                 <Alert
                     type="warning"
                     showIcon
-                    message="¿Solo quieres que corrija lo que puso?"
+                    title="¿Solo quieres que corrija lo que puso?"
                     description="Reabrir el envío (la flecha de esta misma tabla) se lo devuelve para editarlo conservando todo lo escrito. Eliminar es para capturas de prueba o equivocadas que deben desaparecer."
                 />
                 <Alert
                     type="info"
                     showIcon
-                    message="Descarga el PDF antes de continuar"
+                    title="Descarga el PDF antes de continuar"
                     description={(
-                        <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                        <Space orientation="vertical" size="small" style={{ width: '100%' }}>
                             <Text>Es el único registro que quedará de lo que capturó.</Text>
                             <Button
                                 icon={<FilePdfOutlined />}

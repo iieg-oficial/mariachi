@@ -24,7 +24,15 @@ vi.mock('@app/fullscreenHeader', () => ({
 const ROWS_BY_RESOURCE = {
     'layer-metadata': {
         columns: [{ key: 'layer_key', title: 'Capa', type: 'text', sticky: true }],
-        rows: [{ layer_key: 'salud:hospitales', workspace: 'salud', descripcion: '' }],
+        rows: [
+            { layer_key: 'salud:hospitales', workspace: 'salud', descripcion: '' },
+            {
+                layer_key: 'salud:clinicas',
+                workspace: 'salud',
+                descripcion: 'Clínicas',
+                has_dynamic_stats: true,
+            },
+        ],
     },
     'layer-config': {
         columns: [{ key: 'id', title: 'ID', type: 'text', sticky: true }],
@@ -98,6 +106,13 @@ describe('MetadataGridPage', () => {
 
         const estado = await screen.findByText('Todo guardado');
         expect(container.querySelector('.ant-tabs-extra-content')?.contains(estado)).toBe(true);
+    });
+
+    it('anuncia en la barra de estado las capas con numeralia dinámica', async () => {
+        const MetadataGridPage = await importPage();
+        render(<MetadataGridPage />);
+
+        expect(await screen.findByText('1 con numeralia dinámica')).toBeTruthy();
     });
 
     it('publica una toolbar en el header fullscreen', async () => {

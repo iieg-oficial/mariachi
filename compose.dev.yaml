@@ -54,6 +54,7 @@ services:
       VITE_GOOGLE_ANALYTICS_ID: ${VITE_GOOGLE_ANALYTICS_ID?}
       VITE_MAPALAB_PROXY_URL: ${VITE_MAPALAB_PROXY_URL:?}
       VITE_CARTO_API_KEY: ${VITE_CARTO_API_KEY?}
+      VITE_APP_ENV: ${VITE_APP_ENV:?}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:

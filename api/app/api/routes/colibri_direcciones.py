@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_db, require_role, verify_csrf
+from app.api.deps import get_db, require_permission, verify_csrf
 from app.core.time import utcnow
 from app.models.direccion_organizacional import DireccionOrganizacional
 from app.models.reporte import Reporte
@@ -58,7 +58,7 @@ async def crear_direccion(
     payload: DireccionOrganizacionalCreate,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
-    __: Usuario = Depends(require_role(["tetlamamakani"])),
+    __: Usuario = Depends(require_permission("mariachi.colibri_config.manage")),
 ):
     direccion = DireccionOrganizacional(**payload.model_dump())
     db.add(direccion)
@@ -82,7 +82,7 @@ async def actualizar_direccion(
     payload: DireccionOrganizacionalUpdate,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
-    __: Usuario = Depends(require_role(["tetlamamakani"])),
+    __: Usuario = Depends(require_permission("mariachi.colibri_config.manage")),
 ):
     direccion = (
         db.query(DireccionOrganizacional)
@@ -114,7 +114,7 @@ async def eliminar_direccion(
     direccion_id: int,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(verify_csrf),
-    __: Usuario = Depends(require_role(["tetlamamakani"])),
+    __: Usuario = Depends(require_permission("mariachi.colibri_config.manage")),
 ):
     direccion = (
         db.query(DireccionOrganizacional)

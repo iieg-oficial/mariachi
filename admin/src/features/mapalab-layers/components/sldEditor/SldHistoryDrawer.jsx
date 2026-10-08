@@ -60,7 +60,7 @@ export default function SldHistoryDrawer({ open, onClose, workspace, styleName, 
         <Drawer
             title="Historial de SLDs aplicados"
             placement="right"
-            width={480}
+            size={480}
             open={open}
             onClose={onClose}
             extra={<Text type="secondary" style={{ fontSize: 12 }}>{items.length} versiones</Text>}
@@ -86,7 +86,7 @@ export default function SldHistoryDrawer({ open, onClose, workspace, styleName, 
                                     display: 'block',
                                 }}
                             >
-                                <Space direction="vertical" size={6} style={{ width: '100%' }}>
+                                <Space orientation="vertical" size={6} style={{ width: '100%' }}>
                                     <Space wrap>
                                         <Tag color={isLatest ? 'orange' : 'default'}>
                                             {isLatest ? 'Versión actual' : `#${items.length - idx}`}

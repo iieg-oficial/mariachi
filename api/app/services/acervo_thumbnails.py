@@ -25,8 +25,10 @@ ALLOWED_WIDTHS = (120, 400, 1280)
 DEFAULT_WIDTH = 400
 WEBP_QUALITY = 80
 
-# Cota anti decompression-bomb: rechaza imágenes que decodifican a > ~64 MP.
-Image.MAX_IMAGE_PIXELS = 64_000_000
+MAX_OPEN_PIXELS = 1_000_000_000
+MAX_FULL_DECODE_PIXELS = 128_000_000
+
+Image.MAX_IMAGE_PIXELS = MAX_OPEN_PIXELS // 2
 
 RASTER_MIME = frozenset({
     "image/png",
@@ -81,6 +83,12 @@ def cleanup_prefix(client, folder_prefix: str) -> None:
 
 def generate_webp(data: bytes, width: int) -> bytes:
     with Image.open(io.BytesIO(data)) as img:
+        if img.format == "JPEG":
+            img.draft("RGB", (width, width))
+        elif img.width * img.height > MAX_FULL_DECODE_PIXELS:
+            raise Image.DecompressionBombError(
+                f"{img.width}x{img.height} excede {MAX_FULL_DECODE_PIXELS} px sin decodificación reducida"
+            )
         has_alpha = img.mode in ("RGBA", "LA") or (
             img.mode == "P" and "transparency" in img.info
         )

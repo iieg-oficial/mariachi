@@ -1,7 +1,13 @@
 import pytest
 
 from app.core import refresh_token as refresh_token_module
-from tests.conftest import ADMIN_PREFIX, login_as
+from app.core.security import decodificar_token
+from tests.conftest import (
+    ADMIN_PREFIX,
+    TODOS_LOS_PERMISOS,
+    establecer_cookies_de_sesion,
+    login_as,
+)
 
 
 class _FakePipeline:
@@ -97,19 +103,14 @@ def fake_refresh_redis(monkeypatch):
     return fake
 
 
-def test_login_emite_refresh_cookie(client, admin_user, fake_refresh_redis):
-    response = client.post(
-        f"{ADMIN_PREFIX}/autenticacion/iniciar-sesion",
-        json={"username": "admin_test", "password": "testpass123"},
-    )
-    assert response.status_code == 200
-    names = [c.name for c in response.cookies.jar]
-    assert "access_token" in names
-    assert "refresh_token" in names
+def test_la_sesion_del_callback_trae_access_y_refresh(client, admin_user, fake_refresh_redis):
+    establecer_cookies_de_sesion(client, admin_user)
+    assert client.cookies.get("access_token")
+    assert client.cookies.get("refresh_token")
 
 
 def test_refrescar_renueva_cookies(client, admin_user, fake_refresh_redis):
-    login_as(client, "admin_test", "testpass123")
+    establecer_cookies_de_sesion(client, admin_user)
     response = client.post(f"{ADMIN_PREFIX}/autenticacion/refrescar")
     assert response.status_code == 200
     assert "csrf_token" in response.json()
@@ -118,8 +119,15 @@ def test_refrescar_renueva_cookies(client, admin_user, fake_refresh_redis):
     assert "refresh_token" in names
 
 
-def test_refrescar_emite_access_valido(client, admin_user, fake_refresh_redis):
-    login_as(client, "admin_test", "testpass123")
+def test_refrescar_informa_la_vigencia_de_la_sesion(client, admin_user, fake_refresh_redis):
+    establecer_cookies_de_sesion(client, admin_user)
+    response = client.post(f"{ADMIN_PREFIX}/autenticacion/refrescar")
+    assert response.status_code == 200
+    assert response.json()["session_expires_in"] > 0
+
+
+def test_refrescar_conserva_el_sid_de_la_sesion(client, admin_user, fake_refresh_redis):
+    sid = establecer_cookies_de_sesion(client, admin_user)
     refresh = client.cookies.get("refresh_token")
     client.cookies.clear()
     client.cookies.set("refresh_token", refresh)
@@ -127,9 +135,9 @@ def test_refrescar_emite_access_valido(client, admin_user, fake_refresh_redis):
     response = client.post(f"{ADMIN_PREFIX}/autenticacion/refrescar")
     assert response.status_code == 200
 
-    perfil = client.get(f"{ADMIN_PREFIX}/autenticacion/perfil")
-    assert perfil.status_code == 200
-    assert perfil.json()["username"] == "admin_test"
+    payload = decodificar_token(response.cookies.get("access_token"))
+    assert payload["sub"] == "admin_test"
+    assert payload["sid"] == sid
 
 
 def test_refrescar_sin_cookie(client, admin_user, fake_refresh_redis):
@@ -144,13 +152,13 @@ def test_refrescar_cookie_invalida(client, admin_user, fake_refresh_redis):
 
 
 def test_refrescar_rotacion_detecta_reuso(client, admin_user, fake_refresh_redis):
-    login_as(client, "admin_test", "testpass123")
+    establecer_cookies_de_sesion(client, admin_user)
     old_refresh = client.cookies.get("refresh_token")
     assert old_refresh
 
     first = client.post(f"{ADMIN_PREFIX}/autenticacion/refrescar")
     assert first.status_code == 200
-    new_refresh = client.cookies.get("refresh_token")
+    new_refresh = first.cookies.get("refresh_token")
     assert new_refresh and new_refresh != old_refresh
 
     client.cookies.clear()
@@ -165,7 +173,8 @@ def test_refrescar_rotacion_detecta_reuso(client, admin_user, fake_refresh_redis
 
 
 def test_logout_revoca_refresh(client, admin_user, fake_refresh_redis):
-    csrf = login_as(client, "admin_test", "testpass123")
+    establecer_cookies_de_sesion(client, admin_user)
+    csrf = login_as(client, admin_user, TODOS_LOS_PERMISOS)
     refresh = client.cookies.get("refresh_token")
 
     logout = client.post(

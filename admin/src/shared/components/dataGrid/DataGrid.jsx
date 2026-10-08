@@ -9,6 +9,12 @@ const { Text } = Typography;
 const GRID_STYLES = `
     .grid-cell-dirty { background-color: #fff7e6; }
     .grid-cell-conflict { background-color: #fff1f0; box-shadow: inset 0 0 0 1px #ff4d4f; }
+    .grid-cell-locked {
+        background-color: #f6f0fa;
+        background-image: repeating-linear-gradient(
+            45deg, rgba(92, 36, 114, 0.14) 0 3px, transparent 3px 6px
+        );
+    }
     .mariachi-grid .dsg-cell-header { font-size: 12px; }
     .mariachi-grid .dsg-cell-gutter { padding: 0 6px; }
 `;

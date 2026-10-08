@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState, useCallback } from 'react';
-import { Alert, AutoComplete, Breadcrumb, Button, Card, Col, Empty, Form, Input, Result, Row, Segmented, Select, Space, Spin, Switch, Tabs, Tag, Tooltip, Typography } from 'antd';
-import { DeleteOutlined, PartitionOutlined, ReloadOutlined, SaveOutlined, SettingOutlined, TableOutlined } from '@ant-design/icons';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { Alert, AutoComplete, Button, Card, Drawer, Empty, Form, Input, Result, Segmented, Select, Space, Spin, Switch, Tabs, Tag, Tooltip, Typography } from 'antd';
+import { DeleteOutlined, HistoryOutlined, PartitionOutlined, PlusOutlined, ReloadOutlined, SettingOutlined, SlidersOutlined, TableOutlined } from '@ant-design/icons';
 import DeleteLayerModal from '@features/mapalab-layers/components/DeleteLayerModal';
 import DeletedLayersList from '@features/mapalab-layers/components/DeletedLayersList';
 import LayersTreeListInline from '@features/mapalab-layers/components/LayersTreeListInline';
@@ -10,9 +10,10 @@ import { useNavigate, useParams, useSearchParams } from 'react-router';
 import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
 import useIsMobile from '@shared/hooks/useIsMobile';
 import { useAuth } from '@shared/contexts/useAuth';
-import InfoBoxBlocksEditor from '@features/mapalab-layers/components/layersEditor/InfoBoxBlocksEditor';
-import InfoBoxPreview from '@features/mapalab-layers/components/layersEditor/InfoBoxPreview';
+import TarjetitaEditor from '@features/mapalab-layers/components/layersEditor/TarjetitaEditor';
+import { SampleFeaturesProvider } from '@features/mapalab-layers/components/layersEditor/SampleFeaturesContext';
 import LayerMetadataSection from '@features/mapalab-layers/components/layersEditor/LayerMetadataSection';
+import LayerStatsSection from '@features/mapalab-layers/components/layersEditor/LayerStatsSection';
 import LayerAliasesSection from '@features/mapalab-layers/components/layersEditor/LayerAliasesSection';
 import CqlFilterBuilder from '@features/mapalab-layers/components/layersEditor/CqlFilterBuilder';
 import WmsGroupField from '@features/mapalab-layers/components/layersEditor/WmsGroupField';
@@ -28,12 +29,33 @@ import LayerHighlightGlobalSettings from '@features/mapalab-layers/components/La
 import { useEventosList } from '@features/mapalab-eventos/hooks/useEventos';
 import { useEventosTreeNode } from '@features/mapalab-eventos/hooks/useEventoTreeNodes';
 import {
+    ADVANCED_TABS,
+    ADVANCED_TAB_TITLES,
     NODE_TYPE_OPTIONS,
-    NODE_TYPE_HELP,
+    PRIMARY_TABS,
     isFieldVisible,
     isTabVisible,
     isPropertyOfGroup,
+    helpForNode,
+    labelForNode,
 } from '@features/mapalab-layers/constants/nodeTypes';
+import AdvancedStack from '@features/mapalab-layers/components/layersEditor/AdvancedStack';
+import InfoIcon from '@features/mapalab-layers/components/layersEditor/InfoIcon';
+import AppearancePanel from '@features/mapalab-layers/components/layersEditor/AppearancePanel';
+import EditorSection from '@features/mapalab-layers/components/layersEditor/EditorSection';
+import LayerBreadcrumb from '@features/mapalab-layers/components/LayerBreadcrumb';
+import TreeSearchInput from '@features/mapalab-layers/components/TreeSearchInput';
+import PublishReviewModal from '@features/mapalab-layers/components/PublishReviewModal';
+import EditandoAhora from '@features/mapalab-layers/components/layersEditor/EditandoAhora';
+import UltimaPublicacion from '@features/mapalab-layers/components/layersEditor/UltimaPublicacion';
+import GridHistoryDrawer from '@shared/components/dataGrid/GridHistoryDrawer';
+import { useLayerDrafts } from '@features/mapalab-layers/hooks/useLayerDrafts';
+import { HISTORY_COLUMNS, METADATA_HISTORY_COLUMNS, diffPayload } from '@features/mapalab-layers/utils/layerDiff';
+import { findPath } from '@features/mapalab-layers/utils/treeSearch';
+import { isOrganizer } from '@features/mapalab-layers/constants/nodeVisuals';
+import { GEOMETRY_TYPE_OPTIONS } from '@features/mapalab-layers/constants/layerConfigCatalogs';
+import { grupoQueHereda } from '@features/mapalab-layers/utils/propagacionTarjetita';
+import { refrescarArbol } from '@features/mapalab-layers/utils/refrescoArbol';
 import MunicipioFieldPicker from '@features/mapalab-layers/components/MunicipioFieldPicker';
 import { findNodeContext } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
 import { message } from '@shared/services/message';
@@ -44,7 +66,9 @@ export default function LayerEditPage() {
     const { id: layerId } = useParams();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const initialTab = searchParams.get('tab') || 'identidad';
+    const requestedTab = searchParams.get('tab') || 'identidad';
+    const requestedAdvanced = ADVANCED_TABS.includes(requestedTab);
+    const initialTab = PRIMARY_TABS.includes(requestedTab) ? requestedTab : 'identidad';
     const { isMobile } = useIsMobile();
     const { user } = useAuth();
     const isAdmin = user?.role === 'tetlamamakani';
@@ -67,7 +91,14 @@ export default function LayerEditPage() {
         getLayer,
         updateLayer,
         saveLayerDraft,
+        saveStatsDraft,
+        saveMetadataDraft,
+        updateLayerMetadata,
+        updateLayerStats,
+        refreshLayerStats,
         requestReview,
+        discardDraft,
+        quitarCampos,
         getLayerDraft,
         listGeoserverWorkspaces,
         listGeoserverStyles,
@@ -84,12 +115,33 @@ export default function LayerEditPage() {
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState(null);
     const [reloadKey, setReloadKey] = useState(0);
-    const [saving, setSaving] = useState(false);
     const [workspaces, setWorkspaces] = useState([]);
     const [availableStyles, setAvailableStyles] = useState([]);
     const [availableFields, setAvailableFields] = useState([]);
+    const [fieldsLoading, setFieldsLoading] = useState(false);
     const [bulkTagsOpen, setBulkTagsOpen] = useState(false);
     const [highlightSettingsOpen, setHighlightSettingsOpen] = useState(false);
+    const [advancedOpen, setAdvancedOpen] = useState(requestedAdvanced);
+    const [treeQuery, setTreeQuery] = useState('');
+    const [createOpen, setCreateOpen] = useState(false);
+    const [createParentId, setCreateParentId] = useState(null);
+    const [editorTab, setEditorTab] = useState(initialTab);
+    const [statsValues, setStatsValues] = useState([]);
+    const [baselinesPorClave, setBaselinesPorClave] = useState({});
+    const registrarBaseline = useCallback((clave, valores) => {
+        setBaselinesPorClave((prev) => ({ ...prev, [clave]: valores }));
+    }, []);
+    const [reviewOpen, setReviewOpen] = useState(false);
+    const [historyOpen, setHistoryOpen] = useState(false);
+    const [publishing, setPublishing] = useState(false);
+    const [autosaveAt, setAutosaveAt] = useState(null);
+    const autosaveTimer = useRef(null);
+    const { drafts, pendingCount, reload: reloadDrafts } = useLayerDrafts();
+    const shellRef = useRef(null);
+    const [baseline, setBaseline] = useState(null);
+    const tocadosRef = useRef(new Set());
+    const asentadoRef = useRef(false);
+    const [shellHeight, setShellHeight] = useState(null);
     const [eventoLayerId, setEventoLayerId] = useState(null);
 
     const [moveOpen, setMoveOpen] = useState(false);
@@ -97,6 +149,19 @@ export default function LayerEditPage() {
     const [deleteReferences, setDeleteReferences] = useState(null);
     const [deleteReferencesLoading, setDeleteReferencesLoading] = useState(false);
     const [deleting, setDeleting] = useState(false);
+
+    useLayoutEffect(() => {
+        const medir = () => {
+            const el = shellRef.current;
+            if (!el) return;
+            const top = el.getBoundingClientRect().top;
+            const holgura = isMobile ? 12 : 48;
+            setShellHeight(Math.max(360, window.innerHeight - top - holgura));
+        };
+        medir();
+        window.addEventListener('resize', medir);
+        return () => window.removeEventListener('resize', medir);
+    }, [isMobile]);
 
     const openDeleteModal = async () => {
         if (!layerId) return;
@@ -113,11 +178,14 @@ export default function LayerEditPage() {
         }
     };
 
-    const handleDeleteAdmin = async ({ force }) => {
+    const handleDeleteAdmin = async ({ force, cascade }) => {
         setDeleting(true);
         try {
-            await deleteLayer(layerId, { force });
-            message.success('Capa archivada — puedes restaurarla desde la papelera');
+            const res = await deleteLayer(layerId, { force, cascade });
+            const total = res?.archived?.length || 1;
+            message.success(total > 1
+                ? `${total} nodos archivados — puedes restaurarlos desde la papelera`
+                : 'Capa archivada — puedes restaurarla desde la papelera');
             setDeleteModalOpen(false);
             await reload();
             navigate('/mapalab/layers');
@@ -144,10 +212,10 @@ export default function LayerEditPage() {
     };
 
 
+    const watchedLabel = Form.useWatch('label', form);
     const selectedWs = Form.useWatch('workspaceAlias', form);
     const selectedGsLayer = Form.useWatch('geoserverLayer', form);
     const selectedStyles = Form.useWatch('styles', form);
-    const watchedConfig = Form.useWatch('infoboxConfig', form);
     const watchedNodeType = Form.useWatch('nodeType', form);
     const parentNodeType = useMemo(() => {
         if (!layerId || !treeData?.length) return null;
@@ -205,12 +273,15 @@ export default function LayerEditPage() {
     useEffect(() => {
         if (!selectedWs || !selectedGsLayer) {
             setAvailableFields([]);
+            setFieldsLoading(false);
             return;
         }
         let cancelled = false;
+        setFieldsLoading(true);
         listGeoserverFields(selectedWs, selectedGsLayer)
             .then((data) => { if (!cancelled) setAvailableFields(data?.fields || []); })
-            .catch(() => { if (!cancelled) setAvailableFields([]); });
+            .catch(() => { if (!cancelled) setAvailableFields([]); })
+            .finally(() => { if (!cancelled) setFieldsLoading(false); });
         return () => { cancelled = true; };
     }, [selectedWs, selectedGsLayer, listGeoserverFields]);
 
@@ -230,6 +301,7 @@ export default function LayerEditPage() {
             imageFormat: data.imageFormat ?? data.image_format ?? 'image/png',
             antialias: data.antialias ?? 'text',
             wfsAvailable: data.wfsAvailable,
+            geometryType: data.geometryType ?? data.geometry_type ?? null,
             downloadable: data.downloadable,
             timeEnabled: data.timeEnabled,
             defaultDate: data.defaultDate ?? data.default_date ?? null,
@@ -282,55 +354,124 @@ export default function LayerEditPage() {
     useEffect(() => {
         if (loading || !layer) return;
         populate(layer);
-    }, [loading, layer, populate]);
+        setBaseline(form.getFieldsValue());
+        tocadosRef.current = new Set();
+        asentadoRef.current = false;
+        const asentar = setTimeout(() => { asentadoRef.current = true; }, 1500);
+        return () => clearTimeout(asentar);
+    }, [loading, layer, populate, form]);
 
-    const buildPayload = async () => {
-        const values = await form.validateFields();
-        const raw = values.searchTags;
-        const tagsArray = Array.isArray(raw)
-            ? raw
-            : (raw || '').split(',').map((t) => t.trim()).filter(Boolean);
-        const { infoboxTemplate: _omitTpl, infoboxParams: _omitParams, ...rest } = values;
-        return { ...rest, searchTags: tagsArray };
-    };
 
-    const handleSaveDirect = async () => {
-        setSaving(true);
+
+
+
+    const scheduleAutosave = useCallback((changedValues) => {
+        if (!layerId || loading || loadError) return;
+
+        if (!asentadoRef.current) {
+            setBaseline(form.getFieldsValue());
+            return;
+        }
+        Object.keys(changedValues || {}).forEach((k) => tocadosRef.current.add(k));
+
+        if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+        autosaveTimer.current = setTimeout(async () => {
+            try {
+                if (!baseline) return;
+                const values = form.getFieldsValue();
+                const soloTocados = Object.fromEntries(
+                    [...tocadosRef.current]
+                        .filter((k) => k !== 'infoboxTemplate' && k !== 'infoboxParams')
+                        .map((k) => [k, values[k]]),
+                );
+                const cambios = diffPayload(soloTocados, baseline);
+                const quitar = Object.keys(soloTocados).filter((k) => !(k in cambios));
+                if (Object.keys(cambios).length === 0 && quitar.length === 0) return;
+                await saveLayerDraft(layerId, cambios, { quitar });
+                setAutosaveAt(new Date());
+                reloadDrafts();
+            } catch { /* el borrador se reintenta al siguiente cambio */ }
+        }, 1500);
+    }, [layerId, loading, loadError, form, baseline, saveLayerDraft, reloadDrafts]);
+
+    useEffect(() => () => {
+        if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    }, []);
+
+    const layerTitles = useMemo(() => {
+        const acc = {};
+        const walk = (nodes) => (nodes || []).forEach((n) => {
+            acc[n.key] = n.title;
+            if (n.children?.length) walk(n.children);
+        });
+        walk(treeData);
+        return acc;
+    }, [treeData]);
+
+    const handleDiscard = async () => {
+        setPublishing(true);
         try {
-            const payload = await buildPayload();
-            await updateLayer(layerId, payload);
-            message.success(`Capa "${layerId}" actualizada`);
+            await Promise.all(drafts.map((d) => discardDraft(d.id)));
+            message.success('Borradores descartados');
+            setReviewOpen(false);
+            await reloadDrafts();
+            setReloadKey((k) => k + 1);
         } catch (err) {
-            message.error(err?.response?.data?.detail || 'Error al guardar');
+            message.error(err?.response?.data?.detail || 'No se pudieron descartar los borradores');
         } finally {
-            setSaving(false);
+            setPublishing(false);
         }
     };
 
-    const handleSaveDraft = async () => {
-        setSaving(true);
+    const handlePublish = async (rows) => {
+        setPublishing(true);
         try {
-            const payload = await buildPayload();
-            await saveLayerDraft(layerId, payload);
-            message.success('Borrador guardado');
-        } catch (err) {
-            message.error(err?.response?.data?.detail || 'Error al guardar borrador');
-        } finally {
-            setSaving(false);
-        }
-    };
+            const porRecurso = new Map();
+            rows.forEach((row) => {
+                const clave = `${row.resourceType}::${row.layerId}`;
+                if (!porRecurso.has(clave)) {
+                    porRecurso.set(clave, { tipo: row.resourceType, id: row.layerId, payload: {} });
+                }
+                porRecurso.get(clave).payload[row.field] = row.value;
+            });
 
-    const handleSubmitReview = async () => {
-        setSaving(true);
-        try {
-            const payload = await buildPayload();
-            await saveLayerDraft(layerId, payload);
-            await requestReview(layerId);
-            message.success('Enviado a revisión');
+            for (const { tipo, id, payload } of porRecurso.values()) {
+                if (!isAdmin) {
+                    if (tipo === 'layer_stats') await saveStatsDraft(id, payload);
+                    else if (tipo === 'layer_metadata') await saveMetadataDraft(id, payload);
+                    else await saveLayerDraft(id, payload);
+                    await requestReview(id, tipo);
+                    continue;
+                }
+                if (tipo === 'layer_stats') {
+                    await updateLayerStats(id, payload);
+                    if ((payload.stats_config || []).length > 0) await refreshLayerStats(id);
+                } else if (tipo === 'layer_metadata') {
+                    await updateLayerMetadata(id, payload);
+                } else {
+                    await updateLayer(id, payload);
+                }
+            }
+
+            if (isAdmin) {
+                const publicadosPorBorrador = new Map();
+                rows.forEach((r) => {
+                    if (!publicadosPorBorrador.has(r.draftId)) publicadosPorBorrador.set(r.draftId, []);
+                    publicadosPorBorrador.get(r.draftId).push(r.field);
+                });
+                await Promise.all(
+                    [...publicadosPorBorrador].map(([id, campos]) => quitarCampos(id, campos)),
+                );
+            }
+            message.success(isAdmin ? 'Cambios publicados' : 'Cambios enviados a revisión');
+            setReviewOpen(false);
+            await reloadDrafts();
+            await refrescarArbol(reload);
+            setReloadKey((k) => k + 1);
         } catch (err) {
-            message.error(err?.response?.data?.detail || 'Error al enviar a revisión');
+            message.error(err?.response?.data?.detail || 'No se pudieron publicar los cambios');
         } finally {
-            setSaving(false);
+            setPublishing(false);
         }
     };
 
@@ -415,6 +556,8 @@ export default function LayerEditPage() {
     })();
 
     const inheritedInfobox = (() => {
+        const delArbol = grupoQueHereda(rawTree, layerId);
+        if (delArbol?.config) return delArbol;
         if (!breadcrumbPath.length) return null;
         for (let i = breadcrumbPath.length - 2; i >= 0; i--) {
             const ancestor = breadcrumbPath[i];
@@ -460,7 +603,6 @@ export default function LayerEditPage() {
         navigate(`/mapalab/layers/${encodeURIComponent(key)}/edit`);
     };
 
-    const saveDisabled = loading || Boolean(loadError) || !layer;
     const deleteDisabled = loading || Boolean(loadError) || !layer || Boolean(layer?.deletedAt);
     const moveDisabled = loading || Boolean(loadError) || !layer || Boolean(layer?.deletedAt);
 
@@ -486,49 +628,9 @@ export default function LayerEditPage() {
     }, [optimisticReorderChildren, reorderLayers]);
 
     const actionButtons = layerId && (
-        <Space size={4} wrap>
-            {isAdmin && (
-                <Tooltip title="Mover esta capa a otro tema o categoría">
-                    <Button
-                        size="small"
-                        icon={<PartitionOutlined />}
-                        disabled={moveDisabled}
-                        onClick={() => setMoveOpen(true)}
-                    >
-                        Mover
-                    </Button>
-                </Tooltip>
-            )}
-            <Tooltip title={isAdmin ? 'Archivar capa (soft delete)' : 'Solicitar archivado a un admin'}>
-                <Button
-                    danger
-                    size="small"
-                    icon={<DeleteOutlined />}
-                    disabled={deleteDisabled}
-                    onClick={openDeleteModal}
-                >
-                    {isAdmin ? 'Archivar' : 'Solicitar'}
-                </Button>
-            </Tooltip>
-            {isAdmin ? (
-                <Tooltip title={loadError ? 'Datos no cargados — no es seguro guardar' : ''}>
-                    <Button size="small" type="primary" icon={<SaveOutlined />} loading={saving} disabled={saveDisabled} onClick={handleSaveDirect}>
-                        Guardar
-                    </Button>
-                </Tooltip>
-            ) : (
-                <Tooltip title={loadError ? 'Datos no cargados — no es seguro guardar' : ''}>
-                    <Space size={4}>
-                        <Button size="small" loading={saving} disabled={saveDisabled} onClick={handleSaveDraft}>
-                            Borrador
-                        </Button>
-                        <Button size="small" type="primary" loading={saving} disabled={saveDisabled} onClick={handleSubmitReview}>
-                            Revisión
-                        </Button>
-                    </Space>
-                </Tooltip>
-            )}
-        </Space>
+        <Button size="small" icon={<SlidersOutlined />} onClick={() => setAdvancedOpen(true)}>
+            Avanzado
+        </Button>
     );
 
     const handleSuggestSlug = async () => {
@@ -548,164 +650,164 @@ export default function LayerEditPage() {
         }
     };
 
-    const tabItems = [
+    const showEditor = Boolean(layerId) && !selectedEventoKey;
+    const selectedNode = layerId ? findNodeContext(treeData, layerId)?.node : null;
+    const headerName = watchedLabel || layer?.label || selectedNode?.title || layerId;
+
+    const noticeWorkspace = workspaces.find((w) => w.alias === selectedWs)?.geoserverWorkspace || selectedWs || null;
+
+    const ownFeatureType = layer?.workspaceAlias && layer?.geoserverLayer
+        ? { layerKey: `${layer.workspaceAlias}:${layer.geoserverLayer}`, workspace: layer.workspaceAlias, geoserverLayer: layer.geoserverLayer, derived: false }
+        : null;
+    const derivedFeatureType = !ownFeatureType && sharedFeatureTypeFromDescendants?.layerKey
+        ? { ...sharedFeatureTypeFromDescendants, derived: true }
+        : null;
+    const featureTypeContext = ownFeatureType || derivedFeatureType;
+
+    const allTabs = [
         {
             key: 'identidad',
             forceRender: true,
             label: 'Identidad',
             children: (
                 <>
-                    <Form.Item
-                        label="Nombre"
-                        name="label"
-                        extra="Nombre que ven los usuarios en la lista de capas y la leyenda del mapa."
-                        rules={[{ required: true }]}
-                    >
-                        <Input />
-                    </Form.Item>
-                    {isFieldVisible('slug', watchedNodeType) && (
+                    <EditorSection title="Nombre y acceso" first>
                         <Form.Item
-                            label="Nombre en URL"
-                            name="slug"
-                            extra="Nombre que se utiliza en la URL para acceder a la capa. Solo se permiten minúsculas, números y guiones. Estable, debe cambiar pocas veces. Vacío = no aparece en deeplinks. Ejemplos: establecimientos-salud, indices-desarrollo-urbano."
-                            rules={[
-                                {
-                                    pattern: /^[a-z0-9-]+$/,
-                                    message: 'Solo minúsculas, números y guiones',
-                                },
-                                { max: 60 },
-                            ]}
+                            label="Nombre"
+                            name="label"
+                            tooltip="Nombre que ven los usuarios en la lista de capas y la leyenda del mapa."
+                            rules={[{ required: true }]}
                         >
-                            <Input
-                                placeholder="establecimientos-salud"
-                                addonAfter={
-                                    <Tooltip title="Genera un nombre en URL desde el nombre de la capa (lowercase, sin acentos, guiones por espacios). Valida que esté disponible; si ya existe agrega sufijo numérico.">
-                                        <Button
-                                            type="link"
-                                            size="small"
-                                            onClick={handleSuggestSlug}
-                                            style={{ padding: 0, height: 'auto' }}
-                                        >
-                                            Sugerir
-                                        </Button>
-                                    </Tooltip>
-                                }
-                            />
+                            <Input />
                         </Form.Item>
-                    )}
-                    {isFieldVisible('alias', watchedNodeType) && (
-                        <Form.Item label="Alias (atajos opcionales)">
-                            <LayerAliasesSection
-                                layerId={layerId}
-                                listAliases={listLayerAliases}
-                                createAlias={createLayerAlias}
-                                deleteAlias={deleteLayerAlias}
-                            />
-                        </Form.Item>
-                    )}
-                    <Form.Item
-                        label="Tipo de nodo"
-                        name="nodeType"
-                        extra={
-                            isProperty
-                                ? 'Este nodo es una Propiedad: comparte feature type con su grupo padre y se enciende cuando se enciende el grupo. No se puede cambiar de tipo desde aquí.'
-                                : 'Rol del nodo en la jerarquía: Tema/Categoría/Etiqueta/Grupo organizan; Capa es la capa WMS real.'
-                        }
-                    >
-                        <Select options={NODE_TYPE_OPTIONS} disabled={isProperty} />
-                    </Form.Item>
-                    {isProperty && (
-                        <Alert closable
-                            type="info"
-                            showIcon
-                            style={{ marginBottom: 16 }}
-                            message="Estás editando una Propiedad"
-                            description={`Las propiedades comparten feature type, simbología, metadatos y numeralia con su grupo padre (todo se almacena por feature type, no por propiedad). Solo se distinguen entre hermanas por su CQL filter. Cambia el "Filtro CQL" en la pestaña Servicios para ajustar qué features se incluyen en esta propiedad. La metadata, numeralia y simbología se editan una sola vez en el grupo padre.`}
-                        />
-                    )}
-                    {isFieldVisible('searchTags', watchedNodeType) && (
-                        <Form.Item
-                            label="Etiquetas de búsqueda"
-                            name="searchTags"
-                            normalize={(values) =>
-                                Array.isArray(values)
-                                    ? Array.from(
-                                        new Set(
-                                            values
-                                                .map((v) => String(v).toLowerCase().trim())
-                                                .filter(Boolean),
-                                        ),
-                                    )
-                                    : values
-                            }
-                            extra="Palabras clave adicionales para filtrar la capa en el buscador del visor. Escribe y presiona espacio, coma o Enter para crear cada etiqueta. Se normalizan a minúsculas."
-                        >
-                            <Select
-                                mode="tags"
-                                tokenSeparators={[' ', ',']}
-                                placeholder="seguridad delito feminicidio"
-                                style={{ width: '100%' }}
-                                open={false}
-                                suffixIcon={null}
-                                tagRender={({ label, closable, onClose }) => (
-                                    <Tag
-                                        color="#FF8300"
-                                        closable={closable}
-                                        onClose={onClose}
-                                        style={{
-                                            margin: '3px 4px 3px 0',
-                                            fontSize: 14,
-                                            color: '#262626',
-                                            padding: '2px 10px',
-                                            borderRadius: 6,
-                                        }}
-                                    >
-                                        {label}
-                                    </Tag>
-                                )}
-                            />
-                        </Form.Item>
-                    )}
-                    {isFieldVisible('municipioFilter', watchedNodeType) && (
-                        <>
+                        {isFieldVisible('slug', watchedNodeType) && (
                             <Form.Item
-                                label="Filtro por municipio"
-                                name="hasMunicipio"
-                                valuePropName="checked"
-                                extra="Si está activa, la capa se filtra por municipio en el visor usando el campo declarado abajo. Si no, cae en filtro espacial BBOX (rectángulo)."
+                                label="Nombre en URL"
+                                name="slug"
+                                tooltip="Nombre que se utiliza en la URL para acceder a la capa. Solo se permiten minúsculas, números y guiones. Estable, debe cambiar pocas veces. Vacío = no aparece en deeplinks. Ejemplos: establecimientos-salud, indices-desarrollo-urbano."
+                                rules={[
+                                    {
+                                        pattern: /^[a-z0-9-]+$/,
+                                        message: 'Solo minúsculas, números y guiones',
+                                    },
+                                    { max: 60 },
+                                ]}
                             >
-                                <Switch />
+                                <Input
+                                    placeholder="establecimientos-salud"
+                                    addonAfter={
+                                        <Tooltip title="Genera un nombre en URL desde el nombre de la capa (lowercase, sin acentos, guiones por espacios). Valida que esté disponible; si ya existe agrega sufijo numérico.">
+                                            <Button
+                                                type="link"
+                                                size="small"
+                                                onClick={handleSuggestSlug}
+                                                style={{ padding: 0, height: 'auto' }}
+                                            >
+                                            Sugerir
+                                            </Button>
+                                        </Tooltip>
+                                    }
+                                />
                             </Form.Item>
-                            <Form.Item noStyle shouldUpdate={(prev, cur) => prev.hasMunicipio !== cur.hasMunicipio}>
-                                {({ getFieldValue }) => getFieldValue('hasMunicipio') && (
-                                    <MunicipioFieldPicker
-                                        workspaceAlias={selectedWs}
-                                        geoserverLayer={selectedGsLayer}
-                                        listFields={listGeoserverFields}
-                                        form={form}
-                                        rawTree={rawTree}
-                                        layerId={layerId}
-                                    />
+                        )}
+                        {isFieldVisible('alias', watchedNodeType) && (
+                            <Form.Item
+                                label={(
+                                    <Space size={6}>
+                                        Alias de enlace
+                                        <InfoIcon title="Atajos cortos que también resuelven a esta capa vía ?layer=<alias>. El nombre en URL canónico siempre funciona; los alias sirven para tener algo memorizable (esalud → establecimientos-salud) o para no romper URLs viejas que cambiaron de nombre." />
+                                    </Space>
                                 )}
+                            >
+                                <LayerAliasesSection
+                                    layerId={layerId}
+                                    listAliases={listLayerAliases}
+                                    createAlias={createLayerAlias}
+                                    deleteAlias={deleteLayerAlias}
+                                />
                             </Form.Item>
-                        </>
-                    )}
-                    <Form.Item
-                        label="Oculta en menú"
-                        name="hiddenInMenu"
-                        valuePropName="checked"
-                        extra="Si está activa, la capa no aparece en el árbol del visor pero sigue siendo accesible vía URL/slug."
-                    >
-                        <Switch />
-                    </Form.Item>
-                    <Form.Item
-                        label="Deshabilitada (prefijo *)"
-                        name="disabled"
-                        valuePropName="checked"
-                        extra="Marca la capa como deshabilitada (en mantenimiento, sin datos). Aparece atenuada con asterisco; no se puede activar."
-                    >
-                        <Switch />
-                    </Form.Item>
+                        )}
+                        <Form.Item
+                            label="Tipo de nodo"
+                            name="nodeType"
+                            tooltip={
+                                isProperty
+                                    ? 'Este nodo es una Propiedad: comparte feature type con su grupo padre y se enciende cuando se enciende el grupo. No se puede cambiar de tipo desde aquí.'
+                                    : 'Rol del nodo en la jerarquía: Tema, Categoría y Etiqueta organizan; Grupo y Capa son capas reales.'
+                            }
+                        >
+                            <Segmented options={NODE_TYPE_OPTIONS} disabled={isProperty} />
+                        </Form.Item>
+                    </EditorSection>
+                    <EditorSection title="Búsqueda en el visor">
+                        {isFieldVisible('searchTags', watchedNodeType) && (
+                            <Form.Item
+                                label="Etiquetas de búsqueda"
+                                name="searchTags"
+                                normalize={(values) =>
+                                    Array.isArray(values)
+                                        ? Array.from(
+                                            new Set(
+                                                values
+                                                    .map((v) => String(v).toLowerCase().trim())
+                                                    .filter(Boolean),
+                                            ),
+                                        )
+                                        : values
+                                }
+                                tooltip="Palabras clave adicionales para filtrar la capa en el buscador del visor. Escribe y presiona espacio, coma o Enter para crear cada etiqueta. Se normalizan a minúsculas."
+                            >
+                                <Select
+                                    mode="tags"
+                                    tokenSeparators={[' ', ',']}
+                                    placeholder="seguridad delito feminicidio"
+                                    style={{ width: '100%' }}
+                                    open={false}
+                                    suffixIcon={null}
+                                    tagRender={({ label, closable, onClose }) => (
+                                        <Tag
+                                            color="#FF8300"
+                                            closable={closable}
+                                            onClose={onClose}
+                                            style={{
+                                                margin: '3px 4px 3px 0',
+                                                fontSize: 14,
+                                                color: '#262626',
+                                                padding: '2px 10px',
+                                                borderRadius: 6,
+                                            }}
+                                        >
+                                            {label}
+                                        </Tag>
+                                    )}
+                                />
+                            </Form.Item>
+                        )}
+                        {isFieldVisible('municipioFilter', watchedNodeType) && (
+                            <>
+                                <Form.Item
+                                    label="Filtro por municipio"
+                                    name="hasMunicipio"
+                                    valuePropName="checked"
+                                    tooltip="Si está activa, la capa se filtra por municipio en el visor usando el campo declarado abajo. Si no, cae en filtro espacial BBOX (rectángulo)."
+                                >
+                                    <Switch />
+                                </Form.Item>
+                                <Form.Item noStyle shouldUpdate={(prev, cur) => prev.hasMunicipio !== cur.hasMunicipio}>
+                                    {({ getFieldValue }) => getFieldValue('hasMunicipio') && (
+                                        <MunicipioFieldPicker
+                                            workspaceAlias={selectedWs}
+                                            geoserverLayer={selectedGsLayer}
+                                            listFields={listGeoserverFields}
+                                            form={form}
+                                            rawTree={rawTree}
+                                            layerId={layerId}
+                                        />
+                                    )}
+                                </Form.Item>
+                            </>
+                        )}
+                    </EditorSection>
                 </>
             ),
         },
@@ -714,24 +816,62 @@ export default function LayerEditPage() {
             forceRender: true,
             label: 'Apariencia',
             children: (
-                <Space orientation="vertical" size="middle" style={{ width: '100%', maxWidth: 720 }}>
+                <>
                     {watchedNodeType === 'tema' && (
-                        <Card size="small" title="Iconos por estado" extra={<Text type="secondary" style={{ fontSize: 11 }}>Aparece en el sider del visor</Text>}>
+                        <EditorSection title="Iconos por estado" hint="Aparecen en el sider del visor." first>
                             <Form.Item name="iconOverrides" noStyle>
                                 <TemaIconField />
                             </Form.Item>
-                        </Card>
+                        </EditorSection>
                     )}
                     {watchedNodeType !== 'tema' && (
-                        <Card
-                            size="small"
-                            title="Resaltado al hacer clic en una feature"
-                            extra={<Text type="secondary" style={{ fontSize: 11 }}>{watchedNodeType === 'leaf' ? 'Aplica a esta capa' : 'Se propaga a las capas hijas que no tengan su propio resaltado'}</Text>}
-                        >
-                            <LayerHighlightField />
-                        </Card>
+                        <AppearancePanel
+                            items={[
+                                {
+                                    key: 'badge',
+                                    propio: true,
+                                    children: (
+                                        <Form.Item name="badge" label={null} valuePropName="value" trigger="onChange" noStyle>
+                                            <LayerBadgeSection />
+                                        </Form.Item>
+                                    ),
+                                },
+                                {
+                                    key: 'notice',
+                                    propio: true,
+                                    children: (
+                                        <Form.Item name="notice" label={null} valuePropName="value" trigger="onChange" noStyle>
+                                            <LayerNoticeSection
+                                                geoserverWorkspace={noticeWorkspace}
+                                                geoserverLayer={selectedGsLayer || null}
+                                                styles={(Array.isArray(selectedStyles) ? selectedStyles.join(',') : selectedStyles) || ''}
+                                                cqlFilter={form.getFieldValue('cqlFilter') || ''}
+                                                defaultZoom={form.getFieldValue('defaultZoom') || null}
+                                            />
+                                        </Form.Item>
+                                    ),
+                                },
+                                {
+                                    key: 'highlight',
+                                    propio: true,
+                                    children: <LayerHighlightField />,
+                                },
+                                {
+                                    key: 'hidden',
+                                    name: 'hiddenInMenu',
+                                    titulo: 'Oculta en el menú',
+                                    ayuda: 'No aparece en el árbol del visor, pero sigue abriéndose por URL o slug.',
+                                },
+                                {
+                                    key: 'disabled',
+                                    name: 'disabled',
+                                    titulo: 'Fuera de servicio',
+                                    ayuda: 'En mantenimiento o sin datos. El visor la muestra atenuada y no deja encenderla.',
+                                },
+                            ]}
+                        />
                     )}
-                </Space>
+                </>
             ),
         },
         {
@@ -745,7 +885,7 @@ export default function LayerEditPage() {
                     <Form.Item
                         label="Workspace de GeoServer"
                         name="workspaceAlias"
-                        extra="Espacio de trabajo donde reside la capa en GeoServer (alias interno definido en la tabla workspaces)."
+                        tooltip="Espacio de trabajo donde reside la capa en GeoServer (alias interno definido en la tabla workspaces)."
                     >
                         <Select
                             showSearch
@@ -757,7 +897,7 @@ export default function LayerEditPage() {
                     <Form.Item
                         label="Capa de GeoServer"
                         name="geoserverLayer"
-                        extra="Nombre técnico de la capa en GeoServer (sin prefijo de workspace). Debe existir en el workspace seleccionado."
+                        tooltip="Nombre técnico de la capa en GeoServer (sin prefijo de workspace). Debe existir en el workspace seleccionado."
                     >
                         <AutoComplete
                             options={layerOptions}
@@ -771,7 +911,7 @@ export default function LayerEditPage() {
                     <Form.Item
                         label="Estilo SLD"
                         name="styles"
-                        extra="Nombre del estilo SLD a aplicar. Vacío = estilo por defecto del workspace."
+                        tooltip="Nombre del estilo SLD a aplicar. Vacío = estilo por defecto del workspace."
                     >
                         <AutoComplete
                             options={styleOptions}
@@ -781,7 +921,7 @@ export default function LayerEditPage() {
                     <Form.Item
                         label="Filtro CQL"
                         name="cqlFilter"
-                        extra="Filtro de tipo CQL aplicado a la capa al renderizar. El constructor arma condiciones campo/operador/valor con los atributos reales de la capa; usa 'Texto avanzado' para CQL más complejo."
+                        tooltip="Filtro de tipo CQL aplicado a la capa al renderizar. El constructor arma condiciones campo/operador/valor con los atributos reales de la capa; usa 'Texto avanzado' para CQL más complejo."
                     >
                         <CqlFilterBuilder
                             workspaceAlias={selectedWs}
@@ -792,7 +932,7 @@ export default function LayerEditPage() {
                     <Form.Item
                         label="Grupo WMS"
                         name="wmsGroup"
-                        extra="Capas con el mismo grupo se mergean en una sola request WMS al GeoServer (mejora performance cuando varias capas comparten estilo). Lo más seguro es agruparlas con sus hermanas directas en el árbol."
+                        tooltip="Capas con el mismo grupo se mergean en una sola request WMS al GeoServer (mejora performance cuando varias capas comparten estilo). Lo más seguro es agruparlas con sus hermanas directas en el árbol."
                     >
                         <WmsGroupField
                             layerId={layerId}
@@ -806,15 +946,22 @@ export default function LayerEditPage() {
                         label="WFS disponible"
                         name="wfsAvailable"
                         valuePropName="checked"
-                        extra="Permite consultar la capa via WFS (Web Feature Service) para obtener features puntuales. Necesario para infobox al hacer click."
+                        tooltip="Permite consultar la capa via WFS (Web Feature Service) para obtener features puntuales. Necesario para infobox al hacer click."
                     >
                         <Switch />
+                    </Form.Item>
+                    <Form.Item
+                        label="Tipo de geometría"
+                        name="geometryType"
+                        tooltip="Se usa para el ícono que identifica la capa en el panel de capas activas del visor y en el árbol del plugin de QGIS. Lo llena solo el job `geometry-type` de dataengine leyendo el DescribeFeatureType de GeoServer; se ajusta a mano cuando la capa no se publica por WFS y no hay de dónde deducirlo."
+                    >
+                        <Select allowClear options={GEOMETRY_TYPE_OPTIONS} placeholder="Sin determinar" />
                     </Form.Item>
                     <Form.Item
                         label="Descargable"
                         name="downloadable"
                         valuePropName="checked"
-                        extra="Habilita el botón de descarga (Shapefile/CSV/GeoJSON) en el visor para esta capa."
+                        tooltip="Habilita el botón de descarga (Shapefile/CSV/GeoJSON) en el visor para esta capa."
                     >
                         <Switch />
                     </Form.Item>
@@ -822,14 +969,14 @@ export default function LayerEditPage() {
                         label="Servir por tiles (caché)"
                         name="tiled"
                         valuePropName="checked"
-                        extra="Sirve la capa como TileWMS cacheable en GeoWebCache en vez de ImageWMS. Recomendado para capas grandes y estáticas: la navegación (pan/zoom) es mucho más fluida. Para capas que cambian seguido, dejar desactivado."
+                        tooltip="Sirve la capa como TileWMS cacheable en GeoWebCache en vez de ImageWMS. Recomendado para capas grandes y estáticas: la navegación (pan/zoom) es mucho más fluida. Para capas que cambian seguido, dejar desactivado."
                     >
                         <Switch />
                     </Form.Item>
                     <Form.Item
                         label="Formato de imagen"
                         name="imageFormat"
-                        extra="Formato que se le pide a GeoServer en cada GetMap. ⚠️ PNG 8 bits y JPEG salen SIN TRANSPARENCIA: cada tile es un rectángulo opaco que tapa el relieve y las capas de abajo. Verificado en los bytes del PNG — el de 8 bits sale como paleta indexada sin canal alfa. Úsalos solo en capas de fondo que ocupen todo el tile (un ráster base), nunca en capas que se superponen. Para el resto, dejar PNG: el ahorro de peso se consigue con el suavizado de bordes, que sí conserva la transparencia."
+                        tooltip="Formato que se le pide a GeoServer en cada GetMap. ⚠️ PNG 8 bits y JPEG salen SIN TRANSPARENCIA: cada tile es un rectángulo opaco que tapa el relieve y las capas de abajo. Verificado en los bytes del PNG — el de 8 bits sale como paleta indexada sin canal alfa. Úsalos solo en capas de fondo que ocupen todo el tile (un ráster base), nunca en capas que se superponen. Para el resto, dejar PNG: el ahorro de peso se consigue con el suavizado de bordes, que sí conserva la transparencia."
                     >
                         <Segmented
                             options={[
@@ -842,7 +989,7 @@ export default function LayerEditPage() {
                     <Form.Item
                         label="Suavizado de bordes (antialias)"
                         name="antialias"
-                        extra="El suavizado crea píxeles intermedios que el PNG comprime mal: quitarlo baja un tile de 256×256 de curvas de nivel de 21.5 KB a 8.7 KB (−59 %) y conserva la transparencia, así que es la forma segura de aligerar una capa. A cambio, las líneas se ven dentadas — se nota en trazos finos como curvas de nivel o cauces. «Solo texto» conserva el suavizado en etiquetas y lo quita en geometrías. Cambiar este ajuste invalida los tiles ya cacheados en GeoWebCache."
+                        tooltip="El suavizado crea píxeles intermedios que el PNG comprime mal: quitarlo baja un tile de 256×256 de curvas de nivel de 21.5 KB a 8.7 KB (−59 %) y conserva la transparencia, así que es la forma segura de aligerar una capa. A cambio, las líneas se ven dentadas — se nota en trazos finos como curvas de nivel o cauces. «Solo texto» conserva el suavizado en etiquetas y lo quita en geometrías. Cambiar este ajuste invalida los tiles ya cacheados en GeoWebCache."
                     >
                         <Segmented
                             options={[
@@ -857,7 +1004,7 @@ export default function LayerEditPage() {
                         label="Soporte temporal (timeEnabled)"
                         name="timeEnabled"
                         valuePropName="checked"
-                        extra="Activa filtros temporales en GeoServer (capas con dimensión TIME). Suele usarse en rásters publicados como ImageMosaic donde GeoServer expone la fecha como dimensión nativa (ej. mosaicos mensuales/anuales de temperatura, precipitación, NDVI). En vectoriales también funciona si la capa tiene un campo TIME indexado."
+                        tooltip="Activa filtros temporales en GeoServer (capas con dimensión TIME). Suele usarse en rásters publicados como ImageMosaic donde GeoServer expone la fecha como dimensión nativa (ej. mosaicos mensuales/anuales de temperatura, precipitación, NDVI). En vectoriales también funciona si la capa tiene un campo TIME indexado."
                     >
                         <Switch />
                     </Form.Item>
@@ -876,14 +1023,14 @@ export default function LayerEditPage() {
                             if (typeof v === 'object' && v.year) return { value: String(v.year) };
                             return { value: String(v) };
                         }}
-                        extra="Año específico (ej. 2024), o 'latest' para usar la más reciente disponible."
+                        tooltip="Año específico (ej. 2024), o 'latest' para usar la más reciente disponible."
                     >
                         <Input placeholder="2024 o latest" />
                     </Form.Item>
                     <Form.Item
                         label="Patrón de estilo temporal (timeStylePattern)"
                         name="timeStylePattern"
-                        extra="Plantilla de nombre de estilo SLD que cambia según la fecha. Ej: poblacion_{year}."
+                        tooltip="Plantilla de nombre de estilo SLD que cambia según la fecha. Ej: poblacion_{year}."
                     >
                         <Input placeholder="poblacion_{year}" />
                     </Form.Item>
@@ -891,7 +1038,7 @@ export default function LayerEditPage() {
                         label="Ocultar selector de periodicidad"
                         name="hidePeriodicity"
                         valuePropName="checked"
-                        extra="Si está activo, el visor no muestra el control de fechas para esta capa aunque exista soporte temporal."
+                        tooltip="Si está activo, el visor no muestra el control de fechas para esta capa aunque exista soporte temporal."
                     >
                         <Switch />
                     </Form.Item>
@@ -901,107 +1048,66 @@ export default function LayerEditPage() {
         {
             key: 'infobox',
             forceRender: true,
-            label: 'Tarjeta',
+            label: 'Tarjetita',
             children: (
-                <Row gutter={24}>
-                    <Col xs={24} md={14}>
-                        <Form.Item
-                            name="infoboxConfig"
-                            label="Configuración del cuadro"
-                            extra="Bloques que componen el cuadro que aparece al hacer click sobre una feature en el visor. Cada bloque (encabezado, etiquetas, cards, lista, íconos, texto) se puede agregar o quitar según necesites."
-                        >
-                            <InfoBoxBlocksEditor
-                                availableFields={availableFields}
-                                inherited={inheritedInfobox}
-                                nodeType={watchedNodeType}
-                            />
-                        </Form.Item>
-                    </Col>
-                    <Col xs={24} md={10}>
-                        <div style={{ position: 'sticky', top: 0 }}>
-                            <Text strong style={{ display: 'block', marginBottom: 8 }}>Vista previa</Text>
-                            <InfoBoxPreview
-                                value={watchedConfig || inheritedInfobox?.config || null}
-                            />
-                        </div>
-                    </Col>
-                </Row>
-            ),
-        },
-        {
-            key: 'aviso',
-            forceRender: true,
-            label: 'Aviso',
-            children: (() => {
-                const wsObj = workspaces.find((w) => w.alias === selectedWs);
-                const resolvedWs = wsObj?.geoserverWorkspace || selectedWs || null;
-                const selectedCqlFilter = form.getFieldValue('cqlFilter') || '';
-                const layerDefaultZoom = form.getFieldValue('defaultZoom') || null;
-                return (
-                    <Form.Item
-                        name="notice"
-                        label={null}
-                        valuePropName="value"
-                        trigger="onChange"
-                    >
-                        <LayerNoticeSection
-                            geoserverWorkspace={resolvedWs}
-                            geoserverLayer={selectedGsLayer || null}
-                            styles={(Array.isArray(selectedStyles) ? selectedStyles.join(',') : selectedStyles) || ''}
-                            cqlFilter={selectedCqlFilter}
-                            defaultZoom={layerDefaultZoom}
+                <SampleFeaturesProvider workspaceAlias={selectedWs} geoserverLayer={selectedGsLayer}>
+                    <Form.Item name="infoboxConfig" label={null}>
+                        <TarjetitaEditor
+                            availableFields={availableFields}
+                            fieldsLoading={fieldsLoading}
+                            hasFeatureType={!!selectedWs && !!selectedGsLayer}
+                            rawTree={rawTree}
+                            currentLayerId={layerId}
+                            inherited={inheritedInfobox}
+                            nodeType={watchedNodeType}
+                            onIrACapa={handleSelectFromTree}
+                            updateLayer={updateLayer}
+                            reloadTree={reload}
+                            puedePublicar={isAdmin}
                         />
                     </Form.Item>
-                );
-            })(),
-        },
-        {
-            key: 'badge',
-            forceRender: true,
-            label: 'Badge',
-            children: (
-                <Form.Item
-                    name="badge"
-                    label={null}
-                    valuePropName="value"
-                    trigger="onChange"
-                >
-                    <LayerBadgeSection />
-                </Form.Item>
+                </SampleFeaturesProvider>
             ),
         },
         {
             key: 'metadatos',
             forceRender: true,
             label: 'Metadatos',
-            children: layer ? (() => {
-                const ownFeatureType = layer.workspaceAlias && layer.geoserverLayer
-                    ? { layerKey: `${layer.workspaceAlias}:${layer.geoserverLayer}`, workspace: layer.workspaceAlias, geoserverLayer: layer.geoserverLayer, derived: false }
-                    : null;
-                const derived = !ownFeatureType && sharedFeatureTypeFromDescendants?.layerKey
-                    ? { ...sharedFeatureTypeFromDescendants, derived: true }
-                    : null;
-                const metaCtx = ownFeatureType || derived;
-                if (!metaCtx) {
-                    return (
-                        <Empty description={
-                            sharedFeatureTypeFromDescendants?.multiple
-                                ? `Este nodo agrupa capas con feature types distintos (${sharedFeatureTypeFromDescendants.multiple.join(', ')}). Los metadatos se editan en cada feature type por separado.`
-                                : 'Este nodo no tiene feature type propio ni descendientes con uno común. No hay metadatos que editar aquí.'
-                        } />
-                    );
-                }
-                return (
-                    <LayerMetadataSection
-                        layerKey={metaCtx.layerKey}
-                        workspace={metaCtx.workspace}
-                        geoserverLayer={metaCtx.geoserverLayer}
-                        availableFields={availableFields}
-                        derivedFromDescendants={metaCtx.derived}
-                        siblingsSharingCount={ownFeatureType ? countSiblingsSharingFeatureType(metaCtx.layerKey) : 0}
-                    />
-                );
-            })() : null,
+            children: !layer ? null : featureTypeContext ? (
+                <LayerMetadataSection
+                    layerKey={featureTypeContext.layerKey}
+                    onDraftSaved={reloadDrafts}
+                    onBaseline={registrarBaseline}
+                    layerLabel={headerName}
+                    onIrAEstadisticas={() => setEditorTab('estadisticas')}
+                    numeralia={statsValues}
+                    derivedFromDescendants={featureTypeContext.derived}
+                    siblingsSharingCount={ownFeatureType ? countSiblingsSharingFeatureType(featureTypeContext.layerKey) : 0}
+                />
+            ) : (
+                <Empty description={
+                    sharedFeatureTypeFromDescendants?.multiple
+                        ? `Este nodo agrupa capas con feature types distintos (${sharedFeatureTypeFromDescendants.multiple.join(', ')}). Los metadatos se editan en cada feature type por separado.`
+                        : 'Este nodo no tiene feature type propio ni descendientes con uno común. No hay metadatos que editar aquí.'
+                } />
+            ),
+        },
+        {
+            key: 'estadisticas',
+            forceRender: true,
+            label: 'Estadísticas',
+            children: featureTypeContext ? (
+                <LayerStatsSection
+                    layerKey={featureTypeContext.layerKey}
+                    workspace={featureTypeContext.workspace}
+                    geoserverLayer={featureTypeContext.geoserverLayer}
+                    availableFields={availableFields}
+                    onDraftSaved={reloadDrafts}
+                    onValues={setStatsValues}
+                />
+            ) : (
+                <Empty description="Este nodo no tiene feature type propio ni descendientes con uno común, así que no hay estadísticas que configurar." />
+            ),
         },
         {
             key: 'simbologia',
@@ -1035,7 +1141,22 @@ export default function LayerEditPage() {
         .filter((tab) => tab.key === 'identidad' || isTabVisible(tab.key, watchedNodeType))
         .filter((tab) => !(isProperty && (tab.key === 'simbologia' || tab.key === 'metadatos')));
 
-    const nodeHelp = NODE_TYPE_HELP[watchedNodeType];
+    const advancedSections = ADVANCED_TABS
+        .map((key) => allTabs.find((tab) => tab.key === key))
+        .filter(Boolean)
+        .map((tab) => ({ key: tab.key, title: ADVANCED_TAB_TITLES[tab.key], children: tab.children }));
+
+    const tabItems = allTabs.filter((tab) => PRIMARY_TABS.includes(tab.key));
+
+    const nodeHelp = helpForNode(watchedNodeType, parentNodeType);
+    const esOrganizador = isOrganizer(watchedNodeType);
+
+    const parentPathLabel = (() => {
+        const path = layerId ? findPath(treeData, layerId) : null;
+        if (!path || path.length < 2) return 'la raíz del árbol';
+        return path.slice(0, -1).map((n) => n.title).join(' › ');
+    })();
+
 
     const editorBody = !layerId ? null : loading ? (
         <Spin style={{ display: 'block', margin: '48px auto' }} size="large" />
@@ -1057,26 +1178,134 @@ export default function LayerEditPage() {
             ]}
         />
     ) : (
-        <Form form={form} layout="vertical">
-            {nodeHelp && (
-                <div style={{ background: '#E6F4FF', border: '1px solid #91CAFF', borderRadius: 6, padding: '8px 12px', marginBottom: 16 }}>
-                    <Text strong style={{ display: 'block', marginBottom: 2 }}>{nodeHelp.title}</Text>
-                    <Text type="secondary" style={{ fontSize: 12 }}>{nodeHelp.body}</Text>
+        <Form form={form} layout="vertical" className="layer-editor-form" onValuesChange={scheduleAutosave}>
+            {esOrganizador ? (
+                <div className="layer-editor-stack">
+                    {tabItems.map((tab) => (
+                        <div key={tab.key}>{tab.children}</div>
+                    ))}
                 </div>
+            ) : (
+                <Tabs
+                    className="layer-editor-tabs"
+                    activeKey={editorTab}
+                    onChange={setEditorTab}
+                    items={tabItems}
+                    tabPlacement="top"
+
+                />
             )}
-            <Tabs defaultActiveKey={initialTab} items={tabItems} tabPosition="top" style={{ minHeight: 400 }} />
+            <Drawer
+                title="Avanzado"
+                placement="right"
+                width={isMobile ? '92%' : 600}
+                extra={(
+                    <Tooltip title={`Ahora cuelga de ${parentPathLabel}`}>
+                        <Button
+                            size="small"
+                            icon={<PartitionOutlined />}
+                            disabled={moveDisabled}
+                            onClick={() => setMoveOpen(true)}
+                        >
+                            Mover
+                        </Button>
+                    </Tooltip>
+                )}
+                open={advancedOpen}
+                onClose={() => setAdvancedOpen(false)}
+                forceRender
+                styles={{ body: { padding: '20px 24px 28px' } }}
+            >
+                <AdvancedStack sections={advancedSections} />
+                <div style={{ marginTop: 32, paddingTop: 18, borderTop: '1px solid #f0f0f0' }}>
+                    <Button
+                        danger
+                        icon={<DeleteOutlined />}
+                        disabled={deleteDisabled}
+                        onClick={openDeleteModal}
+                        block
+                    >
+                        {isAdmin ? 'Archivar capa' : 'Solicitar archivado'}
+                    </Button>
+                </div>
+            </Drawer>
         </Form>
     );
 
+
+    const editorHeader = (
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap', padding: isMobile ? '10px 12px' : '14px 18px' }}>
+            <Space size={8} wrap style={{ minWidth: 0 }}>
+                <Title level={isMobile ? 5 : 4} style={{ margin: 0 }}>{headerName}</Title>
+                <Tooltip title={nodeHelp ? `${nodeHelp.title}. ${nodeHelp.body}` : null}>
+                    <Tag style={{ marginInlineEnd: 0, cursor: nodeHelp ? 'help' : 'default' }}>
+                        {labelForNode(watchedNodeType, parentNodeType)}
+                    </Tag>
+                </Tooltip>
+                {layer?.workspaceAlias && layer?.geoserverLayer && (
+                    <Text type="secondary" style={{ fontSize: 11 }}>
+                        {layer.workspaceAlias} : {layer.geoserverLayer}
+                    </Text>
+                )}
+                {selectedNode?.hiddenInMenu && (
+                    <Tooltip title="No aparece en el árbol del visor, pero sigue abriéndose por URL">
+                        <Tag color="orange" style={{ marginInlineEnd: 0 }}>oculta</Tag>
+                    </Tooltip>
+                )}
+                {selectedNode?.disabled && (
+                    <Tooltip title="En mantenimiento o sin datos. El visor la muestra atenuada y no deja encenderla">
+                        <Tag color="red" style={{ marginInlineEnd: 0 }}>fuera de servicio</Tag>
+                    </Tooltip>
+                )}
+            </Space>
+            {actionButtons}
+        </div>
+    );
+
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 112px)' }}>
+        <div
+            ref={shellRef}
+            style={{
+                display: 'flex',
+                flexDirection: 'column',
+                height: shellHeight ?? '70vh',
+                minHeight: 0,
+                overflow: 'hidden',
+            }}
+        >
             <div style={{ padding: isMobile ? '8px 8px 0' : '24px 24px 0', flexShrink: 0 }}>
                 <Space
                     align={isMobile ? 'start' : 'center'}
                     orientation={isMobile ? 'vertical' : 'horizontal'}
                     style={{ width: '100%', justifyContent: 'space-between' }}
                 >
-                    <Title level={isMobile ? 4 : 3} style={{ margin: 0 }}>Capas MapaLab</Title>
+                    <Space align="center" size={10}>
+                        <Title level={isMobile ? 4 : 3} style={{ margin: 0 }}>Capas MapaLab</Title>
+                        {pendingCount > 0 && (
+                            <Tooltip title="Ver y publicar los cambios que llevas sin publicar">
+                                <Button size="small" type="primary" onClick={() => setReviewOpen(true)}>
+                                    {pendingCount} sin publicar
+                                </Button>
+                            </Tooltip>
+                        )}
+                        {autosaveAt && (
+                            <Text type="secondary" style={{ fontSize: 11 }}>
+                                guardado {autosaveAt.toLocaleTimeString()}
+                            </Text>
+                        )}
+                        <EditandoAhora layerId={layerId} />
+                        {isAdmin && (
+                            <UltimaPublicacion
+                                layerId={layerId}
+                                layerKey={featureTypeContext?.layerKey}
+                                recarga={reloadKey}
+                                onDeshecha={async () => {
+                                    await refrescarArbol(reload);
+                                    setReloadKey((k) => k + 1);
+                                }}
+                            />
+                        )}
+                    </Space>
                     <Space align="center" size={8}>
                         <Segmented
                             size={isMobile ? 'small' : 'middle'}
@@ -1089,6 +1318,17 @@ export default function LayerEditPage() {
                                 { label: 'Tabla', value: 'tabla', icon: <TableOutlined /> },
                             ]}
                         />
+                        <Tooltip title={showEditor
+                            ? 'Historial de cambios de esta capa'
+                            : 'Historial de cambios de las capas'}
+                        >
+                            <Button
+                                icon={<HistoryOutlined />}
+                                onClick={() => setHistoryOpen(true)}
+                                shape="circle"
+                                aria-label="Historial de cambios"
+                            />
+                        </Tooltip>
                         <Tooltip title="Configuración global del resaltado de features">
                             <Button
                                 icon={<SettingOutlined />}
@@ -1099,87 +1339,139 @@ export default function LayerEditPage() {
                         </Tooltip>
                     </Space>
                 </Space>
-                <Text type="secondary" style={{ fontSize: 12 }}>
-                    Árbol del visor. Click sobre un nodo para abrir el editor inline; click sobre el triángulo para expandir/colapsar la rama.
+                <Text type="secondary" style={{ fontSize: 12, display: 'block', maxWidth: '70ch' }}>
+                    {showEditor
+                        ? 'Se guarda solo; publica desde el contador de arriba.'
+                        : 'Catálogo de capas del visor. Da click en una para editarla.'}
                 </Text>
             </div>
-            <div style={{ flex: 1, minHeight: 0, padding: isMobile ? 6 : 24, paddingBottom: layerId ? (isMobile ? 6 : 12) : (isMobile ? 6 : 24), overflow: 'hidden' }}>
-                <Card style={{ height: '100%', display: 'flex', flexDirection: 'column' }} styles={{ body: { padding: 0, height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' } }}>
+            <div style={{ flex: 1, minHeight: 0, padding: isMobile ? '6px 4px 4px' : '10px 8px 8px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
                     <style>{`
                         .layers-tree-tabs { height: 100%; display: flex; flex-direction: column; min-height: 0; }
                         .layers-tree-tabs > .ant-tabs-content-holder { flex: 1; min-height: 0; overflow: hidden; }
                         .layers-tree-tabs > .ant-tabs-content-holder > .ant-tabs-content { height: 100%; }
                         .layers-tree-tabs .ant-tabs-tabpane { height: 100%; overflow: hidden; }
+                        .layer-editor-form { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+                        .layer-editor-tabs { height: 100%; display: flex; flex-direction: column; min-height: 0; }
+                        .layer-editor-tabs > .ant-tabs-nav { flex-shrink: 0; margin-bottom: 0; }
+                        .layer-editor-tabs > .ant-tabs-content-holder { flex: 1; min-height: 0; overflow-y: auto; }
+                        .layer-editor-tabs .ant-tabs-tabpane { padding: 16px 0 24px; }
+                        .layer-editor-stack { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 0 24px; }
                     `}</style>
-                    <Tabs
-                        className="layers-tree-tabs"
-                        activeKey={treeTab}
-                        onChange={onTreeTabChange}
-                        size="small"
-                        tabBarStyle={{ padding: '0 12px', marginBottom: 0, flexShrink: 0 }}
-                        items={[
-                            {
-                                key: 'layers',
-                                label: `Capas (${catalogTreeData?.length || 0})`,
-                                children: (
-                                    <LayersTreeListInline
-                                        treeData={catalogTreeData}
-                                        loading={treeLoading}
-                                        error={treeError}
-                                        selectedKey={selectedEventoKey ? null : (layerId || null)}
-                                        onSelect={handleSelectFromTree}
-                                        onReload={reload}
-                                        onCreate={createLayer}
-                                        isAdmin={isAdmin}
-                                        onBulkTagsClick={() => setBulkTagsOpen(true)}
-                                        onReorder={isAdmin ? handleReorder : null}
-                                        editorContent={layerId && !selectedEventoKey ? editorBody : null}
-                                        actionButtons={layerId && !selectedEventoKey ? actionButtons : null}
-                                    />
+                    {showEditor ? (
+                        <>
+                            <div style={{ borderBottom: '1px solid #f0f0f0', flexShrink: 0 }}>
+                                <LayerBreadcrumb
+                                    treeData={catalogTreeData}
+                                    selectedKey={layerId}
+                                    onSelect={handleSelectFromTree}
+                                    onBackToTree={() => navigate('/mapalab/layers')}
+                                    isMobile={isMobile}
+                                />
+                            </div>
+                            {editorHeader}
+                            <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', padding: isMobile ? '0 12px' : '0 18px' }}>
+                                {editorBody}
+                            </div>
+                        </>
+                    ) : (
+                        <Tabs
+                            className="layers-tree-tabs"
+                            activeKey={treeTab}
+                            onChange={onTreeTabChange}
+                            size="small"
+                            tabBarStyle={{ padding: '0 12px', marginBottom: 0, flexShrink: 0 }}
+                            tabBarExtraContent={{
+                                right: (
+                                    <Space size={4} style={{ paddingInlineEnd: 4 }}>
+                                        {isAdmin && (
+                                            <Tooltip title="Nuevo nodo en la raíz">
+                                                <Button
+                                                    size="small"
+                                                    type="text"
+                                                    icon={<PlusOutlined />}
+                                                    onClick={() => { setCreateParentId(null); setCreateOpen(true); }}
+                                                    aria-label="Nuevo nodo en la raíz"
+                                                />
+                                            </Tooltip>
+                                        )}
+                                        <TreeSearchInput
+                                            value={treeQuery}
+                                            onChange={(v) => {
+                                                setTreeQuery(v);
+                                                if (v && showEditor) navigate('/mapalab/layers');
+                                            }}
+                                        />
+                                    </Space>
                                 ),
-                            },
-                            {
-                                key: 'eventos',
-                                label: `Eventos (${eventos?.length || 0})`,
-                                children: eventosChildren.length === 0 ? (
-                                    <div style={{ padding: 24 }}>
-                                        <Empty
-                                            description="Sin eventos publicados"
-                                            image={Empty.PRESENTED_IMAGE_SIMPLE}
-                                        >
-                                            <Button type="primary" onClick={() => navigate('/mapalab/eventos')}>
-                                                Ir al editor de eventos
-                                            </Button>
-                                        </Empty>
-                                    </div>
-                                ) : (
-                                    <LayersTreeListInline
-                                        treeData={eventosChildren}
-                                        loading={treeLoading}
-                                        error={treeError}
-                                        selectedKey={selectedEventoKey}
-                                        onSelect={handleSelectFromTree}
-                                        isAdmin={false}
-                                        onReorder={null}
-                                    />
-                                ),
-                            },
-                            {
-                                key: 'papelera',
-                                label: 'Papelera',
-                                children: (
-                                    <DeletedLayersList
-                                        isAdmin={isAdmin}
-                                        listDeleted={listDeletedLayers}
-                                        onRestore={restoreLayer}
-                                        onPurge={purgeLayer}
-                                        onAfterAction={reload}
-                                    />
-                                ),
-                            },
-                        ]}
-                    />
-                </Card>
+                            }}
+                            items={[
+                                {
+                                    key: 'layers',
+                                    label: `Capas (${catalogTreeData?.length || 0})`,
+                                    children: (
+                                        <LayersTreeListInline
+                                            treeData={catalogTreeData}
+                                            loading={treeLoading}
+                                            error={treeError}
+                                            selectedKey={null}
+                                            onSelect={handleSelectFromTree}
+                                            onReload={reload}
+                                            onCreate={createLayer}
+                                            isAdmin={isAdmin}
+                                            onReorder={isAdmin ? handleReorder : null}
+                                            q={treeQuery}
+                                            createOpen={createOpen}
+                                            onCreateClose={() => setCreateOpen(false)}
+                                            createParentId={createParentId}
+                                            onCreateAt={(id) => { setCreateParentId(id); setCreateOpen(true); }}
+                                        />
+                                    ),
+                                },
+                                {
+                                    key: 'eventos',
+                                    label: `Eventos (${eventos?.length || 0})`,
+                                    children: eventosChildren.length === 0 ? (
+                                        <div style={{ padding: 24 }}>
+                                            <Empty
+                                                description="Sin eventos publicados"
+                                                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                                            >
+                                                <Button type="primary" onClick={() => navigate('/mapalab/eventos')}>
+                                                    Ir al editor de eventos
+                                                </Button>
+                                            </Empty>
+                                        </div>
+                                    ) : (
+                                        <LayersTreeListInline
+                                            treeData={eventosChildren}
+                                            loading={treeLoading}
+                                            error={treeError}
+                                            selectedKey={selectedEventoKey}
+                                            onSelect={handleSelectFromTree}
+                                            isAdmin={false}
+                                            onReorder={null}
+                                        />
+                                    ),
+                                },
+                                {
+                                    key: 'papelera',
+                                    label: 'Papelera',
+                                    children: (
+                                        <DeletedLayersList
+                                            isAdmin={isAdmin}
+                                            listDeleted={listDeletedLayers}
+                                            onRestore={restoreLayer}
+                                            onPurge={purgeLayer}
+                                            onAfterAction={reload}
+                                        />
+                                    ),
+                                },
+                            ]}
+                        />
+                    )}
+                </div>
             </div>
 
             <LayerContentDrawer
@@ -1187,6 +1479,30 @@ export default function LayerEditPage() {
                 layerId={eventoLayerId}
                 onClose={() => setEventoLayerId(null)}
                 onSaved={reload}
+            />
+
+            <PublishReviewModal
+                open={reviewOpen}
+                onClose={() => setReviewOpen(false)}
+                drafts={drafts}
+                layerTitles={layerTitles}
+                publishedValues={{
+                    ...baselinesPorClave,
+                    ...(baseline && layerId ? { [layerId]: baseline } : {}),
+                }}
+                isAdmin={isAdmin}
+                onPublish={handlePublish}
+                onDiscard={handleDiscard}
+                publishing={publishing}
+            />
+
+            <GridHistoryDrawer
+                open={historyOpen}
+                onClose={() => setHistoryOpen(false)}
+                resources={[
+                    { value: 'layer-config', label: 'Capas', columnsMeta: HISTORY_COLUMNS },
+                    { value: 'layer-metadata', label: 'Metadatos', columnsMeta: METADATA_HISTORY_COLUMNS },
+                ]}
             />
 
             <BulkTagsDrawer
@@ -1198,6 +1514,7 @@ export default function LayerEditPage() {
             <LayerHighlightGlobalSettings
                 open={highlightSettingsOpen}
                 onClose={() => { setHighlightSettingsOpen(false); reload(); }}
+                onBulkTagsClick={isAdmin ? () => setBulkTagsOpen(true) : null}
                 treeData={treeData}
             />
 

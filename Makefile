@@ -8,6 +8,10 @@ COMPOSE_DEV  := -f compose.yaml -f compose.dev.yaml
 ENV_PROD     := .env.production
 ENV_DEV      := .env.development
 TARJETITAS_DIR := backups/tarjetitas
+VINE_DIR := backups/vine
+ROADMAP_DIR := backups/roadmap
+LLAVES_DIR := backups/llaves
+TELEMETRIA_INTRANET_DIR := backups/telemetria-intranet
 
 UP_GUARDS     = ensure_network
 DEPLOY_GUARDS = ensure_network
@@ -16,4 +20,6 @@ include make/common.mk
 include make/backup.mk
 include make/dev.mk
 include make/sieej.mk
+include make/vine.mk
 include make/mapalab.mk
+include make/acervo.mk

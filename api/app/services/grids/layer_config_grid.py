@@ -22,6 +22,7 @@ NODE_TYPES = ('tema', 'category', 'label', 'group', 'leaf')
 IMAGE_FORMATS = ('image/png', 'image/png8', 'image/jpeg')
 ANTIALIAS_VALUES = ('full', 'text', 'none')
 MUNICIPIO_FIELD_TYPES = ('clave', 'nombre')
+GEOMETRY_TYPES = ('point', 'line', 'polygon', 'raster')
 
 LAYERS_TABLE = GridTable(
     key='layers',
@@ -44,6 +45,7 @@ LAYERS_TABLE = GridTable(
         'image_format',
         'antialias',
         'wfs_available',
+        'geometry_type',
         'downloadable',
         'time_enabled',
         'default_date',
@@ -197,6 +199,7 @@ FIELDS: dict[str, GridField] = {
         _plain_field('image_format', 'image_format', coerce=_choice(IMAGE_FORMATS)),
         _plain_field('antialias', 'antialias', coerce=_choice(ANTIALIAS_VALUES)),
         _bool_field('wfs_available', 'wfs_available'),
+        _plain_field('geometry_type', 'geometry_type', coerce=_choice(GEOMETRY_TYPES)),
         _bool_field('downloadable', 'downloadable'),
         _bool_field('time_enabled', 'time_enabled'),
         GridField(
@@ -249,6 +252,7 @@ COLUMNS_META: list[dict] = [
     {'key': 'image_format', 'title': 'Formato de imagen', 'type': 'select', 'optionsKey': 'imageFormat', 'group': 'Servicios', 'width': 150},
     {'key': 'antialias', 'title': 'Suavizado', 'type': 'select', 'optionsKey': 'antialias', 'group': 'Servicios', 'width': 130},
     {'key': 'wfs_available', 'title': 'WFS disponible', 'type': 'bool', 'group': 'Servicios', 'width': 120},
+    {'key': 'geometry_type', 'title': 'Tipo de geometria', 'type': 'select', 'optionsKey': 'geometryType', 'group': 'Servicios', 'width': 150},
     {'key': 'downloadable', 'title': 'Descargable', 'type': 'bool', 'group': 'Servicios', 'width': 110},
     {'key': 'time_enabled', 'title': 'Soporte temporal', 'type': 'bool', 'group': 'Temporalidad', 'width': 130},
     {'key': 'default_date', 'title': 'Fecha por defecto', 'type': 'text', 'group': 'Temporalidad', 'width': 140},
@@ -278,7 +282,7 @@ _SELECT_SQL = """
     )
     SELECT l.id, l.label, l.slug, l.node_type, l.sort_order, l.hidden_in_menu, l.disabled,
            l.workspace_alias, l.geoserver_layer, l.styles, l.cql_filter, l.wms_group,
-           l.tiled, l.image_format, l.antialias, l.wfs_available, l.downloadable,
+           l.tiled, l.image_format, l.antialias, l.wfs_available, l.geometry_type, l.downloadable,
            l.time_enabled, l.default_date, l.time_style_pattern, l.hide_periodicity,
            l.search_tags, l.has_municipio, l.municipio_field, l.municipio_field_type,
            l.icon_url, l.highlight_color, l.highlight_shape,
@@ -417,8 +421,7 @@ SPEC = GridSpec(
     fields=FIELDS,
     fetch_rows=fetch_rows,
     presence_scope='grid-layer-config',
-    project_slug='mapalab',
-    min_role='editor',
+    permission='mariachi.mapalab.update',
     columns_meta=COLUMNS_META,
     guard=_guard,
     history_table=HISTORY_TABLE,

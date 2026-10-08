@@ -73,7 +73,7 @@ export default function FormularioEditorPage() {
         {
             key: 'asignaciones',
             label: 'Asignaciones',
-            children: <AsignacionesEditor formulario={formulario} />,
+            children: <AsignacionesEditor formulario={formulario} onSaved={setFormulario} />,
         },
         {
             key: 'envios',

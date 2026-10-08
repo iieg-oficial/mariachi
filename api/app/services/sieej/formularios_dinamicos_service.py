@@ -8,7 +8,7 @@ from __future__ import annotations
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from app.api.deps import ADMIN_ROLE
+from app.api.deps import has_permission
 from app.core.time import utcnow
 from app.models.sieej import (
     EnvioFormulario,
@@ -20,6 +20,7 @@ from app.models.sieej import (
 )
 from app.models.user import Usuario
 from app.services.sieej.periodos_service import periodo_relevante
+from app.services.sieej.pertenencia import grupo_por_formulario
 
 
 class FormulariosDinamicosService:
@@ -51,7 +52,7 @@ class FormulariosDinamicosService:
             )
         )
 
-        if user.role != ADMIN_ROLE:
+        if not has_permission(user, "mariachi.sieej_formularios.update"):
             grupos_select = (
                 select(usuario_grupo.c.grupo_id)
                 .where(usuario_grupo.c.usuario_id == user.id)
@@ -76,12 +77,17 @@ class FormulariosDinamicosService:
             return []
 
         ids = [f.id for f in formularios]
+        # En un formulario colaborativo el envio es del grupo: sin esto cada
+        # miembro veria "no iniciado" sobre un envio que su equipo ya empezo.
+        grupo_de = grupo_por_formulario(self.db, user, formularios)
+        dueno = EnvioFormulario.usuario_id == user.id
+        if grupo_de:
+            dueno = or_(
+                dueno, EnvioFormulario.grupo_id.in_(set(grupo_de.values()))
+            )
         envios_rows = (
             self.db.query(EnvioFormulario)
-            .filter(
-                EnvioFormulario.usuario_id == user.id,
-                EnvioFormulario.formulario_id.in_(ids),
-            )
+            .filter(dueno, EnvioFormulario.formulario_id.in_(ids))
             .all()
         )
         # Indexado dual: los no periodicos por formulario; los periodicos por
@@ -89,6 +95,8 @@ class FormulariosDinamicosService:
         envio_no_periodico: dict[int, EnvioFormulario] = {}
         envio_por_periodo: dict[tuple[int, int], EnvioFormulario] = {}
         for e in envios_rows:
+            if e.grupo_id != grupo_de.get(e.formulario_id):
+                continue
             if e.periodo_id is None:
                 envio_no_periodico[e.formulario_id] = e
             else:
@@ -168,7 +176,7 @@ class FormulariosDinamicosService:
         )
         if formulario is None:
             return None
-        if user.role == ADMIN_ROLE:
+        if has_permission(user, "mariachi.sieej_formularios.update"):
             return formulario
         if not self._user_puede_ver(formulario, user):
             return None

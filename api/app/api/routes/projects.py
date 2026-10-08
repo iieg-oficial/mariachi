@@ -3,7 +3,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_current_user, require_role, verify_csrf
+from app.api.deps import get_current_user, require_permission, verify_csrf
 from app.core.database import get_db
 from app.models.project import Project, UserProject
 from app.models.user import Usuario
@@ -18,7 +18,7 @@ from app.schemas.project import (
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/projects", tags=["projects"])
 
-_require_admin = require_role(["tetlamamakani"])
+_require_admin = require_permission("mariachi.sistema.manage")
 
 
 @router.get("", response_model=list[ProjectResponse])

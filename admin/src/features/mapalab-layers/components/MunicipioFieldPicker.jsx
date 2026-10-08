@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Form, Select, Spin } from 'antd';
+import { CheckCircleFilled } from '@ant-design/icons';
+import InfoIcon from '@features/mapalab-layers/components/layersEditor/InfoIcon';
+import { Alert, Form, Select, Spin, Space, Tooltip, Button, Segmented, Typography } from 'antd';
 import { MUNICIPIO_FIELD_TYPE_OPTIONS } from '@features/mapalab-layers/constants/nodeTypes';
 
 const CLAVE_PATTERN = /^14\d{3}$/;
@@ -23,6 +25,8 @@ const collectDescendantLeavesWithWms = (node, acc = []) => {
     (node.children || []).forEach(c => collectDescendantLeavesWithWms(c, acc));
     return acc;
 };
+
+const { Text } = Typography;
 
 const detectFieldKind = (samples) => {
     if (!Array.isArray(samples) || samples.length === 0) {
@@ -107,6 +111,8 @@ const MunicipioFieldPicker = ({
     }, [fields]);
 
     const currentField = Form.useWatch('municipioField', form);
+    const [forzarTipo, setForzarTipo] = useState(false);
+
     const detection = useMemo(() => {
         if (!currentField || !samples[currentField]) {
             return { type: null, confidence: 0, reason: null };
@@ -116,11 +122,11 @@ const MunicipioFieldPicker = ({
 
     useEffect(() => {
         if (!currentField || !detection.type) return;
-        const currentType = form.getFieldValue('municipioFieldType');
-        if (!currentType) {
-            form.setFieldsValue({ municipioFieldType: detection.type });
-        }
+        if (form.getFieldValue('municipioFieldType') === detection.type) return;
+        form.setFieldsValue({ municipioFieldType: detection.type });
     }, [currentField, detection.type, form]);
+
+    const detectado = Boolean(currentField && detection.type);
 
     const sampleList = currentField && Array.isArray(samples[currentField])
         ? samples[currentField].slice(0, 5)
@@ -128,26 +134,24 @@ const MunicipioFieldPicker = ({
 
     return (
         <>
-            {resolved?.descendantCount > 0 && (
-                <Alert
-                    type="info"
-                    showIcon
-                    style={{ marginBottom: 16 }}
-                    message={`Este nodo no tiene capa propia. La configuración aplicará a ${resolved.descendantCount} capa(s) descendiente(s) que heredan la metadata vía el árbol.`}
-                    description={`Columnas detectadas leyendo el feature type de '${resolved.workspaceAlias}:${resolved.geoserverLayer}' (primer descendiente con WMS). Asume que todas las propiedades hijas comparten el mismo schema de columnas.`}
-                />
-            )}
             {!resolved && (
                 <Alert
                     type="warning"
                     showIcon
                     style={{ marginBottom: 16 }}
-                    message="No se puede inferir la capa WMS"
+                    title="No se puede inferir la capa WMS"
                     description="Este nodo no tiene workspace/geoserver_layer propio ni descendientes con uno. Asigna primero una capa WMS o configura este filtro en una hoja descendiente."
                 />
             )}
             <Form.Item
-                label="Campo de municipio"
+                label={(
+                    <Space size={6}>
+                        Campo de municipio
+                        {resolved?.descendantCount > 0 && (
+                            <InfoIcon title={`Este nodo no tiene capa propia: la configuración aplicará a ${resolved.descendantCount} capa(s) descendiente(s) que heredan la metadata por el árbol. Las columnas se leyeron de ${resolved.workspaceAlias}:${resolved.geoserverLayer}, el primer descendiente con WMS, asumiendo que todas las propiedades hijas comparten el mismo schema.`} />
+                        )}
+                    </Space>
+                )}
                 name="municipioField"
                 rules={[{ required: true, message: 'Selecciona la columna' }]}
                 extra={
@@ -188,28 +192,36 @@ const MunicipioFieldPicker = ({
                     showIcon
                     closable
                     style={{ marginBottom: 16 }}
-                    message="Esta columna no parece ser de municipio"
+                    title="Esta columna no parece ser de municipio"
                     description={`Los valores leídos (${sampleList.slice(0, 3).map(v => `'${v}'`).join(', ')}…) no coinciden con el patrón de clave INEGI (14NNN) ni con nombres de municipio. Verifica que la columna sea la correcta o ajusta el tipo manualmente.`}
                 />
             )}
-            {currentField && detection.type && (
-                <Alert
-                    type="success"
-                    showIcon
-                    closable
-                    style={{ marginBottom: 16 }}
-                    message={`Tipo detectado: ${detection.type === 'clave' ? 'Clave INEGI' : 'Nombre'}`}
-                    description={`${Math.round(detection.confidence * 100)}% de las muestras encajan (${detection.reason}). El tipo se preseleccionó; puedes cambiarlo abajo si es necesario.`}
-                />
+            {detectado && !forzarTipo ? (
+                <Form.Item name="municipioFieldType" noStyle />
+            ) : null}
+            <div style={{ display: detectado && !forzarTipo ? 'none' : 'block' }}>
+                <Form.Item
+                    label="Tipo de valor del campo"
+                    name="municipioFieldType"
+                    rules={[{ required: true, message: 'Selecciona el tipo' }]}
+                    tooltip="El visor genera CQL distinto según esto: 'clave' produce IN ('14039',…) y 'nombre' produce IN ('Guadalajara',…). Normalmente se detecta solo leyendo los valores de la columna."
+                >
+                    <Segmented options={MUNICIPIO_FIELD_TYPE_OPTIONS} />
+                </Form.Item>
+            </div>
+            {detectado && !forzarTipo && (
+                <Space size={6} style={{ marginBottom: 16 }}>
+                    <Tooltip title={`${Math.round(detection.confidence * 100)}% de las muestras encajan (${detection.reason}).`}>
+                        <CheckCircleFilled style={{ color: '#1F7A4D', fontSize: 13, cursor: 'help' }} />
+                    </Tooltip>
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                        Detectado como {detection.type === 'clave' ? 'Clave INEGI' : 'Nombre de municipio'}
+                    </Text>
+                    <Button type="link" size="small" style={{ padding: 0 }} onClick={() => setForzarTipo(true)}>
+                        cambiar
+                    </Button>
+                </Space>
             )}
-            <Form.Item
-                label="Tipo de valor del campo"
-                name="municipioFieldType"
-                rules={[{ required: true, message: 'Selecciona el tipo' }]}
-                extra="El visor genera CQL distinto según esto: 'clave' produce `<field> IN ('14039',…)`; 'nombre' produce `<field> IN ('Guadalajara',…)`."
-            >
-                <Select options={MUNICIPIO_FIELD_TYPE_OPTIONS} placeholder="Selecciona tipo" />
-            </Form.Item>
         </>
     );
 };

@@ -25,7 +25,16 @@ class GrupoResponse(GrupoBase):
 
 
 class GrupoUsuariosUpdate(BaseModel):
+    """Membresia del grupo y quienes de ella coordinan.
+
+    `coordinadores` es un subconjunto de `usuarios`: quien no aparezca ahi
+    queda como capturista. Va como lista y no como mapa de roles porque el rol
+    es binario y asi el cliente manda lo que el usuario marco, no un
+    diccionario que tenga que armar.
+    """
+
     usuarios: list[int] = Field(default_factory=list)
+    coordinadores: list[int] = Field(default_factory=list)
 
 
 class FormularioAsignacionesUpdate(BaseModel):

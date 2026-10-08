@@ -40,7 +40,7 @@ export default function TipoFormDrawer({
         <Drawer
             title={editing ? `Editar tipo: ${editing.label}` : 'Nuevo tipo'}
             open={open}
-            width={isMobile ? '100%' : 640}
+            size={isMobile ? '100%' : 640}
             onClose={onClose}
             destroyOnClose
             extra={

@@ -37,11 +37,14 @@ services:
 
   redis:
     image: redis:7-alpine
+    command: ["sh", "-c", "exec docker-entrypoint.sh redis-server --requirepass \"$$(cat /run/secrets/redis_password)\""]
+    secrets:
+      - redis_password
     volumes:
       - redis_data:/data
     healthcheck:
       <<: *healthcheck
-      test: [ "CMD", "redis-cli", "ping" ]
+      test: [ "CMD-SHELL", "REDISCLI_AUTH=\"$$(cat /run/secrets/redis_password)\" redis-cli ping | grep -q PONG" ]
       start_period: 2s
     networks:
       - mariachi_network
@@ -70,6 +73,7 @@ services:
       - postgres_password
       - secret_key
       - csrf_secret_key
+      - redis_password
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=15).read()"]
       interval: 15s
@@ -91,6 +95,8 @@ secrets:
     file: ./secrets/secret_key
   csrf_secret_key:
     file: ./secrets/csrf_secret_key
+  redis_password:
+    file: ./secrets/redis_password
 
 networks:
   mariachi_network:

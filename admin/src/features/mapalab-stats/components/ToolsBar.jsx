@@ -1,5 +1,5 @@
 import { Card, Empty, Progress, Space, Tag, Typography } from 'antd';
-import { TOOL_LABELS } from '@features/mapalab-stats/constants';
+import { TOOL_COLORS, TOOL_LABELS } from '@features/mapalab-stats/constants';
 
 const { Text } = Typography;
 
@@ -16,12 +16,12 @@ const ToolsBar = ({ rows = [], loading }) => {
 
     return (
         <Card title="Herramientas" size="small" loading={loading}>
-            <Space direction="vertical" size={8} style={{ width: '100%' }}>
+            <Space orientation="vertical" size={8} style={{ width: '100%' }}>
                 {rows.map((row) => (
                     <div key={`${row.eventName}-${row.tool}`}>
                         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                             <Text>
-                                <Tag color={row.eventName === 'measurement_tool_use' ? 'blue' : 'purple'}>
+                                <Tag color={TOOL_COLORS[row.eventName] || 'purple'}>
                                     {TOOL_LABELS[row.eventName] || row.eventName}
                                 </Tag>
                                 {row.tool}

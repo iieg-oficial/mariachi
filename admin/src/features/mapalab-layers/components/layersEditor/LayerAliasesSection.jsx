@@ -56,13 +56,6 @@ export default function LayerAliasesSection({ layerId, listAliases, createAlias,
 
     return (
         <Space orientation="vertical" size="middle" style={{ width: '100%' }}>
-            <Text type="secondary">
-                Atajos cortos opcionales que también resuelven a esta capa vía{' '}
-                <code>?layer=&lt;alias&gt;</code>. El nombre en URL canónico siempre funciona; los alias son
-                memorizables (ejemplo: <code>esalud</code> → <code>establecimientos-salud</code>) o sirven
-                como redirects para URLs viejas que cambiaron de nombre.
-            </Text>
-
             <Form form={form} component={false}>
                 <Space.Compact style={{ width: '100%', maxWidth: 360 }}>
                     <Form.Item
@@ -82,43 +75,44 @@ export default function LayerAliasesSection({ layerId, listAliases, createAlias,
                 </Space.Compact>
             </Form>
 
-            <List
-                size="small"
-                bordered
-                loading={loading}
-                dataSource={aliases}
-                locale={{ emptyText: 'Sin alias. El nombre en URL canónico sigue funcionando.' }}
-                renderItem={(item) => (
-                    <List.Item
-                        actions={[
-                            <Popconfirm
-                                key="del"
-                                title={`Eliminar alias "${item.alias}"?`}
-                                onConfirm={() => handleDelete(item.alias)}
-                                okText="Si"
-                                cancelText="No"
-                            >
-                                <Button type="text" danger icon={<DeleteOutlined />} />
-                            </Popconfirm>,
-                        ]}
-                    >
-                        <Tag
-                            color="#5C2472"
-                            style={{
-                                fontSize: 14,
-                                color: '#262626',
-                                padding: '2px 10px',
-                                borderRadius: 6,
-                            }}
+            {aliases.length > 0 && (
+                <List
+                    size="small"
+                    bordered
+                    loading={loading}
+                    dataSource={aliases}
+                    renderItem={(item) => (
+                        <List.Item
+                            actions={[
+                                <Popconfirm
+                                    key="del"
+                                    title={`Eliminar alias "${item.alias}"?`}
+                                    onConfirm={() => handleDelete(item.alias)}
+                                    okText="Si"
+                                    cancelText="No"
+                                >
+                                    <Button type="text" danger icon={<DeleteOutlined />} />
+                                </Popconfirm>,
+                            ]}
                         >
-                            {item.alias}
-                        </Tag>
-                        <Text type="secondary" style={{ marginLeft: 8 }}>
+                            <Tag
+                                color="#5C2472"
+                                style={{
+                                    fontSize: 14,
+                                    color: '#262626',
+                                    padding: '2px 10px',
+                                    borderRadius: 6,
+                                }}
+                            >
+                                {item.alias}
+                            </Tag>
+                            <Text type="secondary" style={{ marginLeft: 8 }}>
                             por {item.createdBy || '—'}
-                        </Text>
-                    </List.Item>
-                )}
-            />
+                            </Text>
+                        </List.Item>
+                    )}
+                />
+            )}
         </Space>
     );
 }

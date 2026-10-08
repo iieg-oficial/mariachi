@@ -15,7 +15,7 @@ export default function ChangeDetail({ change }) {
         const meta = change.metadataValues || {};
         const stats = change.statsValues || {};
         return (
-            <Space direction="vertical" style={{ width: '100%' }}>
+            <Space orientation="vertical" style={{ width: '100%' }}>
                 <Title level={5}>Metadata</Title>
                 <Descriptions column={1} size="small" bordered>
                     {Object.entries(meta).map(([k, v]) => (

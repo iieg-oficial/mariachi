@@ -13,7 +13,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session, selectinload
 
-from app.api.deps import ADMIN_ROLE
+from app.api.deps import has_permission
 from app.core.time import to_naive_utc, utcnow
 from app.models.sieej import (
     EnvioArchivo,
@@ -25,6 +25,7 @@ from app.models.sieej import (
     Grupo,
     formulario_grupo,
     formulario_usuario,
+    usuario_grupo,
 )
 from app.models.user import Usuario
 from app.services.acervo import AcervoClient
@@ -220,6 +221,8 @@ class FormulariosAdminService:
         """
         f = self.get(formulario_id)
         self._verificar_conflicto(f, data.pop("actualizado_en_esperado", None))
+        self._verificar_baja_colaborativa(f, data.get("colaborativo"))
+        self._verificar_alta_colaborativa(f, data.get("colaborativo"))
         version_previa = f.version or 1
 
         slug_previo = f.slug
@@ -268,6 +271,7 @@ class FormulariosAdminService:
             "vigencia_inicio",
             "vigencia_fin",
             "publico",
+            "colaborativo",
         ):
             if campo in data and data[campo] is not None:
                 setattr(f, campo, data[campo])
@@ -512,7 +516,7 @@ class FormulariosAdminService:
         if con_envios and confirmacion is None:
             return self.cerrar(formulario_id, actor=actor)
         if con_envios:
-            if actor is None or actor.role != ADMIN_ROLE:
+            if actor is None or not has_permission(actor, "mariachi.sieej_formularios.delete"):
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail=(
@@ -556,6 +560,109 @@ class FormulariosAdminService:
         )
         return None
 
+    def _verificar_grupos_con_envios(
+        self, formulario: Formulario, grupos_ids: list[int]
+    ) -> None:
+        """Impide desasignar un grupo que ya tiene un envio vivo del formulario.
+
+        El envio seguiria apuntando a un grupo que ya no ve el formulario, asi
+        que sus miembros perderian el acceso a lo que llevan capturado. Misma
+        razon que el bloqueo de apagar la bandera.
+        """
+        if not formulario.colaborativo:
+            return
+        quedan = set(grupos_ids)
+        huerfanos = (
+            self.db.query(Grupo.nombre, func.count(EnvioFormulario.id))
+            .join(EnvioFormulario, EnvioFormulario.grupo_id == Grupo.id)
+            .filter(
+                EnvioFormulario.formulario_id == formulario.id,
+                EnvioFormulario.estado == "en_proceso",
+                EnvioFormulario.eliminado_en.is_(None),
+                Grupo.id.notin_(quedan) if quedan else True,
+            )
+            .group_by(Grupo.nombre)
+            .all()
+        )
+        if huerfanos:
+            nombres = ", ".join(f"{nombre} ({n})" for nombre, n in huerfanos)
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "No se puede quitar un grupo con envios en proceso: "
+                    f"{nombres}. Espera a que se envien o eliminalos primero."
+                ),
+            )
+
+    def _verificar_alta_colaborativa(
+        self, formulario: Formulario, colaborativo: bool | None
+    ) -> None:
+        """Impide prender la bandera con grupos que no tienen coordinador.
+
+        Sin coordinador el grupo captura pero no puede entregar, y se descubre
+        al final. Junto con el bloqueo de quitar al ultimo coordinador, cierra
+        el circulo: no se puede entrar en un estado del que despues no se sale.
+        """
+        if colaborativo is not True or formulario.colaborativo:
+            return
+        sin_coordinador = [
+            nombre
+            for nombre, coordinadores in (
+                self.db.query(
+                    Grupo.nombre,
+                    func.count(usuario_grupo.c.usuario_id).filter(
+                        usuario_grupo.c.rol == "coordinador"
+                    ),
+                )
+                .join(formulario_grupo, formulario_grupo.c.grupo_id == Grupo.id)
+                .join(usuario_grupo, usuario_grupo.c.grupo_id == Grupo.id)
+                .filter(formulario_grupo.c.formulario_id == formulario.id)
+                .group_by(Grupo.nombre)
+                .all()
+            )
+            if not coordinadores
+        ]
+        if sin_coordinador:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    "Estos grupos no tienen coordinador y no podrian enviar el "
+                    f"formulario: {', '.join(sin_coordinador)}. Nombra uno en "
+                    "cada grupo antes de activar la captura colaborativa."
+                ),
+            )
+
+    def _verificar_baja_colaborativa(
+        self, formulario: Formulario, colaborativo: bool | None
+    ) -> None:
+        """Impide apagar la bandera con envios de grupo vivos.
+
+        Apagarla mueve la identidad del envio de vuelta a la persona, y los
+        envios que ya pertenecen a un grupo se quedarian sin ruta de acceso:
+        nadie los volveria a encontrar desde el formulario.
+        """
+        if colaborativo is not False or not formulario.colaborativo:
+            return
+        vivos = (
+            self.db.query(func.count(EnvioFormulario.id))
+            .filter(
+                EnvioFormulario.formulario_id == formulario.id,
+                EnvioFormulario.grupo_id.isnot(None),
+                EnvioFormulario.estado == "en_proceso",
+                EnvioFormulario.eliminado_en.is_(None),
+            )
+            .scalar()
+        ) or 0
+        if vivos:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    f"No se puede desactivar la captura colaborativa: hay {vivos} "
+                    "envio(s) de grupo en proceso que quedarian sin acceso. "
+                    "Espera a que se envien o eliminalos primero."
+                ),
+            )
+
     def actualizar_asignaciones(
         self,
         formulario_id: int,
@@ -563,6 +670,7 @@ class FormulariosAdminService:
         usuarios_ids: list[int],
     ) -> Formulario:
         f = self.get(formulario_id)
+        self._verificar_grupos_con_envios(f, grupos_ids)
 
         # Validar que los grupos y usuarios existan
         if grupos_ids:
@@ -679,6 +787,87 @@ class FormulariosAdminService:
             .all()
         )
 
+    def historial_export(
+        self,
+        formulario_id: int,
+        envios: list[EnvioFormulario],
+        usuarios: dict[int, Usuario],
+    ) -> tuple[list[dict[str, Any]], dict[int, str]]:
+        """Filas del historial para el export, y quien capturo cada envio.
+
+        Las dos salen del mismo recorrido: la hoja de historial necesita cada
+        cambio y la de envios necesita el conjunto de quienes capturaron, que
+        no es el dueno del envio cuando el formulario es colaborativo.
+        """
+        historial = self.historial_de_formulario(formulario_id)
+        envio_ids = {e.id for e in envios}
+        actor_ids = {h.actor_usuario_id for h in historial if h.actor_usuario_id}
+        actores = (
+            {
+                u.id: u
+                for u in self.db.query(Usuario).filter(Usuario.id.in_(actor_ids)).all()
+            }
+            if actor_ids
+            else {}
+        )
+        dueno = {e.id: usuarios.get(e.usuario_id) for e in envios}
+        filas: list[dict[str, Any]] = []
+        capturistas: dict[int, list[str]] = {}
+        for h in historial:
+            if h.envio_id not in envio_ids:
+                continue
+            actor = actores.get(h.actor_usuario_id)
+            u_envio = dueno.get(h.envio_id)
+            if actor is not None and h.origen == "captura":
+                nombres = capturistas.setdefault(h.envio_id, [])
+                if actor.name not in nombres:
+                    nombres.append(actor.name)
+            filas.append(
+                {
+                    "envio_id": h.envio_id,
+                    "usuario": u_envio.name if u_envio else "",
+                    "version": h.formulario_version,
+                    "campo": h.field_label or h.field_path,
+                    "valor_anterior": h.valor_anterior,
+                    "valor_nuevo": h.valor_nuevo,
+                    "actor": actor.name if actor else "",
+                    "origen": h.origen,
+                    "fecha": (
+                        h.cambiado_en.strftime("%Y-%m-%d %H:%M") if h.cambiado_en else ""
+                    ),
+                }
+            )
+        return filas, {eid: ", ".join(n) for eid, n in capturistas.items()}
+
+    def listar_eventos_envio(
+        self, formulario_id: int, envio_id: int
+    ) -> list[dict[str, Any]]:
+        """Linea de tiempo de un envio, con el nombre de quien hizo cada cosa."""
+        self.get(formulario_id)
+        filas = (
+            self.db.query(EnvioEvento, Usuario.name)
+            .join(EnvioFormulario, EnvioFormulario.id == EnvioEvento.envio_id)
+            .outerjoin(Usuario, Usuario.id == EnvioEvento.actor_usuario_id)
+            .filter(
+                EnvioEvento.envio_id == envio_id,
+                EnvioFormulario.formulario_id == formulario_id,
+            )
+            .order_by(EnvioEvento.ocurrido_en.desc())
+            .all()
+        )
+        return [
+            {
+                "id": evento.id,
+                "envio_id": evento.envio_id,
+                "tipo": evento.tipo,
+                "payload": evento.payload,
+                "actor_usuario_id": evento.actor_usuario_id,
+                "actor_nombre": actor_nombre,
+                "ocurrido_en": evento.ocurrido_en,
+            }
+            for evento, actor_nombre in filas
+        ]
+
     def eliminar_envio(
         self,
         formulario_id: int,
@@ -697,7 +886,7 @@ class FormulariosAdminService:
         """
         formulario = self.get(formulario_id)
         envio = self.get_envio(formulario_id, envio_id)
-        if actor.role != ADMIN_ROLE:
+        if not has_permission(actor, "mariachi.sieej_formularios.delete"):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=(
