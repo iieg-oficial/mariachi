@@ -22,6 +22,9 @@ const PANEL_PERMISSIONS = [
     'mariachi.mapalab_llaves.manage',
     'mariachi.mapalab_acceso.manage',
     'mariachi.mapalab_propuestas.approve',
+    'mariachi.vine.view',
+    'mariachi.frames.view',
+    'mariachi.intranet.view',
 ];
 
 export default function ProtectedRoute({ children }) {
