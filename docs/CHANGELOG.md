@@ -9,6 +9,16 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [2.151.1] - 2026-10-09
+
+### Corregido
+
+- **Módulos locales sin acceso para quien solo tiene sus roles.** La lista de permisos que deja entrar al
+  panel en el admin (`ProtectedRoute.jsx`) no tenía `mariachi.vine.view`, `mariachi.frames.view` ni
+  `mariachi.intranet.view`, que el backend sí acepta en `PANEL_PERMISSIONS`. Una cuenta con solo «Vine -
+  estadisticas», «Frames - camaras» o un rol de intranet veía «Acceso restringido». Las dos listas siguen
+  duplicadas: cualquier permiso de panel nuevo va en las dos.
+
 ## [2.151.0] - 2026-10-08
 
 ### Agregado
