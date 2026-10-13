@@ -57,3 +57,33 @@ def test_sin_url_configurada_es_503(monkeypatch):
     with pytest.raises(HTTPException) as error:
         asyncio.run(huachicol_monitor.consultar("/api/status"))
     assert error.value.status_code == 503
+
+
+def test_espera_lo_que_tarda_huachicol_sin_pasar_el_timeout_del_admin(monkeypatch):
+    usados: list[httpx.Timeout] = []
+    monkeypatch.setattr(
+        huachicol_monitor,
+        "get_settings",
+        lambda: SimpleNamespace(huachicol_monitor_url="http://huachicol:8000"),
+    )
+    original = httpx.AsyncClient
+
+    def cliente(**kwargs) -> httpx.AsyncClient:
+        usados.append(httpx.Timeout(kwargs["timeout"]))
+        return original(
+            transport=httpx.MockTransport(lambda request: httpx.Response(200, json={})), **kwargs
+        )
+
+    monkeypatch.setattr(huachicol_monitor.httpx, "AsyncClient", cliente)
+    asyncio.run(huachicol_monitor.consultar("/api/nodos"))
+    assert 5 <= usados[0].read < 10
+
+
+def test_timeout_de_lectura_sale_como_502(monkeypatch):
+    def lento(request: httpx.Request) -> httpx.Response:
+        raise httpx.ReadTimeout("lento", request=request)
+
+    _con_respuesta(monkeypatch, lento)
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(huachicol_monitor.consultar("/api/nodos"))
+    assert error.value.status_code == 502

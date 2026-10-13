@@ -9,6 +9,13 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [No publicado]
+
+### Corregido
+
+- `/sistema/monitor/status` y `/monitor/nodos` ya no responden 502 a ratos: huachicol tarda de 1 a
+  5 s en armar el estado y la API lo cortaba a los 2 s. Ahora espera 8, por debajo de los 10 del admin.
+
 ## [2.151.1] - 2026-10-09
 
 ### Corregido

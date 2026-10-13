@@ -3,7 +3,7 @@ from fastapi import HTTPException
 
 from app.core.settings import get_settings
 
-_TIMEOUT_SECONDS = 2.0
+_TIMEOUT_SECONDS = 8.0
 
 
 async def consultar(path: str) -> dict | list:
