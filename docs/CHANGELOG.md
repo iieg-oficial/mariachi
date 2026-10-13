@@ -9,6 +9,13 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [No publicado]
+
+### Corregido
+
+- `PUT /layer-metadata/{key}/stats` ya no responde «schema vacio o invalido» con indicadores
+  válidos: el volcado sin alias convertía la clave `schema` de cada indicador en `schema_`.
+
 ## [2.151.1] - 2026-10-09
 
 ### Corregido
