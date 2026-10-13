@@ -19,6 +19,8 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
   páginas, donde no se veían: «Revisar» abre un resumen de los cambios con Aprobar y Rechazar.
 - `PUT /layer-metadata/{key}/stats` ya no responde «schema vacio o invalido» con indicadores
   válidos: el volcado sin alias convertía la clave `schema` de cada indicador en `schema_`.
+- `/sistema/monitor/status` y `/monitor/nodos` ya no responden 502 a ratos: huachicol tarda de 1 a
+  5 s en armar el estado y la API lo cortaba a los 2 s. Ahora espera 8, por debajo de los 10 del admin.
 
 ## [2.151.1] - 2026-10-09
 
