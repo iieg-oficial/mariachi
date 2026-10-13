@@ -9,6 +9,13 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [No publicado]
+
+### Corregido
+
+- El editor de páginas (y la revisión de borradores que lo abre) ya no se cae con «useMessage is not a
+  function»: el modal de JSON usaba `message.useMessage()` del puente de mensajes, que no lo tiene.
+
 ## [2.151.1] - 2026-10-09
 
 ### Corregido
