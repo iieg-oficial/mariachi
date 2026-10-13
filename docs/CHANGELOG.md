@@ -9,6 +9,13 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ---
 
+## [No publicado]
+
+### Corregido
+
+- La cola de revisión ya no manda los borradores de capa, metadatos y estadísticas al editor de
+  páginas, donde no se veían: «Revisar» abre un resumen de los cambios con Aprobar y Rechazar.
+
 ## [2.151.1] - 2026-10-09
 
 ### Corregido

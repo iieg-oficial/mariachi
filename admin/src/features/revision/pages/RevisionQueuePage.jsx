@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { Table, Card, Typography, Button, Space, Modal, Input, Tag } from 'antd';
 import { useNavigate } from 'react-router';
 import { EditOutlined, CloseOutlined, EyeOutlined } from '@ant-design/icons';
@@ -8,6 +8,15 @@ import { message } from '@shared/services/message';
 
 const { Title } = Typography;
 
+const BorradorCapaRevisionModal = lazy(() => import('@features/mapalab-layers')
+    .then((m) => ({ default: m.BorradorCapaRevisionModal })));
+
+const TIPOS_DE_CAPA = {
+    layer: 'Capa',
+    layer_metadata: 'Metadatos',
+    layer_stats: 'Estadísticas',
+};
+
 export default function RevisionQueue() {
     const { isMobile } = useIsMobile();
     const navigate = useNavigate();
@@ -16,6 +25,8 @@ export default function RevisionQueue() {
     const [rechazarModalVisible, setRechazarModalVisible] = useState(false);
     const [borradorSeleccionado, setBorradorSeleccionado] = useState(null);
     const [comentario, setComentario] = useState('');
+    const [borradorCapa, setBorradorCapa] = useState(null);
+    const [aprobando, setAprobando] = useState(false);
 
     const fetchPendientes = useCallback(async () => {
         try {
@@ -71,6 +82,25 @@ export default function RevisionQueue() {
         setRechazarModalVisible(true);
     };
 
+    const handleAprobarCapa = async (borrador) => {
+        setAprobando(true);
+        try {
+            await api.post(`/borradores/por-id/${borrador.id}/aprobar`);
+            message.success('Borrador aprobado y publicado');
+            setBorradorCapa(null);
+            fetchPendientes();
+        } catch (err) {
+            message.error(err?.response?.data?.detail || 'Error al aprobar el borrador');
+        } finally {
+            setAprobando(false);
+        }
+    };
+
+    const handleRechazarCapa = (borrador) => {
+        setBorradorCapa(null);
+        handleRechazar(borrador);
+    };
+
     const confirmarRechazo = async () => {
         try {
             await api.post(`/borradores/por-id/${borradorSeleccionado.id}/rechazar`, { comentario });
@@ -86,6 +116,8 @@ export default function RevisionQueue() {
     const isEvento = (record) => record?.resource_type === 'evento';
     const isHomeSection = (record) => record?.resource_type === 'home_section';
     const isSld = (record) => record?.resource_type === 'sld';
+    const isLayerDraft = (record) => Boolean(TIPOS_DE_CAPA[record?.resource_type]);
+    const layerDraftName = (record) => `${TIPOS_DE_CAPA[record.resource_type]}: ${record.data?.label || record.resource_id}`;
 
     const tipoTag = (record) => {
         if (isMenu(record)) return <Tag color="purple">Menú de navegación</Tag>;
@@ -96,6 +128,7 @@ export default function RevisionQueue() {
             const label = shape === 'point' ? 'Punto' : shape === 'boundary' ? 'Boundary' : 'Coroplético';
             return <Tag color="green">Simbología ({label}): {record.resource_id}</Tag>;
         }
+        if (isLayerDraft(record)) return <Tag color="blue">{layerDraftName(record)}</Tag>;
         return record.data?.title || `Página ${record.resource_id}`;
     };
 
@@ -120,7 +153,23 @@ export default function RevisionQueue() {
         return `/pages/edit/${record.resource_id}?review=true&borrador=${record.id}`;
     };
 
-    const supportsPreview = (record) => isMenu(record) || (!isEvento(record) && !isHomeSection(record) && !isSld(record));
+    const supportsPreview = (record) => isMenu(record)
+        || (!isEvento(record) && !isHomeSection(record) && !isSld(record) && !isLayerDraft(record));
+
+    const handleRevisar = (record) => {
+        if (isLayerDraft(record)) setBorradorCapa(record);
+        else navigate(editPath(record));
+    };
+
+    const nombreDelRecurso = (record) => {
+        if (!record) return '';
+        if (isMenu(record)) return 'Menú de navegación';
+        if (isEvento(record)) return `evento "${record.data?.titulo || record.resource_id}"`;
+        if (isHomeSection(record)) return `sección home "${record.resource_id}"`;
+        if (isSld(record)) return `simbología "${record.resource_id}"`;
+        if (isLayerDraft(record)) return `${TIPOS_DE_CAPA[record.resource_type].toLowerCase()} "${record.data?.label || record.resource_id}"`;
+        return record.data?.title;
+    };
 
     const columns = [
         {
@@ -163,7 +212,7 @@ export default function RevisionQueue() {
                     <Button
                         type="primary"
                         icon={<EditOutlined />}
-                        onClick={() => navigate(editPath(record))}
+                        onClick={() => handleRevisar(record)}
                     >
                         {isMobile ? '' : 'Revisar'}
                     </Button>
@@ -213,13 +262,7 @@ export default function RevisionQueue() {
             >
                 <p>
                     Se notificará a <strong>{borradorSeleccionado?.usuario?.name}</strong> que su borrador de{' '}
-                    <strong>{borradorSeleccionado ? (
-                        isMenu(borradorSeleccionado) ? 'Menú de navegación'
-                            : isEvento(borradorSeleccionado) ? `evento "${borradorSeleccionado.data?.titulo || borradorSeleccionado.resource_id}"`
-                                : isHomeSection(borradorSeleccionado) ? `sección home "${borradorSeleccionado.resource_id}"`
-                                    : isSld(borradorSeleccionado) ? `simbología "${borradorSeleccionado.resource_id}"`
-                                        : borradorSeleccionado.data?.title
-                    ) : ''}</strong> fue rechazado.
+                    <strong>{nombreDelRecurso(borradorSeleccionado)}</strong> fue rechazado.
                 </p>
                 <Input.TextArea
                     placeholder="Motivo del rechazo (opcional)"
@@ -228,6 +271,19 @@ export default function RevisionQueue() {
                     rows={3}
                 />
             </Modal>
+
+            {borradorCapa && (
+                <Suspense fallback={null}>
+                    <BorradorCapaRevisionModal
+                        borrador={borradorCapa}
+                        onClose={() => setBorradorCapa(null)}
+                        onAprobar={handleAprobarCapa}
+                        onRechazar={handleRechazarCapa}
+                        aprobando={aprobando}
+                        width={isMobile ? '100%' : 640}
+                    />
+                </Suspense>
+            )}
         </div>
     );
 }
