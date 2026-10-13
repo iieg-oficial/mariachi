@@ -15,6 +15,8 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 - El editor de páginas (y la revisión de borradores que lo abre) ya no se cae con «useMessage is not a
   function»: el modal de JSON usaba `message.useMessage()` del puente de mensajes, que no lo tiene.
+- La cola de revisión ya no manda los borradores de capa, metadatos y estadísticas al editor de
+  páginas, donde no se veían: «Revisar» abre un resumen de los cambios con Aprobar y Rechazar.
 
 ## [2.151.1] - 2026-10-09
 
