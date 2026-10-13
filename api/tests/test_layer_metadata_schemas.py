@@ -9,6 +9,7 @@ from app.schemas.layer_metadata import (
     LayerStatsUpdate,
     NumeraliaValueInput,
 )
+from app.services.stats_templates import validate_stats_config
 
 
 class TestLayerMetadataUpdateFechaUltima:
@@ -62,3 +63,27 @@ class TestNumeraliaValueInput:
         assert stats.values[0].valor == '1234.50'
         assert stats.values[1].valor == '15'
         assert stats.values[1].simbolo == '%'
+
+
+class TestStatsConfigSchemaAlias:
+    def _payload(self) -> dict:
+        return LayerStatsUpdate.model_validate({
+            'stats_config': [
+                {'position': 1, 'label': 'Total', 'operation': 'count', 'schema': 'educacion', 'table': 'centros'},
+            ],
+        }).model_dump(exclude_unset=True, by_alias=False)
+
+    def test_dump_sin_alias_conserva_la_clave_schema(self):
+        item = self._payload()['stats_config'][0]
+        assert item['schema'] == 'educacion'
+        assert 'schema_' not in item
+
+    def test_payload_del_put_pasa_la_validacion(self):
+        validado = validate_stats_config(self._payload()['stats_config'])
+        assert validado[0]['schema'] == 'educacion'
+
+    def test_dump_con_alias_igual(self):
+        stats = LayerStatsUpdate.model_validate({
+            'stats_config': [{'operation': 'count', 'schema': 'educacion', 'table': 'centros'}],
+        })
+        assert stats.model_dump(by_alias=True)['statsConfig'][0]['schema'] == 'educacion'

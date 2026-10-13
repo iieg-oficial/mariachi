@@ -17,6 +17,8 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
   function»: el modal de JSON usaba `message.useMessage()` del puente de mensajes, que no lo tiene.
 - La cola de revisión ya no manda los borradores de capa, metadatos y estadísticas al editor de
   páginas, donde no se veían: «Revisar» abre un resumen de los cambios con Aprobar y Rechazar.
+- `PUT /layer-metadata/{key}/stats` ya no responde «schema vacio o invalido» con indicadores
+  válidos: el volcado sin alias convertía la clave `schema` de cada indicador en `schema_`.
 
 ## [2.151.1] - 2026-10-09
 
