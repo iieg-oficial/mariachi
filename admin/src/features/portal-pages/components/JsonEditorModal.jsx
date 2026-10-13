@@ -12,7 +12,6 @@ export default function JsonEditorModal({ visible, onClose, initialData, onSave 
     const { isMobile } = useIsMobile();
     const [jsonString, setJsonString] = useState('');
     const [error, setError] = useState(null);
-    const [messageApi, contextHolder] = message.useMessage();
 
     useEffect(() => {
         if (visible && initialData) {
@@ -39,7 +38,7 @@ export default function JsonEditorModal({ visible, onClose, initialData, onSave 
         };
         const snippetString = JSON.stringify(snippet, null, 2);
         navigator.clipboard.writeText(snippetString);
-        messageApi.success(`Plantilla de ${config.label} copiada al portapapeles`);
+        message.success(`Plantilla de ${config.label} copiada al portapapeles`);
     };
 
     const renderSnippetList = () => {
@@ -109,7 +108,6 @@ export default function JsonEditorModal({ visible, onClose, initialData, onSave 
             style={{ top: isMobile ? 0 : 20 }}
             centered={isMobile}
         >
-            {contextHolder}
             <Row gutter={[16, 16]}>
                 <Col xs={24} md={16}>
                     <Alert closable

@@ -1,7 +1,15 @@
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    SerializerFunctionWrapHandler,
+    field_validator,
+    model_serializer,
+    model_validator,
+)
 
 from app.schemas._camel import CamelCaseInput
 from app.services.bulk_ingest_parser import parse_date_iso, parse_number_with_symbol
@@ -79,6 +87,13 @@ class StatsConfigItem(BaseModel):
     expression: dict | None = None
 
     model_config = ConfigDict(populate_by_name=True, extra='allow')
+
+    @model_serializer(mode='wrap')
+    def _schema_sin_guion_bajo(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
+        data = handler(self)
+        if 'schema_' in data:
+            data['schema'] = data.pop('schema_')
+        return data
 
 
 class LayerMetadataBase(CamelCaseInput):
