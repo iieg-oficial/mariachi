@@ -38,6 +38,8 @@ export default function TarjetitaEditor({
     updateLayer = null,
     reloadTree = null,
     puedePublicar = false,
+    visibilidad = null,
+    oculta = false,
 }) {
     const [mode, setMode] = useState('lienzo');
     const [soloVista, setSoloVista] = useState(false);
@@ -121,12 +123,14 @@ export default function TarjetitaEditor({
                             />
                         </Tooltip>
                     )}
+                    {!soloVista && visibilidad}
                     {!soloVista && <InfoBoxModeSwitch value={mode} onChange={setMode} />}
                 </Space>
             </div>
 
             {soloLlamada ? (
                 <div style={{
+                    opacity: oculta ? 0.45 : 1,
                     flex: 1,
                     minHeight: 220,
                     border: '1px dashed #d9cfe0',
@@ -158,6 +162,7 @@ export default function TarjetitaEditor({
                     gap: 24,
                     minWidth: 0,
                     justifyContent: soloVista ? 'center' : undefined,
+                    opacity: oculta ? 0.45 : 1,
                 }}>
                     <div style={{ flex: soloVista ? '0 0 auto' : '1 1 340px', minWidth: 0 }}>
                         <InfoBoxEditor
