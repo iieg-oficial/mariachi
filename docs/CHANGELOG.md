@@ -13,6 +13,10 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ### Agregado
 
+- Campo **Columna de fecha** en la edición de capas de mapalab, en el grid de configuración y en el
+  historial: la columna con la que el visor filtra y anima por fecha. Vacío, se usa la columna con el
+  comentario `mapalab:fecha` o `fecha`; una columna guardada que ya no existe en la capa se marca en el
+  selector. Requiere dataengine `0058`.
 - Segmented **Visible / Oculta** en la pestaña Tarjetita de las capas de mapalab, junto a
   Lienzo/Lista/JSON, y columna **Consultable** en el grid de configuración y en el historial: con
   Oculta la capa no abre infobox al hacer clic en el visor y el editor se atenúa. Requiere
@@ -20,6 +24,10 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ### Corregido
 
+- La pestaña Estadísticas de una capa manda el `db_schema` del workspace y no su alias: en `general`,
+  `seguridad` y `recursos` no coinciden y la cifra calculada se rechazaba o quedaba en «—».
+- Agregar una condición a una cifra calculada ya no tumba el admin (React #31): el editor de
+  condiciones pintaba las columnas `{name, type}` como texto.
 - El editor de páginas (y la revisión de borradores que lo abre) ya no se cae con «useMessage is not a
   function»: el modal de JSON usaba `message.useMessage()` del puente de mensajes, que no lo tiene.
 - La cola de revisión ya no manda los borradores de capa, metadatos y estadísticas al editor de

@@ -228,6 +228,7 @@ class LayerBase(CamelCaseInput):
     time_style_pattern: str | None = Field(default=None, max_length=200, serialization_alias="timeStylePattern")
     raster_periodicity: dict | None = Field(default=None, serialization_alias="rasterPeriodicity")
     hide_periodicity: bool = Field(default=False, serialization_alias="hidePeriodicity")
+    date_column: str | None = Field(default=None, max_length=100, serialization_alias="dateColumn")
 
     default_zoom: Any = Field(default=None, serialization_alias="defaultZoom")
     zoom_range: dict | None = Field(default=None, serialization_alias="zoomRange")
@@ -327,6 +328,7 @@ class LayerUpdate(CamelCaseInput):
     time_style_pattern: str | None = Field(default=None, serialization_alias="timeStylePattern")
     raster_periodicity: dict | None = Field(default=None, serialization_alias="rasterPeriodicity")
     hide_periodicity: bool | None = Field(default=None, serialization_alias="hidePeriodicity")
+    date_column: str | None = Field(default=None, max_length=100, serialization_alias="dateColumn")
 
     default_zoom: Any = Field(default=None, serialization_alias="defaultZoom")
     zoom_range: dict | None = Field(default=None, serialization_alias="zoomRange")

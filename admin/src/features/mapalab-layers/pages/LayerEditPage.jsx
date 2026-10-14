@@ -58,6 +58,7 @@ import { GEOMETRY_TYPE_OPTIONS } from '@features/mapalab-layers/constants/layerC
 import { grupoQueHereda } from '@features/mapalab-layers/utils/propagacionTarjetita';
 import { refrescarArbol } from '@features/mapalab-layers/utils/refrescoArbol';
 import MunicipioFieldPicker from '@features/mapalab-layers/components/MunicipioFieldPicker';
+import ColumnaFechaField from '@features/mapalab-layers/components/ColumnaFechaField';
 import { findNodeContext } from '@features/mapalab-layers/hooks/useLayerTreeAdmin';
 import { message } from '@shared/services/message';
 
@@ -310,6 +311,7 @@ export default function LayerEditPage() {
             defaultDate: data.defaultDate ?? data.default_date ?? null,
             timeStylePattern: data.timeStylePattern ?? data.time_style_pattern ?? '',
             hidePeriodicity: data.hidePeriodicity ?? data.hide_periodicity ?? false,
+            dateColumn: data.dateColumn ?? data.date_column ?? null,
             searchTags: data.searchTags || data.search_tags || data.searchMeta?.tags || [],
             hasMunicipio: data.hasMunicipio ?? data.has_municipio ?? data.searchMeta?.hasMunicipio ?? false,
             municipioField: data.municipioField ?? data.municipio_field ?? data.searchMeta?.municipioField ?? '',
@@ -1011,6 +1013,7 @@ export default function LayerEditPage() {
                     >
                         <Switch />
                     </Form.Item>
+                    <ColumnaFechaField form={form} availableFields={availableFields} fieldsLoading={fieldsLoading} />
                     <Form.Item
                         label="Fecha por defecto"
                         name="defaultDate"
@@ -1108,7 +1111,7 @@ export default function LayerEditPage() {
             children: featureTypeContext ? (
                 <LayerStatsSection
                     layerKey={featureTypeContext.layerKey}
-                    workspace={featureTypeContext.workspace}
+                    workspace={workspaces.find((w) => w.alias === featureTypeContext.workspace)?.dbSchema || featureTypeContext.workspace}
                     geoserverLayer={featureTypeContext.geoserverLayer}
                     availableFields={availableFields}
                     onDraftSaved={reloadDrafts}

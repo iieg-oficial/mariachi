@@ -38,6 +38,7 @@ TRACKED_COLUMNS: tuple[str, ...] = (
     'default_date',
     'time_style_pattern',
     'hide_periodicity',
+    'date_column',
     'search_tags',
     'has_municipio',
     'municipio_field',
