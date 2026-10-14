@@ -122,6 +122,12 @@ class TestCampos:
         FIELDS['cql_filter'].write(row, None)
         assert row['cql_filter'] == ''
 
+    def test_columna_de_fecha_vacia_vuelve_a_automatica(self):
+        row = {'date_column': 'fecha_corte'}
+        FIELDS['date_column'].write(row, None)
+        assert row['date_column'] is None
+        assert FIELDS['date_column'].max_length == 100
+
 
 class TestGuard:
     def test_campo_obligatorio_vacio_se_rechaza(self):
