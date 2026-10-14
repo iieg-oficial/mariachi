@@ -84,6 +84,7 @@ class Layer(DataEngineBase):
     time_style_pattern = Column(String(200), nullable=True)
     raster_periodicity = Column(JSONB, nullable=True)
     hide_periodicity = Column(Boolean, server_default=text("FALSE"), nullable=False)
+    date_column = Column(String(100), nullable=True)
 
     default_zoom = Column(JSONB, nullable=True)
     zoom_range = Column(JSONB, nullable=True)

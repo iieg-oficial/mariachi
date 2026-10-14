@@ -13,6 +13,10 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ### Agregado
 
+- Campo **Columna de fecha** en la edición de capas de mapalab, en el grid de configuración y en el
+  historial: la columna con la que el visor filtra y anima por fecha. Vacío, se usa la columna con el
+  comentario `mapalab:fecha` o `fecha`; una columna guardada que ya no existe en la capa se marca en el
+  selector. Requiere dataengine `0058`.
 - Segmented **Visible / Oculta** en la pestaña Tarjetita de las capas de mapalab, junto a
   Lienzo/Lista/JSON, y columna **Consultable** en el grid de configuración y en el historial: con
   Oculta la capa no abre infobox al hacer clic en el visor y el editor se atenúa. Requiere
