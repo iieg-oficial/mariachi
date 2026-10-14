@@ -47,6 +47,7 @@ LAYERS_TABLE = GridTable(
         'wfs_available',
         'geometry_type',
         'downloadable',
+        'queryable',
         'time_enabled',
         'default_date',
         'time_style_pattern',
@@ -201,6 +202,7 @@ FIELDS: dict[str, GridField] = {
         _bool_field('wfs_available', 'wfs_available'),
         _plain_field('geometry_type', 'geometry_type', coerce=_choice(GEOMETRY_TYPES)),
         _bool_field('downloadable', 'downloadable'),
+        _bool_field('queryable', 'queryable'),
         _bool_field('time_enabled', 'time_enabled'),
         GridField(
             key='default_date',
@@ -254,6 +256,7 @@ COLUMNS_META: list[dict] = [
     {'key': 'wfs_available', 'title': 'WFS disponible', 'type': 'bool', 'group': 'Servicios', 'width': 120},
     {'key': 'geometry_type', 'title': 'Tipo de geometria', 'type': 'select', 'optionsKey': 'geometryType', 'group': 'Servicios', 'width': 150},
     {'key': 'downloadable', 'title': 'Descargable', 'type': 'bool', 'group': 'Servicios', 'width': 110},
+    {'key': 'queryable', 'title': 'Consultable', 'type': 'bool', 'group': 'Servicios', 'width': 110},
     {'key': 'time_enabled', 'title': 'Soporte temporal', 'type': 'bool', 'group': 'Temporalidad', 'width': 130},
     {'key': 'default_date', 'title': 'Fecha por defecto', 'type': 'text', 'group': 'Temporalidad', 'width': 140},
     {'key': 'time_style_pattern', 'title': 'Patron de estilo temporal', 'type': 'text', 'group': 'Temporalidad', 'width': 200},
@@ -282,7 +285,7 @@ _SELECT_SQL = """
     )
     SELECT l.id, l.label, l.slug, l.node_type, l.sort_order, l.hidden_in_menu, l.disabled,
            l.workspace_alias, l.geoserver_layer, l.styles, l.cql_filter, l.wms_group,
-           l.tiled, l.image_format, l.antialias, l.wfs_available, l.geometry_type, l.downloadable,
+           l.tiled, l.image_format, l.antialias, l.wfs_available, l.geometry_type, l.downloadable, l.queryable,
            l.time_enabled, l.default_date, l.time_style_pattern, l.hide_periodicity,
            l.search_tags, l.has_municipio, l.municipio_field, l.municipio_field_type,
            l.icon_url, l.highlight_color, l.highlight_shape,

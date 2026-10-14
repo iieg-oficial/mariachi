@@ -33,6 +33,7 @@ TRACKED_COLUMNS: tuple[str, ...] = (
     'wfs_available',
     'geometry_type',
     'downloadable',
+    'queryable',
     'time_enabled',
     'default_date',
     'time_style_pattern',

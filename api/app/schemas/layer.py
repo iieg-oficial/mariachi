@@ -219,6 +219,7 @@ class LayerBase(CamelCaseInput):
     wfs_available: bool = Field(default=True, serialization_alias="wfsAvailable")
     wfs_layer_name: str | None = Field(default=None, max_length=200, serialization_alias="wfsLayerName")
     downloadable: bool = True
+    queryable: bool = True
 
     metadata_layer: str | None = Field(default=None, max_length=200, serialization_alias="metadataLayer")
 
@@ -317,6 +318,7 @@ class LayerUpdate(CamelCaseInput):
     wfs_available: bool | None = Field(default=None, serialization_alias="wfsAvailable")
     wfs_layer_name: str | None = Field(default=None, serialization_alias="wfsLayerName")
     downloadable: bool | None = None
+    queryable: bool | None = None
 
     metadata_layer: str | None = Field(default=None, serialization_alias="metadataLayer")
 

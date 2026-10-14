@@ -303,6 +303,7 @@ export default function LayerEditPage() {
             wfsAvailable: data.wfsAvailable,
             geometryType: data.geometryType ?? data.geometry_type ?? null,
             downloadable: data.downloadable,
+            queryable: data.queryable ?? true,
             timeEnabled: data.timeEnabled,
             defaultDate: data.defaultDate ?? data.default_date ?? null,
             timeStylePattern: data.timeStylePattern ?? data.time_style_pattern ?? '',
@@ -962,6 +963,14 @@ export default function LayerEditPage() {
                         name="downloadable"
                         valuePropName="checked"
                         tooltip="Habilita el botón de descarga (Shapefile/CSV/GeoJSON) en el visor para esta capa."
+                    >
+                        <Switch />
+                    </Form.Item>
+                    <Form.Item
+                        label="Consultable"
+                        name="queryable"
+                        valuePropName="checked"
+                        tooltip="Al hacer clic en el mapa, la capa abre su infobox. Apagarlo la deja solo como referencia visual, como las curvas de nivel."
                     >
                         <Switch />
                     </Form.Item>

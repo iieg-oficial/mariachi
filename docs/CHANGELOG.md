@@ -11,6 +11,11 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ## [No publicado]
 
+### Agregado
+
+- Interruptor **Consultable** en la edición de capas de mapalab, en el grid de configuración y en el
+  historial: apagado, la capa no abre infobox al hacer clic en el visor. Requiere dataengine `0057`.
+
 ### Corregido
 
 - El editor de páginas (y la revisión de borradores que lo abre) ya no se cae con «useMessage is not a
