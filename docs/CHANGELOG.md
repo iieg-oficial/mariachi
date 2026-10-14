@@ -13,6 +13,11 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ### Corregido
 
+- Agregar una condición a una cifra calculada ya no tumba el admin con «Error del servidor»: el editor
+  de condiciones recibía las columnas como `{name, type}` y las pintaba como texto.
+- La pestaña «Estadísticas» de una capa arma las cifras calculadas con el schema real del workspace
+  (`db_schema`) y no con su alias: en `general`, `seguridad` y `recursos` el alias no coincide con el
+  schema y la API rechazaba la cifra o la vista previa quedaba en «—».
 - El editor de páginas (y la revisión de borradores que lo abre) ya no se cae con «useMessage is not a
   function»: el modal de JSON usaba `message.useMessage()` del puente de mensajes, que no lo tiene.
 - La cola de revisión ya no manda los borradores de capa, metadatos y estadísticas al editor de

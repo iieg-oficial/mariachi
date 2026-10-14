@@ -1099,7 +1099,7 @@ export default function LayerEditPage() {
             children: featureTypeContext ? (
                 <LayerStatsSection
                     layerKey={featureTypeContext.layerKey}
-                    workspace={featureTypeContext.workspace}
+                    workspace={workspaces.find((w) => w.alias === featureTypeContext.workspace)?.dbSchema || featureTypeContext.workspace}
                     geoserverLayer={featureTypeContext.geoserverLayer}
                     availableFields={availableFields}
                     onDraftSaved={reloadDrafts}
