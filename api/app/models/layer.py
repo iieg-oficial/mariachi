@@ -75,6 +75,7 @@ class Layer(DataEngineBase):
     wfs_available = Column(Boolean, server_default=text("TRUE"), nullable=False)
     wfs_layer_name = Column(String(200), nullable=True)
     downloadable = Column(Boolean, server_default=text("TRUE"), nullable=False)
+    queryable = Column(Boolean, server_default=text("TRUE"), nullable=False)
 
     metadata_layer = Column(String(200), nullable=True)
 
