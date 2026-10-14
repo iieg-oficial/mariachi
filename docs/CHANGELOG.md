@@ -20,6 +20,10 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ### Corregido
 
+- La pestaña Estadísticas de una capa manda el `db_schema` del workspace y no su alias: en `general`,
+  `seguridad` y `recursos` no coinciden y la cifra calculada se rechazaba o quedaba en «—».
+- Agregar una condición a una cifra calculada ya no tumba el admin (React #31): el editor de
+  condiciones pintaba las columnas `{name, type}` como texto.
 - El editor de páginas (y la revisión de borradores que lo abre) ya no se cae con «useMessage is not a
   function»: el modal de JSON usaba `message.useMessage()` del puente de mensajes, que no lo tiene.
 - La cola de revisión ya no manda los borradores de capa, metadatos y estadísticas al editor de

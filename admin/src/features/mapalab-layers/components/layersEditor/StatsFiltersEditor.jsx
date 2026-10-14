@@ -26,7 +26,10 @@ const MUNICIPIO_TOKEN = '@municipio';
 const isContextValue = (value) => typeof value === 'string' && /^\{\{[a-z_.]+\}\}$/.test(value.trim());
 
 const fieldOptions = (availableFields, current) => {
-    const opts = (availableFields || []).map((f) => ({ value: f, label: f }));
+    const opts = (availableFields || []).map((f) => {
+        const nombre = typeof f === 'string' ? f : f.name;
+        return { value: nombre, label: nombre };
+    });
     if (current && !opts.some((o) => o.value === current)) opts.unshift({ value: current, label: current });
     if (!opts.some((o) => o.value === MUNICIPIO_TOKEN)) {
         opts.unshift({ value: MUNICIPIO_TOKEN, label: '@municipio — la columna que declare la capa' });
