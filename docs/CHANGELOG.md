@@ -13,8 +13,10 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ### Agregado
 
-- Interruptor **Consultable** en la edición de capas de mapalab, en el grid de configuración y en el
-  historial: apagado, la capa no abre infobox al hacer clic en el visor. Requiere dataengine `0057`.
+- Segmented **Visible / Oculta** en la pestaña Tarjetita de las capas de mapalab, junto a
+  Lienzo/Lista/JSON, y columna **Consultable** en el grid de configuración y en el historial: con
+  Oculta la capa no abre infobox al hacer clic en el visor y el editor se atenúa. Requiere
+  dataengine `0057`.
 
 ### Corregido
 

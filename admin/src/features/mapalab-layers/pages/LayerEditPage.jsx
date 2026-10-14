@@ -11,6 +11,7 @@ import { useLayerTreeAdmin } from '@features/mapalab-layers/hooks/useLayerTreeAd
 import useIsMobile from '@shared/hooks/useIsMobile';
 import { useAuth } from '@shared/contexts/useAuth';
 import TarjetitaEditor from '@features/mapalab-layers/components/layersEditor/TarjetitaEditor';
+import InfoBoxVisibilitySwitch from '@features/mapalab-layers/components/layersEditor/InfoBoxVisibilitySwitch';
 import { SampleFeaturesProvider } from '@features/mapalab-layers/components/layersEditor/SampleFeaturesContext';
 import LayerMetadataSection from '@features/mapalab-layers/components/layersEditor/LayerMetadataSection';
 import LayerStatsSection from '@features/mapalab-layers/components/layersEditor/LayerStatsSection';
@@ -217,6 +218,7 @@ export default function LayerEditPage() {
     const selectedGsLayer = Form.useWatch('geoserverLayer', form);
     const selectedStyles = Form.useWatch('styles', form);
     const watchedNodeType = Form.useWatch('nodeType', form);
+    const watchedQueryable = Form.useWatch('queryable', form);
     const parentNodeType = useMemo(() => {
         if (!layerId || !treeData?.length) return null;
         const ctx = findNodeContext(treeData, layerId);
@@ -967,14 +969,6 @@ export default function LayerEditPage() {
                         <Switch />
                     </Form.Item>
                     <Form.Item
-                        label="Consultable"
-                        name="queryable"
-                        valuePropName="checked"
-                        tooltip="Al hacer clic en el mapa, la capa abre su infobox. Apagarlo la deja solo como referencia visual, como las curvas de nivel."
-                    >
-                        <Switch />
-                    </Form.Item>
-                    <Form.Item
                         label="Servir por tiles (caché)"
                         name="tiled"
                         valuePropName="checked"
@@ -1073,6 +1067,12 @@ export default function LayerEditPage() {
                             updateLayer={updateLayer}
                             reloadTree={reload}
                             puedePublicar={isAdmin}
+                            oculta={watchedNodeType === 'leaf' && watchedQueryable === false}
+                            visibilidad={watchedNodeType === 'leaf' && (
+                                <Form.Item name="queryable" noStyle>
+                                    <InfoBoxVisibilitySwitch />
+                                </Form.Item>
+                            )}
                         />
                     </Form.Item>
                 </SampleFeaturesProvider>
