@@ -69,9 +69,9 @@ const CAMPO_COLUMNS = [
 const ACCIONES = [
     { accion: 'Ver una capa', como: 'Seleccionarla y «Agregar al mapa», o doble clic. Entra como WMS en modo tile.' },
     { accion: 'Ver un grupo entero', como: 'Marcar su casilla. Los nodos de la misma tabla entran como una sola capa con sus filtros combinados.' },
-    { accion: 'Traer la tabla completa', como: 'Marcar «Traer la tabla completa» antes de agregar: ignora el filtro del catálogo.' },
+    { accion: 'Traer la tabla completa', como: 'Clic derecho en la capa o el grupo → «Traer la tabla completa»: ignora el filtro del catálogo.' },
     { accion: 'Consultar un elemento', como: 'Con el panel abierto, clic en el lienzo. Consulta la capa elegida en el árbol, esté cargada o no.' },
-    { accion: 'Analizar los datos', como: '«Descargar vectorial» deja un GeoPackage local, ya filtrado por el nodo.' },
+    { accion: 'Analizar los datos', como: '«Descargar vectorial» deja un GeoPackage local, ya filtrado por el nodo. Si el archivo ya existe se guarda como _2: nunca se sobrescribe.' },
     { accion: 'Cambiar de límites', como: 'El switch IIEG | INEGI de la barra: mueve las capas de límites y cambia la geometría con la que se dibuja todo lo demás.' },
 ];
 
@@ -129,26 +129,14 @@ function UsoTab() {
                     en adelante es una capa normal: zoom a la selección, copiar o exportar a GeoPackage.
                 </Paragraph>
                 <Paragraph type="secondary" style={{ marginBottom: 0 }}>
-                    Manda a la vez lo elegido en el árbol, la capa activa de QGIS y, si no hay ninguna, la primera que
-                    responda de arriba abajo. Los clics se acumulan y volver a uno ya consultado no lo duplica.
+                    Manda lo elegido en el árbol; si no hay, la capa activa de QGIS, y si tampoco, la primera capa
+                    visible que responda de arriba abajo. Los clics se acumulan y volver a uno ya consultado no lo
+                    duplica. La herramienta se activa al abrir el panel sólo si la mano o identificar estaban activas.
                 </Paragraph>
             </Card>
 
-            <Alert
-                type="warning"
-                showIcon
-                title="Antes de publicarlo fuera de la red"
-                description={
-                    <ul style={{ margin: 0, paddingLeft: 18 }}>
-                        <li>El tráfico del plugin pasa por el gateway, no por la URL interna de GeoServer: eso es lo que le da cache, rate limit y protección de bots.</li>
-                        <li>Falta declarar el User-Agent de QGIS en la allowlist del gateway; hoy pasa por accidente, no por regla.</li>
-                        <li>Falta su propia zona de rate limit: hoy comparte la del visor, y el límite es por IP de salida.</li>
-                    </ul>
-                }
-            />
-
             <Space size={8} wrap>
-                <Tag color="purple">mapalab · plugin/</Tag>
+                <Tag color="purple">mapalab-qgis</Tag>
                 <Tag color="purple">QGIS 3.40 LTR</Tag>
                 <Tag color="purple">sólo lectura</Tag>
             </Space>

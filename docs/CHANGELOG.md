@@ -33,6 +33,10 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ### Cambiado
 
+- Guía del plugin de QGIS al día con mapalab-qgis 0.15.0: «Cambiar servidor…» desde el menú Web,
+  «Traer la tabla completa» en el clic derecho, descargas que nunca sobrescriben y el orden de la
+  consulta por clic. Se retira el aviso «Antes de publicarlo»: la allowlist de QGIS y su zona de rate
+  limit ya están en gateway-hub.
 - Documentación del MCP de mapalab en el admin: siete tools públicas sin API key (`layer_table` y
   `layer_stats` entran, `query_wfs` sale, `create_swipe` marcada BETA) y el playground prueba las siete
   sin pedir llave, marcando los errores de dominio (`isError`).
