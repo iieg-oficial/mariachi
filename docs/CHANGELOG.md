@@ -33,6 +33,7 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ### Cambiado
 
+- Guía del plugin de QGIS: desde 0.17.0 ya no pide el servidor, viene con el público del IIEG.
 - Tópico del MCP en el admin: seis tools en producción y siete en dev/beta, reglas de identificadores,
   fechas, municipios y textos sin datos de contacto, y una tarjeta de protecciones (rol de BD, GeoServer
   anónimo, solo por nginx, límites y entrada).

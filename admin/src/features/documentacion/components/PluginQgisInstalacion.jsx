@@ -26,8 +26,8 @@ const PASOS = [
         description: 'En la pestaña «Instalados» debe aparecer «MapaLab» con su casilla marcada, y en la barra de herramientas el ícono de MapaLab.',
     },
     {
-        title: 'Escribir la dirección del servidor',
-        description: 'Al abrir el panel por primera vez pide el servidor. Se escribe una sola vez: queda guardada en el perfil de QGIS, no se vuelve a pedir.',
+        title: 'Abrir el panel',
+        description: 'Desde 0.17.0 viene apuntando al servidor público del IIEG y carga el catálogo al abrirse. Para el de pruebas u otro interno: menú Web → MapaLab → «Cambiar servidor…».',
     },
     {
         title: 'Aceptar el certificado, si lo pide',
