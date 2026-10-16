@@ -27,6 +27,17 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
   Lienzo/Lista/JSON, y columna **Consultable** en el grid de configuración y en el historial: con
   Oculta la capa no abre infobox al hacer clic en el visor y el editor se atenúa. Requiere
   dataengine `0057`.
+- `purge_mapalab_events.py` purga también `huachicol.mcp_events` con la misma ventana de
+  `MAPALAB_EVENTS_RETENTION_DAYS`; los rollups `huachicol.mcp_rollup_*` solo recalculan los últimos
+  3 días y conservan el histórico.
+
+### Cambiado
+
+- Documentación del MCP de mapalab en el admin: siete tools públicas sin API key (`layer_table` y
+  `layer_stats` entran, `query_wfs` sale, `create_swipe` marcada BETA) y el playground prueba las siete
+  sin pedir llave, marcando los errores de dominio (`isError`).
+- Telemetría del MCP en el admin: tabla `huachicol.mcp_events`, prefijo `/api/mariachi`,
+  `session_hash` e `ip_hash` nulos, y sin la auditoría por API key retirada en mapalab 1.202.0.
 
 ### Corregido
 
@@ -42,6 +53,8 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
   válidos: el volcado sin alias convertía la clave `schema` de cada indicador en `schema_`.
 - `/sistema/monitor/status` y `/monitor/nodos` ya no responden 502 a ratos: huachicol tarda de 1 a
   5 s en armar el estado y la API lo cortaba a los 2 s. Ahora espera 8, por debajo de los 10 del admin.
+- La ingesta de telemetría del MCP ya no rechaza con 422 el lote entero cuando un texto (`client_name`,
+  `method`, `tool`…) excede su máximo: se trunca a la longitud de la columna y el lote se guarda.
 
 ## [2.151.1] - 2026-10-09
 
