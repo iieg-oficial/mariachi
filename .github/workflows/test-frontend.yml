@@ -7,9 +7,15 @@ on:
         description: 'Subcarpeta del frontend a testear (admin o web)'
         required: true
         type: string
+      correr:
+        description: 'false salta los tests (no cambió la app o ya corren en el PR)'
+        required: false
+        type: boolean
+        default: true
 
 jobs:
   test:
+    if: ${{ inputs.correr }}
     runs-on: [self-hosted, linux, iieg]
     timeout-minutes: 20
     defaults:
@@ -23,11 +29,22 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: 26
-          cache: 'npm'
-          cache-dependency-path: ${{ inputs.app }}/package-lock.json
+
+      - name: Restaurar node_modules
+        id: nm
+        env:
+          LLAVE: ${{ github.event.repository.name }}-${{ inputs.app }}-node26-${{ hashFiles(format('{0}/package-lock.json', inputs.app)) }}
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/node-modules.sh" restaurar "$LLAVE"
 
       - name: Install dependencies
+        if: steps.nm.outputs.hit != 'true'
         run: npm ci
+
+      - name: Guardar node_modules
+        if: steps.nm.outputs.hit != 'true'
+        env:
+          LLAVE: ${{ github.event.repository.name }}-${{ inputs.app }}-node26-${{ hashFiles(format('{0}/package-lock.json', inputs.app)) }}
+        run: bash "$GITHUB_WORKSPACE/.github/scripts/node-modules.sh" guardar "$LLAVE"
 
       - name: Lint
         run: npm run lint

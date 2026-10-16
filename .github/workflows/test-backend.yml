@@ -2,9 +2,16 @@ name: Test Backend
 
 on:
   workflow_call:
+    inputs:
+      correr:
+        description: 'false salta los tests (no cambió api/ o ya corren en el PR)'
+        required: false
+        type: boolean
+        default: true
 
 jobs:
   test:
+    if: ${{ inputs.correr }}
     runs-on: [self-hosted, linux, iieg]
     timeout-minutes: 20
     defaults:
