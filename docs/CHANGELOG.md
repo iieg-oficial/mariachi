@@ -33,6 +33,12 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ### Cambiado
 
+- Guía del plugin de QGIS: desde 0.17.0 ya no pide el servidor, viene con el público del IIEG.
+- Tópico del MCP en el admin: seis tools en producción y siete en dev/beta, reglas de identificadores,
+  fechas, municipios y textos sin datos de contacto, y una tarjeta de protecciones (rol de BD, GeoServer
+  anónimo, solo por nginx, límites y entrada).
+- Guía del plugin de QGIS con lo de 0.16.0: filtro por municipio y fecha, y abrir un mapa
+  compartido del visor.
 - Guía del plugin de QGIS al día con mapalab-qgis 0.15.0: «Cambiar servidor…» desde el menú Web,
   «Traer la tabla completa» en el clic derecho, descargas que nunca sobrescriben y el orden de la
   consulta por clic. Se retira el aviso «Antes de publicarlo»: la allowlist de QGIS y su zona de rate

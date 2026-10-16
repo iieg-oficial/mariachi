@@ -22,12 +22,12 @@ const GRUPO_COLOR = {
 };
 
 const TOOLS = [
-    { grupo: 'búsqueda', tool: 'search_layers', modulo: 'mapalab.py', desc: 'Busca capas por texto o tema; devuelve el id que usan las demás.' },
+    { grupo: 'búsqueda', tool: 'search_layers', modulo: 'herramientas_lectura.py', desc: 'Busca capas por texto o tema; devuelve el id que usan las demás.' },
     { grupo: 'capa', tool: 'describe_layer', modulo: 'layers.py', desc: 'Cualidades, metadata, numeralia y periodicidad de una capa.' },
     { grupo: 'municipios', tool: 'municipios', modulo: 'resolve.py', desc: 'Lista o busca municipios con su clave INEGI.' },
     { grupo: 'datos', tool: 'layer_table', modulo: 'tabla.py', desc: 'Filas legibles, filtrables y paginadas de una capa.' },
     { grupo: 'datos', tool: 'layer_stats', modulo: 'estadisticas.py', desc: 'Conteo, suma, promedio y reparto por clase.' },
-    { grupo: 'creación', tool: 'create_map', modulo: 'shares.py', desc: 'Crea un mapa compartible con capas, municipio y año.' },
+    { grupo: 'creación', tool: 'create_map', modulo: 'shares.py', desc: 'Crea un mapa compartible con capas, municipio, año y mes.' },
     { grupo: 'creación', tool: 'create_swipe', modulo: 'shares.py', desc: 'Comparador A|B de una capa en dos años o de dos capas.', beta: true },
 ];
 
@@ -57,12 +57,21 @@ const TOOL_COLUMNS = [
 ];
 
 const REGLAS = [
-    { tema: 'Identificadores', regla: 'El id de search_layers; también acepta slug, alias o nombre parcial.' },
-    { tema: 'Fechas', regla: 'year (o year_a/year_b), validado contra describe_layer.periodicidad; sin CQL.' },
-    { tema: 'Municipios', regla: 'Nombre o clave directo, p. ej. municipio: "Guadalajara".' },
+    { tema: 'Identificadores', regla: 'El id de search_layers; un grupo o un texto que coincide con varias capas devuelve las opciones.' },
+    { tema: 'Fechas', regla: 'year y month, validados contra describe_layer.periodicidad con la columna de fecha de cada capa.' },
+    { tema: 'Municipios', regla: 'Nombre (con o sin acentos) o clave; filtra las capas que lo soportan.' },
+    { tema: 'Textos', regla: 'Anotaciones y etiquetas sin páginas web, correos ni teléfonos.' },
     { tema: 'Basemaps', regla: 'voyager, position o sin_mapalab.' },
     { tema: 'Errores', regla: 'Los de dominio llegan como error MCP (isError: true) con un mensaje accionable.' },
     { tema: 'Flujo', regla: 'search_layers → describe_layer → layer_table / layer_stats → create_map.' },
+];
+
+const PROTECCIONES = [
+    { tema: 'Base de datos', regla: 'Rol mapalab_mcp: lee el catálogo y solo escribe compartidos.' },
+    { tema: 'GeoServer', regla: 'Consultas anónimas, sin la credencial de administración.' },
+    { tema: 'Contenedor', regla: 'Corre como appuser y solo se llega por el nginx de mapalab.' },
+    { tema: 'Límites', regla: '10 peticiones/s, 30 mapas/min, 60 tablas/min y 20 cálculos/min para todo el sitio.' },
+    { tema: 'Entrada', regla: 'Origin ajeno da 403 y un cuerpo de más de 256 KB da 413.' },
 ];
 
 const REGLA_COLUMNS = [
@@ -77,7 +86,7 @@ export default function McpTopic() {
             <div>
                 <Title level={3} style={{ marginBottom: 4 }}>Servidor MCP</Title>
                 <Text type="secondary">
-                    Siete tools públicas, sin API key, para que un agente busque capas, consulte sus datos y entregue un mapa.
+                    Seis tools públicas en producción y siete en dev y beta, sin API key, para que un agente busque capas, consulte sus datos y entregue un mapa.
                 </Text>
                 <Paragraph style={{ marginTop: 12, marginBottom: 0, fontSize: 13 }} copyable={{ text: MCP_URL }}>
                     URL del entorno actual: <Text code>{MCP_URL}</Text>
@@ -88,7 +97,7 @@ export default function McpTopic() {
                 title={<>Tools disponibles <Tag style={{ marginLeft: 8 }}>{TOOLS.length}</Tag></>}
                 size="small"
                 extra={
-                    <Tooltip title="create_swipe y el parámetro vista_3d solo existen en dev y beta, como el comparador del visor.">
+                    <Tooltip title="create_swipe, vista_3d y embed_html solo existen en dev y beta, como el comparador del visor.">
                         <InfoCircleOutlined aria-label="Qué es BETA" />
                     </Tooltip>
                 }
@@ -98,6 +107,10 @@ export default function McpTopic() {
 
             <Card title="Guía rápida para agentes" size="small">
                 <Table rowKey="tema" size="small" pagination={false} showHeader={false} dataSource={REGLAS} columns={REGLA_COLUMNS} />
+            </Card>
+
+            <Card title="Protecciones" size="small">
+                <Table rowKey="tema" size="small" pagination={false} showHeader={false} dataSource={PROTECCIONES} columns={REGLA_COLUMNS} />
             </Card>
 
             <div>
