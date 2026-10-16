@@ -13,6 +13,12 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ### Agregado
 
+- La API puede autenticarse ante GeoServer con un token de servicio de minerva (`client_credentials`)
+  en lugar de usuario y contraseña: `GEOSERVER_AUTH_MODE=minerva` y `GEOSERVER_MINERVA_AUDIENCE=sextante`.
+  Usa `MINERVA_CLIENT_ID`, `MINERVA_CLIENT_SECRET` y el canal `MINERVA_ISSUER_URL`; renueva el token
+  antes de que venza y reintenta una vez si GeoServer responde 401. Requiere minerva con el grant
+  `client_credentials` y la cuenta de servicio de mariachi con un rol en `sextante`. El valor por
+  defecto sigue siendo `basic`.
 - Campo **Columna de fecha** en la edición de capas de mapalab, en el grid de configuración y en el
   historial: la columna con la que el visor filtra y anima por fecha. Vacío, se usa la columna con el
   comentario `mapalab:fecha` o `fecha`; una columna guardada que ya no existe en la capa se marca en el

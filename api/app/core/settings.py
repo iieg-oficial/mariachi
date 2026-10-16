@@ -81,6 +81,8 @@ class Settings(BaseSettings):
     geoserver_user: str | None = None
     geoserver_password: str | None = None
     geoserver_timeout: float = 10.0
+    geoserver_auth_mode: Literal["basic", "minerva"] = "basic"
+    geoserver_minerva_audience: str = "sextante"
     geoserver_upload_staging_dir: str = "/var/tmp/geoserver-uploads"
     geoserver_upload_max_bytes: int = 0
     geoserver_installed_font_families: str = "Garet"
