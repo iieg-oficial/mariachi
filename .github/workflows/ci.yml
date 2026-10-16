@@ -12,10 +12,28 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  pr-abierto:
+    if: github.event_name == 'push'
+    runs-on: [self-hosted, linux, iieg]
+    timeout-minutes: 2
+    permissions:
+      pull-requests: read
+    outputs:
+      abiertos: ${{ steps.buscar.outputs.abiertos }}
+    steps:
+      - id: buscar
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: echo "abiertos=$(gh pr list --repo '${{ github.repository }}' --head '${{ github.ref_name }}' --state open --json number --jq length || echo 0)" >> "$GITHUB_OUTPUT"
+
   backend:
+    needs: pr-abierto
+    if: ${{ !cancelled() && (github.event_name != 'push' || needs.pr-abierto.outputs.abiertos == '0') }}
     uses: ./.github/workflows/test-backend.yml
 
   admin:
+    needs: pr-abierto
+    if: ${{ !cancelled() && (github.event_name != 'push' || needs.pr-abierto.outputs.abiertos == '0') }}
     uses: ./.github/workflows/test-frontend.yml
     with:
       app: admin
