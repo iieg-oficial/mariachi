@@ -53,7 +53,7 @@ const SITUACIONES = [
     },
     {
         caso: 'Cambiar de servidor',
-        que: 'Borrar la dirección guardada desde Configuración → Opciones → Avanzado, grupo mapalab, clave base_url. El panel vuelve a pedirla.',
+        que: 'Menú Web → MapaLab → «Cambiar servidor…». El panel vuelve a pedir la dirección y recarga el catálogo.',
     },
     {
         caso: 'El panel no aparece',

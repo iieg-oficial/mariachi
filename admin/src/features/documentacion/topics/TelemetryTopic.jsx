@@ -12,8 +12,8 @@ const MCP_FIELDS = [
     { campo: 'error_code', tipo: 'int | null', origen: 'status HTTP cuando hay error' },
     { campo: 'duration_ms', tipo: 'int', origen: 'time.monotonic() antes/después del downstream' },
     { campo: 'bytes_out', tipo: 'int', origen: 'suma de chunks del response (incluye SSE)' },
-    { campo: 'session_hash', tipo: 'sha-256', origen: 'salt + mcp-session-id (no se guarda en claro)' },
-    { campo: 'ip_hash', tipo: 'sha-256', origen: 'salt + IP del cliente' },
+    { campo: 'session_hash', tipo: 'null', origen: 'siempre nulo: el MCP es stateless_http' },
+    { campo: 'ip_hash', tipo: 'null', origen: 'siempre nulo: el borde de producción no entrega la IP' },
     { campo: 'client_name', tipo: 'string | null', origen: 'params.clientInfo.name del initialize' },
     { campo: 'client_version', tipo: 'string | null', origen: 'params.clientInfo.version del initialize' },
 ];
@@ -78,11 +78,11 @@ export default function TelemetryTopic() {
             </div>
 
             <Card
-                title={<>Servidor MCP de MapaLab — <Text code>mapalab_mcp_events</Text></>}
+                title={<>Servidor MCP de MapaLab — <Text code>huachicol.mcp_events</Text></>}
                 size="small"
             >
                 <Paragraph type="secondary" style={{ marginTop: 0, marginBottom: 12, fontSize: 12 }}>
-                    Middleware ASGI en el container <Text code>mapalab-mcp</Text> intercepta cada request al endpoint <Text code>/mcp/</Text>, parsea el JSON-RPC y empuja al buffer. Flush async cada 30 s a <Text code>POST /api/administrador/internal/mapalab/mcp/events</Text>. Sin identidad: <Text code>session_hash</Text> e <Text code>ip_hash</Text> son SHA-256 + salt del token interno. Dashboard en el tab MCP de <Text code>/huachicol/telemetria?fuente=mapalab</Text>.
+                    El MCP envía lotes cada 30 s a <Text code>POST /api/mariachi/internal/mapalab/mcp/events</Text>; los crudos se purgan a los 90 días (por defecto) y lo agregado queda en <Text code>huachicol.mcp_rollup_*</Text>.
                 </Paragraph>
                 <Table
                     rowKey="campo"
@@ -91,15 +91,6 @@ export default function TelemetryTopic() {
                     dataSource={MCP_FIELDS}
                     columns={FIELD_COLUMNS}
                 />
-            </Card>
-
-            <Card
-                title={<>Auditoría por API key — <Text code>mapalab_api_keys_accesos</Text> (endpoint = mcp)</>}
-                size="small"
-            >
-                <Paragraph type="secondary" style={{ marginTop: 0, marginBottom: 0, fontSize: 12 }}>
-                    Además de la telemetría anónima de arriba, cada <Text code>tools/call</Text> se registra <strong>atribuido a la API key</strong> en la misma tabla que usa el widget embebido (<Text code>mapalab_api_keys_accesos</Text>), con <Text code>endpoint = mcp</Text>, <Text code>resultado</Text> (allowed | denied | quota_exceeded), la herramienta en <Text code>motivo</Text> e <Text code>ip_hash</Text>; <Text code>origin</Text> va nulo (el MCP no tiene dominio). Se reúsa <Text code>access_logger</Text> (flush a <Text code>POST /api/administrador/internal/mapalab/keys/accesos</Text>). Se ve por llave en la pestaña <Text code>Auditoría</Text> de <Text code>/mapalab/api-keys</Text>, junto con los accesos del embed (distinguidos por la columna Acción). Solo se registran los <Text code>tools/call</Text>; no se guardan los argumentos.
-                </Paragraph>
             </Card>
 
             <Card title="Visor MapaLab — Herramientas" size="small">

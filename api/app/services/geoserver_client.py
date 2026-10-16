@@ -7,6 +7,7 @@ from urllib.parse import quote
 
 import httpx
 
+from app.core.service_token import ServiceTokenAuth, shared_provider
 from app.core.settings import get_settings
 
 RASTER_ROOT = "geoserver-raster"
@@ -34,7 +35,18 @@ class GeoServerClient:
         if not self._base_url:
             raise GeoServerError("GEOSERVER_URL no esta configurado")
 
-        self._auth = (self._user, self._password) if self._user else None
+        self._auth: httpx.Auth | tuple[str, str] | None
+        if settings.geoserver_auth_mode == "minerva" and user is None:
+            self._auth = ServiceTokenAuth(
+                shared_provider(
+                    settings.minerva_issuer_url,
+                    settings.minerva_client_id,
+                    settings.minerva_client_secret,
+                    settings.geoserver_minerva_audience,
+                )
+            )
+        else:
+            self._auth = (self._user, self._password) if self._user else None
 
     def _rest_url(self, path: str) -> str:
         return f"{self._base_url}/rest/{path.lstrip('/')}"

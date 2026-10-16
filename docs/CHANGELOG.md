@@ -13,6 +13,12 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
 
 ### Agregado
 
+- La API puede autenticarse ante GeoServer con un token de servicio de minerva (`client_credentials`)
+  en lugar de usuario y contraseña: `GEOSERVER_AUTH_MODE=minerva` y `GEOSERVER_MINERVA_AUDIENCE=sextante`.
+  Usa `MINERVA_CLIENT_ID`, `MINERVA_CLIENT_SECRET` y el canal `MINERVA_ISSUER_URL`; renueva el token
+  antes de que venza y reintenta una vez si GeoServer responde 401. Requiere minerva con el grant
+  `client_credentials` y la cuenta de servicio de mariachi con un rol en `sextante`. El valor por
+  defecto sigue siendo `basic`.
 - Campo **Columna de fecha** en la edición de capas de mapalab, en el grid de configuración y en el
   historial: la columna con la que el visor filtra y anima por fecha. Vacío, se usa la columna con el
   comentario `mapalab:fecha` o `fecha`; una columna guardada que ya no existe en la capa se marca en el
@@ -21,6 +27,21 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
   Lienzo/Lista/JSON, y columna **Consultable** en el grid de configuración y en el historial: con
   Oculta la capa no abre infobox al hacer clic en el visor y el editor se atenúa. Requiere
   dataengine `0057`.
+- `purge_mapalab_events.py` purga también `huachicol.mcp_events` con la misma ventana de
+  `MAPALAB_EVENTS_RETENTION_DAYS`; los rollups `huachicol.mcp_rollup_*` solo recalculan los últimos
+  3 días y conservan el histórico.
+
+### Cambiado
+
+- Guía del plugin de QGIS al día con mapalab-qgis 0.15.0: «Cambiar servidor…» desde el menú Web,
+  «Traer la tabla completa» en el clic derecho, descargas que nunca sobrescriben y el orden de la
+  consulta por clic. Se retira el aviso «Antes de publicarlo»: la allowlist de QGIS y su zona de rate
+  limit ya están en gateway-hub.
+- Documentación del MCP de mapalab en el admin: siete tools públicas sin API key (`layer_table` y
+  `layer_stats` entran, `query_wfs` sale, `create_swipe` marcada BETA) y el playground prueba las siete
+  sin pedir llave, marcando los errores de dominio (`isError`).
+- Telemetría del MCP en el admin: tabla `huachicol.mcp_events`, prefijo `/api/mariachi`,
+  `session_hash` e `ip_hash` nulos, y sin la auditoría por API key retirada en mapalab 1.202.0.
 
 ### Corregido
 
@@ -36,6 +57,8 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
   válidos: el volcado sin alias convertía la clave `schema` de cada indicador en `schema_`.
 - `/sistema/monitor/status` y `/monitor/nodos` ya no responden 502 a ratos: huachicol tarda de 1 a
   5 s en armar el estado y la API lo cortaba a los 2 s. Ahora espera 8, por debajo de los 10 del admin.
+- La ingesta de telemetría del MCP ya no rechaza con 422 el lote entero cuando un texto (`client_name`,
+  `method`, `tool`…) excede su máximo: se trunca a la longitud de la columna y el lote se guarda.
 
 ## [2.151.1] - 2026-10-09
 
