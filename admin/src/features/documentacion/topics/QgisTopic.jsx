@@ -72,6 +72,8 @@ const ACCIONES = [
     { accion: 'Traer la tabla completa', como: 'Clic derecho en la capa o el grupo → «Traer la tabla completa»: ignora el filtro del catálogo.' },
     { accion: 'Consultar un elemento', como: 'Con el panel abierto, clic en el lienzo. Consulta la capa elegida en el árbol, esté cargada o no.' },
     { accion: 'Analizar los datos', como: '«Descargar vectorial» deja un GeoPackage local, ya filtrado por el nodo. Si el archivo ya existe se guarda como _2: nunca se sobrescribe.' },
+    { accion: 'Filtrar por municipio o fecha', como: 'Debajo del árbol, al elegir una capa que los soporta. Arranca en el mismo periodo que el visor y cambia la capa ya cargada; también filtra la consulta y la descarga.' },
+    { accion: 'Abrir un mapa compartido', como: 'Menú Web → MapaLab → «Abrir mapa compartido…» o el botón del panel: se pega el enlace del visor (…/mapa?s=…) y entra con sus capas, filtros, vista y anotaciones; el mapa base va como OpenStreetMap.' },
     { accion: 'Cambiar de límites', como: 'El switch IIEG | INEGI de la barra: mueve las capas de límites y cambia la geometría con la que se dibuja todo lo demás.' },
 ];
 
