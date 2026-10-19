@@ -4,8 +4,8 @@ export const aNombreInterno = (etiqueta) => (etiqueta || '')
     .toLowerCase()
     .replace(/[áéíóúüñ]/g, (c) => SIN_ACENTO[c])
     .replace(/[^a-z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '')
-    .replace(/^[0-9]+/, '')
+    .replace(/^[^a-z]+/, '')
+    .replace(/_+$/, '')
     .slice(0, 20)
     .replace(/_+$/, '');
 
