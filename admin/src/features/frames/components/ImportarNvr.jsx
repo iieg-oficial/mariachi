@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-    Button, Checkbox, Form, Input, InputNumber, List, Modal, Space, Tag, Typography, message,
+    Button, Checkbox, Form, Input, InputNumber, List, Modal, Space, Switch, Tag, Typography, message,
 } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 
@@ -25,6 +25,7 @@ const ImportarNvr = ({ abierto, onCerrar, onImportado }) => {
     const [seleccion, setSeleccion] = useState([]);
     const [buscando, setBuscando] = useState(false);
     const [importando, setImportando] = useState(false);
+    const [sub, setSub] = useState(true);
 
     const cerrar = () => {
         setCanales([]);
@@ -64,6 +65,7 @@ const ImportarNvr = ({ abierto, onCerrar, onImportado }) => {
                     contrasena: cfg.contrasena,
                     host: cfg.host,
                     canal: canal.canal,
+                    sub,
                 }),
                 habilitada: false,
                 grabacion_habilitada: false,
@@ -137,9 +139,17 @@ const ImportarNvr = ({ abierto, onCerrar, onImportado }) => {
                         <Input.Password autoComplete="new-password" />
                     </Form.Item>
                 </div>
-                <Button icon={<SearchOutlined />} onClick={buscar} loading={buscando}>
-                    Buscar canales
-                </Button>
+                <Space size={16} wrap>
+                    <Button icon={<SearchOutlined />} onClick={buscar} loading={buscando}>
+                        Buscar canales
+                    </Button>
+                    <Space size={8}>
+                        <Switch checked={sub} onChange={setSub} size="small" />
+                        <Text type="secondary" style={{ fontSize: 12 }}>
+                            Sub-stream (ligero, para ver muchas a la vez)
+                        </Text>
+                    </Space>
+                </Space>
             </Form>
 
             {canales.length ? (

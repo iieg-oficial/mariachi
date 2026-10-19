@@ -37,6 +37,12 @@ A partir de `1.0.0` el proyecto está en producción: se sigue versionado semán
   valida la URL con un sondeo RTSP (DESCRIBE con Digest) antes de guardar, así que detecta puerto mal,
   host inalcanzable, credencial equivocada o canal inexistente. Al editar reutiliza la contraseña
   guardada sin volver a pedirla.
+- Elegir **Principal / Sub-stream** al dar de alta o importar cámaras de frames por el NVR (el
+  sub-stream termina en `…/Channels/<canal>02`). «Importar del NVR» usa sub por omisión: pesa mucho
+  menos, así que permite ver muchas cámaras a la vez sin saturar el grabador, igual que el cliente de
+  Hikvision muestra el mosaico en sub y el principal solo al expandir.
+- Selector de **fps (15 / 30)** en la vista de una cámara a pantalla completa. La imagen se sigue
+  sirviendo por fotos (snapshots), así que el 30 depende del enlace y no equivale al stream real.
 
 ### Cambiado
 

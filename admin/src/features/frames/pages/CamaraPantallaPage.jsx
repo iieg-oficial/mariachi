@@ -11,7 +11,10 @@ import { CALIDADES } from '../constants/calidades';
 
 const VIVO_PATH = '/frames/camaras';
 const ALTA = CALIDADES[CALIDADES.length - 1].value;
-const INTERVALO_INDIVIDUAL_MS = Math.round(1000 / 15);
+const FPS = [
+    { label: '15 fps', value: 15 },
+    { label: '30 fps', value: 30 },
+];
 
 const rutaDe = (nombre) => `/frames/vivo/pantalla/${encodeURIComponent(nombre)}`;
 
@@ -20,6 +23,7 @@ const CamaraPantallaPage = () => {
     const navigate = useNavigate();
     const isMobile = useIsMobile();
     const [alto, setAlto] = useState(ALTA);
+    const [fps, setFps] = useState(15);
     const { camaras, estados, cargando } = useCamarasEnVivo();
 
     const indice = camaras.findIndex((c) => c.nombre === nombre);
@@ -49,6 +53,7 @@ const CamaraPantallaPage = () => {
                     : <Tag color="red">sin señal</Tag>
             ) : null}
             <Segmented options={CALIDADES} value={alto} onChange={setAlto} size="small" />
+            <Segmented options={FPS} value={fps} onChange={setFps} size="small" />
             {camaras.length > 1 ? (
                 <>
                     <Tooltip title="Anterior (←)">
@@ -70,7 +75,7 @@ const CamaraPantallaPage = () => {
                 </>
             ) : null}
         </Space>
-    ), [estado, alto, camaras.length, ir]);
+    ), [estado, alto, fps, camaras.length, ir]);
 
     const posicion = indice >= 0 ? ` · ${indice + 1} de ${camaras.length}` : '';
     useFullscreenHeader({
@@ -86,7 +91,7 @@ const CamaraPantallaPage = () => {
                     nombre={camara.nombre}
                     etiqueta={camara.etiqueta}
                     alto={alto}
-                    intervalo={INTERVALO_INDIVIDUAL_MS}
+                    intervalo={Math.round(1000 / fps)}
                     llenar
                 />
             ) : (

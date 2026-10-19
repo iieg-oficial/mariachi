@@ -31,6 +31,7 @@ const CamaraModal = ({ abierto, camara, onCancelar, onGuardar, guardando }) => {
     const [manual, setManual] = useState(false);
     const [cambiandoConexion, setCambiandoConexion] = useState(false);
     const [probando, setProbando] = useState(false);
+    const [sub, setSub] = useState(false);
     const edicion = Boolean(camara);
 
     const etiqueta = Form.useWatch('etiqueta', form);
@@ -45,7 +46,8 @@ const CamaraModal = ({ abierto, camara, onCancelar, onGuardar, guardando }) => {
         contrasena: conexion?.contrasena,
         host: conexion?.host,
         canal: modo === CONEXION_NVR ? conexion?.canal : undefined,
-    }), [conexion, modo]);
+        sub,
+    }), [conexion, modo, sub]);
 
     const editaConexion = !edicion || cambiandoConexion;
     const compuesta = editaConexion && !manual;
@@ -55,6 +57,7 @@ const CamaraModal = ({ abierto, camara, onCancelar, onGuardar, guardando }) => {
         if (!abierto) return;
         setManual(false);
         setCambiandoConexion(false);
+        setSub(false);
         if (camara) {
             setModo(CONEXION_DIRECTA);
             form.setFieldsValue(camara);
@@ -169,6 +172,8 @@ const CamaraModal = ({ abierto, camara, onCancelar, onGuardar, guardando }) => {
                     }}
                     urlCompuesta={urlCompuesta}
                     urlActual={camara?.rtsp_url}
+                    sub={sub}
+                    onSub={setSub}
                     onCambiar={() => {
                         setModo(CONEXION_DIRECTA);
                         setManual(false);
